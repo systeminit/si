@@ -33,23 +33,21 @@
       >
         <template v-slot:activator="{ on }">
           <v-btn icon v-on="on">
-            <v-icon>person</v-icon>
+            <v-avatar>
+              <img :src="profile.picture" />
+            </v-avatar>
+            <!-- <v-icon>person</v-icon> -->
           </v-btn>
         </template>
 
         <v-card>
           <v-list>
-            <v-list-tile avatar>
-              <v-list-tile-avatar>
-                <img
-                  src="https://cdn.vuetifyjs.com/images/john.jpg"
-                  alt="John"
-                />
-              </v-list-tile-avatar>
-
+            <v-list-tile>
               <v-list-tile-content>
-                <v-list-tile-title>Bobo T. Clown</v-list-tile-title>
-                <v-list-tile-sub-title>A Funny Guy</v-list-tile-sub-title>
+                <v-list-tile-title>{{ profile.name }}</v-list-tile-title>
+                <v-list-tile-sub-title>{{
+                  profile.email
+                }}</v-list-tile-sub-title>
               </v-list-tile-content>
             </v-list-tile>
           </v-list>
@@ -74,8 +72,8 @@
 
           <v-card-actions>
             <v-spacer></v-spacer>
+            <v-btn flat @click="$auth.logOut()">Logout</v-btn>
             <v-btn flat @click="menu = false">Cancel</v-btn>
-            <v-btn color="primary" @click="menu = false">Save</v-btn>
           </v-card-actions>
         </v-card>
       </v-menu>
@@ -87,9 +85,15 @@
 import Vue from "vue";
 export default Vue.extend({
   name: "GlobalToolbar",
+  methods: {
+    handleLoginEvent(data: any) {
+      this.profile = data.profile;
+    },
+  },
   data() {
     return {
-      drawer: null,
+      profile: this.$auth.profile,
+      drawer: false,
       menu: false,
       message: false,
       hints: true,
