@@ -1,5 +1,13 @@
 # si-web-app
 
+## Environment Options
+
+You can turn authentication on/off by setting up:
+```
+#.env.local
+VUE_APP_AUTHENTICATION=false
+```
+
 ## Project setup
 ```
 npm install

@@ -50,7 +50,6 @@ router.beforeEach((to, from, next) => {
   if (to.path == "/callback" || auth.isAuthenticated()) {
     return next();
   }
-  console.log("tomorrow");
 
   auth.login({ target: to.fullPath });
 });
