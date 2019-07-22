@@ -1,0 +1,33 @@
+{
+  "name": "si-graphql",
+  "version": "0.0.1",
+  "private": true,
+  "description": "System Initiative GraphQL Server",
+  "main": "index.js",
+  "scripts": {
+    "build": "webpack --config webpack.$NODE_ENV.js",
+    "start": "node dist/server",
+    "start:env": "node --require dotenv/config dist/server",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "System Initiative, Inc.",
+  "devDependencies": {
+    "@types/webpack-env": "^1.14.0",
+    "clean-webpack-plugin": "^3.0.0",
+    "dotenv": "^8.0.0",
+    "ts-loader": "^6.0.4",
+    "tsconfig-paths": "^3.8.0",
+    "tsconfig-paths-webpack-plugin": "^3.2.0",
+    "typescript": "^3.5.3",
+    "webpack": "^4.36.1",
+    "webpack-cli": "^3.3.6",
+    "webpack-merge": "^4.2.1",
+    "webpack-node-externals": "^1.7.2"
+  },
+  "dependencies": {
+    "@graphql-modules/core": "^0.7.8",
+    "apollo-server": "^2.7.0",
+    "graphql": "^14.4.2"
+  }
+}

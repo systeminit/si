@@ -1,0 +1,4 @@
+dist
+tags
+node_modules
+.env
