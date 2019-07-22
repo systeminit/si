@@ -29,3 +29,6 @@ or 'user-service'.
 
 A [Vue](https://vuejs.org) application that is the Web UI for SI. 
 
+## si-graphql
+
+The GraphQL API.

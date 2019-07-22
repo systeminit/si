@@ -1,8 +1,6 @@
 import { ApolloServer } from 'apollo-server';
 
 import { environment } from './environment';
-import resolvers from './resolvers';
-import typeDefs from './schemas';
 
 import { HelloWorld } from '@modules/hello-world';
 
