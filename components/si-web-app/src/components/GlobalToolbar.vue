@@ -10,6 +10,14 @@
             <v-list-tile-title>Home</v-list-tile-title>
           </v-list-tile-content>
         </v-list-tile>
+        <v-list-tile :to="{ name: 'workspaces' }" active-class append>
+          <v-list-tile-action>
+            <v-icon>group_work</v-icon>
+          </v-list-tile-action>
+          <v-list-tile-content>
+            <v-list-tile-title>Workspaces</v-list-tile-title>
+          </v-list-tile-content>
+        </v-list-tile>
         <v-list-tile :to="{ name: 'about' }" active-class append>
           <v-list-tile-action>
             <v-icon>contact_mail</v-icon>
@@ -21,7 +29,7 @@
       </v-list>
     </v-navigation-drawer>
 
-    <v-toolbar fixed app>
+    <v-toolbar fixed app color="primary" dark>
       <v-toolbar-side-icon @click.stop="drawer = !drawer"></v-toolbar-side-icon>
       <v-toolbar-title>System Initiative</v-toolbar-title>
       <v-spacer></v-spacer>

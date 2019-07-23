@@ -1,5 +1,7 @@
+import { AuthenticationError } from 'apollo-server';
+
 import { GraphQLModule } from '@graphql-modules/core';
-import gql from "graphql-tag";
+import gql from 'graphql-tag';
 
 export const HelloWorld = new GraphQLModule({
   typeDefs: gql`
@@ -12,9 +14,14 @@ export const HelloWorld = new GraphQLModule({
   `,
   resolvers: {
     Query: {
-      testMessage: (): string => {
-        return "foo";
+      testMessage: (_obj, _args, context, info) => {
+        console.log(info.session.req.user);
+        if (info.session.req.user) {
+          return 'logged in';
+        } else {
+          return 'not logged in';
+        }
       },
-    }
-  }
+    },
+  },
 });

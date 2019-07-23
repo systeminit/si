@@ -5,10 +5,20 @@
 </template>
 
 <script>
+import gql from "graphql-tag";
+import createUser from "@/graphql/mutation/createUser.graphql";
+
 export default {
   methods: {
-    handleLoginEvent(data) {
+    async handleLoginEvent(data) {
       if (!data.error) {
+        let r = await this.$apollo.mutate({
+          mutation: createUser,
+          variables: {
+            email: data.profile.email,
+            name: data.profile.name,
+          },
+        });
         this.$router.push(data.state.target || "/");
       }
     },

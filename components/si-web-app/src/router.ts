@@ -3,6 +3,8 @@ import Router from "vue-router";
 import Home from "@/views/Home.vue";
 import NotFound from "@/views/NotFound.vue";
 import Callback from "@/components/Callback.vue";
+import Workspaces from "@/views/Workspaces.vue";
+import WorkspaceShow from "@/views/WorkspaceShow.vue";
 import auth from "@/auth/authService";
 
 Vue.use(Router);
@@ -38,6 +40,16 @@ const router = new Router({
       path: "/callback",
       name: "callback",
       component: Callback,
+    },
+    {
+      path: "/workspaces",
+      name: "workspaces",
+      component: Workspaces,
+    },
+    {
+      path: "/workspaces/:id",
+      name: "workspace",
+      component: WorkspaceShow,
     },
     {
       path: "*",

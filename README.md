@@ -9,6 +9,14 @@ We're currently working on 'BugBear'
 Things are set up as a mono-repo - all you should need to do to start working
 is check out this repository. 
 
+# Try it out
+
+Make sure you have node installed. Do 'npm install' in each of the components. For
+`si-graphql`, run `npm start`. For `si-web-app`, run `npm run serve`. 
+
+Then hit `http://localhost:8080` for the web app. If you want to play around with
+GraphQL directly, see the readme there.
+
 # Vocabulary
 
 ## components

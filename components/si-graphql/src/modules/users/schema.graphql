@@ -1,0 +1,38 @@
+"A User"
+type User {
+  "The id"
+  id: ID!
+  "The Email Address reported by their provider"
+  email: String!
+  "The Name reported by their provider"
+  name: String
+}
+
+input getUserByIdInput {
+  "The ID for the user"
+  id: ID!
+}
+
+
+input createUserInput {
+  "The users email"
+  email: String!,
+  "The users name"
+  name: String
+}
+
+"The response to a createUser mutation"
+type createUserPayload {
+  "The created user"
+  user: User,
+}
+
+extend type Query {
+  "Get a User by their ID"
+  getUserById(input: getUserByIdInput): User
+}
+
+extend type Mutation {
+  "Create a new user"
+  createUser(input: createUserInput): createUserPayload
+}

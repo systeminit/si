@@ -39,3 +39,21 @@ npm start:env
 This will start the server and load your `.env` file. It will hot-reload when
 webpack recompiles.
 
+### Auth
+
+First, log in to the web UI. Then fire up the console, and type:
+
+```
+this.localStorage['authIdToken']
+```
+
+That is your auth token. Then head over the the graphql playground on this server,
+and in the http headrs section, add
+
+```
+{
+  "Authorization": "Bearer <YOURSTRING>"
+}
+```
+
+And viola, you'll be authing your queries.
