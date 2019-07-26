@@ -1,0 +1,67 @@
+"A workspace; where work happens"
+type Workspace {
+  "The id"
+  id: ID!
+  "The name of the workspace"
+  name: String!
+  "Description of what the workspace is for"
+  description: String
+  "Members of the workspace"
+  members: [User!]!
+  "Creator of the workspace"
+  creator: User!
+}
+
+extend type User {
+  "The workspaces this user is a member of"
+  workspaces: [Workspace]
+  "The workspaces this user is the creator of"
+  createdWorkspaces: [Workspace]
+}
+
+###
+# Queries
+###
+input getWorkspaceByIdInput {
+  "The ID for the Workspace"
+  id: ID!
+}
+
+extend type Query {
+  "Get Workspace by ID"
+  getWorkspaceById(input: getWorkspaceByIdInput): Workspace
+  "Gets the logged in users Workspaces"
+  getWorkspaces: [Workspace]!
+}
+
+# Mutations
+input createWorkspaceInput {
+  "The name of the workspace"
+  name: String!
+  "What the workspace is for"
+  description: String
+}
+
+"The result of a createWorkspace mutation"
+type createWorkspacePayload {
+  "The workspace that was just created"
+  workspace: Workspace
+}
+
+input deleteWorkspaceInput {
+  "The ID of the Workspace to delete"
+  id: ID! 
+}
+
+"The result of a createWorkspace mutation"
+type deleteWorkspacePayload {
+  "The workspace ID that was just created"
+  workspace: Workspace
+}
+
+extend type Mutation {
+  "Create a new Workspace"
+  createWorkspace(input: createWorkspaceInput): createWorkspacePayload
+  "Delete a Workspace"
+  deleteWorkspace(input: deleteWorkspaceInput): deleteWorkspacePayload
+}

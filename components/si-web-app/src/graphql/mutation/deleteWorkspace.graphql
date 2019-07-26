@@ -1,0 +1,9 @@
+mutation deleteWorkspace($id: ID!) {
+  deleteWorkspace(input: { id: $id }) {
+    workspace {
+      id
+      name
+      description
+    }
+  }
+}

@@ -7,22 +7,22 @@ module.exports = {
       {
         exclude: [path.resolve(__dirname, 'node_modules')],
         test: /\.ts$/,
-        use: 'ts-loader'
+        use: 'ts-loader',
       },
       {
         test: /\.(graphql|gql)$/,
         exclude: [path.resolve(__dirname, 'node_modules')],
         loader: 'graphql-tag/loader',
-      }
-    ]
+      },
+    ],
   },
   output: {
     filename: 'server.js',
-    path: path.resolve(__dirname, 'dist')
+    path: path.resolve(__dirname, 'dist'),
   },
   resolve: {
-    plugins: [ new TsconfigPathsPlugin({})],
-    extensions: ['.ts', '.tsx', '.js', '.graphql', '.gql' ]
+    plugins: [new TsconfigPathsPlugin({})],
+    extensions: ['.ts', '.tsx', '.js'],
   },
-  target: 'node'
+  target: 'node',
 };

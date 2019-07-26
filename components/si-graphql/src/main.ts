@@ -1,25 +1,9 @@
-import { ApolloServer } from 'apollo-server';
+import http from 'http';
+import app from '@/server';
+import { environment } from '@/environment';
 
-import { environment } from './environment';
+const server = http.createServer(app);
 
-import { HelloWorld } from '@modules/hello-world';
-
-const server = new ApolloServer({ 
-  context: session => session,
-  modules: [
-    HelloWorld
-  ],
-  //resolvers, 
-  //typeDefs,
-  introspection: environment.apollo.introspection,
-  playground: environment.apollo.playground
+server.listen({ port: environment.port }, (): void => {
+  console.log(`System Initiative GraphQL Listening on ${environment.port}`);
 });
-
-server.listen(environment.port)
-  .then(({ url }) => console.log(`Server ready at ${url}. `));
-
-// Hot Module Replacement
-if (module.hot) {
-  module.hot.accept();
-  module.hot.dispose(() => server.stop());
-}

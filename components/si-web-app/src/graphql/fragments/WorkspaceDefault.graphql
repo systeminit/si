@@ -1,0 +1,15 @@
+fragment WorkspaceDefault on Workspace {
+  id
+  name
+  description
+  creator {
+    id
+    name
+    email
+  }
+  members {
+    id
+    name
+    email
+  }
+}

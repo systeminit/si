@@ -9,14 +9,23 @@
     "test:unit": "vue-cli-service test:unit"
   },
   "dependencies": {
+    "apollo-cache-inmemory": "^1.6.2",
+    "apollo-client": "^2.6.3",
+    "apollo-link": "^1.2.12",
+    "apollo-link-context": "^1.0.18",
+    "apollo-link-http": "^1.5.15",
     "auth0-js": "^9.11.1",
     "core-js": "^2.6.5",
+    "graphql": "^14.4.2",
+    "graphql-tag": "^2.10.1",
     "vue": "^2.6.10",
+    "vue-apollo": "^3.0.0-rc.2",
     "vue-router": "^3.0.3",
     "vuetify": "^1.5.5"
   },
   "devDependencies": {
     "@types/auth0-js": "^9.10.2",
+    "@types/graphql": "^14.2.3",
     "@types/jest": "^23.1.4",
     "@vue/cli-plugin-babel": "^3.9.0",
     "@vue/cli-plugin-eslint": "^3.9.0",
@@ -29,6 +38,7 @@
     "babel-core": "7.0.0-bridge.0",
     "babel-eslint": "^10.0.1",
     "eslint": "^5.16.0",
+    "eslint-plugin-graphql": "^3.0.3",
     "eslint-plugin-vue": "^5.0.0",
     "lint-staged": "^8.1.5",
     "stylus": "^0.54.5",

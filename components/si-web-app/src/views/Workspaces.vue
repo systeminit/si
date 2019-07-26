@@ -1,12 +1,6 @@
 <template>
   <StandardLayout>
-    <v-container fluid fill-height>
-      <v-layout justify-center align-center>
-        <v-flex text-xs-center>
-          <WorkspaceTop />
-        </v-flex>
-      </v-layout>
-    </v-container>
+    <WorkspaceTop />
   </StandardLayout>
 </template>
 
@@ -16,7 +10,7 @@ import StandardLayout from "@/components/StandardLayout.vue";
 import WorkspaceTop from "@/components/WorkspaceTop.vue";
 
 export default Vue.extend({
-  name: "home",
+  name: "Workspaces",
   components: {
     StandardLayout,
     WorkspaceTop,
