@@ -17,6 +17,9 @@ Make sure you have node installed. Do 'npm install' in each of the components. F
 Then hit `http://localhost:8080` for the web app. If you want to play around with
 GraphQL directly, see the readme there.
 
+# Vagrant Development Environment
+Once you have vagrant installed you can fire up a dev environment with `make vagrant-create` and you can destroy the environment with `make vagrant-remove`. Or you can simply use the vagrant commands directly if you know what you're doing.
+
 # Vocabulary
 
 ## components
