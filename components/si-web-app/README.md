@@ -40,3 +40,6 @@ npm run test:unit
 
 ### Customize configuration
 See [Configuration Reference](https://cli.vuejs.org/config/).
+
+## Docker Container
+Generate a docker container to run this service with `make docker-build` and run the container with `docker-run`. Alternatively you can generate and run the container with `make docker`.
