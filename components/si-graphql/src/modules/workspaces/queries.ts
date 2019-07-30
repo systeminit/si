@@ -18,5 +18,5 @@ export async function getWorkspaces(
   info,
 ): Promise<Workspace[]> {
   let user = await checkAuthentication(info);
-  return user.$relatedQuery("workspaces");
+  return user.$relatedQuery("workspaces").orderBy("name");
 }

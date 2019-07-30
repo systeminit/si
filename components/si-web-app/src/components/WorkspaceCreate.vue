@@ -1,10 +1,9 @@
 <template>
   <v-card>
-    <v-card-title dark class="secondary">
-      <span class="headline white--text">Create a Workspace</span>
+    <v-card-title>
+      Create a Workspace
     </v-card-title>
     <v-card-text>
-      {{ errorMessage }}
       <v-text-field
         required
         outlined
@@ -19,6 +18,7 @@
       ></v-text-field>
     </v-card-text>
     <v-card-actions>
+      <v-spacer />
       <v-btn color="primary" @click="createWorkspace()">
         Create Workspace
       </v-btn>
@@ -28,6 +28,7 @@
 
 <script lang="ts">
 import Vue from "vue";
+import sortBy from "lodash/sortBy";
 
 import createWorkspace from "@/graphql/mutation/createWorkspace.graphql";
 import getWorkspaces from "@/graphql/queries/getWorkspaces.graphql";
@@ -48,6 +49,8 @@ export default Vue.extend({
             query: getWorkspaces,
           });
           data.getWorkspaces.push(workspace);
+          let nw = sortBy(data.getWorkspaces, ["name", "id"]);
+          data.getWorkspaces = nw;
           store.writeQuery({
             query: getWorkspaces,
             data,

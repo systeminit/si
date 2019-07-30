@@ -1,11 +1,11 @@
 <template>
   <StandardLayout>
-    <v-container fluid fill-height>
-      <v-layout justify-center align-center>
-        <v-flex text-xs-center>
+    <v-container class="fill-height" fluid>
+      <v-row justify="center" align="center">
+        <v-col class="text-center">
           <WorkspaceTop />
-        </v-flex>
-      </v-layout>
+        </v-col>
+      </v-row>
     </v-container>
   </StandardLayout>
 </template>

@@ -1,28 +1,49 @@
 <template>
   <div>
     <v-container>
-      <v-layout align-center justify-center>
-        <v-flex xl12>
+      <v-row align="center" justify="center">
+        <v-col xl="12">
           <v-card md8>
-            <v-card-title dark class="secondary">
-              <v-btn :to="{ name: 'workspaces' }" dark flat>
+            <v-card-title>
+              <v-btn :to="{ name: 'workspaces' }" text active-class exact>
                 <v-icon>arrow_back</v-icon>
               </v-btn>
-              <span class="headline white--text">
-                Workspace {{ getWorkspaceById.name }}
-              </span>
+              Workspace / {{ getWorkspaceById.name }}
               <v-spacer />
-              <v-btn dark flat @click="deleteWorkspace()">
-                <v-icon>delete</v-icon>
-              </v-btn>
+              <v-dialog v-model="deleteDialog">
+                <template v-slot:activator="{ on }">
+                  <v-btn text v-on="on">
+                    <v-icon>delete</v-icon>
+                  </v-btn>
+                </template>
+                <v-card>
+                  <v-card-title>
+                    Delete Workspace
+                  </v-card-title>
+                  <v-divider />
+                  <v-card-text>
+                    Really delete {{ getWorkspaceById.name }}? This cannot be
+                    un-done.
+                  </v-card-text>
+                  <v-card-actions>
+                    <v-spacer></v-spacer>
+                    <v-btn text @click="deleteDialog = false">
+                      Cancel
+                    </v-btn>
+                    <v-btn text @click="deleteWorkspace()">
+                      Delete
+                    </v-btn>
+                  </v-card-actions>
+                </v-card>
+              </v-dialog>
             </v-card-title>
             <v-divider />
             <v-card-text>
               {{ getWorkspaceById.description }}
             </v-card-text>
           </v-card>
-        </v-flex>
-      </v-layout>
+        </v-col>
+      </v-row>
     </v-container>
   </div>
 </template>
@@ -52,6 +73,7 @@ export default Vue.extend({
         name: "Loading",
         description: "Loading",
       },
+      deleteDialog: false,
     };
   },
   methods: {
@@ -78,6 +100,7 @@ export default Vue.extend({
               query: getWorkspaces,
               data,
             });
+            this.deleteDialog = false;
             this.$router.push({ name: "workspaces" });
           }
         },
