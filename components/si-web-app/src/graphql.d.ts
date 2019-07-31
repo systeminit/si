@@ -1,7 +1,7 @@
 // graphql.d.ts file
-declare module '*.graphql' {
-    import {DocumentNode} from 'graphql';
+declare module "*.graphql" {
+  import { DocumentNode } from "graphql";
 
-    const value: DocumentNode;
-    export = value;
+  const value: DocumentNode;
+  export = value;
 }

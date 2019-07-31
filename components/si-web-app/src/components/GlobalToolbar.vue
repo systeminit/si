@@ -1,36 +1,7 @@
 <template>
   <div>
-    <v-navigation-drawer fixed v-model="drawer" app>
-      <v-list dense>
-        <v-list-tile :to="{ name: 'home' }" active-class append>
-          <v-list-tile-action>
-            <v-icon>home</v-icon>
-          </v-list-tile-action>
-          <v-list-tile-content>
-            <v-list-tile-title>Home</v-list-tile-title>
-          </v-list-tile-content>
-        </v-list-tile>
-        <v-list-tile :to="{ name: 'workspaces' }" active-class append>
-          <v-list-tile-action>
-            <v-icon>group_work</v-icon>
-          </v-list-tile-action>
-          <v-list-tile-content>
-            <v-list-tile-title>Workspaces</v-list-tile-title>
-          </v-list-tile-content>
-        </v-list-tile>
-        <v-list-tile :to="{ name: 'about' }" active-class append>
-          <v-list-tile-action>
-            <v-icon>contact_mail</v-icon>
-          </v-list-tile-action>
-          <v-list-tile-content>
-            <v-list-tile-title>Contact</v-list-tile-title>
-          </v-list-tile-content>
-        </v-list-tile>
-      </v-list>
-    </v-navigation-drawer>
-
-    <v-toolbar fixed app color="primary" dark>
-      <v-toolbar-side-icon @click.stop="drawer = !drawer"></v-toolbar-side-icon>
+    <v-app-bar fixed app color="primary" dark>
+      <v-app-bar-nav-icon @click.stop="drawer = !drawer"></v-app-bar-nav-icon>
       <v-toolbar-title>System Initiative</v-toolbar-title>
       <v-spacer></v-spacer>
       <v-menu
@@ -50,42 +21,78 @@
 
         <v-card>
           <v-list>
-            <v-list-tile>
-              <v-list-tile-content>
-                <v-list-tile-title>{{ profile.name }}</v-list-tile-title>
-                <v-list-tile-sub-title>{{
-                  profile.email
-                }}</v-list-tile-sub-title>
-              </v-list-tile-content>
-            </v-list-tile>
+            <v-list-item>
+              <v-list-item-content>
+                <v-list-item-title>{{ profile.name }}</v-list-item-title>
+                <v-list-item-subtitle>{{ profile.email }}</v-list-item-subtitle>
+              </v-list-item-content>
+            </v-list-item>
           </v-list>
 
           <v-divider></v-divider>
 
           <v-list>
-            <v-list-tile>
-              <v-list-tile-action>
+            <v-list-item>
+              <v-list-item-action>
                 <v-switch v-model="message" color="purple"></v-switch>
-              </v-list-tile-action>
-              <v-list-tile-title>Enable messages</v-list-tile-title>
-            </v-list-tile>
+              </v-list-item-action>
+              <v-list-item-title>Enable messages</v-list-item-title>
+            </v-list-item>
 
-            <v-list-tile>
-              <v-list-tile-action>
+            <v-list-item>
+              <v-list-item-action>
                 <v-switch v-model="hints" color="purple"></v-switch>
-              </v-list-tile-action>
-              <v-list-tile-title>Enable hints</v-list-tile-title>
-            </v-list-tile>
+              </v-list-item-action>
+              <v-list-item-title>Enable hints</v-list-item-title>
+            </v-list-item>
           </v-list>
 
           <v-card-actions>
             <v-spacer></v-spacer>
-            <v-btn flat @click="$auth.logOut()">Logout</v-btn>
-            <v-btn flat @click="menu = false">Cancel</v-btn>
+            <v-btn text @click="$auth.logOut()">Logout</v-btn>
+            <v-btn text @click="menu = false">Cancel</v-btn>
           </v-card-actions>
         </v-card>
       </v-menu>
-    </v-toolbar>
+    </v-app-bar>
+    <v-navigation-drawer v-model="drawer" app>
+      <v-list dense>
+        <v-list-item :to="{ name: 'home' }" exact append>
+          <v-list-item-action>
+            <v-icon>home</v-icon>
+          </v-list-item-action>
+          <v-list-item-content>
+            <v-list-item-title>Home</v-list-item-title>
+          </v-list-item-content>
+        </v-list-item>
+        <v-list-item :to="{ name: 'workspaces' }" exact append>
+          <v-list-item-action>
+            <v-icon>group_work</v-icon>
+          </v-list-item-action>
+          <v-list-item-content>
+            <v-list-item-title>Workspaces</v-list-item-title>
+          </v-list-item-content>
+        </v-list-item>
+
+        <v-list-item :to="{ name: 'workspaces' }" exact append>
+          <v-list-item-action>
+            <v-icon>cloud</v-icon>
+          </v-list-item-action>
+          <v-list-item-content>
+            <v-list-item-title>Integrations</v-list-item-title>
+          </v-list-item-content>
+        </v-list-item>
+
+        <v-list-item :to="{ name: 'about' }" exact append>
+          <v-list-item-action>
+            <v-icon>contact_mail</v-icon>
+          </v-list-item-action>
+          <v-list-item-content>
+            <v-list-item-title>Contact</v-list-item-title>
+          </v-list-item-content>
+        </v-list-item>
+      </v-list>
+    </v-navigation-drawer>
   </div>
 </template>
 

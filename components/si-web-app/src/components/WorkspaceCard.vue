@@ -4,8 +4,8 @@
       :to="{ name: 'workspace', params: { id: id } }"
       :elevation="hover ? 12 : 2"
     >
-      <v-card-title dark class="secondary">
-        <span class="headline white--text">{{ name }}</span>
+      <v-card-title>
+        {{ name }}
       </v-card-title>
       <v-divider />
       <v-card-text>{{ description }}</v-card-text>

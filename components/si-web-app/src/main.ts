@@ -5,7 +5,7 @@ import { createHttpLink } from "apollo-link-http";
 import { InMemoryCache } from "apollo-cache-inmemory";
 import VueApollo from "vue-apollo";
 
-import "./plugins/vuetify";
+import vuetify from "./plugins/vuetify";
 import App from "./App.vue";
 import router from "./router";
 import AuthPlugin from "@/plugins/auth";
@@ -58,5 +58,6 @@ declare module "vue/types/vue" {
 new Vue({
   router,
   apolloProvider,
+  vuetify,
   render: h => h(App),
 }).$mount("#app");
