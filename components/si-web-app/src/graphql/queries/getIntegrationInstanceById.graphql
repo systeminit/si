@@ -1,0 +1,7 @@
+#import "../fragments/IntegrationInstanceDefault.graphql"
+
+query getIntegrationInstanceById($id: ID!) {
+  getIntegrationInstanceById(input: { id: $id }) {
+    ...IntegrationInstanceDefault 
+  }
+}

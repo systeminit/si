@@ -1,0 +1,21 @@
+#import ("../fragments/IntegrationInstanceDefault.graphql")
+
+mutation disableIntegrationInstanceOnWorkspace($integrationInstanceId: ID!, $workspaceId: ID!) {
+  disableIntegrationInstanceOnWorkspace(
+    input: { 
+      integrationInstanceId: $integrationInstanceId,
+      workspaceId: $workspaceId,
+    }
+  ) {
+    integrationInstance { 
+      ...IntegrationInstanceDefault
+    }
+    workspace {
+      id
+      integrationInstances {
+        ...IntegrationInstanceDefault
+      }
+    }
+  }
+}
+

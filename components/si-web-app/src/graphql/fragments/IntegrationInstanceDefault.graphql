@@ -1,0 +1,14 @@
+fragment IntegrationInstanceDefault on IntegrationInstance {
+  id
+  name
+  description
+  integration {
+    id
+    name
+    description
+    image
+  }
+  workspaces {
+    id
+  }
+}
