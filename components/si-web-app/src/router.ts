@@ -8,6 +8,7 @@ import WorkspaceShow from "@/views/WorkspaceShow.vue";
 import Integrations from "@/views/Integrations.vue";
 import IntegrationShow from "@/views/IntegrationShow.vue";
 import auth from "@/auth/authService";
+import Graph from "@/views/Graph.vue";
 
 Vue.use(Router);
 
@@ -62,6 +63,11 @@ const router = new Router({
       path: "/integrations/:id",
       name: "integration",
       component: IntegrationShow,
+    },
+    {
+      path: "/graph",
+      name: "graph",
+      component: Graph,
     },
     {
       path: "*",

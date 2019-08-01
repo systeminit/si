@@ -1,5 +1,7 @@
 {
   "compilerOptions": {
+    "noImplicitAny": false, // We may not want to keep this permanantly.
+    // "allowJs": true,
     "target": "esnext",
     "module": "esnext",
     "strict": true,
@@ -29,6 +31,7 @@
     ]
   },
   "include": [
+    "src/@types/*.ts",
     "src/**/*.ts",
     "src/**/*.tsx",
     "src/**/*.vue",
