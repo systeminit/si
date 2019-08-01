@@ -84,6 +84,15 @@
           </v-list-item-content>
         </v-list-item>
 
+        <v-list-item :to="{ name: 'graph' }" exact append>
+          <v-list-item-action>
+            <v-icon>polymer</v-icon>
+          </v-list-item-action>
+          <v-list-item-content>
+            <v-list-item-title>Graph</v-list-item-title>
+          </v-list-item-content>
+        </v-list-item>
+
         <v-list-item :to="{ name: 'about' }" append>
           <v-list-item-action>
             <v-icon>contact_mail</v-icon>

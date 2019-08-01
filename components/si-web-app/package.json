@@ -9,6 +9,7 @@
     "test:unit": "vue-cli-service test:unit"
   },
   "dependencies": {
+    "alight": "^0.14.1",
     "apollo-cache-inmemory": "^1.6.2",
     "apollo-client": "^2.6.3",
     "apollo-link": "^1.2.12",
@@ -19,6 +20,15 @@
     "graphql": "^14.4.2",
     "graphql-tag": "^2.10.1",
     "lodash": "^4.17.15",
+    "rete": "^1.4.1-rc.1",
+    "rete-area-plugin": "^0.2.1",
+    "rete-comment-plugin": "^0.6.0",
+    "rete-connection-mastery-plugin": "^0.2.2",
+    "rete-connection-plugin": "^0.8.2-rc.1",
+    "rete-context-menu-plugin": "^0.4.1",
+    "rete-history-plugin": "^0.2.1",
+    "rete-module-plugin": "^0.3.0",
+    "rete-vue-render-plugin": "^0.4.0",
     "vue": "^2.6.10",
     "vue-apollo": "^3.0.0-rc.2",
     "vue-router": "^3.0.3",
