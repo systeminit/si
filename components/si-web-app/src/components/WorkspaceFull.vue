@@ -77,14 +77,7 @@ import getWorkspaceById from "@/graphql/queries/getWorkspaceById.graphql";
 import getWorkspaces from "@/graphql/queries/getWorkspaces.graphql";
 import deleteWorkspace from "@/graphql/mutation/deleteWorkspace.graphql";
 
-interface IntegrationInstance {
-  id: String;
-  workspaces: Workspace[];
-}
-
-interface Workspace {
-  id: String;
-}
+import { IntegrationInstance } from "@/graphql/types";
 
 export default Vue.extend({
   name: "WorkspaceFull",

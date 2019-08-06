@@ -82,14 +82,7 @@ import getIntegrationInstances from "@/graphql/queries/getIntegrationInstances.g
 import getIntegrationInstanceById from "@/graphql/queries/getIntegrationInstanceById.graphql";
 import deleteIntegrationInstance from "@/graphql/mutation/deleteIntegrationInstance.graphql";
 
-interface IntegrationInstance {
-  id: String;
-}
-
-interface Workspace {
-  id: String;
-  integrationInstances: IntegrationInstance[];
-}
+import { Workspace } from "@/graphql/types";
 
 export default Vue.extend({
   name: "IntegrationFull",
