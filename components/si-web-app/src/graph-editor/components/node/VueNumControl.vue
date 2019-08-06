@@ -1,46 +1,55 @@
 <template>
-  <input type="number" :readonly="readonly" :value="value" @input="change($event)" @dblclick.stop="" @pointerdown.stop="" @pointermove.stop=""/>
+  <input
+    type="number"
+    :readonly="readonly"
+    :value="value"
+    @input="change($event)"
+    @dblclick.stop=""
+    @pointerdown.stop=""
+    @pointermove.stop=""
+  />
 </template>
 
-<script>
+<script lang="ts">
 import Vue from "vue";
 
-export default Vue.extend( {
+export default Vue.extend({
   name: "VueNumControl",
-  props: ['readonly', 'emitter', 'ikey', 'getData', 'putData'],
+  props: ["readonly", "emitter", "ikey", "getData", "putData"],
   // template: '<input type="number" :readonly="readonly" :value="value" @input="change($event)" @dblclick.stop="" @pointerdown.stop="" @pointermove.stop=""/>',
   data() {
     return {
       value: 0,
-    }
+    };
   },
   methods: {
-    change(e){
+    change(e) {
       this.value = +e.target.value;
       this.update();
     },
     update() {
-      if (this.ikey)
-        this.putData(this.ikey, this.value)
-      this.emitter.trigger('process');
-    }
+      if (this.ikey) this.putData(this.ikey, this.value);
+      this.emitter.trigger("process");
+    },
   },
   mounted() {
     this.value = this.getData(this.ikey);
-  }
+  },
 });
-
 </script>
 <style>
-html, body {
+html,
+body {
   height: 100%;
   width: 100%;
 }
 
-.node .control input, .node .input-control input {
+.node .control input,
+.node .input-control input {
   width: 140px;
 }
-select, input {
+select,
+input {
   width: 100%;
   border-radius: 30px;
   background-color: white;

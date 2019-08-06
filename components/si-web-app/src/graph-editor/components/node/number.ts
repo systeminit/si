@@ -1,5 +1,5 @@
 import Rete from "rete";
-import sockets from '../../sockets';
+import sockets from "../../sockets";
 
 export default class Number extends Rete.Component {
   constructor() {
