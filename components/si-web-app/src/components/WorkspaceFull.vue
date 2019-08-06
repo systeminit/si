@@ -40,6 +40,25 @@
             <v-divider />
             <v-card-text>
               {{ getWorkspaceById.description }}
+              <v-divider />
+              <div v-if="getIntegrationInstances.length != 0">
+                <h3>Enable/Disable Integrations</h3>
+                <v-list>
+                  <IntegrationToggle
+                    v-for="integrationInstance in getIntegrationInstances"
+                    :key="integrationInstance.id"
+                    :integrationInstanceId="integrationInstance.id"
+                    :workspaceId="getWorkspaceById.id"
+                    :title="integrationInstance.name"
+                    :initialEnabled="
+                      isIntegrationInstanceEnabled(integrationInstance)
+                    "
+                  />
+                </v-list>
+              </div>
+              <div v-else>
+                There are no integrations yet; perhaps add one?
+              </div>
             </v-card-text>
           </v-card>
         </v-col>
@@ -51,9 +70,14 @@
 <script lang="ts">
 import Vue from "vue";
 
+import IntegrationToggle from "@/components/IntegrationToggle.vue";
+
+import getIntegrationInstances from "@/graphql/queries/getIntegrationInstances.graphql";
 import getWorkspaceById from "@/graphql/queries/getWorkspaceById.graphql";
 import getWorkspaces from "@/graphql/queries/getWorkspaces.graphql";
 import deleteWorkspace from "@/graphql/mutation/deleteWorkspace.graphql";
+
+import { IntegrationInstance } from "@/graphql/types";
 
 export default Vue.extend({
   name: "WorkspaceFull",
@@ -66,6 +90,9 @@ export default Vue.extend({
         };
       },
     },
+    getIntegrationInstances: {
+      query: getIntegrationInstances,
+    },
   },
   data() {
     return {
@@ -77,6 +104,13 @@ export default Vue.extend({
     };
   },
   methods: {
+    isIntegrationInstanceEnabled(integrationInstance: IntegrationInstance) {
+      console.log(integrationInstance);
+      let found = integrationInstance.workspaces.find(w => {
+        return w.id == this.workspace_id;
+      });
+      return found === undefined ? false : true;
+    },
     deleteWorkspace() {
       this.$apollo.mutate({
         mutation: deleteWorkspace,
@@ -107,9 +141,11 @@ export default Vue.extend({
       });
     },
   },
-
   props: {
     workspace_id: String,
+  },
+  components: {
+    IntegrationToggle,
   },
 });
 </script>

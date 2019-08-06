@@ -5,6 +5,8 @@ import NotFound from "@/views/NotFound.vue";
 import Callback from "@/components/Callback.vue";
 import Workspaces from "@/views/Workspaces.vue";
 import WorkspaceShow from "@/views/WorkspaceShow.vue";
+import Integrations from "@/views/Integrations.vue";
+import IntegrationShow from "@/views/IntegrationShow.vue";
 import auth from "@/auth/authService";
 
 Vue.use(Router);
@@ -50,6 +52,16 @@ const router = new Router({
       path: "/workspaces/:id",
       name: "workspace",
       component: WorkspaceShow,
+    },
+    {
+      path: "/integrations",
+      name: "integrations",
+      component: Integrations,
+    },
+    {
+      path: "/integrations/:id",
+      name: "integration",
+      component: IntegrationShow,
     },
     {
       path: "*",

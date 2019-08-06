@@ -65,7 +65,8 @@
             <v-list-item-title>Home</v-list-item-title>
           </v-list-item-content>
         </v-list-item>
-        <v-list-item :to="{ name: 'workspaces' }" exact append>
+
+        <v-list-item :to="{ name: 'workspaces' }" append>
           <v-list-item-action>
             <v-icon>group_work</v-icon>
           </v-list-item-action>
@@ -74,7 +75,7 @@
           </v-list-item-content>
         </v-list-item>
 
-        <v-list-item :to="{ name: 'workspaces' }" exact append>
+        <v-list-item :to="{ name: 'integrations' }" append>
           <v-list-item-action>
             <v-icon>cloud</v-icon>
           </v-list-item-action>
@@ -83,7 +84,7 @@
           </v-list-item-content>
         </v-list-item>
 
-        <v-list-item :to="{ name: 'about' }" exact append>
+        <v-list-item :to="{ name: 'about' }" append>
           <v-list-item-action>
             <v-icon>contact_mail</v-icon>
           </v-list-item-action>

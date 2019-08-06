@@ -1,0 +1,138 @@
+"An Integration"
+type Integration {
+  "The ID"
+  id: ID!
+  "The name of the service"
+  name: String!
+  "Description of the service"
+  description: String
+  "The options for the integration"
+  options: String
+  "The image for the integration"
+  image: String
+}
+
+"An instance of an integration, created by a user"
+type IntegrationInstance {
+  "The ID of this Integration Instance"
+  id: ID!
+  "The integration"
+  integration: Integration!
+  "The user who created this integration"
+  user: User!
+  "The name of this integration"
+  name: String!
+  "The description of this integration"
+  description: String!
+  # I suspect this should actually never be returned; but fuck it for now.
+  "The options for this integration"
+  options: String!
+  "Workspaces this integration instance is enabled on"
+  workspaces: [Workspace]!
+}
+
+input getIntegrationInstanceByIdInput {
+  "The ID for the Integration Instance"
+  id: ID!
+}
+
+extend type Query {
+  "Get a list of all known integrations"
+  getAllIntegrations: [Integration]!
+  "Get a list of all this users integration instances"
+  getIntegrationInstances: [IntegrationInstance]!
+  "Get a specific integration instance"
+  getIntegrationInstanceById(input: getIntegrationInstanceByIdInput): IntegrationInstance
+}
+
+"Create an Integration Instance"
+input createIntegrationInstanceInput {
+  "The Integration ID you want to add"
+  integrationId: ID!
+  "The name of this integration in your account"
+  name: String!
+  "The description of what this integration is for"
+  description: String!
+  "The options for using this integration in the backend"
+  options: String!
+}
+
+"The response to a createIntegrationInstance call"
+type createIntegrationInstancePayload {
+  "The created integration instance"
+  integrationInstance: IntegrationInstance
+}
+
+"Delete an Integration Instance"
+input deleteIntegrationInstanceInput {
+  "The ID fo the Integration Instance to delete"
+  id: ID!
+}
+
+"The result of a deleteIntegrationInstance mutation"
+type deleteIntegrationInstancePayload {
+  "The deleted integration instance"
+  integrationInstance: IntegrationInstance
+}
+
+"Enable an Integration Instance on a Workspace"
+input enableIntegrationInstanceOnWorkspaceInput {
+  "The ID for the integration instance to enable"
+  integrationInstanceId: ID!
+  "The ID for the workspace to enable"
+  workspaceId: ID!
+}
+
+"The response to enabling an integration instance on a workspace"
+type enableIntegrationInstanceOnWorkspacePayload {
+  "The associated integration instance"
+  integrationInstance: IntegrationInstance,
+  "The workspace"
+  workspace: Workspace
+}
+
+"Disable an Integration Instance on a Workspace"
+input disableIntegrationInstanceOnWorkspaceInput {
+  "The ID for the integration instance to enable"
+  integrationInstanceId: ID!
+  "The ID for the workspace to enable"
+  workspaceId: ID!
+}
+
+"The response to enabling an integration instance on a workspace"
+type disableIntegrationInstanceOnWorkspacePayload {
+  "The associated integration instance"
+  integrationInstance: IntegrationInstance,
+  "The workspace"
+  workspace: Workspace
+}
+
+extend type Mutation {
+  "Create a new integration"
+  createIntegrationInstance(
+    input: createIntegrationInstanceInput
+  ): createIntegrationInstancePayload
+
+  "Delete an integration instance"
+  deleteIntegrationInstance(
+    input: deleteIntegrationInstanceInput): deleteIntegrationInstancePayload
+
+  "Enable an integration instance on a workspace"
+  enableIntegrationInstanceOnWorkspace(
+    input: enableIntegrationInstanceOnWorkspaceInput): enableIntegrationInstanceOnWorkspacePayload
+
+  "Disable an integration instance on a workspace"
+  disableIntegrationInstanceOnWorkspace(
+    input: disableIntegrationInstanceOnWorkspaceInput): disableIntegrationInstanceOnWorkspacePayload
+
+}
+
+extend type User {
+  "Integration Instances created by this user"
+  integrationInstances: [IntegrationInstance]!
+}
+
+extend type Workspace {
+  "The integration instances enabled for this workspace"
+  integrationInstances: [IntegrationInstance]!
+}

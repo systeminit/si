@@ -1,0 +1,7 @@
+#import "../fragments/IntegrationInstanceDefault.graphql"
+
+query getIntegrationInstances {
+  getIntegrationInstances {
+    ...IntegrationInstanceDefault
+  }
+}

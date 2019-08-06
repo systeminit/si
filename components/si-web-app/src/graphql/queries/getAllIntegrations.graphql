@@ -1,0 +1,9 @@
+query getAllIntegrations {
+  getAllIntegrations {
+    id
+    name
+    description
+    options
+    image
+  }
+}

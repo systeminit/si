@@ -1,6 +1,7 @@
 import { RelationMappings } from "objection";
 
 import { User } from "@/datalayer/user";
+import { IntegrationInstance } from "@/datalayer/integration";
 import Model from "@/db";
 
 export class Workspace extends Model {
@@ -11,6 +12,7 @@ export class Workspace extends Model {
 
   public creator!: User;
   public members!: User[];
+  public integrationInstances: IntegrationInstance[];
 
   public static tableName = "workspaces";
 
@@ -34,6 +36,18 @@ export class Workspace extends Model {
             to: "users_workspaces.user_id",
           },
           to: "users.id",
+        },
+      },
+      integrationInstances: {
+        relation: Model.ManyToManyRelation,
+        modelClass: IntegrationInstance,
+        join: {
+          from: "workspaces.id",
+          through: {
+            from: "integration_instance_workspaces.workspace_id",
+            to: "integration_instance_workspaces.integration_instance_id",
+          },
+          to: "integration_instances.id",
         },
       },
     };

@@ -13,7 +13,6 @@ input getUserByIdInput {
   id: ID!
 }
 
-
 input createUserInput {
   "The users email"
   email: String!,

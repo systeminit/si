@@ -6,6 +6,7 @@ import jwksRsa from "jwks-rsa";
 import { HelloWorld } from "@modules/hello-world";
 import { Users } from "@modules/users";
 import { Workspaces } from "@modules/workspaces";
+import { Integrations } from "@modules/integrations";
 import { environment } from "@/environment";
 
 // Authentication middleware. When used, the
@@ -31,7 +32,7 @@ const checkJwt = jwt({
 
 const server = new ApolloServer({
   context: (session): typeof session => session,
-  modules: [HelloWorld, Users, Workspaces],
+  modules: [HelloWorld, Users, Workspaces, Integrations],
   introspection: environment.apollo.introspection,
   playground: environment.apollo.playground,
 });

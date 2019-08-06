@@ -53,7 +53,7 @@ input deleteWorkspaceInput {
   id: ID! 
 }
 
-"The result of a createWorkspace mutation"
+"The result of a deleteWorkspace mutation"
 type deleteWorkspacePayload {
   "The workspace ID that was just created"
   workspace: Workspace

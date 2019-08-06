@@ -1,5 +1,6 @@
 import Model from "@/db";
 import { Workspace } from "./workspace";
+import { IntegrationInstance } from "./integration";
 
 export class User extends Model {
   public readonly id!: number;
@@ -7,6 +8,7 @@ export class User extends Model {
   public name?: string;
   public createdWorkspaces: Workspace[];
   public workspaces: Workspace[];
+  public integrationInstances: IntegrationInstance[];
 
   public static tableName = "users";
 
@@ -17,6 +19,14 @@ export class User extends Model {
       join: {
         from: "users.id",
         to: "workspaces.creator_id",
+      },
+    },
+    integrationInstances: {
+      relation: Model.HasManyRelation,
+      modelClass: IntegrationInstance,
+      join: {
+        from: "users.id",
+        to: "integration_instances.user_id",
       },
     },
     workspaces: {
