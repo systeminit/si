@@ -4,7 +4,7 @@
   </StandardLayout>
 </template>
 
-<script>
+<script lang="ts">
 import Vue from "vue";
 import StandardLayout from "@/components/StandardLayout.vue";
 import GraphEditor from "@/components/GraphEditor.vue";

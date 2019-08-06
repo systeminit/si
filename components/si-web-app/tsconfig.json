@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "noImplicitAny": false, // We may not want to keep this permanantly.
+    // "noImplicitAny": false, // We may not want to keep this permanantly.
     // "allowJs": true,
     "target": "esnext",
     "module": "esnext",
