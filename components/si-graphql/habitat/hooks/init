@@ -1,0 +1,7 @@
+#!/bin/sh
+
+cd {{pkg.path}}
+
+mkdir -p {{pkg.svc_data_path}}/db
+export NODE_ENV=production
+exec npx knex migrate:latest

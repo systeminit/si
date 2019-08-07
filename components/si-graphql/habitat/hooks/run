@@ -1,0 +1,7 @@
+#!/bin/sh
+
+exec 2>&1
+
+cd {{pkg.svc_path}}
+
+exec node {{pkg.path}}/dist/server.js

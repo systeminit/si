@@ -1,0 +1,3 @@
+[si-graphql]
+plan_path = "components/si-graphql"
+paths = [ "components/si-graphql/*" ]
