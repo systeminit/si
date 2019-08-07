@@ -1,4 +1,4 @@
 [build]
 base = "components/si-web-app"
 command = "npm run build"
-publish = "dist"
+publish = "components/si-web-app/dist"
