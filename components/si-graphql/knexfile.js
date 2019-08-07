@@ -8,6 +8,13 @@ module.exports = {
       filename: "./db/dev.sqlite3",
     },
   },
+  production: {
+    client: "sqlite3",
+    useNullAsDefault: true,
+    connection: {
+      filename: "/hab/svc/si-graphql/data/db/prod.sqlite3",
+    },
+  },
 
   // staging: {
   //   client: 'postgresql',
