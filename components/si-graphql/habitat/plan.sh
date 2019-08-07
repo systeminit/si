@@ -5,7 +5,7 @@ pkg_maintainer="System Initiative <adam@systeminit.com>"
 pkg_license=("Proprietary")
 pkg_shasum="TODO"
 pkg_deps=(core/node core/sqlite)
-pkg_build_deps=(core/gcc core/python2 core/make)
+pkg_build_deps=(core/gcc core/python2 core/make core/busybox)
 
 do_build() {
   npm install --build-from-source --sqlite=$(pkg_path_for core/sqlite) --loglevel verbose
