@@ -5,7 +5,7 @@ pkg_maintainer="System Initiative <adam@systeminit.com>"
 pkg_license=("Proprietary")
 pkg_shasum="TODO"
 pkg_deps=(core/node core/sqlite)
-pkg_build_deps=()
+pkg_build_deps=(core/gcc core/python2 core/make)
 
 do_build() {
   npm install
