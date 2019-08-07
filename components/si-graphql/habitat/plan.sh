@@ -8,7 +8,7 @@ pkg_deps=(core/node core/sqlite)
 pkg_build_deps=(core/gcc core/python2 core/make)
 
 do_build() {
-  npm install
+  npm install --build-from-source --sqlite=$(pkg_path_for core/sqlite)
   npm run build
   npm prune  --production
 }
