@@ -2,6 +2,7 @@ import express from "express";
 import { ApolloServer } from "apollo-server-express";
 import jwt from "express-jwt";
 import jwksRsa from "jwks-rsa";
+import cors from "cors";
 
 import { HelloWorld } from "@modules/hello-world";
 import { Users } from "@modules/users";
@@ -38,6 +39,7 @@ const server = new ApolloServer({
 });
 
 const app = express();
+app.use(cors);
 app.use(checkJwt);
 server.applyMiddleware({ app });
 
