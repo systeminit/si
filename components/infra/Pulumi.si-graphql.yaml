@@ -1,0 +1,6 @@
+config:
+  aws:region: us-west-1
+  si-graphql-infra:habAuthToken:
+    secure: AAABAFbOb6ndAUv07/Gj1uScryPfy0G6UL5STfKmp9JrSoQjkGVe5iAoAblXAIjX6cHl9aDT00CFgWjNDP8HEFy17NUYlarpgpMi69VK8nDBmYl+y97kMu04RXb7TPJcIzIlfT1P5T6roO/UAOR0kT/2TdDmGn7mLDCwuyHcudgjmC89UKw5ydyoXWHNMBuMxuoClEE6xNaT41iDENtFxKYeq9CDt4mL1Ishe+a8S1otGB3Yc+RGdu123XfAHGoABRIyQYYuX5OE+u5dbw==
+  si-graphql-infra:masterDbPassword:
+    secure: AAABAILA9dt0p73a82KNB2BqdngOjFios5+nWvIt/lrAmZCEORHtIGAhhW6GI0ylvqIO+A==
