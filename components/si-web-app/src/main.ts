@@ -13,10 +13,15 @@ import AuthService from "@/auth/authService";
 
 Vue.config.productionTip = false;
 
+let graphqlUrl = "https://localhost:4000/graphql";
+if (process.env.NODE_ENV === "production") {
+  graphqlUrl = "https://graphql.systeminit.com/graphql";
+}
+
 // HTTP connection to the API
 const httpLink = createHttpLink({
   // You should use an absolute URL here
-  uri: "http://localhost:4000/graphql",
+  uri: graphqlUrl,
 });
 
 // Cache implementation
