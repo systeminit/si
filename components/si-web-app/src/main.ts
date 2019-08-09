@@ -13,7 +13,7 @@ import AuthService from "@/auth/authService";
 
 Vue.config.productionTip = false;
 
-let graphqlUrl = "https://localhost:4000/graphql";
+let graphqlUrl = "http://localhost:4000/graphql";
 if (process.env.NODE_ENV === "production") {
   graphqlUrl = "https://graphql.systeminit.com/graphql";
 }
