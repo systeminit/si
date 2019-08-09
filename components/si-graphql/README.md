@@ -60,3 +60,6 @@ And viola, you'll be authing your queries.
 
 ## Docker Container
 Generate a docker container to run this service with `make docker-build` and run the container with `docker-run`. Alternatively you can generate and run the container with `make docker`. 
+
+## Habitat Package
+You can also create a habitat package with `hab studio build`. 
