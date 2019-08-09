@@ -39,8 +39,24 @@ const server = new ApolloServer({
 });
 
 const app = express();
-app.use(cors);
+app.use(cors());
+app.options("*", cors());
 app.use(checkJwt);
 server.applyMiddleware({ app });
+
+app.get("/", function(req, res, _next): void {
+  res.send(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>System Initiative GraphQL API</title>
+</head>
+<body>
+<h1>The System Initiative GraphQL API</h1>
+</body>
+</html>
+`);
+});
 
 export default app;
