@@ -1,15 +1,16 @@
 import Rete from "rete";
-import sockets from "../../sockets";
+import { NumControl } from "./numcontrol";
+import sockets from "../../../sockets";
 
-export default class Number extends Rete.Component {
+export class NumComponent extends Rete.Component {
   constructor() {
     super("Number");
   }
 
   // @ts-ignore: Parameter 'node' implicitly has an 'any' type.
   builder(node) {
-    let out = new Rete.Output("num", "Number", sockets.num);
-    return node.addOutput(out);
+    var out1 = new Rete.Output("num", "Number", sockets.num);
+    return node.addControl(new NumControl(this.editor, "num")).addOutput(out1);
   }
 
   // @ts-ignore: Parameters 'node', 'inputs', and 'outputs' implicitly have an 'any' type.

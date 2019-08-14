@@ -1,8 +1,7 @@
 import Rete from "rete";
-import VueNumControl from "./VueNumControl.vue";
-import sockets from "../../sockets";
+import VueVpcControl from "./VueVpcControl.vue";
 
-export default class NumControl extends Rete.Control {
+export class VpcControl extends Rete.Control {
   component: any; // Fix this to the right type.
   props: any; // Fix this to the right type.
   vueContext: any;
@@ -10,7 +9,7 @@ export default class NumControl extends Rete.Control {
   // @ts-ignore: Parameter 'emitter' and 'key' implicitly have an 'any' type.
   constructor(emitter, key, readonly?: any) {
     super(key);
-    this.component = VueNumControl;
+    this.component = VueVpcControl;
     this.props = { emitter, ikey: key, readonly };
   }
 
