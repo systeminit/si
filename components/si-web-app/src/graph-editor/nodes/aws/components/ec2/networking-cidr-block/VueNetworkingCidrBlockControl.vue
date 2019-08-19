@@ -1,12 +1,12 @@
 <template>
   <input
-    type="number"
+    type="text"
     :readonly="readonly"
     :value="value"
     @input="change($event)"
-    @dblclick.stop=""
-    @pointerdown.stop=""
-    @pointermove.stop=""
+    @dblclick.stop
+    @pointerdown.stop
+    @pointermove.stop
   />
 </template>
 
@@ -14,18 +14,17 @@
 import Vue from "vue";
 
 export default Vue.extend({
-  name: "VueNumControl",
+  name: "VueNetworkingCidrBlockControl",
   props: ["readonly", "emitter", "ikey", "getData", "putData"],
-  // template: '<input type="number" :readonly="readonly" :value="value" @input="change($event)" @dblclick.stop="" @pointerdown.stop="" @pointermove.stop=""/>',
   data() {
     return {
-      value: 0,
+      value: "test",
     };
   },
   methods: {
     // @ts-ignore: Parameter 'e' implicitly has an 'any' type.
     change(e) {
-      this.value = +e.target.value;
+      this.value = e.target.value;
       this.update();
     },
     update() {

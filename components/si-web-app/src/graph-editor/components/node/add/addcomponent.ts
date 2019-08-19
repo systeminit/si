@@ -1,8 +1,8 @@
 import Rete from "rete";
-import NumControl from "./numcontrol";
-import sockets from "../../sockets";
+import { NumControl } from "../num/numcontrol";
+import sockets from "../../../sockets";
 
-export default class AddComponent extends Rete.Component {
+export class AddComponent extends Rete.Component {
   editor: any;
 
   constructor() {

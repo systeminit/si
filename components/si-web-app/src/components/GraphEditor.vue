@@ -1,5 +1,7 @@
 <template>
-  <div id="rete" ref="rete"></div>
+  <div id="editor">
+    <div id="rete" ref="rete"></div>
+  </div>
 </template>
 
 <script lang="ts">
@@ -15,9 +17,11 @@ import HistoryPlugin from "rete-history-plugin";
 import ConnectionMasteryPlugin from "rete-connection-mastery-plugin";
 import { Output, Input, Engine, NodeEditor } from "rete";
 
-import components from "../graph-editor/components";
-import NumComponent from "../graph-editor/components/node/numcomponent";
-import AddComponent from "../graph-editor/components/node/addcomponent";
+import awsNodes from "../graph-editor/nodes/aws";
+import commonNodes from "../graph-editor/nodes/common";
+
+import { NumComponent } from "../graph-editor/components/node/num/numcomponent";
+import { AddComponent } from "../graph-editor/components/node/add/addcomponent";
 
 export default Vue.extend({
   name: "GraphEditor",
@@ -42,32 +46,37 @@ export default Vue.extend({
 
       let engine = new Rete.Engine(ID);
 
-      components.list.map(c => {
-        editor.register(c as NumComponent | AddComponent);
-        engine.register(c as NumComponent | AddComponent);
+      awsNodes.list.map(n => {
+        editor.register(n);
+        engine.register(n);
       });
 
-      // Create default nodes
-      let n1 = await components.list[0].createNode({ num: 2 });
-      let n2 = await components.list[0].createNode({ num: 0 });
-      let add = await components.list[1].createNode();
+      commonNodes.list.map(n => {
+        editor.register(n);
+        engine.register(n);
+      });
 
-      n1.position = [80, 200];
-      n2.position = [80, 400];
-      add.position = [500, 240];
+      // // Create default nodes
+      // let n1 = await nodes.list[0].createNode({ num: 2 });
+      // let n2 = await nodes.list[0].createNode({ num: 0 });
+      // let add = await nodes.list[1].createNode();
 
-      editor.addNode(n1);
-      editor.addNode(n2);
-      editor.addNode(add);
+      // n1.position = [80, 200];
+      // n2.position = [80, 400];
+      // add.position = [500, 240];
 
-      editor.connect(
-        n1.outputs.get("num") as Output,
-        add.inputs.get("num") as Input,
-      );
-      editor.connect(
-        n2.outputs.get("num") as Output,
-        add.inputs.get("num2") as Input,
-      );
+      // editor.addNode(n1);
+      // editor.addNode(n2);
+      // editor.addNode(add);
+
+      // editor.connect(
+      //   n1.outputs.get("num") as Output,
+      //   add.inputs.get("num") as Input,
+      // );
+      // editor.connect(
+      //   n2.outputs.get("num") as Output,
+      //   add.inputs.get("num2") as Input,
+      // );
 
       editor.on("process", async () => {
         await this.eventHandler("process", engine, editor);
@@ -101,15 +110,22 @@ export default Vue.extend({
 });
 </script>
 <style>
+#editor {
+  width: 100%;
+  height: 800vh;
+  background-color: #ffffff;
+  background-image: linear-gradient(#ffffff, #181818);
+}
 #rete {
   width: 100%;
-  height: 512px;
+  height: 100%;
 }
 
 .node.control input,
 .node .input-control input {
   width: 140px;
 }
+
 
 select,
 input {
@@ -121,4 +137,9 @@ input {
   font-size: 110%;
   width: 170px;
 }
+
+.context-menu {
+  width: 200px;
+}
+
 </style>
