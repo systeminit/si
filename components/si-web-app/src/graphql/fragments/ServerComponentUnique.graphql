@@ -1,0 +1,11 @@
+fragment ServerComponentUnique on ServerComponent {
+  cpu {
+    id
+    name
+    cores
+    baseFreqMHz
+    allCoreTurboFreqMHz
+    singleCoreTurboFreqMHz
+  }
+  memoryGIB
+}

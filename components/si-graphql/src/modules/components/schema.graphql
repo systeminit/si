@@ -1,0 +1,24 @@
+interface Component {
+  "The ID"
+  id: ID!
+  "The Name of the Component"
+  name: String!
+  "Description of the element"
+  description: String!
+  "Raw data for the component"
+  rawDataJson: String!
+  "The integration that backs the component"
+  integration: Integration!
+  "The kind of node created by this component type"
+  nodeType: String!
+}
+
+input GetComponentsInput {
+  integration: String,
+  workspace: String,
+}
+
+extend type Query {
+  "Get a list of all known components"
+  getComponents(where: GetComponentsInput): [Component]!
+}

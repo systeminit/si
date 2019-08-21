@@ -64,6 +64,9 @@
                   :initialEnabled="isWorkspaceEnabled(workspace)"
                 />
               </v-list>
+              <ComponentTable
+                :integrationId="getIntegrationInstanceById.integration.id"
+              ></ComponentTable>
             </v-card-text>
           </v-card>
         </v-col>
@@ -76,6 +79,7 @@
 import Vue from "vue";
 
 import IntegrationToggle from "@/components/IntegrationToggle.vue";
+import ComponentTable from "@/components/ComponentTable.vue";
 
 import getWorkspacesWithIntegrationInstances from "@/graphql/queries/getWorkspacesWithIntegrationInstances.graphql";
 import getIntegrationInstances from "@/graphql/queries/getIntegrationInstances.graphql";
@@ -155,6 +159,7 @@ export default Vue.extend({
   },
   components: {
     IntegrationToggle,
+    ComponentTable,
   },
 });
 </script>

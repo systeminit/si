@@ -37,7 +37,6 @@ A component
 * instanceType
 * cpu
 * memory
-* gpu
 * currentState (started/stopped/restarting/destroyed/created..)
 
 #### Implementations
