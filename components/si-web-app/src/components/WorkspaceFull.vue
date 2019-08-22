@@ -40,6 +40,9 @@
             <v-divider />
             <v-card-text>
               {{ getWorkspaceById.description }}
+
+              <ComponentTable :workspaceId="workspace_id"></ComponentTable>
+
               <v-divider />
               <div v-if="getIntegrationInstances.length != 0">
                 <h3>Enable/Disable Integrations</h3>
@@ -50,6 +53,7 @@
                     :integrationInstanceId="integrationInstance.id"
                     :workspaceId="getWorkspaceById.id"
                     :title="integrationInstance.name"
+                    :integrationName="integrationInstance.integration.name"
                     :initialEnabled="
                       isIntegrationInstanceEnabled(integrationInstance)
                     "
@@ -70,6 +74,7 @@
 <script lang="ts">
 import Vue from "vue";
 
+import ComponentTable from "@/components/ComponentTable.vue";
 import IntegrationToggle from "@/components/IntegrationToggle.vue";
 
 import getIntegrationInstances from "@/graphql/queries/getIntegrationInstances.graphql";
@@ -146,6 +151,7 @@ export default Vue.extend({
   },
   components: {
     IntegrationToggle,
+    ComponentTable,
   },
 });
 </script>

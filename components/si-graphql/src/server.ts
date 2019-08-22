@@ -4,10 +4,7 @@ import jwt from "express-jwt";
 import jwksRsa from "jwks-rsa";
 import cors from "cors";
 
-import { HelloWorld } from "@modules/hello-world";
-import { Users } from "@modules/users";
-import { Workspaces } from "@modules/workspaces";
-import { Integrations } from "@modules/integrations";
+import { AppModule } from "@/app.modules";
 import { environment } from "@/environment";
 
 // Authentication middleware. When used, the
@@ -33,7 +30,7 @@ const checkJwt = jwt({
 
 const server = new ApolloServer({
   context: (session): typeof session => session,
-  modules: [HelloWorld, Users, Workspaces, Integrations],
+  modules: [AppModule],
   introspection: environment.apollo.introspection,
   playground: environment.apollo.playground,
 });
@@ -44,7 +41,7 @@ app.options("*", cors());
 app.use(checkJwt);
 server.applyMiddleware({ app });
 
-app.get("/", function(req, res, _next): void {
+app.get("/", function(_req, res, _next): void {
   res.send(`
 <!DOCTYPE html>
 <html lang="en">

@@ -12,6 +12,7 @@
   "keywords": [],
   "author": "System Initiative, Inc.",
   "devDependencies": {
+    "@types/lodash": "^4.14.137",
     "@types/webpack-env": "^1.14.0",
     "@typescript-eslint/eslint-plugin": "^1.13.0",
     "@typescript-eslint/parser": "^1.13.0",
@@ -50,6 +51,7 @@
     "jsonwebtoken": "^8.5.1",
     "jwks-rsa": "^1.6.0",
     "knex": "^0.19.1",
+    "lodash": "^4.17.15",
     "objection": "^1.6.9",
     "sqlite3": "^4.0.9"
   }

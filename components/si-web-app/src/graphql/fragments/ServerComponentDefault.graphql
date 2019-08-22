@@ -1,0 +1,7 @@
+#import "../fragments/ComponentDefault.graphql"
+#import "../fragments/ServerComponentUnique.graphql"
+
+fragment ServerComponentDefault on ServerComponent {
+  ... ComponentDefault
+  ... ServerComponentUnique
+}

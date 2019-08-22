@@ -1,8 +1,9 @@
 import { AuthenticationError } from "apollo-server";
 
 import { User } from "@/datalayer/user";
+import { GqlInfo } from "@/app.modules";
 
-export async function checkAuthentication(info): Promise<User> {
+export async function checkAuthentication(info: GqlInfo): Promise<User> {
   if (info.session.req.user === undefined) {
     throw new AuthenticationError("must authenticate");
   }

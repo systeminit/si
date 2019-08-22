@@ -3,7 +3,10 @@
     <v-list-item-action>
       <v-switch @click.stop="toggleIntegration()" v-model="enabled"></v-switch>
     </v-list-item-action>
-    <v-list-item-title>{{ title }}</v-list-item-title>
+    <v-list-item-title v-if="integrationName">
+      {{ integrationName }}: {{ title }}
+    </v-list-item-title>
+    <v-list-item-title v-else>{{ title }}</v-list-item-title>
   </v-list-item>
 </template>
 
@@ -52,6 +55,7 @@ export default Vue.extend({
     workspaceId: String,
     initialEnabled: Boolean,
     title: String,
+    integrationName: String,
   },
 });
 </script>

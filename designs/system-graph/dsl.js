@@ -1,8 +1,5 @@
-
 // Assuming you had some kind of catalog of things that already exist
 let os = si.operatingSystem.lookup("Ubuntu", { version: "18.04" });
-os.update(); // Sorry, nothign to update
-
 let network = si.network.lookup("10.0.0.0/4");
 let service = si.service.lookup("si-graphql");
 let server = si.compute.lookup(integration: "AWS", instanceType: "x1.large") // << 
