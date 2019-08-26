@@ -1,7 +1,11 @@
 exports.up = function(knex) {
   return knex.schema
     .createTable("workspaces", table => {
-      table.increments();
+      table
+        .uuid("id")
+        .primary()
+        .notNullable()
+        .unique();
       table.timestamps();
       table.string("name").notNullable;
       table.string("description");

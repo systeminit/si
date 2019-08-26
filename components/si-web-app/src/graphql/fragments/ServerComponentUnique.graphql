@@ -8,4 +8,5 @@ fragment ServerComponentUnique on ServerComponent {
     singleCoreTurboFreqMHz
   }
   memoryGIB
+  serverSupportedActions
 }

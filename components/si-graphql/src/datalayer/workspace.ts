@@ -1,3 +1,4 @@
+import uuidv4 from "uuid/v4";
 import { RelationMappings } from "objection";
 
 import { User } from "@/datalayer/user";
@@ -74,6 +75,8 @@ export class Workspace extends Model {
     description: string,
   ): Promise<Workspace> {
     let workspace = await Workspace.query().insertAndFetch({
+      //@ts-ignore
+      id: uuidv4(),
       //@ts-ignore This does exist, you bastards
       name: wsName,
       description: description,

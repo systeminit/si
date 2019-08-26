@@ -2,12 +2,16 @@ import Vue from "vue";
 import { ApolloClient } from "apollo-client";
 import { setContext } from "apollo-link-context";
 import { createHttpLink } from "apollo-link-http";
-import { InMemoryCache } from "apollo-cache-inmemory";
+import {
+  InMemoryCache,
+  IntrospectionFragmentMatcher,
+} from "apollo-cache-inmemory";
 import VueApollo from "vue-apollo";
 
 import vuetify from "./plugins/vuetify";
 import App from "./App.vue";
 import router from "./router";
+import introspectionResult from "./fragmentTypes";
 import AuthPlugin from "@/plugins/auth";
 import AuthService from "@/auth/authService";
 
@@ -24,8 +28,15 @@ const httpLink = createHttpLink({
   uri: graphqlUrl,
 });
 
+// Fragment Matching
+const fragmentMatcher = new IntrospectionFragmentMatcher({
+  introspectionQueryResultData: introspectionResult,
+});
+
 // Cache implementation
-const cache = new InMemoryCache();
+const cache = new InMemoryCache({
+  fragmentMatcher,
+});
 
 // If we have an authentication token in local storage, append it
 // to all of our Apollo calls

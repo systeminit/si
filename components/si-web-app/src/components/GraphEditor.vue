@@ -126,7 +126,6 @@ export default Vue.extend({
   width: 140px;
 }
 
-
 select,
 input {
   width: 100%;
@@ -141,5 +140,4 @@ input {
 .context-menu {
   width: 200px;
 }
-
 </style>

@@ -5,6 +5,7 @@ import { Workspaces } from "@modules/workspaces";
 import { Integrations } from "@modules/integrations";
 import { Components } from "@modules/components";
 import { Servers } from "@modules/servers";
+import { OperatingSystems } from "@modules/operating-systems";
 
 export interface GqlRoot {
   [key: string]: any; //eslint-disable-line
@@ -23,5 +24,13 @@ export interface GqlInfo {
 }
 
 export const AppModule = new GraphQLModule({
-  imports: [HelloWorld, Users, Workspaces, Integrations, Components, Servers],
+  imports: [
+    HelloWorld,
+    Users,
+    Workspaces,
+    Integrations,
+    Components,
+    Servers,
+    OperatingSystems,
+  ],
 });
