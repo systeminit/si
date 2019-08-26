@@ -3,7 +3,7 @@ import { Workspace } from "./workspace";
 import { IntegrationInstance } from "./integration";
 
 export class User extends Model {
-  public readonly id!: number;
+  public readonly id!: string;
   public email!: string;
   public name?: string;
   public createdWorkspaces: Workspace[];
