@@ -1,11 +1,15 @@
 #import "../fragments/ComponentDefault.graphql"
 #import "../fragments/ServerComponentUnique.graphql"
+#import "../fragments/OperatingSystemComponentUnique.graphql"
 
 query getComponents($integrationId: String, $workspaceId: String) {
   getComponents(where: { integration: $integrationId, workspace: $workspaceId }) {
     ... ComponentDefault
     ... on ServerComponent {
       ...ServerComponentUnique
+    }
+    ... on OperatingSystemComponent {
+      ... OperatingSystemComponentUnique
     }
   }
 }

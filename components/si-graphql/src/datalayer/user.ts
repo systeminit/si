@@ -1,3 +1,5 @@
+import uuidv4 from "uuid/v4";
+
 import Model from "@/db";
 import { Workspace } from "./workspace";
 import { IntegrationInstance } from "./integration";
@@ -50,6 +52,7 @@ export class User extends Model {
     let user = await User.query().findOne({ email });
     if (user === undefined) {
       user = await User.query().insertAndFetch({
+        id: uuidv4(),
         email,
         name,
       });

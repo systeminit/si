@@ -3,23 +3,13 @@ import hasIn from "lodash/hasIn";
 import filter from "lodash/filter";
 
 import { checkAuthentication } from "@/modules/auth";
-import { ServerComponent } from "@/datalayer/serverComponents";
-import { Integration } from "@/datalayer/integration";
-import { GqlRoot, GqlContext, GqlInfo } from "@/app.modules";
+import { IntegrationInstance } from "@/datalayer/integration";
+import { GqlRoot, GqlContext, GqlInfo } from "@/app.module";
 import { getServerComponents } from "@/modules/servers/queries";
+import { getOperatingSystemComponents } from "@/modules/operating-systems/queries";
 import { User } from "@/datalayer/user";
 import { Workspace } from "@/datalayer/workspace";
-import { IntegrationInstance } from "@/datalayer/integration";
-
-export interface Component {
-  id: string;
-  name: string;
-  description: string;
-  rawDataJson: string;
-  integration: Integration;
-  memoryGIB: number;
-  nodeType: string;
-}
+import { Component } from "@/datalayer/component";
 
 export interface GetComponentsInput {
   where?: {
@@ -36,13 +26,10 @@ export async function getComponents(
 ): Promise<Component[]> {
   await checkAuthentication(info);
   let data: Component[] = [];
-  let serverData: ServerComponent[] = await getServerComponents(
-    obj,
-    args,
-    context,
-    info,
-  );
+  let serverData = await getServerComponents(obj, args, context, info);
+  let osData = await getOperatingSystemComponents(obj, args, context, info);
   data = data.concat(serverData);
+  data = data.concat(osData);
   return data;
 }
 
@@ -66,7 +53,11 @@ export async function filterComponents<T extends Component>(
       .eager("integration");
     let result = filter(data, (o: T): boolean => {
       for (let x = 0; x < integrationInstances.length; x++) {
-        if (integrationInstances[x].integration.id == o.integration.id) {
+        // HACK: 5 is the magic number of the global integration
+        if (
+          integrationInstances[x].integration.id == o.integration.id ||
+          o.integration.id == "9bfc0c3e-6273-4196-8e74-364761cb1b04" // The magic guid for the global integration
+        ) {
           return true;
         }
       }

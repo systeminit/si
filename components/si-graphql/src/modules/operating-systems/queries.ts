@@ -1,21 +1,21 @@
 import { checkAuthentication } from "@/modules/auth";
 import {
-  ServerComponent,
-  serverComponentData,
-} from "@/datalayer/server-component";
+  OperatingSystemComponent,
+  operatingSystemComponentData,
+} from "@/datalayer/operating-system-component";
 import { GqlRoot, GqlContext, GqlInfo } from "@/app.module";
 import {
   GetComponentsInput,
   filterComponents,
 } from "@/modules/components/queries";
 
-export async function getServerComponents(
+export async function getOperatingSystemComponents(
   _obj: GqlRoot,
   args: GetComponentsInput,
   _context: GqlContext,
   info: GqlInfo,
-): Promise<ServerComponent[]> {
+): Promise<OperatingSystemComponent[]> {
   let user = await checkAuthentication(info);
-  let data: ServerComponent[] = await serverComponentData();
+  let data: OperatingSystemComponent[] = await operatingSystemComponentData();
   return filterComponents(data, args, user);
 }

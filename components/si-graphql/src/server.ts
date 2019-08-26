@@ -4,7 +4,7 @@ import jwt from "express-jwt";
 import jwksRsa from "jwks-rsa";
 import cors from "cors";
 
-import { AppModule } from "@/app.modules";
+import { AppModule } from "@/app.module";
 import { environment } from "@/environment";
 
 // Authentication middleware. When used, the

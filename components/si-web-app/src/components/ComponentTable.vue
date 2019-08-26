@@ -18,6 +18,17 @@
       :expanded.sync="expanded"
       show-expand
     >
+      <template v-slot:item.supportedActions="{ item }">
+        <template v-if="item.nodeType == 'Server'">
+          {{ item.serverSupportedActions.join(", ") }}
+        </template>
+        <template v-else-if="item.nodeType == 'Operating System'">
+          {{ item.operatingSystemSupportedActions.join(", ") }}
+        </template>
+        <template v-else>
+          Unknown Actions List; this is probably a bug
+        </template>
+      </template>
       <template v-slot:expanded-item="props">
         <td
           :colspan="props.headers.length"
@@ -37,6 +48,29 @@
             </li>
             <li>Memory {{ props.item.memoryGIB }} GIB</li>
           </ul>
+        </td>
+        <td
+          :colspan="props.headers.length"
+          v-else-if="props.item.nodeType == 'Operating System'"
+        >
+          <ul>
+            <li>Operating System Name: {{ props.item.operatingSystemName }}</li>
+            <li>
+              Operating System Version: {{ props.item.operatingSystemVersion }}
+            </li>
+            <li>
+              Operating System Release: {{ props.item.operatingSystemRelease }}
+            </li>
+            <li>Platform: {{ props.item.platform }}</li>
+            <li>Platform Version: {{ props.item.platformVersion }}</li>
+            <li>Platform Release: {{ props.item.platformRelease }}</li>
+            <li>
+              Supported Architectures: {{ props.item.architecture.join(", ") }}
+            </li>
+          </ul>
+        </td>
+        <td :colspan="props.headers.length" v-else>
+          This is a bug; add the node type to the slot for expansion
         </td>
       </template>
     </v-data-table>
@@ -66,9 +100,10 @@ export default Vue.extend({
       expanded: [],
       search: "",
       headers: [
+        { text: "Node Type", value: "nodeType" },
         { text: "Name", align: "left", value: "name" },
         { text: "Description", value: "description" },
-        { text: "Node Type", value: "nodeType" },
+        { text: "Supported Actions", value: "supportedActions" },
       ],
     };
   },

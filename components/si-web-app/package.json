@@ -7,7 +7,8 @@
     "build": "vue-cli-service build",
     "lint": "vue-cli-service lint",
     "test:unit": "vue-cli-service test:unit",
-    "start": "vue-cli-service serve"
+    "start": "vue-cli-service serve",
+    "codegen": "graphql-codegen && npm run lint --fix"
   },
   "dependencies": {
     "alight": "^0.14.1",
@@ -36,6 +37,8 @@
     "vuetify": "^2.0.3"
   },
   "devDependencies": {
+    "@graphql-codegen/cli": "^1.6.1",
+    "@graphql-codegen/fragment-matcher": "^1.6.1",
     "@mdi/font": "^3.8.95",
     "@types/auth0-js": "^9.10.2",
     "@types/graphql": "^14.2.3",

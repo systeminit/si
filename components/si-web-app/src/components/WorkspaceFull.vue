@@ -106,6 +106,7 @@ export default Vue.extend({
         description: "Loading",
       },
       deleteDialog: false,
+      getIntegrationInstances: [],
     };
   },
   methods: {
