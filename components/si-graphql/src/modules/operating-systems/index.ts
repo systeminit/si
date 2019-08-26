@@ -1,13 +1,13 @@
 import { GraphQLModule } from "@graphql-modules/core";
 
 import typeDefs from "./schema.graphql";
-import { getServerComponents } from "./queries";
+import { getOperatingSystemComponents } from "./queries";
 
-export const Servers = new GraphQLModule({
+export const OperatingSystems = new GraphQLModule({
   typeDefs,
   resolvers: {
     Query: {
-      getServerComponents,
+      getOperatingSystemComponents,
     },
   },
 });

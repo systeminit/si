@@ -1,0 +1,58 @@
+enum OperatingSystemAction {
+  START
+  STOP
+  RESTART
+  UPDATE
+  CONFIGURE
+}
+
+"An Operating System component"
+type OperatingSystemComponent implements Component {
+  "The ID"
+  id: ID!
+  "The name of the component"
+  name: String!
+  "Description of the element"
+  description: String!
+  "Raw data for the component"
+  rawDataJson: String!
+  "The integration that backs the component"
+  integration: Integration!
+  "The type of node created by this component type"
+  nodeType: String!
+  "The name of the operating system"
+  operatingSystemName: String!
+  "The version of the operating system"
+  operatingSystemVersion: String!
+  "The release of the operating system"
+  operatingSystemRelease: String!
+  "The name of the operating systems platform"
+  platform: String!
+  "The platform version"
+  platformVersion: String!
+  "The release of the platform"
+  platformRelease: String!
+  "The system architectures"
+  architecture: [String!]
+  "The list of supported actions that can be taken"
+  operatingSystemSupportedActions: [OperatingSystemAction]!
+}
+
+enum OperatingSystemState {
+  RUNNING
+  STOPPED
+}
+
+type OperatingSystem {
+  id: ID!
+  name: String!
+  description: String
+  componentType: OperatingSystemComponent
+  state: OperatingSystemState
+  rawDataJson: String!
+}
+
+extend type Query {
+  "Get Operating System Components enabled for this user"
+  getOperatingSystemComponents(where: GetComponentsInput): [OperatingSystemComponent]!
+}

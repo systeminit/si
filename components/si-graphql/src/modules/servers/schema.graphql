@@ -1,20 +1,20 @@
 "A list of acceptable actions"
-enum ServerComponentAction {
-  Start
-  Stop
-  Restart
-  Destroy
-  Create
-  Console
+enum ServerAction {
+  START
+  STOP
+  RESTART
+  DESTROY
+  CREATE
+  CONSOLE
 }
 
 "A list of states for a component"
-enum ServerComponentState {
-  Running
-  Stopped
-  Destroyed
-  Creating
-  Unknown
+enum ServerState {
+  RUNNING
+  STOPPED
+  DESTROYED
+  CREATING
+  UNKNOWN
 }
 
 "CPU data for the server component"
@@ -44,15 +44,16 @@ type ServerComponent implements Component {
   cpu: ServerCpu!
   "The amount of memory"
   memoryGIB: Int!
+  "The list of supported actions that can be taken"
+  serverSupportedActions: [ServerAction]!
 }
 
 type Server {
   id: ID!
-  internalIntegrationKey: String!
   name: String!
   description: String
   componentType: ServerComponent
-  state: ServerComponentState
+  state: ServerState
   rawDataJson: String!
 }
 

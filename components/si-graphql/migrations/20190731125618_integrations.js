@@ -1,7 +1,11 @@
 exports.up = function(knex) {
   return knex.schema
     .createTable("integrations", table => {
-      table.increments();
+      table
+        .uuid("id")
+        .primary()
+        .notNullable()
+        .unique();
       table.timestamps();
       table.string("name").notNullable;
       table.string("description");
@@ -9,7 +13,11 @@ exports.up = function(knex) {
       table.string("image");
     })
     .createTable("integration_instances", table => {
-      table.increments();
+      table
+        .uuid("id")
+        .primary()
+        .notNullable()
+        .unique();
       table.timestamps();
       table.string("name").notNullable;
       table.string("description").notNullable;

@@ -1,11 +1,12 @@
 import { RelationMappings } from "objection";
+import uuidv4 from "uuid/v4";
 
 import { User } from "@/datalayer/user";
 import { Workspace } from "@/datalayer/workspace";
 import Model from "@/db";
 
 export class Integration extends Model {
-  public readonly id!: number;
+  public readonly id!: string;
   public name!: string;
   public description?: string;
   public options?: string;
@@ -24,7 +25,7 @@ interface DisableOnWorkspaceResult {
 }
 
 export class IntegrationInstance extends Model {
-  public readonly id!: number;
+  public readonly id!: string;
   public name!: string;
   public description!: string;
   public options!: string;
@@ -136,7 +137,7 @@ export class IntegrationInstance extends Model {
   }
 
   public static async deleteIntegrationInstance(
-    id: number,
+    id: string,
     user: User,
   ): Promise<IntegrationInstance> {
     let integrationInstance = await IntegrationInstance.query()
@@ -157,7 +158,10 @@ export class IntegrationInstance extends Model {
     options,
     user,
   ): Promise<IntegrationInstance> {
+    let uuid: string = uuidv4();
     let integrationInstance = await IntegrationInstance.query().insertAndFetch({
+      //@ts-ignore It does exist, you bastards
+      id: uuid,
       //@ts-ignore It does exist, you bastards
       name,
       description,
@@ -172,7 +176,7 @@ export class IntegrationInstance extends Model {
 }
 
 export class IntegrationInstanceWorkspace extends Model {
-  public readonly id!: number;
+  public readonly id!: string;
 
   public workspace!: Workspace;
   public integrationInstance!: IntegrationInstance;
