@@ -4,3 +4,5 @@ si-web-app:
   - components/si-web-app/**/*
 infra:
   - components/infra/**/*
+ci:
+  - .github/**/*
