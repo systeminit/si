@@ -3,7 +3,7 @@ name: si-graphql CI
 on: 
   push:
     paths:
-      - 'components/si-graphql/**/*'
+      - 'components/si-graphql/**'
 
 jobs:
   build:

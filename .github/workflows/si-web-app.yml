@@ -3,7 +3,7 @@ name: si-web-app CI
 on: 
   push:
     paths:
-      - 'components/si-web-app/**/*'
+      - 'components/si-web-app/**'
 
 jobs:
   build:
