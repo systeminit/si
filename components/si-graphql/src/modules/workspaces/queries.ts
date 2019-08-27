@@ -17,6 +17,6 @@ export async function getWorkspaces(
   _context,
   info,
 ): Promise<Workspace[]> {
-  let user = await checkAuthentication(info);
+  const user = await checkAuthentication(info);
   return user.$relatedQuery("workspaces").orderBy("name");
 }

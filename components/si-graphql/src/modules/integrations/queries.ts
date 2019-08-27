@@ -17,7 +17,7 @@ export async function getIntegrationInstances(
   _context,
   info,
 ): Promise<Integration[]> {
-  let currentUser = await checkAuthentication(info);
+  const currentUser = await checkAuthentication(info);
   return IntegrationInstance.getIntegrationInstances(currentUser);
 }
 
@@ -27,7 +27,7 @@ export async function getIntegrationInstanceById(
   _context,
   info,
 ): Promise<IntegrationInstance> {
-  let user = await checkAuthentication(info);
+  const user = await checkAuthentication(info);
   return IntegrationInstance.query()
     .where("user_id", user.id)
     .findById(id);

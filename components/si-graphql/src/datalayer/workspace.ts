@@ -58,7 +58,7 @@ export class Workspace extends Model {
     creator: User,
     id: number,
   ): Promise<Workspace> {
-    let workspace = await Workspace.query()
+    const workspace = await Workspace.query()
       .where("id", id)
       .where("creator_id", creator.id)
       .first();
@@ -74,7 +74,7 @@ export class Workspace extends Model {
     creator: User,
     description: string,
   ): Promise<Workspace> {
-    let workspace = await Workspace.query().insertAndFetch({
+    const workspace = await Workspace.query().insertAndFetch({
       //@ts-ignore
       id: uuidv4(),
       //@ts-ignore This does exist, you bastards

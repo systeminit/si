@@ -26,8 +26,8 @@ export async function getComponents(
 ): Promise<Component[]> {
   await checkAuthentication(info);
   let data: Component[] = [];
-  let serverData = await getServerComponents(obj, args, context, info);
-  let osData = await getOperatingSystemComponents(obj, args, context, info);
+  const serverData = await getServerComponents(obj, args, context, info);
+  const osData = await getOperatingSystemComponents(obj, args, context, info);
   data = data.concat(serverData);
   data = data.concat(osData);
   return data;
@@ -40,7 +40,7 @@ export async function filterComponents<T extends Component>(
 ): Promise<T[]> {
   // Limit by Workspace
   if (hasIn(args, "where.workspace")) {
-    let workspace: Workspace[] = await user
+    const workspace: Workspace[] = await user
       .$relatedQuery("workspaces")
       .where("id", args.where.workspace);
     if (workspace.length == 0) {
@@ -48,10 +48,10 @@ export async function filterComponents<T extends Component>(
         invalidArgs: ["workspace"],
       });
     }
-    let integrationInstances: IntegrationInstance[] = await workspace[0]
+    const integrationInstances: IntegrationInstance[] = await workspace[0]
       .$relatedQuery("integrationInstances")
       .eager("integration");
-    let result = filter(data, (o: T): boolean => {
+    const result = filter(data, (o: T): boolean => {
       for (let x = 0; x < integrationInstances.length; x++) {
         // HACK: 5 is the magic number of the global integration
         if (
@@ -66,7 +66,7 @@ export async function filterComponents<T extends Component>(
     return result;
     // Limit by Integration
   } else if (hasIn(args, "where.integration")) {
-    let result = filter(data, (o: T): boolean => {
+    const result = filter(data, (o: T): boolean => {
       return `${o.integration.id}` == args.where.integration;
     });
     return result;

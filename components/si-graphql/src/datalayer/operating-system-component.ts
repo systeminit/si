@@ -28,10 +28,10 @@ export interface OperatingSystemComponent extends Component {
 export async function operatingSystemComponentData(): Promise<
   OperatingSystemComponent[]
 > {
-  let globalIntegration = await Integration.query()
+  const globalIntegration = await Integration.query()
     .where("name", "Global")
     .first();
-  let operatingSystemComponentData: OperatingSystemComponent[] = [
+  const operatingSystemComponentData: OperatingSystemComponent[] = [
     {
       id: "a1c8618e-ffab-4d7e-be0c-ba50cf88a63f",
       name: "Ubuntu 18.04.3 LTS",

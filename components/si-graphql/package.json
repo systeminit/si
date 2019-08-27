@@ -7,6 +7,7 @@
   "scripts": {
     "start": "webpack --config webpack.development.js",
     "build": "webpack --config webpack.production.js",
+    "lint": "eslint src/**/*.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

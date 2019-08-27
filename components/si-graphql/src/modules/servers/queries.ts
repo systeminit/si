@@ -15,7 +15,7 @@ export async function getServerComponents(
   _context: GqlContext,
   info: GqlInfo,
 ): Promise<ServerComponent[]> {
-  let user = await checkAuthentication(info);
-  let data: ServerComponent[] = await serverComponentData();
+  const user = await checkAuthentication(info);
+  const data: ServerComponent[] = await serverComponentData();
   return filterComponents(data, args, user);
 }

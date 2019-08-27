@@ -74,17 +74,17 @@ export class IntegrationInstance extends Model {
     workspaceId,
     user,
   ): Promise<EnableOnWorkspaceResult> {
-    let integrationInstance = await IntegrationInstance.query()
+    const integrationInstance = await IntegrationInstance.query()
       .where("user_id", user.id)
       .andWhere("id", integrationInstanceId)
       .first();
 
-    let workspace = await Workspace.query()
+    const workspace = await Workspace.query()
       .where("creator_id", user.id)
       .andWhere("id", workspaceId)
       .first();
 
-    let exists = await integrationInstance
+    const exists = await integrationInstance
       .$relatedQuery("workspaces")
       .where("workspace_id", workspace.id);
 
@@ -103,17 +103,17 @@ export class IntegrationInstance extends Model {
     workspaceId,
     user,
   ): Promise<DisableOnWorkspaceResult> {
-    let integrationInstance = await IntegrationInstance.query()
+    const integrationInstance = await IntegrationInstance.query()
       .where("user_id", user.id)
       .andWhere("id", integrationInstanceId)
       .first();
 
-    let workspace = await Workspace.query()
+    const workspace = await Workspace.query()
       .where("creator_id", user.id)
       .andWhere("id", workspaceId)
       .first();
 
-    let exists = await integrationInstance
+    const exists = await integrationInstance
       .$relatedQuery("workspaces")
       .where("workspace_id", workspace.id);
 
@@ -140,7 +140,7 @@ export class IntegrationInstance extends Model {
     id: string,
     user: User,
   ): Promise<IntegrationInstance> {
-    let integrationInstance = await IntegrationInstance.query()
+    const integrationInstance = await IntegrationInstance.query()
       .where("id", id)
       .where("user_id", user.id)
       .first();
@@ -158,19 +158,21 @@ export class IntegrationInstance extends Model {
     options,
     user,
   ): Promise<IntegrationInstance> {
-    let uuid: string = uuidv4();
-    let integrationInstance = await IntegrationInstance.query().insertAndFetch({
-      //@ts-ignore It does exist, you bastards
-      id: uuid,
-      //@ts-ignore It does exist, you bastards
-      name,
-      description,
-      options,
-      //eslint-disable-next-line
+    const uuid: string = uuidv4();
+    const integrationInstance = await IntegrationInstance.query().insertAndFetch(
+      {
+        //@ts-ignore It does exist, you bastards
+        id: uuid,
+        //@ts-ignore It does exist, you bastards
+        name,
+        description,
+        options,
+        //eslint-disable-next-line
       integration_id: integrationId,
-      //eslint-disable-next-line
+        //eslint-disable-next-line
       user_id: user.id,
-    });
+      },
+    );
     return integrationInstance;
   }
 }
