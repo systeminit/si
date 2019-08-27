@@ -1,9 +1,9 @@
-name: si-web-app CI 
+name: si-graphql CI 
 
 on: 
   push:
     paths:
-      - 'components/si-web-app/**'
+      - 'components/si-graphql/**'
 
 jobs:
   build:
