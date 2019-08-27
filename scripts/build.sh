@@ -4,5 +4,6 @@ set -e
 
 for c in "$@"
 do
-  pushd $c && npm run build
+  pushd ./components/$c && npm run build
+  popd
 done

@@ -4,6 +4,6 @@ set -e
 
 for c in "$@"
 do
-  pushd $c && npm install
+  pushd components/$c && npm install
   popd
 done
