@@ -1,0 +1,6 @@
+si-graphql:
+  - components/si-graphql/**/*
+si-web:
+  - components/si-web/**/*
+infra:
+  - components/infra/**/*
