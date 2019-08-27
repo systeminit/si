@@ -27,13 +27,13 @@ export interface ServerComponent extends Component {
 }
 
 export async function serverComponentData(): Promise<ServerComponent[]> {
-  let aws = await Integration.query()
+  const aws = await Integration.query()
     .where("name", "AWS")
     .first();
-  let gcp = await Integration.query()
+  const gcp = await Integration.query()
     .where("name", "Google")
     .first();
-  let serverComponentData: ServerComponent[] = [
+  const serverComponentData: ServerComponent[] = [
     {
       id: "92cd05e5-ca2f-4618-bd9f-fc1fb7a7cb22",
       name: "m5.large",

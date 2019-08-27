@@ -1,6 +1,6 @@
-import http from 'http';
-import app from '@/server';
-import { environment } from '@/environment';
+import http from "http";
+import app from "@/server";
+import { environment } from "@/environment";
 
 const server = http.createServer(app);
 

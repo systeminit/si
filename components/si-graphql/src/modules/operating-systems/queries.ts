@@ -15,7 +15,7 @@ export async function getOperatingSystemComponents(
   _context: GqlContext,
   info: GqlInfo,
 ): Promise<OperatingSystemComponent[]> {
-  let user = await checkAuthentication(info);
-  let data: OperatingSystemComponent[] = await operatingSystemComponentData();
+  const user = await checkAuthentication(info);
+  const data: OperatingSystemComponent[] = await operatingSystemComponentData();
   return filterComponents(data, args, user);
 }
