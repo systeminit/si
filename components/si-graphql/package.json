@@ -15,8 +15,8 @@
     "@types/lodash": "^4.14.137",
     "@types/uuid": "^3.4.5",
     "@types/webpack-env": "^1.14.0",
-    "@typescript-eslint/eslint-plugin": "^1.13.0",
-    "@typescript-eslint/parser": "^1.13.0",
+    "@typescript-eslint/eslint-plugin": "^2.0.0",
+    "@typescript-eslint/parser": "^2.0.0",
     "clean-webpack-plugin": "^3.0.0",
     "eslint": "^6.2.2",
     "eslint-config-prettier": "^6.1.0",
@@ -25,6 +25,7 @@
     "gqlint": "^1.8.0",
     "nodemon": "^1.19.1",
     "nodemon-webpack-plugin": "^4.0.8",
+    "npm-check-updates": "^3.1.21",
     "prettier": "^1.18.2",
     "ts-loader": "^6.0.4",
     "ts-node": "^8.3.0",
@@ -37,7 +38,7 @@
     "webpack-node-externals": "^1.7.2"
   },
   "peerDependencies": {
-    "eslint": "^6.1.0"
+    "eslint": "^6.2.2"
   },
   "dependencies": {
     "@graphql-modules/core": "^0.7.10",
