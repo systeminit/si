@@ -2,6 +2,8 @@
 
 set -e
 
-pushd ./components/si-graphql && npm run lint
-popd
-pushd ./components/si-web-app && npm run lint
+for c in "$@"
+do
+  pushd $c && npm run lint
+  popd
+done

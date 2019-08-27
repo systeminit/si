@@ -2,6 +2,8 @@
 
 set -e
 
-pushd ./components/si-graphql && npm install
-popd
-pushd ./components/si-web-app && npm install
+for c in "$@"
+do
+  pushd $c && npm install
+  popd
+done
