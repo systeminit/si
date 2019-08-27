@@ -2,6 +2,8 @@
 
 set -e
 
-pushd ./components/si-graphql && npm run build
-popd
-pushd ./components/si-web-app && npm run build
+for c in "$@"
+do
+  pushd ./components/$c && npm run build
+  popd
+done
