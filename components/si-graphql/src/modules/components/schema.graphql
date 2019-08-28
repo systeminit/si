@@ -11,6 +11,8 @@ interface Component {
   integration: Integration!
   "The kind of node created by this component type"
   nodeType: String!
+  "The list of supported actions for this component"
+  supportedActions: [String]!
 }
 
 input GetComponentsInput {

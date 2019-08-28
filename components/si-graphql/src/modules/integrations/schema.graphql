@@ -7,9 +7,19 @@ type Integration {
   "Description of the service"
   description: String
   "The options for the integration"
-  options: String
+  options: IntegrationOption
   "The image for the integration"
   image: String
+}
+
+type IntegrationOptionField {
+  id: String
+  name: String
+  type: String
+}
+
+type IntegrationOption {
+  fields: [IntegrationOptionField]
 }
 
 "An instance of an integration, created by a user"

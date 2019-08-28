@@ -1,62 +1,81 @@
 import uuidv4 from "uuid/v4";
 
-import Model from "@/db";
-import { Workspace } from "./workspace";
-import { IntegrationInstance } from "./integration";
+import { cdb } from "@/db";
 
-export class User extends Model {
+interface GetResultUser {
+  value: User;
+}
+
+interface UserInterface {
+  id: string;
+  email: string;
+  name?: string;
+  __typename: string;
+}
+
+export class User implements UserInterface {
   public readonly id!: string;
   public email!: string;
   public name?: string;
-  public createdWorkspaces: Workspace[];
-  public workspaces: Workspace[];
-  public integrationInstances: IntegrationInstance[];
+  public __typename = "User";
 
-  public static tableName = "users";
-
-  public static relationMappings = {
-    createdWorkspaces: {
-      relation: Model.HasManyRelation,
-      modelClass: Workspace,
-      join: {
-        from: "users.id",
-        to: "workspaces.creator_id",
-      },
-    },
-    integrationInstances: {
-      relation: Model.HasManyRelation,
-      modelClass: IntegrationInstance,
-      join: {
-        from: "users.id",
-        to: "integration_instances.user_id",
-      },
-    },
-    workspaces: {
-      relation: Model.ManyToManyRelation,
-      modelClass: Workspace,
-      join: {
-        from: "users.id",
-        through: {
-          from: "users_workspaces.user_id",
-          to: "users_workspaces.workspace_id",
-        },
-        to: "workspaces.id",
-      },
-    },
-  };
-
-  public static async createOrReturn(
-    email: string,
-    name: string,
-  ): Promise<User> {
-    let user = await User.query().findOne({ email });
-    if (user === undefined) {
-      user = await User.query().insertAndFetch({
-        id: uuidv4(),
-        email,
-        name,
-      });
+  constructor({
+    name,
+    email,
+    user,
+  }: {
+    name?: string;
+    email?: string;
+    user?: UserInterface;
+  }) {
+    if (user !== undefined) {
+      for (const key of Object.keys(user)) {
+        this[key] = user[key];
+      }
+    } else {
+      this.id = uuidv4();
+      this.name = name;
+      this.email = email;
     }
-    return user;
+  }
+
+  public get fqId(): string {
+    return `user:${this.id}`;
+  }
+
+  public static async getByFqId(fqid: string): Promise<User> {
+    const col = cdb.bucket.defaultCollection();
+    const result = await col.get(fqid);
+    const user: UserInterface = result.value;
+    return new User({ user: user });
+  }
+
+  public static async getById(uuid: string): Promise<User> {
+    const col = cdb.bucket.defaultCollection();
+    const result = await col.get(`user:${uuid}`);
+    const user: UserInterface = result.value;
+    return new User({ user: user });
+  }
+
+  public static async createOrReturn({
+    email,
+    name,
+  }: {
+    email: string;
+    name: string;
+  }): Promise<User> {
+    let userPointer: GetResultUser;
+    const col = cdb.bucket.defaultCollection();
+
+    try {
+      userPointer = await col.get(`user:email:${email}`);
+    } catch (e) {
+      const user = new User({ name, email });
+      await col.insert(`user:${user.id}`, user);
+      await col.insert(`user:email:${email}`, `user:${user.id}`);
+      return user;
+    }
+    const user = await col.get(userPointer.value);
+    return new User({ user: user.value });
   }
 }

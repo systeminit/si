@@ -5,7 +5,7 @@ type Workspace {
   "The name of the workspace"
   name: String!
   "Description of what the workspace is for"
-  description: String
+  description: String!
   "Members of the workspace"
   members: [User!]!
   "Creator of the workspace"

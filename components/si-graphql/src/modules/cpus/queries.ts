@@ -1,18 +1,18 @@
 import { checkAuthentication } from "@/modules/auth";
-import { Server, ServerComponent } from "@/datalayer/component/server";
+import { Cpu, CpuComponent } from "@/datalayer/component/cpu";
 import { GqlRoot, GqlContext, GqlInfo } from "@/app.module";
 import {
   GetComponentsInput,
   filterComponents,
 } from "@/modules/components/queries";
 
-export async function getServerComponents(
+export async function getCpuComponents(
   _obj: GqlRoot,
   args: GetComponentsInput,
   _context: GqlContext,
   info: GqlInfo,
-): Promise<ServerComponent[]> {
+): Promise<CpuComponent[]> {
   const user = await checkAuthentication(info);
-  const data: ServerComponent[] = await Server.getAll();
+  const data: CpuComponent[] = await Cpu.getAll();
   return filterComponents(data, args, user);
 }

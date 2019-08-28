@@ -17,6 +17,21 @@ APOLLO_PLAYGROUND=true
 
 This will provide schema introspection and a default playground.
 
+You will also need a working Couchbase instance. If you have docker installed, 
+you can get this by running:
+
+```
+$ npm run couchbase-dev
+```
+
+You then likely need to add the default data:
+
+```
+$ npm run migrate
+```
+
+And viola - you're gtg.
+
 ## Run
 
 You'll need two separate terminal windows to do development.

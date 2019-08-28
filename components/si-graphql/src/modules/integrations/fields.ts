@@ -3,35 +3,34 @@ import { User } from "@/datalayer/user";
 import { Workspace } from "@/datalayer/workspace";
 
 // IntegrationInstance fields
-export async function integration(integrationInstance): Promise<Integration> {
-  const integration = await integrationInstance.$relatedQuery("integration");
-  return integration;
+export async function integration(
+  integrationInstance: IntegrationInstance,
+): Promise<Integration> {
+  return integrationInstance.integration();
 }
 
-export async function user(integrationInstance): Promise<User> {
-  const user = await integrationInstance.$relatedQuery("user");
-  return user;
+export async function user(
+  integrationInstance: IntegrationInstance,
+): Promise<User> {
+  return integrationInstance.user();
 }
 
-export async function workspaces(integrationInstance): Promise<Workspace[]> {
-  const workspaces = await integrationInstance.$relatedQuery("workspaces");
-  return workspaces;
+export async function workspaces(
+  integrationInstance: IntegrationInstance,
+): Promise<Workspace[]> {
+  return integrationInstance.workspaces();
 }
 
 // User fields
 export async function integrationInstances(
-  user,
+  user: User,
 ): Promise<IntegrationInstance[]> {
-  const integrationInstances = await user.$relatedQuery("integrationInstances");
-  return integrationInstances;
+  return IntegrationInstance.getForUser(user);
 }
 
 // Workspace fields
 export async function workspaceIntegrationInstances(
-  workspace,
+  workspace: Workspace,
 ): Promise<IntegrationInstance[]> {
-  const integrationInstances = await workspace.$relatedQuery(
-    "integrationInstances",
-  );
-  return integrationInstances;
+  return await workspace.integrationInstances();
 }

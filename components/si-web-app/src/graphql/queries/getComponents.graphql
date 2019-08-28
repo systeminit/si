@@ -1,6 +1,7 @@
 #import "../fragments/ComponentDefault.graphql"
 #import "../fragments/ServerComponentUnique.graphql"
 #import "../fragments/OperatingSystemComponentUnique.graphql"
+#import "../fragments/DiskImageComponentUnique.graphql"
 
 query getComponents($integrationId: String, $workspaceId: String) {
   getComponents(where: { integration: $integrationId, workspace: $workspaceId }) {
@@ -10,6 +11,9 @@ query getComponents($integrationId: String, $workspaceId: String) {
     }
     ... on OperatingSystemComponent {
       ... OperatingSystemComponentUnique
+    }
+    ... on DiskImageComponent {
+      ... DiskImageComponentUnique
     }
   }
 }

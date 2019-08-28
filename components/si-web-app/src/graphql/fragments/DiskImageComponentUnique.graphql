@@ -1,0 +1,10 @@
+fragment DiskImageComponentUnique on DiskImageComponent {
+  format
+  operatingSystem {
+    ... ComponentDefault
+    ... on OperatingSystemComponent {
+      ... OperatingSystemComponentUnique
+    }
+  }
+}
+

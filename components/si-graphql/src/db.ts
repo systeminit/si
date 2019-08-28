@@ -1,9 +1,14 @@
-import { Model } from "objection";
-import Knex from "knex";
-import { environment } from "@/environment";
-import knexConfig from "../knexfile";
+import couchbase from "couchbase";
 
-const config = knexConfig[environment.node_env];
-export const knex = Knex(config);
-Model.knex(knex);
-export default Model;
+import { environment } from "@/environment";
+
+const cluster = new couchbase.Cluster(environment.couchbase.cluster, {
+  username: environment.couchbase.username,
+  password: environment.couchbase.password,
+});
+const bucket = cluster.bucket(environment.couchbase.bucket);
+
+export const cdb = {
+  cluster,
+  bucket,
+};

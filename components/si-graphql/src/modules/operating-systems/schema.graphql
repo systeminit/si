@@ -1,11 +1,3 @@
-enum OperatingSystemAction {
-  START
-  STOP
-  RESTART
-  UPDATE
-  CONFIGURE
-}
-
 "An Operating System component"
 type OperatingSystemComponent implements Component {
   "The ID"
@@ -35,7 +27,7 @@ type OperatingSystemComponent implements Component {
   "The system architectures"
   architecture: [String!]
   "The list of supported actions that can be taken"
-  operatingSystemSupportedActions: [OperatingSystemAction]!
+  supportedActions: [String]!
 }
 
 enum OperatingSystemState {

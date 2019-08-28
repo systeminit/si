@@ -1,22 +1,23 @@
 import { Workspace } from "@/datalayer/workspace";
+import { GqlRoot, GqlArgs, GqlContext, GqlInfo } from "@/app.module";
 import { checkAuthentication } from "@/modules/auth";
 
 export async function getWorkspaceById(
-  _obj,
+  _obj: GqlRoot,
   { input: { id: id } },
-  _context,
-  info,
+  _context: GqlContext,
+  info: GqlInfo,
 ): Promise<Workspace> {
   await checkAuthentication(info);
-  return Workspace.query().findById(id);
+  return Workspace.getById(id);
 }
 
 export async function getWorkspaces(
-  _obj,
-  _input,
-  _context,
-  info,
+  _obj: GqlRoot,
+  _input: GqlArgs,
+  _context: GqlContext,
+  info: GqlInfo,
 ): Promise<Workspace[]> {
   const user = await checkAuthentication(info);
-  return user.$relatedQuery("workspaces").orderBy("name");
+  return Workspace.getWorkspacesForUser(user);
 }

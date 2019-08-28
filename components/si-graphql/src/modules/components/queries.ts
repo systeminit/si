@@ -1,15 +1,17 @@
 import { UserInputError } from "apollo-server";
 import hasIn from "lodash/hasIn";
+import find from "lodash/find";
 import filter from "lodash/filter";
 
 import { checkAuthentication } from "@/modules/auth";
-import { IntegrationInstance } from "@/datalayer/integration";
 import { GqlRoot, GqlContext, GqlInfo } from "@/app.module";
 import { getServerComponents } from "@/modules/servers/queries";
 import { getOperatingSystemComponents } from "@/modules/operating-systems/queries";
+import { getDiskImageComponents } from "@/modules/disk-images/queries";
+import { getCpuComponents } from "@/modules/cpus/queries";
 import { User } from "@/datalayer/user";
 import { Workspace } from "@/datalayer/workspace";
-import { Component } from "@/datalayer/component";
+import { ComponentObject } from "@/datalayer/component";
 
 export interface GetComponentsInput {
   where?: {
@@ -23,51 +25,59 @@ export async function getComponents(
   args: GetComponentsInput,
   context: GqlContext,
   info: GqlInfo,
-): Promise<Component[]> {
+): Promise<ComponentObject[]> {
   await checkAuthentication(info);
-  let data: Component[] = [];
+  let data: ComponentObject[] = [];
   const serverData = await getServerComponents(obj, args, context, info);
   const osData = await getOperatingSystemComponents(obj, args, context, info);
+  const imageData = await getDiskImageComponents(obj, args, context, info);
+  const cpuData = await getCpuComponents(obj, args, context, info);
   data = data.concat(serverData);
   data = data.concat(osData);
+  data = data.concat(imageData);
+  data = data.concat(cpuData);
   return data;
 }
 
-export async function filterComponents<T extends Component>(
+export async function filterComponents<T extends ComponentObject>(
   data: T[],
   args: GetComponentsInput,
   user: User,
 ): Promise<T[]> {
   // Limit by Workspace
   if (hasIn(args, "where.workspace")) {
-    const workspace: Workspace[] = await user
-      .$relatedQuery("workspaces")
-      .where("id", args.where.workspace);
-    if (workspace.length == 0) {
+    const workspaces = await Workspace.getWorkspacesForUser(user);
+    const filterWorkspace = find(workspaces, { id: args.where.workspace });
+    if (filterWorkspace === undefined) {
+      console.log(workspaces);
+      console.log(filterWorkspace);
       throw new UserInputError("Workspace is not associated with the user", {
         invalidArgs: ["workspace"],
       });
     }
-    const integrationInstances: IntegrationInstance[] = await workspace[0]
-      .$relatedQuery("integrationInstances")
-      .eager("integration");
+
+    const integrationInstances = await filterWorkspace.integrationInstances();
+
     const result = filter(data, (o: T): boolean => {
-      for (let x = 0; x < integrationInstances.length; x++) {
-        // HACK: 5 is the magic number of the global integration
-        if (
-          integrationInstances[x].integration.id == o.integration.id ||
-          o.integration.id == "9bfc0c3e-6273-4196-8e74-364761cb1b04" // The magic guid for the global integration
-        ) {
+      for (const integrationInstance of integrationInstances) {
+        if (o.integrationId == integrationInstance.integrationId) {
           return true;
         }
       }
-      return false;
+      // The magic guid for the global integration
+      if (
+        o.integrationId == "integration:9bfc0c3e-6273-4196-8e74-364761cb1b04"
+      ) {
+        return true;
+      } else {
+        return false;
+      }
     });
     return result;
     // Limit by Integration
   } else if (hasIn(args, "where.integration")) {
     const result = filter(data, (o: T): boolean => {
-      return `${o.integration.id}` == args.where.integration;
+      return o.integrationId == `integration:${args.where.integration}`;
     });
     return result;
   } else {

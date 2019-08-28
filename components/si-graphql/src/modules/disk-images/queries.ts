@@ -1,18 +1,21 @@
 import { checkAuthentication } from "@/modules/auth";
-import { Server, ServerComponent } from "@/datalayer/component/server";
+import {
+  DiskImage,
+  DiskImageComponent,
+} from "@/datalayer/component/disk-image";
 import { GqlRoot, GqlContext, GqlInfo } from "@/app.module";
 import {
   GetComponentsInput,
   filterComponents,
 } from "@/modules/components/queries";
 
-export async function getServerComponents(
+export async function getDiskImageComponents(
   _obj: GqlRoot,
   args: GetComponentsInput,
   _context: GqlContext,
   info: GqlInfo,
-): Promise<ServerComponent[]> {
+): Promise<DiskImageComponent[]> {
   const user = await checkAuthentication(info);
-  const data: ServerComponent[] = await Server.getAll();
+  const data = await DiskImage.getAll();
   return filterComponents(data, args, user);
 }

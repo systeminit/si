@@ -8,11 +8,14 @@
     "start": "webpack --config webpack.development.js",
     "build": "webpack --config webpack.production.js",
     "lint": "eslint src/**/*.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "migrate": "node ./dist/migrate.js",
+    "couchbase-dev": "./scripts/couchbase-dev.sh"
   },
   "keywords": [],
   "author": "System Initiative, Inc.",
   "devDependencies": {
+    "@types/dotenv": "^6.1.1",
     "@types/lodash": "^4.14.137",
     "@types/uuid": "^3.4.5",
     "@types/webpack-env": "^1.14.0",
@@ -47,16 +50,14 @@
     "apollo-server": "^2.9.0",
     "apollo-server-express": "^2.9.0",
     "cors": "^2.8.5",
+    "couchbase": "^3.0.0-alpha.2",
     "dotenv": "^8.1.0",
     "express-jwt": "^5.3.1",
     "graphql": "^14.5.3",
     "graphql-tag": "^2.10.1",
     "jsonwebtoken": "^8.5.1",
     "jwks-rsa": "^1.6.0",
-    "knex": "^0.19.2",
     "lodash": "^4.17.15",
-    "objection": "^1.6.9",
-    "sqlite3": "^4.1.0",
     "uuid": "^3.3.3"
   }
 }
