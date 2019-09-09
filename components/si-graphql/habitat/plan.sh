@@ -16,8 +16,6 @@ do_build() {
 
 do_install() {
   cp -r ./node_modules $pkg_prefix
-  cp -r knexfile.js $pkg_prefix
-  cp -r migrations $pkg_prefix
   cp -r ./dist $pkg_prefix
 }
 

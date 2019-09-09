@@ -3,7 +3,13 @@ query getAllIntegrations {
     id
     name
     description
-    options
+    options {
+      fields {
+        id
+        name
+        type
+      }
+    }
     image
   }
 }

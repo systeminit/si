@@ -1,5 +1,4 @@
 // const graphql = require('eslint-plugin-graphql');
-
 module.exports = {
   parser:  '@typescript-eslint/parser',  // Specifies the ESLint parser
   extends:  [
@@ -10,7 +9,7 @@ module.exports = {
   plugins: [
     "graphql"
   ],
- parserOptions:  {
+  parserOptions:  {
     ecmaVersion:  2018,  // Allows for the parsing of modern ECMAScript features
     sourceType:  'module',  // Allows for the use of imports
   },
@@ -20,4 +19,12 @@ module.exports = {
     // Place to specify ESLint rules. Can be used to overwrite rules specified from the extended configs
     // e.g. "@typescript-eslint/explicit-function-return-type": "off",
   },
+  overrides: [
+    {
+      files: [ "*.js", "*.jsx" ],
+      rules: {
+        "@typescript-eslint": "off",
+      }
+    }
+  ],
 }

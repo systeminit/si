@@ -1,32 +1,3 @@
-"A list of acceptable actions"
-enum ServerAction {
-  START
-  STOP
-  RESTART
-  DESTROY
-  CREATE
-  CONSOLE
-}
-
-"A list of states for a component"
-enum ServerState {
-  RUNNING
-  STOPPED
-  DESTROYED
-  CREATING
-  UNKNOWN
-}
-
-"CPU data for the server component"
-type ServerCpu {
-  id: ID!
-  name: String!
-  cores: Int!
-  baseFreqMHz: Int!
-  allCoreTurboFreqMHz: Int!
-  singleCoreTurboFreqMHz: Int!
-}
-
 type ServerComponent implements Component {
   "The ID"
   id: ID!
@@ -40,21 +11,12 @@ type ServerComponent implements Component {
   integration: Integration!
   "The type of node created by this component type"
   nodeType: String!
-  "The CPU options"
-  cpu: ServerCpu!
   "The amount of memory"
   memoryGIB: Int!
+  "The number of CPU cores"
+  cpuCores: Int
   "The list of supported actions that can be taken"
-  serverSupportedActions: [ServerAction]!
-}
-
-type Server {
-  id: ID!
-  name: String!
-  description: String
-  componentType: ServerComponent
-  state: ServerState
-  rawDataJson: String!
+  supportedActions: [String]!
 }
 
 extend type Query {

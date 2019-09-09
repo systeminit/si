@@ -19,14 +19,8 @@
       show-expand
     >
       <template v-slot:item.supportedActions="{ item }">
-        <template v-if="item.nodeType == 'Server'">
-          {{ item.serverSupportedActions.join(", ") }}
-        </template>
-        <template v-else-if="item.nodeType == 'Operating System'">
-          {{ item.operatingSystemSupportedActions.join(", ") }}
-        </template>
-        <template v-else>
-          Unknown Actions List; this is probably a bug
+        <template>
+          {{ item.supportedActions.join(", ") }}
         </template>
       </template>
       <template v-slot:expanded-item="props">

@@ -30,10 +30,10 @@
               label="Integration Description"
             ></v-text-field>
             <v-text-field
-              v-for="field in getOptions()"
-              :key="field.field_id"
-              :label="field.field_name"
-              v-model="newOptions[field.field_id]"
+              v-for="field in options.fields"
+              :key="field.id"
+              :label="field.name"
+              v-model="newOptions[field.id]"
               required
               outlined
             ></v-text-field>
@@ -92,11 +92,6 @@ export default Vue.extend({
           });
         },
       });
-    },
-    getOptions(): Array<Object> {
-      let optionData = JSON.parse(this.options);
-      console.log(optionData);
-      return optionData.fields;
     },
   },
   data() {

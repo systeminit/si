@@ -6,5 +6,4 @@ fragment OperatingSystemComponentUnique on OperatingSystemComponent {
   platformVersion
   platformRelease
   architecture
-  operatingSystemSupportedActions
 }

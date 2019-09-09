@@ -1,0 +1,35 @@
+enum DiskImageAction {
+  CREATE
+  DELETE
+}
+
+"A Disk Image Component"
+type DiskImageComponent implements Component {
+  "The ID"
+  id: ID!
+  "The name of the component"
+  name: String!
+  "Description of the element"
+  description: String!
+  "Raw data for the component"
+  rawDataJson: String!
+  "The integration that backs the component"
+  integration: Integration!
+  "The type of node created by this component type"
+  nodeType: String!
+  "The format of this disk image"
+  format: String!
+  "The operating system inside this image"
+  operatingSystem: OperatingSystemComponent
+  supportedActions: [String]!
+}
+
+extend type OperatingSystemComponent {
+  diskImages: [DiskImageComponent]!
+}
+
+extend type Query {
+  "Get Operating System Components enabled for this user"
+  getDiskImageComponents(where: GetComponentsInput): [DiskImageComponent]!
+}
+

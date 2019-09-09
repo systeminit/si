@@ -9,4 +9,5 @@ fragment ComponentDefault on Component {
     description
   }
   nodeType
+  supportedActions
 }

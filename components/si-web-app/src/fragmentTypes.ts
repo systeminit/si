@@ -21,7 +21,13 @@ const result: IntrospectionResultData = {
             name: "ServerComponent",
           },
           {
+            name: "CpuComponent",
+          },
+          {
             name: "OperatingSystemComponent",
+          },
+          {
+            name: "DiskImageComponent",
           },
         ],
       },

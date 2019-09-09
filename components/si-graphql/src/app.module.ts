@@ -6,6 +6,8 @@ import { Integrations } from "@modules/integrations";
 import { Components } from "@modules/components";
 import { Servers } from "@modules/servers";
 import { OperatingSystems } from "@modules/operating-systems";
+import { DiskImages } from "@modules/disk-images";
+import { Cpus } from "@modules/cpus";
 
 export interface GqlRoot {
   [key: string]: any; //eslint-disable-line
@@ -23,6 +25,9 @@ export interface GqlInfo {
   [key: string]: any; //eslint-disable-line
 }
 
+// Make the component relationships work
+import "@/datalayer/component/relationships";
+
 export const AppModule = new GraphQLModule({
   imports: [
     HelloWorld,
@@ -32,5 +37,7 @@ export const AppModule = new GraphQLModule({
     Components,
     Servers,
     OperatingSystems,
+    DiskImages,
+    Cpus,
   ],
 });

@@ -4,7 +4,6 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const defaultPort = 4000;
-const defaultNodeEnv = "development";
 
 interface Environment {
   apollo: {
@@ -12,7 +11,13 @@ interface Environment {
     playground: boolean;
   };
   port: number | string;
-  node_env: string;
+  nodeEnv: string;
+  couchbase: {
+    cluster: string;
+    bucket: string;
+    username: string;
+    password: string;
+  };
 }
 
 export const environment: Environment = {
@@ -21,5 +26,11 @@ export const environment: Environment = {
     playground: process.env.APOLLO_PLAYGROUND === "true",
   },
   port: process.env.PORT || defaultPort,
-  node_env: process.env.NODE_ENV || "development",
+  nodeEnv: process.env.NODE_ENV || "development",
+  couchbase: {
+    cluster: process.env.COUCHBASE_CLUSTER || "couchbase://127.0.0.1",
+    bucket: process.env.COUCHBASE_BUCKET || "si",
+    username: process.env.COUCHBASE_USERNAME || "si",
+    password: process.env.COUCHBASE_PASSWORD || "bugbear",
+  },
 };
