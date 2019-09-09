@@ -14,7 +14,7 @@ const ssh_key = new aws.ec2.KeyPair("si-key", {
   publicKey: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDZiV25xYzz2cCOMHRxA333VsXXwq8AEZTL0wvrfpvyXtd6r7PeyTD9F+LjjITmKR8kRv6dfRrAIFNl4n/yugFl46Wa9m5aU7R/EkfcEo38j61tC6SywC+JFGuw3XeUxAhVHE6zQYw5esX0AHahOf0IQw8f7YuzDxDocAUiXgRsFDr2aHiMkAISOzWjGimAYnP00rvo//a4u5ogMKZNYZJdjoNudx8qXfT+BR4/UhcsUp2Ky5uaFDGgu6lqnaAzXBold8x8Ag3Fv0OKw8NES+K/tZElzd4k+BR1onEGqksjk7ZPISQuYxhWtVtySfOn3KhaPrM9D2ZSEKhQvqjeuCQyuHytoXyR8xtYNtyFTRlQFVwTvWBELb8kOoWK0NQzYL/pUc71SqANjnSxCSlPeKrbsepR187TVMLawAp92k/ZO/HtUpNemJzn1W+FwNsvYgwaZiTe0GSgrmnNe7AGzAMaBGUrRlhEIRGvQcdXfriu5VA0nWw8RBxrWLSVqf57U5M= admin@systeminit.com"
 });
 
-const size = "t2.medium";
+const size = "t2.large";
 
 const ami = "ami-08fd8ae3806f09a08";
 
@@ -29,7 +29,7 @@ curl -o couchbase.deb https://packages.couchbase.com/releases/6.5.0-beta/couchba
 sha256sum -c couchbase.shasum
 dpkg -i ./couchbase.deb
 echo 'Sleeping for couchbase start'
-sleep 10
+sleep 30
 /opt/couchbase/bin/couchbase-cli cluster-init -c 127.0.0.1 --cluster-username si --cluster-password bugbear --services data,index,query,fts,analytics --cluster-ramsize 2048 --cluster-index-ramsize 1024 --cluster-eventing-ramsize 1024 --cluster-fts-ramsize 1024 --cluster-analytics-ramsize 1024 --index-storage-setting default
 
 /opt/couchbase/bin/couchbase-cli bucket-create --cluster 127.0.0.1 --username si --password bugbear --bucket si --bucket-type couchbase --bucket-ramsize 2048 
