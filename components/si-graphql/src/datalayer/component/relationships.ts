@@ -2,6 +2,7 @@ import { OperatingSystem } from "./operating-system";
 import { DiskImage } from "./disk-image";
 import { Cpu } from "./cpu";
 import { Server } from "./server";
+import { Port, PortEntity } from "./port";
 
 // All relationships have to be defined here. This is because Javascript
 // modules are resolved at import time - which means if you do anything
@@ -14,6 +15,11 @@ import { Server } from "./server";
 // a whole raft of nasty undefined bugs.
 //
 // You're welcome.
+
+PortEntity.hasOneComponent({
+  from: "componentId",
+  to: { field: "component", model: Port },
+});
 
 DiskImage.hasOne({
   from: "operatingSystemId",

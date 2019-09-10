@@ -93,6 +93,7 @@ export default Vue.extend({
     return {
       expanded: [],
       search: "",
+      getComponents: [],
       headers: [
         { text: "Node Type", value: "nodeType" },
         { text: "Name", align: "left", value: "name" },

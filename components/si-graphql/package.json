@@ -10,7 +10,8 @@
     "lint": "eslint src/**/*.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
     "migrate": "node ./dist/migrate.js",
-    "couchbase-dev": "./scripts/couchbase-dev.sh"
+    "couchbase-dev": "./scripts/couchbase-dev.sh",
+    "generate-ports": "./utils/generate-ports.pl /etc/services > ./src/migrate/ports.ts"
   },
   "keywords": [],
   "author": "System Initiative, Inc.",
@@ -53,11 +54,13 @@
     "couchbase": "^3.0.0-alpha.2",
     "dotenv": "^8.1.0",
     "express-jwt": "^5.3.1",
+    "express-winston": "^3.3.0",
     "graphql": "^14.5.4",
     "graphql-tag": "^2.10.1",
     "jsonwebtoken": "^8.5.1",
     "jwks-rsa": "^1.6.0",
     "lodash": "^4.17.15",
+    "searchjs": "^1.0.2",
     "uuid": "^3.3.3"
   }
 }

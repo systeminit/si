@@ -3,6 +3,8 @@ import { ApolloServer } from "apollo-server-express";
 import jwt from "express-jwt";
 import jwksRsa from "jwks-rsa";
 import cors from "cors";
+import winston from "winston";
+import expressWinston from "express-winston";
 
 import { AppModule } from "@/app.module";
 import { environment } from "@/environment";
@@ -33,9 +35,23 @@ const server = new ApolloServer({
   modules: [AppModule],
   introspection: environment.apollo.introspection,
   playground: environment.apollo.playground,
+  engine: {
+    apiKey: "service:bugbear:tEpqybzZjL3ltXKoDkeG-A",
+  },
+  tracing: true,
+});
+
+const logger = expressWinston.logger({
+  transports: [new winston.transports.Console()],
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.prettyPrint(),
+    winston.format.colorize(),
+  ),
 });
 
 const app = express();
+app.use(logger);
 app.use(cors());
 app.options("*", cors());
 app.use(checkJwt);

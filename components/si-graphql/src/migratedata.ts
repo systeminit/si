@@ -4,6 +4,15 @@ import { OperatingSystem } from "@/datalayer/component/operating-system";
 import { Server } from "@/datalayer/component/server";
 import { DiskImage } from "@/datalayer/component/disk-image";
 import "@/datalayer/component/relationships";
+import { getPortData } from "@/migrate/ports";
+
+async function importPortData(): Promise<void> {
+  const data = await getPortData();
+  for (const d of data) {
+    console.log(`Migrating ${d.fqId()} ${d.name}`);
+    await d.save();
+  }
+}
 
 async function importDiskImageData(): Promise<void> {
   const awsIntegration = await Integration.getByName("AWS");
@@ -191,6 +200,8 @@ async function main(): Promise<void> {
     await importServerData();
     console.log("** Disk Image");
     await importDiskImageData();
+    console.log("** Ports");
+    await importPortData();
   } catch (e) {
     console.log("Failed: ", e);
     process.exit();
