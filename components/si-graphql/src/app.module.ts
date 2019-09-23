@@ -7,6 +7,7 @@ import { Components } from "@modules/components";
 import { Servers } from "@modules/servers";
 import { OperatingSystems } from "@modules/operating-systems";
 import { DiskImages } from "@modules/disk-images";
+import { Ports } from "@modules/ports";
 import { Cpus } from "@modules/cpus";
 
 export interface GqlRoot {
@@ -39,5 +40,6 @@ export const AppModule = new GraphQLModule({
     OperatingSystems,
     DiskImages,
     Cpus,
+    Ports,
   ],
 });

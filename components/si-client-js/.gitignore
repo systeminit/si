@@ -1,0 +1,6 @@
+dist
+tags
+node_modules
+.env
+results/
+/lib

@@ -2,6 +2,7 @@ import { UserInputError } from "apollo-server";
 import hasIn from "lodash/hasIn";
 import find from "lodash/find";
 import filter from "lodash/filter";
+import { matchArray, SearchPrimitive } from "searchjs";
 
 import { checkAuthentication } from "@/modules/auth";
 import { GqlRoot, GqlContext, GqlInfo } from "@/app.module";
@@ -9,6 +10,7 @@ import { getServerComponents } from "@/modules/servers/queries";
 import { getOperatingSystemComponents } from "@/modules/operating-systems/queries";
 import { getDiskImageComponents } from "@/modules/disk-images/queries";
 import { getCpuComponents } from "@/modules/cpus/queries";
+import { getPortComponents } from "@/modules/ports/queries";
 import { User } from "@/datalayer/user";
 import { Workspace } from "@/datalayer/workspace";
 import { ComponentObject } from "@/datalayer/component";
@@ -17,6 +19,13 @@ export interface GetComponentsInput {
   where?: {
     integration?: string;
     workspace?: string;
+  };
+}
+
+export interface FindComponentInput {
+  where: {
+    workspace?: string;
+    search: string;
   };
 }
 
@@ -32,10 +41,12 @@ export async function getComponents(
   const osData = await getOperatingSystemComponents(obj, args, context, info);
   const imageData = await getDiskImageComponents(obj, args, context, info);
   const cpuData = await getCpuComponents(obj, args, context, info);
+  const portData = await getPortComponents(obj, args, context, info);
   data = data.concat(serverData);
   data = data.concat(osData);
   data = data.concat(imageData);
   data = data.concat(cpuData);
+  data = data.concat(portData);
   return data;
 }
 
@@ -83,4 +94,26 @@ export async function filterComponents<T extends ComponentObject>(
   } else {
     return data;
   }
+}
+
+export async function findComponents(
+  obj: GqlRoot,
+  args: FindComponentInput,
+  context: GqlContext,
+  info: GqlInfo,
+): Promise<ComponentObject[]> {
+  let data: ComponentObject[];
+
+  if (args.where.workspace) {
+    data = await getComponents(
+      obj,
+      { where: { workspace: args.where.workspace } },
+      context,
+      info,
+    );
+  } else {
+    data = await getComponents(obj, {}, context, info);
+  }
+  const searchArguments = JSON.parse(args.where.search) as SearchPrimitive;
+  return matchArray(data, searchArguments);
 }

@@ -2,10 +2,14 @@
 #import "../fragments/ServerComponentUnique.graphql"
 #import "../fragments/OperatingSystemComponentUnique.graphql"
 #import "../fragments/DiskImageComponentUnique.graphql"
+#import "../fragments/PortComponentUnique.graphql"
 
 query getComponents($integrationId: String, $workspaceId: String) {
   getComponents(where: { integration: $integrationId, workspace: $workspaceId }) {
     ... ComponentDefault
+    ... on PortComponent {
+      ... PortComponentUnique
+    }
     ... on ServerComponent {
       ...ServerComponentUnique
     }

@@ -20,7 +20,17 @@ input GetComponentsInput {
   workspace: String,
 }
 
+"Find a component with a searchjs query"
+input FindComponentInput {
+  "A workspace to limit the search to"
+  workspace: String
+  "A JSON SearchJS Query"
+  search: String!
+}
+
 extend type Query {
   "Get a list of all known components"
   getComponents(where: GetComponentsInput): [Component]!
+  "Find components"
+  findComponents(where: FindComponentInput!): [Component]!
 }

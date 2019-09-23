@@ -29,6 +29,9 @@ const result: IntrospectionResultData = {
           {
             name: "DiskImageComponent",
           },
+          {
+            name: "PortComponent",
+          },
         ],
       },
     ],

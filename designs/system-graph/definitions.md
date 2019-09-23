@@ -12,7 +12,12 @@
 * A component has attribute(s).
 * A component has state(s).
 * Components have relationship(s).
-* A component is represented as a node.
+* A component is represented as a node type.
+
+### Entity
+* An entinty is an instance of a component
+* Entities have state(s).
+* Entities have relationship(s).
 
 ### Operation
 * An operation is an action performed on a component.
