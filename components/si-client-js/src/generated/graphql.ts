@@ -96,6 +96,28 @@ export type CreatePortPayload = {
   port: PortEntity,
 };
 
+export type CreateSshKeyArgs = {
+  /** The name of the SSH Key */
+  name?: Maybe<Scalars['String']>,
+  /** A description of the SSH Key */
+  description?: Maybe<Scalars['String']>,
+  /** The private key */
+  privateKey?: Maybe<Scalars['String']>,
+  /** The public key */
+  publicKey?: Maybe<Scalars['String']>,
+};
+
+export type CreateSshKeyInput = {
+  constraints?: Maybe<Scalars['String']>,
+  args?: Maybe<CreateSshKeyArgs>,
+  workspace: Scalars['String'],
+};
+
+export type CreateSshKeyPayload = {
+   __typename?: 'CreateSshKeyPayload',
+  sshKey: SshKeyEntity,
+};
+
 export type CreateUserInput = {
   /** The users email */
   email: Scalars['String'],
@@ -301,6 +323,7 @@ export type Mutation = {
   /** Disable an integration instance on a workspace */
   disableIntegrationInstanceOnWorkspace?: Maybe<DisableIntegrationInstanceOnWorkspacePayload>,
   createPort: CreatePortPayload,
+  createSshKey: CreateSshKeyPayload,
 };
 
 
@@ -341,6 +364,11 @@ export type MutationDisableIntegrationInstanceOnWorkspaceArgs = {
 
 export type MutationCreatePortArgs = {
   input?: Maybe<CreatePortInput>
+};
+
+
+export type MutationCreateSshKeyArgs = {
+  input?: Maybe<CreateSshKeyInput>
 };
 
 export type OperatingSystem = {
@@ -466,6 +494,8 @@ export type Query = {
   /** Get Operating System Components enabled for this user */
   getPortComponents: Array<Maybe<PortComponent>>,
   findPortComponents: Array<Maybe<PortComponent>>,
+  getSshKeyComponents: Array<Maybe<PortComponent>>,
+  findSshKeyComponents: Array<Maybe<PortComponent>>,
 };
 
 
@@ -523,6 +553,16 @@ export type QueryFindPortComponentsArgs = {
   where?: Maybe<FindComponentInput>
 };
 
+
+export type QueryGetSshKeyComponentsArgs = {
+  where?: Maybe<GetComponentsInput>
+};
+
+
+export type QueryFindSshKeyComponentsArgs = {
+  where?: Maybe<FindComponentInput>
+};
+
 export type ServerComponent = Component & {
    __typename?: 'ServerComponent',
   /** The ID */
@@ -544,6 +584,62 @@ export type ServerComponent = Component & {
   /** The list of supported actions that can be taken */
   supportedActions: Array<Maybe<Scalars['String']>>,
   cpu: CpuComponent,
+};
+
+/** An SSH Key Component */
+export type SshKeyComponent = Component & {
+   __typename?: 'SshKeyComponent',
+  /** The ID */
+  id: Scalars['ID'],
+  /** The name of the component */
+  name: Scalars['String'],
+  /** Description of the element */
+  description: Scalars['String'],
+  /** Raw data for the component */
+  rawDataJson: Scalars['String'],
+  /** The integration that backs the component */
+  integration: Integration,
+  /** The type of node created by this component type */
+  nodeType: Scalars['String'],
+  /** The supported actions on this component */
+  supportedActions: Array<Maybe<Scalars['String']>>,
+  /** The type of keys */
+  keyType: Scalars['String'],
+  /** The format of the keys */
+  keyFormat: Scalars['String'],
+  /** The number of bits in the key */
+  bits: Scalars['Int'],
+};
+
+/** An SSH Key Entity */
+export type SshKeyEntity = {
+   __typename?: 'SshKeyEntity',
+  /** The ID */
+  id: Scalars['ID'],
+  /** The name of the SSH Key */
+  name: Scalars['String'],
+  /** A longer description of the SSH Key */
+  description: Scalars['String'],
+  /** The type of keys */
+  keyType: Scalars['String'],
+  /** The format of the keys */
+  keyFormat: Scalars['String'],
+  /** The number of bits in the keys */
+  bits: Scalars['String'],
+  /** The comment in the keys */
+  comment: Scalars['String'],
+  /** The bubble babble fingerprint of the keys */
+  bubbleBabble: Scalars['String'],
+  /** The sha256 fingerprint of the keys */
+  fingerPrint: Scalars['String'],
+  /** The randomArt fingerprint of the keys */
+  randomArt: Scalars['String'],
+  /** The private key */
+  privateKey: Scalars['String'],
+  /** The public key */
+  publicKey: Scalars['String'],
+  /** An optional component this entity was created with */
+  component?: Maybe<SshKeyComponent>,
 };
 
 /** A User */
