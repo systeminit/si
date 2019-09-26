@@ -1,4 +1,4 @@
-import { Port, PortEntity } from "@/port";
+import { Port } from "@/port";
 
 test('Port findComponent', async () => {
   let p = await Port.findComponent({serviceName: "http", protocol: "tcp"});
@@ -19,7 +19,7 @@ test('Port find Complex', async () => {
 });
 
 test('Port entity creation', async () => {
-  const p: PortEntity = await Port.create({ constraints: { serviceName: "http", protocol: "tcp"}, args: { name: "Poop Service http" }});
+  const p = await Port.create({ constraints: { serviceName: "http", protocol: "tcp"}, args: { name: "Poop Service http" }});
   expect(p.name).toBe("Poop Service http");
   expect(p.serviceName).toBe("http");
   expect(p.protocol).toBe("tcp");

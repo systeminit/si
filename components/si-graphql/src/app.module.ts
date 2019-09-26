@@ -9,6 +9,7 @@ import { OperatingSystems } from "@modules/operating-systems";
 import { DiskImages } from "@modules/disk-images";
 import { Ports } from "@modules/ports";
 import { Cpus } from "@modules/cpus";
+import { SshKey } from "@modules/ssh-key";
 
 export interface GqlRoot {
   [key: string]: any; //eslint-disable-line
@@ -41,5 +42,6 @@ export const AppModule = new GraphQLModule({
     DiskImages,
     Cpus,
     Ports,
+    SshKey,
   ],
 });

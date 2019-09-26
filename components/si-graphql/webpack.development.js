@@ -22,7 +22,10 @@ module.exports = merge.smart(common, {
   mode: "development",
   plugins: [
     new CleanWebpackPlugin(),
-    new NodemonPlugin({ script: "./dist/server.js" }),
+    new NodemonPlugin({
+      script: "./dist/server.js",
+      watch: "./dist/server.js",
+    }),
   ],
   watch: true,
 });

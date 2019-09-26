@@ -1,0 +1,84 @@
+"An SSH Key Component"
+type SshKeyComponent implements Component {
+  "The ID"
+  id: ID!
+  "The name of the component"
+  name: String!
+  "Description of the element"
+  description: String!
+  "Raw data for the component"
+  rawDataJson: String!
+  "The integration that backs the component"
+  integration: Integration!
+  "The type of node created by this component type"
+  nodeType: String!
+  "The supported actions on this component"
+  supportedActions: [String]!
+  "The type of keys"
+  keyType: String!
+  "The format of the keys"
+  keyFormat: String!
+  "The number of bits in the key"
+  bits: Int!
+}
+
+"An SSH Key Entity"
+type SshKeyEntity {
+  "The ID"
+  id: ID!
+  "The name of the SSH Key"
+  name: String!
+  "A longer description of the SSH Key"
+  description: String!
+  "The type of keys"
+  keyType: String!
+  "The format of the keys"
+  keyFormat: String!
+  "The number of bits in the keys"
+  bits: String!
+  "The comment in the keys"
+  comment: String!
+  "The bubble babble fingerprint of the keys"
+  bubbleBabble: String!
+  "The sha256 fingerprint of the keys"
+  fingerPrint: String!
+  "The randomArt fingerprint of the keys"
+  randomArt: String!
+  "The private key"
+  privateKey: String!
+  "The public key"
+  publicKey: String!
+  "An optional component this entity was created with"
+  component: SshKeyComponent
+}
+
+extend type Query {
+  getSshKeyComponents(where: GetComponentsInput): [PortComponent]!
+  findSshKeyComponents(where: FindComponentInput): [PortComponent]!
+}
+
+input CreateSshKeyArgs {
+  "The name of the SSH Key"
+  name: String
+  "A description of the SSH Key"
+  description: String
+  "The private key"
+  privateKey: String
+  "The public key"
+  publicKey: String
+}
+
+input CreateSshKeyInput {
+  constraints: String,
+  args: CreateSshKeyArgs,
+  workspace: String!,
+}
+
+type CreateSshKeyPayload {
+  sshKey: SshKeyEntity!
+}
+
+extend type Mutation {
+  createSshKey(input: CreateSshKeyInput): CreateSshKeyPayload!
+}
+

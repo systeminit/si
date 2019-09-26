@@ -3,6 +3,7 @@ import { DiskImage } from "./disk-image";
 import { Cpu } from "./cpu";
 import { Server } from "./server";
 import { Port, PortEntity } from "./port";
+import { SshKey, SshKeyEntity } from "./ssh-key";
 
 // All relationships have to be defined here. This is because Javascript
 // modules are resolved at import time - which means if you do anything
@@ -19,6 +20,11 @@ import { Port, PortEntity } from "./port";
 PortEntity.hasOneComponent({
   from: "componentId",
   to: { field: "component", model: Port },
+});
+
+SshKeyEntity.hasOneComponent({
+  from: "componentId",
+  to: { field: "component", model: SshKey },
 });
 
 DiskImage.hasOne({

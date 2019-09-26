@@ -32,6 +32,9 @@ const result: IntrospectionResultData = {
           {
             name: "PortComponent",
           },
+          {
+            name: "SshKeyComponent",
+          },
         ],
       },
     ],
