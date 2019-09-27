@@ -1,8 +1,3 @@
-enum DiskImageAction {
-  CREATE
-  DELETE
-}
-
 "A Disk Image Component"
 type DiskImageComponent implements Component {
   "The ID"
@@ -28,8 +23,44 @@ extend type OperatingSystemComponent {
   diskImages: [DiskImageComponent]!
 }
 
+"A Disk Image Component"
+type DiskImageEntity {
+  "The ID"
+  id: ID!
+  "The name of the disk image"
+  name: String!
+  "Description of the disk image"
+  description: String!
+  "The format of this disk image"
+  format: String!
+  "The operating system inside this image"
+  operatingSystem: OperatingSystemEntity
+  "The optional component"
+  component: DiskImageComponent
+}
+
 extend type Query {
   "Get Operating System Components enabled for this user"
   getDiskImageComponents(where: GetComponentsInput): [DiskImageComponent]!
+  findDiskImageComponents(where: FindComponentInput): [DiskImageComponent]!
+}
+
+input CreateDiskImageArgs {
+  name: String
+  description: String
+}
+
+input CreateDiskImageInput {
+  constraints: String,
+  args: CreateDiskImageArgs,
+  workspace: String!,
+}
+
+type CreateDiskImagePayload {
+  diskImage: DiskImageEntity!
+}
+
+extend type Mutation {
+  createDiskImage(input: CreateDiskImageInput): CreateDiskImagePayload!
 }
 

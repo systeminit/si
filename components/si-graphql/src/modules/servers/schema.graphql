@@ -19,7 +19,51 @@ type ServerComponent implements Component {
   supportedActions: [String]!
 }
 
+"An Operating System entity"
+type ServerEntity {
+  "The ID"
+  id: ID!
+  "The name of the component"
+  name: String!
+  "Description of the element"
+  description: String!
+  "The amount of memory"
+  memoryGIB: Int!
+  "The number of CPU cores"
+  cpuCores: Int
+  "CPU"
+  cpu: CpuEntity
+  "SSH Key"
+  sshKey: SshKeyEntity
+  "Operating System"
+  operatingSystem: OperatingSystemEntity
+  "The component this entity was created from"
+  component: ServerComponent
+}
+
 extend type Query {
   "Get Server Components enabled for this user"
   getServerComponents(where: GetComponentsInput): [ServerComponent]!
+  findServerComponents(where: FindComponentInput): [ServerComponent]!
+}
+
+input CreateServerArgs {
+  "The name of the Server"
+  name: String
+  "A description of the Server"
+  description: String
+}
+
+input CreateServerInput {
+  constraints: String,
+  args: CreateServerArgs,
+  workspace: String!,
+}
+
+type CreateServerPayload {
+  server: ServerEntity!
+}
+
+extend type Mutation {
+  createServer(input: CreateServerInput): CreateServerPayload!
 }

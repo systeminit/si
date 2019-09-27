@@ -53,8 +53,8 @@ type SshKeyEntity {
 }
 
 extend type Query {
-  getSshKeyComponents(where: GetComponentsInput): [PortComponent]!
-  findSshKeyComponents(where: FindComponentInput): [PortComponent]!
+  getSshKeyComponents(where: GetComponentsInput): [SshKeyComponent]!
+  findSshKeyComponents(where: FindComponentInput): [SshKeyComponent]!
 }
 
 input CreateSshKeyArgs {

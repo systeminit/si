@@ -12,10 +12,6 @@ type CpuComponent implements Component {
   integration: Integration!
   "The type of node created by this component type"
   nodeType: String!
-  "The format of this disk image"
-  format: String!
-  "The operating system inside this image"
-  operatingSystem: OperatingSystemComponent
   supportedActions: [String]!
   cores: Int!
   baseFreqMHz: Int!
@@ -25,6 +21,22 @@ type CpuComponent implements Component {
   manufacturer: String!
 }
 
+type CpuEntity {
+  "The ID"
+  id: ID!
+  "The name of the port"
+  name: String!
+  "A longer description of the port"
+  description: String!
+  cores: Int!
+  baseFreqMHz: Int!
+  allCoreTurboFreqMHz: Int!
+  singleCoreTurboFreqMHz: Int!
+  architecture: String!
+  manufacturer: String!
+  component: CpuComponent
+}
+
 extend type ServerComponent {
   cpu: CpuComponent!
 }
@@ -32,6 +44,24 @@ extend type ServerComponent {
 extend type Query {
   "Get Operating System Components enabled for this user"
   getCpuComponents(where: GetComponentsInput): [CpuComponent]!
+  findCpuComponents(where: FindComponentInput): [CpuComponent]!
 }
 
+input CreateCpuArgs {
+  name: String,
+  description: String,
+}
 
+input CreateCpuInput {
+  constraints: String,
+  args: CreateCpuArgs,
+  workspace: String!,
+}
+
+type CreateCpuPayload {
+  cpu: CpuEntity!
+}
+
+extend type Mutation {
+  createCpu(input: CreateCpuInput): CreateCpuPayload!
+}

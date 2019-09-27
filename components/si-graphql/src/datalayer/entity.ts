@@ -28,7 +28,7 @@ export interface Entity<T extends EntityObject> {
   getByName(name: string): Promise<T>;
   getAll(): Promise<T[]>;
   hasOneComponent(args: HasOneComponentArgs<Component<any>>): void;
-  hasOne(args: HasOneArgs<Entity<T>>): void;
+  hasOne(args: HasOneArgs<Entity<any>>): void;
   hasMany(args: HasManyArgs<Entity<T>>): void;
 }
 

@@ -59,9 +59,12 @@
     "faker": "^4.1.0",
     "graphql": "^14.5.4",
     "graphql-tag": "^2.10.1",
+    "graphql-tag-pluck": "^0.8.5",
     "jsonwebtoken": "^8.5.1",
     "jwks-rsa": "^1.6.0",
     "lodash": "^4.17.15",
+    "nexus": "^0.11.7",
+    "reflect-metadata": "^0.1.13",
     "searchjs": "^1.0.2",
     "uuid": "^3.3.3"
   }

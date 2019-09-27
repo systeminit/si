@@ -40,10 +40,6 @@ export type CpuComponent = Component & {
   integration: Integration,
   /** The type of node created by this component type */
   nodeType: Scalars['String'],
-  /** The format of this disk image */
-  format: Scalars['String'],
-  /** The operating system inside this image */
-  operatingSystem?: Maybe<OperatingSystemComponent>,
   supportedActions: Array<Maybe<Scalars['String']>>,
   cores: Scalars['Int'],
   baseFreqMHz: Scalars['Int'],
@@ -51,6 +47,55 @@ export type CpuComponent = Component & {
   singleCoreTurboFreqMHz: Scalars['Int'],
   architecture: Scalars['String'],
   manufacturer: Scalars['String'],
+};
+
+export type CpuEntity = {
+   __typename?: 'CpuEntity',
+  /** The ID */
+  id: Scalars['ID'],
+  /** The name of the port */
+  name: Scalars['String'],
+  /** A longer description of the port */
+  description: Scalars['String'],
+  cores: Scalars['Int'],
+  baseFreqMHz: Scalars['Int'],
+  allCoreTurboFreqMHz: Scalars['Int'],
+  singleCoreTurboFreqMHz: Scalars['Int'],
+  architecture: Scalars['String'],
+  manufacturer: Scalars['String'],
+  component?: Maybe<CpuComponent>,
+};
+
+export type CreateCpuArgs = {
+  name?: Maybe<Scalars['String']>,
+  description?: Maybe<Scalars['String']>,
+};
+
+export type CreateCpuInput = {
+  constraints?: Maybe<Scalars['String']>,
+  args?: Maybe<CreateCpuArgs>,
+  workspace: Scalars['String'],
+};
+
+export type CreateCpuPayload = {
+   __typename?: 'CreateCpuPayload',
+  cpu: CpuEntity,
+};
+
+export type CreateDiskImageArgs = {
+  name?: Maybe<Scalars['String']>,
+  description?: Maybe<Scalars['String']>,
+};
+
+export type CreateDiskImageInput = {
+  constraints?: Maybe<Scalars['String']>,
+  args?: Maybe<CreateDiskImageArgs>,
+  workspace: Scalars['String'],
+};
+
+export type CreateDiskImagePayload = {
+   __typename?: 'CreateDiskImagePayload',
+  diskImage: DiskImageEntity,
 };
 
 /** Create an Integration Instance */
@@ -70,6 +115,24 @@ export type CreateIntegrationInstancePayload = {
    __typename?: 'createIntegrationInstancePayload',
   /** The created integration instance */
   integrationInstance?: Maybe<IntegrationInstance>,
+};
+
+export type CreateOperatingSystemArgs = {
+  /** The name of the SSH Key */
+  name?: Maybe<Scalars['String']>,
+  /** A description of the SSH Key */
+  description?: Maybe<Scalars['String']>,
+};
+
+export type CreateOperatingSystemInput = {
+  constraints?: Maybe<Scalars['String']>,
+  args?: Maybe<CreateOperatingSystemArgs>,
+  workspace: Scalars['String'],
+};
+
+export type CreateOperatingSystemPayload = {
+   __typename?: 'CreateOperatingSystemPayload',
+  operatingSystem: OperatingSystemEntity,
 };
 
 export type CreatePortArgs = {
@@ -94,6 +157,24 @@ export type CreatePortInput = {
 export type CreatePortPayload = {
    __typename?: 'CreatePortPayload',
   port: PortEntity,
+};
+
+export type CreateServerArgs = {
+  /** The name of the Server */
+  name?: Maybe<Scalars['String']>,
+  /** A description of the Server */
+  description?: Maybe<Scalars['String']>,
+};
+
+export type CreateServerInput = {
+  constraints?: Maybe<Scalars['String']>,
+  args?: Maybe<CreateServerArgs>,
+  workspace: Scalars['String'],
+};
+
+export type CreateServerPayload = {
+   __typename?: 'CreateServerPayload',
+  server: ServerEntity,
 };
 
 export type CreateSshKeyArgs = {
@@ -188,11 +269,6 @@ export type DisableIntegrationInstanceOnWorkspacePayload = {
   workspace?: Maybe<Workspace>,
 };
 
-export enum DiskImageAction {
-  Create = 'CREATE',
-  Delete = 'DELETE'
-}
-
 /** A Disk Image Component */
 export type DiskImageComponent = Component & {
    __typename?: 'DiskImageComponent',
@@ -213,6 +289,23 @@ export type DiskImageComponent = Component & {
   /** The operating system inside this image */
   operatingSystem?: Maybe<OperatingSystemComponent>,
   supportedActions: Array<Maybe<Scalars['String']>>,
+};
+
+/** A Disk Image Component */
+export type DiskImageEntity = {
+   __typename?: 'DiskImageEntity',
+  /** The ID */
+  id: Scalars['ID'],
+  /** The name of the disk image */
+  name: Scalars['String'],
+  /** Description of the disk image */
+  description: Scalars['String'],
+  /** The format of this disk image */
+  format: Scalars['String'],
+  /** The operating system inside this image */
+  operatingSystem?: Maybe<OperatingSystemEntity>,
+  /** The optional component */
+  component?: Maybe<DiskImageComponent>,
 };
 
 /** Enable an Integration Instance on a Workspace */
@@ -322,6 +415,10 @@ export type Mutation = {
   enableIntegrationInstanceOnWorkspace?: Maybe<EnableIntegrationInstanceOnWorkspacePayload>,
   /** Disable an integration instance on a workspace */
   disableIntegrationInstanceOnWorkspace?: Maybe<DisableIntegrationInstanceOnWorkspacePayload>,
+  createServer: CreateServerPayload,
+  createOperatingSystem: CreateOperatingSystemPayload,
+  createDiskImage: CreateDiskImagePayload,
+  createCpu: CreateCpuPayload,
   createPort: CreatePortPayload,
   createSshKey: CreateSshKeyPayload,
 };
@@ -362,6 +459,26 @@ export type MutationDisableIntegrationInstanceOnWorkspaceArgs = {
 };
 
 
+export type MutationCreateServerArgs = {
+  input?: Maybe<CreateServerInput>
+};
+
+
+export type MutationCreateOperatingSystemArgs = {
+  input?: Maybe<CreateOperatingSystemInput>
+};
+
+
+export type MutationCreateDiskImageArgs = {
+  input?: Maybe<CreateDiskImageInput>
+};
+
+
+export type MutationCreateCpuArgs = {
+  input?: Maybe<CreateCpuInput>
+};
+
+
 export type MutationCreatePortArgs = {
   input?: Maybe<CreatePortInput>
 };
@@ -369,16 +486,6 @@ export type MutationCreatePortArgs = {
 
 export type MutationCreateSshKeyArgs = {
   input?: Maybe<CreateSshKeyInput>
-};
-
-export type OperatingSystem = {
-   __typename?: 'OperatingSystem',
-  id: Scalars['ID'],
-  name: Scalars['String'],
-  description?: Maybe<Scalars['String']>,
-  componentType?: Maybe<OperatingSystemComponent>,
-  state?: Maybe<OperatingSystemState>,
-  rawDataJson: Scalars['String'],
 };
 
 /** An Operating System component */
@@ -415,10 +522,32 @@ export type OperatingSystemComponent = Component & {
   diskImages: Array<Maybe<DiskImageComponent>>,
 };
 
-export enum OperatingSystemState {
-  Running = 'RUNNING',
-  Stopped = 'STOPPED'
-}
+/** An Operating System entity */
+export type OperatingSystemEntity = {
+   __typename?: 'OperatingSystemEntity',
+  /** The ID */
+  id: Scalars['ID'],
+  /** The name of the component */
+  name: Scalars['String'],
+  /** Description of the element */
+  description: Scalars['String'],
+  /** The name of the operating system */
+  operatingSystemName: Scalars['String'],
+  /** The version of the operating system */
+  operatingSystemVersion: Scalars['String'],
+  /** The release of the operating system */
+  operatingSystemRelease: Scalars['String'],
+  /** The name of the operating systems platform */
+  platform: Scalars['String'],
+  /** The platform version */
+  platformVersion: Scalars['String'],
+  /** The release of the platform */
+  platformRelease: Scalars['String'],
+  /** The system architectures */
+  architecture: Scalars['String'],
+  /** An optional component this entity was created with */
+  component?: Maybe<OperatingSystemComponent>,
+};
 
 /** A Port Component */
 export type PortComponent = Component & {
@@ -485,17 +614,21 @@ export type Query = {
   findComponents: Array<Maybe<Component>>,
   /** Get Server Components enabled for this user */
   getServerComponents: Array<Maybe<ServerComponent>>,
+  findServerComponents: Array<Maybe<ServerComponent>>,
   /** Get Operating System Components enabled for this user */
   getOperatingSystemComponents: Array<Maybe<OperatingSystemComponent>>,
+  findOperatingSystemComponents: Array<Maybe<OperatingSystemComponent>>,
   /** Get Operating System Components enabled for this user */
   getDiskImageComponents: Array<Maybe<DiskImageComponent>>,
+  findDiskImageComponents: Array<Maybe<DiskImageComponent>>,
   /** Get Operating System Components enabled for this user */
   getCpuComponents: Array<Maybe<CpuComponent>>,
+  findCpuComponents: Array<Maybe<CpuComponent>>,
   /** Get Operating System Components enabled for this user */
   getPortComponents: Array<Maybe<PortComponent>>,
   findPortComponents: Array<Maybe<PortComponent>>,
-  getSshKeyComponents: Array<Maybe<PortComponent>>,
-  findSshKeyComponents: Array<Maybe<PortComponent>>,
+  getSshKeyComponents: Array<Maybe<SshKeyComponent>>,
+  findSshKeyComponents: Array<Maybe<SshKeyComponent>>,
 };
 
 
@@ -529,8 +662,18 @@ export type QueryGetServerComponentsArgs = {
 };
 
 
+export type QueryFindServerComponentsArgs = {
+  where?: Maybe<FindComponentInput>
+};
+
+
 export type QueryGetOperatingSystemComponentsArgs = {
   where?: Maybe<GetComponentsInput>
+};
+
+
+export type QueryFindOperatingSystemComponentsArgs = {
+  where?: Maybe<FindComponentInput>
 };
 
 
@@ -539,8 +682,18 @@ export type QueryGetDiskImageComponentsArgs = {
 };
 
 
+export type QueryFindDiskImageComponentsArgs = {
+  where?: Maybe<FindComponentInput>
+};
+
+
 export type QueryGetCpuComponentsArgs = {
   where?: Maybe<GetComponentsInput>
+};
+
+
+export type QueryFindCpuComponentsArgs = {
+  where?: Maybe<FindComponentInput>
 };
 
 
@@ -584,6 +737,29 @@ export type ServerComponent = Component & {
   /** The list of supported actions that can be taken */
   supportedActions: Array<Maybe<Scalars['String']>>,
   cpu: CpuComponent,
+};
+
+/** An Operating System entity */
+export type ServerEntity = {
+   __typename?: 'ServerEntity',
+  /** The ID */
+  id: Scalars['ID'],
+  /** The name of the component */
+  name: Scalars['String'],
+  /** Description of the element */
+  description: Scalars['String'],
+  /** The amount of memory */
+  memoryGIB: Scalars['Int'],
+  /** The number of CPU cores */
+  cpuCores?: Maybe<Scalars['Int']>,
+  /** CPU */
+  cpu?: Maybe<CpuEntity>,
+  /** SSH Key */
+  sshKey?: Maybe<SshKeyEntity>,
+  /** Operating System */
+  operatingSystem?: Maybe<OperatingSystemEntity>,
+  /** The component this entity was created from */
+  component?: Maybe<ServerComponent>,
 };
 
 /** An SSH Key Component */

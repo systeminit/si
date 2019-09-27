@@ -1,7 +1,14 @@
 import uuidv4 from "uuid/v4";
+import hasIn from "lodash/hasIn";
+import find from "lodash/find";
+import filter from "lodash/filter";
+import { matchArray, SearchPrimitive } from "searchjs";
+import { UserInputError } from "apollo-server";
 
+import { User } from "@/datalayer/user";
 import { cdb } from "@/db";
 import { Integration } from "@/datalayer/integration";
+import { Workspace } from "@/datalayer/workspace";
 
 export interface ComponentData {
   id?: string;
@@ -27,6 +34,8 @@ export interface Component<T extends ComponentObject> {
   getByFqId(id: string): Promise<T>;
   getByName(name: string): Promise<T>;
   getAll(): Promise<T[]>;
+  filterAll(args: GetComponentsInput, user: User): Promise<T[]>;
+  find(args: FindComponentInput, user: User): Promise<T[]>;
   hasOne(args: HasOneArgs<Component<any>>): void;
   hasMany(args: HasManyArgs<Component<any>>): void;
 }
@@ -56,6 +65,20 @@ export interface ComponentArgs {
   nodeType: string;
   __typename: string;
   fqKey: string;
+}
+
+export interface GetComponentsInput {
+  where?: {
+    integration?: string;
+    workspace?: string;
+  };
+}
+
+export interface FindComponentInput {
+  where: {
+    workspace?: string;
+    search: string;
+  };
 }
 
 export function CreateComponent<T extends ComponentObject>({
@@ -161,6 +184,61 @@ export function CreateComponent<T extends ComponentObject>({
     return result;
   };
 
+  const filterAll = async function filterAll(
+    args: GetComponentsInput,
+    user: User,
+  ): Promise<T[]> {
+    const data = await getAll();
+    // Limit by Workspace
+    if (hasIn(args, "where.workspace")) {
+      const workspaces = await Workspace.getWorkspacesForUser(user);
+      const filterWorkspace = find(workspaces, { id: args.where.workspace });
+      if (filterWorkspace === undefined) {
+        console.log(workspaces);
+        console.log(filterWorkspace);
+        throw new UserInputError("Workspace is not associated with the user", {
+          invalidArgs: ["workspace"],
+        });
+      }
+
+      const integrationInstances = await filterWorkspace.integrationInstances();
+
+      const result = filter(data, (o: T): boolean => {
+        for (const integrationInstance of integrationInstances) {
+          if (o.integrationId == integrationInstance.integrationId) {
+            return true;
+          }
+        }
+        // The magic guid for the global integration
+        if (
+          o.integrationId == "integration:9bfc0c3e-6273-4196-8e74-364761cb1b04"
+        ) {
+          return true;
+        } else {
+          return false;
+        }
+      });
+      return result;
+      // Limit by Integration
+    } else if (hasIn(args, "where.integration")) {
+      const result = filter(data, (o: T): boolean => {
+        return o.integrationId == `integration:${args.where.integration}`;
+      });
+      return result;
+    } else {
+      return data;
+    }
+  };
+
+  const findComponent = async function findComponent(
+    args: FindComponentInput,
+    user: User,
+  ): Promise<T[]> {
+    const data: T[] = await filterAll(args, user);
+    const searchArguments = JSON.parse(args.where.search) as SearchPrimitive;
+    return matchArray(data, searchArguments);
+  };
+
   return {
     New,
     getById,
@@ -169,5 +247,7 @@ export function CreateComponent<T extends ComponentObject>({
     hasOne,
     hasMany,
     getAll,
+    filterAll,
+    find: findComponent,
   };
 }
