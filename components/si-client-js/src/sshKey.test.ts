@@ -29,6 +29,8 @@ test('SSH Key Create From Key', async () => {
   expect(defaultKey.name).toBe("Opeth");
   expect(defaultKey.comment).toBe("Opeth");
 });
+
+// SshKey.find({ "keyType": "RSA" }).replace({ constraints: { keyType: "ed25519" } });
     
 
   // Create a DSA key, with 1024 bits per FIPS

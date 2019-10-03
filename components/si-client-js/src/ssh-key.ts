@@ -4,7 +4,7 @@ import gql from "graphql-tag";
 import { apolloClient } from "@/apollo";
 import { SshKeyComponent, SshKeyEntity } from "@/generated/graphql";
 
-interface SshKeyCreate {
+export interface SshKeyCreate {
   constraints?: SearchPrimitive, 
   args?: {
     name?: string,

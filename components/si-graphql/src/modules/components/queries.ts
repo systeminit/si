@@ -6,15 +6,15 @@ import { matchArray, SearchPrimitive } from "searchjs";
 
 import { checkAuthentication } from "@/modules/auth";
 import { GqlRoot, GqlContext, GqlInfo } from "@/app.module";
-import { getServerComponents } from "@/modules/servers/queries";
-import { getOperatingSystemComponents } from "@/modules/operating-systems/queries";
-import { getDiskImageComponents } from "@/modules/disk-images/queries";
-import { getCpuComponents } from "@/modules/cpus/queries";
-import { getPortComponents } from "@/modules/ports/queries";
-import { getSshKeyComponents } from "@/modules/ssh-key/queries";
 import { User } from "@/datalayer/user";
 import { Workspace } from "@/datalayer/workspace";
 import { ComponentObject } from "@/datalayer/component";
+import { Server } from "@/datalayer/component/server";
+import { OperatingSystem } from "@/datalayer/component/operating-system";
+import { DiskImage } from "@/datalayer/component/disk-image";
+import { Cpu } from "@/datalayer/component/cpu";
+import { Port } from "@/datalayer/component/port";
+import { SshKey } from "@/datalayer/component/ssh-key";
 
 export interface GetComponentsInput {
   where?: {
@@ -31,19 +31,19 @@ export interface FindComponentInput {
 }
 
 export async function getComponents(
-  obj: GqlRoot,
+  _obj: GqlRoot,
   args: GetComponentsInput,
-  context: GqlContext,
+  _context: GqlContext,
   info: GqlInfo,
 ): Promise<ComponentObject[]> {
-  await checkAuthentication(info);
+  const user = await checkAuthentication(info);
   let data: ComponentObject[] = [];
-  const serverData = await getServerComponents(obj, args, context, info);
-  const osData = await getOperatingSystemComponents(obj, args, context, info);
-  const imageData = await getDiskImageComponents(obj, args, context, info);
-  const cpuData = await getCpuComponents(obj, args, context, info);
-  const portData = await getPortComponents(obj, args, context, info);
-  const sshKeyData = await getSshKeyComponents(obj, args, context, info);
+  const serverData = await Server.filterAll(args, user);
+  const osData = await OperatingSystem.filterAll(args, user);
+  const imageData = await DiskImage.filterAll(args, user);
+  const cpuData = await Cpu.filterAll(args, user);
+  const portData = await Port.filterAll(args, user);
+  const sshKeyData = await SshKey.filterAll(args, user);
   data = data.concat(serverData);
   data = data.concat(osData);
   data = data.concat(imageData);

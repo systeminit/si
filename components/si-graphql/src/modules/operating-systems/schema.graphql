@@ -30,21 +30,56 @@ type OperatingSystemComponent implements Component {
   supportedActions: [String]!
 }
 
-enum OperatingSystemState {
-  RUNNING
-  STOPPED
-}
-
-type OperatingSystem {
+"An Operating System entity"
+type OperatingSystemEntity {
+  "The ID"
   id: ID!
+  "The name of the component"
   name: String!
-  description: String
-  componentType: OperatingSystemComponent
-  state: OperatingSystemState
-  rawDataJson: String!
+  "Description of the element"
+  description: String!
+  "The name of the operating system"
+  operatingSystemName: String!
+  "The version of the operating system"
+  operatingSystemVersion: String!
+  "The release of the operating system"
+  operatingSystemRelease: String!
+  "The name of the operating systems platform"
+  platform: String!
+  "The platform version"
+  platformVersion: String!
+  "The release of the platform"
+  platformRelease: String!
+  "The system architectures"
+  architecture: String!
+  "An optional component this entity was created with"
+  component: OperatingSystemComponent
 }
 
 extend type Query {
   "Get Operating System Components enabled for this user"
   getOperatingSystemComponents(where: GetComponentsInput): [OperatingSystemComponent]!
+  findOperatingSystemComponents(where: FindComponentInput): [OperatingSystemComponent]!
 }
+
+input CreateOperatingSystemArgs {
+  "The name of the SSH Key"
+  name: String
+  "A description of the SSH Key"
+  description: String
+}
+
+input CreateOperatingSystemInput {
+  constraints: String,
+  args: CreateOperatingSystemArgs,
+  workspace: String!,
+}
+
+type CreateOperatingSystemPayload {
+  operatingSystem: OperatingSystemEntity!
+}
+
+extend type Mutation {
+  createOperatingSystem(input: CreateOperatingSystemInput): CreateOperatingSystemPayload!
+}
+

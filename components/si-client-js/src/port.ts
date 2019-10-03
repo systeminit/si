@@ -4,7 +4,7 @@ import gql from "graphql-tag";
 import { apolloClient } from "@/apollo";
 import { PortComponent, PortEntity } from "@/generated/graphql";
 
-interface PortCreate {
+export interface PortCreate {
   constraints?: SearchPrimitive, 
   args: {
     name: string,

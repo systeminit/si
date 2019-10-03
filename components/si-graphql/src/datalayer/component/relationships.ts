@@ -1,7 +1,7 @@
-import { OperatingSystem } from "./operating-system";
-import { DiskImage } from "./disk-image";
-import { Cpu } from "./cpu";
-import { Server } from "./server";
+import { OperatingSystem, OperatingSystemEntity } from "./operating-system";
+import { DiskImage, DiskImageEntity } from "./disk-image";
+import { Cpu, CpuEntity } from "./cpu";
+import { Server, ServerEntity } from "./server";
 import { Port, PortEntity } from "./port";
 import { SshKey, SshKeyEntity } from "./ssh-key";
 
@@ -27,11 +27,24 @@ SshKeyEntity.hasOneComponent({
   to: { field: "component", model: SshKey },
 });
 
+CpuEntity.hasOneComponent({
+  from: "componentId",
+  to: { field: "component", model: Cpu },
+});
+
 DiskImage.hasOne({
   from: "operatingSystemId",
   to: {
     field: "operatingSystem",
     model: OperatingSystem,
+  },
+});
+
+DiskImageEntity.hasOne({
+  from: "operatingSystemId",
+  to: {
+    field: "operatingSystem",
+    model: OperatingSystemEntity,
   },
 });
 
@@ -47,3 +60,18 @@ OperatingSystem.hasMany({
 });
 
 Server.hasOne({ from: "cpuId", to: { field: "cpu", model: Cpu } });
+
+ServerEntity.hasOne({
+  from: "cpuId",
+  to: { field: "cpu", model: CpuEntity },
+});
+
+ServerEntity.hasOne({
+  from: "operatingSystemId",
+  to: { field: "operatingSystem", model: OperatingSystemEntity },
+});
+
+ServerEntity.hasOne({
+  from: "sshKeyId",
+  to: { field: "sshKey", model: SshKeyEntity },
+});

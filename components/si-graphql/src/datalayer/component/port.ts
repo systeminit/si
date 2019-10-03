@@ -7,17 +7,17 @@ export interface PortComponent extends ComponentObject {
   number: number;
 }
 
-export interface PortEntity extends EntityObject {
-  serviceName: PortComponent["serviceName"];
-  protocol: PortComponent["protocol"];
-  number: PortComponent["number"];
-}
-
 export const Port = CreateComponent<PortComponent>({
   __typename: "PortComponent",
   nodeType: "Port",
   fqKey: "component:port",
 });
+
+export interface PortEntity extends EntityObject {
+  serviceName: PortComponent["serviceName"];
+  protocol: PortComponent["protocol"];
+  number: PortComponent["number"];
+}
 
 export const PortEntity = CreateEntity<PortEntity>({
   __typename: "PortEntity",
