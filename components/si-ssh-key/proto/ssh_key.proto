@@ -1,0 +1,169 @@
+syntax = "proto3";
+
+package ssh_key;
+
+service SshKey {
+  rpc GetComponent(GetComponentRequest) returns (GetComponentReply);
+  rpc ListComponents(ListComponentsRequest) returns (ListComponentsReply);
+  rpc CreateEntity(CreateEntityRequest) returns (CreateEntityReply);
+  rpc GetEntity(GetEntityRequest) returns (GetEntityReply);
+  rpc ListEntities(ListEntitiesRequest) returns (ListEntitiesReply);
+}
+
+message GetEntityRequest {
+  string tenant_id = 1;
+  string entity_id = 2;
+}
+
+message GetEntityReply {
+  Entity entity = 1;
+}
+
+message CreateEntityRequest {
+  Query constraint = 1;
+  string name = 2;
+  string description = 3;
+  string tenant_id = 4;
+  string public_key = 5;
+  string private_key = 6;
+}
+
+message CreateEntityReply {
+  Entity entity = 1;
+}
+
+message ListEntitiesRequest {
+  Query query = 1;
+  int32 page_size = 2;
+  string order_by = 3;
+  OrderByDirection order_by_direction = 4;
+  string page_token = 5;
+}
+
+message ListEntitiesReply {
+  repeated Entity entity = 1;
+  int32 total_count = 2;
+  string next_page_token = 3;
+}
+
+enum QueryComparison {
+  EQUALS = 0;
+  NOTEQUALS = 1;
+}
+
+enum QueryBooleanLogic {
+  AND = 0;
+  OR = 1;
+}
+
+enum QueryFieldType {
+  STRING = 0;
+  INT = 1;
+}
+
+message QueryExpression {
+  string field = 1;
+  QueryFieldType field_type = 2;
+  QueryComparison comparison = 3;
+  string value = 4;
+}
+
+message Query {
+  repeated QueryExpressionOption items = 1;
+  QueryBooleanLogic boolean_term = 3;
+  bool is_not = 4;
+}
+
+message QueryExpressionOption {
+  oneof qe {
+    QueryExpression expression = 1;
+    Query query = 2;
+  }
+}
+
+enum OrderByDirection {
+  ASC = 0;
+  DESC = 1;
+}
+
+message PageToken {
+  Query query = 1;
+  int32 page_size = 2;
+  string order_by = 3; 
+  OrderByDirection order_by_direction = 4;
+  string item_id = 5;
+}
+
+message ListComponentsRequest {
+  Query query = 1;
+  int32 page_size = 2;
+  string order_by = 3;
+  OrderByDirection order_by_direction = 4;
+  string page_token = 5;
+}
+
+message ListComponentsReply {
+  repeated Component component = 1;
+  int32 total_count = 2;
+  string next_page_token = 3;
+}
+
+message GetComponentRequest {
+  string component_id = 1;
+}
+
+message GetComponentReply {
+  Component component = 1;
+}
+
+enum KeyType {
+  RSA = 0;
+  DSA = 1;
+  ECDSA = 2;
+  ED25519 = 3;
+}
+
+enum KeyFormat {
+  RFC4716 = 0;
+  PKCS8 = 1;
+  PEM = 2;
+}
+
+message Component {
+  string id = 1;
+  string natural_key = 2;
+  string name = 3;
+  string display_name = 4;
+  string description = 5;
+  string raw_data_json = 6;
+  string integration_id = 7;
+  string integration_service_id = 8;
+  string type_name = 9;
+  string display_type_name = 10;
+  // From here, we are in to the fields for this specific component
+  KeyType key_type = 20;
+  KeyFormat key_format = 21;
+  uint32 bits = 22;
+}
+
+message Entity {
+  string id = 1;
+  string natural_key = 2;
+  string type_name = 3;
+  string display_type_name = 4;
+  string name = 5;
+  string display_name = 6;
+  string description = 7;
+  string component_id = 8;
+  string tenant_id = 9;
+  // Field for this entity
+  KeyType key_type = 20;
+  KeyFormat key_format = 21;
+  uint32 bits = 22;
+  string comment = 23;
+  string bubble_babble = 24;
+  string fingerprint = 25;
+  string random_art = 26;
+  string private_key = 27;
+  string public_key = 28;
+}
