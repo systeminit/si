@@ -2,15 +2,16 @@ use couchbase::{self, options::QueryOptions, SharedBucket, SharedCluster};
 use futures::stream::StreamExt;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{self, json};
+use si_settings::Settings;
 use sodiumoxide::crypto::secretbox;
 use tracing::{event, span, Level};
+use tracing_futures::Instrument;
 use uuid::Uuid;
 
 use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::error::{Error, Result};
-use crate::settings::Settings;
 use crate::ssh_key;
 
 pub mod page_token;
@@ -66,6 +67,7 @@ impl Db {
         })
     }
 
+    #[tracing::instrument]
     pub async fn insert<S, T>(&self, id: S, content: T) -> Result<couchbase::result::MutationResult>
     where
         S: Into<String> + std::fmt::Debug + std::fmt::Display,
@@ -73,17 +75,17 @@ impl Db {
     {
         let bucket = self.bucket.clone();
         let collection = bucket.default_collection();
-        event!(Level::DEBUG, ?id, ?content);
         collection
             .insert(id, content, None)
             .await
             .map_err(Error::CouchbaseError)
     }
 
+    #[tracing::instrument]
     pub async fn list<
         I: DeserializeOwned + Storable + std::fmt::Debug,
-        S: AsRef<str>,
-        D: std::fmt::Display,
+        S: AsRef<str> + std::fmt::Debug,
+        D: std::fmt::Display + std::fmt::Debug,
     >(
         &self,
         type_name: S,
@@ -93,9 +95,6 @@ impl Db {
         order_by_direction: D,
         item_id: S,
     ) -> Result<ListResult<I>> {
-        let span = span!(Level::INFO, "list");
-        let _entered_span = span.enter();
-
         let mut named_params = HashMap::new();
         named_params.insert("type_name".into(), json![type_name.as_ref()]);
         named_params.insert("order_by".into(), json![order_by.as_ref()]);
@@ -155,14 +154,11 @@ impl Db {
         })
     }
 
+    #[tracing::instrument]
     pub async fn migrate_component<I: Migrateable + Storable + Serialize + std::fmt::Debug>(
         &self,
         component: &mut I,
     ) -> Result<couchbase::result::MutationResult> {
-        let service_start_span = span!(Level::INFO, "migrate_component");
-        let _entered_span = service_start_span.enter();
-
-        event!(Level::DEBUG, ?component, "component to migrate");
         let positional_options =
             QueryOptions::new().set_positional_parameters(vec![json![component.natural_key()]]);
         let mut result = self
@@ -194,23 +190,17 @@ impl Db {
             component.set_id(seen_id);
         }
 
-        event!(Level::INFO, ?component);
-
         self.upsert(component).await
     }
 
+    #[tracing::instrument]
     pub async fn upsert<T>(&self, content: &T) -> Result<couchbase::result::MutationResult>
     where
         T: Serialize + Storable + std::fmt::Debug,
     {
-        let span = span!(Level::INFO, "upsert");
-        let _entered_span = span.enter();
-
         let bucket = self.bucket.clone();
         let collection = bucket.default_collection();
         let id = content.get_id().clone();
-
-        event!(Level::DEBUG, ?id, ?content);
 
         collection
             .upsert(id, content, None)
@@ -218,14 +208,12 @@ impl Db {
             .map_err(Error::CouchbaseError)
     }
 
+    #[tracing::instrument]
     pub async fn get<S, T>(&self, id: S) -> Result<T>
     where
         S: Into<String> + std::fmt::Debug,
         T: DeserializeOwned + std::fmt::Debug,
     {
-        let span = span!(Level::INFO, "get");
-        let _entered_span = span.enter();
-        event!(Level::DEBUG, ?id);
         let item = {
             let bucket = self.bucket.clone();
             let collection = bucket.default_collection();
@@ -251,35 +239,43 @@ pub trait Migrateable {
 }
 
 impl Storable for ssh_key::Entity {
+    #[tracing::instrument]
     fn get_id(&self) -> &str {
         &self.id
     }
 }
 
 impl Storable for ssh_key::Component {
+    #[tracing::instrument]
     fn get_id(&self) -> &str {
         &self.id
     }
 }
 
 impl Migrateable for ssh_key::Component {
+    #[tracing::instrument]
     fn generate_id(&mut self) {
         self.id = format!("component:sshkey:{}", Uuid::new_v4());
     }
 
     fn set_id<T: Into<String>>(&mut self, id: T) {
+        let span = span!(Level::TRACE, "set_id");
+        let _entered_span = span.enter();
         self.id = id.into();
     }
 
+    #[tracing::instrument]
     fn set_natural_key(&mut self) {
         self.natural_key = format!("{}/{}", self.integration_service_id, self.name);
     }
 
+    #[tracing::instrument]
     fn natural_key(&self) -> &str {
         &self.natural_key
     }
 }
 
+#[tracing::instrument]
 pub fn migration_data() -> Vec<ssh_key::Component> {
     let key_types = [
         ssh_key::KeyType::Rsa,

@@ -1,0 +1,9 @@
+// -*- mode: js; -*-
+// Simple Text Query on Non-Default Index, specifying an index that consists only of content derived from a specific field from a specific document-type.
+{
+    "indexName": "travel-sample-index-hotel-description",
+    "size": 10,
+    "query": {
+        "match": "swanky"
+    }
+}

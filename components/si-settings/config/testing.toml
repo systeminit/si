@@ -1,0 +1,3 @@
+[db]
+cluster_url = "couchbase://127.0.0.2"
+scan_consistency = "RequestPlus"

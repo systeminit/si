@@ -1,0 +1,13 @@
+// -*- mode: js; -*-
+// Simple Text Query on Stored Field, specifying the field to be searched; targeting an index with dynamic fields stored, to ensure that field-content is included in the return object.
+{
+    "indexName": "travel-sample-index-stored",
+    "size": 10,
+    "highlight": {
+        "style": "html"
+    },
+    "query": {
+        "field": "destinationairport",
+        "match": "MDG"
+    }
+}

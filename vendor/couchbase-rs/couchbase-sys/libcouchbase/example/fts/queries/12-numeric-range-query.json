@@ -1,0 +1,11 @@
+// -*- mode: js; -*-
+// Numeric Range Query, whereby minimum and maximum numbers are specified, and matches within the range returned.
+{
+    "indexName": "travel-sample-index-unstored",
+    "size": 10,
+    "query": {
+        "field": "id",
+        "max": 10200.0,
+        "min": 10100.0
+    }
+}

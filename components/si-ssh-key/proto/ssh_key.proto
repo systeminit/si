@@ -1,13 +1,30 @@
 syntax = "proto3";
 
-package ssh_key;
+package si.ssh_key;
+
+import "si-data/proto/data.proto";
 
 service SshKey {
+  /// { "query": true }
   rpc GetComponent(GetComponentRequest) returns (GetComponentReply);
+  /// { "query": true }
   rpc ListComponents(ListComponentsRequest) returns (ListComponentsReply);
+  /// { "query": true }
+  rpc PickComponent(PickComponentRequest) returns (PickComponentReply);
+  /// { "mutation": true }
   rpc CreateEntity(CreateEntityRequest) returns (CreateEntityReply);
+  /// { "query": true }
   rpc GetEntity(GetEntityRequest) returns (GetEntityReply);
+  /// { "query": true }
   rpc ListEntities(ListEntitiesRequest) returns (ListEntitiesReply);
+}
+
+message PickComponentRequest {
+  si.data.Query query = 1;
+}
+
+message PickComponentReply {
+  Component component = 1;
 }
 
 message GetEntityRequest {
@@ -20,7 +37,7 @@ message GetEntityReply {
 }
 
 message CreateEntityRequest {
-  Query constraint = 1;
+  si.data.Query constraint = 1;
   string name = 2;
   string description = 3;
   string tenant_id = 4;
@@ -33,10 +50,10 @@ message CreateEntityReply {
 }
 
 message ListEntitiesRequest {
-  Query query = 1;
+  si.data.Query query = 1;
   int32 page_size = 2;
   string order_by = 3;
-  OrderByDirection order_by_direction = 4;
+  si.data.OrderByDirection order_by_direction = 4;
   string page_token = 5;
 }
 
@@ -46,59 +63,11 @@ message ListEntitiesReply {
   string next_page_token = 3;
 }
 
-enum QueryComparison {
-  EQUALS = 0;
-  NOTEQUALS = 1;
-}
-
-enum QueryBooleanLogic {
-  AND = 0;
-  OR = 1;
-}
-
-enum QueryFieldType {
-  STRING = 0;
-  INT = 1;
-}
-
-message QueryExpression {
-  string field = 1;
-  QueryFieldType field_type = 2;
-  QueryComparison comparison = 3;
-  string value = 4;
-}
-
-message Query {
-  repeated QueryExpressionOption items = 1;
-  QueryBooleanLogic boolean_term = 3;
-  bool is_not = 4;
-}
-
-message QueryExpressionOption {
-  oneof qe {
-    QueryExpression expression = 1;
-    Query query = 2;
-  }
-}
-
-enum OrderByDirection {
-  ASC = 0;
-  DESC = 1;
-}
-
-message PageToken {
-  Query query = 1;
-  int32 page_size = 2;
-  string order_by = 3; 
-  OrderByDirection order_by_direction = 4;
-  string item_id = 5;
-}
-
 message ListComponentsRequest {
-  Query query = 1;
+  si.data.Query query = 1;
   int32 page_size = 2;
   string order_by = 3;
-  OrderByDirection order_by_direction = 4;
+  si.data.OrderByDirection order_by_direction = 4;
   string page_token = 5;
 }
 

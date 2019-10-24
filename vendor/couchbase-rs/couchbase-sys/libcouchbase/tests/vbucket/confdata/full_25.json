@@ -1,0 +1,363 @@
+{
+   "quota" : {
+      "rawRAM" : 524288000,
+      "ram" : 524288000
+   },
+   "localRandomKeyUri" : "/pools/default/buckets/default/localRandomKey",
+   "bucketCapabilitiesVer" : "",
+   "authType" : "sasl",
+   "uuid" : "cc4b033b19282a4bef76925a11755cc3",
+   "replicaNumber" : 1,
+   "vBucketServerMap" : {
+      "vBucketMap" : [
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ],
+         [
+            0,
+            -1
+         ]
+      ],
+      "numReplicas" : 1,
+      "hashAlgorithm" : "CRC",
+      "serverList" : [
+         "10.0.0.120:11210"
+      ]
+   },
+   "saslPassword" : "",
+   "basicStats" : {
+      "opsPerSec" : 0,
+      "diskUsed" : 1386470,
+      "quotaPercentUsed" : 0.420147705078125,
+      "diskFetches" : 0,
+      "memUsed" : 2202784,
+      "dataUsed" : 1301646,
+      "itemCount" : 6
+   },
+   "fastWarmupSettings" : false,
+   "replicaIndex" : false,
+   "controllers" : {
+      "startRecovery" : "/pools/default/buckets/default/controller/startRecovery",
+      "flush" : "/pools/default/buckets/default/controller/doFlush",
+      "compactDB" : "/pools/default/buckets/default/controller/compactDatabases",
+      "purgeDeletes" : "/pools/default/buckets/default/controller/unsafePurgeBucket",
+      "compactAll" : "/pools/default/buckets/default/controller/compactBucket"
+   },
+   "autoCompactionSettings" : false,
+   "nodeLocator" : "vbucket",
+   "threadsNumber" : 2,
+   "bucketCapabilities" : [
+      "touch",
+      "couchapi"
+   ],
+   "name" : "default",
+   "stats" : {
+      "directoryURI" : "/pools/default/buckets/default/statsDirectory",
+      "nodeStatsListURI" : "/pools/default/buckets/default/nodes",
+      "uri" : "/pools/default/buckets/default/stats"
+   },
+   "ddocs" : {
+      "uri" : "/pools/default/buckets/default/ddocs"
+   },
+   "uri" : "/pools/default/buckets/default?bucket_uuid=cc4b033b19282a4bef76925a11755cc3",
+   "streamingUri" : "/pools/default/bucketsStreaming/default?bucket_uuid=cc4b033b19282a4bef76925a11755cc3",
+   "proxyPort" : 0,
+   "nodes" : [
+      {
+         "status" : "healthy",
+         "couchApiBaseHTTPS" : "https://10.0.0.120:18092/default",
+         "thisNode" : true,
+         "hostname" : "10.0.0.120:8091",
+         "memoryFree" : 10630004736,
+         "os" : "i386-apple-darwin11.4.2",
+         "otpNode" : "ns_1@127.0.0.1",
+         "mcdMemoryReserved" : 13107,
+         "mcdMemoryAllocated" : 13107,
+         "uptime" : "613933",
+         "clusterCompatibility" : 131077,
+         "memoryTotal" : 17179869184,
+         "replication" : 0,
+         "couchApiBase" : "http://10.0.0.120:8092/default",
+         "version" : "2.5.1-1083-rel-enterprise",
+         "ports" : {
+            "direct" : 11210,
+            "sslProxy" : 11214,
+            "httpsMgmt" : 18091,
+            "proxy" : 11211,
+            "httpsCAPI" : 18092
+         },
+         "clusterMembership" : "active",
+         "interestingStats" : {
+            "cmd_get" : 0,
+            "mem_used" : 10186600,
+            "ep_bg_fetched" : 0,
+            "ops" : 0,
+            "get_hits" : 0,
+            "couch_docs_data_size" : 12353230,
+            "couch_views_actual_disk_size" : 1509002,
+            "couch_docs_actual_disk_size" : 13198057,
+            "curr_items" : 7309,
+            "vb_replica_curr_items" : 0,
+            "couch_views_data_size" : 1494638,
+            "curr_items_tot" : 7309
+         },
+         "systemStats" : {
+            "swap_used" : 3255107584,
+            "cpu_utilization_rate" : 14.8936170212766,
+            "mem_total" : 17179869184,
+            "mem_free" : 10630004736,
+            "swap_total" : 4294967296
+         }
+      }
+   ],
+   "bucketType" : "membase"
+}

@@ -1,0 +1,24 @@
+protoPackageName = "si.account"
+
+service.Account.CreateAccount.skipauth = true
+service.Account.CreateAccount.mutation = true
+service.Account.GetBillingAccount.query = true
+service.Account.CreateUser.mutation = true
+service.Account.GetUser.query = true
+
+message.LoginRequest.skip = true
+message.LoginReply.skip = true
+message.User.passwordHash.skip = true
+
+[message.User.billingAccountId.has_one]
+to = "billingAccount"
+grpcServiceName = "Account"
+method = "GetBillingAccount"
+type = "BillingAccount"
+
+[extend.BillingAccount.users.has_many]
+to = "users"
+via = "billingAccountId"
+grpcServiceName = "Account"
+method = "ListUsers"
+type = "Users"

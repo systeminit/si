@@ -1,0 +1,14 @@
+name: test 
+on: push
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Fetch branches
+      run: git fetch --all
+    - name: Install dependencies
+      run: sudo make build_deps
+    - name: Test
+      run: make test_from_git

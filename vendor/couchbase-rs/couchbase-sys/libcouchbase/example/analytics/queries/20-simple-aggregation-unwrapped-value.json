@@ -1,0 +1,6 @@
+// vim: ft=javascript
+// Compute the total number of beers and return unwrapped value
+{
+  "statement": "SELECT VALUE COUNT(b) FROM beers b"
+}
+

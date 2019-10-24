@@ -1,7 +1,15 @@
-si-graphql:
-  - components/si-graphql/**/*
-si-web-app:
-  - components/si-web-app/**/*
+si-ssh-key:
+  - components/si-ssh-key/**/*
+si-settings:
+  - components/si-settings/**/*
+si-data:
+  - components/si-data/**/*
+si-account:
+  - components/si-account/**/*
+si-graphql-api:
+  - components/si-graphql-api/**/*
+si-web-ui:
+  - components/si-web-ui/**/*
 infra:
   - components/infra/**/*
 ci:

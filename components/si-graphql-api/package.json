@@ -1,0 +1,49 @@
+{
+  "name": "si-graphql-api",
+  "private": true,
+  "version": "0.1.0",
+  "description": "System Initiative GraphQL API",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "ts-node-dev --no-notify --transpileOnly --respawn -r tsconfig-paths/register src/index.ts",
+    "prod": "ts-node --log-error -r tsconfig-paths/register src/index.ts",
+    "build": "tsc",
+    "test": "jest --passWithNoTests"
+  },
+  "keywords": [],
+  "author": "The System Initiative, Inc.",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@types/jest": "^24.0.19",
+    "@types/jsonwebtoken": "^8.3.5",
+    "@typescript-eslint/eslint-plugin": "^2.5.0",
+    "@typescript-eslint/parser": "^2.5.0",
+    "eslint": "^6.5.1",
+    "eslint-config-prettier": "^6.4.0",
+    "eslint-plugin-graphql": "^3.1.0",
+    "eslint-plugin-prettier": "^3.1.1",
+    "grpc-tools": "^1.8.0",
+    "jest": "^24.9.0",
+    "prettier": "^1.18.2",
+    "ts-jest": "^24.1.0",
+    "ts-node": "^8.5.4",
+    "ts-node-dev": "^1.0.0-pre.43",
+    "ts-protoc-gen": "^0.12.0",
+    "tsconfig-paths": "^3.9.0",
+    "typescript": "^3.6.4"
+  },
+  "dependencies": {
+    "@grpc/proto-loader": "^0.5.2",
+    "@iarna/toml": "^2.2.3",
+    "apollo-datasource": "^0.6.3",
+    "apollo-server": "^2.9.7",
+    "dotenv": "^8.2.0",
+    "graphql": "^14.5.8",
+    "grpc": "^1.24.2",
+    "grpc-caller": "^0.13.0",
+    "jsonwebtoken": "^8.5.1",
+    "nexus": "^0.11.7",
+    "protobufjs": "^6.8.8",
+    "winston": "^3.2.1"
+  }
+}

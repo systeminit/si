@@ -1,0 +1,6 @@
+// vim: ft=javascript
+// Retrieve first brewery, ordered by name
+{
+  "statement": "SELECT * FROM breweries ORDER BY name LIMIT 1",
+  "pretty": true
+}

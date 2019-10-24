@@ -1,0 +1,17 @@
+EXECUTE_PROCESS(
+    COMMAND ${CMAKE_COMMAND} --build . --config Debug)
+
+EXECUTE_PROCESS(
+    COMMAND ${CMAKE_COMMAND} --build . --config RelWithDebInfo)
+
+EXECUTE_PROCESS(
+    COMMAND ${CMAKE_COMMAND}
+        -DCMAKE_INSTALL_CONFIG_NAME=Debug
+        -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
+        -P cmake_install.cmake)
+
+EXECUTE_PROCESS(
+    COMMAND ${CMAKE_COMMAND}
+        -DCMAKE_INSTALL_CONFIG_NAME=RelWithDebInfo
+        -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
+        -P cmake_install.cmake)

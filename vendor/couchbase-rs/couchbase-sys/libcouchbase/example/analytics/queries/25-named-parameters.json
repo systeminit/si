@@ -1,0 +1,7 @@
+// vim: ft=javascript
+// Find the same brewery information but specify name as parameter
+{
+  "statement": "SELECT VALUE bw FROM breweries bw WHERE bw.name = $name",
+  "$name": "Kona Brewing",
+  "pretty": true
+}

@@ -1,0 +1,16 @@
+// -*- mode: js; -*-
+// Phrase Query, without Analysis, for searching on a phrase without analysis supported.
+{
+    "indexName": "travel-sample-index-stored",
+    "size": 10,
+    "highlight": {
+        "style": "html"
+    },
+    "query": {
+        "field": "description",
+        "terms": [
+            "dorm",
+            "rooms"
+        ]
+    }
+}

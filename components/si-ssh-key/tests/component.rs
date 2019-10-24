@@ -10,7 +10,9 @@ use tokio;
 #[test]
 fn run_server_and_client() {
     let _ = common::SERVER.clone();
-    common::get_connected_client();
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    let f = async { common::get_connected_client().await };
+    rt.block_on(f);
 }
 
 #[test]
@@ -18,7 +20,7 @@ fn create_entity() {
     let _ = common::SERVER.clone();
     let rt = tokio::runtime::Runtime::new().unwrap();
     let f = async {
-        let mut client = common::get_connected_client();
+        let mut client = common::get_connected_client().await;
 
         // Create an entity, mother-trucker - with the default
         let request = tonic::Request::new(CreateEntityRequest {
@@ -48,7 +50,7 @@ fn get_entity() {
     let _ = common::SERVER.clone();
     let rt = tokio::runtime::Runtime::new().unwrap();
     let f = async {
-        let mut client = common::get_connected_client();
+        let mut client = common::get_connected_client().await;
 
         // Create an entity so we can get it again
         let request = tonic::Request::new(CreateEntityRequest {
@@ -100,7 +102,7 @@ fn list_entities() {
     let _ = common::SERVER.clone();
     let rt = tokio::runtime::Runtime::new().unwrap();
     let f = async {
-        let mut client = common::get_connected_client();
+        let mut client = common::get_connected_client().await;
 
         // Create an entity so we can get it again
         let request = tonic::Request::new(CreateEntityRequest {
@@ -185,7 +187,7 @@ fn list_components() {
     let _ = common::SERVER.clone();
     let rt = tokio::runtime::Runtime::new().unwrap();
     let f = async {
-        let mut client = common::get_connected_client();
+        let mut client = common::get_connected_client().await;
 
         // Get a list of components
         let request = tonic::Request::new(ListComponentsRequest {
@@ -288,7 +290,7 @@ fn get_component() {
     let _ = common::SERVER.clone();
     let rt = tokio::runtime::Runtime::new().unwrap();
     let f = async {
-        let mut client = common::get_connected_client();
+        let mut client = common::get_connected_client().await;
 
         // Get a component to... get
         let lrequest = tonic::Request::new(ListComponentsRequest {

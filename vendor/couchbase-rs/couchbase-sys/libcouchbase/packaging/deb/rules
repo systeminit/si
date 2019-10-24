@@ -1,0 +1,46 @@
+#!/usr/bin/make -f
+
+DEB_HOST_MULTIARCH ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
+
+DH_AC_FLAGS=--buildsystem=cmake -- -DLCB_NO_MOCK=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
+DH_AT_CMD = dh_auto_build --verbose --parallel -- alltests
+ifdef DEB_HOST_MULTIARCH
+	DH_AC_FLAGS += -DCMAKE_INSTALL_LIBDIR=lib/$(DEB_HOST_MULTIARCH)
+endif
+
+%:
+	dh $@ --verbose --parallel
+
+override_dh_strip:
+	dh_strip -plibcouchbase3-tools -plibcouchbase3 -plibcouchbase3-libevent -plibcouchbase3-libev --dbg-package=libcouchbase-dbg
+	dh_strip --remaining-packages
+
+override_dh_auto_configure:
+	# Generate the install files
+	echo "usr/lib/$(DEB_HOST_MULTIARCH)/libcouchbase.so.*" \
+		> debian/libcouchbase3.install
+	echo "usr/lib/$(DEB_HOST_MULTIARCH)/libcouchbase/libcouchbase_libevent.so" \
+		> debian/libcouchbase3-libevent.install
+	echo "usr/lib/$(DEB_HOST_MULTIARCH)/libcouchbase/libcouchbase_libev.so" \
+		> debian/libcouchbase3-libev.install
+	echo "usr/lib/$(DEB_HOST_MULTIARCH)/libcouchbase.so" \
+		> debian/libcouchbase-dev.install
+	echo "usr/include/*" \
+		>> debian/libcouchbase-dev.install
+	echo "usr/lib/$(DEB_HOST_MULTIARCH)/pkgconfig/libcouchbase.pc" \
+		>> debian/libcouchbase-dev.install
+	# Generate 'cbc' files
+	echo "usr/bin/cbc*" \
+		> debian/libcouchbase3-tools.install
+	echo "usr/share/man/man1/cbc*.1*" \
+		>> debian/libcouchbase3-tools.install
+	echo "usr/share/man/man4/cbcrc*.4*" \
+		>> debian/libcouchbase3-tools.install
+	dh_auto_configure $(DH_AC_FLAGS)
+
+override_dh_auto_test:
+	$(DH_AT_CMD)
+	dh_auto_test $@
+
+override_dh_installchangelogs:
+	dh_installchangelogs -plibcouchbase3 --keep RELEASE_NOTES.markdown

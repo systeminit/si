@@ -1,7 +1,7 @@
+use si_settings::Settings;
 use sodiumoxide;
 use toml;
 
-use si_ssh_key::settings::Settings;
 use si_ssh_key::ssh_key::{client::SshKeyClient, GetComponentRequest, ListComponentsRequest};
 
 #[tokio::main]
@@ -12,7 +12,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("SECRET KEY");
     println!("{}", toml::to_string(&key).unwrap());
 
-    let mut client = SshKeyClient::connect("http://[::1]:50051")?;
+    let mut client = SshKeyClient::connect("http://[::1]:50051").await?;
     //let mut client = SshKeyClient::connect("http://[::1]:5151")?;
 
     let request = tonic::Request::new(GetComponentRequest {

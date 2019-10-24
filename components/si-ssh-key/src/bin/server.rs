@@ -1,3 +1,4 @@
+use si_settings::Settings;
 use tokio::runtime::Builder;
 use tonic::transport::Server;
 use tracing::{span, Level};
@@ -7,7 +8,6 @@ use si_ssh_key::{
     data::{self, Db},
     error,
     service::Service,
-    settings::Settings,
     ssh_key::server::SshKeyServer,
 };
 
@@ -38,10 +38,11 @@ fn main() -> error::Result<()> {
 
         drop(entered_span);
 
-        let addr = "[::1]:50051".parse().unwrap();
+        let addr = "[::1]:50052".parse().unwrap();
 
         Server::builder()
-            .serve(addr, SshKeyServer::new(service))
+            .add_service(SshKeyServer::new(service))
+            .serve(addr)
             .await
             .map_err(error::Error::TonicError)
     })

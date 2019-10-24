@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package si.data;
+
+enum QueryComparison {
+  EQUALS = 0;
+  NOTEQUALS = 1;
+}
+
+enum QueryBooleanLogic {
+  AND = 0;
+  OR = 1;
+}
+
+enum QueryFieldType {
+  STRING = 0;
+  INT = 1;
+}
+
+message QueryExpression {
+  string field = 1;
+  QueryFieldType field_type = 2;
+  QueryComparison comparison = 3;
+  string value = 4;
+}
+
+message Query {
+  repeated QueryExpressionOption items = 1;
+  QueryBooleanLogic boolean_term = 3;
+  bool is_not = 4;
+}
+
+message QueryExpressionOption {
+  oneof qe {
+    QueryExpression expression = 1;
+    Query query = 2;
+  }
+}
+
+enum OrderByDirection {
+  ASC = 0;
+  DESC = 1;
+}
+
+message PageToken {
+  Query query = 1;
+  int32 page_size = 2;
+  string order_by = 3; 
+  OrderByDirection order_by_direction = 4;
+  string item_id = 5;
+}
+

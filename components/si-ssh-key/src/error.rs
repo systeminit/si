@@ -3,6 +3,7 @@ use config::ConfigError;
 use couchbase::error::CouchbaseError;
 use prost;
 use serde_cbor;
+use si_settings::error::SettingsError;
 use tonic;
 use tracing::{event, Level};
 
@@ -16,6 +17,7 @@ pub enum Error {
     Base64DecodeError(base64::DecodeError),
     CborEncodeError(serde_cbor::error::Error),
     ComponentNotFound,
+    SettingsError(SettingsError),
     ConfigError(ConfigError),
     CouchbaseError(CouchbaseError),
     FromUtf8Error(string::FromUtf8Error),
@@ -59,6 +61,7 @@ impl fmt::Display for Error {
             Error::ParseIntError(e) => format!("Failed to parse a string to an integer; this is probably a bad field type setting: {}", e),
             Error::ProstEncodeError(e) => format!("Prost encoding error: {}", e),
             Error::ProstDecodeError(e) => format!("Prost encoding error: {}", e),
+            Error::SettingsError(e) => format!("Settings error: {}", e),
             Error::StringError => format!("String conversion error"),
             Error::SodiumOxideInit => format!("Initialization error for sodiumoxide"),
             Error::SodiumOxideOpen => format!("Failed to decrypt a secret box"),
@@ -70,6 +73,12 @@ impl fmt::Display for Error {
 }
 
 impl error::Error for Error {}
+
+impl From<SettingsError> for Error {
+    fn from(err: SettingsError) -> Error {
+        Error::SettingsError(err)
+    }
+}
 
 impl From<string::FromUtf8Error> for Error {
     fn from(err: string::FromUtf8Error) -> Error {

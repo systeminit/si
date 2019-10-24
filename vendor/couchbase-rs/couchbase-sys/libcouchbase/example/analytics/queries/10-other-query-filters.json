@@ -1,0 +1,6 @@
+// vim: ft=javascript
+// Apply a range condition together with a string condition to select breweries
+{
+  "statement": "SELECT VALUE bw FROM breweries bw WHERE bw.geo.lat > 60.0 AND bw.name LIKE '%Brewing%' ORDER BY bw.name",
+  "pretty": true
+}

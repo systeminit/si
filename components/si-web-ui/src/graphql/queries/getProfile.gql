@@ -1,0 +1,18 @@
+query getProfile($userId: String!) {
+  getUser(input: { userId: $userId }) {
+    user {
+      id
+      email
+      domain
+      displayName
+      givenName
+      familyName
+      picture
+      billingAccount {
+        id
+        displayName
+        shortName
+      }
+    }
+  }
+}
