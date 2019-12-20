@@ -4,6 +4,12 @@ on: push
 jobs:
   build:
     runs-on: ubuntu-latest
+    services:
+      couchbase:
+        image: docker.pkg.github.com/systeminit/si/couchbase:latest
+        ports:
+          - 8091-8096:8091-8096
+          - 11210-11211:11210-11211
     steps:
     - uses: actions/checkout@v2
     - name: Fetch branches
