@@ -1,0 +1,10 @@
+// vim: ft=javascript
+// Fetch  list of all breweries paired with their associated beers, including
+// all attributes, while also limiting the answer set size to at most 3
+// results.
+{
+  "statement": "SELECT * FROM breweries bw, beers br WHERE br.brewery_id = meta(bw).id ORDER BY bw.name, br.name LIMIT 3",
+  "pretty": true
+}
+
+

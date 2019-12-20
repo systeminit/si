@@ -1,4 +1,4 @@
 [build]
-base = "components/si-web-app"
+base = "components/si-web-ui"
 command = "npm run build"
-publish = "components/si-web-app/dist"
+publish = "components/si-web-ui/dist"

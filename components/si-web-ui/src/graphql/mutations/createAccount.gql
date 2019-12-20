@@ -1,0 +1,31 @@
+mutation createAccount(
+  $billingAccountShortName: String!
+  $billingAccountDisplayName: String!
+  $userDisplayName: String!
+  $userGivenName: String!
+  $userFamilyName: String!
+  $userEmail: String!, $userPassword: String!
+) {
+  createAccount(
+    input: {
+      billingAccount: {
+        shortName: $billingAccountShortName
+        displayName: $billingAccountDisplayName
+      }
+      user: {
+        displayName: $userDisplayName
+        givenName: $userGivenName
+        familyName: $userFamilyName
+        email: $userEmail
+        password: $userPassword
+      }
+    }
+  ) {
+    user {
+      id
+    }
+    billingAccount {
+      id
+    }
+  }
+}

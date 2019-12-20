@@ -1,0 +1,3 @@
+*.xml
+compat_reports/*
+logs/*

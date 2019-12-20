@@ -1,0 +1,21 @@
+// -*- mode: js; -*-
+// Conjunction Query, whereby two separate queries are defined and then run as part of the search, with only the matches returned by both included in the result-object.
+{
+    "indexName": "travel-sample-index-stored",
+    "size": 10,
+    "highlight": {
+        "style": "html"
+    },
+    "query": {
+        "conjuncts": [
+            {
+                "field": "reviews.content",
+                "match": "La Rue Saint Denis!!"
+            },
+            {
+                "field": "description",
+                "match": "boutique"
+            }
+        ]
+    }
+}

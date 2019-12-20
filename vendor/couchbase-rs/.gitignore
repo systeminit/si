@@ -1,0 +1,7 @@
+target/
+Cargo.lock
+.idea/
+*.iml
+.vscode/
+CouchbaseMock.jar
+tags

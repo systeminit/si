@@ -1,0 +1,6 @@
+// vim: ft=javascript
+// Tell analytics service to shadow the data from beer-sample bucket using
+// breweries dataset.
+{
+  "statement": "CREATE DATASET breweries ON `beer-sample` WHERE `type` = \"brewery\""
+}

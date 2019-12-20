@@ -1,0 +1,7 @@
+// vim: ft=javascript
+// List populated datasets
+{
+  "statement": "SELECT ds.BucketName, ds.DatasetName, ds.`Filter` FROM Metadata.`Dataset` ds WHERE ds.DataverseName = \"Default\""
+}
+
+

@@ -1,0 +1,201 @@
+.\" generated with Ronn/v0.7.3
+.\" http://github.com/rtomayko/ronn/tree/0.7.3
+.
+.TH "CBC\-N1QLBACK" "1" "April 2019" "" ""
+.
+.SH "NAME"
+\fBcbc\-n1qlback\fR \- Stress Test for Couchbase Query (N1QL)
+.
+.SH "SYNOPSIS"
+\fBcbc\-n1qlback\fR \-f QUERYFILE [\fIOPTIONS\fR]
+.
+.SH "DESCRIPTION"
+\fBcbc\-n1qlback\fR creates a specified number of threads each executing a set of user defined queries\.
+.
+.P
+\fBcbc\-n1qlback\fR requires that it be passed the path to a file containing the queries to execute; one per line\. The query should be in the format of the actual HTTP POST body (in JSON format) to be sent to the server\. For simple queries, only the \fBstatement\fR field needs to be set:
+.
+.IP "" 4
+.
+.nf
+
+{"statement":"SELECT country FROM `travel\-sample`"}
+{"statement":"SELECT country, COUNT(country) FROM `travel\-sample` GROUP BY country"}
+.
+.fi
+.
+.IP "" 0
+.
+.P
+For more complex queries (for example, placeholders, custom options), you may refer to the N1QL REST API reference\.
+.
+.P
+\fBn1qlback\fR requires that any resources (data items, indexes) are already defined\.
+.
+.SH "OPTIONS"
+The following options control workload generation:
+.
+.TP
+\fB\-f\fR \fB\-\-queryfile\fR=\fIPATH\fR
+Path to a file containing the query bodies to execute in JSON format, one query per line\. See above for the format\.
+.
+.TP
+\fB\-t\fR, \fB\-\-num\-threads\fR=\fINTHREADS\fR
+Set the number of threads (and thus the number of client instances) to run concurrently\. Each thread is assigned its own client object\.
+.
+.P
+The following options control how \fBcbc\-n1qlback\fR connects to the cluster
+.
+.TP
+\fB\-U\fR, \fB\-\-spec\fR=\fISPEC\fR
+A string describing the cluster to connect to\. The string is in a URI\-like syntax, and may also contain other options\. See the \fIEXAMPLES\fR section for information\. Typically such a URI will look like \fBcouchbase://host1,host2,host3/bucket\fR\.
+.
+.IP
+The default for this option is \fBcouchbase://localhost/default\fR
+.
+.TP
+\fB\-u\fR, \fB\-\-username\fR=\fIUSERNAME\fR
+Specify the \fIusername\fR for the bucket\. Since Couchbase 5\.x this is mandatory switch, and it must specify the name of the user exisiting on cluster (read more at "Security/Authorization" section of the server manual)\. For older servers this field should be either left empty or set to the name of the bucket itself\.
+.
+.TP
+\fB\-P\fR, \fB\-\-password\fR=\fIPASSWORD\fR:
+
+.
+.TP
+\fB\-P \-\fR, \fB\-\-password=\-\fR
+Specify the password for the bucket\. As for servers before 5\.x this was only needed if the bucket is protected with a password\. For cluster version after 5\.x, the password is mandatory, and should match the selected account (read more at "Security/Authorization" section of the server manual)\.
+.
+.IP
+Specifying the \fB\-\fR as the password indicates that the program should prompt for the password\. You may also specify the password on the commandline, directly, but is insecure as command line arguments are visible via commands such as \fBps\fR\.
+.
+.TP
+\fB\-T\fR, \fB\-\-timings\fR
+Dump command timings at the end of execution\. This will display a histogram showing the latencies for the commands executed\.
+.
+.TP
+\fB\-v\fR, \fB\-\-verbose\fR
+Specify more information to standard error about what the client is doing\. You may specify this option multiple times for increased output detail\.
+.
+.TP
+\fB\-D\fR, \fB\-\-cparam\fR=OPTION=VALUE
+Provide additional client options\. Acceptable options can also be placed in the connection string, however this option is provided as a convenience\. This option may be specified multiple times, each time specifying a key=value pair (for example, \fB\-Doperation_timeout=10 \-Dconfig_cache=/foo/bar/baz\fR)\. See \fIADDITIONAL OPTIONS\fR for more information
+.
+.TP
+\fB\-y\fR, \fB\-\-compress\fR
+Enable compressing of documents\. When the library is compiled with compression support, this option will enable Snappy compression for outgoing data\. Incoming compressed data handled automatically regardless of this option\. Note, that because the compression support have to be negotiated with the server, first packets might be sent uncompressed even when this switch was specified\. This is because the library might queue data commands before socket connection has been established, and the library will negotiate compression feature\. If it is known that all server support compression repeating the switch (like \fB\-yy\fR) will force compression for all outgoing mutations, even scheduled before establishing connection\.
+.
+.TP
+\fB\-\-truststorepath\fR=\fIPATH\fR
+The path to the server\'s SSL certificate\. This is typically required for SSL connectivity unless the certificate has already been added to the OpenSSL installation on the system (only applicable with \fBcouchbases://\fR scheme)
+.
+.TP
+\fB\-\-certpath\fR=\fIPATH\fR
+The path to the server\'s SSL certificate\. This is typically required for SSL connectivity unless the certificate has already been added to the OpenSSL installation on the system (only applicable with \fBcouchbases://\fR scheme)\. This also should contain client certificate when certificate authentication used, and in this case other public certificates could be extracted into \fBtruststorepath\fR chain\.
+.
+.TP
+\fB\-\-keypath\fR=\fIPATH\fR
+The path to the client SSL private key\. This is typically required for SSL client certificate authentication\. The certificate itself have to go first in chain specified by \fBcertpath\fR (only applicable with \fBcouchbases://\fR scheme)
+.
+.TP
+\fB\-\-dump\fR
+Dump verbose internal state after operations are done\.
+.
+.TP
+\fB\-e\fR, \fB\-\-error\-log\fR=\fIPATH\fR
+Path to a file, where the command will write failed queries along with error details\. Use this option to figure out why \fBERRORS\fR metric is not zero\.
+.
+.P
+ \fI\fR
+.
+.SH "ADDITIONAL OPTIONS"
+The following options may be included in the connection string (via the \fB\-U\fR option) as URI\-style query params (e\.g\. \fBcouchbase://host/bucket?option1=value1&option2=value2\fR) or as individual key=value pairs passed to the \fB\-D\fR switch (e\.g\. \fB\-Doption1=value1 \-Doption2=value\fR)\. The \fB\-D\fR will internally build the connection string, and is provided as a convenience for options to be easily passed on the command\-line
+.
+.IP "\(bu" 4
+\fBoperation_timeout=SECONDS\fR: Specify the operation timeout in seconds\. This is the time the client will wait for an operation to complete before timing it out\. The default is \fB2\.5\fR
+.
+.IP "\(bu" 4
+\fBconfig_cache=PATH\fR: Enables the client to make use of a file based configuration cache rather than connecting for the bootstrap operation\. If the file does not exist, the client will first connect to the cluster and then cache the bootstrap information in the file\.
+.
+.IP "\(bu" 4
+\fBtruststorepath=PATH\fR: The path to the server\'s SSL certificate\. This is typically required for SSL connectivity unless the certificate has already been added to the OpenSSL installation on the system (only applicable with \fBcouchbases://\fR scheme)
+.
+.IP "\(bu" 4
+\fBcertpath=PATH\fR: The path to the server\'s SSL certificate\. This is typically required for SSL connectivity unless the certificate has already been added to the OpenSSL installation on the system (only applicable with \fBcouchbases://\fR scheme)\. This also should contain client certificate when certificate authentication used, and in this case other public certificates could be extracted into \fBtruststorepath\fR chain\.
+.
+.IP "\(bu" 4
+\fBkeypath=PATH\fR: The path to the client SSL private key\. This is typically required for SSL client certificate authentication\. The certificate itself have to go first in chain specified by \fBcertpath\fR (only applicable with \fBcouchbases://\fR scheme)
+.
+.IP "\(bu" 4
+\fBipv6=allow\fR: Enable IPv6\.
+.
+.IP "\(bu" 4
+\fBssl=no_verify\fR: Temporarily disable certificate verification for SSL (only applicable with \fBcouchbases://\fR scheme)\. This should only be used for quickly debugging SSL functionality\.
+.
+.IP "\(bu" 4
+\fBsasl_mech_force=MECHANISM\fR: Force a specific \fISASL\fR mechanism to be used when performing the initial connection\. This should only need to be modified for debugging purposes\. The currently supported mechanisms are \fBPLAIN\fR and \fBCRAM\-MD5\fR
+.
+.IP "\(bu" 4
+\fBbootstrap_on=<both,http,cccp>\fR: Specify the bootstrap protocol the client should use when attempting to connect to the cluster\. Options are: \fBcccp\fR: Bootstrap using the Memcached protocol (supported on clusters 2\.5 and greater); \fBhttp\fR: Bootstrap using the HTTP REST protocol (supported on any cluster version); and \fBboth\fR: First attempt bootstrap over the Memcached protocol, and use the HTTP protocol if Memcached bootstrap fails\. The default is \fBboth\fR
+.
+.IP "\(bu" 4
+\fBenable_tracing=true/false\fR: Activate/deactivate end\-to\-end tracing\.
+.
+.IP "\(bu" 4
+\fBtracing_orphaned_queue_flush_interval=SECONDS\fR: Flush interval for orphaned spans queue in default tracer\. This is the time the tracer will wait between repeated attempts to flush most recent orphaned spans\. Default value is 10 seconds\.
+.
+.IP "\(bu" 4
+\fBtracing_orphaned_queue_size=NUMBER\fR: Size of orphaned spans queue in default tracer\. Queues in default tracer has fixed size, and it will remove information about older spans, when the limit will be reached before flushing time\. Default value is 128\.
+.
+.IP "\(bu" 4
+\fBtracing_threshold_queue_flush_interval=SECONDS\fR: Flush interval for spans with total time over threshold in default tracer\. This is the time the tracer will wait between repeated attempts to flush threshold queue\. Default value is 10 seconds\.
+.
+.IP "\(bu" 4
+\fBtracing_threshold_queue_size=NUMBER\fR: Size of threshold queue in default tracer\. Queues in default tracer has fixed size, and it will remove information about older spans, when the limit will be reached before flushing time\. Default value is 128\.
+.
+.IP "\(bu" 4
+\fBtracing_threshold_kv=SECONDS\fR: Minimum time for the tracing span of KV service to be considered by threshold tracer\. Default value is 0\.5 seconds\.
+.
+.IP "\(bu" 4
+\fBtracing_threshold_n1ql=SECONDS\fR: Minimum time for the tracing span of N1QL service to be considered by threshold tracer\. Default value is 1 second\.
+.
+.IP "\(bu" 4
+\fBtracing_threshold_view=SECONDS\fR: Minimum time for the tracing span of VIEW service to be considered by threshold tracer\. Default value is 1 second\.
+.
+.IP "\(bu" 4
+\fBtracing_threshold_fts=SECONDS\fR: Minimum time for the tracing span of FTS service to be considered by threshold tracer\. Default value is 1 second\.
+.
+.IP "\(bu" 4
+\fBtracing_threshold_analytics=SECONDS\fR: Minimum time for the tracing span of ANALYTICS service to be considered by threshold tracer\. Default value is 1 second\.
+.
+.IP "" 0
+.
+.SH "EXAMPLES"
+The following will create a file with 3 queries and 5 threads alternating between them\. It also creates indexes on the \fBtravel\-sample\fR bucket
+.
+.IP "" 4
+.
+.nf
+
+cbc n1ql \-U couchbase://192\.168\.72\.101/a_bucket \'CREATE INDEX ix_name ON `travel\-sample`(name)\'
+cbc n1ql \-U couchbase://192\.168\.72\.101/a_bucket \'CREATE INDEX ix_country ON `travel\-sample`(country)\'
+
+cat queries\.txt <<EOF
+{"statement":"SELECT country FROM `travel\-sample` WHERE `travel\-sample`\.country = \e"United States\e""}
+{"statement":"SELECT name FROM `travel\-sample` LIMIT 10"}
+{"statement":"SELECT country, COUNT(country) FROM `travel\-sample` GROUP BY country"}
+EOF
+
+cbc\-n1qlback \-U couchbase://192\.168\.72\.101/a_bucket \-t 5 \-f queries\.txt
+.
+.fi
+.
+.IP "" 0
+.
+.SH "BUGS"
+This command\'s options are subject to change\.
+.
+.SH "SEE ALSO"
+cbc(1), cbc\-pillowfight(1), cbcrc(4)
+.
+.SH "HISTORY"
+The \fBcbc\-n1qlback\fR tool was first introduced in libcouchbase 2\.4\.10

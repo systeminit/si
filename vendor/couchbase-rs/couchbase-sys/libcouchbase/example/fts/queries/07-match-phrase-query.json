@@ -1,0 +1,13 @@
+// -*- mode: js; -*-
+// Match Phrase Query, using Analysis, for searching on a phrase.
+{
+    "indexName": "travel-sample-index-stored",
+    "size": 10,
+    "highlight": {
+        "style": "html"
+    },
+    "query": {
+        "field": "description",
+        "match_phrase": "Eiffel Tower"
+    }
+}

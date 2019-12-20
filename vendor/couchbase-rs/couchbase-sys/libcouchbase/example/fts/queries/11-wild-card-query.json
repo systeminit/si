@@ -1,0 +1,13 @@
+// -*- mode: js; -*-
+// Wild Card Query, whereby a wildcard is used in the string submitted for the search.
+{
+    "indexName": "travel-sample-index-stored",
+    "size": 10,
+    "highlight": {
+        "style": "html"
+    },
+    "query": {
+        "field": "description",
+        "wildcard": "bouti*ue"
+    }
+}

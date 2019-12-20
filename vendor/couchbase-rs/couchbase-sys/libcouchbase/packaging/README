@@ -1,0 +1,7 @@
+These files contain the underlying metadata templates for building deb and
+rpm packages. To build a local package, do `make dist-deb` or `make dist-rpm`
+from within the top level directory.
+
+To build public signed packages, inspect the
+[lcbpackage](https://github.com/couchbaselabs/lcbpackage) for the necessary
+tooling

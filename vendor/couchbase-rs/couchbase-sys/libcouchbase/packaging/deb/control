@@ -1,0 +1,72 @@
+Source: libcouchbase
+Priority: optional
+Maintainer: Couchbase SDK Team <support@couchbase.com>
+Build-Depends: debhelper (>= 7.0.50~), cmake (>= 2.8.9), libevent-dev (>= 1.4), libev-dev (>= 3)
+Standards-Version: 3.9.2
+Section: libs
+Homepage: http://www.couchbase.com/develop/c/current
+Vcs-Browser: https://github.com/couchbase/libcouchbase
+Vcs-Git: git://github.com/couchbase/libcouchbase.git
+
+Package: libcouchbase3-libevent
+Architecture: any
+Depends: libcouchbase3 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Multi-Arch: same
+Description: library for the Couchbase protocol (libevent backend)
+ libcouchbase is a library implementing Couchbase protocol.
+ .
+ This package provides libevent backend for libcouchbase
+
+Package: libcouchbase3-libev
+Architecture: any
+Depends: libcouchbase3 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Multi-Arch: same
+Description: library for the Couchbase protocol (libev backend)
+ libcouchbase is a library implementing Couchbase protocol.
+ .
+ This package provides libev backend for libcouchbase
+
+Package: libcouchbase-dbg
+Section: debug
+Architecture: any
+Priority: extra
+Depends: libcouchbase3 (= ${binary:Version}), ${misc:Depends}
+Multi-Arch: same
+Description: library for the Couchbase protocol, debug symbols
+ libcouchbase is a library implementing Couchbase protocol.
+ .
+ This package provides debugging symbols.
+
+Package: libcouchbase3
+Architecture: any
+Provides: libcouchbase3
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Multi-Arch: same
+Description: library for the Couchbase protocol, core files
+ libcouchbase is a library implementing Couchbase protocol.
+ .
+ This package provides the core for libcouchbase. It contains an IO implementation
+ based on select(2). If preferred, you can install one of the available
+ backends (libcouchbase3-libevent or libcouchbase3-libev).  libcouchbase will
+ automatically use the installed backend. It is also possible to integrate another
+ IO backend or write your own.
+
+Package: libcouchbase-dev
+Section: libdevel
+Architecture: any
+Multi-Arch: same
+Depends: libcouchbase3 (= ${binary:Version}), ${misc:Depends}
+Description: library for the Couchbase protocol, development files
+ libcouchbase is a library implementing Couchbase protocol.
+ .
+ This package provides the files needed for development.
+
+Package: libcouchbase3-tools
+Section: utils
+Architecture: any
+Depends: libcouchbase3 (= ${binary:Version}), libcouchbase3-libevent (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Conflicts: libcouchbase1-bin, libcouchbase2-bin
+Description: library for the Couchbase protocol
+ libcouchbase is a library implementing Couchbase protocol.
+ .
+ This package provides the cbc tools built on libcouchbase library.

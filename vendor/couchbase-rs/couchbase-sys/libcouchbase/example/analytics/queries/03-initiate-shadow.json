@@ -1,0 +1,6 @@
+// vim: ft=javascript
+// Initiate the shadowing relationship of datasets to the data in Couchbase
+// Server
+{
+  "statement": "CONNECT LINK Local"
+}

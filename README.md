@@ -2,44 +2,36 @@
 
 This is the source for the System Initiative.
 
-We're currently working on 'BugBear'
+## Quick Start
 
-![bugbear](https://i.pinimg.com/736x/2b/95/f0/2b95f05d3c62ccd4be854b567a7592e1--fantasy-creatures-mythical-creatures.jpg)
+### Linux 
 
-Things are set up as a mono-repo - all you should need to do to start working
-is check out this repository. 
+This repository is known to only work on Arch Linux or Ubuntu. If you're 
+trying to run it on something else... sorry, it's not supported.
 
-# Try it out
+If you don't have a Linux VM handy, you can use the scripts in the ./scripts/ folder to get yourself a docker container. Install docker, then run the script, and you'll have the repo mounted inside a container. Follow the instructions for bootstrapping, and you're gtg.
 
-Make sure you have node installed. Do 'npm install' in each of the components. For
-`si-graphql`, run `npm start`. For `si-web-app`, run `npm run serve`. 
+### Bootstrapping
 
-Then hit `http://localhost:8080` for the web app. If you want to play around with
-GraphQL directly, see the readme there.
+To get ready to run this repository, you should run:
 
-# Vagrant Development Environment
-Once you have vagrant installed you can fire up a dev environment with `make vagrant-create` and you can destroy the environment with `make vagrant-remove`. Or you can simply use the vagrant commands directly if you know what you're doing.
+```
+./components/build/bootstrap.sh
+```
 
-# Vocabulary
+This will detect either Arch or Ubuntu, and install the pre-requisites
+needed to build a component.
 
-## components
+Next, you should run:
 
-A component is a usable piece of the system. It may be a service, a user
-interface, etc.
+```
+make build
+```
 
-Components that are user facing should have the 'application' they are a part of
-in front of their name. For example, 'si-web' tells us that this is the web
-frontend for the 'si' application.
+This will ensure that all the pre-requisites for each component are 
+installed, and compile each component. If this is successful, 
+congratulations, you're all done. 
 
-Service and other domain pieces should have '-service' on the end. So 'auth-service',
-or 'user-service'.
+## Layout
 
-# Component List
-
-## si-web-app
-
-A [Vue](https://vuejs.org) application that is the Web UI for SI. 
-
-## si-graphql
-
-The GraphQL API.
+The `components` directory has all the components. 

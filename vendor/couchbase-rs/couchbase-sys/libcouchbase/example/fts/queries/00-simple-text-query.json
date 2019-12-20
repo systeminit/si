@@ -1,0 +1,12 @@
+// -*- mode: js; -*-
+// Simple Text Query on a single word, targeting an index with dynamic fields not stored.
+{
+    "indexName": "travel-sample-index-unstored",
+    "size": 10,
+    "highlight": {
+        "style": "html"
+    },
+    "query": {
+        "match": "swanky"
+    }
+}

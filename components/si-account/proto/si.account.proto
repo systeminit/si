@@ -1,0 +1,115 @@
+syntax = "proto3";
+
+package si.account;
+
+import "si-data/proto/data.proto";
+
+service Account {
+  rpc CreateAccount(CreateAccountRequest) returns (CreateAccountReply);
+  rpc GetBillingAccount(GetBillingAccountRequest) returns (GetBillingAccountReply);
+  rpc GetUser(GetUserRequest) returns (GetUserReply);
+  rpc Login(LoginRequest) returns (LoginReply);
+}
+
+message GetUserRequest {
+  string user_id = 1;
+}
+
+message GetUserReply {
+  User user = 1;
+}
+
+message GetBillingAccountRequest {
+  string billing_account_id = 1;
+}
+
+message GetBillingAccountReply {
+  BillingAccount billing_account = 1;
+}
+
+message CreateAccountRequest {
+  CreateBillingAccountRequest billing_account = 1;
+  CreateUserRequest user = 2;
+}
+
+message CreateAccountReply {
+  BillingAccount billing_account = 1;
+  User user = 2;
+}
+
+message CreateBillingAccountRequest {
+  string display_name = 1;
+  string short_name = 2;
+}
+
+message CreateBillingAccountReply {
+  BillingAccount billing_account = 1;
+}
+
+message CreateUserRequest {
+  string display_name = 1;
+  string given_name = 2;
+  string family_name = 3;
+  string email = 4;
+  string password = 5;
+}
+
+message CreateUserReply {
+  User user = 1;
+}
+
+message LoginRequest {
+  string email = 1;
+  string password = 2;
+  string billing_account_short_name = 3;
+}
+
+message LoginReply {
+  /// User is authenicated or not
+  bool authenticated = 1;
+  /// The users id
+  string user_id = 2;
+  /// The users billing account id
+  string billing_account_id = 3;
+}
+
+message User {
+  string id = 1;
+  repeated string tenantIds = 2;
+  string natural_key = 3;
+  string type_name = 4;
+  string email = 5;
+  string domain = 6;
+  string display_name = 7;
+  string given_name = 8;
+  string family_name = 9;
+  string picture = 10;
+  string password_hash = 11;
+  repeated Capability capabilities = 12;
+  string billing_account_id = 20;
+}
+
+message Capability {
+  string subject = 1;
+  repeated string actions = 2;
+}
+
+message Group {
+  string id = 1;
+  repeated string tenant_ids = 2;
+  string natural_key = 3;
+  string type_name = 4;
+  string name = 5;
+  string display_name = 6;
+  repeated string user_ids = 7;
+  repeated Capability capabilities = 8;
+} 
+
+message BillingAccount {
+  string id = 1;
+  string natural_key = 2;
+  string type_name = 3;
+  string display_name = 4;
+  string short_name = 5;
+  repeated string tenant_ids = 10;
+}

@@ -1,0 +1,1048 @@
+.\" generated with Ronn/v0.7.3
+.\" http://github.com/rtomayko/ronn/tree/0.7.3
+.
+.TH "CBC" "1" "April 2019" "" ""
+.
+.SH "NAME"
+\fBcbc\fR \- Couchbase Client Commandline Utility
+.
+.SH "SYNOPSIS"
+\fBcbc\fR \fICOMMAND\fR [\fIOPTIONS\fR]
+.
+.br
+\fBcbc help\fR
+.
+.br
+\fBcbc version\fR
+.
+.br
+\fBcbc cat\fR \fIKEYS\fR \[char46]\[char46]\[char46] [\fIOPTIONS\fR]
+.
+.br
+\fBcbc create\fR \fIKEY\fR \fI\-V VALUE\fR [\fIOPTIONS\fR]
+.
+.br
+\fBcbc create\fR \fIKEY\fR [\fIOPTIONS\fR]
+.
+.br
+\fBcbc cp\fR \fIFILES\fR \[char46]\[char46]\[char46] [\fIOPTIONS\fR]
+.
+.br
+\fBcbc incr\fR \fIKEY\fR [\fIOPTIONS\fR]
+.
+.br
+\fBcbc decr\fR \fIKEY\fR [\fIOPTIONS\fR]
+.
+.br
+\fBcbc touch\fR \fIKEY\fR [\fIOPTIONS\fR]
+.
+.br
+\fBcbc rm\fR \fIKEY\fR [\fIOPTIONS\fR]
+.
+.br
+\fBcbc hash\fR \fIKEY\fR [\fIOPTIONS\fR]
+.
+.br
+\fBcbc stats\fR \fIKEYS\fR \[char46]\[char46]\[char46] [\fIOPTIONS\fR]
+.
+.br
+\fBcbc observe\fR \fIKEYS\fR \[char46]\[char46]\[char46] [\fIOPTIONS\fR]
+.
+.br
+\fBcbc view\fR \fIVIEWPATH\fR [\fIOPTIONS\fR]
+.
+.br
+\fBcbc lock\fR \fIKEY\fR [\fIOPTIONS\fR]
+.
+.br
+\fBcbc unlock\fR \fIKEY\fR \fICAS\fR [\fIOPTIONS\fR]
+.
+.br
+\fBcbc admin\fR \fI\-P PASSWORD\fR \fIRESTAPI\fR [\fIOPTIONS\fR]
+.
+.br
+\fBcbc bucket\-create\fR \fI\-P PASSWORD\fR \fINAME\fR [\fIOPTIONS\fR]
+.
+.br
+\fBcbc bucket\-delete\fR \fI\-P PASSWORD\fR \fINAME\fR [\fIOPTIONS\fR]
+.
+.br
+\fBcbc bucket\-flush\fR \fINAME\fR [\fIOPTIONS\fR]
+.
+.br
+\fBcbc role\-list\fR [\fIOPTIONS\fR]
+.
+.br
+\fBcbc user\-list\fR [\fIOPTIONS\fR]
+.
+.br
+\fBcbc user\-upsert\fR \fINAME\fR [\fIOPTIONS\fR]
+.
+.br
+\fBcbc user\-delete\fR \fINAME\fR [\fIOPTIONS\fR]
+.
+.br
+\fBcbc connstr\fR \fISPEC\fR
+.
+.br
+\fBcbc query\fR \fIQUERY\fR \[char46]\[char46]\[char46] [\fIOPTIONS\fR]
+.
+.br
+\fBcbc write\-config\fR [\fIOPTIONS\fR \[char46]\[char46]\[char46]]
+.
+.br
+\fBcbc strerror\fR \fIHEX\-OR\-DECIMAL\-CODE\fR
+.
+.br
+\fBcbc ping\fR [\fIOPTIONS\fR \[char46]\[char46]\[char46]]
+.
+.br
+\fBcbc watch\fR [\fIKEYS\fR \[char46]\[char46]\[char46]] [\fIOPTIONS\fR \[char46]\[char46]\[char46]]
+.
+.br
+\fBcbc keygen\fR [\fIKEYS\fR \[char46]\[char46]\[char46]] [\fIOPTIONS\fR \[char46]\[char46]\[char46]]
+.
+.br
+.
+.SH "DESCRIPTION"
+\fBcbc\fR is a utility for communicating with a Couchbase cluster\.
+.
+.P
+\fBcbc\fR should be invoked with the command name first and then a series of command options appropriate for the specific command\. \fBcbc help\fR will always show the full list of available commands\.
+.
+.P
+ \fI\fR
+.
+.SH "OPTIONS"
+Options may be read either from the command line, or from a configuration file (see cbcrc(4)):
+.
+.P
+The following common options may be applied to most of the commands
+.
+.TP
+\fB\-U\fR, \fB\-\-spec\fR=\fISPEC\fR
+A string describing the cluster to connect to\. The string is in a URI\-like syntax, and may also contain other options\. See the \fIEXAMPLES\fR section for information\. Typically such a URI will look like \fBcouchbase://host1,host2,host3/bucket\fR\.
+.
+.IP
+The default for this option is \fBcouchbase://localhost/default\fR
+.
+.TP
+\fB\-u\fR, \fB\-\-username\fR=\fIUSERNAME\fR
+Specify the \fIusername\fR for the bucket\. Since Couchbase 5\.x this is mandatory switch, and it must specify the name of the user exisiting on cluster (read more at "Security/Authorization" section of the server manual)\. For older servers this field should be either left empty or set to the name of the bucket itself\.
+.
+.TP
+\fB\-P\fR, \fB\-\-password\fR=\fIPASSWORD\fR:
+
+.
+.TP
+\fB\-P \-\fR, \fB\-\-password=\-\fR
+Specify the password for the bucket\. As for servers before 5\.x this was only needed if the bucket is protected with a password\. For cluster version after 5\.x, the password is mandatory, and should match the selected account (read more at "Security/Authorization" section of the server manual)\.
+.
+.IP
+Specifying the \fB\-\fR as the password indicates that the program should prompt for the password\. You may also specify the password on the commandline, directly, but is insecure as command line arguments are visible via commands such as \fBps\fR\.
+.
+.TP
+\fB\-T\fR, \fB\-\-timings\fR
+Dump command timings at the end of execution\. This will display a histogram showing the latencies for the commands executed\.
+.
+.TP
+\fB\-v\fR, \fB\-\-verbose\fR
+Specify more information to standard error about what the client is doing\. You may specify this option multiple times for increased output detail\.
+.
+.TP
+\fB\-D\fR, \fB\-\-cparam\fR=OPTION=VALUE
+Provide additional client options\. Acceptable options can also be placed in the connection string, however this option is provided as a convenience\. This option may be specified multiple times, each time specifying a key=value pair (for example, \fB\-Doperation_timeout=10 \-Dconfig_cache=/foo/bar/baz\fR)\. See \fIADDITIONAL OPTIONS\fR for more information
+.
+.TP
+\fB\-y\fR, \fB\-\-compress\fR
+Enable compressing of documents\. When the library is compiled with compression support, this option will enable Snappy compression for outgoing data\. Incoming compressed data handled automatically regardless of this option\. Note, that because the compression support have to be negotiated with the server, first packets might be sent uncompressed even when this switch was specified\. This is because the library might queue data commands before socket connection has been established, and the library will negotiate compression feature\. If it is known that all server support compression repeating the switch (like \fB\-yy\fR) will force compression for all outgoing mutations, even scheduled before establishing connection\.
+.
+.TP
+\fB\-\-truststorepath\fR=\fIPATH\fR
+The path to the server\'s SSL certificate\. This is typically required for SSL connectivity unless the certificate has already been added to the OpenSSL installation on the system (only applicable with \fBcouchbases://\fR scheme)
+.
+.TP
+\fB\-\-certpath\fR=\fIPATH\fR
+The path to the server\'s SSL certificate\. This is typically required for SSL connectivity unless the certificate has already been added to the OpenSSL installation on the system (only applicable with \fBcouchbases://\fR scheme)\. This also should contain client certificate when certificate authentication used, and in this case other public certificates could be extracted into \fBtruststorepath\fR chain\.
+.
+.TP
+\fB\-\-keypath\fR=\fIPATH\fR
+The path to the client SSL private key\. This is typically required for SSL client certificate authentication\. The certificate itself have to go first in chain specified by \fBcertpath\fR (only applicable with \fBcouchbases://\fR scheme)
+.
+.TP
+\fB\-\-dump\fR
+Dump verbose internal state after operations are done\.
+.
+.P
+ \fI\fR
+.
+.SH "ADDITIONAL OPTIONS"
+The following options may be included in the connection string (via the \fB\-U\fR option) as URI\-style query params (e\.g\. \fBcouchbase://host/bucket?option1=value1&option2=value2\fR) or as individual key=value pairs passed to the \fB\-D\fR switch (e\.g\. \fB\-Doption1=value1 \-Doption2=value\fR)\. The \fB\-D\fR will internally build the connection string, and is provided as a convenience for options to be easily passed on the command\-line
+.
+.IP "\(bu" 4
+\fBoperation_timeout=SECONDS\fR: Specify the operation timeout in seconds\. This is the time the client will wait for an operation to complete before timing it out\. The default is \fB2\.5\fR
+.
+.IP "\(bu" 4
+\fBconfig_cache=PATH\fR: Enables the client to make use of a file based configuration cache rather than connecting for the bootstrap operation\. If the file does not exist, the client will first connect to the cluster and then cache the bootstrap information in the file\.
+.
+.IP "\(bu" 4
+\fBtruststorepath=PATH\fR: The path to the server\'s SSL certificate\. This is typically required for SSL connectivity unless the certificate has already been added to the OpenSSL installation on the system (only applicable with \fBcouchbases://\fR scheme)
+.
+.IP "\(bu" 4
+\fBcertpath=PATH\fR: The path to the server\'s SSL certificate\. This is typically required for SSL connectivity unless the certificate has already been added to the OpenSSL installation on the system (only applicable with \fBcouchbases://\fR scheme)\. This also should contain client certificate when certificate authentication used, and in this case other public certificates could be extracted into \fBtruststorepath\fR chain\.
+.
+.IP "\(bu" 4
+\fBkeypath=PATH\fR: The path to the client SSL private key\. This is typically required for SSL client certificate authentication\. The certificate itself have to go first in chain specified by \fBcertpath\fR (only applicable with \fBcouchbases://\fR scheme)
+.
+.IP "\(bu" 4
+\fBipv6=allow\fR: Enable IPv6\.
+.
+.IP "\(bu" 4
+\fBssl=no_verify\fR: Temporarily disable certificate verification for SSL (only applicable with \fBcouchbases://\fR scheme)\. This should only be used for quickly debugging SSL functionality\.
+.
+.IP "\(bu" 4
+\fBsasl_mech_force=MECHANISM\fR: Force a specific \fISASL\fR mechanism to be used when performing the initial connection\. This should only need to be modified for debugging purposes\. The currently supported mechanisms are \fBPLAIN\fR and \fBCRAM\-MD5\fR
+.
+.IP "\(bu" 4
+\fBbootstrap_on=<both,http,cccp>\fR: Specify the bootstrap protocol the client should use when attempting to connect to the cluster\. Options are: \fBcccp\fR: Bootstrap using the Memcached protocol (supported on clusters 2\.5 and greater); \fBhttp\fR: Bootstrap using the HTTP REST protocol (supported on any cluster version); and \fBboth\fR: First attempt bootstrap over the Memcached protocol, and use the HTTP protocol if Memcached bootstrap fails\. The default is \fBboth\fR
+.
+.IP "\(bu" 4
+\fBenable_tracing=true/false\fR: Activate/deactivate end\-to\-end tracing\.
+.
+.IP "\(bu" 4
+\fBtracing_orphaned_queue_flush_interval=SECONDS\fR: Flush interval for orphaned spans queue in default tracer\. This is the time the tracer will wait between repeated attempts to flush most recent orphaned spans\. Default value is 10 seconds\.
+.
+.IP "\(bu" 4
+\fBtracing_orphaned_queue_size=NUMBER\fR: Size of orphaned spans queue in default tracer\. Queues in default tracer has fixed size, and it will remove information about older spans, when the limit will be reached before flushing time\. Default value is 128\.
+.
+.IP "\(bu" 4
+\fBtracing_threshold_queue_flush_interval=SECONDS\fR: Flush interval for spans with total time over threshold in default tracer\. This is the time the tracer will wait between repeated attempts to flush threshold queue\. Default value is 10 seconds\.
+.
+.IP "\(bu" 4
+\fBtracing_threshold_queue_size=NUMBER\fR: Size of threshold queue in default tracer\. Queues in default tracer has fixed size, and it will remove information about older spans, when the limit will be reached before flushing time\. Default value is 128\.
+.
+.IP "\(bu" 4
+\fBtracing_threshold_kv=SECONDS\fR: Minimum time for the tracing span of KV service to be considered by threshold tracer\. Default value is 0\.5 seconds\.
+.
+.IP "\(bu" 4
+\fBtracing_threshold_n1ql=SECONDS\fR: Minimum time for the tracing span of N1QL service to be considered by threshold tracer\. Default value is 1 second\.
+.
+.IP "\(bu" 4
+\fBtracing_threshold_view=SECONDS\fR: Minimum time for the tracing span of VIEW service to be considered by threshold tracer\. Default value is 1 second\.
+.
+.IP "\(bu" 4
+\fBtracing_threshold_fts=SECONDS\fR: Minimum time for the tracing span of FTS service to be considered by threshold tracer\. Default value is 1 second\.
+.
+.IP "\(bu" 4
+\fBtracing_threshold_analytics=SECONDS\fR: Minimum time for the tracing span of ANALYTICS service to be considered by threshold tracer\. Default value is 1 second\.
+.
+.IP "" 0
+.
+.SH "COMMANDS"
+The following commands are supported by \fBcbc\fR\. Unless otherwise specified, each command supports all of the options above\.
+.
+.SS "cat"
+Write the value of keys to standard output\.
+.
+.P
+This command requires that at least one key may be passed to it, but may accept multiple keys\. The keys should be specified as positional arguments after the command\.
+.
+.P
+In addition to the options in the \fIOPTIONS\fR section, the following options are supported:
+.
+.TP
+\fBr\fR, \fB\-\-replica\fR=\fIall|INDEX\fR
+Read the value from a replica server\. The value for this option can either be the string \fBall\fR which will cause the client to request the value from each replica, or \fBINDEX\fR where \fBINDEX\fR is a 0\-based replica index\.
+.
+.TP
+\fBe\fR, \fB\-\-expiry\fR=\fIEXPIRATION\fR
+Specify that this operation should be a \fIget\-and\-touch\fR operation in which the key\'s expiry time is updated along with retrieving the item\.
+.
+.SS "create"
+.
+.SS "cp"
+Create a new item in the cluster, or update the value of an existing item\. By default this command will read the value from standard input unless the \fB\-\-value\fR option is specified\.
+.
+.P
+The \fBcp\fR command functions the same, except it operates on a list of files\. Each file is stored in the cluster under the name specified on the command line\.
+.
+.P
+In addition to the options in the \fIOPTIONS\fR section, the following options are supported:
+.
+.TP
+\fB\-V\fR, \fB\-\-value\fR=\fIVALUE\fR
+The value to store in the cluster\. If omitted, the value is read from standard input\. This option is valid only for the \fBcreate\fR command\.
+.
+.TP
+\fBf\fR, \fB\-\-flags\fR=\fIITEMFLAGS\fR
+A 32 bit unsigned integer to be stored alongside the value\. This number is returned when the item is retrieved again\. Other clients commonly use this value to determine the type of item being stored\.
+.
+.TP
+\fBe\fR, \fB\-\-expiry\fR=\fIEXPIRATION\fR
+The number of time in seconds from now at which the item should expire\.
+.
+.TP
+\fBM\fR, \fB\-\-mode\fR=\fIupsert|insert|replace\fR
+Specify the storage mode\. Mode can be one of \fBinsert\fR (store item if it does not yet exist), \fBreplace\fR (only store item if key already exists), or \fBupsert\fR (unconditionally store item)
+.
+.TP
+\fBd\fR, \fB\-\-durability\fR=\fILEVEL\fR
+Specify durability level for mutation operations\. Known values are: "none", "majority", "majority_and_persist_on_master", "persist_to_majority"\.
+.
+.TP
+\fBp\fR, \fB\-\-persist\-to\fR=\fINUMNODES\fR
+Wait until the item has been persisted to at least \fBNUMNODES\fR nodes\' disk\. If \fBNUMNODES\fR is 1 then wait until only the master node has persisted the item for this key\. You may not specify a number greater than the number of nodes actually in the cluster\.
+.
+.TP
+\fBr\fR \fB\-\-replicate\-to\fR=\fINREPLICAS\fR
+Wait until the item has been replicated to at least \fBNREPLICAS\fR replica nodes\. The bucket must be configured with at least one replica, and at least \fBNREPLICAS\fR replica nodes must be online\.
+.
+.SS "observe"
+Retrieve persistence and replication information for items\.
+.
+.P
+This command will print the status of each key to standard error\.
+.
+.P
+See the \fIOPTIONS\fR for accepted options
+.
+.SS "incr"
+.
+.SS "decr"
+These commands increment or decrement a \fIcounter\fR item in the cluster\. A \fIcounter\fR is a value stored as an ASCII string which is readable as a number, thus for example \fB42\fR\.
+.
+.P
+These commands will by default refuse to operate on an item which does not exist in the cluster\.
+.
+.P
+The \fBincr\fR and \fBdecr\fR command differ with how they treat the \fB\-\-delta\fR argument\. The \fBincr\fR command will treat the value as a \fIpositive\fR offset and increment the current value by the amount specified, whereas the \fBdecr\fR command will treat the value as a \fInegative\fR offset and decrement the value by the amount specified\.
+.
+.P
+In addition to \fIOPTIONS\fR, the following options are supported:
+.
+.TP
+\fB\-\-initial=_DEFAULT_\fR
+Set the initial value for the item if it does not exist in the cluster\. The value should be an unsigned 64 bit integer\. If this option is not specified and the item does not exist, the operation will fail\. If the item \fIdoes\fR exist, this option is ignored\.
+.
+.TP
+\fB\-\-delta\fR=\fIDELTA\fR
+Set the absolute delta by which the value should change\. If the command is \fBincr\fR then the value will be \fIincremented\fR by this amount\. If the command is \fBdecr\fR then the value will be \fIdecremented\fR by this amount\. The default value for this option is \fB1\fR\.
+.
+.TP
+\fB\-e\fR, \fB\-\-expiry\fR=\fIEXPIRATION\fR
+Set the expiration time for the key, in terms of seconds from now\.
+.
+.SS "hash"
+Display mapping information for a key\.
+.
+.P
+This command diplays mapping information about a key\. The mapping information indicates which \fIvBucket\fR the key is mapped to, and which server is currently the master node for the given \fIvBucket\fR\.
+.
+.P
+See the \fIOPTIONS\fR for accepted options
+.
+.P
+ \fI\fR
+.
+.SS "lock"
+Lock an item in the cluster\.
+.
+.P
+This will retrieve and lock an item in the cluster, making it inaccessible for modification until it is unlocked (see \fIunlock\fR)\.
+.
+.P
+In addition to the common options (\fIOPTIONS\fR), this command accepts the following options:
+.
+.TP
+\fBe\fR, \fB\-\-expiry\fR=\fILOCKTIME\fR
+Specify the amount of time the lock should be held for\. If not specified, it will default to the server side maximum of 15 seconds\.
+.
+.P
+ \fI\fR
+.
+.SS "unlock"
+Unlock a previously locked item\.
+.
+.P
+This command accepts two mandatory positional arguments which are the key and \fICAS\fR value\. The \fICAS\fR value should be specified as printed from the \fIlock\fR command (i\.e\. with the leading \fB0x\fR hexadecimal prefix)\.
+.
+.P
+See the \fIOPTIONS\fR for accepted options
+.
+.SS "rm"
+Remove an item from the cluster\.
+.
+.P
+This command will remove an item from the cluster\. If the item does not exist, the operation will fail\.
+.
+.P
+See the \fIOPTIONS\fR for accepted options
+.
+.SS "stats"
+Retrieve a list of cluster statistics\. If positional arguments are passed to this command, only the statistics classified under those keys will be retrieved\. See the server documentation for a full list of possible statistics categories\.
+.
+.P
+This command will contact each server in the cluster and retrieve that node\'s own set of statistics\.
+.
+.P
+The statistics are printed to standard output in the form of \fBSERVER STATISTIC VALUE\fR where \fISERVER\fR is the \fIhost:port\fR representation of the node from which has provided this statistic, \fISTATISTIC\fR is the name of the current statistical key, and \fIVALUE\fR is the value for this statistic\.
+.
+.P
+See the \fIOPTIONS\fR for accepted options
+.
+.SS "watch"
+Retrieve a list of cluster statistics, select specified sub\-keys and aggregate values across the cluster\. Then continuously poll the stats and display the difference with the previous values\. If the list of stat sub\-keys not specified, the command will use \fBcmd_total_ops\fR, \fBcmd_total_gets\fR, \fBcmd_total_sets\fR\.
+.
+.P
+In addition to the options in the \fIOPTIONS\fR section, the following options are supported: * \fB\-n\fR, \fB\-\-interval\fR=\fIVALUE\fR: Update interval in seconds (default \fB1\fR second)\.
+.
+.SS "keygen"
+Output list of keys that equally distribute amongst every vbucket\.
+.
+.P
+In addition to the options in the \fIOPTIONS\fR section, the following options are supported: * \fB\-\-keys\-per\-vbucket\fR=\fIVALUE\fR: Number of keys to generate per vBucket (default \fB1\fR)\.
+.
+.SS "write\-config"
+Write the configuration file based on arguments passed\.
+.
+.SS "strerror"
+Decode library error code
+.
+.SS "version"
+Display information about the underlying version of \fIlibcouchbase\fR to which the \fBcbc\fR binary is linked\.
+.
+.SS "verbosity"
+Set the memcached logging versbosity on the cluster\. This affects how the memcached processes write their logs\. This command accepts a single positional argument which is a string describing the verbosity level to be set\. The options are \fBdetail\fR, \fBdebug\fR \fBinfo\fR, and \fBwarning\fR\.
+.
+.SS "ping"
+Sends NOOP\-like request to every service on each cluster node, and report time it took to response\.
+.
+.TP
+\fB\-\-details\fR
+Provide more details about status of the service\.
+.
+.SS "view"
+Execute an HTTP request against the server\'s view (CAPI) interface\.
+.
+.P
+The request may be one to create a design document, view a design document, or query a view\.
+.
+.P
+To create a design document, the definition of the document (in JSON) should be piped to the command on standard input\.
+.
+.P
+This command accepts one positional argument which is the \fIpath\fR (relative to the bucket) to execute\. Thus to query the \fBbrewery_beers\fR view in the \fBbeer\fR design document within the \fBbeer\-sample\fR bucket one would do: cbc view \-U couchbase://localhost/beer\-sample \fIdesign/beer/\fRview/brewery_beers
+.
+.P
+In addition to the \fIOPTIONS\fR specified above, the following options are recognized:
+.
+.TP
+\fB\-X\fR, \fB\-\-method\fR=\fIGET|PUT|POST|DELETE\fR
+Specify the HTTP method to use for the specific request\. The default method is \fBGET\fR to query a view\. To delete an existing design document, specify \fBDELETE\fR, and to create a new design document, specify \fBPUT\fR\.
+.
+.SS "query"
+Execute a N1QL Query\. The cluster must have at least one query node enabled\.
+.
+.P
+The query itself is passed as a positional argument on the commandline\. The query may contain named placeholders (in the format of \fB$param\fR), whose values may be supplied later on using the \fB\-\-qarg=\'$param=value\'\fR syntax\.
+.
+.P
+It is recommended to place the statement in single quotes to avoid shell expansion\.
+.
+.P
+In addition to the \fIOPTIONS\fR specified above, the following options are recognized:
+.
+.TP
+\fB\-Q\fR, \fB\-\-qopt\fR=\fISETTING=VALUE\fR
+Specify additional options controlling the execution of the query\. This can be used for example, to set the \fBscan_consistency\fR of the query\.
+.
+.TP
+\fB\-A\fR, \fB\-\-qarg\fR=\fIPLACEHOLDER=VALUE\fR
+Supply values for placeholders found in the query string\. The placeholders must evaluate to valid JSON values\.
+.
+.TP
+\fB\-\-prepare\fR
+Prepare query before issuing\. Default is FALSE\.
+.
+.TP
+\fB\-\-analytics\fR
+Perform query to analytics service\. Default is FALSE\.
+.
+.SS "admin"
+Execute an administrative request against the management REST API\. Note that in order to perform an administrative API you will need to provide \fIadministrative\fR credentials to \fBcbc admin\fR\. This means the username and password used to log into the administration console\.
+.
+.P
+This command accepts a single positional argument which is the REST API endpoint (i\.e\. HTTP path) to execute\.
+.
+.P
+If the request requires a \fIbody\fR, it should be supplied via standard input
+.
+.P
+In addition to the \fIOPTIONS\fR specified above, the following options are recognized:
+.
+.TP
+\fB\-X\fR, \fB\-\-method\fR=\fIGET|PUT|POST|DELETE\fR
+Specify the HTTP method to use for the specific request\. The default method is \fBGET\fR\.
+.
+.SS "bucket\-create"
+Create a bucket in the cluster\.
+.
+.P
+This command will create a bucket with the name specified as the lone positional argument on the command line\.
+.
+.P
+As this is an administrative command, the \fB\-\-username\fR and \fB\-\-password\fR options should be supplied administrative credentials\.
+.
+.P
+In addition to the \fIOPTIONS\fR specified above, the following options are recognized:
+.
+.TP
+\fB\-\-bucket\-type\fR=\fIcouchbase|memcached\fR
+Specify the type of bucket to create\. A \fIcouchbase\fR bucket has persistence to disk and replication\. A \fImemached\fR bucket is in\-memory only and does not replicate\.
+.
+.TP
+\fB\-\-ram\-quota\fR=\fIQUOTA\fR
+Specify the maximum amount of memory the bucket should occupy (per node) in megabytes\. If not specified, the default is \fI512\fR\.
+.
+.TP
+\fB\-\-bucket\-password\fR=\fIPASSWORD\fR
+Specify the password to secure this bucket\. If passed, this password will be required by all clients attempting to connect to the bucket\. If ommitted, this bucket may be accessible to everyone for both read and write access\.
+.
+.TP
+\fB\-\-num\-replicas\fR=\fIREPLICAS\fR
+Specify the amount of replicas the bucket should have\. This will set the number of nodes each item will be replicated to\. If not specified the default is \fI1\fR\.
+.
+.SS "bucket\-flush"
+This command will flush the bucket with the name specified as the lone positional argument on the command line\.
+.
+.P
+This command does not require administrative level credentials, however it does require that \fIflush\fR be enabled for the bucket\.
+.
+.P
+See the \fIOPTIONS\fR for accepted options
+.
+.SS "role\-list"
+List accessible RBAC user roles in the cluster\.
+.
+.P
+In addition to the \fIOPTIONS\fR specified above, the following options are recognized:
+.
+.TP
+\fB\-r\fR, \fB\-\-raw\fR
+Print unformatted server response in JSON form\.
+.
+.SS "user\-list"
+List users in the cluster\.
+.
+.P
+In addition to the \fIOPTIONS\fR specified above, the following options are recognized:
+.
+.TP
+\fB\-r\fR, \fB\-\-raw\fR
+Print unformatted server response in JSON form\.
+.
+.SS "user\-upsert"
+Create or update a user in the cluster\. Takes user ID as an argument\.
+.
+.P
+In addition to the \fIOPTIONS\fR specified above, the following options are recognized:
+.
+.TP
+\fB\-\-domain\fR=\fIlocal|remote\fR
+The domain, where user account defined\. If not specified, the default is \fIlocal\fR\.
+.
+.TP
+\fB\-\-full\-name\fR=\fIFULL_NAME\fR
+The user\'s fullname\. If not specified, the default is empty string\.
+.
+.TP
+\fB\-\-role\fR=\fIROLE\fR
+The role associated with user (can be specified multiple times if needed)\.
+.
+.TP
+\fB\-\-user\-password\fR=\fIPASSWORD\fR
+The password for the user\.
+.
+.SS "user\-delete"
+Delete a user in the cluster\. Takes user ID as an argument\.
+.
+.P
+In addition to the \fIOPTIONS\fR specified above, the following options are recognized:
+.
+.TP
+\fB\-\-domain\fR=\fIlocal|remote\fR
+The domain, where user account defined\. If not specified, the default is \fIlocal\fR\.
+.
+.SS "connstr"
+This command will parse a connection string into its constituent parts and display them on the screen\. The command takes a single positional argument which is the string to parse\.
+.
+.SH "EXAMPLES"
+.
+.SS "CONNECTION EXAMPLES"
+The following shows how to connect to various types of buckets\. These examples all show how to retrieve the key \fBkey\fR\. See \fIOPERATION EXAMPLES\fR for more information on specific sub\-commands\.
+.
+.P
+Connect to a bucket (\fBa_bucket\fR) on a cluster on a remote host (for servers version 5\.x+)\. It uses account \'myname\' and asks password interactively:
+.
+.IP "" 4
+.
+.nf
+
+cbc cat key \-U couchbase://192\.168\.33\.101/a_bucket \-u myname \-P\-
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Run against a password\-less bucket (\fBa_bucket\fR) on a cluster on a remote host (for servers older than 5\.x):
+.
+.IP "" 4
+.
+.nf
+
+cbc cat key \-U couchbase://192\.168\.33\.101/a_bucket
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Connect to an SSL cluster at \fBsecure\.net\fR\. The certificate for the cluster is stored locally at \fB/home/couchbase/couchbase_cert\.pem\fR:
+.
+.IP "" 4
+.
+.nf
+
+cbc cat key \-U couchbases://secure\.net/topsecret_bucket?certpath=/home/couchbase/couchbase_cert\.pem
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Connect to an SSL cluster at \fBsecure\.net\fR, ignoring certificate verification\. This is insecure but handy for testing:
+.
+.IP "" 4
+.
+.nf
+
+cbc cat key \-U couchbases://secure\.net/topsecret_bucket?ssl=no_verify
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Connect to a password protected bucket (\fBprotected\fR) on a remote host (for servers older than 5\.x):
+.
+.IP "" 4
+.
+.nf
+
+cbc cat key \-U couchbase://remote\.host\.net/protected \-P\-
+Bucket password:
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Connect to a password protected bucket (for servers older than 5\.x), specifying the password on the command line (INSECURE, but useful for testing dummy environments)
+.
+.IP "" 4
+.
+.nf
+
+cbc cat key \-U couchbase://remote\.host\.net/protected \-P t0ps3cr3t
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Connect to a bucket running on a cluster with a custom REST API port
+.
+.IP "" 4
+.
+.nf
+
+cbc cat key \-U http://localhost:9000/default
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Connec to bucket running on a cluster with a custom memcached port
+.
+.IP "" 4
+.
+.nf
+
+cbc cat key \-U couchbase://localhost:12000/default
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Connect to a \fImemcached\fR (http://memcached\.org) cluster using the binary protocol\. A vanilla memcached cluster is not the same as a memcached bucket residing within a couchbase cluster (use the normal \fBcouchbase://\fR scheme for that):
+.
+.IP "" 4
+.
+.nf
+
+cbc cat key \-U memcached://host1,host2,host3,host4
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Connect to a cluster using the HTTP protocol for bootstrap, and set the operation timeout to 5 seconds
+.
+.IP "" 4
+.
+.nf
+
+cbc cat key \-U couchbase://host/bucket \-Dbootstrap_on=http \-Doperation_timeout=5
+.
+.fi
+.
+.IP "" 0
+.
+.SS "OPERATION EXAMPLES"
+Store a file to the cluster:
+.
+.IP "" 4
+.
+.nf
+
+$ cbc cp mystuff\.txt
+mystuff\.txt         Stored\. CAS=0xe15dbe22efc1e00
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Retrieve persistence/replication information about an item (note that \fIStatus\fR is a set of bits):
+.
+.IP "" 4
+.
+.nf
+
+$ cbc observe mystuff\.txt
+mystuff              [Master] Status=0x80, CAS=0x0
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Display mapping information about keys:
+.
+.IP "" 4
+.
+.nf
+
+$cbc hash foo bar baz
+foo: [vBucket=115, Index=3] Server: cbnode3:11210, CouchAPI: http://cbnode3:8092/default
+bar: [vBucket=767, Index=0] Server: cbnode1:11210, CouchAPI: http://cbnode1:8092/default
+baz: [vBucket=36, Index=2] Server: cbnode2:11210, CouchAPI: http://cbnode2:8092/default
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Create a bucket:
+.
+.IP "" 4
+.
+.nf
+
+$ cbc bucket\-create \-\-bucket\-type=memcached \-\-ram\-quota=100 \-\-password=letmein \-u Administrator \-P 123456 mybucket
+Requesting /pools/default/buckets
+202
+  Cache\-Control: no\-cache
+  Content\-Length: 0
+  Date: Sun, 22 Jun 2014 22:43:56 GMT
+  Location: /pools/default/buckets/mybucket
+  Pragma: no\-cache
+  Server: Couchbase Server
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Flush a bucket:
+.
+.IP "" 4
+.
+.nf
+
+$ cbc bucket\-flush default
+Requesting /pools/default/buckets/default/controller/doFlush
+
+
+200
+  Cache\-Control: no\-cache
+  Content\-Length: 0
+  Date: Sun, 22 Jun 2014 22:53:44 GMT
+  Pragma: no\-cache
+  Server: Couchbase Server
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Delete a bucket:
+.
+.IP "" 4
+.
+.nf
+
+$ cbc bucket\-delete mybucket \-P123456
+Requesting /pools/default/buckets/mybucket
+200
+  Cache\-Control: no\-cache
+  Content\-Length: 0
+  Date: Sun, 22 Jun 2014 22:55:58 GMT
+  Pragma: no\-cache
+  Server: Couchbase Server
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Use \fBcbc stats\fR to determine the minimum and maximum timeouts for a lock operation:
+.
+.IP "" 4
+.
+.nf
+
+$ cbc stats | grep ep_getl
+localhost:11210 ep_getl_default_timeout 15
+localhost:11210 ep_getl_max_timeout 30
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Create a design document:
+.
+.IP "" 4
+.
+.nf
+
+$ echo \'{"views":{"all":{"map":"function(doc,meta){emit(meta\.id,null)}"}}}\' | cbc view \-X PUT _design/blog
+201
+  Cache\-Control: must\-revalidate
+  Content\-Length: 32
+  Content\-Type: application/json
+  Date: Sun, 22 Jun 2014 23:03:40 GMT
+  Location: http://localhost:8092/default/_design/blog
+  Server: MochiWeb/1\.0 (Any of you quaids got a smint?)
+{"ok":true,"id":"_design/blog"}
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Query a view:
+.
+.IP "" 4
+.
+.nf
+
+$ cbc view _design/blog/_view/all?limit=5
+200
+  Cache\-Control: must\-revalidate
+  Content\-Type: application/json
+  Date: Sun, 22 Jun 2014 23:06:09 GMT
+  Server: MochiWeb/1\.0 (Any of you quaids got a smint?)
+  Transfer\-Encoding: chunked
+{"total_rows":20,"rows":[
+{"id":"bin","key":"bin","value":null},
+{"id":"check\-all\-libev\-unit\-tests\.log","key":"check\-all\-libev\-unit\-tests\.log","value":null},
+{"id":"check\-all\-libevent\-unit\-tests\.log","key":"check\-all\-libevent\-unit\-tests\.log","value":null},
+{"id":"check\-all\-select\-unit\-tests\.log","key":"check\-all\-select\-unit\-tests\.log","value":null},
+{"id":"cmake_install\.cmake","key":"cmake_install\.cmake","value":null}
+]
+}
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Issue a N1QL query:
+.
+.IP "" 4
+.
+.nf
+
+$ cbc query \'SELECT * FROM `travel\-sample` WHERE type="airport" AND city=$city\' \-Qscan_consistency=request_plus \-A\'$city=\e"Reno\e"\'
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Ping cluster services:
+.
+.IP "" 4
+.
+.nf
+
+$ cbc ping \-\-details  \-Ucouchbase://192\.168\.1\.101
+{
+   "version" : 1,
+   "config_rev" : 54,
+   "id" : "0x1d67af0",
+   "sdk" : "libcouchbase/2\.8\.4",
+   "services" : {
+      "fts" : [
+         {
+            "id" : "0x1d75e90",
+            "latency_us" : 1500,
+            "local" : "192\.168\.1\.12:35232",
+            "remote" : "192\.168\.1\.101:8094",
+            "status" : "ok"
+         },
+         {
+            "id" : "0x1da6800",
+            "latency_us" : 2301,
+            "local" : "192\.168\.1\.12:40344",
+            "remote" : "192\.168\.1\.103:8094",
+            "status" : "ok"
+         },
+         {
+            "id" : "0x1da3270",
+            "latency_us" : 2820,
+            "local" : "192\.168\.1\.12:42730",
+            "remote" : "192\.168\.1\.102:8094",
+            "status" : "ok"
+         },
+         {
+            "details" : "LCB_ENETUNREACH (0x31): The remote host was unreachable \- is your network OK?",
+            "latency_us" : 3071733,
+            "remote" : "192\.168\.1\.104:8094",
+            "status" : "error"
+         }
+      ],
+      "kv" : [
+         {
+            "id" : "0x1d6bde0",
+            "latency_us" : 3700,
+            "local" : "192\.168\.1\.12:42006",
+            "remote" : "192\.168\.1\.101:11210",
+            "scope" : "default",
+            "status" : "ok"
+         },
+         {
+            "id" : "0x1dadcf0",
+            "latency_us" : 5509,
+            "local" : "192\.168\.1\.12:39936",
+            "remote" : "192\.168\.1\.103:11210",
+            "scope" : "default",
+            "status" : "ok"
+         },
+         {
+            "id" : "0x1dac500",
+            "latency_us" : 5594,
+            "local" : "192\.168\.1\.12:33868",
+            "remote" : "192\.168\.1\.102:11210",
+            "scope" : "default",
+            "status" : "ok"
+         },
+         {
+            "latency_us" : 2501688,
+            "remote" : "192\.168\.1\.104:11210",
+            "scope" : "default",
+            "status" : "timeout"
+         }
+      ],
+      "n1ql" : [
+         {
+            "id" : "0x1d7f280",
+            "latency_us" : 3235,
+            "local" : "192\.168\.1\.12:54210",
+            "remote" : "192\.168\.1\.101:8093",
+            "status" : "ok"
+         },
+         {
+            "id" : "0x1d76f20",
+            "latency_us" : 4625,
+            "local" : "192\.168\.1\.12:58454",
+            "remote" : "192\.168\.1\.102:8093",
+            "status" : "ok"
+         },
+         {
+            "id" : "0x1da44b0",
+            "latency_us" : 4477,
+            "local" : "192\.168\.1\.12:36678",
+            "remote" : "192\.168\.1\.103:8093",
+            "status" : "ok"
+         },
+         {
+            "details" : "LCB_ENETUNREACH (0x31): The remote host was unreachable \- is your network OK?",
+            "latency_us" : 3071843,
+            "remote" : "192\.168\.1\.104:8093",
+            "status" : "error"
+         }
+      ],
+      "views" : [
+         {
+            "id" : "0x1da55c0",
+            "latency_us" : 1762,
+            "local" : "192\.168\.1\.12:52166",
+            "remote" : "192\.168\.1\.103:8092",
+            "status" : "ok"
+         },
+         {
+            "id" : "0x1da20d0",
+            "latency_us" : 2016,
+            "local" : "192\.168\.1\.12:59420",
+            "remote" : "192\.168\.1\.102:8092",
+            "status" : "ok"
+         },
+         {
+            "id" : "0x1d6a740",
+            "latency_us" : 2567,
+            "local" : "192\.168\.1\.12:38614",
+            "remote" : "192\.168\.1\.101:8092",
+            "status" : "ok"
+         },
+         {
+            "details" : "LCB_ENETUNREACH (0x31): The remote host was unreachable \- is your network OK?",
+            "latency_us" : 3071798,
+            "remote" : "192\.168\.1\.104:8092",
+            "status" : "error"
+         }
+      ]
+   }
+}
+.
+.fi
+.
+.IP "" 0
+.
+.SH "FILES"
+cbc(1) and cbc\-pillowfight(1) may also read options from cbcrc(4)\. The default path for \fBcbcrc\fR is \fB$HOME/\.cbcrc\fR, but may be overridden by setting the \fBCBC_CONFIG\fR evironment variable to an alternate path\.
+.
+.SH "BUGS"
+The options in this utility and their behavior are subject to change\. This script should be used for experiemntation only and not inside production scripts\.
+.
+.SH "SEE ALSO"
+cbc\-pillowfight(1), cbcrc(4)
+.
+.SH "History"
+The cbc command first appeared in version 0\.3\.0 of the library\. It was significantly rewritten in version 2\.4\.0

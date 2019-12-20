@@ -1,9 +1,9 @@
 use lazy_static::lazy_static;
+use si_settings::Settings;
 use si_ssh_key::{
     data::{self, Db},
     error,
     service::Service,
-    settings::Settings,
     ssh_key::client::SshKeyClient,
     ssh_key::server::SshKeyServer,
 };
@@ -25,9 +25,11 @@ lazy_static! {
     };
 }
 
-pub fn get_connected_client() -> SshKeyClient<Channel> {
+pub async fn get_connected_client() -> SshKeyClient<Channel> {
     let bind_to = format!("http://[::1]:{}", SETTINGS.service.port);
-    SshKeyClient::connect(bind_to).expect("Cannot connect client to server")
+    SshKeyClient::connect(bind_to)
+        .await
+        .expect("Cannot connect client to server")
 }
 
 pub fn run_server() {
@@ -51,7 +53,8 @@ pub fn run_server() {
             let addr = bind_to.parse().unwrap();
 
             Server::builder()
-                .serve(addr, SshKeyServer::new(service))
+                .add_service(SshKeyServer::new(service))
+                .serve(addr)
                 .await
                 .map_err(error::Error::TonicError)
                 .expect("Error with server building");

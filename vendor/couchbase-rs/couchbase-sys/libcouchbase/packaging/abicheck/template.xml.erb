@@ -1,0 +1,10 @@
+<version><%= ENV['VERSION'] %></version>
+<headers>
+  <!-- <%= "#{ENV['PREFIX']}/include/**/*.h" %> -->
+<% Dir["#{ENV['PREFIX']}/include/**/*.h"].each do |hdr| %>
+  <%= hdr %>
+<% end %>
+</headers>
+<libs>
+  <%= ENV['PREFIX'] %>/lib/libcouchbase.so
+</libs>

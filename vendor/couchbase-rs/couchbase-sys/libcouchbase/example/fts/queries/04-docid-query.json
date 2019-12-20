@@ -1,0 +1,11 @@
+// -*- mode: js; -*-
+// DocId Query, showing results of a query on two document IDs.
+{
+    "indexName": "travel-sample-index-unstored",
+    "query": {
+        "ids": [
+            "hotel_26223",
+            "hotel_28960"
+        ]
+    }
+}

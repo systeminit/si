@@ -1,0 +1,6 @@
+// vim: ft=javascript
+// Find a particular brewery based on its Couchbase Server key
+{
+  "statement": "SELECT meta(bw) AS meta, bw AS data FROM breweries bw WHERE meta(bw).id = 'kona_brewing'",
+  "pretty": true
+}

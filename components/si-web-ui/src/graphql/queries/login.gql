@@ -1,0 +1,11 @@
+query login($email: String!, $password: String!, $billingAccountShortName: String!) {
+  login(input: {
+    email: $email,
+    password: $password,
+    billingAccountShortName: $billingAccountShortName
+  }) {
+    jwt 
+    userId
+    billingAccountId
+  }
+}

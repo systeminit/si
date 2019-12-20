@@ -1,0 +1,12 @@
+[profile.release]
+debug = true
+
+[workspace]
+members = [
+  "components/si-account", 
+  "components/si-settings",
+  "components/si-data",
+  "components/si-ssh-key",
+  "vendor/couchbase-rs/couchbase-sys",
+  "vendor/couchbase-rs/couchbase",
+]

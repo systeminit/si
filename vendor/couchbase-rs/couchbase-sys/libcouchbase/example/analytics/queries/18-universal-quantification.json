@@ -1,0 +1,7 @@
+// vim: ft=javascript
+// Find those breweries that only have seriously strong beers
+{
+  "statement": "WITH nested_breweries AS ( SELECT bw.name AS brewer, bw.phone, ( SELECT br.name, br.abv FROM beers br WHERE br.brewery_id = meta(bw).id ORDER BY br.name) AS beers FROM breweries bw) SELECT VALUE nb FROM nested_breweries nb WHERE (EVERY b IN nb.beers SATISFIES b.abv >= 10) AND ARRAY_COUNT(nb.beers) > 0 ORDER BY nb.brewer LIMIT 5",
+  "pretty": true
+}
+

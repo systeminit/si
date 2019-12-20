@@ -1,0 +1,5 @@
+// vim: ft=javascript
+// Display dataverses defined by Analytics service
+{
+  "statement": "SELECT * FROM Metadata.`Dataverse`"
+}
