@@ -4,15 +4,23 @@ on: push
 jobs:
   build:
     runs-on: ubuntu-latest
-
-    #services:
-    #  couchbase:
-    #    image: docker.pkg.github.com/systeminit/si/couchbase:latest
-    #    ports:
-    #      - 8091-8096:8091-8096
-    #      - 11210-11211:11210-11211
     steps:
     - uses: actions/checkout@v2
+    - name: Cache cargo registry
+      uses: actions/cache@v1
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache cargo index
+      uses: actions/cache@v1
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache cargo build
+      uses: actions/cache@v1
+      with:
+        path: target
+        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
     - name: Docker login
       run: docker login docker.pkg.github.com -u $GITHUB_ACTOR -p $GITHUB_TOKEN
       env: 
