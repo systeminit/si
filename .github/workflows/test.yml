@@ -6,6 +6,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
+    - name: Fetch branches
+      run: git fetch --all
     - name: Generate Cache Checksum
       run: git diff --name-only origin/master...HEAD | cut -d "/" -f 1,2 | sort | uniq | tr "\n" " " | shasum | cut -d " " -f 1 > .cache-checksum
     - name: Cache cargo registry
@@ -29,8 +31,6 @@ jobs:
         GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
     - name: Start Couchbase
       run: docker run -d --name db -p 8091-8096:8091-8096 -p 11210-11211:11210-11211 docker.pkg.github.com/systeminit/si/couchbase:latest 
-    - name: Fetch branches
-      run: git fetch --all
     - name: Install dependencies
       run: sudo make build_deps
     - name: Test
