@@ -11,7 +11,7 @@ ifeq ($(USE_PACMAN),/usr/bin/pacman)
 	sudo pacman -Sy --noconfirm 
 endif
 ifeq ($(USE_APT),/usr/bin/apt-get)
-	sudo apt-get update -y
+	sudo env DEBIAN_FRONTEND=noninteractive apt-get update -y
 endif
 
 package_sync: package_update
@@ -19,7 +19,7 @@ ifeq ($(USE_PACMAN),/usr/bin/pacman)
 	sudo pacman -Syu --noconfirm 
 endif
 ifeq ($(USE_APT),/usr/bin/apt-get)
-	sudo apt-get upgrade -y
+	sudo env DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
 endif
 
 package_curl:
@@ -27,7 +27,7 @@ ifeq ($(USE_PACMAN),/usr/bin/pacman)
 	sudo pacman -S --needed --noconfirm curl
 endif
 ifeq ($(USE_APT),/usr/bin/apt-get)
-	sudo apt-get install -y curl
+	sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y curl
 endif
 
 package_rust: package_curl
@@ -42,7 +42,7 @@ ifeq ($(USE_PACMAN),/usr/bin/pacman)
 	sudo pacman -S --needed --noconfirm base-devel cmake clang
 endif
 ifeq ($(USE_APT),/usr/bin/apt-get)
-	sudo apt-get install -y build-essential cmake clang
+	sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential cmake clang
 endif
 
 runtime_deps: package_update
@@ -50,6 +50,6 @@ ifeq ($(USE_PACMAN),/usr/bin/pacman)
 	sudo pacman -S --needed --noconfirm openssl libev libevent nodejs npm
 endif
 ifeq ($(USE_APT),/usr/bin/apt-get)
-	sudo apt-get install -y openssl libev-dev libevent-dev nodejs npm
+	sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y openssl libev-dev libevent-dev nodejs npm
 endif
 

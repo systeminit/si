@@ -1,0 +1,34 @@
+FROM docker.pkg.github.com/systeminit/si/si-base:latest as component-builder
+ARG component
+ARG release=debug
+RUN mkdir -p /src
+COPY . /src
+RUN cd / && tar zxf /build-cache/cargo-cache.tgz
+WORKDIR /src/component/${component}
+RUN . /root/.cargo/env && cd /src/component/${component} && cargo build 
+RUN cp $(find /src -name 'libcouchbase.so' | head -n 1) /usr/lib
+
+FROM ubuntu:rolling
+ARG component
+ARG release=debug
+RUN env DEBIAN_FRONTEND=noninteractive apt-get update; \
+  apt-get -y upgrade; \
+  apt-get install -y openssl libev-dev libevent-dev; \
+  apt-get autoremove -y; \
+  apt-get clean; \
+  find /var/lib/apt/lists -type f | xargs rm; \
+  find /var/log -type f -exec rm {} \; ; \
+  rm -rf /usr/share/man/*; \
+  rm -rf /usr/share/doc/*; \
+  rm -f /var/log/alternatives.log /var/log/apt/*; \
+  rm /var/cache/debconf/*-old
+RUN mkdir -p /svc/${component}/config
+COPY --from=component-builder /usr/lib/libcouchbase.so /usr/lib
+RUN ln -s /usr/lib/libcouchbase.so /usr/lib/libcouchbase.so.3
+COPY --from=component-builder /src/target/${release}/${component}-server /svc/${component}/
+COPY --from=component-builder /src/components/${component}/config/* /svc/${component}/config
+COPY --from=component-builder /src/components/build/run.sh /svc
+RUN chmod a+x /svc/run.sh
+ENV START_SERVICE=${component}
+ENV SI_SERVICE_PORT=5000
+ENTRYPOINT /svc/run.sh

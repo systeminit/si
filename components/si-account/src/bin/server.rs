@@ -14,7 +14,9 @@ async fn run() -> Result<()> {
 
     let service = Service::new(db);
 
-    let addr = "[::1]:50052".parse().unwrap();
+    let listen_string = format!("0.0.0.0:{}", settings.service.port);
+
+    let addr = listen_string.parse().unwrap();
 
     println!("--> Account service listening on {} <--", addr);
     println!("--> Let us make users and stuff <--");
