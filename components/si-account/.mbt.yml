@@ -1,7 +1,0 @@
-name: si-account
-build:
-  default:
-    cmd: make
-    args:
-
-

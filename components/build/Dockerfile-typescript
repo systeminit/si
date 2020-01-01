@@ -1,0 +1,31 @@
+FROM docker.pkg.github.com/systeminit/si/si-base:latest as component-builder
+ARG component
+ARG release=debug
+RUN mkdir -p /src
+COPY . /src
+RUN cd / && tar zxf /build-cache/npm-cache.tgz
+RUN find /src -name 'proto' -type d | xargs tar zcvf /build-cache/protos.tgz
+RUN cd /src/components/${component} && make build
+
+FROM ubuntu:rolling
+ARG component
+ARG release=debug
+RUN env DEBIAN_FRONTEND=noninteractive apt-get update; \
+  apt-get -y upgrade; \
+  apt-get install -y openssl nodejs npm; \
+  apt-get autoremove -y; \
+  apt-get clean; \
+  find /var/lib/apt/lists -type f | xargs rm; \
+  find /var/log -type f -exec rm {} \; ; \
+  rm -rf /usr/share/man/*; \
+  rm -rf /usr/share/doc/*; \
+  rm -f /var/log/alternatives.log /var/log/apt/*; \
+  rm /var/cache/debconf/*-old
+RUN mkdir -p /svc
+COPY --from=component-builder /build-cache/protos.tgz /svc
+RUN cd /svc && tar zxf protos.tgz --strip-components=2 && rm protos.tgz 
+COPY --from=component-builder /src/components/${component} /svc/${component}
+COPY --from=component-builder /src/components/build/run.sh /svc
+RUN chmod a+x /svc/run.sh
+ENV START_SERVICE=${component}
+ENTRYPOINT /svc/run.sh

@@ -8,30 +8,13 @@ jobs:
     - uses: actions/checkout@v2
     - name: Fetch branches
       run: git fetch --all
-    - name: Generate Cache Checksum
-      run: git diff --name-only origin/master...HEAD | cut -d "/" -f 1,2 | sort | uniq | tr "\n" " " | shasum | cut -d " " -f 1 > .cache-checksum
-    - name: Cache cargo registry
-      uses: actions/cache@v1
-      with:
-        path: ~/.cargo/registry
-        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('.cache-checksum') }}
-    - name: Cache cargo index
-      uses: actions/cache@v1
-      with:
-        path: ~/.cargo/git
-        key: ${{ runner.os }}-cargo-index-${{ hashFiles('.cache-checksum') }}
-    - name: Cache cargo build
-      uses: actions/cache@v1
-      with:
-        path: target
-        key: ${{ runner.os }}-cargo-index-${{ hashFiles('.cache-checksum') }}
     - name: Docker login
       run: docker login docker.pkg.github.com -u $GITHUB_ACTOR -p $GITHUB_TOKEN
       env: 
         GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
     - name: Start Couchbase
       run: docker run -d --name db -p 8091-8096:8091-8096 -p 11210-11211:11210-11211 docker.pkg.github.com/systeminit/si/couchbase:latest 
-    - name: Install dependencies
-      run: sudo make build_deps
     - name: Test
       run: make test_from_git
+      env:
+        TEST_IN_CONTAINERS: TRUE
