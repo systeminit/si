@@ -21,7 +21,7 @@ start: install
 	npm run start
 
 test_container:
-	docker run -it --network=host --volume=$(CURDIR)/../../:/src docker.pkg.github.com/systeminit/si/si-base:latest /bin/bash -c "cd / && tar zxf /build-cache/cargo-cache.tgz && tar zxf /build-cache/npm-cache.tgz && . /root/.cargo/env && cd /src/components/$(COMPONENT) && make test"
+	docker run -t --network=host --volume=$(CURDIR)/../../:/src docker.pkg.github.com/systeminit/si/si-base:latest /bin/bash -c "cd / && tar zxf /build-cache/cargo-cache.tgz && tar zxf /build-cache/npm-cache.tgz && . /root/.cargo/env && cd /src/components/$(COMPONENT) && make test"
 
 container:
 	env BUILDKIT_PROGRESS=plain DOCKER_BUILDKIT=1 docker build \
