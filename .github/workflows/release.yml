@@ -13,5 +13,7 @@ jobs:
       run: docker login docker.pkg.github.com -u $GITHUB_ACTOR -p $GITHUB_TOKEN
       env: 
         GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
-    - name: Release new base build image
+    - name: Docker Pull Recent Base Image
+      run: docker pull docker.pkg.github.com/systeminit/si/si-base:latest
+    - name: Release Components 
       run: make release
