@@ -22,14 +22,18 @@
 include ./components/build/deps.mk
 
 COMPONENTS = components/si-data components/si-account components/si-settings components/si-graphql-api components/si-web-ui
+RELEASEABLE_COMPONENTS = components/si-account components/si-graphql-api
 BUILDABLE = $(patsubst %,build//%,$(COMPONENTS))
 TESTABLE = $(patsubst %,test//%,$(COMPONENTS))
+RELEASEABLE = $(patsubst %,release//%,$(RELEASEABLE_COMPONENTS))
+CONTAINABLE = $(patsubst %,container//%,$(RELEASEABLE_COMPONENTS))
 BUILDABLE_REGEX = $(shell echo $(COMPONENTS) | tr " " "|")
 TO_BUILD=$(shell git diff --name-only origin/master...HEAD | grep -E "^($(BUILDABLE_REGEX))" | cut -d "/" -f 1,2 | sort | uniq | tr "\n" " ")
+RELEASE := $(shell date +%Y%m%d%H%M%S)
 
 .DEFAULT_GOAL := build
 
-.PHONY: $(BUILDABLE) $(TESTABLE)
+.PHONY: $(BUILDABLE) $(TESTABLE) $(RELEASEABLE) $(CONTAINABLE)
 
 test//components/si-data//RDEPS: test//components/si-account
 
@@ -48,8 +52,40 @@ build: $(BUILDABLE)
 build_from_git: $(patsubst %,build//%,$(TO_BUILD))
 
 $(TESTABLE): % : %//RDEPS
+ifdef TEST_IN_CONTAINERS
+	@ pushd $(patsubst test//%,%,$@); $(MAKE) test_container
+else
 	@ pushd $(patsubst test//%,%,$@); $(MAKE) test
+endif
 
 test: $(TESTABLE)
 
 test_from_git: $(patsubst %,test//%,$(TO_BUILD))
+
+$(CONTAINABLE): clean
+	@ pushd $(patsubst container//%,%,$@); $(MAKE) container
+
+$(RELEASEABLE): clean
+	@ pushd $(patsubst release//%,%,$@); $(MAKE) release
+
+container//base: clean
+	env BUILDKIT_PROGRESS=plain DOCKER_BUILDKIT=1 docker build \
+		-f $(CURDIR)/components/build/Dockerfile-base \
+		-t si-base:latest \
+		-t si-base:$(RELEASE) \
+		-t docker.pkg.github.com/systeminit/si/si-base:latest \
+		--squash .
+
+release//base: container//base
+	docker push docker.pkg.github.com/systeminit/si/si-base:latest
+
+release: $(RELEASEABLE)
+	@ echo "--> You have released the System Initative! <--"
+
+clean:
+	rm -rf ./components/*/node_modules
+	rm -rf ./target
+
+force_clean:
+	sudo rm -rf ./components/*/node_modules
+	sudo rm -rf ./target
