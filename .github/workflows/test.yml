@@ -17,4 +17,6 @@ jobs:
     - name: Test
       run: make test_from_git
       env:
+        RUST_BACKTRACE: 1
+        RUST_LOG: debug
         TEST_IN_CONTAINERS: TRUE

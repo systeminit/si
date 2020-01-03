@@ -11,7 +11,7 @@ build_release:
 	cargo build --release
 
 test:
-	cargo test
+	cargo test -- --nocapture
 
 run:
 	cargo run
@@ -34,4 +34,3 @@ container:
 release: container
 	docker push docker.pkg.github.com/systeminit/si/${COMPONENT}-service:$(RELEASE)
 	docker push docker.pkg.github.com/systeminit/si/${COMPONENT}-service:latest
-
