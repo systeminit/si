@@ -64,18 +64,13 @@ pub fn delete_and_create_buckets() -> Service {
 
     std::thread::sleep(std::time::Duration::from_secs(10));
 
-    let docker_result = Command::new("docker")
-        .arg("exec")
-        .arg("db")
-        .arg("cbq")
+    let create_result = Command::new("curl")
         .arg("-u")
-        .arg("si")
-        .arg("-p")
-        .arg("bugbear")
-        .arg("-script")
-        .arg("create primary index on `si_integration`")
+        .arg("si:bugbear")
+        .arg("http://127.0.0.1:8093/query/service")
+        .arg("-d")
+        .arg("statement=create primary index on `si_integration`")
         .output();
-    println!("{:?}", docker_result);
 
     std::thread::sleep(std::time::Duration::from_secs(10));
 
