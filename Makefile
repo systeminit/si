@@ -79,9 +79,13 @@ container//base: clean
 release//base: container//base
 	docker push docker.pkg.github.com/systeminit/si/si-base:latest
 
+release: $(RELEASEABLE)
+	@ echo "--> You have released the System Initative! <--"
+
 clean:
 	rm -rf ./components/*/node_modules
 	rm -rf ./target
 
-release: $(RELEASEABLE)
-	@ echo "--> You have released the System Initative! <--"
+force_clean:
+	sudo rm -rf ./components/*/node_modules
+	sudo rm -rf ./target
