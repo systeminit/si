@@ -11,7 +11,7 @@ build_release:
 	cargo build --release
 
 test:
-	cargo test -- --nocapture
+	env RUST_BACKTRACE=1 RUST_LOG=debug cargo test -- --nocapture
 
 run:
 	cargo run
