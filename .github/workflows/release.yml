@@ -1,0 +1,17 @@
+name: Release
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Docker login
+      run: docker login docker.pkg.github.com -u $GITHUB_ACTOR -p $GITHUB_TOKEN
+      env: 
+        GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+    - name: Release new base build image
+      run: make release
