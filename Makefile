@@ -74,7 +74,7 @@ container//base: clean
 		-t si-base:latest \
 		-t si-base:$(RELEASE) \
 		-t docker.pkg.github.com/systeminit/si/si-base:latest \
-		--squash .
+		.
 
 release//base: container//base
 	docker push docker.pkg.github.com/systeminit/si/si-base:latest
