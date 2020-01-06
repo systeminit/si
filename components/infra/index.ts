@@ -36,27 +36,27 @@ sleep 30
 
 /opt/couchbase/bin/cbq -engine http://localhost:8091 -u si -p bugbear --script "CREATE PRIMARY INDEX ON \`si\`"
 
-groupadd hab
-useradd -g hab hab
-curl https://raw.githubusercontent.com/habitat-sh/habitat/master/components/hab/install.sh | bash
-hab license accept
-hab pkg install core/hab-sup
-cat <<-EOH > /etc/systemd/system/habitat.service
-[Unit]
-Description=The Chef Habitat Supervisor
-
-[Service]
-ExecStart=/bin/hab sup run
-Environment=HAB_AUTH_TOKEN=${config.require("habAuthToken")}
-
-[Install]
-WantedBy=default.target
-EOH
-systemctl enable habitat
-systemctl start habitat
-echo "Waiting to start the service while the sup spins up"
-sleep 30
-hab svc load si/si-graphql --channel unstable --strategy at-once
+apt-get remove -y docker docker-engine docker.io containerd runc
+apt-get autoremove -y
+apt-get install -y \
+    apt-transport-https \
+    ca-certificates \
+    curl \
+    gnupg-agent \
+    software-properties-common
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+add-apt-repository \
+   "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+   $(lsb_release -cs) \
+   stable"
+apt-get update -y
+apt-get install -y docker-ce docker-ce-cli containerd.io
+systemctl enable docker
+systemctl start docker
+docker login -u adamhjk -p 0a27ddb56fb70eb2faf5335a43d104ccfc681223 docker.pkg.github.com
+docker run --restart always --network=host --detach --name si-graphql-api-service docker.pkg.github.com/systeminit/si/si-graphql-api-service:latest
+docker run --restart always --network=host --detach --name si-account-service docker.pkg.github.com/systeminit/si/si-account-service:latest
+docker run --detach --name watchtower -v /root/.docker/config.json:/config.json -v /var/run/docker.sock:/var/run/docker.sock containrrr/watchtower --cleanup
 `;
 
 const vpc = awsx.ec2.Vpc.getDefault();
