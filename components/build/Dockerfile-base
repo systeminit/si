@@ -3,18 +3,18 @@ LABEL maintainer="dev@systeminit.com"
 RUN mkdir /src
 WORKDIR /src
 COPY . /src
-RUN ./components/build/bootstrap.sh
-RUN make build_deps
-RUN make build 
-RUN apt-get autoremove -y
-RUN apt-get clean
-RUN find /var/lib/apt/lists -type f | xargs rm
-RUN find /var/log -type f -exec rm {} \; 
-RUN rm -rf /usr/share/man/*
-RUN rm -rf /usr/share/doc/*
-RUN rm -f /var/log/alternatives.log /var/log/apt/*
-RUN rm /var/cache/debconf/*-old
-RUN mkdir -p /build-cache
-RUN tar zcvf /build-cache/cargo-cache.tgz /src/target /root/.cargo
-RUN tar zcvf /build-cache/npm-cache.tgz /src/components/*/node_modules
-RUN rm -rf /src
+RUN ./components/build/bootstrap.sh \ 
+  && make build_deps \
+  && make build  \
+  && apt-get autoremove -y \
+  && apt-get clean \
+  && find /var/lib/apt/lists -type f | xargs rm \
+  && find /var/log -type f -exec rm {} \;  \
+  && rm -rf /usr/share/man/* \
+  && rm -rf /usr/share/doc/* \
+  && rm -f /var/log/alternatives.log /var/log/apt/* \
+  && rm /var/cache/debconf/*-old \
+  && mkdir -p /build-cache \
+  && tar zcvf /build-cache/cargo-cache.tgz /src/target /root/.cargo \
+  && tar zcvf /build-cache/npm-cache.tgz /src/components/*/node_modules \
+  && rm -rf /src 

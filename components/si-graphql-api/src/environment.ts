@@ -30,7 +30,7 @@ export const environment: Environment = {
   logLevel: process.env.LOG_LEVEL || "info",
   jwtKey: process.env.JWT_KEY || "slithering0d00risLithgeringpoler",
   services: {
-    "si-ssh-key": process.env.SERVICES_SI_SSH_KEY || "[::1]:50051",
-    "si-account": process.env.SERVICES_SI_ACCOUNT || "[::1]:50052",
+    "si-ssh-key": process.env.SERVICES_SI_SSH_KEY || "127.0.0.1:5150",
+    "si-account": process.env.SERVICES_SI_ACCOUNT || "127.0.0.1:5151",
   },
 };
