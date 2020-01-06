@@ -109,6 +109,6 @@ const port = process.env.PORT || 4000;
 
 server.listen({ port }, () =>
   console.log(
-    `==> Server ready at http://localhost:${port}${server.graphqlPath} <==`,
+    `==> Server ready at http://0.0.0.0:${port}${server.graphqlPath} <==`,
   ),
 );
