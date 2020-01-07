@@ -181,13 +181,15 @@ impl server::Account for Service {
             let req = request.get_ref();
 
             // Only let users with @systeminit.com register
-            match &req.user {
-                Some(user) => {
-                    if !user.email.contains("@systeminit.com") {
-                        return Err(tonic::Status::from(AccountError::Authorization));
+            if std::env::var_os("NO_SIGNUPS").is_some() {
+                match &req.user {
+                    Some(user) => {
+                        if !user.email.contains("@systeminit.com") {
+                            return Err(tonic::Status::from(AccountError::Authorization));
+                        }
                     }
+                    None => return Err(tonic::Status::from(AccountError::EmptyUser)),
                 }
-                None => return Err(tonic::Status::from(AccountError::EmptyUser)),
             }
 
             let mut ba = match &req.billing_account {
