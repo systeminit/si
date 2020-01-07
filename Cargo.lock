@@ -1991,6 +1991,7 @@ dependencies = [
 name = "si-data"
 version = "0.1.0"
 dependencies = [
+ "anyhow 1.0.25 (registry+https://github.com/rust-lang/crates.io-index)",
  "base64 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "bytes 0.4.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "couchbase 1.0.0-alpha.3",
@@ -2007,6 +2008,7 @@ dependencies = [
  "sodiumoxide 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "thiserror 1.0.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio 0.2.0-alpha.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "toml 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "tracing 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "tracing-futures 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "tracing-subscriber 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
