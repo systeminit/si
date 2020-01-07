@@ -53,7 +53,7 @@ build_from_git: $(patsubst %,build//%,$(TO_BUILD))
 
 $(TESTABLE): % : %//RDEPS
 ifdef TEST_IN_CONTAINERS
-	@ pushd $(patsubst test//%,%,$@); $(MAKE) test_container
+	@ pushd $(patsubst test//%,%,$@); $(MAKE) test_container RELEASE=$(RELEASE)
 else
 	@ pushd $(patsubst test//%,%,$@); $(MAKE) test
 endif
@@ -63,10 +63,10 @@ test: $(TESTABLE)
 test_from_git: $(patsubst %,test//%,$(TO_BUILD))
 
 $(CONTAINABLE): clean
-	@ pushd $(patsubst container//%,%,$@); $(MAKE) container
+	@ pushd $(patsubst container//%,%,$@); $(MAKE) container RELEASE=$(RELEASE)
 
 $(RELEASEABLE): clean
-	@ pushd $(patsubst release//%,%,$@); $(MAKE) release
+	@ pushd $(patsubst release//%,%,$@); $(MAKE) release RELEASE=$(RELEASE)
 
 container//base: clean
 	env BUILDKIT_PROGRESS=plain DOCKER_BUILDKIT=1 docker build \
