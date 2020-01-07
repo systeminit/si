@@ -2,5 +2,9 @@ config:
   aws:region: us-west-1
   si-graphql-infra:habAuthToken:
     secure: AAABAFbOb6ndAUv07/Gj1uScryPfy0G6UL5STfKmp9JrSoQjkGVe5iAoAblXAIjX6cHl9aDT00CFgWjNDP8HEFy17NUYlarpgpMi69VK8nDBmYl+y97kMu04RXb7TPJcIzIlfT1P5T6roO/UAOR0kT/2TdDmGn7mLDCwuyHcudgjmC89UKw5ydyoXWHNMBuMxuoClEE6xNaT41iDENtFxKYeq9CDt4mL1Ishe+a8S1otGB3Yc+RGdu123XfAHGoABRIyQYYuX5OE+u5dbw==
+  si-graphql-infra:jwtSecret:
+    secure: AAABAJcf/mD+hJ26IXHuq0SHF0WsmWr9Ez0NBrl5rtvno2EZ+lwfdl0w4NhWikCBkCTYFGE0uCX5DB8F9K0C1r3JqcGWt/iMlOc=
   si-graphql-infra:masterDbPassword:
-    secure: AAABAILA9dt0p73a82KNB2BqdngOjFios5+nWvIt/lrAmZCEORHtIGAhhW6GI0ylvqIO+A==
+    secure: AAABAMo0gVkyl0NQq2ETO7e0u59G9M3hgWkPzChztVskqOdkDr8URwd33N1yV9KnKVI=
+  si-graphql-infra:siAccountServiceConfig:
+    secure: AAABAKdeajVWVtQk0a0HQV5WuaMfUSG5lIIoAqJEuD4w3EsjY4RQ/iLjHoOlONrUjqZwOKGGWoZEwDqXYF2V2GGo110y9Fxd95FvgkI759VAJdBIMvOBvIhs/e0xOQfo0Ocryg2Lu18so4A6Cy+4kQ2XcAbJeX7HZ3s6bwsxlagzoAlIKC1AwgUQ7XsYHMBGQW/vjBJvsTsNLipRGg3yTAx0Sy6O8w3G0uP19cLM4UQU3iffvpsYvA5gp28d000etgGOML/ry68CSS/4Z/L6DoseiNzVnfsOpqtIlg/A4vFxSHzpV9G4a0iOnViUO7QALDUkWcHgul0Ue3ZUGAA3VeQUc/2PTm3qQjF+Q1FBry6BItZvhj8og6FiHevOYZoywsYcwIr/wbtliYGiXcW5R15VMDZEumoUFUBRbLWhiYvoVDRGD0vjxraQPiwm9djmiUn4HwHyJI5kyPywTods7VbsVkYrYwNcH7s9A7bD6U/pols=

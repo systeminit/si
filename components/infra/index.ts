@@ -18,7 +18,15 @@ const size = "t2.large";
 
 const ami = "ami-08fd8ae3806f09a08";
 
-const userData = `#!/bin/bash
+const userData = pulumi.all([
+  config.requireSecret("siAccountServiceConfig"), 
+  config.requireSecret("masterDbPassword"), 
+  config.requireSecret("jwtSecret")]
+                           ).apply(([
+                             siAccountServiceConfig, 
+                             masterDbPassword,
+                           jwtSecret]) => 
+`#!/bin/bash
 apt-get update -y
 apt-get upgrade -y
 
@@ -30,11 +38,13 @@ sha256sum -c couchbase.shasum
 dpkg -i ./couchbase.deb
 echo 'Sleeping for couchbase start'
 sleep 30
-/opt/couchbase/bin/couchbase-cli cluster-init -c 127.0.0.1 --cluster-username si --cluster-password bugbear --services data,index,query,fts,analytics --cluster-ramsize 2048 --cluster-index-ramsize 1024 --cluster-eventing-ramsize 1024 --cluster-fts-ramsize 1024 --cluster-analytics-ramsize 1024 --index-storage-setting default
+/opt/couchbase/bin/couchbase-cli cluster-init -c 127.0.0.1 --cluster-username si --cluster-password "${masterDbPassword}" --services data,index,query,fts,analytics --cluster-ramsize 2048 --cluster-index-ramsize 1024 --cluster-eventing-ramsize 1024 --cluster-fts-ramsize 1024 --cluster-analytics-ramsize 1024 --index-storage-setting default
 
-/opt/couchbase/bin/couchbase-cli bucket-create --cluster 127.0.0.1 --username si --password bugbear --bucket si --bucket-type couchbase --bucket-ramsize 2048 
+/opt/couchbase/bin/couchbase-cli bucket-create --cluster 127.0.0.1 --username si --password "${masterDbPassword}" --bucket si --bucket-type couchbase --bucket-ramsize 2048 
 
-/opt/couchbase/bin/cbq -engine http://localhost:8091 -u si -p bugbear --script "CREATE PRIMARY INDEX ON \`si\`"
+sleep 20
+
+/opt/couchbase/bin/cbq -engine http://localhost:8091 -u si -p "${masterDbPassword}" --script 'CREATE PRIMARY INDEX ON \`si\`'
 
 apt-get remove -y docker docker-engine docker.io containerd runc
 apt-get autoremove -y
@@ -53,11 +63,15 @@ apt-get update -y
 apt-get install -y docker-ce docker-ce-cli containerd.io
 systemctl enable docker
 systemctl start docker
+
+echo '${siAccountServiceConfig}' > /etc/si-account-config.toml
+echo 'JWT_KEY=${jwtSecret}' > /etc/si-graphql-api-config.env
+
 docker login -u adamhjk -p 0a27ddb56fb70eb2faf5335a43d104ccfc681223 docker.pkg.github.com
-docker run --restart always --network=host --detach --name si-graphql-api-service docker.pkg.github.com/systeminit/si/si-graphql-api-service:latest
-docker run --restart always --network=host --detach --name si-account-service docker.pkg.github.com/systeminit/si/si-account-service:latest
+docker run --restart always --network=host --detach --name si-graphql-api-service -v /etc/si-graphql-api-config.env:/svc/si-graphql-api/.env docker.pkg.github.com/systeminit/si/si-graphql-api-service:latest
+docker run --restart always --network=host --detach --name si-account-service -v /etc/si-account-config.toml:/svc/si-account/config/default.toml docker.pkg.github.com/systeminit/si/si-account-service:latest
 docker run --detach --name watchtower -v /root/.docker/config.json:/config.json -v /var/run/docker.sock:/var/run/docker.sock containrrr/watchtower --cleanup
-`;
+`);
 
 const vpc = awsx.ec2.Vpc.getDefault();
 const lbsg = new awsx.ec2.SecurityGroup("si-graphql-lb", {
