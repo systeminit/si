@@ -8,9 +8,38 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
+    - name: Notify Slack of Start
+      id: slack
+      uses: voxmedia/github-action-slack-notify-build@v1
+      env:
+        SLACK_BOT_TOKEN: ${{ secrets.SLACKBOT_TOKEN }}
+      with: 
+        status: STARTING
+        color: warning
+        channel: engineering
     - name: Docker login
       run: docker login docker.pkg.github.com -u $GITHUB_ACTOR -p $GITHUB_TOKEN
       env: 
         GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
     - name: Release new base build image
       run: make release//base
+    - name: Notify Slack of Success
+      if: success()
+      uses: voxmedia/github-action-slack-notify-build@v1
+      env:
+        SLACK_BOT_TOKEN: ${{ secrets.SLACKBOT_TOKEN }}
+      with: 
+        message_id: ${{ steps.slack.outputs.message_id }}
+        status: SUCCESS
+        color: good
+        channel: engineering
+    - name: Notify Slack of Failure
+      if: failure()
+      uses: voxmedia/github-action-slack-notify-build@v1
+      env:
+        SLACK_BOT_TOKEN: ${{ secrets.SLACKBOT_TOKEN }}
+      with: 
+        message_id: ${{ steps.slack.outputs.message_id }}
+        status: FAILED
+        color: danger
+        channel: engineering
