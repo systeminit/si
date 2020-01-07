@@ -70,7 +70,12 @@ echo 'JWT_KEY=${jwtSecret}' > /etc/si-graphql-api-config.env
 docker login -u adamhjk -p 0a27ddb56fb70eb2faf5335a43d104ccfc681223 docker.pkg.github.com
 docker run --restart always --network=host --detach --name si-graphql-api-service -v /etc/si-graphql-api-config.env:/svc/si-graphql-api/.env docker.pkg.github.com/systeminit/si/si-graphql-api-service:latest
 docker run --restart always --network=host --detach --name si-account-service -e NO_SIGNUPS=1 -v /etc/si-account-config.toml:/svc/si-account/config/default.toml docker.pkg.github.com/systeminit/si/si-account-service:latest
-docker run --detach --name watchtower -v /root/.docker/config.json:/config.json -v /var/run/docker.sock:/var/run/docker.sock containrrr/watchtower --cleanup
+docker run --detach --name watchtower -v /root/.docker/config.json:/config.json \
+  -e WATCHTOWER_NOTIFICATIONS=slack \
+  -e WATCHTOWER_NOTIFICATION_SLACK_HOOK_URL="https://hooks.slack.com/services/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" \
+  -e WATCHTOWER_NOTIFICATION_SLACK_IDENTIFIER=watchtower \
+  -e WATCHTOWER_NOTIFICATION_SLACK_ICON_EMOJI=:whale: \
+  -v /var/run/docker.sock:/var/run/docker.sock containrrr/watchtower --cleanup
 `);
 
 const vpc = awsx.ec2.Vpc.getDefault();
