@@ -32,9 +32,9 @@ serde_json = "1.0"
 couchbase = { path = "../../vendor/couchbase-rs/couchbase" }
 
 # Tracing
-tracing = "0.1.10"
-tracing-futures = { version = "0.1.1", features = ["tokio", "std-future"] }
-tracing-subscriber = "0.1.6"
+tracing = "0.1"
+tracing-futures = { version = "0.2", features = ["tokio", "std-future"] }
+tracing-subscriber = "0.2.0-alpha.2"
 thiserror = "1.0"
 config = { version = "0.9.3", features = [ "toml" ] }
 sodiumoxide = "0.2"
@@ -50,8 +50,9 @@ si-data = { path = "../si-data" }
 
 [dev-dependencies]
 lazy_static = "1.4"
-tracing-subscriber = "0.1.6"
+tracing-subscriber = "0.2.0-alpha.2"
 tracing-opentelemetry = "0.1.0"
+opentelemetry = "0.1"
 
 [build-dependencies]
 tonic-build = { version = "0.1.0-beta.1" }
