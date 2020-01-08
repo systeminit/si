@@ -30,7 +30,11 @@ CONTAINABLE = $(patsubst %,container//%,$(RELEASEABLE_COMPONENTS))
 BUILDABLE_REGEX = $(shell echo $(COMPONENTS) | tr " " "|")
 RELEASEABLE_REGEX = $(shell echo $(RELEASEABLE_COMPONENTS) | tr " " "|")
 TO_BUILD=$(shell git diff --name-only origin/master...HEAD | grep -E "^($(BUILDABLE_REGEX))" | cut -d "/" -f 1,2 | sort | uniq | tr "\n" " ")
-TO_RELEASE=$(shell git diff --name-only HEAD~1 | grep -E "^($(RELEASEABLE_REGEX))" | cut -d "/" -f 1,2 | sort | uniq | tr "\n" " ")
+
+GITHUB_SHA := HEAD
+
+TO_RELEASE=$(shell git diff --name-only $(GITHUB_SHA) | grep -E "^($(RELEASEABLE_REGEX))" | cut -d "/" -f 1,2 | sort | uniq | tr "\n" " ")
+
 
 RELEASE := $(shell date +%Y%m%d%H%M%S)
 
@@ -84,6 +88,8 @@ release//base: container//base
 
 release_from_git: $(patsubst %,release//%,$(TO_RELEASE))
 	@ echo "--> You have (maybe) released the System Initative! <--"
+	@ echo Released: $(TO_RELEASE)
+
 
 release: $(RELEASEABLE)
 	@ echo "--> You have released the System Initative! <--"
