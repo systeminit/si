@@ -16,15 +16,15 @@ jobs:
       run: make release//base
     - name: Notify slack
       if: success()
+      uses: pullreminders/slack-action@v1.0.7
       env:
         SLACK_BOT_TOKEN: ${{ secrets.SLACKBOT_TOKEN }}
-        uses: pullreminders/slack-action@v1.0.7
         with:
           args: '{\"channel\":\"engineering\",\"text\":\"Base image rebuilt!\"}'
     - name: Notify slack
       if: failure()
+      uses: pullreminders/slack-action@v1.0.7
       env:
         SLACK_BOT_TOKEN: ${{ secrets.SLACKBOT_TOKEN }}
-        uses: pullreminders/slack-action@v1.0.7
         with:
           args: '{\"channel\":\"engineering\",\"text\":\"@here Base image rebuild failed - better check it out. :)\"}'
