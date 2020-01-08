@@ -9,6 +9,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
+    - name: Unshallow the clone
+      run: git fetch --depth=2
     - name: Notify Slack of Start
       id: slack
       uses: voxmedia/github-action-slack-notify-build@v1
