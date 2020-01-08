@@ -24,6 +24,8 @@ jobs:
         GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
     - name: Docker Pull Recent Base Image
       run: docker pull docker.pkg.github.com/systeminit/si/si-base:latest
+    - name: Setup tmate session
+      uses: mxschmitt/action-tmate@v1
     - name: Release Components 
       run: make release_from_git
     - name: Notify Slack of Success
