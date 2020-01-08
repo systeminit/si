@@ -101,3 +101,7 @@ clean:
 force_clean:
 	sudo rm -rf ./components/*/node_modules
 	sudo rm -rf ./target
+
+dev_deps:
+	./components/couchbase/run.sh; exit 0
+	./components/jaeger/run.sh; exit 0

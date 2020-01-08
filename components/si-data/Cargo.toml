@@ -12,7 +12,7 @@ edition = "2018"
 [dependencies]
 anyhow = "1.0"
 uuid = { version = "0.7", features = [ "serde", "v4" ] }
-futures-preview = { version = "=0.3.0-alpha.19", default-features = false, features = ["alloc", "compat"]}
+futures = { version = "0.3", default-features = false, features = ["alloc"]}
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 couchbase = { path = "../../vendor/couchbase-rs/couchbase" }
@@ -26,7 +26,7 @@ prost = "0.5"
 prost-derive = "0.5"
 bytes = "0.4"
 thiserror = "1.0"
-tokio = { version = "=0.2.0-alpha.6", features = [ "timer" ] }
+tokio = { version = "0.2", features = [ "full" ] } 
 toml = "0.5"
 
 # Internal Dependencies
@@ -39,5 +39,4 @@ prost-build = "0.5"
 ureq = "0.11" 
 lazy_static = "1.4"
 tracing-subscriber = "0.1.6"
-#futures-preview = { version = "=0.3.0-alpha.19", default-features = false, features = ["alloc", "compat"]}
 

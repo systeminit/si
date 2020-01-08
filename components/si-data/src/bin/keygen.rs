@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use serde::Serialize;
 use sodiumoxide::crypto::secretbox;
 use toml;
@@ -9,7 +9,7 @@ struct Paging {
 }
 
 fn main() -> Result<()> {
-    sodiumoxide::init();
+    sodiumoxide::init().expect("Cannot init sodiumoxide - something is real wrong");
     let paging = Paging {
         key: secretbox::gen_key(),
     };

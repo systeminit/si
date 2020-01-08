@@ -1,12 +1,19 @@
 use lazy_static::lazy_static;
+use opentelemetry::{
+    api::{Key, Provider, Sampler},
+    exporter::trace::jaeger,
+    global, sdk,
+};
 use tokio;
 use tokio::sync::Mutex;
 use tracing;
-use tracing_subscriber::{self, EnvFilter, FmtSubscriber};
+use tracing_opentelemetry::OpentelemetryLayer;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::{self, fmt, EnvFilter, FmtSubscriber, Layer, Registry};
 
 use std::env;
 
-use si_account::{protobuf, protobuf::server::Account, service::Service};
+use si_account::{protobuf, protobuf::account_server::Account, service::Service};
 use si_data::Db;
 use si_settings::Settings;
 
@@ -20,12 +27,33 @@ pub struct TestAccount {
 
 lazy_static! {
     pub static ref SETTINGS: Settings = {
-        let subscriber = FmtSubscriber::builder()
-            .with_env_filter(EnvFilter::from_default_env())
-            .finish();
+        let exporter = jaeger::Exporter::builder()
+            .with_process(jaeger::Process {
+                service_name: "si-test",
+                tags: Vec::new(),
+            })
+            .init();
+        let provider = sdk::Provider::builder()
+            .with_exporter(exporter)
+            .with_config(sdk::Config {
+                default_sampler: Sampler::Always,
+                ..Default::default()
+            })
+            .build();
 
-        tracing::subscriber::set_global_default(subscriber)
-            .expect("setting tracing default failed");
+        let tracer = provider.get_tracer("account");
+
+        let fmt_layer = fmt::Layer::default();
+        let opentelemetry_layer = OpentelemetryLayer::with_tracer(tracer);
+        let env_filter_layer = EnvFilter::from_default_env();
+
+        let subscriber = Registry::default()
+            .with(env_filter_layer)
+            .with(fmt_layer)
+            .with(opentelemetry_layer);
+
+        tracing::subscriber::set_global_default(subscriber).unwrap();
+
         env::set_var("RUN_ENV", "testing");
         Settings::new().expect("Failed to load settings")
     };
@@ -131,7 +159,7 @@ mod authorize {
 
 mod login {
     use super::{create_test_account, SERVICE, TEST_ACCOUNT};
-    use si_account::{protobuf, protobuf::server::Account};
+    use si_account::{protobuf, protobuf::account_server::Account};
 
     #[tokio::test]
     async fn bare_request_invalid() {
@@ -216,7 +244,7 @@ mod login {
 
 mod create_account {
     use super::SERVICE;
-    use si_account::{protobuf, protobuf::server::Account};
+    use si_account::{protobuf, protobuf::account_server::Account};
 
     #[tokio::test]
     async fn bare_request_invalid() {

@@ -1,6 +1,3 @@
-use tracing::{self, trace};
-use uuid::Uuid;
-
 use crate::storable::Storable;
 
 /// The Migrateable trait is something that can be migrated and managed as a versioned

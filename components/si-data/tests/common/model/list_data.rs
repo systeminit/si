@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 use si_data::error::{DataError, Result};
-use si_data::Migrateable;
 use si_data::{Reference, Storable};
 use uuid::Uuid;
 

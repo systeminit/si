@@ -5,7 +5,7 @@ use tokio::runtime::Builder;
 use tonic::transport::Server;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
-use si_account::{protobuf::server::AccountServer, service::Service};
+use si_account::{protobuf::account_server::AccountServer, service::Service};
 
 async fn run() -> Result<()> {
     let settings = Settings::new()?;
@@ -37,8 +37,9 @@ fn main() -> Result<()> {
     tracing::subscriber::set_global_default(subscriber)
         .context("cannot set the global tracing defalt")?;
 
-    let runtime = Builder::new()
-        .panic_handler(|err| std::panic::resume_unwind(err))
+    let mut runtime = Builder::new()
+        .enable_all()
+        //.panic_handler(|err| std::panic::resume_unwind(err))
         .build()
         .context("Cannot set the tokio runtime up")?;
 
