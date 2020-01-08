@@ -33,7 +33,7 @@ TO_BUILD=$(shell git diff --name-only origin/master...HEAD | grep -E "^($(BUILDA
 
 GITHUB_SHA := HEAD
 
-TO_RELEASE=$(shell git diff --name-only $(GITHUB_SHA) | grep -E "^($(RELEASEABLE_REGEX))" | cut -d "/" -f 1,2 | sort | uniq | tr "\n" " ")
+TO_RELEASE=$(shell git diff --name-only HEAD^ | grep -E "^($(RELEASEABLE_REGEX))" | cut -d "/" -f 1,2 | sort | uniq | tr "\n" " ")
 
 
 RELEASE := $(shell date +%Y%m%d%H%M%S)
