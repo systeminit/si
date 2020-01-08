@@ -19,12 +19,12 @@ jobs:
       uses: pullreminders/slack-action@v1.0.7
       env:
         SLACK_BOT_TOKEN: ${{ secrets.SLACKBOT_TOKEN }}
-        with:
-          args: '{\"channel\":\"engineering\",\"text\":\"Base image rebuilt!\"}'
+      with:
+        args: '{\"channel\":\"engineering\",\"text\":\"Base image rebuilt!\"}'
     - name: Notify slack
       if: failure()
       uses: pullreminders/slack-action@v1.0.7
       env:
         SLACK_BOT_TOKEN: ${{ secrets.SLACKBOT_TOKEN }}
-        with:
-          args: '{\"channel\":\"engineering\",\"text\":\"@here Base image rebuild failed - better check it out. :)\"}'
+      with:
+        args: '{\"channel\":\"engineering\",\"text\":\"@here Base image rebuild failed - better check it out. :)\"}'
