@@ -6,7 +6,7 @@ use tracing_subscriber::{self, EnvFilter, FmtSubscriber};
 
 use std::env;
 
-use si_account::{protobuf, protobuf::server::Account, service::Service};
+use si_account::{protobuf, protobuf::account_server::Account, service::Service};
 use si_data::Db;
 use si_settings::Settings;
 
@@ -131,7 +131,7 @@ mod authorize {
 
 mod login {
     use super::{create_test_account, SERVICE, TEST_ACCOUNT};
-    use si_account::{protobuf, protobuf::server::Account};
+    use si_account::{protobuf, protobuf::account_server::Account};
 
     #[tokio::test]
     async fn bare_request_invalid() {
@@ -216,7 +216,7 @@ mod login {
 
 mod create_account {
     use super::SERVICE;
-    use si_account::{protobuf, protobuf::server::Account};
+    use si_account::{protobuf, protobuf::account_server::Account};
 
     #[tokio::test]
     async fn bare_request_invalid() {

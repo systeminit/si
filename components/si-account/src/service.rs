@@ -6,7 +6,7 @@ use tracing_futures::Instrument;
 use crate::authorize::authorize;
 use crate::error::{AccountError, TonicResult};
 use crate::model::{billing_account, group, user};
-use crate::protobuf::{self, server};
+use crate::protobuf::{self, account_server};
 
 #[derive(Debug)]
 pub struct Service {
@@ -24,7 +24,7 @@ impl Service {
 }
 
 #[tonic::async_trait]
-impl server::Account for Service {
+impl account_server::Account for Service {
     async fn get_user(
         &self,
         request: Request<protobuf::GetUserRequest>,

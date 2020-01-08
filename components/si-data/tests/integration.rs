@@ -1,7 +1,6 @@
 use lazy_static::lazy_static;
-use serde::{Deserialize, Serialize};
 use tokio;
-use tracing::{self, debug};
+use tracing;
 use tracing_subscriber::{self, EnvFilter, FmtSubscriber};
 use ureq;
 use uuid::Uuid;
@@ -16,7 +15,7 @@ use si_data::{
         QueryExpressionOption,
     },
     error::{DataError, Result},
-    Db, ListResult, Migrateable, Reference, Storable,
+    Db, ListResult, Storable,
 };
 use si_settings::Settings;
 

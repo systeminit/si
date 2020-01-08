@@ -1,10 +1,9 @@
 use couchbase::{options::QueryOptions, options::ScanConsistency, SharedBucket, SharedCluster};
-use futures::stream::{Stream, StreamExt};
+use futures::stream::StreamExt;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{self, json};
 use si_settings::Settings;
 use sodiumoxide::crypto::secretbox;
-use tokio;
 use tracing::{debug, event, span, Level};
 
 use std::collections::HashMap;
