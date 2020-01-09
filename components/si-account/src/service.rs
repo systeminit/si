@@ -5,7 +5,7 @@ use tracing_futures::Instrument;
 
 use crate::authorize::authorize;
 use crate::error::{AccountError, TonicResult};
-use crate::model::{billing_account, group, user};
+use crate::model::{billing_account, group, organization, user, workspace};
 use crate::protobuf::{self, account_server};
 
 #[derive(Debug)]
@@ -54,8 +54,8 @@ impl account_server::Account for Service {
 
             Ok(Response::new(protobuf::GetUserReply { user: Some(user) }))
         }
-            .instrument(debug_span!("get_user", ?request))
-            .await
+        .instrument(debug_span!("get_user", ?request))
+        .await
     }
 
     async fn get_billing_account(
@@ -100,8 +100,8 @@ impl account_server::Account for Service {
                 billing_account: Some(billing_account),
             }))
         }
-            .instrument(debug_span!("get_billing_account", ?request))
-            .await
+        .instrument(debug_span!("get_billing_account", ?request))
+        .await
     }
 
     // Login always returns a response, and it is purposefully vague
@@ -169,8 +169,8 @@ impl account_server::Account for Service {
                 }))
             }
         }
-            .instrument(debug_span!("login", ?request))
-            .await
+        .instrument(debug_span!("login", ?request))
+        .await
     }
 
     async fn create_account(
@@ -222,10 +222,31 @@ impl account_server::Account for Service {
             admin_group.add_to_tenant_ids(ba.id.clone());
             admin_group.add_user(user.id.clone());
             admin_group.add_capability(ba.id.clone(), vec!["any".to_string()]);
+            admin_group.billing_account_id = ba.id.clone();
             self.db
                 .validate_and_insert_as_new(&mut admin_group)
                 .await
                 .map_err(AccountError::CreateGroupError)?;
+
+            let mut organization =
+                organization::Organization::new("default".to_string(), ba.id.clone());
+            organization.add_to_tenant_ids(ba.id.clone());
+            self.db
+                .validate_and_insert_as_new(&mut organization)
+                .await
+                .map_err(AccountError::CreateOrganizationError)?;
+
+            let mut workspace = workspace::Workspace::new(
+                "default".to_string(),
+                ba.id.clone(),
+                organization.id.clone(),
+            );
+            workspace.add_to_tenant_ids(ba.id.clone());
+            workspace.add_to_tenant_ids(organization.id.clone());
+            self.db
+                .validate_and_insert_as_new(&mut workspace)
+                .await
+                .map_err(AccountError::CreateWorkspaceError)?;
 
             Ok(Response::new(protobuf::CreateAccountReply {
                 user: Some(user),
@@ -233,7 +254,7 @@ impl account_server::Account for Service {
                 ..Default::default()
             }))
         }
-            .instrument(debug_span!("create_account", ?request))
-            .await
+        .instrument(debug_span!("create_account", ?request))
+        .await
     }
 }
