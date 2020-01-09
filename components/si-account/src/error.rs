@@ -19,6 +19,10 @@ pub enum AccountError {
     CreateBillingAccountError(si_data::error::DataError),
     #[error("error creating a group: {0}")]
     CreateGroupError(si_data::error::DataError),
+    #[error("error creating an organization: {0}")]
+    CreateOrganizationError(si_data::error::DataError),
+    #[error("error creating a workspace: {0}")]
+    CreateWorkspaceError(si_data::error::DataError),
     #[error("invalid create user request: {0}")]
     InvalidCreateUserRequest(String),
     #[error("an email was provided, but it wasn't valid - no at sign?")]

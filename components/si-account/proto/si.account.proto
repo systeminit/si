@@ -103,6 +103,7 @@ message Group {
   string display_name = 6;
   repeated string user_ids = 7;
   repeated Capability capabilities = 8;
+  string billing_account_id = 20;
 } 
 
 message BillingAccount {
@@ -112,4 +113,23 @@ message BillingAccount {
   string display_name = 4;
   string short_name = 5;
   repeated string tenant_ids = 10;
+}
+
+message Organization {
+  string id = 1;
+  string natural_key = 2;
+  string type_name = 3;
+  string name = 4;
+  repeated string tenant_ids = 10;
+  string billing_account_id = 20;
+}
+
+message Workspace {
+  string id = 1;
+  string natural_key = 2;
+  string type_name = 3;
+  string name = 4;
+  repeated string tenant_ids = 10;
+  string billing_account_id = 20;
+  string organization_id = 21;
 }
