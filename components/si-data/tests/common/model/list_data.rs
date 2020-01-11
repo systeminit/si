@@ -24,6 +24,17 @@ impl ListData {
             tenant_ids: vec!["global".to_string()],
         }
     }
+
+    pub fn new_non_global<T: Into<String>>(id: T, name: T) -> ListData {
+        let name = name.into();
+        ListData {
+            id: id.into(),
+            name: name.clone(),
+            type_name: String::from("list_data"),
+            natural_key: name,
+            tenant_ids: vec!["local".to_string()],
+        }
+    }
 }
 
 impl Storable for ListData {

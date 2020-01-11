@@ -1,4 +1,5 @@
 import { DataSource } from "apollo-datasource";
+import * as path from "path";
 
 import { ServiceDescription } from "@/services";
 import grpcCaller = require("grpc-caller");
@@ -15,6 +16,9 @@ export class GrpcServiceBroker {
     this.services = {};
 
     for (const sd of services) {
+      if (sd.dataOnly == true) {
+        continue;
+      }
       const caller = grpcCaller(
         sd.address,
         {
@@ -24,6 +28,7 @@ export class GrpcServiceBroker {
             longs: String,
             defaults: true,
             oneofs: true,
+            includeDirs: [path.join(__dirname, "..", "..", "..")],
           },
         },
         sd.grpcServiceName,

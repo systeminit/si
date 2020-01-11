@@ -8,6 +8,7 @@ export class ServiceDescription {
   graphqlTypePrefix: string;
   grpcServiceName: string;
   address: string;
+  dataOnly: boolean;
 
   constructor({
     serviceName,
@@ -15,18 +16,21 @@ export class ServiceDescription {
     grpcServiceName,
     graphqlTypePrefix,
     address,
+    dataOnly,
   }: {
     serviceName: string;
     protoPackageName: string;
     grpcServiceName: string;
     graphqlTypePrefix: string;
     address: string;
+    dataOnly?: boolean;
   }) {
     this.serviceName = serviceName;
     this.protoPackageName = protoPackageName;
     this.grpcServiceName = grpcServiceName;
     this.graphqlTypePrefix = graphqlTypePrefix;
     this.address = address;
+    this.dataOnly = dataOnly;
   }
 
   protobufPath(): string {
@@ -62,6 +66,15 @@ export const services = [
     graphqlTypePrefix: "",
     address: environment.services["si-account"],
   }),
+  new ServiceDescription({
+    serviceName: "si-data",
+    protoPackageName: "si.data",
+    grpcServiceName: "Data",
+    graphqlTypePrefix: "Data",
+    address: environment.services["si-account"],
+    dataOnly: true,
+  }),
+
   // new ServiceDescription({
   //   serviceName: "si-ssh-key",
   //   protoPackageName: "ssh_key",

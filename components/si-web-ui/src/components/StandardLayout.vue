@@ -23,7 +23,10 @@
 
     <v-app-bar app clipped-left>
       <v-app-bar-nav-icon @click.stop="drawer = !drawer" />
-      <v-toolbar-title>IRA OS</v-toolbar-title>
+      <v-toolbar-title
+        >IRA OS / Org: {{ organization.name }} / Workspace:
+        {{ workspace.name }}</v-toolbar-title
+      >
       <v-spacer></v-spacer>
       <v-menu
         v-model="menu"
@@ -98,13 +101,27 @@ import { auth } from "@/auth";
 
 export default Vue.extend({
   name: "StandardLayout",
-  data: () => ({
-    drawer: false,
-    message: false,
-    hints: false,
-    menu: false,
-    profile: auth.getProfile(),
-  }),
+  data: () => {
+    const profile = auth.getProfile();
+    const organization = (profile &&
+      profile.billingAccount &&
+      profile.billingAccount.organizations &&
+      profile.billingAccount.organizations.items &&
+      profile.billingAccount.organizations.items[0]) || { name: "busted" };
+    const workspace = (organization &&
+      organization.workspaces &&
+      organization.workspaces.items &&
+      organization.workspaces.items[0]) || { name: "busted" };
+    return {
+      drawer: false,
+      message: false,
+      hints: false,
+      menu: false,
+      profile,
+      organization,
+      workspace,
+    };
+  },
   methods: {
     async logOut() {
       await auth.logout();

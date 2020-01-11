@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use si_data::Db;
 use si_settings::Settings;
+use tokio::prelude::*;
 use tokio::runtime::Builder;
 use tonic::transport::Server;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
@@ -29,7 +30,8 @@ async fn run() -> Result<()> {
     Ok(())
 }
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     let subscriber = FmtSubscriber::builder()
         .with_env_filter(EnvFilter::from_default_env())
         .finish();
@@ -37,12 +39,14 @@ fn main() -> Result<()> {
     tracing::subscriber::set_global_default(subscriber)
         .context("cannot set the global tracing defalt")?;
 
-    let mut runtime = Builder::new()
-        .enable_all()
-        //.panic_handler(|err| std::panic::resume_unwind(err))
-        .build()
-        .context("Cannot set the tokio runtime up")?;
+    //let mut runtime = Builder::new()
+    //    .enable_all()
+    //    //.panic_handler(|err| std::panic::resume_unwind(err))
+    //    .build()
+    //    .context("Cannot set the tokio runtime up")?;
 
-    runtime.block_on(async { run().await })?;
+    let handle = tokio::spawn(async move { run().await });
+
+    handle.await??;
     Ok(())
 }

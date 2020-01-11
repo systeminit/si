@@ -115,8 +115,8 @@ impl SshKey for Service {
             event!(Level::INFO, ?response);
             Ok(response)
         }
-            .instrument(span!(Level::INFO, "get_component"))
-            .await
+        .instrument(span!(Level::INFO, "get_component"))
+        .await
     }
 
     async fn list_components(
@@ -197,8 +197,8 @@ impl SshKey for Service {
 
             Ok(response)
         }
-            .instrument(span!(Level::INFO, "list_components"))
-            .await
+        .instrument(span!(Level::INFO, "list_components"))
+        .await
     }
 
     //async fn pick_component(
@@ -370,8 +370,8 @@ impl SshKey for Service {
             });
             Ok(response)
         }
-            .instrument(span!(Level::INFO, "create_entity"))
-            .await
+        .instrument(span!(Level::INFO, "create_entity"))
+        .await
     }
 
     async fn get_entity(
@@ -395,8 +395,8 @@ impl SshKey for Service {
 
             Ok(response)
         }
-            .instrument(span!(Level::INFO, "get_entity"))
-            .await
+        .instrument(span!(Level::INFO, "get_entity"))
+        .await
     }
 
     async fn list_entities(
@@ -477,7 +477,7 @@ impl SshKey for Service {
 
             Ok(response)
         }
-            .instrument(span!(Level::INFO, "list_entities"))
-            .await
+        .instrument(span!(Level::INFO, "list_entities"))
+        .await
     }
 }

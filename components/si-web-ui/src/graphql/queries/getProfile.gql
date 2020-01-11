@@ -12,6 +12,22 @@ query getProfile($userId: String!) {
         id
         displayName
         shortName
+        organizations {
+          items {
+            id
+            name
+            workspaces {
+              items {
+                id
+                name
+              }
+              nextPageToken
+              totalCount
+            }
+          }
+          nextPageToken
+          totalCount
+        }
       }
     }
   }

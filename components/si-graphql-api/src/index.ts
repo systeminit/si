@@ -13,7 +13,9 @@ import { DataSources } from "apollo-server-core/dist/graphqlOptions";
 
 // First, load the protocol buffers
 const protobufLoader = new ProtobufLoader({
-  protos: [],
+  protos: [
+    //path.join(__dirname, "..", "..", "si-data", "proto", "si.data.proto"),
+  ],
   services,
 });
 

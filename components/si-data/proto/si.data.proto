@@ -48,5 +48,6 @@ message PageToken {
   string order_by = 3; 
   OrderByDirection order_by_direction = 4;
   string item_id = 5;
+  string contained_within = 6;
 }
 

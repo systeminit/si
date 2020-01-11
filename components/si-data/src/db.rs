@@ -257,42 +257,71 @@ impl Db {
         let order_by = page_token.order_by;
         let page_size = page_token.page_size;
         let item_id = page_token.item_id;
-        let order_by_direction = OrderByDirection::from_i32(page_token.order_by_direction)
-            .ok_or(DataError::InvalidOrderByDirection)?;
-        self.list(&query, page_size, &order_by, order_by_direction, &item_id)
-            .await
+        let order_by_direction = page_token.order_by_direction;
+        let contained_within = page_token.contained_within;
+        //let order_by_direction = OrderByDirection::from_i32(page_token.order_by_direction)
+        //.ok_or(DataError::InvalidOrderByDirection)?;
+        self.list(
+            &query,
+            page_size,
+            &order_by,
+            order_by_direction,
+            &contained_within,
+            &item_id,
+        )
+        .await
     }
 
     #[tracing::instrument]
     pub async fn list<
         I: DeserializeOwned + Storable + std::fmt::Debug,
+        O: AsRef<str> + std::fmt::Debug,
+        C: AsRef<str> + std::fmt::Debug + std::fmt::Display,
         S: AsRef<str> + std::fmt::Debug,
     >(
         &self,
         query: &Option<Query>,
         page_size: i32,
-        order_by: S,
-        order_by_direction: OrderByDirection,
+        order_by: O,
+        order_by_direction: i32,
+        contained_within: C,
         item_id: S,
     ) -> Result<ListResult<I>> {
-        <I as Storable>::is_order_by_valid(order_by.as_ref(), <I as Storable>::order_by_fields())?;
         let type_name = <I as Storable>::type_name();
+
+        // The empty string is the default order_by; and it should be
+        // naturalKey
+        let order_by = match order_by.as_ref() {
+            "" => "naturalKey",
+            ob => ob,
+        };
+
+        <I as Storable>::is_order_by_valid(order_by, <I as Storable>::order_by_fields())?;
+
+        // If you don't send a valid order by direction, you fucked with
+        // the protobuf you sent by hand
+        let order_by_direction = OrderByDirection::from_i32(order_by_direction)
+            .ok_or(DataError::InvalidOrderByDirection)?;
+
+        // The default page size is 10, and the inbound default is 0
+        let page_size = if page_size == 0 { 10 } else { page_size };
 
         let mut named_params = HashMap::new();
         named_params.insert("type_name".into(), json![type_name]);
-        named_params.insert("order_by".into(), json![order_by.as_ref()]);
+        named_params.insert("order_by".into(), json![order_by]);
         let named_options = QueryOptions::new()
             .set_named_parameters(named_params)
             .set_scan_consistency(self.scan_consistency);
 
         let cbquery = match query {
             Some(q) => format!(
-                "SELECT {bucket}.* FROM `{bucket}` WHERE typeName = $type_name AND {} ORDER BY {bucket}.[$order_by] {}",
-                q.as_n1ql(&self.bucket_name)?,
-                order_by_direction.to_string(),
+               "SELECT {bucket}.* FROM `{bucket}` WHERE typeName = $type_name AND ARRAY_CONTAINS(tenantIds, \"{tenant_id}\") AND {query} ORDER BY {bucket}.[$order_by] {order_by_direction}",
+                query=q.as_n1ql(&self.bucket_name)?,
+                order_by_direction=order_by_direction.to_string(),
                 bucket=self.bucket_name,
+                tenant_id=contained_within,
             ),
-            None => format!("SELECT {bucket}.* FROM `{bucket}` WHERE typeName = $type_name ORDER BY {bucket}.[$order_by] {}", order_by_direction, bucket=self.bucket_name),
+            None => format!("SELECT {bucket}.* FROM `{bucket}` WHERE typeName = $type_name AND ARRAY_CONTAINS(tenantIds, \"{tenant_id}\") ORDER BY {bucket}.[$order_by] {}", order_by_direction, bucket=self.bucket_name, tenant_id=contained_within),
         };
         event!(Level::DEBUG, ?cbquery, ?named_options);
         let mut result = self.cluster.query(cbquery, Some(named_options)).await?;
@@ -342,9 +371,10 @@ impl Db {
             let mut next_page_token = PageToken::default();
             next_page_token.query = query.clone();
             next_page_token.page_size = page_size;
-            next_page_token.order_by = String::from(order_by.as_ref());
+            next_page_token.order_by = String::from(order_by);
             next_page_token.order_by_direction = order_by_direction as i32;
             next_page_token.item_id = next_item_id.clone();
+            next_page_token.contained_within = contained_within.to_string();
             next_page_token.seal(&self.page_secret_key)?
         };
 
@@ -435,6 +465,24 @@ impl Db {
     where
         S: Into<String> + std::fmt::Debug,
         T: DeserializeOwned + std::fmt::Debug,
+    {
+        let item = {
+            let bucket = self.bucket.clone();
+            let collection = bucket.default_collection();
+            collection
+                .get(id.into(), None)
+                .await
+                .map_err(DataError::CouchbaseError)?
+        };
+        event!(Level::DEBUG, ?item);
+        Ok(item.content_as::<T>()?)
+    }
+
+    #[tracing::instrument]
+    pub async fn get_storable<S, T>(&self, id: S) -> Result<T>
+    where
+        S: Into<String> + std::fmt::Debug,
+        T: Storable + DeserializeOwned + std::fmt::Debug,
     {
         let item = {
             let bucket = self.bucket.clone();

@@ -107,18 +107,46 @@ export class SchemaGenerator {
     protobufName?: string,
   ): string {
     protobufName = protobufName || protobufItem.name;
-    const protobufFullName = protobufItem.fullName;
+
+    let isReferenceType = false;
+
+    let protobufFullName = protobufItem.fullName;
+    // If it starts with si, then the full name is the name of the item - it's
+    // a foreign reference, essentially.
+    if (protobufName.startsWith("si.")) {
+      isReferenceType = true;
+      protobufFullName = `.${protobufName}`;
+    }
 
     // The protobuf full name is `si.account.User`, for example
     //
     // So find the service that uses that same prefix, and then
     // return the graphqlTypePrefix for that service.
-    const graphqlTypePrefix = this.services.find(s =>
+    const graphqlTypePrefixResult = this.services.find(s =>
       protobufFullName.startsWith(`.${s.protoPackageName}`),
-    ).graphqlTypePrefix;
+    );
+    logger.log("info", "the prefix result is :", {
+      graphqlTypePrefixResult,
+      protobufItem,
+      protobufName,
+      protobufFullName,
+    });
+    const graphqlTypePrefix = graphqlTypePrefixResult.graphqlTypePrefix;
 
-    const name = `${graphqlTypePrefix}${protobufName}`;
-    return name;
+    logger.log("info", "the prefix is :", { graphqlTypePrefix });
+
+    logger.log("info", "we have: ", {
+      protobufItem,
+      protobufName,
+      protobufFullName,
+    });
+
+    if (isReferenceType) {
+      const realName = protobufName.split(".").pop();
+      return `${graphqlTypePrefix}${realName}`;
+    } else {
+      return `${graphqlTypePrefix}${protobufName}`;
+    }
   }
 
   // Define all the fields for a top level type. May be either
@@ -159,18 +187,18 @@ export class SchemaGenerator {
         gt = t;
       }
 
-      // If it is an "id" field, then we should announce that
-      // to GraphQL, so that client side caching can be smart.
-      if (field == "id") {
-        gt.id(field, fieldConfig);
-        // If the hints say this field has_one, then it should become
-        // two fields - one the original field, and the second a field
-        // that resolves to the grpc endpoint that retrieves the ID.
-        //
-        // The corresponding field must be identical to the field
-        // in the request object.
-      } else if (hint["has_one"]) {
-        gt.string(field, fieldConfig);
+      // If the hints say this field has_one, then it should become
+      // two fields - one the original field, and the second a field
+      // that resolves to the grpc endpoint that retrieves the ID.
+      //
+      // The corresponding field must be identical to the field
+      // in the request object.
+      if (hint["has_one"]) {
+        if (field == "id") {
+          gt.id(field, fieldConfig);
+        } else {
+          gt.string(field, fieldConfig);
+        }
         gt.field(hint["has_one"]["to"], {
           type: hint["has_one"]["type"],
           async resolve(obj, _attrs, { dataSources: { grpc }, user }: Context) {
@@ -193,6 +221,52 @@ export class SchemaGenerator {
           },
           ...fieldConfig,
         });
+        // TODO: Need to deal with having many has_many fields off a single
+        // graphql field. Basically it's an array? TOML. Who knows.
+      } else if (hint["has_many"]) {
+        if (field == "id") {
+          gt.id(field, fieldConfig);
+        } else {
+          gt.string(field, fieldConfig);
+        }
+        for (const thisHint of hint["has_many"]) {
+          gt.field(thisHint["to"], {
+            type: thisHint["type"],
+            args: { input: arg({ type: thisHint["inputType"] }) },
+            async resolve(
+              obj,
+              attrs,
+              { dataSources: { grpc }, user }: Context,
+            ) {
+              const metadata = new Metadata();
+              metadata.add("authenticated", `${user.authenticated}`);
+              metadata.add("userId", user["userId"] || "");
+              metadata.add("billingAccountId", user["billingAccountId"] || "");
+
+              const grpcServiceName = thisHint["grpcServiceName"];
+              const g = grpc.service(grpcServiceName);
+              const input = attrs["input"] || {};
+              logger.log("error", "I have sad times", { attrs });
+              logger.log("error", "I have good times", { obj });
+              input["scopeByTenantId"] = obj["id"];
+              const req = new g.Request(thisHint["method"], input).withMetadata(
+                metadata,
+              );
+              const result = await req.exec();
+              logger.log("error", "I have the has many", {
+                result: result,
+                thisHint,
+              });
+              return result.response;
+            },
+            ...fieldConfig,
+          });
+        }
+        // If it is an "id" field, then we should announce that
+        // to GraphQL, so that client side caching can be smart.
+      } else if (field == "id") {
+        gt.id(field, fieldConfig);
+
         // Protobuf floats or doubles live in GraphQL floats.
       } else if (fieldData.type == "float" || fieldData.type == "double") {
         gt.float(field, fieldConfig);
@@ -220,9 +294,6 @@ export class SchemaGenerator {
       } else {
         // Otherwise, this field references another type. So we look
         // up the type name and use it.
-        //
-        // NOTE: I suspect this function is going to fail us when we
-        // reference types outside of the same package.
         const referenceType = this.graphqlTypeName(
           protobufType,
           fieldData.type,
@@ -283,9 +354,14 @@ export class SchemaGenerator {
               metadata.add("userId", user["userId"] || "");
               metadata.add("billingAccountId", user["billingAccountId"] || "");
               const g = grpc.service(grpcServiceName);
-              const req = new g.Request(grpcMethodName, input).withMetadata(
-                metadata,
-              );
+              let req;
+              if (input) {
+                req = new g.Request(grpcMethodName, input).withMetadata(
+                  metadata,
+                );
+              } else {
+                req = new g.Request(grpcMethodName, {}).withMetadata(metadata);
+              }
               const result = await req.exec();
               return result.response;
             },
@@ -372,7 +448,7 @@ export class SchemaGenerator {
       // until schema generation. So we delegate it to the
       // protobufToType method, which is actually going to
       // define our type.
-      if (name.endsWith("Request")) {
+      if (name.endsWith("Request") || hints["inputType"]) {
         const graphqlType = inputObjectType({
           //@ts-ignore
           name,
