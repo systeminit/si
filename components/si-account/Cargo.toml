@@ -14,11 +14,11 @@ anyhow = "1.0"
 uuid = { version = "0.7", features = [ "serde", "v4" ] }
 
 # Tonic Deps
-tonic = "0.1.0-beta.1"
-bytes = "0.4"
-prost = "0.5"
-prost-derive = "0.5"
-tokio = { version = "0.2", features = ["rt-threaded", "time", "stream", "fs", "macros", "uds"] }
+tonic = "0.1" 
+bytes = "0.5"
+prost = "0.6" 
+prost-derive = "0.6"
+tokio = { version = "0.2", features = ["full"] }
 futures = { version = "0.3", features = ["alloc"]}
 async-stream = "0.2"
 http = "0.2"
@@ -55,5 +55,4 @@ tracing-opentelemetry = "0.1.0"
 opentelemetry = "0.1"
 
 [build-dependencies]
-tonic-build = { version = "0.1.0-beta.1" }
-prost-build = "0.5"
+tonic-build = "0.1"

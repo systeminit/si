@@ -53,10 +53,22 @@ pub enum AccountError {
     GrpcHeaderToString(#[from] tonic::metadata::errors::ToStrError),
     #[error("login failed")]
     LoginFailed,
+    #[error("error listing users: {0}")]
+    ListUsersError(si_data::error::DataError),
+    #[error("error listing users: {0}")]
+    ListWorkspacesError(si_data::error::DataError),
+    #[error("error listing users: {0}")]
+    ListOrganizationsError(si_data::error::DataError),
     #[error("cannot hash the password")]
     PasswordHash,
     #[error("cannot find user")]
     UserMissing,
+    #[error("cannot find organization")]
+    OrganizationMissing,
+    #[error("unknown tenant id")]
+    UnknownTenantId(si_data::error::DataError),
+    #[error("invalid tenant id for scoped authorization")]
+    InvalidTenantId,
     #[error("error with database request: {0})")]
     Db(#[from] si_data::error::DataError),
     #[error("error converting bytes to utf-8 string: {0}")]
@@ -74,6 +86,7 @@ impl From<AccountError> for tonic::Status {
             | AccountError::InvalidMissingGivenName
             | AccountError::InvalidMissingFamilyName
             | AccountError::InvalidMissingShortName
+            | AccountError::InvalidTenantId
             | AccountError::EmptyBillingAccount
             | AccountError::EmptyUser => {
                 tonic::Status::new(tonic::Code::InvalidArgument, err.to_string())

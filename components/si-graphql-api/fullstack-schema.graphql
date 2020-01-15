@@ -12,6 +12,9 @@ type BillingAccount {
   """naturalKey"""
   naturalKey: String
 
+  """id"""
+  organizations(input: ListOrganizationsRequest): ListOrganizationsReply
+
   """shortName"""
   shortName: String
 
@@ -20,6 +23,9 @@ type BillingAccount {
 
   """typeName"""
   typeName: String
+
+  """id"""
+  users(input: ListUsersRequest): ListUsersReply
 }
 
 type Capability {
@@ -81,6 +87,79 @@ input CreateUserRequest {
   password: String
 }
 
+enum DataOrderByDirection {
+  ASC
+  DESC
+}
+
+input DataPageToken {
+  """containedWithin"""
+  containedWithin: String
+
+  """itemId"""
+  itemId: String
+
+  """orderBy"""
+  orderBy: String
+
+  """orderByDirection"""
+  orderByDirection: DataOrderByDirection
+
+  """pageSize"""
+  pageSize: Int
+
+  """query"""
+  query: DataQuery
+}
+
+input DataQuery {
+  """booleanTerm"""
+  booleanTerm: DataQueryBooleanLogic
+
+  """isNot"""
+  isNot: Boolean
+
+  """items"""
+  items: [DataQueryExpressionOption!]
+}
+
+enum DataQueryBooleanLogic {
+  AND
+  OR
+}
+
+enum DataQueryComparison {
+  EQUALS
+  NOTEQUALS
+}
+
+input DataQueryExpression {
+  """comparison"""
+  comparison: DataQueryComparison
+
+  """field"""
+  field: String
+
+  """fieldType"""
+  fieldType: DataQueryFieldType
+
+  """value"""
+  value: String
+}
+
+input DataQueryExpressionOption {
+  """expression"""
+  expression: DataQueryExpression
+
+  """query"""
+  query: DataQuery
+}
+
+enum DataQueryFieldType {
+  INT
+  STRING
+}
+
 type GetBillingAccountReply {
   """billingAccount"""
   billingAccount: BillingAccount
@@ -89,6 +168,16 @@ type GetBillingAccountReply {
 input GetBillingAccountRequest {
   """billingAccountId"""
   billingAccountId: String
+}
+
+type GetOrganizationReply {
+  """organization"""
+  organization: Organization
+}
+
+input GetOrganizationRequest {
+  """organizationId"""
+  organizationId: String
 }
 
 type GetUserReply {
@@ -102,6 +191,9 @@ input GetUserRequest {
 }
 
 type Group {
+  """billingAccountId"""
+  billingAccountId: String
+
   """capabilities"""
   capabilities: [Capability!]
 
@@ -127,6 +219,99 @@ type Group {
   userIds: [String!]
 }
 
+type ListOrganizationsReply {
+  """items"""
+  items: [Organization!]
+
+  """nextPageToken"""
+  nextPageToken: String
+
+  """totalCount"""
+  totalCount: Int
+}
+
+input ListOrganizationsRequest {
+  """orderBy"""
+  orderBy: String
+
+  """orderByDirection"""
+  orderByDirection: DataOrderByDirection
+
+  """pageSize"""
+  pageSize: Int
+
+  """pageToken"""
+  pageToken: String
+
+  """query"""
+  query: DataQuery
+
+  """scopeByTenantId"""
+  scopeByTenantId: String
+}
+
+type ListUsersReply {
+  """items"""
+  items: [User!]
+
+  """nextPageToken"""
+  nextPageToken: String
+
+  """totalCount"""
+  totalCount: Int
+}
+
+input ListUsersRequest {
+  """orderBy"""
+  orderBy: String
+
+  """orderByDirection"""
+  orderByDirection: DataOrderByDirection
+
+  """pageSize"""
+  pageSize: Int
+
+  """pageToken"""
+  pageToken: String
+
+  """query"""
+  query: DataQuery
+
+  """scopeByTenantId"""
+  scopeByTenantId: String
+}
+
+type ListWorkspacesReply {
+  """items"""
+  items: [Workspace!]
+
+  """nextPageToken"""
+  nextPageToken: String
+
+  """totalCount"""
+  totalCount: Int
+}
+
+input ListWorkspacesRequest {
+  """orderBy"""
+  orderBy: String
+
+  """orderByDirection"""
+  orderByDirection: DataOrderByDirection
+
+  """pageSize"""
+  pageSize: Int
+
+  """pageToken"""
+  pageToken: String
+
+  """query"""
+  query: DataQuery
+
+  """scopeByTenantId"""
+  scopeByTenantId: String
+}
+
 type LoginReply {
   billingAccountId: String
   jwt: String
@@ -143,9 +328,38 @@ type Mutation {
   createAccount(input: CreateAccountRequest): CreateAccountReply
 }
 
+type Organization {
+  """billingAccountId"""
+  billingAccount: BillingAccount
+
+  """billingAccountId"""
+  billingAccountId: String
+
+  """id"""
+  id: ID
+
+  """name"""
+  name: String
+
+  """naturalKey"""
+  naturalKey: String
+
+  """tenantIds"""
+  tenantIds: [String!]
+
+  """typeName"""
+  typeName: String
+
+  """id"""
+  workspaces(input: ListWorkspacesRequest): ListWorkspacesReply
+}
+
 type Query {
   getBillingAccount(input: GetBillingAccountRequest): GetBillingAccountReply
   getUser(input: GetUserRequest): GetUserReply
+  listOrganizations(input: ListOrganizationsRequest): ListOrganizationsReply
+  listUsers(input: ListUsersRequest): ListUsersReply
+  listWorkspaces(input: ListWorkspacesRequest): ListWorkspacesReply
   login(input: LoginRequest): LoginReply
 }
 
@@ -182,6 +396,35 @@ type User {
 
   """picture"""
   picture: String
+
+  """tenantIds"""
+  tenantIds: [String!]
+
+  """typeName"""
+  typeName: String
+}
+
+type Workspace {
+  """billingAccountId"""
+  billingAccount: BillingAccount
+
+  """billingAccountId"""
+  billingAccountId: String
+
+  """id"""
+  id: ID
+
+  """name"""
+  name: String
+
+  """naturalKey"""
+  naturalKey: String
+
+  """organizationId"""
+  organization: Organization
+
+  """organizationId"""
+  organizationId: String
 
   """tenantIds"""
   tenantIds: [String!]

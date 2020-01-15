@@ -7,6 +7,8 @@ fn main() {
     println!("{}", proto_include_path_string);
     let mut prost_build = prost_build::Config::new();
     prost_build
-        .compile_protos(&["si-data/proto/data.proto"], &[proto_include_path_string])
+        .type_attribute(".", "#[derive(serde::Serialize, serde::Deserialize)]")
+        .type_attribute(".", "#[serde(rename_all = \"camelCase\")]")
+        .compile_protos(&["si-data/proto/si.data.proto"], &[proto_include_path_string])
         .expect("cannot compile protobufs");
 }

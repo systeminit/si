@@ -16,7 +16,17 @@ export interface GraphqlHintMessage {
       method: string;
       type: string;
     };
+    has_many?: [
+      {
+        to: string;
+        grpcServiceName: string;
+        method: string;
+        type: string;
+        inputType: string;
+      },
+    ];
     skip?: boolean;
+    inputType?: boolean;
   };
 }
 

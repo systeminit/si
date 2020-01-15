@@ -1,9 +1,9 @@
-use si_data::{Db, Storable};
+use si_data::{Db, ListResult, Storable};
 use tonic::{Request, Response};
 use tracing::{debug, debug_span};
 use tracing_futures::Instrument;
 
-use crate::authorize::authorize;
+use crate::authorize::{authorize, authorize_by_tenant_id};
 use crate::error::{AccountError, TonicResult};
 use crate::model::{billing_account, group, organization, user, workspace};
 use crate::protobuf::{self, account_server};
@@ -55,6 +55,242 @@ impl account_server::Account for Service {
             Ok(Response::new(protobuf::GetUserReply { user: Some(user) }))
         }
         .instrument(debug_span!("get_user", ?request))
+        .await
+    }
+
+    async fn get_organization(
+        &self,
+        request: Request<protobuf::GetOrganizationRequest>,
+    ) -> TonicResult<protobuf::GetOrganizationReply> {
+        async {
+            debug!("get_organization");
+            let metadata = request.metadata();
+            let user_id = metadata
+                .get("userId")
+                .ok_or(AccountError::InvalidAuthentication)?
+                .to_str()
+                .map_err(AccountError::GrpcHeaderToString)?;
+            let billing_account_id = metadata
+                .get("billingAccountId")
+                .ok_or(AccountError::InvalidAuthentication)?
+                .to_str()
+                .map_err(AccountError::GrpcHeaderToString)?;
+            let req = request.get_ref();
+
+            let organization: organization::Organization = self
+                .db
+                .get(req.organization_id.to_string())
+                .await
+                .map_err(|e| {
+                    debug!(?e, "organization_get_failed");
+                    AccountError::OrganizationMissing
+                })?;
+            debug!(?organization, "found");
+
+            authorize(&self.db, user_id, billing_account_id, "read", &organization).await?;
+
+            Ok(Response::new(protobuf::GetOrganizationReply {
+                organization: Some(organization),
+            }))
+        }
+        .instrument(debug_span!("get_organization", ?request))
+        .await
+    }
+
+    async fn list_organizations(
+        &self,
+        request: Request<protobuf::ListOrganizationsRequest>,
+    ) -> TonicResult<protobuf::ListOrganizationsReply> {
+        async {
+            let metadata = request.metadata();
+            let user_id = metadata
+                .get("userId")
+                .ok_or(AccountError::InvalidAuthentication)?
+                .to_str()
+                .map_err(AccountError::GrpcHeaderToString)?;
+            let billing_account_id = metadata
+                .get("billingAccountId")
+                .ok_or(AccountError::InvalidAuthentication)?
+                .to_str()
+                .map_err(AccountError::GrpcHeaderToString)?;
+            let req = request.get_ref();
+
+            let billing_account: billing_account::BillingAccount = self
+                .db
+                .get(billing_account_id)
+                .await
+                .map_err(|_| AccountError::BillingAccountMissing)?;
+
+            authorize(
+                &self.db,
+                user_id,
+                billing_account_id,
+                "list_organizations",
+                &billing_account,
+            )
+            .await?;
+
+            let list_result: ListResult<organization::Organization> = if req.page_token != "" {
+                self.db
+                    .list_by_page_token(&req.page_token)
+                    .await
+                    .map_err(AccountError::ListOrganizationsError)?
+            } else {
+                self.db
+                    .list(
+                        &req.query,
+                        req.page_size,
+                        &req.order_by,
+                        req.order_by_direction,
+                        billing_account_id,
+                        "",
+                    )
+                    .await
+                    .map_err(AccountError::ListOrganizationsError)?
+            };
+
+            if list_result.items.len() == 0 {
+                return Ok(Response::new(protobuf::ListOrganizationsReply::default()));
+            }
+
+            Ok(Response::new(protobuf::ListOrganizationsReply {
+                total_count: list_result.total_count(),
+                next_page_token: list_result.page_token().to_string(),
+                items: list_result.items,
+            }))
+        }
+        .instrument(debug_span!("list_organizations", ?request))
+        .await
+    }
+
+    async fn list_workspaces(
+        &self,
+        request: Request<protobuf::ListWorkspacesRequest>,
+    ) -> TonicResult<protobuf::ListWorkspacesReply> {
+        async {
+            let metadata = request.metadata();
+            let user_id = metadata
+                .get("userId")
+                .ok_or(AccountError::InvalidAuthentication)?
+                .to_str()
+                .map_err(AccountError::GrpcHeaderToString)?;
+            let billing_account_id = metadata
+                .get("billingAccountId")
+                .ok_or(AccountError::InvalidAuthentication)?
+                .to_str()
+                .map_err(AccountError::GrpcHeaderToString)?;
+            let req = request.get_ref();
+
+            let scope_by_tenant_id = if req.scope_by_tenant_id == "" {
+                billing_account_id
+            } else {
+                &req.scope_by_tenant_id
+            };
+
+            authorize_by_tenant_id(&self.db, user_id, scope_by_tenant_id, "list_workspaces")
+                .await?;
+
+            let list_result: ListResult<workspace::Workspace> = if req.page_token != "" {
+                self.db
+                    .list_by_page_token(&req.page_token)
+                    .await
+                    .map_err(AccountError::ListWorkspacesError)?
+            } else {
+                self.db
+                    .list(
+                        &req.query,
+                        req.page_size,
+                        &req.order_by,
+                        req.order_by_direction,
+                        scope_by_tenant_id,
+                        "",
+                    )
+                    .await
+                    .map_err(AccountError::ListWorkspacesError)?
+            };
+
+            if list_result.items.len() == 0 {
+                return Ok(Response::new(protobuf::ListWorkspacesReply::default()));
+            }
+
+            Ok(Response::new(protobuf::ListWorkspacesReply {
+                total_count: list_result.total_count(),
+                next_page_token: list_result.page_token().to_string(),
+                items: list_result.items,
+            }))
+        }
+        .instrument(debug_span!("list_workspaces", ?request))
+        .await
+    }
+
+    async fn list_users(
+        &self,
+        request: Request<protobuf::ListUsersRequest>,
+    ) -> TonicResult<protobuf::ListUsersReply> {
+        async {
+            let metadata = request.metadata();
+            let user_id = metadata
+                .get("userId")
+                .ok_or(AccountError::InvalidAuthentication)?
+                .to_str()
+                .map_err(AccountError::GrpcHeaderToString)?;
+            let billing_account_id = metadata
+                .get("billingAccountId")
+                .ok_or(AccountError::InvalidAuthentication)?
+                .to_str()
+                .map_err(AccountError::GrpcHeaderToString)?;
+            let req = request.get_ref();
+
+            let billing_account: billing_account::BillingAccount = self
+                .db
+                .get(billing_account_id)
+                .await
+                .map_err(|_| AccountError::BillingAccountMissing)?;
+
+            // You get authorization for listing contained items on
+            // the containing item. I just made that up. It means you
+            // certainly won't be able to, say, decide you can't see
+            // individual things. I can imagine how to do that, but...
+            // today is not the day.
+            authorize(
+                &self.db,
+                user_id,
+                billing_account_id,
+                "list_users",
+                &billing_account,
+            )
+            .await?;
+
+            let list_result: ListResult<user::User> = if req.page_token != "" {
+                self.db
+                    .list_by_page_token(&req.page_token)
+                    .await
+                    .map_err(AccountError::ListUsersError)?
+            } else {
+                self.db
+                    .list(
+                        &req.query,
+                        req.page_size,
+                        &req.order_by,
+                        req.order_by_direction,
+                        billing_account_id,
+                        "",
+                    )
+                    .await
+                    .map_err(AccountError::ListUsersError)?
+            };
+
+            if list_result.items.len() == 0 {
+                return Ok(Response::new(protobuf::ListUsersReply::default()));
+            }
+
+            Ok(Response::new(protobuf::ListUsersReply {
+                total_count: list_result.total_count(),
+                next_page_token: list_result.page_token().to_string(),
+                items: list_result.items,
+            }))
+        }
+        .instrument(debug_span!("list_users", ?request))
         .await
     }
 

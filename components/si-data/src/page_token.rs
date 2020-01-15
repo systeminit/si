@@ -34,7 +34,7 @@ impl PageToken {
         let token: Token = serde_cbor::from_slice(&cbor_token)?;
         let protobuf_page_token = secretbox::open(&token.ciphertext, &token.nonce, key)
             .map_err(|_| DataError::SodiumOxideOpen)?;
-        let page_token: PageToken = prost::Message::decode(&protobuf_page_token)?;
+        let page_token: PageToken = prost::Message::decode(&protobuf_page_token[..])?;
         Ok(page_token)
     }
 }

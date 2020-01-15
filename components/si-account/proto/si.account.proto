@@ -2,13 +2,62 @@ syntax = "proto3";
 
 package si.account;
 
-import "si-data/proto/data.proto";
+import "si-data/proto/si.data.proto";
 
 service Account {
   rpc CreateAccount(CreateAccountRequest) returns (CreateAccountReply);
   rpc GetBillingAccount(GetBillingAccountRequest) returns (GetBillingAccountReply);
   rpc GetUser(GetUserRequest) returns (GetUserReply);
+  rpc GetOrganization(GetOrganizationRequest) returns (GetOrganizationReply);
+  rpc ListWorkspaces(ListWorkspacesRequest) returns (ListWorkspacesReply);
+  rpc ListOrganizations(ListOrganizationsRequest) returns (ListOrganizationsReply);
+  rpc ListUsers(ListUsersRequest) returns (ListUsersReply);
   rpc Login(LoginRequest) returns (LoginReply);
+}
+
+message ListOrganizationsRequest {
+  si.data.Query query = 1;
+  int32 page_size = 2;
+  string order_by = 3;
+  si.data.OrderByDirection order_by_direction = 4;
+  string page_token = 5;
+  string scope_by_tenant_id = 6;
+}
+
+message ListOrganizationsReply {
+  repeated Organization items = 1;
+  int32 total_count = 2;
+  string next_page_token = 3;
+}
+
+message ListWorkspacesRequest {
+  si.data.Query query = 1;
+  int32 page_size = 2;
+  string order_by = 3;
+  si.data.OrderByDirection order_by_direction = 4;
+  string page_token = 5;
+  string scope_by_tenant_id = 6;
+}
+
+message ListWorkspacesReply {
+  repeated Workspace items = 1;
+  int32 total_count = 2;
+  string next_page_token = 3;
+}
+
+message ListUsersRequest {
+  si.data.Query query = 1;
+  int32 page_size = 2;
+  string order_by = 3;
+  si.data.OrderByDirection order_by_direction = 4;
+  string page_token = 5;
+  string scope_by_tenant_id = 6;
+}
+
+message ListUsersReply {
+  repeated User items = 1;
+  int32 total_count = 2;
+  string next_page_token = 3;
 }
 
 message GetUserRequest {
@@ -25,6 +74,14 @@ message GetBillingAccountRequest {
 
 message GetBillingAccountReply {
   BillingAccount billing_account = 1;
+}
+
+message GetOrganizationRequest {
+  string organization_id = 1;
+}
+
+message GetOrganizationReply {
+  Organization organization = 1;
 }
 
 message CreateAccountRequest {

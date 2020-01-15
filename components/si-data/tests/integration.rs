@@ -152,8 +152,29 @@ async fn list() {
         DB.insert(x).await.expect("cannot insert items");
     }
 
+    // This ensures that the tenancy check is working - if it isn't,
+    // the whole world will be off by one.
+    DB.insert(&ListData::new_non_global("100", "ozzy"))
+        .await
+        .expect("cannot insert non global item");
+    let local_result: ListResult<ListData> = DB
+        .list(&None, 2, "name", 0, "local", "")
+        .await
+        .expect("Cannot list items");
+
+    assert_eq!(
+        local_result.len(),
+        1,
+        "results should match requested count"
+    );
+    assert_eq!(
+        local_result.total_count(),
+        1,
+        "results should have the correct total count"
+    );
+
     let result: ListResult<ListData> = DB
-        .list(&None, 2, "name", OrderByDirection::Asc, "")
+        .list(&None, 2, "name", 0, "global", "")
         .await
         .expect("Cannot list items");
 
@@ -225,7 +246,7 @@ async fn list() {
     });
 
     let query_result: ListResult<ListData> = DB
-        .list(&query, 2, "name", OrderByDirection::Asc, "")
+        .list(&query, 2, "name", 0, "global", "")
         .await
         .expect("Cannot list queried items");
     assert_eq!(
@@ -244,9 +265,8 @@ async fn list() {
     );
 
     // Errors on bad order_by
-    let bad_order_by: Result<ListResult<ListData>> = DB
-        .list(&query, 2, "katatonia", OrderByDirection::Asc, "")
-        .await;
+    let bad_order_by: Result<ListResult<ListData>> =
+        DB.list(&query, 2, "katatonia", 0, "global", "").await;
     match bad_order_by {
         Err(DataError::InvalidOrderBy) => true,
         Err(e) => panic!("returned wrong error for bad order by field: {}", e),

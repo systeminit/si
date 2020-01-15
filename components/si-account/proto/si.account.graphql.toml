@@ -5,6 +5,9 @@ service.Account.CreateAccount.mutation = true
 service.Account.GetBillingAccount.query = true
 service.Account.CreateUser.mutation = true
 service.Account.GetUser.query = true
+service.Account.ListUsers.query = true
+service.Account.ListWorkspaces.query = true
+service.Account.ListOrganizations.query = true
 
 message.LoginRequest.skip = true
 message.LoginReply.skip = true
@@ -16,9 +19,48 @@ grpcServiceName = "Account"
 method = "GetBillingAccount"
 type = "BillingAccount"
 
-[extend.BillingAccount.users.has_many]
+[[message.BillingAccount.id.has_many]]
 to = "users"
-via = "billingAccountId"
 grpcServiceName = "Account"
 method = "ListUsers"
-type = "Users"
+type = "ListUsersReply"
+inputType = "ListUsersRequest"
+
+[[message.BillingAccount.id.has_many]]
+to = "organizations"
+grpcServiceName = "Account"
+method = "ListOrganizations"
+type = "ListOrganizationsReply"
+inputType = "ListOrganizationsRequest"
+
+[message.Organization.billingAccountId.has_one]
+to = "billingAccount"
+grpcServiceName = "Account"
+method = "GetBillingAccount"
+type = "BillingAccount"
+
+[[message.Organization.id.has_many]]
+to = "workspaces"
+grpcServiceName = "Account"
+method = "ListWorkspaces"
+type = "ListWorkspacesReply"
+inputType = "ListWorkspacesRequest"
+
+[message.Workspace.billingAccountId.has_one]
+to = "billingAccount"
+grpcServiceName = "Account"
+method = "GetBillingAccount"
+type = "BillingAccount"
+
+[message.Workspace.organizationId.has_one]
+to = "organization"
+grpcServiceName = "Account"
+method = "GetOrganization"
+type = "Organization"
+
+#[message.Workspace.organizationAccountId.has_one]
+#to = "billingAccount"
+#grpcServiceName = "Account"
+#method = "GetBillingAccount"
+#type = "BillingAccount"
+
