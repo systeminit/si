@@ -1,8 +1,7 @@
 use anyhow::{Context, Result};
 use si_data::Db;
 use si_settings::Settings;
-use tokio::prelude::*;
-use tokio::runtime::Builder;
+use tokio;
 use tonic::transport::Server;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
