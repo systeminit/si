@@ -12,7 +12,7 @@ build: install
 
 build_release: build
 
-test: install 
+test: install build
 	npm run test
 
 run: start
