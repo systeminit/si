@@ -232,6 +232,7 @@ export class SchemaGenerator {
         for (const thisHint of hint["has_many"]) {
           gt.field(thisHint["to"], {
             type: thisHint["type"],
+            // @ts-ignore - we know, this isn't strongly typed
             args: { input: arg({ type: thisHint["inputType"] }) },
             async resolve(
               obj,
