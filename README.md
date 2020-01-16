@@ -35,3 +35,6 @@ congratulations, you're all done.
 ## Layout
 
 The `components` directory has all the components. 
+
+### New notes
+

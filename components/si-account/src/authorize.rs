@@ -1,4 +1,3 @@
-use serde::de::DeserializeOwned;
 use serde_json::json;
 use si_data::{Db, Storable};
 use tracing::{debug, info};
