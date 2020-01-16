@@ -2186,6 +2186,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "si-ssh-key"
+version = "0.1.0"
+
+[[package]]
 name = "signal-hook-registry"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
