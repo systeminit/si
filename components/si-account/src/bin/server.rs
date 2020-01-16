@@ -38,12 +38,6 @@ async fn main() -> Result<()> {
     tracing::subscriber::set_global_default(subscriber)
         .context("cannot set the global tracing defalt")?;
 
-    //let mut runtime = Builder::new()
-    //    .enable_all()
-    //    //.panic_handler(|err| std::panic::resume_unwind(err))
-    //    .build()
-    //    .context("Cannot set the tokio runtime up")?;
-
     let handle = tokio::spawn(async move { run().await });
 
     handle.await??;

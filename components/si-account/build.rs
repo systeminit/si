@@ -1,4 +1,3 @@
-// , deserialize_with = \"crate::serde_enum::key_type_enum_d\")]
 fn main() {
     tonic_build::configure()
         .extern_path(".si.data", "::si_data::data")

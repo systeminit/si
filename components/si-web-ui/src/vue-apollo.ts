@@ -17,7 +17,7 @@ const AUTH_TOKEN = "apollo-token";
 let httpEndpoint =
   process.env.VUE_APP_GRAPHQL_HTTP || "http://localhost:4000/graphql";
 let wsEndpoint =
-  process.env.VUE_APP_GRAPHQL_WS || "wss://localhost:4000/graphql";
+  process.env.VUE_APP_GRAPHQL_WS || "ws://localhost:4000/graphql";
 if (process.env.NODE_ENV === "production") {
   httpEndpoint = "https://graphql.systeminit.com/graphql";
   wsEndpoint = "wss://graphql.systeminit.com/graphql";
