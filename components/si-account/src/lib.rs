@@ -4,5 +4,6 @@ pub mod protobuf {
 
 pub mod authorize;
 pub mod error;
+pub mod migrate;
 pub mod model;
 pub mod service;

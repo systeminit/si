@@ -8,6 +8,7 @@ service.Account.GetUser.query = true
 service.Account.ListUsers.query = true
 service.Account.ListWorkspaces.query = true
 service.Account.ListOrganizations.query = true
+service.Account.ListIntegrations.query = true
 
 message.LoginRequest.skip = true
 message.LoginReply.skip = true

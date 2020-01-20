@@ -2188,6 +2188,40 @@ dependencies = [
 [[package]]
 name = "si-ssh-key"
 version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-stream",
+ "base64 0.10.1",
+ "bytes 0.5.3",
+ "config",
+ "couchbase",
+ "futures 0.3.1",
+ "http 0.2.0",
+ "lazy_static 1.4.0",
+ "names",
+ "opentelemetry",
+ "prost",
+ "prost-derive",
+ "serde 1.0.104",
+ "serde_cbor",
+ "serde_json",
+ "si-account",
+ "si-data",
+ "si-settings",
+ "sodiumoxide",
+ "tempfile",
+ "thiserror",
+ "tokio 0.2.9",
+ "toml 0.5.5",
+ "tonic",
+ "tonic-build",
+ "tower",
+ "tracing",
+ "tracing-futures 0.2.0",
+ "tracing-opentelemetry",
+ "tracing-subscriber 0.2.0-alpha.2",
+ "uuid",
+]
 
 [[package]]
 name = "signal-hook-registry"

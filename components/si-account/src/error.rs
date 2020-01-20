@@ -55,10 +55,12 @@ pub enum AccountError {
     LoginFailed,
     #[error("error listing users: {0}")]
     ListUsersError(si_data::error::DataError),
-    #[error("error listing users: {0}")]
+    #[error("error listing workspaces: {0}")]
     ListWorkspacesError(si_data::error::DataError),
-    #[error("error listing users: {0}")]
+    #[error("error listing organizations: {0}")]
     ListOrganizationsError(si_data::error::DataError),
+    #[error("error listing integrations: {0}")]
+    ListIntegrationsError(si_data::error::DataError),
     #[error("cannot hash the password")]
     PasswordHash,
     #[error("cannot find user")]

@@ -5,15 +5,12 @@ use tokio;
 use tonic::transport::Server;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
-use si_account::{migrate::migrate, protobuf::account_server::AccountServer, service::Service};
+use si_ssh_key::{protobuf::ssh_key_server::SshKeyServer, service::Service};
 
 async fn run() -> Result<()> {
     let settings = Settings::new()?;
 
     let db = Db::new(&settings).context("Cannot connect to the database")?;
-
-    println!("*** Migrating so much right now ***");
-    migrate(&db).await?;
 
     let service = Service::new(db);
 
@@ -21,11 +18,11 @@ async fn run() -> Result<()> {
 
     let addr = listen_string.parse().unwrap();
 
-    println!("--> Account service listening on {} <--", addr);
-    println!("--> Let us make users and stuff <--");
+    println!("--> SSH Key service listening on {} <--", addr);
+    println!("--> Let us make ssh keys and stuff <--");
 
     Server::builder()
-        .add_service(AccountServer::new(service))
+        .add_service(SshKeyServer::new(service))
         .serve(addr)
         .await?;
 

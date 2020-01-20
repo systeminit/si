@@ -219,6 +219,79 @@ type Group {
   userIds: [String!]
 }
 
+type Integration {
+  """displayName"""
+  displayName: String
+
+  """id"""
+  id: ID
+
+  """integrationOptions"""
+  integrationOptions: [IntegrationOption!]
+
+  """name"""
+  name: String
+
+  """naturalKey"""
+  naturalKey: String
+
+  """tenantIds"""
+  tenantIds: [String!]
+
+  """typeName"""
+  typeName: String
+
+  """version"""
+  version: Int
+}
+
+type IntegrationOption {
+  """display_Name"""
+  display_Name: String
+
+  """name"""
+  name: String
+
+  """optionType"""
+  optionType: IntegrationOptionType
+}
+
+enum IntegrationOptionType {
+  SECRET
+  STRING
+}
+
+type ListIntegrationsReply {
+  """items"""
+  items: [Integration!]
+
+  """nextPageToken"""
+  nextPageToken: String
+
+  """totalCount"""
+  totalCount: Int
+}
+
+input ListIntegrationsRequest {
+  """orderBy"""
+  orderBy: String
+
+  """orderByDirection"""
+  orderByDirection: DataOrderByDirection
+
+  """pageSize"""
+  pageSize: Int
+
+  """pageToken"""
+  pageToken: String
+
+  """query"""
+  query: DataQuery
+
+  """scopeByTenantId"""
+  scopeByTenantId: String
+}
+
 type ListOrganizationsReply {
   """items"""
   items: [Organization!]
@@ -357,6 +430,7 @@ type Organization {
 type Query {
   getBillingAccount(input: GetBillingAccountRequest): GetBillingAccountReply
   getUser(input: GetUserRequest): GetUserReply
+  listIntegrations(input: ListIntegrationsRequest): ListIntegrationsReply
   listOrganizations(input: ListOrganizationsRequest): ListOrganizationsReply
   listUsers(input: ListUsersRequest): ListUsersReply
   listWorkspaces(input: ListWorkspacesRequest): ListWorkspacesReply

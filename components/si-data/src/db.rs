@@ -4,7 +4,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{self, json};
 use si_settings::Settings;
 use sodiumoxide::crypto::secretbox;
-use tracing::{debug, event, span, Level};
+use tracing::{debug, event, info, span, Level};
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -387,43 +387,55 @@ impl Db {
     }
 
     #[tracing::instrument]
-    pub async fn migrate_component<I: Migrateable + Storable + Serialize + std::fmt::Debug>(
+    pub async fn migrate<
+        I: Migrateable + Storable + DeserializeOwned + Serialize + std::fmt::Debug,
+    >(
         &self,
-        component: &mut I,
-    ) -> Result<couchbase::result::MutationResult> {
-        let positional_options = QueryOptions::new()
-            .set_positional_parameters(vec![json![component.natural_key()]])
-            .set_scan_consistency(self.scan_consistency);
-        let mut result = self
-            .cluster
-            .query(
-                "select id from `si` where naturalKey = $1",
-                Some(positional_options),
-            )
-            .await
-            .map_err(DataError::CouchbaseError)?;
+        item: &mut I,
+    ) -> Result<()> {
+        item.set_type_name();
+        item.set_natural_key();
 
-        let mut seen_id = String::from("nopermcnoperson");
-        let mut result_iter = result.rows_as::<IdResult>()?;
+        let natural_key = item.get_natural_key().ok_or(DataError::NaturalKeyMissing)?;
 
-        // We only want the first result
-        if let Some(item) = result_iter.next().await {
-            match item {
-                Ok(i) => {
-                    seen_id = i.id;
-                    event!(Level::DEBUG, ?seen_id, "found component id");
+        let existing_item: Result<I> = self.lookup_by_natural_key(natural_key).await;
+        match existing_item {
+            Ok(real_item) => {
+                let existing_id = real_item.get_id();
+                item.set_id(existing_id);
+                item.set_type_name();
+                item.set_natural_key();
+                for tenant_id in real_item.get_tenant_ids().iter() {
+                    item.add_to_tenant_ids(tenant_id.clone());
                 }
-                Err(e) => return Err(DataError::CouchbaseError(e)),
-            };
+                if item.get_version() > real_item.get_version() {
+                    info!(
+                        current_item = item.get_version(),
+                        real_item = real_item.get_version(),
+                        migrate = "update"
+                    );
+                    self.upsert(item).await?;
+                } else if item.get_version() < real_item.get_version() {
+                    debug!(
+                        current_item = item.get_version(),
+                        real_item = real_item.get_version(),
+                        migrate = "newer existing"
+                    );
+                } else {
+                    debug!(
+                        current_item = item.get_version(),
+                        real_item = real_item.get_version(),
+                        migrate = "identical"
+                    );
+                }
+            }
+            Err(e) => {
+                info!(migrate = "new", ?e);
+                self.validate_and_insert_as_new(item).await?;
+            }
         }
 
-        if seen_id == "nopermcnoperson" {
-            component.generate_id();
-        } else {
-            component.set_id(seen_id);
-        }
-
-        self.upsert(component).await
+        Ok(())
     }
 
     #[tracing::instrument]
@@ -442,21 +454,40 @@ impl Db {
     }
 
     #[tracing::instrument]
-    pub async fn lookup<S, T>(&self, tenant_id: S, type_name: S, natural_key: S) -> Result<T>
+    pub async fn lookup_by_natural_key<S1, T>(&self, natural_key: S1) -> Result<T>
     where
-        S: Into<String> + std::fmt::Debug,
+        S1: Into<String> + std::fmt::Debug,
         T: DeserializeOwned + std::fmt::Debug,
     {
-        event!(Level::DEBUG, "formatting");
+        let key = natural_key.into();
+        event!(Level::DEBUG, ?key, "looking up");
+        let lookup_object: LookupObject = self.get(key).await?;
+        event!(Level::DEBUG, ?lookup_object, "returning");
+        self.get(lookup_object.object_id).await
+    }
+
+    #[tracing::instrument]
+    pub async fn lookup<S1, S2, S3, T>(
+        &self,
+        tenant_id: S1,
+        type_name: S2,
+        natural_key: S3,
+    ) -> Result<T>
+    where
+        S1: Into<String> + std::fmt::Debug,
+        S2: Into<String> + std::fmt::Debug,
+        S3: Into<String> + std::fmt::Debug,
+        T: DeserializeOwned + std::fmt::Debug,
+    {
         let key = format!(
             "{}:{}:{}",
             tenant_id.into(),
             type_name.into(),
             natural_key.into()
         );
-        event!(Level::DEBUG, "looking up");
+        event!(Level::DEBUG, ?key, "looking up");
         let lookup_object: LookupObject = self.get(key).await?;
-        event!(Level::DEBUG, "returning");
+        event!(Level::DEBUG, ?lookup_object, "returning");
         self.get(lookup_object.object_id).await
     }
 

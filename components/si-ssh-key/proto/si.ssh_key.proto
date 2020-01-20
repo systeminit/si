@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package si.ssh_key;
+
+import "si-data/proto/si.data.proto";
+
+service SshKey {
+  rpc GetComponent(GetComponentRequest) returns (GetComponentReply);
+}
+
+enum KeyType {
+  RSA = 0;
+  DSA = 1;
+  ECDSA = 2;
+  ED25519 = 3;
+}
+
+enum KeyFormat {
+  RFC4716 = 0;
+  PKCS8 = 1;
+  PEM = 2;
+}
+
+message Component {
+  string id = 1;
+  repeated string tenantIds = 2;
+  string natural_key = 3;
+  string type_name = 4;
+  string name = 5;
+  string display_name = 6;
+  string description = 7;
+  // TODO: KEEP GOING
+  string integration_id = 8;
+  string integration_service_id = 9;
+  string display_type_name = 10;
+  // From here, we are in to the fields for this specific component
+  KeyType key_type = 20;
+  KeyFormat key_format = 21;
+  uint32 bits = 22;
+}
+

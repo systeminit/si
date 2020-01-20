@@ -4,6 +4,56 @@ version = "0.1.0"
 authors = ["Adam Jacob <adam@systeminit.com>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[[bin]]
+name = "si-ssh-key-server"
+path = "src/bin/server.rs"
+edition = "2018"
 
 [dependencies]
+anyhow = "1.0"
+uuid = { version = "0.7", features = [ "serde", "v4" ] }
+
+# Tonic Deps
+tonic = "0.1" 
+bytes = "0.5"
+prost = "0.6" 
+prost-derive = "0.6"
+tokio = { version = "0.2", features = ["full"] }
+futures = { version = "0.3", features = ["alloc"]}
+async-stream = "0.2"
+http = "0.2"
+tower = "0.3" 
+
+# Serde
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Couchbase
+couchbase = { path = "../../vendor/couchbase-rs/couchbase" }
+
+# Tracing
+tracing = "0.1"
+tracing-futures = { version = "0.2", features = ["tokio", "std-future"] }
+tracing-subscriber = "0.2.0-alpha.2"
+thiserror = "1.0"
+config = { version = "0.9.3", features = [ "toml" ] }
+sodiumoxide = "0.2"
+toml = "0.5"
+serde_cbor = "0.10"
+base64 = "0.10.1"
+names = "0.11"
+tempfile = "3.1"
+
+# Local Deps
+si-settings = { path = "../si-settings" }
+si-data = { path = "../si-data" }
+si-account = { path = "../si-account" }
+
+[dev-dependencies]
+lazy_static = "1.4"
+tracing-subscriber = "0.2.0-alpha.2"
+tracing-opentelemetry = "0.1.0"
+opentelemetry = "0.1"
+
+[build-dependencies]
+tonic-build = "0.1"

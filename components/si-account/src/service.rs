@@ -5,7 +5,7 @@ use tracing_futures::Instrument;
 
 use crate::authorize::{authorize, authorize_by_tenant_id};
 use crate::error::{AccountError, TonicResult};
-use crate::model::{billing_account, group, organization, user, workspace};
+use crate::model::{billing_account, group, integration, organization, user, workspace};
 use crate::protobuf::{self, account_server};
 
 #[derive(Debug)]
@@ -94,6 +94,72 @@ impl account_server::Account for Service {
             }))
         }
         .instrument(debug_span!("get_organization", ?request))
+        .await
+    }
+
+    async fn list_integrations(
+        &self,
+        request: Request<protobuf::ListIntegrationsRequest>,
+    ) -> TonicResult<protobuf::ListIntegrationsReply> {
+        async {
+            let metadata = request.metadata();
+            let user_id = metadata
+                .get("userId")
+                .ok_or(AccountError::InvalidAuthentication)?
+                .to_str()
+                .map_err(AccountError::GrpcHeaderToString)?;
+            let billing_account_id = metadata
+                .get("billingAccountId")
+                .ok_or(AccountError::InvalidAuthentication)?
+                .to_str()
+                .map_err(AccountError::GrpcHeaderToString)?;
+            let req = request.get_ref();
+
+            let billing_account: billing_account::BillingAccount = self
+                .db
+                .get(billing_account_id)
+                .await
+                .map_err(|_| AccountError::BillingAccountMissing)?;
+
+            authorize(
+                &self.db,
+                user_id,
+                billing_account_id,
+                "list_integrations",
+                &billing_account,
+            )
+            .await?;
+
+            let list_result: ListResult<integration::Integration> = if req.page_token != "" {
+                self.db
+                    .list_by_page_token(&req.page_token)
+                    .await
+                    .map_err(AccountError::ListIntegrationsError)?
+            } else {
+                self.db
+                    .list(
+                        &req.query,
+                        req.page_size,
+                        &req.order_by,
+                        req.order_by_direction,
+                        "global",
+                        "",
+                    )
+                    .await
+                    .map_err(AccountError::ListIntegrationsError)?
+            };
+
+            if list_result.items.len() == 0 {
+                return Ok(Response::new(protobuf::ListIntegrationsReply::default()));
+            }
+
+            Ok(Response::new(protobuf::ListIntegrationsReply {
+                total_count: list_result.total_count(),
+                next_page_token: list_result.page_token().to_string(),
+                items: list_result.items,
+            }))
+        }
+        .instrument(debug_span!("list_integrations", ?request))
         .await
     }
 
