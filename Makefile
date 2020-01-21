@@ -23,10 +23,12 @@ include ./components/build/deps.mk
 
 COMPONENTS = components/si-data components/si-account components/si-settings components/si-graphql-api components/si-web-ui
 RELEASEABLE_COMPONENTS = components/si-account components/si-graphql-api
+RUNNABLE_COMPONENTS = components/si-account components/si-graphql-api components/si-web-ui
 BUILDABLE = $(patsubst %,build//%,$(COMPONENTS))
 TESTABLE = $(patsubst %,test//%,$(COMPONENTS))
 RELEASEABLE = $(patsubst %,release//%,$(RELEASEABLE_COMPONENTS))
 CONTAINABLE = $(patsubst %,container//%,$(RELEASEABLE_COMPONENTS))
+WATCHABLE = $(patsubst %,watch//%,$(RUNNABLE_COMPONENTS))
 BUILDABLE_REGEX = $(shell echo $(COMPONENTS) | tr " " "|")
 RELEASEABLE_REGEX = $(shell echo $(RELEASEABLE_COMPONENTS) | tr " " "|")
 TO_BUILD=$(shell git diff --name-only origin/master...HEAD | grep -E "^($(BUILDABLE_REGEX))" | cut -d "/" -f 1,2 | sort | uniq | tr "\n" " ")
@@ -74,6 +76,25 @@ $(CONTAINABLE): clean
 
 $(RELEASEABLE): clean
 	@ pushd $(patsubst release//%,%,$@); $(MAKE) release RELEASE=$(RELEASE)
+
+$(WATCHABLE):
+	@ pushd $(patsubst watch//%,%,$@); $(MAKE) watch
+
+watch:
+	@ echo $(RUNNABLE_COMPONENTS) | tr ' ' '\n' | parallel --tag --jobs 0 --linebuffer -r make watch//{}
+
+tmux: tmux_session tmux_windows
+	@ echo "*** Starting magical tmux good times ***"
+	@ echo "tmux attach -t si"
+
+tmux_session:
+	@ tmux -2 new-session -d -s si
+
+tmux_windows:
+	@ for x in $(RUNNABLE_COMPONENTS); do tmux new-window -a -t si -n $$(echo $$x | cut -f 2 -d '/') make watch//$$x; done
+
+tmux_panes:
+	@ for x in $(RUNNABLE_COMPONENTS); do tmux split-window -v make watch//$$x; done
 
 container//base: clean
 	env BUILDKIT_PROGRESS=plain DOCKER_BUILDKIT=1 docker build \

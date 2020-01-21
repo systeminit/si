@@ -39,10 +39,10 @@ endif
 
 build_deps: package_update package_curl package_rust runtime_deps
 ifeq ($(USE_PACMAN),/usr/bin/pacman)
-	sudo pacman -S --needed --noconfirm base-devel cmake clang
+	sudo pacman -S --needed --noconfirm base-devel cmake clang parallel tmux
 endif
 ifeq ($(USE_APT),/usr/bin/apt-get)
-	sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential cmake clang
+	sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential cmake clang parallel tmux
 endif
 
 runtime_deps: package_update

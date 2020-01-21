@@ -104,3 +104,17 @@ create primary index on `si`
 ```
 
 And hit execute. Then you can log in, and you'll be gtg.
+
+## Regular use
+
+```
+make tmux
+```
+
+Will start all the services in a tmux session called `si`.
+
+```
+make watch
+```
+
+Will start all the services in a single shell.
