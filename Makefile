@@ -83,18 +83,28 @@ $(WATCHABLE):
 watch:
 	@ echo $(RUNNABLE_COMPONENTS) | tr ' ' '\n' | parallel --tag --jobs 0 --linebuffer -r make watch//{}
 
-tmux: tmux_session tmux_windows
-	@ echo "*** Starting magical tmux good times ***"
-	@ echo "tmux attach -t si"
+tmux: tmux//windows
+
+tmux//windows: tmux_session tmux_windows
+	@ echo "*** Starting magical tmux (panes) good times ***"
+
+tmux//panes: tmux_session tmux_panes
+	@ echo "*** Starting magical tmux (windows) good times ***"
 
 tmux_session:
+ifdef TMUX
+	@ echo Not starting a new session, as you are in one.
+else
+	@ echo "*** Starting new tmux session ***"
 	@ tmux -2 new-session -d -s si
+	@ echo "tmux attach -t si"
+endif
 
 tmux_windows:
-	@ for x in $(RUNNABLE_COMPONENTS); do tmux new-window -a -t si -n $$(echo $$x | cut -f 2 -d '/') make watch//$$x; done
+	@ for x in $(RUNNABLE_COMPONENTS); do tmux new-window -a -n $$(echo $$x | cut -f 2 -d '/') && tmux send-keys "make watch//$$x" C-m; done
 
 tmux_panes:
-	@ for x in $(RUNNABLE_COMPONENTS); do tmux split-window -v make watch//$$x; done
+	@ for x in $(RUNNABLE_COMPONENTS); do tmux split-window -v && tmux send-keys "make watch//$$x" C-m; done
 
 container//base: clean
 	env BUILDKIT_PROGRESS=plain DOCKER_BUILDKIT=1 docker build \

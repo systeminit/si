@@ -35,6 +35,7 @@ ifneq ($(RUST_EXISTS),$(HOME)/.cargo/bin/cargo)
 	curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > /tmp/rustup.sh
 	chmod a+x /tmp/rustup.sh
 	/tmp/rustup.sh -y
+	cargo install --force cargo-watch
 endif
 
 build_deps: package_update package_curl package_rust runtime_deps

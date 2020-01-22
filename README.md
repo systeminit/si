@@ -111,10 +111,25 @@ And hit execute. Then you can log in, and you'll be gtg.
 make tmux
 ```
 
-Will start all the services in a tmux session called `si`.
+Will start all the services in a tmux session called `si`. You can also
+specifically ask for windows or panes, with:
+
+```
+make tmux//windows
+```
+
+Or 
+
+```
+make tmux//panes
+```
+
+If a session does not exist, one will be created for you. If you are inside of
+tmux already, it will automatically detect that, and create the panes/windows
+for you inside the session you are in.
 
 ```
 make watch
 ```
 
-Will start all the services in a single shell.
+Will start all the services in a single shell, without tmux.
