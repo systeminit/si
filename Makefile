@@ -89,7 +89,7 @@ tmux//windows: tmux_session tmux_windows
 	@ echo "*** Starting magical tmux (windows) good times ***"
 
 tmux//panes: tmux_session tmux_panes
-	@ echo "*** Starting magical tmux (windows) good times ***"
+	@ echo "*** Starting magical tmux (panes) good times ***"
 
 tmux_session:
 ifdef TMUX
