@@ -65,3 +65,9 @@ type = "Organization"
 #method = "GetBillingAccount"
 #type = "BillingAccount"
 
+[[message.Integration.id.has_many]]
+to = "integrationServices"
+grpcServiceName = "Account"
+method = "ListIntegrationServices"
+type = "ListIntegrationServicesReply"
+inputType = "ListIntegrationServicesRequest"

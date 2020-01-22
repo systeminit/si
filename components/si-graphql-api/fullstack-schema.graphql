@@ -229,6 +229,9 @@ type Integration {
   """integrationOptions"""
   integrationOptions: [IntegrationOption!]
 
+  """id"""
+  integrationServices(input: ListIntegrationServicesRequest): ListIntegrationServicesReply
+
   """name"""
   name: String
 
@@ -259,6 +262,63 @@ type IntegrationOption {
 enum IntegrationOptionType {
   SECRET
   STRING
+}
+
+type IntegrationService {
+  """displayName"""
+  displayName: String
+
+  """id"""
+  id: ID
+
+  """integrationId"""
+  integrationId: String
+
+  """name"""
+  name: String
+
+  """naturalKey"""
+  naturalKey: String
+
+  """tenantIds"""
+  tenantIds: [String!]
+
+  """typeName"""
+  typeName: String
+
+  """version"""
+  version: Int
+}
+
+type ListIntegrationServicesReply {
+  """items"""
+  items: [IntegrationService!]
+
+  """nextPageToken"""
+  nextPageToken: String
+
+  """totalCount"""
+  totalCount: Int
+}
+
+input ListIntegrationServicesRequest {
+  """orderBy"""
+  orderBy: String
+
+  """orderByDirection"""
+  orderByDirection: DataOrderByDirection
+
+  """pageSize"""
+  pageSize: Int
+
+  """pageToken"""
+  pageToken: String
+
+  """query"""
+  query: DataQuery
+
+  """scopeByTenantId"""
+  scopeByTenantId: String
 }
 
 type ListIntegrationsReply {

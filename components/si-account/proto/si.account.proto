@@ -13,7 +13,23 @@ service Account {
   rpc ListOrganizations(ListOrganizationsRequest) returns (ListOrganizationsReply);
   rpc ListUsers(ListUsersRequest) returns (ListUsersReply);
   rpc ListIntegrations(ListIntegrationsRequest) returns (ListIntegrationsReply);
+  rpc ListIntegrationServices(ListIntegrationServicesRequest) returns (ListIntegrationServicesReply);
   rpc Login(LoginRequest) returns (LoginReply);
+}
+
+message ListIntegrationServicesRequest {
+  si.data.Query query = 1;
+  int32 page_size = 2;
+  string order_by = 3;
+  si.data.OrderByDirection order_by_direction = 4;
+  string page_token = 5;
+  string scope_by_tenant_id = 6;
+}
+
+message ListIntegrationServicesReply {
+  repeated IntegrationService items = 1;
+  int32 total_count = 2;
+  string next_page_token = 3;
 }
 
 message ListIntegrationsRequest {
@@ -207,6 +223,17 @@ message Workspace {
   string organization_id = 21;
 }
 
+message IntegrationService {
+  string id = 1;
+  string natural_key = 2;
+  string type_name = 3;
+  string name = 4;
+  string display_name = 5;
+  int32 version = 6;
+  string integration_id = 7;
+  repeated string tenant_ids = 10;
+}
+
 message Integration {
   string id = 1;
   string natural_key = 2;
@@ -226,3 +253,4 @@ message Integration {
   }
   repeated IntegrationOption integration_options = 11;
 }
+

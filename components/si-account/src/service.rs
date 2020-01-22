@@ -97,6 +97,80 @@ impl account_server::Account for Service {
         .await
     }
 
+    async fn list_integration_services(
+        &self,
+        request: Request<protobuf::ListIntegrationServicesRequest>,
+    ) -> TonicResult<protobuf::ListIntegrationServicesReply> {
+        async {
+            let metadata = request.metadata();
+            let user_id = metadata
+                .get("userId")
+                .ok_or(AccountError::InvalidAuthentication)?
+                .to_str()
+                .map_err(AccountError::GrpcHeaderToString)?;
+            let billing_account_id = metadata
+                .get("billingAccountId")
+                .ok_or(AccountError::InvalidAuthentication)?
+                .to_str()
+                .map_err(AccountError::GrpcHeaderToString)?;
+            let req = request.get_ref();
+
+            let billing_account: billing_account::BillingAccount = self
+                .db
+                .get(billing_account_id)
+                .await
+                .map_err(|_| AccountError::BillingAccountMissing)?;
+
+            let scope_by_tenant_id = if req.scope_by_tenant_id == "" {
+                "global"
+            } else {
+                &req.scope_by_tenant_id
+            };
+
+            authorize(
+                &self.db,
+                user_id,
+                billing_account_id,
+                "list_integrations",
+                &billing_account,
+            )
+            .await?;
+
+            let list_result: ListResult<integration::IntegrationService> = if req.page_token != "" {
+                self.db
+                    .list_by_page_token(&req.page_token)
+                    .await
+                    .map_err(AccountError::ListIntegrationServicesError)?
+            } else {
+                self.db
+                    .list(
+                        &req.query,
+                        req.page_size,
+                        &req.order_by,
+                        req.order_by_direction,
+                        scope_by_tenant_id,
+                        "",
+                    )
+                    .await
+                    .map_err(AccountError::ListIntegrationServicesError)?
+            };
+
+            if list_result.items.len() == 0 {
+                return Ok(Response::new(
+                    protobuf::ListIntegrationServicesReply::default(),
+                ));
+            }
+
+            Ok(Response::new(protobuf::ListIntegrationServicesReply {
+                total_count: list_result.total_count(),
+                next_page_token: list_result.page_token().to_string(),
+                items: list_result.items,
+            }))
+        }
+        .instrument(debug_span!("list_integration_services", ?request))
+        .await
+    }
+
     async fn list_integrations(
         &self,
         request: Request<protobuf::ListIntegrationsRequest>,

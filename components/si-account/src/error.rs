@@ -61,6 +61,8 @@ pub enum AccountError {
     ListOrganizationsError(si_data::error::DataError),
     #[error("error listing integrations: {0}")]
     ListIntegrationsError(si_data::error::DataError),
+    #[error("error listing integration services: {0}")]
+    ListIntegrationServicesError(si_data::error::DataError),
     #[error("cannot hash the password")]
     PasswordHash,
     #[error("cannot find user")]
