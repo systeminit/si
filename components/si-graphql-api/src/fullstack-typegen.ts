@@ -19,6 +19,17 @@ export interface NexusGenInputs {
     displayName?: string | null; // String
     shortName?: string | null; // String
   }
+  CreateIntegrationInstanceRequest: { // input type
+    displayName?: string | null; // String
+    integrationId?: string | null; // String
+    integrationOptionValues?: NexusGenInputs['CreateIntegrationOptionValueRequest'][] | null; // [CreateIntegrationOptionValueRequest!]
+    name?: string | null; // String
+  }
+  CreateIntegrationOptionValueRequest: { // input type
+    name?: string | null; // String
+    optionType?: NexusGenEnums['IntegrationOptionType'] | null; // IntegrationOptionType
+    value?: string | null; // String
+  }
   CreateUserRequest: { // input type
     displayName?: string | null; // String
     email?: string | null; // String
@@ -52,11 +63,22 @@ export interface NexusGenInputs {
   GetBillingAccountRequest: { // input type
     billingAccountId?: string | null; // String
   }
+  GetIntegrationRequest: { // input type
+    integrationId?: string | null; // String
+  }
   GetOrganizationRequest: { // input type
     organizationId?: string | null; // String
   }
   GetUserRequest: { // input type
     userId?: string | null; // String
+  }
+  ListIntegrationInstancesRequest: { // input type
+    orderBy?: string | null; // String
+    orderByDirection?: NexusGenEnums['DataOrderByDirection'] | null; // DataOrderByDirection
+    pageSize?: number | null; // Int
+    pageToken?: string | null; // String
+    query?: NexusGenInputs['DataQuery'] | null; // DataQuery
+    scopeByTenantId?: string | null; // String
   }
   ListIntegrationServicesRequest: { // input type
     orderBy?: string | null; // String
@@ -108,7 +130,7 @@ export interface NexusGenInputs {
 export interface NexusGenEnums {
   DataOrderByDirection: 0 | 1
   DataQueryBooleanLogic: 0 | 1
-  DataQueryComparison: 0 | 1
+  DataQueryComparison: 2 | 0 | 3 | 1 | 4
   DataQueryFieldType: 1 | 0
   IntegrationOptionType: 1 | 0
 }
@@ -133,11 +155,17 @@ export interface NexusGenRootTypes {
   CreateBillingAccountReply: { // root type
     billingAccount?: NexusGenRootTypes['BillingAccount'] | null; // BillingAccount
   }
+  CreateIntegrationInstanceReply: { // root type
+    integrationInstance?: NexusGenRootTypes['IntegrationInstance'] | null; // IntegrationInstance
+  }
   CreateUserReply: { // root type
     user?: NexusGenRootTypes['User'] | null; // User
   }
   GetBillingAccountReply: { // root type
     billingAccount?: NexusGenRootTypes['BillingAccount'] | null; // BillingAccount
+  }
+  GetIntegrationReply: { // root type
+    integration?: NexusGenRootTypes['Integration'] | null; // Integration
   }
   GetOrganizationReply: { // root type
     organization?: NexusGenRootTypes['Organization'] | null; // Organization
@@ -166,10 +194,29 @@ export interface NexusGenRootTypes {
     typeName?: string | null; // String
     version?: number | null; // Int
   }
+  IntegrationInstance: { // root type
+    billingAccountId?: string | null; // String
+    displayName?: string | null; // String
+    enabledOnOrganizationIds?: string[] | null; // [String!]
+    enabledOnWorkspaceIds?: string[] | null; // [String!]
+    id?: string | null; // ID
+    integrationId?: string | null; // String
+    integrationOptionValues?: NexusGenRootTypes['IntegrationOptionValue'][] | null; // [IntegrationOptionValue!]
+    integrationServiceIds?: string[] | null; // [String!]
+    name?: string | null; // String
+    naturalKey?: string | null; // String
+    tenantIds?: string[] | null; // [String!]
+    typeName?: string | null; // String
+  }
   IntegrationOption: { // root type
-    display_Name?: string | null; // String
+    displayName?: string | null; // String
     name?: string | null; // String
     optionType?: NexusGenEnums['IntegrationOptionType'] | null; // IntegrationOptionType
+  }
+  IntegrationOptionValue: { // root type
+    name?: string | null; // String
+    optionType?: NexusGenEnums['IntegrationOptionType'] | null; // IntegrationOptionType
+    value?: string | null; // String
   }
   IntegrationService: { // root type
     displayName?: string | null; // String
@@ -180,6 +227,11 @@ export interface NexusGenRootTypes {
     tenantIds?: string[] | null; // [String!]
     typeName?: string | null; // String
     version?: number | null; // Int
+  }
+  ListIntegrationInstancesReply: { // root type
+    items?: NexusGenRootTypes['IntegrationInstance'][] | null; // [IntegrationInstance!]
+    nextPageToken?: string | null; // String
+    totalCount?: number | null; // Int
   }
   ListIntegrationServicesReply: { // root type
     items?: NexusGenRootTypes['IntegrationService'][] | null; // [IntegrationService!]
@@ -254,14 +306,18 @@ export interface NexusGenRootTypes {
 export interface NexusGenAllTypes extends NexusGenRootTypes {
   CreateAccountRequest: NexusGenInputs['CreateAccountRequest'];
   CreateBillingAccountRequest: NexusGenInputs['CreateBillingAccountRequest'];
+  CreateIntegrationInstanceRequest: NexusGenInputs['CreateIntegrationInstanceRequest'];
+  CreateIntegrationOptionValueRequest: NexusGenInputs['CreateIntegrationOptionValueRequest'];
   CreateUserRequest: NexusGenInputs['CreateUserRequest'];
   DataPageToken: NexusGenInputs['DataPageToken'];
   DataQuery: NexusGenInputs['DataQuery'];
   DataQueryExpression: NexusGenInputs['DataQueryExpression'];
   DataQueryExpressionOption: NexusGenInputs['DataQueryExpressionOption'];
   GetBillingAccountRequest: NexusGenInputs['GetBillingAccountRequest'];
+  GetIntegrationRequest: NexusGenInputs['GetIntegrationRequest'];
   GetOrganizationRequest: NexusGenInputs['GetOrganizationRequest'];
   GetUserRequest: NexusGenInputs['GetUserRequest'];
+  ListIntegrationInstancesRequest: NexusGenInputs['ListIntegrationInstancesRequest'];
   ListIntegrationServicesRequest: NexusGenInputs['ListIntegrationServicesRequest'];
   ListIntegrationsRequest: NexusGenInputs['ListIntegrationsRequest'];
   ListOrganizationsRequest: NexusGenInputs['ListOrganizationsRequest'];
@@ -279,6 +335,7 @@ export interface NexusGenFieldTypes {
   BillingAccount: { // field return type
     displayName: string | null; // String
     id: string | null; // ID
+    integrationInstances: NexusGenRootTypes['ListIntegrationInstancesReply'] | null; // ListIntegrationInstancesReply
     naturalKey: string | null; // String
     organizations: NexusGenRootTypes['ListOrganizationsReply'] | null; // ListOrganizationsReply
     shortName: string | null; // String
@@ -297,11 +354,17 @@ export interface NexusGenFieldTypes {
   CreateBillingAccountReply: { // field return type
     billingAccount: NexusGenRootTypes['BillingAccount'] | null; // BillingAccount
   }
+  CreateIntegrationInstanceReply: { // field return type
+    integrationInstance: NexusGenRootTypes['IntegrationInstance'] | null; // IntegrationInstance
+  }
   CreateUserReply: { // field return type
     user: NexusGenRootTypes['User'] | null; // User
   }
   GetBillingAccountReply: { // field return type
     billingAccount: NexusGenRootTypes['BillingAccount'] | null; // BillingAccount
+  }
+  GetIntegrationReply: { // field return type
+    integration: NexusGenRootTypes['Integration'] | null; // Integration
   }
   GetOrganizationReply: { // field return type
     organization: NexusGenRootTypes['Organization'] | null; // Organization
@@ -331,20 +394,49 @@ export interface NexusGenFieldTypes {
     typeName: string | null; // String
     version: number | null; // Int
   }
+  IntegrationInstance: { // field return type
+    billingAccount: NexusGenRootTypes['BillingAccount'] | null; // BillingAccount
+    billingAccountId: string | null; // String
+    displayName: string | null; // String
+    enabledOnOrganizationIds: string[] | null; // [String!]
+    enabledOnOrganizations: NexusGenRootTypes['ListOrganizationsReply'] | null; // ListOrganizationsReply
+    enabledOnWorkspaceIds: string[] | null; // [String!]
+    enabledOnWorkspaces: NexusGenRootTypes['ListWorkspacesReply'] | null; // ListWorkspacesReply
+    id: string | null; // ID
+    integration: NexusGenRootTypes['Integration'] | null; // Integration
+    integrationId: string | null; // String
+    integrationOptionValues: NexusGenRootTypes['IntegrationOptionValue'][] | null; // [IntegrationOptionValue!]
+    integrationServiceIds: string[] | null; // [String!]
+    name: string | null; // String
+    naturalKey: string | null; // String
+    tenantIds: string[] | null; // [String!]
+    typeName: string | null; // String
+  }
   IntegrationOption: { // field return type
-    display_Name: string | null; // String
+    displayName: string | null; // String
     name: string | null; // String
     optionType: NexusGenEnums['IntegrationOptionType'] | null; // IntegrationOptionType
+  }
+  IntegrationOptionValue: { // field return type
+    name: string | null; // String
+    optionType: NexusGenEnums['IntegrationOptionType'] | null; // IntegrationOptionType
+    value: string | null; // String
   }
   IntegrationService: { // field return type
     displayName: string | null; // String
     id: string | null; // ID
+    integration: NexusGenRootTypes['Integration'] | null; // Integration
     integrationId: string | null; // String
     name: string | null; // String
     naturalKey: string | null; // String
     tenantIds: string[] | null; // [String!]
     typeName: string | null; // String
     version: number | null; // Int
+  }
+  ListIntegrationInstancesReply: { // field return type
+    items: NexusGenRootTypes['IntegrationInstance'][] | null; // [IntegrationInstance!]
+    nextPageToken: string | null; // String
+    totalCount: number | null; // Int
   }
   ListIntegrationServicesReply: { // field return type
     items: NexusGenRootTypes['IntegrationService'][] | null; // [IntegrationService!]
@@ -378,10 +470,12 @@ export interface NexusGenFieldTypes {
   }
   Mutation: { // field return type
     createAccount: NexusGenRootTypes['CreateAccountReply'] | null; // CreateAccountReply
+    createIntegrationInstance: NexusGenRootTypes['CreateIntegrationInstanceReply'] | null; // CreateIntegrationInstanceReply
   }
   Organization: { // field return type
     billingAccount: NexusGenRootTypes['BillingAccount'] | null; // BillingAccount
     billingAccountId: string | null; // String
+    enabledIntegrationInstances: NexusGenRootTypes['ListIntegrationInstancesReply'] | null; // ListIntegrationInstancesReply
     id: string | null; // ID
     name: string | null; // String
     naturalKey: string | null; // String
@@ -392,6 +486,7 @@ export interface NexusGenFieldTypes {
   Query: { // field return type
     getBillingAccount: NexusGenRootTypes['GetBillingAccountReply'] | null; // GetBillingAccountReply
     getUser: NexusGenRootTypes['GetUserReply'] | null; // GetUserReply
+    listIntegrationInstances: NexusGenRootTypes['ListIntegrationInstancesReply'] | null; // ListIntegrationInstancesReply
     listIntegrations: NexusGenRootTypes['ListIntegrationsReply'] | null; // ListIntegrationsReply
     listOrganizations: NexusGenRootTypes['ListOrganizationsReply'] | null; // ListOrganizationsReply
     listUsers: NexusGenRootTypes['ListUsersReply'] | null; // ListUsersReply
@@ -416,6 +511,7 @@ export interface NexusGenFieldTypes {
   Workspace: { // field return type
     billingAccount: NexusGenRootTypes['BillingAccount'] | null; // BillingAccount
     billingAccountId: string | null; // String
+    enabledIntegrationInstances: NexusGenRootTypes['ListIntegrationInstancesReply'] | null; // ListIntegrationInstancesReply
     id: string | null; // ID
     name: string | null; // String
     naturalKey: string | null; // String
@@ -428,6 +524,9 @@ export interface NexusGenFieldTypes {
 
 export interface NexusGenArgTypes {
   BillingAccount: {
+    integrationInstances: { // args
+      input?: NexusGenInputs['ListIntegrationInstancesRequest'] | null; // ListIntegrationInstancesRequest
+    }
     organizations: { // args
       input?: NexusGenInputs['ListOrganizationsRequest'] | null; // ListOrganizationsRequest
     }
@@ -440,12 +539,26 @@ export interface NexusGenArgTypes {
       input?: NexusGenInputs['ListIntegrationServicesRequest'] | null; // ListIntegrationServicesRequest
     }
   }
+  IntegrationInstance: {
+    enabledOnOrganizations: { // args
+      input?: NexusGenInputs['ListOrganizationsRequest'] | null; // ListOrganizationsRequest
+    }
+    enabledOnWorkspaces: { // args
+      input?: NexusGenInputs['ListWorkspacesRequest'] | null; // ListWorkspacesRequest
+    }
+  }
   Mutation: {
     createAccount: { // args
       input?: NexusGenInputs['CreateAccountRequest'] | null; // CreateAccountRequest
     }
+    createIntegrationInstance: { // args
+      input?: NexusGenInputs['CreateIntegrationInstanceRequest'] | null; // CreateIntegrationInstanceRequest
+    }
   }
   Organization: {
+    enabledIntegrationInstances: { // args
+      input?: NexusGenInputs['ListIntegrationInstancesRequest'] | null; // ListIntegrationInstancesRequest
+    }
     workspaces: { // args
       input?: NexusGenInputs['ListWorkspacesRequest'] | null; // ListWorkspacesRequest
     }
@@ -456,6 +569,9 @@ export interface NexusGenArgTypes {
     }
     getUser: { // args
       input?: NexusGenInputs['GetUserRequest'] | null; // GetUserRequest
+    }
+    listIntegrationInstances: { // args
+      input?: NexusGenInputs['ListIntegrationInstancesRequest'] | null; // ListIntegrationInstancesRequest
     }
     listIntegrations: { // args
       input?: NexusGenInputs['ListIntegrationsRequest'] | null; // ListIntegrationsRequest
@@ -473,6 +589,11 @@ export interface NexusGenArgTypes {
       input?: NexusGenInputs['LoginRequest'] | null; // LoginRequest
     }
   }
+  Workspace: {
+    enabledIntegrationInstances: { // args
+      input?: NexusGenInputs['ListIntegrationInstancesRequest'] | null; // ListIntegrationInstancesRequest
+    }
+  }
 }
 
 export interface NexusGenAbstractResolveReturnTypes {
@@ -480,9 +601,9 @@ export interface NexusGenAbstractResolveReturnTypes {
 
 export interface NexusGenInheritedFields {}
 
-export type NexusGenObjectNames = "BillingAccount" | "Capability" | "CreateAccountReply" | "CreateBillingAccountReply" | "CreateUserReply" | "GetBillingAccountReply" | "GetOrganizationReply" | "GetUserReply" | "Group" | "Integration" | "IntegrationOption" | "IntegrationService" | "ListIntegrationServicesReply" | "ListIntegrationsReply" | "ListOrganizationsReply" | "ListUsersReply" | "ListWorkspacesReply" | "LoginReply" | "Mutation" | "Organization" | "Query" | "User" | "Workspace";
+export type NexusGenObjectNames = "BillingAccount" | "Capability" | "CreateAccountReply" | "CreateBillingAccountReply" | "CreateIntegrationInstanceReply" | "CreateUserReply" | "GetBillingAccountReply" | "GetIntegrationReply" | "GetOrganizationReply" | "GetUserReply" | "Group" | "Integration" | "IntegrationInstance" | "IntegrationOption" | "IntegrationOptionValue" | "IntegrationService" | "ListIntegrationInstancesReply" | "ListIntegrationServicesReply" | "ListIntegrationsReply" | "ListOrganizationsReply" | "ListUsersReply" | "ListWorkspacesReply" | "LoginReply" | "Mutation" | "Organization" | "Query" | "User" | "Workspace";
 
-export type NexusGenInputNames = "CreateAccountRequest" | "CreateBillingAccountRequest" | "CreateUserRequest" | "DataPageToken" | "DataQuery" | "DataQueryExpression" | "DataQueryExpressionOption" | "GetBillingAccountRequest" | "GetOrganizationRequest" | "GetUserRequest" | "ListIntegrationServicesRequest" | "ListIntegrationsRequest" | "ListOrganizationsRequest" | "ListUsersRequest" | "ListWorkspacesRequest" | "LoginRequest";
+export type NexusGenInputNames = "CreateAccountRequest" | "CreateBillingAccountRequest" | "CreateIntegrationInstanceRequest" | "CreateIntegrationOptionValueRequest" | "CreateUserRequest" | "DataPageToken" | "DataQuery" | "DataQueryExpression" | "DataQueryExpressionOption" | "GetBillingAccountRequest" | "GetIntegrationRequest" | "GetOrganizationRequest" | "GetUserRequest" | "ListIntegrationInstancesRequest" | "ListIntegrationServicesRequest" | "ListIntegrationsRequest" | "ListOrganizationsRequest" | "ListUsersRequest" | "ListWorkspacesRequest" | "LoginRequest";
 
 export type NexusGenEnumNames = "DataOrderByDirection" | "DataQueryBooleanLogic" | "DataQueryComparison" | "DataQueryFieldType" | "IntegrationOptionType";
 

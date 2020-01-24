@@ -5,7 +5,9 @@ use tracing_futures::Instrument;
 
 use crate::authorize::{authorize, authorize_by_tenant_id};
 use crate::error::{AccountError, TonicResult};
-use crate::model::{billing_account, group, integration, organization, user, workspace};
+use crate::model::{
+    billing_account, group, integration, integration_instance, organization, user, workspace,
+};
 use crate::protobuf::{self, account_server};
 
 #[derive(Debug)]
@@ -25,6 +27,60 @@ impl Service {
 
 #[tonic::async_trait]
 impl account_server::Account for Service {
+    async fn get_integration(
+        &self,
+        request: Request<protobuf::GetIntegrationRequest>,
+    ) -> TonicResult<protobuf::GetIntegrationReply> {
+        async {
+            let metadata = request.metadata();
+            let user_id = metadata
+                .get("userId")
+                .ok_or(AccountError::InvalidAuthentication)?
+                .to_str()
+                .map_err(AccountError::GrpcHeaderToString)?;
+            let billing_account_id = metadata
+                .get("billingAccountId")
+                .ok_or(AccountError::InvalidAuthentication)?
+                .to_str()
+                .map_err(AccountError::GrpcHeaderToString)?;
+            let req = request.get_ref();
+
+            let integration: integration::Integration = self
+                .db
+                .get(req.integration_id.to_string())
+                .await
+                .map_err(|e| {
+                    debug!(?e, "user_get_failed");
+                    AccountError::IntegrationMissing
+                })?;
+            debug!(?integration, "found");
+
+            let billing_account: billing_account::BillingAccount = self
+                .db
+                .get(billing_account_id)
+                .await
+                .map_err(|_| AccountError::BillingAccountMissing)?;
+
+            // We auth on billing account, because eventually it will be the
+            // place where you decide what you can see globally, I guess? I dunno.
+            // Safe enough for now.
+            authorize(
+                &self.db,
+                user_id,
+                billing_account_id,
+                "read_integration",
+                &billing_account,
+            )
+            .await?;
+
+            Ok(Response::new(protobuf::GetIntegrationReply {
+                integration: Some(integration),
+            }))
+        }
+        .instrument(debug_span!("get_integration", ?request))
+        .await
+    }
+
     async fn get_user(
         &self,
         request: Request<protobuf::GetUserRequest>,
@@ -94,6 +150,81 @@ impl account_server::Account for Service {
             }))
         }
         .instrument(debug_span!("get_organization", ?request))
+        .await
+    }
+
+    async fn list_integration_instances(
+        &self,
+        request: Request<protobuf::ListIntegrationInstancesRequest>,
+    ) -> TonicResult<protobuf::ListIntegrationInstancesReply> {
+        async {
+            let metadata = request.metadata();
+            let user_id = metadata
+                .get("userId")
+                .ok_or(AccountError::InvalidAuthentication)?
+                .to_str()
+                .map_err(AccountError::GrpcHeaderToString)?;
+            let billing_account_id = metadata
+                .get("billingAccountId")
+                .ok_or(AccountError::InvalidAuthentication)?
+                .to_str()
+                .map_err(AccountError::GrpcHeaderToString)?;
+            let req = request.get_ref();
+
+            let billing_account: billing_account::BillingAccount = self
+                .db
+                .get(billing_account_id)
+                .await
+                .map_err(|_| AccountError::BillingAccountMissing)?;
+
+            let scope_by_tenant_id = if req.scope_by_tenant_id == "" {
+                billing_account_id
+            } else {
+                &req.scope_by_tenant_id
+            };
+
+            authorize(
+                &self.db,
+                user_id,
+                billing_account_id,
+                "list_integration_instances",
+                &billing_account,
+            )
+            .await?;
+
+            let list_result: ListResult<integration_instance::IntegrationInstance> =
+                if req.page_token != "" {
+                    self.db
+                        .list_by_page_token(&req.page_token)
+                        .await
+                        .map_err(AccountError::ListIntegrationInstancesError)?
+                } else {
+                    self.db
+                        .list(
+                            &req.query,
+                            req.page_size,
+                            &req.order_by,
+                            req.order_by_direction,
+                            scope_by_tenant_id,
+                            "",
+                        )
+                        .await
+                        .map_err(AccountError::ListIntegrationInstancesError)?
+                };
+
+            if list_result.items.len() == 0 {
+                return Ok(Response::new(
+                    protobuf::ListIntegrationInstancesReply::default(),
+                ));
+            }
+
+            Ok(Response::new(protobuf::ListIntegrationInstancesReply {
+                total_count: list_result.total_count(),
+                next_page_token: list_result.page_token().to_string(),
+                items: list_result.items,
+            }))
+        }
+        .instrument(debug_span!("list_integration_instances", ?request))
         .await
     }
 
@@ -549,6 +680,83 @@ impl account_server::Account for Service {
         .await
     }
 
+    async fn create_integration_instance(
+        &self,
+        request: Request<protobuf::CreateIntegrationInstanceRequest>,
+    ) -> TonicResult<protobuf::CreateIntegrationInstanceReply> {
+        async {
+            let metadata = request.metadata();
+            let user_id = metadata
+                .get("userId")
+                .ok_or(AccountError::InvalidAuthentication)?
+                .to_str()
+                .map_err(AccountError::GrpcHeaderToString)?;
+            let billing_account_id = metadata
+                .get("billingAccountId")
+                .ok_or(AccountError::InvalidAuthentication)?
+                .to_str()
+                .map_err(AccountError::GrpcHeaderToString)?;
+
+            // We authorize on the billing account, so we have to go get it.
+            let billing_account: billing_account::BillingAccount = self
+                .db
+                .get(billing_account_id)
+                .await
+                .map_err(|_| AccountError::BillingAccountMissing)?;
+
+            authorize(
+                &self.db,
+                user_id,
+                billing_account_id,
+                "create_integration_instance",
+                &billing_account,
+            )
+            .await?;
+
+            let req = request.get_ref();
+
+            // These are only here because we are skipping the part where you
+            // enable/disable for workspaces and organizations. There are only
+            // the default ones, so every object is just going to be enabled
+            // for them by default, for now.
+            let organization: organization::Organization = self
+                .db
+                .lookup(billing_account_id, "organization", "default")
+                .await
+                .map_err(|_| AccountError::OrganizationMissing)?;
+
+            let workspace: workspace::Workspace = self
+                .db
+                .lookup_by_natural_key(format!(
+                    "{}:{}:workspace:default",
+                    billing_account_id,
+                    organization.get_id()
+                ))
+                .await
+                .map_err(|_| AccountError::WorkspaceMissing)?;
+
+            let mut integration_instance =
+                integration_instance::IntegrationInstance::new_from_create_request(&req)?;
+
+            integration_instance.add_to_tenant_ids(billing_account_id.to_string());
+            integration_instance.billing_account_id = billing_account_id.to_string();
+            integration_instance.enabled_on_workspace_ids = vec![workspace.get_id().to_string()];
+            integration_instance.enabled_on_organization_ids =
+                vec![organization.get_id().to_string()];
+
+            self.db
+                .validate_and_insert_as_new(&mut integration_instance)
+                .await
+                .map_err(AccountError::CreateIntegrationInstanceError)?;
+
+            Ok(Response::new(protobuf::CreateIntegrationInstanceReply {
+                integration_instance: Some(integration_instance),
+            }))
+        }
+        .instrument(debug_span!("create_integration_instance", ?request))
+        .await
+    }
+
     async fn create_account(
         &self,
         request: Request<protobuf::CreateAccountRequest>,
@@ -623,6 +831,29 @@ impl account_server::Account for Service {
                 .validate_and_insert_as_new(&mut workspace)
                 .await
                 .map_err(AccountError::CreateWorkspaceError)?;
+
+            let global_integration: integration::Integration = self
+                .db
+                .lookup_by_natural_key("global:integration:global")
+                .await
+                .map_err(|_| AccountError::IntegrationMissing)?;
+
+            let mut integration_instance = integration_instance::IntegrationInstance {
+                name: "global".to_string(),
+                display_name: "Global Integration".to_string(),
+                tenant_ids: vec![ba.get_id().to_string()],
+                integration_id: global_integration.get_id().to_string(),
+                integration_option_values: Vec::new(),
+                billing_account_id: ba.get_id().to_string(),
+                enabled_on_workspace_ids: vec![workspace.get_id().to_string()],
+                enabled_on_organization_ids: vec![organization.get_id().to_string()],
+                ..Default::default()
+            };
+
+            self.db
+                .validate_and_insert_as_new(&mut integration_instance)
+                .await
+                .map_err(AccountError::CreateIntegrationInstanceError)?;
 
             Ok(Response::new(protobuf::CreateAccountReply {
                 user: Some(user),

@@ -6,15 +6,33 @@ import "si-data/proto/si.data.proto";
 
 service Account {
   rpc CreateAccount(CreateAccountRequest) returns (CreateAccountReply);
+  rpc CreateIntegrationInstance(CreateIntegrationInstanceRequest) returns (CreateIntegrationInstanceReply);
   rpc GetBillingAccount(GetBillingAccountRequest) returns (GetBillingAccountReply);
   rpc GetUser(GetUserRequest) returns (GetUserReply);
   rpc GetOrganization(GetOrganizationRequest) returns (GetOrganizationReply);
+  rpc GetIntegration(GetIntegrationRequest) returns (GetIntegrationReply);
   rpc ListWorkspaces(ListWorkspacesRequest) returns (ListWorkspacesReply);
   rpc ListOrganizations(ListOrganizationsRequest) returns (ListOrganizationsReply);
   rpc ListUsers(ListUsersRequest) returns (ListUsersReply);
   rpc ListIntegrations(ListIntegrationsRequest) returns (ListIntegrationsReply);
   rpc ListIntegrationServices(ListIntegrationServicesRequest) returns (ListIntegrationServicesReply);
+  rpc ListIntegrationInstances(ListIntegrationInstancesRequest) returns (ListIntegrationInstancesReply);
   rpc Login(LoginRequest) returns (LoginReply);
+}
+
+message ListIntegrationInstancesRequest {
+  si.data.Query query = 1;
+  int32 page_size = 2;
+  string order_by = 3;
+  si.data.OrderByDirection order_by_direction = 4;
+  string page_token = 5;
+  string scope_by_tenant_id = 6;
+}
+
+message ListIntegrationInstancesReply {
+  repeated IntegrationInstance items = 1;
+  int32 total_count = 2;
+  string next_page_token = 3;
 }
 
 message ListIntegrationServicesRequest {
@@ -92,6 +110,14 @@ message ListUsersReply {
   string next_page_token = 3;
 }
 
+message GetIntegrationRequest {
+  string integration_id = 1;
+}
+
+message GetIntegrationReply {
+  Integration integration = 1;
+}
+
 message GetUserRequest {
   string user_id = 1;
 }
@@ -114,6 +140,23 @@ message GetOrganizationRequest {
 
 message GetOrganizationReply {
   Organization organization = 1;
+}
+
+message CreateIntegrationOptionValueRequest {
+  string name = 1;
+  string value = 2;
+  IntegrationOptionType option_type = 3;
+}
+
+message CreateIntegrationInstanceRequest {
+  string integration_id = 1;
+  string name = 2;
+  string display_name = 3;
+  repeated CreateIntegrationOptionValueRequest integration_option_values = 4;
+}
+
+message CreateIntegrationInstanceReply {
+  IntegrationInstance integration_instance = 1;
 }
 
 message CreateAccountRequest {
@@ -234,6 +277,23 @@ message IntegrationService {
   repeated string tenant_ids = 10;
 }
 
+enum IntegrationOptionType {
+  STRING = 0;
+  SECRET = 1;
+}
+
+message IntegrationOption {
+  string name = 1;
+  string display_name = 2;
+  IntegrationOptionType option_type = 3;
+}
+
+message IntegrationOptionValue {
+  string name = 1;
+  string value = 2;
+  IntegrationOptionType option_type = 3;
+}
+
 message Integration {
   string id = 1;
   string natural_key = 2;
@@ -242,15 +302,20 @@ message Integration {
   string display_name = 5;
   int32 version = 6;
   repeated string tenant_ids = 10;
-  message IntegrationOption {
-    string name = 1;
-    string display_Name = 2;
-    enum IntegrationOptionType {
-      STRING = 0;
-      SECRET = 1;
-    }
-    IntegrationOptionType option_type = 3;
-  }
   repeated IntegrationOption integration_options = 11;
 }
 
+message IntegrationInstance {
+  string id = 1;
+  string natural_key = 2;
+  string type_name = 3;
+  repeated string tenant_ids = 4;
+  string name = 5;
+  string display_name = 6;
+  string integration_id = 7;
+  repeated string integration_service_ids = 8;
+  repeated IntegrationOptionValue integration_option_values = 9;
+  string billing_account_id = 10;
+  repeated string enabled_on_workspace_ids = 11;
+  repeated string enabled_on_organization_ids = 12;
+}

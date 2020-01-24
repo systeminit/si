@@ -9,6 +9,9 @@ type BillingAccount {
   """id"""
   id: ID
 
+  """id"""
+  integrationInstances(input: ListIntegrationInstancesRequest): ListIntegrationInstancesReply
+
   """naturalKey"""
   naturalKey: String
 
@@ -63,6 +66,36 @@ input CreateBillingAccountRequest {
 
   """shortName"""
   shortName: String
+}
+
+type CreateIntegrationInstanceReply {
+  """integrationInstance"""
+  integrationInstance: IntegrationInstance
+}
+
+input CreateIntegrationInstanceRequest {
+  """displayName"""
+  displayName: String
+
+  """integrationId"""
+  integrationId: String
+
+  """integrationOptionValues"""
+  integrationOptionValues: [CreateIntegrationOptionValueRequest!]
+
+  """name"""
+  name: String
+}
+
+input CreateIntegrationOptionValueRequest {
+  """name"""
+  name: String
+
+  """optionType"""
+  optionType: IntegrationOptionType
+
+  """value"""
+  value: String
 }
 
 type CreateUserReply {
@@ -129,8 +162,11 @@ enum DataQueryBooleanLogic {
 }
 
 enum DataQueryComparison {
+  CONTAINS
   EQUALS
+  LIKE
   NOTEQUALS
+  NOTLIKE
 }
 
 input DataQueryExpression {
@@ -168,6 +204,16 @@ type GetBillingAccountReply {
 input GetBillingAccountRequest {
   """billingAccountId"""
   billingAccountId: String
+}
+
+type GetIntegrationReply {
+  """integration"""
+  integration: Integration
+}
+
+input GetIntegrationRequest {
+  """integrationId"""
+  integrationId: String
 }
 
 type GetOrganizationReply {
@@ -248,9 +294,59 @@ type Integration {
   version: Int
 }
 
+type IntegrationInstance {
+  """billingAccountId"""
+  billingAccount: BillingAccount
+
+  """billingAccountId"""
+  billingAccountId: String
+
+  """displayName"""
+  displayName: String
+
+  """enabledOnOrganizationIds"""
+  enabledOnOrganizationIds: [String!]
+
+  """enabledOnOrganizationIds"""
+  enabledOnOrganizations(input: ListOrganizationsRequest): ListOrganizationsReply
+
+  """enabledOnWorkspaceIds"""
+  enabledOnWorkspaceIds: [String!]
+
+  """enabledOnWorkspaceIds"""
+  enabledOnWorkspaces(input: ListWorkspacesRequest): ListWorkspacesReply
+
+  """id"""
+  id: ID
+
+  """integrationId"""
+  integration: Integration
+
+  """integrationId"""
+  integrationId: String
+
+  """integrationOptionValues"""
+  integrationOptionValues: [IntegrationOptionValue!]
+
+  """integrationServiceIds"""
+  integrationServiceIds: [String!]
+
+  """name"""
+  name: String
+
+  """naturalKey"""
+  naturalKey: String
+
+  """tenantIds"""
+  tenantIds: [String!]
+
+  """typeName"""
+  typeName: String
+}
+
 type IntegrationOption {
-  """display_Name"""
-  display_Name: String
+  """displayName"""
+  displayName: String
 
   """name"""
   name: String
@@ -264,12 +360,26 @@ enum IntegrationOptionType {
   STRING
 }
 
+type IntegrationOptionValue {
+  """name"""
+  name: String
+
+  """optionType"""
+  optionType: IntegrationOptionType
+
+  """value"""
+  value: String
+}
+
 type IntegrationService {
   """displayName"""
   displayName: String
 
   """id"""
   id: ID
+
+  """integrationId"""
+  integration: Integration
 
   """integrationId"""
   integrationId: String
@@ -288,6 +398,37 @@ type IntegrationService {
 
   """version"""
   version: Int
+}
+
+type ListIntegrationInstancesReply {
+  """items"""
+  items: [IntegrationInstance!]
+
+  """nextPageToken"""
+  nextPageToken: String
+
+  """totalCount"""
+  totalCount: Int
+}
+
+input ListIntegrationInstancesRequest {
+  """orderBy"""
+  orderBy: String
+
+  """orderByDirection"""
+  orderByDirection: DataOrderByDirection
+
+  """pageSize"""
+  pageSize: Int
+
+  """pageToken"""
+  pageToken: String
+
+  """query"""
+  query: DataQuery
+
+  """scopeByTenantId"""
+  scopeByTenantId: String
 }
 
 type ListIntegrationServicesReply {
@@ -459,6 +600,7 @@ input LoginRequest {
 
 type Mutation {
   createAccount(input: CreateAccountRequest): CreateAccountReply
+  createIntegrationInstance(input: CreateIntegrationInstanceRequest): CreateIntegrationInstanceReply
 }
 
 type Organization {
@@ -467,6 +609,9 @@ type Organization {
 
   """billingAccountId"""
   billingAccountId: String
+
+  """id"""
+  enabledIntegrationInstances(input: ListIntegrationInstancesRequest): ListIntegrationInstancesReply
 
   """id"""
   id: ID
@@ -490,6 +635,7 @@ type Organization {
 type Query {
   getBillingAccount(input: GetBillingAccountRequest): GetBillingAccountReply
   getUser(input: GetUserRequest): GetUserReply
+  listIntegrationInstances(input: ListIntegrationInstancesRequest): ListIntegrationInstancesReply
   listIntegrations(input: ListIntegrationsRequest): ListIntegrationsReply
   listOrganizations(input: ListOrganizationsRequest): ListOrganizationsReply
   listUsers(input: ListUsersRequest): ListUsersReply
@@ -544,6 +690,9 @@ type Workspace {
 
   """billingAccountId"""
   billingAccountId: String
+
+  """id"""
+  enabledIntegrationInstances(input: ListIntegrationInstancesRequest): ListIntegrationInstancesReply
 
   """id"""
   id: ID

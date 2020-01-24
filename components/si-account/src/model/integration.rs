@@ -3,8 +3,7 @@ use uuid::Uuid;
 
 pub use crate::error::{AccountError, Result};
 pub use crate::protobuf::{
-    integration::integration_option::IntegrationOptionType, integration::IntegrationOption,
-    Integration, IntegrationService,
+    Integration, IntegrationOption, IntegrationOptionType, IntegrationService,
 };
 
 impl Storable for Integration {

@@ -186,86 +186,9 @@ export class SchemaGenerator {
       } else {
         gt = t;
       }
-
-      // If the hints say this field has_one, then it should become
-      // two fields - one the original field, and the second a field
-      // that resolves to the grpc endpoint that retrieves the ID.
-      //
-      // The corresponding field must be identical to the field
-      // in the request object.
-      if (hint["has_one"]) {
-        if (field == "id") {
-          gt.id(field, fieldConfig);
-        } else {
-          gt.string(field, fieldConfig);
-        }
-        gt.field(hint["has_one"]["to"], {
-          type: hint["has_one"]["type"],
-          async resolve(obj, _attrs, { dataSources: { grpc }, user }: Context) {
-            const metadata = new Metadata();
-            metadata.add("authenticated", `${user.authenticated}`);
-            metadata.add("userId", user["userId"] || "");
-            metadata.add("billingAccountId", user["billingAccountId"] || "");
-
-            const grpcServiceName = hint["has_one"]["grpcServiceName"];
-            const g = grpc.service(grpcServiceName);
-            const input = {};
-            input[field] = obj[field];
-            const req = new g.Request(
-              hint["has_one"]["method"],
-              input,
-            ).withMetadata(metadata);
-            const result = await req.exec();
-            logger.log("warn", "I have the cheese", { result: result, hint });
-            return result.response[hint["has_one"]["to"]];
-          },
-          ...fieldConfig,
-        });
-        // TODO: Need to deal with having many has_many fields off a single
-        // graphql field. Basically it's an array? TOML. Who knows.
-      } else if (hint["has_many"]) {
-        if (field == "id") {
-          gt.id(field, fieldConfig);
-        } else {
-          gt.string(field, fieldConfig);
-        }
-        for (const thisHint of hint["has_many"]) {
-          gt.field(thisHint["to"], {
-            type: thisHint["type"],
-            // @ts-ignore - we know, this isn't strongly typed
-            args: { input: arg({ type: thisHint["inputType"] }) },
-            async resolve(
-              obj,
-              attrs,
-              { dataSources: { grpc }, user }: Context,
-            ) {
-              const metadata = new Metadata();
-              metadata.add("authenticated", `${user.authenticated}`);
-              metadata.add("userId", user["userId"] || "");
-              metadata.add("billingAccountId", user["billingAccountId"] || "");
-
-              const grpcServiceName = thisHint["grpcServiceName"];
-              const g = grpc.service(grpcServiceName);
-              const input = attrs["input"] || {};
-              logger.log("error", "I have sad times", { attrs });
-              logger.log("error", "I have good times", { obj });
-              input["scopeByTenantId"] = obj["id"];
-              const req = new g.Request(thisHint["method"], input).withMetadata(
-                metadata,
-              );
-              const result = await req.exec();
-              logger.log("error", "I have the has many", {
-                result: result,
-                thisHint,
-              });
-              return result.response;
-            },
-            ...fieldConfig,
-          });
-        }
-        // If it is an "id" field, then we should announce that
-        // to GraphQL, so that client side caching can be smart.
-      } else if (field == "id") {
+      // If it is an "id" field, then we should announce that
+      // to GraphQL, so that client side caching can be smart.
+      if (field == "id") {
         gt.id(field, fieldConfig);
 
         // Protobuf floats or doubles live in GraphQL floats.
@@ -301,6 +224,198 @@ export class SchemaGenerator {
         );
         // @ts-ignore
         gt.field(field, { type: referenceType, ...fieldConfig });
+      }
+
+      // If the hints say this field has_one, then it should become
+      // two fields - one the original field, and the second a field
+      // that resolves to the grpc endpoint that retrieves the ID.
+      //
+      // The corresponding field must be identical to the field
+      // in the request object.
+      if (hint["has_one"]) {
+        gt.field(hint["has_one"]["to"], {
+          type: hint["has_one"]["type"],
+          async resolve(obj, _attrs, { dataSources: { grpc }, user }: Context) {
+            const metadata = new Metadata();
+            metadata.add("authenticated", `${user.authenticated}`);
+            metadata.add("userId", user["userId"] || "");
+            metadata.add("billingAccountId", user["billingAccountId"] || "");
+
+            const grpcServiceName = hint["has_one"]["grpcServiceName"];
+            const g = grpc.service(grpcServiceName);
+            const input = {};
+            input[field] = obj[field];
+            const req = new g.Request(
+              hint["has_one"]["method"],
+              input,
+            ).withMetadata(metadata);
+            const result = await req.exec();
+            logger.log("warn", "I have the cheese", { result: result, hint });
+            return result.response[hint["has_one"]["to"]];
+          },
+          ...fieldConfig,
+        });
+      }
+      if (hint["in_list"]) {
+        for (const thisHint of hint["in_list"]) {
+          t.field(thisHint["to"], {
+            type: thisHint["type"],
+            // @ts-ignore - we know, this isn't strongly typed
+            args: { input: arg({ type: thisHint["inputType"] }) },
+            async resolve(
+              obj,
+              attrs,
+              { dataSources: { grpc }, user }: Context,
+            ) {
+              const metadata = new Metadata();
+              metadata.add("authenticated", `${user.authenticated}`);
+              metadata.add("userId", user["userId"] || "");
+              metadata.add("billingAccountId", user["billingAccountId"] || "");
+
+              const grpcServiceName = thisHint["grpcServiceName"];
+              const g = grpc.service(grpcServiceName);
+              const expressionList = [];
+              expressionList.push({
+                expression: {
+                  field: thisHint["listField"],
+                  fieldType: "STRING",
+                  comparison: "CONTAINS",
+                  value: obj.id,
+                },
+              });
+              const input = attrs["input"] || {};
+              if (input["query"]) {
+                const userQuery = input["query"];
+                input["query"] = {
+                  items: [
+                    { query: userQuery },
+                    {
+                      query: {
+                        items: expressionList,
+                      },
+                    },
+                  ],
+                  booleanTerm: "AND",
+                };
+              } else {
+                input["query"] = {
+                  items: expressionList,
+                };
+              }
+              // I think this might not work forever, but it's going to work as
+              // long as everything you are lookikng for is scoped by billing id! :)
+              input["scopeByTenantId"] = obj["billing_account_id"];
+              const req = new g.Request(thisHint["method"], input).withMetadata(
+                metadata,
+              );
+              const result = await req.exec();
+              logger.log("error", "**** I have the in list", {
+                result: result,
+                thisHint,
+              });
+              return result.response;
+            },
+            ...fieldConfig,
+          });
+        }
+      }
+      if (hint["has_list"]) {
+        const thisHint = hint["has_list"];
+        t.field(thisHint["to"], {
+          type: thisHint["type"],
+          // @ts-ignore - we know, this isn't strongly typed
+          args: { input: arg({ type: thisHint["inputType"] }) },
+          async resolve(obj, attrs, { dataSources: { grpc }, user }: Context) {
+            const metadata = new Metadata();
+            metadata.add("authenticated", `${user.authenticated}`);
+            metadata.add("userId", user["userId"] || "");
+            metadata.add("billingAccountId", user["billingAccountId"] || "");
+
+            const grpcServiceName = thisHint["grpcServiceName"];
+            const g = grpc.service(grpcServiceName);
+            const expressionList = [];
+            for (const itemId of obj[field]) {
+              expressionList.push({
+                expression: {
+                  field: "id",
+                  fieldType: "STRING",
+                  comparison: "EQUALS",
+                  value: itemId,
+                },
+              });
+            }
+            const input = attrs["input"] || {};
+            if (input["query"]) {
+              const userQuery = input["query"];
+              input["query"] = {
+                items: [
+                  { query: userQuery },
+                  {
+                    query: {
+                      items: expressionList,
+                      booleanTerm: "OR",
+                    },
+                  },
+                ],
+                booleanTerm: "AND",
+              };
+            } else {
+              input["query"] = {
+                items: expressionList,
+                booleanTerm: "OR",
+              };
+            }
+            // I think this might not work forever, but it's going to work as
+            // long as everything you are lookikng for is scoped by billing id! :)
+            input["scopeByTenantId"] = obj["billing_account_id"];
+            const req = new g.Request(thisHint["method"], input).withMetadata(
+              metadata,
+            );
+            const result = await req.exec();
+            logger.log("error", "**** I have the has list", {
+              result: result,
+              thisHint,
+            });
+            return result.response;
+          },
+          ...fieldConfig,
+        });
+      }
+      if (hint["has_many"]) {
+        for (const thisHint of hint["has_many"]) {
+          t.field(thisHint["to"], {
+            type: thisHint["type"],
+            // @ts-ignore - we know, this isn't strongly typed
+            args: { input: arg({ type: thisHint["inputType"] }) },
+            async resolve(
+              obj,
+              attrs,
+              { dataSources: { grpc }, user }: Context,
+            ) {
+              const metadata = new Metadata();
+              metadata.add("authenticated", `${user.authenticated}`);
+              metadata.add("userId", user["userId"] || "");
+              metadata.add("billingAccountId", user["billingAccountId"] || "");
+
+              const grpcServiceName = thisHint["grpcServiceName"];
+              const g = grpc.service(grpcServiceName);
+              const input = attrs["input"] || {};
+              logger.log("error", "I have sad times", { attrs });
+              logger.log("error", "I have good times", { obj });
+              input["scopeByTenantId"] = obj["id"];
+              const req = new g.Request(thisHint["method"], input).withMetadata(
+                metadata,
+              );
+              const result = await req.exec();
+              logger.log("error", "I have the has many", {
+                result: result,
+                thisHint,
+              });
+              return result.response;
+            },
+            ...fieldConfig,
+          });
+        }
       }
     }
   }

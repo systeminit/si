@@ -28,6 +28,9 @@ impl fmt::Display for QueryComparison {
         let msg = match self {
             &QueryComparison::Equals => "=".to_string(),
             &QueryComparison::Notequals => "!=".to_string(),
+            &QueryComparison::Contains => "contains".to_string(),
+            &QueryComparison::Like => "LIKE".to_string(),
+            &QueryComparison::Notlike => "NOT LIKE".to_string(),
         };
         write!(f, "{}", msg)
     }
@@ -74,13 +77,22 @@ impl Query {
                         }
                         None => return Err(DataError::InvalidFieldType),
                     };
-                    let expression = format!(
-                        "{}.[{}] {} {}",
-                        bucket_name,
-                        json![exp.field],
-                        comparison,
-                        value
-                    );
+                    let expression = if comparison == QueryComparison::Contains {
+                        format!(
+                            "ARRAY_CONTAINS({}.[{}], {})",
+                            bucket_name,
+                            json![exp.field],
+                            value
+                        )
+                    } else {
+                        format!(
+                            "{}.[{}] {} {}",
+                            bucket_name,
+                            json![exp.field],
+                            comparison,
+                            value
+                        )
+                    };
                     where_string.push_str(&expression);
                 }
                 Some(query_expression_option::Qe::Query(q)) => {
@@ -121,6 +133,60 @@ mod query_test {
         };
         let query_string = query.as_n1ql("si").expect("Failed to create n1ql query");
         assert_eq!(query_string, "(si.[\"foo\"] = \"bar\")");
+    }
+
+    #[test]
+    fn single_term_contains() {
+        let query = Query {
+            items: vec![QueryExpressionOption {
+                qe: Some(query_expression_option::Qe::Expression(QueryExpression {
+                    field: "foo".to_string(),
+                    comparison: QueryComparison::Contains as i32,
+                    value: "bar".to_string(),
+                    ..Default::default()
+                })),
+            }],
+            boolean_term: QueryBooleanLogic::And as i32,
+            ..Default::default()
+        };
+        let query_string = query.as_n1ql("si").expect("Failed to create n1ql query");
+        assert_eq!(query_string, "(ARRAY_CONTAINS(si.[\"foo\"], \"bar\"))");
+    }
+
+    #[test]
+    fn single_term_like() {
+        let query = Query {
+            items: vec![QueryExpressionOption {
+                qe: Some(query_expression_option::Qe::Expression(QueryExpression {
+                    field: "foo".to_string(),
+                    comparison: QueryComparison::Like as i32,
+                    value: "bar".to_string(),
+                    ..Default::default()
+                })),
+            }],
+            boolean_term: QueryBooleanLogic::And as i32,
+            ..Default::default()
+        };
+        let query_string = query.as_n1ql("si").expect("Failed to create n1ql query");
+        assert_eq!(query_string, "(si.[\"foo\"] LIKE \"bar\")");
+    }
+
+    #[test]
+    fn single_term_notlike() {
+        let query = Query {
+            items: vec![QueryExpressionOption {
+                qe: Some(query_expression_option::Qe::Expression(QueryExpression {
+                    field: "foo".to_string(),
+                    comparison: QueryComparison::Notlike as i32,
+                    value: "bar".to_string(),
+                    ..Default::default()
+                })),
+            }],
+            boolean_term: QueryBooleanLogic::And as i32,
+            ..Default::default()
+        };
+        let query_string = query.as_n1ql("si").expect("Failed to create n1ql query");
+        assert_eq!(query_string, "(si.[\"foo\"] NOT LIKE \"bar\")");
     }
 
     #[test]

@@ -5,6 +5,9 @@ package si.data;
 enum QueryComparison {
   EQUALS = 0;
   NOTEQUALS = 1;
+  CONTAINS = 2;
+  LIKE = 3;
+  NOTLIKE = 4;
 }
 
 enum QueryBooleanLogic {
