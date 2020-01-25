@@ -1,5 +1,6 @@
-use crate::data::{
-    query_expression_option, Query, QueryBooleanLogic, QueryComparison, QueryFieldType,
+pub use crate::data::{
+    query_expression_option, Query, QueryBooleanLogic, QueryComparison, QueryExpression,
+    QueryExpressionOption, QueryFieldType,
 };
 use crate::error::{DataError, Result};
 

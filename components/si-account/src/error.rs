@@ -81,6 +81,8 @@ pub enum AccountError {
     WorkspaceMissing,
     #[error("cannot find integration")]
     IntegrationMissing,
+    #[error("cannot find integration service")]
+    IntegrationServiceMissing,
     #[error("unknown tenant id")]
     UnknownTenantId(si_data::error::DataError),
     #[error("invalid tenant id for scoped authorization")]

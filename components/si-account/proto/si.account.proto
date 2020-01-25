@@ -11,6 +11,7 @@ service Account {
   rpc GetUser(GetUserRequest) returns (GetUserReply);
   rpc GetOrganization(GetOrganizationRequest) returns (GetOrganizationReply);
   rpc GetIntegration(GetIntegrationRequest) returns (GetIntegrationReply);
+  rpc GetIntegrationService(GetIntegrationServiceRequest) returns (GetIntegrationServiceReply);
   rpc ListWorkspaces(ListWorkspacesRequest) returns (ListWorkspacesReply);
   rpc ListOrganizations(ListOrganizationsRequest) returns (ListOrganizationsReply);
   rpc ListUsers(ListUsersRequest) returns (ListUsersReply);
@@ -140,6 +141,14 @@ message GetOrganizationRequest {
 
 message GetOrganizationReply {
   Organization organization = 1;
+}
+
+message GetIntegrationServiceRequest {
+  string integration_service_id = 1;
+}
+
+message GetIntegrationServiceReply {
+  IntegrationService integration_service = 1;
 }
 
 message CreateIntegrationOptionValueRequest {

@@ -1,0 +1,18 @@
+protoPackageName = "si.ssh_key"
+
+service.SshKey.GetComponent.query = true
+service.SshKey.ListComponents.query = true
+service.SshKey.PickComponent.query = true
+
+[message.Component.integrationId.has_one]
+to = "integration"
+grpcServiceName = "Account"
+method = "GetIntegration"
+type = "Integration"
+
+[message.Component.integrationServiceId.has_one]
+to = "integrationService"
+grpcServiceName = "Account"
+method = "GetIntegrationService"
+type = "IntegrationService"
+

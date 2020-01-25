@@ -6,6 +6,66 @@ import "si-data/proto/si.data.proto";
 
 service SshKey {
   rpc GetComponent(GetComponentRequest) returns (GetComponentReply);
+  rpc ListComponents(ListComponentsRequest) returns (ListComponentsReply);
+  rpc PickComponent(PickComponentRequest) returns (PickComponentReply);
+}
+
+
+message PickComponentRequest {
+  string name = 1;
+  string display_name = 2;
+  string integration_id = 3;
+  string integration_service_id = 4;
+  enum KeyTypeRequest {
+    NOKEYTYPE = 0;
+    RSA = 1;
+    DSA = 2;
+    ECDSA = 3;
+    ED25519 = 4;
+  }
+
+  enum KeyFormatRequest {
+    NOKEYFORMAT = 0;
+    RFC4716 = 1;
+    PKCS8 = 2;
+    PEM = 3;
+  }
+  KeyTypeRequest key_type = 5;
+  KeyFormatRequest key_format = 6;
+  uint32 bits = 7;
+}
+
+message ConstraintValueReply {
+  string field = 1;
+  string value = 2;
+}
+
+message PickComponentReply {
+  Component chosen = 1;
+  repeated ConstraintValueReply implicit_constraints = 2;
+}
+
+message ListComponentsRequest {
+  si.data.Query query = 1;
+  int32 page_size = 2;
+  string order_by = 3;
+  si.data.OrderByDirection order_by_direction = 4;
+  string page_token = 5;
+  string scope_by_tenant_id = 6;
+}
+
+message ListComponentsReply {
+  repeated Component items = 1;
+  int32 total_count = 2;
+  string next_page_token = 3;
+}
+
+message GetComponentRequest {
+  string component_id = 1;
+}
+
+message GetComponentReply {
+  Component component = 1;
 }
 
 enum KeyType {
@@ -29,10 +89,10 @@ message Component {
   string name = 5;
   string display_name = 6;
   string description = 7;
-  // TODO: KEEP GOING
   string integration_id = 8;
   string integration_service_id = 9;
   string display_type_name = 10;
+  int32 version = 11;
   // From here, we are in to the fields for this specific component
   KeyType key_type = 20;
   KeyFormat key_format = 21;

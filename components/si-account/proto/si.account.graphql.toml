@@ -97,6 +97,13 @@ method = "ListIntegrationServices"
 type = "ListIntegrationServicesReply"
 inputType = "ListIntegrationServicesRequest"
 
+# [[message.Integration.id.has_many]]
+# to = "sshKeyComponents"
+# grpcServiceName = "SshKey"
+# method = "ListSshKeys"
+# type = "ListSshKeysReply"
+# inputType = "ListSshKeysRequest"
+
 [message.IntegrationService.integrationId.has_one]
 to = "integration"
 grpcServiceName = "Account"

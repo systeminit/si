@@ -15,7 +15,13 @@ pub async fn migrate(db: &Db) -> Result<()> {
                 version: 1,
                 ..Default::default()
             },
-            Vec::new(),
+            vec![IntegrationService {
+                name: "ssh_key".to_string(),
+                display_name: "SSH Key".to_string(),
+                tenant_ids: vec!["global".to_string()],
+                version: 1,
+                ..Default::default()
+            }],
         ),
         (
             Integration {

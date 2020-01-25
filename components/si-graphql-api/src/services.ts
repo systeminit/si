@@ -74,6 +74,13 @@ export const services = [
     address: environment.services["si-account"],
     dataOnly: true,
   }),
+  new ServiceDescription({
+    serviceName: "si-ssh-key",
+    protoPackageName: "si.ssh_key",
+    grpcServiceName: "SshKey",
+    graphqlTypePrefix: "SshKey",
+    address: environment.services["si-ssh-key"],
+  }),
 
   // new ServiceDescription({
   //   serviceName: "si-ssh-key",

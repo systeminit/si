@@ -27,6 +27,60 @@ impl Service {
 
 #[tonic::async_trait]
 impl account_server::Account for Service {
+    async fn get_integration_service(
+        &self,
+        request: Request<protobuf::GetIntegrationServiceRequest>,
+    ) -> TonicResult<protobuf::GetIntegrationServiceReply> {
+        async {
+            let metadata = request.metadata();
+            let user_id = metadata
+                .get("userId")
+                .ok_or(AccountError::InvalidAuthentication)?
+                .to_str()
+                .map_err(AccountError::GrpcHeaderToString)?;
+            let billing_account_id = metadata
+                .get("billingAccountId")
+                .ok_or(AccountError::InvalidAuthentication)?
+                .to_str()
+                .map_err(AccountError::GrpcHeaderToString)?;
+            let req = request.get_ref();
+
+            let integration_service: integration::IntegrationService = self
+                .db
+                .get(req.integration_service_id.to_string())
+                .await
+                .map_err(|e| {
+                    debug!(?e, "integration_service_get_failed");
+                    AccountError::IntegrationServiceMissing
+                })?;
+            debug!(?integration_service, "found");
+
+            let billing_account: billing_account::BillingAccount = self
+                .db
+                .get(billing_account_id)
+                .await
+                .map_err(|_| AccountError::BillingAccountMissing)?;
+
+            // We auth on billing account, because eventually it will be the
+            // place where you decide what you can see globally, I guess? I dunno.
+            // Safe enough for now.
+            authorize(
+                &self.db,
+                user_id,
+                billing_account_id,
+                "read_integration_service",
+                &billing_account,
+            )
+            .await?;
+
+            Ok(Response::new(protobuf::GetIntegrationServiceReply {
+                integration_service: Some(integration_service),
+            }))
+        }
+        .instrument(debug_span!("get_integration_service", ?request))
+        .await
+    }
+
     async fn get_integration(
         &self,
         request: Request<protobuf::GetIntegrationRequest>,

@@ -66,6 +66,9 @@ export interface NexusGenInputs {
   GetIntegrationRequest: { // input type
     integrationId?: string | null; // String
   }
+  GetIntegrationServiceRequest: { // input type
+    integrationServiceId?: string | null; // String
+  }
   GetOrganizationRequest: { // input type
     organizationId?: string | null; // String
   }
@@ -125,6 +128,26 @@ export interface NexusGenInputs {
     email: string; // String!
     password: string; // String!
   }
+  SshKeyGetComponentRequest: { // input type
+    componentId?: string | null; // String
+  }
+  SshKeyListComponentsRequest: { // input type
+    orderBy?: string | null; // String
+    orderByDirection?: NexusGenEnums['DataOrderByDirection'] | null; // DataOrderByDirection
+    pageSize?: number | null; // Int
+    pageToken?: string | null; // String
+    query?: NexusGenInputs['DataQuery'] | null; // DataQuery
+    scopeByTenantId?: string | null; // String
+  }
+  SshKeyPickComponentRequest: { // input type
+    bits?: number | null; // Int
+    displayName?: string | null; // String
+    integrationId?: string | null; // String
+    integrationServiceId?: string | null; // String
+    keyFormat?: NexusGenEnums['SshKeyKeyFormatRequest'] | null; // SshKeyKeyFormatRequest
+    keyType?: NexusGenEnums['SshKeyKeyTypeRequest'] | null; // SshKeyKeyTypeRequest
+    name?: string | null; // String
+  }
 }
 
 export interface NexusGenEnums {
@@ -133,6 +156,10 @@ export interface NexusGenEnums {
   DataQueryComparison: 2 | 0 | 3 | 1 | 4
   DataQueryFieldType: 1 | 0
   IntegrationOptionType: 1 | 0
+  SshKeyKeyFormat: 2 | 1 | 0
+  SshKeyKeyFormatRequest: 0 | 3 | 2 | 1
+  SshKeyKeyType: 1 | 2 | 3 | 0
+  SshKeyKeyTypeRequest: 2 | 3 | 4 | 0 | 1
 }
 
 export interface NexusGenRootTypes {
@@ -166,6 +193,9 @@ export interface NexusGenRootTypes {
   }
   GetIntegrationReply: { // root type
     integration?: NexusGenRootTypes['Integration'] | null; // Integration
+  }
+  GetIntegrationServiceReply: { // root type
+    integrationService?: NexusGenRootTypes['IntegrationService'] | null; // IntegrationService
   }
   GetOrganizationReply: { // root type
     organization?: NexusGenRootTypes['Organization'] | null; // Organization
@@ -273,6 +303,38 @@ export interface NexusGenRootTypes {
     typeName?: string | null; // String
   }
   Query: {};
+  SshKeyComponent: { // root type
+    bits?: number | null; // Int
+    description?: string | null; // String
+    displayName?: string | null; // String
+    displayTypeName?: string | null; // String
+    id?: string | null; // ID
+    integrationId?: string | null; // String
+    integrationServiceId?: string | null; // String
+    keyFormat?: NexusGenEnums['SshKeyKeyFormat'] | null; // SshKeyKeyFormat
+    keyType?: NexusGenEnums['SshKeyKeyType'] | null; // SshKeyKeyType
+    name?: string | null; // String
+    naturalKey?: string | null; // String
+    tenantIds?: string[] | null; // [String!]
+    typeName?: string | null; // String
+    version?: number | null; // Int
+  }
+  SshKeyConstraintValueReply: { // root type
+    field?: string | null; // String
+    value?: string | null; // String
+  }
+  SshKeyGetComponentReply: { // root type
+    component?: NexusGenRootTypes['SshKeyComponent'] | null; // SshKeyComponent
+  }
+  SshKeyListComponentsReply: { // root type
+    items?: NexusGenRootTypes['SshKeyComponent'][] | null; // [SshKeyComponent!]
+    nextPageToken?: string | null; // String
+    totalCount?: number | null; // Int
+  }
+  SshKeyPickComponentReply: { // root type
+    chosen?: NexusGenRootTypes['SshKeyComponent'] | null; // SshKeyComponent
+    implicitConstraints?: NexusGenRootTypes['SshKeyConstraintValueReply'][] | null; // [SshKeyConstraintValueReply!]
+  }
   User: { // root type
     billingAccountId?: string | null; // String
     capabilities?: NexusGenRootTypes['Capability'][] | null; // [Capability!]
@@ -315,6 +377,7 @@ export interface NexusGenAllTypes extends NexusGenRootTypes {
   DataQueryExpressionOption: NexusGenInputs['DataQueryExpressionOption'];
   GetBillingAccountRequest: NexusGenInputs['GetBillingAccountRequest'];
   GetIntegrationRequest: NexusGenInputs['GetIntegrationRequest'];
+  GetIntegrationServiceRequest: NexusGenInputs['GetIntegrationServiceRequest'];
   GetOrganizationRequest: NexusGenInputs['GetOrganizationRequest'];
   GetUserRequest: NexusGenInputs['GetUserRequest'];
   ListIntegrationInstancesRequest: NexusGenInputs['ListIntegrationInstancesRequest'];
@@ -324,11 +387,18 @@ export interface NexusGenAllTypes extends NexusGenRootTypes {
   ListUsersRequest: NexusGenInputs['ListUsersRequest'];
   ListWorkspacesRequest: NexusGenInputs['ListWorkspacesRequest'];
   LoginRequest: NexusGenInputs['LoginRequest'];
+  SshKeyGetComponentRequest: NexusGenInputs['SshKeyGetComponentRequest'];
+  SshKeyListComponentsRequest: NexusGenInputs['SshKeyListComponentsRequest'];
+  SshKeyPickComponentRequest: NexusGenInputs['SshKeyPickComponentRequest'];
   DataOrderByDirection: NexusGenEnums['DataOrderByDirection'];
   DataQueryBooleanLogic: NexusGenEnums['DataQueryBooleanLogic'];
   DataQueryComparison: NexusGenEnums['DataQueryComparison'];
   DataQueryFieldType: NexusGenEnums['DataQueryFieldType'];
   IntegrationOptionType: NexusGenEnums['IntegrationOptionType'];
+  SshKeyKeyFormat: NexusGenEnums['SshKeyKeyFormat'];
+  SshKeyKeyFormatRequest: NexusGenEnums['SshKeyKeyFormatRequest'];
+  SshKeyKeyType: NexusGenEnums['SshKeyKeyType'];
+  SshKeyKeyTypeRequest: NexusGenEnums['SshKeyKeyTypeRequest'];
 }
 
 export interface NexusGenFieldTypes {
@@ -365,6 +435,9 @@ export interface NexusGenFieldTypes {
   }
   GetIntegrationReply: { // field return type
     integration: NexusGenRootTypes['Integration'] | null; // Integration
+  }
+  GetIntegrationServiceReply: { // field return type
+    integrationService: NexusGenRootTypes['IntegrationService'] | null; // IntegrationService
   }
   GetOrganizationReply: { // field return type
     organization: NexusGenRootTypes['Organization'] | null; // Organization
@@ -492,6 +565,43 @@ export interface NexusGenFieldTypes {
     listUsers: NexusGenRootTypes['ListUsersReply'] | null; // ListUsersReply
     listWorkspaces: NexusGenRootTypes['ListWorkspacesReply'] | null; // ListWorkspacesReply
     login: NexusGenRootTypes['LoginReply'] | null; // LoginReply
+    sshKeyGetComponent: NexusGenRootTypes['SshKeyGetComponentReply'] | null; // SshKeyGetComponentReply
+    sshKeyListComponents: NexusGenRootTypes['SshKeyListComponentsReply'] | null; // SshKeyListComponentsReply
+    sshKeyPickComponent: NexusGenRootTypes['SshKeyPickComponentReply'] | null; // SshKeyPickComponentReply
+  }
+  SshKeyComponent: { // field return type
+    bits: number | null; // Int
+    description: string | null; // String
+    displayName: string | null; // String
+    displayTypeName: string | null; // String
+    id: string | null; // ID
+    integration: NexusGenRootTypes['Integration'] | null; // Integration
+    integrationId: string | null; // String
+    integrationService: NexusGenRootTypes['IntegrationService'] | null; // IntegrationService
+    integrationServiceId: string | null; // String
+    keyFormat: NexusGenEnums['SshKeyKeyFormat'] | null; // SshKeyKeyFormat
+    keyType: NexusGenEnums['SshKeyKeyType'] | null; // SshKeyKeyType
+    name: string | null; // String
+    naturalKey: string | null; // String
+    tenantIds: string[] | null; // [String!]
+    typeName: string | null; // String
+    version: number | null; // Int
+  }
+  SshKeyConstraintValueReply: { // field return type
+    field: string | null; // String
+    value: string | null; // String
+  }
+  SshKeyGetComponentReply: { // field return type
+    component: NexusGenRootTypes['SshKeyComponent'] | null; // SshKeyComponent
+  }
+  SshKeyListComponentsReply: { // field return type
+    items: NexusGenRootTypes['SshKeyComponent'][] | null; // [SshKeyComponent!]
+    nextPageToken: string | null; // String
+    totalCount: number | null; // Int
+  }
+  SshKeyPickComponentReply: { // field return type
+    chosen: NexusGenRootTypes['SshKeyComponent'] | null; // SshKeyComponent
+    implicitConstraints: NexusGenRootTypes['SshKeyConstraintValueReply'][] | null; // [SshKeyConstraintValueReply!]
   }
   User: { // field return type
     billingAccount: NexusGenRootTypes['BillingAccount'] | null; // BillingAccount
@@ -588,6 +698,15 @@ export interface NexusGenArgTypes {
     login: { // args
       input?: NexusGenInputs['LoginRequest'] | null; // LoginRequest
     }
+    sshKeyGetComponent: { // args
+      input?: NexusGenInputs['SshKeyGetComponentRequest'] | null; // SshKeyGetComponentRequest
+    }
+    sshKeyListComponents: { // args
+      input?: NexusGenInputs['SshKeyListComponentsRequest'] | null; // SshKeyListComponentsRequest
+    }
+    sshKeyPickComponent: { // args
+      input?: NexusGenInputs['SshKeyPickComponentRequest'] | null; // SshKeyPickComponentRequest
+    }
   }
   Workspace: {
     enabledIntegrationInstances: { // args
@@ -601,11 +720,11 @@ export interface NexusGenAbstractResolveReturnTypes {
 
 export interface NexusGenInheritedFields {}
 
-export type NexusGenObjectNames = "BillingAccount" | "Capability" | "CreateAccountReply" | "CreateBillingAccountReply" | "CreateIntegrationInstanceReply" | "CreateUserReply" | "GetBillingAccountReply" | "GetIntegrationReply" | "GetOrganizationReply" | "GetUserReply" | "Group" | "Integration" | "IntegrationInstance" | "IntegrationOption" | "IntegrationOptionValue" | "IntegrationService" | "ListIntegrationInstancesReply" | "ListIntegrationServicesReply" | "ListIntegrationsReply" | "ListOrganizationsReply" | "ListUsersReply" | "ListWorkspacesReply" | "LoginReply" | "Mutation" | "Organization" | "Query" | "User" | "Workspace";
+export type NexusGenObjectNames = "BillingAccount" | "Capability" | "CreateAccountReply" | "CreateBillingAccountReply" | "CreateIntegrationInstanceReply" | "CreateUserReply" | "GetBillingAccountReply" | "GetIntegrationReply" | "GetIntegrationServiceReply" | "GetOrganizationReply" | "GetUserReply" | "Group" | "Integration" | "IntegrationInstance" | "IntegrationOption" | "IntegrationOptionValue" | "IntegrationService" | "ListIntegrationInstancesReply" | "ListIntegrationServicesReply" | "ListIntegrationsReply" | "ListOrganizationsReply" | "ListUsersReply" | "ListWorkspacesReply" | "LoginReply" | "Mutation" | "Organization" | "Query" | "SshKeyComponent" | "SshKeyConstraintValueReply" | "SshKeyGetComponentReply" | "SshKeyListComponentsReply" | "SshKeyPickComponentReply" | "User" | "Workspace";
 
-export type NexusGenInputNames = "CreateAccountRequest" | "CreateBillingAccountRequest" | "CreateIntegrationInstanceRequest" | "CreateIntegrationOptionValueRequest" | "CreateUserRequest" | "DataPageToken" | "DataQuery" | "DataQueryExpression" | "DataQueryExpressionOption" | "GetBillingAccountRequest" | "GetIntegrationRequest" | "GetOrganizationRequest" | "GetUserRequest" | "ListIntegrationInstancesRequest" | "ListIntegrationServicesRequest" | "ListIntegrationsRequest" | "ListOrganizationsRequest" | "ListUsersRequest" | "ListWorkspacesRequest" | "LoginRequest";
+export type NexusGenInputNames = "CreateAccountRequest" | "CreateBillingAccountRequest" | "CreateIntegrationInstanceRequest" | "CreateIntegrationOptionValueRequest" | "CreateUserRequest" | "DataPageToken" | "DataQuery" | "DataQueryExpression" | "DataQueryExpressionOption" | "GetBillingAccountRequest" | "GetIntegrationRequest" | "GetIntegrationServiceRequest" | "GetOrganizationRequest" | "GetUserRequest" | "ListIntegrationInstancesRequest" | "ListIntegrationServicesRequest" | "ListIntegrationsRequest" | "ListOrganizationsRequest" | "ListUsersRequest" | "ListWorkspacesRequest" | "LoginRequest" | "SshKeyGetComponentRequest" | "SshKeyListComponentsRequest" | "SshKeyPickComponentRequest";
 
-export type NexusGenEnumNames = "DataOrderByDirection" | "DataQueryBooleanLogic" | "DataQueryComparison" | "DataQueryFieldType" | "IntegrationOptionType";
+export type NexusGenEnumNames = "DataOrderByDirection" | "DataQueryBooleanLogic" | "DataQueryComparison" | "DataQueryFieldType" | "IntegrationOptionType" | "SshKeyKeyFormat" | "SshKeyKeyFormatRequest" | "SshKeyKeyType" | "SshKeyKeyTypeRequest";
 
 export type NexusGenInterfaceNames = never;
 

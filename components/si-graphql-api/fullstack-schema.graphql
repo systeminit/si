@@ -216,6 +216,16 @@ input GetIntegrationRequest {
   integrationId: String
 }
 
+type GetIntegrationServiceReply {
+  """integrationService"""
+  integrationService: IntegrationService
+}
+
+input GetIntegrationServiceRequest {
+  """integrationServiceId"""
+  integrationServiceId: String
+}
+
 type GetOrganizationReply {
   """organization"""
   organization: Organization
@@ -641,6 +651,167 @@ type Query {
   listUsers(input: ListUsersRequest): ListUsersReply
   listWorkspaces(input: ListWorkspacesRequest): ListWorkspacesReply
   login(input: LoginRequest): LoginReply
+  sshKeyGetComponent(input: SshKeyGetComponentRequest): SshKeyGetComponentReply
+  sshKeyListComponents(input: SshKeyListComponentsRequest): SshKeyListComponentsReply
+  sshKeyPickComponent(input: SshKeyPickComponentRequest): SshKeyPickComponentReply
+}
+
+type SshKeyComponent {
+  """bits"""
+  bits: Int
+
+  """description"""
+  description: String
+
+  """displayName"""
+  displayName: String
+
+  """displayTypeName"""
+  displayTypeName: String
+
+  """id"""
+  id: ID
+
+  """integrationId"""
+  integration: Integration
+
+  """integrationId"""
+  integrationId: String
+
+  """integrationServiceId"""
+  integrationService: IntegrationService
+
+  """integrationServiceId"""
+  integrationServiceId: String
+
+  """keyFormat"""
+  keyFormat: SshKeyKeyFormat
+
+  """keyType"""
+  keyType: SshKeyKeyType
+
+  """name"""
+  name: String
+
+  """naturalKey"""
+  naturalKey: String
+
+  """tenantIds"""
+  tenantIds: [String!]
+
+  """typeName"""
+  typeName: String
+
+  """version"""
+  version: Int
+}
+
+type SshKeyConstraintValueReply {
+  """field"""
+  field: String
+
+  """value"""
+  value: String
+}
+
+type SshKeyGetComponentReply {
+  """component"""
+  component: SshKeyComponent
+}
+
+input SshKeyGetComponentRequest {
+  """componentId"""
+  componentId: String
+}
+
+enum SshKeyKeyFormat {
+  PEM
+  PKCS8
+  RFC4716
+}
+
+enum SshKeyKeyFormatRequest {
+  NOKEYFORMAT
+  PEM
+  PKCS8
+  RFC4716
+}
+
+enum SshKeyKeyType {
+  DSA
+  ECDSA
+  ED25519
+  RSA
+}
+
+enum SshKeyKeyTypeRequest {
+  DSA
+  ECDSA
+  ED25519
+  NOKEYTYPE
+  RSA
+}
+
+type SshKeyListComponentsReply {
+  """items"""
+  items: [SshKeyComponent!]
+
+  """nextPageToken"""
+  nextPageToken: String
+
+  """totalCount"""
+  totalCount: Int
+}
+
+input SshKeyListComponentsRequest {
+  """orderBy"""
+  orderBy: String
+
+  """orderByDirection"""
+  orderByDirection: DataOrderByDirection
+
+  """pageSize"""
+  pageSize: Int
+
+  """pageToken"""
+  pageToken: String
+
+  """query"""
+  query: DataQuery
+
+  """scopeByTenantId"""
+  scopeByTenantId: String
+}
+
+type SshKeyPickComponentReply {
+  """chosen"""
+  chosen: SshKeyComponent
+
+  """implicitConstraints"""
+  implicitConstraints: [SshKeyConstraintValueReply!]
+}
+
+input SshKeyPickComponentRequest {
+  """bits"""
+  bits: Int
+
+  """displayName"""
+  displayName: String
+
+  """integrationId"""
+  integrationId: String
+
+  """integrationServiceId"""
+  integrationServiceId: String
+
+  """keyFormat"""
+  keyFormat: SshKeyKeyFormatRequest
+
+  """keyType"""
+  keyType: SshKeyKeyTypeRequest
+
+  """name"""
+  name: String
 }
 
 type User {

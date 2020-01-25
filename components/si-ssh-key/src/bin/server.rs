@@ -5,12 +5,15 @@ use tokio;
 use tonic::transport::Server;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
-use si_ssh_key::{protobuf::ssh_key_server::SshKeyServer, service::Service};
+use si_ssh_key::{migrate, Service, SshKeyServer};
 
 async fn run() -> Result<()> {
     let settings = Settings::new()?;
 
     let db = Db::new(&settings).context("Cannot connect to the database")?;
+
+    println!("*** Migrating so much right now ***");
+    migrate(&db).await?;
 
     let service = Service::new(db);
 

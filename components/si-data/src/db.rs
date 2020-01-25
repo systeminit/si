@@ -405,9 +405,7 @@ impl Db {
                 item.set_id(existing_id);
                 item.set_type_name();
                 item.set_natural_key();
-                for tenant_id in real_item.get_tenant_ids().iter() {
-                    item.add_to_tenant_ids(tenant_id.clone());
-                }
+                item.add_to_tenant_ids(existing_id.to_string());
                 if item.get_version() > real_item.get_version() {
                     info!(
                         current_item = item.get_version(),
