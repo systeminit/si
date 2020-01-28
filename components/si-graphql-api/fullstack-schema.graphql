@@ -611,6 +611,7 @@ input LoginRequest {
 type Mutation {
   createAccount(input: CreateAccountRequest): CreateAccountReply
   createIntegrationInstance(input: CreateIntegrationInstanceRequest): CreateIntegrationInstanceReply
+  sshKeyCreateEntity(input: SshKeyCreateEntityRequest): SshKeyCreateEntityReply
 }
 
 type Organization {
@@ -706,12 +707,200 @@ type SshKeyComponent {
   version: Int
 }
 
-type SshKeyConstraintValueReply {
-  """field"""
-  field: String
+type SshKeyConstraints {
+  """bits"""
+  bits: Int
 
-  """value"""
-  value: String
+  """displayName"""
+  displayName: String
+
+  """integrationId"""
+  integrationId: String
+
+  """integrationServiceId"""
+  integrationServiceId: String
+
+  """keyFormat"""
+  keyFormat: SshKeyKeyFormatRequest
+
+  """keyType"""
+  keyType: SshKeyKeyTypeRequest
+
+  """name"""
+  name: String
+}
+
+type SshKeyCreateEntityReply {
+  """entity"""
+  entity: SshKeyEntity
+
+  """event"""
+  event: SshKeyEntityEvent
+}
+
+input SshKeyCreateEntityRequest {
+  """constraints"""
+  constraints: SshKeyPickComponentRequest
+
+  """description"""
+  description: String
+
+  """displayName"""
+  displayName: String
+
+  """name"""
+  name: String
+
+  """workspaceId"""
+  workspaceId: String
+}
+
+type SshKeyEntity {
+  """billingAccountId"""
+  billingAccount: BillingAccount
+
+  """billingAccountId"""
+  billingAccountId: String
+
+  """bits"""
+  bits: Int
+
+  """bubbleBabble"""
+  bubbleBabble: String
+
+  """comment"""
+  comment: String
+
+  """componentId"""
+  componentId: String
+
+  """constraints"""
+  constraints: SshKeyConstraints
+
+  """description"""
+  description: String
+
+  """displayName"""
+  displayName: String
+
+  """fingerprint"""
+  fingerprint: String
+
+  """id"""
+  id: ID
+
+  """implicitConstraints"""
+  implicitConstraints: [SshKeyImplicitConstraint!]
+
+  """integrationId"""
+  integration: Integration
+
+  """integrationId"""
+  integrationId: String
+
+  """integrationServiceId"""
+  integrationService: IntegrationService
+
+  """integrationServiceId"""
+  integrationServiceId: String
+
+  """keyFormat"""
+  keyFormat: SshKeyKeyFormat
+
+  """keyType"""
+  keyType: SshKeyKeyType
+
+  """linkedEntityIds"""
+  linkedEntityIds: [String!]
+
+  """name"""
+  name: String
+
+  """naturalKey"""
+  naturalKey: String
+
+  """organizationId"""
+  organization: Organization
+
+  """organizationId"""
+  organizationId: String
+
+  """privateKey"""
+  privateKey: String
+
+  """publicKey"""
+  publicKey: String
+
+  """randomArt"""
+  randomArt: String
+
+  """state"""
+  state: SshKeyState
+
+  """tenantIds"""
+  tenantIds: [String!]
+
+  """typeName"""
+  typeName: String
+
+  """workspaceId"""
+  workspace: Workspace
+
+  """workspaceId"""
+  workspaceId: String
+}
+
+type SshKeyEntityEvent {
+  """actionName"""
+  actionName: String
+
+  """billingAccountId"""
+  billingAccountId: String
+
+  """body"""
+  body: String
+
+  """createTime"""
+  createTime: String
+
+  """entityId"""
+  entityId: String
+
+  """finalized"""
+  finalized: Boolean
+
+  """finalTime"""
+  finalTime: String
+
+  """from"""
+  from: String
+
+  """id"""
+  id: ID
+
+  """integrationId"""
+  integrationId: String
+
+  """integrationServiceId"""
+  integrationServiceId: String
+
+  """naturalKey"""
+  naturalKey: String
+
+  """organizationId"""
+  organizationId: String
+
+  """tenantIds"""
+  tenantIds: [String!]
+
+  """typeName"""
+  typeName: String
+
+  """updatedTime"""
+  updatedTime: String
+
+  """workspaceId"""
+  workspaceId: String
 }
 
 type SshKeyGetComponentReply {
@@ -722,6 +911,14 @@ type SshKeyGetComponentReply {
 input SshKeyGetComponentRequest {
   """componentId"""
   componentId: String
+}
+
+type SshKeyImplicitConstraint {
+  """field"""
+  field: String
+
+  """value"""
+  value: String
 }
 
 enum SshKeyKeyFormat {
@@ -784,11 +981,11 @@ input SshKeyListComponentsRequest {
 }
 
 type SshKeyPickComponentReply {
-  """chosen"""
-  chosen: SshKeyComponent
+  """component"""
+  component: SshKeyComponent
 
   """implicitConstraints"""
-  implicitConstraints: [SshKeyConstraintValueReply!]
+  implicitConstraints: [SshKeyImplicitConstraint!]
 }
 
 input SshKeyPickComponentRequest {
@@ -812,6 +1009,12 @@ input SshKeyPickComponentRequest {
 
   """name"""
   name: String
+}
+
+enum SshKeyState {
+  ERROR
+  OK
+  UNINITIALIZED
 }
 
 type User {

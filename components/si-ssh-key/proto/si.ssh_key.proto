@@ -8,8 +8,111 @@ service SshKey {
   rpc GetComponent(GetComponentRequest) returns (GetComponentReply);
   rpc ListComponents(ListComponentsRequest) returns (ListComponentsReply);
   rpc PickComponent(PickComponentRequest) returns (PickComponentReply);
+  rpc CreateEntity(CreateEntityRequest) returns (CreateEntityReply);
 }
 
+// Entities have actions, actions emit entity events, and they mutate/own an entity in flight.
+//
+//  -- publish to agent/ssh-key/billing_account/../
+//     Event{ entity.., action: create }  
+//  -- agent::action_create(&mut entity) -> &mut Entity
+//      -- EntityEvent{ id: name, from: action, type: enum, name: string, body:string, create_time: Time, update_time: Time } @ QoS 0
+//      -- EntityEvent{ type: enum, name: string, body:string } entity-event/ssh-key @ Qos 0
+//      -- EntityStore{ .. final entity, } entity-event/ssh-key @ QoS 2
+//      -- EntityStore{ Entity, EntityEvent } entity-storage/ssh-key @QoS 2
+//  -- agent::action_delete(&mut entity) -> &mut Entity
+//  -- agent::action_status(&entity) -> &Entity
+
+message Entity {
+  string id = 1;
+  repeated string tenantIds = 2;
+  string natural_key = 3;
+  string type_name = 4;
+  string name = 5;
+  string display_name = 6;
+  string description = 7;
+  string component_id = 8;
+  string integration_id = 9;
+  string integration_service_id = 10;
+  string workspace_id = 11;
+  string organization_id = 12;
+  string billing_account_id = 13;
+  repeated string linked_entity_ids = 14;
+  Constraints constraints = 15;
+  repeated ImplicitConstraint implicit_constraints = 16;
+  // From here, we are in to the fields for this specific component
+  KeyType key_type = 20;
+  KeyFormat key_format = 21;
+  uint32 bits = 22;
+  string comment = 23;
+  string bubble_babble = 24;
+  string fingerprint = 25;
+  string random_art = 26;
+  string private_key = 27;
+  string public_key = 28;
+  enum State {
+    UNINITIALIZED = 0;
+    ERROR = 1;
+    OK = 2;
+  }
+  State state = 29;
+}
+
+message EntityEvent {
+  string id = 1;
+  repeated string tenantIds = 2;
+  string natural_key = 3;
+  string type_name = 4;
+  string from = 5;
+  string action_name = 6;
+  string body = 7;
+  string create_time = 8;
+  string updated_time = 9;
+  string final_time = 10;
+  bool finalized = 11;
+  string entity_id = 12;
+  string integration_id = 13;
+  string integration_service_id = 14;
+  string workspace_id = 15;
+  string organization_id = 16;
+  string billing_account_id = 17;
+}
+
+message CreateEntityRequest {
+  PickComponentRequest constraints = 1;
+  string name = 2;
+  string display_name = 3;
+  string description = 4;
+  string workspace_id = 5;
+}
+
+message CreateEntityReply {
+  Entity entity = 1;
+  EntityEvent event = 2;
+}
+
+message Constraints {
+  string name = 1;
+  string display_name = 2;
+  string integration_id = 3;
+  string integration_service_id = 4;
+  enum KeyTypeRequest {
+    NOKEYTYPE = 0;
+    RSA = 1;
+    DSA = 2;
+    ECDSA = 3;
+    ED25519 = 4;
+  }
+  enum KeyFormatRequest {
+    NOKEYFORMAT = 0;
+    RFC4716 = 1;
+    PKCS8 = 2;
+    PEM = 3;
+  }
+  KeyTypeRequest key_type = 5;
+  KeyFormatRequest key_format = 6;
+  uint32 bits = 7;
+}
 
 message PickComponentRequest {
   string name = 1;
@@ -23,7 +126,6 @@ message PickComponentRequest {
     ECDSA = 3;
     ED25519 = 4;
   }
-
   enum KeyFormatRequest {
     NOKEYFORMAT = 0;
     RFC4716 = 1;
@@ -35,14 +137,14 @@ message PickComponentRequest {
   uint32 bits = 7;
 }
 
-message ConstraintValueReply {
+message ImplicitConstraint {
   string field = 1;
   string value = 2;
 }
 
 message PickComponentReply {
-  Component chosen = 1;
-  repeated ConstraintValueReply implicit_constraints = 2;
+  Component component = 1;
+  repeated ImplicitConstraint implicit_constraints = 2;
 }
 
 message ListComponentsRequest {

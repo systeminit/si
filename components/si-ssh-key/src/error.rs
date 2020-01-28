@@ -23,6 +23,8 @@ pub enum SshKeyError {
     InvalidMissingIntegrationId,
     #[error("cannot find billing account")]
     BillingAccountMissing,
+    #[error("cannot find workspace")]
+    WorkspaceMissing,
     #[error("invalid authentication; bad or missing headers")]
     InvalidAuthentication,
     #[error("error listing components: {0}")]
@@ -43,6 +45,8 @@ pub enum SshKeyError {
     KeyFormatInvalid,
     #[error("invalid bits value for key type: {0} {1}")]
     BitsInvalid(String, u32),
+    #[error("unknown tenant id")]
+    CreateEntity(si_data::error::DataError),
 }
 
 impl From<SshKeyError> for tonic::Status {

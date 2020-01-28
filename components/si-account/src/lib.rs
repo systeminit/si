@@ -10,3 +10,4 @@ pub mod service;
 
 pub use model::billing_account::BillingAccount;
 pub use model::integration::{Integration, IntegrationService};
+pub use model::workspace::Workspace;
