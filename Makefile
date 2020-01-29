@@ -136,3 +136,4 @@ force_clean:
 dev_deps:
 	./components/couchbase/run.sh; exit 0
 	./components/jaeger/run.sh; exit 0
+	./components/vernemq/run.sh; exit 0

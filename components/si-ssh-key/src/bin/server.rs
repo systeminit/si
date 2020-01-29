@@ -5,7 +5,7 @@ use tokio;
 use tonic::transport::Server;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
-use si_ssh_key::{migrate, Service, SshKeyServer};
+use si_ssh_key::{migrate, AgentClient, Service, SshKeyServer};
 
 async fn run() -> Result<()> {
     let settings = Settings::new()?;
@@ -15,7 +15,10 @@ async fn run() -> Result<()> {
     println!("*** Migrating so much right now ***");
     migrate(&db).await?;
 
-    let service = Service::new(db);
+    println!("*** Starting the Agent Client ***");
+    let agent_client = AgentClient::new().await?;
+
+    let service = Service::new(db, agent_client);
 
     let listen_string = format!("0.0.0.0:{}", settings.service.port);
 

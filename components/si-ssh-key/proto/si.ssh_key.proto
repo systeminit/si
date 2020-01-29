@@ -63,19 +63,30 @@ message EntityEvent {
   repeated string tenantIds = 2;
   string natural_key = 3;
   string type_name = 4;
-  string from = 5;
+  string user_id = 5;
   string action_name = 6;
-  string body = 7;
+  string output_body = 7;
   string create_time = 8;
   string updated_time = 9;
   string final_time = 10;
   bool finalized = 11;
   string entity_id = 12;
-  string integration_id = 13;
-  string integration_service_id = 14;
-  string workspace_id = 15;
-  string organization_id = 16;
-  string billing_account_id = 17;
+  string component_id = 13;
+  string integration_id = 14;
+  string integration_service_id = 15;
+  string workspace_id = 16;
+  string organization_id = 17;
+  string billing_account_id = 18;
+  Entity input_entity = 19;
+  Entity output_entity = 20;
+  enum NextState {
+    NONE = 0;
+    UNINITIALIZED = 1;
+    ERROR = 2;
+    OK = 3;
+  }
+  NextState next_state = 21;
+  bool success = 22;
 }
 
 message CreateEntityRequest {

@@ -223,6 +223,7 @@ checksum = "31850b4a4d6bae316f7a09e691c944c28299298837edc0a03f755618c23cbc01"
 dependencies = [
  "num-integer",
  "num-traits 0.2.11",
+ "serde 1.0.104",
  "time",
 ]
 
@@ -659,11 +660,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0bae52d6b29cf440e298856fec3965ee6fa71b06aa7495178615953fd669e5f9"
 
 [[package]]
+name = "futures-timer"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a5cedfe9b6dc756220782cc1ba5bcb1fa091cdcba155e40d3556159c3db58043"
+dependencies = [
+ "futures 0.1.29",
+]
+
+[[package]]
 name = "futures-util"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c0d66274fb76985d3c62c886d1da7ac4c0903a8c9f754e8fe0f35a6a6cc39e76"
 dependencies = [
+ "futures 0.1.29",
  "futures-channel",
  "futures-core",
  "futures-io",
@@ -1341,6 +1352,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49a4b8ea2179e6a2e27411d3bca09ca6dd630821cf6894c6c7c8467a8ee7ef13"
 dependencies = [
  "stable_deref_trait",
+]
+
+[[package]]
+name = "paho-mqtt"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "662e0ce380ac38a98071bf43cae40f33bfabad4ec5d0e9425fb35a785e816050"
+dependencies = [
+ "env_logger",
+ "futures 0.1.29",
+ "futures-timer",
+ "libc",
+ "log",
+ "paho-mqtt-sys",
+]
+
+[[package]]
+name = "paho-mqtt-sys"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ea5b57c183a901ff955a5a0ec36963593dfe82b24ffb38086286a09c376b1e9f"
+dependencies = [
+ "cmake",
 ]
 
 [[package]]
@@ -2193,6 +2227,7 @@ dependencies = [
  "async-stream",
  "base64 0.10.1",
  "bytes 0.5.3",
+ "chrono",
  "config",
  "couchbase",
  "futures 0.3.1",
@@ -2200,6 +2235,7 @@ dependencies = [
  "lazy_static 1.4.0",
  "names",
  "opentelemetry",
+ "paho-mqtt",
  "prost",
  "prost-derive",
  "serde 1.0.104",

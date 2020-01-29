@@ -1,3 +1,5 @@
+use paho_mqtt as mqtt;
+use prost::EncodeError;
 use si_data;
 use thiserror::Error;
 use tonic::{self, Response};
@@ -21,6 +23,8 @@ pub enum SshKeyError {
     InvalidMissingName,
     #[error("invalid object; missing integrationId field")]
     InvalidMissingIntegrationId,
+    #[error("invalid object; missing actionName field")]
+    InvalidMissingActionName,
     #[error("cannot find billing account")]
     BillingAccountMissing,
     #[error("cannot find workspace")]
@@ -45,8 +49,18 @@ pub enum SshKeyError {
     KeyFormatInvalid,
     #[error("invalid bits value for key type: {0} {1}")]
     BitsInvalid(String, u32),
-    #[error("unknown tenant id")]
+    #[error("error creating an entity: {0}")]
     CreateEntity(si_data::error::DataError),
+    #[error("error creating an entity event: {0}")]
+    CreateEntityEvent(si_data::error::DataError),
+    #[error("mqtt failed: {0}")]
+    MqttError(#[from] mqtt::errors::MqttError),
+    #[error("protobuf serialization failed: {0}")]
+    ProtoError(#[from] prost::EncodeError),
+    #[error("invalid entity event; it is missing an input entity")]
+    InvalidEntityEventMissingInputEntity,
+    #[error("invalid entity event; invalid action name")]
+    InvalidEntityEventInvalidActionName,
 }
 
 impl From<SshKeyError> for tonic::Status {
