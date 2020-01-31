@@ -9,19 +9,32 @@ service SshKey {
   rpc ListComponents(ListComponentsRequest) returns (ListComponentsReply);
   rpc PickComponent(PickComponentRequest) returns (PickComponentReply);
   rpc CreateEntity(CreateEntityRequest) returns (CreateEntityReply);
+  rpc ListEntities(ListEntitiesRequest) returns (ListEntitiesReply);
+  rpc GetEntity(GetEntityRequest) returns (GetEntityReply);
 }
 
-// Entities have actions, actions emit entity events, and they mutate/own an entity in flight.
-//
-//  -- publish to agent/ssh-key/billing_account/../
-//     Event{ entity.., action: create }  
-//  -- agent::action_create(&mut entity) -> &mut Entity
-//      -- EntityEvent{ id: name, from: action, type: enum, name: string, body:string, create_time: Time, update_time: Time } @ QoS 0
-//      -- EntityEvent{ type: enum, name: string, body:string } entity-event/ssh-key @ Qos 0
-//      -- EntityStore{ .. final entity, } entity-event/ssh-key @ QoS 2
-//      -- EntityStore{ Entity, EntityEvent } entity-storage/ssh-key @QoS 2
-//  -- agent::action_delete(&mut entity) -> &mut Entity
-//  -- agent::action_status(&entity) -> &Entity
+message GetEntityRequest {
+  string entity_id = 1;
+}
+
+message GetEntityReply {
+  Entity entity = 1;
+}
+
+message ListEntitiesRequest {
+  si.data.Query query = 1;
+  int32 page_size = 2;
+  string order_by = 3;
+  si.data.OrderByDirection order_by_direction = 4;
+  string page_token = 5;
+  string scope_by_tenant_id = 6;
+}
+
+message ListEntitiesReply {
+  repeated Entity items = 1;
+  int32 total_count = 2;
+  string next_page_token = 3;
+}
 
 message Entity {
   string id = 1;
@@ -65,7 +78,7 @@ message EntityEvent {
   string type_name = 4;
   string user_id = 5;
   string action_name = 6;
-  string output_body = 7;
+  repeated string output_lines = 7;
   string create_time = 8;
   string updated_time = 9;
   string final_time = 10;
@@ -87,6 +100,8 @@ message EntityEvent {
   }
   NextState next_state = 21;
   bool success = 22;
+  string error_message = 23;
+  repeated string error_lines = 24;
 }
 
 message CreateEntityRequest {

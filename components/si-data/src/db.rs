@@ -68,7 +68,7 @@ impl std::fmt::Display for OrderByDirection {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Db {
     // Eventually, this should become a real thread pool.
     pub cluster: SharedCluster,

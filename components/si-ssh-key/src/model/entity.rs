@@ -5,6 +5,7 @@ use uuid::Uuid;
 
 use crate::error::{Result, SshKeyError};
 pub use crate::model::component::{KeyFormat, KeyType};
+pub use crate::protobuf::entity::State;
 pub use crate::protobuf::entity_event::NextState;
 use crate::protobuf::{Constraints, CreateEntityRequest, PickComponentReply, PickComponentRequest};
 pub use crate::protobuf::{Entity, EntityEvent};
@@ -272,5 +273,53 @@ impl EntityEvent {
             ],
             ..Default::default()
         }
+    }
+
+    pub fn log(&mut self, line: impl Into<String>) {
+        self.output_lines.push(line.into());
+    }
+
+    pub fn error_log(&mut self, line: impl Into<String>) {
+        self.error_lines.push(line.into());
+    }
+
+    pub fn fail(&mut self, err: impl std::error::Error) {
+        let time: DateTime<Utc> = Utc::now();
+        let time_string = format!("{}", time);
+        self.success = false;
+        self.updated_time = time_string.clone();
+        self.final_time = time_string;
+        self.finalized = true;
+        self.error_message = err.to_string();
+        if self.output_entity.is_none() {
+            if self.input_entity.is_some() {
+                let mut output_entity = self.input_entity.clone();
+                // You're safe, because we just checked... twice!
+                output_entity.as_mut().unwrap().state = State::Error as i32;
+                self.output_entity = output_entity;
+            }
+        }
+        self.log("*** Task failed ***");
+    }
+
+    pub fn success(&mut self) {
+        let time: DateTime<Utc> = Utc::now();
+        let time_string = format!("{}", time);
+        self.success = true;
+        self.updated_time = time_string.clone();
+        self.final_time = time_string;
+        self.finalized = true;
+        if self.output_entity.is_none() {
+            // What happens if there is no input entity, and no output entity?
+            if self.input_entity.is_some() {
+                let mut output_entity = self.input_entity.clone();
+                // You're safe, because we just checked... twice!
+                output_entity.as_mut().unwrap().state = State::Ok as i32;
+                self.output_entity = output_entity;
+            }
+        } else {
+            self.output_entity.as_mut().unwrap().state = State::Ok as i32;
+        }
+        self.log("*** Task Succeeded ***");
     }
 }

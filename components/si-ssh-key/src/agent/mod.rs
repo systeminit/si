@@ -1,22 +1,676 @@
-use futures::compat::Future01CompatExt;
+use futures::compat::{Future01CompatExt, Stream01CompatExt};
+use futures::StreamExt;
 use paho_mqtt as mqtt;
 use prost::Message;
+use tempfile::TempDir;
+use tokio;
+use tokio::fs;
+use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::process::Command;
+use tokio::sync::{oneshot, Mutex};
+
+use tracing::{debug, error, warn};
+use uuid::Uuid;
 
 use si_data::Db;
 
 use std::fmt;
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
+use std::process::{ExitStatus, Stdio};
+use std::sync::Arc;
 
 use crate::error::{Result, SshKeyError};
-use crate::model::entity::EntityEvent;
+use crate::model::entity::{EntityEvent, KeyFormat, KeyType};
 
-mod server {}
+pub enum CaptureOutput {
+    None,
+    Stdout,
+    Stderr,
+    Both,
+}
 
-#[derive(Debug)]
+impl CaptureOutput {
+    pub fn stdout(&self) -> bool {
+        match self {
+            CaptureOutput::Stdout | CaptureOutput::Both => true,
+            _ => false,
+        }
+    }
+
+    pub fn stderr(&self) -> bool {
+        match self {
+            CaptureOutput::Stderr | CaptureOutput::Both => true,
+            _ => false,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct CommandResult {
+    exit_status: ExitStatus,
+    stdout: Option<String>,
+    stderr: Option<String>,
+}
+
+impl CommandResult {
+    pub fn new(
+        exit_status: ExitStatus,
+        stdout: Option<String>,
+        stderr: Option<String>,
+    ) -> CommandResult {
+        CommandResult {
+            exit_status,
+            stdout,
+            stderr,
+        }
+    }
+
+    pub fn success(self) -> Result<CommandResult> {
+        if self.exit_status.success() {
+            Ok(self)
+        } else {
+            Err(SshKeyError::CommandFailed(self))
+        }
+    }
+
+    pub fn try_stdout(&mut self) -> Result<String> {
+        self.stdout.take().ok_or(SshKeyError::CommandExpectedOutput)
+    }
+
+    pub fn stdout(&self) -> Option<&String> {
+        self.stdout.as_ref()
+    }
+
+    pub fn try_stderr(&mut self) -> Result<String> {
+        self.stderr.take().ok_or(SshKeyError::CommandExpectedOutput)
+    }
+
+    pub fn stderr(&self) -> Option<&String> {
+        self.stderr.as_ref()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct AgentFinalizer {
+    mqtt: MqttAsyncClientInternal,
+    db: Db,
+}
+
+impl AgentFinalizer {
+    pub fn new(db: Db) -> AgentFinalizer {
+        let client_id = format!("agent_finalizer:{}", Uuid::new_v4());
+
+        let cli = mqtt::AsyncClientBuilder::new()
+            .server_uri("tcp://localhost:1883")
+            .client_id(client_id.as_ref())
+            .persistence(false)
+            .finalize();
+
+        AgentFinalizer {
+            mqtt: MqttAsyncClientInternal { mqtt: cli },
+            db,
+        }
+    }
+
+    fn subscribe_topics(&self) -> (Vec<String>, Vec<i32>) {
+        let finalized_topic = format!("+/+/+/+/+/+/action/+/+/finalized",);
+        (vec![finalized_topic], vec![2])
+    }
+
+    #[tracing::instrument]
+    pub async fn dispatch(&mut self, entity_event: EntityEvent) -> Result<()> {
+        let entity = entity_event
+            .output_entity
+            .ok_or(SshKeyError::MissingOutputEntity)?;
+        debug!("updating_entity");
+        self.db.upsert(&entity).await?;
+        Ok(())
+    }
+
+    pub async fn run(&mut self) -> Result<()> {
+        // Whats the right value? Who knows? God only knows. Ask the Beach Boys.
+        let mut rx = self.mqtt.get_stream(1000).compat();
+        println!("Finalizer connecting to the MQTT server...");
+        let (server_uri, ver, session_present) = self
+            .mqtt
+            .connect(mqtt::ConnectOptions::new())
+            .compat()
+            .await?;
+        // Make the connection to the broker
+        println!("Connected to: '{}' with MQTT version {}", server_uri, ver);
+        if !session_present {
+            let (subscribe_channels, subscribe_qos) = self.subscribe_topics();
+            // Subscribe to multiple topics
+            self.mqtt
+                .subscribe(&subscribe_channels[0], subscribe_qos[0])
+                //.subscribe_many(&subscribe_channels, &subscribe_qos)
+                .compat()
+                .await?;
+        }
+
+        // Just wait for incoming messages by running the receiver stream
+        // in this thread.
+        println!("Waiting for messages...");
+        while let Some(stream_msg) = rx.next().await {
+            let msg = match stream_msg {
+                Ok(maybe_msg) => match maybe_msg {
+                    Some(msg) => msg,
+                    None => {
+                        debug!("you don't have a message, eh?");
+                        continue;
+                    }
+                },
+                Err(_) => {
+                    debug!("whats up?");
+                    continue;
+                }
+            };
+            let entity_event: EntityEvent = match EntityEvent::decode(msg.payload()) {
+                Ok(e) => e,
+                Err(err) => {
+                    debug!(?err, "deserialzing error - bad message");
+                    continue;
+                }
+            };
+            let mut self_ref: AgentFinalizer = self.clone();
+            tokio::spawn(async move { self_ref.dispatch(entity_event).await });
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct AgentServer {
+    mqtt: MqttAsyncClientInternal,
+    integration_id: String,
+    integration_service_id: String,
+}
+
+impl AgentServer {
+    pub fn new(
+        integration_id: impl Into<String>,
+        integration_service_id: impl Into<String>,
+    ) -> AgentServer {
+        let client_id = format!("agent_server:{}", Uuid::new_v4());
+
+        let cli = mqtt::AsyncClientBuilder::new()
+            .server_uri("tcp://localhost:1883")
+            .client_id(client_id.as_ref())
+            .persistence(false)
+            .finalize();
+
+        AgentServer {
+            mqtt: MqttAsyncClientInternal { mqtt: cli },
+            integration_id: integration_id.into(),
+            integration_service_id: integration_service_id.into(),
+        }
+    }
+
+    fn subscribe_topics(&self) -> (Vec<String>, Vec<i32>) {
+        let inbound_channel = format!(
+            "+/+/+/{}/{}/+/+/+/+",
+            self.integration_id, self.integration_service_id,
+        );
+        (vec![inbound_channel], vec![2])
+    }
+
+    #[tracing::instrument]
+    pub async fn dispatch(&mut self, entity_event: EntityEvent) -> Result<()> {
+        let action_name = entity_event.action_name.clone();
+        let entity_event_locked = Arc::new(Mutex::new(entity_event));
+        let result = match action_name.as_ref() {
+            "create" => self.create(entity_event_locked.clone()).await,
+            _ => Err(SshKeyError::InvalidEntityEventInvalidActionName),
+        };
+        if let Err(e) = result {
+            {
+                let mut entity_event = entity_event_locked.lock().await;
+                entity_event.fail(e);
+            }
+            if let Err(send_err) = self.send(entity_event_locked).await {
+                error!(?send_err, "failed_to_send_message");
+            }
+        };
+        Ok(())
+    }
+
+    async fn generate_result_topic(&self, entity_event_locked: Arc<Mutex<EntityEvent>>) -> String {
+        let entity_event = entity_event_locked.lock().await;
+        let topic = format!(
+            "{}/{}/{}/{}/{}/{}/{}/{}/{}/result",
+            entity_event.billing_account_id,
+            entity_event.organization_id,
+            entity_event.workspace_id,
+            entity_event.integration_id,
+            entity_event.integration_service_id,
+            entity_event.entity_id,
+            "action",
+            entity_event.action_name,
+            entity_event.id,
+        );
+        topic
+    }
+
+    async fn generate_finalized_topic(
+        &self,
+        entity_event_locked: Arc<Mutex<EntityEvent>>,
+    ) -> String {
+        let entity_event = entity_event_locked.lock().await;
+        let topic = format!(
+            "{}/{}/{}/{}/{}/{}/{}/{}/{}/finalized",
+            entity_event.billing_account_id,
+            entity_event.organization_id,
+            entity_event.workspace_id,
+            entity_event.integration_id,
+            entity_event.integration_service_id,
+            entity_event.entity_id,
+            "action",
+            entity_event.action_name,
+            entity_event.id,
+        );
+        topic
+    }
+
+    pub async fn send(&self, entity_event_locked: Arc<Mutex<EntityEvent>>) -> Result<()> {
+        let mut payload = Vec::new();
+        let finalized = {
+            let entity_event = entity_event_locked.lock().await;
+            entity_event.encode(&mut payload)?;
+            entity_event.finalized
+        };
+        if finalized {
+            let msg = mqtt::Message::new(
+                self.generate_result_topic(entity_event_locked.clone())
+                    .await,
+                payload.clone(),
+                0,
+            );
+            self.mqtt.publish(msg).compat().await?;
+            let msg = mqtt::Message::new(
+                self.generate_finalized_topic(entity_event_locked.clone())
+                    .await,
+                payload,
+                2,
+            );
+            self.mqtt.publish(msg).compat().await?;
+        } else {
+            let msg = mqtt::Message::new(
+                self.generate_result_topic(entity_event_locked.clone())
+                    .await,
+                payload,
+                0,
+            );
+            self.mqtt.publish(msg).compat().await?;
+        }
+        Ok(())
+    }
+
+    /// Spawns a `Command` with data for the standard input stream, indents the output stream contents,
+    /// and returns its `CommandResult`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an `Err` if:
+    ///
+    /// * The command failed to spawn
+    /// * One of the I/O streams failed to be properly captured
+    /// * One of the output-reading threads panics
+    /// * The command wasn't running
+    async fn spawn_command(
+        &self,
+        mut cmd: Command,
+        entity_event_locked: Arc<Mutex<EntityEvent>>,
+        capture_output: CaptureOutput,
+    ) -> Result<CommandResult> {
+        {
+            let mut entity_event = entity_event_locked.lock().await;
+            entity_event.log(format!("---- Running Command ----"));
+            entity_event.log(format!("{:?}", cmd));
+            entity_event.log(format!("---- Output ----"));
+            entity_event.error_log(format!("---- Running Command ----"));
+            entity_event.error_log(format!("{:?}", cmd));
+            entity_event.error_log(format!("---- Error Output ----"));
+        }
+        cmd.stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+
+        debug!(?cmd, "running");
+
+        let mut child = cmd.spawn()?;
+        let stdin = child.stdin.take().ok_or(SshKeyError::NoIoPipe)?;
+        drop(stdin);
+
+        let (stdout_tx, stdout_rx) = if capture_output.stdout() {
+            let (stdout_tx, stdout_rx) = oneshot::channel::<String>();
+            (Some(stdout_tx), Some(stdout_rx))
+        } else {
+            (None, None)
+        };
+
+        let stdout = BufReader::new(child.stdout.take().ok_or(SshKeyError::NoIoPipe)?);
+        let std_entity_event = entity_event_locked.clone();
+        let std_self = self.clone();
+        let stdout_handle = tokio::spawn(async move {
+            let mut stdout_capture: Option<String> = if stdout_tx.is_some() {
+                Some(String::new())
+            } else {
+                None
+            };
+            let mut lines = stdout.lines();
+            while let Some(result_line) = lines.next().await {
+                let line = match result_line {
+                    Ok(line) => line,
+                    Err(err) => {
+                        error!(?err, "line_read_error");
+                        continue;
+                    }
+                };
+                if stdout_tx.is_some() {
+                    // Safe because stdout_capture is none if stdout_tx is none
+                    stdout_capture
+                        .as_mut()
+                        .unwrap()
+                        .push_str(&format!("{}\n", &line));
+                }
+                debug!(?line);
+                {
+                    {
+                        let mut entity_event = std_entity_event.lock().await;
+                        entity_event.log(line);
+                    }
+                    match std_self.send(std_entity_event.clone()).await {
+                        Ok(_) => (),
+                        Err(err) => {
+                            error!(?err, "cannot_send_line_to_mqtt");
+                            continue;
+                        }
+                    }
+                }
+            }
+            if stdout_tx.is_some() {
+                match stdout_tx.unwrap().send(stdout_capture.unwrap()) {
+                    Ok(()) => debug!("sent_stdout_capture_tx"),
+                    Err(_) => warn!("failed_to_send_capture_tx"),
+                }
+            }
+        });
+
+        let (stderr_tx, stderr_rx) = if capture_output.stderr() {
+            let (stderr_tx, stderr_rx) = oneshot::channel::<String>();
+            (Some(stderr_tx), Some(stderr_rx))
+        } else {
+            (None, None)
+        };
+
+        let stderr = BufReader::new(child.stderr.take().ok_or(SshKeyError::NoIoPipe)?);
+        let std_err_entity_event = entity_event_locked.clone();
+        let std_err_self = self.clone();
+        let stderr_handle = tokio::spawn(async move {
+            let mut stderr_capture: Option<String> = if stderr_tx.is_some() {
+                Some(String::new())
+            } else {
+                None
+            };
+
+            let mut lines = stderr.lines();
+            while let Some(result_line) = lines.next().await {
+                let line = match result_line {
+                    Ok(line) => line,
+                    Err(err) => {
+                        error!(?err, "line_read_error");
+                        continue;
+                    }
+                };
+                if stderr_tx.is_some() {
+                    // Safe because stdout_capture is none if stdout_tx is none
+                    stderr_capture
+                        .as_mut()
+                        .unwrap()
+                        .push_str(&format!("{}\n", &line));
+                }
+                debug!(?line);
+                {
+                    {
+                        let mut entity_event = std_err_entity_event.lock().await;
+                        entity_event.error_log(line);
+                    }
+                    match std_err_self.send(std_err_entity_event.clone()).await {
+                        Ok(_) => (),
+                        Err(err) => {
+                            error!(?err, "cannot_send_line_to_mqtt");
+                            continue;
+                        }
+                    }
+                }
+            }
+            if stderr_tx.is_some() {
+                match stderr_tx.unwrap().send(stderr_capture.unwrap()) {
+                    Ok(()) => debug!("sent_stderr_capture_tx"),
+                    Err(_) => warn!("failed_to_send_stderr_capture_tx"),
+                }
+            }
+        });
+
+        let (_stdout_result, _stderr_result, child_result) =
+            tokio::join!(stdout_handle, stderr_handle, child);
+
+        let stdout_string_option = if stdout_rx.is_some() {
+            let mut rx = stdout_rx.unwrap();
+            match rx.try_recv() {
+                Ok(s) => Some(s),
+                Err(e) => return Err(SshKeyError::from(e)),
+            }
+        } else {
+            None
+        };
+
+        let stderr_string_option = if stderr_rx.is_some() {
+            let mut rx = stderr_rx.unwrap();
+            match rx.try_recv() {
+                Ok(s) => Some(s),
+                Err(e) => return Err(SshKeyError::from(e)),
+            }
+        } else {
+            None
+        };
+
+        let child_status = child_result.map_err(SshKeyError::IoError)?;
+
+        {
+            let mut entity_event = entity_event_locked.lock().await;
+            entity_event.log(format!("---- Finished Command ----"));
+            entity_event.error_log(format!("---- Finished Command ----"));
+        }
+
+        Ok(CommandResult::new(
+            child_status,
+            stdout_string_option,
+            stderr_string_option,
+        ))
+    }
+
+    #[tracing::instrument]
+    pub async fn create(&mut self, entity_event_locked: Arc<Mutex<EntityEvent>>) -> Result<()> {
+        let tempdir = TempDir::new()?;
+        let filename = tempdir.path().join("newkey");
+
+        debug!(?tempdir, ?filename, "tempfile_created");
+
+        // Before this gets used in anger, the user needs to give us the passphrase
+        let mut ssh_keygen_cmd = Command::new("ssh-keygen");
+        ssh_keygen_cmd.current_dir(tempdir.path());
+        {
+            let entity_event = entity_event_locked.lock().await;
+            let input_entity = entity_event
+                .input_entity
+                .as_ref()
+                .ok_or(SshKeyError::MissingInputEntity)?;
+            let key_type =
+                KeyType::from_i32(input_entity.key_type).ok_or(SshKeyError::KeyTypeInvalid)?;
+            let key_format = KeyFormat::from_i32(input_entity.key_format)
+                .ok_or(SshKeyError::KeyFormatInvalid)?;
+
+            ssh_keygen_cmd.arg("-t");
+            ssh_keygen_cmd.arg(format!("{}", key_type));
+            ssh_keygen_cmd.arg("-m");
+            ssh_keygen_cmd.arg(format!("{}", key_format));
+            ssh_keygen_cmd.arg("-b");
+            ssh_keygen_cmd.arg(format!("{}", input_entity.bits));
+            ssh_keygen_cmd.arg("-C");
+            ssh_keygen_cmd.arg(&input_entity.name[..]);
+            ssh_keygen_cmd.arg("-f");
+            ssh_keygen_cmd.arg(filename.to_string_lossy().as_ref());
+            ssh_keygen_cmd.arg("-N");
+            ssh_keygen_cmd.arg("\"\"");
+        }
+
+        self.spawn_command(
+            ssh_keygen_cmd,
+            entity_event_locked.clone(),
+            CaptureOutput::None,
+        )
+        .await?
+        .success()?;
+
+        {
+            let mut entity_event = entity_event_locked.lock().await;
+            entity_event.output_entity = entity_event.input_entity.clone();
+            let output_entity = entity_event
+                .output_entity
+                .as_mut()
+                .ok_or(SshKeyError::MissingInputEntity)?;
+
+            let private_key = fs::read(&filename).await?;
+            output_entity.private_key = String::from_utf8(private_key)?;
+
+            let public_key_name = format!("{}.pub", filename.display());
+            let public_key = fs::read(&public_key_name).await?;
+            output_entity.public_key = String::from_utf8(public_key)?;
+        }
+
+        let mut ssh_fingerprint_cmd = Command::new("ssh-keygen");
+        ssh_fingerprint_cmd.current_dir(tempdir.path());
+        ssh_fingerprint_cmd.arg("-l");
+        ssh_fingerprint_cmd.arg("-f");
+        ssh_fingerprint_cmd.arg(filename.to_string_lossy().as_ref());
+        let mut ssh_fingerprint_out = self
+            .spawn_command(
+                ssh_fingerprint_cmd,
+                entity_event_locked.clone(),
+                CaptureOutput::Stdout,
+            )
+            .await?
+            .success()?;
+
+        let mut ssh_babble_cmd = Command::new("ssh-keygen");
+        ssh_babble_cmd.current_dir(tempdir.path());
+        ssh_babble_cmd.arg("-B");
+        ssh_babble_cmd.arg("-f");
+        ssh_babble_cmd.arg(filename.to_string_lossy().as_ref());
+        let mut ssh_babble_out = self
+            .spawn_command(
+                ssh_babble_cmd,
+                entity_event_locked.clone(),
+                CaptureOutput::Stdout,
+            )
+            .await?
+            .success()?;
+
+        let mut ssh_random_cmd = Command::new("ssh-keygen");
+        ssh_random_cmd.current_dir(tempdir.path());
+        ssh_random_cmd.arg("-l");
+        ssh_random_cmd.arg("-v");
+        ssh_random_cmd.arg("-f");
+        ssh_random_cmd.arg(filename.to_string_lossy().as_ref());
+        let mut ssh_random_out = self
+            .spawn_command(
+                ssh_random_cmd,
+                entity_event_locked.clone(),
+                CaptureOutput::Stdout,
+            )
+            .await?
+            .success()?;
+
+        {
+            let mut entity_event = entity_event_locked.lock().await;
+            let output_entity = entity_event
+                .output_entity
+                .as_mut()
+                .ok_or(SshKeyError::MissingOutputEntity)?;
+            output_entity.fingerprint = ssh_fingerprint_out.try_stdout()?;
+            output_entity.bubble_babble = ssh_babble_out.try_stdout()?;
+            output_entity.random_art = ssh_random_out.try_stdout()?;
+            entity_event.success();
+        }
+
+        self.send(entity_event_locked.clone()).await?;
+
+        Ok(())
+    }
+
+    pub async fn run(&mut self) -> Result<()> {
+        // Whats the right value? Who knows? God only knows. Ask the Beach Boys.
+        let mut rx = self.mqtt.get_stream(1000).compat();
+        println!("Connecting to the MQTT server...");
+        let (server_uri, ver, session_present) = self
+            .mqtt
+            .connect(mqtt::ConnectOptions::new())
+            .compat()
+            .await?;
+        // Make the connection to the broker
+        println!("Connected to: '{}' with MQTT version {}", server_uri, ver);
+        if !session_present {
+            let (subscribe_channels, subscribe_qos) = self.subscribe_topics();
+            // Subscribe to multiple topics
+            self.mqtt
+                .subscribe(&subscribe_channels[0], subscribe_qos[0])
+                //.subscribe_many(&subscribe_channels, &subscribe_qos)
+                .compat()
+                .await?;
+        }
+
+        // Just wait for incoming messages by running the receiver stream
+        // in this thread.
+        println!("Waiting for messages...");
+        while let Some(stream_msg) = rx.next().await {
+            let msg = match stream_msg {
+                Ok(maybe_msg) => match maybe_msg {
+                    Some(msg) => msg,
+                    None => {
+                        debug!("you don't have a message, eh?");
+                        continue;
+                    }
+                },
+                Err(_) => {
+                    debug!("whats up?");
+                    continue;
+                }
+            };
+            let entity_event: EntityEvent = match EntityEvent::decode(msg.payload()) {
+                Ok(e) => e,
+                Err(err) => {
+                    debug!(?err, "deserialzing error - bad message");
+                    continue;
+                }
+            };
+            if entity_event.input_entity.is_none() {
+                warn!(?entity_event, "Missing input entity on event");
+                continue;
+            }
+            let mut self_ref = self.clone();
+            tokio::spawn(async move { self_ref.dispatch(entity_event).await });
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct AgentClient {
     mqtt: MqttAsyncClientInternal,
 }
 
+#[derive(Clone)]
 struct MqttAsyncClientInternal {
     mqtt: mqtt::AsyncClient,
 }
@@ -35,10 +689,22 @@ impl Deref for MqttAsyncClientInternal {
     }
 }
 
+impl DerefMut for MqttAsyncClientInternal {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.mqtt
+    }
+}
+
 impl AgentClient {
     pub async fn new() -> Result<AgentClient> {
         // Create a client & define connect options
-        let cli = mqtt::AsyncClient::new("tcp://localhost:1883")?;
+        let client_id = format!("agent_client:{}", Uuid::new_v4());
+
+        let cli = mqtt::AsyncClientBuilder::new()
+            .server_uri("tcp://localhost:1883")
+            .client_id(client_id.as_ref())
+            .persistence(false)
+            .finalize();
 
         cli.connect(mqtt::ConnectOptions::new()).compat().await?;
 
@@ -48,6 +714,9 @@ impl AgentClient {
     }
 
     pub async fn dispatch(&self, entity_event: &EntityEvent) -> Result<()> {
+        if entity_event.input_entity.is_none() {
+            return Err(SshKeyError::MissingInputEntity);
+        }
         match &entity_event.action_name[..] {
             "create" => self.send(entity_event).await,
             _ => Err(SshKeyError::InvalidEntityEventInvalidActionName),
@@ -79,7 +748,7 @@ impl AgentClient {
         entity_event.encode(&mut payload)?;
         // We are very close to the broker - so no need to pretend that we are at
         // risk of not receiving our messages. Right?
-        let msg = mqtt::Message::new(self.generate_topic(&entity_event), payload, 0);
+        let msg = mqtt::Message::new(self.generate_topic(entity_event), payload, 0);
         self.mqtt.publish(msg).compat().await?;
         Ok(())
     }

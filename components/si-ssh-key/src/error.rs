@@ -4,6 +4,9 @@ use si_data;
 use thiserror::Error;
 use tonic::{self, Response};
 
+use crate::agent::CommandResult;
+use crate::model::entity::EntityEvent;
+
 pub type Result<T> = std::result::Result<T, SshKeyError>;
 pub type TonicResult<T> = std::result::Result<Response<T>, tonic::Status>;
 
@@ -17,6 +20,8 @@ pub enum SshKeyError {
     EmptyBillingAccount,
     #[error("this request required a component object id, but it did not exist")]
     ComponentMissing,
+    #[error("this request required an entity object id, but it did not exist")]
+    EntityMissing,
     #[error("invalid object; missing displayName field")]
     InvalidMissingDisplayName,
     #[error("invalid object; missing name field")]
@@ -33,6 +38,8 @@ pub enum SshKeyError {
     InvalidAuthentication,
     #[error("error listing components: {0}")]
     ListComponentsError(si_data::error::DataError),
+    #[error("error listing entities: {0}")]
+    ListEntitiesError(si_data::error::DataError),
     #[error("invalid grpc header; cannot become a string: {0}")]
     GrpcHeaderToString(#[from] tonic::metadata::errors::ToStrError),
     #[error("unknown tenant id")]
@@ -41,6 +48,8 @@ pub enum SshKeyError {
     Db(#[from] si_data::error::DataError),
     #[error("error converting bytes to utf-8 string: {0}")]
     Utf8Error(#[from] std::str::Utf8Error),
+    #[error("error converting bytes to utf-8 string: {0}")]
+    Utf8StringError(#[from] std::string::FromUtf8Error),
     #[error("pick component error: {0}")]
     PickComponent(String),
     #[error("invalid key type value")]
@@ -61,6 +70,20 @@ pub enum SshKeyError {
     InvalidEntityEventMissingInputEntity,
     #[error("invalid entity event; invalid action name")]
     InvalidEntityEventInvalidActionName,
+    #[error("IO error: {0}")]
+    IoError(#[from] std::io::Error),
+    #[error("no io pipe - this is, um, bad")]
+    NoIoPipe,
+    #[error("entity event action call is missing an input entity")]
+    MissingInputEntity,
+    #[error("entity event action call is missing an output entity")]
+    MissingOutputEntity,
+    #[error("oneshot channel error: {0}")]
+    Oneshot(#[from] tokio::sync::oneshot::error::TryRecvError),
+    #[error("command failed: {0:?}")]
+    CommandFailed(CommandResult),
+    #[error("expected output and recevied none")]
+    CommandExpectedOutput,
 }
 
 impl From<SshKeyError> for tonic::Status {
@@ -69,7 +92,8 @@ impl From<SshKeyError> for tonic::Status {
             SshKeyError::InvalidMissingDisplayName
             | SshKeyError::InvalidMissingName
             | SshKeyError::PickComponent(_)
-            | SshKeyError::ComponentMissing => {
+            | SshKeyError::ComponentMissing
+            | SshKeyError::EntityMissing => {
                 tonic::Status::new(tonic::Code::InvalidArgument, err.to_string())
             }
             SshKeyError::Authorization => {

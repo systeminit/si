@@ -18,6 +18,7 @@ import {
 } from "nexus";
 import { logger } from "@/logger";
 import { loginTypes } from "@/schema/login";
+import { subscriptionTypes } from "@/schema/entityEvent";
 import { Context } from "@/.";
 import { AuthenticationError } from "apollo-server";
 
@@ -54,6 +55,7 @@ export class SchemaGenerator {
 
     // All the non-generated types get added here
     this.types = this.types.concat(loginTypes);
+    this.types = this.types.concat(subscriptionTypes);
 
     this.seenTypes = {};
   }

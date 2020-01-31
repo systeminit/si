@@ -1,0 +1,14 @@
+subscription {
+  streamEntityEvents(input:{workspaceId:"workspace:8d11f487-5835-4b71-9b87-20d19b2685d4"}) {
+    id
+    actionName
+    entityId
+    typeName
+    createTime
+    updatedTime
+    finalTime
+    finalized
+    outputLines
+    errorLines
+  }
+}

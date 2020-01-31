@@ -272,9 +272,6 @@ impl ssh_key_server::SshKey for Service {
         &self,
         request: Request<protobuf::CreateEntityRequest>,
     ) -> TonicResult<protobuf::CreateEntityReply> {
-        // Create an Entity, in the UNINITIALIZED state
-        // Submit the entity to the create action via MQTT, return EntityEvent
-        // Return Entity and Entity Event
         async {
             let metadata = request.metadata();
             let user_id = metadata
@@ -337,7 +334,7 @@ impl ssh_key_server::SshKey for Service {
 
             Ok(Response::new(protobuf::CreateEntityReply {
                 entity: Some(entity),
-                ..Default::default()
+                event: Some(entity_event),
             }))
         }
         .instrument(debug_span!("create_entity", ?request))
@@ -494,6 +491,112 @@ impl ssh_key_server::SshKey for Service {
             }))
         }
         .instrument(debug_span!("get_component", ?request))
+        .await
+    }
+
+    async fn list_entities(
+        &self,
+        request: Request<protobuf::ListEntitiesRequest>,
+    ) -> TonicResult<protobuf::ListEntitiesReply> {
+        async {
+            let metadata = request.metadata();
+            let user_id = metadata
+                .get("userId")
+                .ok_or(SshKeyError::InvalidAuthentication)?
+                .to_str()
+                .map_err(SshKeyError::GrpcHeaderToString)?;
+            let billing_account_id = metadata
+                .get("billingAccountId")
+                .ok_or(SshKeyError::InvalidAuthentication)?
+                .to_str()
+                .map_err(SshKeyError::GrpcHeaderToString)?;
+            let req = request.get_ref();
+
+            let billing_account: BillingAccount = self
+                .db
+                .get(billing_account_id)
+                .await
+                .map_err(|_| SshKeyError::BillingAccountMissing)?;
+
+            authorize(
+                &self.db,
+                user_id,
+                billing_account_id,
+                "list_entities",
+                &billing_account,
+            )
+            .await?;
+
+            let scope = if req.scope_by_tenant_id == "" {
+                billing_account_id
+            } else {
+                req.scope_by_tenant_id.as_ref()
+            };
+
+            let list_result: ListResult<Entity> = if req.page_token != "" {
+                self.db
+                    .list_by_page_token(&req.page_token)
+                    .await
+                    .map_err(SshKeyError::ListEntitiesError)?
+            } else {
+                self.db
+                    .list(
+                        &req.query,
+                        req.page_size,
+                        &req.order_by,
+                        req.order_by_direction,
+                        scope,
+                        "",
+                    )
+                    .await
+                    .map_err(SshKeyError::ListEntitiesError)?
+            };
+
+            if list_result.items.len() == 0 {
+                return Ok(Response::new(protobuf::ListEntitiesReply::default()));
+            }
+
+            Ok(Response::new(protobuf::ListEntitiesReply {
+                total_count: list_result.total_count(),
+                next_page_token: list_result.page_token().to_string(),
+                items: list_result.items,
+            }))
+        }
+        .instrument(debug_span!("list_entities", ?request))
+        .await
+    }
+
+    async fn get_entity(
+        &self,
+        request: Request<protobuf::GetEntityRequest>,
+    ) -> TonicResult<protobuf::GetEntityReply> {
+        async {
+            let metadata = request.metadata();
+            let user_id = metadata
+                .get("userId")
+                .ok_or(SshKeyError::InvalidAuthentication)?
+                .to_str()
+                .map_err(SshKeyError::GrpcHeaderToString)?;
+            let billing_account_id = metadata
+                .get("billingAccountId")
+                .ok_or(SshKeyError::InvalidAuthentication)?
+                .to_str()
+                .map_err(SshKeyError::GrpcHeaderToString)?;
+            let req = request.get_ref();
+
+            let entity: Entity = self.db.get(req.entity_id.to_string()).await.map_err(|e| {
+                debug!(?e, "entity_get_failed");
+                SshKeyError::EntityMissing
+            })?;
+            debug!(?entity, "found");
+
+            authorize(&self.db, user_id, billing_account_id, "get_entity", &entity).await?;
+
+            Ok(Response::new(protobuf::GetEntityReply {
+                entity: Some(entity),
+            }))
+        }
+        .instrument(debug_span!("get_entity", ?request))
         .await
     }
 }

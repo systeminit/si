@@ -4,6 +4,8 @@ service.SshKey.GetComponent.query = true
 service.SshKey.ListComponents.query = true
 service.SshKey.PickComponent.query = true
 service.SshKey.CreateEntity.mutation = true
+service.SshKey.ListEntities.query = true
+service.SshKey.GetEntity.query = true
 
 [message.Component.integrationId.has_one]
 to = "integration"

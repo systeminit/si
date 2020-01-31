@@ -653,7 +653,9 @@ type Query {
   listWorkspaces(input: ListWorkspacesRequest): ListWorkspacesReply
   login(input: LoginRequest): LoginReply
   sshKeyGetComponent(input: SshKeyGetComponentRequest): SshKeyGetComponentReply
+  sshKeyGetEntity(input: SshKeyGetEntityRequest): SshKeyGetEntityReply
   sshKeyListComponents(input: SshKeyListComponentsRequest): SshKeyListComponentsReply
+  sshKeyListEntities(input: SshKeyListEntitiesRequest): SshKeyListEntitiesReply
   sshKeyPickComponent(input: SshKeyPickComponentRequest): SshKeyPickComponentReply
 }
 
@@ -857,8 +859,8 @@ type SshKeyEntityEvent {
   """billingAccountId"""
   billingAccountId: String
 
-  """body"""
-  body: String
+  """componentId"""
+  componentId: String
 
   """createTime"""
   createTime: String
@@ -866,17 +868,23 @@ type SshKeyEntityEvent {
   """entityId"""
   entityId: String
 
+  """errorLines"""
+  errorLines: [String!]
+
+  """errorMessage"""
+  errorMessage: String
+
   """finalized"""
   finalized: Boolean
 
   """finalTime"""
   finalTime: String
 
-  """from"""
-  from: String
-
   """id"""
   id: ID
+
+  """inputEntity"""
+  inputEntity: SshKeyEntity
 
   """integrationId"""
   integrationId: String
@@ -887,8 +895,20 @@ type SshKeyEntityEvent {
   """naturalKey"""
   naturalKey: String
 
+  """nextState"""
+  nextState: SshKeyNextState
+
   """organizationId"""
   organizationId: String
+
+  """outputEntity"""
+  outputEntity: SshKeyEntity
+
+  """outputLines"""
+  outputLines: [String!]
+
+  """success"""
+  success: Boolean
 
   """tenantIds"""
   tenantIds: [String!]
@@ -898,6 +918,9 @@ type SshKeyEntityEvent {
 
   """updatedTime"""
   updatedTime: String
+
+  """userId"""
+  userId: String
 
   """workspaceId"""
   workspaceId: String
@@ -911,6 +934,16 @@ type SshKeyGetComponentReply {
 input SshKeyGetComponentRequest {
   """componentId"""
   componentId: String
+}
+
+type SshKeyGetEntityReply {
+  """entity"""
+  entity: SshKeyEntity
+}
+
+input SshKeyGetEntityRequest {
+  """entityId"""
+  entityId: String
 }
 
 type SshKeyImplicitConstraint {
@@ -980,6 +1013,44 @@ input SshKeyListComponentsRequest {
   scopeByTenantId: String
 }
 
+type SshKeyListEntitiesReply {
+  """items"""
+  items: [SshKeyEntity!]
+
+  """nextPageToken"""
+  nextPageToken: String
+
+  """totalCount"""
+  totalCount: Int
+}
+
+input SshKeyListEntitiesRequest {
+  """orderBy"""
+  orderBy: String
+
+  """orderByDirection"""
+  orderByDirection: DataOrderByDirection
+
+  """pageSize"""
+  pageSize: Int
+
+  """pageToken"""
+  pageToken: String
+
+  """query"""
+  query: DataQuery
+
+  """scopeByTenantId"""
+  scopeByTenantId: String
+}
+
+enum SshKeyNextState {
+  ERROR
+  NONE
+  OK
+  UNINITIALIZED
+}
+
 type SshKeyPickComponentReply {
   """component"""
   component: SshKeyComponent
@@ -1015,6 +1086,14 @@ enum SshKeyState {
   ERROR
   OK
   UNINITIALIZED
+}
+
+input StreamEntityEventsRequest {
+  workspaceId: String!
+}
+
+type Subscription {
+  streamEntityEvents(input: StreamEntityEventsRequest!): SshKeyEntityEvent
 }
 
 type User {

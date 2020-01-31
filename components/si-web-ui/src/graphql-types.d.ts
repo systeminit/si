@@ -14,6 +14,8 @@ export type BillingAccount = {
   displayName?: Maybe<Scalars["String"]>;
   /** id */
   id?: Maybe<Scalars["ID"]>;
+  /** id */
+  integrationInstances?: Maybe<ListIntegrationInstancesReply>;
   /** naturalKey */
   naturalKey?: Maybe<Scalars["String"]>;
   /** id */
@@ -26,6 +28,10 @@ export type BillingAccount = {
   typeName?: Maybe<Scalars["String"]>;
   /** id */
   users?: Maybe<ListUsersReply>;
+};
+
+export type BillingAccountIntegrationInstancesArgs = {
+  input?: Maybe<ListIntegrationInstancesRequest>;
 };
 
 export type BillingAccountOrganizationsArgs = {
@@ -70,6 +76,32 @@ export type CreateBillingAccountRequest = {
   displayName?: Maybe<Scalars["String"]>;
   /** shortName */
   shortName?: Maybe<Scalars["String"]>;
+};
+
+export type CreateIntegrationInstanceReply = {
+  __typename?: "CreateIntegrationInstanceReply";
+  /** integrationInstance */
+  integrationInstance?: Maybe<IntegrationInstance>;
+};
+
+export type CreateIntegrationInstanceRequest = {
+  /** displayName */
+  displayName?: Maybe<Scalars["String"]>;
+  /** integrationId */
+  integrationId?: Maybe<Scalars["String"]>;
+  /** integrationOptionValues */
+  integrationOptionValues?: Maybe<Array<CreateIntegrationOptionValueRequest>>;
+  /** name */
+  name?: Maybe<Scalars["String"]>;
+};
+
+export type CreateIntegrationOptionValueRequest = {
+  /** name */
+  name?: Maybe<Scalars["String"]>;
+  /** optionType */
+  optionType?: Maybe<IntegrationOptionType>;
+  /** value */
+  value?: Maybe<Scalars["String"]>;
 };
 
 export type CreateUserReply = {
@@ -126,8 +158,11 @@ export enum DataQueryBooleanLogic {
 }
 
 export enum DataQueryComparison {
+  Contains = "CONTAINS",
   Equals = "EQUALS",
+  Like = "LIKE",
   Notequals = "NOTEQUALS",
+  Notlike = "NOTLIKE",
 }
 
 export type DataQueryExpression = {
@@ -162,6 +197,28 @@ export type GetBillingAccountReply = {
 export type GetBillingAccountRequest = {
   /** billingAccountId */
   billingAccountId?: Maybe<Scalars["String"]>;
+};
+
+export type GetIntegrationReply = {
+  __typename?: "GetIntegrationReply";
+  /** integration */
+  integration?: Maybe<Integration>;
+};
+
+export type GetIntegrationRequest = {
+  /** integrationId */
+  integrationId?: Maybe<Scalars["String"]>;
+};
+
+export type GetIntegrationServiceReply = {
+  __typename?: "GetIntegrationServiceReply";
+  /** integrationService */
+  integrationService?: Maybe<IntegrationService>;
+};
+
+export type GetIntegrationServiceRequest = {
+  /** integrationServiceId */
+  integrationServiceId?: Maybe<Scalars["String"]>;
 };
 
 export type GetOrganizationReply = {
@@ -206,6 +263,198 @@ export type Group = {
   typeName?: Maybe<Scalars["String"]>;
   /** userIds */
   userIds?: Maybe<Array<Scalars["String"]>>;
+};
+
+export type Integration = {
+  __typename?: "Integration";
+  /** displayName */
+  displayName?: Maybe<Scalars["String"]>;
+  /** id */
+  id?: Maybe<Scalars["ID"]>;
+  /** integrationOptions */
+  integrationOptions?: Maybe<Array<IntegrationOption>>;
+  /** id */
+  integrationServices?: Maybe<ListIntegrationServicesReply>;
+  /** name */
+  name?: Maybe<Scalars["String"]>;
+  /** naturalKey */
+  naturalKey?: Maybe<Scalars["String"]>;
+  /** tenantIds */
+  tenantIds?: Maybe<Array<Scalars["String"]>>;
+  /** typeName */
+  typeName?: Maybe<Scalars["String"]>;
+  /** version */
+  version?: Maybe<Scalars["Int"]>;
+};
+
+export type IntegrationIntegrationServicesArgs = {
+  input?: Maybe<ListIntegrationServicesRequest>;
+};
+
+export type IntegrationInstance = {
+  __typename?: "IntegrationInstance";
+  /** billingAccountId */
+  billingAccount?: Maybe<BillingAccount>;
+  /** billingAccountId */
+  billingAccountId?: Maybe<Scalars["String"]>;
+  /** displayName */
+  displayName?: Maybe<Scalars["String"]>;
+  /** enabledOnOrganizationIds */
+  enabledOnOrganizationIds?: Maybe<Array<Scalars["String"]>>;
+  /** enabledOnOrganizationIds */
+  enabledOnOrganizations?: Maybe<ListOrganizationsReply>;
+  /** enabledOnWorkspaceIds */
+  enabledOnWorkspaceIds?: Maybe<Array<Scalars["String"]>>;
+  /** enabledOnWorkspaceIds */
+  enabledOnWorkspaces?: Maybe<ListWorkspacesReply>;
+  /** id */
+  id?: Maybe<Scalars["ID"]>;
+  /** integrationId */
+  integration?: Maybe<Integration>;
+  /** integrationId */
+  integrationId?: Maybe<Scalars["String"]>;
+  /** integrationOptionValues */
+  integrationOptionValues?: Maybe<Array<IntegrationOptionValue>>;
+  /** integrationServiceIds */
+  integrationServiceIds?: Maybe<Array<Scalars["String"]>>;
+  /** name */
+  name?: Maybe<Scalars["String"]>;
+  /** naturalKey */
+  naturalKey?: Maybe<Scalars["String"]>;
+  /** tenantIds */
+  tenantIds?: Maybe<Array<Scalars["String"]>>;
+  /** typeName */
+  typeName?: Maybe<Scalars["String"]>;
+};
+
+export type IntegrationInstanceEnabledOnOrganizationsArgs = {
+  input?: Maybe<ListOrganizationsRequest>;
+};
+
+export type IntegrationInstanceEnabledOnWorkspacesArgs = {
+  input?: Maybe<ListWorkspacesRequest>;
+};
+
+export type IntegrationOption = {
+  __typename?: "IntegrationOption";
+  /** displayName */
+  displayName?: Maybe<Scalars["String"]>;
+  /** name */
+  name?: Maybe<Scalars["String"]>;
+  /** optionType */
+  optionType?: Maybe<IntegrationOptionType>;
+};
+
+export enum IntegrationOptionType {
+  Secret = "SECRET",
+  String = "STRING",
+}
+
+export type IntegrationOptionValue = {
+  __typename?: "IntegrationOptionValue";
+  /** name */
+  name?: Maybe<Scalars["String"]>;
+  /** optionType */
+  optionType?: Maybe<IntegrationOptionType>;
+  /** value */
+  value?: Maybe<Scalars["String"]>;
+};
+
+export type IntegrationService = {
+  __typename?: "IntegrationService";
+  /** displayName */
+  displayName?: Maybe<Scalars["String"]>;
+  /** id */
+  id?: Maybe<Scalars["ID"]>;
+  /** integrationId */
+  integration?: Maybe<Integration>;
+  /** integrationId */
+  integrationId?: Maybe<Scalars["String"]>;
+  /** name */
+  name?: Maybe<Scalars["String"]>;
+  /** naturalKey */
+  naturalKey?: Maybe<Scalars["String"]>;
+  /** tenantIds */
+  tenantIds?: Maybe<Array<Scalars["String"]>>;
+  /** typeName */
+  typeName?: Maybe<Scalars["String"]>;
+  /** version */
+  version?: Maybe<Scalars["Int"]>;
+};
+
+export type ListIntegrationInstancesReply = {
+  __typename?: "ListIntegrationInstancesReply";
+  /** items */
+  items?: Maybe<Array<IntegrationInstance>>;
+  /** nextPageToken */
+  nextPageToken?: Maybe<Scalars["String"]>;
+  /** totalCount */
+  totalCount?: Maybe<Scalars["Int"]>;
+};
+
+export type ListIntegrationInstancesRequest = {
+  /** orderBy */
+  orderBy?: Maybe<Scalars["String"]>;
+  /** orderByDirection */
+  orderByDirection?: Maybe<DataOrderByDirection>;
+  /** pageSize */
+  pageSize?: Maybe<Scalars["Int"]>;
+  /** pageToken */
+  pageToken?: Maybe<Scalars["String"]>;
+  /** query */
+  query?: Maybe<DataQuery>;
+  /** scopeByTenantId */
+  scopeByTenantId?: Maybe<Scalars["String"]>;
+};
+
+export type ListIntegrationServicesReply = {
+  __typename?: "ListIntegrationServicesReply";
+  /** items */
+  items?: Maybe<Array<IntegrationService>>;
+  /** nextPageToken */
+  nextPageToken?: Maybe<Scalars["String"]>;
+  /** totalCount */
+  totalCount?: Maybe<Scalars["Int"]>;
+};
+
+export type ListIntegrationServicesRequest = {
+  /** orderBy */
+  orderBy?: Maybe<Scalars["String"]>;
+  /** orderByDirection */
+  orderByDirection?: Maybe<DataOrderByDirection>;
+  /** pageSize */
+  pageSize?: Maybe<Scalars["Int"]>;
+  /** pageToken */
+  pageToken?: Maybe<Scalars["String"]>;
+  /** query */
+  query?: Maybe<DataQuery>;
+  /** scopeByTenantId */
+  scopeByTenantId?: Maybe<Scalars["String"]>;
+};
+
+export type ListIntegrationsReply = {
+  __typename?: "ListIntegrationsReply";
+  /** items */
+  items?: Maybe<Array<Integration>>;
+  /** nextPageToken */
+  nextPageToken?: Maybe<Scalars["String"]>;
+  /** totalCount */
+  totalCount?: Maybe<Scalars["Int"]>;
+};
+
+export type ListIntegrationsRequest = {
+  /** orderBy */
+  orderBy?: Maybe<Scalars["String"]>;
+  /** orderByDirection */
+  orderByDirection?: Maybe<DataOrderByDirection>;
+  /** pageSize */
+  pageSize?: Maybe<Scalars["Int"]>;
+  /** pageToken */
+  pageToken?: Maybe<Scalars["String"]>;
+  /** query */
+  query?: Maybe<DataQuery>;
+  /** scopeByTenantId */
+  scopeByTenantId?: Maybe<Scalars["String"]>;
 };
 
 export type ListOrganizationsReply = {
@@ -299,10 +548,20 @@ export type LoginRequest = {
 export type Mutation = {
   __typename?: "Mutation";
   createAccount?: Maybe<CreateAccountReply>;
+  createIntegrationInstance?: Maybe<CreateIntegrationInstanceReply>;
+  sshKeyCreateEntity?: Maybe<SshKeyCreateEntityReply>;
 };
 
 export type MutationCreateAccountArgs = {
   input?: Maybe<CreateAccountRequest>;
+};
+
+export type MutationCreateIntegrationInstanceArgs = {
+  input?: Maybe<CreateIntegrationInstanceRequest>;
+};
+
+export type MutationSshKeyCreateEntityArgs = {
+  input?: Maybe<SshKeyCreateEntityRequest>;
 };
 
 export type Organization = {
@@ -311,6 +570,8 @@ export type Organization = {
   billingAccount?: Maybe<BillingAccount>;
   /** billingAccountId */
   billingAccountId?: Maybe<Scalars["String"]>;
+  /** id */
+  enabledIntegrationInstances?: Maybe<ListIntegrationInstancesReply>;
   /** id */
   id?: Maybe<Scalars["ID"]>;
   /** name */
@@ -325,6 +586,10 @@ export type Organization = {
   workspaces?: Maybe<ListWorkspacesReply>;
 };
 
+export type OrganizationEnabledIntegrationInstancesArgs = {
+  input?: Maybe<ListIntegrationInstancesRequest>;
+};
+
 export type OrganizationWorkspacesArgs = {
   input?: Maybe<ListWorkspacesRequest>;
 };
@@ -333,10 +598,17 @@ export type Query = {
   __typename?: "Query";
   getBillingAccount?: Maybe<GetBillingAccountReply>;
   getUser?: Maybe<GetUserReply>;
+  listIntegrationInstances?: Maybe<ListIntegrationInstancesReply>;
+  listIntegrations?: Maybe<ListIntegrationsReply>;
   listOrganizations?: Maybe<ListOrganizationsReply>;
   listUsers?: Maybe<ListUsersReply>;
   listWorkspaces?: Maybe<ListWorkspacesReply>;
   login?: Maybe<LoginReply>;
+  sshKeyGetComponent?: Maybe<SshKeyGetComponentReply>;
+  sshKeyGetEntity?: Maybe<SshKeyGetEntityReply>;
+  sshKeyListComponents?: Maybe<SshKeyListComponentsReply>;
+  sshKeyListEntities?: Maybe<SshKeyListEntitiesReply>;
+  sshKeyPickComponent?: Maybe<SshKeyPickComponentReply>;
 };
 
 export type QueryGetBillingAccountArgs = {
@@ -345,6 +617,14 @@ export type QueryGetBillingAccountArgs = {
 
 export type QueryGetUserArgs = {
   input?: Maybe<GetUserRequest>;
+};
+
+export type QueryListIntegrationInstancesArgs = {
+  input?: Maybe<ListIntegrationInstancesRequest>;
+};
+
+export type QueryListIntegrationsArgs = {
+  input?: Maybe<ListIntegrationsRequest>;
 };
 
 export type QueryListOrganizationsArgs = {
@@ -361,6 +641,378 @@ export type QueryListWorkspacesArgs = {
 
 export type QueryLoginArgs = {
   input?: Maybe<LoginRequest>;
+};
+
+export type QuerySshKeyGetComponentArgs = {
+  input?: Maybe<SshKeyGetComponentRequest>;
+};
+
+export type QuerySshKeyGetEntityArgs = {
+  input?: Maybe<SshKeyGetEntityRequest>;
+};
+
+export type QuerySshKeyListComponentsArgs = {
+  input?: Maybe<SshKeyListComponentsRequest>;
+};
+
+export type QuerySshKeyListEntitiesArgs = {
+  input?: Maybe<SshKeyListEntitiesRequest>;
+};
+
+export type QuerySshKeyPickComponentArgs = {
+  input?: Maybe<SshKeyPickComponentRequest>;
+};
+
+export type SshKeyComponent = {
+  __typename?: "SshKeyComponent";
+  /** bits */
+  bits?: Maybe<Scalars["Int"]>;
+  /** description */
+  description?: Maybe<Scalars["String"]>;
+  /** displayName */
+  displayName?: Maybe<Scalars["String"]>;
+  /** displayTypeName */
+  displayTypeName?: Maybe<Scalars["String"]>;
+  /** id */
+  id?: Maybe<Scalars["ID"]>;
+  /** integrationId */
+  integration?: Maybe<Integration>;
+  /** integrationId */
+  integrationId?: Maybe<Scalars["String"]>;
+  /** integrationServiceId */
+  integrationService?: Maybe<IntegrationService>;
+  /** integrationServiceId */
+  integrationServiceId?: Maybe<Scalars["String"]>;
+  /** keyFormat */
+  keyFormat?: Maybe<SshKeyKeyFormat>;
+  /** keyType */
+  keyType?: Maybe<SshKeyKeyType>;
+  /** name */
+  name?: Maybe<Scalars["String"]>;
+  /** naturalKey */
+  naturalKey?: Maybe<Scalars["String"]>;
+  /** tenantIds */
+  tenantIds?: Maybe<Array<Scalars["String"]>>;
+  /** typeName */
+  typeName?: Maybe<Scalars["String"]>;
+  /** version */
+  version?: Maybe<Scalars["Int"]>;
+};
+
+export type SshKeyConstraints = {
+  __typename?: "SshKeyConstraints";
+  /** bits */
+  bits?: Maybe<Scalars["Int"]>;
+  /** displayName */
+  displayName?: Maybe<Scalars["String"]>;
+  /** integrationId */
+  integrationId?: Maybe<Scalars["String"]>;
+  /** integrationServiceId */
+  integrationServiceId?: Maybe<Scalars["String"]>;
+  /** keyFormat */
+  keyFormat?: Maybe<SshKeyKeyFormatRequest>;
+  /** keyType */
+  keyType?: Maybe<SshKeyKeyTypeRequest>;
+  /** name */
+  name?: Maybe<Scalars["String"]>;
+};
+
+export type SshKeyCreateEntityReply = {
+  __typename?: "SshKeyCreateEntityReply";
+  /** entity */
+  entity?: Maybe<SshKeyEntity>;
+  /** event */
+  event?: Maybe<SshKeyEntityEvent>;
+};
+
+export type SshKeyCreateEntityRequest = {
+  /** constraints */
+  constraints?: Maybe<SshKeyPickComponentRequest>;
+  /** description */
+  description?: Maybe<Scalars["String"]>;
+  /** displayName */
+  displayName?: Maybe<Scalars["String"]>;
+  /** name */
+  name?: Maybe<Scalars["String"]>;
+  /** workspaceId */
+  workspaceId?: Maybe<Scalars["String"]>;
+};
+
+export type SshKeyEntity = {
+  __typename?: "SshKeyEntity";
+  /** billingAccountId */
+  billingAccount?: Maybe<BillingAccount>;
+  /** billingAccountId */
+  billingAccountId?: Maybe<Scalars["String"]>;
+  /** bits */
+  bits?: Maybe<Scalars["Int"]>;
+  /** bubbleBabble */
+  bubbleBabble?: Maybe<Scalars["String"]>;
+  /** comment */
+  comment?: Maybe<Scalars["String"]>;
+  /** componentId */
+  componentId?: Maybe<Scalars["String"]>;
+  /** constraints */
+  constraints?: Maybe<SshKeyConstraints>;
+  /** description */
+  description?: Maybe<Scalars["String"]>;
+  /** displayName */
+  displayName?: Maybe<Scalars["String"]>;
+  /** fingerprint */
+  fingerprint?: Maybe<Scalars["String"]>;
+  /** id */
+  id?: Maybe<Scalars["ID"]>;
+  /** implicitConstraints */
+  implicitConstraints?: Maybe<Array<SshKeyImplicitConstraint>>;
+  /** integrationId */
+  integration?: Maybe<Integration>;
+  /** integrationId */
+  integrationId?: Maybe<Scalars["String"]>;
+  /** integrationServiceId */
+  integrationService?: Maybe<IntegrationService>;
+  /** integrationServiceId */
+  integrationServiceId?: Maybe<Scalars["String"]>;
+  /** keyFormat */
+  keyFormat?: Maybe<SshKeyKeyFormat>;
+  /** keyType */
+  keyType?: Maybe<SshKeyKeyType>;
+  /** linkedEntityIds */
+  linkedEntityIds?: Maybe<Array<Scalars["String"]>>;
+  /** name */
+  name?: Maybe<Scalars["String"]>;
+  /** naturalKey */
+  naturalKey?: Maybe<Scalars["String"]>;
+  /** organizationId */
+  organization?: Maybe<Organization>;
+  /** organizationId */
+  organizationId?: Maybe<Scalars["String"]>;
+  /** privateKey */
+  privateKey?: Maybe<Scalars["String"]>;
+  /** publicKey */
+  publicKey?: Maybe<Scalars["String"]>;
+  /** randomArt */
+  randomArt?: Maybe<Scalars["String"]>;
+  /** state */
+  state?: Maybe<SshKeyState>;
+  /** tenantIds */
+  tenantIds?: Maybe<Array<Scalars["String"]>>;
+  /** typeName */
+  typeName?: Maybe<Scalars["String"]>;
+  /** workspaceId */
+  workspace?: Maybe<Workspace>;
+  /** workspaceId */
+  workspaceId?: Maybe<Scalars["String"]>;
+};
+
+export type SshKeyEntityEvent = {
+  __typename?: "SshKeyEntityEvent";
+  /** actionName */
+  actionName?: Maybe<Scalars["String"]>;
+  /** billingAccountId */
+  billingAccountId?: Maybe<Scalars["String"]>;
+  /** componentId */
+  componentId?: Maybe<Scalars["String"]>;
+  /** createTime */
+  createTime?: Maybe<Scalars["String"]>;
+  /** entityId */
+  entityId?: Maybe<Scalars["String"]>;
+  /** errorLines */
+  errorLines?: Maybe<Array<Scalars["String"]>>;
+  /** errorMessage */
+  errorMessage?: Maybe<Scalars["String"]>;
+  /** finalized */
+  finalized?: Maybe<Scalars["Boolean"]>;
+  /** finalTime */
+  finalTime?: Maybe<Scalars["String"]>;
+  /** id */
+  id?: Maybe<Scalars["ID"]>;
+  /** inputEntity */
+  inputEntity?: Maybe<SshKeyEntity>;
+  /** integrationId */
+  integrationId?: Maybe<Scalars["String"]>;
+  /** integrationServiceId */
+  integrationServiceId?: Maybe<Scalars["String"]>;
+  /** naturalKey */
+  naturalKey?: Maybe<Scalars["String"]>;
+  /** nextState */
+  nextState?: Maybe<SshKeyNextState>;
+  /** organizationId */
+  organizationId?: Maybe<Scalars["String"]>;
+  /** outputEntity */
+  outputEntity?: Maybe<SshKeyEntity>;
+  /** outputLines */
+  outputLines?: Maybe<Array<Scalars["String"]>>;
+  /** success */
+  success?: Maybe<Scalars["Boolean"]>;
+  /** tenantIds */
+  tenantIds?: Maybe<Array<Scalars["String"]>>;
+  /** typeName */
+  typeName?: Maybe<Scalars["String"]>;
+  /** updatedTime */
+  updatedTime?: Maybe<Scalars["String"]>;
+  /** userId */
+  userId?: Maybe<Scalars["String"]>;
+  /** workspaceId */
+  workspaceId?: Maybe<Scalars["String"]>;
+};
+
+export type SshKeyGetComponentReply = {
+  __typename?: "SshKeyGetComponentReply";
+  /** component */
+  component?: Maybe<SshKeyComponent>;
+};
+
+export type SshKeyGetComponentRequest = {
+  /** componentId */
+  componentId?: Maybe<Scalars["String"]>;
+};
+
+export type SshKeyGetEntityReply = {
+  __typename?: "SshKeyGetEntityReply";
+  /** entity */
+  entity?: Maybe<SshKeyEntity>;
+};
+
+export type SshKeyGetEntityRequest = {
+  /** entityId */
+  entityId?: Maybe<Scalars["String"]>;
+};
+
+export type SshKeyImplicitConstraint = {
+  __typename?: "SshKeyImplicitConstraint";
+  /** field */
+  field?: Maybe<Scalars["String"]>;
+  /** value */
+  value?: Maybe<Scalars["String"]>;
+};
+
+export enum SshKeyKeyFormat {
+  Pem = "PEM",
+  Pkcs8 = "PKCS8",
+  Rfc4716 = "RFC4716",
+}
+
+export enum SshKeyKeyFormatRequest {
+  Nokeyformat = "NOKEYFORMAT",
+  Pem = "PEM",
+  Pkcs8 = "PKCS8",
+  Rfc4716 = "RFC4716",
+}
+
+export enum SshKeyKeyType {
+  Dsa = "DSA",
+  Ecdsa = "ECDSA",
+  Ed25519 = "ED25519",
+  Rsa = "RSA",
+}
+
+export enum SshKeyKeyTypeRequest {
+  Dsa = "DSA",
+  Ecdsa = "ECDSA",
+  Ed25519 = "ED25519",
+  Nokeytype = "NOKEYTYPE",
+  Rsa = "RSA",
+}
+
+export type SshKeyListComponentsReply = {
+  __typename?: "SshKeyListComponentsReply";
+  /** items */
+  items?: Maybe<Array<SshKeyComponent>>;
+  /** nextPageToken */
+  nextPageToken?: Maybe<Scalars["String"]>;
+  /** totalCount */
+  totalCount?: Maybe<Scalars["Int"]>;
+};
+
+export type SshKeyListComponentsRequest = {
+  /** orderBy */
+  orderBy?: Maybe<Scalars["String"]>;
+  /** orderByDirection */
+  orderByDirection?: Maybe<DataOrderByDirection>;
+  /** pageSize */
+  pageSize?: Maybe<Scalars["Int"]>;
+  /** pageToken */
+  pageToken?: Maybe<Scalars["String"]>;
+  /** query */
+  query?: Maybe<DataQuery>;
+  /** scopeByTenantId */
+  scopeByTenantId?: Maybe<Scalars["String"]>;
+};
+
+export type SshKeyListEntitiesReply = {
+  __typename?: "SshKeyListEntitiesReply";
+  /** items */
+  items?: Maybe<Array<SshKeyEntity>>;
+  /** nextPageToken */
+  nextPageToken?: Maybe<Scalars["String"]>;
+  /** totalCount */
+  totalCount?: Maybe<Scalars["Int"]>;
+};
+
+export type SshKeyListEntitiesRequest = {
+  /** orderBy */
+  orderBy?: Maybe<Scalars["String"]>;
+  /** orderByDirection */
+  orderByDirection?: Maybe<DataOrderByDirection>;
+  /** pageSize */
+  pageSize?: Maybe<Scalars["Int"]>;
+  /** pageToken */
+  pageToken?: Maybe<Scalars["String"]>;
+  /** query */
+  query?: Maybe<DataQuery>;
+  /** scopeByTenantId */
+  scopeByTenantId?: Maybe<Scalars["String"]>;
+};
+
+export enum SshKeyNextState {
+  Error = "ERROR",
+  None = "NONE",
+  Ok = "OK",
+  Uninitialized = "UNINITIALIZED",
+}
+
+export type SshKeyPickComponentReply = {
+  __typename?: "SshKeyPickComponentReply";
+  /** component */
+  component?: Maybe<SshKeyComponent>;
+  /** implicitConstraints */
+  implicitConstraints?: Maybe<Array<SshKeyImplicitConstraint>>;
+};
+
+export type SshKeyPickComponentRequest = {
+  /** bits */
+  bits?: Maybe<Scalars["Int"]>;
+  /** displayName */
+  displayName?: Maybe<Scalars["String"]>;
+  /** integrationId */
+  integrationId?: Maybe<Scalars["String"]>;
+  /** integrationServiceId */
+  integrationServiceId?: Maybe<Scalars["String"]>;
+  /** keyFormat */
+  keyFormat?: Maybe<SshKeyKeyFormatRequest>;
+  /** keyType */
+  keyType?: Maybe<SshKeyKeyTypeRequest>;
+  /** name */
+  name?: Maybe<Scalars["String"]>;
+};
+
+export enum SshKeyState {
+  Error = "ERROR",
+  Ok = "OK",
+  Uninitialized = "UNINITIALIZED",
+}
+
+export type StreamEntityEventsRequest = {
+  workspaceId: Scalars["String"];
+};
+
+export type Subscription = {
+  __typename?: "Subscription";
+  streamEntityEvents?: Maybe<SshKeyEntityEvent>;
+};
+
+export type SubscriptionStreamEntityEventsArgs = {
+  input: StreamEntityEventsRequest;
 };
 
 export type User = {
@@ -400,6 +1052,8 @@ export type Workspace = {
   /** billingAccountId */
   billingAccountId?: Maybe<Scalars["String"]>;
   /** id */
+  enabledIntegrationInstances?: Maybe<ListIntegrationInstancesReply>;
+  /** id */
   id?: Maybe<Scalars["ID"]>;
   /** name */
   name?: Maybe<Scalars["String"]>;
@@ -413,6 +1067,10 @@ export type Workspace = {
   tenantIds?: Maybe<Array<Scalars["String"]>>;
   /** typeName */
   typeName?: Maybe<Scalars["String"]>;
+};
+
+export type WorkspaceEnabledIntegrationInstancesArgs = {
+  input?: Maybe<ListIntegrationInstancesRequest>;
 };
 
 export type CreateAccountMutationVariables = {

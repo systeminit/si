@@ -5,7 +5,8 @@ use tokio;
 use tonic::transport::Server;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
-use si_ssh_key::{migrate, AgentClient, Service, SshKeyServer};
+use si_account::{Integration, IntegrationService};
+use si_ssh_key::{migrate, AgentClient, AgentFinalizer, AgentServer, Service, SshKeyServer};
 
 async fn run() -> Result<()> {
     let settings = Settings::new()?;
@@ -17,6 +18,24 @@ async fn run() -> Result<()> {
 
     println!("*** Starting the Agent Client ***");
     let agent_client = AgentClient::new().await?;
+
+    let integration: Integration = db
+        .lookup_by_natural_key("global:integration:global")
+        .await?;
+
+    let integration_service_lookup_id =
+        format!("global:{}:integration_service:ssh_key", integration.id);
+    let integration_service: IntegrationService = db
+        .lookup_by_natural_key(integration_service_lookup_id)
+        .await?;
+
+    // I bet you want to actually be smarter than this, if this errors - but life goes
+    // on.
+    let mut agent_server = AgentServer::new(integration.id, integration_service.id);
+    tokio::spawn(async move { agent_server.run().await });
+
+    let mut agent_finalizer = AgentFinalizer::new(db.clone());
+    tokio::spawn(async move { agent_finalizer.run().await });
 
     let service = Service::new(db, agent_client);
 

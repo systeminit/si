@@ -10,7 +10,7 @@ pub mod model;
 mod serde_enum;
 pub mod service;
 
-pub use agent::AgentClient;
+pub use agent::{AgentClient, AgentFinalizer, AgentServer};
 pub use migrate::migrate;
 pub use protobuf::ssh_key_server::SshKeyServer;
 pub use service::Service;
