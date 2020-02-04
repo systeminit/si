@@ -1,0 +1,23 @@
+query {
+  sshKeyListComponents(input: { pageSize: 10000 }) {
+    items {
+      id
+      naturalKey
+      name
+      displayName
+    }
+    totalCount
+    nextPageToken
+  }
+  sshKeyListEntities(input: { pageSize: 10000 }) {
+    items {
+      id
+      naturalKey
+      typeName
+      name
+      displayName
+    }
+    totalCount
+    nextPageToken
+  }
+}

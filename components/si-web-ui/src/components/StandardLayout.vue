@@ -89,7 +89,7 @@
     </v-content>
 
     <v-footer app>
-      <span>&copy; 2019 - The System Initiative, Inc.</span>
+      <span>&copy; 2020 - The System Initiative, Inc.</span>
     </v-footer>
   </div>
 </template>

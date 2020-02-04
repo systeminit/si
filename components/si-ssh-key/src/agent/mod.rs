@@ -119,6 +119,8 @@ impl AgentFinalizer {
 
     #[tracing::instrument]
     pub async fn dispatch(&mut self, entity_event: EntityEvent) -> Result<()> {
+        debug!("updating_entity_event");
+        self.db.upsert(&entity_event).await?;
         let entity = entity_event
             .output_entity
             .ok_or(SshKeyError::MissingOutputEntity)?;
@@ -217,6 +219,7 @@ impl AgentServer {
     #[tracing::instrument]
     pub async fn dispatch(&mut self, entity_event: EntityEvent) -> Result<()> {
         let action_name = entity_event.action_name.clone();
+        warn!(?entity_event, "please show me the money");
         let entity_event_locked = Arc::new(Mutex::new(entity_event));
         let result = match action_name.as_ref() {
             "create" => self.create(entity_event_locked.clone()).await,
@@ -522,7 +525,7 @@ impl AgentServer {
             ssh_keygen_cmd.arg("-f");
             ssh_keygen_cmd.arg(filename.to_string_lossy().as_ref());
             ssh_keygen_cmd.arg("-N");
-            ssh_keygen_cmd.arg("\"\"");
+            ssh_keygen_cmd.arg("");
         }
 
         self.spawn_command(

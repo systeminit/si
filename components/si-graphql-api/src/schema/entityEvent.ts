@@ -8,19 +8,6 @@ import { protobufLoader } from "@/protobuf";
 
 const pubsub = new MQTTPubSub();
 
-//        let topic = format!(
-//            "{}/{}/{}/{}/{}/{}/{}/{}/{}/result",
-//            entity_event.billing_account_id,
-//            entity_event.organization_id,
-//            entity_event.workspace_id,
-//            entity_event.integration_id,
-//            entity_event.integration_service_id,
-//            entity_event.entity_id,
-//            "action",
-//            entity_event.action_name,
-//            entity_event.id,
-//        );
-
 const StreamEntityEventsRequest = inputObjectType({
   name: "StreamEntityEventsRequest",
   definition(t) {
@@ -37,11 +24,13 @@ const subscription = objectType({
         input: arg({ type: "StreamEntityEventsRequest", required: true }),
       },
       resolve: payload => {
-        logger.log("warn", "oh shit", { payload });
         const messageType = protobufLoader.root.lookupType(
           "si.ssh_key.EntityEvent",
         );
         const response = messageType.decode(Buffer.from(payload));
+        console.log("error", "time is up", {
+          createTime: response["createTime"],
+        });
         logger.log("warn", "oh shit response", { response });
         return response;
       },
@@ -52,5 +41,54 @@ const subscription = objectType({
     });
   },
 });
+
+//import { $$asyncIterator } from "iterall";
+//
+//export const withStaticFields = (
+//  asyncIterator: AsyncIterator<any>,
+//  staticFields: Record<string, any>,
+//): Function => {
+//  return (
+//    rootValue: any,
+//    args: any,
+//    context: any,
+//    info: any,
+//  ): AsyncIterator<any> => {
+//    return {
+//      next() {
+//        return asyncIterator.next().then(({ value, done }) => {
+//          const messageType = protobufLoader.root.lookupType(
+//            "si.ssh_key.EntityEvent",
+//          );
+//          const response = messageType.decode(Buffer.from(value));
+//          console.log("error", "time is up", {
+//            createTime: response["createTime"],
+//          });
+//          //logger.log("warn", "oh shit response", { response });
+//          return {
+//            value: response,
+//            done,
+//          };
+//          //return {
+//          //  value: {
+//          //    ...value,
+//          //    ...staticFields,
+//          //  },
+//          //  done,
+//          //};
+//        });
+//      },
+//      return() {
+//        return Promise.resolve({ value: undefined, done: true });
+//      },
+//      throw(error) {
+//        return Promise.reject(error);
+//      },
+//      [$$asyncIterator]() {
+//        return this;
+//      },
+//    };
+//  };
+//};
 
 export const subscriptionTypes = [subscription, StreamEntityEventsRequest];

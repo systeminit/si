@@ -1,4 +1,10 @@
-import { Query, BillingAccount, User, GetUserReply } from "@/graphql-types";
+import {
+  Query,
+  BillingAccount,
+  User,
+  Workspace,
+  GetUserReply,
+} from "@/graphql-types";
 import * as jwtLib from "jsonwebtoken";
 import { onLogin, onLogout, ExtendedApolloClient } from "@/vue-apollo";
 import { ApolloQueryResult } from "apollo-client";
@@ -118,6 +124,19 @@ class Authentication {
 
   getProfile(): User {
     return this.profile;
+  }
+
+  getCurrentWorkspace(): Workspace {
+    const organization = (this.profile &&
+      this.profile.billingAccount &&
+      this.profile.billingAccount.organizations &&
+      this.profile.billingAccount.organizations.items &&
+      this.profile.billingAccount.organizations.items[0]) || { name: "busted" };
+    const workspace = (organization &&
+      organization.workspaces &&
+      organization.workspaces.items &&
+      organization.workspaces.items[0]) || { name: "busted" };
+    return workspace;
   }
 }
 

@@ -1,5 +1,5 @@
-subscription {
-  streamEntityEvents(input:{workspaceId:"workspace:8d11f487-5835-4b71-9b87-20d19b2685d4"}) {
+subscription($workspaceId: String!) {
+  streamEntityEvents(input:{workspaceId:$workspaceId}) {
     id
     actionName
     entityId
@@ -10,5 +10,23 @@ subscription {
     finalized
     outputLines
     errorLines
+    success
+    inputEntity {
+      id
+      keyType
+      keyFormat
+      bits
+      state
+    }
+    outputEntity {
+      id
+      keyType
+      keyFormat
+      bits
+      fingerprint
+      publicKey
+      privateKey
+      state
+    }
   }
 }
