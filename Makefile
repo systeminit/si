@@ -127,6 +127,7 @@ release: $(RELEASEABLE)
 
 clean:
 	rm -rf ./components/*/node_modules
+	rm -rf ./components/*/target
 	rm -rf ./target
 
 force_clean:
