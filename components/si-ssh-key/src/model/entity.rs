@@ -1,9 +1,9 @@
 use chrono::prelude::{DateTime, Utc};
 use si_account::Workspace;
-use si_data::{error::DataError, Migrateable, Reference, Storable};
+use si_data::{error::DataError, Reference, Storable};
 use uuid::Uuid;
 
-use crate::error::{Result, SshKeyError};
+use crate::error::SshKeyError;
 pub use crate::model::component::{KeyFormat, KeyType};
 pub use crate::protobuf::entity::State;
 pub use crate::protobuf::entity_event::NextState;

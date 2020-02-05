@@ -1,11 +1,9 @@
 use paho_mqtt as mqtt;
-use prost::EncodeError;
 use si_data;
 use thiserror::Error;
 use tonic::{self, Response};
 
 use crate::agent::CommandResult;
-use crate::model::entity::EntityEvent;
 
 pub type Result<T> = std::result::Result<T, SshKeyError>;
 pub type TonicResult<T> = std::result::Result<Response<T>, tonic::Status>;

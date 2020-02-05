@@ -3,7 +3,6 @@ use uuid::Uuid;
 
 use crate::error::SshKeyError;
 pub use crate::protobuf::{Component, KeyFormat, KeyType};
-use crate::protobuf::{PickComponentReply, PickComponentRequest};
 
 impl std::fmt::Display for KeyType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

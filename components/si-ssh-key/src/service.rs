@@ -1,24 +1,18 @@
 use si_data::{
     query_expression_option, Db, ListResult, Query, QueryBooleanLogic, QueryComparison,
-    QueryExpression, QueryExpressionOption, QueryFieldType, Storable,
+    QueryExpression, QueryExpressionOption, QueryFieldType,
 };
-use tonic::{Request, Response, Status};
+use tonic::{Request, Response};
 use tracing::{debug, debug_span};
 use tracing_futures::Instrument;
 
-use si_account::{
-    authorize::{authorize, authorize_by_tenant_id},
-    BillingAccount, Workspace,
-};
+use si_account::{authorize::authorize, BillingAccount, Workspace};
 
 use crate::agent::AgentClient;
 use crate::error::{SshKeyError, TonicResult};
 use crate::model::component::{Component, KeyFormat, KeyType};
 use crate::model::entity::{Entity, EntityEvent};
-use crate::protobuf::{
-    self, pick_component_request::KeyFormatRequest, pick_component_request::KeyTypeRequest,
-    ssh_key_server, ImplicitConstraint,
-};
+use crate::protobuf::{self, ssh_key_server, ImplicitConstraint};
 
 #[derive(Debug)]
 pub struct Service {
@@ -111,11 +105,16 @@ async fn pick_component(
     debug!("solving like a motherfucker");
 
     // DEFAULT VALUES
-    let mut key_type = KeyType::Rsa;
-    let mut key_format = KeyFormat::Rfc4716;
-    let mut bits: u32 = 2048;
-    let integration = "Global";
-    let integration_service = "SSH Key";
+    let key_type: KeyType; // = KeyType::Rsa;
+    let key_format: KeyFormat; // = KeyFormat::Rfc4716;
+    let bits: u32; // = 2048;
+
+    // Someday, this will matter - but for now, there is only one integration.
+    //
+    // Here, future self, I gift to you these variables. Do with them what you will.
+    //
+    // let integration = "Global";
+    // let integration_service = "SSH Key";
 
     let mut implicit_constraints: Vec<ImplicitConstraint> = Vec::new();
 
