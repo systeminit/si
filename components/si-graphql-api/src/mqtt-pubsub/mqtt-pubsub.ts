@@ -1,6 +1,12 @@
-import { PubSubEngine } from 'graphql-subscriptions/dist/pubsub-engine';
-import { connect, Client, ISubscriptionGrant, IClientPublishOptions, IClientSubscribeOptions } from 'mqtt';
-import { PubSubAsyncIterator } from './pubsub-async-iterator';
+import { PubSubEngine } from "graphql-subscriptions/dist/pubsub-engine";
+import {
+  connect,
+  Client,
+  ISubscriptionGrant,
+  IClientPublishOptions,
+  IClientSubscribeOptions,
+} from "mqtt";
+import { PubSubAsyncIterator } from "./pubsub-async-iterator";
 
 export interface PubSubMQTTOptions {
   brokerUrl?: string;
@@ -15,7 +21,6 @@ export interface PubSubMQTTOptions {
 }
 
 export class MQTTPubSub implements PubSubEngine {
-
   private triggerTransform: TriggerTransform;
   private onMQTTSubscribe: SubscribeHandler;
   private subscribeOptionsResolver: SubscribeOptionsResolver;
@@ -28,8 +33,8 @@ export class MQTTPubSub implements PubSubEngine {
   private rawData: boolean;
 
   private static matches(pattern: string, topic: string) {
-    const patternSegments = pattern.split('/');
-    const topicSegments = topic.split('/');
+    const patternSegments = pattern.split("/");
+    const topicSegments = topic.split("/");
     const patternLength = patternSegments.length;
 
     for (let i = 0; i < patternLength; i++) {
@@ -38,44 +43,49 @@ export class MQTTPubSub implements PubSubEngine {
       if (!currentTopic && !currentPattern) {
         continue;
       }
-      if (!currentTopic && currentPattern !== '#') {
+      if (!currentTopic && currentPattern !== "#") {
         return false;
       }
-      if (currentPattern[0] === '#') {
-        return i === (patternLength - 1);
+      if (currentPattern[0] === "#") {
+        return i === patternLength - 1;
       }
-      if (currentPattern[0] !== '+' && currentPattern !== currentTopic) {
+      if (currentPattern[0] !== "+" && currentPattern !== currentTopic) {
         return false;
       }
     }
-    return patternLength === (topicSegments.length);
+    return patternLength === topicSegments.length;
   }
 
   constructor(options: PubSubMQTTOptions = {}) {
-    this.triggerTransform = options.triggerTransform || (trigger => trigger as string);
+    this.triggerTransform =
+      options.triggerTransform || (trigger => trigger as string);
 
     if (options.client) {
       this.mqttConnection = options.client;
     } else {
-      const brokerUrl = options.brokerUrl || 'mqtt://localhost';
+      const brokerUrl = options.brokerUrl || "mqtt://localhost";
       this.mqttConnection = connect(brokerUrl);
     }
 
-    this.mqttConnection.on('message', this.onMessage.bind(this));
+    this.mqttConnection.on("message", this.onMessage.bind(this));
 
     if (options.connectionListener) {
-      this.mqttConnection.on('connect', options.connectionListener);
-      this.mqttConnection.on('error', options.connectionListener);
+      this.mqttConnection.on("connect", options.connectionListener);
+      this.mqttConnection.on("error", options.connectionListener);
     } else {
-      this.mqttConnection.on('error', console.error);
+      this.mqttConnection.on("error", console.error);
     }
 
     this.subscriptionMap = {};
     this.subsRefsMap = {};
     this.currentSubscriptionId = 0;
     this.onMQTTSubscribe = options.onMQTTSubscribe || (() => null);
-    this.publishOptionsResolver = options.publishOptions || (() => Promise.resolve({} as IClientPublishOptions));
-    this.subscribeOptionsResolver = options.subscribeOptions || (() => Promise.resolve({} as IClientSubscribeOptions));
+    this.publishOptionsResolver =
+      options.publishOptions ||
+      (() => Promise.resolve({} as IClientPublishOptions));
+    this.subscribeOptionsResolver =
+      options.subscribeOptions ||
+      (() => Promise.resolve({} as IClientSubscribeOptions));
     this.parseMessageWithEncoding = options.parseMessageWithEncoding;
     this.rawData = options.rawData;
   }
@@ -86,7 +96,8 @@ export class MQTTPubSub implements PubSubEngine {
       if (this.rawData) {
         message = Buffer.from(payload);
       } else {
-        message = Buffer.from(JSON.stringify(payload), this.parseMessageWithEncoding);
+        message = Buffer.from(JSON.stringify(payload), this
+          .parseMessageWithEncoding as BufferEncoding);
       }
 
       this.mqttConnection.publish(trigger, message, publishOptions);
@@ -94,40 +105,47 @@ export class MQTTPubSub implements PubSubEngine {
     return true;
   }
 
-  public subscribe(trigger: string, onMessage: Function, options?: Object): Promise<number> {
+  public subscribe(
+    trigger: string,
+    onMessage: Function,
+    options?: Record<string, any>,
+  ): Promise<number> {
     const triggerName: string = this.triggerTransform(trigger, options);
     const id = this.currentSubscriptionId++;
     this.subscriptionMap[id] = [triggerName, onMessage];
 
-    let refs = this.subsRefsMap[triggerName];
+    const refs = this.subsRefsMap[triggerName];
     if (refs && refs.length > 0) {
       const newRefs = [...refs, id];
       this.subsRefsMap[triggerName] = newRefs;
       return Promise.resolve(id);
-
     } else {
       return new Promise<number>((resolve, reject) => {
         // 1. Resolve options object
-        this.subscribeOptionsResolver(trigger, options).then(subscriptionOptions => {
+        this.subscribeOptionsResolver(trigger, options)
+          .then(subscriptionOptions => {
+            // 2. Subscribing using MQTT
+            this.mqttConnection.subscribe(
+              triggerName,
+              { qos: 0, ...subscriptionOptions },
+              (err, granted) => {
+                if (err) {
+                  reject(err);
+                } else {
+                  // 3. Saving the new sub id
+                  const subscriptionIds = this.subsRefsMap[triggerName] || [];
+                  this.subsRefsMap[triggerName] = [...subscriptionIds, id];
 
-          // 2. Subscribing using MQTT
-          this.mqttConnection.subscribe(triggerName, { qos: 0, ...subscriptionOptions }, (err, granted) => {
-            if (err) {
-              reject(err);
-            } else {
+                  // 4. Resolving the subscriptions id to the Subscription Manager
+                  resolve(id);
 
-              // 3. Saving the new sub id
-              const subscriptionIds = this.subsRefsMap[triggerName] || [];
-              this.subsRefsMap[triggerName] = [...subscriptionIds, id];
-
-              // 4. Resolving the subscriptions id to the Subscription Manager
-              resolve(id);
-
-              // 5. Notify implementor on the subscriptions ack and QoS
-              this.onMQTTSubscribe(id, granted);
-            }
-          });
-        }).catch(err => reject(err));
+                  // 5. Notify implementor on the subscriptions ack and QoS
+                  this.onMQTTSubscribe(id, granted);
+                }
+              },
+            );
+          })
+          .catch(err => reject(err));
       });
     }
   }
@@ -144,7 +162,6 @@ export class MQTTPubSub implements PubSubEngine {
     if (refs.length === 1) {
       this.mqttConnection.unsubscribe(triggerName);
       newRefs = [];
-
     } else {
       const index = refs.indexOf(subId);
       if (index > -1) {
@@ -162,9 +179,9 @@ export class MQTTPubSub implements PubSubEngine {
 
   private onMessage(topic: string, message: Buffer) {
     const subscribers = [].concat(
-        ...Object.keys(this.subsRefsMap)
-        .filter((key) => MQTTPubSub.matches(key, topic))
-        .map((key) => this.subsRefsMap[key]),
+      ...Object.keys(this.subsRefsMap)
+        .filter(key => MQTTPubSub.matches(key, topic))
+        .map(key => this.subsRefsMap[key]),
     );
 
     // Don't work for nothing..
@@ -196,7 +213,19 @@ export class MQTTPubSub implements PubSubEngine {
 
 export type Path = Array<string | number>;
 export type Trigger = string | Path;
-export type TriggerTransform = (trigger: Trigger, channelOptions?: Object) => string;
-export type SubscribeOptionsResolver = (trigger: Trigger, channelOptions?: Object) => Promise<IClientSubscribeOptions>;
-export type PublishOptionsResolver = (trigger: Trigger, payload: any) => Promise<IClientPublishOptions>;
-export type SubscribeHandler = (id: number, granted: ISubscriptionGrant[]) => void;
+export type TriggerTransform = (
+  trigger: Trigger,
+  channelOptions?: Record<string, any>,
+) => string;
+export type SubscribeOptionsResolver = (
+  trigger: Trigger,
+  channelOptions?: Record<string, any>,
+) => Promise<IClientSubscribeOptions>;
+export type PublishOptionsResolver = (
+  trigger: Trigger,
+  payload: any,
+) => Promise<IClientPublishOptions>;
+export type SubscribeHandler = (
+  id: number,
+  granted: ISubscriptionGrant[],
+) => void;
