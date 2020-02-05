@@ -1,19 +1,20 @@
+use futures;
 use lazy_static::lazy_static;
 use opentelemetry::{
-    api::{Key, Provider, Sampler},
+    api::{Provider, Sampler},
     exporter::trace::jaeger,
-    global, sdk,
+    sdk,
 };
 use tokio;
 use tokio::sync::Mutex;
 use tracing;
 use tracing_opentelemetry::OpentelemetryLayer;
 use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::{self, fmt, EnvFilter, FmtSubscriber, Layer, Registry};
+use tracing_subscriber::{self, fmt, EnvFilter, Registry};
 
 use std::env;
 
-use si_account::{protobuf, protobuf::account_server::Account, service::Service};
+use si_account::{migrate::migrate, protobuf, protobuf::account_server::Account, service::Service};
 use si_data::Db;
 use si_settings::Settings;
 
@@ -92,7 +93,7 @@ pub fn delete_and_create_buckets() -> Service {
 
     std::thread::sleep(std::time::Duration::from_secs(10));
 
-    let create_result = Command::new("curl")
+    let _create_result = Command::new("curl")
         .arg("-u")
         .arg("si:bugbear")
         .arg("http://127.0.0.1:8093/query/service")
@@ -103,6 +104,13 @@ pub fn delete_and_create_buckets() -> Service {
     std::thread::sleep(std::time::Duration::from_secs(10));
 
     let db = Db::new(&SETTINGS).expect("failed to connect to database cluster");
+    let async_block_db = db.clone();
+    let async_block = async {
+        migrate(&async_block_db)
+            .await
+            .expect("Migrations really should work, yes?");
+    };
+    futures::executor::block_on(async_block);
     Service::new(db)
 }
 
