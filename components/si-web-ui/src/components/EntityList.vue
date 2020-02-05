@@ -3,7 +3,13 @@
     <v-row no-gutters class="justify-start">
       <v-col cols="12">
         <v-card cols="12">
-          <v-card-title>{{ entityType }}</v-card-title>
+          <v-card-title>
+            {{ entityType }}
+            <v-spacer></v-spacer>
+            <v-btn>
+              <v-icon>mdi-plus</v-icon>
+            </v-btn>
+          </v-card-title>
           <v-card-text>
             <v-data-table
               :headers="headers"
@@ -83,14 +89,13 @@ export default Vue.extend({
   data(): EntityListData {
     return {
       options: {
-        itemsPerPage: 20,
+        itemsPerPage: 10,
         sortBy: ["displayName"],
         sortDesc: [false],
         page: 1,
       },
       headers: [
         { text: "Display Name", value: "displayName" },
-        { text: "ID", value: "id" },
         { text: "Key Type", value: "keyType" },
         { text: "Key Format", value: "keyFormat" },
         { text: "Bits", value: "bits" },

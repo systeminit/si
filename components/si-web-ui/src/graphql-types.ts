@@ -1260,6 +1260,48 @@ export type PickComponentQuery = { __typename?: "Query" } & {
   >;
 };
 
+export type SshKeyGetEntityQueryVariables = {
+  entityId?: Maybe<Scalars["String"]>;
+};
+
+export type SshKeyGetEntityQuery = { __typename?: "Query" } & {
+  sshKeyGetEntity: Maybe<
+    { __typename?: "SshKeyGetEntityReply" } & {
+      entity: Maybe<
+        { __typename?: "SshKeyEntity" } & Pick<
+          SshKeyEntity,
+          | "id"
+          | "naturalKey"
+          | "typeName"
+          | "name"
+          | "displayName"
+          | "description"
+          | "keyType"
+          | "keyFormat"
+          | "bits"
+          | "state"
+          | "publicKey"
+        > & {
+            constraints: Maybe<
+              { __typename?: "SshKeyConstraints" } & Pick<
+                SshKeyConstraints,
+                "keyType" | "keyFormat" | "bits"
+              >
+            >;
+            implicitConstraints: Maybe<
+              Array<
+                { __typename?: "SshKeyImplicitConstraint" } & Pick<
+                  SshKeyImplicitConstraint,
+                  "field" | "value"
+                >
+              >
+            >;
+          }
+      >;
+    }
+  >;
+};
+
 export type SshKeyListEntitiesQueryVariables = {
   pageSize?: Maybe<Scalars["Int"]>;
   orderBy?: Maybe<Scalars["String"]>;
@@ -1286,6 +1328,9 @@ export type SshKeyListEntitiesQuery = { __typename?: "Query" } & {
               | "keyFormat"
               | "bits"
               | "state"
+              | "organizationId"
+              | "workspaceId"
+              | "billingAccountId"
             >
           >
         >;

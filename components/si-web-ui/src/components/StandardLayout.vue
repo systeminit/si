@@ -1,7 +1,56 @@
 <template>
   <div>
-    <v-navigation-drawer v-model="drawer" app clipped>
+    <v-navigation-drawer app clipped fixed expand-on-hover floating>
       <v-list dense>
+        <v-list-group prepend-icon="mdi-view-dashboard" class="white--text">
+          <template v-slot:activator>
+            <v-list-item-title>Workspaces</v-list-item-title>
+          </template>
+          <v-list-item>
+            <v-list-item
+              link
+              :to="{
+                name: 'workspace',
+                params: {
+                  organizationId: organization.id,
+                  workspaceId: workspace.id,
+                },
+              }"
+            >
+              <v-list-item-action>
+                <v-icon>mdi-alpha-d</v-icon>
+              </v-list-item-action>
+              <v-list-item-content>
+                <v-list-item-title>Default</v-list-item-title>
+              </v-list-item-content>
+            </v-list-item>
+          </v-list-item>
+        </v-list-group>
+        <v-list-group prepend-icon="mdi-dns-outline" class="white--text">
+          <template v-slot:activator>
+            <v-list-item-title>Entities</v-list-item-title>
+          </template>
+          <v-list-item
+            link
+            :to="{
+              name: 'workspaceCreateEntity',
+              params: {
+                organizationId: organization.id,
+                workspaceId: workspace.id,
+                entityType: 'sshKey',
+              },
+            }"
+          >
+            <v-list-item-action>
+              <v-icon>mdi-key</v-icon>
+            </v-list-item-action>
+            <v-list-item-content>
+              SSH Key
+            </v-list-item-content>
+          </v-list-item>
+        </v-list-group>
+
+        <!--
         <v-list-item
           link
           :to="{
@@ -19,6 +68,7 @@
             <v-list-item-title>Default Workspace</v-list-item-title>
           </v-list-item-content>
         </v-list-item>
+-->
         <v-list-item link :to="{ name: 'about' }">
           <v-list-item-action>
             <v-icon>mdi-settings</v-icon>
@@ -31,7 +81,7 @@
     </v-navigation-drawer>
 
     <v-app-bar app clipped-left>
-      <v-app-bar-nav-icon @click.stop="drawer = !drawer" />
+      <!-- <v-app-bar-nav-icon @click.stop="drawer = !drawer" /> -->
       <v-toolbar-title
         >IRA OS / Org: {{ organization.name }} / Workspace:
         {{ workspace.name }}</v-toolbar-title

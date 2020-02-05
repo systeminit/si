@@ -6,6 +6,7 @@ import SignIn from "@/views/SignIn.vue";
 import NotFound from "@/views/NotFound.vue";
 import Workspace from "@/views/Workspace.vue";
 import WorkspaceShowEntity from "@/views/WorkspaceShowEntity.vue";
+import WorkspaceCreateEntity from "@/views/WorkspaceCreateEntity.vue";
 
 import { auth } from "@/auth";
 
@@ -28,15 +29,21 @@ const routes = [
     component: SignUp,
   },
   {
-    path: "/o/:organizationId/w/:workspaceId",
-    name: "workspace",
-    component: Workspace,
-    props: true,
-  },
-  {
     path: "/o/:organizationId/w/:workspaceId/se/:entityId",
     name: "workspaceShowEntity",
     component: WorkspaceShowEntity,
+    props: true,
+  },
+  {
+    path: "/o/:organizationId/w/:workspaceId/ce/:entityType",
+    name: "workspaceCreateEntity",
+    component: WorkspaceCreateEntity,
+    props: true,
+  },
+  {
+    path: "/o/:organizationId/w/:workspaceId",
+    name: "workspace",
+    component: Workspace,
     props: true,
   },
   {
