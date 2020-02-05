@@ -1,4 +1,4 @@
-query($keyType:SshKeyKeyTypeRequest, $keyFormat: SshKeyKeyFormatRequest, $bits: Int) {
+query pickComponent($keyType:SshKeyKeyTypeRequest, $keyFormat: SshKeyKeyFormatRequest, $bits: Int) {
   sshKeyPickComponent(input:{keyType: $keyType, keyFormat: $keyFormat, bits: $bits}) {
     component {
       id

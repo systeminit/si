@@ -1094,6 +1094,68 @@ export type CreateAccountMutation = { __typename?: "Mutation" } & {
   >;
 };
 
+export type CreateEntityMutationVariables = {
+  name: Scalars["String"];
+  displayName: Scalars["String"];
+  description: Scalars["String"];
+  workspaceId: Scalars["String"];
+  constraints?: Maybe<SshKeyPickComponentRequest>;
+};
+
+export type CreateEntityMutation = { __typename?: "Mutation" } & {
+  sshKeyCreateEntity: Maybe<
+    { __typename?: "SshKeyCreateEntityReply" } & {
+      entity: Maybe<
+        { __typename?: "SshKeyEntity" } & Pick<
+          SshKeyEntity,
+          | "id"
+          | "privateKey"
+          | "publicKey"
+          | "bubbleBabble"
+          | "randomArt"
+          | "state"
+        >
+      >;
+      event: Maybe<
+        { __typename?: "SshKeyEntityEvent" } & Pick<
+          SshKeyEntityEvent,
+          | "id"
+          | "actionName"
+          | "entityId"
+          | "typeName"
+          | "createTime"
+          | "updatedTime"
+          | "finalTime"
+          | "finalized"
+          | "outputLines"
+          | "errorLines"
+          | "success"
+        > & {
+            inputEntity: Maybe<
+              { __typename?: "SshKeyEntity" } & Pick<
+                SshKeyEntity,
+                "id" | "keyType" | "keyFormat" | "bits" | "state"
+              >
+            >;
+            outputEntity: Maybe<
+              { __typename?: "SshKeyEntity" } & Pick<
+                SshKeyEntity,
+                | "id"
+                | "keyType"
+                | "keyFormat"
+                | "bits"
+                | "fingerprint"
+                | "publicKey"
+                | "privateKey"
+                | "state"
+              >
+            >;
+          }
+      >;
+    }
+  >;
+};
+
 export type GetProfileQueryVariables = {
   userId: Scalars["String"];
 };
@@ -1168,5 +1230,143 @@ export type LoginQuery = { __typename?: "Query" } & {
       LoginReply,
       "jwt" | "userId" | "billingAccountId"
     >
+  >;
+};
+
+export type PickComponentQueryVariables = {
+  keyType?: Maybe<SshKeyKeyTypeRequest>;
+  keyFormat?: Maybe<SshKeyKeyFormatRequest>;
+  bits?: Maybe<Scalars["Int"]>;
+};
+
+export type PickComponentQuery = { __typename?: "Query" } & {
+  sshKeyPickComponent: Maybe<
+    { __typename?: "SshKeyPickComponentReply" } & {
+      component: Maybe<
+        { __typename?: "SshKeyComponent" } & Pick<
+          SshKeyComponent,
+          "id" | "displayName" | "keyType" | "keyFormat" | "bits"
+        >
+      >;
+      implicitConstraints: Maybe<
+        Array<
+          { __typename?: "SshKeyImplicitConstraint" } & Pick<
+            SshKeyImplicitConstraint,
+            "field" | "value"
+          >
+        >
+      >;
+    }
+  >;
+};
+
+export type SshKeyListEntitiesQueryVariables = {
+  pageSize?: Maybe<Scalars["Int"]>;
+  orderBy?: Maybe<Scalars["String"]>;
+  orderByDirection?: Maybe<DataOrderByDirection>;
+  pageToken?: Maybe<Scalars["String"]>;
+};
+
+export type SshKeyListEntitiesQuery = { __typename?: "Query" } & {
+  sshKeyListEntities: Maybe<
+    { __typename?: "SshKeyListEntitiesReply" } & Pick<
+      SshKeyListEntitiesReply,
+      "totalCount" | "nextPageToken"
+    > & {
+        items: Maybe<
+          Array<
+            { __typename?: "SshKeyEntity" } & Pick<
+              SshKeyEntity,
+              | "id"
+              | "naturalKey"
+              | "typeName"
+              | "name"
+              | "displayName"
+              | "keyType"
+              | "keyFormat"
+              | "bits"
+              | "state"
+            >
+          >
+        >;
+      }
+  >;
+};
+
+export type WorkspaceListQueryVariables = {};
+
+export type WorkspaceListQuery = { __typename?: "Query" } & {
+  sshKeyListComponents: Maybe<
+    { __typename?: "SshKeyListComponentsReply" } & Pick<
+      SshKeyListComponentsReply,
+      "totalCount" | "nextPageToken"
+    > & {
+        items: Maybe<
+          Array<
+            { __typename?: "SshKeyComponent" } & Pick<
+              SshKeyComponent,
+              "id" | "naturalKey" | "name" | "displayName"
+            >
+          >
+        >;
+      }
+  >;
+  sshKeyListEntities: Maybe<
+    { __typename?: "SshKeyListEntitiesReply" } & Pick<
+      SshKeyListEntitiesReply,
+      "totalCount" | "nextPageToken"
+    > & {
+        items: Maybe<
+          Array<
+            { __typename?: "SshKeyEntity" } & Pick<
+              SshKeyEntity,
+              "id" | "naturalKey" | "typeName" | "name" | "displayName"
+            >
+          >
+        >;
+      }
+  >;
+};
+
+export type StreamEntityEventsSubscriptionVariables = {
+  workspaceId: Scalars["String"];
+};
+
+export type StreamEntityEventsSubscription = { __typename?: "Subscription" } & {
+  streamEntityEvents: Maybe<
+    { __typename?: "SshKeyEntityEvent" } & Pick<
+      SshKeyEntityEvent,
+      | "id"
+      | "actionName"
+      | "entityId"
+      | "typeName"
+      | "createTime"
+      | "updatedTime"
+      | "finalTime"
+      | "finalized"
+      | "outputLines"
+      | "errorLines"
+      | "success"
+    > & {
+        inputEntity: Maybe<
+          { __typename?: "SshKeyEntity" } & Pick<
+            SshKeyEntity,
+            "id" | "keyType" | "keyFormat" | "bits" | "state"
+          >
+        >;
+        outputEntity: Maybe<
+          { __typename?: "SshKeyEntity" } & Pick<
+            SshKeyEntity,
+            | "id"
+            | "keyType"
+            | "keyFormat"
+            | "bits"
+            | "fingerprint"
+            | "publicKey"
+            | "privateKey"
+            | "state"
+          >
+        >;
+      }
   >;
 };

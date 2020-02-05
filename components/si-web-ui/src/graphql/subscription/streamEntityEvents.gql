@@ -1,4 +1,4 @@
-subscription($workspaceId: String!) {
+subscription streamEntityEvents($workspaceId: String!) {
   streamEntityEvents(input:{workspaceId:$workspaceId}) {
     id
     actionName

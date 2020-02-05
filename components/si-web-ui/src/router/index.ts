@@ -4,6 +4,8 @@ import Home from "@/views/Home.vue";
 import SignUp from "@/views/SignUp.vue";
 import SignIn from "@/views/SignIn.vue";
 import NotFound from "@/views/NotFound.vue";
+import Workspace from "@/views/Workspace.vue";
+import WorkspaceShowEntity from "@/views/WorkspaceShowEntity.vue";
 
 import { auth } from "@/auth";
 
@@ -24,6 +26,18 @@ const routes = [
     path: "/signup",
     name: "signup",
     component: SignUp,
+  },
+  {
+    path: "/o/:organizationId/w/:workspaceId",
+    name: "workspace",
+    component: Workspace,
+    props: true,
+  },
+  {
+    path: "/o/:organizationId/w/:workspaceId/se/:entityId",
+    name: "workspaceShowEntity",
+    component: WorkspaceShowEntity,
+    props: true,
   },
   {
     path: "/about",

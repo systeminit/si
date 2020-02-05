@@ -6,6 +6,29 @@
           <v-card class="mr-2" height="100%">
             <v-card-title>Workspace</v-card-title>
             <v-card-text>
+              <v-list dense>
+                <v-list-item to="poop">
+                  <v-list-item-action>
+                    <v-btn icon>
+                      <v-icon color="grey lighten-1">mdi-folder</v-icon>
+                    </v-btn>
+                  </v-list-item-action>
+
+                  <v-list-item-content to="">
+                    <v-list-item-title>SSH Key</v-list-item-title>
+                  </v-list-item-content>
+
+                  <v-list-item-action>
+                    <v-btn icon>
+                      <v-icon color="grey lighten-1">mdi-plus</v-icon>
+                    </v-btn>
+                  </v-list-item-action>
+                </v-list-item>
+              </v-list>
+            </v-card-text>
+
+            <!--
+            <v-card-text>
               <v-treeview
                 :items="workspaceList"
                 activatable
@@ -17,6 +40,7 @@
               >
               </v-treeview>
             </v-card-text>
+            -->
           </v-card>
         </v-col>
         <v-col cols="8" class="flex-grow-1 flex-shrink-0">
@@ -93,7 +117,9 @@ import "codemirror/keymap/vim.js";
 import "codemirror/keymap/emacs.js";
 import "codemirror/keymap/sublime.js";
 import "codemirror/mode/yaml/yaml.js";
+import "codemirror/mode/toml/toml.js";
 import YAML from "yaml";
+import TOML from "@iarna/toml";
 import NameGenerator from "project-name-generator";
 
 import { auth } from "@/auth";
@@ -111,11 +137,10 @@ export default Vue.extend({
   data() {
     const entityName = NameGenerator.generate({ words: 4, number: true });
     return {
-      code: `name: ${entityName.dashed}
-displayName: ${entityName.spaced}
-description: SSH Key ${entityName.spaced}
-constraints:
-    # Your constraints here
+      code: `name = "${entityName.dashed}"
+displayName = "${entityName.spaced}"
+description = "SSH Key ${entityName.spaced}"
+# constraints.WHATEVER
       `,
       codeOutput: "# Nothing yet!",
       active: [],
@@ -154,7 +179,7 @@ constraints:
         theme: "gruvbox-dark",
         lineNumbers: true,
         keyMap: "vim",
-        mode: "text/x-yaml",
+        mode: "text/x-toml",
       },
       cmOutputOptions: {
         tabSize: 4,
@@ -189,7 +214,7 @@ constraints:
   computed: {
     inputData(): any {
       try {
-        let objectData = YAML.parse(this.code);
+        let objectData = TOML.parse(this.code);
         console.log("objectData:", objectData);
         return objectData;
       } catch (err) {

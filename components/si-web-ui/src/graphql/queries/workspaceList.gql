@@ -1,4 +1,4 @@
-query {
+query workspaceList {
   sshKeyListComponents(input: { pageSize: 10000 }) {
     items {
       id

@@ -1,0 +1,32 @@
+query sshKeyListEntities(
+  $pageSize: Int, 
+  $orderBy: String, 
+  $orderByDirection: DataOrderByDirection, 
+  $pageToken: String
+) {  
+  sshKeyListEntities(
+    input: { 
+      pageSize: $pageSize, 
+      orderBy: $orderBy,
+      orderByDirection: $orderByDirection, 
+      pageToken: $pageToken,
+    }
+  ) {
+    items {
+      id
+      naturalKey
+      typeName
+      name
+      displayName
+      keyType
+      keyFormat
+      bits
+      state
+      organizationId
+      workspaceId
+      billingAccountId
+    }
+    totalCount
+    nextPageToken
+  }
+}

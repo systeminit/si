@@ -1,4 +1,4 @@
-mutation(
+mutation createEntity(
   $name: String!,
   $displayName: String!,
   $description: String!,

@@ -2,12 +2,21 @@
   <div>
     <v-navigation-drawer v-model="drawer" app clipped>
       <v-list dense>
-        <v-list-item link :to="{ name: 'home' }">
+        <v-list-item
+          link
+          :to="{
+            name: 'workspace',
+            params: {
+              organizationId: organization.id,
+              workspaceId: workspace.id,
+            },
+          }"
+        >
           <v-list-item-action>
             <v-icon>mdi-view-dashboard</v-icon>
           </v-list-item-action>
           <v-list-item-content>
-            <v-list-item-title>Dashboard</v-list-item-title>
+            <v-list-item-title>Default Workspace</v-list-item-title>
           </v-list-item-content>
         </v-list-item>
         <v-list-item link :to="{ name: 'about' }">

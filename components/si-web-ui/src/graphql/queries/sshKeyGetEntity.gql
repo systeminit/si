@@ -1,0 +1,26 @@
+query sshKeyGetEntity($entityId: String) {
+  sshKeyGetEntity(input: { entityId: $entityId }) {
+    entity {
+      id
+      naturalKey
+      typeName
+      name
+      displayName
+      description
+      constraints {
+        keyType
+        keyFormat
+        bits
+      }
+      implicitConstraints {
+        field
+        value
+      }
+      keyType
+      keyFormat
+      bits
+      state
+      publicKey
+    }
+  }
+}

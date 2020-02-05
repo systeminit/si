@@ -1,12 +1,12 @@
 import { arg, objectType, inputObjectType } from "nexus";
-import { MQTTPubSub } from "graphql-mqtt-subscriptions";
+import { MQTTPubSub } from "@/mqtt-pubsub/mqtt-pubsub";
 import { logger } from "@/logger";
 
 import { environment } from "@/environment";
 import { Context } from "@/.";
 import { protobufLoader } from "@/protobuf";
 
-const pubsub = new MQTTPubSub();
+const pubsub = new MQTTPubSub({ rawData: true });
 
 const StreamEntityEventsRequest = inputObjectType({
   name: "StreamEntityEventsRequest",
@@ -14,6 +14,11 @@ const StreamEntityEventsRequest = inputObjectType({
     t.string("workspaceId", { required: true });
   },
 });
+
+interface Payload {
+  topic: string;
+  message: Buffer;
+}
 
 const subscription = objectType({
   name: "Subscription",
@@ -27,10 +32,7 @@ const subscription = objectType({
         const messageType = protobufLoader.root.lookupType(
           "si.ssh_key.EntityEvent",
         );
-        const response = messageType.decode(Buffer.from(payload));
-        console.log("error", "time is up", {
-          createTime: response["createTime"],
-        });
+        const response = messageType.decode(payload["message"]);
         logger.log("warn", "oh shit response", { response });
         return response;
       },

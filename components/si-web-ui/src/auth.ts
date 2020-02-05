@@ -1,10 +1,4 @@
-import {
-  Query,
-  BillingAccount,
-  User,
-  Workspace,
-  GetUserReply,
-} from "@/graphql-types";
+import { Query, BillingAccount, User, Workspace } from "@/graphql-types";
 import * as jwtLib from "jsonwebtoken";
 import { onLogin, onLogout, ExtendedApolloClient } from "@/vue-apollo";
 import { ApolloQueryResult } from "apollo-client";

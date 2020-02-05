@@ -12,6 +12,7 @@
     "generate": "graphql-codegen && vue-cli-service lint"
   },
   "dependencies": {
+    "@iarna/toml": "^2.2.3",
     "@types/node-fetch": "^2.5.4",
     "core-js": "^3.4.3",
     "jsonwebtoken": "^8.5.1",
@@ -25,7 +26,7 @@
     "yaml": "^1.7.2"
   },
   "devDependencies": {
-    "@graphql-codegen/cli": "^1.9.1",
+    "@graphql-codegen/cli": "^1.12.1",
     "@graphql-codegen/typescript": "^1.12.1",
     "@graphql-codegen/typescript-operations": "^1.12.1",
     "@mdi/font": "^4.7.95",
