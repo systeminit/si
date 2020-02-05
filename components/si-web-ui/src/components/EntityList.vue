@@ -159,7 +159,6 @@ export default Vue.extend({
           sshKeyListEntities = data["sshKeyListEntities"];
         } else {
           // We got bullshit data, so.. just use the old data? <shrub>
-          console.log("we are fucked?");
           sshKeyListEntities = this.sshKeyListEntities;
         }
         this.nextPageToken = sshKeyListEntities.nextPageToken || "";

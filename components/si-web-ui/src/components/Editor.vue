@@ -210,6 +210,7 @@ import createEntityMutation from "@/graphql/mutations/createEntity.gql";
 import streamEntityEvents from "@/graphql/subscription/streamEntityEvents.gql";
 import {
   SshKeyKeyType,
+  SshKeyPickComponentRequest,
   SshKeyPickComponentReply,
   SshKeyCreateEntityReply,
   SshKeyEntityEvent,
@@ -219,7 +220,6 @@ import {
   SshKeyImplicitConstraint,
 } from "@/graphql-types";
 import EntityShow from "@/components/EntityShow.vue";
-import { SshKeyPickComponentRequest } from "../graphql-funtimes";
 
 interface DataField {
   code: string;
@@ -301,7 +301,6 @@ description = "SSH Key ${entityName.spaced}"`;
         mutation: createEntityMutation,
         variables: inputData,
       });
-      console.log("alice in chains says yes", data);
       this.createEntityData = data.data["sshKeyCreateEntity"];
       this.loading = false;
     },
@@ -362,7 +361,6 @@ description = "SSH Key ${entityName.spaced}"`;
       },
       variables(): SshKeyPickComponentRequest {
         let inputData = this.inputData;
-        console.log("my input data", inputData);
         if (inputData.parsed && inputData.parsed["constraints"]) {
           const inputConstraints = inputData.parsed["constraints"];
           return {

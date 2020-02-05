@@ -106,7 +106,6 @@ export default Vue.extend({
         if (data["sshKeyGetEntity"] && data["sshKeyGetEntity"]["entity"]) {
           return data.sshKeyGetEntity.entity;
         } else {
-          console.log("Wha happa?");
           return {};
         }
       },

@@ -68,6 +68,7 @@ echo '${siAccountServiceConfig}' > /etc/si-account-config.toml
 echo 'JWT_KEY=${jwtSecret}' > /etc/si-graphql-api-config.env
 
 docker login -u adamhjk -p 0a27ddb56fb70eb2faf5335a43d104ccfc681223 docker.pkg.github.com
+docker run -e "DOCKER_VERNEMQ_ACCEPT_EULA=yes" -e "DOCKER_VERNEMQ_ALLOW_ANONYMOUS=on" -p 1883:1883 --restart always --detach --name vernemq erlio/docker-vernemq
 docker run --restart always --network=host --detach --name si-graphql-api-service -v /etc/si-graphql-api-config.env:/svc/si-graphql-api/.env docker.pkg.github.com/systeminit/si/si-graphql-api-service:latest
 docker run --restart always --network=host --detach --name si-account-service -e NO_SIGNUPS=1 -v /etc/si-account-config.toml:/svc/si-account/config/default.toml docker.pkg.github.com/systeminit/si/si-account-service:latest
 docker run --detach --name watchtower -v /root/.docker/config.json:/config.json \
