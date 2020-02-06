@@ -13,7 +13,7 @@ ARG component
 ARG release=debug
 RUN env DEBIAN_FRONTEND=noninteractive apt-get update; \
   apt-get -y upgrade; \
-  apt-get install -y openssl libev-dev libevent-dev; \
+  apt-get install -y openssl libev-dev libevent-dev openssh-client; \
   apt-get autoremove -y; \
   apt-get clean; \
   find /var/lib/apt/lists -type f | xargs rm; \
