@@ -5,12 +5,15 @@ use tokio;
 use tonic::transport::Server;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
-use si_account::{protobuf::account_server::AccountServer, service::Service};
+use si_account::{migrate::migrate, protobuf::account_server::AccountServer, service::Service};
 
 async fn run() -> Result<()> {
     let settings = Settings::new()?;
 
     let db = Db::new(&settings).context("Cannot connect to the database")?;
+
+    println!("*** Migrating so much right now ***");
+    migrate(&db).await?;
 
     let service = Service::new(db);
 

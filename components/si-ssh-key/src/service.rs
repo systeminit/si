@@ -1,483 +1,601 @@
-use names;
+use si_data::{
+    query_expression_option, Db, ListResult, Query, QueryBooleanLogic, QueryComparison,
+    QueryExpression, QueryExpressionOption, QueryFieldType,
+};
 use tonic::{Request, Response};
-use tracing::{event, span, Level};
+use tracing::{debug, debug_span};
 use tracing_futures::Instrument;
 
-use crate::agent::Agent;
-use crate::data::{Db, ListResult};
-use crate::error::{Error, Result, TonicResult};
-use crate::ssh_key::{
-    query_expression_option::Qe, server::SshKey, Component, CreateEntityReply, CreateEntityRequest,
-    Entity, GetComponentReply, GetComponentRequest, GetEntityReply, GetEntityRequest, KeyFormat,
-    KeyType, ListComponentsReply, ListComponentsRequest, ListEntitiesReply, ListEntitiesRequest,
-    OrderByDirection, PageToken, PickComponentReply, PickComponentRequest, Query,
-    QueryBooleanLogic, QueryComparison, QueryExpression, QueryExpressionOption, QueryFieldType,
-};
+use si_account::{authorize::authorize, BillingAccount, Workspace};
+
+use crate::agent::AgentClient;
+use crate::error::{SshKeyError, TonicResult};
+use crate::model::component::{Component, KeyFormat, KeyType};
+use crate::model::entity::{Entity, EntityEvent};
+use crate::protobuf::{self, ssh_key_server, ImplicitConstraint};
 
 #[derive(Debug)]
 pub struct Service {
     db: Db,
-    component_order_by: Vec<&'static str>,
-    entity_order_by: Vec<&'static str>,
+    agent: AgentClient,
 }
 
 impl Service {
-    pub fn new(db: Db) -> Result<Service> {
-        Ok(Service {
-            db: db,
-            component_order_by: vec![
-                "naturalKey",
-                "bits",
-                "displayName",
-                "integration",
-                "keyType",
-                "keyFormat",
-            ],
-            entity_order_by: vec![
-                "naturalKey",
-                "bits",
-                "displayName",
-                "integration",
-                "keyType",
-                "keyFormat",
-                "comment",
-            ],
-        })
+    pub fn new(db: Db, agent: AgentClient) -> Service {
+        Service { db, agent }
     }
 
-    pub fn is_component_order_by_valid<S: AsRef<str>>(&self, order_by: S) -> Result<()> {
-        let test = order_by.as_ref();
+    pub fn db(&self) -> &Db {
+        &self.db
+    }
 
-        match self.component_order_by.iter().find(|o| *o == &test) {
-            Some(_) => Ok(()),
-            None => Err(Error::OrderBy),
+    pub fn agent(&self) -> &AgentClient {
+        &self.agent
+    }
+}
+
+async fn pick_component(
+    db: &Db,
+    request: Request<protobuf::PickComponentRequest>,
+) -> TonicResult<protobuf::PickComponentReply> {
+    let req = request.get_ref();
+    if req.name != "" {
+        let query = Query {
+            items: vec![QueryExpressionOption {
+                qe: Some(query_expression_option::Qe::Expression(QueryExpression {
+                    field: "name".to_string(),
+                    comparison: QueryComparison::Equals as i32,
+                    value: req.name.to_string(),
+                    ..Default::default()
+                })),
+            }],
+            boolean_term: QueryBooleanLogic::And as i32,
+            ..Default::default()
+        };
+        debug!(?query, "checking by name");
+        let mut name_check_result: ListResult<Component> = db
+            .list(&Some(query), 1, "", 0, "global", "")
+            .await
+            .map_err(SshKeyError::ListComponentsError)?;
+        debug!(?name_check_result, "checking by name result");
+        if name_check_result.len() == 1 {
+            debug!("chosen by name");
+            return Ok(Response::new(protobuf::PickComponentReply {
+                // Safe because we checked the length above
+                component: name_check_result.items.pop(),
+                ..Default::default()
+            }));
+        } else {
+            debug!("name does not match exactly");
+            return Err(tonic::Status::from(SshKeyError::PickComponent(
+                "name must match exactly, and was not found".to_string(),
+            )));
+        }
+    }
+    if req.display_name != "" {
+        let query = Query {
+            items: vec![QueryExpressionOption {
+                qe: Some(query_expression_option::Qe::Expression(QueryExpression {
+                    field: "displayName".to_string(),
+                    comparison: QueryComparison::Equals as i32,
+                    value: req.display_name.to_string(),
+                    ..Default::default()
+                })),
+            }],
+            boolean_term: QueryBooleanLogic::And as i32,
+            ..Default::default()
+        };
+        let mut name_check_result: ListResult<Component> = db
+            .list(&Some(query), 1, "", 0, "global", "")
+            .await
+            .map_err(SshKeyError::ListComponentsError)?;
+        if name_check_result.len() == 1 {
+            return Ok(Response::new(protobuf::PickComponentReply {
+                // Safe because we checked the length above
+                component: name_check_result.items.pop(),
+                ..Default::default()
+            }));
+        } else {
+            return Err(tonic::Status::from(SshKeyError::PickComponent(
+                "displayName must match exactly, and was not found".to_string(),
+            )));
         }
     }
 
-    pub fn is_entity_order_by_valid<S: AsRef<str>>(&self, order_by: S) -> Result<()> {
-        let test = order_by.as_ref();
+    debug!("solving like a motherfucker");
 
-        match self.entity_order_by.iter().find(|o| *o == &test) {
-            Some(_) => Ok(()),
-            None => Err(Error::OrderBy),
-        }
-    }
-}
+    // DEFAULT VALUES
+    let key_type: KeyType; // = KeyType::Rsa;
+    let key_format: KeyFormat; // = KeyFormat::Rfc4716;
+    let bits: u32; // = 2048;
 
-impl std::fmt::Display for KeyType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let msg = match self {
-            &KeyType::Rsa => "RSA".to_string(),
-            &KeyType::Dsa => "DSA".to_string(),
-            &KeyType::Ecdsa => "ECDSA".to_string(),
-            &KeyType::Ed25519 => "ED25519".to_string(),
+    // Someday, this will matter - but for now, there is only one integration.
+    //
+    // Here, future self, I gift to you these variables. Do with them what you will.
+    //
+    // let integration = "Global";
+    // let integration_service = "SSH Key";
+
+    let mut implicit_constraints: Vec<ImplicitConstraint> = Vec::new();
+
+    // KEY TYPE GOES FIRST...
+
+    // Means you have some kind of a type provided as a constraint
+    //if req.key_type != 0 {
+    if req.key_type == 0 {
+        key_type = KeyType::Rsa;
+        implicit_constraints.push(ImplicitConstraint {
+            field: "keyType".to_string(),
+            value: key_type.to_string(),
+        });
+    } else {
+        key_type = match req.key_type {
+            0 => unreachable!("You cannot get here"),
+            1 => KeyType::Rsa,
+            2 => KeyType::Dsa,
+            3 => KeyType::Ecdsa,
+            4 => KeyType::Ed25519,
+            _ => return Err(tonic::Status::from(SshKeyError::KeyTypeInvalid)),
         };
-        write!(f, "{}", msg)
     }
-}
 
-impl std::fmt::Display for KeyFormat {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let msg = match self {
-            &KeyFormat::Rfc4716 => "RFC4716".to_string(),
-            &KeyFormat::Pkcs8 => "PKCS8".to_string(),
-            &KeyFormat::Pem => "PEM".to_string(),
+    // THEN SOLVE FOR BITS
+
+    // If you didn't supply bits, we pick the right number of bits
+    // on your behalf
+    if req.bits == 0 {
+        bits = match key_type {
+            KeyType::Rsa => 2048,
+            KeyType::Dsa => 1024,
+            // No idea if this is right, but lets go for bigger. Because,
+            // you know... better.
+            KeyType::Ecdsa => 521,
+            KeyType::Ed25519 => 256,
         };
-        write!(f, "{}", msg)
+        implicit_constraints.push(ImplicitConstraint {
+            field: "bits".to_string(),
+            value: bits.to_string(),
+        });
+    } else {
+        // You provided me bits, and I need to check that the bits are valid
+        // for your key_type.
+        bits = match key_type {
+            KeyType::Rsa => match req.bits {
+                1024 | 2048 | 3072 | 4096 => req.bits,
+                value => {
+                    return Err(tonic::Status::from(SshKeyError::BitsInvalid(
+                        key_type.to_string(),
+                        value,
+                    )))
+                }
+            },
+            KeyType::Dsa => match req.bits {
+                1024 => req.bits,
+                value => {
+                    return Err(tonic::Status::from(SshKeyError::BitsInvalid(
+                        key_type.to_string(),
+                        value,
+                    )))
+                }
+            },
+            KeyType::Ecdsa => match req.bits {
+                256 | 384 | 521 => req.bits,
+                value => {
+                    return Err(tonic::Status::from(SshKeyError::BitsInvalid(
+                        key_type.to_string(),
+                        value,
+                    )))
+                }
+            },
+            KeyType::Ed25519 => match req.bits {
+                256 => req.bits,
+                value => {
+                    return Err(tonic::Status::from(SshKeyError::BitsInvalid(
+                        key_type.to_string(),
+                        value,
+                    )))
+                }
+            },
+        };
     }
-}
 
-impl std::fmt::Display for OrderByDirection {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let msg = match self {
-            &OrderByDirection::Asc => "ASC".to_string(),
-            &OrderByDirection::Desc => "DESC".to_string(),
+    // SOLVE FOR FORMAT
+    if req.key_format == 0 {
+        key_format = KeyFormat::Rfc4716;
+        implicit_constraints.push(ImplicitConstraint {
+            field: "keyFormat".to_string(),
+            value: key_format.to_string(),
+        });
+    } else {
+        key_format = match req.key_format {
+            0 => unreachable!("You cannot get here"),
+            1 => KeyFormat::Rfc4716,
+            2 => KeyFormat::Pkcs8,
+            3 => KeyFormat::Pem,
+            _ => return Err(tonic::Status::from(SshKeyError::KeyFormatInvalid)),
         };
-        write!(f, "{}", msg)
+    }
+
+    let query = Query {
+        items: vec![
+            QueryExpressionOption {
+                qe: Some(query_expression_option::Qe::Expression(QueryExpression {
+                    field: "keyType".to_string(),
+                    comparison: QueryComparison::Equals as i32,
+                    value: key_type.to_string(),
+                    ..Default::default()
+                })),
+            },
+            QueryExpressionOption {
+                qe: Some(query_expression_option::Qe::Expression(QueryExpression {
+                    field: "keyFormat".to_string(),
+                    comparison: QueryComparison::Equals as i32,
+                    value: key_format.to_string(),
+                    ..Default::default()
+                })),
+            },
+            QueryExpressionOption {
+                qe: Some(query_expression_option::Qe::Expression(QueryExpression {
+                    field: "bits".to_string(),
+                    comparison: QueryComparison::Equals as i32,
+                    field_type: QueryFieldType::Int as i32,
+                    value: bits.to_string(),
+                    ..Default::default()
+                })),
+            },
+        ],
+        boolean_term: QueryBooleanLogic::And as i32,
+        ..Default::default()
+    };
+    let mut name_check_result: ListResult<Component> = db
+        .list(&Some(query), 1, "", 0, "global", "")
+        .await
+        .map_err(SshKeyError::ListComponentsError)?;
+    if name_check_result.len() == 1 {
+        return Ok(Response::new(protobuf::PickComponentReply {
+            // Safe because we checked the length above
+            component: name_check_result.items.pop(),
+            implicit_constraints,
+            ..Default::default()
+        }));
+    } else {
+        return Err(tonic::Status::from(SshKeyError::PickComponent(
+            "our algo is very, very wrong. woopsie poopsie".to_string(),
+        )));
     }
 }
 
 #[tonic::async_trait]
-impl SshKey for Service {
-    async fn get_component(
+impl ssh_key_server::SshKey for Service {
+    async fn create_entity(
         &self,
-        request: Request<GetComponentRequest>,
-    ) -> TonicResult<Response<GetComponentReply>> {
+        request: Request<protobuf::CreateEntityRequest>,
+    ) -> TonicResult<protobuf::CreateEntityReply> {
         async {
-            event!(Level::INFO, ?request);
-            let req = request.into_inner();
-            let component = self.db.get(req.component_id).await?;
+            let metadata = request.metadata();
+            let user_id = metadata
+                .get("userId")
+                .ok_or(SshKeyError::InvalidAuthentication)?
+                .to_str()
+                .map_err(SshKeyError::GrpcHeaderToString)?;
+            let billing_account_id = metadata
+                .get("billingAccountId")
+                .ok_or(SshKeyError::InvalidAuthentication)?
+                .to_str()
+                .map_err(SshKeyError::GrpcHeaderToString)?;
+            let req = request.get_ref();
 
-            let reply = GetComponentReply {
-                component: Some(component),
+            let billing_account: BillingAccount = self
+                .db
+                .get(billing_account_id)
+                .await
+                .map_err(|_| SshKeyError::BillingAccountMissing)?;
+
+            // NOTE: Someday, make this work on the workspace. Going to need to actually
+            // think about it, instead of just blatting out what works. ;)
+            authorize(
+                &self.db,
+                user_id,
+                billing_account_id,
+                "create_entity",
+                &billing_account,
+            )
+            .await?;
+
+            let workspace: Workspace = self
+                .db
+                .get(&req.workspace_id)
+                .await
+                .map_err(|_| SshKeyError::WorkspaceMissing)?;
+
+            let constraints = match &req.constraints {
+                Some(constraint) => constraint.clone(),
+                None => protobuf::PickComponentRequest::default(),
             };
-            let response = Response::new(reply);
-            event!(Level::INFO, ?response);
-            Ok(response)
+
+            let selected_component = pick_component(&self.db, tonic::Request::new(constraints))
+                .await?
+                .into_inner();
+
+            let mut entity = Entity::from_request_and_component(req, selected_component, workspace);
+            self.db
+                .validate_and_insert_as_new(&mut entity)
+                .await
+                .map_err(SshKeyError::CreateEntity)?;
+
+            let mut entity_event = EntityEvent::new(user_id, "create", &entity);
+            self.db
+                .validate_and_insert_as_new(&mut entity_event)
+                .await
+                .map_err(SshKeyError::CreateEntityEvent)?;
+
+            self.agent.dispatch(&entity_event).await?;
+
+            Ok(Response::new(protobuf::CreateEntityReply {
+                entity: Some(entity),
+                event: Some(entity_event),
+            }))
         }
-        .instrument(span!(Level::INFO, "get_component"))
+        .instrument(debug_span!("create_entity", ?request))
         .await
+    }
+
+    async fn pick_component(
+        &self,
+        request: Request<protobuf::PickComponentRequest>,
+    ) -> TonicResult<protobuf::PickComponentReply> {
+        let metadata = request.metadata();
+        let user_id = metadata
+            .get("userId")
+            .ok_or(SshKeyError::InvalidAuthentication)?
+            .to_str()
+            .map_err(SshKeyError::GrpcHeaderToString)?;
+        let billing_account_id = metadata
+            .get("billingAccountId")
+            .ok_or(SshKeyError::InvalidAuthentication)?
+            .to_str()
+            .map_err(SshKeyError::GrpcHeaderToString)?;
+
+        let billing_account: BillingAccount = self
+            .db
+            .get(billing_account_id)
+            .await
+            .map_err(|_| SshKeyError::BillingAccountMissing)?;
+
+        authorize(
+            &self.db,
+            user_id,
+            billing_account_id,
+            "pick_component",
+            &billing_account,
+        )
+        .await?;
+
+        return pick_component(&self.db, request).await;
     }
 
     async fn list_components(
         &self,
-        request: Request<ListComponentsRequest>,
-    ) -> TonicResult<Response<ListComponentsReply>> {
+        request: Request<protobuf::ListComponentsRequest>,
+    ) -> TonicResult<protobuf::ListComponentsReply> {
         async {
-            event!(Level::INFO, ?request);
-            let req = request.into_inner();
+            let metadata = request.metadata();
+            let user_id = metadata
+                .get("userId")
+                .ok_or(SshKeyError::InvalidAuthentication)?
+                .to_str()
+                .map_err(SshKeyError::GrpcHeaderToString)?;
+            let billing_account_id = metadata
+                .get("billingAccountId")
+                .ok_or(SshKeyError::InvalidAuthentication)?
+                .to_str()
+                .map_err(SshKeyError::GrpcHeaderToString)?;
+            let req = request.get_ref();
 
-            // "" is the default value for a protocol buffer string
-            let mut order_by = if req.order_by == "" {
-                "naturalKey".to_string()
-            } else {
-                // Make this safe
-                req.order_by
-            };
-
-            let order_by_direction = OrderByDirection::from_i32(req.order_by_direction)
-                .ok_or(Error::InvalidOrderByDirection)?;
-
-            // 0 is the default value for a protocol buffer int32
-            let mut page_size = if req.page_size == 0 {
-                10
-            } else {
-                req.page_size
-            };
-
-            let mut query = req.query;
-
-            let mut item_id = String::new();
-
-            if req.page_token != "" {
-                let page_token = PageToken::unseal(&req.page_token, &self.db.page_secret_key)?;
-                query = page_token.query;
-                order_by = page_token.order_by;
-                page_size = page_token.page_size;
-                item_id = page_token.item_id;
-            }
-
-            self.is_component_order_by_valid(&order_by)?;
-
-            let list_result: ListResult<Component> = self
+            let billing_account: BillingAccount = self
                 .db
-                .list(
-                    "component:ssh_key",
-                    &query,
-                    page_size,
-                    &order_by,
-                    &order_by_direction.to_string(),
-                    &item_id,
-                )
-                .await?;
-            event!(Level::DEBUG, ?list_result);
+                .get(billing_account_id)
+                .await
+                .map_err(|_| SshKeyError::BillingAccountMissing)?;
 
-            // Skip the rest of the logic - the answer is there is nothing
+            authorize(
+                &self.db,
+                user_id,
+                billing_account_id,
+                "list_components",
+                &billing_account,
+            )
+            .await?;
+
+            let list_result: ListResult<Component> = if req.page_token != "" {
+                self.db
+                    .list_by_page_token(&req.page_token)
+                    .await
+                    .map_err(SshKeyError::ListComponentsError)?
+            } else {
+                self.db
+                    .list(
+                        &req.query,
+                        req.page_size,
+                        &req.order_by,
+                        req.order_by_direction,
+                        "global",
+                        "",
+                    )
+                    .await
+                    .map_err(SshKeyError::ListComponentsError)?
+            };
+
             if list_result.items.len() == 0 {
-                return Ok(Response::new(ListComponentsReply::default()));
+                return Ok(Response::new(protobuf::ListComponentsReply::default()));
             }
 
-            let mut reply = ListComponentsReply::default();
-            reply.total_count = list_result.total_count;
-            reply.component = list_result.items;
-
-            // If we have another page, seal up the info in a page token
-            if list_result.next_item_id != "" {
-                let mut next_page_token = PageToken::default();
-                next_page_token.query = query;
-                next_page_token.page_size = page_size;
-                next_page_token.order_by = order_by;
-                next_page_token.item_id = list_result.next_item_id;
-                event!(Level::DEBUG, ?next_page_token);
-                reply.next_page_token = next_page_token.seal(&self.db.page_secret_key)?;
-            }
-
-            let response = Response::new(reply);
-            event!(Level::INFO, ?response);
-
-            Ok(response)
+            Ok(Response::new(protobuf::ListComponentsReply {
+                total_count: list_result.total_count(),
+                next_page_token: list_result.page_token().to_string(),
+                items: list_result.items,
+            }))
         }
-        .instrument(span!(Level::INFO, "list_components"))
+        .instrument(debug_span!("list_components", ?request))
         .await
     }
 
-    //async fn pick_component(
-    //    &self,
-    //    request: Request<PickComponentRequest>,
-    //) -> TonicResult<Response<PickComponentReply>> {
-    //    async {
-    //        event!(Level::INFO, ?request);
-    //        let req = request.into_inner();
-    //        let component = self.db.get(req.component_id).await?;
-
-    //        let reply = PickComponentReply {
-    //            component: Some(component),
-    //        };
-    //        let response = Response::new(reply);
-    //        event!(Level::INFO, ?response);
-    //        Ok(response)
-    //    }
-    //        .instrument(span!(Level::INFO, "pick_component"))
-    //        .await
-    //}
-
-    async fn create_entity(
+    async fn get_component(
         &self,
-        request: Request<CreateEntityRequest>,
-    ) -> TonicResult<Response<CreateEntityReply>> {
+        request: Request<protobuf::GetComponentRequest>,
+    ) -> TonicResult<protobuf::GetComponentReply> {
         async {
-            event!(Level::INFO, ?request);
-            let req = request.into_inner();
+            let metadata = request.metadata();
+            let user_id = metadata
+                .get("userId")
+                .ok_or(SshKeyError::InvalidAuthentication)?
+                .to_str()
+                .map_err(SshKeyError::GrpcHeaderToString)?;
+            let billing_account_id = metadata
+                .get("billingAccountId")
+                .ok_or(SshKeyError::InvalidAuthentication)?
+                .to_str()
+                .map_err(SshKeyError::GrpcHeaderToString)?;
+            let req = request.get_ref();
 
-            let tenant_id = if req.tenant_id == "" {
-                // When this is fleshed out, this should be a legit validation, where we check that the
-                // tenant id exists, and that the user making the request has the capabilities required
-                return Err(tonic::Status::new(
-                    tonic::Code::InvalidArgument,
-                    "All entities must have a tenant_id",
-                ));
-            } else {
-                req.tenant_id
-            };
-
-            let name = if req.name == "" {
-                let mut generator = names::Generator::with_naming(names::Name::Numbered);
-                generator.next().unwrap() // There is always a name, so this is safe.
-            } else {
-                req.name
-            };
-
-            let description = if req.description == "" {
-                name.clone()
-            } else {
-                req.description
-            };
-
-            let query = if req.constraint.is_none() {
-                Some(Query {
-                    items: vec![QueryExpressionOption {
-                        qe: Some(Qe::Expression(QueryExpression {
-                            field: "name".to_string(),
-                            comparison: QueryComparison::Equals as i32,
-                            value: "RSA 3072 RFC4716".to_string(),
-                            ..Default::default()
-                        })),
-                    }],
-                    ..Default::default()
-                })
-            } else {
-                req.constraint
-            };
-
-            let constraint_result: ListResult<Component> = self
+            let billing_account: BillingAccount = self
                 .db
-                .list("component:ssh_key", &query, 1, "bits", "DESC", "")
-                .await?;
-            event!(Level::DEBUG, ?constraint_result);
+                .get(billing_account_id)
+                .await
+                .map_err(|_| SshKeyError::BillingAccountMissing)?;
 
-            // If we are bigger than 1, we start adding default constraints until
-            // we wind up with the default again.
-            //
-            // This is.. not a sexy pattern. but it's going to work, I think.
-            //
-            // It super isn't going to work. You have to be much smarter about the
-            // internals, and you have to know whats being queried for in the first
-            // place.
-            let maybe_prototype_component = if constraint_result.total_count == 1 {
-                constraint_result.items.into_iter().next() // Safe because we checked above
-            } else {
-                let extra_search_constraints = vec![
-                    QueryExpressionOption {
-                        qe: Some(Qe::Expression(QueryExpression {
-                            field: "keyFormat".to_string(),
-                            comparison: QueryComparison::Equals as i32,
-                            value: "RFC4716".to_string(),
-                            ..Default::default()
-                        })),
-                    },
-                    QueryExpressionOption {
-                        qe: Some(Qe::Expression(QueryExpression {
-                            field: "keyType".to_string(),
-                            comparison: QueryComparison::Equals as i32,
-                            value: "RSA".to_string(),
-                            ..Default::default()
-                        })),
-                    },
-                    QueryExpressionOption {
-                        qe: Some(Qe::Expression(QueryExpression {
-                            field: "bits".to_string(),
-                            comparison: QueryComparison::Equals as i32,
-                            field_type: QueryFieldType::Int as i32,
-                            value: "3072".to_string(),
-                        })),
-                    },
-                ];
-                let mut c_query = Query {
-                    items: vec![QueryExpressionOption {
-                        qe: Some(Qe::Query(query.unwrap())),
-                        ..Default::default()
-                    }],
-                    boolean_term: QueryBooleanLogic::And as i32,
-                    ..Default::default()
-                };
-                let mut final_item = None;
-                for cqe in extra_search_constraints.into_iter() {
-                    c_query.items.push(cqe);
-                    let new_constraint_result: ListResult<Component> = self
-                        .db
-                        .list(
-                            "component:ssh_key",
-                            &Some(c_query.clone()),
-                            1,
-                            "bits",
-                            "DESC",
-                            "",
-                        )
-                        .await?;
-                    if new_constraint_result.total_count == 1 {
-                        final_item = new_constraint_result.items.into_iter().next();
-                        break;
-                    }
-                }
-                final_item
-            };
+            let component: Component =
+                self.db
+                    .get(req.component_id.to_string())
+                    .await
+                    .map_err(|e| {
+                        debug!(?e, "component_get_failed");
+                        SshKeyError::ComponentMissing
+                    })?;
+            debug!(?component, "found");
 
-            let prototype_component = match maybe_prototype_component {
-                Some(c) => c,
-                None => return Err(tonic::Status::from(Error::ComponentNotFound)),
-            };
+            // NOTE: Once we actually can authorize on something other than your
+            // billing account, this should get fixed.
+            authorize(
+                &self.db,
+                user_id,
+                billing_account_id,
+                "read_global_component",
+                &billing_account,
+            )
+            .await?;
 
-            event!(Level::INFO, ?prototype_component);
-
-            let mut agent = Agent::new(
-                prototype_component,
-                Entity {
-                    name: name,
-                    description: description,
-                    tenant_id: tenant_id,
-                    ..Default::default()
-                },
-            );
-
-            agent.create().await?;
-
-            self.db
-                .insert(agent.entity().id.clone(), agent.entity())
-                .await?;
-
-            let response = Response::new(CreateEntityReply {
-                entity: Some(agent.into_entity()),
-            });
-            Ok(response)
+            Ok(Response::new(protobuf::GetComponentReply {
+                component: Some(component),
+            }))
         }
-        .instrument(span!(Level::INFO, "create_entity"))
-        .await
-    }
-
-    async fn get_entity(
-        &self,
-        request: Request<GetEntityRequest>,
-    ) -> TonicResult<Response<GetEntityReply>> {
-        async {
-            event!(Level::INFO, ?request);
-            let req = request.into_inner();
-            let entity: Entity = self.db.get(req.entity_id).await?;
-
-            if entity.tenant_id != req.tenant_id {
-                return Err(tonic::Status::from(Error::InvalidTenant));
-            }
-
-            let reply = GetEntityReply {
-                entity: Some(entity),
-            };
-            let response = Response::new(reply);
-            event!(Level::INFO, ?response);
-
-            Ok(response)
-        }
-        .instrument(span!(Level::INFO, "get_entity"))
+        .instrument(debug_span!("get_component", ?request))
         .await
     }
 
     async fn list_entities(
         &self,
-        request: Request<ListEntitiesRequest>,
-    ) -> TonicResult<Response<ListEntitiesReply>> {
+        request: Request<protobuf::ListEntitiesRequest>,
+    ) -> TonicResult<protobuf::ListEntitiesReply> {
         async {
-            event!(Level::INFO, ?request);
-            let req = request.into_inner();
+            let metadata = request.metadata();
+            let user_id = metadata
+                .get("userId")
+                .ok_or(SshKeyError::InvalidAuthentication)?
+                .to_str()
+                .map_err(SshKeyError::GrpcHeaderToString)?;
+            let billing_account_id = metadata
+                .get("billingAccountId")
+                .ok_or(SshKeyError::InvalidAuthentication)?
+                .to_str()
+                .map_err(SshKeyError::GrpcHeaderToString)?;
+            let req = request.get_ref();
 
-            // "" is the default value for a protocol buffer string
-            let mut order_by = if req.order_by == "" {
-                "naturalKey".to_string()
-            } else {
-                // Make this safe
-                req.order_by
-            };
-
-            let order_by_direction = OrderByDirection::from_i32(req.order_by_direction)
-                .ok_or(Error::InvalidOrderByDirection)?;
-
-            // 0 is the default value for a protocol buffer int32
-            let mut page_size = if req.page_size == 0 {
-                10
-            } else {
-                req.page_size
-            };
-
-            let mut query = req.query;
-
-            let mut item_id = String::new();
-
-            if req.page_token != "" {
-                let page_token = PageToken::unseal(&req.page_token, &self.db.page_secret_key)?;
-                query = page_token.query;
-                order_by = page_token.order_by;
-                page_size = page_token.page_size;
-                item_id = page_token.item_id;
-            }
-
-            self.is_entity_order_by_valid(&order_by)?;
-
-            let list_result: ListResult<Entity> = self
+            let billing_account: BillingAccount = self
                 .db
-                .list(
-                    "entity:ssh_key",
-                    &query,
-                    page_size,
-                    &order_by,
-                    &order_by_direction.to_string(),
-                    &item_id,
-                )
-                .await?;
-            event!(Level::DEBUG, ?list_result);
+                .get(billing_account_id)
+                .await
+                .map_err(|_| SshKeyError::BillingAccountMissing)?;
 
-            // Skip the rest of the logic - the answer is there is nothing
+            authorize(
+                &self.db,
+                user_id,
+                billing_account_id,
+                "list_entities",
+                &billing_account,
+            )
+            .await?;
+
+            let scope = if req.scope_by_tenant_id == "" {
+                billing_account_id
+            } else {
+                req.scope_by_tenant_id.as_ref()
+            };
+
+            let list_result: ListResult<Entity> = if req.page_token != "" {
+                self.db
+                    .list_by_page_token(&req.page_token)
+                    .await
+                    .map_err(SshKeyError::ListEntitiesError)?
+            } else {
+                self.db
+                    .list(
+                        &req.query,
+                        req.page_size,
+                        &req.order_by,
+                        req.order_by_direction,
+                        scope,
+                        "",
+                    )
+                    .await
+                    .map_err(SshKeyError::ListEntitiesError)?
+            };
+
             if list_result.items.len() == 0 {
-                return Ok(Response::new(ListEntitiesReply::default()));
+                return Ok(Response::new(protobuf::ListEntitiesReply::default()));
             }
 
-            let mut reply = ListEntitiesReply::default();
-            reply.total_count = list_result.total_count;
-            reply.entity = list_result.items;
-
-            // If we have another page, seal up the info in a page token
-            if list_result.next_item_id != "" {
-                let mut next_page_token = PageToken::default();
-                next_page_token.query = query;
-                next_page_token.page_size = page_size;
-                next_page_token.order_by = order_by;
-                next_page_token.item_id = list_result.next_item_id;
-                event!(Level::DEBUG, ?next_page_token);
-                reply.next_page_token = next_page_token.seal(&self.db.page_secret_key)?;
-            }
-
-            let response = Response::new(reply);
-            event!(Level::INFO, ?response);
-
-            Ok(response)
+            Ok(Response::new(protobuf::ListEntitiesReply {
+                total_count: list_result.total_count(),
+                next_page_token: list_result.page_token().to_string(),
+                items: list_result.items,
+            }))
         }
-        .instrument(span!(Level::INFO, "list_entities"))
+        .instrument(debug_span!("list_entities", ?request))
+        .await
+    }
+
+    async fn get_entity(
+        &self,
+        request: Request<protobuf::GetEntityRequest>,
+    ) -> TonicResult<protobuf::GetEntityReply> {
+        async {
+            let metadata = request.metadata();
+            let user_id = metadata
+                .get("userId")
+                .ok_or(SshKeyError::InvalidAuthentication)?
+                .to_str()
+                .map_err(SshKeyError::GrpcHeaderToString)?;
+            let billing_account_id = metadata
+                .get("billingAccountId")
+                .ok_or(SshKeyError::InvalidAuthentication)?
+                .to_str()
+                .map_err(SshKeyError::GrpcHeaderToString)?;
+            let req = request.get_ref();
+
+            let entity: Entity = self.db.get(req.entity_id.to_string()).await.map_err(|e| {
+                debug!(?e, "entity_get_failed");
+                SshKeyError::EntityMissing
+            })?;
+            debug!(?entity, "found");
+
+            authorize(&self.db, user_id, billing_account_id, "get_entity", &entity).await?;
+
+            Ok(Response::new(protobuf::GetEntityReply {
+                entity: Some(entity),
+            }))
+        }
+        .instrument(debug_span!("get_entity", ?request))
         .await
     }
 }

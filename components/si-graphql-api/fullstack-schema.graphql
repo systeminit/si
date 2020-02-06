@@ -9,6 +9,9 @@ type BillingAccount {
   """id"""
   id: ID
 
+  """id"""
+  integrationInstances(input: ListIntegrationInstancesRequest): ListIntegrationInstancesReply
+
   """naturalKey"""
   naturalKey: String
 
@@ -63,6 +66,36 @@ input CreateBillingAccountRequest {
 
   """shortName"""
   shortName: String
+}
+
+type CreateIntegrationInstanceReply {
+  """integrationInstance"""
+  integrationInstance: IntegrationInstance
+}
+
+input CreateIntegrationInstanceRequest {
+  """displayName"""
+  displayName: String
+
+  """integrationId"""
+  integrationId: String
+
+  """integrationOptionValues"""
+  integrationOptionValues: [CreateIntegrationOptionValueRequest!]
+
+  """name"""
+  name: String
+}
+
+input CreateIntegrationOptionValueRequest {
+  """name"""
+  name: String
+
+  """optionType"""
+  optionType: IntegrationOptionType
+
+  """value"""
+  value: String
 }
 
 type CreateUserReply {
@@ -129,8 +162,11 @@ enum DataQueryBooleanLogic {
 }
 
 enum DataQueryComparison {
+  CONTAINS
   EQUALS
+  LIKE
   NOTEQUALS
+  NOTLIKE
 }
 
 input DataQueryExpression {
@@ -168,6 +204,26 @@ type GetBillingAccountReply {
 input GetBillingAccountRequest {
   """billingAccountId"""
   billingAccountId: String
+}
+
+type GetIntegrationReply {
+  """integration"""
+  integration: Integration
+}
+
+input GetIntegrationRequest {
+  """integrationId"""
+  integrationId: String
+}
+
+type GetIntegrationServiceReply {
+  """integrationService"""
+  integrationService: IntegrationService
+}
+
+input GetIntegrationServiceRequest {
+  """integrationServiceId"""
+  integrationServiceId: String
 }
 
 type GetOrganizationReply {
@@ -217,6 +273,234 @@ type Group {
 
   """userIds"""
   userIds: [String!]
+}
+
+type Integration {
+  """displayName"""
+  displayName: String
+
+  """id"""
+  id: ID
+
+  """integrationOptions"""
+  integrationOptions: [IntegrationOption!]
+
+  """id"""
+  integrationServices(input: ListIntegrationServicesRequest): ListIntegrationServicesReply
+
+  """name"""
+  name: String
+
+  """naturalKey"""
+  naturalKey: String
+
+  """tenantIds"""
+  tenantIds: [String!]
+
+  """typeName"""
+  typeName: String
+
+  """version"""
+  version: Int
+}
+
+type IntegrationInstance {
+  """billingAccountId"""
+  billingAccount: BillingAccount
+
+  """billingAccountId"""
+  billingAccountId: String
+
+  """displayName"""
+  displayName: String
+
+  """enabledOnOrganizationIds"""
+  enabledOnOrganizationIds: [String!]
+
+  """enabledOnOrganizationIds"""
+  enabledOnOrganizations(input: ListOrganizationsRequest): ListOrganizationsReply
+
+  """enabledOnWorkspaceIds"""
+  enabledOnWorkspaceIds: [String!]
+
+  """enabledOnWorkspaceIds"""
+  enabledOnWorkspaces(input: ListWorkspacesRequest): ListWorkspacesReply
+
+  """id"""
+  id: ID
+
+  """integrationId"""
+  integration: Integration
+
+  """integrationId"""
+  integrationId: String
+
+  """integrationOptionValues"""
+  integrationOptionValues: [IntegrationOptionValue!]
+
+  """integrationServiceIds"""
+  integrationServiceIds: [String!]
+
+  """name"""
+  name: String
+
+  """naturalKey"""
+  naturalKey: String
+
+  """tenantIds"""
+  tenantIds: [String!]
+
+  """typeName"""
+  typeName: String
+}
+
+type IntegrationOption {
+  """displayName"""
+  displayName: String
+
+  """name"""
+  name: String
+
+  """optionType"""
+  optionType: IntegrationOptionType
+}
+
+enum IntegrationOptionType {
+  SECRET
+  STRING
+}
+
+type IntegrationOptionValue {
+  """name"""
+  name: String
+
+  """optionType"""
+  optionType: IntegrationOptionType
+
+  """value"""
+  value: String
+}
+
+type IntegrationService {
+  """displayName"""
+  displayName: String
+
+  """id"""
+  id: ID
+
+  """integrationId"""
+  integration: Integration
+
+  """integrationId"""
+  integrationId: String
+
+  """name"""
+  name: String
+
+  """naturalKey"""
+  naturalKey: String
+
+  """tenantIds"""
+  tenantIds: [String!]
+
+  """typeName"""
+  typeName: String
+
+  """version"""
+  version: Int
+}
+
+type ListIntegrationInstancesReply {
+  """items"""
+  items: [IntegrationInstance!]
+
+  """nextPageToken"""
+  nextPageToken: String
+
+  """totalCount"""
+  totalCount: Int
+}
+
+input ListIntegrationInstancesRequest {
+  """orderBy"""
+  orderBy: String
+
+  """orderByDirection"""
+  orderByDirection: DataOrderByDirection
+
+  """pageSize"""
+  pageSize: Int
+
+  """pageToken"""
+  pageToken: String
+
+  """query"""
+  query: DataQuery
+
+  """scopeByTenantId"""
+  scopeByTenantId: String
+}
+
+type ListIntegrationServicesReply {
+  """items"""
+  items: [IntegrationService!]
+
+  """nextPageToken"""
+  nextPageToken: String
+
+  """totalCount"""
+  totalCount: Int
+}
+
+input ListIntegrationServicesRequest {
+  """orderBy"""
+  orderBy: String
+
+  """orderByDirection"""
+  orderByDirection: DataOrderByDirection
+
+  """pageSize"""
+  pageSize: Int
+
+  """pageToken"""
+  pageToken: String
+
+  """query"""
+  query: DataQuery
+
+  """scopeByTenantId"""
+  scopeByTenantId: String
+}
+
+type ListIntegrationsReply {
+  """items"""
+  items: [Integration!]
+
+  """nextPageToken"""
+  nextPageToken: String
+
+  """totalCount"""
+  totalCount: Int
+}
+
+input ListIntegrationsRequest {
+  """orderBy"""
+  orderBy: String
+
+  """orderByDirection"""
+  orderByDirection: DataOrderByDirection
+
+  """pageSize"""
+  pageSize: Int
+
+  """pageToken"""
+  pageToken: String
+
+  """query"""
+  query: DataQuery
+
+  """scopeByTenantId"""
+  scopeByTenantId: String
 }
 
 type ListOrganizationsReply {
@@ -326,6 +610,8 @@ input LoginRequest {
 
 type Mutation {
   createAccount(input: CreateAccountRequest): CreateAccountReply
+  createIntegrationInstance(input: CreateIntegrationInstanceRequest): CreateIntegrationInstanceReply
+  sshKeyCreateEntity(input: SshKeyCreateEntityRequest): SshKeyCreateEntityReply
 }
 
 type Organization {
@@ -334,6 +620,9 @@ type Organization {
 
   """billingAccountId"""
   billingAccountId: String
+
+  """id"""
+  enabledIntegrationInstances(input: ListIntegrationInstancesRequest): ListIntegrationInstancesReply
 
   """id"""
   id: ID
@@ -357,10 +646,454 @@ type Organization {
 type Query {
   getBillingAccount(input: GetBillingAccountRequest): GetBillingAccountReply
   getUser(input: GetUserRequest): GetUserReply
+  listIntegrationInstances(input: ListIntegrationInstancesRequest): ListIntegrationInstancesReply
+  listIntegrations(input: ListIntegrationsRequest): ListIntegrationsReply
   listOrganizations(input: ListOrganizationsRequest): ListOrganizationsReply
   listUsers(input: ListUsersRequest): ListUsersReply
   listWorkspaces(input: ListWorkspacesRequest): ListWorkspacesReply
   login(input: LoginRequest): LoginReply
+  sshKeyGetComponent(input: SshKeyGetComponentRequest): SshKeyGetComponentReply
+  sshKeyGetEntity(input: SshKeyGetEntityRequest): SshKeyGetEntityReply
+  sshKeyListComponents(input: SshKeyListComponentsRequest): SshKeyListComponentsReply
+  sshKeyListEntities(input: SshKeyListEntitiesRequest): SshKeyListEntitiesReply
+  sshKeyPickComponent(input: SshKeyPickComponentRequest): SshKeyPickComponentReply
+}
+
+type SshKeyComponent {
+  """bits"""
+  bits: Int
+
+  """description"""
+  description: String
+
+  """displayName"""
+  displayName: String
+
+  """displayTypeName"""
+  displayTypeName: String
+
+  """id"""
+  id: ID
+
+  """integrationId"""
+  integration: Integration
+
+  """integrationId"""
+  integrationId: String
+
+  """integrationServiceId"""
+  integrationService: IntegrationService
+
+  """integrationServiceId"""
+  integrationServiceId: String
+
+  """keyFormat"""
+  keyFormat: SshKeyKeyFormat
+
+  """keyType"""
+  keyType: SshKeyKeyType
+
+  """name"""
+  name: String
+
+  """naturalKey"""
+  naturalKey: String
+
+  """tenantIds"""
+  tenantIds: [String!]
+
+  """typeName"""
+  typeName: String
+
+  """version"""
+  version: Int
+}
+
+type SshKeyConstraints {
+  """bits"""
+  bits: Int
+
+  """displayName"""
+  displayName: String
+
+  """integrationId"""
+  integrationId: String
+
+  """integrationServiceId"""
+  integrationServiceId: String
+
+  """keyFormat"""
+  keyFormat: SshKeyKeyFormatRequest
+
+  """keyType"""
+  keyType: SshKeyKeyTypeRequest
+
+  """name"""
+  name: String
+}
+
+type SshKeyCreateEntityReply {
+  """entity"""
+  entity: SshKeyEntity
+
+  """event"""
+  event: SshKeyEntityEvent
+}
+
+input SshKeyCreateEntityRequest {
+  """constraints"""
+  constraints: SshKeyPickComponentRequest
+
+  """description"""
+  description: String
+
+  """displayName"""
+  displayName: String
+
+  """name"""
+  name: String
+
+  """workspaceId"""
+  workspaceId: String
+}
+
+type SshKeyEntity {
+  """billingAccountId"""
+  billingAccount: BillingAccount
+
+  """billingAccountId"""
+  billingAccountId: String
+
+  """bits"""
+  bits: Int
+
+  """bubbleBabble"""
+  bubbleBabble: String
+
+  """comment"""
+  comment: String
+
+  """componentId"""
+  componentId: String
+
+  """constraints"""
+  constraints: SshKeyConstraints
+
+  """description"""
+  description: String
+
+  """displayName"""
+  displayName: String
+
+  """fingerprint"""
+  fingerprint: String
+
+  """id"""
+  id: ID
+
+  """implicitConstraints"""
+  implicitConstraints: [SshKeyImplicitConstraint!]
+
+  """integrationId"""
+  integration: Integration
+
+  """integrationId"""
+  integrationId: String
+
+  """integrationServiceId"""
+  integrationService: IntegrationService
+
+  """integrationServiceId"""
+  integrationServiceId: String
+
+  """keyFormat"""
+  keyFormat: SshKeyKeyFormat
+
+  """keyType"""
+  keyType: SshKeyKeyType
+
+  """linkedEntityIds"""
+  linkedEntityIds: [String!]
+
+  """name"""
+  name: String
+
+  """naturalKey"""
+  naturalKey: String
+
+  """organizationId"""
+  organization: Organization
+
+  """organizationId"""
+  organizationId: String
+
+  """privateKey"""
+  privateKey: String
+
+  """publicKey"""
+  publicKey: String
+
+  """randomArt"""
+  randomArt: String
+
+  """state"""
+  state: SshKeyState
+
+  """tenantIds"""
+  tenantIds: [String!]
+
+  """typeName"""
+  typeName: String
+
+  """workspaceId"""
+  workspace: Workspace
+
+  """workspaceId"""
+  workspaceId: String
+}
+
+type SshKeyEntityEvent {
+  """actionName"""
+  actionName: String
+
+  """billingAccountId"""
+  billingAccountId: String
+
+  """componentId"""
+  componentId: String
+
+  """createTime"""
+  createTime: String
+
+  """entityId"""
+  entityId: String
+
+  """errorLines"""
+  errorLines: [String!]
+
+  """errorMessage"""
+  errorMessage: String
+
+  """finalized"""
+  finalized: Boolean
+
+  """finalTime"""
+  finalTime: String
+
+  """id"""
+  id: ID
+
+  """inputEntity"""
+  inputEntity: SshKeyEntity
+
+  """integrationId"""
+  integrationId: String
+
+  """integrationServiceId"""
+  integrationServiceId: String
+
+  """naturalKey"""
+  naturalKey: String
+
+  """nextState"""
+  nextState: SshKeyNextState
+
+  """organizationId"""
+  organizationId: String
+
+  """outputEntity"""
+  outputEntity: SshKeyEntity
+
+  """outputLines"""
+  outputLines: [String!]
+
+  """success"""
+  success: Boolean
+
+  """tenantIds"""
+  tenantIds: [String!]
+
+  """typeName"""
+  typeName: String
+
+  """updatedTime"""
+  updatedTime: String
+
+  """userId"""
+  userId: String
+
+  """workspaceId"""
+  workspaceId: String
+}
+
+type SshKeyGetComponentReply {
+  """component"""
+  component: SshKeyComponent
+}
+
+input SshKeyGetComponentRequest {
+  """componentId"""
+  componentId: String
+}
+
+type SshKeyGetEntityReply {
+  """entity"""
+  entity: SshKeyEntity
+}
+
+input SshKeyGetEntityRequest {
+  """entityId"""
+  entityId: String
+}
+
+type SshKeyImplicitConstraint {
+  """field"""
+  field: String
+
+  """value"""
+  value: String
+}
+
+enum SshKeyKeyFormat {
+  PEM
+  PKCS8
+  RFC4716
+}
+
+enum SshKeyKeyFormatRequest {
+  NOKEYFORMAT
+  PEM
+  PKCS8
+  RFC4716
+}
+
+enum SshKeyKeyType {
+  DSA
+  ECDSA
+  ED25519
+  RSA
+}
+
+enum SshKeyKeyTypeRequest {
+  DSA
+  ECDSA
+  ED25519
+  NOKEYTYPE
+  RSA
+}
+
+type SshKeyListComponentsReply {
+  """items"""
+  items: [SshKeyComponent!]
+
+  """nextPageToken"""
+  nextPageToken: String
+
+  """totalCount"""
+  totalCount: Int
+}
+
+input SshKeyListComponentsRequest {
+  """orderBy"""
+  orderBy: String
+
+  """orderByDirection"""
+  orderByDirection: DataOrderByDirection
+
+  """pageSize"""
+  pageSize: Int
+
+  """pageToken"""
+  pageToken: String
+
+  """query"""
+  query: DataQuery
+
+  """scopeByTenantId"""
+  scopeByTenantId: String
+}
+
+type SshKeyListEntitiesReply {
+  """items"""
+  items: [SshKeyEntity!]
+
+  """nextPageToken"""
+  nextPageToken: String
+
+  """totalCount"""
+  totalCount: Int
+}
+
+input SshKeyListEntitiesRequest {
+  """orderBy"""
+  orderBy: String
+
+  """orderByDirection"""
+  orderByDirection: DataOrderByDirection
+
+  """pageSize"""
+  pageSize: Int
+
+  """pageToken"""
+  pageToken: String
+
+  """query"""
+  query: DataQuery
+
+  """scopeByTenantId"""
+  scopeByTenantId: String
+}
+
+enum SshKeyNextState {
+  ERROR
+  NONE
+  OK
+  UNINITIALIZED
+}
+
+type SshKeyPickComponentReply {
+  """component"""
+  component: SshKeyComponent
+
+  """implicitConstraints"""
+  implicitConstraints: [SshKeyImplicitConstraint!]
+}
+
+input SshKeyPickComponentRequest {
+  """bits"""
+  bits: Int
+
+  """displayName"""
+  displayName: String
+
+  """integrationId"""
+  integrationId: String
+
+  """integrationServiceId"""
+  integrationServiceId: String
+
+  """keyFormat"""
+  keyFormat: SshKeyKeyFormatRequest
+
+  """keyType"""
+  keyType: SshKeyKeyTypeRequest
+
+  """name"""
+  name: String
+}
+
+enum SshKeyState {
+  ERROR
+  OK
+  UNINITIALIZED
+}
+
+input StreamEntityEventsRequest {
+  workspaceId: String!
+}
+
+type Subscription {
+  streamEntityEvents(input: StreamEntityEventsRequest!): SshKeyEntityEvent
 }
 
 type User {
@@ -410,6 +1143,9 @@ type Workspace {
 
   """billingAccountId"""
   billingAccountId: String
+
+  """id"""
+  enabledIntegrationInstances(input: ListIntegrationInstancesRequest): ListIntegrationInstancesReply
 
   """id"""
   id: ID

@@ -85,11 +85,7 @@ impl Storable for TestData {
 }
 
 impl Migrateable for TestData {
-    fn set_natural_key(&mut self) {
-        self.natural_key = format!("poop/{}", self.name);
-    }
-
-    fn natural_key(&self) -> &str {
-        &self.natural_key
+    fn get_version(&self) -> i32 {
+        1
     }
 }

@@ -21,9 +21,9 @@
 
 include ./components/build/deps.mk
 
-COMPONENTS = components/si-data components/si-account components/si-settings components/si-graphql-api components/si-web-ui
-RELEASEABLE_COMPONENTS = components/si-account components/si-graphql-api
-RUNNABLE_COMPONENTS = components/si-account components/si-graphql-api components/si-web-ui
+COMPONENTS = components/si-data components/si-account components/si-settings components/si-graphql-api components/si-web-ui components/si-ssh-key
+RELEASEABLE_COMPONENTS = components/si-account components/si-graphql-api components/si-ssh-key
+RUNNABLE_COMPONENTS = components/si-account components/si-graphql-api components/si-web-ui components/si-ssh-key
 BUILDABLE = $(patsubst %,build//%,$(COMPONENTS))
 TESTABLE = $(patsubst %,test//%,$(COMPONENTS))
 RELEASEABLE = $(patsubst %,release//%,$(RELEASEABLE_COMPONENTS))
@@ -44,7 +44,7 @@ RELEASE := $(shell date +%Y%m%d%H%M%S)
 
 .PHONY: $(BUILDABLE) $(TESTABLE) $(RELEASEABLE) $(CONTAINABLE)
 
-test//components/si-data//RDEPS: test//components/si-account
+test//components/si-data//RDEPS: test//components/si-account test//components/si-ssh-key
 
 test//components/si-account//RDEPS: test//components/si-graphql-api
 
@@ -127,6 +127,7 @@ release: $(RELEASEABLE)
 
 clean:
 	rm -rf ./components/*/node_modules
+	rm -rf ./components/*/target
 	rm -rf ./target
 
 force_clean:
@@ -136,3 +137,4 @@ force_clean:
 dev_deps:
 	./components/couchbase/run.sh; exit 0
 	./components/jaeger/run.sh; exit 0
+	./components/vernemq/run.sh; exit 0

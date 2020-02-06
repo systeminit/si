@@ -2,9 +2,11 @@
 cluster_url = "couchbase://127.0.0.1"
 cluster_user = "si"
 cluster_password = "bugbear"
+bucket_name = "si"
+scan_consistency = "NotBounded"
 
 [service]
-port = 5150
+port = 5152
 
 [paging]
 # A serialized sodiumoxide key; never use this one in production!

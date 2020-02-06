@@ -1,49 +1,70 @@
+use anyhow::{Context, Result};
+use si_data::Db;
 use si_settings::Settings;
-use tokio::runtime::Builder;
+use tokio;
 use tonic::transport::Server;
-use tracing::{span, Level};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
-use si_ssh_key::{
-    data::{self, Db},
-    error,
-    service::Service,
-    ssh_key::server::SshKeyServer,
-};
+use si_account::{Integration, IntegrationService};
+use si_ssh_key::{migrate, AgentClient, AgentFinalizer, AgentServer, Service, SshKeyServer};
 
-fn main() -> error::Result<()> {
+async fn run() -> Result<()> {
+    let settings = Settings::new()?;
+
+    let db = Db::new(&settings).context("Cannot connect to the database")?;
+
+    println!("*** Migrating so much right now ***");
+    migrate(&db).await?;
+
+    println!("*** Starting the Agent Client ***");
+    let agent_client = AgentClient::new().await?;
+
+    let integration: Integration = db
+        .lookup_by_natural_key("global:integration:global")
+        .await?;
+
+    let integration_service_lookup_id =
+        format!("global:{}:integration_service:ssh_key", integration.id);
+    let integration_service: IntegrationService = db
+        .lookup_by_natural_key(integration_service_lookup_id)
+        .await?;
+
+    // I bet you want to actually be smarter than this, if this errors - but life goes
+    // on.
+    let mut agent_server = AgentServer::new(integration.id, integration_service.id);
+    tokio::spawn(async move { agent_server.run().await });
+
+    let mut agent_finalizer = AgentFinalizer::new(db.clone());
+    tokio::spawn(async move { agent_finalizer.run().await });
+
+    let service = Service::new(db, agent_client);
+
+    let listen_string = format!("0.0.0.0:{}", settings.service.port);
+
+    let addr = listen_string.parse().unwrap();
+
+    println!("--> SSH Key service listening on {} <--", addr);
+    println!("--> Let us make ssh keys and stuff <--");
+
+    Server::builder()
+        .add_service(SshKeyServer::new(service))
+        .serve(addr)
+        .await?;
+
+    Ok(())
+}
+
+#[tokio::main]
+async fn main() -> Result<()> {
     let subscriber = FmtSubscriber::builder()
         .with_env_filter(EnvFilter::from_default_env())
         .finish();
 
-    tracing::subscriber::set_global_default(subscriber).expect("setting tracing default failed");
+    tracing::subscriber::set_global_default(subscriber)
+        .context("cannot set the global tracing defalt")?;
 
-    let runtime = Builder::new()
-        .panic_handler(|err| std::panic::resume_unwind(err))
-        .build()?;
-    runtime.block_on(async {
-        let service_start_span = span!(Level::INFO, "service_init");
-        let entered_span = service_start_span.enter();
+    let handle = tokio::spawn(async move { run().await });
 
-        let settings = Settings::new()?;
-
-        let db = Db::new(&settings)?;
-
-        let mut data = data::migration_data();
-        for d in data.iter_mut() {
-            db.migrate_component(d).await?;
-        }
-
-        let service = Service::new(db)?;
-
-        drop(entered_span);
-
-        let addr = "[::1]:50052".parse().unwrap();
-
-        Server::builder()
-            .add_service(SshKeyServer::new(service))
-            .serve(addr)
-            .await
-            .map_err(error::Error::TonicError)
-    })
+    handle.await??;
+    Ok(())
 }

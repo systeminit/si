@@ -11,8 +11,7 @@ pub mod common;
 
 use si_data::{
     data::{
-        query_expression_option::Qe, OrderByDirection, Query, QueryComparison, QueryExpression,
-        QueryExpressionOption,
+        query_expression_option::Qe, Query, QueryComparison, QueryExpression, QueryExpressionOption,
     },
     error::{DataError, Result},
     Db, ListResult, Storable,

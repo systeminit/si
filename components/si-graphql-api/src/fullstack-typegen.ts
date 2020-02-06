@@ -19,6 +19,17 @@ export interface NexusGenInputs {
     displayName?: string | null; // String
     shortName?: string | null; // String
   }
+  CreateIntegrationInstanceRequest: { // input type
+    displayName?: string | null; // String
+    integrationId?: string | null; // String
+    integrationOptionValues?: NexusGenInputs['CreateIntegrationOptionValueRequest'][] | null; // [CreateIntegrationOptionValueRequest!]
+    name?: string | null; // String
+  }
+  CreateIntegrationOptionValueRequest: { // input type
+    name?: string | null; // String
+    optionType?: NexusGenEnums['IntegrationOptionType'] | null; // IntegrationOptionType
+    value?: string | null; // String
+  }
   CreateUserRequest: { // input type
     displayName?: string | null; // String
     email?: string | null; // String
@@ -52,11 +63,41 @@ export interface NexusGenInputs {
   GetBillingAccountRequest: { // input type
     billingAccountId?: string | null; // String
   }
+  GetIntegrationRequest: { // input type
+    integrationId?: string | null; // String
+  }
+  GetIntegrationServiceRequest: { // input type
+    integrationServiceId?: string | null; // String
+  }
   GetOrganizationRequest: { // input type
     organizationId?: string | null; // String
   }
   GetUserRequest: { // input type
     userId?: string | null; // String
+  }
+  ListIntegrationInstancesRequest: { // input type
+    orderBy?: string | null; // String
+    orderByDirection?: NexusGenEnums['DataOrderByDirection'] | null; // DataOrderByDirection
+    pageSize?: number | null; // Int
+    pageToken?: string | null; // String
+    query?: NexusGenInputs['DataQuery'] | null; // DataQuery
+    scopeByTenantId?: string | null; // String
+  }
+  ListIntegrationServicesRequest: { // input type
+    orderBy?: string | null; // String
+    orderByDirection?: NexusGenEnums['DataOrderByDirection'] | null; // DataOrderByDirection
+    pageSize?: number | null; // Int
+    pageToken?: string | null; // String
+    query?: NexusGenInputs['DataQuery'] | null; // DataQuery
+    scopeByTenantId?: string | null; // String
+  }
+  ListIntegrationsRequest: { // input type
+    orderBy?: string | null; // String
+    orderByDirection?: NexusGenEnums['DataOrderByDirection'] | null; // DataOrderByDirection
+    pageSize?: number | null; // Int
+    pageToken?: string | null; // String
+    query?: NexusGenInputs['DataQuery'] | null; // DataQuery
+    scopeByTenantId?: string | null; // String
   }
   ListOrganizationsRequest: { // input type
     orderBy?: string | null; // String
@@ -87,13 +128,61 @@ export interface NexusGenInputs {
     email: string; // String!
     password: string; // String!
   }
+  SshKeyCreateEntityRequest: { // input type
+    constraints?: NexusGenInputs['SshKeyPickComponentRequest'] | null; // SshKeyPickComponentRequest
+    description?: string | null; // String
+    displayName?: string | null; // String
+    name?: string | null; // String
+    workspaceId?: string | null; // String
+  }
+  SshKeyGetComponentRequest: { // input type
+    componentId?: string | null; // String
+  }
+  SshKeyGetEntityRequest: { // input type
+    entityId?: string | null; // String
+  }
+  SshKeyListComponentsRequest: { // input type
+    orderBy?: string | null; // String
+    orderByDirection?: NexusGenEnums['DataOrderByDirection'] | null; // DataOrderByDirection
+    pageSize?: number | null; // Int
+    pageToken?: string | null; // String
+    query?: NexusGenInputs['DataQuery'] | null; // DataQuery
+    scopeByTenantId?: string | null; // String
+  }
+  SshKeyListEntitiesRequest: { // input type
+    orderBy?: string | null; // String
+    orderByDirection?: NexusGenEnums['DataOrderByDirection'] | null; // DataOrderByDirection
+    pageSize?: number | null; // Int
+    pageToken?: string | null; // String
+    query?: NexusGenInputs['DataQuery'] | null; // DataQuery
+    scopeByTenantId?: string | null; // String
+  }
+  SshKeyPickComponentRequest: { // input type
+    bits?: number | null; // Int
+    displayName?: string | null; // String
+    integrationId?: string | null; // String
+    integrationServiceId?: string | null; // String
+    keyFormat?: NexusGenEnums['SshKeyKeyFormatRequest'] | null; // SshKeyKeyFormatRequest
+    keyType?: NexusGenEnums['SshKeyKeyTypeRequest'] | null; // SshKeyKeyTypeRequest
+    name?: string | null; // String
+  }
+  StreamEntityEventsRequest: { // input type
+    workspaceId: string; // String!
+  }
 }
 
 export interface NexusGenEnums {
   DataOrderByDirection: 0 | 1
   DataQueryBooleanLogic: 0 | 1
-  DataQueryComparison: 0 | 1
+  DataQueryComparison: 2 | 0 | 3 | 1 | 4
   DataQueryFieldType: 1 | 0
+  IntegrationOptionType: 1 | 0
+  SshKeyKeyFormat: 2 | 1 | 0
+  SshKeyKeyFormatRequest: 0 | 3 | 2 | 1
+  SshKeyKeyType: 1 | 2 | 3 | 0
+  SshKeyKeyTypeRequest: 2 | 3 | 4 | 0 | 1
+  SshKeyNextState: 2 | 0 | 3 | 1
+  SshKeyState: 1 | 2 | 0
 }
 
 export interface NexusGenRootTypes {
@@ -116,11 +205,20 @@ export interface NexusGenRootTypes {
   CreateBillingAccountReply: { // root type
     billingAccount?: NexusGenRootTypes['BillingAccount'] | null; // BillingAccount
   }
+  CreateIntegrationInstanceReply: { // root type
+    integrationInstance?: NexusGenRootTypes['IntegrationInstance'] | null; // IntegrationInstance
+  }
   CreateUserReply: { // root type
     user?: NexusGenRootTypes['User'] | null; // User
   }
   GetBillingAccountReply: { // root type
     billingAccount?: NexusGenRootTypes['BillingAccount'] | null; // BillingAccount
+  }
+  GetIntegrationReply: { // root type
+    integration?: NexusGenRootTypes['Integration'] | null; // Integration
+  }
+  GetIntegrationServiceReply: { // root type
+    integrationService?: NexusGenRootTypes['IntegrationService'] | null; // IntegrationService
   }
   GetOrganizationReply: { // root type
     organization?: NexusGenRootTypes['Organization'] | null; // Organization
@@ -138,6 +236,65 @@ export interface NexusGenRootTypes {
     tenantIds?: string[] | null; // [String!]
     typeName?: string | null; // String
     userIds?: string[] | null; // [String!]
+  }
+  Integration: { // root type
+    displayName?: string | null; // String
+    id?: string | null; // ID
+    integrationOptions?: NexusGenRootTypes['IntegrationOption'][] | null; // [IntegrationOption!]
+    name?: string | null; // String
+    naturalKey?: string | null; // String
+    tenantIds?: string[] | null; // [String!]
+    typeName?: string | null; // String
+    version?: number | null; // Int
+  }
+  IntegrationInstance: { // root type
+    billingAccountId?: string | null; // String
+    displayName?: string | null; // String
+    enabledOnOrganizationIds?: string[] | null; // [String!]
+    enabledOnWorkspaceIds?: string[] | null; // [String!]
+    id?: string | null; // ID
+    integrationId?: string | null; // String
+    integrationOptionValues?: NexusGenRootTypes['IntegrationOptionValue'][] | null; // [IntegrationOptionValue!]
+    integrationServiceIds?: string[] | null; // [String!]
+    name?: string | null; // String
+    naturalKey?: string | null; // String
+    tenantIds?: string[] | null; // [String!]
+    typeName?: string | null; // String
+  }
+  IntegrationOption: { // root type
+    displayName?: string | null; // String
+    name?: string | null; // String
+    optionType?: NexusGenEnums['IntegrationOptionType'] | null; // IntegrationOptionType
+  }
+  IntegrationOptionValue: { // root type
+    name?: string | null; // String
+    optionType?: NexusGenEnums['IntegrationOptionType'] | null; // IntegrationOptionType
+    value?: string | null; // String
+  }
+  IntegrationService: { // root type
+    displayName?: string | null; // String
+    id?: string | null; // ID
+    integrationId?: string | null; // String
+    name?: string | null; // String
+    naturalKey?: string | null; // String
+    tenantIds?: string[] | null; // [String!]
+    typeName?: string | null; // String
+    version?: number | null; // Int
+  }
+  ListIntegrationInstancesReply: { // root type
+    items?: NexusGenRootTypes['IntegrationInstance'][] | null; // [IntegrationInstance!]
+    nextPageToken?: string | null; // String
+    totalCount?: number | null; // Int
+  }
+  ListIntegrationServicesReply: { // root type
+    items?: NexusGenRootTypes['IntegrationService'][] | null; // [IntegrationService!]
+    nextPageToken?: string | null; // String
+    totalCount?: number | null; // Int
+  }
+  ListIntegrationsReply: { // root type
+    items?: NexusGenRootTypes['Integration'][] | null; // [Integration!]
+    nextPageToken?: string | null; // String
+    totalCount?: number | null; // Int
   }
   ListOrganizationsReply: { // root type
     items?: NexusGenRootTypes['Organization'][] | null; // [Organization!]
@@ -169,6 +326,114 @@ export interface NexusGenRootTypes {
     typeName?: string | null; // String
   }
   Query: {};
+  SshKeyComponent: { // root type
+    bits?: number | null; // Int
+    description?: string | null; // String
+    displayName?: string | null; // String
+    displayTypeName?: string | null; // String
+    id?: string | null; // ID
+    integrationId?: string | null; // String
+    integrationServiceId?: string | null; // String
+    keyFormat?: NexusGenEnums['SshKeyKeyFormat'] | null; // SshKeyKeyFormat
+    keyType?: NexusGenEnums['SshKeyKeyType'] | null; // SshKeyKeyType
+    name?: string | null; // String
+    naturalKey?: string | null; // String
+    tenantIds?: string[] | null; // [String!]
+    typeName?: string | null; // String
+    version?: number | null; // Int
+  }
+  SshKeyConstraints: { // root type
+    bits?: number | null; // Int
+    displayName?: string | null; // String
+    integrationId?: string | null; // String
+    integrationServiceId?: string | null; // String
+    keyFormat?: NexusGenEnums['SshKeyKeyFormatRequest'] | null; // SshKeyKeyFormatRequest
+    keyType?: NexusGenEnums['SshKeyKeyTypeRequest'] | null; // SshKeyKeyTypeRequest
+    name?: string | null; // String
+  }
+  SshKeyCreateEntityReply: { // root type
+    entity?: NexusGenRootTypes['SshKeyEntity'] | null; // SshKeyEntity
+    event?: NexusGenRootTypes['SshKeyEntityEvent'] | null; // SshKeyEntityEvent
+  }
+  SshKeyEntity: { // root type
+    billingAccountId?: string | null; // String
+    bits?: number | null; // Int
+    bubbleBabble?: string | null; // String
+    comment?: string | null; // String
+    componentId?: string | null; // String
+    constraints?: NexusGenRootTypes['SshKeyConstraints'] | null; // SshKeyConstraints
+    description?: string | null; // String
+    displayName?: string | null; // String
+    fingerprint?: string | null; // String
+    id?: string | null; // ID
+    implicitConstraints?: NexusGenRootTypes['SshKeyImplicitConstraint'][] | null; // [SshKeyImplicitConstraint!]
+    integrationId?: string | null; // String
+    integrationServiceId?: string | null; // String
+    keyFormat?: NexusGenEnums['SshKeyKeyFormat'] | null; // SshKeyKeyFormat
+    keyType?: NexusGenEnums['SshKeyKeyType'] | null; // SshKeyKeyType
+    linkedEntityIds?: string[] | null; // [String!]
+    name?: string | null; // String
+    naturalKey?: string | null; // String
+    organizationId?: string | null; // String
+    privateKey?: string | null; // String
+    publicKey?: string | null; // String
+    randomArt?: string | null; // String
+    state?: NexusGenEnums['SshKeyState'] | null; // SshKeyState
+    tenantIds?: string[] | null; // [String!]
+    typeName?: string | null; // String
+    workspaceId?: string | null; // String
+  }
+  SshKeyEntityEvent: { // root type
+    actionName?: string | null; // String
+    billingAccountId?: string | null; // String
+    componentId?: string | null; // String
+    createTime?: string | null; // String
+    entityId?: string | null; // String
+    errorLines?: string[] | null; // [String!]
+    errorMessage?: string | null; // String
+    finalized?: boolean | null; // Boolean
+    finalTime?: string | null; // String
+    id?: string | null; // ID
+    inputEntity?: NexusGenRootTypes['SshKeyEntity'] | null; // SshKeyEntity
+    integrationId?: string | null; // String
+    integrationServiceId?: string | null; // String
+    naturalKey?: string | null; // String
+    nextState?: NexusGenEnums['SshKeyNextState'] | null; // SshKeyNextState
+    organizationId?: string | null; // String
+    outputEntity?: NexusGenRootTypes['SshKeyEntity'] | null; // SshKeyEntity
+    outputLines?: string[] | null; // [String!]
+    success?: boolean | null; // Boolean
+    tenantIds?: string[] | null; // [String!]
+    typeName?: string | null; // String
+    updatedTime?: string | null; // String
+    userId?: string | null; // String
+    workspaceId?: string | null; // String
+  }
+  SshKeyGetComponentReply: { // root type
+    component?: NexusGenRootTypes['SshKeyComponent'] | null; // SshKeyComponent
+  }
+  SshKeyGetEntityReply: { // root type
+    entity?: NexusGenRootTypes['SshKeyEntity'] | null; // SshKeyEntity
+  }
+  SshKeyImplicitConstraint: { // root type
+    field?: string | null; // String
+    value?: string | null; // String
+  }
+  SshKeyListComponentsReply: { // root type
+    items?: NexusGenRootTypes['SshKeyComponent'][] | null; // [SshKeyComponent!]
+    nextPageToken?: string | null; // String
+    totalCount?: number | null; // Int
+  }
+  SshKeyListEntitiesReply: { // root type
+    items?: NexusGenRootTypes['SshKeyEntity'][] | null; // [SshKeyEntity!]
+    nextPageToken?: string | null; // String
+    totalCount?: number | null; // Int
+  }
+  SshKeyPickComponentReply: { // root type
+    component?: NexusGenRootTypes['SshKeyComponent'] | null; // SshKeyComponent
+    implicitConstraints?: NexusGenRootTypes['SshKeyImplicitConstraint'][] | null; // [SshKeyImplicitConstraint!]
+  }
+  Subscription: {};
   User: { // root type
     billingAccountId?: string | null; // String
     capabilities?: NexusGenRootTypes['Capability'][] | null; // [Capability!]
@@ -202,28 +467,50 @@ export interface NexusGenRootTypes {
 export interface NexusGenAllTypes extends NexusGenRootTypes {
   CreateAccountRequest: NexusGenInputs['CreateAccountRequest'];
   CreateBillingAccountRequest: NexusGenInputs['CreateBillingAccountRequest'];
+  CreateIntegrationInstanceRequest: NexusGenInputs['CreateIntegrationInstanceRequest'];
+  CreateIntegrationOptionValueRequest: NexusGenInputs['CreateIntegrationOptionValueRequest'];
   CreateUserRequest: NexusGenInputs['CreateUserRequest'];
   DataPageToken: NexusGenInputs['DataPageToken'];
   DataQuery: NexusGenInputs['DataQuery'];
   DataQueryExpression: NexusGenInputs['DataQueryExpression'];
   DataQueryExpressionOption: NexusGenInputs['DataQueryExpressionOption'];
   GetBillingAccountRequest: NexusGenInputs['GetBillingAccountRequest'];
+  GetIntegrationRequest: NexusGenInputs['GetIntegrationRequest'];
+  GetIntegrationServiceRequest: NexusGenInputs['GetIntegrationServiceRequest'];
   GetOrganizationRequest: NexusGenInputs['GetOrganizationRequest'];
   GetUserRequest: NexusGenInputs['GetUserRequest'];
+  ListIntegrationInstancesRequest: NexusGenInputs['ListIntegrationInstancesRequest'];
+  ListIntegrationServicesRequest: NexusGenInputs['ListIntegrationServicesRequest'];
+  ListIntegrationsRequest: NexusGenInputs['ListIntegrationsRequest'];
   ListOrganizationsRequest: NexusGenInputs['ListOrganizationsRequest'];
   ListUsersRequest: NexusGenInputs['ListUsersRequest'];
   ListWorkspacesRequest: NexusGenInputs['ListWorkspacesRequest'];
   LoginRequest: NexusGenInputs['LoginRequest'];
+  SshKeyCreateEntityRequest: NexusGenInputs['SshKeyCreateEntityRequest'];
+  SshKeyGetComponentRequest: NexusGenInputs['SshKeyGetComponentRequest'];
+  SshKeyGetEntityRequest: NexusGenInputs['SshKeyGetEntityRequest'];
+  SshKeyListComponentsRequest: NexusGenInputs['SshKeyListComponentsRequest'];
+  SshKeyListEntitiesRequest: NexusGenInputs['SshKeyListEntitiesRequest'];
+  SshKeyPickComponentRequest: NexusGenInputs['SshKeyPickComponentRequest'];
+  StreamEntityEventsRequest: NexusGenInputs['StreamEntityEventsRequest'];
   DataOrderByDirection: NexusGenEnums['DataOrderByDirection'];
   DataQueryBooleanLogic: NexusGenEnums['DataQueryBooleanLogic'];
   DataQueryComparison: NexusGenEnums['DataQueryComparison'];
   DataQueryFieldType: NexusGenEnums['DataQueryFieldType'];
+  IntegrationOptionType: NexusGenEnums['IntegrationOptionType'];
+  SshKeyKeyFormat: NexusGenEnums['SshKeyKeyFormat'];
+  SshKeyKeyFormatRequest: NexusGenEnums['SshKeyKeyFormatRequest'];
+  SshKeyKeyType: NexusGenEnums['SshKeyKeyType'];
+  SshKeyKeyTypeRequest: NexusGenEnums['SshKeyKeyTypeRequest'];
+  SshKeyNextState: NexusGenEnums['SshKeyNextState'];
+  SshKeyState: NexusGenEnums['SshKeyState'];
 }
 
 export interface NexusGenFieldTypes {
   BillingAccount: { // field return type
     displayName: string | null; // String
     id: string | null; // ID
+    integrationInstances: NexusGenRootTypes['ListIntegrationInstancesReply'] | null; // ListIntegrationInstancesReply
     naturalKey: string | null; // String
     organizations: NexusGenRootTypes['ListOrganizationsReply'] | null; // ListOrganizationsReply
     shortName: string | null; // String
@@ -242,11 +529,20 @@ export interface NexusGenFieldTypes {
   CreateBillingAccountReply: { // field return type
     billingAccount: NexusGenRootTypes['BillingAccount'] | null; // BillingAccount
   }
+  CreateIntegrationInstanceReply: { // field return type
+    integrationInstance: NexusGenRootTypes['IntegrationInstance'] | null; // IntegrationInstance
+  }
   CreateUserReply: { // field return type
     user: NexusGenRootTypes['User'] | null; // User
   }
   GetBillingAccountReply: { // field return type
     billingAccount: NexusGenRootTypes['BillingAccount'] | null; // BillingAccount
+  }
+  GetIntegrationReply: { // field return type
+    integration: NexusGenRootTypes['Integration'] | null; // Integration
+  }
+  GetIntegrationServiceReply: { // field return type
+    integrationService: NexusGenRootTypes['IntegrationService'] | null; // IntegrationService
   }
   GetOrganizationReply: { // field return type
     organization: NexusGenRootTypes['Organization'] | null; // Organization
@@ -264,6 +560,71 @@ export interface NexusGenFieldTypes {
     tenantIds: string[] | null; // [String!]
     typeName: string | null; // String
     userIds: string[] | null; // [String!]
+  }
+  Integration: { // field return type
+    displayName: string | null; // String
+    id: string | null; // ID
+    integrationOptions: NexusGenRootTypes['IntegrationOption'][] | null; // [IntegrationOption!]
+    integrationServices: NexusGenRootTypes['ListIntegrationServicesReply'] | null; // ListIntegrationServicesReply
+    name: string | null; // String
+    naturalKey: string | null; // String
+    tenantIds: string[] | null; // [String!]
+    typeName: string | null; // String
+    version: number | null; // Int
+  }
+  IntegrationInstance: { // field return type
+    billingAccount: NexusGenRootTypes['BillingAccount'] | null; // BillingAccount
+    billingAccountId: string | null; // String
+    displayName: string | null; // String
+    enabledOnOrganizationIds: string[] | null; // [String!]
+    enabledOnOrganizations: NexusGenRootTypes['ListOrganizationsReply'] | null; // ListOrganizationsReply
+    enabledOnWorkspaceIds: string[] | null; // [String!]
+    enabledOnWorkspaces: NexusGenRootTypes['ListWorkspacesReply'] | null; // ListWorkspacesReply
+    id: string | null; // ID
+    integration: NexusGenRootTypes['Integration'] | null; // Integration
+    integrationId: string | null; // String
+    integrationOptionValues: NexusGenRootTypes['IntegrationOptionValue'][] | null; // [IntegrationOptionValue!]
+    integrationServiceIds: string[] | null; // [String!]
+    name: string | null; // String
+    naturalKey: string | null; // String
+    tenantIds: string[] | null; // [String!]
+    typeName: string | null; // String
+  }
+  IntegrationOption: { // field return type
+    displayName: string | null; // String
+    name: string | null; // String
+    optionType: NexusGenEnums['IntegrationOptionType'] | null; // IntegrationOptionType
+  }
+  IntegrationOptionValue: { // field return type
+    name: string | null; // String
+    optionType: NexusGenEnums['IntegrationOptionType'] | null; // IntegrationOptionType
+    value: string | null; // String
+  }
+  IntegrationService: { // field return type
+    displayName: string | null; // String
+    id: string | null; // ID
+    integration: NexusGenRootTypes['Integration'] | null; // Integration
+    integrationId: string | null; // String
+    name: string | null; // String
+    naturalKey: string | null; // String
+    tenantIds: string[] | null; // [String!]
+    typeName: string | null; // String
+    version: number | null; // Int
+  }
+  ListIntegrationInstancesReply: { // field return type
+    items: NexusGenRootTypes['IntegrationInstance'][] | null; // [IntegrationInstance!]
+    nextPageToken: string | null; // String
+    totalCount: number | null; // Int
+  }
+  ListIntegrationServicesReply: { // field return type
+    items: NexusGenRootTypes['IntegrationService'][] | null; // [IntegrationService!]
+    nextPageToken: string | null; // String
+    totalCount: number | null; // Int
+  }
+  ListIntegrationsReply: { // field return type
+    items: NexusGenRootTypes['Integration'][] | null; // [Integration!]
+    nextPageToken: string | null; // String
+    totalCount: number | null; // Int
   }
   ListOrganizationsReply: { // field return type
     items: NexusGenRootTypes['Organization'][] | null; // [Organization!]
@@ -287,10 +648,13 @@ export interface NexusGenFieldTypes {
   }
   Mutation: { // field return type
     createAccount: NexusGenRootTypes['CreateAccountReply'] | null; // CreateAccountReply
+    createIntegrationInstance: NexusGenRootTypes['CreateIntegrationInstanceReply'] | null; // CreateIntegrationInstanceReply
+    sshKeyCreateEntity: NexusGenRootTypes['SshKeyCreateEntityReply'] | null; // SshKeyCreateEntityReply
   }
   Organization: { // field return type
     billingAccount: NexusGenRootTypes['BillingAccount'] | null; // BillingAccount
     billingAccountId: string | null; // String
+    enabledIntegrationInstances: NexusGenRootTypes['ListIntegrationInstancesReply'] | null; // ListIntegrationInstancesReply
     id: string | null; // ID
     name: string | null; // String
     naturalKey: string | null; // String
@@ -301,10 +665,134 @@ export interface NexusGenFieldTypes {
   Query: { // field return type
     getBillingAccount: NexusGenRootTypes['GetBillingAccountReply'] | null; // GetBillingAccountReply
     getUser: NexusGenRootTypes['GetUserReply'] | null; // GetUserReply
+    listIntegrationInstances: NexusGenRootTypes['ListIntegrationInstancesReply'] | null; // ListIntegrationInstancesReply
+    listIntegrations: NexusGenRootTypes['ListIntegrationsReply'] | null; // ListIntegrationsReply
     listOrganizations: NexusGenRootTypes['ListOrganizationsReply'] | null; // ListOrganizationsReply
     listUsers: NexusGenRootTypes['ListUsersReply'] | null; // ListUsersReply
     listWorkspaces: NexusGenRootTypes['ListWorkspacesReply'] | null; // ListWorkspacesReply
     login: NexusGenRootTypes['LoginReply'] | null; // LoginReply
+    sshKeyGetComponent: NexusGenRootTypes['SshKeyGetComponentReply'] | null; // SshKeyGetComponentReply
+    sshKeyGetEntity: NexusGenRootTypes['SshKeyGetEntityReply'] | null; // SshKeyGetEntityReply
+    sshKeyListComponents: NexusGenRootTypes['SshKeyListComponentsReply'] | null; // SshKeyListComponentsReply
+    sshKeyListEntities: NexusGenRootTypes['SshKeyListEntitiesReply'] | null; // SshKeyListEntitiesReply
+    sshKeyPickComponent: NexusGenRootTypes['SshKeyPickComponentReply'] | null; // SshKeyPickComponentReply
+  }
+  SshKeyComponent: { // field return type
+    bits: number | null; // Int
+    description: string | null; // String
+    displayName: string | null; // String
+    displayTypeName: string | null; // String
+    id: string | null; // ID
+    integration: NexusGenRootTypes['Integration'] | null; // Integration
+    integrationId: string | null; // String
+    integrationService: NexusGenRootTypes['IntegrationService'] | null; // IntegrationService
+    integrationServiceId: string | null; // String
+    keyFormat: NexusGenEnums['SshKeyKeyFormat'] | null; // SshKeyKeyFormat
+    keyType: NexusGenEnums['SshKeyKeyType'] | null; // SshKeyKeyType
+    name: string | null; // String
+    naturalKey: string | null; // String
+    tenantIds: string[] | null; // [String!]
+    typeName: string | null; // String
+    version: number | null; // Int
+  }
+  SshKeyConstraints: { // field return type
+    bits: number | null; // Int
+    displayName: string | null; // String
+    integrationId: string | null; // String
+    integrationServiceId: string | null; // String
+    keyFormat: NexusGenEnums['SshKeyKeyFormatRequest'] | null; // SshKeyKeyFormatRequest
+    keyType: NexusGenEnums['SshKeyKeyTypeRequest'] | null; // SshKeyKeyTypeRequest
+    name: string | null; // String
+  }
+  SshKeyCreateEntityReply: { // field return type
+    entity: NexusGenRootTypes['SshKeyEntity'] | null; // SshKeyEntity
+    event: NexusGenRootTypes['SshKeyEntityEvent'] | null; // SshKeyEntityEvent
+  }
+  SshKeyEntity: { // field return type
+    billingAccount: NexusGenRootTypes['BillingAccount'] | null; // BillingAccount
+    billingAccountId: string | null; // String
+    bits: number | null; // Int
+    bubbleBabble: string | null; // String
+    comment: string | null; // String
+    componentId: string | null; // String
+    constraints: NexusGenRootTypes['SshKeyConstraints'] | null; // SshKeyConstraints
+    description: string | null; // String
+    displayName: string | null; // String
+    fingerprint: string | null; // String
+    id: string | null; // ID
+    implicitConstraints: NexusGenRootTypes['SshKeyImplicitConstraint'][] | null; // [SshKeyImplicitConstraint!]
+    integration: NexusGenRootTypes['Integration'] | null; // Integration
+    integrationId: string | null; // String
+    integrationService: NexusGenRootTypes['IntegrationService'] | null; // IntegrationService
+    integrationServiceId: string | null; // String
+    keyFormat: NexusGenEnums['SshKeyKeyFormat'] | null; // SshKeyKeyFormat
+    keyType: NexusGenEnums['SshKeyKeyType'] | null; // SshKeyKeyType
+    linkedEntityIds: string[] | null; // [String!]
+    name: string | null; // String
+    naturalKey: string | null; // String
+    organization: NexusGenRootTypes['Organization'] | null; // Organization
+    organizationId: string | null; // String
+    privateKey: string | null; // String
+    publicKey: string | null; // String
+    randomArt: string | null; // String
+    state: NexusGenEnums['SshKeyState'] | null; // SshKeyState
+    tenantIds: string[] | null; // [String!]
+    typeName: string | null; // String
+    workspace: NexusGenRootTypes['Workspace'] | null; // Workspace
+    workspaceId: string | null; // String
+  }
+  SshKeyEntityEvent: { // field return type
+    actionName: string | null; // String
+    billingAccountId: string | null; // String
+    componentId: string | null; // String
+    createTime: string | null; // String
+    entityId: string | null; // String
+    errorLines: string[] | null; // [String!]
+    errorMessage: string | null; // String
+    finalized: boolean | null; // Boolean
+    finalTime: string | null; // String
+    id: string | null; // ID
+    inputEntity: NexusGenRootTypes['SshKeyEntity'] | null; // SshKeyEntity
+    integrationId: string | null; // String
+    integrationServiceId: string | null; // String
+    naturalKey: string | null; // String
+    nextState: NexusGenEnums['SshKeyNextState'] | null; // SshKeyNextState
+    organizationId: string | null; // String
+    outputEntity: NexusGenRootTypes['SshKeyEntity'] | null; // SshKeyEntity
+    outputLines: string[] | null; // [String!]
+    success: boolean | null; // Boolean
+    tenantIds: string[] | null; // [String!]
+    typeName: string | null; // String
+    updatedTime: string | null; // String
+    userId: string | null; // String
+    workspaceId: string | null; // String
+  }
+  SshKeyGetComponentReply: { // field return type
+    component: NexusGenRootTypes['SshKeyComponent'] | null; // SshKeyComponent
+  }
+  SshKeyGetEntityReply: { // field return type
+    entity: NexusGenRootTypes['SshKeyEntity'] | null; // SshKeyEntity
+  }
+  SshKeyImplicitConstraint: { // field return type
+    field: string | null; // String
+    value: string | null; // String
+  }
+  SshKeyListComponentsReply: { // field return type
+    items: NexusGenRootTypes['SshKeyComponent'][] | null; // [SshKeyComponent!]
+    nextPageToken: string | null; // String
+    totalCount: number | null; // Int
+  }
+  SshKeyListEntitiesReply: { // field return type
+    items: NexusGenRootTypes['SshKeyEntity'][] | null; // [SshKeyEntity!]
+    nextPageToken: string | null; // String
+    totalCount: number | null; // Int
+  }
+  SshKeyPickComponentReply: { // field return type
+    component: NexusGenRootTypes['SshKeyComponent'] | null; // SshKeyComponent
+    implicitConstraints: NexusGenRootTypes['SshKeyImplicitConstraint'][] | null; // [SshKeyImplicitConstraint!]
+  }
+  Subscription: { // field return type
+    streamEntityEvents: NexusGenRootTypes['SshKeyEntityEvent'] | null; // SshKeyEntityEvent
   }
   User: { // field return type
     billingAccount: NexusGenRootTypes['BillingAccount'] | null; // BillingAccount
@@ -324,6 +812,7 @@ export interface NexusGenFieldTypes {
   Workspace: { // field return type
     billingAccount: NexusGenRootTypes['BillingAccount'] | null; // BillingAccount
     billingAccountId: string | null; // String
+    enabledIntegrationInstances: NexusGenRootTypes['ListIntegrationInstancesReply'] | null; // ListIntegrationInstancesReply
     id: string | null; // ID
     name: string | null; // String
     naturalKey: string | null; // String
@@ -336,6 +825,9 @@ export interface NexusGenFieldTypes {
 
 export interface NexusGenArgTypes {
   BillingAccount: {
+    integrationInstances: { // args
+      input?: NexusGenInputs['ListIntegrationInstancesRequest'] | null; // ListIntegrationInstancesRequest
+    }
     organizations: { // args
       input?: NexusGenInputs['ListOrganizationsRequest'] | null; // ListOrganizationsRequest
     }
@@ -343,12 +835,34 @@ export interface NexusGenArgTypes {
       input?: NexusGenInputs['ListUsersRequest'] | null; // ListUsersRequest
     }
   }
+  Integration: {
+    integrationServices: { // args
+      input?: NexusGenInputs['ListIntegrationServicesRequest'] | null; // ListIntegrationServicesRequest
+    }
+  }
+  IntegrationInstance: {
+    enabledOnOrganizations: { // args
+      input?: NexusGenInputs['ListOrganizationsRequest'] | null; // ListOrganizationsRequest
+    }
+    enabledOnWorkspaces: { // args
+      input?: NexusGenInputs['ListWorkspacesRequest'] | null; // ListWorkspacesRequest
+    }
+  }
   Mutation: {
     createAccount: { // args
       input?: NexusGenInputs['CreateAccountRequest'] | null; // CreateAccountRequest
     }
+    createIntegrationInstance: { // args
+      input?: NexusGenInputs['CreateIntegrationInstanceRequest'] | null; // CreateIntegrationInstanceRequest
+    }
+    sshKeyCreateEntity: { // args
+      input?: NexusGenInputs['SshKeyCreateEntityRequest'] | null; // SshKeyCreateEntityRequest
+    }
   }
   Organization: {
+    enabledIntegrationInstances: { // args
+      input?: NexusGenInputs['ListIntegrationInstancesRequest'] | null; // ListIntegrationInstancesRequest
+    }
     workspaces: { // args
       input?: NexusGenInputs['ListWorkspacesRequest'] | null; // ListWorkspacesRequest
     }
@@ -359,6 +873,12 @@ export interface NexusGenArgTypes {
     }
     getUser: { // args
       input?: NexusGenInputs['GetUserRequest'] | null; // GetUserRequest
+    }
+    listIntegrationInstances: { // args
+      input?: NexusGenInputs['ListIntegrationInstancesRequest'] | null; // ListIntegrationInstancesRequest
+    }
+    listIntegrations: { // args
+      input?: NexusGenInputs['ListIntegrationsRequest'] | null; // ListIntegrationsRequest
     }
     listOrganizations: { // args
       input?: NexusGenInputs['ListOrganizationsRequest'] | null; // ListOrganizationsRequest
@@ -372,6 +892,31 @@ export interface NexusGenArgTypes {
     login: { // args
       input?: NexusGenInputs['LoginRequest'] | null; // LoginRequest
     }
+    sshKeyGetComponent: { // args
+      input?: NexusGenInputs['SshKeyGetComponentRequest'] | null; // SshKeyGetComponentRequest
+    }
+    sshKeyGetEntity: { // args
+      input?: NexusGenInputs['SshKeyGetEntityRequest'] | null; // SshKeyGetEntityRequest
+    }
+    sshKeyListComponents: { // args
+      input?: NexusGenInputs['SshKeyListComponentsRequest'] | null; // SshKeyListComponentsRequest
+    }
+    sshKeyListEntities: { // args
+      input?: NexusGenInputs['SshKeyListEntitiesRequest'] | null; // SshKeyListEntitiesRequest
+    }
+    sshKeyPickComponent: { // args
+      input?: NexusGenInputs['SshKeyPickComponentRequest'] | null; // SshKeyPickComponentRequest
+    }
+  }
+  Subscription: {
+    streamEntityEvents: { // args
+      input: NexusGenInputs['StreamEntityEventsRequest']; // StreamEntityEventsRequest!
+    }
+  }
+  Workspace: {
+    enabledIntegrationInstances: { // args
+      input?: NexusGenInputs['ListIntegrationInstancesRequest'] | null; // ListIntegrationInstancesRequest
+    }
   }
 }
 
@@ -380,11 +925,11 @@ export interface NexusGenAbstractResolveReturnTypes {
 
 export interface NexusGenInheritedFields {}
 
-export type NexusGenObjectNames = "BillingAccount" | "Capability" | "CreateAccountReply" | "CreateBillingAccountReply" | "CreateUserReply" | "GetBillingAccountReply" | "GetOrganizationReply" | "GetUserReply" | "Group" | "ListOrganizationsReply" | "ListUsersReply" | "ListWorkspacesReply" | "LoginReply" | "Mutation" | "Organization" | "Query" | "User" | "Workspace";
+export type NexusGenObjectNames = "BillingAccount" | "Capability" | "CreateAccountReply" | "CreateBillingAccountReply" | "CreateIntegrationInstanceReply" | "CreateUserReply" | "GetBillingAccountReply" | "GetIntegrationReply" | "GetIntegrationServiceReply" | "GetOrganizationReply" | "GetUserReply" | "Group" | "Integration" | "IntegrationInstance" | "IntegrationOption" | "IntegrationOptionValue" | "IntegrationService" | "ListIntegrationInstancesReply" | "ListIntegrationServicesReply" | "ListIntegrationsReply" | "ListOrganizationsReply" | "ListUsersReply" | "ListWorkspacesReply" | "LoginReply" | "Mutation" | "Organization" | "Query" | "SshKeyComponent" | "SshKeyConstraints" | "SshKeyCreateEntityReply" | "SshKeyEntity" | "SshKeyEntityEvent" | "SshKeyGetComponentReply" | "SshKeyGetEntityReply" | "SshKeyImplicitConstraint" | "SshKeyListComponentsReply" | "SshKeyListEntitiesReply" | "SshKeyPickComponentReply" | "Subscription" | "User" | "Workspace";
 
-export type NexusGenInputNames = "CreateAccountRequest" | "CreateBillingAccountRequest" | "CreateUserRequest" | "DataPageToken" | "DataQuery" | "DataQueryExpression" | "DataQueryExpressionOption" | "GetBillingAccountRequest" | "GetOrganizationRequest" | "GetUserRequest" | "ListOrganizationsRequest" | "ListUsersRequest" | "ListWorkspacesRequest" | "LoginRequest";
+export type NexusGenInputNames = "CreateAccountRequest" | "CreateBillingAccountRequest" | "CreateIntegrationInstanceRequest" | "CreateIntegrationOptionValueRequest" | "CreateUserRequest" | "DataPageToken" | "DataQuery" | "DataQueryExpression" | "DataQueryExpressionOption" | "GetBillingAccountRequest" | "GetIntegrationRequest" | "GetIntegrationServiceRequest" | "GetOrganizationRequest" | "GetUserRequest" | "ListIntegrationInstancesRequest" | "ListIntegrationServicesRequest" | "ListIntegrationsRequest" | "ListOrganizationsRequest" | "ListUsersRequest" | "ListWorkspacesRequest" | "LoginRequest" | "SshKeyCreateEntityRequest" | "SshKeyGetComponentRequest" | "SshKeyGetEntityRequest" | "SshKeyListComponentsRequest" | "SshKeyListEntitiesRequest" | "SshKeyPickComponentRequest" | "StreamEntityEventsRequest";
 
-export type NexusGenEnumNames = "DataOrderByDirection" | "DataQueryBooleanLogic" | "DataQueryComparison" | "DataQueryFieldType";
+export type NexusGenEnumNames = "DataOrderByDirection" | "DataQueryBooleanLogic" | "DataQueryComparison" | "DataQueryFieldType" | "IntegrationOptionType" | "SshKeyKeyFormat" | "SshKeyKeyFormatRequest" | "SshKeyKeyType" | "SshKeyKeyTypeRequest" | "SshKeyNextState" | "SshKeyState";
 
 export type NexusGenInterfaceNames = never;
 

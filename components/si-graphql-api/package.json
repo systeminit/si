@@ -39,9 +39,12 @@
     "apollo-server": "^2.9.7",
     "dotenv": "^8.2.0",
     "graphql": "^14.5.8",
+    "graphql-subscriptions": "^0.4.2",
     "grpc": "^1.24.2",
     "grpc-caller": "^0.13.0",
+    "iterall": "^1.1.1",
     "jsonwebtoken": "^8.5.1",
+    "mqtt": "^2.3.0",
     "nexus": "^0.11.7",
     "protobufjs": "^6.8.8",
     "winston": "^3.2.1"

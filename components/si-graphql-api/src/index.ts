@@ -5,19 +5,19 @@ import { makeSchema } from "nexus";
 
 import { services } from "@/services";
 import { environment } from "@/environment";
-import { ProtobufLoader } from "@/protobuf";
+import { protobufLoader } from "@/protobuf";
 import { GraphqlHintLoader } from "@/graphql-hint";
 import { SchemaGenerator } from "@/schema/generator";
 import { GrpcServiceBroker, Grpc } from "@/datasources/grpc";
 import { DataSources } from "apollo-server-core/dist/graphqlOptions";
 
 // First, load the protocol buffers
-const protobufLoader = new ProtobufLoader({
-  protos: [
-    //path.join(__dirname, "..", "..", "si-data", "proto", "si.data.proto"),
-  ],
-  services,
-});
+//const protobufLoader = new ProtobufLoader({
+//  protos: [
+//    //path.join(__dirname, "..", "..", "si-data", "proto", "si.data.proto"),
+//  ],
+//  services,
+//});
 
 // Second, load the graphql hints
 const graphqlHintLoader = new GraphqlHintLoader({
@@ -84,25 +84,30 @@ const server = new ApolloServer({
     console.log(response);
     return response;
   },
-  context: ({ req }): Context => {
-    const token = req.headers.authorization || "";
-    const userContext: UserContext = { authenticated: false };
-    if (token.startsWith("Bearer ")) {
-      const authParts = token.split(" ");
-      const payload = jwtLib.verify(authParts[1], environment.jwtKey, {
-        audience: "https://app.systeminit.com",
-        issuer: "https://app.systeminit.com",
-        clockTolerance: 60,
-      });
-      console.log(payload);
-      if (payload["billingAccountId"] && payload["userId"]) {
-        userContext["authenticated"] = true;
-        userContext["billingAccountId"] = payload["billingAccountId"];
-        userContext["userId"] = payload["userId"];
+  context: ({ req, connection }): Context => {
+    if (connection) {
+      console.log("Youre a connection, for whatever that means!");
+      console.log({ connection });
+    } else {
+      const token = req.headers.authorization || "";
+      const userContext: UserContext = { authenticated: false };
+      if (token.startsWith("Bearer ")) {
+        const authParts = token.split(" ");
+        const payload = jwtLib.verify(authParts[1], environment.jwtKey, {
+          audience: "https://app.systeminit.com",
+          issuer: "https://app.systeminit.com",
+          clockTolerance: 60,
+        });
+        console.log(payload);
+        if (payload["billingAccountId"] && payload["userId"]) {
+          userContext["authenticated"] = true;
+          userContext["billingAccountId"] = payload["billingAccountId"];
+          userContext["userId"] = payload["userId"];
+        }
       }
+      console.log(userContext);
+      return { user: userContext };
     }
-    console.log(userContext);
-    return { user: userContext };
   },
   tracing: true,
 });

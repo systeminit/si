@@ -1,160 +1,103 @@
-use base64;
-use config::ConfigError;
-use couchbase::error::CouchbaseError;
-use prost;
-use serde_cbor;
-use si_settings::error::SettingsError;
-use tonic;
-use tracing::{event, Level};
+use paho_mqtt as mqtt;
+use si_data;
+use thiserror::Error;
+use tonic::{self, Response};
 
-use std::{error, fmt, num, result, string};
+use crate::agent::CommandResult;
 
-pub type Result<T> = result::Result<T, Error>;
-pub type TonicResult<T> = result::Result<T, tonic::Status>;
+pub type Result<T> = std::result::Result<T, SshKeyError>;
+pub type TonicResult<T> = std::result::Result<Response<T>, tonic::Status>;
 
-#[derive(Debug)]
-pub enum Error {
-    Base64DecodeError(base64::DecodeError),
-    CborEncodeError(serde_cbor::error::Error),
-    ComponentNotFound,
-    SettingsError(SettingsError),
-    ConfigError(ConfigError),
-    CouchbaseError(CouchbaseError),
-    FromUtf8Error(string::FromUtf8Error),
-    InvalidQueryComparison,
-    InvalidBooleanLogic,
-    InvalidFieldType,
-    InvalidOrderByDirection,
-    InvalidKeyType,
-    InvalidKeyFormat,
-    InvalidTenant,
-    IoError(std::io::Error),
-    OrderBy,
-    ParseIntError(num::ParseIntError),
-    ProstEncodeError(prost::EncodeError),
-    ProstDecodeError(prost::DecodeError),
-    StringError,
-    SodiumOxideInit,
-    SodiumOxideOpen,
-    SshKeyGenError(i32, String, String),
-    TonicError(tonic::transport::Error),
+#[derive(Error, Debug)]
+pub enum SshKeyError {
+    #[error("this request is not allowed")]
+    Authorization,
+    #[error("this request required a user object, but it did not exist")]
+    EmptyUser,
+    #[error("this request required a billing account object, but it did not exist")]
+    EmptyBillingAccount,
+    #[error("this request required a component object id, but it did not exist")]
+    ComponentMissing,
+    #[error("this request required an entity object id, but it did not exist")]
+    EntityMissing,
+    #[error("invalid object; missing displayName field")]
+    InvalidMissingDisplayName,
+    #[error("invalid object; missing name field")]
+    InvalidMissingName,
+    #[error("invalid object; missing integrationId field")]
+    InvalidMissingIntegrationId,
+    #[error("invalid object; missing actionName field")]
+    InvalidMissingActionName,
+    #[error("cannot find billing account")]
+    BillingAccountMissing,
+    #[error("cannot find workspace")]
+    WorkspaceMissing,
+    #[error("invalid authentication; bad or missing headers")]
+    InvalidAuthentication,
+    #[error("error listing components: {0}")]
+    ListComponentsError(si_data::error::DataError),
+    #[error("error listing entities: {0}")]
+    ListEntitiesError(si_data::error::DataError),
+    #[error("invalid grpc header; cannot become a string: {0}")]
+    GrpcHeaderToString(#[from] tonic::metadata::errors::ToStrError),
+    #[error("unknown tenant id")]
+    UnknownTenantId(si_data::error::DataError),
+    #[error("error with database request: {0})")]
+    Db(#[from] si_data::error::DataError),
+    #[error("error converting bytes to utf-8 string: {0}")]
+    Utf8Error(#[from] std::str::Utf8Error),
+    #[error("error converting bytes to utf-8 string: {0}")]
+    Utf8StringError(#[from] std::string::FromUtf8Error),
+    #[error("pick component error: {0}")]
+    PickComponent(String),
+    #[error("invalid key type value")]
+    KeyTypeInvalid,
+    #[error("invalid key format value")]
+    KeyFormatInvalid,
+    #[error("invalid bits value for key type: {0} {1}")]
+    BitsInvalid(String, u32),
+    #[error("error creating an entity: {0}")]
+    CreateEntity(si_data::error::DataError),
+    #[error("error creating an entity event: {0}")]
+    CreateEntityEvent(si_data::error::DataError),
+    #[error("mqtt failed: {0}")]
+    MqttError(#[from] mqtt::errors::MqttError),
+    #[error("protobuf serialization failed: {0}")]
+    ProtoError(#[from] prost::EncodeError),
+    #[error("invalid entity event; it is missing an input entity")]
+    InvalidEntityEventMissingInputEntity,
+    #[error("invalid entity event; invalid action name")]
+    InvalidEntityEventInvalidActionName,
+    #[error("IO error: {0}")]
+    IoError(#[from] std::io::Error),
+    #[error("no io pipe - this is, um, bad")]
+    NoIoPipe,
+    #[error("entity event action call is missing an input entity")]
+    MissingInputEntity,
+    #[error("entity event action call is missing an output entity")]
+    MissingOutputEntity,
+    #[error("oneshot channel error: {0}")]
+    Oneshot(#[from] tokio::sync::oneshot::error::TryRecvError),
+    #[error("command failed: {0:?}")]
+    CommandFailed(CommandResult),
+    #[error("expected output and recevied none")]
+    CommandExpectedOutput,
 }
 
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let msg = match &*self {
-            Error::Base64DecodeError(e) => format!("base64 decode error: {}", e),
-            Error::CborEncodeError(e) => format!("CBOR encode error: {}", e),
-            Error::ComponentNotFound => format!("Component not found during entity creation; more constraints?"),
-            Error::ConfigError(e) => format!("Configuration error: {}", e),
-            Error::CouchbaseError(e) => format!("Couchbase error: {}", e),
-            Error::FromUtf8Error(e) => format!("Error converting a string to utf-8: {}", e),
-            Error::InvalidBooleanLogic => format!("Invalid boolean logic integer"),
-            Error::InvalidQueryComparison => format!("Invalid query comparison integer"),
-            Error::InvalidFieldType => format!("Invalid field type integer"),
-            Error::InvalidKeyType => format!("Invalid key type integer"),
-            Error::InvalidKeyFormat => format!("Invalid key format integer"),
-            Error::InvalidOrderByDirection => format!("Invalid order by direction"),
-            Error::InvalidTenant => format!("Invalid tenant specified for entity"),
-            Error::IoError(e) => format!("IO error: {}", e),
-            Error::OrderBy => format!("Invalid order_by option"),
-            Error::ParseIntError(e) => format!("Failed to parse a string to an integer; this is probably a bad field type setting: {}", e),
-            Error::ProstEncodeError(e) => format!("Prost encoding error: {}", e),
-            Error::ProstDecodeError(e) => format!("Prost encoding error: {}", e),
-            Error::SettingsError(e) => format!("Settings error: {}", e),
-            Error::StringError => format!("String conversion error"),
-            Error::SodiumOxideInit => format!("Initialization error for sodiumoxide"),
-            Error::SodiumOxideOpen => format!("Failed to decrypt a secret box"),
-            Error::SshKeyGenError(exit_code, stdout, stderr) => format!("Failed to generate SSH Key.\nCode: {}\n***STDOUT***\n{}\n***STDERR***\n{}", exit_code, stdout, stderr),
-            Error::TonicError(e) => format!("Tonic error: {}", e),
-        };
-        write!(f, "{}", msg)
-    }
-}
-
-impl error::Error for Error {}
-
-impl From<SettingsError> for Error {
-    fn from(err: SettingsError) -> Error {
-        Error::SettingsError(err)
-    }
-}
-
-impl From<string::FromUtf8Error> for Error {
-    fn from(err: string::FromUtf8Error) -> Error {
-        Error::FromUtf8Error(err)
-    }
-}
-
-impl From<num::ParseIntError> for Error {
-    fn from(err: num::ParseIntError) -> Error {
-        Error::ParseIntError(err)
-    }
-}
-
-impl From<base64::DecodeError> for Error {
-    fn from(err: base64::DecodeError) -> Error {
-        Error::Base64DecodeError(err)
-    }
-}
-
-impl From<prost::EncodeError> for Error {
-    fn from(err: prost::EncodeError) -> Error {
-        Error::ProstEncodeError(err)
-    }
-}
-
-impl From<prost::DecodeError> for Error {
-    fn from(err: prost::DecodeError) -> Error {
-        Error::ProstDecodeError(err)
-    }
-}
-
-impl From<serde_cbor::error::Error> for Error {
-    fn from(err: serde_cbor::error::Error) -> Error {
-        Error::CborEncodeError(err)
-    }
-}
-
-impl From<std::io::Error> for Error {
-    fn from(err: std::io::Error) -> Error {
-        Error::IoError(err)
-    }
-}
-
-impl From<tonic::transport::Error> for Error {
-    fn from(err: tonic::transport::Error) -> Error {
-        Error::TonicError(err)
-    }
-}
-
-impl From<ConfigError> for Error {
-    fn from(err: ConfigError) -> Error {
-        Error::ConfigError(err)
-    }
-}
-
-impl From<CouchbaseError> for Error {
-    fn from(err: CouchbaseError) -> Error {
-        Error::CouchbaseError(err)
-    }
-}
-
-impl From<Error> for tonic::Status {
-    fn from(err: Error) -> tonic::Status {
+impl From<SshKeyError> for tonic::Status {
+    fn from(err: SshKeyError) -> tonic::Status {
         match err {
-            Error::CouchbaseError(CouchbaseError::KeyDoesNotExist) => {
-                event!(Level::DEBUG, "no_id");
-                tonic::Status::new(tonic::Code::NotFound, "Item not found")
+            SshKeyError::InvalidMissingDisplayName
+            | SshKeyError::InvalidMissingName
+            | SshKeyError::PickComponent(_)
+            | SshKeyError::ComponentMissing
+            | SshKeyError::EntityMissing => {
+                tonic::Status::new(tonic::Code::InvalidArgument, err.to_string())
             }
-            Error::InvalidTenant => {
-                tonic::Status::new(tonic::Code::InvalidArgument, format!("{}", err))
+            SshKeyError::Authorization => {
+                tonic::Status::new(tonic::Code::PermissionDenied, err.to_string())
             }
-            Error::ComponentNotFound => {
-                tonic::Status::new(tonic::Code::InvalidArgument, format!("{}", err))
-            }
-            Error::OrderBy => tonic::Status::new(tonic::Code::InvalidArgument, format!("{}", err)),
-            _ => tonic::Status::new(tonic::Code::Unknown, format!("{}", err)),
+            _ => tonic::Status::new(tonic::Code::Unknown, err.to_string()),
         }
     }
 }

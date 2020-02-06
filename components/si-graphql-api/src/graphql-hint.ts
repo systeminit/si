@@ -16,6 +16,23 @@ export interface GraphqlHintMessage {
       method: string;
       type: string;
     };
+    has_list?: {
+      to: string;
+      grpcServiceName: string;
+      method: string;
+      type: string;
+      inputType: string;
+    };
+    in_list?: [
+      {
+        to: string;
+        listField: string;
+        grpcServiceName: string;
+        method: string;
+        type: string;
+        inputType: string;
+      },
+    ];
     has_many?: [
       {
         to: string;

@@ -1,5 +1,5 @@
 import * as protobuf from "protobufjs";
-import { ServiceDescription } from "@/services";
+import { ServiceDescription, services } from "@/services";
 
 export class ProtobufLoader {
   root: protobuf.Root;
@@ -16,3 +16,5 @@ export class ProtobufLoader {
     this.root = protobuf.loadSync(paths);
   }
 }
+
+export const protobufLoader = new ProtobufLoader({ protos: [], services });

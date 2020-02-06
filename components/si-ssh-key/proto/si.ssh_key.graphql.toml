@@ -1,0 +1,53 @@
+protoPackageName = "si.ssh_key"
+
+service.SshKey.GetComponent.query = true
+service.SshKey.ListComponents.query = true
+service.SshKey.PickComponent.query = true
+service.SshKey.CreateEntity.mutation = true
+service.SshKey.ListEntities.query = true
+service.SshKey.GetEntity.query = true
+
+[message.Component.integrationId.has_one]
+to = "integration"
+grpcServiceName = "Account"
+method = "GetIntegration"
+type = "Integration"
+
+[message.Component.integrationServiceId.has_one]
+to = "integrationService"
+grpcServiceName = "Account"
+method = "GetIntegrationService"
+type = "IntegrationService"
+
+[message.Entity.integrationId.has_one]
+to = "integration"
+grpcServiceName = "Account"
+method = "GetIntegration"
+type = "Integration"
+
+[message.Entity.integrationServiceId.has_one]
+to = "integrationService"
+grpcServiceName = "Account"
+method = "GetIntegrationService"
+type = "IntegrationService"
+
+[message.Entity.workspaceId.has_one]
+to = "workspace"
+grpcServiceName = "Account"
+method = "GetWorkspace"
+type = "Workspace"
+
+[message.Entity.organizationId.has_one]
+to = "organization"
+grpcServiceName = "Account"
+method = "GetOrganization"
+type = "Organization"
+
+[message.Entity.billingAccountId.has_one]
+to = "billingAccount"
+grpcServiceName = "Account"
+method = "GetBillingAccount"
+type = "BillingAccount"
+
+
+

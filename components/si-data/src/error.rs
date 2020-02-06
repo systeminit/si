@@ -16,6 +16,8 @@ pub enum DataError {
     TenantIdIntegrity(String),
     #[error("an object with this naturalKey ({0}) already exists")]
     NaturalKeyExists(String),
+    #[error("this object must have a naturalKey, and it is missing")]
+    NaturalKeyMissing,
     #[error("invalid boolean logic field")]
     InvalidBooleanLogic,
     #[error("invalid field type")]

@@ -1,4 +1,4 @@
-use crate::ssh_key::{KeyFormat, KeyType};
+use crate::model::component::{KeyFormat, KeyType};
 
 use serde::{de, Deserialize, Deserializer, Serializer};
 

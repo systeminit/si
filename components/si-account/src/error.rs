@@ -15,6 +15,8 @@ pub enum AccountError {
     EmptyBillingAccount,
     #[error("error creating a user: {0}")]
     CreateUserError(si_data::error::DataError),
+    #[error("error creating a integration instance: {0}")]
+    CreateIntegrationInstanceError(si_data::error::DataError),
     #[error("error creating a billing account: {0}")]
     CreateBillingAccountError(si_data::error::DataError),
     #[error("error creating a group: {0}")]
@@ -45,6 +47,10 @@ pub enum AccountError {
     InvalidMissingFamilyName,
     #[error("invalid object; missing shortName field")]
     InvalidMissingShortName,
+    #[error("invalid object; missing integrationId field")]
+    InvalidMissingIntegrationId,
+    #[error("invalid object; missing integrationOptionValues field")]
+    InvalidMissingIntegrationOptionValues,
     #[error("cannot find billing account")]
     BillingAccountMissing,
     #[error("invalid authentication; bad or missing headers")]
@@ -55,16 +61,28 @@ pub enum AccountError {
     LoginFailed,
     #[error("error listing users: {0}")]
     ListUsersError(si_data::error::DataError),
-    #[error("error listing users: {0}")]
+    #[error("error listing workspaces: {0}")]
     ListWorkspacesError(si_data::error::DataError),
-    #[error("error listing users: {0}")]
+    #[error("error listing organizations: {0}")]
     ListOrganizationsError(si_data::error::DataError),
+    #[error("error listing integrations: {0}")]
+    ListIntegrationsError(si_data::error::DataError),
+    #[error("error listing integration services: {0}")]
+    ListIntegrationServicesError(si_data::error::DataError),
+    #[error("error listing integration instances: {0}")]
+    ListIntegrationInstancesError(si_data::error::DataError),
     #[error("cannot hash the password")]
     PasswordHash,
     #[error("cannot find user")]
     UserMissing,
     #[error("cannot find organization")]
     OrganizationMissing,
+    #[error("cannot find workspace")]
+    WorkspaceMissing,
+    #[error("cannot find integration")]
+    IntegrationMissing,
+    #[error("cannot find integration service")]
+    IntegrationServiceMissing,
     #[error("unknown tenant id")]
     UnknownTenantId(si_data::error::DataError),
     #[error("invalid tenant id for scoped authorization")]

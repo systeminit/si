@@ -30,7 +30,7 @@ ifeq ($(USE_APT),/usr/bin/apt-get)
 	sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y curl
 endif
 
-package_rust: package_curl
+package_rust: package_curl package_compilers
 ifneq ($(RUST_EXISTS),$(HOME)/.cargo/bin/cargo)
 	curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > /tmp/rustup.sh
 	chmod a+x /tmp/rustup.sh
@@ -38,12 +38,20 @@ ifneq ($(RUST_EXISTS),$(HOME)/.cargo/bin/cargo)
 	cargo install --force cargo-watch
 endif
 
-build_deps: package_update package_curl package_rust runtime_deps
+package_compilers:
 ifeq ($(USE_PACMAN),/usr/bin/pacman)
-	sudo pacman -S --needed --noconfirm base-devel cmake clang parallel tmux
+	sudo pacman -S --needed --noconfirm base-devel cmake clang
 endif
 ifeq ($(USE_APT),/usr/bin/apt-get)
-	sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential cmake clang parallel tmux
+	sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential cmake clang 
+endif
+
+build_deps: package_update package_curl package_compilers package_rust runtime_deps
+ifeq ($(USE_PACMAN),/usr/bin/pacman)
+	sudo pacman -S --needed --noconfirm parallel tmux
+endif
+ifeq ($(USE_APT),/usr/bin/apt-get)
+	sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y parallel tmux
 endif
 
 runtime_deps: package_update
