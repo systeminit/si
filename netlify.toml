@@ -2,3 +2,8 @@
 base = "components/si-web-ui"
 command = "npm run build"
 publish = "components/si-web-ui/dist"
+
+[[redirects]]
+from = "/*"
+to = "/index.html"
+status = 200
