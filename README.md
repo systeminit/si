@@ -64,6 +64,12 @@ http://localhost:8091
 
 Log in as user `si`, password `bugbear`. You should see two buckets - `si` and `si_integration`.
 
+Now, run the VerneMQ service for our MQTT broker:
+
+```
+./components/vernemq/run.sh
+```
+
 Also start Jaeger, to get distributed tracing:
 
 ```
