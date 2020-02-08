@@ -186,10 +186,12 @@ pub struct AgentServer {
     mqtt: MqttAsyncClientInternal,
     integration_id: String,
     integration_service_id: String,
+    name: String,
 }
 
 impl AgentServer {
     pub fn new(
+        name: impl Into<String>,
         integration_id: impl Into<String>,
         integration_service_id: impl Into<String>,
     ) -> AgentServer {
@@ -202,6 +204,7 @@ impl AgentServer {
             .finalize();
 
         AgentServer {
+            name: name.into(),
             mqtt: MqttAsyncClientInternal { mqtt: cli },
             integration_id: integration_id.into(),
             integration_service_id: integration_service_id.into(),
@@ -222,7 +225,12 @@ impl AgentServer {
         warn!(?entity_event, "please show me the money");
         let entity_event_locked = Arc::new(Mutex::new(entity_event));
         let result = match action_name.as_ref() {
-            "create" => self.create(entity_event_locked.clone()).await,
+            // This is a very dirty thing, and it should be removed once we
+            // understand what we really want from the shape of these servers.
+            "create" => match self.name.as_ref() {
+                "global" => self.create_global(entity_event_locked.clone()).await,
+                "aws" => self.create_aws(entity_event_locked.clone()).await,
+            },
             _ => Err(SshKeyError::InvalidEntityEventInvalidActionName),
         };
         if let Err(e) = result {
@@ -494,7 +502,15 @@ impl AgentServer {
     }
 
     #[tracing::instrument]
-    pub async fn create(&mut self, entity_event_locked: Arc<Mutex<EntityEvent>>) -> Result<()> {
+    pub async fn create_aws(&mut self, entity_event_locked: Arc<Mutex<EntityEvent>>) -> Result<()> {
+        Ok(())
+    }
+
+    #[tracing::instrument]
+    pub async fn create_global(
+        &mut self,
+        entity_event_locked: Arc<Mutex<EntityEvent>>,
+    ) -> Result<()> {
         let tempdir = TempDir::new()?;
         let filename = tempdir.path().join("newkey");
 

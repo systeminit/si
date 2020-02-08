@@ -7,6 +7,7 @@ members = [
   "components/si-settings",
   "components/si-data",
   "components/si-ssh-key",
+  "components/si-external-api-gateway/rust-client",
   "vendor/couchbase-rs/couchbase-sys",
   "vendor/couchbase-rs/couchbase",
 ]

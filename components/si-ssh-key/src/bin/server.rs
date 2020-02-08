@@ -31,8 +31,20 @@ async fn run() -> Result<()> {
 
     // I bet you want to actually be smarter than this, if this errors - but life goes
     // on.
-    let mut agent_server = AgentServer::new(integration.id, integration_service.id);
+    let mut agent_server = AgentServer::new("global", integration.id, integration_service.id);
     tokio::spawn(async move { agent_server.run().await });
+
+    let aws_integration: Integration = db.lookup_by_natural_key("global:integration:aws").await?;
+
+    let aws_ec2_integration_service_lookup_id =
+        format!("global:{}:integration_service:ec2", aws_integration.id);
+    let aws_integration_service: IntegrationService = db
+        .lookup_by_natural_key(aws_ec2_integration_service_lookup_id)
+        .await?;
+
+    let mut agent_server_aws =
+        AgentServer::new("aws", aws_integration.id, aws_integration_service.id);
+    tokio::spawn(async move { agent_server_aws.run().await });
 
     let mut agent_finalizer = AgentFinalizer::new(db.clone());
     tokio::spawn(async move { agent_finalizer.run().await });
