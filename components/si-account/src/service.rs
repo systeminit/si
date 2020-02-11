@@ -909,6 +909,29 @@ impl account_server::Account for Service {
                 .await
                 .map_err(AccountError::CreateIntegrationInstanceError)?;
 
+            let aws_integration: integration::Integration = self
+                .db
+                .lookup_by_natural_key("global:integration:aws")
+                .await
+                .map_err(|_| AccountError::IntegrationMissing)?;
+
+            let mut aws_integration_instance = integration_instance::IntegrationInstance {
+                name: "aws".to_string(),
+                display_name: "AWS".to_string(),
+                tenant_ids: vec![ba.get_id().to_string()],
+                integration_id: aws_integration.get_id().to_string(),
+                integration_option_values: Vec::new(),
+                billing_account_id: ba.get_id().to_string(),
+                enabled_on_workspace_ids: vec![workspace.get_id().to_string()],
+                enabled_on_organization_ids: vec![organization.get_id().to_string()],
+                ..Default::default()
+            };
+
+            self.db
+                .validate_and_insert_as_new(&mut aws_integration_instance)
+                .await
+                .map_err(AccountError::CreateIntegrationInstanceError)?;
+
             Ok(Response::new(protobuf::CreateAccountReply {
                 user: Some(user),
                 billing_account: Some(ba),

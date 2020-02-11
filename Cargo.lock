@@ -2208,6 +2208,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "si-external-api-gateway"
+version = "0.1.0"
+dependencies = [
+ "async-stream",
+ "bytes 0.5.4",
+ "futures 0.3.1",
+ "http 0.2.0",
+ "prost",
+ "prost-derive",
+ "serde 1.0.104",
+ "serde_json",
+ "si-settings",
+ "thiserror",
+ "tokio 0.2.11",
+ "tonic",
+ "tonic-build",
+ "tower",
+ "tracing",
+ "tracing-futures 0.2.1",
+ "tracing-subscriber 0.2.0-alpha.4",
+]
+
+[[package]]
 name = "si-settings"
 version = "0.1.0"
 dependencies = [
@@ -2244,6 +2267,7 @@ dependencies = [
  "serde_json",
  "si-account",
  "si-data",
+ "si-external-api-gateway",
  "si-settings",
  "sodiumoxide",
  "tempfile",

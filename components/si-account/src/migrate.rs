@@ -28,7 +28,7 @@ pub async fn migrate(db: &Db) -> Result<()> {
                 name: "aws".to_string(),
                 display_name: "Amazon Web Services".to_string(),
                 tenant_ids: vec!["global".to_string()],
-                version: 2,
+                version: 4,
                 integration_options: vec![
                     IntegrationOption {
                         name: "access_key".to_string(),
@@ -39,6 +39,11 @@ pub async fn migrate(db: &Db) -> Result<()> {
                         name: "secret_key".to_string(),
                         display_name: "Secret Key".to_string(),
                         option_type: IntegrationOptionType::Secret as i32,
+                    },
+                    IntegrationOption {
+                        name: "region".to_string(),
+                        display_name: "region".to_string(),
+                        option_type: IntegrationOptionType::String as i32,
                     },
                 ],
                 ..Default::default()

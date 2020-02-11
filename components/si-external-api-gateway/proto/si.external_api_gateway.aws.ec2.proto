@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package si.external_api_gateway.aws.ec2;
+
+import "si-external-api-gateway/proto/si.external_api_gateway.proto";
+
+service Ec2 { 
+  rpc CreateKeyPair(CreateKeyPairRequest) returns (CreateKeyPairReply);
+}
+
+message CreateKeyPairRequest {
+  si.external_api_gateway.Context context = 1;
+  string keyName = 2;
+  bool dry_run = 3;
+}
+
+message CreateKeyPairReply {
+  string request_id = 1;
+  string key_fingerprint = 2;
+  string key_material = 3;
+  string key_name = 4;
+  string key_pair_id = 5;
+  Error error = 6;
+}
+
+message Error {
+  string code = 1;
+  string message = 2;
+  string request_id = 3;
+}
+
+message Filter {
+  string name = 1;
+  repeated string values = 2;
+}

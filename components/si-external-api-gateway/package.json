@@ -1,21 +1,21 @@
 {
-  "name": "si-graphql-api",
+  "name": "si-external-api-gateway",
   "private": true,
   "version": "0.1.0",
-  "description": "System Initiative GraphQL API",
+  "description": "System Initiative External API Gateway",
   "main": "dist/index.js",
   "scripts": {
     "start": "ts-node-dev --no-notify --transpileOnly --respawn -r tsconfig-paths/register src/index.ts",
     "prod": "ts-node --log-error -r tsconfig-paths/register src/index.ts",
     "build": "tsc",
-    "test": "jest --passWithNoTests"
+    "test": "jest --passWithNoTests",
+    "lint": "eslint ./src --fix"
   },
   "keywords": [],
   "author": "The System Initiative, Inc.",
   "license": "UNLICENSED",
   "devDependencies": {
     "@types/jest": "^24.0.19",
-    "@types/jsonwebtoken": "^8.3.5",
     "@typescript-eslint/eslint-plugin": "^2.5.0",
     "@typescript-eslint/parser": "^2.5.0",
     "eslint": "^6.5.1",
@@ -33,19 +33,12 @@
     "typescript": "^3.6.4"
   },
   "dependencies": {
-    "@grpc/proto-loader": "^0.5.3",
+    "@grpc/proto-loader": "^0.5.2",
     "@iarna/toml": "^2.2.3",
-    "apollo-datasource": "^0.6.3",
-    "apollo-server": "^2.9.7",
+    "@aws-sdk/client-ec2": "^1.0.0-alpha.2",
     "dotenv": "^8.2.0",
-    "graphql": "^14.5.8",
-    "graphql-subscriptions": "^0.4.2",
     "grpc": "^1.24.2",
     "grpc-caller": "^0.13.0",
-    "iterall": "^1.1.1",
-    "jsonwebtoken": "^8.5.1",
-    "mqtt": "^2.3.0",
-    "nexus": "^0.11.7",
     "protobufjs": "^6.8.8",
     "winston": "^3.2.1"
   }

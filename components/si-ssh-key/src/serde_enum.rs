@@ -8,7 +8,7 @@ where
 {
     match KeyType::from_i32(*enum_value) {
         Some(real_enum) => serializer.serialize_str(&format!("{}", real_enum)),
-        None => serializer.serialize_unit(),
+        None => serializer.serialize_str("RSA"),
     }
 }
 
@@ -34,7 +34,7 @@ where
 {
     match KeyFormat::from_i32(*enum_value) {
         Some(real_enum) => serializer.serialize_str(&format!("{}", real_enum)),
-        None => serializer.serialize_unit(),
+        None => serializer.serialize_str("RFC4716"),
     }
 }
 
