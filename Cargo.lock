@@ -2267,6 +2267,7 @@ dependencies = [
  "serde_json",
  "si-account",
  "si-data",
+ "si-external-api-gateway",
  "si-settings",
  "sodiumoxide",
  "tempfile",

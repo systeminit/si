@@ -82,6 +82,12 @@ pub enum SshKeyError {
     CommandFailed(CommandResult),
     #[error("expected output and recevied none")]
     CommandExpectedOutput,
+    #[error("grpc client error: {0}")]
+    GrpcClient(#[from] tonic::transport::Error),
+    #[error("grpc call error: {0}")]
+    GrpcCall(#[from] tonic::Status),
+    #[error("an external API request has failed")]
+    ExternalRequest,
 }
 
 impl From<SshKeyError> for tonic::Status {

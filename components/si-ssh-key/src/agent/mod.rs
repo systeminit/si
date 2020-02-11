@@ -13,9 +13,11 @@ use tracing::{debug, error, warn};
 use uuid::Uuid;
 
 use si_data::Db;
+use si_external_api_gateway::aws::ec2;
 
 use std::fmt;
 use std::ops::{Deref, DerefMut};
+use std::os::unix::fs::PermissionsExt;
 use std::process::{ExitStatus, Stdio};
 use std::sync::Arc;
 
@@ -230,6 +232,7 @@ impl AgentServer {
             "create" => match self.name.as_ref() {
                 "global" => self.create_global(entity_event_locked.clone()).await,
                 "aws" => self.create_aws(entity_event_locked.clone()).await,
+                _ => Ok(()),
             },
             _ => Err(SshKeyError::InvalidEntityEventInvalidActionName),
         };
@@ -503,6 +506,142 @@ impl AgentServer {
 
     #[tracing::instrument]
     pub async fn create_aws(&mut self, entity_event_locked: Arc<Mutex<EntityEvent>>) -> Result<()> {
+        // More evidence this should be refactored - why connect multiple times, rather than
+        // multiplexing? Even if we need N connections, better to manage it higher up.
+        let mut ec2 = ec2::Ec2Client::connect("http://localhost:4001").await?;
+        let result = {
+            let mut entity_event = entity_event_locked.lock().await;
+
+            let key_name = if entity_event.input_entity.is_some() {
+                entity_event.input_entity.as_ref().unwrap().id.to_string()
+            } else {
+                return Err(SshKeyError::MissingInputEntity);
+            };
+            entity_event.log("Creating Key Pair in EC2");
+            let result = ec2
+                .create_key_pair(ec2::CreateKeyPairRequest {
+                    context: Some(ec2::Context {
+                        billing_account_id: entity_event.billing_account_id.to_string(),
+                        organization_id: entity_event.organization_id.to_string(),
+                        workspace_id: entity_event.workspace_id.to_string(),
+                        ..Default::default()
+                    }),
+                    key_name: key_name,
+                    dry_run: false,
+                })
+                .await?
+                .into_inner();
+
+            if result.error.is_some() {
+                let e = result.error.as_ref().unwrap();
+                entity_event.error_log("Request failed\n");
+                entity_event.error_log(format!("Code: {}\n", e.code));
+                entity_event.error_log(format!("Message: {}\n", e.message));
+                entity_event.error_log(format!("Request ID: {}\n", e.request_id));
+                return Err(SshKeyError::ExternalRequest);
+            }
+            entity_event.log("Creation successful!\n");
+            entity_event.log(format!("Request ID: {}\n", result.request_id));
+            entity_event.log(format!("Key Fingerprint: {}\n", result.key_fingerprint));
+            entity_event.log("Key Material:\n");
+            entity_event.log(format!("{}\n", result.key_material));
+            entity_event.log(format!("Key Name: {}\n", result.key_name));
+            entity_event.log(format!("Key Pair ID: {}\n", result.key_pair_id));
+            result
+        };
+
+        let tempdir = TempDir::new()?;
+        let filename = tempdir.path().join("newkey");
+        tokio::fs::write(&filename, &result.key_material).await?;
+        let file_metadata = tokio::fs::metadata(&filename).await?;
+        let mut file_perms = file_metadata.permissions();
+        file_perms.set_mode(0o600);
+        tokio::fs::set_permissions(&filename, file_perms).await?;
+
+        debug!(?tempdir, ?filename, "tempfile_created");
+
+        let key_format = {
+            let entity_event = entity_event_locked.lock().await;
+            match KeyFormat::from_i32(entity_event.input_entity.as_ref().unwrap().key_format) {
+                Some(key_format) => key_format,
+                // TODO: Fix this error
+                None => return Err(SshKeyError::MissingInputEntity),
+            }
+        };
+
+        let mut ssh_public_key_cmd = Command::new("ssh-keygen");
+        ssh_public_key_cmd.current_dir(tempdir.path());
+        ssh_public_key_cmd.arg("-e");
+        ssh_public_key_cmd.arg("-f");
+        ssh_public_key_cmd.arg(filename.to_string_lossy().as_ref());
+        ssh_public_key_cmd.arg("-m");
+        ssh_public_key_cmd.arg(format!("{}", key_format));
+        let mut ssh_public_key_out = self
+            .spawn_command(
+                ssh_public_key_cmd,
+                entity_event_locked.clone(),
+                CaptureOutput::Stdout,
+            )
+            .await?
+            .success()?;
+
+        let filename_pub = tempdir.path().join("newkey.pub");
+        tokio::fs::write(
+            &filename_pub,
+            &ssh_public_key_out.stdout().unwrap_or(&"".to_string()),
+        )
+        .await?;
+        let pub_file_metadata = tokio::fs::metadata(&filename_pub).await?;
+        let mut pub_file_perms = pub_file_metadata.permissions();
+        pub_file_perms.set_mode(0o644);
+        tokio::fs::set_permissions(&filename_pub, pub_file_perms).await?;
+
+        let mut ssh_fingerprint_cmd = Command::new("ssh-keygen");
+        ssh_fingerprint_cmd.current_dir(tempdir.path());
+        ssh_fingerprint_cmd.arg("-l");
+        ssh_fingerprint_cmd.arg("-f");
+        ssh_fingerprint_cmd.arg(filename.to_string_lossy().as_ref());
+        let mut ssh_fingerprint_out = self
+            .spawn_command(
+                ssh_fingerprint_cmd,
+                entity_event_locked.clone(),
+                CaptureOutput::Stdout,
+            )
+            .await?
+            .success()?;
+
+        let mut ssh_babble_cmd = Command::new("ssh-keygen");
+        ssh_babble_cmd.current_dir(tempdir.path());
+        ssh_babble_cmd.arg("-B");
+        ssh_babble_cmd.arg("-f");
+        ssh_babble_cmd.arg(filename.to_string_lossy().as_ref());
+        let mut ssh_babble_out = self
+            .spawn_command(
+                ssh_babble_cmd,
+                entity_event_locked.clone(),
+                CaptureOutput::Stdout,
+            )
+            .await?
+            .success()?;
+
+        {
+            let mut entity_event = entity_event_locked.lock().await;
+            entity_event.output_entity = entity_event.input_entity.clone();
+            let output_entity = entity_event
+                .output_entity
+                .as_mut()
+                .ok_or(SshKeyError::MissingOutputEntity)?;
+            output_entity.private_key = result.key_material.to_string();
+            output_entity.public_key = ssh_public_key_out.try_stdout()?;
+            output_entity.fingerprint = ssh_fingerprint_out.try_stdout()?;
+            output_entity.bubble_babble = ssh_babble_out.try_stdout()?;
+            entity_event.success();
+        }
+
+        debug!("sending success");
+        self.send(entity_event_locked.clone()).await?;
+        debug!("sent success");
+
         Ok(())
     }
 
@@ -513,7 +652,6 @@ impl AgentServer {
     ) -> Result<()> {
         let tempdir = TempDir::new()?;
         let filename = tempdir.path().join("newkey");
-
         debug!(?tempdir, ?filename, "tempfile_created");
 
         // Before this gets used in anger, the user needs to give us the passphrase
