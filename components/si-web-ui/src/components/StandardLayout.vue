@@ -38,6 +38,7 @@
                 organizationId: organization.id,
                 workspaceId: workspace.id,
                 entityType: 'sshKey',
+                entityName: 'SSH Key',
               },
             }"
           >
@@ -46,6 +47,25 @@
             </v-list-item-action>
             <v-list-item-content>
               SSH Key
+            </v-list-item-content>
+          </v-list-item>
+          <v-list-item
+            link
+            :to="{
+              name: 'workspaceCreateEntity',
+              params: {
+                organizationId: organization.id,
+                workspaceId: workspace.id,
+                entityType: 'awsEksClusterRuntime',
+                entityName: 'AWS EKS Cluster Runtime',
+              },
+            }"
+          >
+            <v-list-item-action>
+              <v-icon>mdi-ship-wheel</v-icon>
+            </v-list-item-action>
+            <v-list-item-content>
+              AWS EKS Cluster Runtime
             </v-list-item-content>
           </v-list-item>
         </v-list-group>

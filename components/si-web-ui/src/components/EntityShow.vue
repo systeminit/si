@@ -1,9 +1,9 @@
 <template>
   <v-container class="fluid">
     <v-card>
-      <v-card-title>{{ sshKeyGetEntity.displayName }}</v-card-title>
-      <v-card-subtitle>SSH Key</v-card-subtitle>
-      <v-card-text>
+      <v-card-title>{{ getEntity.displayName }}</v-card-title>
+      <v-card-subtitle>{{ entityName }}</v-card-subtitle>
+      <v-card-text v-if="entityType == 'sshKey'">
         <v-btn-toggle>
           <v-btn>Rotate</v-btn>
           <v-btn>Replace</v-btn>
@@ -16,7 +16,7 @@
               <v-list-item-title>
                 Key Type
               </v-list-item-title>
-              {{ sshKeyGetEntity.keyType }}
+              {{ getEntity.keyType }}
             </v-list-item-content>
           </v-list-item>
           <v-list-item>
@@ -24,7 +24,7 @@
               <v-list-item-title>
                 Key Format
               </v-list-item-title>
-              {{ sshKeyGetEntity.keyFormat }}
+              {{ getEntity.keyFormat }}
             </v-list-item-content>
           </v-list-item>
           <v-list-item>
@@ -32,7 +32,7 @@
               <v-list-item-title>
                 Bits
               </v-list-item-title>
-              {{ sshKeyGetEntity.bits }}
+              {{ getEntity.bits }}
             </v-list-item-content>
           </v-list-item>
           <v-list-item>
@@ -47,9 +47,34 @@
                 flat
                 single-line
                 readonly
-                :value="sshKeyGetEntity.publicKey"
+                :value="getEntity.publicKey"
               >
               </v-textarea>
+            </v-list-item-content>
+          </v-list-item>
+        </v-list>
+      </v-card-text>
+      <v-card-text v-else>
+        <v-btn-toggle>
+          <v-btn>Deploy</v-btn>
+          <v-btn>Clone</v-btn>
+          <v-btn>Delete</v-btn>
+        </v-btn-toggle>
+        <v-list flat>
+          <v-list-item>
+            <v-list-item-content>
+              <v-list-item-title>
+                ID
+              </v-list-item-title>
+              {{ getEntity.id }}
+            </v-list-item-content>
+          </v-list-item>
+          <v-list-item>
+            <v-list-item-content>
+              <v-list-item-title>
+                Kubernetes Version
+              </v-list-item-title>
+              {{ getEntity.kubernetesVersion }}
             </v-list-item-content>
           </v-list-item>
         </v-list>
@@ -62,10 +87,16 @@
 import Vue from "vue";
 
 import sshKeyGetEntity from "@/graphql/queries/sshKeyGetEntity.gql";
-import { Query, SshKeyEntity, SshKeyGetEntityRequest } from "@/graphql-types";
+import awsEksClusterRuntimeGetEntity from "@/graphql/queries/awsEksClusterRuntimeGetEntity.gql";
+import {
+  Query,
+  SshKeyEntity,
+  AwsEksClusterRuntimeGetEntityRequest,
+  SshKeyGetEntityRequest,
+} from "@/graphql-types";
 
 interface DataField {
-  sshKeyGetEntity: SshKeyEntity;
+  getEntity: SshKeyEntity | AwsEksClusterRuntimeEntity;
   loading: boolean;
   cmOutputOptions: {
     tabSize: number;
@@ -81,6 +112,8 @@ interface DataField {
 export default Vue.extend({
   name: "EntityShow",
   props: {
+    entityName: String,
+    entityType: String,
     entityId: String,
   },
   data(): DataField {
@@ -94,27 +127,42 @@ export default Vue.extend({
         keyMap: "vim",
         readOnly: true,
       },
-      sshKeyGetEntity: {},
+      getEntity: {},
       loading: true,
     };
   },
-  apollo: {
-    sshKeyGetEntity: {
-      query: sshKeyGetEntity,
-      update(data: Query): SshKeyEntity {
+  created: function(): void {
+    let queryString;
+    let resultString: string;
+    if (this.entityType == "awsEksClusterRuntime") {
+      queryString = awsEksClusterRuntimeGetEntity;
+      resultString = "awsEksClusterRuntimeGetEntity";
+    } else if (this.entityType == "sshKey") {
+      queryString = sshKeyGetEntity;
+      resultString = "sshKeyGetEntity";
+    } else {
+      // Um.. what?
+      queryString = sshKeyGetEntities;
+      resultString = "sshKeyGetEntities";
+    }
+    this.$apollo.addSmartQuery("getEntity", {
+      query: queryString,
+      update(data: Query): SshKeyEntity | AwsEksClusterRuntimeEntity {
         this.loading = false;
-        if (data["sshKeyGetEntity"] && data["sshKeyGetEntity"]["entity"]) {
-          return data.sshKeyGetEntity.entity;
+        if (data[resultString] && data[resultString]["entity"]) {
+          return data[resultString]["entity"];
         } else {
           return {};
         }
       },
-      variables(): SshKeyGetEntityRequest {
+      variables():
+        | SshKeyGetEntityRequest
+        | awsEksClusterRuntimeGetEntityRequest {
         return {
           entityId: this.entityId,
         };
       },
-    },
+    });
   },
 });
 </script>

@@ -1,0 +1,32 @@
+query awsEksClusterRuntimeListEntities(
+  $pageSize: Int, 
+  $orderBy: String, 
+  $orderByDirection: DataOrderByDirection, 
+  $pageToken: String
+) {  
+  awsEksClusterRuntimeListEntities(
+    input: { 
+      pageSize: $pageSize, 
+      orderBy: $orderBy,
+      orderByDirection: $orderByDirection, 
+      pageToken: $pageToken,
+    }
+  ) {
+    items {
+      id
+      naturalKey
+      typeName
+      name
+      displayName
+      state
+      kubernetesVersion
+      cloudwatchLogs
+      organizationId
+      workspaceId
+      billingAccountId
+    }
+    totalCount
+    nextPageToken
+  }
+}
+

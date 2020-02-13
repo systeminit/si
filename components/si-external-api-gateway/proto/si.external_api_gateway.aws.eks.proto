@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package si.external_api_gateway.aws.eks;
+
+import "si-external-api-gateway/proto/si.external_api_gateway.proto";
+
+service EKS { 
+  rpc CreateCluster(CreateClusterRequest) returns (CreateClusterReply);
+}
+
+message CreateClusterRequest {
+  si.external_api_gateway.Context context = 1;
+  string name = 2;
+  string version = 3;
+  string role_arn = 4;
+  message ClusterLogging {
+    repeated string types = 1;
+    bool enabled = 2;
+  }
+  ClusterLogging logging = 5;
+  string client_request_token = 6;
+  message VpcConfigRequest {
+    repeated string subnet_ids = 1;
+    repeated string security_group_ids = 2;
+    bool endpoint_public_access = 3;
+    bool endpoint_private_access = 4;
+  }
+  VpcConfigRequest resources_vpc_config = 7;
+}
+
+message CreateClusterReply {
+  message Cluster {
+    string created_at = 1;
+    message ResourcesVpcConfig {
+      repeated string subnet_ids = 1;
+      repeated string security_group_ids = 2;
+    }
+    ResourcesVpcConfig resources_vpc_config = 2;
+    message ClusterLogging {
+      repeated string types = 1;
+    }
+    ClusterLogging logging = 3;
+    message CertificateAuthority {
+      string data = 1;
+    }
+    CertificateAuthority certificate_authority = 4;
+  }
+  Cluster cluster = 1;
+  Error error = 2;
+}
+
+message Error {
+  string code = 1;
+  string message = 2;
+  string request_id = 3;
+}
+
+message Filter {
+  string name = 1;
+  repeated string values = 2;
+}
+

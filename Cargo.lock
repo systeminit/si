@@ -2179,6 +2179,47 @@ dependencies = [
 ]
 
 [[package]]
+name = "si-aws-eks-cluster-runtime"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-stream",
+ "base64 0.10.1",
+ "bytes 0.5.4",
+ "chrono",
+ "config",
+ "couchbase",
+ "futures 0.3.1",
+ "http 0.2.0",
+ "lazy_static 1.4.0",
+ "names",
+ "opentelemetry",
+ "paho-mqtt",
+ "prost",
+ "prost-derive",
+ "serde 1.0.104",
+ "serde_cbor",
+ "serde_json",
+ "si-account",
+ "si-data",
+ "si-external-api-gateway",
+ "si-settings",
+ "sodiumoxide",
+ "tempfile",
+ "thiserror",
+ "tokio 0.2.11",
+ "toml 0.5.6",
+ "tonic",
+ "tonic-build",
+ "tower",
+ "tracing",
+ "tracing-futures 0.2.1",
+ "tracing-opentelemetry",
+ "tracing-subscriber 0.2.0-alpha.4",
+ "uuid",
+]
+
+[[package]]
 name = "si-data"
 version = "0.1.0"
 dependencies = [

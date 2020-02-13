@@ -17,4 +17,5 @@ npx protoc \
     --grpc_out="${OUT_DIR}" \
     --proto_path=../ \
     si-external-api-gateway/proto/si.external_api_gateway.proto \
-    si-external-api-gateway/proto/si.external_api_gateway.aws.ec2.proto
+    si-external-api-gateway/proto/si.external_api_gateway.aws.ec2.proto \
+    si-external-api-gateway/proto/si.external_api_gateway.aws.eks.proto

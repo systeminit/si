@@ -2,6 +2,411 @@
 ### Do not make changes to this file directly
 
 
+type AwsEksClusterRuntimeComponent {
+  """description"""
+  description: String
+
+  """displayName"""
+  displayName: String
+
+  """displayTypeName"""
+  displayTypeName: String
+
+  """id"""
+  id: ID
+
+  """integrationId"""
+  integration: Integration
+
+  """integrationId"""
+  integrationId: String
+
+  """integrationServiceId"""
+  integrationService: IntegrationService
+
+  """integrationServiceId"""
+  integrationServiceId: String
+
+  """kubernetesVersion"""
+  kubernetesVersion: String
+
+  """name"""
+  name: String
+
+  """naturalKey"""
+  naturalKey: String
+
+  """tenantIds"""
+  tenantIds: [String!]
+
+  """typeName"""
+  typeName: String
+
+  """version"""
+  version: Int
+}
+
+type AwsEksClusterRuntimeConstraints {
+  """displayName"""
+  displayName: String
+
+  """integrationId"""
+  integrationId: String
+
+  """integrationServiceId"""
+  integrationServiceId: String
+
+  """kubernetesVersion"""
+  kubernetesVersion: String
+
+  """name"""
+  name: String
+}
+
+type AwsEksClusterRuntimeCreateEntityReply {
+  """entity"""
+  entity: AwsEksClusterRuntimeEntity
+
+  """event"""
+  event: AwsEksClusterRuntimeEntityEvent
+}
+
+input AwsEksClusterRuntimeCreateEntityRequest {
+  """cloudwatchLogs"""
+  cloudwatchLogs: Boolean
+
+  """constraints"""
+  constraints: AwsEksClusterRuntimePickComponentRequest
+
+  """description"""
+  description: String
+
+  """displayName"""
+  displayName: String
+
+  """name"""
+  name: String
+
+  """nodeGroupAwsInstanceType"""
+  nodeGroupAwsInstanceType: String
+
+  """nodeGroupDesiredSize"""
+  nodeGroupDesiredSize: Int
+
+  """nodeGroupDiskSizeGib"""
+  nodeGroupDiskSizeGib: String
+
+  """nodeGroupMaximumSize"""
+  nodeGroupMaximumSize: Int
+
+  """nodeGroupMinimumSize"""
+  nodeGroupMinimumSize: Int
+
+  """nodeGroupSshKeyId"""
+  nodeGroupSshKeyId: String
+
+  """workspaceId"""
+  workspaceId: String
+}
+
+type AwsEksClusterRuntimeEntity {
+  """billingAccountId"""
+  billingAccount: BillingAccount
+
+  """billingAccountId"""
+  billingAccountId: String
+
+  """cloudwatchLogs"""
+  cloudwatchLogs: Boolean
+
+  """componentId"""
+  componentId: String
+
+  """constraints"""
+  constraints: AwsEksClusterRuntimeConstraints
+
+  """description"""
+  description: String
+
+  """displayName"""
+  displayName: String
+
+  """id"""
+  id: ID
+
+  """implicitConstraints"""
+  implicitConstraints: [AwsEksClusterRuntimeImplicitConstraint!]
+
+  """integrationId"""
+  integration: Integration
+
+  """integrationId"""
+  integrationId: String
+
+  """integrationServiceId"""
+  integrationService: IntegrationService
+
+  """integrationServiceId"""
+  integrationServiceId: String
+
+  """kubernetesVersion"""
+  kubernetesVersion: String
+
+  """linkedEntityIds"""
+  linkedEntityIds: [String!]
+
+  """name"""
+  name: String
+
+  """naturalKey"""
+  naturalKey: String
+
+  """nodeGroupAwsInstanceType"""
+  nodeGroupAwsInstanceType: String
+
+  """nodeGroupDesiredSize"""
+  nodeGroupDesiredSize: Int
+
+  """nodeGroupDiskSizeGib"""
+  nodeGroupDiskSizeGib: String
+
+  """nodeGroupMaximumSize"""
+  nodeGroupMaximumSize: Int
+
+  """nodeGroupMinimumSize"""
+  nodeGroupMinimumSize: Int
+
+  """nodeGroupSshKeyId"""
+  nodeGroupSshKeyId: String
+
+  """organizationId"""
+  organization: Organization
+
+  """organizationId"""
+  organizationId: String
+
+  """state"""
+  state: AwsEksClusterRuntimeState
+
+  """tenantIds"""
+  tenantIds: [String!]
+
+  """typeName"""
+  typeName: String
+
+  """workspaceId"""
+  workspace: Workspace
+
+  """workspaceId"""
+  workspaceId: String
+}
+
+type AwsEksClusterRuntimeEntityEvent {
+  """actionName"""
+  actionName: String
+
+  """billingAccountId"""
+  billingAccountId: String
+
+  """componentId"""
+  componentId: String
+
+  """createTime"""
+  createTime: String
+
+  """entityId"""
+  entityId: String
+
+  """errorLines"""
+  errorLines: [String!]
+
+  """errorMessage"""
+  errorMessage: String
+
+  """finalized"""
+  finalized: Boolean
+
+  """finalTime"""
+  finalTime: String
+
+  """id"""
+  id: ID
+
+  """inputEntity"""
+  inputEntity: AwsEksClusterRuntimeEntity
+
+  """integrationId"""
+  integrationId: String
+
+  """integrationServiceId"""
+  integrationServiceId: String
+
+  """naturalKey"""
+  naturalKey: String
+
+  """nextState"""
+  nextState: AwsEksClusterRuntimeNextState
+
+  """organizationId"""
+  organizationId: String
+
+  """outputEntity"""
+  outputEntity: AwsEksClusterRuntimeEntity
+
+  """outputLines"""
+  outputLines: [String!]
+
+  """success"""
+  success: Boolean
+
+  """tenantIds"""
+  tenantIds: [String!]
+
+  """typeName"""
+  typeName: String
+
+  """updatedTime"""
+  updatedTime: String
+
+  """userId"""
+  userId: String
+
+  """workspaceId"""
+  workspaceId: String
+}
+
+type AwsEksClusterRuntimeGetComponentReply {
+  """component"""
+  component: AwsEksClusterRuntimeComponent
+}
+
+input AwsEksClusterRuntimeGetComponentRequest {
+  """componentId"""
+  componentId: String
+}
+
+type AwsEksClusterRuntimeGetEntityReply {
+  """entity"""
+  entity: AwsEksClusterRuntimeEntity
+}
+
+input AwsEksClusterRuntimeGetEntityRequest {
+  """entityId"""
+  entityId: String
+}
+
+type AwsEksClusterRuntimeImplicitConstraint {
+  """field"""
+  field: String
+
+  """value"""
+  value: String
+}
+
+type AwsEksClusterRuntimeListComponentsReply {
+  """items"""
+  items: [AwsEksClusterRuntimeComponent!]
+
+  """nextPageToken"""
+  nextPageToken: String
+
+  """totalCount"""
+  totalCount: Int
+}
+
+input AwsEksClusterRuntimeListComponentsRequest {
+  """orderBy"""
+  orderBy: String
+
+  """orderByDirection"""
+  orderByDirection: DataOrderByDirection
+
+  """pageSize"""
+  pageSize: Int
+
+  """pageToken"""
+  pageToken: String
+
+  """query"""
+  query: DataQuery
+
+  """scopeByTenantId"""
+  scopeByTenantId: String
+}
+
+type AwsEksClusterRuntimeListEntitiesReply {
+  """items"""
+  items: [AwsEksClusterRuntimeEntity!]
+
+  """nextPageToken"""
+  nextPageToken: String
+
+  """totalCount"""
+  totalCount: Int
+}
+
+input AwsEksClusterRuntimeListEntitiesRequest {
+  """orderBy"""
+  orderBy: String
+
+  """orderByDirection"""
+  orderByDirection: DataOrderByDirection
+
+  """pageSize"""
+  pageSize: Int
+
+  """pageToken"""
+  pageToken: String
+
+  """query"""
+  query: DataQuery
+
+  """scopeByTenantId"""
+  scopeByTenantId: String
+}
+
+enum AwsEksClusterRuntimeNextState {
+  ERROR
+  NONE
+  OK
+  UNINITIALIZED
+}
+
+type AwsEksClusterRuntimePickComponentReply {
+  """component"""
+  component: AwsEksClusterRuntimeComponent
+
+  """implicitConstraints"""
+  implicitConstraints: [AwsEksClusterRuntimeImplicitConstraint!]
+}
+
+input AwsEksClusterRuntimePickComponentRequest {
+  """displayName"""
+  displayName: String
+
+  """integrationId"""
+  integrationId: String
+
+  """integrationServiceId"""
+  integrationServiceId: String
+
+  """kubernetesVersion"""
+  kubernetesVersion: String
+
+  """name"""
+  name: String
+}
+
+enum AwsEksClusterRuntimeState {
+  ERROR
+  OK
+  UNINITIALIZED
+}
+
+input AwsEksClusterRuntimeStreamEntityEventsRequest {
+  workspaceId: String!
+}
+
 type BillingAccount {
   """displayName"""
   displayName: String
@@ -609,6 +1014,7 @@ input LoginRequest {
 }
 
 type Mutation {
+  awsEksClusterRuntimeCreateEntity(input: AwsEksClusterRuntimeCreateEntityRequest): AwsEksClusterRuntimeCreateEntityReply
   createAccount(input: CreateAccountRequest): CreateAccountReply
   createIntegrationInstance(input: CreateIntegrationInstanceRequest): CreateIntegrationInstanceReply
   sshKeyCreateEntity(input: SshKeyCreateEntityRequest): SshKeyCreateEntityReply
@@ -644,6 +1050,11 @@ type Organization {
 }
 
 type Query {
+  awsEksClusterRuntimeGetComponent(input: AwsEksClusterRuntimeGetComponentRequest): AwsEksClusterRuntimeGetComponentReply
+  awsEksClusterRuntimeGetEntity(input: AwsEksClusterRuntimeGetEntityRequest): AwsEksClusterRuntimeGetEntityReply
+  awsEksClusterRuntimeListComponents(input: AwsEksClusterRuntimeListComponentsRequest): AwsEksClusterRuntimeListComponentsReply
+  awsEksClusterRuntimeListEntities(input: AwsEksClusterRuntimeListEntitiesRequest): AwsEksClusterRuntimeListEntitiesReply
+  awsEksClusterRuntimePickComponent(input: AwsEksClusterRuntimePickComponentRequest): AwsEksClusterRuntimePickComponentReply
   getBillingAccount(input: GetBillingAccountRequest): GetBillingAccountReply
   getUser(input: GetUserRequest): GetUserReply
   listIntegrationInstances(input: ListIntegrationInstancesRequest): ListIntegrationInstancesReply
@@ -1088,12 +1499,13 @@ enum SshKeyState {
   UNINITIALIZED
 }
 
-input StreamEntityEventsRequest {
+input SshKeyStreamEntityEventsRequest {
   workspaceId: String!
 }
 
 type Subscription {
-  streamEntityEvents(input: StreamEntityEventsRequest!): SshKeyEntityEvent
+  awsEksClusterRuntimeStreamEntityEvents(input: AwsEksClusterRuntimeStreamEntityEventsRequest!): AwsEksClusterRuntimeEntityEvent
+  sshKeyStreamEntityEvents(input: SshKeyStreamEntityEventsRequest!): SshKeyEntityEvent
 }
 
 type User {

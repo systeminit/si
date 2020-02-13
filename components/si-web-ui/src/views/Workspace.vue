@@ -1,7 +1,16 @@
 <template>
   <StandardLayout>
     <EntityList
-      entityType="SSH Key"
+      entityName="AWS EKS Cluster Runtime"
+      entityType="awsEksClusterRuntime"
+      :organizationId="organizationId"
+      :workspaceId="workspaceId"
+    >
+    </EntityList>
+
+    <EntityList
+      entityName="SSH Key"
+      entityType="sshKey"
       :organizationId="organizationId"
       :workspaceId="workspaceId"
     >

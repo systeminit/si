@@ -1,6 +1,10 @@
 <template>
   <StandardLayout>
-    <EntityShow :entityId="entityId"></EntityShow>
+    <EntityShow
+      :entityName="entityName"
+      :entityType="entityType"
+      :entityId="entityId"
+    ></EntityShow>
   </StandardLayout>
 </template>
 
@@ -14,6 +18,8 @@ export default {
     organizationId: String,
     workspaceId: String,
     entityId: String,
+    entityType: String,
+    entityName: String,
   },
   components: {
     StandardLayout,

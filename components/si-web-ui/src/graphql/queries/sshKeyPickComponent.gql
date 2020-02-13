@@ -1,0 +1,16 @@
+query sshKeyPickComponent($keyType:SshKeyKeyTypeRequest, $keyFormat: SshKeyKeyFormatRequest, $bits: Int) {
+  sshKeyPickComponent(input:{keyType: $keyType, keyFormat: $keyFormat, bits: $bits}) {
+    component {
+      id
+      displayName
+      keyType
+      keyFormat
+      bits
+    }
+    implicitConstraints {
+      field
+      value
+    }
+  }
+}
+

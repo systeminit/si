@@ -33,9 +33,10 @@
     "typescript": "^3.6.4"
   },
   "dependencies": {
+    "@aws-sdk/client-ec2": "^1.0.0-alpha.2",
+    "@aws-sdk/client-eks": "^1.0.0-alpha.1",
     "@grpc/proto-loader": "^0.5.2",
     "@iarna/toml": "^2.2.3",
-    "@aws-sdk/client-ec2": "^1.0.0-alpha.2",
     "dotenv": "^8.2.0",
     "grpc": "^1.24.2",
     "grpc-caller": "^0.13.0",

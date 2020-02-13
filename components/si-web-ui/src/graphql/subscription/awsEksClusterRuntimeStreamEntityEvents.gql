@@ -1,5 +1,5 @@
-subscription streamEntityEvents($workspaceId: String!) {
-  streamEntityEvents(input:{workspaceId:$workspaceId}) {
+subscription awsEksClusterRuntimeStreamEntityEvents($workspaceId: String!) {
+  awsEksClusterRuntimeStreamEntityEvents(input:{workspaceId:$workspaceId}) {
     id
     actionName
     entityId
@@ -13,20 +13,14 @@ subscription streamEntityEvents($workspaceId: String!) {
     success
     inputEntity {
       id
-      keyType
-      keyFormat
-      bits
+      kubernetesVersion
       state
     }
     outputEntity {
       id
-      keyType
-      keyFormat
-      bits
-      fingerprint
-      publicKey
-      privateKey
+      kubernetesVersion
       state
     }
   }
 }
+

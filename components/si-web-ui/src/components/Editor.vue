@@ -43,7 +43,7 @@
                     <v-card-text class="d-flex float">
                       <v-card class="ma-2">
                         <v-card-title>Properties</v-card-title>
-                        <v-card-text>
+                        <v-card-text v-if="entityType == 'sshKey'">
                           <ul>
                             <li>bits: {{ checkComponent.component.bits }}</li>
                             <li>
@@ -52,6 +52,16 @@
                             </li>
                             <li>
                               keyType: {{ checkComponent.component.keyType }}
+                            </li>
+                          </ul>
+                        </v-card-text>
+                        <v-card-text
+                          v-if="entityType == 'awsEksClusterRuntime'"
+                        >
+                          <ul>
+                            <li>
+                              kubernetesVersion:
+                              {{ checkComponent.component.kubernetesVersion }}
                             </li>
                           </ul>
                         </v-card-text>
@@ -160,7 +170,11 @@
                   <div
                     v-if="streamEntityEvent && streamEntityEvent.outputEntity"
                   >
-                    <EntityShow :entityId="streamEntityEvent.outputEntity.id" />
+                    <EntityShow
+                      :entityType="entityType"
+                      :entityName="entityName"
+                      :entityId="streamEntityEvent.outputEntity.id"
+                    />
                   </div>
                   <v-card v-else>
                     <v-card-title>No Entity</v-card-title>
@@ -176,12 +190,20 @@
         <v-col cols="4">
           <v-card class="ml-2" height="100%">
             <v-card-title>Hints</v-card-title>
-            <v-card-text>
+            <v-card-text v-if="entityType == 'sshKey'">
               <h3>Constraints</h3>
               <ul>
                 <li>constraints.keyType = "RSA" | "DSA" | "ED25519"</li>
                 <li>constraints.keyFormat = "RFC4716" | "PKCS8" | "PEM"</li>
                 <li>constraints.bits = Number</li>
+              </ul>
+            </v-card-text>
+            <v-card-text v-else>
+              <h3>Constraints</h3>
+              <ul>
+                <li>
+                  constraints.kubernetesVersion = "1.12" | "1.13" | "1.14"
+                </li>
               </ul>
             </v-card-text>
           </v-card>
@@ -205,18 +227,29 @@ import NameGenerator from "project-name-generator";
 
 import { auth } from "@/auth";
 import workspaceList from "@/graphql/queries/workspaceList.gql";
-import pickComponent from "@/graphql/queries/pickComponent.gql";
-import createEntityMutation from "@/graphql/mutations/createEntity.gql";
-import streamEntityEvents from "@/graphql/subscription/streamEntityEvents.gql";
+import sshKeyPickComponent from "@/graphql/queries/sshKeyPickComponent.gql";
+import awsEksClusterRuntimePickComponent from "@/graphql/queries/awsEksClusterRuntimePickComponent.gql";
+import sshKeyCreateEntity from "@/graphql/mutations/sshKeyCreateEntity.gql";
+import awsEksClusterRuntimeCreateEntity from "@/graphql/mutations/awsEksClusterRuntimeCreateEntity.gql";
+import sshKeyStreamEntityEvents from "@/graphql/subscription/sshKeyStreamEntityEvents.gql";
+import awsEksClusterRuntimeStreamEntityEvents from "@/graphql/subscription/awsEksClusterRuntimeStreamEntityEvents.gql";
 import {
+  AwsEksClusterRuntimePickComponentRequest,
+  AwsEksClusterRuntimePickComponentReply,
+  AwsEksClusterRuntimeCreateEntityReply,
+  AwsEksClusterRuntimeEntityEvent,
+  AwsEksClusterRuntimeCreateEntityRequest,
+  AwsEksClusterRuntimeImplicitConstraint,
+  AwsEksClusterRuntimeStreamEntityEventsRequest,
+  AwsEksClusterRuntimeStreamEntityEventsSubscription,
   SshKeyKeyType,
   SshKeyPickComponentRequest,
   SshKeyPickComponentReply,
   SshKeyCreateEntityReply,
   SshKeyEntityEvent,
   SshKeyCreateEntityRequest,
-  StreamEntityEventsRequest,
-  StreamEntityEventsSubscription,
+  SshKeyStreamEntityEventsRequest,
+  SshKeyStreamEntityEventsSubscription,
   SshKeyImplicitConstraint,
 } from "@/graphql-types";
 import EntityShow from "@/components/EntityShow.vue";
@@ -225,9 +258,15 @@ interface DataField {
   code: string;
   tab: null | number;
   agentOutputTab: null | number;
-  createEntityData: null | SshKeyCreateEntityReply;
-  checkComponent: null | SshKeyPickComponentReply;
-  streamEntityEvent: null | SshKeyEntityEvent;
+  createEntityData:
+    | null
+    | SshKeyCreateEntityReply
+    | AwsEksClusterRuntimeCreateEntityReply;
+  checkComponent:
+    | null
+    | SshKeyPickComponentReply
+    | AwsEksClusterRuntimePickComponentReply;
+  streamEntityEvent: null | SshKeyEntityEvent | AwsEksClusterRuntimeEntityEvent;
   cmOptions: {
     tabSize: number;
     theme: "gruvbox-dark";
@@ -248,13 +287,14 @@ export default Vue.extend({
   name: "Editor",
   props: {
     entityName: String,
+    entityType: String,
   },
   data(): DataField {
-    const entityName = NameGenerator.generate({ words: 4, number: true });
+    const newEntityName = NameGenerator.generate({ words: 4, number: true });
     return {
-      code: `name = "${entityName.dashed}"
-displayName = "${entityName.spaced}"
-description = "SSH Key ${entityName.spaced}"`,
+      code: `name = "${newEntityName.dashed}"
+displayName = "${newEntityName.spaced}"
+description = "${this.entityName} ${newEntityName.spaced}"`,
       tab: null,
       agentOutputTab: null,
       createEntityData: null,
@@ -273,14 +313,14 @@ description = "SSH Key ${entityName.spaced}"`,
   },
   methods: {
     resetComponentState(): void {
-      const entityName = NameGenerator.generate({ words: 4, number: true });
+      const newEntityName = NameGenerator.generate({ words: 4, number: true });
       this.createEntityData = null;
       this.streamEntityEvent = null;
       this.cmOptions["readOnly"] = false;
       this.tab = 0;
-      this.code = `name = "${entityName.dashed}"
-displayName = "${entityName.spaced}"
-description = "SSH Key ${entityName.spaced}"`;
+      this.code = `name = "${newEntityName.dashed}"
+displayName = "${newEntityName.spaced}"
+description = "${this.entityName} ${newEntityName.spaced}"`;
     },
     onCmCodeChange(newCode: string): void {
       this.code = newCode;
@@ -297,11 +337,19 @@ description = "SSH Key ${entityName.spaced}"`;
       }
       const workspace = auth.getCurrentWorkspace();
       inputData["workspaceId"] = workspace.id;
+
+      let createEntityMutation;
+      let dataKey;
+      if (this.entityType == "sshKey") {
+        createEntityMutation = sshKeyCreateEntity;
+      } else {
+        createEntityMutation = awsEksClusterRuntimeCreateEntity;
+      }
       let data = await this.$apollo.mutate({
         mutation: createEntityMutation,
         variables: inputData,
       });
-      this.createEntityData = data.data["sshKeyCreateEntity"];
+      this.createEntityData = data.data[`${this.entityType}CreateEntity`];
       this.loading = false;
     },
   },
@@ -321,30 +369,34 @@ description = "SSH Key ${entityName.spaced}"`;
       }
     },
   },
-  apollo: {
-    $subscribe: {
-      entityEvents: {
-        query: streamEntityEvents,
-        variables(): StreamEntityEventsRequest {
-          const workspace = auth.getCurrentWorkspace();
-          return {
-            workspaceId: workspace.id || "",
-          };
-        },
-        result({ data }: { data: StreamEntityEventsSubscription }): void {
-          this.streamEntityEvent = data["streamEntityEvents"];
-          if (this.streamEntityEvent && this.streamEntityEvent.finalized) {
-            this.tab = 2;
-          }
-        },
-      },
-    },
-    checkComponent: {
-      query: pickComponent,
+  created: function(): void {
+    let pickQueryString;
+    let pickResultString: string;
+    let streamQueryString;
+    let streamResultString: string;
+    if (this.entityType == "awsEksClusterRuntime") {
+      pickQueryString = awsEksClusterRuntimePickComponent;
+      pickResultString = "awsEksClusterRuntimePickComponent";
+      streamQueryString = awsEksClusterRuntimeStreamEntityEvents;
+      streamResultString = "awsEksClusterRuntimeStreamEntityEvents";
+    } else if (this.entityType == "sshKey") {
+      pickQueryString = sshKeyPickComponent;
+      pickResultString = "sshKeyPickComponent";
+      streamQueryString = sshKeyStreamEntityEvents;
+      streamResultString = "sshKeyStreamEntityEvents";
+    } else {
+      // Um.. what?
+      pickQueryString = sshKeyPickComponent;
+      pickResultString = "sshKeyPickComponent";
+      streamQueryString = sshKeyStreamEntityEvents;
+      streamResultString = "sshKeyStreamEntityEvents";
+    }
+    this.$apollo.addSmartQuery("checkComponent", {
+      query: pickQueryString,
       update: data => {
-        data.sshKeyPickComponent.implicitConstraints.sort(function(
-          a: SshKeyImplicitConstraint,
-          b: SshKeyImplicitConstraint,
+        data[pickResultString].implicitConstraints.sort(function(
+          a: SshKeyImplicitConstraint | AwsEksClusterRuntimeImplicitConstraint,
+          b: SshKeyImplicitConstraint | AwsEksClusterRuntimeImplicitConstraint,
         ) {
           if (!a || !a["field"] || !b || !b["field"]) {
             return 0;
@@ -357,23 +409,106 @@ description = "SSH Key ${entityName.spaced}"`;
             return 0;
           }
         });
-        return data.sshKeyPickComponent;
+        return data[pickResultString];
       },
-      variables(): SshKeyPickComponentRequest {
+      variables():
+        | SshKeyPickComponentRequest
+        | AwsEksClusterRuntimePickComponentRequest {
         let inputData = this.inputData;
         if (inputData.parsed && inputData.parsed["constraints"]) {
           const inputConstraints = inputData.parsed["constraints"];
-          return {
-            keyType: inputConstraints["keyType"],
-            keyFormat: inputConstraints["keyFormat"],
-            bits: inputConstraints["bits"],
-          };
+          if (this.entityType == "sshKey") {
+            return {
+              keyType: inputConstraints["keyType"],
+              keyFormat: inputConstraints["keyFormat"],
+              bits: inputConstraints["bits"],
+            };
+          } else {
+            return {
+              kubernetesVersion: inputConstraints["kubernetesVersion"],
+            };
+          }
         } else {
           return {};
         }
       },
-    },
+    });
+    this.$apollo.addSmartSubscription("entityEvents", {
+      query: streamQueryString,
+      variables():
+        | SshKeyStreamEntityEventsRequest
+        | AwsEksClusterRuntimeStreamEntityEventsRequest {
+        const workspace = auth.getCurrentWorkspace();
+        return {
+          workspaceId: workspace.id || "",
+        };
+      },
+      result({
+        data,
+      }: {
+        data:
+          | SshKeyStreamEntityEventsSubscription
+          | AwsEksClusterRuntimeEntityEventSubscription;
+      }): void {
+        this.streamEntityEvent = data[streamResultString];
+        if (this.streamEntityEvent && this.streamEntityEvent.finalized) {
+          this.tab = 2;
+        }
+      },
+    });
   },
+  //apollo: {
+  //  $subscribe: {
+  //    entityEvents: {
+  //      query: streamEntityEvents,
+  //      variables(): StreamEntityEventsRequest {
+  //        const workspace = auth.getCurrentWorkspace();
+  //        return {
+  //          workspaceId: workspace.id || "",
+  //        };
+  //      },
+  //      result({ data }: { data: StreamEntityEventsSubscription }): void {
+  //        this.streamEntityEvent = data["streamEntityEvents"];
+  //        if (this.streamEntityEvent && this.streamEntityEvent.finalized) {
+  //          this.tab = 2;
+  //        }
+  //      },
+  //    },
+  //  },
+  //checkComponent: {
+  //  query: pickComponent,
+  //  update: data => {
+  //    data.sshKeyPickComponent.implicitConstraints.sort(function(
+  //      a: SshKeyImplicitConstraint,
+  //      b: SshKeyImplicitConstraint,
+  //    ) {
+  //      if (!a || !a["field"] || !b || !b["field"]) {
+  //        return 0;
+  //      }
+  //      if (a.field < b.field) {
+  //        return -1;
+  //      } else if (a.field > b.field) {
+  //        return 1;
+  //      } else {
+  //        return 0;
+  //      }
+  //    });
+  //    return data.sshKeyPickComponent;
+  //  },
+  //  variables(): SshKeyPickComponentRequest {
+  //    let inputData = this.inputData;
+  //    if (inputData.parsed && inputData.parsed["constraints"]) {
+  //      const inputConstraints = inputData.parsed["constraints"];
+  //      return {
+  //        keyType: inputConstraints["keyType"],
+  //        keyFormat: inputConstraints["keyFormat"],
+  //        bits: inputConstraints["bits"],
+  //      };
+  //    } else {
+  //      return {};
+  //    }
+  //  },
+  //},
   components: {
     codemirror,
     EntityShow,

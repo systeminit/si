@@ -1,6 +1,8 @@
 <template>
   <StandardLayout>
-    <Editor entityName="SSH Key"></Editor>
+    <v-card>
+      <v-card-title>Select a Workpsace from the sidebar</v-card-title>
+    </v-card>
   </StandardLayout>
 </template>
 
@@ -12,7 +14,7 @@ export default {
   name: "home",
   components: {
     StandardLayout,
-    Editor,
+    //Editor,
   },
 };
 </script>

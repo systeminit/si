@@ -5,7 +5,10 @@ fn main() {
         .type_attribute(".", "#[derive(serde::Serialize, serde::Deserialize)]")
         .type_attribute(".", "#[serde(rename_all = \"camelCase\")]")
         .compile(
-            &["si-external-api-gateway/proto/si.external_api_gateway.aws.ec2.proto"],
+            &[
+                "si-external-api-gateway/proto/si.external_api_gateway.aws.ec2.proto",
+                "si-external-api-gateway/proto/si.external_api_gateway.aws.eks.proto",
+            ],
             &["../.."],
         )
         .unwrap();

@@ -1,0 +1,49 @@
+mutation awsEksClusterRuntimeCreateEntity(
+  $name: String!,
+  $displayName: String!,
+  $description: String!,
+  $workspaceId: String!,
+  $constraints: AwsEksClusterRuntimePickComponentRequest,
+) {
+  awsEksClusterRuntimeCreateEntity(
+    input: {
+      constraints: $constraints
+      name: $name
+      displayName: $displayName
+      description: $description
+      workspaceId: $workspaceId
+    }
+  ) {
+    entity {
+      id
+      kubernetesVersion
+      cloudwatchLogs
+      state
+    }
+    event {
+      id
+      actionName
+      entityId
+      typeName
+      createTime
+      updatedTime
+      finalTime
+      finalized
+      outputLines
+      errorLines
+      success
+      inputEntity {
+        id
+        kubernetesVersion
+        cloudwatchLogs
+        state
+      }
+      outputEntity {
+        id
+        kubernetesVersion
+        cloudwatchLogs
+        state
+      }
+    }
+  }
+}
