@@ -35,13 +35,20 @@ class AwsEks {
     callback: sendUnaryData<CreateClusterReply>,
   ): Promise<void> {
     const client = new EKSClient({ region: "us-east-2" });
+    const resourcesVpcConfig = call.request.getResourcesVpcConfig();
+
     const commandInputs: CreateClusterInput = {
       name: call.request.getName(),
       version: call.request.getVersion(),
       roleArn: call.request.getRoleArn(),
       logging: call.request.getLogging(),
       clientRequestToken: call.request.getClientRequestToken(),
-      resourcesVpcConfig: call.request.getResourcesVpcConfig(),
+      resourcesVpcConfig: {
+        subnetIds: resourcesVpcConfig.getSubnetIdsList(),
+        securityGroupIds: resourcesVpcConfig.getSecurityGroupIdsList(),
+        endpointPublicAccess: resourcesVpcConfig.getEndpointPublicAccess(),
+        endpointPrivateAccess: resourcesVpcConfig.getEndpointPrivateAccess(),
+      },
     };
     const command = new CreateClusterCommand(commandInputs);
     const reply = new CreateClusterReply();
