@@ -559,18 +559,27 @@ impl AgentServer {
                         ..Default::default()
                     }),
                     version: input_entity.kubernetes_version.to_string(),
-                    // So, this works if you are Fletcher. Cheers!
-                    role_arn: "arn:aws:iam::167069368189:role/eksServiceRole".to_string(),
+                    // So, this works if you are Adam! Ha!. Cheers!
+                    role_arn: "arn:aws:iam::835304779882:role/eksServiceRole".to_string(),
+                    //role_arn: "arn:aws:iam::167069368189:role/eksServiceRole".to_string(),
                     name: input_entity.id.replace(':', "-").to_string(),
                     logging,
                     client_request_token: entity_event.id.to_string(),
                     resources_vpc_config: Some(eks::create_cluster_request::VpcConfigRequest {
+                        // Adam Subnets! ;P
                         subnet_ids: vec![
-                            "subnet-223e1c58".to_string(),
-                            "subnet-5a867231".to_string(),
-                            "subnet-a26ae0ee".to_string(),
+                            "subnet-0c064a76".to_string(),
+                            "subnet-08a11544".to_string(),
+                            "subnet-ae9a8dc6".to_string(),
                         ],
-                        security_group_ids: vec!["sg-bc6539db".to_string()],
+                        security_group_ids: vec!["sg-070f1067".to_string()],
+                        // Fletcher subnets! :)
+                        //subnet_ids: vec![
+                        //    "subnet-223e1c58".to_string(),
+                        //    "subnet-5a867231".to_string(),
+                        //    "subnet-a26ae0ee".to_string(),
+                        //],
+                        //security_group_ids: vec!["sg-bc6539db".to_string()],
                         endpoint_public_access: true,
                         endpoint_private_access: false,
                     }),

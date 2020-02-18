@@ -5,6 +5,8 @@ import {
   CreateClusterOutput,
 } from "@aws-sdk/client-eks";
 
+import AWS from "aws-sdk";
+
 import { logger } from "@/logger";
 import { Server, ServerUnaryCall, sendUnaryData } from "grpc";
 import { EKSService } from "@/generated/si-external-api-gateway/proto/si.external_api_gateway.aws.eks_grpc_pb";
@@ -34,6 +36,66 @@ class AwsEks {
     call: ServerUnaryCall<CreateClusterRequest>,
     callback: sendUnaryData<CreateClusterReply>,
   ): Promise<void> {
+    const awsLogger = {
+      log(foo: string): void {
+        logger.info(foo);
+      },
+    };
+    const eks = new AWS.EKS({ logger: awsLogger, region: "us-east-2" });
+    const reply = new CreateClusterReply();
+    try {
+      const resourcesVpcConfigInput = call.request.getResourcesVpcConfig();
+      const createClusterInput = {
+        name: call.request.getName(),
+        version: call.request.getVersion(),
+        roleArn: call.request.getRoleArn(),
+        resourcesVpcConfig: {
+          subnetIds: resourcesVpcConfigInput.getSubnetIdsList(),
+          securityGroupIds: resourcesVpcConfigInput.getSecurityGroupIdsList(),
+          endpointPublicAccess: resourcesVpcConfigInput.getEndpointPublicAccess(),
+          endpointPrivateAccess: resourcesVpcConfigInput.getEndpointPrivateAccess(),
+        },
+        clientRequestToken: call.request.getClientRequestToken(),
+      };
+      if (call.request.hasLogging()) {
+        const loggingInput = call.request.getLogging();
+        createClusterInput["logging"] = {
+          clusterLogging: [
+            {
+              enabled: loggingInput.getEnabled(),
+              types: loggingInput.getTypesList(),
+            },
+          ],
+        };
+      }
+
+      const results = await eks.createCluster(createClusterInput).promise();
+      const cluster = new CreateClusterReply.Cluster();
+      cluster.setCreatedAt(results.cluster.createdAt.toUTCString());
+      const resourcesVpcConfig = new CreateClusterReply.Cluster.ResourcesVpcConfig();
+      resourcesVpcConfig.setSubnetIdsList(
+        results.cluster.resourcesVpcConfig.subnetIds,
+      );
+      resourcesVpcConfig.setSecurityGroupIdsList(
+        results.cluster.resourcesVpcConfig.securityGroupIds,
+      );
+      cluster.setResourcesVpcConfig(resourcesVpcConfig);
+      //cluster.setLogging(results.logging);
+      //cluster.setCertificateAuthority(results.certificateAuthority);
+      reply.setCluster(cluster);
+    } catch (err) {
+      const error = new PError();
+      error.setCode(err.code);
+      error.setMessage(err.message);
+      reply.setError(error);
+    }
+    callback(null, reply);
+  }
+
+  async createClusterv3(
+    call: ServerUnaryCall<CreateClusterRequest>,
+    callback: sendUnaryData<CreateClusterReply>,
+  ): Promise<void> {
     const client = new EKSClient({ region: "us-east-2" });
     const resourcesVpcConfig = call.request.getResourcesVpcConfig();
 
@@ -53,12 +115,22 @@ class AwsEks {
     const command = new CreateClusterCommand(commandInputs);
     const reply = new CreateClusterReply();
     try {
-      const results: CreateClusterOutput = await client.send(command);
+      logger.log("warn", "more... fuck");
+      const results = await client.send(command);
+      logger.log("warn", "less... fuck");
       const cluster = reply.getCluster();
-      cluster.setCreatedAt(results.createdAt);
-      cluster.setResourcesVpcConfig(results.resourcesVpcConfig);
-      cluster.setLogging(results.logging);
-      cluster.setCertificateAuthority(results.certificateAuthority);
+      cluster.setCreatedAt(results.cluster.createdAt.toUTCString());
+      const resourcesVpcConfig = cluster.getResourcesVpcConfig();
+      resourcesVpcConfig.setSubnetIdsList(
+        results.cluster.resourcesVpcConfig.subnetIds,
+      );
+      resourcesVpcConfig.setSecurityGroupIdsList(
+        results.cluster.resourcesVpcConfig.securityGroupIds,
+      );
+      cluster.setResourcesVpcConfig(resourcesVpcConfig);
+      logger.log("warn", "FUCK");
+      //cluster.setLogging(results.logging);
+      //cluster.setCertificateAuthority(results.certificateAuthority);
       reply.setCluster(cluster);
     } catch (err) {
       const error = new PError();
