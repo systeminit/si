@@ -45,6 +45,10 @@ class AwsEks {
     const reply = new CreateClusterReply();
     try {
       const resourcesVpcConfigInput = call.request.getResourcesVpcConfig();
+      const tags = {};
+      for (const tag of call.request.getTagsList()) {
+        tags[tag.getKey()] = tag.getValue();
+      }
       const createClusterInput = {
         name: call.request.getName(),
         version: call.request.getVersion(),
@@ -56,6 +60,7 @@ class AwsEks {
           endpointPrivateAccess: resourcesVpcConfigInput.getEndpointPrivateAccess(),
         },
         clientRequestToken: call.request.getClientRequestToken(),
+        tags,
       };
       if (call.request.hasLogging()) {
         const loggingInput = call.request.getLogging();
@@ -80,6 +85,14 @@ class AwsEks {
         results.cluster.resourcesVpcConfig.securityGroupIds,
       );
       cluster.setResourcesVpcConfig(resourcesVpcConfig);
+      const tagsList = [];
+      for (const key in results.cluster.tags) {
+        const tag = new CreateClusterReply.Cluster.Tag();
+        tag.setKey(key);
+        tag.setValue(results.cluster.tags[key]);
+        tagsList.push(tag);
+      }
+      cluster.setTagsList(tagsList);
       //cluster.setLogging(results.logging);
       //cluster.setCertificateAuthority(results.certificateAuthority);
       reply.setCluster(cluster);

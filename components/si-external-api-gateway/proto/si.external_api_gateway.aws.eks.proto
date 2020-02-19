@@ -4,7 +4,7 @@ package si.external_api_gateway.aws.eks;
 
 import "si-external-api-gateway/proto/si.external_api_gateway.proto";
 
-service EKS { 
+service EKS {
   rpc CreateCluster(CreateClusterRequest) returns (CreateClusterReply);
 }
 
@@ -26,6 +26,11 @@ message CreateClusterRequest {
     bool endpoint_private_access = 4;
   }
   VpcConfigRequest resources_vpc_config = 7;
+  message TagRequest {
+    string key = 1;
+    string value = 2;
+  }
+  repeated TagRequest tags = 8;
 }
 
 message CreateClusterReply {
@@ -44,6 +49,11 @@ message CreateClusterReply {
       string data = 1;
     }
     CertificateAuthority certificate_authority = 4;
+    message Tag {
+      string key = 1;
+      string value = 2;
+    }
+    repeated Tag tags = 5;
   }
   Cluster cluster = 1;
   Error error = 2;
@@ -59,4 +69,3 @@ message Filter {
   string name = 1;
   repeated string values = 2;
 }
-

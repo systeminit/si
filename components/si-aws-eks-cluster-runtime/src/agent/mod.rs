@@ -550,6 +550,21 @@ impl AgentServer {
                 None
             };
 
+            let tags = vec![
+                eks::create_cluster_request::TagRequest {
+                    key: "si:id".to_string(),
+                    value: input_entity.id.to_string(),
+                },
+                eks::create_cluster_request::TagRequest {
+                    key: "si:name".to_string(),
+                    value: input_entity.name.to_string(),
+                },
+                eks::create_cluster_request::TagRequest {
+                    key: "si:displayName".to_string(),
+                    value: input_entity.display_name.to_string(),
+                },
+            ];
+
             let result = eks
                 .create_cluster(eks::CreateClusterRequest {
                     context: Some(eks::Context {
@@ -583,6 +598,7 @@ impl AgentServer {
                         endpoint_public_access: true,
                         endpoint_private_access: false,
                     }),
+                    tags,
                 })
                 .await?
                 .into_inner();
