@@ -32,9 +32,9 @@ serde_json = "1.0"
 couchbase = { path = "../../vendor/couchbase-rs/couchbase" }
 
 # Tracing
-tracing = "0.1"
-tracing-futures = { version = "0.2", features = ["tokio", "std-future"] }
-tracing-subscriber = "0.2.0-alpha.2"
+tracing = "0.1.12"
+tracing-futures = { version = "0.2.2", features = ["tokio", "std-future"] }
+tracing-subscriber = "0.2.1"
 thiserror = "1.0"
 config = { version = "0.9.3", features = [ "toml" ] }
 sodiumoxide = "0.2"

@@ -29,7 +29,7 @@ const routes = [
     component: SignUp,
   },
   {
-    path: "/o/:organizationId/w/:workspaceId/se/:entityId",
+    path: "/o/:organizationId/w/:workspaceId/se/:entityType/:entityId",
     name: "workspaceShowEntity",
     component: WorkspaceShowEntity,
     props: true,

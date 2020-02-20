@@ -1,10 +1,3 @@
-import {
-  EKSClient,
-  CreateClusterCommand,
-  CreateClusterInput,
-  CreateClusterOutput,
-} from "@aws-sdk/client-eks";
-
 import AWS from "aws-sdk";
 
 import { logger } from "@/logger";
@@ -93,55 +86,6 @@ class AwsEks {
         tagsList.push(tag);
       }
       cluster.setTagsList(tagsList);
-      //cluster.setLogging(results.logging);
-      //cluster.setCertificateAuthority(results.certificateAuthority);
-      reply.setCluster(cluster);
-    } catch (err) {
-      const error = new PError();
-      error.setCode(err.code);
-      error.setMessage(err.message);
-      reply.setError(error);
-    }
-    callback(null, reply);
-  }
-
-  async createClusterv3(
-    call: ServerUnaryCall<CreateClusterRequest>,
-    callback: sendUnaryData<CreateClusterReply>,
-  ): Promise<void> {
-    const client = new EKSClient({ region: "us-east-2" });
-    const resourcesVpcConfig = call.request.getResourcesVpcConfig();
-
-    const commandInputs: CreateClusterInput = {
-      name: call.request.getName(),
-      version: call.request.getVersion(),
-      roleArn: call.request.getRoleArn(),
-      logging: call.request.getLogging(),
-      clientRequestToken: call.request.getClientRequestToken(),
-      resourcesVpcConfig: {
-        subnetIds: resourcesVpcConfig.getSubnetIdsList(),
-        securityGroupIds: resourcesVpcConfig.getSecurityGroupIdsList(),
-        endpointPublicAccess: resourcesVpcConfig.getEndpointPublicAccess(),
-        endpointPrivateAccess: resourcesVpcConfig.getEndpointPrivateAccess(),
-      },
-    };
-    const command = new CreateClusterCommand(commandInputs);
-    const reply = new CreateClusterReply();
-    try {
-      logger.log("warn", "more... fuck");
-      const results = await client.send(command);
-      logger.log("warn", "less... fuck");
-      const cluster = reply.getCluster();
-      cluster.setCreatedAt(results.cluster.createdAt.toUTCString());
-      const resourcesVpcConfig = cluster.getResourcesVpcConfig();
-      resourcesVpcConfig.setSubnetIdsList(
-        results.cluster.resourcesVpcConfig.subnetIds,
-      );
-      resourcesVpcConfig.setSecurityGroupIdsList(
-        results.cluster.resourcesVpcConfig.securityGroupIds,
-      );
-      cluster.setResourcesVpcConfig(resourcesVpcConfig);
-      logger.log("warn", "FUCK");
       //cluster.setLogging(results.logging);
       //cluster.setCertificateAuthority(results.certificateAuthority);
       reply.setCluster(cluster);

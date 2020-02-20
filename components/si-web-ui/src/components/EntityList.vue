@@ -4,9 +4,18 @@
       <v-col cols="12">
         <v-card cols="12">
           <v-card-title>
-            {{ entityName }}
+            {{ siComponent.name }}
             <v-spacer></v-spacer>
-            <v-btn>
+            <v-btn
+              :to="{
+                name: 'workspaceCreateEntity',
+                params: {
+                  organizationId: organizationId,
+                  workspaceId: workspaceId,
+                  entityType: siComponent.typeName,
+                },
+              }"
+            >
               <v-icon>mdi-plus</v-icon>
             </v-btn>
           </v-card-title>
@@ -20,9 +29,8 @@
               v-on:update:page="showMore"
               hide-default-footer
             >
-              <template v-slot:item.action="{ item }">
-                <v-btn
-                  icon
+              <template v-slot:item.name="{ item }">
+                <router-link
                   :to="{
                     name: 'workspaceShowEntity',
                     params: {
@@ -30,14 +38,10 @@
                       workspaceId: item.workspaceId,
                       entityId: item.id,
                       entityType: entityType,
-                      entityName: entityName,
                     },
                   }"
+                  >{{ item.name }}</router-link
                 >
-                  <v-icon>
-                    mdi-eye
-                  </v-icon>
-                </v-btn>
               </template>
             </v-data-table>
           </v-card-text>
@@ -59,16 +63,9 @@
 import Vue from "vue";
 
 import { auth } from "@/auth";
-import sshKeyListEntities from "@/graphql/queries/sshKeyListEntities.gql";
-import awsEksClusterRuntimeListEntities from "@/graphql/queries/awsEksClusterRuntimeListEntities.gql";
-import {
-  Query,
-  SshKeyListEntitiesReply,
-  SshKeyListEntitiesRequest,
-  AwsEksClusterRuntimeListEntitiesReply,
-  AwsEksClusterRuntimeListEntitiesRequest,
-  DataOrderByDirection,
-} from "@/graphql-types";
+import { siComponentRegistry } from "@/registry";
+import { SiComponent } from "@/registry/siComponent";
+import { Query, DataOrderByDirection } from "@/graphql-types";
 
 interface EntityListData {
   options: {
@@ -77,10 +74,9 @@ interface EntityListData {
     sortDesc: boolean[];
     page: number;
   };
+  siComponent: SiComponent;
   headers: { text: string; value: string }[];
-  sshKeyListEntities: SshKeyListEntitiesReply;
-  awsEksClusterRuntimeListEntities: AwsEksClusterRuntimeListEntitiesReply;
-  listEntities: SshKeyListEntitiesReply | AwsEksClusterRuntimeListEntitiesReply;
+  listEntities: {};
   loading: boolean;
   nextPageToken: string;
   showMoreDisabled: boolean;
@@ -89,30 +85,13 @@ interface EntityListData {
 export default Vue.extend({
   name: "EntityList",
   props: {
-    entityName: String,
     entityType: String,
     organizationId: String,
     workspaceId: String,
   },
   data(): EntityListData {
     let headers;
-    if (this.entityType == "sshKey") {
-      headers = [
-        { text: "Display Name", value: "displayName" },
-        { text: "Key Type", value: "keyType" },
-        { text: "Key Format", value: "keyFormat" },
-        { text: "Bits", value: "bits" },
-        { text: "State", value: "state" },
-        { text: "Actions", value: "action" },
-      ];
-    } else {
-      headers = [
-        { text: "Display Name", value: "displayName" },
-        { text: "Kubernetes Version", value: "kubernetesVersion" },
-        { text: "State", value: "state" },
-        { text: "Actions", value: "action" },
-      ];
-    }
+    let siComponent = siComponentRegistry.lookup(this.entityType);
     return {
       options: {
         itemsPerPage: 10,
@@ -120,17 +99,8 @@ export default Vue.extend({
         sortDesc: [false],
         page: 1,
       },
-      headers,
-      sshKeyListEntities: {
-        items: [],
-        totalCount: 0,
-        nextPageToken: "",
-      },
-      awsEksClusterRuntimeListEntities: {
-        items: [],
-        totalCount: 0,
-        nextPageToken: "",
-      },
+      siComponent,
+      headers: siComponent.listHeaders,
       listEntities: {
         items: [],
         totalCount: 0,
@@ -153,24 +123,12 @@ export default Vue.extend({
         // Transform the previous result with new data
         updateQuery: (previousResult, { fetchMoreResult }) => {
           this.loading = false;
-          let newItems;
-          let nextPageToken;
-          let nextTotalCount;
-          let previousResultList;
-          if (this.entityType == "sshKey") {
-            newItems = fetchMoreResult.sshKeyListEntities.items;
-            nextPageToken = fetchMoreResult.sshKeyListEntities.nextPageToken;
-            nextTotalCount = fetchMoreResult.sshKeyListEntities.totalCount;
-            previousResultList = previousResult.sshKeyListEntities;
-          } else if (this.entityType == "awsEksClusterRuntime") {
-            newItems = fetchMoreResult.awsEksClusterRuntimeListEntities.items;
-            nextPageToken =
-              fetchMoreResult.awsEksClusterRuntimeListEntities.nextPageToken;
-            nextTotalCount =
-              fetchMoreResult.awsEksClusterRuntimeListEntities.totalCount;
-            previousResultList =
-              previousResult.awsEksClusterRuntimeListEntities;
-          }
+          let siComponent = siComponentRegistry.lookup(this.entityType);
+          let resultString = siComponent.listEntitiesResultString();
+          let newItems = fetchMoreResult[resultString].items;
+          let nextPageToken = fetchMoreResult[resultString].nextPageToken;
+          let nextTotalCount = fetchMoreResult[resultString].totalCount;
+          let previousResultList = previousResult[resultString];
 
           this.nextPageToken = nextPageToken;
 
@@ -180,10 +138,8 @@ export default Vue.extend({
             this.showMoreDisabled = false;
           }
 
-          let key = `${this.entityType}ListEntities`;
-
           return {
-            [key]: {
+            [resultString]: {
               __typename: previousResultList.__typename,
               // Merging the tag list
               items: [...previousResultList.items, ...newItems],
@@ -195,29 +151,17 @@ export default Vue.extend({
       });
     },
   },
-  created: function(): void {
-    let queryString;
-    let resultString: string;
-    if (this.entityType == "awsEksClusterRuntime") {
-      queryString = awsEksClusterRuntimeListEntities;
-      resultString = "awsEksClusterRuntimeListEntities";
-    } else if (this.entityType == "sshKey") {
-      queryString = sshKeyListEntities;
-      resultString = "sshKeyListEntities";
-    } else {
-      // Um.. what?
-      queryString = sshKeyListEntities;
-      resultString = "sshKeyListEntities";
-    }
-    let thisType = this;
-    this.$apollo.addSmartQuery("listEntities", {
-      query: queryString,
-      update(
-        this: typeof thisType,
-        data: Query,
-      ): SshKeyListEntitiesReply | AwsEksClusterRuntimeListEntitiesReply {
+  apollo: {
+    listEntities: {
+      query(): any {
+        let siComponent = siComponentRegistry.lookup(this.entityType);
+        return siComponent.listEntities;
+      },
+      update(data: Query): any {
         this.loading = false;
         let listEntities;
+        let siComponent = siComponentRegistry.lookup(this.entityType);
+        let resultString = siComponent.listEntitiesResultString();
 
         // @ts-ignore - we know, you can't index it. but you can.
         if (data[resultString]) {
@@ -235,9 +179,7 @@ export default Vue.extend({
         }
         return listEntities;
       },
-      variables(
-        this: typeof thisType,
-      ): SshKeyListEntitiesRequest | AwsEksClusterRuntimeListEntitiesRequest {
+      variables(): any {
         let orderByDirection: DataOrderByDirection;
         if (this.options["sortDesc"][0]) {
           orderByDirection = DataOrderByDirection.Desc;
@@ -250,7 +192,7 @@ export default Vue.extend({
           orderByDirection,
         };
       },
-    });
+    },
   },
 });
 </script>

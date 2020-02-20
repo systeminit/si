@@ -1,0 +1,14 @@
+query awsEksClusterRuntimePickComponent($input: AwsEksClusterRuntimePickComponentRequest) {
+  awsEksClusterRuntimePickComponent(input:$input) {
+    component {
+      id
+      displayName
+      kubernetesVersion
+    }
+    implicitConstraints {
+      field
+      value
+    }
+  }
+}
+

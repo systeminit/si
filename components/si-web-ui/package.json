@@ -18,7 +18,7 @@
     "jsonwebtoken": "^8.5.1",
     "project-name-generator": "^2.1.7",
     "vue": "^2.6.10",
-    "vue-apollo": "^3.0.0-beta.11",
+    "vue-apollo": "^3.0.3",
     "vue-codemirror": "^4.0.6",
     "vue-gtag": "^1.1.1",
     "vue-router": "^3.1.3",

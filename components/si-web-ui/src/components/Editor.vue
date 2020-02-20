@@ -6,7 +6,7 @@
           <v-row no-gutters class="flex-grow-0">
             <v-col cols="12">
               <v-card :loading="loading">
-                <v-card-title>Create {{ entityName }}</v-card-title>
+                <v-card-title>Create {{ siComponent.name }}</v-card-title>
                 <v-card-text>
                   <codemirror
                     :value="code"
@@ -43,25 +43,13 @@
                     <v-card-text class="d-flex float">
                       <v-card class="ma-2">
                         <v-card-title>Properties</v-card-title>
-                        <v-card-text v-if="entityType == 'sshKey'">
+                        <v-card-text>
                           <ul>
-                            <li>bits: {{ checkComponent.component.bits }}</li>
-                            <li>
-                              keyFormat:
-                              {{ checkComponent.component.keyFormat }}
-                            </li>
-                            <li>
-                              keyType: {{ checkComponent.component.keyType }}
-                            </li>
-                          </ul>
-                        </v-card-text>
-                        <v-card-text
-                          v-if="entityType == 'awsEksClusterRuntime'"
-                        >
-                          <ul>
-                            <li>
-                              kubernetesVersion:
-                              {{ checkComponent.component.kubernetesVersion }}
+                            <li
+                              v-for="cprop in siComponent.componentProperties"
+                              v-bind:key="cprop"
+                            >
+                              {{ cprop }}: {{ checkComponent.component[cprop] }}
                             </li>
                           </ul>
                         </v-card-text>
@@ -172,7 +160,6 @@
                   >
                     <EntityShow
                       :entityType="entityType"
-                      :entityName="entityName"
                       :entityId="streamEntityEvent.outputEntity.id"
                     />
                   </div>
@@ -190,19 +177,14 @@
         <v-col cols="4">
           <v-card class="ml-2" height="100%">
             <v-card-title>Hints</v-card-title>
-            <v-card-text v-if="entityType == 'sshKey'">
+            <v-card-text>
               <h3>Constraints</h3>
               <ul>
-                <li>constraints.keyType = "RSA" | "DSA" | "ED25519"</li>
-                <li>constraints.keyFormat = "RFC4716" | "PKCS8" | "PEM"</li>
-                <li>constraints.bits = Number</li>
-              </ul>
-            </v-card-text>
-            <v-card-text v-else>
-              <h3>Constraints</h3>
-              <ul>
-                <li>
-                  constraints.kubernetesVersion = "1.12" | "1.13" | "1.14"
+                <li
+                  v-for="hint in siComponent.hints"
+                  v-bind:key="hint.constraintName"
+                >
+                  constraints.{{ hint.constraintName }} = {{ hint.hintValue }}
                 </li>
               </ul>
             </v-card-text>
@@ -213,7 +195,7 @@
   </div>
 </template>
 
-<script lang="ts">
+<script lang="js">
 import Vue from "vue";
 import { codemirror } from "vue-codemirror";
 import "codemirror/lib/codemirror.css";
@@ -224,82 +206,32 @@ import "codemirror/keymap/sublime.js";
 import "codemirror/mode/toml/toml.js";
 import TOML from "@iarna/toml";
 import NameGenerator from "project-name-generator";
+import gql from "graphql-tag";
+import { DocumentNode } from "graphql";
 
 import { auth } from "@/auth";
-import workspaceList from "@/graphql/queries/workspaceList.gql";
-import sshKeyPickComponent from "@/graphql/queries/sshKeyPickComponent.gql";
-import awsEksClusterRuntimePickComponent from "@/graphql/queries/awsEksClusterRuntimePickComponent.gql";
-import sshKeyCreateEntity from "@/graphql/mutations/sshKeyCreateEntity.gql";
-import awsEksClusterRuntimeCreateEntity from "@/graphql/mutations/awsEksClusterRuntimeCreateEntity.gql";
-import sshKeyStreamEntityEvents from "@/graphql/subscription/sshKeyStreamEntityEvents.gql";
-import awsEksClusterRuntimeStreamEntityEvents from "@/graphql/subscription/awsEksClusterRuntimeStreamEntityEvents.gql";
-import {
-  AwsEksClusterRuntimePickComponentRequest,
-  AwsEksClusterRuntimePickComponentReply,
-  AwsEksClusterRuntimeCreateEntityReply,
-  AwsEksClusterRuntimeEntityEvent,
-  AwsEksClusterRuntimeCreateEntityRequest,
-  AwsEksClusterRuntimeImplicitConstraint,
-  AwsEksClusterRuntimeStreamEntityEventsRequest,
-  AwsEksClusterRuntimeStreamEntityEventsSubscription,
-  SshKeyKeyType,
-  SshKeyPickComponentRequest,
-  SshKeyPickComponentReply,
-  SshKeyCreateEntityReply,
-  SshKeyEntityEvent,
-  SshKeyCreateEntityRequest,
-  SshKeyStreamEntityEventsRequest,
-  SshKeyStreamEntityEventsSubscription,
-  SshKeyImplicitConstraint,
-} from "@/graphql-types";
+import { siComponentRegistry } from "@/registry";
 import EntityShow from "@/components/EntityShow.vue";
-
-interface DataField {
-  code: string;
-  tab: null | number;
-  agentOutputTab: null | number;
-  createEntityData:
-    | null
-    | SshKeyCreateEntityReply
-    | AwsEksClusterRuntimeCreateEntityReply;
-  checkComponent:
-    | null
-    | SshKeyPickComponentReply
-    | AwsEksClusterRuntimePickComponentReply;
-  streamEntityEvent: null | SshKeyEntityEvent | AwsEksClusterRuntimeEntityEvent;
-  cmOptions: {
-    tabSize: number;
-    theme: "gruvbox-dark";
-    lineNumbers: boolean;
-    keyMap: "vim" | "emacs" | "sublime";
-    mode: "text/x-toml";
-    readOnly: boolean;
-  };
-  loading: boolean;
-}
-
-interface InputData {
-  parsed: null | SshKeyCreateEntityRequest;
-  error: string;
-}
+import { SiComponent } from "../registry/siComponent";
 
 export default Vue.extend({
   name: "Editor",
   props: {
-    entityName: String,
     entityType: String,
   },
-  data(): DataField {
+  data() {
     const newEntityName = NameGenerator.generate({ words: 4, number: true });
+    const siComponent = siComponentRegistry.lookup(this.entityType);
     return {
       code: `name = "${newEntityName.dashed}"
 displayName = "${newEntityName.spaced}"
-description = "${this.entityName} ${newEntityName.spaced}"`,
+description = "${siComponent.name} ${newEntityName.spaced}"`,
       tab: null,
       agentOutputTab: null,
       createEntityData: null,
       checkComponent: null,
       streamEntityEvent: null,
+      siComponent,
       cmOptions: {
         tabSize: 4,
         theme: "gruvbox-dark",
@@ -311,21 +243,30 @@ description = "${this.entityName} ${newEntityName.spaced}"`,
       loading: false,
     };
   },
+  watch: {
+    $route: "resetComponentState",
+  },
   methods: {
-    resetComponentState(): void {
+    resetComponentState() {
       const newEntityName = NameGenerator.generate({ words: 4, number: true });
+      const siComponent = siComponentRegistry.lookup(this.entityType);
+      this.siComponent = siComponent;
+      this.loading = false;
       this.createEntityData = null;
       this.streamEntityEvent = null;
+      this.checkComponent = null;
       this.cmOptions["readOnly"] = false;
       this.tab = 0;
       this.code = `name = "${newEntityName.dashed}"
 displayName = "${newEntityName.spaced}"
-description = "${this.entityName} ${newEntityName.spaced}"`;
+description = "${siComponent.name} ${newEntityName.spaced}"`;
+      this.$apollo.queries.checkComponent.refresh();
+      this.$apollo.subscriptions.entityEvents.refresh();
     },
-    onCmCodeChange(newCode: string): void {
+    onCmCodeChange(newCode) {
       this.code = newCode;
     },
-    async createEntity(): Promise<void> {
+    async createEntity() {
       this.loading = true;
       this.tab = 1;
       this.cmOptions["readOnly"] = true;
@@ -338,23 +279,18 @@ description = "${this.entityName} ${newEntityName.spaced}"`;
       const workspace = auth.getCurrentWorkspace();
       inputData["workspaceId"] = workspace.id;
 
-      let createEntityMutation;
-      let dataKey;
-      if (this.entityType == "sshKey") {
-        createEntityMutation = sshKeyCreateEntity;
-      } else {
-        createEntityMutation = awsEksClusterRuntimeCreateEntity;
-      }
+      let siComponent = siComponentRegistry.lookup(this.entityType);
+
       let data = await this.$apollo.mutate({
-        mutation: createEntityMutation,
+        mutation: siComponent.createEntity,
         variables: inputData,
       });
-      this.createEntityData = data.data[`${this.entityType}CreateEntity`];
+      this.createEntityData = data.data[siComponent.createEntityResultString()];
       this.loading = false;
     },
   },
   computed: {
-    inputData(): InputData {
+    inputData() {
       try {
         let objectData = TOML.parse(this.code);
         return {
@@ -369,35 +305,38 @@ description = "${this.entityName} ${newEntityName.spaced}"`;
       }
     },
   },
-  created: function(): void {
-    let pickQueryString;
-    let pickResultString: string;
-    let streamQueryString;
-    let streamResultString: string;
-    if (this.entityType == "awsEksClusterRuntime") {
-      pickQueryString = awsEksClusterRuntimePickComponent;
-      pickResultString = "awsEksClusterRuntimePickComponent";
-      streamQueryString = awsEksClusterRuntimeStreamEntityEvents;
-      streamResultString = "awsEksClusterRuntimeStreamEntityEvents";
-    } else if (this.entityType == "sshKey") {
-      pickQueryString = sshKeyPickComponent;
-      pickResultString = "sshKeyPickComponent";
-      streamQueryString = sshKeyStreamEntityEvents;
-      streamResultString = "sshKeyStreamEntityEvents";
-    } else {
-      // Um.. what?
-      pickQueryString = sshKeyPickComponent;
-      pickResultString = "sshKeyPickComponent";
-      streamQueryString = sshKeyStreamEntityEvents;
-      streamResultString = "sshKeyStreamEntityEvents";
-    }
-    this.$apollo.addSmartQuery("checkComponent", {
-      query: pickQueryString,
-      update: data => {
-        data[pickResultString].implicitConstraints.sort(function(
-          a: SshKeyImplicitConstraint | AwsEksClusterRuntimeImplicitConstraint,
-          b: SshKeyImplicitConstraint | AwsEksClusterRuntimeImplicitConstraint,
-        ) {
+  apollo: {
+    $subscribe: {
+      entityEvents: {
+        query() {
+          let siComponent = siComponentRegistry.lookup(this.entityType);
+          return siComponent.streamEntityEvents;
+        },
+        variables() {
+          const workspace = auth.getCurrentWorkspace();
+          return {
+            workspaceId: workspace.id || "",
+          };
+        },
+        result({ data }) {
+          let siComponent = siComponentRegistry.lookup(this.entityType);
+          this.streamEntityEvent =
+            data[siComponent.streamEntityEventsResultString()];
+          if (this.streamEntityEvent && this.streamEntityEvent.finalized) {
+            this.tab = 2;
+          }
+        },
+      },
+    },
+    checkComponent: {
+      query() {
+        let siComponent = siComponentRegistry.lookup(this.entityType);
+        return siComponent.pickComponent;
+      },
+      update(data) {
+        let siComponent = siComponentRegistry.lookup(this.entityType);
+        const pickResultString = siComponent.pickComponentResultString();
+        data[pickResultString].implicitConstraints.sort(function(a, b,) {
           if (!a || !a["field"] || !b || !b["field"]) {
             return 0;
           }
@@ -411,104 +350,16 @@ description = "${this.entityName} ${newEntityName.spaced}"`;
         });
         return data[pickResultString];
       },
-      variables():
-        | SshKeyPickComponentRequest
-        | AwsEksClusterRuntimePickComponentRequest {
+      variables() {
         let inputData = this.inputData;
         if (inputData.parsed && inputData.parsed["constraints"]) {
-          const inputConstraints = inputData.parsed["constraints"];
-          if (this.entityType == "sshKey") {
-            return {
-              keyType: inputConstraints["keyType"],
-              keyFormat: inputConstraints["keyFormat"],
-              bits: inputConstraints["bits"],
-            };
-          } else {
-            return {
-              kubernetesVersion: inputConstraints["kubernetesVersion"],
-            };
-          }
+          return { input: inputData.parsed["constraints"] };
         } else {
           return {};
         }
       },
-    });
-    this.$apollo.addSmartSubscription("entityEvents", {
-      query: streamQueryString,
-      variables():
-        | SshKeyStreamEntityEventsRequest
-        | AwsEksClusterRuntimeStreamEntityEventsRequest {
-        const workspace = auth.getCurrentWorkspace();
-        return {
-          workspaceId: workspace.id || "",
-        };
-      },
-      result({
-        data,
-      }: {
-        data:
-          | SshKeyStreamEntityEventsSubscription
-          | AwsEksClusterRuntimeEntityEventSubscription;
-      }): void {
-        this.streamEntityEvent = data[streamResultString];
-        if (this.streamEntityEvent && this.streamEntityEvent.finalized) {
-          this.tab = 2;
-        }
-      },
-    });
+    },
   },
-  //apollo: {
-  //  $subscribe: {
-  //    entityEvents: {
-  //      query: streamEntityEvents,
-  //      variables(): StreamEntityEventsRequest {
-  //        const workspace = auth.getCurrentWorkspace();
-  //        return {
-  //          workspaceId: workspace.id || "",
-  //        };
-  //      },
-  //      result({ data }: { data: StreamEntityEventsSubscription }): void {
-  //        this.streamEntityEvent = data["streamEntityEvents"];
-  //        if (this.streamEntityEvent && this.streamEntityEvent.finalized) {
-  //          this.tab = 2;
-  //        }
-  //      },
-  //    },
-  //  },
-  //checkComponent: {
-  //  query: pickComponent,
-  //  update: data => {
-  //    data.sshKeyPickComponent.implicitConstraints.sort(function(
-  //      a: SshKeyImplicitConstraint,
-  //      b: SshKeyImplicitConstraint,
-  //    ) {
-  //      if (!a || !a["field"] || !b || !b["field"]) {
-  //        return 0;
-  //      }
-  //      if (a.field < b.field) {
-  //        return -1;
-  //      } else if (a.field > b.field) {
-  //        return 1;
-  //      } else {
-  //        return 0;
-  //      }
-  //    });
-  //    return data.sshKeyPickComponent;
-  //  },
-  //  variables(): SshKeyPickComponentRequest {
-  //    let inputData = this.inputData;
-  //    if (inputData.parsed && inputData.parsed["constraints"]) {
-  //      const inputConstraints = inputData.parsed["constraints"];
-  //      return {
-  //        keyType: inputConstraints["keyType"],
-  //        keyFormat: inputConstraints["keyFormat"],
-  //        bits: inputConstraints["bits"],
-  //      };
-  //    } else {
-  //      return {};
-  //    }
-  //  },
-  //},
   components: {
     codemirror,
     EntityShow,

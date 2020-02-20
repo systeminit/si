@@ -125,7 +125,7 @@ async fn pick_component(
     if req.kubernetes_version == "" {
         kubernetes_version = "1.14".to_string();
         implicit_constraints.push(ImplicitConstraint {
-            field: "kubernetes_version".to_string(),
+            field: "kubernetesVersion".to_string(),
             value: "1.14".to_string(),
         });
     } else {

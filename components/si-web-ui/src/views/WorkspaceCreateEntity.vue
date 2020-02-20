@@ -1,6 +1,6 @@
 <template>
   <StandardLayout>
-    <Editor :entityName="entityName" :entityType="entityType"></Editor>
+    <Editor :entityType="entityType"></Editor>
   </StandardLayout>
 </template>
 
@@ -14,7 +14,6 @@ export default {
     organizationId: String,
     workspaceId: String,
     entityType: String,
-    entityName: String,
   },
   components: {
     StandardLayout,
