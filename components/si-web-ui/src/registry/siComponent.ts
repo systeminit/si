@@ -3,6 +3,7 @@ import { DocumentNode } from "graphql";
 export class SiComponent {
   typeName: string;
   name: string;
+  icon: string;
 
   // Properties
   componentProperties: string[];
@@ -51,6 +52,7 @@ export class SiComponent {
       showProperties,
       showActions,
       listHeaders,
+      icon,
     }: {
       getEntity: DocumentNode;
       listEntities: DocumentNode;
@@ -63,6 +65,7 @@ export class SiComponent {
       showProperties: SiComponent["showProperties"];
       showActions: SiComponent["showActions"];
       listHeaders: SiComponent["listHeaders"];
+      icon: string;
     },
   ) {
     this.typeName = typeName;
@@ -77,6 +80,7 @@ export class SiComponent {
     this.showProperties = showProperties;
     this.showActions = showActions;
     this.listHeaders = listHeaders;
+    this.icon = icon;
   }
 
   listEntitiesResultString(): string {

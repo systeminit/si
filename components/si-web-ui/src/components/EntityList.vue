@@ -3,6 +3,10 @@
     <v-row no-gutters class="justify-start">
       <v-col cols="12">
         <v-card cols="12">
+          <v-alert type="error" dismissible v-if="errorMessage">
+            {{ errorMessage }}
+          </v-alert>
+
           <v-card-title>
             {{ siComponent.name }}
             <v-spacer></v-spacer>
@@ -46,12 +50,27 @@
             </v-data-table>
           </v-card-text>
           <v-card-actions>
-            <v-spacer> </v-spacer>
-            Total Count: {{ listEntities.totalCount }} Items Per Page:
-            {{ options.itemsPerPage }}
-            <v-btn @click="showMore" :disabled="showMoreDisabled">
-              Load More
-            </v-btn>
+            <v-spacer></v-spacer>
+            <v-card class="d-flex justify-center align-content-center" flat>
+              <v-card flat class="align-self-center pa-2">
+                {{ listEntities.items.length }} /
+                {{ listEntities.totalCount }} items
+              </v-card>
+              <v-card flat class="align-self-center pa-2 flex-grow-0" cols="1">
+                <v-select
+                  small-chips
+                  v-model="options.itemsPerPage"
+                  :items="itemsPerPageOptions"
+                  label="Items Per Page"
+                >
+                </v-select>
+              </v-card>
+              <v-card flat class="align-self-center pa-2">
+                <v-btn @click="showMore" :disabled="showMoreDisabled">
+                  Load More
+                </v-btn>
+              </v-card>
+            </v-card>
           </v-card-actions>
         </v-card>
       </v-col>
@@ -59,28 +78,11 @@
   </v-container>
 </template>
 
-<script lang="ts">
+<script lang="js">
 import Vue from "vue";
 
 import { auth } from "@/auth";
 import { siComponentRegistry } from "@/registry";
-import { SiComponent } from "@/registry/siComponent";
-import { Query, DataOrderByDirection } from "@/graphql-types";
-
-interface EntityListData {
-  options: {
-    itemsPerPage: number;
-    sortBy: string[];
-    sortDesc: boolean[];
-    page: number;
-  };
-  siComponent: SiComponent;
-  headers: { text: string; value: string }[];
-  listEntities: {};
-  loading: boolean;
-  nextPageToken: string;
-  showMoreDisabled: boolean;
-}
 
 export default Vue.extend({
   name: "EntityList",
@@ -89,10 +91,12 @@ export default Vue.extend({
     organizationId: String,
     workspaceId: String,
   },
-  data(): EntityListData {
+  data() {
     let headers;
     let siComponent = siComponentRegistry.lookup(this.entityType);
     return {
+      errorMessage: null,
+      itemsPerPageOptions: [10, 20, 30, 40, 50, 100],
       options: {
         itemsPerPage: 10,
         sortBy: ["displayName"],
@@ -112,7 +116,7 @@ export default Vue.extend({
     };
   },
   methods: {
-    showMore(): void {
+    showMore() {
       this.loading = true;
       // Fetch more data and transform the original result
       this.$apollo.queries.listEntities.fetchMore({
@@ -153,34 +157,12 @@ export default Vue.extend({
   },
   apollo: {
     listEntities: {
-      query(): any {
+      query() {
         let siComponent = siComponentRegistry.lookup(this.entityType);
         return siComponent.listEntities;
       },
-      update(data: Query): any {
-        this.loading = false;
-        let listEntities;
-        let siComponent = siComponentRegistry.lookup(this.entityType);
-        let resultString = siComponent.listEntitiesResultString();
-
-        // @ts-ignore - we know, you can't index it. but you can.
-        if (data[resultString]) {
-          // @ts-ignore same same
-          listEntities = data[resultString];
-        } else {
-          // We got bullshit data, so.. just use the old data? <shrub>
-          listEntities = this.listEntities;
-        }
-        this.nextPageToken = listEntities.nextPageToken || "";
-        if (this.nextPageToken == "") {
-          this.showMoreDisabled = true;
-        } else {
-          this.showMoreDisabled = false;
-        }
-        return listEntities;
-      },
-      variables(): any {
-        let orderByDirection: DataOrderByDirection;
+      variables() {
+        let orderByDirection;
         if (this.options["sortDesc"][0]) {
           orderByDirection = DataOrderByDirection.Desc;
         } else {
@@ -191,6 +173,28 @@ export default Vue.extend({
           orderBy: this.options["sortBy"][0],
           orderByDirection,
         };
+      },
+      update(data) {
+        this.loading = false;
+        let listEntities;
+        let siComponent = siComponentRegistry.lookup(this.entityType);
+        let resultString = siComponent.listEntitiesResultString();
+
+        if (data[resultString]) {
+          listEntities = data[resultString];
+        } else {
+          listEntities = this.listEntities;
+        }
+        this.nextPageToken = listEntities.nextPageToken || "";
+        if (this.nextPageToken == "") {
+          this.showMoreDisabled = true;
+        } else {
+          this.showMoreDisabled = false;
+        }
+        return listEntities;
+      },
+      error(error, vm, key, type, options) {
+        this.errorMessage = error.message;
       },
     },
   },

@@ -1,6 +1,6 @@
 <template>
   <div>
-    <v-navigation-drawer app clipped fixed expand-on-hover floating>
+    <v-navigation-drawer app clipped fixed expand-on-hover floating permanent>
       <v-list dense>
         <v-list-group prepend-icon="mdi-view-dashboard" class="white--text">
           <template v-slot:activator>
@@ -26,69 +26,36 @@
             </v-list-item>
           </v-list-item>
         </v-list-group>
-        <v-list-group prepend-icon="mdi-dns-outline" class="white--text">
+        <v-list-group prepend-icon="mdi-playlist-plus" class="white--text">
           <template v-slot:activator>
-            <v-list-item-title>Entities</v-list-item-title>
+            <v-list-item-title>Create Entities</v-list-item-title>
           </template>
+
           <v-list-item
+            v-for="siComponent in siComponentRegistry.list()"
+            v-bind:key="siComponent.typeName"
             link
             :to="{
               name: 'workspaceCreateEntity',
               params: {
                 organizationId: organization.id,
                 workspaceId: workspace.id,
-                entityType: 'sshKey',
-                entityName: 'SSH Key',
+                entityType: siComponent.typeName,
+                entityName: siComponent.name,
               },
             }"
           >
             <v-list-item-action>
-              <v-icon>mdi-key</v-icon>
+              <v-icon>
+                {{ siComponent.icon }}
+              </v-icon>
             </v-list-item-action>
             <v-list-item-content>
-              SSH Key
-            </v-list-item-content>
-          </v-list-item>
-          <v-list-item
-            link
-            :to="{
-              name: 'workspaceCreateEntity',
-              params: {
-                organizationId: organization.id,
-                workspaceId: workspace.id,
-                entityType: 'awsEksClusterRuntime',
-                entityName: 'AWS EKS Cluster Runtime',
-              },
-            }"
-          >
-            <v-list-item-action>
-              <v-icon>mdi-ship-wheel</v-icon>
-            </v-list-item-action>
-            <v-list-item-content>
-              AWS EKS Cluster Runtime
+              {{ siComponent.name }}
             </v-list-item-content>
           </v-list-item>
         </v-list-group>
 
-        <!--
-        <v-list-item
-          link
-          :to="{
-            name: 'workspace',
-            params: {
-              organizationId: organization.id,
-              workspaceId: workspace.id,
-            },
-          }"
-        >
-          <v-list-item-action>
-            <v-icon>mdi-view-dashboard</v-icon>
-          </v-list-item-action>
-          <v-list-item-content>
-            <v-list-item-title>Default Workspace</v-list-item-title>
-          </v-list-item-content>
-        </v-list-item>
--->
         <v-list-item link :to="{ name: 'about' }">
           <v-list-item-action>
             <v-icon>mdi-settings</v-icon>
@@ -177,6 +144,7 @@
 import Vue from "vue";
 
 import { auth } from "@/auth";
+import { siComponentRegistry } from "@/registry";
 
 export default Vue.extend({
   name: "StandardLayout",
@@ -192,6 +160,7 @@ export default Vue.extend({
       organization.workspaces.items &&
       organization.workspaces.items[0]) || { name: "busted" };
     return {
+      siComponentRegistry,
       drawer: false,
       message: false,
       hints: false,

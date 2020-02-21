@@ -34,4 +34,5 @@ export const awsEksClusterRuntime = new SiComponent("awsEksClusterRuntime", {
   pickComponent,
   streamEntityEvents,
   createEntity,
+  icon: "mdi-ship-wheel",
 });

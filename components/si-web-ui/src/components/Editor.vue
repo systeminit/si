@@ -220,7 +220,7 @@ export default Vue.extend({
     entityType: String,
   },
   data() {
-    const newEntityName = NameGenerator.generate({ words: 4, number: true });
+    const newEntityName = NameGenerator.generate({ words: 2, number: true });
     const siComponent = siComponentRegistry.lookup(this.entityType);
     return {
       code: `name = "${newEntityName.dashed}"
@@ -248,7 +248,7 @@ description = "${siComponent.name} ${newEntityName.spaced}"`,
   },
   methods: {
     resetComponentState() {
-      const newEntityName = NameGenerator.generate({ words: 4, number: true });
+      const newEntityName = NameGenerator.generate({ words: 2, number: true });
       const siComponent = siComponentRegistry.lookup(this.entityType);
       this.siComponent = siComponent;
       this.loading = false;

@@ -42,4 +42,5 @@ export const sshKey = new SiComponent("sshKey", {
   pickComponent,
   streamEntityEvents,
   createEntity,
+  icon: "mdi-key",
 });
