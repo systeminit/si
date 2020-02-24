@@ -12,6 +12,15 @@ service SshKey {
   rpc ListEntities(ListEntitiesRequest) returns (ListEntitiesReply);
   rpc GetEntity(GetEntityRequest) returns (GetEntityReply);
   rpc ListEntityEvents(ListEntityEventsRequest) returns (ListEntityEventsReply);
+  rpc SyncEntity(SyncEntityRequest) returns (SyncEntityReply);
+}
+
+message SyncEntityRequest {
+  string entity_id = 1;
+}
+
+message SyncEntityReply {
+  EntityEvent event = 2;
 }
 
 message ListEntityEventsRequest {

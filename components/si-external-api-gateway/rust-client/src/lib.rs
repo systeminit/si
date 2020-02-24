@@ -1,3 +1,5 @@
+use tonic;
+
 pub mod protobuf {
     tonic::include_proto!("si.external_api_gateway");
     pub mod aws {
@@ -13,7 +15,8 @@ pub mod protobuf {
 pub mod aws {
     pub mod ec2 {
         pub use crate::protobuf::aws::ec2::{
-            ec2_client::Ec2Client, CreateKeyPairReply, CreateKeyPairRequest, Error, Filter,
+            ec2_client::Ec2Client, CreateKeyPairReply, CreateKeyPairRequest, DescribeKeyPairsReply,
+            DescribeKeyPairsRequest, Error, Filter,
         };
         pub use crate::protobuf::Context;
     }

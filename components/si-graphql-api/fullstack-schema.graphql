@@ -1090,6 +1090,7 @@ type Mutation {
   createAccount(input: CreateAccountRequest): CreateAccountReply
   createIntegrationInstance(input: CreateIntegrationInstanceRequest): CreateIntegrationInstanceReply
   sshKeyCreateEntity(input: SshKeyCreateEntityRequest): SshKeyCreateEntityReply
+  sshKeySyncEntity(input: SshKeySyncEntityRequest): SshKeySyncEntityReply
 }
 
 type Organization {
@@ -1616,6 +1617,16 @@ enum SshKeyState {
 
 input SshKeyStreamEntityEventsRequest {
   workspaceId: String!
+}
+
+type SshKeySyncEntityReply {
+  """event"""
+  event: SshKeyEntityEvent
+}
+
+input SshKeySyncEntityRequest {
+  """entityId"""
+  entityId: String
 }
 
 type Subscription {

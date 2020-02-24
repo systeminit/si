@@ -27,6 +27,8 @@ query sshKeyListEntityEvents(
       updatedTime
       finalized
       success
+      outputLines
+      errorLines
     }
     totalCount
     nextPageToken

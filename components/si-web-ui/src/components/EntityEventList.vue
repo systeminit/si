@@ -18,8 +18,45 @@
               :options.sync="options"
               :loading="loading"
               v-on:update:page="showMore"
+              show-expand
               hide-default-footer
             >
+              <template v-slot:expanded-item="data">
+                <td :colspan="data.headers.length">
+                  <v-list>
+                    <v-list-item>
+                      <v-list-item-content>
+                        <v-list-item-title>
+                          Output
+                        </v-list-item-title>
+                        <v-textarea
+                          on-resize
+                          outlined
+                          full-width
+                          flat
+                          readonly
+                          :value="data.item.outputLines.join('\n')"
+                        />
+                      </v-list-item-content>
+                    </v-list-item>
+                    <v-list-item>
+                      <v-list-item-content>
+                        <v-list-item-title>
+                          Error
+                        </v-list-item-title>
+                        <v-textarea
+                          on-resize
+                          outlined
+                          full-width
+                          flat
+                          readonly
+                          :value="data.item.errorLines.join('\n')"
+                        />
+                      </v-list-item-content>
+                    </v-list-item>
+                  </v-list>
+                </td>
+              </template>
             </v-data-table>
           </v-card-text>
           <v-card-actions>
@@ -73,7 +110,7 @@ export default Vue.extend({
       options: {
         itemsPerPage: 10,
         sortBy: ["updatedTime"],
-        sortDesc: [false],
+        sortDesc: [true],
         page: 1,
       },
       siComponent,

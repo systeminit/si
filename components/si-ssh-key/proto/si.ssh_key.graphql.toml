@@ -3,10 +3,12 @@ protoPackageName = "si.ssh_key"
 service.SshKey.GetComponent.query = true
 service.SshKey.ListComponents.query = true
 service.SshKey.PickComponent.query = true
-service.SshKey.CreateEntity.mutation = true
 service.SshKey.ListEntities.query = true
 service.SshKey.GetEntity.query = true
 service.SshKey.ListEntityEvents.query = true
+
+service.SshKey.CreateEntity.mutation = true
+service.SshKey.SyncEntity.mutation = true
 
 [message.Component.integrationId.has_one]
 to = "integration"

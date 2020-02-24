@@ -267,6 +267,62 @@ async fn pick_component(
 
 #[tonic::async_trait]
 impl ssh_key_server::SshKey for Service {
+    async fn sync_entity(
+        &self,
+        request: Request<protobuf::SyncEntityRequest>,
+    ) -> TonicResult<protobuf::SyncEntityReply> {
+        async {
+            let metadata = request.metadata();
+            let user_id = metadata
+                .get("userId")
+                .ok_or(SshKeyError::InvalidAuthentication)?
+                .to_str()
+                .map_err(SshKeyError::GrpcHeaderToString)?;
+            let billing_account_id = metadata
+                .get("billingAccountId")
+                .ok_or(SshKeyError::InvalidAuthentication)?
+                .to_str()
+                .map_err(SshKeyError::GrpcHeaderToString)?;
+            let req = request.get_ref();
+
+            let billing_account: BillingAccount = self
+                .db
+                .get(billing_account_id)
+                .await
+                .map_err(|_| SshKeyError::BillingAccountMissing)?;
+
+            authorize(
+                &self.db,
+                user_id,
+                billing_account_id,
+                "sync_entity",
+                &billing_account,
+            )
+            .await?;
+
+            let entity = self
+                .db
+                .get(&req.entity_id)
+                .await
+                .map_err(|_| SshKeyError::EntityMissing)?;
+
+            let mut entity_event = EntityEvent::new(user_id, "sync", &entity);
+            self.db
+                .validate_and_insert_as_new(&mut entity_event)
+                .await
+                .map_err(SshKeyError::CreateEntityEvent)?;
+
+            self.agent.dispatch(&entity_event).await?;
+
+            Ok(Response::new(protobuf::SyncEntityReply {
+                event: Some(entity_event),
+                ..Default::default()
+            }))
+        }
+        .instrument(debug_span!("sync_entity", ?request))
+        .await
+    }
+
     async fn list_entity_events(
         &self,
         request: Request<protobuf::ListEntityEventsRequest>,

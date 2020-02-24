@@ -9,7 +9,8 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 use tokio::sync::{oneshot, Mutex};
 
-use tracing::{debug, error, warn};
+use tracing::{debug, debug_span, error, warn};
+use tracing_futures::Instrument;
 use uuid::Uuid;
 
 use si_data::Db;
@@ -221,31 +222,40 @@ impl AgentServer {
         (vec![inbound_channel], vec![2])
     }
 
-    #[tracing::instrument]
     pub async fn dispatch(&mut self, entity_event: EntityEvent) -> Result<()> {
-        let action_name = entity_event.action_name.clone();
-        warn!(?entity_event, "please show me the money");
-        let entity_event_locked = Arc::new(Mutex::new(entity_event));
-        let result = match action_name.as_ref() {
-            // This is a very dirty thing, and it should be removed once we
-            // understand what we really want from the shape of these servers.
-            "create" => match self.name.as_ref() {
-                "global" => self.create_global(entity_event_locked.clone()).await,
-                "aws" => self.create_aws(entity_event_locked.clone()).await,
-                _ => Ok(()),
-            },
-            _ => Err(SshKeyError::InvalidEntityEventInvalidActionName),
-        };
-        if let Err(e) = result {
-            {
-                let mut entity_event = entity_event_locked.lock().await;
-                entity_event.fail(e);
-            }
-            if let Err(send_err) = self.send(entity_event_locked).await {
-                error!(?send_err, "failed_to_send_message");
-            }
-        };
-        Ok(())
+        async {
+            let action_name = entity_event.action_name.clone();
+            warn!(?entity_event, "please show me the money");
+            let entity_event_locked = Arc::new(Mutex::new(entity_event));
+            let result = match action_name.as_ref() {
+                // This is a very dirty thing, and it should be removed once we
+                // understand what we really want from the shape of these servers.
+                "create" => match self.name.as_ref() {
+                    "global" => self.create_global(entity_event_locked.clone()).await,
+                    "aws" => self.create_aws(entity_event_locked.clone()).await,
+                    _ => Ok(()),
+                },
+                "sync" => match self.name.as_ref() {
+                    "global" => self.sync_global(entity_event_locked.clone()).await,
+                    "aws" => self.sync_aws(entity_event_locked.clone()).await,
+                    _ => Ok(()),
+                },
+                _ => Err(SshKeyError::InvalidEntityEventInvalidActionName),
+            };
+            warn!(?result, "dispatch result");
+            if let Err(e) = result {
+                {
+                    let mut entity_event = entity_event_locked.lock().await;
+                    entity_event.fail(e);
+                }
+                if let Err(send_err) = self.send(entity_event_locked).await {
+                    error!(?send_err, "failed_to_send_message");
+                }
+            };
+            Ok(())
+        }
+        .instrument(debug_span!("server_dispatch"))
+        .await
     }
 
     async fn generate_result_topic(&self, entity_event_locked: Arc<Mutex<EntityEvent>>) -> String {
@@ -286,37 +296,51 @@ impl AgentServer {
     }
 
     pub async fn send(&self, entity_event_locked: Arc<Mutex<EntityEvent>>) -> Result<()> {
-        let mut payload = Vec::new();
-        let finalized = {
-            let entity_event = entity_event_locked.lock().await;
-            entity_event.encode(&mut payload)?;
-            entity_event.finalized
-        };
-        if finalized {
-            let msg = mqtt::Message::new(
-                self.generate_result_topic(entity_event_locked.clone())
-                    .await,
-                payload.clone(),
-                0,
-            );
-            self.mqtt.publish(msg).compat().await?;
-            let msg = mqtt::Message::new(
-                self.generate_finalized_topic(entity_event_locked.clone())
-                    .await,
-                payload,
-                2,
-            );
-            self.mqtt.publish(msg).compat().await?;
-        } else {
-            let msg = mqtt::Message::new(
-                self.generate_result_topic(entity_event_locked.clone())
-                    .await,
-                payload,
-                0,
-            );
-            self.mqtt.publish(msg).compat().await?;
+        async {
+            let mut payload = Vec::new();
+            debug!("making payload");
+            let finalized = {
+                debug!("blocked myself");
+                let entity_event = entity_event_locked.lock().await;
+                debug!("locked myself");
+                entity_event.encode(&mut payload)?;
+                debug!("encoded myself");
+                entity_event.finalized
+            };
+            debug!(?finalized, "finalized myself");
+            if finalized {
+                debug!("is finalized");
+                debug!("sending result topic");
+                let msg = mqtt::Message::new(
+                    self.generate_result_topic(entity_event_locked.clone())
+                        .await,
+                    payload.clone(),
+                    0,
+                );
+                self.mqtt.publish(msg).compat().await?;
+                debug!("sending finalized topic");
+                let msg = mqtt::Message::new(
+                    self.generate_finalized_topic(entity_event_locked.clone())
+                        .await,
+                    payload,
+                    2,
+                );
+                self.mqtt.publish(msg).compat().await?;
+            } else {
+                debug!("not finalized");
+                debug!("sending result topic");
+                let msg = mqtt::Message::new(
+                    self.generate_result_topic(entity_event_locked.clone())
+                        .await,
+                    payload,
+                    0,
+                );
+                self.mqtt.publish(msg).compat().await?;
+            }
+            Ok(())
         }
-        Ok(())
+        .instrument(debug_span!("agent_server_send"))
+        .await
     }
 
     /// Spawns a `Command` with data for the standard input stream, indents the output stream contents,
@@ -526,7 +550,7 @@ impl AgentServer {
                         workspace_id: entity_event.workspace_id.to_string(),
                         ..Default::default()
                     }),
-                    key_name: key_name,
+                    key_name,
                     dry_run: false,
                 })
                 .await?
@@ -643,6 +667,76 @@ impl AgentServer {
         debug!("sent success");
 
         Ok(())
+    }
+
+    pub async fn sync_global(
+        &mut self,
+        entity_event_locked: Arc<Mutex<EntityEvent>>,
+    ) -> Result<()> {
+        async {
+            {
+                let mut entity_event = entity_event_locked.lock().await;
+                entity_event.output_entity = entity_event.input_entity.clone();
+                entity_event.log("Synchronized State");
+                entity_event.success();
+            }
+            debug!("sending success");
+            self.send(entity_event_locked.clone()).await?;
+            debug!("sent success");
+            Ok(())
+        }
+        .instrument(debug_span!(
+            "agent_server_sync_global",
+            ?entity_event_locked
+        ))
+        .await
+    }
+
+    pub async fn sync_aws(&mut self, entity_event_locked: Arc<Mutex<EntityEvent>>) -> Result<()> {
+        async {
+            let mut ec2 = ec2::Ec2Client::connect("http://localhost:4001").await?;
+            {
+                let mut entity_event = entity_event_locked.lock().await;
+
+                entity_event.log("Synchronizing Key Pair in EC2");
+                let result = ec2
+                    .describe_key_pairs(ec2::DescribeKeyPairsRequest {
+                        context: Some(ec2::Context {
+                            billing_account_id: entity_event.billing_account_id.to_string(),
+                            organization_id: entity_event.organization_id.to_string(),
+                            workspace_id: entity_event.workspace_id.to_string(),
+                            ..Default::default()
+                        }),
+                        key_names: vec![entity_event.entity_id.clone()],
+                    })
+                    .await?
+                    .into_inner();
+                if result.error.is_some() {
+                    let e = result.error.as_ref().unwrap();
+                    entity_event.error_log("Request failed\n");
+                    entity_event.error_log(format!("Code: {}\n", e.code));
+                    entity_event.error_log(format!("Message: {}\n", e.message));
+                    entity_event.error_log(format!("Request ID: {}\n", e.request_id));
+                    return Err(SshKeyError::ExternalRequest);
+                }
+                if result.key_pairs.len() > 0 {
+                    entity_event.log("Sync successful!\n");
+                    entity_event.log(format!(
+                        "Fingerprint: {}\n",
+                        result.key_pairs[0].key_fingerprint
+                    ));
+                    entity_event.output_entity = entity_event.input_entity.clone();
+                    entity_event.log("Synchronized State");
+                    entity_event.success();
+                }
+            }
+            debug!("sending success");
+            self.send(entity_event_locked.clone()).await?;
+            debug!("sent success");
+            Ok(())
+        }
+        .instrument(debug_span!("agent_server_sync_aws", ?entity_event_locked))
+        .await
     }
 
     #[tracing::instrument]
@@ -876,6 +970,7 @@ impl AgentClient {
         }
         match &entity_event.action_name[..] {
             "create" => self.send(entity_event).await,
+            "sync" => self.send(entity_event).await,
             _ => Err(SshKeyError::InvalidEntityEventInvalidActionName),
         }
     }
