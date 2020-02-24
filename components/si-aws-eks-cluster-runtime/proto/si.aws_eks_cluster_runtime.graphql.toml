@@ -6,6 +6,8 @@ service.AwsEksClusterRuntime.PickComponent.query = true
 service.AwsEksClusterRuntime.CreateEntity.mutation = true
 service.AwsEksClusterRuntime.ListEntities.query = true
 service.AwsEksClusterRuntime.GetEntity.query = true
+service.AwsEksClusterRuntime.SyncEntity.query = true
+service.AwsEksClusterRuntime.ListEntityEvents.query = true
 
 [message.Component.integrationId.has_one]
 to = "integration"
@@ -48,3 +50,23 @@ to = "billingAccount"
 grpcServiceName = "Account"
 method = "GetBillingAccount"
 type = "BillingAccount"
+
+[[message.Entity.id.has_many]]
+to = "entityEvents"
+grpcServiceName = "AwsEksClusterRuntime"
+method = "awsEksClusterRuntimeListEntityEvents"
+type = "AwsEksClusterRuntimeListEntityEventsReply"
+inputType = "AwsEksClusterRuntimeListEntityEventsRequest"
+
+[message.EntityEvent.entityId.has_one]
+to = "entity"
+grpcServiceName = "AwsEksClusterRuntime"
+method = "GetEntity"
+type = "AwsEksClusterRuntimeEntity"
+
+[message.EntityEvent.userId.has_one]
+to = "user"
+grpcServiceName = "Account"
+method = "GetUser"
+type = "User"
+

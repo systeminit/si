@@ -24,6 +24,15 @@ export const sshKey = new SiComponent("sshKey", {
     { text: "Bits", value: "bits" },
     { text: "State", value: "state" },
   ],
+  listEntityEventHeaders: [
+    { text: "Name", value: "actionName" },
+    { text: "For Entity", value: "entity.displayName" },
+    { text: "By User", value: "user.name" },
+    { text: "Created At", value: "createTime" },
+    { text: "Updated At", value: "updatedTime" },
+    { text: "Finished", value: "finalized" },
+    { text: "Success", value: "success" },
+  ],
   showProperties: [
     { displayName: "ID", property: "id", showAs: "text" },
     { displayName: "Key Type", property: "keyType", showAs: "text" },

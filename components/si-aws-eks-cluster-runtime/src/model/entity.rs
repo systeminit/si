@@ -4,10 +4,20 @@ use si_data::{error::DataError, Reference, Storable};
 use uuid::Uuid;
 
 use crate::error::AwsEksClusterRuntimeError;
-pub use crate::protobuf::entity::State;
+pub use crate::protobuf::create_entity_request::TagRequest;
+pub use crate::protobuf::entity::{State, Tag};
 pub use crate::protobuf::entity_event::NextState;
 use crate::protobuf::{Constraints, CreateEntityRequest, PickComponentReply, PickComponentRequest};
 pub use crate::protobuf::{Entity, EntityEvent};
+
+impl std::convert::From<&TagRequest> for Tag {
+    fn from(tagreq: &TagRequest) -> Tag {
+        Tag {
+            key: tagreq.key.clone(),
+            value: tagreq.value.clone(),
+        }
+    }
+}
 
 impl Storable for Entity {
     fn get_id(&self) -> &str {
@@ -116,6 +126,11 @@ impl Entity {
             None => None,
         };
 
+        let mut tags = vec![];
+        for tagreq in req.tags.iter() {
+            tags.push(Tag::from(tagreq));
+        }
+
         let mut e = Entity {
             name: req.name.clone(),
             display_name: req.display_name.clone(),
@@ -136,6 +151,7 @@ impl Entity {
                 workspace.organization_id,
                 workspace.id,
             ],
+            tags,
             ..Default::default()
         };
         if req.node_group_aws_instance_type == "" {

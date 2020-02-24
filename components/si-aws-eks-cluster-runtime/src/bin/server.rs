@@ -60,6 +60,9 @@ async fn run() -> Result<()> {
 #[tokio::main]
 async fn main() -> Result<()> {
     let subscriber = FmtSubscriber::builder()
+        .without_time()
+        .with_ansi(true)
+        .compact()
         .with_env_filter(EnvFilter::from_default_env())
         .finish();
 

@@ -85,6 +85,8 @@ export type AwsEksClusterRuntimeCreateEntityRequest = {
   nodeGroupMinimumSize?: Maybe<Scalars["Int"]>;
   /** nodeGroupSshKeyId */
   nodeGroupSshKeyId?: Maybe<Scalars["String"]>;
+  /** tags */
+  tags?: Maybe<Array<AwsEksClusterRuntimeTagRequest>>;
   /** workspaceId */
   workspaceId?: Maybe<Scalars["String"]>;
 };
@@ -143,6 +145,8 @@ export type AwsEksClusterRuntimeEntity = {
   organizationId?: Maybe<Scalars["String"]>;
   /** state */
   state?: Maybe<AwsEksClusterRuntimeState>;
+  /** tags */
+  tags?: Maybe<Array<AwsEksClusterRuntimeTag>>;
   /** tenantIds */
   tenantIds?: Maybe<Array<Scalars["String"]>>;
   /** typeName */
@@ -321,6 +325,21 @@ export enum AwsEksClusterRuntimeState {
 
 export type AwsEksClusterRuntimeStreamEntityEventsRequest = {
   workspaceId: Scalars["String"];
+};
+
+export type AwsEksClusterRuntimeTag = {
+  __typename?: "AwsEksClusterRuntimeTag";
+  /** key */
+  key?: Maybe<Scalars["String"]>;
+  /** value */
+  value?: Maybe<Scalars["String"]>;
+};
+
+export type AwsEksClusterRuntimeTagRequest = {
+  /** key */
+  key?: Maybe<Scalars["String"]>;
+  /** value */
+  value?: Maybe<Scalars["String"]>;
 };
 
 export type BillingAccount = {
@@ -1435,58 +1454,6 @@ export type WorkspaceEnabledIntegrationInstancesArgs = {
   input?: Maybe<ListIntegrationInstancesRequest>;
 };
 
-export type AwsEksClusterRuntimeCreateEntityMutationVariables = {
-  name: Scalars["String"];
-  displayName: Scalars["String"];
-  description: Scalars["String"];
-  workspaceId: Scalars["String"];
-  constraints?: Maybe<AwsEksClusterRuntimePickComponentRequest>;
-};
-
-export type AwsEksClusterRuntimeCreateEntityMutation = {
-  __typename?: "Mutation";
-} & {
-  awsEksClusterRuntimeCreateEntity: Maybe<
-    { __typename?: "AwsEksClusterRuntimeCreateEntityReply" } & {
-      entity: Maybe<
-        { __typename?: "AwsEksClusterRuntimeEntity" } & Pick<
-          AwsEksClusterRuntimeEntity,
-          "id" | "kubernetesVersion" | "cloudwatchLogs" | "state"
-        >
-      >;
-      event: Maybe<
-        { __typename?: "AwsEksClusterRuntimeEntityEvent" } & Pick<
-          AwsEksClusterRuntimeEntityEvent,
-          | "id"
-          | "actionName"
-          | "entityId"
-          | "typeName"
-          | "createTime"
-          | "updatedTime"
-          | "finalTime"
-          | "finalized"
-          | "outputLines"
-          | "errorLines"
-          | "success"
-        > & {
-            inputEntity: Maybe<
-              { __typename?: "AwsEksClusterRuntimeEntity" } & Pick<
-                AwsEksClusterRuntimeEntity,
-                "id" | "kubernetesVersion" | "cloudwatchLogs" | "state"
-              >
-            >;
-            outputEntity: Maybe<
-              { __typename?: "AwsEksClusterRuntimeEntity" } & Pick<
-                AwsEksClusterRuntimeEntity,
-                "id" | "kubernetesVersion" | "cloudwatchLogs" | "state"
-              >
-            >;
-          }
-      >;
-    }
-  >;
-};
-
 export type CreateAccountMutationVariables = {
   billingAccountShortName: Scalars["String"];
   billingAccountDisplayName: Scalars["String"];
@@ -1565,171 +1532,6 @@ export type CreateEntityMutation = { __typename?: "Mutation" } & {
               >
             >;
           }
-      >;
-    }
-  >;
-};
-
-export type SshKeyCreateEntityMutationVariables = {
-  name: Scalars["String"];
-  displayName: Scalars["String"];
-  description: Scalars["String"];
-  workspaceId: Scalars["String"];
-  constraints?: Maybe<SshKeyPickComponentRequest>;
-};
-
-export type SshKeyCreateEntityMutation = { __typename?: "Mutation" } & {
-  sshKeyCreateEntity: Maybe<
-    { __typename?: "SshKeyCreateEntityReply" } & {
-      entity: Maybe<
-        { __typename?: "SshKeyEntity" } & Pick<
-          SshKeyEntity,
-          | "id"
-          | "privateKey"
-          | "publicKey"
-          | "bubbleBabble"
-          | "randomArt"
-          | "state"
-        >
-      >;
-      event: Maybe<
-        { __typename?: "SshKeyEntityEvent" } & Pick<
-          SshKeyEntityEvent,
-          | "id"
-          | "actionName"
-          | "entityId"
-          | "typeName"
-          | "createTime"
-          | "updatedTime"
-          | "finalTime"
-          | "finalized"
-          | "outputLines"
-          | "errorLines"
-          | "success"
-        > & {
-            inputEntity: Maybe<
-              { __typename?: "SshKeyEntity" } & Pick<
-                SshKeyEntity,
-                "id" | "keyType" | "keyFormat" | "bits" | "state"
-              >
-            >;
-            outputEntity: Maybe<
-              { __typename?: "SshKeyEntity" } & Pick<
-                SshKeyEntity,
-                | "id"
-                | "keyType"
-                | "keyFormat"
-                | "bits"
-                | "fingerprint"
-                | "publicKey"
-                | "privateKey"
-                | "state"
-              >
-            >;
-          }
-      >;
-    }
-  >;
-};
-
-export type AwsEksClusterRuntimeGetEntityQueryVariables = {
-  entityId?: Maybe<Scalars["String"]>;
-};
-
-export type AwsEksClusterRuntimeGetEntityQuery = { __typename?: "Query" } & {
-  awsEksClusterRuntimeGetEntity: Maybe<
-    { __typename?: "AwsEksClusterRuntimeGetEntityReply" } & {
-      entity: Maybe<
-        { __typename?: "AwsEksClusterRuntimeEntity" } & Pick<
-          AwsEksClusterRuntimeEntity,
-          | "id"
-          | "naturalKey"
-          | "typeName"
-          | "name"
-          | "displayName"
-          | "description"
-          | "state"
-          | "kubernetesVersion"
-        > & {
-            constraints: Maybe<
-              { __typename?: "AwsEksClusterRuntimeConstraints" } & Pick<
-                AwsEksClusterRuntimeConstraints,
-                "kubernetesVersion"
-              >
-            >;
-            implicitConstraints: Maybe<
-              Array<
-                {
-                  __typename?: "AwsEksClusterRuntimeImplicitConstraint";
-                } & Pick<
-                  AwsEksClusterRuntimeImplicitConstraint,
-                  "field" | "value"
-                >
-              >
-            >;
-          }
-      >;
-    }
-  >;
-};
-
-export type AwsEksClusterRuntimeListEntitiesQueryVariables = {
-  pageSize?: Maybe<Scalars["Int"]>;
-  orderBy?: Maybe<Scalars["String"]>;
-  orderByDirection?: Maybe<DataOrderByDirection>;
-  pageToken?: Maybe<Scalars["String"]>;
-};
-
-export type AwsEksClusterRuntimeListEntitiesQuery = { __typename?: "Query" } & {
-  awsEksClusterRuntimeListEntities: Maybe<
-    { __typename?: "AwsEksClusterRuntimeListEntitiesReply" } & Pick<
-      AwsEksClusterRuntimeListEntitiesReply,
-      "totalCount" | "nextPageToken"
-    > & {
-        items: Maybe<
-          Array<
-            { __typename?: "AwsEksClusterRuntimeEntity" } & Pick<
-              AwsEksClusterRuntimeEntity,
-              | "id"
-              | "naturalKey"
-              | "typeName"
-              | "name"
-              | "displayName"
-              | "state"
-              | "kubernetesVersion"
-              | "cloudwatchLogs"
-              | "organizationId"
-              | "workspaceId"
-              | "billingAccountId"
-            >
-          >
-        >;
-      }
-  >;
-};
-
-export type AwsEksClusterRuntimePickComponentQueryVariables = {
-  kubernetesVersion?: Maybe<Scalars["String"]>;
-};
-
-export type AwsEksClusterRuntimePickComponentQuery = {
-  __typename?: "Query";
-} & {
-  awsEksClusterRuntimePickComponent: Maybe<
-    { __typename?: "AwsEksClusterRuntimePickComponentReply" } & {
-      component: Maybe<
-        { __typename?: "AwsEksClusterRuntimeComponent" } & Pick<
-          AwsEksClusterRuntimeComponent,
-          "id" | "displayName" | "kubernetesVersion"
-        >
-      >;
-      implicitConstraints: Maybe<
-        Array<
-          { __typename?: "AwsEksClusterRuntimeImplicitConstraint" } & Pick<
-            AwsEksClusterRuntimeImplicitConstraint,
-            "field" | "value"
-          >
-        >
       >;
     }
   >;
@@ -1839,111 +1641,6 @@ export type PickComponentQuery = { __typename?: "Query" } & {
   >;
 };
 
-export type SshKeyGetEntityQueryVariables = {
-  entityId?: Maybe<Scalars["String"]>;
-};
-
-export type SshKeyGetEntityQuery = { __typename?: "Query" } & {
-  sshKeyGetEntity: Maybe<
-    { __typename?: "SshKeyGetEntityReply" } & {
-      entity: Maybe<
-        { __typename?: "SshKeyEntity" } & Pick<
-          SshKeyEntity,
-          | "id"
-          | "naturalKey"
-          | "typeName"
-          | "name"
-          | "displayName"
-          | "description"
-          | "keyType"
-          | "keyFormat"
-          | "bits"
-          | "state"
-          | "publicKey"
-        > & {
-            constraints: Maybe<
-              { __typename?: "SshKeyConstraints" } & Pick<
-                SshKeyConstraints,
-                "keyType" | "keyFormat" | "bits"
-              >
-            >;
-            implicitConstraints: Maybe<
-              Array<
-                { __typename?: "SshKeyImplicitConstraint" } & Pick<
-                  SshKeyImplicitConstraint,
-                  "field" | "value"
-                >
-              >
-            >;
-          }
-      >;
-    }
-  >;
-};
-
-export type SshKeyListEntitiesQueryVariables = {
-  pageSize?: Maybe<Scalars["Int"]>;
-  orderBy?: Maybe<Scalars["String"]>;
-  orderByDirection?: Maybe<DataOrderByDirection>;
-  pageToken?: Maybe<Scalars["String"]>;
-};
-
-export type SshKeyListEntitiesQuery = { __typename?: "Query" } & {
-  sshKeyListEntities: Maybe<
-    { __typename?: "SshKeyListEntitiesReply" } & Pick<
-      SshKeyListEntitiesReply,
-      "totalCount" | "nextPageToken"
-    > & {
-        items: Maybe<
-          Array<
-            { __typename?: "SshKeyEntity" } & Pick<
-              SshKeyEntity,
-              | "id"
-              | "naturalKey"
-              | "typeName"
-              | "name"
-              | "displayName"
-              | "keyType"
-              | "keyFormat"
-              | "bits"
-              | "state"
-              | "organizationId"
-              | "workspaceId"
-              | "billingAccountId"
-            >
-          >
-        >;
-      }
-  >;
-};
-
-export type SshKeyPickComponentQueryVariables = {
-  keyType?: Maybe<SshKeyKeyTypeRequest>;
-  keyFormat?: Maybe<SshKeyKeyFormatRequest>;
-  bits?: Maybe<Scalars["Int"]>;
-};
-
-export type SshKeyPickComponentQuery = { __typename?: "Query" } & {
-  sshKeyPickComponent: Maybe<
-    { __typename?: "SshKeyPickComponentReply" } & {
-      component: Maybe<
-        { __typename?: "SshKeyComponent" } & Pick<
-          SshKeyComponent,
-          "id" | "displayName" | "keyType" | "keyFormat" | "bits"
-        >
-      >;
-      implicitConstraints: Maybe<
-        Array<
-          { __typename?: "SshKeyImplicitConstraint" } & Pick<
-            SshKeyImplicitConstraint,
-            "field" | "value"
-          >
-        >
-      >;
-    }
-  >;
-};
-
 export type WorkspaceListQueryVariables = {};
 
 export type WorkspaceListQuery = { __typename?: "Query" } & {
@@ -1973,89 +1670,6 @@ export type WorkspaceListQuery = { __typename?: "Query" } & {
               SshKeyEntity,
               "id" | "naturalKey" | "typeName" | "name" | "displayName"
             >
-          >
-        >;
-      }
-  >;
-};
-
-export type AwsEksClusterRuntimeStreamEntityEventsSubscriptionVariables = {
-  workspaceId: Scalars["String"];
-};
-
-export type AwsEksClusterRuntimeStreamEntityEventsSubscription = {
-  __typename?: "Subscription";
-} & {
-  awsEksClusterRuntimeStreamEntityEvents: Maybe<
-    { __typename?: "AwsEksClusterRuntimeEntityEvent" } & Pick<
-      AwsEksClusterRuntimeEntityEvent,
-      | "id"
-      | "actionName"
-      | "entityId"
-      | "typeName"
-      | "createTime"
-      | "updatedTime"
-      | "finalTime"
-      | "finalized"
-      | "outputLines"
-      | "errorLines"
-      | "success"
-    > & {
-        inputEntity: Maybe<
-          { __typename?: "AwsEksClusterRuntimeEntity" } & Pick<
-            AwsEksClusterRuntimeEntity,
-            "id" | "kubernetesVersion" | "state"
-          >
-        >;
-        outputEntity: Maybe<
-          { __typename?: "AwsEksClusterRuntimeEntity" } & Pick<
-            AwsEksClusterRuntimeEntity,
-            "id" | "kubernetesVersion" | "state"
-          >
-        >;
-      }
-  >;
-};
-
-export type SshKeyStreamEntityEventsSubscriptionVariables = {
-  workspaceId: Scalars["String"];
-};
-
-export type SshKeyStreamEntityEventsSubscription = {
-  __typename?: "Subscription";
-} & {
-  sshKeyStreamEntityEvents: Maybe<
-    { __typename?: "SshKeyEntityEvent" } & Pick<
-      SshKeyEntityEvent,
-      | "id"
-      | "actionName"
-      | "entityId"
-      | "typeName"
-      | "createTime"
-      | "updatedTime"
-      | "finalTime"
-      | "finalized"
-      | "outputLines"
-      | "errorLines"
-      | "success"
-    > & {
-        inputEntity: Maybe<
-          { __typename?: "SshKeyEntity" } & Pick<
-            SshKeyEntity,
-            "id" | "keyType" | "keyFormat" | "bits" | "state"
-          >
-        >;
-        outputEntity: Maybe<
-          { __typename?: "SshKeyEntity" } & Pick<
-            SshKeyEntity,
-            | "id"
-            | "keyType"
-            | "keyFormat"
-            | "bits"
-            | "fingerprint"
-            | "publicKey"
-            | "privateKey"
-            | "state"
           >
         >;
       }

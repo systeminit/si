@@ -237,6 +237,10 @@ impl AgentServer {
                 "aws" => self.create_aws(entity_event_locked.clone()).await,
                 _ => Ok(()),
             },
+            "sync" => match self.name.as_ref() {
+                "aws" => self.sync_aws(entity_event_locked.clone()).await,
+                _ => Ok(()),
+            },
             _ => Err(AwsEksClusterRuntimeError::InvalidEntityEventInvalidActionName),
         };
         if let Err(e) = result {
@@ -521,6 +525,34 @@ impl AgentServer {
     }
 
     #[tracing::instrument]
+    pub async fn sync_aws(&mut self, entity_event_locked: Arc<Mutex<EntityEvent>>) -> Result<()> {
+        // More evidence this should be refactored - why connect multiple times, rather than
+        // multiplexing? Even if we need N connections, better to manage it higher up.
+        //
+        //let mut eks = eks::EksClient::connect("http://localhost:4001").await?;
+        {
+            let mut entity_event = entity_event_locked.lock().await;
+            entity_event.log("Sync successful!\n");
+            entity_event.output_entity = entity_event.input_entity.clone();
+            //let output_entity = entity_event
+            //    .output_entity
+            //    .as_mut()
+            //    .ok_or(AwsEksClusterRuntimeError::MissingOutputEntity)?;
+            //output_entity.private_key = result.key_material.to_string();
+            //output_entity.public_key = ssh_public_key_out.try_stdout()?;
+            //output_entity.fingerprint = ssh_fingerprint_out.try_stdout()?;
+            //output_entity.bubble_babble = ssh_babble_out.try_stdout()?;
+            entity_event.success();
+        }
+
+        debug!("sending success");
+        self.send(entity_event_locked.clone()).await?;
+        debug!("sent success");
+
+        Ok(())
+    }
+
+    #[tracing::instrument]
     pub async fn create_aws(&mut self, entity_event_locked: Arc<Mutex<EntityEvent>>) -> Result<()> {
         // More evidence this should be refactored - why connect multiple times, rather than
         // multiplexing? Even if we need N connections, better to manage it higher up.
@@ -550,7 +582,7 @@ impl AgentServer {
                 None
             };
 
-            let tags = vec![
+            let mut tags = vec![
                 eks::create_cluster_request::TagRequest {
                     key: "si:id".to_string(),
                     value: input_entity.id.to_string(),
@@ -564,6 +596,13 @@ impl AgentServer {
                     value: input_entity.display_name.to_string(),
                 },
             ];
+
+            for tag in input_entity.tags.iter() {
+                tags.push(eks::create_cluster_request::TagRequest {
+                    key: tag.key.clone(),
+                    value: tag.value.clone(),
+                });
+            }
 
             let result = eks
                 .create_cluster(eks::CreateClusterRequest {

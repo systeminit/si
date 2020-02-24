@@ -105,6 +105,9 @@ input AwsEksClusterRuntimeCreateEntityRequest {
   """nodeGroupSshKeyId"""
   nodeGroupSshKeyId: String
 
+  """tags"""
+  tags: [AwsEksClusterRuntimeTagRequest!]
+
   """workspaceId"""
   workspaceId: String
 }
@@ -130,6 +133,9 @@ type AwsEksClusterRuntimeEntity {
 
   """displayName"""
   displayName: String
+
+  """id"""
+  entityEvents(input: AwsEksClusterRuntimeListEntityEventsRequest): AwsEksClusterRuntimeListEntityEventsReply
 
   """id"""
   id: ID
@@ -188,6 +194,9 @@ type AwsEksClusterRuntimeEntity {
   """state"""
   state: AwsEksClusterRuntimeState
 
+  """tags"""
+  tags: [AwsEksClusterRuntimeTag!]
+
   """tenantIds"""
   tenantIds: [String!]
 
@@ -213,6 +222,9 @@ type AwsEksClusterRuntimeEntityEvent {
 
   """createTime"""
   createTime: String
+
+  """entityId"""
+  entity: AwsEksClusterRuntimeEntity
 
   """entityId"""
   entityId: String
@@ -365,6 +377,37 @@ input AwsEksClusterRuntimeListEntitiesRequest {
   scopeByTenantId: String
 }
 
+type AwsEksClusterRuntimeListEntityEventsReply {
+  """items"""
+  items: [AwsEksClusterRuntimeEntityEvent!]
+
+  """nextPageToken"""
+  nextPageToken: String
+
+  """totalCount"""
+  totalCount: Int
+}
+
+input AwsEksClusterRuntimeListEntityEventsRequest {
+  """orderBy"""
+  orderBy: String
+
+  """orderByDirection"""
+  orderByDirection: DataOrderByDirection
+
+  """pageSize"""
+  pageSize: Int
+
+  """pageToken"""
+  pageToken: String
+
+  """query"""
+  query: DataQuery
+
+  """scopeByTenantId"""
+  scopeByTenantId: String
+}
+
 enum AwsEksClusterRuntimeNextState {
   ERROR
   NONE
@@ -405,6 +448,32 @@ enum AwsEksClusterRuntimeState {
 
 input AwsEksClusterRuntimeStreamEntityEventsRequest {
   workspaceId: String!
+}
+
+type AwsEksClusterRuntimeSyncEntityReply {
+  """entityEvent"""
+  entityEvent: AwsEksClusterRuntimeEntityEvent
+}
+
+input AwsEksClusterRuntimeSyncEntityRequest {
+  """entityId"""
+  entityId: String
+}
+
+type AwsEksClusterRuntimeTag {
+  """key"""
+  key: String
+
+  """value"""
+  value: String
+}
+
+input AwsEksClusterRuntimeTagRequest {
+  """key"""
+  key: String
+
+  """value"""
+  value: String
 }
 
 type BillingAccount {
@@ -1054,7 +1123,9 @@ type Query {
   awsEksClusterRuntimeGetEntity(input: AwsEksClusterRuntimeGetEntityRequest): AwsEksClusterRuntimeGetEntityReply
   awsEksClusterRuntimeListComponents(input: AwsEksClusterRuntimeListComponentsRequest): AwsEksClusterRuntimeListComponentsReply
   awsEksClusterRuntimeListEntities(input: AwsEksClusterRuntimeListEntitiesRequest): AwsEksClusterRuntimeListEntitiesReply
+  awsEksClusterRuntimeListEntityEvents(input: AwsEksClusterRuntimeListEntityEventsRequest): AwsEksClusterRuntimeListEntityEventsReply
   awsEksClusterRuntimePickComponent(input: AwsEksClusterRuntimePickComponentRequest): AwsEksClusterRuntimePickComponentReply
+  awsEksClusterRuntimeSyncEntity(input: AwsEksClusterRuntimeSyncEntityRequest): AwsEksClusterRuntimeSyncEntityReply
   getBillingAccount(input: GetBillingAccountRequest): GetBillingAccountReply
   getUser(input: GetUserRequest): GetUserReply
   listIntegrationInstances(input: ListIntegrationInstancesRequest): ListIntegrationInstancesReply
@@ -1067,6 +1138,7 @@ type Query {
   sshKeyGetEntity(input: SshKeyGetEntityRequest): SshKeyGetEntityReply
   sshKeyListComponents(input: SshKeyListComponentsRequest): SshKeyListComponentsReply
   sshKeyListEntities(input: SshKeyListEntitiesRequest): SshKeyListEntitiesReply
+  sshKeyListEntityEvents(input: SshKeyListEntityEventsRequest): SshKeyListEntityEventsReply
   sshKeyPickComponent(input: SshKeyPickComponentRequest): SshKeyPickComponentReply
 }
 
@@ -1196,6 +1268,9 @@ type SshKeyEntity {
   """displayName"""
   displayName: String
 
+  """id"""
+  entityEvents(input: SshKeyListEntityEventsRequest): SshKeyListEntityEventsReply
+
   """fingerprint"""
   fingerprint: String
 
@@ -1275,6 +1350,9 @@ type SshKeyEntityEvent {
 
   """createTime"""
   createTime: String
+
+  """entityId"""
+  entity: SshKeyEntity
 
   """entityId"""
   entityId: String
@@ -1436,6 +1514,37 @@ type SshKeyListEntitiesReply {
 }
 
 input SshKeyListEntitiesRequest {
+  """orderBy"""
+  orderBy: String
+
+  """orderByDirection"""
+  orderByDirection: DataOrderByDirection
+
+  """pageSize"""
+  pageSize: Int
+
+  """pageToken"""
+  pageToken: String
+
+  """query"""
+  query: DataQuery
+
+  """scopeByTenantId"""
+  scopeByTenantId: String
+}
+
+type SshKeyListEntityEventsReply {
+  """items"""
+  items: [SshKeyEntityEvent!]
+
+  """nextPageToken"""
+  nextPageToken: String
+
+  """totalCount"""
+  totalCount: Int
+}
+
+input SshKeyListEntityEventsRequest {
   """orderBy"""
   orderBy: String
 

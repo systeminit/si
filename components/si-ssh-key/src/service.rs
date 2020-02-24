@@ -267,6 +267,78 @@ async fn pick_component(
 
 #[tonic::async_trait]
 impl ssh_key_server::SshKey for Service {
+    async fn list_entity_events(
+        &self,
+        request: Request<protobuf::ListEntityEventsRequest>,
+    ) -> TonicResult<protobuf::ListEntityEventsReply> {
+        async {
+            let metadata = request.metadata();
+            let user_id = metadata
+                .get("userId")
+                .ok_or(SshKeyError::InvalidAuthentication)?
+                .to_str()
+                .map_err(SshKeyError::GrpcHeaderToString)?;
+            let billing_account_id = metadata
+                .get("billingAccountId")
+                .ok_or(SshKeyError::InvalidAuthentication)?
+                .to_str()
+                .map_err(SshKeyError::GrpcHeaderToString)?;
+            let req = request.get_ref();
+
+            let billing_account: BillingAccount = self
+                .db
+                .get(billing_account_id)
+                .await
+                .map_err(|_| SshKeyError::BillingAccountMissing)?;
+
+            authorize(
+                &self.db,
+                user_id,
+                billing_account_id,
+                "list_entity_events",
+                &billing_account,
+            )
+            .await?;
+
+            let scope = if req.scope_by_tenant_id == "" {
+                billing_account_id
+            } else {
+                req.scope_by_tenant_id.as_ref()
+            };
+
+            let list_result: ListResult<EntityEvent> = if req.page_token != "" {
+                self.db
+                    .list_by_page_token(&req.page_token)
+                    .await
+                    .map_err(SshKeyError::ListEntityEventsError)?
+            } else {
+                self.db
+                    .list(
+                        &req.query,
+                        req.page_size,
+                        &req.order_by,
+                        req.order_by_direction,
+                        scope,
+                        "",
+                    )
+                    .await
+                    .map_err(SshKeyError::ListEntityEventsError)?
+            };
+
+            if list_result.items.len() == 0 {
+                return Ok(Response::new(protobuf::ListEntityEventsReply::default()));
+            }
+
+            Ok(Response::new(protobuf::ListEntityEventsReply {
+                total_count: list_result.total_count(),
+                next_page_token: list_result.page_token().to_string(),
+                items: list_result.items,
+            }))
+        }
+        .instrument(debug_span!("list_entity_events", ?request))
+        .await
+    }
+
     async fn create_entity(
         &self,
         request: Request<protobuf::CreateEntityRequest>,

@@ -8,9 +8,36 @@ service AwsEksClusterRuntime {
   rpc GetComponent(GetComponentRequest) returns (GetComponentReply);
   rpc ListComponents(ListComponentsRequest) returns (ListComponentsReply);
   rpc PickComponent(PickComponentRequest) returns (PickComponentReply);
+  
   rpc CreateEntity(CreateEntityRequest) returns (CreateEntityReply);
   rpc ListEntities(ListEntitiesRequest) returns (ListEntitiesReply);
   rpc GetEntity(GetEntityRequest) returns (GetEntityReply);
+  rpc SyncEntity(SyncEntityRequest) returns (SyncEntityReply);
+
+  rpc ListEntityEvents(ListEntityEventsRequest) returns (ListEntityEventsReply);
+}
+
+message ListEntityEventsRequest {
+  si.data.Query query = 1;
+  int32 page_size = 2;
+  string order_by = 3;
+  si.data.OrderByDirection order_by_direction = 4;
+  string page_token = 5;
+  string scope_by_tenant_id = 6;
+}
+
+message ListEntityEventsReply {
+  repeated EntityEvent items = 1;
+  int32 total_count = 2;
+  string next_page_token = 3;
+}
+
+message SyncEntityRequest {
+  string entity_id = 1;
+}
+
+message SyncEntityReply {
+  EntityEvent entity_event = 2;
 }
 
 message GetEntityRequest {
@@ -71,6 +98,11 @@ message Entity {
     OK = 2;
   }
   State state = 25;
+  message Tag {
+    string key = 1;
+    string value = 2;
+  }
+  repeated Tag tags = 26;
 }
 
 message EntityEvent {
@@ -119,6 +151,11 @@ message CreateEntityRequest {
   int32 node_group_minimum_size = 10;
   int32 node_group_maximum_size = 11;
   int32 node_group_desired_size = 12;
+  message TagRequest {
+    string key = 1;
+    string value = 2;
+  }
+  repeated TagRequest tags = 13;
 }
 
 message CreateEntityReply {

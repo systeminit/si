@@ -38,6 +38,8 @@ pub enum SshKeyError {
     ListComponentsError(si_data::error::DataError),
     #[error("error listing entities: {0}")]
     ListEntitiesError(si_data::error::DataError),
+    #[error("error listing entity events: {0}")]
+    ListEntityEventsError(si_data::error::DataError),
     #[error("invalid grpc header; cannot become a string: {0}")]
     GrpcHeaderToString(#[from] tonic::metadata::errors::ToStrError),
     #[error("unknown tenant id")]

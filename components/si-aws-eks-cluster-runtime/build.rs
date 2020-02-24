@@ -4,6 +4,8 @@ fn main() {
         .extern_path(".si.account", "::si_account::protobuf")
         .type_attribute(".", "#[derive(serde::Serialize, serde::Deserialize)]")
         .type_attribute(".", "#[serde(rename_all = \"camelCase\")]")
+        .type_attribute("Entity", "#[serde(default)]")
+        .type_attribute("EntityEvent", "#[serde(default)]")
         // .field_attribute(
         //     "key_type",
         //     "#[serde(serialize_with = \"crate::serde_enum::key_type_enum_s\", deserialize_with = \"crate::serde_enum::key_type_enum_d\")]",

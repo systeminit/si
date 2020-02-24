@@ -166,6 +166,63 @@ async fn pick_component(
 
 #[tonic::async_trait]
 impl aws_eks_cluster_runtime_server::AwsEksClusterRuntime for Service {
+    async fn sync_entity(
+        &self,
+        request: Request<protobuf::SyncEntityRequest>,
+    ) -> TonicResult<protobuf::SyncEntityReply> {
+        async {
+            let metadata = request.metadata();
+            let user_id = metadata
+                .get("userId")
+                .ok_or(AwsEksClusterRuntimeError::InvalidAuthentication)?
+                .to_str()
+                .map_err(AwsEksClusterRuntimeError::GrpcHeaderToString)?;
+            let billing_account_id = metadata
+                .get("billingAccountId")
+                .ok_or(AwsEksClusterRuntimeError::InvalidAuthentication)?
+                .to_str()
+                .map_err(AwsEksClusterRuntimeError::GrpcHeaderToString)?;
+            let req = request.get_ref();
+
+            let billing_account: BillingAccount = self
+                .db
+                .get(billing_account_id)
+                .await
+                .map_err(|_| AwsEksClusterRuntimeError::BillingAccountMissing)?;
+
+            // NOTE: Someday, make this work on the workspace. Going to need to actually
+            // think about it, instead of just blatting out what works. ;)
+            authorize(
+                &self.db,
+                user_id,
+                billing_account_id,
+                "sync_entity",
+                &billing_account,
+            )
+            .await?;
+
+            let entity = self
+                .db
+                .get(&req.entity_id)
+                .await
+                .map_err(|_| AwsEksClusterRuntimeError::EntityMissing)?;
+
+            let mut entity_event = EntityEvent::new(user_id, "sync", &entity);
+            self.db
+                .validate_and_insert_as_new(&mut entity_event)
+                .await
+                .map_err(AwsEksClusterRuntimeError::CreateEntityEvent)?;
+
+            self.agent.dispatch(&entity_event).await?;
+
+            Ok(Response::new(protobuf::SyncEntityReply {
+                entity_event: Some(entity_event),
+            }))
+        }
+        .instrument(debug_span!("sync_entity", ?request))
+        .await
+    }
+
     async fn create_entity(
         &self,
         request: Request<protobuf::CreateEntityRequest>,
@@ -389,6 +446,78 @@ impl aws_eks_cluster_runtime_server::AwsEksClusterRuntime for Service {
             }))
         }
         .instrument(debug_span!("get_component", ?request))
+        .await
+    }
+
+    async fn list_entity_events(
+        &self,
+        request: Request<protobuf::ListEntityEventsRequest>,
+    ) -> TonicResult<protobuf::ListEntityEventsReply> {
+        async {
+            let metadata = request.metadata();
+            let user_id = metadata
+                .get("userId")
+                .ok_or(AwsEksClusterRuntimeError::InvalidAuthentication)?
+                .to_str()
+                .map_err(AwsEksClusterRuntimeError::GrpcHeaderToString)?;
+            let billing_account_id = metadata
+                .get("billingAccountId")
+                .ok_or(AwsEksClusterRuntimeError::InvalidAuthentication)?
+                .to_str()
+                .map_err(AwsEksClusterRuntimeError::GrpcHeaderToString)?;
+            let req = request.get_ref();
+
+            let billing_account: BillingAccount = self
+                .db
+                .get(billing_account_id)
+                .await
+                .map_err(|_| AwsEksClusterRuntimeError::BillingAccountMissing)?;
+
+            authorize(
+                &self.db,
+                user_id,
+                billing_account_id,
+                "list_entity_events",
+                &billing_account,
+            )
+            .await?;
+
+            let scope = if req.scope_by_tenant_id == "" {
+                billing_account_id
+            } else {
+                req.scope_by_tenant_id.as_ref()
+            };
+
+            let list_result: ListResult<EntityEvent> = if req.page_token != "" {
+                self.db
+                    .list_by_page_token(&req.page_token)
+                    .await
+                    .map_err(AwsEksClusterRuntimeError::ListEntityEventsError)?
+            } else {
+                self.db
+                    .list(
+                        &req.query,
+                        req.page_size,
+                        &req.order_by,
+                        req.order_by_direction,
+                        scope,
+                        "",
+                    )
+                    .await
+                    .map_err(AwsEksClusterRuntimeError::ListEntityEventsError)?
+            };
+
+            if list_result.items.len() == 0 {
+                return Ok(Response::new(protobuf::ListEntityEventsReply::default()));
+            }
+
+            Ok(Response::new(protobuf::ListEntityEventsReply {
+                total_count: list_result.total_count(),
+                next_page_token: list_result.page_token().to_string(),
+                items: list_result.items,
+            }))
+        }
+        .instrument(debug_span!("list_entity_events", ?request))
         .await
     }
 

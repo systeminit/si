@@ -29,6 +29,11 @@ export class SiComponent {
     value: string;
   }[];
 
+  listEntityEventHeaders: {
+    text: string;
+    value: string;
+  }[];
+
   // Queries
   getEntity: DocumentNode;
   listEntities: DocumentNode;
@@ -52,6 +57,7 @@ export class SiComponent {
       showProperties,
       showActions,
       listHeaders,
+      listEntityEventHeaders,
       icon,
     }: {
       getEntity: DocumentNode;
@@ -65,6 +71,7 @@ export class SiComponent {
       showProperties: SiComponent["showProperties"];
       showActions: SiComponent["showActions"];
       listHeaders: SiComponent["listHeaders"];
+      listEntityEventHeaders: SiComponent["listEntityEventHeaders"];
       icon: string;
     },
   ) {
@@ -80,6 +87,7 @@ export class SiComponent {
     this.showProperties = showProperties;
     this.showActions = showActions;
     this.listHeaders = listHeaders;
+    this.listEntityEventHeaders = listEntityEventHeaders;
     this.icon = icon;
   }
 
