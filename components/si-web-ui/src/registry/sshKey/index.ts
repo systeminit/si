@@ -6,6 +6,7 @@ import pickComponent from "./graphql/queries/pickComponent.gql";
 import listEntityEvents from "./graphql/queries/listEntityEvents.gql";
 
 import createEntity from "./graphql/mutations/createEntity.gql";
+import syncEntity from "./graphql/mutations/syncEntity.gql";
 
 import streamEntityEvents from "./graphql/subscriptions/streamEntityEvents.gql";
 
@@ -17,6 +18,7 @@ export const sshKey = new SiComponent("sshKey", {
     { displayName: "Replace" },
     { displayName: "Clone" },
     { displayName: "Delete" },
+    { displayName: "Sync", mutation: syncEntity },
   ],
   listHeaders: [
     { text: "Name", value: "name" },

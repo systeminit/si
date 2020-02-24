@@ -1,0 +1,22 @@
+mutation sshKeySyncEntity($entityId: String!) {
+  runAction: sshKeySyncEntity(input:{entityId: $entityId}) {
+    event {
+      id
+      actionName
+      entity {
+        id
+        displayName
+      }
+      user {
+        id
+        displayName
+      }
+      createTime
+      updatedTime
+      finalized
+      success
+      outputLines
+      errorLines
+    }
+  }
+}

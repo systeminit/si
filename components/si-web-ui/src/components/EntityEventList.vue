@@ -99,6 +99,7 @@ export default Vue.extend({
   props: {
     entityType: String,
     entityId: String,
+    watchEvent: Number,
   },
   data() {
     let siComponent = siComponentRegistry.lookup(this.entityType);
@@ -124,6 +125,12 @@ export default Vue.extend({
       nextPageToken: "",
       showMoreDisabled: true,
     };
+  },
+  watch: {
+    watchEvent(_oldNumber, _newNumber) {
+      console.log("I got this");
+      this.$apollo.queries.listEntityEvents.refetch();
+    }
   },
   methods: {
     showMore() {

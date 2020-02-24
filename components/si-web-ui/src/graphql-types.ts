@@ -108,6 +108,8 @@ export type AwsEksClusterRuntimeEntity = {
   /** displayName */
   displayName?: Maybe<Scalars["String"]>;
   /** id */
+  entityEvents?: Maybe<AwsEksClusterRuntimeListEntityEventsReply>;
+  /** id */
   id?: Maybe<Scalars["ID"]>;
   /** implicitConstraints */
   implicitConstraints?: Maybe<Array<AwsEksClusterRuntimeImplicitConstraint>>;
@@ -157,6 +159,10 @@ export type AwsEksClusterRuntimeEntity = {
   workspaceId?: Maybe<Scalars["String"]>;
 };
 
+export type AwsEksClusterRuntimeEntityEntityEventsArgs = {
+  input?: Maybe<AwsEksClusterRuntimeListEntityEventsRequest>;
+};
+
 export type AwsEksClusterRuntimeEntityEvent = {
   __typename?: "AwsEksClusterRuntimeEntityEvent";
   /** actionName */
@@ -167,6 +173,8 @@ export type AwsEksClusterRuntimeEntityEvent = {
   componentId?: Maybe<Scalars["String"]>;
   /** createTime */
   createTime?: Maybe<Scalars["String"]>;
+  /** entityId */
+  entity?: Maybe<AwsEksClusterRuntimeEntity>;
   /** entityId */
   entityId?: Maybe<Scalars["String"]>;
   /** errorLines */
@@ -203,6 +211,8 @@ export type AwsEksClusterRuntimeEntityEvent = {
   typeName?: Maybe<Scalars["String"]>;
   /** updatedTime */
   updatedTime?: Maybe<Scalars["String"]>;
+  /** userId */
+  user?: Maybe<User>;
   /** userId */
   userId?: Maybe<Scalars["String"]>;
   /** workspaceId */
@@ -289,6 +299,31 @@ export type AwsEksClusterRuntimeListEntitiesRequest = {
   scopeByTenantId?: Maybe<Scalars["String"]>;
 };
 
+export type AwsEksClusterRuntimeListEntityEventsReply = {
+  __typename?: "AwsEksClusterRuntimeListEntityEventsReply";
+  /** items */
+  items?: Maybe<Array<AwsEksClusterRuntimeEntityEvent>>;
+  /** nextPageToken */
+  nextPageToken?: Maybe<Scalars["String"]>;
+  /** totalCount */
+  totalCount?: Maybe<Scalars["Int"]>;
+};
+
+export type AwsEksClusterRuntimeListEntityEventsRequest = {
+  /** orderBy */
+  orderBy?: Maybe<Scalars["String"]>;
+  /** orderByDirection */
+  orderByDirection?: Maybe<DataOrderByDirection>;
+  /** pageSize */
+  pageSize?: Maybe<Scalars["Int"]>;
+  /** pageToken */
+  pageToken?: Maybe<Scalars["String"]>;
+  /** query */
+  query?: Maybe<DataQuery>;
+  /** scopeByTenantId */
+  scopeByTenantId?: Maybe<Scalars["String"]>;
+};
+
 export enum AwsEksClusterRuntimeNextState {
   Error = "ERROR",
   None = "NONE",
@@ -325,6 +360,17 @@ export enum AwsEksClusterRuntimeState {
 
 export type AwsEksClusterRuntimeStreamEntityEventsRequest = {
   workspaceId: Scalars["String"];
+};
+
+export type AwsEksClusterRuntimeSyncEntityReply = {
+  __typename?: "AwsEksClusterRuntimeSyncEntityReply";
+  /** entityEvent */
+  entityEvent?: Maybe<AwsEksClusterRuntimeEntityEvent>;
+};
+
+export type AwsEksClusterRuntimeSyncEntityRequest = {
+  /** entityId */
+  entityId?: Maybe<Scalars["String"]>;
 };
 
 export type AwsEksClusterRuntimeTag = {
@@ -887,6 +933,7 @@ export type Mutation = {
   createAccount?: Maybe<CreateAccountReply>;
   createIntegrationInstance?: Maybe<CreateIntegrationInstanceReply>;
   sshKeyCreateEntity?: Maybe<SshKeyCreateEntityReply>;
+  sshKeySyncEntity?: Maybe<SshKeySyncEntityReply>;
 };
 
 export type MutationAwsEksClusterRuntimeCreateEntityArgs = {
@@ -903,6 +950,10 @@ export type MutationCreateIntegrationInstanceArgs = {
 
 export type MutationSshKeyCreateEntityArgs = {
   input?: Maybe<SshKeyCreateEntityRequest>;
+};
+
+export type MutationSshKeySyncEntityArgs = {
+  input?: Maybe<SshKeySyncEntityRequest>;
 };
 
 export type Organization = {
@@ -947,9 +998,13 @@ export type Query = {
   awsEksClusterRuntimeListEntities?: Maybe<
     AwsEksClusterRuntimeListEntitiesReply
   >;
+  awsEksClusterRuntimeListEntityEvents?: Maybe<
+    AwsEksClusterRuntimeListEntityEventsReply
+  >;
   awsEksClusterRuntimePickComponent?: Maybe<
     AwsEksClusterRuntimePickComponentReply
   >;
+  awsEksClusterRuntimeSyncEntity?: Maybe<AwsEksClusterRuntimeSyncEntityReply>;
   getBillingAccount?: Maybe<GetBillingAccountReply>;
   getUser?: Maybe<GetUserReply>;
   listIntegrationInstances?: Maybe<ListIntegrationInstancesReply>;
@@ -962,6 +1017,7 @@ export type Query = {
   sshKeyGetEntity?: Maybe<SshKeyGetEntityReply>;
   sshKeyListComponents?: Maybe<SshKeyListComponentsReply>;
   sshKeyListEntities?: Maybe<SshKeyListEntitiesReply>;
+  sshKeyListEntityEvents?: Maybe<SshKeyListEntityEventsReply>;
   sshKeyPickComponent?: Maybe<SshKeyPickComponentReply>;
 };
 
@@ -981,8 +1037,16 @@ export type QueryAwsEksClusterRuntimeListEntitiesArgs = {
   input?: Maybe<AwsEksClusterRuntimeListEntitiesRequest>;
 };
 
+export type QueryAwsEksClusterRuntimeListEntityEventsArgs = {
+  input?: Maybe<AwsEksClusterRuntimeListEntityEventsRequest>;
+};
+
 export type QueryAwsEksClusterRuntimePickComponentArgs = {
   input?: Maybe<AwsEksClusterRuntimePickComponentRequest>;
+};
+
+export type QueryAwsEksClusterRuntimeSyncEntityArgs = {
+  input?: Maybe<AwsEksClusterRuntimeSyncEntityRequest>;
 };
 
 export type QueryGetBillingAccountArgs = {
@@ -1031,6 +1095,10 @@ export type QuerySshKeyListComponentsArgs = {
 
 export type QuerySshKeyListEntitiesArgs = {
   input?: Maybe<SshKeyListEntitiesRequest>;
+};
+
+export type QuerySshKeyListEntityEventsArgs = {
+  input?: Maybe<SshKeyListEntityEventsRequest>;
 };
 
 export type QuerySshKeyPickComponentArgs = {
@@ -1132,6 +1200,8 @@ export type SshKeyEntity = {
   description?: Maybe<Scalars["String"]>;
   /** displayName */
   displayName?: Maybe<Scalars["String"]>;
+  /** id */
+  entityEvents?: Maybe<SshKeyListEntityEventsReply>;
   /** fingerprint */
   fingerprint?: Maybe<Scalars["String"]>;
   /** id */
@@ -1178,6 +1248,10 @@ export type SshKeyEntity = {
   workspaceId?: Maybe<Scalars["String"]>;
 };
 
+export type SshKeyEntityEntityEventsArgs = {
+  input?: Maybe<SshKeyListEntityEventsRequest>;
+};
+
 export type SshKeyEntityEvent = {
   __typename?: "SshKeyEntityEvent";
   /** actionName */
@@ -1188,6 +1262,8 @@ export type SshKeyEntityEvent = {
   componentId?: Maybe<Scalars["String"]>;
   /** createTime */
   createTime?: Maybe<Scalars["String"]>;
+  /** entityId */
+  entity?: Maybe<SshKeyEntity>;
   /** entityId */
   entityId?: Maybe<Scalars["String"]>;
   /** errorLines */
@@ -1224,6 +1300,8 @@ export type SshKeyEntityEvent = {
   typeName?: Maybe<Scalars["String"]>;
   /** updatedTime */
   updatedTime?: Maybe<Scalars["String"]>;
+  /** userId */
+  user?: Maybe<User>;
   /** userId */
   userId?: Maybe<Scalars["String"]>;
   /** workspaceId */
@@ -1338,6 +1416,31 @@ export type SshKeyListEntitiesRequest = {
   scopeByTenantId?: Maybe<Scalars["String"]>;
 };
 
+export type SshKeyListEntityEventsReply = {
+  __typename?: "SshKeyListEntityEventsReply";
+  /** items */
+  items?: Maybe<Array<SshKeyEntityEvent>>;
+  /** nextPageToken */
+  nextPageToken?: Maybe<Scalars["String"]>;
+  /** totalCount */
+  totalCount?: Maybe<Scalars["Int"]>;
+};
+
+export type SshKeyListEntityEventsRequest = {
+  /** orderBy */
+  orderBy?: Maybe<Scalars["String"]>;
+  /** orderByDirection */
+  orderByDirection?: Maybe<DataOrderByDirection>;
+  /** pageSize */
+  pageSize?: Maybe<Scalars["Int"]>;
+  /** pageToken */
+  pageToken?: Maybe<Scalars["String"]>;
+  /** query */
+  query?: Maybe<DataQuery>;
+  /** scopeByTenantId */
+  scopeByTenantId?: Maybe<Scalars["String"]>;
+};
+
 export enum SshKeyNextState {
   Error = "ERROR",
   None = "NONE",
@@ -1378,6 +1481,17 @@ export enum SshKeyState {
 
 export type SshKeyStreamEntityEventsRequest = {
   workspaceId: Scalars["String"];
+};
+
+export type SshKeySyncEntityReply = {
+  __typename?: "SshKeySyncEntityReply";
+  /** event */
+  event?: Maybe<SshKeyEntityEvent>;
+};
+
+export type SshKeySyncEntityRequest = {
+  /** entityId */
+  entityId?: Maybe<Scalars["String"]>;
 };
 
 export type Subscription = {

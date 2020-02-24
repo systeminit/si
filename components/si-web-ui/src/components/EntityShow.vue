@@ -8,6 +8,7 @@
           <v-btn
             v-for="action in siComponent.showActions"
             v-bind:key="action.displayName"
+            @click="runAction(getEntity.id, action.mutation)"
           >
             {{ action.displayName }}
           </v-btn>
@@ -38,7 +39,11 @@
             </v-list-item-content>
           </v-list-item>
         </v-list>
-        <EntityEventList :entityType="entityType" :entityId="getEntity.id" />
+        <EntityEventList
+          :entityType="entityType"
+          :entityId="getEntity.id"
+          :watchEvent="watchEvent"
+        />
       </v-card-text>
     </v-card>
   </v-container>
@@ -57,6 +62,7 @@ import EntityEventList from "@/components/EntityEventList.vue";
 interface DataField {
   getEntity: any;
   siComponent: SiComponent;
+  watchEvent: number;
 }
 
 export default Vue.extend({
@@ -68,10 +74,35 @@ export default Vue.extend({
   },
   data(): DataField {
     const siComponent = siComponentRegistry.lookup(this.entityType);
+    const watchEvent = 0;
     return {
       getEntity: {},
       siComponent,
+      watchEvent,
     };
+  },
+  methods: {
+    runAction(entityId: string, mutation: DocumentNode): void {
+      if (mutation) {
+        this.$apollo.mutate({
+          mutation,
+          variables: {
+            entityId,
+          },
+          update: (store, { data: { runAction } }) => {
+            this.watchEvent++;
+            //this.$emit("refresh:entity-event-list", runAction);
+            //const listEntityEvents = this.siComponent.listEntityEvents;
+            //// Read the data from our cache for this query.
+            //const data = store.readQuery({ query: listEntityEvents });
+            //// Add our tag from the mutation to the end
+            //data.tags.push(addTag);
+            //// Write our data back to the cache.
+            //store.writeQuery({ query: TAGS_QUERY, data });
+          },
+        });
+      }
+    },
   },
   apollo: {
     getEntity: {

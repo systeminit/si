@@ -16,6 +16,7 @@ export class SiComponent {
 
   showActions: {
     displayName: string;
+    mutation?: DocumentNode;
   }[];
 
   showProperties: {
