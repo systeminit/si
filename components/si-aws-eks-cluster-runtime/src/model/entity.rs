@@ -273,7 +273,7 @@ impl Storable for EntityEvent {
             "userId",
             "actionName",
             "createTime",
-            "updateTime",
+            "updatedTime",
             "finalTime",
             "finalized",
             "entityId",

@@ -5,6 +5,7 @@ import listEntities from "./graphql/queries/listEntities.gql";
 import pickComponent from "./graphql/queries/pickComponent.gql";
 import streamEntityEvents from "./graphql/subscriptions/streamEntityEvents.gql";
 import createEntity from "./graphql/mutations/createEntity.gql";
+import listEntityEvents from "./graphql/queries/listEntityEvents.gql";
 
 export const awsEksClusterRuntime = new SiComponent("awsEksClusterRuntime", {
   name: "AWS EKS Cluster Runtime",
@@ -29,6 +30,15 @@ export const awsEksClusterRuntime = new SiComponent("awsEksClusterRuntime", {
       hintValue: '"1.14" | "1.13" | "1.12"',
     },
   ],
+  listEntityEventHeaders: [
+    { text: "Name", value: "actionName" },
+    { text: "By User", value: "user.displayName" },
+    { text: "Created At", value: "createTime" },
+    { text: "Updated At", value: "updatedTime" },
+    { text: "Finished", value: "finalized" },
+    { text: "Success", value: "success" },
+  ],
+  listEntityEvents,
   getEntity,
   listEntities,
   pickComponent,

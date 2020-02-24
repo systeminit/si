@@ -8,7 +8,7 @@
           </v-alert>
 
           <v-card-title>
-            Entity Events
+            Events
           </v-card-title>
           <v-card-text>
             <v-data-table
@@ -20,28 +20,14 @@
               v-on:update:page="showMore"
               hide-default-footer
             >
-              <template v-slot:item.entity.displayName="{ item }">
-                <router-link
-                  :to="{
-                    name: 'workspaceShowEntity',
-                    params: {
-                      organizationId: item.organizationId,
-                      workspaceId: item.workspaceId,
-                      entityId: item.entity.id,
-                      entityType: item.entity.typeName,
-                    },
-                  }"
-                  >{{ item.entity.displayName }}</router-link
-                >
-              </template>
             </v-data-table>
           </v-card-text>
           <v-card-actions>
             <v-spacer></v-spacer>
             <v-card class="d-flex justify-center align-content-center" flat>
               <v-card flat class="align-self-center pa-2">
-                {{ listEntities.items.length }} /
-                {{ listEntities.totalCount }} items
+                {{ listEntityEvents.items.length }} /
+                {{ listEntityEvents.totalCount }} items
               </v-card>
               <v-card flat class="align-self-center pa-2 flex-grow-0" cols="1">
                 <v-select
@@ -66,10 +52,6 @@
 </template>
 
 <script lang="js">
-
-//  TODO: LEFT OFF HERE. WE NEED A GENERAL ENTITY EVEN LIST, AND A SPECIFIC ONE FOR
-// A GIVEN ENTITY.
-
 import Vue from "vue";
 
 import { auth } from "@/auth";
@@ -79,12 +61,12 @@ export default Vue.extend({
   name: "EntityEventList",
   props: {
     entityType: String,
-    organizationId: String,
-    workspaceId: String,
+    entityId: String,
   },
   data() {
-    let headers;
     let siComponent = siComponentRegistry.lookup(this.entityType);
+    let headers = siComponent.listEntityEventHeaders;
+
     return {
       errorMessage: null,
       itemsPerPageOptions: [10, 20, 30, 40, 50, 100],
@@ -95,15 +77,7 @@ export default Vue.extend({
         page: 1,
       },
       siComponent,
-      headers: [
-        { text: "Name", value: "actionName" },
-        { text: "For Entity", value: "entity.displayName" },
-        { text: "By User", value: "user.name" },
-        { text: "Created At", value: "createTime" },
-        { text: "Updated At", value: "updatedTime" },
-        { text: "Finished", value: "finalized" },
-        { text: "Success", value: "success" },
-      ],
+      headers,
       listEntityEvents: {
         items: [],
         totalCount: 0,
@@ -127,7 +101,7 @@ export default Vue.extend({
         updateQuery: (previousResult, { fetchMoreResult }) => {
           this.loading = false;
           let siComponent = siComponentRegistry.lookup(this.entityType);
-          let resultString = siComponent.listEntitiesResultString();
+          let resultString = siComponent.listEntityEventsResultString();
           let newItems = fetchMoreResult[resultString].items;
           let nextPageToken = fetchMoreResult[resultString].nextPageToken;
           let nextTotalCount = fetchMoreResult[resultString].totalCount;
@@ -155,19 +129,20 @@ export default Vue.extend({
     },
   },
   apollo: {
-    listEntities: {
+    listEntityEvents: {
       query() {
         let siComponent = siComponentRegistry.lookup(this.entityType);
-        return siComponent.listEntities;
+        return siComponent.listEntityEvents;
       },
       variables() {
         let orderByDirection;
         if (this.options["sortDesc"][0]) {
-          orderByDirection = DataOrderByDirection.Desc;
+          orderByDirection = "DESC";
         } else {
-          orderByDirection = DataOrderByDirection.Asc;
+          orderByDirection = "ASC";
         }
         return {
+          scopeByTenantId: this.entityId,
           pageSize: this.options["itemsPerPage"],
           orderBy: this.options["sortBy"][0],
           orderByDirection,
@@ -175,22 +150,23 @@ export default Vue.extend({
       },
       update(data) {
         this.loading = false;
-        let listEntities;
+        let list;
         let siComponent = siComponentRegistry.lookup(this.entityType);
-        let resultString = siComponent.listEntitiesResultString();
+        let resultString = siComponent.listEntityEventsResultString();
 
         if (data[resultString]) {
-          listEntities = data[resultString];
+          list = data[resultString];
         } else {
-          listEntities = this.listEntities;
+          list = this.listEntityEvents;
         }
-        this.nextPageToken = listEntities.nextPageToken || "";
+
+        this.nextPageToken = list.nextPageToken || "";
         if (this.nextPageToken == "") {
           this.showMoreDisabled = true;
         } else {
           this.showMoreDisabled = false;
         }
-        return listEntities;
+        return list;
       },
       error(error, vm, key, type, options) {
         this.errorMessage = error.message;

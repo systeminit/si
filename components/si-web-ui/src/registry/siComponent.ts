@@ -39,6 +39,7 @@ export class SiComponent {
   listEntities: DocumentNode;
   pickComponent: DocumentNode;
   streamEntityEvents: DocumentNode;
+  listEntityEvents: DocumentNode;
 
   // Mutations
   createEntity: DocumentNode;
@@ -58,6 +59,7 @@ export class SiComponent {
       showActions,
       listHeaders,
       listEntityEventHeaders,
+      listEntityEvents,
       icon,
     }: {
       getEntity: DocumentNode;
@@ -72,6 +74,7 @@ export class SiComponent {
       showActions: SiComponent["showActions"];
       listHeaders: SiComponent["listHeaders"];
       listEntityEventHeaders: SiComponent["listEntityEventHeaders"];
+      listEntityEvents: SiComponent["listEntityEvents"];
       icon: string;
     },
   ) {
@@ -89,6 +92,7 @@ export class SiComponent {
     this.listHeaders = listHeaders;
     this.listEntityEventHeaders = listEntityEventHeaders;
     this.icon = icon;
+    this.listEntityEvents = listEntityEvents;
   }
 
   listEntitiesResultString(): string {
@@ -109,5 +113,9 @@ export class SiComponent {
 
   createEntityResultString(): string {
     return `${this.typeName}CreateEntity`;
+  }
+
+  listEntityEventsResultString(): string {
+    return `${this.typeName}ListEntityEvents`;
   }
 }

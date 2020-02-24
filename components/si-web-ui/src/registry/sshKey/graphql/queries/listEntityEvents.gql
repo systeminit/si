@@ -1,0 +1,34 @@
+query sshKeyListEntityEvents(
+  $pageSize: Int, 
+  $orderBy: String, 
+  $orderByDirection: DataOrderByDirection, 
+  $pageToken: String
+  $scopeByTenantId: String,
+) {
+  sshKeyListEntityEvents(input: {
+    pageSize: $pageSize,
+    orderBy: $orderBy,
+    orderByDirection: $orderByDirection,
+    pageToken: $pageToken,
+    scopeByTenantId: $scopeByTenantId,
+  }) {
+    items {
+      id
+      actionName
+      entity {
+        id
+        displayName
+      }
+      user {
+        id
+        displayName
+      }
+      createTime
+      updatedTime
+      finalized
+      success
+    }
+    totalCount
+    nextPageToken
+  }
+}

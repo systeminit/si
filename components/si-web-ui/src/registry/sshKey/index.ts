@@ -3,6 +3,7 @@ import { SiComponent } from "@/registry/siComponent";
 import getEntity from "./graphql/queries/getEntity.gql";
 import listEntities from "./graphql/queries/listEntities.gql";
 import pickComponent from "./graphql/queries/pickComponent.gql";
+import listEntityEvents from "./graphql/queries/listEntityEvents.gql";
 
 import createEntity from "./graphql/mutations/createEntity.gql";
 
@@ -26,13 +27,13 @@ export const sshKey = new SiComponent("sshKey", {
   ],
   listEntityEventHeaders: [
     { text: "Name", value: "actionName" },
-    { text: "For Entity", value: "entity.displayName" },
-    { text: "By User", value: "user.name" },
+    { text: "By User", value: "user.displayName" },
     { text: "Created At", value: "createTime" },
     { text: "Updated At", value: "updatedTime" },
     { text: "Finished", value: "finalized" },
     { text: "Success", value: "success" },
   ],
+  listEntityEvents,
   showProperties: [
     { displayName: "ID", property: "id", showAs: "text" },
     { displayName: "Key Type", property: "keyType", showAs: "text" },

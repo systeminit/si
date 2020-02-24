@@ -797,6 +797,7 @@ export interface NexusGenFieldTypes {
     tenantIds: string[] | null; // [String!]
     typeName: string | null; // String
     updatedTime: string | null; // String
+    user: NexusGenRootTypes['User'] | null; // User
     userId: string | null; // String
     workspaceId: string | null; // String
   }
@@ -1104,6 +1105,7 @@ export interface NexusGenFieldTypes {
     tenantIds: string[] | null; // [String!]
     typeName: string | null; // String
     updatedTime: string | null; // String
+    user: NexusGenRootTypes['User'] | null; // User
     userId: string | null; // String
     workspaceId: string | null; // String
   }

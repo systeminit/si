@@ -281,6 +281,9 @@ type AwsEksClusterRuntimeEntityEvent {
   updatedTime: String
 
   """userId"""
+  user: User
+
+  """userId"""
   userId: String
 
   """workspaceId"""
@@ -1407,6 +1410,9 @@ type SshKeyEntityEvent {
 
   """updatedTime"""
   updatedTime: String
+
+  """userId"""
+  user: User
 
   """userId"""
   userId: String

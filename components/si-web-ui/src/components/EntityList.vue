@@ -83,6 +83,7 @@ import Vue from "vue";
 
 import { auth } from "@/auth";
 import { siComponentRegistry } from "@/registry";
+import { DataOrderByDirection } from "@/graphql-types";
 
 export default Vue.extend({
   name: "EntityList",

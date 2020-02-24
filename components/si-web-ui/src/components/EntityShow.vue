@@ -38,6 +38,7 @@
             </v-list-item-content>
           </v-list-item>
         </v-list>
+        <EntityEventList :entityType="entityType" :entityId="getEntity.id" />
       </v-card-text>
     </v-card>
   </v-container>
@@ -50,6 +51,8 @@ import DocumentNode from "graphql";
 import { siComponentRegistry } from "@/registry";
 import { SiComponent } from "@/registry/siComponent";
 import { Query } from "@/graphql-types";
+
+import EntityEventList from "@/components/EntityEventList.vue";
 
 interface DataField {
   getEntity: any;
@@ -94,5 +97,6 @@ export default Vue.extend({
       },
     },
   },
+  components: { EntityEventList },
 });
 </script>
