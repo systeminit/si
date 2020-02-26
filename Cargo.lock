@@ -2252,23 +2252,12 @@ dependencies = [
 name = "si-external-api-gateway"
 version = "0.1.0"
 dependencies = [
- "async-stream",
- "bytes 0.5.4",
- "futures 0.3.1",
- "http 0.2.0",
  "prost",
  "prost-derive",
  "serde 1.0.104",
- "serde_json",
- "si-settings",
- "thiserror",
- "tokio 0.2.11",
  "tonic",
  "tonic-build",
- "tower",
- "tracing",
- "tracing-futures 0.2.2",
- "tracing-subscriber 0.2.1",
+ "typed-builder",
 ]
 
 [[package]]
@@ -3181,6 +3170,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "283d3b89e1368717881a9d51dad843cc435380d8109c9e47d38780a324698d8b"
 dependencies = [
  "cfg-if",
+]
+
+[[package]]
+name = "typed-builder"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "78cea224ddd4282dfc40d1edabbd0c020a12e946e3a48e2c2b8f6ff167ad29fe"
+dependencies = [
+ "proc-macro2 1.0.8",
+ "quote 1.0.2",
+ "syn 1.0.14",
 ]
 
 [[package]]

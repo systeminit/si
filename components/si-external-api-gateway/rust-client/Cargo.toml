@@ -7,29 +7,11 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tonic = "0.1" 
-bytes = "0.5"
-prost = "0.6" 
+prost = "0.6"
 prost-derive = "0.6"
-tokio = { version = "0.2", features = ["full"] }
-futures = { version = "0.3", features = ["alloc", "compat"]}
-async-stream = "0.2"
-http = "0.2"
-tower = "0.3" 
-
-# Serde
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-
-# Tracing
-tracing = "0.1"
-tracing-futures = { version = "0.2", features = ["tokio", "std-future"] }
-tracing-subscriber = "0.2.0-alpha.2"
-
-# Errors
-thiserror = "1.0"
-si-settings = { path = "../../si-settings" }
+tonic = "0.1"
+typed-builder = "0.5"
 
 [build-dependencies]
 tonic-build = "0.1"
-

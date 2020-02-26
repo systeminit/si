@@ -10,32 +10,32 @@ export class CreateClusterRequest extends jspb.Message {
   getContext(): si_external_api_gateway_proto_si_external_api_gateway_pb.Context | undefined;
   setContext(value?: si_external_api_gateway_proto_si_external_api_gateway_pb.Context): void;
 
-  getName(): string;
-  setName(value: string): void;
-
-  getVersion(): string;
-  setVersion(value: string): void;
-
-  getRoleArn(): string;
-  setRoleArn(value: string): void;
+  getClientRequestToken(): string;
+  setClientRequestToken(value: string): void;
 
   hasLogging(): boolean;
   clearLogging(): void;
-  getLogging(): CreateClusterRequest.ClusterLogging | undefined;
-  setLogging(value?: CreateClusterRequest.ClusterLogging): void;
+  getLogging(): Logging | undefined;
+  setLogging(value?: Logging): void;
 
-  getClientRequestToken(): string;
-  setClientRequestToken(value: string): void;
+  getName(): string;
+  setName(value: string): void;
 
   hasResourcesVpcConfig(): boolean;
   clearResourcesVpcConfig(): void;
   getResourcesVpcConfig(): CreateClusterRequest.VpcConfigRequest | undefined;
   setResourcesVpcConfig(value?: CreateClusterRequest.VpcConfigRequest): void;
 
+  getRoleArn(): string;
+  setRoleArn(value: string): void;
+
   clearTagsList(): void;
-  getTagsList(): Array<CreateClusterRequest.TagRequest>;
-  setTagsList(value: Array<CreateClusterRequest.TagRequest>): void;
-  addTags(value?: CreateClusterRequest.TagRequest, index?: number): CreateClusterRequest.TagRequest;
+  getTagsList(): Array<Tag>;
+  setTagsList(value: Array<Tag>): void;
+  addTags(value?: Tag, index?: number): Tag;
+
+  getVersion(): string;
+  setVersion(value: string): void;
 
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): CreateClusterRequest.AsObject;
@@ -50,57 +50,36 @@ export class CreateClusterRequest extends jspb.Message {
 export namespace CreateClusterRequest {
   export type AsObject = {
     context?: si_external_api_gateway_proto_si_external_api_gateway_pb.Context.AsObject,
-    name: string,
-    version: string,
-    roleArn: string,
-    logging?: CreateClusterRequest.ClusterLogging.AsObject,
     clientRequestToken: string,
+    logging?: Logging.AsObject,
+    name: string,
     resourcesVpcConfig?: CreateClusterRequest.VpcConfigRequest.AsObject,
-    tagsList: Array<CreateClusterRequest.TagRequest.AsObject>,
-  }
-
-  export class ClusterLogging extends jspb.Message {
-    clearTypesList(): void;
-    getTypesList(): Array<string>;
-    setTypesList(value: Array<string>): void;
-    addTypes(value: string, index?: number): string;
-
-    getEnabled(): boolean;
-    setEnabled(value: boolean): void;
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): ClusterLogging.AsObject;
-    static toObject(includeInstance: boolean, msg: ClusterLogging): ClusterLogging.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: ClusterLogging, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): ClusterLogging;
-    static deserializeBinaryFromReader(message: ClusterLogging, reader: jspb.BinaryReader): ClusterLogging;
-  }
-
-  export namespace ClusterLogging {
-    export type AsObject = {
-      typesList: Array<string>,
-      enabled: boolean,
-    }
+    roleArn: string,
+    tagsList: Array<Tag.AsObject>,
+    version: string,
   }
 
   export class VpcConfigRequest extends jspb.Message {
-    clearSubnetIdsList(): void;
-    getSubnetIdsList(): Array<string>;
-    setSubnetIdsList(value: Array<string>): void;
-    addSubnetIds(value: string, index?: number): string;
+    getEndpointPrivateAccess(): boolean;
+    setEndpointPrivateAccess(value: boolean): void;
+
+    getEndpointPublicAccess(): boolean;
+    setEndpointPublicAccess(value: boolean): void;
+
+    clearPublicAccessCidrsList(): void;
+    getPublicAccessCidrsList(): Array<string>;
+    setPublicAccessCidrsList(value: Array<string>): void;
+    addPublicAccessCidrs(value: string, index?: number): string;
 
     clearSecurityGroupIdsList(): void;
     getSecurityGroupIdsList(): Array<string>;
     setSecurityGroupIdsList(value: Array<string>): void;
     addSecurityGroupIds(value: string, index?: number): string;
 
-    getEndpointPublicAccess(): boolean;
-    setEndpointPublicAccess(value: boolean): void;
-
-    getEndpointPrivateAccess(): boolean;
-    setEndpointPrivateAccess(value: boolean): void;
+    clearSubnetIdsList(): void;
+    getSubnetIdsList(): Array<string>;
+    setSubnetIdsList(value: Array<string>): void;
+    addSubnetIds(value: string, index?: number): string;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): VpcConfigRequest.AsObject;
@@ -114,34 +93,11 @@ export namespace CreateClusterRequest {
 
   export namespace VpcConfigRequest {
     export type AsObject = {
-      subnetIdsList: Array<string>,
-      securityGroupIdsList: Array<string>,
-      endpointPublicAccess: boolean,
       endpointPrivateAccess: boolean,
-    }
-  }
-
-  export class TagRequest extends jspb.Message {
-    getKey(): string;
-    setKey(value: string): void;
-
-    getValue(): string;
-    setValue(value: string): void;
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): TagRequest.AsObject;
-    static toObject(includeInstance: boolean, msg: TagRequest): TagRequest.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: TagRequest, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): TagRequest;
-    static deserializeBinaryFromReader(message: TagRequest, reader: jspb.BinaryReader): TagRequest;
-  }
-
-  export namespace TagRequest {
-    export type AsObject = {
-      key: string,
-      value: string,
+      endpointPublicAccess: boolean,
+      publicAccessCidrsList: Array<string>,
+      securityGroupIdsList: Array<string>,
+      subnetIdsList: Array<string>,
     }
   }
 }
@@ -174,28 +130,57 @@ export namespace CreateClusterReply {
   }
 
   export class Cluster extends jspb.Message {
-    getCreatedAt(): string;
-    setCreatedAt(value: string): void;
-
-    hasResourcesVpcConfig(): boolean;
-    clearResourcesVpcConfig(): void;
-    getResourcesVpcConfig(): CreateClusterReply.Cluster.ResourcesVpcConfig | undefined;
-    setResourcesVpcConfig(value?: CreateClusterReply.Cluster.ResourcesVpcConfig): void;
-
-    hasLogging(): boolean;
-    clearLogging(): void;
-    getLogging(): CreateClusterReply.Cluster.ClusterLogging | undefined;
-    setLogging(value?: CreateClusterReply.Cluster.ClusterLogging): void;
+    getArn(): string;
+    setArn(value: string): void;
 
     hasCertificateAuthority(): boolean;
     clearCertificateAuthority(): void;
-    getCertificateAuthority(): CreateClusterReply.Cluster.CertificateAuthority | undefined;
-    setCertificateAuthority(value?: CreateClusterReply.Cluster.CertificateAuthority): void;
+    getCertificateAuthority(): CreateClusterReply.Cluster.Certificate | undefined;
+    setCertificateAuthority(value?: CreateClusterReply.Cluster.Certificate): void;
+
+    getClientRequestToken(): string;
+    setClientRequestToken(value: string): void;
+
+    getCreatedAt(): string;
+    setCreatedAt(value: string): void;
+
+    getEndpoint(): string;
+    setEndpoint(value: string): void;
+
+    hasIdentity(): boolean;
+    clearIdentity(): void;
+    getIdentity(): CreateClusterReply.Cluster.Identity | undefined;
+    setIdentity(value?: CreateClusterReply.Cluster.Identity): void;
+
+    hasLogging(): boolean;
+    clearLogging(): void;
+    getLogging(): Logging | undefined;
+    setLogging(value?: Logging): void;
+
+    getName(): string;
+    setName(value: string): void;
+
+    getPlatformVersion(): string;
+    setPlatformVersion(value: string): void;
+
+    hasResourcesVpcConfig(): boolean;
+    clearResourcesVpcConfig(): void;
+    getResourcesVpcConfig(): CreateClusterReply.Cluster.VpcConfigResponse | undefined;
+    setResourcesVpcConfig(value?: CreateClusterReply.Cluster.VpcConfigResponse): void;
+
+    getRoleArn(): string;
+    setRoleArn(value: string): void;
+
+    getStatus(): string;
+    setStatus(value: string): void;
 
     clearTagsList(): void;
-    getTagsList(): Array<CreateClusterReply.Cluster.Tag>;
-    setTagsList(value: Array<CreateClusterReply.Cluster.Tag>): void;
-    addTags(value?: CreateClusterReply.Cluster.Tag, index?: number): CreateClusterReply.Cluster.Tag;
+    getTagsList(): Array<Tag>;
+    setTagsList(value: Array<Tag>): void;
+    addTags(value?: Tag, index?: number): Tag;
+
+    getVersion(): string;
+    setVersion(value: string): void;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): Cluster.AsObject;
@@ -209,106 +194,205 @@ export namespace CreateClusterReply {
 
   export namespace Cluster {
     export type AsObject = {
+      arn: string,
+      certificateAuthority?: CreateClusterReply.Cluster.Certificate.AsObject,
+      clientRequestToken: string,
       createdAt: string,
-      resourcesVpcConfig?: CreateClusterReply.Cluster.ResourcesVpcConfig.AsObject,
-      logging?: CreateClusterReply.Cluster.ClusterLogging.AsObject,
-      certificateAuthority?: CreateClusterReply.Cluster.CertificateAuthority.AsObject,
-      tagsList: Array<CreateClusterReply.Cluster.Tag.AsObject>,
+      endpoint: string,
+      identity?: CreateClusterReply.Cluster.Identity.AsObject,
+      logging?: Logging.AsObject,
+      name: string,
+      platformVersion: string,
+      resourcesVpcConfig?: CreateClusterReply.Cluster.VpcConfigResponse.AsObject,
+      roleArn: string,
+      status: string,
+      tagsList: Array<Tag.AsObject>,
+      version: string,
     }
 
-    export class ResourcesVpcConfig extends jspb.Message {
-      clearSubnetIdsList(): void;
-      getSubnetIdsList(): Array<string>;
-      setSubnetIdsList(value: Array<string>): void;
-      addSubnetIds(value: string, index?: number): string;
+    export class Certificate extends jspb.Message {
+      getData(): string;
+      setData(value: string): void;
+
+      serializeBinary(): Uint8Array;
+      toObject(includeInstance?: boolean): Certificate.AsObject;
+      static toObject(includeInstance: boolean, msg: Certificate): Certificate.AsObject;
+      static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+      static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+      static serializeBinaryToWriter(message: Certificate, writer: jspb.BinaryWriter): void;
+      static deserializeBinary(bytes: Uint8Array): Certificate;
+      static deserializeBinaryFromReader(message: Certificate, reader: jspb.BinaryReader): Certificate;
+    }
+
+    export namespace Certificate {
+      export type AsObject = {
+        data: string,
+      }
+    }
+
+    export class Identity extends jspb.Message {
+      hasOidc(): boolean;
+      clearOidc(): void;
+      getOidc(): CreateClusterReply.Cluster.Identity.Oidc | undefined;
+      setOidc(value?: CreateClusterReply.Cluster.Identity.Oidc): void;
+
+      serializeBinary(): Uint8Array;
+      toObject(includeInstance?: boolean): Identity.AsObject;
+      static toObject(includeInstance: boolean, msg: Identity): Identity.AsObject;
+      static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+      static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+      static serializeBinaryToWriter(message: Identity, writer: jspb.BinaryWriter): void;
+      static deserializeBinary(bytes: Uint8Array): Identity;
+      static deserializeBinaryFromReader(message: Identity, reader: jspb.BinaryReader): Identity;
+    }
+
+    export namespace Identity {
+      export type AsObject = {
+        oidc?: CreateClusterReply.Cluster.Identity.Oidc.AsObject,
+      }
+
+      export class Oidc extends jspb.Message {
+        getIssuer(): string;
+        setIssuer(value: string): void;
+
+        serializeBinary(): Uint8Array;
+        toObject(includeInstance?: boolean): Oidc.AsObject;
+        static toObject(includeInstance: boolean, msg: Oidc): Oidc.AsObject;
+        static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+        static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+        static serializeBinaryToWriter(message: Oidc, writer: jspb.BinaryWriter): void;
+        static deserializeBinary(bytes: Uint8Array): Oidc;
+        static deserializeBinaryFromReader(message: Oidc, reader: jspb.BinaryReader): Oidc;
+      }
+
+      export namespace Oidc {
+        export type AsObject = {
+          issuer: string,
+        }
+      }
+    }
+
+    export class VpcConfigResponse extends jspb.Message {
+      getClusterSecurityGroupId(): string;
+      setClusterSecurityGroupId(value: string): void;
+
+      getEndpointPrivateAccess(): boolean;
+      setEndpointPrivateAccess(value: boolean): void;
+
+      getEndpointPublicAccess(): boolean;
+      setEndpointPublicAccess(value: boolean): void;
+
+      clearPublicAccessCidrsList(): void;
+      getPublicAccessCidrsList(): Array<string>;
+      setPublicAccessCidrsList(value: Array<string>): void;
+      addPublicAccessCidrs(value: string, index?: number): string;
 
       clearSecurityGroupIdsList(): void;
       getSecurityGroupIdsList(): Array<string>;
       setSecurityGroupIdsList(value: Array<string>): void;
       addSecurityGroupIds(value: string, index?: number): string;
 
+      clearSubnetIdsList(): void;
+      getSubnetIdsList(): Array<string>;
+      setSubnetIdsList(value: Array<string>): void;
+      addSubnetIds(value: string, index?: number): string;
+
+      getVpcId(): string;
+      setVpcId(value: string): void;
+
       serializeBinary(): Uint8Array;
-      toObject(includeInstance?: boolean): ResourcesVpcConfig.AsObject;
-      static toObject(includeInstance: boolean, msg: ResourcesVpcConfig): ResourcesVpcConfig.AsObject;
+      toObject(includeInstance?: boolean): VpcConfigResponse.AsObject;
+      static toObject(includeInstance: boolean, msg: VpcConfigResponse): VpcConfigResponse.AsObject;
       static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
       static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-      static serializeBinaryToWriter(message: ResourcesVpcConfig, writer: jspb.BinaryWriter): void;
-      static deserializeBinary(bytes: Uint8Array): ResourcesVpcConfig;
-      static deserializeBinaryFromReader(message: ResourcesVpcConfig, reader: jspb.BinaryReader): ResourcesVpcConfig;
+      static serializeBinaryToWriter(message: VpcConfigResponse, writer: jspb.BinaryWriter): void;
+      static deserializeBinary(bytes: Uint8Array): VpcConfigResponse;
+      static deserializeBinaryFromReader(message: VpcConfigResponse, reader: jspb.BinaryReader): VpcConfigResponse;
     }
 
-    export namespace ResourcesVpcConfig {
+    export namespace VpcConfigResponse {
       export type AsObject = {
-        subnetIdsList: Array<string>,
+        clusterSecurityGroupId: string,
+        endpointPrivateAccess: boolean,
+        endpointPublicAccess: boolean,
+        publicAccessCidrsList: Array<string>,
         securityGroupIdsList: Array<string>,
+        subnetIdsList: Array<string>,
+        vpcId: string,
       }
     }
+  }
+}
 
-    export class ClusterLogging extends jspb.Message {
-      clearTypesList(): void;
-      getTypesList(): Array<string>;
-      setTypesList(value: Array<string>): void;
-      addTypes(value: string, index?: number): string;
+export class Logging extends jspb.Message {
+  clearClusterLoggingList(): void;
+  getClusterLoggingList(): Array<Logging.LogSetup>;
+  setClusterLoggingList(value: Array<Logging.LogSetup>): void;
+  addClusterLogging(value?: Logging.LogSetup, index?: number): Logging.LogSetup;
 
-      serializeBinary(): Uint8Array;
-      toObject(includeInstance?: boolean): ClusterLogging.AsObject;
-      static toObject(includeInstance: boolean, msg: ClusterLogging): ClusterLogging.AsObject;
-      static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-      static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-      static serializeBinaryToWriter(message: ClusterLogging, writer: jspb.BinaryWriter): void;
-      static deserializeBinary(bytes: Uint8Array): ClusterLogging;
-      static deserializeBinaryFromReader(message: ClusterLogging, reader: jspb.BinaryReader): ClusterLogging;
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): Logging.AsObject;
+  static toObject(includeInstance: boolean, msg: Logging): Logging.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: Logging, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): Logging;
+  static deserializeBinaryFromReader(message: Logging, reader: jspb.BinaryReader): Logging;
+}
+
+export namespace Logging {
+  export type AsObject = {
+    clusterLoggingList: Array<Logging.LogSetup.AsObject>,
+  }
+
+  export class LogSetup extends jspb.Message {
+    getEnabled(): boolean;
+    setEnabled(value: boolean): void;
+
+    clearTypesList(): void;
+    getTypesList(): Array<string>;
+    setTypesList(value: Array<string>): void;
+    addTypes(value: string, index?: number): string;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): LogSetup.AsObject;
+    static toObject(includeInstance: boolean, msg: LogSetup): LogSetup.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: LogSetup, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): LogSetup;
+    static deserializeBinaryFromReader(message: LogSetup, reader: jspb.BinaryReader): LogSetup;
+  }
+
+  export namespace LogSetup {
+    export type AsObject = {
+      enabled: boolean,
+      typesList: Array<string>,
     }
+  }
+}
 
-    export namespace ClusterLogging {
-      export type AsObject = {
-        typesList: Array<string>,
-      }
-    }
+export class Tag extends jspb.Message {
+  getKey(): string;
+  setKey(value: string): void;
 
-    export class CertificateAuthority extends jspb.Message {
-      getData(): string;
-      setData(value: string): void;
+  getValue(): string;
+  setValue(value: string): void;
 
-      serializeBinary(): Uint8Array;
-      toObject(includeInstance?: boolean): CertificateAuthority.AsObject;
-      static toObject(includeInstance: boolean, msg: CertificateAuthority): CertificateAuthority.AsObject;
-      static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-      static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-      static serializeBinaryToWriter(message: CertificateAuthority, writer: jspb.BinaryWriter): void;
-      static deserializeBinary(bytes: Uint8Array): CertificateAuthority;
-      static deserializeBinaryFromReader(message: CertificateAuthority, reader: jspb.BinaryReader): CertificateAuthority;
-    }
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): Tag.AsObject;
+  static toObject(includeInstance: boolean, msg: Tag): Tag.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: Tag, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): Tag;
+  static deserializeBinaryFromReader(message: Tag, reader: jspb.BinaryReader): Tag;
+}
 
-    export namespace CertificateAuthority {
-      export type AsObject = {
-        data: string,
-      }
-    }
-
-    export class Tag extends jspb.Message {
-      getKey(): string;
-      setKey(value: string): void;
-
-      getValue(): string;
-      setValue(value: string): void;
-
-      serializeBinary(): Uint8Array;
-      toObject(includeInstance?: boolean): Tag.AsObject;
-      static toObject(includeInstance: boolean, msg: Tag): Tag.AsObject;
-      static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-      static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-      static serializeBinaryToWriter(message: Tag, writer: jspb.BinaryWriter): void;
-      static deserializeBinary(bytes: Uint8Array): Tag;
-      static deserializeBinaryFromReader(message: Tag, reader: jspb.BinaryReader): Tag;
-    }
-
-    export namespace Tag {
-      export type AsObject = {
-        key: string,
-        value: string,
-      }
-    }
+export namespace Tag {
+  export type AsObject = {
+    key: string,
+    value: string,
   }
 }
 

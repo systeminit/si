@@ -2,12 +2,8 @@ use futures::compat::{Future01CompatExt, Stream01CompatExt};
 use futures::StreamExt;
 use paho_mqtt as mqtt;
 use prost::Message;
-use tempfile::TempDir;
 use tokio;
-use tokio::fs;
-use tokio::io::{AsyncBufReadExt, BufReader};
-use tokio::process::Command;
-use tokio::sync::{oneshot, Mutex};
+use tokio::sync::Mutex;
 
 use tracing::{debug, error, warn};
 use uuid::Uuid;
@@ -17,8 +13,7 @@ use si_external_api_gateway::aws::eks;
 
 use std::fmt;
 use std::ops::{Deref, DerefMut};
-use std::os::unix::fs::PermissionsExt;
-use std::process::{ExitStatus, Stdio};
+use std::process::ExitStatus;
 use std::sync::Arc;
 
 use crate::error::{AwsEksClusterRuntimeError, Result};
@@ -119,7 +114,7 @@ impl AgentFinalizer {
     }
 
     fn subscribe_topics(&self) -> (Vec<String>, Vec<i32>) {
-        let finalized_topic = format!("+/+/+/+/+/+/action/+/+/finalized",);
+        let finalized_topic = "+/+/+/+/+/+/action/+/+/finalized".to_string();
         (vec![finalized_topic], vec![2])
     }
 
@@ -326,204 +321,6 @@ impl AgentServer {
         Ok(())
     }
 
-    /// Spawns a `Command` with data for the standard input stream, indents the output stream contents,
-    /// and returns its `CommandResult`.
-    ///
-    /// # Errors
-    ///
-    /// Returns an `Err` if:
-    ///
-    /// * The command failed to spawn
-    /// * One of the I/O streams failed to be properly captured
-    /// * One of the output-reading threads panics
-    /// * The command wasn't running
-    async fn spawn_command(
-        &self,
-        mut cmd: Command,
-        entity_event_locked: Arc<Mutex<EntityEvent>>,
-        capture_output: CaptureOutput,
-    ) -> Result<CommandResult> {
-        {
-            let mut entity_event = entity_event_locked.lock().await;
-            entity_event.log(format!("---- Running Command ----"));
-            entity_event.log(format!("{:?}", cmd));
-            entity_event.log(format!("---- Output ----"));
-            entity_event.error_log(format!("---- Running Command ----"));
-            entity_event.error_log(format!("{:?}", cmd));
-            entity_event.error_log(format!("---- Error Output ----"));
-        }
-        cmd.stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
-
-        debug!(?cmd, "running");
-
-        let mut child = cmd.spawn()?;
-        let stdin = child
-            .stdin
-            .take()
-            .ok_or(AwsEksClusterRuntimeError::NoIoPipe)?;
-        drop(stdin);
-
-        let (stdout_tx, stdout_rx) = if capture_output.stdout() {
-            let (stdout_tx, stdout_rx) = oneshot::channel::<String>();
-            (Some(stdout_tx), Some(stdout_rx))
-        } else {
-            (None, None)
-        };
-
-        let stdout = BufReader::new(
-            child
-                .stdout
-                .take()
-                .ok_or(AwsEksClusterRuntimeError::NoIoPipe)?,
-        );
-        let std_entity_event = entity_event_locked.clone();
-        let std_self = self.clone();
-        let stdout_handle = tokio::spawn(async move {
-            let mut stdout_capture: Option<String> = if stdout_tx.is_some() {
-                Some(String::new())
-            } else {
-                None
-            };
-            let mut lines = stdout.lines();
-            while let Some(result_line) = lines.next().await {
-                let line = match result_line {
-                    Ok(line) => line,
-                    Err(err) => {
-                        error!(?err, "line_read_error");
-                        continue;
-                    }
-                };
-                if stdout_tx.is_some() {
-                    // Safe because stdout_capture is none if stdout_tx is none
-                    stdout_capture
-                        .as_mut()
-                        .unwrap()
-                        .push_str(&format!("{}\n", &line));
-                }
-                debug!(?line);
-                {
-                    {
-                        let mut entity_event = std_entity_event.lock().await;
-                        entity_event.log(line);
-                    }
-                    match std_self.send(std_entity_event.clone()).await {
-                        Ok(_) => (),
-                        Err(err) => {
-                            error!(?err, "cannot_send_line_to_mqtt");
-                            continue;
-                        }
-                    }
-                }
-            }
-            if stdout_tx.is_some() {
-                match stdout_tx.unwrap().send(stdout_capture.unwrap()) {
-                    Ok(()) => debug!("sent_stdout_capture_tx"),
-                    Err(_) => warn!("failed_to_send_capture_tx"),
-                }
-            }
-        });
-
-        let (stderr_tx, stderr_rx) = if capture_output.stderr() {
-            let (stderr_tx, stderr_rx) = oneshot::channel::<String>();
-            (Some(stderr_tx), Some(stderr_rx))
-        } else {
-            (None, None)
-        };
-
-        let stderr = BufReader::new(
-            child
-                .stderr
-                .take()
-                .ok_or(AwsEksClusterRuntimeError::NoIoPipe)?,
-        );
-        let std_err_entity_event = entity_event_locked.clone();
-        let std_err_self = self.clone();
-        let stderr_handle = tokio::spawn(async move {
-            let mut stderr_capture: Option<String> = if stderr_tx.is_some() {
-                Some(String::new())
-            } else {
-                None
-            };
-
-            let mut lines = stderr.lines();
-            while let Some(result_line) = lines.next().await {
-                let line = match result_line {
-                    Ok(line) => line,
-                    Err(err) => {
-                        error!(?err, "line_read_error");
-                        continue;
-                    }
-                };
-                if stderr_tx.is_some() {
-                    // Safe because stdout_capture is none if stdout_tx is none
-                    stderr_capture
-                        .as_mut()
-                        .unwrap()
-                        .push_str(&format!("{}\n", &line));
-                }
-                debug!(?line);
-                {
-                    {
-                        let mut entity_event = std_err_entity_event.lock().await;
-                        entity_event.error_log(line);
-                    }
-                    match std_err_self.send(std_err_entity_event.clone()).await {
-                        Ok(_) => (),
-                        Err(err) => {
-                            error!(?err, "cannot_send_line_to_mqtt");
-                            continue;
-                        }
-                    }
-                }
-            }
-            if stderr_tx.is_some() {
-                match stderr_tx.unwrap().send(stderr_capture.unwrap()) {
-                    Ok(()) => debug!("sent_stderr_capture_tx"),
-                    Err(_) => warn!("failed_to_send_stderr_capture_tx"),
-                }
-            }
-        });
-
-        let (_stdout_result, _stderr_result, child_result) =
-            tokio::join!(stdout_handle, stderr_handle, child);
-
-        let stdout_string_option = if stdout_rx.is_some() {
-            let mut rx = stdout_rx.unwrap();
-            match rx.try_recv() {
-                Ok(s) => Some(s),
-                Err(e) => return Err(AwsEksClusterRuntimeError::from(e)),
-            }
-        } else {
-            None
-        };
-
-        let stderr_string_option = if stderr_rx.is_some() {
-            let mut rx = stderr_rx.unwrap();
-            match rx.try_recv() {
-                Ok(s) => Some(s),
-                Err(e) => return Err(AwsEksClusterRuntimeError::from(e)),
-            }
-        } else {
-            None
-        };
-
-        let child_status = child_result.map_err(AwsEksClusterRuntimeError::IoError)?;
-
-        {
-            let mut entity_event = entity_event_locked.lock().await;
-            entity_event.log(format!("---- Finished Command ----"));
-            entity_event.error_log(format!("---- Finished Command ----"));
-        }
-
-        Ok(CommandResult::new(
-            child_status,
-            stdout_string_option,
-            stderr_string_option,
-        ))
-    }
-
     #[tracing::instrument]
     pub async fn sync_aws(&mut self, entity_event_locked: Arc<Mutex<EntityEvent>>) -> Result<()> {
         // More evidence this should be refactored - why connect multiple times, rather than
@@ -557,116 +354,39 @@ impl AgentServer {
         // More evidence this should be refactored - why connect multiple times, rather than
         // multiplexing? Even if we need N connections, better to manage it higher up.
         let mut eks = eks::EksClient::connect("http://localhost:4001").await?;
-        let result = {
+
+        {
             let mut entity_event = entity_event_locked.lock().await;
-            entity_event.log("Creating EKS Cluster");
-
-            let input_entity = if entity_event.input_entity.is_some() {
-                entity_event.input_entity.as_ref().unwrap()
-            } else {
-                return Err(AwsEksClusterRuntimeError::MissingInputEntity);
-            };
-
-            let logging = if input_entity.cloudwatch_logs {
-                Some(eks::create_cluster_request::ClusterLogging {
-                    types: vec![
-                        "api".to_string(),
-                        "audit".to_string(),
-                        "authenticator".to_string(),
-                        "controllerManager".to_string(),
-                        "scheduler".to_string(),
-                    ],
-                    enabled: true,
-                })
-            } else {
-                None
-            };
-
-            let mut tags = vec![
-                eks::create_cluster_request::TagRequest {
-                    key: "si:id".to_string(),
-                    value: input_entity.id.to_string(),
-                },
-                eks::create_cluster_request::TagRequest {
-                    key: "si:name".to_string(),
-                    value: input_entity.name.to_string(),
-                },
-                eks::create_cluster_request::TagRequest {
-                    key: "si:displayName".to_string(),
-                    value: input_entity.display_name.to_string(),
-                },
-            ];
-
-            for tag in input_entity.tags.iter() {
-                tags.push(eks::create_cluster_request::TagRequest {
-                    key: tag.key.clone(),
-                    value: tag.value.clone(),
-                });
-            }
+            entity_event.log("Creating EKS Cluster\n");
 
             let result = eks
-                .create_cluster(eks::CreateClusterRequest {
-                    context: Some(eks::Context {
-                        billing_account_id: entity_event.billing_account_id.to_string(),
-                        organization_id: entity_event.organization_id.to_string(),
-                        workspace_id: entity_event.workspace_id.to_string(),
-                        ..Default::default()
-                    }),
-                    version: input_entity.kubernetes_version.to_string(),
-                    // So, this works if you are Adam! Ha!. Cheers!
-                    role_arn: "arn:aws:iam::835304779882:role/eksServiceRole".to_string(),
-                    //role_arn: "arn:aws:iam::167069368189:role/eksServiceRole".to_string(),
-                    name: input_entity.id.replace(':', "-").to_string(),
-                    logging,
-                    client_request_token: entity_event.id.to_string(),
-                    resources_vpc_config: Some(eks::create_cluster_request::VpcConfigRequest {
-                        // Adam Subnets! ;P
-                        subnet_ids: vec![
-                            "subnet-0c064a76".to_string(),
-                            "subnet-08a11544".to_string(),
-                            "subnet-ae9a8dc6".to_string(),
-                        ],
-                        security_group_ids: vec!["sg-070f1067".to_string()],
-                        // Fletcher subnets! :)
-                        //subnet_ids: vec![
-                        //    "subnet-223e1c58".to_string(),
-                        //    "subnet-5a867231".to_string(),
-                        //    "subnet-a26ae0ee".to_string(),
-                        //],
-                        //security_group_ids: vec!["sg-bc6539db".to_string()],
-                        endpoint_public_access: true,
-                        endpoint_private_access: false,
-                    }),
-                    tags,
-                })
+                .create_cluster(build_create_cluster_request(&mut entity_event)?)
                 .await?
                 .into_inner();
 
-            if result.error.is_some() {
-                let e = result.error.as_ref().unwrap();
-                entity_event.error_log("Request failed\n");
-                entity_event.error_log(format!("Code: {}\n", e.code));
-                entity_event.error_log(format!("Message: {}\n", e.message));
-                entity_event.error_log(format!("Request ID: {}\n", e.request_id));
-                return Err(AwsEksClusterRuntimeError::ExternalRequest);
-            }
-            entity_event.log("Creation successful!\n");
-            entity_event.log(format!("{:?}", result));
-            debug!("YOU DID IT!");
-            result
-        };
+            match result.error {
+                Some(e) => {
+                    entity_event.error_log("Request failed\n");
+                    entity_event.error_log(format!("Code: {}\n", e.code));
+                    entity_event.error_log(format!("Message: {}\n", e.message));
+                    entity_event.error_log(format!("Request ID: {}\n", e.request_id));
+                    return Err(AwsEksClusterRuntimeError::ExternalRequest);
+                }
+                None => {
+                    entity_event.log("Creation successful!\n");
+                    entity_event.log(format!("{:?}\n", result));
+                    debug!("YOU DID IT!");
+                }
+            };
+        }
 
         {
             let mut entity_event = entity_event_locked.lock().await;
             entity_event.output_entity = entity_event.input_entity.clone();
-            let output_entity = entity_event
+            entity_event
                 .output_entity
                 .as_mut()
                 .ok_or(AwsEksClusterRuntimeError::MissingOutputEntity)?;
-            //output_entity.private_key = result.key_material.to_string();
-            //output_entity.public_key = ssh_public_key_out.try_stdout()?;
-            //output_entity.fingerprint = ssh_fingerprint_out.try_stdout()?;
-            //output_entity.bubble_babble = ssh_babble_out.try_stdout()?;
             entity_event.success();
         }
 
@@ -731,6 +451,118 @@ impl AgentServer {
         }
         Ok(())
     }
+}
+
+fn build_create_cluster_request(
+    entity_event: &mut EntityEvent,
+) -> Result<eks::CreateClusterRequest> {
+    let input_entity = if entity_event.input_entity.is_some() {
+        entity_event.input_entity.as_ref().unwrap()
+    } else {
+        return Err(AwsEksClusterRuntimeError::MissingInputEntity);
+    };
+
+    enum WhoDat {
+        Adam,
+        Fletcher,
+    }
+    const WHODAT: WhoDat = WhoDat::Fletcher;
+
+    let security_group_ids = match WHODAT {
+        WhoDat::Adam => vec!["sg-070f1067".to_string()],
+        WhoDat::Fletcher => vec!["sg-bc6539db".to_string()],
+    };
+    let subnet_ids = match WHODAT {
+        WhoDat::Adam => vec![
+            "subnet-0c064a76".to_string(),
+            "subnet-08a11544".to_string(),
+            "subnet-ae9a8dc6".to_string(),
+        ],
+        WhoDat::Fletcher => vec![
+            "subnet-223e1c58".to_string(),
+            "subnet-5a867231".to_string(),
+            "subnet-a26ae0ee".to_string(),
+        ],
+    };
+    let role_arn = match WHODAT {
+        WhoDat::Adam => "arn:aws:iam::835304779882:role/eksServiceRole".to_string(),
+        WhoDat::Fletcher => "arn:aws:iam::167069368189:role/eksServiceRole".to_string(),
+    };
+
+    let logging = if input_entity.cloudwatch_logs {
+        Some(
+            eks::Logging::builder()
+                .cluster_logging(vec![eks::logging::LogSetup::builder()
+                    .enabled(true)
+                    // TODO fn: Chances are we want to ask for which logging types are
+                    // enabled, but for now, you get them all.
+                    .types(vec![
+                        "api".to_string(),
+                        "audit".to_string(),
+                        "authenticator".to_string(),
+                        "controllerManager".to_string(),
+                        "scheduler".to_string(),
+                    ])
+                    .build()])
+                .build(),
+        )
+    } else {
+        None
+    };
+
+    let resources_vpc_config = Some(
+        eks::create_cluster_request::VpcConfigRequest::builder()
+            .endpoint_private_access(false)
+            .endpoint_public_access(true)
+            .public_access_cidrs(Default::default())
+            .security_group_ids(security_group_ids)
+            .subnet_ids(subnet_ids)
+            .build(),
+    );
+    let mut tags = vec![
+        eks::Tag::builder()
+            .key("si:id".to_string())
+            .value(input_entity.id.to_string())
+            .build(),
+        eks::Tag {
+            key: "si:id".to_string(),
+            value: input_entity.id.to_string(),
+        },
+        eks::Tag {
+            key: "si:name".to_string(),
+            value: input_entity.name.to_string(),
+        },
+        eks::Tag {
+            key: "si:displayName".to_string(),
+            value: input_entity.display_name.to_string(),
+        },
+    ];
+    for tag in input_entity.tags.iter() {
+        tags.push(
+            eks::Tag::builder()
+                .key(tag.key.clone())
+                .value(tag.value.clone())
+                .build(),
+        );
+    }
+
+    let request = eks::CreateClusterRequest::builder()
+        .context(Some(eks::Context {
+            billing_account_id: entity_event.billing_account_id.to_string(),
+            organization_id: entity_event.organization_id.to_string(),
+            workspace_id: entity_event.workspace_id.to_string(),
+            ..Default::default()
+        }))
+        .version(input_entity.kubernetes_version.to_string())
+        .role_arn(role_arn)
+        .name(input_entity.id.replace(':', "-"))
+        .logging(logging)
+        .client_request_token(entity_event.id.to_string())
+        .resources_vpc_config(resources_vpc_config)
+        .tags(tags)
+        .build();
+
+    Ok(request)
 }
 
 #[derive(Debug, Clone)]

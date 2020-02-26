@@ -1,5 +1,3 @@
-use tonic;
-
 pub mod protobuf {
     tonic::include_proto!("si.external_api_gateway");
     pub mod aws {
@@ -22,8 +20,8 @@ pub mod aws {
     }
     pub mod eks {
         pub use crate::protobuf::aws::eks::{
-            create_cluster_reply, create_cluster_request, eks_client::EksClient,
-            CreateClusterReply, CreateClusterRequest, Error, Filter,
+            create_cluster_reply, create_cluster_request, eks_client::EksClient, logging,
+            CreateClusterReply, CreateClusterRequest, Error, Filter, Logging, Tag,
         };
         pub use crate::protobuf::Context;
     }

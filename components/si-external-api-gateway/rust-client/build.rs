@@ -14,6 +14,7 @@ fn main() {
         .extern_path(".si.account", "::si_account::protobuf")
         .type_attribute(".", "#[derive(serde::Serialize, serde::Deserialize)]")
         .type_attribute(".", "#[serde(rename_all = \"camelCase\")]")
+        .type_attribute(".", "#[derive(typed_builder::TypedBuilder)]")
         .compile(PROTOS, &["../.."])
         .unwrap();
 }

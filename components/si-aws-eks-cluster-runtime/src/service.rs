@@ -1,6 +1,6 @@
 use si_data::{
     query_expression_option, Db, ListResult, Query, QueryBooleanLogic, QueryComparison,
-    QueryExpression, QueryExpressionOption, QueryFieldType,
+    QueryExpression, QueryExpressionOption,
 };
 use tonic::{Request, Response};
 use tracing::{debug, debug_span};
