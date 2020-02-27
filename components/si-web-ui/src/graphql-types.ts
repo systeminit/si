@@ -163,7 +163,7 @@ export type AwsEksClusterRuntimeEntityEntityEventsArgs = {
   input?: Maybe<AwsEksClusterRuntimeListEntityEventsRequest>;
 };
 
-export type AwsEksClusterRuntimeEntityEvent = {
+export type AwsEksClusterRuntimeEntityEvent = EntityEvent & {
   __typename?: "AwsEksClusterRuntimeEntityEvent";
   /** actionName */
   actionName?: Maybe<Scalars["String"]>;
@@ -357,10 +357,6 @@ export enum AwsEksClusterRuntimeState {
   Ok = "OK",
   Uninitialized = "UNINITIALIZED",
 }
-
-export type AwsEksClusterRuntimeStreamEntityEventsRequest = {
-  workspaceId: Scalars["String"];
-};
 
 export type AwsEksClusterRuntimeSyncEntityReply = {
   __typename?: "AwsEksClusterRuntimeSyncEntityReply";
@@ -567,6 +563,31 @@ export enum DataQueryFieldType {
   Int = "INT",
   String = "STRING",
 }
+
+export type EntityEvent = {
+  actionName?: Maybe<Scalars["String"]>;
+  billingAccountId?: Maybe<Scalars["String"]>;
+  componentId?: Maybe<Scalars["String"]>;
+  createTime?: Maybe<Scalars["String"]>;
+  entityId?: Maybe<Scalars["String"]>;
+  errorLines?: Maybe<Array<Scalars["String"]>>;
+  errorMessage?: Maybe<Scalars["String"]>;
+  finalized?: Maybe<Scalars["Boolean"]>;
+  finalTime?: Maybe<Scalars["String"]>;
+  id?: Maybe<Scalars["ID"]>;
+  integrationId?: Maybe<Scalars["String"]>;
+  integrationServiceId?: Maybe<Scalars["String"]>;
+  naturalKey?: Maybe<Scalars["String"]>;
+  organizationId?: Maybe<Scalars["String"]>;
+  outputLines?: Maybe<Array<Scalars["String"]>>;
+  success?: Maybe<Scalars["Boolean"]>;
+  tenantIds?: Maybe<Array<Scalars["String"]>>;
+  typeName?: Maybe<Scalars["String"]>;
+  updatedTime?: Maybe<Scalars["String"]>;
+  user?: Maybe<User>;
+  userId?: Maybe<Scalars["String"]>;
+  workspaceId?: Maybe<Scalars["String"]>;
+};
 
 export type GetBillingAccountReply = {
   __typename?: "GetBillingAccountReply";
@@ -1252,7 +1273,7 @@ export type SshKeyEntityEntityEventsArgs = {
   input?: Maybe<SshKeyListEntityEventsRequest>;
 };
 
-export type SshKeyEntityEvent = {
+export type SshKeyEntityEvent = EntityEvent & {
   __typename?: "SshKeyEntityEvent";
   /** actionName */
   actionName?: Maybe<Scalars["String"]>;
@@ -1479,10 +1500,6 @@ export enum SshKeyState {
   Uninitialized = "UNINITIALIZED",
 }
 
-export type SshKeyStreamEntityEventsRequest = {
-  workspaceId: Scalars["String"];
-};
-
 export type SshKeySyncEntityReply = {
   __typename?: "SshKeySyncEntityReply";
   /** event */
@@ -1494,20 +1511,17 @@ export type SshKeySyncEntityRequest = {
   entityId?: Maybe<Scalars["String"]>;
 };
 
+export type StreamEntityEventsRequest = {
+  scopeByTenantId: Scalars["String"];
+};
+
 export type Subscription = {
   __typename?: "Subscription";
-  awsEksClusterRuntimeStreamEntityEvents?: Maybe<
-    AwsEksClusterRuntimeEntityEvent
-  >;
-  sshKeyStreamEntityEvents?: Maybe<SshKeyEntityEvent>;
+  streamEntityEvents?: Maybe<EntityEvent>;
 };
 
-export type SubscriptionAwsEksClusterRuntimeStreamEntityEventsArgs = {
-  input: AwsEksClusterRuntimeStreamEntityEventsRequest;
-};
-
-export type SubscriptionSshKeyStreamEntityEventsArgs = {
-  input: SshKeyStreamEntityEventsRequest;
+export type SubscriptionStreamEntityEventsArgs = {
+  input: StreamEntityEventsRequest;
 };
 
 export type User = {

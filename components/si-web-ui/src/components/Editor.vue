@@ -156,11 +156,17 @@
                 </v-tab-item>
                 <v-tab-item key="entity">
                   <div
-                    v-if="streamEntityEvent && streamEntityEvent.outputEntity"
+                    v-if="
+                      createEntityData &&
+                        createEntityData.entity &&
+                        createEntityData.entity.id &&
+                        streamEntityEvent &&
+                        streamEntityEvent.finalized
+                    "
                   >
                     <EntityShow
                       :entityType="entityType"
-                      :entityId="streamEntityEvent.outputEntity.id"
+                      :entityId="createEntityData.entity.id"
                     />
                   </div>
                   <v-card v-else>
@@ -231,6 +237,7 @@ description = "${siComponent.name} ${newEntityName.spaced}"`,
       createEntityData: null,
       checkComponent: null,
       streamEntityEvent: null,
+      skipStream: true,
       siComponent,
       cmOptions: {
         tabSize: 4,
@@ -255,6 +262,7 @@ description = "${siComponent.name} ${newEntityName.spaced}"`,
       this.createEntityData = null;
       this.streamEntityEvent = null;
       this.checkComponent = null;
+      this.skipStream = true;
       this.cmOptions["readOnly"] = false;
       this.tab = 0;
       this.code = `name = "${newEntityName.dashed}"
@@ -286,6 +294,8 @@ description = "${siComponent.name} ${newEntityName.spaced}"`;
         variables: inputData,
       });
       this.createEntityData = data.data[siComponent.createEntityResultString()];
+      this.streamEntityEvent = this.createEntityData.event;
+      this.skipStream = false;
       this.loading = false;
     },
   },
@@ -313,9 +323,11 @@ description = "${siComponent.name} ${newEntityName.spaced}"`;
           return siComponent.streamEntityEvents;
         },
         variables() {
-          const workspace = auth.getCurrentWorkspace();
+          if (!this.createEntityData) {
+            return {}
+          }
           return {
-            workspaceId: workspace.id || "",
+            scopeByTenantId: this.createEntityData.entity.id,
           };
         },
         result({ data }) {
@@ -326,6 +338,9 @@ description = "${siComponent.name} ${newEntityName.spaced}"`;
             this.tab = 2;
           }
         },
+        skip() {
+          return this.skipStream;
+        }
       },
     },
     checkComponent: {

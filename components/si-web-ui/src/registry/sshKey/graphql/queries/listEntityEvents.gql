@@ -15,14 +15,8 @@ query sshKeyListEntityEvents(
     items {
       id
       actionName
-      entity {
-        id
-        displayName
-      }
-      user {
-        id
-        displayName
-      }
+      entityId
+      userId
       createTime
       updatedTime
       finalized

@@ -15,18 +15,12 @@ query awsEksClusterRuntimeListEntityEvents(
     items {
       id
       actionName
-      entity {
-        id
-        displayName
-      }
-      user {
-        id
-        displayName
-      }
       createTime
       updatedTime
       finalized
       success
+      outputLines
+      errorLines
     }
     totalCount
     nextPageToken

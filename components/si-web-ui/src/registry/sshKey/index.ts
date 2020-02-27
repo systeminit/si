@@ -29,7 +29,7 @@ export const sshKey = new SiComponent("sshKey", {
   ],
   listEntityEventHeaders: [
     { text: "Name", value: "actionName" },
-    { text: "By User", value: "user.displayName" },
+    { text: "By User", value: "userId" },
     { text: "Created At", value: "createTime" },
     { text: "Updated At", value: "updatedTime" },
     { text: "Finished", value: "finalized" },

@@ -1,7 +1,8 @@
-subscription awsEksClusterRuntimeStreamEntityEvents($workspaceId: String!) {
-  awsEksClusterRuntimeStreamEntityEvents(input:{workspaceId:$workspaceId}) {
+subscription streamEntityEvents($scopeByTenantId: String!) {
+  streamEntityEvents(input:{scopeByTenantId:$scopeByTenantId}) {
     id
     actionName
+    userId
     entityId
     typeName
     createTime
@@ -11,16 +12,6 @@ subscription awsEksClusterRuntimeStreamEntityEvents($workspaceId: String!) {
     outputLines
     errorLines
     success
-    inputEntity {
-      id
-      kubernetesVersion
-      state
-    }
-    outputEntity {
-      id
-      kubernetesVersion
-      state
-    }
   }
 }
 

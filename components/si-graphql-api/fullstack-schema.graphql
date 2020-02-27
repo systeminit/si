@@ -210,7 +210,7 @@ type AwsEksClusterRuntimeEntity {
   workspaceId: String
 }
 
-type AwsEksClusterRuntimeEntityEvent {
+type AwsEksClusterRuntimeEntityEvent implements EntityEvent {
   """actionName"""
   actionName: String
 
@@ -449,10 +449,6 @@ enum AwsEksClusterRuntimeState {
   UNINITIALIZED
 }
 
-input AwsEksClusterRuntimeStreamEntityEventsRequest {
-  workspaceId: String!
-}
-
 type AwsEksClusterRuntimeSyncEntityReply {
   """entityEvent"""
   entityEvent: AwsEksClusterRuntimeEntityEvent
@@ -671,6 +667,30 @@ input DataQueryExpressionOption {
 enum DataQueryFieldType {
   INT
   STRING
+}
+
+interface EntityEvent {
+  actionName: String
+  billingAccountId: String
+  componentId: String
+  createTime: String
+  entityId: String
+  errorLines: [String!]
+  errorMessage: String
+  finalized: Boolean
+  finalTime: String
+  id: ID
+  integrationId: String
+  integrationServiceId: String
+  naturalKey: String
+  organizationId: String
+  outputLines: [String!]
+  success: Boolean
+  tenantIds: [String!]
+  typeName: String
+  updatedTime: String
+  userId: String
+  workspaceId: String
 }
 
 type GetBillingAccountReply {
@@ -1342,7 +1362,7 @@ type SshKeyEntity {
   workspaceId: String
 }
 
-type SshKeyEntityEvent {
+type SshKeyEntityEvent implements EntityEvent {
   """actionName"""
   actionName: String
 
@@ -1615,10 +1635,6 @@ enum SshKeyState {
   UNINITIALIZED
 }
 
-input SshKeyStreamEntityEventsRequest {
-  workspaceId: String!
-}
-
 type SshKeySyncEntityReply {
   """event"""
   event: SshKeyEntityEvent
@@ -1629,9 +1645,12 @@ input SshKeySyncEntityRequest {
   entityId: String
 }
 
+input StreamEntityEventsRequest {
+  scopeByTenantId: String!
+}
+
 type Subscription {
-  awsEksClusterRuntimeStreamEntityEvents(input: AwsEksClusterRuntimeStreamEntityEventsRequest!): AwsEksClusterRuntimeEntityEvent
-  sshKeyStreamEntityEvents(input: SshKeyStreamEntityEventsRequest!): SshKeyEntityEvent
+  streamEntityEvents(input: StreamEntityEventsRequest!): EntityEvent
 }
 
 type User {

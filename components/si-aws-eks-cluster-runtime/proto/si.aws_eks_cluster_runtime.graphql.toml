@@ -9,6 +9,8 @@ service.AwsEksClusterRuntime.GetEntity.query = true
 service.AwsEksClusterRuntime.SyncEntity.query = true
 service.AwsEksClusterRuntime.ListEntityEvents.query = true
 
+message.EntityEvent.implementsInterfaceTypeHint = ["EntityEvent"] 
+
 [message.Component.integrationId.has_one]
 to = "integration"
 grpcServiceName = "Account"

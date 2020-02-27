@@ -1,5 +1,5 @@
-subscription sshKeyStreamEntityEvents($workspaceId: String!) {
-  sshKeyStreamEntityEvents(input:{workspaceId:$workspaceId}) {
+subscription streamEntityEvents($scopeByTenantId: String!) {
+  streamEntityEvents(input:{scopeByTenantId:$scopeByTenantId}) {
     id
     actionName
     entityId
@@ -11,22 +11,6 @@ subscription sshKeyStreamEntityEvents($workspaceId: String!) {
     outputLines
     errorLines
     success
-    inputEntity {
-      id
-      keyType
-      keyFormat
-      bits
-      state
-    }
-    outputEntity {
-      id
-      keyType
-      keyFormat
-      bits
-      fingerprint
-      publicKey
-      privateKey
-      state
-    }
+    userId
   }
 }

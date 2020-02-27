@@ -109,7 +109,7 @@ export class SiComponent {
   }
 
   streamEntityEventsResultString(): string {
-    return `${this.typeName}StreamEntityEvents`;
+    return `streamEntityEvents`;
   }
 
   createEntityResultString(): string {

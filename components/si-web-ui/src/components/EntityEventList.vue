@@ -35,7 +35,7 @@
                           full-width
                           flat
                           readonly
-                          :value="data.item.outputLines.join('\n')"
+                          :value="formatOutput(data.item.outputLines)"
                         />
                       </v-list-item-content>
                     </v-list-item>
@@ -50,7 +50,7 @@
                           full-width
                           flat
                           readonly
-                          :value="data.item.errorLines.join('\n')"
+                          :value="formatOutput(data.item.errorLines)"
                         />
                       </v-list-item-content>
                     </v-list-item>
@@ -104,6 +104,7 @@ export default Vue.extend({
   data() {
     let siComponent = siComponentRegistry.lookup(this.entityType);
     let headers = siComponent.listEntityEventHeaders;
+    const profile = auth.getProfile();
 
     return {
       errorMessage: null,
@@ -116,6 +117,7 @@ export default Vue.extend({
       },
       siComponent,
       headers,
+      profile,
       listEntityEvents: {
         items: [],
         totalCount: 0,
@@ -128,11 +130,17 @@ export default Vue.extend({
   },
   watch: {
     watchEvent(_oldNumber, _newNumber) {
-      console.log("I got this");
       this.$apollo.queries.listEntityEvents.refetch();
     }
   },
   methods: {
+    formatOutput(inputLines) {
+      if (inputLines && inputLines.length > 0) {
+        return inputLines.join("\n");
+      } else {
+        return "No output"
+      }
+    },
     showMore() {
       this.loading = true;
       // Fetch more data and transform the original result
@@ -211,6 +219,51 @@ export default Vue.extend({
           this.showMoreDisabled = false;
         }
         return list;
+      },
+      subscribeToMore: {
+        document() {
+          let siComponent = siComponentRegistry.lookup(this.entityType);
+          return siComponent.streamEntityEvents;
+        },
+        variables() {
+          console.log(this.entityId)
+          return {
+            scopeByTenantId: this.entityId
+          };
+        },
+        updateQuery(previousResult, data) {
+          console.log("help me out here", { previousResult, data });
+          this.loading = false;
+          let siComponent = siComponentRegistry.lookup(this.entityType);
+          let resultString = siComponent.listEntityEventsResultString();
+          let newItems = previousResult[resultString].items;
+          let nextPageToken = previousResult[resultString].nextPageToken;
+          let nextTotalCount = previousResult[resultString].totalCount;
+          let previousResultList = previousResult[resultString];
+
+          let newEvent = data.subscriptionData.data.streamEntityEvents;
+
+          let elementIndex = newItems.findIndex(element => element.id == newEvent.id);
+          // If the ID of this event exists already, we want to update the data for it
+          // and move on.
+          if (elementIndex != -1) {
+            console.log("You existed", { newEvent, elementIndex });
+            newItems[elementIndex] = newEvent;
+          } else {
+            console.log("You are brand new!", { newEvent });
+            newItems.unshift(newEvent);
+            nextTotalCount = nextTotalCount + 1;
+          }
+
+          return {
+            [resultString]: {
+              __typename: previousResultList.__typename,
+              items: newItems,
+              totalCount: nextTotalCount,
+              nextPageToken,
+            },
+          };
+        }
       },
       error(error, vm, key, type, options) {
         this.errorMessage = error.message;

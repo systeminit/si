@@ -86,8 +86,12 @@ const server = new ApolloServer({
   },
   context: ({ req, connection }): Context => {
     if (connection) {
-      console.log("Youre a connection, for whatever that means!");
-      console.log({ connection });
+      return {
+        //@ts-ignore
+        dataSources,
+        connection,
+      };
+      //console.log({ connection });
     } else {
       const token = req.headers.authorization || "";
       const userContext: UserContext = { authenticated: false };

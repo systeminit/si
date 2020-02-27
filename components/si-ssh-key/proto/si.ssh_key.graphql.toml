@@ -10,6 +10,8 @@ service.SshKey.ListEntityEvents.query = true
 service.SshKey.CreateEntity.mutation = true
 service.SshKey.SyncEntity.mutation = true
 
+message.EntityEvent.implementsInterfaceTypeHint = ["EntityEvent"] 
+
 [message.Component.integrationId.has_one]
 to = "integration"
 grpcServiceName = "Account"

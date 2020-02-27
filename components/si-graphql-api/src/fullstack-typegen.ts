@@ -63,9 +63,6 @@ export interface NexusGenInputs {
     kubernetesVersion?: string | null; // String
     name?: string | null; // String
   }
-  AwsEksClusterRuntimeStreamEntityEventsRequest: { // input type
-    workspaceId: string; // String!
-  }
   AwsEksClusterRuntimeSyncEntityRequest: { // input type
     entityId?: string | null; // String
   }
@@ -236,11 +233,11 @@ export interface NexusGenInputs {
     keyType?: NexusGenEnums['SshKeyKeyTypeRequest'] | null; // SshKeyKeyTypeRequest
     name?: string | null; // String
   }
-  SshKeyStreamEntityEventsRequest: { // input type
-    workspaceId: string; // String!
-  }
   SshKeySyncEntityRequest: { // input type
     entityId?: string | null; // String
+  }
+  StreamEntityEventsRequest: { // input type
+    scopeByTenantId: string; // String!
   }
 }
 
@@ -655,6 +652,7 @@ export interface NexusGenRootTypes {
     tenantIds?: string[] | null; // [String!]
     typeName?: string | null; // String
   }
+  EntityEvent: NexusGenRootTypes['AwsEksClusterRuntimeEntityEvent'] | NexusGenRootTypes['SshKeyEntityEvent'];
   String: string;
   Int: number;
   Float: number;
@@ -670,7 +668,6 @@ export interface NexusGenAllTypes extends NexusGenRootTypes {
   AwsEksClusterRuntimeListEntitiesRequest: NexusGenInputs['AwsEksClusterRuntimeListEntitiesRequest'];
   AwsEksClusterRuntimeListEntityEventsRequest: NexusGenInputs['AwsEksClusterRuntimeListEntityEventsRequest'];
   AwsEksClusterRuntimePickComponentRequest: NexusGenInputs['AwsEksClusterRuntimePickComponentRequest'];
-  AwsEksClusterRuntimeStreamEntityEventsRequest: NexusGenInputs['AwsEksClusterRuntimeStreamEntityEventsRequest'];
   AwsEksClusterRuntimeSyncEntityRequest: NexusGenInputs['AwsEksClusterRuntimeSyncEntityRequest'];
   AwsEksClusterRuntimeTagRequest: NexusGenInputs['AwsEksClusterRuntimeTagRequest'];
   CreateAccountRequest: NexusGenInputs['CreateAccountRequest'];
@@ -701,8 +698,8 @@ export interface NexusGenAllTypes extends NexusGenRootTypes {
   SshKeyListEntitiesRequest: NexusGenInputs['SshKeyListEntitiesRequest'];
   SshKeyListEntityEventsRequest: NexusGenInputs['SshKeyListEntityEventsRequest'];
   SshKeyPickComponentRequest: NexusGenInputs['SshKeyPickComponentRequest'];
-  SshKeyStreamEntityEventsRequest: NexusGenInputs['SshKeyStreamEntityEventsRequest'];
   SshKeySyncEntityRequest: NexusGenInputs['SshKeySyncEntityRequest'];
+  StreamEntityEventsRequest: NexusGenInputs['StreamEntityEventsRequest'];
   AwsEksClusterRuntimeNextState: NexusGenEnums['AwsEksClusterRuntimeNextState'];
   AwsEksClusterRuntimeState: NexusGenEnums['AwsEksClusterRuntimeState'];
   DataOrderByDirection: NexusGenEnums['DataOrderByDirection'];
@@ -1150,8 +1147,7 @@ export interface NexusGenFieldTypes {
     event: NexusGenRootTypes['SshKeyEntityEvent'] | null; // SshKeyEntityEvent
   }
   Subscription: { // field return type
-    awsEksClusterRuntimeStreamEntityEvents: NexusGenRootTypes['AwsEksClusterRuntimeEntityEvent'] | null; // AwsEksClusterRuntimeEntityEvent
-    sshKeyStreamEntityEvents: NexusGenRootTypes['SshKeyEntityEvent'] | null; // SshKeyEntityEvent
+    streamEntityEvents: NexusGenRootTypes['EntityEvent'] | null; // EntityEvent
   }
   User: { // field return type
     billingAccount: NexusGenRootTypes['BillingAccount'] | null; // BillingAccount
@@ -1179,6 +1175,29 @@ export interface NexusGenFieldTypes {
     organizationId: string | null; // String
     tenantIds: string[] | null; // [String!]
     typeName: string | null; // String
+  }
+  EntityEvent: { // field return type
+    actionName: string | null; // String
+    billingAccountId: string | null; // String
+    componentId: string | null; // String
+    createTime: string | null; // String
+    entityId: string | null; // String
+    errorLines: string[] | null; // [String!]
+    errorMessage: string | null; // String
+    finalized: boolean | null; // Boolean
+    finalTime: string | null; // String
+    id: string | null; // ID
+    integrationId: string | null; // String
+    integrationServiceId: string | null; // String
+    naturalKey: string | null; // String
+    organizationId: string | null; // String
+    outputLines: string[] | null; // [String!]
+    success: boolean | null; // Boolean
+    tenantIds: string[] | null; // [String!]
+    typeName: string | null; // String
+    updatedTime: string | null; // String
+    userId: string | null; // String
+    workspaceId: string | null; // String
   }
 }
 
@@ -1308,11 +1327,8 @@ export interface NexusGenArgTypes {
     }
   }
   Subscription: {
-    awsEksClusterRuntimeStreamEntityEvents: { // args
-      input: NexusGenInputs['AwsEksClusterRuntimeStreamEntityEventsRequest']; // AwsEksClusterRuntimeStreamEntityEventsRequest!
-    }
-    sshKeyStreamEntityEvents: { // args
-      input: NexusGenInputs['SshKeyStreamEntityEventsRequest']; // SshKeyStreamEntityEventsRequest!
+    streamEntityEvents: { // args
+      input: NexusGenInputs['StreamEntityEventsRequest']; // StreamEntityEventsRequest!
     }
   }
   Workspace: {
@@ -1323,17 +1339,18 @@ export interface NexusGenArgTypes {
 }
 
 export interface NexusGenAbstractResolveReturnTypes {
+  EntityEvent: "AwsEksClusterRuntimeEntityEvent" | "SshKeyEntityEvent"
 }
 
 export interface NexusGenInheritedFields {}
 
 export type NexusGenObjectNames = "AwsEksClusterRuntimeComponent" | "AwsEksClusterRuntimeConstraints" | "AwsEksClusterRuntimeCreateEntityReply" | "AwsEksClusterRuntimeEntity" | "AwsEksClusterRuntimeEntityEvent" | "AwsEksClusterRuntimeGetComponentReply" | "AwsEksClusterRuntimeGetEntityReply" | "AwsEksClusterRuntimeImplicitConstraint" | "AwsEksClusterRuntimeListComponentsReply" | "AwsEksClusterRuntimeListEntitiesReply" | "AwsEksClusterRuntimeListEntityEventsReply" | "AwsEksClusterRuntimePickComponentReply" | "AwsEksClusterRuntimeSyncEntityReply" | "AwsEksClusterRuntimeTag" | "BillingAccount" | "Capability" | "CreateAccountReply" | "CreateBillingAccountReply" | "CreateIntegrationInstanceReply" | "CreateUserReply" | "GetBillingAccountReply" | "GetIntegrationReply" | "GetIntegrationServiceReply" | "GetOrganizationReply" | "GetUserReply" | "Group" | "Integration" | "IntegrationInstance" | "IntegrationOption" | "IntegrationOptionValue" | "IntegrationService" | "ListIntegrationInstancesReply" | "ListIntegrationServicesReply" | "ListIntegrationsReply" | "ListOrganizationsReply" | "ListUsersReply" | "ListWorkspacesReply" | "LoginReply" | "Mutation" | "Organization" | "Query" | "SshKeyComponent" | "SshKeyConstraints" | "SshKeyCreateEntityReply" | "SshKeyEntity" | "SshKeyEntityEvent" | "SshKeyGetComponentReply" | "SshKeyGetEntityReply" | "SshKeyImplicitConstraint" | "SshKeyListComponentsReply" | "SshKeyListEntitiesReply" | "SshKeyListEntityEventsReply" | "SshKeyPickComponentReply" | "SshKeySyncEntityReply" | "Subscription" | "User" | "Workspace";
 
-export type NexusGenInputNames = "AwsEksClusterRuntimeCreateEntityRequest" | "AwsEksClusterRuntimeGetComponentRequest" | "AwsEksClusterRuntimeGetEntityRequest" | "AwsEksClusterRuntimeListComponentsRequest" | "AwsEksClusterRuntimeListEntitiesRequest" | "AwsEksClusterRuntimeListEntityEventsRequest" | "AwsEksClusterRuntimePickComponentRequest" | "AwsEksClusterRuntimeStreamEntityEventsRequest" | "AwsEksClusterRuntimeSyncEntityRequest" | "AwsEksClusterRuntimeTagRequest" | "CreateAccountRequest" | "CreateBillingAccountRequest" | "CreateIntegrationInstanceRequest" | "CreateIntegrationOptionValueRequest" | "CreateUserRequest" | "DataPageToken" | "DataQuery" | "DataQueryExpression" | "DataQueryExpressionOption" | "GetBillingAccountRequest" | "GetIntegrationRequest" | "GetIntegrationServiceRequest" | "GetOrganizationRequest" | "GetUserRequest" | "ListIntegrationInstancesRequest" | "ListIntegrationServicesRequest" | "ListIntegrationsRequest" | "ListOrganizationsRequest" | "ListUsersRequest" | "ListWorkspacesRequest" | "LoginRequest" | "SshKeyCreateEntityRequest" | "SshKeyGetComponentRequest" | "SshKeyGetEntityRequest" | "SshKeyListComponentsRequest" | "SshKeyListEntitiesRequest" | "SshKeyListEntityEventsRequest" | "SshKeyPickComponentRequest" | "SshKeyStreamEntityEventsRequest" | "SshKeySyncEntityRequest";
+export type NexusGenInputNames = "AwsEksClusterRuntimeCreateEntityRequest" | "AwsEksClusterRuntimeGetComponentRequest" | "AwsEksClusterRuntimeGetEntityRequest" | "AwsEksClusterRuntimeListComponentsRequest" | "AwsEksClusterRuntimeListEntitiesRequest" | "AwsEksClusterRuntimeListEntityEventsRequest" | "AwsEksClusterRuntimePickComponentRequest" | "AwsEksClusterRuntimeSyncEntityRequest" | "AwsEksClusterRuntimeTagRequest" | "CreateAccountRequest" | "CreateBillingAccountRequest" | "CreateIntegrationInstanceRequest" | "CreateIntegrationOptionValueRequest" | "CreateUserRequest" | "DataPageToken" | "DataQuery" | "DataQueryExpression" | "DataQueryExpressionOption" | "GetBillingAccountRequest" | "GetIntegrationRequest" | "GetIntegrationServiceRequest" | "GetOrganizationRequest" | "GetUserRequest" | "ListIntegrationInstancesRequest" | "ListIntegrationServicesRequest" | "ListIntegrationsRequest" | "ListOrganizationsRequest" | "ListUsersRequest" | "ListWorkspacesRequest" | "LoginRequest" | "SshKeyCreateEntityRequest" | "SshKeyGetComponentRequest" | "SshKeyGetEntityRequest" | "SshKeyListComponentsRequest" | "SshKeyListEntitiesRequest" | "SshKeyListEntityEventsRequest" | "SshKeyPickComponentRequest" | "SshKeySyncEntityRequest" | "StreamEntityEventsRequest";
 
 export type NexusGenEnumNames = "AwsEksClusterRuntimeNextState" | "AwsEksClusterRuntimeState" | "DataOrderByDirection" | "DataQueryBooleanLogic" | "DataQueryComparison" | "DataQueryFieldType" | "IntegrationOptionType" | "SshKeyKeyFormat" | "SshKeyKeyFormatRequest" | "SshKeyKeyType" | "SshKeyKeyTypeRequest" | "SshKeyNextState" | "SshKeyState";
 
-export type NexusGenInterfaceNames = never;
+export type NexusGenInterfaceNames = "EntityEvent";
 
 export type NexusGenScalarNames = "Boolean" | "Float" | "ID" | "Int" | "String";
 

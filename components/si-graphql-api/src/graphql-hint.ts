@@ -8,7 +8,11 @@ export interface GraphqlHintMethod {
   skipauth?: boolean;
 }
 
-export interface GraphqlHintMessage {
+type GraphqlHintMessage = GraphqlHintMessageField & {
+  implementsInterfaceTypeHint: string[];
+};
+
+export interface GraphqlHintMessageField {
   [fieldName: string]: {
     has_one?: {
       to: string;
