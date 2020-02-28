@@ -18,6 +18,7 @@ use std::sync::Arc;
 
 use crate::error::{AwsEksClusterRuntimeError, Result};
 use crate::model::entity::EntityEvent;
+use crate::AwsStatus;
 
 pub enum CaptureOutput {
     None,
@@ -355,7 +356,7 @@ impl AgentServer {
         // multiplexing? Even if we need N connections, better to manage it higher up.
         let mut eks = eks::EksClient::connect("http://localhost:4001").await?;
 
-        {
+        let result = {
             let mut entity_event = entity_event_locked.lock().await;
             entity_event.log("Creating EKS Cluster\n");
 
@@ -378,15 +379,32 @@ impl AgentServer {
                     debug!("YOU DID IT!");
                 }
             };
-        }
+
+            result
+        };
 
         {
             let mut entity_event = entity_event_locked.lock().await;
             entity_event.output_entity = entity_event.input_entity.clone();
-            entity_event
+            let mut output = entity_event
                 .output_entity
                 .as_mut()
                 .ok_or(AwsEksClusterRuntimeError::MissingOutputEntity)?;
+            let cluster = result
+                .cluster
+                .ok_or(AwsEksClusterRuntimeError::CreateClusterReplyMissingCluster)?;
+            output.aws_status = match cluster.status.as_ref() {
+                "CREATING" => AwsStatus::Creating.into(),
+                "ACTIVE" => AwsStatus::Active.into(),
+                "DELETING" => AwsStatus::Deleting.into(),
+                "FAILED" => AwsStatus::Failed.into(),
+                "UPDATING" => AwsStatus::Updating.into(),
+                invalid => {
+                    return Err(AwsEksClusterRuntimeError::InvalidCreateClusterStatus(
+                        invalid.to_string(),
+                    ))
+                }
+            };
             entity_event.success();
         }
 

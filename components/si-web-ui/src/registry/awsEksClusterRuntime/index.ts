@@ -13,6 +13,7 @@ export const awsEksClusterRuntime = new SiComponent("awsEksClusterRuntime", {
   listHeaders: [
     { text: "Name", value: "name" },
     { text: "Kubernetes Version", value: "kubernetesVersion" },
+    { text: "AWS Status", value: "awsStatus" },
     { text: "State", value: "state" },
   ],
   showActions: [{ displayName: "Add Node Group" }, { displayName: "Delete" }],
@@ -23,6 +24,7 @@ export const awsEksClusterRuntime = new SiComponent("awsEksClusterRuntime", {
       property: "kubernetesVersion",
       showAs: "text",
     },
+    { displayName: "AWS Status", property: "awsStatus", showAs: "text" },
   ],
   hints: [
     {

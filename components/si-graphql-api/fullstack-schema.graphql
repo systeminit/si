@@ -2,6 +2,15 @@
 ### Do not make changes to this file directly
 
 
+enum AwsEksClusterRuntimeAwsStatus {
+  ACTIVE
+  AWS_STATUS_UNINITIALIZED
+  CREATING
+  DELETING
+  FAILED
+  UPDATING
+}
+
 type AwsEksClusterRuntimeComponent {
   """description"""
   description: String
@@ -113,6 +122,9 @@ input AwsEksClusterRuntimeCreateEntityRequest {
 }
 
 type AwsEksClusterRuntimeEntity {
+  """awsStatus"""
+  awsStatus: AwsEksClusterRuntimeAwsStatus
+
   """billingAccountId"""
   billingAccount: BillingAccount
 

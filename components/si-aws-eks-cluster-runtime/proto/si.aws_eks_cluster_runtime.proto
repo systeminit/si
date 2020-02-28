@@ -103,6 +103,18 @@ message Entity {
     string value = 2;
   }
   repeated Tag tags = 26;
+  enum AwsStatus {
+    // TODO fn: enum variants can't be re-used with enums at the same level of
+    // nesting. This might require a little thought when our labels collide
+    // with the external domain labels.
+    AWS_STATUS_UNINITIALIZED = 0;
+    CREATING = 1;
+    ACTIVE = 2;
+    DELETING = 3;
+    FAILED = 4;
+    UPDATING = 5;
+  }
+  AwsStatus aws_status = 27;
 }
 
 message EntityEvent {

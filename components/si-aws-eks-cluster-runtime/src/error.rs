@@ -90,6 +90,10 @@ pub enum AwsEksClusterRuntimeError {
     GrpcCall(#[from] tonic::Status),
     #[error("an external API request has failed")]
     ExternalRequest,
+    #[error("create cluster reply is missing required cluster information")]
+    CreateClusterReplyMissingCluster,
+    #[error("invalid create cluster status: {0}")]
+    InvalidCreateClusterStatus(String),
 }
 
 impl From<AwsEksClusterRuntimeError> for tonic::Status {

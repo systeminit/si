@@ -8,6 +8,15 @@ export type Scalars = {
   Float: number;
 };
 
+export enum AwsEksClusterRuntimeAwsStatus {
+  Active = "ACTIVE",
+  AwsStatusUninitialized = "AWS_STATUS_UNINITIALIZED",
+  Creating = "CREATING",
+  Deleting = "DELETING",
+  Failed = "FAILED",
+  Updating = "UPDATING",
+}
+
 export type AwsEksClusterRuntimeComponent = {
   __typename?: "AwsEksClusterRuntimeComponent";
   /** description */
@@ -93,6 +102,8 @@ export type AwsEksClusterRuntimeCreateEntityRequest = {
 
 export type AwsEksClusterRuntimeEntity = {
   __typename?: "AwsEksClusterRuntimeEntity";
+  /** awsStatus */
+  awsStatus?: Maybe<AwsEksClusterRuntimeAwsStatus>;
   /** billingAccountId */
   billingAccount?: Maybe<BillingAccount>;
   /** billingAccountId */
@@ -584,7 +595,6 @@ export type EntityEvent = {
   tenantIds?: Maybe<Array<Scalars["String"]>>;
   typeName?: Maybe<Scalars["String"]>;
   updatedTime?: Maybe<Scalars["String"]>;
-  user?: Maybe<User>;
   userId?: Maybe<Scalars["String"]>;
   workspaceId?: Maybe<Scalars["String"]>;
 };

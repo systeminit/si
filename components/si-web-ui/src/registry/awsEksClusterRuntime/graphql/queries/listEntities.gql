@@ -24,6 +24,7 @@ query awsEksClusterRuntimeListEntities(
       organizationId
       workspaceId
       billingAccountId
+      awsStatus
     }
     totalCount
     nextPageToken
