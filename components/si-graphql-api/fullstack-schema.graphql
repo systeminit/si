@@ -222,7 +222,7 @@ type AwsEksClusterRuntimeEntity {
   workspaceId: String
 }
 
-type AwsEksClusterRuntimeEntityEvent implements EntityEvent {
+type AwsEksClusterRuntimeEntityEvent {
   """actionName"""
   actionName: String
 
@@ -462,8 +462,8 @@ enum AwsEksClusterRuntimeState {
 }
 
 type AwsEksClusterRuntimeSyncEntityReply {
-  """entityEvent"""
-  entityEvent: AwsEksClusterRuntimeEntityEvent
+  """event"""
+  event: AwsEksClusterRuntimeEntityEvent
 }
 
 input AwsEksClusterRuntimeSyncEntityRequest {
@@ -1119,6 +1119,7 @@ input LoginRequest {
 
 type Mutation {
   awsEksClusterRuntimeCreateEntity(input: AwsEksClusterRuntimeCreateEntityRequest): AwsEksClusterRuntimeCreateEntityReply
+  awsEksClusterRuntimeSyncEntity(input: AwsEksClusterRuntimeSyncEntityRequest): AwsEksClusterRuntimeSyncEntityReply
   createAccount(input: CreateAccountRequest): CreateAccountReply
   createIntegrationInstance(input: CreateIntegrationInstanceRequest): CreateIntegrationInstanceReply
   sshKeyCreateEntity(input: SshKeyCreateEntityRequest): SshKeyCreateEntityReply
@@ -1161,7 +1162,6 @@ type Query {
   awsEksClusterRuntimeListEntities(input: AwsEksClusterRuntimeListEntitiesRequest): AwsEksClusterRuntimeListEntitiesReply
   awsEksClusterRuntimeListEntityEvents(input: AwsEksClusterRuntimeListEntityEventsRequest): AwsEksClusterRuntimeListEntityEventsReply
   awsEksClusterRuntimePickComponent(input: AwsEksClusterRuntimePickComponentRequest): AwsEksClusterRuntimePickComponentReply
-  awsEksClusterRuntimeSyncEntity(input: AwsEksClusterRuntimeSyncEntityRequest): AwsEksClusterRuntimeSyncEntityReply
   getBillingAccount(input: GetBillingAccountRequest): GetBillingAccountReply
   getUser(input: GetUserRequest): GetUserReply
   listIntegrationInstances(input: ListIntegrationInstancesRequest): ListIntegrationInstancesReply

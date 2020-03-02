@@ -369,7 +369,7 @@ export interface NexusGenRootTypes {
     implicitConstraints?: NexusGenRootTypes['AwsEksClusterRuntimeImplicitConstraint'][] | null; // [AwsEksClusterRuntimeImplicitConstraint!]
   }
   AwsEksClusterRuntimeSyncEntityReply: { // root type
-    entityEvent?: NexusGenRootTypes['AwsEksClusterRuntimeEntityEvent'] | null; // AwsEksClusterRuntimeEntityEvent
+    event?: NexusGenRootTypes['AwsEksClusterRuntimeEntityEvent'] | null; // AwsEksClusterRuntimeEntityEvent
   }
   AwsEksClusterRuntimeTag: { // root type
     key?: string | null; // String
@@ -654,7 +654,7 @@ export interface NexusGenRootTypes {
     tenantIds?: string[] | null; // [String!]
     typeName?: string | null; // String
   }
-  EntityEvent: NexusGenRootTypes['AwsEksClusterRuntimeEntityEvent'] | NexusGenRootTypes['SshKeyEntityEvent'];
+  EntityEvent: NexusGenRootTypes['SshKeyEntityEvent'];
   String: string;
   Int: number;
   Float: number;
@@ -839,7 +839,7 @@ export interface NexusGenFieldTypes {
     implicitConstraints: NexusGenRootTypes['AwsEksClusterRuntimeImplicitConstraint'][] | null; // [AwsEksClusterRuntimeImplicitConstraint!]
   }
   AwsEksClusterRuntimeSyncEntityReply: { // field return type
-    entityEvent: NexusGenRootTypes['AwsEksClusterRuntimeEntityEvent'] | null; // AwsEksClusterRuntimeEntityEvent
+    event: NexusGenRootTypes['AwsEksClusterRuntimeEntityEvent'] | null; // AwsEksClusterRuntimeEntityEvent
   }
   AwsEksClusterRuntimeTag: { // field return type
     key: string | null; // String
@@ -986,6 +986,7 @@ export interface NexusGenFieldTypes {
   }
   Mutation: { // field return type
     awsEksClusterRuntimeCreateEntity: NexusGenRootTypes['AwsEksClusterRuntimeCreateEntityReply'] | null; // AwsEksClusterRuntimeCreateEntityReply
+    awsEksClusterRuntimeSyncEntity: NexusGenRootTypes['AwsEksClusterRuntimeSyncEntityReply'] | null; // AwsEksClusterRuntimeSyncEntityReply
     createAccount: NexusGenRootTypes['CreateAccountReply'] | null; // CreateAccountReply
     createIntegrationInstance: NexusGenRootTypes['CreateIntegrationInstanceReply'] | null; // CreateIntegrationInstanceReply
     sshKeyCreateEntity: NexusGenRootTypes['SshKeyCreateEntityReply'] | null; // SshKeyCreateEntityReply
@@ -1009,7 +1010,6 @@ export interface NexusGenFieldTypes {
     awsEksClusterRuntimeListEntities: NexusGenRootTypes['AwsEksClusterRuntimeListEntitiesReply'] | null; // AwsEksClusterRuntimeListEntitiesReply
     awsEksClusterRuntimeListEntityEvents: NexusGenRootTypes['AwsEksClusterRuntimeListEntityEventsReply'] | null; // AwsEksClusterRuntimeListEntityEventsReply
     awsEksClusterRuntimePickComponent: NexusGenRootTypes['AwsEksClusterRuntimePickComponentReply'] | null; // AwsEksClusterRuntimePickComponentReply
-    awsEksClusterRuntimeSyncEntity: NexusGenRootTypes['AwsEksClusterRuntimeSyncEntityReply'] | null; // AwsEksClusterRuntimeSyncEntityReply
     getBillingAccount: NexusGenRootTypes['GetBillingAccountReply'] | null; // GetBillingAccountReply
     getUser: NexusGenRootTypes['GetUserReply'] | null; // GetUserReply
     listIntegrationInstances: NexusGenRootTypes['ListIntegrationInstancesReply'] | null; // ListIntegrationInstancesReply
@@ -1239,6 +1239,9 @@ export interface NexusGenArgTypes {
     awsEksClusterRuntimeCreateEntity: { // args
       input?: NexusGenInputs['AwsEksClusterRuntimeCreateEntityRequest'] | null; // AwsEksClusterRuntimeCreateEntityRequest
     }
+    awsEksClusterRuntimeSyncEntity: { // args
+      input?: NexusGenInputs['AwsEksClusterRuntimeSyncEntityRequest'] | null; // AwsEksClusterRuntimeSyncEntityRequest
+    }
     createAccount: { // args
       input?: NexusGenInputs['CreateAccountRequest'] | null; // CreateAccountRequest
     }
@@ -1278,9 +1281,6 @@ export interface NexusGenArgTypes {
     }
     awsEksClusterRuntimePickComponent: { // args
       input?: NexusGenInputs['AwsEksClusterRuntimePickComponentRequest'] | null; // AwsEksClusterRuntimePickComponentRequest
-    }
-    awsEksClusterRuntimeSyncEntity: { // args
-      input?: NexusGenInputs['AwsEksClusterRuntimeSyncEntityRequest'] | null; // AwsEksClusterRuntimeSyncEntityRequest
     }
     getBillingAccount: { // args
       input?: NexusGenInputs['GetBillingAccountRequest'] | null; // GetBillingAccountRequest
@@ -1343,7 +1343,7 @@ export interface NexusGenArgTypes {
 }
 
 export interface NexusGenAbstractResolveReturnTypes {
-  EntityEvent: "AwsEksClusterRuntimeEntityEvent" | "SshKeyEntityEvent"
+  EntityEvent: "SshKeyEntityEvent"
 }
 
 export interface NexusGenInheritedFields {}

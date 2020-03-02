@@ -27,6 +27,28 @@ function deserialize_si_external_api_gateway_aws_eks_CreateClusterRequest(buffer
   return si$external$api$gateway_proto_si_external_api_gateway_aws_eks_pb.CreateClusterRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_si_external_api_gateway_aws_eks_DescribeClusterReply(arg) {
+  if (!(arg instanceof si$external$api$gateway_proto_si_external_api_gateway_aws_eks_pb.DescribeClusterReply)) {
+    throw new Error('Expected argument of type si.external_api_gateway.aws.eks.DescribeClusterReply');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_si_external_api_gateway_aws_eks_DescribeClusterReply(buffer_arg) {
+  return si$external$api$gateway_proto_si_external_api_gateway_aws_eks_pb.DescribeClusterReply.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_si_external_api_gateway_aws_eks_DescribeClusterRequest(arg) {
+  if (!(arg instanceof si$external$api$gateway_proto_si_external_api_gateway_aws_eks_pb.DescribeClusterRequest)) {
+    throw new Error('Expected argument of type si.external_api_gateway.aws.eks.DescribeClusterRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_si_external_api_gateway_aws_eks_DescribeClusterRequest(buffer_arg) {
+  return si$external$api$gateway_proto_si_external_api_gateway_aws_eks_pb.DescribeClusterRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 
 // [API reference](https://docs.aws.amazon.com/eks/latest/APIReference/Welcome.html)
 var EKSService = exports.EKSService = {
@@ -82,6 +104,26 @@ createCluster: {
     requestDeserialize: deserialize_si_external_api_gateway_aws_eks_CreateClusterRequest,
     responseSerialize: serialize_si_external_api_gateway_aws_eks_CreateClusterReply,
     responseDeserialize: deserialize_si_external_api_gateway_aws_eks_CreateClusterReply,
+  },
+  // Returns descriptive information about an Amazon EKS cluster.
+//
+// The API server endpoint and certificate authority data returned by this
+// operation are required for kubelet and kubectl to communicate with your
+// Kubernetes API server. For more information, see Create a kubeconfig for
+// Amazon EKS.
+//
+// Note: The API server endpoint and certificate authority data aren't
+// available until the cluster reaches the `ACTIVE` state.
+describeCluster: {
+    path: '/si.external_api_gateway.aws.eks.EKS/DescribeCluster',
+    requestStream: false,
+    responseStream: false,
+    requestType: si$external$api$gateway_proto_si_external_api_gateway_aws_eks_pb.DescribeClusterRequest,
+    responseType: si$external$api$gateway_proto_si_external_api_gateway_aws_eks_pb.DescribeClusterReply,
+    requestSerialize: serialize_si_external_api_gateway_aws_eks_DescribeClusterRequest,
+    requestDeserialize: deserialize_si_external_api_gateway_aws_eks_DescribeClusterRequest,
+    responseSerialize: serialize_si_external_api_gateway_aws_eks_DescribeClusterReply,
+    responseDeserialize: deserialize_si_external_api_gateway_aws_eks_DescribeClusterReply,
   },
 };
 

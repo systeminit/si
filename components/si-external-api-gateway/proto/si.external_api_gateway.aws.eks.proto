@@ -49,6 +49,16 @@ service EKS {
   //
   // [API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_CreateCluster.html)
   rpc CreateCluster(CreateClusterRequest) returns (CreateClusterReply);
+  // Returns descriptive information about an Amazon EKS cluster.
+  //
+  // The API server endpoint and certificate authority data returned by this
+  // operation are required for kubelet and kubectl to communicate with your
+  // Kubernetes API server. For more information, see Create a kubeconfig for
+  // Amazon EKS.
+  //
+  // Note: The API server endpoint and certificate authority data aren't
+  // available until the cluster reaches the `ACTIVE` state.
+  rpc DescribeCluster(DescribeClusterRequest) returns (DescribeClusterReply);
 }
 
 // [API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_CreateCluster.html#API_CreateCluster_RequestSyntax)
@@ -159,165 +169,180 @@ message CreateClusterRequest {
 message CreateClusterReply {
   // The full description of your new cluster.
   Cluster cluster = 1;
-  // An object representing an Amazon EKS cluster.
-  //
-  // [API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_Cluster.html)
-  message Cluster {
-    // The Amazon Resource Name (ARN) of the cluster.
-    //
-    // Required: No
-    string arn = 1;
-    // The certificate-authority-data for your cluster.
-    //
-    // Required: No
-    Certificate certificate_authority = 2;
-    // An object representing the certificate-authority-data for your cluster.
-    //
-    // [API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_Certificate.html)
-    message Certificate {
-      // Base64-encoded certificate data required to communicate with your
-      // cluster. Add this to the certificate-authority-data section of the
-      // kubeconfig file for your cluster.
-      //
-      // Required: No
-      string data = 1;
-    }
-    // Unique, case-sensitive identifier that you provide to ensure the
-    // idempotency of the request.
-    //
-    // Required: No
-    string client_request_token = 3;
-    // The Unix epoch timestamp in seconds for when the cluster was created.
-    //
-    // Required: No
-    string created_at = 4;
-    // The endpoint for your Kubernetes API server.
-    //
-    // Required: No
-    string endpoint = 5;
-    // The identity provider information for the cluster.
-    //
-    // Required: No
-    Identity identity = 6;
-    // An object representing an identity provider for authentication
-    // credentials
-    //
-    // [API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_Identity.html)
-    message Identity {
-      // The OpenID Connect identity provider information for the cluster.
-      //
-      // Required: No
-      Oidc oidc = 1;
-      // An object representing the OpenID Connect identity provider
-      // information for the cluster.
-      //
-      // [API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_OIDC.html)
-      message Oidc {
-        // The issuer URL for the OpenID Connect identity provider.
-        //
-        // Required: No
-        string issuer = 1;
-      }
-    }
-    // The logging configuration for your cluster.
-    //
-    // Required: No
-    Logging logging = 7;
-    // The name of the cluster.
-    //
-    // Required: No
-    string name = 8;
-    // The platform version of your Amazon EKS cluster. For more information,
-    // see Platform Versions in the Amazon EKS User Guide.
-    //
-    // Required: No
-    string platform_version = 9;
-    // VPC configuration used by the cluster control plane. Amazon EKS VPC
-    // resources have specific requirements to work properly with Kubernetes.
-    // For more information, see Cluster VPC Considerations and Cluster
-    // Security Group Considerations in the Amazon EKS User Guide.
-    //
-    // Required: No
-    VpcConfigResponse resources_vpc_config = 10;
-    // An object representing an Amazon EKS cluster VPC configuration response.
-    //
-    //[API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_VpcConfigResponse.html)
-    message VpcConfigResponse {
-      // The cluster security group that was created by Amazon EKS for the
-      // cluster. Managed node groups use this security group for
-      // control-plane-to-data-plane communication.
-      //
-      // Required: No
-      string cluster_security_group_id = 1;
-      // This parameter indicates whether the Amazon EKS private API server
-      // endpoint is enabled. If the Amazon EKS private API server endpoint is
-      // enabled, Kubernetes API requests that originate from within your
-      // cluster's VPC use the private VPC endpoint instead of traversing the
-      // internet. If this value is disabled and you have worker nodes or AWS
-      // Fargate pods in the cluster, then ensure that publicAccessCidrs
-      // includes the necessary CIDR blocks for communication with the worker
-      // nodes or Fargate pods. For more information, see Amazon EKS Cluster
-      // Endpoint Access Control in the Amazon EKS User Guide.
-      //
-      // Required: No
-      bool endpoint_private_access = 2;
-      // This parameter indicates whether the Amazon EKS public API server
-      // endpoint is enabled. If the Amazon EKS public API server endpoint is
-      // disabled, your cluster's Kubernetes API server can only receive
-      // requests that originate from within the cluster VPC.
-      //
-      // Required: No
-      bool endpoint_public_access = 3;
-      // CIDR blocks that are allowed access to your cluster's public
-      // Kubernetes API server endpoint. Communication to the endpoint from
-      // addresses outside of the listed CIDR blocks is denied. The default
-      // value is 0.0.0.0/0. If you've disabled private endpoint access and you
-      // have worker nodes or AWS Fargate pods in the cluster, then ensure that
-      // the necessary CIDR blocks are listed. For more information, see Amazon
-      // EKS Cluster Endpoint Access Control in the Amazon EKS User Guide.
-      //
-      // Required: No
-      repeated string public_access_cidrs = 4;
-      // The security groups associated with the cross-account elastic network
-      // interfaces that are used to allow communication between your worker
-      // nodes and the Kubernetes control plane.
-      //
-      // Required: No
-      repeated string security_group_ids = 5;
-      // The subnets associated with your cluster.
-      //
-      // Required: No
-      repeated string subnet_ids = 6;
-      // The VPC associated with your cluster.
-      //
-      // Required: No
-      string vpc_id = 7;
-    }
-    // The Amazon Resource Name (ARN) of the IAM role that provides permissions
-    // for the Kubernetes control plane to make calls to AWS API operations on
-    // your behalf.
-    //
-    // Required: No
-    string role_arn = 11;
-    // The current status of the cluster.
-    //
-    // Valid Values: `CREATING | ACTIVE | DELETING | FAILED | UPDATING`
-    //
-    // Required: No
-    string status = 12;
-    // The metadata that you apply to the cluster to assist with categorization
-    // and organization. Each tag consists of a key and an optional value, both
-    // of which you define. Cluster tags do not propagate to any other
-    // resources associated with the cluster.
-    //
-    // Required: No
-    repeated Tag tags = 13;
-    // The Kubernetes server version for the cluster.
-    //
-    // Required: No
-    string version = 14;
-  }
   Error error = 2;
+}
+
+// [API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_DescribeCluster.html#API_DescribeCluster_RequestSyntax)
+message DescribeClusterRequest {
+  si.external_api_gateway.Context context = 1;
+  // The name of the cluster to describe.
+  string name = 2;
+}
+
+// [API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_DescribeCluster.html#API_DescribeCluster_ResponseSyntax)
+message DescribeClusterReply {
+  // The full description of your specified cluster.
+  Cluster cluster = 1;
+  Error error = 2;
+}
+
+// An object representing an Amazon EKS cluster.
+//
+// [API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_Cluster.html)
+message Cluster {
+  // The Amazon Resource Name (ARN) of the cluster.
+  //
+  // Required: No
+  string arn = 1;
+  // The certificate-authority-data for your cluster.
+  //
+  // Required: No
+  Certificate certificate_authority = 2;
+  // An object representing the certificate-authority-data for your cluster.
+  //
+  // [API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_Certificate.html)
+  message Certificate {
+    // Base64-encoded certificate data required to communicate with your
+    // cluster. Add this to the certificate-authority-data section of the
+    // kubeconfig file for your cluster.
+    //
+    // Required: No
+    string data = 1;
+  }
+  // Unique, case-sensitive identifier that you provide to ensure the
+  // idempotency of the request.
+  //
+  // Required: No
+  string client_request_token = 3;
+  // The Unix epoch timestamp in seconds for when the cluster was created.
+  //
+  // Required: No
+  string created_at = 4;
+  // The endpoint for your Kubernetes API server.
+  //
+  // Required: No
+  string endpoint = 5;
+  // The identity provider information for the cluster.
+  //
+  // Required: No
+  Identity identity = 6;
+  // An object representing an identity provider for authentication
+  // credentials
+  //
+  // [API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_Identity.html)
+  message Identity {
+    // The OpenID Connect identity provider information for the cluster.
+    //
+    // Required: No
+    Oidc oidc = 1;
+    // An object representing the OpenID Connect identity provider
+    // information for the cluster.
+    //
+    // [API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_OIDC.html)
+    message Oidc {
+      // The issuer URL for the OpenID Connect identity provider.
+      //
+      // Required: No
+      string issuer = 1;
+    }
+  }
+  // The logging configuration for your cluster.
+  //
+  // Required: No
+  Logging logging = 7;
+  // The name of the cluster.
+  //
+  // Required: No
+  string name = 8;
+  // The platform version of your Amazon EKS cluster. For more information,
+  // see Platform Versions in the Amazon EKS User Guide.
+  //
+  // Required: No
+  string platform_version = 9;
+  // VPC configuration used by the cluster control plane. Amazon EKS VPC
+  // resources have specific requirements to work properly with Kubernetes.
+  // For more information, see Cluster VPC Considerations and Cluster
+  // Security Group Considerations in the Amazon EKS User Guide.
+  //
+  // Required: No
+  VpcConfigResponse resources_vpc_config = 10;
+  // An object representing an Amazon EKS cluster VPC configuration response.
+  //
+  //[API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_VpcConfigResponse.html)
+  message VpcConfigResponse {
+    // The cluster security group that was created by Amazon EKS for the
+    // cluster. Managed node groups use this security group for
+    // control-plane-to-data-plane communication.
+    //
+    // Required: No
+    string cluster_security_group_id = 1;
+    // This parameter indicates whether the Amazon EKS private API server
+    // endpoint is enabled. If the Amazon EKS private API server endpoint is
+    // enabled, Kubernetes API requests that originate from within your
+    // cluster's VPC use the private VPC endpoint instead of traversing the
+    // internet. If this value is disabled and you have worker nodes or AWS
+    // Fargate pods in the cluster, then ensure that publicAccessCidrs
+    // includes the necessary CIDR blocks for communication with the worker
+    // nodes or Fargate pods. For more information, see Amazon EKS Cluster
+    // Endpoint Access Control in the Amazon EKS User Guide.
+    //
+    // Required: No
+    bool endpoint_private_access = 2;
+    // This parameter indicates whether the Amazon EKS public API server
+    // endpoint is enabled. If the Amazon EKS public API server endpoint is
+    // disabled, your cluster's Kubernetes API server can only receive
+    // requests that originate from within the cluster VPC.
+    //
+    // Required: No
+    bool endpoint_public_access = 3;
+    // CIDR blocks that are allowed access to your cluster's public
+    // Kubernetes API server endpoint. Communication to the endpoint from
+    // addresses outside of the listed CIDR blocks is denied. The default
+    // value is 0.0.0.0/0. If you've disabled private endpoint access and you
+    // have worker nodes or AWS Fargate pods in the cluster, then ensure that
+    // the necessary CIDR blocks are listed. For more information, see Amazon
+    // EKS Cluster Endpoint Access Control in the Amazon EKS User Guide.
+    //
+    // Required: No
+    repeated string public_access_cidrs = 4;
+    // The security groups associated with the cross-account elastic network
+    // interfaces that are used to allow communication between your worker
+    // nodes and the Kubernetes control plane.
+    //
+    // Required: No
+    repeated string security_group_ids = 5;
+    // The subnets associated with your cluster.
+    //
+    // Required: No
+    repeated string subnet_ids = 6;
+    // The VPC associated with your cluster.
+    //
+    // Required: No
+    string vpc_id = 7;
+  }
+  // The Amazon Resource Name (ARN) of the IAM role that provides permissions
+  // for the Kubernetes control plane to make calls to AWS API operations on
+  // your behalf.
+  //
+  // Required: No
+  string role_arn = 11;
+  // The current status of the cluster.
+  //
+  // Valid Values: `CREATING | ACTIVE | DELETING | FAILED | UPDATING`
+  //
+  // Required: No
+  string status = 12;
+  // The metadata that you apply to the cluster to assist with categorization
+  // and organization. Each tag consists of a key and an optional value, both
+  // of which you define. Cluster tags do not propagate to any other
+  // resources associated with the cluster.
+  //
+  // Required: No
+  repeated Tag tags = 13;
+  // The Kubernetes server version for the cluster.
+  //
+  // Required: No
+  string version = 14;
 }
 
 // An object representing the logging configuration for resources in your
@@ -360,9 +385,4 @@ message Error {
   string code = 1;
   string message = 2;
   string request_id = 3;
-}
-
-message Filter {
-  string name = 1;
-  repeated string values = 2;
 }

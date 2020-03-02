@@ -4,8 +4,11 @@ import { logger } from "@/logger";
 import { Server, ServerUnaryCall, sendUnaryData } from "grpc";
 import { EKSService } from "@/generated/si-external-api-gateway/proto/si.external_api_gateway.aws.eks_grpc_pb";
 import {
+  Cluster,
   CreateClusterRequest,
   CreateClusterReply,
+  DescribeClusterRequest,
+  DescribeClusterReply,
   Logging,
   Tag,
   Error as PError,
@@ -69,8 +72,8 @@ function buildCreateClusterRequest(
 
 function toReplyClusterCertificate(
   ctx: AWS.EKS.Types.Certificate,
-): CreateClusterReply.Cluster.Certificate {
-  const certificateAuthority = new CreateClusterReply.Cluster.Certificate();
+): Cluster.Certificate {
+  const certificateAuthority = new Cluster.Certificate();
   certificateAuthority.setData(ctx.data);
 
   return certificateAuthority;
@@ -78,8 +81,8 @@ function toReplyClusterCertificate(
 
 function toReplyClusterVpcConfigResponse(
   ctx: AWS.EKS.Types.VpcConfigResponse,
-): CreateClusterReply.Cluster.VpcConfigResponse {
-  const resourcesVpcConfig = new CreateClusterReply.Cluster.VpcConfigResponse();
+): Cluster.VpcConfigResponse {
+  const resourcesVpcConfig = new Cluster.VpcConfigResponse();
   resourcesVpcConfig.setClusterSecurityGroupId(ctx.clusterSecurityGroupId);
   resourcesVpcConfig.setEndpointPrivateAccess(ctx.endpointPrivateAccess);
   resourcesVpcConfig.setEndpointPublicAccess(ctx.endpointPublicAccess);
@@ -91,13 +94,11 @@ function toReplyClusterVpcConfigResponse(
   return resourcesVpcConfig;
 }
 
-function toReplyCluster(
-  ctx: AWS.EKS.Types.Cluster,
-): CreateClusterReply.Cluster {
-  const oidc = new CreateClusterReply.Cluster.Identity.Oidc();
+function toReplyCluster(ctx: AWS.EKS.Types.Cluster): Cluster {
+  const oidc = new Cluster.Identity.Oidc();
   oidc.setIssuer(ctx.identity?.oidc?.issuer);
 
-  const identity = new CreateClusterReply.Cluster.Identity();
+  const identity = new Cluster.Identity();
   identity.setOidc(oidc);
 
   const clusterLogging = ctx.logging.clusterLogging.map(ls => {
@@ -119,7 +120,7 @@ function toReplyCluster(
     return tag;
   });
 
-  const cluster = new CreateClusterReply.Cluster();
+  const cluster = new Cluster();
   cluster.setArn(ctx.arn);
   cluster.setCertificateAuthority(
     toReplyClusterCertificate(ctx.certificateAuthority),
@@ -151,6 +152,23 @@ function buildCreateClusterReply(
   return reply;
 }
 
+function buildDescribeClusterRequest(
+  request: DescribeClusterRequest,
+): AWS.EKS.Types.DescribeClusterRequest {
+  return {
+    name: request.getName(),
+  };
+}
+
+function buildDescribeClusterReply(
+  response: AWS.EKS.Types.DescribeClusterResponse,
+): DescribeClusterReply {
+  const reply = new DescribeClusterReply();
+  reply.setCluster(toReplyCluster(response.cluster));
+
+  return reply;
+}
+
 class AwsEks {
   constructor() {
     // These will be used as callbacks - so eventually, they are called in a way
@@ -158,12 +176,14 @@ class AwsEks {
     // the instance of our class here.) This dirty mojo makes that not happen,
     // and ensures that the callbacks have reasonable encapsulation.
     this.createCluster = this.createCluster.bind(this);
+    this.describeCluster = this.describeCluster.bind(this);
   }
 
   addToServer(server: Server): void {
     logger.log("info", "Adding AWS EKS");
     server.addService(EKSService, {
       createCluster: this.createCluster,
+      describeCluster: this.describeCluster,
     });
   }
 
@@ -195,6 +215,38 @@ class AwsEks {
     }
 
     const reply = buildCreateClusterReply(response);
+
+    callback(null, reply);
+  }
+
+  async describeCluster(
+    call: ServerUnaryCall<DescribeClusterRequest>,
+    callback: sendUnaryData<DescribeClusterReply>,
+  ): Promise<void> {
+    const awsLogger = {
+      log(foo: string): void {
+        logger.info(foo);
+      },
+    };
+    const eksClient = new AWS.EKS({ logger: awsLogger, region: "us-east-2" });
+    const request = buildDescribeClusterRequest(call.request);
+    let response;
+
+    try {
+      response = await eksClient.describeCluster(request).promise();
+    } catch (err) {
+      const error = new PError();
+      error.setCode(err.code);
+      error.setMessage(err.message);
+
+      const reply = new DescribeClusterReply();
+      reply.setError(error);
+
+      callback(null, reply);
+      return;
+    }
+
+    const reply = buildDescribeClusterReply(response);
 
     callback(null, reply);
   }

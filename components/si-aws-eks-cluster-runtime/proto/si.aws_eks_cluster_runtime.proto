@@ -37,7 +37,7 @@ message SyncEntityRequest {
 }
 
 message SyncEntityReply {
-  EntityEvent entity_event = 2;
+  EntityEvent event = 2;
 }
 
 message GetEntityRequest {

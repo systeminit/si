@@ -326,20 +326,57 @@ impl AgentServer {
     pub async fn sync_aws(&mut self, entity_event_locked: Arc<Mutex<EntityEvent>>) -> Result<()> {
         // More evidence this should be refactored - why connect multiple times, rather than
         // multiplexing? Even if we need N connections, better to manage it higher up.
-        //
-        //let mut eks = eks::EksClient::connect("http://localhost:4001").await?;
+        let mut eks = eks::EksClient::connect("http://localhost:4001").await?;
+
+        let result = {
+            let mut entity_event = entity_event_locked.lock().await;
+            entity_event.log("Synchronizing EKS cluster in AWS\n");
+
+            let result = eks
+                .describe_cluster(build_describe_cluster_request(&mut entity_event)?)
+                .await?
+                .into_inner();
+
+            match result.error {
+                Some(e) => {
+                    entity_event.error_log("Request failed\n");
+                    entity_event.error_log(format!("Code: {}\n", e.code));
+                    entity_event.error_log(format!("Message: {}\n", e.message));
+                    entity_event.error_log(format!("Request ID: {}\n", e.request_id));
+                    return Err(AwsEksClusterRuntimeError::ExternalRequest);
+                }
+                None => {
+                    entity_event.log("Describe successful!\n");
+                    entity_event.log(format!("{:?}\n", result));
+                    debug!("YOU DID IT!");
+                }
+            };
+
+            result
+        };
+
         {
             let mut entity_event = entity_event_locked.lock().await;
-            entity_event.log("Sync successful!\n");
             entity_event.output_entity = entity_event.input_entity.clone();
-            //let output_entity = entity_event
-            //    .output_entity
-            //    .as_mut()
-            //    .ok_or(AwsEksClusterRuntimeError::MissingOutputEntity)?;
-            //output_entity.private_key = result.key_material.to_string();
-            //output_entity.public_key = ssh_public_key_out.try_stdout()?;
-            //output_entity.fingerprint = ssh_fingerprint_out.try_stdout()?;
-            //output_entity.bubble_babble = ssh_babble_out.try_stdout()?;
+            let mut output = entity_event
+                .output_entity
+                .as_mut()
+                .ok_or(AwsEksClusterRuntimeError::MissingOutputEntity)?;
+            let cluster = result
+                .cluster
+                .ok_or(AwsEksClusterRuntimeError::CreateClusterReplyMissingCluster)?;
+            output.aws_status = match cluster.status.as_ref() {
+                "CREATING" => AwsStatus::Creating.into(),
+                "ACTIVE" => AwsStatus::Active.into(),
+                "DELETING" => AwsStatus::Deleting.into(),
+                "FAILED" => AwsStatus::Failed.into(),
+                "UPDATING" => AwsStatus::Updating.into(),
+                invalid => {
+                    return Err(AwsEksClusterRuntimeError::InvalidCreateClusterStatus(
+                        invalid.to_string(),
+                    ))
+                }
+            };
             entity_event.success();
         }
 
@@ -583,6 +620,28 @@ fn build_create_cluster_request(
     Ok(request)
 }
 
+fn build_describe_cluster_request(
+    entity_event: &mut EntityEvent,
+) -> Result<eks::DescribeClusterRequest> {
+    let input_entity = if entity_event.input_entity.is_some() {
+        entity_event.input_entity.as_ref().unwrap()
+    } else {
+        return Err(AwsEksClusterRuntimeError::MissingInputEntity);
+    };
+
+    let request = eks::DescribeClusterRequest::builder()
+        .context(Some(eks::Context {
+            billing_account_id: entity_event.billing_account_id.to_string(),
+            organization_id: entity_event.organization_id.to_string(),
+            workspace_id: entity_event.workspace_id.to_string(),
+            ..Default::default()
+        }))
+        .name(input_entity.id.replace(':', "-"))
+        .build();
+
+    Ok(request)
+}
+
 #[derive(Debug, Clone)]
 pub struct AgentClient {
     mqtt: MqttAsyncClientInternal,
@@ -636,7 +695,7 @@ impl AgentClient {
             return Err(AwsEksClusterRuntimeError::MissingInputEntity);
         }
         match &entity_event.action_name[..] {
-            "create" => self.send(entity_event).await,
+            "create" | "sync" => self.send(entity_event).await,
             _ => Err(AwsEksClusterRuntimeError::InvalidEntityEventInvalidActionName),
         }
     }

@@ -3,13 +3,12 @@ protoPackageName = "si.aws_eks_cluster_runtime"
 service.AwsEksClusterRuntime.GetComponent.query = true
 service.AwsEksClusterRuntime.ListComponents.query = true
 service.AwsEksClusterRuntime.PickComponent.query = true
-service.AwsEksClusterRuntime.CreateEntity.mutation = true
 service.AwsEksClusterRuntime.ListEntities.query = true
 service.AwsEksClusterRuntime.GetEntity.query = true
-service.AwsEksClusterRuntime.SyncEntity.query = true
 service.AwsEksClusterRuntime.ListEntityEvents.query = true
 
-message.EntityEvent.implementsInterfaceTypeHint = ["EntityEvent"] 
+service.AwsEksClusterRuntime.CreateEntity.mutation = true
+service.AwsEksClusterRuntime.SyncEntity.mutation = true
 
 [message.Component.integrationId.has_one]
 to = "integration"

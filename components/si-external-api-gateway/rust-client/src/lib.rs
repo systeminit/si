@@ -20,8 +20,9 @@ pub mod aws {
     }
     pub mod eks {
         pub use crate::protobuf::aws::eks::{
-            create_cluster_reply, create_cluster_request, eks_client::EksClient, logging,
-            CreateClusterReply, CreateClusterRequest, Error, Filter, Logging, Tag,
+            create_cluster_request, eks_client::EksClient, logging, Cluster, CreateClusterReply,
+            CreateClusterRequest, DescribeClusterReply, DescribeClusterRequest, Error, Logging,
+            Tag,
         };
         pub use crate::protobuf::Context;
     }

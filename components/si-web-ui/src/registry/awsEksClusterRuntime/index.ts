@@ -4,7 +4,10 @@ import getEntity from "./graphql/queries/getEntity.gql";
 import listEntities from "./graphql/queries/listEntities.gql";
 import pickComponent from "./graphql/queries/pickComponent.gql";
 import streamEntityEvents from "./graphql/subscriptions/streamEntityEvents.gql";
+
 import createEntity from "./graphql/mutations/createEntity.gql";
+import syncEntity from "./graphql/mutations/syncEntity.gql";
+
 import listEntityEvents from "./graphql/queries/listEntityEvents.gql";
 
 export const awsEksClusterRuntime = new SiComponent("awsEksClusterRuntime", {
@@ -16,7 +19,11 @@ export const awsEksClusterRuntime = new SiComponent("awsEksClusterRuntime", {
     { text: "AWS Status", value: "awsStatus" },
     { text: "State", value: "state" },
   ],
-  showActions: [{ displayName: "Add Node Group" }, { displayName: "Delete" }],
+  showActions: [
+    { displayName: "Add Node Group" },
+    { displayName: "Delete" },
+    { displayName: "Sync", mutation: syncEntity },
+  ],
   showProperties: [
     { displayName: "ID", property: "id", showAs: "text" },
     {

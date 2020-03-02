@@ -1,0 +1,22 @@
+mutation awsEksClusterRuntimeSyncEntity($entityId: String!) {
+  runAction: awsEksClusterRuntimeSyncEntity(input:{entityId: $entityId}) {
+    event {
+      id
+      actionName
+      entity {
+        id
+        displayName
+      }
+      user {
+        id
+        displayName
+      }
+      createTime
+      updatedTime
+      finalized
+      success
+      outputLines
+      errorLines
+    }
+  }
+}

@@ -216,7 +216,7 @@ impl aws_eks_cluster_runtime_server::AwsEksClusterRuntime for Service {
             self.agent.dispatch(&entity_event).await?;
 
             Ok(Response::new(protobuf::SyncEntityReply {
-                entity_event: Some(entity_event),
+                event: Some(entity_event),
             }))
         }
         .instrument(debug_span!("sync_entity", ?request))
