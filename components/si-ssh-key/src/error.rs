@@ -1,9 +1,10 @@
 use paho_mqtt as mqtt;
+use si_cea::CeaError;
 use si_data;
 use thiserror::Error;
 use tonic::{self, Response};
 
-use crate::agent::CommandResult;
+//use crate::agent::CommandResult;
 
 pub type Result<T> = std::result::Result<T, SshKeyError>;
 pub type TonicResult<T> = std::result::Result<Response<T>, tonic::Status>;
@@ -50,6 +51,8 @@ pub enum SshKeyError {
     Utf8Error(#[from] std::str::Utf8Error),
     #[error("error converting bytes to utf-8 string: {0}")]
     Utf8StringError(#[from] std::string::FromUtf8Error),
+    #[error("error from framework: {0}")]
+    FrameworkError(#[from] CeaError),
     #[error("pick component error: {0}")]
     PickComponent(String),
     #[error("invalid key type value")]
@@ -80,8 +83,8 @@ pub enum SshKeyError {
     MissingOutputEntity,
     #[error("oneshot channel error: {0}")]
     Oneshot(#[from] tokio::sync::oneshot::error::TryRecvError),
-    #[error("command failed: {0:?}")]
-    CommandFailed(CommandResult),
+    //#[error("command failed: {0:?}")]
+    //CommandFailed(CommandResult),
     #[error("expected output and recevied none")]
     CommandExpectedOutput,
     #[error("grpc client error: {0}")]

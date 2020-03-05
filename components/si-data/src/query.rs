@@ -1,6 +1,6 @@
 pub use crate::data::{
-    query_expression_option, Query, QueryBooleanLogic, QueryComparison, QueryExpression,
-    QueryExpressionOption, QueryFieldType,
+    query_expression_option, query_expression_option::Qe, Query, QueryBooleanLogic,
+    QueryComparison, QueryExpression, QueryExpressionOption, QueryFieldType,
 };
 use crate::error::{DataError, Result};
 
@@ -48,6 +48,36 @@ impl fmt::Display for QueryBooleanLogic {
 }
 
 impl Query {
+    pub fn generate_expression_for_string(
+        field: impl Into<String>,
+        comparison: QueryComparison,
+        value: impl Into<String>,
+    ) -> QueryExpressionOption {
+        QueryExpressionOption {
+            qe: Some(Qe::Expression(QueryExpression {
+                field: field.into(),
+                comparison: comparison as i32,
+                field_type: QueryFieldType::String as i32,
+                value: value.into(),
+            })),
+        }
+    }
+
+    pub fn generate_expression_for_int(
+        field: impl Into<String>,
+        comparison: QueryComparison,
+        value: impl Into<String>,
+    ) -> QueryExpressionOption {
+        QueryExpressionOption {
+            qe: Some(Qe::Expression(QueryExpression {
+                field: field.into(),
+                comparison: comparison as i32,
+                field_type: QueryFieldType::Int as i32,
+                value: value.into(),
+            })),
+        }
+    }
+
     pub fn as_n1ql(&self, bucket_name: &str) -> Result<String> {
         let mut where_string = String::new();
         if self.is_not {

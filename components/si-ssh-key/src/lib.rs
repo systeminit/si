@@ -2,15 +2,14 @@ pub mod protobuf {
     tonic::include_proto!("si.ssh_key");
 }
 
-//pub mod authorize;
 pub mod agent;
 pub mod error;
-pub mod migrate;
 pub mod model;
 mod serde_enum;
 pub mod service;
 
-pub use agent::{AgentClient, AgentFinalizer, AgentServer};
-pub use migrate::migrate;
+pub use agent::Dispatcher;
+pub use model::component::Component;
+pub use model::entity::EntityEvent;
 pub use protobuf::ssh_key_server::SshKeyServer;
 pub use service::Service;

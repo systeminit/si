@@ -1,4 +1,5 @@
 use crate::error::{DataError, Result};
+//use si_cea::{Entity, EntityEvent};
 
 pub enum Reference<'a> {
     HasOne(&'static str, &'a str),
@@ -9,7 +10,7 @@ pub enum Reference<'a> {
 /// means anything that has an ID.
 pub trait Storable {
     fn get_id(&self) -> &str;
-    fn set_id<S: Into<String>>(&mut self, id: S);
+    fn set_id(&mut self, id: impl Into<String>);
     fn type_name() -> &'static str;
     fn set_type_name(&mut self);
     fn set_natural_key(&mut self) {}
@@ -17,7 +18,7 @@ pub trait Storable {
         None
     }
     fn get_tenant_ids(&self) -> &[String];
-    fn add_to_tenant_ids(&mut self, id: String);
+    fn add_to_tenant_ids(&mut self, id: impl Into<String>);
     fn generate_id(&mut self);
     fn validate(&self) -> Result<()>;
     fn referential_fields(&self) -> Vec<Reference>;

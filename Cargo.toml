@@ -6,6 +6,7 @@ members = [
   "components/si-account", 
   "components/si-settings",
   "components/si-data",
+  "components/si-cea",
   "components/si-ssh-key",
   "components/si-external-api-gateway/rust-client",
   "components/si-aws-eks-cluster-runtime",
