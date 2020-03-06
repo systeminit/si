@@ -3,8 +3,6 @@ use si_data;
 use thiserror::Error;
 use tonic::{self, Response};
 
-use crate::agent::CommandResult;
-
 pub type Result<T> = std::result::Result<T, AwsEksClusterRuntimeError>;
 pub type TonicResult<T> = std::result::Result<Response<T>, tonic::Status>;
 
@@ -80,20 +78,22 @@ pub enum AwsEksClusterRuntimeError {
     MissingOutputEntity,
     #[error("oneshot channel error: {0}")]
     Oneshot(#[from] tokio::sync::oneshot::error::TryRecvError),
-    #[error("command failed: {0:?}")]
-    CommandFailed(CommandResult),
-    #[error("expected output and recevied none")]
-    CommandExpectedOutput,
     #[error("grpc client error: {0}")]
     GrpcClient(#[from] tonic::transport::Error),
     #[error("grpc call error: {0}")]
     GrpcCall(#[from] tonic::Status),
     #[error("an external API request has failed")]
     ExternalRequest,
-    #[error("create cluster reply is missing required cluster information")]
-    CreateClusterReplyMissingCluster,
-    #[error("invalid create cluster status: {0}")]
-    InvalidCreateClusterStatus(String),
+    #[error("reply is missing required cluster information")]
+    ReplyMissingCluster,
+    #[error("reply is missing required nodegroup information")]
+    ReplyMissingNodegroup,
+    #[error("reply is missing required nodegroup's remote access information")]
+    ReplyMissingNodegroupRemoteAccess,
+    #[error("invalid cluster status: {0}")]
+    InvalidClusterStatus(String),
+    #[error("invalid nodegroup status: {0}")]
+    InvalidNodegroupStatus(String),
 }
 
 impl From<AwsEksClusterRuntimeError> for tonic::Status {

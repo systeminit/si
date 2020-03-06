@@ -1,14 +1,14 @@
 query awsEksClusterRuntimeListEntities(
-  $pageSize: Int, 
-  $orderBy: String, 
-  $orderByDirection: DataOrderByDirection, 
+  $pageSize: Int,
+  $orderBy: String,
+  $orderByDirection: DataOrderByDirection,
   $pageToken: String
-) {  
+) {
   awsEksClusterRuntimeListEntities(
-    input: { 
-      pageSize: $pageSize, 
+    input: {
+      pageSize: $pageSize,
       orderBy: $orderBy,
-      orderByDirection: $orderByDirection, 
+      orderByDirection: $orderByDirection,
       pageToken: $pageToken,
     }
   ) {
@@ -24,7 +24,10 @@ query awsEksClusterRuntimeListEntities(
       organizationId
       workspaceId
       billingAccountId
-      awsStatus
+      clusterName
+      clusterStatus
+      nodegroupName
+      nodegroupStatus
     }
     totalCount
     nextPageToken

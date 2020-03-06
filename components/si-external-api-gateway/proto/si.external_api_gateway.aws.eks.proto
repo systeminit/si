@@ -49,6 +49,20 @@ service EKS {
   //
   // [API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_CreateCluster.html)
   rpc CreateCluster(CreateClusterRequest) returns (CreateClusterReply);
+  // Creates a managed worker node group for an Amazon EKS cluster. You can
+  // only create a node group for your cluster that is equal to the current
+  // Kubernetes version for the cluster. All node groups are created with the
+  // latest AMI release version for the respective minor Kubernetes version of
+  // the cluster.
+  //
+  // An Amazon EKS managed node group is an Amazon EC2 Auto Scaling group and
+  // associated Amazon EC2 instances that are managed by AWS for an Amazon EKS
+  // cluster. Each node group uses a version of the Amazon EKS-optimized Amazon
+  // Linux 2 AMI. For more information, see Managed Node Groups in the Amazon
+  // EKS User Guide.
+  //
+  // [API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_CreateNodegroup.html)
+  rpc CreateNodegroup(CreateNodegroupRequest) returns (CreateNodegroupReply);
   // Returns descriptive information about an Amazon EKS cluster.
   //
   // The API server endpoint and certificate authority data returned by this
@@ -58,7 +72,13 @@ service EKS {
   //
   // Note: The API server endpoint and certificate authority data aren't
   // available until the cluster reaches the `ACTIVE` state.
+  //
+  // [API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_DescribeCluster.html)
   rpc DescribeCluster(DescribeClusterRequest) returns (DescribeClusterReply);
+  // Returns descriptive information about an Amazon EKS node group.
+  //
+  // [API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_DescribeNodegroup.html)
+  rpc DescribeNodegroup(DescribeNodegroupRequest) returns (DescribeNodegroupReply);
 }
 
 // [API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_CreateCluster.html#API_CreateCluster_RequestSyntax)
@@ -90,61 +110,6 @@ message CreateClusterRequest {
   //
   // Required: Yes
   VpcConfigRequest resources_vpc_config = 5;
-  // An object representing the VPC configuration to use for an Amazon EKS
-  // cluster.
-  //
-  // [API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_VpcConfigRequest.html)
-  message VpcConfigRequest {
-    // Set this value to true to enable private access for your cluster's
-    // Kubernetes API server endpoint. If you enable private access, Kubernetes
-    // API requests from within your cluster's VPC use the private VPC
-    // endpoint. The default value for this parameter is false, which disables
-    // private access for your Kubernetes API server. If you disable private
-    // access and you have worker nodes or AWS Fargate pods in the cluster,
-    // then ensure that publicAccessCidrs includes the necessary CIDR blocks
-    // for communication with the worker nodes or Fargate pods. For more
-    // information, see Amazon EKS Cluster Endpoint Access Control in the
-    // Amazon EKS User Guide.
-    //
-    // Required: No
-    bool endpoint_private_access = 1;
-    // Set this value to false to disable public access to your cluster's
-    // Kubernetes API server endpoint. If you disable public access, your
-    // cluster's Kubernetes API server can only receive requests from within
-    // the cluster VPC. The default value for this parameter is true, which
-    // enables public access for your Kubernetes API server. For more
-    // information, see Amazon EKS Cluster Endpoint Access Control in the
-    // Amazon EKS User Guide.
-    //
-    // Required: No
-    bool endpoint_public_access = 2;
-    // The CIDR blocks that are allowed access to your cluster's public
-    // Kubernetes API server endpoint. Communication to the endpoint from
-    // addresses outside of the CIDR blocks that you specify is denied. The
-    // default value is 0.0.0.0/0. If you've disabled private endpoint access
-    // and you have worker nodes or AWS Fargate pods in the cluster, then
-    // ensure that you specify the necessary CIDR blocks. For more information,
-    // see Amazon EKS Cluster Endpoint Access Control in the Amazon EKS User
-    // Guide.
-    //
-    // Required: No
-    repeated string public_access_cidrs = 3;
-    // Specify one or more security groups for the cross-account elastic
-    // network interfaces that Amazon EKS creates to use to allow communication
-    // between your worker nodes and the Kubernetes control plane. If you don't
-    // specify a security group, the default security group for your VPC is
-    // used.
-    //
-    // Required: No
-    repeated string security_group_ids = 4;
-    // Specify subnets for your Amazon EKS worker nodes. Amazon EKS creates
-    // cross-account elastic network interfaces in these subnets to allow
-    // communication between your worker nodes and the Kubernetes control
-    // plane.
-    //
-    // Required: No
-    repeated string subnet_ids = 5;
-  }
   // The Amazon Resource Name (ARN) of the IAM role that provides permissions
   // for Amazon EKS to make calls to other AWS API operations on your behalf.
   // For more information, see Amazon EKS Service IAM Role in the Amazon EKS
@@ -172,6 +137,106 @@ message CreateClusterReply {
   Error error = 2;
 }
 
+// [API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_CreateNodegroup.html#API_CreateNodegroup_RequestSyntax)
+message CreateNodegroupRequest {
+  si.external_api_gateway.Context context = 1;
+  // The name of the cluster to create the node group in.
+  //
+  // Required: Yes
+  string cluster_name = 2;
+  // The AMI type for your node group. GPU instance types should use the
+  // AL2_x86_64_GPU AMI type, which uses the Amazon EKS-optimized Linux AMI
+  // with GPU support. Non-GPU instances should use the AL2_x86_64 AMI type,
+  // which uses the Amazon EKS-optimized Linux AMI.
+  //
+  // Value Values: `AL2_x86_64 | AL2_x86_64_GPU`
+  //
+  // Required: No
+  string ami_type = 3;
+  // Unique, case-sensitive identifier that you provide to ensure the
+  // idempotency of the request.
+  //
+  // Required: No
+  string client_request_token = 4;
+  // The root device disk size (in GiB) for your node group instances. The
+  // default disk size is 20 GiB.
+  //
+  // Required: No
+  uint32 disk_size = 5;
+  // The instance type to use for your node group. Currently, you can specify a
+  // single instance type for a node group. The default value for this
+  // parameter is t3.medium. If you choose a GPU instance type, be sure to
+  // specify the AL2_x86_64_GPU with the amiType parameter.
+  //
+  // Required: No
+  repeated string instance_types = 6;
+  // The Kubernetes labels to be applied to the nodes in the node group when
+  // they are created.
+  //
+  // Key Length Constraints: Minimum length of 1. Maximum length of 63.
+  //
+  // Value Length Constraints: Minimum length of 1. Maximum length of 253.
+  //
+  // Required: No
+  repeated Label labels = 7;
+  // The unique name to give your node group.
+  //
+  // Required: Yes
+  string nodegroup_name = 8;
+  // The IAM role associated with your node group. The Amazon EKS worker node
+  // kubelet daemon makes calls to AWS APIs on your behalf. Worker nodes
+  // receive permissions for these API calls through an IAM instance profile
+  // and associated policies. Before you can launch worker nodes and register
+  // them into a cluster, you must create an IAM role for those worker nodes to
+  // use when they are launched. For more information, see Amazon EKS Worker
+  // Node IAM Role in the Amazon EKS User Guide .
+  //
+  // Required: Yes
+  string node_role = 9;
+  // The AMI version of the Amazon EKS-optimized AMI to use with your node
+  // group. By default, the latest available AMI version for the node group's
+  // current Kubernetes version is used. For more information, see Amazon
+  // EKS-Optimized Linux AMI Versions in the Amazon EKS User Guide.
+  //
+  // Required: No
+  string release_version = 10;
+  // The remote access (SSH) configuration to use with your node group.
+  //
+  // Required: No
+  RemoteAccessConfig remote_access = 11;
+  // The scaling configuration details for the Auto Scaling group that is
+  // created for your node group.
+  NodegroupScalingConfig scaling_config = 12;
+  // The subnets to use for the Auto Scaling group that is created for your
+  // node group. These subnets must have the tag key
+  // kubernetes.io/cluster/CLUSTER_NAME with a value of shared, where
+  // CLUSTER_NAME is replaced with the name of your cluster.
+  //
+  // Required: No
+  repeated string subnets = 13;
+  // The metadata to apply to the node group to assist with categorization and
+  // organization. Each tag consists of a key and an optional value, both of
+  // which you define. Node group tags do not propagate to any other resources
+  // associated with the node group, such as the Amazon EC2 instances or
+  // subnets.
+  //
+  // Required: No
+  repeated Tag tags = 14;
+  // The Kubernetes version to use for your managed nodes. By default, the
+  // Kubernetes version of the cluster is used, and this is the only accepted
+  // specified value.
+  //
+  // Required: No
+  string version = 15;
+}
+
+// [API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_CreateNodegroup.html#API_CreateNodegroup_ResponseSyntax)
+message CreateNodegroupReply {
+  // The full description of your new node group.
+  Nodegroup nodegroup = 1;
+  Error error = 2;
+}
+
 // [API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_DescribeCluster.html#API_DescribeCluster_RequestSyntax)
 message DescribeClusterRequest {
   si.external_api_gateway.Context context = 1;
@@ -186,6 +251,38 @@ message DescribeClusterReply {
   Error error = 2;
 }
 
+// [API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_DescribeNodegroup.html#API_DescribeNodegroup_RequestSyntax)
+message DescribeNodegroupRequest {
+  si.external_api_gateway.Context context = 1;
+  // The name of the Amazon EKS cluster associated with the node group.
+  //
+  // Required: Yes
+  string cluster_name = 2;
+  // The name of the node group to describe.
+  //
+  // Required: Yes
+  string nodegroup_name = 3;
+}
+
+// [API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_DescribeNodegroup.html#API_DescribeNodegroup_ResponseSyntax)
+message DescribeNodegroupReply {
+  // The full description of your node group.
+  Nodegroup nodegroup = 1;
+  Error error = 2;
+}
+
+// An object representing the certificate-authority-data for your cluster.
+//
+// [API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_Certificate.html)
+message Certificate {
+  // Base64-encoded certificate data required to communicate with your cluster.
+  // Add this to the certificate-authority-data section of the kubeconfig file
+  // for your cluster.
+  //
+  // Required: No
+  string data = 1;
+}
+
 // An object representing an Amazon EKS cluster.
 //
 // [API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_Cluster.html)
@@ -198,17 +295,6 @@ message Cluster {
   //
   // Required: No
   Certificate certificate_authority = 2;
-  // An object representing the certificate-authority-data for your cluster.
-  //
-  // [API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_Certificate.html)
-  message Certificate {
-    // Base64-encoded certificate data required to communicate with your
-    // cluster. Add this to the certificate-authority-data section of the
-    // kubeconfig file for your cluster.
-    //
-    // Required: No
-    string data = 1;
-  }
   // Unique, case-sensitive identifier that you provide to ensure the
   // idempotency of the request.
   //
@@ -266,60 +352,6 @@ message Cluster {
   //
   // Required: No
   VpcConfigResponse resources_vpc_config = 10;
-  // An object representing an Amazon EKS cluster VPC configuration response.
-  //
-  //[API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_VpcConfigResponse.html)
-  message VpcConfigResponse {
-    // The cluster security group that was created by Amazon EKS for the
-    // cluster. Managed node groups use this security group for
-    // control-plane-to-data-plane communication.
-    //
-    // Required: No
-    string cluster_security_group_id = 1;
-    // This parameter indicates whether the Amazon EKS private API server
-    // endpoint is enabled. If the Amazon EKS private API server endpoint is
-    // enabled, Kubernetes API requests that originate from within your
-    // cluster's VPC use the private VPC endpoint instead of traversing the
-    // internet. If this value is disabled and you have worker nodes or AWS
-    // Fargate pods in the cluster, then ensure that publicAccessCidrs
-    // includes the necessary CIDR blocks for communication with the worker
-    // nodes or Fargate pods. For more information, see Amazon EKS Cluster
-    // Endpoint Access Control in the Amazon EKS User Guide.
-    //
-    // Required: No
-    bool endpoint_private_access = 2;
-    // This parameter indicates whether the Amazon EKS public API server
-    // endpoint is enabled. If the Amazon EKS public API server endpoint is
-    // disabled, your cluster's Kubernetes API server can only receive
-    // requests that originate from within the cluster VPC.
-    //
-    // Required: No
-    bool endpoint_public_access = 3;
-    // CIDR blocks that are allowed access to your cluster's public
-    // Kubernetes API server endpoint. Communication to the endpoint from
-    // addresses outside of the listed CIDR blocks is denied. The default
-    // value is 0.0.0.0/0. If you've disabled private endpoint access and you
-    // have worker nodes or AWS Fargate pods in the cluster, then ensure that
-    // the necessary CIDR blocks are listed. For more information, see Amazon
-    // EKS Cluster Endpoint Access Control in the Amazon EKS User Guide.
-    //
-    // Required: No
-    repeated string public_access_cidrs = 4;
-    // The security groups associated with the cross-account elastic network
-    // interfaces that are used to allow communication between your worker
-    // nodes and the Kubernetes control plane.
-    //
-    // Required: No
-    repeated string security_group_ids = 5;
-    // The subnets associated with your cluster.
-    //
-    // Required: No
-    repeated string subnet_ids = 6;
-    // The VPC associated with your cluster.
-    //
-    // Required: No
-    string vpc_id = 7;
-  }
   // The Amazon Resource Name (ARN) of the IAM role that provides permissions
   // for the Kubernetes control plane to make calls to AWS API operations on
   // your behalf.
@@ -343,6 +375,21 @@ message Cluster {
   //
   // Required: No
   string version = 14;
+}
+
+message Label {
+  // Label key name.
+  //
+  // Length Constraints: Minimum length of 1. Maximum length of 63.
+  //
+  // Required: Yes
+  string key = 1;
+  // Label value.
+  //
+  // Length Constraints: Minimum length of 1. Maximum length of 253.
+  //
+  // Required: No
+  string value = 2;
 }
 
 // An object representing the logging configuration for resources in your
@@ -376,9 +423,393 @@ message Logging {
   }
 }
 
+// An object representing an Amazon EKS managed node group.
+//
+// [API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_Nodegroup.html)
+message Nodegroup {
+  // The AMI type associated with your node group. GPU instance types should
+  // use the AL2_x86_64_GPU AMI type, which uses the Amazon EKS-optimized Linux
+  // AMI with GPU support. Non-GPU instances should use the AL2_x86_64 AMI
+  // type, which uses the Amazon EKS-optimized Linux AMI.
+  //
+  // Valid Values: `AL2_x86_64 | AL2_x86_64_GPU`
+  //
+  // Required: No
+  string ami_type = 1;
+  // The name of the cluster that the managed node group resides in.
+  //
+  // Required: No
+  string cluster_name = 2;
+  // The Unix epoch timestamp in seconds for when the managed node group was
+  // created.
+  //
+  // Required: No
+  string created_at = 3;
+  // The root device disk size (in GiB) for your node group instances. The
+  // default disk size is 20 GiB.
+  //
+  // Required: No
+  uint32 disk_size = 4;
+  // The health status of the node group. If there are issues with your node
+  // group's health, they are listed here.
+  //
+  // Required: No
+  NodegroupHealth health = 5;
+  // The instance types associated with your node group.
+  //
+  // Required: No
+  repeated string instance_types = 6;
+  // The Kubernetes labels applied to the nodes in the node group.
+  //
+  // Note: Only labels that are applied with the Amazon EKS API are shown here.
+  // There may be other Kubernetes labels applied to the nodes in this group
+  //
+  // Key Length Constraints: Minimum length of 1. Maximum length of 63.
+  //
+  // Value Length Constraints: Minimum length of 1. Maximum length of 253.
+  //
+  // Required: No
+  repeated Label Labels = 7;
+  // The Unix epoch timestamp in seconds for when the managed node group was
+  // last modified.
+  //
+  // Required: No
+  string modified_at = 8;
+  // The Amazon Resource Name (ARN) associated with the managed node group.
+  //
+  // Required: No
+  string nodegroup_arn = 9;
+  // The name associated with an Amazon EKS managed node group.
+  //
+  // Required: No
+  string nodegroup_name = 10;
+  // The IAM role associated with your node group. The Amazon EKS worker node
+  // kubelet daemon makes calls to AWS APIs on your behalf. Worker nodes
+  // receive permissions for these API calls through an IAM instance profile
+  // and associated policies. Before you can launch worker nodes and register
+  // them into a cluster, you must create an IAM role for those worker nodes to
+  // use when they are launched. For more information, see Amazon EKS Worker
+  // Node IAM Role in the Amazon EKS User Guide.
+  //
+  // Required: No
+  string node_role = 11;
+  // The AMI version of the managed node group. For more information, see
+  // Amazon EKS-Optimized Linux AMI Versions in the Amazon EKS User Guide.
+  //
+  // Required: No
+  string release_version = 12;
+  // The remote access (SSH) configuration that is associated with the node
+  // group.
+  //
+  // Required: No
+  RemoteAccessConfig remote_access = 13;
+  // The resources associated with the node group, such as Auto Scaling groups
+  // and security groups for remote access.
+  //
+  // Required: No
+  NodegroupResources resources = 14;
+  // The scaling configuration details for the Auto Scaling group that is
+  // associated with your node group.
+  //
+  // Required: No
+  NodegroupScalingConfig scaling_config = 15;
+  // The current status of the managed node group.
+  //
+  // Value Values: `CREATING | ACTIVE | UPDATING | DELETING | CREATE_FAILED |
+  // DELETE_FAILED | DEGRADED`
+  //
+  // Required: No
+  string status = 16;
+  // The subnets allowed for the Auto Scaling group that is associated with
+  // your node group. These subnets must have the following tag:
+  // kubernetes.io/cluster/CLUSTER_NAME, where CLUSTER_NAME is replaced with
+  // the name of your cluster.
+  //
+  // Required: No
+  repeated string subnets = 17;
+  // The metadata applied to the node group to assist with categorization and
+  // organization. Each tag consists of a key and an optional value, both of
+  // which you define. Node group tags do not propagate to any other resources
+  // associated with the node group, such as the Amazon EC2 instances or
+  // subnets.
+  //
+  // Required: No
+  repeated Tag tags = 18;
+  // The Kubernetes version of the managed node group.
+  //
+  // Required: No
+  string version = 19;
+}
+
+// An object representing the health status of the node group.
+//
+// [API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_NodegroupHealth.html)
+message NodegroupHealth {
+  // Any issues that are associated with the node group.
+  //
+  // Required: No
+  repeated Issue issues = 1;
+  // An object representing an issue with an Amazon EKS resource.
+  //
+  // [API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_Issue.html)
+  message Issue {
+    // A brief description of the error.
+    //
+    // - **AutoScalingGroupNotFound**: We couldn't find the Auto Scaling group
+    // associated with the managed node group. You may be able to recreate an
+    // Auto Scaling group with the same settings to recover.
+    // - **Ec2SecurityGroupNotFound**: We couldn't find the cluster security
+    // group for the cluster. You must recreate your cluster.
+    // - **Ec2SecurityGroupDeletionFailure**: We could not delete the remote
+    // access security group for your managed node group. Remove any
+    // dependencies from the security group.
+    // - **Ec2LaunchTemplateNotFound**: We couldn't find the Amazon EC2 launch
+    // template for your managed node group. You may be able to recreate a
+    // launch template with the same settings to recover.
+    // - **Ec2LaunchTemplateVersionMismatch**: The Amazon EC2 launch template
+    // version for your managed node group does not match the version that
+    // Amazon EKS created. You may be able to revert to the version that Amazon
+    // EKS created to recover.
+    // - **IamInstanceProfileNotFound**: We couldn't find the IAM instance
+    // profile for your managed node group. You may be able to recreate an
+    // instance profile with the same settings to recover.
+    // - **IamNodeRoleNotFound**: We couldn't find the IAM role for your
+    // managed node group. You may be able to recreate an IAM role with the
+    // same settings to recover.
+    // - **AsgInstanceLaunchFailures**: Your Auto Scaling group is experiencing
+    // failures while attempting to launch instances.
+    // - **NodeCreationFailure**: Your launched instances are unable to
+    // register with your Amazon EKS cluster. Common causes of this failure are
+    // insufficient worker node IAM role permissions or lack of outbound
+    // internet access for the nodes.
+    // - **InstanceLimitExceeded**: Your AWS account is unable to launch any
+    // more instances of the specified instance type. You may be able to
+    // request an Amazon EC2 instance limit increase to recover.
+    // - **InsufficientFreeAddresses**: One or more of the subnets associated
+    // with your managed node group does not have enough available IP addresses
+    // for new nodes.
+    // - **AccessDenied**: Amazon EKS or one or more of your managed nodes is
+    // unable to communicate with your cluster API server.
+    // - **InternalFailure**: These errors are usually caused by an Amazon EKS
+    // server-side issue.
+    //
+    // Value Values: `AutoScalingGroupNotFound | Ec2SecurityGroupNotFound |
+    // Ec2SecurityGroupDeletionFailure | Ec2LaunchTemplateNotFound |
+    // Ec2LaunchTemplateVersionMismatch | IamInstanceProfileNotFound |
+    // IamNodeRoleNotFound | AsgInstanceLaunchFailures | InstanceLimitExceeded
+    // | InsufficientFreeAddresses | AccessDenied | InternalFailure`
+    //
+    // Required: No
+    string code = 1;
+    // The error message associated with the issue.
+    //
+    // Required: No
+    string message = 2;
+    // The AWS resources that are afflicted by this issue.
+    //
+    // Required: No
+    repeated string resource_ids = 3;
+  }
+}
+
+// An object representing the resources associated with the node group, such as
+// Auto Scaling groups and security groups for remote access.
+//
+// [API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_NodegroupResources.html)
+message NodegroupResources {
+  // The Auto Scaling groups associated with the node group.
+  //
+  // Required: No
+  repeated AutoScalingGroup auto_scaling_groups = 1;
+  // An Auto Scaling group that is associated with an Amazon EKS managed node
+  // group.
+  //
+  // [API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_AutoScalingGroup.html)
+  message AutoScalingGroup {
+    // The name of the Auto Scaling group associated with an Amazon EKS managed
+    // node group.
+    //
+    // Required: No
+    string name = 1;
+  }
+  // The remote access security group associated with the node group. This
+  // security group controls SSH access to the worker nodes.
+  //
+  // Required: No
+  string remote_access_security_group = 2;
+}
+
+// An object representing the scaling configuration details for the Auto
+// Scaling group that is associated with your node group.
+//
+// [API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_NodegroupScalingConfig.html)
+message NodegroupScalingConfig {
+  // The current number of worker nodes that the managed node group should
+  // maintain.
+  //
+  // Valid Range: Minimum value of 1.
+  //
+  // Required: No
+  uint32 desired_size = 1;
+  // The maximum number of worker nodes that the managed node group can scale
+  // out to. Managed node groups can support up to 100 nodes by default.  Valid
+  // Range: Minimum value of 1.
+  //
+  // Valid Range: Minimum value of 1.
+  //
+  // Required: No
+  uint32 max_size = 2;
+  // The minimum number of worker nodes that the managed node group can scale
+  // in to. This number must be greater than zero.
+  //
+  // Valid Range: Minimum value of 1.
+  //
+  // Required: No
+  uint32 min_size = 3;
+}
+
+// An object representing the remote access configuration for the managed node
+// group.
+//
+// [API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_RemoteAccessConfig.html)
+message RemoteAccessConfig {
+  // The Amazon EC2 SSH key that provides access for SSH communication with the
+  // worker nodes in the managed node group. For more information, see Amazon
+  // EC2 Key Pairs in the Amazon Elastic Compute Cloud User Guide for Linux
+  // Instances.
+  //
+  // Required: No
+  string ec2_ssh_key = 1;
+  // The security groups that are allowed SSH access (port 22) to the worker
+  // nodes. If you specify an Amazon EC2 SSH key but do not specify a source
+  // security group when you create a managed node group, then port 22 on the
+  // worker nodes is opened to the internet (0.0.0.0/0). For more information,
+  // see Security Groups for Your VPC in the Amazon Virtual Private Cloud User
+  // Guide.
+  //
+  // Required: No
+  repeated string sourceSecurityGroups = 2;
+}
+
 message Tag {
+  // Tag key name.
+  //
+  // Length Constraints: Minimum length of 1. Maximum length of 128.
+  //
+  // Required: Yes
   string key = 1;
+  // Tag value.
+  //
+  // Value Length Constraints: Maximum length of 256.
+  //
+  // Required: No
   string value = 2;
+}
+
+// An object representing the VPC configuration to use for an Amazon EKS
+// cluster.
+//
+// [API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_VpcConfigRequest.html)
+message VpcConfigRequest {
+  // Set this value to true to enable private access for your cluster's
+  // Kubernetes API server endpoint. If you enable private access, Kubernetes
+  // API requests from within your cluster's VPC use the private VPC endpoint.
+  // The default value for this parameter is false, which disables private
+  // access for your Kubernetes API server. If you disable private access and
+  // you have worker nodes or AWS Fargate pods in the cluster, then ensure that
+  // publicAccessCidrs includes the necessary CIDR blocks for communication
+  // with the worker nodes or Fargate pods. For more information, see Amazon
+  // EKS Cluster Endpoint Access Control in the Amazon EKS User Guide.
+  //
+  // Required: No
+  bool endpoint_private_access = 1;
+  // Set this value to false to disable public access to your cluster's
+  // Kubernetes API server endpoint. If you disable public access, your
+  // cluster's Kubernetes API server can only receive requests from within the
+  // cluster VPC. The default value for this parameter is true, which enables
+  // public access for your Kubernetes API server. For more information, see
+  // Amazon EKS Cluster Endpoint Access Control in the Amazon EKS User Guide.
+  //
+  // Required: No
+  bool endpoint_public_access = 2;
+  // The CIDR blocks that are allowed access to your cluster's public
+  // Kubernetes API server endpoint. Communication to the endpoint from
+  // addresses outside of the CIDR blocks that you specify is denied. The
+  // default value is 0.0.0.0/0. If you've disabled private endpoint access and
+  // you have worker nodes or AWS Fargate pods in the cluster, then ensure that
+  // you specify the necessary CIDR blocks. For more information, see Amazon
+  // EKS Cluster Endpoint Access Control in the Amazon EKS User Guide.
+  //
+  // Required: No
+  repeated string public_access_cidrs = 3;
+  // Specify one or more security groups for the cross-account elastic network
+  // interfaces that Amazon EKS creates to use to allow communication between
+  // your worker nodes and the Kubernetes control plane. If you don't specify a
+  // security group, the default security group for your VPC is used.
+  //
+  // Required: No
+  repeated string security_group_ids = 4;
+  // Specify subnets for your Amazon EKS worker nodes. Amazon EKS creates
+  // cross-account elastic network interfaces in these subnets to allow
+  // communication between your worker nodes and the Kubernetes control plane.
+  //
+  // Required: No
+  repeated string subnet_ids = 5;
+}
+
+// An object representing an Amazon EKS cluster VPC configuration response.
+//
+//[API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_VpcConfigResponse.html)
+message VpcConfigResponse {
+  // The cluster security group that was created by Amazon EKS for the cluster.
+  // Managed node groups use this security group for
+  // control-plane-to-data-plane communication.
+  //
+  // Required: No
+  string cluster_security_group_id = 1;
+  // This parameter indicates whether the Amazon EKS private API server
+  // endpoint is enabled. If the Amazon EKS private API server endpoint is
+  // enabled, Kubernetes API requests that originate from within your cluster's
+  // VPC use the private VPC endpoint instead of traversing the internet. If
+  // this value is disabled and you have worker nodes or AWS Fargate pods in
+  // the cluster, then ensure that publicAccessCidrs includes the necessary
+  // CIDR blocks for communication with the worker nodes or Fargate pods. For
+  // more information, see Amazon EKS Cluster Endpoint Access Control in the
+  // Amazon EKS User Guide.
+  //
+  // Required: No
+  bool endpoint_private_access = 2;
+  // This parameter indicates whether the Amazon EKS public API server endpoint
+  // is enabled. If the Amazon EKS public API server endpoint is disabled, your
+  // cluster's Kubernetes API server can only receive requests that originate
+  // from within the cluster VPC.
+  //
+  // Required: No
+  bool endpoint_public_access = 3;
+  // CIDR blocks that are allowed access to your cluster's public Kubernetes
+  // API server endpoint. Communication to the endpoint from addresses outside
+  // of the listed CIDR blocks is denied. The default value is 0.0.0.0/0. If
+  // you've disabled private endpoint access and you have worker nodes or AWS
+  // Fargate pods in the cluster, then ensure that the necessary CIDR blocks
+  // are listed. For more information, see Amazon EKS Cluster Endpoint Access
+  // Control in the Amazon EKS User Guide.
+  //
+  // Required: No
+  repeated string public_access_cidrs = 4;
+  // The security groups associated with the cross-account elastic network
+  // interfaces that are used to allow communication between your worker nodes
+  // and the Kubernetes control plane.
+  //
+  // Required: No
+  repeated string security_group_ids = 5;
+  // The subnets associated with your cluster.
+  //
+  // Required: No
+  repeated string subnet_ids = 6;
+  // The VPC associated with your cluster.
+  //
+  // Required: No
+  string vpc_id = 7;
 }
 
 message Error {

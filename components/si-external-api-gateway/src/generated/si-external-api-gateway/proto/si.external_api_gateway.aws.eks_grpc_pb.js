@@ -27,6 +27,28 @@ function deserialize_si_external_api_gateway_aws_eks_CreateClusterRequest(buffer
   return si$external$api$gateway_proto_si_external_api_gateway_aws_eks_pb.CreateClusterRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_si_external_api_gateway_aws_eks_CreateNodegroupReply(arg) {
+  if (!(arg instanceof si$external$api$gateway_proto_si_external_api_gateway_aws_eks_pb.CreateNodegroupReply)) {
+    throw new Error('Expected argument of type si.external_api_gateway.aws.eks.CreateNodegroupReply');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_si_external_api_gateway_aws_eks_CreateNodegroupReply(buffer_arg) {
+  return si$external$api$gateway_proto_si_external_api_gateway_aws_eks_pb.CreateNodegroupReply.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_si_external_api_gateway_aws_eks_CreateNodegroupRequest(arg) {
+  if (!(arg instanceof si$external$api$gateway_proto_si_external_api_gateway_aws_eks_pb.CreateNodegroupRequest)) {
+    throw new Error('Expected argument of type si.external_api_gateway.aws.eks.CreateNodegroupRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_si_external_api_gateway_aws_eks_CreateNodegroupRequest(buffer_arg) {
+  return si$external$api$gateway_proto_si_external_api_gateway_aws_eks_pb.CreateNodegroupRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_si_external_api_gateway_aws_eks_DescribeClusterReply(arg) {
   if (!(arg instanceof si$external$api$gateway_proto_si_external_api_gateway_aws_eks_pb.DescribeClusterReply)) {
     throw new Error('Expected argument of type si.external_api_gateway.aws.eks.DescribeClusterReply');
@@ -47,6 +69,28 @@ function serialize_si_external_api_gateway_aws_eks_DescribeClusterRequest(arg) {
 
 function deserialize_si_external_api_gateway_aws_eks_DescribeClusterRequest(buffer_arg) {
   return si$external$api$gateway_proto_si_external_api_gateway_aws_eks_pb.DescribeClusterRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_si_external_api_gateway_aws_eks_DescribeNodegroupReply(arg) {
+  if (!(arg instanceof si$external$api$gateway_proto_si_external_api_gateway_aws_eks_pb.DescribeNodegroupReply)) {
+    throw new Error('Expected argument of type si.external_api_gateway.aws.eks.DescribeNodegroupReply');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_si_external_api_gateway_aws_eks_DescribeNodegroupReply(buffer_arg) {
+  return si$external$api$gateway_proto_si_external_api_gateway_aws_eks_pb.DescribeNodegroupReply.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_si_external_api_gateway_aws_eks_DescribeNodegroupRequest(arg) {
+  if (!(arg instanceof si$external$api$gateway_proto_si_external_api_gateway_aws_eks_pb.DescribeNodegroupRequest)) {
+    throw new Error('Expected argument of type si.external_api_gateway.aws.eks.DescribeNodegroupRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_si_external_api_gateway_aws_eks_DescribeNodegroupRequest(buffer_arg) {
+  return si$external$api$gateway_proto_si_external_api_gateway_aws_eks_pb.DescribeNodegroupRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 
@@ -105,6 +149,30 @@ createCluster: {
     responseSerialize: serialize_si_external_api_gateway_aws_eks_CreateClusterReply,
     responseDeserialize: deserialize_si_external_api_gateway_aws_eks_CreateClusterReply,
   },
+  // Creates a managed worker node group for an Amazon EKS cluster. You can
+// only create a node group for your cluster that is equal to the current
+// Kubernetes version for the cluster. All node groups are created with the
+// latest AMI release version for the respective minor Kubernetes version of
+// the cluster.
+//
+// An Amazon EKS managed node group is an Amazon EC2 Auto Scaling group and
+// associated Amazon EC2 instances that are managed by AWS for an Amazon EKS
+// cluster. Each node group uses a version of the Amazon EKS-optimized Amazon
+// Linux 2 AMI. For more information, see Managed Node Groups in the Amazon
+// EKS User Guide.
+//
+// [API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_CreateNodegroup.html)
+createNodegroup: {
+    path: '/si.external_api_gateway.aws.eks.EKS/CreateNodegroup',
+    requestStream: false,
+    responseStream: false,
+    requestType: si$external$api$gateway_proto_si_external_api_gateway_aws_eks_pb.CreateNodegroupRequest,
+    responseType: si$external$api$gateway_proto_si_external_api_gateway_aws_eks_pb.CreateNodegroupReply,
+    requestSerialize: serialize_si_external_api_gateway_aws_eks_CreateNodegroupRequest,
+    requestDeserialize: deserialize_si_external_api_gateway_aws_eks_CreateNodegroupRequest,
+    responseSerialize: serialize_si_external_api_gateway_aws_eks_CreateNodegroupReply,
+    responseDeserialize: deserialize_si_external_api_gateway_aws_eks_CreateNodegroupReply,
+  },
   // Returns descriptive information about an Amazon EKS cluster.
 //
 // The API server endpoint and certificate authority data returned by this
@@ -114,6 +182,8 @@ createCluster: {
 //
 // Note: The API server endpoint and certificate authority data aren't
 // available until the cluster reaches the `ACTIVE` state.
+//
+// [API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_DescribeCluster.html)
 describeCluster: {
     path: '/si.external_api_gateway.aws.eks.EKS/DescribeCluster',
     requestStream: false,
@@ -124,6 +194,20 @@ describeCluster: {
     requestDeserialize: deserialize_si_external_api_gateway_aws_eks_DescribeClusterRequest,
     responseSerialize: serialize_si_external_api_gateway_aws_eks_DescribeClusterReply,
     responseDeserialize: deserialize_si_external_api_gateway_aws_eks_DescribeClusterReply,
+  },
+  // Returns descriptive information about an Amazon EKS node group.
+//
+// [API Reference](https://docs.aws.amazon.com/eks/latest/APIReference/API_DescribeNodegroup.html)
+describeNodegroup: {
+    path: '/si.external_api_gateway.aws.eks.EKS/DescribeNodegroup',
+    requestStream: false,
+    responseStream: false,
+    requestType: si$external$api$gateway_proto_si_external_api_gateway_aws_eks_pb.DescribeNodegroupRequest,
+    responseType: si$external$api$gateway_proto_si_external_api_gateway_aws_eks_pb.DescribeNodegroupReply,
+    requestSerialize: serialize_si_external_api_gateway_aws_eks_DescribeNodegroupRequest,
+    requestDeserialize: deserialize_si_external_api_gateway_aws_eks_DescribeNodegroupRequest,
+    responseSerialize: serialize_si_external_api_gateway_aws_eks_DescribeNodegroupReply,
+    responseDeserialize: deserialize_si_external_api_gateway_aws_eks_DescribeNodegroupReply,
   },
 };
 

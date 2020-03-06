@@ -12,5 +12,8 @@ pub mod service;
 
 pub use agent::{AgentClient, AgentFinalizer, AgentServer};
 pub use migrate::migrate;
-pub use protobuf::{aws_eks_cluster_runtime_server::AwsEksClusterRuntimeServer, entity::AwsStatus};
+pub use protobuf::{
+    aws_eks_cluster_runtime_server::AwsEksClusterRuntimeServer, entity::ClusterStatus,
+    entity::NodegroupStatus,
+};
 pub use service::Service;

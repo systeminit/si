@@ -10,17 +10,20 @@ import syncEntity from "./graphql/mutations/syncEntity.gql";
 
 import listEntityEvents from "./graphql/queries/listEntityEvents.gql";
 
+import addNodegroup from "./graphql/mutations/addNodegroup.gql";
+
 export const awsEksClusterRuntime = new SiComponent("awsEksClusterRuntime", {
   name: "AWS EKS Cluster Runtime",
   componentProperties: ["kubernetesVersion"],
   listHeaders: [
     { text: "Name", value: "name" },
     { text: "Kubernetes Version", value: "kubernetesVersion" },
-    { text: "AWS Status", value: "awsStatus" },
+    { text: "Cluster Status", value: "clusterStatus" },
+    { text: "Nodegroup Status", value: "nodegroupStatus" },
     { text: "State", value: "state" },
   ],
   showActions: [
-    { displayName: "Add Node Group" },
+    { displayName: "Add Nodegroup", mutation: addNodegroup },
     { displayName: "Delete" },
     { displayName: "Sync", mutation: syncEntity },
   ],
@@ -31,7 +34,26 @@ export const awsEksClusterRuntime = new SiComponent("awsEksClusterRuntime", {
       property: "kubernetesVersion",
       showAs: "text",
     },
-    { displayName: "AWS Status", property: "awsStatus", showAs: "text" },
+    {
+      displayName: "Cluster Name",
+      property: "clusterName",
+      showAs: "text",
+    },
+    {
+      displayName: "Cluster Status",
+      property: "clusterStatus",
+      showAs: "text",
+    },
+    {
+      displayName: "Nodegroup Name",
+      property: "nodegroupName",
+      showAs: "text",
+    },
+    {
+      displayName: "Nodegroup Status",
+      property: "nodegroupStatus",
+      showAs: "text",
+    },
   ],
   hints: [
     {

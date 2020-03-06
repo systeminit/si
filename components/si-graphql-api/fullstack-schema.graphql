@@ -2,12 +2,22 @@
 ### Do not make changes to this file directly
 
 
-enum AwsEksClusterRuntimeAwsStatus {
+type AwsEksClusterRuntimeAddNodegroupReply {
+  """event"""
+  event: AwsEksClusterRuntimeEntityEvent
+}
+
+input AwsEksClusterRuntimeAddNodegroupRequest {
+  """entityId"""
+  entityId: String
+}
+
+enum AwsEksClusterRuntimeClusterStatus {
   ACTIVE
-  AWS_STATUS_UNINITIALIZED
   CREATING
   DELETING
   FAILED
+  UNKNOWN_CLUSTER_STATUS
   UPDATING
 }
 
@@ -122,9 +132,6 @@ input AwsEksClusterRuntimeCreateEntityRequest {
 }
 
 type AwsEksClusterRuntimeEntity {
-  """awsStatus"""
-  awsStatus: AwsEksClusterRuntimeAwsStatus
-
   """billingAccountId"""
   billingAccount: BillingAccount
 
@@ -133,6 +140,12 @@ type AwsEksClusterRuntimeEntity {
 
   """cloudwatchLogs"""
   cloudwatchLogs: Boolean
+
+  """clusterName"""
+  clusterName: String
+
+  """clusterStatus"""
+  clusterStatus: AwsEksClusterRuntimeClusterStatus
 
   """componentId"""
   componentId: String
@@ -194,8 +207,14 @@ type AwsEksClusterRuntimeEntity {
   """nodeGroupMinimumSize"""
   nodeGroupMinimumSize: Int
 
+  """nodegroupName"""
+  nodegroupName: String
+
   """nodeGroupSshKeyId"""
   nodeGroupSshKeyId: String
+
+  """nodegroupStatus"""
+  nodegroupStatus: AwsEksClusterRuntimeNodegroupStatus
 
   """organizationId"""
   organization: Organization
@@ -222,7 +241,7 @@ type AwsEksClusterRuntimeEntity {
   workspaceId: String
 }
 
-type AwsEksClusterRuntimeEntityEvent {
+type AwsEksClusterRuntimeEntityEvent implements EntityEvent {
   """actionName"""
   actionName: String
 
@@ -428,6 +447,17 @@ enum AwsEksClusterRuntimeNextState {
   NONE
   OK
   UNINITIALIZED
+}
+
+enum AwsEksClusterRuntimeNodegroupStatus {
+  NODEGROUP_ACTIVE
+  NODEGROUP_CREATE_FAILED
+  NODEGROUP_CREATING
+  NODEGROUP_DEGRADED
+  NODEGROUP_DELETE_FAILED
+  NODEGROUP_DELETING
+  NODEGROUP_UPDATING
+  UNKNOWN_NODEGROUP_STATUS
 }
 
 type AwsEksClusterRuntimePickComponentReply {
@@ -1118,6 +1148,7 @@ input LoginRequest {
 }
 
 type Mutation {
+  awsEksClusterRuntimeAddNodegroup(input: AwsEksClusterRuntimeAddNodegroupRequest): AwsEksClusterRuntimeAddNodegroupReply
   awsEksClusterRuntimeCreateEntity(input: AwsEksClusterRuntimeCreateEntityRequest): AwsEksClusterRuntimeCreateEntityReply
   awsEksClusterRuntimeSyncEntity(input: AwsEksClusterRuntimeSyncEntityRequest): AwsEksClusterRuntimeSyncEntityReply
   createAccount(input: CreateAccountRequest): CreateAccountReply

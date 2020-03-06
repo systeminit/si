@@ -15,6 +15,7 @@ fn main() {
         .type_attribute(".", "#[derive(serde::Serialize, serde::Deserialize)]")
         .type_attribute(".", "#[serde(rename_all = \"camelCase\")]")
         .type_attribute(".", "#[derive(typed_builder::TypedBuilder)]")
+        .field_attribute(".", "#[builder(default)]")
         .compile(PROTOS, &["../.."])
         .unwrap();
 }

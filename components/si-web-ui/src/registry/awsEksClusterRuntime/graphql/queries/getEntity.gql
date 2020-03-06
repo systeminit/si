@@ -16,7 +16,10 @@ query awsEksClusterRuntimeGetEntity($entityId: String) {
       }
       state
       kubernetesVersion
-      awsStatus
+      clusterName
+      clusterStatus
+      nodegroupName
+      nodegroupStatus
     }
   }
 }

@@ -166,6 +166,63 @@ async fn pick_component(
 
 #[tonic::async_trait]
 impl aws_eks_cluster_runtime_server::AwsEksClusterRuntime for Service {
+    async fn add_nodegroup(
+        &self,
+        request: Request<protobuf::AddNodegroupRequest>,
+    ) -> TonicResult<protobuf::AddNodegroupReply> {
+        async {
+            let metadata = request.metadata();
+            let user_id = metadata
+                .get("userId")
+                .ok_or(AwsEksClusterRuntimeError::InvalidAuthentication)?
+                .to_str()
+                .map_err(AwsEksClusterRuntimeError::GrpcHeaderToString)?;
+            let billing_account_id = metadata
+                .get("billingAccountId")
+                .ok_or(AwsEksClusterRuntimeError::InvalidAuthentication)?
+                .to_str()
+                .map_err(AwsEksClusterRuntimeError::GrpcHeaderToString)?;
+            let req = request.get_ref();
+
+            let billing_account: BillingAccount = self
+                .db
+                .get(billing_account_id)
+                .await
+                .map_err(|_| AwsEksClusterRuntimeError::BillingAccountMissing)?;
+
+            // NOTE: Someday, make this work on the workspace. Going to need to actually
+            // think about it, instead of just blatting out what works. ;)
+            authorize(
+                &self.db,
+                user_id,
+                billing_account_id,
+                "sync_entity",
+                &billing_account,
+            )
+            .await?;
+
+            let entity = self
+                .db
+                .get(&req.entity_id)
+                .await
+                .map_err(|_| AwsEksClusterRuntimeError::EntityMissing)?;
+
+            let mut entity_event = EntityEvent::new(user_id, "add_nodegroup", &entity);
+            self.db
+                .validate_and_insert_as_new(&mut entity_event)
+                .await
+                .map_err(AwsEksClusterRuntimeError::CreateEntityEvent)?;
+
+            self.agent.dispatch(&entity_event).await?;
+
+            Ok(Response::new(protobuf::AddNodegroupReply {
+                event: Some(entity_event),
+            }))
+        }
+        .instrument(debug_span!("add_nodegroup", ?request))
+        .await
+    }
+
     async fn sync_entity(
         &self,
         request: Request<protobuf::SyncEntityRequest>,

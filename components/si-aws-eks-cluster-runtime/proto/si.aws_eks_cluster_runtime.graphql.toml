@@ -9,6 +9,9 @@ service.AwsEksClusterRuntime.ListEntityEvents.query = true
 
 service.AwsEksClusterRuntime.CreateEntity.mutation = true
 service.AwsEksClusterRuntime.SyncEntity.mutation = true
+service.AwsEksClusterRuntime.AddNodegroup.mutation = true
+
+message.EntityEvent.implementsInterfaceTypeHint = ["EntityEvent"]
 
 [message.Component.integrationId.has_one]
 to = "integration"
