@@ -1,5 +1,7 @@
+use crate::model::entity;
 use paho_mqtt as mqtt;
 use si_data;
+use si_external_api_gateway::aws::eks;
 use thiserror::Error;
 use tonic::{self, Response};
 
@@ -94,6 +96,12 @@ pub enum AwsEksClusterRuntimeError {
     InvalidClusterStatus(String),
     #[error("invalid nodegroup status: {0}")]
     InvalidNodegroupStatus(String),
+    #[error("{0}")]
+    UnknownBool(#[from] entity::UnknownBoolError),
+    #[error("invalid Bool value: {0}")]
+    InvalidBool(#[from] entity::InvalidBoolError),
+    #[error("invalid EKS Bool value: {0}")]
+    InvalidEksBool(#[from] eks::InvalidBoolError),
 }
 
 impl From<AwsEksClusterRuntimeError> for tonic::Status {

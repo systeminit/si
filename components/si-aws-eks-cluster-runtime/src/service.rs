@@ -14,6 +14,10 @@ use crate::model::component::Component;
 use crate::model::entity::{Entity, EntityEvent};
 use crate::protobuf::{self, aws_eks_cluster_runtime_server, ImplicitConstraint};
 
+// NOTE(fnichol): this for sure should not live here long term; it needs to be rolled up into
+// top module level info, metadata, etc.
+const DEFAULT_KUBERNETES_VERSION: &str = "1.14";
+
 #[derive(Debug)]
 pub struct Service {
     db: Db,
@@ -123,10 +127,10 @@ async fn pick_component(
     // KEY TYPE GOES FIRST...
 
     if req.kubernetes_version == "" {
-        kubernetes_version = "1.14".to_string();
+        kubernetes_version = DEFAULT_KUBERNETES_VERSION.to_string();
         implicit_constraints.push(ImplicitConstraint {
             field: "kubernetesVersion".to_string(),
-            value: "1.14".to_string(),
+            value: DEFAULT_KUBERNETES_VERSION.to_string(),
         });
     } else {
         kubernetes_version = req.kubernetes_version.clone();

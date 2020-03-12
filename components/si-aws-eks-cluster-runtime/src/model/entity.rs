@@ -1,20 +1,66 @@
-use chrono::prelude::{DateTime, Utc};
-use si_account::Workspace;
-use si_data::{error::DataError, Reference, Storable};
-use uuid::Uuid;
-
 use crate::error::AwsEksClusterRuntimeError;
 pub use crate::protobuf::create_entity_request::TagRequest;
-pub use crate::protobuf::entity::{State, Tag};
+pub use crate::protobuf::entity::{Bool, State, Tag};
 pub use crate::protobuf::entity_event::NextState;
 use crate::protobuf::{Constraints, CreateEntityRequest, PickComponentReply, PickComponentRequest};
 pub use crate::protobuf::{Entity, EntityEvent};
+use chrono::prelude::{DateTime, Utc};
+use si_account::Workspace;
+use si_data::{error::DataError, Reference, Storable};
+use std::convert::TryFrom;
+use uuid::Uuid;
 
-impl std::convert::From<&TagRequest> for Tag {
+const DEFAULT_NODEGROUP_DESIRED_SIZE: u32 = 2;
+const DEFAULT_NODEGROUP_DISK_SIZE: u32 = 20;
+const DEFAULT_NODEGROUP_INSTANCE_TYPE: &str = "t3.medium";
+const DEFAULT_NODEGROUP_MAX_SIZE: u32 = 2;
+const DEFAULT_NODEGROUP_MIN_SIZE: u32 = 2;
+const DEFAULT_ENDPOINT_PRIVATE_ACCESS: Bool = Bool::False;
+const DEFAULT_ENDPOINT_PUBLIC_ACCESS: Bool = Bool::True;
+
+impl From<&TagRequest> for Tag {
     fn from(tagreq: &TagRequest) -> Tag {
         Tag {
             key: tagreq.key.clone(),
             value: tagreq.value.clone(),
+        }
+    }
+}
+
+#[derive(thiserror::Error, Debug)]
+#[error("unknown Bool value")]
+pub struct UnknownBoolError(());
+
+#[derive(thiserror::Error, Debug)]
+#[error("invalid Bool value: {0}")]
+pub struct InvalidBoolError(i32);
+
+impl TryFrom<Bool> for bool {
+    type Error = UnknownBoolError;
+
+    fn try_from(value: Bool) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Bool::Unknown => Err(UnknownBoolError(())),
+            Bool::True => Ok(true),
+            Bool::False => Ok(false),
+        }
+    }
+}
+
+impl TryFrom<i32> for Bool {
+    type Error = InvalidBoolError;
+
+    fn try_from(value: i32) -> std::result::Result<Self, Self::Error> {
+        Self::from_i32(value).ok_or(InvalidBoolError(value))
+    }
+}
+
+impl From<bool> for Bool {
+    fn from(value: bool) -> Self {
+        if value {
+            Self::True
+        } else {
+            Self::False
         }
     }
 }
@@ -132,53 +178,59 @@ impl Entity {
         }
 
         let mut e = Entity {
+            tenant_ids: vec![
+                workspace.billing_account_id.clone(),
+                workspace.organization_id.clone(),
+                workspace.id.clone(),
+            ],
             name: req.name.clone(),
             display_name: req.display_name.clone(),
             description: req.description.clone(),
-            workspace_id: workspace.id.clone(),
-            organization_id: workspace.organization_id.clone(),
-            billing_account_id: workspace.billing_account_id.clone(),
             component_id: component.id,
             integration_id: component.integration_id,
             integration_service_id: component.integration_service_id,
+            workspace_id: workspace.id,
+            organization_id: workspace.organization_id,
+            billing_account_id: workspace.billing_account_id,
             constraints,
-            implicit_constraints: implicit_constraints.clone(),
+            implicit_constraints,
             kubernetes_version: component.kubernetes_version,
-            cloudwatch_logs: req.cloudwatch_logs.clone(),
-            node_group_ssh_key_id: req.node_group_ssh_key_id.to_string(),
-            tenant_ids: vec![
-                workspace.billing_account_id,
-                workspace.organization_id,
-                workspace.id,
-            ],
+            cloudwatch_logs: req.cloudwatch_logs,
+            nodegroup_ssh_key_id: req.nodegroup_ssh_key_id.to_string(),
             tags,
             ..Default::default()
         };
-        if req.node_group_aws_instance_type == "" {
-            e.node_group_aws_instance_type = "t3.medium".to_string();
+
+        // TODO(fnicho): this becomes a question/requirement, but for now we'll set the default
+        e.endpoint_private_access = DEFAULT_ENDPOINT_PRIVATE_ACCESS.into();
+        // TODO(fnicho): this becomes a question/requirement, but for now we'll set the default
+        e.endpoint_public_access = DEFAULT_ENDPOINT_PUBLIC_ACCESS.into();
+        e.nodegroup_instance_type = if req.nodegroup_instance_type.is_empty() {
+            DEFAULT_NODEGROUP_INSTANCE_TYPE.to_string()
         } else {
-            e.node_group_aws_instance_type = req.node_group_aws_instance_type.clone();
-        }
-        if req.node_group_disk_size_gib == "" {
-            e.node_group_disk_size_gib = "20".to_string();
+            req.nodegroup_instance_type.clone()
+        };
+        e.nodegroup_disk_size = if req.nodegroup_disk_size == 0 {
+            DEFAULT_NODEGROUP_DISK_SIZE
         } else {
-            e.node_group_disk_size_gib = req.node_group_disk_size_gib.clone();
-        }
-        if req.node_group_minimum_size == 0 {
-            e.node_group_minimum_size = 2;
+            req.nodegroup_disk_size
+        };
+        e.nodegroup_min_size = if req.nodegroup_min_size == 0 {
+            DEFAULT_NODEGROUP_MIN_SIZE
         } else {
-            e.node_group_minimum_size = req.node_group_minimum_size;
-        }
-        if req.node_group_maximum_size == 0 {
-            e.node_group_maximum_size = 2;
+            req.nodegroup_min_size
+        };
+        e.nodegroup_max_size = if req.nodegroup_max_size == 0 {
+            DEFAULT_NODEGROUP_MAX_SIZE
         } else {
-            e.node_group_maximum_size = req.node_group_maximum_size;
-        }
-        if req.node_group_desired_size == 0 {
-            e.node_group_desired_size = 2;
+            req.nodegroup_max_size
+        };
+        e.nodegroup_desired_size = if req.nodegroup_desired_size == 0 {
+            DEFAULT_NODEGROUP_DESIRED_SIZE
         } else {
-            e.node_group_desired_size = req.node_group_desired_size;
-        }
+            req.nodegroup_desired_size
+        };
+
         e
     }
 }
@@ -311,6 +363,29 @@ impl EntityEvent {
             ],
             ..Default::default()
         }
+    }
+
+    pub fn result_topic(&self) -> String {
+        format!("{}/result", self.topic_prefix())
+    }
+
+    pub fn finalized_topic(&self) -> String {
+        format!("{}/finalized", self.topic_prefix())
+    }
+
+    fn topic_prefix(&self) -> String {
+        format!(
+            "{}/{}/{}/{}/{}/{}/{}/{}/{}",
+            self.billing_account_id,
+            self.organization_id,
+            self.workspace_id,
+            self.integration_id,
+            self.integration_service_id,
+            self.entity_id,
+            "action",
+            self.action_name,
+            self.id,
+        )
     }
 
     pub fn log(&mut self, line: impl Into<String>) {

@@ -10,8 +10,8 @@ edition = "2018"
 prost = "0.6"
 prost-derive = "0.6"
 serde = { version = "1.0", features = ["derive"] }
+thiserror = "1.0"
 tonic = "0.1"
-typed-builder = "0.5"
 
 [build-dependencies]
 tonic-build = "0.1"

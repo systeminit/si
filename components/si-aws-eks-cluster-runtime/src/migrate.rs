@@ -18,7 +18,7 @@ pub async fn migrate(db: &Db) -> Result<()> {
         .lookup_by_natural_key(aws_eks_integration_service_id)
         .await?;
 
-    let kubernetes_versions = vec!["1.12", "1.13", "1.14"];
+    let kubernetes_versions = vec!["1.12", "1.13", "1.14", "1.15"];
     for kubernetes_version in kubernetes_versions {
         let name = format!("AWS EKS Cluster {} Runtime", kubernetes_version);
         let mut c = Component {

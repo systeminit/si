@@ -722,7 +722,7 @@ message VpcConfigRequest {
   // EKS Cluster Endpoint Access Control in the Amazon EKS User Guide.
   //
   // Required: No
-  bool endpoint_private_access = 1;
+  Bool endpoint_private_access = 1;
   // Set this value to false to disable public access to your cluster's
   // Kubernetes API server endpoint. If you disable public access, your
   // cluster's Kubernetes API server can only receive requests from within the
@@ -731,7 +731,7 @@ message VpcConfigRequest {
   // Amazon EKS Cluster Endpoint Access Control in the Amazon EKS User Guide.
   //
   // Required: No
-  bool endpoint_public_access = 2;
+  Bool endpoint_public_access = 2;
   // The CIDR blocks that are allowed access to your cluster's public
   // Kubernetes API server endpoint. Communication to the endpoint from
   // addresses outside of the CIDR blocks that you specify is denied. The
@@ -778,14 +778,14 @@ message VpcConfigResponse {
   // Amazon EKS User Guide.
   //
   // Required: No
-  bool endpoint_private_access = 2;
+  Bool endpoint_private_access = 2;
   // This parameter indicates whether the Amazon EKS public API server endpoint
   // is enabled. If the Amazon EKS public API server endpoint is disabled, your
   // cluster's Kubernetes API server can only receive requests that originate
   // from within the cluster VPC.
   //
   // Required: No
-  bool endpoint_public_access = 3;
+  Bool endpoint_public_access = 3;
   // CIDR blocks that are allowed access to your cluster's public Kubernetes
   // API server endpoint. Communication to the endpoint from addresses outside
   // of the listed CIDR blocks is denied. The default value is 0.0.0.0/0. If
@@ -810,6 +810,12 @@ message VpcConfigResponse {
   //
   // Required: No
   string vpc_id = 7;
+}
+
+enum Bool {
+  BOOL_UNKNOWN = 0;
+  TRUE = 1;
+  FALSE = 2;
 }
 
 message Error {

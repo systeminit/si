@@ -15,19 +15,19 @@ query awsEksClusterRuntimeListEntities(
     items {
       id
       naturalKey
+      billingAccountId
+      organizationId
+      workspaceId
       typeName
       name
       displayName
       state
       kubernetesVersion
-      cloudwatchLogs
-      organizationId
-      workspaceId
-      billingAccountId
       clusterName
       clusterStatus
       nodegroupName
       nodegroupStatus
+
     }
     totalCount
     nextPageToken

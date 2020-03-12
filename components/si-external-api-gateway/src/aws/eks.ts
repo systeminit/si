@@ -1,9 +1,10 @@
 import AWS from "aws-sdk";
-
 import { logger } from "@/logger";
 import { Server, ServerUnaryCall, sendUnaryData } from "grpc";
 import { EKSService } from "@/generated/si-external-api-gateway/proto/si.external_api_gateway.aws.eks_grpc_pb";
 import {
+  Bool,
+  BoolMap,
   Certificate,
   Cluster,
   CreateClusterRequest,
@@ -26,6 +27,16 @@ import {
   VpcConfigResponse,
   Error as PError,
 } from "@/generated/si-external-api-gateway/proto/si.external_api_gateway.aws.eks_pb";
+import { Err, Ok, Result } from "@usefultools/monads";
+
+enum Error {
+  MissingClusterName,
+  MissingNodegroupName,
+  MissingSubnets,
+  MissingNodeRole,
+}
+
+type ErrorString = keyof typeof Error;
 
 function toLabelsMap(input: Array<Label>): AWS.EKS.Types.labelsMap {
   const labels = {};
@@ -45,19 +56,47 @@ function toTagMap(input: Array<Tag>): AWS.EKS.Types.TagMap {
   return tags;
 }
 
+function toBoolean(input: BoolMap[keyof BoolMap]): boolean | undefined {
+  switch (input) {
+    case Bool.TRUE:
+      return true;
+    case Bool.FALSE:
+      return false;
+    case Bool.BOOL_UNKNOWN:
+      return undefined;
+    default:
+      return undefined;
+  }
+}
+
+function toBool(input: boolean): BoolMap[keyof BoolMap] {
+  if (input) {
+    return Bool.TRUE;
+  } else {
+    return Bool.FALSE;
+  }
+}
+
 function toVpcConfigRequest(
   input: VpcConfigRequest,
 ): AWS.EKS.Types.VpcConfigRequest {
-  let resourcesVpcConfig;
+  let resourcesVpcConfig: AWS.EKS.Types.VpcConfigRequest;
   if (input === undefined) {
     resourcesVpcConfig = {};
   } else {
     resourcesVpcConfig = {
       subnetIds: input.getSubnetIdsList(),
       securityGroupIds: input.getSecurityGroupIdsList(),
-      endpointPublicAccess: input.getEndpointPublicAccess(),
-      endpointPrivateAccess: input.getEndpointPrivateAccess(),
     };
+
+    const endpointPublicAccess = toBoolean(input.getEndpointPublicAccess());
+    if (endpointPublicAccess !== undefined) {
+      resourcesVpcConfig.endpointPublicAccess = endpointPublicAccess;
+    }
+    const endpointPrivateAccess = toBoolean(input.getEndpointPrivateAccess());
+    if (endpointPrivateAccess !== undefined) {
+      resourcesVpcConfig.endpointPrivateAccess = endpointPrivateAccess;
+    }
   }
 
   return resourcesVpcConfig;
@@ -146,16 +185,47 @@ function toRemoteAccessConfigRequest(
   return output;
 }
 
+function failCreateNodegroup(
+  callback: sendUnaryData<CreateNodegroupReply>,
+  e: { code?: string; message: string },
+): void {
+  const error = new PError();
+  if (e.code !== undefined) {
+    error.setCode(e.code);
+  }
+  error.setMessage(e.message);
+
+  const reply = new CreateNodegroupReply();
+  reply.setError(error);
+
+  callback(null, reply);
+}
+
 function toCreateNodegroupRequest(
   input: CreateNodegroupRequest,
-): AWS.EKS.Types.CreateNodegroupRequest {
-  // NOTE(fnichol): should we reject/throw/error if any of these required values
-  // are empty strings, empty arrays, etc?
+): Result<AWS.EKS.Types.CreateNodegroupRequest, Error> {
+  const clusterName = input.getClusterName();
+  if (clusterName.length == 0) {
+    return Err(Error.MissingClusterName);
+  }
+  const nodegroupName = input.getNodegroupName();
+  if (nodegroupName.length == 0) {
+    return Err(Error.MissingNodegroupName);
+  }
+  const subnets = input.getSubnetsList();
+  if (subnets.length == 0) {
+    return Err(Error.MissingSubnets);
+  }
+  const nodeRole = input.getNodeRole();
+  if (nodeRole.length == 0) {
+    return Err(Error.MissingNodeRole);
+  }
+
   const output: AWS.EKS.Types.CreateNodegroupRequest = {
-    clusterName: input.getClusterName(),
-    nodegroupName: input.getNodegroupName(),
-    subnets: input.getSubnetsList(),
-    nodeRole: input.getNodeRole(),
+    clusterName,
+    nodegroupName,
+    subnets,
+    nodeRole,
   };
 
   const scalingConfig = toNodegroupScalingConfigRequest(
@@ -168,7 +238,9 @@ function toCreateNodegroupRequest(
   if (diskSize != 0) {
     output.diskSize = diskSize;
   }
-  const instanceTypes = input.getInstanceTypesList();
+  const instanceTypes = input
+    .getInstanceTypesList()
+    .filter(it => it.length > 0);
   if (instanceTypes.length > 0) {
     output.instanceTypes = instanceTypes;
   }
@@ -201,7 +273,7 @@ function toCreateNodegroupRequest(
     output.releaseVersion = releaseVersion;
   }
 
-  return output;
+  return Ok(output);
 }
 
 function toCertificate(ctx: AWS.EKS.Types.Certificate): Certificate {
@@ -216,8 +288,10 @@ function toVpcConfigResponse(
 ): VpcConfigResponse {
   const resourcesVpcConfig = new VpcConfigResponse();
   resourcesVpcConfig.setClusterSecurityGroupId(ctx.clusterSecurityGroupId);
-  resourcesVpcConfig.setEndpointPrivateAccess(ctx.endpointPrivateAccess);
-  resourcesVpcConfig.setEndpointPublicAccess(ctx.endpointPublicAccess);
+  resourcesVpcConfig.setEndpointPrivateAccess(
+    toBool(ctx.endpointPrivateAccess),
+  );
+  resourcesVpcConfig.setEndpointPublicAccess(toBool(ctx.endpointPublicAccess));
   resourcesVpcConfig.setPublicAccessCidrsList(ctx.publicAccessCidrs);
   resourcesVpcConfig.setSecurityGroupIdsList(ctx.securityGroupIds);
   resourcesVpcConfig.setSubnetIdsList(ctx.subnetIds);
@@ -505,20 +579,21 @@ class AwsEks {
       },
     };
     const eksClient = new AWS.EKS({ logger: awsLogger, region: "us-east-2" });
-    const request = toCreateNodegroupRequest(call.request);
-    let response;
 
+    const result = toCreateNodegroupRequest(call.request);
+    if (result.is_err()) {
+      failCreateNodegroup(callback, {
+        message: Error[result.unwrap_err()],
+      });
+      return;
+    }
+    const request = result.unwrap();
+
+    let response;
     try {
       response = await eksClient.createNodegroup(request).promise();
-    } catch (err) {
-      const error = new PError();
-      error.setCode(err.code);
-      error.setMessage(err.message);
-
-      const reply = new CreateNodegroupReply();
-      reply.setError(error);
-
-      callback(null, reply);
+    } catch (e) {
+      failCreateNodegroup(callback, e);
       return;
     }
 

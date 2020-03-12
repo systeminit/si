@@ -14,6 +14,7 @@ var global = Function('return this')();
 
 var si$external$api$gateway_proto_si_external_api_gateway_pb = require('../../si-external-api-gateway/proto/si.external_api_gateway_pb.js');
 goog.object.extend(proto, si$external$api$gateway_proto_si_external_api_gateway_pb);
+goog.exportSymbol('proto.si.external_api_gateway.aws.eks.Bool', null, global);
 goog.exportSymbol('proto.si.external_api_gateway.aws.eks.Certificate', null, global);
 goog.exportSymbol('proto.si.external_api_gateway.aws.eks.Cluster', null, global);
 goog.exportSymbol('proto.si.external_api_gateway.aws.eks.Cluster.Identity', null, global);
@@ -6590,8 +6591,8 @@ proto.si.external_api_gateway.aws.eks.VpcConfigRequest.prototype.toObject = func
  */
 proto.si.external_api_gateway.aws.eks.VpcConfigRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    endpointPrivateAccess: jspb.Message.getBooleanFieldWithDefault(msg, 1, false),
-    endpointPublicAccess: jspb.Message.getBooleanFieldWithDefault(msg, 2, false),
+    endpointPrivateAccess: jspb.Message.getFieldWithDefault(msg, 1, 0),
+    endpointPublicAccess: jspb.Message.getFieldWithDefault(msg, 2, 0),
     publicAccessCidrsList: (f = jspb.Message.getRepeatedField(msg, 3)) == null ? undefined : f,
     securityGroupIdsList: (f = jspb.Message.getRepeatedField(msg, 4)) == null ? undefined : f,
     subnetIdsList: (f = jspb.Message.getRepeatedField(msg, 5)) == null ? undefined : f
@@ -6632,11 +6633,11 @@ proto.si.external_api_gateway.aws.eks.VpcConfigRequest.deserializeBinaryFromRead
     var field = reader.getFieldNumber();
     switch (field) {
     case 1:
-      var value = /** @type {boolean} */ (reader.readBool());
+      var value = /** @type {!proto.si.external_api_gateway.aws.eks.Bool} */ (reader.readEnum());
       msg.setEndpointPrivateAccess(value);
       break;
     case 2:
-      var value = /** @type {boolean} */ (reader.readBool());
+      var value = /** @type {!proto.si.external_api_gateway.aws.eks.Bool} */ (reader.readEnum());
       msg.setEndpointPublicAccess(value);
       break;
     case 3:
@@ -6681,15 +6682,15 @@ proto.si.external_api_gateway.aws.eks.VpcConfigRequest.prototype.serializeBinary
 proto.si.external_api_gateway.aws.eks.VpcConfigRequest.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
   f = message.getEndpointPrivateAccess();
-  if (f) {
-    writer.writeBool(
+  if (f !== 0.0) {
+    writer.writeEnum(
       1,
       f
     );
   }
   f = message.getEndpointPublicAccess();
-  if (f) {
-    writer.writeBool(
+  if (f !== 0.0) {
+    writer.writeEnum(
       2,
       f
     );
@@ -6719,38 +6720,38 @@ proto.si.external_api_gateway.aws.eks.VpcConfigRequest.serializeBinaryToWriter =
 
 
 /**
- * optional bool endpoint_private_access = 1;
- * @return {boolean}
+ * optional Bool endpoint_private_access = 1;
+ * @return {!proto.si.external_api_gateway.aws.eks.Bool}
  */
 proto.si.external_api_gateway.aws.eks.VpcConfigRequest.prototype.getEndpointPrivateAccess = function() {
-  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 1, false));
+  return /** @type {!proto.si.external_api_gateway.aws.eks.Bool} */ (jspb.Message.getFieldWithDefault(this, 1, 0));
 };
 
 
 /**
- * @param {boolean} value
+ * @param {!proto.si.external_api_gateway.aws.eks.Bool} value
  * @return {!proto.si.external_api_gateway.aws.eks.VpcConfigRequest} returns this
  */
 proto.si.external_api_gateway.aws.eks.VpcConfigRequest.prototype.setEndpointPrivateAccess = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 1, value);
+  return jspb.Message.setProto3EnumField(this, 1, value);
 };
 
 
 /**
- * optional bool endpoint_public_access = 2;
- * @return {boolean}
+ * optional Bool endpoint_public_access = 2;
+ * @return {!proto.si.external_api_gateway.aws.eks.Bool}
  */
 proto.si.external_api_gateway.aws.eks.VpcConfigRequest.prototype.getEndpointPublicAccess = function() {
-  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 2, false));
+  return /** @type {!proto.si.external_api_gateway.aws.eks.Bool} */ (jspb.Message.getFieldWithDefault(this, 2, 0));
 };
 
 
 /**
- * @param {boolean} value
+ * @param {!proto.si.external_api_gateway.aws.eks.Bool} value
  * @return {!proto.si.external_api_gateway.aws.eks.VpcConfigRequest} returns this
  */
 proto.si.external_api_gateway.aws.eks.VpcConfigRequest.prototype.setEndpointPublicAccess = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 2, value);
+  return jspb.Message.setProto3EnumField(this, 2, value);
 };
 
 
@@ -6905,8 +6906,8 @@ proto.si.external_api_gateway.aws.eks.VpcConfigResponse.prototype.toObject = fun
 proto.si.external_api_gateway.aws.eks.VpcConfigResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
     clusterSecurityGroupId: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    endpointPrivateAccess: jspb.Message.getBooleanFieldWithDefault(msg, 2, false),
-    endpointPublicAccess: jspb.Message.getBooleanFieldWithDefault(msg, 3, false),
+    endpointPrivateAccess: jspb.Message.getFieldWithDefault(msg, 2, 0),
+    endpointPublicAccess: jspb.Message.getFieldWithDefault(msg, 3, 0),
     publicAccessCidrsList: (f = jspb.Message.getRepeatedField(msg, 4)) == null ? undefined : f,
     securityGroupIdsList: (f = jspb.Message.getRepeatedField(msg, 5)) == null ? undefined : f,
     subnetIdsList: (f = jspb.Message.getRepeatedField(msg, 6)) == null ? undefined : f,
@@ -6952,11 +6953,11 @@ proto.si.external_api_gateway.aws.eks.VpcConfigResponse.deserializeBinaryFromRea
       msg.setClusterSecurityGroupId(value);
       break;
     case 2:
-      var value = /** @type {boolean} */ (reader.readBool());
+      var value = /** @type {!proto.si.external_api_gateway.aws.eks.Bool} */ (reader.readEnum());
       msg.setEndpointPrivateAccess(value);
       break;
     case 3:
-      var value = /** @type {boolean} */ (reader.readBool());
+      var value = /** @type {!proto.si.external_api_gateway.aws.eks.Bool} */ (reader.readEnum());
       msg.setEndpointPublicAccess(value);
       break;
     case 4:
@@ -7012,15 +7013,15 @@ proto.si.external_api_gateway.aws.eks.VpcConfigResponse.serializeBinaryToWriter 
     );
   }
   f = message.getEndpointPrivateAccess();
-  if (f) {
-    writer.writeBool(
+  if (f !== 0.0) {
+    writer.writeEnum(
       2,
       f
     );
   }
   f = message.getEndpointPublicAccess();
-  if (f) {
-    writer.writeBool(
+  if (f !== 0.0) {
+    writer.writeEnum(
       3,
       f
     );
@@ -7075,38 +7076,38 @@ proto.si.external_api_gateway.aws.eks.VpcConfigResponse.prototype.setClusterSecu
 
 
 /**
- * optional bool endpoint_private_access = 2;
- * @return {boolean}
+ * optional Bool endpoint_private_access = 2;
+ * @return {!proto.si.external_api_gateway.aws.eks.Bool}
  */
 proto.si.external_api_gateway.aws.eks.VpcConfigResponse.prototype.getEndpointPrivateAccess = function() {
-  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 2, false));
+  return /** @type {!proto.si.external_api_gateway.aws.eks.Bool} */ (jspb.Message.getFieldWithDefault(this, 2, 0));
 };
 
 
 /**
- * @param {boolean} value
+ * @param {!proto.si.external_api_gateway.aws.eks.Bool} value
  * @return {!proto.si.external_api_gateway.aws.eks.VpcConfigResponse} returns this
  */
 proto.si.external_api_gateway.aws.eks.VpcConfigResponse.prototype.setEndpointPrivateAccess = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 2, value);
+  return jspb.Message.setProto3EnumField(this, 2, value);
 };
 
 
 /**
- * optional bool endpoint_public_access = 3;
- * @return {boolean}
+ * optional Bool endpoint_public_access = 3;
+ * @return {!proto.si.external_api_gateway.aws.eks.Bool}
  */
 proto.si.external_api_gateway.aws.eks.VpcConfigResponse.prototype.getEndpointPublicAccess = function() {
-  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 3, false));
+  return /** @type {!proto.si.external_api_gateway.aws.eks.Bool} */ (jspb.Message.getFieldWithDefault(this, 3, 0));
 };
 
 
 /**
- * @param {boolean} value
+ * @param {!proto.si.external_api_gateway.aws.eks.Bool} value
  * @return {!proto.si.external_api_gateway.aws.eks.VpcConfigResponse} returns this
  */
 proto.si.external_api_gateway.aws.eks.VpcConfigResponse.prototype.setEndpointPublicAccess = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 3, value);
+  return jspb.Message.setProto3EnumField(this, 3, value);
 };
 
 
@@ -7428,5 +7429,14 @@ proto.si.external_api_gateway.aws.eks.Error.prototype.setRequestId = function(va
   return jspb.Message.setProto3StringField(this, 3, value);
 };
 
+
+/**
+ * @enum {number}
+ */
+proto.si.external_api_gateway.aws.eks.Bool = {
+  BOOL_UNKNOWN: 0,
+  TRUE: 1,
+  FALSE: 2
+};
 
 goog.object.extend(exports, proto.si.external_api_gateway.aws.eks);

@@ -819,11 +819,11 @@ export namespace Tag {
 }
 
 export class VpcConfigRequest extends jspb.Message {
-  getEndpointPrivateAccess(): boolean;
-  setEndpointPrivateAccess(value: boolean): void;
+  getEndpointPrivateAccess(): BoolMap[keyof BoolMap];
+  setEndpointPrivateAccess(value: BoolMap[keyof BoolMap]): void;
 
-  getEndpointPublicAccess(): boolean;
-  setEndpointPublicAccess(value: boolean): void;
+  getEndpointPublicAccess(): BoolMap[keyof BoolMap];
+  setEndpointPublicAccess(value: BoolMap[keyof BoolMap]): void;
 
   clearPublicAccessCidrsList(): void;
   getPublicAccessCidrsList(): Array<string>;
@@ -852,8 +852,8 @@ export class VpcConfigRequest extends jspb.Message {
 
 export namespace VpcConfigRequest {
   export type AsObject = {
-    endpointPrivateAccess: boolean,
-    endpointPublicAccess: boolean,
+    endpointPrivateAccess: BoolMap[keyof BoolMap],
+    endpointPublicAccess: BoolMap[keyof BoolMap],
     publicAccessCidrsList: Array<string>,
     securityGroupIdsList: Array<string>,
     subnetIdsList: Array<string>,
@@ -864,11 +864,11 @@ export class VpcConfigResponse extends jspb.Message {
   getClusterSecurityGroupId(): string;
   setClusterSecurityGroupId(value: string): void;
 
-  getEndpointPrivateAccess(): boolean;
-  setEndpointPrivateAccess(value: boolean): void;
+  getEndpointPrivateAccess(): BoolMap[keyof BoolMap];
+  setEndpointPrivateAccess(value: BoolMap[keyof BoolMap]): void;
 
-  getEndpointPublicAccess(): boolean;
-  setEndpointPublicAccess(value: boolean): void;
+  getEndpointPublicAccess(): BoolMap[keyof BoolMap];
+  setEndpointPublicAccess(value: BoolMap[keyof BoolMap]): void;
 
   clearPublicAccessCidrsList(): void;
   getPublicAccessCidrsList(): Array<string>;
@@ -901,8 +901,8 @@ export class VpcConfigResponse extends jspb.Message {
 export namespace VpcConfigResponse {
   export type AsObject = {
     clusterSecurityGroupId: string,
-    endpointPrivateAccess: boolean,
-    endpointPublicAccess: boolean,
+    endpointPrivateAccess: BoolMap[keyof BoolMap],
+    endpointPublicAccess: BoolMap[keyof BoolMap],
     publicAccessCidrsList: Array<string>,
     securityGroupIdsList: Array<string>,
     subnetIdsList: Array<string>,
@@ -937,4 +937,12 @@ export namespace Error {
     requestId: string,
   }
 }
+
+export interface BoolMap {
+  BOOL_UNKNOWN: 0;
+  TRUE: 1;
+  FALSE: 2;
+}
+
+export const Bool: BoolMap;
 

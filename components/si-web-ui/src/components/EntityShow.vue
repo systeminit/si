@@ -25,6 +25,11 @@
               <div v-if="property.showAs == 'text'">
                 {{ getEntity[property.property] }}
               </div>
+              <div v-if="property.showAs == 'url'">
+                <a v-bind:href="getEntity[property.property]" target="_blank">
+                  {{ getEntity[property.property] }}
+                </a>
+              </div>
               <v-textarea
                 v-else-if="property.showAs == 'textarea'"
                 no-resize

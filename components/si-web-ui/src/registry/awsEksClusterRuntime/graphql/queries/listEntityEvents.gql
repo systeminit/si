@@ -1,7 +1,7 @@
 query awsEksClusterRuntimeListEntityEvents(
-  $pageSize: Int, 
-  $orderBy: String, 
-  $orderByDirection: DataOrderByDirection, 
+  $pageSize: Int,
+  $orderBy: String,
+  $orderByDirection: DataOrderByDirection,
   $pageToken: String
   $scopeByTenantId: String,
 ) {

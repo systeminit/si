@@ -22,7 +22,7 @@ export class SiComponent {
   showProperties: {
     displayName: string;
     property: string;
-    showAs: "text" | "textarea";
+    showAs: "text" | "textarea" | "url";
   }[];
 
   listHeaders: {

@@ -19,6 +19,12 @@ mutation awsEksClusterRuntimeCreateEntity(
     entity {
       id
       kubernetesVersion
+      endpoint
+      certificateAuthority
+      clusterName
+      clusterStatus
+      nodegroupName
+      nodegroupStatus
       cloudwatchLogs
       tags {
         key

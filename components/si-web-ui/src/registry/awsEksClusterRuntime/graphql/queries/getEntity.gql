@@ -16,6 +16,8 @@ query awsEksClusterRuntimeGetEntity($entityId: String) {
       }
       state
       kubernetesVersion
+      endpoint
+      certificateAuthority
       clusterName
       clusterStatus
       nodegroupName

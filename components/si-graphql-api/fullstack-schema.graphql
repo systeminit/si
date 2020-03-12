@@ -12,12 +12,18 @@ input AwsEksClusterRuntimeAddNodegroupRequest {
   entityId: String
 }
 
+enum AwsEksClusterRuntimeBool {
+  BOOL_UNKNOWN
+  FALSE
+  TRUE
+}
+
 enum AwsEksClusterRuntimeClusterStatus {
   ACTIVE
+  CLUSTER_STATUS_UNKNOWN
   CREATING
   DELETING
   FAILED
-  UNKNOWN_CLUSTER_STATUS
   UPDATING
 }
 
@@ -106,23 +112,23 @@ input AwsEksClusterRuntimeCreateEntityRequest {
   """name"""
   name: String
 
-  """nodeGroupAwsInstanceType"""
-  nodeGroupAwsInstanceType: String
+  """nodegroupDesiredSize"""
+  nodegroupDesiredSize: Int
 
-  """nodeGroupDesiredSize"""
-  nodeGroupDesiredSize: Int
+  """nodegroupDiskSize"""
+  nodegroupDiskSize: Int
 
-  """nodeGroupDiskSizeGib"""
-  nodeGroupDiskSizeGib: String
+  """nodegroupInstanceType"""
+  nodegroupInstanceType: String
 
-  """nodeGroupMaximumSize"""
-  nodeGroupMaximumSize: Int
+  """nodegroupMaxSize"""
+  nodegroupMaxSize: Int
 
-  """nodeGroupMinimumSize"""
-  nodeGroupMinimumSize: Int
+  """nodegroupMinSize"""
+  nodegroupMinSize: Int
 
-  """nodeGroupSshKeyId"""
-  nodeGroupSshKeyId: String
+  """nodegroupSshKeyId"""
+  nodegroupSshKeyId: String
 
   """tags"""
   tags: [AwsEksClusterRuntimeTagRequest!]
@@ -137,6 +143,9 @@ type AwsEksClusterRuntimeEntity {
 
   """billingAccountId"""
   billingAccountId: String
+
+  """certificateAuthority"""
+  certificateAuthority: String
 
   """cloudwatchLogs"""
   cloudwatchLogs: Boolean
@@ -158,6 +167,15 @@ type AwsEksClusterRuntimeEntity {
 
   """displayName"""
   displayName: String
+
+  """endpoint"""
+  endpoint: String
+
+  """endpointPrivateAccess"""
+  endpointPrivateAccess: AwsEksClusterRuntimeBool
+
+  """endpointPublicAccess"""
+  endpointPublicAccess: AwsEksClusterRuntimeBool
 
   """id"""
   entityEvents(input: AwsEksClusterRuntimeListEntityEventsRequest): AwsEksClusterRuntimeListEntityEventsReply
@@ -192,26 +210,26 @@ type AwsEksClusterRuntimeEntity {
   """naturalKey"""
   naturalKey: String
 
-  """nodeGroupAwsInstanceType"""
-  nodeGroupAwsInstanceType: String
+  """nodegroupDesiredSize"""
+  nodegroupDesiredSize: Int
 
-  """nodeGroupDesiredSize"""
-  nodeGroupDesiredSize: Int
+  """nodegroupDiskSize"""
+  nodegroupDiskSize: Int
 
-  """nodeGroupDiskSizeGib"""
-  nodeGroupDiskSizeGib: String
+  """nodegroupInstanceType"""
+  nodegroupInstanceType: String
 
-  """nodeGroupMaximumSize"""
-  nodeGroupMaximumSize: Int
+  """nodegroupMaxSize"""
+  nodegroupMaxSize: Int
 
-  """nodeGroupMinimumSize"""
-  nodeGroupMinimumSize: Int
+  """nodegroupMinSize"""
+  nodegroupMinSize: Int
 
   """nodegroupName"""
   nodegroupName: String
 
-  """nodeGroupSshKeyId"""
-  nodeGroupSshKeyId: String
+  """nodegroupSshKeyId"""
+  nodegroupSshKeyId: String
 
   """nodegroupStatus"""
   nodegroupStatus: AwsEksClusterRuntimeNodegroupStatus
@@ -456,8 +474,8 @@ enum AwsEksClusterRuntimeNodegroupStatus {
   NODEGROUP_DEGRADED
   NODEGROUP_DELETE_FAILED
   NODEGROUP_DELETING
+  NODEGROUP_STATUS_UNKNOWN
   NODEGROUP_UPDATING
-  UNKNOWN_NODEGROUP_STATUS
 }
 
 type AwsEksClusterRuntimePickComponentReply {
@@ -488,7 +506,7 @@ input AwsEksClusterRuntimePickComponentRequest {
 enum AwsEksClusterRuntimeState {
   ERROR
   OK
-  UNINITIALIZED
+  STATE_UNKNOWN
 }
 
 type AwsEksClusterRuntimeSyncEntityReply {

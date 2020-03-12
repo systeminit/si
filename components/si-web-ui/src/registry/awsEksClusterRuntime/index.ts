@@ -54,11 +54,21 @@ export const awsEksClusterRuntime = new SiComponent("awsEksClusterRuntime", {
       property: "nodegroupStatus",
       showAs: "text",
     },
+    {
+      displayName: "Endpoint",
+      property: "endpoint",
+      showAs: "url",
+    },
+    {
+      displayName: "Certificate Authority",
+      property: "certificateAuthority",
+      showAs: "textarea",
+    },
   ],
   hints: [
     {
       constraintName: "kubernetesVersion",
-      hintValue: '"1.14" | "1.13" | "1.12"',
+      hintValue: '"1.15" | "1.14" | "1.13" | "1.12"',
     },
   ],
   listEntityEventHeaders: [
