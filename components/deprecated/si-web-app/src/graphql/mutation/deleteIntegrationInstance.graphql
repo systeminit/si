@@ -1,9 +1,0 @@
-#import "../fragments/IntegrationInstanceDefault.graphql"
-
-mutation deleteIntegrationInstance($id: ID!) {
-  deleteIntegrationInstance(input: { id: $id }) {
-    integrationInstance {
-      ...IntegrationInstanceDefault
-    }
-  }
-}

@@ -1,7 +1,0 @@
-#import "../fragments/WorkspaceDefault.graphql"
-
-query getWorkspaceById($id: ID!) {
-  getWorkspaceById(input: { id: $id }) {
-    ...WorkspaceDefault
-  }
-}

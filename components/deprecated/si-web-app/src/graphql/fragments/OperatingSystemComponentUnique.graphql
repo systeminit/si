@@ -1,9 +1,0 @@
-fragment OperatingSystemComponentUnique on OperatingSystemComponent {
-  operatingSystemName
-  operatingSystemVersion
-  operatingSystemRelease
-  platform
-  platformVersion
-  platformRelease
-  architecture
-}

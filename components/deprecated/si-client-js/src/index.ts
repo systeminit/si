@@ -1,1 +1,0 @@
-export * from "@/operating-system";
