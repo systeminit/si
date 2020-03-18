@@ -87,7 +87,7 @@ export default Vue.extend({
     };
   },
   methods: {
-    runAction(entityId: string, mutation: DocumentNode): void {
+    runAction(entityId: string, mutation: any): void {
       if (mutation) {
         this.$apollo.mutate({
           mutation,

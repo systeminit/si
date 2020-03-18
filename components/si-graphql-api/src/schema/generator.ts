@@ -78,6 +78,7 @@ export class SchemaGenerator {
     if (hint && hint.message && hint.message[protobufItem.name]) {
       return hint.message[protobufItem.name];
     } else {
+      // @ts-ignore - I do not know how to make this work
       return {};
     }
   }

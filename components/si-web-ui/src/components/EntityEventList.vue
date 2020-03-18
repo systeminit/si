@@ -226,13 +226,11 @@ export default Vue.extend({
           return siComponent.streamEntityEvents;
         },
         variables() {
-          console.log(this.entityId)
           return {
             scopeByTenantId: this.entityId
           };
         },
         updateQuery(previousResult, data) {
-          console.log("help me out here", { previousResult, data });
           this.loading = false;
           let siComponent = siComponentRegistry.lookup(this.entityType);
           let resultString = siComponent.listEntityEventsResultString();
@@ -247,10 +245,8 @@ export default Vue.extend({
           // If the ID of this event exists already, we want to update the data for it
           // and move on.
           if (elementIndex != -1) {
-            console.log("You existed", { newEvent, elementIndex });
             newItems[elementIndex] = newEvent;
           } else {
-            console.log("You are brand new!", { newEvent });
             newItems.unshift(newEvent);
             nextTotalCount = nextTotalCount + 1;
           }
