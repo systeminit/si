@@ -42,7 +42,7 @@ impl Storable for ListData {
         &self.id
     }
 
-    fn set_id<T: Into<String>>(&mut self, id: T) {
+    fn set_id(&mut self, id: impl Into<String>) {
         let id = id.into();
         self.id = id;
     }
@@ -59,8 +59,8 @@ impl Storable for ListData {
         self.natural_key = format!("{}:{}", ListData::type_name(), self.name);
     }
 
-    fn add_to_tenant_ids(&mut self, id: String) {
-        self.tenant_ids.push(id);
+    fn add_to_tenant_ids(&mut self, id: impl Into<String>) {
+        self.tenant_ids.push(id.into());
     }
 
     fn get_natural_key(&self) -> Option<&str> {
