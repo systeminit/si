@@ -3,49 +3,74 @@
     <v-row no-gutters class="justify-start">
       <v-col cols="12">
         <v-card cols="12">
+          <v-alert type="error" dismissible v-if="errorMessage">
+            {{ errorMessage }}
+          </v-alert>
+
           <v-card-title>
-            {{ entityType }}
+            {{ siComponent.name }}
             <v-spacer></v-spacer>
-            <v-btn>
+            <v-btn
+              :to="{
+                name: 'workspaceCreateEntity',
+                params: {
+                  organizationId: organizationId,
+                  workspaceId: workspaceId,
+                  entityType: siComponent.typeName,
+                },
+              }"
+            >
               <v-icon>mdi-plus</v-icon>
             </v-btn>
           </v-card-title>
           <v-card-text>
             <v-data-table
               :headers="headers"
-              :items="sshKeyListEntities.items"
-              :server-items-length="sshKeyListEntities.totalCount"
+              :items="listEntities.items"
+              :server-items-length="listEntities.totalCount"
               :options.sync="options"
               :loading="loading"
               v-on:update:page="showMore"
               hide-default-footer
             >
-              <template v-slot:item.action="{ item }">
-                <v-btn
-                  icon
+              <template v-slot:item.name="{ item }">
+                <router-link
                   :to="{
                     name: 'workspaceShowEntity',
                     params: {
                       organizationId: item.organizationId,
                       workspaceId: item.workspaceId,
                       entityId: item.id,
+                      entityType: entityType,
                     },
                   }"
+                  >{{ item.name }}</router-link
                 >
-                  <v-icon>
-                    mdi-eye
-                  </v-icon>
-                </v-btn>
               </template>
             </v-data-table>
           </v-card-text>
           <v-card-actions>
-            <v-spacer> </v-spacer>
-            Total Count: {{ sshKeyListEntities.totalCount }} Items Per Page:
-            {{ options.itemsPerPage }}
-            <v-btn @click="showMore" :disabled="showMoreDisabled">
-              Load More
-            </v-btn>
+            <v-spacer></v-spacer>
+            <v-card class="d-flex justify-center align-content-center" flat>
+              <v-card flat class="align-self-center pa-2">
+                {{ listEntities.items.length }} /
+                {{ listEntities.totalCount }} items
+              </v-card>
+              <v-card flat class="align-self-center pa-2 flex-grow-0" cols="1">
+                <v-select
+                  small-chips
+                  v-model="options.itemsPerPage"
+                  :items="itemsPerPageOptions"
+                  label="Items Per Page"
+                >
+                </v-select>
+              </v-card>
+              <v-card flat class="align-self-center pa-2">
+                <v-btn @click="showMore" :disabled="showMoreDisabled">
+                  Load More
+                </v-btn>
+              </v-card>
+            </v-card>
           </v-card-actions>
         </v-card>
       </v-col>
@@ -53,31 +78,12 @@
   </v-container>
 </template>
 
-<script lang="ts">
+<script lang="js">
 import Vue from "vue";
 
 import { auth } from "@/auth";
-import sshKeyListEntities from "@/graphql/queries/sshKeyListEntities.gql";
-import {
-  Query,
-  SshKeyListEntitiesReply,
-  SshKeyListEntitiesRequest,
-  DataOrderByDirection,
-} from "@/graphql-types";
-
-interface EntityListData {
-  options: {
-    itemsPerPage: number;
-    sortBy: string[];
-    sortDesc: boolean[];
-    page: number;
-  };
-  headers: { text: string; value: string }[];
-  sshKeyListEntities: SshKeyListEntitiesReply;
-  loading: boolean;
-  nextPageToken: string;
-  showMoreDisabled: boolean;
-}
+import { siComponentRegistry } from "@/registry";
+import { DataOrderByDirection } from "@/graphql-types";
 
 export default Vue.extend({
   name: "EntityList",
@@ -86,23 +92,21 @@ export default Vue.extend({
     organizationId: String,
     workspaceId: String,
   },
-  data(): EntityListData {
+  data() {
+    let headers;
+    let siComponent = siComponentRegistry.lookup(this.entityType);
     return {
+      errorMessage: null,
+      itemsPerPageOptions: [10, 20, 30, 40, 50, 100],
       options: {
         itemsPerPage: 10,
         sortBy: ["displayName"],
         sortDesc: [false],
         page: 1,
       },
-      headers: [
-        { text: "Display Name", value: "displayName" },
-        { text: "Key Type", value: "keyType" },
-        { text: "Key Format", value: "keyFormat" },
-        { text: "Bits", value: "bits" },
-        { text: "State", value: "state" },
-        { text: "Actions", value: "action" },
-      ],
-      sshKeyListEntities: {
+      siComponent,
+      headers: siComponent.listHeaders,
+      listEntities: {
         items: [],
         totalCount: 0,
         nextPageToken: "",
@@ -113,10 +117,10 @@ export default Vue.extend({
     };
   },
   methods: {
-    showMore(): void {
+    showMore() {
       this.loading = true;
       // Fetch more data and transform the original result
-      this.$apollo.queries.sshKeyListEntities.fetchMore({
+      this.$apollo.queries.listEntities.fetchMore({
         // New variables
         variables: {
           pageToken: this.nextPageToken,
@@ -124,9 +128,12 @@ export default Vue.extend({
         // Transform the previous result with new data
         updateQuery: (previousResult, { fetchMoreResult }) => {
           this.loading = false;
-          const newItems = fetchMoreResult.sshKeyListEntities.items;
-          const nextPageToken =
-            fetchMoreResult.sshKeyListEntities.nextPageToken;
+          let siComponent = siComponentRegistry.lookup(this.entityType);
+          let resultString = siComponent.listEntitiesResultString();
+          let newItems = fetchMoreResult[resultString].items;
+          let nextPageToken = fetchMoreResult[resultString].nextPageToken;
+          let nextTotalCount = fetchMoreResult[resultString].totalCount;
+          let previousResultList = previousResult[resultString];
 
           this.nextPageToken = nextPageToken;
 
@@ -137,11 +144,11 @@ export default Vue.extend({
           }
 
           return {
-            sshKeyListEntities: {
-              __typename: previousResult.sshKeyListEntities.__typename,
+            [resultString]: {
+              __typename: previousResultList.__typename,
               // Merging the tag list
-              items: [...previousResult.sshKeyListEntities.items, ...newItems],
-              totalCount: fetchMoreResult.sshKeyListEntities.totalCount,
+              items: [...previousResultList.items, ...newItems],
+              totalCount: nextTotalCount,
               nextPageToken,
             },
           };
@@ -150,27 +157,13 @@ export default Vue.extend({
     },
   },
   apollo: {
-    sshKeyListEntities: {
-      query: sshKeyListEntities,
-      update(data: Query): SshKeyListEntitiesReply {
-        this.loading = false;
-        let sshKeyListEntities;
-        if (data["sshKeyListEntities"]) {
-          sshKeyListEntities = data["sshKeyListEntities"];
-        } else {
-          // We got bullshit data, so.. just use the old data? <shrub>
-          sshKeyListEntities = this.sshKeyListEntities;
-        }
-        this.nextPageToken = sshKeyListEntities.nextPageToken || "";
-        if (this.nextPageToken == "") {
-          this.showMoreDisabled = true;
-        } else {
-          this.showMoreDisabled = false;
-        }
-        return sshKeyListEntities;
+    listEntities: {
+      query() {
+        let siComponent = siComponentRegistry.lookup(this.entityType);
+        return siComponent.listEntities;
       },
-      variables(): SshKeyListEntitiesRequest {
-        let orderByDirection: DataOrderByDirection;
+      variables() {
+        let orderByDirection;
         if (this.options["sortDesc"][0]) {
           orderByDirection = DataOrderByDirection.Desc;
         } else {
@@ -181,6 +174,28 @@ export default Vue.extend({
           orderBy: this.options["sortBy"][0],
           orderByDirection,
         };
+      },
+      update(data) {
+        this.loading = false;
+        let listEntities;
+        let siComponent = siComponentRegistry.lookup(this.entityType);
+        let resultString = siComponent.listEntitiesResultString();
+
+        if (data[resultString]) {
+          listEntities = data[resultString];
+        } else {
+          listEntities = this.listEntities;
+        }
+        this.nextPageToken = listEntities.nextPageToken || "";
+        if (this.nextPageToken == "") {
+          this.showMoreDisabled = true;
+        } else {
+          this.showMoreDisabled = false;
+        }
+        return listEntities;
+      },
+      error(error, vm, key, type, options) {
+        this.errorMessage = error.message;
       },
     },
   },

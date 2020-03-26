@@ -27,6 +27,28 @@ function deserialize_si_external_api_gateway_aws_ec2_CreateKeyPairRequest(buffer
   return si$external$api$gateway_proto_si_external_api_gateway_aws_ec2_pb.CreateKeyPairRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_si_external_api_gateway_aws_ec2_DescribeKeyPairsReply(arg) {
+  if (!(arg instanceof si$external$api$gateway_proto_si_external_api_gateway_aws_ec2_pb.DescribeKeyPairsReply)) {
+    throw new Error('Expected argument of type si.external_api_gateway.aws.ec2.DescribeKeyPairsReply');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_si_external_api_gateway_aws_ec2_DescribeKeyPairsReply(buffer_arg) {
+  return si$external$api$gateway_proto_si_external_api_gateway_aws_ec2_pb.DescribeKeyPairsReply.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_si_external_api_gateway_aws_ec2_DescribeKeyPairsRequest(arg) {
+  if (!(arg instanceof si$external$api$gateway_proto_si_external_api_gateway_aws_ec2_pb.DescribeKeyPairsRequest)) {
+    throw new Error('Expected argument of type si.external_api_gateway.aws.ec2.DescribeKeyPairsRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_si_external_api_gateway_aws_ec2_DescribeKeyPairsRequest(buffer_arg) {
+  return si$external$api$gateway_proto_si_external_api_gateway_aws_ec2_pb.DescribeKeyPairsRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 
 var Ec2Service = exports.Ec2Service = {
   createKeyPair: {
@@ -39,6 +61,17 @@ var Ec2Service = exports.Ec2Service = {
     requestDeserialize: deserialize_si_external_api_gateway_aws_ec2_CreateKeyPairRequest,
     responseSerialize: serialize_si_external_api_gateway_aws_ec2_CreateKeyPairReply,
     responseDeserialize: deserialize_si_external_api_gateway_aws_ec2_CreateKeyPairReply,
+  },
+  describeKeyPairs: {
+    path: '/si.external_api_gateway.aws.ec2.Ec2/DescribeKeyPairs',
+    requestStream: false,
+    responseStream: false,
+    requestType: si$external$api$gateway_proto_si_external_api_gateway_aws_ec2_pb.DescribeKeyPairsRequest,
+    responseType: si$external$api$gateway_proto_si_external_api_gateway_aws_ec2_pb.DescribeKeyPairsReply,
+    requestSerialize: serialize_si_external_api_gateway_aws_ec2_DescribeKeyPairsRequest,
+    requestDeserialize: deserialize_si_external_api_gateway_aws_ec2_DescribeKeyPairsRequest,
+    responseSerialize: serialize_si_external_api_gateway_aws_ec2_DescribeKeyPairsReply,
+    responseDeserialize: deserialize_si_external_api_gateway_aws_ec2_DescribeKeyPairsReply,
   },
 };
 

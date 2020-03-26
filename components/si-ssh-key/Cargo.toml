@@ -12,6 +12,7 @@ edition = "2018"
 [dependencies]
 anyhow = "1.0"
 uuid = { version = "0.7", features = [ "serde", "v4" ] }
+async-trait = "0.1"
 
 # Tonic Deps
 tonic = "0.1" 
@@ -32,9 +33,9 @@ serde_json = "1.0"
 couchbase = { path = "../../vendor/couchbase-rs/couchbase" }
 
 # Tracing
-tracing = "0.1"
-tracing-futures = { version = "0.2", features = ["tokio", "std-future"] }
-tracing-subscriber = "0.2.0-alpha.2"
+tracing = "0.1.12"
+tracing-futures = { version = "0.2.2", features = ["tokio", "std-future"] }
+tracing-subscriber = "0.2.1"
 thiserror = "1.0"
 config = { version = "0.9.3", features = [ "toml" ] }
 sodiumoxide = "0.2"
@@ -54,6 +55,7 @@ chrono = { version = "0.4", features = ["serde"] }
 si-settings = { path = "../si-settings" }
 si-data = { path = "../si-data" }
 si-account = { path = "../si-account" }
+si-cea = { path = "../si-cea" }
 si-external-api-gateway = { path = "../si-external-api-gateway/rust-client" }
 
 [dev-dependencies]

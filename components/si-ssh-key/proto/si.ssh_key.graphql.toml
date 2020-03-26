@@ -3,9 +3,14 @@ protoPackageName = "si.ssh_key"
 service.SshKey.GetComponent.query = true
 service.SshKey.ListComponents.query = true
 service.SshKey.PickComponent.query = true
-service.SshKey.CreateEntity.mutation = true
 service.SshKey.ListEntities.query = true
 service.SshKey.GetEntity.query = true
+service.SshKey.ListEntityEvents.query = true
+
+service.SshKey.CreateEntity.mutation = true
+service.SshKey.SyncEntity.mutation = true
+
+message.EntityEvent.implementsInterfaceTypeHint = ["EntityEvent"] 
 
 [message.Component.integrationId.has_one]
 to = "integration"
@@ -49,5 +54,22 @@ grpcServiceName = "Account"
 method = "GetBillingAccount"
 type = "BillingAccount"
 
+[[message.Entity.id.has_many]]
+to = "entityEvents"
+grpcServiceName = "SshKey"
+method = "sshKeyListEntityEvents"
+type = "SshKeyListEntityEventsReply"
+inputType = "SshKeyListEntityEventsRequest"
 
+[message.EntityEvent.entityId.has_one]
+to = "entity"
+grpcServiceName = "SshKey"
+method = "GetEntity"
+type = "SshKeyEntity"
+
+[message.EntityEvent.userId.has_one]
+to = "user"
+grpcServiceName = "Account"
+method = "GetUser"
+type = "User"
 

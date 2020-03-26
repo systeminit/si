@@ -11,6 +11,31 @@ service SshKey {
   rpc CreateEntity(CreateEntityRequest) returns (CreateEntityReply);
   rpc ListEntities(ListEntitiesRequest) returns (ListEntitiesReply);
   rpc GetEntity(GetEntityRequest) returns (GetEntityReply);
+  rpc ListEntityEvents(ListEntityEventsRequest) returns (ListEntityEventsReply);
+  rpc SyncEntity(SyncEntityRequest) returns (SyncEntityReply);
+}
+
+message SyncEntityRequest {
+  string entity_id = 1;
+}
+
+message SyncEntityReply {
+  EntityEvent event = 2;
+}
+
+message ListEntityEventsRequest {
+  si.data.Query query = 1;
+  int32 page_size = 2;
+  string order_by = 3;
+  si.data.OrderByDirection order_by_direction = 4;
+  string page_token = 5;
+  string scope_by_tenant_id = 6;
+}
+
+message ListEntityEventsReply {
+  repeated EntityEvent items = 1;
+  int32 total_count = 2;
+  string next_page_token = 3;
 }
 
 message GetEntityRequest {

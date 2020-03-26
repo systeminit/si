@@ -110,6 +110,24 @@ impl Db {
         })
     }
 
+    pub async fn create_primary_index(&self) -> Result<()> {
+        debug!("creating primary index");
+        let mut result = self
+            .cluster
+            .query(
+                format!("CREATE PRIMARY INDEX ON `{}`", self.bucket_name),
+                None,
+            )
+            .await?;
+        debug!("awaiting results");
+        let meta = result.meta().await?;
+        match meta.errors {
+            Some(error) => debug!(?error, "Primary Index already exists"),
+            None => debug!("Created primary index"),
+        }
+        Ok(())
+    }
+
     #[tracing::instrument]
     pub async fn check_natural_key_exists(&self, natural_key: Option<&str>) -> Result<()> {
         match natural_key {

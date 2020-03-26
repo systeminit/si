@@ -1,7 +1,0 @@
-fragment PortComponentUnique on PortComponent {
-  serviceName
-  protocol
-  number
-}
-
-

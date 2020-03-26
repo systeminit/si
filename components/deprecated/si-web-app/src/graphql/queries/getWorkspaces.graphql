@@ -1,7 +1,0 @@
-#import "../fragments/WorkspaceDefault.graphql"
-
-query getWorkspaces {
-  getWorkspaces {
-    ...WorkspaceDefault
-  }
-}

@@ -78,6 +78,7 @@ export class SchemaGenerator {
     if (hint && hint.message && hint.message[protobufItem.name]) {
       return hint.message[protobufItem.name];
     } else {
+      // @ts-ignore - I do not know how to make this work
       return {};
     }
   }
@@ -157,6 +158,13 @@ export class SchemaGenerator {
   protobufToType(protobufType: protobuf.Type, t: any): void {
     // First - grab all the generator hints for this type.
     const hints = this.graphqlHintMessage(protobufType);
+
+    // If we implement an interface, go ahead and do that now.
+    if (hints["implementsInterfaceTypeHint"]) {
+      for (const implementsType of hints["implementsInterfaceTypeHint"]) {
+        t.implements(implementsType);
+      }
+    }
 
     // Second, iterate over every field, and generate its definition.
     for (const field in protobufType.fields) {
@@ -252,7 +260,6 @@ export class SchemaGenerator {
               input,
             ).withMetadata(metadata);
             const result = await req.exec();
-            logger.log("warn", "I have the cheese", { result: result, hint });
             return result.response[hint["has_one"]["to"]];
           },
           ...fieldConfig,

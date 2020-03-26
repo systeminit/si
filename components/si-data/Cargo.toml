@@ -28,9 +28,11 @@ bytes = "0.5"
 thiserror = "1.0"
 tokio = { version = "0.2", features = [ "full" ] } 
 toml = "0.5"
+tonic = "0.1"
 
 # Internal Dependencies
 si-settings = { path = "../si-settings" }
+# si-cea = { path = "../si-cea" }
 
 [build-dependencies]
 prost-build = "0.6"

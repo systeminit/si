@@ -2,6 +2,539 @@
 ### Do not make changes to this file directly
 
 
+type AwsEksClusterRuntimeAddNodegroupReply {
+  """event"""
+  event: AwsEksClusterRuntimeEntityEvent
+}
+
+input AwsEksClusterRuntimeAddNodegroupRequest {
+  """entityId"""
+  entityId: String
+}
+
+enum AwsEksClusterRuntimeBool {
+  BOOL_UNKNOWN
+  FALSE
+  TRUE
+}
+
+enum AwsEksClusterRuntimeClusterStatus {
+  ACTIVE
+  CLUSTER_STATUS_UNKNOWN
+  CREATING
+  DELETING
+  FAILED
+  UPDATING
+}
+
+type AwsEksClusterRuntimeComponent {
+  """description"""
+  description: String
+
+  """displayName"""
+  displayName: String
+
+  """displayTypeName"""
+  displayTypeName: String
+
+  """id"""
+  id: ID
+
+  """integrationId"""
+  integration: Integration
+
+  """integrationId"""
+  integrationId: String
+
+  """integrationServiceId"""
+  integrationService: IntegrationService
+
+  """integrationServiceId"""
+  integrationServiceId: String
+
+  """kubernetesVersion"""
+  kubernetesVersion: String
+
+  """name"""
+  name: String
+
+  """naturalKey"""
+  naturalKey: String
+
+  """tenantIds"""
+  tenantIds: [String!]
+
+  """typeName"""
+  typeName: String
+
+  """version"""
+  version: Int
+}
+
+type AwsEksClusterRuntimeConstraints {
+  """displayName"""
+  displayName: String
+
+  """integrationId"""
+  integrationId: String
+
+  """integrationServiceId"""
+  integrationServiceId: String
+
+  """kubernetesVersion"""
+  kubernetesVersion: String
+
+  """name"""
+  name: String
+}
+
+type AwsEksClusterRuntimeCreateEntityReply {
+  """entity"""
+  entity: AwsEksClusterRuntimeEntity
+
+  """event"""
+  event: AwsEksClusterRuntimeEntityEvent
+}
+
+input AwsEksClusterRuntimeCreateEntityRequest {
+  """cloudwatchLogs"""
+  cloudwatchLogs: Boolean
+
+  """constraints"""
+  constraints: AwsEksClusterRuntimePickComponentRequest
+
+  """description"""
+  description: String
+
+  """displayName"""
+  displayName: String
+
+  """name"""
+  name: String
+
+  """nodegroupDesiredSize"""
+  nodegroupDesiredSize: Int
+
+  """nodegroupDiskSize"""
+  nodegroupDiskSize: Int
+
+  """nodegroupInstanceType"""
+  nodegroupInstanceType: String
+
+  """nodegroupMaxSize"""
+  nodegroupMaxSize: Int
+
+  """nodegroupMinSize"""
+  nodegroupMinSize: Int
+
+  """nodegroupSshKeyId"""
+  nodegroupSshKeyId: String
+
+  """tags"""
+  tags: [AwsEksClusterRuntimeTagRequest!]
+
+  """workspaceId"""
+  workspaceId: String
+}
+
+type AwsEksClusterRuntimeEntity {
+  """billingAccountId"""
+  billingAccount: BillingAccount
+
+  """billingAccountId"""
+  billingAccountId: String
+
+  """certificateAuthority"""
+  certificateAuthority: String
+
+  """cloudwatchLogs"""
+  cloudwatchLogs: Boolean
+
+  """clusterName"""
+  clusterName: String
+
+  """clusterStatus"""
+  clusterStatus: AwsEksClusterRuntimeClusterStatus
+
+  """componentId"""
+  componentId: String
+
+  """constraints"""
+  constraints: AwsEksClusterRuntimeConstraints
+
+  """description"""
+  description: String
+
+  """displayName"""
+  displayName: String
+
+  """endpoint"""
+  endpoint: String
+
+  """endpointPrivateAccess"""
+  endpointPrivateAccess: AwsEksClusterRuntimeBool
+
+  """endpointPublicAccess"""
+  endpointPublicAccess: AwsEksClusterRuntimeBool
+
+  """id"""
+  entityEvents(input: AwsEksClusterRuntimeListEntityEventsRequest): AwsEksClusterRuntimeListEntityEventsReply
+
+  """id"""
+  id: ID
+
+  """implicitConstraints"""
+  implicitConstraints: [AwsEksClusterRuntimeImplicitConstraint!]
+
+  """integrationId"""
+  integration: Integration
+
+  """integrationId"""
+  integrationId: String
+
+  """integrationServiceId"""
+  integrationService: IntegrationService
+
+  """integrationServiceId"""
+  integrationServiceId: String
+
+  """kubernetesVersion"""
+  kubernetesVersion: String
+
+  """linkedEntityIds"""
+  linkedEntityIds: [String!]
+
+  """name"""
+  name: String
+
+  """naturalKey"""
+  naturalKey: String
+
+  """nodegroupDesiredSize"""
+  nodegroupDesiredSize: Int
+
+  """nodegroupDiskSize"""
+  nodegroupDiskSize: Int
+
+  """nodegroupInstanceType"""
+  nodegroupInstanceType: String
+
+  """nodegroupMaxSize"""
+  nodegroupMaxSize: Int
+
+  """nodegroupMinSize"""
+  nodegroupMinSize: Int
+
+  """nodegroupName"""
+  nodegroupName: String
+
+  """nodegroupSshKeyId"""
+  nodegroupSshKeyId: String
+
+  """nodegroupStatus"""
+  nodegroupStatus: AwsEksClusterRuntimeNodegroupStatus
+
+  """organizationId"""
+  organization: Organization
+
+  """organizationId"""
+  organizationId: String
+
+  """state"""
+  state: AwsEksClusterRuntimeState
+
+  """tags"""
+  tags: [AwsEksClusterRuntimeTag!]
+
+  """tenantIds"""
+  tenantIds: [String!]
+
+  """typeName"""
+  typeName: String
+
+  """workspaceId"""
+  workspace: Workspace
+
+  """workspaceId"""
+  workspaceId: String
+}
+
+type AwsEksClusterRuntimeEntityEvent implements EntityEvent {
+  """actionName"""
+  actionName: String
+
+  """billingAccountId"""
+  billingAccountId: String
+
+  """componentId"""
+  componentId: String
+
+  """createTime"""
+  createTime: String
+
+  """entityId"""
+  entity: AwsEksClusterRuntimeEntity
+
+  """entityId"""
+  entityId: String
+
+  """errorLines"""
+  errorLines: [String!]
+
+  """errorMessage"""
+  errorMessage: String
+
+  """finalized"""
+  finalized: Boolean
+
+  """finalTime"""
+  finalTime: String
+
+  """id"""
+  id: ID
+
+  """inputEntity"""
+  inputEntity: AwsEksClusterRuntimeEntity
+
+  """integrationId"""
+  integrationId: String
+
+  """integrationServiceId"""
+  integrationServiceId: String
+
+  """naturalKey"""
+  naturalKey: String
+
+  """nextState"""
+  nextState: AwsEksClusterRuntimeNextState
+
+  """organizationId"""
+  organizationId: String
+
+  """outputEntity"""
+  outputEntity: AwsEksClusterRuntimeEntity
+
+  """outputLines"""
+  outputLines: [String!]
+
+  """success"""
+  success: Boolean
+
+  """tenantIds"""
+  tenantIds: [String!]
+
+  """typeName"""
+  typeName: String
+
+  """updatedTime"""
+  updatedTime: String
+
+  """userId"""
+  user: User
+
+  """userId"""
+  userId: String
+
+  """workspaceId"""
+  workspaceId: String
+}
+
+type AwsEksClusterRuntimeGetComponentReply {
+  """component"""
+  component: AwsEksClusterRuntimeComponent
+}
+
+input AwsEksClusterRuntimeGetComponentRequest {
+  """componentId"""
+  componentId: String
+}
+
+type AwsEksClusterRuntimeGetEntityReply {
+  """entity"""
+  entity: AwsEksClusterRuntimeEntity
+}
+
+input AwsEksClusterRuntimeGetEntityRequest {
+  """entityId"""
+  entityId: String
+}
+
+type AwsEksClusterRuntimeImplicitConstraint {
+  """field"""
+  field: String
+
+  """value"""
+  value: String
+}
+
+type AwsEksClusterRuntimeListComponentsReply {
+  """items"""
+  items: [AwsEksClusterRuntimeComponent!]
+
+  """nextPageToken"""
+  nextPageToken: String
+
+  """totalCount"""
+  totalCount: Int
+}
+
+input AwsEksClusterRuntimeListComponentsRequest {
+  """orderBy"""
+  orderBy: String
+
+  """orderByDirection"""
+  orderByDirection: DataOrderByDirection
+
+  """pageSize"""
+  pageSize: Int
+
+  """pageToken"""
+  pageToken: String
+
+  """query"""
+  query: DataQuery
+
+  """scopeByTenantId"""
+  scopeByTenantId: String
+}
+
+type AwsEksClusterRuntimeListEntitiesReply {
+  """items"""
+  items: [AwsEksClusterRuntimeEntity!]
+
+  """nextPageToken"""
+  nextPageToken: String
+
+  """totalCount"""
+  totalCount: Int
+}
+
+input AwsEksClusterRuntimeListEntitiesRequest {
+  """orderBy"""
+  orderBy: String
+
+  """orderByDirection"""
+  orderByDirection: DataOrderByDirection
+
+  """pageSize"""
+  pageSize: Int
+
+  """pageToken"""
+  pageToken: String
+
+  """query"""
+  query: DataQuery
+
+  """scopeByTenantId"""
+  scopeByTenantId: String
+}
+
+type AwsEksClusterRuntimeListEntityEventsReply {
+  """items"""
+  items: [AwsEksClusterRuntimeEntityEvent!]
+
+  """nextPageToken"""
+  nextPageToken: String
+
+  """totalCount"""
+  totalCount: Int
+}
+
+input AwsEksClusterRuntimeListEntityEventsRequest {
+  """orderBy"""
+  orderBy: String
+
+  """orderByDirection"""
+  orderByDirection: DataOrderByDirection
+
+  """pageSize"""
+  pageSize: Int
+
+  """pageToken"""
+  pageToken: String
+
+  """query"""
+  query: DataQuery
+
+  """scopeByTenantId"""
+  scopeByTenantId: String
+}
+
+enum AwsEksClusterRuntimeNextState {
+  ERROR
+  NONE
+  OK
+  UNINITIALIZED
+}
+
+enum AwsEksClusterRuntimeNodegroupStatus {
+  NODEGROUP_ACTIVE
+  NODEGROUP_CREATE_FAILED
+  NODEGROUP_CREATING
+  NODEGROUP_DEGRADED
+  NODEGROUP_DELETE_FAILED
+  NODEGROUP_DELETING
+  NODEGROUP_STATUS_UNKNOWN
+  NODEGROUP_UPDATING
+}
+
+type AwsEksClusterRuntimePickComponentReply {
+  """component"""
+  component: AwsEksClusterRuntimeComponent
+
+  """implicitConstraints"""
+  implicitConstraints: [AwsEksClusterRuntimeImplicitConstraint!]
+}
+
+input AwsEksClusterRuntimePickComponentRequest {
+  """displayName"""
+  displayName: String
+
+  """integrationId"""
+  integrationId: String
+
+  """integrationServiceId"""
+  integrationServiceId: String
+
+  """kubernetesVersion"""
+  kubernetesVersion: String
+
+  """name"""
+  name: String
+}
+
+enum AwsEksClusterRuntimeState {
+  ERROR
+  OK
+  STATE_UNKNOWN
+}
+
+type AwsEksClusterRuntimeSyncEntityReply {
+  """event"""
+  event: AwsEksClusterRuntimeEntityEvent
+}
+
+input AwsEksClusterRuntimeSyncEntityRequest {
+  """entityId"""
+  entityId: String
+}
+
+type AwsEksClusterRuntimeTag {
+  """key"""
+  key: String
+
+  """value"""
+  value: String
+}
+
+input AwsEksClusterRuntimeTagRequest {
+  """key"""
+  key: String
+
+  """value"""
+  value: String
+}
+
 type BillingAccount {
   """displayName"""
   displayName: String
@@ -194,6 +727,30 @@ input DataQueryExpressionOption {
 enum DataQueryFieldType {
   INT
   STRING
+}
+
+interface EntityEvent {
+  actionName: String
+  billingAccountId: String
+  componentId: String
+  createTime: String
+  entityId: String
+  errorLines: [String!]
+  errorMessage: String
+  finalized: Boolean
+  finalTime: String
+  id: ID
+  integrationId: String
+  integrationServiceId: String
+  naturalKey: String
+  organizationId: String
+  outputLines: [String!]
+  success: Boolean
+  tenantIds: [String!]
+  typeName: String
+  updatedTime: String
+  userId: String
+  workspaceId: String
 }
 
 type GetBillingAccountReply {
@@ -609,9 +1166,13 @@ input LoginRequest {
 }
 
 type Mutation {
+  awsEksClusterRuntimeAddNodegroup(input: AwsEksClusterRuntimeAddNodegroupRequest): AwsEksClusterRuntimeAddNodegroupReply
+  awsEksClusterRuntimeCreateEntity(input: AwsEksClusterRuntimeCreateEntityRequest): AwsEksClusterRuntimeCreateEntityReply
+  awsEksClusterRuntimeSyncEntity(input: AwsEksClusterRuntimeSyncEntityRequest): AwsEksClusterRuntimeSyncEntityReply
   createAccount(input: CreateAccountRequest): CreateAccountReply
   createIntegrationInstance(input: CreateIntegrationInstanceRequest): CreateIntegrationInstanceReply
   sshKeyCreateEntity(input: SshKeyCreateEntityRequest): SshKeyCreateEntityReply
+  sshKeySyncEntity(input: SshKeySyncEntityRequest): SshKeySyncEntityReply
 }
 
 type Organization {
@@ -644,6 +1205,12 @@ type Organization {
 }
 
 type Query {
+  awsEksClusterRuntimeGetComponent(input: AwsEksClusterRuntimeGetComponentRequest): AwsEksClusterRuntimeGetComponentReply
+  awsEksClusterRuntimeGetEntity(input: AwsEksClusterRuntimeGetEntityRequest): AwsEksClusterRuntimeGetEntityReply
+  awsEksClusterRuntimeListComponents(input: AwsEksClusterRuntimeListComponentsRequest): AwsEksClusterRuntimeListComponentsReply
+  awsEksClusterRuntimeListEntities(input: AwsEksClusterRuntimeListEntitiesRequest): AwsEksClusterRuntimeListEntitiesReply
+  awsEksClusterRuntimeListEntityEvents(input: AwsEksClusterRuntimeListEntityEventsRequest): AwsEksClusterRuntimeListEntityEventsReply
+  awsEksClusterRuntimePickComponent(input: AwsEksClusterRuntimePickComponentRequest): AwsEksClusterRuntimePickComponentReply
   getBillingAccount(input: GetBillingAccountRequest): GetBillingAccountReply
   getUser(input: GetUserRequest): GetUserReply
   listIntegrationInstances(input: ListIntegrationInstancesRequest): ListIntegrationInstancesReply
@@ -656,6 +1223,7 @@ type Query {
   sshKeyGetEntity(input: SshKeyGetEntityRequest): SshKeyGetEntityReply
   sshKeyListComponents(input: SshKeyListComponentsRequest): SshKeyListComponentsReply
   sshKeyListEntities(input: SshKeyListEntitiesRequest): SshKeyListEntitiesReply
+  sshKeyListEntityEvents(input: SshKeyListEntityEventsRequest): SshKeyListEntityEventsReply
   sshKeyPickComponent(input: SshKeyPickComponentRequest): SshKeyPickComponentReply
 }
 
@@ -785,6 +1353,9 @@ type SshKeyEntity {
   """displayName"""
   displayName: String
 
+  """id"""
+  entityEvents(input: SshKeyListEntityEventsRequest): SshKeyListEntityEventsReply
+
   """fingerprint"""
   fingerprint: String
 
@@ -852,7 +1423,7 @@ type SshKeyEntity {
   workspaceId: String
 }
 
-type SshKeyEntityEvent {
+type SshKeyEntityEvent implements EntityEvent {
   """actionName"""
   actionName: String
 
@@ -864,6 +1435,9 @@ type SshKeyEntityEvent {
 
   """createTime"""
   createTime: String
+
+  """entityId"""
+  entity: SshKeyEntity
 
   """entityId"""
   entityId: String
@@ -918,6 +1492,9 @@ type SshKeyEntityEvent {
 
   """updatedTime"""
   updatedTime: String
+
+  """userId"""
+  user: User
 
   """userId"""
   userId: String
@@ -1044,6 +1621,37 @@ input SshKeyListEntitiesRequest {
   scopeByTenantId: String
 }
 
+type SshKeyListEntityEventsReply {
+  """items"""
+  items: [SshKeyEntityEvent!]
+
+  """nextPageToken"""
+  nextPageToken: String
+
+  """totalCount"""
+  totalCount: Int
+}
+
+input SshKeyListEntityEventsRequest {
+  """orderBy"""
+  orderBy: String
+
+  """orderByDirection"""
+  orderByDirection: DataOrderByDirection
+
+  """pageSize"""
+  pageSize: Int
+
+  """pageToken"""
+  pageToken: String
+
+  """query"""
+  query: DataQuery
+
+  """scopeByTenantId"""
+  scopeByTenantId: String
+}
+
 enum SshKeyNextState {
   ERROR
   NONE
@@ -1088,12 +1696,22 @@ enum SshKeyState {
   UNINITIALIZED
 }
 
+type SshKeySyncEntityReply {
+  """event"""
+  event: SshKeyEntityEvent
+}
+
+input SshKeySyncEntityRequest {
+  """entityId"""
+  entityId: String
+}
+
 input StreamEntityEventsRequest {
-  workspaceId: String!
+  scopeByTenantId: String!
 }
 
 type Subscription {
-  streamEntityEvents(input: StreamEntityEventsRequest!): SshKeyEntityEvent
+  streamEntityEvents(input: StreamEntityEventsRequest!): EntityEvent
 }
 
 type User {

@@ -81,6 +81,13 @@ export const services = [
     graphqlTypePrefix: "SshKey",
     address: environment.services["si-ssh-key"],
   }),
+  new ServiceDescription({
+    serviceName: "si-aws-eks-cluster-runtime",
+    protoPackageName: "si.aws_eks_cluster_runtime",
+    grpcServiceName: "AwsEksClusterRuntime",
+    graphqlTypePrefix: "AwsEksClusterRuntime",
+    address: environment.services["si-aws-eks-cluster-runtime"],
+  }),
 
   // new ServiceDescription({
   //   serviceName: "si-ssh-key",

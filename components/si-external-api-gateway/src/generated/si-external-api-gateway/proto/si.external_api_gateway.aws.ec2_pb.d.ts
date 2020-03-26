@@ -4,14 +4,94 @@
 import * as jspb from "google-protobuf";
 import * as si_external_api_gateway_proto_si_external_api_gateway_pb from "../../si-external-api-gateway/proto/si.external_api_gateway_pb";
 
+export class DescribeKeyPairsRequest extends jspb.Message {
+  hasContext(): boolean;
+  clearContext(): void;
+  getContext(): si_external_api_gateway_proto_si_external_api_gateway_pb.Context | undefined;
+  setContext(value?: si_external_api_gateway_proto_si_external_api_gateway_pb.Context): void;
+
+  clearKeyNamesList(): void;
+  getKeyNamesList(): Array<string>;
+  setKeyNamesList(value: Array<string>): void;
+  addKeyNames(value: string, index?: number): string;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): DescribeKeyPairsRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: DescribeKeyPairsRequest): DescribeKeyPairsRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: DescribeKeyPairsRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): DescribeKeyPairsRequest;
+  static deserializeBinaryFromReader(message: DescribeKeyPairsRequest, reader: jspb.BinaryReader): DescribeKeyPairsRequest;
+}
+
+export namespace DescribeKeyPairsRequest {
+  export type AsObject = {
+    context?: si_external_api_gateway_proto_si_external_api_gateway_pb.Context.AsObject,
+    keyNamesList: Array<string>,
+  }
+}
+
+export class DescribeKeyPairsReply extends jspb.Message {
+  clearKeyPairsList(): void;
+  getKeyPairsList(): Array<DescribeKeyPairsReply.KeyPair>;
+  setKeyPairsList(value: Array<DescribeKeyPairsReply.KeyPair>): void;
+  addKeyPairs(value?: DescribeKeyPairsReply.KeyPair, index?: number): DescribeKeyPairsReply.KeyPair;
+
+  hasError(): boolean;
+  clearError(): void;
+  getError(): Error | undefined;
+  setError(value?: Error): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): DescribeKeyPairsReply.AsObject;
+  static toObject(includeInstance: boolean, msg: DescribeKeyPairsReply): DescribeKeyPairsReply.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: DescribeKeyPairsReply, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): DescribeKeyPairsReply;
+  static deserializeBinaryFromReader(message: DescribeKeyPairsReply, reader: jspb.BinaryReader): DescribeKeyPairsReply;
+}
+
+export namespace DescribeKeyPairsReply {
+  export type AsObject = {
+    keyPairsList: Array<DescribeKeyPairsReply.KeyPair.AsObject>,
+    error?: Error.AsObject,
+  }
+
+  export class KeyPair extends jspb.Message {
+    getKeyFingerprint(): string;
+    setKeyFingerprint(value: string): void;
+
+    getKeyName(): string;
+    setKeyName(value: string): void;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): KeyPair.AsObject;
+    static toObject(includeInstance: boolean, msg: KeyPair): KeyPair.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: KeyPair, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): KeyPair;
+    static deserializeBinaryFromReader(message: KeyPair, reader: jspb.BinaryReader): KeyPair;
+  }
+
+  export namespace KeyPair {
+    export type AsObject = {
+      keyFingerprint: string,
+      keyName: string,
+    }
+  }
+}
+
 export class CreateKeyPairRequest extends jspb.Message {
   hasContext(): boolean;
   clearContext(): void;
   getContext(): si_external_api_gateway_proto_si_external_api_gateway_pb.Context | undefined;
   setContext(value?: si_external_api_gateway_proto_si_external_api_gateway_pb.Context): void;
 
-  getKeyname(): string;
-  setKeyname(value: string): void;
+  getKeyName(): string;
+  setKeyName(value: string): void;
 
   getDryRun(): boolean;
   setDryRun(value: boolean): void;
@@ -29,7 +109,7 @@ export class CreateKeyPairRequest extends jspb.Message {
 export namespace CreateKeyPairRequest {
   export type AsObject = {
     context?: si_external_api_gateway_proto_si_external_api_gateway_pb.Context.AsObject,
-    keyname: string,
+    keyName: string,
     dryRun: boolean,
   }
 }

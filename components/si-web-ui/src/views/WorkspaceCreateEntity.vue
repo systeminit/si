@@ -1,6 +1,6 @@
 <template>
   <StandardLayout>
-    <Editor entityName="SSH Key"></Editor>
+    <Editor :entityType="entityType"></Editor>
   </StandardLayout>
 </template>
 

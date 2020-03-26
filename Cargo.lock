@@ -2134,9 +2134,9 @@ dependencies = [
 
 [[package]]
 name = "sharded-slab"
-version = "0.0.7"
+version = "0.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73ee8b66dea1777ef2c5f33ffeb90fd54afe43bb5c97bdaf82b521ad7c90a395"
+checksum = "ae75d0445b5d3778c9da3d1f840faa16d0627c8607f78a74daf69e5b988c39a1"
 dependencies = [
  "lazy_static 1.4.0",
 ]
@@ -2172,79 +2172,14 @@ dependencies = [
  "tonic-build",
  "tower",
  "tracing",
- "tracing-futures 0.2.1",
+ "tracing-futures 0.2.2",
  "tracing-opentelemetry",
- "tracing-subscriber 0.2.0-alpha.4",
+ "tracing-subscriber 0.2.1",
  "uuid",
 ]
 
 [[package]]
-name = "si-data"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "base64 0.10.1",
- "bytes 0.5.4",
- "couchbase",
- "futures 0.3.1",
- "lazy_static 1.4.0",
- "names",
- "prost",
- "prost-build",
- "prost-derive",
- "serde 1.0.104",
- "serde_cbor",
- "serde_json",
- "si-settings",
- "sodiumoxide",
- "thiserror",
- "tokio 0.2.11",
- "toml 0.5.6",
- "tracing",
- "tracing-futures 0.1.1",
- "tracing-subscriber 0.1.6",
- "ureq",
- "uuid",
-]
-
-[[package]]
-name = "si-external-api-gateway"
-version = "0.1.0"
-dependencies = [
- "async-stream",
- "bytes 0.5.4",
- "futures 0.3.1",
- "http 0.2.0",
- "prost",
- "prost-derive",
- "serde 1.0.104",
- "serde_json",
- "si-settings",
- "thiserror",
- "tokio 0.2.11",
- "tonic",
- "tonic-build",
- "tower",
- "tracing",
- "tracing-futures 0.2.1",
- "tracing-subscriber 0.2.0-alpha.4",
-]
-
-[[package]]
-name = "si-settings"
-version = "0.1.0"
-dependencies = [
- "config",
- "lazy_static 1.4.0",
- "serde 1.0.104",
- "sodiumoxide",
- "thiserror",
- "toml 0.5.6",
- "tracing",
-]
-
-[[package]]
-name = "si-ssh-key"
+name = "si-aws-eks-cluster-runtime"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -2278,9 +2213,133 @@ dependencies = [
  "tonic-build",
  "tower",
  "tracing",
- "tracing-futures 0.2.1",
+ "tracing-futures 0.2.2",
  "tracing-opentelemetry",
- "tracing-subscriber 0.2.0-alpha.4",
+ "tracing-subscriber 0.2.1",
+ "uuid",
+]
+
+[[package]]
+name = "si-cea"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "bytes 0.5.4",
+ "chrono",
+ "futures 0.3.1",
+ "paho-mqtt",
+ "prost",
+ "prost-derive",
+ "serde 1.0.104",
+ "serde_json",
+ "si-account",
+ "si-data",
+ "si-settings",
+ "thiserror",
+ "tokio 0.2.11",
+ "tonic",
+ "tracing",
+ "tracing-futures 0.2.2",
+ "tracing-subscriber 0.2.1",
+ "uuid",
+]
+
+[[package]]
+name = "si-data"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "base64 0.10.1",
+ "bytes 0.5.4",
+ "couchbase",
+ "futures 0.3.1",
+ "lazy_static 1.4.0",
+ "names",
+ "prost",
+ "prost-build",
+ "prost-derive",
+ "serde 1.0.104",
+ "serde_cbor",
+ "serde_json",
+ "si-settings",
+ "sodiumoxide",
+ "thiserror",
+ "tokio 0.2.11",
+ "toml 0.5.6",
+ "tonic",
+ "tracing",
+ "tracing-futures 0.1.1",
+ "tracing-subscriber 0.1.6",
+ "ureq",
+ "uuid",
+]
+
+[[package]]
+name = "si-external-api-gateway"
+version = "0.1.0"
+dependencies = [
+ "prost",
+ "prost-derive",
+ "serde 1.0.104",
+ "thiserror",
+ "tonic",
+ "tonic-build",
+]
+
+[[package]]
+name = "si-settings"
+version = "0.1.0"
+dependencies = [
+ "config",
+ "lazy_static 1.4.0",
+ "serde 1.0.104",
+ "sodiumoxide",
+ "thiserror",
+ "toml 0.5.6",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "si-ssh-key"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-stream",
+ "async-trait",
+ "base64 0.10.1",
+ "bytes 0.5.4",
+ "chrono",
+ "config",
+ "couchbase",
+ "futures 0.3.1",
+ "http 0.2.0",
+ "lazy_static 1.4.0",
+ "names",
+ "opentelemetry",
+ "paho-mqtt",
+ "prost",
+ "prost-derive",
+ "serde 1.0.104",
+ "serde_cbor",
+ "serde_json",
+ "si-account",
+ "si-cea",
+ "si-data",
+ "si-external-api-gateway",
+ "si-settings",
+ "sodiumoxide",
+ "tempfile",
+ "thiserror",
+ "tokio 0.2.11",
+ "toml 0.5.6",
+ "tonic",
+ "tonic-build",
+ "tower",
+ "tracing",
+ "tracing-futures 0.2.2",
+ "tracing-opentelemetry",
+ "tracing-subscriber 0.2.1",
  "uuid",
 ]
 
@@ -2792,7 +2851,7 @@ dependencies = [
  "tower-make",
  "tower-service",
  "tracing",
- "tracing-futures 0.2.1",
+ "tracing-futures 0.2.2",
 ]
 
 [[package]]
@@ -3029,9 +3088,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-futures"
-version = "0.2.1"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33848db47a7c848ab48b66aab3293cb9c61ea879a3586ecfcd17302fcea0baf1"
+checksum = "58b6233e421bf43203d36a8cd430acd24a75bed39832b0e07bec24541f9759e9"
 dependencies = [
  "pin-project",
  "tokio 0.1.22",
@@ -3058,7 +3117,7 @@ dependencies = [
  "opentelemetry",
  "rand 0.7.3",
  "tracing-core",
- "tracing-subscriber 0.2.0-alpha.4",
+ "tracing-subscriber 0.2.1",
 ]
 
 [[package]]
@@ -3090,9 +3149,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-subscriber"
-version = "0.2.0-alpha.4"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51ec8cdf2ebadeefbb5a0fac5f3d54757415cdcc46f40542eaa0be56cd6d6361"
+checksum = "c6bbfcf5ab0799649189b0df4bd7f730f1929a3846d33ae56cb0ad6e0bbdad09"
 dependencies = [
  "ansi_term",
  "chrono",
@@ -3102,7 +3161,7 @@ dependencies = [
  "serde 1.0.104",
  "serde_json",
  "sharded-slab",
- "smallvec 0.6.13",
+ "smallvec 1.2.0",
  "tracing-core",
  "tracing-log",
  "tracing-serde",

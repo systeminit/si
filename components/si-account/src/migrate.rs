@@ -48,13 +48,22 @@ pub async fn migrate(db: &Db) -> Result<()> {
                 ],
                 ..Default::default()
             },
-            vec![IntegrationService {
-                name: "ec2".to_string(),
-                display_name: "EC2".to_string(),
-                tenant_ids: vec!["global".to_string()],
-                version: 1,
-                ..Default::default()
-            }],
+            vec![
+                IntegrationService {
+                    name: "ec2".to_string(),
+                    display_name: "EC2".to_string(),
+                    tenant_ids: vec!["global".to_string()],
+                    version: 1,
+                    ..Default::default()
+                },
+                IntegrationService {
+                    name: "eks".to_string(),
+                    display_name: "EKS".to_string(),
+                    tenant_ids: vec!["global".to_string()],
+                    version: 1,
+                    ..Default::default()
+                },
+            ],
         ),
     ];
 

@@ -11,7 +11,7 @@ impl Storable for Integration {
         &self.id
     }
 
-    fn set_id<S: Into<String>>(&mut self, id: S) {
+    fn set_id(&mut self, id: impl Into<String>) {
         self.id = id.into();
     }
 
@@ -46,8 +46,8 @@ impl Storable for Integration {
         &self.tenant_ids
     }
 
-    fn add_to_tenant_ids(&mut self, id: String) {
-        self.tenant_ids.push(id);
+    fn add_to_tenant_ids(&mut self, id: impl Into<String>) {
+        self.tenant_ids.push(id.into());
     }
 
     fn referential_fields(&self) -> Vec<Reference> {
@@ -84,7 +84,7 @@ impl Storable for IntegrationService {
         &self.id
     }
 
-    fn set_id<S: Into<String>>(&mut self, id: S) {
+    fn set_id(&mut self, id: impl Into<String>) {
         self.id = id.into();
     }
 
@@ -119,8 +119,8 @@ impl Storable for IntegrationService {
         &self.tenant_ids
     }
 
-    fn add_to_tenant_ids(&mut self, id: String) {
-        self.tenant_ids.push(id);
+    fn add_to_tenant_ids(&mut self, id: impl Into<String>) {
+        self.tenant_ids.push(id.into());
     }
 
     fn referential_fields(&self) -> Vec<Reference> {

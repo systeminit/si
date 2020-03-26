@@ -6,7 +6,7 @@
           <v-row no-gutters class="flex-grow-0">
             <v-col cols="12">
               <v-card :loading="loading">
-                <v-card-title>Create {{ entityName }}</v-card-title>
+                <v-card-title>Create {{ siComponent.name }}</v-card-title>
                 <v-card-text>
                   <codemirror
                     :value="code"
@@ -45,13 +45,11 @@
                         <v-card-title>Properties</v-card-title>
                         <v-card-text>
                           <ul>
-                            <li>bits: {{ checkComponent.component.bits }}</li>
-                            <li>
-                              keyFormat:
-                              {{ checkComponent.component.keyFormat }}
-                            </li>
-                            <li>
-                              keyType: {{ checkComponent.component.keyType }}
+                            <li
+                              v-for="cprop in siComponent.componentProperties"
+                              v-bind:key="cprop"
+                            >
+                              {{ cprop }}: {{ checkComponent.component[cprop] }}
                             </li>
                           </ul>
                         </v-card-text>
@@ -158,9 +156,18 @@
                 </v-tab-item>
                 <v-tab-item key="entity">
                   <div
-                    v-if="streamEntityEvent && streamEntityEvent.outputEntity"
+                    v-if="
+                      createEntityData &&
+                        createEntityData.entity &&
+                        createEntityData.entity.id &&
+                        streamEntityEvent &&
+                        streamEntityEvent.finalized
+                    "
                   >
-                    <EntityShow :entityId="streamEntityEvent.outputEntity.id" />
+                    <EntityShow
+                      :entityType="entityType"
+                      :entityId="createEntityData.entity.id"
+                    />
                   </div>
                   <v-card v-else>
                     <v-card-title>No Entity</v-card-title>
@@ -179,9 +186,12 @@
             <v-card-text>
               <h3>Constraints</h3>
               <ul>
-                <li>constraints.keyType = "RSA" | "DSA" | "ED25519"</li>
-                <li>constraints.keyFormat = "RFC4716" | "PKCS8" | "PEM"</li>
-                <li>constraints.bits = Number</li>
+                <li
+                  v-for="hint in siComponent.hints"
+                  v-bind:key="hint.constraintName"
+                >
+                  constraints.{{ hint.constraintName }} = {{ hint.hintValue }}
+                </li>
               </ul>
             </v-card-text>
           </v-card>
@@ -191,7 +201,7 @@
   </div>
 </template>
 
-<script lang="ts">
+<script lang="js">
 import Vue from "vue";
 import { codemirror } from "vue-codemirror";
 import "codemirror/lib/codemirror.css";
@@ -202,64 +212,33 @@ import "codemirror/keymap/sublime.js";
 import "codemirror/mode/toml/toml.js";
 import TOML from "@iarna/toml";
 import NameGenerator from "project-name-generator";
+import gql from "graphql-tag";
+import { DocumentNode } from "graphql";
 
 import { auth } from "@/auth";
-import workspaceList from "@/graphql/queries/workspaceList.gql";
-import pickComponent from "@/graphql/queries/pickComponent.gql";
-import createEntityMutation from "@/graphql/mutations/createEntity.gql";
-import streamEntityEvents from "@/graphql/subscription/streamEntityEvents.gql";
-import {
-  SshKeyKeyType,
-  SshKeyPickComponentRequest,
-  SshKeyPickComponentReply,
-  SshKeyCreateEntityReply,
-  SshKeyEntityEvent,
-  SshKeyCreateEntityRequest,
-  StreamEntityEventsRequest,
-  StreamEntityEventsSubscription,
-  SshKeyImplicitConstraint,
-} from "@/graphql-types";
+import { siComponentRegistry } from "@/registry";
 import EntityShow from "@/components/EntityShow.vue";
-
-interface DataField {
-  code: string;
-  tab: null | number;
-  agentOutputTab: null | number;
-  createEntityData: null | SshKeyCreateEntityReply;
-  checkComponent: null | SshKeyPickComponentReply;
-  streamEntityEvent: null | SshKeyEntityEvent;
-  cmOptions: {
-    tabSize: number;
-    theme: "gruvbox-dark";
-    lineNumbers: boolean;
-    keyMap: "vim" | "emacs" | "sublime";
-    mode: "text/x-toml";
-    readOnly: boolean;
-  };
-  loading: boolean;
-}
-
-interface InputData {
-  parsed: null | SshKeyCreateEntityRequest;
-  error: string;
-}
+import { SiComponent } from "../registry/siComponent";
 
 export default Vue.extend({
   name: "Editor",
   props: {
-    entityName: String,
+    entityType: String,
   },
-  data(): DataField {
-    const entityName = NameGenerator.generate({ words: 4, number: true });
+  data() {
+    const newEntityName = NameGenerator.generate({ words: 2, number: true });
+    const siComponent = siComponentRegistry.lookup(this.entityType);
     return {
-      code: `name = "${entityName.dashed}"
-displayName = "${entityName.spaced}"
-description = "SSH Key ${entityName.spaced}"`,
+      code: `name = "${newEntityName.dashed}"
+displayName = "${newEntityName.spaced}"
+description = "${siComponent.name} ${newEntityName.spaced}"`,
       tab: null,
       agentOutputTab: null,
       createEntityData: null,
       checkComponent: null,
       streamEntityEvent: null,
+      skipStream: true,
+      siComponent,
       cmOptions: {
         tabSize: 4,
         theme: "gruvbox-dark",
@@ -271,21 +250,31 @@ description = "SSH Key ${entityName.spaced}"`,
       loading: false,
     };
   },
+  watch: {
+    $route: "resetComponentState",
+  },
   methods: {
-    resetComponentState(): void {
-      const entityName = NameGenerator.generate({ words: 4, number: true });
+    resetComponentState() {
+      const newEntityName = NameGenerator.generate({ words: 2, number: true });
+      const siComponent = siComponentRegistry.lookup(this.entityType);
+      this.siComponent = siComponent;
+      this.loading = false;
       this.createEntityData = null;
       this.streamEntityEvent = null;
+      this.checkComponent = null;
+      this.skipStream = true;
       this.cmOptions["readOnly"] = false;
       this.tab = 0;
-      this.code = `name = "${entityName.dashed}"
-displayName = "${entityName.spaced}"
-description = "SSH Key ${entityName.spaced}"`;
+      this.code = `name = "${newEntityName.dashed}"
+displayName = "${newEntityName.spaced}"
+description = "${siComponent.name} ${newEntityName.spaced}"`;
+      this.$apollo.queries.checkComponent.refresh();
+      this.$apollo.subscriptions.entityEvents.refresh();
     },
-    onCmCodeChange(newCode: string): void {
+    onCmCodeChange(newCode) {
       this.code = newCode;
     },
-    async createEntity(): Promise<void> {
+    async createEntity() {
       this.loading = true;
       this.tab = 1;
       this.cmOptions["readOnly"] = true;
@@ -297,16 +286,21 @@ description = "SSH Key ${entityName.spaced}"`;
       }
       const workspace = auth.getCurrentWorkspace();
       inputData["workspaceId"] = workspace.id;
+
+      let siComponent = siComponentRegistry.lookup(this.entityType);
+
       let data = await this.$apollo.mutate({
-        mutation: createEntityMutation,
+        mutation: siComponent.createEntity,
         variables: inputData,
       });
-      this.createEntityData = data.data["sshKeyCreateEntity"];
+      this.createEntityData = data.data[siComponent.createEntityResultString()];
+      this.streamEntityEvent = this.createEntityData.event;
+      this.skipStream = false;
       this.loading = false;
     },
   },
   computed: {
-    inputData(): InputData {
+    inputData() {
       try {
         let objectData = TOML.parse(this.code);
         return {
@@ -324,28 +318,40 @@ description = "SSH Key ${entityName.spaced}"`;
   apollo: {
     $subscribe: {
       entityEvents: {
-        query: streamEntityEvents,
-        variables(): StreamEntityEventsRequest {
-          const workspace = auth.getCurrentWorkspace();
+        query() {
+          let siComponent = siComponentRegistry.lookup(this.entityType);
+          return siComponent.streamEntityEvents;
+        },
+        variables() {
+          if (!this.createEntityData) {
+            return {}
+          }
           return {
-            workspaceId: workspace.id || "",
+            scopeByTenantId: this.createEntityData.entity.id,
           };
         },
-        result({ data }: { data: StreamEntityEventsSubscription }): void {
-          this.streamEntityEvent = data["streamEntityEvents"];
+        result({ data }) {
+          let siComponent = siComponentRegistry.lookup(this.entityType);
+          this.streamEntityEvent =
+            data[siComponent.streamEntityEventsResultString()];
           if (this.streamEntityEvent && this.streamEntityEvent.finalized) {
             this.tab = 2;
           }
         },
+        skip() {
+          return this.skipStream;
+        }
       },
     },
     checkComponent: {
-      query: pickComponent,
-      update: data => {
-        data.sshKeyPickComponent.implicitConstraints.sort(function(
-          a: SshKeyImplicitConstraint,
-          b: SshKeyImplicitConstraint,
-        ) {
+      query() {
+        let siComponent = siComponentRegistry.lookup(this.entityType);
+        return siComponent.pickComponent;
+      },
+      update(data) {
+        let siComponent = siComponentRegistry.lookup(this.entityType);
+        const pickResultString = siComponent.pickComponentResultString();
+        data[pickResultString].implicitConstraints.sort(function(a, b,) {
           if (!a || !a["field"] || !b || !b["field"]) {
             return 0;
           }
@@ -357,17 +363,12 @@ description = "SSH Key ${entityName.spaced}"`;
             return 0;
           }
         });
-        return data.sshKeyPickComponent;
+        return data[pickResultString];
       },
-      variables(): SshKeyPickComponentRequest {
+      variables() {
         let inputData = this.inputData;
         if (inputData.parsed && inputData.parsed["constraints"]) {
-          const inputConstraints = inputData.parsed["constraints"];
-          return {
-            keyType: inputConstraints["keyType"],
-            keyFormat: inputConstraints["keyFormat"],
-            bits: inputConstraints["bits"],
-          };
+          return { input: inputData.parsed["constraints"] };
         } else {
           return {};
         }

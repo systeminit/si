@@ -34,7 +34,7 @@ impl Storable for TestData {
         &self.id
     }
 
-    fn set_id<T: Into<String>>(&mut self, id: T) {
+    fn set_id(&mut self, id: impl Into<String>) {
         let id = id.into();
         self.id = id;
     }
@@ -68,8 +68,8 @@ impl Storable for TestData {
         &self.tenant_ids
     }
 
-    fn add_to_tenant_ids(&mut self, id: String) {
-        self.tenant_ids.push(id);
+    fn add_to_tenant_ids(&mut self, id: impl Into<String>) {
+        self.tenant_ids.push(id.into());
     }
 
     fn validate(&self) -> Result<()> {

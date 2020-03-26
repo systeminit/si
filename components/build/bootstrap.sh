@@ -13,7 +13,7 @@ elif [[ -f /usr/bin/apt-get ]]; then
 fi
 
 if [[ $OS == arch ]]; then
-  pacman -Syu --noconfirm make sudo git
+  pacman -Syu --noconfirm make sudo git kustomize
 elif [[ $OS == ubuntu ]]; then
   apt-get update -y && apt-get upgrade -y
   apt-get install -y make sudo git

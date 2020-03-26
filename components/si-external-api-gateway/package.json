@@ -16,6 +16,7 @@
   "license": "UNLICENSED",
   "devDependencies": {
     "@types/jest": "^24.0.19",
+    "@types/node": "^13.7.2",
     "@typescript-eslint/eslint-plugin": "^2.5.0",
     "@typescript-eslint/parser": "^2.5.0",
     "eslint": "^6.5.1",
@@ -23,7 +24,7 @@
     "eslint-plugin-graphql": "^3.1.0",
     "eslint-plugin-prettier": "^3.1.1",
     "grpc-tools": "^1.8.0",
-    "jest": "^24.9.0",
+    "jest": "^25.1.0",
     "prettier": "^1.18.2",
     "ts-jest": "^24.1.0",
     "ts-node": "^8.5.4",
@@ -33,9 +34,12 @@
     "typescript": "^3.6.4"
   },
   "dependencies": {
+    "@aws-sdk/client-ec2": "^1.0.0-alpha.2",
+    "@aws-sdk/client-eks": "^1.0.0-alpha.1",
     "@grpc/proto-loader": "^0.5.2",
     "@iarna/toml": "^2.2.3",
-    "@aws-sdk/client-ec2": "^1.0.0-alpha.2",
+    "@usefultools/monads": "^3.0.3",
+    "aws-sdk": "^2.621.0",
     "dotenv": "^8.2.0",
     "grpc": "^1.24.2",
     "grpc-caller": "^0.13.0",

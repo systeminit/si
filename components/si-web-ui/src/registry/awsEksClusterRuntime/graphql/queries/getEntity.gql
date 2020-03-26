@@ -1,0 +1,28 @@
+query awsEksClusterRuntimeGetEntity($entityId: String) {
+  awsEksClusterRuntimeGetEntity(input: { entityId: $entityId }) {
+    entity {
+      id
+      naturalKey
+      typeName
+      name
+      displayName
+      description
+      constraints {
+        kubernetesVersion
+      }
+      implicitConstraints {
+        field
+        value
+      }
+      state
+      kubernetesVersion
+      endpoint
+      certificateAuthority
+      clusterName
+      clusterStatus
+      nodegroupName
+      nodegroupStatus
+    }
+  }
+}
+

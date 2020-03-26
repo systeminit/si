@@ -1,4 +1,5 @@
 use thiserror::Error;
+use tonic;
 
 pub type Result<T> = std::result::Result<T, DataError>;
 
@@ -40,4 +41,15 @@ pub enum DataError {
     SodiumOxideOpen,
     #[error("error validating item for insertion: {0}")]
     ValidationError(String),
+}
+
+impl From<DataError> for tonic::Status {
+    fn from(err: DataError) -> tonic::Status {
+        match err {
+            DataError::ValidationError(_) => {
+                tonic::Status::new(tonic::Code::InvalidArgument, err.to_string())
+            }
+            _ => tonic::Status::new(tonic::Code::Unknown, err.to_string()),
+        }
+    }
 }

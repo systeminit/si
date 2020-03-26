@@ -1,0 +1,22 @@
+mutation awsEksClusterRuntimeAddNodegroup($entityId: String!) {
+  runAction: awsEksClusterRuntimeAddNodegroup(input:{entityId: $entityId}) {
+    event {
+      id
+      actionName
+      entity {
+        id
+        displayName
+      }
+      user {
+        id
+        displayName
+      }
+      createTime
+      updatedTime
+      finalized
+      success
+      outputLines
+      errorLines
+    }
+  }
+}
