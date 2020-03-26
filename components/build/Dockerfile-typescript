@@ -10,11 +10,20 @@ RUN cd /src/components/${component} && make build
 FROM ubuntu:rolling
 ARG component
 ARG release=debug
+ARG NODE_VERSION=v13.11.0
+ARG NODE_DISTRO=linux-x64
 RUN env DEBIAN_FRONTEND=noninteractive apt-get update; \
   apt-get -y upgrade; \
-  apt-get install -y openssl nodejs npm; \
+  apt-get install -y openssl curl xz-utils; \
   apt-get autoremove -y; \
   apt-get clean; \
+  curl -sSf https://nodejs.org/dist/$NODE_VERSION/node-$NODE_VERSION-$NODE_DISTRO.tar.xz -o /tmp/node-$NODE_VERSION-$NODE_DISTRO.tar.xz && \
+  mkdir -p /usr/local/lib/nodejs && \
+  tar -xJvf /tmp/node-$NODE_VERSION-$NODE_DISTRO.tar.xz -C /usr/local/lib/nodejs && \
+  ln -sf /usr/local/lib/nodejs/node-$NODE_VERSION-$NODE_DISTRO/bin/node /usr/bin/node && \
+  ln -sf /usr/local/lib/nodejs/node-$NODE_VERSION-$NODE_DISTRO/bin/npm /usr/bin/npm && \
+  ln -sf /usr/local/lib/nodejs/node-$NODE_VERSION-$NODE_DISTRO/bin/npx /usr/bin/npx && \
+  rm /tmp/node-$NODE_VERSION-$NODE_DISTRO.tar.xz && \
   find /var/lib/apt/lists -type f | xargs rm; \
   find /var/log -type f -exec rm {} \; ; \
   rm -rf /usr/share/man/*; \

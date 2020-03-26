@@ -74,6 +74,10 @@ const dataSources = (): DataSources<DataSourceContext> => ({
 });
 
 const server = new ApolloServer({
+  cors: {
+    origin: '*', // <- allow request from all domains; public api
+    credentials: true
+  },
   schema,
   dataSources,
   formatError: error => {

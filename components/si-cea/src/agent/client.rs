@@ -5,6 +5,8 @@ use uuid::Uuid;
 use std::fmt;
 use std::ops::{Deref, DerefMut};
 
+use si_settings::Settings;
+
 use crate::entity_event::EntityEvent;
 use crate::error::Result;
 
@@ -42,12 +44,12 @@ impl DerefMut for MqttAsyncClientInternal {
 }
 
 impl AgentClient {
-    pub async fn new() -> Result<AgentClient> {
+    pub async fn new(name: &str, settings: &Settings) -> Result<AgentClient> {
         // Create a client & define connect options
-        let client_id = format!("agent_client:{}", Uuid::new_v4());
+        let client_id = format!("agent_client:{}:{}", name, Uuid::new_v4());
 
         let cli = mqtt::AsyncClientBuilder::new()
-            .server_uri("tcp://localhost:1883")
+            .server_uri(settings.vernemq_server_uri().as_ref())
             .client_id(client_id.as_ref())
             .persistence(false)
             .finalize();

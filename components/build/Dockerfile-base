@@ -5,6 +5,8 @@ WORKDIR /src
 COPY . /src
 RUN ./components/build/bootstrap.sh \ 
   && make build_deps \
+  && npm config set user 0 \
+  && npm config set unsafe-perm true \
   && make build  \
   && apt-get autoremove -y \
   && apt-get clean \

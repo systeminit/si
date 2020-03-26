@@ -1,0 +1,18 @@
+# Install the Couchbase Controller
+
+You have to install the Couchbase operator, controller, etc.
+Follow the instructions here:
+
+https://docs.couchbase.com/operator/current/install-admission-controller.html
+
+# Add secrets
+
+Unfortunately, this just has to be done by hand. Get the secrets from Adam, 
+and then you can load them in. Or get them k8s.
+
+# Deploy
+
+The deployment nominally uses kustomize, at least once its driven by
+CI.
+
+You can `kubectl apply -k ./deployment` and things should work.

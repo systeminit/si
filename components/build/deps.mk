@@ -5,6 +5,8 @@ SHELL := env PATH=$(PATH) /bin/bash
 USE_PACMAN=$(wildcard /usr/bin/pacman)
 USE_APT=$(wildcard /usr/bin/apt-get)
 RUST_EXISTS=$(wildcard $(HOME)/.cargo/bin/cargo)
+NODE_VERSION=v13.11.0
+NODE_DISTRO=linux-x64
 
 package_update:
 ifeq ($(USE_PACMAN),/usr/bin/pacman)
@@ -59,6 +61,12 @@ ifeq ($(USE_PACMAN),/usr/bin/pacman)
 	sudo pacman -S --needed --noconfirm openssl libev libevent nodejs npm
 endif
 ifeq ($(USE_APT),/usr/bin/apt-get)
-	sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y openssl libev-dev libevent-dev nodejs npm
+	sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y openssl libssl-dev libev-dev libevent-dev
+			curl -sSf https://nodejs.org/dist/$(NODE_VERSION)/node-$(NODE_VERSION)-$(NODE_DISTRO).tar.xz -o /tmp/node-$(NODE_VERSION)-$(NODE_DISTRO).tar.xz && \
+      sudo mkdir -p /usr/local/lib/nodejs && \
+			sudo tar -xJvf /tmp/node-$(NODE_VERSION)-$(NODE_DISTRO).tar.xz -C /usr/local/lib/nodejs && \
+      sudo ln -sf /usr/local/lib/nodejs/node-$(NODE_VERSION)-$(NODE_DISTRO)/bin/node /usr/bin/node && \
+      sudo ln -sf /usr/local/lib/nodejs/node-$(NODE_VERSION)-$(NODE_DISTRO)/bin/npm /usr/bin/npm && \
+      sudo ln -sf /usr/local/lib/nodejs/node-$(NODE_VERSION)-$(NODE_DISTRO)/bin/npx /usr/bin/npx
 endif
 

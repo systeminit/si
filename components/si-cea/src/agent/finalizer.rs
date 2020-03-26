@@ -6,6 +6,7 @@ use tracing::debug;
 use uuid::Uuid;
 
 use si_data::Db;
+use si_settings::Settings;
 
 use crate::agent::client::MqttAsyncClientInternal;
 use crate::entity_event::EntityEvent;
@@ -19,11 +20,16 @@ pub struct AgentFinalizer {
 }
 
 impl AgentFinalizer {
-    pub fn new(db: Db, entity_event_type_name: impl Into<String>) -> AgentFinalizer {
-        let client_id = format!("agent_finalizer:{}", Uuid::new_v4());
+    pub fn new(
+        db: Db,
+        entity_event_type_name: impl Into<String>,
+        settings: &Settings,
+    ) -> AgentFinalizer {
+        let entity_event_name = entity_event_type_name.into();
+        let client_id = format!("agent_finalizer:{}:{}", entity_event_name, Uuid::new_v4());
 
         let cli = mqtt::AsyncClientBuilder::new()
-            .server_uri("tcp://localhost:1883")
+            .server_uri(settings.vernemq_server_uri().as_ref())
             .client_id(client_id.as_ref())
             .persistence(false)
             .finalize();
@@ -31,7 +37,7 @@ impl AgentFinalizer {
         AgentFinalizer {
             mqtt: MqttAsyncClientInternal { mqtt: cli },
             db,
-            entity_event_type_name: entity_event_type_name.into(),
+            entity_event_type_name: entity_event_name,
         }
     }
 

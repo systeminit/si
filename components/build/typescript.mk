@@ -31,12 +31,11 @@ container:
 		-f $(CURDIR)/../build/Dockerfile-typescript \
 		-t ${COMPONENT}-service:latest \
 		-t ${COMPONENT}-service:$(RELEASE) \
-		-t docker.pkg.github.com/systeminit/si/${COMPONENT}-service:latest \
-		-t docker.pkg.github.com/systeminit/si/${COMPONENT}-service:$(RELEASE) \
+		-t 835304779882.dkr.ecr.us-east-2.amazonaws.com/si/${COMPONENT}-service:latest \
+		-t 835304779882.dkr.ecr.us-east-2.amazonaws.com/si/${COMPONENT}-service:$(RELEASE) \
 		--build-arg component=${COMPONENT} \
 		$(CURDIR)/../../
 
 release: container
-	docker push docker.pkg.github.com/systeminit/si/${COMPONENT}-service:$(RELEASE)
-	docker push docker.pkg.github.com/systeminit/si/${COMPONENT}-service:latest
-
+	docker push 835304779882.dkr.ecr.us-east-2.amazonaws.com/si/${COMPONENT}-service:latest
+	docker push 835304779882.dkr.ecr.us-east-2.amazonaws.com/si/${COMPONENT}-service:$(RELEASE)

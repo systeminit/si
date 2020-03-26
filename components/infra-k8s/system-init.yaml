@@ -1,0 +1,387 @@
+###
+# Services come first, then Volumes, then Deployments
+############
+# Services #
+############
+
+# VerneMQ
+apiVersion: v1
+kind: Service
+metadata:
+  name: vernemq
+  labels:
+     bootstrap: "true"
+spec:
+  selector:
+    app: vernemq
+  ports:
+    - protocol: TCP
+      port: 1883
+---
+# si-account
+apiVersion: v1
+kind: Service
+metadata:
+  name: si-account
+  labels:
+     bootstrap: "true"
+spec:
+  selector:
+    app: si-account
+  ports:
+    - protocol: TCP
+      port: 5151
+
+---
+# si-ssh-key
+apiVersion: v1
+kind: Service
+metadata:
+  name: si-ssh-key
+  labels:
+     bootstrap: "true"
+spec:
+  selector:
+    app: si-ssh-key
+  ports:
+    - protocol: TCP
+      port: 5152
+
+---
+# si-aws-eks-cluster-runtime
+apiVersion: v1
+kind: Service
+metadata:
+  name: si-aws-eks-cluster-runtime
+  labels:
+     bootstrap: "true"
+spec:
+  selector:
+    app: si-aws-eks-cluster-runtime
+  ports:
+    - protocol: TCP
+      port: 5154
+
+---
+# si-external-api-gateway
+apiVersion: v1
+kind: Service
+metadata:
+  name: si-external-api-gateway
+  labels:
+     bootstrap: "true"
+spec:
+  selector:
+    app: si-external-api-gateway
+  ports:
+    - protocol: TCP
+      port: 4001
+
+---
+# si-graphql-api
+apiVersion: v1
+kind: Service
+metadata:
+  name: si-graphql-api
+  labels:
+     bootstrap: "true"
+spec:
+  selector:
+    app: si-graphql-api
+  ports:
+    - name: si-graphql-api-port
+      port: 4000 
+      targetPort: 4000
+  type: NodePort
+
+---
+# si-graphql-api-ingress
+#
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: "si-graphql-api-ingress"
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:us-east-2:835304779882:certificate/607ac5d9-94f9-4b8d-bf58-1927641a49d5"
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS":443}]'
+    alb.ingress.kubernetes.io/actions.ssl-redirect: '{"Type": "redirect", "RedirectConfig": { "Protocol": "HTTPS", "Port": "443", "StatusCode": "HTTP_301"}}'
+  labels:
+    app: 2048-ingress
+spec:
+  tls:
+    - hosts:
+      - graphql.systeminit.com
+  rules:
+    - http:
+        paths:
+          - path: /*
+            backend:
+              serviceName: ssl-redirect
+              servicePort: use-annotation
+          - path: /*
+            backend:
+              serviceName: "si-graphql-api"
+              servicePort: 4000 
+
+---
+###############
+# Deployments #
+###############
+
+# vernemq
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vernemq-deployment
+  labels:
+    app: vernemq
+    bootstrap: "true"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vernemq
+  template:
+    metadata:
+      labels:
+        app: vernemq
+        bootstrap: "true"
+    spec:
+      containers:
+        - name: vernemq
+          image: erlio/docker-vernemq
+          env:
+            - name: DOCKER_VERNEMQ_ACCEPT_EULA
+              value: "yes"
+            - name: DOCKER_VERNEMQ_ALLOW_ANONYMOUS
+              value: "on"
+          ports: 
+            - containerPort: 1883
+
+---
+
+# couchbase
+apiVersion: couchbase.com/v1
+kind: CouchbaseCluster
+metadata:
+  name: couchbase-si 
+spec:
+  baseImage: couchbase/server
+  version: enterprise-6.5.0
+  authSecret: couchbase-auth 
+  exposeAdminConsole: true
+  adminConsoleServices:
+    - data
+  cluster:
+    dataServiceMemoryQuota: 2048
+    indexServiceMemoryQuota: 1024
+    searchServiceMemoryQuota: 1024
+    eventingServiceMemoryQuota: 1024
+    analyticsServiceMemoryQuota: 1024
+    indexStorageSetting: memory_optimized
+    autoFailoverTimeout: 120
+    autoFailoverMaxCount: 3
+    autoFailoverOnDataDiskIssues: true
+    autoFailoverOnDataDiskIssuesTimePeriod: 120
+    autoFailoverServerGroup: false
+  buckets:
+    - name: si
+      type: couchbase
+      memoryQuota: 2048
+      replicas: 1
+      ioPriority: high
+      evictionPolicy: fullEviction
+      conflictResolution: seqno
+      enableFlush: true
+      enableIndexReplica: false
+  servers:
+    - size: 2 
+      name: all_services
+      services:
+        - data
+        - index
+        - query
+        - search
+        - eventing
+        - analytics
+---
+
+# si-account-service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: si-account-deployment
+  labels:
+    app: si-account
+    bootstrap: "true"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: si-account
+  template:
+    metadata:
+      labels:
+        app: si-account
+        bootstrap: "true"
+    spec:
+      containers:
+        - name: si-account
+          image: 835304779882.dkr.ecr.us-east-2.amazonaws.com/si/si-account-service:latest 
+          env:
+            - name: NO_SIGNUPS
+              value: "1"
+            - name: RUST_LOG
+              value: "DEBUG"
+          ports: 
+            - containerPort: 5151
+          volumeMounts:
+            - name: si-account-config-dir
+              mountPath: /svc/si-account/config
+              readOnly: true
+      volumes:
+        - name: si-account-config-dir
+          secret:
+            secretName: si-account-service-config
+
+---
+
+# si-ssh-key-service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: si-ssh-key-deployment
+  labels:
+    app: si-ssh-key
+    bootstrap: "true"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: si-ssh-key
+  template:
+    metadata:
+      labels:
+        app: si-ssh-key
+        bootstrap: "true"
+    spec:
+      containers:
+        - name: si-ssh-key
+          image: 835304779882.dkr.ecr.us-east-2.amazonaws.com/si/si-ssh-key-service:latest 
+          env:
+            - name: RUST_LOG
+              value: "DEBUG"
+          ports: 
+            - containerPort: 5152
+          volumeMounts:
+            - name: si-ssh-key-config-dir
+              mountPath: /svc/si-ssh-key/config
+              readOnly: true
+      volumes:
+        - name: si-ssh-key-config-dir
+          secret:
+            secretName: si-ssh-key-service-config
+---
+
+# si-aws-eks-cluster-runtime-service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: si-aws-eks-cluster-runtime-deployment
+  labels:
+    app: si-aws-eks-cluster-runtime
+    bootstrap: "true"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: si-aws-eks-cluster-runtime
+  template:
+    metadata:
+      labels:
+        app: si-aws-eks-cluster-runtime
+        bootstrap: "true"
+    spec:
+      containers:
+        - name: si-aws-eks-cluster-runtime
+          image: 835304779882.dkr.ecr.us-east-2.amazonaws.com/si/si-aws-eks-cluster-runtime-service:latest 
+          env:
+            - name: RUST_LOG
+              value: "DEBUG"
+          ports: 
+            - containerPort: 5154
+          volumeMounts:
+            - name: si-aws-eks-cluster-runtime-config-dir
+              mountPath: /svc/si-aws-eks-cluster-runtime/config
+              readOnly: true
+      volumes:
+        - name: si-aws-eks-cluster-runtime-config-dir
+          secret:
+            secretName: si-aws-eks-cluster-runtime-service-config
+
+---
+
+# si-external-api-gateway-service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: si-external-api-gateway-deployment
+  labels:
+    app: si-external-api-gateway
+    bootstrap: "true"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: si-external-api-gateway
+  template:
+    metadata:
+      labels:
+        app: si-external-api-gateway
+        bootstrap: "true"
+    spec:
+      containers:
+        - name: si-external-api-gateway
+          image: 835304779882.dkr.ecr.us-east-2.amazonaws.com/si/si-external-api-gateway-service:latest 
+          env:
+            - name: LOG_LEVEL
+              value: "debug"
+          ports: 
+            - containerPort: 4001
+---
+
+# si-graphql-api-service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: si-graphql-api-deployment
+  labels:
+    app: si-graphql-api
+    bootstrap: "true"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: si-graphql-api
+  template:
+    metadata:
+      labels:
+        app: si-graphql-api
+        bootstrap: "true"
+    spec:
+      containers:
+        - name: si-graphql-api
+          image: 835304779882.dkr.ecr.us-east-2.amazonaws.com/si/si-graphql-api-service:latest 
+          env:
+            - name: LOG_LEVEL
+              value: "debug"
+            - name: SERVICES_SI_ACCOUNT
+              value: "si-account.default:5151"
+            - name: SERVICES_SI_SSH_KEY
+              value: "si-ssh-key.default:5152"
+            - name: SERVICES_SI_AWS_EKS_CLUSTER_RUNTIME
+              value: "si-ssh-key.default:5154"
+          ports: 
+            - containerPort: 4000

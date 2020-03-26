@@ -48,22 +48,22 @@ macro_rules! gen_server_binary {
         println!("*** Spawning the Agent Server ***");
         let mut agent_dispatch = $dispatcher(si_cea::AgentDispatch::new());
         agent_dispatch.setup(&db).await?;
+        let mut agent_server = si_cea::AgentServer::new($name, agent_dispatch, &settings);
         tokio::spawn(async move {
             // Dispatcher
-            let mut agent_server = si_cea::AgentServer::new("SSH Key", agent_dispatch);
             agent_server.run().await
         });
 
         // Finalizer
         println!("*** Spawning the Agent Finalizer ***");
         let finalizer_db = db.clone();
+        let mut finalizer = si_cea::AgentFinalizer::new(finalizer_db, $entity_event::type_name(), &settings);
         tokio::spawn(async move {
-            let mut finalizer = si_cea::AgentFinalizer::new(finalizer_db, $entity_event::type_name());
             finalizer.run::<$entity_event>().await
         });
 
         // GRPC Services
-        let agent_client = si_cea::AgentClient::new().await?;
+        let agent_client = si_cea::AgentClient::new($name, &settings).await?;
 
         let service = $service::new(db.clone(), agent_client);
 

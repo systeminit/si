@@ -7,6 +7,8 @@ use tracing::{debug, debug_span, warn};
 use tracing_futures::Instrument as _;
 use uuid::Uuid;
 
+use si_settings::Settings;
+
 use crate::agent::client::MqttAsyncClientInternal;
 use crate::agent::dispatch::Dispatch;
 use crate::entity_event::EntityEvent;
@@ -22,13 +24,13 @@ pub struct AgentServer<EE: EntityEvent, D: Dispatch<EE> + Send + Sync + 'static 
 }
 
 impl<EE: EntityEvent, D: Dispatch<EE> + Send + Sync + 'static + Clone> AgentServer<EE, D> {
-    pub fn new(name: impl Into<String>, dispatch: D) -> AgentServer<EE, D> {
+    pub fn new(name: impl Into<String>, dispatch: D, settings: &Settings) -> AgentServer<EE, D> {
         let name = name.into();
 
         let client_id = format!("agent_server:{}:{}", name.clone(), Uuid::new_v4());
 
         let cli = mqtt::AsyncClientBuilder::new()
-            .server_uri("tcp://localhost:1883")
+            .server_uri(settings.vernemq_server_uri().as_ref())
             .client_id(client_id.as_ref())
             .persistence(false)
             .finalize();
