@@ -6,8 +6,12 @@ import { MQTTPubSub } from "@/mqtt-pubsub/mqtt-pubsub";
 import { protobufLoader } from "@/protobuf";
 import { NexusGenRootTypes, NexusGenArgTypes } from "@/fullstack-typegen";
 import { logger } from "@/logger";
+import { environment } from "@/environment";
 
-const pubsub = new MQTTPubSub({ rawData: true });
+const pubsub = new MQTTPubSub({
+  brokerUrl: environment.mqttBrokerUrl,
+  rawData: true,
+});
 
 const EntityEvent = interfaceType({
   name: "EntityEvent",

@@ -14,6 +14,7 @@ interface Environment {
   nodeEnv: string;
   logLevel: string;
   jwtKey: string;
+  mqttBrokerUrl: string;
   services: {
     "si-ssh-key": string;
     "si-account": string;
@@ -26,6 +27,7 @@ export const environment: Environment = {
     introspection: process.env.APOLLO_INTROSPECTION === "true",
     playground: process.env.APOLLO_PLAYGROUND === "true",
   },
+  mqttBrokerUrl: process.env.MQTT_BROKER_URL || "mqtt://localhost",
   port: process.env.PORT || defaultPort,
   nodeEnv: process.env.NODE_ENV || "development",
   logLevel: process.env.LOG_LEVEL || "info",

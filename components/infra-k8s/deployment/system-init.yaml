@@ -381,6 +381,8 @@ spec:
       - env:
         - name: LOG_LEVEL
           value: debug
+        - name: MQTT_BROKER_URL
+          value: "mqtt://vernemq.default"
         - name: SERVICES_SI_ACCOUNT
           value: si-account.default:5151
         - name: SERVICES_SI_SSH_KEY
@@ -391,4 +393,3 @@ spec:
         name: si-graphql-api
         ports:
         - containerPort: 4000
----
