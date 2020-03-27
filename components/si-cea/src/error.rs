@@ -10,7 +10,7 @@ use si_settings::error::SettingsError;
 
 use crate::agent::utility::spawn_command::CommandResult;
 
-pub type Result<T> = std::result::Result<T, CeaError>;
+pub type CeaResult<T> = std::result::Result<T, CeaError>;
 pub type TonicResult<T> = std::result::Result<tonic::Response<T>, tonic::Status>;
 
 #[derive(Error, Debug)]
@@ -40,6 +40,10 @@ pub enum CeaError {
     CommandExpectedOutput,
     #[error("no I/O pipe during command call")]
     NoIoPipe,
+    #[error("conversion error: {0}")]
+    ConversionError(Box<dyn std::error::Error + Send + Sync>),
+    #[error("action error: {0}")]
+    ActionError(String),
 
     // MQTT
     #[error("mqtt failed: {0}")]
@@ -89,6 +93,19 @@ pub enum CeaError {
         #[from]
         tokio::sync::mpsc::error::SendError<crate::agent::utility::spawn_command::OutputLine>,
     ),
+}
+
+impl CeaError {
+    pub fn conversion_error<E>(error: E) -> Self
+    where
+        E: std::error::Error + Send + Sync + 'static,
+    {
+        Self::ConversionError(Box::new(error))
+    }
+
+    pub fn action_error(msg: impl Into<String>) -> Self {
+        Self::ActionError(msg.into())
+    }
 }
 
 impl From<CeaError> for tonic::Status {

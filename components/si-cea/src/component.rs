@@ -1,18 +1,18 @@
-pub mod prelude {
-    pub use crate::{gen_component, Component as _, ImplicitConstraints, MigrateComponent};
-    pub use si_account::{Integration, IntegrationService};
-    pub use si_data::error::DataError;
-    pub use si_data::Storable as _;
-}
-
+use crate::error::{CeaError, CeaResult};
+use crate::list::ListRequest;
 use async_trait::async_trait;
 use prost::Message;
 use serde::de::DeserializeOwned;
 use serde::ser::Serialize;
 use si_data::{Db, ListResult, Migrateable, Storable};
 
-use crate::error::{CeaError, Result};
-use crate::list::ListRequest;
+pub mod prelude {
+    pub use crate::error::{CeaError, CeaResult};
+    pub use crate::{gen_component, Component as _, ImplicitConstraints, MigrateComponent};
+    pub use si_account::{Integration, IntegrationService};
+    pub use si_data::error::DataError;
+    pub use si_data::Storable as _;
+}
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ImplicitConstraint {
@@ -92,12 +92,12 @@ pub trait Component:
 {
     fn validate(&self) -> si_data::error::Result<()>;
 
-    async fn get(db: &Db, id: &str) -> Result<Self> {
+    async fn get(db: &Db, id: &str) -> CeaResult<Self> {
         let entity = db.get(id).await?;
         Ok(entity)
     }
 
-    async fn list<T: ListRequest>(db: &Db, list_request: &T) -> Result<ListResult<Self>> {
+    async fn list<T: ListRequest>(db: &Db, list_request: &T) -> CeaResult<ListResult<Self>> {
         let result = if list_request.has_page_token() {
             db.list_by_page_token(list_request.page_token()).await?
         } else {
@@ -118,7 +118,7 @@ pub trait Component:
         db: &Db,
         expressions: Vec<si_data::QueryExpressionOption>,
         boolean_term: si_data::QueryBooleanLogic,
-    ) -> Result<Self> {
+    ) -> CeaResult<Self> {
         let query = si_data::Query {
             items: expressions,
             boolean_term: boolean_term as i32,
@@ -134,16 +134,23 @@ pub trait Component:
         }
     }
 
-    async fn pick_by_string_field(
+    async fn pick_by_string_field<F, V>(
         db: &si_data::Db,
-        field: String,
-        value: String,
-    ) -> Result<Option<Self>> {
+        field: F,
+        value: V,
+    ) -> CeaResult<Option<Self>>
+    where
+        F: Into<String> + Send,
+        V: Into<String> + Send,
+    {
+        let value = value.into();
+        let field = field.into();
+
         if value != "" {
             let query = si_data::Query {
                 items: vec![si_data::QueryExpressionOption {
                     qe: Some(si_data::Qe::Expression(si_data::QueryExpression {
-                        field: field.to_string(),
+                        field: field.clone(),
                         comparison: si_data::QueryComparison::Equals as i32,
                         value: value.clone(),
                         ..Default::default()
@@ -169,7 +176,7 @@ pub trait Component:
 
 #[async_trait]
 pub trait MigrateComponent: Component {
-    async fn migrate(db: &Db) -> Result<()>;
+    async fn migrate(db: &Db) -> CeaResult<()>;
 }
 
 #[macro_export]

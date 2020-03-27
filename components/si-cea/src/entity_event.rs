@@ -1,3 +1,7 @@
+use crate::agent::client::MqttAsyncClientInternal;
+use crate::entity::{Entity, EntityState};
+use crate::error::{CeaError, CeaResult};
+use crate::list::ListRequest;
 use async_trait::async_trait;
 use chrono::prelude::{DateTime, Utc};
 use futures::compat::Future01CompatExt;
@@ -5,13 +9,7 @@ use paho_mqtt as mqtt;
 use prost::Message;
 use serde::de::DeserializeOwned;
 use serde::ser::Serialize;
-
 use si_data::{Db, Storable};
-
-use crate::agent::client::MqttAsyncClientInternal;
-use crate::entity::{Entity, EntityState};
-use crate::error::{CeaError, Result};
-use crate::list::ListRequest;
 
 #[async_trait]
 pub trait EntityEvent:
@@ -100,13 +98,16 @@ pub trait EntityEvent:
         user_id: &str,
         action_name: &str,
         entity: &Self::Entity,
-    ) -> Result<Self> {
+    ) -> CeaResult<Self> {
         let mut entity_event = Self::new(user_id, action_name, entity);
         db.validate_and_insert_as_new(&mut entity_event).await?;
         Ok(entity_event)
     }
 
-    async fn list<T: ListRequest>(db: &Db, list_request: &T) -> Result<si_data::ListResult<Self>> {
+    async fn list<T: ListRequest>(
+        db: &Db,
+        list_request: &T,
+    ) -> CeaResult<si_data::ListResult<Self>> {
         let result = if list_request.has_page_token() {
             db.list_by_page_token(list_request.page_token()).await?
         } else {
@@ -123,7 +124,7 @@ pub trait EntityEvent:
         Ok(result)
     }
 
-    fn validate_action_name(&self) -> Result<()> {
+    fn validate_action_name(&self) -> CeaResult<()> {
         if Self::action_names()
             .iter()
             .find(|&&x| x == self.action_name())
@@ -137,7 +138,7 @@ pub trait EntityEvent:
         Ok(())
     }
 
-    fn validate_input_entity(&self) -> Result<()> {
+    fn validate_input_entity(&self) -> CeaResult<()> {
         if self.input_entity().is_none() {
             return Err(CeaError::ValidationError(format!(
                 "Input entity must not be empty"
@@ -146,7 +147,7 @@ pub trait EntityEvent:
         Ok(())
     }
 
-    fn validate(&self) -> Result<()> {
+    fn validate(&self) -> CeaResult<()> {
         self.validate_action_name()?;
         self.validate_input_entity()?;
         Ok(())
@@ -203,7 +204,7 @@ pub trait EntityEvent:
         self.log("*** Task Succeeded ***");
     }
 
-    async fn send_via_mqtt(&self, mqtt_client: &MqttAsyncClientInternal) -> Result<()> {
+    async fn send_via_mqtt(&self, mqtt_client: &MqttAsyncClientInternal) -> CeaResult<()> {
         let mut payload = Vec::new();
         let finalized = {
             self.encode(&mut payload)?;

@@ -24,7 +24,7 @@ pub use crate::component::{
 };
 pub use crate::entity::Entity;
 pub use crate::entity_event::EntityEvent;
-pub use crate::error::{CeaError, Result, TonicResult};
+pub use crate::error::{CeaError, CeaResult, TonicResult};
 pub use crate::list::{ListReply, ListRequest};
 pub use crate::service::auth::Authentication;
 pub use crate::service::Service;

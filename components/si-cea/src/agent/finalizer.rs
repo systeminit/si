@@ -1,16 +1,14 @@
+use crate::agent::client::MqttAsyncClientInternal;
+use crate::entity_event::EntityEvent;
+use crate::error::CeaResult;
 use futures::compat::{Future01CompatExt, Stream01CompatExt};
 use futures::StreamExt;
 use paho_mqtt as mqtt;
 use prost::Message;
-use tracing::debug;
-use uuid::Uuid;
-
 use si_data::Db;
 use si_settings::Settings;
-
-use crate::agent::client::MqttAsyncClientInternal;
-use crate::entity_event::EntityEvent;
-use crate::error::Result;
+use tracing::debug;
+use uuid::Uuid;
 
 #[derive(Debug, Clone)]
 pub struct AgentFinalizer {
@@ -49,7 +47,7 @@ impl AgentFinalizer {
         (vec![finalized_topic], vec![2])
     }
 
-    pub async fn dispatch(&mut self, entity_event: impl EntityEvent) -> Result<()> {
+    pub async fn dispatch(&mut self, entity_event: impl EntityEvent) -> CeaResult<()> {
         debug!("updating_entity_event");
         self.db.upsert(&entity_event).await?;
         // No output entity means we didn't mutate anything
@@ -60,7 +58,7 @@ impl AgentFinalizer {
         Ok(())
     }
 
-    pub async fn run<T: EntityEvent + 'static>(&mut self) -> Result<()> {
+    pub async fn run<T: EntityEvent + 'static>(&mut self) -> CeaResult<()> {
         // Whats the right value? Who knows? God only knows. Ask the Beach Boys.
         let mut rx = self.mqtt.get_stream(1000).compat();
         println!("Finalizer connecting to the MQTT server...");

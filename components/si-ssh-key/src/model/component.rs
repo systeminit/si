@@ -1,10 +1,8 @@
-use si_cea::component::prelude::*;
-
 pub use crate::protobuf::{
     Component, ImplicitConstraint, KeyFormat, KeyType, ListComponentsReply, ListComponentsRequest,
     PickComponentReply, PickComponentRequest,
 };
-
+use si_cea::component::prelude::*;
 use si_data::Db;
 
 impl std::fmt::Display for KeyType {
@@ -52,7 +50,7 @@ impl Component {
     pub async fn pick(
         db: &Db,
         req: &PickComponentRequest,
-    ) -> si_cea::Result<(ImplicitConstraints, Component)> {
+    ) -> CeaResult<(ImplicitConstraints, Component)> {
         let mut implicit_constraints = ImplicitConstraints::new();
 
         if let Some(result) =
@@ -82,11 +80,7 @@ impl Component {
                 2 => KeyType::Dsa,
                 3 => KeyType::Ecdsa,
                 4 => KeyType::Ed25519,
-                _ => {
-                    return Err(si_cea::CeaError::PickComponent(
-                        "key type is invalid".to_string(),
-                    ))
-                }
+                _ => return Err(CeaError::PickComponent("key type is invalid".to_string())),
             };
         }
 
@@ -111,7 +105,7 @@ impl Component {
                 KeyType::Rsa => match req.bits {
                     1024 | 2048 | 3072 | 4096 => req.bits,
                     value => {
-                        return Err(si_cea::CeaError::PickComponent(format!(
+                        return Err(CeaError::PickComponent(format!(
                             "invalid bits ({}) for keyType: {}",
                             value, key_type
                         )));
@@ -120,7 +114,7 @@ impl Component {
                 KeyType::Dsa => match req.bits {
                     1024 => req.bits,
                     value => {
-                        return Err(si_cea::CeaError::PickComponent(format!(
+                        return Err(CeaError::PickComponent(format!(
                             "invalid bits ({}) for keyType: {}",
                             value, key_type
                         )));
@@ -129,7 +123,7 @@ impl Component {
                 KeyType::Ecdsa => match req.bits {
                     256 | 384 | 521 => req.bits,
                     value => {
-                        return Err(si_cea::CeaError::PickComponent(format!(
+                        return Err(CeaError::PickComponent(format!(
                             "invalid bits ({}) for keyType: {}",
                             value, key_type
                         )));
@@ -138,7 +132,7 @@ impl Component {
                 KeyType::Ed25519 => match req.bits {
                     256 => req.bits,
                     value => {
-                        return Err(si_cea::CeaError::PickComponent(format!(
+                        return Err(CeaError::PickComponent(format!(
                             "invalid bits ({}) for keyType: {}",
                             value, key_type
                         )));
@@ -158,7 +152,7 @@ impl Component {
                 2 => KeyFormat::Pkcs8,
                 3 => KeyFormat::Pem,
                 _ => {
-                    return Err(si_cea::CeaError::PickComponent(
+                    return Err(CeaError::PickComponent(
                         "keyFormat is not valid".to_string(),
                     ));
                 }
@@ -191,7 +185,7 @@ impl Component {
 
 #[async_trait::async_trait]
 impl MigrateComponent for Component {
-    async fn migrate(db: &Db) -> si_cea::Result<()> {
+    async fn migrate(db: &Db) -> CeaResult<()> {
         let key_types = [KeyType::Rsa, KeyType::Dsa, KeyType::Ecdsa, KeyType::Ed25519];
         let key_formats = [KeyFormat::Rfc4716, KeyFormat::Pkcs8, KeyFormat::Pem];
 

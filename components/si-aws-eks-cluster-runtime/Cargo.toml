@@ -12,17 +12,18 @@ edition = "2018"
 [dependencies]
 anyhow = "1.0"
 uuid = { version = "0.7", features = [ "serde", "v4" ] }
+async-trait = "0.1"
 
 # Tonic Deps
-tonic = "0.1" 
+tonic = "0.1"
 bytes = "0.5"
-prost = "0.6" 
+prost = "0.6"
 prost-derive = "0.6"
 tokio = { version = "0.2", features = ["full"] }
 futures = { version = "0.3", features = ["alloc", "compat"]}
 async-stream = "0.2"
 http = "0.2"
-tower = "0.3" 
+tower = "0.3"
 
 # Serde
 serde = { version = "1.0.104", features = ["derive"] }
@@ -54,6 +55,7 @@ chrono = { version = "0.4", features = ["serde"] }
 si-settings = { path = "../si-settings" }
 si-data = { path = "../si-data" }
 si-account = { path = "../si-account" }
+si-cea = { path = "../si-cea" }
 si-external-api-gateway = { path = "../si-external-api-gateway/rust-client" }
 
 [dev-dependencies]

@@ -2184,6 +2184,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-stream",
+ "async-trait",
  "base64 0.10.1",
  "bytes 0.5.4",
  "chrono",
@@ -2201,6 +2202,7 @@ dependencies = [
  "serde_cbor",
  "serde_json",
  "si-account",
+ "si-cea",
  "si-data",
  "si-external-api-gateway",
  "si-settings",

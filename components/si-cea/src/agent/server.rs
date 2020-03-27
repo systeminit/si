@@ -1,20 +1,17 @@
+use crate::agent::client::MqttAsyncClientInternal;
+use crate::agent::dispatch::Dispatch;
+use crate::entity_event::EntityEvent;
+use crate::error::CeaResult;
 use futures::compat::{Future01CompatExt, Stream01CompatExt};
 use futures::StreamExt;
 use paho_mqtt as mqtt;
 use prost::Message;
+use si_settings::Settings;
+use std::marker::PhantomData;
 use tokio;
 use tracing::{debug, debug_span, warn};
 use tracing_futures::Instrument as _;
 use uuid::Uuid;
-
-use si_settings::Settings;
-
-use crate::agent::client::MqttAsyncClientInternal;
-use crate::agent::dispatch::Dispatch;
-use crate::entity_event::EntityEvent;
-use crate::error::Result;
-
-use std::marker::PhantomData;
 
 pub struct AgentServer<EE: EntityEvent, D: Dispatch<EE> + Send + Sync + 'static + Clone> {
     pub mqtt: MqttAsyncClientInternal,
@@ -56,7 +53,7 @@ impl<EE: EntityEvent, D: Dispatch<EE> + Send + Sync + 'static + Clone> AgentServ
         topics
     }
 
-    pub async fn run(&mut self) -> Result<()> {
+    pub async fn run(&mut self) -> CeaResult<()> {
         // Whats the right value? Who knows? God only knows. Ask the Beach Boys.
         let mut rx = self.mqtt.get_stream(1000).compat();
         println!("Connecting to the MQTT server...");

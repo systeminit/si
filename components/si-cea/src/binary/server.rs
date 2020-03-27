@@ -1,14 +1,13 @@
-pub mod prelude {
-    pub use crate::{EntityEvent as _, gen_server_binary};
-    pub use crate::Dispatch as _;
-    pub use crate::MigrateComponent as _;
-}
-
+use crate::error::CeaResult;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
-use crate::error::Result;
+pub mod prelude {
+    pub use crate::Dispatch as _;
+    pub use crate::MigrateComponent as _;
+    pub use crate::{gen_server_binary, EntityEvent as _};
+}
 
-pub fn setup_tracing() -> Result<()> {
+pub fn setup_tracing() -> CeaResult<()> {
     let subscriber = FmtSubscriber::builder()
         .without_time()
         .with_ansi(true)
@@ -24,11 +23,11 @@ pub fn setup_tracing() -> Result<()> {
 #[macro_export]
 macro_rules! gen_server_binary {
     (
-        name: $name: tt, 
-        dispatcher: $dispatcher: ident, 
+        name: $name: tt,
+        dispatcher: $dispatcher: ident,
         component: $component: ident,
-        entity_event: $entity_event: ident, 
-        service: $service: ident, 
+        entity_event: $entity_event: ident,
+        service: $service: ident,
         server: $server: ident
     ) => {
         println!("*** Starting {} ***", $name);
@@ -57,10 +56,9 @@ macro_rules! gen_server_binary {
         // Finalizer
         println!("*** Spawning the Agent Finalizer ***");
         let finalizer_db = db.clone();
-        let mut finalizer = si_cea::AgentFinalizer::new(finalizer_db, $entity_event::type_name(), &settings);
-        tokio::spawn(async move {
-            finalizer.run::<$entity_event>().await
-        });
+        let mut finalizer =
+            si_cea::AgentFinalizer::new(finalizer_db, $entity_event::type_name(), &settings);
+        tokio::spawn(async move { finalizer.run::<$entity_event>().await });
 
         // GRPC Services
         let agent_client = si_cea::AgentClient::new($name, &settings).await?;
@@ -78,5 +76,5 @@ macro_rules! gen_server_binary {
             .add_service($server::new(service))
             .serve(addr)
             .await?;
-    }
+    };
 }

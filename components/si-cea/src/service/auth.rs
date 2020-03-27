@@ -1,9 +1,7 @@
-use std::convert::TryFrom;
-
+use crate::error::{CeaError, CeaResult};
 use si_account::{authorize::authorize, BillingAccount};
 use si_data::Db;
-
-use crate::error::{CeaError, Result};
+use std::convert::TryFrom;
 
 #[derive(Debug)]
 pub struct Authentication {
@@ -27,7 +25,7 @@ impl Authentication {
         self.user_id.as_ref()
     }
 
-    pub async fn billing_account(&self, db: &Db) -> Result<BillingAccount> {
+    pub async fn billing_account(&self, db: &Db) -> CeaResult<BillingAccount> {
         let billing_account: BillingAccount = db.get(self.billing_account_id()).await?;
         Ok(billing_account)
     }
@@ -36,7 +34,7 @@ impl Authentication {
         &self,
         db: &Db,
         action: impl Into<&str>,
-    ) -> Result<()> {
+    ) -> CeaResult<()> {
         let ba = self.billing_account(db).await?;
         authorize(
             db,
