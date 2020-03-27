@@ -1,11 +1,9 @@
+use crate::error::{CeaError, CeaResult};
+use crate::{EntityEvent, MqttAsyncClientInternal};
+use std::process::{ExitStatus, Stdio};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 use tokio::sync::mpsc;
-
-use std::process::{ExitStatus, Stdio};
-
-use crate::error::{CeaError, Result};
-use crate::{EntityEvent, MqttAsyncClientInternal};
 
 pub enum CaptureOutput {
     None,
@@ -50,7 +48,7 @@ impl CommandResult {
         }
     }
 
-    pub fn success(self) -> Result<CommandResult> {
+    pub fn success(self) -> CeaResult<CommandResult> {
         if self.exit_status.success() {
             Ok(self)
         } else {
@@ -58,7 +56,7 @@ impl CommandResult {
         }
     }
 
-    pub fn try_stdout(&mut self) -> Result<String> {
+    pub fn try_stdout(&mut self) -> CeaResult<String> {
         self.stdout.take().ok_or(CeaError::CommandExpectedOutput)
     }
 
@@ -66,7 +64,7 @@ impl CommandResult {
         self.stdout.as_ref()
     }
 
-    pub fn try_stderr(&mut self) -> Result<String> {
+    pub fn try_stderr(&mut self) -> CeaResult<String> {
         self.stderr.take().ok_or(CeaError::CommandExpectedOutput)
     }
 
@@ -91,7 +89,7 @@ pub enum OutputLine {
 async fn read_stdout(
     mut tx: mpsc::Sender<OutputLine>,
     io_pipe: tokio::process::ChildStdout,
-) -> Result<()> {
+) -> CeaResult<()> {
     let buffer = BufReader::new(io_pipe);
     let mut lines = buffer.lines();
     while let Some(line) = lines.next_line().await? {
@@ -104,7 +102,7 @@ async fn read_stdout(
 async fn read_stderr(
     mut tx: mpsc::Sender<OutputLine>,
     io_pipe: tokio::process::ChildStderr,
-) -> Result<()> {
+) -> CeaResult<()> {
     let buffer = BufReader::new(io_pipe);
     let mut lines = buffer.lines();
     while let Some(line) = lines.next_line().await? {
@@ -130,7 +128,7 @@ pub async fn spawn_command(
     mut cmd: Command,
     entity_event: &mut impl EntityEvent,
     capture_output: CaptureOutput,
-) -> Result<CommandResult> {
+) -> CeaResult<CommandResult> {
     entity_event.log(format!("---- Running Command ----"));
     entity_event.log(format!("{:?}", cmd));
     entity_event.log(format!("---- Output ----"));

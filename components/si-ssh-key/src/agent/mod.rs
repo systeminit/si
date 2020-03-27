@@ -1,10 +1,10 @@
 use crate::model::entity::EntityEvent;
 use si_cea::agent::dispatch::Dispatch;
 use si_cea::{
-    gen_dispatch, gen_dispatch_keys, gen_dispatch_setup, gen_dispatcher, MqttAsyncClientInternal,
+    gen_dispatch, gen_dispatch_keys, gen_dispatch_setup, gen_dispatcher, CeaResult,
+    MqttAsyncClientInternal,
 };
 use si_data::Db;
-use std::ops::{Deref, DerefMut};
 
 gen_dispatcher!(self_ident: self);
 
@@ -12,7 +12,7 @@ gen_dispatcher!(self_ident: self);
 impl Dispatch<EntityEvent> for Dispatcher {
     gen_dispatch_keys!(self);
 
-    async fn setup(&mut self, db: &Db) -> si_cea::Result<()> {
+    async fn setup(&mut self, db: &Db) -> CeaResult<()> {
         gen_dispatch_setup!(
             self,
             db,
@@ -42,7 +42,7 @@ impl Dispatch<EntityEvent> for Dispatcher {
         entity_event: &mut EntityEvent,
         integration_service_id: String,
         action_name: String,
-    ) -> si_cea::Result<()> {
+    ) -> CeaResult<()> {
         gen_dispatch!(
             self,
             mqtt_client,
@@ -63,7 +63,8 @@ impl Dispatch<EntityEvent> for Dispatcher {
 pub mod global {
     use crate::model::entity::{EntityEvent, KeyFormat, KeyType};
     use si_cea::{
-        spawn_command, CaptureOutput, CeaError, EntityEvent as _, MqttAsyncClientInternal,
+        spawn_command, CaptureOutput, CeaError, CeaResult, EntityEvent as _,
+        MqttAsyncClientInternal,
     };
     use tempfile::TempDir;
     use tokio::fs;
@@ -74,7 +75,7 @@ pub mod global {
     pub async fn sync(
         _mqtt_client: &MqttAsyncClientInternal,
         entity_event: &mut EntityEvent,
-    ) -> si_cea::Result<()> {
+    ) -> CeaResult<()> {
         async {
             debug!(?entity_event);
             entity_event.output_entity = entity_event.input_entity.clone();
@@ -88,7 +89,7 @@ pub mod global {
     pub async fn create(
         mqtt_client: &MqttAsyncClientInternal,
         entity_event: &mut EntityEvent,
-    ) -> si_cea::Result<()> {
+    ) -> CeaResult<()> {
         async {
             debug!(?entity_event);
             let tempdir = TempDir::new()?;
@@ -207,7 +208,8 @@ pub mod global {
 pub mod aws {
     use crate::model::entity::{EntityEvent, KeyFormat};
     use si_cea::{
-        spawn_command, CaptureOutput, CeaError, EntityEvent as _, MqttAsyncClientInternal,
+        spawn_command, CaptureOutput, CeaError, CeaResult, EntityEvent as _,
+        MqttAsyncClientInternal,
     };
     use si_external_api_gateway::aws::ec2;
     use std::os::unix::fs::PermissionsExt;
@@ -219,7 +221,7 @@ pub mod aws {
     pub async fn create(
         mqtt_client: &MqttAsyncClientInternal,
         entity_event: &mut EntityEvent,
-    ) -> si_cea::Result<()> {
+    ) -> CeaResult<()> {
         async {
             debug!(?entity_event);
             // More evidence this should be refactored - why connect multiple times, rather than
@@ -358,7 +360,7 @@ pub mod aws {
     pub async fn sync(
         _mqtt_client: &MqttAsyncClientInternal,
         entity_event: &mut EntityEvent,
-    ) -> si_cea::Result<()> {
+    ) -> CeaResult<()> {
         async {
             let mut ec2 = ec2::Ec2Client::connect("http://localhost:4001").await?;
             entity_event.log("Synchronizing Key Pair in EC2");
@@ -393,7 +395,7 @@ pub mod aws {
             }
             Ok(())
         }
-        .instrument(debug_span!("ssh_key_aws_create"))
+        .instrument(debug_span!("ssh_key_aws_sync"))
         .await
     }
 }

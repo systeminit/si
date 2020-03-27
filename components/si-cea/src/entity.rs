@@ -1,20 +1,19 @@
+use crate::error::CeaResult;
+use crate::list::ListRequest;
+use async_trait::async_trait;
+use prost::Message;
+use serde::de::DeserializeOwned;
+use serde::ser::Serialize;
+use si_data::db::ListResult;
+use si_data::{Db, Storable};
+
 pub mod prelude {
-    pub use crate::{gen_entity, gen_entity_event, CeaError, ListReply as _, ListRequest as _};
+    pub use crate::{
+        gen_entity, gen_entity_event, CeaError, CeaResult, ListReply as _, ListRequest as _,
+    };
     pub use si_data::{ListResult, Query, Storable as _};
     pub use uuid::Uuid;
 }
-
-use prost::Message;
-
-use serde::de::DeserializeOwned;
-use serde::ser::Serialize;
-
-use async_trait::async_trait;
-
-use crate::error::Result;
-use crate::list::ListRequest;
-use si_data::db::ListResult;
-use si_data::{Db, Storable};
 
 pub enum EntityState {
     Uninitialized = 0,
@@ -42,14 +41,14 @@ pub trait Entity:
     fn set_organization_id(&mut self, organization_id: impl Into<String>);
     fn billing_account_id(&self) -> &str;
     fn set_billing_account_id(&mut self, billing_account_id: impl Into<String>);
-    fn validate(&self) -> Result<()>;
+    fn validate(&self) -> CeaResult<()>;
 
-    async fn get(db: &Db, id: &str) -> Result<Self> {
+    async fn get(db: &Db, id: &str) -> CeaResult<Self> {
         let entity = db.get(id).await?;
         Ok(entity)
     }
 
-    async fn list<T: ListRequest>(db: &Db, list_request: &T) -> Result<ListResult<Self>> {
+    async fn list<T: ListRequest>(db: &Db, list_request: &T) -> CeaResult<ListResult<Self>> {
         let result = if list_request.has_page_token() {
             db.list_by_page_token(list_request.page_token()).await?
         } else {

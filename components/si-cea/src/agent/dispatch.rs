@@ -1,9 +1,7 @@
-use si_data::Db;
-
 use crate::agent::client::MqttAsyncClientInternal;
 use crate::entity_event::EntityEvent;
-use crate::error::{CeaError, Result};
-
+use crate::error::{CeaError, CeaResult};
+use si_data::Db;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -38,7 +36,7 @@ impl AgentDispatch {
         integration_service_id: impl Into<IntegrationServiceId>,
         action_name: impl Into<ActionName>,
         function_name: impl Into<FunctionName>,
-    ) -> Result<()> {
+    ) -> CeaResult<()> {
         let dispatch_table =
             Arc::get_mut(&mut self.dispatch_table).ok_or(CeaError::ExternalRequest)?;
         dispatch_table.insert(
@@ -51,14 +49,14 @@ impl AgentDispatch {
 
 #[async_trait::async_trait]
 pub trait Dispatch<EE: EntityEvent> {
-    async fn setup(&mut self, db: &Db) -> Result<()>;
+    async fn setup(&mut self, db: &Db) -> CeaResult<()>;
     async fn dispatch(
         &self,
         mqtt_client: &MqttAsyncClientInternal,
         entity_event: &mut EE,
         integration_service_id: String,
         action_name: String,
-    ) -> Result<()>;
+    ) -> CeaResult<()>;
     fn keys(&self) -> std::collections::hash_map::Keys<(String, String), String>;
 }
 
@@ -68,7 +66,7 @@ macro_rules! gen_dispatcher {
         #[derive(Debug, Clone)]
         pub struct Dispatcher(pub si_cea::AgentDispatch);
 
-        impl Deref for Dispatcher {
+        impl std::ops::Deref for Dispatcher {
             type Target = si_cea::AgentDispatch;
 
             fn deref(&$self_ident) -> &Self::Target {
@@ -76,7 +74,7 @@ macro_rules! gen_dispatcher {
             }
         }
 
-        impl DerefMut for Dispatcher {
+        impl std::ops::DerefMut for Dispatcher {
             fn deref_mut(&mut $self_ident) -> &mut Self::Target {
                 &mut $self_ident.0
             }

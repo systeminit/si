@@ -1,14 +1,13 @@
-use si_cea::entity::prelude::*;
-
-use si_account::Workspace;
-
-pub use crate::model::component::{KeyFormat, KeyType};
-pub use crate::protobuf::entity::State;
-pub use crate::protobuf::entity_event::NextState;
 use crate::protobuf::{
     Constraints, CreateEntityRequest, ListEntitiesReply, ListEntitiesRequest,
     ListEntityEventsReply, ListEntityEventsRequest, PickComponentReply, PickComponentRequest,
 };
+use si_account::Workspace;
+use si_cea::entity::prelude::*;
+
+pub use crate::model::component::{KeyFormat, KeyType};
+pub use crate::protobuf::entity::State;
+pub use crate::protobuf::entity_event::NextState;
 pub use crate::protobuf::{Entity, EntityEvent};
 
 gen_entity!(
@@ -42,7 +41,7 @@ impl Entity {
         req: &CreateEntityRequest,
         pick_component: PickComponentReply,
         workspace: Workspace,
-    ) -> si_cea::Result<Entity> {
+    ) -> CeaResult<Entity> {
         // Safe, because we didn't error way earlier.
         let component = pick_component.component.unwrap();
         let implicit_constraints = pick_component.implicit_constraints;

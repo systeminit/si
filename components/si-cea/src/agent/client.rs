@@ -1,14 +1,11 @@
+use crate::entity_event::EntityEvent;
+use crate::error::CeaResult;
 use futures::compat::Future01CompatExt;
 use paho_mqtt as mqtt;
-use uuid::Uuid;
-
+use si_settings::Settings;
 use std::fmt;
 use std::ops::{Deref, DerefMut};
-
-use si_settings::Settings;
-
-use crate::entity_event::EntityEvent;
-use crate::error::Result;
+use uuid::Uuid;
 
 pub use tracing::{debug, debug_span};
 pub use tracing_futures::Instrument as _;
@@ -44,7 +41,7 @@ impl DerefMut for MqttAsyncClientInternal {
 }
 
 impl AgentClient {
-    pub async fn new(name: &str, settings: &Settings) -> Result<AgentClient> {
+    pub async fn new(name: &str, settings: &Settings) -> CeaResult<AgentClient> {
         // Create a client & define connect options
         let client_id = format!("agent_client:{}:{}", name, Uuid::new_v4());
 
@@ -61,7 +58,7 @@ impl AgentClient {
         })
     }
 
-    pub async fn dispatch(&self, entity_event: &impl EntityEvent) -> Result<()> {
+    pub async fn dispatch(&self, entity_event: &impl EntityEvent) -> CeaResult<()> {
         async {
             entity_event.validate_input_entity()?;
             entity_event.validate_action_name()?;
@@ -92,7 +89,7 @@ impl AgentClient {
         topic
     }
 
-    pub async fn send(&self, entity_event: &impl EntityEvent) -> Result<()> {
+    pub async fn send(&self, entity_event: &impl EntityEvent) -> CeaResult<()> {
         async {
             let mut payload = Vec::new();
             entity_event.encode(&mut payload)?;
