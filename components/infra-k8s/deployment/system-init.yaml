@@ -1,9 +1,16 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata: 
+  name: si-external-api-gateway
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::835304779882:role/si-external-api-gateway
+
 ###
 # Services come first, then Volumes, then Deployments
 ############
 # Services #
 ############
-
+---
 # VerneMQ
 apiVersion: v1
 kind: Service
@@ -272,6 +279,8 @@ spec:
       - env:
         - name: RUST_LOG
           value: DEBUG
+        - name: SI_EXTERNAL_API_GATEWAY_URL
+          value: "http://si-external-api-gateway.default:4001"
         image: 835304779882.dkr.ecr.us-east-2.amazonaws.com/si/si-ssh-key-service:latest
         name: si-ssh-key
         ports:
@@ -311,6 +320,8 @@ spec:
       - env:
         - name: RUST_LOG
           value: DEBUG
+        - name: SI_EXTERNAL_API_GATEWAY_URL
+          value: "http://si-external-api-gateway.default:4001"
         image: 835304779882.dkr.ecr.us-east-2.amazonaws.com/si/si-aws-eks-cluster-runtime-service:latest
         name: si-aws-eks-cluster-runtime
         ports:
@@ -346,6 +357,7 @@ spec:
         app: si-external-api-gateway
         bootstrap: "true"
     spec:
+      serviceAccountName: si-external-api-gateway
       containers:
       - env:
         - name: LOG_LEVEL
@@ -388,7 +400,7 @@ spec:
         - name: SERVICES_SI_SSH_KEY
           value: si-ssh-key.default:5152
         - name: SERVICES_SI_AWS_EKS_CLUSTER_RUNTIME
-          value: si-ssh-key.default:5154
+          value: si-aws-eks-cluster-runtime.default:5154
         image: 835304779882.dkr.ecr.us-east-2.amazonaws.com/si/si-graphql-api-service:latest
         name: si-graphql-api
         ports:
