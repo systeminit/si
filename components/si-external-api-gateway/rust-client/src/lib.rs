@@ -1,3 +1,5 @@
+use std::env;
+
 pub mod protobuf {
     tonic::include_proto!("si.external_api_gateway");
     pub mod aws {
@@ -67,6 +69,15 @@ pub mod aws {
                 }
             }
         }
+    }
+}
+
+pub fn gateway_url() -> String {
+    match env::var_os("SI_EXTERNAL_API_GATEWAY_URL") {
+        Some(val) => val
+            .into_string()
+            .unwrap_or("http://localhost:4001".to_string()),
+        None => "http://localhost:4001".to_string(),
     }
 }
 

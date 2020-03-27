@@ -226,7 +226,7 @@ pub mod aws {
             debug!(?entity_event);
             // More evidence this should be refactored - why connect multiple times, rather than
             // multiplexing? Even if we need N connections, better to manage it higher up.
-            let mut ec2 = ec2::Ec2Client::connect("http://localhost:4001").await?;
+            let mut ec2 = ec2::Ec2Client::connect(si_external_api_gateway::gateway_url()).await?;
 
             entity_event.output_entity = entity_event.input_entity.clone();
 
@@ -362,7 +362,7 @@ pub mod aws {
         entity_event: &mut EntityEvent,
     ) -> CeaResult<()> {
         async {
-            let mut ec2 = ec2::Ec2Client::connect("http://localhost:4001").await?;
+            let mut ec2 = ec2::Ec2Client::connect(si_external_api_gateway::gateway_url()).await?;
             entity_event.log("Synchronizing Key Pair in EC2");
             let result = ec2
                 .describe_key_pairs(ec2::DescribeKeyPairsRequest {

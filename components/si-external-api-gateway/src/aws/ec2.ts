@@ -57,6 +57,7 @@ class AwsEc2 {
         reply.addKeyPairs(nKeyPair);
       }
     } catch (err) {
+      logger.log("warn", "failed to describe key pair", { err });
       const error = new PError();
       error.setCode(err.code);
       error.setMessage(err.message);
@@ -83,6 +84,7 @@ class AwsEc2 {
       reply.setKeyMaterial(results.KeyMaterial);
       reply.setKeyName(results.KeyName);
     } catch (err) {
+      logger.log("warn", "failed to create key pair", { err });
       const error = new PError();
       error.setCode(err.code);
       error.setMessage(err.message);

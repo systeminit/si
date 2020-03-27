@@ -4,7 +4,11 @@ resources:
 - system-init.yaml
 namespace: default
 images:
+- name: 835304779882.dkr.ecr.us-east-2.amazonaws.com/si/si-external-api-gateway-service
+  newTag: "20200327110540"
 - name: 835304779882.dkr.ecr.us-east-2.amazonaws.com/si/si-external-api-gateway-service:latest
   newTag: "20200325071359"
 - name: 835304779882.dkr.ecr.us-east-2.amazonaws.com/si/si-graphql-api-service
   newTag: "20200326170526"
+- name: 835304779882.dkr.ecr.us-east-2.amazonaws.com/si/si-ssh-key-service
+  newTag: "20200327075318"

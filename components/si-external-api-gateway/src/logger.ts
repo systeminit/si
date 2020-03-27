@@ -6,13 +6,11 @@ export const logger = winston.createLogger({
   defaultMeta: { service: "si-external-api-gateway" },
 });
 
-if (environment.nodeEnv !== "production") {
-  logger.add(
-    new winston.transports.Console({
-      format: winston.format.combine(
-        winston.format.colorize(),
-        winston.format.simple(),
-      ),
-    }),
-  );
-}
+logger.add(
+  new winston.transports.Console({
+    format: winston.format.combine(
+      winston.format.colorize(),
+      winston.format.simple(),
+    ),
+  }),
+);
