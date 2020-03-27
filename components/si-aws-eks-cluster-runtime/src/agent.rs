@@ -61,13 +61,15 @@ mod aws {
     enum WhoDat {
         Adam,
         Fletcher,
+        Production,
     }
-    const WHODAT: WhoDat = WhoDat::Fletcher;
+    const WHODAT: WhoDat = WhoDat::Production;
 
     fn hardcoded_security_group_ids() -> Vec<String> {
         match WHODAT {
             WhoDat::Adam => vec!["sg-070f1067".to_string()],
             WhoDat::Fletcher => vec!["sg-bc6539db".to_string()],
+            WhoDat::Production => vec!["sg-070f1067".to_string()],
         }
     }
 
@@ -83,6 +85,11 @@ mod aws {
                 "subnet-5a867231".to_string(),
                 "subnet-a26ae0ee".to_string(),
             ],
+            WhoDat::Production => vec![
+                "subnet-0c064a76".to_string(),
+                "subnet-08a11544".to_string(),
+                "subnet-ae9a8dc6".to_string(),
+            ],
         }
     }
 
@@ -90,19 +97,22 @@ mod aws {
         match WHODAT {
             WhoDat::Adam => "arn:aws:iam::835304779882:role/eksServiceRole".to_string(),
             WhoDat::Fletcher => "arn:aws:iam::167069368189:role/eksServiceRole".to_string(),
+            WhoDat::Production => "arn:aws:iam::835304779882:role/eksServiceRole".to_string(),
         }
     }
 
     fn hardcoded_node_iam_role_name() -> String {
         match WHODAT {
-            WhoDat::Adam => "i:dont:have:one:yet".to_string(),
+            WhoDat::Adam => "arn:aws:iam::835304779882:role/nodeInstanceRole".to_string(),
+            WhoDat::Production => "arn:aws:iam::835304779882:role/nodeInstanceRole".to_string(),
             WhoDat::Fletcher => "arn:aws:iam::167069368189:role/NodeInstanceRole".to_string(),
         }
     }
 
     fn hardcoded_ec2_ssh_key() -> String {
         match WHODAT {
-            WhoDat::Adam => "adam".to_string(),
+            WhoDat::Adam => "si_key".to_string(),
+            WhoDat::Production => "si_key".to_string(),
             WhoDat::Fletcher => "fnichol".to_string(),
         }
     }
@@ -184,7 +194,7 @@ mod aws {
         async {
             // More evidence this should be refactored - why connect multiple times, rather than
             // multiplexing? Even if we need N connections, better to manage it higher up.
-            let mut eks = eks::EksClient::connect("http://localhost:4001").await?;
+            let mut eks = eks::EksClient::connect(si_external_api_gateway::gateway_url()).await?;
 
             entity_event.log("Performing CreateCluster\n");
 
@@ -225,7 +235,7 @@ mod aws {
         async {
             // More evidence this should be refactored - why connect multiple times, rather than
             // multiplexing? Even if we need N connections, better to manage it higher up.
-            let mut eks = eks::EksClient::connect("http://localhost:4001").await?;
+            let mut eks = eks::EksClient::connect(si_external_api_gateway::gateway_url()).await?;
 
             entity_event.log("Performing CreateNodegroup\n");
 
@@ -266,7 +276,8 @@ mod aws {
         async {
             // More evidence this should be refactored - why connect multiple times, rather than
             // multiplexing? Even if we need N connections, better to manage it higher up.
-            let mut client = eks::EksClient::connect("http://localhost:4001").await?;
+            let mut client =
+                eks::EksClient::connect(si_external_api_gateway::gateway_url()).await?;
 
             entity_event.log("Performing DescribeCluster\n");
 
@@ -307,7 +318,8 @@ mod aws {
         async {
             // More evidence this should be refactored - why connect multiple times, rather than
             // multiplexing? Even if we need N connections, better to manage it higher up.
-            let mut client = eks::EksClient::connect("http://localhost:4001").await?;
+            let mut client =
+                eks::EksClient::connect(si_external_api_gateway::gateway_url()).await?;
 
             entity_event.log("Performing DescribeNodegroup\n");
 

@@ -400,7 +400,7 @@ spec:
         - name: SERVICES_SI_SSH_KEY
           value: si-ssh-key.default:5152
         - name: SERVICES_SI_AWS_EKS_CLUSTER_RUNTIME
-          value: si-ssh-key.default:5154
+          value: si-aws-eks-cluster-runtime.default:5154
         image: 835304779882.dkr.ecr.us-east-2.amazonaws.com/si/si-graphql-api-service:latest
         name: si-graphql-api
         ports:
