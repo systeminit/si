@@ -92,6 +92,7 @@ message Entity {
     UNINITIALIZED = 0;
     ERROR = 1;
     OK = 2;
+    TRANSITION = 3;
   }
   State state = 29;
 }
@@ -127,6 +128,7 @@ message EntityEvent {
   bool success = 22;
   string error_message = 23;
   repeated string error_lines = 24;
+  Entity previous_entity = 25;
 }
 
 message CreateEntityRequest {

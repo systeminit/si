@@ -128,7 +128,7 @@ export class SchemaGenerator {
     const graphqlTypePrefixResult = this.services.find(s =>
       protobufFullName.startsWith(`.${s.protoPackageName}`),
     );
-    logger.log("info", "the prefix result is :", {
+    logger.log("debug", "the prefix result is :", {
       graphqlTypePrefixResult,
       protobufItem,
       protobufName,
@@ -136,9 +136,9 @@ export class SchemaGenerator {
     });
     const graphqlTypePrefix = graphqlTypePrefixResult.graphqlTypePrefix;
 
-    logger.log("info", "the prefix is :", { graphqlTypePrefix });
+    logger.log("debug", "the prefix is :", { graphqlTypePrefix });
 
-    logger.log("info", "we have: ", {
+    logger.log("debug", "we have: ", {
       protobufItem,
       protobufName,
       protobufFullName,
@@ -191,7 +191,7 @@ export class SchemaGenerator {
       // is a list type. Otherwise, we can use the passed in
       // type template.
       let gt: typeof t | typeof t.list;
-      if (fieldData.repeated) {
+      if (fieldData.repeated || fieldData.map) {
         gt = t.list;
       } else {
         gt = t;
@@ -200,9 +200,21 @@ export class SchemaGenerator {
       // to GraphQL, so that client side caching can be smart.
       if (field == "id") {
         gt.id(field, fieldConfig);
-
+      } else if (fieldData.map) {
+        // NOTE: This only works with map<string, string> in protobuf.
+        //
+        // If we need to support more complex types, you'll need to
+        // resolve the protobuf field
+        const typeName = this.graphqlTypeName(protobufType);
+        const mapFieldType = field.charAt(0).toUpperCase() + field.slice(1);
+        const mapTypeName = `${typeName}${mapFieldType}Map`;
+        gt.field(field, { type: mapTypeName, ...fieldConfig });
+      } else if (
         // Protobuf floats or doubles live in GraphQL floats.
-      } else if (fieldData.type == "float" || fieldData.type == "double") {
+        fieldData.type == "float" ||
+        fieldData.type == "double" ||
+        fieldData.type == "DoubleValue"
+      ) {
         gt.float(field, fieldConfig);
         // Protobuf integers map to GraphQL integers.
       } else if (
@@ -211,10 +223,14 @@ export class SchemaGenerator {
         fieldData.type == "uint32" ||
         fieldData.type == "sint32" ||
         fieldData.type == "fixed32" ||
-        fieldData.type == "sfixed32"
+        fieldData.type == "sfixed32" ||
+        fieldData.type == "google.protobuf.UInt32Value"
       ) {
         gt.int(field, fieldConfig);
-      } else if (fieldData.type == "bool") {
+      } else if (
+        fieldData.type == "bool" ||
+        fieldData.type == "google.protobuf.BoolValue"
+      ) {
         gt.boolean(field, fieldConfig);
       } else if (
         fieldData.type == "string" ||
@@ -222,7 +238,9 @@ export class SchemaGenerator {
         fieldData.type == "uint64" ||
         fieldData.type == "sint64" ||
         fieldData.type == "fixed64" ||
-        fieldData.type == "sfixed64"
+        fieldData.type == "sfixed64" ||
+        fieldData.type == "bytes" ||
+        fieldData.type == "google.protobuf.StringValue"
       ) {
         gt.string(field, fieldConfig);
       } else {
@@ -481,14 +499,16 @@ export class SchemaGenerator {
               const g = grpc.service(grpcServiceName);
               let req;
               if (input) {
-                req = new g.Request(grpcMethodName, input).withMetadata(
+                const grpcInput = transformInputMethod(input, protobufItem);
+                req = new g.Request(grpcMethodName, grpcInput).withMetadata(
                   metadata,
                 );
               } else {
                 req = new g.Request(grpcMethodName, {}).withMetadata(metadata);
               }
-              const result = await req.exec();
-              return result.response;
+              let result = await req.exec();
+              result = transformOutputMethod(result.response, protobufItem);
+              return result;
             },
           });
         },
@@ -515,16 +535,18 @@ export class SchemaGenerator {
               if (user.authenticated == false && hint["skipauth"] != true) {
                 throw new AuthenticationError("Must be logged in");
               }
+              const grpcInput = transformInputMethod(input, protobufItem);
               const metadata = new Metadata();
               metadata.add("authenticated", `${user.authenticated}`);
               metadata.add("userId", user["userId"] || "");
               metadata.add("billingAccountId", user["billingAccountId"] || "");
               const g = grpc.service(grpcServiceName);
-              const req = new g.Request(grpcMethodName, input).withMetadata(
+              const req = new g.Request(grpcMethodName, grpcInput).withMetadata(
                 metadata,
               );
-              const result = await req.exec();
-              return result.response;
+              let result = await req.exec();
+              result = transformOutputMethod(result.response, protobufItem);
+              return result;
             },
           });
         },
@@ -561,8 +583,42 @@ export class SchemaGenerator {
     if (!this.seenTypes[name]) {
       const hints = this.graphqlHintMessage(protobufType);
       if (hints["skip"]) {
-        logger.log("info", "Skipping type", { name });
+        logger.log("debug", "Skipping type", { name });
         return;
+      }
+
+      // If this is a map type, we need to generate the map
+      // object here. We can't do it down below, because then
+      // we are in the definition, and the types won't be
+      // available.
+      for (const field in protobufType.fields) {
+        const fieldData = protobufType.fields[field];
+        if (fieldData.map) {
+          const typeName = this.graphqlTypeName(protobufType);
+          const mapFieldType = field.charAt(0).toUpperCase() + field.slice(1);
+          const mapTypeName = `${typeName}${mapFieldType}Map`;
+          if (name.endsWith("Request") || hints["inputType"]) {
+            const mapType = inputObjectType({
+              name: mapTypeName,
+              definition(mapt) {
+                mapt.string("key");
+                mapt.string("value");
+              },
+            });
+            this.seenTypes[mapTypeName] = true;
+            this.types.push(mapType);
+          } else {
+            const mapType = objectType({
+              name: mapTypeName,
+              definition(mapt) {
+                mapt.string("key");
+                mapt.string("value");
+              },
+            });
+            this.seenTypes[mapTypeName] = true;
+            this.types.push(mapType);
+          }
+        }
       }
 
       // If the type ends with Request, it is a type defined
@@ -603,14 +659,27 @@ export class SchemaGenerator {
   ): void {
     // If we do not have a current type, then we are at the root.
     // Resolve all the fields, and then load from there.
+    //
+    // But only in the `si` namespace. We don't want to load anybody
+    // elses random stuff, except via reference.
     if (current === undefined) {
       this.protoLoader.root.resolve();
-      current = this.protoLoader.root;
+      const root = this.protoLoader.root;
+      for (const nested of root.nestedArray) {
+        if (nested.name == "si") {
+          current = nested;
+          break;
+        }
+      }
     }
 
     // If this is a protobuf Type, then translate that to a GraphQL Type
     if (current instanceof protobuf.Type) {
-      logger.log("info", "Loading type", { name: current.name });
+      logger.log("info", "Loading type", {
+        name: current.name,
+        current,
+        typeFriend: typeof current,
+      });
       this.protobufTypeToGraphql(current);
       // If this is a protobuf Enum, then translate that to a GraphQL Enum
     } else if (current instanceof protobuf.Enum) {
@@ -638,4 +707,221 @@ export class SchemaGenerator {
     // Walk all the types
     this.traverseTypes();
   }
+}
+
+export function transformOutputType(
+  input: any,
+  protobufType: protobuf.Type,
+): any {
+  protobufType.resolve();
+  if (Array.isArray(input)) {
+    for (const itemId in input) {
+      for (const inputField in input[itemId]) {
+        const inputFieldType = protobufType.fields[inputField];
+        inputFieldType.resolve();
+        input[itemId][inputField] = transformOutputField(
+          input[itemId][inputField],
+          inputFieldType,
+        );
+      }
+    }
+  } else {
+    for (const inputField in input) {
+      const inputFieldType = protobufType.fields[inputField];
+      input[inputField] = transformOutputField(
+        input[inputField],
+        inputFieldType,
+      );
+    }
+  }
+  return input;
+}
+
+export function transformOutputField(
+  inputValue: any,
+  protobufField: protobuf.Field,
+): any {
+  const protobufScalars = [
+    "double",
+    "float",
+    "int32",
+    "int64",
+    "uint32",
+    "uint64",
+    "sint32",
+    "sint64",
+    "fixed32",
+    "fixed64",
+    "sfixed32",
+    "sfixed64",
+    "bool",
+    "string",
+    "bytes",
+  ];
+  const googleWellKnownTypeWrappers = [
+    "google.protobuf.DoubleValue",
+    "google.protobuf.FloatValue",
+    "google.protobuf.Int64Value",
+    "google.protobuf.UInt64Value",
+    "google.protobuf.Int32Value",
+    "google.protobuf.UInt32Value",
+    "google.protobuf.BoolValue",
+    "google.protobuf.StringValue",
+    "google.protobuf.BytesValue",
+  ];
+  if (protobufField.map) {
+    const arrayMap = [];
+    for (const [key, value] of Object.entries(inputValue)) {
+      if (protobufScalars.includes(protobufField.type)) {
+        arrayMap.push({ key: key, value: value });
+      } else if (googleWellKnownTypeWrappers.includes(protobufField.type)) {
+        arrayMap.push({ key: key, value: value["value"] });
+      } else {
+        protobufField.resolve();
+        arrayMap.push({
+          key: key,
+          value: transformOutputType(
+            value,
+            protobufField.resolvedType as protobuf.Type,
+          ),
+        });
+        //map[entry.key] = transformInputType(
+        //  entry.value,
+        //  protobufField.resolvedType as protobuf.Type,
+        //);
+      }
+    }
+    return arrayMap;
+  } else if (protobufScalars.includes(protobufField.type)) {
+    return inputValue;
+  } else if (googleWellKnownTypeWrappers.includes(protobufField.type)) {
+    if (inputValue === null) {
+      return null;
+    } else {
+      return inputValue["value"];
+    }
+  } else {
+    protobufField.resolve();
+    return transformOutputType(
+      inputValue,
+      protobufField.resolvedType as protobuf.Type,
+    );
+  }
+}
+
+export function transformOutputMethod(
+  input: any,
+  protobufItem: protobuf.Method,
+): any {
+  protobufItem.resolve();
+  const responseType = protobufItem.resolvedResponseType;
+  return transformOutputType(input, responseType);
+}
+
+export function transformInputField(
+  inputValue: any,
+  protobufField: protobuf.Field,
+): any {
+  const protobufScalars = [
+    "double",
+    "float",
+    "int32",
+    "int64",
+    "uint32",
+    "uint64",
+    "sint32",
+    "sint64",
+    "fixed32",
+    "fixed64",
+    "sfixed32",
+    "sfixed64",
+    "bool",
+    "string",
+    "bytes",
+  ];
+  const googleWellKnownTypeWrappers = [
+    "google.protobuf.DoubleValue",
+    "google.protobuf.FloatValue",
+    "google.protobuf.Int64Value",
+    "google.protobuf.UInt64Value",
+    "google.protobuf.Int32Value",
+    "google.protobuf.UInt32Value",
+    "google.protobuf.BoolValue",
+    "google.protobuf.StringValue",
+    "google.protobuf.BytesValue",
+  ];
+
+  if (Array.isArray(inputValue) && protobufField.map) {
+    const map = {};
+    for (const entry of inputValue) {
+      if (protobufScalars.includes(protobufField.type)) {
+        map[entry.key] = entry.value;
+      } else if (googleWellKnownTypeWrappers.includes(protobufField.type)) {
+        map[entry.key] = { value: entry.value };
+      } else {
+        protobufField.resolve();
+        map[entry.key] = transformInputType(
+          entry.value,
+          protobufField.resolvedType as protobuf.Type,
+        );
+      }
+    }
+    return map;
+  } else if (protobufScalars.includes(protobufField.type)) {
+    return inputValue;
+  } else if (googleWellKnownTypeWrappers.includes(protobufField.type)) {
+    return { value: inputValue };
+  } else {
+    protobufField.resolve();
+    return transformInputType(
+      inputValue,
+      protobufField.resolvedType as protobuf.Type,
+    );
+  }
+}
+
+export function transformInputType(
+  input: any,
+  protobufType: protobuf.Type,
+): any {
+  protobufType.resolve();
+  if (Array.isArray(input)) {
+    for (const itemId in input) {
+      for (const inputField in input[itemId]) {
+        const inputFieldType = protobufType.fields[inputField];
+        inputFieldType.resolve();
+        input[itemId][inputField] = transformInputField(
+          input[itemId][inputField],
+          inputFieldType,
+        );
+      }
+    }
+  } else {
+    for (const inputField in input) {
+      const inputFieldType = protobufType.fields[inputField];
+      input[inputField] = transformInputField(
+        input[inputField],
+        inputFieldType,
+      );
+    }
+  }
+  return input;
+}
+
+export function transformInputMethod(
+  input: any,
+  protobufItem: protobuf.Method,
+): any {
+  // Resolve the whole item, so we have all the fields and attributes
+  //
+  // Steps:
+  //
+  // 1) Get the request type from the method
+  // 2) Look up the request type
+  // 3) Walk the top level properties of the input, and look for fields that match the request type. If any of those fields are well known types or maps, convert them to the right structure.
+  // 4) If we find a type, resolve that type.
+  // 5) Return the results.
+  protobufItem.resolve();
+  const requestType = protobufItem.resolvedRequestType;
+  return transformInputType(input, requestType);
 }

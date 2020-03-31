@@ -88,11 +88,19 @@ export const services = [
     graphqlTypePrefix: "AwsEksClusterRuntime",
     address: environment.services["si-aws-eks-cluster-runtime"],
   }),
-
-  // new ServiceDescription({
-  //   serviceName: "si-ssh-key",
-  //   protoPackageName: "ssh_key",
-  //   graphqlTypePrefix: "SshKey",
-  //   address: environment.services["si-ssh-key"],
-  // }),
+  new ServiceDescription({
+    serviceName: "si-kubernetes",
+    protoPackageName: "si.kubernetes.deployment",
+    grpcServiceName: "KubernetesDeployment",
+    graphqlTypePrefix: "KubernetesDeployment",
+    address: environment.services["si-kubernetes"],
+  }),
+  new ServiceDescription({
+    serviceName: "si-kubernetes",
+    protoPackageName: "si.kubernetes",
+    grpcServiceName: "Kubernetes",
+    graphqlTypePrefix: "Kubernetes",
+    address: environment.services["si-kubernetes"],
+    dataOnly: true,
+  }),
 ];

@@ -2133,6 +2133,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_yaml"
+version = "0.8.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "691b17f19fc1ec9d94ec0b5864859290dff279dbd7b03f017afda54eb36c3c35"
+dependencies = [
+ "dtoa",
+ "linked-hash-map 0.5.2",
+ "serde 1.0.104",
+ "yaml-rust",
+]
+
+[[package]]
 name = "sharded-slab"
 version = "0.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2234,6 +2246,7 @@ dependencies = [
  "prost-derive",
  "serde 1.0.104",
  "serde_json",
+ "serde_yaml",
  "si-account",
  "si-data",
  "si-settings",
@@ -2286,6 +2299,51 @@ dependencies = [
  "thiserror",
  "tonic",
  "tonic-build",
+]
+
+[[package]]
+name = "si-kubernetes"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-stream",
+ "async-trait",
+ "base64 0.10.1",
+ "bytes 0.5.4",
+ "chrono",
+ "config",
+ "couchbase",
+ "futures 0.3.1",
+ "http 0.2.0",
+ "lazy_static 1.4.0",
+ "names",
+ "opentelemetry",
+ "paho-mqtt",
+ "prost",
+ "prost-derive",
+ "prost-types",
+ "serde 1.0.104",
+ "serde_cbor",
+ "serde_json",
+ "serde_yaml",
+ "si-account",
+ "si-cea",
+ "si-data",
+ "si-external-api-gateway",
+ "si-settings",
+ "sodiumoxide",
+ "tempfile",
+ "thiserror",
+ "tokio 0.2.11",
+ "toml 0.5.6",
+ "tonic",
+ "tonic-build",
+ "tower",
+ "tracing",
+ "tracing-futures 0.2.2",
+ "tracing-opentelemetry",
+ "tracing-subscriber 0.2.1",
+ "uuid",
 ]
 
 [[package]]

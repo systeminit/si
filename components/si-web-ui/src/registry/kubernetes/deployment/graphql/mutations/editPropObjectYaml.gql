@@ -1,0 +1,66 @@
+mutation kubernetesDeploymentEditPropObjectYaml(
+  $entityId: String!,
+  $workspaceId: String!,
+  $prop: String!,
+) {
+  kubernetesDeploymentEditPropObject(
+    input: {
+      entityId: $entityId
+      workspaceId: $workspaceId
+      prop: $prop
+    }
+  ) {
+    entity {
+      id
+      kubernetesVersion
+      object {
+        apiVersion
+        kind
+      }
+      objectYaml
+      state
+    }
+    event {
+      id
+      actionName
+      entityId
+      typeName
+      createTime
+      updatedTime
+      finalTime
+      finalized
+      outputLines
+      errorLines
+      success
+      inputEntity {
+        id
+        kubernetesVersion
+        object {
+          apiVersion
+          kind
+        }
+        objectYaml
+        state
+      }
+      outputEntity {
+        id
+        kubernetesVersion
+        object {
+          apiVersion
+          kind
+        }
+        state
+      }
+      previousEntity {
+        id
+        kubernetesVersion
+        object {
+          apiVersion
+          kind
+        }
+        objectYaml
+        state
+      }
+    }
+  }
+}

@@ -10,6 +10,7 @@ members = [
   "components/si-ssh-key",
   "components/si-external-api-gateway/rust-client",
   "components/si-aws-eks-cluster-runtime",
+  "components/si-kubernetes",
   "vendor/couchbase-rs/couchbase-sys",
   "vendor/couchbase-rs/couchbase",
 ]

@@ -1,0 +1,7 @@
+fragment MetaData on KubernetesMetaData {
+  name
+  labels {
+    key
+    value
+  }
+}

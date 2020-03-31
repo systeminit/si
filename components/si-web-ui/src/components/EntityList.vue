@@ -3,9 +3,9 @@
     <v-row no-gutters class="justify-start">
       <v-col cols="12">
         <v-card cols="12">
-          <v-alert type="error" dismissible v-if="errorMessage">
-            {{ errorMessage }}
-          </v-alert>
+          <v-alert type="error" dismissible v-if="errorMessage">{{
+            errorMessage
+          }}</v-alert>
 
           <v-card-title>
             {{ siComponent.name }}
@@ -62,13 +62,12 @@
                   v-model="options.itemsPerPage"
                   :items="itemsPerPageOptions"
                   label="Items Per Page"
-                >
-                </v-select>
+                ></v-select>
               </v-card>
               <v-card flat class="align-self-center pa-2">
-                <v-btn @click="showMore" :disabled="showMoreDisabled">
-                  Load More
-                </v-btn>
+                <v-btn @click="showMore" :disabled="showMoreDisabled"
+                  >Load More</v-btn
+                >
               </v-card>
             </v-card>
           </v-card-actions>

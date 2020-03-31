@@ -21,9 +21,9 @@
 
 include ./components/build/deps.mk
 
-COMPONENTS = components/si-data components/si-account components/si-settings components/si-graphql-api components/si-web-ui components/si-ssh-key components/si-external-api-gateway components/si-aws-eks-cluster-runtime
-RELEASEABLE_COMPONENTS = components/si-account components/si-graphql-api components/si-ssh-key components/si-external-api-gateway components/si-aws-eks-cluster-runtime 
-RUNNABLE_COMPONENTS = components/si-account components/si-graphql-api components/si-web-ui components/si-ssh-key components/si-external-api-gateway components/si-aws-eks-cluster-runtime
+COMPONENTS = components/si-data components/si-account components/si-settings components/si-graphql-api components/si-web-ui components/si-ssh-key components/si-external-api-gateway components/si-aws-eks-cluster-runtime components/si-kubernetes
+RELEASEABLE_COMPONENTS = components/si-account components/si-graphql-api components/si-ssh-key components/si-external-api-gateway components/si-aws-eks-cluster-runtime components/si-kubernetes
+RUNNABLE_COMPONENTS = components/si-account components/si-graphql-api components/si-web-ui components/si-ssh-key components/si-external-api-gateway components/si-aws-eks-cluster-runtime components/si-kubernetes
 BUILDABLE = $(patsubst %,build//%,$(COMPONENTS))
 TESTABLE = $(patsubst %,test//%,$(COMPONENTS))
 RELEASEABLE = $(patsubst %,release//%,$(RELEASEABLE_COMPONENTS))

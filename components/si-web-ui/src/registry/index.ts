@@ -1,6 +1,7 @@
 import { SiComponent } from "@/registry/siComponent";
 import { sshKey } from "@/registry/sshKey";
 import { awsEksClusterRuntime } from "@/registry/awsEksClusterRuntime";
+import { kubernetesDeployment } from "@/registry/kubernetes/deployment";
 
 export class SiComponentRegistry {
   siComponents: { [key: string]: SiComponent };
@@ -31,4 +32,5 @@ export class SiComponentRegistry {
 export const siComponentRegistry = new SiComponentRegistry([
   sshKey,
   awsEksClusterRuntime,
+  kubernetesDeployment,
 ]);

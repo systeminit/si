@@ -44,6 +44,8 @@ pub enum CeaError {
     ConversionError(Box<dyn std::error::Error + Send + Sync>),
     #[error("action error: {0}")]
     ActionError(String),
+    #[error("request is missing a required prop value")]
+    RequestMissingProp,
 
     // MQTT
     #[error("mqtt failed: {0}")]
@@ -93,6 +95,12 @@ pub enum CeaError {
         #[from]
         tokio::sync::mpsc::error::SendError<crate::agent::utility::spawn_command::OutputLine>,
     ),
+
+    // Serde
+    #[error("serde cannot convert json from a string: {0}")]
+    JsonString(#[from] serde_json::error::Error),
+    #[error("serde cannot serialize/deserialze to yaml: {0}")]
+    Yaml(#[from] serde_yaml::Error),
 }
 
 impl CeaError {

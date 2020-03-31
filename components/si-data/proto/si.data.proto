@@ -29,7 +29,7 @@ message QueryExpression {
 
 message Query {
   repeated QueryExpressionOption items = 1;
-  QueryBooleanLogic boolean_term = 3;
+  si.data.QueryBooleanLogic boolean_term = 3;
   bool is_not = 4;
 }
 

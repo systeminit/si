@@ -1,0 +1,20 @@
+apiVersion = "apps/v1"
+kind = "Deployment"
+[metadata]
+name = "nginx-deployment"
+[[metadata.labels]]
+key = "app"
+value = "nginx"
+[spec]
+replicas = 3
+[[spec.selector.matchLabels]]
+key = "app"
+value = "nginx"
+[[spec.template.metadata.labels]]
+key = "app"
+value = "nginx"
+[[spec.template.spec.containers]]
+name = "nginx"
+image = "nginx:1.7.9"
+[[spec.template.spec.containers.ports]]
+containerPort = 80

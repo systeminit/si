@@ -8,7 +8,8 @@
     "start": "ts-node-dev --no-notify --transpileOnly --respawn -r tsconfig-paths/register src/index.ts",
     "prod": "ts-node --log-error -r tsconfig-paths/register src/index.ts",
     "build": "tsc",
-    "test": "jest --passWithNoTests"
+    "test": "jest --passWithNoTests --detectOpenHandles --forceExit",
+    "test-watch": "jest --passWithNoTests --detectOpenHandles --forceExit --watch"
   },
   "keywords": [],
   "author": "The System Initiative, Inc.",

@@ -22,7 +22,7 @@ pub use crate::binary::server::setup_tracing;
 pub use crate::component::{
     Component, ImplicitConstraints, MigrateComponent, PickComponentRequest,
 };
-pub use crate::entity::Entity;
+pub use crate::entity::{Entity, EntityState};
 pub use crate::entity_event::EntityEvent;
 pub use crate::error::{CeaError, CeaResult, TonicResult};
 pub use crate::list::{ListReply, ListRequest};

@@ -63,6 +63,13 @@ pub async fn migrate(db: &Db) -> Result<()> {
                     version: 1,
                     ..Default::default()
                 },
+                IntegrationService {
+                    name: "eks_kubernetes".to_string(),
+                    display_name: "EKS Kubernetes".to_string(),
+                    tenant_ids: vec!["global".to_string()],
+                    version: 1,
+                    ..Default::default()
+                },
             ],
         ),
     ];

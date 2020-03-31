@@ -1,12 +1,16 @@
 <template>
   <StandardLayout>
-    <Editor :entityType="entityType"></Editor>
+    <EntityCreate
+      :entityType="entityType"
+      :organizationId="organizationId"
+      :workspaceId="workspaceId"
+    ></EntityCreate>
   </StandardLayout>
 </template>
 
 <script lang="ts">
 import StandardLayout from "@/components/StandardLayout.vue";
-import Editor from "@/components/Editor.vue";
+import EntityCreate from "@/components/entity/create.vue";
 
 export default {
   name: "workspaceCreateEntity",
@@ -17,7 +21,7 @@ export default {
   },
   components: {
     StandardLayout,
-    Editor,
+    EntityCreate,
   },
 };
 </script>

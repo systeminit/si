@@ -1,0 +1,55 @@
+#import "../../../graphql/fragments/metadata.gql"
+
+query kubernetesDeploymentGetEntity($entityId: String) {
+  kubernetesDeploymentGetEntity(input: { entityId: $entityId }) {
+    entity {
+      id
+      naturalKey
+      typeName
+      name
+      displayName
+      description
+      constraints {
+        kubernetesVersion
+      }
+      implicitConstraints {
+        field
+        value
+      }
+      state
+      kubernetesVersion
+      object {
+        apiVersion
+        kind
+        metadata {
+          ... MetaData
+        }
+        spec {
+          replicas
+          selector {
+            matchLabels {
+              key
+              value
+            }
+          }
+          template {
+            metadata {
+              ... MetaData
+            }
+            spec {
+              containers {
+                name
+                image
+                ports {
+                  containerPort
+                }
+              }
+            }
+          }
+        }
+      }
+      objectYaml
+    }
+  }
+}
+

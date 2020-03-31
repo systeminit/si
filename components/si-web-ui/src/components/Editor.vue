@@ -6,23 +6,36 @@
           <v-row no-gutters class="flex-grow-0">
             <v-col cols="12">
               <v-card :loading="loading">
-                <v-card-title>Create {{ siComponent.name }}</v-card-title>
+                <v-alert type="error" dismissible v-if="errorMessage">
+                  {{ errorMessage }}
+                </v-alert>
+                <v-card-title>
+                  {{ operationName }} {{ siComponent.name }}
+                  {{ editName }}
+                </v-card-title>
                 <v-card-text>
                   <codemirror
                     :value="code"
                     :options="cmOptions"
                     @input="onCmCodeChange"
-                  >
-                  </codemirror>
+                  ></codemirror>
                 </v-card-text>
+
                 <v-card-actions>
                   <v-spacer></v-spacer>
-                  <v-btn @click="resetComponentState">
-                    Reset
-                  </v-btn>
-                  <v-btn @click="createEntity" :disabled="cmOptions.readOnly">
-                    Create
-                  </v-btn>
+                  <v-btn @click="resetComponentState">Reset</v-btn>
+                  <v-btn
+                    v-if="operation == 'create'"
+                    @click="createEntity"
+                    :disabled="cmOptions.readOnly"
+                    >Create</v-btn
+                  >
+                  <v-btn
+                    v-else
+                    @click="editEntity"
+                    :disabled="cmOptions.readOnly"
+                    >Edit</v-btn
+                  >
                 </v-card-actions>
               </v-card>
             </v-col>
@@ -130,8 +143,7 @@
                                 :value="
                                   streamEntityEvent.outputLines.join('\n')
                                 "
-                              >
-                              </v-textarea>
+                              ></v-textarea>
                             </v-tab-item>
                             <v-tab-item>
                               <v-textarea
@@ -141,8 +153,7 @@
                                 flat
                                 readonly
                                 :value="streamEntityEvent.errorLines.join('\n')"
-                              >
-                              </v-textarea>
+                              ></v-textarea>
                             </v-tab-item>
                           </v-tabs-items>
                         </v-card-text>
@@ -151,7 +162,9 @@
                   </v-card>
                   <v-card v-else>
                     <v-card-title>No Entity Events</v-card-title>
-                    <v-card-text>Maybe hit the "Create" button?</v-card-text>
+                    <v-card-text
+                      >Maybe hit the "{{ operationName }}" button?</v-card-text
+                    >
                   </v-card>
                 </v-tab-item>
                 <v-tab-item key="entity">
@@ -172,7 +185,7 @@
                   <v-card v-else>
                     <v-card-title>No Entity</v-card-title>
                     <v-card-text>
-                      No Entity yet; maybe hit the "Create" button?
+                      No Entity yet; maybe hit the "{{ operationName }}" button?
                     </v-card-text>
                   </v-card>
                 </v-tab-item>
@@ -224,14 +237,27 @@ export default Vue.extend({
   name: "Editor",
   props: {
     entityType: String,
+    entityId: String,
+    operation: String,
+    organizationId: String,
+    workspaceId: String,
   },
   data() {
     const newEntityName = NameGenerator.generate({ words: 2, number: true });
     const siComponent = siComponentRegistry.lookup(this.entityType);
-    return {
-      code: `name = "${newEntityName.dashed}"
+    let code;
+    if (this.entityId) {
+      code = `loading...`;
+    } else {
+      code = `name = "${newEntityName.dashed}"
 displayName = "${newEntityName.spaced}"
-description = "${siComponent.name} ${newEntityName.spaced}"`,
+description = "${siComponent.name} ${newEntityName.spaced}"`;
+    }
+    console.log("I have code", { code });
+    return {
+      errorMessage: null,
+      code,
+      originalCode: code,
       tab: null,
       agentOutputTab: null,
       createEntityData: null,
@@ -262,20 +288,53 @@ description = "${siComponent.name} ${newEntityName.spaced}"`,
       this.createEntityData = null;
       this.streamEntityEvent = null;
       this.checkComponent = null;
-      this.skipStream = true;
       this.cmOptions["readOnly"] = false;
       this.tab = 0;
-      this.code = `name = "${newEntityName.dashed}"
-displayName = "${newEntityName.spaced}"
-description = "${siComponent.name} ${newEntityName.spaced}"`;
+      if (this.operation == "create") {
+        this.code = `name = "${newEntityName.dashed}"
+  displayName = "${newEntityName.spaced}"
+  description = "${siComponent.name} ${newEntityName.spaced}"`;
+      } else {
+        this.code = this.originalCode;
+      }
       this.$apollo.queries.checkComponent.refresh();
-      this.$apollo.subscriptions.entityEvents.refresh();
     },
     onCmCodeChange(newCode) {
       this.code = newCode;
     },
+    async editEntity() {
+      this.tab = 1;
+      this.cmOptions["readOnly"] = true;
+      let inputData;
+      if (this.inputData.parsed) {
+        inputData = this.inputData.parsed;
+      } else {
+        inputData = {};
+      }
+      inputData["workspaceId"] = this.workspaceId;
+      inputData["entityId"] = this.entityId;
+      inputData["prop"] = inputData["props"];
+
+      let siComponent = siComponentRegistry.lookup(this.entityType);
+
+      try {
+        let data = await this.$apollo.mutate({
+          mutation: siComponent.editEntity,
+          variables: inputData,
+        });
+      } catch (error) {
+          this.tab = 0;
+          this.cmOptions["readOnly"] = false;
+          this.errorMessage = `Edit error: ${error.message}`;
+          this.loading = false;
+          return;
+      }
+      this.createEntityData = data.data[siComponent.resultString("EditEntity")];
+      this.streamEntityEvent = this.createEntityData.event;
+      this.loading = false;
+    },
     async createEntity() {
-      this.loading = true;
+      //this.loading = true;
       this.tab = 1;
       this.cmOptions["readOnly"] = true;
       let inputData;
@@ -289,17 +348,43 @@ description = "${siComponent.name} ${newEntityName.spaced}"`;
 
       let siComponent = siComponentRegistry.lookup(this.entityType);
 
-      let data = await this.$apollo.mutate({
-        mutation: siComponent.createEntity,
-        variables: inputData,
-      });
+      try {
+        let data = await this.$apollo.mutate({
+          mutation: siComponent.createEntity,
+          variables: inputData,
+        });
+      } catch (error) {
+          this.tab = 0;
+          this.cmOptions["readOnly"] = false;
+          this.errorMessage = `Create error: ${error.message}`;
+          this.loading = false;
+          return;
+      }
       this.createEntityData = data.data[siComponent.createEntityResultString()];
+      this.entityId = createEntityData.entity.id;
       this.streamEntityEvent = this.createEntityData.event;
-      this.skipStream = false;
       this.loading = false;
     },
   },
   computed: {
+    editName() {
+      if (this.operation == "create") {
+        return "";
+      } else {
+        if (this.getEntity && this.getEntity.displayName) {
+          return this.getEntity.displayName;
+        } else {
+          return "loading..."
+        }
+      }
+    },
+    operationName() {
+      if (this.operation == "create") {
+        return "Create";
+      } else {
+        return "Edit";
+      }
+    },
     inputData() {
       try {
         let objectData = TOML.parse(this.code);
@@ -316,6 +401,34 @@ description = "${siComponent.name} ${newEntityName.spaced}"`;
     },
   },
   apollo: {
+    getEntity: {
+      query() {
+        let siComponent = siComponentRegistry.lookup(this.entityType);
+        return siComponent.getEntity;
+      },
+      update(data) {
+        let resultString = siComponentRegistry
+          .lookup(this.entityType)
+          .getEntityResultString();
+
+        if (data[resultString] && data[resultString]["entity"]) {
+          let siComponent = siComponentRegistry.lookup(this.entityType);
+          this.code = siComponent.generateSpec(data[resultString]["entity"]);
+          this.originalCode = siComponent.generateSpec(data[resultString]["entity"]);
+          return data[resultString]["entity"];
+        } else {
+          return {};
+        }
+      },
+      variables() {
+        return {
+          entityId: this.entityId,
+        };
+      },
+      skip() {
+        return this.operation == "create";
+      }
+    },
     $subscribe: {
       entityEvents: {
         query() {
@@ -323,24 +436,26 @@ description = "${siComponent.name} ${newEntityName.spaced}"`;
           return siComponent.streamEntityEvents;
         },
         variables() {
-          if (!this.createEntityData) {
-            return {}
-          }
           return {
-            scopeByTenantId: this.createEntityData.entity.id,
-          };
+            scopeByTenantId: auth.getCurrentWorkspace().id,
+          }
         },
         result({ data }) {
-          let siComponent = siComponentRegistry.lookup(this.entityType);
-          this.streamEntityEvent =
-            data[siComponent.streamEntityEventsResultString()];
-          if (this.streamEntityEvent && this.streamEntityEvent.finalized) {
-            this.tab = 2;
+          if (this.createEntityData && this.createEntityData.entity && this.createEntityData.entity.id) {
+            let siComponent = siComponentRegistry.lookup(this.entityType);
+            let entityEvent = data[siComponent.streamEntityEventsResultString()];
+            if (entityEvent && (entityEvent.entityId == this.createEntityData.entity.id)) {
+              this.streamEntityEvent = entityEvent;
+              if (this.streamEntityEvent && this.streamEntityEvent.finalized) {
+                this.tab = 2;
+              }
+            }
           }
         },
-        skip() {
-          return this.skipStream;
-        }
+        error(error, vm, key, type, options) {
+          this.errorMessage = `Event error: ${error.message}`;
+          this.loading = false;
+        },
       },
     },
     checkComponent: {
@@ -372,6 +487,10 @@ description = "${siComponent.name} ${newEntityName.spaced}"`;
         } else {
           return {};
         }
+      },
+      error(error, vm, key, type, options) {
+        this.errorMessage = `Check component error: ${error.message}`;
+        this.loading = false;
       },
     },
   },

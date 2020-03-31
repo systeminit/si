@@ -3,13 +3,11 @@
     <v-row no-gutters class="justify-start">
       <v-col cols="12">
         <v-card cols="12">
-          <v-alert type="error" dismissible v-if="errorMessage">
-            {{ errorMessage }}
-          </v-alert>
+          <v-alert type="error" dismissible v-if="errorMessage">{{
+            errorMessage
+          }}</v-alert>
 
-          <v-card-title>
-            Events
-          </v-card-title>
+          <v-card-title>Events</v-card-title>
           <v-card-text>
             <v-data-table
               :headers="headers"
@@ -26,9 +24,7 @@
                   <v-list>
                     <v-list-item>
                       <v-list-item-content>
-                        <v-list-item-title>
-                          Output
-                        </v-list-item-title>
+                        <v-list-item-title>Output</v-list-item-title>
                         <v-textarea
                           on-resize
                           outlined
@@ -41,9 +37,7 @@
                     </v-list-item>
                     <v-list-item>
                       <v-list-item-content>
-                        <v-list-item-title>
-                          Error
-                        </v-list-item-title>
+                        <v-list-item-title>Error</v-list-item-title>
                         <v-textarea
                           on-resize
                           outlined
@@ -72,13 +66,12 @@
                   v-model="options.itemsPerPage"
                   :items="itemsPerPageOptions"
                   label="Items Per Page"
-                >
-                </v-select>
+                ></v-select>
               </v-card>
               <v-card flat class="align-self-center pa-2">
-                <v-btn @click="showMore" :disabled="showMoreDisabled">
-                  Load More
-                </v-btn>
+                <v-btn @click="showMore" :disabled="showMoreDisabled"
+                  >Load More</v-btn
+                >
               </v-card>
             </v-card>
           </v-card-actions>
@@ -264,6 +257,9 @@ export default Vue.extend({
       error(error, vm, key, type, options) {
         this.errorMessage = error.message;
       },
+      skip() {
+        return !this.entityId;
+      }
     },
   },
 });
