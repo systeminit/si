@@ -1,6 +1,11 @@
 <template>
   <StandardLayout>
-    <EntityShow :entityType="entityType" :entityId="entityId"></EntityShow>
+    <EntityShow
+      :entityType="entityType"
+      :entityId="entityId"
+      :organizationId="organizationId"
+      :workspaceId="workspaceId"
+    ></EntityShow>
   </StandardLayout>
 </template>
 

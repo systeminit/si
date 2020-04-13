@@ -9,7 +9,8 @@ use si_data::{Db, Storable};
 
 pub mod prelude {
     pub use crate::{
-        gen_entity, gen_entity_event, CeaError, CeaResult, ListReply as _, ListRequest as _,
+        gen_entity, gen_entity_event, CeaError, CeaResult, Entity as _, ListReply as _,
+        ListRequest as _,
     };
     pub use si_data::{ListResult, Query, Storable as _};
     pub use uuid::Uuid;
@@ -19,6 +20,7 @@ pub enum EntityState {
     Uninitialized = 0,
     Error = 1,
     Ok = 2,
+    Transition = 3,
 }
 
 #[async_trait]
@@ -42,6 +44,15 @@ pub trait Entity:
     fn billing_account_id(&self) -> &str;
     fn set_billing_account_id(&mut self, billing_account_id: impl Into<String>);
     fn validate(&self) -> CeaResult<()>;
+
+    fn set_state_transition(&mut self) {
+        self.set_state(EntityState::Transition as i32);
+    }
+
+    async fn save(&self, db: &Db) -> CeaResult<()> {
+        db.upsert(self).await?;
+        Ok(())
+    }
 
     async fn get(db: &Db, id: &str) -> CeaResult<Self> {
         let entity = db.get(id).await?;

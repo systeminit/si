@@ -317,6 +317,9 @@ type AwsEksClusterRuntimeEntityEvent implements EntityEvent {
   """outputLines"""
   outputLines: [String!]
 
+  """previousEntity"""
+  previousEntity: AwsEksClusterRuntimeEntity
+
   """success"""
   success: Boolean
 
@@ -507,6 +510,7 @@ enum AwsEksClusterRuntimeState {
   ERROR
   OK
   STATE_UNKNOWN
+  TRANSITION
 }
 
 type AwsEksClusterRuntimeSyncEntityReply {
@@ -967,6 +971,625 @@ type IntegrationService {
   version: Int
 }
 
+type KubernetesContainer {
+  """image"""
+  image: String
+
+  """name"""
+  name: String
+
+  """ports"""
+  ports: [KubernetesContainerPorts!]
+}
+
+type KubernetesContainerPorts {
+  """containerPort"""
+  containerPort: Int
+}
+
+input KubernetesContainerPortsRequest {
+  """containerPort"""
+  containerPort: Int
+}
+
+input KubernetesContainerRequest {
+  """image"""
+  image: String
+
+  """name"""
+  name: String
+
+  """ports"""
+  ports: [KubernetesContainerPortsRequest!]
+}
+
+type KubernetesDeploymentComponent {
+  """description"""
+  description: String
+
+  """displayName"""
+  displayName: String
+
+  """displayTypeName"""
+  displayTypeName: String
+
+  """id"""
+  id: ID
+
+  """integrationId"""
+  integration: Integration
+
+  """integrationId"""
+  integrationId: String
+
+  """integrationServiceId"""
+  integrationService: IntegrationService
+
+  """integrationServiceId"""
+  integrationServiceId: String
+
+  """kubernetesVersion"""
+  kubernetesVersion: String
+
+  """name"""
+  name: String
+
+  """naturalKey"""
+  naturalKey: String
+
+  """tenantIds"""
+  tenantIds: [String!]
+
+  """typeName"""
+  typeName: String
+
+  """version"""
+  version: Int
+}
+
+type KubernetesDeploymentConstraints {
+  """displayName"""
+  displayName: String
+
+  """integrationId"""
+  integrationId: String
+
+  """integrationServiceId"""
+  integrationServiceId: String
+
+  """kubernetesVersion"""
+  kubernetesVersion: String
+
+  """name"""
+  name: String
+}
+
+type KubernetesDeploymentCreateEntityReply {
+  """entity"""
+  entity: KubernetesDeploymentEntity
+
+  """event"""
+  event: KubernetesDeploymentEntityEvent
+}
+
+input KubernetesDeploymentCreateEntityRequest {
+  """constraints"""
+  constraints: KubernetesDeploymentPickComponentRequest
+
+  """description"""
+  description: String
+
+  """displayName"""
+  displayName: String
+
+  """name"""
+  name: String
+
+  """props"""
+  props: KubernetesDeploymentPropsRequest
+
+  """workspaceId"""
+  workspaceId: String
+}
+
+type KubernetesDeploymentDeployment {
+  """apiVersion"""
+  apiVersion: String
+
+  """kind"""
+  kind: String
+
+  """metadata"""
+  metadata: KubernetesMetaData
+
+  """spec"""
+  spec: KubernetesDeploymentSpec
+}
+
+input KubernetesDeploymentDeploymentRequest {
+  """apiVersion"""
+  apiVersion: String
+
+  """kind"""
+  kind: String
+
+  """metadata"""
+  metadata: KubernetesMetaDataRequest
+
+  """spec"""
+  spec: KubernetesDeploymentSpecRequest
+}
+
+type KubernetesDeploymentEditPropObjectReply {
+  """entity"""
+  entity: KubernetesDeploymentEntity
+
+  """event"""
+  event: KubernetesDeploymentEntityEvent
+}
+
+input KubernetesDeploymentEditPropObjectRequest {
+  """entityId"""
+  entityId: String
+
+  """prop"""
+  prop: KubernetesDeploymentDeploymentRequest
+
+  """workspaceId"""
+  workspaceId: String
+}
+
+type KubernetesDeploymentEditPropObjectYamlReply {
+  """entity"""
+  entity: KubernetesDeploymentEntity
+
+  """event"""
+  event: KubernetesDeploymentEntityEvent
+}
+
+input KubernetesDeploymentEditPropObjectYamlRequest {
+  """entityId"""
+  entityId: String
+
+  """prop"""
+  prop: String
+
+  """workspaceId"""
+  workspaceId: String
+}
+
+type KubernetesDeploymentEntity {
+  """billingAccountId"""
+  billingAccount: BillingAccount
+
+  """billingAccountId"""
+  billingAccountId: String
+
+  """componentId"""
+  componentId: String
+
+  """constraints"""
+  constraints: KubernetesDeploymentConstraints
+
+  """description"""
+  description: String
+
+  """displayName"""
+  displayName: String
+
+  """id"""
+  entityEvents(input: KubernetesDeploymentListEntityEventsRequest): KubernetesDeploymentListEntityEventsReply
+
+  """id"""
+  id: ID
+
+  """implicitConstraints"""
+  implicitConstraints: [KubernetesDeploymentImplicitConstraint!]
+
+  """integrationId"""
+  integration: Integration
+
+  """integrationId"""
+  integrationId: String
+
+  """integrationServiceId"""
+  integrationService: IntegrationService
+
+  """integrationServiceId"""
+  integrationServiceId: String
+
+  """kubernetesVersion"""
+  kubernetesVersion: String
+
+  """linkedEntityIds"""
+  linkedEntityIds: [String!]
+
+  """name"""
+  name: String
+
+  """naturalKey"""
+  naturalKey: String
+
+  """object"""
+  object: KubernetesDeploymentDeployment
+
+  """objectYaml"""
+  objectYaml: String
+
+  """organizationId"""
+  organization: Organization
+
+  """organizationId"""
+  organizationId: String
+
+  """state"""
+  state: KubernetesDeploymentState
+
+  """tenantIds"""
+  tenantIds: [String!]
+
+  """typeName"""
+  typeName: String
+
+  """workspaceId"""
+  workspace: Workspace
+
+  """workspaceId"""
+  workspaceId: String
+}
+
+type KubernetesDeploymentEntityEvent implements EntityEvent {
+  """actionName"""
+  actionName: String
+
+  """billingAccountId"""
+  billingAccountId: String
+
+  """componentId"""
+  componentId: String
+
+  """createTime"""
+  createTime: String
+
+  """entityId"""
+  entity: KubernetesDeploymentEntity
+
+  """entityId"""
+  entityId: String
+
+  """errorLines"""
+  errorLines: [String!]
+
+  """errorMessage"""
+  errorMessage: String
+
+  """finalized"""
+  finalized: Boolean
+
+  """finalTime"""
+  finalTime: String
+
+  """id"""
+  id: ID
+
+  """inputEntity"""
+  inputEntity: KubernetesDeploymentEntity
+
+  """integrationId"""
+  integrationId: String
+
+  """integrationServiceId"""
+  integrationServiceId: String
+
+  """naturalKey"""
+  naturalKey: String
+
+  """nextState"""
+  nextState: KubernetesDeploymentNextState
+
+  """organizationId"""
+  organizationId: String
+
+  """outputEntity"""
+  outputEntity: KubernetesDeploymentEntity
+
+  """outputLines"""
+  outputLines: [String!]
+
+  """previousEntity"""
+  previousEntity: KubernetesDeploymentEntity
+
+  """success"""
+  success: Boolean
+
+  """tenantIds"""
+  tenantIds: [String!]
+
+  """typeName"""
+  typeName: String
+
+  """updatedTime"""
+  updatedTime: String
+
+  """userId"""
+  user: User
+
+  """userId"""
+  userId: String
+
+  """workspaceId"""
+  workspaceId: String
+}
+
+type KubernetesDeploymentGetComponentReply {
+  """component"""
+  component: KubernetesDeploymentComponent
+}
+
+input KubernetesDeploymentGetComponentRequest {
+  """componentId"""
+  componentId: String
+}
+
+type KubernetesDeploymentGetEntityReply {
+  """entity"""
+  entity: KubernetesDeploymentEntity
+}
+
+input KubernetesDeploymentGetEntityRequest {
+  """entityId"""
+  entityId: String
+}
+
+type KubernetesDeploymentImplicitConstraint {
+  """field"""
+  field: String
+
+  """value"""
+  value: String
+}
+
+type KubernetesDeploymentListComponentsReply {
+  """items"""
+  items: [KubernetesDeploymentComponent!]
+
+  """nextPageToken"""
+  nextPageToken: String
+
+  """totalCount"""
+  totalCount: Int
+}
+
+input KubernetesDeploymentListComponentsRequest {
+  """orderBy"""
+  orderBy: String
+
+  """orderByDirection"""
+  orderByDirection: DataOrderByDirection
+
+  """pageSize"""
+  pageSize: Int
+
+  """pageToken"""
+  pageToken: String
+
+  """query"""
+  query: DataQuery
+
+  """scopeByTenantId"""
+  scopeByTenantId: String
+}
+
+type KubernetesDeploymentListEntitiesReply {
+  """items"""
+  items: [KubernetesDeploymentEntity!]
+
+  """nextPageToken"""
+  nextPageToken: String
+
+  """totalCount"""
+  totalCount: Int
+}
+
+input KubernetesDeploymentListEntitiesRequest {
+  """orderBy"""
+  orderBy: String
+
+  """orderByDirection"""
+  orderByDirection: DataOrderByDirection
+
+  """pageSize"""
+  pageSize: Int
+
+  """pageToken"""
+  pageToken: String
+
+  """query"""
+  query: DataQuery
+
+  """scopeByTenantId"""
+  scopeByTenantId: String
+}
+
+type KubernetesDeploymentListEntityEventsReply {
+  """items"""
+  items: [KubernetesDeploymentEntityEvent!]
+
+  """nextPageToken"""
+  nextPageToken: String
+
+  """totalCount"""
+  totalCount: Int
+}
+
+input KubernetesDeploymentListEntityEventsRequest {
+  """orderBy"""
+  orderBy: String
+
+  """orderByDirection"""
+  orderByDirection: DataOrderByDirection
+
+  """pageSize"""
+  pageSize: Int
+
+  """pageToken"""
+  pageToken: String
+
+  """query"""
+  query: DataQuery
+
+  """scopeByTenantId"""
+  scopeByTenantId: String
+}
+
+enum KubernetesDeploymentNextState {
+  ERROR
+  NONE
+  OK
+  UNINITIALIZED
+}
+
+type KubernetesDeploymentPickComponentReply {
+  """component"""
+  component: KubernetesDeploymentComponent
+
+  """implicitConstraints"""
+  implicitConstraints: [KubernetesDeploymentImplicitConstraint!]
+}
+
+input KubernetesDeploymentPickComponentRequest {
+  """displayName"""
+  displayName: String
+
+  """integrationId"""
+  integrationId: String
+
+  """integrationServiceId"""
+  integrationServiceId: String
+
+  """kubernetesVersion"""
+  kubernetesVersion: String
+
+  """name"""
+  name: String
+}
+
+input KubernetesDeploymentPropsRequest {
+  """object"""
+  object: KubernetesDeploymentDeploymentRequest
+}
+
+type KubernetesDeploymentSpec {
+  """replicas"""
+  replicas: Int
+
+  """selector"""
+  selector: KubernetesLabelSelector
+
+  """template"""
+  template: KubernetesPodTemplateSpec
+}
+
+input KubernetesDeploymentSpecRequest {
+  """replicas"""
+  replicas: Int
+
+  """selector"""
+  selector: KubernetesLabelSelectorRequest
+
+  """template"""
+  template: KubernetesPodTemplateSpecRequest
+}
+
+enum KubernetesDeploymentState {
+  ERROR
+  OK
+  STATE_UNKNOWN
+  TRANSITION
+}
+
+type KubernetesDeploymentSyncEntityReply {
+  """event"""
+  event: KubernetesDeploymentEntityEvent
+}
+
+input KubernetesDeploymentSyncEntityRequest {
+  """entityId"""
+  entityId: String
+}
+
+type KubernetesLabelSelector {
+  """matchLabels"""
+  matchLabels: [KubernetesLabelSelectorMatchLabelsMap!]
+}
+
+type KubernetesLabelSelectorMatchLabelsMap {
+  key: String
+  value: String
+}
+
+input KubernetesLabelSelectorRequest {
+  """matchLabels"""
+  matchLabels: [KubernetesLabelSelectorRequestMatchLabelsMap!]
+}
+
+input KubernetesLabelSelectorRequestMatchLabelsMap {
+  key: String
+  value: String
+}
+
+type KubernetesMetaData {
+  """labels"""
+  labels: [KubernetesMetaDataLabelsMap!]
+
+  """name"""
+  name: String
+}
+
+type KubernetesMetaDataLabelsMap {
+  key: String
+  value: String
+}
+
+input KubernetesMetaDataRequest {
+  """labels"""
+  labels: [KubernetesMetaDataRequestLabelsMap!]
+
+  """name"""
+  name: String
+}
+
+input KubernetesMetaDataRequestLabelsMap {
+  key: String
+  value: String
+}
+
+type KubernetesPodSpec {
+  """containers"""
+  containers: [KubernetesContainer!]
+}
+
+input KubernetesPodSpecRequest {
+  """containers"""
+  containers: [KubernetesContainerRequest!]
+}
+
+type KubernetesPodTemplateSpec {
+  """metadata"""
+  metadata: KubernetesMetaData
+
+  """spec"""
+  spec: KubernetesPodSpec
+}
+
+input KubernetesPodTemplateSpecRequest {
+  """metadata"""
+  metadata: KubernetesMetaDataRequest
+
+  """spec"""
+  spec: KubernetesPodSpecRequest
+}
+
 type ListIntegrationInstancesReply {
   """items"""
   items: [IntegrationInstance!]
@@ -1171,6 +1794,10 @@ type Mutation {
   awsEksClusterRuntimeSyncEntity(input: AwsEksClusterRuntimeSyncEntityRequest): AwsEksClusterRuntimeSyncEntityReply
   createAccount(input: CreateAccountRequest): CreateAccountReply
   createIntegrationInstance(input: CreateIntegrationInstanceRequest): CreateIntegrationInstanceReply
+  kubernetesDeploymentCreateEntity(input: KubernetesDeploymentCreateEntityRequest): KubernetesDeploymentCreateEntityReply
+  kubernetesDeploymentEditPropObject(input: KubernetesDeploymentEditPropObjectRequest): KubernetesDeploymentEditPropObjectReply
+  kubernetesDeploymentEditPropObjectYaml(input: KubernetesDeploymentEditPropObjectYamlRequest): KubernetesDeploymentEditPropObjectYamlReply
+  kubernetesDeploymentSyncEntity(input: KubernetesDeploymentSyncEntityRequest): KubernetesDeploymentSyncEntityReply
   sshKeyCreateEntity(input: SshKeyCreateEntityRequest): SshKeyCreateEntityReply
   sshKeySyncEntity(input: SshKeySyncEntityRequest): SshKeySyncEntityReply
 }
@@ -1213,6 +1840,12 @@ type Query {
   awsEksClusterRuntimePickComponent(input: AwsEksClusterRuntimePickComponentRequest): AwsEksClusterRuntimePickComponentReply
   getBillingAccount(input: GetBillingAccountRequest): GetBillingAccountReply
   getUser(input: GetUserRequest): GetUserReply
+  kubernetesDeploymentGetComponent(input: KubernetesDeploymentGetComponentRequest): KubernetesDeploymentGetComponentReply
+  kubernetesDeploymentGetEntity(input: KubernetesDeploymentGetEntityRequest): KubernetesDeploymentGetEntityReply
+  kubernetesDeploymentListComponents(input: KubernetesDeploymentListComponentsRequest): KubernetesDeploymentListComponentsReply
+  kubernetesDeploymentListEntities(input: KubernetesDeploymentListEntitiesRequest): KubernetesDeploymentListEntitiesReply
+  kubernetesDeploymentListEntityEvents(input: KubernetesDeploymentListEntityEventsRequest): KubernetesDeploymentListEntityEventsReply
+  kubernetesDeploymentPickComponent(input: KubernetesDeploymentPickComponentRequest): KubernetesDeploymentPickComponentReply
   listIntegrationInstances(input: ListIntegrationInstancesRequest): ListIntegrationInstancesReply
   listIntegrations(input: ListIntegrationsRequest): ListIntegrationsReply
   listOrganizations(input: ListOrganizationsRequest): ListOrganizationsReply
@@ -1481,6 +2114,9 @@ type SshKeyEntityEvent implements EntityEvent {
   """outputLines"""
   outputLines: [String!]
 
+  """previousEntity"""
+  previousEntity: SshKeyEntity
+
   """success"""
   success: Boolean
 
@@ -1693,6 +2329,7 @@ input SshKeyPickComponentRequest {
 enum SshKeyState {
   ERROR
   OK
+  TRANSITION
   UNINITIALIZED
 }
 

@@ -88,6 +88,7 @@ pub trait EntityEvent:
     fn input_entity(&self) -> Option<&Self::Entity>;
     fn set_input_entity(&mut self, entity: Option<Self::Entity>);
     fn set_output_entity(&mut self, entity: Option<Self::Entity>);
+    fn set_previous_entity(&mut self, entity: Option<Self::Entity>);
     fn user_id(&self) -> &str;
     fn set_user_id(&mut self, user_id: impl Into<String>);
     fn create_time(&self) -> &str;
@@ -100,6 +101,19 @@ pub trait EntityEvent:
         entity: &Self::Entity,
     ) -> CeaResult<Self> {
         let mut entity_event = Self::new(user_id, action_name, entity);
+        db.validate_and_insert_as_new(&mut entity_event).await?;
+        Ok(entity_event)
+    }
+
+    async fn create_with_previous_entity(
+        db: &Db,
+        user_id: &str,
+        action_name: &str,
+        entity: &Self::Entity,
+        previous_entity: Self::Entity,
+    ) -> CeaResult<Self> {
+        let mut entity_event = Self::new(user_id, action_name, entity);
+        entity_event.set_previous_entity(Some(previous_entity));
         db.validate_and_insert_as_new(&mut entity_event).await?;
         Ok(entity_event)
     }
@@ -352,6 +366,10 @@ macro_rules! gen_entity_event {
 
             fn set_output_entity(&mut self, output_entity: Option<Self::Entity>) {
                 self.output_entity = output_entity;
+            }
+
+            fn set_previous_entity(&mut self, previous_entity: Option<Self::Entity>) {
+                self.previous_entity = previous_entity;
             }
 
             fn user_id(&self) -> &str {

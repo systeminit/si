@@ -72,7 +72,6 @@ export class GraphqlHintLoader {
       const hintmap: GraphqlHint = TOML.parse(
         fs.readFileSync(service.graphqlHintPath(), { encoding: "utf8" }),
       );
-      console.log("warn", "toml", { hintmap });
       this.hints.push(hintmap);
     }
   }

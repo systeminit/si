@@ -19,6 +19,7 @@ interface Environment {
     "si-ssh-key": string;
     "si-account": string;
     "si-aws-eks-cluster-runtime": string;
+    "si-kubernetes": string;
   };
 }
 
@@ -36,5 +37,6 @@ export const environment: Environment = {
     "si-account": process.env.SERVICES_SI_ACCOUNT || "127.0.0.1:5151",
     "si-ssh-key": process.env.SERVICES_SI_SSH_KEY || "127.0.0.1:5152",
     "si-aws-eks-cluster-runtime": process.env.SERVICES_SI_AWS_EKS_CLUSTER_RUNTIME || "127.0.0.1:5154",
+    "si-kubernetes": process.env.SERVICES_SI_KUBERNETES || "127.0.0.1:5155",
   },
 };

@@ -1,0 +1,276 @@
+syntax = "proto3";
+
+package si.kubernetes.deployment;
+
+import "si-kubernetes/proto/si.kubernetes.proto";
+import "si-data/proto/si.data.proto";
+import "google/protobuf/wrappers.proto";
+
+service KubernetesDeployment {
+  rpc GetComponent(GetComponentRequest) returns (GetComponentReply);
+  rpc ListComponents(ListComponentsRequest) returns (ListComponentsReply);
+  rpc PickComponent(PickComponentRequest) returns (PickComponentReply);
+
+  rpc CreateEntity(CreateEntityRequest) returns (CreateEntityReply);
+  rpc ListEntities(ListEntitiesRequest) returns (ListEntitiesReply);
+  rpc GetEntity(GetEntityRequest) returns (GetEntityReply);
+  rpc EditPropObject(EditPropObjectRequest) returns (EditPropObjectReply);
+  rpc EditPropObjectYaml(EditPropObjectYamlRequest) returns (EditPropObjectYamlReply);
+  rpc SyncEntity(SyncEntityRequest) returns (SyncEntityReply);
+
+  rpc ListEntityEvents(ListEntityEventsRequest) returns (ListEntityEventsReply);
+}
+
+message CreateEntityRequest {
+  PickComponentRequest constraints = 1;
+  string name = 2;
+  string display_name = 3;
+  string description = 4;
+  string workspace_id = 5;
+  PropsRequest props = 6;
+
+  message PropsRequest {
+    DeploymentRequest object = 1;
+  }
+  message DeploymentRequest {
+    google.protobuf.StringValue api_version = 1;
+    google.protobuf.StringValue kind = 2;
+    si.kubernetes.MetaDataRequest metadata = 3;
+    SpecRequest spec = 4;
+    message SpecRequest {
+      uint32 replicas = 1;
+      si.kubernetes.LabelSelectorRequest selector = 2;
+      si.kubernetes.PodTemplateSpecRequest template = 3;
+    }
+  }
+}
+
+message CreateEntityReply {
+  Entity entity = 1;
+  EntityEvent event = 2;
+}
+
+message EditPropObjectRequest {
+  string entity_id = 1;
+  string workspace_id = 2;
+
+  message DeploymentRequest {
+    google.protobuf.StringValue api_version = 1;
+    google.protobuf.StringValue kind = 2;
+    si.kubernetes.MetaDataRequest metadata = 3;
+    SpecRequest spec = 4;
+    message SpecRequest {
+      uint32 replicas = 1;
+      si.kubernetes.LabelSelectorRequest selector = 2;
+      si.kubernetes.PodTemplateSpecRequest template = 3;
+    }
+  }
+
+  DeploymentRequest prop = 1000;
+}
+
+message EditPropObjectReply {
+  Entity entity = 1;
+  EntityEvent event = 2;
+}
+
+message EditPropObjectYamlRequest {
+  string entity_id = 1;
+  string workspace_id = 2;
+
+  google.protobuf.StringValue prop = 1000;
+}
+
+message EditPropObjectYamlReply {
+  Entity entity = 1;
+  EntityEvent event = 2;
+}
+
+message GetComponentRequest {
+  string component_id = 1;
+}
+
+message GetComponentReply {
+  Component component = 1;
+}
+
+message GetEntityRequest {
+  string entity_id = 1;
+}
+
+message GetEntityReply {
+  Entity entity = 1;
+}
+
+message ListComponentsRequest {
+  si.data.Query query = 1;
+  int32 page_size = 2;
+  string order_by = 3;
+  si.data.OrderByDirection order_by_direction = 4;
+  string page_token = 5;
+  string scope_by_tenant_id = 6;
+}
+
+message ListComponentsReply {
+  repeated Component items = 1;
+  int32 total_count = 2;
+  string next_page_token = 3;
+}
+
+message ListEntityEventsRequest {
+  si.data.Query query = 1;
+  int32 page_size = 2;
+  string order_by = 3;
+  si.data.OrderByDirection order_by_direction = 4;
+  string page_token = 5;
+  string scope_by_tenant_id = 6;
+}
+
+message ListEntityEventsReply {
+  repeated EntityEvent items = 1;
+  int32 total_count = 2;
+  string next_page_token = 3;
+}
+
+message ListEntitiesRequest {
+  si.data.Query query = 1;
+  int32 page_size = 2;
+  string order_by = 3;
+  si.data.OrderByDirection order_by_direction = 4;
+  string page_token = 5;
+  string scope_by_tenant_id = 6;
+}
+
+message ListEntitiesReply {
+  repeated Entity items = 1;
+  int32 total_count = 2;
+  string next_page_token = 3;
+}
+
+message PickComponentRequest {
+  string name = 1;
+  string display_name = 2;
+  string integration_id = 3;
+  string integration_service_id = 4;
+  string kubernetes_version = 12;
+}
+
+message PickComponentReply {
+  Component component = 1;
+  repeated ImplicitConstraint implicit_constraints = 2;
+}
+
+message SyncEntityRequest {
+  string entity_id = 1;
+}
+
+message SyncEntityReply {
+  EntityEvent event = 2;
+}
+
+message Constraints {
+  string name = 1;
+  string display_name = 2;
+  string integration_id = 3;
+  string integration_service_id = 4;
+  string kubernetes_version = 5;
+}
+
+message Component {
+  string id = 1;
+  repeated string tenantIds = 2;
+  string natural_key = 3;
+  string type_name = 4;
+  string name = 5;
+  string display_name = 6;
+  string description = 7;
+  string integration_id = 8;
+  string integration_service_id = 9;
+  string display_type_name = 10;
+  int32 version = 11;
+  // From here, we are in to the fields for this specific component
+  string kubernetes_version = 12;
+}
+
+message Entity {
+  string id = 1;
+  repeated string tenantIds = 2;
+  string natural_key = 3;
+  string type_name = 4;
+  string name = 5;
+  string display_name = 6;
+  string description = 7;
+  string component_id = 8;
+  string integration_id = 9;
+  string integration_service_id = 10;
+  string workspace_id = 11;
+  string organization_id = 12;
+  string billing_account_id = 13;
+  repeated string linked_entity_ids = 14;
+  Constraints constraints = 15;
+  repeated ImplicitConstraint implicit_constraints = 16;
+
+  State state = 17;
+  enum State {
+    STATE_UNKNOWN = 0;
+    ERROR = 1;
+    OK = 2;
+    TRANSITION = 3;
+  }
+
+  string kubernetes_version = 1001;
+
+  message Deployment {
+    google.protobuf.StringValue api_version = 1;
+    google.protobuf.StringValue kind = 2;
+    si.kubernetes.MetaData metadata = 3;
+    Spec spec = 4;
+    message Spec {
+      uint32 replicas = 1;
+      si.kubernetes.LabelSelector selector = 2;
+      si.kubernetes.PodTemplateSpec template = 3;
+    }
+  }
+
+  Deployment object = 1002;
+  google.protobuf.StringValue object_yaml = 1003;
+}
+
+message EntityEvent {
+  string id = 1;
+  repeated string tenantIds = 2;
+  string natural_key = 3;
+  string type_name = 4;
+  string user_id = 5;
+  string action_name = 6;
+  repeated string output_lines = 7;
+  string create_time = 8;
+  string updated_time = 9;
+  string final_time = 10;
+  bool finalized = 11;
+  string entity_id = 12;
+  string component_id = 13;
+  string integration_id = 14;
+  string integration_service_id = 15;
+  string workspace_id = 16;
+  string organization_id = 17;
+  string billing_account_id = 18;
+  Entity input_entity = 19;
+  Entity output_entity = 20;
+  enum NextState {
+    NONE = 0;
+    UNINITIALIZED = 1;
+    ERROR = 2;
+    OK = 3;
+  }
+  NextState next_state = 21;
+  bool success = 22;
+  string error_message = 23;
+  repeated string error_lines = 24;
+  Entity previous_entity = 25;
+}
+
+message ImplicitConstraint {
+  string field = 1;
+  string value = 2;
+}

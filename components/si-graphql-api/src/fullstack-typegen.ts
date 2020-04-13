@@ -137,6 +137,108 @@ export interface NexusGenInputs {
   GetUserRequest: { // input type
     userId?: string | null; // String
   }
+  KubernetesContainerPortsRequest: { // input type
+    containerPort?: number | null; // Int
+  }
+  KubernetesContainerRequest: { // input type
+    image?: string | null; // String
+    name?: string | null; // String
+    ports?: NexusGenInputs['KubernetesContainerPortsRequest'][] | null; // [KubernetesContainerPortsRequest!]
+  }
+  KubernetesDeploymentCreateEntityRequest: { // input type
+    constraints?: NexusGenInputs['KubernetesDeploymentPickComponentRequest'] | null; // KubernetesDeploymentPickComponentRequest
+    description?: string | null; // String
+    displayName?: string | null; // String
+    name?: string | null; // String
+    props?: NexusGenInputs['KubernetesDeploymentPropsRequest'] | null; // KubernetesDeploymentPropsRequest
+    workspaceId?: string | null; // String
+  }
+  KubernetesDeploymentDeploymentRequest: { // input type
+    apiVersion?: string | null; // String
+    kind?: string | null; // String
+    metadata?: NexusGenInputs['KubernetesMetaDataRequest'] | null; // KubernetesMetaDataRequest
+    spec?: NexusGenInputs['KubernetesDeploymentSpecRequest'] | null; // KubernetesDeploymentSpecRequest
+  }
+  KubernetesDeploymentEditPropObjectRequest: { // input type
+    entityId?: string | null; // String
+    prop?: NexusGenInputs['KubernetesDeploymentDeploymentRequest'] | null; // KubernetesDeploymentDeploymentRequest
+    workspaceId?: string | null; // String
+  }
+  KubernetesDeploymentEditPropObjectYamlRequest: { // input type
+    entityId?: string | null; // String
+    prop?: string | null; // String
+    workspaceId?: string | null; // String
+  }
+  KubernetesDeploymentGetComponentRequest: { // input type
+    componentId?: string | null; // String
+  }
+  KubernetesDeploymentGetEntityRequest: { // input type
+    entityId?: string | null; // String
+  }
+  KubernetesDeploymentListComponentsRequest: { // input type
+    orderBy?: string | null; // String
+    orderByDirection?: NexusGenEnums['DataOrderByDirection'] | null; // DataOrderByDirection
+    pageSize?: number | null; // Int
+    pageToken?: string | null; // String
+    query?: NexusGenInputs['DataQuery'] | null; // DataQuery
+    scopeByTenantId?: string | null; // String
+  }
+  KubernetesDeploymentListEntitiesRequest: { // input type
+    orderBy?: string | null; // String
+    orderByDirection?: NexusGenEnums['DataOrderByDirection'] | null; // DataOrderByDirection
+    pageSize?: number | null; // Int
+    pageToken?: string | null; // String
+    query?: NexusGenInputs['DataQuery'] | null; // DataQuery
+    scopeByTenantId?: string | null; // String
+  }
+  KubernetesDeploymentListEntityEventsRequest: { // input type
+    orderBy?: string | null; // String
+    orderByDirection?: NexusGenEnums['DataOrderByDirection'] | null; // DataOrderByDirection
+    pageSize?: number | null; // Int
+    pageToken?: string | null; // String
+    query?: NexusGenInputs['DataQuery'] | null; // DataQuery
+    scopeByTenantId?: string | null; // String
+  }
+  KubernetesDeploymentPickComponentRequest: { // input type
+    displayName?: string | null; // String
+    integrationId?: string | null; // String
+    integrationServiceId?: string | null; // String
+    kubernetesVersion?: string | null; // String
+    name?: string | null; // String
+  }
+  KubernetesDeploymentPropsRequest: { // input type
+    object?: NexusGenInputs['KubernetesDeploymentDeploymentRequest'] | null; // KubernetesDeploymentDeploymentRequest
+  }
+  KubernetesDeploymentSpecRequest: { // input type
+    replicas?: number | null; // Int
+    selector?: NexusGenInputs['KubernetesLabelSelectorRequest'] | null; // KubernetesLabelSelectorRequest
+    template?: NexusGenInputs['KubernetesPodTemplateSpecRequest'] | null; // KubernetesPodTemplateSpecRequest
+  }
+  KubernetesDeploymentSyncEntityRequest: { // input type
+    entityId?: string | null; // String
+  }
+  KubernetesLabelSelectorRequest: { // input type
+    matchLabels?: NexusGenInputs['KubernetesLabelSelectorRequestMatchLabelsMap'][] | null; // [KubernetesLabelSelectorRequestMatchLabelsMap!]
+  }
+  KubernetesLabelSelectorRequestMatchLabelsMap: { // input type
+    key?: string | null; // String
+    value?: string | null; // String
+  }
+  KubernetesMetaDataRequest: { // input type
+    labels?: NexusGenInputs['KubernetesMetaDataRequestLabelsMap'][] | null; // [KubernetesMetaDataRequestLabelsMap!]
+    name?: string | null; // String
+  }
+  KubernetesMetaDataRequestLabelsMap: { // input type
+    key?: string | null; // String
+    value?: string | null; // String
+  }
+  KubernetesPodSpecRequest: { // input type
+    containers?: NexusGenInputs['KubernetesContainerRequest'][] | null; // [KubernetesContainerRequest!]
+  }
+  KubernetesPodTemplateSpecRequest: { // input type
+    metadata?: NexusGenInputs['KubernetesMetaDataRequest'] | null; // KubernetesMetaDataRequest
+    spec?: NexusGenInputs['KubernetesPodSpecRequest'] | null; // KubernetesPodSpecRequest
+  }
   ListIntegrationInstancesRequest: { // input type
     orderBy?: string | null; // String
     orderByDirection?: NexusGenEnums['DataOrderByDirection'] | null; // DataOrderByDirection
@@ -249,18 +351,20 @@ export interface NexusGenEnums {
   AwsEksClusterRuntimeClusterStatus: 2 | 0 | 1 | 3 | 4 | 5
   AwsEksClusterRuntimeNextState: 2 | 0 | 3 | 1
   AwsEksClusterRuntimeNodegroupStatus: 2 | 5 | 1 | 7 | 6 | 4 | 0 | 3
-  AwsEksClusterRuntimeState: 1 | 2 | 0
+  AwsEksClusterRuntimeState: 1 | 2 | 0 | 3
   DataOrderByDirection: 0 | 1
   DataQueryBooleanLogic: 0 | 1
   DataQueryComparison: 2 | 0 | 3 | 1 | 4
   DataQueryFieldType: 1 | 0
   IntegrationOptionType: 1 | 0
+  KubernetesDeploymentNextState: 2 | 0 | 3 | 1
+  KubernetesDeploymentState: 1 | 2 | 0 | 3
   SshKeyKeyFormat: 2 | 1 | 0
   SshKeyKeyFormatRequest: 0 | 3 | 2 | 1
   SshKeyKeyType: 1 | 2 | 3 | 0
   SshKeyKeyTypeRequest: 2 | 3 | 4 | 0 | 1
   SshKeyNextState: 2 | 0 | 3 | 1
-  SshKeyState: 1 | 2 | 0
+  SshKeyState: 1 | 2 | 3 | 0
 }
 
 export interface NexusGenRootTypes {
@@ -347,6 +451,7 @@ export interface NexusGenRootTypes {
     organizationId?: string | null; // String
     outputEntity?: NexusGenRootTypes['AwsEksClusterRuntimeEntity'] | null; // AwsEksClusterRuntimeEntity
     outputLines?: string[] | null; // [String!]
+    previousEntity?: NexusGenRootTypes['AwsEksClusterRuntimeEntity'] | null; // AwsEksClusterRuntimeEntity
     success?: boolean | null; // Boolean
     tenantIds?: string[] | null; // [String!]
     typeName?: string | null; // String
@@ -485,6 +590,161 @@ export interface NexusGenRootTypes {
     typeName?: string | null; // String
     version?: number | null; // Int
   }
+  KubernetesContainer: { // root type
+    image?: string | null; // String
+    name?: string | null; // String
+    ports?: NexusGenRootTypes['KubernetesContainerPorts'][] | null; // [KubernetesContainerPorts!]
+  }
+  KubernetesContainerPorts: { // root type
+    containerPort?: number | null; // Int
+  }
+  KubernetesDeploymentComponent: { // root type
+    description?: string | null; // String
+    displayName?: string | null; // String
+    displayTypeName?: string | null; // String
+    id?: string | null; // ID
+    integrationId?: string | null; // String
+    integrationServiceId?: string | null; // String
+    kubernetesVersion?: string | null; // String
+    name?: string | null; // String
+    naturalKey?: string | null; // String
+    tenantIds?: string[] | null; // [String!]
+    typeName?: string | null; // String
+    version?: number | null; // Int
+  }
+  KubernetesDeploymentConstraints: { // root type
+    displayName?: string | null; // String
+    integrationId?: string | null; // String
+    integrationServiceId?: string | null; // String
+    kubernetesVersion?: string | null; // String
+    name?: string | null; // String
+  }
+  KubernetesDeploymentCreateEntityReply: { // root type
+    entity?: NexusGenRootTypes['KubernetesDeploymentEntity'] | null; // KubernetesDeploymentEntity
+    event?: NexusGenRootTypes['KubernetesDeploymentEntityEvent'] | null; // KubernetesDeploymentEntityEvent
+  }
+  KubernetesDeploymentDeployment: { // root type
+    apiVersion?: string | null; // String
+    kind?: string | null; // String
+    metadata?: NexusGenRootTypes['KubernetesMetaData'] | null; // KubernetesMetaData
+    spec?: NexusGenRootTypes['KubernetesDeploymentSpec'] | null; // KubernetesDeploymentSpec
+  }
+  KubernetesDeploymentEditPropObjectReply: { // root type
+    entity?: NexusGenRootTypes['KubernetesDeploymentEntity'] | null; // KubernetesDeploymentEntity
+    event?: NexusGenRootTypes['KubernetesDeploymentEntityEvent'] | null; // KubernetesDeploymentEntityEvent
+  }
+  KubernetesDeploymentEditPropObjectYamlReply: { // root type
+    entity?: NexusGenRootTypes['KubernetesDeploymentEntity'] | null; // KubernetesDeploymentEntity
+    event?: NexusGenRootTypes['KubernetesDeploymentEntityEvent'] | null; // KubernetesDeploymentEntityEvent
+  }
+  KubernetesDeploymentEntity: { // root type
+    billingAccountId?: string | null; // String
+    componentId?: string | null; // String
+    constraints?: NexusGenRootTypes['KubernetesDeploymentConstraints'] | null; // KubernetesDeploymentConstraints
+    description?: string | null; // String
+    displayName?: string | null; // String
+    id?: string | null; // ID
+    implicitConstraints?: NexusGenRootTypes['KubernetesDeploymentImplicitConstraint'][] | null; // [KubernetesDeploymentImplicitConstraint!]
+    integrationId?: string | null; // String
+    integrationServiceId?: string | null; // String
+    kubernetesVersion?: string | null; // String
+    linkedEntityIds?: string[] | null; // [String!]
+    name?: string | null; // String
+    naturalKey?: string | null; // String
+    object?: NexusGenRootTypes['KubernetesDeploymentDeployment'] | null; // KubernetesDeploymentDeployment
+    objectYaml?: string | null; // String
+    organizationId?: string | null; // String
+    state?: NexusGenEnums['KubernetesDeploymentState'] | null; // KubernetesDeploymentState
+    tenantIds?: string[] | null; // [String!]
+    typeName?: string | null; // String
+    workspaceId?: string | null; // String
+  }
+  KubernetesDeploymentEntityEvent: { // root type
+    actionName?: string | null; // String
+    billingAccountId?: string | null; // String
+    componentId?: string | null; // String
+    createTime?: string | null; // String
+    entityId?: string | null; // String
+    errorLines?: string[] | null; // [String!]
+    errorMessage?: string | null; // String
+    finalized?: boolean | null; // Boolean
+    finalTime?: string | null; // String
+    id?: string | null; // ID
+    inputEntity?: NexusGenRootTypes['KubernetesDeploymentEntity'] | null; // KubernetesDeploymentEntity
+    integrationId?: string | null; // String
+    integrationServiceId?: string | null; // String
+    naturalKey?: string | null; // String
+    nextState?: NexusGenEnums['KubernetesDeploymentNextState'] | null; // KubernetesDeploymentNextState
+    organizationId?: string | null; // String
+    outputEntity?: NexusGenRootTypes['KubernetesDeploymentEntity'] | null; // KubernetesDeploymentEntity
+    outputLines?: string[] | null; // [String!]
+    previousEntity?: NexusGenRootTypes['KubernetesDeploymentEntity'] | null; // KubernetesDeploymentEntity
+    success?: boolean | null; // Boolean
+    tenantIds?: string[] | null; // [String!]
+    typeName?: string | null; // String
+    updatedTime?: string | null; // String
+    userId?: string | null; // String
+    workspaceId?: string | null; // String
+  }
+  KubernetesDeploymentGetComponentReply: { // root type
+    component?: NexusGenRootTypes['KubernetesDeploymentComponent'] | null; // KubernetesDeploymentComponent
+  }
+  KubernetesDeploymentGetEntityReply: { // root type
+    entity?: NexusGenRootTypes['KubernetesDeploymentEntity'] | null; // KubernetesDeploymentEntity
+  }
+  KubernetesDeploymentImplicitConstraint: { // root type
+    field?: string | null; // String
+    value?: string | null; // String
+  }
+  KubernetesDeploymentListComponentsReply: { // root type
+    items?: NexusGenRootTypes['KubernetesDeploymentComponent'][] | null; // [KubernetesDeploymentComponent!]
+    nextPageToken?: string | null; // String
+    totalCount?: number | null; // Int
+  }
+  KubernetesDeploymentListEntitiesReply: { // root type
+    items?: NexusGenRootTypes['KubernetesDeploymentEntity'][] | null; // [KubernetesDeploymentEntity!]
+    nextPageToken?: string | null; // String
+    totalCount?: number | null; // Int
+  }
+  KubernetesDeploymentListEntityEventsReply: { // root type
+    items?: NexusGenRootTypes['KubernetesDeploymentEntityEvent'][] | null; // [KubernetesDeploymentEntityEvent!]
+    nextPageToken?: string | null; // String
+    totalCount?: number | null; // Int
+  }
+  KubernetesDeploymentPickComponentReply: { // root type
+    component?: NexusGenRootTypes['KubernetesDeploymentComponent'] | null; // KubernetesDeploymentComponent
+    implicitConstraints?: NexusGenRootTypes['KubernetesDeploymentImplicitConstraint'][] | null; // [KubernetesDeploymentImplicitConstraint!]
+  }
+  KubernetesDeploymentSpec: { // root type
+    replicas?: number | null; // Int
+    selector?: NexusGenRootTypes['KubernetesLabelSelector'] | null; // KubernetesLabelSelector
+    template?: NexusGenRootTypes['KubernetesPodTemplateSpec'] | null; // KubernetesPodTemplateSpec
+  }
+  KubernetesDeploymentSyncEntityReply: { // root type
+    event?: NexusGenRootTypes['KubernetesDeploymentEntityEvent'] | null; // KubernetesDeploymentEntityEvent
+  }
+  KubernetesLabelSelector: { // root type
+    matchLabels?: NexusGenRootTypes['KubernetesLabelSelectorMatchLabelsMap'][] | null; // [KubernetesLabelSelectorMatchLabelsMap!]
+  }
+  KubernetesLabelSelectorMatchLabelsMap: { // root type
+    key?: string | null; // String
+    value?: string | null; // String
+  }
+  KubernetesMetaData: { // root type
+    labels?: NexusGenRootTypes['KubernetesMetaDataLabelsMap'][] | null; // [KubernetesMetaDataLabelsMap!]
+    name?: string | null; // String
+  }
+  KubernetesMetaDataLabelsMap: { // root type
+    key?: string | null; // String
+    value?: string | null; // String
+  }
+  KubernetesPodSpec: { // root type
+    containers?: NexusGenRootTypes['KubernetesContainer'][] | null; // [KubernetesContainer!]
+  }
+  KubernetesPodTemplateSpec: { // root type
+    metadata?: NexusGenRootTypes['KubernetesMetaData'] | null; // KubernetesMetaData
+    spec?: NexusGenRootTypes['KubernetesPodSpec'] | null; // KubernetesPodSpec
+  }
   ListIntegrationInstancesReply: { // root type
     items?: NexusGenRootTypes['IntegrationInstance'][] | null; // [IntegrationInstance!]
     nextPageToken?: string | null; // String
@@ -606,6 +866,7 @@ export interface NexusGenRootTypes {
     organizationId?: string | null; // String
     outputEntity?: NexusGenRootTypes['SshKeyEntity'] | null; // SshKeyEntity
     outputLines?: string[] | null; // [String!]
+    previousEntity?: NexusGenRootTypes['SshKeyEntity'] | null; // SshKeyEntity
     success?: boolean | null; // Boolean
     tenantIds?: string[] | null; // [String!]
     typeName?: string | null; // String
@@ -669,7 +930,7 @@ export interface NexusGenRootTypes {
     tenantIds?: string[] | null; // [String!]
     typeName?: string | null; // String
   }
-  EntityEvent: NexusGenRootTypes['AwsEksClusterRuntimeEntityEvent'] | NexusGenRootTypes['SshKeyEntityEvent'];
+  EntityEvent: NexusGenRootTypes['AwsEksClusterRuntimeEntityEvent'] | NexusGenRootTypes['KubernetesDeploymentEntityEvent'] | NexusGenRootTypes['SshKeyEntityEvent'];
   String: string;
   Int: number;
   Float: number;
@@ -702,6 +963,27 @@ export interface NexusGenAllTypes extends NexusGenRootTypes {
   GetIntegrationServiceRequest: NexusGenInputs['GetIntegrationServiceRequest'];
   GetOrganizationRequest: NexusGenInputs['GetOrganizationRequest'];
   GetUserRequest: NexusGenInputs['GetUserRequest'];
+  KubernetesContainerPortsRequest: NexusGenInputs['KubernetesContainerPortsRequest'];
+  KubernetesContainerRequest: NexusGenInputs['KubernetesContainerRequest'];
+  KubernetesDeploymentCreateEntityRequest: NexusGenInputs['KubernetesDeploymentCreateEntityRequest'];
+  KubernetesDeploymentDeploymentRequest: NexusGenInputs['KubernetesDeploymentDeploymentRequest'];
+  KubernetesDeploymentEditPropObjectRequest: NexusGenInputs['KubernetesDeploymentEditPropObjectRequest'];
+  KubernetesDeploymentEditPropObjectYamlRequest: NexusGenInputs['KubernetesDeploymentEditPropObjectYamlRequest'];
+  KubernetesDeploymentGetComponentRequest: NexusGenInputs['KubernetesDeploymentGetComponentRequest'];
+  KubernetesDeploymentGetEntityRequest: NexusGenInputs['KubernetesDeploymentGetEntityRequest'];
+  KubernetesDeploymentListComponentsRequest: NexusGenInputs['KubernetesDeploymentListComponentsRequest'];
+  KubernetesDeploymentListEntitiesRequest: NexusGenInputs['KubernetesDeploymentListEntitiesRequest'];
+  KubernetesDeploymentListEntityEventsRequest: NexusGenInputs['KubernetesDeploymentListEntityEventsRequest'];
+  KubernetesDeploymentPickComponentRequest: NexusGenInputs['KubernetesDeploymentPickComponentRequest'];
+  KubernetesDeploymentPropsRequest: NexusGenInputs['KubernetesDeploymentPropsRequest'];
+  KubernetesDeploymentSpecRequest: NexusGenInputs['KubernetesDeploymentSpecRequest'];
+  KubernetesDeploymentSyncEntityRequest: NexusGenInputs['KubernetesDeploymentSyncEntityRequest'];
+  KubernetesLabelSelectorRequest: NexusGenInputs['KubernetesLabelSelectorRequest'];
+  KubernetesLabelSelectorRequestMatchLabelsMap: NexusGenInputs['KubernetesLabelSelectorRequestMatchLabelsMap'];
+  KubernetesMetaDataRequest: NexusGenInputs['KubernetesMetaDataRequest'];
+  KubernetesMetaDataRequestLabelsMap: NexusGenInputs['KubernetesMetaDataRequestLabelsMap'];
+  KubernetesPodSpecRequest: NexusGenInputs['KubernetesPodSpecRequest'];
+  KubernetesPodTemplateSpecRequest: NexusGenInputs['KubernetesPodTemplateSpecRequest'];
   ListIntegrationInstancesRequest: NexusGenInputs['ListIntegrationInstancesRequest'];
   ListIntegrationServicesRequest: NexusGenInputs['ListIntegrationServicesRequest'];
   ListIntegrationsRequest: NexusGenInputs['ListIntegrationsRequest'];
@@ -728,6 +1010,8 @@ export interface NexusGenAllTypes extends NexusGenRootTypes {
   DataQueryComparison: NexusGenEnums['DataQueryComparison'];
   DataQueryFieldType: NexusGenEnums['DataQueryFieldType'];
   IntegrationOptionType: NexusGenEnums['IntegrationOptionType'];
+  KubernetesDeploymentNextState: NexusGenEnums['KubernetesDeploymentNextState'];
+  KubernetesDeploymentState: NexusGenEnums['KubernetesDeploymentState'];
   SshKeyKeyFormat: NexusGenEnums['SshKeyKeyFormat'];
   SshKeyKeyFormatRequest: NexusGenEnums['SshKeyKeyFormatRequest'];
   SshKeyKeyType: NexusGenEnums['SshKeyKeyType'];
@@ -829,6 +1113,7 @@ export interface NexusGenFieldTypes {
     organizationId: string | null; // String
     outputEntity: NexusGenRootTypes['AwsEksClusterRuntimeEntity'] | null; // AwsEksClusterRuntimeEntity
     outputLines: string[] | null; // [String!]
+    previousEntity: NexusGenRootTypes['AwsEksClusterRuntimeEntity'] | null; // AwsEksClusterRuntimeEntity
     success: boolean | null; // Boolean
     tenantIds: string[] | null; // [String!]
     typeName: string | null; // String
@@ -977,6 +1262,171 @@ export interface NexusGenFieldTypes {
     typeName: string | null; // String
     version: number | null; // Int
   }
+  KubernetesContainer: { // field return type
+    image: string | null; // String
+    name: string | null; // String
+    ports: NexusGenRootTypes['KubernetesContainerPorts'][] | null; // [KubernetesContainerPorts!]
+  }
+  KubernetesContainerPorts: { // field return type
+    containerPort: number | null; // Int
+  }
+  KubernetesDeploymentComponent: { // field return type
+    description: string | null; // String
+    displayName: string | null; // String
+    displayTypeName: string | null; // String
+    id: string | null; // ID
+    integration: NexusGenRootTypes['Integration'] | null; // Integration
+    integrationId: string | null; // String
+    integrationService: NexusGenRootTypes['IntegrationService'] | null; // IntegrationService
+    integrationServiceId: string | null; // String
+    kubernetesVersion: string | null; // String
+    name: string | null; // String
+    naturalKey: string | null; // String
+    tenantIds: string[] | null; // [String!]
+    typeName: string | null; // String
+    version: number | null; // Int
+  }
+  KubernetesDeploymentConstraints: { // field return type
+    displayName: string | null; // String
+    integrationId: string | null; // String
+    integrationServiceId: string | null; // String
+    kubernetesVersion: string | null; // String
+    name: string | null; // String
+  }
+  KubernetesDeploymentCreateEntityReply: { // field return type
+    entity: NexusGenRootTypes['KubernetesDeploymentEntity'] | null; // KubernetesDeploymentEntity
+    event: NexusGenRootTypes['KubernetesDeploymentEntityEvent'] | null; // KubernetesDeploymentEntityEvent
+  }
+  KubernetesDeploymentDeployment: { // field return type
+    apiVersion: string | null; // String
+    kind: string | null; // String
+    metadata: NexusGenRootTypes['KubernetesMetaData'] | null; // KubernetesMetaData
+    spec: NexusGenRootTypes['KubernetesDeploymentSpec'] | null; // KubernetesDeploymentSpec
+  }
+  KubernetesDeploymentEditPropObjectReply: { // field return type
+    entity: NexusGenRootTypes['KubernetesDeploymentEntity'] | null; // KubernetesDeploymentEntity
+    event: NexusGenRootTypes['KubernetesDeploymentEntityEvent'] | null; // KubernetesDeploymentEntityEvent
+  }
+  KubernetesDeploymentEditPropObjectYamlReply: { // field return type
+    entity: NexusGenRootTypes['KubernetesDeploymentEntity'] | null; // KubernetesDeploymentEntity
+    event: NexusGenRootTypes['KubernetesDeploymentEntityEvent'] | null; // KubernetesDeploymentEntityEvent
+  }
+  KubernetesDeploymentEntity: { // field return type
+    billingAccount: NexusGenRootTypes['BillingAccount'] | null; // BillingAccount
+    billingAccountId: string | null; // String
+    componentId: string | null; // String
+    constraints: NexusGenRootTypes['KubernetesDeploymentConstraints'] | null; // KubernetesDeploymentConstraints
+    description: string | null; // String
+    displayName: string | null; // String
+    entityEvents: NexusGenRootTypes['KubernetesDeploymentListEntityEventsReply'] | null; // KubernetesDeploymentListEntityEventsReply
+    id: string | null; // ID
+    implicitConstraints: NexusGenRootTypes['KubernetesDeploymentImplicitConstraint'][] | null; // [KubernetesDeploymentImplicitConstraint!]
+    integration: NexusGenRootTypes['Integration'] | null; // Integration
+    integrationId: string | null; // String
+    integrationService: NexusGenRootTypes['IntegrationService'] | null; // IntegrationService
+    integrationServiceId: string | null; // String
+    kubernetesVersion: string | null; // String
+    linkedEntityIds: string[] | null; // [String!]
+    name: string | null; // String
+    naturalKey: string | null; // String
+    object: NexusGenRootTypes['KubernetesDeploymentDeployment'] | null; // KubernetesDeploymentDeployment
+    objectYaml: string | null; // String
+    organization: NexusGenRootTypes['Organization'] | null; // Organization
+    organizationId: string | null; // String
+    state: NexusGenEnums['KubernetesDeploymentState'] | null; // KubernetesDeploymentState
+    tenantIds: string[] | null; // [String!]
+    typeName: string | null; // String
+    workspace: NexusGenRootTypes['Workspace'] | null; // Workspace
+    workspaceId: string | null; // String
+  }
+  KubernetesDeploymentEntityEvent: { // field return type
+    actionName: string | null; // String
+    billingAccountId: string | null; // String
+    componentId: string | null; // String
+    createTime: string | null; // String
+    entity: NexusGenRootTypes['KubernetesDeploymentEntity'] | null; // KubernetesDeploymentEntity
+    entityId: string | null; // String
+    errorLines: string[] | null; // [String!]
+    errorMessage: string | null; // String
+    finalized: boolean | null; // Boolean
+    finalTime: string | null; // String
+    id: string | null; // ID
+    inputEntity: NexusGenRootTypes['KubernetesDeploymentEntity'] | null; // KubernetesDeploymentEntity
+    integrationId: string | null; // String
+    integrationServiceId: string | null; // String
+    naturalKey: string | null; // String
+    nextState: NexusGenEnums['KubernetesDeploymentNextState'] | null; // KubernetesDeploymentNextState
+    organizationId: string | null; // String
+    outputEntity: NexusGenRootTypes['KubernetesDeploymentEntity'] | null; // KubernetesDeploymentEntity
+    outputLines: string[] | null; // [String!]
+    previousEntity: NexusGenRootTypes['KubernetesDeploymentEntity'] | null; // KubernetesDeploymentEntity
+    success: boolean | null; // Boolean
+    tenantIds: string[] | null; // [String!]
+    typeName: string | null; // String
+    updatedTime: string | null; // String
+    user: NexusGenRootTypes['User'] | null; // User
+    userId: string | null; // String
+    workspaceId: string | null; // String
+  }
+  KubernetesDeploymentGetComponentReply: { // field return type
+    component: NexusGenRootTypes['KubernetesDeploymentComponent'] | null; // KubernetesDeploymentComponent
+  }
+  KubernetesDeploymentGetEntityReply: { // field return type
+    entity: NexusGenRootTypes['KubernetesDeploymentEntity'] | null; // KubernetesDeploymentEntity
+  }
+  KubernetesDeploymentImplicitConstraint: { // field return type
+    field: string | null; // String
+    value: string | null; // String
+  }
+  KubernetesDeploymentListComponentsReply: { // field return type
+    items: NexusGenRootTypes['KubernetesDeploymentComponent'][] | null; // [KubernetesDeploymentComponent!]
+    nextPageToken: string | null; // String
+    totalCount: number | null; // Int
+  }
+  KubernetesDeploymentListEntitiesReply: { // field return type
+    items: NexusGenRootTypes['KubernetesDeploymentEntity'][] | null; // [KubernetesDeploymentEntity!]
+    nextPageToken: string | null; // String
+    totalCount: number | null; // Int
+  }
+  KubernetesDeploymentListEntityEventsReply: { // field return type
+    items: NexusGenRootTypes['KubernetesDeploymentEntityEvent'][] | null; // [KubernetesDeploymentEntityEvent!]
+    nextPageToken: string | null; // String
+    totalCount: number | null; // Int
+  }
+  KubernetesDeploymentPickComponentReply: { // field return type
+    component: NexusGenRootTypes['KubernetesDeploymentComponent'] | null; // KubernetesDeploymentComponent
+    implicitConstraints: NexusGenRootTypes['KubernetesDeploymentImplicitConstraint'][] | null; // [KubernetesDeploymentImplicitConstraint!]
+  }
+  KubernetesDeploymentSpec: { // field return type
+    replicas: number | null; // Int
+    selector: NexusGenRootTypes['KubernetesLabelSelector'] | null; // KubernetesLabelSelector
+    template: NexusGenRootTypes['KubernetesPodTemplateSpec'] | null; // KubernetesPodTemplateSpec
+  }
+  KubernetesDeploymentSyncEntityReply: { // field return type
+    event: NexusGenRootTypes['KubernetesDeploymentEntityEvent'] | null; // KubernetesDeploymentEntityEvent
+  }
+  KubernetesLabelSelector: { // field return type
+    matchLabels: NexusGenRootTypes['KubernetesLabelSelectorMatchLabelsMap'][] | null; // [KubernetesLabelSelectorMatchLabelsMap!]
+  }
+  KubernetesLabelSelectorMatchLabelsMap: { // field return type
+    key: string | null; // String
+    value: string | null; // String
+  }
+  KubernetesMetaData: { // field return type
+    labels: NexusGenRootTypes['KubernetesMetaDataLabelsMap'][] | null; // [KubernetesMetaDataLabelsMap!]
+    name: string | null; // String
+  }
+  KubernetesMetaDataLabelsMap: { // field return type
+    key: string | null; // String
+    value: string | null; // String
+  }
+  KubernetesPodSpec: { // field return type
+    containers: NexusGenRootTypes['KubernetesContainer'][] | null; // [KubernetesContainer!]
+  }
+  KubernetesPodTemplateSpec: { // field return type
+    metadata: NexusGenRootTypes['KubernetesMetaData'] | null; // KubernetesMetaData
+    spec: NexusGenRootTypes['KubernetesPodSpec'] | null; // KubernetesPodSpec
+  }
   ListIntegrationInstancesReply: { // field return type
     items: NexusGenRootTypes['IntegrationInstance'][] | null; // [IntegrationInstance!]
     nextPageToken: string | null; // String
@@ -1018,6 +1468,10 @@ export interface NexusGenFieldTypes {
     awsEksClusterRuntimeSyncEntity: NexusGenRootTypes['AwsEksClusterRuntimeSyncEntityReply'] | null; // AwsEksClusterRuntimeSyncEntityReply
     createAccount: NexusGenRootTypes['CreateAccountReply'] | null; // CreateAccountReply
     createIntegrationInstance: NexusGenRootTypes['CreateIntegrationInstanceReply'] | null; // CreateIntegrationInstanceReply
+    kubernetesDeploymentCreateEntity: NexusGenRootTypes['KubernetesDeploymentCreateEntityReply'] | null; // KubernetesDeploymentCreateEntityReply
+    kubernetesDeploymentEditPropObject: NexusGenRootTypes['KubernetesDeploymentEditPropObjectReply'] | null; // KubernetesDeploymentEditPropObjectReply
+    kubernetesDeploymentEditPropObjectYaml: NexusGenRootTypes['KubernetesDeploymentEditPropObjectYamlReply'] | null; // KubernetesDeploymentEditPropObjectYamlReply
+    kubernetesDeploymentSyncEntity: NexusGenRootTypes['KubernetesDeploymentSyncEntityReply'] | null; // KubernetesDeploymentSyncEntityReply
     sshKeyCreateEntity: NexusGenRootTypes['SshKeyCreateEntityReply'] | null; // SshKeyCreateEntityReply
     sshKeySyncEntity: NexusGenRootTypes['SshKeySyncEntityReply'] | null; // SshKeySyncEntityReply
   }
@@ -1041,6 +1495,12 @@ export interface NexusGenFieldTypes {
     awsEksClusterRuntimePickComponent: NexusGenRootTypes['AwsEksClusterRuntimePickComponentReply'] | null; // AwsEksClusterRuntimePickComponentReply
     getBillingAccount: NexusGenRootTypes['GetBillingAccountReply'] | null; // GetBillingAccountReply
     getUser: NexusGenRootTypes['GetUserReply'] | null; // GetUserReply
+    kubernetesDeploymentGetComponent: NexusGenRootTypes['KubernetesDeploymentGetComponentReply'] | null; // KubernetesDeploymentGetComponentReply
+    kubernetesDeploymentGetEntity: NexusGenRootTypes['KubernetesDeploymentGetEntityReply'] | null; // KubernetesDeploymentGetEntityReply
+    kubernetesDeploymentListComponents: NexusGenRootTypes['KubernetesDeploymentListComponentsReply'] | null; // KubernetesDeploymentListComponentsReply
+    kubernetesDeploymentListEntities: NexusGenRootTypes['KubernetesDeploymentListEntitiesReply'] | null; // KubernetesDeploymentListEntitiesReply
+    kubernetesDeploymentListEntityEvents: NexusGenRootTypes['KubernetesDeploymentListEntityEventsReply'] | null; // KubernetesDeploymentListEntityEventsReply
+    kubernetesDeploymentPickComponent: NexusGenRootTypes['KubernetesDeploymentPickComponentReply'] | null; // KubernetesDeploymentPickComponentReply
     listIntegrationInstances: NexusGenRootTypes['ListIntegrationInstancesReply'] | null; // ListIntegrationInstancesReply
     listIntegrations: NexusGenRootTypes['ListIntegrationsReply'] | null; // ListIntegrationsReply
     listOrganizations: NexusGenRootTypes['ListOrganizationsReply'] | null; // ListOrganizationsReply
@@ -1139,6 +1599,7 @@ export interface NexusGenFieldTypes {
     organizationId: string | null; // String
     outputEntity: NexusGenRootTypes['SshKeyEntity'] | null; // SshKeyEntity
     outputLines: string[] | null; // [String!]
+    previousEntity: NexusGenRootTypes['SshKeyEntity'] | null; // SshKeyEntity
     success: boolean | null; // Boolean
     tenantIds: string[] | null; // [String!]
     typeName: string | null; // String
@@ -1264,6 +1725,11 @@ export interface NexusGenArgTypes {
       input?: NexusGenInputs['ListWorkspacesRequest'] | null; // ListWorkspacesRequest
     }
   }
+  KubernetesDeploymentEntity: {
+    entityEvents: { // args
+      input?: NexusGenInputs['KubernetesDeploymentListEntityEventsRequest'] | null; // KubernetesDeploymentListEntityEventsRequest
+    }
+  }
   Mutation: {
     awsEksClusterRuntimeAddNodegroup: { // args
       input?: NexusGenInputs['AwsEksClusterRuntimeAddNodegroupRequest'] | null; // AwsEksClusterRuntimeAddNodegroupRequest
@@ -1279,6 +1745,18 @@ export interface NexusGenArgTypes {
     }
     createIntegrationInstance: { // args
       input?: NexusGenInputs['CreateIntegrationInstanceRequest'] | null; // CreateIntegrationInstanceRequest
+    }
+    kubernetesDeploymentCreateEntity: { // args
+      input?: NexusGenInputs['KubernetesDeploymentCreateEntityRequest'] | null; // KubernetesDeploymentCreateEntityRequest
+    }
+    kubernetesDeploymentEditPropObject: { // args
+      input?: NexusGenInputs['KubernetesDeploymentEditPropObjectRequest'] | null; // KubernetesDeploymentEditPropObjectRequest
+    }
+    kubernetesDeploymentEditPropObjectYaml: { // args
+      input?: NexusGenInputs['KubernetesDeploymentEditPropObjectYamlRequest'] | null; // KubernetesDeploymentEditPropObjectYamlRequest
+    }
+    kubernetesDeploymentSyncEntity: { // args
+      input?: NexusGenInputs['KubernetesDeploymentSyncEntityRequest'] | null; // KubernetesDeploymentSyncEntityRequest
     }
     sshKeyCreateEntity: { // args
       input?: NexusGenInputs['SshKeyCreateEntityRequest'] | null; // SshKeyCreateEntityRequest
@@ -1319,6 +1797,24 @@ export interface NexusGenArgTypes {
     }
     getUser: { // args
       input?: NexusGenInputs['GetUserRequest'] | null; // GetUserRequest
+    }
+    kubernetesDeploymentGetComponent: { // args
+      input?: NexusGenInputs['KubernetesDeploymentGetComponentRequest'] | null; // KubernetesDeploymentGetComponentRequest
+    }
+    kubernetesDeploymentGetEntity: { // args
+      input?: NexusGenInputs['KubernetesDeploymentGetEntityRequest'] | null; // KubernetesDeploymentGetEntityRequest
+    }
+    kubernetesDeploymentListComponents: { // args
+      input?: NexusGenInputs['KubernetesDeploymentListComponentsRequest'] | null; // KubernetesDeploymentListComponentsRequest
+    }
+    kubernetesDeploymentListEntities: { // args
+      input?: NexusGenInputs['KubernetesDeploymentListEntitiesRequest'] | null; // KubernetesDeploymentListEntitiesRequest
+    }
+    kubernetesDeploymentListEntityEvents: { // args
+      input?: NexusGenInputs['KubernetesDeploymentListEntityEventsRequest'] | null; // KubernetesDeploymentListEntityEventsRequest
+    }
+    kubernetesDeploymentPickComponent: { // args
+      input?: NexusGenInputs['KubernetesDeploymentPickComponentRequest'] | null; // KubernetesDeploymentPickComponentRequest
     }
     listIntegrationInstances: { // args
       input?: NexusGenInputs['ListIntegrationInstancesRequest'] | null; // ListIntegrationInstancesRequest
@@ -1375,16 +1871,16 @@ export interface NexusGenArgTypes {
 }
 
 export interface NexusGenAbstractResolveReturnTypes {
-  EntityEvent: "AwsEksClusterRuntimeEntityEvent" | "SshKeyEntityEvent"
+  EntityEvent: "AwsEksClusterRuntimeEntityEvent" | "KubernetesDeploymentEntityEvent" | "SshKeyEntityEvent"
 }
 
 export interface NexusGenInheritedFields {}
 
-export type NexusGenObjectNames = "AwsEksClusterRuntimeAddNodegroupReply" | "AwsEksClusterRuntimeComponent" | "AwsEksClusterRuntimeConstraints" | "AwsEksClusterRuntimeCreateEntityReply" | "AwsEksClusterRuntimeEntity" | "AwsEksClusterRuntimeEntityEvent" | "AwsEksClusterRuntimeGetComponentReply" | "AwsEksClusterRuntimeGetEntityReply" | "AwsEksClusterRuntimeImplicitConstraint" | "AwsEksClusterRuntimeListComponentsReply" | "AwsEksClusterRuntimeListEntitiesReply" | "AwsEksClusterRuntimeListEntityEventsReply" | "AwsEksClusterRuntimePickComponentReply" | "AwsEksClusterRuntimeSyncEntityReply" | "AwsEksClusterRuntimeTag" | "BillingAccount" | "Capability" | "CreateAccountReply" | "CreateBillingAccountReply" | "CreateIntegrationInstanceReply" | "CreateUserReply" | "GetBillingAccountReply" | "GetIntegrationReply" | "GetIntegrationServiceReply" | "GetOrganizationReply" | "GetUserReply" | "Group" | "Integration" | "IntegrationInstance" | "IntegrationOption" | "IntegrationOptionValue" | "IntegrationService" | "ListIntegrationInstancesReply" | "ListIntegrationServicesReply" | "ListIntegrationsReply" | "ListOrganizationsReply" | "ListUsersReply" | "ListWorkspacesReply" | "LoginReply" | "Mutation" | "Organization" | "Query" | "SshKeyComponent" | "SshKeyConstraints" | "SshKeyCreateEntityReply" | "SshKeyEntity" | "SshKeyEntityEvent" | "SshKeyGetComponentReply" | "SshKeyGetEntityReply" | "SshKeyImplicitConstraint" | "SshKeyListComponentsReply" | "SshKeyListEntitiesReply" | "SshKeyListEntityEventsReply" | "SshKeyPickComponentReply" | "SshKeySyncEntityReply" | "Subscription" | "User" | "Workspace";
+export type NexusGenObjectNames = "AwsEksClusterRuntimeAddNodegroupReply" | "AwsEksClusterRuntimeComponent" | "AwsEksClusterRuntimeConstraints" | "AwsEksClusterRuntimeCreateEntityReply" | "AwsEksClusterRuntimeEntity" | "AwsEksClusterRuntimeEntityEvent" | "AwsEksClusterRuntimeGetComponentReply" | "AwsEksClusterRuntimeGetEntityReply" | "AwsEksClusterRuntimeImplicitConstraint" | "AwsEksClusterRuntimeListComponentsReply" | "AwsEksClusterRuntimeListEntitiesReply" | "AwsEksClusterRuntimeListEntityEventsReply" | "AwsEksClusterRuntimePickComponentReply" | "AwsEksClusterRuntimeSyncEntityReply" | "AwsEksClusterRuntimeTag" | "BillingAccount" | "Capability" | "CreateAccountReply" | "CreateBillingAccountReply" | "CreateIntegrationInstanceReply" | "CreateUserReply" | "GetBillingAccountReply" | "GetIntegrationReply" | "GetIntegrationServiceReply" | "GetOrganizationReply" | "GetUserReply" | "Group" | "Integration" | "IntegrationInstance" | "IntegrationOption" | "IntegrationOptionValue" | "IntegrationService" | "KubernetesContainer" | "KubernetesContainerPorts" | "KubernetesDeploymentComponent" | "KubernetesDeploymentConstraints" | "KubernetesDeploymentCreateEntityReply" | "KubernetesDeploymentDeployment" | "KubernetesDeploymentEditPropObjectReply" | "KubernetesDeploymentEditPropObjectYamlReply" | "KubernetesDeploymentEntity" | "KubernetesDeploymentEntityEvent" | "KubernetesDeploymentGetComponentReply" | "KubernetesDeploymentGetEntityReply" | "KubernetesDeploymentImplicitConstraint" | "KubernetesDeploymentListComponentsReply" | "KubernetesDeploymentListEntitiesReply" | "KubernetesDeploymentListEntityEventsReply" | "KubernetesDeploymentPickComponentReply" | "KubernetesDeploymentSpec" | "KubernetesDeploymentSyncEntityReply" | "KubernetesLabelSelector" | "KubernetesLabelSelectorMatchLabelsMap" | "KubernetesMetaData" | "KubernetesMetaDataLabelsMap" | "KubernetesPodSpec" | "KubernetesPodTemplateSpec" | "ListIntegrationInstancesReply" | "ListIntegrationServicesReply" | "ListIntegrationsReply" | "ListOrganizationsReply" | "ListUsersReply" | "ListWorkspacesReply" | "LoginReply" | "Mutation" | "Organization" | "Query" | "SshKeyComponent" | "SshKeyConstraints" | "SshKeyCreateEntityReply" | "SshKeyEntity" | "SshKeyEntityEvent" | "SshKeyGetComponentReply" | "SshKeyGetEntityReply" | "SshKeyImplicitConstraint" | "SshKeyListComponentsReply" | "SshKeyListEntitiesReply" | "SshKeyListEntityEventsReply" | "SshKeyPickComponentReply" | "SshKeySyncEntityReply" | "Subscription" | "User" | "Workspace";
 
-export type NexusGenInputNames = "AwsEksClusterRuntimeAddNodegroupRequest" | "AwsEksClusterRuntimeCreateEntityRequest" | "AwsEksClusterRuntimeGetComponentRequest" | "AwsEksClusterRuntimeGetEntityRequest" | "AwsEksClusterRuntimeListComponentsRequest" | "AwsEksClusterRuntimeListEntitiesRequest" | "AwsEksClusterRuntimeListEntityEventsRequest" | "AwsEksClusterRuntimePickComponentRequest" | "AwsEksClusterRuntimeSyncEntityRequest" | "AwsEksClusterRuntimeTagRequest" | "CreateAccountRequest" | "CreateBillingAccountRequest" | "CreateIntegrationInstanceRequest" | "CreateIntegrationOptionValueRequest" | "CreateUserRequest" | "DataPageToken" | "DataQuery" | "DataQueryExpression" | "DataQueryExpressionOption" | "GetBillingAccountRequest" | "GetIntegrationRequest" | "GetIntegrationServiceRequest" | "GetOrganizationRequest" | "GetUserRequest" | "ListIntegrationInstancesRequest" | "ListIntegrationServicesRequest" | "ListIntegrationsRequest" | "ListOrganizationsRequest" | "ListUsersRequest" | "ListWorkspacesRequest" | "LoginRequest" | "SshKeyCreateEntityRequest" | "SshKeyGetComponentRequest" | "SshKeyGetEntityRequest" | "SshKeyListComponentsRequest" | "SshKeyListEntitiesRequest" | "SshKeyListEntityEventsRequest" | "SshKeyPickComponentRequest" | "SshKeySyncEntityRequest" | "StreamEntityEventsRequest";
+export type NexusGenInputNames = "AwsEksClusterRuntimeAddNodegroupRequest" | "AwsEksClusterRuntimeCreateEntityRequest" | "AwsEksClusterRuntimeGetComponentRequest" | "AwsEksClusterRuntimeGetEntityRequest" | "AwsEksClusterRuntimeListComponentsRequest" | "AwsEksClusterRuntimeListEntitiesRequest" | "AwsEksClusterRuntimeListEntityEventsRequest" | "AwsEksClusterRuntimePickComponentRequest" | "AwsEksClusterRuntimeSyncEntityRequest" | "AwsEksClusterRuntimeTagRequest" | "CreateAccountRequest" | "CreateBillingAccountRequest" | "CreateIntegrationInstanceRequest" | "CreateIntegrationOptionValueRequest" | "CreateUserRequest" | "DataPageToken" | "DataQuery" | "DataQueryExpression" | "DataQueryExpressionOption" | "GetBillingAccountRequest" | "GetIntegrationRequest" | "GetIntegrationServiceRequest" | "GetOrganizationRequest" | "GetUserRequest" | "KubernetesContainerPortsRequest" | "KubernetesContainerRequest" | "KubernetesDeploymentCreateEntityRequest" | "KubernetesDeploymentDeploymentRequest" | "KubernetesDeploymentEditPropObjectRequest" | "KubernetesDeploymentEditPropObjectYamlRequest" | "KubernetesDeploymentGetComponentRequest" | "KubernetesDeploymentGetEntityRequest" | "KubernetesDeploymentListComponentsRequest" | "KubernetesDeploymentListEntitiesRequest" | "KubernetesDeploymentListEntityEventsRequest" | "KubernetesDeploymentPickComponentRequest" | "KubernetesDeploymentPropsRequest" | "KubernetesDeploymentSpecRequest" | "KubernetesDeploymentSyncEntityRequest" | "KubernetesLabelSelectorRequest" | "KubernetesLabelSelectorRequestMatchLabelsMap" | "KubernetesMetaDataRequest" | "KubernetesMetaDataRequestLabelsMap" | "KubernetesPodSpecRequest" | "KubernetesPodTemplateSpecRequest" | "ListIntegrationInstancesRequest" | "ListIntegrationServicesRequest" | "ListIntegrationsRequest" | "ListOrganizationsRequest" | "ListUsersRequest" | "ListWorkspacesRequest" | "LoginRequest" | "SshKeyCreateEntityRequest" | "SshKeyGetComponentRequest" | "SshKeyGetEntityRequest" | "SshKeyListComponentsRequest" | "SshKeyListEntitiesRequest" | "SshKeyListEntityEventsRequest" | "SshKeyPickComponentRequest" | "SshKeySyncEntityRequest" | "StreamEntityEventsRequest";
 
-export type NexusGenEnumNames = "AwsEksClusterRuntimeBool" | "AwsEksClusterRuntimeClusterStatus" | "AwsEksClusterRuntimeNextState" | "AwsEksClusterRuntimeNodegroupStatus" | "AwsEksClusterRuntimeState" | "DataOrderByDirection" | "DataQueryBooleanLogic" | "DataQueryComparison" | "DataQueryFieldType" | "IntegrationOptionType" | "SshKeyKeyFormat" | "SshKeyKeyFormatRequest" | "SshKeyKeyType" | "SshKeyKeyTypeRequest" | "SshKeyNextState" | "SshKeyState";
+export type NexusGenEnumNames = "AwsEksClusterRuntimeBool" | "AwsEksClusterRuntimeClusterStatus" | "AwsEksClusterRuntimeNextState" | "AwsEksClusterRuntimeNodegroupStatus" | "AwsEksClusterRuntimeState" | "DataOrderByDirection" | "DataQueryBooleanLogic" | "DataQueryComparison" | "DataQueryFieldType" | "IntegrationOptionType" | "KubernetesDeploymentNextState" | "KubernetesDeploymentState" | "SshKeyKeyFormat" | "SshKeyKeyFormatRequest" | "SshKeyKeyType" | "SshKeyKeyTypeRequest" | "SshKeyNextState" | "SshKeyState";
 
 export type NexusGenInterfaceNames = "EntityEvent";
 

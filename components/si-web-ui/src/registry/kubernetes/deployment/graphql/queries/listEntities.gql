@@ -1,0 +1,31 @@
+query kubernetesDeploymentListEntities(
+  $pageSize: Int,
+  $orderBy: String,
+  $orderByDirection: DataOrderByDirection,
+  $pageToken: String
+) {
+  kubernetesDeploymentListEntities(
+    input: {
+      pageSize: $pageSize,
+      orderBy: $orderBy,
+      orderByDirection: $orderByDirection,
+      pageToken: $pageToken,
+    }
+  ) {
+    items {
+      id
+      naturalKey
+      billingAccountId
+      organizationId
+      workspaceId
+      typeName
+      name
+      displayName
+      state
+      kubernetesVersion
+    }
+    totalCount
+    nextPageToken
+  }
+}
+

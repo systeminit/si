@@ -75,17 +75,19 @@ const dataSources = (): DataSources<DataSourceContext> => ({
 
 const server = new ApolloServer({
   cors: {
-    origin: '*', // <- allow request from all domains; public api
-    credentials: true
+    origin: "*", // <- allow request from all domains; public api
+    credentials: true,
   },
   schema,
   dataSources,
   formatError: error => {
-    console.log(error);
+    console.log("-------------------ERROR----------------------");
+    console.dir(error, { depth: Infinity });
     return error;
   },
   formatResponse: response => {
-    console.log(response);
+    console.log("-------------------RESPONSE----------------------");
+    console.dir(response, { depth: Infinity });
     return response;
   },
   context: ({ req, connection }): Context => {
@@ -97,6 +99,8 @@ const server = new ApolloServer({
       };
       //console.log({ connection });
     } else {
+      console.log("-------------------REQUEST----------------------");
+      console.dir(req.body, { depth: Infinity });
       const token = req.headers.authorization || "";
       const userContext: UserContext = { authenticated: false };
       if (token.startsWith("Bearer ")) {
@@ -106,18 +110,15 @@ const server = new ApolloServer({
           issuer: "https://app.systeminit.com",
           clockTolerance: 60,
         });
-        console.log(payload);
         if (payload["billingAccountId"] && payload["userId"]) {
           userContext["authenticated"] = true;
           userContext["billingAccountId"] = payload["billingAccountId"];
           userContext["userId"] = payload["userId"];
         }
       }
-      console.log(userContext);
       return { user: userContext };
     }
   },
-  tracing: true,
 });
 
 const port = process.env.PORT || 4000;

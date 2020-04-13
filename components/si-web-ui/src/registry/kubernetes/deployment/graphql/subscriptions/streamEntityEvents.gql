@@ -1,0 +1,17 @@
+subscription streamEntityEvents($scopeByTenantId: String!) {
+  streamEntityEvents(input:{scopeByTenantId:$scopeByTenantId}) {
+    id
+    actionName
+    userId
+    entityId
+    typeName
+    createTime
+    updatedTime
+    finalTime
+    finalized
+    outputLines
+    errorLines
+    success
+  }
+}
+

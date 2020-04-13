@@ -74,7 +74,7 @@ const subscription = objectType({
           topicParts,
         });
 
-        const protobufType = `si.${entityExtractResult[1]}.EntityEvent`;
+        const protobufType = `si.${entityExtractResult[1].replace('_', '.')}.EntityEvent`;
         logger.log("warn", "about to deserialize", {
           protobufType,
         });

@@ -6,9 +6,9 @@ use si_data::Db;
 pub mod prelude {
 
     pub use crate::{
-        gen_service_action, gen_service_create_entity, gen_service_get, gen_service_list,
-        gen_service_pick_component, Component as _, Entity as _, EntityEvent as _,
-        ListRequest as _, Service as CeaService, TonicResult,
+        gen_service_action, gen_service_create_entity, gen_service_edit_prop, gen_service_get,
+        gen_service_list, gen_service_pick_component, Component as _, Entity as _,
+        EntityEvent as _, ListRequest as _, Service as CeaService, TonicResult,
     };
     pub use std::convert::TryFrom as _;
     pub use tonic::Request as TonicRequest;
@@ -168,6 +168,45 @@ macro_rules! gen_service_create_entity {
             }))
         }
         .instrument(debug_span!($endpoint, ?$request))
+        .await
+    };
+}
+
+#[macro_export]
+macro_rules! gen_service_edit_prop {
+    ($self:ident, $request:ident, $endpoint:ident, $request_ty:ident, $response_ty:ident) => {
+        async {
+            let auth = si_cea::Authentication::try_from(&$request)?;
+            auth.authorize_on_billing_account(&$self.db, stringify!($endpoint))
+                .await?;
+
+            let req: &$request_ty = $request.get_ref();
+
+            let mut entity = Entity::get(&$self.db, &req.entity_id).await?;
+
+            let previous_entity = entity.clone();
+
+            entity.set_state_transition();
+            entity.$endpoint(req).await?;
+            entity.save(&$self.db).await?;
+
+            let entity_event = EntityEvent::create_with_previous_entity(
+                &$self.db,
+                auth.user_id(),
+                stringify!(endpoint),
+                &entity,
+                previous_entity,
+            )
+            .await?;
+
+            $self.agent.dispatch(&entity_event).await?;
+
+            Ok(tonic::Response::new($response_ty {
+                entity: Some(entity),
+                event: Some(entity_event),
+            }))
+        }
+        .instrument(debug_span!(stringify!($endpoint), ?$request))
         .await
     };
 }
