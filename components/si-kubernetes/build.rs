@@ -20,8 +20,8 @@ fn main() {
         .extern_path(".si.account", "::si_account::protobuf")
         .type_attribute(".", "#[derive(serde::Serialize, serde::Deserialize)]")
         .type_attribute(".", "#[serde(rename_all = \"camelCase\")]")
-        //.type_attribute("Entity", "#[serde(default)]")
-        //.type_attribute("EntityEvent", "#[serde(default)]")
+        .type_attribute("Entity", "#[serde(default)]")
+        .type_attribute("EntityEvent", "#[serde(default)]")
         .field_attribute("in", "#[serde(rename = \"in\")]")
         .compile(PROTOS, &[proto_include_path_string])
         .unwrap();
