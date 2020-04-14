@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package si.account;
 
-import "si-data/proto/si.data.proto";
+import "si-registry/proto/si.data.proto";
 
 service Account {
   rpc CreateAccount(CreateAccountRequest) returns (CreateAccountReply);
@@ -25,7 +25,7 @@ message ListIntegrationInstancesRequest {
   si.data.Query query = 1;
   int32 page_size = 2;
   string order_by = 3;
-  si.data.OrderByDirection order_by_direction = 4;
+  si.data.PageTokenOrderByDirection order_by_direction = 4;
   string page_token = 5;
   string scope_by_tenant_id = 6;
 }
@@ -40,7 +40,7 @@ message ListIntegrationServicesRequest {
   si.data.Query query = 1;
   int32 page_size = 2;
   string order_by = 3;
-  si.data.OrderByDirection order_by_direction = 4;
+  si.data.PageTokenOrderByDirection order_by_direction = 4;
   string page_token = 5;
   string scope_by_tenant_id = 6;
 }
@@ -55,7 +55,7 @@ message ListIntegrationsRequest {
   si.data.Query query = 1;
   int32 page_size = 2;
   string order_by = 3;
-  si.data.OrderByDirection order_by_direction = 4;
+  si.data.PageTokenOrderByDirection order_by_direction = 4;
   string page_token = 5;
   string scope_by_tenant_id = 6;
 }
@@ -70,7 +70,7 @@ message ListOrganizationsRequest {
   si.data.Query query = 1;
   int32 page_size = 2;
   string order_by = 3;
-  si.data.OrderByDirection order_by_direction = 4;
+  si.data.PageTokenOrderByDirection order_by_direction = 4;
   string page_token = 5;
   string scope_by_tenant_id = 6;
 }
@@ -85,7 +85,7 @@ message ListWorkspacesRequest {
   si.data.Query query = 1;
   int32 page_size = 2;
   string order_by = 3;
-  si.data.OrderByDirection order_by_direction = 4;
+  si.data.PageTokenOrderByDirection order_by_direction = 4;
   string page_token = 5;
   string scope_by_tenant_id = 6;
 }
@@ -100,7 +100,7 @@ message ListUsersRequest {
   si.data.Query query = 1;
   int32 page_size = 2;
   string order_by = 3;
-  si.data.OrderByDirection order_by_direction = 4;
+  si.data.PageTokenOrderByDirection order_by_direction = 4;
   string page_token = 5;
   string scope_by_tenant_id = 6;
 }
