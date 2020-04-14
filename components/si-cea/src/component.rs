@@ -117,7 +117,7 @@ pub trait Component:
     async fn pick_by_expressions(
         db: &Db,
         expressions: Vec<si_data::QueryExpressionOption>,
-        boolean_term: si_data::QueryBooleanLogic,
+        boolean_term: si_data::QueryBooleanTerm,
     ) -> CeaResult<Self> {
         let query = si_data::Query {
             items: expressions,
@@ -149,12 +149,14 @@ pub trait Component:
         if value != "" {
             let query = si_data::Query {
                 items: vec![si_data::QueryExpressionOption {
-                    qe: Some(si_data::Qe::Expression(si_data::QueryExpression {
+                    expression: Some(si_data::QueryExpressionOptionExpression {
                         field: field.clone(),
-                        comparison: si_data::QueryComparison::Equals as i32,
+                        comparison: si_data::QueryExpressionOptionExpressionComparison::Equals
+                            as i32,
                         value: value.clone(),
                         ..Default::default()
-                    })),
+                    }),
+                    ..Default::default()
                 }],
                 boolean_term: si_data::QueryBooleanLogic::And as i32,
                 ..Default::default()

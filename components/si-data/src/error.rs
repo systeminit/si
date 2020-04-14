@@ -23,6 +23,8 @@ pub enum DataError {
     InvalidBooleanLogic,
     #[error("invalid field type")]
     InvalidFieldType,
+    #[error("invalid query options")]
+    InvalidQueryItems,
     #[error("invalid query comparison option")]
     InvalidQueryComparison,
     #[error("invalid order by direction; should be ASC or DESC")]
@@ -41,6 +43,8 @@ pub enum DataError {
     SodiumOxideOpen,
     #[error("error validating item for insertion: {0}")]
     ValidationError(String),
+    #[error("a protobuf field was required, and it was absent: {0})")]
+    RequiredField(String),
 }
 
 impl From<DataError> for tonic::Status {
