@@ -137,7 +137,7 @@ registry.component({
           },
         });
         p.properties.addObject({
-          name: "expressionOption",
+          name: "items",
           label: "Expression Option",
           options(p: PropObject) {
             p.repeated = true;

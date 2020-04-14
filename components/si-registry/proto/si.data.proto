@@ -29,7 +29,7 @@ message PageToken {
 message Query {
   QueryBooleanTerm boolean_term = 1;
   google.protobuf.BoolValue is_not = 2;
-  repeated QueryExpressionOption expression_option = 3;
+  repeated QueryItems items = 3;
 }
 
 enum PageTokenOrderByDirection {
@@ -44,29 +44,29 @@ enum QueryBooleanTerm {
   QUERY_BOOLEAN_TERM_OR = 2;
 }
 
-message QueryExpressionOption {
+message QueryItems {
   si.data.Query query = 1001;
-  QueryExpressionOptionExpression expression = 1;
+  QueryItemsExpression expression = 1;
 }
 
-message QueryExpressionOptionExpression {
+message QueryItemsExpression {
   google.protobuf.StringValue field = 1;
   google.protobuf.StringValue value = 2;
-  QueryExpressionOptionExpressionComparison comparison = 3;
-  QueryExpressionOptionExpressionFieldType field_type = 4;
+  QueryItemsExpressionComparison comparison = 3;
+  QueryItemsExpressionFieldType field_type = 4;
 }
 
-enum QueryExpressionOptionExpressionComparison {
-  QUERY_EXPRESSION_OPTION_EXPRESSION_COMPARISON_UNKNOWN = 0;
-  QUERY_EXPRESSION_OPTION_EXPRESSION_COMPARISON_EQUALS = 1;
-  QUERY_EXPRESSION_OPTION_EXPRESSION_COMPARISON_NOT_EQUALS = 2;
-  QUERY_EXPRESSION_OPTION_EXPRESSION_COMPARISON_CONTAINS = 3;
-  QUERY_EXPRESSION_OPTION_EXPRESSION_COMPARISON_LIKE = 4;
-  QUERY_EXPRESSION_OPTION_EXPRESSION_COMPARISON_NOT_LIKE = 5;
+enum QueryItemsExpressionComparison {
+  QUERY_ITEMS_EXPRESSION_COMPARISON_UNKNOWN = 0;
+  QUERY_ITEMS_EXPRESSION_COMPARISON_EQUALS = 1;
+  QUERY_ITEMS_EXPRESSION_COMPARISON_NOT_EQUALS = 2;
+  QUERY_ITEMS_EXPRESSION_COMPARISON_CONTAINS = 3;
+  QUERY_ITEMS_EXPRESSION_COMPARISON_LIKE = 4;
+  QUERY_ITEMS_EXPRESSION_COMPARISON_NOT_LIKE = 5;
 }
 
-enum QueryExpressionOptionExpressionFieldType {
-  QUERY_EXPRESSION_OPTION_EXPRESSION_FIELD_TYPE_UNKNOWN = 0;
-  QUERY_EXPRESSION_OPTION_EXPRESSION_FIELD_TYPE_STRING = 1;
-  QUERY_EXPRESSION_OPTION_EXPRESSION_FIELD_TYPE_INT = 2;
+enum QueryItemsExpressionFieldType {
+  QUERY_ITEMS_EXPRESSION_FIELD_TYPE_UNKNOWN = 0;
+  QUERY_ITEMS_EXPRESSION_FIELD_TYPE_STRING = 1;
+  QUERY_ITEMS_EXPRESSION_FIELD_TYPE_INT = 2;
 }

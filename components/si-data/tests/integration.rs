@@ -10,9 +10,7 @@ use std::env;
 pub mod common;
 
 use si_data::{
-    data::{
-        query_expression_option::Qe, Query, QueryComparison, QueryExpression, QueryExpressionOption,
-    },
+    data::{Query, QueryItems, QueryItemsExpression, QueryItemsExpressionComparison},
     error::{DataError, Result},
     Db, ListResult, Storable,
 };
@@ -37,7 +35,8 @@ lazy_static! {
         if ureq::post("http://si:bugbear@localhost:8091/pools/default/buckets/si_integration/controller/doFlush").call().error() {
            panic!("Cannot flush si_integration bucket");
         };
-        Db::new(&SETTINGS).expect("failed to connect to database cluster")
+        let db = Db::new(&SETTINGS).expect("failed to connect to database cluster");
+        db
     };
 }
 
@@ -139,6 +138,9 @@ async fn upsert() {
 
 #[tokio::test]
 async fn list() {
+    DB.create_primary_index()
+        .await
+        .expect("failed to create primary index");
     let items = vec![
         ListData::new("5", "king diamond"),
         ListData::new("6", "slayer"),
@@ -233,13 +235,14 @@ async fn list() {
 
     // With a Query
     let query = Some(Query {
-        items: vec![QueryExpressionOption {
-            qe: Some(Qe::Expression(QueryExpression {
-                field: "name".to_string(),
-                comparison: QueryComparison::Equals as i32,
-                value: "slayer".to_string(),
+        items: vec![QueryItems {
+            expression: Some(QueryItemsExpression {
+                field: Some("name".to_string()),
+                comparison: QueryItemsExpressionComparison::Equals as i32,
+                value: Some("slayer".to_string()),
                 ..Default::default()
-            })),
+            }),
+            ..Default::default()
         }],
         ..Default::default()
     });

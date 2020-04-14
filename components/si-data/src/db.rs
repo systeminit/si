@@ -9,7 +9,7 @@ use tracing::{debug, event, info, span, Level};
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::data::{OrderByDirection, PageToken, Query};
+use crate::data::{PageToken, PageTokenOrderByDirection, Query};
 use crate::error::{DataError, Result};
 use crate::migrateable::Migrateable;
 use crate::storable::{Reference, Storable};
@@ -58,11 +58,12 @@ impl<T: DeserializeOwned + std::fmt::Debug> std::ops::Deref for ListResult<T> {
     }
 }
 
-impl std::fmt::Display for OrderByDirection {
+impl std::fmt::Display for PageTokenOrderByDirection {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let msg = match self {
-            &OrderByDirection::Asc => "ASC".to_string(),
-            &OrderByDirection::Desc => "DESC".to_string(),
+            &PageTokenOrderByDirection::Unknown => "ASC".to_string(),
+            &PageTokenOrderByDirection::Asc => "ASC".to_string(),
+            &PageTokenOrderByDirection::Desc => "DESC".to_string(),
         };
         write!(f, "{}", msg)
     }
@@ -272,11 +273,19 @@ impl Db {
     {
         let page_token = PageToken::unseal(page_token.as_ref(), &self.page_secret_key)?;
         let query = page_token.query;
-        let order_by = page_token.order_by;
-        let page_size = page_token.page_size;
-        let item_id = page_token.item_id;
+        let order_by = page_token
+            .order_by
+            .ok_or(DataError::RequiredField("page_token.order_by".into()))?;
+        let page_size = page_token
+            .page_size
+            .ok_or(DataError::RequiredField("page_token.page_size".into()))?;
+        let item_id = page_token
+            .item_id
+            .ok_or(DataError::RequiredField("page_token.item_id".into()))?;
         let order_by_direction = page_token.order_by_direction;
-        let contained_within = page_token.contained_within;
+        let contained_within = page_token.contained_within.ok_or(DataError::RequiredField(
+            "page_token.contained_within".into(),
+        ))?;
         //let order_by_direction = OrderByDirection::from_i32(page_token.order_by_direction)
         //.ok_or(DataError::InvalidOrderByDirection)?;
         self.list(
@@ -290,7 +299,6 @@ impl Db {
         .await
     }
 
-    #[tracing::instrument]
     pub async fn list<
         I: DeserializeOwned + Storable + std::fmt::Debug,
         O: AsRef<str> + std::fmt::Debug,
@@ -318,7 +326,7 @@ impl Db {
 
         // If you don't send a valid order by direction, you fucked with
         // the protobuf you sent by hand
-        let order_by_direction = OrderByDirection::from_i32(order_by_direction)
+        let order_by_direction = PageTokenOrderByDirection::from_i32(order_by_direction)
             .ok_or(DataError::InvalidOrderByDirection)?;
 
         // The default page size is 10, and the inbound default is 0
@@ -388,19 +396,19 @@ impl Db {
         } else {
             let mut next_page_token = PageToken::default();
             next_page_token.query = query.clone();
-            next_page_token.page_size = page_size;
-            next_page_token.order_by = String::from(order_by);
+            next_page_token.page_size = Some(page_size);
+            next_page_token.order_by = Some(String::from(order_by));
             next_page_token.order_by_direction = order_by_direction as i32;
-            next_page_token.item_id = next_item_id.clone();
-            next_page_token.contained_within = contained_within.to_string();
+            next_page_token.item_id = Some(next_item_id.clone());
+            next_page_token.contained_within = Some(contained_within.to_string());
             next_page_token.seal(&self.page_secret_key)?
         };
 
         Ok(ListResult {
             items: final_vec,
             total_count: result_meta.metrics.result_count as i32,
-            next_item_id: next_item_id,
-            page_token: page_token,
+            next_item_id,
+            page_token,
         })
     }
 

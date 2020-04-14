@@ -9,6 +9,9 @@ fn main() {
     prost_build
         .type_attribute(".", "#[derive(serde::Serialize, serde::Deserialize)]")
         .type_attribute(".", "#[serde(rename_all = \"camelCase\")]")
-        .compile_protos(&["si-data/proto/si.data.proto"], &[proto_include_path_string])
+        .compile_protos(
+            &["si-registry/proto/si.data.proto"],
+            &[proto_include_path_string],
+        )
         .expect("cannot compile protobufs");
 }

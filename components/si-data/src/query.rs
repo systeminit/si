@@ -1,6 +1,6 @@
 pub use crate::data::{
-    query_expression_option, query_expression_option::Qe, Query, QueryBooleanLogic,
-    QueryComparison, QueryExpression, QueryExpressionOption, QueryFieldType,
+    Query, QueryBooleanTerm, QueryItems, QueryItemsExpression, QueryItemsExpressionComparison,
+    QueryItemsExpressionFieldType,
 };
 use crate::error::{DataError, Result};
 
@@ -24,24 +24,26 @@ use serde_json::json;
 //  evaluated, with eevery expression joined together with AND.
 //
 
-impl fmt::Display for QueryComparison {
+impl fmt::Display for QueryItemsExpressionComparison {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let msg = match self {
-            &QueryComparison::Equals => "=".to_string(),
-            &QueryComparison::Notequals => "!=".to_string(),
-            &QueryComparison::Contains => "contains".to_string(),
-            &QueryComparison::Like => "LIKE".to_string(),
-            &QueryComparison::Notlike => "NOT LIKE".to_string(),
+            &QueryItemsExpressionComparison::Unknown => "UNKNOWN".to_string(),
+            &QueryItemsExpressionComparison::Equals => "=".to_string(),
+            &QueryItemsExpressionComparison::NotEquals => "!=".to_string(),
+            &QueryItemsExpressionComparison::Contains => "contains".to_string(),
+            &QueryItemsExpressionComparison::Like => "LIKE".to_string(),
+            &QueryItemsExpressionComparison::NotLike => "NOT LIKE".to_string(),
         };
         write!(f, "{}", msg)
     }
 }
 
-impl fmt::Display for QueryBooleanLogic {
+impl fmt::Display for QueryBooleanTerm {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let msg = match self {
-            &QueryBooleanLogic::And => "AND".to_string(),
-            &QueryBooleanLogic::Or => "OR".to_string(),
+            &QueryBooleanTerm::Unknown => "UNKNOWN".to_string(),
+            &QueryBooleanTerm::And => "AND".to_string(),
+            &QueryBooleanTerm::Or => "OR".to_string(),
         };
         write!(f, "{}", msg)
     }
@@ -50,87 +52,101 @@ impl fmt::Display for QueryBooleanLogic {
 impl Query {
     pub fn generate_expression_for_string(
         field: impl Into<String>,
-        comparison: QueryComparison,
+        comparison: QueryItemsExpressionComparison,
         value: impl Into<String>,
-    ) -> QueryExpressionOption {
-        QueryExpressionOption {
-            qe: Some(Qe::Expression(QueryExpression {
-                field: field.into(),
+    ) -> QueryItems {
+        QueryItems {
+            expression: Some(QueryItemsExpression {
+                field: Some(field.into()),
                 comparison: comparison as i32,
-                field_type: QueryFieldType::String as i32,
-                value: value.into(),
-            })),
+                field_type: QueryItemsExpressionFieldType::String as i32,
+                value: Some(value.into()),
+            }),
+            ..Default::default()
         }
     }
 
     pub fn generate_expression_for_int(
         field: impl Into<String>,
-        comparison: QueryComparison,
+        comparison: QueryItemsExpressionComparison,
         value: impl Into<String>,
-    ) -> QueryExpressionOption {
-        QueryExpressionOption {
-            qe: Some(Qe::Expression(QueryExpression {
-                field: field.into(),
+    ) -> QueryItems {
+        QueryItems {
+            expression: Some(QueryItemsExpression {
+                field: Some(field.into()),
                 comparison: comparison as i32,
-                field_type: QueryFieldType::Int as i32,
-                value: value.into(),
-            })),
+                field_type: QueryItemsExpressionFieldType::Int as i32,
+                value: Some(value.into()),
+            }),
+            ..Default::default()
         }
     }
 
     pub fn as_n1ql(&self, bucket_name: &str) -> Result<String> {
         let mut where_string = String::new();
-        if self.is_not {
+        if self.is_not.unwrap_or(false) {
             where_string.push_str("NOT ");
         }
         where_string.push_str("(");
         let mut item_count = 0;
         for query_e_option in self.items.iter() {
             if item_count != 0 {
-                let qbl = match QueryBooleanLogic::from_i32(self.boolean_term) {
+                let qbl = match QueryBooleanTerm::from_i32(self.boolean_term) {
                     Some(l) => l,
                     None => return Err(DataError::InvalidBooleanLogic),
                 };
                 let boolean_term = format!(" {} ", qbl);
                 where_string.push_str(&boolean_term);
             }
-            match &query_e_option.qe {
-                Some(query_expression_option::Qe::Expression(exp)) => {
-                    let comparison = match QueryComparison::from_i32(exp.comparison) {
-                        Some(c) => c,
-                        None => return Err(DataError::InvalidQueryComparison),
-                    };
-                    let value = match QueryFieldType::from_i32(exp.field_type) {
-                        Some(QueryFieldType::String) => json![exp.value],
-                        Some(QueryFieldType::Int) => {
-                            let vint: u64 = exp.value.parse()?;
-                            json![vint]
-                        }
-                        None => return Err(DataError::InvalidFieldType),
-                    };
-                    let expression = if comparison == QueryComparison::Contains {
-                        format!(
-                            "ARRAY_CONTAINS({}.[{}], {})",
-                            bucket_name,
-                            json![exp.field],
-                            value
-                        )
-                    } else {
-                        format!(
-                            "{}.[{}] {} {}",
-                            bucket_name,
-                            json![exp.field],
-                            comparison,
-                            value
-                        )
-                    };
-                    where_string.push_str(&expression);
+            if query_e_option.expression.is_some() {
+                match &query_e_option.expression {
+                    Some(exp) => {
+                        let comparison =
+                            match QueryItemsExpressionComparison::from_i32(exp.comparison) {
+                                Some(c) => c,
+                                None => return Err(DataError::InvalidQueryComparison),
+                            };
+                        let value = match QueryItemsExpressionFieldType::from_i32(exp.field_type) {
+                            Some(QueryItemsExpressionFieldType::Unknown) => json![exp.value],
+                            Some(QueryItemsExpressionFieldType::String) => json![exp.value],
+                            Some(QueryItemsExpressionFieldType::Int) => {
+                                // Elizabeth Jacob fixed this bug, her first, on 04-13-2020.
+                                // Good job, Monkey.
+                                let vint: u64 = exp.value.as_ref().unwrap_or(&"".into()).parse()?;
+                                json![vint]
+                            }
+                            None => return Err(DataError::InvalidFieldType),
+                        };
+                        let expression = if comparison == QueryItemsExpressionComparison::Contains {
+                            format!(
+                                "ARRAY_CONTAINS({}.[{}], {})",
+                                bucket_name,
+                                json![exp.field],
+                                value
+                            )
+                        } else {
+                            format!(
+                                "{}.[{}] {} {}",
+                                bucket_name,
+                                json![exp.field],
+                                comparison,
+                                value
+                            )
+                        };
+                        where_string.push_str(&expression);
+                    }
+                    None => unreachable!(),
                 }
-                Some(query_expression_option::Qe::Query(q)) => {
-                    let query_group = q.as_n1ql(bucket_name)?;
-                    where_string.push_str(&query_group);
+            } else if query_e_option.query.is_some() {
+                match &query_e_option.query {
+                    Some(q) => {
+                        let query_group = q.as_n1ql(bucket_name)?;
+                        where_string.push_str(&query_group);
+                    }
+                    None => unreachable!(),
                 }
-                None => return Err(DataError::InvalidQueryComparison),
+            } else {
+                return Err(DataError::InvalidQueryItems);
             }
             item_count = item_count + 1;
         }
@@ -144,22 +160,23 @@ impl Query {
 mod query_test {
 
     use crate::data::{
-        query_expression_option, Query, QueryBooleanLogic, QueryComparison, QueryExpression,
-        QueryExpressionOption, QueryFieldType,
+        Query, QueryBooleanTerm, QueryItems, QueryItemsExpression, QueryItemsExpressionComparison,
+        QueryItemsExpressionFieldType,
     };
 
     #[test]
     fn single_term() {
         let query = Query {
-            items: vec![QueryExpressionOption {
-                qe: Some(query_expression_option::Qe::Expression(QueryExpression {
-                    field: "foo".to_string(),
-                    comparison: QueryComparison::Equals as i32,
-                    value: "bar".to_string(),
+            items: vec![QueryItems {
+                expression: Some(QueryItemsExpression {
+                    field: Some("foo".to_string()),
+                    comparison: QueryItemsExpressionComparison::Equals as i32,
+                    value: Some("bar".to_string()),
                     ..Default::default()
-                })),
+                }),
+                ..Default::default()
             }],
-            boolean_term: QueryBooleanLogic::And as i32,
+            boolean_term: QueryBooleanTerm::And as i32,
             ..Default::default()
         };
         let query_string = query.as_n1ql("si").expect("Failed to create n1ql query");
@@ -169,15 +186,16 @@ mod query_test {
     #[test]
     fn single_term_contains() {
         let query = Query {
-            items: vec![QueryExpressionOption {
-                qe: Some(query_expression_option::Qe::Expression(QueryExpression {
-                    field: "foo".to_string(),
-                    comparison: QueryComparison::Contains as i32,
-                    value: "bar".to_string(),
+            items: vec![QueryItems {
+                expression: Some(QueryItemsExpression {
+                    field: Some("foo".to_string()),
+                    comparison: QueryItemsExpressionComparison::Contains as i32,
+                    value: Some("bar".to_string()),
                     ..Default::default()
-                })),
+                }),
+                ..Default::default()
             }],
-            boolean_term: QueryBooleanLogic::And as i32,
+            boolean_term: QueryBooleanTerm::And as i32,
             ..Default::default()
         };
         let query_string = query.as_n1ql("si").expect("Failed to create n1ql query");
@@ -187,15 +205,16 @@ mod query_test {
     #[test]
     fn single_term_like() {
         let query = Query {
-            items: vec![QueryExpressionOption {
-                qe: Some(query_expression_option::Qe::Expression(QueryExpression {
-                    field: "foo".to_string(),
-                    comparison: QueryComparison::Like as i32,
-                    value: "bar".to_string(),
+            items: vec![QueryItems {
+                expression: Some(QueryItemsExpression {
+                    field: Some("foo".to_string()),
+                    comparison: QueryItemsExpressionComparison::Like as i32,
+                    value: Some("bar".to_string()),
                     ..Default::default()
-                })),
+                }),
+                ..Default::default()
             }],
-            boolean_term: QueryBooleanLogic::And as i32,
+            boolean_term: QueryBooleanTerm::And as i32,
             ..Default::default()
         };
         let query_string = query.as_n1ql("si").expect("Failed to create n1ql query");
@@ -205,15 +224,16 @@ mod query_test {
     #[test]
     fn single_term_notlike() {
         let query = Query {
-            items: vec![QueryExpressionOption {
-                qe: Some(query_expression_option::Qe::Expression(QueryExpression {
-                    field: "foo".to_string(),
-                    comparison: QueryComparison::Notlike as i32,
-                    value: "bar".to_string(),
+            items: vec![QueryItems {
+                expression: Some(QueryItemsExpression {
+                    field: Some("foo".to_string()),
+                    comparison: QueryItemsExpressionComparison::NotLike as i32,
+                    value: Some("bar".to_string()),
                     ..Default::default()
-                })),
+                }),
+                ..Default::default()
             }],
-            boolean_term: QueryBooleanLogic::And as i32,
+            boolean_term: QueryBooleanTerm::And as i32,
             ..Default::default()
         };
         let query_string = query.as_n1ql("si").expect("Failed to create n1ql query");
@@ -223,15 +243,16 @@ mod query_test {
     #[test]
     fn single_term_int_field() {
         let query = Query {
-            items: vec![QueryExpressionOption {
-                qe: Some(query_expression_option::Qe::Expression(QueryExpression {
-                    field: "foo".to_string(),
-                    comparison: QueryComparison::Equals as i32,
-                    value: "1".to_string(),
-                    field_type: QueryFieldType::Int as i32,
-                })),
+            items: vec![QueryItems {
+                expression: Some(QueryItemsExpression {
+                    field: Some("foo".to_string()),
+                    comparison: QueryItemsExpressionComparison::Equals as i32,
+                    value: Some("1".to_string()),
+                    field_type: QueryItemsExpressionFieldType::Int as i32,
+                }),
+                ..Default::default()
             }],
-            boolean_term: QueryBooleanLogic::And as i32,
+            boolean_term: QueryBooleanTerm::And as i32,
             ..Default::default()
         };
         let query_string = query.as_n1ql("si").expect("Failed to create n1ql query");
@@ -242,24 +263,26 @@ mod query_test {
     fn multi_term_and() {
         let query = Query {
             items: vec![
-                QueryExpressionOption {
-                    qe: Some(query_expression_option::Qe::Expression(QueryExpression {
-                        field: "foo".to_string(),
-                        comparison: QueryComparison::Equals as i32,
-                        value: "bar".to_string(),
+                QueryItems {
+                    expression: Some(QueryItemsExpression {
+                        field: Some("foo".to_string()),
+                        comparison: QueryItemsExpressionComparison::Equals as i32,
+                        value: Some("bar".to_string()),
                         ..Default::default()
-                    })),
+                    }),
+                    ..Default::default()
                 },
-                QueryExpressionOption {
-                    qe: Some(query_expression_option::Qe::Expression(QueryExpression {
-                        field: "freaky".to_string(),
-                        comparison: QueryComparison::Notequals as i32,
-                        value: "friday".to_string(),
+                QueryItems {
+                    expression: Some(QueryItemsExpression {
+                        field: Some("freaky".to_string()),
+                        comparison: QueryItemsExpressionComparison::NotEquals as i32,
+                        value: Some("friday".to_string()),
                         ..Default::default()
-                    })),
+                    }),
+                    ..Default::default()
                 },
             ],
-            boolean_term: QueryBooleanLogic::And as i32,
+            boolean_term: QueryBooleanTerm::And as i32,
             ..Default::default()
         };
         let query_string = query.as_n1ql("si").expect("Failed to create n1ql query");
@@ -273,24 +296,26 @@ mod query_test {
     fn multi_term_or() {
         let query = Query {
             items: vec![
-                QueryExpressionOption {
-                    qe: Some(query_expression_option::Qe::Expression(QueryExpression {
-                        field: "foo".to_string(),
-                        comparison: QueryComparison::Equals as i32,
-                        value: "bar".to_string(),
+                QueryItems {
+                    expression: Some(QueryItemsExpression {
+                        field: Some("foo".to_string()),
+                        comparison: QueryItemsExpressionComparison::Equals as i32,
+                        value: Some("bar".to_string()),
                         ..Default::default()
-                    })),
+                    }),
+                    ..Default::default()
                 },
-                QueryExpressionOption {
-                    qe: Some(query_expression_option::Qe::Expression(QueryExpression {
-                        field: "freaky".to_string(),
-                        comparison: QueryComparison::Notequals as i32,
-                        value: "friday".to_string(),
+                QueryItems {
+                    expression: Some(QueryItemsExpression {
+                        field: Some("freaky".to_string()),
+                        comparison: QueryItemsExpressionComparison::NotEquals as i32,
+                        value: Some("friday".to_string()),
                         ..Default::default()
-                    })),
+                    }),
+                    ..Default::default()
                 },
             ],
-            boolean_term: QueryBooleanLogic::Or as i32,
+            boolean_term: QueryBooleanTerm::Or as i32,
             ..Default::default()
         };
         let query_string = query.as_n1ql("si").expect("Failed to create n1ql query");
@@ -304,52 +329,53 @@ mod query_test {
     fn multi_group() {
         let query = Query {
             items: vec![
-                QueryExpressionOption {
-                    qe: Some(query_expression_option::Qe::Expression(QueryExpression {
-                        field: "foo".to_string(),
-                        comparison: QueryComparison::Equals as i32,
-                        value: "bar".to_string(),
+                QueryItems {
+                    expression: Some(QueryItemsExpression {
+                        field: Some("foo".to_string()),
+                        comparison: QueryItemsExpressionComparison::Equals as i32,
+                        value: Some("bar".to_string()),
                         ..Default::default()
-                    })),
+                    }),
+                    ..Default::default()
                 },
-                QueryExpressionOption {
-                    qe: Some(query_expression_option::Qe::Expression(QueryExpression {
-                        field: "freaky".to_string(),
-                        comparison: QueryComparison::Notequals as i32,
-                        value: "friday".to_string(),
+                QueryItems {
+                    expression: Some(QueryItemsExpression {
+                        field: Some("freaky".to_string()),
+                        comparison: QueryItemsExpressionComparison::NotEquals as i32,
+                        value: Some("friday".to_string()),
                         ..Default::default()
-                    })),
+                    }),
+                    ..Default::default()
                 },
-                QueryExpressionOption {
-                    qe: Some(query_expression_option::Qe::Query(Query {
+                QueryItems {
+                    query: Some(Query {
                         items: vec![
-                            QueryExpressionOption {
-                                qe: Some(query_expression_option::Qe::Expression(
-                                    QueryExpression {
-                                        field: "parent".to_string(),
-                                        comparison: QueryComparison::Equals as i32,
-                                        value: "teacher".to_string(),
-                                        ..Default::default()
-                                    },
-                                )),
+                            QueryItems {
+                                expression: Some(QueryItemsExpression {
+                                    field: Some("parent".to_string()),
+                                    comparison: QueryItemsExpressionComparison::Equals as i32,
+                                    value: Some("teacher".to_string()),
+                                    ..Default::default()
+                                }),
+                                ..Default::default()
                             },
-                            QueryExpressionOption {
-                                qe: Some(query_expression_option::Qe::Expression(
-                                    QueryExpression {
-                                        field: "loop".to_string(),
-                                        comparison: QueryComparison::Equals as i32,
-                                        value: "canoe".to_string(),
-                                        ..Default::default()
-                                    },
-                                )),
+                            QueryItems {
+                                expression: Some(QueryItemsExpression {
+                                    field: Some("loop".to_string()),
+                                    comparison: QueryItemsExpressionComparison::Equals as i32,
+                                    value: Some("canoe".to_string()),
+                                    ..Default::default()
+                                }),
+                                ..Default::default()
                             },
                         ],
-                        boolean_term: QueryBooleanLogic::Or as i32,
+                        boolean_term: QueryBooleanTerm::Or as i32,
                         ..Default::default()
-                    })),
+                    }),
+                    ..Default::default()
                 },
             ],
-            boolean_term: QueryBooleanLogic::And as i32,
+            boolean_term: QueryBooleanTerm::And as i32,
             ..Default::default()
         };
         let query_string = query.as_n1ql("si").expect("Failed to create n1ql query");
@@ -363,52 +389,53 @@ mod query_test {
     fn multi_group_not() {
         let query = Query {
             items: vec![
-                QueryExpressionOption {
-                    qe: Some(query_expression_option::Qe::Expression(QueryExpression {
-                        field: "foo".to_string(),
-                        comparison: QueryComparison::Equals as i32,
-                        value: "bar".to_string(),
+                QueryItems {
+                    expression: Some(QueryItemsExpression {
+                        field: Some("foo".to_string()),
+                        comparison: QueryItemsExpressionComparison::Equals as i32,
+                        value: Some("bar".to_string()),
                         ..Default::default()
-                    })),
+                    }),
+                    ..Default::default()
                 },
-                QueryExpressionOption {
-                    qe: Some(query_expression_option::Qe::Expression(QueryExpression {
-                        field: "freaky".to_string(),
-                        comparison: QueryComparison::Notequals as i32,
-                        value: "friday".to_string(),
+                QueryItems {
+                    expression: Some(QueryItemsExpression {
+                        field: Some("freaky".to_string()),
+                        comparison: QueryItemsExpressionComparison::NotEquals as i32,
+                        value: Some("friday".to_string()),
                         ..Default::default()
-                    })),
+                    }),
+                    ..Default::default()
                 },
-                QueryExpressionOption {
-                    qe: Some(query_expression_option::Qe::Query(Query {
+                QueryItems {
+                    query: Some(Query {
                         items: vec![
-                            QueryExpressionOption {
-                                qe: Some(query_expression_option::Qe::Expression(
-                                    QueryExpression {
-                                        field: "parent".to_string(),
-                                        comparison: QueryComparison::Equals as i32,
-                                        value: "teacher".to_string(),
-                                        ..Default::default()
-                                    },
-                                )),
+                            QueryItems {
+                                expression: Some(QueryItemsExpression {
+                                    field: Some("parent".to_string()),
+                                    comparison: QueryItemsExpressionComparison::Equals as i32,
+                                    value: Some("teacher".to_string()),
+                                    ..Default::default()
+                                }),
+                                ..Default::default()
                             },
-                            QueryExpressionOption {
-                                qe: Some(query_expression_option::Qe::Expression(
-                                    QueryExpression {
-                                        field: "loop".to_string(),
-                                        comparison: QueryComparison::Equals as i32,
-                                        value: "canoe".to_string(),
-                                        ..Default::default()
-                                    },
-                                )),
+                            QueryItems {
+                                expression: Some(QueryItemsExpression {
+                                    field: Some("loop".to_string()),
+                                    comparison: QueryItemsExpressionComparison::Equals as i32,
+                                    value: Some("canoe".to_string()),
+                                    ..Default::default()
+                                }),
+                                ..Default::default()
                             },
                         ],
-                        boolean_term: QueryBooleanLogic::Or as i32,
-                        is_not: true,
-                    })),
+                        boolean_term: QueryBooleanTerm::Or as i32,
+                        is_not: Some(true),
+                    }),
+                    ..Default::default()
                 },
             ],
-            boolean_term: QueryBooleanLogic::And as i32,
+            boolean_term: QueryBooleanTerm::And as i32,
             ..Default::default()
         };
         let query_string = query.as_n1ql("si").expect("Failed to create n1ql query");
