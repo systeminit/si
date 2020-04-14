@@ -58,7 +58,7 @@ chrono = { version = "0.4", features = ["serde"] }
 si-settings = { path = "../si-settings" }
 si-data = { path = "../si-data" }
 si-account = { path = "../si-account" }
-si-cea = { path = "../si-cea" }
+#si-cea = { path = "../si-cea" }
 si-external-api-gateway = { path = "../si-external-api-gateway/rust-client" }
 
 [dev-dependencies]

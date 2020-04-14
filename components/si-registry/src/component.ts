@@ -666,7 +666,17 @@ export class Component {
     }
     resultSetSorted = resultSetSorted.sort();
     for (const importPart of resultSetSorted) {
+      // TODO: Figure this out. It's going to be dirty for now.
+      //       The issue is EntityEvent doesn't exist when we
+      //       walk the imports, so it doesn't get added. We
+      //       could either call the importWalk again, but only
+      //       if this component requires it. Or, we can use the
+      //       fact that if we import entity we also want EntityEvent,
+      //       and get it done that way. So... thats what I did.
       result = result + `\nimport "${importPart}";`;
+      if (importPart == "si-registry/proto/si.entity.proto") {
+        result = result + `\nimport "si-registry/proto/si.entity_event.proto";`;
+      }
     }
     return result;
   }
@@ -772,7 +782,20 @@ export class Component {
         options(p: PropObject) {
           p.universal = true;
           p.parentName = "";
-          p.properties.attrs = component.properties.attrs;
+          for (const cp of component.properties.attrs) {
+            //if (p.kind() == "object") {
+            p.properties.addLink({
+              name: cp.name,
+              label: cp.label,
+              options(np: PropLink) {
+                np.lookup = {
+                  component: cp.componentTypeName,
+                  propType: "properties",
+                  names: [cp.name],
+                };
+              },
+            });
+          }
         },
       });
     }
@@ -839,11 +862,11 @@ ${messageContents}
 
   renderProtobufMethodMessages(): string {
     let result = "";
-    result = this.renderProtobufMessagesForAttrList(this.componentMethods);
-    result =
-      result + this.renderProtobufMessagesForAttrList(this.entityMethods);
-    result =
-      result + this.renderProtobufMessagesForAttrList(this.entityActions);
+    //result = this.renderProtobufMessagesForAttrList(this.componentMethods);
+    //result =
+    //  result + this.renderProtobufMessagesForAttrList(this.entityMethods);
+    //result =
+    //  result + this.renderProtobufMessagesForAttrList(this.entityActions);
     return result;
   }
 
@@ -909,6 +932,7 @@ ${definition}
   renderProtobufObjectMessages(): string {
     let result = "";
     for (const attrList of this.attrLists()) {
+      result = result + `\n// ${attrList}\n`;
       if (this[attrList].length > 0) {
         result =
           result +

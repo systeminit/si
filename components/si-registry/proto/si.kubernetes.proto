@@ -2,12 +2,28 @@
 // Do not edit by hand!
 // This means you! It won't last! You'll be sad!
 
+// Prelude
 syntax = "proto3";
 
 package si.kubernetes;
 
 import "google/protobuf/wrappers.proto";
 
+// Objects
+
+// constraints
+
+// properties
+
+// data
+
+// entityMethods
+
+// entityActions
+
+// componentMethods
+
+// internalOnly
 
 
 message Metadata {
@@ -41,3 +57,7 @@ message ContainerPorts {
 message ContainerPortsPortValues {
   google.protobuf.UInt32Value container_port = 1001;
 }
+
+// entity
+
+// component

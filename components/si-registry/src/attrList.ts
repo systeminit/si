@@ -248,7 +248,18 @@ export class AttrList {
       label: `Edit ${camelCase(p.parentName)}${pascalCase(p.name)} Property`,
       options(pa: PropAction) {
         pa.universal = true;
-        pa.request.addProp(p, { name: p.name, label: p.label });
+        pa.request.addLink({
+          name: p.name,
+          label: p.label,
+          options(p: PropLink) {
+            p.lookup = {
+              component: p.componentTypeName,
+              propType: "properties",
+              names: [p.name],
+            };
+          },
+        });
+        //pa.request.addProp(p, { name: p.name, label: p.label });
       },
     });
   }

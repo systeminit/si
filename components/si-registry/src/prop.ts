@@ -1,6 +1,6 @@
 import { snakeCase } from "change-case";
 
-interface PropConstructor {
+export interface PropConstructor {
   name: string;
   label: string;
   componentTypeName: string;

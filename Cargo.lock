@@ -2327,7 +2327,6 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "si-account",
- "si-cea",
  "si-data",
  "si-external-api-gateway",
  "si-settings",

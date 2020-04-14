@@ -44,10 +44,15 @@ export class PropLink extends Prop {
   }
 
   protobufDefinition(inputNumber: number): string {
-    return this.lookupMyself().protobufDefinition(
-      inputNumber,
-      this.protobufPackageName(),
-    );
+    const realp = this.lookupMyself();
+    const realPackageName = realp.protobufPackageName();
+    let packageName: string;
+    if (realPackageName.match(/^google/)) {
+      packageName = "";
+    } else {
+      packageName = this.protobufPackageName();
+    }
+    return realp.protobufDefinition(inputNumber, packageName);
   }
 
   protobufImportPath(componentName = ""): string {

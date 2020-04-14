@@ -2,6 +2,7 @@
 // Do not edit by hand!
 // This means you! It won't last! You'll be sad!
 
+// Prelude
 syntax = "proto3";
 
 package si.kubernetes_deployment;
@@ -10,8 +11,10 @@ import "google/protobuf/wrappers.proto";
 import "si-registry/proto/si.component.proto";
 import "si-registry/proto/si.data.proto";
 import "si-registry/proto/si.entity.proto";
+import "si-registry/proto/si.entity_event.proto";
 import "si-registry/proto/si.kubernetes.proto";
 
+// Service
 service KubernetesDeployment {
   rpc GetComponent(GetComponentRequest) returns (GetComponentReply);
   rpc PickComponent(PickComponentRequest) returns (PickComponentReply);
@@ -24,117 +27,10 @@ service KubernetesDeployment {
   rpc EditKubernetesObjectYamlAction(EditKubernetesObjectYamlActionRequest) returns (EditKubernetesObjectYamlActionReply);
 }
 
-
-message GetComponentRequest {
-  google.protobuf.StringValue component_id = 1;
-}
-
-message GetComponentReply {
-  Component component = 1;
-}
-
-message PickComponentRequest {
-  Constraints constraints = 1;
-}
-
-message PickComponentReply {
-  Constraints implicit_constraints = 1;
-  Component component = 2;
-}
-
-message ListComponentsRequest {
-  si.data.Query query = 1;
-  google.protobuf.UInt32Value page_size = 2;
-  google.protobuf.StringValue order_by = 3;
-  si.data.PageTokenOrderByDirection order_by_direction = 4;
-  google.protobuf.StringValue page_token = 5;
-  google.protobuf.StringValue scope_by_tenant_id = 6;
-}
-
-message ListComponentsReply {
-  Entity items = 1;
-  google.protobuf.UInt32Value total_count = 2;
-  google.protobuf.StringValue next_page_token = 3;
-}
-
-message CreateEntityRequest {
-  Constraints constraints = 1;
-  Properties properties = 2;
-  google.protobuf.StringValue name = 3;
-  google.protobuf.StringValue display_name = 4;
-  google.protobuf.StringValue description = 5;
-  google.protobuf.StringValue workplace_id = 6;
-}
-
-message CreateEntityReply {
-  Entity entity = 1;
-  EntityEvent entity_event = 2;
-}
-
-message ListEntitiesRequest {
-  si.data.Query query = 1;
-  google.protobuf.UInt32Value page_size = 2;
-  google.protobuf.StringValue order_by = 3;
-  si.data.PageTokenOrderByDirection order_by_direction = 4;
-  google.protobuf.StringValue page_token = 5;
-  google.protobuf.StringValue scope_by_tenant_id = 6;
-}
-
-message ListEntitiesReply {
-  Entity items = 1;
-  google.protobuf.UInt32Value total_count = 2;
-  google.protobuf.StringValue next_page_token = 3;
-}
-
-message GetEntityRequest {
-  google.protobuf.StringValue entity_id = 1;
-}
-
-message GetEntityReply {
-  Entity entity = 1;
-}
-
-message SyncActionRequest {
-  google.protobuf.StringValue entity_id = 1;
-}
-
-message SyncActionReply {
-  Entity entity = 1001;
-  EntityEvent entity_event = 1002;
-}
-
-message EditKubernetesObjectActionRequest {
-  KubernetesObject kubernetes_object = 1001;
-}
-
-message EditKubernetesObjectActionReply {
-  Entity entity = 1001;
-  EntityEvent entity_event = 1002;
-}
-
-message EditKubernetesObjectYamlActionRequest {
-  google.protobuf.StringValue kubernetes_object_yaml = 1001;
-}
-
-message EditKubernetesObjectYamlActionReply {
-  Entity entity = 1001;
-  EntityEvent entity_event = 1002;
-}
-
-message KubernetesObject {
-  google.protobuf.StringValue api_version = 1001;
-  google.protobuf.StringValue kind = 1002;
-  si.kubernetes.Metadata metadata = 1003;
-  KubernetesObjectSpec spec = 1004;
-}
-
-message KubernetesObjectSpec {
-  google.protobuf.UInt32Value replicas = 1001;
-  si.kubernetes.LabelSelector label_selector = 1002;
-  si.kubernetes.PodTemplateSpec pod_template_spec = 1003;
-}
+// Methods
 
 
+// Component
 
 message Component {
   google.protobuf.StringValue id = 1;
@@ -146,6 +42,7 @@ message Component {
 }
 
 
+// Entity
 
 message Entity {
   google.protobuf.StringValue id = 1;
@@ -159,6 +56,7 @@ message Entity {
 }
 
 
+// EntityEvent
 
 message EntityEvent {
   google.protobuf.StringValue id = 1;
@@ -178,7 +76,12 @@ message EntityEvent {
 }
 
 
+// Objects
 
+// constraints
+
+
+// properties
 
 
 message KubernetesObject {
@@ -193,6 +96,10 @@ message KubernetesObjectSpec {
   si.kubernetes.LabelSelector label_selector = 1002;
   si.kubernetes.PodTemplateSpec pod_template_spec = 1003;
 }
+
+// data
+
+// entityMethods
 
 
 message ListComponentsRequest {
@@ -247,6 +154,8 @@ message GetEntityReply {
   Entity entity = 1;
 }
 
+// entityActions
+
 
 message SyncActionRequest {
   google.protobuf.StringValue entity_id = 1;
@@ -258,7 +167,7 @@ message SyncActionReply {
 }
 
 message EditKubernetesObjectActionRequest {
-  KubernetesObject kubernetes_object = 1001;
+  si.kubernetes_deployment.KubernetesObject kubernetes_object = 1001;
 }
 
 message EditKubernetesObjectActionReply {
@@ -275,18 +184,7 @@ message EditKubernetesObjectYamlActionReply {
   EntityEvent entity_event = 1002;
 }
 
-message KubernetesObject {
-  google.protobuf.StringValue api_version = 1001;
-  google.protobuf.StringValue kind = 1002;
-  si.kubernetes.Metadata metadata = 1003;
-  KubernetesObjectSpec spec = 1004;
-}
-
-message KubernetesObjectSpec {
-  google.protobuf.UInt32Value replicas = 1001;
-  si.kubernetes.LabelSelector label_selector = 1002;
-  si.kubernetes.PodTemplateSpec pod_template_spec = 1003;
-}
+// componentMethods
 
 
 message GetComponentRequest {
@@ -306,24 +204,17 @@ message PickComponentReply {
   Component component = 2;
 }
 
+// internalOnly
+
+// entity
+
 
 message Properties {
-  KubernetesObject kubernetes_object = 1001;
+  si.kubernetes_deployment.KubernetesObject kubernetes_object = 1001;
   google.protobuf.StringValue kubernetes_object_yaml = 1002;
 }
 
-message KubernetesObject {
-  google.protobuf.StringValue api_version = 1001;
-  google.protobuf.StringValue kind = 1002;
-  si.kubernetes.Metadata metadata = 1003;
-  KubernetesObjectSpec spec = 1004;
-}
-
-message KubernetesObjectSpec {
-  google.protobuf.UInt32Value replicas = 1001;
-  si.kubernetes.LabelSelector label_selector = 1002;
-  si.kubernetes.PodTemplateSpec pod_template_spec = 1003;
-}
+// component
 
 
 message Constraints {
