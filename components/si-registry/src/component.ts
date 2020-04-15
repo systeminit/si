@@ -12,6 +12,7 @@ export interface ComponentConstructor {
   displayTypeName: Component["displayTypeName"];
   noStd?: boolean;
   options?(c: Component): void;
+  siPathName?: string;
 }
 
 export type ComponentAttrListName =
@@ -28,6 +29,7 @@ export type ComponentAttrListName =
 export class Component {
   typeName: string;
   displayTypeName: string;
+  siPathName: string;
 
   constraints: AttrList;
   properties: AttrList;
@@ -47,10 +49,12 @@ export class Component {
     typeName,
     displayTypeName,
     noStd = false,
+    siPathName = "",
   }: ComponentConstructor) {
     this.typeName = typeName;
     this.displayTypeName = displayTypeName;
     this.noStd = noStd;
+    this.siPathName = siPathName;
     this.constraints = new AttrList({ component: this });
     this.properties = new AttrList({ component: this, autoCreateEdits: true });
     this.data = new AttrList({ component: this });

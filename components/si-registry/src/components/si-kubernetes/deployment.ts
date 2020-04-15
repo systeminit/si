@@ -11,6 +11,7 @@ import { registry } from "@/componentRegistry";
 registry.component({
   typeName: "kubernetesDeployment",
   displayTypeName: "Kubernetes Deployment Object",
+  siPathName: "si-kubernetes",
   options(c: Component) {
     // Constraints
     c.constraints.addText({

@@ -6,10 +6,12 @@ import path from "path";
 import program from "commander";
 import { registry } from "@/componentRegistry";
 import { CodegenProtobuf } from "@/codegen/protobuf";
+import { CodegenRust, generateGenMod } from "@/codegen/rust";
 import Listr, { ListrRendererValue } from "listr";
 import "@/loader";
 import fs from "fs";
 import { promisify } from "util";
+import { snakeCase } from "change-case";
 
 console.log(
   chalk.greenBright(figlet.textSync("Lets go!", { horizontalLayout: "full" })),
@@ -34,9 +36,15 @@ function main(program: program.Command): void {
   const tasks = new Listr(
     [
       {
-        title: `Generating ${chalk.yellowBright("Protobuf")}`,
+        title: `Generating ${chalk.keyword("darkseagreen")("Protobuf")}`,
         task: (): Listr => {
           return generateProtobuf();
+        },
+      },
+      {
+        title: `Generating ${chalk.keyword("orange")("Rust")}`,
+        task: (): Listr => {
+          return generateRust();
         },
       },
     ],
@@ -54,7 +62,9 @@ function generateProtobuf(): Listr {
   const tasks = [];
   for (const component of registry.components) {
     tasks.push({
-      title: `Protobuf for ${chalk.blue(component.typeName)}`,
+      title: `Protobuf ${chalk.keyword("darkseagreen")(
+        component.protobufPackageName(),
+      )}`,
       task: async () => {
         const cp = new CodegenProtobuf(component);
         const protoFile = path.join(
@@ -71,3 +81,57 @@ function generateProtobuf(): Listr {
   }
   return new Listr(tasks, { concurrent: true });
 }
+
+function generateRust(): Listr {
+  const tasks = [];
+  const writtenComponents: {
+    [key: string]: string[];
+  } = {};
+
+  for (const component of registry.components) {
+    if (component.noStd) {
+      continue;
+    }
+    if (!writtenComponents[component.siPathName]) {
+      writtenComponents[component.siPathName] = [];
+    }
+    writtenComponents[component.siPathName].push(component.typeName);
+    tasks.push({
+      title: `Rust for ${chalk.keyword("orange")(component.typeName)}`,
+      task: (): Listr => {
+        return new Listr(
+          [
+            {
+              title: `Rust Component ${chalk.keyword("orange")(
+                component.typeName,
+              )}`,
+              task: async (): Promise<void> => {
+                const cp = new CodegenRust(component);
+                await cp.generateComponentImpls();
+              },
+            },
+            {
+              title: `Rust Component ${chalk.keyword("orange")(
+                component.typeName,
+              )} mod.rs`,
+              task: async (): Promise<void> => {
+                const cp = new CodegenRust(component);
+                await cp.generateComponentMod();
+              },
+            },
+          ],
+          { concurrent: true },
+        );
+      },
+    });
+  }
+  tasks.push({
+    title: `Rust $chalk.keyword("orange")("gen/mod.rs")`,
+    task: async (): Promise<void> => {
+      await generateGenMod(writtenComponents);
+    },
+  });
+
+  return new Listr(tasks, { concurrent: true });
+}
+
