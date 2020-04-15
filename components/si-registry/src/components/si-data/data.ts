@@ -50,15 +50,6 @@ registry.component({
             p.universal = true;
           },
         });
-        p.properties.addText({
-          name: "displayTypeName",
-          label: "Display Type Name",
-          options(p) {
-            p.readOnly = true;
-            p.required = true;
-            p.universal = true;
-          },
-        });
       },
     });
     c.internalOnly.addObject({
@@ -83,7 +74,7 @@ registry.component({
           label: "Page Size",
           options(p: PropNumber) {
             p.universal = true;
-            p.numberKind = "int32";
+            p.numberKind = "uint32";
           },
         });
         p.properties.addText({
@@ -204,4 +195,3 @@ registry.component({
     });
   },
 });
-

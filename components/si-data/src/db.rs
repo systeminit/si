@@ -31,7 +31,7 @@ pub struct LookupObject {
 #[derive(Debug)]
 pub struct ListResult<I: DeserializeOwned + std::fmt::Debug> {
     pub items: Vec<I>,
-    pub total_count: i32,
+    pub total_count: u32,
     pub next_item_id: String,
     pub page_token: String,
 }
@@ -41,7 +41,7 @@ impl<I: DeserializeOwned + std::fmt::Debug> ListResult<I> {
         self.items
     }
 
-    pub fn total_count(&self) -> i32 {
+    pub fn total_count(&self) -> u32 {
         self.total_count
     }
 
@@ -307,7 +307,7 @@ impl Db {
     >(
         &self,
         query: &Option<Query>,
-        page_size: i32,
+        page_size: u32,
         order_by: O,
         order_by_direction: i32,
         contained_within: C,
@@ -406,7 +406,7 @@ impl Db {
 
         Ok(ListResult {
             items: final_vec,
-            total_count: result_meta.metrics.result_count as i32,
+            total_count: result_meta.metrics.result_count as u32,
             next_item_id,
             page_token,
         })

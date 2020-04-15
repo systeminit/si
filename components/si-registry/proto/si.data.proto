@@ -30,12 +30,11 @@ message Storable {
   repeated google.protobuf.StringValue tenant_ids = 1;
   google.protobuf.StringValue natural_key = 2;
   google.protobuf.StringValue type_name = 3;
-  google.protobuf.StringValue display_type_name = 4;
 }
 
 message PageToken {
   si.data.Query query = 1;
-  google.protobuf.Int32Value page_size = 2;
+  google.protobuf.UInt32Value page_size = 2;
   google.protobuf.StringValue order_by = 3;
   PageTokenOrderByDirection order_by_direction = 4;
   google.protobuf.StringValue item_id = 5;

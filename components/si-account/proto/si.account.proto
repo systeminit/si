@@ -23,7 +23,7 @@ service Account {
 
 message ListIntegrationInstancesRequest {
   si.data.Query query = 1;
-  int32 page_size = 2;
+  uint32 page_size = 2;
   string order_by = 3;
   si.data.PageTokenOrderByDirection order_by_direction = 4;
   string page_token = 5;
@@ -32,13 +32,13 @@ message ListIntegrationInstancesRequest {
 
 message ListIntegrationInstancesReply {
   repeated IntegrationInstance items = 1;
-  int32 total_count = 2;
+  uint32 total_count = 2;
   string next_page_token = 3;
 }
 
 message ListIntegrationServicesRequest {
   si.data.Query query = 1;
-  int32 page_size = 2;
+  uint32 page_size = 2;
   string order_by = 3;
   si.data.PageTokenOrderByDirection order_by_direction = 4;
   string page_token = 5;
@@ -47,13 +47,13 @@ message ListIntegrationServicesRequest {
 
 message ListIntegrationServicesReply {
   repeated IntegrationService items = 1;
-  int32 total_count = 2;
+  uint32 total_count = 2;
   string next_page_token = 3;
 }
 
 message ListIntegrationsRequest {
   si.data.Query query = 1;
-  int32 page_size = 2;
+  uint32 page_size = 2;
   string order_by = 3;
   si.data.PageTokenOrderByDirection order_by_direction = 4;
   string page_token = 5;
@@ -62,13 +62,13 @@ message ListIntegrationsRequest {
 
 message ListIntegrationsReply {
   repeated Integration items = 1;
-  int32 total_count = 2;
+  uint32 total_count = 2;
   string next_page_token = 3;
 }
 
 message ListOrganizationsRequest {
   si.data.Query query = 1;
-  int32 page_size = 2;
+  uint32 page_size = 2;
   string order_by = 3;
   si.data.PageTokenOrderByDirection order_by_direction = 4;
   string page_token = 5;
@@ -77,13 +77,13 @@ message ListOrganizationsRequest {
 
 message ListOrganizationsReply {
   repeated Organization items = 1;
-  int32 total_count = 2;
+  uint32 total_count = 2;
   string next_page_token = 3;
 }
 
 message ListWorkspacesRequest {
   si.data.Query query = 1;
-  int32 page_size = 2;
+  uint32 page_size = 2;
   string order_by = 3;
   si.data.PageTokenOrderByDirection order_by_direction = 4;
   string page_token = 5;
@@ -92,13 +92,13 @@ message ListWorkspacesRequest {
 
 message ListWorkspacesReply {
   repeated Workspace items = 1;
-  int32 total_count = 2;
+  uint32 total_count = 2;
   string next_page_token = 3;
 }
 
 message ListUsersRequest {
   si.data.Query query = 1;
-  int32 page_size = 2;
+  uint32 page_size = 2;
   string order_by = 3;
   si.data.PageTokenOrderByDirection order_by_direction = 4;
   string page_token = 5;
@@ -107,7 +107,7 @@ message ListUsersRequest {
 
 message ListUsersReply {
   repeated User items = 1;
-  int32 total_count = 2;
+  uint32 total_count = 2;
   string next_page_token = 3;
 }
 

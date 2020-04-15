@@ -1,12 +1,12 @@
 use std::path::Path;
 
 const PROTOS: &[&str] = &[
-    "si-registry/proto/si.kubernetes.proto",
-    "si-registry/proto/si.kubernetes_deployment.proto",
+    "si-registry/proto/si.component.proto",
+    "si-registry/proto/si.entity.proto",
+    "si-registry/proto/si.entity_event.proto",
 ];
 
 fn main() {
-    println!("cargo:rerun-if-changes=../si-cea");
     println!("cargo:rerun-if-changed=Cargo.toml");
     for proto in PROTOS {
         println!("cargo:rerun-if-changed=../{}", proto);
@@ -18,13 +18,8 @@ fn main() {
     tonic_build::configure()
         .extern_path(".si.data", "::si_data::data")
         .extern_path(".si.account", "::si_account::protobuf")
-        .extern_path(".si.component", "::si_cea::protobuf::component")
-        .extern_path(".si.entity", "::si_cea::protobuf::entity")
-        .extern_path(".si.entity_event", "::si_cea::protobuf::entity_event")
         .type_attribute(".", "#[derive(serde::Serialize, serde::Deserialize)]")
         .type_attribute(".", "#[serde(rename_all = \"camelCase\")]")
-        .type_attribute("Entity", "#[serde(default)]")
-        .type_attribute("EntityEvent", "#[serde(default)]")
         .field_attribute("in", "#[serde(rename = \"in\")]")
         .compile(PROTOS, &[proto_include_path_string])
         .unwrap();

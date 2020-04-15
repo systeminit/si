@@ -26,6 +26,8 @@ pub enum CeaError {
     MissingInputEntity,
     #[error("missing output entity in entity event")]
     MissingOutputEntity,
+    #[error("pick component invalid; missing constraints")]
+    InvalidPickMissingConstraints,
     #[error("error validating item for insertion: {0}")]
     ValidationError(String),
     #[error("error picking a component: {0}")]

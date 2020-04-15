@@ -29,7 +29,7 @@ import "google/protobuf/wrappers.proto";
 message ComponentSiProperties {
   google.protobuf.StringValue integration_id = 1;
   google.protobuf.StringValue integration_service_id = 2;
-  google.protobuf.Int64Value version = 3;
+  google.protobuf.Int32Value version = 3;
 }
 
 // entity

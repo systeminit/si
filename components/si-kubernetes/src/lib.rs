@@ -1,12 +1,15 @@
 pub mod protobuf {
-    tonic::include_proto!("si.kubernetes");
+    pub mod kubernetes {
+        tonic::include_proto!("si.kubernetes");
+    }
+
     pub mod deployment {
-        tonic::include_proto!("si.kubernetes.deployment");
+        tonic::include_proto!("si.kubernetes_deployment");
     }
 }
 
 // pub mod agent;
-// pub mod model;
+pub mod model;
 // pub mod service;
 //
 // pub use agent::Dispatcher;

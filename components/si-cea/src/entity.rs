@@ -60,18 +60,19 @@ pub trait Entity:
     }
 
     async fn list<T: ListRequest>(db: &Db, list_request: &T) -> CeaResult<ListResult<Self>> {
-        let result = if list_request.has_page_token() {
-            db.list_by_page_token(list_request.page_token()).await?
-        } else {
-            db.list(
-                list_request.query(),
-                list_request.page_size(),
-                list_request.order_by(),
-                list_request.order_by_direction(),
-                list_request.scope_by_tenant_id(),
-                "",
-            )
-            .await?
+        let result = match list_request.page_token() {
+            Some(token) => db.list_by_page_token(token).await?,
+            None => {
+                db.list(
+                    list_request.query(),
+                    list_request.page_size(),
+                    list_request.order_by(),
+                    list_request.order_by_direction(),
+                    list_request.scope_by_tenant_id(),
+                    "",
+                )
+                .await?
+            }
         };
         Ok(result)
     }

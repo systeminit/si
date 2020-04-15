@@ -34,3 +34,13 @@ pub trait Storable {
         }
     }
 }
+
+impl crate::data::Storable {
+    pub fn new() -> Self {
+        todo!("boop")
+    }
+
+    pub fn add_to_tenant_ids(&mut self, id: impl Into<String>) {
+        self.tenant_ids.push(id.into());
+    }
+}

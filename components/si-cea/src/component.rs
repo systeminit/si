@@ -92,35 +92,39 @@ pub trait Component:
 {
     fn validate(&self) -> si_data::error::Result<()>;
 
+    fn display_type_name() -> &'static str;
+    fn set_display_type_name(&mut self);
+
     async fn get(db: &Db, id: &str) -> CeaResult<Self> {
         let entity = db.get(id).await?;
         Ok(entity)
     }
 
     async fn list<T: ListRequest>(db: &Db, list_request: &T) -> CeaResult<ListResult<Self>> {
-        let result = if list_request.has_page_token() {
-            db.list_by_page_token(list_request.page_token()).await?
-        } else {
-            db.list(
-                list_request.query(),
-                list_request.page_size(),
-                list_request.order_by(),
-                list_request.order_by_direction(),
-                list_request.scope_by_tenant_id(),
-                "",
-            )
-            .await?
+        let result = match list_request.page_token() {
+            Some(token) => db.list_by_page_token(token).await?,
+            None => {
+                db.list(
+                    list_request.query(),
+                    list_request.page_size(),
+                    list_request.order_by(),
+                    list_request.order_by_direction(),
+                    list_request.scope_by_tenant_id(),
+                    "",
+                )
+                .await?
+            }
         };
         Ok(result)
     }
 
     async fn pick_by_expressions(
         db: &Db,
-        expressions: Vec<si_data::QueryExpressionOption>,
+        items: Vec<si_data::QueryItems>,
         boolean_term: si_data::QueryBooleanTerm,
     ) -> CeaResult<Self> {
         let query = si_data::Query {
-            items: expressions,
+            items,
             boolean_term: boolean_term as i32,
             ..Default::default()
         };
@@ -147,20 +151,11 @@ pub trait Component:
         let field = field.into();
 
         if value != "" {
-            let query = si_data::Query {
-                items: vec![si_data::QueryExpressionOption {
-                    expression: Some(si_data::QueryExpressionOptionExpression {
-                        field: field.clone(),
-                        comparison: si_data::QueryExpressionOptionExpressionComparison::Equals
-                            as i32,
-                        value: value.clone(),
-                        ..Default::default()
-                    }),
-                    ..Default::default()
-                }],
-                boolean_term: si_data::QueryBooleanLogic::And as i32,
-                ..Default::default()
-            };
+            let query = si_data::Query::generate_for_string(
+                field.clone(),
+                si_data::QueryItemsExpressionComparison::Equals,
+                value.clone(),
+            );
             let mut check_result: si_data::ListResult<Self> =
                 db.list(&Some(query), 1, "", 0, "global", "").await?;
             if check_result.len() == 1 {
@@ -192,6 +187,11 @@ macro_rules! gen_component {
     ) => {
         impl si_cea::Component for Component {
             fn validate(&$self_ident) -> si_data::error::Result<()> $validate_fn
+
+            fn set_display_type_name(&mut self, display_type_name: impl Into<String>) {
+                self.display_type_name = display_type_name.into();
+            }
+
         }
 
         impl si_data::Storable for Component {

@@ -3,6 +3,20 @@
 //! It makes it easy to produce new components, entities, and actors!
 //!
 
+pub mod protobuf {
+    pub mod component {
+        tonic::include_proto!("si.component");
+    }
+
+    pub mod entity {
+        tonic::include_proto!("si.entity");
+    }
+
+    pub mod entity_event {
+        tonic::include_proto!("si.entity_event");
+    }
+}
+
 pub mod agent;
 pub mod error;
 pub mod service;

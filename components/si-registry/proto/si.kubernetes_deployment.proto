@@ -36,9 +36,11 @@ message Component {
   google.protobuf.StringValue id = 1;
   google.protobuf.StringValue name = 2;
   google.protobuf.StringValue display_name = 3;
-  si.data.Storable storable = 4;
-  si.component.ComponentSiProperties component_si_properties = 5;
-  Constraints constraints = 6;
+  google.protobuf.StringValue description = 4;
+  google.protobuf.StringValue display_type_name = 5;
+  si.data.Storable storable = 6;
+  si.component.ComponentSiProperties component_si_properties = 7;
+  Constraints constraints = 8;
 }
 
 
@@ -112,7 +114,7 @@ message ListComponentsRequest {
 }
 
 message ListComponentsReply {
-  Entity items = 1;
+  repeated Component items = 1;
   google.protobuf.UInt32Value total_count = 2;
   google.protobuf.StringValue next_page_token = 3;
 }

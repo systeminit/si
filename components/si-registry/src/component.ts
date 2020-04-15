@@ -367,11 +367,12 @@ export class Component {
             p.universal = true;
           },
         });
-        p.reply.addEntity({
+        p.reply.addComponent({
           name: "items",
           label: "Items",
           options(p) {
             p.universal = true;
+            p.repeated = true;
           },
         });
         p.reply.addNumber({
@@ -444,6 +445,21 @@ export class Component {
       label: "Component Display Name",
       options(p) {
         p.universal = true;
+      },
+    });
+    this.component.addText({
+      name: "description",
+      label: "Component Description",
+      options(p) {
+        p.universal = true;
+      },
+    });
+    this.component.addText({
+      name: "displayTypeName",
+      label: "Display Type Name",
+      options(p) {
+        p.universal = true;
+        p.readOnly = true;
       },
     });
     this.component.addLink({

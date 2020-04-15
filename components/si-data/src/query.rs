@@ -50,34 +50,28 @@ impl fmt::Display for QueryBooleanTerm {
 }
 
 impl Query {
-    pub fn generate_expression_for_string(
+    pub fn generate_for_string(
         field: impl Into<String>,
         comparison: QueryItemsExpressionComparison,
         value: impl Into<String>,
-    ) -> QueryItems {
-        QueryItems {
-            expression: Some(QueryItemsExpression {
-                field: Some(field.into()),
-                comparison: comparison as i32,
-                field_type: QueryItemsExpressionFieldType::String as i32,
-                value: Some(value.into()),
-            }),
+    ) -> Self {
+        Query {
+            items: vec![QueryItems::generate_expression_for_string(
+                field, comparison, value,
+            )],
             ..Default::default()
         }
     }
 
-    pub fn generate_expression_for_int(
+    pub fn generate_for_int(
         field: impl Into<String>,
         comparison: QueryItemsExpressionComparison,
         value: impl Into<String>,
-    ) -> QueryItems {
-        QueryItems {
-            expression: Some(QueryItemsExpression {
-                field: Some(field.into()),
-                comparison: comparison as i32,
-                field_type: QueryItemsExpressionFieldType::Int as i32,
-                value: Some(value.into()),
-            }),
+    ) -> Query {
+        Query {
+            items: vec![QueryItems::generate_expression_for_int(
+                field, comparison, value,
+            )],
             ..Default::default()
         }
     }
@@ -153,6 +147,40 @@ impl Query {
         where_string.push_str(")");
 
         Ok(where_string)
+    }
+}
+
+impl QueryItems {
+    pub fn generate_expression_for_string(
+        field: impl Into<String>,
+        comparison: QueryItemsExpressionComparison,
+        value: impl Into<String>,
+    ) -> Self {
+        QueryItems {
+            expression: Some(QueryItemsExpression {
+                field: Some(field.into()),
+                comparison: comparison as i32,
+                field_type: QueryItemsExpressionFieldType::String as i32,
+                value: Some(value.into()),
+            }),
+            ..Default::default()
+        }
+    }
+
+    pub fn generate_expression_for_int(
+        field: impl Into<String>,
+        comparison: QueryItemsExpressionComparison,
+        value: impl Into<String>,
+    ) -> Self {
+        QueryItems {
+            expression: Some(QueryItemsExpression {
+                field: Some(field.into()),
+                comparison: comparison as i32,
+                field_type: QueryItemsExpressionFieldType::Int as i32,
+                value: Some(value.into()),
+            }),
+            ..Default::default()
+        }
     }
 }
 

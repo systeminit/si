@@ -1,5 +1,5 @@
 pub mod component;
-pub mod entity;
+// pub mod entity;
 
 pub use component::Component;
-pub use entity::{Entity, EntityEvent};
+// pub use entity::{Entity, EntityEvent};
