@@ -1,20 +1,20 @@
-import { Prop, PropDefaultValues, PropConstructor } from "@/prop";
-import { PropText } from "@/prop/text";
-import { PropCode } from "@/prop/code";
-import { PropSelect } from "@/prop/select";
-import { PropNumber } from "@/prop/number";
-import { PropMap } from "@/prop/map";
-import { PropComponent } from "@/prop/component";
-import { PropEntity } from "@/prop/entity";
-import { PropEnum } from "@/prop/enum";
-import { PropBool } from "@/prop/bool";
-import { PropEntityEvent } from "@/prop/entityEvent";
-import { PropLink } from "@/prop/link";
-import { PropConstraints } from "@/prop/constraints";
-import { PropProperties } from "@/prop/properties";
-import { propRegistry } from "@/propRegistry";
-import { Component } from "@/component";
-import { registry } from "@/componentRegistry";
+import { Prop, PropDefaultValues, PropConstructor } from "./prop";
+import { PropText } from "./prop/text";
+import { PropCode } from "./prop/code";
+import { PropSelect } from "./prop/select";
+import { PropNumber } from "./prop/number";
+import { PropMap } from "./prop/map";
+import { PropComponent } from "./prop/component";
+import { PropEntity } from "./prop/entity";
+import { PropEnum } from "./prop/enum";
+import { PropBool } from "./prop/bool";
+import { PropEntityEvent } from "./prop/entityEvent";
+import { PropLink } from "./prop/link";
+import { PropConstraints } from "./prop/constraints";
+import { PropProperties } from "./prop/properties";
+import { propRegistry } from "./propRegistry";
+import { Component } from "./component";
+import { registry } from "./componentRegistry";
 
 import { pascalCase, camelCase } from "change-case";
 

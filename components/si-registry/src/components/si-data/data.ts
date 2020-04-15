@@ -5,9 +5,9 @@ import {
   PropLink,
   PropNumber,
   Component,
-} from "@/components/prelude";
+} from "../../components/prelude";
 
-import { registry } from "@/componentRegistry";
+import { registry } from "../../componentRegistry";
 
 registry.component({
   typeName: "data",

@@ -3,9 +3,9 @@
   "private": true,
   "version": "0.1.0",
   "description": "Component/Entity Registry",
-  "main": "dist/index.js",
+  "main": "src/index.ts",
   "bin": {
-    "si-generate": "dist/bin/si-generate.js"
+    "si-generate": "src/bin/si-generate.ts"
   },
   "scripts": {
     "start": "ts-node-dev --no-notify --transpileOnly --respawn -r tsconfig-paths/register --watch $(find ./src -name '*.ejs' -print0 | tr '\\0' ,) src/bin/si-generate.ts",

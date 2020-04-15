@@ -1,4 +1,4 @@
-import { Prop, PropValue } from "@/prop";
+import { Prop, PropValue } from "../prop";
 
 export class PropMap extends Prop {
   baseDefaultValue: Record<string, string>;

@@ -1,10 +1,10 @@
-import { registry } from "@/componentRegistry";
-import { Component } from "@/component";
-import { PropObject, PropAction, PropMethod } from "@/attrList";
-import { PropNumber } from "@/prop/number";
-import { PropText } from "@/prop/text";
-import { CodegenProtobuf } from "@/codegen/protobuf";
-import "@/loader";
+import { registry } from "src/componentRegistry";
+import { Component } from "src/component";
+import { PropObject, PropAction, PropMethod } from "src/attrList";
+import { PropNumber } from "src/prop/number";
+import { PropText } from "src/prop/text";
+import { CodegenProtobuf } from "src/codegen/protobuf";
+import "src/loader";
 
 test("registryLoad", done => {
   const c = registry.get("data");

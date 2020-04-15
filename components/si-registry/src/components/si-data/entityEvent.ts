@@ -1,6 +1,6 @@
-import { PropEnum, PropObject, Component } from "@/components/prelude";
+import { PropObject, Component } from "../../components/prelude";
 
-import { registry } from "@/componentRegistry";
+import { registry } from "../../componentRegistry";
 
 registry.component({
   typeName: "entityEvent",

@@ -1,5 +1,5 @@
-import { Component, ComponentConstructor } from "@/component";
-import { Props } from "@/attrList";
+import { Component, ComponentConstructor } from "./component";
+import { Props } from "./attrList";
 
 export interface PropLookup {
   component: string;

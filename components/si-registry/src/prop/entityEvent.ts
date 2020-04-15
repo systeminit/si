@@ -1,4 +1,4 @@
-import { Prop, PropValue } from "@/prop";
+import { Prop, PropValue } from "../prop";
 
 export class PropEntityEvent extends Prop {
   baseDefaultValue: string;

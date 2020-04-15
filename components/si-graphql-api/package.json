@@ -50,6 +50,7 @@
     "mqtt": "^2.3.0",
     "nexus": "^0.11.7",
     "protobufjs": "^6.8.8",
-    "winston": "^3.2.1"
+    "winston": "^3.2.1",
+    "si-registry": "file:../si-registry"
   }
 }

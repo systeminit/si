@@ -1,4 +1,4 @@
-import { Prop, PropValue } from "@/prop";
+import { Prop, PropValue } from "../prop";
 import { pascalCase, constantCase } from "change-case";
 
 export class PropEnum extends Prop {

@@ -1,6 +1,6 @@
-import { Prop, PropValue } from "@/prop";
-import { PropLookup, registry } from "@/componentRegistry";
-import { Props } from "@/attrList";
+import { Prop, PropValue } from "../prop";
+import { PropLookup, registry } from "../componentRegistry";
+import { Props } from "../attrList";
 
 import { snakeCase } from "change-case";
 

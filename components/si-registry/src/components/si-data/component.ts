@@ -1,5 +1,5 @@
-import { PropObject, Component, PropNumber } from "@/components/prelude";
-import { registry } from "@/componentRegistry";
+import { PropObject, Component, PropNumber } from "../../components/prelude";
+import { registry } from "../..//componentRegistry";
 
 registry.component({
   typeName: "component",
@@ -7,7 +7,7 @@ registry.component({
   noStd: true,
   options(c: Component) {
     c.internalOnly.addObject({
-      name: "componentSiProperties",
+      name: "siProperties",
       label: "Common Component SI Properties",
       options(p: PropObject) {
         p.universal = true;

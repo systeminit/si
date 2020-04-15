@@ -4,9 +4,10 @@ import {
   PropText,
   PropLink,
   PropNumber,
+  PropEnum,
   PropCode,
-} from "@/components/prelude";
-import { registry } from "@/componentRegistry";
+} from "../../components/prelude";
+import { registry } from "../../componentRegistry";
 
 registry.component({
   typeName: "kubernetesDeployment",
@@ -14,9 +15,12 @@ registry.component({
   siPathName: "si-kubernetes",
   options(c: Component) {
     // Constraints
-    c.constraints.addText({
+    c.constraints.addEnum({
       name: "kubernetesVersion",
       label: "Kubernetes Version",
+      options(p: PropEnum) {
+        p.variants = ["1.12", "1.13", "1.14", "1.15"];
+      },
     });
 
     // Properties

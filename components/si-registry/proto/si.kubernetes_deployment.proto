@@ -39,7 +39,7 @@ message Component {
   google.protobuf.StringValue description = 4;
   google.protobuf.StringValue display_type_name = 5;
   si.data.Storable si_storable = 6;
-  si.component.ComponentSiProperties si_properties = 7;
+  si.component.SiProperties si_properties = 7;
   Constraints constraints = 8;
 }
 
@@ -82,6 +82,14 @@ message EntityEvent {
 
 // constraints
 
+
+enum KubernetesVersion {
+    KUBERNETES_VERSION_UNKNOWN = 0;
+  KUBERNETES_VERSION_1_12 = 1;
+  KUBERNETES_VERSION_1_13 = 2;
+  KUBERNETES_VERSION_1_14 = 3;
+  KUBERNETES_VERSION_1_15 = 4;
+  }
 
 // properties
 
@@ -222,5 +230,5 @@ message Properties {
 message Constraints {
   google.protobuf.StringValue component_name = 1;
   google.protobuf.StringValue component_display_name = 2;
-  google.protobuf.StringValue kubernetes_version = 1001;
+  KubernetesVersion kubernetes_version = 1001;
 }

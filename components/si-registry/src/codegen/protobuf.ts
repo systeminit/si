@@ -1,4 +1,4 @@
-import { Component } from "@/component";
+import { Component } from "src/component";
 import ejs from "ejs";
 
 export class CodegenProtobuf {

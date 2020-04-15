@@ -1,10 +1,10 @@
-import { Props, PropMethod, AttrList } from "@/attrList";
+import { Props, PropMethod, AttrList } from "./attrList";
 import {
   PropAction,
   PropLink,
   PropNumber,
   PropObject,
-} from "@/components/prelude";
+} from "./components/prelude";
 import { snakeCase, pascalCase } from "change-case";
 
 export interface ComponentConstructor {
@@ -44,6 +44,8 @@ export class Component {
   entityEvent: AttrList;
 
   noStd: boolean;
+
+  seenEnum = {};
 
   constructor({
     typeName,
@@ -489,7 +491,7 @@ export class Component {
         p.lookup = {
           component: "component",
           propType: "internalOnly",
-          names: ["componentSiProperties"],
+          names: ["siProperties"],
         };
         p.required = true;
       },
@@ -888,7 +890,7 @@ ${messageContents}
   }
 
   renderProtobufMethodMessages(): string {
-    let result = "";
+    const result = "";
     //result = this.renderProtobufMessagesForAttrList(this.componentMethods);
     //result =
     //  result + this.renderProtobufMessagesForAttrList(this.entityMethods);
@@ -924,11 +926,14 @@ ${messageContents}
           }
         }
       } else if (p.kind() == "enum") {
-        // @ts-ignore
-        const definition = p.protobufEnumDefinition(0);
-        result = result.concat(`\nenum ${p.protobufType()} {
-${definition}
-}\n`);
+        if (this.seenEnum[p.protobufType()] != 1) {
+          // @ts-ignore
+          const definition = p.protobufEnumDefinition(0);
+          this.seenEnum[p.protobufType()] = 1;
+          result = result.concat(`\nenum ${p.protobufType()} {
+  ${definition}
+  }\n`);
+        }
       }
     }
 

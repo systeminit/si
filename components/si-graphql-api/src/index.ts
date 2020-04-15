@@ -8,8 +8,11 @@ import { environment } from "@/environment";
 import { protobufLoader } from "@/protobuf";
 import { GraphqlHintLoader } from "@/graphql-hint";
 import { SchemaGenerator } from "@/schema/generator";
+import { SiRegistryGenerator } from "@/schema/registryGenerator";
 import { GrpcServiceBroker, Grpc } from "@/datasources/grpc";
 import { DataSources } from "apollo-server-core/dist/graphqlOptions";
+
+import "@/schema/registryGenerator";
 
 // First, load the protocol buffers
 //const protobufLoader = new ProtobufLoader({
@@ -25,8 +28,13 @@ const graphqlHintLoader = new GraphqlHintLoader({
 });
 
 // Pass them to our custom schema generator
-const sg = new SchemaGenerator(services, protobufLoader, graphqlHintLoader);
+//const sg = new SchemaGenerator(services, protobufLoader, graphqlHintLoader);
+//sg.generate();
+//
+
+const sg = new SiRegistryGenerator();
 sg.generate();
+console.dir(sg, { depth: Infinity });
 
 const schema = makeSchema({
   types: sg.types,

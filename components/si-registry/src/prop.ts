@@ -1,4 +1,4 @@
-import { snakeCase } from "change-case";
+import { pascalCase, snakeCase, camelCase } from "change-case";
 
 export interface PropConstructor {
   name: string;
@@ -95,6 +95,16 @@ export abstract class Prop {
 
   protobufPackageName(): string {
     return "";
+  }
+
+  graphqlTypeName(): string {
+    return `${pascalCase(this.componentTypeName)}${pascalCase(
+      this.parentName,
+    )}${pascalCase(this.name)}`;
+  }
+
+  graphqlFieldName(): string {
+    return `${camelCase(this.name)}`;
   }
 
   bagNames(): string[] {

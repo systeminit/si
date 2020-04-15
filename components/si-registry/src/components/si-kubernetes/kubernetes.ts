@@ -4,9 +4,9 @@ import {
   PropText,
   PropLink,
   PropNumber,
-} from "@/components/prelude";
+} from "../../components/prelude";
 
-import { registry } from "@/componentRegistry";
+import { registry } from "../../componentRegistry";
 
 registry.component({
   typeName: "kubernetes",

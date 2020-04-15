@@ -3,9 +3,9 @@
 //
 // The are all loaded exclusively for their side-effects.
 
-import "@/components/si-data/data";
-import "@/components/si-data/component";
-import "@/components/si-data/entity";
-import "@/components/si-data/entityEvent";
-import "@/components/si-kubernetes/kubernetes";
-import "@/components/si-kubernetes/deployment";
+import "./components/si-data/data";
+import "./components/si-data/component";
+import "./components/si-data/entity";
+import "./components/si-data/entityEvent";
+import "./components/si-kubernetes/kubernetes";
+import "./components/si-kubernetes/deployment";

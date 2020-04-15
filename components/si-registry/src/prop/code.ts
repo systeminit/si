@@ -1,6 +1,6 @@
 import TOML from "@iarna/toml";
 
-import { Prop, PropValue } from "@/prop";
+import { Prop, PropValue } from "../prop";
 
 interface ParsedValue {
   parsed: Record<string, any> | null;

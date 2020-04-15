@@ -1,5 +1,5 @@
-import { Prop } from "@/prop";
-import { PropText } from "@/prop/text";
+import { Prop } from "../prop";
+import { PropText } from "../prop/text";
 
 export class PropNumber extends PropText {
   baseDefaultValue: string;

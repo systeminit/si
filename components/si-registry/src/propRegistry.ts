@@ -1,4 +1,4 @@
-import { Props } from "@/attrList";
+import { Props } from "./attrList";
 
 export class PropRegistry {
   propStore: Record<string, Props>;

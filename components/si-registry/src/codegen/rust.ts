@@ -1,5 +1,5 @@
-import { Component } from "@/component";
-import { PropObject } from "@/components/prelude";
+import { Component } from "src/component";
+import { PropObject } from "src/components/prelude";
 
 import { snakeCase } from "change-case";
 import ejs from "ejs";

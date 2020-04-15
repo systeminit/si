@@ -4,14 +4,16 @@ import chalk from "chalk";
 import figlet from "figlet";
 import path from "path";
 import program from "commander";
-import { registry } from "@/componentRegistry";
-import { CodegenProtobuf } from "@/codegen/protobuf";
-import { CodegenRust, generateGenMod } from "@/codegen/rust";
+import { registry } from "src/componentRegistry";
+import { CodegenProtobuf } from "src/codegen/protobuf";
+import { CodegenRust, generateGenMod } from "src/codegen/rust";
 import Listr, { ListrRendererValue } from "listr";
-import "@/loader";
+import "src/loader";
 import fs from "fs";
 import { promisify } from "util";
-import { snakeCase } from "change-case";
+import childProcess from "child_process";
+import util from "util";
+const execCmd = util.promisify(childProcess.exec);
 
 console.log(
   chalk.greenBright(figlet.textSync("Lets go!", { horizontalLayout: "full" })),

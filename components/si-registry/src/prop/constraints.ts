@@ -1,4 +1,4 @@
-import { Prop, PropValue } from "@/prop";
+import { Prop, PropValue } from "../prop";
 
 export class PropConstraints extends Prop {
   baseDefaultValue: string;
