@@ -1,23 +1,29 @@
 import { Component } from "@/component";
+import { PropObject } from "@/components/prelude";
 
 import { snakeCase } from "change-case";
 import ejs from "ejs";
 import fs from "fs";
 import path from "path";
+import childProcess from "child_process";
+import util from "util";
+
+const execCmd = util.promisify(childProcess.exec);
 
 export class CodegenRust {
   component: Component;
+  formatter: RustFormatter;
 
   constructor(component: Component) {
     this.component = component;
+    this.formatter = new RustFormatter(component);
   }
 
   async writeCode(part: string, code: string): Promise<void> {
     const createdPath = await this.makePath();
-    await fs.promises.writeFile(
-      path.join(createdPath, `${snakeCase(part)}.rs`),
-      code,
-    );
+    const codeFilename = path.join(createdPath, `${snakeCase(part)}.rs`);
+    await fs.promises.writeFile(codeFilename, code);
+    await execCmd(`rustfmt ${codeFilename}`);
   }
 
   async makePath(): Promise<string> {
@@ -41,6 +47,7 @@ export class CodegenRust {
       "<%- include('rust/component.rs.ejs', { component: component }) %>",
       {
         component: this.component,
+        fmt: this.formatter,
       },
       {
         filename: __filename,
@@ -56,6 +63,75 @@ export class CodegenRust {
       lines.push(`pub mod ${mod};`);
     }
     await this.writeCode("mod", lines.join("\n"));
+  }
+}
+
+export class RustFormatter {
+  component: Component;
+
+  constructor(component: Component) {
+    this.component = component;
+  }
+
+  componentTypeName(): string {
+    return snakeCase(this.component.typeName);
+  }
+
+  componentOrderByFields(): string {
+    const orderByFields = [];
+    const componentObject = this.component.asComponent();
+    for (const p of componentObject.properties.attrs) {
+      if (p.hidden) {
+        continue;
+      }
+      if (p.name == "storable") {
+        orderByFields.push('"storable.naturalKey"');
+        orderByFields.push('"storable.typeName"');
+      } else if (p.name == "siProperties") {
+        continue;
+      } else if (p.name == "constraints" && p.kind() == "object") {
+        // @ts-ignore trust us - we checked
+        for (const pc of p.properties.attrs) {
+          if (pc.kind() != "object") {
+            orderByFields.push(`"constraints.${pc.name}"`);
+          }
+        }
+      } else {
+        orderByFields.push(`"${p.name}"`);
+      }
+    }
+    return `vec![${orderByFields.join(",")}]\n`;
+  }
+
+  componentImports(): string {
+    const result = [];
+    result.push(
+      `pub use crate::protobuf::${snakeCase(this.component.typeName)}::{`,
+      `  Constraints,`,
+      `  ListComponentsReply,`,
+      `  ListComponentsRequest,`,
+      `  PickComponentRequest,`,
+      `  Component,`,
+      `};`,
+    );
+    return result.join("\n");
+  }
+
+  componentValidation(): string {
+    return this.genValidation(this.component.asComponent());
+  }
+
+  genValidation(propObject: PropObject): string {
+    const result = [];
+    for (const prop of propObject.properties.attrs) {
+      if (prop.required) {
+        const propName = snakeCase(prop.name);
+        result.push(`if self.${propName}.is_none() {
+          return Err(DataError::ValidationError("missing required ${propName} value".into()));
+        }`);
+      }
+    }
+    return result.join("\n");
   }
 }
 
@@ -75,7 +151,7 @@ export async function generateGenMod(writtenComponents: {
     const absolutePathName = path.resolve(pathName);
     const code = ["// Auto-generated code!", "// No touchy!\n"];
     for (const typeName of writtenComponents[component]) {
-      code.push(`mod ${snakeCase(typeName)};`);
+      code.push(`pub mod ${snakeCase(typeName)};`);
     }
 
     await fs.promises.writeFile(

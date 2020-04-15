@@ -67,14 +67,23 @@ export abstract class Prop {
   abstract protobufType(): string;
   abstract defaultValue(): PropValue;
 
-  protobufDefinition(inputNumber: number, packageName = ""): string {
+  protobufDefinition(
+    inputNumber: number,
+    packageName = "",
+    newName = "",
+  ): string {
     let repeated: string;
     if (this.repeated) {
       repeated = "repeated ";
     } else {
       repeated = "";
     }
-    const name = `${this.name}`;
+    let name: string;
+    if (newName) {
+      name = newName;
+    } else {
+      name = `${this.name}`;
+    }
     return `${repeated}${packageName}${this.protobufType()} ${snakeCase(
       name,
     )} = ${inputNumber};`;

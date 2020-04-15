@@ -38,8 +38,8 @@ message Component {
   google.protobuf.StringValue display_name = 3;
   google.protobuf.StringValue description = 4;
   google.protobuf.StringValue display_type_name = 5;
-  si.data.Storable storable = 6;
-  si.component.ComponentSiProperties component_si_properties = 7;
+  si.data.Storable si_storable = 6;
+  si.component.ComponentSiProperties si_properties = 7;
   Constraints constraints = 8;
 }
 
@@ -50,8 +50,8 @@ message Entity {
   google.protobuf.StringValue id = 1;
   google.protobuf.StringValue name = 2;
   google.protobuf.StringValue display_name = 3;
-  si.data.Storable storable = 4;
-  si.entity.EntitySiProperties entity_si_properties = 5;
+  si.data.Storable si_storable = 4;
+  si.entity.EntitySiProperties si_properties = 5;
   Constraints constraints = 6;
   Constraints implicit_constraints = 7;
   Properties properties = 8;
@@ -62,14 +62,14 @@ message Entity {
 
 message EntityEvent {
   google.protobuf.StringValue id = 1;
-  si.data.Storable storable = 2;
+  si.data.Storable si_storable = 2;
   google.protobuf.StringValue action_name = 3;
   google.protobuf.StringValue create_time = 4;
   google.protobuf.StringValue updated_time = 5;
   google.protobuf.StringValue final_time = 6;
   google.protobuf.BoolValue finalized = 7;
   google.protobuf.BoolValue success = 8;
-  si.entity_event.EntityEventSiProperties entity_event_si_properties = 9;
+  si.entity_event.EntityEventSiProperties si_properties = 9;
   Entity input_entity = 10;
   Entity output_entity = 11;
   Entity previous_entity = 12;
@@ -95,8 +95,8 @@ message KubernetesObject {
 
 message KubernetesObjectSpec {
   google.protobuf.UInt32Value replicas = 1001;
-  si.kubernetes.LabelSelector label_selector = 1002;
-  si.kubernetes.PodTemplateSpec pod_template_spec = 1003;
+  si.kubernetes.LabelSelector selector = 1002;
+  si.kubernetes.PodTemplateSpec template = 1003;
 }
 
 // data

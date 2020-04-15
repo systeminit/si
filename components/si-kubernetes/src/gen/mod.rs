@@ -1,4 +1,4 @@
 // Auto-generated code!
 // No touchy!
 
-mod kubernetes_deployment;
+pub mod kubernetes_deployment;

@@ -430,6 +430,7 @@ export class Component {
       options(p) {
         p.universal = true;
         p.readOnly = true;
+        p.required = true;
       },
     });
     this.component.addText({
@@ -438,6 +439,7 @@ export class Component {
       options(p) {
         p.universal = true;
         p.readOnly = true;
+        p.required = true;
       },
     });
     this.component.addText({
@@ -445,6 +447,7 @@ export class Component {
       label: "Component Display Name",
       options(p) {
         p.universal = true;
+        p.required = true;
       },
     });
     this.component.addText({
@@ -452,6 +455,7 @@ export class Component {
       label: "Component Description",
       options(p) {
         p.universal = true;
+        p.required = true;
       },
     });
     this.component.addText({
@@ -460,6 +464,7 @@ export class Component {
       options(p) {
         p.universal = true;
         p.readOnly = true;
+        p.required = true;
       },
     });
     this.component.addLink({
@@ -473,6 +478,7 @@ export class Component {
           propType: "internalOnly",
           names: ["storable"],
         };
+        p.required = true;
       },
     });
     this.component.addLink({
@@ -485,6 +491,7 @@ export class Component {
           propType: "internalOnly",
           names: ["componentSiProperties"],
         };
+        p.required = true;
       },
     });
   }

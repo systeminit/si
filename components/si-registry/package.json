@@ -8,7 +8,7 @@
     "si-generate": "dist/bin/si-generate.js"
   },
   "scripts": {
-    "start": "ts-node-dev --no-notify --transpileOnly --respawn -r tsconfig-paths/register src/bin/si-generate.ts",
+    "start": "ts-node-dev --no-notify --transpileOnly --respawn -r tsconfig-paths/register --watch $(find ./src -name '*.ejs' -print0 | tr '\\0' ,) src/bin/si-generate.ts",
     "generate": "ts-node -r tsconfig-paths/register src/bin/si-generate.ts",
     "generate-verbose": "ts-node -r tsconfig-paths/register src/bin/si-generate.ts -- -v",
     "prod": "ts-node --log-error -r tsconfig-paths/register src/index.ts",

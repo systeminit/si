@@ -42,12 +42,12 @@ message Container {
 }
 
 message PodSpec {
-  si.kubernetes.Container container = 1001;
+  si.kubernetes.Container containers = 1001;
 }
 
 message PodTemplateSpec {
   si.kubernetes.Metadata metadata = 1001;
-  si.kubernetes.PodSpec pod_spec = 1002;
+  si.kubernetes.PodSpec spec = 1002;
 }
 
 message ContainerPorts {

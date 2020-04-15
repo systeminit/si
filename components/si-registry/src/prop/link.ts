@@ -52,7 +52,7 @@ export class PropLink extends Prop {
     } else {
       packageName = this.protobufPackageName();
     }
-    return realp.protobufDefinition(inputNumber, packageName);
+    return realp.protobufDefinition(inputNumber, packageName, this.name);
   }
 
   protobufImportPath(componentName = ""): string {
