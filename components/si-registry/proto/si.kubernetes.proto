@@ -31,7 +31,7 @@ message Metadata {
   map<string, string> labels = 1002;
 }
 
-message LabelSelector {
+message Selector {
   map<string, string> match_labels = 1001;
 }
 

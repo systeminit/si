@@ -248,6 +248,7 @@ export class AttrList {
       label: `Edit ${camelCase(p.parentName)}${pascalCase(p.name)} Property`,
       options(pa: PropAction) {
         pa.universal = true;
+        pa.mutation = true;
         pa.request.addLink({
           name: p.name,
           label: p.label,
@@ -259,7 +260,6 @@ export class AttrList {
             };
           },
         });
-        //pa.request.addProp(p, { name: p.name, label: p.label });
       },
     });
   }
@@ -316,6 +316,8 @@ export class PropMethod extends Prop {
   request: AttrList;
   reply: AttrList;
   realParentName: string;
+  mutation: boolean;
+  skipAuth: boolean;
 
   // Methods have a Request and a Response
   //
@@ -346,6 +348,8 @@ export class PropMethod extends Prop {
       parentName: `${pascalCase(parentName)}${pascalCase(name)}Reply`,
       component: registry.get(this.componentTypeName),
     });
+    this.mutation = false;
+    this.skipAuth = false;
   }
 
   kind(): string {

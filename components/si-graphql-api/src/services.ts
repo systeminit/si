@@ -35,13 +35,8 @@ export class ServiceDescription {
 
   protobufPath(): string {
     // Services are always peers here, for now.
-    const dir = path.join(__dirname, "..", "..");
-    return path.join(
-      dir,
-      this.serviceName,
-      "proto",
-      `${this.protoPackageName}.proto`,
-    );
+    const dir = path.join(__dirname, "..", "..", "si-registry", "proto");
+    return path.join(dir, `${this.protoPackageName}.proto`);
   }
 
   graphqlHintPath(): string {
@@ -59,21 +54,13 @@ export class ServiceDescription {
 // Add new GRPC services here, and they will get turned in to
 // GraphQL endpoints automatically for you.
 export const services = [
-  // new ServiceDescription({
-  //   serviceName: "si-account",
-  //   protoPackageName: "si.account",
-  //   grpcServiceName: "Account",
-  //   graphqlTypePrefix: "",
-  //   address: environment.services["si-account"],
-  // }),
-  // new ServiceDescription({
-  //   serviceName: "si-data",
-  //   protoPackageName: "si.data",
-  //   grpcServiceName: "Data",
-  //   graphqlTypePrefix: "Data",
-  //   address: environment.services["si-account"],
-  //   dataOnly: true,
-  // }),
+  new ServiceDescription({
+    serviceName: "si-account",
+    protoPackageName: "si.account",
+    grpcServiceName: "Account",
+    graphqlTypePrefix: "",
+    address: environment.services["si-account"],
+  }),
   // new ServiceDescription({
   //   serviceName: "si-ssh-key",
   //   protoPackageName: "si.ssh_key",
@@ -88,19 +75,11 @@ export const services = [
   //   graphqlTypePrefix: "AwsEksClusterRuntime",
   //   address: environment.services["si-aws-eks-cluster-runtime"],
   // }),
-  // new ServiceDescription({
-  //   serviceName: "si-kubernetes",
-  //   protoPackageName: "si.kubernetes.deployment",
-  //   grpcServiceName: "KubernetesDeployment",
-  //   graphqlTypePrefix: "KubernetesDeployment",
-  //   address: environment.services["si-kubernetes"],
-  // }),
-  // new ServiceDescription({
-  //   serviceName: "si-kubernetes",
-  //   protoPackageName: "si.kubernetes",
-  //   grpcServiceName: "Kubernetes",
-  //   graphqlTypePrefix: "Kubernetes",
-  //   address: environment.services["si-kubernetes"],
-  //   dataOnly: true,
-  // }),
+  new ServiceDescription({
+    serviceName: "si-kubernetes",
+    protoPackageName: "si.kubernetes_deployment",
+    grpcServiceName: "KubernetesDeployment",
+    graphqlTypePrefix: "KubernetesDeployment",
+    address: environment.services["si-kubernetes"],
+  }),
 ];

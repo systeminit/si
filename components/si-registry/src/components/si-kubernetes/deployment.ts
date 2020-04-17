@@ -19,7 +19,7 @@ registry.component({
       name: "kubernetesVersion",
       label: "Kubernetes Version",
       options(p: PropEnum) {
-        p.variants = ["1.12", "1.13", "1.14", "1.15"];
+        p.variants = ["v1.12", "v1.13", "v1.14", "v1.15"];
       },
     });
 
@@ -72,7 +72,7 @@ registry.component({
                 p.lookup = {
                   component: "kubernetes",
                   propType: "internalOnly",
-                  names: ["labelSelector"],
+                  names: ["selector"],
                 };
               },
             });

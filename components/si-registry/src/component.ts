@@ -84,6 +84,7 @@ export class Component {
       name: "syncAction",
       label: "Sync State",
       options(p: PropAction) {
+        p.mutation = true;
         p.universal = true;
         p.request.addText({
           name: "entityId",
@@ -102,6 +103,7 @@ export class Component {
       name: "createEntity",
       label: "Create Entity",
       options(p: PropMethod) {
+        p.mutation = true;
         p.request.addConstraints({
           name: "constraints",
           label: "Constraints",
@@ -138,8 +140,8 @@ export class Component {
           },
         });
         p.request.addText({
-          name: "workplaceId",
-          label: "Workplace ID",
+          name: "workspaceId",
+          label: "Workspace ID",
           options(p) {
             p.universal = true;
           },
@@ -311,7 +313,7 @@ export class Component {
         });
       },
     });
-    this.entityMethods.addMethod({
+    this.componentMethods.addMethod({
       name: "listComponents",
       label: "List Components",
       options(p: PropMethod) {
@@ -758,6 +760,30 @@ export class Component {
     p.universal = true;
     p.properties.attrs = component.entityEvent.attrs;
 
+    return p;
+  }
+
+  asConstraints(): PropObject {
+    const p = new PropObject({
+      name: "constraints",
+      label: `${this.displayTypeName} Constraints`,
+      parentName: "",
+      componentTypeName: this.typeName,
+    });
+    p.universal = true;
+    p.properties.attrs = this.constraints.attrs;
+    return p;
+  }
+
+  asProperties(): PropObject {
+    const p = new PropObject({
+      name: "properties",
+      label: `${this.displayTypeName} properties`,
+      parentName: "",
+      componentTypeName: this.typeName,
+    });
+    p.universal = true;
+    p.properties.attrs = this.properties.attrs;
     return p;
   }
 

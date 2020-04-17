@@ -39,6 +39,7 @@
     "@iarna/toml": "^2.2.3",
     "apollo-datasource": "^0.6.3",
     "apollo-server": "^2.9.7",
+    "change-case": "^4.1.1",
     "dotenv": "^8.2.0",
     "graphql": "^14.5.8",
     "graphql-subscriptions": "^0.4.2",
@@ -50,7 +51,7 @@
     "mqtt": "^2.3.0",
     "nexus": "^0.11.7",
     "protobufjs": "^6.8.8",
-    "winston": "^3.2.1",
-    "si-registry": "file:../si-registry"
+    "si-registry": "file:../si-registry",
+    "winston": "^3.2.1"
   }
 }

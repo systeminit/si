@@ -17,8 +17,8 @@ import "si-registry/proto/si.kubernetes.proto";
 // Service
 service KubernetesDeployment {
   rpc GetComponent(GetComponentRequest) returns (GetComponentReply);
-  rpc PickComponent(PickComponentRequest) returns (PickComponentReply);
   rpc ListComponents(ListComponentsRequest) returns (ListComponentsReply);
+  rpc PickComponent(PickComponentRequest) returns (PickComponentReply);
   rpc CreateEntity(CreateEntityRequest) returns (CreateEntityReply);
   rpc ListEntities(ListEntitiesRequest) returns (ListEntitiesReply);
   rpc GetEntity(GetEntityRequest) returns (GetEntityReply);
@@ -85,10 +85,10 @@ message EntityEvent {
 
 enum KubernetesVersion {
     KUBERNETES_VERSION_UNKNOWN = 0;
-  KUBERNETES_VERSION_1_12 = 1;
-  KUBERNETES_VERSION_1_13 = 2;
-  KUBERNETES_VERSION_1_14 = 3;
-  KUBERNETES_VERSION_1_15 = 4;
+  KUBERNETES_VERSION_V1_12 = 1;
+  KUBERNETES_VERSION_V1_13 = 2;
+  KUBERNETES_VERSION_V1_14 = 3;
+  KUBERNETES_VERSION_V1_15 = 4;
   }
 
 // properties
@@ -103,7 +103,7 @@ message KubernetesObject {
 
 message KubernetesObjectSpec {
   google.protobuf.UInt32Value replicas = 1001;
-  si.kubernetes.LabelSelector selector = 1002;
+  si.kubernetes.Selector selector = 1002;
   si.kubernetes.PodTemplateSpec template = 1003;
 }
 
@@ -112,28 +112,13 @@ message KubernetesObjectSpec {
 // entityMethods
 
 
-message ListComponentsRequest {
-  si.data.Query query = 1;
-  google.protobuf.UInt32Value page_size = 2;
-  google.protobuf.StringValue order_by = 3;
-  si.data.PageTokenOrderByDirection order_by_direction = 4;
-  google.protobuf.StringValue page_token = 5;
-  google.protobuf.StringValue scope_by_tenant_id = 6;
-}
-
-message ListComponentsReply {
-  repeated Component items = 1;
-  google.protobuf.UInt32Value total_count = 2;
-  google.protobuf.StringValue next_page_token = 3;
-}
-
 message CreateEntityRequest {
   Constraints constraints = 1;
   Properties properties = 2;
   google.protobuf.StringValue name = 3;
   google.protobuf.StringValue display_name = 4;
   google.protobuf.StringValue description = 5;
-  google.protobuf.StringValue workplace_id = 6;
+  google.protobuf.StringValue workspace_id = 6;
 }
 
 message CreateEntityReply {
@@ -203,6 +188,21 @@ message GetComponentRequest {
 
 message GetComponentReply {
   Component component = 1;
+}
+
+message ListComponentsRequest {
+  si.data.Query query = 1;
+  google.protobuf.UInt32Value page_size = 2;
+  google.protobuf.StringValue order_by = 3;
+  si.data.PageTokenOrderByDirection order_by_direction = 4;
+  google.protobuf.StringValue page_token = 5;
+  google.protobuf.StringValue scope_by_tenant_id = 6;
+}
+
+message ListComponentsReply {
+  repeated Component items = 1;
+  google.protobuf.UInt32Value total_count = 2;
+  google.protobuf.StringValue next_page_token = 3;
 }
 
 message PickComponentRequest {

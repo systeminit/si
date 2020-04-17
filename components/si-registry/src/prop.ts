@@ -97,10 +97,14 @@ export abstract class Prop {
     return "";
   }
 
-  graphqlTypeName(): string {
+  graphqlTypeName(inputType?: boolean): string {
+    let request = "";
+    if (inputType) {
+      request = "Request";
+    }
     return `${pascalCase(this.componentTypeName)}${pascalCase(
       this.parentName,
-    )}${pascalCase(this.name)}`;
+    )}${pascalCase(this.name)}${request}`;
   }
 
   graphqlFieldName(): string {

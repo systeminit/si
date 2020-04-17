@@ -34,7 +34,7 @@ registry.component({
 
     // LabelSelector
     c.internalOnly.addObject({
-      name: "labelSelector",
+      name: "selector",
       label: "Label Selector",
       options(p: PropObject) {
         p.properties.addMap({

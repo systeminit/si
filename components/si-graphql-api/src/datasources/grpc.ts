@@ -34,8 +34,6 @@ export class GrpcServiceBroker {
         sd.grpcServiceName,
       );
 
-      logger.log("info", "Loading Service", { service: sd, caller });
-
       this.services[sd.grpcServiceName] = {
         client: caller,
       };

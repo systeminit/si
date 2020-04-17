@@ -5,9 +5,9 @@ import { makeSchema } from "nexus";
 
 import { services } from "@/services";
 import { environment } from "@/environment";
-import { protobufLoader } from "@/protobuf";
-import { GraphqlHintLoader } from "@/graphql-hint";
-import { SchemaGenerator } from "@/schema/generator";
+//import { protobufLoader } from "@/protobuf";
+//import { GraphqlHintLoader } from "@/graphql-hint";
+//import { SchemaGenerator } from "@/schema/generator";
 import { SiRegistryGenerator } from "@/schema/registryGenerator";
 import { GrpcServiceBroker, Grpc } from "@/datasources/grpc";
 import { DataSources } from "apollo-server-core/dist/graphqlOptions";
@@ -23,9 +23,9 @@ import "@/schema/registryGenerator";
 //});
 
 // Second, load the graphql hints
-const graphqlHintLoader = new GraphqlHintLoader({
-  services,
-});
+//const graphqlHintLoader = new GraphqlHintLoader({
+//  services,
+//});
 
 // Pass them to our custom schema generator
 //const sg = new SchemaGenerator(services, protobufLoader, graphqlHintLoader);
@@ -34,7 +34,6 @@ const graphqlHintLoader = new GraphqlHintLoader({
 
 const sg = new SiRegistryGenerator();
 sg.generate();
-console.dir(sg, { depth: Infinity });
 
 const schema = makeSchema({
   types: sg.types,
@@ -56,6 +55,7 @@ const schema = makeSchema({
         alias: "t",
       },
     ],
+    debug: true,
     //contextType: "t.Context",
   },
 });

@@ -2,2424 +2,694 @@
 ### Do not make changes to this file directly
 
 
-type AwsEksClusterRuntimeAddNodegroupReply {
-  """event"""
-  event: AwsEksClusterRuntimeEntityEvent
-}
-
-input AwsEksClusterRuntimeAddNodegroupRequest {
-  """entityId"""
-  entityId: String
-}
-
-enum AwsEksClusterRuntimeBool {
-  BOOL_UNKNOWN
-  FALSE
-  TRUE
-}
-
-enum AwsEksClusterRuntimeClusterStatus {
-  ACTIVE
-  CLUSTER_STATUS_UNKNOWN
-  CREATING
-  DELETING
-  FAILED
-  UPDATING
-}
-
-type AwsEksClusterRuntimeComponent {
-  """description"""
-  description: String
-
-  """displayName"""
-  displayName: String
-
-  """displayTypeName"""
-  displayTypeName: String
-
-  """id"""
-  id: ID
-
-  """integrationId"""
-  integration: Integration
-
-  """integrationId"""
+type ComponentSiProperties {
+  """Integration Id"""
   integrationId: String
 
-  """integrationServiceId"""
-  integrationService: IntegrationService
-
-  """integrationServiceId"""
+  """Integration Service Id"""
   integrationServiceId: String
 
-  """kubernetesVersion"""
-  kubernetesVersion: String
-
-  """name"""
-  name: String
-
-  """naturalKey"""
-  naturalKey: String
-
-  """tenantIds"""
-  tenantIds: [String!]
-
-  """typeName"""
-  typeName: String
-
-  """version"""
+  """Version"""
   version: Int
 }
 
-type AwsEksClusterRuntimeConstraints {
-  """displayName"""
-  displayName: String
+type DataPageToken {
+  """Contained Within"""
+  containedWithin: String
 
-  """integrationId"""
-  integrationId: String
+  """Item ID"""
+  itemId: String
 
-  """integrationServiceId"""
-  integrationServiceId: String
-
-  """kubernetesVersion"""
-  kubernetesVersion: String
-
-  """name"""
-  name: String
-}
-
-type AwsEksClusterRuntimeCreateEntityReply {
-  """entity"""
-  entity: AwsEksClusterRuntimeEntity
-
-  """event"""
-  event: AwsEksClusterRuntimeEntityEvent
-}
-
-input AwsEksClusterRuntimeCreateEntityRequest {
-  """cloudwatchLogs"""
-  cloudwatchLogs: Boolean
-
-  """constraints"""
-  constraints: AwsEksClusterRuntimePickComponentRequest
-
-  """description"""
-  description: String
-
-  """displayName"""
-  displayName: String
-
-  """name"""
-  name: String
-
-  """nodegroupDesiredSize"""
-  nodegroupDesiredSize: Int
-
-  """nodegroupDiskSize"""
-  nodegroupDiskSize: Int
-
-  """nodegroupInstanceType"""
-  nodegroupInstanceType: String
-
-  """nodegroupMaxSize"""
-  nodegroupMaxSize: Int
-
-  """nodegroupMinSize"""
-  nodegroupMinSize: Int
-
-  """nodegroupSshKeyId"""
-  nodegroupSshKeyId: String
-
-  """tags"""
-  tags: [AwsEksClusterRuntimeTagRequest!]
-
-  """workspaceId"""
-  workspaceId: String
-}
-
-type AwsEksClusterRuntimeEntity {
-  """billingAccountId"""
-  billingAccount: BillingAccount
-
-  """billingAccountId"""
-  billingAccountId: String
-
-  """certificateAuthority"""
-  certificateAuthority: String
-
-  """cloudwatchLogs"""
-  cloudwatchLogs: Boolean
-
-  """clusterName"""
-  clusterName: String
-
-  """clusterStatus"""
-  clusterStatus: AwsEksClusterRuntimeClusterStatus
-
-  """componentId"""
-  componentId: String
-
-  """constraints"""
-  constraints: AwsEksClusterRuntimeConstraints
-
-  """description"""
-  description: String
-
-  """displayName"""
-  displayName: String
-
-  """endpoint"""
-  endpoint: String
-
-  """endpointPrivateAccess"""
-  endpointPrivateAccess: AwsEksClusterRuntimeBool
-
-  """endpointPublicAccess"""
-  endpointPublicAccess: AwsEksClusterRuntimeBool
-
-  """id"""
-  entityEvents(input: AwsEksClusterRuntimeListEntityEventsRequest): AwsEksClusterRuntimeListEntityEventsReply
-
-  """id"""
-  id: ID
-
-  """implicitConstraints"""
-  implicitConstraints: [AwsEksClusterRuntimeImplicitConstraint!]
-
-  """integrationId"""
-  integration: Integration
-
-  """integrationId"""
-  integrationId: String
-
-  """integrationServiceId"""
-  integrationService: IntegrationService
-
-  """integrationServiceId"""
-  integrationServiceId: String
-
-  """kubernetesVersion"""
-  kubernetesVersion: String
-
-  """linkedEntityIds"""
-  linkedEntityIds: [String!]
-
-  """name"""
-  name: String
-
-  """naturalKey"""
-  naturalKey: String
-
-  """nodegroupDesiredSize"""
-  nodegroupDesiredSize: Int
-
-  """nodegroupDiskSize"""
-  nodegroupDiskSize: Int
-
-  """nodegroupInstanceType"""
-  nodegroupInstanceType: String
-
-  """nodegroupMaxSize"""
-  nodegroupMaxSize: Int
-
-  """nodegroupMinSize"""
-  nodegroupMinSize: Int
-
-  """nodegroupName"""
-  nodegroupName: String
-
-  """nodegroupSshKeyId"""
-  nodegroupSshKeyId: String
-
-  """nodegroupStatus"""
-  nodegroupStatus: AwsEksClusterRuntimeNodegroupStatus
-
-  """organizationId"""
-  organization: Organization
-
-  """organizationId"""
-  organizationId: String
-
-  """state"""
-  state: AwsEksClusterRuntimeState
-
-  """tags"""
-  tags: [AwsEksClusterRuntimeTag!]
-
-  """tenantIds"""
-  tenantIds: [String!]
-
-  """typeName"""
-  typeName: String
-
-  """workspaceId"""
-  workspace: Workspace
-
-  """workspaceId"""
-  workspaceId: String
-}
-
-type AwsEksClusterRuntimeEntityEvent implements EntityEvent {
-  """actionName"""
-  actionName: String
-
-  """billingAccountId"""
-  billingAccountId: String
-
-  """componentId"""
-  componentId: String
-
-  """createTime"""
-  createTime: String
-
-  """entityId"""
-  entity: AwsEksClusterRuntimeEntity
-
-  """entityId"""
-  entityId: String
-
-  """errorLines"""
-  errorLines: [String!]
-
-  """errorMessage"""
-  errorMessage: String
-
-  """finalized"""
-  finalized: Boolean
-
-  """finalTime"""
-  finalTime: String
-
-  """id"""
-  id: ID
-
-  """inputEntity"""
-  inputEntity: AwsEksClusterRuntimeEntity
-
-  """integrationId"""
-  integrationId: String
-
-  """integrationServiceId"""
-  integrationServiceId: String
-
-  """naturalKey"""
-  naturalKey: String
-
-  """nextState"""
-  nextState: AwsEksClusterRuntimeNextState
-
-  """organizationId"""
-  organizationId: String
-
-  """outputEntity"""
-  outputEntity: AwsEksClusterRuntimeEntity
-
-  """outputLines"""
-  outputLines: [String!]
-
-  """previousEntity"""
-  previousEntity: AwsEksClusterRuntimeEntity
-
-  """success"""
-  success: Boolean
-
-  """tenantIds"""
-  tenantIds: [String!]
-
-  """typeName"""
-  typeName: String
-
-  """updatedTime"""
-  updatedTime: String
-
-  """userId"""
-  user: User
-
-  """userId"""
-  userId: String
-
-  """workspaceId"""
-  workspaceId: String
-}
-
-type AwsEksClusterRuntimeGetComponentReply {
-  """component"""
-  component: AwsEksClusterRuntimeComponent
-}
-
-input AwsEksClusterRuntimeGetComponentRequest {
-  """componentId"""
-  componentId: String
-}
-
-type AwsEksClusterRuntimeGetEntityReply {
-  """entity"""
-  entity: AwsEksClusterRuntimeEntity
-}
-
-input AwsEksClusterRuntimeGetEntityRequest {
-  """entityId"""
-  entityId: String
-}
-
-type AwsEksClusterRuntimeImplicitConstraint {
-  """field"""
-  field: String
-
-  """value"""
-  value: String
-}
-
-type AwsEksClusterRuntimeListComponentsReply {
-  """items"""
-  items: [AwsEksClusterRuntimeComponent!]
-
-  """nextPageToken"""
-  nextPageToken: String
-
-  """totalCount"""
-  totalCount: Int
-}
-
-input AwsEksClusterRuntimeListComponentsRequest {
-  """orderBy"""
+  """Order by"""
   orderBy: String
 
-  """orderByDirection"""
-  orderByDirection: DataOrderByDirection
+  """Order by direction"""
+  orderByDirection: DataPageTokenOrderByDirection
 
-  """pageSize"""
+  """Page Size"""
   pageSize: Int
 
-  """pageToken"""
-  pageToken: String
-
-  """query"""
-  query: DataQuery
-
-  """scopeByTenantId"""
-  scopeByTenantId: String
+  """Query"""
+  query: [DataQuery!]
 }
 
-type AwsEksClusterRuntimeListEntitiesReply {
-  """items"""
-  items: [AwsEksClusterRuntimeEntity!]
-
-  """nextPageToken"""
-  nextPageToken: String
-
-  """totalCount"""
-  totalCount: Int
-}
-
-input AwsEksClusterRuntimeListEntitiesRequest {
-  """orderBy"""
-  orderBy: String
-
-  """orderByDirection"""
-  orderByDirection: DataOrderByDirection
-
-  """pageSize"""
-  pageSize: Int
-
-  """pageToken"""
-  pageToken: String
-
-  """query"""
-  query: DataQuery
-
-  """scopeByTenantId"""
-  scopeByTenantId: String
-}
-
-type AwsEksClusterRuntimeListEntityEventsReply {
-  """items"""
-  items: [AwsEksClusterRuntimeEntityEvent!]
-
-  """nextPageToken"""
-  nextPageToken: String
-
-  """totalCount"""
-  totalCount: Int
-}
-
-input AwsEksClusterRuntimeListEntityEventsRequest {
-  """orderBy"""
-  orderBy: String
-
-  """orderByDirection"""
-  orderByDirection: DataOrderByDirection
-
-  """pageSize"""
-  pageSize: Int
-
-  """pageToken"""
-  pageToken: String
-
-  """query"""
-  query: DataQuery
-
-  """scopeByTenantId"""
-  scopeByTenantId: String
-}
-
-enum AwsEksClusterRuntimeNextState {
-  ERROR
-  NONE
-  OK
-  UNINITIALIZED
-}
-
-enum AwsEksClusterRuntimeNodegroupStatus {
-  NODEGROUP_ACTIVE
-  NODEGROUP_CREATE_FAILED
-  NODEGROUP_CREATING
-  NODEGROUP_DEGRADED
-  NODEGROUP_DELETE_FAILED
-  NODEGROUP_DELETING
-  NODEGROUP_STATUS_UNKNOWN
-  NODEGROUP_UPDATING
-}
-
-type AwsEksClusterRuntimePickComponentReply {
-  """component"""
-  component: AwsEksClusterRuntimeComponent
-
-  """implicitConstraints"""
-  implicitConstraints: [AwsEksClusterRuntimeImplicitConstraint!]
-}
-
-input AwsEksClusterRuntimePickComponentRequest {
-  """displayName"""
-  displayName: String
-
-  """integrationId"""
-  integrationId: String
-
-  """integrationServiceId"""
-  integrationServiceId: String
-
-  """kubernetesVersion"""
-  kubernetesVersion: String
-
-  """name"""
-  name: String
-}
-
-enum AwsEksClusterRuntimeState {
-  ERROR
-  OK
-  STATE_UNKNOWN
-  TRANSITION
-}
-
-type AwsEksClusterRuntimeSyncEntityReply {
-  """event"""
-  event: AwsEksClusterRuntimeEntityEvent
-}
-
-input AwsEksClusterRuntimeSyncEntityRequest {
-  """entityId"""
-  entityId: String
-}
-
-type AwsEksClusterRuntimeTag {
-  """key"""
-  key: String
-
-  """value"""
-  value: String
-}
-
-input AwsEksClusterRuntimeTagRequest {
-  """key"""
-  key: String
-
-  """value"""
-  value: String
-}
-
-type BillingAccount {
-  """displayName"""
-  displayName: String
-
-  """id"""
-  id: ID
-
-  """id"""
-  integrationInstances(input: ListIntegrationInstancesRequest): ListIntegrationInstancesReply
-
-  """naturalKey"""
-  naturalKey: String
-
-  """id"""
-  organizations(input: ListOrganizationsRequest): ListOrganizationsReply
-
-  """shortName"""
-  shortName: String
-
-  """tenantIds"""
-  tenantIds: [String!]
-
-  """typeName"""
-  typeName: String
-
-  """id"""
-  users(input: ListUsersRequest): ListUsersReply
-}
-
-type Capability {
-  """actions"""
-  actions: [String!]
-
-  """subject"""
-  subject: String
-}
-
-type CreateAccountReply {
-  """billingAccount"""
-  billingAccount: BillingAccount
-
-  """user"""
-  user: User
-}
-
-input CreateAccountRequest {
-  """billingAccount"""
-  billingAccount: CreateBillingAccountRequest
-
-  """user"""
-  user: CreateUserRequest
-}
-
-type CreateBillingAccountReply {
-  """billingAccount"""
-  billingAccount: BillingAccount
-}
-
-input CreateBillingAccountRequest {
-  """displayName"""
-  displayName: String
-
-  """shortName"""
-  shortName: String
-}
-
-type CreateIntegrationInstanceReply {
-  """integrationInstance"""
-  integrationInstance: IntegrationInstance
-}
-
-input CreateIntegrationInstanceRequest {
-  """displayName"""
-  displayName: String
-
-  """integrationId"""
-  integrationId: String
-
-  """integrationOptionValues"""
-  integrationOptionValues: [CreateIntegrationOptionValueRequest!]
-
-  """name"""
-  name: String
-}
-
-input CreateIntegrationOptionValueRequest {
-  """name"""
-  name: String
-
-  """optionType"""
-  optionType: IntegrationOptionType
-
-  """value"""
-  value: String
-}
-
-type CreateUserReply {
-  """user"""
-  user: User
-}
-
-input CreateUserRequest {
-  """displayName"""
-  displayName: String
-
-  """email"""
-  email: String
-
-  """familyName"""
-  familyName: String
-
-  """givenName"""
-  givenName: String
-
-  """password"""
-  password: String
-}
-
-enum DataOrderByDirection {
+"""Order by direction"""
+enum DataPageTokenOrderByDirection {
   ASC
   DESC
 }
 
-input DataPageToken {
-  """containedWithin"""
-  containedWithin: String
+type DataQuery {
+  """Query Boolean Logic"""
+  booleanTerm: DataQueryBooleanTerm
 
-  """itemId"""
-  itemId: String
-
-  """orderBy"""
-  orderBy: String
-
-  """orderByDirection"""
-  orderByDirection: DataOrderByDirection
-
-  """pageSize"""
-  pageSize: Int
-
-  """query"""
-  query: DataQuery
-}
-
-input DataQuery {
-  """booleanTerm"""
-  booleanTerm: DataQueryBooleanLogic
-
-  """isNot"""
+  """Is Not"""
   isNot: Boolean
 
-  """items"""
-  items: [DataQueryExpressionOption!]
+  """Query"""
+  items: [DataQueryItems!]
 }
 
-enum DataQueryBooleanLogic {
+"""Query Boolean Logic"""
+enum DataQueryBooleanTerm {
   AND
   OR
 }
 
-enum DataQueryComparison {
-  CONTAINS
-  EQUALS
-  LIKE
-  NOTEQUALS
-  NOTLIKE
+type DataQueryItems {
+  """Expression Option"""
+  expression: DataQueryItemsExpression
+
+  """Query"""
+  query: [DataQuery!]
 }
 
-input DataQueryExpression {
-  """comparison"""
-  comparison: DataQueryComparison
+type DataQueryItemsExpression {
+  """Query Comparison"""
+  comparison: DataQueryItemsExpressionComparison
 
-  """field"""
+  """Field"""
   field: String
 
-  """fieldType"""
-  fieldType: DataQueryFieldType
+  """Query Field Type"""
+  fieldType: DataQueryItemsExpressionFieldType
 
-  """value"""
+  """Value"""
   value: String
 }
 
-input DataQueryExpressionOption {
-  """expression"""
-  expression: DataQueryExpression
-
-  """query"""
-  query: DataQuery
+"""Query Comparison"""
+enum DataQueryItemsExpressionComparison {
+  CONTAINS
+  EQUALS
+  LIKE
+  NOT_EQUALS
+  NOT_LIKE
 }
 
-enum DataQueryFieldType {
+"""Query Field Type"""
+enum DataQueryItemsExpressionFieldType {
   INT
   STRING
 }
 
-interface EntityEvent {
-  actionName: String
-  billingAccountId: String
-  componentId: String
-  createTime: String
-  entityId: String
-  errorLines: [String!]
-  errorMessage: String
-  finalized: Boolean
-  finalTime: String
-  id: ID
-  integrationId: String
-  integrationServiceId: String
-  naturalKey: String
-  organizationId: String
-  outputLines: [String!]
-  success: Boolean
-  tenantIds: [String!]
-  typeName: String
-  updatedTime: String
-  userId: String
-  workspaceId: String
-}
+input DataQueryItemsExpressionRequest {
+  """Query Comparison"""
+  comparison: DataQueryItemsExpressionComparison
 
-type GetBillingAccountReply {
-  """billingAccount"""
-  billingAccount: BillingAccount
-}
+  """Field"""
+  field: String
 
-input GetBillingAccountRequest {
-  """billingAccountId"""
-  billingAccountId: String
-}
+  """Query Field Type"""
+  fieldType: DataQueryItemsExpressionFieldType
 
-type GetIntegrationReply {
-  """integration"""
-  integration: Integration
-}
-
-input GetIntegrationRequest {
-  """integrationId"""
-  integrationId: String
-}
-
-type GetIntegrationServiceReply {
-  """integrationService"""
-  integrationService: IntegrationService
-}
-
-input GetIntegrationServiceRequest {
-  """integrationServiceId"""
-  integrationServiceId: String
-}
-
-type GetOrganizationReply {
-  """organization"""
-  organization: Organization
-}
-
-input GetOrganizationRequest {
-  """organizationId"""
-  organizationId: String
-}
-
-type GetUserReply {
-  """user"""
-  user: User
-}
-
-input GetUserRequest {
-  """userId"""
-  userId: String
-}
-
-type Group {
-  """billingAccountId"""
-  billingAccountId: String
-
-  """capabilities"""
-  capabilities: [Capability!]
-
-  """displayName"""
-  displayName: String
-
-  """id"""
-  id: ID
-
-  """name"""
-  name: String
-
-  """naturalKey"""
-  naturalKey: String
-
-  """tenantIds"""
-  tenantIds: [String!]
-
-  """typeName"""
-  typeName: String
-
-  """userIds"""
-  userIds: [String!]
-}
-
-type Integration {
-  """displayName"""
-  displayName: String
-
-  """id"""
-  id: ID
-
-  """integrationOptions"""
-  integrationOptions: [IntegrationOption!]
-
-  """id"""
-  integrationServices(input: ListIntegrationServicesRequest): ListIntegrationServicesReply
-
-  """name"""
-  name: String
-
-  """naturalKey"""
-  naturalKey: String
-
-  """tenantIds"""
-  tenantIds: [String!]
-
-  """typeName"""
-  typeName: String
-
-  """version"""
-  version: Int
-}
-
-type IntegrationInstance {
-  """billingAccountId"""
-  billingAccount: BillingAccount
-
-  """billingAccountId"""
-  billingAccountId: String
-
-  """displayName"""
-  displayName: String
-
-  """enabledOnOrganizationIds"""
-  enabledOnOrganizationIds: [String!]
-
-  """enabledOnOrganizationIds"""
-  enabledOnOrganizations(input: ListOrganizationsRequest): ListOrganizationsReply
-
-  """enabledOnWorkspaceIds"""
-  enabledOnWorkspaceIds: [String!]
-
-  """enabledOnWorkspaceIds"""
-  enabledOnWorkspaces(input: ListWorkspacesRequest): ListWorkspacesReply
-
-  """id"""
-  id: ID
-
-  """integrationId"""
-  integration: Integration
-
-  """integrationId"""
-  integrationId: String
-
-  """integrationOptionValues"""
-  integrationOptionValues: [IntegrationOptionValue!]
-
-  """integrationServiceIds"""
-  integrationServiceIds: [String!]
-
-  """name"""
-  name: String
-
-  """naturalKey"""
-  naturalKey: String
-
-  """tenantIds"""
-  tenantIds: [String!]
-
-  """typeName"""
-  typeName: String
-}
-
-type IntegrationOption {
-  """displayName"""
-  displayName: String
-
-  """name"""
-  name: String
-
-  """optionType"""
-  optionType: IntegrationOptionType
-}
-
-enum IntegrationOptionType {
-  SECRET
-  STRING
-}
-
-type IntegrationOptionValue {
-  """name"""
-  name: String
-
-  """optionType"""
-  optionType: IntegrationOptionType
-
-  """value"""
+  """Value"""
   value: String
 }
 
-type IntegrationService {
-  """displayName"""
-  displayName: String
+input DataQueryItemsRequest {
+  """Expression Option"""
+  expression: DataQueryItemsExpressionRequest
 
-  """id"""
-  id: ID
+  """Query"""
+  query: [DataQueryRequest!]
+}
 
-  """integrationId"""
-  integration: Integration
+input DataQueryRequest {
+  """Query Boolean Logic"""
+  booleanTerm: DataQueryBooleanTerm
 
-  """integrationId"""
-  integrationId: String
+  """Is Not"""
+  isNot: Boolean
 
-  """name"""
-  name: String
+  """Query"""
+  items: [DataQueryItemsRequest!]
+}
 
-  """naturalKey"""
+type DataStorable {
+  """Natural Key"""
   naturalKey: String
 
-  """tenantIds"""
+  """Tenant IDs"""
   tenantIds: [String!]
 
-  """typeName"""
+  """Type Name"""
   typeName: String
+}
 
-  """version"""
+type EntityEntitySiProperties {
+  """Billing Account ID"""
+  billingAccountId: String
+
+  """Component Id"""
+  componentId: String
+
+  """Entity State"""
+  entityState: EntityEntitySiPropertiesEntityState
+
+  """Integration Id"""
+  integrationId: String
+
+  """Integration Service Id"""
+  integrationServiceId: String
+
+  """Organization ID"""
+  organizationId: String
+
+  """Version"""
   version: Int
+
+  """Workspace ID"""
+  workspaceId: String
+}
+
+"""Entity State"""
+enum EntityEntitySiPropertiesEntityState {
+  ERROR
+  OK
+  TRANSITION
+}
+
+type EntityEventEntityEventSiProperties {
+  """Billing Account ID"""
+  billingAccountId: String
+
+  """Component Id"""
+  componentId: String
+
+  """Integration Id"""
+  integrationId: String
+
+  """Integration Service Id"""
+  integrationServiceId: String
+
+  """Organization ID"""
+  organizationId: String
+
+  """Workspace ID"""
+  workspaceId: String
 }
 
 type KubernetesContainer {
-  """image"""
+  """Image"""
   image: String
 
-  """name"""
+  """Name"""
   name: String
 
-  """ports"""
+  """Container"""
   ports: [KubernetesContainerPorts!]
 }
 
 type KubernetesContainerPorts {
-  """containerPort"""
+  """Ports"""
+  portValues: KubernetesContainerPortsPortValues
+}
+
+type KubernetesContainerPortsPortValues {
+  """Container Port"""
+  containerPort: Int
+}
+
+input KubernetesContainerPortsPortValuesRequest {
+  """Container Port"""
   containerPort: Int
 }
 
 input KubernetesContainerPortsRequest {
-  """containerPort"""
-  containerPort: Int
+  """Ports"""
+  portValues: KubernetesContainerPortsPortValuesRequest
 }
 
 input KubernetesContainerRequest {
-  """image"""
+  """Image"""
   image: String
 
-  """name"""
+  """Name"""
   name: String
 
-  """ports"""
+  """Container"""
   ports: [KubernetesContainerPortsRequest!]
 }
 
 type KubernetesDeploymentComponent {
-  """description"""
+  """Kubernetes Deployment Object Component"""
+  constraints: KubernetesDeploymentConstraints
+
+  """Component Description"""
   description: String
 
-  """displayName"""
+  """Component Display Name"""
   displayName: String
 
-  """displayTypeName"""
+  """Display Type Name"""
   displayTypeName: String
 
-  """id"""
+  """Component ID"""
   id: ID
 
-  """integrationId"""
-  integration: Integration
-
-  """integrationId"""
-  integrationId: String
-
-  """integrationServiceId"""
-  integrationService: IntegrationService
-
-  """integrationServiceId"""
-  integrationServiceId: String
-
-  """kubernetesVersion"""
-  kubernetesVersion: String
-
-  """name"""
+  """Component Name"""
   name: String
 
-  """naturalKey"""
-  naturalKey: String
+  """SI Properties"""
+  siProperties: [ComponentSiProperties!]
 
-  """tenantIds"""
-  tenantIds: [String!]
-
-  """typeName"""
-  typeName: String
-
-  """version"""
-  version: Int
+  """SI Storable"""
+  siStorable: [DataStorable!]
 }
 
 type KubernetesDeploymentConstraints {
-  """displayName"""
-  displayName: String
+  """Component Display Name"""
+  componentDisplayName: String
 
-  """integrationId"""
-  integrationId: String
+  """Component Name"""
+  componentName: String
 
-  """integrationServiceId"""
-  integrationServiceId: String
-
-  """kubernetesVersion"""
-  kubernetesVersion: String
-
-  """name"""
-  name: String
+  """Kubernetes Version"""
+  kubernetesVersion: KubernetesDeploymentKubernetesVersion
 }
 
+input KubernetesDeploymentConstraintsRequest {
+  """Component Display Name"""
+  componentDisplayName: String
+
+  """Component Name"""
+  componentName: String
+
+  """Kubernetes Version"""
+  kubernetesVersion: KubernetesDeploymentKubernetesVersion
+}
+
+"""Create Entity Reply"""
 type KubernetesDeploymentCreateEntityReply {
-  """entity"""
+  """Entity"""
   entity: KubernetesDeploymentEntity
 
-  """event"""
-  event: KubernetesDeploymentEntityEvent
+  """EntityEvent"""
+  entityEvent: KubernetesDeploymentEntityEvent
 }
 
+"""Create Entity Request"""
 input KubernetesDeploymentCreateEntityRequest {
-  """constraints"""
-  constraints: KubernetesDeploymentPickComponentRequest
+  """Constraints"""
+  constraints: KubernetesDeploymentConstraintsRequest
 
-  """description"""
+  """Description"""
   description: String
 
-  """displayName"""
+  """Display Name"""
   displayName: String
 
-  """name"""
+  """Name"""
   name: String
 
-  """props"""
-  props: KubernetesDeploymentPropsRequest
+  """Properties"""
+  properties: KubernetesDeploymentPropertiesRequest
 
-  """workspaceId"""
+  """Workspace ID"""
   workspaceId: String
 }
 
-type KubernetesDeploymentDeployment {
-  """apiVersion"""
-  apiVersion: String
-
-  """kind"""
-  kind: String
-
-  """metadata"""
-  metadata: KubernetesMetaData
-
-  """spec"""
-  spec: KubernetesDeploymentSpec
-}
-
-input KubernetesDeploymentDeploymentRequest {
-  """apiVersion"""
-  apiVersion: String
-
-  """kind"""
-  kind: String
-
-  """metadata"""
-  metadata: KubernetesMetaDataRequest
-
-  """spec"""
-  spec: KubernetesDeploymentSpecRequest
-}
-
-type KubernetesDeploymentEditPropObjectReply {
-  """entity"""
+"""Edit KubernetesObject Property Reply"""
+type KubernetesDeploymentEditKubernetesObjectActionReply {
+  """Entity"""
   entity: KubernetesDeploymentEntity
 
-  """event"""
-  event: KubernetesDeploymentEntityEvent
+  """Entity Event"""
+  entityEvent: KubernetesDeploymentEntityEvent
 }
 
-input KubernetesDeploymentEditPropObjectRequest {
-  """entityId"""
-  entityId: String
-
-  """prop"""
-  prop: KubernetesDeploymentDeploymentRequest
-
-  """workspaceId"""
-  workspaceId: String
+"""Edit KubernetesObject Property Request"""
+input KubernetesDeploymentEditKubernetesObjectActionRequest {
+  """Kubernetes Object"""
+  kubernetesObject: [KubernetesDeploymentKubernetesObjectRequest!]
 }
 
-type KubernetesDeploymentEditPropObjectYamlReply {
-  """entity"""
+"""Edit KubernetesObjectYaml Property Reply"""
+type KubernetesDeploymentEditKubernetesObjectYamlActionReply {
+  """Entity"""
   entity: KubernetesDeploymentEntity
 
-  """event"""
-  event: KubernetesDeploymentEntityEvent
+  """Entity Event"""
+  entityEvent: KubernetesDeploymentEntityEvent
 }
 
-input KubernetesDeploymentEditPropObjectYamlRequest {
-  """entityId"""
-  entityId: String
-
-  """prop"""
-  prop: String
-
-  """workspaceId"""
-  workspaceId: String
+"""Edit KubernetesObjectYaml Property Request"""
+input KubernetesDeploymentEditKubernetesObjectYamlActionRequest {
+  """Kubernetes Object YAML"""
+  kubernetesObjectYaml: String
 }
 
 type KubernetesDeploymentEntity {
-  """billingAccountId"""
-  billingAccount: BillingAccount
-
-  """billingAccountId"""
-  billingAccountId: String
-
-  """componentId"""
-  componentId: String
-
-  """constraints"""
+  """Constraints"""
   constraints: KubernetesDeploymentConstraints
 
-  """description"""
-  description: String
-
-  """displayName"""
+  """Entity Display Name"""
   displayName: String
 
-  """id"""
-  entityEvents(input: KubernetesDeploymentListEntityEventsRequest): KubernetesDeploymentListEntityEventsReply
-
-  """id"""
+  """Entity ID"""
   id: ID
 
-  """implicitConstraints"""
-  implicitConstraints: [KubernetesDeploymentImplicitConstraint!]
+  """Implicit Constraints"""
+  implicitConstraints: KubernetesDeploymentConstraints
 
-  """integrationId"""
-  integration: Integration
-
-  """integrationId"""
-  integrationId: String
-
-  """integrationServiceId"""
-  integrationService: IntegrationService
-
-  """integrationServiceId"""
-  integrationServiceId: String
-
-  """kubernetesVersion"""
-  kubernetesVersion: String
-
-  """linkedEntityIds"""
-  linkedEntityIds: [String!]
-
-  """name"""
+  """Entity Name"""
   name: String
 
-  """naturalKey"""
-  naturalKey: String
+  """Kubernetes Deployment Object Entity"""
+  properties: KubernetesDeploymentProperties
 
-  """object"""
-  object: KubernetesDeploymentDeployment
+  """SI Properties"""
+  siProperties: [EntityEntitySiProperties!]
 
-  """objectYaml"""
-  objectYaml: String
-
-  """organizationId"""
-  organization: Organization
-
-  """organizationId"""
-  organizationId: String
-
-  """state"""
-  state: KubernetesDeploymentState
-
-  """tenantIds"""
-  tenantIds: [String!]
-
-  """typeName"""
-  typeName: String
-
-  """workspaceId"""
-  workspace: Workspace
-
-  """workspaceId"""
-  workspaceId: String
+  """SI Storable"""
+  siStorable: [DataStorable!]
 }
 
-type KubernetesDeploymentEntityEvent implements EntityEvent {
-  """actionName"""
+type KubernetesDeploymentEntityEvent {
+  """Action Name"""
   actionName: String
 
-  """billingAccountId"""
-  billingAccountId: String
-
-  """componentId"""
-  componentId: String
-
-  """createTime"""
+  """Creation Time"""
   createTime: String
 
-  """entityId"""
-  entity: KubernetesDeploymentEntity
-
-  """entityId"""
-  entityId: String
-
-  """errorLines"""
+  """Error Lines"""
   errorLines: [String!]
 
-  """errorMessage"""
+  """Error Message"""
   errorMessage: String
 
-  """finalized"""
+  """Finalized"""
   finalized: Boolean
 
-  """finalTime"""
+  """Final Time"""
   finalTime: String
 
-  """id"""
+  """Entity Event ID"""
   id: ID
 
-  """inputEntity"""
+  """Input Entity"""
   inputEntity: KubernetesDeploymentEntity
 
-  """integrationId"""
-  integrationId: String
-
-  """integrationServiceId"""
-  integrationServiceId: String
-
-  """naturalKey"""
-  naturalKey: String
-
-  """nextState"""
-  nextState: KubernetesDeploymentNextState
-
-  """organizationId"""
-  organizationId: String
-
-  """outputEntity"""
+  """Output Entity"""
   outputEntity: KubernetesDeploymentEntity
 
-  """outputLines"""
-  outputLines: [String!]
-
-  """previousEntity"""
+  """Previous Entity"""
   previousEntity: KubernetesDeploymentEntity
+
+  """SI Properties"""
+  siProperties: [EntityEventEntityEventSiProperties!]
+
+  """SI Storable"""
+  siStorable: [DataStorable!]
 
   """success"""
   success: Boolean
 
-  """tenantIds"""
-  tenantIds: [String!]
-
-  """typeName"""
-  typeName: String
-
-  """updatedTime"""
+  """Updated Time"""
   updatedTime: String
-
-  """userId"""
-  user: User
-
-  """userId"""
-  userId: String
-
-  """workspaceId"""
-  workspaceId: String
 }
 
+"""Get Component Reply"""
 type KubernetesDeploymentGetComponentReply {
-  """component"""
   component: KubernetesDeploymentComponent
 }
 
+"""Get Component Request"""
 input KubernetesDeploymentGetComponentRequest {
-  """componentId"""
+  """undefined ID"""
   componentId: String
 }
 
+"""Get Entity Reply"""
 type KubernetesDeploymentGetEntityReply {
-  """entity"""
+  """undefined"""
   entity: KubernetesDeploymentEntity
 }
 
+"""Get Entity Request"""
 input KubernetesDeploymentGetEntityRequest {
-  """entityId"""
+  """Entity ID"""
   entityId: String
 }
 
-type KubernetesDeploymentImplicitConstraint {
-  """field"""
-  field: String
+type KubernetesDeploymentKubernetesObject {
+  """API Version"""
+  apiVersion: String
 
-  """value"""
-  value: String
+  """Kind"""
+  kind: String
+
+  """Metadata"""
+  metadata: [KubernetesMetadata!]
+
+  """Kubernetes Object"""
+  spec: KubernetesDeploymentKubernetesObjectSpec
 }
 
+input KubernetesDeploymentKubernetesObjectRequest {
+  """API Version"""
+  apiVersion: String
+
+  """Kind"""
+  kind: String
+
+  """Metadata"""
+  metadata: [KubernetesMetadataRequest!]
+
+  """Kubernetes Object"""
+  spec: KubernetesDeploymentKubernetesObjectSpecRequest
+}
+
+type KubernetesDeploymentKubernetesObjectSpec {
+  """Replicas"""
+  replicas: Int
+
+  """Selector"""
+  selector: [KubernetesSelector!]
+
+  """Pod Template Spec"""
+  template: [KubernetesPodTemplateSpec!]
+}
+
+input KubernetesDeploymentKubernetesObjectSpecRequest {
+  """Replicas"""
+  replicas: Int
+
+  """Selector"""
+  selector: [KubernetesSelectorRequest!]
+
+  """Pod Template Spec"""
+  template: [KubernetesPodTemplateSpecRequest!]
+}
+
+"""Kubernetes Version"""
+enum KubernetesDeploymentKubernetesVersion {
+  V1_12
+  V1_13
+  V1_14
+  V1_15
+}
+
+"""List Components Reply"""
 type KubernetesDeploymentListComponentsReply {
-  """items"""
+  """Items"""
   items: [KubernetesDeploymentComponent!]
 
-  """nextPageToken"""
+  """Next Page Token"""
   nextPageToken: String
 
-  """totalCount"""
+  """Total Count"""
   totalCount: Int
 }
 
+"""List Components Request"""
 input KubernetesDeploymentListComponentsRequest {
-  """orderBy"""
+  """Order By"""
   orderBy: String
 
-  """orderByDirection"""
-  orderByDirection: DataOrderByDirection
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
 
-  """pageSize"""
+  """Page Size"""
   pageSize: Int
 
-  """pageToken"""
+  """Page Token"""
   pageToken: String
 
-  """query"""
-  query: DataQuery
+  """Query"""
+  query: [DataQueryRequest!]
 
-  """scopeByTenantId"""
+  """Scope By Tenant ID"""
   scopeByTenantId: String
 }
 
+"""List Entities Reply"""
 type KubernetesDeploymentListEntitiesReply {
-  """items"""
-  items: [KubernetesDeploymentEntity!]
+  """Items"""
+  items: KubernetesDeploymentEntity
 
-  """nextPageToken"""
+  """Next Page Token"""
   nextPageToken: String
 
-  """totalCount"""
+  """Total Count"""
   totalCount: Int
 }
 
+"""List Entities Request"""
 input KubernetesDeploymentListEntitiesRequest {
-  """orderBy"""
+  """Order By"""
   orderBy: String
 
-  """orderByDirection"""
-  orderByDirection: DataOrderByDirection
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
 
-  """pageSize"""
+  """Page Size"""
   pageSize: Int
 
-  """pageToken"""
+  """Page Token"""
   pageToken: String
 
-  """query"""
-  query: DataQuery
+  """Query"""
+  query: [DataQueryRequest!]
 
-  """scopeByTenantId"""
+  """Scope By Tenant ID"""
   scopeByTenantId: String
 }
 
-type KubernetesDeploymentListEntityEventsReply {
-  """items"""
-  items: [KubernetesDeploymentEntityEvent!]
-
-  """nextPageToken"""
-  nextPageToken: String
-
-  """totalCount"""
-  totalCount: Int
-}
-
-input KubernetesDeploymentListEntityEventsRequest {
-  """orderBy"""
-  orderBy: String
-
-  """orderByDirection"""
-  orderByDirection: DataOrderByDirection
-
-  """pageSize"""
-  pageSize: Int
-
-  """pageToken"""
-  pageToken: String
-
-  """query"""
-  query: DataQuery
-
-  """scopeByTenantId"""
-  scopeByTenantId: String
-}
-
-enum KubernetesDeploymentNextState {
-  ERROR
-  NONE
-  OK
-  UNINITIALIZED
-}
-
+"""Pick Component Reply"""
 type KubernetesDeploymentPickComponentReply {
-  """component"""
+  """Chosen Component"""
   component: KubernetesDeploymentComponent
 
-  """implicitConstraints"""
-  implicitConstraints: [KubernetesDeploymentImplicitConstraint!]
+  """Implicit Constraints"""
+  implicitConstraints: KubernetesDeploymentConstraints
 }
 
+"""Pick Component Request"""
 input KubernetesDeploymentPickComponentRequest {
-  """displayName"""
-  displayName: String
-
-  """integrationId"""
-  integrationId: String
-
-  """integrationServiceId"""
-  integrationServiceId: String
-
-  """kubernetesVersion"""
-  kubernetesVersion: String
-
-  """name"""
-  name: String
+  """Constraints"""
+  constraints: KubernetesDeploymentConstraintsRequest
 }
 
-input KubernetesDeploymentPropsRequest {
-  """object"""
-  object: KubernetesDeploymentDeploymentRequest
+type KubernetesDeploymentProperties {
+  """Kubernetes Object"""
+  kubernetesObject: [KubernetesDeploymentKubernetesObject!]
+
+  """Kubernetes Object YAML"""
+  kubernetesObjectYaml: String
 }
 
-type KubernetesDeploymentSpec {
-  """replicas"""
-  replicas: Int
+input KubernetesDeploymentPropertiesRequest {
+  """Kubernetes Deployment Object properties"""
+  kubernetesObject: KubernetesDeploymentKubernetesObjectRequest
 
-  """selector"""
-  selector: KubernetesLabelSelector
-
-  """template"""
-  template: KubernetesPodTemplateSpec
+  """Kubernetes Object YAML"""
+  kubernetesObjectYaml: String
 }
 
-input KubernetesDeploymentSpecRequest {
-  """replicas"""
-  replicas: Int
+"""Sync State Reply"""
+type KubernetesDeploymentSyncActionReply {
+  """Entity"""
+  entity: KubernetesDeploymentEntity
 
-  """selector"""
-  selector: KubernetesLabelSelectorRequest
-
-  """template"""
-  template: KubernetesPodTemplateSpecRequest
+  """Entity Event"""
+  entityEvent: KubernetesDeploymentEntityEvent
 }
 
-enum KubernetesDeploymentState {
-  ERROR
-  OK
-  STATE_UNKNOWN
-  TRANSITION
-}
-
-type KubernetesDeploymentSyncEntityReply {
-  """event"""
-  event: KubernetesDeploymentEntityEvent
-}
-
-input KubernetesDeploymentSyncEntityRequest {
-  """entityId"""
+"""Sync State Request"""
+input KubernetesDeploymentSyncActionRequest {
+  """Entity ID"""
   entityId: String
 }
 
-type KubernetesLabelSelector {
-  """matchLabels"""
-  matchLabels: [KubernetesLabelSelectorMatchLabelsMap!]
-}
-
-type KubernetesLabelSelectorMatchLabelsMap {
+"""Labels"""
+type KubernetesLabels {
   key: String
   value: String
 }
 
-input KubernetesLabelSelectorRequest {
-  """matchLabels"""
-  matchLabels: [KubernetesLabelSelectorRequestMatchLabelsMap!]
-}
-
-input KubernetesLabelSelectorRequestMatchLabelsMap {
+"""Labels"""
+input KubernetesLabelsRequest {
   key: String
   value: String
 }
 
-type KubernetesMetaData {
-  """labels"""
-  labels: [KubernetesMetaDataLabelsMap!]
+"""Match Labels"""
+type KubernetesMatchLabels {
+  key: String
+  value: String
+}
 
-  """name"""
+"""Match Labels"""
+input KubernetesMatchLabelsRequest {
+  key: String
+  value: String
+}
+
+type KubernetesMetadata {
+  """Labels"""
+  labels: KubernetesLabels
+
+  """Name"""
   name: String
 }
 
-type KubernetesMetaDataLabelsMap {
-  key: String
-  value: String
-}
+input KubernetesMetadataRequest {
+  """Labels"""
+  labels: KubernetesLabelsRequest
 
-input KubernetesMetaDataRequest {
-  """labels"""
-  labels: [KubernetesMetaDataRequestLabelsMap!]
-
-  """name"""
+  """Name"""
   name: String
-}
-
-input KubernetesMetaDataRequestLabelsMap {
-  key: String
-  value: String
 }
 
 type KubernetesPodSpec {
-  """containers"""
+  """Containers"""
   containers: [KubernetesContainer!]
 }
 
 input KubernetesPodSpecRequest {
-  """containers"""
+  """Containers"""
   containers: [KubernetesContainerRequest!]
 }
 
 type KubernetesPodTemplateSpec {
-  """metadata"""
-  metadata: KubernetesMetaData
+  """Meta Data"""
+  metadata: [KubernetesMetadata!]
 
-  """spec"""
-  spec: KubernetesPodSpec
+  """Pod Spec"""
+  spec: [KubernetesPodSpec!]
 }
 
 input KubernetesPodTemplateSpecRequest {
-  """metadata"""
-  metadata: KubernetesMetaDataRequest
+  """Meta Data"""
+  metadata: [KubernetesMetadataRequest!]
 
-  """spec"""
-  spec: KubernetesPodSpecRequest
+  """Pod Spec"""
+  spec: [KubernetesPodSpecRequest!]
 }
 
-type ListIntegrationInstancesReply {
-  """items"""
-  items: [IntegrationInstance!]
-
-  """nextPageToken"""
-  nextPageToken: String
-
-  """totalCount"""
-  totalCount: Int
+type KubernetesSelector {
+  """Match Labels"""
+  matchLabels: KubernetesMatchLabels
 }
 
-input ListIntegrationInstancesRequest {
-  """orderBy"""
-  orderBy: String
-
-  """orderByDirection"""
-  orderByDirection: DataOrderByDirection
-
-  """pageSize"""
-  pageSize: Int
-
-  """pageToken"""
-  pageToken: String
-
-  """query"""
-  query: DataQuery
-
-  """scopeByTenantId"""
-  scopeByTenantId: String
-}
-
-type ListIntegrationServicesReply {
-  """items"""
-  items: [IntegrationService!]
-
-  """nextPageToken"""
-  nextPageToken: String
-
-  """totalCount"""
-  totalCount: Int
-}
-
-input ListIntegrationServicesRequest {
-  """orderBy"""
-  orderBy: String
-
-  """orderByDirection"""
-  orderByDirection: DataOrderByDirection
-
-  """pageSize"""
-  pageSize: Int
-
-  """pageToken"""
-  pageToken: String
-
-  """query"""
-  query: DataQuery
-
-  """scopeByTenantId"""
-  scopeByTenantId: String
-}
-
-type ListIntegrationsReply {
-  """items"""
-  items: [Integration!]
-
-  """nextPageToken"""
-  nextPageToken: String
-
-  """totalCount"""
-  totalCount: Int
-}
-
-input ListIntegrationsRequest {
-  """orderBy"""
-  orderBy: String
-
-  """orderByDirection"""
-  orderByDirection: DataOrderByDirection
-
-  """pageSize"""
-  pageSize: Int
-
-  """pageToken"""
-  pageToken: String
-
-  """query"""
-  query: DataQuery
-
-  """scopeByTenantId"""
-  scopeByTenantId: String
-}
-
-type ListOrganizationsReply {
-  """items"""
-  items: [Organization!]
-
-  """nextPageToken"""
-  nextPageToken: String
-
-  """totalCount"""
-  totalCount: Int
-}
-
-input ListOrganizationsRequest {
-  """orderBy"""
-  orderBy: String
-
-  """orderByDirection"""
-  orderByDirection: DataOrderByDirection
-
-  """pageSize"""
-  pageSize: Int
-
-  """pageToken"""
-  pageToken: String
-
-  """query"""
-  query: DataQuery
-
-  """scopeByTenantId"""
-  scopeByTenantId: String
-}
-
-type ListUsersReply {
-  """items"""
-  items: [User!]
-
-  """nextPageToken"""
-  nextPageToken: String
-
-  """totalCount"""
-  totalCount: Int
-}
-
-input ListUsersRequest {
-  """orderBy"""
-  orderBy: String
-
-  """orderByDirection"""
-  orderByDirection: DataOrderByDirection
-
-  """pageSize"""
-  pageSize: Int
-
-  """pageToken"""
-  pageToken: String
-
-  """query"""
-  query: DataQuery
-
-  """scopeByTenantId"""
-  scopeByTenantId: String
-}
-
-type ListWorkspacesReply {
-  """items"""
-  items: [Workspace!]
-
-  """nextPageToken"""
-  nextPageToken: String
-
-  """totalCount"""
-  totalCount: Int
-}
-
-input ListWorkspacesRequest {
-  """orderBy"""
-  orderBy: String
-
-  """orderByDirection"""
-  orderByDirection: DataOrderByDirection
-
-  """pageSize"""
-  pageSize: Int
-
-  """pageToken"""
-  pageToken: String
-
-  """query"""
-  query: DataQuery
-
-  """scopeByTenantId"""
-  scopeByTenantId: String
-}
-
-type LoginReply {
-  billingAccountId: String
-  jwt: String
-  userId: String
-}
-
-input LoginRequest {
-  billingAccountShortName: String!
-  email: String!
-  password: String!
+input KubernetesSelectorRequest {
+  """Match Labels"""
+  matchLabels: KubernetesMatchLabelsRequest
 }
 
 type Mutation {
-  awsEksClusterRuntimeAddNodegroup(input: AwsEksClusterRuntimeAddNodegroupRequest): AwsEksClusterRuntimeAddNodegroupReply
-  awsEksClusterRuntimeCreateEntity(input: AwsEksClusterRuntimeCreateEntityRequest): AwsEksClusterRuntimeCreateEntityReply
-  awsEksClusterRuntimeSyncEntity(input: AwsEksClusterRuntimeSyncEntityRequest): AwsEksClusterRuntimeSyncEntityReply
-  createAccount(input: CreateAccountRequest): CreateAccountReply
-  createIntegrationInstance(input: CreateIntegrationInstanceRequest): CreateIntegrationInstanceReply
   kubernetesDeploymentCreateEntity(input: KubernetesDeploymentCreateEntityRequest): KubernetesDeploymentCreateEntityReply
-  kubernetesDeploymentEditPropObject(input: KubernetesDeploymentEditPropObjectRequest): KubernetesDeploymentEditPropObjectReply
-  kubernetesDeploymentEditPropObjectYaml(input: KubernetesDeploymentEditPropObjectYamlRequest): KubernetesDeploymentEditPropObjectYamlReply
-  kubernetesDeploymentSyncEntity(input: KubernetesDeploymentSyncEntityRequest): KubernetesDeploymentSyncEntityReply
-  sshKeyCreateEntity(input: SshKeyCreateEntityRequest): SshKeyCreateEntityReply
-  sshKeySyncEntity(input: SshKeySyncEntityRequest): SshKeySyncEntityReply
-}
-
-type Organization {
-  """billingAccountId"""
-  billingAccount: BillingAccount
-
-  """billingAccountId"""
-  billingAccountId: String
-
-  """id"""
-  enabledIntegrationInstances(input: ListIntegrationInstancesRequest): ListIntegrationInstancesReply
-
-  """id"""
-  id: ID
-
-  """name"""
-  name: String
-
-  """naturalKey"""
-  naturalKey: String
-
-  """tenantIds"""
-  tenantIds: [String!]
-
-  """typeName"""
-  typeName: String
-
-  """id"""
-  workspaces(input: ListWorkspacesRequest): ListWorkspacesReply
+  kubernetesDeploymentEditKubernetesObjectAction(input: KubernetesDeploymentEditKubernetesObjectActionRequest): KubernetesDeploymentEditKubernetesObjectActionReply
+  kubernetesDeploymentEditKubernetesObjectYamlAction(input: KubernetesDeploymentEditKubernetesObjectYamlActionRequest): KubernetesDeploymentEditKubernetesObjectYamlActionReply
+  kubernetesDeploymentSyncAction(input: KubernetesDeploymentSyncActionRequest): KubernetesDeploymentSyncActionReply
 }
 
 type Query {
-  awsEksClusterRuntimeGetComponent(input: AwsEksClusterRuntimeGetComponentRequest): AwsEksClusterRuntimeGetComponentReply
-  awsEksClusterRuntimeGetEntity(input: AwsEksClusterRuntimeGetEntityRequest): AwsEksClusterRuntimeGetEntityReply
-  awsEksClusterRuntimeListComponents(input: AwsEksClusterRuntimeListComponentsRequest): AwsEksClusterRuntimeListComponentsReply
-  awsEksClusterRuntimeListEntities(input: AwsEksClusterRuntimeListEntitiesRequest): AwsEksClusterRuntimeListEntitiesReply
-  awsEksClusterRuntimeListEntityEvents(input: AwsEksClusterRuntimeListEntityEventsRequest): AwsEksClusterRuntimeListEntityEventsReply
-  awsEksClusterRuntimePickComponent(input: AwsEksClusterRuntimePickComponentRequest): AwsEksClusterRuntimePickComponentReply
-  getBillingAccount(input: GetBillingAccountRequest): GetBillingAccountReply
-  getUser(input: GetUserRequest): GetUserReply
   kubernetesDeploymentGetComponent(input: KubernetesDeploymentGetComponentRequest): KubernetesDeploymentGetComponentReply
   kubernetesDeploymentGetEntity(input: KubernetesDeploymentGetEntityRequest): KubernetesDeploymentGetEntityReply
   kubernetesDeploymentListComponents(input: KubernetesDeploymentListComponentsRequest): KubernetesDeploymentListComponentsReply
   kubernetesDeploymentListEntities(input: KubernetesDeploymentListEntitiesRequest): KubernetesDeploymentListEntitiesReply
-  kubernetesDeploymentListEntityEvents(input: KubernetesDeploymentListEntityEventsRequest): KubernetesDeploymentListEntityEventsReply
   kubernetesDeploymentPickComponent(input: KubernetesDeploymentPickComponentRequest): KubernetesDeploymentPickComponentReply
-  listIntegrationInstances(input: ListIntegrationInstancesRequest): ListIntegrationInstancesReply
-  listIntegrations(input: ListIntegrationsRequest): ListIntegrationsReply
-  listOrganizations(input: ListOrganizationsRequest): ListOrganizationsReply
-  listUsers(input: ListUsersRequest): ListUsersReply
-  listWorkspaces(input: ListWorkspacesRequest): ListWorkspacesReply
-  login(input: LoginRequest): LoginReply
-  sshKeyGetComponent(input: SshKeyGetComponentRequest): SshKeyGetComponentReply
-  sshKeyGetEntity(input: SshKeyGetEntityRequest): SshKeyGetEntityReply
-  sshKeyListComponents(input: SshKeyListComponentsRequest): SshKeyListComponentsReply
-  sshKeyListEntities(input: SshKeyListEntitiesRequest): SshKeyListEntitiesReply
-  sshKeyListEntityEvents(input: SshKeyListEntityEventsRequest): SshKeyListEntityEventsReply
-  sshKeyPickComponent(input: SshKeyPickComponentRequest): SshKeyPickComponentReply
-}
-
-type SshKeyComponent {
-  """bits"""
-  bits: Int
-
-  """description"""
-  description: String
-
-  """displayName"""
-  displayName: String
-
-  """displayTypeName"""
-  displayTypeName: String
-
-  """id"""
-  id: ID
-
-  """integrationId"""
-  integration: Integration
-
-  """integrationId"""
-  integrationId: String
-
-  """integrationServiceId"""
-  integrationService: IntegrationService
-
-  """integrationServiceId"""
-  integrationServiceId: String
-
-  """keyFormat"""
-  keyFormat: SshKeyKeyFormat
-
-  """keyType"""
-  keyType: SshKeyKeyType
-
-  """name"""
-  name: String
-
-  """naturalKey"""
-  naturalKey: String
-
-  """tenantIds"""
-  tenantIds: [String!]
-
-  """typeName"""
-  typeName: String
-
-  """version"""
-  version: Int
-}
-
-type SshKeyConstraints {
-  """bits"""
-  bits: Int
-
-  """displayName"""
-  displayName: String
-
-  """integrationId"""
-  integrationId: String
-
-  """integrationServiceId"""
-  integrationServiceId: String
-
-  """keyFormat"""
-  keyFormat: SshKeyKeyFormatRequest
-
-  """keyType"""
-  keyType: SshKeyKeyTypeRequest
-
-  """name"""
-  name: String
-}
-
-type SshKeyCreateEntityReply {
-  """entity"""
-  entity: SshKeyEntity
-
-  """event"""
-  event: SshKeyEntityEvent
-}
-
-input SshKeyCreateEntityRequest {
-  """constraints"""
-  constraints: SshKeyPickComponentRequest
-
-  """description"""
-  description: String
-
-  """displayName"""
-  displayName: String
-
-  """name"""
-  name: String
-
-  """workspaceId"""
-  workspaceId: String
-}
-
-type SshKeyEntity {
-  """billingAccountId"""
-  billingAccount: BillingAccount
-
-  """billingAccountId"""
-  billingAccountId: String
-
-  """bits"""
-  bits: Int
-
-  """bubbleBabble"""
-  bubbleBabble: String
-
-  """comment"""
-  comment: String
-
-  """componentId"""
-  componentId: String
-
-  """constraints"""
-  constraints: SshKeyConstraints
-
-  """description"""
-  description: String
-
-  """displayName"""
-  displayName: String
-
-  """id"""
-  entityEvents(input: SshKeyListEntityEventsRequest): SshKeyListEntityEventsReply
-
-  """fingerprint"""
-  fingerprint: String
-
-  """id"""
-  id: ID
-
-  """implicitConstraints"""
-  implicitConstraints: [SshKeyImplicitConstraint!]
-
-  """integrationId"""
-  integration: Integration
-
-  """integrationId"""
-  integrationId: String
-
-  """integrationServiceId"""
-  integrationService: IntegrationService
-
-  """integrationServiceId"""
-  integrationServiceId: String
-
-  """keyFormat"""
-  keyFormat: SshKeyKeyFormat
-
-  """keyType"""
-  keyType: SshKeyKeyType
-
-  """linkedEntityIds"""
-  linkedEntityIds: [String!]
-
-  """name"""
-  name: String
-
-  """naturalKey"""
-  naturalKey: String
-
-  """organizationId"""
-  organization: Organization
-
-  """organizationId"""
-  organizationId: String
-
-  """privateKey"""
-  privateKey: String
-
-  """publicKey"""
-  publicKey: String
-
-  """randomArt"""
-  randomArt: String
-
-  """state"""
-  state: SshKeyState
-
-  """tenantIds"""
-  tenantIds: [String!]
-
-  """typeName"""
-  typeName: String
-
-  """workspaceId"""
-  workspace: Workspace
-
-  """workspaceId"""
-  workspaceId: String
-}
-
-type SshKeyEntityEvent implements EntityEvent {
-  """actionName"""
-  actionName: String
-
-  """billingAccountId"""
-  billingAccountId: String
-
-  """componentId"""
-  componentId: String
-
-  """createTime"""
-  createTime: String
-
-  """entityId"""
-  entity: SshKeyEntity
-
-  """entityId"""
-  entityId: String
-
-  """errorLines"""
-  errorLines: [String!]
-
-  """errorMessage"""
-  errorMessage: String
-
-  """finalized"""
-  finalized: Boolean
-
-  """finalTime"""
-  finalTime: String
-
-  """id"""
-  id: ID
-
-  """inputEntity"""
-  inputEntity: SshKeyEntity
-
-  """integrationId"""
-  integrationId: String
-
-  """integrationServiceId"""
-  integrationServiceId: String
-
-  """naturalKey"""
-  naturalKey: String
-
-  """nextState"""
-  nextState: SshKeyNextState
-
-  """organizationId"""
-  organizationId: String
-
-  """outputEntity"""
-  outputEntity: SshKeyEntity
-
-  """outputLines"""
-  outputLines: [String!]
-
-  """previousEntity"""
-  previousEntity: SshKeyEntity
-
-  """success"""
-  success: Boolean
-
-  """tenantIds"""
-  tenantIds: [String!]
-
-  """typeName"""
-  typeName: String
-
-  """updatedTime"""
-  updatedTime: String
-
-  """userId"""
-  user: User
-
-  """userId"""
-  userId: String
-
-  """workspaceId"""
-  workspaceId: String
-}
-
-type SshKeyGetComponentReply {
-  """component"""
-  component: SshKeyComponent
-}
-
-input SshKeyGetComponentRequest {
-  """componentId"""
-  componentId: String
-}
-
-type SshKeyGetEntityReply {
-  """entity"""
-  entity: SshKeyEntity
-}
-
-input SshKeyGetEntityRequest {
-  """entityId"""
-  entityId: String
-}
-
-type SshKeyImplicitConstraint {
-  """field"""
-  field: String
-
-  """value"""
-  value: String
-}
-
-enum SshKeyKeyFormat {
-  PEM
-  PKCS8
-  RFC4716
-}
-
-enum SshKeyKeyFormatRequest {
-  NOKEYFORMAT
-  PEM
-  PKCS8
-  RFC4716
-}
-
-enum SshKeyKeyType {
-  DSA
-  ECDSA
-  ED25519
-  RSA
-}
-
-enum SshKeyKeyTypeRequest {
-  DSA
-  ECDSA
-  ED25519
-  NOKEYTYPE
-  RSA
-}
-
-type SshKeyListComponentsReply {
-  """items"""
-  items: [SshKeyComponent!]
-
-  """nextPageToken"""
-  nextPageToken: String
-
-  """totalCount"""
-  totalCount: Int
-}
-
-input SshKeyListComponentsRequest {
-  """orderBy"""
-  orderBy: String
-
-  """orderByDirection"""
-  orderByDirection: DataOrderByDirection
-
-  """pageSize"""
-  pageSize: Int
-
-  """pageToken"""
-  pageToken: String
-
-  """query"""
-  query: DataQuery
-
-  """scopeByTenantId"""
-  scopeByTenantId: String
-}
-
-type SshKeyListEntitiesReply {
-  """items"""
-  items: [SshKeyEntity!]
-
-  """nextPageToken"""
-  nextPageToken: String
-
-  """totalCount"""
-  totalCount: Int
-}
-
-input SshKeyListEntitiesRequest {
-  """orderBy"""
-  orderBy: String
-
-  """orderByDirection"""
-  orderByDirection: DataOrderByDirection
-
-  """pageSize"""
-  pageSize: Int
-
-  """pageToken"""
-  pageToken: String
-
-  """query"""
-  query: DataQuery
-
-  """scopeByTenantId"""
-  scopeByTenantId: String
-}
-
-type SshKeyListEntityEventsReply {
-  """items"""
-  items: [SshKeyEntityEvent!]
-
-  """nextPageToken"""
-  nextPageToken: String
-
-  """totalCount"""
-  totalCount: Int
-}
-
-input SshKeyListEntityEventsRequest {
-  """orderBy"""
-  orderBy: String
-
-  """orderByDirection"""
-  orderByDirection: DataOrderByDirection
-
-  """pageSize"""
-  pageSize: Int
-
-  """pageToken"""
-  pageToken: String
-
-  """query"""
-  query: DataQuery
-
-  """scopeByTenantId"""
-  scopeByTenantId: String
-}
-
-enum SshKeyNextState {
-  ERROR
-  NONE
-  OK
-  UNINITIALIZED
-}
-
-type SshKeyPickComponentReply {
-  """component"""
-  component: SshKeyComponent
-
-  """implicitConstraints"""
-  implicitConstraints: [SshKeyImplicitConstraint!]
-}
-
-input SshKeyPickComponentRequest {
-  """bits"""
-  bits: Int
-
-  """displayName"""
-  displayName: String
-
-  """integrationId"""
-  integrationId: String
-
-  """integrationServiceId"""
-  integrationServiceId: String
-
-  """keyFormat"""
-  keyFormat: SshKeyKeyFormatRequest
-
-  """keyType"""
-  keyType: SshKeyKeyTypeRequest
-
-  """name"""
-  name: String
-}
-
-enum SshKeyState {
-  ERROR
-  OK
-  TRANSITION
-  UNINITIALIZED
-}
-
-type SshKeySyncEntityReply {
-  """event"""
-  event: SshKeyEntityEvent
-}
-
-input SshKeySyncEntityRequest {
-  """entityId"""
-  entityId: String
-}
-
-input StreamEntityEventsRequest {
-  scopeByTenantId: String!
-}
-
-type Subscription {
-  streamEntityEvents(input: StreamEntityEventsRequest!): EntityEvent
-}
-
-type User {
-  """billingAccountId"""
-  billingAccount: BillingAccount
-
-  """billingAccountId"""
-  billingAccountId: String
-
-  """capabilities"""
-  capabilities: [Capability!]
-
-  """displayName"""
-  displayName: String
-
-  """domain"""
-  domain: String
-
-  """email"""
-  email: String
-
-  """familyName"""
-  familyName: String
-
-  """givenName"""
-  givenName: String
-
-  """id"""
-  id: ID
-
-  """naturalKey"""
-  naturalKey: String
-
-  """picture"""
-  picture: String
-
-  """tenantIds"""
-  tenantIds: [String!]
-
-  """typeName"""
-  typeName: String
-}
-
-type Workspace {
-  """billingAccountId"""
-  billingAccount: BillingAccount
-
-  """billingAccountId"""
-  billingAccountId: String
-
-  """id"""
-  enabledIntegrationInstances(input: ListIntegrationInstancesRequest): ListIntegrationInstancesReply
-
-  """id"""
-  id: ID
-
-  """name"""
-  name: String
-
-  """naturalKey"""
-  naturalKey: String
-
-  """organizationId"""
-  organization: Organization
-
-  """organizationId"""
-  organizationId: String
-
-  """tenantIds"""
-  tenantIds: [String!]
-
-  """typeName"""
-  typeName: String
 }

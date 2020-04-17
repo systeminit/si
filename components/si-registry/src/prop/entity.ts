@@ -1,4 +1,5 @@
 import { Prop, PropValue } from "../prop";
+import { pascalCase } from "change-case";
 
 export class PropEntity extends Prop {
   baseDefaultValue: string;
@@ -32,5 +33,15 @@ export class PropEntity extends Prop {
 
   defaultValue(): PropValue {
     return this.baseDefaultValue;
+  }
+
+  graphqlTypeName(inputType?: boolean): string {
+    let request = "";
+    if (inputType) {
+      request = "Request";
+    }
+    return `${pascalCase(this.componentTypeName)}${pascalCase(
+      this.parentName,
+    )}Entity${request}`;
   }
 }
