@@ -14,18 +14,12 @@ import {
   enumType,
   inputObjectType,
   queryType,
-  extendType,
   mutationType,
   queryField,
   mutationField,
 } from "nexus";
 import { logger } from "@/logger";
-import { loginTypes } from "@/schema/login";
-import {
-  NexusObjectTypeDef,
-  ObjectDefinitionBlock,
-  InputDefinitionBlock,
-} from "nexus/dist/core";
+import { ObjectDefinitionBlock, InputDefinitionBlock } from "nexus/dist/core";
 import { camelCase, pascalCase, constantCase } from "change-case";
 import { Context } from "@/index";
 import { AuthenticationError } from "apollo-server";
@@ -43,6 +37,8 @@ export class SiRegistryGenerator {
   // eslint-disable-next-line
   //
   // This is any because it is any in nexus
+
+  // eslint-disable-next-line
   types: any[];
   loopDetector: Record<string, true> = {};
   typesCache: Record<string, true> = {};
@@ -97,7 +93,8 @@ export class SiRegistryGenerator {
   }
 
   generateInputObjectTypes(prop: PropObject | PropLink): void {
-    let iteratorField;
+    // eslint-disable-next-line
+    let iteratorField: any;
 
     if (prop.kind() == "object") {
       // @ts-ignore
@@ -148,6 +145,7 @@ export class SiRegistryGenerator {
     component: Component,
     mutation = false,
   ): void {
+    // eslint-disable-next-line
     const thisGenerator = this;
 
     if (!this.typesCache[prop.graphqlTypeName(true)]) {
@@ -206,7 +204,8 @@ export class SiRegistryGenerator {
         metadata.add("userId", user["userId"] || "");
         metadata.add("billingAccountId", user["billingAccountId"] || "");
         const g = grpc.service(component.siPathName);
-        let req;
+        // eslint-disable-next-line
+        let req: any;
         if (input) {
           const grpcInput = thisGenerator.transformGraphqlToGrpc(
             input,
@@ -234,9 +233,11 @@ export class SiRegistryGenerator {
   // Transform all well-known types and maps to be the format expected by
   // our GRPC protobuf call.
   transformGraphqlToGrpc(
+    // eslint-disable-next-line
     input: Record<string, any>,
     prop: PropMethod | PropAction,
     component: Component,
+    // eslint-disable-next-line
   ): Record<string, any> {
     for (const p of prop.request.attrs) {
       if (input[p.graphqlFieldName()] == undefined) {
@@ -252,10 +253,12 @@ export class SiRegistryGenerator {
   }
 
   transformGraphqlFieldToGrpc(
+    // eslint-disable-next-line
     input: any,
     prop: Props,
     component: Component,
     ignoreRepeated = false,
+    // eslint-disable-next-line
   ): any {
     if (prop.repeated && !ignoreRepeated) {
       const newArrayValues = [];
@@ -332,9 +335,11 @@ export class SiRegistryGenerator {
   // Transform all well-known types and maps to be the format expected by
   // our GRPC protobuf call.
   transformGrpcToGraphql(
+    // eslint-disable-next-line
     input: Record<string, any>,
     prop: PropMethod | PropAction,
     component: Component,
+    // eslint-disable-next-line
   ): Record<string, any> {
     for (const p of prop.reply.attrs) {
       if (input[p.graphqlFieldName()] == undefined) {
@@ -350,10 +355,12 @@ export class SiRegistryGenerator {
   }
 
   transformGrpcFieldToGraphql(
+    // eslint-disable-next-line
     input: any,
     prop: Props,
     component: Component,
     ignoreRepeated = false,
+    // eslint-disable-next-line
   ): any {
     if (prop.repeated && !ignoreRepeated) {
       const newArrayValues = [];
@@ -695,7 +702,8 @@ export class SiRegistryGenerator {
       }
     } else {
       if (!this.typesCache[prop.graphqlTypeName(inputType)]) {
-        let typeFun;
+        // eslint-disable-next-line
+        let typeFun: any;
         if (inputType) {
           typeFun = inputObjectType;
         } else {
@@ -704,7 +712,8 @@ export class SiRegistryGenerator {
         const mapType = typeFun({
           name: prop.graphqlTypeName(inputType),
           description: prop.label,
-          definition(mapt) {
+          // eslint-disable-next-line
+          definition(mapt: any) {
             mapt.string("key");
             mapt.string("value");
           },
