@@ -22,12 +22,7 @@ export class PropMap extends Prop {
     return "map";
   }
 
-  protobufType(): string {
-    return "map<string, string>";
-  }
-
   defaultValue(): PropValue {
     return this.baseDefaultValue;
   }
 }
-

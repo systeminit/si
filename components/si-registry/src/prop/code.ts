@@ -44,18 +44,6 @@ export class PropCode extends Prop {
     return this.baseDefaultValue;
   }
 
-  protobufType(): string {
-    return "google.protobuf.StringValue";
-  }
-
-  protobufPackageName(): string {
-    return "google.protobuf.";
-  }
-
-  protobufImportPath(): string {
-    return "google/protobuf/wrappers.proto";
-  }
-
   realValue(value: PropValue): PropValue {
     if (value === null) {
       return null;

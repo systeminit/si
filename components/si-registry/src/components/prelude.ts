@@ -1,9 +1,6 @@
-export { registry } from "../componentRegistry";
+export { registry } from "../registry";
 export { PropBool } from "../prop/bool";
 export { PropCode } from "../prop/code";
-export { PropComponent } from "../prop/component";
-export { PropEntity } from "../prop/entity";
-export { PropEntityEvent } from "../prop/entityEvent";
 export { PropEnum } from "../prop/enum";
 export { PropLink } from "../prop/link";
 export { PropMap } from "../prop/map";
@@ -11,4 +8,3 @@ export { PropNumber } from "../prop/number";
 export { PropSelect } from "../prop/select";
 export { PropText } from "../prop/text";
 export { Props, PropObject, PropAction, PropMethod } from "../attrList";
-export { Component } from "../component";

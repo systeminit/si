@@ -30,18 +30,6 @@ export class PropSelect extends Prop {
     return "select";
   }
 
-  protobufType(): string {
-    return "google.protobuf.StringValue";
-  }
-
-  protobufImportPath(): string {
-    return "google/protobuf/wrappers.proto";
-  }
-
-  protobufPackageName(): string {
-    return "google.protobuf.";
-  }
-
   defaultValue(): PropValue {
     return this.baseDefaultValue;
   }

@@ -6,6 +6,5 @@
 //
 
 import "./loader";
-export { registry } from "./componentRegistry";
-export { Component } from "./component";
+export { registry } from "./registry";
 export * from "./components/prelude";

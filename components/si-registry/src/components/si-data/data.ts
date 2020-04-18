@@ -4,17 +4,16 @@ import {
   PropText,
   PropLink,
   PropNumber,
-  Component,
 } from "../../components/prelude";
 
-import { registry } from "../../componentRegistry";
+import { registry } from "../../registry";
 
-registry.component({
+registry.base({
   typeName: "data",
   displayTypeName: "SI Data",
-  noStd: true,
-  options(c: Component) {
-    c.internalOnly.addObject({
+  serviceName: "data",
+  options(c) {
+    c.fields.addObject({
       name: "storable",
       label: "SI Internal Storable Data",
       options(p: PropObject) {
@@ -52,7 +51,7 @@ registry.component({
         });
       },
     });
-    c.internalOnly.addObject({
+    c.fields.addObject({
       name: "pageToken",
       label: "Page Token",
       options(p: PropObject) {
@@ -63,8 +62,7 @@ registry.component({
           options(p: PropLink) {
             p.universal = true;
             p.lookup = {
-              component: "data",
-              propType: "internalOnly",
+              typeName: "data",
               names: ["query"],
             };
           },
@@ -108,7 +106,7 @@ registry.component({
         });
       },
     });
-    c.internalOnly.addObject({
+    c.fields.addObject({
       name: "query",
       label: "Query",
       options(p: PropObject) {
@@ -138,8 +136,7 @@ registry.component({
               label: "Query",
               options(p: PropLink) {
                 p.lookup = {
-                  component: "data",
-                  propType: "internalOnly",
+                  typeName: "data",
                   names: ["query"],
                 };
               },

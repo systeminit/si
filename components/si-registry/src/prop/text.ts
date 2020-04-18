@@ -22,18 +22,6 @@ export class PropText extends Prop {
     this.baseDefaultValue = defaultValue || "";
   }
 
-  protobufType(): string {
-    return "google.protobuf.StringValue";
-  }
-
-  protobufImportPath(): string {
-    return "google/protobuf/wrappers.proto";
-  }
-
-  protobufPackageName(): string {
-    return "google.protobuf.";
-  }
-
   kind(): string {
     return "text";
   }

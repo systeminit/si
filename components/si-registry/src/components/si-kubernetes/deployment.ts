@@ -1,5 +1,4 @@
 import {
-  Component,
   PropObject,
   PropText,
   PropLink,
@@ -7,13 +6,14 @@ import {
   PropEnum,
   PropCode,
 } from "../../components/prelude";
-import { registry } from "../../componentRegistry";
+import { registry } from "../../registry";
 
-registry.component({
+registry.componentAndEntity({
   typeName: "kubernetesDeployment",
   displayTypeName: "Kubernetes Deployment Object",
   siPathName: "si-kubernetes",
-  options(c: Component) {
+  serviceName: "kubernetes",
+  options(c) {
     // Constraints
     c.constraints.addEnum({
       name: "kubernetesVersion",
@@ -48,9 +48,7 @@ registry.component({
           label: "Metadata",
           options(p: PropLink) {
             p.lookup = {
-              component: "kubernetes",
-              propType: "internalOnly",
-              names: ["metadata"],
+              typeName: "kubernetesMetadata",
             };
           },
         });
@@ -70,9 +68,7 @@ registry.component({
               label: "Selector",
               options(p: PropLink) {
                 p.lookup = {
-                  component: "kubernetes",
-                  propType: "internalOnly",
-                  names: ["selector"],
+                  typeName: "kubernetesSelector",
                 };
               },
             });
@@ -81,9 +77,7 @@ registry.component({
               label: "Pod Template Spec",
               options(p: PropLink) {
                 p.lookup = {
-                  component: "kubernetes",
-                  propType: "internalOnly",
-                  names: ["podTemplateSpec"],
+                  typeName: "kubernetesPodTemplateSpec",
                 };
               },
             });

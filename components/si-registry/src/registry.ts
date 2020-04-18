@@ -1,0 +1,154 @@
+import {
+  ObjectTypes,
+  BaseObjectConstructor,
+  SystemObject,
+  BaseObject,
+  ComponentObject,
+  EntityObject,
+  ComponentAndEntityObject,
+  ComponentAndEntityObjectConstructor,
+} from "./systemComponent";
+import { Props } from "./attrList";
+
+export interface PropLookup {
+  typeName: string;
+  names?: string[];
+}
+
+export class Registry {
+  objects: ObjectTypes[];
+
+  constructor() {
+    this.objects = [];
+  }
+
+  get(typeName: string): ObjectTypes | undefined {
+    const result = this.objects.find(v => v.typeName == typeName);
+    if (result) {
+      return result;
+    } else {
+      throw `Cannot get object named ${typeName} in the registry`;
+    }
+  }
+
+  serviceNames(): string[] {
+    const names = new Set();
+    for (const object of this.objects) {
+      if (object.serviceName) {
+        names.add(object.serviceName);
+      }
+    }
+    const arrayNames = [];
+    for (const name of names.values()) {
+      arrayNames.push(name);
+    }
+    return arrayNames;
+  }
+
+  getObjectsForServiceName(serviceName: string): ObjectTypes[] {
+    const results = [];
+    for (const object of this.objects) {
+      if (object.serviceName == serviceName) {
+        results.push(object);
+      }
+    }
+    return results;
+  }
+
+  // Find a property!
+  lookupProp(lookup: PropLookup): Props {
+    const foundObject = this.objects.find(c => c.typeName == lookup.typeName);
+    if (!foundObject) {
+      throw `Cannot find object: ${foundObject}`;
+    }
+    if (!lookup.names) {
+      return foundObject.rootProp;
+    }
+    const firstName = lookup.names[0];
+    let returnProp = foundObject.fields.getEntry(firstName);
+    if (!returnProp) {
+      throw `Cannot find prop on object ${foundObject.typeName}: ${firstName}`;
+    }
+    if (returnProp.kind() != "object" && lookup.names.length > 1) {
+      throw `You asked for sub-properties of a non-object type on ${foundObject.typeName} property ${firstName}`;
+    }
+    for (let i = 1; i < lookup.names.length; i++) {
+      const lookupName = lookup.names[i];
+      const lookupResult = returnProp["properties"].getEntry(lookupName);
+      if (!lookupResult) {
+        throw `Cannot find prop "${lookupName}" on ${returnProp.name}`;
+      }
+
+      if (i != lookup.names.length - 1 && lookupResult.kind() != "object") {
+        console.log({
+          i,
+          length: lookup.names.length,
+          lookupName,
+          lookupResult,
+        });
+        throw `Cannot look up a sub-property of a non object Prop: ${
+          foundObject.typeName
+        } property ${lookupName} is ${lookupResult.kind()}`;
+      }
+
+      returnProp = lookupResult;
+    }
+    return returnProp;
+  }
+
+  // These are "basic" objects - they don't have any extra behavior or
+  // automatic fields. They just store the fields you give them.
+  base(constructorArgs: BaseObjectConstructor): BaseObject {
+    const compy = new BaseObject(constructorArgs);
+    this.objects.push(compy);
+    if (constructorArgs.options) {
+      constructorArgs.options(compy);
+    }
+    return compy;
+  }
+
+  // These are "system" objects - they have what is needed to be an object
+  // inside our system. They come with things like types, IDs, tenancy,
+  // etc.
+  system(constructorArgs: BaseObjectConstructor): SystemObject {
+    const compy = new SystemObject(constructorArgs);
+    this.objects.push(compy);
+    if (constructorArgs.options) {
+      constructorArgs.options(compy);
+    }
+    return compy;
+  }
+
+  component(constructorArgs: BaseObjectConstructor): ComponentObject {
+    const compy = new ComponentObject(constructorArgs);
+    this.objects.push(compy);
+    if (constructorArgs.options) {
+      constructorArgs.options(compy);
+    }
+    return compy;
+  }
+
+  entity(constructorArgs: BaseObjectConstructor): EntityObject {
+    const compy = new EntityObject(constructorArgs);
+    this.objects.push(compy);
+    if (constructorArgs.options) {
+      constructorArgs.options(compy);
+    }
+    return compy;
+  }
+
+  componentAndEntity(
+    constructorArgs: ComponentAndEntityObjectConstructor,
+  ): ComponentAndEntityObject {
+    const compy = new ComponentAndEntityObject(constructorArgs);
+    this.objects.push(compy.component);
+    this.objects.push(compy.entity);
+    this.objects.push(compy.entityEvent);
+    if (constructorArgs.options) {
+      constructorArgs.options(compy);
+    }
+    return compy;
+  }
+}
+
+export const registry = new Registry();

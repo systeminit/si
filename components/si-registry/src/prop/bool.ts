@@ -22,18 +22,6 @@ export class PropBool extends Prop {
     this.baseDefaultValue = defaultValue || false;
   }
 
-  protobufType(): string {
-    return "google.protobuf.BoolValue";
-  }
-
-  protobufPackageName(): string {
-    return "google.protobuf.";
-  }
-
-  protobufImportPath(): string {
-    return "google/protobuf/wrappers.proto";
-  }
-
   kind(): string {
     return "bool";
   }

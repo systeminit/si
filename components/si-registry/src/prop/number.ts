@@ -24,24 +24,4 @@ export class PropNumber extends PropText {
   kind(): string {
     return "number";
   }
-
-  protobufType(): string {
-    if (this.numberKind == "int32") {
-      return "google.protobuf.Int32Value";
-    } else if (this.numberKind == "uint32") {
-      return "google.protobuf.UInt32Value";
-    } else if (this.numberKind == "int64") {
-      return "google.protobuf.Int64Value";
-    } else if (this.numberKind == "uint64") {
-      return "google.protobuf.UInt64Value";
-    }
-  }
-
-  protobufPackageName(): string {
-    return "google.protobuf.";
-  }
-
-  protobufImportPath(): string {
-    return "google/protobuf/wrappers.proto";
-  }
 }
