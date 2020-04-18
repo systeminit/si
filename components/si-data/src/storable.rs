@@ -36,8 +36,12 @@ pub trait Storable {
 }
 
 impl crate::data::Storable {
-    pub fn new() -> Self {
-        todo!("boop")
+    pub fn new(type_name: impl Into<String>) -> Self {
+        Self {
+            tenant_ids: Vec::new(),
+            natural_key: None,
+            type_name: Some(type_name.into()),
+        }
     }
 
     pub fn add_to_tenant_ids(&mut self, id: impl Into<String>) {

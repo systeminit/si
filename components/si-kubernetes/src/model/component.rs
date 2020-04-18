@@ -1,15 +1,12 @@
 pub use crate::gen::kubernetes_deployment::component::{
     Component, Constraints, PickComponentRequest,
 };
+pub use crate::protobuf::kubernetes_deployment::KubernetesVersion;
 
 use si_cea::component::prelude::*;
 use si_data::Db;
 use std::fmt;
-
-// NOTE(fnichol): this for sure should not live here long term; it needs to be rolled up into
-// top module level info, metadata, etc.
-const DEFAULT_KUBERNETES_VERSION: &str = "1.15";
-const VALID_KUBERNETES_VERSION_VALUES: &[&str] = &["1.15", "1.14", "1.13", "1.12"];
+use std::str::FromStr;
 
 impl Component {
     pub async fn pick(db: &Db, req: &PickComponentRequest) -> CeaResult<(Constraints, Self)> {
@@ -26,28 +23,18 @@ impl Component {
                 let mut implicit_constraints = Constraints::default();
                 let mut query_items = Vec::new();
 
-                let kubernetes_version = match &constraints.kubernetes_version {
-                    Some(value) => {
-                        if Field::is_valid_kubernetes_version(&value) {
-                            value.clone()
-                        } else {
-                            return Err(CeaError::PickComponent(format!(
-                                "invalid {}: {}",
-                                Field::KubernetesVersion,
-                                value
-                            )));
-                        }
+                let kubernetes_version = match constraints.kubernetes_version() {
+                    KubernetesVersion::Unknown => {
+                        let default = KubernetesVersion::default();
+                        implicit_constraints.set_kubernetes_version(default);
+                        default
                     }
-                    None => {
-                        implicit_constraints.kubernetes_version =
-                            Some(DEFAULT_KUBERNETES_VERSION.to_string());
-                        DEFAULT_KUBERNETES_VERSION.to_string()
-                    }
+                    value => value,
                 };
                 query_items.push(si_data::QueryItems::generate_expression_for_string(
                     Field::KubernetesVersion.to_string(),
                     si_data::QueryItemsExpressionComparison::Equals,
-                    kubernetes_version,
+                    kubernetes_version.to_string(),
                 ));
 
                 let component =
@@ -110,7 +97,7 @@ impl MigrateComponent for Component {
             .lookup_by_natural_key(aws_eks_integration_service_id)
             .await?;
 
-        for kubernetes_version in VALID_KUBERNETES_VERSION_VALUES {
+        for kubernetes_version in KubernetesVersion::iterator() {
             let name = format!("AWS EKS Kubernetes {} Deployment", kubernetes_version);
             let mut c = Component {
                 name: Some(name.clone()),
@@ -133,6 +120,54 @@ impl MigrateComponent for Component {
     }
 }
 
+// TODO(fnichol) Code gen this
+impl KubernetesVersion {
+    pub fn iterator() -> impl Iterator<Item = Self> {
+        [Self::V112, Self::V113, Self::V114, Self::V115]
+            .iter()
+            .copied()
+    }
+
+    fn default() -> Self {
+        Self::V115
+    }
+}
+
+// TODO(fnichol) Code gen this
+#[derive(thiserror::Error, Debug)]
+#[error("invalid KubernetesVersion value: {0}")]
+pub struct InvalidKubernetesVersionError(String);
+
+// TODO(fnichol) Code gen this
+impl FromStr for KubernetesVersion {
+    type Err = InvalidKubernetesVersionError;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        let r = match s {
+            "v1.12" => Self::V112,
+            "v1.13" => Self::V113,
+            "v1.14" => Self::V114,
+            "v1.15" => Self::V115,
+            invalid => return Err(InvalidKubernetesVersionError(invalid.to_string())),
+        };
+        Ok(r)
+    }
+}
+
+// TODO(fnichol) Code gen this
+impl fmt::Display for KubernetesVersion {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let msg = match self {
+            Self::Unknown => "<UNKNOWN>",
+            Self::V112 => "v1.12",
+            Self::V113 => "v1.13",
+            Self::V114 => "v1.14",
+            Self::V115 => "v1.15",
+        };
+        write!(f, "{}", msg)
+    }
+}
+
 enum Field {
     DisplayName,
     KubernetesVersion,
@@ -147,11 +182,5 @@ impl fmt::Display for Field {
             Self::Name => "name",
         };
         write!(f, "{}", msg)
-    }
-}
-
-impl Field {
-    fn is_valid_kubernetes_version(s: &str) -> bool {
-        VALID_KUBERNETES_VERSION_VALUES.contains(&s)
     }
 }

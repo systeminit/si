@@ -33,6 +33,16 @@ registry.component({
           },
         });
         p.properties.addText({
+          name: "entityId",
+          label: "Entity Id",
+          options(p) {
+            p.readOnly = true;
+            p.hidden = true;
+            p.required = true;
+            p.universal = true;
+          },
+        });
+        p.properties.addText({
           name: "componentId",
           label: "Component Id",
           options(p) {

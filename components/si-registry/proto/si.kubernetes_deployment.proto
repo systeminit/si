@@ -25,6 +25,7 @@ service KubernetesDeployment {
   rpc SyncAction(SyncActionRequest) returns (SyncActionReply);
   rpc EditKubernetesObjectAction(EditKubernetesObjectActionRequest) returns (EditKubernetesObjectActionReply);
   rpc EditKubernetesObjectYamlAction(EditKubernetesObjectYamlActionRequest) returns (EditKubernetesObjectYamlActionReply);
+  rpc ListEntityEvents(ListEntityEventsRequest) returns (ListEntityEventsReply);
 }
 
 // Methods
@@ -69,12 +70,14 @@ message EntityEvent {
   google.protobuf.StringValue final_time = 6;
   google.protobuf.BoolValue finalized = 7;
   google.protobuf.BoolValue success = 8;
-  si.entity_event.EntityEventSiProperties si_properties = 9;
-  Entity input_entity = 10;
-  Entity output_entity = 11;
-  Entity previous_entity = 12;
-  google.protobuf.StringValue error_message = 13;
-  repeated google.protobuf.StringValue error_lines = 14;
+  google.protobuf.StringValue user_id = 9;
+  si.entity_event.EntityEventSiProperties si_properties = 10;
+  Entity input_entity = 11;
+  Entity output_entity = 12;
+  Entity previous_entity = 13;
+  google.protobuf.StringValue error_message = 14;
+  repeated google.protobuf.StringValue output_lines = 15;
+  repeated google.protobuf.StringValue error_lines = 16;
 }
 
 
@@ -84,12 +87,12 @@ message EntityEvent {
 
 
 enum KubernetesVersion {
-    KUBERNETES_VERSION_UNKNOWN = 0;
+  KUBERNETES_VERSION_UNKNOWN = 0;
   KUBERNETES_VERSION_V1_12 = 1;
   KUBERNETES_VERSION_V1_13 = 2;
   KUBERNETES_VERSION_V1_14 = 3;
   KUBERNETES_VERSION_V1_15 = 4;
-  }
+}
 
 // properties
 
@@ -136,7 +139,7 @@ message ListEntitiesRequest {
 }
 
 message ListEntitiesReply {
-  Entity items = 1;
+  repeated Entity items = 1;
   google.protobuf.UInt32Value total_count = 2;
   google.protobuf.StringValue next_page_token = 3;
 }
@@ -177,6 +180,24 @@ message EditKubernetesObjectYamlActionRequest {
 message EditKubernetesObjectYamlActionReply {
   Entity entity = 1001;
   EntityEvent entity_event = 1002;
+}
+
+// entityEventMethods
+
+
+message ListEntityEventsRequest {
+  si.data.Query query = 1;
+  google.protobuf.UInt32Value page_size = 2;
+  google.protobuf.StringValue order_by = 3;
+  si.data.PageTokenOrderByDirection order_by_direction = 4;
+  google.protobuf.StringValue page_token = 5;
+  google.protobuf.StringValue scope_by_tenant_id = 6;
+}
+
+message ListEntityEventsReply {
+  repeated EntityEvent items = 1;
+  google.protobuf.UInt32Value total_count = 2;
+  google.protobuf.StringValue next_page_token = 3;
 }
 
 // componentMethods

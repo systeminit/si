@@ -6,6 +6,8 @@ use serde::de::DeserializeOwned;
 use serde::ser::Serialize;
 use si_data::{Db, ListResult, Migrateable, Storable};
 
+pub use crate::protobuf::component::SiProperties;
+
 pub mod prelude {
     pub use crate::error::{CeaError, CeaResult};
     pub use crate::{gen_component, Component as _, ImplicitConstraints, MigrateComponent};

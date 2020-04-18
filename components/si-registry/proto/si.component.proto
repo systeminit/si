@@ -21,6 +21,8 @@ import "google/protobuf/wrappers.proto";
 
 // entityActions
 
+// entityEventMethods
+
 // componentMethods
 
 // internalOnly

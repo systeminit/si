@@ -1,4 +1,4 @@
-import { PropObject, Component, PropNumber } from "../../components/prelude";
+import { Component, PropNumber, PropObject } from "../../components/prelude";
 import { registry } from "../..//componentRegistry";
 
 registry.component({

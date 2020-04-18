@@ -21,6 +21,8 @@ import "google/protobuf/wrappers.proto";
 
 // entityActions
 
+// entityEventMethods
+
 // componentMethods
 
 // internalOnly
@@ -34,15 +36,15 @@ message EntitySiProperties {
   google.protobuf.StringValue workspace_id = 5;
   google.protobuf.StringValue organization_id = 6;
   google.protobuf.StringValue billing_account_id = 7;
-  google.protobuf.Int64Value version = 8;
+  google.protobuf.Int32Value version = 8;
 }
 
 enum EntitySiPropertiesEntityState {
-    ENTITY_SI_PROPERTIES_ENTITY_STATE_UNKNOWN = 0;
+  ENTITY_SI_PROPERTIES_ENTITY_STATE_UNKNOWN = 0;
   ENTITY_SI_PROPERTIES_ENTITY_STATE_ERROR = 1;
   ENTITY_SI_PROPERTIES_ENTITY_STATE_OK = 2;
   ENTITY_SI_PROPERTIES_ENTITY_STATE_TRANSITION = 3;
-  }
+}
 
 // entity
 

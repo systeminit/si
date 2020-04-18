@@ -24,7 +24,9 @@ export type ComponentAttrListName =
   | "componentMethods"
   | "entity"
   | "component"
-  | "internalOnly";
+  | "internalOnly"
+  | "entityEvent"
+  | "entityEventMethods";
 
 export class Component {
   typeName: string;
@@ -42,6 +44,7 @@ export class Component {
   entity: AttrList;
   component: AttrList;
   entityEvent: AttrList;
+  entityEventMethods: AttrList;
 
   noStd: boolean;
 
@@ -67,6 +70,7 @@ export class Component {
     this.entity = new AttrList({ component: this });
     this.component = new AttrList({ component: this });
     this.entityEvent = new AttrList({ component: this });
+    this.entityEventMethods = new AttrList({ component: this });
   }
 
   setDefaultValues(): void {
@@ -76,6 +80,7 @@ export class Component {
     this.universalEntityActions();
     this.universalEntity();
     this.universalEntityEvent();
+    this.universalEntityEventMethods();
     this.universalComponent();
   }
 
@@ -226,6 +231,7 @@ export class Component {
           label: "Items",
           options(p) {
             p.universal = true;
+            p.repeated = true;
           },
         });
         p.reply.addNumber({
@@ -427,6 +433,92 @@ export class Component {
     });
   }
 
+  universalEntityEventMethods(): void {
+    this.entityEventMethods.addMethod({
+      name: "listEntityEvents",
+      label: "List Entity Events",
+      options(p: PropMethod) {
+        p.universal = true;
+        p.request.addLink({
+          name: "query",
+          label: "Query",
+          options(p: PropLink) {
+            p.universal = true;
+            p.lookup = {
+              component: "data",
+              propType: "internalOnly",
+              names: ["query"],
+            };
+          },
+        });
+        p.request.addNumber({
+          name: "pageSize",
+          label: "Page Size",
+          options(p: PropNumber) {
+            p.universal = true;
+            p.numberKind = "uint32";
+          },
+        });
+        p.request.addText({
+          name: "orderBy",
+          label: "Order By",
+          options(p) {
+            p.universal = true;
+          },
+        });
+        p.request.addLink({
+          name: "orderByDirection",
+          label: "Order By Direction",
+          options(p: PropLink) {
+            p.universal = true;
+            p.lookup = {
+              component: "data",
+              propType: "internalOnly",
+              names: ["pageToken", "orderByDirection"],
+            };
+          },
+        });
+        p.request.addText({
+          name: "pageToken",
+          label: "Page Token",
+          options(p) {
+            p.universal = true;
+          },
+        });
+        p.request.addText({
+          name: "scopeByTenantId",
+          label: "Scope By Tenant ID",
+          options(p) {
+            p.universal = true;
+          },
+        });
+        p.reply.addEntityEvent({
+          name: "items",
+          label: "Items",
+          options(p) {
+            p.universal = true;
+            p.repeated = true;
+          },
+        });
+        p.reply.addNumber({
+          name: "totalCount",
+          label: "Total Count",
+          options(p: PropNumber) {
+            p.universal = true;
+            p.numberKind = "uint32";
+          },
+        });
+        p.reply.addText({
+          name: "nextPageToken",
+          label: "Next Page Token",
+          options(p) {
+            p.universal = true;
+          },
+        });
+      },
+    });
+  }
+
   universalComponent(): void {
     this.component.addText({
       name: "id",
@@ -570,6 +662,14 @@ export class Component {
         p.readOnly = true;
       },
     });
+    this.entityEvent.addText({
+      name: "userId",
+      label: "User ID",
+      options(p) {
+        p.universal = true;
+        p.readOnly = true;
+      },
+    });
     this.entityEvent.addLink({
       name: "siProperties",
       label: "SI Properties",
@@ -608,6 +708,14 @@ export class Component {
       name: "errorMessage",
       label: "Error Message",
       options(p) {
+        p.universal = true;
+      },
+    });
+    this.entityEvent.addText({
+      name: "outputLines",
+      label: "Output Lines",
+      options(p) {
+        p.repeated = true;
         p.universal = true;
       },
     });
@@ -719,6 +827,7 @@ export class Component {
       "data",
       "entityMethods",
       "entityActions",
+      "entityEventMethods",
       "componentMethods",
       "internalOnly",
       "entity",
@@ -901,6 +1010,7 @@ ${messageContents}
       this.componentMethods,
       this.entityMethods,
       this.entityActions,
+      this.entityEventMethods,
     ];
     for (const methodType of methodTypeSet) {
       for (const p of methodType.attrs) {
@@ -957,8 +1067,8 @@ ${messageContents}
           const definition = p.protobufEnumDefinition(0);
           this.seenEnum[p.protobufType()] = 1;
           result = result.concat(`\nenum ${p.protobufType()} {
-  ${definition}
-  }\n`);
+${definition}
+}\n`);
         }
       }
     }

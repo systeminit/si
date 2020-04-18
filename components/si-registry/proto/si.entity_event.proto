@@ -21,6 +21,8 @@ import "google/protobuf/wrappers.proto";
 
 // entityActions
 
+// entityEventMethods
+
 // componentMethods
 
 // internalOnly
@@ -29,10 +31,11 @@ import "google/protobuf/wrappers.proto";
 message EntityEventSiProperties {
   google.protobuf.StringValue integration_id = 1;
   google.protobuf.StringValue integration_service_id = 2;
-  google.protobuf.StringValue component_id = 3;
-  google.protobuf.StringValue workspace_id = 4;
-  google.protobuf.StringValue organization_id = 5;
-  google.protobuf.StringValue billing_account_id = 6;
+  google.protobuf.StringValue entity_id = 3;
+  google.protobuf.StringValue component_id = 4;
+  google.protobuf.StringValue workspace_id = 5;
+  google.protobuf.StringValue organization_id = 6;
+  google.protobuf.StringValue billing_account_id = 7;
 }
 
 // entity

@@ -49,6 +49,17 @@ pub enum CeaError {
     #[error("request is missing a required prop value")]
     RequestMissingProp,
 
+    #[error("entity is missing constraints object")]
+    EntityMissingConstraints,
+    #[error("entity is missing implicit_constraints object")]
+    EntityMissingImplicitConstraints,
+    #[error("entity is missing properties object")]
+    EntityMissingProperties,
+    #[error("entity is missing si_properties object")]
+    EntityMissingSiProperties,
+    #[error("entity is missing si_storable object")]
+    EntityMissingSiStorable,
+
     // MQTT
     #[error("mqtt failed: {0}")]
     Mqtt(#[from] mqtt::errors::MqttError),
