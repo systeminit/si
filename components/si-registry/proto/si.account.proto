@@ -5,16 +5,13 @@
 syntax = "proto3";
 
 package si.account;
-import "si.data";
+import "google/protobuf/wrappers.proto";
+import "si-registry/proto/si.data.proto";
 // No Services
 message BillingAccount {
   google.protobuf.StringValue id = 1;
   google.protobuf.StringValue name = 2;
   google.protobuf.StringValue display_name = 3;
   si.data.DataStorable si_storable = 4;
-  google.protobuf.StringValue id = 5;
-  google.protobuf.StringValue short_name = 6;
-  google.protobuf.StringValue display_name = 7;
-  si.data.DataStorable si_storable = 8;
-  si.account.BillingAccountCreate create = 1001;
+  google.protobuf.StringValue short_name = 5;
 }

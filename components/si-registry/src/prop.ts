@@ -66,20 +66,6 @@ export abstract class Prop {
   abstract kind(): string;
   abstract defaultValue(): PropValue;
 
-  graphqlTypeName(inputType?: boolean): string {
-    let request = "";
-    if (inputType) {
-      request = "Request";
-    }
-    return `${pascalCase(this.componentTypeName)}${pascalCase(
-      this.parentName,
-    )}${pascalCase(this.name)}${request}`;
-  }
-
-  graphqlFieldName(): string {
-    return `${camelCase(this.name)}`;
-  }
-
   bagNames(): string[] {
     return [];
   }

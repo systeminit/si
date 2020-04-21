@@ -2,6 +2,23 @@
 ### Do not make changes to this file directly
 
 
+type BillingAccount {
+  """System Initiative Billing Account Display Name"""
+  displayName: String
+
+  """System Initiative Billing Account ID"""
+  id: ID
+
+  """System Initiative Billing Account Name"""
+  name: String
+
+  """Billing Account Short Name"""
+  shortName: String
+
+  """SI Storable"""
+  siStorable: [DataStorable!]
+}
+
 type ComponentSiProperties {
   """Integration Id"""
   integrationId: String
@@ -137,7 +154,38 @@ type DataStorable {
   typeName: String
 }
 
-type EntityEntitySiProperties {
+input DataStorableRequest {
+  """Natural Key"""
+  naturalKey: String
+
+  """Tenant IDs"""
+  tenantIds: [String!]
+
+  """Type Name"""
+  typeName: String
+}
+
+type EntityEventSiProperties {
+  """Billing Account ID"""
+  billingAccountId: String
+
+  """Component Id"""
+  componentId: String
+
+  """Integration Id"""
+  integrationId: String
+
+  """Integration Service Id"""
+  integrationServiceId: String
+
+  """Organization ID"""
+  organizationId: String
+
+  """Workspace ID"""
+  workspaceId: String
+}
+
+type EntitySiProperties {
   """Billing Account ID"""
   billingAccountId: String
 
@@ -145,7 +193,7 @@ type EntityEntitySiProperties {
   componentId: String
 
   """Entity State"""
-  entityState: EntityEntitySiPropertiesEntityState
+  entityState: EntitySiPropertiesEntityState
 
   """Integration Id"""
   integrationId: String
@@ -164,18 +212,21 @@ type EntityEntitySiProperties {
 }
 
 """Entity State"""
-enum EntityEntitySiPropertiesEntityState {
+enum EntitySiPropertiesEntityState {
   ERROR
   OK
   TRANSITION
 }
 
-type EntityEventEntityEventSiProperties {
+input EntitySiPropertiesRequest {
   """Billing Account ID"""
   billingAccountId: String
 
   """Component Id"""
   componentId: String
+
+  """Entity State"""
+  entityState: EntitySiPropertiesEntityState
 
   """Integration Id"""
   integrationId: String
@@ -185,6 +236,9 @@ type EntityEventEntityEventSiProperties {
 
   """Organization ID"""
   organizationId: String
+
+  """Version"""
+  version: Int
 
   """Workspace ID"""
   workspaceId: String
@@ -197,7 +251,7 @@ type KubernetesContainer {
   """Name"""
   name: String
 
-  """Container"""
+  """Kubernetes Container Definition"""
   ports: [KubernetesContainerPorts!]
 }
 
@@ -228,27 +282,27 @@ input KubernetesContainerRequest {
   """Name"""
   name: String
 
-  """Container"""
+  """Kubernetes Container Definition"""
   ports: [KubernetesContainerPortsRequest!]
 }
 
 type KubernetesDeploymentComponent {
   """Kubernetes Deployment Object Component"""
-  constraints: KubernetesDeploymentConstraints
+  constraints: KubernetesDeploymentComponentConstraints
 
   """Component Description"""
   description: String
 
-  """Component Display Name"""
+  """Kubernetes Deployment Object Component Display Name"""
   displayName: String
 
   """Display Type Name"""
   displayTypeName: String
 
-  """Component ID"""
+  """Kubernetes Deployment Object Component ID"""
   id: ID
 
-  """Component Name"""
+  """Kubernetes Deployment Object Component Name"""
   name: String
 
   """SI Properties"""
@@ -258,7 +312,7 @@ type KubernetesDeploymentComponent {
   siStorable: [DataStorable!]
 }
 
-type KubernetesDeploymentConstraints {
+type KubernetesDeploymentComponentConstraints {
   """Component Display Name"""
   componentDisplayName: String
 
@@ -266,233 +320,41 @@ type KubernetesDeploymentConstraints {
   componentName: String
 
   """Kubernetes Version"""
-  kubernetesVersion: KubernetesDeploymentKubernetesVersion
-}
-
-input KubernetesDeploymentConstraintsRequest {
-  """Component Display Name"""
-  componentDisplayName: String
-
-  """Component Name"""
-  componentName: String
-
-  """Kubernetes Version"""
-  kubernetesVersion: KubernetesDeploymentKubernetesVersion
-}
-
-"""Create Entity Reply"""
-type KubernetesDeploymentCreateEntityReply {
-  """Entity"""
-  entity: KubernetesDeploymentEntity
-
-  """EntityEvent"""
-  entityEvent: KubernetesDeploymentEntityEvent
-}
-
-"""Create Entity Request"""
-input KubernetesDeploymentCreateEntityRequest {
-  """Constraints"""
-  constraints: KubernetesDeploymentConstraintsRequest
-
-  """Description"""
-  description: String
-
-  """Display Name"""
-  displayName: String
-
-  """Name"""
-  name: String
-
-  """Properties"""
-  properties: KubernetesDeploymentPropertiesRequest
-
-  """Workspace ID"""
-  workspaceId: String
-}
-
-"""Edit KubernetesObject Property Reply"""
-type KubernetesDeploymentEditKubernetesObjectActionReply {
-  """Entity"""
-  entity: KubernetesDeploymentEntity
-
-  """Entity Event"""
-  entityEvent: KubernetesDeploymentEntityEvent
-}
-
-"""Edit KubernetesObject Property Request"""
-input KubernetesDeploymentEditKubernetesObjectActionRequest {
-  """Kubernetes Object"""
-  kubernetesObject: [KubernetesDeploymentKubernetesObjectRequest!]
-}
-
-"""Edit KubernetesObjectYaml Property Reply"""
-type KubernetesDeploymentEditKubernetesObjectYamlActionReply {
-  """Entity"""
-  entity: KubernetesDeploymentEntity
-
-  """Entity Event"""
-  entityEvent: KubernetesDeploymentEntityEvent
-}
-
-"""Edit KubernetesObjectYaml Property Request"""
-input KubernetesDeploymentEditKubernetesObjectYamlActionRequest {
-  """Kubernetes Object YAML"""
-  kubernetesObjectYaml: String
-}
-
-type KubernetesDeploymentEntity {
-  """Constraints"""
-  constraints: KubernetesDeploymentConstraints
-
-  """Entity Display Name"""
-  displayName: String
-
-  """Entity ID"""
-  id: ID
-
-  """Implicit Constraints"""
-  implicitConstraints: KubernetesDeploymentConstraints
-
-  """Entity Name"""
-  name: String
-
-  """Kubernetes Deployment Object Entity"""
-  properties: KubernetesDeploymentProperties
-
-  """SI Properties"""
-  siProperties: [EntityEntitySiProperties!]
-
-  """SI Storable"""
-  siStorable: [DataStorable!]
-}
-
-type KubernetesDeploymentEntityEvent {
-  """Action Name"""
-  actionName: String
-
-  """Creation Time"""
-  createTime: String
-
-  """Error Lines"""
-  errorLines: [String!]
-
-  """Error Message"""
-  errorMessage: String
-
-  """Finalized"""
-  finalized: Boolean
-
-  """Final Time"""
-  finalTime: String
-
-  """Entity Event ID"""
-  id: ID
-
-  """Input Entity"""
-  inputEntity: KubernetesDeploymentEntity
-
-  """Output Entity"""
-  outputEntity: KubernetesDeploymentEntity
-
-  """Previous Entity"""
-  previousEntity: KubernetesDeploymentEntity
-
-  """SI Properties"""
-  siProperties: [EntityEventEntityEventSiProperties!]
-
-  """SI Storable"""
-  siStorable: [DataStorable!]
-
-  """success"""
-  success: Boolean
-
-  """Updated Time"""
-  updatedTime: String
-}
-
-"""Get Component Reply"""
-type KubernetesDeploymentGetComponentReply {
-  component: KubernetesDeploymentComponent
-}
-
-"""Get Component Request"""
-input KubernetesDeploymentGetComponentRequest {
-  """undefined ID"""
-  componentId: String
-}
-
-"""Get Entity Reply"""
-type KubernetesDeploymentGetEntityReply {
-  """undefined"""
-  entity: KubernetesDeploymentEntity
-}
-
-"""Get Entity Request"""
-input KubernetesDeploymentGetEntityRequest {
-  """Entity ID"""
-  entityId: String
-}
-
-type KubernetesDeploymentKubernetesObject {
-  """API Version"""
-  apiVersion: String
-
-  """Kind"""
-  kind: String
-
-  """Metadata"""
-  metadata: [KubernetesMetadata!]
-
-  """Kubernetes Object"""
-  spec: KubernetesDeploymentKubernetesObjectSpec
-}
-
-input KubernetesDeploymentKubernetesObjectRequest {
-  """API Version"""
-  apiVersion: String
-
-  """Kind"""
-  kind: String
-
-  """Metadata"""
-  metadata: [KubernetesMetadataRequest!]
-
-  """Kubernetes Object"""
-  spec: KubernetesDeploymentKubernetesObjectSpecRequest
-}
-
-type KubernetesDeploymentKubernetesObjectSpec {
-  """Replicas"""
-  replicas: Int
-
-  """Selector"""
-  selector: [KubernetesSelector!]
-
-  """Pod Template Spec"""
-  template: [KubernetesPodTemplateSpec!]
-}
-
-input KubernetesDeploymentKubernetesObjectSpecRequest {
-  """Replicas"""
-  replicas: Int
-
-  """Selector"""
-  selector: [KubernetesSelectorRequest!]
-
-  """Pod Template Spec"""
-  template: [KubernetesPodTemplateSpecRequest!]
+  kubernetesVersion: KubernetesDeploymentComponentConstraintsKubernetesVersion
 }
 
 """Kubernetes Version"""
-enum KubernetesDeploymentKubernetesVersion {
+enum KubernetesDeploymentComponentConstraintsKubernetesVersion {
   V1_12
   V1_13
   V1_14
   V1_15
 }
 
+input KubernetesDeploymentComponentConstraintsRequest {
+  """Component Display Name"""
+  componentDisplayName: String
+
+  """Component Name"""
+  componentName: String
+
+  """Kubernetes Version"""
+  kubernetesVersion: KubernetesDeploymentComponentConstraintsKubernetesVersion
+}
+
+"""Get Component Reply"""
+type KubernetesDeploymentComponentGetReply {
+  component: [KubernetesDeploymentComponent!]
+}
+
+"""Get Component Request"""
+input KubernetesDeploymentComponentGetRequest {
+  """undefined ID"""
+  componentId: String
+}
+
 """List Components Reply"""
-type KubernetesDeploymentListComponentsReply {
+type KubernetesDeploymentComponentListReply {
   """Items"""
   items: [KubernetesDeploymentComponent!]
 
@@ -504,40 +366,7 @@ type KubernetesDeploymentListComponentsReply {
 }
 
 """List Components Request"""
-input KubernetesDeploymentListComponentsRequest {
-  """Order By"""
-  orderBy: String
-
-  """Order By Direction"""
-  orderByDirection: DataPageTokenOrderByDirection
-
-  """Page Size"""
-  pageSize: Int
-
-  """Page Token"""
-  pageToken: String
-
-  """Query"""
-  query: [DataQueryRequest!]
-
-  """Scope By Tenant ID"""
-  scopeByTenantId: String
-}
-
-"""List Entities Reply"""
-type KubernetesDeploymentListEntitiesReply {
-  """Items"""
-  items: KubernetesDeploymentEntity
-
-  """Next Page Token"""
-  nextPageToken: String
-
-  """Total Count"""
-  totalCount: Int
-}
-
-"""List Entities Request"""
-input KubernetesDeploymentListEntitiesRequest {
+input KubernetesDeploymentComponentListRequest {
   """Order By"""
   orderBy: String
 
@@ -558,78 +387,324 @@ input KubernetesDeploymentListEntitiesRequest {
 }
 
 """Pick Component Reply"""
-type KubernetesDeploymentPickComponentReply {
+type KubernetesDeploymentComponentPickReply {
   """Chosen Component"""
-  component: KubernetesDeploymentComponent
+  component: [KubernetesDeploymentComponent!]
 
   """Implicit Constraints"""
-  implicitConstraints: KubernetesDeploymentConstraints
+  implicitConstraints: [KubernetesDeploymentComponentConstraints!]
 }
 
 """Pick Component Request"""
-input KubernetesDeploymentPickComponentRequest {
+input KubernetesDeploymentComponentPickRequest {
   """Constraints"""
-  constraints: KubernetesDeploymentConstraintsRequest
+  constraints: [KubernetesDeploymentComponentConstraintsRequest!]
 }
 
-type KubernetesDeploymentProperties {
-  """Kubernetes Object"""
-  kubernetesObject: [KubernetesDeploymentKubernetesObject!]
+type KubernetesDeploymentEntity {
+  """Constraints"""
+  constraints: [KubernetesDeploymentComponentConstraints!]
 
-  """Kubernetes Object YAML"""
-  kubernetesObjectYaml: String
+  """Entity Description"""
+  description: String
+
+  """Kubernetes Deployment Object Entity Display Name"""
+  displayName: String
+
+  """Display Type Name"""
+  displayTypeName: String
+
+  """Kubernetes Deployment Object Entity ID"""
+  id: ID
+
+  """Implicit Constraints"""
+  implicitConstraints: [KubernetesDeploymentComponentConstraints!]
+
+  """Kubernetes Deployment Object Entity Name"""
+  name: String
+
+  """Kubernetes Deployment Object Entity"""
+  properties: KubernetesDeploymentEntityProperties
+
+  """SI Properties"""
+  siProperties: [EntitySiProperties!]
+
+  """SI Storable"""
+  siStorable: [DataStorable!]
 }
 
-input KubernetesDeploymentPropertiesRequest {
-  """Kubernetes Deployment Object properties"""
-  kubernetesObject: KubernetesDeploymentKubernetesObjectRequest
-
-  """Kubernetes Object YAML"""
-  kubernetesObjectYaml: String
-}
-
-"""Sync State Reply"""
-type KubernetesDeploymentSyncActionReply {
+"""Create Entity Reply"""
+type KubernetesDeploymentEntityCreateEntityReply {
   """Entity"""
-  entity: KubernetesDeploymentEntity
+  entity: [KubernetesDeploymentEntity!]
 
   """Entity Event"""
-  entityEvent: KubernetesDeploymentEntityEvent
+  entityEvent: [KubernetesDeploymentEntityEvent!]
 }
 
-"""Sync State Request"""
-input KubernetesDeploymentSyncActionRequest {
+"""Create Entity Request"""
+input KubernetesDeploymentEntityCreateEntityRequest {
+  """Constraints"""
+  constraints: [KubernetesDeploymentComponentConstraintsRequest!]
+
+  """Description"""
+  description: String
+
+  """Display Name"""
+  displayName: String
+
+  """Name"""
+  name: String
+
+  """Properties"""
+  properties: [KubernetesDeploymentEntityPropertiesRequest!]
+
+  """Workspace ID"""
+  workspaceId: String
+}
+
+type KubernetesDeploymentEntityEvent {
+  """Action Name"""
+  actionName: String
+
+  """Creation Time"""
+  createTime: String
+
+  """Kubernetes Deployment Object EntityEvent Display Name"""
+  displayName: String
+
+  """Error Lines"""
+  errorLines: [String!]
+
+  """Error Message"""
+  errorMessage: String
+
+  """Finalized"""
+  finalized: Boolean
+
+  """Final Time"""
+  finalTime: String
+
+  """Kubernetes Deployment Object EntityEvent ID"""
+  id: ID
+
+  """Input Entity"""
+  inputEntity: [KubernetesDeploymentEntity!]
+
+  """Kubernetes Deployment Object EntityEvent Name"""
+  name: String
+
+  """Output Entity"""
+  outputEntity: [KubernetesDeploymentEntity!]
+
+  """Previous Entity"""
+  previousEntity: [KubernetesDeploymentEntity!]
+
+  """SI Properties"""
+  siProperties: [EntityEventSiProperties!]
+
+  """SI Storable"""
+  siStorable: [DataStorable!]
+
+  """success"""
+  success: Boolean
+
+  """Updated Time"""
+  updatedTime: String
+}
+
+"""Get Entity Reply"""
+type KubernetesDeploymentEntityGetEntityReply {
+  """undefined"""
+  entity: [KubernetesDeploymentEntity!]
+}
+
+"""Get Entity Request"""
+input KubernetesDeploymentEntityGetEntityRequest {
   """Entity ID"""
   entityId: String
 }
 
-"""Labels"""
-type KubernetesLabels {
-  key: String
-  value: String
+"""
+Edit kubernetesDeploymentEntityPropertiesKubernetesObject Property Reply
+"""
+type KubernetesDeploymentEntityKubernetesObjectEditReply {
+  """Entity Event"""
+  entityEvent: [KubernetesDeploymentEntityEvent!]
 }
 
-"""Labels"""
-input KubernetesLabelsRequest {
-  key: String
-  value: String
+"""
+Edit kubernetesDeploymentEntityPropertiesKubernetesObject Property Request
+"""
+input KubernetesDeploymentEntityKubernetesObjectEditRequest {
+  """Entity ID"""
+  entityId: String
+
+  """The Kubernetes Object property value"""
+  property: [KubernetesDeploymentEntityPropertiesKubernetesObjectRequest!]
 }
 
-"""Match Labels"""
-type KubernetesMatchLabels {
-  key: String
-  value: String
+"""Edit KubernetesObjectYaml Property Reply"""
+type KubernetesDeploymentEntityKubernetesObjectYamlEditReply {
+  """Entity Event"""
+  entityEvent: [KubernetesDeploymentEntityEvent!]
 }
 
-"""Match Labels"""
-input KubernetesMatchLabelsRequest {
-  key: String
-  value: String
+"""Edit KubernetesObjectYaml Property Request"""
+input KubernetesDeploymentEntityKubernetesObjectYamlEditRequest {
+  """Entity ID"""
+  entityId: String
+
+  """The Kubernetes Object YAML property value"""
+  property: String
+}
+
+"""List Entities Reply"""
+type KubernetesDeploymentEntityListEntitiesReply {
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: Int
+}
+
+"""List Entities Request"""
+input KubernetesDeploymentEntityListEntitiesRequest {
+  """Items"""
+  items: [KubernetesDeploymentEntityRequest!]
+
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: Int
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: [DataQueryRequest!]
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+type KubernetesDeploymentEntityProperties {
+  """Properties"""
+  kubernetesObject: KubernetesDeploymentEntityPropertiesKubernetesObject
+
+  """Kubernetes Object YAML"""
+  kubernetesObjectYaml: String
+}
+
+type KubernetesDeploymentEntityPropertiesKubernetesObject {
+  """API Version"""
+  apiVersion: String
+
+  """Kind"""
+  kind: String
+
+  """Metadata"""
+  metadata: [KubernetesMetadata!]
+
+  """Kubernetes Object"""
+  spec: KubernetesDeploymentEntityPropertiesKubernetesObjectSpec
+}
+
+input KubernetesDeploymentEntityPropertiesKubernetesObjectRequest {
+  """API Version"""
+  apiVersion: String
+
+  """Kind"""
+  kind: String
+
+  """Metadata"""
+  metadata: [KubernetesMetadataRequest!]
+
+  """Kubernetes Object"""
+  spec: KubernetesDeploymentEntityPropertiesKubernetesObjectSpecRequest
+}
+
+type KubernetesDeploymentEntityPropertiesKubernetesObjectSpec {
+  """Replicas"""
+  replicas: Int
+
+  """Selector"""
+  selector: [KubernetesSelector!]
+
+  """Pod Template Spec"""
+  template: [KubernetesPodTemplateSpec!]
+}
+
+input KubernetesDeploymentEntityPropertiesKubernetesObjectSpecRequest {
+  """Replicas"""
+  replicas: Int
+
+  """Selector"""
+  selector: [KubernetesSelectorRequest!]
+
+  """Pod Template Spec"""
+  template: [KubernetesPodTemplateSpecRequest!]
+}
+
+input KubernetesDeploymentEntityPropertiesRequest {
+  """Properties"""
+  kubernetesObject: KubernetesDeploymentEntityPropertiesKubernetesObjectRequest
+
+  """Kubernetes Object YAML"""
+  kubernetesObjectYaml: String
+}
+
+input KubernetesDeploymentEntityRequest {
+  """Constraints"""
+  constraints: [KubernetesDeploymentComponentConstraintsRequest!]
+
+  """Entity Description"""
+  description: String
+
+  """Kubernetes Deployment Object Entity Display Name"""
+  displayName: String
+
+  """Display Type Name"""
+  displayTypeName: String
+
+  """Kubernetes Deployment Object Entity ID"""
+  id: ID
+
+  """Implicit Constraints"""
+  implicitConstraints: [KubernetesDeploymentComponentConstraintsRequest!]
+
+  """Kubernetes Deployment Object Entity Name"""
+  name: String
+
+  """Kubernetes Deployment Object Entity"""
+  properties: KubernetesDeploymentEntityPropertiesRequest
+
+  """SI Properties"""
+  siProperties: [EntitySiPropertiesRequest!]
+
+  """SI Storable"""
+  siStorable: [DataStorableRequest!]
+}
+
+"""Sync State Reply"""
+type KubernetesDeploymentEntitySyncActionReply {
+  """Entity Event"""
+  entityEvent: [KubernetesDeploymentEntityEvent!]
+}
+
+"""Sync State Request"""
+input KubernetesDeploymentEntitySyncActionRequest {
+  """Entity ID"""
+  entityId: String
 }
 
 type KubernetesMetadata {
   """Labels"""
-  labels: KubernetesLabels
+  labels: Labels
 
   """Name"""
   name: String
@@ -637,7 +712,7 @@ type KubernetesMetadata {
 
 input KubernetesMetadataRequest {
   """Labels"""
-  labels: KubernetesLabelsRequest
+  labels: LabelsRequest
 
   """Name"""
   name: String
@@ -671,25 +746,49 @@ input KubernetesPodTemplateSpecRequest {
 
 type KubernetesSelector {
   """Match Labels"""
-  matchLabels: KubernetesMatchLabels
+  matchLabels: MatchLabels
 }
 
 input KubernetesSelectorRequest {
   """Match Labels"""
-  matchLabels: KubernetesMatchLabelsRequest
+  matchLabels: MatchLabelsRequest
+}
+
+"""Labels"""
+type Labels {
+  key: String
+  value: String
+}
+
+"""Labels"""
+input LabelsRequest {
+  key: String
+  value: String
+}
+
+"""Match Labels"""
+type MatchLabels {
+  key: String
+  value: String
+}
+
+"""Match Labels"""
+input MatchLabelsRequest {
+  key: String
+  value: String
 }
 
 type Mutation {
-  kubernetesDeploymentCreateEntity(input: KubernetesDeploymentCreateEntityRequest): KubernetesDeploymentCreateEntityReply
-  kubernetesDeploymentEditKubernetesObjectAction(input: KubernetesDeploymentEditKubernetesObjectActionRequest): KubernetesDeploymentEditKubernetesObjectActionReply
-  kubernetesDeploymentEditKubernetesObjectYamlAction(input: KubernetesDeploymentEditKubernetesObjectYamlActionRequest): KubernetesDeploymentEditKubernetesObjectYamlActionReply
-  kubernetesDeploymentSyncAction(input: KubernetesDeploymentSyncActionRequest): KubernetesDeploymentSyncActionReply
+  kubernetesDeploymentEntityCreateEntity(input: KubernetesDeploymentEntityCreateEntityRequest): KubernetesDeploymentEntityCreateEntityReply
+  kubernetesDeploymentEntityKubernetesObjectEdit(input: KubernetesDeploymentEntityKubernetesObjectEditRequest): KubernetesDeploymentEntityKubernetesObjectEditReply
+  kubernetesDeploymentEntityKubernetesObjectYamlEdit(input: KubernetesDeploymentEntityKubernetesObjectYamlEditRequest): KubernetesDeploymentEntityKubernetesObjectYamlEditReply
+  kubernetesDeploymentEntitySyncAction(input: KubernetesDeploymentEntitySyncActionRequest): KubernetesDeploymentEntitySyncActionReply
 }
 
 type Query {
-  kubernetesDeploymentGetComponent(input: KubernetesDeploymentGetComponentRequest): KubernetesDeploymentGetComponentReply
-  kubernetesDeploymentGetEntity(input: KubernetesDeploymentGetEntityRequest): KubernetesDeploymentGetEntityReply
-  kubernetesDeploymentListComponents(input: KubernetesDeploymentListComponentsRequest): KubernetesDeploymentListComponentsReply
-  kubernetesDeploymentListEntities(input: KubernetesDeploymentListEntitiesRequest): KubernetesDeploymentListEntitiesReply
-  kubernetesDeploymentPickComponent(input: KubernetesDeploymentPickComponentRequest): KubernetesDeploymentPickComponentReply
+  kubernetesDeploymentComponentGet(input: KubernetesDeploymentComponentGetRequest): KubernetesDeploymentComponentGetReply
+  kubernetesDeploymentComponentList(input: KubernetesDeploymentComponentListRequest): KubernetesDeploymentComponentListReply
+  kubernetesDeploymentComponentPick(input: KubernetesDeploymentComponentPickRequest): KubernetesDeploymentComponentPickReply
+  kubernetesDeploymentEntityGetEntity(input: KubernetesDeploymentEntityGetEntityRequest): KubernetesDeploymentEntityGetEntityReply
+  kubernetesDeploymentEntityListEntities(input: KubernetesDeploymentEntityListEntitiesRequest): KubernetesDeploymentEntityListEntitiesReply
 }

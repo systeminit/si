@@ -446,6 +446,7 @@ export class EntityObject extends SystemObject {
           name: "name",
           label: "Name",
           options(p) {
+            p.required = true;
             p.universal = true;
           },
         });
@@ -453,6 +454,7 @@ export class EntityObject extends SystemObject {
           name: "displayName",
           label: "Display Name",
           options(p) {
+            p.required = true;
             p.universal = true;
           },
         });
@@ -460,6 +462,7 @@ export class EntityObject extends SystemObject {
           name: "description",
           label: "Description",
           options(p) {
+            p.required = true;
             p.universal = true;
           },
         });
@@ -470,7 +473,7 @@ export class EntityObject extends SystemObject {
             p.universal = true;
           },
         });
-        p.request.properties.addLink({
+        p.reply.properties.addLink({
           name: "entity",
           label: "Entity",
           options(p: PropLink) {
@@ -481,7 +484,7 @@ export class EntityObject extends SystemObject {
             };
           },
         });
-        p.request.properties.addLink({
+        p.reply.properties.addLink({
           name: "entityEvent",
           label: "Entity Event",
           options(p: PropLink) {

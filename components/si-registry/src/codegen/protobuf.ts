@@ -74,11 +74,11 @@ export class ProtobufFormatter {
   protobufImportForProp(prop: Props): string {
     if (prop instanceof PropPrelude.PropLink) {
       const propOwner = prop.lookupObject();
-      let pathName = "si.";
+      let pathName = "si-registry/proto/si.";
       if (propOwner.serviceName) {
-        pathName = pathName + snakeCase(propOwner.serviceName);
+        pathName = pathName + snakeCase(propOwner.serviceName) + ".proto";
       } else {
-        pathName = pathName + snakeCase(propOwner.typeName);
+        pathName = pathName + snakeCase(propOwner.typeName) + ".proto";
       }
       return pathName;
     } else {
@@ -94,17 +94,21 @@ export class ProtobufFormatter {
     } else if (prop instanceof PropPrelude.PropEnum) {
       return `${pascalCase(prop.parentName)}${pascalCase(prop.name)}`;
     } else if (prop instanceof PropPrelude.PropLink) {
-      const propOwner = prop.lookupObject();
       const realProp = prop.lookupMyself();
-      let pathName = "si.";
-      if (propOwner.serviceName) {
-        pathName = pathName + snakeCase(propOwner.serviceName);
+      if (realProp instanceof PropPrelude.PropObject) {
+        const propOwner = prop.lookupObject();
+        let pathName = "si.";
+        if (propOwner.serviceName) {
+          pathName = pathName + snakeCase(propOwner.serviceName);
+        } else {
+          pathName = pathName + snakeCase(propOwner.typeName);
+        }
+        return `${pathName}.${pascalCase(realProp.parentName)}${pascalCase(
+          realProp.name,
+        )}`;
       } else {
-        pathName = pathName + snakeCase(propOwner.typeName);
+        return this.protobufTypeForProp(realProp);
       }
-      return `${pathName}.${pascalCase(realProp.parentName)}${pascalCase(
-        realProp.name,
-      )}`;
     } else if (prop instanceof PropPrelude.PropMap) {
       return "map<string, string>";
     } else if (prop instanceof PropPrelude.PropNumber) {
@@ -228,9 +232,16 @@ export class ProtobufFormatter {
     for (const prop of props) {
       if (prop.kind() == "link") {
         const importPath = this.protobufImportForProp(prop);
-        if (importPath && !importPath.startsWith(this.protobufPackageName())) {
+        if (
+          importPath &&
+          !importPath.startsWith(
+            `si-registry/proto/${this.protobufPackageName()}`,
+          )
+        ) {
           result.add(importPath);
         }
+      } else {
+        result.add("google/protobuf/wrappers.proto");
       }
 
       if (this.recurseKinds.includes(prop.kind())) {

@@ -5,7 +5,8 @@
 syntax = "proto3";
 
 package si.kubernetes;
-import "si.data";
+import "google/protobuf/wrappers.proto";
+import "si-registry/proto/si.data.proto";
 service Kubernetes {
   rpc KubernetesDeploymentComponentGet(KubernetesDeploymentComponentGetRequest) returns (KubernetesDeploymentComponentGetReply);
   rpc KubernetesDeploymentComponentList(KubernetesDeploymentComponentListRequest) returns (KubernetesDeploymentComponentListReply);
@@ -74,7 +75,7 @@ message KubernetesDeploymentComponentListRequest {
   si.data.DataQuery query = 1;
   google.protobuf.UInt32Value page_size = 2;
   google.protobuf.StringValue order_by = 3;
-  si.data.DataPageTokenOrderByDirection order_by_direction = 4;
+  DataPageTokenOrderByDirection order_by_direction = 4;
   google.protobuf.StringValue page_token = 5;
   google.protobuf.StringValue scope_by_tenant_id = 6;
 }
@@ -124,16 +125,16 @@ message KubernetesDeploymentEntityCreateEntityRequest {
   google.protobuf.StringValue display_name = 4;
   google.protobuf.StringValue description = 5;
   google.protobuf.StringValue workspace_id = 6;
-  si.kubernetes.KubernetesDeploymentEntity entity = 7;
-  si.kubernetes.KubernetesDeploymentEntityEvent entity_event = 8;
 }
 message KubernetesDeploymentEntityCreateEntityReply {
+  si.kubernetes.KubernetesDeploymentEntity entity = 1;
+  si.kubernetes.KubernetesDeploymentEntityEvent entity_event = 2;
 }
 message KubernetesDeploymentEntityListEntitiesRequest {
   si.data.DataQuery query = 1;
   google.protobuf.UInt32Value page_size = 2;
   google.protobuf.StringValue order_by = 3;
-  si.data.DataPageTokenOrderByDirection order_by_direction = 4;
+  DataPageTokenOrderByDirection order_by_direction = 4;
   google.protobuf.StringValue page_token = 5;
   google.protobuf.StringValue scope_by_tenant_id = 6;
   si.kubernetes.KubernetesDeploymentEntity items = 7;
@@ -163,7 +164,7 @@ message KubernetesDeploymentEntityKubernetesObjectEditReply {
 }
 message KubernetesDeploymentEntityKubernetesObjectYamlEditRequest {
   google.protobuf.StringValue entity_id = 1001;
-  si.kubernetes.KubernetesObjectYaml property = 1002;
+  google.protobuf.StringValue property = 1002;
 }
 message KubernetesDeploymentEntityKubernetesObjectYamlEditReply {
   si.kubernetes.KubernetesDeploymentEntityEvent entity_event = 1;

@@ -5,7 +5,7 @@
 syntax = "proto3";
 
 package si.data;
-// No Imports
+import "google/protobuf/wrappers.proto";
 // No Services
 message DataStorable {
   repeated google.protobuf.StringValue tenant_ids = 1;

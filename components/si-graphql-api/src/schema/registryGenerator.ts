@@ -1,12 +1,12 @@
 import { Metadata } from "grpc";
 import {
   registry,
-  Component,
   Props,
   PropMethod,
   PropAction,
   PropObject,
   PropLink,
+  ObjectTypes,
 } from "si-registry";
 import {
   arg,
@@ -59,34 +59,22 @@ export class SiRegistryGenerator {
   //    * If generating a mutation, create the mapping input types
   generate(): void {
     logger.debug("*** Starting GraphQL API Generation ***");
-    for (const component of registry.components) {
+    for (const systemObject of registry.objects) {
       logger.debug(
-        `*** Generating objects for component ${component.typeName} ***`,
+        `*** Generating GraphQL Types for ${systemObject.typeName} ***`,
       );
-      this.generateComponent(component);
+      this.generateComponent(systemObject);
       logger.debug(
-        `*** Generating methods for component ${component.typeName} ***`,
+        `*** Generating GraphQL Queries and Mutations for ${systemObject.typeName} ***`,
       );
-      this.generateMethods(component);
+      this.generateMethods(systemObject);
     }
   }
 
-  generateMethods(component: Component): void {
-    for (const method of component.componentMethods.attrs) {
-      if (method.kind() == "method" || method.kind() == "action") {
-        // @ts-ignore
-        this.generateQueryOrMutationField(method, component, method.mutation);
-      }
-    }
-    for (const method of component.entityMethods.attrs) {
-      if (method.kind() == "method" || method.kind() == "action") {
-        // @ts-ignore
-        this.generateQueryOrMutationField(method, component, method.mutation);
-      }
-    }
-    for (const method of component.entityActions.attrs) {
-      if (method.kind() == "method" || method.kind() == "action") {
-        // @ts-ignore
+  generateMethods(component: ObjectTypes): void {
+    for (const method of component.methods.attrs) {
+      if (method instanceof PropMethod || method instanceof PropAction) {
+        console.log(`generating method ${method.componentTypeName}`);
         this.generateQueryOrMutationField(method, component, method.mutation);
       }
     }
@@ -118,21 +106,33 @@ export class SiRegistryGenerator {
 
     for (const cp of iteratorField) {
       if (cp.kind() == "object" || cp.kind() == "link") {
-        if (!this.typesCache[cp.graphqlTypeName(true)]) {
-          this.typesCache[cp.graphqlTypeName(true)] = true;
+        if (!this.typesCache[this.graphqlTypeName(cp, true)]) {
+          this.typesCache[this.graphqlTypeName(cp, true)] = true;
           this.generateInputObjectTypes(cp);
         } else {
-          this.typesCache[cp.graphqlTypeName(true)];
+          this.typesCache[this.graphqlTypeName(cp, true)];
         }
       }
     }
   }
 
+  graphqlTypeName(prop: Props, inputType?: boolean): string {
+    let request = "";
+    if (inputType) {
+      request = "Request";
+    }
+    return `${pascalCase(prop.parentName)}${pascalCase(prop.name)}${request}`;
+  }
+
+  graphqlFieldName(prop: Props): string {
+    return `${camelCase(prop.name)}`;
+  }
+
   generateInputTypes(
     prop: PropMethod | PropAction,
-    _component: Component,
+    _component: ObjectTypes,
   ): void {
-    for (const rp of prop.request.attrs) {
+    for (const rp of prop.request.properties.attrs) {
       if (rp.kind() == "object" || rp.kind() == "link") {
         // @ts-ignore
         this.generateInputObjectTypes(rp);
@@ -142,39 +142,39 @@ export class SiRegistryGenerator {
 
   generateQueryOrMutationField(
     prop: PropMethod | PropAction,
-    component: Component,
+    component: ObjectTypes,
     mutation = false,
   ): void {
     // eslint-disable-next-line
     const thisGenerator = this;
 
-    if (!this.typesCache[prop.graphqlTypeName(true)]) {
+    if (!this.typesCache[this.graphqlTypeName(prop, true)]) {
       this.generateInputTypes(prop, component);
 
       const request = inputObjectType({
-        name: `${prop.graphqlTypeName(true)}`,
+        name: `${this.graphqlTypeName(prop, true)}`,
         description: `${prop.label} Request`,
         definition(t) {
-          for (const rp of prop.request.attrs) {
+          for (const rp of prop.request.properties.attrs) {
             thisGenerator.propAsType(rp, { nexusTypeDef: t, inputType: true });
           }
         },
       });
-      this.typesCache[prop.graphqlTypeName(true)] = true;
+      this.typesCache[this.graphqlTypeName(prop, true)] = true;
       this.types.push(request);
     }
 
-    if (!this.typesCache[`${prop.graphqlTypeName()}Reply`]) {
+    if (!this.typesCache[`${this.graphqlTypeName(prop)}Reply`]) {
       const reply = objectType({
-        name: `${prop.graphqlTypeName()}Reply`,
+        name: `${this.graphqlTypeName(prop)}Reply`,
         description: `${prop.label} Reply`,
         definition(t) {
-          for (const rp of prop.reply.attrs) {
+          for (const rp of prop.reply.properties.attrs) {
             thisGenerator.propAsType(rp, { nexusTypeDef: t, inputType: false });
           }
         },
       });
-      this.typesCache[`${prop.graphqlTypeName()}Reply`] = true;
+      this.typesCache[`${this.graphqlTypeName(prop)}Reply`] = true;
       this.types.push(reply);
     }
 
@@ -184,12 +184,12 @@ export class SiRegistryGenerator {
       addField = mutationField;
     }
     // @ts-ignore
-    const query = addField(camelCase(prop.graphqlTypeName()), {
+    const query = addField(camelCase(this.graphqlTypeName(prop)), {
       // @ts-ignore
-      type: `${prop.graphqlTypeName()}Reply`,
+      type: `${this.graphqlTypeName(prop)}Reply`,
       args: {
         // @ts-ignore
-        input: arg({ type: prop.graphqlTypeName(true) }),
+        input: arg({ type: this.graphqlTypeName(prop, true) }),
       },
       async resolve(
         _root,
@@ -236,10 +236,10 @@ export class SiRegistryGenerator {
     // eslint-disable-next-line
     input: Record<string, any>,
     prop: PropMethod | PropAction,
-    component: Component,
+    component: ObjectTypes,
     // eslint-disable-next-line
   ): Record<string, any> {
-    for (const p of prop.request.attrs) {
+    for (const p of prop.request.properties.attrs) {
       if (input[p.graphqlFieldName()] == undefined) {
         continue;
       }
@@ -256,13 +256,13 @@ export class SiRegistryGenerator {
     // eslint-disable-next-line
     input: any,
     prop: Props,
-    component: Component,
+    component: ObjectTypes,
     ignoreRepeated = false,
     // eslint-disable-next-line
   ): any {
     if (prop.repeated && !ignoreRepeated) {
       const newArrayValues = [];
-      for (const fieldValue in input[prop.graphqlFieldName()]) {
+      for (const fieldValue in input[this.graphqlFieldName(prop)]) {
         newArrayValues.push(
           this.transformGraphqlFieldToGrpc(fieldValue, prop, component, true),
         );
@@ -280,9 +280,9 @@ export class SiRegistryGenerator {
     } else if (prop.kind() == "map") {
       const newMap = {};
       if (!Array.isArray(input)) {
-        throw `Cannot generate GRPC call; map type value is not an array ${prop.graphqlFieldName()}: ${JSON.stringify(
-          input,
-        )}`;
+        throw `Cannot generate GRPC call; map type value is not an array ${this.graphqlFieldName(
+          prop,
+        )}: ${JSON.stringify(input)}`;
       }
       for (const entry of input) {
         newMap[entry.key] = { value: entry.value };
@@ -291,11 +291,11 @@ export class SiRegistryGenerator {
     } else if (prop.kind() == "object") {
       // @ts-ignore
       for (const internalProp of prop.properties.attrs) {
-        if (input[internalProp.graphqlFieldName()] != undefined) {
+        if (input[this.graphqlFieldName(internalProp)] != undefined) {
           input[
-            internalProp.graphqlFieldName()
+            this.graphqlFieldName(internalProp)
           ] = this.transformGraphqlFieldToGrpc(
-            input[internalProp.graphqlFieldName()],
+            input[this.graphqlFieldName(internalProp)],
             internalProp,
             component,
           );
@@ -310,23 +310,13 @@ export class SiRegistryGenerator {
         prop.lookupMyself(),
         component,
       );
-    } else if (prop.kind() == "constraints") {
-      return this.transformGraphqlFieldToGrpc(
-        input,
-        component.asConstraints(),
-        component,
-      );
-    } else if (prop.kind() == "properties") {
-      return this.transformGraphqlFieldToGrpc(
-        input,
-        component.asProperties(),
-        component,
-      );
     } else if (prop.kind() == "enum") {
       return input;
     } else {
       console.log(
-        `I don't know what you are: ${prop.graphqlFieldName()}, kind: ${prop.kind()}`,
+        `I don't know what you are: ${this.graphqlFieldName(
+          prop,
+        )}, kind: ${prop.kind()}`,
       );
     }
     return input;
@@ -338,15 +328,15 @@ export class SiRegistryGenerator {
     // eslint-disable-next-line
     input: Record<string, any>,
     prop: PropMethod | PropAction,
-    component: Component,
+    component: ObjectTypes,
     // eslint-disable-next-line
   ): Record<string, any> {
-    for (const p of prop.reply.attrs) {
-      if (input[p.graphqlFieldName()] == undefined) {
+    for (const p of prop.reply.properties.attrs) {
+      if (input[this.graphqlFieldName(p)] == undefined) {
         continue;
       }
-      input[p.graphqlFieldName()] = this.transformGrpcFieldToGraphql(
-        input[p.graphqlFieldName()],
+      input[this.graphqlFieldName(p)] = this.transformGrpcFieldToGraphql(
+        input[this.graphqlFieldName(p)],
         p,
         component,
       );
@@ -358,13 +348,13 @@ export class SiRegistryGenerator {
     // eslint-disable-next-line
     input: any,
     prop: Props,
-    component: Component,
+    component: ObjectTypes,
     ignoreRepeated = false,
     // eslint-disable-next-line
   ): any {
     if (prop.repeated && !ignoreRepeated) {
       const newArrayValues = [];
-      for (const fieldValue in input[prop.graphqlFieldName()]) {
+      for (const fieldValue in input[this.graphqlFieldName(prop)]) {
         newArrayValues.push(
           this.transformGrpcFieldToGraphql(fieldValue, prop, component, true),
         );
@@ -386,11 +376,11 @@ export class SiRegistryGenerator {
     } else if (prop.kind() == "object") {
       // @ts-ignore
       for (const internalProp of prop.properties.attrs) {
-        if (input[internalProp.graphqlFieldName()] != undefined) {
+        if (input[this.graphqlFieldName(internalProp)] != undefined) {
           input[
-            internalProp.graphqlFieldName()
+            this.graphqlFieldName(internalProp)
           ] = this.transformGrpcFieldToGraphql(
-            input[internalProp.graphqlFieldName()],
+            input[this.graphqlFieldName(internalProp)],
             internalProp,
             component,
           );
@@ -405,35 +395,13 @@ export class SiRegistryGenerator {
         prop.lookupMyself(),
         component,
       );
-    } else if (prop.kind() == "constraints") {
-      return this.transformGrpcFieldToGraphql(
-        input,
-        component.asConstraints(),
-        component,
-      );
-    } else if (prop.kind() == "properties") {
-      return this.transformGrpcFieldToGraphql(
-        input,
-        component.asProperties(),
-        component,
-      );
-    } else if (prop.kind() == "entity") {
-      return this.transformGrpcFieldToGraphql(
-        input,
-        component.asEntity(),
-        component,
-      );
-    } else if (prop.kind() == "entityEvent") {
-      return this.transformGrpcFieldToGraphql(
-        input,
-        component.asEntityEvent(),
-        component,
-      );
     } else if (prop.kind() == "enum") {
       return input;
     } else {
       console.log(
-        `I don't know what you are: ${prop.graphqlFieldName()}, kind: ${prop.kind()}`,
+        `I don't know what you are: ${this.graphqlFieldName(
+          prop,
+        )}, kind: ${prop.kind()}`,
       );
     }
     return input;
@@ -445,16 +413,16 @@ export class SiRegistryGenerator {
     };
     if (nexusTypeDef) {
       if (prop.repeated) {
-        if (prop.graphqlFieldName() == "id") {
-          nexusTypeDef.list.id(prop.graphqlFieldName(), fieldConfig);
+        if (this.graphqlFieldName(prop) == "id") {
+          nexusTypeDef.list.id(this.graphqlFieldName(prop), fieldConfig);
         } else {
-          nexusTypeDef.list.string(prop.graphqlFieldName(), fieldConfig);
+          nexusTypeDef.list.string(this.graphqlFieldName(prop), fieldConfig);
         }
       } else {
-        if (prop.graphqlFieldName() == "id") {
-          nexusTypeDef.id(prop.graphqlFieldName(), fieldConfig);
+        if (this.graphqlFieldName(prop) == "id") {
+          nexusTypeDef.id(this.graphqlFieldName(prop), fieldConfig);
         } else {
-          nexusTypeDef.string(prop.graphqlFieldName(), fieldConfig);
+          nexusTypeDef.string(this.graphqlFieldName(prop), fieldConfig);
         }
       }
     }
@@ -466,9 +434,9 @@ export class SiRegistryGenerator {
     };
     if (nexusTypeDef) {
       if (prop.repeated) {
-        nexusTypeDef.list.int(prop.graphqlFieldName(), fieldConfig);
+        nexusTypeDef.list.int(this.graphqlFieldName(prop), fieldConfig);
       } else {
-        nexusTypeDef.int(prop.graphqlFieldName(), fieldConfig);
+        nexusTypeDef.int(this.graphqlFieldName(prop), fieldConfig);
       }
     }
   }
@@ -487,16 +455,16 @@ export class SiRegistryGenerator {
       if (realProp.kind() == "object") {
         if (prop.repeated) {
           // @ts-ignore
-          nexusTypeDef.list.field(prop.graphqlFieldName(), {
+          nexusTypeDef.list.field(this.graphqlFieldName(prop), {
             // @ts-ignore
-            type: realProp.graphqlTypeName(inputType),
+            type: this.graphqlTypeName(realProp, inputType),
             ...fieldConfig,
           });
         } else {
           // @ts-ignore
-          nexusTypeDef.list.field(prop.graphqlFieldName(), {
+          nexusTypeDef.list.field(this.graphqlFieldName(prop), {
             // @ts-ignore
-            type: realProp.graphqlTypeName(inputType),
+            type: this.graphqlTypeName(realProp, inputType),
             ...fieldConfig,
           });
         }
@@ -507,14 +475,14 @@ export class SiRegistryGenerator {
       } else if (realProp.kind() == "enum") {
         if (prop.repeated) {
           // @ts-ignore
-          nexusTypeDef.list.field(prop.graphqlFieldName(), {
-            type: realProp.graphqlTypeName(),
+          nexusTypeDef.list.field(this.graphqlFieldName(prop), {
+            type: this.graphqlTypeName(realProp),
             ...fieldConfig,
           });
         } else {
           // @ts-ignore
-          nexusTypeDef.field(prop.graphqlFieldName(), {
-            type: realProp.graphqlTypeName(),
+          nexusTypeDef.field(this.graphqlFieldName(prop), {
+            type: this.graphqlTypeName(realProp),
             ...fieldConfig,
           });
         }
@@ -527,10 +495,10 @@ export class SiRegistryGenerator {
       }
     } else if (inputType) {
       if (realProp.kind() == "object") {
-        if (this.loopDetector[realProp.graphqlTypeName(inputType)]) {
+        if (this.loopDetector[this.graphqlTypeName(realProp, inputType)]) {
           return;
         }
-        this.loopDetector[realProp.graphqlTypeName(inputType)] = true;
+        this.loopDetector[this.graphqlTypeName(realProp, inputType)] = true;
         this.propAsType(realProp, { inputType });
       }
     }
@@ -542,9 +510,9 @@ export class SiRegistryGenerator {
     };
     if (nexusTypeDef) {
       if (prop.repeated) {
-        nexusTypeDef.list.boolean(prop.graphqlFieldName(), fieldConfig);
+        nexusTypeDef.list.boolean(this.graphqlFieldName(prop), fieldConfig);
       } else {
-        nexusTypeDef.boolean(prop.graphqlFieldName(), fieldConfig);
+        nexusTypeDef.boolean(this.graphqlFieldName(prop), fieldConfig);
       }
     }
   }
@@ -556,26 +524,26 @@ export class SiRegistryGenerator {
     if (nexusTypeDef) {
       if (prop.repeated) {
         // @ts-ignore
-        nexusTypeDef.list.field(prop.graphqlFieldName(), {
+        nexusTypeDef.list.field(this.graphqlFieldName(prop), {
           // @ts-ignore
-          type: prop.graphqlTypeName(),
+          type: this.graphqlTypeName(prop),
           ...fieldConfig,
         });
       } else {
         // @ts-ignore
-        nexusTypeDef.field(prop.graphqlFieldName(), {
+        nexusTypeDef.field(this.graphqlFieldName(prop), {
           // @ts-ignore
-          type: prop.graphqlTypeName(),
+          type: this.graphqlTypeName(prop),
           ...fieldConfig,
         });
       }
     } else {
-      if (this.typesCache[prop.graphqlTypeName()]) {
+      if (this.typesCache[this.graphqlTypeName(prop)]) {
         return;
       }
-      this.typesCache[prop.graphqlTypeName()] = true;
+      this.typesCache[this.graphqlTypeName(prop)] = true;
       const et = enumType({
-        name: prop.graphqlTypeName(),
+        name: this.graphqlTypeName(prop),
         description: prop.label,
         // @ts-ignore
         members: prop.variants.map((v: string) => constantCase(v)),
@@ -595,22 +563,22 @@ export class SiRegistryGenerator {
     if (nexusTypeDef) {
       if (prop.repeated) {
         // @ts-ignore
-        nexusTypeDef.list.field(prop.graphqlFieldName(), {
+        nexusTypeDef.list.field(this.graphqlFieldName(prop), {
           // @ts-ignore
-          type: prop.graphqlTypeName(inputType),
+          type: this.graphqlTypeName(prop, inputType),
           ...fieldConfig,
         });
       } else {
         // @ts-ignore
-        nexusTypeDef.field(prop.graphqlFieldName(), {
+        nexusTypeDef.field(this.graphqlFieldName(prop), {
           // @ts-ignore
-          type: prop.graphqlTypeName(inputType),
+          type: this.graphqlTypeName(prop, inputType),
           ...fieldConfig,
         });
       }
     }
 
-    if (this.typesCache[prop.graphqlTypeName(inputType)]) {
+    if (this.typesCache[this.graphqlTypeName(prop, inputType)]) {
       return;
     }
 
@@ -642,26 +610,26 @@ export class SiRegistryGenerator {
       }
     }
 
-    if (!this.typesCache[prop.graphqlTypeName(inputType)]) {
+    if (!this.typesCache[this.graphqlTypeName(prop, inputType)]) {
       let createType = objectType;
       if (inputType) {
         // @ts-ignore
         createType = inputObjectType;
       }
       const ot = createType({
-        name: prop.graphqlTypeName(inputType),
+        name: this.graphqlTypeName(prop, inputType),
         definition(t) {
           // @ts-ignore
           for (const p of prop.properties.attrs) {
             if (p.kind() == "object") {
               if (p.repeated) {
-                t.list.field(p.graphqlFieldName(), {
-                  type: p.graphqlTypeName(inputType),
+                t.list.field(thisGenerator.graphqlFieldName(p), {
+                  type: thisGenerator.graphqlTypeName(p, inputType),
                   ...fieldConfig,
                 });
               } else {
-                t.field(p.graphqlFieldName(), {
-                  type: p.graphqlTypeName(inputType),
+                t.field(thisGenerator.graphqlFieldName(p), {
+                  type: thisGenerator.graphqlTypeName(p, inputType),
                   ...fieldConfig,
                 });
               }
@@ -671,7 +639,7 @@ export class SiRegistryGenerator {
           }
         },
       });
-      this.typesCache[prop.graphqlTypeName(inputType)] = true;
+      this.typesCache[this.graphqlTypeName(prop, inputType)] = true;
       this.types.push(ot);
     }
   }
@@ -687,21 +655,21 @@ export class SiRegistryGenerator {
     if (nexusTypeDef) {
       if (prop.repeated) {
         // @ts-ignore
-        nexusTypeDef.list.field(prop.graphqlFieldName(), {
+        nexusTypeDef.list.field(this.graphqlFieldName(prop), {
           // @ts-ignore
-          type: prop.graphqlTypeName(inputType),
+          type: this.graphqlTypeName(prop, inputType),
           ...fieldConfig,
         });
       } else {
         // @ts-ignore
-        nexusTypeDef.field(prop.graphqlFieldName(), {
+        nexusTypeDef.field(this.graphqlFieldName(prop), {
           // @ts-ignore
-          type: prop.graphqlTypeName(inputType),
+          type: this.graphqlTypeName(prop, inputType),
           ...fieldConfig,
         });
       }
     } else {
-      if (!this.typesCache[prop.graphqlTypeName(inputType)]) {
+      if (!this.typesCache[this.graphqlTypeName(prop, inputType)]) {
         // eslint-disable-next-line
         let typeFun: any;
         if (inputType) {
@@ -710,7 +678,7 @@ export class SiRegistryGenerator {
           typeFun = objectType;
         }
         const mapType = typeFun({
-          name: prop.graphqlTypeName(inputType),
+          name: this.graphqlTypeName(prop, inputType),
           description: prop.label,
           // eslint-disable-next-line
           definition(mapt: any) {
@@ -718,7 +686,7 @@ export class SiRegistryGenerator {
             mapt.string("value");
           },
         });
-        this.typesCache[prop.graphqlTypeName(inputType)] = true;
+        this.typesCache[this.graphqlTypeName(prop, inputType)] = true;
         this.types.push(mapType);
       }
     }
@@ -744,39 +712,9 @@ export class SiRegistryGenerator {
       this.enumField(prop, { nexusTypeDef, inputType });
     } else if (prop.kind() == "map") {
       this.transformMapField(prop, { nexusTypeDef, inputType });
-    } else if (
-      prop.kind() == "constraints" ||
-      prop.kind() == "entity" ||
-      prop.kind() == "entityEvent" ||
-      prop.kind() == "component" ||
-      prop.kind() == "properties"
-    ) {
-      this.existingField(prop, { nexusTypeDef, inputType });
-    }
-  }
-
-  existingField(
-    prop: Props,
-    { nexusTypeDef, inputType }: NexusBlockOptions,
-  ): void {
-    const fieldConfig = {
-      description: prop.label,
-    };
-
-    if (nexusTypeDef) {
-      if (prop.repeated) {
-        // @ts-ignore
-        nexusTypeDef.list.field(prop.graphqlFieldName(), {
-          type: prop.graphqlTypeName(inputType),
-          ...fieldConfig,
-        });
-      } else {
-        // @ts-ignore
-        nexusTypeDef.field(prop.graphqlFieldName(), {
-          type: prop.graphqlTypeName(inputType),
-          ...fieldConfig,
-        });
-      }
+    } else {
+      console.dir(prop);
+      throw `Cannot transform this prop to a graphql type - bug: ${prop.kind()}`;
     }
   }
 
@@ -791,55 +729,51 @@ export class SiRegistryGenerator {
     if (nexusTypeDef) {
       if (prop.repeated) {
         // @ts-ignore
-        nexusTypeDef.list.field(prop.graphqlFieldName(), {
-          type: prop.graphqlTypeName(inputType),
+        nexusTypeDef.list.field(this.graphqlFieldName(prop), {
+          type: this.graphqlTypeName(prop, inputType),
           ...fieldConfig,
         });
       } else {
         // @ts-ignore
-        nexusTypeDef.field(prop.graphqlFieldName(), {
-          type: prop.graphqlTypeName(inputType),
+        nexusTypeDef.field(this.graphqlFieldName(prop), {
+          type: this.graphqlTypeName(prop, inputType),
           ...fieldConfig,
         });
       }
     }
   }
 
-  generateComponentNoStandard(component: Component): void {
-    for (const prop of component.internalOnly.attrs) {
-      if (prop.kind() != "object") {
-        logger.log(
-          "warn",
-          "Found top level prop whose kind was not object; skipping it!",
-          { prop },
-        );
-        continue;
-      }
-      this.propAsType(prop, { inputType: false });
-    }
-  }
+  //generateComponentNoStandard(component: Component): void {
+  //  for (const prop of component.internalOnly.attrs) {
+  //    if (prop.kind() != "object") {
+  //      logger.log(
+  //        "warn",
+  //        "Found top level prop whose kind was not object; skipping it!",
+  //        { prop },
+  //      );
+  //      continue;
+  //    }
+  //    this.propAsType(prop, { inputType: false });
+  //  }
+  //}
 
-  generateComponentStandard(component: Component): void {
-    // First, you have to catch any objects or enums defined - because if you
-    // don't, they might only be linked in the entity later, and then won't
-    // appear in the API. Sad clown!
-    for (const prop of component.properties.attrs) {
-      if (prop.kind() == "object" || prop.kind() == "enum") {
-        this.propAsType(prop, { inputType: false });
-      }
-    }
-    this.propAsType(component.asComponent(), { inputType: false });
-    this.propAsType(component.asConstraints(), { inputType: true });
-    this.propAsType(component.asProperties(), { inputType: true });
-    this.propAsType(component.asEntity(), { inputType: false });
-    this.propAsType(component.asEntityEvent(), { inputType: false });
-  }
+  //generateComponentStandard(component: Component): void {
+  //  // First, you have to catch any objects or enums defined - because if you
+  //  // don't, they might only be linked in the entity later, and then won't
+  //  // appear in the API. Sad clown!
+  //  for (const prop of component.properties.attrs) {
+  //    if (prop.kind() == "object" || prop.kind() == "enum") {
+  //      this.propAsType(prop, { inputType: false });
+  //    }
+  //  }
+  //  this.propAsType(component.asComponent(), { inputType: false });
+  //  this.propAsType(component.asConstraints(), { inputType: true });
+  //  this.propAsType(component.asProperties(), { inputType: true });
+  //  this.propAsType(component.asEntity(), { inputType: false });
+  //  this.propAsType(component.asEntityEvent(), { inputType: false });
+  //}
 
-  generateComponent(component: Component): void {
-    if (component.noStd) {
-      this.generateComponentNoStandard(component);
-    } else {
-      this.generateComponentStandard(component);
-    }
+  generateComponent(systemObject: ObjectTypes): void {
+    this.propAsType(systemObject.rootProp, { inputType: false });
   }
 }
