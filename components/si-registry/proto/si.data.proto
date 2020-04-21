@@ -58,11 +58,6 @@ message DataQuery {
   google.protobuf.BoolValue is_not = 2;
   repeated si.data.DataQueryItems items = 3;
 }
-message Data {
-  si.data.DataStorable storable = 1;
-  si.data.DataPageToken page_token = 2;
-  si.data.DataQuery query = 1001;
-}
 message ComponentSiProperties {
   google.protobuf.StringValue integration_id = 1;
   google.protobuf.StringValue integration_service_id = 2;

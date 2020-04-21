@@ -101,8 +101,7 @@ export class SystemObject extends BaseObject {
         p.universal = true;
         p.hidden = true;
         p.lookup = {
-          typeName: "data",
-          names: ["storable"],
+          typeName: "dataStorable",
         };
         p.required = true;
       },
@@ -215,8 +214,7 @@ export class ComponentObject extends SystemObject {
           options(p: PropLink) {
             p.universal = true;
             p.lookup = {
-              typeName: "data",
-              names: ["query"],
+              typeName: "dataQuery",
             };
           },
         });
@@ -241,8 +239,8 @@ export class ComponentObject extends SystemObject {
           options(p: PropLink) {
             p.universal = true;
             p.lookup = {
-              typeName: "data",
-              names: ["pageToken", "orderByDirection"],
+              typeName: "dataPageToken",
+              names: ["orderByDirection"],
             };
           },
         });
@@ -300,7 +298,7 @@ export class ComponentObject extends SystemObject {
             p.universal = true;
             p.required = true;
             p.lookup = {
-              typeName: "kubernetesDeploymentComponent",
+              typeName: `${baseTypeName}Component`,
               names: ["constraints"],
             };
           },
@@ -312,7 +310,7 @@ export class ComponentObject extends SystemObject {
             p.universal = true;
             p.required = true;
             p.lookup = {
-              typeName: "kubernetesDeploymentComponent",
+              typeName: `${baseTypeName}Component`,
               names: ["constraints"],
             };
           },
@@ -323,7 +321,7 @@ export class ComponentObject extends SystemObject {
           options(p: PropLink) {
             p.universal = true;
             p.lookup = {
-              typeName: "kubernetesDeploymentComponent",
+              typeName: `${baseTypeName}Component`,
             };
           },
         });
@@ -508,8 +506,7 @@ export class EntityObject extends SystemObject {
           options(p: PropLink) {
             p.universal = true;
             p.lookup = {
-              typeName: "data",
-              names: ["query"],
+              typeName: "dataQuery",
             };
           },
         });
@@ -534,8 +531,8 @@ export class EntityObject extends SystemObject {
           options(p: PropLink) {
             p.universal = true;
             p.lookup = {
-              typeName: "data",
-              names: ["pageToken", "orderByDirection"],
+              typeName: "dataPageToken",
+              names: ["orderByDirection"],
             };
           },
         });

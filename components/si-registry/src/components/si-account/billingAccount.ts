@@ -39,8 +39,7 @@ registry.system({
         p.universal = true;
         p.hidden = true;
         p.lookup = {
-          typeName: "data",
-          names: ["storable"],
+          typeName: "dataStorable",
         };
         p.required = true;
       },
