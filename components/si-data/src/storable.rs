@@ -35,7 +35,7 @@ pub trait Storable {
     }
 }
 
-impl crate::data::DataStorable {
+impl crate::protobuf::DataStorable {
     pub fn new(type_name: impl Into<String>) -> Self {
         Self {
             tenant_ids: Vec::new(),

@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 use serde_cbor;
 use sodiumoxide::crypto::secretbox;
 
-use crate::data::DataPageToken;
 use crate::error::{DataError, Result};
+use crate::protobuf::DataPageToken;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Token {
@@ -20,10 +20,7 @@ impl DataPageToken {
 
         self.encode(&mut buffer)?;
         let ciphertext = secretbox::seal(&buffer, &nonce, &key);
-        let token = Token {
-            nonce: nonce,
-            ciphertext: ciphertext,
-        };
+        let token = Token { nonce, ciphertext };
         let cbordata = serde_cbor::to_vec(&token)?;
         let base64text = base64::encode(&cbordata);
         Ok(base64text)

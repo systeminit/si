@@ -10,10 +10,10 @@ use std::env;
 pub mod common;
 
 use si_data::{
-    data::{
+    error::{DataError, Result},
+    protobuf::{
         DataQuery, DataQueryItems, DataQueryItemsExpression, DataQueryItemsExpressionComparison,
     },
-    error::{DataError, Result},
     Db, ListResult, Storable,
 };
 use si_settings::Settings;
@@ -235,7 +235,7 @@ async fn list() {
     );
     assert_eq!(last_result.page_token(), "");
 
-    // With a DataQuery
+    // With a Query
     let query = Some(DataQuery {
         items: vec![DataQueryItems {
             expression: Some(DataQueryItemsExpression {

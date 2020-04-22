@@ -9,9 +9,9 @@ use tracing::{debug, event, info, span, Level};
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::data::{DataPageToken, DataPageTokenOrderByDirection, DataQuery};
 use crate::error::{DataError, Result};
 use crate::migrateable::Migrateable;
+use crate::protobuf::{DataPageToken, DataPageTokenOrderByDirection, DataQuery};
 use crate::storable::{Reference, Storable};
 
 #[derive(Debug, Deserialize)]
@@ -103,10 +103,10 @@ impl Db {
         };
 
         Ok(Db {
-            cluster: cluster,
-            bucket: bucket,
+            cluster,
+            bucket,
             bucket_name: Arc::new(settings.db.bucket_name.clone()),
-            scan_consistency: scan_consistency,
+            scan_consistency,
             page_secret_key: settings.paging.key.clone(),
         })
     }

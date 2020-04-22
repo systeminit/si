@@ -1,8 +1,8 @@
-pub use crate::data::{
+use crate::error::{DataError, Result};
+pub use crate::protobuf::{
     DataQuery, DataQueryBooleanTerm, DataQueryItems, DataQueryItemsExpression,
     DataQueryItemsExpressionComparison, DataQueryItemsExpressionFieldType,
 };
-use crate::error::{DataError, Result};
 
 use std::fmt;
 
@@ -132,6 +132,38 @@ impl DataQuery {
                                     value
                                 )
                             };
+                        let value =
+                            match DataQueryItemsExpressionFieldType::from_i32(exp.field_type) {
+                                Some(DataQueryItemsExpressionFieldType::Unknown) => {
+                                    json![exp.value]
+                                }
+                                Some(DataQueryItemsExpressionFieldType::String) => json![exp.value],
+                                Some(DataQueryItemsExpressionFieldType::Int) => {
+                                    // Elizabeth Jacob fixed this bug, her first, on 04-13-2020.
+                                    // Good job, Monkey.
+                                    let vint: u64 =
+                                        exp.value.as_ref().unwrap_or(&"".into()).parse()?;
+                                    json![vint]
+                                }
+                                None => return Err(DataError::InvalidFieldType),
+                            };
+                        let expression =
+                            if comparison == DataQueryItemsExpressionComparison::Contains {
+                                format!(
+                                    "ARRAY_CONTAINS({}.[{}], {})",
+                                    bucket_name,
+                                    json![exp.field],
+                                    value
+                                )
+                            } else {
+                                format!(
+                                    "{}.[{}] {} {}",
+                                    bucket_name,
+                                    json![exp.field],
+                                    comparison,
+                                    value
+                                )
+                            };
                         where_string.push_str(&expression);
                     }
                     None => unreachable!(),
@@ -192,7 +224,7 @@ impl DataQueryItems {
 #[cfg(test)]
 mod query_test {
 
-    use crate::data::{
+    use crate::query::{
         DataQuery, DataQueryBooleanTerm, DataQueryItems, DataQueryItemsExpression,
         DataQueryItemsExpressionComparison, DataQueryItemsExpressionFieldType,
     };
