@@ -7,6 +7,7 @@ import { PropMap } from "./prop/map";
 import { PropEnum } from "./prop/enum";
 import { PropBool } from "./prop/bool";
 import { PropLink } from "./prop/link";
+import { PropPassword } from "./prop/password";
 
 import { pascalCase, camelCase } from "change-case";
 
@@ -14,6 +15,7 @@ import { registry } from "./registry";
 
 export type Props =
   | PropText
+  | PropPassword
   | PropSelect
   | PropCode
   | PropNumber
@@ -70,8 +72,12 @@ export class AttrList {
     return this.attrs;
   }
 
-  getEntry(name: string): Props | undefined {
-    return this.attrs.find(e => e.name == name);
+  getEntry(name: string): Props {
+    const result = this.attrs.find(e => e.name == name);
+    if (result == undefined) {
+      throw `Cannot find property ${name} for ${this.componentTypeName}`;
+    }
+    return result;
   }
 
   createValueObject(defaultValues?: PropDefaultValues): PropDefaultValues {
@@ -127,6 +133,12 @@ export class AttrList {
   addText(addArgs: AddArguments): void {
     addArgs.componentTypeName = this.componentTypeName;
     const p = new PropText(addArgs as PropConstructor);
+    this.addProp(p, addArgs);
+  }
+
+  addPassword(addArgs: AddArguments): void {
+    addArgs.componentTypeName = this.componentTypeName;
+    const p = new PropPassword(addArgs as PropConstructor);
     this.addProp(p, addArgs);
   }
 

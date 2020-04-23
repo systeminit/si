@@ -12,6 +12,7 @@ export type PropValue =
   | string[]
   | Record<string, any>
   | boolean;
+
 export type PropDefaultValues = {
   [key: string]: PropValue;
 };

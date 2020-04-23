@@ -13,6 +13,7 @@ fn main() {
     let proto_include_path_string = proto_include_path.to_str().unwrap();
 
     tonic_build::configure()
+        .extern_path(".si.data", "::si_data::protobuf")
         .extern_path(".si.account", "::si_account::protobuf")
         .extern_path(".si.cea", "::si_cea::protobuf")
         .extern_path(".si.data", "::si_data::data")

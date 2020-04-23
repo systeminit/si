@@ -15,6 +15,7 @@ registry.base({
         p.hidden = true;
         p.required = true;
         p.universal = true;
+        p.reference = true;
       },
     });
     c.fields.addText({
@@ -25,6 +26,7 @@ registry.base({
         p.hidden = true;
         p.required = true;
         p.universal = true;
+        p.reference = true;
       },
     });
     c.fields.addNumber({

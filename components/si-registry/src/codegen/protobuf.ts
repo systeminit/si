@@ -11,11 +11,11 @@ export class ProtobufFormatter {
 
   recurseKinds = ["object"];
 
-  constructor(systemObject: ObjectTypes[]) {
-    if (systemObject.length == 0) {
+  constructor(systemObjects: ObjectTypes[]) {
+    if (systemObjects.length == 0) {
       throw "You must provide objects to generate";
     }
-    this.systemObjects = systemObject;
+    this.systemObjects = systemObjects;
   }
 
   first(): ObjectTypes {

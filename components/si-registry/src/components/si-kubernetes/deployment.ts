@@ -14,6 +14,11 @@ registry.componentAndEntity({
   siPathName: "si-kubernetes",
   serviceName: "kubernetes",
   options(c) {
+    c.entity.associations.belongsTo({
+      fromFieldPath: ["siProperties", "billingAccountId"],
+      typeName: "billingAccount",
+    });
+
     // Constraints
     c.constraints.addEnum({
       name: "kubernetesVersion",
@@ -85,6 +90,7 @@ registry.componentAndEntity({
         });
       },
     });
+
     c.properties.addCode({
       name: "kubernetesObjectYaml",
       label: "Kubernetes Object YAML",

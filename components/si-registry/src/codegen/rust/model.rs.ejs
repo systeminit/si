@@ -1,0 +1,10 @@
+// Auth-generated code!
+// No touchy!
+
+use si_data;
+use uuid;
+
+<%- include('storable.rs.ejs', { fmt: fmt }) %> 
+<%_ if (fmt.hasCreateMethod()) { _%>
+<%- include('implCreate.rs.ejs', { fmt: fmt }) %>
+<%_ } _%>

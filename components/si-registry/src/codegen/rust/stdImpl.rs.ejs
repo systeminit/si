@@ -1,0 +1,20 @@
+impl <%- fmt.structName() %> {
+    pub fn new(req: &CreateBillingAccountRequest) -> Result<BillingAccount> {
+        if req.short_name == "" {
+            return Err(AccountError::InvalidMissingShortName);
+        }
+        let display_name = if req.display_name == "" {
+            req.short_name.clone()
+        } else {
+            req.display_name.clone()
+        };
+
+        Ok(BillingAccount {
+            short_name: req.short_name.clone(),
+            display_name: display_name,
+            ..Default::default()
+        })
+    }
+}
+
+

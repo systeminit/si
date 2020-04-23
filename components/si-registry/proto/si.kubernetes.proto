@@ -12,10 +12,10 @@ service Kubernetes {
   rpc KubernetesDeploymentComponentGet(KubernetesDeploymentComponentGetRequest) returns (KubernetesDeploymentComponentGetReply);
   rpc KubernetesDeploymentComponentList(KubernetesDeploymentComponentListRequest) returns (KubernetesDeploymentComponentListReply);
   rpc KubernetesDeploymentComponentPick(KubernetesDeploymentComponentPickRequest) returns (KubernetesDeploymentComponentPickReply);
-  rpc KubernetesDeploymentEntityCreateEntity(KubernetesDeploymentEntityCreateEntityRequest) returns (KubernetesDeploymentEntityCreateEntityReply);
-  rpc KubernetesDeploymentEntityListEntities(KubernetesDeploymentEntityListEntitiesRequest) returns (KubernetesDeploymentEntityListEntitiesReply);
-  rpc KubernetesDeploymentEntityGetEntity(KubernetesDeploymentEntityGetEntityRequest) returns (KubernetesDeploymentEntityGetEntityReply);
-  rpc KubernetesDeploymentEntitySyncAction(KubernetesDeploymentEntitySyncActionRequest) returns (KubernetesDeploymentEntitySyncActionReply);
+  rpc KubernetesDeploymentEntityCreate(KubernetesDeploymentEntityCreateRequest) returns (KubernetesDeploymentEntityCreateReply);
+  rpc KubernetesDeploymentEntityList(KubernetesDeploymentEntityListRequest) returns (KubernetesDeploymentEntityListReply);
+  rpc KubernetesDeploymentEntityGet(KubernetesDeploymentEntityGetRequest) returns (KubernetesDeploymentEntityGetReply);
+  rpc KubernetesDeploymentEntitySync(KubernetesDeploymentEntitySyncRequest) returns (KubernetesDeploymentEntitySyncReply);
   rpc KubernetesDeploymentEntityKubernetesObjectEdit(KubernetesDeploymentEntityKubernetesObjectEditRequest) returns (KubernetesDeploymentEntityKubernetesObjectEditReply);
   rpc KubernetesDeploymentEntityKubernetesObjectYamlEdit(KubernetesDeploymentEntityKubernetesObjectYamlEditRequest) returns (KubernetesDeploymentEntityKubernetesObjectYamlEditReply);
   rpc KubernetesDeploymentEntityEventListEntityEvents(KubernetesDeploymentEntityEventListEntityEventsRequest) returns (KubernetesDeploymentEntityEventListEntityEventsReply);
@@ -120,7 +120,7 @@ message KubernetesDeploymentEntity {
   si.kubernetes.KubernetesDeploymentComponentConstraints constraints = 9;
   si.kubernetes.KubernetesDeploymentComponentConstraints implicit_constraints = 10;
 }
-message KubernetesDeploymentEntityCreateEntityRequest {
+message KubernetesDeploymentEntityCreateRequest {
   si.kubernetes.KubernetesDeploymentComponentConstraints constraints = 1;
   si.kubernetes.KubernetesDeploymentEntityProperties properties = 2;
   google.protobuf.StringValue name = 3;
@@ -128,11 +128,11 @@ message KubernetesDeploymentEntityCreateEntityRequest {
   google.protobuf.StringValue description = 5;
   google.protobuf.StringValue workspace_id = 6;
 }
-message KubernetesDeploymentEntityCreateEntityReply {
+message KubernetesDeploymentEntityCreateReply {
   si.kubernetes.KubernetesDeploymentEntity entity = 1;
   si.kubernetes.KubernetesDeploymentEntityEvent entity_event = 2;
 }
-message KubernetesDeploymentEntityListEntitiesRequest {
+message KubernetesDeploymentEntityListRequest {
   si.data.DataQuery query = 1;
   google.protobuf.UInt32Value page_size = 2;
   google.protobuf.StringValue order_by = 3;
@@ -145,16 +145,16 @@ message KubernetesDeploymentEntityListEntitiesReply {
   google.protobuf.UInt32Value total_count = 2;
   google.protobuf.StringValue next_page_token = 3;
 }
-message KubernetesDeploymentEntityGetEntityRequest {
+message KubernetesDeploymentEntityGetRequest {
   google.protobuf.StringValue entity_id = 1;
 }
-message KubernetesDeploymentEntityGetEntityReply {
+message KubernetesDeploymentEntityGetReply {
   si.kubernetes.KubernetesDeploymentEntity entity = 1;
 }
 message KubernetesDeploymentEntitySyncActionRequest {
   google.protobuf.StringValue entity_id = 1;
 }
-message KubernetesDeploymentEntitySyncActionReply {
+message KubernetesDeploymentEntitySyncReply {
   si.kubernetes.KubernetesDeploymentEntityEvent entity_event = 1;
 }
 message KubernetesDeploymentEntityKubernetesObjectEditRequest {

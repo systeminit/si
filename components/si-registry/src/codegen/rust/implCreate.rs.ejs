@@ -1,0 +1,22 @@
+impl <%- fmt.structName() %> {
+  pub fn new(<%- fmt.implCreateNewArgs() %>) -> si_data::Result<<%- fmt.structName() %>> {
+    let mut result_obj = <%- fmt.structName() %> { ..Default::default() };
+    <%- fmt.implCreateSetProperties() %>
+
+  <%_ if (fmt.isStorable()) { _%>
+    let mut si_storable = si_data::protobuf::DataStorable::default();
+    si_storable.tenant_ids = vec![
+      <%- fmt.tenancyVec() %>
+    ];
+    result_obj.si_storable = Some(si_storable);
+  <%_ } _%>
+
+    Ok(result_obj)
+  }
+
+  pub async fn create(db: &si_data::Db, <%- fmt.implCreateNewArgs() %>) -> si_data::Result<<%- fmt.structName() %>> {
+    let mut result_obj = <%- fmt.structName() %>::new(<%- fmt.implCreatePassNewArgs() %>)?;
+    db.validate_and_insert_as_new(&mut result_obj).await?;
+    Ok(result_obj)
+  }
+}

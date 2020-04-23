@@ -1,4 +1,4 @@
 // Auto-generated code!
 // No touchy!
 
-pub mod kubernetes;
+pub mod model;

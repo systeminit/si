@@ -6,7 +6,11 @@ import path from "path";
 import program from "commander";
 import { registry } from "src/registry";
 import { ProtobufFormatter } from "src/codegen/protobuf";
-import { CodegenRust, generateGenMod } from "src/codegen/rust";
+import {
+  CodegenRust,
+  generateGenMod,
+  generateGenModModel,
+} from "src/codegen/rust";
 import Listr, { ListrRendererValue } from "listr";
 import "src/loader";
 import fs from "fs";
@@ -43,12 +47,12 @@ function main(program: program.Command): void {
           return generateProtobuf();
         },
       },
-      //{
-      //  title: `Generating ${chalk.keyword("orange")("Rust")}`,
-      //  task: (): Listr => {
-      //    return generateRust();
-      //  },
-      //},
+      {
+        title: `Generating ${chalk.keyword("orange")("Rust")}`,
+        task: (): Listr => {
+          return generateRust();
+        },
+      },
     ],
     {
       renderer,
@@ -84,56 +88,48 @@ function generateProtobuf(): Listr {
   return new Listr(tasks, { concurrent: true });
 }
 
-//function generateRust(): Listr {
-//  const tasks = [];
-//  const writtenComponents: {
-//    [key: string]: string[];
-//  } = {};
-//
-//  for (const component of registry.components) {
-//    if (component.noStd) {
-//      continue;
-//    }
-//    if (!writtenComponents[component.siPathName]) {
-//      writtenComponents[component.siPathName] = [];
-//    }
-//    writtenComponents[component.siPathName].push(component.typeName);
-//    tasks.push({
-//      title: `Rust for ${chalk.keyword("orange")(component.typeName)}`,
-//      task: (): Listr => {
-//        return new Listr(
-//          [
-//            {
-//              title: `Rust Component ${chalk.keyword("orange")(
-//                component.typeName,
-//              )}`,
-//              task: async (): Promise<void> => {
-//                const cp = new CodegenRust(component);
-//                await cp.generateComponentImpls();
-//              },
-//            },
-//            {
-//              title: `Rust Component ${chalk.keyword("orange")(
-//                component.typeName,
-//              )} mod.rs`,
-//              task: async (): Promise<void> => {
-//                const cp = new CodegenRust(component);
-//                await cp.generateComponentMod();
-//              },
-//            },
-//          ],
-//          { concurrent: true },
-//        );
-//      },
-//    });
-//  }
-//  tasks.push({
-//    title: `Rust $chalk.keyword("orange")("gen/mod.rs")`,
-//    task: async (): Promise<void> => {
-//      await generateGenMod(writtenComponents);
-//    },
-//  });
-//
-//  return new Listr(tasks, { concurrent: true });
-//}
+function generateRust(): Listr {
+  const tasks = [];
+
+  for (const serviceName of registry.serviceNames()) {
+    const codegenRust = new CodegenRust(serviceName);
+    const systemObjects = registry.getObjectsForServiceName(serviceName);
+    if (systemObjects.some(o => o.kind() != "baseObject")) {
+      tasks.push({
+        title: `Rust ${chalk.keyword("orange")(
+          "gen/mod.rs",
+        )} for ${serviceName}`,
+        task: async (): Promise<void> => {
+          await codegenRust.generateGenMod();
+        },
+      });
+
+      tasks.push({
+        title: `Rust ${chalk.keyword("orange")(
+          "gen/model/mod.rs",
+        )} for ${serviceName}`,
+        task: async (): Promise<void> => {
+          await codegenRust.generateGenModelMod();
+        },
+      });
+
+      for (const systemObject of registry.getObjectsForServiceName(
+        serviceName,
+      )) {
+        if (systemObject.kind() != "baseObject") {
+          tasks.push({
+            title: `Rust model ${chalk.keyword("orange")(serviceName)} ${
+              systemObject.typeName
+            }`,
+            task: async (): Promise<void> => {
+              await codegenRust.generateGenModel(systemObject);
+            },
+          });
+        }
+      }
+    }
+  }
+
+  return new Listr(tasks, { concurrent: true });
+}
 

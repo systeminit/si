@@ -7,11 +7,49 @@ syntax = "proto3";
 package si.account;
 import "google/protobuf/wrappers.proto";
 import "si-registry/proto/si.data.proto";
-// No Services
+service Account {
+  rpc BillingAccountCreate(BillingAccountCreateRequest) returns (BillingAccountCreateReply);
+  rpc BillingAccountGet(BillingAccountGetRequest) returns (BillingAccountGetReply);
+  rpc UserCreate(UserCreateRequest) returns (UserCreateReply);
+}
 message BillingAccount {
   google.protobuf.StringValue id = 1;
   google.protobuf.StringValue name = 2;
   google.protobuf.StringValue display_name = 3;
   si.data.DataStorable si_storable = 4;
-  google.protobuf.StringValue short_name = 5;
+}
+message BillingAccountCreateRequest {
+  google.protobuf.StringValue name = 1001;
+  google.protobuf.StringValue display_name = 1002;
+}
+message BillingAccountCreateReply {
+  si.account.BillingAccount billing_account = 1001;
+}
+message BillingAccountGetRequest {
+  google.protobuf.StringValue billing_account_id = 1001;
+}
+message BillingAccountGetReply {
+  si.account.BillingAccount billing_account = 1001;
+}
+message UserSiProperties {
+  google.protobuf.StringValue billing_account_id = 1001;
+}
+message User {
+  google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue name = 2;
+  google.protobuf.StringValue display_name = 3;
+  si.data.DataStorable si_storable = 4;
+  google.protobuf.StringValue email = 5;
+  google.protobuf.StringValue password = 6;
+  si.account.UserSiProperties si_properties = 1001;
+}
+message UserCreateRequest {
+  google.protobuf.StringValue name = 1001;
+  google.protobuf.StringValue display_name = 1002;
+  google.protobuf.StringValue email = 1003;
+  google.protobuf.StringValue password = 1004;
+  google.protobuf.StringValue billing_account_id = 1005;
+}
+message UserCreateReply {
+  si.account.User user = 1001;
 }

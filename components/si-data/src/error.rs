@@ -45,6 +45,12 @@ pub enum DataError {
     ValidationError(String),
     #[error("a protobuf field was required, and it was absent: {0})")]
     RequiredField(String),
+    #[error("cannot encrypt an empty password")]
+    EmptyPassword,
+    #[error("failed to hash a password")]
+    PasswordHash,
+    #[error("UTF-8 String conversion error")]
+    Utf8(#[from] std::str::Utf8Error),
 }
 
 impl From<DataError> for tonic::Status {

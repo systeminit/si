@@ -6,10 +6,12 @@ pub mod db;
 pub mod error;
 pub mod migrateable;
 pub mod page_token;
+pub mod password;
 pub mod query;
 pub mod storable;
 
 pub use db::{Db, ListResult};
+pub use error::{DataError, Result};
 pub use migrateable::Migrateable;
 pub use query::{
     DataQuery, DataQueryBooleanTerm, DataQueryItems, DataQueryItemsExpression,

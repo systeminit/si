@@ -7,6 +7,8 @@ import {
   PropObject,
   PropLink,
   ObjectTypes,
+  BelongsTo,
+  Associations,
 } from "si-registry";
 import {
   arg,
@@ -19,7 +21,11 @@ import {
   mutationField,
 } from "nexus";
 import { logger } from "@/logger";
-import { ObjectDefinitionBlock, InputDefinitionBlock } from "nexus/dist/core";
+import {
+  ObjectDefinitionBlock,
+  InputDefinitionBlock,
+  extendType,
+} from "nexus/dist/core";
 import { camelCase, pascalCase, constantCase } from "change-case";
 import { Context } from "@/index";
 import { AuthenticationError } from "apollo-server";
@@ -32,6 +38,11 @@ interface NexusBlockOptions {
 type NexusTypeDefBlock =
   | ObjectDefinitionBlock<string>
   | InputDefinitionBlock<string>;
+
+interface FieldConfig {
+  description: string;
+  nullable?: boolean;
+}
 
 export class SiRegistryGenerator {
   // eslint-disable-next-line
@@ -68,6 +79,113 @@ export class SiRegistryGenerator {
         `*** Generating GraphQL Queries and Mutations for ${systemObject.typeName} ***`,
       );
       this.generateMethods(systemObject);
+      logger.debug(
+        `*** Generating Associations for ${systemObject.typeName} ***`,
+      );
+      this.generateAssociations(systemObject);
+    }
+  }
+
+  generateAssociations(systemObject: ObjectTypes): void {
+    if (systemObject.associations.all().length == 0) {
+      return;
+    }
+    const thisGenerator = this;
+    const associationTypeName = `${pascalCase(
+      systemObject.typeName,
+    )}Associations`;
+    if (!this.typesCache[associationTypeName]) {
+      const assocType = objectType({
+        name: associationTypeName,
+        description: `${systemObject.displayTypeName} Associations`,
+        definition(t) {
+          for (const association of systemObject.associations.all()) {
+            const returnType = registry.get(association.typeName);
+            const associatedObject = registry.get(association.typeName);
+            const associatedProp = associatedObject.methods.attrs.find(m => {
+              return m.name == association.methodName;
+            });
+            if (!associatedProp) {
+              throw `Cannot find associated method for ${systemObject.typeName} assocation ${association.fieldName}`;
+            }
+
+            if (association instanceof BelongsTo) {
+              // This is a map to the "get" method
+              t.field(association.fieldName, {
+                // @ts-ignore
+                type: pascalCase(association.typeName),
+                description: returnType.displayTypeName,
+                async resolve(_root, _input, context: Context) {
+                  const grpc = context.dataSources.grpc;
+                  const user = context.user;
+                  const associationParent = context.associationParent;
+                  if (!associationParent) {
+                    throw "Cannot load associations without a parent; bug in the root field resolver";
+                  }
+                  if (user.authenticated == false) {
+                    throw new AuthenticationError("Must be logged in");
+                  }
+                  const metadata = new Metadata();
+                  metadata.add("authenticated", `${user.authenticated}`);
+                  metadata.add("userId", user["userId"] || "");
+                  metadata.add(
+                    "billingAccountId",
+                    user["billingAccountId"] || "",
+                  );
+                  const g = grpc.service(systemObject.siPathName);
+
+                  // Get the field from the associationParent
+                  let lookupValue = associationParent;
+                  for (const key of association.fromFieldPath) {
+                    if (lookupValue[key] == undefined) {
+                      console.log("Cannot find field for associations", {
+                        associationParent,
+                        association,
+                        key,
+                      });
+                      throw `Cannot find field ${association.fromFieldPath.join(
+                        ".",
+                      )} on association lookup`;
+                    }
+                    lookupValue = lookupValue[key];
+                  }
+
+                  // eslint-disable-next-line
+                  const methodName = `${pascalCase(systemObject.typeName)}${
+                    associatedProp.name
+                  }`;
+
+                  const reqInput = {};
+                  reqInput[association.methodArgumentName] = lookupValue;
+
+                  const req = new g.Request(methodName, reqInput).withMetadata(
+                    metadata,
+                  );
+                  let result = await req.exec();
+                  result = thisGenerator.transformGrpcToGraphql(
+                    result.response,
+                    associatedProp as PropMethod,
+                    systemObject,
+                  );
+                  return result;
+                },
+              });
+            }
+          }
+        },
+      });
+      const extendRealType = extendType({
+        // @ts-ignore
+        type: pascalCase(systemObject.typeName),
+        definition(t) {
+          // @ts-ignore
+          t.field("associations", { type: associationTypeName });
+        },
+      });
+      this.typesCache[associationTypeName] = true;
+      this.typesCache[extendRealType] = true;
+      this.types.push(assocType);
+      this.types.push(extendRealType);
     }
   }
 
@@ -188,14 +306,15 @@ export class SiRegistryGenerator {
       // @ts-ignore
       type: `${this.graphqlTypeName(prop)}Reply`,
       args: {
-        // @ts-ignore
-        input: arg({ type: this.graphqlTypeName(prop, true) }),
+        input: arg({
+          // @ts-ignore
+          type: this.graphqlTypeName(prop, true),
+          nullable: !prop.required,
+        }),
       },
-      async resolve(
-        _root,
-        { input },
-        { dataSources: { grpc }, user }: Context,
-      ) {
+      async resolve(_root, { input }, context: Context) {
+        const grpc = context.dataSources.grpc;
+        const user = context.user;
         if (user.authenticated == false && prop.skipAuth != true) {
           throw new AuthenticationError("Must be logged in");
         }
@@ -224,6 +343,16 @@ export class SiRegistryGenerator {
           prop,
           component,
         );
+        // Stash the result in case we have associations. If we do, we will need the
+        // data on this result in order to resolve them. Since it only lives for
+        // the duration of the request, we're not doing that much damage by doing
+        // it this way.
+        //
+        // Hopefully this remains true in the face of multiple queries in a single
+        // call. (that the context isn't truly global, but global per root resolution)
+        //
+        // We will find out.
+        context.associationParent = result;
         return result;
       },
     });
@@ -407,10 +536,12 @@ export class SiRegistryGenerator {
     return input;
   }
 
-  stringField(prop: Props, { nexusTypeDef }: NexusBlockOptions): void {
-    const fieldConfig = {
-      description: prop.label,
-    };
+  stringField(
+    prop: Props,
+    { nexusTypeDef, inputType }: NexusBlockOptions,
+  ): void {
+    const fieldConfig = this.makeFieldConfig(prop, { inputType });
+
     if (nexusTypeDef) {
       if (prop.repeated) {
         if (this.graphqlFieldName(prop) == "id") {
@@ -428,10 +559,9 @@ export class SiRegistryGenerator {
     }
   }
 
-  intField(prop: Props, { nexusTypeDef }: NexusBlockOptions): void {
-    const fieldConfig = {
-      description: prop.label,
-    };
+  intField(prop: Props, { nexusTypeDef, inputType }: NexusBlockOptions): void {
+    const fieldConfig = this.makeFieldConfig(prop, { inputType });
+
     if (nexusTypeDef) {
       if (prop.repeated) {
         nexusTypeDef.list.int(this.graphqlFieldName(prop), fieldConfig);
@@ -445,9 +575,8 @@ export class SiRegistryGenerator {
     prop: Props,
     { nexusTypeDef, inputType }: NexusBlockOptions,
   ): void {
-    const fieldConfig = {
-      description: prop.label,
-    };
+    const fieldConfig = this.makeFieldConfig(prop, { inputType });
+
     // @ts-ignore
     const realProp = prop.lookupMyself();
     if (nexusTypeDef) {
@@ -462,7 +591,7 @@ export class SiRegistryGenerator {
           });
         } else {
           // @ts-ignore
-          nexusTypeDef.list.field(this.graphqlFieldName(prop), {
+          nexusTypeDef.field(this.graphqlFieldName(prop), {
             // @ts-ignore
             type: this.graphqlTypeName(realProp, inputType),
             ...fieldConfig,
@@ -504,10 +633,12 @@ export class SiRegistryGenerator {
     }
   }
 
-  booleanField(prop: Props, { nexusTypeDef }: NexusBlockOptions): void {
-    const fieldConfig = {
-      description: prop.label,
-    };
+  booleanField(
+    prop: Props,
+    { nexusTypeDef, inputType }: NexusBlockOptions,
+  ): void {
+    const fieldConfig = this.makeFieldConfig(prop, { inputType });
+
     if (nexusTypeDef) {
       if (prop.repeated) {
         nexusTypeDef.list.boolean(this.graphqlFieldName(prop), fieldConfig);
@@ -517,10 +648,9 @@ export class SiRegistryGenerator {
     }
   }
 
-  enumField(prop: Props, { nexusTypeDef }: NexusBlockOptions): void {
-    const fieldConfig = {
-      description: prop.label,
-    };
+  enumField(prop: Props, { nexusTypeDef, inputType }: NexusBlockOptions): void {
+    const fieldConfig = this.makeFieldConfig(prop, { inputType });
+
     if (nexusTypeDef) {
       if (prop.repeated) {
         // @ts-ignore
@@ -552,13 +682,21 @@ export class SiRegistryGenerator {
     }
   }
 
+  makeFieldConfig(prop: Props, { inputType }: NexusBlockOptions): FieldConfig {
+    const fieldConfig = {
+      description: prop.label,
+    };
+    if (inputType) {
+      fieldConfig["nullable"] = !prop.required;
+    }
+    return fieldConfig;
+  }
+
   objectField(
     prop: Props,
     { nexusTypeDef, inputType }: NexusBlockOptions,
   ): void {
-    const fieldConfig = {
-      description: prop.label,
-    };
+    const fieldConfig = this.makeFieldConfig(prop, { inputType });
 
     if (nexusTypeDef) {
       if (prop.repeated) {
@@ -624,11 +762,13 @@ export class SiRegistryGenerator {
             if (p.kind() == "object") {
               if (p.repeated) {
                 t.list.field(thisGenerator.graphqlFieldName(p), {
+                  // @ts-ignore
                   type: thisGenerator.graphqlTypeName(p, inputType),
                   ...fieldConfig,
                 });
               } else {
                 t.field(thisGenerator.graphqlFieldName(p), {
+                  // @ts-ignore
                   type: thisGenerator.graphqlTypeName(p, inputType),
                   ...fieldConfig,
                 });
@@ -648,9 +788,7 @@ export class SiRegistryGenerator {
     prop: Props,
     { nexusTypeDef, inputType }: NexusBlockOptions,
   ): void {
-    const fieldConfig = {
-      description: prop.label,
-    };
+    const fieldConfig = this.makeFieldConfig(prop, { inputType });
 
     if (nexusTypeDef) {
       if (prop.repeated) {
@@ -722,9 +860,7 @@ export class SiRegistryGenerator {
     prop: Props,
     { nexusTypeDef, inputType }: NexusBlockOptions,
   ): void {
-    const fieldConfig = {
-      description: prop.label,
-    };
+    const fieldConfig = this.makeFieldConfig(prop, { inputType });
 
     if (nexusTypeDef) {
       if (prop.repeated) {

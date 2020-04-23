@@ -75,6 +75,7 @@ export interface UserContext {
 export interface Context {
   dataSources?: DataSourceContext;
   user: UserContext;
+  associationParent?: any;
 }
 
 const dataSources = (): DataSources<DataSourceContext> => ({

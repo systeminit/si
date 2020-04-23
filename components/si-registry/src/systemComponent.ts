@@ -2,6 +2,7 @@ import { PropLink } from "./prop/link";
 import { PropNumber } from "./prop/number";
 import { PropObject, PropMethod, PropAction } from "./attrList";
 import { camelCase } from "change-case";
+import { AssociationList } from "./systemObject/associations";
 
 export type ObjectTypes =
   | BaseObject
@@ -26,6 +27,7 @@ export class BaseObject {
 
   rootProp: PropObject;
   methodsProp: PropObject;
+  associations: AssociationList;
 
   constructor({
     typeName,
@@ -49,6 +51,7 @@ export class BaseObject {
       componentTypeName: typeName,
       parentName: "",
     });
+    this.associations = new AssociationList();
   }
 
   get fields(): BaseObject["rootProp"]["properties"] {
@@ -58,9 +61,15 @@ export class BaseObject {
   get methods(): BaseObject["methodsProp"]["properties"] {
     return this.methodsProp.properties;
   }
+
+  kind(): string {
+    return "baseObject";
+  }
 }
 
 export class SystemObject extends BaseObject {
+  tenancy: string[][] = [];
+
   constructor(args: BaseObjectConstructor) {
     super(args);
     this.setSystemObjectDefaults();
@@ -106,6 +115,14 @@ export class SystemObject extends BaseObject {
         p.required = true;
       },
     });
+  }
+
+  addTenant(tenantLookup: string[]): void {
+    this.tenancy.push(tenantLookup);
+  }
+
+  kind(): string {
+    return "systemObject";
   }
 }
 
@@ -181,6 +198,7 @@ export class ComponentObject extends SystemObject {
       name: "get",
       label: "Get Component",
       options(p: PropMethod) {
+        p.required = true;
         p.request.properties.addText({
           name: "componentId",
           label: `${this.displayTypeName} ID`,
@@ -334,6 +352,10 @@ export class ComponentObject extends SystemObject {
     const constraintProp = this.fields.getEntry("constraints") as PropObject;
     return constraintProp.properties;
   }
+
+  kind(): string {
+    return "componentObject";
+  }
 }
 
 export class EntityObject extends SystemObject {
@@ -415,7 +437,7 @@ export class EntityObject extends SystemObject {
     });
 
     this.methods.addMethod({
-      name: "createEntity",
+      name: "create",
       label: "Create Entity",
       options(p: PropMethod) {
         p.mutation = true;
@@ -437,6 +459,7 @@ export class EntityObject extends SystemObject {
           options(p: PropLink) {
             p.universal = true;
             p.readOnly = true;
+            p.required = true;
             p.lookup = {
               typeName: `${baseTypeName}Entity`,
               names: ["properties"],
@@ -472,6 +495,7 @@ export class EntityObject extends SystemObject {
           label: "Workspace ID",
           options(p) {
             p.universal = true;
+            p.required = true;
           },
         });
         p.reply.properties.addLink({
@@ -500,7 +524,7 @@ export class EntityObject extends SystemObject {
     });
 
     this.methods.addMethod({
-      name: "listEntities",
+      name: "list",
       label: "List Entities",
       options(p: PropMethod) {
         p.universal = true;
@@ -585,7 +609,7 @@ export class EntityObject extends SystemObject {
     });
 
     this.methods.addMethod({
-      name: "getEntity",
+      name: "get",
       label: "Get Entity",
       options(p: PropMethod) {
         p.universal = true;
@@ -612,7 +636,7 @@ export class EntityObject extends SystemObject {
     });
 
     this.methods.addAction({
-      name: "syncAction",
+      name: "sync",
       label: "Sync State",
       options(p: PropAction) {
         p.mutation = true;
@@ -624,6 +648,10 @@ export class EntityObject extends SystemObject {
   get properties(): EntityObject["rootProp"]["properties"] {
     const prop = this.fields.getEntry("properties") as PropObject;
     return prop.properties;
+  }
+
+  kind(): string {
+    return "entityObject";
   }
 }
 
@@ -852,6 +880,10 @@ export class EntityEventObject extends SystemObject {
         });
       },
     });
+  }
+
+  kind(): string {
+    return "entityEventObject";
   }
 }
 

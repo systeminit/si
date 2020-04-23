@@ -1,7 +1,16 @@
-import { Component } from "src/component";
-import { PropObject } from "src/components/prelude";
+import {
+  ObjectTypes,
+  BaseObject,
+  SystemObject,
+  ComponentObject,
+  EntityObject,
+  EntityEventObject,
+} from "src/systemComponent";
+import * as PropPrelude from "src/components/prelude";
+import { registry } from "src/registry";
+import { Props } from "src/attrList";
 
-import { snakeCase } from "change-case";
+import { snakeCase, pascalCase } from "change-case";
 import ejs from "ejs";
 import fs from "fs";
 import path from "path";
@@ -10,153 +19,516 @@ import util from "util";
 
 const execCmd = util.promisify(childProcess.exec);
 
+export class RustFormatter {
+  systemObject: ObjectTypes;
+
+  constructor(systemObject: RustFormatter["systemObject"]) {
+    this.systemObject = systemObject;
+  }
+
+  structName(): string {
+    return `crate::protobuf::${pascalCase(this.systemObject.typeName)}`;
+  }
+
+  typeName(): string {
+    return snakeCase(this.systemObject.typeName);
+  }
+
+  hasCreateMethod(): boolean {
+    try {
+      this.systemObject.methods.getEntry("create");
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  rustTypeForProp(prop: Props, reference = false): string {
+    if (
+      prop instanceof PropPrelude.PropAction ||
+      prop instanceof PropPrelude.PropMethod
+    ) {
+      throw `Cannot return the type for a method or action for ${prop.name}`;
+    } else if (prop instanceof PropPrelude.PropNumber) {
+      if (prop.numberKind == "int32") {
+        return "i32";
+      } else if (prop.numberKind == "uint32") {
+        return "u32";
+      } else if (prop.numberKind == "int64") {
+        return "i64";
+      } else if (prop.numberKind == "uint64") {
+        return "u64";
+      }
+    } else if (
+      prop instanceof PropPrelude.PropBool ||
+      prop instanceof PropPrelude.PropObject
+    ) {
+      if (reference) {
+        return `&crate::protobuf::${pascalCase(prop.parentName)}${pascalCase(
+          prop.name,
+        )}`;
+      } else {
+        return `crate::protobuf::${pascalCase(prop.parentName)}${pascalCase(
+          prop.name,
+        )}`;
+      }
+    } else if (prop instanceof PropPrelude.PropLink) {
+      const realProp = prop.lookupMyself();
+      if (realProp instanceof PropPrelude.PropObject) {
+        const propOwner = prop.lookupObject();
+        let pathName: string;
+        if (
+          propOwner.serviceName &&
+          propOwner.serviceName == this.systemObject.serviceName
+        ) {
+          pathName = "crate::protobuf";
+        } else if (propOwner.serviceName) {
+          pathName = `si_${propOwner.serviceName}::protobuf`;
+        } else {
+          pathName = "crate::protobuf";
+        }
+        return `${pathName}::${pascalCase(realProp.parentName)}${pascalCase(
+          realProp.name,
+        )}`;
+      } else {
+        return this.rustTypeForProp(realProp);
+      }
+    } else if (prop instanceof PropPrelude.PropMap) {
+      if (reference) {
+        return `&std::collections::HashMap<String, String>`;
+      } else {
+        return `std::collections::HashMap<String, String>`;
+      }
+    } else if (
+      prop instanceof PropPrelude.PropText ||
+      prop instanceof PropPrelude.PropCode ||
+      prop instanceof PropPrelude.PropSelect
+    ) {
+      if (reference) {
+        return "Option<&str>";
+      } else {
+        return "Option<String>";
+      }
+    } else {
+      throw `Cannot generate type for ${prop.name} kind ${prop.kind()} - Bug!`;
+    }
+  }
+
+  implCreateNewArgs(): string {
+    const result = [];
+    const createMethod = this.systemObject.methods.getEntry("create");
+    if (createMethod instanceof PropPrelude.PropMethod) {
+      for (const prop of createMethod.request.properties.attrs) {
+        result.push(`${snakeCase(prop.name)}: ${this.rustTypeForProp(prop)}`);
+      }
+    }
+    return result.join(", ");
+  }
+
+  implCreatePassNewArgs(): string {
+    const result = [];
+    const createMethod = this.systemObject.methods.getEntry("create");
+    if (createMethod instanceof PropPrelude.PropMethod) {
+      for (const prop of createMethod.request.properties.attrs) {
+        result.push(snakeCase(prop.name));
+      }
+    }
+    return result.join(", ");
+  }
+
+  isStorable(): boolean {
+    if (this.systemObject instanceof SystemObject) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  implCreateSetProperties(): string {
+    const result = [];
+    const createMethod = this.systemObject.methods.getEntry("create");
+    if (createMethod instanceof PropPrelude.PropMethod) {
+      for (const prop of createMethod.request.properties.attrs) {
+        const variableName = snakeCase(prop.name);
+        if (prop instanceof PropPrelude.PropPassword) {
+          result.push(
+            `result_obj.${variableName} = Some(si_data::password::encrypt_password(${variableName})?);`,
+          );
+        } else {
+          result.push(`result_obj.${variableName} = ${variableName};`);
+        }
+      }
+    }
+    return result.join("\n");
+  }
+
+  tenancyVec(): string {
+    const result = [];
+    if (this.systemObject instanceof SystemObject) {
+      for (const tenant of this.systemObject.tenancy) {
+        const tenantResult = [];
+        for (const tenantPart of tenant) {
+        }
+      }
+    }
+    return result.join(", ");
+  }
+
+  storableValidateFunction(): string {
+    const result = [];
+    for (const prop of this.systemObject.fields.attrs) {
+      if (prop.required) {
+        const propName = snakeCase(prop.name);
+        result.push(`if self.${propName}.is_none() {
+           return Err(si_data::DataError::ValidationError("missing required ${propName} value".into()));
+         }`);
+      }
+    }
+    return result.join("\n");
+  }
+
+  storableOrderByFieldsByProp(
+    topProp: PropPrelude.PropObject,
+    prefix: string,
+  ): string {
+    const results = [];
+    for (let prop of topProp.properties.attrs) {
+      if (prop.hidden) {
+        continue;
+      }
+      if (prop instanceof PropPrelude.PropLink) {
+        prop = prop.lookupMyself();
+      }
+      if (prop instanceof PropPrelude.PropObject) {
+        if (prefix == "") {
+          results.push(this.storableOrderByFieldsByProp(prop, prop.name));
+        } else {
+          results.push(
+            this.storableOrderByFieldsByProp(prop, `${prefix}.${prop.name}`),
+          );
+        }
+      } else {
+        if (prefix == "") {
+          results.push(`"${prop.name}"`);
+        } else {
+          results.push(`"${prefix}.${prop.name}"`);
+        }
+      }
+    }
+    return results.join(", ");
+  }
+
+  storableOrderByFieldsFunction(): string {
+    const results = this.storableOrderByFieldsByProp(
+      this.systemObject.rootProp,
+      "",
+    );
+    return `vec![${results}]\n`;
+  }
+
+  storableReferentialFieldsFunction(): string {
+    const fetchProps = [];
+    const referenceVec = [];
+    if (this.systemObject instanceof EntityEventObject) {
+    } else if (this.systemObject instanceof EntityObject) {
+    } else if (this.systemObject instanceof ComponentObject) {
+      let siProperties = this.systemObject.fields.getEntry("siProperties");
+      if (siProperties instanceof PropPrelude.PropLink) {
+        siProperties = siProperties.lookupMyself();
+      }
+      if (!(siProperties instanceof PropPrelude.PropObject)) {
+        throw "Cannot get properties of a non object in ref check";
+      }
+      console.log({ siProperties });
+      for (const prop of siProperties.properties.attrs) {
+        if (prop.reference) {
+          const itemName = snakeCase(prop.name);
+          if (prop.repeated) {
+            fetchProps.push(`let ${itemName} = match &self.si_properties {
+                           Some(cip) => cip
+                           .${itemName}
+                           .as_ref()
+                           .map(String::as_ref)
+                           .unwrap_or("No ${itemName} found for referential integrity check"),
+                             None => "No ${itemName} found for referential integrity check",
+                         };`);
+            referenceVec.push(
+              `si_data::Reference::HasMany("${itemName}", ${itemName})`,
+            );
+          } else {
+            fetchProps.push(`let ${itemName} = match &self.si_properties {
+                           Some(cip) => cip
+                           .${itemName}
+                           .as_ref()
+                           .map(String::as_ref)
+                           .unwrap_or("No ${itemName} found for referential integrity check"),
+                             None => "No ${itemName} found for referential integrity check",
+                         };`);
+            referenceVec.push(
+              `si_data::Reference::HasOne("${itemName}", ${itemName})`,
+            );
+          }
+        }
+      }
+    } else if (this.systemObject instanceof SystemObject) {
+    } else if (this.systemObject instanceof BaseObject) {
+    }
+
+    if (fetchProps.length && referenceVec.length) {
+      const results = [];
+      results.push(fetchProps.join("\n"));
+      results.push(`vec![${referenceVec.join(",")}]`);
+      return results.join("\n");
+    } else {
+      return "Vec::new()";
+    }
+  }
+}
+
 export class CodegenRust {
-  component: Component;
-  formatter: RustFormatter;
+  serviceName: string;
 
-  constructor(component: Component) {
-    this.component = component;
-    this.formatter = new RustFormatter(component);
+  constructor(serviceName: string) {
+    this.serviceName = serviceName;
   }
 
-  async writeCode(part: string, code: string): Promise<void> {
-    const createdPath = await this.makePath();
-    const codeFilename = path.join(createdPath, `${snakeCase(part)}.rs`);
-    await fs.promises.writeFile(codeFilename, code);
-    await execCmd(`rustfmt ${codeFilename}`);
+  // Generate the 'gen/mod.rs'
+  async generateGenMod(): Promise<void> {
+    const results = [
+      "// Auto-generated code!",
+      "// No touchy!",
+      "",
+      "pub mod model;",
+    ];
+    await this.writeCode("gen/mod.rs", results.join("\n"));
   }
 
-  async makePath(): Promise<string> {
+  // Generate the 'gen/model/mod.rs'
+  async generateGenModelMod(): Promise<void> {
+    const results = ["// Auto-generated code!", "// No touchy!", ""];
+    for (const systemObject of registry.getObjectsForServiceName(
+      this.serviceName,
+    )) {
+      if (systemObject.kind() != "baseObject") {
+        results.push(`pub mod ${snakeCase(systemObject.typeName)};`);
+      }
+    }
+    await this.writeCode("gen/model/mod.rs", results.join("\n"));
+  }
+
+  async generateGenModel(systemObject: ObjectTypes): Promise<void> {
+    const output = ejs.render(
+      "<%- include('rust/model.rs.ejs', { fmt: fmt }) %>",
+      {
+        fmt: new RustFormatter(systemObject),
+      },
+      {
+        filename: __filename,
+      },
+    );
+    await this.writeCode(
+      `gen/model/${snakeCase(systemObject.typeName)}.rs`,
+      output,
+    );
+  }
+
+  async makePath(pathPart: string): Promise<string> {
     const pathName = path.join(
       __dirname,
       "..",
       "..",
       "..",
-      this.component.siPathName,
+      `si-${this.serviceName}`,
       "src",
-      "gen",
-      snakeCase(this.component.typeName),
+      pathPart,
     );
     const absolutePathName = path.resolve(pathName);
     await fs.promises.mkdir(path.resolve(pathName), { recursive: true });
     return absolutePathName;
   }
 
-  async generateComponentImpls(): Promise<void> {
-    const output = ejs.render(
-      "<%- include('rust/component.rs.ejs', { component: component }) %>",
-      {
-        component: this.component,
-        fmt: this.formatter,
-      },
-      {
-        filename: __filename,
-      },
-    );
-    await this.writeCode("component", output);
-  }
-
-  async generateComponentMod(): Promise<void> {
-    const mods = ["component"];
-    const lines = ["// Auto-generated code!", "// No Touchy!\n"];
-    for (const mod of mods) {
-      lines.push(`pub mod ${mod};`);
-    }
-    await this.writeCode("mod", lines.join("\n"));
+  async writeCode(filename: string, code: string): Promise<void> {
+    const pathname = path.dirname(filename);
+    const basename = path.basename(filename);
+    const createdPath = await this.makePath(pathname);
+    const codeFilename = path.join(createdPath, basename);
+    await fs.promises.writeFile(codeFilename, code);
+    await execCmd(`rustfmt ${codeFilename}`);
   }
 }
 
-export class RustFormatter {
-  component: Component;
-
-  constructor(component: Component) {
-    this.component = component;
-  }
-
-  componentTypeName(): string {
-    return snakeCase(this.component.typeName);
-  }
-
-  componentOrderByFields(): string {
-    const orderByFields = [];
-    const componentObject = this.component.asComponent();
-    for (const p of componentObject.properties.attrs) {
-      if (p.hidden) {
-        continue;
-      }
-      if (p.name == "storable") {
-        orderByFields.push('"storable.naturalKey"');
-        orderByFields.push('"storable.typeName"');
-      } else if (p.name == "siProperties") {
-        continue;
-      } else if (p.name == "constraints" && p.kind() == "object") {
-        // @ts-ignore trust us - we checked
-        for (const pc of p.properties.attrs) {
-          if (pc.kind() != "object") {
-            orderByFields.push(`"constraints.${pc.name}"`);
-          }
-        }
-      } else {
-        orderByFields.push(`"${p.name}"`);
-      }
-    }
-    return `vec![${orderByFields.join(",")}]\n`;
-  }
-
-  componentImports(): string {
-    const result = [];
-    result.push(
-      `pub use crate::protobuf::${snakeCase(this.component.typeName)}::{`,
-      `  Constraints,`,
-      `  ListComponentsReply,`,
-      `  ListComponentsRequest,`,
-      `  PickComponentRequest,`,
-      `  Component,`,
-      `};`,
-    );
-    return result.join("\n");
-  }
-
-  componentValidation(): string {
-    return this.genValidation(this.component.asComponent());
-  }
-
-  genValidation(propObject: PropObject): string {
-    const result = [];
-    for (const prop of propObject.properties.attrs) {
-      if (prop.required) {
-        const propName = snakeCase(prop.name);
-        result.push(`if self.${propName}.is_none() {
-          return Err(DataError::ValidationError("missing required ${propName} value".into()));
-        }`);
-      }
-    }
-    return result.join("\n");
-  }
-}
-
-export async function generateGenMod(writtenComponents: {
-  [key: string]: string[];
-}): Promise<void> {
-  for (const component in writtenComponents) {
-    const pathName = path.join(
-      __dirname,
-      "..",
-      "..",
-      "..",
-      component,
-      "src",
-      "gen",
-    );
-    const absolutePathName = path.resolve(pathName);
-    const code = ["// Auto-generated code!", "// No touchy!\n"];
-    for (const typeName of writtenComponents[component]) {
-      code.push(`pub mod ${snakeCase(typeName)};`);
-    }
-
-    await fs.promises.writeFile(
-      path.join(absolutePathName, "mod.rs"),
-      code.join("\n"),
-    );
-  }
-}
+// export class CodegenRust {
+//   systemObject: ObjectTypes;
+//   formatter: RustFormatter;
+//
+//   constructor(systemObject: ObjectTypes) {
+//     this.systemObject = systemObject;
+//     this.formatter = new RustFormatter(systemObject);
+//   }
+//
+//   async writeCode(part: string, code: string): Promise<void> {
+//     const createdPath = await this.makePath();
+//     const codeFilename = path.join(createdPath, `${snakeCase(part)}.rs`);
+//     await fs.promises.writeFile(codeFilename, code);
+//     await execCmd(`rustfmt ${codeFilename}`);
+//   }
+//
+//   async makePath(): Promise<string> {
+//     const pathName = path.join(
+//       __dirname,
+//       "..",
+//       "..",
+//       "..",
+//       this.systemObject.siPathName,
+//       "src",
+//       "gen",
+//       snakeCase(this.systemObject.typeName),
+//     );
+//     const absolutePathName = path.resolve(pathName);
+//     await fs.promises.mkdir(path.resolve(pathName), { recursive: true });
+//     return absolutePathName;
+//   }
+//
+//   async generateComponentImpls(): Promise<void> {
+//     const output = ejs.render(
+//       "<%- include('rust/component.rs.ejs', { component: component }) %>",
+//       {
+//         systemObject: this.systemObject,
+//         fmt: this.formatter,
+//       },
+//       {
+//         filename: __filename,
+//       },
+//     );
+//     await this.writeCode("component", output);
+//   }
+//
+//   async generateComponentMod(): Promise<void> {
+//     const mods = ["component"];
+//     const lines = ["// Auto-generated code!", "// No Touchy!\n"];
+//     for (const mod of mods) {
+//       lines.push(`pub mod ${mod};`);
+//     }
+//     await this.writeCode("mod", lines.join("\n"));
+//   }
+// }
+//
+// export class RustFormatter {
+//   systemObject: ObjectTypes;
+//
+//   constructor(systemObject: RustFormatter["systemObject"]) {
+//     this.systemObject = systemObject;
+//   }
+//
+//   componentTypeName(): string {
+//     return snakeCase(this.systemObject.typeName);
+//   }
+//
+//   componentOrderByFields(): string {
+//     const orderByFields = [];
+//     const componentObject = this.component.asComponent();
+//     for (const p of componentObject.properties.attrs) {
+//       if (p.hidden) {
+//         continue;
+//       }
+//       if (p.name == "storable") {
+//         orderByFields.push('"storable.naturalKey"');
+//         orderByFields.push('"storable.typeName"');
+//       } else if (p.name == "siProperties") {
+//         continue;
+//       } else if (p.name == "constraints" && p.kind() == "object") {
+//         // @ts-ignore trust us - we checked
+//         for (const pc of p.properties.attrs) {
+//           if (pc.kind() != "object") {
+//             orderByFields.push(`"constraints.${pc.name}"`);
+//           }
+//         }
+//       } else {
+//         orderByFields.push(`"${p.name}"`);
+//       }
+//     }
+//     return `vec![${orderByFields.join(",")}]\n`;
+//   }
+//
+//   componentImports(): string {
+//     const result = [];
+//     result.push(
+//       `pub use crate::protobuf::${snakeCase(this.component.typeName)}::{`,
+//       `  Constraints,`,
+//       `  ListComponentsReply,`,
+//       `  ListComponentsRequest,`,
+//       `  PickComponentRequest,`,
+//       `  Component,`,
+//       `};`,
+//     );
+//     return result.join("\n");
+//   }
+//
+//   componentValidation(): string {
+//     return this.genValidation(this.component.asComponent());
+//   }
+//
+//   genValidation(propObject: PropObject): string {
+//     const result = [];
+//     for (const prop of propObject.properties.attrs) {
+//       if (prop.required) {
+//         const propName = snakeCase(prop.name);
+//         result.push(`if self.${propName}.is_none() {
+//           return Err(DataError::ValidationError("missing required ${propName} value".into()));
+//         }`);
+//       }
+//     }
+//     return result.join("\n");
+//   }
+// }
+//
+// export async function generateGenMod(writtenComponents: {
+//   [key: string]: string[];
+// }): Promise<void> {
+//   for (const component in writtenComponents) {
+//     const pathName = path.join(
+//       __dirname,
+//       "..",
+//       "..",
+//       "..",
+//       component,
+//       "src",
+//       "gen",
+//     );
+//     const absolutePathName = path.resolve(pathName);
+//     const code = [
+//       "// Auto-generated code!",
+//       "// No touchy!",
+//       "",
+//       "pub mod model;",
+//     ];
+//
+//     await fs.promises.writeFile(
+//       path.join(absolutePathName, "mod.rs"),
+//       code.join("\n"),
+//     );
+//   }
+// }
+//
+// export async function generateGenModModel(serviceName: string): Promise<void> {
+//   const pathName = path.join(
+//     __dirname,
+//     "..",
+//     "..",
+//     "..",
+//     serviceName,
+//     "src",
+//     "gen",
+//     "model",
+//   );
+//   const absolutePathName = path.resolve(pathName);
+//   const code = ["// Auto-generated code!", "// No touchy!\n"];
+//   for (const typeName of writtenComponents[component]) {
+//     code.push(`pub mod ${snakeCase(typeName)};`);
+//   }
+//
+//   await fs.promises.writeFile(
+//     path.join(absolutePathName, "mod.rs"),
+//     code.join("\n"),
+//   );
+// }
