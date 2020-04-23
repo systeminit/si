@@ -3,10 +3,11 @@
 //
 // The are all loaded exclusively for their side-effects.
 
+import "./components/si-cea/component";
+import "./components/si-cea/entity";
+import "./components/si-cea/entityEvent";
+
 import "./components/si-data/data";
-import "./components/si-data/component";
-import "./components/si-data/entity";
-import "./components/si-data/entityEvent";
 
 import "./components/si-account/billingAccount";
 

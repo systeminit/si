@@ -1,20 +1,10 @@
-import { PropEnum } from "../../components/prelude";
-
 import { registry } from "../../registry";
 
 registry.base({
-  typeName: "entitySiProperties",
-  displayTypeName: "SI Entity Internal Properties",
-  serviceName: "data",
+  typeName: "entityEventSiProperties",
+  displayTypeName: "SI Entity Event",
+  serviceName: "cea",
   options(c) {
-    c.fields.addEnum({
-      name: "entityState",
-      label: "Entity State",
-      options(p: PropEnum) {
-        p.universal = true;
-        p.variants = ["error", "ok", "transition"];
-      },
-    });
     c.fields.addText({
       name: "integrationId",
       label: "Integration Id",
@@ -28,6 +18,16 @@ registry.base({
     c.fields.addText({
       name: "integrationServiceId",
       label: "Integration Service Id",
+      options(p) {
+        p.readOnly = true;
+        p.hidden = true;
+        p.required = true;
+        p.universal = true;
+      },
+    });
+    c.fields.addText({
+      name: "entityId",
+      label: "Entity Id",
       options(p) {
         p.readOnly = true;
         p.hidden = true;
@@ -68,16 +68,6 @@ registry.base({
     c.fields.addText({
       name: "billingAccountId",
       label: "Billing Account ID",
-      options(p) {
-        p.readOnly = true;
-        p.hidden = true;
-        p.required = true;
-        p.universal = true;
-      },
-    });
-    c.fields.addNumber({
-      name: "version",
-      label: "Version",
       options(p) {
         p.readOnly = true;
         p.hidden = true;

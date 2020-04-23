@@ -262,6 +262,7 @@ export class ComponentObject extends SystemObject {
           name: "items",
           label: "Items",
           options(p: PropLink) {
+            p.repeated = true;
             p.universal = true;
             p.required = true;
             p.lookup = {
@@ -553,10 +554,11 @@ export class EntityObject extends SystemObject {
             p.universal = true;
           },
         });
-        p.request.properties.addLink({
+        p.reply.properties.addLink({
           name: "items",
           label: "Items",
           options(p: PropLink) {
+            p.repeated = true;
             p.universal = true;
             p.readOnly = true;
             p.lookup = {
@@ -690,6 +692,14 @@ export class EntityEventObject extends SystemObject {
         p.readOnly = true;
       },
     });
+    this.fields.addText({
+      name: "userId",
+      label: "User ID",
+      options(p) {
+        p.universal = true;
+        p.readOnly = true;
+      },
+    });
     this.fields.addLink({
       name: "siProperties",
       label: "SI Properties",
@@ -742,11 +752,104 @@ export class EntityEventObject extends SystemObject {
       },
     });
     this.fields.addText({
+      name: "outputLines",
+      label: "Output Lines",
+      options(p) {
+        p.repeated = true;
+        p.universal = true;
+      },
+    });
+    this.fields.addText({
       name: "errorLines",
       label: "Error Lines",
       options(p) {
         p.repeated = true;
         p.universal = true;
+      },
+    });
+
+    this.methods.addMethod({
+      name: "listEntityEvents",
+      label: "List EntityEvents",
+      options(p: PropMethod) {
+        p.universal = true;
+        p.request.properties.addLink({
+          name: "query",
+          label: "Query",
+          options(p: PropLink) {
+            p.universal = true;
+            p.lookup = {
+              typeName: "dataQuery",
+            };
+          },
+        });
+        p.request.properties.addNumber({
+          name: "pageSize",
+          label: "Page Size",
+          options(p: PropNumber) {
+            p.universal = true;
+            p.numberKind = "uint32";
+          },
+        });
+        p.request.properties.addText({
+          name: "orderBy",
+          label: "Order By",
+          options(p) {
+            p.universal = true;
+          },
+        });
+        p.request.properties.addLink({
+          name: "orderByDirection",
+          label: "Order By Direction",
+          options(p: PropLink) {
+            p.universal = true;
+            p.lookup = {
+              typeName: "dataPageToken",
+              names: ["orderByDirection"],
+            };
+          },
+        });
+        p.request.properties.addText({
+          name: "pageToken",
+          label: "Page Token",
+          options(p) {
+            p.universal = true;
+          },
+        });
+        p.request.properties.addText({
+          name: "scopeByTenantId",
+          label: "Scope By Tenant ID",
+          options(p) {
+            p.universal = true;
+          },
+        });
+        p.reply.properties.addLink({
+          name: "items",
+          label: "Items",
+          options(p: PropLink) {
+            p.repeated = true;
+            p.universal = true;
+            p.readOnly = true;
+            p.lookup = {
+              typeName: `${baseTypeName}EntityEvent`,
+            };
+          },
+        });
+        p.reply.properties.addNumber({
+          name: "totalCount",
+          label: "Total Count",
+          options(p: PropNumber) {
+            p.universal = true;
+            p.numberKind = "uint32";
+          },
+        });
+        p.reply.properties.addText({
+          name: "nextPageToken",
+          label: "Next Page Token",
+          options(p) {
+            p.universal = true;
+          },
+        });
       },
     });
   }

@@ -5,7 +5,7 @@ import { registry } from "../../registry";
 registry.base({
   typeName: "componentSiProperties",
   displayTypeName: "SI Component Internal Properties",
-  serviceName: "data",
+  serviceName: "cea",
   options(c) {
     c.fields.addText({
       name: "integrationId",

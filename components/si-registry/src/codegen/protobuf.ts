@@ -95,7 +95,10 @@ export class ProtobufFormatter {
       return `${pascalCase(prop.parentName)}${pascalCase(prop.name)}`;
     } else if (prop instanceof PropPrelude.PropLink) {
       const realProp = prop.lookupMyself();
-      if (realProp instanceof PropPrelude.PropObject) {
+      if (
+        realProp instanceof PropPrelude.PropObject ||
+        realProp instanceof PropPrelude.PropEnum
+      ) {
         const propOwner = prop.lookupObject();
         let pathName = "si.";
         if (propOwner.serviceName) {
