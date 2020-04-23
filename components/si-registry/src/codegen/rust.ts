@@ -19,6 +19,11 @@ import util from "util";
 
 const execCmd = util.promisify(childProcess.exec);
 
+interface RustTypeAsPropOptions {
+  reference?: boolean;
+  option?: boolean;
+}
+
 export class RustFormatter {
   systemObject: ObjectTypes;
 
@@ -34,6 +39,10 @@ export class RustFormatter {
     return snakeCase(this.systemObject.typeName);
   }
 
+  errorType(): string {
+    return `crate::error::${pascalCase(this.systemObject.serviceName)}Error`;
+  }
+
   hasCreateMethod(): boolean {
     try {
       this.systemObject.methods.getEntry("create");
@@ -43,35 +52,122 @@ export class RustFormatter {
     }
   }
 
-  rustTypeForProp(prop: Props, reference = false): string {
+  implListRequestType(renderOptions: RustTypeAsPropOptions = {}): string {
+    const list = this.systemObject.methods.getEntry(
+      "list",
+    ) as PropPrelude.PropMethod;
+    return this.rustTypeForProp(list.request, renderOptions);
+  }
+
+  implListReplyType(renderOptions: RustTypeAsPropOptions = {}): string {
+    const list = this.systemObject.methods.getEntry(
+      "list",
+    ) as PropPrelude.PropMethod;
+    return this.rustTypeForProp(list.reply, renderOptions);
+  }
+
+  implServiceRequestType(
+    propMethod: PropPrelude.PropMethod,
+    renderOptions: RustTypeAsPropOptions = {},
+  ): string {
+    return this.rustTypeForProp(propMethod.request, renderOptions);
+  }
+
+  implServiceReplyType(
+    propMethod: PropPrelude.PropMethod,
+    renderOptions: RustTypeAsPropOptions = {},
+  ): string {
+    return this.rustTypeForProp(propMethod.reply, renderOptions);
+  }
+
+  implServiceMethodName(
+    propMethod: PropPrelude.PropMethod | PropPrelude.PropAction,
+  ): string {
+    return snakeCase(
+      this.rustTypeForProp(propMethod, {
+        option: false,
+        reference: false,
+      }),
+    );
+  }
+
+  rustFieldNameForProp(prop: Props): string {
+    return snakeCase(prop.name);
+  }
+
+  implServiceAuthCall(propMethod: PropPrelude.PropMethod): string {
+    let prelude = "si_account::authorize";
+    if (this.systemObject.serviceName == "account") {
+      prelude = "crate::authorize";
+    }
+    return `${prelude}::authnz(&self.db, &request, "${this.implServiceMethodName(
+      propMethod,
+    )}").await?;`;
+  }
+
+  implServiceGetMethodBody(propMethod: PropPrelude.PropMethod): string {
+    const results = [];
+    for (const field of propMethod.request.properties.attrs) {
+      if (field.required) {
+        const rustVariableName = this.rustFieldNameForProp(field);
+      } else {
+      }
+    }
+    return results.join("\n");
+  }
+
+  serviceMethods(): string {
+    const results = [];
+    for (const propMethod of this.systemObject.methods.attrs) {
+      const output = ejs.render(
+        "<%- include('rust/serviceMethod.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
+        {
+          fmt: this,
+          propMethod: propMethod,
+        },
+        {
+          filename: __filename,
+        },
+      );
+      results.push(output);
+    }
+    return results.join("\n");
+  }
+
+  rustTypeForProp(
+    prop: Props,
+    renderOptions: RustTypeAsPropOptions = {},
+  ): string {
+    const reference = renderOptions.reference || false;
+    let option = true;
+    if (renderOptions.option === false) {
+      option = false;
+    }
+
+    let typeName: string;
+
     if (
       prop instanceof PropPrelude.PropAction ||
       prop instanceof PropPrelude.PropMethod
     ) {
-      throw `Cannot return the type for a method or action for ${prop.name}`;
+      typeName = `${pascalCase(prop.parentName)}${pascalCase(prop.name)}`;
     } else if (prop instanceof PropPrelude.PropNumber) {
       if (prop.numberKind == "int32") {
-        return "i32";
+        typeName = "i32";
       } else if (prop.numberKind == "uint32") {
-        return "u32";
+        typeName = "u32";
       } else if (prop.numberKind == "int64") {
-        return "i64";
+        typeName = "i64";
       } else if (prop.numberKind == "uint64") {
-        return "u64";
+        typeName = "u64";
       }
     } else if (
       prop instanceof PropPrelude.PropBool ||
       prop instanceof PropPrelude.PropObject
     ) {
-      if (reference) {
-        return `&crate::protobuf::${pascalCase(prop.parentName)}${pascalCase(
-          prop.name,
-        )}`;
-      } else {
-        return `crate::protobuf::${pascalCase(prop.parentName)}${pascalCase(
-          prop.name,
-        )}`;
-      }
+      typeName = `crate::protobuf::${pascalCase(prop.parentName)}${pascalCase(
+        prop.name,
+      )}`;
     } else if (prop instanceof PropPrelude.PropLink) {
       const realProp = prop.lookupMyself();
       if (realProp instanceof PropPrelude.PropObject) {
@@ -87,31 +183,38 @@ export class RustFormatter {
         } else {
           pathName = "crate::protobuf";
         }
-        return `${pathName}::${pascalCase(realProp.parentName)}${pascalCase(
+        typeName = `${pathName}::${pascalCase(realProp.parentName)}${pascalCase(
           realProp.name,
         )}`;
       } else {
-        return this.rustTypeForProp(realProp);
+        return this.rustTypeForProp(realProp, renderOptions);
       }
     } else if (prop instanceof PropPrelude.PropMap) {
-      if (reference) {
-        return `&std::collections::HashMap<String, String>`;
-      } else {
-        return `std::collections::HashMap<String, String>`;
-      }
+      typeName = `std::collections::HashMap<String, String>`;
     } else if (
       prop instanceof PropPrelude.PropText ||
       prop instanceof PropPrelude.PropCode ||
       prop instanceof PropPrelude.PropSelect
     ) {
-      if (reference) {
-        return "Option<&str>";
-      } else {
-        return "Option<String>";
-      }
+      typeName = "String";
     } else {
       throw `Cannot generate type for ${prop.name} kind ${prop.kind()} - Bug!`;
     }
+    if (reference) {
+      if (typeName == "String") {
+        typeName = "&str";
+      } else {
+        typeName = `&${typeName}`;
+      }
+    }
+    if (prop.repeated) {
+      typeName = `Vec<${typeName}>`;
+    } else {
+      if (option) {
+        typeName = `Option<${typeName}>`;
+      }
+    }
+    return typeName;
   }
 
   implCreateNewArgs(): string {
@@ -134,6 +237,36 @@ export class RustFormatter {
       }
     }
     return result.join(", ");
+  }
+
+  implServiceMethodListResultToReply(): string {
+    const result = [];
+    const listMethod = this.systemObject.methods.getEntry("list");
+    if (listMethod instanceof PropPrelude.PropMethod) {
+      for (const prop of listMethod.reply.properties.attrs) {
+        const fieldName = snakeCase(prop.name);
+        let listReplyValue = `Some(list_reply.${fieldName})`;
+        if (fieldName == "next_page_token") {
+          listReplyValue = "Some(list_reply.page_token)";
+        } else if (fieldName == "items") {
+          listReplyValue = `list_reply.${fieldName}`;
+        }
+        result.push(`${fieldName}: ${listReplyValue}`);
+      }
+    }
+    return result.join(", ");
+  }
+
+  implServiceMethodCreateDestructure(): string {
+    const result = [];
+    const createMethod = this.systemObject.methods.getEntry("create");
+    if (createMethod instanceof PropPrelude.PropMethod) {
+      for (const prop of createMethod.request.properties.attrs) {
+        const fieldName = snakeCase(prop.name);
+        result.push(`let ${fieldName} = inner.${fieldName};`);
+      }
+    }
+    return result.join("\n");
   }
 
   isStorable(): boolean {
@@ -162,16 +295,43 @@ export class RustFormatter {
     return result.join("\n");
   }
 
-  tenancyVec(): string {
+  implCreateAddToTenancy(): string {
     const result = [];
-    if (this.systemObject instanceof SystemObject) {
-      for (const tenant of this.systemObject.tenancy) {
-        const tenantResult = [];
-        for (const tenantPart of tenant) {
-        }
-      }
+    if (this.systemObject.typeName == "billingAccount") {
+      result.push(`si_storable.add_to_tenant_ids("global");`);
+    } else if (
+      this.systemObject.typeName == "user" ||
+      this.systemObject.typeName == "group" ||
+      this.systemObject.typeName == "organization"
+    ) {
+      result.push(`let billing_account_id = si_properties.as_ref().unwrap().billing_account_id.as_ref().ok_or(
+            si_data::DataError::ValidationError("siProperties.billingAccountId".into()),
+        )?;
+        si_storable.add_to_tenant_ids(billing_account_id);`);
+    } else if (this.systemObject.typeName == "workspace") {
+      result.push(`let billing_account_id = si_properties.as_ref().unwrap().billing_account_id.as_ref().ok_or(
+            si_data::DataError::ValidationError("siProperties.billingAccountId".into()),
+        )?;
+        si_storable.add_to_tenant_ids(billing_account_id);`);
+      result.push(`let organization_id = si_properties.as_ref().unwrap().organization_id.as_ref().ok_or(
+            si_data::DataError::ValidationError("siProperties.organizationId".into()),
+        )?;
+        si_storable.add_to_tenant_ids(organization_id);`);
+    } else {
+      result.push(`let billing_account_id = si_properties.as_ref().unwrap().billing_account_id.as_ref().ok_or(
+            si_data::DataError::ValidationError("siProperties.billingAccountId".into()),
+        )?;
+        si_storable.add_to_tenant_ids(billing_account_id);`);
+      result.push(`let organization_id = si_properties.as_ref().unwrap().organization_id.as_ref().ok_or(
+            si_data::DataError::ValidationError("siProperties.organizationId".into()),
+        )?;
+        si_storable.add_to_tenant_ids(organization_id);`);
+      result.push(`let workspace_id = si_properties.as_ref().unwrap().workspace_id.as_ref().ok_or(
+            si_data::DataError::ValidationError("siProperties.workspaceId".into()),
+        )?;
+        si_storable.add_to_tenant_ids(workspace_id);`);
     }
-    return result.join(", ");
+    return result.join("\n");
   }
 
   storableValidateFunction(): string {
@@ -179,9 +339,15 @@ export class RustFormatter {
     for (const prop of this.systemObject.fields.attrs) {
       if (prop.required) {
         const propName = snakeCase(prop.name);
-        result.push(`if self.${propName}.is_none() {
-           return Err(si_data::DataError::ValidationError("missing required ${propName} value".into()));
-         }`);
+        if (prop.repeated) {
+          result.push(`if self.${propName}.len() == 0 {
+             return Err(si_data::DataError::ValidationError("missing required ${propName} value".into()));
+           }`);
+        } else {
+          result.push(`if self.${propName}.is_none() {
+             return Err(si_data::DataError::ValidationError("missing required ${propName} value".into()));
+           }`);
+        }
       }
     }
     return result.join("\n");
@@ -285,6 +451,58 @@ export class RustFormatter {
   }
 }
 
+export class RustFormatterService {
+  serviceName: string;
+  systemObjects: ObjectTypes[];
+
+  constructor(serviceName: string) {
+    this.serviceName = serviceName;
+    this.systemObjects = registry.getObjectsForServiceName(serviceName);
+  }
+
+  systemObjectsAsFormatters(): RustFormatter[] {
+    return this.systemObjects.map(o => new RustFormatter(o));
+  }
+
+  implServiceStructBody(): string {
+    const result = ["pub db: si_data::Db,"];
+    if (this.hasComponents()) {
+      result.push("pub agent: si_cea::AgentClient,");
+    }
+    return result.join("\n");
+  }
+
+  implServiceStructConstructorReturn(): string {
+    const result = ["db"];
+    if (this.hasComponents()) {
+      result.push("agent");
+    }
+    return result.join(",");
+  }
+
+  implServiceNewConstructorArgs(): string {
+    if (this.hasComponents()) {
+      return "db: si_data::Db, agent: si_cea::AgentClient";
+    } else {
+      return "db: si_data::Db";
+    }
+  }
+
+  implServiceTraitName(): string {
+    return `crate::protobuf::${snakeCase(
+      this.serviceName,
+    )}_server::${pascalCase(this.serviceName)}`;
+  }
+
+  hasComponents(): boolean {
+    if (this.systemObjects.find(s => s.kind() == "component")) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+}
+
 export class CodegenRust {
   serviceName: string;
 
@@ -299,6 +517,7 @@ export class CodegenRust {
       "// No touchy!",
       "",
       "pub mod model;",
+      "pub mod service;",
     ];
     await this.writeCode("gen/mod.rs", results.join("\n"));
   }
@@ -314,6 +533,19 @@ export class CodegenRust {
       }
     }
     await this.writeCode("gen/model/mod.rs", results.join("\n"));
+  }
+
+  async generateGenService(): Promise<void> {
+    const output = ejs.render(
+      "<%- include('rust/service.rs.ejs', { fmt: fmt }) %>",
+      {
+        fmt: new RustFormatterService(this.serviceName),
+      },
+      {
+        filename: __filename,
+      },
+    );
+    await this.writeCode(`gen/service.rs`, output);
   }
 
   async generateGenModel(systemObject: ObjectTypes): Promise<void> {

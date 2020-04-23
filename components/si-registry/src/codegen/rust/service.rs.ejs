@@ -1,0 +1,38 @@
+// Auto-generated rust code!
+// No-Touchy!
+
+use tonic;
+use tracing::{self, info_span, info, debug};
+use tracing_futures::Instrument as _;
+
+use si_data;
+<%_ if (fmt.hasComponents()) { _%>
+use si_cea;
+<%_ } _%>
+
+#[derive(Debug)]
+pub struct Service {
+<%- fmt.implServiceStructBody() %>
+}
+
+impl Service {
+    pub fn new(<%- fmt.implServiceNewConstructorArgs() %>) -> Service {
+        Service { <%- fmt.implServiceStructConstructorReturn() %> }
+    }
+
+    pub fn db(&self) -> &si_data::Db {
+        &self.db
+    }
+    <% if (fmt.hasComponents()) { %>
+    pub fn agent(&self) -> &si_cea::AgentClient {
+        &self.agent
+    }
+    <%_ } _%>
+}
+
+#[tonic::async_trait]
+impl <%- fmt.implServiceTraitName() %> for Service {
+<%_ for (const objFmt of fmt.systemObjectsAsFormatters()) { _%>
+<%- objFmt.serviceMethods() %>
+<%_ } _%>
+}

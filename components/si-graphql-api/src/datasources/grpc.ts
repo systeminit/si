@@ -34,7 +34,8 @@ export class GrpcServiceBroker {
         sd.grpcServiceName,
       );
 
-      this.services[sd.grpcServiceName] = {
+      console.log("Setting up service for", { sd });
+      this.services[sd.serviceName] = {
         client: caller,
       };
     }

@@ -6,11 +6,7 @@ import path from "path";
 import program from "commander";
 import { registry } from "src/registry";
 import { ProtobufFormatter } from "src/codegen/protobuf";
-import {
-  CodegenRust,
-  generateGenMod,
-  generateGenModModel,
-} from "src/codegen/rust";
+import { CodegenRust } from "src/codegen/rust";
 import Listr, { ListrRendererValue } from "listr";
 import "src/loader";
 import fs from "fs";
@@ -94,6 +90,16 @@ function generateRust(): Listr {
   for (const serviceName of registry.serviceNames()) {
     const codegenRust = new CodegenRust(serviceName);
     const systemObjects = registry.getObjectsForServiceName(serviceName);
+
+    tasks.push({
+      title: `Rust service ${chalk.keyword("orange")(
+        "gen/service.rs",
+      )} for ${serviceName}`,
+      task: async (): Promise<void> => {
+        await codegenRust.generateGenService();
+      },
+    });
+
     if (systemObjects.some(o => o.kind() != "baseObject")) {
       tasks.push({
         title: `Rust ${chalk.keyword("orange")(
@@ -132,4 +138,3 @@ function generateRust(): Listr {
 
   return new Listr(tasks, { concurrent: true });
 }
-

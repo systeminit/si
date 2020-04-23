@@ -91,6 +91,8 @@ pub enum AccountError {
     Db(#[from] si_data::error::DataError),
     #[error("error converting bytes to utf-8 string: {0}")]
     Utf8Error(#[from] std::str::Utf8Error),
+    #[error("Missing required field {0}")]
+    MissingField(String),
 }
 
 impl From<AccountError> for tonic::Status {

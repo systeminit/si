@@ -19,6 +19,10 @@ export interface BaseObjectConstructor {
   options?(c: BaseObject): void;
 }
 
+export interface AddMethodConstructor {
+  isPrivate?: PropMethod["isPrivate"];
+}
+
 export class BaseObject {
   typeName: string;
   displayTypeName: string;
@@ -123,6 +127,126 @@ export class SystemObject extends BaseObject {
 
   kind(): string {
     return "systemObject";
+  }
+
+  addGetMethod(args: AddMethodConstructor = {}): void {
+    // eslint-disable-next-line
+    const systemObject = this;
+    systemObject.methods.addMethod({
+      name: "get",
+      label: `Get a ${systemObject.displayTypeName}`,
+      options(p: PropMethod) {
+        p.isPrivate = args.isPrivate || false;
+        p.skipAuth = true;
+        p.request.properties.addText({
+          name: "id",
+          label: `${systemObject.displayTypeName} ID`,
+          options(p) {
+            p.required = true;
+          },
+        });
+        p.reply.properties.addLink({
+          name: "object",
+          label: `${systemObject.displayTypeName} Object`,
+          options(p: PropLink) {
+            p.lookup = {
+              typeName: systemObject.typeName,
+            };
+          },
+        });
+      },
+    });
+  }
+
+  addListMethod(args: AddMethodConstructor = {}): void {
+    // eslint-disable-next-line
+    const systemObject = this;
+    systemObject.methods.addMethod({
+      name: "list",
+      label: `List ${systemObject.displayTypeName}`,
+      options(p: PropMethod) {
+        p.universal = true;
+        p.isPrivate = args.isPrivate || false;
+        p.skipAuth = true;
+        p.request.properties.addLink({
+          name: "query",
+          label: "Query",
+          options(p: PropLink) {
+            p.universal = true;
+            p.lookup = {
+              typeName: "dataQuery",
+            };
+          },
+        });
+        p.request.properties.addNumber({
+          name: "pageSize",
+          label: "Page Size",
+          options(p: PropNumber) {
+            p.universal = true;
+            p.numberKind = "uint32";
+          },
+        });
+        p.request.properties.addText({
+          name: "orderBy",
+          label: "Order By",
+          options(p) {
+            p.universal = true;
+          },
+        });
+        p.request.properties.addLink({
+          name: "orderByDirection",
+          label: "Order By Direction",
+          options(p: PropLink) {
+            p.universal = true;
+            p.lookup = {
+              typeName: "dataPageToken",
+              names: ["orderByDirection"],
+            };
+          },
+        });
+        p.request.properties.addText({
+          name: "pageToken",
+          label: "Page Token",
+          options(p) {
+            p.universal = true;
+          },
+        });
+        p.request.properties.addText({
+          name: "scopeByTenantId",
+          label: "Scope By Tenant ID",
+          options(p) {
+            p.universal = true;
+          },
+        });
+        p.reply.properties.addLink({
+          name: "items",
+          label: "Items",
+          options(p: PropLink) {
+            p.universal = true;
+            p.required = true;
+            p.repeated = true;
+            p.lookup = {
+              typeName: systemObject.typeName,
+            };
+          },
+        });
+        p.reply.properties.addNumber({
+          name: "totalCount",
+          label: "Total Count",
+          options(p: PropNumber) {
+            p.universal = true;
+            p.numberKind = "uint32";
+          },
+        });
+        p.reply.properties.addText({
+          name: "nextPageToken",
+          label: "Next Page Token",
+          options(p) {
+            p.universal = true;
+          },
+        });
+      },
+    });
   }
 }
 
@@ -796,90 +920,7 @@ export class EntityEventObject extends SystemObject {
       },
     });
 
-    this.methods.addMethod({
-      name: "listEntityEvents",
-      label: "List EntityEvents",
-      options(p: PropMethod) {
-        p.universal = true;
-        p.request.properties.addLink({
-          name: "query",
-          label: "Query",
-          options(p: PropLink) {
-            p.universal = true;
-            p.lookup = {
-              typeName: "dataQuery",
-            };
-          },
-        });
-        p.request.properties.addNumber({
-          name: "pageSize",
-          label: "Page Size",
-          options(p: PropNumber) {
-            p.universal = true;
-            p.numberKind = "uint32";
-          },
-        });
-        p.request.properties.addText({
-          name: "orderBy",
-          label: "Order By",
-          options(p) {
-            p.universal = true;
-          },
-        });
-        p.request.properties.addLink({
-          name: "orderByDirection",
-          label: "Order By Direction",
-          options(p: PropLink) {
-            p.universal = true;
-            p.lookup = {
-              typeName: "dataPageToken",
-              names: ["orderByDirection"],
-            };
-          },
-        });
-        p.request.properties.addText({
-          name: "pageToken",
-          label: "Page Token",
-          options(p) {
-            p.universal = true;
-          },
-        });
-        p.request.properties.addText({
-          name: "scopeByTenantId",
-          label: "Scope By Tenant ID",
-          options(p) {
-            p.universal = true;
-          },
-        });
-        p.reply.properties.addLink({
-          name: "items",
-          label: "Items",
-          options(p: PropLink) {
-            p.repeated = true;
-            p.universal = true;
-            p.readOnly = true;
-            p.lookup = {
-              typeName: `${baseTypeName}EntityEvent`,
-            };
-          },
-        });
-        p.reply.properties.addNumber({
-          name: "totalCount",
-          label: "Total Count",
-          options(p: PropNumber) {
-            p.universal = true;
-            p.numberKind = "uint32";
-          },
-        });
-        p.reply.properties.addText({
-          name: "nextPageToken",
-          label: "Next Page Token",
-          options(p) {
-            p.universal = true;
-          },
-        });
-      },
-    });
+    this.addListMethod();
   }
 
   kind(): string {

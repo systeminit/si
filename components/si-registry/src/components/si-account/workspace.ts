@@ -3,8 +3,8 @@ import { registry } from "../../registry";
 import { SystemObject } from "../../systemComponent";
 
 registry.system({
-  typeName: "user",
-  displayTypeName: "A System Initiative User",
+  typeName: "workspace",
+  displayTypeName: "A System Initiative Workspace",
   siPathName: "si-account",
   serviceName: "account",
   options(c: SystemObject) {
@@ -12,24 +12,11 @@ registry.system({
       fromFieldPath: ["siProperties", "billingAccountId"],
       typeName: "billingAccount",
     });
+    c.associations.belongsTo({
+      fromFieldPath: ["siProperties", "organizationId"],
+      typeName: "organization",
+    });
 
-    c.fields.addText({
-      name: "email",
-      label: "A valid email address",
-      options(p) {
-        p.universal = true;
-        p.required = true;
-      },
-    });
-    c.fields.addPassword({
-      name: "password",
-      label: "The users password hash",
-      options(p) {
-        p.universal = true;
-        p.required = true;
-        p.hidden = true;
-      },
-    });
     c.fields.addObject({
       name: "siProperties",
       label: "SI Internal Properties",
@@ -42,25 +29,20 @@ registry.system({
             p.required = true;
           },
         });
+        p.properties.addText({
+          name: "organizationId",
+          label: "Organization ID",
+          options(p) {
+            p.required = true;
+          },
+        });
       },
     });
-    c.fields.addLink({
-      name: "capabilities",
-      label: "Authorized capabilities for this user",
-      options(p: PropLink) {
-        p.required = true;
-        p.hidden = true;
-        p.lookup = {
-          typeName: "capability",
-        };
-      },
-    });
-
     c.addListMethod();
     c.addGetMethod();
     c.methods.addMethod({
       name: "create",
-      label: "Create a User",
+      label: "Create an Organization",
       options(p: PropMethod) {
         p.mutation = true;
         p.request.properties.addText({
@@ -77,27 +59,13 @@ registry.system({
             p.required = true;
           },
         });
-        p.request.properties.addText({
-          name: "email",
-          label: "Users email address",
-          options(p) {
-            p.required = true;
-          },
-        });
-        p.request.properties.addPassword({
-          name: "password",
-          label: "Users password",
-          options(p) {
-            p.required = true;
-          },
-        });
         p.request.properties.addLink({
           name: "siProperties",
           label: "The SI Properties for this User",
           options(p: PropLink) {
             p.required = true;
             p.lookup = {
-              typeName: "user",
+              typeName: "workspace",
               names: ["siProperties"],
             };
           },
@@ -107,7 +75,7 @@ registry.system({
           label: `${c.displayTypeName} Object`,
           options(p: PropLink) {
             p.lookup = {
-              typeName: "user",
+              typeName: "workspace",
             };
           },
         });
@@ -115,3 +83,4 @@ registry.system({
     });
   },
 });
+

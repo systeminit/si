@@ -4,13 +4,13 @@
 use si_data;
 use uuid;
 
-impl si_data::Storable for crate::protobuf::BillingAccount {
+impl si_data::Storable for crate::protobuf::Group {
     /// # Panics
     ///
-    /// * When a system object's `id` is not set (`crate::protobuf::BillingAccount::generate_id()` must be called first)
+    /// * When a system object's `id` is not set (`crate::protobuf::Group::generate_id()` must be called first)
     fn get_id(&self) -> &str {
         (self.id.as_ref())
-            .expect("crate::protobuf::BillingAccount::generate_id() must be called before crate::protobuf::BillingAccount::get_id")
+            .expect("crate::protobuf::Group::generate_id() must be called before crate::protobuf::Group::get_id")
     }
 
     fn set_id(&mut self, id: impl Into<String>) {
@@ -18,7 +18,7 @@ impl si_data::Storable for crate::protobuf::BillingAccount {
     }
 
     fn type_name() -> &'static str {
-        "billing_account"
+        "group"
     }
 
     fn set_type_name(&mut self) {
@@ -57,6 +57,21 @@ impl si_data::Storable for crate::protobuf::BillingAccount {
         if self.si_storable.is_none() {
             return Err(si_data::DataError::ValidationError(
                 "missing required si_storable value".into(),
+            ));
+        }
+        if self.user_ids.len() == 0 {
+            return Err(si_data::DataError::ValidationError(
+                "missing required user_ids value".into(),
+            ));
+        }
+        if self.si_properties.is_none() {
+            return Err(si_data::DataError::ValidationError(
+                "missing required si_properties value".into(),
+            ));
+        }
+        if self.capabilities.is_none() {
+            return Err(si_data::DataError::ValidationError(
+                "missing required capabilities value".into(),
             ));
         }
         Ok(())
@@ -101,12 +116,12 @@ impl si_data::Storable for crate::protobuf::BillingAccount {
         let natural_key = format!(
             "{}:{}:{}",
             self.get_tenant_ids().first().expect(
-                "crate::protobuf::BillingAccount's tenant_ids must be set with crate::protobuf::BillingAccount.set_natural_key() is called"
+                "crate::protobuf::Group's tenant_ids must be set with crate::protobuf::Group.set_natural_key() is called"
             ),
             <Self as si_data::Storable>::type_name(),
             self.name
                 .as_ref()
-                .expect("crate::protobuf::BillingAccount.name must be set when crate::protobuf::BillingAccount.set_natural_key() is called")
+                .expect("crate::protobuf::Group.name must be set when crate::protobuf::Group.set_natural_key() is called")
         );
 
         let mut storable = self.si_storable.as_mut().unwrap();
@@ -114,15 +129,18 @@ impl si_data::Storable for crate::protobuf::BillingAccount {
     }
 
     fn order_by_fields() -> Vec<&'static str> {
-        vec!["id", "name", "displayName"]
+        vec![
+            "id",
+            "name",
+            "displayName",
+            "userIds",
+            "siProperties.billingAccountId",
+        ]
     }
 }
 
-impl crate::protobuf::BillingAccount {
-    pub async fn get(
-        db: &si_data::Db,
-        id: &str,
-    ) -> si_data::Result<crate::protobuf::BillingAccount> {
+impl crate::protobuf::Group {
+    pub async fn get(db: &si_data::Db, id: &str) -> si_data::Result<crate::protobuf::Group> {
         let obj = db.get(id).await?;
         Ok(obj)
     }
@@ -134,8 +152,8 @@ impl crate::protobuf::BillingAccount {
 
     pub async fn list(
         db: &si_data::Db,
-        list_request: crate::protobuf::BillingAccountListRequest,
-    ) -> si_data::Result<si_data::ListResult<crate::protobuf::BillingAccount>> {
+        list_request: crate::protobuf::GroupListRequest,
+    ) -> si_data::Result<si_data::ListResult<crate::protobuf::Group>> {
         let result = match list_request.page_token {
             Some(token) => db.list_by_page_token(token).await?,
             None => {
@@ -166,19 +184,31 @@ impl crate::protobuf::BillingAccount {
     }
 }
 
-impl crate::protobuf::BillingAccount {
+impl crate::protobuf::Group {
     pub fn new(
         name: Option<String>,
         display_name: Option<String>,
-    ) -> si_data::Result<crate::protobuf::BillingAccount> {
+        user_ids: Vec<String>,
+        si_properties: Option<crate::protobuf::GroupSiProperties>,
+    ) -> si_data::Result<crate::protobuf::Group> {
         let mut si_storable = si_data::protobuf::DataStorable::default();
-        si_storable.add_to_tenant_ids("global");
+        let billing_account_id = si_properties
+            .as_ref()
+            .unwrap()
+            .billing_account_id
+            .as_ref()
+            .ok_or(si_data::DataError::ValidationError(
+                "siProperties.billingAccountId".into(),
+            ))?;
+        si_storable.add_to_tenant_ids(billing_account_id);
 
-        let mut result_obj = crate::protobuf::BillingAccount {
+        let mut result_obj = crate::protobuf::Group {
             ..Default::default()
         };
         result_obj.name = name;
         result_obj.display_name = display_name;
+        result_obj.user_ids = user_ids;
+        result_obj.si_properties = si_properties;
         result_obj.si_storable = Some(si_storable);
 
         Ok(result_obj)
@@ -188,8 +218,11 @@ impl crate::protobuf::BillingAccount {
         db: &si_data::Db,
         name: Option<String>,
         display_name: Option<String>,
-    ) -> si_data::Result<crate::protobuf::BillingAccount> {
-        let mut result_obj = crate::protobuf::BillingAccount::new(name, display_name)?;
+        user_ids: Vec<String>,
+        si_properties: Option<crate::protobuf::GroupSiProperties>,
+    ) -> si_data::Result<crate::protobuf::Group> {
+        let mut result_obj =
+            crate::protobuf::Group::new(name, display_name, user_ids, si_properties)?;
         db.validate_and_insert_as_new(&mut result_obj).await?;
         Ok(result_obj)
     }

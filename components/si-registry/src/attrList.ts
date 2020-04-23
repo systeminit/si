@@ -275,6 +275,7 @@ export class PropMethod extends Prop {
   realParentName: string;
   mutation: boolean;
   skipAuth: boolean;
+  isPrivate: boolean;
 
   // Methods have a Request and a Response
   //
@@ -311,6 +312,7 @@ export class PropMethod extends Prop {
     });
     this.mutation = false;
     this.skipAuth = false;
+    this.isPrivate = false;
   }
 
   kind(): string {

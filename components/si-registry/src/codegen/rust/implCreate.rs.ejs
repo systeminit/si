@@ -1,15 +1,13 @@
 impl <%- fmt.structName() %> {
   pub fn new(<%- fmt.implCreateNewArgs() %>) -> si_data::Result<<%- fmt.structName() %>> {
-    let mut result_obj = <%- fmt.structName() %> { ..Default::default() };
-    <%- fmt.implCreateSetProperties() %>
-
   <%_ if (fmt.isStorable()) { _%>
     let mut si_storable = si_data::protobuf::DataStorable::default();
-    si_storable.tenant_ids = vec![
-      <%- fmt.tenancyVec() %>
-    ];
-    result_obj.si_storable = Some(si_storable);
+    <%- fmt.implCreateAddToTenancy() %> 
   <%_ } _%>
+
+    let mut result_obj = <%- fmt.structName() %> { ..Default::default() };
+    <%- fmt.implCreateSetProperties() %>
+    result_obj.si_storable = Some(si_storable);
 
     Ok(result_obj)
   }

@@ -124,8 +124,59 @@ impl si_data::Storable for crate::protobuf::KubernetesDeploymentEntityEvent {
             "finalTime",
             "finalized",
             "success",
+            "userId",
             "errorMessage",
+            "outputLines",
             "errorLines",
         ]
+    }
+}
+
+impl crate::protobuf::KubernetesDeploymentEntityEvent {
+    pub async fn get(
+        db: &si_data::Db,
+        id: &str,
+    ) -> si_data::Result<crate::protobuf::KubernetesDeploymentEntityEvent> {
+        let obj = db.get(id).await?;
+        Ok(obj)
+    }
+
+    pub async fn save(&self, db: &si_data::Db) -> si_data::Result<()> {
+        db.upsert(self).await?;
+        Ok(())
+    }
+
+    pub async fn list(
+        db: &si_data::Db,
+        list_request: crate::protobuf::KubernetesDeploymentEntityEventListRequest,
+    ) -> si_data::Result<si_data::ListResult<crate::protobuf::KubernetesDeploymentEntityEvent>>
+    {
+        let result = match list_request.page_token {
+            Some(token) => db.list_by_page_token(token).await?,
+            None => {
+                let page_size = match list_request.page_size {
+                    Some(page_size) => page_size,
+                    None => 10,
+                };
+                let order_by = match list_request.order_by {
+                    Some(order_by) => order_by,
+                    None => "".to_string(), // The empty string is the signal for a default, thanks protobuf history
+                };
+                let contained_within = match list_request.scope_by_tenant_id {
+                    Some(contained_within) => contained_within,
+                    None => return Err(si_data::DataError::MissingScopeByTenantId),
+                };
+                db.list(
+                    &list_request.query,
+                    page_size,
+                    order_by,
+                    list_request.order_by_direction,
+                    contained_within,
+                    "",
+                )
+                .await?
+            }
+        };
+        Ok(result)
     }
 }

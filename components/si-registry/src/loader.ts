@@ -10,7 +10,11 @@ import "./components/si-cea/entityEvent";
 import "./components/si-data/data";
 
 import "./components/si-account/billingAccount";
+import "./components/si-account/capability";
 import "./components/si-account/user";
+import "./components/si-account/group";
+import "./components/si-account/organization";
+import "./components/si-account/workspace";
 
 import "./components/si-kubernetes/kubernetes";
 import "./components/si-kubernetes/deployment";

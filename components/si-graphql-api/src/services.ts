@@ -54,13 +54,13 @@ export class ServiceDescription {
 // Add new GRPC services here, and they will get turned in to
 // GraphQL endpoints automatically for you.
 export const services = [
-  //new ServiceDescription({
-  //  serviceName: "si-account",
-  //  protoPackageName: "si.account",
-  //  grpcServiceName: "Account",
-  //  graphqlTypePrefix: "",
-  //  address: environment.services["si-account"],
-  //}),
+  new ServiceDescription({
+    serviceName: "si-account",
+    protoPackageName: "si.account",
+    grpcServiceName: "Account",
+    graphqlTypePrefix: "",
+    address: environment.services["si-account"],
+  }),
   // new ServiceDescription({
   //   serviceName: "si-ssh-key",
   //   protoPackageName: "si.ssh_key",

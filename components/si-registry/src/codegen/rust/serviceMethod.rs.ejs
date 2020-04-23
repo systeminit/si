@@ -1,0 +1,34 @@
+async fn <%- fmt.implServiceMethodName(propMethod) %>(
+    &self, 
+    request: tonic::Request<<%- fmt.implServiceRequestType(propMethod, { option: false, reference: false }) %>>,
+    ) -> std::result::Result<tonic::Response<<%- fmt.implServiceReplyType(propMethod, { option: false, reference: false }) %>>, tonic::Status> {
+    async {
+      info!(?request);
+      <%_ if (propMethod.skipAuth) { _%>
+        // This object is set to skipAuth; so there is no authorization.
+      <%_ } else { _%>
+        <%- fmt.implServiceAuthCall(propMethod) %>         
+      <%_ } _%>
+      // The request always gets consumed!
+      let inner = request.into_inner();
+      <%_ if (propMethod.name == "get") { _%>
+        let request_id = inner.id.ok_or(si_data::DataError::RequiredField("id".to_string()))?;
+        let output = <%- fmt.structName() %>::get(&self.db, &request_id).await?;
+        debug!(?output);
+        Ok(tonic::Response::new(<%- fmt.implServiceReplyType(propMethod, { option: false, reference: false }) %>{ object: Some(output) }))
+      <%_ } else if (propMethod.name == "create") { _%>
+        <%- fmt.implServiceMethodCreateDestructure() %>
+        let output = <%- fmt.structName() %>::create(&self.db, <%- fmt.implCreatePassNewArgs() %>).await?; 
+        debug!(?output);
+        Ok(tonic::Response::new(<%- fmt.implServiceReplyType(propMethod, { option: false, reference: false }) %>{ object: Some(output) })) 
+      <%_ } else if (propMethod.name == "list") { _%>
+        let list_reply = <%- fmt.structName() %>::list(&self.db, inner).await?; 
+        debug!(?list_reply);
+        Ok(tonic::Response::new(<%- fmt.implServiceReplyType(propMethod, { option: false, reference: false }) %>{ <%- fmt.implServiceMethodListResultToReply() %> })) 
+      <%_ } else { _%>
+        Ok(tonic::Response::new(<%- fmt.implServiceReplyType(propMethod, { option: false, reference: false }) %>{ ..Default::default() }))
+      <%_ } _%>
+    }
+    .instrument(info_span!("<%- fmt.implServiceMethodName(propMethod) %>"))
+    .await
+}

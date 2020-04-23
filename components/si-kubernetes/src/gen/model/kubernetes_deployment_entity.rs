@@ -139,14 +139,91 @@ impl si_data::Storable for crate::protobuf::KubernetesDeploymentEntity {
 }
 
 impl crate::protobuf::KubernetesDeploymentEntity {
+    pub async fn get(
+        db: &si_data::Db,
+        id: &str,
+    ) -> si_data::Result<crate::protobuf::KubernetesDeploymentEntity> {
+        let obj = db.get(id).await?;
+        Ok(obj)
+    }
+
+    pub async fn save(&self, db: &si_data::Db) -> si_data::Result<()> {
+        db.upsert(self).await?;
+        Ok(())
+    }
+
+    pub async fn list(
+        db: &si_data::Db,
+        list_request: crate::protobuf::KubernetesDeploymentEntityListRequest,
+    ) -> si_data::Result<si_data::ListResult<crate::protobuf::KubernetesDeploymentEntity>> {
+        let result = match list_request.page_token {
+            Some(token) => db.list_by_page_token(token).await?,
+            None => {
+                let page_size = match list_request.page_size {
+                    Some(page_size) => page_size,
+                    None => 10,
+                };
+                let order_by = match list_request.order_by {
+                    Some(order_by) => order_by,
+                    None => "".to_string(), // The empty string is the signal for a default, thanks protobuf history
+                };
+                let contained_within = match list_request.scope_by_tenant_id {
+                    Some(contained_within) => contained_within,
+                    None => return Err(si_data::DataError::MissingScopeByTenantId),
+                };
+                db.list(
+                    &list_request.query,
+                    page_size,
+                    order_by,
+                    list_request.order_by_direction,
+                    contained_within,
+                    "",
+                )
+                .await?
+            }
+        };
+        Ok(result)
+    }
+}
+
+impl crate::protobuf::KubernetesDeploymentEntity {
     pub fn new(
-        constraints: crate::protobuf::KubernetesDeploymentComponentConstraints,
-        properties: crate::protobuf::KubernetesDeploymentEntityProperties,
+        constraints: Option<crate::protobuf::KubernetesDeploymentComponentConstraints>,
+        properties: Option<crate::protobuf::KubernetesDeploymentEntityProperties>,
         name: Option<String>,
         display_name: Option<String>,
         description: Option<String>,
         workspace_id: Option<String>,
     ) -> si_data::Result<crate::protobuf::KubernetesDeploymentEntity> {
+        let mut si_storable = si_data::protobuf::DataStorable::default();
+        let billing_account_id = si_properties
+            .as_ref()
+            .unwrap()
+            .billing_account_id
+            .as_ref()
+            .ok_or(si_data::DataError::ValidationError(
+                "siProperties.billingAccountId".into(),
+            ))?;
+        si_storable.add_to_tenant_ids(billing_account_id);
+        let organization_id = si_properties
+            .as_ref()
+            .unwrap()
+            .organization_id
+            .as_ref()
+            .ok_or(si_data::DataError::ValidationError(
+                "siProperties.organizationId".into(),
+            ))?;
+        si_storable.add_to_tenant_ids(organization_id);
+        let workspace_id = si_properties
+            .as_ref()
+            .unwrap()
+            .workspace_id
+            .as_ref()
+            .ok_or(si_data::DataError::ValidationError(
+                "siProperties.workspaceId".into(),
+            ))?;
+        si_storable.add_to_tenant_ids(workspace_id);
+
         let mut result_obj = crate::protobuf::KubernetesDeploymentEntity {
             ..Default::default()
         };
@@ -156,9 +233,6 @@ impl crate::protobuf::KubernetesDeploymentEntity {
         result_obj.display_name = display_name;
         result_obj.description = description;
         result_obj.workspace_id = workspace_id;
-
-        let mut si_storable = si_data::protobuf::DataStorable::default();
-        si_storable.tenant_ids = vec![];
         result_obj.si_storable = Some(si_storable);
 
         Ok(result_obj)
@@ -166,8 +240,8 @@ impl crate::protobuf::KubernetesDeploymentEntity {
 
     pub async fn create(
         db: &si_data::Db,
-        constraints: crate::protobuf::KubernetesDeploymentComponentConstraints,
-        properties: crate::protobuf::KubernetesDeploymentEntityProperties,
+        constraints: Option<crate::protobuf::KubernetesDeploymentComponentConstraints>,
+        properties: Option<crate::protobuf::KubernetesDeploymentEntityProperties>,
         name: Option<String>,
         display_name: Option<String>,
         description: Option<String>,

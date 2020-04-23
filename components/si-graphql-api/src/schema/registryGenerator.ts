@@ -266,6 +266,10 @@ export class SiRegistryGenerator {
     // eslint-disable-next-line
     const thisGenerator = this;
 
+    if (prop.isPrivate) {
+      return;
+    }
+
     if (!this.typesCache[this.graphqlTypeName(prop, true)]) {
       this.generateInputTypes(prop, component);
 
@@ -331,13 +335,18 @@ export class SiRegistryGenerator {
             prop,
             component,
           );
-          req = new g.Request(pascalCase(prop.name), grpcInput).withMetadata(
-            metadata,
-          );
+          req = new g.Request(
+            `${camelCase(component.typeName)}${pascalCase(prop.name)}`,
+            grpcInput,
+          ).withMetadata(metadata);
         } else {
-          req = new g.Request(pascalCase(prop.name), {}).withMetadata(metadata);
+          req = new g.Request(
+            `${camelCase(component.typeName)}${pascalCase(prop.name)}`,
+            {},
+          ).withMetadata(metadata);
         }
         let result = await req.exec();
+        console.dir({ response: result.response }, { depth: Infinity });
         result = thisGenerator.transformGrpcToGraphql(
           result.response,
           prop,
@@ -369,11 +378,11 @@ export class SiRegistryGenerator {
     // eslint-disable-next-line
   ): Record<string, any> {
     for (const p of prop.request.properties.attrs) {
-      if (input[p.graphqlFieldName()] == undefined) {
+      if (input[this.graphqlFieldName(p)] == undefined) {
         continue;
       }
-      input[p.graphqlFieldName()] = this.transformGraphqlFieldToGrpc(
-        input[p.graphqlFieldName()],
+      input[this.graphqlFieldName(p)] = this.transformGraphqlFieldToGrpc(
+        input[this.graphqlFieldName(p)],
         p,
         component,
       );
@@ -482,8 +491,10 @@ export class SiRegistryGenerator {
     // eslint-disable-next-line
   ): any {
     if (prop.repeated && !ignoreRepeated) {
+      console.log("You are an array");
+      console.dir({ input, prop }, { depth: Infinity });
       const newArrayValues = [];
-      for (const fieldValue in input[this.graphqlFieldName(prop)]) {
+      for (const fieldValue of input) {
         newArrayValues.push(
           this.transformGrpcFieldToGraphql(fieldValue, prop, component, true),
         );
@@ -838,7 +849,11 @@ export class SiRegistryGenerator {
     // eslint-disable-next-line
     if (prop.kind() == "object") {
       this.objectField(prop, { nexusTypeDef, inputType });
-    } else if (prop.kind() == "text" || prop.kind() == "code") {
+    } else if (
+      prop.kind() == "text" ||
+      prop.kind() == "code" ||
+      prop.kind() == "password"
+    ) {
       this.stringField(prop, { nexusTypeDef, inputType });
     } else if (prop.kind() == "number") {
       this.intField(prop, { nexusTypeDef, inputType });

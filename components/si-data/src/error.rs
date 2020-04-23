@@ -51,6 +51,8 @@ pub enum DataError {
     PasswordHash,
     #[error("UTF-8 String conversion error")]
     Utf8(#[from] std::str::Utf8Error),
+    #[error("Missing a scope by tenant id for a list operation")]
+    MissingScopeByTenantId,
 }
 
 impl From<DataError> for tonic::Status {

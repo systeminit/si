@@ -341,13 +341,13 @@ impl Db {
 
         let cbquery = match query {
             Some(q) => format!(
-               "SELECT {bucket}.* FROM `{bucket}` WHERE typeName = $type_name AND ARRAY_CONTAINS(tenantIds, \"{tenant_id}\") AND {query} ORDER BY {bucket}.[$order_by] {order_by_direction}",
+               "SELECT {bucket}.* FROM `{bucket}` WHERE siStorable.typeName = $type_name AND ARRAY_CONTAINS(siStorable.tenantIds, \"{tenant_id}\") AND {query} ORDER BY {bucket}.[$order_by] {order_by_direction}",
                 query=q.as_n1ql(&self.bucket_name)?,
                 order_by_direction=order_by_direction.to_string(),
                 bucket=self.bucket_name,
                 tenant_id=contained_within,
             ),
-            None => format!("SELECT {bucket}.* FROM `{bucket}` WHERE typeName = $type_name AND ARRAY_CONTAINS(tenantIds, \"{tenant_id}\") ORDER BY {bucket}.[$order_by] {}", order_by_direction, bucket=self.bucket_name, tenant_id=contained_within),
+            None => format!("SELECT {bucket}.* FROM `{bucket}` WHERE siStorable.typeName = $type_name AND ARRAY_CONTAINS(siStorable.tenantIds, \"{tenant_id}\") ORDER BY {bucket}.[$order_by] {}", order_by_direction, bucket=self.bucket_name, tenant_id=contained_within),
         };
         event!(Level::DEBUG, ?cbquery, ?named_options);
         let mut result = self.cluster.query(cbquery, Some(named_options)).await?;

@@ -69,6 +69,16 @@ impl si_data::Storable for crate::protobuf::User {
                 "missing required password value".into(),
             ));
         }
+        if self.si_properties.is_none() {
+            return Err(si_data::DataError::ValidationError(
+                "missing required si_properties value".into(),
+            ));
+        }
+        if self.capabilities.is_none() {
+            return Err(si_data::DataError::ValidationError(
+                "missing required capabilities value".into(),
+            ));
+        }
         Ok(())
     }
 
@@ -135,13 +145,69 @@ impl si_data::Storable for crate::protobuf::User {
 }
 
 impl crate::protobuf::User {
+    pub async fn get(db: &si_data::Db, id: &str) -> si_data::Result<crate::protobuf::User> {
+        let obj = db.get(id).await?;
+        Ok(obj)
+    }
+
+    pub async fn save(&self, db: &si_data::Db) -> si_data::Result<()> {
+        db.upsert(self).await?;
+        Ok(())
+    }
+
+    pub async fn list(
+        db: &si_data::Db,
+        list_request: crate::protobuf::UserListRequest,
+    ) -> si_data::Result<si_data::ListResult<crate::protobuf::User>> {
+        let result = match list_request.page_token {
+            Some(token) => db.list_by_page_token(token).await?,
+            None => {
+                let page_size = match list_request.page_size {
+                    Some(page_size) => page_size,
+                    None => 10,
+                };
+                let order_by = match list_request.order_by {
+                    Some(order_by) => order_by,
+                    None => "".to_string(), // The empty string is the signal for a default, thanks protobuf history
+                };
+                let contained_within = match list_request.scope_by_tenant_id {
+                    Some(contained_within) => contained_within,
+                    None => return Err(si_data::DataError::MissingScopeByTenantId),
+                };
+                db.list(
+                    &list_request.query,
+                    page_size,
+                    order_by,
+                    list_request.order_by_direction,
+                    contained_within,
+                    "",
+                )
+                .await?
+            }
+        };
+        Ok(result)
+    }
+}
+
+impl crate::protobuf::User {
     pub fn new(
         name: Option<String>,
         display_name: Option<String>,
         email: Option<String>,
         password: Option<String>,
-        billing_account_id: Option<String>,
+        si_properties: Option<crate::protobuf::UserSiProperties>,
     ) -> si_data::Result<crate::protobuf::User> {
+        let mut si_storable = si_data::protobuf::DataStorable::default();
+        let billing_account_id = si_properties
+            .as_ref()
+            .unwrap()
+            .billing_account_id
+            .as_ref()
+            .ok_or(si_data::DataError::ValidationError(
+                "siProperties.billingAccountId".into(),
+            ))?;
+        si_storable.add_to_tenant_ids(billing_account_id);
+
         let mut result_obj = crate::protobuf::User {
             ..Default::default()
         };
@@ -149,10 +215,7 @@ impl crate::protobuf::User {
         result_obj.display_name = display_name;
         result_obj.email = email;
         result_obj.password = Some(si_data::password::encrypt_password(password)?);
-        result_obj.billing_account_id = billing_account_id;
-
-        let mut si_storable = si_data::protobuf::DataStorable::default();
-        si_storable.tenant_ids = vec![];
+        result_obj.si_properties = si_properties;
         result_obj.si_storable = Some(si_storable);
 
         Ok(result_obj)
@@ -164,10 +227,10 @@ impl crate::protobuf::User {
         display_name: Option<String>,
         email: Option<String>,
         password: Option<String>,
-        billing_account_id: Option<String>,
+        si_properties: Option<crate::protobuf::UserSiProperties>,
     ) -> si_data::Result<crate::protobuf::User> {
         let mut result_obj =
-            crate::protobuf::User::new(name, display_name, email, password, billing_account_id)?;
+            crate::protobuf::User::new(name, display_name, email, password, si_properties)?;
         db.validate_and_insert_as_new(&mut result_obj).await?;
         Ok(result_obj)
     }

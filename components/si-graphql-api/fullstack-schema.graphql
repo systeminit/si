@@ -12,23 +12,76 @@ type BillingAccount {
   """System Initiative Billing Account Name"""
   name: String
 
-  """Billing Account Short Name"""
-  shortName: String
-
   """SI Storable"""
   siStorable: DataStorable
 }
 
-"""Get a Billing Account Reply"""
-type BillingAccountGetReply {
-  """Billing Account"""
-  billingAccount: BillingAccount
+"""Create a Billing Account Reply"""
+type BillingAccountCreateReply {
+  """undefined Object"""
+  object: BillingAccount
 }
 
-"""Get a Billing Account Request"""
+"""Create a Billing Account Request"""
+input BillingAccountCreateRequest {
+  """Billing Account Display Name"""
+  displayName: String!
+
+  """Billing Account Name"""
+  name: String!
+}
+
+"""Get a System Initiative Billing Account Reply"""
+type BillingAccountGetReply {
+  """System Initiative Billing Account Object"""
+  object: BillingAccount
+}
+
+"""Get a System Initiative Billing Account Request"""
 input BillingAccountGetRequest {
-  """Billing Account ID"""
-  billingAccountId: String!
+  """System Initiative Billing Account ID"""
+  id: ID!
+}
+
+"""List System Initiative Billing Account Reply"""
+type BillingAccountListReply {
+  """Items"""
+  items: [BillingAccount!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: Int
+}
+
+"""List System Initiative Billing Account Request"""
+input BillingAccountListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: Int
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+type Capability {
+  """The actions this capability allows"""
+  actions: [String!]
+
+  """The object the capability applies to"""
+  subject: String
 }
 
 type ComponentSiProperties {
@@ -166,23 +219,15 @@ type DataStorable {
   typeName: String
 }
 
-input DataStorableRequest {
-  """Natural Key"""
-  naturalKey: String!
-
-  """Tenant IDs"""
-  tenantIds: [String!]!
-
-  """Type Name"""
-  typeName: String!
-}
-
 type EntityEventSiProperties {
   """Billing Account ID"""
   billingAccountId: String
 
   """Component Id"""
   componentId: String
+
+  """Entity Id"""
+  entityId: String
 
   """Integration Id"""
   integrationId: String
@@ -230,30 +275,103 @@ enum EntitySiPropertiesEntityState {
   TRANSITION
 }
 
-input EntitySiPropertiesRequest {
+type Group {
+  """Authorized capabilities for this user"""
+  capabilities: Capability
+
+  """A System Initiative User Group Display Name"""
+  displayName: String
+
+  """A System Initiative User Group ID"""
+  id: ID
+
+  """A System Initiative User Group Name"""
+  name: String
+
+  """A System Initiative User Group"""
+  siProperties: GroupSiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+
+  """User IDs of our groups members"""
+  userIds: [String!]
+}
+
+"""Create a Group Reply"""
+type GroupCreateReply {
+  """A System Initiative User Group Object"""
+  object: Group
+}
+
+"""Create a Group Request"""
+input GroupCreateRequest {
+  """Group Display Name"""
+  displayName: String!
+
+  """Group Name"""
+  name: String!
+
+  """The SI Properties for this User"""
+  siProperties: GroupSiPropertiesRequest!
+
+  """Group user IDs"""
+  userIds: [String!]
+}
+
+"""Get a A System Initiative User Group Reply"""
+type GroupGetReply {
+  """A System Initiative User Group Object"""
+  object: Group
+}
+
+"""Get a A System Initiative User Group Request"""
+input GroupGetRequest {
+  """A System Initiative User Group ID"""
+  id: ID!
+}
+
+"""List A System Initiative User Group Reply"""
+type GroupListReply {
+  """Items"""
+  items: [Group!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: Int
+}
+
+"""List A System Initiative User Group Request"""
+input GroupListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: Int
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+type GroupSiProperties {
+  """Billing Account ID"""
+  billingAccountId: String
+}
+
+input GroupSiPropertiesRequest {
   """Billing Account ID"""
   billingAccountId: String!
-
-  """Component Id"""
-  componentId: String!
-
-  """Entity State"""
-  entityState: EntitySiPropertiesEntityState
-
-  """Integration Id"""
-  integrationId: String!
-
-  """Integration Service Id"""
-  integrationServiceId: String!
-
-  """Organization ID"""
-  organizationId: String!
-
-  """Version"""
-  version: Int!
-
-  """Workspace ID"""
-  workspaceId: String!
 }
 
 type KubernetesContainer {
@@ -368,7 +486,7 @@ input KubernetesDeploymentComponentGetRequest {
 """List Components Reply"""
 type KubernetesDeploymentComponentListReply {
   """Items"""
-  items: KubernetesDeploymentComponent
+  items: [KubernetesDeploymentComponent!]
 
   """Next Page Token"""
   nextPageToken: String
@@ -517,6 +635,9 @@ type KubernetesDeploymentEntityEvent {
   """Output Entity"""
   outputEntity: KubernetesDeploymentEntity
 
+  """Output Lines"""
+  outputLines: [String!]
+
   """Previous Entity"""
   previousEntity: KubernetesDeploymentEntity
 
@@ -531,6 +652,42 @@ type KubernetesDeploymentEntityEvent {
 
   """Updated Time"""
   updatedTime: String
+
+  """User ID"""
+  userId: String
+}
+
+"""List Kubernetes Deployment Object EntityEvent Reply"""
+type KubernetesDeploymentEntityEventListReply {
+  """Items"""
+  items: [KubernetesDeploymentEntityEvent!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: Int
+}
+
+"""List Kubernetes Deployment Object EntityEvent Request"""
+input KubernetesDeploymentEntityEventListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: Int
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
 }
 
 """Get Entity Reply"""
@@ -581,6 +738,9 @@ input KubernetesDeploymentEntityKubernetesObjectYamlEditRequest {
 
 """List Entities Reply"""
 type KubernetesDeploymentEntityListReply {
+  """Items"""
+  items: [KubernetesDeploymentEntity!]
+
   """Next Page Token"""
   nextPageToken: String
 
@@ -590,9 +750,6 @@ type KubernetesDeploymentEntityListReply {
 
 """List Entities Request"""
 input KubernetesDeploymentEntityListRequest {
-  """Items"""
-  items: KubernetesDeploymentEntityRequest
-
   """Order By"""
   orderBy: String
 
@@ -676,38 +833,6 @@ input KubernetesDeploymentEntityPropertiesRequest {
 
   """Kubernetes Object YAML"""
   kubernetesObjectYaml: String
-}
-
-input KubernetesDeploymentEntityRequest {
-  """Constraints"""
-  constraints: KubernetesDeploymentComponentConstraintsRequest
-
-  """Entity Description"""
-  description: String!
-
-  """Kubernetes Deployment Object Entity Display Name"""
-  displayName: String!
-
-  """Display Type Name"""
-  displayTypeName: String!
-
-  """Kubernetes Deployment Object Entity ID"""
-  id: ID!
-
-  """Implicit Constraints"""
-  implicitConstraints: KubernetesDeploymentComponentConstraintsRequest
-
-  """Kubernetes Deployment Object Entity Name"""
-  name: String!
-
-  """Kubernetes Deployment Object Entity"""
-  properties: KubernetesDeploymentEntityPropertiesRequest
-
-  """SI Properties"""
-  siProperties: EntitySiPropertiesRequest!
-
-  """SI Storable"""
-  siStorable: DataStorableRequest!
 }
 
 """Sync State Reply"""
@@ -799,17 +924,350 @@ input MatchLabelsRequest {
 }
 
 type Mutation {
+  billingAccountCreate(input: BillingAccountCreateRequest): BillingAccountCreateReply
+  groupCreate(input: GroupCreateRequest): GroupCreateReply
   kubernetesDeploymentEntityCreate(input: KubernetesDeploymentEntityCreateRequest): KubernetesDeploymentEntityCreateReply
   kubernetesDeploymentEntityKubernetesObjectEdit(input: KubernetesDeploymentEntityKubernetesObjectEditRequest): KubernetesDeploymentEntityKubernetesObjectEditReply
   kubernetesDeploymentEntityKubernetesObjectYamlEdit(input: KubernetesDeploymentEntityKubernetesObjectYamlEditRequest): KubernetesDeploymentEntityKubernetesObjectYamlEditReply
   kubernetesDeploymentEntitySync(input: KubernetesDeploymentEntitySyncRequest): KubernetesDeploymentEntitySyncReply
+  organizationCreate(input: OrganizationCreateRequest): OrganizationCreateReply
+  userCreate(input: UserCreateRequest): UserCreateReply
+  workspaceCreate(input: WorkspaceCreateRequest): WorkspaceCreateReply
+}
+
+type Organization {
+  associations: OrganizationAssociations
+
+  """A System Initiative Organization Display Name"""
+  displayName: String
+
+  """A System Initiative Organization ID"""
+  id: ID
+
+  """A System Initiative Organization Name"""
+  name: String
+
+  """A System Initiative Organization"""
+  siProperties: OrganizationSiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+}
+
+"""A System Initiative Organization Associations"""
+type OrganizationAssociations {
+  """System Initiative Billing Account"""
+  billingAccount: BillingAccount
+}
+
+"""Create an Organization Reply"""
+type OrganizationCreateReply {
+  """A System Initiative Organization Object"""
+  object: Organization
+}
+
+"""Create an Organization Request"""
+input OrganizationCreateRequest {
+  """User Display Name"""
+  displayName: String!
+
+  """User Name"""
+  name: String!
+
+  """The SI Properties for this User"""
+  siProperties: OrganizationSiPropertiesRequest!
+}
+
+"""Get a A System Initiative Organization Reply"""
+type OrganizationGetReply {
+  """A System Initiative Organization Object"""
+  object: Organization
+}
+
+"""Get a A System Initiative Organization Request"""
+input OrganizationGetRequest {
+  """A System Initiative Organization ID"""
+  id: ID!
+}
+
+"""List A System Initiative Organization Reply"""
+type OrganizationListReply {
+  """Items"""
+  items: [Organization!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: Int
+}
+
+"""List A System Initiative Organization Request"""
+input OrganizationListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: Int
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+type OrganizationSiProperties {
+  """Billing Account ID"""
+  billingAccountId: String
+}
+
+input OrganizationSiPropertiesRequest {
+  """Billing Account ID"""
+  billingAccountId: String!
 }
 
 type Query {
   billingAccountGet(input: BillingAccountGetRequest): BillingAccountGetReply
+  billingAccountList(input: BillingAccountListRequest): BillingAccountListReply
+  groupGet(input: GroupGetRequest): GroupGetReply
+  groupList(input: GroupListRequest): GroupListReply
   kubernetesDeploymentComponentGet(input: KubernetesDeploymentComponentGetRequest!): KubernetesDeploymentComponentGetReply
   kubernetesDeploymentComponentList(input: KubernetesDeploymentComponentListRequest): KubernetesDeploymentComponentListReply
   kubernetesDeploymentComponentPick(input: KubernetesDeploymentComponentPickRequest): KubernetesDeploymentComponentPickReply
+  kubernetesDeploymentEntityEventList(input: KubernetesDeploymentEntityEventListRequest): KubernetesDeploymentEntityEventListReply
   kubernetesDeploymentEntityGet(input: KubernetesDeploymentEntityGetRequest): KubernetesDeploymentEntityGetReply
   kubernetesDeploymentEntityList(input: KubernetesDeploymentEntityListRequest): KubernetesDeploymentEntityListReply
+  organizationGet(input: OrganizationGetRequest): OrganizationGetReply
+  organizationList(input: OrganizationListRequest): OrganizationListReply
+  userGet(input: UserGetRequest): UserGetReply
+  userList(input: UserListRequest): UserListReply
+  workspaceGet(input: WorkspaceGetRequest): WorkspaceGetReply
+  workspaceList(input: WorkspaceListRequest): WorkspaceListReply
+}
+
+type User {
+  associations: UserAssociations
+
+  """Authorized capabilities for this user"""
+  capabilities: Capability
+
+  """A System Initiative User Display Name"""
+  displayName: String
+
+  """A valid email address"""
+  email: String
+
+  """A System Initiative User ID"""
+  id: ID
+
+  """A System Initiative User Name"""
+  name: String
+
+  """The users password hash"""
+  password: String
+
+  """A System Initiative User"""
+  siProperties: UserSiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+}
+
+"""A System Initiative User Associations"""
+type UserAssociations {
+  """System Initiative Billing Account"""
+  billingAccount: BillingAccount
+}
+
+"""Create a User Reply"""
+type UserCreateReply {
+  """A System Initiative User Object"""
+  object: User
+}
+
+"""Create a User Request"""
+input UserCreateRequest {
+  """User Display Name"""
+  displayName: String!
+
+  """Users email address"""
+  email: String!
+
+  """User Name"""
+  name: String!
+
+  """Users password"""
+  password: String!
+
+  """The SI Properties for this User"""
+  siProperties: UserSiPropertiesRequest!
+}
+
+"""Get a A System Initiative User Reply"""
+type UserGetReply {
+  """A System Initiative User Object"""
+  object: User
+}
+
+"""Get a A System Initiative User Request"""
+input UserGetRequest {
+  """A System Initiative User ID"""
+  id: ID!
+}
+
+"""List A System Initiative User Reply"""
+type UserListReply {
+  """Items"""
+  items: [User!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: Int
+}
+
+"""List A System Initiative User Request"""
+input UserListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: Int
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+type UserSiProperties {
+  """Billing Account ID"""
+  billingAccountId: String
+}
+
+input UserSiPropertiesRequest {
+  """Billing Account ID"""
+  billingAccountId: String!
+}
+
+type Workspace {
+  associations: WorkspaceAssociations
+
+  """A System Initiative Workspace Display Name"""
+  displayName: String
+
+  """A System Initiative Workspace ID"""
+  id: ID
+
+  """A System Initiative Workspace Name"""
+  name: String
+
+  """A System Initiative Workspace"""
+  siProperties: WorkspaceSiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+}
+
+"""A System Initiative Workspace Associations"""
+type WorkspaceAssociations {
+  """System Initiative Billing Account"""
+  billingAccount: BillingAccount
+
+  """A System Initiative Organization"""
+  organization: Organization
+}
+
+"""Create an Organization Reply"""
+type WorkspaceCreateReply {
+  """A System Initiative Workspace Object"""
+  object: Workspace
+}
+
+"""Create an Organization Request"""
+input WorkspaceCreateRequest {
+  """User Display Name"""
+  displayName: String!
+
+  """User Name"""
+  name: String!
+
+  """The SI Properties for this User"""
+  siProperties: WorkspaceSiPropertiesRequest!
+}
+
+"""Get a A System Initiative Workspace Reply"""
+type WorkspaceGetReply {
+  """A System Initiative Workspace Object"""
+  object: Workspace
+}
+
+"""Get a A System Initiative Workspace Request"""
+input WorkspaceGetRequest {
+  """A System Initiative Workspace ID"""
+  id: ID!
+}
+
+"""List A System Initiative Workspace Reply"""
+type WorkspaceListReply {
+  """Items"""
+  items: [Workspace!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: Int
+}
+
+"""List A System Initiative Workspace Request"""
+input WorkspaceListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: Int
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+type WorkspaceSiProperties {
+  """Billing Account ID"""
+  billingAccountId: String
+
+  """Organization ID"""
+  organizationId: String
+}
+
+input WorkspaceSiPropertiesRequest {
+  """Billing Account ID"""
+  billingAccountId: String!
+
+  """Organization ID"""
+  organizationId: String!
 }

@@ -1,33 +1,25 @@
-import { PropObject, PropMethod, PropLink } from "../../components/prelude";
+import {
+  PropObject,
+  PropMethod,
+  PropLink,
+  PropText,
+} from "../../components/prelude";
 import { registry } from "../../registry";
 import { SystemObject } from "../../systemComponent";
 
 registry.system({
-  typeName: "user",
-  displayTypeName: "A System Initiative User",
+  typeName: "group",
+  displayTypeName: "A System Initiative User Group",
   siPathName: "si-account",
   serviceName: "account",
   options(c: SystemObject) {
-    c.associations.belongsTo({
-      fromFieldPath: ["siProperties", "billingAccountId"],
-      typeName: "billingAccount",
-    });
-
+    // The magical add list association lives here! Yay! Progress
     c.fields.addText({
-      name: "email",
-      label: "A valid email address",
-      options(p) {
-        p.universal = true;
+      name: "userIds",
+      label: "User IDs of our groups members",
+      options(p: PropText) {
+        p.repeated = true;
         p.required = true;
-      },
-    });
-    c.fields.addPassword({
-      name: "password",
-      label: "The users password hash",
-      options(p) {
-        p.universal = true;
-        p.required = true;
-        p.hidden = true;
       },
     });
     c.fields.addObject({
@@ -60,35 +52,28 @@ registry.system({
     c.addGetMethod();
     c.methods.addMethod({
       name: "create",
-      label: "Create a User",
+      label: "Create a Group",
       options(p: PropMethod) {
         p.mutation = true;
         p.request.properties.addText({
           name: "name",
-          label: "User Name",
+          label: "Group Name",
           options(p) {
             p.required = true;
           },
         });
         p.request.properties.addText({
           name: "displayName",
-          label: "User Display Name",
+          label: "Group Display Name",
           options(p) {
             p.required = true;
           },
         });
         p.request.properties.addText({
-          name: "email",
-          label: "Users email address",
+          name: "userIds",
+          label: "Group user IDs",
           options(p) {
-            p.required = true;
-          },
-        });
-        p.request.properties.addPassword({
-          name: "password",
-          label: "Users password",
-          options(p) {
-            p.required = true;
+            p.repeated = true;
           },
         });
         p.request.properties.addLink({
@@ -97,7 +82,7 @@ registry.system({
           options(p: PropLink) {
             p.required = true;
             p.lookup = {
-              typeName: "user",
+              typeName: "group",
               names: ["siProperties"],
             };
           },
@@ -107,7 +92,7 @@ registry.system({
           label: `${c.displayTypeName} Object`,
           options(p: PropLink) {
             p.lookup = {
-              typeName: "user",
+              typeName: "group",
             };
           },
         });

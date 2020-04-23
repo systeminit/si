@@ -18,7 +18,7 @@ service Kubernetes {
   rpc KubernetesDeploymentEntitySync(KubernetesDeploymentEntitySyncRequest) returns (KubernetesDeploymentEntitySyncReply);
   rpc KubernetesDeploymentEntityKubernetesObjectEdit(KubernetesDeploymentEntityKubernetesObjectEditRequest) returns (KubernetesDeploymentEntityKubernetesObjectEditReply);
   rpc KubernetesDeploymentEntityKubernetesObjectYamlEdit(KubernetesDeploymentEntityKubernetesObjectYamlEditRequest) returns (KubernetesDeploymentEntityKubernetesObjectYamlEditReply);
-  rpc KubernetesDeploymentEntityEventListEntityEvents(KubernetesDeploymentEntityEventListEntityEventsRequest) returns (KubernetesDeploymentEntityEventListEntityEventsReply);
+  rpc KubernetesDeploymentEntityEventList(KubernetesDeploymentEntityEventListRequest) returns (KubernetesDeploymentEntityEventListReply);
 }
 message KubernetesMetadata {
   google.protobuf.StringValue name = 1001;
@@ -140,7 +140,7 @@ message KubernetesDeploymentEntityListRequest {
   google.protobuf.StringValue page_token = 5;
   google.protobuf.StringValue scope_by_tenant_id = 6;
 }
-message KubernetesDeploymentEntityListEntitiesReply {
+message KubernetesDeploymentEntityListReply {
   repeated si.kubernetes.KubernetesDeploymentEntity items = 1;
   google.protobuf.UInt32Value total_count = 2;
   google.protobuf.StringValue next_page_token = 3;
@@ -151,7 +151,7 @@ message KubernetesDeploymentEntityGetRequest {
 message KubernetesDeploymentEntityGetReply {
   si.kubernetes.KubernetesDeploymentEntity entity = 1;
 }
-message KubernetesDeploymentEntitySyncActionRequest {
+message KubernetesDeploymentEntitySyncRequest {
   google.protobuf.StringValue entity_id = 1;
 }
 message KubernetesDeploymentEntitySyncReply {
@@ -191,7 +191,7 @@ message KubernetesDeploymentEntityEvent {
   repeated google.protobuf.StringValue output_lines = 17;
   repeated google.protobuf.StringValue error_lines = 18;
 }
-message KubernetesDeploymentEntityEventListEntityEventsRequest {
+message KubernetesDeploymentEntityEventListRequest {
   si.data.DataQuery query = 1;
   google.protobuf.UInt32Value page_size = 2;
   google.protobuf.StringValue order_by = 3;
@@ -199,7 +199,7 @@ message KubernetesDeploymentEntityEventListEntityEventsRequest {
   google.protobuf.StringValue page_token = 5;
   google.protobuf.StringValue scope_by_tenant_id = 6;
 }
-message KubernetesDeploymentEntityEventListEntityEventsReply {
+message KubernetesDeploymentEntityEventListReply {
   repeated si.kubernetes.KubernetesDeploymentEntityEvent items = 1;
   google.protobuf.UInt32Value total_count = 2;
   google.protobuf.StringValue next_page_token = 3;
