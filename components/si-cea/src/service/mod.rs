@@ -1,14 +1,15 @@
-pub mod auth;
-
 use crate::agent::client::AgentClient;
 use si_data::Db;
+use std::convert::TryFrom;
+
+pub mod auth;
 
 pub mod prelude {
-
+    pub use super::{authnz, into_response};
     pub use crate::{
-        gen_service_action, gen_service_create_entity, gen_service_edit_prop, gen_service_get,
-        gen_service_list, gen_service_pick_component, Component as _, Entity as _,
-        EntityEvent as _, ListRequest as _, Service as CeaService, TonicResult,
+        component_get, component_list, component_pick, edit, entity_create, entity_event_list,
+        entity_get, entity_list, sync, CeaError, Component as _, Entity as _, EntityEvent as _,
+        ListRequest as _, Service as CeaService, TonicResult,
     };
     pub use std::convert::TryFrom as _;
     pub use tonic::Request as TonicRequest;
@@ -36,177 +37,294 @@ impl Service {
     }
 }
 
-#[macro_export]
-macro_rules! gen_service_action {
-    ($self:ident, $request:ident, $endpoint:tt, $action:tt, $response:ident) => {
-        async {
-            let auth = si_cea::Authentication::try_from(&$request)?;
-            auth.authorize_on_billing_account($self.db(), $endpoint)
-                .await?;
+pub async fn authnz<T>(
+    db: &Db,
+    request: &tonic::Request<T>,
+    endpoint: impl AsRef<str>,
+) -> crate::CeaResult<crate::Authentication>
+where
+    T: std::fmt::Debug,
+{
+    tracing::debug!(?request);
+    let auth = crate::Authentication::try_from(request)?;
+    auth.authorize_on_billing_account(db, endpoint.as_ref())
+        .await?;
 
-            let req = $request.get_ref();
+    Ok(auth)
+}
 
-            let entity = Entity::get($self.db(), &req.entity_id).await?;
-
-            let entity_event =
-                EntityEvent::create($self.db(), auth.user_id(), $action, &entity).await?;
-
-            $self.agent.dispatch(&entity_event).await?;
-
-            Ok(tonic::Response::new($response {
-                event: Some(entity_event),
-                ..Default::default()
-            }))
-        }
-        .instrument(debug_span!($endpoint, ?$request))
-        .await
-    };
+pub fn into_response<O, T>(ouput: O) -> crate::TonicResult<T>
+where
+    T: From<O>,
+{
+    Ok(tonic::Response::new(ouput.into()))
 }
 
 #[macro_export]
-macro_rules! gen_service_list {
-    ($self:ident, $request:ident, $endpoint:tt, $list_type:ident) => {
-        async {
-            debug!(?$request);
-            let auth = { si_cea::Authentication::try_from(&$request)? };
-            auth.authorize_on_billing_account(&$self.db, $endpoint)
-                .await?;
-            {
-                $request.get_mut().default_scope_by_tenant_id(&auth);
-            }
-            let req = $request.get_ref();
+macro_rules! component_get {
+    ($component:ty, $endpoint:expr, $request:expr, $db:expr $(,)?) => {{
+        type MyComponent = $component;
+        const ENDPOINT: &str = $endpoint;
+        let request = $request;
+        let db = $db;
 
-            let list_result = $list_type::list(&$self.db, req).await?;
-            Ok(tonic::Response::new(list_result.into()))
+        async {
+            authnz(db, &request, ENDPOINT).await?;
+
+            let component_id = request
+                .into_inner()
+                .component_id
+                .ok_or(CeaError::InvalidComponentGetRequestMissingId)?;
+
+            into_response(MyComponent::get(db, &component_id).await?)
         }
-        .instrument(debug_span!($endpoint))
+        .instrument(debug_span!(ENDPOINT))
         .await
-    };
+    }};
 }
 
 #[macro_export]
-macro_rules! gen_service_get {
-    ($self:ident, $request:ident, $endpoint:tt, $get_type:ident, $get_field:ident, $response_ty:ident, $response_field:ident) => {
+macro_rules! component_list {
+    ($component:ty, $endpoint:expr, $request:expr, $db:expr $(,)?) => {{
+        type MyComponent = $component;
+        const ENDPOINT: &str = $endpoint;
+        let request = $request;
+        let db = $db;
+
         async {
-            let auth = si_cea::Authentication::try_from(&$request)?;
+            let auth = authnz(db, &request, ENDPOINT).await?;
 
-            auth.authorize_on_billing_account(&$self.db, $endpoint)
-                .await?;
+            let mut list_request = request.into_inner();
 
-            let req = $request.get_ref();
+            list_request.default_scope_by_tenant_id(&auth);
 
-            let item = $get_type::get(&$self.db, &req.$get_field).await?;
-
-            Ok(tonic::Response::new($response_ty {
-                $response_field: Some(item),
-            }))
+            into_response(MyComponent::list(db, &list_request).await?)
         }
-        .instrument(debug_span!($endpoint, ?$request))
+        .instrument(debug_span!(ENDPOINT))
         .await
-    };
+    }};
 }
 
 #[macro_export]
-macro_rules! gen_service_pick_component {
-    ($self:ident, $request:ident, $endpoint:tt, $response_ty:ident) => {
+macro_rules! component_pick {
+    ($component:ty, $endpoint:expr, $request:expr, $db:expr $(,)?) => {{
+        type MyComponent = $component;
+        const ENDPOINT: &str = $endpoint;
+        let request = $request;
+        let db = $db;
+
         async {
-            let auth = si_cea::Authentication::try_from(&$request)?;
+            authnz(db, &request, ENDPOINT).await?;
 
-            auth.authorize_on_billing_account(&$self.db, $endpoint)
-                .await?;
+            let constraints = request
+                .into_inner()
+                .constraints
+                .ok_or(CeaError::InvalidComponentPickRequestMissingConstraints)?;
 
-            let req = $request.get_ref();
-
-            let (implicit_constraints, chosen_component) = Component::pick(&$self.db, req).await?;
-            let mut return_implicit: Vec<ImplicitConstraint> = implicit_constraints.into();
-
-            Ok(tonic::Response::new($response_ty {
-                component: Some(chosen_component),
-                implicit_constraints: return_implicit,
-                ..Default::default()
-            }))
+            into_response(MyComponent::pick(db, &constraints).await?)
         }
-        .instrument(debug_span!($endpoint, ?$request))
+        .instrument(debug_span!(ENDPOINT))
         .await
-    };
+    }};
 }
 
 #[macro_export]
-macro_rules! gen_service_create_entity {
-    ($self:ident, $request:ident, $endpoint:tt, $response_ty:ident) => {
+macro_rules! entity_create {
+    ($component:ty, $entity:ty, $entity_event:ty, $endpoint:expr, $request:expr, $db:expr, $agent:expr $(,)?) => {{
+        type MyComponent = $component;
+        type MyEntity = $entity;
+        type MyEntityEvent = $entity_event;
+        const ENDPOINT: &str = $endpoint;
+        let request = $request;
+        let db = $db;
+        let agent = $agent;
+
         async {
-            let auth = si_cea::Authentication::try_from(&$request)?;
-            auth.authorize_on_billing_account(&$self.db, $endpoint)
-                .await?;
-            let req: &CreateEntityRequest = $request.get_ref();
+            let auth = authnz(db, &request, ENDPOINT).await?;
 
-            let workspace = $self.db.get(&req.workspace_id).await?;
+            let inner = request.into_inner();
+            let name = inner
+                .name
+                .ok_or(CeaError::InvalidEntityCreateRequestMissingField("name"))?;
+            let display_name =
+                inner
+                    .display_name
+                    .ok_or(CeaError::InvalidEntityCreateRequestMissingField(
+                        "display_name",
+                    ))?;
+            let description = inner.description;
+            let properties = inner.properties.unwrap_or_default();
+            let constraints = inner.constraints.unwrap_or_default();
+            let workspace_id =
+                inner
+                    .workspace_id
+                    .ok_or(CeaError::InvalidEntityCreateRequestMissingField(
+                        "workspace_id",
+                    ))?;
 
-            let constraints = match &req.constraints {
-                Some(constraint) => constraint.clone(),
-                None => PickComponentRequest::default(),
-            };
+            let workspace = db.get(&workspace_id).await?;
+            let (implicit_constraints, component) = MyComponent::pick(db, &constraints).await?;
 
-            let (implicit_constraints, chosen_component) =
-                Component::pick(&$self.db, &constraints).await?;
-            let mut pick_component: PickComponentReply = PickComponentReply::default();
-            pick_component.component = Some(chosen_component);
-            pick_component.implicit_constraints = implicit_constraints.into();
+            let entity = MyEntity::from_request_and_component(
+                db,
+                name,
+                display_name,
+                description,
+                properties,
+                constraints,
+                component,
+                implicit_constraints,
+                workspace,
+            )
+            .await?;
+            let entity_event = MyEntityEvent::create(db, auth.user_id(), "create", &entity).await?;
+            agent.dispatch(&entity_event).await?;
 
-            let entity =
-                Entity::from_request_and_component(&$self.db, req, pick_component, workspace)
-                    .await?;
-
-            let entity_event =
-                EntityEvent::create(&$self.db, auth.user_id(), "create", &entity).await?;
-
-            $self.agent.dispatch(&entity_event).await?;
-
-            Ok(tonic::Response::new($response_ty {
-                entity: Some(entity),
-                event: Some(entity_event),
-            }))
+            into_response((entity, entity_event))
         }
-        .instrument(debug_span!($endpoint, ?$request))
+        .instrument(debug_span!(ENDPOINT))
         .await
-    };
+    }};
 }
 
 #[macro_export]
-macro_rules! gen_service_edit_prop {
-    ($self:ident, $request:ident, $endpoint:ident, $request_ty:ident, $response_ty:ident) => {
+macro_rules! entity_list {
+    ($entity:ty, $endpoint:expr, $request:expr, $db:expr $(,)?) => {{
+        type MyEntity = $entity;
+        const ENDPOINT: &str = $endpoint;
+        let request = $request;
+        let db = $db;
+
         async {
-            let auth = si_cea::Authentication::try_from(&$request)?;
-            auth.authorize_on_billing_account(&$self.db, stringify!($endpoint))
-                .await?;
+            let auth = authnz(db, &request, ENDPOINT).await?;
 
-            let req: &$request_ty = $request.get_ref();
+            let mut list_request = request.into_inner();
 
-            let mut entity = Entity::get(&$self.db, &req.entity_id).await?;
+            list_request.default_scope_by_tenant_id(&auth);
 
+            into_response(MyEntity::list(db, &list_request).await?)
+        }
+        .instrument(debug_span!(ENDPOINT))
+        .await
+    }};
+}
+
+#[macro_export]
+macro_rules! entity_get {
+    ($entity:ty, $endpoint:expr, $request:expr, $db:expr $(,)?) => {{
+        type MyEntity = $entity;
+        const ENDPOINT: &str = $endpoint;
+        let request = $request;
+        let db = $db;
+
+        async {
+            authnz(db, &request, ENDPOINT).await?;
+
+            let entity_id = request
+                .into_inner()
+                .entity_id
+                .ok_or(CeaError::InvalidEntityGetRequestMissingId)?;
+
+            into_response(MyEntity::get(db, &entity_id).await?)
+        }
+        .instrument(debug_span!(ENDPOINT))
+        .await
+    }};
+}
+
+#[macro_export]
+macro_rules! sync {
+    ($entity:ty, $entity_event:ty, $endpoint:expr, $request:expr, $db:expr, $agent:expr $(,)?) => {{
+        type MyEntity = $entity;
+        type MyEntityEvent = $entity_event;
+        const ENDPOINT: &str = $endpoint;
+        let request = $request;
+        let db = $db;
+        let agent = $agent;
+
+        async {
+            let auth = authnz(db, &request, ENDPOINT).await?;
+
+            let entity_id = request
+                .into_inner()
+                .entity_id
+                .ok_or(CeaError::InvalidEntityGetRequestMissingId)?;
+
+            let entity = MyEntity::get(db, &entity_id).await?;
+            let entity_event = MyEntityEvent::create(db, auth.user_id(), ENDPOINT, &entity).await?;
+            agent.dispatch(&entity_event).await?;
+
+            into_response(entity_event)
+        }
+        .instrument(debug_span!(ENDPOINT))
+        .await
+    }};
+}
+
+#[macro_export]
+macro_rules! edit {
+    ($entity:ty, $entity_event:ty, $endpoint:expr, $request:expr, $db:expr, $agent:expr, $inner_property:expr, $edit_property:expr $(,)?) => {{
+        type MyEntity = $entity;
+        type MyEntityEvent = $entity_event;
+        const ENDPOINT: &str = $endpoint;
+        let request = $request;
+        let db = $db;
+        let agent = $agent;
+        let inner_property = $inner_property;
+        let edit_property = $edit_property;
+
+        async {
+            let auth = authnz(db, &request, ENDPOINT).await?;
+
+            let mut inner = request.into_inner();
+            let entity_id = inner
+                .entity_id
+                .take()
+                .ok_or(CeaError::InvalidEntityEditRequestMissingId)?;
+            let property =
+                inner_property(inner).ok_or(CeaError::InvalidEntityEditRequestMissingProperty)?;
+
+            let mut entity = MyEntity::get(db, &entity_id).await?;
             let previous_entity = entity.clone();
-
             entity.set_state_transition();
-            entity.$endpoint(req).await?;
-            entity.save(&$self.db).await?;
+            edit_property(&mut entity, property)?;
+            entity.save(db).await?;
 
-            let entity_event = EntityEvent::create_with_previous_entity(
-                &$self.db,
+            let entity_event = MyEntityEvent::create_with_previous_entity(
+                db,
                 auth.user_id(),
-                stringify!(endpoint),
+                ENDPOINT,
                 &entity,
                 previous_entity,
             )
             .await?;
+            agent.dispatch(&entity_event).await?;
 
-            $self.agent.dispatch(&entity_event).await?;
-
-            Ok(tonic::Response::new($response_ty {
-                entity: Some(entity),
-                event: Some(entity_event),
-            }))
+            into_response(entity_event)
         }
-        .instrument(debug_span!(stringify!($endpoint), ?$request))
+        .instrument(debug_span!(ENDPOINT))
         .await
-    };
+    }};
+}
+
+#[macro_export]
+macro_rules! entity_event_list {
+    ($entity_event:ty, $endpoint:expr, $request:expr, $db:expr $(,)?) => {{
+        type MyEntityEvent = $entity_event;
+        const ENDPOINT: &str = $endpoint;
+        let request = $request;
+        let db = $db;
+
+        async {
+            let auth = authnz(db, &request, ENDPOINT).await?;
+
+            let mut list_request = request.into_inner();
+
+            list_request.default_scope_by_tenant_id(&auth);
+
+            into_response(MyEntityEvent::list(db, &list_request).await?)
+        }
+        .instrument(debug_span!(ENDPOINT))
+        .await
+    }};
 }

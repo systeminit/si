@@ -1,6 +1,6 @@
+use crate::model::Component;
 use crate::protobuf::kubernetes_deployment::{
-    CreateEntityRequest, KubernetesObject, ListEntitiesReply, ListEntitiesRequest,
-    PickComponentReply, Properties,
+    Constraints, KubernetesObject, ListEntitiesReply, ListEntitiesRequest, Properties,
 };
 use si_account::Workspace;
 use si_cea::entity::prelude::*;
@@ -9,15 +9,15 @@ use std::convert::{TryFrom, TryInto};
 pub use crate::protobuf::kubernetes_deployment::Entity;
 
 impl Entity {
-    pub fn edit_kubernetes_object(&mut self, prop: KubernetesObject) -> CeaResult<()> {
-        self.properties_mut()?.kubernetes_object = Some(prop);
+    pub fn edit_kubernetes_object(&mut self, property: KubernetesObject) -> CeaResult<()> {
+        self.properties_mut()?.kubernetes_object = Some(property);
         self.update_kubernetes_object_yaml_from_kubernetes_object()?;
 
         Ok(())
     }
 
-    pub fn edit_kubernetes_object_yaml(&mut self, prop: String) -> CeaResult<()> {
-        self.properties_mut()?.kubernetes_object_yaml = Some(prop);
+    pub fn edit_kubernetes_object_yaml(&mut self, property: String) -> CeaResult<()> {
+        self.properties_mut()?.kubernetes_object_yaml = Some(property);
         self.update_kubernetes_object_from_kubernetes_object_yaml()?;
 
         Ok(())
@@ -25,15 +25,15 @@ impl Entity {
 
     pub async fn from_request_and_component(
         db: &si_data::Db,
-        req: CreateEntityRequest,
-        pick_component: PickComponentReply,
+        name: String,
+        display_name: String,
+        description: Option<String>,
+        properties: Properties,
+        constraints: Constraints,
+        component: Component,
+        implicit_constraints: Constraints,
         workspace: Workspace,
     ) -> CeaResult<Self> {
-        let component = pick_component.component.expect("TODO: fix");
-        let implicit_constraints = pick_component.implicit_constraints.expect("TODO: fix");
-        let constraints = req.constraints.expect("TODO: fix");
-        let properties = req.properties.expect("TODO: fix");
-
         let mut si_storable = si_data::data::Storable::default();
         si_storable.tenant_ids = vec![
             workspace.billing_account_id.clone(),
@@ -49,8 +49,9 @@ impl Entity {
 
         let mut entity = Entity {
             id: None,
-            name: Some(req.name.expect("TODO: fix")),
-            display_name: Some(req.display_name.expect("TODO: fix")),
+            name: Some(name),
+            display_name: Some(display_name),
+            description,
             si_storable: Some(si_storable),
             si_properties: Some(si_properties),
             constraints: Some(constraints),

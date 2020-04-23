@@ -323,7 +323,7 @@ export class PropMethod extends Prop {
 export class PropAction extends PropMethod {
   // Actions have a Request and a Response
   //
-  // The Response is always `{ entity: Entity, entityEvent: EntityEvent }`;
+  // The Response is always `{ entityEvent: EntityEvent }`;
   //
   // The Request is made up of properties!
 
@@ -345,6 +345,7 @@ export class PropAction extends PropMethod {
       name: "entityId",
       label: "Entity ID",
       options(p) {
+        p.universal = true;
         p.required = true;
       },
     });

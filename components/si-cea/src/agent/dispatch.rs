@@ -5,6 +5,11 @@ use si_data::Db;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+pub mod prelude {
+    pub use super::{AgentDispatch, Dispatch};
+    pub use crate::entity_event::EntityEvent as _;
+}
+
 type IntegrationServiceId = String;
 type ActionName = String;
 type FunctionName = String;
@@ -49,53 +54,20 @@ impl AgentDispatch {
 
 #[async_trait::async_trait]
 pub trait Dispatch<EE: EntityEvent> {
-    async fn setup(&mut self, db: &Db) -> CeaResult<()>;
+    // async fn setup(&mut self, db: &Db) -> CeaResult<()>;
     async fn dispatch(
         &self,
         mqtt_client: &MqttAsyncClientInternal,
         entity_event: &mut EE,
-        integration_service_id: String,
-        action_name: String,
     ) -> CeaResult<()>;
-    fn keys(&self) -> std::collections::hash_map::Keys<(String, String), String>;
-}
-
-#[macro_export]
-macro_rules! gen_dispatcher {
-    (self_ident: $self_ident:ident) => {
-        #[derive(Debug, Clone)]
-        pub struct Dispatcher(pub si_cea::AgentDispatch);
-
-        impl std::ops::Deref for Dispatcher {
-            type Target = si_cea::AgentDispatch;
-
-            fn deref(&$self_ident) -> &Self::Target {
-                &$self_ident.0
-            }
-        }
-
-        impl std::ops::DerefMut for Dispatcher {
-            fn deref_mut(&mut $self_ident) -> &mut Self::Target {
-                &mut $self_ident.0
-            }
-        }
-    }
-}
-
-#[macro_export]
-macro_rules! gen_dispatch_keys {
-    ($self_ident:ident) => {
-        fn keys(&$self_ident) -> std::collections::hash_map::Keys<(String, String), String> {
-            $self_ident.dispatch_table.keys()
-        }
-    }
+    fn keys(&self) -> Vec<(String, String)>;
 }
 
 #[macro_export]
 macro_rules! gen_dispatch_setup {
     (
         $self_ident:ident,
-        $db_ident:ident,
+        $db:ident,
         $({
             integration_name: $integration_name:tt,
             integration_service_name: $integration_service_name:tt,
@@ -104,21 +76,26 @@ macro_rules! gen_dispatch_setup {
             ]
         }),*
     ) => {
+        let db = $db;
         $(
         {
-            let integration: si_account::Integration = $db_ident
-                .lookup_by_natural_key(format!("global:integration:{}", $integration_name))
+            let integration_name = $integration_name;
+            let integration_service_name = $integration_service_name;
+
+            let integration: si_account::Integration = db
+                .lookup_by_natural_key(format!("global:integration:{}", integration_name))
                 .await?;
             let integration_service_lookup_id = format!(
                 "global:{}:integration_service:{}",
                 integration.id,
-                $integration_service_name
+                integration_service_name
             );
-            let integration_service: si_account::IntegrationService = $db_ident
+            let integration_service: si_account::IntegrationService = db
                 .lookup_by_natural_key(integration_service_lookup_id)
                 .await?;
             $(
-                $self_ident.dispatch_to(integration_service.id.clone(), $action_name, stringify!($dispatch_to))?;
+                let action_name = $action_name;
+                $self_ident.dispatch_to(integration_service.id.clone(), action_name, stringify!($dispatch_to))?;
             )*
         }
         )*

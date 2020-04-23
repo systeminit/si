@@ -104,25 +104,9 @@ impl<EE: EntityEvent, D: Dispatch<EE> + Send + Sync + 'static + Clone> AgentServ
                         warn!(?entity_event, "Missing input entity on event");
                         return;
                     }
-                    let integration_service_id = entity_event.integration_service_id().to_string();
-                    let action_name = entity_event.action_name().to_string();
+                    debug!(?entity_event, "dispatch");
 
-                    debug!(
-                        ?integration_service_id,
-                        ?entity_event,
-                        ?action_name,
-                        "dispatch"
-                    );
-
-                    match dispatch
-                        .dispatch(
-                            &mqtt_client,
-                            &mut entity_event,
-                            integration_service_id,
-                            action_name,
-                        )
-                        .await
-                    {
+                    match dispatch.dispatch(&mqtt_client, &mut entity_event).await {
                         Ok(()) => {
                             debug!(?entity_event, "success");
                             entity_event.succeeded();

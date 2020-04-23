@@ -168,6 +168,10 @@ pub trait EntityEvent:
         Ok(())
     }
 
+    fn init_output_entity(&mut self) {
+        self.set_output_entity(self.input_entity().map(|e| e.clone()));
+    }
+
     fn log(&mut self, line: impl Into<String>) {
         self.add_to_output_lines(line);
     }

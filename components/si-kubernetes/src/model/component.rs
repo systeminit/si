@@ -9,41 +9,35 @@ use std::fmt;
 use std::str::FromStr;
 
 impl Component {
-    pub async fn pick(db: &Db, req: &PickComponentRequest) -> CeaResult<(Constraints, Self)> {
-        match &req.constraints {
-            None => Err(CeaError::InvalidPickMissingConstraints),
-            Some(constraints) => {
-                if let Some(found) = Self::pick_by_component_name(db, &constraints).await? {
-                    return Ok(found);
-                }
-                if let Some(found) = Self::pick_by_component_display_name(db, &constraints).await? {
-                    return Ok(found);
-                }
-
-                let mut implicit_constraints = Constraints::default();
-                let mut query_items = Vec::new();
-
-                let kubernetes_version = match constraints.kubernetes_version() {
-                    KubernetesVersion::Unknown => {
-                        let default = KubernetesVersion::default();
-                        implicit_constraints.set_kubernetes_version(default);
-                        default
-                    }
-                    value => value,
-                };
-                query_items.push(si_data::QueryItems::generate_expression_for_string(
-                    Field::KubernetesVersion.to_string(),
-                    si_data::QueryItemsExpressionComparison::Equals,
-                    kubernetes_version.to_string(),
-                ));
-
-                let component =
-                    Self::pick_by_expressions(db, query_items, si_data::QueryBooleanTerm::And)
-                        .await?;
-
-                Ok((implicit_constraints, component))
-            }
+    pub async fn pick(db: &Db, constraints: &Constraints) -> CeaResult<(Constraints, Self)> {
+        if let Some(found) = Self::pick_by_component_name(db, constraints).await? {
+            return Ok(found);
         }
+        if let Some(found) = Self::pick_by_component_display_name(db, constraints).await? {
+            return Ok(found);
+        }
+
+        let mut implicit_constraints = Constraints::default();
+        let mut query_items = Vec::new();
+
+        let kubernetes_version = match constraints.kubernetes_version() {
+            KubernetesVersion::Unknown => {
+                let default = KubernetesVersion::default();
+                implicit_constraints.set_kubernetes_version(default);
+                default
+            }
+            value => value,
+        };
+        query_items.push(si_data::QueryItems::generate_expression_for_string(
+            Field::KubernetesVersion.to_string(),
+            si_data::QueryItemsExpressionComparison::Equals,
+            kubernetes_version.to_string(),
+        ));
+
+        let component =
+            Self::pick_by_expressions(db, query_items, si_data::QueryBooleanTerm::And).await?;
+
+        Ok((implicit_constraints, component))
     }
 
     // NOTE(fnichol): This can likely be common/cea code?

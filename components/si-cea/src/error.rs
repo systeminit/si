@@ -26,8 +26,6 @@ pub enum CeaError {
     MissingInputEntity,
     #[error("missing output entity in entity event")]
     MissingOutputEntity,
-    #[error("pick component invalid; missing constraints")]
-    InvalidPickMissingConstraints,
     #[error("error validating item for insertion: {0}")]
     ValidationError(String),
     #[error("error picking a component: {0}")]
@@ -59,6 +57,19 @@ pub enum CeaError {
     EntityMissingSiProperties,
     #[error("entity is missing si_storable object")]
     EntityMissingSiStorable,
+
+    #[error("create entity request invalid; missing {0}")]
+    InvalidEntityCreateRequestMissingField(&'static str),
+    #[error("edit entity property request invalid; missing entity_id")]
+    InvalidEntityEditRequestMissingId,
+    #[error("edit entity property request invalid; missing property")]
+    InvalidEntityEditRequestMissingProperty,
+    #[error("get entity request invalid; missing entity_id")]
+    InvalidEntityGetRequestMissingId,
+    #[error("get component request invalid; missing component_id")]
+    InvalidComponentGetRequestMissingId,
+    #[error("pick component request invalid; missing constraints")]
+    InvalidComponentPickRequestMissingConstraints,
 
     // MQTT
     #[error("mqtt failed: {0}")]
