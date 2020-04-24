@@ -1,9 +1,6 @@
 use std::path::Path;
 
-const PROTOS: &[&str] = &[
-    "si-registry/proto/si.kubernetes.proto",
-    "si-registry/proto/si.kubernetes_deployment.proto",
-];
+const PROTOS: &[&str] = &["si-registry/proto/si.kubernetes.proto"];
 
 fn main() {
     println!("cargo:rerun-if-changes=../si-cea");
@@ -16,11 +13,9 @@ fn main() {
     let proto_include_path_string = proto_include_path.to_str().unwrap();
 
     tonic_build::configure()
-        .extern_path(".si.data", "::si_data::data")
         .extern_path(".si.account", "::si_account::protobuf")
-        .extern_path(".si.component", "::si_cea::protobuf::component")
-        .extern_path(".si.entity", "::si_cea::protobuf::entity")
-        .extern_path(".si.entity_event", "::si_cea::protobuf::entity_event")
+        .extern_path(".si.cea", "::si_cea::protobuf")
+        .extern_path(".si.data", "::si_data::data")
         .type_attribute(".", "#[derive(serde::Serialize, serde::Deserialize)]")
         .type_attribute(".", "#[serde(rename_all = \"camelCase\")]")
         .type_attribute("Entity", "#[serde(default)]")

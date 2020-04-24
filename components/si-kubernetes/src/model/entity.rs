@@ -1,40 +1,35 @@
-use crate::model::Component;
-use crate::protobuf::kubernetes_deployment::{
-    Constraints, KubernetesObject, ListEntitiesReply, ListEntitiesRequest, Properties,
+use crate::model::KubernetesDeploymentComponent;
+use crate::protobuf::{
+    KubernetesDeploymentComponentConstraints, KubernetesDeploymentEntityListEntitiesReply,
+    KubernetesDeploymentEntityListEntitiesRequest, KubernetesDeploymentEntityProperties,
+    KubernetesDeploymentEntityPropertiesKubernetesObject,
 };
 use si_account::Workspace;
 use si_cea::entity::prelude::*;
 use std::convert::{TryFrom, TryInto};
 
-pub use crate::protobuf::kubernetes_deployment::Entity;
+pub use crate::protobuf::KubernetesDeploymentEntity;
+
+type Component = KubernetesDeploymentComponent;
+type ComponentConstraints = KubernetesDeploymentComponentConstraints;
+type Entity = KubernetesDeploymentEntity;
+type EntityProperties = KubernetesDeploymentEntityProperties;
+type KubernetesObject = KubernetesDeploymentEntityPropertiesKubernetesObject;
 
 impl Entity {
-    pub fn edit_kubernetes_object(&mut self, property: KubernetesObject) -> CeaResult<()> {
-        self.properties_mut()?.kubernetes_object = Some(property);
-        self.update_kubernetes_object_yaml_from_kubernetes_object()?;
-
-        Ok(())
-    }
-
-    pub fn edit_kubernetes_object_yaml(&mut self, property: String) -> CeaResult<()> {
-        self.properties_mut()?.kubernetes_object_yaml = Some(property);
-        self.update_kubernetes_object_from_kubernetes_object_yaml()?;
-
-        Ok(())
-    }
-
-    pub async fn from_request_and_component(
+    pub async fn create(
         db: &si_data::Db,
         name: String,
         display_name: String,
-        description: Option<String>,
-        properties: Properties,
-        constraints: Constraints,
+        description: String,
+        display_type_name: String,
+        properties: EntityProperties,
+        constraints: ComponentConstraints,
         component: Component,
-        implicit_constraints: Constraints,
+        implicit_constraints: ComponentConstraints,
         workspace: Workspace,
     ) -> CeaResult<Self> {
-        let mut si_storable = si_data::data::Storable::default();
+        let mut si_storable = si_data::data::DataStorable::default();
         si_storable.tenant_ids = vec![
             workspace.billing_account_id.clone(),
             workspace.organization_id.clone(),
@@ -51,7 +46,8 @@ impl Entity {
             id: None,
             name: Some(name),
             display_name: Some(display_name),
-            description,
+            description: Some(description),
+            display_type_name: Some(display_type_name),
             si_storable: Some(si_storable),
             si_properties: Some(si_properties),
             constraints: Some(constraints),
@@ -74,16 +70,30 @@ impl Entity {
         Ok(entity)
     }
 
-    fn properties(&self) -> CeaResult<&Properties> {
-        self.properties
-            .as_ref()
-            .ok_or(CeaError::EntityMissingProperties)
+    pub fn edit_kubernetes_object(&mut self, property: KubernetesObject) -> CeaResult<()> {
+        self.properties_mut()?.kubernetes_object = Some(property);
+        self.update_kubernetes_object_yaml_from_kubernetes_object()?;
+
+        Ok(())
     }
 
-    fn properties_mut(&mut self) -> CeaResult<&mut Properties> {
+    pub fn edit_kubernetes_object_yaml(&mut self, property: String) -> CeaResult<()> {
+        self.properties_mut()?.kubernetes_object_yaml = Some(property);
+        self.update_kubernetes_object_from_kubernetes_object_yaml()?;
+
+        Ok(())
+    }
+
+    fn properties(&self) -> CeaResult<&EntityProperties> {
+        self.properties
+            .as_ref()
+            .ok_or(CeaError::MissingEntityProperties)
+    }
+
+    fn properties_mut(&mut self) -> CeaResult<&mut EntityProperties> {
         self.properties
             .as_mut()
-            .ok_or(CeaError::EntityMissingProperties)
+            .ok_or(CeaError::MissingEntityProperties)
     }
 
     fn update_kubernetes_object_yaml_from_kubernetes_object(&mut self) -> CeaResult<()> {
@@ -417,12 +427,12 @@ impl si_data::Storable for Entity {
     }
 }
 
-impl si_cea::ListRequest for ListEntitiesRequest {
-    fn query(&self) -> &Option<Query> {
+impl si_cea::ListRequest for KubernetesDeploymentEntityListEntitiesRequest {
+    fn query(&self) -> &Option<DataQuery> {
         &self.query
     }
 
-    fn set_query(&mut self, query: Option<Query>) {
+    fn set_query(&mut self, query: Option<DataQuery>) {
         self.query = query;
     }
 
@@ -470,7 +480,7 @@ impl si_cea::ListRequest for ListEntitiesRequest {
     }
 }
 
-impl si_cea::ListReply for ListEntitiesReply {
+impl si_cea::ListReply for KubernetesDeploymentEntityListEntitiesReply {
     type Reply = Entity;
 
     fn items(&self) -> &Vec<Self::Reply> {
@@ -498,10 +508,10 @@ impl si_cea::ListReply for ListEntitiesReply {
     }
 }
 
-impl From<ListResult<Entity>> for ListEntitiesReply {
+impl From<ListResult<Entity>> for KubernetesDeploymentEntityListEntitiesReply {
     fn from(list_result: ListResult<Entity>) -> Self {
         if list_result.items.len() == 0 {
-            ListEntitiesReply::default()
+            Self::default()
         } else {
             let next_page_token = if list_result.page_token().is_empty() {
                 None
@@ -509,7 +519,7 @@ impl From<ListResult<Entity>> for ListEntitiesReply {
                 Some(list_result.page_token().to_string())
             };
 
-            ListEntitiesReply {
+            Self {
                 total_count: Some(list_result.total_count()),
                 next_page_token,
                 items: list_result.items,

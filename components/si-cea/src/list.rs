@@ -3,7 +3,7 @@ use serde::de::DeserializeOwned;
 use serde::ser::Serialize;
 
 use crate::Authentication;
-use si_data::query::Query;
+use si_data::query::DataQuery;
 
 pub trait ListReply: Message + std::fmt::Debug + Default {
     type Reply: Message + std::fmt::Debug + Default;
@@ -17,8 +17,8 @@ pub trait ListReply: Message + std::fmt::Debug + Default {
 }
 
 pub trait ListRequest: Message + Serialize + DeserializeOwned + std::fmt::Debug + Default {
-    fn query(&self) -> &Option<Query>;
-    fn set_query(&mut self, query: Option<Query>);
+    fn query(&self) -> &Option<DataQuery>;
+    fn set_query(&mut self, query: Option<DataQuery>);
     fn page_size(&self) -> u32;
     fn set_page_size(&mut self, page_size: u32);
     fn order_by(&self) -> &str;

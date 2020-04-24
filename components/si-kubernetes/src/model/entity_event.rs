@@ -1,8 +1,12 @@
-use crate::model::Entity;
-pub use crate::protobuf::kubernetes_deployment::{
-    EntityEvent, ListEntityEventsReply, ListEntityEventsRequest,
+use crate::model::KubernetesDeploymentEntity;
+pub use crate::protobuf::{
+    KubernetesDeploymentEntityEvent, KubernetesDeploymentEntityEventListEntityEventsReply,
+    KubernetesDeploymentEntityEventListEntityEventsRequest,
 };
-use si_data::Query;
+use si_data::DataQuery;
+
+type Entity = KubernetesDeploymentEntity;
+type EntityEvent = KubernetesDeploymentEntityEvent;
 
 impl si_cea::EntityEvent for EntityEvent {
     type Entity = Entity;
@@ -462,7 +466,7 @@ impl si_data::Storable for EntityEvent {
     }
 }
 
-impl si_cea::ListReply for ListEntityEventsReply {
+impl si_cea::ListReply for KubernetesDeploymentEntityEventListEntityEventsReply {
     type Reply = EntityEvent;
 
     fn items(&self) -> &Vec<Self::Reply> {
@@ -490,10 +494,12 @@ impl si_cea::ListReply for ListEntityEventsReply {
     }
 }
 
-impl From<si_data::ListResult<EntityEvent>> for ListEntityEventsReply {
-    fn from(list_result: si_data::ListResult<EntityEvent>) -> ListEntityEventsReply {
+impl From<si_data::ListResult<EntityEvent>>
+    for KubernetesDeploymentEntityEventListEntityEventsReply
+{
+    fn from(list_result: si_data::ListResult<EntityEvent>) -> Self {
         if list_result.items.len() == 0 {
-            ListEntityEventsReply::default()
+            Self::default()
         } else {
             let next_page_token = if list_result.page_token().is_empty() {
                 None
@@ -501,7 +507,7 @@ impl From<si_data::ListResult<EntityEvent>> for ListEntityEventsReply {
                 Some(list_result.page_token().to_string())
             };
 
-            ListEntityEventsReply {
+            Self {
                 total_count: Some(list_result.total_count()),
                 next_page_token,
                 items: list_result.items,
@@ -510,12 +516,12 @@ impl From<si_data::ListResult<EntityEvent>> for ListEntityEventsReply {
     }
 }
 
-impl si_cea::ListRequest for ListEntityEventsRequest {
-    fn query(&self) -> &Option<Query> {
+impl si_cea::ListRequest for KubernetesDeploymentEntityEventListEntityEventsRequest {
+    fn query(&self) -> &Option<DataQuery> {
         &self.query
     }
 
-    fn set_query(&mut self, query: Option<Query>) {
+    fn set_query(&mut self, query: Option<DataQuery>) {
         self.query = query;
     }
 

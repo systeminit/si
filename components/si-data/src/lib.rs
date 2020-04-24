@@ -12,7 +12,7 @@ pub mod storable;
 pub use db::{Db, ListResult};
 pub use migrateable::Migrateable;
 pub use query::{
-    Query, QueryBooleanTerm, QueryItems, QueryItemsExpression, QueryItemsExpressionComparison,
-    QueryItemsExpressionFieldType,
+    DataQuery, DataQueryBooleanTerm, DataQueryItems, DataQueryItemsExpression,
+    DataQueryItemsExpressionComparison, DataQueryItemsExpressionFieldType,
 };
 pub use storable::{Reference, Storable};

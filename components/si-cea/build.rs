@@ -1,10 +1,6 @@
 use std::path::Path;
 
-const PROTOS: &[&str] = &[
-    "si-registry/proto/si.component.proto",
-    "si-registry/proto/si.entity.proto",
-    "si-registry/proto/si.entity_event.proto",
-];
+const PROTOS: &[&str] = &["si-registry/proto/si.cea.proto"];
 
 fn main() {
     println!("cargo:rerun-if-changed=Cargo.toml");

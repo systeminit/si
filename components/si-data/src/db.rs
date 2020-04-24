@@ -9,7 +9,7 @@ use tracing::{debug, event, info, span, Level};
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::data::{PageToken, PageTokenOrderByDirection, Query};
+use crate::data::{DataPageToken, DataPageTokenOrderByDirection, DataQuery};
 use crate::error::{DataError, Result};
 use crate::migrateable::Migrateable;
 use crate::storable::{Reference, Storable};
@@ -58,12 +58,12 @@ impl<T: DeserializeOwned + std::fmt::Debug> std::ops::Deref for ListResult<T> {
     }
 }
 
-impl std::fmt::Display for PageTokenOrderByDirection {
+impl std::fmt::Display for DataPageTokenOrderByDirection {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let msg = match self {
-            &PageTokenOrderByDirection::Unknown => "ASC".to_string(),
-            &PageTokenOrderByDirection::Asc => "ASC".to_string(),
-            &PageTokenOrderByDirection::Desc => "DESC".to_string(),
+            &DataPageTokenOrderByDirection::Unknown => "ASC".to_string(),
+            &DataPageTokenOrderByDirection::Asc => "ASC".to_string(),
+            &DataPageTokenOrderByDirection::Desc => "DESC".to_string(),
         };
         write!(f, "{}", msg)
     }
@@ -271,7 +271,7 @@ impl Db {
         S: AsRef<str> + std::fmt::Debug,
         I: DeserializeOwned + Storable + std::fmt::Debug,
     {
-        let page_token = PageToken::unseal(page_token.as_ref(), &self.page_secret_key)?;
+        let page_token = DataPageToken::unseal(page_token.as_ref(), &self.page_secret_key)?;
         let query = page_token.query;
         let order_by = page_token
             .order_by
@@ -306,7 +306,7 @@ impl Db {
         S: AsRef<str> + std::fmt::Debug,
     >(
         &self,
-        query: &Option<Query>,
+        query: &Option<DataQuery>,
         page_size: u32,
         order_by: O,
         order_by_direction: i32,
@@ -326,7 +326,7 @@ impl Db {
 
         // If you don't send a valid order by direction, you fucked with
         // the protobuf you sent by hand
-        let order_by_direction = PageTokenOrderByDirection::from_i32(order_by_direction)
+        let order_by_direction = DataPageTokenOrderByDirection::from_i32(order_by_direction)
             .ok_or(DataError::InvalidOrderByDirection)?;
 
         // The default page size is 10, and the inbound default is 0
@@ -394,7 +394,7 @@ impl Db {
         let page_token = if next_item_id == "" {
             String::from("")
         } else {
-            let mut next_page_token = PageToken::default();
+            let mut next_page_token = DataPageToken::default();
             next_page_token.query = query.clone();
             next_page_token.page_size = Some(page_size);
             next_page_token.order_by = Some(String::from(order_by));

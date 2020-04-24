@@ -24,9 +24,9 @@ pub enum DataError {
     #[error("invalid field type")]
     InvalidFieldType,
     #[error("invalid query options")]
-    InvalidQueryItems,
+    InvalidDataQueryItems,
     #[error("invalid query comparison option")]
-    InvalidQueryComparison,
+    InvalidDataQueryComparison,
     #[error("invalid order by direction; should be ASC or DESC")]
     InvalidOrderByDirection,
     #[error("invalid order by field")]

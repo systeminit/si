@@ -10,7 +10,9 @@ use std::env;
 pub mod common;
 
 use si_data::{
-    data::{Query, QueryItems, QueryItemsExpression, QueryItemsExpressionComparison},
+    data::{
+        DataQuery, DataQueryItems, DataQueryItemsExpression, DataQueryItemsExpressionComparison,
+    },
     error::{DataError, Result},
     Db, ListResult, Storable,
 };
@@ -233,12 +235,12 @@ async fn list() {
     );
     assert_eq!(last_result.page_token(), "");
 
-    // With a Query
-    let query = Some(Query {
-        items: vec![QueryItems {
-            expression: Some(QueryItemsExpression {
+    // With a DataQuery
+    let query = Some(DataQuery {
+        items: vec![DataQueryItems {
+            expression: Some(DataQueryItemsExpression {
                 field: Some("name".to_string()),
-                comparison: QueryItemsExpressionComparison::Equals as i32,
+                comparison: DataQueryItemsExpressionComparison::Equals as i32,
                 value: Some("slayer".to_string()),
                 ..Default::default()
             }),

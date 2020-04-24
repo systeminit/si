@@ -3,11 +3,13 @@
 
 use si_cea::component::prelude::*;
 
-pub use crate::protobuf::kubernetes_deployment::{
-    Component, Constraints, ListComponentsReply, ListComponentsRequest, PickComponentRequest,
+pub use crate::protobuf::{
+    KubernetesDeploymentComponent, KubernetesDeploymentComponentConstraints,
+    KubernetesDeploymentComponentListReply, KubernetesDeploymentComponentListRequest,
+    KubernetesDeploymentComponentPickRequest,
 };
 
-impl si_cea::Component for Component {
+impl si_cea::Component for KubernetesDeploymentComponent {
     // Validates only that top-level required arguments exist.
     // Deep validation of arguments happens at the GraphQL layer.
     fn validate(&self) -> si_data::error::Result<()> {
@@ -58,7 +60,7 @@ impl si_cea::Component for Component {
     }
 }
 
-impl si_data::Storable for Component {
+impl si_data::Storable for KubernetesDeploymentComponent {
     /// # Panics
     ///
     /// * When a component's `id` is not set (`Component::generate_id()` must be called first)
@@ -187,7 +189,7 @@ impl si_data::Storable for Component {
     }
 }
 
-impl si_data::Migrateable for Component {
+impl si_data::Migrateable for KubernetesDeploymentComponent {
     fn get_version(&self) -> i32 {
         self.si_properties
             .as_ref()
@@ -196,8 +198,8 @@ impl si_data::Migrateable for Component {
     }
 }
 
-impl si_cea::ListReply for ListComponentsReply {
-    type Reply = Component;
+impl si_cea::ListReply for KubernetesDeploymentComponentListReply {
+    type Reply = KubernetesDeploymentComponent;
 
     fn items(&self) -> &Vec<Self::Reply> {
         &self.items
@@ -224,10 +226,12 @@ impl si_cea::ListReply for ListComponentsReply {
     }
 }
 
-impl From<si_data::ListResult<Component>> for ListComponentsReply {
-    fn from(list_result: si_data::ListResult<Component>) -> Self {
+impl From<si_data::ListResult<KubernetesDeploymentComponent>>
+    for KubernetesDeploymentComponentListReply
+{
+    fn from(list_result: si_data::ListResult<KubernetesDeploymentComponent>) -> Self {
         if list_result.items.len() == 0 {
-            ListComponentsReply::default()
+            Self::default()
         } else {
             let next_page_token = if list_result.page_token().is_empty() {
                 None
@@ -235,7 +239,7 @@ impl From<si_data::ListResult<Component>> for ListComponentsReply {
                 Some(list_result.page_token().to_string())
             };
 
-            ListComponentsReply {
+            Self {
                 total_count: Some(list_result.total_count()),
                 next_page_token,
                 items: list_result.items,
@@ -244,12 +248,12 @@ impl From<si_data::ListResult<Component>> for ListComponentsReply {
     }
 }
 
-impl si_cea::ListRequest for ListComponentsRequest {
-    fn query(&self) -> &Option<si_data::Query> {
+impl si_cea::ListRequest for KubernetesDeploymentComponentListRequest {
+    fn query(&self) -> &Option<si_data::DataQuery> {
         &self.query
     }
 
-    fn set_query(&mut self, query: Option<si_data::Query>) {
+    fn set_query(&mut self, query: Option<si_data::DataQuery>) {
         self.query = query;
     }
 

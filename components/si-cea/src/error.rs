@@ -48,15 +48,15 @@ pub enum CeaError {
     RequestMissingProp,
 
     #[error("entity is missing constraints object")]
-    EntityMissingConstraints,
+    MissingEntityConstraints,
     #[error("entity is missing implicit_constraints object")]
-    EntityMissingImplicitConstraints,
+    MissingEntityImplicitConstraints,
     #[error("entity is missing properties object")]
-    EntityMissingProperties,
+    MissingEntityProperties,
     #[error("entity is missing si_properties object")]
-    EntityMissingSiProperties,
+    MissingEntitySiProperties,
     #[error("entity is missing si_storable object")]
-    EntityMissingSiStorable,
+    MissingEntitySiStorable,
 
     #[error("create entity request invalid; missing {0}")]
     InvalidEntityCreateRequestMissingField(&'static str),

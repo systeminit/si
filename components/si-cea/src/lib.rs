@@ -4,17 +4,7 @@
 //!
 
 pub mod protobuf {
-    pub mod component {
-        tonic::include_proto!("si.component");
-    }
-
-    pub mod entity {
-        tonic::include_proto!("si.entity");
-    }
-
-    pub mod entity_event {
-        tonic::include_proto!("si.entity_event");
-    }
+    tonic::include_proto!("si.cea");
 }
 
 pub mod agent;
@@ -33,9 +23,7 @@ pub use crate::agent::finalizer::AgentFinalizer;
 pub use crate::agent::server::AgentServer;
 pub use crate::agent::utility::spawn_command::{spawn_command, CaptureOutput, CommandResult};
 pub use crate::binary::server::setup_tracing;
-pub use crate::component::{
-    Component, ImplicitConstraints, MigrateComponent, PickComponentRequest,
-};
+pub use crate::component::{Component, MigrateComponent};
 pub use crate::entity::{Entity, EntityState};
 pub use crate::entity_event::EntityEvent;
 pub use crate::error::{CeaError, CeaResult, TonicResult};

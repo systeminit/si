@@ -1,12 +1,17 @@
-pub use crate::gen::kubernetes_deployment::component::{
-    Component, Constraints, PickComponentRequest,
+pub use crate::gen::kubernetes::kubernetes_deployment_component::{
+    KubernetesDeploymentComponent, KubernetesDeploymentComponentConstraints,
+    KubernetesDeploymentComponentListRequest,
 };
-pub use crate::protobuf::kubernetes_deployment::KubernetesVersion;
+pub use crate::protobuf::KubernetesDeploymentComponentConstraintsKubernetesVersion;
 
 use si_cea::component::prelude::*;
 use si_data::Db;
 use std::fmt;
 use std::str::FromStr;
+
+type Component = KubernetesDeploymentComponent;
+type Constraints = KubernetesDeploymentComponentConstraints;
+type KubernetesVersion = KubernetesDeploymentComponentConstraintsKubernetesVersion;
 
 impl Component {
     pub async fn pick(db: &Db, constraints: &Constraints) -> CeaResult<(Constraints, Self)> {
@@ -28,14 +33,14 @@ impl Component {
             }
             value => value,
         };
-        query_items.push(si_data::QueryItems::generate_expression_for_string(
+        query_items.push(si_data::DataQueryItems::generate_expression_for_string(
             Field::KubernetesVersion.to_string(),
-            si_data::QueryItemsExpressionComparison::Equals,
+            si_data::DataQueryItemsExpressionComparison::Equals,
             kubernetes_version.to_string(),
         ));
 
         let component =
-            Self::pick_by_expressions(db, query_items, si_data::QueryBooleanTerm::And).await?;
+            Self::pick_by_expressions(db, query_items, si_data::DataQueryBooleanTerm::And).await?;
 
         Ok((implicit_constraints, component))
     }

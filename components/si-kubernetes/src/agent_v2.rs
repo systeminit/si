@@ -5,14 +5,16 @@
 ///
 pub mod lib {
     use async_trait::async_trait;
-    use si_cea::{CeaResult, EntityEvent as EntityEventTrait, MqttAsyncClientInternal};
+    use si_cea::{CeaError, CeaResult, EntityEvent as EntityEventTrait, MqttAsyncClientInternal};
     use si_data::Db;
     use std::collections::HashMap;
 
     pub mod codegen_prelude {
         pub use super::{Dispatch, IntegrationActions, IntegrationNames};
         pub use async_trait::async_trait;
-        pub use si_cea::{CeaResult, EntityEvent as EntityEventTrait, MqttAsyncClientInternal};
+        pub use si_cea::{
+            CeaError, CeaResult, EntityEvent as EntityEventTrait, MqttAsyncClientInternal,
+        };
         pub use std::marker::PhantomData;
     }
 
@@ -74,10 +76,16 @@ pub mod lib {
 
         async fn dispatch(
             &self,
-            _mqtt_client: &MqttAsyncClientInternal,
+            mqtt_client: &MqttAsyncClientInternal,
             entity_event: &mut Self::EntityEvent,
         ) -> CeaResult<()> {
-            todo!("boop")
+            match self.dispatchers.get(entity_event.integration_service_id()) {
+                Some(dispatcher) => dispatcher.dispatch(mqtt_client, entity_event).await,
+                None => Err(CeaError::DispatchFunctionMissing(
+                    entity_event.integration_service_id().to_string(),
+                    entity_event.action_name().to_string(),
+                )),
+            }
         }
     }
 
@@ -159,7 +167,10 @@ pub mod codegen {
                 "sync" => T::sync(mc, ee).await,
                 "edit_kubernetes_object" => T::edit_kubernetes_object(mc, ee).await,
                 "edit_kubernetes_object_yaml" => T::edit_kubernetes_object_yaml(mc, ee).await,
-                invalid => panic!("TODO: fix for invalid action: {}", invalid),
+                invalid => Err(CeaError::DispatchFunctionMissing(
+                    ee.integration_service_id().to_string(),
+                    invalid.to_string(),
+                )),
             }
         }
     }
@@ -188,72 +199,6 @@ pub mod codegen {
             entity_event: &mut Self::EntityEvent,
         ) -> CeaResult<()>;
     }
-
-    ///
-    /// GCP
-    ///
-
-    pub struct GcpDispatcher<T: GcpDispatchFunctions> {
-        _phantom: PhantomData<T>,
-    }
-
-    impl<T: GcpDispatchFunctions> GcpDispatcher<T> {
-        pub fn new() -> Self {
-            Self {
-                _phantom: PhantomData::default(),
-            }
-        }
-    }
-
-    impl<T: GcpDispatchFunctions> IntegrationActions for GcpDispatcher<T> {
-        fn actions() -> &'static [&'static str] {
-            &["create", "sync", "edit_kubernetes_object_yaml"]
-        }
-    }
-
-    impl<T: GcpDispatchFunctions> IntegrationNames for GcpDispatcher<T> {
-        fn integration_names() -> (&'static str, &'static str) {
-            T::integration_names()
-        }
-    }
-
-    #[async_trait]
-    impl<T: GcpDispatchFunctions + Sync> Dispatch for GcpDispatcher<T> {
-        type EntityEvent = T::EntityEvent;
-
-        async fn dispatch(
-            &self,
-            mc: &MqttAsyncClientInternal,
-            ee: &mut Self::EntityEvent,
-        ) -> CeaResult<()> {
-            match ee.action_name() {
-                "create" => T::create(mc, ee).await,
-                "sync" => T::sync(mc, ee).await,
-                "edit_kubernetes_object_yaml" => T::edit_kubernetes_object_yaml(mc, ee).await,
-                invalid => panic!("TODO: fix for invalid action: {}", invalid),
-            }
-        }
-    }
-
-    #[async_trait]
-    pub trait GcpDispatchFunctions: IntegrationNames {
-        type EntityEvent: EntityEventTrait + Send;
-
-        async fn create(
-            mqtt_client: &MqttAsyncClientInternal,
-            entity_event: &mut Self::EntityEvent,
-        ) -> CeaResult<()>;
-
-        async fn sync(
-            mqtt_client: &MqttAsyncClientInternal,
-            entity_event: &mut Self::EntityEvent,
-        ) -> CeaResult<()>;
-
-        async fn edit_kubernetes_object_yaml(
-            mqtt_client: &MqttAsyncClientInternal,
-            entity_event: &mut Self::EntityEvent,
-        ) -> CeaResult<()>;
-    }
 }
 
 /// --------------------------
@@ -262,22 +207,19 @@ pub mod codegen {
 ///
 ///
 pub mod mycrate {
-    use super::codegen::{AwsDispatcher, GcpDispatcher};
+    use super::codegen::AwsDispatcher;
     use super::lib::Dispatcher;
-    use crate::model::EntityEvent;
+    use crate::model::KubernetesDeploymentEntityEvent;
     use si_cea::CeaResult;
 
-    type MyEntityEvent = EntityEvent;
+    type EntityEvent = KubernetesDeploymentEntityEvent;
 
     // Somewhere in the crate library root
-    pub async fn dispatcher(db: &si_data::Db) -> CeaResult<Dispatcher<MyEntityEvent>> {
+    pub async fn dispatcher(db: &si_data::Db) -> CeaResult<Dispatcher<EntityEvent>> {
         let mut dispatcher = Dispatcher::default();
 
         dispatcher
             .add(db, AwsDispatcher::<aws::AwsDispatchFunctionsImpl>::new())
-            .await?;
-        dispatcher
-            .add(db, GcpDispatcher::<gcp::GcpDispatchFunctionsImpl>::new())
             .await?;
 
         Ok(dispatcher)
@@ -286,9 +228,9 @@ pub mod mycrate {
     mod aws {
         use super::super::codegen::AwsDispatchFunctions;
         use super::super::lib::prelude::*;
-        use crate::model::EntityEvent;
+        use crate::model::KubernetesDeploymentEntityEvent;
 
-        type MyEntityEvent = EntityEvent;
+        type EntityEvent = KubernetesDeploymentEntityEvent;
 
         pub struct AwsDispatchFunctionsImpl;
 
@@ -300,7 +242,7 @@ pub mod mycrate {
 
         #[async_trait]
         impl AwsDispatchFunctions for AwsDispatchFunctionsImpl {
-            type EntityEvent = MyEntityEvent;
+            type EntityEvent = EntityEvent;
 
             async fn create(
                 _mqtt_client: &MqttAsyncClientInternal,
@@ -353,48 +295,6 @@ pub mod mycrate {
                 }
                 .instrument(debug_span!("edit_kubernetes_object_yaml"))
                 .await
-            }
-        }
-    }
-
-    mod gcp {
-        use super::super::codegen::GcpDispatchFunctions;
-        use super::super::lib::prelude::*;
-        use crate::model::EntityEvent;
-
-        type MyEntityEvent = EntityEvent;
-
-        pub struct GcpDispatchFunctionsImpl;
-
-        impl IntegrationNames for GcpDispatchFunctionsImpl {
-            fn integration_names() -> (&'static str, &'static str) {
-                ("gcp", "kubernetes_deployment")
-            }
-        }
-
-        #[async_trait]
-        impl GcpDispatchFunctions for GcpDispatchFunctionsImpl {
-            type EntityEvent = MyEntityEvent;
-
-            async fn create(
-                _mqtt_client: &MqttAsyncClientInternal,
-                _entity_event: &mut Self::EntityEvent,
-            ) -> CeaResult<()> {
-                todo!("boop")
-            }
-
-            async fn sync(
-                _mqtt_client: &MqttAsyncClientInternal,
-                _entity_event: &mut Self::EntityEvent,
-            ) -> CeaResult<()> {
-                todo!("boop");
-            }
-
-            async fn edit_kubernetes_object_yaml(
-                _mqtt_client: &MqttAsyncClientInternal,
-                _entity_event: &mut Self::EntityEvent,
-            ) -> CeaResult<()> {
-                todo!("boop")
             }
         }
     }

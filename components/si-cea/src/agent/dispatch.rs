@@ -1,7 +1,6 @@
 use crate::agent::client::MqttAsyncClientInternal;
 use crate::entity_event::EntityEvent;
 use crate::error::{CeaError, CeaResult};
-use si_data::Db;
 use std::collections::HashMap;
 use std::sync::Arc;
 
