@@ -1,6 +1,7 @@
 use si_data;
 use thiserror::Error;
 use tonic::{self, Response};
+use tracing::error;
 
 pub type Result<T> = std::result::Result<T, AccountError>;
 pub type TonicResult<T> = std::result::Result<Response<T>, tonic::Status>;
@@ -109,12 +110,21 @@ impl From<AccountError> for tonic::Status {
             | AccountError::InvalidTenantId
             | AccountError::EmptyBillingAccount
             | AccountError::EmptyUser => {
+                error!(?err, "tonic invalid argument");
                 tonic::Status::new(tonic::Code::InvalidArgument, err.to_string())
             }
             AccountError::Authorization => {
+                error!(?err, "tonic permission denied");
                 tonic::Status::new(tonic::Code::PermissionDenied, err.to_string())
             }
-            _ => tonic::Status::new(tonic::Code::Unknown, err.to_string()),
+            AccountError::Db(err) => {
+                error!(?err, "tonic failed precondition");
+                tonic::Status::new(tonic::Code::FailedPrecondition, err.to_string())
+            }
+            _ => {
+                error!(?err, "tonic unknown");
+                tonic::Status::new(tonic::Code::Unknown, err.to_string())
+            }
         }
     }
 }

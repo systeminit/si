@@ -129,7 +129,6 @@ impl Db {
         Ok(())
     }
 
-    #[tracing::instrument]
     pub async fn check_natural_key_exists(&self, natural_key: Option<&str>) -> Result<()> {
         match natural_key {
             Some(nk) => {
@@ -143,7 +142,6 @@ impl Db {
         }
     }
 
-    #[tracing::instrument]
     pub async fn validate_and_insert_as_new<'a, T>(&self, content: &'a mut T) -> Result<&'a mut T>
     where
         T: Storable + Serialize + std::fmt::Debug,
@@ -253,7 +251,6 @@ impl Db {
         Ok(content)
     }
 
-    #[tracing::instrument]
     pub async fn insert<'a, T>(&self, content: &'a T) -> Result<&'a T>
     where
         T: Storable + Serialize + std::fmt::Debug,
@@ -412,7 +409,6 @@ impl Db {
         })
     }
 
-    #[tracing::instrument]
     pub async fn migrate<
         I: Migrateable + Storable + DeserializeOwned + Serialize + std::fmt::Debug,
     >(
@@ -462,7 +458,6 @@ impl Db {
         Ok(())
     }
 
-    #[tracing::instrument]
     pub async fn upsert<T>(&self, content: &T) -> Result<couchbase::result::MutationResult>
     where
         T: Serialize + Storable + std::fmt::Debug,
@@ -477,7 +472,6 @@ impl Db {
             .map_err(DataError::CouchbaseError)
     }
 
-    #[tracing::instrument]
     pub async fn lookup_by_natural_key<S1, T>(&self, natural_key: S1) -> Result<T>
     where
         S1: Into<String> + std::fmt::Debug,
@@ -490,7 +484,6 @@ impl Db {
         self.get(lookup_object.object_id).await
     }
 
-    #[tracing::instrument]
     pub async fn lookup<S1, S2, S3, T>(
         &self,
         tenant_id: S1,
@@ -515,7 +508,6 @@ impl Db {
         self.get(lookup_object.object_id).await
     }
 
-    #[tracing::instrument]
     pub async fn get<S, T>(&self, id: S) -> Result<T>
     where
         S: Into<String> + std::fmt::Debug,
@@ -533,7 +525,6 @@ impl Db {
         Ok(item.content_as::<T>()?)
     }
 
-    #[tracing::instrument]
     pub async fn get_storable<S, T>(&self, id: S) -> Result<T>
     where
         S: Into<String> + std::fmt::Debug,
@@ -551,7 +542,6 @@ impl Db {
         Ok(item.content_as::<T>()?)
     }
 
-    #[tracing::instrument]
     pub async fn exists<S>(&self, id: S) -> Result<bool>
     where
         S: Into<String> + std::fmt::Debug,
@@ -577,7 +567,6 @@ impl Db {
         }
     }
 
-    #[tracing::instrument]
     pub async fn remove<S>(&self, id: S) -> Result<couchbase::result::MutationResult>
     where
         S: Into<String> + std::fmt::Debug,
@@ -590,7 +579,6 @@ impl Db {
             .map_err(DataError::CouchbaseError)
     }
 
-    #[tracing::instrument]
     pub async fn query<I>(
         &self,
         query: String,

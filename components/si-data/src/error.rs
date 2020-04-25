@@ -61,7 +61,7 @@ impl From<DataError> for tonic::Status {
             DataError::ValidationError(_) => {
                 tonic::Status::new(tonic::Code::InvalidArgument, err.to_string())
             }
-            _ => tonic::Status::new(tonic::Code::Unknown, err.to_string()),
+            _ => tonic::Status::new(tonic::Code::InvalidArgument, err.to_string()),
         }
     }
 }

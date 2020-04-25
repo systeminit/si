@@ -10,9 +10,11 @@ import "si-registry/proto/si.data.proto";
 service Account {
   rpc BillingAccountList(BillingAccountListRequest) returns (BillingAccountListReply);
   rpc BillingAccountGet(BillingAccountGetRequest) returns (BillingAccountGetReply);
+  rpc BillingAccountSignup(BillingAccountSignupRequest) returns (BillingAccountSignupReply);
   rpc BillingAccountCreate(BillingAccountCreateRequest) returns (BillingAccountCreateReply);
   rpc UserList(UserListRequest) returns (UserListReply);
   rpc UserGet(UserGetRequest) returns (UserGetReply);
+  rpc UserInitialCreate(UserInitialCreateRequest) returns (UserInitialCreateReply);
   rpc UserCreate(UserCreateRequest) returns (UserCreateReply);
   rpc GroupList(GroupListRequest) returns (GroupListReply);
   rpc GroupGet(GroupGetRequest) returns (GroupGetReply);
@@ -48,6 +50,24 @@ message BillingAccountGetRequest {
 }
 message BillingAccountGetReply {
   si.account.BillingAccount object = 1001;
+}
+message BillingAccountSignupRequestBillingAccount {
+  google.protobuf.StringValue name = 1001;
+  google.protobuf.StringValue display_name = 1002;
+}
+message BillingAccountSignupRequestUser {
+  google.protobuf.StringValue name = 1001;
+  google.protobuf.StringValue display_name = 1002;
+  google.protobuf.StringValue email = 1;
+  google.protobuf.StringValue password = 2;
+}
+message BillingAccountSignupRequest {
+  si.account.BillingAccountSignupRequestBillingAccount billing_account = 1001;
+  si.account.BillingAccountSignupRequestUser user = 1002;
+}
+message BillingAccountSignupReply {
+  si.account.BillingAccount billing_account = 1001;
+  si.account.User user = 1002;
 }
 message BillingAccountCreateRequest {
   google.protobuf.StringValue name = 1001;
@@ -90,6 +110,16 @@ message UserGetRequest {
   google.protobuf.StringValue id = 1001;
 }
 message UserGetReply {
+  si.account.User object = 1001;
+}
+message UserInitialCreateRequest {
+  google.protobuf.StringValue name = 1001;
+  google.protobuf.StringValue display_name = 1002;
+  google.protobuf.StringValue email = 1003;
+  google.protobuf.StringValue password = 1004;
+  si.account.UserSiProperties si_properties = 1005;
+}
+message UserInitialCreateReply {
   si.account.User object = 1001;
 }
 message UserCreateRequest {

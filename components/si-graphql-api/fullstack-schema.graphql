@@ -16,21 +16,6 @@ type BillingAccount {
   siStorable: DataStorable
 }
 
-"""Create a Billing Account Reply"""
-type BillingAccountCreateReply {
-  """undefined Object"""
-  object: BillingAccount
-}
-
-"""Create a Billing Account Request"""
-input BillingAccountCreateRequest {
-  """Billing Account Display Name"""
-  displayName: String!
-
-  """Billing Account Name"""
-  name: String!
-}
-
 """Get a System Initiative Billing Account Reply"""
 type BillingAccountGetReply {
   """System Initiative Billing Account Object"""
@@ -74,6 +59,46 @@ input BillingAccountListRequest {
 
   """Scope By Tenant ID"""
   scopeByTenantId: String
+}
+
+"""Create a Billing Account and Administrative User Reply"""
+type BillingAccountSignupReply {
+  """Billing Account Object"""
+  billingAccount: BillingAccount
+
+  """User Object"""
+  user: User
+}
+
+"""Create a Billing Account and Administrative User Request"""
+input BillingAccountSignupRequest {
+  """Billing Account Information"""
+  billingAccount: BillingAccountSignupRequestBillingAccountRequest!
+
+  """User Information"""
+  user: BillingAccountSignupRequestUserRequest!
+}
+
+input BillingAccountSignupRequestBillingAccountRequest {
+  """Billing Account Display Name"""
+  displayName: String!
+
+  """Billing Account Name"""
+  name: String!
+}
+
+input BillingAccountSignupRequestUserRequest {
+  """User Display Name"""
+  displayName: String!
+
+  """A valid email address"""
+  email: String!
+
+  """User Name"""
+  name: String!
+
+  """The users password hash"""
+  password: String!
 }
 
 type Capability {
@@ -924,7 +949,7 @@ input MatchLabelsRequest {
 }
 
 type Mutation {
-  billingAccountCreate(input: BillingAccountCreateRequest): BillingAccountCreateReply
+  billingAccountSignup(input: BillingAccountSignupRequest): BillingAccountSignupReply
   groupCreate(input: GroupCreateRequest): GroupCreateReply
   kubernetesDeploymentEntityCreate(input: KubernetesDeploymentEntityCreateRequest): KubernetesDeploymentEntityCreateReply
   kubernetesDeploymentEntityKubernetesObjectEdit(input: KubernetesDeploymentEntityKubernetesObjectEditRequest): KubernetesDeploymentEntityKubernetesObjectEditReply

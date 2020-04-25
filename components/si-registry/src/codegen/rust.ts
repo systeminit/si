@@ -35,6 +35,10 @@ export class RustFormatter {
     return `crate::protobuf::${pascalCase(this.systemObject.typeName)}`;
   }
 
+  modelName(): string {
+    return `crate::model::${pascalCase(this.systemObject.typeName)}`;
+  }
+
   typeName(): string {
     return snakeCase(this.systemObject.typeName);
   }

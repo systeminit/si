@@ -14,19 +14,21 @@ async fn <%- fmt.implServiceMethodName(propMethod) %>(
       <%_ if (propMethod.name == "get") { _%>
         let request_id = inner.id.ok_or(si_data::DataError::RequiredField("id".to_string()))?;
         let output = <%- fmt.structName() %>::get(&self.db, &request_id).await?;
-        debug!(?output);
+        info!(?output);
         Ok(tonic::Response::new(<%- fmt.implServiceReplyType(propMethod, { option: false, reference: false }) %>{ object: Some(output) }))
       <%_ } else if (propMethod.name == "create") { _%>
         <%- fmt.implServiceMethodCreateDestructure() %>
         let output = <%- fmt.structName() %>::create(&self.db, <%- fmt.implCreatePassNewArgs() %>).await?; 
-        debug!(?output);
+        info!(?output);
         Ok(tonic::Response::new(<%- fmt.implServiceReplyType(propMethod, { option: false, reference: false }) %>{ object: Some(output) })) 
       <%_ } else if (propMethod.name == "list") { _%>
         let list_reply = <%- fmt.structName() %>::list(&self.db, inner).await?; 
-        debug!(?list_reply);
+        info!(?list_reply);
         Ok(tonic::Response::new(<%- fmt.implServiceReplyType(propMethod, { option: false, reference: false }) %>{ <%- fmt.implServiceMethodListResultToReply() %> })) 
       <%_ } else { _%>
-        Ok(tonic::Response::new(<%- fmt.implServiceReplyType(propMethod, { option: false, reference: false }) %>{ ..Default::default() }))
+        let output = <%- fmt.modelName() %>::<%- fmt.implServiceMethodName(propMethod) %>(&self.db, inner).await?;
+        info!(?output);
+        Ok(tonic::Response::new(output))
       <%_ } _%>
     }
     .instrument(info_span!("<%- fmt.implServiceMethodName(propMethod) %>"))

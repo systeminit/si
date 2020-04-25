@@ -167,7 +167,6 @@ export class SystemObject extends BaseObject {
       options(p: PropMethod) {
         p.universal = true;
         p.isPrivate = args.isPrivate || false;
-        p.skipAuth = true;
         p.request.properties.addLink({
           name: "query",
           label: "Query",

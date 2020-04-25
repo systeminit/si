@@ -74,11 +74,6 @@ impl si_data::Storable for crate::protobuf::User {
                 "missing required si_properties value".into(),
             ));
         }
-        if self.capabilities.is_none() {
-            return Err(si_data::DataError::ValidationError(
-                "missing required capabilities value".into(),
-            ));
-        }
         Ok(())
     }
 

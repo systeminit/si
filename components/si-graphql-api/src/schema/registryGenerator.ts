@@ -345,6 +345,7 @@ export class SiRegistryGenerator {
             {},
           ).withMetadata(metadata);
         }
+        console.log("fuckity");
         let result = await req.exec();
         console.dir({ response: result.response }, { depth: Infinity });
         result = thisGenerator.transformGrpcToGraphql(
@@ -410,7 +411,8 @@ export class SiRegistryGenerator {
       prop.kind() == "text" ||
       prop.kind() == "number" ||
       prop.kind() == "bool" ||
-      prop.kind() == "code"
+      prop.kind() == "code" ||
+      prop.kind() == "password"
     ) {
       return {
         value: input,
@@ -504,7 +506,8 @@ export class SiRegistryGenerator {
       prop.kind() == "text" ||
       prop.kind() == "number" ||
       prop.kind() == "bool" ||
-      prop.kind() == "code"
+      prop.kind() == "code" ||
+      prop.kind() == "password"
     ) {
       return input["value"];
     } else if (prop.kind() == "map") {

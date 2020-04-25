@@ -1,91 +1,56 @@
-use si_data::{error::DataError, Reference, Storable};
-use uuid::Uuid;
+use si_data::{DataError, Db};
 
-pub use crate::error::{AccountError, Result};
-pub use crate::protobuf::{BillingAccount, CreateBillingAccountReply, CreateBillingAccountRequest};
-
-impl Storable for BillingAccount {
-    fn get_id(&self) -> &str {
-        &self.id
-    }
-
-    fn set_id(&mut self, id: impl Into<String>) {
-        self.id = id.into();
-    }
-
-    fn type_name() -> &'static str {
-        "billing_account"
-    }
-
-    fn set_type_name(&mut self) {
-        self.type_name = BillingAccount::type_name().to_string();
-    }
-
-    fn generate_id(&mut self) {
-        let uuid = Uuid::new_v4();
-        self.id = format!("{}:{}", BillingAccount::type_name(), uuid);
-    }
-
-    fn validate(&self) -> si_data::error::Result<()> {
-        if self.display_name == "" {
-            return Err(DataError::ValidationError(
-                AccountError::InvalidMissingDisplayName.to_string(),
-            ));
-        }
-        if self.short_name == "" {
-            return Err(DataError::ValidationError(
-                AccountError::InvalidMissingShortName.to_string(),
-            ));
-        }
-        Ok(())
-    }
-
-    fn get_tenant_ids(&self) -> &[String] {
-        &self.tenant_ids
-    }
-
-    fn add_to_tenant_ids(&mut self, id: impl Into<String>) {
-        self.tenant_ids.push(id.into());
-    }
-
-    fn referential_fields(&self) -> Vec<Reference> {
-        Vec::new()
-    }
-
-    fn get_natural_key(&self) -> Option<&str> {
-        Some(&self.natural_key)
-    }
-
-    fn set_natural_key(&mut self) {
-        self.natural_key = format!(
-            "{}:{}:{}",
-            // This is safe *only* after the object has been created.
-            self.get_tenant_ids()[0],
-            BillingAccount::type_name(),
-            self.short_name
-        );
-    }
-
-    fn order_by_fields() -> Vec<&'static str> {
-        vec!["id", "naturalKey", "typeName", "displayName", "shortName"]
-    }
-}
+use crate::error::Result;
+pub use crate::protobuf::{
+    BillingAccount, BillingAccountSignupReply, BillingAccountSignupRequest, User, UserSiProperties,
+};
+use tracing::debug;
 
 impl BillingAccount {
-    pub fn new_from_create_request(req: &CreateBillingAccountRequest) -> Result<BillingAccount> {
-        if req.short_name == "" {
-            return Err(AccountError::InvalidMissingShortName);
-        }
-        let display_name = if req.display_name == "" {
-            req.short_name.clone()
-        } else {
-            req.display_name.clone()
+    pub async fn billing_account_signup(
+        db: &Db,
+        request: BillingAccountSignupRequest,
+    ) -> Result<BillingAccountSignupReply> {
+        debug!("billing account req");
+        let billing_account_req = request
+            .billing_account
+            .ok_or(DataError::RequiredField("billingAccount".into()))?;
+
+        debug!("billing account create");
+        let billing_account = BillingAccount::create(
+            db,
+            billing_account_req.name,
+            billing_account_req.display_name,
+        )
+        .await?;
+
+        debug!("user");
+        let user_req = request
+            .user
+            .ok_or(DataError::RequiredField("user".into()))?;
+
+        debug!("user_si_properties");
+        let user_si_properties = UserSiProperties {
+            billing_account_id: billing_account.id.clone(),
         };
 
-        Ok(BillingAccount {
-            short_name: req.short_name.clone(),
-            display_name: display_name,
-            ..Default::default()
+        debug!("user_create");
+        let user = User::create(
+            db,
+            user_req.name,
+            user_req.display_name,
+            user_req.email,
+            user_req.password,
+            Some(user_si_properties),
+        )
+        .await?;
+
+        // TODO: Finish stealing all the rest of the createAccount
+
+        debug!("replied");
+        Ok(BillingAccountSignupReply {
+            billing_account: Some(billing_account),
+            user: Some(user),
         })
     }
 }
