@@ -19,6 +19,10 @@ registry.system({
       fromFieldPath: ["siProperties", "billingAccountId"],
       typeName: "billingAccount",
     });
+    c.associations.hasMany({
+      fieldName: "integrationInstances",
+      typeName: "integrationInstance",
+    });
     c.fields.addNumber({
       name: "version",
       label: "The version of this integration",

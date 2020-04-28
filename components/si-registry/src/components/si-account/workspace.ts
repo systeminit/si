@@ -16,6 +16,11 @@ registry.system({
       fromFieldPath: ["siProperties", "organizationId"],
       typeName: "organization",
     });
+    c.associations.inList({
+      fieldName: "integrationInstances",
+      typeName: "integrationInstance",
+      toFieldPath: ["siProperties", "enabledWorkspaceIdList"],
+    });
 
     c.fields.addObject({
       name: "siProperties",

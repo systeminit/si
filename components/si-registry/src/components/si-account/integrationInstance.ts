@@ -22,6 +22,17 @@ registry.system({
       fromFieldPath: ["siProperties", "integrationId"],
       typeName: "integration",
     });
+    c.associations.hasList({
+      fromFieldPath: ["siProperties", "enabledWorkspaceIdList"],
+      fieldName: "workspaces",
+      typeName: "workspace",
+    });
+    c.associations.hasList({
+      fromFieldPath: ["siProperties", "enabledOrganizationIdList"],
+      fieldName: "organizations",
+      typeName: "organization",
+    });
+
     c.fields.addObject({
       name: "optionValues",
       label: "Options for this Integration",

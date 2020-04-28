@@ -1,7 +1,6 @@
-import { PropEnum } from "../../components/prelude";
+import { PropEnum, PropNumber } from "../../components/prelude";
 
 import { registry } from "../../registry";
-import { PropNumber } from "@/prop/number";
 
 registry.base({
   typeName: "entitySiProperties",

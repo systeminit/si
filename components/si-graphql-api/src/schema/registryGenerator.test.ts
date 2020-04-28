@@ -1,12 +1,12 @@
 import { registry, PropMethod } from "si-registry";
-import { SiRegistryGenerator } from "@/schema/registryGenerator";
+import { registryGenerator as sg } from "./registryGenerator";
 
-const sg = new SiRegistryGenerator();
+//const sg = new SiRegistryGenerator();
 
 test("transformGraphqlToGrpc", done => {
-  const kubernetesDeployment = registry.get("kubernetesDeployment");
-  const kubernetesDeploymentCreateEntity = kubernetesDeployment.entityMethods.attrs.find(
-    v => (v.name = "KubernetesDeploymentCreateEntity"),
+  const kubernetesDeployment = registry.get("kubernetesDeploymentEntity");
+  const kubernetesDeploymentCreateEntity = kubernetesDeployment.methods.attrs.find(
+    v => (v.name = "create"),
   ) as PropMethod;
   const input = {
     name: "amonamarth",
@@ -85,9 +85,9 @@ test("transformGraphqlToGrpc", done => {
 });
 
 test("transformGrpcToGraphql", done => {
-  const kubernetesDeployment = registry.get("kubernetesDeployment");
-  const kubernetesDeploymentCreateEntity = kubernetesDeployment.entityMethods.attrs.find(
-    v => (v.name = "KubernetesDeploymentCreateEntity"),
+  const kubernetesDeployment = registry.get("kubernetesDeploymentEntity");
+  const kubernetesDeploymentCreateEntity = kubernetesDeployment.methods.attrs.find(
+    v => (v.name = "create"),
   ) as PropMethod;
 
   const input = {

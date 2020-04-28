@@ -13,8 +13,8 @@ async fn run() -> Result<()> {
     let settings = Settings::new()?;
 
     let db = Db::new(&settings).context("Cannot connect to the database")?;
-    println!("*** Creating primary index - remove before production ***");
-    db.create_primary_index().await?;
+    println!("*** Creating indexes ***");
+    db.create_indexes().await?;
 
     println!("*** Migrating so much right now ***");
     migrate(&db).await?;

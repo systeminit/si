@@ -3,6 +3,8 @@
 
 
 type BillingAccount {
+  associations: BillingAccountAssociations
+
   """System Initiative Billing Account Display Name"""
   displayName: String
 
@@ -14,6 +16,18 @@ type BillingAccount {
 
   """SI Storable"""
   siStorable: DataStorable
+}
+
+"""System Initiative Billing Account Associations"""
+type BillingAccountAssociations {
+  """An instance of an integration with another system"""
+  integrationInstances(input: IntegrationInstanceListRequest): IntegrationInstanceListReply
+
+  """A System Initiative Organization"""
+  organizations(input: OrganizationListRequest): OrganizationListReply
+
+  """A System Initiative User"""
+  users(input: UserListRequest): UserListReply
 }
 
 """Get a System Initiative Billing Account Reply"""
@@ -436,6 +450,9 @@ type Integration {
 type IntegrationAssociations {
   """System Initiative Billing Account"""
   billingAccount: BillingAccount
+
+  """An instance of an integration with another system"""
+  integrationInstances(input: IntegrationInstanceListRequest): IntegrationInstanceListReply
 }
 
 """Get a An integration with another system Reply"""
@@ -479,6 +496,12 @@ type IntegrationInstanceAssociations {
 
   """An integration with another system"""
   integration: Integration
+
+  """A System Initiative Organization"""
+  organizations(input: OrganizationListRequest): OrganizationListReply
+
+  """A System Initiative Workspace"""
+  workspaces(input: WorkspaceListRequest): WorkspaceListReply
 }
 
 """Get a An instance of an integration with another system Reply"""
@@ -1475,6 +1498,9 @@ type Workspace {
 type WorkspaceAssociations {
   """System Initiative Billing Account"""
   billingAccount: BillingAccount
+
+  """An instance of an integration with another system"""
+  integrationInstances(input: IntegrationInstanceListRequest): IntegrationInstanceListReply
 
   """A System Initiative Organization"""
   organization: Organization

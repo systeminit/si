@@ -40,10 +40,109 @@ export class BelongsTo extends Association {
       args.methodName = "get";
     }
     if (args.methodArgumentName == undefined) {
-      args.methodArgumentName = `${args.typeName}Id`;
+      args.methodArgumentName = `id`;
     }
     super(args as AssociationConstructor);
-    this.fromFieldPath = this.fromFieldPath;
+    this.fromFieldPath = args.fromFieldPath;
+  }
+
+  kind(): string {
+    return "belongsTo";
+  }
+}
+
+interface HasManyConstructor
+  extends Omit<
+    AssociationConstructor,
+    "methodName" | "methodArgumentName" | "fromFieldPath"
+  > {
+  fromFieldPath?: HasMany["fromFieldPath"];
+  methodName?: Association["methodName"];
+  methodArgumentName?: Association["methodArgumentName"];
+}
+
+export class HasMany extends Association {
+  fromFieldPath: string[];
+
+  constructor(args: HasManyConstructor) {
+    if (args.methodName == undefined) {
+      args.methodName = "list";
+    }
+    if (args.methodArgumentName == undefined) {
+      args.methodArgumentName = `input`;
+    }
+    super(args as AssociationConstructor);
+    if (args.fromFieldPath) {
+      this.fromFieldPath = args.fromFieldPath;
+    } else {
+      this.fromFieldPath = ["id"];
+    }
+  }
+
+  kind(): string {
+    return "hasMany";
+  }
+}
+
+interface HasListConstructor
+  extends Omit<AssociationConstructor, "methodName" | "methodArgumentName"> {
+  fromFieldPath: HasList["fromFieldPath"];
+  methodName?: Association["methodName"];
+  methodArgumentName?: Association["methodArgumentName"];
+}
+
+export class HasList extends Association {
+  fromFieldPath: string[];
+
+  constructor(args: HasListConstructor) {
+    if (args.methodName == undefined) {
+      args.methodName = "list";
+    }
+    if (args.methodArgumentName == undefined) {
+      args.methodArgumentName = `input`;
+    }
+    super(args as AssociationConstructor);
+    this.fromFieldPath = args.fromFieldPath;
+  }
+
+  kind(): string {
+    return "hasList";
+  }
+}
+
+interface InListConstructor
+  extends Omit<
+    AssociationConstructor,
+    "methodName" | "methodArgumentName" | "fromFieldPath"
+  > {
+  toFieldPath: InList["toFieldPath"];
+  fromFieldPath?: InList["fromFieldPath"];
+  methodName?: Association["methodName"];
+  methodArgumentName?: Association["methodArgumentName"];
+}
+
+export class InList extends Association {
+  fromFieldPath: string[];
+  toFieldPath: string[];
+
+  constructor(args: InListConstructor) {
+    if (args.methodName == undefined) {
+      args.methodName = "list";
+    }
+    if (args.methodArgumentName == undefined) {
+      args.methodArgumentName = `input`;
+    }
+    super(args as AssociationConstructor);
+    if (args.fromFieldPath) {
+      this.fromFieldPath = args.fromFieldPath;
+    } else {
+      this.fromFieldPath = ["id"];
+    }
+    this.toFieldPath = args.toFieldPath;
+  }
+
+  kind(): string {
+    return "inList";
   }
 }
 
@@ -56,6 +155,24 @@ export class AssociationList {
 
   belongsTo(args: BelongsToConstructor): BelongsTo {
     const assoc = new BelongsTo(args);
+    this.associations.push(assoc);
+    return assoc;
+  }
+
+  hasMany(args: HasManyConstructor): HasMany {
+    const assoc = new HasMany(args);
+    this.associations.push(assoc);
+    return assoc;
+  }
+
+  hasList(args: HasListConstructor): HasMany {
+    const assoc = new HasList(args);
+    this.associations.push(assoc);
+    return assoc;
+  }
+
+  inList(args: InListConstructor): HasMany {
+    const assoc = new InList(args);
     this.associations.push(assoc);
     return assoc;
   }

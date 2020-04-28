@@ -30,7 +30,7 @@ impl fmt::Display for DataQueryItemsExpressionComparison {
             &DataQueryItemsExpressionComparison::Unknown => "UNKNOWN".to_string(),
             &DataQueryItemsExpressionComparison::Equals => "=".to_string(),
             &DataQueryItemsExpressionComparison::NotEquals => "!=".to_string(),
-            &DataQueryItemsExpressionComparison::Contains => "contains".to_string(),
+            &DataQueryItemsExpressionComparison::Contains => "CONTAINS".to_string(),
             &DataQueryItemsExpressionComparison::Like => "LIKE".to_string(),
             &DataQueryItemsExpressionComparison::NotLike => "NOT LIKE".to_string(),
         };
@@ -115,54 +115,30 @@ impl DataQuery {
                                 }
                                 None => return Err(DataError::InvalidFieldType),
                             };
+                        let exp_field = match &exp.field {
+                            Some(field) => {
+                                if field.contains(".") {
+                                    let mut escaped_fields = Vec::new();
+                                    for field_part in field.split(".") {
+                                        let escaped = format!("`{}`", field_part);
+                                        escaped_fields.push(escaped);
+                                    }
+                                    escaped_fields.join(".")
+                                } else {
+                                    field.clone()
+                                }
+                            }
+                            None => {
+                                return Err(DataError::RequiredField(
+                                    "query.expression.field".into(),
+                                ))
+                            }
+                        };
                         let expression =
                             if comparison == DataQueryItemsExpressionComparison::Contains {
-                                format!(
-                                    "ARRAY_CONTAINS({}.[{}], {})",
-                                    bucket_name,
-                                    json![exp.field],
-                                    value
-                                )
+                                format!("ARRAY_CONTAINS({}.{}, {})", bucket_name, exp_field, value)
                             } else {
-                                format!(
-                                    "{}.[{}] {} {}",
-                                    bucket_name,
-                                    json![exp.field],
-                                    comparison,
-                                    value
-                                )
-                            };
-                        let value =
-                            match DataQueryItemsExpressionFieldType::from_i32(exp.field_type) {
-                                Some(DataQueryItemsExpressionFieldType::Unknown) => {
-                                    json![exp.value]
-                                }
-                                Some(DataQueryItemsExpressionFieldType::String) => json![exp.value],
-                                Some(DataQueryItemsExpressionFieldType::Int) => {
-                                    // Elizabeth Jacob fixed this bug, her first, on 04-13-2020.
-                                    // Good job, Monkey.
-                                    let vint: u64 =
-                                        exp.value.as_ref().unwrap_or(&"".into()).parse()?;
-                                    json![vint]
-                                }
-                                None => return Err(DataError::InvalidFieldType),
-                            };
-                        let expression =
-                            if comparison == DataQueryItemsExpressionComparison::Contains {
-                                format!(
-                                    "ARRAY_CONTAINS({}.[{}], {})",
-                                    bucket_name,
-                                    json![exp.field],
-                                    value
-                                )
-                            } else {
-                                format!(
-                                    "{}.[{}] {} {}",
-                                    bucket_name,
-                                    json![exp.field],
-                                    comparison,
-                                    value
-                                )
+                                format!("{}.{} {} {}", bucket_name, exp_field, comparison, value)
                             };
                         where_string.push_str(&expression);
                     }

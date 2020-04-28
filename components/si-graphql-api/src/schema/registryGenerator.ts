@@ -6,9 +6,8 @@ import {
   PropAction,
   PropObject,
   PropLink,
+  PropEnum,
   ObjectTypes,
-  BelongsTo,
-  Associations,
 } from "si-registry";
 import {
   arg,
@@ -90,6 +89,7 @@ export class SiRegistryGenerator {
     if (systemObject.associations.all().length == 0) {
       return;
     }
+    // eslint-disable-next-line
     const thisGenerator = this;
     const associationTypeName = `${pascalCase(
       systemObject.typeName,
@@ -109,7 +109,7 @@ export class SiRegistryGenerator {
               throw `Cannot find associated method for ${systemObject.typeName} assocation ${association.fieldName}`;
             }
 
-            if (association instanceof BelongsTo) {
+            if (association.kind() == "belongsTo") {
               // This is a map to the "get" method
               t.field(association.fieldName, {
                 // @ts-ignore
@@ -138,11 +138,6 @@ export class SiRegistryGenerator {
                   let lookupValue = associationParent;
                   for (const key of association.fromFieldPath) {
                     if (lookupValue[key] == undefined) {
-                      console.log("Cannot find field for associations", {
-                        associationParent,
-                        association,
-                        key,
-                      });
                       throw `Cannot find field ${association.fromFieldPath.join(
                         ".",
                       )} on association lookup`;
@@ -151,22 +146,249 @@ export class SiRegistryGenerator {
                   }
 
                   // eslint-disable-next-line
-                  const methodName = `${pascalCase(systemObject.typeName)}${
-                    associatedProp.name
-                  }`;
+                  const methodName = `${pascalCase(
+                    association.typeName,
+                  )}${pascalCase(association.methodName)}`;
 
                   const reqInput = {};
-                  reqInput[association.methodArgumentName] = lookupValue;
+                  reqInput[association.methodArgumentName] = {
+                    value: lookupValue,
+                  };
 
                   const req = new g.Request(methodName, reqInput)
                     .withMetadata(metadata)
                     .withRetry(0);
+
                   let result = await req.exec();
                   result = thisGenerator.transformGrpcToGraphql(
                     result.response,
                     associatedProp as PropMethod,
                     systemObject,
                   );
+
+                  return result.object;
+                },
+              });
+            } else if (association.kind() == "hasMany") {
+              const methodName = `${pascalCase(
+                association.typeName,
+              )}${pascalCase(association.methodName)}`;
+
+              // This is a map to the list method
+              t.field(association.fieldName, {
+                // @ts-ignore
+                type: `${methodName}Reply`,
+                // @ts-ignore
+                args: { input: arg({ type: `${methodName}Request` }) },
+                description: returnType.displayTypeName,
+                async resolve(_root, input, context: Context) {
+                  const grpc = context.dataSources.grpc;
+                  const user = context.user;
+                  const associationParent = context.associationParent;
+                  if (!associationParent) {
+                    throw "Cannot load associations without a parent; bug in the root field resolver";
+                  }
+                  if (user.authenticated == false) {
+                    throw new AuthenticationError("Must be logged in");
+                  }
+                  const metadata = new Metadata();
+                  metadata.add("authenticated", `${user.authenticated}`);
+                  metadata.add("userId", user["userId"] || "");
+                  metadata.add(
+                    "billingAccountId",
+                    user["billingAccountId"] || "",
+                  );
+                  const g = grpc.service(systemObject.siPathName);
+
+                  // Get the field from the associationParent
+                  let lookupValue = associationParent;
+                  for (const key of association.fromFieldPath) {
+                    if (lookupValue[key] == undefined) {
+                      throw `Cannot find field ${association.fromFieldPath.join(
+                        ".",
+                      )} on association lookup`;
+                    }
+                    lookupValue = lookupValue[key];
+                  }
+                  input["scopeByTenantId"] = lookupValue;
+
+                  const reqInput = thisGenerator.transformGraphqlToGrpc(
+                    input,
+                    associatedProp as PropMethod,
+                    systemObject,
+                  );
+
+                  const req = new g.Request(methodName, reqInput)
+                    .withMetadata(metadata)
+                    .withRetry(0);
+
+                  let result = await req.exec();
+                  result = thisGenerator.transformGrpcToGraphql(
+                    result.response,
+                    associatedProp as PropMethod,
+                    systemObject,
+                  );
+
+                  return result;
+                },
+              });
+            } else if (association.kind() == "hasList") {
+              const methodName = `${pascalCase(
+                association.typeName,
+              )}${pascalCase(association.methodName)}`;
+
+              // This is a map to the list method
+              t.field(association.fieldName, {
+                // @ts-ignore
+                type: `${methodName}Reply`,
+                // @ts-ignore
+                args: { input: arg({ type: `${methodName}Request` }) },
+                description: returnType.displayTypeName,
+                async resolve(_root, input, context: Context) {
+                  const grpc = context.dataSources.grpc;
+                  const user = context.user;
+                  const associationParent = context.associationParent;
+                  if (!associationParent) {
+                    throw "Cannot load associations without a parent; bug in the root field resolver";
+                  }
+                  if (user.authenticated == false) {
+                    throw new AuthenticationError("Must be logged in");
+                  }
+                  const metadata = new Metadata();
+                  metadata.add("authenticated", `${user.authenticated}`);
+                  metadata.add("userId", user["userId"] || "");
+                  metadata.add(
+                    "billingAccountId",
+                    user["billingAccountId"] || "",
+                  );
+                  const g = grpc.service(systemObject.siPathName);
+
+                  // Get the field from the associationParent
+                  input["scopeByTenantId"] =
+                    associationParent["siProperties"]["billingAccountId"];
+                  let lookupValue = associationParent;
+                  for (const key of association.fromFieldPath) {
+                    if (lookupValue[key] == undefined) {
+                      throw `Cannot find field ${association.fromFieldPath.join(
+                        ".",
+                      )} on association lookup`;
+                    }
+                    lookupValue = lookupValue[key];
+                  }
+                  if (!Array.isArray(lookupValue)) {
+                    throw "Failed to lookup an array value during HasList association - this is a bug!";
+                  }
+                  const queryData = {
+                    booleanTerm: "OR",
+                    items: [],
+                  };
+                  for (const id of lookupValue) {
+                    queryData.items.push({
+                      expression: {
+                        field: "id",
+                        comparison: "EQUALS",
+                        value: id,
+                        fieldType: "STRING",
+                      },
+                    });
+                  }
+                  input["query"] = queryData;
+
+                  const reqInput = thisGenerator.transformGraphqlToGrpc(
+                    input,
+                    associatedProp as PropMethod,
+                    systemObject,
+                  );
+
+                  const req = new g.Request(methodName, reqInput)
+                    .withMetadata(metadata)
+                    .withRetry(0);
+
+                  let result = await req.exec();
+                  result = thisGenerator.transformGrpcToGraphql(
+                    result.response,
+                    associatedProp as PropMethod,
+                    systemObject,
+                  );
+
+                  return result;
+                },
+              });
+            } else if (association.kind() == "inList") {
+              const methodName = `${pascalCase(
+                association.typeName,
+              )}${pascalCase(association.methodName)}`;
+
+              // This is a map to the list method
+              t.field(association.fieldName, {
+                // @ts-ignore
+                type: `${methodName}Reply`,
+                // @ts-ignore
+                args: { input: arg({ type: `${methodName}Request` }) },
+                description: returnType.displayTypeName,
+                async resolve(_root, input, context: Context) {
+                  const grpc = context.dataSources.grpc;
+                  const user = context.user;
+                  const associationParent = context.associationParent;
+                  if (!associationParent) {
+                    throw "Cannot load associations without a parent; bug in the root field resolver";
+                  }
+                  if (user.authenticated == false) {
+                    throw new AuthenticationError("Must be logged in");
+                  }
+                  const metadata = new Metadata();
+                  metadata.add("authenticated", `${user.authenticated}`);
+                  metadata.add("userId", user["userId"] || "");
+                  metadata.add(
+                    "billingAccountId",
+                    user["billingAccountId"] || "",
+                  );
+                  const g = grpc.service(systemObject.siPathName);
+
+                  // Get the field from the associationParent
+                  input["scopeByTenantId"] =
+                    associationParent["siProperties"]["billingAccountId"];
+                  let lookupValue = associationParent;
+                  for (const key of association.fromFieldPath) {
+                    if (lookupValue[key] == undefined) {
+                      throw `Cannot find field ${association.fromFieldPath.join(
+                        ".",
+                      )} on association lookup`;
+                    }
+                    lookupValue = lookupValue[key];
+                  }
+                  const queryData = {
+                    booleanTerm: "OR",
+                    items: [],
+                  };
+                  queryData.items.push({
+                    expression: {
+                      // @ts-ignore
+                      field: association.toFieldPath.join("."),
+                      comparison: "CONTAINS",
+                      value: lookupValue,
+                      fieldType: "STRING",
+                    },
+                  });
+                  input["query"] = queryData;
+
+                  const reqInput = thisGenerator.transformGraphqlToGrpc(
+                    input,
+                    associatedProp as PropMethod,
+                    systemObject,
+                  );
+
+                  const req = new g.Request(methodName, reqInput)
+                    .withMetadata(metadata)
+                    .withRetry(0);
+
+                  let result = await req.exec();
+                  result = thisGenerator.transformGrpcToGraphql(
+                    result.response,
+                    associatedProp as PropMethod,
+                    systemObject,
+                  );
+
                   return result;
                 },
               });
@@ -178,8 +400,14 @@ export class SiRegistryGenerator {
         // @ts-ignore
         type: pascalCase(systemObject.typeName),
         definition(t) {
-          // @ts-ignore
-          t.field("associations", { type: associationTypeName });
+          t.field("associations", {
+            // @ts-ignore
+            type: associationTypeName,
+            async resolve(root, _input, context: Context) {
+              context.associationParent = root;
+              return {};
+            },
+          });
         },
       });
       this.typesCache[associationTypeName] = true;
@@ -348,7 +576,6 @@ export class SiRegistryGenerator {
             .withMetadata(metadata)
             .withRetry(0);
         }
-        console.log("fuckity");
         let result = await req.exec();
         console.dir({ response: result.response }, { depth: Infinity });
         result = thisGenerator.transformGrpcToGraphql(
@@ -356,16 +583,6 @@ export class SiRegistryGenerator {
           prop,
           component,
         );
-        // Stash the result in case we have associations. If we do, we will need the
-        // data on this result in order to resolve them. Since it only lives for
-        // the duration of the request, we're not doing that much damage by doing
-        // it this way.
-        //
-        // Hopefully this remains true in the face of multiple queries in a single
-        // call. (that the context isn't truly global, but global per root resolution)
-        //
-        // We will find out.
-        context.associationParent = result;
         return result;
       },
     });
@@ -404,7 +621,7 @@ export class SiRegistryGenerator {
   ): any {
     if (prop.repeated && !ignoreRepeated) {
       const newArrayValues = [];
-      for (const fieldValue in input[this.graphqlFieldName(prop)]) {
+      for (const fieldValue of input) {
         newArrayValues.push(
           this.transformGraphqlFieldToGrpc(fieldValue, prop, component, true),
         );
@@ -454,7 +671,17 @@ export class SiRegistryGenerator {
         component,
       );
     } else if (prop.kind() == "enum") {
-      return input;
+      const enumProp = prop as PropEnum;
+      const inputString = `${input}`;
+      for (let index = 0; index < enumProp.variants.length; index++) {
+        if (
+          enumProp.variants[index].toLowerCase() == inputString.toLowerCase()
+        ) {
+          return index + 1;
+        }
+      }
+      logger.log("warn", "Unknown enum", { prop, input });
+      return 0;
     } else {
       console.log(
         `I don't know what you are: ${this.graphqlFieldName(
@@ -496,8 +723,6 @@ export class SiRegistryGenerator {
     // eslint-disable-next-line
   ): any {
     if (prop.repeated && !ignoreRepeated) {
-      console.log("You are an array");
-      console.dir({ input, prop }, { depth: Infinity });
       const newArrayValues = [];
       for (const fieldValue of input) {
         newArrayValues.push(

@@ -8,6 +8,19 @@ registry.system({
   siPathName: "si-account",
   serviceName: "account",
   options(c: SystemObject) {
+    c.associations.hasMany({
+      fieldName: "users",
+      typeName: "user",
+    });
+    c.associations.hasMany({
+      fieldName: "organizations",
+      typeName: "organization",
+    });
+    c.associations.hasMany({
+      fieldName: "integrationInstances",
+      typeName: "integrationInstance",
+    });
+
     c.addListMethod();
     c.addGetMethod();
 

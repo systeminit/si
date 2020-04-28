@@ -111,21 +111,40 @@ impl Db {
         })
     }
 
-    pub async fn create_primary_index(&self) -> Result<()> {
-        debug!("creating primary index");
+    pub async fn create_indexes(&self) -> Result<()> {
+        debug!("creating index on siStorable.typeName");
         let mut result = self
             .cluster
             .query(
-                format!("CREATE PRIMARY INDEX ON `{}`", self.bucket_name),
+                format!(
+                    "CREATE INDEX `idx_si_storable_typename` on `{}`(siStorable.typeName)",
+                    self.bucket_name
+                ),
                 None,
             )
             .await?;
         debug!("awaiting results");
         let meta = result.meta().await?;
         match meta.errors {
-            Some(error) => debug!(?error, "Primary Index already exists"),
-            None => debug!("Created primary index"),
+            Some(error) => debug!(?error, "index already exists"),
+            None => debug!("created primary index"),
         }
+
+        debug!("creating index on siStorable.typeName and siStorable.tenantIds");
+        let mut result = self
+            .cluster
+            .query(
+                format!("CREATE INDEX `idx_si_storable_typename_and_tenancy` ON `{}` (siStorable.typeName, DISTINCT ARRAY t FOR t IN siStorable.tenantIds END)", self.bucket_name),
+                None,
+            )
+            .await?;
+        debug!("awaiting results");
+        let meta = result.meta().await?;
+        match meta.errors {
+            Some(error) => debug!(?error, "index already exists"),
+            None => debug!("created primary index"),
+        }
+
         Ok(())
     }
 
