@@ -456,7 +456,6 @@ export class RustFormatter {
       if (!(siProperties instanceof PropPrelude.PropObject)) {
         throw "Cannot get properties of a non object in ref check";
       }
-      console.log({ siProperties });
       for (const prop of siProperties.properties.attrs) {
         if (prop.reference) {
           const itemName = snakeCase(prop.name);

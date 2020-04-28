@@ -2,7 +2,7 @@
 // No-Touchy!
 
 use tonic;
-use tracing::{self, debug, info, info_span};
+use tracing::{self, info, info_span};
 use tracing_futures::Instrument as _;
 
 use si_data;
@@ -65,6 +65,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
     > {
         async {
             info!(?request);
+            #[allow(unused_variables)]
             let auth = si_account::authorize::authnz(
                 &self.db,
                 &request,
@@ -171,6 +172,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
     > {
         async {
             info!(?request);
+            #[allow(unused_variables)]
             let auth = si_account::authorize::authnz(
                 &self.db,
                 &request,
@@ -300,6 +302,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
     > {
         async {
             info!(?request);
+            #[allow(unused_variables)]
             let auth = si_account::authorize::authnz(
                 &self.db,
                 &request,

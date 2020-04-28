@@ -21,7 +21,8 @@ async fn <%- fmt.implServiceMethodName(propMethod) %>(
         <%_ } else if (propMethod.name == "list") { _%>
         <%_ if (propMethod.skipAuth) { _%>
           let inner = request.into_inner();
-        <%_ } else { _%>
+          <%_ } else { _%>
+        #[allow(unused_variables)]
         let auth = <%- fmt.implServiceAuth(propMethod) %>
         let mut inner = request.into_inner();
         if inner.scope_by_tenant_id.is_none() {

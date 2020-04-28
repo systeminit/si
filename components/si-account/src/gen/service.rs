@@ -2,7 +2,7 @@
 // No-Touchy!
 
 use tonic;
-use tracing::{self, debug, info, info_span};
+use tracing::{self, info, info_span};
 use tracing_futures::Instrument as _;
 
 use si_data;
@@ -31,6 +31,7 @@ impl crate::protobuf::account_server::Account for Service {
     {
         async {
             info!(?request);
+            #[allow(unused_variables)]
             let auth = crate::authorize::authnz(&self.db, &request, "billing_account_list").await?;
             let mut inner = request.into_inner();
             if inner.scope_by_tenant_id.is_none() {
@@ -130,6 +131,7 @@ impl crate::protobuf::account_server::Account for Service {
     ) -> std::result::Result<tonic::Response<crate::protobuf::UserListReply>, tonic::Status> {
         async {
             info!(?request);
+            #[allow(unused_variables)]
             let auth = crate::authorize::authnz(&self.db, &request, "user_list").await?;
             let mut inner = request.into_inner();
             if inner.scope_by_tenant_id.is_none() {
@@ -225,6 +227,7 @@ impl crate::protobuf::account_server::Account for Service {
     ) -> std::result::Result<tonic::Response<crate::protobuf::GroupListReply>, tonic::Status> {
         async {
             info!(?request);
+            #[allow(unused_variables)]
             let auth = crate::authorize::authnz(&self.db, &request, "group_list").await?;
             let mut inner = request.into_inner();
             if inner.scope_by_tenant_id.is_none() {
@@ -304,6 +307,7 @@ impl crate::protobuf::account_server::Account for Service {
     {
         async {
             info!(?request);
+            #[allow(unused_variables)]
             let auth = crate::authorize::authnz(&self.db, &request, "organization_list").await?;
             let mut inner = request.into_inner();
             if inner.scope_by_tenant_id.is_none() {
@@ -382,6 +386,7 @@ impl crate::protobuf::account_server::Account for Service {
     {
         async {
             info!(?request);
+            #[allow(unused_variables)]
             let auth = crate::authorize::authnz(&self.db, &request, "workspace_list").await?;
             let mut inner = request.into_inner();
             if inner.scope_by_tenant_id.is_none() {
@@ -456,6 +461,7 @@ impl crate::protobuf::account_server::Account for Service {
     {
         async {
             info!(?request);
+            #[allow(unused_variables)]
             let auth = crate::authorize::authnz(&self.db, &request, "integration_list").await?;
             let mut inner = request.into_inner();
             if inner.scope_by_tenant_id.is_none() {
@@ -540,6 +546,7 @@ impl crate::protobuf::account_server::Account for Service {
     > {
         async {
             info!(?request);
+            #[allow(unused_variables)]
             let auth =
                 crate::authorize::authnz(&self.db, &request, "integration_service_list").await?;
             let mut inner = request.into_inner();
@@ -631,6 +638,7 @@ impl crate::protobuf::account_server::Account for Service {
     > {
         async {
             info!(?request);
+            #[allow(unused_variables)]
             let auth =
                 crate::authorize::authnz(&self.db, &request, "integration_instance_list").await?;
             let mut inner = request.into_inner();

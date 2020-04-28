@@ -14,10 +14,6 @@ fn main() {
         .extern_path(".si.data", "::si_data::protobuf")
         .type_attribute(".", "#[derive(serde::Serialize, serde::Deserialize)]")
         .type_attribute(".", "#[serde(rename_all = \"camelCase\")]")
-        .field_attribute(
-            "tenant.kind",
-            "#[serde(serialize_with = \"crate::serde_enum::tenantkind_enum_s\", deserialize_with = \"crate::serde_enum::tenantkind_enum_d\")]",
-        )
         .field_attribute("in", "#[serde(rename = \"in\")]")
         .compile(PROTOS, &[proto_include_path_string])
         .unwrap();
