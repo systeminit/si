@@ -72,7 +72,7 @@ export class BaseObject {
 }
 
 export class SystemObject extends BaseObject {
-  tenancy: string[][] = [];
+  naturalKey = "name";
 
   constructor(args: BaseObjectConstructor) {
     super(args);
@@ -119,10 +119,6 @@ export class SystemObject extends BaseObject {
         p.required = true;
       },
     });
-  }
-
-  addTenant(tenantLookup: string[]): void {
-    this.tenancy.push(tenantLookup);
   }
 
   kind(): string {

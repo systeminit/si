@@ -5,38 +5,18 @@ import { makeSchema } from "nexus";
 
 import { services } from "@/services";
 import { environment } from "@/environment";
-//import { protobufLoader } from "@/protobuf";
-//import { GraphqlHintLoader } from "@/graphql-hint";
-//import { SchemaGenerator } from "@/schema/generator";
-import { SiRegistryGenerator } from "@/schema/registryGenerator";
+import { registryGenerator } from "@/schema/registryGenerator";
+import { loginTypes } from "@/schema/login";
 import { GrpcServiceBroker, Grpc } from "@/datasources/grpc";
 import { DataSources } from "apollo-server-core/dist/graphqlOptions";
 
 import "@/schema/registryGenerator";
 
-// First, load the protocol buffers
-//const protobufLoader = new ProtobufLoader({
-//  protos: [
-//    //path.join(__dirname, "..", "..", "si-data", "proto", "si.data.proto"),
-//  ],
-//  services,
-//});
-
-// Second, load the graphql hints
-//const graphqlHintLoader = new GraphqlHintLoader({
-//  services,
-//});
-
-// Pass them to our custom schema generator
-//const sg = new SchemaGenerator(services, protobufLoader, graphqlHintLoader);
-//sg.generate();
-//
-
-const sg = new SiRegistryGenerator();
-sg.generate();
+registryGenerator.generate();
+const graphqlTypes = [registryGenerator.types, loginTypes];
 
 const schema = makeSchema({
-  types: sg.types,
+  types: graphqlTypes,
   nonNullDefaults: { output: false, input: false },
   outputs: {
     schema: path.join(__dirname, "../fullstack-schema.graphql"),

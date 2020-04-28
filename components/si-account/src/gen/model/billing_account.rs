@@ -114,7 +114,7 @@ impl si_data::Storable for crate::protobuf::BillingAccount {
     }
 
     fn order_by_fields() -> Vec<&'static str> {
-        vec!["id", "name", "displayName"]
+        vec!["siStorable.naturalKey", "id", "name", "displayName"]
     }
 }
 
@@ -124,6 +124,14 @@ impl crate::protobuf::BillingAccount {
         id: &str,
     ) -> si_data::Result<crate::protobuf::BillingAccount> {
         let obj = db.get(id).await?;
+        Ok(obj)
+    }
+
+    pub async fn get_by_natural_key(
+        db: &si_data::Db,
+        natural_key: &str,
+    ) -> si_data::Result<crate::protobuf::BillingAccount> {
+        let obj = db.lookup_by_natural_key(natural_key).await?;
         Ok(obj)
     }
 

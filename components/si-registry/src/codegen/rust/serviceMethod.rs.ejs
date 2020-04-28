@@ -4,31 +4,43 @@ async fn <%- fmt.implServiceMethodName(propMethod) %>(
     ) -> std::result::Result<tonic::Response<<%- fmt.implServiceReplyType(propMethod, { option: false, reference: false }) %>>, tonic::Status> {
     async {
       info!(?request);
-      <%_ if (propMethod.skipAuth) { _%>
-        // This object is set to skipAuth; so there is no authorization.
-      <%_ } else { _%>
-        <%- fmt.implServiceAuthCall(propMethod) %>         
-      <%_ } _%>
-      // The request always gets consumed!
-      let inner = request.into_inner();
       <%_ if (propMethod.name == "get") { _%>
+        <%- fmt.implServiceAuth(propMethod) %>
+        let inner = request.into_inner();
         let request_id = inner.id.ok_or(si_data::DataError::RequiredField("id".to_string()))?;
-        let output = <%- fmt.structName() %>::get(&self.db, &request_id).await?;
-        info!(?output);
-        Ok(tonic::Response::new(<%- fmt.implServiceReplyType(propMethod, { option: false, reference: false }) %>{ object: Some(output) }))
+        let reply = <%- fmt.structName() %>::get(&self.db, &request_id).await?;
+        info!(?reply);
+        Ok(tonic::Response::new(<%- fmt.implServiceReplyType(propMethod, { option: false, reference: false }) %>{ object: Some(reply) }))
       <%_ } else if (propMethod.name == "create") { _%>
+        <%- fmt.implServiceAuth(propMethod) %>
+        let inner = request.into_inner();
         <%- fmt.implServiceMethodCreateDestructure() %>
-        let output = <%- fmt.structName() %>::create(&self.db, <%- fmt.implCreatePassNewArgs() %>).await?; 
-        info!(?output);
-        Ok(tonic::Response::new(<%- fmt.implServiceReplyType(propMethod, { option: false, reference: false }) %>{ object: Some(output) })) 
-      <%_ } else if (propMethod.name == "list") { _%>
+        let reply = <%- fmt.structName() %>::create(&self.db, <%- fmt.implCreatePassNewArgs() %>).await?; 
+        info!(?reply);
+        Ok(tonic::Response::new(<%- fmt.implServiceReplyType(propMethod, { option: false, reference: false }) %>{ object: Some(reply) })) 
+        <%_ } else if (propMethod.name == "list") { _%>
+        <%_ if (propMethod.skipAuth) { _%>
+          let inner = request.into_inner();
+        <%_ } else { _%>
+        let auth = <%- fmt.implServiceAuth(propMethod) %>
+        let mut inner = request.into_inner();
+        if inner.scope_by_tenant_id.is_none() {
+        <%_ if (fmt.systemObject.typeName == "integration" || fmt.systemObject.typeName == "integrationService" || fmt.systemObject.typeName == "billingAccount") { _%>
+          inner.scope_by_tenant_id = Some(String::from("global"));
+        <%_ } else { _%>
+          inner.scope_by_tenant_id = Some(auth.billing_account_id().into());
+        <%_ } _%>
+        }
+        <%_ } %>
         let list_reply = <%- fmt.structName() %>::list(&self.db, inner).await?; 
         info!(?list_reply);
         Ok(tonic::Response::new(<%- fmt.implServiceReplyType(propMethod, { option: false, reference: false }) %>{ <%- fmt.implServiceMethodListResultToReply() %> })) 
-      <%_ } else { _%>
-        let output = <%- fmt.modelName() %>::<%- fmt.implServiceMethodName(propMethod) %>(&self.db, inner).await?;
-        info!(?output);
-        Ok(tonic::Response::new(output))
+        <%_ } else { _%>
+        <%- fmt.implServiceAuth(propMethod) %>
+        let inner = request.into_inner();
+        let reply = <%- fmt.modelName() %>::<%- fmt.implServiceMethodName(propMethod) %>(&self.db, inner).await?;
+        info!(?reply);
+        Ok(tonic::Response::new(reply))
       <%_ } _%>
     }
     .instrument(info_span!("<%- fmt.implServiceMethodName(propMethod) %>"))

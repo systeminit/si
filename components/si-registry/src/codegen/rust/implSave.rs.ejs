@@ -2,6 +2,11 @@ impl <%- fmt.structName() %> {
   pub async fn get(db: &si_data::Db, id: &str) -> si_data::Result<<%- fmt.structName() %>> {
     let obj = db.get(id).await?;
     Ok(obj)
+    }
+
+  pub async fn get_by_natural_key(db: &si_data::Db, natural_key: &str) -> si_data::Result<<%- fmt.structName() %>> {
+    let obj = db.lookup_by_natural_key(natural_key).await?;
+    Ok(obj)
   }
 
   pub async fn save(&self, db: &si_data::Db) -> si_data::Result<()> {

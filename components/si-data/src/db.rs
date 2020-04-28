@@ -315,7 +315,7 @@ impl Db {
         // The empty string is the default order_by; and it should be
         // naturalKey
         let order_by = match order_by.as_ref() {
-            "" => "naturalKey",
+            "" => "siStorable.naturalKey",
             ob => ob,
         };
 
@@ -353,7 +353,7 @@ impl Db {
 
         let mut result_stream = result.rows_as::<I>()?;
         let result_meta = result.meta().await?;
-        event!(Level::WARN, ?result_meta);
+        event!(Level::DEBUG, ?result_meta);
 
         let mut final_vec: Vec<I> = Vec::new();
 

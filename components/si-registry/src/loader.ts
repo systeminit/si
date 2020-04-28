@@ -15,6 +15,9 @@ import "./components/si-account/user";
 import "./components/si-account/group";
 import "./components/si-account/organization";
 import "./components/si-account/workspace";
+import "./components/si-account/integration";
+import "./components/si-account/integrationService";
+import "./components/si-account/integrationInstance";
 
 import "./components/si-kubernetes/kubernetes";
 import "./components/si-kubernetes/deployment";

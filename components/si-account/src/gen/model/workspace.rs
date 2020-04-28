@@ -120,9 +120,11 @@ impl si_data::Storable for crate::protobuf::Workspace {
 
     fn order_by_fields() -> Vec<&'static str> {
         vec![
+            "siStorable.naturalKey",
             "id",
             "name",
             "displayName",
+            "siStorable.naturalKey",
             "siProperties.billingAccountId",
             "siProperties.organizationId",
         ]
@@ -132,6 +134,14 @@ impl si_data::Storable for crate::protobuf::Workspace {
 impl crate::protobuf::Workspace {
     pub async fn get(db: &si_data::Db, id: &str) -> si_data::Result<crate::protobuf::Workspace> {
         let obj = db.get(id).await?;
+        Ok(obj)
+    }
+
+    pub async fn get_by_natural_key(
+        db: &si_data::Db,
+        natural_key: &str,
+    ) -> si_data::Result<crate::protobuf::Workspace> {
+        let obj = db.lookup_by_natural_key(natural_key).await?;
         Ok(obj)
     }
 
@@ -181,6 +191,9 @@ impl crate::protobuf::Workspace {
         si_properties: Option<crate::protobuf::WorkspaceSiProperties>,
     ) -> si_data::Result<crate::protobuf::Workspace> {
         let mut si_storable = si_data::protobuf::DataStorable::default();
+        si_properties
+            .as_ref()
+            .ok_or(si_data::DataError::ValidationError("siProperties".into()))?;
         let billing_account_id = si_properties
             .as_ref()
             .unwrap()

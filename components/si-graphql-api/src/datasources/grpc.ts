@@ -56,7 +56,6 @@ export class Grpc extends DataSource {
   }
 
   service(service: string): any {
-    logger.log("warn", "getting service", { service, broker: this.broker });
     return this.broker.services[service].client;
   }
 }

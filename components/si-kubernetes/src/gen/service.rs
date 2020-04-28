@@ -39,17 +39,16 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
                 "kubernetes_deployment_component_get",
             )
             .await?;
-            // The request always gets consumed!
             let inner = request.into_inner();
             let request_id = inner
                 .id
                 .ok_or(si_data::DataError::RequiredField("id".to_string()))?;
-            let output =
+            let reply =
                 crate::protobuf::KubernetesDeploymentComponent::get(&self.db, &request_id).await?;
-            info!(?output);
+            info!(?reply);
             Ok(tonic::Response::new(
                 crate::protobuf::KubernetesDeploymentComponentGetReply {
-                    object: Some(output),
+                    object: Some(reply),
                 },
             ))
         }
@@ -66,14 +65,17 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
     > {
         async {
             info!(?request);
-            si_account::authorize::authnz(
+            let auth = si_account::authorize::authnz(
                 &self.db,
                 &request,
                 "kubernetes_deployment_component_list",
             )
             .await?;
-            // The request always gets consumed!
-            let inner = request.into_inner();
+            let mut inner = request.into_inner();
+            if inner.scope_by_tenant_id.is_none() {
+                inner.scope_by_tenant_id = Some(auth.billing_account_id().into());
+            }
+
             let list_reply =
                 crate::protobuf::KubernetesDeploymentComponent::list(&self.db, inner).await?;
             info!(?list_reply);
@@ -104,15 +106,14 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
                 "kubernetes_deployment_component_pick",
             )
             .await?;
-            // The request always gets consumed!
             let inner = request.into_inner();
-            let output =
+            let reply =
                 crate::model::KubernetesDeploymentComponent::kubernetes_deployment_component_pick(
                     &self.db, inner,
                 )
                 .await?;
-            info!(?output);
-            Ok(tonic::Response::new(output))
+            info!(?reply);
+            Ok(tonic::Response::new(reply))
         }
         .instrument(info_span!("kubernetes_deployment_component_pick"))
         .await
@@ -133,7 +134,6 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
                 "kubernetes_deployment_entity_create",
             )
             .await?;
-            // The request always gets consumed!
             let inner = request.into_inner();
             let constraints = inner.constraints;
             let properties = inner.properties;
@@ -141,7 +141,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             let display_name = inner.display_name;
             let description = inner.description;
             let workspace_id = inner.workspace_id;
-            let output = crate::protobuf::KubernetesDeploymentEntity::create(
+            let reply = crate::protobuf::KubernetesDeploymentEntity::create(
                 &self.db,
                 constraints,
                 properties,
@@ -151,10 +151,10 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
                 workspace_id,
             )
             .await?;
-            info!(?output);
+            info!(?reply);
             Ok(tonic::Response::new(
                 crate::protobuf::KubernetesDeploymentEntityCreateReply {
-                    object: Some(output),
+                    object: Some(reply),
                 },
             ))
         }
@@ -171,10 +171,17 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
     > {
         async {
             info!(?request);
-            si_account::authorize::authnz(&self.db, &request, "kubernetes_deployment_entity_list")
-                .await?;
-            // The request always gets consumed!
-            let inner = request.into_inner();
+            let auth = si_account::authorize::authnz(
+                &self.db,
+                &request,
+                "kubernetes_deployment_entity_list",
+            )
+            .await?;
+            let mut inner = request.into_inner();
+            if inner.scope_by_tenant_id.is_none() {
+                inner.scope_by_tenant_id = Some(auth.billing_account_id().into());
+            }
+
             let list_reply =
                 crate::protobuf::KubernetesDeploymentEntity::list(&self.db, inner).await?;
             info!(?list_reply);
@@ -201,17 +208,16 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             info!(?request);
             si_account::authorize::authnz(&self.db, &request, "kubernetes_deployment_entity_get")
                 .await?;
-            // The request always gets consumed!
             let inner = request.into_inner();
             let request_id = inner
                 .id
                 .ok_or(si_data::DataError::RequiredField("id".to_string()))?;
-            let output =
+            let reply =
                 crate::protobuf::KubernetesDeploymentEntity::get(&self.db, &request_id).await?;
-            info!(?output);
+            info!(?reply);
             Ok(tonic::Response::new(
                 crate::protobuf::KubernetesDeploymentEntityGetReply {
-                    object: Some(output),
+                    object: Some(reply),
                 },
             ))
         }
@@ -230,15 +236,14 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             info!(?request);
             si_account::authorize::authnz(&self.db, &request, "kubernetes_deployment_entity_sync")
                 .await?;
-            // The request always gets consumed!
             let inner = request.into_inner();
-            let output =
+            let reply =
                 crate::model::KubernetesDeploymentEntity::kubernetes_deployment_entity_sync(
                     &self.db, inner,
                 )
                 .await?;
-            info!(?output);
-            Ok(tonic::Response::new(output))
+            info!(?reply);
+            Ok(tonic::Response::new(reply))
         }
         .instrument(info_span!("kubernetes_deployment_entity_sync"))
         .await
@@ -255,12 +260,11 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
     > {
         async {
       info!(?request);
-        si_account::authorize::authnz(&self.db, &request, "kubernetes_deployment_entity_kubernetes_object_edit").await?;         
-      // The request always gets consumed!
-      let inner = request.into_inner();
-        let output = crate::model::KubernetesDeploymentEntity::kubernetes_deployment_entity_kubernetes_object_edit(&self.db, inner).await?;
-        info!(?output);
-        Ok(tonic::Response::new(output))
+        si_account::authorize::authnz(&self.db, &request, "kubernetes_deployment_entity_kubernetes_object_edit").await?;
+        let inner = request.into_inner();
+        let reply = crate::model::KubernetesDeploymentEntity::kubernetes_deployment_entity_kubernetes_object_edit(&self.db, inner).await?;
+        info!(?reply);
+        Ok(tonic::Response::new(reply))
     }
     .instrument(info_span!("kubernetes_deployment_entity_kubernetes_object_edit"))
     .await
@@ -277,12 +281,11 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
     > {
         async {
       info!(?request);
-        si_account::authorize::authnz(&self.db, &request, "kubernetes_deployment_entity_kubernetes_object_yaml_edit").await?;         
-      // The request always gets consumed!
-      let inner = request.into_inner();
-        let output = crate::model::KubernetesDeploymentEntity::kubernetes_deployment_entity_kubernetes_object_yaml_edit(&self.db, inner).await?;
-        info!(?output);
-        Ok(tonic::Response::new(output))
+        si_account::authorize::authnz(&self.db, &request, "kubernetes_deployment_entity_kubernetes_object_yaml_edit").await?;
+        let inner = request.into_inner();
+        let reply = crate::model::KubernetesDeploymentEntity::kubernetes_deployment_entity_kubernetes_object_yaml_edit(&self.db, inner).await?;
+        info!(?reply);
+        Ok(tonic::Response::new(reply))
     }
     .instrument(info_span!("kubernetes_deployment_entity_kubernetes_object_yaml_edit"))
     .await
@@ -297,14 +300,17 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
     > {
         async {
             info!(?request);
-            si_account::authorize::authnz(
+            let auth = si_account::authorize::authnz(
                 &self.db,
                 &request,
                 "kubernetes_deployment_entity_event_list",
             )
             .await?;
-            // The request always gets consumed!
-            let inner = request.into_inner();
+            let mut inner = request.into_inner();
+            if inner.scope_by_tenant_id.is_none() {
+                inner.scope_by_tenant_id = Some(auth.billing_account_id().into());
+            }
+
             let list_reply =
                 crate::protobuf::KubernetesDeploymentEntityEvent::list(&self.db, inner).await?;
             info!(?list_reply);

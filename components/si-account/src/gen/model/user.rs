@@ -119,7 +119,7 @@ impl si_data::Storable for crate::protobuf::User {
                 "crate::protobuf::User's tenant_ids must be set with crate::protobuf::User.set_natural_key() is called"
             ),
             <Self as si_data::Storable>::type_name(),
-            self.name
+            self.email
                 .as_ref()
                 .expect("crate::protobuf::User.name must be set when crate::protobuf::User.set_natural_key() is called")
         );
@@ -130,10 +130,12 @@ impl si_data::Storable for crate::protobuf::User {
 
     fn order_by_fields() -> Vec<&'static str> {
         vec![
+            "siStorable.naturalKey",
             "id",
             "name",
             "displayName",
             "email",
+            "siStorable.naturalKey",
             "siProperties.billingAccountId",
         ]
     }
@@ -142,6 +144,14 @@ impl si_data::Storable for crate::protobuf::User {
 impl crate::protobuf::User {
     pub async fn get(db: &si_data::Db, id: &str) -> si_data::Result<crate::protobuf::User> {
         let obj = db.get(id).await?;
+        Ok(obj)
+    }
+
+    pub async fn get_by_natural_key(
+        db: &si_data::Db,
+        natural_key: &str,
+    ) -> si_data::Result<crate::protobuf::User> {
+        let obj = db.lookup_by_natural_key(natural_key).await?;
         Ok(obj)
     }
 
@@ -193,6 +203,9 @@ impl crate::protobuf::User {
         si_properties: Option<crate::protobuf::UserSiProperties>,
     ) -> si_data::Result<crate::protobuf::User> {
         let mut si_storable = si_data::protobuf::DataStorable::default();
+        si_properties
+            .as_ref()
+            .ok_or(si_data::DataError::ValidationError("siProperties".into()))?;
         let billing_account_id = si_properties
             .as_ref()
             .unwrap()

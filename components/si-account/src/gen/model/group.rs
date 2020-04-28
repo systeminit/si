@@ -69,11 +69,6 @@ impl si_data::Storable for crate::protobuf::Group {
                 "missing required si_properties value".into(),
             ));
         }
-        if self.capabilities.is_none() {
-            return Err(si_data::DataError::ValidationError(
-                "missing required capabilities value".into(),
-            ));
-        }
         Ok(())
     }
 
@@ -130,10 +125,12 @@ impl si_data::Storable for crate::protobuf::Group {
 
     fn order_by_fields() -> Vec<&'static str> {
         vec![
+            "siStorable.naturalKey",
             "id",
             "name",
             "displayName",
             "userIds",
+            "siStorable.naturalKey",
             "siProperties.billingAccountId",
         ]
     }
@@ -142,6 +139,14 @@ impl si_data::Storable for crate::protobuf::Group {
 impl crate::protobuf::Group {
     pub async fn get(db: &si_data::Db, id: &str) -> si_data::Result<crate::protobuf::Group> {
         let obj = db.get(id).await?;
+        Ok(obj)
+    }
+
+    pub async fn get_by_natural_key(
+        db: &si_data::Db,
+        natural_key: &str,
+    ) -> si_data::Result<crate::protobuf::Group> {
+        let obj = db.lookup_by_natural_key(natural_key).await?;
         Ok(obj)
     }
 
@@ -190,8 +195,12 @@ impl crate::protobuf::Group {
         display_name: Option<String>,
         user_ids: Vec<String>,
         si_properties: Option<crate::protobuf::GroupSiProperties>,
+        capabilities: Vec<crate::protobuf::Capability>,
     ) -> si_data::Result<crate::protobuf::Group> {
         let mut si_storable = si_data::protobuf::DataStorable::default();
+        si_properties
+            .as_ref()
+            .ok_or(si_data::DataError::ValidationError("siProperties".into()))?;
         let billing_account_id = si_properties
             .as_ref()
             .unwrap()
@@ -209,6 +218,7 @@ impl crate::protobuf::Group {
         result_obj.display_name = display_name;
         result_obj.user_ids = user_ids;
         result_obj.si_properties = si_properties;
+        result_obj.capabilities = capabilities;
         result_obj.si_storable = Some(si_storable);
 
         Ok(result_obj)
@@ -220,9 +230,10 @@ impl crate::protobuf::Group {
         display_name: Option<String>,
         user_ids: Vec<String>,
         si_properties: Option<crate::protobuf::GroupSiProperties>,
+        capabilities: Vec<crate::protobuf::Capability>,
     ) -> si_data::Result<crate::protobuf::Group> {
         let mut result_obj =
-            crate::protobuf::Group::new(name, display_name, user_ids, si_properties)?;
+            crate::protobuf::Group::new(name, display_name, user_ids, si_properties, capabilities)?;
         db.validate_and_insert_as_new(&mut result_obj).await?;
         Ok(result_obj)
     }

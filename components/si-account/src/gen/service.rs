@@ -31,9 +31,12 @@ impl crate::protobuf::account_server::Account for Service {
     {
         async {
             info!(?request);
-            crate::authorize::authnz(&self.db, &request, "billing_account_list").await?;
-            // The request always gets consumed!
-            let inner = request.into_inner();
+            let auth = crate::authorize::authnz(&self.db, &request, "billing_account_list").await?;
+            let mut inner = request.into_inner();
+            if inner.scope_by_tenant_id.is_none() {
+                inner.scope_by_tenant_id = Some(String::from("global"));
+            }
+
             let list_reply = crate::protobuf::BillingAccount::list(&self.db, inner).await?;
             info!(?list_reply);
             Ok(tonic::Response::new(
@@ -55,17 +58,17 @@ impl crate::protobuf::account_server::Account for Service {
     {
         async {
             info!(?request);
-            // This object is set to skipAuth; so there is no authorization.
-            // The request always gets consumed!
+            // Skipping authentication
+
             let inner = request.into_inner();
             let request_id = inner
                 .id
                 .ok_or(si_data::DataError::RequiredField("id".to_string()))?;
-            let output = crate::protobuf::BillingAccount::get(&self.db, &request_id).await?;
-            info!(?output);
+            let reply = crate::protobuf::BillingAccount::get(&self.db, &request_id).await?;
+            info!(?reply);
             Ok(tonic::Response::new(
                 crate::protobuf::BillingAccountGetReply {
-                    object: Some(output),
+                    object: Some(reply),
                 },
             ))
         }
@@ -82,13 +85,13 @@ impl crate::protobuf::account_server::Account for Service {
     > {
         async {
             info!(?request);
-            // This object is set to skipAuth; so there is no authorization.
-            // The request always gets consumed!
+            // Skipping authentication
+
             let inner = request.into_inner();
-            let output =
+            let reply =
                 crate::model::BillingAccount::billing_account_signup(&self.db, inner).await?;
-            info!(?output);
-            Ok(tonic::Response::new(output))
+            info!(?reply);
+            Ok(tonic::Response::new(reply))
         }
         .instrument(info_span!("billing_account_signup"))
         .await
@@ -103,17 +106,17 @@ impl crate::protobuf::account_server::Account for Service {
     > {
         async {
             info!(?request);
-            // This object is set to skipAuth; so there is no authorization.
-            // The request always gets consumed!
+            // Skipping authentication
+
             let inner = request.into_inner();
             let name = inner.name;
             let display_name = inner.display_name;
-            let output =
+            let reply =
                 crate::protobuf::BillingAccount::create(&self.db, name, display_name).await?;
-            info!(?output);
+            info!(?reply);
             Ok(tonic::Response::new(
                 crate::protobuf::BillingAccountCreateReply {
-                    object: Some(output),
+                    object: Some(reply),
                 },
             ))
         }
@@ -127,9 +130,12 @@ impl crate::protobuf::account_server::Account for Service {
     ) -> std::result::Result<tonic::Response<crate::protobuf::UserListReply>, tonic::Status> {
         async {
             info!(?request);
-            crate::authorize::authnz(&self.db, &request, "user_list").await?;
-            // The request always gets consumed!
-            let inner = request.into_inner();
+            let auth = crate::authorize::authnz(&self.db, &request, "user_list").await?;
+            let mut inner = request.into_inner();
+            if inner.scope_by_tenant_id.is_none() {
+                inner.scope_by_tenant_id = Some(auth.billing_account_id().into());
+            }
+
             let list_reply = crate::protobuf::User::list(&self.db, inner).await?;
             info!(?list_reply);
             Ok(tonic::Response::new(crate::protobuf::UserListReply {
@@ -148,37 +154,37 @@ impl crate::protobuf::account_server::Account for Service {
     ) -> std::result::Result<tonic::Response<crate::protobuf::UserGetReply>, tonic::Status> {
         async {
             info!(?request);
-            // This object is set to skipAuth; so there is no authorization.
-            // The request always gets consumed!
+            // Skipping authentication
+
             let inner = request.into_inner();
             let request_id = inner
                 .id
                 .ok_or(si_data::DataError::RequiredField("id".to_string()))?;
-            let output = crate::protobuf::User::get(&self.db, &request_id).await?;
-            info!(?output);
+            let reply = crate::protobuf::User::get(&self.db, &request_id).await?;
+            info!(?reply);
             Ok(tonic::Response::new(crate::protobuf::UserGetReply {
-                object: Some(output),
+                object: Some(reply),
             }))
         }
         .instrument(info_span!("user_get"))
         .await
     }
 
-    async fn user_initial_create(
+    async fn user_login_internal(
         &self,
-        request: tonic::Request<crate::protobuf::UserInitialCreateRequest>,
-    ) -> std::result::Result<tonic::Response<crate::protobuf::UserInitialCreateReply>, tonic::Status>
+        request: tonic::Request<crate::protobuf::UserLoginInternalRequest>,
+    ) -> std::result::Result<tonic::Response<crate::protobuf::UserLoginInternalReply>, tonic::Status>
     {
         async {
             info!(?request);
-            // This object is set to skipAuth; so there is no authorization.
-            // The request always gets consumed!
+            // Skipping authentication
+
             let inner = request.into_inner();
-            let output = crate::model::User::user_initial_create(&self.db, inner).await?;
-            info!(?output);
-            Ok(tonic::Response::new(output))
+            let reply = crate::model::User::user_login_internal(&self.db, inner).await?;
+            info!(?reply);
+            Ok(tonic::Response::new(reply))
         }
-        .instrument(info_span!("user_initial_create"))
+        .instrument(info_span!("user_login_internal"))
         .await
     }
 
@@ -189,14 +195,13 @@ impl crate::protobuf::account_server::Account for Service {
         async {
             info!(?request);
             crate::authorize::authnz(&self.db, &request, "user_create").await?;
-            // The request always gets consumed!
             let inner = request.into_inner();
             let name = inner.name;
             let display_name = inner.display_name;
             let email = inner.email;
             let password = inner.password;
             let si_properties = inner.si_properties;
-            let output = crate::protobuf::User::create(
+            let reply = crate::protobuf::User::create(
                 &self.db,
                 name,
                 display_name,
@@ -205,9 +210,9 @@ impl crate::protobuf::account_server::Account for Service {
                 si_properties,
             )
             .await?;
-            info!(?output);
+            info!(?reply);
             Ok(tonic::Response::new(crate::protobuf::UserCreateReply {
-                object: Some(output),
+                object: Some(reply),
             }))
         }
         .instrument(info_span!("user_create"))
@@ -220,9 +225,12 @@ impl crate::protobuf::account_server::Account for Service {
     ) -> std::result::Result<tonic::Response<crate::protobuf::GroupListReply>, tonic::Status> {
         async {
             info!(?request);
-            crate::authorize::authnz(&self.db, &request, "group_list").await?;
-            // The request always gets consumed!
-            let inner = request.into_inner();
+            let auth = crate::authorize::authnz(&self.db, &request, "group_list").await?;
+            let mut inner = request.into_inner();
+            if inner.scope_by_tenant_id.is_none() {
+                inner.scope_by_tenant_id = Some(auth.billing_account_id().into());
+            }
+
             let list_reply = crate::protobuf::Group::list(&self.db, inner).await?;
             info!(?list_reply);
             Ok(tonic::Response::new(crate::protobuf::GroupListReply {
@@ -241,16 +249,16 @@ impl crate::protobuf::account_server::Account for Service {
     ) -> std::result::Result<tonic::Response<crate::protobuf::GroupGetReply>, tonic::Status> {
         async {
             info!(?request);
-            // This object is set to skipAuth; so there is no authorization.
-            // The request always gets consumed!
+            // Skipping authentication
+
             let inner = request.into_inner();
             let request_id = inner
                 .id
                 .ok_or(si_data::DataError::RequiredField("id".to_string()))?;
-            let output = crate::protobuf::Group::get(&self.db, &request_id).await?;
-            info!(?output);
+            let reply = crate::protobuf::Group::get(&self.db, &request_id).await?;
+            info!(?reply);
             Ok(tonic::Response::new(crate::protobuf::GroupGetReply {
-                object: Some(output),
+                object: Some(reply),
             }))
         }
         .instrument(info_span!("group_get"))
@@ -265,23 +273,24 @@ impl crate::protobuf::account_server::Account for Service {
         async {
             info!(?request);
             crate::authorize::authnz(&self.db, &request, "group_create").await?;
-            // The request always gets consumed!
             let inner = request.into_inner();
             let name = inner.name;
             let display_name = inner.display_name;
             let user_ids = inner.user_ids;
             let si_properties = inner.si_properties;
-            let output = crate::protobuf::Group::create(
+            let capabilities = inner.capabilities;
+            let reply = crate::protobuf::Group::create(
                 &self.db,
                 name,
                 display_name,
                 user_ids,
                 si_properties,
+                capabilities,
             )
             .await?;
-            info!(?output);
+            info!(?reply);
             Ok(tonic::Response::new(crate::protobuf::GroupCreateReply {
-                object: Some(output),
+                object: Some(reply),
             }))
         }
         .instrument(info_span!("group_create"))
@@ -295,9 +304,12 @@ impl crate::protobuf::account_server::Account for Service {
     {
         async {
             info!(?request);
-            crate::authorize::authnz(&self.db, &request, "organization_list").await?;
-            // The request always gets consumed!
-            let inner = request.into_inner();
+            let auth = crate::authorize::authnz(&self.db, &request, "organization_list").await?;
+            let mut inner = request.into_inner();
+            if inner.scope_by_tenant_id.is_none() {
+                inner.scope_by_tenant_id = Some(auth.billing_account_id().into());
+            }
+
             let list_reply = crate::protobuf::Organization::list(&self.db, inner).await?;
             info!(?list_reply);
             Ok(tonic::Response::new(
@@ -319,17 +331,17 @@ impl crate::protobuf::account_server::Account for Service {
     {
         async {
             info!(?request);
-            // This object is set to skipAuth; so there is no authorization.
-            // The request always gets consumed!
+            // Skipping authentication
+
             let inner = request.into_inner();
             let request_id = inner
                 .id
                 .ok_or(si_data::DataError::RequiredField("id".to_string()))?;
-            let output = crate::protobuf::Organization::get(&self.db, &request_id).await?;
-            info!(?output);
+            let reply = crate::protobuf::Organization::get(&self.db, &request_id).await?;
+            info!(?reply);
             Ok(tonic::Response::new(
                 crate::protobuf::OrganizationGetReply {
-                    object: Some(output),
+                    object: Some(reply),
                 },
             ))
         }
@@ -345,18 +357,17 @@ impl crate::protobuf::account_server::Account for Service {
         async {
             info!(?request);
             crate::authorize::authnz(&self.db, &request, "organization_create").await?;
-            // The request always gets consumed!
             let inner = request.into_inner();
             let name = inner.name;
             let display_name = inner.display_name;
             let si_properties = inner.si_properties;
-            let output =
+            let reply =
                 crate::protobuf::Organization::create(&self.db, name, display_name, si_properties)
                     .await?;
-            info!(?output);
+            info!(?reply);
             Ok(tonic::Response::new(
                 crate::protobuf::OrganizationCreateReply {
-                    object: Some(output),
+                    object: Some(reply),
                 },
             ))
         }
@@ -371,9 +382,12 @@ impl crate::protobuf::account_server::Account for Service {
     {
         async {
             info!(?request);
-            crate::authorize::authnz(&self.db, &request, "workspace_list").await?;
-            // The request always gets consumed!
-            let inner = request.into_inner();
+            let auth = crate::authorize::authnz(&self.db, &request, "workspace_list").await?;
+            let mut inner = request.into_inner();
+            if inner.scope_by_tenant_id.is_none() {
+                inner.scope_by_tenant_id = Some(auth.billing_account_id().into());
+            }
+
             let list_reply = crate::protobuf::Workspace::list(&self.db, inner).await?;
             info!(?list_reply);
             Ok(tonic::Response::new(crate::protobuf::WorkspaceListReply {
@@ -393,16 +407,16 @@ impl crate::protobuf::account_server::Account for Service {
     {
         async {
             info!(?request);
-            // This object is set to skipAuth; so there is no authorization.
-            // The request always gets consumed!
+            // Skipping authentication
+
             let inner = request.into_inner();
             let request_id = inner
                 .id
                 .ok_or(si_data::DataError::RequiredField("id".to_string()))?;
-            let output = crate::protobuf::Workspace::get(&self.db, &request_id).await?;
-            info!(?output);
+            let reply = crate::protobuf::Workspace::get(&self.db, &request_id).await?;
+            info!(?reply);
             Ok(tonic::Response::new(crate::protobuf::WorkspaceGetReply {
-                object: Some(output),
+                object: Some(reply),
             }))
         }
         .instrument(info_span!("workspace_get"))
@@ -417,22 +431,285 @@ impl crate::protobuf::account_server::Account for Service {
         async {
             info!(?request);
             crate::authorize::authnz(&self.db, &request, "workspace_create").await?;
-            // The request always gets consumed!
             let inner = request.into_inner();
             let name = inner.name;
             let display_name = inner.display_name;
             let si_properties = inner.si_properties;
-            let output =
+            let reply =
                 crate::protobuf::Workspace::create(&self.db, name, display_name, si_properties)
                     .await?;
-            info!(?output);
+            info!(?reply);
             Ok(tonic::Response::new(
                 crate::protobuf::WorkspaceCreateReply {
-                    object: Some(output),
+                    object: Some(reply),
                 },
             ))
         }
         .instrument(info_span!("workspace_create"))
+        .await
+    }
+
+    async fn integration_list(
+        &self,
+        request: tonic::Request<crate::protobuf::IntegrationListRequest>,
+    ) -> std::result::Result<tonic::Response<crate::protobuf::IntegrationListReply>, tonic::Status>
+    {
+        async {
+            info!(?request);
+            let auth = crate::authorize::authnz(&self.db, &request, "integration_list").await?;
+            let mut inner = request.into_inner();
+            if inner.scope_by_tenant_id.is_none() {
+                inner.scope_by_tenant_id = Some(String::from("global"));
+            }
+
+            let list_reply = crate::protobuf::Integration::list(&self.db, inner).await?;
+            info!(?list_reply);
+            Ok(tonic::Response::new(
+                crate::protobuf::IntegrationListReply {
+                    items: list_reply.items,
+                    total_count: Some(list_reply.total_count),
+                    next_page_token: Some(list_reply.page_token),
+                },
+            ))
+        }
+        .instrument(info_span!("integration_list"))
+        .await
+    }
+
+    async fn integration_get(
+        &self,
+        request: tonic::Request<crate::protobuf::IntegrationGetRequest>,
+    ) -> std::result::Result<tonic::Response<crate::protobuf::IntegrationGetReply>, tonic::Status>
+    {
+        async {
+            info!(?request);
+            // Skipping authentication
+
+            let inner = request.into_inner();
+            let request_id = inner
+                .id
+                .ok_or(si_data::DataError::RequiredField("id".to_string()))?;
+            let reply = crate::protobuf::Integration::get(&self.db, &request_id).await?;
+            info!(?reply);
+            Ok(tonic::Response::new(crate::protobuf::IntegrationGetReply {
+                object: Some(reply),
+            }))
+        }
+        .instrument(info_span!("integration_get"))
+        .await
+    }
+
+    async fn integration_create(
+        &self,
+        request: tonic::Request<crate::protobuf::IntegrationCreateRequest>,
+    ) -> std::result::Result<tonic::Response<crate::protobuf::IntegrationCreateReply>, tonic::Status>
+    {
+        async {
+            info!(?request);
+            crate::authorize::authnz(&self.db, &request, "integration_create").await?;
+            let inner = request.into_inner();
+            let name = inner.name;
+            let display_name = inner.display_name;
+            let version = inner.version;
+            let options = inner.options;
+            let reply = crate::protobuf::Integration::create(
+                &self.db,
+                name,
+                display_name,
+                version,
+                options,
+            )
+            .await?;
+            info!(?reply);
+            Ok(tonic::Response::new(
+                crate::protobuf::IntegrationCreateReply {
+                    object: Some(reply),
+                },
+            ))
+        }
+        .instrument(info_span!("integration_create"))
+        .await
+    }
+
+    async fn integration_service_list(
+        &self,
+        request: tonic::Request<crate::protobuf::IntegrationServiceListRequest>,
+    ) -> std::result::Result<
+        tonic::Response<crate::protobuf::IntegrationServiceListReply>,
+        tonic::Status,
+    > {
+        async {
+            info!(?request);
+            let auth =
+                crate::authorize::authnz(&self.db, &request, "integration_service_list").await?;
+            let mut inner = request.into_inner();
+            if inner.scope_by_tenant_id.is_none() {
+                inner.scope_by_tenant_id = Some(String::from("global"));
+            }
+
+            let list_reply = crate::protobuf::IntegrationService::list(&self.db, inner).await?;
+            info!(?list_reply);
+            Ok(tonic::Response::new(
+                crate::protobuf::IntegrationServiceListReply {
+                    items: list_reply.items,
+                    total_count: Some(list_reply.total_count),
+                    next_page_token: Some(list_reply.page_token),
+                },
+            ))
+        }
+        .instrument(info_span!("integration_service_list"))
+        .await
+    }
+
+    async fn integration_service_get(
+        &self,
+        request: tonic::Request<crate::protobuf::IntegrationServiceGetRequest>,
+    ) -> std::result::Result<
+        tonic::Response<crate::protobuf::IntegrationServiceGetReply>,
+        tonic::Status,
+    > {
+        async {
+            info!(?request);
+            // Skipping authentication
+
+            let inner = request.into_inner();
+            let request_id = inner
+                .id
+                .ok_or(si_data::DataError::RequiredField("id".to_string()))?;
+            let reply = crate::protobuf::IntegrationService::get(&self.db, &request_id).await?;
+            info!(?reply);
+            Ok(tonic::Response::new(
+                crate::protobuf::IntegrationServiceGetReply {
+                    object: Some(reply),
+                },
+            ))
+        }
+        .instrument(info_span!("integration_service_get"))
+        .await
+    }
+
+    async fn integration_service_create(
+        &self,
+        request: tonic::Request<crate::protobuf::IntegrationServiceCreateRequest>,
+    ) -> std::result::Result<
+        tonic::Response<crate::protobuf::IntegrationServiceCreateReply>,
+        tonic::Status,
+    > {
+        async {
+            info!(?request);
+            crate::authorize::authnz(&self.db, &request, "integration_service_create").await?;
+            let inner = request.into_inner();
+            let name = inner.name;
+            let display_name = inner.display_name;
+            let version = inner.version;
+            let si_properties = inner.si_properties;
+            let reply = crate::protobuf::IntegrationService::create(
+                &self.db,
+                name,
+                display_name,
+                version,
+                si_properties,
+            )
+            .await?;
+            info!(?reply);
+            Ok(tonic::Response::new(
+                crate::protobuf::IntegrationServiceCreateReply {
+                    object: Some(reply),
+                },
+            ))
+        }
+        .instrument(info_span!("integration_service_create"))
+        .await
+    }
+
+    async fn integration_instance_list(
+        &self,
+        request: tonic::Request<crate::protobuf::IntegrationInstanceListRequest>,
+    ) -> std::result::Result<
+        tonic::Response<crate::protobuf::IntegrationInstanceListReply>,
+        tonic::Status,
+    > {
+        async {
+            info!(?request);
+            let auth =
+                crate::authorize::authnz(&self.db, &request, "integration_instance_list").await?;
+            let mut inner = request.into_inner();
+            if inner.scope_by_tenant_id.is_none() {
+                inner.scope_by_tenant_id = Some(auth.billing_account_id().into());
+            }
+
+            let list_reply = crate::protobuf::IntegrationInstance::list(&self.db, inner).await?;
+            info!(?list_reply);
+            Ok(tonic::Response::new(
+                crate::protobuf::IntegrationInstanceListReply {
+                    items: list_reply.items,
+                    total_count: Some(list_reply.total_count),
+                    next_page_token: Some(list_reply.page_token),
+                },
+            ))
+        }
+        .instrument(info_span!("integration_instance_list"))
+        .await
+    }
+
+    async fn integration_instance_get(
+        &self,
+        request: tonic::Request<crate::protobuf::IntegrationInstanceGetRequest>,
+    ) -> std::result::Result<
+        tonic::Response<crate::protobuf::IntegrationInstanceGetReply>,
+        tonic::Status,
+    > {
+        async {
+            info!(?request);
+            // Skipping authentication
+
+            let inner = request.into_inner();
+            let request_id = inner
+                .id
+                .ok_or(si_data::DataError::RequiredField("id".to_string()))?;
+            let reply = crate::protobuf::IntegrationInstance::get(&self.db, &request_id).await?;
+            info!(?reply);
+            Ok(tonic::Response::new(
+                crate::protobuf::IntegrationInstanceGetReply {
+                    object: Some(reply),
+                },
+            ))
+        }
+        .instrument(info_span!("integration_instance_get"))
+        .await
+    }
+
+    async fn integration_instance_create(
+        &self,
+        request: tonic::Request<crate::protobuf::IntegrationInstanceCreateRequest>,
+    ) -> std::result::Result<
+        tonic::Response<crate::protobuf::IntegrationInstanceCreateReply>,
+        tonic::Status,
+    > {
+        async {
+            info!(?request);
+            crate::authorize::authnz(&self.db, &request, "integration_instance_create").await?;
+            let inner = request.into_inner();
+            let name = inner.name;
+            let display_name = inner.display_name;
+            let option_values = inner.option_values;
+            let si_properties = inner.si_properties;
+            let reply = crate::protobuf::IntegrationInstance::create(
+                &self.db,
+                name,
+                display_name,
+                option_values,
+                si_properties,
+            )
+            .await?;
+            info!(?reply);
+            Ok(tonic::Response::new(
+                crate::protobuf::IntegrationInstanceCreateReply {
+                    object: Some(reply),
+                },
+            ))
+        }
+        .instrument(info_span!("integration_instance_create"))
         .await
     }
 }

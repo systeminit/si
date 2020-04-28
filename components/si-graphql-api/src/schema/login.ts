@@ -2,20 +2,21 @@ import { arg, queryField, objectType, inputObjectType } from "nexus";
 import * as jwtLib from "jsonwebtoken";
 import { AuthenticationError } from "apollo-server";
 
+import { registryGenerator } from "@/schema/registryGenerator";
 import { environment } from "@/environment";
 import { Context } from "@/.";
 
-const LoginRequest = inputObjectType({
-  name: "LoginRequest",
+const UserLoginRequest = inputObjectType({
+  name: "UserLoginRequest",
   definition(t) {
     t.string("email", { required: true });
     t.string("password", { required: true });
-    t.string("billingAccountShortName", { required: true });
+    t.string("billingAccountName", { required: true });
   },
 });
 
-const LoginReply = objectType({
-  name: "LoginReply",
+const UserLoginReply = objectType({
+  name: "UserLoginReply",
   definition(t) {
     t.string("jwt");
     t.string("userId");
@@ -23,18 +24,23 @@ const LoginReply = objectType({
   },
 });
 
-const Login = queryField("login", {
-  type: LoginReply,
-  args: { input: arg({ type: LoginRequest }) },
+const UserLogin = queryField("userLogin", {
+  type: UserLoginReply,
+  args: { input: arg({ type: UserLoginRequest }) },
   async resolve(_root, { input }, { dataSources: { grpc } }: Context) {
-    const g = grpc.service("Account");
-    const req = new g.Request("login", input);
+    const g = grpc.service("si-account");
+    const grpcInput = {
+      email: { value: input.email },
+      password: { value: input.password },
+      billingAccountName: { value: input.billingAccountName },
+    };
+    const req = new g.Request("userLoginInternal", grpcInput).withRetry(0);
     const result = await req.exec();
-    if (result.response.authenticated == true) {
+    if (result.response.authenticated.value == true) {
       const jwt = jwtLib.sign(
         {
-          userId: result.response.userId,
-          billingAccountId: result.response.billingAccountId,
+          userId: result.response.userId.value,
+          billingAccountId: result.response.billingAccountId.value,
         },
         environment.jwtKey,
         {
@@ -45,8 +51,8 @@ const Login = queryField("login", {
       );
       return {
         jwt,
-        userId: result.response.userId,
-        billingAccountId: result.response.billingAccountId,
+        userId: result.response.userId.value,
+        billingAccountId: result.response.billingAccountId.value,
       };
     } else {
       throw new AuthenticationError("authentication failed");
@@ -54,4 +60,4 @@ const Login = queryField("login", {
   },
 });
 
-export const loginTypes = [LoginRequest, LoginReply, Login];
+export const loginTypes = [UserLoginRequest, UserLoginReply, UserLogin];

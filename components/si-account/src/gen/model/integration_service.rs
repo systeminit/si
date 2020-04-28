@@ -4,13 +4,13 @@
 use si_data;
 use uuid;
 
-impl si_data::Storable for crate::protobuf::KubernetesDeploymentEntity {
+impl si_data::Storable for crate::protobuf::IntegrationService {
     /// # Panics
     ///
-    /// * When a system object's `id` is not set (`crate::protobuf::KubernetesDeploymentEntity::generate_id()` must be called first)
+    /// * When a system object's `id` is not set (`crate::protobuf::IntegrationService::generate_id()` must be called first)
     fn get_id(&self) -> &str {
         (self.id.as_ref())
-            .expect("crate::protobuf::KubernetesDeploymentEntity::generate_id() must be called before crate::protobuf::KubernetesDeploymentEntity::get_id")
+            .expect("crate::protobuf::IntegrationService::generate_id() must be called before crate::protobuf::IntegrationService::get_id")
     }
 
     fn set_id(&mut self, id: impl Into<String>) {
@@ -18,7 +18,7 @@ impl si_data::Storable for crate::protobuf::KubernetesDeploymentEntity {
     }
 
     fn type_name() -> &'static str {
-        "kubernetes_deployment_entity"
+        "integration_service"
     }
 
     fn set_type_name(&mut self) {
@@ -59,24 +59,14 @@ impl si_data::Storable for crate::protobuf::KubernetesDeploymentEntity {
                 "missing required si_storable value".into(),
             ));
         }
-        if self.description.is_none() {
+        if self.version.is_none() {
             return Err(si_data::DataError::ValidationError(
-                "missing required description value".into(),
-            ));
-        }
-        if self.display_type_name.is_none() {
-            return Err(si_data::DataError::ValidationError(
-                "missing required display_type_name value".into(),
+                "missing required version value".into(),
             ));
         }
         if self.si_properties.is_none() {
             return Err(si_data::DataError::ValidationError(
                 "missing required si_properties value".into(),
-            ));
-        }
-        if self.properties.is_none() {
-            return Err(si_data::DataError::ValidationError(
-                "missing required properties value".into(),
             ));
         }
         Ok(())
@@ -121,12 +111,12 @@ impl si_data::Storable for crate::protobuf::KubernetesDeploymentEntity {
         let natural_key = format!(
             "{}:{}:{}",
             self.get_tenant_ids().first().expect(
-                "crate::protobuf::KubernetesDeploymentEntity's tenant_ids must be set with crate::protobuf::KubernetesDeploymentEntity.set_natural_key() is called"
+                "crate::protobuf::IntegrationService's tenant_ids must be set with crate::protobuf::IntegrationService.set_natural_key() is called"
             ),
             <Self as si_data::Storable>::type_name(),
             self.name
                 .as_ref()
-                .expect("crate::protobuf::KubernetesDeploymentEntity.name must be set when crate::protobuf::KubernetesDeploymentEntity.set_natural_key() is called")
+                .expect("crate::protobuf::IntegrationService.name must be set when crate::protobuf::IntegrationService.set_natural_key() is called")
         );
 
         let mut storable = self.si_storable.as_mut().unwrap();
@@ -134,15 +124,31 @@ impl si_data::Storable for crate::protobuf::KubernetesDeploymentEntity {
     }
 
     fn order_by_fields() -> Vec<&'static str> {
-        vec!["siStorable.naturalKey", "id", "name", "displayName", "description", "displayTypeName", "siStorable.naturalKey", "entitySiProperties.entityState", "siStorable.naturalKey", "siStorable.naturalKey", "properties.kubernetesObject.apiVersion", "properties.kubernetesObject.kind", "siStorable.naturalKey", "properties.kubernetesObject.kubernetesMetadata.name", "properties.kubernetesObject.kubernetesMetadata.labels", "siStorable.naturalKey", "properties.kubernetesObject.spec.replicas", "siStorable.naturalKey", "properties.kubernetesObject.spec.kubernetesSelector.matchLabels", "siStorable.naturalKey", "siStorable.naturalKey", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesMetadata.name", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesMetadata.labels", "siStorable.naturalKey", "siStorable.naturalKey", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesPodSpec.kubernetesContainer.name", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesPodSpec.kubernetesContainer.image", "siStorable.naturalKey", "siStorable.naturalKey", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesPodSpec.kubernetesContainer.ports.portValues.containerPort", "properties.kubernetesObjectYaml", "siStorable.naturalKey", "constraints.componentName", "constraints.componentDisplayName", "constraints.kubernetesVersion", "siStorable.naturalKey", "constraints.componentName", "constraints.componentDisplayName", "constraints.kubernetesVersion"]
+        vec![
+            "siStorable.naturalKey",
+            "id",
+            "name",
+            "displayName",
+            "siStorable.naturalKey",
+            "siProperties.integrationId",
+        ]
     }
 }
 
-impl crate::protobuf::KubernetesDeploymentEntity {
+impl si_data::Migrateable for crate::protobuf::IntegrationService {
+    fn get_version(&self) -> i32 {
+        match self.version {
+            Some(v) => v,
+            None => 0,
+        }
+    }
+}
+
+impl crate::protobuf::IntegrationService {
     pub async fn get(
         db: &si_data::Db,
         id: &str,
-    ) -> si_data::Result<crate::protobuf::KubernetesDeploymentEntity> {
+    ) -> si_data::Result<crate::protobuf::IntegrationService> {
         let obj = db.get(id).await?;
         Ok(obj)
     }
@@ -150,7 +156,7 @@ impl crate::protobuf::KubernetesDeploymentEntity {
     pub async fn get_by_natural_key(
         db: &si_data::Db,
         natural_key: &str,
-    ) -> si_data::Result<crate::protobuf::KubernetesDeploymentEntity> {
+    ) -> si_data::Result<crate::protobuf::IntegrationService> {
         let obj = db.lookup_by_natural_key(natural_key).await?;
         Ok(obj)
     }
@@ -162,8 +168,8 @@ impl crate::protobuf::KubernetesDeploymentEntity {
 
     pub async fn list(
         db: &si_data::Db,
-        list_request: crate::protobuf::KubernetesDeploymentEntityListRequest,
-    ) -> si_data::Result<si_data::ListResult<crate::protobuf::KubernetesDeploymentEntity>> {
+        list_request: crate::protobuf::IntegrationServiceListRequest,
+    ) -> si_data::Result<si_data::ListResult<crate::protobuf::IntegrationService>> {
         let result = match list_request.page_token {
             Some(token) => db.list_by_page_token(token).await?,
             None => {
@@ -194,56 +200,35 @@ impl crate::protobuf::KubernetesDeploymentEntity {
     }
 }
 
-impl crate::protobuf::KubernetesDeploymentEntity {
+impl crate::protobuf::IntegrationService {
     pub fn new(
-        constraints: Option<crate::protobuf::KubernetesDeploymentComponentConstraints>,
-        properties: Option<crate::protobuf::KubernetesDeploymentEntityProperties>,
         name: Option<String>,
         display_name: Option<String>,
-        description: Option<String>,
-        workspace_id: Option<String>,
-    ) -> si_data::Result<crate::protobuf::KubernetesDeploymentEntity> {
+        version: Option<i32>,
+        si_properties: Option<crate::protobuf::IntegrationServiceSiProperties>,
+    ) -> si_data::Result<crate::protobuf::IntegrationService> {
         let mut si_storable = si_data::protobuf::DataStorable::default();
+        si_storable.add_to_tenant_ids("global");
         si_properties
             .as_ref()
             .ok_or(si_data::DataError::ValidationError("siProperties".into()))?;
-        let billing_account_id = si_properties
+        let integration_id = si_properties
             .as_ref()
             .unwrap()
-            .billing_account_id
+            .integration_id
             .as_ref()
             .ok_or(si_data::DataError::ValidationError(
-                "siProperties.billingAccountId".into(),
+                "siProperties.integrationId".into(),
             ))?;
-        si_storable.add_to_tenant_ids(billing_account_id);
-        let organization_id = si_properties
-            .as_ref()
-            .unwrap()
-            .organization_id
-            .as_ref()
-            .ok_or(si_data::DataError::ValidationError(
-                "siProperties.organizationId".into(),
-            ))?;
-        si_storable.add_to_tenant_ids(organization_id);
-        let workspace_id = si_properties
-            .as_ref()
-            .unwrap()
-            .workspace_id
-            .as_ref()
-            .ok_or(si_data::DataError::ValidationError(
-                "siProperties.workspaceId".into(),
-            ))?;
-        si_storable.add_to_tenant_ids(workspace_id);
+        si_storable.add_to_tenant_ids(integration_id);
 
-        let mut result_obj = crate::protobuf::KubernetesDeploymentEntity {
+        let mut result_obj = crate::protobuf::IntegrationService {
             ..Default::default()
         };
-        result_obj.constraints = constraints;
-        result_obj.properties = properties;
         result_obj.name = name;
         result_obj.display_name = display_name;
-        result_obj.description = description;
-        result_obj.workspace_id = workspace_id;
+        result_obj.version = version;
+        result_obj.si_properties = si_properties;
         result_obj.si_storable = Some(si_storable);
 
         Ok(result_obj)
@@ -251,21 +236,13 @@ impl crate::protobuf::KubernetesDeploymentEntity {
 
     pub async fn create(
         db: &si_data::Db,
-        constraints: Option<crate::protobuf::KubernetesDeploymentComponentConstraints>,
-        properties: Option<crate::protobuf::KubernetesDeploymentEntityProperties>,
         name: Option<String>,
         display_name: Option<String>,
-        description: Option<String>,
-        workspace_id: Option<String>,
-    ) -> si_data::Result<crate::protobuf::KubernetesDeploymentEntity> {
-        let mut result_obj = crate::protobuf::KubernetesDeploymentEntity::new(
-            constraints,
-            properties,
-            name,
-            display_name,
-            description,
-            workspace_id,
-        )?;
+        version: Option<i32>,
+        si_properties: Option<crate::protobuf::IntegrationServiceSiProperties>,
+    ) -> si_data::Result<crate::protobuf::IntegrationService> {
+        let mut result_obj =
+            crate::protobuf::IntegrationService::new(name, display_name, version, si_properties)?;
         db.validate_and_insert_as_new(&mut result_obj).await?;
         Ok(result_obj)
     }

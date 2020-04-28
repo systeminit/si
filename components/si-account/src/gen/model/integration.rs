@@ -4,13 +4,13 @@
 use si_data;
 use uuid;
 
-impl si_data::Storable for crate::protobuf::KubernetesDeploymentEntityEvent {
+impl si_data::Storable for crate::protobuf::Integration {
     /// # Panics
     ///
-    /// * When a system object's `id` is not set (`crate::protobuf::KubernetesDeploymentEntityEvent::generate_id()` must be called first)
+    /// * When a system object's `id` is not set (`crate::protobuf::Integration::generate_id()` must be called first)
     fn get_id(&self) -> &str {
         (self.id.as_ref())
-            .expect("crate::protobuf::KubernetesDeploymentEntityEvent::generate_id() must be called before crate::protobuf::KubernetesDeploymentEntityEvent::get_id")
+            .expect("crate::protobuf::Integration::generate_id() must be called before crate::protobuf::Integration::get_id")
     }
 
     fn set_id(&mut self, id: impl Into<String>) {
@@ -18,7 +18,7 @@ impl si_data::Storable for crate::protobuf::KubernetesDeploymentEntityEvent {
     }
 
     fn type_name() -> &'static str {
-        "kubernetes_deployment_entity_event"
+        "integration"
     }
 
     fn set_type_name(&mut self) {
@@ -57,6 +57,11 @@ impl si_data::Storable for crate::protobuf::KubernetesDeploymentEntityEvent {
         if self.si_storable.is_none() {
             return Err(si_data::DataError::ValidationError(
                 "missing required si_storable value".into(),
+            ));
+        }
+        if self.version.is_none() {
+            return Err(si_data::DataError::ValidationError(
+                "missing required version value".into(),
             ));
         }
         Ok(())
@@ -101,12 +106,12 @@ impl si_data::Storable for crate::protobuf::KubernetesDeploymentEntityEvent {
         let natural_key = format!(
             "{}:{}:{}",
             self.get_tenant_ids().first().expect(
-                "crate::protobuf::KubernetesDeploymentEntityEvent's tenant_ids must be set with crate::protobuf::KubernetesDeploymentEntityEvent.set_natural_key() is called"
+                "crate::protobuf::Integration's tenant_ids must be set with crate::protobuf::Integration.set_natural_key() is called"
             ),
             <Self as si_data::Storable>::type_name(),
             self.name
                 .as_ref()
-                .expect("crate::protobuf::KubernetesDeploymentEntityEvent.name must be set when crate::protobuf::KubernetesDeploymentEntityEvent.set_natural_key() is called")
+                .expect("crate::protobuf::Integration.name must be set when crate::protobuf::Integration.set_natural_key() is called")
         );
 
         let mut storable = self.si_storable.as_mut().unwrap();
@@ -119,25 +124,25 @@ impl si_data::Storable for crate::protobuf::KubernetesDeploymentEntityEvent {
             "id",
             "name",
             "displayName",
-            "actionName",
-            "createTime",
-            "updatedTime",
-            "finalTime",
-            "finalized",
-            "success",
-            "userId",
-            "errorMessage",
-            "outputLines",
-            "errorLines",
+            "siStorable.naturalKey",
+            "options.name",
+            "options.displayName",
+            "options.optionType",
         ]
     }
 }
 
-impl crate::protobuf::KubernetesDeploymentEntityEvent {
-    pub async fn get(
-        db: &si_data::Db,
-        id: &str,
-    ) -> si_data::Result<crate::protobuf::KubernetesDeploymentEntityEvent> {
+impl si_data::Migrateable for crate::protobuf::Integration {
+    fn get_version(&self) -> i32 {
+        match self.version {
+            Some(v) => v,
+            None => 0,
+        }
+    }
+}
+
+impl crate::protobuf::Integration {
+    pub async fn get(db: &si_data::Db, id: &str) -> si_data::Result<crate::protobuf::Integration> {
         let obj = db.get(id).await?;
         Ok(obj)
     }
@@ -145,7 +150,7 @@ impl crate::protobuf::KubernetesDeploymentEntityEvent {
     pub async fn get_by_natural_key(
         db: &si_data::Db,
         natural_key: &str,
-    ) -> si_data::Result<crate::protobuf::KubernetesDeploymentEntityEvent> {
+    ) -> si_data::Result<crate::protobuf::Integration> {
         let obj = db.lookup_by_natural_key(natural_key).await?;
         Ok(obj)
     }
@@ -157,9 +162,8 @@ impl crate::protobuf::KubernetesDeploymentEntityEvent {
 
     pub async fn list(
         db: &si_data::Db,
-        list_request: crate::protobuf::KubernetesDeploymentEntityEventListRequest,
-    ) -> si_data::Result<si_data::ListResult<crate::protobuf::KubernetesDeploymentEntityEvent>>
-    {
+        list_request: crate::protobuf::IntegrationListRequest,
+    ) -> si_data::Result<si_data::ListResult<crate::protobuf::Integration>> {
         let result = match list_request.page_token {
             Some(token) => db.list_by_page_token(token).await?,
             None => {
@@ -187,5 +191,41 @@ impl crate::protobuf::KubernetesDeploymentEntityEvent {
             }
         };
         Ok(result)
+    }
+}
+
+impl crate::protobuf::Integration {
+    pub fn new(
+        name: Option<String>,
+        display_name: Option<String>,
+        version: Option<i32>,
+        options: Vec<crate::protobuf::IntegrationOptions>,
+    ) -> si_data::Result<crate::protobuf::Integration> {
+        let mut si_storable = si_data::protobuf::DataStorable::default();
+        si_storable.add_to_tenant_ids("global");
+
+        let mut result_obj = crate::protobuf::Integration {
+            ..Default::default()
+        };
+        result_obj.name = name;
+        result_obj.display_name = display_name;
+        result_obj.version = version;
+        result_obj.options = options;
+        result_obj.si_storable = Some(si_storable);
+
+        Ok(result_obj)
+    }
+
+    pub async fn create(
+        db: &si_data::Db,
+        name: Option<String>,
+        display_name: Option<String>,
+        version: Option<i32>,
+        options: Vec<crate::protobuf::IntegrationOptions>,
+    ) -> si_data::Result<crate::protobuf::Integration> {
+        let mut result_obj =
+            crate::protobuf::Integration::new(name, display_name, version, options)?;
+        db.validate_and_insert_as_new(&mut result_obj).await?;
+        Ok(result_obj)
     }
 }

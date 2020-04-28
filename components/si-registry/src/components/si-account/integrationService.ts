@@ -2,24 +2,28 @@ import {
   PropObject,
   PropMethod,
   PropLink,
-  PropText,
+  PropNumber,
 } from "../../components/prelude";
 import { registry } from "../../registry";
 import { SystemObject } from "../../systemComponent";
 
 registry.system({
-  typeName: "group",
-  displayTypeName: "A System Initiative User Group",
+  typeName: "integrationService",
+  displayTypeName: "An service within an integration",
   siPathName: "si-account",
   serviceName: "account",
   options(c: SystemObject) {
-    // The magical add list association lives here! Yay! Progress
-    c.fields.addText({
-      name: "userIds",
-      label: "User IDs of our groups members",
-      options(p: PropText) {
-        p.repeated = true;
+    c.associations.belongsTo({
+      fromFieldPath: ["siProperties", "integrationId"],
+      typeName: "integration",
+    });
+    c.fields.addNumber({
+      name: "version",
+      label: "The version of this integration",
+      options(p: PropNumber) {
         p.required = true;
+        p.hidden = true;
+        p.numberKind = "int32";
       },
     });
     c.fields.addObject({
@@ -28,73 +32,54 @@ registry.system({
       options(p: PropObject) {
         p.required = true;
         p.properties.addText({
-          name: "billingAccountId",
-          label: "Billing Account ID",
+          name: "integrationId",
+          label: "Integration ID",
           options(p) {
             p.required = true;
           },
         });
       },
     });
-    c.fields.addLink({
-      name: "capabilities",
-      label: "Authorized capabilities for this user",
-      options(p: PropLink) {
-        p.hidden = true;
-        p.repeated = true;
-        p.lookup = {
-          typeName: "capability",
-        };
-      },
-    });
 
-    c.addListMethod();
+    c.addListMethod({ isPrivate: true });
     c.addGetMethod();
     c.methods.addMethod({
       name: "create",
-      label: "Create a Group",
+      label: "Create an Integration Servcie",
       options(p: PropMethod) {
         p.mutation = true;
+        p.hidden = true;
+        p.isPrivate = true;
         p.request.properties.addText({
           name: "name",
-          label: "Group Name",
+          label: "Integration Service Name",
           options(p) {
             p.required = true;
           },
         });
         p.request.properties.addText({
           name: "displayName",
-          label: "Group Display Name",
+          label: "Integration Service Display Name",
           options(p) {
             p.required = true;
           },
         });
-        p.request.properties.addText({
-          name: "userIds",
-          label: "Group user IDs",
-          options(p) {
-            p.repeated = true;
+        p.request.properties.addNumber({
+          name: "version",
+          label: "Version of this object; for migration",
+          options(p: PropNumber) {
+            p.required = true;
+            p.numberKind = "int32";
           },
         });
         p.request.properties.addLink({
           name: "siProperties",
-          label: "The SI Properties for this User",
+          label: "Si Properties",
           options(p: PropLink) {
             p.required = true;
             p.lookup = {
-              typeName: "group",
+              typeName: "integrationService",
               names: ["siProperties"],
-            };
-          },
-        });
-        p.request.properties.addLink({
-          name: "capabilities",
-          label: "Authorized capabilities for this user",
-          options(p: PropLink) {
-            p.hidden = true;
-            p.repeated = true;
-            p.lookup = {
-              typeName: "capability",
             };
           },
         });
@@ -103,7 +88,7 @@ registry.system({
           label: `${c.displayTypeName} Object`,
           options(p: PropLink) {
             p.lookup = {
-              typeName: "group",
+              typeName: "integrationService",
             };
           },
         });

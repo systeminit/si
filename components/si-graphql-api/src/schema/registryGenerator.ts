@@ -158,9 +158,9 @@ export class SiRegistryGenerator {
                   const reqInput = {};
                   reqInput[association.methodArgumentName] = lookupValue;
 
-                  const req = new g.Request(methodName, reqInput).withMetadata(
-                    metadata,
-                  );
+                  const req = new g.Request(methodName, reqInput)
+                    .withMetadata(metadata)
+                    .withRetry(0);
                   let result = await req.exec();
                   result = thisGenerator.transformGrpcToGraphql(
                     result.response,
@@ -192,7 +192,6 @@ export class SiRegistryGenerator {
   generateMethods(component: ObjectTypes): void {
     for (const method of component.methods.attrs) {
       if (method instanceof PropMethod || method instanceof PropAction) {
-        console.log(`generating method ${method.componentTypeName}`);
         this.generateQueryOrMutationField(method, component, method.mutation);
       }
     }
@@ -338,12 +337,16 @@ export class SiRegistryGenerator {
           req = new g.Request(
             `${camelCase(component.typeName)}${pascalCase(prop.name)}`,
             grpcInput,
-          ).withMetadata(metadata);
+          )
+            .withMetadata(metadata)
+            .withRetry(0);
         } else {
           req = new g.Request(
             `${camelCase(component.typeName)}${pascalCase(prop.name)}`,
             {},
-          ).withMetadata(metadata);
+          )
+            .withMetadata(metadata)
+            .withRetry(0);
         }
         console.log("fuckity");
         let result = await req.exec();
@@ -848,6 +851,9 @@ export class SiRegistryGenerator {
     prop: Props,
     { nexusTypeDef, inputType }: NexusBlockOptions,
   ): void {
+    if (prop.skip) {
+      return;
+    }
     // yes, this is a binding of this. I need it. Shut your face.
     // eslint-disable-next-line
     if (prop.kind() == "object") {
@@ -931,3 +937,5 @@ export class SiRegistryGenerator {
     this.propAsType(systemObject.rootProp, { inputType: false });
   }
 }
+
+export const registryGenerator = new SiRegistryGenerator();

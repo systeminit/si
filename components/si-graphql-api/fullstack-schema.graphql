@@ -109,6 +109,14 @@ type Capability {
   subject: String
 }
 
+input CapabilityRequest {
+  """The actions this capability allows"""
+  actions: [String!]!
+
+  """The object the capability applies to"""
+  subject: String!
+}
+
 type ComponentSiProperties {
   """Integration Id"""
   integrationId: String
@@ -302,7 +310,7 @@ enum EntitySiPropertiesEntityState {
 
 type Group {
   """Authorized capabilities for this user"""
-  capabilities: Capability
+  capabilities: [Capability!]
 
   """A System Initiative User Group Display Name"""
   displayName: String
@@ -331,6 +339,9 @@ type GroupCreateReply {
 
 """Create a Group Request"""
 input GroupCreateRequest {
+  """Authorized capabilities for this user"""
+  capabilities: [CapabilityRequest!]
+
   """Group Display Name"""
   displayName: String!
 
@@ -397,6 +408,242 @@ type GroupSiProperties {
 input GroupSiPropertiesRequest {
   """Billing Account ID"""
   billingAccountId: String!
+}
+
+type Integration {
+  associations: IntegrationAssociations
+
+  """An integration with another system Display Name"""
+  displayName: String
+
+  """An integration with another system ID"""
+  id: ID
+
+  """An integration with another system Name"""
+  name: String
+
+  """An integration with another system"""
+  options: [IntegrationOptions!]
+
+  """SI Storable"""
+  siStorable: DataStorable
+
+  """The version of this integration"""
+  version: Int
+}
+
+"""An integration with another system Associations"""
+type IntegrationAssociations {
+  """System Initiative Billing Account"""
+  billingAccount: BillingAccount
+}
+
+"""Get a An integration with another system Reply"""
+type IntegrationGetReply {
+  """An integration with another system Object"""
+  object: Integration
+}
+
+"""Get a An integration with another system Request"""
+input IntegrationGetRequest {
+  """An integration with another system ID"""
+  id: ID!
+}
+
+type IntegrationInstance {
+  associations: IntegrationInstanceAssociations
+
+  """An instance of an integration with another system Display Name"""
+  displayName: String
+
+  """An instance of an integration with another system ID"""
+  id: ID
+
+  """An instance of an integration with another system Name"""
+  name: String
+
+  """An instance of an integration with another system"""
+  optionValues: [IntegrationInstanceOptionValues!]
+
+  """An instance of an integration with another system"""
+  siProperties: IntegrationInstanceSiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+}
+
+"""An instance of an integration with another system Associations"""
+type IntegrationInstanceAssociations {
+  """System Initiative Billing Account"""
+  billingAccount: BillingAccount
+
+  """An integration with another system"""
+  integration: Integration
+}
+
+"""Get a An instance of an integration with another system Reply"""
+type IntegrationInstanceGetReply {
+  """An instance of an integration with another system Object"""
+  object: IntegrationInstance
+}
+
+"""Get a An instance of an integration with another system Request"""
+input IntegrationInstanceGetRequest {
+  """An instance of an integration with another system ID"""
+  id: ID!
+}
+
+"""List An instance of an integration with another system Reply"""
+type IntegrationInstanceListReply {
+  """Items"""
+  items: [IntegrationInstance!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: Int
+}
+
+"""List An instance of an integration with another system Request"""
+input IntegrationInstanceListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: Int
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+type IntegrationInstanceOptionValues {
+  """The name for this option"""
+  name: String
+
+  """The type of option"""
+  optionType: IntegrationOptionsOptionType
+
+  """The value for this option"""
+  value: String
+}
+
+type IntegrationInstanceSiProperties {
+  """Billing Account ID"""
+  billingAccountId: String
+
+  """List of organization id's this integration instance is enabled on"""
+  enabledOrganizationIdList: [String!]
+
+  """List of workspace id's this integration instance is enabled on"""
+  enabledWorkspaceIdList: [String!]
+
+  """Integration ID"""
+  integrationId: String
+}
+
+"""List An integration with another system Reply"""
+type IntegrationListReply {
+  """Items"""
+  items: [Integration!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: Int
+}
+
+"""List An integration with another system Request"""
+input IntegrationListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: Int
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+type IntegrationOptions {
+  """The display name for this option"""
+  displayName: String
+
+  """The name for this option"""
+  name: String
+
+  """The type of option"""
+  optionType: IntegrationOptionsOptionType
+}
+
+"""The type of option"""
+enum IntegrationOptionsOptionType {
+  SECRET
+  STRING
+}
+
+type IntegrationService {
+  associations: IntegrationServiceAssociations
+
+  """An service within an integration Display Name"""
+  displayName: String
+
+  """An service within an integration ID"""
+  id: ID
+
+  """An service within an integration Name"""
+  name: String
+
+  """An service within an integration"""
+  siProperties: IntegrationServiceSiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+
+  """The version of this integration"""
+  version: Int
+}
+
+"""An service within an integration Associations"""
+type IntegrationServiceAssociations {
+  """An integration with another system"""
+  integration: Integration
+}
+
+"""Get a An service within an integration Reply"""
+type IntegrationServiceGetReply {
+  """An service within an integration Object"""
+  object: IntegrationService
+}
+
+"""Get a An service within an integration Request"""
+input IntegrationServiceGetRequest {
+  """An service within an integration ID"""
+  id: ID!
+}
+
+type IntegrationServiceSiProperties {
+  """Integration ID"""
+  integrationId: String
 }
 
 type KubernetesContainer {
@@ -1063,6 +1310,11 @@ type Query {
   billingAccountList(input: BillingAccountListRequest): BillingAccountListReply
   groupGet(input: GroupGetRequest): GroupGetReply
   groupList(input: GroupListRequest): GroupListReply
+  integrationGet(input: IntegrationGetRequest): IntegrationGetReply
+  integrationInstanceGet(input: IntegrationInstanceGetRequest): IntegrationInstanceGetReply
+  integrationInstanceList(input: IntegrationInstanceListRequest): IntegrationInstanceListReply
+  integrationList(input: IntegrationListRequest): IntegrationListReply
+  integrationServiceGet(input: IntegrationServiceGetRequest): IntegrationServiceGetReply
   kubernetesDeploymentComponentGet(input: KubernetesDeploymentComponentGetRequest!): KubernetesDeploymentComponentGetReply
   kubernetesDeploymentComponentList(input: KubernetesDeploymentComponentListRequest): KubernetesDeploymentComponentListReply
   kubernetesDeploymentComponentPick(input: KubernetesDeploymentComponentPickRequest): KubernetesDeploymentComponentPickReply
@@ -1073,6 +1325,7 @@ type Query {
   organizationList(input: OrganizationListRequest): OrganizationListReply
   userGet(input: UserGetRequest): UserGetReply
   userList(input: UserListRequest): UserListReply
+  userLogin(input: UserLoginRequest): UserLoginReply
   workspaceGet(input: WorkspaceGetRequest): WorkspaceGetReply
   workspaceList(input: WorkspaceListRequest): WorkspaceListReply
 }
@@ -1094,9 +1347,6 @@ type User {
 
   """A System Initiative User Name"""
   name: String
-
-  """The users password hash"""
-  password: String
 
   """A System Initiative User"""
   siProperties: UserSiProperties
@@ -1178,6 +1428,18 @@ input UserListRequest {
 
   """Scope By Tenant ID"""
   scopeByTenantId: String
+}
+
+type UserLoginReply {
+  billingAccountId: String
+  jwt: String
+  userId: String
+}
+
+input UserLoginRequest {
+  billingAccountName: String!
+  email: String!
+  password: String!
 }
 
 type UserSiProperties {

@@ -79,7 +79,7 @@ impl si_data::Storable for <%- fmt.structName() %> {
                 "<%- fmt.structName() %>'s tenant_ids must be set with <%- fmt.structName() %>.set_natural_key() is called"
             ),
             <Self as si_data::Storable>::type_name(),
-            self.name
+            self.<%- fmt.naturalKey() %>
                 .as_ref()
                 .expect("<%- fmt.structName() %>.name must be set when <%- fmt.structName() %>.set_natural_key() is called")
         );
@@ -92,4 +92,3 @@ impl si_data::Storable for <%- fmt.structName() %> {
       <%- fmt.storableOrderByFieldsFunction() %>
     }
 }
-

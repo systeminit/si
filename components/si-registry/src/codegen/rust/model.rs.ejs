@@ -5,6 +5,9 @@ use si_data;
 use uuid;
 
 <%- include('storable.rs.ejs', { fmt: fmt }) %> 
+<%_ if (fmt.isMigrateable()) { _%>
+<%- include('migrateable.rs.ejs', { fmt: fmt }) %>
+<%_ } _%>
 <%- include('implSave.rs.ejs', { fmt: fmt }) %>
 <%_ if (fmt.hasCreateMethod()) { _%>
 <%- include('implCreate.rs.ejs', { fmt: fmt }) %>

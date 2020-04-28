@@ -99,6 +99,14 @@ export class RustFormatter {
     return snakeCase(prop.name);
   }
 
+  implServiceAuth(propMethod: PropPrelude.PropMethod): string {
+    if (propMethod.skipAuth) {
+      return "// Skipping authentication\n";
+    } else {
+      return this.implServiceAuthCall(propMethod);
+    }
+  }
+
   implServiceAuthCall(propMethod: PropPrelude.PropMethod): string {
     let prelude = "si_account::authorize";
     if (this.systemObject.serviceName == "account") {
@@ -273,6 +281,23 @@ export class RustFormatter {
     return result.join("\n");
   }
 
+  naturalKey(): string {
+    if (this.systemObject instanceof SystemObject) {
+      return snakeCase(this.systemObject.naturalKey);
+    } else {
+      return "name";
+    }
+  }
+
+  isMigrateable(): boolean {
+    try {
+      this.systemObject.fields.getEntry("version");
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   isStorable(): boolean {
     if (this.systemObject instanceof SystemObject) {
       return true;
@@ -301,18 +326,37 @@ export class RustFormatter {
 
   implCreateAddToTenancy(): string {
     const result = [];
-    if (this.systemObject.typeName == "billingAccount") {
+    if (
+      this.systemObject.typeName == "billingAccount" ||
+      this.systemObject.typeName == "integration"
+    ) {
       result.push(`si_storable.add_to_tenant_ids("global");`);
+    } else if (this.systemObject.typeName == "integrationService") {
+      result.push(`si_storable.add_to_tenant_ids("global");`);
+      result.push(
+        `si_properties.as_ref().ok_or(si_data::DataError::ValidationError("siProperties".into()))?;`,
+      );
+      result.push(`let integration_id = si_properties.as_ref().unwrap().integration_id.as_ref().ok_or(
+            si_data::DataError::ValidationError("siProperties.integrationId".into()),
+        )?;
+        si_storable.add_to_tenant_ids(integration_id);`);
     } else if (
       this.systemObject.typeName == "user" ||
       this.systemObject.typeName == "group" ||
-      this.systemObject.typeName == "organization"
+      this.systemObject.typeName == "organization" ||
+      this.systemObject.typeName == "integrationInstance"
     ) {
+      result.push(
+        `si_properties.as_ref().ok_or(si_data::DataError::ValidationError("siProperties".into()))?;`,
+      );
       result.push(`let billing_account_id = si_properties.as_ref().unwrap().billing_account_id.as_ref().ok_or(
             si_data::DataError::ValidationError("siProperties.billingAccountId".into()),
         )?;
         si_storable.add_to_tenant_ids(billing_account_id);`);
     } else if (this.systemObject.typeName == "workspace") {
+      result.push(
+        `si_properties.as_ref().ok_or(si_data::DataError::ValidationError("siProperties".into()))?;`,
+      );
       result.push(`let billing_account_id = si_properties.as_ref().unwrap().billing_account_id.as_ref().ok_or(
             si_data::DataError::ValidationError("siProperties.billingAccountId".into()),
         )?;
@@ -322,6 +366,9 @@ export class RustFormatter {
         )?;
         si_storable.add_to_tenant_ids(organization_id);`);
     } else {
+      result.push(
+        `si_properties.as_ref().ok_or(si_data::DataError::ValidationError("siProperties".into()))?;`,
+      );
       result.push(`let billing_account_id = si_properties.as_ref().unwrap().billing_account_id.as_ref().ok_or(
             si_data::DataError::ValidationError("siProperties.billingAccountId".into()),
         )?;
@@ -361,7 +408,7 @@ export class RustFormatter {
     topProp: PropPrelude.PropObject,
     prefix: string,
   ): string {
-    const results = [];
+    const results = ['"siStorable.naturalKey"'];
     for (let prop of topProp.properties.attrs) {
       if (prop.hidden) {
         continue;

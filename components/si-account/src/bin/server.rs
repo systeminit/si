@@ -5,8 +5,9 @@ use tokio;
 use tonic::transport::Server;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
-// used to have migrate::migrate
-use si_account::{gen::service::Service, protobuf::account_server::AccountServer};
+use si_account::{
+    gen::service::Service, migrate::migrate, protobuf::account_server::AccountServer,
+};
 
 async fn run() -> Result<()> {
     let settings = Settings::new()?;
@@ -16,7 +17,7 @@ async fn run() -> Result<()> {
     db.create_primary_index().await?;
 
     println!("*** Migrating so much right now ***");
-    //migrate(&db).await?;
+    migrate(&db).await?;
 
     let service = Service::new(db);
 

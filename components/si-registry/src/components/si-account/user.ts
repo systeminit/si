@@ -8,6 +8,8 @@ registry.system({
   siPathName: "si-account",
   serviceName: "account",
   options(c: SystemObject) {
+    c.naturalKey = "email";
+
     c.associations.belongsTo({
       fromFieldPath: ["siProperties", "billingAccountId"],
       typeName: "billingAccount",
@@ -28,6 +30,7 @@ registry.system({
         p.universal = true;
         p.required = true;
         p.hidden = true;
+        p.skip = true;
       },
     });
     c.fields.addObject({
@@ -58,61 +61,52 @@ registry.system({
     c.addListMethod();
     c.addGetMethod();
 
-    // This is the endpoint we use for creating a new user,
-    // even when you can't authenticate. ;)
     c.methods.addMethod({
-      name: "initialCreate",
-      label: "Create initial User",
+      name: "loginInternal",
+      label: "Login",
       options(p: PropMethod) {
-        p.mutation = true;
-        p.skipAuth = true;
         p.isPrivate = true;
-        p.request.properties.addText({
-          name: "name",
-          label: "User Name",
-          options(p) {
-            p.required = true;
-          },
-        });
-        p.request.properties.addText({
-          name: "displayName",
-          label: "User Display Name",
-          options(p) {
-            p.required = true;
-          },
-        });
+        p.skipAuth = true;
         p.request.properties.addText({
           name: "email",
-          label: "Users email address",
+          label: "Email",
           options(p) {
             p.required = true;
           },
         });
         p.request.properties.addPassword({
           name: "password",
-          label: "Users password",
+          label: "Password",
           options(p) {
             p.required = true;
           },
         });
-        p.request.properties.addLink({
-          name: "siProperties",
-          label: "The SI Properties for this User",
-          options(p: PropLink) {
+        p.request.properties.addText({
+          name: "billingAccountName",
+          label: "Billing Account",
+          options(p) {
             p.required = true;
-            p.lookup = {
-              typeName: "user",
-              names: ["siProperties"],
-            };
           },
         });
-        p.reply.properties.addLink({
-          name: "object",
-          label: `${c.displayTypeName} Object`,
-          options(p: PropLink) {
-            p.lookup = {
-              typeName: "user",
-            };
+        p.reply.properties.addBool({
+          name: "authenticated",
+          label: "Authenticated",
+          options(p) {
+            p.required = true;
+          },
+        });
+        p.reply.properties.addText({
+          name: "userId",
+          label: "User Id",
+          options(p) {
+            p.required = true;
+          },
+        });
+        p.reply.properties.addText({
+          name: "billingAccountId",
+          label: "Billing Account Id",
+          options(p) {
+            p.required = true;
           },
         });
       },

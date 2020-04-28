@@ -1,5 +1,3 @@
-import { pascalCase, snakeCase, camelCase } from "change-case";
-
 export interface PropConstructor {
   name: string;
   label: string;
@@ -23,6 +21,7 @@ export abstract class Prop {
   rules: ((v: any) => boolean | string)[];
   required: boolean;
   readOnly: boolean;
+  // Hidden from the UI
   hidden: boolean;
   repeated: boolean;
   universal: boolean;
@@ -30,6 +29,8 @@ export abstract class Prop {
   parentName: string;
   reference: boolean;
   componentTypeName: string;
+  // Hidden from the API
+  skip: boolean;
 
   constructor({
     name,
@@ -62,6 +63,7 @@ export abstract class Prop {
     this.lookupTag = null;
     this.parentName = "";
     this.reference = false;
+    this.skip = false;
   }
 
   abstract kind(): string;
