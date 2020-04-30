@@ -629,13 +629,16 @@ export class CodegenRust {
     return absolutePathName;
   }
 
+  async formatCode(): Promise<void> {
+    await execCmd(`cargo fmt -p si-${this.serviceName}`);
+  }
+
   async writeCode(filename: string, code: string): Promise<void> {
     const pathname = path.dirname(filename);
     const basename = path.basename(filename);
     const createdPath = await this.makePath(pathname);
     const codeFilename = path.join(createdPath, basename);
     await fs.promises.writeFile(codeFilename, code);
-    await execCmd(`rustfmt ${codeFilename}`);
   }
 }
 

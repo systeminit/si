@@ -133,7 +133,6 @@ export class SystemObject extends BaseObject {
       label: `Get a ${systemObject.displayTypeName}`,
       options(p: PropMethod) {
         p.isPrivate = args.isPrivate || false;
-        p.skipAuth = true;
         p.request.properties.addText({
           name: "id",
           label: `${systemObject.displayTypeName} ID`,

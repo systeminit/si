@@ -37,6 +37,13 @@
   "dependencies": {
     "@grpc/proto-loader": "^0.5.3",
     "@iarna/toml": "^2.2.3",
+    "@opentelemetry/core": "^0.7.0",
+    "@opentelemetry/exporter-collector": "^0.7.0",
+    "@opentelemetry/exporter-jaeger": "^0.7.0",
+    "@opentelemetry/node": "^0.7.0",
+    "@opentelemetry/plugin-grpc": "^0.7.0",
+    "@opentelemetry/plugin-http": "^0.7.0",
+    "@opentelemetry/tracing": "^0.7.0",
     "apollo-datasource": "^0.6.3",
     "apollo-server": "^2.9.7",
     "change-case": "^4.1.1",

@@ -133,8 +133,15 @@ function generateRust(): Listr {
           });
         }
       }
+
+      tasks.push({
+        title: `Rust format ${serviceName}`,
+        task: async (): Promise<void> => {
+          await codegenRust.formatCode();
+        },
+      });
     }
   }
 
-  return new Listr(tasks, { concurrent: true });
+  return new Listr(tasks, { concurrent: false });
 }

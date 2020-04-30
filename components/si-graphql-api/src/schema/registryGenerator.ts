@@ -28,6 +28,7 @@ import {
 import { camelCase, pascalCase, constantCase } from "change-case";
 import { Context } from "@/index";
 import { AuthenticationError } from "apollo-server";
+import traceApi from "@opentelemetry/api";
 
 interface NexusBlockOptions {
   nexusTypeDef?: NexusTypeDefBlock;
@@ -116,6 +117,19 @@ export class SiRegistryGenerator {
                 type: pascalCase(association.typeName),
                 description: returnType.displayTypeName,
                 async resolve(_root, _input, context: Context) {
+                  const trace = traceApi.trace.getTracer("si-graphql-api");
+                  const span = trace.startSpan(
+                    `graphql.belongsTo ${association.fieldName}`,
+                    { parent: trace.getCurrentSpan() },
+                  );
+                  span.setAttribute("graphql.resolver", true);
+                  span.setAttribute("graphql.root", false);
+                  span.setAttribute("graphql.mutation", false);
+                  span.setAttribute("graphql.query", false);
+                  span.setAttribute("graphql.association", true);
+                  span.setAttribute("graphql.association.type", "belongsTo");
+                  span.setAttribute("graphql.fieldName", association.fieldName);
+
                   const grpc = context.dataSources.grpc;
                   const user = context.user;
                   const associationParent = context.associationParent;
@@ -166,6 +180,7 @@ export class SiRegistryGenerator {
                     systemObject,
                   );
 
+                  span.end();
                   return result.object;
                 },
               });
@@ -182,6 +197,19 @@ export class SiRegistryGenerator {
                 args: { input: arg({ type: `${methodName}Request` }) },
                 description: returnType.displayTypeName,
                 async resolve(_root, input, context: Context) {
+                  const trace = traceApi.trace.getTracer("si-graphql-api");
+                  const span = trace.startSpan(
+                    `graphql.hasMany ${association.fieldName}`,
+                    { parent: trace.getCurrentSpan() },
+                  );
+                  span.setAttribute("graphql.resolver", true);
+                  span.setAttribute("graphql.root", false);
+                  span.setAttribute("graphql.mutation", false);
+                  span.setAttribute("graphql.query", false);
+                  span.setAttribute("graphql.association", true);
+                  span.setAttribute("graphql.association.type", "hasMany");
+                  span.setAttribute("graphql.fieldName", association.fieldName);
+
                   const grpc = context.dataSources.grpc;
                   const user = context.user;
                   const associationParent = context.associationParent;
@@ -229,6 +257,8 @@ export class SiRegistryGenerator {
                     systemObject,
                   );
 
+                  span.end();
+
                   return result;
                 },
               });
@@ -245,6 +275,19 @@ export class SiRegistryGenerator {
                 args: { input: arg({ type: `${methodName}Request` }) },
                 description: returnType.displayTypeName,
                 async resolve(_root, input, context: Context) {
+                  const trace = traceApi.trace.getTracer("si-graphql-api");
+                  const span = trace.startSpan(
+                    `graphql.hasList ${association.fieldName}`,
+                    { parent: trace.getCurrentSpan() },
+                  );
+                  span.setAttribute("graphql.resolver", true);
+                  span.setAttribute("graphql.root", false);
+                  span.setAttribute("graphql.mutation", false);
+                  span.setAttribute("graphql.query", false);
+                  span.setAttribute("graphql.association", true);
+                  span.setAttribute("graphql.association.type", "hasList");
+                  span.setAttribute("graphql.fieldName", association.fieldName);
+
                   const grpc = context.dataSources.grpc;
                   const user = context.user;
                   const associationParent = context.associationParent;
@@ -311,6 +354,8 @@ export class SiRegistryGenerator {
                     systemObject,
                   );
 
+                  span.end();
+
                   return result;
                 },
               });
@@ -327,6 +372,19 @@ export class SiRegistryGenerator {
                 args: { input: arg({ type: `${methodName}Request` }) },
                 description: returnType.displayTypeName,
                 async resolve(_root, input, context: Context) {
+                  const trace = traceApi.trace.getTracer("si-graphql-api");
+                  const span = trace.startSpan(
+                    `graphql.inList ${association.fieldName}`,
+                    { parent: trace.getCurrentSpan() },
+                  );
+                  span.setAttribute("graphql.resolver", true);
+                  span.setAttribute("graphql.root", false);
+                  span.setAttribute("graphql.mutation", false);
+                  span.setAttribute("graphql.query", false);
+                  span.setAttribute("graphql.association", true);
+                  span.setAttribute("graphql.association.type", "hasList");
+                  span.setAttribute("graphql.fieldName", association.fieldName);
+
                   const grpc = context.dataSources.grpc;
                   const user = context.user;
                   const associationParent = context.associationParent;
@@ -389,6 +447,8 @@ export class SiRegistryGenerator {
                     systemObject,
                   );
 
+                  span.end();
+
                   return result;
                 },
               });
@@ -404,7 +464,21 @@ export class SiRegistryGenerator {
             // @ts-ignore
             type: associationTypeName,
             async resolve(root, _input, context: Context) {
+              const trace = traceApi.trace.getTracer("si-graphql-api");
+              const span = trace.startSpan(
+                `graphql.associations ${camelCase(systemObject.typeName)}`,
+                { parent: trace.getCurrentSpan() },
+              );
+              span.setAttribute("graphql.resolver", true);
+              span.setAttribute("graphql.root", false);
+              span.setAttribute("graphql.mutation", false);
+              span.setAttribute("graphql.query", false);
+              span.setAttribute("graphql.association", false);
+              span.setAttribute("graphql.fieldName", "associations");
+
               context.associationParent = root;
+
+              span.end();
               return {};
             },
           });
@@ -544,9 +618,23 @@ export class SiRegistryGenerator {
         }),
       },
       async resolve(_root, { input }, context: Context) {
+        const trace = traceApi.trace.getTracer("si-graphql-api");
+        const span = trace.startSpan(
+          `graphql.resolver ${camelCase(thisGenerator.graphqlTypeName(prop))}`,
+          { parent: trace.getCurrentSpan() },
+        );
+        span.setAttribute("graphql.resolver", true);
+        span.setAttribute("graphql.root", true);
+        if (mutation) {
+          span.setAttribute("graphql.mutation", true);
+        } else {
+          span.setAttribute("graphql.query", true);
+        }
+
         const grpc = context.dataSources.grpc;
         const user = context.user;
         if (user.authenticated == false && prop.skipAuth != true) {
+          span.end();
           throw new AuthenticationError("Must be logged in");
         }
         const metadata = new Metadata();
@@ -577,12 +665,12 @@ export class SiRegistryGenerator {
             .withRetry(0);
         }
         let result = await req.exec();
-        console.dir({ response: result.response }, { depth: Infinity });
         result = thisGenerator.transformGrpcToGraphql(
           result.response,
           prop,
           component,
         );
+        span.end();
         return result;
       },
     });

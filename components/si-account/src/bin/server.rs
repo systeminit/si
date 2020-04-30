@@ -1,9 +1,17 @@
 use anyhow::{Context, Result};
+use opentelemetry::{
+    api::{Provider, Sampler},
+    sdk,
+};
+use opentelemetry_jaeger;
 use si_data::Db;
 use si_settings::Settings;
 use tokio;
 use tonic::transport::Server;
-use tracing_subscriber::{EnvFilter, FmtSubscriber};
+use tracing;
+use tracing_opentelemetry::OpenTelemetryLayer;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::{self, fmt, EnvFilter, FmtSubscriber, Registry};
 
 use si_account::{
     gen::service::Service, migrate::migrate, protobuf::account_server::AccountServer,
@@ -38,9 +46,30 @@ async fn run() -> Result<()> {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let subscriber = FmtSubscriber::builder()
-        .with_env_filter(EnvFilter::from_default_env())
-        .finish();
+    let exporter = opentelemetry_jaeger::Exporter::builder()
+        .with_process(opentelemetry_jaeger::Process {
+            service_name: "si-account".into(),
+            tags: Vec::new(),
+        })
+        .init()?;
+    let provider = sdk::Provider::builder()
+        .with_simple_exporter(exporter)
+        .with_config(sdk::Config {
+            default_sampler: Box::new(sdk::Sampler::Always),
+            ..Default::default()
+        })
+        .build();
+
+    let tracer = provider.get_tracer("si-account");
+
+    let fmt_layer = fmt::Layer::default();
+    let opentelemetry_layer = OpenTelemetryLayer::with_tracer(tracer);
+    let env_filter_layer = EnvFilter::from_default_env();
+
+    let subscriber = Registry::default()
+        .with(env_filter_layer)
+        .with(fmt_layer)
+        .with(opentelemetry_layer);
 
     tracing::subscriber::set_global_default(subscriber)
         .context("cannot set the global tracing defalt")?;

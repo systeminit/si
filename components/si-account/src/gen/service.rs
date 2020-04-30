@@ -1,11 +1,40 @@
 // Auto-generated rust code!
 // No-Touchy!
 
+use opentelemetry::api::propagation::text_propagator::HttpTextFormat;
 use tonic;
-use tracing::{self, info, info_span};
+use tracing::{self, debug, info};
 use tracing_futures::Instrument as _;
+use tracing_opentelemetry::OpenTelemetrySpanExt as _;
 
 use si_data;
+
+struct TonicMetaWrapper<'a>(&'a mut tonic::metadata::MetadataMap);
+
+impl<'a> opentelemetry::api::propagation::Carrier for TonicMetaWrapper<'a> {
+    fn get(&self, key: &'static str) -> Option<&str> {
+        let raw_value = self.0.get(key)?;
+        match raw_value.to_str() {
+            Ok(value) => Some(value),
+            Err(_e) => {
+                debug!("Cannot extract header for trace parent, not a string");
+                None
+            }
+        }
+    }
+
+    fn set(&mut self, key: &'static str, raw_value: String) {
+        let value = match tonic::metadata::MetadataValue::from_str(&raw_value) {
+            Ok(value) => value,
+            Err(_e) => {
+                debug!("Cannot insert header for trace parent, not a string");
+                debug!("Inserting the empty string");
+                tonic::metadata::MetadataValue::from_str("").unwrap()
+            }
+        };
+        self.0.insert(key, value);
+    }
+}
 
 #[derive(Debug)]
 pub struct Service {
@@ -26,9 +55,46 @@ impl Service {
 impl crate::protobuf::account_server::Account for Service {
     async fn billing_account_list(
         &self,
-        request: tonic::Request<crate::protobuf::BillingAccountListRequest>,
+        mut request: tonic::Request<crate::protobuf::BillingAccountListRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::BillingAccountListReply>, tonic::Status>
     {
+        let trace_propagator =
+            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
+        let span_context = {
+            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
+            trace_propagator.extract(&metadata_wrapper)
+        };
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "billing_account_list",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
         async {
             info!(?request);
             #[allow(unused_variables)]
@@ -48,19 +114,55 @@ impl crate::protobuf::account_server::Account for Service {
                 },
             ))
         }
-        .instrument(info_span!("billing_account_list"))
+        .instrument(span)
         .await
     }
 
     async fn billing_account_get(
         &self,
-        request: tonic::Request<crate::protobuf::BillingAccountGetRequest>,
+        mut request: tonic::Request<crate::protobuf::BillingAccountGetRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::BillingAccountGetReply>, tonic::Status>
     {
+        let trace_propagator =
+            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
+        let span_context = {
+            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
+            trace_propagator.extract(&metadata_wrapper)
+        };
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "billing_account_get",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
         async {
             info!(?request);
-            // Skipping authentication
-
+            crate::authorize::authnz(&self.db, &request, "billing_account_get").await?;
             let inner = request.into_inner();
             let request_id = inner
                 .id
@@ -73,17 +175,54 @@ impl crate::protobuf::account_server::Account for Service {
                 },
             ))
         }
-        .instrument(info_span!("billing_account_get"))
+        .instrument(span)
         .await
     }
 
     async fn billing_account_signup(
         &self,
-        request: tonic::Request<crate::protobuf::BillingAccountSignupRequest>,
+        mut request: tonic::Request<crate::protobuf::BillingAccountSignupRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::BillingAccountSignupReply>,
         tonic::Status,
     > {
+        let trace_propagator =
+            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
+        let span_context = {
+            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
+            trace_propagator.extract(&metadata_wrapper)
+        };
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "billing_account_signup",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
         async {
             info!(?request);
             // Skipping authentication
@@ -94,21 +233,57 @@ impl crate::protobuf::account_server::Account for Service {
             info!(?reply);
             Ok(tonic::Response::new(reply))
         }
-        .instrument(info_span!("billing_account_signup"))
+        .instrument(span)
         .await
     }
 
     async fn billing_account_create(
         &self,
-        request: tonic::Request<crate::protobuf::BillingAccountCreateRequest>,
+        mut request: tonic::Request<crate::protobuf::BillingAccountCreateRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::BillingAccountCreateReply>,
         tonic::Status,
     > {
+        let trace_propagator =
+            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
+        let span_context = {
+            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
+            trace_propagator.extract(&metadata_wrapper)
+        };
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "billing_account_create",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
         async {
             info!(?request);
-            // Skipping authentication
-
+            crate::authorize::authnz(&self.db, &request, "billing_account_create").await?;
             let inner = request.into_inner();
             let name = inner.name;
             let display_name = inner.display_name;
@@ -121,14 +296,51 @@ impl crate::protobuf::account_server::Account for Service {
                 },
             ))
         }
-        .instrument(info_span!("billing_account_create"))
+        .instrument(span)
         .await
     }
 
     async fn user_list(
         &self,
-        request: tonic::Request<crate::protobuf::UserListRequest>,
+        mut request: tonic::Request<crate::protobuf::UserListRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::UserListReply>, tonic::Status> {
+        let trace_propagator =
+            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
+        let span_context = {
+            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
+            trace_propagator.extract(&metadata_wrapper)
+        };
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "user_list",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
         async {
             info!(?request);
             #[allow(unused_variables)]
@@ -146,18 +358,54 @@ impl crate::protobuf::account_server::Account for Service {
                 next_page_token: Some(list_reply.page_token),
             }))
         }
-        .instrument(info_span!("user_list"))
+        .instrument(span)
         .await
     }
 
     async fn user_get(
         &self,
-        request: tonic::Request<crate::protobuf::UserGetRequest>,
+        mut request: tonic::Request<crate::protobuf::UserGetRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::UserGetReply>, tonic::Status> {
+        let trace_propagator =
+            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
+        let span_context = {
+            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
+            trace_propagator.extract(&metadata_wrapper)
+        };
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "user_get",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
         async {
             info!(?request);
-            // Skipping authentication
-
+            crate::authorize::authnz(&self.db, &request, "user_get").await?;
             let inner = request.into_inner();
             let request_id = inner
                 .id
@@ -168,15 +416,52 @@ impl crate::protobuf::account_server::Account for Service {
                 object: Some(reply),
             }))
         }
-        .instrument(info_span!("user_get"))
+        .instrument(span)
         .await
     }
 
     async fn user_login_internal(
         &self,
-        request: tonic::Request<crate::protobuf::UserLoginInternalRequest>,
+        mut request: tonic::Request<crate::protobuf::UserLoginInternalRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::UserLoginInternalReply>, tonic::Status>
     {
+        let trace_propagator =
+            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
+        let span_context = {
+            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
+            trace_propagator.extract(&metadata_wrapper)
+        };
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "user_login_internal",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
         async {
             info!(?request);
             // Skipping authentication
@@ -186,14 +471,51 @@ impl crate::protobuf::account_server::Account for Service {
             info!(?reply);
             Ok(tonic::Response::new(reply))
         }
-        .instrument(info_span!("user_login_internal"))
+        .instrument(span)
         .await
     }
 
     async fn user_create(
         &self,
-        request: tonic::Request<crate::protobuf::UserCreateRequest>,
+        mut request: tonic::Request<crate::protobuf::UserCreateRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::UserCreateReply>, tonic::Status> {
+        let trace_propagator =
+            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
+        let span_context = {
+            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
+            trace_propagator.extract(&metadata_wrapper)
+        };
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "user_create",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
         async {
             info!(?request);
             crate::authorize::authnz(&self.db, &request, "user_create").await?;
@@ -217,14 +539,51 @@ impl crate::protobuf::account_server::Account for Service {
                 object: Some(reply),
             }))
         }
-        .instrument(info_span!("user_create"))
+        .instrument(span)
         .await
     }
 
     async fn group_list(
         &self,
-        request: tonic::Request<crate::protobuf::GroupListRequest>,
+        mut request: tonic::Request<crate::protobuf::GroupListRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::GroupListReply>, tonic::Status> {
+        let trace_propagator =
+            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
+        let span_context = {
+            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
+            trace_propagator.extract(&metadata_wrapper)
+        };
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "group_list",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
         async {
             info!(?request);
             #[allow(unused_variables)]
@@ -242,18 +601,54 @@ impl crate::protobuf::account_server::Account for Service {
                 next_page_token: Some(list_reply.page_token),
             }))
         }
-        .instrument(info_span!("group_list"))
+        .instrument(span)
         .await
     }
 
     async fn group_get(
         &self,
-        request: tonic::Request<crate::protobuf::GroupGetRequest>,
+        mut request: tonic::Request<crate::protobuf::GroupGetRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::GroupGetReply>, tonic::Status> {
+        let trace_propagator =
+            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
+        let span_context = {
+            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
+            trace_propagator.extract(&metadata_wrapper)
+        };
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "group_get",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
         async {
             info!(?request);
-            // Skipping authentication
-
+            crate::authorize::authnz(&self.db, &request, "group_get").await?;
             let inner = request.into_inner();
             let request_id = inner
                 .id
@@ -264,15 +659,52 @@ impl crate::protobuf::account_server::Account for Service {
                 object: Some(reply),
             }))
         }
-        .instrument(info_span!("group_get"))
+        .instrument(span)
         .await
     }
 
     async fn group_create(
         &self,
-        request: tonic::Request<crate::protobuf::GroupCreateRequest>,
+        mut request: tonic::Request<crate::protobuf::GroupCreateRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::GroupCreateReply>, tonic::Status>
     {
+        let trace_propagator =
+            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
+        let span_context = {
+            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
+            trace_propagator.extract(&metadata_wrapper)
+        };
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "group_create",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
         async {
             info!(?request);
             crate::authorize::authnz(&self.db, &request, "group_create").await?;
@@ -296,15 +728,52 @@ impl crate::protobuf::account_server::Account for Service {
                 object: Some(reply),
             }))
         }
-        .instrument(info_span!("group_create"))
+        .instrument(span)
         .await
     }
 
     async fn organization_list(
         &self,
-        request: tonic::Request<crate::protobuf::OrganizationListRequest>,
+        mut request: tonic::Request<crate::protobuf::OrganizationListRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::OrganizationListReply>, tonic::Status>
     {
+        let trace_propagator =
+            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
+        let span_context = {
+            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
+            trace_propagator.extract(&metadata_wrapper)
+        };
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "organization_list",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
         async {
             info!(?request);
             #[allow(unused_variables)]
@@ -324,19 +793,55 @@ impl crate::protobuf::account_server::Account for Service {
                 },
             ))
         }
-        .instrument(info_span!("organization_list"))
+        .instrument(span)
         .await
     }
 
     async fn organization_get(
         &self,
-        request: tonic::Request<crate::protobuf::OrganizationGetRequest>,
+        mut request: tonic::Request<crate::protobuf::OrganizationGetRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::OrganizationGetReply>, tonic::Status>
     {
+        let trace_propagator =
+            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
+        let span_context = {
+            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
+            trace_propagator.extract(&metadata_wrapper)
+        };
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "organization_get",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
         async {
             info!(?request);
-            // Skipping authentication
-
+            crate::authorize::authnz(&self.db, &request, "organization_get").await?;
             let inner = request.into_inner();
             let request_id = inner
                 .id
@@ -349,15 +854,52 @@ impl crate::protobuf::account_server::Account for Service {
                 },
             ))
         }
-        .instrument(info_span!("organization_get"))
+        .instrument(span)
         .await
     }
 
     async fn organization_create(
         &self,
-        request: tonic::Request<crate::protobuf::OrganizationCreateRequest>,
+        mut request: tonic::Request<crate::protobuf::OrganizationCreateRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::OrganizationCreateReply>, tonic::Status>
     {
+        let trace_propagator =
+            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
+        let span_context = {
+            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
+            trace_propagator.extract(&metadata_wrapper)
+        };
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "organization_create",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
         async {
             info!(?request);
             crate::authorize::authnz(&self.db, &request, "organization_create").await?;
@@ -375,15 +917,52 @@ impl crate::protobuf::account_server::Account for Service {
                 },
             ))
         }
-        .instrument(info_span!("organization_create"))
+        .instrument(span)
         .await
     }
 
     async fn workspace_list(
         &self,
-        request: tonic::Request<crate::protobuf::WorkspaceListRequest>,
+        mut request: tonic::Request<crate::protobuf::WorkspaceListRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::WorkspaceListReply>, tonic::Status>
     {
+        let trace_propagator =
+            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
+        let span_context = {
+            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
+            trace_propagator.extract(&metadata_wrapper)
+        };
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "workspace_list",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
         async {
             info!(?request);
             #[allow(unused_variables)]
@@ -401,19 +980,55 @@ impl crate::protobuf::account_server::Account for Service {
                 next_page_token: Some(list_reply.page_token),
             }))
         }
-        .instrument(info_span!("workspace_list"))
+        .instrument(span)
         .await
     }
 
     async fn workspace_get(
         &self,
-        request: tonic::Request<crate::protobuf::WorkspaceGetRequest>,
+        mut request: tonic::Request<crate::protobuf::WorkspaceGetRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::WorkspaceGetReply>, tonic::Status>
     {
+        let trace_propagator =
+            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
+        let span_context = {
+            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
+            trace_propagator.extract(&metadata_wrapper)
+        };
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "workspace_get",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
         async {
             info!(?request);
-            // Skipping authentication
-
+            crate::authorize::authnz(&self.db, &request, "workspace_get").await?;
             let inner = request.into_inner();
             let request_id = inner
                 .id
@@ -424,15 +1039,52 @@ impl crate::protobuf::account_server::Account for Service {
                 object: Some(reply),
             }))
         }
-        .instrument(info_span!("workspace_get"))
+        .instrument(span)
         .await
     }
 
     async fn workspace_create(
         &self,
-        request: tonic::Request<crate::protobuf::WorkspaceCreateRequest>,
+        mut request: tonic::Request<crate::protobuf::WorkspaceCreateRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::WorkspaceCreateReply>, tonic::Status>
     {
+        let trace_propagator =
+            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
+        let span_context = {
+            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
+            trace_propagator.extract(&metadata_wrapper)
+        };
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "workspace_create",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
         async {
             info!(?request);
             crate::authorize::authnz(&self.db, &request, "workspace_create").await?;
@@ -450,15 +1102,52 @@ impl crate::protobuf::account_server::Account for Service {
                 },
             ))
         }
-        .instrument(info_span!("workspace_create"))
+        .instrument(span)
         .await
     }
 
     async fn integration_list(
         &self,
-        request: tonic::Request<crate::protobuf::IntegrationListRequest>,
+        mut request: tonic::Request<crate::protobuf::IntegrationListRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::IntegrationListReply>, tonic::Status>
     {
+        let trace_propagator =
+            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
+        let span_context = {
+            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
+            trace_propagator.extract(&metadata_wrapper)
+        };
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "integration_list",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
         async {
             info!(?request);
             #[allow(unused_variables)]
@@ -478,19 +1167,55 @@ impl crate::protobuf::account_server::Account for Service {
                 },
             ))
         }
-        .instrument(info_span!("integration_list"))
+        .instrument(span)
         .await
     }
 
     async fn integration_get(
         &self,
-        request: tonic::Request<crate::protobuf::IntegrationGetRequest>,
+        mut request: tonic::Request<crate::protobuf::IntegrationGetRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::IntegrationGetReply>, tonic::Status>
     {
+        let trace_propagator =
+            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
+        let span_context = {
+            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
+            trace_propagator.extract(&metadata_wrapper)
+        };
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "integration_get",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
         async {
             info!(?request);
-            // Skipping authentication
-
+            crate::authorize::authnz(&self.db, &request, "integration_get").await?;
             let inner = request.into_inner();
             let request_id = inner
                 .id
@@ -501,15 +1226,52 @@ impl crate::protobuf::account_server::Account for Service {
                 object: Some(reply),
             }))
         }
-        .instrument(info_span!("integration_get"))
+        .instrument(span)
         .await
     }
 
     async fn integration_create(
         &self,
-        request: tonic::Request<crate::protobuf::IntegrationCreateRequest>,
+        mut request: tonic::Request<crate::protobuf::IntegrationCreateRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::IntegrationCreateReply>, tonic::Status>
     {
+        let trace_propagator =
+            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
+        let span_context = {
+            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
+            trace_propagator.extract(&metadata_wrapper)
+        };
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "integration_create",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
         async {
             info!(?request);
             crate::authorize::authnz(&self.db, &request, "integration_create").await?;
@@ -533,17 +1295,54 @@ impl crate::protobuf::account_server::Account for Service {
                 },
             ))
         }
-        .instrument(info_span!("integration_create"))
+        .instrument(span)
         .await
     }
 
     async fn integration_service_list(
         &self,
-        request: tonic::Request<crate::protobuf::IntegrationServiceListRequest>,
+        mut request: tonic::Request<crate::protobuf::IntegrationServiceListRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::IntegrationServiceListReply>,
         tonic::Status,
     > {
+        let trace_propagator =
+            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
+        let span_context = {
+            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
+            trace_propagator.extract(&metadata_wrapper)
+        };
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "integration_service_list",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
         async {
             info!(?request);
             #[allow(unused_variables)]
@@ -564,21 +1363,57 @@ impl crate::protobuf::account_server::Account for Service {
                 },
             ))
         }
-        .instrument(info_span!("integration_service_list"))
+        .instrument(span)
         .await
     }
 
     async fn integration_service_get(
         &self,
-        request: tonic::Request<crate::protobuf::IntegrationServiceGetRequest>,
+        mut request: tonic::Request<crate::protobuf::IntegrationServiceGetRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::IntegrationServiceGetReply>,
         tonic::Status,
     > {
+        let trace_propagator =
+            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
+        let span_context = {
+            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
+            trace_propagator.extract(&metadata_wrapper)
+        };
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "integration_service_get",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
         async {
             info!(?request);
-            // Skipping authentication
-
+            crate::authorize::authnz(&self.db, &request, "integration_service_get").await?;
             let inner = request.into_inner();
             let request_id = inner
                 .id
@@ -591,17 +1426,54 @@ impl crate::protobuf::account_server::Account for Service {
                 },
             ))
         }
-        .instrument(info_span!("integration_service_get"))
+        .instrument(span)
         .await
     }
 
     async fn integration_service_create(
         &self,
-        request: tonic::Request<crate::protobuf::IntegrationServiceCreateRequest>,
+        mut request: tonic::Request<crate::protobuf::IntegrationServiceCreateRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::IntegrationServiceCreateReply>,
         tonic::Status,
     > {
+        let trace_propagator =
+            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
+        let span_context = {
+            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
+            trace_propagator.extract(&metadata_wrapper)
+        };
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "integration_service_create",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
         async {
             info!(?request);
             crate::authorize::authnz(&self.db, &request, "integration_service_create").await?;
@@ -625,17 +1497,54 @@ impl crate::protobuf::account_server::Account for Service {
                 },
             ))
         }
-        .instrument(info_span!("integration_service_create"))
+        .instrument(span)
         .await
     }
 
     async fn integration_instance_list(
         &self,
-        request: tonic::Request<crate::protobuf::IntegrationInstanceListRequest>,
+        mut request: tonic::Request<crate::protobuf::IntegrationInstanceListRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::IntegrationInstanceListReply>,
         tonic::Status,
     > {
+        let trace_propagator =
+            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
+        let span_context = {
+            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
+            trace_propagator.extract(&metadata_wrapper)
+        };
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "integration_instance_list",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
         async {
             info!(?request);
             #[allow(unused_variables)]
@@ -656,21 +1565,57 @@ impl crate::protobuf::account_server::Account for Service {
                 },
             ))
         }
-        .instrument(info_span!("integration_instance_list"))
+        .instrument(span)
         .await
     }
 
     async fn integration_instance_get(
         &self,
-        request: tonic::Request<crate::protobuf::IntegrationInstanceGetRequest>,
+        mut request: tonic::Request<crate::protobuf::IntegrationInstanceGetRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::IntegrationInstanceGetReply>,
         tonic::Status,
     > {
+        let trace_propagator =
+            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
+        let span_context = {
+            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
+            trace_propagator.extract(&metadata_wrapper)
+        };
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "integration_instance_get",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
         async {
             info!(?request);
-            // Skipping authentication
-
+            crate::authorize::authnz(&self.db, &request, "integration_instance_get").await?;
             let inner = request.into_inner();
             let request_id = inner
                 .id
@@ -683,17 +1628,54 @@ impl crate::protobuf::account_server::Account for Service {
                 },
             ))
         }
-        .instrument(info_span!("integration_instance_get"))
+        .instrument(span)
         .await
     }
 
     async fn integration_instance_create(
         &self,
-        request: tonic::Request<crate::protobuf::IntegrationInstanceCreateRequest>,
+        mut request: tonic::Request<crate::protobuf::IntegrationInstanceCreateRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::IntegrationInstanceCreateReply>,
         tonic::Status,
     > {
+        let trace_propagator =
+            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
+        let span_context = {
+            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
+            trace_propagator.extract(&metadata_wrapper)
+        };
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "integration_instance_create",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
         async {
             info!(?request);
             crate::authorize::authnz(&self.db, &request, "integration_instance_create").await?;
@@ -717,7 +1699,7 @@ impl crate::protobuf::account_server::Account for Service {
                 },
             ))
         }
-        .instrument(info_span!("integration_instance_create"))
+        .instrument(span)
         .await
     }
 }

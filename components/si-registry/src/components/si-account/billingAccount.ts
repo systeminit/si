@@ -115,7 +115,6 @@ registry.system({
       label: "Create a Billing Account",
       options(p: PropMethod) {
         p.mutation = true;
-        p.skipAuth = true;
         p.isPrivate = true;
         p.request.properties.addText({
           name: "name",

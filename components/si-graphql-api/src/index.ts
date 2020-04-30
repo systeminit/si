@@ -1,3 +1,17 @@
+import { NodeTracerProvider } from "@opentelemetry/node";
+import { SimpleSpanProcessor } from "@opentelemetry/tracing";
+import { JaegerExporter } from "@opentelemetry/exporter-jaeger";
+import api, { CanonicalCode } from "@opentelemetry/api";
+
+const collectorOptions = {
+  serviceName: "si-graphql-api",
+};
+const provider = new NodeTracerProvider();
+const exporter = new JaegerExporter(collectorOptions);
+provider.addSpanProcessor(new SimpleSpanProcessor(exporter));
+provider.register();
+const tracer = api.trace.getTracer("si-graphql-api");
+
 import { ApolloServer } from "apollo-server";
 import * as path from "path";
 import * as jwtLib from "jsonwebtoken";
@@ -70,11 +84,28 @@ const server = new ApolloServer({
   schema,
   dataSources,
   formatError: error => {
+    const span = tracer.getCurrentSpan();
+    if (error && error.message) {
+      span.setAttributes({
+        error: true,
+        //"error.path": error.path,
+        //"error.name": error.name,
+        //"error.source.name": error.source.name,
+        //"error.source.body": error.source.body,
+        "error.message": error.message,
+        //"error.originalError": `${error.originalError}`,
+      });
+    } else {
+      span.setAttributes({ error: true });
+    }
+    span.setStatus({ code: CanonicalCode.UNKNOWN });
     console.log("-------------------ERROR----------------------");
     console.dir(error, { depth: Infinity });
     return error;
   },
   formatResponse: response => {
+    const span = tracer.getCurrentSpan();
+    span.addEvent("graphql response", { response });
     console.log("-------------------RESPONSE----------------------");
     console.dir(response, { depth: Infinity });
     return response;
@@ -88,6 +119,11 @@ const server = new ApolloServer({
       };
       //console.log({ connection });
     } else {
+      const span = tracer.getCurrentSpan();
+      span.addEvent("graphql request", {
+        "graphql.request.query": req.body.query,
+        "graphql.request.variables": JSON.stringify(req.body.variables),
+      });
       console.log("-------------------REQUEST----------------------");
       console.dir(req.body, { depth: Infinity });
       const token = req.headers.authorization || "";
@@ -101,8 +137,11 @@ const server = new ApolloServer({
         });
         if (payload["billingAccountId"] && payload["userId"]) {
           userContext["authenticated"] = true;
+          span.setAttribute("authenticated", true);
           userContext["billingAccountId"] = payload["billingAccountId"];
+          span.setAttribute("billingAccountId", payload["billingAccountId"]);
           userContext["userId"] = payload["userId"];
+          span.setAttribute("userId", payload["userId"]);
         }
       }
       return { user: userContext };

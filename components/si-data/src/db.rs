@@ -4,7 +4,8 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{self, json};
 use si_settings::Settings;
 use sodiumoxide::crypto::secretbox;
-use tracing::{debug, event, info, span, Level};
+use tracing::{debug, event, info, info_span, span, Level};
+use tracing_futures::Instrument as _;
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -112,121 +113,149 @@ impl Db {
     }
 
     pub async fn create_indexes(&self) -> Result<()> {
-        debug!("creating index on siStorable.typeName");
-        let mut result = self
-            .cluster
-            .query(
-                format!(
-                    "CREATE INDEX `idx_si_storable_typename` on `{}`(siStorable.typeName)",
-                    self.bucket_name
-                ),
-                None,
-            )
-            .await?;
-        debug!("awaiting results");
-        let meta = result.meta().await?;
-        match meta.errors {
-            Some(error) => debug!(?error, "index already exists"),
-            None => debug!("created primary index"),
-        }
+        async {
+            debug!("creating index on siStorable.typeName");
+            let mut result = self
+                .cluster
+                .query(
+                    format!(
+                        "CREATE INDEX `idx_si_storable_typename` on `{}`(siStorable.typeName)",
+                        self.bucket_name
+                    ),
+                    None,
+                )
+                .await?;
+            debug!("awaiting results");
+            let meta = result.meta().await?;
+            match meta.errors {
+                Some(error) => debug!(?error, "index already exists"),
+                None => debug!("created primary index"),
+            }
 
-        debug!("creating index on siStorable.typeName and siStorable.tenantIds");
-        let mut result = self
-            .cluster
-            .query(
-                format!("CREATE INDEX `idx_si_storable_typename_and_tenancy` ON `{}` (siStorable.typeName, DISTINCT ARRAY t FOR t IN siStorable.tenantIds END)", self.bucket_name),
-                None,
-            )
-            .await?;
-        debug!("awaiting results");
-        let meta = result.meta().await?;
-        match meta.errors {
-            Some(error) => debug!(?error, "index already exists"),
-            None => debug!("created primary index"),
-        }
+            debug!("creating index on siStorable.typeName and siStorable.tenantIds");
+            let mut result = self
+                .cluster
+                .query(
+                    format!("CREATE INDEX `idx_si_storable_typename_and_tenancy` ON `{}` (siStorable.typeName, DISTINCT ARRAY t FOR t IN siStorable.tenantIds END)", self.bucket_name),
+                    None,
+                )
+                .await?;
+            debug!("awaiting results");
+            let meta = result.meta().await?;
+            match meta.errors {
+                Some(error) => debug!(?error, "index already exists"),
+                None => debug!("created primary index"),
+            }
 
-        Ok(())
+            Ok(())
+        }
+        .instrument(info_span!("db.create_indexes"))
+        .await
     }
 
     pub async fn check_natural_key_exists(&self, natural_key: Option<&str>) -> Result<()> {
-        match natural_key {
-            Some(nk) => {
-                if self.exists(nk).await? == true {
-                    Err(DataError::NaturalKeyExists(nk.to_string()))
-                } else {
-                    Ok(())
+        let span = info_span!(
+            "db.check_natural_key_exists",
+            ?natural_key,
+            exists = tracing::field::Empty
+        );
+        async {
+            let span = tracing::Span::current();
+            match natural_key {
+                Some(nk) => {
+                    if self.exists(nk).await? == true {
+                        span.record("exists", &tracing::field::display(false));
+                        Err(DataError::NaturalKeyExists(nk.to_string()))
+                    } else {
+                        span.record("exists", &tracing::field::display(true));
+                        Ok(())
+                    }
                 }
+                None => Ok(()),
             }
-            None => Ok(()),
         }
+        .instrument(span)
+        .await
     }
 
     pub async fn validate_and_insert_as_new<'a, T>(&self, content: &'a mut T) -> Result<&'a mut T>
     where
         T: Storable + Serialize + std::fmt::Debug,
     {
-        event!(Level::TRACE, "generating_id");
-        // We generate a new ID for every inserted object, no matter what
-        content.generate_id();
+        let span = info_span!(
+            "db.validate_and_insert_as_new",
+            db.storable.id = tracing::field::Empty,
+            db.storable.type_name = tracing::field::Empty,
+            db.storable.natural_key = tracing::field::Empty,
+            db.storable.tenant_ids = tracing::field::Empty,
+            error = tracing::field::Empty,
+            component = tracing::field::display("si-data"),
+        );
+        async {
+            let span = tracing::Span::current();
+            event!(Level::TRACE, "generating_id");
+            // We generate a new ID for every inserted object, no matter what
+            content.generate_id();
+            span.record("db.storable.id", &tracing::field::display(content.get_id()));
 
-        event!(Level::TRACE, "set_type_name");
-        // We set the type name, always.
-        content.set_type_name();
+            event!(Level::TRACE, "set_type_name");
+            // We set the type name, always.
+            content.set_type_name();
+            span.record(
+                "db.storable.type_name",
+                &tracing::field::display(<T as Storable>::type_name()),
+            );
 
-        event!(Level::TRACE, "check_tenant_ids");
-        // We must have a tenant ID already in the list; otherwise, this object is
-        // invalid and should be rejected. The first item in the list is our primary
-        // tenancy.
-        if content.get_tenant_ids().len() == 0 {
-            return Err(DataError::MissingTenantIds);
-        }
+            event!(Level::TRACE, "check_tenant_ids");
+            // We must have a tenant ID already in the list; otherwise, this object is
+            // invalid and should be rejected. The first item in the list is our primary
+            // tenancy.
+            if content.get_tenant_ids().len() == 0 {
+                span.record("error", &"DataError::MissingTenantIds");
+                return Err(DataError::MissingTenantIds);
+            }
 
-        event!(Level::TRACE, "add_self_to_tenant_ids");
-        // The object itself should always be in the tenant id list, ideally last.
-        content.add_to_tenant_ids(content.get_id().to_string());
+            event!(Level::TRACE, "add_self_to_tenant_ids");
+            // The object itself should always be in the tenant id list, ideally last.
+            content.add_to_tenant_ids(content.get_id().to_string());
 
-        event!(Level::TRACE, "set_natural_key");
-        // We set the natural key, if the object needs one.
-        content.set_natural_key();
+            let tenant_id_list = content.get_tenant_ids().join(", ");
+            span.record(
+                "db.storable.tenant_ids",
+                &tracing::field::display(&tenant_id_list[..]),
+            );
 
-        event!(Level::TRACE, "check_natural_key_exists");
-        // Check for the natural key - it should not already exist, assuming we have one.
-        self.check_natural_key_exists(content.get_natural_key())
-            .await?;
+            event!(Level::TRACE, "set_natural_key");
+            // We set the natural key, if the object needs one.
+            content.set_natural_key();
 
-        event!(Level::TRACE, "check_model_validation");
-        // Check model provided validation
-        content.validate()?;
+            span.record(
+                "db.natural_key",
+                &tracing::field::display(&content.get_natural_key().unwrap_or("None")),
+            );
 
-        event!(Level::TRACE, "check_referential_integrity");
-        // Check referential integrity; every ID referred to must
-        // exist.
-        for referential_field in content.referential_fields().iter() {
-            match referential_field {
-                Reference::HasOne(field_name, reference_id) => {
-                    event!(
-                        Level::TRACE,
-                        ?field_name,
-                        ?reference_id,
-                        "check_referential_integrity_has_one"
-                    );
-                    if self.exists(*reference_id).await? == false {
-                        event!(Level::TRACE, "check_referential_integrity_failed");
-                        return Err(DataError::ReferentialIntegrity(
-                            field_name.to_string(),
-                            reference_id.to_string(),
-                        ));
-                    }
-                }
-                Reference::HasMany(field_name, reference_id_list) => {
-                    for reference_id in reference_id_list.iter() {
+            event!(Level::TRACE, "check_natural_key_exists");
+            // Check for the natural key - it should not already exist, assuming we have one.
+            self.check_natural_key_exists(content.get_natural_key())
+                .await?;
+
+            event!(Level::TRACE, "check_model_validation");
+            // Check model provided validation
+            content.validate()?;
+
+            event!(Level::TRACE, "check_referential_integrity");
+            // Check referential integrity; every ID referred to must
+            // exist.
+            for referential_field in content.referential_fields().iter() {
+                match referential_field {
+                    Reference::HasOne(field_name, reference_id) => {
                         event!(
                             Level::TRACE,
                             ?field_name,
                             ?reference_id,
-                            "check_referential_integrity_has_many"
+                            "check_referential_integrity_has_one"
                         );
-                        if self.exists(reference_id).await? == false {
+                        if self.exists(*reference_id).await? == false {
                             event!(Level::TRACE, "check_referential_integrity_failed");
                             return Err(DataError::ReferentialIntegrity(
                                 field_name.to_string(),
@@ -234,52 +263,103 @@ impl Db {
                             ));
                         }
                     }
+                    Reference::HasMany(field_name, reference_id_list) => {
+                        for reference_id in reference_id_list.iter() {
+                            event!(
+                                Level::TRACE,
+                                ?field_name,
+                                ?reference_id,
+                                "check_referential_integrity_has_many"
+                            );
+                            if self.exists(reference_id).await? == false {
+                                event!(Level::TRACE, "check_referential_integrity_failed");
+                                return Err(DataError::ReferentialIntegrity(
+                                    field_name.to_string(),
+                                    reference_id.to_string(),
+                                ));
+                            }
+                        }
+                    }
                 }
             }
-        }
 
-        event!(Level::TRACE, "check_tenant_ids");
-        // Check tenant_ids - do not allow objects with non-existent tenant ids in to the
-        // database.
-        for tenant_id in content.get_tenant_ids().iter() {
-            if tenant_id == "global" || tenant_id == content.get_id() {
-                continue;
+            event!(Level::TRACE, "check_tenant_ids");
+            // Check tenant_ids - do not allow objects with non-existent tenant ids in to the
+            // database.
+            for tenant_id in content.get_tenant_ids().iter() {
+                if tenant_id == "global" || tenant_id == content.get_id() {
+                    continue;
+                }
+                if self.exists(tenant_id).await? == false {
+                    return Err(DataError::TenantIdIntegrity(tenant_id.to_string()));
+                }
             }
-            if self.exists(tenant_id).await? == false {
-                return Err(DataError::TenantIdIntegrity(tenant_id.to_string()));
+
+            event!(Level::TRACE, "insert");
+            self.insert(content).await?;
+
+            if let Some(nk) = content.get_natural_key() {
+                let id = String::from(nk);
+                let lookup_object = LookupObject {
+                    id: String::from(nk),
+                    object_id: content.get_id().to_string(),
+                    type_name: "lookup_object".to_string(),
+                    tenant_ids: Vec::from(content.get_tenant_ids()),
+                };
+                let bucket = self.bucket.clone();
+                let collection = bucket.default_collection();
+                debug!(?id, ?lookup_object, "insert_natural_key_lookup_object");
+                collection.insert(id, lookup_object, None).await?;
             }
+
+            Ok(content)
         }
-
-        event!(Level::TRACE, "insert");
-        self.insert(content).await?;
-
-        if let Some(nk) = content.get_natural_key() {
-            let id = String::from(nk);
-            let lookup_object = LookupObject {
-                id: String::from(nk),
-                object_id: content.get_id().to_string(),
-                type_name: "lookup_object".to_string(),
-                tenant_ids: Vec::from(content.get_tenant_ids()),
-            };
-            let bucket = self.bucket.clone();
-            let collection = bucket.default_collection();
-            debug!(?id, ?lookup_object, "insert_natural_key_lookup_object");
-            collection.insert(id, lookup_object, None).await?;
-        }
-
-        Ok(content)
+        .instrument(span)
+        .await
     }
 
     pub async fn insert<'a, T>(&self, content: &'a T) -> Result<&'a T>
     where
         T: Storable + Serialize + std::fmt::Debug,
     {
-        let bucket = self.bucket.clone();
-        let collection = bucket.default_collection();
-        let id = String::from(content.get_id());
-        debug!(?id, ?content, "insert");
-        collection.insert(id, content, None).await?;
-        Ok(content)
+        let bucket_name = format!("{}", self.bucket_name);
+        let span = info_span!(
+            "db.insert",
+            db.storable.id = tracing::field::Empty,
+            db.storable.type_name = tracing::field::Empty,
+            db.storable.natural_key = tracing::field::Empty,
+            db.storable.tenant_ids = tracing::field::Empty,
+            db.bucket_name = tracing::field::display(&bucket_name[..]),
+            error = tracing::field::Empty,
+            component = tracing::field::display("si-data"),
+        );
+        async {
+            let span = tracing::Span::current();
+            span.record(
+                "db.storable.id",
+                &tracing::field::display(&content.get_id()),
+            );
+            span.record(
+                "db.storable.type_name",
+                &tracing::field::display(&<T as Storable>::type_name()),
+            );
+            span.record(
+                "db.storable.tenant_ids",
+                &tracing::field::display(&content.get_tenant_ids().join(", ")[..]),
+            );
+            span.record(
+                "db.natural_key",
+                &tracing::field::display(&content.get_natural_key().unwrap_or("None")),
+            );
+            let bucket = self.bucket.clone();
+            let collection = bucket.default_collection();
+            let id = String::from(content.get_id());
+            debug!(?id, ?content, "insert");
+            collection.insert(id, content, None).await?;
+            Ok(content)
+        }
+        .instrument(span)
+        .await
     }
 
     pub async fn list_by_page_token<S, I>(&self, page_token: S) -> Result<ListResult<I>>
@@ -287,31 +367,64 @@ impl Db {
         S: AsRef<str> + std::fmt::Debug,
         I: DeserializeOwned + Storable + std::fmt::Debug,
     {
-        let page_token = DataPageToken::unseal(page_token.as_ref(), &self.page_secret_key)?;
-        let query = page_token.query;
-        let order_by = page_token
-            .order_by
-            .ok_or(DataError::RequiredField("page_token.order_by".into()))?;
-        let page_size = page_token
-            .page_size
-            .ok_or(DataError::RequiredField("page_token.page_size".into()))?;
-        let item_id = page_token
-            .item_id
-            .ok_or(DataError::RequiredField("page_token.item_id".into()))?;
-        let order_by_direction = page_token.order_by_direction;
-        let contained_within = page_token.contained_within.ok_or(DataError::RequiredField(
-            "page_token.contained_within".into(),
-        ))?;
-        //let order_by_direction = OrderByDirection::from_i32(page_token.order_by_direction)
-        //.ok_or(DataError::InvalidOrderByDirection)?;
-        self.list(
-            &query,
-            page_size,
-            &order_by,
-            order_by_direction,
-            &contained_within,
-            &item_id,
-        )
+        let span = info_span!(
+            "db.list_by_page_token",
+            db.list.query = tracing::field::Empty,
+            db.list.order_by = tracing::field::Empty,
+            db.list.page_size = tracing::field::Empty,
+            db.list.item_id = tracing::field::Empty,
+            db.list.order_by_direction = tracing::field::Empty,
+            db.list.scope_by_tenant_id = tracing::field::Empty,
+            component = tracing::field::display("si-data"),
+        );
+        async {
+            let span = tracing::Span::current();
+            let page_token = DataPageToken::unseal(page_token.as_ref(), &self.page_secret_key)?;
+            let query = page_token.query;
+            span.record("db.list.query", &tracing::field::debug(&query));
+
+            let order_by = page_token
+                .order_by
+                .ok_or(DataError::RequiredField("page_token.order_by".into()))?;
+            span.record("db.list.order_by", &tracing::field::display(&order_by));
+
+            let page_size = page_token
+                .page_size
+                .ok_or(DataError::RequiredField("page_token.page_size".into()))?;
+            span.record("db.list.page_size", &tracing::field::display(&page_size));
+
+            let item_id = page_token
+                .item_id
+                .ok_or(DataError::RequiredField("page_token.item_id".into()))?;
+            span.record("db.list.item_id", &tracing::field::display(&item_id));
+
+            let order_by_direction = page_token.order_by_direction;
+            span.record(
+                "db.list.order_by_direction",
+                &tracing::field::display(&order_by_direction),
+            );
+
+            let contained_within = page_token.contained_within.ok_or(DataError::RequiredField(
+                "page_token.contained_within".into(),
+            ))?;
+            span.record(
+                "db.list.contained_within",
+                &tracing::field::display(&contained_within),
+            );
+
+            //let order_by_direction = OrderByDirection::from_i32(page_token.order_by_direction)
+            //.ok_or(DataError::InvalidOrderByDirection)?;
+            self.list(
+                &query,
+                page_size,
+                &order_by,
+                order_by_direction,
+                &contained_within,
+                &item_id,
+            )
+            .await
+        }
+        .instrument(span)
         .await
     }
 
@@ -329,103 +442,146 @@ impl Db {
         contained_within: C,
         item_id: S,
     ) -> Result<ListResult<I>> {
-        let type_name = <I as Storable>::type_name();
+        let span = info_span!(
+            "db.list",
+            db.list.query = tracing::field::Empty,
+            db.list.order_by = tracing::field::Empty,
+            db.list.page_size = tracing::field::Empty,
+            db.list.item_id = tracing::field::Empty,
+            db.list.order_by_direction = tracing::field::Empty,
+            db.list.scope_by_tenant_id = tracing::field::Empty,
+            db.list.next_page_token = tracing::field::Empty,
+            db.list.items_count = tracing::field::Empty,
+            db.storable.type_name = tracing::field::Empty,
+            db.cb.querymeta.request_id = tracing::field::Empty,
+            db.cb.querymeta.status = tracing::field::Empty,
+            db.cb.querymeta.errors = tracing::field::Empty,
+            db.cb.querymeta.client_context_id = tracing::field::Empty,
+            db.cb.querymeta.elapsed_time = tracing::field::Empty,
+            db.cb.querymeta.execution_time = tracing::field::Empty,
+            db.cb.querymeta.result_count = tracing::field::Empty,
+            db.cb.querymeta.result_size = tracing::field::Empty,
+            component = tracing::field::display("si-data"),
+        );
+        async {
+            let span = tracing::Span::current();
 
-        // The empty string is the default order_by; and it should be
-        // naturalKey
-        let order_by = match order_by.as_ref() {
-            "" => "siStorable.naturalKey",
-            ob => ob,
-        };
+            let type_name = <I as Storable>::type_name();
+            span.record("db.storable.type_name", &tracing::field::display(&type_name));
 
-        <I as Storable>::is_order_by_valid(order_by, <I as Storable>::order_by_fields())?;
+            // The empty string is the default order_by; and it should be
+            // naturalKey
+            let order_by = match order_by.as_ref() {
+                "" => "siStorable.naturalKey",
+                ob => ob,
+            };
+            span.record("db.list.order_by", &tracing::field::display(&order_by));
 
-        // If you don't send a valid order by direction, you fucked with
-        // the protobuf you sent by hand
-        let order_by_direction = DataPageTokenOrderByDirection::from_i32(order_by_direction)
-            .ok_or(DataError::InvalidOrderByDirection)?;
+            <I as Storable>::is_order_by_valid(order_by, <I as Storable>::order_by_fields())?;
 
-        // The default page size is 10, and the inbound default is 0
-        let page_size = if page_size == 0 { 10 } else { page_size };
+            // If you don't send a valid order by direction, you fucked with
+            // the protobuf you sent by hand
+            let order_by_direction = DataPageTokenOrderByDirection::from_i32(order_by_direction)
+                .ok_or(DataError::InvalidOrderByDirection)?;
+            span.record("db.list.order_by_direction", &tracing::field::display(&order_by_direction));
 
-        let mut named_params = HashMap::new();
-        named_params.insert("type_name".into(), json![type_name]);
-        named_params.insert("order_by".into(), json![order_by]);
-        let named_options = QueryOptions::new()
-            .set_named_parameters(named_params)
-            .set_scan_consistency(self.scan_consistency);
+            // The default page size is 10, and the inbound default is 0
+            let page_size = if page_size == 0 { 10 } else { page_size };
+            span.record("db.list.page_size", &tracing::field::display(&order_by));
 
-        let cbquery = match query {
-            Some(q) => format!(
-               "SELECT {bucket}.* FROM `{bucket}` WHERE siStorable.typeName = $type_name AND ARRAY_CONTAINS(siStorable.tenantIds, \"{tenant_id}\") AND {query} ORDER BY {bucket}.[$order_by] {order_by_direction}",
-                query=q.as_n1ql(&self.bucket_name)?,
-                order_by_direction=order_by_direction.to_string(),
-                bucket=self.bucket_name,
-                tenant_id=contained_within,
-            ),
-            None => format!("SELECT {bucket}.* FROM `{bucket}` WHERE siStorable.typeName = $type_name AND ARRAY_CONTAINS(siStorable.tenantIds, \"{tenant_id}\") ORDER BY {bucket}.[$order_by] {}", order_by_direction, bucket=self.bucket_name, tenant_id=contained_within),
-        };
-        event!(Level::DEBUG, ?cbquery, ?named_options);
-        let mut result = self.cluster.query(cbquery, Some(named_options)).await?;
+            let mut named_params = HashMap::new();
+            named_params.insert("type_name".into(), json![type_name]);
+            named_params.insert("order_by".into(), json![order_by]);
+            let named_options = QueryOptions::new()
+                .set_named_parameters(named_params)
+                .set_scan_consistency(self.scan_consistency);
 
-        event!(Level::DEBUG, ?result);
+            let cbquery = match query {
+                Some(q) => format!(
+                   "SELECT {bucket}.* FROM `{bucket}` WHERE siStorable.typeName = $type_name AND ARRAY_CONTAINS(siStorable.tenantIds, \"{tenant_id}\") AND {query} ORDER BY {bucket}.[$order_by] {order_by_direction}",
+                    query=q.as_n1ql(&self.bucket_name)?,
+                    order_by_direction=order_by_direction.to_string(),
+                    bucket=self.bucket_name,
+                    tenant_id=contained_within,
+                ),
+                None => format!("SELECT {bucket}.* FROM `{bucket}` WHERE siStorable.typeName = $type_name AND ARRAY_CONTAINS(siStorable.tenantIds, \"{tenant_id}\") ORDER BY {bucket}.[$order_by] {}", order_by_direction, bucket=self.bucket_name, tenant_id=contained_within),
+            };
+            span.record("db.list.query", &tracing::field::display(&cbquery));
 
-        let mut result_stream = result.rows_as::<I>()?;
-        let result_meta = result.meta().await?;
-        event!(Level::DEBUG, ?result_meta);
+            let mut result = {
+                let span = info_span!("db.cb.query", db.cb.query = &tracing::field::display(&cbquery), db.cb.query.success = tracing::field::Empty);
+                let result = self.cluster.query(cbquery, Some(named_options)).await?;
+                span.record("db.cb.query.success", &tracing::field::display(true));
+                result
+            };
 
-        let mut final_vec: Vec<I> = Vec::new();
+            let mut result_stream = result.rows_as::<I>()?;
+            let result_meta = result.meta().await?;
+            span.record("db.cb.querymeta.request_id", &tracing::field::display(&result_meta.request_id));
+            span.record("db.cb.querymeta.status", &tracing::field::display(&result_meta.status));
+            span.record("db.cb.querymeta.errors", &tracing::field::debug(&result_meta.errors));
+            span.record("db.cb.querymeta.client_context_id", &tracing::field::display(&result_meta.client_context_id));
+            span.record("db.cb.querymeta.elapsed_time", &tracing::field::display(&result_meta.metrics.elapsed_time));
+            span.record("db.cb.querymeta.execution_time", &tracing::field::display(&result_meta.metrics.execution_time));
+            span.record("db.cb.querymeta.result_count", &tracing::field::display(&result_meta.metrics.result_count));
+            span.record("db.cb.querymeta.result_size", &tracing::field::display(&result_meta.metrics.result_size));
 
-        let mut real_item_id = item_id.as_ref().to_string();
-        let mut include = false;
-        let mut count = 0;
-        let mut next_item_id = String::new();
+            let mut final_vec: Vec<I> = Vec::new();
 
-        // Probably a way to optimize this for really long result sets by
-        // using some fancy combinator on the stream iterator; but... this is
-        // fine until it ain't. :)
-        while let Some(r) = result_stream.next().await {
-            event!(Level::DEBUG, ?r);
-            match r {
-                Ok(item) => {
-                    if count == 0 && real_item_id == "" {
-                        real_item_id = item.get_id().to_string();
+            let mut real_item_id = item_id.as_ref().to_string();
+            let mut include = false;
+            let mut count = 0;
+            let mut next_item_id = String::new();
+
+            // Probably a way to optimize this for really long result sets by
+            // using some fancy combinator on the stream iterator; but... this is
+            // fine until it ain't. :)
+            while let Some(r) = result_stream.next().await {
+                match r {
+                    Ok(item) => {
+                        if count == 0 && real_item_id == "" {
+                            real_item_id = item.get_id().to_string();
+                        }
+                        if real_item_id == item.get_id() {
+                            include = true;
+                            count = count + 1;
+                            final_vec.push(item);
+                        } else if count == page_size {
+                            next_item_id = item.get_id().to_string();
+                            break;
+                        } else if include {
+                            final_vec.push(item);
+                            count = count + 1;
+                        }
                     }
-                    if real_item_id == item.get_id() {
-                        include = true;
-                        count = count + 1;
-                        final_vec.push(item);
-                    } else if count == page_size {
-                        next_item_id = item.get_id().to_string();
-                        break;
-                    } else if include {
-                        final_vec.push(item);
-                        count = count + 1;
-                    }
+                    Err(e) => return Err(DataError::CouchbaseError(e)),
                 }
-                Err(e) => return Err(DataError::CouchbaseError(e)),
             }
+
+            let page_token = if next_item_id == "" {
+                String::from("")
+            } else {
+                let mut next_page_token = DataPageToken::default();
+                next_page_token.query = query.clone();
+                next_page_token.page_size = Some(page_size);
+                next_page_token.order_by = Some(String::from(order_by));
+                next_page_token.order_by_direction = order_by_direction as i32;
+                next_page_token.item_id = Some(next_item_id.clone());
+                next_page_token.contained_within = Some(contained_within.to_string());
+                next_page_token.seal(&self.page_secret_key)?
+            };
+            span.record("db.list.next_page_token", &tracing::field::display(&page_token));
+            span.record("db.list.items_count", &tracing::field::display(&final_vec.len()));
+
+            Ok(ListResult {
+                items: final_vec,
+                total_count: result_meta.metrics.result_count as u32,
+                next_item_id,
+                page_token,
+            })
         }
-
-        let page_token = if next_item_id == "" {
-            String::from("")
-        } else {
-            let mut next_page_token = DataPageToken::default();
-            next_page_token.query = query.clone();
-            next_page_token.page_size = Some(page_size);
-            next_page_token.order_by = Some(String::from(order_by));
-            next_page_token.order_by_direction = order_by_direction as i32;
-            next_page_token.item_id = Some(next_item_id.clone());
-            next_page_token.contained_within = Some(contained_within.to_string());
-            next_page_token.seal(&self.page_secret_key)?
-        };
-
-        Ok(ListResult {
-            items: final_vec,
-            total_count: result_meta.metrics.result_count as u32,
-            next_item_id,
-            page_token,
-        })
+        .instrument(span)
+        .await
     }
 
     pub async fn migrate<

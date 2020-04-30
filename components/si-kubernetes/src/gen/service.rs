@@ -1,11 +1,40 @@
 // Auto-generated rust code!
 // No-Touchy!
 
+use opentelemetry::api::propagation::text_propagator::HttpTextFormat;
 use tonic;
-use tracing::{self, info, info_span};
+use tracing::{self, debug, info};
 use tracing_futures::Instrument as _;
+use tracing_opentelemetry::OpenTelemetrySpanExt as _;
 
 use si_data;
+
+struct TonicMetaWrapper<'a>(&'a mut tonic::metadata::MetadataMap);
+
+impl<'a> opentelemetry::api::propagation::Carrier for TonicMetaWrapper<'a> {
+    fn get(&self, key: &'static str) -> Option<&str> {
+        let raw_value = self.0.get(key)?;
+        match raw_value.to_str() {
+            Ok(value) => Some(value),
+            Err(_e) => {
+                debug!("Cannot extract header for trace parent, not a string");
+                None
+            }
+        }
+    }
+
+    fn set(&mut self, key: &'static str, raw_value: String) {
+        let value = match tonic::metadata::MetadataValue::from_str(&raw_value) {
+            Ok(value) => value,
+            Err(_e) => {
+                debug!("Cannot insert header for trace parent, not a string");
+                debug!("Inserting the empty string");
+                tonic::metadata::MetadataValue::from_str("").unwrap()
+            }
+        };
+        self.0.insert(key, value);
+    }
+}
 
 #[derive(Debug)]
 pub struct Service {
@@ -26,11 +55,48 @@ impl Service {
 impl crate::protobuf::kubernetes_server::Kubernetes for Service {
     async fn kubernetes_deployment_component_get(
         &self,
-        request: tonic::Request<crate::protobuf::KubernetesDeploymentComponentGetRequest>,
+        mut request: tonic::Request<crate::protobuf::KubernetesDeploymentComponentGetRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::KubernetesDeploymentComponentGetReply>,
         tonic::Status,
     > {
+        let trace_propagator =
+            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
+        let span_context = {
+            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
+            trace_propagator.extract(&metadata_wrapper)
+        };
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "kubernetes_deployment_component_get",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
         async {
             info!(?request);
             si_account::authorize::authnz(
@@ -52,17 +118,54 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
                 },
             ))
         }
-        .instrument(info_span!("kubernetes_deployment_component_get"))
+        .instrument(span)
         .await
     }
 
     async fn kubernetes_deployment_component_list(
         &self,
-        request: tonic::Request<crate::protobuf::KubernetesDeploymentComponentListRequest>,
+        mut request: tonic::Request<crate::protobuf::KubernetesDeploymentComponentListRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::KubernetesDeploymentComponentListReply>,
         tonic::Status,
     > {
+        let trace_propagator =
+            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
+        let span_context = {
+            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
+            trace_propagator.extract(&metadata_wrapper)
+        };
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "kubernetes_deployment_component_list",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
         async {
             info!(?request);
             #[allow(unused_variables)]
@@ -88,17 +191,54 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
                 },
             ))
         }
-        .instrument(info_span!("kubernetes_deployment_component_list"))
+        .instrument(span)
         .await
     }
 
     async fn kubernetes_deployment_component_pick(
         &self,
-        request: tonic::Request<crate::protobuf::KubernetesDeploymentComponentPickRequest>,
+        mut request: tonic::Request<crate::protobuf::KubernetesDeploymentComponentPickRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::KubernetesDeploymentComponentPickReply>,
         tonic::Status,
     > {
+        let trace_propagator =
+            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
+        let span_context = {
+            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
+            trace_propagator.extract(&metadata_wrapper)
+        };
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "kubernetes_deployment_component_pick",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
         async {
             info!(?request);
             si_account::authorize::authnz(
@@ -116,17 +256,54 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             info!(?reply);
             Ok(tonic::Response::new(reply))
         }
-        .instrument(info_span!("kubernetes_deployment_component_pick"))
+        .instrument(span)
         .await
     }
 
     async fn kubernetes_deployment_entity_create(
         &self,
-        request: tonic::Request<crate::protobuf::KubernetesDeploymentEntityCreateRequest>,
+        mut request: tonic::Request<crate::protobuf::KubernetesDeploymentEntityCreateRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::KubernetesDeploymentEntityCreateReply>,
         tonic::Status,
     > {
+        let trace_propagator =
+            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
+        let span_context = {
+            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
+            trace_propagator.extract(&metadata_wrapper)
+        };
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "kubernetes_deployment_entity_create",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
         async {
             info!(?request);
             si_account::authorize::authnz(
@@ -159,17 +336,54 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
                 },
             ))
         }
-        .instrument(info_span!("kubernetes_deployment_entity_create"))
+        .instrument(span)
         .await
     }
 
     async fn kubernetes_deployment_entity_list(
         &self,
-        request: tonic::Request<crate::protobuf::KubernetesDeploymentEntityListRequest>,
+        mut request: tonic::Request<crate::protobuf::KubernetesDeploymentEntityListRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::KubernetesDeploymentEntityListReply>,
         tonic::Status,
     > {
+        let trace_propagator =
+            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
+        let span_context = {
+            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
+            trace_propagator.extract(&metadata_wrapper)
+        };
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "kubernetes_deployment_entity_list",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
         async {
             info!(?request);
             #[allow(unused_variables)]
@@ -195,17 +409,54 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
                 },
             ))
         }
-        .instrument(info_span!("kubernetes_deployment_entity_list"))
+        .instrument(span)
         .await
     }
 
     async fn kubernetes_deployment_entity_get(
         &self,
-        request: tonic::Request<crate::protobuf::KubernetesDeploymentEntityGetRequest>,
+        mut request: tonic::Request<crate::protobuf::KubernetesDeploymentEntityGetRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::KubernetesDeploymentEntityGetReply>,
         tonic::Status,
     > {
+        let trace_propagator =
+            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
+        let span_context = {
+            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
+            trace_propagator.extract(&metadata_wrapper)
+        };
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "kubernetes_deployment_entity_get",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
         async {
             info!(?request);
             si_account::authorize::authnz(&self.db, &request, "kubernetes_deployment_entity_get")
@@ -223,17 +474,54 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
                 },
             ))
         }
-        .instrument(info_span!("kubernetes_deployment_entity_get"))
+        .instrument(span)
         .await
     }
 
     async fn kubernetes_deployment_entity_sync(
         &self,
-        request: tonic::Request<crate::protobuf::KubernetesDeploymentEntitySyncRequest>,
+        mut request: tonic::Request<crate::protobuf::KubernetesDeploymentEntitySyncRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::KubernetesDeploymentEntitySyncReply>,
         tonic::Status,
     > {
+        let trace_propagator =
+            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
+        let span_context = {
+            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
+            trace_propagator.extract(&metadata_wrapper)
+        };
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "kubernetes_deployment_entity_sync",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
         async {
             info!(?request);
             si_account::authorize::authnz(&self.db, &request, "kubernetes_deployment_entity_sync")
@@ -247,19 +535,56 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             info!(?reply);
             Ok(tonic::Response::new(reply))
         }
-        .instrument(info_span!("kubernetes_deployment_entity_sync"))
+        .instrument(span)
         .await
     }
 
     async fn kubernetes_deployment_entity_kubernetes_object_edit(
         &self,
-        request: tonic::Request<
+        mut request: tonic::Request<
             crate::protobuf::KubernetesDeploymentEntityKubernetesObjectEditRequest,
         >,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::KubernetesDeploymentEntityKubernetesObjectEditReply>,
         tonic::Status,
     > {
+        let trace_propagator =
+            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
+        let span_context = {
+            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
+            trace_propagator.extract(&metadata_wrapper)
+        };
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "kubernetes_deployment_entity_kubernetes_object_edit",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
         async {
       info!(?request);
         si_account::authorize::authnz(&self.db, &request, "kubernetes_deployment_entity_kubernetes_object_edit").await?;
@@ -268,19 +593,56 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
         info!(?reply);
         Ok(tonic::Response::new(reply))
     }
-    .instrument(info_span!("kubernetes_deployment_entity_kubernetes_object_edit"))
+    .instrument(span)
     .await
     }
 
     async fn kubernetes_deployment_entity_kubernetes_object_yaml_edit(
         &self,
-        request: tonic::Request<
+        mut request: tonic::Request<
             crate::protobuf::KubernetesDeploymentEntityKubernetesObjectYamlEditRequest,
         >,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::KubernetesDeploymentEntityKubernetesObjectYamlEditReply>,
         tonic::Status,
     > {
+        let trace_propagator =
+            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
+        let span_context = {
+            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
+            trace_propagator.extract(&metadata_wrapper)
+        };
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "kubernetes_deployment_entity_kubernetes_object_yaml_edit",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
         async {
       info!(?request);
         si_account::authorize::authnz(&self.db, &request, "kubernetes_deployment_entity_kubernetes_object_yaml_edit").await?;
@@ -289,17 +651,54 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
         info!(?reply);
         Ok(tonic::Response::new(reply))
     }
-    .instrument(info_span!("kubernetes_deployment_entity_kubernetes_object_yaml_edit"))
+    .instrument(span)
     .await
     }
 
     async fn kubernetes_deployment_entity_event_list(
         &self,
-        request: tonic::Request<crate::protobuf::KubernetesDeploymentEntityEventListRequest>,
+        mut request: tonic::Request<crate::protobuf::KubernetesDeploymentEntityEventListRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::KubernetesDeploymentEntityEventListReply>,
         tonic::Status,
     > {
+        let trace_propagator =
+            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
+        let span_context = {
+            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
+            trace_propagator.extract(&metadata_wrapper)
+        };
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "kubernetes_deployment_entity_event_list",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
         async {
             info!(?request);
             #[allow(unused_variables)]
@@ -325,7 +724,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
                 },
             ))
         }
-        .instrument(info_span!("kubernetes_deployment_entity_event_list"))
+        .instrument(span)
         .await
     }
 }
