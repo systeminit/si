@@ -1,15 +1,14 @@
 use crate::model::KubernetesDeploymentEntity;
-pub use crate::protobuf::{
-    KubernetesDeploymentEntityEvent, KubernetesDeploymentEntityEventListEntityEventsReply,
+use crate::protobuf::{
+    KubernetesDeploymentEntityEventListEntityEventsReply,
     KubernetesDeploymentEntityEventListEntityEventsRequest,
 };
-use si_data::DataQuery;
+use si_cea::entity_event::prelude::*;
 
-type Entity = KubernetesDeploymentEntity;
-type EntityEvent = KubernetesDeploymentEntityEvent;
+pub use crate::protobuf::KubernetesDeploymentEntityEvent;
 
-impl si_cea::EntityEvent for EntityEvent {
-    type Entity = Entity;
+impl EntityEvent for KubernetesDeploymentEntityEvent {
+    type Entity = KubernetesDeploymentEntity;
 
     fn set_action_name(&mut self, action_name: impl Into<String>) {
         self.action_name = Some(action_name.into());
@@ -298,7 +297,7 @@ impl si_cea::EntityEvent for EntityEvent {
     }
 }
 
-impl si_data::Storable for EntityEvent {
+impl si_data::Storable for KubernetesDeploymentEntityEvent {
     fn get_id(&self) -> &str {
         self.id.as_ref().expect("TODO: fix")
     }
@@ -326,13 +325,13 @@ impl si_data::Storable for EntityEvent {
             format!(
                 "{}:{}",
                 <Self as si_data::Storable>::type_name(),
-                uuid::Uuid::new_v4(),
+                uuid_string(),
             ),
         );
     }
 
     fn validate(&self) -> si_data::error::Result<()> {
-        match <Self as si_cea::EntityEvent>::validate(&self) {
+        match <Self as EntityEvent>::validate(&self) {
             Ok(()) => Ok(()),
             Err(e) => Err(si_data::error::DataError::ValidationError(e.to_string())),
         }
@@ -466,8 +465,8 @@ impl si_data::Storable for EntityEvent {
     }
 }
 
-impl si_cea::ListReply for KubernetesDeploymentEntityEventListEntityEventsReply {
-    type Reply = EntityEvent;
+impl ListReply for KubernetesDeploymentEntityEventListEntityEventsReply {
+    type Reply = KubernetesDeploymentEntityEvent;
 
     fn items(&self) -> &Vec<Self::Reply> {
         &self.items
@@ -494,10 +493,10 @@ impl si_cea::ListReply for KubernetesDeploymentEntityEventListEntityEventsReply 
     }
 }
 
-impl From<si_data::ListResult<EntityEvent>>
+impl From<si_data::ListResult<KubernetesDeploymentEntityEvent>>
     for KubernetesDeploymentEntityEventListEntityEventsReply
 {
-    fn from(list_result: si_data::ListResult<EntityEvent>) -> Self {
+    fn from(list_result: si_data::ListResult<KubernetesDeploymentEntityEvent>) -> Self {
         if list_result.items.len() == 0 {
             Self::default()
         } else {
@@ -516,7 +515,7 @@ impl From<si_data::ListResult<EntityEvent>>
     }
 }
 
-impl si_cea::ListRequest for KubernetesDeploymentEntityEventListEntityEventsRequest {
+impl ListRequest for KubernetesDeploymentEntityEventListEntityEventsRequest {
     fn query(&self) -> &Option<DataQuery> {
         &self.query
     }

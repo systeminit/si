@@ -8,12 +8,20 @@ use si_data::{Db, ListResult, Migrateable, Storable};
 
 pub use crate::protobuf::ComponentSiProperties;
 
+pub mod codegen_prelude {
+    pub use crate::component::Component;
+    pub use crate::list::{ListReply, ListRequest};
+    pub use si_data::error::{DataError, Result as DataResult};
+    pub use si_data::{uuid_string, ListResult, Migrateable, Storable};
+}
+
 pub mod prelude {
-    pub use super::{Component as _, MigrateComponent};
-    pub use crate::error::{CeaError, CeaResult};
+    pub use super::MigrateComponent;
+    pub use crate::component::Component;
+    pub use crate::error::CeaResult;
     pub use si_account::{Integration, IntegrationService};
-    pub use si_data::error::DataError;
-    pub use si_data::Storable as _;
+    pub use si_data::Db;
+    pub use si_data::Storable;
 }
 
 #[async_trait]

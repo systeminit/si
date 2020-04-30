@@ -1,5 +1,5 @@
 use crate::error::{CeaError, CeaResult};
-use crate::{EntityEvent, MqttAsyncClientInternal};
+use crate::{EntityEvent, MqttClient};
 use std::process::{ExitStatus, Stdio};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
@@ -124,7 +124,7 @@ async fn read_stderr(
 /// * One of the output-reading threads panics
 /// * The command wasn't running
 pub async fn spawn_command(
-    mqtt_client: &MqttAsyncClientInternal,
+    mqtt_client: &MqttClient,
     mut cmd: Command,
     entity_event: &mut impl EntityEvent,
     capture_output: CaptureOutput,

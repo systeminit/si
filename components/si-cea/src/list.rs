@@ -2,7 +2,7 @@ use prost::Message;
 use serde::de::DeserializeOwned;
 use serde::ser::Serialize;
 
-use crate::Authentication;
+use crate::service::auth::Authentication;
 use si_data::query::DataQuery;
 
 pub trait ListReply: Message + std::fmt::Debug + Default {

@@ -18,15 +18,40 @@ use crate::protobuf::{
     KubernetesDeploymentEntitySyncActionReply, KubernetesDeploymentEntitySyncActionRequest,
 };
 use si_cea::service::prelude::*;
+use si_cea::CeaResult;
+use si_data::Db;
+use si_settings::Settings;
 
-pub type Service = CeaService;
+pub use crate::protobuf::kubernetes_server::KubernetesServer;
 
 type Component = KubernetesDeploymentComponent;
 type Entity = KubernetesDeploymentEntity;
 type EntityEvent = KubernetesDeploymentEntityEvent;
 
+pub async fn kubernetes(
+    db: Db,
+    settings: &Settings,
+) -> CeaResult<KubernetesServer<KubernetesImpl>> {
+    let agent = AgentClient::new("kubernetes", settings).await?;
+    let trait_impl = KubernetesImpl::new(db, agent);
+
+    Ok(KubernetesServer::new(trait_impl))
+}
+
+#[derive(Debug)]
+pub struct KubernetesImpl {
+    db: Db,
+    agent: AgentClient,
+}
+
+impl KubernetesImpl {
+    pub fn new(db: Db, agent: AgentClient) -> Self {
+        Self { db, agent }
+    }
+}
+
 #[tonic::async_trait]
-impl kubernetes_server::Kubernetes for Service {
+impl kubernetes_server::Kubernetes for KubernetesImpl {
     async fn kubernetes_deployment_component_get(
         &self,
         request: TonicRequest<KubernetesDeploymentComponentGetRequest>,

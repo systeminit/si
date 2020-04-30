@@ -1,18 +1,19 @@
 // Auth-generated code!
 // No touchy!
 
-use si_cea::component::prelude::*;
+use crate::protobuf::{
+    KubernetesDeploymentComponentListReply, KubernetesDeploymentComponentListRequest,
+};
+use si_cea::component::codegen_prelude::*;
 
 pub use crate::protobuf::{
     KubernetesDeploymentComponent, KubernetesDeploymentComponentConstraints,
-    KubernetesDeploymentComponentListReply, KubernetesDeploymentComponentListRequest,
-    KubernetesDeploymentComponentPickRequest,
 };
 
-impl si_cea::Component for KubernetesDeploymentComponent {
+impl Component for KubernetesDeploymentComponent {
     // Validates only that top-level required arguments exist.
     // Deep validation of arguments happens at the GraphQL layer.
-    fn validate(&self) -> si_data::error::Result<()> {
+    fn validate(&self) -> DataResult<()> {
         if self.id.is_none() {
             return Err(DataError::ValidationError(
                 "missing required id value".into(),
@@ -60,7 +61,7 @@ impl si_cea::Component for KubernetesDeploymentComponent {
     }
 }
 
-impl si_data::Storable for KubernetesDeploymentComponent {
+impl Storable for KubernetesDeploymentComponent {
     /// # Panics
     ///
     /// * When a component's `id` is not set (`Component::generate_id()` must be called first)
@@ -90,12 +91,12 @@ impl si_data::Storable for KubernetesDeploymentComponent {
         self.set_id(format!(
             "{}:{}",
             <Self as si_data::Storable>::type_name(),
-            uuid::Uuid::new_v4(),
+            uuid_string(),
         ));
     }
 
     fn validate(&self) -> si_data::error::Result<()> {
-        match <Self as si_cea::Component>::validate(&self) {
+        match <Self as Component>::validate(&self) {
             Ok(()) => Ok(()),
             Err(e) => Err(si_data::error::DataError::ValidationError(e.to_string())),
         }
@@ -189,7 +190,7 @@ impl si_data::Storable for KubernetesDeploymentComponent {
     }
 }
 
-impl si_data::Migrateable for KubernetesDeploymentComponent {
+impl Migrateable for KubernetesDeploymentComponent {
     fn get_version(&self) -> i32 {
         self.si_properties
             .as_ref()
@@ -198,7 +199,7 @@ impl si_data::Migrateable for KubernetesDeploymentComponent {
     }
 }
 
-impl si_cea::ListReply for KubernetesDeploymentComponentListReply {
+impl ListReply for KubernetesDeploymentComponentListReply {
     type Reply = KubernetesDeploymentComponent;
 
     fn items(&self) -> &Vec<Self::Reply> {
@@ -226,9 +227,7 @@ impl si_cea::ListReply for KubernetesDeploymentComponentListReply {
     }
 }
 
-impl From<si_data::ListResult<KubernetesDeploymentComponent>>
-    for KubernetesDeploymentComponentListReply
-{
+impl From<ListResult<KubernetesDeploymentComponent>> for KubernetesDeploymentComponentListReply {
     fn from(list_result: si_data::ListResult<KubernetesDeploymentComponent>) -> Self {
         if list_result.items.len() == 0 {
             Self::default()
@@ -248,7 +247,7 @@ impl From<si_data::ListResult<KubernetesDeploymentComponent>>
     }
 }
 
-impl si_cea::ListRequest for KubernetesDeploymentComponentListRequest {
+impl ListRequest for KubernetesDeploymentComponentListRequest {
     fn query(&self) -> &Option<si_data::DataQuery> {
         &self.query
     }

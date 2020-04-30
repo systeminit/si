@@ -1,5 +1,7 @@
 use crate::error::{DataError, Result};
 
+pub use crate::data::DataStorable;
+
 pub enum Reference<'a> {
     HasOne(&'static str, &'a str),
     HasMany(&'static str, Vec<String>),
@@ -35,7 +37,7 @@ pub trait Storable {
     }
 }
 
-impl crate::protobuf::DataStorable {
+impl DataStorable {
     pub fn new(type_name: impl Into<String>) -> Self {
         Self {
             tenant_ids: Vec::new(),

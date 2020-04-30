@@ -440,6 +440,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4358a9e11b9a09cf52383b451b49a169e8d797b68aa02301ff586d70d9661ea3"
 
 [[package]]
+name = "dyn-clone"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b3ec9c7fb9a2ce708751c98e31ccbae74b6ab194f5c8e30cfb7ed62e38b70866"
+
+[[package]]
 name = "either"
 version = "1.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2279,6 +2285,7 @@ dependencies = [
  "async-trait",
  "bytes 0.5.4",
  "chrono",
+ "dyn-clone",
  "futures 0.3.4",
  "paho-mqtt",
  "prost",
@@ -2296,7 +2303,7 @@ dependencies = [
  "tracing",
  "tracing-futures 0.2.2",
  "tracing-subscriber 0.2.5",
- "uuid",
+ "tracing-subscriber 0.2.1",
 ]
 
 [[package]]
@@ -2383,7 +2390,6 @@ dependencies = [
  "tracing-futures 0.2.2",
  "tracing-opentelemetry 0.1.0",
  "tracing-subscriber 0.2.5",
- "uuid",
 ]
 
 [[package]]

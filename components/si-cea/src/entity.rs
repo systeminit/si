@@ -11,12 +11,21 @@ use si_data::{Db, Storable};
 
 pub use crate::protobuf::{EntitySiProperties, EntitySiPropertiesEntityState};
 
+pub mod codegen_prelude {
+    pub use super::{Entity, EntitySiProperties};
+    pub use crate::error::{CeaError, CeaResult};
+    pub use crate::list::{ListReply, ListRequest};
+    pub use si_account::Workspace;
+    pub use si_data::error::{DataError, Result as DataResult};
+    pub use si_data::{uuid_string, DataQuery, DataStorable, Db, ListResult, Reference, Storable};
+}
+
 pub mod prelude {
-    pub use super::{EntitySiProperties, EntitySiPropertiesEntityState};
-    pub use crate::{CeaError, CeaResult, Entity as _, ListReply as _, ListRequest as _};
+    pub use super::{Entity, EntitySiProperties, EntitySiPropertiesEntityState};
+    pub use crate::error::{CeaError, CeaResult};
+    pub use crate::list::{ListReply, ListRequest};
     pub use si_data::error::DataError;
     pub use si_data::{DataQuery, ListResult, Storable as _};
-    pub use uuid::Uuid;
 }
 
 impl EntitySiProperties {

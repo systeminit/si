@@ -1,19 +1,16 @@
-pub use crate::gen::kubernetes::kubernetes_deployment_component::{
-    KubernetesDeploymentComponent, KubernetesDeploymentComponentConstraints,
-    KubernetesDeploymentComponentListRequest,
-};
-pub use crate::protobuf::KubernetesDeploymentComponentConstraintsKubernetesVersion;
-
 use si_cea::component::prelude::*;
-use si_data::Db;
 use std::fmt;
 use std::str::FromStr;
 
-type Component = KubernetesDeploymentComponent;
+pub use crate::gen::kubernetes::kubernetes_deployment_component::{
+    KubernetesDeploymentComponent, KubernetesDeploymentComponentConstraints,
+};
+pub use crate::protobuf::KubernetesDeploymentComponentConstraintsKubernetesVersion;
+
 type Constraints = KubernetesDeploymentComponentConstraints;
 type KubernetesVersion = KubernetesDeploymentComponentConstraintsKubernetesVersion;
 
-impl Component {
+impl KubernetesDeploymentComponent {
     pub async fn pick(db: &Db, constraints: &Constraints) -> CeaResult<(Constraints, Self)> {
         if let Some(found) = Self::pick_by_component_name(db, constraints).await? {
             return Ok(found);
@@ -81,7 +78,7 @@ impl Component {
 }
 
 #[async_trait::async_trait]
-impl MigrateComponent for Component {
+impl MigrateComponent for KubernetesDeploymentComponent {
     async fn migrate(db: &Db) -> CeaResult<()> {
         // Should these be internal model calls? Pretty sure they def should.
         let aws_integration: Integration =
@@ -98,7 +95,7 @@ impl MigrateComponent for Component {
 
         for kubernetes_version in KubernetesVersion::iterator() {
             let name = format!("AWS EKS Kubernetes {} Deployment", kubernetes_version);
-            let mut c = Component {
+            let mut c = Self {
                 name: Some(name.clone()),
                 display_name: Some(name.clone()),
                 description: Some(name.clone()),

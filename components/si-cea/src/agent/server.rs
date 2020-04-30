@@ -1,67 +1,67 @@
-use crate::agent::client::MqttAsyncClientInternal;
-use crate::agent::dispatch::Dispatch;
+use crate::agent::dispatch::{Dispatch, SubscribeKeys};
 use crate::entity_event::EntityEvent;
-use crate::error::CeaResult;
+use crate::{CeaResult, MqttClient};
 use futures::compat::{Future01CompatExt, Stream01CompatExt};
 use futures::StreamExt;
-use paho_mqtt as mqtt;
 use prost::Message;
+use si_data::uuid_string;
 use si_settings::Settings;
-use std::marker::PhantomData;
 use tokio;
 use tracing::{debug, debug_span, warn};
 use tracing_futures::Instrument as _;
-use uuid::Uuid;
 
-pub struct AgentServer<EE: EntityEvent, D: Dispatch<EE> + Send + Sync + 'static + Clone> {
-    pub mqtt: MqttAsyncClientInternal,
+pub struct AgentServer<
+    EE: EntityEvent,
+    D: Dispatch<EntityEvent = EE> + SubscribeKeys + Send + Sync + Clone + 'static,
+> {
+    pub mqtt: MqttClient,
     pub name: String,
     pub dispatch: D,
-    phantom: PhantomData<EE>,
 }
 
-impl<EE: EntityEvent, D: Dispatch<EE> + Send + Sync + 'static + Clone> AgentServer<EE, D> {
+impl<
+        EE: EntityEvent,
+        D: Dispatch<EntityEvent = EE> + SubscribeKeys + Send + Sync + Clone + 'static,
+    > AgentServer<EE, D>
+{
     pub fn new(name: impl Into<String>, dispatch: D, settings: &Settings) -> AgentServer<EE, D> {
         let name = name.into();
 
-        let client_id = format!("agent_server:{}:{}", name.clone(), Uuid::new_v4());
+        let client_id = format!("agent_server:{}:{}", name.clone(), uuid_string());
 
-        let cli = mqtt::AsyncClientBuilder::new()
+        let mqtt = MqttClient::new()
             .server_uri(settings.vernemq_server_uri().as_ref())
             .client_id(client_id.as_ref())
             .persistence(false)
             .finalize();
 
         let server: AgentServer<EE, D> = AgentServer {
-            name: name.into(),
-            mqtt: MqttAsyncClientInternal { mqtt: cli },
+            name,
+            mqtt,
             dispatch,
-            phantom: PhantomData,
         };
         server
     }
 
     fn subscribe_topics(&self) -> Vec<String> {
-        let mut topics = Vec::new();
-        for (integration_service_id, action_name) in self.dispatch.keys() {
-            let inbound_channel = format!(
-                "+/+/+/+/{}/+/action/{}/+",
-                integration_service_id, action_name
-            );
-            topics.push(inbound_channel);
-        }
-        topics
+        self.dispatch
+            .subscribe_keys()
+            .iter()
+            .map(|key| {
+                format!(
+                    "+/+/+/+/{}/+/action/{}/+",
+                    key.integration_service_id(),
+                    key.action_name()
+                )
+            })
+            .collect()
     }
 
     pub async fn run(&mut self) -> CeaResult<()> {
         // Whats the right value? Who knows? God only knows. Ask the Beach Boys.
         let mut rx = self.mqtt.get_stream(1000).compat();
         println!("Connecting to the MQTT server...");
-        let (server_uri, ver, session_present) = self
-            .mqtt
-            .connect(mqtt::ConnectOptions::new())
-            .compat()
-            .await?;
+        let (server_uri, ver, session_present) = self.mqtt.default_connect().await?;
         // Make the connection to the broker
         println!("Connected to: '{}' with MQTT version {}", server_uri, ver);
         if !session_present {

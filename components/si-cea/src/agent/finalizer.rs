@@ -1,18 +1,15 @@
-use crate::agent::client::MqttAsyncClientInternal;
 use crate::entity_event::EntityEvent;
-use crate::error::CeaResult;
+use crate::{CeaResult, MqttClient};
 use futures::compat::{Future01CompatExt, Stream01CompatExt};
 use futures::StreamExt;
-use paho_mqtt as mqtt;
 use prost::Message;
-use si_data::Db;
+use si_data::{uuid_string, Db};
 use si_settings::Settings;
 use tracing::debug;
-use uuid::Uuid;
 
 #[derive(Debug, Clone)]
 pub struct AgentFinalizer {
-    mqtt: MqttAsyncClientInternal,
+    mqtt: MqttClient,
     entity_event_type_name: String,
     db: Db,
 }
@@ -24,16 +21,16 @@ impl AgentFinalizer {
         settings: &Settings,
     ) -> AgentFinalizer {
         let entity_event_name = entity_event_type_name.into();
-        let client_id = format!("agent_finalizer:{}:{}", entity_event_name, Uuid::new_v4());
+        let client_id = format!("agent_finalizer:{}:{}", entity_event_name, uuid_string());
 
-        let cli = mqtt::AsyncClientBuilder::new()
+        let mqtt = MqttClient::new()
             .server_uri(settings.vernemq_server_uri().as_ref())
             .client_id(client_id.as_ref())
             .persistence(false)
             .finalize();
 
         AgentFinalizer {
-            mqtt: MqttAsyncClientInternal { mqtt: cli },
+            mqtt,
             db,
             entity_event_type_name: entity_event_name,
         }
@@ -62,11 +59,7 @@ impl AgentFinalizer {
         // Whats the right value? Who knows? God only knows. Ask the Beach Boys.
         let mut rx = self.mqtt.get_stream(1000).compat();
         println!("Finalizer connecting to the MQTT server...");
-        let (server_uri, ver, session_present) = self
-            .mqtt
-            .connect(mqtt::ConnectOptions::new())
-            .compat()
-            .await?;
+        let (server_uri, ver, session_present) = self.mqtt.default_connect().await?;
         // Make the connection to the broker
         println!("Connected to: '{}' with MQTT version {}", server_uri, ver);
         if !session_present {

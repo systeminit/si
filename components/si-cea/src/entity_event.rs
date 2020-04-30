@@ -1,7 +1,6 @@
-use crate::agent::client::MqttAsyncClientInternal;
 use crate::entity::{Entity, EntityState};
-use crate::error::{CeaError, CeaResult};
 use crate::list::ListRequest;
+use crate::{CeaError, CeaResult, MqttClient};
 use async_trait::async_trait;
 use chrono::prelude::{DateTime, Utc};
 use futures::compat::Future01CompatExt;
@@ -11,9 +10,15 @@ use serde::de::DeserializeOwned;
 use serde::ser::Serialize;
 use si_data::{Db, Storable};
 
+pub mod prelude {
+    pub use super::EntityEvent;
+    pub use crate::list::{ListReply, ListRequest};
+    pub use si_data::{uuid_string, DataQuery};
+}
+
 #[async_trait]
 pub trait EntityEvent:
-    Message + Storable + Serialize + DeserializeOwned + std::fmt::Debug + Default
+    Message + Storable + Serialize + DeserializeOwned + std::fmt::Debug + Default + Clone
 {
     type Entity: Entity;
 
@@ -223,7 +228,7 @@ pub trait EntityEvent:
         self.log("*** Task Succeeded ***");
     }
 
-    async fn send_via_mqtt(&self, mqtt_client: &MqttAsyncClientInternal) -> CeaResult<()> {
+    async fn send_via_mqtt(&self, mqtt_client: &MqttClient) -> CeaResult<()> {
         let mut payload = Vec::new();
         let finalized = {
             self.encode(&mut payload)?;

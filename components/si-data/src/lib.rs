@@ -17,4 +17,8 @@ pub use query::{
     DataQuery, DataQueryBooleanTerm, DataQueryItems, DataQueryItemsExpression,
     DataQueryItemsExpressionComparison, DataQueryItemsExpressionFieldType,
 };
-pub use storable::{Reference, Storable};
+pub use storable::{DataStorable, Reference, Storable};
+
+pub fn uuid_string() -> String {
+    uuid::Uuid::new_v4().to_string()
+}

@@ -15,7 +15,6 @@ thiserror = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_yaml = "0.8"
-uuid = { version = "0.7", features = [ "serde", "v4" ] }
 futures = { version = "0.3", features = ["alloc", "compat"]}
 tonic = "0.1"
 bytes = "0.5"
@@ -28,6 +27,7 @@ tracing-subscriber = "0.2.1"
 si-data = { path = "../si-data" }
 si-account = { path = "../si-account" }
 si-settings = { path = "../si-settings" }
+dyn-clone = "1.0.1"
 
 [build-dependencies]
 tonic-build = "0.1"

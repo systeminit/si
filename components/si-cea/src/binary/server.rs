@@ -2,9 +2,12 @@ use crate::error::CeaResult;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 pub mod prelude {
-    pub use crate::Dispatch as _;
-    pub use crate::MigrateComponent as _;
-    pub use crate::{gen_server_binary, EntityEvent as _};
+    pub use crate::agent::dispatch::Dispatcher;
+    pub use crate::agent::finalizer::AgentFinalizer;
+    pub use crate::agent::server::AgentServer;
+    pub use crate::component::MigrateComponent;
+    pub use si_data::{Db, Storable};
+    pub use si_settings::Settings;
 }
 
 pub fn setup_tracing() -> CeaResult<()> {
