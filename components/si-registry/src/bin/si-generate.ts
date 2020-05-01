@@ -1,14 +1,12 @@
-#!/usr/bin/env node
-
 import chalk from "chalk";
 import figlet from "figlet";
 import path from "path";
 import program from "commander";
-import { registry } from "src/registry";
-import { ProtobufFormatter } from "src/codegen/protobuf";
-import { CodegenRust } from "src/codegen/rust";
+import { registry } from "../registry";
+import { ProtobufFormatter } from "../codegen/protobuf";
+import { CodegenRust } from "../codegen/rust";
 import Listr, { ListrRendererValue } from "listr";
-import "src/loader";
+import "../loader";
 import fs from "fs";
 import { promisify } from "util";
 //import childProcess from "child_process";
@@ -69,13 +67,7 @@ function generateProtobuf(): Listr {
         const cp = new ProtobufFormatter(
           registry.getObjectsForServiceName(serviceName),
         );
-        const protoFile = path.join(
-          __dirname,
-          "..",
-          "..",
-          "proto",
-          `si.${serviceName}.proto`,
-        );
+        const protoFile = path.join("./proto", `si.${serviceName}.proto`);
         const writeFileAsync = promisify(fs.writeFile);
         await writeFileAsync(protoFile, cp.generateString());
       },

@@ -30,13 +30,16 @@ export class ServiceDescription {
     this.grpcServiceName = grpcServiceName;
     this.graphqlTypePrefix = graphqlTypePrefix;
     this.address = address;
-    this.dataOnly = dataOnly;
+    this.dataOnly = dataOnly || false;
   }
 
   protobufPath(): string {
-    // Services are always peers here, for now.
-    const dir = path.join(__dirname, "..", "..", "si-registry", "proto");
-    return path.join(dir, `${this.protoPackageName}.proto`);
+    return path.join(
+      "..",
+      "si-registry",
+      "proto",
+      `${this.protoPackageName}.proto`,
+    );
   }
 
   graphqlHintPath(): string {

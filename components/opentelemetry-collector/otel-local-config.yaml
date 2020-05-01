@@ -8,7 +8,7 @@ receivers:
 exporters:
   honeycomb:
     api_key: 70120a6952d7d5f3e3f0329ea99fb6c2
-    dataset: development
+    dataset: dev-USERNAME
   logging:
     loglevel: debug
 service:

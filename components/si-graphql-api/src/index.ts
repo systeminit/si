@@ -33,24 +33,8 @@ const schema = makeSchema({
   types: graphqlTypes,
   nonNullDefaults: { output: false, input: false },
   outputs: {
-    schema: path.join(__dirname, "../fullstack-schema.graphql"),
-    typegen: path.join(
-      __dirname.replace(/\/dist$/, "/src"),
-      "../src/fullstack-typegen.ts",
-    ),
-  },
-  typegenAutoConfig: {
-    sources: [
-      {
-        source: path.join(
-          __dirname.replace(/\/dist$/, "/src"),
-          "./typeDefs.ts",
-        ),
-        alias: "t",
-      },
-    ],
-    debug: true,
-    //contextType: "t.Context",
+    schema: path.resolve("./fullstack-schema.graphql"),
+    typegen: path.resolve("./fullstack-typegen.ts"),
   },
 });
 

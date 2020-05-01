@@ -263,12 +263,12 @@ export class ProtobufFormatter {
 
   generateString(): string {
     return ejs.render(
-      "<%- include('protobuf/proto', { fmt }) %>",
+      "<%- include('src/codegen/protobuf/proto', { fmt }) %>",
       {
         fmt: this,
       },
       {
-        filename: __filename,
+        filename: ".",
       },
     );
   }

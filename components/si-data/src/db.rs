@@ -230,7 +230,7 @@ impl Db {
             content.set_natural_key();
 
             span.record(
-                "db.natural_key",
+                "db.storable.natural_key",
                 &tracing::field::display(&content.get_natural_key().unwrap_or("None")),
             );
 
@@ -348,7 +348,7 @@ impl Db {
                 &tracing::field::display(&content.get_tenant_ids().join(", ")[..]),
             );
             span.record(
-                "db.natural_key",
+                "db.storable.natural_key",
                 &tracing::field::display(&content.get_natural_key().unwrap_or("None")),
             );
             let bucket = self.bucket.clone();
@@ -590,61 +590,98 @@ impl Db {
         &self,
         item: &mut I,
     ) -> Result<()> {
-        item.set_type_name();
-        item.set_natural_key();
+        let span = info_span!(
+            "db.migrate",
+            db.migrate.updated = tracing::field::Empty,
+            db.migrate.identical = tracing::field::Empty,
+            db.migrate.outdated = tracing::field::Empty,
+            db.migrate.existed = tracing::field::Empty,
+            db.migrate.new = tracing::field::Empty,
+            db.storable.id = tracing::field::Empty,
+            db.storable.natural_key = tracing::field::Empty,
+            db.storable.type_name = tracing::field::Empty,
+            db.storable.tenant_ids = tracing::field::Empty,
+            error = tracing::field::Empty,
+            component = tracing::field::display("si-data"),
+        );
 
-        let natural_key = item.get_natural_key().ok_or(DataError::NaturalKeyMissing)?;
+        async {
+            let span = tracing::Span::current();
 
-        let existing_item: Result<I> = self.lookup_by_natural_key(natural_key).await;
-        match existing_item {
-            Ok(real_item) => {
-                let existing_id = real_item.get_id();
-                item.set_id(existing_id);
-                item.set_type_name();
-                item.set_natural_key();
-                item.add_to_tenant_ids(existing_id.to_string());
-                if item.get_version() > real_item.get_version() {
-                    info!(
-                        current_item = item.get_version(),
-                        real_item = real_item.get_version(),
-                        migrate = "update"
+            item.set_type_name();
+            span.record(
+                "db.storable.type_name",
+                &tracing::field::display(<I as Storable>::type_name()),
+            );
+            item.set_natural_key();
+
+            let natural_key = item.get_natural_key().ok_or(DataError::NaturalKeyMissing)?;
+
+            span.record(
+                "db.storable.natural_key",
+                &tracing::field::display(&natural_key),
+            );
+
+            let existing_item: Result<I> = self.lookup_by_natural_key(natural_key).await;
+            match existing_item {
+                Ok(real_item) => {
+                    span.record("db.migrate.existed", &tracing::field::display(true));
+
+                    let existing_id = real_item.get_id();
+                    item.set_id(existing_id);
+                    span.record("db.storable.id", &tracing::field::display(existing_id));
+                    item.add_to_tenant_ids(existing_id.to_string());
+                    span.record(
+                        "db.storable.tenant_ids",
+                        &tracing::field::debug(item.get_tenant_ids()),
                     );
-                    self.upsert(item).await?;
-                } else if item.get_version() < real_item.get_version() {
-                    debug!(
-                        current_item = item.get_version(),
-                        real_item = real_item.get_version(),
-                        migrate = "newer existing"
-                    );
-                } else {
-                    debug!(
-                        current_item = item.get_version(),
-                        real_item = real_item.get_version(),
-                        migrate = "identical"
-                    );
+                    if item.get_version() > real_item.get_version() {
+                        span.record("db.migrate.updated", &tracing::field::display(true));
+                        self.upsert(item).await?;
+                    } else if item.get_version() < real_item.get_version() {
+                        span.record("db.migrate.outdated", &tracing::field::display(true));
+                    } else {
+                        span.record("db.migrate.identical", &tracing::field::display(true));
+                    }
+                }
+                Err(_e) => {
+                    span.record("db.migrate.new", &tracing::field::display(true));
+                    self.validate_and_insert_as_new(item).await?;
                 }
             }
-            Err(e) => {
-                info!(migrate = "new", ?e);
-                self.validate_and_insert_as_new(item).await?;
-            }
-        }
 
-        Ok(())
+            Ok(())
+        }
+        .instrument(span)
+        .await
     }
 
     pub async fn upsert<T>(&self, content: &T) -> Result<couchbase::result::MutationResult>
     where
         T: Serialize + Storable + std::fmt::Debug,
     {
-        let bucket = self.bucket.clone();
-        let collection = bucket.default_collection();
-        let id = content.get_id().clone();
+        let bucket_name = format!("{}", self.bucket_name);
+        let span = info_span!(
+            "db.upsert",
+            db.storable.id = %content.get_id(),
+            db.storable.natural_key = %content.get_natural_key().unwrap_or("None"),
+            db.storable.type_name = %<T as Storable>::type_name(),
+            db.storable.tenant_ids = ?content.get_tenant_ids(),
+            db.bucket_name = tracing::field::display(&bucket_name[..]),
+            component = tracing::field::display("si-data"),
+        );
+        async {
+            let bucket = self.bucket.clone();
+            let collection = bucket.default_collection();
+            let id = content.get_id().clone();
 
-        collection
-            .upsert(id, content, None)
-            .await
-            .map_err(DataError::CouchbaseError)
+            collection
+                .upsert(id, content, None)
+                .await
+                .map_err(DataError::CouchbaseError)
+        }
+        .instrument(span)
+        .await
     }
 
     pub async fn lookup_by_natural_key<S1, T>(&self, natural_key: S1) -> Result<T>
@@ -653,10 +690,31 @@ impl Db {
         T: DeserializeOwned + std::fmt::Debug,
     {
         let key = natural_key.into();
-        event!(Level::DEBUG, ?key, "looking up");
-        let lookup_object: LookupObject = self.get(key).await?;
-        event!(Level::DEBUG, ?lookup_object, "returning");
-        self.get(lookup_object.object_id).await
+        let span = info_span!(
+            "db.lookup_by_natural_key",
+            db.lookup.id = tracing::field::Empty,
+            db.lookup.natural_key = %key,
+            db.lookup.object_id = tracing::field::Empty,
+            db.storable.tenant_ids = tracing::field::Empty,
+            component = tracing::field::display("si-data"),
+        );
+
+        async {
+            let span = tracing::Span::current();
+            let lookup_object: LookupObject = self.get(key).await?;
+            span.record("db.lookup.id", &tracing::field::display(&lookup_object.id));
+            span.record(
+                "db.lookup.object_id",
+                &tracing::field::display(&lookup_object.object_id),
+            );
+            span.record(
+                "db.storable.tenant_ids",
+                &tracing::field::debug(&lookup_object.tenant_ids),
+            );
+            self.get(lookup_object.object_id).await
+        }
+        .instrument(span)
+        .await
     }
 
     pub async fn lookup<S1, S2, S3, T>(
@@ -677,10 +735,30 @@ impl Db {
             type_name.into(),
             natural_key.into()
         );
-        event!(Level::DEBUG, ?key, "looking up");
-        let lookup_object: LookupObject = self.get(key).await?;
-        event!(Level::DEBUG, ?lookup_object, "returning");
-        self.get(lookup_object.object_id).await
+        let span = info_span!(
+            "db.lookup",
+            db.lookup.id = tracing::field::Empty,
+            db.lookup.natural_key = %key,
+            db.lookup.object_id = tracing::field::Empty,
+            db.storable.tenant_ids = tracing::field::Empty,
+            component = tracing::field::display("si-data"),
+        );
+        async {
+            let span = tracing::Span::current();
+            let lookup_object: LookupObject = self.get(key).await?;
+            span.record("db.lookup.id", &tracing::field::display(&lookup_object.id));
+            span.record(
+                "db.lookup.object_id",
+                &tracing::field::display(&lookup_object.object_id),
+            );
+            span.record(
+                "db.storable.tenant_ids",
+                &tracing::field::debug(&lookup_object.tenant_ids),
+            );
+            self.get(lookup_object.object_id).await
+        }
+        .instrument(span)
+        .await
     }
 
     pub async fn get<S, T>(&self, id: S) -> Result<T>
@@ -688,16 +766,26 @@ impl Db {
         S: Into<String> + std::fmt::Debug,
         T: DeserializeOwned + std::fmt::Debug,
     {
-        let item = {
-            let bucket = self.bucket.clone();
-            let collection = bucket.default_collection();
-            collection
-                .get(id.into(), None)
-                .await
-                .map_err(DataError::CouchbaseError)?
-        };
-        event!(Level::DEBUG, ?item);
-        Ok(item.content_as::<T>()?)
+        let id_string = id.into();
+        let span = info_span!(
+            "db.get",
+            db.get.id = %id_string,
+            db.bucket_name = tracing::field::display(&self.bucket_name),
+            component = tracing::field::display("si-data"),
+        );
+        async {
+            let item = {
+                let bucket = self.bucket.clone();
+                let collection = bucket.default_collection();
+                collection
+                    .get(id_string, None)
+                    .await
+                    .map_err(DataError::CouchbaseError)?
+            };
+            Ok(item.content_as::<T>()?)
+        }
+        .instrument(span)
+        .await
     }
 
     pub async fn get_storable<S, T>(&self, id: S) -> Result<T>
@@ -705,53 +793,107 @@ impl Db {
         S: Into<String> + std::fmt::Debug,
         T: Storable + DeserializeOwned + std::fmt::Debug,
     {
-        let item = {
-            let bucket = self.bucket.clone();
-            let collection = bucket.default_collection();
-            collection
-                .get(id.into(), None)
-                .await
-                .map_err(DataError::CouchbaseError)?
-        };
-        event!(Level::DEBUG, ?item);
-        Ok(item.content_as::<T>()?)
+        let id_string = id.into();
+        let span = info_span!(
+            "db.get_storable",
+            db.get.id = %id_string,
+            db.storable.id = tracing::field::Empty,
+            db.storable.type_name = tracing::field::Empty,
+            db.storable.natural_key = tracing::field::Empty,
+            db.storable.tenant_ids = tracing::field::Empty,
+            db.storable.natural_key = tracing::field::Empty,
+            db.bucket_name = tracing::field::display(&self.bucket_name),
+            component = tracing::field::display("si-data"),
+        );
+        async {
+            let span = tracing::Span::current();
+            let item = {
+                let bucket = self.bucket.clone();
+                let collection = bucket.default_collection();
+                collection
+                    .get(id_string, None)
+                    .await
+                    .map_err(DataError::CouchbaseError)?
+            };
+            let ditem = item.content_as::<T>()?;
+            span.record("db.storable.id", &tracing::field::display(&ditem.get_id()));
+            span.record(
+                "db.storable.type_name",
+                &tracing::field::display(&<T as Storable>::type_name()),
+            );
+            span.record(
+                "db.storable.tenant_ids",
+                &tracing::field::display(&ditem.get_tenant_ids().join(", ")[..]),
+            );
+            span.record(
+                "db.storable.natural_key",
+                &tracing::field::display(&ditem.get_natural_key().unwrap_or("None")),
+            );
+            Ok(ditem)
+        }
+        .instrument(span)
+        .await
     }
 
     pub async fn exists<S>(&self, id: S) -> Result<bool>
     where
         S: Into<String> + std::fmt::Debug,
     {
-        let bucket = self.bucket.clone();
-        let collection = bucket.default_collection();
-        match collection.exists(id, None).await {
-            Ok(cas) => {
-                event!(Level::DEBUG, ?cas, "true");
-                return Ok(true);
-            }
-            Err(couchbase::CouchbaseError::Success) => {
-                event!(Level::DEBUG, "false");
-                return Ok(false);
-            }
-            Err(couchbase::CouchbaseError::KeyDoesNotExist) => {
-                event!(Level::DEBUG, "false");
-                return Ok(false);
-            }
-            Err(e) => {
-                return Err(DataError::CouchbaseError(e));
+        let id_string = id.into();
+        let span = info_span!(
+            "db.exists",
+            db.get.id = %id_string,
+            db.exists = tracing::field::Empty,
+            db.bucket_name = tracing::field::display(&self.bucket_name),
+            component = tracing::field::display("si-data"),
+        );
+        async {
+            let span = tracing::Span::current();
+            let bucket = self.bucket.clone();
+            let collection = bucket.default_collection();
+            match collection.exists(id_string, None).await {
+                Ok(_cas) => {
+                    span.record("db.exists", &tracing::field::display(true));
+                    return Ok(true);
+                }
+                Err(couchbase::CouchbaseError::Success) => {
+                    span.record("db.exists", &tracing::field::display(false));
+                    return Ok(false);
+                }
+                Err(couchbase::CouchbaseError::KeyDoesNotExist) => {
+                    span.record("db.exists", &tracing::field::display(false));
+                    return Ok(false);
+                }
+                Err(e) => {
+                    return Err(DataError::CouchbaseError(e));
+                }
             }
         }
+        .instrument(span)
+        .await
     }
 
     pub async fn remove<S>(&self, id: S) -> Result<couchbase::result::MutationResult>
     where
         S: Into<String> + std::fmt::Debug,
     {
-        let bucket = self.bucket.clone();
-        let collection = bucket.default_collection();
-        collection
-            .remove(id, None)
-            .await
-            .map_err(DataError::CouchbaseError)
+        let id_string = id.into();
+        let span = info_span!(
+            "db.remove",
+            db.get.id = %id_string,
+            db.bucket_name = tracing::field::display(&self.bucket_name),
+            component = tracing::field::display("si-data"),
+        );
+        async {
+            let bucket = self.bucket.clone();
+            let collection = bucket.default_collection();
+            collection
+                .remove(id_string, None)
+                .await
+                .map_err(DataError::CouchbaseError)
+        }
+        .instrument(span)
+        .await
     }
 
     pub async fn query<I>(
@@ -762,23 +904,72 @@ impl Db {
     where
         I: DeserializeOwned + Storable + std::fmt::Debug,
     {
-        debug!("query");
-        let query_options = QueryOptions::new().set_scan_consistency(self.scan_consistency);
-        let named_options = match named_params {
-            Some(hashmap) => Some(query_options.set_named_parameters(hashmap)),
-            None => Some(query_options),
-        };
-        let mut result = self.cluster.query(query, named_options).await?;
-        let mut result_stream = result.rows_as::<I>()?;
-        let mut final_vec: Vec<I> = Vec::new();
-        while let Some(r) = result_stream.next().await {
-            match r {
-                Ok(v) => final_vec.push(v),
-                Err(e) => return Err(DataError::CouchbaseError(e)),
+        let span = info_span!(
+            "db.query",
+            db.list.query = %query,
+            db.list.named_params = tracing::field::debug(&named_params),
+            db.cb.querymeta.request_id = tracing::field::Empty,
+            db.cb.querymeta.status = tracing::field::Empty,
+            db.cb.querymeta.errors = tracing::field::Empty,
+            db.cb.querymeta.client_context_id = tracing::field::Empty,
+            db.cb.querymeta.elapsed_time = tracing::field::Empty,
+            db.cb.querymeta.execution_time = tracing::field::Empty,
+            db.cb.querymeta.result_count = tracing::field::Empty,
+            db.cb.querymeta.result_size = tracing::field::Empty,
+            component = tracing::field::display("si-data"),
+        );
+        async {
+            let span = tracing::Span::current();
+            let query_options = QueryOptions::new().set_scan_consistency(self.scan_consistency);
+            let named_options = match named_params {
+                Some(hashmap) => Some(query_options.set_named_parameters(hashmap)),
+                None => Some(query_options),
+            };
+            let mut result = self.cluster.query(query, named_options).await?;
+            let result_meta = result.meta().await?;
+            span.record(
+                "db.cb.querymeta.request_id",
+                &tracing::field::display(&result_meta.request_id),
+            );
+            span.record(
+                "db.cb.querymeta.status",
+                &tracing::field::display(&result_meta.status),
+            );
+            span.record(
+                "db.cb.querymeta.errors",
+                &tracing::field::debug(&result_meta.errors),
+            );
+            span.record(
+                "db.cb.querymeta.client_context_id",
+                &tracing::field::display(&result_meta.client_context_id),
+            );
+            span.record(
+                "db.cb.querymeta.elapsed_time",
+                &tracing::field::display(&result_meta.metrics.elapsed_time),
+            );
+            span.record(
+                "db.cb.querymeta.execution_time",
+                &tracing::field::display(&result_meta.metrics.execution_time),
+            );
+            span.record(
+                "db.cb.querymeta.result_count",
+                &tracing::field::display(&result_meta.metrics.result_count),
+            );
+            span.record(
+                "db.cb.querymeta.result_size",
+                &tracing::field::display(&result_meta.metrics.result_size),
+            );
+            let mut result_stream = result.rows_as::<I>()?;
+            let mut final_vec: Vec<I> = Vec::new();
+            while let Some(r) = result_stream.next().await {
+                match r {
+                    Ok(v) => final_vec.push(v),
+                    Err(e) => return Err(DataError::CouchbaseError(e)),
+                }
             }
+            Ok(final_vec)
         }
-        debug!(?final_vec, "query_result");
-
-        Ok(final_vec)
+        .instrument(span)
+        .await
     }
 }

@@ -5,10 +5,10 @@ import {
   ComponentObject,
   EntityObject,
   EntityEventObject,
-} from "src/systemComponent";
-import * as PropPrelude from "src/components/prelude";
-import { registry } from "src/registry";
-import { Props } from "src/attrList";
+} from "../systemComponent";
+import * as PropPrelude from "../components/prelude";
+import { registry } from "../registry";
+import { Props } from "../attrList";
 
 import { snakeCase, pascalCase } from "change-case";
 import ejs from "ejs";
@@ -132,13 +132,13 @@ export class RustFormatter {
     const results = [];
     for (const propMethod of this.systemObject.methods.attrs) {
       const output = ejs.render(
-        "<%- include('rust/serviceMethod.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
+        "<%- include('src/codegen/rust/serviceMethod.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
         {
           fmt: this,
           propMethod: propMethod,
         },
         {
-          filename: __filename,
+          filename: ".",
         },
       );
       results.push(output);
@@ -587,12 +587,12 @@ export class CodegenRust {
 
   async generateGenService(): Promise<void> {
     const output = ejs.render(
-      "<%- include('rust/service.rs.ejs', { fmt: fmt }) %>",
+      "<%- include('src/codegen/rust/service.rs.ejs', { fmt: fmt }) %>",
       {
         fmt: new RustFormatterService(this.serviceName),
       },
       {
-        filename: __filename,
+        filename: ".",
       },
     );
     await this.writeCode(`gen/service.rs`, output);
@@ -600,12 +600,12 @@ export class CodegenRust {
 
   async generateGenModel(systemObject: ObjectTypes): Promise<void> {
     const output = ejs.render(
-      "<%- include('rust/model.rs.ejs', { fmt: fmt }) %>",
+      "<%- include('src/codegen/rust/model.rs.ejs', { fmt: fmt }) %>",
       {
         fmt: new RustFormatter(systemObject),
       },
       {
-        filename: __filename,
+        filename: ".",
       },
     );
     await this.writeCode(
@@ -615,15 +615,7 @@ export class CodegenRust {
   }
 
   async makePath(pathPart: string): Promise<string> {
-    const pathName = path.join(
-      __dirname,
-      "..",
-      "..",
-      "..",
-      `si-${this.serviceName}`,
-      "src",
-      pathPart,
-    );
+    const pathName = path.join("..", `si-${this.serviceName}`, "src", pathPart);
     const absolutePathName = path.resolve(pathName);
     await fs.promises.mkdir(path.resolve(pathName), { recursive: true });
     return absolutePathName;

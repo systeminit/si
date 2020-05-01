@@ -2,7 +2,7 @@ import { DataSource } from "apollo-datasource";
 import * as path from "path";
 
 import { ServiceDescription } from "@/services";
-import grpcCaller = require("grpc-caller");
+import grpcCaller from "grpc-caller";
 import { logger } from "@/logger";
 
 export class GrpcServiceBroker {
@@ -28,7 +28,7 @@ export class GrpcServiceBroker {
             longs: String,
             defaults: true,
             oneofs: true,
-            includeDirs: [path.join(__dirname, "..", "..", "..")],
+            includeDirs: [path.join("..")],
           },
         },
         sd.grpcServiceName,
