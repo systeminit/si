@@ -1,1 +1,1 @@
-declare module "*.proto";
+declare module "grpc-caller";

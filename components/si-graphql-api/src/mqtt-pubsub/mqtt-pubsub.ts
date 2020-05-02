@@ -86,7 +86,9 @@ export class MQTTPubSub implements PubSubEngine {
     this.subscribeOptionsResolver =
       options.subscribeOptions ||
       (() => Promise.resolve({} as IClientSubscribeOptions));
+    // @ts-ignore
     this.parseMessageWithEncoding = options.parseMessageWithEncoding;
+    // @ts-ignore
     this.rawData = options.rawData;
   }
 
@@ -150,8 +152,10 @@ export class MQTTPubSub implements PubSubEngine {
     }
   }
 
+  // @ts-ignore
   public unsubscribe(subId: number) {
     const [triggerName = null] = this.subscriptionMap[subId] || [];
+    // @ts-ignore
     const refs = this.subsRefsMap[triggerName];
 
     if (!refs) {
@@ -160,6 +164,7 @@ export class MQTTPubSub implements PubSubEngine {
 
     let newRefs;
     if (refs.length === 1) {
+      // @ts-ignore
       this.mqttConnection.unsubscribe(triggerName);
       newRefs = [];
     } else {
@@ -169,16 +174,19 @@ export class MQTTPubSub implements PubSubEngine {
       }
     }
 
+    // @ts-ignore
     this.subsRefsMap[triggerName] = newRefs;
     delete this.subscriptionMap[subId];
   }
 
   public asyncIterator<T>(triggers: string | string[]): AsyncIterator<T> {
+    // @ts-ignore
     return new PubSubAsyncIterator<T>(this, triggers);
   }
 
   private onMessage(topic: string, message: Buffer) {
     const subscribers = [].concat(
+      // @ts-ignore
       ...Object.keys(this.subsRefsMap)
         .filter(key => MQTTPubSub.matches(key, topic))
         .map(key => this.subsRefsMap[key]),

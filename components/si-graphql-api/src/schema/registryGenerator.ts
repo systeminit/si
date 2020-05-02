@@ -102,7 +102,13 @@ export class SiRegistryGenerator {
         definition(t) {
           for (const association of systemObject.associations.all()) {
             const returnType = registry.get(association.typeName);
+            if (returnType == undefined) {
+              throw "No return type defined for this association; bug!";
+            }
             const associatedObject = registry.get(association.typeName);
+            if (associatedObject == undefined) {
+              throw "No associated object defined for this association; bug!";
+            }
             const associatedProp = associatedObject.methods.attrs.find(m => {
               return m.name == association.methodName;
             });
@@ -116,7 +122,7 @@ export class SiRegistryGenerator {
                 // @ts-ignore
                 type: pascalCase(association.typeName),
                 description: returnType.displayTypeName,
-                async resolve(_root, _input, context: Context) {
+                async resolve(_root, _input, context: any) {
                   const trace = traceApi.trace.getTracer("si-graphql-api");
                   const span = trace.startSpan(
                     `graphql.belongsTo ${association.fieldName}`,
@@ -164,7 +170,7 @@ export class SiRegistryGenerator {
                     association.typeName,
                   )}${pascalCase(association.methodName)}`;
 
-                  const reqInput = {};
+                  const reqInput: Record<string, any> = {};
                   reqInput[association.methodArgumentName] = {
                     value: lookupValue,
                   };
@@ -196,7 +202,7 @@ export class SiRegistryGenerator {
                 // @ts-ignore
                 args: { input: arg({ type: `${methodName}Request` }) },
                 description: returnType.displayTypeName,
-                async resolve(_root, input, context: Context) {
+                async resolve(_root, input, context: any) {
                   const trace = traceApi.trace.getTracer("si-graphql-api");
                   const span = trace.startSpan(
                     `graphql.hasMany ${association.fieldName}`,
@@ -274,7 +280,7 @@ export class SiRegistryGenerator {
                 // @ts-ignore
                 args: { input: arg({ type: `${methodName}Request` }) },
                 description: returnType.displayTypeName,
-                async resolve(_root, input, context: Context) {
+                async resolve(_root, input, context: any) {
                   const trace = traceApi.trace.getTracer("si-graphql-api");
                   const span = trace.startSpan(
                     `graphql.hasList ${association.fieldName}`,
@@ -321,7 +327,7 @@ export class SiRegistryGenerator {
                   if (!Array.isArray(lookupValue)) {
                     throw "Failed to lookup an array value during HasList association - this is a bug!";
                   }
-                  const queryData = {
+                  const queryData: Record<string, any> = {
                     booleanTerm: "OR",
                     items: [],
                   };
@@ -371,7 +377,7 @@ export class SiRegistryGenerator {
                 // @ts-ignore
                 args: { input: arg({ type: `${methodName}Request` }) },
                 description: returnType.displayTypeName,
-                async resolve(_root, input, context: Context) {
+                async resolve(_root, input, context: any) {
                   const trace = traceApi.trace.getTracer("si-graphql-api");
                   const span = trace.startSpan(
                     `graphql.inList ${association.fieldName}`,
@@ -415,7 +421,7 @@ export class SiRegistryGenerator {
                     }
                     lookupValue = lookupValue[key];
                   }
-                  const queryData = {
+                  const queryData: Record<string, any> = {
                     booleanTerm: "OR",
                     items: [],
                   };
@@ -463,7 +469,7 @@ export class SiRegistryGenerator {
           t.field("associations", {
             // @ts-ignore
             type: associationTypeName,
-            async resolve(root, _input, context: Context) {
+            async resolve(root, _input, context: any) {
               const trace = traceApi.trace.getTracer("si-graphql-api");
               const span = trace.startSpan(
                 `graphql.associations ${camelCase(systemObject.typeName)}`,
@@ -617,7 +623,7 @@ export class SiRegistryGenerator {
           nullable: !prop.required,
         }),
       },
-      async resolve(_root, { input }, context: Context) {
+      async resolve(_root, { input }, context: any): Promise<any> {
         const trace = traceApi.trace.getTracer("si-graphql-api");
         const span = trace.startSpan(
           `graphql.resolver ${camelCase(thisGenerator.graphqlTypeName(prop))}`,
@@ -630,7 +636,6 @@ export class SiRegistryGenerator {
         } else {
           span.setAttribute("graphql.query", true);
         }
-
         const grpc = context.dataSources.grpc;
         const user = context.user;
         if (user.authenticated == false && prop.skipAuth != true) {
@@ -726,7 +731,7 @@ export class SiRegistryGenerator {
         value: input,
       };
     } else if (prop.kind() == "map") {
-      const newMap = {};
+      const newMap: Record<string, any> = {};
       if (!Array.isArray(input)) {
         throw `Cannot generate GRPC call; map type value is not an array ${this.graphqlFieldName(
           prop,
@@ -1013,7 +1018,7 @@ export class SiRegistryGenerator {
   }
 
   makeFieldConfig(prop: Props, { inputType }: NexusBlockOptions): FieldConfig {
-    const fieldConfig = {
+    const fieldConfig: FieldConfig = {
       description: prop.label,
     };
     if (inputType) {

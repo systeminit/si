@@ -2,7 +2,6 @@ import { arg, queryField, objectType, inputObjectType } from "nexus";
 import * as jwtLib from "jsonwebtoken";
 import { AuthenticationError } from "apollo-server";
 
-import { registryGenerator } from "@/schema/registryGenerator";
 import { environment } from "@/environment";
 import { Context } from "@/.";
 
@@ -27,7 +26,7 @@ const UserLoginReply = objectType({
 const UserLogin = queryField("userLogin", {
   type: UserLoginReply,
   args: { input: arg({ type: UserLoginRequest }) },
-  async resolve(_root, { input }, { dataSources: { grpc } }: Context) {
+  async resolve(_root, { input }: any, { dataSources: { grpc } }: any) {
     const g = grpc.service("si-account");
     const grpcInput = {
       email: { value: input.email },

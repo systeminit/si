@@ -2,13 +2,12 @@ import { DataSource } from "apollo-datasource";
 import * as path from "path";
 
 import { ServiceDescription } from "@/services";
-import grpcCaller from "grpc-caller";
-import { logger } from "@/logger";
+import * as grpcCaller from "grpc-caller";
 
 export class GrpcServiceBroker {
   services: {
     [key: string]: {
-      client: grpcCaller;
+      client: any;
     };
   };
 
@@ -51,7 +50,7 @@ export class Grpc extends DataSource {
     this.broker = broker;
   }
 
-  initialize(config): void {
+  initialize(config: any): void {
     this.config = config;
   }
 

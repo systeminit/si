@@ -5,6 +5,9 @@ import { registryGenerator as sg } from "./registryGenerator";
 
 test("transformGraphqlToGrpc", done => {
   const kubernetesDeployment = registry.get("kubernetesDeploymentEntity");
+  if (kubernetesDeployment == undefined) {
+    throw "Kubernetes Deployment Entity is undefined; bug!";
+  }
   const kubernetesDeploymentCreateEntity = kubernetesDeployment.methods.attrs.find(
     v => (v.name = "create"),
   ) as PropMethod;
@@ -86,6 +89,9 @@ test("transformGraphqlToGrpc", done => {
 
 test("transformGrpcToGraphql", done => {
   const kubernetesDeployment = registry.get("kubernetesDeploymentEntity");
+  if (kubernetesDeployment == undefined) {
+    throw "Kubernetes Deployment Entity is undefined; bug!";
+  }
   const kubernetesDeploymentCreateEntity = kubernetesDeployment.methods.attrs.find(
     v => (v.name = "create"),
   ) as PropMethod;

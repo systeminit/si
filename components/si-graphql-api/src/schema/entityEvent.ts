@@ -1,10 +1,8 @@
-import { Metadata } from "grpc";
 import { arg, objectType, inputObjectType, interfaceType } from "nexus";
 import _ from "lodash";
 
 import { MQTTPubSub } from "@/mqtt-pubsub/mqtt-pubsub";
 import { protobufLoader } from "@/protobuf";
-import { NexusGenRootTypes, NexusGenArgTypes } from "@/fullstack-typegen";
 import { logger } from "@/logger";
 import { environment } from "@/environment";
 
@@ -56,8 +54,10 @@ const subscription = objectType({
   name: "Subscription",
   definition(t) {
     t.field("streamEntityEvents", {
+      // @ts-ignore
       type: "EntityEvent",
       args: {
+        // @ts-ignore
         input: arg({ type: "StreamEntityEventsRequest", required: true }),
       },
       resolve: payload => {
@@ -74,20 +74,23 @@ const subscription = objectType({
           topicParts,
         });
 
-        const protobufType = `si.${entityExtractResult[1].replace('_', '.')}.EntityEvent`;
+        const protobufType = `si.${entityExtractResult[1].replace(
+          "_",
+          ".",
+        )}.EntityEvent`;
         logger.log("warn", "about to deserialize", {
           protobufType,
         });
 
         const messageType = protobufLoader.root.lookupType(protobufType);
         const response = messageType.decode(payload["message"]);
-        return response as NexusGenRootTypes["EntityEvent"];
+        return response;
       },
       // @ts-ignore - We know it doesn't exist, but it works anyway
       subscribe: (
         // @ts-ignore - we know, its any.
         _,
-        args: NexusGenArgTypes["Subscription"]["streamEntityEvents"],
+        args: any,
       ) => {
         const input = args.input;
         // WARNING: THIS NEEDS AUTHZ!

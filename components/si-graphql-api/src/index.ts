@@ -68,7 +68,10 @@ const server = new ApolloServer({
   schema,
   dataSources,
   formatError: error => {
-    const span = tracer.getCurrentSpan();
+    let span = tracer.getCurrentSpan();
+    if (span == undefined) {
+      span = tracer.startSpan("request without root span");
+    }
     if (error && error.message) {
       span.setAttributes({
         error: true,
@@ -87,8 +90,11 @@ const server = new ApolloServer({
     console.dir(error, { depth: Infinity });
     return error;
   },
-  formatResponse: response => {
-    const span = tracer.getCurrentSpan();
+  formatResponse: (response: any) => {
+    let span = tracer.getCurrentSpan();
+    if (span == undefined) {
+      span = tracer.startSpan("request without root span");
+    }
     span.addEvent("graphql response", { response });
     console.log("-------------------RESPONSE----------------------");
     console.dir(response, { depth: Infinity });
@@ -103,7 +109,10 @@ const server = new ApolloServer({
       };
       //console.log({ connection });
     } else {
-      const span = tracer.getCurrentSpan();
+      let span = tracer.getCurrentSpan();
+      if (span == undefined) {
+        span = tracer.startSpan("request without root span");
+      }
       span.addEvent("graphql request", {
         "graphql.request.query": req.body.query,
         "graphql.request.variables": JSON.stringify(req.body.variables),
@@ -114,12 +123,20 @@ const server = new ApolloServer({
       const userContext: UserContext = { authenticated: false };
       if (token.startsWith("Bearer ")) {
         const authParts = token.split(" ");
-        const payload = jwtLib.verify(authParts[1], environment.jwtKey, {
-          audience: "https://app.systeminit.com",
-          issuer: "https://app.systeminit.com",
-          clockTolerance: 60,
-        });
-        if (payload["billingAccountId"] && payload["userId"]) {
+        const payload: string | Record<string, any> = jwtLib.verify(
+          authParts[1],
+          environment.jwtKey,
+          {
+            audience: "https://app.systeminit.com",
+            issuer: "https://app.systeminit.com",
+            clockTolerance: 60,
+          },
+        );
+        if (
+          typeof payload != "string" &&
+          payload["billingAccountId"] &&
+          payload["userId"]
+        ) {
           userContext["authenticated"] = true;
           span.setAttribute("authenticated", true);
           userContext["billingAccountId"] = payload["billingAccountId"];
