@@ -610,6 +610,7 @@ impl Db {
                 "db.storable.type_name",
                 &tracing::field::display(<I as Storable>::type_name()),
             );
+
             item.set_natural_key()?;
 
             let natural_key = item.natural_key()?.ok_or(DataError::NaturalKeyMissing)?;

@@ -55,7 +55,7 @@ export class AttrList {
   }: AttrListConstructor) {
     this.parentName = parentName || "";
     this.attrs = [];
-    this.componentTypeName = componentTypeName;
+    this.componentTypeName = componentTypeName || "";
     this.readOnly = readOnly || false;
     this.autoCreateEdits = autoCreateEdits || false;
   }
@@ -225,7 +225,6 @@ export class AttrList {
 export class PropObject extends Prop {
   baseDefaultValue: Record<string, any>;
   properties: AttrList;
-  realParentName: string;
 
   constructor({
     name,
@@ -242,9 +241,9 @@ export class PropObject extends Prop {
   }) {
     super({ name, label, componentTypeName });
     this.baseDefaultValue = defaultValue || {};
-    this.parentName = parentName;
+    this.parentName = parentName || "";
     this.properties = new AttrList({
-      parentName: `${pascalCase(parentName)}${pascalCase(name)}`,
+      parentName: `${pascalCase(this.parentName)}${pascalCase(name)}`,
       componentTypeName: this.componentTypeName,
     });
   }
@@ -272,7 +271,6 @@ export class PropMethod extends Prop {
   baseDefaultValue: Record<string, any>;
   request: PropObject;
   reply: PropObject;
-  realParentName: string;
   mutation: boolean;
   skipAuth: boolean;
   isPrivate: boolean;
@@ -297,7 +295,7 @@ export class PropMethod extends Prop {
   }) {
     super({ name, label, componentTypeName });
     this.baseDefaultValue = defaultValue || {};
-    this.parentName = parentName;
+    this.parentName = parentName || "";
     this.request = new PropObject({
       name: `${pascalCase(name)}Request`,
       label: `${label} Request`,

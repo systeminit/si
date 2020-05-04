@@ -145,6 +145,7 @@ export class ProtobufFormatter {
       // @ts-ignore
       throw `Unknown property type for rendering protobuf! Fix me: ${prop.kind()}`;
     }
+    return "unreachable!";
   }
 
   protobufDefinitionForProp(prop: Props, inputNumber: number): string {
@@ -185,6 +186,7 @@ export class ProtobufFormatter {
     }
 
     for (const bag of prop.bagNames()) {
+      // @ts-ignore
       for (const childProp of prop[bag].attrs) {
         if (childProp instanceof PropObject || childProp instanceof PropEnum) {
           results.push(this.protobufMessageForPropObject(childProp));
@@ -198,7 +200,9 @@ export class ProtobufFormatter {
 
       let universalBase = 0;
       let customBase = 1000;
+      // @ts-ignore
       for (const index in prop[bag].attrs) {
+        // @ts-ignore
         const p = prop[bag].attrs[index];
 
         if (p.universal) {
@@ -249,6 +253,7 @@ export class ProtobufFormatter {
 
       if (this.recurseKinds.includes(prop.kind())) {
         for (const bag of prop.bagNames()) {
+          // @ts-ignore
           for (const internalProp of prop[bag].attrs) {
             const newSet = this.protobufImportWalk([internalProp]);
             for (const item of newSet.values()) {
@@ -273,23 +278,3 @@ export class ProtobufFormatter {
     );
   }
 }
-
-//export class CodegenProtobuf {
-//  component: Component;
-//
-//  constructor(component: Component) {
-//    this.component = component;
-//  }
-//
-//  generateString(): string {
-//    return ejs.render(
-//      "<%- include('protobuf/full', { component: component }) %>",
-//      {
-//        component: this.component,
-//      },
-//      {
-//        filename: __filename,
-//      },
-//    );
-//  }
-//}

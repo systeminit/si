@@ -1,8 +1,13 @@
 module.exports = {
   transpileDependencies: ["vuetify"],
+  configureWebpack: {
+    resolve: {
+      symlinks: false,
+    },
+  },
   pluginOptions: {
     apollo: {
-      lintGQL: true,
+      lintGQL: false,
     },
   },
 };

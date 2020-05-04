@@ -132,7 +132,7 @@ registry.system({
         });
         p.reply.properties.addLink({
           name: "item",
-          label: `${this.displayTypeName} Item`,
+          label: `Billing Account Item`,
           options(p: PropLink) {
             p.lookup = {
               typeName: "billingAccount",

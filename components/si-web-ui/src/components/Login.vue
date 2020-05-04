@@ -6,9 +6,7 @@
       <v-btn to="signup" color="accent">Sign Up</v-btn>
     </v-toolbar>
     <v-card-text>
-      <v-alert type="warning" v-if="error">
-        Sign in failed; try again?
-      </v-alert>
+      <v-alert type="warning" v-if="error">Sign in failed; try again?</v-alert>
       <v-form>
         <v-combobox
           v-model="billingAccountSelect"

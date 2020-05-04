@@ -1,5 +1,6 @@
 import { PropObject, PropMethod } from "./attrList";
 import { AssociationList } from "./systemObject/associations";
+import { SiGraphql } from "./systemObject/graphql";
 export declare type ObjectTypes = BaseObject | SystemObject | ComponentObject | EntityObject | EntityEventObject;
 export interface BaseObjectConstructor {
     typeName: BaseObject["typeName"];
@@ -19,13 +20,16 @@ export declare class BaseObject {
     rootProp: PropObject;
     methodsProp: PropObject;
     associations: AssociationList;
+    private internalGraphql;
     constructor({ typeName, displayTypeName, serviceName, siPathName, }: BaseObjectConstructor);
     get fields(): BaseObject["rootProp"]["properties"];
     get methods(): BaseObject["methodsProp"]["properties"];
+    get graphql(): SiGraphql;
     kind(): string;
 }
 export declare class SystemObject extends BaseObject {
     naturalKey: string;
+    migrateable: boolean;
     constructor(args: BaseObjectConstructor);
     setSystemObjectDefaults(): void;
     kind(): string;

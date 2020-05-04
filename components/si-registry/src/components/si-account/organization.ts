@@ -12,6 +12,12 @@ registry.system({
       fromFieldPath: ["siProperties", "billingAccountId"],
       typeName: "billingAccount",
     });
+
+    c.associations.hasMany({
+      fieldName: "workspaces",
+      typeName: "workspace",
+    });
+
     c.fields.addObject({
       name: "siProperties",
       label: "SI Internal Properties",

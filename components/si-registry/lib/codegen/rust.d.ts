@@ -10,19 +10,29 @@ export declare class RustFormatter {
     constructor(systemObject: RustFormatter["systemObject"]);
     structName(): string;
     modelName(): string;
+    componentConstraintsName(): string;
+    entityName(): string;
     typeName(): string;
     errorType(): string;
     hasCreateMethod(): boolean;
+    isComponentObject(): boolean;
+    isEntityObject(): boolean;
+    isEntityEventObject(): boolean;
     implListRequestType(renderOptions?: RustTypeAsPropOptions): string;
     implListReplyType(renderOptions?: RustTypeAsPropOptions): string;
     implServiceRequestType(propMethod: PropPrelude.PropMethod, renderOptions?: RustTypeAsPropOptions): string;
     implServiceReplyType(propMethod: PropPrelude.PropMethod, renderOptions?: RustTypeAsPropOptions): string;
     implServiceMethodName(propMethod: PropPrelude.PropMethod | PropPrelude.PropAction): string;
-    rustFieldNameForProp(prop: Props): string;
+    implServiceCommonCreate(propMethod: PropPrelude.PropMethod): string;
+    implServiceEntityCreate(propMethod: PropPrelude.PropMethod): string;
+    implServiceGet(propMethod: PropPrelude.PropMethod): string;
+    implServiceList(propMethod: PropPrelude.PropMethod): string;
+    implServiceComponentPick(propMethod: PropPrelude.PropMethod): string;
+    implServiceCustomMethod(propMethod: PropPrelude.PropMethod): string;
     implServiceAuth(propMethod: PropPrelude.PropMethod): string;
     implServiceAuthCall(propMethod: PropPrelude.PropMethod): string;
-    implServiceGetMethodBody(propMethod: PropPrelude.PropMethod): string;
     serviceMethods(): string;
+    rustFieldNameForProp(prop: Props): string;
     rustTypeForProp(prop: Props, renderOptions?: RustTypeAsPropOptions): string;
     implCreateNewArgs(): string;
     implCreatePassNewArgs(): string;
@@ -47,7 +57,9 @@ export declare class RustFormatterService {
     implServiceStructConstructorReturn(): string;
     implServiceNewConstructorArgs(): string;
     implServiceTraitName(): string;
+    implServiceMigrate(): string;
     hasComponents(): boolean;
+    hasMigratables(): boolean;
 }
 export declare class CodegenRust {
     serviceName: string;

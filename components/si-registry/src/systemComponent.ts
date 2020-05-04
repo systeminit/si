@@ -3,6 +3,7 @@ import { PropNumber } from "./prop/number";
 import { PropObject, PropMethod, PropAction } from "./attrList";
 import { camelCase } from "change-case";
 import { AssociationList } from "./systemObject/associations";
+import { SiGraphql } from "./systemObject/graphql";
 
 export type ObjectTypes =
   | BaseObject
@@ -33,6 +34,8 @@ export class BaseObject {
   methodsProp: PropObject;
   associations: AssociationList;
 
+  private internalGraphql: undefined | SiGraphql;
+
   constructor({
     typeName,
     displayTypeName,
@@ -56,6 +59,7 @@ export class BaseObject {
       parentName: "",
     });
     this.associations = new AssociationList();
+    this.internalGraphql = undefined;
   }
 
   get fields(): BaseObject["rootProp"]["properties"] {
@@ -64,6 +68,13 @@ export class BaseObject {
 
   get methods(): BaseObject["methodsProp"]["properties"] {
     return this.methodsProp.properties;
+  }
+
+  get graphql(): SiGraphql {
+    if (this.internalGraphql == undefined) {
+      this.internalGraphql = new SiGraphql(this);
+    }
+    return this.internalGraphql;
   }
 
   kind(): string {

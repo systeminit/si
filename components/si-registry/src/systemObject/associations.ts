@@ -153,6 +153,22 @@ export class AssociationList {
     return this.associations;
   }
 
+  getByFieldName(fieldName: string): Associations {
+    const result = this.associations.find(a => a.fieldName == fieldName);
+    if (result == undefined) {
+      throw `Cannot get association field ${fieldName}; it does not exist on the object`;
+    }
+    return result;
+  }
+
+  getByTypeName(typeName: string): Associations {
+    const result = this.associations.find(a => a.typeName == typeName);
+    if (result == undefined) {
+      throw `Cannot get association type ${typeName}; it does not exist on the object`;
+    }
+    return result;
+  }
+
   belongsTo(args: BelongsToConstructor): BelongsTo {
     const assoc = new BelongsTo(args);
     this.associations.push(assoc);

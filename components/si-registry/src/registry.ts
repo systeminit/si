@@ -22,7 +22,7 @@ export class Registry {
     this.objects = [];
   }
 
-  get(typeName: string): ObjectTypes | undefined {
+  get(typeName: string): ObjectTypes {
     const result = this.objects.find(v => v.typeName == typeName);
     if (result) {
       return result;
@@ -40,7 +40,7 @@ export class Registry {
     }
     const arrayNames = [];
     for (const name of names.values()) {
-      arrayNames.push(name);
+      arrayNames.push(`${name}`);
     }
     return arrayNames;
   }
@@ -74,6 +74,7 @@ export class Registry {
     }
     for (let i = 1; i < lookup.names.length; i++) {
       const lookupName = lookup.names[i];
+      // @ts-ignore
       const lookupResult = returnProp["properties"].getEntry(lookupName);
       if (!lookupResult) {
         throw `Cannot find prop "${lookupName}" on ${returnProp.name}`;

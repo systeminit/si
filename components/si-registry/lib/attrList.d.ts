@@ -53,7 +53,6 @@ export declare class AttrList {
 export declare class PropObject extends Prop {
     baseDefaultValue: Record<string, any>;
     properties: AttrList;
-    realParentName: string;
     constructor({ name, label, componentTypeName, parentName, defaultValue, }: {
         name: Prop["name"];
         label: Prop["label"];
@@ -70,7 +69,6 @@ export declare class PropMethod extends Prop {
     baseDefaultValue: Record<string, any>;
     request: PropObject;
     reply: PropObject;
-    realParentName: string;
     mutation: boolean;
     skipAuth: boolean;
     isPrivate: boolean;

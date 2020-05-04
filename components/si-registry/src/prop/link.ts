@@ -2,12 +2,11 @@ import { Prop, PropValue } from "../prop";
 import { PropLookup, registry } from "../registry";
 import { Props } from "../attrList";
 
-import { snakeCase } from "change-case";
 import { ObjectTypes } from "../systemComponent";
 
 export class PropLink extends Prop {
   baseDefaultValue: string;
-  lookup: PropLookup;
+  lookup: undefined | PropLookup;
 
   constructor({
     name,
@@ -29,10 +28,16 @@ export class PropLink extends Prop {
   }
 
   lookupObject(): ObjectTypes {
+    if (this.lookup == undefined) {
+      throw "Link must have a lookup object defined on `p.lookup`";
+    }
     return registry.get(this.lookup.typeName);
   }
 
   lookupMyself(): Props {
+    if (this.lookup == undefined) {
+      throw "Link must have a lookup object defined on `p.lookup`";
+    }
     return registry.lookupProp(this.lookup);
   }
 

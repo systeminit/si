@@ -5,6 +5,7 @@ import { ApolloQueryResult } from "apollo-client";
 import VueApollo from "vue-apollo";
 
 import getProfile from "@/graphql/queries/getProfile.gql";
+import { registry } from "si-registry";
 
 /**
  * BillingAccountList handles the list of BillingAccounts that
@@ -90,21 +91,35 @@ class Authentication {
       throw "Authentication not initialized";
     }
     let client = this.apollo.defaultClient;
-    let userReply: ApolloQueryResult<Query> = await client.query({
-      query: getProfile,
-      variables: { userId },
+    let user = registry.get("user");
+    let userQuery = user.graphql.query({
+      methodName: "get",
+      associations: {
+        user: ["billingAccount"],
+        billingAccount: ["organizations"],
+        organization: ["workspaces"],
+      },
     });
-    if (
-      userReply.data &&
-      userReply.data.getUser &&
-      userReply.data.getUser.user
-    ) {
-      this.profile = userReply.data.getUser.user;
-      this.loggedIn = true;
-      localStorage.setItem("profile", JSON.stringify(this.profile));
-    } else {
-      throw "User query did not return data for the user profile";
-    }
+    const userReply: ApolloQueryResult<Query> = await client.query({
+      query: userQuery,
+      variables: { id: userId },
+    });
+    const data = user.graphql.validateResult({
+      methodName: "get",
+      data: userReply,
+    });
+    this.profile = {
+      billingAccount: data.object.associations.billingAccount.object,
+      workspaces:
+        data.object.associations.billingAccount.object.associations
+          .organizations.items[0].associations.workspaces.items,
+      workspaceDefault:
+        data.object.associations.billingAccount.object.associations
+          .organizations.items[0].associations.workspaces.items[0],
+      ...data.object,
+    };
+    this.loggedIn = true;
+    localStorage.setItem("profile", JSON.stringify(this.profile));
   }
 
   async logout(): Promise<void> {
@@ -121,16 +136,7 @@ class Authentication {
   }
 
   getCurrentWorkspace(): Workspace {
-    const organization = (this.profile &&
-      this.profile.billingAccount &&
-      this.profile.billingAccount.organizations &&
-      this.profile.billingAccount.organizations.items &&
-      this.profile.billingAccount.organizations.items[0]) || { name: "busted" };
-    const workspace = (organization &&
-      organization.workspaces &&
-      organization.workspaces.items &&
-      organization.workspaces.items[0]) || { name: "busted" };
-    return workspace;
+    return this.profile.workspaceDefault;
   }
 }
 

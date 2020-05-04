@@ -4,7 +4,7 @@ import { Props } from "../attrList";
 import { ObjectTypes } from "../systemComponent";
 export declare class PropLink extends Prop {
     baseDefaultValue: string;
-    lookup: PropLookup;
+    lookup: undefined | PropLookup;
     constructor({ name, label, componentTypeName, rules, required, defaultValue, }: {
         name: Prop["name"];
         label: Prop["label"];

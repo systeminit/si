@@ -7,7 +7,7 @@ export interface PropLookup {
 export declare class Registry {
     objects: ObjectTypes[];
     constructor();
-    get(typeName: string): ObjectTypes | undefined;
+    get(typeName: string): ObjectTypes;
     serviceNames(): string[];
     getObjectsForServiceName(serviceName: string): ObjectTypes[];
     lookupProp(lookup: PropLookup): Props;

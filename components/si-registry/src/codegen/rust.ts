@@ -46,7 +46,11 @@ export class RustFormatter {
   }
 
   entityName(): string {
+    if (this.systemObject.kind() == "baseObject") {
+      throw "You asked for an entity name on a baseObject; this is a bug!";
+    }
     return `crate::protobuf::${pascalCase(
+      // @ts-ignore
       this.systemObject.baseTypeName,
     )}Entity`;
   }
@@ -187,17 +191,6 @@ export class RustFormatter {
     )}").await?;`;
   }
 
-  implServiceGetMethodBody(propMethod: PropPrelude.PropMethod): string {
-    const results = [];
-    for (const field of propMethod.request.properties.attrs) {
-      if (field.required) {
-        const rustVariableName = this.rustFieldNameForProp(field);
-      } else {
-      }
-    }
-    return results.join("\n");
-  }
-
   serviceMethods(): string {
     const results = [];
     const propMethods = this.systemObject.methods.attrs.sort((a, b) =>
@@ -290,19 +283,24 @@ export class RustFormatter {
       throw `Cannot generate type for ${prop.name} kind ${prop.kind()} - Bug!`;
     }
     if (reference) {
+      // @ts-ignore - we do assign it, you just cant tell
       if (typeName == "String") {
         typeName = "&str";
       } else {
+        // @ts-ignore - we do assign it, you just cant tell
         typeName = `&${typeName}`;
       }
     }
     if (prop.repeated) {
+      // @ts-ignore - we do assign it, you just cant tell
       typeName = `Vec<${typeName}>`;
     } else {
       if (option) {
+        // @ts-ignore - we do assign it, you just cant tell
         typeName = `Option<${typeName}>`;
       }
     }
+    // @ts-ignore - we do assign it, you just cant tell
     return typeName;
   }
 

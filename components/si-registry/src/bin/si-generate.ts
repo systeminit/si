@@ -9,9 +9,9 @@ import Listr, { ListrRendererValue } from "listr";
 import "../loader";
 import fs from "fs";
 import { promisify } from "util";
-//import childProcess from "child_process";
-//import util from "util";
-//const execCmd = util.promisify(childProcess.exec);
+import childProcess from "child_process";
+import util from "util";
+const execCmd = util.promisify(childProcess.exec);
 
 console.log(
   chalk.greenBright(figlet.textSync("Lets go!", { horizontalLayout: "full" })),
@@ -47,6 +47,12 @@ function main(program: program.Command): void {
           return generateRust();
         },
       },
+      {
+        title: `Generating ${chalk.keyword("yellow")("Javascript Library")}`,
+        task: (): Listr => {
+          return generateJavascriptLibrary();
+        },
+      },
     ],
     {
       renderer,
@@ -56,6 +62,17 @@ function main(program: program.Command): void {
   tasks.run().catch((err: Error): void => {
     console.log(err);
   });
+}
+
+function generateJavascriptLibrary(): Listr {
+  const tasks = [];
+  tasks.push({
+    title: `Javascript library for si-registry`,
+    task: async () => {
+      await execCmd("npm run build");
+    },
+  });
+  return new Listr(tasks, { concurrent: true });
 }
 
 function generateProtobuf(): Listr {

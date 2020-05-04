@@ -24,7 +24,7 @@ export class PropEnum extends Prop {
   }) {
     super({ name, label, componentTypeName, rules, required });
     this.variants = [];
-    this.parentName = parentName;
+    this.parentName = parentName || "";
     this.baseDefaultValue = defaultValue || "";
   }
 

@@ -117,10 +117,14 @@ export class SiRegistryGenerator {
             }
 
             if (association.kind() == "belongsTo") {
+              const methodName = `${pascalCase(
+                association.typeName,
+              )}${pascalCase(association.methodName)}`;
+
               // This is a map to the "get" method
               t.field(association.fieldName, {
                 // @ts-ignore
-                type: pascalCase(association.typeName),
+                type: `${methodName}Reply`,
                 description: returnType.displayTypeName,
                 async resolve(_root, _input, context: any) {
                   const trace = traceApi.trace.getTracer("si-graphql-api");
@@ -187,7 +191,7 @@ export class SiRegistryGenerator {
                   );
 
                   span.end();
-                  return result.object;
+                  return result;
                 },
               });
             } else if (association.kind() == "hasMany") {

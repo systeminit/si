@@ -382,7 +382,7 @@ impl si_data::Storable for crate::protobuf::KubernetesDeploymentEntityEvent {
     }
 
     fn set_type_name(&mut self) {
-        if self.si_storable.is_some() {
+        if self.si_storable.is_none() {
             self.si_storable = Some(Default::default());
         }
 
@@ -430,7 +430,7 @@ impl si_data::Storable for crate::protobuf::KubernetesDeploymentEntityEvent {
                 .ok_or(si_data::DataError::RequiredField("name".to_string()))?,
         );
 
-        if self.si_storable.is_some() {
+        if self.si_storable.is_none() {
             self.si_storable = Some(Default::default());
         }
 

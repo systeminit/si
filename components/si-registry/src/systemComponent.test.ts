@@ -10,6 +10,7 @@ test("create component and entity", done => {
     typeName: "kubernetesDeployment",
     displayTypeName: "Kubernetes Deployment Object",
     siPathName: "si-kubernetes",
+    serviceName: "kubernetes",
     options(c) {
       c.constraints.addText({
         name: "mybutt",
@@ -26,6 +27,7 @@ test("createSystemComponent", done => {
     typeName: "billingAccount",
     displayTypeName: "Billing Account",
     siPathName: "si-account",
+    serviceName: "whatwhat",
   });
 
   c.fields.addText({
@@ -40,11 +42,11 @@ test("createSystemComponent", done => {
     name: "create",
     label: "Create a new billing account",
     options(p: PropMethod) {
-      p.request.addText({
+      p.request.properties.addText({
         name: "name",
         label: "Billing Account Name",
       });
-      p.reply.addLink({
+      p.reply.properties.addLink({
         name: "billingAccount",
         label: "Billing Account",
         options(p: PropLink) {

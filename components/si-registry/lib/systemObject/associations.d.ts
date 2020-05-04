@@ -57,6 +57,8 @@ export declare class InList extends Association {
 export declare class AssociationList {
     associations: Associations[];
     all(): AssociationList["associations"];
+    getByFieldName(fieldName: string): Associations;
+    getByTypeName(typeName: string): Associations;
     belongsTo(args: BelongsToConstructor): BelongsTo;
     hasMany(args: HasManyConstructor): HasMany;
     hasList(args: HasListConstructor): HasMany;
