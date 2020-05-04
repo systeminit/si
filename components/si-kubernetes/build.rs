@@ -16,7 +16,6 @@ fn main() {
         .extern_path(".si.data", "::si_data::protobuf")
         .extern_path(".si.account", "::si_account::protobuf")
         .extern_path(".si.cea", "::si_cea::protobuf")
-        .extern_path(".si.data", "::si_data::data")
         .type_attribute(".", "#[derive(serde::Serialize, serde::Deserialize)]")
         .type_attribute(".", "#[serde(rename_all = \"camelCase\")]")
         .type_attribute("Entity", "#[serde(default)]")

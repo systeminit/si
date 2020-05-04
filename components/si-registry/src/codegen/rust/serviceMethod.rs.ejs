@@ -73,6 +73,19 @@ async fn <%- fmt.implServiceMethodName(propMethod) %>(
         let list_reply = <%- fmt.structName() %>::list(&self.db, inner).await?; 
         info!(?list_reply);
         Ok(tonic::Response::new(<%- fmt.implServiceReplyType(propMethod, { option: false, reference: false }) %>{ <%- fmt.implServiceMethodListResultToReply() %> })) 
+        <%_ } else if (propMethod.name == "pick") { _%>
+          <%- fmt.implServiceAuth(propMethod) %>
+          let inner = request.into_inner();
+          let constraints = inner.constraints.ok_or(si_data::DataError::RequiredField("constraints".to_string()))?;
+
+          let (implicit_constraints, component) = <%- fmt.structName() %>::pick(&self.db, &constraints).await?;
+          info!(?implicit_constraints, ?component);
+          Ok(tonic::Response::new(<%- fmt.implServiceReplyType(propMethod, { option: false, reference: false }) %>
+              {
+                  implicit_constraints: Some(implicit_constraints),
+                  component: Some(component),
+              },
+          ))
         <%_ } else { _%>
         <%- fmt.implServiceAuth(propMethod) %>
         let inner = request.into_inner();

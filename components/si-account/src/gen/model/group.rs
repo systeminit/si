@@ -1,8 +1,106 @@
 // Auth-generated code!
 // No touchy!
 
-use si_data;
-use uuid;
+impl crate::protobuf::Group {
+    pub fn new(
+        name: Option<String>,
+        display_name: Option<String>,
+        user_ids: Vec<String>,
+        si_properties: Option<crate::protobuf::GroupSiProperties>,
+        capabilities: Vec<crate::protobuf::Capability>,
+    ) -> si_data::Result<crate::protobuf::Group> {
+        let mut si_storable = si_data::protobuf::DataStorable::default();
+        si_properties
+            .as_ref()
+            .ok_or(si_data::DataError::ValidationError("siProperties".into()))?;
+        let billing_account_id = si_properties
+            .as_ref()
+            .unwrap()
+            .billing_account_id
+            .as_ref()
+            .ok_or(si_data::DataError::ValidationError(
+                "siProperties.billingAccountId".into(),
+            ))?;
+        si_storable.add_to_tenant_ids(billing_account_id);
+
+        let mut result_obj = crate::protobuf::Group {
+            ..Default::default()
+        };
+        result_obj.name = name;
+        result_obj.display_name = display_name;
+        result_obj.user_ids = user_ids;
+        result_obj.si_properties = si_properties;
+        result_obj.capabilities = capabilities;
+        result_obj.si_storable = Some(si_storable);
+
+        Ok(result_obj)
+    }
+
+    pub async fn create(
+        db: &si_data::Db,
+        name: Option<String>,
+        display_name: Option<String>,
+        user_ids: Vec<String>,
+        si_properties: Option<crate::protobuf::GroupSiProperties>,
+        capabilities: Vec<crate::protobuf::Capability>,
+    ) -> si_data::Result<crate::protobuf::Group> {
+        let mut result_obj =
+            crate::protobuf::Group::new(name, display_name, user_ids, si_properties, capabilities)?;
+        db.validate_and_insert_as_new(&mut result_obj).await?;
+        Ok(result_obj)
+    }
+
+    pub async fn get(db: &si_data::Db, id: &str) -> si_data::Result<crate::protobuf::Group> {
+        let obj = db.get(id).await?;
+        Ok(obj)
+    }
+
+    pub async fn get_by_natural_key(
+        db: &si_data::Db,
+        natural_key: &str,
+    ) -> si_data::Result<crate::protobuf::Group> {
+        let obj = db.lookup_by_natural_key(natural_key).await?;
+        Ok(obj)
+    }
+
+    pub async fn save(&self, db: &si_data::Db) -> si_data::Result<()> {
+        db.upsert(self).await?;
+        Ok(())
+    }
+
+    pub async fn list(
+        db: &si_data::Db,
+        list_request: crate::protobuf::GroupListRequest,
+    ) -> si_data::Result<si_data::ListResult<crate::protobuf::Group>> {
+        let result = match list_request.page_token {
+            Some(token) => db.list_by_page_token(token).await?,
+            None => {
+                let page_size = match list_request.page_size {
+                    Some(page_size) => page_size,
+                    None => 10,
+                };
+                let order_by = match list_request.order_by {
+                    Some(order_by) => order_by,
+                    None => "".to_string(), // The empty string is the signal for a default, thanks protobuf history
+                };
+                let contained_within = match list_request.scope_by_tenant_id {
+                    Some(contained_within) => contained_within,
+                    None => return Err(si_data::DataError::MissingScopeByTenantId),
+                };
+                db.list(
+                    &list_request.query,
+                    page_size,
+                    order_by,
+                    list_request.order_by_direction,
+                    contained_within,
+                    "",
+                )
+                .await?
+            }
+        };
+        Ok(result)
+    }
+}
 
 impl si_data::Storable for crate::protobuf::Group {
     /// # Panics
@@ -34,7 +132,7 @@ impl si_data::Storable for crate::protobuf::Group {
         self.set_id(format!(
             "{}:{}",
             <Self as si_data::Storable>::type_name(),
-            uuid::Uuid::new_v4(),
+            si_data::uuid_string(),
         ));
     }
 
@@ -133,108 +231,5 @@ impl si_data::Storable for crate::protobuf::Group {
             "siStorable.naturalKey",
             "siProperties.billingAccountId",
         ]
-    }
-}
-
-impl crate::protobuf::Group {
-    pub async fn get(db: &si_data::Db, id: &str) -> si_data::Result<crate::protobuf::Group> {
-        let obj = db.get(id).await?;
-        Ok(obj)
-    }
-
-    pub async fn get_by_natural_key(
-        db: &si_data::Db,
-        natural_key: &str,
-    ) -> si_data::Result<crate::protobuf::Group> {
-        let obj = db.lookup_by_natural_key(natural_key).await?;
-        Ok(obj)
-    }
-
-    pub async fn save(&self, db: &si_data::Db) -> si_data::Result<()> {
-        db.upsert(self).await?;
-        Ok(())
-    }
-
-    pub async fn list(
-        db: &si_data::Db,
-        list_request: crate::protobuf::GroupListRequest,
-    ) -> si_data::Result<si_data::ListResult<crate::protobuf::Group>> {
-        let result = match list_request.page_token {
-            Some(token) => db.list_by_page_token(token).await?,
-            None => {
-                let page_size = match list_request.page_size {
-                    Some(page_size) => page_size,
-                    None => 10,
-                };
-                let order_by = match list_request.order_by {
-                    Some(order_by) => order_by,
-                    None => "".to_string(), // The empty string is the signal for a default, thanks protobuf history
-                };
-                let contained_within = match list_request.scope_by_tenant_id {
-                    Some(contained_within) => contained_within,
-                    None => return Err(si_data::DataError::MissingScopeByTenantId),
-                };
-                db.list(
-                    &list_request.query,
-                    page_size,
-                    order_by,
-                    list_request.order_by_direction,
-                    contained_within,
-                    "",
-                )
-                .await?
-            }
-        };
-        Ok(result)
-    }
-}
-
-impl crate::protobuf::Group {
-    pub fn new(
-        name: Option<String>,
-        display_name: Option<String>,
-        user_ids: Vec<String>,
-        si_properties: Option<crate::protobuf::GroupSiProperties>,
-        capabilities: Vec<crate::protobuf::Capability>,
-    ) -> si_data::Result<crate::protobuf::Group> {
-        let mut si_storable = si_data::protobuf::DataStorable::default();
-        si_properties
-            .as_ref()
-            .ok_or(si_data::DataError::ValidationError("siProperties".into()))?;
-        let billing_account_id = si_properties
-            .as_ref()
-            .unwrap()
-            .billing_account_id
-            .as_ref()
-            .ok_or(si_data::DataError::ValidationError(
-                "siProperties.billingAccountId".into(),
-            ))?;
-        si_storable.add_to_tenant_ids(billing_account_id);
-
-        let mut result_obj = crate::protobuf::Group {
-            ..Default::default()
-        };
-        result_obj.name = name;
-        result_obj.display_name = display_name;
-        result_obj.user_ids = user_ids;
-        result_obj.si_properties = si_properties;
-        result_obj.capabilities = capabilities;
-        result_obj.si_storable = Some(si_storable);
-
-        Ok(result_obj)
-    }
-
-    pub async fn create(
-        db: &si_data::Db,
-        name: Option<String>,
-        display_name: Option<String>,
-        user_ids: Vec<String>,
-        si_properties: Option<crate::protobuf::GroupSiProperties>,
-        capabilities: Vec<crate::protobuf::Capability>,
-    ) -> si_data::Result<crate::protobuf::Group> {
-        let mut result_obj =
-            crate::protobuf::Group::new(name, display_name, user_ids, si_properties, capabilities)?;
-        db.validate_and_insert_as_new(&mut result_obj).await?;
-        Ok(result_obj)
     }
 }

@@ -6,5 +6,6 @@ pub mod gen;
 
 pub mod authorize;
 pub mod error;
-pub mod migrate;
 pub mod model;
+
+pub use protobuf::{BillingAccount, Integration, IntegrationService, Workspace};

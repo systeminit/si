@@ -1,8 +1,5 @@
 use anyhow::{Context, Result};
-use opentelemetry::{
-    api::{Provider, Sampler},
-    sdk,
-};
+use opentelemetry::{api::Provider, sdk};
 use opentelemetry_jaeger;
 use si_data::Db;
 use si_settings::Settings;
@@ -11,11 +8,9 @@ use tonic::transport::Server;
 use tracing;
 use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::{self, fmt, EnvFilter, FmtSubscriber, Registry};
+use tracing_subscriber::{self, fmt, EnvFilter, Registry};
 
-use si_account::{
-    gen::service::Service, migrate::migrate, protobuf::account_server::AccountServer,
-};
+use si_account::{gen::service::Service, protobuf::account_server::AccountServer};
 
 async fn run() -> Result<()> {
     let settings = Settings::new()?;
@@ -24,10 +19,9 @@ async fn run() -> Result<()> {
     println!("*** Creating indexes ***");
     db.create_indexes().await?;
 
-    println!("*** Migrating so much right now ***");
-    migrate(&db).await?;
-
     let service = Service::new(db);
+    println!("*** Migrating so much right now ***");
+    service.migrate().await?;
 
     let listen_string = format!("0.0.0.0:{}", settings.service.port);
 

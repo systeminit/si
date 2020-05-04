@@ -2,7 +2,7 @@ use crate::protobuf::KubernetesDeploymentEntityPropertiesKubernetesObject;
 use si_cea::entity::prelude::*;
 use std::convert::TryFrom;
 
-pub use crate::togen::model::kubernetes_deployment_entity::KubernetesDeploymentEntity;
+pub use crate::protobuf::KubernetesDeploymentEntity;
 
 impl TryFrom<&KubernetesDeploymentEntityPropertiesKubernetesObject> for String {
     type Error = CeaError;

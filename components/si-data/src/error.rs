@@ -53,6 +53,8 @@ pub enum DataError {
     Utf8(#[from] std::str::Utf8Error),
     #[error("Missing a scope by tenant id for a list operation")]
     MissingScopeByTenantId,
+    #[error("error picking a component: {0}")]
+    PickComponent(String),
 }
 
 impl From<DataError> for tonic::Status {

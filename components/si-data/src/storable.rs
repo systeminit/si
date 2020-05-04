@@ -1,6 +1,6 @@
 use crate::error::{DataError, Result};
 
-pub use crate::data::DataStorable;
+pub use crate::protobuf::DataStorable;
 
 pub enum Reference<'a> {
     HasOne(&'static str, &'a str),

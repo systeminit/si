@@ -43,20 +43,21 @@ impl AgentClient {
     // that people can run specific agents for their billing account. We can
     // do that by just putting it in the EntityEvent stuct, and if it is
     // filled in, we use it.
-    fn generate_topic(&self, entity_event: &impl EntityEvent) -> String {
+    fn generate_topic(&self, entity_event: &impl EntityEvent) -> CeaResult<String> {
         let topic = format!(
             "{}/{}/{}/{}/{}/{}/{}/{}/{}",
-            entity_event.billing_account_id(),
-            entity_event.organization_id(),
-            entity_event.workspace_id(),
-            entity_event.integration_id(),
-            entity_event.integration_service_id(),
-            entity_event.entity_id(),
+            entity_event.billing_account_id()?,
+            entity_event.organization_id()?,
+            entity_event.workspace_id()?,
+            entity_event.integration_id()?,
+            entity_event.integration_service_id()?,
+            entity_event.entity_id()?,
             "action",
-            entity_event.action_name(),
-            entity_event.id(),
+            entity_event.action_name()?,
+            entity_event.id()?,
         );
-        topic
+
+        Ok(topic)
     }
 
     pub async fn send(&self, entity_event: &impl EntityEvent) -> CeaResult<()> {
@@ -65,9 +66,9 @@ impl AgentClient {
             entity_event.encode(&mut payload)?;
             // We are very close to the broker - so no need to pretend that we are at
             // risk of not receiving our messages. Right?
-            let topic = self.generate_topic(entity_event);
+            let topic = self.generate_topic(entity_event)?;
             debug!(?topic, "topic");
-            let msg = Message::new(self.generate_topic(entity_event), payload, 0);
+            let msg = Message::new(self.generate_topic(entity_event)?, payload, 0);
             self.mqtt.publish(msg).compat().await?;
             Ok(())
         }

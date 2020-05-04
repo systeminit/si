@@ -49,6 +49,12 @@ impl Service {
     pub fn db(&self) -> &si_data::Db {
         &self.db
     }
+
+    pub async fn migrate(&self) -> si_data::Result<()> {
+        crate::protobuf::Integration::migrate(&self.db).await?;
+        crate::protobuf::IntegrationService::migrate(&self.db).await?;
+        Ok(())
+    }
 }
 
 #[tonic::async_trait]
@@ -1278,14 +1284,14 @@ impl crate::protobuf::account_server::Account for Service {
             let inner = request.into_inner();
             let name = inner.name;
             let display_name = inner.display_name;
-            let version = inner.version;
             let options = inner.options;
+            let si_properties = inner.si_properties;
             let reply = crate::protobuf::Integration::create(
                 &self.db,
                 name,
                 display_name,
-                version,
                 options,
+                si_properties,
             )
             .await?;
             info!(?reply);

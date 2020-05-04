@@ -28,7 +28,7 @@ impl si_data::Storable for <%- fmt.structName() %> {
         self.set_id(format!(
             "{}:{}",
             <Self as si_data::Storable>::type_name(),
-            uuid::Uuid::new_v4(),
+            si_data::uuid_string(),
         ));
     }
 

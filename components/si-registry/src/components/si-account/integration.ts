@@ -15,6 +15,8 @@ registry.system({
   siPathName: "si-account",
   serviceName: "account",
   options(c: SystemObject) {
+    c.migrateable = true;
+
     c.associations.belongsTo({
       fromFieldPath: ["siProperties", "billingAccountId"],
       typeName: "billingAccount",
@@ -22,15 +24,6 @@ registry.system({
     c.associations.hasMany({
       fieldName: "integrationInstances",
       typeName: "integrationInstance",
-    });
-    c.fields.addNumber({
-      name: "version",
-      label: "The version of this integration",
-      options(p: PropNumber) {
-        p.required = true;
-        p.hidden = true;
-        p.numberKind = "int32";
-      },
     });
     c.fields.addObject({
       name: "options",
@@ -61,6 +54,22 @@ registry.system({
         });
       },
     });
+    c.fields.addObject({
+      name: "siProperties",
+      label: "SI Internal Properties",
+      options(p: PropObject) {
+        p.required = true;
+        p.properties.addNumber({
+          name: "version",
+          label: "The version of this integration",
+          options(p: PropNumber) {
+            p.required = true;
+            p.hidden = true;
+            p.numberKind = "int32";
+          },
+        });
+      },
+    });
     c.addListMethod();
     c.addGetMethod();
     c.methods.addMethod({
@@ -84,14 +93,6 @@ registry.system({
             p.required = true;
           },
         });
-        p.request.properties.addNumber({
-          name: "version",
-          label: "Version of this object; for migration",
-          options(p: PropNumber) {
-            p.required = true;
-            p.numberKind = "int32";
-          },
-        });
         p.request.properties.addLink({
           name: "options",
           label: "Options for this Integration",
@@ -100,6 +101,17 @@ registry.system({
             p.lookup = {
               typeName: "integration",
               names: ["options"],
+            };
+          },
+        });
+        p.request.properties.addLink({
+          name: "siProperties",
+          label: "Si Properties",
+          options(p: PropLink) {
+            p.required = true;
+            p.lookup = {
+              typeName: "integration",
+              names: ["siProperties"],
             };
           },
         });
@@ -116,4 +128,3 @@ registry.system({
     });
   },
 });
-

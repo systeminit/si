@@ -49,7 +49,7 @@ impl Service {
     pub fn db(&self) -> &si_data::Db {
         &self.db
     }
-    }
+        }
 
 #[tonic::async_trait]
 impl crate::protobuf::data_server::Data for Service {

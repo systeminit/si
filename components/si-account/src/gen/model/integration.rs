@@ -1,8 +1,92 @@
 // Auth-generated code!
 // No touchy!
 
-use si_data;
-use uuid;
+impl crate::protobuf::Integration {
+    pub fn new(
+        name: Option<String>,
+        display_name: Option<String>,
+        options: Vec<crate::protobuf::IntegrationOptions>,
+        si_properties: Option<crate::protobuf::IntegrationSiProperties>,
+    ) -> si_data::Result<crate::protobuf::Integration> {
+        let mut si_storable = si_data::protobuf::DataStorable::default();
+        si_storable.add_to_tenant_ids("global");
+
+        let mut result_obj = crate::protobuf::Integration {
+            ..Default::default()
+        };
+        result_obj.name = name;
+        result_obj.display_name = display_name;
+        result_obj.options = options;
+        result_obj.si_properties = si_properties;
+        result_obj.si_storable = Some(si_storable);
+
+        Ok(result_obj)
+    }
+
+    pub async fn create(
+        db: &si_data::Db,
+        name: Option<String>,
+        display_name: Option<String>,
+        options: Vec<crate::protobuf::IntegrationOptions>,
+        si_properties: Option<crate::protobuf::IntegrationSiProperties>,
+    ) -> si_data::Result<crate::protobuf::Integration> {
+        let mut result_obj =
+            crate::protobuf::Integration::new(name, display_name, options, si_properties)?;
+        db.validate_and_insert_as_new(&mut result_obj).await?;
+        Ok(result_obj)
+    }
+
+    pub async fn get(db: &si_data::Db, id: &str) -> si_data::Result<crate::protobuf::Integration> {
+        let obj = db.get(id).await?;
+        Ok(obj)
+    }
+
+    pub async fn get_by_natural_key(
+        db: &si_data::Db,
+        natural_key: &str,
+    ) -> si_data::Result<crate::protobuf::Integration> {
+        let obj = db.lookup_by_natural_key(natural_key).await?;
+        Ok(obj)
+    }
+
+    pub async fn save(&self, db: &si_data::Db) -> si_data::Result<()> {
+        db.upsert(self).await?;
+        Ok(())
+    }
+
+    pub async fn list(
+        db: &si_data::Db,
+        list_request: crate::protobuf::IntegrationListRequest,
+    ) -> si_data::Result<si_data::ListResult<crate::protobuf::Integration>> {
+        let result = match list_request.page_token {
+            Some(token) => db.list_by_page_token(token).await?,
+            None => {
+                let page_size = match list_request.page_size {
+                    Some(page_size) => page_size,
+                    None => 10,
+                };
+                let order_by = match list_request.order_by {
+                    Some(order_by) => order_by,
+                    None => "".to_string(), // The empty string is the signal for a default, thanks protobuf history
+                };
+                let contained_within = match list_request.scope_by_tenant_id {
+                    Some(contained_within) => contained_within,
+                    None => return Err(si_data::DataError::MissingScopeByTenantId),
+                };
+                db.list(
+                    &list_request.query,
+                    page_size,
+                    order_by,
+                    list_request.order_by_direction,
+                    contained_within,
+                    "",
+                )
+                .await?
+            }
+        };
+        Ok(result)
+    }
+}
 
 impl si_data::Storable for crate::protobuf::Integration {
     /// # Panics
@@ -34,7 +118,7 @@ impl si_data::Storable for crate::protobuf::Integration {
         self.set_id(format!(
             "{}:{}",
             <Self as si_data::Storable>::type_name(),
-            uuid::Uuid::new_v4(),
+            si_data::uuid_string(),
         ));
     }
 
@@ -59,9 +143,9 @@ impl si_data::Storable for crate::protobuf::Integration {
                 "missing required si_storable value".into(),
             ));
         }
-        if self.version.is_none() {
+        if self.si_properties.is_none() {
             return Err(si_data::DataError::ValidationError(
-                "missing required version value".into(),
+                "missing required si_properties value".into(),
             ));
         }
         Ok(())
@@ -128,104 +212,16 @@ impl si_data::Storable for crate::protobuf::Integration {
             "options.name",
             "options.displayName",
             "options.optionType",
+            "siStorable.naturalKey",
         ]
     }
 }
 
 impl si_data::Migrateable for crate::protobuf::Integration {
     fn get_version(&self) -> i32 {
-        match self.version {
-            Some(v) => v,
+        match self.si_properties.as_ref().map(|p| p.version) {
+            Some(v) => v.unwrap_or(0),
             None => 0,
         }
-    }
-}
-
-impl crate::protobuf::Integration {
-    pub async fn get(db: &si_data::Db, id: &str) -> si_data::Result<crate::protobuf::Integration> {
-        let obj = db.get(id).await?;
-        Ok(obj)
-    }
-
-    pub async fn get_by_natural_key(
-        db: &si_data::Db,
-        natural_key: &str,
-    ) -> si_data::Result<crate::protobuf::Integration> {
-        let obj = db.lookup_by_natural_key(natural_key).await?;
-        Ok(obj)
-    }
-
-    pub async fn save(&self, db: &si_data::Db) -> si_data::Result<()> {
-        db.upsert(self).await?;
-        Ok(())
-    }
-
-    pub async fn list(
-        db: &si_data::Db,
-        list_request: crate::protobuf::IntegrationListRequest,
-    ) -> si_data::Result<si_data::ListResult<crate::protobuf::Integration>> {
-        let result = match list_request.page_token {
-            Some(token) => db.list_by_page_token(token).await?,
-            None => {
-                let page_size = match list_request.page_size {
-                    Some(page_size) => page_size,
-                    None => 10,
-                };
-                let order_by = match list_request.order_by {
-                    Some(order_by) => order_by,
-                    None => "".to_string(), // The empty string is the signal for a default, thanks protobuf history
-                };
-                let contained_within = match list_request.scope_by_tenant_id {
-                    Some(contained_within) => contained_within,
-                    None => return Err(si_data::DataError::MissingScopeByTenantId),
-                };
-                db.list(
-                    &list_request.query,
-                    page_size,
-                    order_by,
-                    list_request.order_by_direction,
-                    contained_within,
-                    "",
-                )
-                .await?
-            }
-        };
-        Ok(result)
-    }
-}
-
-impl crate::protobuf::Integration {
-    pub fn new(
-        name: Option<String>,
-        display_name: Option<String>,
-        version: Option<i32>,
-        options: Vec<crate::protobuf::IntegrationOptions>,
-    ) -> si_data::Result<crate::protobuf::Integration> {
-        let mut si_storable = si_data::protobuf::DataStorable::default();
-        si_storable.add_to_tenant_ids("global");
-
-        let mut result_obj = crate::protobuf::Integration {
-            ..Default::default()
-        };
-        result_obj.name = name;
-        result_obj.display_name = display_name;
-        result_obj.version = version;
-        result_obj.options = options;
-        result_obj.si_storable = Some(si_storable);
-
-        Ok(result_obj)
-    }
-
-    pub async fn create(
-        db: &si_data::Db,
-        name: Option<String>,
-        display_name: Option<String>,
-        version: Option<i32>,
-        options: Vec<crate::protobuf::IntegrationOptions>,
-    ) -> si_data::Result<crate::protobuf::Integration> {
-        let mut result_obj =
-            crate::protobuf::Integration::new(name, display_name, version, options)?;
-        db.validate_and_insert_as_new(&mut result_obj).await?;
-        Ok(result_obj)
     }
 }

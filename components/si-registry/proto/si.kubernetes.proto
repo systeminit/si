@@ -11,10 +11,11 @@ import "si-registry/proto/si.cea.proto";
 service Kubernetes {
   rpc KubernetesDeploymentComponentGet(KubernetesDeploymentComponentGetRequest) returns (KubernetesDeploymentComponentGetReply);
   rpc KubernetesDeploymentComponentList(KubernetesDeploymentComponentListRequest) returns (KubernetesDeploymentComponentListReply);
+  rpc KubernetesDeploymentComponentCreate(KubernetesDeploymentComponentCreateRequest) returns (KubernetesDeploymentComponentCreateReply);
   rpc KubernetesDeploymentComponentPick(KubernetesDeploymentComponentPickRequest) returns (KubernetesDeploymentComponentPickReply);
-  rpc KubernetesDeploymentEntityCreate(KubernetesDeploymentEntityCreateRequest) returns (KubernetesDeploymentEntityCreateReply);
-  rpc KubernetesDeploymentEntityList(KubernetesDeploymentEntityListRequest) returns (KubernetesDeploymentEntityListReply);
   rpc KubernetesDeploymentEntityGet(KubernetesDeploymentEntityGetRequest) returns (KubernetesDeploymentEntityGetReply);
+  rpc KubernetesDeploymentEntityList(KubernetesDeploymentEntityListRequest) returns (KubernetesDeploymentEntityListReply);
+  rpc KubernetesDeploymentEntityCreate(KubernetesDeploymentEntityCreateRequest) returns (KubernetesDeploymentEntityCreateReply);
   rpc KubernetesDeploymentEntitySync(KubernetesDeploymentEntitySyncRequest) returns (KubernetesDeploymentEntitySyncReply);
   rpc KubernetesDeploymentEntityKubernetesObjectEdit(KubernetesDeploymentEntityKubernetesObjectEditRequest) returns (KubernetesDeploymentEntityKubernetesObjectEditReply);
   rpc KubernetesDeploymentEntityKubernetesObjectYamlEdit(KubernetesDeploymentEntityKubernetesObjectYamlEditRequest) returns (KubernetesDeploymentEntityKubernetesObjectYamlEditReply);
@@ -63,15 +64,14 @@ message KubernetesDeploymentComponent {
   google.protobuf.StringValue display_name = 3;
   si.data.DataStorable si_storable = 4;
   google.protobuf.StringValue description = 5;
-  google.protobuf.StringValue display_type_name = 6;
-  si.kubernetes.KubernetesDeploymentComponentConstraints constraints = 7;
-  si.cea.ComponentSiProperties si_properties = 8;
+  si.kubernetes.KubernetesDeploymentComponentConstraints constraints = 6;
+  si.cea.ComponentSiProperties si_properties = 7;
 }
 message KubernetesDeploymentComponentGetRequest {
-  google.protobuf.StringValue component_id = 1;
+  google.protobuf.StringValue id = 1001;
 }
 message KubernetesDeploymentComponentGetReply {
-  si.kubernetes.KubernetesDeploymentComponent component = 1;
+  si.kubernetes.KubernetesDeploymentComponent object = 1001;
 }
 message KubernetesDeploymentComponentListRequest {
   si.data.DataQuery query = 1;
@@ -85,6 +85,15 @@ message KubernetesDeploymentComponentListReply {
   repeated si.kubernetes.KubernetesDeploymentComponent items = 1;
   google.protobuf.UInt32Value total_count = 2;
   google.protobuf.StringValue next_page_token = 3;
+}
+message KubernetesDeploymentComponentCreateRequest {
+  google.protobuf.StringValue name = 1001;
+  google.protobuf.StringValue display_name = 1002;
+  google.protobuf.StringValue description = 1003;
+  si.kubernetes.KubernetesDeploymentComponentConstraints constraints = 1;
+  si.cea.ComponentSiProperties si_properties = 1004;
+}
+message KubernetesDeploymentComponentCreateReply {
 }
 message KubernetesDeploymentComponentPickRequest {
   si.kubernetes.KubernetesDeploymentComponentConstraints constraints = 1;
@@ -114,23 +123,16 @@ message KubernetesDeploymentEntity {
   google.protobuf.StringValue display_name = 3;
   si.data.DataStorable si_storable = 4;
   google.protobuf.StringValue description = 5;
-  google.protobuf.StringValue display_type_name = 6;
-  si.cea.EntitySiProperties si_properties = 7;
-  si.kubernetes.KubernetesDeploymentEntityProperties properties = 8;
-  si.kubernetes.KubernetesDeploymentComponentConstraints constraints = 9;
-  si.kubernetes.KubernetesDeploymentComponentConstraints implicit_constraints = 10;
+  si.cea.EntitySiProperties si_properties = 6;
+  si.kubernetes.KubernetesDeploymentEntityProperties properties = 7;
+  si.kubernetes.KubernetesDeploymentComponentConstraints constraints = 8;
+  si.kubernetes.KubernetesDeploymentComponentConstraints implicit_constraints = 9;
 }
-message KubernetesDeploymentEntityCreateRequest {
-  si.kubernetes.KubernetesDeploymentComponentConstraints constraints = 1;
-  si.kubernetes.KubernetesDeploymentEntityProperties properties = 2;
-  google.protobuf.StringValue name = 3;
-  google.protobuf.StringValue display_name = 4;
-  google.protobuf.StringValue description = 5;
-  google.protobuf.StringValue workspace_id = 6;
+message KubernetesDeploymentEntityGetRequest {
+  google.protobuf.StringValue id = 1001;
 }
-message KubernetesDeploymentEntityCreateReply {
-  si.kubernetes.KubernetesDeploymentEntity entity = 1;
-  si.kubernetes.KubernetesDeploymentEntityEvent entity_event = 2;
+message KubernetesDeploymentEntityGetReply {
+  si.kubernetes.KubernetesDeploymentEntity object = 1001;
 }
 message KubernetesDeploymentEntityListRequest {
   si.data.DataQuery query = 1;
@@ -145,11 +147,17 @@ message KubernetesDeploymentEntityListReply {
   google.protobuf.UInt32Value total_count = 2;
   google.protobuf.StringValue next_page_token = 3;
 }
-message KubernetesDeploymentEntityGetRequest {
-  google.protobuf.StringValue entity_id = 1;
+message KubernetesDeploymentEntityCreateRequest {
+  google.protobuf.StringValue name = 1;
+  google.protobuf.StringValue display_name = 2;
+  google.protobuf.StringValue description = 3;
+  si.kubernetes.KubernetesDeploymentComponentConstraints constraints = 4;
+  si.kubernetes.KubernetesDeploymentEntityProperties properties = 5;
+  si.cea.EntitySiProperties si_properties = 1001;
 }
-message KubernetesDeploymentEntityGetReply {
+message KubernetesDeploymentEntityCreateReply {
   si.kubernetes.KubernetesDeploymentEntity entity = 1;
+  si.kubernetes.KubernetesDeploymentEntityEvent entity_event = 2;
 }
 message KubernetesDeploymentEntitySyncRequest {
   google.protobuf.StringValue entity_id = 1;
@@ -180,16 +188,16 @@ message KubernetesDeploymentEntityEvent {
   google.protobuf.StringValue create_time = 6;
   google.protobuf.StringValue updated_time = 7;
   google.protobuf.StringValue final_time = 8;
-  google.protobuf.BoolValue finalized = 9;
-  google.protobuf.BoolValue success = 10;
+  google.protobuf.BoolValue success = 9;
+  google.protobuf.BoolValue finalized = 10;
   google.protobuf.StringValue user_id = 11;
-  si.cea.EntityEventSiProperties si_properties = 12;
-  si.kubernetes.KubernetesDeploymentEntity input_entity = 13;
-  si.kubernetes.KubernetesDeploymentEntity output_entity = 14;
+  repeated google.protobuf.StringValue output_lines = 12;
+  repeated google.protobuf.StringValue error_lines = 13;
+  google.protobuf.StringValue error_message = 14;
   si.kubernetes.KubernetesDeploymentEntity previous_entity = 15;
-  google.protobuf.StringValue error_message = 16;
-  repeated google.protobuf.StringValue output_lines = 17;
-  repeated google.protobuf.StringValue error_lines = 18;
+  si.kubernetes.KubernetesDeploymentEntity input_entity = 16;
+  si.kubernetes.KubernetesDeploymentEntity output_entity = 17;
+  si.cea.EntityEventSiProperties si_properties = 18;
 }
 message KubernetesDeploymentEntityEventListRequest {
   si.data.DataQuery query = 1;

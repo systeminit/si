@@ -57,6 +57,12 @@ impl Service {
         &self.agent
     }
     <%_ } _%>
+    <% if (fmt.hasMigratables()) { %>
+    pub async fn migrate(&self) -> si_data::Result<()> {
+        <%- fmt.implServiceMigrate() %>
+        Ok(())
+    }
+    <%_ } _%>
 }
 
 #[tonic::async_trait]

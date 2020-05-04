@@ -73,6 +73,7 @@ export class BaseObject {
 
 export class SystemObject extends BaseObject {
   naturalKey = "name";
+  migrateable = false;
 
   constructor(args: BaseObjectConstructor) {
     super(args);
@@ -261,20 +262,17 @@ export class ComponentObject extends SystemObject {
 
   setComponentDefaults(): void {
     const baseTypeName = this.baseTypeName;
+
+    this.migrateable = true;
+
+    this.addGetMethod();
+    this.addListMethod();
+
     this.fields.addText({
       name: "description",
       label: "Component Description",
       options(p) {
         p.universal = true;
-        p.required = true;
-      },
-    });
-    this.fields.addText({
-      name: "displayTypeName",
-      label: "Display Type Name",
-      options(p) {
-        p.universal = true;
-        p.readOnly = true;
         p.required = true;
       },
     });
@@ -313,117 +311,57 @@ export class ComponentObject extends SystemObject {
     });
 
     this.methods.addMethod({
-      name: "get",
-      label: "Get Component",
+      name: "create",
+      label: "Create a Component",
       options(p: PropMethod) {
-        p.required = true;
+        p.mutation = true;
+        p.hidden = true;
+        p.isPrivate = true;
         p.request.properties.addText({
-          name: "componentId",
-          label: `${this.displayTypeName} ID`,
+          name: "name",
+          label: "Integration Name",
           options(p) {
-            p.universal = true;
             p.required = true;
           },
         });
-        p.reply.properties.addLink({
-          name: "component",
-          label: this.displayTypeName,
+        p.request.properties.addText({
+          name: "displayName",
+          label: "Integration Display Name",
+          options(p) {
+            p.required = true;
+          },
+        });
+        p.request.properties.addText({
+          name: "description",
+          label: "Integration Display Name",
+          options(p) {
+            p.required = true;
+          },
+        });
+        p.request.properties.addLink({
+          name: "constraints",
+          label: "Constraints",
           options(p: PropLink) {
             p.universal = true;
             p.required = true;
             p.lookup = {
               typeName: `${baseTypeName}Component`,
+              names: ["constraints"],
             };
-          },
-        });
-      },
-    });
-
-    this.methods.addMethod({
-      name: "list",
-      label: "List Components",
-      options(p: PropMethod) {
-        p.universal = true;
-        p.request.properties.addLink({
-          name: "query",
-          label: "Query",
-          options(p: PropLink) {
-            p.universal = true;
-            p.lookup = {
-              typeName: "dataQuery",
-            };
-          },
-        });
-        p.request.properties.addNumber({
-          name: "pageSize",
-          label: "Page Size",
-          options(p: PropNumber) {
-            p.universal = true;
-            p.numberKind = "uint32";
-          },
-        });
-        p.request.properties.addText({
-          name: "orderBy",
-          label: "Order By",
-          options(p) {
-            p.universal = true;
           },
         });
         p.request.properties.addLink({
-          name: "orderByDirection",
-          label: "Order By Direction",
+          name: "siProperties",
+          label: "Si Properties",
           options(p: PropLink) {
-            p.universal = true;
-            p.lookup = {
-              typeName: "dataPageToken",
-              names: ["orderByDirection"],
-            };
-          },
-        });
-        p.request.properties.addText({
-          name: "pageToken",
-          label: "Page Token",
-          options(p) {
-            p.universal = true;
-          },
-        });
-        p.request.properties.addText({
-          name: "scopeByTenantId",
-          label: "Scope By Tenant ID",
-          options(p) {
-            p.universal = true;
-          },
-        });
-        p.reply.properties.addLink({
-          name: "items",
-          label: "Items",
-          options(p: PropLink) {
-            p.repeated = true;
-            p.universal = true;
             p.required = true;
             p.lookup = {
-              typeName: `${baseTypeName}Component`,
+              typeName: "componentSiProperties",
             };
-          },
-        });
-        p.reply.properties.addNumber({
-          name: "totalCount",
-          label: "Total Count",
-          options(p: PropNumber) {
-            p.universal = true;
-            p.numberKind = "uint32";
-          },
-        });
-        p.reply.properties.addText({
-          name: "nextPageToken",
-          label: "Next Page Token",
-          options(p) {
-            p.universal = true;
           },
         });
       },
     });
-
     this.methods.addMethod({
       name: "pick",
       label: "Pick Component",
@@ -493,20 +431,15 @@ export class EntityObject extends SystemObject {
 
   setEntityDefaults(): void {
     const baseTypeName = this.baseTypeName;
+
+    this.addGetMethod();
+    this.addListMethod();
+
     this.fields.addText({
       name: "description",
       label: "Entity Description",
       options(p) {
         p.universal = true;
-        p.required = true;
-      },
-    });
-    this.fields.addText({
-      name: "displayTypeName",
-      label: "Display Type Name",
-      options(p) {
-        p.universal = true;
-        p.readOnly = true;
         p.required = true;
       },
     });
@@ -559,6 +492,30 @@ export class EntityObject extends SystemObject {
       label: "Create Entity",
       options(p: PropMethod) {
         p.mutation = true;
+        p.request.properties.addText({
+          name: "name",
+          label: "Name",
+          options(p) {
+            p.required = true;
+            p.universal = true;
+          },
+        });
+        p.request.properties.addText({
+          name: "displayName",
+          label: "Display Name",
+          options(p) {
+            p.required = true;
+            p.universal = true;
+          },
+        });
+        p.request.properties.addText({
+          name: "description",
+          label: "Description",
+          options(p) {
+            p.required = true;
+            p.universal = true;
+          },
+        });
         p.request.properties.addLink({
           name: "constraints",
           label: "Constraints",
@@ -584,36 +541,14 @@ export class EntityObject extends SystemObject {
             };
           },
         });
-        p.request.properties.addText({
-          name: "name",
-          label: "Name",
-          options(p) {
+        p.request.properties.addLink({
+          name: "siProperties",
+          label: "Si Properties",
+          options(p: PropLink) {
             p.required = true;
-            p.universal = true;
-          },
-        });
-        p.request.properties.addText({
-          name: "displayName",
-          label: "Display Name",
-          options(p) {
-            p.required = true;
-            p.universal = true;
-          },
-        });
-        p.request.properties.addText({
-          name: "description",
-          label: "Description",
-          options(p) {
-            p.required = true;
-            p.universal = true;
-          },
-        });
-        p.request.properties.addText({
-          name: "workspaceId",
-          label: "Workspace ID",
-          options(p) {
-            p.universal = true;
-            p.required = true;
+            p.lookup = {
+              typeName: "entitySiProperties",
+            };
           },
         });
         p.reply.properties.addLink({
@@ -635,118 +570,6 @@ export class EntityObject extends SystemObject {
             p.readOnly = true;
             p.lookup = {
               typeName: `${baseTypeName}EntityEvent`,
-            };
-          },
-        });
-      },
-    });
-
-    this.methods.addMethod({
-      name: "list",
-      label: "List Entities",
-      options(p: PropMethod) {
-        p.universal = true;
-        p.request.properties.addLink({
-          name: "query",
-          label: "Query",
-          options(p: PropLink) {
-            p.universal = true;
-            p.lookup = {
-              typeName: "dataQuery",
-            };
-          },
-        });
-        p.request.properties.addNumber({
-          name: "pageSize",
-          label: "Page Size",
-          options(p: PropNumber) {
-            p.universal = true;
-            p.numberKind = "uint32";
-          },
-        });
-        p.request.properties.addText({
-          name: "orderBy",
-          label: "Order By",
-          options(p) {
-            p.universal = true;
-          },
-        });
-        p.request.properties.addLink({
-          name: "orderByDirection",
-          label: "Order By Direction",
-          options(p: PropLink) {
-            p.universal = true;
-            p.lookup = {
-              typeName: "dataPageToken",
-              names: ["orderByDirection"],
-            };
-          },
-        });
-        p.request.properties.addText({
-          name: "pageToken",
-          label: "Page Token",
-          options(p) {
-            p.universal = true;
-          },
-        });
-        p.request.properties.addText({
-          name: "scopeByTenantId",
-          label: "Scope By Tenant ID",
-          options(p) {
-            p.universal = true;
-          },
-        });
-        p.reply.properties.addLink({
-          name: "items",
-          label: "Items",
-          options(p: PropLink) {
-            p.repeated = true;
-            p.universal = true;
-            p.readOnly = true;
-            p.lookup = {
-              typeName: `${baseTypeName}Entity`,
-            };
-          },
-        });
-        p.reply.properties.addNumber({
-          name: "totalCount",
-          label: "Total Count",
-          options(p: PropNumber) {
-            p.universal = true;
-            p.numberKind = "uint32";
-          },
-        });
-        p.reply.properties.addText({
-          name: "nextPageToken",
-          label: "Next Page Token",
-          options(p) {
-            p.universal = true;
-          },
-        });
-      },
-    });
-
-    this.methods.addMethod({
-      name: "get",
-      label: "Get Entity",
-      options(p: PropMethod) {
-        p.universal = true;
-        p.request.properties.addText({
-          name: "entityId",
-          label: "Entity ID",
-          options(p) {
-            p.universal = true;
-            p.required = true;
-          },
-        });
-        p.reply.properties.addLink({
-          name: "entity",
-          label: `${this.displayName}`,
-          options(p: PropLink) {
-            p.universal = true;
-            p.readOnly = true;
-            p.lookup = {
-              typeName: `${baseTypeName}Entity`,
             };
           },
         });
@@ -795,6 +618,7 @@ export class EntityEventObject extends SystemObject {
       label: "Action Name",
       options(p) {
         p.universal = true;
+        p.required = true;
         p.readOnly = true;
       },
     });
@@ -823,16 +647,16 @@ export class EntityEventObject extends SystemObject {
       },
     });
     this.fields.addBool({
-      name: "finalized",
-      label: "Finalized",
+      name: "success",
+      label: "success",
       options(p) {
         p.universal = true;
         p.readOnly = true;
       },
     });
     this.fields.addBool({
-      name: "success",
-      label: "success",
+      name: "finalized",
+      label: "Finalized",
       options(p) {
         p.universal = true;
         p.readOnly = true;
@@ -846,14 +670,37 @@ export class EntityEventObject extends SystemObject {
         p.readOnly = true;
       },
     });
+    this.fields.addText({
+      name: "outputLines",
+      label: "Output Lines",
+      options(p) {
+        p.repeated = true;
+        p.universal = true;
+      },
+    });
+    this.fields.addText({
+      name: "errorLines",
+      label: "Error Lines",
+      options(p) {
+        p.repeated = true;
+        p.universal = true;
+      },
+    });
+    this.fields.addText({
+      name: "errorMessage",
+      label: "Error Message",
+      options(p) {
+        p.universal = true;
+      },
+    });
     this.fields.addLink({
-      name: "siProperties",
-      label: "SI Properties",
+      name: "previousEntity",
+      label: "Previous Entity",
       options(p: PropLink) {
         p.universal = true;
         p.hidden = true;
         p.lookup = {
-          typeName: "entityEventSiProperties",
+          typeName: `${baseTypeName}Entity`,
         };
       },
     });
@@ -862,6 +709,7 @@ export class EntityEventObject extends SystemObject {
       label: "Input Entity",
       options(p: PropLink) {
         p.universal = true;
+        p.required = true;
         p.hidden = true;
         p.lookup = {
           typeName: `${baseTypeName}Entity`,
@@ -880,37 +728,14 @@ export class EntityEventObject extends SystemObject {
       },
     });
     this.fields.addLink({
-      name: "previousEntity",
-      label: "Previous Entity",
+      name: "siProperties",
+      label: "SI Properties",
       options(p: PropLink) {
         p.universal = true;
         p.hidden = true;
         p.lookup = {
-          typeName: `${baseTypeName}Entity`,
+          typeName: "entityEventSiProperties",
         };
-      },
-    });
-    this.fields.addText({
-      name: "errorMessage",
-      label: "Error Message",
-      options(p) {
-        p.universal = true;
-      },
-    });
-    this.fields.addText({
-      name: "outputLines",
-      label: "Output Lines",
-      options(p) {
-        p.repeated = true;
-        p.universal = true;
-      },
-    });
-    this.fields.addText({
-      name: "errorLines",
-      label: "Error Lines",
-      options(p) {
-        p.repeated = true;
-        p.universal = true;
       },
     });
 

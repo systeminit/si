@@ -39,6 +39,18 @@ export class RustFormatter {
     return `crate::model::${pascalCase(this.systemObject.typeName)}`;
   }
 
+  componentConstraintsName(): string {
+    return `crate::protobuf::${pascalCase(
+      this.systemObject.typeName,
+    )}Constraints`;
+  }
+
+  entityName(): string {
+    return `crate::protobuf::${pascalCase(
+      this.systemObject.baseTypeName,
+    )}Entity`;
+  }
+
   typeName(): string {
     return snakeCase(this.systemObject.typeName);
   }
@@ -54,6 +66,18 @@ export class RustFormatter {
     } catch {
       return false;
     }
+  }
+
+  isComponentObject(): boolean {
+    return this.systemObject.kind() == "componentObject";
+  }
+
+  isEntityObject(): boolean {
+    return this.systemObject.kind() == "entityObject";
+  }
+
+  isEntityEventObject(): boolean {
+    return this.systemObject.kind() == "entityEventObject";
   }
 
   implListRequestType(renderOptions: RustTypeAsPropOptions = {}): string {
@@ -290,12 +314,10 @@ export class RustFormatter {
   }
 
   isMigrateable(): boolean {
-    try {
-      this.systemObject.fields.getEntry("version");
-      return true;
-    } catch {
-      return false;
-    }
+    return (
+      // @ts-ignore
+      this.systemObject.kind() != "baseObject" && this.systemObject.migrateable
+    );
   }
 
   isStorable(): boolean {
@@ -340,6 +362,19 @@ export class RustFormatter {
             si_data::DataError::ValidationError("siProperties.integrationId".into()),
         )?;
         si_storable.add_to_tenant_ids(integration_id);`);
+    } else if (this.systemObject.kind() == "componentObject") {
+      result.push(`si_storable.add_to_tenant_ids("global");`);
+      result.push(
+        `si_properties.as_ref().ok_or(si_data::DataError::ValidationError("siProperties".into()))?;`,
+      );
+      result.push(`let integration_id = si_properties.as_ref().unwrap().integration_id.as_ref().ok_or(
+            si_data::DataError::ValidationError("siProperties.integrationId".into()),
+        )?;
+        si_storable.add_to_tenant_ids(integration_id);`);
+      result.push(`let integration_service_id = si_properties.as_ref().unwrap().integration_service_id.as_ref().ok_or(
+            si_data::DataError::ValidationError("siProperties.integrationServiceId".into()),
+        )?;
+        si_storable.add_to_tenant_ids(integration_service_id);`);
     } else if (
       this.systemObject.typeName == "user" ||
       this.systemObject.typeName == "group" ||
@@ -544,8 +579,36 @@ export class RustFormatterService {
     )}_server::${pascalCase(this.serviceName)}`;
   }
 
+  implServiceMigrate(): string {
+    const result = [];
+    for (const systemObj of this.systemObjects) {
+      // @ts-ignore
+      if (systemObj.kind() != "baseObject" && systemObj.migrateable == true) {
+        result.push(
+          `crate::protobuf::${pascalCase(
+            systemObj.typeName,
+          )}::migrate(&self.db).await?;`,
+        );
+      }
+    }
+    return result.join("\n");
+  }
+
   hasComponents(): boolean {
     if (this.systemObjects.find(s => s.kind() == "component")) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  hasMigratables(): boolean {
+    if (
+      this.systemObjects.find(
+        // @ts-ignore
+        s => s.kind() != "baseObject" && s.migrateable == true,
+      )
+    ) {
       return true;
     } else {
       return false;
@@ -579,7 +642,10 @@ export class CodegenRust {
       this.serviceName,
     )) {
       if (systemObject.kind() != "baseObject") {
+        /* // TODO: remove me FUCKERS */
+        /* if (systemObject.kind() != "entityEventObject") { */
         results.push(`pub mod ${snakeCase(systemObject.typeName)};`);
+        /* } */
       }
     }
     await this.writeCode("gen/model/mod.rs", results.join("\n"));

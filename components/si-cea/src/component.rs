@@ -16,12 +16,11 @@ pub mod codegen_prelude {
 }
 
 pub mod prelude {
-    pub use super::MigrateComponent;
     pub use crate::component::Component;
     pub use crate::error::CeaResult;
     pub use si_account::{Integration, IntegrationService};
-    pub use si_data::Db;
     pub use si_data::Storable;
+    pub use si_data::{Db, Result as DataResult};
 }
 
 #[async_trait]
@@ -107,9 +106,4 @@ pub trait Component:
         }
         Ok(None)
     }
-}
-
-#[async_trait]
-pub trait MigrateComponent: Component {
-    async fn migrate(db: &Db) -> CeaResult<()>;
 }

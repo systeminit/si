@@ -117,11 +117,11 @@ impl kubernetes_server::Kubernetes for KubernetesImpl {
                 .constraints
                 .ok_or(CeaError::InvalidComponentPickRequestMissingConstraints)?;
 
-            let output = Component::pick(db, &constraints).await?;
+            let (implicit_constraints, component) = Component::pick(db, &constraints).await?;
             Ok(tonic::Response::new(
                 KubernetesDeploymentComponentPickReply {
-                    implicit_constraints: Some(output.0),
-                    component: Some(output.1),
+                    implicit_constraints: Some(implicit_constraints),
+                    component: Some(component),
                 },
             ))
         }

@@ -49,6 +49,11 @@ impl Service {
     pub fn db(&self) -> &si_data::Db {
         &self.db
     }
+
+    pub async fn migrate(&self) -> si_data::Result<()> {
+        crate::protobuf::KubernetesDeploymentComponent::migrate(&self.db).await?;
+        Ok(())
+    }
 }
 
 #[tonic::async_trait]
@@ -195,6 +200,84 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
         .await
     }
 
+    async fn kubernetes_deployment_component_create(
+        &self,
+        mut request: tonic::Request<crate::protobuf::KubernetesDeploymentComponentCreateRequest>,
+    ) -> std::result::Result<
+        tonic::Response<crate::protobuf::KubernetesDeploymentComponentCreateReply>,
+        tonic::Status,
+    > {
+        let trace_propagator =
+            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
+        let span_context = {
+            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
+            trace_propagator.extract(&metadata_wrapper)
+        };
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "kubernetes_deployment_component_create",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
+        async {
+            info!(?request);
+            si_account::authorize::authnz(
+                &self.db,
+                &request,
+                "kubernetes_deployment_component_create",
+            )
+            .await?;
+            let inner = request.into_inner();
+            let name = inner.name;
+            let display_name = inner.display_name;
+            let description = inner.description;
+            let constraints = inner.constraints;
+            let si_properties = inner.si_properties;
+            let reply = crate::protobuf::KubernetesDeploymentComponent::create(
+                &self.db,
+                name,
+                display_name,
+                description,
+                constraints,
+                si_properties,
+            )
+            .await?;
+            info!(?reply);
+            Ok(tonic::Response::new(
+                crate::protobuf::KubernetesDeploymentComponentCreateReply {
+                    object: Some(reply),
+                },
+            ))
+        }
+        .instrument(span)
+        .await
+    }
+
     async fn kubernetes_deployment_component_pick(
         &self,
         mut request: tonic::Request<crate::protobuf::KubernetesDeploymentComponentPickRequest>,
@@ -248,23 +331,30 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             )
             .await?;
             let inner = request.into_inner();
-            let reply =
-                crate::model::KubernetesDeploymentComponent::kubernetes_deployment_component_pick(
-                    &self.db, inner,
-                )
-                .await?;
-            info!(?reply);
-            Ok(tonic::Response::new(reply))
+            let constraints = inner
+                .constraints
+                .ok_or(si_data::DataError::RequiredField("constraints".to_string()))?;
+
+            let (implicit_constraints, component) =
+                crate::protobuf::KubernetesDeploymentComponent::pick(&self.db, &constraints)
+                    .await?;
+            info!(?implicit_constraints, ?component);
+            Ok(tonic::Response::new(
+                crate::protobuf::KubernetesDeploymentComponentPickReply {
+                    implicit_constraints: Some(implicit_constraints),
+                    component: Some(component),
+                },
+            ))
         }
         .instrument(span)
         .await
     }
 
-    async fn kubernetes_deployment_entity_create(
+    async fn kubernetes_deployment_entity_get(
         &self,
-        mut request: tonic::Request<crate::protobuf::KubernetesDeploymentEntityCreateRequest>,
+        mut request: tonic::Request<crate::protobuf::KubernetesDeploymentEntityGetRequest>,
     ) -> std::result::Result<
-        tonic::Response<crate::protobuf::KubernetesDeploymentEntityCreateReply>,
+        tonic::Response<crate::protobuf::KubernetesDeploymentEntityGetReply>,
         tonic::Status,
     > {
         let trace_propagator =
@@ -275,7 +365,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "kubernetes_deployment_entity_create",
+            "kubernetes_deployment_entity_get",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -306,32 +396,17 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
 
         async {
             info!(?request);
-            si_account::authorize::authnz(
-                &self.db,
-                &request,
-                "kubernetes_deployment_entity_create",
-            )
-            .await?;
+            si_account::authorize::authnz(&self.db, &request, "kubernetes_deployment_entity_get")
+                .await?;
             let inner = request.into_inner();
-            let constraints = inner.constraints;
-            let properties = inner.properties;
-            let name = inner.name;
-            let display_name = inner.display_name;
-            let description = inner.description;
-            let workspace_id = inner.workspace_id;
-            let reply = crate::protobuf::KubernetesDeploymentEntity::create(
-                &self.db,
-                constraints,
-                properties,
-                name,
-                display_name,
-                description,
-                workspace_id,
-            )
-            .await?;
+            let request_id = inner
+                .id
+                .ok_or(si_data::DataError::RequiredField("id".to_string()))?;
+            let reply =
+                crate::protobuf::KubernetesDeploymentEntity::get(&self.db, &request_id).await?;
             info!(?reply);
             Ok(tonic::Response::new(
-                crate::protobuf::KubernetesDeploymentEntityCreateReply {
+                crate::protobuf::KubernetesDeploymentEntityGetReply {
                     object: Some(reply),
                 },
             ))
@@ -413,11 +488,11 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
         .await
     }
 
-    async fn kubernetes_deployment_entity_get(
+    async fn kubernetes_deployment_entity_create(
         &self,
-        mut request: tonic::Request<crate::protobuf::KubernetesDeploymentEntityGetRequest>,
+        mut request: tonic::Request<crate::protobuf::KubernetesDeploymentEntityCreateRequest>,
     ) -> std::result::Result<
-        tonic::Response<crate::protobuf::KubernetesDeploymentEntityGetReply>,
+        tonic::Response<crate::protobuf::KubernetesDeploymentEntityCreateReply>,
         tonic::Status,
     > {
         let trace_propagator =
@@ -428,7 +503,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "kubernetes_deployment_entity_get",
+            "kubernetes_deployment_entity_create",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -459,17 +534,32 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
 
         async {
             info!(?request);
-            si_account::authorize::authnz(&self.db, &request, "kubernetes_deployment_entity_get")
-                .await?;
+            si_account::authorize::authnz(
+                &self.db,
+                &request,
+                "kubernetes_deployment_entity_create",
+            )
+            .await?;
             let inner = request.into_inner();
-            let request_id = inner
-                .id
-                .ok_or(si_data::DataError::RequiredField("id".to_string()))?;
-            let reply =
-                crate::protobuf::KubernetesDeploymentEntity::get(&self.db, &request_id).await?;
+            let name = inner.name;
+            let display_name = inner.display_name;
+            let description = inner.description;
+            let constraints = inner.constraints;
+            let properties = inner.properties;
+            let si_properties = inner.si_properties;
+            let reply = crate::protobuf::KubernetesDeploymentEntity::create(
+                &self.db,
+                name,
+                display_name,
+                description,
+                constraints,
+                properties,
+                si_properties,
+            )
+            .await?;
             info!(?reply);
             Ok(tonic::Response::new(
-                crate::protobuf::KubernetesDeploymentEntityGetReply {
+                crate::protobuf::KubernetesDeploymentEntityCreateReply {
                     object: Some(reply),
                 },
             ))

@@ -3,6 +3,7 @@ use std::path::Path;
 const PROTOS: &[&str] = &["si-registry/proto/si.account.proto"];
 
 fn main() {
+    println!("cargo:rerun-if-changes=../si-data");
     println!("cargo:rerun-if-changed=Cargo.toml");
     for proto in PROTOS {
         println!("cargo:rerun-if-changed=../{}", proto);

@@ -13,6 +13,8 @@ registry.system({
   siPathName: "si-account",
   serviceName: "account",
   options(c: SystemObject) {
+    c.migrateable = true;
+
     c.associations.belongsTo({
       fromFieldPath: ["siProperties", "integrationId"],
       typeName: "integration",
@@ -36,6 +38,15 @@ registry.system({
           label: "Integration ID",
           options(p) {
             p.required = true;
+          },
+        });
+        p.properties.addNumber({
+          name: "version",
+          label: "The version of this integration",
+          options(p: PropNumber) {
+            p.required = true;
+            p.hidden = true;
+            p.numberKind = "int32";
           },
         });
       },

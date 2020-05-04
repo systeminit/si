@@ -1,8 +1,222 @@
 // Auth-generated code!
 // No touchy!
 
-use si_data;
-use uuid;
+impl crate::protobuf::KubernetesDeploymentComponent {
+    pub fn new(
+        name: Option<String>,
+        display_name: Option<String>,
+        description: Option<String>,
+        constraints: Option<crate::protobuf::KubernetesDeploymentComponentConstraints>,
+        si_properties: Option<si_cea::protobuf::ComponentSiProperties>,
+    ) -> si_data::Result<crate::protobuf::KubernetesDeploymentComponent> {
+        let mut si_storable = si_data::protobuf::DataStorable::default();
+        si_storable.add_to_tenant_ids("global");
+        si_properties
+            .as_ref()
+            .ok_or(si_data::DataError::ValidationError("siProperties".into()))?;
+        let integration_id = si_properties
+            .as_ref()
+            .unwrap()
+            .integration_id
+            .as_ref()
+            .ok_or(si_data::DataError::ValidationError(
+                "siProperties.integrationId".into(),
+            ))?;
+        si_storable.add_to_tenant_ids(integration_id);
+        let integration_service_id = si_properties
+            .as_ref()
+            .unwrap()
+            .integration_service_id
+            .as_ref()
+            .ok_or(si_data::DataError::ValidationError(
+                "siProperties.integrationServiceId".into(),
+            ))?;
+        si_storable.add_to_tenant_ids(integration_service_id);
+
+        let mut result_obj = crate::protobuf::KubernetesDeploymentComponent {
+            ..Default::default()
+        };
+        result_obj.name = name;
+        result_obj.display_name = display_name;
+        result_obj.description = description;
+        result_obj.constraints = constraints;
+        result_obj.si_properties = si_properties;
+        result_obj.si_storable = Some(si_storable);
+
+        Ok(result_obj)
+    }
+
+    pub async fn create(
+        db: &si_data::Db,
+        name: Option<String>,
+        display_name: Option<String>,
+        description: Option<String>,
+        constraints: Option<crate::protobuf::KubernetesDeploymentComponentConstraints>,
+        si_properties: Option<si_cea::protobuf::ComponentSiProperties>,
+    ) -> si_data::Result<crate::protobuf::KubernetesDeploymentComponent> {
+        let mut result_obj = crate::protobuf::KubernetesDeploymentComponent::new(
+            name,
+            display_name,
+            description,
+            constraints,
+            si_properties,
+        )?;
+        db.validate_and_insert_as_new(&mut result_obj).await?;
+        Ok(result_obj)
+    }
+
+    pub async fn pick_by_expressions(
+        db: &si_data::Db,
+        items: Vec<si_data::DataQueryItems>,
+        boolean_term: si_data::DataQueryBooleanTerm,
+    ) -> si_data::Result<Self> {
+        let query = si_data::DataQuery {
+            items,
+            boolean_term: boolean_term as i32,
+            ..Default::default()
+        };
+
+        let mut check_result: si_data::ListResult<Self> =
+            db.list(&Some(query), 1, "", 0, "global", "").await?;
+        if check_result.len() == 1 {
+            return Ok(check_result.items.pop().unwrap());
+        } else {
+            return Err(si_data::DataError::PickComponent(
+                "a match was not found".to_string(),
+            ));
+        }
+    }
+
+    pub async fn pick_by_string_field<F, V>(
+        db: &si_data::Db,
+        field: F,
+        value: V,
+    ) -> si_data::Result<Option<Self>>
+    where
+        F: Into<String> + Send,
+        V: Into<String> + Send,
+    {
+        let value = value.into();
+        let field = field.into();
+
+        if value != "" {
+            let query = si_data::DataQuery::generate_for_string(
+                field.clone(),
+                si_data::DataQueryItemsExpressionComparison::Equals,
+                value.clone(),
+            );
+            let mut check_result: si_data::ListResult<Self> =
+                db.list(&Some(query), 1, "", 0, "global", "").await?;
+            if check_result.len() == 1 {
+                return Ok(Some(check_result.items.pop().unwrap()));
+            } else {
+                return Err(si_data::DataError::PickComponent(format!(
+                    "{}={} must match exactly, and was not found",
+                    field, value
+                )));
+            }
+        }
+        Ok(None)
+    }
+
+    pub async fn pick_by_component_name(
+        db: &si_data::Db,
+        req: &crate::protobuf::KubernetesDeploymentComponentConstraints,
+    ) -> si_data::Result<
+        Option<(
+            crate::protobuf::KubernetesDeploymentComponentConstraints,
+            Self,
+        )>,
+    > {
+        match &req.component_name {
+            Some(name) => match Self::pick_by_string_field(db, "name", name).await? {
+                Some(component) => Ok(Some((
+                    crate::protobuf::KubernetesDeploymentComponentConstraints::default(),
+                    component,
+                ))),
+                None => Ok(None),
+            },
+            None => Ok(None),
+        }
+    }
+
+    pub async fn pick_by_component_display_name(
+        db: &si_data::Db,
+        req: &crate::protobuf::KubernetesDeploymentComponentConstraints,
+    ) -> si_data::Result<
+        Option<(
+            crate::protobuf::KubernetesDeploymentComponentConstraints,
+            Self,
+        )>,
+    > {
+        match &req.component_display_name {
+            Some(display_name) => {
+                match Self::pick_by_string_field(db, "displayName", display_name).await? {
+                    Some(component) => Ok(Some((
+                        crate::protobuf::KubernetesDeploymentComponentConstraints::default(),
+                        component,
+                    ))),
+                    None => Ok(None),
+                }
+            }
+            None => Ok(None),
+        }
+    }
+
+    pub async fn get(
+        db: &si_data::Db,
+        id: &str,
+    ) -> si_data::Result<crate::protobuf::KubernetesDeploymentComponent> {
+        let obj = db.get(id).await?;
+        Ok(obj)
+    }
+
+    pub async fn get_by_natural_key(
+        db: &si_data::Db,
+        natural_key: &str,
+    ) -> si_data::Result<crate::protobuf::KubernetesDeploymentComponent> {
+        let obj = db.lookup_by_natural_key(natural_key).await?;
+        Ok(obj)
+    }
+
+    pub async fn save(&self, db: &si_data::Db) -> si_data::Result<()> {
+        db.upsert(self).await?;
+        Ok(())
+    }
+
+    pub async fn list(
+        db: &si_data::Db,
+        list_request: crate::protobuf::KubernetesDeploymentComponentListRequest,
+    ) -> si_data::Result<si_data::ListResult<crate::protobuf::KubernetesDeploymentComponent>> {
+        let result = match list_request.page_token {
+            Some(token) => db.list_by_page_token(token).await?,
+            None => {
+                let page_size = match list_request.page_size {
+                    Some(page_size) => page_size,
+                    None => 10,
+                };
+                let order_by = match list_request.order_by {
+                    Some(order_by) => order_by,
+                    None => "".to_string(), // The empty string is the signal for a default, thanks protobuf history
+                };
+                let contained_within = match list_request.scope_by_tenant_id {
+                    Some(contained_within) => contained_within,
+                    None => return Err(si_data::DataError::MissingScopeByTenantId),
+                };
+                db.list(
+                    &list_request.query,
+                    page_size,
+                    order_by,
+                    list_request.order_by_direction,
+                    contained_within,
+                    "",
+                )
+                .await?
+            }
+        };
+        Ok(result)
+    }
+}
 
 impl si_data::Storable for crate::protobuf::KubernetesDeploymentComponent {
     /// # Panics
@@ -34,7 +248,7 @@ impl si_data::Storable for crate::protobuf::KubernetesDeploymentComponent {
         self.set_id(format!(
             "{}:{}",
             <Self as si_data::Storable>::type_name(),
-            uuid::Uuid::new_v4(),
+            si_data::uuid_string(),
         ));
     }
 
@@ -62,11 +276,6 @@ impl si_data::Storable for crate::protobuf::KubernetesDeploymentComponent {
         if self.description.is_none() {
             return Err(si_data::DataError::ValidationError(
                 "missing required description value".into(),
-            ));
-        }
-        if self.display_type_name.is_none() {
-            return Err(si_data::DataError::ValidationError(
-                "missing required display_type_name value".into(),
             ));
         }
         if self.constraints.is_none() {
@@ -159,7 +368,6 @@ impl si_data::Storable for crate::protobuf::KubernetesDeploymentComponent {
             "name",
             "displayName",
             "description",
-            "displayTypeName",
             "siStorable.naturalKey",
             "constraints.componentName",
             "constraints.componentDisplayName",
@@ -169,58 +377,11 @@ impl si_data::Storable for crate::protobuf::KubernetesDeploymentComponent {
     }
 }
 
-impl crate::protobuf::KubernetesDeploymentComponent {
-    pub async fn get(
-        db: &si_data::Db,
-        id: &str,
-    ) -> si_data::Result<crate::protobuf::KubernetesDeploymentComponent> {
-        let obj = db.get(id).await?;
-        Ok(obj)
-    }
-
-    pub async fn get_by_natural_key(
-        db: &si_data::Db,
-        natural_key: &str,
-    ) -> si_data::Result<crate::protobuf::KubernetesDeploymentComponent> {
-        let obj = db.lookup_by_natural_key(natural_key).await?;
-        Ok(obj)
-    }
-
-    pub async fn save(&self, db: &si_data::Db) -> si_data::Result<()> {
-        db.upsert(self).await?;
-        Ok(())
-    }
-
-    pub async fn list(
-        db: &si_data::Db,
-        list_request: crate::protobuf::KubernetesDeploymentComponentListRequest,
-    ) -> si_data::Result<si_data::ListResult<crate::protobuf::KubernetesDeploymentComponent>> {
-        let result = match list_request.page_token {
-            Some(token) => db.list_by_page_token(token).await?,
-            None => {
-                let page_size = match list_request.page_size {
-                    Some(page_size) => page_size,
-                    None => 10,
-                };
-                let order_by = match list_request.order_by {
-                    Some(order_by) => order_by,
-                    None => "".to_string(), // The empty string is the signal for a default, thanks protobuf history
-                };
-                let contained_within = match list_request.scope_by_tenant_id {
-                    Some(contained_within) => contained_within,
-                    None => return Err(si_data::DataError::MissingScopeByTenantId),
-                };
-                db.list(
-                    &list_request.query,
-                    page_size,
-                    order_by,
-                    list_request.order_by_direction,
-                    contained_within,
-                    "",
-                )
-                .await?
-            }
-        };
-        Ok(result)
+impl si_data::Migrateable for crate::protobuf::KubernetesDeploymentComponent {
+    fn get_version(&self) -> i32 {
+        match self.si_properties.as_ref().map(|p| p.version) {
+            Some(v) => v.unwrap_or(0),
+            None => 0,
+        }
     }
 }

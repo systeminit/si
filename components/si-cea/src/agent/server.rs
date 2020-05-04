@@ -100,8 +100,8 @@ impl<
                             return;
                         }
                     };
-                    if entity_event.input_entity().is_none() {
-                        warn!(?entity_event, "Missing input entity on event");
+                    if let Err(err) = entity_event.input_entity() {
+                        warn!(?err, "missing input entity on event");
                         return;
                     }
                     debug!(?entity_event, "dispatch");
@@ -109,11 +109,17 @@ impl<
                     match dispatch.dispatch(&mqtt_client, &mut entity_event).await {
                         Ok(()) => {
                             debug!(?entity_event, "success");
-                            entity_event.succeeded();
+                            if let Err(err) = entity_event.succeeded() {
+                                warn!(?err, "error setting entity_event to succeeded");
+                                return;
+                            }
                         }
                         Err(e) => {
                             debug!(?entity_event, "failed");
-                            entity_event.failed(e);
+                            if let Err(err) = entity_event.failed(e) {
+                                warn!(?err, "error setting entity_event to failed");
+                                return;
+                            }
                         }
                     }
                     match entity_event.send_via_mqtt(&mqtt_client).await {

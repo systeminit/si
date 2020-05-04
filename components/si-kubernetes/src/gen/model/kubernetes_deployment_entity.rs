@@ -1,8 +1,247 @@
 // Auth-generated code!
 // No touchy!
 
-use si_data;
-use uuid;
+impl crate::protobuf::KubernetesDeploymentEntity {
+    pub fn new(
+        name: Option<String>,
+        display_name: Option<String>,
+        description: Option<String>,
+        constraints: Option<crate::protobuf::KubernetesDeploymentComponentConstraints>,
+        properties: Option<crate::protobuf::KubernetesDeploymentEntityProperties>,
+        si_properties: Option<si_cea::protobuf::EntitySiProperties>,
+    ) -> si_data::Result<crate::protobuf::KubernetesDeploymentEntity> {
+        let mut si_storable = si_data::protobuf::DataStorable::default();
+        si_properties
+            .as_ref()
+            .ok_or(si_data::DataError::ValidationError("siProperties".into()))?;
+        let billing_account_id = si_properties
+            .as_ref()
+            .unwrap()
+            .billing_account_id
+            .as_ref()
+            .ok_or(si_data::DataError::ValidationError(
+                "siProperties.billingAccountId".into(),
+            ))?;
+        si_storable.add_to_tenant_ids(billing_account_id);
+        let organization_id = si_properties
+            .as_ref()
+            .unwrap()
+            .organization_id
+            .as_ref()
+            .ok_or(si_data::DataError::ValidationError(
+                "siProperties.organizationId".into(),
+            ))?;
+        si_storable.add_to_tenant_ids(organization_id);
+        let workspace_id = si_properties
+            .as_ref()
+            .unwrap()
+            .workspace_id
+            .as_ref()
+            .ok_or(si_data::DataError::ValidationError(
+                "siProperties.workspaceId".into(),
+            ))?;
+        si_storable.add_to_tenant_ids(workspace_id);
+
+        let mut result_obj = crate::protobuf::KubernetesDeploymentEntity {
+            ..Default::default()
+        };
+        result_obj.name = name;
+        result_obj.display_name = display_name;
+        result_obj.description = description;
+        result_obj.constraints = constraints;
+        result_obj.properties = properties;
+        result_obj.si_properties = si_properties;
+        result_obj.si_storable = Some(si_storable);
+
+        Ok(result_obj)
+    }
+
+    pub async fn create(
+        db: &si_data::Db,
+        name: Option<String>,
+        display_name: Option<String>,
+        description: Option<String>,
+        constraints: Option<crate::protobuf::KubernetesDeploymentComponentConstraints>,
+        properties: Option<crate::protobuf::KubernetesDeploymentEntityProperties>,
+        si_properties: Option<si_cea::protobuf::EntitySiProperties>,
+    ) -> si_data::Result<crate::protobuf::KubernetesDeploymentEntity> {
+        let mut result_obj = crate::protobuf::KubernetesDeploymentEntity::new(
+            name,
+            display_name,
+            description,
+            constraints,
+            properties,
+            si_properties,
+        )?;
+        db.validate_and_insert_as_new(&mut result_obj).await?;
+        Ok(result_obj)
+    }
+
+    pub async fn get(
+        db: &si_data::Db,
+        id: &str,
+    ) -> si_data::Result<crate::protobuf::KubernetesDeploymentEntity> {
+        let obj = db.get(id).await?;
+        Ok(obj)
+    }
+
+    pub async fn get_by_natural_key(
+        db: &si_data::Db,
+        natural_key: &str,
+    ) -> si_data::Result<crate::protobuf::KubernetesDeploymentEntity> {
+        let obj = db.lookup_by_natural_key(natural_key).await?;
+        Ok(obj)
+    }
+
+    pub async fn save(&self, db: &si_data::Db) -> si_data::Result<()> {
+        db.upsert(self).await?;
+        Ok(())
+    }
+
+    pub async fn list(
+        db: &si_data::Db,
+        list_request: crate::protobuf::KubernetesDeploymentEntityListRequest,
+    ) -> si_data::Result<si_data::ListResult<crate::protobuf::KubernetesDeploymentEntity>> {
+        let result = match list_request.page_token {
+            Some(token) => db.list_by_page_token(token).await?,
+            None => {
+                let page_size = match list_request.page_size {
+                    Some(page_size) => page_size,
+                    None => 10,
+                };
+                let order_by = match list_request.order_by {
+                    Some(order_by) => order_by,
+                    None => "".to_string(), // The empty string is the signal for a default, thanks protobuf history
+                };
+                let contained_within = match list_request.scope_by_tenant_id {
+                    Some(contained_within) => contained_within,
+                    None => return Err(si_data::DataError::MissingScopeByTenantId),
+                };
+                db.list(
+                    &list_request.query,
+                    page_size,
+                    order_by,
+                    list_request.order_by_direction,
+                    contained_within,
+                    "",
+                )
+                .await?
+            }
+        };
+        Ok(result)
+    }
+}
+
+impl si_cea::Entity for crate::protobuf::KubernetesDeploymentEntity {
+    fn id(&self) -> &str {
+        self.id.as_ref().expect("TODO: fix")
+    }
+
+    fn set_id(&mut self, id: impl Into<String>) {
+        self.id = Some(id.into());
+    }
+
+    fn state(&self) -> i32 {
+        self.si_properties.as_ref().expect("TODO: fix").entity_state
+    }
+
+    fn set_state(&mut self, state: si_cea::EntitySiPropertiesEntityState) {
+        self.si_properties
+            .as_mut()
+            .expect("TODO: fix")
+            .set_entity_state(state);
+    }
+
+    fn component_id(&self) -> &str {
+        self.si_properties
+            .as_ref()
+            .expect("TODO: fix")
+            .component_id
+            .as_ref()
+            .expect("TODO: fix")
+    }
+
+    fn set_component_id(&mut self, component_id: impl Into<String>) {
+        self.si_properties.as_mut().expect("TODO: fix").component_id = Some(component_id.into());
+    }
+
+    fn integration_id(&self) -> &str {
+        self.si_properties
+            .as_ref()
+            .expect("TODO: fix")
+            .integration_id
+            .as_ref()
+            .expect("TODO: fix")
+    }
+
+    fn set_integration_id(&mut self, integration_id: impl Into<String>) {
+        self.si_properties
+            .as_mut()
+            .expect("TODO: fix")
+            .integration_id = Some(integration_id.into());
+    }
+
+    fn integration_service_id(&self) -> &str {
+        self.si_properties
+            .as_ref()
+            .expect("TODO: fix")
+            .integration_service_id
+            .as_ref()
+            .expect("TODO: fix")
+    }
+
+    fn set_integration_service_id(&mut self, integration_service_id: impl Into<String>) {
+        self.si_properties
+            .as_mut()
+            .expect("TODO: fix")
+            .integration_service_id = Some(integration_service_id.into());
+    }
+
+    fn workspace_id(&self) -> &str {
+        self.si_properties
+            .as_ref()
+            .expect("TODO: fix")
+            .workspace_id
+            .as_ref()
+            .expect("TODO: fix")
+    }
+
+    fn set_workspace_id(&mut self, workspace_id: impl Into<String>) {
+        self.si_properties.as_mut().expect("TODO: fix").workspace_id = Some(workspace_id.into());
+    }
+
+    fn organization_id(&self) -> &str {
+        self.si_properties
+            .as_ref()
+            .expect("TODO: fix")
+            .organization_id
+            .as_ref()
+            .expect("TODO: fix")
+    }
+
+    fn set_organization_id(&mut self, organization_id: impl Into<String>) {
+        self.si_properties
+            .as_mut()
+            .expect("TODO: fix")
+            .organization_id = Some(organization_id.into());
+    }
+
+    fn billing_account_id(&self) -> &str {
+        self.si_properties
+            .as_ref()
+            .expect("TODO: fix")
+            .billing_account_id
+            .as_ref()
+            .expect("TODO: fix")
+    }
+
+    fn set_billing_account_id(&mut self, billing_account_id: impl Into<String>) {
+        self.si_properties
+            .as_mut()
+            .expect("TODO: fix")
+            .billing_account_id = Some(billing_account_id.into());
+    }
+}
 
 impl si_data::Storable for crate::protobuf::KubernetesDeploymentEntity {
     /// # Panics
@@ -34,7 +273,7 @@ impl si_data::Storable for crate::protobuf::KubernetesDeploymentEntity {
         self.set_id(format!(
             "{}:{}",
             <Self as si_data::Storable>::type_name(),
-            uuid::Uuid::new_v4(),
+            si_data::uuid_string(),
         ));
     }
 
@@ -62,11 +301,6 @@ impl si_data::Storable for crate::protobuf::KubernetesDeploymentEntity {
         if self.description.is_none() {
             return Err(si_data::DataError::ValidationError(
                 "missing required description value".into(),
-            ));
-        }
-        if self.display_type_name.is_none() {
-            return Err(si_data::DataError::ValidationError(
-                "missing required display_type_name value".into(),
             ));
         }
         if self.si_properties.is_none() {
@@ -134,139 +368,6 @@ impl si_data::Storable for crate::protobuf::KubernetesDeploymentEntity {
     }
 
     fn order_by_fields() -> Vec<&'static str> {
-        vec!["siStorable.naturalKey", "id", "name", "displayName", "description", "displayTypeName", "siStorable.naturalKey", "entitySiProperties.entityState", "siStorable.naturalKey", "siStorable.naturalKey", "properties.kubernetesObject.apiVersion", "properties.kubernetesObject.kind", "siStorable.naturalKey", "properties.kubernetesObject.kubernetesMetadata.name", "properties.kubernetesObject.kubernetesMetadata.labels", "siStorable.naturalKey", "properties.kubernetesObject.spec.replicas", "siStorable.naturalKey", "properties.kubernetesObject.spec.kubernetesSelector.matchLabels", "siStorable.naturalKey", "siStorable.naturalKey", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesMetadata.name", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesMetadata.labels", "siStorable.naturalKey", "siStorable.naturalKey", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesPodSpec.kubernetesContainer.name", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesPodSpec.kubernetesContainer.image", "siStorable.naturalKey", "siStorable.naturalKey", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesPodSpec.kubernetesContainer.ports.portValues.containerPort", "properties.kubernetesObjectYaml", "siStorable.naturalKey", "constraints.componentName", "constraints.componentDisplayName", "constraints.kubernetesVersion", "siStorable.naturalKey", "constraints.componentName", "constraints.componentDisplayName", "constraints.kubernetesVersion"]
-    }
-}
-
-impl crate::protobuf::KubernetesDeploymentEntity {
-    pub async fn get(
-        db: &si_data::Db,
-        id: &str,
-    ) -> si_data::Result<crate::protobuf::KubernetesDeploymentEntity> {
-        let obj = db.get(id).await?;
-        Ok(obj)
-    }
-
-    pub async fn get_by_natural_key(
-        db: &si_data::Db,
-        natural_key: &str,
-    ) -> si_data::Result<crate::protobuf::KubernetesDeploymentEntity> {
-        let obj = db.lookup_by_natural_key(natural_key).await?;
-        Ok(obj)
-    }
-
-    pub async fn save(&self, db: &si_data::Db) -> si_data::Result<()> {
-        db.upsert(self).await?;
-        Ok(())
-    }
-
-    pub async fn list(
-        db: &si_data::Db,
-        list_request: crate::protobuf::KubernetesDeploymentEntityListRequest,
-    ) -> si_data::Result<si_data::ListResult<crate::protobuf::KubernetesDeploymentEntity>> {
-        let result = match list_request.page_token {
-            Some(token) => db.list_by_page_token(token).await?,
-            None => {
-                let page_size = match list_request.page_size {
-                    Some(page_size) => page_size,
-                    None => 10,
-                };
-                let order_by = match list_request.order_by {
-                    Some(order_by) => order_by,
-                    None => "".to_string(), // The empty string is the signal for a default, thanks protobuf history
-                };
-                let contained_within = match list_request.scope_by_tenant_id {
-                    Some(contained_within) => contained_within,
-                    None => return Err(si_data::DataError::MissingScopeByTenantId),
-                };
-                db.list(
-                    &list_request.query,
-                    page_size,
-                    order_by,
-                    list_request.order_by_direction,
-                    contained_within,
-                    "",
-                )
-                .await?
-            }
-        };
-        Ok(result)
-    }
-}
-
-impl crate::protobuf::KubernetesDeploymentEntity {
-    pub fn new(
-        constraints: Option<crate::protobuf::KubernetesDeploymentComponentConstraints>,
-        properties: Option<crate::protobuf::KubernetesDeploymentEntityProperties>,
-        name: Option<String>,
-        display_name: Option<String>,
-        description: Option<String>,
-        workspace_id: Option<String>,
-    ) -> si_data::Result<crate::protobuf::KubernetesDeploymentEntity> {
-        let mut si_storable = si_data::protobuf::DataStorable::default();
-        si_properties
-            .as_ref()
-            .ok_or(si_data::DataError::ValidationError("siProperties".into()))?;
-        let billing_account_id = si_properties
-            .as_ref()
-            .unwrap()
-            .billing_account_id
-            .as_ref()
-            .ok_or(si_data::DataError::ValidationError(
-                "siProperties.billingAccountId".into(),
-            ))?;
-        si_storable.add_to_tenant_ids(billing_account_id);
-        let organization_id = si_properties
-            .as_ref()
-            .unwrap()
-            .organization_id
-            .as_ref()
-            .ok_or(si_data::DataError::ValidationError(
-                "siProperties.organizationId".into(),
-            ))?;
-        si_storable.add_to_tenant_ids(organization_id);
-        let workspace_id = si_properties
-            .as_ref()
-            .unwrap()
-            .workspace_id
-            .as_ref()
-            .ok_or(si_data::DataError::ValidationError(
-                "siProperties.workspaceId".into(),
-            ))?;
-        si_storable.add_to_tenant_ids(workspace_id);
-
-        let mut result_obj = crate::protobuf::KubernetesDeploymentEntity {
-            ..Default::default()
-        };
-        result_obj.constraints = constraints;
-        result_obj.properties = properties;
-        result_obj.name = name;
-        result_obj.display_name = display_name;
-        result_obj.description = description;
-        result_obj.workspace_id = workspace_id;
-        result_obj.si_storable = Some(si_storable);
-
-        Ok(result_obj)
-    }
-
-    pub async fn create(
-        db: &si_data::Db,
-        constraints: Option<crate::protobuf::KubernetesDeploymentComponentConstraints>,
-        properties: Option<crate::protobuf::KubernetesDeploymentEntityProperties>,
-        name: Option<String>,
-        display_name: Option<String>,
-        description: Option<String>,
-        workspace_id: Option<String>,
-    ) -> si_data::Result<crate::protobuf::KubernetesDeploymentEntity> {
-        let mut result_obj = crate::protobuf::KubernetesDeploymentEntity::new(
-            constraints,
-            properties,
-            name,
-            display_name,
-            description,
-            workspace_id,
-        )?;
-        db.validate_and_insert_as_new(&mut result_obj).await?;
-        Ok(result_obj)
+        vec!["siStorable.naturalKey", "id", "name", "displayName", "description", "siStorable.naturalKey", "entitySiProperties.entityState", "siStorable.naturalKey", "siStorable.naturalKey", "properties.kubernetesObject.apiVersion", "properties.kubernetesObject.kind", "siStorable.naturalKey", "properties.kubernetesObject.kubernetesMetadata.name", "properties.kubernetesObject.kubernetesMetadata.labels", "siStorable.naturalKey", "properties.kubernetesObject.spec.replicas", "siStorable.naturalKey", "properties.kubernetesObject.spec.kubernetesSelector.matchLabels", "siStorable.naturalKey", "siStorable.naturalKey", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesMetadata.name", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesMetadata.labels", "siStorable.naturalKey", "siStorable.naturalKey", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesPodSpec.kubernetesContainer.name", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesPodSpec.kubernetesContainer.image", "siStorable.naturalKey", "siStorable.naturalKey", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesPodSpec.kubernetesContainer.ports.portValues.containerPort", "properties.kubernetesObjectYaml", "siStorable.naturalKey", "constraints.componentName", "constraints.componentDisplayName", "constraints.kubernetesVersion", "siStorable.naturalKey", "constraints.componentName", "constraints.componentDisplayName", "constraints.kubernetesVersion"]
     }
 }

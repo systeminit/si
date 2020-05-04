@@ -1,14 +1,24 @@
 // Auth-generated code!
 // No touchy!
 
-use si_data;
-use uuid;
-
-<%- include('storable.rs.ejs', { fmt: fmt }) %> 
-<%_ if (fmt.isMigrateable()) { _%>
-<%- include('migrateable.rs.ejs', { fmt: fmt }) %>
-<%_ } _%>
-<%- include('implSave.rs.ejs', { fmt: fmt }) %>
+impl <%- fmt.structName() %> {
 <%_ if (fmt.hasCreateMethod()) { _%>
 <%- include('implCreate.rs.ejs', { fmt: fmt }) %>
+<%_ } _%>
+<%_ if (fmt.isComponentObject()) { _%>
+<%- include('implPick.rs.ejs', { fmt: fmt }) %>
+<%_ } _%>
+<%- include('implSave.rs.ejs', { fmt: fmt }) %>
+}
+
+<%_ if (fmt.isEntityEventObject()) { _%>
+<%- include('implEntityEvent.rs.ejs', { fmt: fmt }) %>
+<%_ } _%>
+<%_ if (fmt.isEntityObject()) { _%>
+<%- include('implEntity.rs.ejs', { fmt: fmt }) %>
+<%_ } _%>
+
+<%- include('storable.rs.ejs', { fmt: fmt }) %>
+<%_ if (fmt.isMigrateable()) { _%>
+<%- include('migrateable.rs.ejs', { fmt: fmt }) %>
 <%_ } _%>

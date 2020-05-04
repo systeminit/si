@@ -107,11 +107,11 @@ impl<T: EntityEvent> Dispatch for Dispatcher<T> {
         mqtt_client: &MqttClient,
         entity_event: &mut Self::EntityEvent,
     ) -> CeaResult<()> {
-        match self.dispatchers.get(entity_event.integration_service_id()) {
+        match self.dispatchers.get(entity_event.integration_service_id()?) {
             Some(dispatcher) => dispatcher.dispatch(mqtt_client, entity_event).await,
             None => Err(CeaError::DispatchFunctionMissing(
-                entity_event.integration_service_id().to_string(),
-                entity_event.action_name().to_string(),
+                entity_event.integration_service_id()?.to_string(),
+                entity_event.action_name()?.to_string(),
             )),
         }
     }
@@ -147,11 +147,12 @@ async fn integration_service_id_for(
         .await?;
     let integration_service_lookup_id = format!(
         "global:{}:integration_service:{}",
-        integration.id, integration_service_name
+        integration.id.expect("TODO: fix"),
+        integration_service_name
     );
     let integration_service: si_account::IntegrationService = db
         .lookup_by_natural_key(integration_service_lookup_id)
         .await?;
 
-    Ok(integration_service.id)
+    Ok(integration_service.id.expect("TODO: fix"))
 }

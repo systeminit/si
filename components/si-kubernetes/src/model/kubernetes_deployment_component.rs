@@ -1,11 +1,12 @@
+use crate::protobuf::{
+    KubernetesDeploymentComponentConstraints,
+    KubernetesDeploymentComponentConstraintsKubernetesVersion,
+};
 use si_cea::component::prelude::*;
 use std::fmt;
 use std::str::FromStr;
 
-pub use crate::gen::kubernetes::kubernetes_deployment_component::{
-    KubernetesDeploymentComponent, KubernetesDeploymentComponentConstraints,
-};
-pub use crate::protobuf::KubernetesDeploymentComponentConstraintsKubernetesVersion;
+pub use crate::protobuf::KubernetesDeploymentComponent;
 
 type Constraints = KubernetesDeploymentComponentConstraints;
 type KubernetesVersion = KubernetesDeploymentComponentConstraintsKubernetesVersion;
@@ -42,44 +43,7 @@ impl KubernetesDeploymentComponent {
         Ok((implicit_constraints, component))
     }
 
-    // NOTE(fnichol): This can likely be common/cea code?
-    async fn pick_by_component_name(
-        db: &Db,
-        req: &Constraints,
-    ) -> CeaResult<Option<(Constraints, Self)>> {
-        match &req.component_name {
-            Some(name) => {
-                match Self::pick_by_string_field(db, Field::Name.to_string(), name).await? {
-                    Some(component) => Ok(Some((Constraints::default(), component))),
-                    None => Ok(None),
-                }
-            }
-            None => Ok(None),
-        }
-    }
-
-    // NOTE(fnichol): This can likely be common/cea code?
-    async fn pick_by_component_display_name(
-        db: &Db,
-        req: &Constraints,
-    ) -> CeaResult<Option<(Constraints, Self)>> {
-        match &req.component_display_name {
-            Some(display_name) => {
-                match Self::pick_by_string_field(db, Field::DisplayName.to_string(), display_name)
-                    .await?
-                {
-                    Some(component) => Ok(Some((Constraints::default(), component))),
-                    None => Ok(None),
-                }
-            }
-            None => Ok(None),
-        }
-    }
-}
-
-#[async_trait::async_trait]
-impl MigrateComponent for KubernetesDeploymentComponent {
-    async fn migrate(db: &Db) -> CeaResult<()> {
+    pub async fn migrate(db: &Db) -> DataResult<()> {
         // Should these be internal model calls? Pretty sure they def should.
         let aws_integration: Integration =
             db.lookup_by_natural_key("global:integration:aws").await?;

@@ -267,13 +267,16 @@ message IntegrationOptions {
   google.protobuf.StringValue display_name = 1002;
   IntegrationOptionsOptionType option_type = 1003;
 }
+message IntegrationSiProperties {
+  google.protobuf.Int32Value version = 1001;
+}
 message Integration {
   google.protobuf.StringValue id = 1;
   google.protobuf.StringValue name = 2;
   google.protobuf.StringValue display_name = 3;
   si.data.DataStorable si_storable = 4;
-  google.protobuf.Int32Value version = 1001;
-  repeated si.account.IntegrationOptions options = 1002;
+  repeated si.account.IntegrationOptions options = 1001;
+  si.account.IntegrationSiProperties si_properties = 1002;
 }
 message IntegrationListRequest {
   si.data.DataQuery query = 1;
@@ -297,14 +300,15 @@ message IntegrationGetReply {
 message IntegrationCreateRequest {
   google.protobuf.StringValue name = 1001;
   google.protobuf.StringValue display_name = 1002;
-  google.protobuf.Int32Value version = 1003;
-  repeated si.account.IntegrationOptions options = 1004;
+  repeated si.account.IntegrationOptions options = 1003;
+  si.account.IntegrationSiProperties si_properties = 1004;
 }
 message IntegrationCreateReply {
   si.account.Integration object = 1001;
 }
 message IntegrationServiceSiProperties {
   google.protobuf.StringValue integration_id = 1001;
+  google.protobuf.Int32Value version = 1002;
 }
 message IntegrationService {
   google.protobuf.StringValue id = 1;
