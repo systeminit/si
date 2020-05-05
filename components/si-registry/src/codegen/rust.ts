@@ -119,13 +119,59 @@ export class RustFormatter {
     );
   }
 
-  rustFieldNameForProp(prop: Props): string {
-    return snakeCase(prop.name);
+  implServiceCommonCreate(propMethod: PropPrelude.PropMethod): string {
+    return ejs.render(
+      "<%- include('src/codegen/rust/implServiceCommonCreate.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
+      { fmt: this, propMethod: propMethod },
+      { filename: "." },
+    );
+  }
+
+  implServiceEntityCreate(propMethod: PropPrelude.PropMethod): string {
+    return ejs.render(
+      "<%- include('src/codegen/rust/implServiceEntityCreate.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
+      { fmt: this, propMethod: propMethod },
+      { filename: "." },
+    );
+  }
+
+  implServiceGet(propMethod: PropPrelude.PropMethod): string {
+    return ejs.render(
+      "<%- include('src/codegen/rust/implServiceGet.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
+      { fmt: this, propMethod: propMethod },
+      { filename: "." },
+    );
+  }
+
+  implServiceList(propMethod: PropPrelude.PropMethod): string {
+    return ejs.render(
+      "<%- include('src/codegen/rust/implServiceList.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
+      { fmt: this, propMethod: propMethod },
+      { filename: "." },
+    );
+  }
+
+  implServiceComponentPick(propMethod: PropPrelude.PropMethod): string {
+    return ejs.render(
+      "<%- include('src/codegen/rust/implServiceComponentPick.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
+      { fmt: this, propMethod: propMethod },
+      { filename: "." },
+    );
+  }
+
+  implServiceCustomMethod(propMethod: PropPrelude.PropMethod): string {
+    return ejs.render(
+      "<%- include('src/codegen/rust/implServiceCustomMethod.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
+      { fmt: this, propMethod: propMethod },
+      { filename: "." },
+    );
   }
 
   implServiceAuth(propMethod: PropPrelude.PropMethod): string {
     if (propMethod.skipAuth) {
-      return "// Skipping authentication\n";
+      return `// Authentication is skipped on \`${this.implServiceMethodName(
+        propMethod,
+      )}\`\n`;
     } else {
       return this.implServiceAuthCall(propMethod);
     }
@@ -154,7 +200,10 @@ export class RustFormatter {
 
   serviceMethods(): string {
     const results = [];
-    for (const propMethod of this.systemObject.methods.attrs) {
+    const propMethods = this.systemObject.methods.attrs.sort((a, b) =>
+      a.name > b.name ? 1 : -1,
+    );
+    for (const propMethod of propMethods) {
       const output = ejs.render(
         "<%- include('src/codegen/rust/serviceMethod.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
         {
@@ -168,6 +217,10 @@ export class RustFormatter {
       results.push(output);
     }
     return results.join("\n");
+  }
+
+  rustFieldNameForProp(prop: Props): string {
+    return snakeCase(prop.name);
   }
 
   rustTypeForProp(
@@ -281,11 +334,11 @@ export class RustFormatter {
     if (listMethod instanceof PropPrelude.PropMethod) {
       for (const prop of listMethod.reply.properties.attrs) {
         const fieldName = snakeCase(prop.name);
-        let listReplyValue = `Some(list_reply.${fieldName})`;
+        let listReplyValue = `Some(output.${fieldName})`;
         if (fieldName == "next_page_token") {
-          listReplyValue = "Some(list_reply.page_token)";
+          listReplyValue = "Some(output.page_token)";
         } else if (fieldName == "items") {
-          listReplyValue = `list_reply.${fieldName}`;
+          listReplyValue = `output.${fieldName}`;
         }
         result.push(`${fieldName}: ${listReplyValue}`);
       }
@@ -546,7 +599,9 @@ export class RustFormatterService {
   }
 
   systemObjectsAsFormatters(): RustFormatter[] {
-    return this.systemObjects.map(o => new RustFormatter(o));
+    return this.systemObjects
+      .sort((a, b) => (a.typeName > b.typeName ? 1 : -1))
+      .map(o => new RustFormatter(o));
   }
 
   implServiceStructBody(): string {
@@ -642,10 +697,7 @@ export class CodegenRust {
       this.serviceName,
     )) {
       if (systemObject.kind() != "baseObject") {
-        /* // TODO: remove me FUCKERS */
-        /* if (systemObject.kind() != "entityEventObject") { */
         results.push(`pub mod ${snakeCase(systemObject.typeName)};`);
-        /* } */
       }
     }
     await this.writeCode("gen/model/mod.rs", results.join("\n"));

@@ -1,13 +1,32 @@
 // Auto-generated rust code!
 // No-Touchy!
 
-use tonic;
-use tracing::{self, debug, info};
+use tracing::{debug, info};
 use tracing_futures::Instrument as _;
 use tracing_opentelemetry::OpenTelemetrySpanExt as _;
 use opentelemetry::api::propagation::text_propagator::HttpTextFormat;
 
-use si_data;
+#[derive(Debug)]
+pub struct Service {
+pub db: si_data::Db,
+}
+
+impl Service {
+    pub fn new(db: si_data::Db) -> Service {
+        Service { db }
+    }
+
+    pub fn db(&self) -> &si_data::Db {
+        &self.db
+    }
+        }
+
+#[tonic::async_trait]
+impl crate::protobuf::cea_server::Cea for Service {
+    
+    
+    
+}
 
 struct TonicMetaWrapper<'a>(&'a mut tonic::metadata::MetadataMap);
 
@@ -34,26 +53,4 @@ impl<'a> opentelemetry::api::propagation::Carrier for TonicMetaWrapper<'a> {
         };
         self.0.insert(key, value);
     }
-}
-
-#[derive(Debug)]
-pub struct Service {
-pub db: si_data::Db,
-}
-
-impl Service {
-    pub fn new(db: si_data::Db) -> Service {
-        Service { db }
-    }
-
-    pub fn db(&self) -> &si_data::Db {
-        &self.db
-    }
-        }
-
-#[tonic::async_trait]
-impl crate::protobuf::cea_server::Cea for Service {
-
-
-
 }

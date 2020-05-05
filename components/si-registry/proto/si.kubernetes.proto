@@ -71,7 +71,7 @@ message KubernetesDeploymentComponentGetRequest {
   google.protobuf.StringValue id = 1001;
 }
 message KubernetesDeploymentComponentGetReply {
-  si.kubernetes.KubernetesDeploymentComponent object = 1001;
+  si.kubernetes.KubernetesDeploymentComponent item = 1001;
 }
 message KubernetesDeploymentComponentListRequest {
   si.data.DataQuery query = 1;
@@ -94,6 +94,7 @@ message KubernetesDeploymentComponentCreateRequest {
   si.cea.ComponentSiProperties si_properties = 1004;
 }
 message KubernetesDeploymentComponentCreateReply {
+  si.kubernetes.KubernetesDeploymentComponent item = 1;
 }
 message KubernetesDeploymentComponentPickRequest {
   si.kubernetes.KubernetesDeploymentComponentConstraints constraints = 1;
@@ -132,7 +133,7 @@ message KubernetesDeploymentEntityGetRequest {
   google.protobuf.StringValue id = 1001;
 }
 message KubernetesDeploymentEntityGetReply {
-  si.kubernetes.KubernetesDeploymentEntity object = 1001;
+  si.kubernetes.KubernetesDeploymentEntity item = 1001;
 }
 message KubernetesDeploymentEntityListRequest {
   si.data.DataQuery query = 1;
@@ -156,7 +157,7 @@ message KubernetesDeploymentEntityCreateRequest {
   si.cea.EntitySiProperties si_properties = 1001;
 }
 message KubernetesDeploymentEntityCreateReply {
-  si.kubernetes.KubernetesDeploymentEntity entity = 1;
+  si.kubernetes.KubernetesDeploymentEntity item = 1;
   si.kubernetes.KubernetesDeploymentEntityEvent entity_event = 2;
 }
 message KubernetesDeploymentEntitySyncRequest {

@@ -1,16 +1,44 @@
 // Auto-generated rust code!
 // No-Touchy!
 
-use tonic;
-use tracing::{self, debug, info};
+use tracing::{debug, info};
 use tracing_futures::Instrument as _;
 use tracing_opentelemetry::OpenTelemetrySpanExt as _;
 use opentelemetry::api::propagation::text_propagator::HttpTextFormat;
 
-use si_data;
-<%_ if (fmt.hasComponents()) { _%>
-use si_cea;
+#[derive(Debug)]
+pub struct Service {
+<%- fmt.implServiceStructBody() %>
+}
+
+impl Service {
+    pub fn new(<%- fmt.implServiceNewConstructorArgs() %>) -> Service {
+        Service { <%- fmt.implServiceStructConstructorReturn() %> }
+    }
+
+    pub fn db(&self) -> &si_data::Db {
+        &self.db
+    }
+    <% if (fmt.hasComponents()) { %>
+    pub fn agent(&self) -> &si_cea::AgentClient {
+        &self.agent
+    }
+    <%_ } _%>
+    <% if (fmt.hasMigratables()) { %>
+    pub async fn migrate(&self) -> si_data::Result<()> {
+        <%- fmt.implServiceMigrate() %>
+
+        Ok(())
+    }
+    <%_ } _%>
+}
+
+#[tonic::async_trait]
+impl <%- fmt.implServiceTraitName() %> for Service {
+<%_ for (const objFmt of fmt.systemObjectsAsFormatters()) { _%>
+    <%- objFmt.serviceMethods() %>
 <%_ } _%>
+}
 
 struct TonicMetaWrapper<'a>(&'a mut tonic::metadata::MetadataMap);
 
@@ -37,37 +65,4 @@ impl<'a> opentelemetry::api::propagation::Carrier for TonicMetaWrapper<'a> {
         };
         self.0.insert(key, value);
     }
-}
-
-#[derive(Debug)]
-pub struct Service {
-<%- fmt.implServiceStructBody() %>
-}
-
-impl Service {
-    pub fn new(<%- fmt.implServiceNewConstructorArgs() %>) -> Service {
-        Service { <%- fmt.implServiceStructConstructorReturn() %> }
-    }
-
-    pub fn db(&self) -> &si_data::Db {
-        &self.db
-    }
-    <% if (fmt.hasComponents()) { %>
-    pub fn agent(&self) -> &si_cea::AgentClient {
-        &self.agent
-    }
-    <%_ } _%>
-    <% if (fmt.hasMigratables()) { %>
-    pub async fn migrate(&self) -> si_data::Result<()> {
-        <%- fmt.implServiceMigrate() %>
-        Ok(())
-    }
-    <%_ } _%>
-}
-
-#[tonic::async_trait]
-impl <%- fmt.implServiceTraitName() %> for Service {
-<%_ for (const objFmt of fmt.systemObjectsAsFormatters()) { _%>
-<%- objFmt.serviceMethods() %>
-<%_ } _%>
 }

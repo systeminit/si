@@ -4,7 +4,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{self, json};
 use si_settings::Settings;
 use sodiumoxide::crypto::secretbox;
-use tracing::{debug, event, info, info_span, span, Level};
+use tracing::{debug, event, info_span, span, Level};
 use tracing_futures::Instrument as _;
 
 use std::collections::HashMap;
@@ -196,7 +196,7 @@ impl Db {
             event!(Level::TRACE, "generating_id");
             // We generate a new ID for every inserted object, no matter what
             content.generate_id();
-            span.record("db.storable.id", &tracing::field::display(content.get_id()));
+            span.record("db.storable.id", &tracing::field::display(content.id()?));
 
             event!(Level::TRACE, "set_type_name");
             // We set the type name, always.
@@ -210,16 +210,16 @@ impl Db {
             // We must have a tenant ID already in the list; otherwise, this object is
             // invalid and should be rejected. The first item in the list is our primary
             // tenancy.
-            if content.get_tenant_ids().len() == 0 {
+            if content.tenant_ids()?.is_empty() {
                 span.record("error", &"DataError::MissingTenantIds");
                 return Err(DataError::MissingTenantIds);
             }
 
             event!(Level::TRACE, "add_self_to_tenant_ids");
             // The object itself should always be in the tenant id list, ideally last.
-            content.add_to_tenant_ids(content.get_id().to_string());
+            content.add_to_tenant_ids(content.id()?.to_string());
 
-            let tenant_id_list = content.get_tenant_ids().join(", ");
+            let tenant_id_list = content.tenant_ids()?.join(", ");
             span.record(
                 "db.storable.tenant_ids",
                 &tracing::field::display(&tenant_id_list[..]),
@@ -227,16 +227,16 @@ impl Db {
 
             event!(Level::TRACE, "set_natural_key");
             // We set the natural key, if the object needs one.
-            content.set_natural_key();
+            content.set_natural_key()?;
 
             span.record(
                 "db.storable.natural_key",
-                &tracing::field::display(&content.get_natural_key().unwrap_or("None")),
+                &tracing::field::display(&content.natural_key()?.unwrap_or("None")),
             );
 
             event!(Level::TRACE, "check_natural_key_exists");
             // Check for the natural key - it should not already exist, assuming we have one.
-            self.check_natural_key_exists(content.get_natural_key())
+            self.check_natural_key_exists(content.natural_key()?)
                 .await?;
 
             event!(Level::TRACE, "check_model_validation");
@@ -286,8 +286,8 @@ impl Db {
             event!(Level::TRACE, "check_tenant_ids");
             // Check tenant_ids - do not allow objects with non-existent tenant ids in to the
             // database.
-            for tenant_id in content.get_tenant_ids().iter() {
-                if tenant_id == "global" || tenant_id == content.get_id() {
+            for tenant_id in content.tenant_ids()?.iter() {
+                if tenant_id == "global" || tenant_id == content.id()? {
                     continue;
                 }
                 if self.exists(tenant_id).await? == false {
@@ -298,13 +298,13 @@ impl Db {
             event!(Level::TRACE, "insert");
             self.insert(content).await?;
 
-            if let Some(nk) = content.get_natural_key() {
+            if let Some(nk) = content.natural_key()? {
                 let id = String::from(nk);
                 let lookup_object = LookupObject {
                     id: String::from(nk),
-                    object_id: content.get_id().to_string(),
+                    object_id: content.id()?.to_string(),
                     type_name: "lookup_object".to_string(),
-                    tenant_ids: Vec::from(content.get_tenant_ids()),
+                    tenant_ids: Vec::from(content.tenant_ids()?),
                 };
                 let bucket = self.bucket.clone();
                 let collection = bucket.default_collection();
@@ -335,25 +335,22 @@ impl Db {
         );
         async {
             let span = tracing::Span::current();
-            span.record(
-                "db.storable.id",
-                &tracing::field::display(&content.get_id()),
-            );
+            span.record("db.storable.id", &tracing::field::display(&content.id()?));
             span.record(
                 "db.storable.type_name",
                 &tracing::field::display(&<T as Storable>::type_name()),
             );
             span.record(
                 "db.storable.tenant_ids",
-                &tracing::field::display(&content.get_tenant_ids().join(", ")[..]),
+                &tracing::field::display(&content.tenant_ids()?.join(", ")[..]),
             );
             span.record(
                 "db.storable.natural_key",
-                &tracing::field::display(&content.get_natural_key().unwrap_or("None")),
+                &tracing::field::display(&content.natural_key()?.unwrap_or("None")),
             );
             let bucket = self.bucket.clone();
             let collection = bucket.default_collection();
-            let id = String::from(content.get_id());
+            let id = String::from(content.id()?);
             debug!(?id, ?content, "insert");
             collection.insert(id, content, None).await?;
             Ok(content)
@@ -540,14 +537,14 @@ impl Db {
                 match r {
                     Ok(item) => {
                         if count == 0 && real_item_id == "" {
-                            real_item_id = item.get_id().to_string();
+                            real_item_id = item.id()?.to_string();
                         }
-                        if real_item_id == item.get_id() {
+                        if real_item_id == item.id()? {
                             include = true;
                             count = count + 1;
                             final_vec.push(item);
                         } else if count == page_size {
-                            next_item_id = item.get_id().to_string();
+                            next_item_id = item.id()?.to_string();
                             break;
                         } else if include {
                             final_vec.push(item);
@@ -613,9 +610,9 @@ impl Db {
                 "db.storable.type_name",
                 &tracing::field::display(<I as Storable>::type_name()),
             );
-            item.set_natural_key();
+            item.set_natural_key()?;
 
-            let natural_key = item.get_natural_key().ok_or(DataError::NaturalKeyMissing)?;
+            let natural_key = item.natural_key()?.ok_or(DataError::NaturalKeyMissing)?;
 
             span.record(
                 "db.storable.natural_key",
@@ -627,13 +624,13 @@ impl Db {
                 Ok(real_item) => {
                     span.record("db.migrate.existed", &tracing::field::display(true));
 
-                    let existing_id = real_item.get_id();
+                    let existing_id = real_item.id()?;
                     item.set_id(existing_id);
                     span.record("db.storable.id", &tracing::field::display(existing_id));
                     item.add_to_tenant_ids(existing_id.to_string());
                     span.record(
                         "db.storable.tenant_ids",
-                        &tracing::field::debug(item.get_tenant_ids()),
+                        &tracing::field::debug(item.tenant_ids()?),
                     );
                     if item.get_version() > real_item.get_version() {
                         span.record("db.migrate.updated", &tracing::field::display(true));
@@ -663,17 +660,17 @@ impl Db {
         let bucket_name = format!("{}", self.bucket_name);
         let span = info_span!(
             "db.upsert",
-            db.storable.id = %content.get_id(),
-            db.storable.natural_key = %content.get_natural_key().unwrap_or("None"),
+            db.storable.id = %content.id()?,
+            db.storable.natural_key = %content.natural_key()?.unwrap_or("None"),
             db.storable.type_name = %<T as Storable>::type_name(),
-            db.storable.tenant_ids = ?content.get_tenant_ids(),
+            db.storable.tenant_ids = ?content.tenant_ids()?,
             db.bucket_name = tracing::field::display(&bucket_name[..]),
             component = tracing::field::display("si-data"),
         );
         async {
             let bucket = self.bucket.clone();
             let collection = bucket.default_collection();
-            let id = content.get_id().clone();
+            let id = content.id()?.clone();
 
             collection
                 .upsert(id, content, None)
@@ -816,18 +813,18 @@ impl Db {
                     .map_err(DataError::CouchbaseError)?
             };
             let ditem = item.content_as::<T>()?;
-            span.record("db.storable.id", &tracing::field::display(&ditem.get_id()));
+            span.record("db.storable.id", &tracing::field::display(&ditem.id()?));
             span.record(
                 "db.storable.type_name",
                 &tracing::field::display(&<T as Storable>::type_name()),
             );
             span.record(
                 "db.storable.tenant_ids",
-                &tracing::field::display(&ditem.get_tenant_ids().join(", ")[..]),
+                &tracing::field::display(&ditem.tenant_ids()?.join(", ")[..]),
             );
             span.record(
                 "db.storable.natural_key",
-                &tracing::field::display(&ditem.get_natural_key().unwrap_or("None")),
+                &tracing::field::display(&ditem.natural_key()?.unwrap_or("None")),
             );
             Ok(ditem)
         }

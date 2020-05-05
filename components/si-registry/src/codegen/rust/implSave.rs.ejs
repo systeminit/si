@@ -23,7 +23,8 @@ pub async fn list(db: &si_data::Db, list_request: <%- fmt.implListRequestType({ 
             };
             let order_by = match list_request.order_by {
                 Some(order_by) => order_by,
-                None => "".to_string(), // The empty string is the signal for a default, thanks protobuf history
+                // The empty string is the signal for a default, thanks protobuf history
+                None => "".to_string(),
             };
             let contained_within = match list_request.scope_by_tenant_id {
                 Some(contained_within) => contained_within,

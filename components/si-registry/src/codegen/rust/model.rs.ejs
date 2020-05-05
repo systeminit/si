@@ -5,10 +5,10 @@ impl <%- fmt.structName() %> {
 <%_ if (fmt.hasCreateMethod()) { _%>
 <%- include('implCreate.rs.ejs', { fmt: fmt }) %>
 <%_ } _%>
+<%- include('implSave.rs.ejs', { fmt: fmt }) %>
 <%_ if (fmt.isComponentObject()) { _%>
 <%- include('implPick.rs.ejs', { fmt: fmt }) %>
 <%_ } _%>
-<%- include('implSave.rs.ejs', { fmt: fmt }) %>
 }
 
 <%_ if (fmt.isEntityEventObject()) { _%>

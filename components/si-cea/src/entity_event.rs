@@ -17,14 +17,9 @@ pub mod prelude {
 
 #[async_trait]
 pub trait EntityEvent:
-    Message + Storable + Serialize + DeserializeOwned + std::fmt::Debug + Default + Clone
+    Clone + std::fmt::Debug + Default + DeserializeOwned + Message + Serialize + Storable
 {
     type Entity: Entity;
-
-    fn id(&self) -> DataResult<&str>;
-
-    fn tenant_ids(&self) -> DataResult<&[String]>;
-    fn add_to_tenant_ids(&mut self, id: impl Into<String>);
 
     fn action_names() -> &'static [&'static str];
     fn action_name(&self) -> DataResult<&str>;
@@ -88,38 +83,30 @@ pub trait EntityEvent:
     fn entity_id(&self) -> DataResult<&str>;
     fn set_entity_id(&mut self, entity_id: impl Into<String>);
 
-    // TODO(fnichol): not needed--Storable sets this on upsert
-    // fn set_id(&mut self, id: impl Into<String>);
-    // fn type_name(&self) -> &'static str;
-    // fn get_type_name(&self) -> &str;
-    // fn set_type_name(&mut self, type_name: impl Into<String>);
-    // fn natural_key(&self) -> Option<&str>;
-    // fn set_natural_key(&mut self, natural_key: impl Into<String>);
-
     fn new(
         user_id: impl Into<String>,
         action_name: impl Into<String>,
         entity: &Self::Entity,
-    ) -> Self {
+    ) -> DataResult<Self> {
         let create_time: DateTime<Utc> = Utc::now();
         let mut entity_event: Self = Default::default();
+        entity_event.add_to_tenant_ids(entity.billing_account_id()?);
+        entity_event.add_to_tenant_ids(entity.organization_id()?);
+        entity_event.add_to_tenant_ids(entity.workspace_id()?);
+        entity_event.add_to_tenant_ids(entity.id()?);
         entity_event.set_action_name(action_name);
-        entity_event.set_billing_account_id(entity.billing_account_id());
-
-        entity_event.set_user_id(user_id);
-        entity_event.set_entity_id(entity.id());
         entity_event.set_create_time(create_time.to_string());
-        entity_event.set_component_id(entity.component_id());
-        entity_event.set_integration_id(entity.integration_id());
-        entity_event.set_integration_service_id(entity.integration_service_id());
-        entity_event.set_workspace_id(entity.workspace_id());
-        entity_event.set_organization_id(entity.organization_id());
+        entity_event.set_user_id(user_id);
         entity_event.set_input_entity(entity.clone());
-        <Self as EntityEvent>::add_to_tenant_ids(&mut entity_event, entity.billing_account_id());
-        <Self as EntityEvent>::add_to_tenant_ids(&mut entity_event, entity.organization_id());
-        <Self as EntityEvent>::add_to_tenant_ids(&mut entity_event, entity.workspace_id());
-        <Self as EntityEvent>::add_to_tenant_ids(&mut entity_event, entity.id());
-        entity_event
+        entity_event.set_billing_account_id(entity.billing_account_id()?);
+        entity_event.set_organization_id(entity.organization_id()?);
+        entity_event.set_workspace_id(entity.workspace_id()?);
+        entity_event.set_integration_id(entity.integration_id()?);
+        entity_event.set_integration_service_id(entity.integration_service_id()?);
+        entity_event.set_component_id(entity.component_id()?);
+        entity_event.set_entity_id(entity.id()?);
+
+        Ok(entity_event)
     }
 
     async fn create(
@@ -128,7 +115,7 @@ pub trait EntityEvent:
         action_name: &str,
         entity: &Self::Entity,
     ) -> DataResult<Self> {
-        let mut entity_event = Self::new(user_id, action_name, entity);
+        let mut entity_event = Self::new(user_id, action_name, entity)?;
         db.validate_and_insert_as_new(&mut entity_event).await?;
         Ok(entity_event)
     }
@@ -140,7 +127,7 @@ pub trait EntityEvent:
         entity: &Self::Entity,
         previous_entity: Self::Entity,
     ) -> DataResult<Self> {
-        let mut entity_event = Self::new(user_id, action_name, entity);
+        let mut entity_event = Self::new(user_id, action_name, entity)?;
         entity_event.set_previous_entity(previous_entity);
         db.validate_and_insert_as_new(&mut entity_event).await?;
         Ok(entity_event)
@@ -199,7 +186,7 @@ pub trait EntityEvent:
         self.set_error_message(err.to_string());
         self.add_to_error_lines(format!("*** ERROR STRING ***\n{}", err));
         self.mut_output_entity()?
-            .set_state(EntitySiPropertiesEntityState::Error);
+            .set_entity_state(EntitySiPropertiesEntityState::Error);
         self.log("*** Task failed ***");
 
         Ok(())
@@ -213,7 +200,7 @@ pub trait EntityEvent:
         self.set_final_time(time_string);
         self.set_finalized(true);
         self.mut_output_entity()?
-            .set_state(EntitySiPropertiesEntityState::Ok);
+            .set_entity_state(EntitySiPropertiesEntityState::Ok);
         self.log("*** Task Succeeded ***");
 
         Ok(())
@@ -262,7 +249,7 @@ pub trait EntityEvent:
             self.workspace_id()?,
             self.integration_id()?,
             self.integration_service_id()?,
-            <Self as Storable>::type_name(),
+            Self::type_name(),
             self.entity_id()?,
             "action",
             self.action_name()?,

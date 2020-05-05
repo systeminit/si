@@ -2,28 +2,32 @@ use crate::error::{DataError, Result};
 
 pub use crate::protobuf::DataStorable;
 
-pub enum Reference<'a> {
-    HasOne(&'static str, &'a str),
-    HasMany(&'static str, Vec<String>),
-}
-
 /// The Storable trait defines anything that can be stored in Couchbase; which
 /// means anything that has an ID.
 pub trait Storable {
-    fn get_id(&self) -> &str;
-    fn set_id(&mut self, id: impl Into<String>);
     fn type_name() -> &'static str;
     fn set_type_name(&mut self);
-    fn set_natural_key(&mut self) {}
-    fn get_natural_key(&self) -> Option<&str> {
-        None
-    }
-    fn get_tenant_ids(&self) -> &[String];
-    fn add_to_tenant_ids(&mut self, id: impl Into<String>);
+
+    fn id(&self) -> Result<&str>;
+    fn set_id(&mut self, id: impl Into<String>);
     fn generate_id(&mut self);
+
+    fn natural_key(&self) -> Result<Option<&str>> {
+        Ok(None)
+    }
+    fn set_natural_key(&mut self) -> Result<()> {
+        Ok(())
+    }
+
+    fn tenant_ids(&self) -> Result<&[String]>;
+    fn add_to_tenant_ids(&mut self, id: impl Into<String>);
+
     fn validate(&self) -> Result<()>;
+
     fn referential_fields(&self) -> Vec<Reference>;
+
     fn order_by_fields() -> Vec<&'static str>;
+
     fn is_order_by_valid<S: AsRef<str>>(
         order_by: S,
         order_by_fields: Vec<&'static str>,
@@ -35,6 +39,11 @@ pub trait Storable {
             None => Err(DataError::InvalidOrderBy),
         }
     }
+}
+
+pub enum Reference<'a> {
+    HasOne(&'static str, &'a str),
+    HasMany(&'static str, Vec<String>),
 }
 
 impl DataStorable {

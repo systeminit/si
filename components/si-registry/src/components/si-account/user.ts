@@ -157,8 +157,8 @@ registry.system({
           },
         });
         p.reply.properties.addLink({
-          name: "object",
-          label: `${c.displayTypeName} Object`,
+          name: "item",
+          label: `${c.displayTypeName} Item`,
           options(p: PropLink) {
             p.lookup = {
               typeName: "user",

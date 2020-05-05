@@ -129,6 +129,7 @@ export class SystemObject extends BaseObject {
   addGetMethod(args: AddMethodConstructor = {}): void {
     // eslint-disable-next-line
     const systemObject = this;
+
     systemObject.methods.addMethod({
       name: "get",
       label: `Get a ${systemObject.displayTypeName}`,
@@ -142,8 +143,8 @@ export class SystemObject extends BaseObject {
           },
         });
         p.reply.properties.addLink({
-          name: "object",
-          label: `${systemObject.displayTypeName} Object`,
+          name: "item",
+          label: `${systemObject.displayTypeName} Item`,
           options(p: PropLink) {
             p.lookup = {
               typeName: systemObject.typeName,
@@ -360,6 +361,17 @@ export class ComponentObject extends SystemObject {
             };
           },
         });
+        p.reply.properties.addLink({
+          name: "item",
+          label: `${baseTypeName}Component Item`,
+          options(p: PropLink) {
+            p.universal = true;
+            p.readOnly = true;
+            p.lookup = {
+              typeName: `${baseTypeName}Component`,
+            };
+          },
+        });
       },
     });
     this.methods.addMethod({
@@ -552,8 +564,8 @@ export class EntityObject extends SystemObject {
           },
         });
         p.reply.properties.addLink({
-          name: "entity",
-          label: "Entity",
+          name: "item",
+          label: "${baseTypeName}Entity Item",
           options(p: PropLink) {
             p.universal = true;
             p.readOnly = true;

@@ -50,7 +50,7 @@ impl KubernetesDeploymentComponent {
 
         let aws_eks_integration_service_id = format!(
             "global:{}:integration_service:eks_kubernetes",
-            aws_integration.get_id()
+            aws_integration.id()?
         );
 
         let aws_eks_integration_service: IntegrationService = db
@@ -71,8 +71,8 @@ impl KubernetesDeploymentComponent {
                 ..Default::default()
             };
             c.add_to_tenant_ids("global".to_string());
-            c.add_to_tenant_ids(aws_integration.get_id().to_string());
-            c.add_to_tenant_ids(aws_eks_integration_service.get_id().to_string());
+            c.add_to_tenant_ids(aws_integration.id()?.to_string());
+            c.add_to_tenant_ids(aws_eks_integration_service.id()?.to_string());
             db.migrate(&mut c).await?;
         }
 

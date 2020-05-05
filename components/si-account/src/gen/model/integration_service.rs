@@ -82,7 +82,8 @@ impl crate::protobuf::IntegrationService {
                 };
                 let order_by = match list_request.order_by {
                     Some(order_by) => order_by,
-                    None => "".to_string(), // The empty string is the signal for a default, thanks protobuf history
+                    // The empty string is the signal for a default, thanks protobuf history
+                    None => "".to_string(),
                 };
                 let contained_within = match list_request.scope_by_tenant_id {
                     Some(contained_within) => contained_within,
@@ -104,37 +105,91 @@ impl crate::protobuf::IntegrationService {
 }
 
 impl si_data::Storable for crate::protobuf::IntegrationService {
-    /// # Panics
-    ///
-    /// * When a system object's `id` is not set (`crate::protobuf::IntegrationService::generate_id()` must be called first)
-    fn get_id(&self) -> &str {
-        (self.id.as_ref())
-            .expect("crate::protobuf::IntegrationService::generate_id() must be called before crate::protobuf::IntegrationService::get_id")
+    fn type_name() -> &'static str {
+        "integration_service"
+    }
+
+    fn set_type_name(&mut self) {
+        if self.si_storable.is_some() {
+            self.si_storable = Some(Default::default());
+        }
+
+        let si_storable = self.si_storable.as_mut().expect(
+            "crate::protobuf::IntegrationService.si_storable \
+                has been set or initialized",
+        );
+        si_storable.type_name = Some(Self::type_name().to_string());
+    }
+
+    fn id(&self) -> si_data::Result<&str> {
+        self.id
+            .as_ref()
+            .map(String::as_str)
+            .ok_or(si_data::DataError::RequiredField("id".to_string()))
     }
 
     fn set_id(&mut self, id: impl Into<String>) {
         self.id = Some(id.into());
     }
 
-    fn type_name() -> &'static str {
-        "integration_service"
+    fn generate_id(&mut self) {
+        self.set_id(format!("{}:{}", Self::type_name(), si_data::uuid_string(),));
     }
 
-    fn set_type_name(&mut self) {
-        if let None = self.si_storable {
+    fn natural_key(&self) -> si_data::Result<Option<&str>> {
+        Ok(self
+            .si_storable
+            .as_ref()
+            .ok_or(si_data::DataError::RequiredField("si_storable".to_string()))?
+            .natural_key
+            .as_ref()
+            .map(String::as_str))
+    }
+
+    fn set_natural_key(&mut self) -> si_data::Result<()> {
+        let natural_key = format!(
+            "{}:{}:{}",
+            self.tenant_ids()?
+                .first()
+                .ok_or(si_data::DataError::MissingTenantIds)?,
+            Self::type_name(),
+            self.name
+                .as_ref()
+                .ok_or(si_data::DataError::RequiredField("name".to_string()))?,
+        );
+
+        if self.si_storable.is_some() {
             self.si_storable = Some(Default::default());
         }
 
-        let storable = self.si_storable.as_mut().unwrap();
-        storable.type_name = Some(<Self as si_data::Storable>::type_name().to_string());
+        let si_storable = self.si_storable.as_mut().expect(
+            "crate::protobuf::IntegrationService.si_storable \
+                has been set or initialized",
+        );
+        si_storable.natural_key = Some(natural_key);
+
+        Ok(())
     }
 
-    fn generate_id(&mut self) {
-        self.set_id(format!(
-            "{}:{}",
-            <Self as si_data::Storable>::type_name(),
-            si_data::uuid_string(),
-        ));
+    fn tenant_ids(&self) -> si_data::Result<&[String]> {
+        Ok(self
+            .si_storable
+            .as_ref()
+            .ok_or(si_data::DataError::RequiredField("si_storable".to_string()))?
+            .tenant_ids
+            .as_slice())
+    }
+
+    fn add_to_tenant_ids(&mut self, id: impl Into<String>) {
+        if self.si_storable.is_none() {
+            self.si_storable = Some(Default::default());
+        }
+
+        let si_storable = self.si_storable.as_mut().expect(
+            "crate::protobuf::IntegrationService.si_storable \
+                has been set or initialized",
+        );
+        si_storable.tenant_ids.push(id.into());
     }
 
     fn validate(&self) -> si_data::error::Result<()> {
@@ -168,58 +223,12 @@ impl si_data::Storable for crate::protobuf::IntegrationService {
                 "missing required si_properties value".into(),
             ));
         }
+
         Ok(())
-    }
-
-    fn get_tenant_ids(&self) -> &[String] {
-        match &self.si_storable {
-            Some(storable) => &storable.tenant_ids,
-            None => &[],
-        }
-    }
-
-    fn add_to_tenant_ids(&mut self, id: impl Into<String>) {
-        if let None = self.si_storable {
-            self.si_storable = Some(Default::default());
-        }
-
-        let storable = self.si_storable.as_mut().unwrap();
-        storable.tenant_ids.push(id.into());
     }
 
     fn referential_fields(&self) -> Vec<si_data::Reference> {
         Vec::new()
-    }
-
-    fn get_natural_key(&self) -> Option<&str> {
-        self.si_storable
-            .as_ref()
-            .and_then(|s| s.natural_key.as_ref().map(String::as_ref))
-    }
-
-    /// # Panics
-    ///
-    /// This method will panic if any required information is missing to generate a natural key:
-    ///
-    /// * When `tenant_ids` are not set
-    /// * When `name` is not set
-    fn set_natural_key(&mut self) {
-        if let None = self.si_storable {
-            self.si_storable = Some(Default::default());
-        }
-        let natural_key = format!(
-            "{}:{}:{}",
-            self.get_tenant_ids().first().expect(
-                "crate::protobuf::IntegrationService's tenant_ids must be set with crate::protobuf::IntegrationService.set_natural_key() is called"
-            ),
-            <Self as si_data::Storable>::type_name(),
-            self.name
-                .as_ref()
-                .expect("crate::protobuf::IntegrationService.name must be set when crate::protobuf::IntegrationService.set_natural_key() is called")
-        );
-
-        let mut storable = self.si_storable.as_mut().unwrap();
-        storable.natural_key = Some(natural_key);
     }
 
     fn order_by_fields() -> Vec<&'static str> {

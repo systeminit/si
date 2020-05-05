@@ -58,7 +58,7 @@ message BillingAccountGetRequest {
   google.protobuf.StringValue id = 1001;
 }
 message BillingAccountGetReply {
-  si.account.BillingAccount object = 1001;
+  si.account.BillingAccount item = 1001;
 }
 message BillingAccountSignupRequestBillingAccount {
   google.protobuf.StringValue name = 1001;
@@ -83,7 +83,7 @@ message BillingAccountCreateRequest {
   google.protobuf.StringValue display_name = 1002;
 }
 message BillingAccountCreateReply {
-  si.account.BillingAccount object = 1001;
+  si.account.BillingAccount item = 1001;
 }
 message Capability {
   google.protobuf.StringValue subject = 1;
@@ -119,7 +119,7 @@ message UserGetRequest {
   google.protobuf.StringValue id = 1001;
 }
 message UserGetReply {
-  si.account.User object = 1001;
+  si.account.User item = 1001;
 }
 message UserLoginInternalRequest {
   google.protobuf.StringValue email = 1001;
@@ -139,7 +139,7 @@ message UserCreateRequest {
   si.account.UserSiProperties si_properties = 1005;
 }
 message UserCreateReply {
-  si.account.User object = 1001;
+  si.account.User item = 1001;
 }
 message GroupSiProperties {
   google.protobuf.StringValue billing_account_id = 1001;
@@ -170,7 +170,7 @@ message GroupGetRequest {
   google.protobuf.StringValue id = 1001;
 }
 message GroupGetReply {
-  si.account.Group object = 1001;
+  si.account.Group item = 1001;
 }
 message GroupCreateRequest {
   google.protobuf.StringValue name = 1001;
@@ -180,7 +180,7 @@ message GroupCreateRequest {
   repeated si.account.Capability capabilities = 1005;
 }
 message GroupCreateReply {
-  si.account.Group object = 1001;
+  si.account.Group item = 1001;
 }
 message OrganizationSiProperties {
   google.protobuf.StringValue billing_account_id = 1001;
@@ -209,7 +209,7 @@ message OrganizationGetRequest {
   google.protobuf.StringValue id = 1001;
 }
 message OrganizationGetReply {
-  si.account.Organization object = 1001;
+  si.account.Organization item = 1001;
 }
 message OrganizationCreateRequest {
   google.protobuf.StringValue name = 1001;
@@ -217,7 +217,7 @@ message OrganizationCreateRequest {
   si.account.OrganizationSiProperties si_properties = 1003;
 }
 message OrganizationCreateReply {
-  si.account.Organization object = 1001;
+  si.account.Organization item = 1001;
 }
 message WorkspaceSiProperties {
   google.protobuf.StringValue billing_account_id = 1001;
@@ -247,7 +247,7 @@ message WorkspaceGetRequest {
   google.protobuf.StringValue id = 1001;
 }
 message WorkspaceGetReply {
-  si.account.Workspace object = 1001;
+  si.account.Workspace item = 1001;
 }
 message WorkspaceCreateRequest {
   google.protobuf.StringValue name = 1001;
@@ -255,7 +255,7 @@ message WorkspaceCreateRequest {
   si.account.WorkspaceSiProperties si_properties = 1003;
 }
 message WorkspaceCreateReply {
-  si.account.Workspace object = 1001;
+  si.account.Workspace item = 1001;
 }
 enum IntegrationOptionsOptionType {
   INTEGRATION_OPTIONS_OPTION_TYPE_UNKNOWN = 0;
@@ -295,7 +295,7 @@ message IntegrationGetRequest {
   google.protobuf.StringValue id = 1001;
 }
 message IntegrationGetReply {
-  si.account.Integration object = 1001;
+  si.account.Integration item = 1001;
 }
 message IntegrationCreateRequest {
   google.protobuf.StringValue name = 1001;
@@ -304,7 +304,7 @@ message IntegrationCreateRequest {
   si.account.IntegrationSiProperties si_properties = 1004;
 }
 message IntegrationCreateReply {
-  si.account.Integration object = 1001;
+  si.account.Integration item = 1001;
 }
 message IntegrationServiceSiProperties {
   google.protobuf.StringValue integration_id = 1001;
@@ -335,7 +335,7 @@ message IntegrationServiceGetRequest {
   google.protobuf.StringValue id = 1001;
 }
 message IntegrationServiceGetReply {
-  si.account.IntegrationService object = 1001;
+  si.account.IntegrationService item = 1001;
 }
 message IntegrationServiceCreateRequest {
   google.protobuf.StringValue name = 1001;
@@ -344,7 +344,7 @@ message IntegrationServiceCreateRequest {
   si.account.IntegrationServiceSiProperties si_properties = 1004;
 }
 message IntegrationServiceCreateReply {
-  si.account.IntegrationService object = 1001;
+  si.account.IntegrationService item = 1001;
 }
 message IntegrationInstanceOptionValues {
   google.protobuf.StringValue name = 1001;
@@ -382,7 +382,7 @@ message IntegrationInstanceGetRequest {
   google.protobuf.StringValue id = 1001;
 }
 message IntegrationInstanceGetReply {
-  si.account.IntegrationInstance object = 1001;
+  si.account.IntegrationInstance item = 1001;
 }
 message IntegrationInstanceCreateRequest {
   google.protobuf.StringValue name = 1001;
@@ -391,5 +391,5 @@ message IntegrationInstanceCreateRequest {
   si.account.IntegrationInstanceSiProperties si_properties = 1004;
 }
 message IntegrationInstanceCreateReply {
-  si.account.IntegrationInstance object = 1001;
+  si.account.IntegrationInstance item = 1001;
 }

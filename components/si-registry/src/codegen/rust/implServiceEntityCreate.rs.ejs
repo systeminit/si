@@ -1,0 +1,16 @@
+<%- fmt.implServiceAuth(propMethod) %>
+
+let inner = request.into_inner();
+<%- fmt.implServiceMethodCreateDestructure() %>
+
+let entity = <%- fmt.structName() %>::create(&self.db, <%- fmt.implCreatePassNewArgs() %>).await?;
+info!(?entity);
+
+// TODO: fix
+// entity_event should *not* be `None`
+Ok(tonic::Response::new(
+     <%- fmt.implServiceReplyType(propMethod, { option: false, reference: false }) %>{
+        item: Some(entity),
+        entity_event: None,
+    },
+))

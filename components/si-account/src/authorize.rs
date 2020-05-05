@@ -142,7 +142,7 @@ pub async fn authorize<T: Storable + std::fmt::Debug>(
         // or "any", then it is authorized.
         for capability in user.capabilities.iter() {
             if subject
-                .get_tenant_ids()
+                .tenant_ids()?
                 .iter()
                 // Why FLOOPYBOODLES? Well, because capability's subject is now an option, and there
                 // is no world where FLOOPYBOODLES is a valid tenant ID. So.. it lets us fail the
@@ -175,7 +175,7 @@ pub async fn authorize<T: Storable + std::fmt::Debug>(
             json![user.si_properties.unwrap().billing_account_id],
         );
         named_params.insert("actor_id".into(), json![actor_id]);
-        named_params.insert("subject_id".into(), json![subject.get_id()]);
+        named_params.insert("subject_id".into(), json![subject.id()?]);
 
         let query = format!("SELECT {bucket}.* FROM {bucket} WHERE siStorable.typeName = \"group\" AND ARRAY_CONTAINS(siStorable.tenantIds, $tenant_id) AND ARRAY_CONTAINS(userIds, $actor_id)", bucket=db.bucket_name);
 
@@ -183,7 +183,7 @@ pub async fn authorize<T: Storable + std::fmt::Debug>(
 
         for group in groups.iter() {
             for capability in group.capabilities.iter() {
-                if subject.get_tenant_ids().iter().any(|tenant_id| {
+                if subject.tenant_ids()?.iter().any(|tenant_id| {
                     tenant_id
                         == capability
                             .subject

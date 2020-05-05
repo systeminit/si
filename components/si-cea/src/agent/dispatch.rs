@@ -1,7 +1,7 @@
 use crate::{CeaError, CeaResult, EntityEvent, MqttClient};
 use async_trait::async_trait;
 use dyn_clone::DynClone;
-use si_data::Db;
+use si_data::{DataError, Db};
 use std::collections::HashMap;
 
 pub mod codegen_prelude {
@@ -147,12 +147,16 @@ async fn integration_service_id_for(
         .await?;
     let integration_service_lookup_id = format!(
         "global:{}:integration_service:{}",
-        integration.id.expect("TODO: fix"),
+        integration
+            .id
+            .ok_or(DataError::RequiredField("id".to_string()))?,
         integration_service_name
     );
     let integration_service: si_account::IntegrationService = db
         .lookup_by_natural_key(integration_service_lookup_id)
         .await?;
 
-    Ok(integration_service.id.expect("TODO: fix"))
+    Ok(integration_service
+        .id
+        .ok_or(DataError::RequiredField("id".to_string()))?)
 }

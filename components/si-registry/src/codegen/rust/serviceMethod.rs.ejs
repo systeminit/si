@@ -1,5 +1,5 @@
 async fn <%- fmt.implServiceMethodName(propMethod) %>(
-    &self, 
+    &self,
     mut request: tonic::Request<<%- fmt.implServiceRequestType(propMethod, { option: false, reference: false }) %>>,
     ) -> std::result::Result<tonic::Response<<%- fmt.implServiceReplyType(propMethod, { option: false, reference: false }) %>>, tonic::Status> {
     let trace_propagator =
@@ -9,7 +9,7 @@ async fn <%- fmt.implServiceMethodName(propMethod) %>(
         trace_propagator.extract(&metadata_wrapper)
     };
     let span = tracing::span!(
-      tracing::Level::INFO, 
+      tracing::Level::INFO,
       "<%- fmt.implServiceMethodName(propMethod) %>",
       metadata.content_type = tracing::field::Empty,
       authenticated = tracing::field::Empty,
@@ -40,59 +40,21 @@ async fn <%- fmt.implServiceMethodName(propMethod) %>(
     }
 
     async {
-      info!(?request);
-      <%_ if (propMethod.name == "get") { _%>
-        <%- fmt.implServiceAuth(propMethod) %>
-        let inner = request.into_inner();
-        let request_id = inner.id.ok_or(si_data::DataError::RequiredField("id".to_string()))?;
-        let reply = <%- fmt.structName() %>::get(&self.db, &request_id).await?;
-        info!(?reply);
-        Ok(tonic::Response::new(<%- fmt.implServiceReplyType(propMethod, { option: false, reference: false }) %>{ object: Some(reply) }))
-      <%_ } else if (propMethod.name == "create") { _%>
-        <%- fmt.implServiceAuth(propMethod) %>
-        let inner = request.into_inner();
-        <%- fmt.implServiceMethodCreateDestructure() %>
-        let reply = <%- fmt.structName() %>::create(&self.db, <%- fmt.implCreatePassNewArgs() %>).await?; 
-        info!(?reply);
-        Ok(tonic::Response::new(<%- fmt.implServiceReplyType(propMethod, { option: false, reference: false }) %>{ object: Some(reply) })) 
-        <%_ } else if (propMethod.name == "list") { _%>
-        <%_ if (propMethod.skipAuth) { _%>
-          let inner = request.into_inner();
-          <%_ } else { _%>
-        #[allow(unused_variables)]
-        let auth = <%- fmt.implServiceAuth(propMethod) %>
-        let mut inner = request.into_inner();
-        if inner.scope_by_tenant_id.is_none() {
-        <%_ if (fmt.systemObject.typeName == "integration" || fmt.systemObject.typeName == "integrationService" || fmt.systemObject.typeName == "billingAccount") { _%>
-          inner.scope_by_tenant_id = Some(String::from("global"));
-        <%_ } else { _%>
-          inner.scope_by_tenant_id = Some(auth.billing_account_id().into());
-        <%_ } _%>
-        }
-        <%_ } %>
-        let list_reply = <%- fmt.structName() %>::list(&self.db, inner).await?; 
-        info!(?list_reply);
-        Ok(tonic::Response::new(<%- fmt.implServiceReplyType(propMethod, { option: false, reference: false }) %>{ <%- fmt.implServiceMethodListResultToReply() %> })) 
-        <%_ } else if (propMethod.name == "pick") { _%>
-          <%- fmt.implServiceAuth(propMethod) %>
-          let inner = request.into_inner();
-          let constraints = inner.constraints.ok_or(si_data::DataError::RequiredField("constraints".to_string()))?;
+        info!(?request);
 
-          let (implicit_constraints, component) = <%- fmt.structName() %>::pick(&self.db, &constraints).await?;
-          info!(?implicit_constraints, ?component);
-          Ok(tonic::Response::new(<%- fmt.implServiceReplyType(propMethod, { option: false, reference: false }) %>
-              {
-                  implicit_constraints: Some(implicit_constraints),
-                  component: Some(component),
-              },
-          ))
+        <%_ if (propMethod.name == "get") { _%>
+            <%- fmt.implServiceGet(propMethod) %>
+        <%_ } else if (propMethod.name == "create" && fmt.isEntityObject()) { _%>
+            <%- fmt.implServiceEntityCreate(propMethod) %>
+        <%_ } else if (propMethod.name == "create") { _%>
+            <%- fmt.implServiceCommonCreate(propMethod) %>
+        <%_ } else if (propMethod.name == "list") { _%>
+            <%- fmt.implServiceList(propMethod) %>
+        <%_ } else if (propMethod.name == "pick" && fmt.isComponentObject()) { _%>
+            <%- fmt.implServiceComponentPick(propMethod) %>
         <%_ } else { _%>
-        <%- fmt.implServiceAuth(propMethod) %>
-        let inner = request.into_inner();
-        let reply = <%- fmt.modelName() %>::<%- fmt.implServiceMethodName(propMethod) %>(&self.db, inner).await?;
-        info!(?reply);
-        Ok(tonic::Response::new(reply))
-      <%_ } _%>
+            <%- fmt.implServiceCustomMethod(propMethod) %>
+        <%_ } _%>
     }
     .instrument(span)
     .await

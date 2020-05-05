@@ -1,30 +1,6 @@
 impl si_cea::EntityEvent for <%- fmt.structName() %> {
     type Entity = <%- fmt.entityName() %>;
 
-    fn id(&self) -> si_data::Result<&str> {
-        self.id
-            .as_ref()
-            .map(String::as_str)
-            .ok_or(si_data::DataError::RequiredField("id".to_string()))
-    }
-
-    fn tenant_ids(&self) -> si_data::Result<&[String]> {
-        Ok(self.si_storable
-            .as_ref()
-            .ok_or(si_data::DataError::RequiredField("si_properties".to_string()))?
-            .tenant_ids
-            .as_slice())
-    }
-
-    fn add_to_tenant_ids(&mut self, id: impl Into<String>) {
-        if self.si_storable.is_none() {
-            self.si_storable = Some(Default::default());
-        }
-
-        let storable = self.si_storable.as_mut().unwrap();
-        storable.tenant_ids.push(id.into());
-    }
-
     // TODO(fnichol) need some values here, probably for validation?
     fn action_names() -> &'static [&'static str] {
         &[]
@@ -174,7 +150,10 @@ impl si_cea::EntityEvent for <%- fmt.structName() %> {
             self.si_properties = Some(Default::default());
         }
 
-        let si_properties = self.si_properties.as_mut().unwrap();
+        let si_properties = self.si_properties
+            .as_mut()
+            .expect("<%- fmt.structName() %>.si_properties \
+                has been set or initialized");
         si_properties.billing_account_id = Some(billing_account_id.into());
     }
 
@@ -193,7 +172,10 @@ impl si_cea::EntityEvent for <%- fmt.structName() %> {
             self.si_properties = Some(Default::default());
         }
 
-        let si_properties = self.si_properties.as_mut().unwrap();
+        let si_properties = self.si_properties
+            .as_mut()
+            .expect("<%- fmt.structName() %>.si_properties \
+                has been set or initialized");
         si_properties.organization_id = Some(organization_id.into());
     }
 
@@ -212,7 +194,10 @@ impl si_cea::EntityEvent for <%- fmt.structName() %> {
             self.si_properties = Some(Default::default());
         }
 
-        let si_properties = self.si_properties.as_mut().unwrap();
+        let si_properties = self.si_properties
+            .as_mut()
+            .expect("<%- fmt.structName() %>.si_properties \
+                has been set or initialized");
         si_properties.workspace_id = Some(workspace_id.into());
     }
 
@@ -231,7 +216,10 @@ impl si_cea::EntityEvent for <%- fmt.structName() %> {
             self.si_properties = Some(Default::default());
         }
 
-        let si_properties = self.si_properties.as_mut().unwrap();
+        let si_properties = self.si_properties
+            .as_mut()
+            .expect("<%- fmt.structName() %>.si_properties \
+                has been set or initialized");
         si_properties.integration_id = Some(integration_id.into());
     }
 
@@ -250,7 +238,10 @@ impl si_cea::EntityEvent for <%- fmt.structName() %> {
             self.si_properties = Some(Default::default());
         }
 
-        let si_properties = self.si_properties.as_mut().unwrap();
+        let si_properties = self.si_properties
+            .as_mut()
+            .expect("<%- fmt.structName() %>.si_properties \
+                has been set or initialized");
         si_properties.integration_service_id = Some(integration_service_id.into());
     }
 
@@ -269,7 +260,10 @@ impl si_cea::EntityEvent for <%- fmt.structName() %> {
             self.si_properties = Some(Default::default());
         }
 
-        let si_properties = self.si_properties.as_mut().unwrap();
+        let si_properties = self.si_properties
+            .as_mut()
+            .expect("<%- fmt.structName() %>.si_properties \
+                has been set or initialized");
         si_properties.component_id = Some(component_id.into());
     }
 
@@ -288,7 +282,10 @@ impl si_cea::EntityEvent for <%- fmt.structName() %> {
             self.si_properties = Some(Default::default());
         }
 
-        let si_properties = self.si_properties.as_mut().unwrap();
+        let si_properties = self.si_properties
+            .as_mut()
+            .expect("<%- fmt.structName() %>.si_properties \
+                has been set or initialized");
         si_properties.entity_id = Some(entity_id.into());
     }
 }

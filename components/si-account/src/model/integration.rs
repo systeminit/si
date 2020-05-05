@@ -84,11 +84,12 @@ impl Integration {
             item.add_to_tenant_ids("global".to_string());
             db.migrate(item).await?;
             for service in services.iter_mut() {
-                service.add_to_tenant_ids(item.get_id().to_string());
+                let item_id = item.id()?;
+                service.add_to_tenant_ids(item_id.to_string());
                 service
                     .si_properties
                     .as_mut()
-                    .map(|p| p.integration_id = Some(item.get_id().to_string()));
+                    .map(|p| p.integration_id = Some(item_id.to_string()));
                 db.migrate(service).await?;
             }
         }

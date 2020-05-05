@@ -1,118 +1,152 @@
 impl si_cea::Entity for <%- fmt.structName() %> {
-    fn id(&self) -> &str {
-        self.id
+    fn entity_state(&self) -> si_data::Result<si_cea::EntitySiPropertiesEntityState> {
+        Ok(self.si_properties
             .as_ref()
-            .expect("TODO: fix")
+            .ok_or(si_data::DataError::RequiredField("si_properties".to_string()))?
+            .entity_state())
     }
 
-    fn set_id(&mut self, id: impl Into<String>) {
-        self.id = Some(id.into());
-    }
+    fn set_entity_state(&mut self, state: si_cea::EntitySiPropertiesEntityState) {
+        if self.si_properties.is_none() {
+            self.si_properties = Some(Default::default());
+        }
 
-    fn state(&self) -> i32 {
-        self.si_properties
-            .as_ref()
-            .expect("TODO: fix").entity_state
-    }
-
-    fn set_state(&mut self, state: si_cea::EntitySiPropertiesEntityState) {
-        self.si_properties
+        let si_properties = self.si_properties
             .as_mut()
-            .expect("TODO: fix").set_entity_state(state);
+            .expect("<%- fmt.structName() %>.si_properties \
+                has been set or initialized");
+        si_properties.set_entity_state(state);
     }
 
-    fn component_id(&self) -> &str {
+    fn integration_id(&self) -> si_data::Result<&str> {
         self.si_properties
             .as_ref()
-            .expect("TODO: fix")
-            .component_id
-            .as_ref()
-            .expect("TODO: fix")
-    }
-
-    fn set_component_id(&mut self, component_id: impl Into<String>) {
-        self.si_properties
-            .as_mut()
-            .expect("TODO: fix")
-            .component_id = Some(component_id.into());
-    }
-
-    fn integration_id(&self) -> &str {
-        self.si_properties
-            .as_ref()
-            .expect("TODO: fix")
+            .ok_or(si_data::DataError::RequiredField("si_properties".to_string()))?
             .integration_id
             .as_ref()
-            .expect("TODO: fix")
+            .map(String::as_str)
+            .ok_or(si_data::DataError::RequiredField("integration_id".to_string()))
     }
 
     fn set_integration_id(&mut self, integration_id: impl Into<String>) {
-        self.si_properties
+        if self.si_properties.is_none() {
+            self.si_properties = Some(Default::default());
+        }
+
+        let si_properties = self.si_properties
             .as_mut()
-            .expect("TODO: fix")
-            .integration_id = Some(integration_id.into());
+            .expect("<%- fmt.structName() %>.si_properties \
+                has been set or initialized");
+        si_properties.integration_id = Some(integration_id.into());
     }
 
-    fn integration_service_id(&self) -> &str {
+    fn integration_service_id(&self) -> si_data::Result<&str> {
         self.si_properties
             .as_ref()
-            .expect("TODO: fix")
+            .ok_or(si_data::DataError::RequiredField("si_properties".to_string()))?
             .integration_service_id
             .as_ref()
-            .expect("TODO: fix")
+            .map(String::as_str)
+            .ok_or(si_data::DataError::RequiredField("integration_service_id".to_string()))
     }
 
     fn set_integration_service_id(&mut self, integration_service_id: impl Into<String>) {
-        self.si_properties
+        if self.si_properties.is_none() {
+            self.si_properties = Some(Default::default());
+        }
+
+        let si_properties = self.si_properties
             .as_mut()
-            .expect("TODO: fix")
-            .integration_service_id = Some(integration_service_id.into());
+            .expect("<%- fmt.structName() %>.si_properties \
+                has been set or initialized");
+        si_properties.integration_service_id = Some(integration_service_id.into());
     }
 
-    fn workspace_id(&self) -> &str {
+    fn component_id(&self) -> si_data::Result<&str> {
         self.si_properties
             .as_ref()
-            .expect("TODO: fix")
+            .ok_or(si_data::DataError::RequiredField("si_properties".to_string()))?
+            .component_id
+            .as_ref()
+            .map(String::as_str)
+            .ok_or(si_data::DataError::RequiredField("component_id".to_string()))
+    }
+
+    fn set_component_id(&mut self, component_id: impl Into<String>) {
+        if self.si_properties.is_none() {
+            self.si_properties = Some(Default::default());
+        }
+
+        let si_properties = self.si_properties
+            .as_mut()
+            .expect("<%- fmt.structName() %>.si_properties \
+                has been set or initialized");
+        si_properties.component_id = Some(component_id.into());
+    }
+
+    fn workspace_id(&self) -> si_data::Result<&str> {
+        self.si_properties
+            .as_ref()
+            .ok_or(si_data::DataError::RequiredField("si_properties".to_string()))?
             .workspace_id
             .as_ref()
-            .expect("TODO: fix")
+            .map(String::as_str)
+            .ok_or(si_data::DataError::RequiredField("workspace_id".to_string()))
     }
 
     fn set_workspace_id(&mut self, workspace_id: impl Into<String>) {
-        self.si_properties
+        if self.si_properties.is_none() {
+            self.si_properties = Some(Default::default());
+        }
+
+        let si_properties = self.si_properties
             .as_mut()
-            .expect("TODO: fix").workspace_id = Some(workspace_id.into());
+            .expect("<%- fmt.structName() %>.si_properties \
+                has been set or initialized");
+        si_properties.workspace_id = Some(workspace_id.into());
     }
 
-    fn organization_id(&self) -> &str {
+    fn organization_id(&self) -> si_data::Result<&str> {
         self.si_properties
             .as_ref()
-            .expect("TODO: fix")
+            .ok_or(si_data::DataError::RequiredField("si_properties".to_string()))?
             .organization_id
             .as_ref()
-            .expect("TODO: fix")
+            .map(String::as_str)
+            .ok_or(si_data::DataError::RequiredField("organization_id".to_string()))
     }
 
     fn set_organization_id(&mut self, organization_id: impl Into<String>) {
-        self.si_properties
+        if self.si_properties.is_none() {
+            self.si_properties = Some(Default::default());
+        }
+
+        let si_properties = self.si_properties
             .as_mut()
-            .expect("TODO: fix")
-            .organization_id = Some(organization_id.into());
+            .expect("<%- fmt.structName() %>.si_properties \
+                has been set or initialized");
+        si_properties.organization_id = Some(organization_id.into());
     }
 
-    fn billing_account_id(&self) -> &str {
+    fn billing_account_id(&self) -> si_data::Result<&str> {
         self.si_properties
             .as_ref()
-            .expect("TODO: fix")
+            .ok_or(si_data::DataError::RequiredField("si_properties".to_string()))?
             .billing_account_id
             .as_ref()
-            .expect("TODO: fix")
+            .map(String::as_str)
+            .ok_or(si_data::DataError::RequiredField("billing_account_id".to_string()))
     }
 
     fn set_billing_account_id(&mut self, billing_account_id: impl Into<String>) {
-        self.si_properties
+        if self.si_properties.is_none() {
+            self.si_properties = Some(Default::default());
+        }
+
+        let si_properties = self.si_properties
             .as_mut()
-            .expect("TODO: fix")
-            .billing_account_id = Some(billing_account_id.into());
+            .expect("<%- fmt.structName() %>.si_properties \
+                has been set or initialized");
+        si_properties.billing_account_id = Some(billing_account_id.into());
     }
 }

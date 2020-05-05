@@ -39,8 +39,9 @@ module.exports = {
     new CleanWebpackPlugin(),
     new NodemonPlugin({
       script: "./dist/binary.bundle.js",
-      watch: "./dist/binary.bundle.js",
+      watch: ["./dist", "./src/codegen/rust"],
       nodeArgs: ["--enable-source-maps"],
+      ext: "js,ejs",
     }),
   ],
   target: "node",
