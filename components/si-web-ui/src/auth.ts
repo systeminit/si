@@ -109,14 +109,14 @@ class Authentication {
       data: userReply,
     });
     this.profile = {
-      billingAccount: data.object.associations.billingAccount.object,
+      billingAccount: data.item.associations.billingAccount.item,
       workspaces:
-        data.object.associations.billingAccount.object.associations
-          .organizations.items[0].associations.workspaces.items,
+        data.item.associations.billingAccount.item.associations.organizations
+          .items[0].associations.workspaces.items,
       workspaceDefault:
-        data.object.associations.billingAccount.object.associations
-          .organizations.items[0].associations.workspaces.items[0],
-      ...data.object,
+        data.item.associations.billingAccount.item.associations.organizations
+          .items[0].associations.workspaces.items[0],
+      ...data.item,
     };
     this.loggedIn = true;
     localStorage.setItem("profile", JSON.stringify(this.profile));
