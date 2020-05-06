@@ -8,16 +8,12 @@ use tracing_opentelemetry::OpenTelemetrySpanExt as _;
 
 #[derive(Debug)]
 pub struct Service {
-    pub db: si_data::Db,
+    db: si_data::Db,
 }
 
 impl Service {
     pub fn new(db: si_data::Db) -> Service {
         Service { db }
-    }
-
-    pub fn db(&self) -> &si_data::Db {
-        &self.db
     }
 
     pub async fn migrate(&self) -> si_data::Result<()> {
@@ -145,7 +141,7 @@ impl crate::protobuf::account_server::Account for Service {
             let inner = request.into_inner();
             let id = inner
                 .id
-                .ok_or(si_data::DataError::RequiredField("id".to_string()))?;
+                .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))?;
 
             let output = crate::protobuf::BillingAccount::get(&self.db, &id).await?;
             info!(?output);
@@ -409,7 +405,7 @@ impl crate::protobuf::account_server::Account for Service {
             let inner = request.into_inner();
             let id = inner
                 .id
-                .ok_or(si_data::DataError::RequiredField("id".to_string()))?;
+                .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))?;
 
             let output = crate::protobuf::Group::get(&self.db, &id).await?;
             info!(?output);
@@ -608,7 +604,7 @@ impl crate::protobuf::account_server::Account for Service {
             let inner = request.into_inner();
             let id = inner
                 .id
-                .ok_or(si_data::DataError::RequiredField("id".to_string()))?;
+                .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))?;
 
             let output = crate::protobuf::Integration::get(&self.db, &id).await?;
             info!(?output);
@@ -814,7 +810,7 @@ impl crate::protobuf::account_server::Account for Service {
             let inner = request.into_inner();
             let id = inner
                 .id
-                .ok_or(si_data::DataError::RequiredField("id".to_string()))?;
+                .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))?;
 
             let output = crate::protobuf::IntegrationInstance::get(&self.db, &id).await?;
             info!(?output);
@@ -1023,7 +1019,7 @@ impl crate::protobuf::account_server::Account for Service {
             let inner = request.into_inner();
             let id = inner
                 .id
-                .ok_or(si_data::DataError::RequiredField("id".to_string()))?;
+                .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))?;
 
             let output = crate::protobuf::IntegrationService::get(&self.db, &id).await?;
             info!(?output);
@@ -1222,7 +1218,7 @@ impl crate::protobuf::account_server::Account for Service {
             let inner = request.into_inner();
             let id = inner
                 .id
-                .ok_or(si_data::DataError::RequiredField("id".to_string()))?;
+                .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))?;
 
             let output = crate::protobuf::Organization::get(&self.db, &id).await?;
             info!(?output);
@@ -1424,7 +1420,7 @@ impl crate::protobuf::account_server::Account for Service {
             let inner = request.into_inner();
             let id = inner
                 .id
-                .ok_or(si_data::DataError::RequiredField("id".to_string()))?;
+                .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))?;
 
             let output = crate::protobuf::User::get(&self.db, &id).await?;
             info!(?output);
@@ -1675,7 +1671,7 @@ impl crate::protobuf::account_server::Account for Service {
             let inner = request.into_inner();
             let id = inner
                 .id
-                .ok_or(si_data::DataError::RequiredField("id".to_string()))?;
+                .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))?;
 
             let output = crate::protobuf::Workspace::get(&self.db, &id).await?;
             info!(?output);

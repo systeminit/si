@@ -354,7 +354,7 @@ export class PropAction extends PropMethod {
   }) {
     super({ name, label, componentTypeName, parentName, defaultValue });
     this.request.properties.addText({
-      name: "entityId",
+      name: "id",
       label: "Entity ID",
       options(p) {
         p.universal = true;
@@ -362,7 +362,7 @@ export class PropAction extends PropMethod {
       },
     });
     this.reply.properties.addLink({
-      name: "entityEvent",
+      name: "item",
       label: `Entity Event`,
       options(p: PropLink) {
         p.universal = true;

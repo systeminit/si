@@ -382,17 +382,17 @@ impl Db {
 
             let order_by = page_token
                 .order_by
-                .ok_or(DataError::RequiredField("page_token.order_by".into()))?;
+                .ok_or_else(|| DataError::RequiredField("page_token.order_by".into()))?;
             span.record("db.list.order_by", &tracing::field::display(&order_by));
 
             let page_size = page_token
                 .page_size
-                .ok_or(DataError::RequiredField("page_token.page_size".into()))?;
+                .ok_or_else(|| DataError::RequiredField("page_token.page_size".into()))?;
             span.record("db.list.page_size", &tracing::field::display(&page_size));
 
             let item_id = page_token
                 .item_id
-                .ok_or(DataError::RequiredField("page_token.item_id".into()))?;
+                .ok_or_else(|| DataError::RequiredField("page_token.item_id".into()))?;
             span.record("db.list.item_id", &tracing::field::display(&item_id));
 
             let order_by_direction = page_token.order_by_direction;
@@ -401,16 +401,16 @@ impl Db {
                 &tracing::field::display(&order_by_direction),
             );
 
-            let contained_within = page_token.contained_within.ok_or(DataError::RequiredField(
-                "page_token.contained_within".into(),
-            ))?;
+            let contained_within = page_token
+                .contained_within
+                .ok_or_else(|| DataError::RequiredField("page_token.contained_within".into()))?;
             span.record(
                 "db.list.contained_within",
                 &tracing::field::display(&contained_within),
             );
 
             //let order_by_direction = OrderByDirection::from_i32(page_token.order_by_direction)
-            //.ok_or(DataError::InvalidOrderByDirection)?;
+            //.ok_or_else(|| DataError::InvalidOrderByDirection)?;
             self.list(
                 &query,
                 page_size,
@@ -479,7 +479,7 @@ impl Db {
             // If you don't send a valid order by direction, you fucked with
             // the protobuf you sent by hand
             let order_by_direction = DataPageTokenOrderByDirection::from_i32(order_by_direction)
-                .ok_or(DataError::InvalidOrderByDirection)?;
+                .ok_or_else(|| DataError::InvalidOrderByDirection)?;
             span.record("db.list.order_by_direction", &tracing::field::display(&order_by_direction));
 
             // The default page size is 10, and the inbound default is 0
@@ -613,7 +613,9 @@ impl Db {
 
             item.set_natural_key()?;
 
-            let natural_key = item.natural_key()?.ok_or(DataError::NaturalKeyMissing)?;
+            let natural_key = item
+                .natural_key()?
+                .ok_or_else(|| DataError::NaturalKeyMissing)?;
 
             span.record(
                 "db.storable.natural_key",

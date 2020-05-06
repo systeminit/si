@@ -20,7 +20,7 @@ impl User {
                     request
                         .billing_account_name
                         .as_ref()
-                        .ok_or(DataError::ValidationError("billingAccountName".into()))?
+                        .ok_or_else(|| DataError::ValidationError("billingAccountName".into()))?
                 )
                 .as_ref(),
             )
@@ -35,12 +35,12 @@ impl User {
                     billing_account
                         .id
                         .as_ref()
-                        .ok_or(DataError::ValidationError("billingAccountId".into()))?,
+                        .ok_or_else(|| DataError::ValidationError("billingAccountId".into()))?,
                     User::type_name(),
                     request
                         .email
                         .as_ref()
-                        .ok_or(DataError::ValidationError("email".into()))?
+                        .ok_or_else(|| DataError::ValidationError("email".into()))?
                 )
                 .as_ref(),
             )
@@ -52,9 +52,9 @@ impl User {
                 request
                     .password
                     .as_ref()
-                    .ok_or(DataError::ValidationError("password".into()))?,
+                    .ok_or_else(|| DataError::ValidationError("password".into()))?,
                 user.password
-                    .ok_or(DataError::ValidationError("passwordHash".into()))?,
+                    .ok_or_else(|| DataError::ValidationError("passwordHash".into()))?,
             );
             debug!(?authenticated);
 

@@ -42,7 +42,11 @@ async fn <%- fmt.implServiceMethodName(propMethod) %>(
     async {
         info!(?request);
 
-        <%_ if (propMethod.name == "get") { _%>
+        <%_ if (fmt.isEntityEditMethod(propMethod)) { _%>
+            <%- fmt.implServiceEntityEdit(propMethod) %>
+        <%_ } else if (fmt.isEntityActionMethod(propMethod)) { _%>
+            <%- fmt.implServiceEntityAction(propMethod) %>
+        <%_ } else if (propMethod.name == "get") { _%>
             <%- fmt.implServiceGet(propMethod) %>
         <%_ } else if (propMethod.name == "create" && fmt.isEntityObject()) { _%>
             <%- fmt.implServiceEntityCreate(propMethod) %>

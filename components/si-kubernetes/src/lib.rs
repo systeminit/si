@@ -3,6 +3,6 @@ pub mod protobuf {
 }
 
 // pub mod agent;
-mod gen;
+pub mod gen;
 pub mod model;
 // pub mod togen;

@@ -67,13 +67,13 @@ impl<T> TryFrom<&tonic::Request<T>> for Authentication {
         debug!("extracting user_id");
         let user_id = metadata
             .get("userId")
-            .ok_or(AccountError::MissingField("userId".into()))?
+            .ok_or_else(|| AccountError::MissingField("userId".into()))?
             .to_str()?;
         debug!(?user_id);
         debug!("extracting billing_account_id");
         let billing_account_id = metadata
             .get("billingAccountId")
-            .ok_or(AccountError::MissingField("billingAccountId".into()))?
+            .ok_or_else(|| AccountError::MissingField("billingAccountId".into()))?
             .to_str()?;
         debug!(?billing_account_id);
         Ok(Authentication::new(user_id, billing_account_id))

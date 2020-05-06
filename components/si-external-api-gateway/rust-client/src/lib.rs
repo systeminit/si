@@ -56,7 +56,7 @@ pub mod aws {
             type Error = InvalidBoolError;
 
             fn try_from(value: i32) -> std::result::Result<Self, Self::Error> {
-                Self::from_i32(value).ok_or(InvalidBoolError(value))
+                Self::from_i32(value).ok_or_else(|| InvalidBoolError(value))
             }
         }
 

@@ -40,19 +40,66 @@ export class RustFormatter {
   }
 
   componentConstraintsName(): string {
-    return `crate::protobuf::${pascalCase(
-      this.systemObject.typeName,
-    )}Constraints`;
+    if (this.systemObject instanceof ComponentObject) {
+      return `crate::protobuf::${pascalCase(
+        this.systemObject.typeName,
+      )}Constraints`;
+    } else {
+      throw "<no_valid_component_constraints_name>";
+    }
+  }
+
+  entityEditMethodName(propMethod: PropPrelude.PropMethod): string {
+    if (this.systemObject instanceof EntityObject) {
+      return `edit_${this.rustFieldNameForProp(propMethod).replace(
+        "_edit",
+        "",
+      )}`;
+    } else {
+      throw "<no_valid_entity_edit_method_name>";
+    }
   }
 
   entityName(): string {
-    if (this.systemObject.kind() == "baseObject") {
-      throw "You asked for an entity name on a baseObject; this is a bug!";
+    if (
+      this.systemObject instanceof ComponentObject ||
+      this.systemObject instanceof EntityObject ||
+      this.systemObject instanceof EntityEventObject
+    ) {
+      return `crate::protobuf::${pascalCase(
+        this.systemObject.baseTypeName,
+      )}Entity`;
+    } else {
+      throw "You asked for an entity name on a non-component object; this is a bug!";
     }
-    return `crate::protobuf::${pascalCase(
-      // @ts-ignore
-      this.systemObject.baseTypeName,
-    )}Entity`;
+  }
+
+  entityEventName(): string {
+    if (
+      this.systemObject instanceof ComponentObject ||
+      this.systemObject instanceof EntityObject ||
+      this.systemObject instanceof EntityEventObject
+    ) {
+      return `crate::protobuf::${pascalCase(
+        this.systemObject.baseTypeName,
+      )}EntityEvent`;
+    } else {
+      throw "You asked for an entityEvent name on a non-component object; this is a bug!";
+    }
+  }
+
+  entityPropertiesName(): string {
+    if (
+      this.systemObject instanceof ComponentObject ||
+      this.systemObject instanceof EntityObject ||
+      this.systemObject instanceof EntityEventObject
+    ) {
+      return `crate::protobuf::${pascalCase(
+        this.systemObject.baseTypeName,
+      )}EntityProperties`;
+    } else {
+      throw "You asked for an entityProperties name on a non-component object; this is a bug!";
+    }
   }
 
   typeName(): string {
@@ -82,6 +129,16 @@ export class RustFormatter {
 
   isEntityEventObject(): boolean {
     return this.systemObject.kind() == "entityEventObject";
+  }
+
+  isEntityActionMethod(propMethod: PropPrelude.PropMethod): boolean {
+    return propMethod.kind() == "action" && this.isEntityObject();
+  }
+
+  isEntityEditMethod(propMethod: PropPrelude.PropMethod): boolean {
+    return (
+      this.isEntityActionMethod(propMethod) && propMethod.name.endsWith("Edit")
+    );
   }
 
   implListRequestType(renderOptions: RustTypeAsPropOptions = {}): string {
@@ -120,6 +177,22 @@ export class RustFormatter {
         option: false,
         reference: false,
       }),
+    );
+  }
+
+  implServiceEntityAction(propMethod: PropPrelude.PropMethod): string {
+    return ejs.render(
+      "<%- include('src/codegen/rust/implServiceEntityAction.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
+      { fmt: this, propMethod: propMethod },
+      { filename: "." },
+    );
+  }
+
+  implServiceEntityEdit(propMethod: PropPrelude.PropMethod): string {
+    return ejs.render(
+      "<%- include('src/codegen/rust/implServiceEntityEdit.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
+      { fmt: this, propMethod: propMethod },
+      { filename: "." },
     );
   }
 
@@ -407,22 +480,22 @@ export class RustFormatter {
     } else if (this.systemObject.typeName == "integrationService") {
       result.push(`si_storable.add_to_tenant_ids("global");`);
       result.push(
-        `si_properties.as_ref().ok_or(si_data::DataError::ValidationError("siProperties".into()))?;`,
+        `si_properties.as_ref().ok_or_else(|| si_data::DataError::ValidationError("siProperties".into()))?;`,
       );
-      result.push(`let integration_id = si_properties.as_ref().unwrap().integration_id.as_ref().ok_or(
+      result.push(`let integration_id = si_properties.as_ref().unwrap().integration_id.as_ref().ok_or_else(||
             si_data::DataError::ValidationError("siProperties.integrationId".into()),
         )?;
         si_storable.add_to_tenant_ids(integration_id);`);
     } else if (this.systemObject.kind() == "componentObject") {
       result.push(`si_storable.add_to_tenant_ids("global");`);
       result.push(
-        `si_properties.as_ref().ok_or(si_data::DataError::ValidationError("siProperties".into()))?;`,
+        `si_properties.as_ref().ok_or_else(|| si_data::DataError::ValidationError("siProperties".into()))?;`,
       );
-      result.push(`let integration_id = si_properties.as_ref().unwrap().integration_id.as_ref().ok_or(
+      result.push(`let integration_id = si_properties.as_ref().unwrap().integration_id.as_ref().ok_or_else(||
             si_data::DataError::ValidationError("siProperties.integrationId".into()),
         )?;
         si_storable.add_to_tenant_ids(integration_id);`);
-      result.push(`let integration_service_id = si_properties.as_ref().unwrap().integration_service_id.as_ref().ok_or(
+      result.push(`let integration_service_id = si_properties.as_ref().unwrap().integration_service_id.as_ref().ok_or_else(||
             si_data::DataError::ValidationError("siProperties.integrationServiceId".into()),
         )?;
         si_storable.add_to_tenant_ids(integration_service_id);`);
@@ -433,37 +506,37 @@ export class RustFormatter {
       this.systemObject.typeName == "integrationInstance"
     ) {
       result.push(
-        `si_properties.as_ref().ok_or(si_data::DataError::ValidationError("siProperties".into()))?;`,
+        `si_properties.as_ref().ok_or_else(|| si_data::DataError::ValidationError("siProperties".into()))?;`,
       );
-      result.push(`let billing_account_id = si_properties.as_ref().unwrap().billing_account_id.as_ref().ok_or(
+      result.push(`let billing_account_id = si_properties.as_ref().unwrap().billing_account_id.as_ref().ok_or_else(||
             si_data::DataError::ValidationError("siProperties.billingAccountId".into()),
         )?;
         si_storable.add_to_tenant_ids(billing_account_id);`);
     } else if (this.systemObject.typeName == "workspace") {
       result.push(
-        `si_properties.as_ref().ok_or(si_data::DataError::ValidationError("siProperties".into()))?;`,
+        `si_properties.as_ref().ok_or_else(|| si_data::DataError::ValidationError("siProperties".into()))?;`,
       );
-      result.push(`let billing_account_id = si_properties.as_ref().unwrap().billing_account_id.as_ref().ok_or(
+      result.push(`let billing_account_id = si_properties.as_ref().unwrap().billing_account_id.as_ref().ok_or_else(||
             si_data::DataError::ValidationError("siProperties.billingAccountId".into()),
         )?;
         si_storable.add_to_tenant_ids(billing_account_id);`);
-      result.push(`let organization_id = si_properties.as_ref().unwrap().organization_id.as_ref().ok_or(
+      result.push(`let organization_id = si_properties.as_ref().unwrap().organization_id.as_ref().ok_or_else(||
             si_data::DataError::ValidationError("siProperties.organizationId".into()),
         )?;
         si_storable.add_to_tenant_ids(organization_id);`);
     } else {
       result.push(
-        `si_properties.as_ref().ok_or(si_data::DataError::ValidationError("siProperties".into()))?;`,
+        `si_properties.as_ref().ok_or_else(|| si_data::DataError::ValidationError("siProperties".into()))?;`,
       );
-      result.push(`let billing_account_id = si_properties.as_ref().unwrap().billing_account_id.as_ref().ok_or(
+      result.push(`let billing_account_id = si_properties.as_ref().unwrap().billing_account_id.as_ref().ok_or_else(||
             si_data::DataError::ValidationError("siProperties.billingAccountId".into()),
         )?;
         si_storable.add_to_tenant_ids(billing_account_id);`);
-      result.push(`let organization_id = si_properties.as_ref().unwrap().organization_id.as_ref().ok_or(
+      result.push(`let organization_id = si_properties.as_ref().unwrap().organization_id.as_ref().ok_or_else(||
             si_data::DataError::ValidationError("siProperties.organizationId".into()),
         )?;
         si_storable.add_to_tenant_ids(organization_id);`);
-      result.push(`let workspace_id = si_properties.as_ref().unwrap().workspace_id.as_ref().ok_or(
+      result.push(`let workspace_id = si_properties.as_ref().unwrap().workspace_id.as_ref().ok_or_else(||
             si_data::DataError::ValidationError("siProperties.workspaceId".into()),
         )?;
         si_storable.add_to_tenant_ids(workspace_id);`);
@@ -603,27 +676,27 @@ export class RustFormatterService {
   }
 
   implServiceStructBody(): string {
-    const result = ["pub db: si_data::Db,"];
-    if (this.hasComponents()) {
-      result.push("pub agent: si_cea::AgentClient,");
+    const result = ["db: si_data::Db,"];
+    if (this.hasEntities()) {
+      result.push("agent: si_cea::AgentClient,");
     }
     return result.join("\n");
   }
 
-  implServiceStructConstructorReturn(): string {
-    const result = ["db"];
-    if (this.hasComponents()) {
-      result.push("agent");
-    }
-    return result.join(",");
-  }
-
   implServiceNewConstructorArgs(): string {
-    if (this.hasComponents()) {
+    if (this.hasEntities()) {
       return "db: si_data::Db, agent: si_cea::AgentClient";
     } else {
       return "db: si_data::Db";
     }
+  }
+
+  implServiceStructConstructorReturn(): string {
+    const result = ["db"];
+    if (this.hasEntities()) {
+      result.push("agent");
+    }
+    return result.join(",");
   }
 
   implServiceTraitName(): string {
@@ -647,8 +720,8 @@ export class RustFormatterService {
     return result.join("\n");
   }
 
-  hasComponents(): boolean {
-    if (this.systemObjects.find(s => s.kind() == "component")) {
+  hasEntities(): boolean {
+    if (this.systemObjects.find(s => s.kind() == "entityObject")) {
       return true;
     } else {
       return false;

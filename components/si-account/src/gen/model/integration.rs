@@ -110,7 +110,7 @@ impl si_data::Storable for crate::protobuf::Integration {
         self.id
             .as_ref()
             .map(String::as_str)
-            .ok_or(si_data::DataError::RequiredField("id".to_string()))
+            .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))
     }
 
     fn set_id(&mut self, id: impl Into<String>) {
@@ -125,7 +125,7 @@ impl si_data::Storable for crate::protobuf::Integration {
         Ok(self
             .si_storable
             .as_ref()
-            .ok_or(si_data::DataError::RequiredField("si_storable".to_string()))?
+            .ok_or_else(|| si_data::DataError::RequiredField("si_storable".to_string()))?
             .natural_key
             .as_ref()
             .map(String::as_str))
@@ -136,11 +136,11 @@ impl si_data::Storable for crate::protobuf::Integration {
             "{}:{}:{}",
             self.tenant_ids()?
                 .first()
-                .ok_or(si_data::DataError::MissingTenantIds)?,
+                .ok_or_else(|| si_data::DataError::MissingTenantIds)?,
             Self::type_name(),
             self.name
                 .as_ref()
-                .ok_or(si_data::DataError::RequiredField("name".to_string()))?,
+                .ok_or_else(|| si_data::DataError::RequiredField("name".to_string()))?,
         );
 
         if self.si_storable.is_none() {
@@ -160,7 +160,7 @@ impl si_data::Storable for crate::protobuf::Integration {
         Ok(self
             .si_storable
             .as_ref()
-            .ok_or(si_data::DataError::RequiredField("si_storable".to_string()))?
+            .ok_or_else(|| si_data::DataError::RequiredField("si_storable".to_string()))?
             .tenant_ids
             .as_slice())
     }

@@ -149,7 +149,7 @@ async fn integration_service_id_for(
         "global:{}:integration_service:{}",
         integration
             .id
-            .ok_or(DataError::RequiredField("id".to_string()))?,
+            .ok_or_else(|| DataError::RequiredField("id".to_string()))?,
         integration_service_name
     );
     let integration_service: si_account::IntegrationService = db
@@ -158,5 +158,5 @@ async fn integration_service_id_for(
 
     Ok(integration_service
         .id
-        .ok_or(DataError::RequiredField("id".to_string()))?)
+        .ok_or_else(|| DataError::RequiredField("id".to_string()))?)
 }

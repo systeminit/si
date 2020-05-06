@@ -116,7 +116,9 @@ pub trait EntityEvent:
         entity: &Self::Entity,
     ) -> DataResult<Self> {
         let mut entity_event = Self::new(user_id, action_name, entity)?;
+
         db.validate_and_insert_as_new(&mut entity_event).await?;
+
         Ok(entity_event)
     }
 
@@ -129,7 +131,9 @@ pub trait EntityEvent:
     ) -> DataResult<Self> {
         let mut entity_event = Self::new(user_id, action_name, entity)?;
         entity_event.set_previous_entity(previous_entity);
+
         db.validate_and_insert_as_new(&mut entity_event).await?;
+
         Ok(entity_event)
     }
 

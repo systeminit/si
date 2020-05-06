@@ -17,7 +17,7 @@ impl BillingAccount {
         debug!("billing account req");
         let billing_account_req = request
             .billing_account
-            .ok_or(DataError::RequiredField("billingAccount".into()))?;
+            .ok_or_else(|| DataError::RequiredField("billingAccount".into()))?;
 
         debug!("billing account create");
         let billing_account = BillingAccount::create(
@@ -30,7 +30,7 @@ impl BillingAccount {
         debug!("user");
         let user_req = request
             .user
-            .ok_or(DataError::RequiredField("user".into()))?;
+            .ok_or_else(|| DataError::RequiredField("user".into()))?;
 
         debug!("user si properties");
         let user_si_properties = UserSiProperties {

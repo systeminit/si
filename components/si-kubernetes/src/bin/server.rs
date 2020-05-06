@@ -3,24 +3,26 @@
 // use si_kubernetes::model::{KubernetesDeploymentComponent, KubernetesDeploymentEntityEvent};
 // use si_kubernetes::togen::service;
 
+use anyhow::Context;
+use si_kubernetes::gen::service::Service;
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // let name = "Kubernetes";
+    let server_name = "kubernetes";
 
-    // println!("*** Starting {} ***", name);
-    // si_cea::binary::server::setup_tracing()?;
+    println!("*** Starting {} ***", server_name);
+    si_cea::binary::server::setup_tracing()?;
 
-    // println!("*** Loading settings ***");
-    // let settings = Settings::new()?;
+    println!("*** Loading settings ***");
+    let settings = si_settings::Settings::new()?;
 
-    // println!("*** Connecting to the database ***");
-    // let db = Db::new(&settings)?;
+    println!("*** Connecting to the database ***");
+    let db = si_data::Db::new(&settings).context("Cannot connect to the database")?;
 
-    // println!(
-    //     "*** Migrating {} ***",
-    //     KubernetesDeploymentComponent::type_name()
-    // );
-    // KubernetesDeploymentComponent::migrate(&db).await?;
+    let agent_client = si_cea::AgentClient::new(server_name, &settings).await?;
+    let service = Service::new(db, agent_client);
+    println!("*** Migrating so much right now ***");
+    service.migrate().await?;
 
     // println!(
     //     "*** Spawning the {} Agent Server ***",

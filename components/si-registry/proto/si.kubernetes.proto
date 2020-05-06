@@ -161,24 +161,24 @@ message KubernetesDeploymentEntityCreateReply {
   si.kubernetes.KubernetesDeploymentEntityEvent entity_event = 2;
 }
 message KubernetesDeploymentEntitySyncRequest {
-  google.protobuf.StringValue entity_id = 1;
+  google.protobuf.StringValue id = 1;
 }
 message KubernetesDeploymentEntitySyncReply {
-  si.kubernetes.KubernetesDeploymentEntityEvent entity_event = 1;
+  si.kubernetes.KubernetesDeploymentEntityEvent item = 1;
 }
 message KubernetesDeploymentEntityKubernetesObjectEditRequest {
-  google.protobuf.StringValue entity_id = 1;
+  google.protobuf.StringValue id = 1;
   si.kubernetes.KubernetesDeploymentEntityPropertiesKubernetesObject property = 1001;
 }
 message KubernetesDeploymentEntityKubernetesObjectEditReply {
-  si.kubernetes.KubernetesDeploymentEntityEvent entity_event = 1;
+  si.kubernetes.KubernetesDeploymentEntityEvent item = 1;
 }
 message KubernetesDeploymentEntityKubernetesObjectYamlEditRequest {
-  google.protobuf.StringValue entity_id = 1;
+  google.protobuf.StringValue id = 1;
   google.protobuf.StringValue property = 1001;
 }
 message KubernetesDeploymentEntityKubernetesObjectYamlEditReply {
-  si.kubernetes.KubernetesDeploymentEntityEvent entity_event = 1;
+  si.kubernetes.KubernetesDeploymentEntityEvent item = 1;
 }
 message KubernetesDeploymentEntityEvent {
   google.protobuf.StringValue id = 1;

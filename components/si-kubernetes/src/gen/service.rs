@@ -8,16 +8,13 @@ use tracing_opentelemetry::OpenTelemetrySpanExt as _;
 
 #[derive(Debug)]
 pub struct Service {
-    pub db: si_data::Db,
+    db: si_data::Db,
+    agent: si_cea::AgentClient,
 }
 
 impl Service {
-    pub fn new(db: si_data::Db) -> Service {
-        Service { db }
-    }
-
-    pub fn db(&self) -> &si_data::Db {
-        &self.db
+    pub fn new(db: si_data::Db, agent: si_cea::AgentClient) -> Service {
+        Service { db, agent }
     }
 
     pub async fn migrate(&self) -> si_data::Result<()> {
@@ -166,7 +163,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             let inner = request.into_inner();
             let id = inner
                 .id
-                .ok_or(si_data::DataError::RequiredField("id".to_string()))?;
+                .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))?;
 
             let output = crate::protobuf::KubernetesDeploymentComponent::get(&self.db, &id).await?;
             info!(?output);
@@ -312,7 +309,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             let inner = request.into_inner();
             let constraints = inner
                 .constraints
-                .ok_or(si_data::DataError::RequiredField("constraints".to_string()))?;
+                .ok_or_else(|| si_data::DataError::RequiredField("constraints".to_string()))?;
 
             let (implicit_constraints, component) =
                 crate::protobuf::KubernetesDeploymentComponent::pick(&self.db, &constraints)
@@ -470,7 +467,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             let inner = request.into_inner();
             let id = inner
                 .id
-                .ok_or(si_data::DataError::RequiredField("id".to_string()))?;
+                .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))?;
 
             let output = crate::protobuf::KubernetesDeploymentEntity::get(&self.db, &id).await?;
             info!(?output);
@@ -530,20 +527,54 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
         }
 
         async {
-        info!(?request);
+            info!(?request);
 
-            si_account::authorize::authnz(&self.db, &request, "kubernetes_deployment_entity_kubernetes_object_edit").await?;
+            use si_cea::{Entity, EntityEvent};
 
-let inner = request.into_inner();
+            let auth = si_account::authorize::authnz(
+                &self.db,
+                &request,
+                "kubernetes_deployment_entity_kubernetes_object_edit",
+            )
+            .await?;
 
-let output = crate::model::KubernetesDeploymentEntity::kubernetes_deployment_entity_kubernetes_object_edit(&self.db, inner).await?;
-info!(?output);
+            let inner = request.into_inner();
+            let id = inner
+                .id
+                .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))?;
+            let property = inner
+                .property
+                .ok_or_else(|| si_data::DataError::RequiredField("property".to_string()))?;
 
-Ok(tonic::Response::new(output))
+            let mut entity =
+                crate::protobuf::KubernetesDeploymentEntity::get(&self.db, &id).await?;
+            info!(?entity);
+            let previous_entity = entity.clone();
 
-    }
-    .instrument(span)
-    .await
+            entity.set_entity_state_transition();
+            entity.edit_kubernetes_object(property)?;
+            entity.save(&self.db).await?;
+            info!(?entity);
+
+            let entity_event =
+                crate::protobuf::KubernetesDeploymentEntityEvent::create_with_previous_entity(
+                    &self.db,
+                    auth.user_id(),
+                    "kubernetes_object_edit",
+                    &entity,
+                    previous_entity,
+                )
+                .await?;
+            info!(?entity_event);
+
+            Ok(tonic::Response::new(
+                crate::protobuf::KubernetesDeploymentEntityKubernetesObjectEditReply {
+                    item: Some(entity_event),
+                },
+            ))
+        }
+        .instrument(span)
+        .await
     }
 
     async fn kubernetes_deployment_entity_kubernetes_object_yaml_edit(
@@ -593,20 +624,54 @@ Ok(tonic::Response::new(output))
         }
 
         async {
-        info!(?request);
+            info!(?request);
 
-            si_account::authorize::authnz(&self.db, &request, "kubernetes_deployment_entity_kubernetes_object_yaml_edit").await?;
+            use si_cea::{Entity, EntityEvent};
 
-let inner = request.into_inner();
+            let auth = si_account::authorize::authnz(
+                &self.db,
+                &request,
+                "kubernetes_deployment_entity_kubernetes_object_yaml_edit",
+            )
+            .await?;
 
-let output = crate::model::KubernetesDeploymentEntity::kubernetes_deployment_entity_kubernetes_object_yaml_edit(&self.db, inner).await?;
-info!(?output);
+            let inner = request.into_inner();
+            let id = inner
+                .id
+                .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))?;
+            let property = inner
+                .property
+                .ok_or_else(|| si_data::DataError::RequiredField("property".to_string()))?;
 
-Ok(tonic::Response::new(output))
+            let mut entity =
+                crate::protobuf::KubernetesDeploymentEntity::get(&self.db, &id).await?;
+            info!(?entity);
+            let previous_entity = entity.clone();
 
-    }
-    .instrument(span)
-    .await
+            entity.set_entity_state_transition();
+            entity.edit_kubernetes_object_yaml(property)?;
+            entity.save(&self.db).await?;
+            info!(?entity);
+
+            let entity_event =
+                crate::protobuf::KubernetesDeploymentEntityEvent::create_with_previous_entity(
+                    &self.db,
+                    auth.user_id(),
+                    "kubernetes_object_yaml_edit",
+                    &entity,
+                    previous_entity,
+                )
+                .await?;
+            info!(?entity_event);
+
+            Ok(tonic::Response::new(
+                crate::protobuf::KubernetesDeploymentEntityKubernetesObjectYamlEditReply {
+                    item: Some(entity_event),
+                },
+            ))
+        }
+        .instrument(span)
+        .await
     }
 
     async fn kubernetes_deployment_entity_list(
@@ -731,19 +796,37 @@ Ok(tonic::Response::new(output))
         async {
             info!(?request);
 
-            si_account::authorize::authnz(&self.db, &request, "kubernetes_deployment_entity_sync")
-                .await?;
+            use si_cea::EntityEvent;
+
+            let auth = si_account::authorize::authnz(
+                &self.db,
+                &request,
+                "kubernetes_deployment_entity_sync",
+            )
+            .await?;
 
             let inner = request.into_inner();
+            let id = inner
+                .id
+                .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))?;
 
-            let output =
-                crate::model::KubernetesDeploymentEntity::kubernetes_deployment_entity_sync(
-                    &self.db, inner,
-                )
-                .await?;
-            info!(?output);
+            let entity = crate::protobuf::KubernetesDeploymentEntity::get(&self.db, &id).await?;
+            info!(?entity);
+            let entity_event = crate::protobuf::KubernetesDeploymentEntityEvent::create(
+                &self.db,
+                auth.user_id(),
+                "sync",
+                &entity,
+            )
+            .await?;
+            info!(?entity_event);
+            self.agent.dispatch(&entity_event).await?;
 
-            Ok(tonic::Response::new(output))
+            Ok(tonic::Response::new(
+                crate::protobuf::KubernetesDeploymentEntitySyncReply {
+                    item: Some(entity_event),
+                },
+            ))
         }
         .instrument(span)
         .await

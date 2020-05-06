@@ -13,33 +13,33 @@ impl crate::protobuf::KubernetesDeploymentEntity {
         let mut si_storable = si_data::protobuf::DataStorable::default();
         si_properties
             .as_ref()
-            .ok_or(si_data::DataError::ValidationError("siProperties".into()))?;
+            .ok_or_else(|| si_data::DataError::ValidationError("siProperties".into()))?;
         let billing_account_id = si_properties
             .as_ref()
             .unwrap()
             .billing_account_id
             .as_ref()
-            .ok_or(si_data::DataError::ValidationError(
-                "siProperties.billingAccountId".into(),
-            ))?;
+            .ok_or_else(|| {
+                si_data::DataError::ValidationError("siProperties.billingAccountId".into())
+            })?;
         si_storable.add_to_tenant_ids(billing_account_id);
         let organization_id = si_properties
             .as_ref()
             .unwrap()
             .organization_id
             .as_ref()
-            .ok_or(si_data::DataError::ValidationError(
-                "siProperties.organizationId".into(),
-            ))?;
+            .ok_or_else(|| {
+                si_data::DataError::ValidationError("siProperties.organizationId".into())
+            })?;
         si_storable.add_to_tenant_ids(organization_id);
         let workspace_id = si_properties
             .as_ref()
             .unwrap()
             .workspace_id
             .as_ref()
-            .ok_or(si_data::DataError::ValidationError(
-                "siProperties.workspaceId".into(),
-            ))?;
+            .ok_or_else(|| {
+                si_data::DataError::ValidationError("siProperties.workspaceId".into())
+            })?;
         si_storable.add_to_tenant_ids(workspace_id);
 
         let mut result_obj = crate::protobuf::KubernetesDeploymentEntity {
@@ -134,13 +134,13 @@ impl crate::protobuf::KubernetesDeploymentEntity {
 }
 
 impl si_cea::Entity for crate::protobuf::KubernetesDeploymentEntity {
+    type EntityProperties = crate::protobuf::KubernetesDeploymentEntityProperties;
+
     fn entity_state(&self) -> si_data::Result<si_cea::EntitySiPropertiesEntityState> {
         Ok(self
             .si_properties
             .as_ref()
-            .ok_or(si_data::DataError::RequiredField(
-                "si_properties".to_string(),
-            ))?
+            .ok_or_else(|| si_data::DataError::RequiredField("si_properties".to_string()))?
             .entity_state())
     }
 
@@ -156,18 +156,26 @@ impl si_cea::Entity for crate::protobuf::KubernetesDeploymentEntity {
         si_properties.set_entity_state(state);
     }
 
+    fn properties(&self) -> si_data::Result<&Self::EntityProperties> {
+        self.properties
+            .as_ref()
+            .ok_or_else(|| si_data::DataError::RequiredField("properties".to_string()))
+    }
+
+    fn properties_mut(&mut self) -> si_data::Result<&mut Self::EntityProperties> {
+        self.properties
+            .as_mut()
+            .ok_or_else(|| si_data::DataError::RequiredField("properties".to_string()))
+    }
+
     fn integration_id(&self) -> si_data::Result<&str> {
         self.si_properties
             .as_ref()
-            .ok_or(si_data::DataError::RequiredField(
-                "si_properties".to_string(),
-            ))?
+            .ok_or_else(|| si_data::DataError::RequiredField("si_properties".to_string()))?
             .integration_id
             .as_ref()
             .map(String::as_str)
-            .ok_or(si_data::DataError::RequiredField(
-                "integration_id".to_string(),
-            ))
+            .ok_or_else(|| si_data::DataError::RequiredField("integration_id".to_string()))
     }
 
     fn set_integration_id(&mut self, integration_id: impl Into<String>) {
@@ -185,15 +193,11 @@ impl si_cea::Entity for crate::protobuf::KubernetesDeploymentEntity {
     fn integration_service_id(&self) -> si_data::Result<&str> {
         self.si_properties
             .as_ref()
-            .ok_or(si_data::DataError::RequiredField(
-                "si_properties".to_string(),
-            ))?
+            .ok_or_else(|| si_data::DataError::RequiredField("si_properties".to_string()))?
             .integration_service_id
             .as_ref()
             .map(String::as_str)
-            .ok_or(si_data::DataError::RequiredField(
-                "integration_service_id".to_string(),
-            ))
+            .ok_or_else(|| si_data::DataError::RequiredField("integration_service_id".to_string()))
     }
 
     fn set_integration_service_id(&mut self, integration_service_id: impl Into<String>) {
@@ -211,15 +215,11 @@ impl si_cea::Entity for crate::protobuf::KubernetesDeploymentEntity {
     fn component_id(&self) -> si_data::Result<&str> {
         self.si_properties
             .as_ref()
-            .ok_or(si_data::DataError::RequiredField(
-                "si_properties".to_string(),
-            ))?
+            .ok_or_else(|| si_data::DataError::RequiredField("si_properties".to_string()))?
             .component_id
             .as_ref()
             .map(String::as_str)
-            .ok_or(si_data::DataError::RequiredField(
-                "component_id".to_string(),
-            ))
+            .ok_or_else(|| si_data::DataError::RequiredField("component_id".to_string()))
     }
 
     fn set_component_id(&mut self, component_id: impl Into<String>) {
@@ -237,15 +237,11 @@ impl si_cea::Entity for crate::protobuf::KubernetesDeploymentEntity {
     fn workspace_id(&self) -> si_data::Result<&str> {
         self.si_properties
             .as_ref()
-            .ok_or(si_data::DataError::RequiredField(
-                "si_properties".to_string(),
-            ))?
+            .ok_or_else(|| si_data::DataError::RequiredField("si_properties".to_string()))?
             .workspace_id
             .as_ref()
             .map(String::as_str)
-            .ok_or(si_data::DataError::RequiredField(
-                "workspace_id".to_string(),
-            ))
+            .ok_or_else(|| si_data::DataError::RequiredField("workspace_id".to_string()))
     }
 
     fn set_workspace_id(&mut self, workspace_id: impl Into<String>) {
@@ -263,15 +259,11 @@ impl si_cea::Entity for crate::protobuf::KubernetesDeploymentEntity {
     fn organization_id(&self) -> si_data::Result<&str> {
         self.si_properties
             .as_ref()
-            .ok_or(si_data::DataError::RequiredField(
-                "si_properties".to_string(),
-            ))?
+            .ok_or_else(|| si_data::DataError::RequiredField("si_properties".to_string()))?
             .organization_id
             .as_ref()
             .map(String::as_str)
-            .ok_or(si_data::DataError::RequiredField(
-                "organization_id".to_string(),
-            ))
+            .ok_or_else(|| si_data::DataError::RequiredField("organization_id".to_string()))
     }
 
     fn set_organization_id(&mut self, organization_id: impl Into<String>) {
@@ -289,15 +281,11 @@ impl si_cea::Entity for crate::protobuf::KubernetesDeploymentEntity {
     fn billing_account_id(&self) -> si_data::Result<&str> {
         self.si_properties
             .as_ref()
-            .ok_or(si_data::DataError::RequiredField(
-                "si_properties".to_string(),
-            ))?
+            .ok_or_else(|| si_data::DataError::RequiredField("si_properties".to_string()))?
             .billing_account_id
             .as_ref()
             .map(String::as_str)
-            .ok_or(si_data::DataError::RequiredField(
-                "billing_account_id".to_string(),
-            ))
+            .ok_or_else(|| si_data::DataError::RequiredField("billing_account_id".to_string()))
     }
 
     fn set_billing_account_id(&mut self, billing_account_id: impl Into<String>) {
@@ -334,7 +322,7 @@ impl si_data::Storable for crate::protobuf::KubernetesDeploymentEntity {
         self.id
             .as_ref()
             .map(String::as_str)
-            .ok_or(si_data::DataError::RequiredField("id".to_string()))
+            .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))
     }
 
     fn set_id(&mut self, id: impl Into<String>) {
@@ -349,7 +337,7 @@ impl si_data::Storable for crate::protobuf::KubernetesDeploymentEntity {
         Ok(self
             .si_storable
             .as_ref()
-            .ok_or(si_data::DataError::RequiredField("si_storable".to_string()))?
+            .ok_or_else(|| si_data::DataError::RequiredField("si_storable".to_string()))?
             .natural_key
             .as_ref()
             .map(String::as_str))
@@ -360,11 +348,11 @@ impl si_data::Storable for crate::protobuf::KubernetesDeploymentEntity {
             "{}:{}:{}",
             self.tenant_ids()?
                 .first()
-                .ok_or(si_data::DataError::MissingTenantIds)?,
+                .ok_or_else(|| si_data::DataError::MissingTenantIds)?,
             Self::type_name(),
             self.name
                 .as_ref()
-                .ok_or(si_data::DataError::RequiredField("name".to_string()))?,
+                .ok_or_else(|| si_data::DataError::RequiredField("name".to_string()))?,
         );
 
         if self.si_storable.is_none() {
@@ -384,7 +372,7 @@ impl si_data::Storable for crate::protobuf::KubernetesDeploymentEntity {
         Ok(self
             .si_storable
             .as_ref()
-            .ok_or(si_data::DataError::RequiredField("si_storable".to_string()))?
+            .ok_or_else(|| si_data::DataError::RequiredField("si_storable".to_string()))?
             .tenant_ids
             .as_slice())
     }

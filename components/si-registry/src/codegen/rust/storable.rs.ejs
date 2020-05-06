@@ -19,7 +19,7 @@ impl si_data::Storable for <%- fmt.structName() %> {
         self.id
             .as_ref()
             .map(String::as_str)
-            .ok_or(si_data::DataError::RequiredField("id".to_string()))
+            .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))
     }
 
     fn set_id(&mut self, id: impl Into<String>) {
@@ -37,7 +37,7 @@ impl si_data::Storable for <%- fmt.structName() %> {
     fn natural_key(&self) -> si_data::Result<Option<&str>> {
         Ok(self.si_storable
             .as_ref()
-            .ok_or(si_data::DataError::RequiredField("si_storable".to_string()))?
+            .ok_or_else(|| si_data::DataError::RequiredField("si_storable".to_string()))?
             .natural_key
             .as_ref()
             .map(String::as_str))
@@ -46,11 +46,11 @@ impl si_data::Storable for <%- fmt.structName() %> {
     fn set_natural_key(&mut self) -> si_data::Result<()> {
         let natural_key = format!(
             "{}:{}:{}",
-            self.tenant_ids()?.first().ok_or(si_data::DataError::MissingTenantIds)?,
+            self.tenant_ids()?.first().ok_or_else(|| si_data::DataError::MissingTenantIds)?,
             Self::type_name(),
             self.<%- fmt.naturalKey() %>
                 .as_ref()
-                .ok_or(si_data::DataError::RequiredField("<%- fmt.naturalKey() %>".to_string()))?,
+                .ok_or_else(|| si_data::DataError::RequiredField("<%- fmt.naturalKey() %>".to_string()))?,
         );
 
         if self.si_storable.is_none() {
@@ -69,7 +69,7 @@ impl si_data::Storable for <%- fmt.structName() %> {
     fn tenant_ids(&self) -> si_data::Result<&[String]> {
         Ok(self.si_storable
             .as_ref()
-            .ok_or(si_data::DataError::RequiredField("si_storable".to_string()))?
+            .ok_or_else(|| si_data::DataError::RequiredField("si_storable".to_string()))?
             .tenant_ids
             .as_slice())
     }

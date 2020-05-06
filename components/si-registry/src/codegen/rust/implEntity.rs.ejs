@@ -1,8 +1,10 @@
 impl si_cea::Entity for <%- fmt.structName() %> {
+    type EntityProperties = <%- fmt.entityPropertiesName() %>;
+
     fn entity_state(&self) -> si_data::Result<si_cea::EntitySiPropertiesEntityState> {
         Ok(self.si_properties
             .as_ref()
-            .ok_or(si_data::DataError::RequiredField("si_properties".to_string()))?
+            .ok_or_else(|| si_data::DataError::RequiredField("si_properties".to_string()))?
             .entity_state())
     }
 
@@ -18,14 +20,26 @@ impl si_cea::Entity for <%- fmt.structName() %> {
         si_properties.set_entity_state(state);
     }
 
+    fn properties(&self) -> si_data::Result<&Self::EntityProperties> {
+        self.properties
+            .as_ref()
+            .ok_or_else(|| si_data::DataError::RequiredField("properties".to_string()))
+    }
+
+    fn properties_mut(&mut self) -> si_data::Result<&mut Self::EntityProperties> {
+        self.properties
+            .as_mut()
+            .ok_or_else(|| si_data::DataError::RequiredField("properties".to_string()))
+    }
+
     fn integration_id(&self) -> si_data::Result<&str> {
         self.si_properties
             .as_ref()
-            .ok_or(si_data::DataError::RequiredField("si_properties".to_string()))?
+            .ok_or_else(|| si_data::DataError::RequiredField("si_properties".to_string()))?
             .integration_id
             .as_ref()
             .map(String::as_str)
-            .ok_or(si_data::DataError::RequiredField("integration_id".to_string()))
+            .ok_or_else(|| si_data::DataError::RequiredField("integration_id".to_string()))
     }
 
     fn set_integration_id(&mut self, integration_id: impl Into<String>) {
@@ -43,11 +57,11 @@ impl si_cea::Entity for <%- fmt.structName() %> {
     fn integration_service_id(&self) -> si_data::Result<&str> {
         self.si_properties
             .as_ref()
-            .ok_or(si_data::DataError::RequiredField("si_properties".to_string()))?
+            .ok_or_else(|| si_data::DataError::RequiredField("si_properties".to_string()))?
             .integration_service_id
             .as_ref()
             .map(String::as_str)
-            .ok_or(si_data::DataError::RequiredField("integration_service_id".to_string()))
+            .ok_or_else(|| si_data::DataError::RequiredField("integration_service_id".to_string()))
     }
 
     fn set_integration_service_id(&mut self, integration_service_id: impl Into<String>) {
@@ -65,11 +79,11 @@ impl si_cea::Entity for <%- fmt.structName() %> {
     fn component_id(&self) -> si_data::Result<&str> {
         self.si_properties
             .as_ref()
-            .ok_or(si_data::DataError::RequiredField("si_properties".to_string()))?
+            .ok_or_else(|| si_data::DataError::RequiredField("si_properties".to_string()))?
             .component_id
             .as_ref()
             .map(String::as_str)
-            .ok_or(si_data::DataError::RequiredField("component_id".to_string()))
+            .ok_or_else(|| si_data::DataError::RequiredField("component_id".to_string()))
     }
 
     fn set_component_id(&mut self, component_id: impl Into<String>) {
@@ -87,11 +101,11 @@ impl si_cea::Entity for <%- fmt.structName() %> {
     fn workspace_id(&self) -> si_data::Result<&str> {
         self.si_properties
             .as_ref()
-            .ok_or(si_data::DataError::RequiredField("si_properties".to_string()))?
+            .ok_or_else(|| si_data::DataError::RequiredField("si_properties".to_string()))?
             .workspace_id
             .as_ref()
             .map(String::as_str)
-            .ok_or(si_data::DataError::RequiredField("workspace_id".to_string()))
+            .ok_or_else(|| si_data::DataError::RequiredField("workspace_id".to_string()))
     }
 
     fn set_workspace_id(&mut self, workspace_id: impl Into<String>) {
@@ -109,11 +123,11 @@ impl si_cea::Entity for <%- fmt.structName() %> {
     fn organization_id(&self) -> si_data::Result<&str> {
         self.si_properties
             .as_ref()
-            .ok_or(si_data::DataError::RequiredField("si_properties".to_string()))?
+            .ok_or_else(|| si_data::DataError::RequiredField("si_properties".to_string()))?
             .organization_id
             .as_ref()
             .map(String::as_str)
-            .ok_or(si_data::DataError::RequiredField("organization_id".to_string()))
+            .ok_or_else(|| si_data::DataError::RequiredField("organization_id".to_string()))
     }
 
     fn set_organization_id(&mut self, organization_id: impl Into<String>) {
@@ -131,11 +145,11 @@ impl si_cea::Entity for <%- fmt.structName() %> {
     fn billing_account_id(&self) -> si_data::Result<&str> {
         self.si_properties
             .as_ref()
-            .ok_or(si_data::DataError::RequiredField("si_properties".to_string()))?
+            .ok_or_else(|| si_data::DataError::RequiredField("si_properties".to_string()))?
             .billing_account_id
             .as_ref()
             .map(String::as_str)
-            .ok_or(si_data::DataError::RequiredField("billing_account_id".to_string()))
+            .ok_or_else(|| si_data::DataError::RequiredField("billing_account_id".to_string()))
     }
 
     fn set_billing_account_id(&mut self, billing_account_id: impl Into<String>) {

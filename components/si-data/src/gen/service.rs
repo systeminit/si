@@ -8,7 +8,7 @@ use opentelemetry::api::propagation::text_propagator::HttpTextFormat;
 
 #[derive(Debug)]
 pub struct Service {
-pub db: si_data::Db,
+db: si_data::Db,
 }
 
 impl Service {
@@ -16,10 +16,7 @@ impl Service {
         Service { db }
     }
 
-    pub fn db(&self) -> &si_data::Db {
-        &self.db
     }
-        }
 
 #[tonic::async_trait]
 impl crate::protobuf::data_server::Data for Service {

@@ -18,8 +18,13 @@ pub mod prelude {
 pub trait Entity:
     Clone + std::fmt::Debug + Default + DeserializeOwned + Message + Serialize + Storable
 {
+    type EntityProperties;
+
     fn entity_state(&self) -> DataResult<EntitySiPropertiesEntityState>;
     fn set_entity_state(&mut self, state: EntitySiPropertiesEntityState);
+
+    fn properties(&self) -> DataResult<&Self::EntityProperties>;
+    fn properties_mut(&mut self) -> DataResult<&mut Self::EntityProperties>;
 
     fn integration_id(&self) -> DataResult<&str>;
     fn set_integration_id(&mut self, integration_id: impl Into<String>);
@@ -59,37 +64,33 @@ impl EntitySiProperties {
                 workspace
                     .id
                     .as_ref()
-                    .ok_or(DataError::RequiredField("id".to_string()))?
+                    .ok_or_else(|| DataError::RequiredField("id".to_string()))?
                     .to_string(),
             ),
             organization_id: Some(
                 workspace
                     .si_properties
                     .as_ref()
-                    .ok_or(si_data::DataError::RequiredField(
-                        "si_properties".to_string(),
-                    ))?
+                    .ok_or_else(|| si_data::DataError::RequiredField("si_properties".to_string()))?
                     .organization_id
                     .as_ref()
                     .map(String::as_str)
-                    .ok_or(si_data::DataError::RequiredField(
-                        "organization_id".to_string(),
-                    ))?
+                    .ok_or_else(|| {
+                        si_data::DataError::RequiredField("organization_id".to_string())
+                    })?
                     .to_string(),
             ),
             billing_account_id: Some(
                 workspace
                     .si_properties
                     .as_ref()
-                    .ok_or(si_data::DataError::RequiredField(
-                        "si_properties".to_string(),
-                    ))?
+                    .ok_or_else(|| si_data::DataError::RequiredField("si_properties".to_string()))?
                     .billing_account_id
                     .as_ref()
                     .map(String::as_str)
-                    .ok_or(si_data::DataError::RequiredField(
-                        "billing_accound_id".to_string(),
-                    ))?
+                    .ok_or_else(|| {
+                        si_data::DataError::RequiredField("billing_accound_id".to_string())
+                    })?
                     .to_string(),
             ),
             version: csp.version.clone(),

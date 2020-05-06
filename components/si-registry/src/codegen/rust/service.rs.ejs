@@ -16,14 +16,6 @@ impl Service {
         Service { <%- fmt.implServiceStructConstructorReturn() %> }
     }
 
-    pub fn db(&self) -> &si_data::Db {
-        &self.db
-    }
-    <% if (fmt.hasComponents()) { %>
-    pub fn agent(&self) -> &si_cea::AgentClient {
-        &self.agent
-    }
-    <%_ } _%>
     <% if (fmt.hasMigratables()) { %>
     pub async fn migrate(&self) -> si_data::Result<()> {
         <%- fmt.implServiceMigrate() %>
