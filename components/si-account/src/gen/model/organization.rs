@@ -21,15 +21,13 @@ impl crate::protobuf::Organization {
             })?;
         si_storable.add_to_tenant_ids(billing_account_id);
 
-        let mut result_obj = crate::protobuf::Organization {
-            ..Default::default()
-        };
-        result_obj.name = name;
-        result_obj.display_name = display_name;
-        result_obj.si_properties = si_properties;
-        result_obj.si_storable = Some(si_storable);
+        let mut result: crate::protobuf::Organization = Default::default();
+        result.name = name;
+        result.display_name = display_name;
+        result.si_properties = si_properties;
+        result.si_storable = Some(si_storable);
 
-        Ok(result_obj)
+        Ok(result)
     }
 
     pub async fn create(
@@ -38,9 +36,10 @@ impl crate::protobuf::Organization {
         display_name: Option<String>,
         si_properties: Option<crate::protobuf::OrganizationSiProperties>,
     ) -> si_data::Result<crate::protobuf::Organization> {
-        let mut result_obj = crate::protobuf::Organization::new(name, display_name, si_properties)?;
-        db.validate_and_insert_as_new(&mut result_obj).await?;
-        Ok(result_obj)
+        let mut result = crate::protobuf::Organization::new(name, display_name, si_properties)?;
+        db.validate_and_insert_as_new(&mut result).await?;
+
+        Ok(result)
     }
 
     pub async fn get(db: &si_data::Db, id: &str) -> si_data::Result<crate::protobuf::Organization> {

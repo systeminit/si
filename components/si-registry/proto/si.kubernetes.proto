@@ -152,9 +152,9 @@ message KubernetesDeploymentEntityCreateRequest {
   google.protobuf.StringValue name = 1;
   google.protobuf.StringValue display_name = 2;
   google.protobuf.StringValue description = 3;
-  si.kubernetes.KubernetesDeploymentComponentConstraints constraints = 4;
-  si.kubernetes.KubernetesDeploymentEntityProperties properties = 5;
-  si.cea.EntitySiProperties si_properties = 1001;
+  google.protobuf.StringValue workspace_id = 1001;
+  si.kubernetes.KubernetesDeploymentEntityProperties properties = 4;
+  si.kubernetes.KubernetesDeploymentComponentConstraints constraints = 5;
 }
 message KubernetesDeploymentEntityCreateReply {
   si.kubernetes.KubernetesDeploymentEntity item = 1;

@@ -539,16 +539,11 @@ export class EntityObject extends SystemObject {
             p.universal = true;
           },
         });
-        p.request.properties.addLink({
-          name: "constraints",
-          label: "Constraints",
-          options(p: PropLink) {
-            p.universal = true;
-            p.readOnly = true;
-            p.lookup = {
-              typeName: `${baseTypeName}Component`,
-              names: ["constraints"],
-            };
+        p.request.properties.addText({
+          name: "workspace_id",
+          label: `Workspace ID`,
+          options(p) {
+            p.required = true;
           },
         });
         p.request.properties.addLink({
@@ -565,12 +560,14 @@ export class EntityObject extends SystemObject {
           },
         });
         p.request.properties.addLink({
-          name: "siProperties",
-          label: "Si Properties",
+          name: "constraints",
+          label: "Constraints",
           options(p: PropLink) {
-            p.required = true;
+            p.universal = true;
+            p.readOnly = true;
             p.lookup = {
-              typeName: "entitySiProperties",
+              typeName: `${baseTypeName}Component`,
+              names: ["constraints"],
             };
           },
         });

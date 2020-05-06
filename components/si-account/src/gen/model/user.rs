@@ -23,17 +23,15 @@ impl crate::protobuf::User {
             })?;
         si_storable.add_to_tenant_ids(billing_account_id);
 
-        let mut result_obj = crate::protobuf::User {
-            ..Default::default()
-        };
-        result_obj.name = name;
-        result_obj.display_name = display_name;
-        result_obj.email = email;
-        result_obj.password = Some(si_data::password::encrypt_password(password)?);
-        result_obj.si_properties = si_properties;
-        result_obj.si_storable = Some(si_storable);
+        let mut result: crate::protobuf::User = Default::default();
+        result.name = name;
+        result.display_name = display_name;
+        result.email = email;
+        result.password = Some(si_data::password::encrypt_password(password)?);
+        result.si_properties = si_properties;
+        result.si_storable = Some(si_storable);
 
-        Ok(result_obj)
+        Ok(result)
     }
 
     pub async fn create(
@@ -44,10 +42,11 @@ impl crate::protobuf::User {
         password: Option<String>,
         si_properties: Option<crate::protobuf::UserSiProperties>,
     ) -> si_data::Result<crate::protobuf::User> {
-        let mut result_obj =
+        let mut result =
             crate::protobuf::User::new(name, display_name, email, password, si_properties)?;
-        db.validate_and_insert_as_new(&mut result_obj).await?;
-        Ok(result_obj)
+        db.validate_and_insert_as_new(&mut result).await?;
+
+        Ok(result)
     }
 
     pub async fn get(db: &si_data::Db, id: &str) -> si_data::Result<crate::protobuf::User> {

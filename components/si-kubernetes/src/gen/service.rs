@@ -374,7 +374,9 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
         async {
             info!(?request);
 
-            si_account::authorize::authnz(
+            use si_cea::EntityEvent;
+
+            let auth = si_account::authorize::authnz(
                 &self.db,
                 &request,
                 "kubernetes_deployment_entity_create",
@@ -385,28 +387,68 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             let name = inner.name;
             let display_name = inner.display_name;
             let description = inner.description;
-            let constraints = inner.constraints;
+            let workspace_id = inner.workspace_id;
             let properties = inner.properties;
-            let si_properties = inner.si_properties;
+            let constraints = inner.constraints;
+
+            let constraints = constraints.ok_or_else(|| {
+                si_data::DataError::ValidationError(
+                    "missing required constraints value".to_string(),
+                )
+            })?;
+            let workspace_id = workspace_id.ok_or_else(|| {
+                si_data::DataError::ValidationError(
+                    "missing required workspace_id value".to_string(),
+                )
+            })?;
+
+            let workspace = si_account::Workspace::get(&self.db, &workspace_id).await?;
+
+            let (implicit_constraints, component) =
+                crate::protobuf::KubernetesDeploymentComponent::pick(&self.db, &constraints)
+                    .await?;
+            info!(?implicit_constraints, ?component);
+
+            let si_properties = si_cea::EntitySiProperties::new(
+                &workspace,
+                component
+                    .id
+                    .as_ref()
+                    .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))?,
+                component.si_properties.as_ref().ok_or_else(|| {
+                    si_data::DataError::RequiredField("si_properties".to_string())
+                })?,
+            )?;
 
             let entity = crate::protobuf::KubernetesDeploymentEntity::create(
                 &self.db,
                 name,
                 display_name,
                 description,
-                constraints,
+                Some(constraints),
+                Some(implicit_constraints),
                 properties,
-                si_properties,
+                Some(si_properties),
             )
             .await?;
             info!(?entity);
+            let entity_event = crate::protobuf::KubernetesDeploymentEntityEvent::create(
+                &self.db,
+                auth.user_id(),
+                "create",
+                &entity,
+            )
+            .await?;
+            info!(?entity_event);
+            self.agent.dispatch(&entity_event).await?;
 
-            // TODO: fix
-            // entity_event should *not* be `None`
             Ok(tonic::Response::new(
                 crate::protobuf::KubernetesDeploymentEntityCreateReply {
+                    // TODO(fnichol): does it really make sense to return the item
+                    // when the dispatch will likely change its state at a later
+                    // point in time?
                     item: Some(entity),
-                    entity_event: None,
+                    entity_event: Some(entity_event),
                 },
             ))
         }

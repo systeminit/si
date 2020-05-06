@@ -30,15 +30,13 @@ impl crate::protobuf::Workspace {
             })?;
         si_storable.add_to_tenant_ids(organization_id);
 
-        let mut result_obj = crate::protobuf::Workspace {
-            ..Default::default()
-        };
-        result_obj.name = name;
-        result_obj.display_name = display_name;
-        result_obj.si_properties = si_properties;
-        result_obj.si_storable = Some(si_storable);
+        let mut result: crate::protobuf::Workspace = Default::default();
+        result.name = name;
+        result.display_name = display_name;
+        result.si_properties = si_properties;
+        result.si_storable = Some(si_storable);
 
-        Ok(result_obj)
+        Ok(result)
     }
 
     pub async fn create(
@@ -47,9 +45,10 @@ impl crate::protobuf::Workspace {
         display_name: Option<String>,
         si_properties: Option<crate::protobuf::WorkspaceSiProperties>,
     ) -> si_data::Result<crate::protobuf::Workspace> {
-        let mut result_obj = crate::protobuf::Workspace::new(name, display_name, si_properties)?;
-        db.validate_and_insert_as_new(&mut result_obj).await?;
-        Ok(result_obj)
+        let mut result = crate::protobuf::Workspace::new(name, display_name, si_properties)?;
+        db.validate_and_insert_as_new(&mut result).await?;
+
+        Ok(result)
     }
 
     pub async fn get(db: &si_data::Db, id: &str) -> si_data::Result<crate::protobuf::Workspace> {

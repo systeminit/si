@@ -7,6 +7,7 @@ impl crate::protobuf::KubernetesDeploymentEntity {
         display_name: Option<String>,
         description: Option<String>,
         constraints: Option<crate::protobuf::KubernetesDeploymentComponentConstraints>,
+        implicit_constraints: Option<crate::protobuf::KubernetesDeploymentComponentConstraints>,
         properties: Option<crate::protobuf::KubernetesDeploymentEntityProperties>,
         si_properties: Option<si_cea::protobuf::EntitySiProperties>,
     ) -> si_data::Result<crate::protobuf::KubernetesDeploymentEntity> {
@@ -42,18 +43,17 @@ impl crate::protobuf::KubernetesDeploymentEntity {
             })?;
         si_storable.add_to_tenant_ids(workspace_id);
 
-        let mut result_obj = crate::protobuf::KubernetesDeploymentEntity {
-            ..Default::default()
-        };
-        result_obj.name = name;
-        result_obj.display_name = display_name;
-        result_obj.description = description;
-        result_obj.constraints = constraints;
-        result_obj.properties = properties;
-        result_obj.si_properties = si_properties;
-        result_obj.si_storable = Some(si_storable);
+        let mut result: crate::protobuf::KubernetesDeploymentEntity = Default::default();
+        result.name = name;
+        result.display_name = display_name;
+        result.description = description;
+        result.constraints = constraints;
+        result.implicit_constraints = implicit_constraints;
+        result.properties = properties;
+        result.si_properties = si_properties;
+        result.si_storable = Some(si_storable);
 
-        Ok(result_obj)
+        Ok(result)
     }
 
     pub async fn create(
@@ -62,19 +62,22 @@ impl crate::protobuf::KubernetesDeploymentEntity {
         display_name: Option<String>,
         description: Option<String>,
         constraints: Option<crate::protobuf::KubernetesDeploymentComponentConstraints>,
+        implicit_constraints: Option<crate::protobuf::KubernetesDeploymentComponentConstraints>,
         properties: Option<crate::protobuf::KubernetesDeploymentEntityProperties>,
         si_properties: Option<si_cea::protobuf::EntitySiProperties>,
     ) -> si_data::Result<crate::protobuf::KubernetesDeploymentEntity> {
-        let mut result_obj = crate::protobuf::KubernetesDeploymentEntity::new(
+        let mut result = crate::protobuf::KubernetesDeploymentEntity::new(
             name,
             display_name,
             description,
             constraints,
+            implicit_constraints,
             properties,
             si_properties,
         )?;
-        db.validate_and_insert_as_new(&mut result_obj).await?;
-        Ok(result_obj)
+        db.validate_and_insert_as_new(&mut result).await?;
+
+        Ok(result)
     }
 
     pub async fn get(

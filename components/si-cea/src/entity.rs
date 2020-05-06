@@ -52,48 +52,59 @@ pub trait Entity:
 impl EntitySiProperties {
     pub fn new(
         workspace: &Workspace,
-        csp: &ComponentSiProperties,
         component_id: impl Into<String>,
+        component_si_properties: &ComponentSiProperties,
     ) -> DataResult<Self> {
-        Ok(Self {
-            entity_state: Default::default(),
-            integration_id: csp.integration_id.clone(),
-            integration_service_id: csp.integration_service_id.clone(),
-            component_id: Some(component_id.into()),
-            workspace_id: Some(
-                workspace
-                    .id
-                    .as_ref()
-                    .ok_or_else(|| DataError::RequiredField("id".to_string()))?
-                    .to_string(),
-            ),
-            organization_id: Some(
-                workspace
-                    .si_properties
-                    .as_ref()
-                    .ok_or_else(|| si_data::DataError::RequiredField("si_properties".to_string()))?
-                    .organization_id
-                    .as_ref()
-                    .map(String::as_str)
-                    .ok_or_else(|| {
-                        si_data::DataError::RequiredField("organization_id".to_string())
-                    })?
-                    .to_string(),
-            ),
-            billing_account_id: Some(
-                workspace
-                    .si_properties
-                    .as_ref()
-                    .ok_or_else(|| si_data::DataError::RequiredField("si_properties".to_string()))?
-                    .billing_account_id
-                    .as_ref()
-                    .map(String::as_str)
-                    .ok_or_else(|| {
-                        si_data::DataError::RequiredField("billing_accound_id".to_string())
-                    })?
-                    .to_string(),
-            ),
-            version: csp.version.clone(),
-        })
+        let mut result: Self = Default::default();
+        result.entity_state = Default::default();
+        result.integration_id = Some(
+            component_si_properties
+                .integration_id
+                .as_ref()
+                .ok_or_else(|| DataError::RequiredField("integration_id".to_string()))?
+                .clone(),
+        );
+        result.integration_service_id = Some(
+            component_si_properties
+                .integration_service_id
+                .as_ref()
+                .ok_or_else(|| DataError::RequiredField("integration_service_id".to_string()))?
+                .clone(),
+        );
+        result.component_id = Some(component_id.into());
+        result.workspace_id = Some(
+            workspace
+                .id
+                .as_ref()
+                .ok_or_else(|| DataError::RequiredField("id".to_string()))?
+                .clone(),
+        );
+        result.organization_id = Some(
+            workspace
+                .si_properties
+                .as_ref()
+                .ok_or_else(|| DataError::RequiredField("si_properties".to_string()))?
+                .organization_id
+                .as_ref()
+                .ok_or_else(|| DataError::RequiredField("organization_id".to_string()))?
+                .clone(),
+        );
+        result.billing_account_id = Some(
+            workspace
+                .si_properties
+                .as_ref()
+                .ok_or_else(|| DataError::RequiredField("si_properties".to_string()))?
+                .billing_account_id
+                .as_ref()
+                .ok_or_else(|| DataError::RequiredField("billing_account_id".to_string()))?
+                .clone(),
+        );
+        result.version = Some(
+            component_si_properties
+                .version
+                .ok_or_else(|| DataError::RequiredField("version".to_string()))?,
+        );
+
+        Ok(result)
     }
 }

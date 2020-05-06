@@ -33,17 +33,15 @@ impl crate::protobuf::KubernetesDeploymentComponent {
             })?;
         si_storable.add_to_tenant_ids(integration_service_id);
 
-        let mut result_obj = crate::protobuf::KubernetesDeploymentComponent {
-            ..Default::default()
-        };
-        result_obj.name = name;
-        result_obj.display_name = display_name;
-        result_obj.description = description;
-        result_obj.constraints = constraints;
-        result_obj.si_properties = si_properties;
-        result_obj.si_storable = Some(si_storable);
+        let mut result: crate::protobuf::KubernetesDeploymentComponent = Default::default();
+        result.name = name;
+        result.display_name = display_name;
+        result.description = description;
+        result.constraints = constraints;
+        result.si_properties = si_properties;
+        result.si_storable = Some(si_storable);
 
-        Ok(result_obj)
+        Ok(result)
     }
 
     pub async fn create(
@@ -54,15 +52,16 @@ impl crate::protobuf::KubernetesDeploymentComponent {
         constraints: Option<crate::protobuf::KubernetesDeploymentComponentConstraints>,
         si_properties: Option<si_cea::protobuf::ComponentSiProperties>,
     ) -> si_data::Result<crate::protobuf::KubernetesDeploymentComponent> {
-        let mut result_obj = crate::protobuf::KubernetesDeploymentComponent::new(
+        let mut result = crate::protobuf::KubernetesDeploymentComponent::new(
             name,
             display_name,
             description,
             constraints,
             si_properties,
         )?;
-        db.validate_and_insert_as_new(&mut result_obj).await?;
-        Ok(result_obj)
+        db.validate_and_insert_as_new(&mut result).await?;
+
+        Ok(result)
     }
 
     pub async fn get(

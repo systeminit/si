@@ -23,16 +23,14 @@ impl crate::protobuf::IntegrationService {
             })?;
         si_storable.add_to_tenant_ids(integration_id);
 
-        let mut result_obj = crate::protobuf::IntegrationService {
-            ..Default::default()
-        };
-        result_obj.name = name;
-        result_obj.display_name = display_name;
-        result_obj.version = version;
-        result_obj.si_properties = si_properties;
-        result_obj.si_storable = Some(si_storable);
+        let mut result: crate::protobuf::IntegrationService = Default::default();
+        result.name = name;
+        result.display_name = display_name;
+        result.version = version;
+        result.si_properties = si_properties;
+        result.si_storable = Some(si_storable);
 
-        Ok(result_obj)
+        Ok(result)
     }
 
     pub async fn create(
@@ -42,10 +40,11 @@ impl crate::protobuf::IntegrationService {
         version: Option<i32>,
         si_properties: Option<crate::protobuf::IntegrationServiceSiProperties>,
     ) -> si_data::Result<crate::protobuf::IntegrationService> {
-        let mut result_obj =
+        let mut result =
             crate::protobuf::IntegrationService::new(name, display_name, version, si_properties)?;
-        db.validate_and_insert_as_new(&mut result_obj).await?;
-        Ok(result_obj)
+        db.validate_and_insert_as_new(&mut result).await?;
+
+        Ok(result)
     }
 
     pub async fn get(

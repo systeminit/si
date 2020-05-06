@@ -4,15 +4,16 @@ pub fn new(<%- fmt.implCreateNewArgs() %>) -> si_data::Result<<%- fmt.structName
     <%- fmt.implCreateAddToTenancy() %>
 <%_ } _%>
 
-    let mut result_obj = <%- fmt.structName() %> { ..Default::default() };
+    let mut result: <%- fmt.structName() %> = Default::default();
     <%- fmt.implCreateSetProperties() %>
-    result_obj.si_storable = Some(si_storable);
+    result.si_storable = Some(si_storable);
 
-    Ok(result_obj)
+    Ok(result)
 }
 
 pub async fn create(db: &si_data::Db, <%- fmt.implCreateNewArgs() %>) -> si_data::Result<<%- fmt.structName() %>> {
-    let mut result_obj = <%- fmt.structName() %>::new(<%- fmt.implCreatePassNewArgs() %>)?;
-    db.validate_and_insert_as_new(&mut result_obj).await?;
-    Ok(result_obj)
+    let mut result = <%- fmt.structName() %>::new(<%- fmt.implCreatePassNewArgs() %>)?;
+    db.validate_and_insert_as_new(&mut result).await?;
+
+    Ok(result)
 }

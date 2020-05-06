@@ -22,16 +22,14 @@ impl crate::protobuf::IntegrationInstance {
             })?;
         si_storable.add_to_tenant_ids(billing_account_id);
 
-        let mut result_obj = crate::protobuf::IntegrationInstance {
-            ..Default::default()
-        };
-        result_obj.name = name;
-        result_obj.display_name = display_name;
-        result_obj.option_values = option_values;
-        result_obj.si_properties = si_properties;
-        result_obj.si_storable = Some(si_storable);
+        let mut result: crate::protobuf::IntegrationInstance = Default::default();
+        result.name = name;
+        result.display_name = display_name;
+        result.option_values = option_values;
+        result.si_properties = si_properties;
+        result.si_storable = Some(si_storable);
 
-        Ok(result_obj)
+        Ok(result)
     }
 
     pub async fn create(
@@ -41,14 +39,15 @@ impl crate::protobuf::IntegrationInstance {
         option_values: Vec<crate::protobuf::IntegrationInstanceOptionValues>,
         si_properties: Option<crate::protobuf::IntegrationInstanceSiProperties>,
     ) -> si_data::Result<crate::protobuf::IntegrationInstance> {
-        let mut result_obj = crate::protobuf::IntegrationInstance::new(
+        let mut result = crate::protobuf::IntegrationInstance::new(
             name,
             display_name,
             option_values,
             si_properties,
         )?;
-        db.validate_and_insert_as_new(&mut result_obj).await?;
-        Ok(result_obj)
+        db.validate_and_insert_as_new(&mut result).await?;
+
+        Ok(result)
     }
 
     pub async fn get(

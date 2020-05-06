@@ -273,8 +273,7 @@ impl crate::protobuf::account_server::Account for Service {
 
             let inner = request.into_inner();
 
-            let output =
-                crate::model::BillingAccount::billing_account_signup(&self.db, inner).await?;
+            let output = crate::model::BillingAccount::signup(&self.db, inner).await?;
             info!(?output);
 
             Ok(tonic::Response::new(output))
@@ -1547,7 +1546,7 @@ impl crate::protobuf::account_server::Account for Service {
 
             let inner = request.into_inner();
 
-            let output = crate::model::User::user_login_internal(&self.db, inner).await?;
+            let output = crate::model::User::login_internal(&self.db, inner).await?;
             info!(?output);
 
             Ok(tonic::Response::new(output))

@@ -1,0 +1,50 @@
+pub fn new(
+    name: Option<String>,
+    display_name: Option<String>,
+    description: Option<String>,
+    constraints: Option<<%- fmt.componentConstraintsName() %>>,
+    implicit_constraints: Option<<%- fmt.componentConstraintsName() %>>,
+    properties: Option<<%- fmt.entityPropertiesName() %>>,
+    si_properties: Option<si_cea::protobuf::EntitySiProperties>,
+) -> si_data::Result<<%- fmt.structName() %>> {
+<%_ if (fmt.isStorable()) { _%>
+    let mut si_storable = si_data::protobuf::DataStorable::default();
+    <%- fmt.implCreateAddToTenancy() %>
+<%_ } _%>
+
+    let mut result: <%- fmt.structName() %> = Default::default();
+    result.name = name;
+    result.display_name = display_name;
+    result.description = description;
+    result.constraints = constraints;
+    result.implicit_constraints = implicit_constraints;
+    result.properties = properties;
+    result.si_properties = si_properties;
+    result.si_storable = Some(si_storable);
+
+    Ok(result)
+}
+
+pub async fn create(
+    db: &si_data::Db,
+    name: Option<String>,
+    display_name: Option<String>,
+    description: Option<String>,
+    constraints: Option<<%- fmt.componentConstraintsName() %>>,
+    implicit_constraints: Option<<%- fmt.componentConstraintsName() %>>,
+    properties: Option<<%- fmt.entityPropertiesName() %>>,
+    si_properties: Option<si_cea::protobuf::EntitySiProperties>,
+) -> si_data::Result<<%- fmt.structName() %>> {
+    let mut result = <%- fmt.structName() %>::new(
+        name,
+        display_name,
+        description,
+        constraints,
+        implicit_constraints,
+        properties,
+        si_properties,
+    )?;
+    db.validate_and_insert_as_new(&mut result).await?;
+
+    Ok(result)
+}

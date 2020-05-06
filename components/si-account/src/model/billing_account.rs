@@ -10,7 +10,7 @@ pub use crate::protobuf::{
 use tracing::debug;
 
 impl BillingAccount {
-    pub async fn billing_account_signup(
+    pub async fn signup(
         db: &Db,
         request: BillingAccountSignupRequest,
     ) -> Result<BillingAccountSignupReply> {

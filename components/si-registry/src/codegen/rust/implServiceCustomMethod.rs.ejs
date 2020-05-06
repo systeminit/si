@@ -2,7 +2,7 @@
 
 let inner = request.into_inner();
 
-let output = <%- fmt.modelName() %>::<%- fmt.implServiceMethodName(propMethod) %>(&self.db, inner).await?;
+let output = <%- fmt.modelName() %>::<%- fmt.modelServiceMethodName(propMethod) %>(&self.db, inner).await?;
 info!(?output);
 
 Ok(tonic::Response::new(output))

@@ -9,14 +9,12 @@ impl crate::protobuf::BillingAccount {
         let mut si_storable = si_data::protobuf::DataStorable::default();
         si_storable.add_to_tenant_ids("global");
 
-        let mut result_obj = crate::protobuf::BillingAccount {
-            ..Default::default()
-        };
-        result_obj.name = name;
-        result_obj.display_name = display_name;
-        result_obj.si_storable = Some(si_storable);
+        let mut result: crate::protobuf::BillingAccount = Default::default();
+        result.name = name;
+        result.display_name = display_name;
+        result.si_storable = Some(si_storable);
 
-        Ok(result_obj)
+        Ok(result)
     }
 
     pub async fn create(
@@ -24,9 +22,10 @@ impl crate::protobuf::BillingAccount {
         name: Option<String>,
         display_name: Option<String>,
     ) -> si_data::Result<crate::protobuf::BillingAccount> {
-        let mut result_obj = crate::protobuf::BillingAccount::new(name, display_name)?;
-        db.validate_and_insert_as_new(&mut result_obj).await?;
-        Ok(result_obj)
+        let mut result = crate::protobuf::BillingAccount::new(name, display_name)?;
+        db.validate_and_insert_as_new(&mut result).await?;
+
+        Ok(result)
     }
 
     pub async fn get(

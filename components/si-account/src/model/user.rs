@@ -6,7 +6,7 @@ pub use crate::protobuf::{BillingAccount, User, UserLoginInternalReply, UserLogi
 pub use si_data::{password::verify_password, DataError, Storable};
 
 impl User {
-    pub async fn user_login_internal(
+    pub async fn login_internal(
         db: &si_data::Db,
         request: UserLoginInternalRequest,
     ) -> Result<UserLoginInternalReply> {
@@ -77,7 +77,7 @@ impl User {
                 })
             }
         }
-        .instrument(debug_span!("user_login_internal"))
+        .instrument(debug_span!("login_internal"))
         .await
     }
 }

@@ -39,13 +39,31 @@ export class RustFormatter {
     return `crate::model::${pascalCase(this.systemObject.typeName)}`;
   }
 
-  componentConstraintsName(): string {
-    if (this.systemObject instanceof ComponentObject) {
+  componentName(): string {
+    if (
+      this.systemObject instanceof ComponentObject ||
+      this.systemObject instanceof EntityObject ||
+      this.systemObject instanceof EntityEventObject
+    ) {
       return `crate::protobuf::${pascalCase(
-        this.systemObject.typeName,
-      )}Constraints`;
+        this.systemObject.baseTypeName,
+      )}Component`;
     } else {
-      throw "<no_valid_component_constraints_name>";
+      throw "You asked for an component name on a non-component object; this is a bug!";
+    }
+  }
+
+  componentConstraintsName(): string {
+    if (
+      this.systemObject instanceof ComponentObject ||
+      this.systemObject instanceof EntityObject ||
+      this.systemObject instanceof EntityEventObject
+    ) {
+      return `crate::protobuf::${pascalCase(
+        this.systemObject.baseTypeName,
+      )}ComponentConstraints`;
+    } else {
+      throw "You asked for a component constraints name on a non-component object; this is a bug!";
     }
   }
 
@@ -56,21 +74,7 @@ export class RustFormatter {
         "",
       )}`;
     } else {
-      throw "<no_valid_entity_edit_method_name>";
-    }
-  }
-
-  entityName(): string {
-    if (
-      this.systemObject instanceof ComponentObject ||
-      this.systemObject instanceof EntityObject ||
-      this.systemObject instanceof EntityEventObject
-    ) {
-      return `crate::protobuf::${pascalCase(
-        this.systemObject.baseTypeName,
-      )}Entity`;
-    } else {
-      throw "You asked for an entity name on a non-component object; this is a bug!";
+      throw "You asked for an edit method name on a non-entity object; this is a bug!";
     }
   }
 
@@ -88,6 +92,20 @@ export class RustFormatter {
     }
   }
 
+  entityName(): string {
+    if (
+      this.systemObject instanceof ComponentObject ||
+      this.systemObject instanceof EntityObject ||
+      this.systemObject instanceof EntityEventObject
+    ) {
+      return `crate::protobuf::${pascalCase(
+        this.systemObject.baseTypeName,
+      )}Entity`;
+    } else {
+      throw "You asked for an entity name on a non-component object; this is a bug!";
+    }
+  }
+
   entityPropertiesName(): string {
     if (
       this.systemObject instanceof ComponentObject ||
@@ -100,6 +118,12 @@ export class RustFormatter {
     } else {
       throw "You asked for an entityProperties name on a non-component object; this is a bug!";
     }
+  }
+
+  modelServiceMethodName(
+    propMethod: PropPrelude.PropMethod | PropPrelude.PropAction,
+  ): string {
+    return this.rustFieldNameForProp(propMethod);
   }
 
   typeName(): string {
@@ -460,10 +484,10 @@ export class RustFormatter {
         const variableName = snakeCase(prop.name);
         if (prop instanceof PropPrelude.PropPassword) {
           result.push(
-            `result_obj.${variableName} = Some(si_data::password::encrypt_password(${variableName})?);`,
+            `result.${variableName} = Some(si_data::password::encrypt_password(${variableName})?);`,
           );
         } else {
-          result.push(`result_obj.${variableName} = ${variableName};`);
+          result.push(`result.${variableName} = ${variableName};`);
         }
       }
     }
