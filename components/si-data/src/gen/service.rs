@@ -6,6 +6,8 @@ use tracing_futures::Instrument as _;
 use tracing_opentelemetry::OpenTelemetrySpanExt as _;
 use opentelemetry::api::propagation::text_propagator::HttpTextFormat;
 
+pub use crate::protobuf::data_server::DataServer as Server;
+
 #[derive(Debug)]
 pub struct Service {
 db: si_data::Db,

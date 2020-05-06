@@ -66,6 +66,7 @@ export declare class RustFormatterService {
     implServiceNewConstructorArgs(): string;
     implServiceStructConstructorReturn(): string;
     implServiceTraitName(): string;
+    implServerName(): string;
     implServiceMigrate(): string;
     hasEntities(): boolean;
     hasMigratables(): boolean;

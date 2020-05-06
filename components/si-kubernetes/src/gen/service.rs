@@ -6,6 +6,8 @@ use tracing::{debug, info};
 use tracing_futures::Instrument as _;
 use tracing_opentelemetry::OpenTelemetrySpanExt as _;
 
+pub use crate::protobuf::kubernetes_server::KubernetesServer as Server;
+
 #[derive(Debug)]
 pub struct Service {
     db: si_data::Db,

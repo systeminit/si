@@ -729,6 +729,10 @@ export class RustFormatterService {
     )}_server::${pascalCase(this.serviceName)}`;
   }
 
+  implServerName(): string {
+    return `${this.implServiceTraitName()}Server`;
+  }
+
   implServiceMigrate(): string {
     const result = [];
     for (const systemObj of this.systemObjects) {
