@@ -100,14 +100,16 @@ function generateRust(): Listr {
     const codegenRust = new CodegenRust(serviceName);
     const systemObjects = registry.getObjectsForServiceName(serviceName);
 
-    tasks.push({
-      title: `Rust service ${chalk.keyword("orange")(
-        "gen/service.rs",
-      )} for ${serviceName}`,
-      task: async (): Promise<void> => {
-        await codegenRust.generateGenService();
-      },
-    });
+    if (codegenRust.hasServiceMethods()) {
+      tasks.push({
+        title: `Rust service ${chalk.keyword("orange")(
+          "gen/service.rs",
+        )} for ${serviceName}`,
+        task: async (): Promise<void> => {
+          await codegenRust.generateGenService();
+        },
+      });
+    }
 
     if (systemObjects.some(o => o.kind() != "baseObject")) {
       tasks.push({

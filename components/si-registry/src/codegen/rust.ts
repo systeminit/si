@@ -777,6 +777,14 @@ export class CodegenRust {
     this.serviceName = serviceName;
   }
 
+  hasServiceMethods(): boolean {
+    return (
+      registry
+        .getObjectsForServiceName(this.serviceName)
+        .flatMap(o => o.methods.attrs).length > 0
+    );
+  }
+
   // Generate the 'gen/mod.rs'
   async generateGenMod(): Promise<void> {
     const results = [

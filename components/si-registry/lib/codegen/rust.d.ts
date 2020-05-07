@@ -74,6 +74,7 @@ export declare class RustFormatterService {
 export declare class CodegenRust {
     serviceName: string;
     constructor(serviceName: string);
+    hasServiceMethods(): boolean;
     generateGenMod(): Promise<void>;
     generateGenModelMod(): Promise<void>;
     generateGenService(): Promise<void>;
