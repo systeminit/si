@@ -1,3 +1,5 @@
+import { RelationshipList } from "./prop/relationships";
+
 export interface PropConstructor {
   name: string;
   label: string;
@@ -21,6 +23,8 @@ export abstract class Prop {
   rules: ((v: any) => boolean | string)[];
   required: boolean;
   readOnly: boolean;
+  relationships: RelationshipList;
+
   // Hidden from the UI
   hidden: boolean;
   repeated: boolean;
@@ -64,6 +68,7 @@ export abstract class Prop {
     this.parentName = "";
     this.reference = false;
     this.skip = false;
+    this.relationships = new RelationshipList();
   }
 
   abstract kind(): string;

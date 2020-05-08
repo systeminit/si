@@ -322,32 +322,6 @@ enum EntitySiPropertiesEntityState {
   TRANSITION
 }
 
-input EntitySiPropertiesRequest {
-  """Billing Account ID"""
-  billingAccountId: String!
-
-  """Component Id"""
-  componentId: String!
-
-  """Entity State"""
-  entityState: EntitySiPropertiesEntityState
-
-  """Integration Id"""
-  integrationId: String!
-
-  """Integration Service Id"""
-  integrationServiceId: String!
-
-  """Organization ID"""
-  organizationId: String!
-
-  """Version"""
-  version: Int!
-
-  """Workspace ID"""
-  workspaceId: String!
-}
-
 type Group {
   """Authorized capabilities for this user"""
   capabilities: [Capability!]
@@ -921,8 +895,8 @@ input KubernetesDeploymentEntityCreateRequest {
   """Properties"""
   properties: KubernetesDeploymentEntityPropertiesRequest!
 
-  """Si Properties"""
-  siProperties: EntitySiPropertiesRequest!
+  """Workspace ID"""
+  workspaceId: String!
 }
 
 type KubernetesDeploymentEntityEvent {
@@ -1031,7 +1005,7 @@ Edit kubernetesDeploymentEntityPropertiesKubernetesObject Property Reply
 """
 type KubernetesDeploymentEntityKubernetesObjectEditReply {
   """Entity Event"""
-  entityEvent: KubernetesDeploymentEntityEvent
+  item: KubernetesDeploymentEntityEvent
 }
 
 """
@@ -1039,7 +1013,7 @@ Edit kubernetesDeploymentEntityPropertiesKubernetesObject Property Request
 """
 input KubernetesDeploymentEntityKubernetesObjectEditRequest {
   """Entity ID"""
-  entityId: String!
+  id: ID!
 
   """The Kubernetes Object property value"""
   property: KubernetesDeploymentEntityPropertiesKubernetesObjectRequest
@@ -1048,13 +1022,13 @@ input KubernetesDeploymentEntityKubernetesObjectEditRequest {
 """Edit KubernetesObjectYaml Property Reply"""
 type KubernetesDeploymentEntityKubernetesObjectYamlEditReply {
   """Entity Event"""
-  entityEvent: KubernetesDeploymentEntityEvent
+  item: KubernetesDeploymentEntityEvent
 }
 
 """Edit KubernetesObjectYaml Property Request"""
 input KubernetesDeploymentEntityKubernetesObjectYamlEditRequest {
   """Entity ID"""
-  entityId: String!
+  id: ID!
 
   """The Kubernetes Object YAML property value"""
   property: String
@@ -1162,13 +1136,13 @@ input KubernetesDeploymentEntityPropertiesRequest {
 """Sync State Reply"""
 type KubernetesDeploymentEntitySyncReply {
   """Entity Event"""
-  entityEvent: KubernetesDeploymentEntityEvent
+  item: KubernetesDeploymentEntityEvent
 }
 
 """Sync State Request"""
 input KubernetesDeploymentEntitySyncRequest {
   """Entity ID"""
-  entityId: String!
+  id: ID!
 }
 
 type KubernetesMetadata {

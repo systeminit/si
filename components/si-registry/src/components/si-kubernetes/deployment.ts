@@ -33,6 +33,18 @@ registry.componentAndEntity({
       name: "kubernetesObject",
       label: "Kubernetes Object",
       options(p: PropObject) {
+        p.relationships.updates({
+          partner: {
+            typeName: "kubernetesDeployment",
+            names: ["kubernetesObjectYaml"],
+          },
+        });
+        p.relationships.either({
+          partner: {
+            typeName: "kubernetesDeployment",
+            names: ["kubernetesObjectYaml"],
+          },
+        });
         p.properties.addText({
           name: "apiVersion",
           label: "API Version",
@@ -95,6 +107,18 @@ registry.componentAndEntity({
       name: "kubernetesObjectYaml",
       label: "Kubernetes Object YAML",
       options(p: PropCode) {
+        p.relationships.updates({
+          partner: {
+            typeName: "kubernetesDeployment",
+            names: ["kubernetesObject"],
+          },
+        });
+        p.relationships.either({
+          partner: {
+            typeName: "kubernetesDeployment",
+            names: ["kubernetesObject"],
+          },
+        });
         p.language = "yaml";
       },
     });
