@@ -1,3 +1,4 @@
+import { RelationshipList } from "./prop/relationships";
 export interface PropConstructor {
     name: string;
     label: string;
@@ -13,6 +14,7 @@ export declare abstract class Prop {
     rules: ((v: any) => boolean | string)[];
     required: boolean;
     readOnly: boolean;
+    relationships: RelationshipList;
     hidden: boolean;
     repeated: boolean;
     universal: boolean;

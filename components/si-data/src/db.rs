@@ -12,6 +12,7 @@ use std::sync::Arc;
 
 use crate::error::{DataError, Result};
 use crate::migrateable::Migrateable;
+use crate::mvcc::TxnId;
 use crate::protobuf::{DataPageToken, DataPageTokenOrderByDirection, DataQuery};
 use crate::storable::{Reference, Storable};
 
@@ -74,7 +75,7 @@ impl std::fmt::Display for DataPageTokenOrderByDirection {
 pub struct Db {
     // Eventually, this should become a real thread pool.
     pub cluster: SharedCluster,
-    bucket: Arc<SharedBucket>,
+    pub bucket: Arc<SharedBucket>,
     pub bucket_name: Arc<String>,
     pub scan_consistency: ScanConsistency,
     pub page_secret_key: secretbox::Key,

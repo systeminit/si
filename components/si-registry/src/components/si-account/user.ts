@@ -1,4 +1,9 @@
-import { PropObject, PropMethod, PropLink } from "../../components/prelude";
+import {
+  PropObject,
+  PropMethod,
+  PropLink,
+  PropNumber,
+} from "../../components/prelude";
 import { registry } from "../../registry";
 import { SystemObject } from "../../systemComponent";
 
@@ -43,6 +48,13 @@ registry.system({
           label: "Billing Account ID",
           options(p) {
             p.required = true;
+          },
+        });
+        p.properties.addNumber({
+          name: "currentTxn",
+          label: "The users current transaction id (128 bit integer)",
+          options(p: PropNumber) {
+            p.numberKind = "u128";
           },
         });
       },

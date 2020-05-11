@@ -221,7 +221,7 @@ mod query_test {
             ..Default::default()
         };
         let query_string = query.as_n1ql("si").expect("Failed to create n1ql query");
-        assert_eq!(query_string, "(si.[\"foo\"] = \"bar\")");
+        assert_eq!(query_string, "(si.foo = \"bar\")");
     }
 
     #[test]
@@ -240,7 +240,7 @@ mod query_test {
             ..Default::default()
         };
         let query_string = query.as_n1ql("si").expect("Failed to create n1ql query");
-        assert_eq!(query_string, "(ARRAY_CONTAINS(si.[\"foo\"], \"bar\"))");
+        assert_eq!(query_string, "(ARRAY_CONTAINS(si.foo, \"bar\"))");
     }
 
     #[test]
@@ -259,7 +259,7 @@ mod query_test {
             ..Default::default()
         };
         let query_string = query.as_n1ql("si").expect("Failed to create n1ql query");
-        assert_eq!(query_string, "(si.[\"foo\"] LIKE \"bar\")");
+        assert_eq!(query_string, "(si.foo LIKE \"bar\")");
     }
 
     #[test]
@@ -278,7 +278,7 @@ mod query_test {
             ..Default::default()
         };
         let query_string = query.as_n1ql("si").expect("Failed to create n1ql query");
-        assert_eq!(query_string, "(si.[\"foo\"] NOT LIKE \"bar\")");
+        assert_eq!(query_string, "(si.foo NOT LIKE \"bar\")");
     }
 
     #[test]
@@ -297,7 +297,7 @@ mod query_test {
             ..Default::default()
         };
         let query_string = query.as_n1ql("si").expect("Failed to create n1ql query");
-        assert_eq!(query_string, "(si.[\"foo\"] = 1)");
+        assert_eq!(query_string, "(si.foo = 1)");
     }
 
     #[test]
@@ -329,7 +329,7 @@ mod query_test {
         let query_string = query.as_n1ql("si").expect("Failed to create n1ql query");
         assert_eq!(
             query_string,
-            "(si.[\"foo\"] = \"bar\" AND si.[\"freaky\"] != \"friday\")"
+            "(si.foo = \"bar\" AND si.freaky != \"friday\")"
         );
     }
 
@@ -362,7 +362,7 @@ mod query_test {
         let query_string = query.as_n1ql("si").expect("Failed to create n1ql query");
         assert_eq!(
             query_string,
-            "(si.[\"foo\"] = \"bar\" OR si.[\"freaky\"] != \"friday\")"
+            "(si.foo = \"bar\" OR si.freaky != \"friday\")"
         );
     }
 
@@ -422,7 +422,7 @@ mod query_test {
         let query_string = query.as_n1ql("si").expect("Failed to create n1ql query");
         assert_eq!(
             query_string,
-            "(si.[\"foo\"] = \"bar\" AND si.[\"freaky\"] != \"friday\" AND (si.[\"parent\"] = \"teacher\" OR si.[\"loop\"] = \"canoe\"))"
+            "(si.foo = \"bar\" AND si.freaky != \"friday\" AND (si.parent = \"teacher\" OR si.loop = \"canoe\"))"
         );
     }
 
@@ -482,7 +482,7 @@ mod query_test {
         let query_string = query.as_n1ql("si").expect("Failed to create n1ql query");
         assert_eq!(
             query_string,
-            "(si.[\"foo\"] = \"bar\" AND si.[\"freaky\"] != \"friday\" AND NOT (si.[\"parent\"] = \"teacher\" OR si.[\"loop\"] = \"canoe\"))"
+            "(si.foo = \"bar\" AND si.freaky != \"friday\" AND NOT (si.parent = \"teacher\" OR si.loop = \"canoe\"))"
         );
     }
 }

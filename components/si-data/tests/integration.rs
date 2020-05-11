@@ -11,6 +11,7 @@ pub mod common;
 
 use si_data::{
     error::{DataError, Result},
+    mvcc::TxnId,
     protobuf::{
         DataQuery, DataQueryItems, DataQueryItemsExpression, DataQueryItemsExpressionComparison,
     },
@@ -59,7 +60,7 @@ async fn validate_and_insert_as_new() {
     DB.validate_and_insert_as_new(&mut item)
         .await
         .expect("cannot insert item - first test data");
-    let id_parts: Vec<&str> = item.get_id().split(":").collect();
+    let id_parts: Vec<&str> = item.id().expect("should have an id").split(":").collect();
     assert_eq!(
         id_parts[0], "test_data",
         "type_name is not the first part of the id"
@@ -140,7 +141,7 @@ async fn upsert() {
 
 #[tokio::test]
 async fn list() {
-    DB.create_primary_index()
+    DB.create_indexes()
         .await
         .expect("failed to create primary index");
     let items = vec![

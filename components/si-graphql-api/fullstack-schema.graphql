@@ -51,7 +51,7 @@ type BillingAccountListReply {
   nextPageToken: String
 
   """Total Count"""
-  totalCount: Int
+  totalCount: String
 }
 
 """List System Initiative Billing Account Request"""
@@ -63,7 +63,7 @@ input BillingAccountListRequest {
   orderByDirection: DataPageTokenOrderByDirection
 
   """Page Size"""
-  pageSize: Int
+  pageSize: String
 
   """Page Token"""
   pageToken: String
@@ -156,7 +156,7 @@ type DataPageToken {
   orderByDirection: DataPageTokenOrderByDirection
 
   """Page Size"""
-  pageSize: Int
+  pageSize: String
 
   """Query"""
   query: DataQuery
@@ -390,7 +390,7 @@ type GroupListReply {
   nextPageToken: String
 
   """Total Count"""
-  totalCount: Int
+  totalCount: String
 }
 
 """List A System Initiative User Group Request"""
@@ -402,7 +402,7 @@ input GroupListRequest {
   orderByDirection: DataPageTokenOrderByDirection
 
   """Page Size"""
-  pageSize: Int
+  pageSize: String
 
   """Page Token"""
   pageToken: String
@@ -525,7 +525,7 @@ type IntegrationInstanceListReply {
   nextPageToken: String
 
   """Total Count"""
-  totalCount: Int
+  totalCount: String
 }
 
 """List An instance of an integration with another system Request"""
@@ -537,7 +537,7 @@ input IntegrationInstanceListRequest {
   orderByDirection: DataPageTokenOrderByDirection
 
   """Page Size"""
-  pageSize: Int
+  pageSize: String
 
   """Page Token"""
   pageToken: String
@@ -583,7 +583,7 @@ type IntegrationListReply {
   nextPageToken: String
 
   """Total Count"""
-  totalCount: Int
+  totalCount: String
 }
 
 """List An integration with another system Request"""
@@ -595,7 +595,7 @@ input IntegrationListRequest {
   orderByDirection: DataPageTokenOrderByDirection
 
   """Page Size"""
-  pageSize: Int
+  pageSize: String
 
   """Page Token"""
   pageToken: String
@@ -641,9 +641,6 @@ type IntegrationService {
 
   """SI Storable"""
   siStorable: DataStorable
-
-  """The version of this integration"""
-  version: Int
 }
 
 """An service within an integration Associations"""
@@ -695,12 +692,12 @@ type KubernetesContainerPorts {
 
 type KubernetesContainerPortsPortValues {
   """Container Port"""
-  containerPort: Int
+  containerPort: String
 }
 
 input KubernetesContainerPortsPortValuesRequest {
   """Container Port"""
-  containerPort: Int
+  containerPort: String
 }
 
 input KubernetesContainerPortsRequest {
@@ -793,7 +790,7 @@ type KubernetesDeploymentComponentListReply {
   nextPageToken: String
 
   """Total Count"""
-  totalCount: Int
+  totalCount: String
 }
 
 """List Kubernetes Deployment Object Component Request"""
@@ -805,7 +802,7 @@ input KubernetesDeploymentComponentListRequest {
   orderByDirection: DataPageTokenOrderByDirection
 
   """Page Size"""
-  pageSize: Int
+  pageSize: String
 
   """Page Token"""
   pageToken: String
@@ -964,7 +961,7 @@ type KubernetesDeploymentEntityEventListReply {
   nextPageToken: String
 
   """Total Count"""
-  totalCount: Int
+  totalCount: String
 }
 
 """List Kubernetes Deployment Object EntityEvent Request"""
@@ -976,7 +973,7 @@ input KubernetesDeploymentEntityEventListRequest {
   orderByDirection: DataPageTokenOrderByDirection
 
   """Page Size"""
-  pageSize: Int
+  pageSize: String
 
   """Page Token"""
   pageToken: String
@@ -1043,7 +1040,7 @@ type KubernetesDeploymentEntityListReply {
   nextPageToken: String
 
   """Total Count"""
-  totalCount: Int
+  totalCount: String
 }
 
 """List Kubernetes Deployment Object Entity Request"""
@@ -1055,7 +1052,7 @@ input KubernetesDeploymentEntityListRequest {
   orderByDirection: DataPageTokenOrderByDirection
 
   """Page Size"""
-  pageSize: Int
+  pageSize: String
 
   """Page Token"""
   pageToken: String
@@ -1105,7 +1102,7 @@ input KubernetesDeploymentEntityPropertiesKubernetesObjectRequest {
 
 type KubernetesDeploymentEntityPropertiesKubernetesObjectSpec {
   """Replicas"""
-  replicas: Int
+  replicas: String
 
   """Selector"""
   selector: KubernetesSelector
@@ -1116,7 +1113,7 @@ type KubernetesDeploymentEntityPropertiesKubernetesObjectSpec {
 
 input KubernetesDeploymentEntityPropertiesKubernetesObjectSpecRequest {
   """Replicas"""
-  replicas: Int
+  replicas: String
 
   """Selector"""
   selector: KubernetesSelectorRequest
@@ -1300,7 +1297,7 @@ type OrganizationListReply {
   nextPageToken: String
 
   """Total Count"""
-  totalCount: Int
+  totalCount: String
 }
 
 """List A System Initiative Organization Request"""
@@ -1312,7 +1309,7 @@ input OrganizationListRequest {
   orderByDirection: DataPageTokenOrderByDirection
 
   """Page Size"""
-  pageSize: Int
+  pageSize: String
 
   """Page Token"""
   pageToken: String
@@ -1435,7 +1432,7 @@ type UserListReply {
   nextPageToken: String
 
   """Total Count"""
-  totalCount: Int
+  totalCount: String
 }
 
 """List A System Initiative User Request"""
@@ -1447,7 +1444,7 @@ input UserListRequest {
   orderByDirection: DataPageTokenOrderByDirection
 
   """Page Size"""
-  pageSize: Int
+  pageSize: String
 
   """Page Token"""
   pageToken: String
@@ -1474,11 +1471,17 @@ input UserLoginRequest {
 type UserSiProperties {
   """Billing Account ID"""
   billingAccountId: String
+
+  """The users current transaction id (128 bit integer)"""
+  currentTxn: String
 }
 
 input UserSiPropertiesRequest {
   """Billing Account ID"""
   billingAccountId: String!
+
+  """The users current transaction id (128 bit integer)"""
+  currentTxn: String
 }
 
 type Workspace {
@@ -1551,7 +1554,7 @@ type WorkspaceListReply {
   nextPageToken: String
 
   """Total Count"""
-  totalCount: Int
+  totalCount: String
 }
 
 """List A System Initiative Workspace Request"""
@@ -1563,7 +1566,7 @@ input WorkspaceListRequest {
   orderByDirection: DataPageTokenOrderByDirection
 
   """Page Size"""
-  pageSize: Int
+  pageSize: String
 
   """Page Token"""
   pageToken: String

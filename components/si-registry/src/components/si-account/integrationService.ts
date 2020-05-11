@@ -19,15 +19,6 @@ registry.system({
       fromFieldPath: ["siProperties", "integrationId"],
       typeName: "integration",
     });
-    c.fields.addNumber({
-      name: "version",
-      label: "The version of this integration",
-      options(p: PropNumber) {
-        p.required = true;
-        p.hidden = true;
-        p.numberKind = "int32";
-      },
-    });
     c.fields.addObject({
       name: "siProperties",
       label: "SI Internal Properties",
@@ -73,14 +64,6 @@ registry.system({
           label: "Integration Service Display Name",
           options(p) {
             p.required = true;
-          },
-        });
-        p.request.properties.addNumber({
-          name: "version",
-          label: "Version of this object; for migration",
-          options(p: PropNumber) {
-            p.required = true;
-            p.numberKind = "int32";
           },
         });
         p.request.properties.addLink({

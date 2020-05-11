@@ -947,14 +947,12 @@ impl crate::protobuf::account_server::Account for Service {
             let inner = request.into_inner();
             let name = inner.name;
             let display_name = inner.display_name;
-            let version = inner.version;
             let si_properties = inner.si_properties;
 
             let output = crate::protobuf::IntegrationService::create(
                 &self.db,
                 name,
                 display_name,
-                version,
                 si_properties,
             )
             .await?;

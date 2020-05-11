@@ -5,7 +5,6 @@ impl crate::protobuf::IntegrationService {
     pub fn new(
         name: Option<String>,
         display_name: Option<String>,
-        version: Option<i32>,
         si_properties: Option<crate::protobuf::IntegrationServiceSiProperties>,
     ) -> si_data::Result<crate::protobuf::IntegrationService> {
         let mut si_storable = si_data::protobuf::DataStorable::default();
@@ -26,7 +25,6 @@ impl crate::protobuf::IntegrationService {
         let mut result: crate::protobuf::IntegrationService = Default::default();
         result.name = name;
         result.display_name = display_name;
-        result.version = version;
         result.si_properties = si_properties;
         result.si_storable = Some(si_storable);
 
@@ -37,11 +35,10 @@ impl crate::protobuf::IntegrationService {
         db: &si_data::Db,
         name: Option<String>,
         display_name: Option<String>,
-        version: Option<i32>,
         si_properties: Option<crate::protobuf::IntegrationServiceSiProperties>,
     ) -> si_data::Result<crate::protobuf::IntegrationService> {
         let mut result =
-            crate::protobuf::IntegrationService::new(name, display_name, version, si_properties)?;
+            crate::protobuf::IntegrationService::new(name, display_name, si_properties)?;
         db.validate_and_insert_as_new(&mut result).await?;
 
         Ok(result)
@@ -210,11 +207,6 @@ impl si_data::Storable for crate::protobuf::IntegrationService {
         if self.si_storable.is_none() {
             return Err(si_data::DataError::ValidationError(
                 "missing required si_storable value".into(),
-            ));
-        }
-        if self.version.is_none() {
-            return Err(si_data::DataError::ValidationError(
-                "missing required version value".into(),
             ));
         }
         if self.si_properties.is_none() {

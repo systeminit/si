@@ -3,7 +3,7 @@ import { PropText } from "../prop/text";
 
 export class PropNumber extends PropText {
   baseDefaultValue: string;
-  numberKind: "int32" | "uint32" | "int64" | "uint64";
+  numberKind: "int32" | "uint32" | "int64" | "uint64" | "u128";
 
   constructor({
     name,

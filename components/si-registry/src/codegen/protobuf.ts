@@ -123,6 +123,8 @@ export class ProtobufFormatter {
         return "google.protobuf.Int64Value";
       } else if (prop.numberKind == "uint64") {
         return "google.protobuf.UInt64Value";
+      } else if (prop.numberKind == "u128") {
+        return "google.protobuf.StringValue";
       }
     } else if (prop instanceof PropPrelude.PropObject) {
       return `${this.protobufPackageName()}.${pascalCase(

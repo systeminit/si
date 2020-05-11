@@ -30,8 +30,8 @@ impl TestData {
 }
 
 impl Storable for TestData {
-    fn get_id(&self) -> &str {
-        &self.id
+    fn id(&self) -> Result<&str> {
+        Ok(&self.id)
     }
 
     fn set_id(&mut self, id: impl Into<String>) {
@@ -47,12 +47,13 @@ impl Storable for TestData {
         self.type_name = TestData::type_name().to_string();
     }
 
-    fn set_natural_key(&mut self) {
+    fn set_natural_key(&mut self) -> Result<()> {
         self.natural_key = format!("{}:{}", TestData::type_name(), self.name);
+        Ok(())
     }
 
-    fn get_natural_key(&self) -> Option<&str> {
-        None
+    fn natural_key(&self) -> Result<Option<&str>> {
+        Ok(None)
     }
 
     fn generate_id(&mut self) {
@@ -64,8 +65,8 @@ impl Storable for TestData {
         Vec::new()
     }
 
-    fn get_tenant_ids(&self) -> &[String] {
-        &self.tenant_ids
+    fn tenant_ids(&self) -> Result<&[String]> {
+        Ok(&self.tenant_ids)
     }
 
     fn add_to_tenant_ids(&mut self, id: impl Into<String>) {

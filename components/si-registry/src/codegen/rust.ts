@@ -339,6 +339,8 @@ export class RustFormatter {
         typeName = "i64";
       } else if (prop.numberKind == "uint64") {
         typeName = "u64";
+      } else if (prop.numberKind == "u128") {
+        typeName = "u128";
       }
     } else if (
       prop instanceof PropPrelude.PropBool ||
@@ -566,6 +568,14 @@ export class RustFormatter {
         si_storable.add_to_tenant_ids(workspace_id);`);
     }
     return result.join("\n");
+  }
+
+  storableIsMvcc(): string {
+    if (this.systemObject.mvcc == true) {
+      return "true";
+    } else {
+      return "false";
+    }
   }
 
   storableValidateFunction(): string {

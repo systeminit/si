@@ -17,6 +17,7 @@ export declare class BaseObject {
     displayTypeName: string;
     siPathName: string;
     serviceName: string;
+    mvcc: boolean;
     rootProp: PropObject;
     methodsProp: PropObject;
     associations: AssociationList;

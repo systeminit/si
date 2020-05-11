@@ -17,7 +17,7 @@ export interface NexusGenInputs {
   BillingAccountListRequest: { // input type
     orderBy?: string | null; // String
     orderByDirection?: NexusGenEnums['DataPageTokenOrderByDirection'] | null; // DataPageTokenOrderByDirection
-    pageSize?: number | null; // Int
+    pageSize?: string | null; // String
     pageToken?: string | null; // String
     query?: NexusGenInputs['DataQueryRequest'] | null; // DataQueryRequest
     scopeByTenantId?: string | null; // String
@@ -68,7 +68,7 @@ export interface NexusGenInputs {
   GroupListRequest: { // input type
     orderBy?: string | null; // String
     orderByDirection?: NexusGenEnums['DataPageTokenOrderByDirection'] | null; // DataPageTokenOrderByDirection
-    pageSize?: number | null; // Int
+    pageSize?: string | null; // String
     pageToken?: string | null; // String
     query?: NexusGenInputs['DataQueryRequest'] | null; // DataQueryRequest
     scopeByTenantId?: string | null; // String
@@ -85,7 +85,7 @@ export interface NexusGenInputs {
   IntegrationInstanceListRequest: { // input type
     orderBy?: string | null; // String
     orderByDirection?: NexusGenEnums['DataPageTokenOrderByDirection'] | null; // DataPageTokenOrderByDirection
-    pageSize?: number | null; // Int
+    pageSize?: string | null; // String
     pageToken?: string | null; // String
     query?: NexusGenInputs['DataQueryRequest'] | null; // DataQueryRequest
     scopeByTenantId?: string | null; // String
@@ -93,7 +93,7 @@ export interface NexusGenInputs {
   IntegrationListRequest: { // input type
     orderBy?: string | null; // String
     orderByDirection?: NexusGenEnums['DataPageTokenOrderByDirection'] | null; // DataPageTokenOrderByDirection
-    pageSize?: number | null; // Int
+    pageSize?: string | null; // String
     pageToken?: string | null; // String
     query?: NexusGenInputs['DataQueryRequest'] | null; // DataQueryRequest
     scopeByTenantId?: string | null; // String
@@ -102,7 +102,7 @@ export interface NexusGenInputs {
     id: string; // ID!
   }
   KubernetesContainerPortsPortValuesRequest: { // input type
-    containerPort?: number | null; // Int
+    containerPort?: string | null; // String
   }
   KubernetesContainerPortsRequest: { // input type
     portValues?: NexusGenInputs['KubernetesContainerPortsPortValuesRequest'] | null; // KubernetesContainerPortsPortValuesRequest
@@ -123,7 +123,7 @@ export interface NexusGenInputs {
   KubernetesDeploymentComponentListRequest: { // input type
     orderBy?: string | null; // String
     orderByDirection?: NexusGenEnums['DataPageTokenOrderByDirection'] | null; // DataPageTokenOrderByDirection
-    pageSize?: number | null; // Int
+    pageSize?: string | null; // String
     pageToken?: string | null; // String
     query?: NexusGenInputs['DataQueryRequest'] | null; // DataQueryRequest
     scopeByTenantId?: string | null; // String
@@ -142,7 +142,7 @@ export interface NexusGenInputs {
   KubernetesDeploymentEntityEventListRequest: { // input type
     orderBy?: string | null; // String
     orderByDirection?: NexusGenEnums['DataPageTokenOrderByDirection'] | null; // DataPageTokenOrderByDirection
-    pageSize?: number | null; // Int
+    pageSize?: string | null; // String
     pageToken?: string | null; // String
     query?: NexusGenInputs['DataQueryRequest'] | null; // DataQueryRequest
     scopeByTenantId?: string | null; // String
@@ -161,7 +161,7 @@ export interface NexusGenInputs {
   KubernetesDeploymentEntityListRequest: { // input type
     orderBy?: string | null; // String
     orderByDirection?: NexusGenEnums['DataPageTokenOrderByDirection'] | null; // DataPageTokenOrderByDirection
-    pageSize?: number | null; // Int
+    pageSize?: string | null; // String
     pageToken?: string | null; // String
     query?: NexusGenInputs['DataQueryRequest'] | null; // DataQueryRequest
     scopeByTenantId?: string | null; // String
@@ -173,7 +173,7 @@ export interface NexusGenInputs {
     spec?: NexusGenInputs['KubernetesDeploymentEntityPropertiesKubernetesObjectSpecRequest'] | null; // KubernetesDeploymentEntityPropertiesKubernetesObjectSpecRequest
   }
   KubernetesDeploymentEntityPropertiesKubernetesObjectSpecRequest: { // input type
-    replicas?: number | null; // Int
+    replicas?: string | null; // String
     selector?: NexusGenInputs['KubernetesSelectorRequest'] | null; // KubernetesSelectorRequest
     template?: NexusGenInputs['KubernetesPodTemplateSpecRequest'] | null; // KubernetesPodTemplateSpecRequest
   }
@@ -217,7 +217,7 @@ export interface NexusGenInputs {
   OrganizationListRequest: { // input type
     orderBy?: string | null; // String
     orderByDirection?: NexusGenEnums['DataPageTokenOrderByDirection'] | null; // DataPageTokenOrderByDirection
-    pageSize?: number | null; // Int
+    pageSize?: string | null; // String
     pageToken?: string | null; // String
     query?: NexusGenInputs['DataQueryRequest'] | null; // DataQueryRequest
     scopeByTenantId?: string | null; // String
@@ -238,7 +238,7 @@ export interface NexusGenInputs {
   UserListRequest: { // input type
     orderBy?: string | null; // String
     orderByDirection?: NexusGenEnums['DataPageTokenOrderByDirection'] | null; // DataPageTokenOrderByDirection
-    pageSize?: number | null; // Int
+    pageSize?: string | null; // String
     pageToken?: string | null; // String
     query?: NexusGenInputs['DataQueryRequest'] | null; // DataQueryRequest
     scopeByTenantId?: string | null; // String
@@ -250,6 +250,7 @@ export interface NexusGenInputs {
   }
   UserSiPropertiesRequest: { // input type
     billingAccountId: string; // String!
+    currentTxn?: string | null; // String
   }
   WorkspaceCreateRequest: { // input type
     displayName: string; // String!
@@ -262,7 +263,7 @@ export interface NexusGenInputs {
   WorkspaceListRequest: { // input type
     orderBy?: string | null; // String
     orderByDirection?: NexusGenEnums['DataPageTokenOrderByDirection'] | null; // DataPageTokenOrderByDirection
-    pageSize?: number | null; // Int
+    pageSize?: string | null; // String
     pageToken?: string | null; // String
     query?: NexusGenInputs['DataQueryRequest'] | null; // DataQueryRequest
     scopeByTenantId?: string | null; // String
@@ -297,7 +298,7 @@ export interface NexusGenRootTypes {
   BillingAccountListReply: { // root type
     items?: NexusGenRootTypes['BillingAccount'][] | null; // [BillingAccount!]
     nextPageToken?: string | null; // String
-    totalCount?: number | null; // Int
+    totalCount?: string | null; // String
   }
   BillingAccountSignupReply: { // root type
     billingAccount?: NexusGenRootTypes['BillingAccount'] | null; // BillingAccount
@@ -317,7 +318,7 @@ export interface NexusGenRootTypes {
     itemId?: string | null; // String
     orderBy?: string | null; // String
     orderByDirection?: NexusGenEnums['DataPageTokenOrderByDirection'] | null; // DataPageTokenOrderByDirection
-    pageSize?: number | null; // Int
+    pageSize?: string | null; // String
     query?: NexusGenRootTypes['DataQuery'] | null; // DataQuery
   }
   DataQuery: { // root type
@@ -377,7 +378,7 @@ export interface NexusGenRootTypes {
   GroupListReply: { // root type
     items?: NexusGenRootTypes['Group'][] | null; // [Group!]
     nextPageToken?: string | null; // String
-    totalCount?: number | null; // Int
+    totalCount?: string | null; // String
   }
   GroupSiProperties: { // root type
     billingAccountId?: string | null; // String
@@ -409,7 +410,7 @@ export interface NexusGenRootTypes {
   IntegrationInstanceListReply: { // root type
     items?: NexusGenRootTypes['IntegrationInstance'][] | null; // [IntegrationInstance!]
     nextPageToken?: string | null; // String
-    totalCount?: number | null; // Int
+    totalCount?: string | null; // String
   }
   IntegrationInstanceOptionValues: { // root type
     name?: string | null; // String
@@ -425,7 +426,7 @@ export interface NexusGenRootTypes {
   IntegrationListReply: { // root type
     items?: NexusGenRootTypes['Integration'][] | null; // [Integration!]
     nextPageToken?: string | null; // String
-    totalCount?: number | null; // Int
+    totalCount?: string | null; // String
   }
   IntegrationOptions: { // root type
     displayName?: string | null; // String
@@ -438,7 +439,6 @@ export interface NexusGenRootTypes {
     name?: string | null; // String
     siProperties?: NexusGenRootTypes['IntegrationServiceSiProperties'] | null; // IntegrationServiceSiProperties
     siStorable?: NexusGenRootTypes['DataStorable'] | null; // DataStorable
-    version?: number | null; // Int
   }
   IntegrationServiceAssociations: {};
   IntegrationServiceGetReply: { // root type
@@ -460,7 +460,7 @@ export interface NexusGenRootTypes {
     portValues?: NexusGenRootTypes['KubernetesContainerPortsPortValues'] | null; // KubernetesContainerPortsPortValues
   }
   KubernetesContainerPortsPortValues: { // root type
-    containerPort?: number | null; // Int
+    containerPort?: string | null; // String
   }
   KubernetesDeploymentComponent: { // root type
     constraints?: NexusGenRootTypes['KubernetesDeploymentComponentConstraints'] | null; // KubernetesDeploymentComponentConstraints
@@ -482,7 +482,7 @@ export interface NexusGenRootTypes {
   KubernetesDeploymentComponentListReply: { // root type
     items?: NexusGenRootTypes['KubernetesDeploymentComponent'][] | null; // [KubernetesDeploymentComponent!]
     nextPageToken?: string | null; // String
-    totalCount?: number | null; // Int
+    totalCount?: string | null; // String
   }
   KubernetesDeploymentComponentPickReply: { // root type
     component?: NexusGenRootTypes['KubernetesDeploymentComponent'] | null; // KubernetesDeploymentComponent
@@ -527,7 +527,7 @@ export interface NexusGenRootTypes {
   KubernetesDeploymentEntityEventListReply: { // root type
     items?: NexusGenRootTypes['KubernetesDeploymentEntityEvent'][] | null; // [KubernetesDeploymentEntityEvent!]
     nextPageToken?: string | null; // String
-    totalCount?: number | null; // Int
+    totalCount?: string | null; // String
   }
   KubernetesDeploymentEntityGetReply: { // root type
     item?: NexusGenRootTypes['KubernetesDeploymentEntity'] | null; // KubernetesDeploymentEntity
@@ -541,7 +541,7 @@ export interface NexusGenRootTypes {
   KubernetesDeploymentEntityListReply: { // root type
     items?: NexusGenRootTypes['KubernetesDeploymentEntity'][] | null; // [KubernetesDeploymentEntity!]
     nextPageToken?: string | null; // String
-    totalCount?: number | null; // Int
+    totalCount?: string | null; // String
   }
   KubernetesDeploymentEntityProperties: { // root type
     kubernetesObject?: NexusGenRootTypes['KubernetesDeploymentEntityPropertiesKubernetesObject'] | null; // KubernetesDeploymentEntityPropertiesKubernetesObject
@@ -554,7 +554,7 @@ export interface NexusGenRootTypes {
     spec?: NexusGenRootTypes['KubernetesDeploymentEntityPropertiesKubernetesObjectSpec'] | null; // KubernetesDeploymentEntityPropertiesKubernetesObjectSpec
   }
   KubernetesDeploymentEntityPropertiesKubernetesObjectSpec: { // root type
-    replicas?: number | null; // Int
+    replicas?: string | null; // String
     selector?: NexusGenRootTypes['KubernetesSelector'] | null; // KubernetesSelector
     template?: NexusGenRootTypes['KubernetesPodTemplateSpec'] | null; // KubernetesPodTemplateSpec
   }
@@ -601,7 +601,7 @@ export interface NexusGenRootTypes {
   OrganizationListReply: { // root type
     items?: NexusGenRootTypes['Organization'][] | null; // [Organization!]
     nextPageToken?: string | null; // String
-    totalCount?: number | null; // Int
+    totalCount?: string | null; // String
   }
   OrganizationSiProperties: { // root type
     billingAccountId?: string | null; // String
@@ -626,7 +626,7 @@ export interface NexusGenRootTypes {
   UserListReply: { // root type
     items?: NexusGenRootTypes['User'][] | null; // [User!]
     nextPageToken?: string | null; // String
-    totalCount?: number | null; // Int
+    totalCount?: string | null; // String
   }
   UserLoginReply: { // root type
     billingAccountId?: string | null; // String
@@ -635,6 +635,7 @@ export interface NexusGenRootTypes {
   }
   UserSiProperties: { // root type
     billingAccountId?: string | null; // String
+    currentTxn?: string | null; // String
   }
   Workspace: { // root type
     displayName?: string | null; // String
@@ -653,7 +654,7 @@ export interface NexusGenRootTypes {
   WorkspaceListReply: { // root type
     items?: NexusGenRootTypes['Workspace'][] | null; // [Workspace!]
     nextPageToken?: string | null; // String
-    totalCount?: number | null; // Int
+    totalCount?: string | null; // String
   }
   WorkspaceSiProperties: { // root type
     billingAccountId?: string | null; // String
@@ -749,7 +750,7 @@ export interface NexusGenFieldTypes {
   BillingAccountListReply: { // field return type
     items: NexusGenRootTypes['BillingAccount'][] | null; // [BillingAccount!]
     nextPageToken: string | null; // String
-    totalCount: number | null; // Int
+    totalCount: string | null; // String
   }
   BillingAccountSignupReply: { // field return type
     billingAccount: NexusGenRootTypes['BillingAccount'] | null; // BillingAccount
@@ -769,7 +770,7 @@ export interface NexusGenFieldTypes {
     itemId: string | null; // String
     orderBy: string | null; // String
     orderByDirection: NexusGenEnums['DataPageTokenOrderByDirection'] | null; // DataPageTokenOrderByDirection
-    pageSize: number | null; // Int
+    pageSize: string | null; // String
     query: NexusGenRootTypes['DataQuery'] | null; // DataQuery
   }
   DataQuery: { // field return type
@@ -829,7 +830,7 @@ export interface NexusGenFieldTypes {
   GroupListReply: { // field return type
     items: NexusGenRootTypes['Group'][] | null; // [Group!]
     nextPageToken: string | null; // String
-    totalCount: number | null; // Int
+    totalCount: string | null; // String
   }
   GroupSiProperties: { // field return type
     billingAccountId: string | null; // String
@@ -871,7 +872,7 @@ export interface NexusGenFieldTypes {
   IntegrationInstanceListReply: { // field return type
     items: NexusGenRootTypes['IntegrationInstance'][] | null; // [IntegrationInstance!]
     nextPageToken: string | null; // String
-    totalCount: number | null; // Int
+    totalCount: string | null; // String
   }
   IntegrationInstanceOptionValues: { // field return type
     name: string | null; // String
@@ -887,7 +888,7 @@ export interface NexusGenFieldTypes {
   IntegrationListReply: { // field return type
     items: NexusGenRootTypes['Integration'][] | null; // [Integration!]
     nextPageToken: string | null; // String
-    totalCount: number | null; // Int
+    totalCount: string | null; // String
   }
   IntegrationOptions: { // field return type
     displayName: string | null; // String
@@ -901,7 +902,6 @@ export interface NexusGenFieldTypes {
     name: string | null; // String
     siProperties: NexusGenRootTypes['IntegrationServiceSiProperties'] | null; // IntegrationServiceSiProperties
     siStorable: NexusGenRootTypes['DataStorable'] | null; // DataStorable
-    version: number | null; // Int
   }
   IntegrationServiceAssociations: { // field return type
     integration: NexusGenRootTypes['IntegrationGetReply'] | null; // IntegrationGetReply
@@ -925,7 +925,7 @@ export interface NexusGenFieldTypes {
     portValues: NexusGenRootTypes['KubernetesContainerPortsPortValues'] | null; // KubernetesContainerPortsPortValues
   }
   KubernetesContainerPortsPortValues: { // field return type
-    containerPort: number | null; // Int
+    containerPort: string | null; // String
   }
   KubernetesDeploymentComponent: { // field return type
     constraints: NexusGenRootTypes['KubernetesDeploymentComponentConstraints'] | null; // KubernetesDeploymentComponentConstraints
@@ -947,7 +947,7 @@ export interface NexusGenFieldTypes {
   KubernetesDeploymentComponentListReply: { // field return type
     items: NexusGenRootTypes['KubernetesDeploymentComponent'][] | null; // [KubernetesDeploymentComponent!]
     nextPageToken: string | null; // String
-    totalCount: number | null; // Int
+    totalCount: string | null; // String
   }
   KubernetesDeploymentComponentPickReply: { // field return type
     component: NexusGenRootTypes['KubernetesDeploymentComponent'] | null; // KubernetesDeploymentComponent
@@ -995,7 +995,7 @@ export interface NexusGenFieldTypes {
   KubernetesDeploymentEntityEventListReply: { // field return type
     items: NexusGenRootTypes['KubernetesDeploymentEntityEvent'][] | null; // [KubernetesDeploymentEntityEvent!]
     nextPageToken: string | null; // String
-    totalCount: number | null; // Int
+    totalCount: string | null; // String
   }
   KubernetesDeploymentEntityGetReply: { // field return type
     item: NexusGenRootTypes['KubernetesDeploymentEntity'] | null; // KubernetesDeploymentEntity
@@ -1009,7 +1009,7 @@ export interface NexusGenFieldTypes {
   KubernetesDeploymentEntityListReply: { // field return type
     items: NexusGenRootTypes['KubernetesDeploymentEntity'][] | null; // [KubernetesDeploymentEntity!]
     nextPageToken: string | null; // String
-    totalCount: number | null; // Int
+    totalCount: string | null; // String
   }
   KubernetesDeploymentEntityProperties: { // field return type
     kubernetesObject: NexusGenRootTypes['KubernetesDeploymentEntityPropertiesKubernetesObject'] | null; // KubernetesDeploymentEntityPropertiesKubernetesObject
@@ -1022,7 +1022,7 @@ export interface NexusGenFieldTypes {
     spec: NexusGenRootTypes['KubernetesDeploymentEntityPropertiesKubernetesObjectSpec'] | null; // KubernetesDeploymentEntityPropertiesKubernetesObjectSpec
   }
   KubernetesDeploymentEntityPropertiesKubernetesObjectSpec: { // field return type
-    replicas: number | null; // Int
+    replicas: string | null; // String
     selector: NexusGenRootTypes['KubernetesSelector'] | null; // KubernetesSelector
     template: NexusGenRootTypes['KubernetesPodTemplateSpec'] | null; // KubernetesPodTemplateSpec
   }
@@ -1083,7 +1083,7 @@ export interface NexusGenFieldTypes {
   OrganizationListReply: { // field return type
     items: NexusGenRootTypes['Organization'][] | null; // [Organization!]
     nextPageToken: string | null; // String
-    totalCount: number | null; // Int
+    totalCount: string | null; // String
   }
   OrganizationSiProperties: { // field return type
     billingAccountId: string | null; // String
@@ -1134,7 +1134,7 @@ export interface NexusGenFieldTypes {
   UserListReply: { // field return type
     items: NexusGenRootTypes['User'][] | null; // [User!]
     nextPageToken: string | null; // String
-    totalCount: number | null; // Int
+    totalCount: string | null; // String
   }
   UserLoginReply: { // field return type
     billingAccountId: string | null; // String
@@ -1143,6 +1143,7 @@ export interface NexusGenFieldTypes {
   }
   UserSiProperties: { // field return type
     billingAccountId: string | null; // String
+    currentTxn: string | null; // String
   }
   Workspace: { // field return type
     associations: NexusGenRootTypes['WorkspaceAssociations'] | null; // WorkspaceAssociations
@@ -1166,7 +1167,7 @@ export interface NexusGenFieldTypes {
   WorkspaceListReply: { // field return type
     items: NexusGenRootTypes['Workspace'][] | null; // [Workspace!]
     nextPageToken: string | null; // String
-    totalCount: number | null; // Int
+    totalCount: string | null; // String
   }
   WorkspaceSiProperties: { // field return type
     billingAccountId: string | null; // String

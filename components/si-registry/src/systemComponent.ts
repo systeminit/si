@@ -29,6 +29,7 @@ export class BaseObject {
   displayTypeName: string;
   siPathName: string;
   serviceName: string;
+  mvcc: boolean;
 
   rootProp: PropObject;
   methodsProp: PropObject;
@@ -60,6 +61,7 @@ export class BaseObject {
     });
     this.associations = new AssociationList();
     this.internalGraphql = undefined;
+    this.mvcc = false;
   }
 
   get fields(): BaseObject["rootProp"]["properties"] {
@@ -454,6 +456,8 @@ export class EntityObject extends SystemObject {
 
   setEntityDefaults(): void {
     const baseTypeName = this.baseTypeName;
+
+    this.mvcc = true;
 
     this.addGetMethod();
     this.addListMethod();

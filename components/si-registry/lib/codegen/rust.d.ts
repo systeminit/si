@@ -52,6 +52,7 @@ export declare class RustFormatter {
     isStorable(): boolean;
     implCreateSetProperties(): string;
     implCreateAddToTenancy(): string;
+    storableIsMvcc(): string;
     storableValidateFunction(): string;
     storableOrderByFieldsByProp(topProp: PropPrelude.PropObject, prefix: string): string;
     storableOrderByFieldsFunction(): string;

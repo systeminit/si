@@ -91,6 +91,7 @@ message Capability {
 }
 message UserSiProperties {
   google.protobuf.StringValue billing_account_id = 1001;
+  google.protobuf.StringValue current_txn = 1002;
 }
 message User {
   google.protobuf.StringValue id = 1;
@@ -315,8 +316,7 @@ message IntegrationService {
   google.protobuf.StringValue name = 2;
   google.protobuf.StringValue display_name = 3;
   si.data.DataStorable si_storable = 4;
-  google.protobuf.Int32Value version = 1001;
-  si.account.IntegrationServiceSiProperties si_properties = 1002;
+  si.account.IntegrationServiceSiProperties si_properties = 1001;
 }
 message IntegrationServiceListRequest {
   si.data.DataQuery query = 1;
@@ -340,8 +340,7 @@ message IntegrationServiceGetReply {
 message IntegrationServiceCreateRequest {
   google.protobuf.StringValue name = 1001;
   google.protobuf.StringValue display_name = 1002;
-  google.protobuf.Int32Value version = 1003;
-  si.account.IntegrationServiceSiProperties si_properties = 1004;
+  si.account.IntegrationServiceSiProperties si_properties = 1003;
 }
 message IntegrationServiceCreateReply {
   si.account.IntegrationService item = 1001;

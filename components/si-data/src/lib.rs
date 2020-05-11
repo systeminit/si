@@ -1,3 +1,5 @@
+#![recursion_limit = "256"]
+
 pub mod protobuf {
     include!(concat!(env!("OUT_DIR"), "/si.data.rs"));
 }
@@ -5,6 +7,7 @@ pub mod protobuf {
 pub mod db;
 pub mod error;
 pub mod migrateable;
+pub mod mvcc;
 pub mod page_token;
 pub mod password;
 pub mod query;

@@ -7,6 +7,7 @@ import {
   PropObject,
   PropLink,
   PropEnum,
+  PropNumber,
   ObjectTypes,
 } from "si-registry";
 import {
@@ -902,10 +903,19 @@ export class SiRegistryGenerator {
     const fieldConfig = this.makeFieldConfig(prop, { inputType });
 
     if (nexusTypeDef) {
-      if (prop.repeated) {
-        nexusTypeDef.list.int(this.graphqlFieldName(prop), fieldConfig);
+      const numberProp = prop as PropNumber;
+      if (numberProp.numberKind == "int32") {
+        if (prop.repeated) {
+          nexusTypeDef.list.int(this.graphqlFieldName(prop), fieldConfig);
+        } else {
+          nexusTypeDef.int(this.graphqlFieldName(prop), fieldConfig);
+        }
       } else {
-        nexusTypeDef.int(this.graphqlFieldName(prop), fieldConfig);
+        if (prop.repeated) {
+          nexusTypeDef.list.string(this.graphqlFieldName(prop), fieldConfig);
+        } else {
+          nexusTypeDef.string(this.graphqlFieldName(prop), fieldConfig);
+        }
       }
     }
   }
