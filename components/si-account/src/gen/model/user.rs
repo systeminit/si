@@ -243,7 +243,6 @@ impl si_data::Storable for crate::protobuf::User {
             "email",
             "siStorable.naturalKey",
             "siProperties.billingAccountId",
-            "siProperties.currentTxn",
         ]
     }
 }

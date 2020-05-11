@@ -50,13 +50,6 @@ registry.system({
             p.required = true;
           },
         });
-        p.properties.addNumber({
-          name: "currentTxn",
-          label: "The users current transaction id (128 bit integer)",
-          options(p: PropNumber) {
-            p.numberKind = "u128";
-          },
-        });
       },
     });
     c.fields.addLink({
