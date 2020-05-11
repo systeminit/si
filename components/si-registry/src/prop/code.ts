@@ -1,6 +1,6 @@
 import TOML from "@iarna/toml";
 
-import { Prop, PropValue } from "@/prop";
+import { Prop, PropValue } from "../prop";
 
 interface ParsedValue {
   parsed: Record<string, any> | null;
@@ -42,18 +42,6 @@ export class PropCode extends Prop {
 
   defaultValue(): PropValue {
     return this.baseDefaultValue;
-  }
-
-  protobufType(): string {
-    return "google.protobuf.StringValue";
-  }
-
-  protobufPackageName(): string {
-    return "google.protobuf.";
-  }
-
-  protobufImportPath(): string {
-    return "google/protobuf/wrappers.proto";
   }
 
   realValue(value: PropValue): PropValue {

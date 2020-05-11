@@ -11,7 +11,6 @@ edition = "2018"
 
 [dependencies]
 anyhow = "1.0"
-uuid = { version = "0.7", features = [ "serde", "v4" ] }
 async-trait = "0.1"
 
 # Tonic Deps
@@ -60,6 +59,9 @@ si-data = { path = "../si-data" }
 si-account = { path = "../si-account" }
 si-cea = { path = "../si-cea" }
 si-external-api-gateway = { path = "../si-external-api-gateway/rust-client" }
+
+tracing-opentelemetry = "0.3"
+opentelemetry = "0.4"
 
 [dev-dependencies]
 lazy_static = "1.4"

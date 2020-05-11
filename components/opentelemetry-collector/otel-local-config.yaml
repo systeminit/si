@@ -1,0 +1,18 @@
+receivers:
+  jaeger:
+    protocols:
+      grpc:
+      thrift_http:
+      thrift_compact:
+      thrift_binary:
+exporters:
+  honeycomb:
+    api_key: 70120a6952d7d5f3e3f0329ea99fb6c2
+    dataset: dev-USERNAME
+  logging:
+    loglevel: debug
+service:
+  pipelines:
+    traces:
+      receivers: [jaeger]
+      exporters: [logging, honeycomb]

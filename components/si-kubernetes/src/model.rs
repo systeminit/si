@@ -1,5 +1,7 @@
-pub mod component;
-pub mod entity;
+pub mod kubernetes_deployment_component;
+pub mod kubernetes_deployment_entity;
+pub mod kubernetes_deployment_entity_event;
 
-pub use component::Component;
-pub use entity::{Entity, EntityEvent};
+pub use kubernetes_deployment_component::KubernetesDeploymentComponent;
+pub use kubernetes_deployment_entity::KubernetesDeploymentEntity;
+pub use kubernetes_deployment_entity_event::KubernetesDeploymentEntityEvent;

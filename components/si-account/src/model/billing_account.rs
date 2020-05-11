@@ -1,91 +1,149 @@
-use si_data::{error::DataError, Reference, Storable};
-use uuid::Uuid;
+use si_data::{DataError, Db};
 
-pub use crate::error::{AccountError, Result};
-pub use crate::protobuf::{BillingAccount, CreateBillingAccountReply, CreateBillingAccountRequest};
-
-impl Storable for BillingAccount {
-    fn get_id(&self) -> &str {
-        &self.id
-    }
-
-    fn set_id(&mut self, id: impl Into<String>) {
-        self.id = id.into();
-    }
-
-    fn type_name() -> &'static str {
-        "billing_account"
-    }
-
-    fn set_type_name(&mut self) {
-        self.type_name = BillingAccount::type_name().to_string();
-    }
-
-    fn generate_id(&mut self) {
-        let uuid = Uuid::new_v4();
-        self.id = format!("{}:{}", BillingAccount::type_name(), uuid);
-    }
-
-    fn validate(&self) -> si_data::error::Result<()> {
-        if self.display_name == "" {
-            return Err(DataError::ValidationError(
-                AccountError::InvalidMissingDisplayName.to_string(),
-            ));
-        }
-        if self.short_name == "" {
-            return Err(DataError::ValidationError(
-                AccountError::InvalidMissingShortName.to_string(),
-            ));
-        }
-        Ok(())
-    }
-
-    fn get_tenant_ids(&self) -> &[String] {
-        &self.tenant_ids
-    }
-
-    fn add_to_tenant_ids(&mut self, id: impl Into<String>) {
-        self.tenant_ids.push(id.into());
-    }
-
-    fn referential_fields(&self) -> Vec<Reference> {
-        Vec::new()
-    }
-
-    fn get_natural_key(&self) -> Option<&str> {
-        Some(&self.natural_key)
-    }
-
-    fn set_natural_key(&mut self) {
-        self.natural_key = format!(
-            "{}:{}:{}",
-            // This is safe *only* after the object has been created.
-            self.get_tenant_ids()[0],
-            BillingAccount::type_name(),
-            self.short_name
-        );
-    }
-
-    fn order_by_fields() -> Vec<&'static str> {
-        vec!["id", "naturalKey", "typeName", "displayName", "shortName"]
-    }
-}
+use crate::error::Result;
+pub use crate::protobuf::{
+    BillingAccount, BillingAccountSignupReply, BillingAccountSignupRequest, Capability, Group,
+    GroupSiProperties, Integration, IntegrationInstance, IntegrationInstanceSiProperties,
+    Organization, OrganizationSiProperties, User, UserSiProperties, Workspace,
+    WorkspaceSiProperties,
+};
+use tracing::debug;
 
 impl BillingAccount {
-    pub fn new_from_create_request(req: &CreateBillingAccountRequest) -> Result<BillingAccount> {
-        if req.short_name == "" {
-            return Err(AccountError::InvalidMissingShortName);
-        }
-        let display_name = if req.display_name == "" {
-            req.short_name.clone()
-        } else {
-            req.display_name.clone()
+    pub async fn signup(
+        db: &Db,
+        request: BillingAccountSignupRequest,
+    ) -> Result<BillingAccountSignupReply> {
+        debug!("billing account req");
+        let billing_account_req = request
+            .billing_account
+            .ok_or_else(|| DataError::RequiredField("billingAccount".into()))?;
+
+        debug!("billing account create");
+        let billing_account = BillingAccount::create(
+            db,
+            billing_account_req.name,
+            billing_account_req.display_name,
+        )
+        .await?;
+
+        debug!("user");
+        let user_req = request
+            .user
+            .ok_or_else(|| DataError::RequiredField("user".into()))?;
+
+        debug!("get transaction id");
+        let txn_id = db.get_new_txn_id().await?;
+
+        debug!("user si properties");
+        let user_si_properties = UserSiProperties {
+            billing_account_id: billing_account.id.clone(),
+            current_txn: Some(txn_id.to_string()),
         };
 
-        Ok(BillingAccount {
-            short_name: req.short_name.clone(),
-            display_name: display_name,
-            ..Default::default()
+        debug!("user create");
+        let user = User::create(
+            db,
+            user_req.name,
+            user_req.display_name,
+            user_req.email,
+            user_req.password,
+            Some(user_si_properties),
+        )
+        .await?;
+
+        debug!("admin group si properties");
+        let group_si_properties = GroupSiProperties {
+            billing_account_id: billing_account.id.clone(),
+        };
+
+        debug!("admin group capabilities");
+        let group_capabilities = vec![Capability {
+            subject: billing_account.id.clone(),
+            actions: vec!["any".to_string()],
+        }];
+
+        debug!("admin group create");
+        let _group = Group::create(
+            db,
+            Some("administrators".to_string()),
+            Some("Administrators".to_string()),
+            vec![user.id.as_ref().unwrap().clone()],
+            Some(group_si_properties),
+            group_capabilities,
+        )
+        .await?;
+
+        debug!("organization si properties");
+        let organization_si_properties = OrganizationSiProperties {
+            billing_account_id: billing_account.id.clone(),
+        };
+
+        debug!("organization create");
+        let organization = Organization::create(
+            db,
+            Some("default".to_string()),
+            Some("Default".to_string()),
+            Some(organization_si_properties),
+        )
+        .await?;
+
+        debug!("workspace si properties");
+        let workspace_si_properties = WorkspaceSiProperties {
+            billing_account_id: billing_account.id.clone(),
+            organization_id: organization.id.clone(),
+        };
+
+        debug!("workspace create");
+        let workspace = Workspace::create(
+            db,
+            Some("default".to_string()),
+            Some("Default".to_string()),
+            Some(workspace_si_properties),
+        )
+        .await?;
+
+        debug!("get global integration");
+        let global_integration =
+            Integration::get_by_natural_key(db, "global:integration:global").await?;
+
+        debug!("create global integration instance");
+        let _integration_instance = IntegrationInstance::create(
+            db,
+            Some("global".to_string()),
+            Some("Global Integration".to_string()),
+            vec![],
+            Some(IntegrationInstanceSiProperties {
+                billing_account_id: billing_account.id.clone(),
+                integration_id: global_integration.id.clone(),
+                enabled_workspace_id_list: vec![workspace.id.as_ref().unwrap().clone()],
+                enabled_organization_id_list: vec![organization.id.as_ref().unwrap().clone()],
+            }),
+        )
+        .await?;
+
+        debug!("get aws integration");
+        let aws_integration = Integration::get_by_natural_key(db, "global:integration:aws").await?;
+
+        debug!("create aws integration instance");
+        let _aws_integration_instance = IntegrationInstance::create(
+            db,
+            Some("aws".to_string()),
+            Some("AWS Integration".to_string()),
+            vec![],
+            Some(IntegrationInstanceSiProperties {
+                billing_account_id: billing_account.id.clone(),
+                integration_id: aws_integration.id.clone(),
+                enabled_workspace_id_list: vec![workspace.id.as_ref().unwrap().clone()],
+                enabled_organization_id_list: vec![organization.id.as_ref().unwrap().clone()],
+            }),
+        )
+        .await?;
+
+        debug!("sending reply");
+        Ok(BillingAccountSignupReply {
+            billing_account: Some(billing_account),
+            user: Some(user),
         })
     }
 }

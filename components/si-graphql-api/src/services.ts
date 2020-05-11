@@ -30,15 +30,13 @@ export class ServiceDescription {
     this.grpcServiceName = grpcServiceName;
     this.graphqlTypePrefix = graphqlTypePrefix;
     this.address = address;
-    this.dataOnly = dataOnly;
+    this.dataOnly = dataOnly || false;
   }
 
   protobufPath(): string {
-    // Services are always peers here, for now.
-    const dir = path.join(__dirname, "..", "..");
     return path.join(
-      dir,
-      this.serviceName,
+      "..",
+      "si-registry",
       "proto",
       `${this.protoPackageName}.proto`,
     );
@@ -66,41 +64,25 @@ export const services = [
     graphqlTypePrefix: "",
     address: environment.services["si-account"],
   }),
-  new ServiceDescription({
-    serviceName: "si-data",
-    protoPackageName: "si.data",
-    grpcServiceName: "Data",
-    graphqlTypePrefix: "Data",
-    address: environment.services["si-account"],
-    dataOnly: true,
-  }),
-  new ServiceDescription({
-    serviceName: "si-ssh-key",
-    protoPackageName: "si.ssh_key",
-    grpcServiceName: "SshKey",
-    graphqlTypePrefix: "SshKey",
-    address: environment.services["si-ssh-key"],
-  }),
-  new ServiceDescription({
-    serviceName: "si-aws-eks-cluster-runtime",
-    protoPackageName: "si.aws_eks_cluster_runtime",
-    grpcServiceName: "AwsEksClusterRuntime",
-    graphqlTypePrefix: "AwsEksClusterRuntime",
-    address: environment.services["si-aws-eks-cluster-runtime"],
-  }),
-  new ServiceDescription({
-    serviceName: "si-kubernetes",
-    protoPackageName: "si.kubernetes.deployment",
-    grpcServiceName: "KubernetesDeployment",
-    graphqlTypePrefix: "KubernetesDeployment",
-    address: environment.services["si-kubernetes"],
-  }),
+  // new ServiceDescription({
+  //   serviceName: "si-ssh-key",
+  //   protoPackageName: "si.ssh_key",
+  //   grpcServiceName: "SshKey",
+  //   graphqlTypePrefix: "SshKey",
+  //   address: environment.services["si-ssh-key"],
+  // }),
+  // new ServiceDescription({
+  //   serviceName: "si-aws-eks-cluster-runtime",
+  //   protoPackageName: "si.aws_eks_cluster_runtime",
+  //   grpcServiceName: "AwsEksClusterRuntime",
+  //   graphqlTypePrefix: "AwsEksClusterRuntime",
+  //   address: environment.services["si-aws-eks-cluster-runtime"],
+  // }),
   new ServiceDescription({
     serviceName: "si-kubernetes",
     protoPackageName: "si.kubernetes",
     grpcServiceName: "Kubernetes",
     graphqlTypePrefix: "Kubernetes",
     address: environment.services["si-kubernetes"],
-    dataOnly: true,
   }),
 ];

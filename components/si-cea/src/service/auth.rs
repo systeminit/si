@@ -55,11 +55,11 @@ impl<T> TryFrom<&tonic::Request<T>> for Authentication {
         let metadata = request.metadata();
         let user_id = metadata
             .get("userId")
-            .ok_or(CeaError::InvalidAuthenticationMissingUserId)?
+            .ok_or_else(|| CeaError::InvalidAuthenticationMissingUserId)?
             .to_str()?;
         let billing_account_id = metadata
             .get("billingAccountId")
-            .ok_or(CeaError::InvalidAuthenticationMissingBillingAccountId)?
+            .ok_or_else(|| CeaError::InvalidAuthenticationMissingBillingAccountId)?
             .to_str()?;
         Ok(Authentication::new(user_id, billing_account_id))
     }

@@ -1,7 +1,6 @@
 pub mod billing_account;
-pub mod group;
+pub use billing_account::BillingAccount;
 pub mod integration;
-pub mod integration_instance;
-pub mod organization;
+pub mod integration_service;
 pub mod user;
-pub mod workspace;
+pub use user::User;

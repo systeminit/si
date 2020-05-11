@@ -1,0 +1,19 @@
+pub fn new(<%- fmt.implCreateNewArgs() %>) -> si_data::Result<<%- fmt.structName() %>> {
+<%_ if (fmt.isStorable()) { _%>
+    let mut si_storable = si_data::protobuf::DataStorable::default();
+    <%- fmt.implCreateAddToTenancy() %>
+<%_ } _%>
+
+    let mut result: <%- fmt.structName() %> = Default::default();
+    <%- fmt.implCreateSetProperties() %>
+    result.si_storable = Some(si_storable);
+
+    Ok(result)
+}
+
+pub async fn create(db: &si_data::Db, <%- fmt.implCreateNewArgs() %>) -> si_data::Result<<%- fmt.structName() %>> {
+    let mut result = <%- fmt.structName() %>::new(<%- fmt.implCreatePassNewArgs() %>)?;
+    db.validate_and_insert_as_new(&mut result).await?;
+
+    Ok(result)
+}

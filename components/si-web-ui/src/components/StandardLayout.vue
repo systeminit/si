@@ -46,13 +46,9 @@
             }"
           >
             <v-list-item-action>
-              <v-icon>
-                {{ siComponent.icon }}
-              </v-icon>
+              <v-icon>{{ siComponent.icon }}</v-icon>
             </v-list-item-action>
-            <v-list-item-content>
-              {{ siComponent.name }}
-            </v-list-item-content>
+            <v-list-item-content>{{ siComponent.name }}</v-list-item-content>
           </v-list-item>
         </v-list-group>
 
@@ -69,17 +65,12 @@
 
     <v-app-bar app clipped-left>
       <!-- <v-app-bar-nav-icon @click.stop="drawer = !drawer" /> -->
-      <v-toolbar-title
-        >IRA OS / Org: {{ organization.name }} / Workspace:
-        {{ workspace.name }}</v-toolbar-title
-      >
+      <v-toolbar-title>
+        IRA OS / Org: {{ organization.name }} / Workspace:
+        {{ workspace.name }}
+      </v-toolbar-title>
       <v-spacer></v-spacer>
-      <v-menu
-        v-model="menu"
-        :close-on-content-click="false"
-        :nudge-width="200"
-        offset-y
-      >
+      <v-menu v-model="menu" :close-on-content-click="false" :nudge-width="200" offset-y>
         <template v-slot:activator="{ on }">
           <v-btn icon v-on="on">
             <v-avatar>

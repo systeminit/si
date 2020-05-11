@@ -1,7 +1,7 @@
 module.exports = {
-  preset: "ts-jest",
+  rootDir: "lib",
   testEnvironment: "node",
   moduleNameMapper: {
-    "^@/(.*)$": "<rootDir>/src/$1",
+    "^@/(.*)$": "<rootDir>/$1",
   },
 };

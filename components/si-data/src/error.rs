@@ -24,9 +24,9 @@ pub enum DataError {
     #[error("invalid field type")]
     InvalidFieldType,
     #[error("invalid query options")]
-    InvalidQueryItems,
+    InvalidDataQueryItems,
     #[error("invalid query comparison option")]
-    InvalidQueryComparison,
+    InvalidDataQueryComparison,
     #[error("invalid order by direction; should be ASC or DESC")]
     InvalidOrderByDirection,
     #[error("invalid order by field")]
@@ -45,6 +45,16 @@ pub enum DataError {
     ValidationError(String),
     #[error("a protobuf field was required, and it was absent: {0})")]
     RequiredField(String),
+    #[error("cannot encrypt an empty password")]
+    EmptyPassword,
+    #[error("failed to hash a password")]
+    PasswordHash,
+    #[error("UTF-8 String conversion error")]
+    Utf8(#[from] std::str::Utf8Error),
+    #[error("Missing a scope by tenant id for a list operation")]
+    MissingScopeByTenantId,
+    #[error("error picking a component: {0}")]
+    PickComponent(String),
 }
 
 impl From<DataError> for tonic::Status {
@@ -53,7 +63,7 @@ impl From<DataError> for tonic::Status {
             DataError::ValidationError(_) => {
                 tonic::Status::new(tonic::Code::InvalidArgument, err.to_string())
             }
-            _ => tonic::Status::new(tonic::Code::Unknown, err.to_string()),
+            _ => tonic::Status::new(tonic::Code::InvalidArgument, err.to_string()),
         }
     }
 }

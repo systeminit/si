@@ -1,61 +1,31 @@
+use crate::agent::mqtt::{Message, MqttClient};
 use crate::entity_event::EntityEvent;
 use crate::error::CeaResult;
 use futures::compat::Future01CompatExt;
-use paho_mqtt as mqtt;
+use si_data::uuid_string;
 use si_settings::Settings;
-use std::fmt;
-use std::ops::{Deref, DerefMut};
-use uuid::Uuid;
 
 pub use tracing::{debug, debug_span};
 pub use tracing_futures::Instrument as _;
 
 #[derive(Debug, Clone)]
 pub struct AgentClient {
-    pub mqtt: MqttAsyncClientInternal,
-}
-
-#[derive(Clone)]
-pub struct MqttAsyncClientInternal {
-    pub mqtt: mqtt::AsyncClient,
-}
-
-impl std::fmt::Debug for MqttAsyncClientInternal {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "MQTT Async Client")
-    }
-}
-
-impl Deref for MqttAsyncClientInternal {
-    type Target = mqtt::AsyncClient;
-
-    fn deref(&self) -> &Self::Target {
-        &self.mqtt
-    }
-}
-
-impl DerefMut for MqttAsyncClientInternal {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.mqtt
-    }
+    pub mqtt: MqttClient,
 }
 
 impl AgentClient {
     pub async fn new(name: &str, settings: &Settings) -> CeaResult<AgentClient> {
         // Create a client & define connect options
-        let client_id = format!("agent_client:{}:{}", name, Uuid::new_v4());
+        let client_id = format!("agent_client:{}:{}", name, uuid_string());
 
-        let cli = mqtt::AsyncClientBuilder::new()
+        let mqtt = MqttClient::new()
             .server_uri(settings.vernemq_server_uri().as_ref())
             .client_id(client_id.as_ref())
             .persistence(false)
             .finalize();
+        mqtt.default_connect().await?;
 
-        cli.connect(mqtt::ConnectOptions::new()).compat().await?;
-
-        Ok(AgentClient {
-            mqtt: MqttAsyncClientInternal { mqtt: cli },
-        })
+        Ok(AgentClient { mqtt })
     }
 
     pub async fn dispatch(&self, entity_event: &impl EntityEvent) -> CeaResult<()> {
@@ -73,20 +43,21 @@ impl AgentClient {
     // that people can run specific agents for their billing account. We can
     // do that by just putting it in the EntityEvent stuct, and if it is
     // filled in, we use it.
-    fn generate_topic(&self, entity_event: &impl EntityEvent) -> String {
+    fn generate_topic(&self, entity_event: &impl EntityEvent) -> CeaResult<String> {
         let topic = format!(
             "{}/{}/{}/{}/{}/{}/{}/{}/{}",
-            entity_event.billing_account_id(),
-            entity_event.organization_id(),
-            entity_event.workspace_id(),
-            entity_event.integration_id(),
-            entity_event.integration_service_id(),
-            entity_event.entity_id(),
+            entity_event.billing_account_id()?,
+            entity_event.organization_id()?,
+            entity_event.workspace_id()?,
+            entity_event.integration_id()?,
+            entity_event.integration_service_id()?,
+            entity_event.entity_id()?,
             "action",
-            entity_event.action_name(),
-            entity_event.id(),
+            entity_event.action_name()?,
+            entity_event.id()?,
         );
-        topic
+
+        Ok(topic)
     }
 
     pub async fn send(&self, entity_event: &impl EntityEvent) -> CeaResult<()> {
@@ -95,9 +66,9 @@ impl AgentClient {
             entity_event.encode(&mut payload)?;
             // We are very close to the broker - so no need to pretend that we are at
             // risk of not receiving our messages. Right?
-            let topic = self.generate_topic(entity_event);
+            let topic = self.generate_topic(entity_event)?;
             debug!(?topic, "topic");
-            let msg = mqtt::Message::new(self.generate_topic(entity_event), payload, 0);
+            let msg = Message::new(self.generate_topic(entity_event)?, payload, 0);
             self.mqtt.publish(msg).compat().await?;
             Ok(())
         }

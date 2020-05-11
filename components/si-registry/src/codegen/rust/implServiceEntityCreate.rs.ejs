@@ -1,0 +1,64 @@
+use si_cea::EntityEvent;
+
+let auth = <%- fmt.implServiceAuth(propMethod) %>
+
+let inner = request.into_inner();
+<%- fmt.implServiceMethodCreateDestructure() %>
+
+let constraints = constraints.ok_or_else(|| {
+    si_data::DataError::ValidationError(
+        "missing required constraints value".to_string(),
+    )
+})?;
+let workspace_id = workspace_id.ok_or_else(|| {
+    si_data::DataError::ValidationError(
+        "missing required workspace_id value".to_string(),
+    )
+})?;
+
+let workspace = si_account::Workspace::get(&self.db, &workspace_id).await?;
+
+let (implicit_constraints, component) =
+    <%- fmt.componentName() %>::pick(&self.db, &constraints).await?;
+info!(?implicit_constraints, ?component);
+
+let si_properties = si_cea::EntitySiProperties::new(
+    &workspace,
+    component
+        .id
+        .as_ref()
+        .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))?,
+    component.si_properties.as_ref().ok_or_else(|| {
+        si_data::DataError::RequiredField("si_properties".to_string())
+    })?,
+)?;
+
+let entity = <%- fmt.structName() %>::create(
+    &self.db,
+    name,
+    display_name,
+    description,
+    Some(constraints),
+    Some(implicit_constraints),
+    properties,
+    Some(si_properties),
+).await?;
+info!(?entity);
+let entity_event = <%- fmt.entityEventName() %>::create(
+    &self.db,
+    auth.user_id(),
+    "create",
+    &entity,
+).await?;
+info!(?entity_event);
+self.agent.dispatch(&entity_event).await?;
+
+Ok(tonic::Response::new(
+     <%- fmt.implServiceReplyType(propMethod, { option: false, reference: false }) %> {
+        // TODO(fnichol): does it really make sense to return the item
+        // when the dispatch will likely change its state at a later
+        // point in time?
+        item: Some(entity),
+        entity_event: Some(entity_event),
+    },
+))

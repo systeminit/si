@@ -30,8 +30,8 @@ impl RelationshipData {
 }
 
 impl Storable for RelationshipData {
-    fn get_id(&self) -> &str {
-        &self.id
+    fn id(&self) -> Result<&str> {
+        Ok(&self.id)
     }
 
     fn set_id(&mut self, id: impl Into<String>) {
@@ -47,22 +47,23 @@ impl Storable for RelationshipData {
         self.type_name = RelationshipData::type_name().to_string();
     }
 
-    fn set_natural_key(&mut self) {
+    fn set_natural_key(&mut self) -> Result<()> {
         self.natural_key = format!(
             "{}:{}:{}",
             // This is safe *only* after the object has been created.
-            self.get_tenant_ids()[0],
+            self.tenant_ids()?[0],
             RelationshipData::type_name(),
             self.name
         );
+        Ok(())
     }
 
-    fn get_natural_key(&self) -> Option<&str> {
-        Some(&self.natural_key)
+    fn natural_key(&self) -> Result<Option<&str>> {
+        Ok(Some(&self.natural_key))
     }
 
-    fn get_tenant_ids(&self) -> &[String] {
-        &self.tenant_ids
+    fn tenant_ids(&self) -> Result<&[String]> {
+        Ok(&self.tenant_ids)
     }
 
     fn add_to_tenant_ids(&mut self, id: impl Into<String>) {

@@ -22,92 +22,92 @@ service Account {
 }
 
 message ListIntegrationInstancesRequest {
-  si.data.Query query = 1;
-  int32 page_size = 2;
+  si.data.DataQuery query = 1;
+  uint32 page_size = 2;
   string order_by = 3;
-  si.data.PageTokenOrderByDirection order_by_direction = 4;
+  si.data.DataPageTokenOrderByDirection order_by_direction = 4;
   string page_token = 5;
   string scope_by_tenant_id = 6;
 }
 
 message ListIntegrationInstancesReply {
   repeated IntegrationInstance items = 1;
-  int32 total_count = 2;
+  uint32 total_count = 2;
   string next_page_token = 3;
 }
 
 message ListIntegrationServicesRequest {
-  si.data.Query query = 1;
-  int32 page_size = 2;
+  si.data.DataQuery query = 1;
+  uint32 page_size = 2;
   string order_by = 3;
-  si.data.PageTokenOrderByDirection order_by_direction = 4;
+  si.data.DataPageTokenOrderByDirection order_by_direction = 4;
   string page_token = 5;
   string scope_by_tenant_id = 6;
 }
 
 message ListIntegrationServicesReply {
   repeated IntegrationService items = 1;
-  int32 total_count = 2;
+  uint32 total_count = 2;
   string next_page_token = 3;
 }
 
 message ListIntegrationsRequest {
-  si.data.Query query = 1;
-  int32 page_size = 2;
+  si.data.DataQuery query = 1;
+  uint32 page_size = 2;
   string order_by = 3;
-  si.data.PageTokenOrderByDirection order_by_direction = 4;
+  si.data.DataPageTokenOrderByDirection order_by_direction = 4;
   string page_token = 5;
   string scope_by_tenant_id = 6;
 }
 
 message ListIntegrationsReply {
   repeated Integration items = 1;
-  int32 total_count = 2;
+  uint32 total_count = 2;
   string next_page_token = 3;
 }
 
 message ListOrganizationsRequest {
-  si.data.Query query = 1;
-  int32 page_size = 2;
+  si.data.DataQuery query = 1;
+  uint32 page_size = 2;
   string order_by = 3;
-  si.data.PageTokenOrderByDirection order_by_direction = 4;
+  si.data.DataPageTokenOrderByDirection order_by_direction = 4;
   string page_token = 5;
   string scope_by_tenant_id = 6;
 }
 
 message ListOrganizationsReply {
   repeated Organization items = 1;
-  int32 total_count = 2;
+  uint32 total_count = 2;
   string next_page_token = 3;
 }
 
 message ListWorkspacesRequest {
-  si.data.Query query = 1;
-  int32 page_size = 2;
+  si.data.DataQuery query = 1;
+  uint32 page_size = 2;
   string order_by = 3;
-  si.data.PageTokenOrderByDirection order_by_direction = 4;
+  si.data.DataPageTokenOrderByDirection order_by_direction = 4;
   string page_token = 5;
   string scope_by_tenant_id = 6;
 }
 
 message ListWorkspacesReply {
   repeated Workspace items = 1;
-  int32 total_count = 2;
+  uint32 total_count = 2;
   string next_page_token = 3;
 }
 
 message ListUsersRequest {
-  si.data.Query query = 1;
-  int32 page_size = 2;
+  si.data.DataQuery query = 1;
+  uint32 page_size = 2;
   string order_by = 3;
-  si.data.PageTokenOrderByDirection order_by_direction = 4;
+  si.data.DataPageTokenOrderByDirection order_by_direction = 4;
   string page_token = 5;
   string scope_by_tenant_id = 6;
 }
 
 message ListUsersReply {
   repeated User items = 1;
-  int32 total_count = 2;
+  uint32 total_count = 2;
   string next_page_token = 3;
 }
 

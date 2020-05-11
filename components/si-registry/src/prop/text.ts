@@ -1,4 +1,4 @@
-import { Prop, PropValue } from "@/prop";
+import { Prop, PropValue } from "../prop";
 
 export class PropText extends Prop {
   baseDefaultValue: string;
@@ -20,18 +20,6 @@ export class PropText extends Prop {
   }) {
     super({ name, label, componentTypeName, rules, required });
     this.baseDefaultValue = defaultValue || "";
-  }
-
-  protobufType(): string {
-    return "google.protobuf.StringValue";
-  }
-
-  protobufImportPath(): string {
-    return "google/protobuf/wrappers.proto";
-  }
-
-  protobufPackageName(): string {
-    return "google.protobuf.";
   }
 
   kind(): string {

@@ -2,13 +2,12 @@ import { DataSource } from "apollo-datasource";
 import * as path from "path";
 
 import { ServiceDescription } from "@/services";
-import grpcCaller = require("grpc-caller");
-import { logger } from "@/logger";
+import * as grpcCaller from "grpc-caller";
 
 export class GrpcServiceBroker {
   services: {
     [key: string]: {
-      client: grpcCaller;
+      client: any;
     };
   };
 
@@ -28,15 +27,14 @@ export class GrpcServiceBroker {
             longs: String,
             defaults: true,
             oneofs: true,
-            includeDirs: [path.join(__dirname, "..", "..", "..")],
+            includeDirs: [path.join("..")],
           },
         },
         sd.grpcServiceName,
       );
 
-      logger.log("info", "Loading Service", { service: sd, caller });
-
-      this.services[sd.grpcServiceName] = {
+      console.log("Setting up service for", { sd });
+      this.services[sd.serviceName] = {
         client: caller,
       };
     }
@@ -52,12 +50,11 @@ export class Grpc extends DataSource {
     this.broker = broker;
   }
 
-  initialize(config): void {
+  initialize(config: any): void {
     this.config = config;
   }
 
   service(service: string): any {
-    logger.log("warn", "getting service", { service, broker: this.broker });
     return this.broker.services[service].client;
   }
 }

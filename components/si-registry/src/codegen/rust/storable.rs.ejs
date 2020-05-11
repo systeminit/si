@@ -1,0 +1,102 @@
+impl si_data::Storable for <%- fmt.structName() %> {
+    fn type_name() -> &'static str {
+        "<%- fmt.typeName() %>"
+    }
+
+    fn set_type_name(&mut self) {
+        if self.si_storable.is_none() {
+            self.si_storable = Some(Default::default());
+        }
+
+        let si_storable = self.si_storable
+            .as_mut()
+            .expect("<%- fmt.structName() %>.si_storable \
+                has been set or initialized");
+        si_storable.type_name = Some(Self::type_name().to_string());
+    }
+
+    fn id(&self) -> si_data::Result<&str> {
+        self.id
+            .as_ref()
+            .map(String::as_str)
+            .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))
+    }
+
+    fn set_id(&mut self, id: impl Into<String>) {
+        self.id = Some(id.into());
+    }
+
+    fn generate_id(&mut self) {
+        self.set_id(format!(
+            "{}:{}",
+            Self::type_name(),
+            si_data::uuid_string(),
+        ));
+    }
+
+    fn natural_key(&self) -> si_data::Result<Option<&str>> {
+        Ok(self.si_storable
+            .as_ref()
+            .ok_or_else(|| si_data::DataError::RequiredField("si_storable".to_string()))?
+            .natural_key
+            .as_ref()
+            .map(String::as_str))
+    }
+
+    fn set_natural_key(&mut self) -> si_data::Result<()> {
+        let natural_key = format!(
+            "{}:{}:{}",
+            self.tenant_ids()?.first().ok_or_else(|| si_data::DataError::MissingTenantIds)?,
+            Self::type_name(),
+            self.<%- fmt.naturalKey() %>
+                .as_ref()
+                .ok_or_else(|| si_data::DataError::RequiredField("<%- fmt.naturalKey() %>".to_string()))?,
+        );
+
+        if self.si_storable.is_none() {
+            self.si_storable = Some(Default::default());
+        }
+
+        let si_storable = self.si_storable
+            .as_mut()
+            .expect("<%- fmt.structName() %>.si_storable \
+                has been set or initialized");
+        si_storable.natural_key = Some(natural_key);
+
+        Ok(())
+    }
+
+    fn tenant_ids(&self) -> si_data::Result<&[String]> {
+        Ok(self.si_storable
+            .as_ref()
+            .ok_or_else(|| si_data::DataError::RequiredField("si_storable".to_string()))?
+            .tenant_ids
+            .as_slice())
+    }
+
+    fn add_to_tenant_ids(&mut self, id: impl Into<String>) {
+        if self.si_storable.is_none() {
+            self.si_storable = Some(Default::default());
+        }
+
+        let si_storable = self.si_storable
+            .as_mut()
+            .expect("<%- fmt.structName() %>.si_storable \
+                has been set or initialized");
+        si_storable.tenant_ids.push(id.into());
+    }
+
+    fn validate(&self) -> si_data::error::Result<()> {
+        <%- fmt.storableValidateFunction() %>
+
+        Ok(())
+    }
+
+    fn referential_fields(&self) -> Vec<si_data::Reference> {
+        <%- fmt.storableReferentialFieldsFunction() %>
+    }
+
+    fn order_by_fields() -> Vec<&'static str> {
+      <%- fmt.storableOrderByFieldsFunction() %>
+    }
+}

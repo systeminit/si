@@ -1,21 +1,31 @@
 import {
-  Component,
   PropObject,
   PropText,
   PropLink,
   PropNumber,
+  PropEnum,
   PropCode,
-} from "@/components/prelude";
-import { registry } from "@/componentRegistry";
+} from "../../components/prelude";
+import { registry } from "../../registry";
 
-registry.component({
+registry.componentAndEntity({
   typeName: "kubernetesDeployment",
   displayTypeName: "Kubernetes Deployment Object",
-  options(c: Component) {
+  siPathName: "si-kubernetes",
+  serviceName: "kubernetes",
+  options(c) {
+    c.entity.associations.belongsTo({
+      fromFieldPath: ["siProperties", "billingAccountId"],
+      typeName: "billingAccount",
+    });
+
     // Constraints
-    c.constraints.addText({
+    c.constraints.addEnum({
       name: "kubernetesVersion",
       label: "Kubernetes Version",
+      options(p: PropEnum) {
+        p.variants = ["v1.12", "v1.13", "v1.14", "v1.15"];
+      },
     });
 
     // Properties
@@ -23,6 +33,18 @@ registry.component({
       name: "kubernetesObject",
       label: "Kubernetes Object",
       options(p: PropObject) {
+        p.relationships.updates({
+          partner: {
+            typeName: "kubernetesDeployment",
+            names: ["kubernetesObjectYaml"],
+          },
+        });
+        p.relationships.either({
+          partner: {
+            typeName: "kubernetesDeployment",
+            names: ["kubernetesObjectYaml"],
+          },
+        });
         p.properties.addText({
           name: "apiVersion",
           label: "API Version",
@@ -43,9 +65,7 @@ registry.component({
           label: "Metadata",
           options(p: PropLink) {
             p.lookup = {
-              component: "kubernetes",
-              propType: "internalOnly",
-              names: ["metadata"],
+              typeName: "kubernetesMetadata",
             };
           },
         });
@@ -65,9 +85,7 @@ registry.component({
               label: "Selector",
               options(p: PropLink) {
                 p.lookup = {
-                  component: "kubernetes",
-                  propType: "internalOnly",
-                  names: ["labelSelector"],
+                  typeName: "kubernetesSelector",
                 };
               },
             });
@@ -76,9 +94,7 @@ registry.component({
               label: "Pod Template Spec",
               options(p: PropLink) {
                 p.lookup = {
-                  component: "kubernetes",
-                  propType: "internalOnly",
-                  names: ["podTemplateSpec"],
+                  typeName: "kubernetesPodTemplateSpec",
                 };
               },
             });
@@ -86,10 +102,23 @@ registry.component({
         });
       },
     });
+
     c.properties.addCode({
       name: "kubernetesObjectYaml",
       label: "Kubernetes Object YAML",
       options(p: PropCode) {
+        p.relationships.updates({
+          partner: {
+            typeName: "kubernetesDeployment",
+            names: ["kubernetesObject"],
+          },
+        });
+        p.relationships.either({
+          partner: {
+            typeName: "kubernetesDeployment",
+            names: ["kubernetesObject"],
+          },
+        });
         p.language = "yaml";
       },
     });

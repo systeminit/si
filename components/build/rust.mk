@@ -2,6 +2,7 @@ include $(CURDIR)/../build/docker.mk
 
 RELEASE := $(shell date +%Y%m%d%H%M%S)
 WATCH_PATHS ?= .
+WATCH_TASK ?= run
 
 .PHONY: build build_release test run start release container
 
@@ -20,7 +21,7 @@ run:
 start: run
 
 watch:
-	cargo watch $(foreach path,$(WATCH_PATHS),-w $(path)) -x run
+	cargo watch $(foreach path,$(WATCH_PATHS),-w $(path)) -x $(WATCH_TASK)
 
 test_container:
 	docker run -t --network=host --volume=$(CURDIR)/../../:/src docker.pkg.github.com/systeminit/si/si-base:latest /bin/bash -c "cd / && if [[ ! -d /src/target ]]; then tar zxf /build-cache/cargo-cache.tgz; fi && if [[ ! -d /src/components/si-web-ui/node_modules ]]; then tar zxf /build-cache/npm-cache.tgz; fi && . /root/.cargo/env && cd /src/components/$(COMPONENT) && make test"

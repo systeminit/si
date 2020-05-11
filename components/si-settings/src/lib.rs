@@ -3,7 +3,6 @@ use config::{Config, Environment, File as ConfigFile};
 use serde::Deserialize;
 use sodiumoxide;
 use tracing::{event, Level};
-use uuid::Uuid;
 
 use std::env;
 

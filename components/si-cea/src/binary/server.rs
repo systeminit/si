@@ -2,9 +2,11 @@ use crate::error::CeaResult;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 pub mod prelude {
-    pub use crate::Dispatch as _;
-    pub use crate::MigrateComponent as _;
-    pub use crate::{gen_server_binary, EntityEvent as _};
+    pub use crate::agent::dispatch::Dispatcher;
+    pub use crate::agent::finalizer::AgentFinalizer;
+    pub use crate::agent::server::AgentServer;
+    pub use si_data::{Db, Storable};
+    pub use si_settings::Settings;
 }
 
 pub fn setup_tracing() -> CeaResult<()> {
@@ -18,63 +20,4 @@ pub fn setup_tracing() -> CeaResult<()> {
     tracing::subscriber::set_global_default(subscriber)?;
 
     Ok(())
-}
-
-#[macro_export]
-macro_rules! gen_server_binary {
-    (
-        name: $name: tt,
-        dispatcher: $dispatcher: ident,
-        component: $component: ident,
-        entity_event: $entity_event: ident,
-        service: $service: ident,
-        server: $server: ident
-    ) => {
-        println!("*** Starting {} ***", $name);
-        si_cea::binary::server::setup_tracing()?;
-
-        println!("*** Loading settings ***");
-        let settings = si_settings::Settings::new()?;
-
-        println!("*** Connecting to the database ***");
-        let db = si_data::Db::new(&settings)?;
-
-        // Migrate
-        println!("*** Migrating components ***");
-        $component::migrate(&db).await?;
-
-        // Agent Server
-        println!("*** Spawning the Agent Server ***");
-        let mut agent_dispatch = $dispatcher(si_cea::AgentDispatch::new());
-        agent_dispatch.setup(&db).await?;
-        let mut agent_server = si_cea::AgentServer::new($name, agent_dispatch, &settings);
-        tokio::spawn(async move {
-            // Dispatcher
-            agent_server.run().await
-        });
-
-        // Finalizer
-        println!("*** Spawning the Agent Finalizer ***");
-        let finalizer_db = db.clone();
-        let mut finalizer =
-            si_cea::AgentFinalizer::new(finalizer_db, $entity_event::type_name(), &settings);
-        tokio::spawn(async move { finalizer.run::<$entity_event>().await });
-
-        // GRPC Services
-        let agent_client = si_cea::AgentClient::new($name, &settings).await?;
-
-        let service = $service::new(db.clone(), agent_client);
-
-        let listen_string = format!("0.0.0.0:{}", settings.service.port);
-
-        let addr = listen_string.parse().unwrap();
-
-        println!("--> {} service listening on {} <--", $name, addr);
-        println!("--> Let us make stuff <--");
-
-        tonic::transport::Server::builder()
-            .add_service($server::new(service))
-            .serve(addr)
-            .await?;
-    };
 }

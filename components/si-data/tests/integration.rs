@@ -10,8 +10,11 @@ use std::env;
 pub mod common;
 
 use si_data::{
-    data::{Query, QueryItems, QueryItemsExpression, QueryItemsExpressionComparison},
     error::{DataError, Result},
+    mvcc::TxnId,
+    protobuf::{
+        DataQuery, DataQueryItems, DataQueryItemsExpression, DataQueryItemsExpressionComparison,
+    },
     Db, ListResult, Storable,
 };
 use si_settings::Settings;
@@ -57,7 +60,7 @@ async fn validate_and_insert_as_new() {
     DB.validate_and_insert_as_new(&mut item)
         .await
         .expect("cannot insert item - first test data");
-    let id_parts: Vec<&str> = item.get_id().split(":").collect();
+    let id_parts: Vec<&str> = item.id().expect("should have an id").split(":").collect();
     assert_eq!(
         id_parts[0], "test_data",
         "type_name is not the first part of the id"
@@ -138,7 +141,7 @@ async fn upsert() {
 
 #[tokio::test]
 async fn list() {
-    DB.create_primary_index()
+    DB.create_indexes()
         .await
         .expect("failed to create primary index");
     let items = vec![
@@ -234,11 +237,11 @@ async fn list() {
     assert_eq!(last_result.page_token(), "");
 
     // With a Query
-    let query = Some(Query {
-        items: vec![QueryItems {
-            expression: Some(QueryItemsExpression {
+    let query = Some(DataQuery {
+        items: vec![DataQueryItems {
+            expression: Some(DataQueryItemsExpression {
                 field: Some("name".to_string()),
-                comparison: QueryItemsExpressionComparison::Equals as i32,
+                comparison: DataQueryItemsExpressionComparison::Equals as i32,
                 value: Some("slayer".to_string()),
                 ..Default::default()
             }),

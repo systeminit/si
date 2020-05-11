@@ -1,161 +1,98 @@
-use si_data::{error::DataError, Migrateable, Reference, Storable};
-use uuid::Uuid;
-
-pub use crate::error::{AccountError, Result};
-pub use crate::protobuf::{
-    Integration, IntegrationOption, IntegrationOptionType, IntegrationService,
+use crate::protobuf::{
+    Integration, IntegrationOptions, IntegrationOptionsOptionType, IntegrationService,
+    IntegrationServiceSiProperties, IntegrationSiProperties,
 };
+use si_data::{Db, Storable};
 
-impl Storable for Integration {
-    fn get_id(&self) -> &str {
-        &self.id
-    }
+impl Integration {
+    pub async fn migrate(db: &Db) -> si_data::Result<()> {
+        let mut integrations = vec![
+            (
+                Integration {
+                    name: Some("global".to_string()),
+                    display_name: Some("Always On".to_string()),
+                    si_properties: Some(IntegrationSiProperties { version: Some(1) }),
+                    ..Default::default()
+                },
+                vec![IntegrationService {
+                    name: Some("ssh_key".to_string()),
+                    display_name: Some("SSH Key".to_string()),
+                    si_properties: Some(IntegrationServiceSiProperties {
+                        version: Some(1),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                }],
+            ),
+            (
+                Integration {
+                    name: Some("aws".to_string()),
+                    display_name: Some("Amazon Web Services".to_string()),
+                    options: vec![
+                        IntegrationOptions {
+                            name: Some("access_key".to_string()),
+                            display_name: Some("Access Key".to_string()),
+                            option_type: IntegrationOptionsOptionType::String as i32,
+                        },
+                        IntegrationOptions {
+                            name: Some("secret_key".to_string()),
+                            display_name: Some("Secret Key".to_string()),
+                            option_type: IntegrationOptionsOptionType::Secret as i32,
+                        },
+                        IntegrationOptions {
+                            name: Some("region".to_string()),
+                            display_name: Some("region".to_string()),
+                            option_type: IntegrationOptionsOptionType::String as i32,
+                        },
+                    ],
+                    si_properties: Some(IntegrationSiProperties { version: Some(1) }),
+                    ..Default::default()
+                },
+                vec![
+                    IntegrationService {
+                        name: Some("ec2".to_string()),
+                        display_name: Some("EC2".to_string()),
+                        si_properties: Some(IntegrationServiceSiProperties {
+                            version: Some(1),
+                            ..Default::default()
+                        }),
+                        ..Default::default()
+                    },
+                    IntegrationService {
+                        name: Some("eks".to_string()),
+                        display_name: Some("EKS".to_string()),
+                        si_properties: Some(IntegrationServiceSiProperties {
+                            version: Some(1),
+                            ..Default::default()
+                        }),
+                        ..Default::default()
+                    },
+                    IntegrationService {
+                        name: Some("eks_kubernetes".to_string()),
+                        display_name: Some("EKS Kubernetes".to_string()),
+                        si_properties: Some(IntegrationServiceSiProperties {
+                            version: Some(1),
+                            ..Default::default()
+                        }),
+                        ..Default::default()
+                    },
+                ],
+            ),
+        ];
 
-    fn set_id(&mut self, id: impl Into<String>) {
-        self.id = id.into();
-    }
-
-    fn type_name() -> &'static str {
-        "integration"
-    }
-
-    fn set_type_name(&mut self) {
-        self.type_name = Integration::type_name().to_string();
-    }
-
-    fn generate_id(&mut self) {
-        let uuid = Uuid::new_v4();
-        self.id = format!("{}:{}", Integration::type_name(), uuid);
-    }
-
-    fn validate(&self) -> si_data::error::Result<()> {
-        if self.display_name == "" {
-            return Err(DataError::ValidationError(
-                AccountError::InvalidMissingDisplayName.to_string(),
-            ));
-        }
-        if self.name == "" {
-            return Err(DataError::ValidationError(
-                AccountError::InvalidMissingName.to_string(),
-            ));
-        }
-        Ok(())
-    }
-
-    fn get_tenant_ids(&self) -> &[String] {
-        &self.tenant_ids
-    }
-
-    fn add_to_tenant_ids(&mut self, id: impl Into<String>) {
-        self.tenant_ids.push(id.into());
-    }
-
-    fn referential_fields(&self) -> Vec<Reference> {
-        Vec::new()
-    }
-
-    fn get_natural_key(&self) -> Option<&str> {
-        Some(&self.natural_key)
-    }
-
-    fn set_natural_key(&mut self) {
-        self.natural_key = format!(
-            "{}:{}:{}",
-            // This is safe *only* after the object has been created.
-            self.get_tenant_ids()[0],
-            Integration::type_name(),
-            self.name
-        );
-    }
-
-    fn order_by_fields() -> Vec<&'static str> {
-        vec!["id", "naturalKey", "typeName", "displayName", "name"]
-    }
-}
-
-impl Migrateable for Integration {
-    fn get_version(&self) -> i32 {
-        self.version
-    }
-}
-
-impl Storable for IntegrationService {
-    fn get_id(&self) -> &str {
-        &self.id
-    }
-
-    fn set_id(&mut self, id: impl Into<String>) {
-        self.id = id.into();
-    }
-
-    fn type_name() -> &'static str {
-        "integration_service"
-    }
-
-    fn set_type_name(&mut self) {
-        self.type_name = IntegrationService::type_name().to_string();
-    }
-
-    fn generate_id(&mut self) {
-        let uuid = Uuid::new_v4();
-        self.id = format!("{}:{}", IntegrationService::type_name(), uuid);
-    }
-
-    fn validate(&self) -> si_data::error::Result<()> {
-        if self.display_name == "" {
-            return Err(DataError::ValidationError(
-                AccountError::InvalidMissingDisplayName.to_string(),
-            ));
-        }
-        if self.name == "" {
-            return Err(DataError::ValidationError(
-                AccountError::InvalidMissingName.to_string(),
-            ));
+        for (item, services) in integrations.iter_mut() {
+            item.add_to_tenant_ids("global".to_string());
+            db.migrate(item).await?;
+            for service in services.iter_mut() {
+                let item_id = item.id()?;
+                service.add_to_tenant_ids(item_id.to_string());
+                service
+                    .si_properties
+                    .as_mut()
+                    .map(|p| p.integration_id = Some(item_id.to_string()));
+                db.migrate(service).await?;
+            }
         }
         Ok(())
-    }
-
-    fn get_tenant_ids(&self) -> &[String] {
-        &self.tenant_ids
-    }
-
-    fn add_to_tenant_ids(&mut self, id: impl Into<String>) {
-        self.tenant_ids.push(id.into());
-    }
-
-    fn referential_fields(&self) -> Vec<Reference> {
-        Vec::new()
-    }
-
-    fn get_natural_key(&self) -> Option<&str> {
-        Some(&self.natural_key)
-    }
-
-    fn set_natural_key(&mut self) {
-        self.natural_key = format!(
-            "{}:{}:{}:{}",
-            // This is safe *only* after the object has been created.
-            self.get_tenant_ids()[0],
-            self.get_tenant_ids()[1],
-            IntegrationService::type_name(),
-            self.name
-        );
-    }
-
-    fn order_by_fields() -> Vec<&'static str> {
-        vec![
-            "id",
-            "naturalKey",
-            "typeName",
-            "displayName",
-            "name",
-            "integration_id",
-        ]
-    }
-}
-
-impl Migrateable for IntegrationService {
-    fn get_version(&self) -> i32 {
-        self.version
     }
 }

@@ -4,7 +4,8 @@ mutation createAccount(
   $userDisplayName: String!
   $userGivenName: String!
   $userFamilyName: String!
-  $userEmail: String!, $userPassword: String!
+  $userEmail: String!
+  $userPassword: String!
 ) {
   createAccount(
     input: {

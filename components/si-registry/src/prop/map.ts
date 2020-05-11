@@ -1,4 +1,4 @@
-import { Prop, PropValue } from "@/prop";
+import { Prop, PropValue } from "../prop";
 
 export class PropMap extends Prop {
   baseDefaultValue: Record<string, string>;
@@ -22,12 +22,7 @@ export class PropMap extends Prop {
     return "map";
   }
 
-  protobufType(): string {
-    return "map<string, string>";
-  }
-
   defaultValue(): PropValue {
     return this.baseDefaultValue;
   }
 }
-

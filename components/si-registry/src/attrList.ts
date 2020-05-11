@@ -1,37 +1,28 @@
-import { Prop, PropDefaultValues, PropConstructor } from "@/prop";
-import { PropText } from "@/prop/text";
-import { PropCode } from "@/prop/code";
-import { PropSelect } from "@/prop/select";
-import { PropNumber } from "@/prop/number";
-import { PropMap } from "@/prop/map";
-import { PropComponent } from "@/prop/component";
-import { PropEntity } from "@/prop/entity";
-import { PropEnum } from "@/prop/enum";
-import { PropBool } from "@/prop/bool";
-import { PropEntityEvent } from "@/prop/entityEvent";
-import { PropLink } from "@/prop/link";
-import { PropConstraints } from "@/prop/constraints";
-import { PropProperties } from "@/prop/properties";
-import { propRegistry } from "@/propRegistry";
-import { Component } from "@/component";
-import { registry } from "@/componentRegistry";
+import { Prop, PropDefaultValues, PropConstructor } from "./prop";
+import { PropText } from "./prop/text";
+import { PropCode } from "./prop/code";
+import { PropSelect } from "./prop/select";
+import { PropNumber } from "./prop/number";
+import { PropMap } from "./prop/map";
+import { PropEnum } from "./prop/enum";
+import { PropBool } from "./prop/bool";
+import { PropLink } from "./prop/link";
+import { PropPassword } from "./prop/password";
 
 import { pascalCase, camelCase } from "change-case";
 
+import { registry } from "./registry";
+
 export type Props =
   | PropText
+  | PropPassword
   | PropSelect
   | PropCode
   | PropNumber
   | PropObject
   | PropMap
   | PropEnum
-  | PropComponent
-  | PropEntity
-  | PropEntityEvent
   | PropBool
-  | PropConstraints
-  | PropProperties
   | PropLink;
 
 interface AddArguments {
@@ -43,7 +34,7 @@ interface AddArguments {
 }
 
 interface AttrListConstructor {
-  component?: Component;
+  componentTypeName?: string;
   parentName?: string;
   readOnly?: boolean;
   autoCreateEdits?: boolean;
@@ -54,17 +45,17 @@ export class AttrList {
   readOnly: boolean;
   parentName: string;
   autoCreateEdits: boolean;
-  component: Component;
+  componentTypeName: string;
 
   constructor({
     parentName,
     readOnly,
-    component,
+    componentTypeName,
     autoCreateEdits,
   }: AttrListConstructor) {
     this.parentName = parentName || "";
     this.attrs = [];
-    this.component = component;
+    this.componentTypeName = componentTypeName || "";
     this.readOnly = readOnly || false;
     this.autoCreateEdits = autoCreateEdits || false;
   }
@@ -81,8 +72,12 @@ export class AttrList {
     return this.attrs;
   }
 
-  getEntry(name: string): Props | undefined {
-    return this.attrs.find(e => e.name == name);
+  getEntry(name: string): Props {
+    const result = this.attrs.find(e => e.name == name);
+    if (result == undefined) {
+      throw `Cannot find property ${name} for ${this.componentTypeName}`;
+    }
+    return result;
   }
 
   createValueObject(defaultValues?: PropDefaultValues): PropDefaultValues {
@@ -126,116 +121,77 @@ export class AttrList {
     if (this.autoCreateEdits) {
       this.autoCreateEditAction(p);
     }
-    propRegistry.add(p);
     this.attrs.push(p);
   }
 
   addBool(addArgs: AddArguments): void {
-    addArgs.componentTypeName = this.component.typeName;
+    addArgs.componentTypeName = this.componentTypeName;
     const p = new PropBool(addArgs as PropConstructor);
     this.addProp(p, addArgs);
   }
 
   addText(addArgs: AddArguments): void {
-    addArgs.componentTypeName = this.component.typeName;
+    addArgs.componentTypeName = this.componentTypeName;
     const p = new PropText(addArgs as PropConstructor);
+    this.addProp(p, addArgs);
+  }
+
+  addPassword(addArgs: AddArguments): void {
+    addArgs.componentTypeName = this.componentTypeName;
+    const p = new PropPassword(addArgs as PropConstructor);
     this.addProp(p, addArgs);
   }
 
   addEnum(addArgs: AddArguments): void {
     addArgs.parentName = pascalCase(this.parentName);
-    addArgs.componentTypeName = this.component.typeName;
+    addArgs.componentTypeName = this.componentTypeName;
     const p = new PropEnum(addArgs as PropConstructor);
     this.addProp(p, addArgs);
   }
 
   addNumber(addArgs: AddArguments): void {
-    addArgs.componentTypeName = this.component.typeName;
+    addArgs.componentTypeName = this.componentTypeName;
     const p = new PropNumber(addArgs as PropConstructor);
     this.addProp(p, addArgs);
   }
 
   addLink(addArgs: AddArguments): void {
-    addArgs.componentTypeName = this.component.typeName;
+    addArgs.componentTypeName = this.componentTypeName;
     const p = new PropLink(addArgs as PropConstructor);
     this.addProp(p, addArgs);
   }
 
   addObject(addArgs: AddArguments): void {
-    addArgs.componentTypeName = this.component.typeName;
+    addArgs.componentTypeName = this.componentTypeName;
     addArgs.parentName = pascalCase(this.parentName);
     const p = new PropObject(addArgs as PropConstructor);
     this.addProp(p, addArgs);
   }
 
   addAction(addArgs: AddArguments): void {
-    addArgs.componentTypeName = this.component.typeName;
+    addArgs.componentTypeName = this.componentTypeName;
     addArgs.parentName = pascalCase(this.parentName);
     const p = new PropAction(addArgs as PropConstructor);
     this.addProp(p, addArgs);
   }
 
   addMethod(addArgs: AddArguments): void {
-    addArgs.componentTypeName = this.component.typeName;
+    addArgs.componentTypeName = this.componentTypeName;
     addArgs.parentName = pascalCase(this.parentName);
     const p = new PropMethod(addArgs as PropConstructor);
     this.addProp(p, addArgs);
   }
 
-  addComponent(addArgs: AddArguments): void {
-    addArgs.componentTypeName = this.component.typeName;
-    addArgs.parentName = pascalCase(this.parentName);
-    const p = new PropComponent(addArgs as PropConstructor);
-    this.addProp(p, addArgs);
-  }
-
-  addEntity(addArgs: AddArguments): void {
-    addArgs.componentTypeName = this.component.typeName;
-    addArgs.parentName = pascalCase(this.parentName);
-    const p = new PropEntity(addArgs as PropConstructor);
-    this.addProp(p, addArgs);
-  }
-
-  addEntityEvent(addArgs: AddArguments): void {
-    addArgs.componentTypeName = this.component.typeName;
-    addArgs.parentName = pascalCase(this.parentName);
-    const p = new PropEntityEvent(addArgs as PropConstructor);
-    this.addProp(p, addArgs);
-  }
-
   addMap(addArgs: AddArguments): void {
-    addArgs.componentTypeName = this.component.typeName;
+    addArgs.componentTypeName = this.componentTypeName;
     const p = new PropMap(addArgs as PropConstructor);
     this.addProp(p, addArgs);
   }
 
   addCode(addArgs: AddArguments): void {
-    addArgs.componentTypeName = this.component.typeName;
+    addArgs.componentTypeName = this.componentTypeName;
     const p = new PropCode(addArgs as PropConstructor);
     this.addProp(p, addArgs);
-  }
-
-  addConstraints(addArgs: AddArguments): void {
-    addArgs.componentTypeName = this.component.typeName;
-    const p = new PropConstraints(addArgs as PropConstructor);
-    this.addProp(p, addArgs);
-  }
-
-  addProperties(addArgs: AddArguments): void {
-    addArgs.componentTypeName = this.component.typeName;
-    const p = new PropProperties(addArgs as PropConstructor);
-    this.addProp(p, addArgs);
-  }
-
-  addFromRegistry(lookupTag: string, addArgs: AddArguments): void {
-    const p = propRegistry.get(lookupTag);
-    if (propRegistry.get(lookupTag) === undefined) {
-      throw `Cannot find ${lookupTag} in Prop Registry`;
-    }
-    if (addArgs.options) {
-      addArgs.options(p);
-    }
-    this.attrs.push(p);
   }
 
   autoCreateEditAction(p: Props): void {
@@ -243,12 +199,24 @@ export class AttrList {
     if (notAllowedKinds.includes(p.kind())) {
       return;
     }
-    this.component.entityActions.addAction({
-      name: `Edit${camelCase(p.parentName)}${pascalCase(p.name)}Action`,
+    const systemObject = registry.get(p.componentTypeName);
+
+    systemObject.methods.addAction({
+      name: `${camelCase(p.name)}Edit`,
       label: `Edit ${camelCase(p.parentName)}${pascalCase(p.name)} Property`,
       options(pa: PropAction) {
         pa.universal = true;
-        pa.request.addProp(p, { name: p.name, label: p.label });
+        pa.mutation = true;
+        pa.request.properties.addLink({
+          name: "property",
+          label: `The ${p.label} property value`,
+          options(pl: PropLink) {
+            pl.lookup = {
+              typeName: p.componentTypeName,
+              names: ["properties", p.name],
+            };
+          },
+        });
       },
     });
   }
@@ -257,7 +225,6 @@ export class AttrList {
 export class PropObject extends Prop {
   baseDefaultValue: Record<string, any>;
   properties: AttrList;
-  realParentName: string;
 
   constructor({
     name,
@@ -274,10 +241,10 @@ export class PropObject extends Prop {
   }) {
     super({ name, label, componentTypeName });
     this.baseDefaultValue = defaultValue || {};
-    this.parentName = parentName;
+    this.parentName = parentName || "";
     this.properties = new AttrList({
-      parentName: `${pascalCase(parentName)}${pascalCase(name)}`,
-      component: registry.get(this.componentTypeName),
+      parentName: `${pascalCase(this.parentName)}${pascalCase(name)}`,
+      componentTypeName: this.componentTypeName,
     });
   }
 
@@ -302,9 +269,11 @@ export class PropObject extends Prop {
 
 export class PropMethod extends Prop {
   baseDefaultValue: Record<string, any>;
-  request: AttrList;
-  reply: AttrList;
-  realParentName: string;
+  request: PropObject;
+  reply: PropObject;
+  mutation: boolean;
+  skipAuth: boolean;
+  isPrivate: boolean;
 
   // Methods have a Request and a Response
   //
@@ -326,15 +295,22 @@ export class PropMethod extends Prop {
   }) {
     super({ name, label, componentTypeName });
     this.baseDefaultValue = defaultValue || {};
-    this.parentName = parentName;
-    this.request = new AttrList({
-      parentName: `${pascalCase(parentName)}${pascalCase(name)}Request`,
-      component: registry.get(this.componentTypeName),
+    this.parentName = parentName || "";
+    this.request = new PropObject({
+      name: `${pascalCase(name)}Request`,
+      label: `${label} Request`,
+      parentName: this.parentName,
+      componentTypeName: this.componentTypeName,
     });
-    this.reply = new AttrList({
-      parentName: `${pascalCase(parentName)}${pascalCase(name)}Reply`,
-      component: registry.get(this.componentTypeName),
+    this.reply = new PropObject({
+      name: `${pascalCase(name)}Reply`,
+      label: `${label} Reply`,
+      parentName: this.parentName,
+      componentTypeName: this.componentTypeName,
     });
+    this.mutation = false;
+    this.skipAuth = false;
+    this.isPrivate = false;
   }
 
   kind(): string {
@@ -359,7 +335,7 @@ export class PropMethod extends Prop {
 export class PropAction extends PropMethod {
   // Actions have a Request and a Response
   //
-  // The Response is always `{ entity: Entity, entityEvent: EntityEvent }`;
+  // The Response is always `{ entityEvent: EntityEvent }`;
   //
   // The Request is made up of properties!
 
@@ -377,18 +353,23 @@ export class PropAction extends PropMethod {
     defaultValue?: PropAction["baseDefaultValue"];
   }) {
     super({ name, label, componentTypeName, parentName, defaultValue });
-    this.reply.addEntity({
-      name: "entity",
-      label: "Entity",
+    this.request.properties.addText({
+      name: "id",
+      label: "Entity ID",
       options(p) {
+        p.universal = true;
         p.required = true;
       },
     });
-    this.reply.addEntityEvent({
-      name: "entityEvent",
-      label: "Entity Event",
-      options(p) {
-        p.required = true;
+    this.reply.properties.addLink({
+      name: "item",
+      label: `Entity Event`,
+      options(p: PropLink) {
+        p.universal = true;
+        p.readOnly = true;
+        p.lookup = {
+          typeName: `${this.componentTypeName}Event`,
+        };
       },
     });
   }

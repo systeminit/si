@@ -1,6 +1,6 @@
-import { snakeCase } from "change-case";
+import { RelationshipList } from "./prop/relationships";
 
-interface PropConstructor {
+export interface PropConstructor {
   name: string;
   label: string;
   componentTypeName: string;
@@ -12,6 +12,7 @@ export type PropValue =
   | string[]
   | Record<string, any>
   | boolean;
+
 export type PropDefaultValues = {
   [key: string]: PropValue;
 };
@@ -22,6 +23,9 @@ export abstract class Prop {
   rules: ((v: any) => boolean | string)[];
   required: boolean;
   readOnly: boolean;
+  relationships: RelationshipList;
+
+  // Hidden from the UI
   hidden: boolean;
   repeated: boolean;
   universal: boolean;
@@ -29,6 +33,8 @@ export abstract class Prop {
   parentName: string;
   reference: boolean;
   componentTypeName: string;
+  // Hidden from the API
+  skip: boolean;
 
   constructor({
     name,
@@ -61,32 +67,12 @@ export abstract class Prop {
     this.lookupTag = null;
     this.parentName = "";
     this.reference = false;
+    this.skip = false;
+    this.relationships = new RelationshipList();
   }
 
   abstract kind(): string;
-  abstract protobufType(): string;
   abstract defaultValue(): PropValue;
-
-  protobufDefinition(inputNumber: number, packageName = ""): string {
-    let repeated: string;
-    if (this.repeated) {
-      repeated = "repeated ";
-    } else {
-      repeated = "";
-    }
-    const name = `${this.name}`;
-    return `${repeated}${packageName}${this.protobufType()} ${snakeCase(
-      name,
-    )} = ${inputNumber};`;
-  }
-
-  protobufImportPath(): string {
-    return "";
-  }
-
-  protobufPackageName(): string {
-    return "";
-  }
 
   bagNames(): string[] {
     return [];
