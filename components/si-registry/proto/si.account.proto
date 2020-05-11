@@ -91,7 +91,6 @@ message Capability {
 }
 message UserSiProperties {
   google.protobuf.StringValue billing_account_id = 1001;
-  google.protobuf.StringValue current_txn = 1002;
 }
 message User {
   google.protobuf.StringValue id = 1;

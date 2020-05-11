@@ -250,7 +250,6 @@ export interface NexusGenInputs {
   }
   UserSiPropertiesRequest: { // input type
     billingAccountId: string; // String!
-    currentTxn?: string | null; // String
   }
   WorkspaceCreateRequest: { // input type
     displayName: string; // String!
@@ -635,7 +634,6 @@ export interface NexusGenRootTypes {
   }
   UserSiProperties: { // root type
     billingAccountId?: string | null; // String
-    currentTxn?: string | null; // String
   }
   Workspace: { // root type
     displayName?: string | null; // String
@@ -1143,7 +1141,6 @@ export interface NexusGenFieldTypes {
   }
   UserSiProperties: { // field return type
     billingAccountId: string | null; // String
-    currentTxn: string | null; // String
   }
   Workspace: { // field return type
     associations: NexusGenRootTypes['WorkspaceAssociations'] | null; // WorkspaceAssociations

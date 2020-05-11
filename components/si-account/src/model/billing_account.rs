@@ -32,13 +32,9 @@ impl BillingAccount {
             .user
             .ok_or_else(|| DataError::RequiredField("user".into()))?;
 
-        debug!("get transaction id");
-        let txn_id = db.get_new_txn_id().await?;
-
         debug!("user si properties");
         let user_si_properties = UserSiProperties {
             billing_account_id: billing_account.id.clone(),
-            current_txn: Some(txn_id.to_string()),
         };
 
         debug!("user create");

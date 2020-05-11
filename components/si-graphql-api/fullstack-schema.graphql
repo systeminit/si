@@ -1471,17 +1471,11 @@ input UserLoginRequest {
 type UserSiProperties {
   """Billing Account ID"""
   billingAccountId: String
-
-  """The users current transaction id (128 bit integer)"""
-  currentTxn: String
 }
 
 input UserSiPropertiesRequest {
   """Billing Account ID"""
   billingAccountId: String!
-
-  """The users current transaction id (128 bit integer)"""
-  currentTxn: String
 }
 
 type Workspace {
