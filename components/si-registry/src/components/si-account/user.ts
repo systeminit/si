@@ -1,9 +1,4 @@
-import {
-  PropObject,
-  PropMethod,
-  PropLink,
-  PropNumber,
-} from "../../components/prelude";
+import { PropObject, PropMethod, PropLink } from "../../components/prelude";
 import { registry } from "../../registry";
 import { SystemObject } from "../../systemComponent";
 

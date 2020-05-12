@@ -493,6 +493,26 @@ export class RustFormatter {
         }
       }
     }
+    for (const prop of this.systemObject.fields.attrs) {
+      const variableName = snakeCase(prop.name);
+      const defaultValue = prop.defaultValue();
+      if (defaultValue) {
+        if (prop.kind() == "text") {
+          result.push(
+            `result.${variableName} = "${defaultValue}".to_string();`,
+          );
+        } else if (prop.kind() == "enum") {
+          const enumName = `${pascalCase(
+            this.systemObject.typeName,
+          )}${pascalCase(prop.name)}`;
+          result.push(
+            `result.set_${variableName}(crate::protobuf::${enumName}::${pascalCase(
+              defaultValue as string,
+            )});`,
+          );
+        }
+      }
+    }
     return result.join("\n");
   }
 

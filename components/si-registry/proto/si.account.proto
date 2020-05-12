@@ -34,6 +34,14 @@ service Account {
   rpc IntegrationInstanceList(IntegrationInstanceListRequest) returns (IntegrationInstanceListReply);
   rpc IntegrationInstanceGet(IntegrationInstanceGetRequest) returns (IntegrationInstanceGetReply);
   rpc IntegrationInstanceCreate(IntegrationInstanceCreateRequest) returns (IntegrationInstanceCreateReply);
+  rpc ChangeSetList(ChangeSetListRequest) returns (ChangeSetListReply);
+  rpc ChangeSetGet(ChangeSetGetRequest) returns (ChangeSetGetReply);
+  rpc ChangeSetCreate(ChangeSetCreateRequest) returns (ChangeSetCreateReply);
+  rpc ChangeSetEntryList(ChangeSetEntryListRequest) returns (ChangeSetEntryListReply);
+  rpc ChangeSetEntryGet(ChangeSetEntryGetRequest) returns (ChangeSetEntryGetReply);
+  rpc ChangeSetEntryCreate(ChangeSetEntryCreateRequest) returns (ChangeSetEntryCreateReply);
+  rpc ItemGet(ItemGetRequest) returns (ItemGetReply);
+  rpc ItemList(ItemListRequest) returns (ItemListReply);
 }
 message BillingAccount {
   google.protobuf.StringValue id = 1;
@@ -390,4 +398,134 @@ message IntegrationInstanceCreateRequest {
 }
 message IntegrationInstanceCreateReply {
   si.account.IntegrationInstance item = 1001;
+}
+message ChangeSetSiProperties {
+  google.protobuf.StringValue billing_account_id = 1001;
+  google.protobuf.StringValue organization_id = 1002;
+  google.protobuf.StringValue workspace_id = 1003;
+}
+enum ChangeSetStatus {
+  CHANGE_SET_STATUS_UNKNOWN = 0;
+  CHANGE_SET_STATUS_OPEN = 1;
+  CHANGE_SET_STATUS_CLOSED = 2;
+  CHANGE_SET_STATUS_ABANDONED = 3;
+}
+message ChangeSet {
+  google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue name = 2;
+  google.protobuf.StringValue display_name = 3;
+  si.data.DataStorable si_storable = 4;
+  si.account.ChangeSetSiProperties si_properties = 1001;
+  google.protobuf.StringValue created_by_user_id = 1002;
+  repeated google.protobuf.StringValue change_set_item_order = 1003;
+  ChangeSetStatus status = 1004;
+}
+message ChangeSetListRequest {
+  si.data.DataQuery query = 1;
+  google.protobuf.UInt32Value page_size = 2;
+  google.protobuf.StringValue order_by = 3;
+  si.data.DataPageTokenOrderByDirection order_by_direction = 4;
+  google.protobuf.StringValue page_token = 5;
+  google.protobuf.StringValue scope_by_tenant_id = 6;
+}
+message ChangeSetListReply {
+  repeated si.account.ChangeSet items = 1;
+  google.protobuf.UInt32Value total_count = 2;
+  google.protobuf.StringValue next_page_token = 3;
+}
+message ChangeSetGetRequest {
+  google.protobuf.StringValue id = 1001;
+}
+message ChangeSetGetReply {
+  si.account.ChangeSet item = 1001;
+}
+message ChangeSetCreateRequest {
+  google.protobuf.StringValue name = 1001;
+  google.protobuf.StringValue display_name = 1002;
+  si.account.ChangeSetSiProperties si_properties = 1003;
+  google.protobuf.StringValue created_by_user_id = 1004;
+}
+message ChangeSetCreateReply {
+  si.account.ChangeSet item = 1001;
+}
+message ChangeSetEntrySiProperties {
+  google.protobuf.StringValue billing_account_id = 1001;
+  google.protobuf.StringValue organization_id = 1002;
+  google.protobuf.StringValue workspace_id = 1003;
+  google.protobuf.StringValue change_set_id = 1004;
+}
+enum ChangeSetEntryStatus {
+  CHANGE_SET_ENTRY_STATUS_UNKNOWN = 0;
+  CHANGE_SET_ENTRY_STATUS_OPEN = 1;
+  CHANGE_SET_ENTRY_STATUS_CLOSED = 2;
+  CHANGE_SET_ENTRY_STATUS_ABANDONED = 3;
+}
+message ChangeSetEntry {
+  google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue name = 2;
+  google.protobuf.StringValue display_name = 3;
+  si.data.DataStorable si_storable = 4;
+  si.account.ChangeSetEntrySiProperties si_properties = 1001;
+  google.protobuf.StringValue created_by_user_id = 1002;
+  google.protobuf.StringValue item_id = 1003;
+  ChangeSetEntryStatus status = 1004;
+}
+message ChangeSetEntryListRequest {
+  si.data.DataQuery query = 1;
+  google.protobuf.UInt32Value page_size = 2;
+  google.protobuf.StringValue order_by = 3;
+  si.data.DataPageTokenOrderByDirection order_by_direction = 4;
+  google.protobuf.StringValue page_token = 5;
+  google.protobuf.StringValue scope_by_tenant_id = 6;
+}
+message ChangeSetEntryListReply {
+  repeated si.account.ChangeSetEntry items = 1;
+  google.protobuf.UInt32Value total_count = 2;
+  google.protobuf.StringValue next_page_token = 3;
+}
+message ChangeSetEntryGetRequest {
+  google.protobuf.StringValue id = 1001;
+}
+message ChangeSetEntryGetReply {
+  si.account.ChangeSetEntry item = 1001;
+}
+message ChangeSetEntryCreateRequest {
+  google.protobuf.StringValue name = 1001;
+  google.protobuf.StringValue display_name = 1002;
+  si.account.ChangeSetEntrySiProperties si_properties = 1003;
+  google.protobuf.StringValue created_by_user_id = 1004;
+}
+message ChangeSetEntryCreateReply {
+  si.account.ChangeSetEntry item = 1001;
+}
+message ItemSiProperties {
+  google.protobuf.StringValue billing_account_id = 1001;
+  google.protobuf.StringValue organization_id = 1002;
+  google.protobuf.StringValue workspace_id = 1003;
+}
+message Item {
+  google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue name = 2;
+  google.protobuf.StringValue display_name = 3;
+  si.data.DataStorable si_storable = 4;
+  si.account.ItemSiProperties si_properties = 1001;
+}
+message ItemGetRequest {
+  google.protobuf.StringValue id = 1001;
+}
+message ItemGetReply {
+  si.account.Item item = 1001;
+}
+message ItemListRequest {
+  si.data.DataQuery query = 1;
+  google.protobuf.UInt32Value page_size = 2;
+  google.protobuf.StringValue order_by = 3;
+  si.data.DataPageTokenOrderByDirection order_by_direction = 4;
+  google.protobuf.StringValue page_token = 5;
+  google.protobuf.StringValue scope_by_tenant_id = 6;
+}
+message ItemListReply {
+  repeated si.account.Item items = 1;
+  google.protobuf.UInt32Value total_count = 2;
+  google.protobuf.StringValue next_page_token = 3;
 }

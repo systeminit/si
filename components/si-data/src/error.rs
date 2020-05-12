@@ -11,6 +11,8 @@ pub enum DataError {
     CouchbaseError(#[from] couchbase::CouchbaseError),
     #[error("cannot encode data via cbor")]
     CborEncodeError(#[from] serde_cbor::error::Error),
+    #[error("must have an id field")]
+    MissingId,
     #[error("must have at least one tenant id")]
     MissingTenantIds,
     #[error("a listed tenant id does not exist: {0}")]
@@ -39,6 +41,8 @@ pub enum DataError {
     ProstEncodeError(#[from] prost::EncodeError),
     #[error("cannot decode data via prost")]
     ProstDecodeError(#[from] prost::DecodeError),
+    #[error("serde json error: {0}")]
+    SerdeJson(#[from] serde_json::error::Error),
     #[error("cannot open a sodium oxide secret box")]
     SodiumOxideOpen,
     #[error("error validating item for insertion: {0}")]

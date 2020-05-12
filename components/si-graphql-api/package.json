@@ -53,6 +53,7 @@
     "webpackbar": "^4.0.0"
   },
   "dependencies": {
+    "@babel/runtime": "^7.9.6",
     "@grpc/proto-loader": "^0.5.3",
     "@iarna/toml": "^2.2.3",
     "@opentelemetry/core": "^0.7.0",
