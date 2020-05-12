@@ -11,5 +11,8 @@ import "./components/si-account/workspace";
 import "./components/si-account/integration";
 import "./components/si-account/integrationService";
 import "./components/si-account/integrationInstance";
+import "./components/si-account/changeSet";
+import "./components/si-account/changeSetEntry";
+import "./components/si-account/item";
 import "./components/si-kubernetes/kubernetes";
 import "./components/si-kubernetes/deployment";

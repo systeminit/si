@@ -865,7 +865,8 @@ export class SiRegistryGenerator {
         component,
       );
     } else if (prop.kind() == "enum") {
-      return input;
+      const enumProp = prop as PropEnum;
+      return enumProp.variants[input - 1].toUpperCase();
     } else {
       console.log(
         `I don't know what you are: ${this.graphqlFieldName(
