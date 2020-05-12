@@ -653,6 +653,19 @@ impl Db {
         .await
     }
 
+    // TODO: Do you want to select the things that are in the system, but
+    // replace things that are in a changeset? This query does that for you.
+    // It is fucking bonkers.
+    //
+    // SELECT `si`.*
+    // FROM `si` AS a
+    // WHERE a.siStorable.typeName = "user"
+    //     AND (a.siProperties.changeSetId = "change_set:560fb205-8699-44ea-a1ac-44252eb950c9"
+    //         OR (a.siProperties.changeSetId IS NOT VALUED
+    //           AND a.id NOT IN (
+    //             SELECT RAW id FROM `si` as b where b.siStorable.typeName = "user"
+    //                    AND b.siProperties.changeSetId = "change_set:560fb205-8699-44ea-a1ac-44252eb950c9")))
+    //
     pub async fn list<
         I: DeserializeOwned + Storable + std::fmt::Debug,
         O: AsRef<str> + std::fmt::Debug,
