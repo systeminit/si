@@ -54,6 +54,7 @@
     "webpackbar": "^4.0.0"
   },
   "dependencies": {
+    "@babel/runtime": "^7.9.6",
     "@iarna/toml": "^2.2.3",
     "chalk": "^4.0.0",
     "change-case": "^4.1.1",
