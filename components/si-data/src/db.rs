@@ -660,11 +660,11 @@ impl Db {
     // SELECT `si`.*
     // FROM `si` AS a
     // WHERE a.siStorable.typeName = "user"
-    //     AND (a.siProperties.changeSetId = "change_set:560fb205-8699-44ea-a1ac-44252eb950c9"
-    //         OR (a.siProperties.changeSetId IS NOT VALUED
+    //     AND (a.siStorable.changeSetId = "change_set:560fb205-8699-44ea-a1ac-44252eb950c9"
+    //         OR (a.siStorable.changeSetId IS NOT VALUED
     //           AND a.id NOT IN (
     //             SELECT RAW id FROM `si` as b where b.siStorable.typeName = "user"
-    //                    AND b.siProperties.changeSetId = "change_set:560fb205-8699-44ea-a1ac-44252eb950c9")))
+    //                    AND b.siStorable.changeSetId = "change_set:560fb205-8699-44ea-a1ac-44252eb950c9")))
     //
     pub async fn list<
         I: DeserializeOwned + Storable + std::fmt::Debug,
@@ -730,21 +730,156 @@ impl Db {
             let mut named_params = HashMap::new();
             named_params.insert("type_name".into(), json![type_name]);
             named_params.insert("order_by".into(), json![order_by]);
+            named_params.insert("tenant_id".into(), json![contained_within.as_ref()]);
+
+            // Base query
+            //   + View Context Filter?
+            //   + User Query?
+            let cbquery = match query {
+                Some(q) => {
+                    if let Some(view_context) = q.view_context.as_ref() {
+                        named_params.insert("view_context".into(), json![view_context]);
+
+                        if let Some(change_set_id) = q.change_set_id.as_ref() {
+                            named_params.insert("change_set_id".into(), json![change_set_id]);
+
+                            if q.items.is_empty() {
+                                // View Context Filter & Change Set ID
+                                format!(
+                                    "SELECT a.* \
+                                       FROM `{bucket}` AS a \
+                                       WHERE a.siStorable.typeName = $type_name \
+                                           AND ARRAY_CONTAINS(a.siStorable.tenantIds, $tenant_id) \
+                                           AND ARRAY_CONTAINS(a.siStorable.viewContext, $view_context) \
+                                           AND (a.siStorable.changeSetId = $change_set_id \
+                                                OR (a.siStorable.changeSetId IS NOT VALUED \
+                                                    AND a.id NOT IN ( \
+                                                      SELECT RAW siStorable.itemId FROM `{bucket}` AS b WHERE b.siStorable.typeName = $type_name \
+                                                             AND b.siStorable.changeSetId = $change_set_id))) \
+                                       ORDER BY a.[$order_by] {order_by_direction}",
+                                    order_by_direction=order_by_direction.to_string(),
+                                    bucket=self.bucket_name,
+                                )
+                            } else {
+                                // View Context Filter & Change Set ID & Query
+                                format!(
+                                    "SELECT {bucket}.* \
+                                       FROM `{bucket}` \
+                                       WHERE siStorable.typeName = $type_name \
+                                           AND ARRAY_CONTAINS(siStorable.tenantIds, $tenant_id) \
+                                           AND ARRAY_CONTAINS(siStorable.viewContext, $view_context) \
+                                           AND {query} \
+                                           AND (a.siStorable.changeSetId = $change_set_id \
+                                                OR (a.siStorable.changeSetId IS NOT VALUED \
+                                                    AND a.id NOT IN ( \
+                                                      SELECT RAW siStorable.itemId FROM `{bucket}` AS b WHERE b.siStorable.typeName = $type_name \
+                                                             AND b.siStorable.changeSetId = $change_set_id))) \
+                                       ORDER BY {bucket}.[$order_by] {order_by_direction}",
+                                    query=q.as_n1ql(&self.bucket_name)?,
+                                    order_by_direction=order_by_direction.to_string(),
+                                    bucket=self.bucket_name,
+                                )
+                            }
+                        } else {
+                            if q.items.is_empty() {
+                                // View Context Filter
+                                format!(
+                                    "SELECT {bucket}.* \
+                                       FROM `{bucket}` \
+                                       WHERE siStorable.typeName = $type_name \
+                                           AND siStorable.changeSetId IS NOT VALUED \
+                                           AND ARRAY_CONTAINS(siStorable.tenantIds, $tenant_id) \
+                                           AND ARRAY_CONTAINS(siStorable.viewContext, $view_context) \
+                                       ORDER BY {bucket}.[$order_by] {order_by_direction}",
+                                    order_by_direction=order_by_direction.to_string(),
+                                    bucket=self.bucket_name,
+                                )
+                            } else {
+                                // View Context Filter & Query
+                                format!(
+                                    "SELECT {bucket}.* \
+                                       FROM `{bucket}` \
+                                       WHERE siStorable.typeName = $type_name \
+                                           AND siStorable.changeSetId IS NOT VALUED \
+                                           AND ARRAY_CONTAINS(siStorable.tenantIds, $tenant_id) \
+                                           AND ARRAY_CONTAINS(siStorable.viewContext, $view_context) \
+                                           AND {query} \
+                                       ORDER BY {bucket}.[$order_by] {order_by_direction}",
+                                    query=q.as_n1ql(&self.bucket_name)?,
+                                    order_by_direction=order_by_direction.to_string(),
+                                    bucket=self.bucket_name,
+                                )
+                            }
+                        }
+                    } else if let Some(change_set_id) = q.change_set_id.as_ref() {
+                        named_params.insert("change_set_id".into(), json![change_set_id]);
+
+                        if q.items.is_empty() {
+                            // Change Set ID only
+                            format!(
+                                "SELECT a.* \
+                                       FROM `{bucket}` AS a \
+                                       WHERE a.siStorable.typeName = $type_name \
+                                           AND ARRAY_CONTAINS(a.siStorable.tenantIds, $tenant_id) \
+                                           AND (a.siStorable.changeSetId = $change_set_id \
+                                                OR (a.siStorable.changeSetId IS NOT VALUED \
+                                                    AND a.id NOT IN ( \
+                                                      SELECT RAW siStorable.itemId FROM `{bucket}` AS b WHERE b.siStorable.typeName = $type_name \
+                                                      AND b.siStorable.changeSetId = $change_set_id))) \
+                                       ORDER BY a.[$order_by] {order_by_direction}",
+                                       order_by_direction=order_by_direction.to_string(),
+                                       bucket=self.bucket_name,
+                            )
+                        } else {
+                            // Change Set ID & Query
+                            format!(
+                                "SELECT {bucket}.*  \
+                                       FROM `{bucket}` \
+                                       WHERE siStorable.typeName = $type_name \
+                                           AND ARRAY_CONTAINS(siStorable.tenantIds, $tenant_id) \
+                                           AND {query} \
+                                           AND (a.siStorable.changeSetId = $change_set_id \
+                                                OR (a.siStorable.changeSetId IS NOT VALUED \
+                                                    AND a.id NOT IN ( \
+                                                      SELECT RAW siStorable.itemId FROM `{bucket}` AS b WHERE b.siStorable.typeName = $type_name  \
+                                                             AND b.siStorable.changeSetId = $change_set_id))) \
+                                       ORDER BY {bucket}.[$order_by] {order_by_direction}",
+                                       query=q.as_n1ql(&self.bucket_name)?,
+                                       order_by_direction=order_by_direction.to_string(),
+                                       bucket=self.bucket_name,
+                            )
+                        }
+                    } else {
+                        // No filters or change set id, but a query was provided - it must have items to
+                        // complete
+                        format!(
+                            "SELECT {bucket}.* \
+                               FROM `{bucket}` \
+                               WHERE siStorable.typeName = $type_name \
+                                 AND siStorable.changeSetId IS NOT VALUED \
+                                 AND ARRAY_CONTAINS(siStorable.tenantIds, $tenant_id) \
+                                 AND {query} \
+                                 ORDER BY {bucket}.[$order_by] {order_by_direction}",
+                            query=q.as_n1ql(&self.bucket_name)?,
+                            order_by_direction=order_by_direction.to_string(),
+                            bucket=self.bucket_name,
+                        )
+                    }
+                },
+                None => format!("SELECT {bucket}.* \
+                                  FROM `{bucket}` \
+                                  WHERE siStorable.typeName = $type_name \
+                                    AND siStorable.changeSetId IS NOT VALUED \
+                                    AND ARRAY_CONTAINS(siStorable.tenantIds, $tenant_id) \
+                                    ORDER BY {bucket}.[$order_by] {}", 
+                                    order_by_direction, 
+                                    bucket=self.bucket_name, ),
+            };
+            span.record("db.list.query", &tracing::field::display(&cbquery));
+
             let named_options = QueryOptions::new()
                 .set_named_parameters(named_params)
                 .set_scan_consistency(self.scan_consistency);
-
-            let cbquery = match query {
-                Some(q) => format!(
-                   "SELECT {bucket}.* FROM `{bucket}` WHERE siStorable.typeName = $type_name AND ARRAY_CONTAINS(siStorable.tenantIds, \"{tenant_id}\") AND {query} ORDER BY {bucket}.[$order_by] {order_by_direction}",
-                    query=q.as_n1ql(&self.bucket_name)?,
-                    order_by_direction=order_by_direction.to_string(),
-                    bucket=self.bucket_name,
-                    tenant_id=contained_within,
-                ),
-                None => format!("SELECT {bucket}.* FROM `{bucket}` WHERE siStorable.typeName = $type_name AND ARRAY_CONTAINS(siStorable.tenantIds, \"{tenant_id}\") ORDER BY {bucket}.[$order_by] {}", order_by_direction, bucket=self.bucket_name, tenant_id=contained_within),
-            };
-            span.record("db.list.query", &tracing::field::display(&cbquery));
 
             let mut result = {
                 let span = info_span!("db.cb.query", db.cb.query = &tracing::field::display(&cbquery), db.cb.query.success = tracing::field::Empty);

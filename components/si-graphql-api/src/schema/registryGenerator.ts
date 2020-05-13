@@ -19,15 +19,10 @@ import {
   mutationType,
   queryField,
   mutationField,
-} from "nexus";
-import { logger } from "@/logger";
-import {
-  ObjectDefinitionBlock,
-  InputDefinitionBlock,
   extendType,
-} from "nexus/dist/core";
+} from "@nexus/schema";
+import { logger } from "@/logger";
 import { camelCase, pascalCase, constantCase } from "change-case";
-import { Context } from "@/index";
 import { AuthenticationError } from "apollo-server";
 import traceApi from "@opentelemetry/api";
 

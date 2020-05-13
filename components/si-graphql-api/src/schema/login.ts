@@ -1,9 +1,8 @@
-import { arg, queryField, objectType, inputObjectType } from "nexus";
+import { arg, queryField, objectType, inputObjectType } from "@nexus/schema";
 import * as jwtLib from "jsonwebtoken";
 import { AuthenticationError } from "apollo-server";
 
 import { environment } from "@/environment";
-import { Context } from "@/.";
 
 const UserLoginRequest = inputObjectType({
   name: "UserLoginRequest",

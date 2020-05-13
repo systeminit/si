@@ -44,6 +44,27 @@ registry.base({
         p.universal = true;
       },
     });
+    c.fields.addText({
+      name: "viewContext",
+      label: "View context tags",
+      options(p) {
+        p.universal = true;
+      },
+    });
+    c.fields.addText({
+      name: "changeSetId",
+      label: "The Change Set ID for this item",
+      options(p) {
+        p.universal = true;
+      },
+    });
+    c.fields.addText({
+      name: "itemId",
+      label: "The canonical ID for this item",
+      options(p) {
+        p.universal = true;
+      },
+    });
   },
 });
 
@@ -118,6 +139,20 @@ registry.base({
     c.fields.addBool({
       name: "isNot",
       label: "Is Not",
+      options(p) {
+        p.universal = true;
+      },
+    });
+    c.fields.addText({
+      name: "viewContext",
+      label: "Filter by View Context Tag",
+      options(p) {
+        p.universal = true;
+      },
+    });
+    c.fields.addText({
+      name: "changeSetId",
+      label: "Filter by Change Set ID",
       options(p) {
         p.universal = true;
       },

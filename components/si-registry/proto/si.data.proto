@@ -11,6 +11,9 @@ message DataStorable {
   repeated google.protobuf.StringValue tenant_ids = 1;
   google.protobuf.StringValue natural_key = 2;
   google.protobuf.StringValue type_name = 3;
+  google.protobuf.StringValue view_context = 4;
+  google.protobuf.StringValue change_set_id = 5;
+  google.protobuf.StringValue item_id = 6;
 }
 enum DataPageTokenOrderByDirection {
   DATA_PAGE_TOKEN_ORDER_BY_DIRECTION_UNKNOWN = 0;
@@ -56,5 +59,7 @@ message DataQueryItems {
 message DataQuery {
   DataQueryBooleanTerm boolean_term = 1;
   google.protobuf.BoolValue is_not = 2;
-  repeated si.data.DataQueryItems items = 3;
+  google.protobuf.StringValue view_context = 3;
+  google.protobuf.StringValue change_set_id = 4;
+  repeated si.data.DataQueryItems items = 5;
 }

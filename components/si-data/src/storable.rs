@@ -52,6 +52,9 @@ impl DataStorable {
             tenant_ids: Vec::new(),
             natural_key: None,
             type_name: Some(type_name.into()),
+            view_context: None,
+            change_set_id: None,
+            item_id: None,
         }
     }
 
