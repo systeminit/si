@@ -8,4 +8,5 @@ export { PropNumber } from "../prop/number";
 export { PropSelect } from "../prop/select";
 export { PropText } from "../prop/text";
 export { PropPassword } from "../prop/password";
+export { Relationships, Updates, Either } from "../prop/relationships";
 export { Props, PropObject, PropAction, PropMethod } from "../attrList";

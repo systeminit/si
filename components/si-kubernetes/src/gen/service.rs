@@ -604,7 +604,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
                 crate::protobuf::KubernetesDeploymentEntityEvent::create_with_previous_entity(
                     &self.db,
                     auth.user_id(),
-                    "kubernetes_object_edit",
+                    "edit_kubernetes_object",
                     &entity,
                     previous_entity,
                 )
@@ -701,7 +701,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
                 crate::protobuf::KubernetesDeploymentEntityEvent::create_with_previous_entity(
                     &self.db,
                     auth.user_id(),
-                    "kubernetes_object_yaml_edit",
+                    "edit_kubernetes_object_yaml",
                     &entity,
                     previous_entity,
                 )

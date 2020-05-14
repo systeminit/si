@@ -18,7 +18,7 @@ info!(?entity);
 let entity_event = <%- fmt.entityEventName() %>::create_with_previous_entity(
     &self.db,
     auth.user_id(),
-    "<%- fmt.rustFieldNameForProp(propMethod) %>",
+    "<%- fmt.entityEditMethodName(propMethod) %>",
     &entity,
     previous_entity,
 )

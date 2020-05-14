@@ -53,6 +53,9 @@ impl crate::protobuf::KubernetesDeploymentEntity {
         result.si_properties = si_properties;
         result.si_storable = Some(si_storable);
 
+        // TODO: fix
+        // implement this!
+
         Ok(result)
     }
 
@@ -133,6 +136,49 @@ impl crate::protobuf::KubernetesDeploymentEntity {
             }
         };
         Ok(result)
+    }
+
+    pub fn edit_kubernetes_object(
+        &mut self,
+        property: crate::protobuf::KubernetesDeploymentEntityPropertiesKubernetesObject,
+    ) -> si_cea::CeaResult<()> {
+        use si_cea::Entity;
+
+        self.properties_mut()?.kubernetes_object = Some(property);
+        self.update_kubernetes_object_yaml_from_kubernetes_object()?;
+
+        Ok(())
+    }
+
+    pub fn edit_kubernetes_object_yaml(&mut self, property: String) -> si_cea::CeaResult<()> {
+        use si_cea::Entity;
+
+        self.properties_mut()?.kubernetes_object_yaml = Some(property);
+        self.update_kubernetes_object_from_kubernetes_object_yaml()?;
+
+        Ok(())
+    }
+
+    fn update_kubernetes_object_yaml_from_kubernetes_object(&mut self) -> si_cea::CeaResult<()> {
+        use si_cea::Entity;
+        use std::convert::TryInto;
+
+        if let Some(ref kubernetes_object) = self.properties()?.kubernetes_object {
+            self.properties_mut()?.kubernetes_object_yaml = Some(kubernetes_object.try_into()?);
+        }
+
+        Ok(())
+    }
+
+    fn update_kubernetes_object_from_kubernetes_object_yaml(&mut self) -> si_cea::CeaResult<()> {
+        use si_cea::Entity;
+        use std::convert::TryInto;
+
+        if let Some(ref kubernetes_object_yaml) = self.properties()?.kubernetes_object_yaml {
+            self.properties_mut()?.kubernetes_object = Some(kubernetes_object_yaml.try_into()?);
+        }
+
+        Ok(())
     }
 }
 
@@ -438,5 +484,27 @@ impl si_data::Storable for crate::protobuf::KubernetesDeploymentEntity {
 
     fn order_by_fields() -> Vec<&'static str> {
         vec!["siStorable.naturalKey", "id", "name", "displayName", "description", "siStorable.naturalKey", "entitySiProperties.entityState", "siStorable.naturalKey", "siStorable.naturalKey", "properties.kubernetesObject.apiVersion", "properties.kubernetesObject.kind", "siStorable.naturalKey", "properties.kubernetesObject.kubernetesMetadata.name", "properties.kubernetesObject.kubernetesMetadata.labels", "siStorable.naturalKey", "properties.kubernetesObject.spec.replicas", "siStorable.naturalKey", "properties.kubernetesObject.spec.kubernetesSelector.matchLabels", "siStorable.naturalKey", "siStorable.naturalKey", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesMetadata.name", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesMetadata.labels", "siStorable.naturalKey", "siStorable.naturalKey", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesPodSpec.kubernetesContainer.name", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesPodSpec.kubernetesContainer.image", "siStorable.naturalKey", "siStorable.naturalKey", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesPodSpec.kubernetesContainer.ports.portValues.containerPort", "properties.kubernetesObjectYaml", "siStorable.naturalKey", "constraints.componentName", "constraints.componentDisplayName", "constraints.kubernetesVersion", "siStorable.naturalKey", "constraints.componentName", "constraints.componentDisplayName", "constraints.kubernetesVersion"]
+    }
+}
+
+impl std::convert::TryFrom<&crate::protobuf::KubernetesDeploymentEntityPropertiesKubernetesObject>
+    for String
+{
+    type Error = si_cea::CeaError;
+
+    fn try_from(
+        value: &crate::protobuf::KubernetesDeploymentEntityPropertiesKubernetesObject,
+    ) -> std::result::Result<Self, Self::Error> {
+        Ok(serde_yaml::to_string(value)?)
+    }
+}
+
+impl std::convert::TryFrom<&String>
+    for crate::protobuf::KubernetesDeploymentEntityPropertiesKubernetesObject
+{
+    type Error = si_cea::CeaError;
+
+    fn try_from(value: &String) -> std::result::Result<Self, Self::Error> {
+        Ok(serde_yaml::from_str(value)?)
     }
 }

@@ -100,17 +100,6 @@ function generateRust(): Listr {
     const codegenRust = new CodegenRust(serviceName);
     const systemObjects = registry.getObjectsForServiceName(serviceName);
 
-    if (codegenRust.hasServiceMethods()) {
-      tasks.push({
-        title: `Rust service ${chalk.keyword("orange")(
-          "gen/service.rs",
-        )} for ${serviceName}`,
-        task: async (): Promise<void> => {
-          await codegenRust.generateGenService();
-        },
-      });
-    }
-
     if (systemObjects.some(o => o.kind() != "baseObject")) {
       tasks.push({
         title: `Rust ${chalk.keyword("orange")(
@@ -121,25 +110,60 @@ function generateRust(): Listr {
         },
       });
 
-      tasks.push({
-        title: `Rust ${chalk.keyword("orange")(
-          "gen/model/mod.rs",
-        )} for ${serviceName}`,
-        task: async (): Promise<void> => {
-          await codegenRust.generateGenModelMod();
-        },
-      });
+      if (codegenRust.hasServiceMethods()) {
+        tasks.push({
+          title: `Rust service ${chalk.keyword("orange")(
+            "gen/service.rs",
+          )} for ${serviceName}`,
+          task: async (): Promise<void> => {
+            await codegenRust.generateGenService();
+          },
+        });
+      }
 
-      for (const systemObject of registry.getObjectsForServiceName(
-        serviceName,
-      )) {
-        if (systemObject.kind() != "baseObject") {
+      if (codegenRust.hasModels()) {
+        tasks.push({
+          title: `Rust ${chalk.keyword("orange")(
+            "gen/model/mod.rs",
+          )} for ${serviceName}`,
+          task: async (): Promise<void> => {
+            await codegenRust.generateGenModelMod();
+          },
+        });
+
+        for (const systemObject of registry.getObjectsForServiceName(
+          serviceName,
+        )) {
+          if (systemObject.kind() != "baseObject") {
+            tasks.push({
+              title: `Rust model ${chalk.keyword("orange")(serviceName)} ${
+                systemObject.typeName
+              }`,
+              task: async (): Promise<void> => {
+                await codegenRust.generateGenModel(systemObject);
+              },
+            });
+          }
+        }
+      }
+
+      if (codegenRust.hasEntityIntegrationServcices()) {
+        tasks.push({
+          title: `Rust ${chalk.keyword("orange")(
+            "gen/agent/mod.rs",
+          )} for ${serviceName}`,
+          task: async (): Promise<void> => {
+            await codegenRust.generateGenAgentMod();
+          },
+        });
+
+        for (const agent of codegenRust.entityIntegrationServices()) {
           tasks.push({
-            title: `Rust model ${chalk.keyword("orange")(serviceName)} ${
-              systemObject.typeName
+            title: `Rust agent ${chalk.keyword("orange")(serviceName)} ${
+              agent.agentName
             }`,
             task: async (): Promise<void> => {
-              await codegenRust.generateGenModel(systemObject);
+              await codegenRust.generateGenAgent(agent);
             },
           });
         }

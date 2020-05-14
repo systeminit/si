@@ -11,6 +11,9 @@ impl <%- fmt.structName() %> {
     <%_ if (fmt.isComponentObject()) { _%>
         <%- include('implPick.rs.ejs', { fmt: fmt }) %>
     <%_ } _%>
+    <%_ if (fmt.isEntityObject()) { _%>
+        <%- include('implEdit.rs.ejs', { fmt: fmt }) %>
+    <%_ } _%>
 }
 
 <%_ if (fmt.isEntityEventObject()) { _%>
@@ -20,6 +23,10 @@ impl <%- fmt.structName() %> {
 <%_ } _%>
 
 <%- include('storable.rs.ejs', { fmt: fmt }) %>
+
 <%_ if (fmt.isMigrateable()) { _%>
     <%- include('migrateable.rs.ejs', { fmt: fmt }) %>
+<%_ } _%>
+<%_ if (fmt.isEntityObject()) { _%>
+    <%- include('implEntityPropertyTryFroms.rs.ejs', { fmt: fmt }) %>
 <%_ } _%>

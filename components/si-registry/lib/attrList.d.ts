@@ -22,6 +22,10 @@ interface AttrListConstructor {
     readOnly?: boolean;
     autoCreateEdits?: boolean;
 }
+export interface IntegrationService {
+    integrationName: string;
+    integrationServiceName: string;
+}
 export declare class AttrList {
     attrs: Props[];
     readOnly: boolean;
@@ -85,6 +89,7 @@ export declare class PropMethod extends Prop {
     bagNames(): string[];
 }
 export declare class PropAction extends PropMethod {
+    integrationServices: IntegrationService[];
     constructor({ name, label, componentTypeName, parentName, defaultValue, }: {
         name: Prop["name"];
         label: Prop["label"];

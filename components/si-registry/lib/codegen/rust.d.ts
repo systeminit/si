@@ -1,30 +1,57 @@
-import { ObjectTypes } from "../systemComponent";
+import { ObjectTypes, EntityObject } from "../systemComponent";
 import * as PropPrelude from "../components/prelude";
-import { Props } from "../attrList";
+import { Props, IntegrationService } from "../attrList";
 interface RustTypeAsPropOptions {
     reference?: boolean;
     option?: boolean;
 }
+interface AgentIntegrationService {
+    agentName: string;
+    entity: EntityObject;
+    integrationName: string;
+    integrationServiceName: string;
+}
+interface PropertyUpdate {
+    from: PropPrelude.Props;
+    to: PropPrelude.Props;
+}
+interface PropertyEitherSet {
+    set: PropPrelude.Props[];
+}
 export declare class RustFormatter {
     systemObject: ObjectTypes;
     constructor(systemObject: RustFormatter["systemObject"]);
-    structName(): string;
-    modelName(): string;
+    hasCreateMethod(): boolean;
+    hasEditEithersForAction(propAction: PropPrelude.PropAction): boolean;
+    hasEditUpdatesForAction(propAction: PropPrelude.PropAction): boolean;
+    hasEditUpdatesAndEithers(): boolean;
+    isComponentObject(): boolean;
+    isEntityActionMethod(propMethod: PropPrelude.PropMethod): boolean;
+    isEntityEditMethod(propMethod: PropPrelude.PropMethod): boolean;
+    isEntityEventObject(): boolean;
+    isEntityObject(): boolean;
+    isMigrateable(): boolean;
+    isStorable(): boolean;
+    actionProps(): PropPrelude.PropAction[];
     componentName(): string;
     componentConstraintsName(): string;
     entityEditMethodName(propMethod: PropPrelude.PropMethod): string;
+    entityEditMethods(): PropPrelude.PropAction[];
+    entityEditProperty(propAction: PropPrelude.PropAction): Props;
+    entityEditPropertyField(propAction: PropPrelude.PropAction): string;
+    entityEditPropertyType(propAction: PropPrelude.PropAction): string;
+    entityEditPropertyUpdates(propAction: PropPrelude.PropAction): PropertyUpdate[];
+    entityEditPropertyEithers(): PropertyEitherSet[];
+    entityEditPropertyUpdateMethodName(propertyUpdate: PropertyUpdate): string;
     entityEventName(): string;
     entityName(): string;
     entityPropertiesName(): string;
-    modelServiceMethodName(propMethod: PropPrelude.PropMethod | PropPrelude.PropAction): string;
-    typeName(): string;
     errorType(): string;
-    hasCreateMethod(): boolean;
-    isComponentObject(): boolean;
-    isEntityObject(): boolean;
-    isEntityEventObject(): boolean;
-    isEntityActionMethod(propMethod: PropPrelude.PropMethod): boolean;
-    isEntityEditMethod(propMethod: PropPrelude.PropMethod): boolean;
+    modelName(): string;
+    modelServiceMethodName(propMethod: PropPrelude.PropMethod | PropPrelude.PropAction): string;
+    structName(): string;
+    typeName(): string;
+    implTryFromForPropertyUpdate(propertyUpdate: PropertyUpdate): string;
     implListRequestType(renderOptions?: RustTypeAsPropOptions): string;
     implListReplyType(renderOptions?: RustTypeAsPropOptions): string;
     implServiceRequestType(propMethod: PropPrelude.PropMethod, renderOptions?: RustTypeAsPropOptions): string;
@@ -48,8 +75,6 @@ export declare class RustFormatter {
     implServiceMethodListResultToReply(): string;
     implServiceMethodCreateDestructure(): string;
     naturalKey(): string;
-    isMigrateable(): boolean;
-    isStorable(): boolean;
     implCreateSetProperties(): string;
     implCreateAddToTenancy(): string;
     storableIsMvcc(): string;
@@ -70,16 +95,41 @@ export declare class RustFormatterService {
     implServerName(): string;
     implServiceMigrate(): string;
     hasEntities(): boolean;
+    isMigrateable(prop: ObjectTypes): boolean;
     hasMigratables(): boolean;
+}
+export declare class RustFormatterAgent {
+    agentName: string;
+    entity: EntityObject;
+    entityFormatter: RustFormatter;
+    integrationName: string;
+    integrationServiceName: string;
+    serviceName: string;
+    systemObjects: ObjectTypes[];
+    constructor(serviceName: string, agent: AgentIntegrationService);
+    systemObjectsAsFormatters(): RustFormatter[];
+    actionProps(): PropPrelude.PropAction[];
+    entityActionMethodNames(): string[];
+    dispatcherBaseTypeName(): string;
+    dispatcherTypeName(): string;
+    dispatchFunctionTraitName(): string;
 }
 export declare class CodegenRust {
     serviceName: string;
     constructor(serviceName: string);
+    hasModels(): boolean;
     hasServiceMethods(): boolean;
+    hasEntityIntegrationServcices(): boolean;
+    entities(): EntityObject[];
+    entityActions(entity: EntityObject): PropPrelude.PropAction[];
+    entityintegrationServicesFor(entity: EntityObject): IntegrationService[];
+    entityIntegrationServices(): AgentIntegrationService[];
     generateGenMod(): Promise<void>;
     generateGenModelMod(): Promise<void>;
     generateGenService(): Promise<void>;
     generateGenModel(systemObject: ObjectTypes): Promise<void>;
+    generateGenAgentMod(): Promise<void>;
+    generateGenAgent(agent: AgentIntegrationService): Promise<void>;
     makePath(pathPart: string): Promise<string>;
     formatCode(): Promise<void>;
     writeCode(filename: string, code: string): Promise<void>;

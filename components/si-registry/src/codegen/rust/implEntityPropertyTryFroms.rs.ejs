@@ -1,0 +1,16 @@
+<%_ for (const method of fmt.entityEditMethods()) { _%>
+    <%_ for (const pu of fmt.entityEditPropertyUpdates(method)) { _%>
+    impl std::convert::TryFrom<&<%- fmt.rustTypeForProp(pu.from, { option: false }) %>>
+        for <%- fmt.rustTypeForProp(pu.to, { option: false }) %>
+    {
+        type Error = si_cea::CeaError;
+
+        fn try_from(
+            value: &<%- fmt.rustTypeForProp(pu.from, { option: false }) %>,
+        ) -> std::result::Result<Self, Self::Error> {
+            <%- fmt.implTryFromForPropertyUpdate(pu) -%>
+        }
+    }
+
+    <%_ } _%>
+<%_ } _%>

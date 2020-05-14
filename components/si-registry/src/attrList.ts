@@ -40,6 +40,11 @@ interface AttrListConstructor {
   autoCreateEdits?: boolean;
 }
 
+export interface IntegrationService {
+  integrationName: string;
+  integrationServiceName: string;
+}
+
 export class AttrList {
   attrs: Props[];
   readOnly: boolean;
@@ -333,6 +338,8 @@ export class PropMethod extends Prop {
 }
 
 export class PropAction extends PropMethod {
+  integrationServices: IntegrationService[];
+
   // Actions have a Request and a Response
   //
   // The Response is always `{ entityEvent: EntityEvent }`;
@@ -353,6 +360,7 @@ export class PropAction extends PropMethod {
     defaultValue?: PropAction["baseDefaultValue"];
   }) {
     super({ name, label, componentTypeName, parentName, defaultValue });
+    this.integrationServices = [];
     this.request.properties.addText({
       name: "id",
       label: "Entity ID",
