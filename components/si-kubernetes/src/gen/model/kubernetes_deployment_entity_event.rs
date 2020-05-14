@@ -62,10 +62,13 @@ impl crate::protobuf::KubernetesDeploymentEntityEvent {
 impl si_cea::EntityEvent for crate::protobuf::KubernetesDeploymentEntityEvent {
     type Entity = crate::protobuf::KubernetesDeploymentEntity;
 
-    // TODO: fix
-    // need some values here, probably for validation?
     fn action_names() -> &'static [&'static str] {
-        &[]
+        &[
+            "create",
+            "edit_kubernetes_object",
+            "edit_kubernetes_object_yaml",
+            "sync",
+        ]
     }
 
     fn action_name(&self) -> si_data::Result<&str> {
@@ -382,37 +385,10 @@ impl si_data::Storable for crate::protobuf::KubernetesDeploymentEntityEvent {
     }
 
     fn natural_key(&self) -> si_data::Result<Option<&str>> {
-        Ok(self
-            .si_storable
-            .as_ref()
-            .ok_or_else(|| si_data::DataError::RequiredField("si_storable".to_string()))?
-            .natural_key
-            .as_ref()
-            .map(String::as_str))
+        Ok(None)
     }
 
     fn set_natural_key(&mut self) -> si_data::Result<()> {
-        let natural_key = format!(
-            "{}:{}:{}",
-            self.tenant_ids()?
-                .first()
-                .ok_or_else(|| si_data::DataError::MissingTenantIds)?,
-            Self::type_name(),
-            self.name
-                .as_ref()
-                .ok_or_else(|| si_data::DataError::RequiredField("name".to_string()))?,
-        );
-
-        if self.si_storable.is_none() {
-            self.si_storable = Some(Default::default());
-        }
-
-        let si_storable = self.si_storable.as_mut().expect(
-            "crate::protobuf::KubernetesDeploymentEntityEvent.si_storable \
-                has been set or initialized",
-        );
-        si_storable.natural_key = Some(natural_key);
-
         Ok(())
     }
 
@@ -443,16 +419,6 @@ impl si_data::Storable for crate::protobuf::KubernetesDeploymentEntityEvent {
                 "missing required id value".into(),
             ));
         }
-        if self.name.is_none() {
-            return Err(si_data::DataError::ValidationError(
-                "missing required name value".into(),
-            ));
-        }
-        if self.display_name.is_none() {
-            return Err(si_data::DataError::ValidationError(
-                "missing required display_name value".into(),
-            ));
-        }
         if self.si_storable.is_none() {
             return Err(si_data::DataError::ValidationError(
                 "missing required si_storable value".into(),
@@ -480,8 +446,6 @@ impl si_data::Storable for crate::protobuf::KubernetesDeploymentEntityEvent {
         vec![
             "siStorable.naturalKey",
             "id",
-            "name",
-            "displayName",
             "actionName",
             "createTime",
             "updatedTime",

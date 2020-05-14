@@ -1,9 +1,9 @@
 <%- fmt.implServiceAuth(propMethod) %>
 
 let inner = request.into_inner();
-let constraints = inner.constraints.ok_or_else(|| si_data::DataError::RequiredField("constraints".to_string()))?;
+let constraints = inner.constraints;
 
-let (implicit_constraints, component) = <%- fmt.structName() %>::pick(&self.db, &constraints).await?;
+let (implicit_constraints, component) = <%- fmt.structName() %>::pick(&self.db, constraints).await?;
 info!(?implicit_constraints, ?component);
 
 Ok(tonic::Response::new(

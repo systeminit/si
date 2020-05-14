@@ -26,7 +26,7 @@ const UserLogin = queryField("userLogin", {
   type: UserLoginReply,
   args: { input: arg({ type: UserLoginRequest }) },
   async resolve(_root, { input }: any, { dataSources: { grpc } }: any) {
-    const g = grpc.service("si-account");
+    const g = grpc.service("account");
     const grpcInput = {
       email: { value: input.email },
       password: { value: input.password },

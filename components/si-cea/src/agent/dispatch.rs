@@ -137,7 +137,7 @@ async fn integration_service_id_for(
         .lookup_by_natural_key(format!("global:integration:{}", integration_name))
         .await?;
     let integration_service_lookup_id = format!(
-        "global:{}:integration_service:{}",
+        "{}:integration_service:{}",
         integration
             .id
             .ok_or_else(|| DataError::RequiredField("id".to_string()))?,

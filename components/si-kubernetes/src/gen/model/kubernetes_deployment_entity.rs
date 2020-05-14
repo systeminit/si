@@ -10,8 +10,10 @@ impl crate::protobuf::KubernetesDeploymentEntity {
         implicit_constraints: Option<crate::protobuf::KubernetesDeploymentComponentConstraints>,
         properties: Option<crate::protobuf::KubernetesDeploymentEntityProperties>,
         si_properties: Option<si_cea::protobuf::EntitySiProperties>,
+        change_set_id: Option<String>,
     ) -> si_cea::CeaResult<crate::protobuf::KubernetesDeploymentEntity> {
         let mut si_storable = si_data::protobuf::DataStorable::default();
+        si_storable.change_set_id = change_set_id;
         si_properties
             .as_ref()
             .ok_or_else(|| si_data::DataError::ValidationError("siProperties".into()))?;
@@ -93,6 +95,7 @@ impl crate::protobuf::KubernetesDeploymentEntity {
         implicit_constraints: Option<crate::protobuf::KubernetesDeploymentComponentConstraints>,
         properties: Option<crate::protobuf::KubernetesDeploymentEntityProperties>,
         si_properties: Option<si_cea::protobuf::EntitySiProperties>,
+        change_set_id: Option<String>,
     ) -> si_cea::CeaResult<crate::protobuf::KubernetesDeploymentEntity> {
         let mut result = crate::protobuf::KubernetesDeploymentEntity::new(
             name,
@@ -102,6 +105,7 @@ impl crate::protobuf::KubernetesDeploymentEntity {
             implicit_constraints,
             properties,
             si_properties,
+            change_set_id,
         )?;
         db.validate_and_insert_as_new(&mut result).await?;
 

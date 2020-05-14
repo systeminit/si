@@ -178,9 +178,10 @@ export interface NexusGenInputs {
     scopeByTenantId?: string | null; // String
   }
   KubernetesDeploymentComponentPickRequest: { // input type
-    constraints: NexusGenInputs['KubernetesDeploymentComponentConstraintsRequest']; // KubernetesDeploymentComponentConstraintsRequest!
+    constraints?: NexusGenInputs['KubernetesDeploymentComponentConstraintsRequest'] | null; // KubernetesDeploymentComponentConstraintsRequest
   }
   KubernetesDeploymentEntityCreateRequest: { // input type
+    changeSetId?: string | null; // String
     constraints?: NexusGenInputs['KubernetesDeploymentComponentConstraintsRequest'] | null; // KubernetesDeploymentComponentConstraintsRequest
     description: string; // String!
     displayName: string; // String!
@@ -323,15 +324,15 @@ export interface NexusGenInputs {
 }
 
 export interface NexusGenEnums {
-  ChangeSetEntryStatus: "ABANDONED" | "CLOSED" | "OPEN"
-  ChangeSetStatus: "ABANDONED" | "CLOSED" | "OPEN"
-  DataPageTokenOrderByDirection: "ASC" | "DESC"
-  DataQueryBooleanTerm: "AND" | "OR"
-  DataQueryItemsExpressionComparison: "CONTAINS" | "EQUALS" | "LIKE" | "NOT_EQUALS" | "NOT_LIKE"
-  DataQueryItemsExpressionFieldType: "INT" | "STRING"
-  EntitySiPropertiesEntityState: "ERROR" | "OK" | "TRANSITION"
-  IntegrationOptionsOptionType: "SECRET" | "STRING"
-  KubernetesDeploymentComponentConstraintsKubernetesVersion: "V1_12" | "V1_13" | "V1_14" | "V1_15"
+  ChangeSetEntryStatus: "ABANDONED" | "CLOSED" | "OPEN" | "UNKNOWN"
+  ChangeSetStatus: "ABANDONED" | "CLOSED" | "OPEN" | "UNKNOWN"
+  DataPageTokenOrderByDirection: "ASC" | "DESC" | "UNKNOWN"
+  DataQueryBooleanTerm: "AND" | "OR" | "UNKNOWN"
+  DataQueryItemsExpressionComparison: "CONTAINS" | "EQUALS" | "LIKE" | "NOT_EQUALS" | "NOT_LIKE" | "UNKNOWN"
+  DataQueryItemsExpressionFieldType: "INT" | "STRING" | "UNKNOWN"
+  EntitySiPropertiesEntityState: "ERROR" | "OK" | "TRANSITION" | "UNKNOWN"
+  IntegrationOptionsOptionType: "SECRET" | "STRING" | "UNKNOWN"
+  KubernetesDeploymentComponentConstraintsKubernetesVersion: "UNKNOWN" | "V1_12" | "V1_13" | "V1_14" | "V1_15"
 }
 
 export interface NexusGenRootTypes {
@@ -459,6 +460,7 @@ export interface NexusGenRootTypes {
   }
   EntitySiProperties: { // root type
     billingAccountId?: string | null; // String
+    changeSetId?: string | null; // String
     componentId?: string | null; // String
     entityState?: NexusGenEnums['EntitySiPropertiesEntityState'] | null; // EntitySiPropertiesEntityState
     integrationId?: string | null; // String
@@ -635,14 +637,12 @@ export interface NexusGenRootTypes {
   KubernetesDeploymentEntityEvent: { // root type
     actionName?: string | null; // String
     createTime?: string | null; // String
-    displayName?: string | null; // String
     errorLines?: string[] | null; // [String!]
     errorMessage?: string | null; // String
     finalized?: boolean | null; // Boolean
     finalTime?: string | null; // String
     id?: string | null; // ID
     inputEntity?: NexusGenRootTypes['KubernetesDeploymentEntity'] | null; // KubernetesDeploymentEntity
-    name?: string | null; // String
     outputEntity?: NexusGenRootTypes['KubernetesDeploymentEntity'] | null; // KubernetesDeploymentEntity
     outputLines?: string[] | null; // [String!]
     previousEntity?: NexusGenRootTypes['KubernetesDeploymentEntity'] | null; // KubernetesDeploymentEntity
@@ -1009,6 +1009,7 @@ export interface NexusGenFieldTypes {
   }
   EntitySiProperties: { // field return type
     billingAccountId: string | null; // String
+    changeSetId: string | null; // String
     componentId: string | null; // String
     entityState: NexusGenEnums['EntitySiPropertiesEntityState'] | null; // EntitySiPropertiesEntityState
     integrationId: string | null; // String
@@ -1206,14 +1207,12 @@ export interface NexusGenFieldTypes {
   KubernetesDeploymentEntityEvent: { // field return type
     actionName: string | null; // String
     createTime: string | null; // String
-    displayName: string | null; // String
     errorLines: string[] | null; // [String!]
     errorMessage: string | null; // String
     finalized: boolean | null; // Boolean
     finalTime: string | null; // String
     id: string | null; // ID
     inputEntity: NexusGenRootTypes['KubernetesDeploymentEntity'] | null; // KubernetesDeploymentEntity
-    name: string | null; // String
     outputEntity: NexusGenRootTypes['KubernetesDeploymentEntity'] | null; // KubernetesDeploymentEntity
     outputLines: string[] | null; // [String!]
     previousEntity: NexusGenRootTypes['KubernetesDeploymentEntity'] | null; // KubernetesDeploymentEntity

@@ -105,7 +105,7 @@ export class SiRegistryGenerator {
             if (associatedObject == undefined) {
               throw "No associated object defined for this association; bug!";
             }
-            const associatedProp = associatedObject.methods.attrs.find(m => {
+            const associatedProp = associatedObject.methods.attrs.find((m) => {
               return m.name == association.methodName;
             });
             if (!associatedProp) {
@@ -152,7 +152,7 @@ export class SiRegistryGenerator {
                     "billingAccountId",
                     user["billingAccountId"] || "",
                   );
-                  const g = grpc.service(systemObject.siPathName);
+                  const g = grpc.service(systemObject.serviceName);
 
                   // Get the field from the associationParent
                   let lookupValue = associationParent;
@@ -177,7 +177,7 @@ export class SiRegistryGenerator {
 
                   const req = new g.Request(methodName, reqInput)
                     .withMetadata(metadata)
-                    .withRetry(0);
+                    .withRetry(-1);
 
                   let result = await req.exec();
                   result = thisGenerator.transformGrpcToGraphql(
@@ -232,7 +232,7 @@ export class SiRegistryGenerator {
                     "billingAccountId",
                     user["billingAccountId"] || "",
                   );
-                  const g = grpc.service(systemObject.siPathName);
+                  const g = grpc.service(systemObject.serviceName);
 
                   // Get the field from the associationParent
                   let lookupValue = associationParent;
@@ -254,7 +254,7 @@ export class SiRegistryGenerator {
 
                   const req = new g.Request(methodName, reqInput)
                     .withMetadata(metadata)
-                    .withRetry(0);
+                    .withRetry(-1);
 
                   let result = await req.exec();
                   result = thisGenerator.transformGrpcToGraphql(
@@ -310,7 +310,7 @@ export class SiRegistryGenerator {
                     "billingAccountId",
                     user["billingAccountId"] || "",
                   );
-                  const g = grpc.service(systemObject.siPathName);
+                  const g = grpc.service(systemObject.serviceName);
 
                   // Get the field from the associationParent
                   input["scopeByTenantId"] =
@@ -351,7 +351,7 @@ export class SiRegistryGenerator {
 
                   const req = new g.Request(methodName, reqInput)
                     .withMetadata(metadata)
-                    .withRetry(0);
+                    .withRetry(-1);
 
                   let result = await req.exec();
                   result = thisGenerator.transformGrpcToGraphql(
@@ -407,7 +407,7 @@ export class SiRegistryGenerator {
                     "billingAccountId",
                     user["billingAccountId"] || "",
                   );
-                  const g = grpc.service(systemObject.siPathName);
+                  const g = grpc.service(systemObject.serviceName);
 
                   // Get the field from the associationParent
                   input["scopeByTenantId"] =
@@ -444,7 +444,7 @@ export class SiRegistryGenerator {
 
                   const req = new g.Request(methodName, reqInput)
                     .withMetadata(metadata)
-                    .withRetry(0);
+                    .withRetry(-1);
 
                   let result = await req.exec();
                   result = thisGenerator.transformGrpcToGraphql(
@@ -646,7 +646,7 @@ export class SiRegistryGenerator {
         metadata.add("authenticated", `${user.authenticated}`);
         metadata.add("userId", user["userId"] || "");
         metadata.add("billingAccountId", user["billingAccountId"] || "");
-        const g = grpc.service(component.siPathName);
+        const g = grpc.service(component.serviceName);
         // eslint-disable-next-line
         let req: any;
         if (input) {
@@ -660,14 +660,14 @@ export class SiRegistryGenerator {
             grpcInput,
           )
             .withMetadata(metadata)
-            .withRetry(0);
+            .withRetry(-1);
         } else {
           req = new g.Request(
             `${camelCase(component.typeName)}${pascalCase(prop.name)}`,
             {},
           )
             .withMetadata(metadata)
-            .withRetry(0);
+            .withRetry(-1);
         }
         let result = await req.exec();
         result = thisGenerator.transformGrpcToGraphql(
@@ -861,7 +861,11 @@ export class SiRegistryGenerator {
       );
     } else if (prop.kind() == "enum") {
       const enumProp = prop as PropEnum;
-      return enumProp.variants[input - 1].toUpperCase();
+      if (input === 0) {
+        return constantCase("unknown");
+      } else {
+        return constantCase(enumProp.variants[input - 1]);
+      }
     } else {
       console.log(
         `I don't know what you are: ${this.graphqlFieldName(
@@ -1020,8 +1024,10 @@ export class SiRegistryGenerator {
       const et = enumType({
         name: this.graphqlTypeName(prop),
         description: prop.label,
-        // @ts-ignore
-        members: prop.variants.map((v: string) => constantCase(v)),
+        members: [constantCase("unknown")].concat(
+          // @ts-ignore
+          prop.variants.map((v: string) => constantCase(v)),
+        ),
       });
       this.types.push(et);
     }

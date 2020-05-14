@@ -18,6 +18,7 @@ impl AwsEksKubernetesDeploymentDispatchFunctions
         entity_event: &mut Self::EntityEvent,
     ) -> CeaResult<()> {
         async {
+            println!("****************fuuuuck");
             entity_event.log("Kubernetes like a motherfucker\n");
             entity_event.log(format!("{:?}", entity_event.input_entity()));
             entity_event.init_output_entity()?;

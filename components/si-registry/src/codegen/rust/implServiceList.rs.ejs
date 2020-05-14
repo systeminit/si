@@ -6,7 +6,7 @@ let auth = <%- fmt.implServiceAuth(propMethod) %>
 
 let mut inner = request.into_inner();
 if inner.scope_by_tenant_id.is_none() {
-    <%_ if (fmt.systemObject.typeName == "integration" || fmt.systemObject.typeName == "integrationService" || fmt.systemObject.typeName == "billingAccount") { _%>
+    <%_ if (fmt.systemObject.typeName == "integration" || fmt.systemObject.typeName == "integrationService" || fmt.systemObject.typeName == "billingAccount" || fmt.isComponentObject()) { _%>
         inner.scope_by_tenant_id = Some(String::from("global"));
     <%_ } else { _%>
         inner.scope_by_tenant_id = Some(auth.billing_account_id().into());

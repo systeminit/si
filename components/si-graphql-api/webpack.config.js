@@ -41,7 +41,7 @@ module.exports = {
         "../si-registry/proto",
         "../si-registry/lib",
       ],
-      nodeArgs: ["--enable-source-maps"],
+      nodeArgs: ["--enable-source-maps", "--trace-warnings"],
     }),
   ],
   target: "node",

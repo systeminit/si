@@ -47,6 +47,33 @@ export class RustFormatter {
     this.systemObject = systemObject;
   }
 
+  entityActionMethodNames(): string[] {
+    const results = ["create"];
+
+    if (this.systemObject.kind() == "entityEventObject") {
+      // @ts-ignore
+      const entity = registry.get(`${this.systemObject.baseTypeName}Entity`);
+      const fmt = new RustFormatter(entity);
+      for (const prop of fmt.actionProps()) {
+        if (fmt.isEntityEditMethod(prop)) {
+          results.push(fmt.entityEditMethodName(prop));
+        } else {
+          results.push(prop.name);
+        }
+      }
+    } else {
+      for (const prop of this.actionProps()) {
+        if (this.isEntityEditMethod(prop)) {
+          results.push(this.entityEditMethodName(prop));
+        } else {
+          results.push(prop.name);
+        }
+      }
+    }
+
+    return results;
+  }
+
   hasCreateMethod(): boolean {
     try {
       this.systemObject.methods.getEntry("create");

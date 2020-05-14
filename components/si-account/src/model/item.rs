@@ -1,9 +1,7 @@
-use si_data::{DataError, Db, ListResult, Result};
+use si_data::{Db, ListResult, Result};
 
 pub use crate::protobuf::{Item, ItemGetReply, ItemGetRequest, ItemListReply, ItemListRequest};
-use tracing::debug;
 
-// TODO: Fix up the list_raw functions to understand the change set and view context filters.
 // TODO: Make create and get changeset aware.
 
 impl Item {

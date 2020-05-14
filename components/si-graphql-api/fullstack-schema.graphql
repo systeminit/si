@@ -299,6 +299,7 @@ enum ChangeSetEntryStatus {
   ABANDONED
   CLOSED
   OPEN
+  UNKNOWN
 }
 
 """Get a A change set for your system Reply"""
@@ -373,6 +374,7 @@ enum ChangeSetStatus {
   ABANDONED
   CLOSED
   OPEN
+  UNKNOWN
 }
 
 type ComponentSiProperties {
@@ -410,6 +412,7 @@ type DataPageToken {
 enum DataPageTokenOrderByDirection {
   ASC
   DESC
+  UNKNOWN
 }
 
 type DataQuery {
@@ -433,6 +436,7 @@ type DataQuery {
 enum DataQueryBooleanTerm {
   AND
   OR
+  UNKNOWN
 }
 
 type DataQueryItems {
@@ -464,12 +468,14 @@ enum DataQueryItemsExpressionComparison {
   LIKE
   NOT_EQUALS
   NOT_LIKE
+  UNKNOWN
 }
 
 """Query Field Type"""
 enum DataQueryItemsExpressionFieldType {
   INT
   STRING
+  UNKNOWN
 }
 
 input DataQueryItemsExpressionRequest {
@@ -558,6 +564,9 @@ type EntitySiProperties {
   """Billing Account ID"""
   billingAccountId: String
 
+  """Change Set ID"""
+  changeSetId: String
+
   """Component Id"""
   componentId: String
 
@@ -585,6 +594,7 @@ enum EntitySiPropertiesEntityState {
   ERROR
   OK
   TRANSITION
+  UNKNOWN
 }
 
 type Group {
@@ -887,6 +897,7 @@ type IntegrationOptions {
 enum IntegrationOptionsOptionType {
   SECRET
   STRING
+  UNKNOWN
 }
 
 type IntegrationService {
@@ -1104,6 +1115,7 @@ type KubernetesDeploymentComponentConstraints {
 
 """Kubernetes Version"""
 enum KubernetesDeploymentComponentConstraintsKubernetesVersion {
+  UNKNOWN
   V1_12
   V1_13
   V1_14
@@ -1178,7 +1190,7 @@ type KubernetesDeploymentComponentPickReply {
 """Pick Component Request"""
 input KubernetesDeploymentComponentPickRequest {
   """Constraints"""
-  constraints: KubernetesDeploymentComponentConstraintsRequest!
+  constraints: KubernetesDeploymentComponentConstraintsRequest
 }
 
 type KubernetesDeploymentEntity {
@@ -1229,6 +1241,9 @@ type KubernetesDeploymentEntityCreateReply {
 
 """Create Entity Request"""
 input KubernetesDeploymentEntityCreateRequest {
+  """Change Set ID"""
+  changeSetId: String
+
   """Constraints"""
   constraints: KubernetesDeploymentComponentConstraintsRequest
 
@@ -1255,9 +1270,6 @@ type KubernetesDeploymentEntityEvent {
   """Creation Time"""
   createTime: String
 
-  """Kubernetes Deployment Object EntityEvent Display Name"""
-  displayName: String
-
   """Error Lines"""
   errorLines: [String!]
 
@@ -1275,9 +1287,6 @@ type KubernetesDeploymentEntityEvent {
 
   """Input Entity"""
   inputEntity: KubernetesDeploymentEntity
-
-  """Kubernetes Deployment Object EntityEvent Name"""
-  name: String
 
   """Output Entity"""
   outputEntity: KubernetesDeploymentEntity

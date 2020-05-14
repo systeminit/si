@@ -56,6 +56,15 @@ registry.base({
       },
     });
     c.fields.addText({
+      name: "changeSetId",
+      label: "Change Set ID",
+      options(p) {
+        p.readOnly = true;
+        p.hidden = true;
+        p.universal = true;
+      },
+    });
+    c.fields.addText({
       name: "organizationId",
       label: "Organization ID",
       options(p) {

@@ -55,6 +55,7 @@ export class Grpc extends DataSource {
   }
 
   service(service: string): any {
+    console.log(`service me, motherfucker: ${service}`);
     return this.broker.services[service].client;
   }
 }
