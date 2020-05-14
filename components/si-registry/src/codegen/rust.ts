@@ -8,7 +8,7 @@ import {
 } from "../systemComponent";
 import * as PropPrelude from "../components/prelude";
 import { registry } from "../registry";
-import { Props } from "../attrList";
+import { Props, IntegrationService } from "../attrList";
 
 import { snakeCase, pascalCase } from "change-case";
 import ejs from "ejs";
@@ -24,6 +24,22 @@ interface RustTypeAsPropOptions {
   option?: boolean;
 }
 
+interface AgentIntegrationService {
+  agentName: string;
+  entity: EntityObject;
+  integrationName: string;
+  integrationServiceName: string;
+}
+
+interface PropertyUpdate {
+  from: PropPrelude.Props;
+  to: PropPrelude.Props;
+}
+
+interface PropertyEitherSet {
+  set: PropPrelude.Props[];
+}
+
 export class RustFormatter {
   systemObject: ObjectTypes;
 
@@ -31,12 +47,77 @@ export class RustFormatter {
     this.systemObject = systemObject;
   }
 
-  structName(): string {
-    return `crate::protobuf::${pascalCase(this.systemObject.typeName)}`;
+  hasCreateMethod(): boolean {
+    try {
+      this.systemObject.methods.getEntry("create");
+      return true;
+    } catch {
+      return false;
+    }
   }
 
-  modelName(): string {
-    return `crate::model::${pascalCase(this.systemObject.typeName)}`;
+  hasEditEithersForAction(propAction: PropPrelude.PropAction): boolean {
+    return this.entityEditProperty(propAction)
+      .relationships.all()
+      .some(rel => rel instanceof PropPrelude.Either);
+  }
+
+  hasEditUpdatesForAction(propAction: PropPrelude.PropAction): boolean {
+    return this.entityEditProperty(propAction)
+      .relationships.all()
+      .some(rel => rel instanceof PropPrelude.Updates);
+  }
+
+  hasEditUpdatesAndEithers(): boolean {
+    if (this.isEntityObject()) {
+      return this.entityEditMethods().some(
+        propAction =>
+          this.hasEditUpdatesForAction(propAction) &&
+          this.hasEditUpdatesForAction(propAction),
+      );
+    } else {
+      throw "You ran 'hasEditUpdatesAndEithers()' on a non-entity object; this is a bug!";
+    }
+  }
+
+  isComponentObject(): boolean {
+    return this.systemObject instanceof ComponentObject;
+  }
+
+  isEntityActionMethod(propMethod: PropPrelude.PropMethod): boolean {
+    return (
+      this.isEntityObject() && propMethod instanceof PropPrelude.PropAction
+    );
+  }
+
+  isEntityEditMethod(propMethod: PropPrelude.PropMethod): boolean {
+    return (
+      this.isEntityActionMethod(propMethod) && propMethod.name.endsWith("Edit")
+    );
+  }
+
+  isEntityEventObject(): boolean {
+    return this.systemObject instanceof EntityEventObject;
+  }
+
+  isEntityObject(): boolean {
+    return this.systemObject instanceof EntityObject;
+  }
+
+  isMigrateable(): boolean {
+    return (
+      this.systemObject instanceof SystemObject && this.systemObject.migrateable
+    );
+  }
+
+  isStorable(): boolean {
+    return this.systemObject instanceof SystemObject;
+  }
+
+  actionProps(): PropPrelude.PropAction[] {
+    return this.systemObject.methods.attrs.filter(
+      m => m instanceof PropPrelude.PropAction,
+    ) as PropPrelude.PropAction[];
   }
 
   componentName(): string {
@@ -76,6 +157,52 @@ export class RustFormatter {
     } else {
       throw "You asked for an edit method name on a non-entity object; this is a bug!";
     }
+  }
+
+  entityEditMethods(): PropPrelude.PropAction[] {
+    return this.actionProps().filter(p => this.isEntityEditMethod(p));
+  }
+
+  entityEditProperty(propAction: PropPrelude.PropAction): Props {
+    let property = propAction.request.properties.getEntry("property");
+    if (property instanceof PropPrelude.PropLink) {
+      property = property.lookupMyself();
+    }
+    return property;
+  }
+
+  entityEditPropertyField(propAction: PropPrelude.PropAction): string {
+    return this.rustFieldNameForProp(this.entityEditProperty(propAction));
+  }
+
+  entityEditPropertyType(propAction: PropPrelude.PropAction): string {
+    return this.rustTypeForProp(this.entityEditProperty(propAction), {
+      option: false,
+    });
+  }
+
+  entityEditPropertyUpdates(
+    propAction: PropPrelude.PropAction,
+  ): PropertyUpdate[] {
+    return this.entityEditProperty(propAction)
+      .relationships.all()
+      .filter(r => r instanceof PropPrelude.Updates)
+      .map(update => ({
+        from: this.entityEditProperty(propAction),
+        to: update.partnerProp(),
+      }));
+  }
+
+  entityEditPropertyEithers(): PropertyEitherSet[] {
+    const results = new Set<PropertyEitherSet>();
+
+    return Array.from(results).sort();
+  }
+
+  entityEditPropertyUpdateMethodName(propertyUpdate: PropertyUpdate): string {
+    return `update_${this.rustFieldNameForProp(
+      propertyUpdate.to,
+    )}_from_${this.rustFieldNameForProp(propertyUpdate.from)}`;
   }
 
   entityEventName(): string {
@@ -120,49 +247,64 @@ export class RustFormatter {
     }
   }
 
+  errorType(): string {
+    return `crate::error::${pascalCase(this.systemObject.serviceName)}Error`;
+  }
+
+  modelName(): string {
+    return `crate::model::${pascalCase(this.systemObject.typeName)}`;
+  }
+
   modelServiceMethodName(
     propMethod: PropPrelude.PropMethod | PropPrelude.PropAction,
   ): string {
     return this.rustFieldNameForProp(propMethod);
   }
 
+  structName(): string {
+    return `crate::protobuf::${pascalCase(this.systemObject.typeName)}`;
+  }
+
   typeName(): string {
     return snakeCase(this.systemObject.typeName);
   }
 
-  errorType(): string {
-    return `crate::error::${pascalCase(this.systemObject.serviceName)}Error`;
-  }
+  implTryFromForPropertyUpdate(propertyUpdate: PropertyUpdate): string {
+    const from = propertyUpdate.from;
+    const to = propertyUpdate.to;
 
-  hasCreateMethod(): boolean {
-    try {
-      this.systemObject.methods.getEntry("create");
-      return true;
-    } catch {
-      return false;
+    // Every fallthrough/default/else needs a `throw` clause to loudly proclaim
+    // that a specific conversion is not supported. This allows us to add
+    // conversions as we go without rogue and unexplained errors. In short,
+    // treat this like Rust code with fully satisfied match arms. Thank you,
+    // love, us.
+    if (from instanceof PropPrelude.PropCode) {
+      switch (from.language) {
+        case "yaml":
+          if (to instanceof PropPrelude.PropObject) {
+            return `Ok(serde_yaml::from_str(value)?)`;
+          } else {
+            throw `conversion from language '${
+              from.language
+            }' to type '${to.kind()}' is not supported`;
+          }
+        default:
+          throw `conversion from language '${from.language}' is not supported`;
+      }
+    } else if (from instanceof PropPrelude.PropObject) {
+      if (to instanceof PropPrelude.PropCode) {
+        switch (to.language) {
+          case "yaml":
+            return `Ok(serde_yaml::to_string(value)?)`;
+          default:
+            throw `conversion from PropObject to language '${to.language}' is not supported`;
+        }
+      } else {
+        throw `conversion from PropObject to type '${to.kind()}' is not supported`;
+      }
+    } else {
+      throw `conversion from type '${from.kind()}' to type '${to.kind()}' is not supported`;
     }
-  }
-
-  isComponentObject(): boolean {
-    return this.systemObject.kind() == "componentObject";
-  }
-
-  isEntityObject(): boolean {
-    return this.systemObject.kind() == "entityObject";
-  }
-
-  isEntityEventObject(): boolean {
-    return this.systemObject.kind() == "entityEventObject";
-  }
-
-  isEntityActionMethod(propMethod: PropPrelude.PropMethod): boolean {
-    return propMethod.kind() == "action" && this.isEntityObject();
-  }
-
-  isEntityEditMethod(propMethod: PropPrelude.PropMethod): boolean {
-    return (
-      this.isEntityActionMethod(propMethod) && propMethod.name.endsWith("Edit")
-    );
   }
 
   implListRequestType(renderOptions: RustTypeAsPropOptions = {}): string {
@@ -463,21 +605,6 @@ export class RustFormatter {
     }
   }
 
-  isMigrateable(): boolean {
-    return (
-      // @ts-ignore
-      this.systemObject.kind() != "baseObject" && this.systemObject.migrateable
-    );
-  }
-
-  isStorable(): boolean {
-    if (this.systemObject instanceof SystemObject) {
-      return true;
-    } else {
-      return false;
-    }
-  }
-
   implCreateSetProperties(): string {
     const result = [];
     const createMethod = this.systemObject.methods.getEntry("create");
@@ -766,8 +893,7 @@ export class RustFormatterService {
   implServiceMigrate(): string {
     const result = [];
     for (const systemObj of this.systemObjects) {
-      // @ts-ignore
-      if (systemObj.kind() != "baseObject" && systemObj.migrateable == true) {
+      if (this.isMigrateable(systemObj)) {
         result.push(
           `crate::protobuf::${pascalCase(
             systemObj.typeName,
@@ -779,24 +905,75 @@ export class RustFormatterService {
   }
 
   hasEntities(): boolean {
-    if (this.systemObjects.find(s => s.kind() == "entityObject")) {
-      return true;
-    } else {
-      return false;
-    }
+    return this.systemObjects.some(obj => obj instanceof EntityObject);
+  }
+
+  isMigrateable(prop: ObjectTypes): boolean {
+    return prop instanceof SystemObject && prop.migrateable;
   }
 
   hasMigratables(): boolean {
-    if (
-      this.systemObjects.find(
-        // @ts-ignore
-        s => s.kind() != "baseObject" && s.migrateable == true,
-      )
-    ) {
-      return true;
-    } else {
-      return false;
+    return this.systemObjects.some(obj => this.isMigrateable(obj));
+  }
+}
+
+export class RustFormatterAgent {
+  agentName: string;
+  entity: EntityObject;
+  entityFormatter: RustFormatter;
+  integrationName: string;
+  integrationServiceName: string;
+  serviceName: string;
+  systemObjects: ObjectTypes[];
+
+  constructor(serviceName: string, agent: AgentIntegrationService) {
+    this.agentName = agent.agentName;
+    this.entity = agent.entity;
+    this.entityFormatter = new RustFormatter(this.entity);
+    this.integrationName = agent.integrationName;
+    this.integrationServiceName = agent.integrationServiceName;
+    this.serviceName = serviceName;
+    this.systemObjects = registry.getObjectsForServiceName(serviceName);
+  }
+
+  systemObjectsAsFormatters(): RustFormatter[] {
+    return this.systemObjects
+      .sort((a, b) => (a.typeName > b.typeName ? 1 : -1))
+      .map(o => new RustFormatter(o));
+  }
+
+  actionProps(): PropPrelude.PropAction[] {
+    return this.entity.methods.attrs.filter(
+      m => m instanceof PropPrelude.PropAction,
+    ) as PropPrelude.PropAction[];
+  }
+
+  entityActionMethodNames(): string[] {
+    const results = ["create"];
+
+    for (const prop of this.actionProps()) {
+      if (this.entityFormatter.isEntityEditMethod(prop)) {
+        results.push(this.entityFormatter.entityEditMethodName(prop));
+      } else {
+        results.push(prop.name);
+      }
     }
+
+    return results;
+  }
+
+  dispatcherBaseTypeName(): string {
+    return `${pascalCase(this.integrationName)}${pascalCase(
+      this.integrationServiceName,
+    )}${pascalCase(this.entity.baseTypeName)}`;
+  }
+
+  dispatcherTypeName(): string {
+    return `${this.dispatcherBaseTypeName()}Dispatcher`;
+  }
+
+  dispatchFunctionTraitName(): string {
+    return `${this.dispatcherBaseTypeName()}DispatchFunctions`;
   }
 }
 
@@ -807,6 +984,12 @@ export class CodegenRust {
     this.serviceName = serviceName;
   }
 
+  hasModels(): boolean {
+    return registry
+      .getObjectsForServiceName(this.serviceName)
+      .some(o => o.kind() != "baseObject");
+  }
+
   hasServiceMethods(): boolean {
     return (
       registry
@@ -815,15 +998,67 @@ export class CodegenRust {
     );
   }
 
+  hasEntityIntegrationServcices(): boolean {
+    const integrationServices = new Set(
+      this.entities().flatMap(entity =>
+        this.entityintegrationServicesFor(entity),
+      ),
+    );
+    return integrationServices.size > 0;
+  }
+
+  entities(): EntityObject[] {
+    return registry
+      .getObjectsForServiceName(this.serviceName)
+      .filter(o => o instanceof EntityObject) as EntityObject[];
+  }
+
+  entityActions(entity: EntityObject): PropPrelude.PropAction[] {
+    return entity.methods.attrs.filter(
+      m => m instanceof PropPrelude.PropAction,
+    ) as PropPrelude.PropAction[];
+  }
+
+  entityintegrationServicesFor(entity: EntityObject): IntegrationService[] {
+    const result: Set<IntegrationService> = new Set();
+    for (const integrationService of entity.integrationServices) {
+      result.add(integrationService);
+    }
+    for (const action of this.entityActions(entity)) {
+      for (const integrationService of action.integrationServices) {
+        result.add(integrationService);
+      }
+    }
+    return Array.from(result);
+  }
+
+  entityIntegrationServices(): AgentIntegrationService[] {
+    return this.entities().flatMap(entity =>
+      this.entityintegrationServicesFor(entity).map(integrationService => ({
+        integrationName: integrationService.integrationName,
+        integrationServiceName: integrationService.integrationServiceName,
+        entity: entity,
+        agentName: `${snakeCase(
+          integrationService.integrationName,
+        )}_${snakeCase(integrationService.integrationServiceName)}_${snakeCase(
+          entity.baseTypeName,
+        )}`,
+      })),
+    );
+  }
+
   // Generate the 'gen/mod.rs'
   async generateGenMod(): Promise<void> {
-    const results = [
-      "// Auto-generated code!",
-      "// No touchy!",
-      "",
-      "pub mod model;",
-      "pub mod service;",
-    ];
+    const results = ["// Auto-generated code!", "// No touchy!", ""];
+    if (this.hasEntityIntegrationServcices()) {
+      results.push("pub mod agent;");
+    }
+    if (this.hasModels()) {
+      results.push("pub mod model;");
+    }
+    if (this.hasServiceMethods()) {
+      results.push("pub mod service;");
+    }
     await this.writeCode("gen/mod.rs", results.join("\n"));
   }
 
@@ -867,6 +1102,37 @@ export class CodegenRust {
       `gen/model/${snakeCase(systemObject.typeName)}.rs`,
       output,
     );
+  }
+
+  // Generate the 'gen/agent/mod.rs'
+  async generateGenAgentMod(): Promise<void> {
+    const results = ["// Auto-generated code!", "// No touchy!", ""];
+    for (const agent of this.entityIntegrationServices()) {
+      results.push(`pub mod ${agent.agentName};`);
+    }
+    results.push("");
+    for (const agent of this.entityIntegrationServices()) {
+      const fmt = new RustFormatterAgent(this.serviceName, agent);
+      results.push(
+        `pub use ${
+          agent.agentName
+        }::{${fmt.dispatchFunctionTraitName()}, ${fmt.dispatcherTypeName()}};`,
+      );
+    }
+    await this.writeCode("gen/agent/mod.rs", results.join("\n"));
+  }
+
+  async generateGenAgent(agent: AgentIntegrationService): Promise<void> {
+    const output = ejs.render(
+      "<%- include('src/codegen/rust/agent.rs.ejs', { fmt: fmt }) %>",
+      {
+        fmt: new RustFormatterAgent(this.serviceName, agent),
+      },
+      {
+        filename: ".",
+      },
+    );
+    await this.writeCode(`gen/agent/${snakeCase(agent.agentName)}.rs`, output);
   }
 
   async makePath(pathPart: string): Promise<string> {

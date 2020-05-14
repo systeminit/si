@@ -21,7 +21,7 @@ export declare class Either extends Relationship {
 export declare class RelationshipList {
     relationships: Relationships[];
     all(): RelationshipList["relationships"];
-    updates(args: RelationshipConstructor): Updates;
-    either(args: RelationshipConstructor): Either;
+    updates(args: RelationshipConstructor): void;
+    either(args: RelationshipConstructor): void;
 }
 export {};

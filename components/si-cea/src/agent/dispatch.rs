@@ -4,17 +4,8 @@ use dyn_clone::DynClone;
 use si_data::{DataError, Db};
 use std::collections::HashMap;
 
-pub mod codegen_prelude {
-    pub use super::{Dispatch, IntegrationActions, IntegrationAndServiceName, IntegrationDispatch};
-    pub use crate::agent::mqtt::MqttClient;
-    pub use crate::entity_event::EntityEvent;
-    pub use crate::error::{CeaError, CeaResult, TonicResult};
-    pub use async_trait::async_trait;
-    pub use std::marker::PhantomData;
-}
-
 pub mod prelude {
-    pub use super::{IntegrationActions, IntegrationAndServiceName};
+    pub use super::IntegrationActions;
     pub use crate::agent::mqtt::MqttClient;
     pub use crate::entity_event::EntityEvent as _;
     pub use crate::error::CeaResult;

@@ -22,6 +22,10 @@ pub fn new(
     result.si_properties = si_properties;
     result.si_storable = Some(si_storable);
 
+<%_ if (fmt.hasEditUpdatesAndEithers()) { _%>
+    <%- include('implEntityCreateUpdatesAndEithers.rs.ejs', { fmt: fmt }) %>
+<%_ } _%>
+
     Ok(result)
 }
 

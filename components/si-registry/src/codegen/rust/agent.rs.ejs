@@ -1,0 +1,77 @@
+use si_cea::EntityEvent;
+
+#[derive(Clone)]
+pub struct <%- fmt.dispatcherTypeName() %><T: <%- fmt.dispatchFunctionTraitName() %>> {
+    _phantom: std::marker::PhantomData<T>,
+}
+
+impl<T: <%- fmt.dispatchFunctionTraitName() %>> <%- fmt.dispatcherTypeName() %><T> {
+    pub fn new() -> Self {
+        Self {
+            _phantom: Default::default(),
+        }
+    }
+}
+
+impl<T: <%- fmt.dispatchFunctionTraitName() %>> si_cea::agent::dispatch::IntegrationActions
+    for <%- fmt.dispatcherTypeName() %><T>
+{
+    fn integration_actions(&self) -> &'static [&'static str] {
+        &[
+            <%_ for (const name of fmt.entityActionMethodNames()) { _%>
+            "<%- name %>",
+            <%_ } _%>
+        ]
+    }
+}
+
+impl<T: <%- fmt.dispatchFunctionTraitName() %>> si_cea::agent::dispatch::IntegrationAndServiceName
+    for <%- fmt.dispatcherTypeName() %><T>
+{
+    fn integration_name() -> &'static str {
+        "<%- fmt.integrationName %>"
+    }
+
+    fn integration_service_name() -> &'static str {
+        "<%- fmt.integrationServiceName %>"
+    }
+}
+
+#[async_trait::async_trait]
+impl<T: <%- fmt.dispatchFunctionTraitName() %> + Sync> si_cea::agent::dispatch::Dispatch
+    for <%- fmt.dispatcherTypeName() %><T>
+{
+    type EntityEvent = T::EntityEvent;
+
+    async fn dispatch(
+        &self,
+        mqtt_client: &si_cea::MqttClient,
+        entity_event: &mut Self::EntityEvent
+    ) -> si_cea::CeaResult<()> {
+        match entity_event.action_name()? {
+            <%_ for (const name of fmt.entityActionMethodNames()) { _%>
+            "<%- name %>" => T::<%- name %>(mqtt_client, entity_event).await,
+            <%_ } _%>
+            invalid => Err(si_cea::CeaError::DispatchFunctionMissing(
+                entity_event.integration_service_id()?.to_string(),
+                invalid.to_string(),
+            )),
+        }
+    }
+}
+
+impl<T: <%- fmt.dispatchFunctionTraitName() %> + Sync + Send + Clone> si_cea::agent::dispatch::IntegrationDispatch
+    for <%- fmt.dispatcherTypeName() %><T> {}
+
+#[async_trait::async_trait]
+pub trait <%- fmt.dispatchFunctionTraitName() %> {
+    type EntityEvent: si_cea::EntityEvent + Send;
+
+    <%_ for (const name of fmt.entityActionMethodNames()) { _%>
+    async fn <%- name %>(
+        mqtt_client: &si_cea::MqttClient,
+        entity_event: &mut Self::EntityEvent,
+    ) -> si_cea::CeaResult<()>;
+
+    <%_ } _%>
+}

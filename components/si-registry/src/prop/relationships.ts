@@ -48,11 +48,11 @@ export class RelationshipList {
     return this.relationships;
   }
 
-  updates(args: RelationshipConstructor): Updates {
-    return new Updates(args);
+  updates(args: RelationshipConstructor): void {
+    this.relationships.push(new Updates(args));
   }
 
-  either(args: RelationshipConstructor): Either {
-    return new Either(args);
+  either(args: RelationshipConstructor): void {
+    this.relationships.push(new Either(args));
   }
 }

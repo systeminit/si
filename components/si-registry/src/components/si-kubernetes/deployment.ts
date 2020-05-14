@@ -18,6 +18,10 @@ registry.componentAndEntity({
       fromFieldPath: ["siProperties", "billingAccountId"],
       typeName: "billingAccount",
     });
+    c.entity.integrationServices.push({
+      integrationName: "aws",
+      integrationServiceName: "eks",
+    });
 
     // Constraints
     c.constraints.addEnum({
@@ -35,14 +39,14 @@ registry.componentAndEntity({
       options(p: PropObject) {
         p.relationships.updates({
           partner: {
-            typeName: "kubernetesDeployment",
-            names: ["kubernetesObjectYaml"],
+            typeName: "kubernetesDeploymentEntity",
+            names: ["properties", "kubernetesObjectYaml"],
           },
         });
         p.relationships.either({
           partner: {
-            typeName: "kubernetesDeployment",
-            names: ["kubernetesObjectYaml"],
+            typeName: "kubernetesDeploymentEntity",
+            names: ["properties", "kubernetesObjectYaml"],
           },
         });
         p.properties.addText({
@@ -109,14 +113,14 @@ registry.componentAndEntity({
       options(p: PropCode) {
         p.relationships.updates({
           partner: {
-            typeName: "kubernetesDeployment",
-            names: ["kubernetesObject"],
+            typeName: "kubernetesDeploymentEntity",
+            names: ["properties", "kubernetesObject"],
           },
         });
         p.relationships.either({
           partner: {
-            typeName: "kubernetesDeployment",
-            names: ["kubernetesObject"],
+            typeName: "kubernetesDeploymentEntity",
+            names: ["properties", "kubernetesObject"],
           },
         });
         p.language = "yaml";

@@ -1,0 +1,5 @@
+// TODO: fix
+// implement this!
+<%_ for (const eitherSet of fmt.entityEditPropertyEithers()) { _%>
+<%- JSON.stringify(eitherSet, null, '    ').split("\n").map(l => `// ${l}`).join("\n") %>
+<%_ } _%>

@@ -1,6 +1,11 @@
 import { PropLink } from "./prop/link";
 import { PropNumber } from "./prop/number";
-import { PropObject, PropMethod, PropAction } from "./attrList";
+import {
+  PropObject,
+  PropMethod,
+  PropAction,
+  IntegrationService,
+} from "./attrList";
 import { camelCase } from "change-case";
 import { AssociationList } from "./systemObject/associations";
 import { SiGraphql } from "./systemObject/graphql";
@@ -441,6 +446,7 @@ export class ComponentObject extends SystemObject {
 
 export class EntityObject extends SystemObject {
   baseTypeName: string;
+  integrationServices: IntegrationService[];
 
   constructor(args: BaseObjectConstructor) {
     const typeName = `${args.typeName}Entity`;
@@ -451,6 +457,7 @@ export class EntityObject extends SystemObject {
       serviceName: args.serviceName,
     });
     this.baseTypeName = args.typeName;
+    this.integrationServices = [];
     this.setEntityDefaults();
   }
 

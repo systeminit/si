@@ -1,4 +1,4 @@
-import { PropObject, PropMethod } from "./attrList";
+import { PropObject, PropMethod, IntegrationService } from "./attrList";
 import { AssociationList } from "./systemObject/associations";
 import { SiGraphql } from "./systemObject/graphql";
 export declare type ObjectTypes = BaseObject | SystemObject | ComponentObject | EntityObject | EntityEventObject;
@@ -46,6 +46,7 @@ export declare class ComponentObject extends SystemObject {
 }
 export declare class EntityObject extends SystemObject {
     baseTypeName: string;
+    integrationServices: IntegrationService[];
     constructor(args: BaseObjectConstructor);
     setEntityDefaults(): void;
     get properties(): EntityObject["rootProp"]["properties"];
