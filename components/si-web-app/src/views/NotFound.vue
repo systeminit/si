@@ -1,11 +1,11 @@
 <template>
   <CenteredLayout>
     <meta name="robots" content="noindex" />
-    <v-card class="elevation-12">
-      <v-card-title>Page Not Found</v-card-title>
-      <v-card-subtitle>We tried, though. Seriously.</v-card-subtitle>
-      <v-card-text>Sorry about that, but there is nothing here.</v-card-text>
-    </v-card>
+    <div>
+      <p class="text-white text-5xl ">Page Not Found</p>
+      <p class="text-white text-xl">We tried, though. Seriously.</p>
+      <p class="text-white text-xl">Sorry about that, but there is nothing here.</p>
+    </div>
   </CenteredLayout>
 </template>
 

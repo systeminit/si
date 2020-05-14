@@ -12,7 +12,6 @@
     "baseUrl": ".",
     "types": [
       "webpack-env",
-      "vuetify",
       "vue-apollo",
       "vue-cli-plugin-apollo"
     ],
@@ -29,7 +28,6 @@
     ],
     "typeRoots": [
       "./node_modules/@types",
-      "./node_modules/vuetify/types",
       "./node_modules/vue-apollo/types",
       "./node_modules/vue-cli-plugin-apollo"
     ]

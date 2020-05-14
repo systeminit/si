@@ -4,7 +4,9 @@ import router from "./router";
 import VueGtag from "vue-gtag";
 import { createProvider } from "./vue-apollo";
 import { auth } from "./auth";
-import vuetify from "./plugins/vuetify";
+
+import "@/assets/main.css"
+import "./assets/tailwind.css"
 
 Vue.config.productionTip = false;
 
@@ -25,6 +27,5 @@ if (process.env.NODE_ENV == "production") {
 new Vue({
   router,
   apolloProvider,
-  vuetify,
   render: h => h(App),
 }).$mount("#app");

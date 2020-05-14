@@ -1,16 +1,19 @@
 <template>
-  <v-app id="si">
-    <router-view></router-view>
-  </v-app>
+  <div id="app" class="w-screen h-screen  bg-black">
+    <router-view class="w-full"></router-view>
+  </div>
 </template>
 
-<script lang="ts">
-import Vue from "vue";
-
-export default Vue.extend({
-  name: "App",
-  data: () => ({
-    //
-  }),
-});
+<script>
+export default {
+  name: 'App'
+}
 </script>
+
+<style>
+#app {
+  font-family: "Roboto", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+</style>
