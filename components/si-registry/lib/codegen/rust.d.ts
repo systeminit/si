@@ -16,7 +16,7 @@ interface PropertyUpdate {
     to: PropPrelude.Props;
 }
 interface PropertyEitherSet {
-    set: PropPrelude.Props[];
+    entries: PropPrelude.Props[];
 }
 export declare class RustFormatter {
     systemObject: ObjectTypes;
@@ -41,6 +41,7 @@ export declare class RustFormatter {
     entityEditPropertyField(propAction: PropPrelude.PropAction): string;
     entityEditPropertyType(propAction: PropPrelude.PropAction): string;
     entityEditPropertyUpdates(propAction: PropPrelude.PropAction): PropertyUpdate[];
+    allEntityEditPropertyUpdates(): PropertyUpdate[];
     entityEditPropertyEithers(): PropertyEitherSet[];
     entityEditPropertyUpdateMethodName(propertyUpdate: PropertyUpdate): string;
     entityEventName(): string;

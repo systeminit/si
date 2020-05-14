@@ -6,7 +6,7 @@ pub fn new(
     implicit_constraints: Option<<%- fmt.componentConstraintsName() %>>,
     properties: Option<<%- fmt.entityPropertiesName() %>>,
     si_properties: Option<si_cea::protobuf::EntitySiProperties>,
-) -> si_data::Result<<%- fmt.structName() %>> {
+) -> si_cea::CeaResult<<%- fmt.structName() %>> {
 <%_ if (fmt.isStorable()) { _%>
     let mut si_storable = si_data::protobuf::DataStorable::default();
     <%- fmt.implCreateAddToTenancy() %>
@@ -38,7 +38,7 @@ pub async fn create(
     implicit_constraints: Option<<%- fmt.componentConstraintsName() %>>,
     properties: Option<<%- fmt.entityPropertiesName() %>>,
     si_properties: Option<si_cea::protobuf::EntitySiProperties>,
-) -> si_data::Result<<%- fmt.structName() %>> {
+) -> si_cea::CeaResult<<%- fmt.structName() %>> {
     let mut result = <%- fmt.structName() %>::new(
         name,
         display_name,

@@ -1,5 +1,103 @@
-// TODO: fix
-// implement this!
-<%_ for (const eitherSet of fmt.entityEditPropertyEithers()) { _%>
-<%- JSON.stringify(eitherSet, null, '    ').split("\n").map(l => `// ${l}`).join("\n") %>
+<%_ for (const eithers of fmt.entityEditPropertyEithers().map(e => e.entries)) { _%>
+    use si_cea::Entity;
+
+    <%_ if (eithers.length == 2) { _%>
+        match (
+          result.properties()?.<%- fmt.rustFieldNameForProp(eithers[0]) %>.as_ref(),
+          result.properties()?.<%- fmt.rustFieldNameForProp(eithers[1]) %>.as_ref(),
+        ) {
+            (Some(_), None) => {
+                result
+                    .<%- fmt.entityEditPropertyUpdateMethodName({ from: eithers[0], to: eithers[1] }) %>()?;
+            }
+            (None, Some(_)) => {
+                result
+                    .<%- fmt.entityEditPropertyUpdateMethodName({ from: eithers[1], to: eithers[0] }) %>()?;
+            }
+            (Some(_), Some(_)) => {
+                return Err(si_data::DataError::MultipleEithersProvided2(
+                    "<%- fmt.rustFieldNameForProp(eithers[0]) %>".to_string(),
+                    "<%- fmt.rustFieldNameForProp(eithers[1]) %>".to_string(),
+                )
+                .into());
+            }
+            (None, None) => {
+                return Err(si_data::DataError::NeitherEithersProvided2(
+                    "<%- fmt.rustFieldNameForProp(eithers[0]) %>".to_string(),
+                    "<%- fmt.rustFieldNameForProp(eithers[1]) %>".to_string(),
+                )
+                .into());
+            }
+        }
+    <%_ } else if (eithers.length == 3) { _%>
+        match (
+          result.properties()?.<%- fmt.rustFieldNameForProp(eithers[0]) %>.as_ref(),
+          result.properties()?.<%- fmt.rustFieldNameForProp(eithers[1]) %>.as_ref(),
+          result.properties()?.<%- fmt.rustFieldNameForProp(eithers[2]) %>.as_ref(),
+        ) {
+            (Some(_), None, None) => {
+                result
+                    .<%- fmt.entityEditPropertyUpdateMethodName({ from: eithers[0], to: eithers[1] }) %>()?;
+                result
+                    .<%- fmt.entityEditPropertyUpdateMethodName({ from: eithers[0], to: eithers[2] }) %>()?;
+            }
+            (None, Some(_), None) => {
+                result
+                    .<%- fmt.entityEditPropertyUpdateMethodName({ from: eithers[1], to: eithers[0] }) %>()?;
+                result
+                    .<%- fmt.entityEditPropertyUpdateMethodName({ from: eithers[1], to: eithers[2] }) %>()?;
+            }
+            (None, None, Some(_)) => {
+                result
+                    .<%- fmt.entityEditPropertyUpdateMethodName({ from: eithers[2], to: eithers[0] }) %>()?;
+                result
+                    .<%- fmt.entityEditPropertyUpdateMethodName({ from: eithers[2], to: eithers[1] }) %>()?;
+            }
+            (None, Some(_), Some(_)) => {
+                return Err(si_data::DataError::MultipleEithersProvided2(
+                    "<%- fmt.rustFieldNameForProp(eithers[1]) %>".to_string(),
+                    "<%- fmt.rustFieldNameForProp(eithers[2]) %>".to_string(),
+                )
+                .into());
+            }
+            (Some(_), None, Some(_)) => {
+                return Err(si_data::DataError::MultipleEithersProvided2(
+                    "<%- fmt.rustFieldNameForProp(eithers[0]) %>".to_string(),
+                    "<%- fmt.rustFieldNameForProp(eithers[2]) %>".to_string(),
+                )
+                .into());
+            }
+            (Some(_), Some(_), None) => {
+                return Err(si_data::DataError::MultipleEithersProvided2(
+                    "<%- fmt.rustFieldNameForProp(eithers[0]) %>".to_string(),
+                    "<%- fmt.rustFieldNameForProp(eithers[1]) %>".to_string(),
+                )
+                .into());
+            }
+            (Some(_), Some(_), Some(_)) => {
+                return Err(si_data::DataError::MultipleEithersProvided3(
+                    "<%- fmt.rustFieldNameForProp(eithers[0]) %>".to_string(),
+                    "<%- fmt.rustFieldNameForProp(eithers[1]) %>".to_string(),
+                    "<%- fmt.rustFieldNameForProp(eithers[2]) %>".to_string(),
+                )
+                .into());
+            }
+            (None, None, None) => {
+                return Err(si_data::DataError::NeitherEithersProvided3(
+                    "<%- fmt.rustFieldNameForProp(eithers[0]) %>".to_string(),
+                    "<%- fmt.rustFieldNameForProp(eithers[1]) %>".to_string(),
+                    "<%- fmt.rustFieldNameForProp(eithers[2]) %>".to_string(),
+                )
+                .into());
+            }
+        }
+    <%_ } else { _%>
+        std::compile_error!(
+            "[si-registry codegen] A Property EitherSet of \
+            [<%- eithers.map(e => e.name).join(", ") %>] \
+            with size of (<%- eithers.length %>) was found on Entity \
+            <%- fmt.systemObject.typeName %> which is not supported. \
+            See `implEntityCreateUpdatesAndEithers.rs.ejs` for more details. Kiss Kiss."
+        );
+    <%_ } _%>
 <%_ } _%>

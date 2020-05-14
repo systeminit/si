@@ -37,7 +37,7 @@ interface PropertyUpdate {
 }
 
 interface PropertyEitherSet {
-  set: PropPrelude.Props[];
+  entries: PropPrelude.Props[];
 }
 
 export class RustFormatter {
@@ -193,10 +193,44 @@ export class RustFormatter {
       }));
   }
 
-  entityEditPropertyEithers(): PropertyEitherSet[] {
-    const results = new Set<PropertyEitherSet>();
+  allEntityEditPropertyUpdates(): PropertyUpdate[] {
+    const results = this.entityEditMethods().flatMap(method =>
+      this.entityEditPropertyUpdates(method),
+    );
 
-    return Array.from(results).sort();
+    return Array.from(new Set(results)).sort((a, b) =>
+      `${a.from.name},${a.to.name}` > `${b.from.name},${b.to.name}` ? 1 : -1,
+    );
+  }
+
+  entityEditPropertyEithers(): PropertyEitherSet[] {
+    const results = new Map();
+    const properties = (this.systemObject.fields.getEntry(
+      "properties",
+    ) as PropPrelude.PropObject).properties.attrs;
+
+    for (const property of properties) {
+      const propEithers = property.relationships
+        .all()
+        .filter(rel => rel instanceof PropPrelude.Either);
+
+      if (propEithers.length > 0) {
+        const eithers = new Set<PropPrelude.Props>();
+        eithers.add(property);
+        for (const property of propEithers) {
+          eithers.add(property.partnerProp());
+        }
+
+        const eithersArray = Array.from(eithers).sort((a, b) =>
+          a.name > b.name ? 1 : -1,
+        );
+        results.set(eithersArray.map(e => e.name).join(","), {
+          entries: eithersArray,
+        });
+      }
+    }
+
+    return Array.from(results.values()).sort();
   }
 
   entityEditPropertyUpdateMethodName(propertyUpdate: PropertyUpdate): string {
