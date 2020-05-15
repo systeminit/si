@@ -1,7 +1,5 @@
 pub mod kubernetes_deployment_component;
-pub mod kubernetes_deployment_entity;
-pub mod kubernetes_deployment_entity_event;
 
+pub use crate::protobuf::KubernetesDeploymentEntity;
+pub use crate::protobuf::KubernetesDeploymentEntityEvent;
 pub use kubernetes_deployment_component::KubernetesDeploymentComponent;
-pub use kubernetes_deployment_entity::KubernetesDeploymentEntity;
-pub use kubernetes_deployment_entity_event::KubernetesDeploymentEntityEvent;
