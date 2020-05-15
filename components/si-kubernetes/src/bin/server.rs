@@ -1,9 +1,6 @@
-// use si_kubernetes::agent::aws;
-// use si_kubernetes::model::{KubernetesDeploymentComponent, KubernetesDeploymentEntityEvent};
-// use si_kubernetes::togen::service;
-
 use anyhow::Context;
 use si_cea::binary::server::prelude::*;
+use si_kubernetes::agent::aws_eks_kubernetes_deployment;
 use si_kubernetes::gen::service::{Server, Service};
 use si_kubernetes::model::KubernetesDeploymentEntityEvent;
 
@@ -25,17 +22,16 @@ async fn main() -> anyhow::Result<()> {
     println!("*** Migrating so much right now ***");
     service.migrate().await?;
 
-    // TODO: fix
-    // Add in agent server dispatcher
-
-    // println!(
-    //     "*** Spawning the {} Agent Server ***",
-    //     KubernetesDeploymentEntityEvent::type_name()
-    // );
-    // let mut agent_dispatcher = Dispatcher::default();
-    // agent_dispatcher.add(&db, aws::dispatcher()).await?;
-    // let mut agent_server = AgentServer::new(name, agent_dispatcher, &settings);
-    // tokio::spawn(async move { agent_server.run().await });
+    println!(
+        "*** Spawning the {} Agent Server ***",
+        KubernetesDeploymentEntityEvent::type_name()
+    );
+    let mut agent_dispatcher = Dispatcher::default();
+    agent_dispatcher
+        .add(&db, aws_eks_kubernetes_deployment::dispatcher())
+        .await?;
+    let mut agent_server = AgentServer::new(server_name, agent_dispatcher, &settings);
+    tokio::spawn(async move { agent_server.run().await });
 
     println!(
         "*** Spawning the {} Agent Finalizer ***",
