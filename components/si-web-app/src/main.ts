@@ -1,14 +1,14 @@
 import Vue from "vue";
-import App from "./App.vue";
-import router from "./router";
+import App from "@/App.vue";
+import router from "@/router";
 
 import VueGtag from "vue-gtag";
-import { createProvider } from "./plugins/vue-apollo";
-import { auth } from "./auth";
+import { createProvider } from "@/plugins/vue-apollo";
+import { auth } from "@/auth";
 
 import "@/assets/main.css";
-import "./assets/tailwind.css";
-import "./plugins/vue-tailwind.js";
+import "@/assets/tailwind.css";
+import "@/plugins/vue-tailwind.js";
 
 
 Vue.config.productionTip = false;
