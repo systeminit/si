@@ -14,6 +14,7 @@
   "dependencies": {
     "@iarna/toml": "^2.2.3",
     "@types/node-fetch": "^2.5.4",
+    "@types/vue-feather-icons": "^5.0.0",
     "apollo-client": "2.6.8",
     "core-js": "^3.6.4",
     "jsonwebtoken": "^8.5.1",
@@ -22,8 +23,10 @@
     "vue": "^2.6.11",
     "vue-apollo": "^3.0.3",
     "vue-codemirror": "^4.0.6",
+    "vue-feather-icons": "^5.0.0",
     "vue-gtag": "^1.1.1",
     "vue-router": "^3.1.6",
+    "vue-tailwind": "^0.4.6",
     "yaml": "^1.7.2"
   },
   "devDependencies": {

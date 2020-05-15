@@ -1,24 +1,12 @@
 import Vue from "vue";
 import VueRouter from "vue-router";
 
-import SignIn from "@/views/SignIn.vue";
-import NotFound from "@/views/NotFound.vue";
+// @ts-ignore: Unreachable code error
+import routes from "./routes";
 
 import { auth } from "@/auth";
 
 Vue.use(VueRouter);
-
-const routes = [
-  {
-    path: "/signin",
-    name: "signin",
-    component: SignIn,
-  },
-  {
-    path: "*",
-    component: NotFound,
-  },
-];
 
 const router = new VueRouter({
   mode: "history",
