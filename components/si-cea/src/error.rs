@@ -79,6 +79,9 @@ pub enum CeaError {
     #[error("prost failed to encode: {0}")]
     ProstEncodeError(#[from] prost::EncodeError),
 
+    #[error("{0}")]
+    Infallible(#[from] std::convert::Infallible),
+
     // Tonic
     #[error("tonic failed to convert metadata to string: {0}")]
     TonicToString(#[from] tonic::metadata::errors::ToStrError),

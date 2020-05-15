@@ -49,6 +49,14 @@ pub enum DataError {
     ValidationError(String),
     #[error("a protobuf field was required, and it was absent: {0})")]
     RequiredField(String),
+    #[error("only one of property fields '{0}' or '{1}' can be set")]
+    MultipleEithersProvided2(String, String),
+    #[error("only one of property fields '{0}', '{1}', or '{2}' can be set")]
+    MultipleEithersProvided3(String, String, String),
+    #[error("neither one of property fields '{0}' nor '{1}' are set and one is required")]
+    NeitherEithersProvided2(String, String),
+    #[error("neither one of property fields '{0}', '{1}', nor '{2}' are set and one is required")]
+    NeitherEithersProvided3(String, String, String),
     #[error("cannot encrypt an empty password")]
     EmptyPassword,
     #[error("failed to hash a password")]

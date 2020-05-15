@@ -10,7 +10,7 @@ impl crate::protobuf::KubernetesDeploymentEntity {
         implicit_constraints: Option<crate::protobuf::KubernetesDeploymentComponentConstraints>,
         properties: Option<crate::protobuf::KubernetesDeploymentEntityProperties>,
         si_properties: Option<si_cea::protobuf::EntitySiProperties>,
-    ) -> si_data::Result<crate::protobuf::KubernetesDeploymentEntity> {
+    ) -> si_cea::CeaResult<crate::protobuf::KubernetesDeploymentEntity> {
         let mut si_storable = si_data::protobuf::DataStorable::default();
         si_properties
             .as_ref()
@@ -53,8 +53,33 @@ impl crate::protobuf::KubernetesDeploymentEntity {
         result.si_properties = si_properties;
         result.si_storable = Some(si_storable);
 
-        // TODO: fix
-        // implement this!
+        use si_cea::Entity;
+
+        match (
+            result.properties()?.kubernetes_object.as_ref(),
+            result.properties()?.kubernetes_object_yaml.as_ref(),
+        ) {
+            (Some(_), None) => {
+                result.update_kubernetes_object_yaml_from_kubernetes_object()?;
+            }
+            (None, Some(_)) => {
+                result.update_kubernetes_object_from_kubernetes_object_yaml()?;
+            }
+            (Some(_), Some(_)) => {
+                return Err(si_data::DataError::MultipleEithersProvided2(
+                    "kubernetes_object".to_string(),
+                    "kubernetes_object_yaml".to_string(),
+                )
+                .into());
+            }
+            (None, None) => {
+                return Err(si_data::DataError::NeitherEithersProvided2(
+                    "kubernetes_object".to_string(),
+                    "kubernetes_object_yaml".to_string(),
+                )
+                .into());
+            }
+        }
 
         Ok(result)
     }
@@ -68,7 +93,7 @@ impl crate::protobuf::KubernetesDeploymentEntity {
         implicit_constraints: Option<crate::protobuf::KubernetesDeploymentComponentConstraints>,
         properties: Option<crate::protobuf::KubernetesDeploymentEntityProperties>,
         si_properties: Option<si_cea::protobuf::EntitySiProperties>,
-    ) -> si_data::Result<crate::protobuf::KubernetesDeploymentEntity> {
+    ) -> si_cea::CeaResult<crate::protobuf::KubernetesDeploymentEntity> {
         let mut result = crate::protobuf::KubernetesDeploymentEntity::new(
             name,
             display_name,
