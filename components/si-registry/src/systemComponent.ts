@@ -108,24 +108,26 @@ export class SystemObject extends BaseObject {
         p.required = true;
       },
     });
-    this.fields.addText({
-      name: "name",
-      label: `${this.displayTypeName} Name`,
-      options(p) {
-        p.universal = true;
-        p.readOnly = true;
-        p.required = true;
-      },
-    });
-    this.fields.addText({
-      name: "displayName",
-      label: `${this.displayTypeName} Display Name`,
-      options(p) {
-        p.universal = true;
-        p.readOnly = true;
-        p.required = true;
-      },
-    });
+    if (!this.typeName.endsWith("EntityEvent")) {
+      this.fields.addText({
+        name: "name",
+        label: `${this.displayTypeName} Name`,
+        options(p) {
+          p.universal = true;
+          p.readOnly = true;
+          p.required = true;
+        },
+      });
+      this.fields.addText({
+        name: "displayName",
+        label: `${this.displayTypeName} Display Name`,
+        options(p) {
+          p.universal = true;
+          p.readOnly = true;
+          p.required = true;
+        },
+      });
+    }
     this.fields.addLink({
       name: "siStorable",
       label: "SI Storable",
@@ -362,7 +364,6 @@ export class ComponentObject extends SystemObject {
           label: "Constraints",
           options(p: PropLink) {
             p.universal = true;
-            p.required = true;
             p.lookup = {
               typeName: `${baseTypeName}Component`,
               names: ["constraints"],
@@ -401,7 +402,6 @@ export class ComponentObject extends SystemObject {
           label: "Constraints",
           options(p: PropLink) {
             p.universal = true;
-            p.required = true;
             p.lookup = {
               typeName: `${baseTypeName}Component`,
               names: ["constraints"],
@@ -551,11 +551,15 @@ export class EntityObject extends SystemObject {
           },
         });
         p.request.properties.addText({
-          name: "workspace_id",
+          name: "workspaceId",
           label: `Workspace ID`,
           options(p) {
             p.required = true;
           },
+        });
+        p.request.properties.addText({
+          name: "changeSetId",
+          label: `Change Set ID`,
         });
         p.request.properties.addLink({
           name: "properties",

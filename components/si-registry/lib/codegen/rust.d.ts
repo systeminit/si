@@ -21,6 +21,7 @@ interface PropertyEitherSet {
 export declare class RustFormatter {
     systemObject: ObjectTypes;
     constructor(systemObject: RustFormatter["systemObject"]);
+    entityActionMethodNames(): string[];
     hasCreateMethod(): boolean;
     hasEditEithersForAction(propAction: PropPrelude.PropAction): boolean;
     hasEditUpdatesForAction(propAction: PropPrelude.PropAction): boolean;

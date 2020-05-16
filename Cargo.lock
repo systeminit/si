@@ -2365,6 +2365,7 @@ dependencies = [
  "names",
  "opentelemetry 0.1.5",
  "opentelemetry 0.4.0",
+ "opentelemetry-jaeger",
  "paho-mqtt",
  "prost",
  "prost-derive",

@@ -34,12 +34,7 @@ export class ServiceDescription {
   }
 
   protobufPath(): string {
-    return path.join(
-      "..",
-      "si-registry",
-      "proto",
-      `${this.protoPackageName}.proto`,
-    );
+    return path.join("si-registry", "proto", `${this.protoPackageName}.proto`);
   }
 
   graphqlHintPath(): string {
@@ -58,7 +53,7 @@ export class ServiceDescription {
 // GraphQL endpoints automatically for you.
 export const services = [
   new ServiceDescription({
-    serviceName: "si-account",
+    serviceName: "account",
     protoPackageName: "si.account",
     grpcServiceName: "Account",
     graphqlTypePrefix: "",
@@ -79,10 +74,10 @@ export const services = [
   //   address: environment.services["si-aws-eks-cluster-runtime"],
   // }),
   new ServiceDescription({
-    serviceName: "si-kubernetes",
+    serviceName: "kubernetes",
     protoPackageName: "si.kubernetes",
     grpcServiceName: "Kubernetes",
-    graphqlTypePrefix: "Kubernetes",
+    graphqlTypePrefix: "",
     address: environment.services["si-kubernetes"],
   }),
 ];

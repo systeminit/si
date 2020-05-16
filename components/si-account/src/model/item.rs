@@ -1,7 +1,8 @@
-use si_data::{DataError, Db, ListResult, Result};
+use si_data::{Db, ListResult, Result};
 
 pub use crate::protobuf::{Item, ItemGetReply, ItemGetRequest, ItemListReply, ItemListRequest};
-use tracing::debug;
+
+// TODO: Make create and get changeset aware.
 
 impl Item {
     pub async fn get(db: &Db, id: impl Into<String>) -> Result<Item> {

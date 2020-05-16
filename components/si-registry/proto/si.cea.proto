@@ -24,9 +24,10 @@ message EntitySiProperties {
   google.protobuf.StringValue integration_service_id = 3;
   google.protobuf.StringValue component_id = 4;
   google.protobuf.StringValue workspace_id = 5;
-  google.protobuf.StringValue organization_id = 6;
-  google.protobuf.StringValue billing_account_id = 7;
-  google.protobuf.Int32Value version = 8;
+  google.protobuf.StringValue change_set_id = 6;
+  google.protobuf.StringValue organization_id = 7;
+  google.protobuf.StringValue billing_account_id = 8;
+  google.protobuf.Int32Value version = 9;
 }
 message EntityEventSiProperties {
   google.protobuf.StringValue integration_id = 1;

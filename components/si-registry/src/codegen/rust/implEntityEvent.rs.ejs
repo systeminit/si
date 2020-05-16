@@ -1,10 +1,8 @@
 impl si_cea::EntityEvent for <%- fmt.structName() %> {
     type Entity = <%- fmt.entityName() %>;
 
-    // TODO: fix
-    // need some values here, probably for validation?
     fn action_names() -> &'static [&'static str] {
-        &[]
+    &[<%- fmt.entityActionMethodNames().map(e => `"${e}"`).join(",") %>]
     }
 
     fn action_name(&self) -> si_data::Result<&str> {

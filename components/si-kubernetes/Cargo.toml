@@ -62,6 +62,7 @@ si-external-api-gateway = { path = "../si-external-api-gateway/rust-client" }
 
 tracing-opentelemetry = "0.3"
 opentelemetry = "0.4"
+opentelemetry-jaeger = "0.3"
 
 [dev-dependencies]
 lazy_static = "1.4"

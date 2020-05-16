@@ -235,7 +235,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
 
             let mut inner = request.into_inner();
             if inner.scope_by_tenant_id.is_none() {
-                inner.scope_by_tenant_id = Some(auth.billing_account_id().into());
+                inner.scope_by_tenant_id = Some(String::from("global"));
             }
 
             let output =
@@ -309,13 +309,10 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             .await?;
 
             let inner = request.into_inner();
-            let constraints = inner
-                .constraints
-                .ok_or_else(|| si_data::DataError::RequiredField("constraints".to_string()))?;
+            let constraints = inner.constraints;
 
             let (implicit_constraints, component) =
-                crate::protobuf::KubernetesDeploymentComponent::pick(&self.db, &constraints)
-                    .await?;
+                crate::protobuf::KubernetesDeploymentComponent::pick(&self.db, constraints).await?;
             info!(?implicit_constraints, ?component);
 
             Ok(tonic::Response::new(
@@ -390,14 +387,10 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             let display_name = inner.display_name;
             let description = inner.description;
             let workspace_id = inner.workspace_id;
+            let change_set_id = inner.change_set_id;
             let properties = inner.properties;
             let constraints = inner.constraints;
 
-            let constraints = constraints.ok_or_else(|| {
-                si_data::DataError::ValidationError(
-                    "missing required constraints value".to_string(),
-                )
-            })?;
             let workspace_id = workspace_id.ok_or_else(|| {
                 si_data::DataError::ValidationError(
                     "missing required workspace_id value".to_string(),
@@ -407,7 +400,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             let workspace = si_account::Workspace::get(&self.db, &workspace_id).await?;
 
             let (implicit_constraints, component) =
-                crate::protobuf::KubernetesDeploymentComponent::pick(&self.db, &constraints)
+                crate::protobuf::KubernetesDeploymentComponent::pick(&self.db, constraints.clone())
                     .await?;
             info!(?implicit_constraints, ?component);
 
@@ -427,10 +420,11 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
                 name,
                 display_name,
                 description,
-                Some(constraints),
+                constraints,
                 Some(implicit_constraints),
                 properties,
                 Some(si_properties),
+                change_set_id,
             )
             .await?;
             info!(?entity);

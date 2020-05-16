@@ -5,11 +5,6 @@ let auth = <%- fmt.implServiceAuth(propMethod) %>
 let inner = request.into_inner();
 <%- fmt.implServiceMethodCreateDestructure() %>
 
-let constraints = constraints.ok_or_else(|| {
-    si_data::DataError::ValidationError(
-        "missing required constraints value".to_string(),
-    )
-})?;
 let workspace_id = workspace_id.ok_or_else(|| {
     si_data::DataError::ValidationError(
         "missing required workspace_id value".to_string(),
@@ -19,7 +14,7 @@ let workspace_id = workspace_id.ok_or_else(|| {
 let workspace = si_account::Workspace::get(&self.db, &workspace_id).await?;
 
 let (implicit_constraints, component) =
-    <%- fmt.componentName() %>::pick(&self.db, &constraints).await?;
+    <%- fmt.componentName() %>::pick(&self.db, constraints.clone()).await?;
 info!(?implicit_constraints, ?component);
 
 let si_properties = si_cea::EntitySiProperties::new(
@@ -38,10 +33,11 @@ let entity = <%- fmt.structName() %>::create(
     name,
     display_name,
     description,
-    Some(constraints),
+    constraints,
     Some(implicit_constraints),
     properties,
     Some(si_properties),
+    change_set_id,
 ).await?;
 info!(?entity);
 let entity_event = <%- fmt.entityEventName() %>::create(

@@ -35,15 +35,22 @@ impl si_data::Storable for <%- fmt.structName() %> {
     }
 
     fn natural_key(&self) -> si_data::Result<Option<&str>> {
+    <%_ if (fmt.isEntityEventObject()) { _%>
+        Ok(None)
+    <%_ } else { _%>
         Ok(self.si_storable
             .as_ref()
             .ok_or_else(|| si_data::DataError::RequiredField("si_storable".to_string()))?
             .natural_key
             .as_ref()
             .map(String::as_str))
+    <%_ } _%>
     }
 
     fn set_natural_key(&mut self) -> si_data::Result<()> {
+    <%_ if (fmt.isEntityEventObject()) { _%>
+        Ok(())
+    <%_ } else { _%>
         let natural_key = format!(
             "{}:{}:{}",
             self.tenant_ids()?.first().ok_or_else(|| si_data::DataError::MissingTenantIds)?,
@@ -64,6 +71,7 @@ impl si_data::Storable for <%- fmt.structName() %> {
         si_storable.natural_key = Some(natural_key);
 
         Ok(())
+      <%_ } _%>
     }
 
     fn tenant_ids(&self) -> si_data::Result<&[String]> {

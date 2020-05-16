@@ -494,12 +494,181 @@ impl Db {
         .await
     }
 
-    // TODO: Pick up on getting the list of raw things. Removing
-    // all the safety that storable provides. We either bind it
-    // driectly to uitem, which It hink probalby sucks but will
-    // work, or we need a minimal trait that just does ID.
-    //
-    // I think it's probably the minimal trait route.
+    pub fn create_cb_query(
+        &self,
+        query: &Option<DataQuery>,
+        type_name: &str,
+        order_by: &str,
+        order_by_direction: DataPageTokenOrderByDirection,
+        contained_within: &str,
+        raw: bool,
+    ) -> Result<(HashMap<String, serde_json::Value>, String)> {
+        let mut named_params = HashMap::new();
+        named_params.insert("type_name".into(), json![type_name]);
+        named_params.insert("order_by".into(), json![order_by]);
+        named_params.insert("tenant_id".into(), json![contained_within]);
+
+        let type_check = if raw {
+            "siStorable.typeName IS VALUED"
+        } else {
+            "siStorable.typeName = $type_name"
+        };
+        // Base query
+        //   + View Context Filter?
+        //   + User Query?
+        let cbquery = match query {
+            Some(q) => {
+                if let Some(view_context) = q.view_context.as_ref() {
+                    named_params.insert("view_context".into(), json![view_context]);
+
+                    if let Some(change_set_id) = q.change_set_id.as_ref() {
+                        named_params.insert("change_set_id".into(), json![change_set_id]);
+
+                        if q.items.is_empty() {
+                            // View Context Filter & Change Set ID
+                            format!(
+                                    "SELECT a.* \
+                                       FROM `{bucket}` AS a \
+                                       WHERE a.{type_check} \
+                                           AND ARRAY_CONTAINS(a.siStorable.tenantIds, $tenant_id) \
+                                           AND ARRAY_CONTAINS(a.siStorable.viewContext, $view_context) \
+                                           AND (a.siStorable.changeSetId = $change_set_id \
+                                                OR (a.siStorable.changeSetId IS NOT VALUED \
+                                                    AND a.id NOT IN ( \
+                                                      SELECT RAW siStorable.itemId FROM `{bucket}` AS b WHERE b.{type_check} \
+                                                             AND b.siStorable.changeSetId = $change_set_id))) \
+                                       ORDER BY a.[$order_by] {order_by_direction}",
+                                    order_by_direction=order_by_direction.to_string(),
+                                    bucket=self.bucket_name,
+                                    type_check=type_check,
+                                )
+                        } else {
+                            // View Context Filter & Change Set ID & Query
+                            format!(
+                                    "SELECT {bucket}.* \
+                                       FROM `{bucket}` \
+                                       WHERE {type_check} \
+                                           AND ARRAY_CONTAINS(siStorable.tenantIds, $tenant_id) \
+                                           AND ARRAY_CONTAINS(siStorable.viewContext, $view_context) \
+                                           AND {query} \
+                                           AND (a.siStorable.changeSetId = $change_set_id \
+                                                OR (a.siStorable.changeSetId IS NOT VALUED \
+                                                    AND a.id NOT IN ( \
+                                                      SELECT RAW siStorable.itemId FROM `{bucket}` AS b WHERE b.{type_check} \
+                                                             AND b.siStorable.changeSetId = $change_set_id))) \
+                                       ORDER BY {bucket}.[$order_by] {order_by_direction}",
+                                    query=q.as_n1ql(&self.bucket_name)?,
+                                    order_by_direction=order_by_direction.to_string(),
+                                    bucket=self.bucket_name,
+                                    type_check=type_check,
+                                )
+                        }
+                    } else {
+                        if q.items.is_empty() {
+                            // View Context Filter
+                            format!(
+                                    "SELECT {bucket}.* \
+                                       FROM `{bucket}` \
+                                       WHERE {type_check} \
+                                           AND siStorable.changeSetId IS NOT VALUED \
+                                           AND ARRAY_CONTAINS(siStorable.tenantIds, $tenant_id) \
+                                           AND ARRAY_CONTAINS(siStorable.viewContext, $view_context) \
+                                       ORDER BY {bucket}.[$order_by] {order_by_direction}",
+                                    order_by_direction=order_by_direction.to_string(),
+                                    bucket=self.bucket_name,
+                                    type_check=type_check,
+                                )
+                        } else {
+                            // View Context Filter & Query
+                            format!(
+                                    "SELECT {bucket}.* \
+                                       FROM `{bucket}` \
+                                       WHERE {type_check} \
+                                           AND siStorable.changeSetId IS NOT VALUED \
+                                           AND ARRAY_CONTAINS(siStorable.tenantIds, $tenant_id) \
+                                           AND ARRAY_CONTAINS(siStorable.viewContext, $view_context) \
+                                           AND {query} \
+                                       ORDER BY {bucket}.[$order_by] {order_by_direction}",
+                                    query=q.as_n1ql(&self.bucket_name)?,
+                                    order_by_direction=order_by_direction.to_string(),
+                                    bucket=self.bucket_name,
+                                    type_check=type_check,
+                                )
+                        }
+                    }
+                } else if let Some(change_set_id) = q.change_set_id.as_ref() {
+                    named_params.insert("change_set_id".into(), json![change_set_id]);
+
+                    if q.items.is_empty() {
+                        // Change Set ID only
+                        format!(
+                                "SELECT a.* \
+                                       FROM `{bucket}` AS a \
+                                       WHERE a.{type_check} \
+                                           AND ARRAY_CONTAINS(a.siStorable.tenantIds, $tenant_id) \
+                                           AND (a.siStorable.changeSetId = $change_set_id \
+                                                OR (a.siStorable.changeSetId IS NOT VALUED \
+                                                    AND a.id NOT IN ( \
+                                                      SELECT RAW siStorable.itemId FROM `{bucket}` AS b WHERE b.{type_check} \
+                                                      AND b.siStorable.changeSetId = $change_set_id))) \
+                                       ORDER BY a.[$order_by] {order_by_direction}",
+                                       order_by_direction=order_by_direction.to_string(),
+                                       bucket=self.bucket_name,
+                                       type_check=type_check,
+                            )
+                    } else {
+                        // Change Set ID & Query
+                        format!(
+                                "SELECT a.*  \
+                                       FROM `{bucket}` AS a \
+                                       WHERE a.{type_check} \
+                                           AND ARRAY_CONTAINS(siStorable.tenantIds, $tenant_id) \
+                                           AND {query} \
+                                           AND (a.siStorable.changeSetId = $change_set_id \
+                                                OR (a.siStorable.changeSetId IS NOT VALUED \
+                                                    AND a.id NOT IN ( \
+                                                      SELECT RAW siStorable.itemId FROM `{bucket}` AS b WHERE b.{type_check}  \
+                                                             AND b.siStorable.changeSetId = $change_set_id))) \
+                                       ORDER BY {bucket}.[$order_by] {order_by_direction}",
+                                       query=q.as_n1ql(&self.bucket_name)?,
+                                       order_by_direction=order_by_direction.to_string(),
+                                       bucket=self.bucket_name,
+                                       type_check=type_check,
+                            )
+                    }
+                } else {
+                    // No filters or change set id, but a query was provided - it must have items to
+                    // complete
+                    format!(
+                        "SELECT {bucket}.* \
+                               FROM `{bucket}` \
+                               WHERE {type_check} \
+                                 AND siStorable.changeSetId IS NOT VALUED \
+                                 AND ARRAY_CONTAINS(siStorable.tenantIds, $tenant_id) \
+                                 AND {query} \
+                                 ORDER BY {bucket}.[$order_by] {order_by_direction}",
+                        query = q.as_n1ql(&self.bucket_name)?,
+                        order_by_direction = order_by_direction.to_string(),
+                        bucket = self.bucket_name,
+                        type_check = type_check,
+                    )
+                }
+            }
+            None => format!(
+                "SELECT {bucket}.* \
+                                  FROM `{bucket}` \
+                                  WHERE {type_check} \
+                                    AND siStorable.changeSetId IS NOT VALUED \
+                                    AND ARRAY_CONTAINS(siStorable.tenantIds, $tenant_id) \
+                                    ORDER BY {bucket}.[$order_by] {}",
+                order_by_direction,
+                bucket = self.bucket_name,
+                type_check = type_check,
+            ),
+        };
+        Ok((named_params, cbquery))
+    }
+
     pub async fn list_raw<
         O: AsRef<str> + std::fmt::Debug,
         C: AsRef<str> + std::fmt::Debug + std::fmt::Display,
@@ -553,32 +722,36 @@ impl Db {
             // the protobuf you sent by hand
             let order_by_direction = DataPageTokenOrderByDirection::from_i32(order_by_direction)
                 .ok_or_else(|| DataError::InvalidOrderByDirection)?;
-            span.record("db.list.order_by_direction", &tracing::field::display(&order_by_direction));
+            span.record(
+                "db.list.order_by_direction",
+                &tracing::field::display(&order_by_direction),
+            );
 
             // The default page size is 10, and the inbound default is 0
             let page_size = if page_size == 0 { 10 } else { page_size };
             span.record("db.list.page_size", &tracing::field::display(&order_by));
 
-            let mut named_params = HashMap::new();
-            named_params.insert("order_by".into(), json![order_by]);
-            let named_options = QueryOptions::new()
-                .set_named_parameters(named_params)
-                .set_scan_consistency(self.scan_consistency);
+            let (named_params, cbquery) = self.create_cb_query(
+                query,
+                "", // we will ignore this, actually.
+                order_by,
+                order_by_direction,
+                contained_within.as_ref(),
+                true,
+            )?;
 
-            let cbquery = match query {
-                Some(q) => format!(
-                   "SELECT {bucket}.* FROM `{bucket}` WHERE siStorable.typeName IS VALUED AND ARRAY_CONTAINS(siStorable.tenantIds, \"{tenant_id}\") AND {query} ORDER BY {bucket}.[$order_by] {order_by_direction}",
-                    query=q.as_n1ql(&self.bucket_name)?,
-                    order_by_direction=order_by_direction.to_string(),
-                    bucket=self.bucket_name,
-                    tenant_id=contained_within,
-                ),
-                None => format!("SELECT {bucket}.* FROM `{bucket}` WHERE siStorable.typeName IS VALUED AND ARRAY_CONTAINS(siStorable.tenantIds, \"{tenant_id}\") ORDER BY {bucket}.[$order_by] {}", order_by_direction, bucket=self.bucket_name, tenant_id=contained_within),
-            };
             span.record("db.list.query", &tracing::field::display(&cbquery));
 
             let mut result = {
-                let span = info_span!("db.cb.query", db.cb.query = &tracing::field::display(&cbquery), db.cb.query.success = tracing::field::Empty);
+                let span = info_span!(
+                    "db.cb.query",
+                    db.cb.query = &tracing::field::display(&cbquery),
+                    db.cb.named_params = &tracing::field::debug(&named_params),
+                    db.cb.query.success = tracing::field::Empty
+                );
+                let named_options = QueryOptions::new()
+                    .set_named_parameters(named_params)
+                    .set_scan_consistency(self.scan_consistency);
                 let result = self.cluster.query(cbquery, Some(named_options)).await?;
                 span.record("db.cb.query.success", &tracing::field::display(true));
                 result
@@ -586,14 +759,38 @@ impl Db {
 
             let mut result_stream = result.rows_as::<serde_json::Value>()?;
             let result_meta = result.meta().await?;
-            span.record("db.cb.querymeta.request_id", &tracing::field::display(&result_meta.request_id));
-            span.record("db.cb.querymeta.status", &tracing::field::display(&result_meta.status));
-            span.record("db.cb.querymeta.errors", &tracing::field::debug(&result_meta.errors));
-            span.record("db.cb.querymeta.client_context_id", &tracing::field::display(&result_meta.client_context_id));
-            span.record("db.cb.querymeta.elapsed_time", &tracing::field::display(&result_meta.metrics.elapsed_time));
-            span.record("db.cb.querymeta.execution_time", &tracing::field::display(&result_meta.metrics.execution_time));
-            span.record("db.cb.querymeta.result_count", &tracing::field::display(&result_meta.metrics.result_count));
-            span.record("db.cb.querymeta.result_size", &tracing::field::display(&result_meta.metrics.result_size));
+            span.record(
+                "db.cb.querymeta.request_id",
+                &tracing::field::display(&result_meta.request_id),
+            );
+            span.record(
+                "db.cb.querymeta.status",
+                &tracing::field::display(&result_meta.status),
+            );
+            span.record(
+                "db.cb.querymeta.errors",
+                &tracing::field::debug(&result_meta.errors),
+            );
+            span.record(
+                "db.cb.querymeta.client_context_id",
+                &tracing::field::display(&result_meta.client_context_id),
+            );
+            span.record(
+                "db.cb.querymeta.elapsed_time",
+                &tracing::field::display(&result_meta.metrics.elapsed_time),
+            );
+            span.record(
+                "db.cb.querymeta.execution_time",
+                &tracing::field::display(&result_meta.metrics.execution_time),
+            );
+            span.record(
+                "db.cb.querymeta.result_count",
+                &tracing::field::display(&result_meta.metrics.result_count),
+            );
+            span.record(
+                "db.cb.querymeta.result_size",
+                &tracing::field::display(&result_meta.metrics.result_size),
+            );
 
             let mut final_vec: Vec<serde_json::Value> = Vec::new();
 
@@ -639,8 +836,14 @@ impl Db {
                 next_page_token.contained_within = Some(contained_within.to_string());
                 next_page_token.seal(&self.page_secret_key)?
             };
-            span.record("db.list.next_page_token", &tracing::field::display(&page_token));
-            span.record("db.list.items_count", &tracing::field::display(&final_vec.len()));
+            span.record(
+                "db.list.next_page_token",
+                &tracing::field::display(&page_token),
+            );
+            span.record(
+                "db.list.items_count",
+                &tracing::field::display(&final_vec.len()),
+            );
 
             Ok(ListResult {
                 items: final_vec,
@@ -677,7 +880,7 @@ impl Db {
             db.list.scope_by_tenant_id = tracing::field::Empty,
             db.list.next_page_token = tracing::field::Empty,
             db.list.items_count = tracing::field::Empty,
-            db.storable.type_name = tracing::field::Empty,
+            db.cb.querymeta.named_params = tracing::field::Empty,
             db.cb.querymeta.request_id = tracing::field::Empty,
             db.cb.querymeta.status = tracing::field::Empty,
             db.cb.querymeta.errors = tracing::field::Empty,
@@ -692,7 +895,10 @@ impl Db {
             let span = tracing::Span::current();
 
             let type_name = <I as Storable>::type_name();
-            span.record("db.storable.type_name", &tracing::field::display(&type_name));
+            span.record(
+                "db.storable.type_name",
+                &tracing::field::display(&type_name),
+            );
 
             // The empty string is the default order_by; and it should be
             // naturalKey
@@ -708,33 +914,35 @@ impl Db {
             // the protobuf you sent by hand
             let order_by_direction = DataPageTokenOrderByDirection::from_i32(order_by_direction)
                 .ok_or_else(|| DataError::InvalidOrderByDirection)?;
-            span.record("db.list.order_by_direction", &tracing::field::display(&order_by_direction));
+            span.record(
+                "db.list.order_by_direction",
+                &tracing::field::display(&order_by_direction),
+            );
 
             // The default page size is 10, and the inbound default is 0
             let page_size = if page_size == 0 { 10 } else { page_size };
             span.record("db.list.page_size", &tracing::field::display(&order_by));
 
-            let mut named_params = HashMap::new();
-            named_params.insert("type_name".into(), json![type_name]);
-            named_params.insert("order_by".into(), json![order_by]);
-            let named_options = QueryOptions::new()
-                .set_named_parameters(named_params)
-                .set_scan_consistency(self.scan_consistency);
-
-            let cbquery = match query {
-                Some(q) => format!(
-                   "SELECT {bucket}.* FROM `{bucket}` WHERE siStorable.typeName = $type_name AND ARRAY_CONTAINS(siStorable.tenantIds, \"{tenant_id}\") AND {query} ORDER BY {bucket}.[$order_by] {order_by_direction}",
-                    query=q.as_n1ql(&self.bucket_name)?,
-                    order_by_direction=order_by_direction.to_string(),
-                    bucket=self.bucket_name,
-                    tenant_id=contained_within,
-                ),
-                None => format!("SELECT {bucket}.* FROM `{bucket}` WHERE siStorable.typeName = $type_name AND ARRAY_CONTAINS(siStorable.tenantIds, \"{tenant_id}\") ORDER BY {bucket}.[$order_by] {}", order_by_direction, bucket=self.bucket_name, tenant_id=contained_within),
-            };
+            let (named_params, cbquery) = self.create_cb_query(
+                query,
+                type_name,
+                order_by,
+                order_by_direction,
+                contained_within.as_ref(),
+                false,
+            )?;
             span.record("db.list.query", &tracing::field::display(&cbquery));
 
             let mut result = {
-                let span = info_span!("db.cb.query", db.cb.query = &tracing::field::display(&cbquery), db.cb.query.success = tracing::field::Empty);
+                let span = info_span!(
+                    "db.cb.query",
+                    db.cb.query = &tracing::field::display(&cbquery),
+                    db.cb.named_params = &tracing::field::debug(&named_params),
+                    db.cb.query.success = tracing::field::Empty
+                );
+                let named_options = QueryOptions::new()
+                    .set_named_parameters(named_params)
+                    .set_scan_consistency(self.scan_consistency);
                 let result = self.cluster.query(cbquery, Some(named_options)).await?;
                 span.record("db.cb.query.success", &tracing::field::display(true));
                 result
@@ -742,14 +950,38 @@ impl Db {
 
             let mut result_stream = result.rows_as::<I>()?;
             let result_meta = result.meta().await?;
-            span.record("db.cb.querymeta.request_id", &tracing::field::display(&result_meta.request_id));
-            span.record("db.cb.querymeta.status", &tracing::field::display(&result_meta.status));
-            span.record("db.cb.querymeta.errors", &tracing::field::debug(&result_meta.errors));
-            span.record("db.cb.querymeta.client_context_id", &tracing::field::display(&result_meta.client_context_id));
-            span.record("db.cb.querymeta.elapsed_time", &tracing::field::display(&result_meta.metrics.elapsed_time));
-            span.record("db.cb.querymeta.execution_time", &tracing::field::display(&result_meta.metrics.execution_time));
-            span.record("db.cb.querymeta.result_count", &tracing::field::display(&result_meta.metrics.result_count));
-            span.record("db.cb.querymeta.result_size", &tracing::field::display(&result_meta.metrics.result_size));
+            span.record(
+                "db.cb.querymeta.request_id",
+                &tracing::field::display(&result_meta.request_id),
+            );
+            span.record(
+                "db.cb.querymeta.status",
+                &tracing::field::display(&result_meta.status),
+            );
+            span.record(
+                "db.cb.querymeta.errors",
+                &tracing::field::debug(&result_meta.errors),
+            );
+            span.record(
+                "db.cb.querymeta.client_context_id",
+                &tracing::field::display(&result_meta.client_context_id),
+            );
+            span.record(
+                "db.cb.querymeta.elapsed_time",
+                &tracing::field::display(&result_meta.metrics.elapsed_time),
+            );
+            span.record(
+                "db.cb.querymeta.execution_time",
+                &tracing::field::display(&result_meta.metrics.execution_time),
+            );
+            span.record(
+                "db.cb.querymeta.result_count",
+                &tracing::field::display(&result_meta.metrics.result_count),
+            );
+            span.record(
+                "db.cb.querymeta.result_size",
+                &tracing::field::display(&result_meta.metrics.result_size),
+            );
 
             let mut final_vec: Vec<I> = Vec::new();
 
@@ -795,8 +1027,14 @@ impl Db {
                 next_page_token.contained_within = Some(contained_within.to_string());
                 next_page_token.seal(&self.page_secret_key)?
             };
-            span.record("db.list.next_page_token", &tracing::field::display(&page_token));
-            span.record("db.list.items_count", &tracing::field::display(&final_vec.len()));
+            span.record(
+                "db.list.next_page_token",
+                &tracing::field::display(&page_token),
+            );
+            span.record(
+                "db.list.items_count",
+                &tracing::field::display(&final_vec.len()),
+            );
 
             Ok(ListResult {
                 items: final_vec,
