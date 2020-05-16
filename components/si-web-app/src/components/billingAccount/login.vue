@@ -104,7 +104,7 @@ export default Vue.extend({
 
         billingAccountList.addAccount({
           id: data.billingAccountId,
-          shortName: this.billingAccountSelect,
+          name: this.objVariables.billingAccountName,
         });
         this.billingAccounts = billingAccountList.getAccounts();
 

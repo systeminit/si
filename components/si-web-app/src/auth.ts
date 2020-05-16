@@ -4,7 +4,6 @@ import { onLogin, onLogout, ExtendedApolloClient } from "@/vue-apollo";
 import { ApolloQueryResult } from "apollo-client";
 import VueApollo from "vue-apollo";
 
-import getProfile from "@/graphql/queries/getProfile.gql";
 import { registry } from "si-registry";
 
 /**
@@ -25,12 +24,12 @@ class BillingAccountList {
     }
   }
 
-  public getFirstAccountShortName(): string {
+  public getFirstAccountName(): string {
     const accounts = this.getAccounts();
-    if (accounts.length == 0) {
+    if (accounts.length == 0 || accounts[0].name == undefined) {
       return "";
     } else {
-      return accounts[0].shortName ? accounts[0].shortName : "";
+      return accounts[0].name;
     }
   }
 
@@ -52,9 +51,29 @@ class BillingAccountList {
 
 export const billingAccountList = new BillingAccountList();
 
+interface ProfileConstructor {
+  user: User;
+  billingAccount: BillingAccount;
+  workspaces: Workspace[];
+}
+
+class Profile {
+  user: User;
+  billingAccount: BillingAccount;
+  workspaces: Workspace[];
+  workspaceDefault: Workspace;
+
+  constructor(args: ProfileConstructor) {
+    this.user = args.user;
+    this.billingAccount = args.billingAccount;
+    this.workspaces = args.workspaces;
+    this.workspaceDefault = args.workspaces[0];
+  }
+}
+
 class Authentication {
   loggedIn: boolean = false;
-  profile: User = {};
+  profile: Profile | undefined;
   apollo: null | VueApollo = null;
 
   setApollo(apolloProvider: VueApollo): void {
@@ -75,8 +94,8 @@ class Authentication {
       if (this.loggedIn == false) {
         let profileJson = localStorage.getItem("profile");
         if (profileJson) {
-          let user = JSON.parse(profileJson) as User;
-          this.profile = user;
+          let profile = JSON.parse(profileJson) as Profile;
+          this.profile = profile;
           this.loggedIn = true;
         }
       }
@@ -108,22 +127,19 @@ class Authentication {
       methodName: "get",
       data: userReply,
     });
-    this.profile = {
+    this.profile = new Profile({
+      user: data.item,
       billingAccount: data.item.associations.billingAccount.item,
       workspaces:
         data.item.associations.billingAccount.item.associations.organizations
           .items[0].associations.workspaces.items,
-      workspaceDefault:
-        data.item.associations.billingAccount.item.associations.organizations
-          .items[0].associations.workspaces.items[0],
-      ...data.item,
-    };
+    });
     this.loggedIn = true;
     localStorage.setItem("profile", JSON.stringify(this.profile));
   }
 
   async logout(): Promise<void> {
-    this.profile = {};
+    this.profile = undefined;
     this.loggedIn = false;
     if (this.apollo) {
       await onLogout(this.apollo.defaultClient as ExtendedApolloClient);
@@ -131,16 +147,19 @@ class Authentication {
     localStorage.removeItem("profile");
   }
 
-  getProfile(): User {
+  getProfile(): Profile {
+    if (this.profile == undefined) {
+      throw "Cannot get profile; user is not logged in!";
+    }
     return this.profile;
   }
 
   // - Alex -
   // Property 'workspaceDefault' does not exist on type 'User'.
   //
-  // getCurrentWorkspace(): Workspace {
-  //   return this.profile.workspaceDefault;
-  // }
+  getCurrentWorkspace(): Workspace {
+    return this.getProfile().workspaceDefault;
+  }
 }
 
 export const auth = new Authentication();
