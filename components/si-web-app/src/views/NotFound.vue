@@ -2,9 +2,11 @@
   <CenteredLayout>
     <meta name="robots" content="noindex" />
     <div>
-      <p class="text-white text-5xl ">Page Not Found</p>
+      <p class="text-white text-5xl">Page Not Found</p>
       <p class="text-white text-xl">We tried, though. Seriously.</p>
-      <p class="text-white text-xl">Sorry about that, but there is nothing here.</p>
+      <p class="text-white text-xl">
+        Sorry about that, but there is nothing here.
+      </p>
     </div>
   </CenteredLayout>
 </template>
