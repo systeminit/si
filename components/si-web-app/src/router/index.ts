@@ -27,10 +27,7 @@ const router = new VueRouter({
 });
 
 router.beforeEach(async (to, _from, next) => {
-  if (
-    (await auth.isAuthenticated()) ||
-    to.path == "/signin"
-  ) {
+  if ((await auth.isAuthenticated()) || to.path == "/signin") {
     return next();
   } else {
     next("/signin");

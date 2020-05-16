@@ -135,7 +135,7 @@ class Authentication {
     return this.profile;
   }
 
-  // - Alex - 
+  // - Alex -
   // Property 'workspaceDefault' does not exist on type 'User'.
   //
   // getCurrentWorkspace(): Workspace {

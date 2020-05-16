@@ -5,8 +5,8 @@ import VueGtag from "vue-gtag";
 import { createProvider } from "./vue-apollo";
 import { auth } from "./auth";
 
-import "@/assets/main.css"
-import "./assets/tailwind.css"
+import "@/assets/main.css";
+import "./assets/tailwind.css";
 
 Vue.config.productionTip = false;
 
