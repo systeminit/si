@@ -26,11 +26,11 @@
               patternUnits="userSpaceOnUse"
               class="grid-background"
             >
-              <rect fill="#111718" width="20" height="20" />
+              <rect fill="#272727" width="20" height="20" />
               <path
                 d="M 20 0 L 0 0 0 20"
                 fill="none"
-                stroke="#76A1A9"
+                stroke="#575757"
                 stroke-width="1"
               />
             </pattern>
