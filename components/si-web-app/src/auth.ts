@@ -1,4 +1,10 @@
-import { Query, BillingAccount, User, Workspace } from "@/types/graphql-types";
+import {
+  Query,
+  BillingAccount,
+  User,
+  Workspace,
+  Organization,
+} from "@/types/graphql-types";
 import * as jwtLib from "jsonwebtoken";
 import { onLogin, onLogout, ExtendedApolloClient } from "@/plugins/vue-apollo";
 import { ApolloQueryResult } from "apollo-client";
@@ -54,12 +60,14 @@ export const billingAccountList = new BillingAccountList();
 interface ProfileConstructor {
   user: User;
   billingAccount: BillingAccount;
+  organization: Organization;
   workspaces: Workspace[];
 }
 
 class Profile {
   user: User;
   billingAccount: BillingAccount;
+  organization: Organization;
   workspaces: Workspace[];
   workspaceDefault: Workspace;
 
@@ -67,6 +75,7 @@ class Profile {
     this.user = args.user;
     this.billingAccount = args.billingAccount;
     this.workspaces = args.workspaces;
+    this.organization = args.organization;
     this.workspaceDefault = args.workspaces[0];
   }
 }
@@ -130,6 +139,7 @@ class Authentication {
     this.profile = new Profile({
       user: data.item,
       billingAccount: data.item.associations.billingAccount.item,
+      organization: data.item.associations.organization.item,
       workspaces:
         data.item.associations.billingAccount.item.associations.organizations
           .items[0].associations.workspaces.items,
