@@ -17,6 +17,10 @@ registry.system({
       typeName: "organization",
     });
     c.associations.hasMany({
+      fieldName: "workspaces",
+      typeName: "workspace",
+    });
+    c.associations.hasMany({
       fieldName: "integrationInstances",
       typeName: "integrationInstance",
     });

@@ -1,15 +1,16 @@
 use crate::gen::agent::{
-    AwsEksKubernetesDeploymentDispatchFunctions, AwsEksKubernetesDeploymentDispatcher,
+    AwsEksKubernetesKubernetesDeploymentDispatchFunctions,
+    AwsEksKubernetesKubernetesDeploymentDispatcher,
 };
 use crate::model::KubernetesDeploymentEntityEvent;
 use si_cea::agent::dispatch::prelude::*;
 
 #[derive(Clone)]
-pub struct AwsEksKubernetesDeploymentDispatchFunctionsImpl;
+pub struct AwsEksKubernetesKubernetesDeploymentDispatchFunctionsImpl;
 
 #[async_trait]
-impl AwsEksKubernetesDeploymentDispatchFunctions
-    for AwsEksKubernetesDeploymentDispatchFunctionsImpl
+impl AwsEksKubernetesKubernetesDeploymentDispatchFunctions
+    for AwsEksKubernetesKubernetesDeploymentDispatchFunctionsImpl
 {
     type EntityEvent = KubernetesDeploymentEntityEvent;
 
@@ -18,7 +19,6 @@ impl AwsEksKubernetesDeploymentDispatchFunctions
         entity_event: &mut Self::EntityEvent,
     ) -> CeaResult<()> {
         async {
-            println!("****************fuuuuck");
             entity_event.log("Kubernetes like a motherfucker\n");
             entity_event.log(format!("{:?}", entity_event.input_entity()));
             entity_event.init_output_entity()?;
@@ -68,7 +68,10 @@ impl AwsEksKubernetesDeploymentDispatchFunctions
     }
 }
 
-pub fn dispatcher(
-) -> AwsEksKubernetesDeploymentDispatcher<AwsEksKubernetesDeploymentDispatchFunctionsImpl> {
-    AwsEksKubernetesDeploymentDispatcher::<AwsEksKubernetesDeploymentDispatchFunctionsImpl>::new()
+pub fn dispatcher() -> AwsEksKubernetesKubernetesDeploymentDispatcher<
+    AwsEksKubernetesKubernetesDeploymentDispatchFunctionsImpl,
+> {
+    AwsEksKubernetesKubernetesDeploymentDispatcher::<
+        AwsEksKubernetesKubernetesDeploymentDispatchFunctionsImpl,
+    >::new()
 }

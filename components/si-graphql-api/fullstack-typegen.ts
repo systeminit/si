@@ -880,6 +880,7 @@ export interface NexusGenFieldTypes {
     integrationInstances: NexusGenRootTypes['IntegrationInstanceListReply'] | null; // IntegrationInstanceListReply
     organizations: NexusGenRootTypes['OrganizationListReply'] | null; // OrganizationListReply
     users: NexusGenRootTypes['UserListReply'] | null; // UserListReply
+    workspaces: NexusGenRootTypes['WorkspaceListReply'] | null; // WorkspaceListReply
   }
   BillingAccountGetReply: { // field return type
     item: NexusGenRootTypes['BillingAccount'] | null; // BillingAccount
@@ -1421,6 +1422,9 @@ export interface NexusGenArgTypes {
     }
     users: { // args
       input?: NexusGenInputs['UserListRequest'] | null; // UserListRequest
+    }
+    workspaces: { // args
+      input?: NexusGenInputs['WorkspaceListRequest'] | null; // WorkspaceListRequest
     }
   }
   IntegrationAssociations: {
