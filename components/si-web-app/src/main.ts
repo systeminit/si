@@ -10,7 +10,6 @@ import "@/assets/main.css";
 import "@/assets/tailwind.css";
 import "@/plugins/vue-tailwind.js";
 
-
 Vue.config.productionTip = false;
 
 let apolloProvider = createProvider();
