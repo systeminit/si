@@ -139,7 +139,9 @@ class Authentication {
     this.profile = new Profile({
       user: data.item,
       billingAccount: data.item.associations.billingAccount.item,
-      organization: data.item.associations.organization.item,
+      organization:
+        data.item.associations.billingAccount.item.associations.organizations
+          .items[0],
       workspaces:
         data.item.associations.billingAccount.item.associations.organizations
           .items[0].associations.workspaces.items,
