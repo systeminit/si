@@ -1,3 +1,5 @@
+<!-- display: block -->
+
 <template>
   <div id="signin-form" :loading="$apollo.loading">
     <form>
@@ -13,10 +15,9 @@
                 size="1.5x"
                 class="custom-class text-teal-700 group-hover:text-teal-500"
               ></UserIcon>
+            
             </div>
-            <div
-              class="flex-1 group border-b border-b-2 border-teal-800 group-hover:border-teal-500"
-            >
+            <div class="flex-1 group border-b border-b-2 border-teal-800 group-hover:border-teal-500">
               <input
                 class="appearance-none bg-transparent border-none w-full text-gray-400 mr-3 py-1 px-2 leading-tight focus:outline-none"
                 type="text"
