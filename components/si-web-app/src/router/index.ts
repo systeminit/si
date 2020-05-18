@@ -5,6 +5,7 @@ import VueRouter from "vue-router";
 import routes from "./routes";
 
 import { auth } from "@/auth";
+import { tracer } from "@/telemetry";
 
 Vue.use(VueRouter);
 
@@ -14,10 +15,26 @@ const router = new VueRouter({
   routes,
 });
 
-router.beforeEach(async (to, _from, next) => {
+router.beforeEach(async (to, from, next) => {
+  const span = tracer.startSpan(`web.router ${to.path}`);
+  span.setAttributes({
+    "web.route.to.path": to.path,
+    "web.route.to.full_path": to.fullPath,
+    "web.route.to.params": to.params,
+    "web.route.to.query": to.query,
+    "web.route.to.redirected_from": to.redirectedFrom,
+    "web.route.from.path": from.path,
+    "web.route.from.full_path": from.fullPath,
+    "web.route.from.params": from.params,
+    "web.route.from.query": from.query,
+    "web.route.from.redirected_from": from.redirectedFrom,
+  });
   if ((await auth.isAuthenticated()) || to.path == "/signin") {
+    span.end();
     return next();
   } else {
+    span.setAttribute("web.route.to.redirected", "/signin");
+    span.end();
     next("/signin");
   }
 });
