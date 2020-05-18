@@ -2,21 +2,18 @@
   <div id="signin-form" :loading="$apollo.loading">
     <form>
       <div class="flex flex-col w-80 border border-teal-800">
+        
         <div class="flex items-center bg-teal-800 px-4 py-2 h-16">
           <p class="text-left text-xl text-white ">{{ form.title.label }}</p>
         </div>
 
         <div class="flex flex-col px-8 py-4">
+          
           <div class="flex flex-row items-center h-12 group">
             <div class="pr-4">
-              <UserIcon
-                size="1.5x"
-                class="custom-class text-teal-700 group-hover:text-teal-500"
-              ></UserIcon>
+              <UserIcon size="1.5x" class="custom-class text-teal-700 group-hover:text-teal-500"/>
             </div>
-            <div
-              class="flex-1 group border-b border-b-2 border-teal-800 group-hover:border-teal-500"
-            >
+            <div class="flex-1 group border-b border-b-2 border-teal-800 group-hover:border-teal-500">
               <input
                 class="appearance-none bg-transparent border-none w-full text-gray-400 mr-3 py-1 px-2 leading-tight focus:outline-none"
                 type="text"
@@ -29,14 +26,9 @@
 
           <div class="flex flex-row items-center h-12 group">
             <div class="pr-4">
-              <mail-icon
-                size="1.5x"
-                class="custom-class text-teal-700 group-hover:text-teal-500"
-              ></mail-icon>
+              <mail-icon size="1.5x" class="custom-class text-teal-700 group-hover:text-teal-500"/>
             </div>
-            <div
-              class="flex-1 border-b border-b-2 border-teal-800 group-hover:border-teal-500"
-            >
+            <div class="flex-1 border-b border-b-2 border-teal-800 group-hover:border-teal-500">
               <input
                 class="appearance-none bg-transparent border-none w-full text-gray-400 mr-3 py-1 px-2 leading-tight focus:outline-none"
                 type="text"
@@ -47,16 +39,11 @@
             </div>
           </div>
 
-          <div class="flex flex-row items-center h-12 group">
+          <div class="flex flex-row items-center h-12 group">  
             <div class="pr-4">
-              <lock-icon
-                size="1.5x"
-                class="custom-class text-teal-700 group-hover:text-teal-500"
-              ></lock-icon>
+              <lock-icon size="1.5x" class="custom-class text-teal-700 group-hover:text-teal-500"/>
             </div>
-            <div
-              class="flex-1 group border-b border-b-2 border-teal-800 group-hover:border-teal-500"
-            >
+            <div class="flex-1 group border-b border-b-2 border-teal-800 group-hover:border-teal-500">
               <input
                 class="appearance-none bg-transparent border-none w-full text-gray-400 mr-3 py-1 px-2 leading-tight focus:outline-none"
                 type="password"
@@ -73,8 +60,7 @@
             class="bg-teal-700 px-4 py-2 text-white hover:bg-teal-600"
             @click="checkLogin()"
             type="button"
-          >
-            {{ form.okButton.label }}
+          >{{ form.okButton.label }}
           </button>
         </div>
 
@@ -83,9 +69,7 @@
           role="alert"
           v-if="error"
         >
-          <strong class="text-center font-bold bg-red-200 py-2"
-            >Sign in failed; try again?</strong
-          >
+          <strong class="text-center font-bold bg-red-200 py-2">Sign in failed; try again?</strong>
           <span class="font-normal text-sm px-4 py-3">({{ error }})</span>
         </div>
       </div>

@@ -8,13 +8,12 @@
         :workspaceId="workspaceId"
       />
 
-      <router-view class="w-full" />
+      <router-view class="w-full"/>
     </div>
   </div>
 </template>
 
 <script>
-// import AppMainLayout from "@/components/layout/AppMainLayout.vue"
 import WorkspaceNav from "./WorkspaceNav.vue";
 import AppBar from "@/components/common/AppBar.vue";
 
