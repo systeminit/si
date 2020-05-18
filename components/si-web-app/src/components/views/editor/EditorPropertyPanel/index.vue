@@ -29,28 +29,14 @@
 
     </div>
 
-    <div id="property-panel-menu">
-
-      <div v-for="field of objMethod.properties.attrs" v-bind:key="field.name">
-        <div v-if="field.kind() == 'text'">
-          <v-text-field
-            v-model="objVariables[field.name]"
-            :label="field.label"
-            :name="field.name"
-          ></v-text-field>
-        </div>
-      </div>
-
-
+    <div>
+      <PropertyList/>
     </div>
-
-
 
   </div>
 </template>
 
 <script>
-import UiButton from "@/components/ui/button/UiButton.vue";
 import {
   Maximize2Icon,
   SettingsIcon,
@@ -58,14 +44,11 @@ import {
   SearchIcon,
   CodeIcon,
 } from "vue-feather-icons";
-
-import { registry } from "si-registry";
-const user = registry.get("user");
-
-registry.get
+import UiButton from "@/components/ui/button/UiButton.vue";
+import PropertyList from "./PropertyList.vue";
 
 export default {
-  name: "HelloWorld",
+  name: "EditorPropertyPanel",
   components: {
     Maximize2Icon,
     SettingsIcon,
@@ -73,6 +56,7 @@ export default {
     SearchIcon,
     CodeIcon,
     UiButton,
+    PropertyList,
   },
 };
 </script>

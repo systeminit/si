@@ -12,6 +12,9 @@ export default {
     const profile = auth.getProfile();
     const organization = profile.organization;
     const workspace = profile.workspaceDefault;
+
+    console.log(profile)
+
     return {
       organizationId: organization.id,
       workspaceId: workspace.id,
