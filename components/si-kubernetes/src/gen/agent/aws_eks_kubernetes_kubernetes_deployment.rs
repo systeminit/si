@@ -1,11 +1,15 @@
 use si_cea::EntityEvent;
 
 #[derive(Clone)]
-pub struct AwsEksKubernetesDeploymentDispatcher<T: AwsEksKubernetesDeploymentDispatchFunctions> {
+pub struct AwsEksKubernetesKubernetesDeploymentDispatcher<
+    T: AwsEksKubernetesKubernetesDeploymentDispatchFunctions,
+> {
     _phantom: std::marker::PhantomData<T>,
 }
 
-impl<T: AwsEksKubernetesDeploymentDispatchFunctions> AwsEksKubernetesDeploymentDispatcher<T> {
+impl<T: AwsEksKubernetesKubernetesDeploymentDispatchFunctions>
+    AwsEksKubernetesKubernetesDeploymentDispatcher<T>
+{
     pub fn new() -> Self {
         Self {
             _phantom: Default::default(),
@@ -13,8 +17,9 @@ impl<T: AwsEksKubernetesDeploymentDispatchFunctions> AwsEksKubernetesDeploymentD
     }
 }
 
-impl<T: AwsEksKubernetesDeploymentDispatchFunctions> si_cea::agent::dispatch::IntegrationActions
-    for AwsEksKubernetesDeploymentDispatcher<T>
+impl<T: AwsEksKubernetesKubernetesDeploymentDispatchFunctions>
+    si_cea::agent::dispatch::IntegrationActions
+    for AwsEksKubernetesKubernetesDeploymentDispatcher<T>
 {
     fn integration_actions(&self) -> &'static [&'static str] {
         &[
@@ -26,8 +31,9 @@ impl<T: AwsEksKubernetesDeploymentDispatchFunctions> si_cea::agent::dispatch::In
     }
 }
 
-impl<T: AwsEksKubernetesDeploymentDispatchFunctions>
-    si_cea::agent::dispatch::IntegrationAndServiceName for AwsEksKubernetesDeploymentDispatcher<T>
+impl<T: AwsEksKubernetesKubernetesDeploymentDispatchFunctions>
+    si_cea::agent::dispatch::IntegrationAndServiceName
+    for AwsEksKubernetesKubernetesDeploymentDispatcher<T>
 {
     fn integration_name() -> &'static str {
         "aws"
@@ -39,8 +45,8 @@ impl<T: AwsEksKubernetesDeploymentDispatchFunctions>
 }
 
 #[async_trait::async_trait]
-impl<T: AwsEksKubernetesDeploymentDispatchFunctions + Sync> si_cea::agent::dispatch::Dispatch
-    for AwsEksKubernetesDeploymentDispatcher<T>
+impl<T: AwsEksKubernetesKubernetesDeploymentDispatchFunctions + Sync>
+    si_cea::agent::dispatch::Dispatch for AwsEksKubernetesKubernetesDeploymentDispatcher<T>
 {
     type EntityEvent = T::EntityEvent;
 
@@ -64,13 +70,14 @@ impl<T: AwsEksKubernetesDeploymentDispatchFunctions + Sync> si_cea::agent::dispa
     }
 }
 
-impl<T: AwsEksKubernetesDeploymentDispatchFunctions + Sync + Send + Clone>
-    si_cea::agent::dispatch::IntegrationDispatch for AwsEksKubernetesDeploymentDispatcher<T>
+impl<T: AwsEksKubernetesKubernetesDeploymentDispatchFunctions + Sync + Send + Clone>
+    si_cea::agent::dispatch::IntegrationDispatch
+    for AwsEksKubernetesKubernetesDeploymentDispatcher<T>
 {
 }
 
 #[async_trait::async_trait]
-pub trait AwsEksKubernetesDeploymentDispatchFunctions {
+pub trait AwsEksKubernetesKubernetesDeploymentDispatchFunctions {
     type EntityEvent: si_cea::EntityEvent + Send;
 
     async fn create(

@@ -20,7 +20,7 @@ registry.componentAndEntity({
     });
     c.entity.integrationServices.push({
       integrationName: "aws",
-      integrationServiceName: "eks",
+      integrationServiceName: "eks_kubernetes",
     });
 
     // Constraints
