@@ -1,4 +1,4 @@
-const uik = require("./src/design/themes/dark");
+const theme = require("./src/design/themes/tailwind/tailwind-dark");
 
 module.exports = {
   theme: {
@@ -9,10 +9,13 @@ module.exports = {
       sans: ["Roboto", "Sans-serif"],
     },
     extend: {
-      colors: uik.colors,
-      backgroundColor: "#121212",
+      spacing: theme.spacing,
+      colors: theme.colors,
     },
   },
-  variants: {},
+  variants: {
+    borderColor: ["group-hover"],
+    textColor: ["group-hover"],
+  },
   plugins: [],
 };

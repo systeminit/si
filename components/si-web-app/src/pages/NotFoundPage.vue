@@ -13,8 +13,7 @@
 
 <script lang="ts">
 import Vue from "vue";
-
-import CenteredLayout from "@/components/CenteredLayout.vue";
+import CenteredLayout from "@/components/layout/CenteredLayout.vue";
 
 export default Vue.extend({
   name: "signin",

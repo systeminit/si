@@ -23,4 +23,12 @@ const screens = {
   xl: "1280px",
 };
 
+const spacing = {
+  "72": "18rem",
+  "80": "20rem",
+  "96": "24rem",
+};
+
+exports.spacing = spacing;
+
 exports.colors = colors;
