@@ -1,42 +1,37 @@
 <template>
   <div id="system-details" class="flex flex-col flex-no-wrap w-full">
-    
     <div id="system-summary" class="flex-none h-40">
-        {{ systemName }}
+      {{ systemName }}
     </div>
 
     <div id="system-editor" class="flex h-full w-full">
-        <Editor/>
+      <Editor />
     </div>
-
   </div>
-
 </template>
 
 <script>
-import Editor from "@/components/views/editor/Editor.vue"
+import Editor from "@/components/views/editor/Editor.vue";
 
 export default {
-  name: 'SystemDetails',
+  name: "SystemDetails",
   components: {
-    Editor
+    Editor,
   },
-  data: function () {
+  data: function() {
     return {
-      systemName: "demo"
-    }
-  }
-}
+      systemName: "demo",
+    };
+  },
+};
 </script>
 
 <style type="text/css" scoped>
-
 #system-summary {
-  background-color: #2A2F32;
+  background-color: #2a2f32;
 }
 
 #system-editor {
   background-color: #000000;
 }
-
 </style>

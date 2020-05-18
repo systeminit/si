@@ -1,6 +1,6 @@
 <template>
   <CenteredLayout>
-    <SignInForm/>
+    <SignInForm />
   </CenteredLayout>
 </template>
 
@@ -12,7 +12,7 @@ export default {
   name: "SignInPage",
   components: {
     CenteredLayout,
-    SignInForm
+    SignInForm,
   },
-}
+};
 </script>

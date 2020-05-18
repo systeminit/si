@@ -7,34 +7,33 @@
     :kind="kind"
   >
     <slot />
-  
   </component>
 </template>
 
 <script>
-import {UiButton} from "./UiButtonStyle.js";
+import { UiButton } from "./UiButtonStyle.js";
 
 export default {
   name: "UiButton",
   props: {
     tag: {
       type: String,
-      default: "button"
+      default: "button",
     },
     type: {
       type: String,
-      default: ""
+      default: "",
     },
     kind: {
       type: String,
-      default: "default"
+      default: "default",
     },
   },
   computed: {
     style() {
-      let theme = new UiButton(this.kind); 
-      return theme.style
-    }
-  }
+      let theme = new UiButton(this.kind);
+      return theme.style;
+    },
+  },
 };
 </script>

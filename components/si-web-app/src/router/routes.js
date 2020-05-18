@@ -29,9 +29,9 @@ const routes = [
         path: "/o/:organizationId/w/:workspaceId/s/:systemId",
         name: "system",
         component: SystemDetails,
-        props: true
-      }
-    ]
+        props: true,
+      },
+    ],
   },
 ];
 

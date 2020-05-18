@@ -1,5 +1,5 @@
 <template>
-  <WorkspacePage :organizationId="organizationId" :workspaceId="workspaceId"/>
+  <WorkspacePage :organizationId="organizationId" :workspaceId="workspaceId" />
 </template>
 
 <script lang="ts">
@@ -10,11 +10,14 @@ export default {
   name: "home",
   data() {
     const profile = auth.getProfile();
+    console.log(profile);
     const organization = (profile &&
       profile.billingAccount &&
       profile.billingAccount.associations.organizations &&
       profile.billingAccount.associations.organizations.items &&
-      profile.billingAccount.associations.organizations.items[0]) || { name: "busted" };
+      profile.billingAccount.associations.organizations.items[0]) || {
+      name: "busted",
+    };
 
     // Looks like workspcaces aren't under organization?
     // const workspace = (organization &&
@@ -26,8 +29,6 @@ export default {
       profile.workspaces &&
       profile.workspaces[0]) || { name: "busted" };
 
-
-
     return {
       organizationId: organization.id,
       workspaceId: workspace.id,
@@ -35,8 +36,6 @@ export default {
   },
   components: {
     WorkspacePage,
-  }
+  },
 };
 </script>
-
-

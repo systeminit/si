@@ -1,32 +1,38 @@
 <template>
-
-  <div ref="editor" id="editor" class="flex h-full w-full flex-row" v-on:mousemove="mouseMove" v-on:mousedown="mouseDown" v-on:mouseup="mouseUp">
-
+  <div
+    ref="editor"
+    id="editor"
+    class="flex h-full w-full flex-row"
+    v-on:mousemove="mouseMove"
+    v-on:mousedown="mouseDown"
+    v-on:mouseup="mouseUp"
+  >
     <div ref="leftPanel" class="box-border flex-auto bg-gray-900">
-      <SchematicPanel/>
+      <SchematicPanel />
     </div>
-      
-    <div ref="resizeHandle" class="w-1 bg-gray-800 flex-none cursor-resize"></div>
-    
+
+    <div
+      ref="resizeHandle"
+      class="w-1 bg-gray-800 flex-none cursor-resize"
+    ></div>
+
     <div ref="rightPanel" class="box-border flex-auto bg-gray-900">
-      <PropertyPanel/>
+      <PropertyPanel />
     </div>
-
   </div>
-
 </template>
 
 <script>
-import SchematicPanel from './EditorSchematicPanel.vue'
-import PropertyPanel from './EditorPropertyPanel.vue'
+import SchematicPanel from "./EditorSchematicPanel.vue";
+import PropertyPanel from "./EditorPropertyPanel.vue";
 
 export default {
-  name: 'Editor',
+  name: "Editor",
   components: {
-      SchematicPanel,
-      PropertyPanel
+    SchematicPanel,
+    PropertyPanel,
   },
-  data: function () {
+  data: function() {
     return {
       resizeHandle: {},
       leftPanel: {},
@@ -34,21 +40,21 @@ export default {
       isResizing: false,
       window: {
         width: 0,
-        height: 0
+        height: 0,
       },
-    }
+    };
   },
   mounted: function() {
-    this.resizeHandle = this.$refs.resizeHandle
-    this.leftPanel = this.$refs.leftPanel
-    this.rightPanel = this.$refs.rightPanel
+    this.resizeHandle = this.$refs.resizeHandle;
+    this.leftPanel = this.$refs.leftPanel;
+    this.rightPanel = this.$refs.rightPanel;
   },
   created() {
-    window.addEventListener('resize', this.handleResize);
+    window.addEventListener("resize", this.handleResize);
     this.handleResize();
   },
   destroyed() {
-    window.removeEventListener('resize', this.handleResize);
+    window.removeEventListener("resize", this.handleResize);
   },
   methods: {
     mouseDown() {
@@ -58,15 +64,13 @@ export default {
     },
     mouseMove(event) {
       if (this.isResizing) {
-
         let pointerXposRelative = event.clientX - this.resizeHandle.offsetLeft;
-        let panelRect = this.leftPanel.getBoundingClientRect()
-        let panelWidthUpdate = parseInt(panelRect.width) + pointerXposRelative
+        let panelRect = this.leftPanel.getBoundingClientRect();
+        let panelWidthUpdate = parseInt(panelRect.width) + pointerXposRelative;
 
-        this.leftPanel.style.width = panelWidthUpdate + 'px';
+        this.leftPanel.style.width = panelWidthUpdate + "px";
         this.leftPanel.style.flexGrow = 0;
       }
-        
     },
     mouseUp() {
       this.isResizing = false;
@@ -82,9 +86,7 @@ export default {
       // transform width of the right pannel while maintaining ratios
       // set right panel width while resizing window.
       // simulate resizeHandle transform...
-    }
-  }
+    },
+  },
 };
 </script>
-
-

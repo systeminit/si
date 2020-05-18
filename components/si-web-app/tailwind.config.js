@@ -10,12 +10,12 @@ module.exports = {
     },
     extend: {
       spacing: theme.spacing,
-      colors: theme.colors
+      colors: theme.colors,
     },
   },
   variants: {
-    borderColor: ['group-hover'],
-    textColor: ['group-hover'],
+    borderColor: ["group-hover"],
+    textColor: ["group-hover"],
   },
   plugins: [],
 };
