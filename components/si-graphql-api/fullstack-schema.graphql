@@ -28,6 +28,9 @@ type BillingAccountAssociations {
 
   """A System Initiative User"""
   users(input: UserListRequest): UserListReply
+
+  """A System Initiative Workspace"""
+  workspaces(input: WorkspaceListRequest): WorkspaceListReply
 }
 
 """Get a System Initiative Billing Account Reply"""
