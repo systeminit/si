@@ -11,7 +11,7 @@
       <SchematicPanel />
     </div>
 
-    <div ref="resizeHandle"class="w-1 bg-gray-800 flex-none cursor-resize"/>
+    <div ref="resizeHandle"class="w-1 bg-gray-800 flex-none cursor-resize"></div>
 
     <div ref="rightPanel" class="box-border flex-auto bg-gray-900">
       <PropertyPanel />
