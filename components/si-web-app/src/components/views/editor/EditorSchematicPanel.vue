@@ -151,26 +151,26 @@ export default {
       x: this.canvas.element.offsetLeft,
       y: this.canvas.element.offsetTop,
     };
-    console.log(canvasOrigin);
+    // console.log(canvasOrigin);
 
     let canvasDimension = {
       width: this.canvas.element.offsetWidth,
       height: this.canvas.element.offsetHeight,
     };
-    console.log(canvasDimension);
+    // console.log(canvasDimension);
 
     let viewCenter = {
       x: canvasDimension.width / 2 - canvasOrigin.x,
       y: canvasDimension.height / 2 - canvasOrigin.y,
     };
-    console.log(viewCenter);
+    // console.log(viewCenter);
 
     let gridDimension = {
       x: this.grid.element.width.baseVal.value,
       y: this.grid.element.height.baseVal.value,
     };
 
-    console.log(gridDimension);
+    // console.log(gridDimension);
 
     let scaleFactor = 4;
 
@@ -180,11 +180,11 @@ export default {
     };
     this.gridWidth = `${gridUpdatedDimension.x}%`;
     this.gridHeight = `${gridUpdatedDimension.y}%`;
-    console.log(gridUpdatedDimension);
+    // console.log(gridUpdatedDimension);
 
     this.grid.dimension.width = gridDimension.x * scaleFactor;
     this.grid.dimension.height = gridDimension.y * scaleFactor;
-    console.log(this.grid.dimension.width, this.grid.dimension.height);
+    // console.log(this.grid.dimension.width, this.grid.dimension.height);
 
     gridDimension = {
       x: this.grid.element.width.baseVal.value * scaleFactor,
@@ -195,7 +195,7 @@ export default {
       x: gridDimension.x / 2,
       y: gridDimension.y / 2,
     };
-    console.log(gridCenter);
+    // console.log(gridCenter);
 
     let canvasOffset = {
       x: -(gridCenter.x - viewCenter.x - canvasOrigin.x),
@@ -211,7 +211,7 @@ export default {
   methods: {
     mouseOver() {},
     mouseDown(event) {
-      console.log("mouseDown");
+      // console.log("mouseDown");
 
       if (event.altKey) {
         let mousePositionInScreenSpace = {
@@ -228,7 +228,7 @@ export default {
         this.isPanning = true;
       } else {
         this.selection.object = event.target;
-        console.log(this.selection.object);
+        // console.log(this.selection.object);
 
         if (this.selection.object.classList.contains("node")) {
           let selectionOffsetLeft = event.target.offsetLeft;
@@ -286,26 +286,26 @@ export default {
       }
     },
     log(msg) {
-      console.log(msg);
+      // console.log(msg);
     },
     canvasConstraint() {
       let left = this.canvas.element.offsetRight;
       let top = this.canvas.element.offsetBottom;
 
-      console.log(left, top);
+      // console.log(left, top);
 
-      console.log(
-        "::" + this.grid.element.getBoundingClientRect().left,
-        this.grid.element.getBoundingClientRect().top,
-      );
-      console.log(
-        "::" + this.canvas.element.offsetLeft,
-        this.canvas.element.offsetTop,
-      );
+      // console.log(
+      //   "::" + this.grid.element.getBoundingClientRect().left,
+      //   this.grid.element.getBoundingClientRect().top,
+      // );
+      // console.log(
+      //   "::" + this.canvas.element.offsetLeft,
+      //   this.canvas.element.offsetTop,
+      // );
     },
     panCanvas() {
-      console.log("==============");
-      console.log("panning canvas");
+      // console.log("==============");
+      // console.log("panning canvas");
 
       let mousePositionInScreenSpace = {
         x: event.clientX,
@@ -326,9 +326,9 @@ export default {
         y: this.canvas.offset.y + mouseMovement.y,
       };
 
-      console.log(
-        `canvas offset - x:${this.canvas.offset.x} y:${this.canvas.offset.y}`,
-      );
+      // console.log(
+      //   `canvas offset - x:${this.canvas.offset.x} y:${this.canvas.offset.y}`,
+      // );
       this.log(
         `desired adjusted translation - x:${translation.x} y:${translation.y}`,
       );
@@ -373,14 +373,14 @@ export default {
       let limitX = this.linearEquation(pt1, pt2, val);
       let limitY = this.linearEquation(pt3, pt2, val);
 
-      console.log(limitX);
+      // console.log(limitX);
 
       translation.x = Math.max(limitX, translation.x);
       // translation.y = Math.max(limitY, translation.y)
-      console.log(limitY);
+      // console.log(limitY);
 
       this.log(`adjusted translation - x:${translation.x} y:${translation.y}`);
-      console.log("zoom " + 1 / this.zoom.factor);
+      // console.log("zoom " + 1 / this.zoom.factor);
 
       this.canvas.element.style.transformOrigin = "0 0";
       this.canvas.element.style.transform = `matrix(${this.zoom.factor}, 0, 0, ${this.zoom.factor}, ${translation.x}, ${translation.y})`;
@@ -402,20 +402,20 @@ export default {
        *
        */
 
-      console.log(point1);
-      console.log(point2);
+      // console.log(point1);/
+      // console.log(point2);
 
       // Solving the slope
       let m = (point2.y - point1.y) / (point2.x - point1.x);
-      console.log(`m: ${m}`);
+      // console.log(`m: ${m}`);
 
       // solving for b (with any of the two point)
       let b = point1.y - m * point1.x;
-      console.log(`b: ${b}`);
+      // console.log(`b: ${b}`);
 
       // solve for y
       let y = m * value + b;
-      console.log(`y: ${y}`);
+      // console.log(`y: ${y}`);
 
       return y;
     },
@@ -583,7 +583,7 @@ export default {
       this.gridWidth = `${width.x}%`;
       this.gridHeight = `${width.y}%`;
 
-      console.log(width);
+      // console.log(width);
     },
   },
 };

@@ -29,7 +29,7 @@
 
     </div>
 
-    <div>
+    <div class="flex w-full h-full">
       <PropertyList/>
     </div>
 
