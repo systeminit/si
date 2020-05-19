@@ -8,8 +8,11 @@
       @mousemove="mouseMove"
       @mouseup="mouseUp"
     >
-      <div ref="canvas" id="canvas" class="flex-auto relative w-full h-full canvas block">
-        
+      <div
+        ref="canvas"
+        id="canvas"
+        class="flex-auto relative w-full h-full canvas block"
+      >
         <div class="node draggable absolute">Node</div>
 
         <svg
@@ -37,7 +40,6 @@
           </defs>
           <rect width="100%" height="100%" fill="url(#grid)" />
         </svg>
-      
       </div>
     </div>
   </div>

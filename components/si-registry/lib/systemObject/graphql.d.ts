@@ -26,5 +26,6 @@ export declare class SiGraphql {
     associationFieldList(associations: QueryArgs["associations"], systemObject: ObjectTypes): string;
     fieldList(propObject: PropObject, associations: QueryArgs["associations"], systemObjectMemo: ObjectTypes): string;
     query(args: QueryArgs): DocumentNode;
+    mutation(args: QueryArgs): DocumentNode;
 }
 export {};

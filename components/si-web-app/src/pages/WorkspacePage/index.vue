@@ -8,7 +8,7 @@
         :workspaceId="workspaceId"
       />
 
-      <router-view class="w-full"/>
+      <router-view class="w-full" />
     </div>
   </div>
 </template>
