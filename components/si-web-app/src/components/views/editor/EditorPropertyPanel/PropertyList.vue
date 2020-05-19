@@ -89,8 +89,7 @@ export default {
   components: {
     LinkIcon,
   },
-  mounted() {
-  },
+  mounted() {},
   data() {
     const kubernetesDeploymentEntity = registry.get(
       "kubernetesDeploymentEntity",
@@ -103,7 +102,7 @@ export default {
       { methodName: "create" },
     );
     console.log(kubernetesDeploymentEntityCreateVars);
-  
+
     return {
       kubernetesDeploymentEntity,
       kubernetesDeploymentEntityCreate,
@@ -116,7 +115,7 @@ export default {
         methodName: "create",
       });
       console.log(mutation);
-      
+
       try {
         this.$apollo.mutate({
           mutation,
@@ -141,24 +140,21 @@ export default {
       }
 
       try {
-        consol.log(this.kubernetesDeploymentEntityList)
+        consol.log(this.kubernetesDeploymentEntityList);
         // let objE = registry.objects
         // let listTest = this.kubernetesDeploymentEntityList()
 
         // let KubernetesDeploymentEntityListRequest = registry.KubernetesDeploymentEntityListRequest()
         // let KubernetesDeploymentEntityList = this.kubernetesDeploymentEntity.methods.getEntry("list");
 
-
         // let KubernetesDeploymentEntityList = registry.KubernetesDeploymentEntityListKubernetesDeploymentEntityListRequest)
         // let listA = registry.get("kubernetesDeploymentEntityList", );
         // console.log(KubernetesDeploymentEntityList)
-
       } catch (error) {
         console.log("oops", { error });
       }
 
-      console.log("done")
-
+      console.log("done");
     },
     onKeyUp(event) {
       if (event.key == "Enter") {
@@ -173,24 +169,24 @@ export default {
     kubernetesDeploymentEntityList: {
       query() {
         return this.kubernetesDeploymentEntity.graphql.query({
-          methodName:"list"
-        }); 
+          methodName: "list",
+        });
       },
       variables() {
         return {
-          pageSize: "1000"
-        }
+          pageSize: "1000",
+        };
       },
       update(data) {
-        console.log(data)
-        console.log(data.kubernetesDeploymentEntityList)
-      }
+        console.log(data);
+        console.log(data.kubernetesDeploymentEntityList);
+      },
     },
     // kubernetesDeploymentEntityGet: {
     //   query() {
     //     return this.kubernetesDeploymentEntity.graphql.query({
     //       methodName:"get"
-    //     }); 
+    //     });
     //   },
     //   variables(myVar) {
     //     return {
@@ -203,7 +199,7 @@ export default {
     //   }
     // }
     // -> Item List... look into our item list
-  }
+  },
 };
 </script>
 
