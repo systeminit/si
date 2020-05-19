@@ -1,4 +1,6 @@
 receivers:
+  otlp:
+    endpoint: 0.0.0.0:55678
   jaeger:
     protocols:
       grpc:
@@ -14,5 +16,5 @@ exporters:
 service:
   pipelines:
     traces:
-      receivers: [jaeger]
+      receivers: [jaeger, otlp]
       exporters: [logging, honeycomb]

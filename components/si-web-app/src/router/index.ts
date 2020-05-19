@@ -16,6 +16,7 @@ const router = new VueRouter({
 });
 
 router.beforeEach(async (to, from, next) => {
+  console.log("firing");
   const span = tracer.startSpan(`web.router ${to.path}`);
   span.setAttributes({
     "web.route.to.path": to.path,
@@ -30,6 +31,10 @@ router.beforeEach(async (to, from, next) => {
     "web.route.from.redirected_from": from.redirectedFrom,
   });
   if ((await auth.isAuthenticated()) || to.path == "/signin") {
+    span.setAttributes({
+      userId: auth.profile?.user.id,
+      billingAccountId: auth.profile?.billingAccount.id,
+    });
     span.end();
     return next();
   } else {
