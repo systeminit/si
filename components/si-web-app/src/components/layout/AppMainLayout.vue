@@ -1,8 +1,8 @@
 <template>
   <div id="app-main-layout" class="flex flex-col h-screen w-screen">
-    <AppBar/>
+    <AppBar />
 
-    <slot/>
+    <slot />
   </div>
 </template>
 

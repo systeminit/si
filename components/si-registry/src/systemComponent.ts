@@ -555,11 +555,15 @@ export class EntityObject extends SystemObject {
           label: `Workspace ID`,
           options(p) {
             p.required = true;
+            p.hidden = true;
           },
         });
         p.request.properties.addText({
           name: "changeSetId",
           label: `Change Set ID`,
+          options(p) {
+            p.hidden = true;
+          },
         });
         p.request.properties.addLink({
           name: "properties",

@@ -13,7 +13,7 @@ export default {
     const organization = profile.organization;
     const workspace = profile.workspaceDefault;
 
-    console.log(profile)
+    console.log(profile);
 
     return {
       organizationId: organization.id,
