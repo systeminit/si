@@ -67,7 +67,7 @@ export class SiGraphql {
     let result = "";
     if (prop.kind() == "object" || prop.kind() == "enum") {
       let request = "";
-      if (inputType) {
+      if (inputType && prop.kind() != "enum") {
         request = "Request";
       }
       result = `${pascalCase(prop.parentName)}${pascalCase(
@@ -80,7 +80,7 @@ export class SiGraphql {
         result = "String";
       }
     } else if (prop.kind() == "number") {
-      result = "Int";
+      result = "String";
     } else if (prop.kind() == "link") {
       const linkProp = prop as PropLink;
       const realProp = linkProp.lookupMyself();
@@ -178,7 +178,7 @@ export class SiGraphql {
     const requestVariables = [];
     const inputVariables = [];
     for (const prop of request.properties.attrs) {
-      requestVariables.push(`$${prop.name}: ${this.graphqlTypeName(prop)}`);
+      requestVariables.push(`$${prop.name}: ${this.graphqlTypeName(prop, true)}`);
       inputVariables.push(`${prop.name}: $${prop.name}`);
     }
 
