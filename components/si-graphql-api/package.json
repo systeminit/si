@@ -63,6 +63,7 @@
     "@opentelemetry/plugin-express": "^0.7.0",
     "@opentelemetry/plugin-grpc": "^0.8.0",
     "@opentelemetry/plugin-http": "^0.8.0",
+    "@opentelemetry/plugin-https": "^0.8.1",
     "@opentelemetry/tracing": "^0.8.0",
     "apollo-datasource": "^0.7.0",
     "apollo-server": "^2.13.1",
