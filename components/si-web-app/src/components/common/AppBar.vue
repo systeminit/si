@@ -12,6 +12,7 @@
 
     <div class="flex self-center m-4">
       <div class="self-center flex-1 px-1 py-1 mx-2">
+
         <help-circle-icon
           size="1.5x"
           class="text-center text-white"

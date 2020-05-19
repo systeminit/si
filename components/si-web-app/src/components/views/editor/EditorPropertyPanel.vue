@@ -27,6 +27,11 @@
       <ui-button ref="submitButton" kind="icon">
         <maximize-2-icon size="1.5x" class="custom-class"></maximize-2-icon>
       </ui-button>
+
+    </div>
+
+    <div class="flex w-full h-full">
+      <PropertyList />
     </div>
   </div>
 </template>
