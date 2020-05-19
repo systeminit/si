@@ -16,7 +16,7 @@
       </div>
 
       <div class="self-center flex-1 text-center px-2 py-2 ml-2">
-        <user-icon size="1.5x" class="text-center text-white" />
+        <user-icon size="1.5x" class="text-center text-white" @click="onLogout"/>
       </div>
     </div>
   </nav>
@@ -24,6 +24,7 @@
 
 <script>
 import { UserIcon, HelpCircleIcon } from "vue-feather-icons";
+import { auth } from "@/auth";
 
 export default {
   name: "AppBar",
@@ -31,6 +32,13 @@ export default {
     UserIcon,
     HelpCircleIcon,
   },
+  methods: {
+    onLogout(event) {
+      console.log("logout clicked")
+      auth.logout();
+      this.$router.push({ name: 'signin' });
+    }
+  }
 };
 </script>
 

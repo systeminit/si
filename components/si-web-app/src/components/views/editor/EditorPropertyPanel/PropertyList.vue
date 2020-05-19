@@ -90,16 +90,6 @@ export default {
     LinkIcon,
   },
   mounted() {
-    const kubernetesDeploymentEntity = registry.get(
-      "kubernetesDeploymentEntity",
-    );
-    let i;
-
-    console.log(kubernetesDeploymentEntity.fields.attrs);
-    for (i = 0; i < kubernetesDeploymentEntity.length; i++) {
-      console.log("AA");
-      console.log(kubernetesDeploymentEntity[i]);
-    }
   },
   data() {
     const kubernetesDeploymentEntity = registry.get(
@@ -108,11 +98,12 @@ export default {
     const kubernetesDeploymentEntityCreate = kubernetesDeploymentEntity.methods.getEntry(
       "create",
     );
+
     const kubernetesDeploymentEntityCreateVars = kubernetesDeploymentEntity.graphql.variablesObject(
       { methodName: "create" },
     );
     console.log(kubernetesDeploymentEntityCreateVars);
-
+  
     return {
       kubernetesDeploymentEntity,
       kubernetesDeploymentEntityCreate,
@@ -125,6 +116,7 @@ export default {
         methodName: "create",
       });
       console.log(mutation);
+      
       try {
         this.$apollo.mutate({
           mutation,
@@ -147,6 +139,26 @@ export default {
       } catch (error) {
         console.log("not today, homie", { error });
       }
+
+      try {
+        consol.log(this.kubernetesDeploymentEntityList)
+        // let objE = registry.objects
+        // let listTest = this.kubernetesDeploymentEntityList()
+
+        // let KubernetesDeploymentEntityListRequest = registry.KubernetesDeploymentEntityListRequest()
+        // let KubernetesDeploymentEntityList = this.kubernetesDeploymentEntity.methods.getEntry("list");
+
+
+        // let KubernetesDeploymentEntityList = registry.KubernetesDeploymentEntityListKubernetesDeploymentEntityListRequest)
+        // let listA = registry.get("kubernetesDeploymentEntityList", );
+        // console.log(KubernetesDeploymentEntityList)
+
+      } catch (error) {
+        console.log("oops", { error });
+      }
+
+      console.log("done")
+
     },
     onKeyUp(event) {
       if (event.key == "Enter") {
@@ -157,6 +169,41 @@ export default {
       }
     },
   },
+  apollo: {
+    kubernetesDeploymentEntityList: {
+      query() {
+        return this.kubernetesDeploymentEntity.graphql.query({
+          methodName:"list"
+        }); 
+      },
+      variables() {
+        return {
+          pageSize: "1000"
+        }
+      },
+      update(data) {
+        console.log(data)
+        console.log(data.kubernetesDeploymentEntityList)
+      }
+    },
+    // kubernetesDeploymentEntityGet: {
+    //   query() {
+    //     return this.kubernetesDeploymentEntity.graphql.query({
+    //       methodName:"get"
+    //     }); 
+    //   },
+    //   variables(myVar) {
+    //     return {
+    //       pageSize: myVar
+    //     }
+    //   },
+    //   update(data) {
+    //     console.log(data)
+    //     // this.me == data.what.I.want
+    //   }
+    // }
+    // -> Item List... look into our item list
+  }
 };
 </script>
 
