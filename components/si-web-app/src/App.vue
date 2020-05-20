@@ -4,10 +4,17 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { telemetry } from "@/telemetry";
+import { auth } from "@/auth";
+
 export default {
   name: "App",
 };
+
+window.addEventListener("beforeunload", () => {
+  telemetry.end();
+});
 </script>
 
 <style>

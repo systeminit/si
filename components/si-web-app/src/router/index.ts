@@ -5,7 +5,7 @@ import VueRouter from "vue-router";
 import routes from "./routes";
 
 import { auth } from "@/auth";
-import { tracer } from "@/telemetry";
+import { telemetry } from "@/telemetry";
 
 Vue.use(VueRouter);
 
@@ -16,8 +16,7 @@ const router = new VueRouter({
 });
 
 router.beforeEach(async (to, from, next) => {
-  console.log("firing");
-  const span = tracer.startSpan(`web.router ${to.path}`);
+  const span = telemetry.routeSpan(`web.router ${to.path}`);
   span.setAttributes({
     "web.route.to.path": to.path,
     "web.route.to.full_path": to.fullPath,
@@ -31,15 +30,9 @@ router.beforeEach(async (to, from, next) => {
     "web.route.from.redirected_from": from.redirectedFrom,
   });
   if ((await auth.isAuthenticated()) || to.path == "/signin") {
-    span.setAttributes({
-      userId: auth.profile?.user.id,
-      billingAccountId: auth.profile?.billingAccount.id,
-    });
-    span.end();
     return next();
   } else {
     span.setAttribute("web.route.to.redirected", "/signin");
-    span.end();
     next("/signin");
   }
 });
