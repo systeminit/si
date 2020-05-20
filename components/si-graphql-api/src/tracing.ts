@@ -4,7 +4,6 @@ const provider = new NodeTracerProvider({
     grpc: { enabled: true, path: "@opentelemetry/plugin-grpc" },
     http: { enabled: true, path: "@opentelemetry/plugin-http" },
     https: { enabled: true, path: "@opentelemetry/plugin-https" },
-    express: { enabled: true, path: "@opentelemetry/plugin-express" },
   },
 });
 import { SimpleSpanProcessor } from "@opentelemetry/tracing";
@@ -15,4 +14,3 @@ const collectorOptions = {
 const exporter = new JaegerExporter(collectorOptions);
 provider.addSpanProcessor(new SimpleSpanProcessor(exporter));
 provider.register();
-

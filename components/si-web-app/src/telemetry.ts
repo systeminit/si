@@ -12,6 +12,7 @@ import * as api from "@opentelemetry/api";
 import { auth } from "@/auth";
 
 const provider = new WebTracerProvider({
+  //plugins: [new DocumentLoad() as any, new UserInteractionPlugin()],
   plugins: [new DocumentLoad() as any],
 });
 provider.addSpanProcessor(
@@ -55,7 +56,11 @@ class Telemetry {
   session: api.Span;
 
   constructor() {
-    this.session = tracer.startSpan("web.session");
+    this.session = tracer.startSpan(
+      "web.session",
+      undefined,
+      api.context.active(),
+    );
     this.session.setAttribute("web.session", true);
   }
 
@@ -73,29 +78,29 @@ class Telemetry {
     options?: api.SpanOptions,
     context?: api.Context,
   ): api.Span {
-    if (options != undefined) {
-      if (this.currentRoute) {
-        options.parent = this.currentRoute;
-      } else {
-        options.parent = this.session;
-      }
+    let parentSpan;
+    if (this.currentRoute) {
+      parentSpan = this.currentRoute;
     } else {
-      if (this.currentRoute) {
-        options = { parent: this.currentRoute };
-      } else {
-        options = { parent: this.session };
+      parentSpan = this.session;
+    }
+    const span = tracer.withSpan(parentSpan, _ => {
+      const span = tracer.startSpan(
+        name,
+        options,
+        context || api.context.active(),
+      );
+      if (auth.profile) {
+        const profile = auth.profile;
+        span.setAttributes({
+          user_id: profile.user.id,
+          billing_account_id: profile.billingAccount.id,
+          organization: profile.organization.id,
+          workspace: profile.workspaceDefault.id,
+        });
       }
-    }
-    const span = tracer.startSpan(name, options, context);
-    if (auth.profile) {
-      const profile = auth.profile;
-      span.setAttributes({
-        user_id: profile.user.id,
-        billing_account_id: profile.billingAccount.id,
-        organization: profile.organization.id,
-        workspace: profile.workspaceDefault.id,
-      });
-    }
+      return span;
+    });
     return span;
   }
 
