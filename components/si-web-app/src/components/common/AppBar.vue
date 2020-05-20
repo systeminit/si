@@ -12,14 +12,15 @@
 
     <div class="flex self-center m-4">
       <div class="self-center flex-1 px-1 py-1 mx-2">
-        <help-circle-icon
-          size="1.5x"
-          class="text-center text-white"
-        ></help-circle-icon>
+        <help-circle-icon size="1.5x" class="text-center text-white" />
       </div>
 
       <div class="self-center flex-1 text-center px-2 py-2 ml-2">
-        <user-icon size="1.5x" class="text-center text-white"></user-icon>
+        <user-icon
+          size="1.5x"
+          class="text-center text-white"
+          @click="onLogout"
+        />
       </div>
     </div>
   </nav>
@@ -27,12 +28,20 @@
 
 <script>
 import { UserIcon, HelpCircleIcon } from "vue-feather-icons";
+import { auth } from "@/auth";
 
 export default {
   name: "AppBar",
   components: {
     UserIcon,
     HelpCircleIcon,
+  },
+  methods: {
+    onLogout(event) {
+      console.log("logout clicked");
+      auth.logout();
+      this.$router.push({ name: "signin" });
+    },
   },
 };
 </script>

@@ -1,3 +1,5 @@
+<!-- display: block -->
+
 <template>
   <div id="signin-form" :loading="$apollo.loading">
     <form>

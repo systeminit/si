@@ -28,11 +28,14 @@
         <maximize-2-icon size="1.5x" class="custom-class"></maximize-2-icon>
       </ui-button>
     </div>
+
+    <div class="flex w-full h-full">
+      <PropertyList />
+    </div>
   </div>
 </template>
 
 <script>
-import UiButton from "@/components/ui/button/UiButton.vue";
 import {
   Maximize2Icon,
   SettingsIcon,
@@ -40,9 +43,11 @@ import {
   SearchIcon,
   CodeIcon,
 } from "vue-feather-icons";
+import UiButton from "@/components/ui/button/UiButton.vue";
+import PropertyList from "./PropertyList.vue";
 
 export default {
-  name: "HelloWorld",
+  name: "EditorPropertyPanel",
   components: {
     Maximize2Icon,
     SettingsIcon,
@@ -50,6 +55,7 @@ export default {
     SearchIcon,
     CodeIcon,
     UiButton,
+    PropertyList,
   },
 };
 </script>

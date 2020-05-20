@@ -1,4 +1,5 @@
 import { PropMethod, PropObject, Props } from "../attrList";
+import { PropLink } from "../prop/link";
 import { ObjectTypes } from "../systemComponent";
 import { registry } from "../registry";
 
@@ -66,7 +67,7 @@ export class SiGraphql {
     let result = "";
     if (prop.kind() == "object" || prop.kind() == "enum") {
       let request = "";
-      if (inputType) {
+      if (inputType && prop.kind() != "enum") {
         request = "Request";
       }
       result = `${pascalCase(prop.parentName)}${pascalCase(
@@ -79,9 +80,12 @@ export class SiGraphql {
         result = "String";
       }
     } else if (prop.kind() == "number") {
-      result = "Int";
+      result = "String";
+    } else if (prop.kind() == "link") {
+      const linkProp = prop as PropLink;
+      const realProp = linkProp.lookupMyself();
+      return this.graphqlTypeName(realProp, inputType);
     }
-
     if (prop.required) {
       return `${result}!`;
     } else {
@@ -141,6 +145,9 @@ export class SiGraphql {
         );
         result.push(this.associationFieldList(associations, systemObject));
         result.push("}");
+      }
+      if (prop.kind() == "map") {
+        result.push("{ key value }");
       } else if (prop.kind() == "link") {
         // @ts-ignore
         const realObj = prop.lookupMyself();
@@ -171,7 +178,7 @@ export class SiGraphql {
     const requestVariables = [];
     const inputVariables = [];
     for (const prop of request.properties.attrs) {
-      requestVariables.push(`$${prop.name}: ${this.graphqlTypeName(prop)}`);
+      requestVariables.push(`$${prop.name}: ${this.graphqlTypeName(prop, true)}`);
       inputVariables.push(`${prop.name}: $${prop.name}`);
     }
 
@@ -188,6 +195,43 @@ export class SiGraphql {
     )}) { ${methodName}(input: { ${inputVariables.join(
       ", ",
     )} }) { ${fieldList} } }`;
+    return gql`
+      ${resultString}
+    `;
+  }
+
+  mutation(args: QueryArgs): DocumentNode {
+    const method = this.systemObject.methods.getEntry(
+      args.methodName,
+    ) as PropMethod;
+    const methodName =
+      args.overrideName ||
+      `${camelCase(this.systemObject.typeName)}${pascalCase(args.methodName)}`;
+
+    const request = method.request;
+    const requestVariables = [];
+    const inputVariables = [];
+    for (const prop of request.properties.attrs) {
+      requestVariables.push(
+        `$${prop.name}: ${this.graphqlTypeName(prop, true)}`,
+      );
+      inputVariables.push(`${prop.name}: $${prop.name}`);
+    }
+
+    const reply = method.reply;
+    let fieldList: string;
+    if (args.overrideFields) {
+      fieldList = `${args.overrideFields}`;
+    } else {
+      fieldList = this.fieldList(reply, args.associations, this.systemObject);
+    }
+
+    const resultString = `mutation ${methodName}(${requestVariables.join(
+      ", ",
+    )}) { ${methodName}(input: { ${inputVariables.join(
+      ", ",
+    )} }) { ${fieldList} } }`;
+    console.log(resultString);
     return gql`
       ${resultString}
     `;

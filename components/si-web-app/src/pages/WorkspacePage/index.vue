@@ -14,7 +14,6 @@
 </template>
 
 <script>
-// import AppMainLayout from "@/components/layout/AppMainLayout.vue"
 import WorkspaceNav from "./WorkspaceNav.vue";
 import AppBar from "@/components/common/AppBar.vue";
 
