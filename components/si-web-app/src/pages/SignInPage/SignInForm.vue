@@ -100,6 +100,7 @@ import Vue from "vue";
 import { UserIcon, MailIcon, LockIcon } from "vue-feather-icons";
 import { billingAccountList, auth } from "@/auth";
 import { registry, PropMethod } from "si-registry";
+import { tracer } from "@/telemetry";
 
 const user = registry.get("user");
 
@@ -154,7 +155,21 @@ export default Vue.extend({
   },
   methods: {
     async checkLogin() {
+      let span = tracer.getCurrentSpan();
+      if (span) {
+        const parentSpan = span;
+        span = tracer.startSpan("web.SignInForm.checkLogin", {
+          parent: parentSpan,
+        });
+      } else {
+        span = tracer.startSpan("web.SignInForm.checkLogin");
+      }
       try {
+        span.setAttributes({
+          "web.SignInForm.email": this.objVariables.email,
+          "web.SignInForm.billingAccountName": this.objVariables
+            .billingAccountName,
+        });
         const loginResult = await this.$apollo.query({
           query: user.graphql.query({
             methodName: "loginInternal",

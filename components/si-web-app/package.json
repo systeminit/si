@@ -13,6 +13,11 @@
   },
   "dependencies": {
     "@iarna/toml": "^2.2.3",
+    "@opentelemetry/context-zone": "^0.8.1",
+    "@opentelemetry/exporter-collector": "^0.8.1",
+    "@opentelemetry/plugin-document-load": "^0.7.0",
+    "@opentelemetry/plugin-user-interaction": "^0.7.0",
+    "@opentelemetry/web": "^0.8.1",
     "@types/node-fetch": "^2.5.4",
     "@types/vue-feather-icons": "^5.0.0",
     "apollo-client": "2.6.8",

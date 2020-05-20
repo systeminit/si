@@ -5,8 +5,12 @@ import {
   restartWebsockets,
 } from "vue-cli-plugin-apollo/graphql-client";
 import ApolloClient from "apollo-client";
+import { setContext } from "apollo-link-context";
 import { InMemoryCache } from "apollo-cache-inmemory";
 import { SubscriptionClient } from "subscriptions-transport-ws";
+import * as api from "@opentelemetry/api";
+import { telemetry, tracer } from "@/telemetry";
+import { print as printGql } from "graphql/language/printer";
 
 // Install the vue plugin
 Vue.use(VueApollo);
@@ -22,6 +26,35 @@ if (process.env.NODE_ENV === "production") {
   httpEndpoint = "https://graphql.systeminit.com/graphql";
   wsEndpoint = "wss://graphql.systeminit.com/graphql";
 }
+
+const telemetryLink = setContext((request, prevContext) => {
+  let spanName = `web.graphql.`;
+  if (request.operationName) {
+    spanName += request.operationName;
+  } else {
+    spanName += "anon";
+  }
+  const span = telemetry.createSpan(`${spanName}`);
+  span.setAttributes({
+    "web.graphql.name": request.operationName || "anon",
+    "web.graphql.operationName": request.operationName,
+    "web.graphql.query": printGql(request.query),
+    "web.graphql.variables": JSON.stringify(request.variables),
+  });
+  const headers = tracer.withSpan(span, () => {
+    const headers: Record<string, unknown> = {};
+    api.propagation.inject(headers, (headers, k, v) => {
+      headers[k] = v;
+    });
+    return headers;
+  });
+  console.log("headers", headers);
+  console.log("prevContext", prevContext);
+  span.end();
+  return {
+    headers: { traceparent: headers["traceparent"], ...prevContext["headers"] },
+  };
+});
 
 // Config
 const defaultOptions = {
@@ -43,7 +76,7 @@ const defaultOptions = {
   // Override default apollo link
   // note: don't override httpLink here, specify httpLink options in the
   // httpLinkOptions property of defaultOptions.
-  // link: myLink
+  link: telemetryLink,
 
   // Override default cache
   // cache: myCache
