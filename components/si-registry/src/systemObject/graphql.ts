@@ -51,16 +51,59 @@ export class SiGraphql {
     return result;
   }
 
+  // Second argument is if you want a repeated field
+  variablesObjectForProperty(prop: Props, repeated = false): any {
+    if (
+      prop.kind() == "text" ||
+      prop.kind() == "number" ||
+      prop.kind() == "code" ||
+      prop.kind() == "enum"
+    ) {
+      if (prop.repeated && repeated) {
+        return [];
+      } else {
+        return "";
+      }
+    } else if (prop.kind() == "map") {
+      if (prop.repeated && repeated) {
+        return [];
+      } else {
+        return {};
+      }
+    } else if (prop.kind() == "link") {
+      const propLink = prop as PropLink;
+      if (prop.repeated && repeated) {
+        return [];
+      } else {
+        // TODO: There might be a bug here, where the name of the prop itself
+        // and the name of the linked prop don't match, and so we get the
+        // wrong field name if the prop is an object.
+        return this.variablesObjectForProperty(
+          propLink.lookupMyself(),
+          repeated,
+        );
+      }
+    } else if (prop.kind() == "object" || prop.kind() == "method") {
+      const propObject = prop as PropObject;
+      const result: Record<string, unknown> = {};
+      for (const field of propObject.properties.attrs) {
+        const fieldVariables = this.variablesObjectForProperty(field, repeated);
+        result[`${field.name}`] = fieldVariables;
+      }
+      if (prop.repeated && repeated) {
+        return [];
+      } else {
+        return result;
+      }
+    }
+  }
+
   variablesObject(args: VariablesObjectArgs): Record<string, any> {
     const method = this.systemObject.methods.getEntry(
       args.methodName,
     ) as PropMethod;
     const request = method.request;
-    const result: Record<string, any> = {};
-    for (const field of request.properties.attrs) {
-      result[field.name] = field.defaultValue();
-    }
-    return result;
+    return this.variablesObjectForProperty(request, true);
   }
 
   graphqlTypeName(prop: Props, inputType?: boolean): string {
@@ -178,7 +221,9 @@ export class SiGraphql {
     const requestVariables = [];
     const inputVariables = [];
     for (const prop of request.properties.attrs) {
-      requestVariables.push(`$${prop.name}: ${this.graphqlTypeName(prop, true)}`);
+      requestVariables.push(
+        `$${prop.name}: ${this.graphqlTypeName(prop, true)}`,
+      );
       inputVariables.push(`${prop.name}: $${prop.name}`);
     }
 

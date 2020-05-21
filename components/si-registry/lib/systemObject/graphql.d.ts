@@ -21,6 +21,7 @@ export declare class SiGraphql {
     systemObject: ObjectTypes;
     constructor(systemObject: SiGraphql["systemObject"]);
     validateResult(args: ValidateResultArgs): Record<string, any>;
+    variablesObjectForProperty(prop: Props, repeated?: boolean): any;
     variablesObject(args: VariablesObjectArgs): Record<string, any>;
     graphqlTypeName(prop: Props, inputType?: boolean): string;
     associationFieldList(associations: QueryArgs["associations"], systemObject: ObjectTypes): string;
