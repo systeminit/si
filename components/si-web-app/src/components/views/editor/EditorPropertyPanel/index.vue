@@ -1,9 +1,7 @@
 <template>
-  <div ref="property-panel" class="w-full flex-col h-full w-full">
-    <div
-      id="property-panel-menu"
-      class="flex-row flex-no-wrap content-between bg-black h-30 w-full"
-    >
+  <div ref="property-panel" class="w-full flex-col h-full w-full property-editor-bg-color">
+    <div id="property-panel-menu" class="flex-row flex-no-wrap content-between bg-black h-30 w-full">
+      
       <ui-button ref="submitButton" kind="icon">
         <filter-icon size="1.5x" class="custom-class"></filter-icon>
       </ui-button>
@@ -27,9 +25,10 @@
       <ui-button ref="submitButton" kind="icon">
         <maximize-2-icon size="1.5x" class="custom-class"></maximize-2-icon>
       </ui-button>
+    
     </div>
 
-    <div class="flex w-full h-full">
+    <div class="flex w-full h-full overflow-auto">
       <PropertyList />
     </div>
   </div>
@@ -59,3 +58,14 @@ export default {
   },
 };
 </script>
+
+<style scoped>
+.property-editor-bg-color {
+  background-color: #212324;
+}
+
+.property-title-bg-color {
+  background-color: #292C2D;
+}
+
+</style>

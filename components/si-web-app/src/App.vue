@@ -1,6 +1,6 @@
 <template>
-  <div id="app" class="w-screen h-screen bg-white">
-    <router-view class="w-full"></router-view>
+  <div id="app" class="bg-white">
+    <router-view class=""></router-view>
   </div>
 </template>
 

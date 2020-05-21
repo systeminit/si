@@ -1,7 +1,7 @@
 <template>
   <nav
     id="workspace-nav"
-    class="flex flex-col flex-shrink-0 flex-no-wrap bg-primary w-56"
+    class="flex flex-col flex-shrink-0 flex-no-wrap bg-primary w-56 h-full"
   >
     <div id="workspace-switcher" class="flex px-4 py-2 m-2">
       <span

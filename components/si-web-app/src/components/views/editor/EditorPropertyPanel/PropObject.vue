@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div v-for="field of propObject.properties.attrs.filter(i => !i.hidden)" v-bind:key="field.name" class="flex flex-row property-editor-bg-color">
+    <div v-for="field of propObject.properties.attrs.filter(i => !i.hidden)" v-bind:key="field.name" class="flex flex-row">
       
       <div class="px-2 py-2 text-gray-400"/>
         <PropObjectProperty
@@ -54,13 +54,3 @@ export default Vue.extend({
   },
 });
 </script>
-
-<style>
-.property-editor-bg-color {
-  background-color: #212324;
-}
-
-.input-bg-color {
-  background-color: #25788a;
-}
-</style>

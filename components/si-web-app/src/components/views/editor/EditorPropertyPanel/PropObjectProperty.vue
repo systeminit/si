@@ -1,20 +1,38 @@
 <template>
-  <div class="w-full bg-red-500">
-    <div class="pl-1 py-2">
+
+<!-- eslint-disable vue/no-unused-components -->
+
+  <div class="w-full">
+    <div class="pl-1 py-1">
       
       <div v-if="propObjectProperty.repeated">
-        <button class="bg-teal-700 px-4 py-2 text-white" type="button"> Add Item </button>
+        <button class="text-teal-700 text-center" type="button">
+          <plus-square-icon size="1.25x" class="custom-class"></plus-square-icon>
+        </button>
+
+        <vue-json-pretty
+          class="text-white"
+          :path="'res'"
+          :data="propObjectProperty">
+        </vue-json-pretty>
+
+        <div class="px-2 text-sm text-gray-400">
+          {{ propObjectProperty.name }}
+        </div>
+
+
       </div>
       
       <div v-else-if="propObjectProperty.kind() == 'text'">
 
-        <div class="flex">
-          <div class="px-2 py-2 text-gray-400">
+        <div class="flex items-center">
+
+          <div class="px-2 text-sm text-gray-400">
             {{ propObjectProperty.name }}
           </div>
 
           <input
-            class="appearance-none input-bg-color border-none text-gray-400 mr-3 py-1 px-2 leading-tight focus:outline-none"
+            class="appearance-none input-bg-color border-none text-gray-400 pl-2 h-5 text-sm leading-tight focus:outline-none"
             type="text"
             :aria-label="propObjectProperty.name"
             v-model="objectModel"
@@ -25,27 +43,35 @@
 
       <div v-else-if="propObjectProperty.kind() == 'code'">
         
-        <div class="px-2 py-2 text-gray-400">
-          {{ propObjectProperty.name }}
+        <div class="flex items-center">
+          <div class="px-2 text-sm text-gray-400">
+            {{ propObjectProperty.name }}
+          </div>
         </div>
-
-        <p> Derived </p>
-
       </div>
 
       <div v-else-if="propObjectProperty.kind() == 'number'">
-        <input
-          class="appearance-none input-bg-color border-none text-gray-400 mr-3 py-1 px-2 leading-tight focus:outline-none"
-          type="text"
-          :aria-label="propObjectProperty.name"
-          v-model="objectModel"
-          placeholder="number"
-        />
+        <div class="flex items-center">
+          
+          <div class="px-2 text-sm text-gray-400">
+            {{ propObjectProperty.name }}
+          </div>
+
+          <input
+            class="appearance-none input-bg-color border-none text-gray-400 ml-3 pl-2 h-5 text-sm leading-tight focus:outline-none"
+            type="text"
+            :aria-label="propObjectProperty.name"
+            v-model="objectModel"
+            placeholder="number"
+          />
+        </div>
       </div>
 
       <div v-else-if="propObjectProperty.kind() == 'enum'">
         
-        <select :aria-label="propObjectProperty.name">
+        <select 
+          class="block appearance-none bg-gray-200 border border-gray-200 text-gray-700 px-4 rounded leading-tight focus:outline-none "
+          :aria-label="propObjectProperty.name">
           <option
             v-for="option in propObjectProperty.variants"
             v-bind:key="option"
@@ -58,34 +84,36 @@
       <!-- A map has some number of Key/Value pairs. -->
       <div v-else-if="propObjectProperty.kind() == 'map'">
         
-        <button class="bg-teal-700 px-4 py-2 text-white hover:bg-teal-600" type="button">
-          Add Row
-        </button>
-        
-        <input
-          class="appearance-none input-bg-color border-none text-gray-400 mr-3 py-1 px-2 leading-tight focus:outline-none"
-          type="text"
-          :aria-label="propObjectProperty.name + ' key'"
-          v-model="objectModel"
-          placeholder="text"
-        />
-        
-        <input
-          class="appearance-none input-bg-color border-none text-gray-400 mr-3 py-1 px-2 leading-tight focus:outline-none"
-          type="text"
-          :aria-label="propObjectProperty.name + ' value'"
-          v-model="objectModel"
-          placeholder="text"
-        />
-
+        <div class="flex items-center">
+          <button class="text-teal-700 text-center" type="button">
+            <plus-square-icon size="1.25x" class="custom-class"></plus-square-icon>
+          </button>
+          
+          <input
+            class="appearance-none input-bg-color border-none text-gray-400 ml-3 pl-2 h-5 text-sm leading-tight focus:outline-none"
+            type="text"
+            :aria-label="propObjectProperty.name + ' key'"
+            v-model="objectModel"
+            placeholder="text"
+          />
+          
+          <input
+            class="appearance-none input-bg-color border-none text-gray-400 ml-3 pl-2 h-5 text-sm leading-tight focus:outline-none"
+            type="text"
+            :aria-label="propObjectProperty.name + ' value'"
+            v-model="objectModel"
+            placeholder="text"
+          />
+        </div>
       </div>
 
       <div v-else-if="propObjectProperty.kind() == 'link'">
         <div v-if="propObjectProperty.lookupMyself().kind() == 'object'">
 
-          <div class="flex flex-col">
+          <div class="flex flex-col"> 
             
-            <div class="pl-2 py-2 text-white bg-gray-800">
+            <div class="flex pl-2 text-sm text-white property-title-bg-color">
+              <chevron-down-icon size="1.5x" class="custom-class"></chevron-down-icon>
               {{ propObjectProperty.name }}
             </div>
 
@@ -123,9 +151,16 @@
 </template>
 
 <script lang="ts">
+
+/* eslint-disable vue/no-unused-components */
+
 import Vue from "vue";
 import { registry } from "si-registry";
 import { auth } from "@/utils/auth";
+import { PlusSquareIcon, ChevronDownIcon } from "vue-feather-icons"
+
+// @ts-ignore
+import VueJsonPretty from "vue-json-pretty"
 
 // @ts-ignore
 export default Vue.extend({
@@ -139,6 +174,9 @@ export default Vue.extend({
     },
   },
   components: {
+    PlusSquareIcon,
+    ChevronDownIcon,
+    VueJsonPretty,
     PropObject: () => import("./PropObject.vue"),
   },
   data() {
@@ -157,12 +195,17 @@ export default Vue.extend({
 });
 </script>
 
-<style>
+<style scoped>
 .property-editor-bg-color {
   background-color: #212324;
+}
+
+.property-title-bg-color {
+  background-color: #292C2D;
 }
 
 .input-bg-color {
   background-color: #25788a;
 }
+
 </style>

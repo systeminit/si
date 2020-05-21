@@ -143,13 +143,3 @@ export default {
   },
 };
 </script>
-
-<style>
-.property-editor-bg-color {
-  background-color: #212324;
-}
-
-.input-bg-color {
-  background-color: #25788a;
-}
-</style>
