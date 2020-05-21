@@ -3,62 +3,11 @@
     id="property-panel-list"
     class="flex-grow property-editor-bg-color h-full"
   >
-    <!-- <div v-for="field of kubernetesDeploymentEntity.fields.attrs" v-bind:key="field.name"> -->
-
-    <table class="table-auto" v-on:keyup="onKeyUp">
-      <tr>
-        <th class="w-1/2 px-4 py-2"></th>
-        <th class="w-1/4 px-4 py-2"></th>
-        <th class="w-1/4 px-4 py-2"></th>
-      </tr>
-
-      <tbody
-        v-for="field of kubernetesDeploymentEntityCreate.request.properties.attrs.filter(
-          i => !i.hidden,
-        )"
-        v-bind:key="field.name"
-      >
-        <tr>
-          <td class="text-right px-2 py-2 text-gray-400">{{ field.name }}</td>
-
-          <td class="px-1 py-2 group-hover:border-teal-500">
-            <div v-if="field.kind() == 'text'">
-              <input
-                class="appearance-none input-bg-color border-none w-full text-gray-400 mr-3 py-1 px-2 leading-tight focus:outline-none"
-                type="text"
-                :aria-label="field.name"
-                v-model="kubernetesDeploymentEntityCreateVars[field.name]"
-                placeholder="text"
-              />
-            </div>
-
-            <div v-else-if="field.kind() == 'link'">
-              <input
-                class="appearance-none input-bg-color border-none w-full text-gray-400 mr-3 py-1 px-2 leading-tight focus:outline-none"
-                type="text"
-                :aria-label="field.name"
-                v-model="kubernetesDeploymentEntityCreateVars[field.name]"
-                placeholder="link"
-              />
-            </div>
-
-            <div v-else-if="field.kind() == 'object'">
-              <input
-                class="appearance-none input-bg-color border-none w-full text-gray-400 mr-3 py-1 px-2 leading-tight focus:outline-none"
-                type="text"
-                :aria-label="field.name"
-                v-model="kubernetesDeploymentEntityCreateVars[field.name]"
-                placeholder="object"
-              />
-            </div>
-          </td>
-
-          <td class="text-left px-2 py-2">
-            <link-icon size="1x" class="text-left text-white"></link-icon>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <PropObject
+      :propObject="kubernetesDeploymentEntityCreate.request"
+      :propObjectModel="kubernetesDeploymentEntityCreateVars"
+      @propChangeMsg="propChangeMsg"
+    />
     <div class="flex flex-row-reverse pr-8 pb-4">
       <button
         class="bg-teal-700 px-4 py-2 text-white hover:bg-teal-600"
@@ -80,14 +29,17 @@ import { registry } from "si-registry";
 // field constraints, propObject.
 // create(), editingK8sProps and yaml.
 
-import { LinkIcon } from "vue-feather-icons";
+//import { LinkIcon } from "vue-feather-icons";
 
 import { auth } from "@/auth";
+
+import PropObject from "./PropObject.vue";
 
 export default {
   name: "PropertyList",
   components: {
-    LinkIcon,
+    //LinkIcon,
+    PropObject,
   },
   mounted() {},
   data() {
@@ -110,6 +62,9 @@ export default {
     };
   },
   methods: {
+    propChangeMsg(event) {
+      this.kubernetesDeploymentEntityCreateVars = event["value"];
+    },
     createEntity() {
       const mutation = this.kubernetesDeploymentEntity.graphql.mutation({
         methodName: "create",
