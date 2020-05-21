@@ -1,11 +1,11 @@
-import "@/telemetry";
+import "@/utils/telemetry";
 import Vue from "vue";
 import App from "@/App.vue";
 import router from "@/router";
 
 import VueGtag from "vue-gtag";
 import { createProvider } from "@/plugins/vue-apollo";
-import { auth } from "@/auth";
+import { auth } from "@/utils/auth";
 
 import "@/assets/main.css";
 import "@/assets/tailwind.css";

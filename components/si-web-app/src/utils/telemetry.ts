@@ -9,7 +9,7 @@ import { ZoneContextManager } from "@opentelemetry/context-zone";
 import { CollectorExporter } from "@opentelemetry/exporter-collector";
 import * as api from "@opentelemetry/api";
 
-import { auth } from "@/auth";
+import { auth } from "@/utils/auth";
 
 const provider = new WebTracerProvider({
   //plugins: [new DocumentLoad() as any, new UserInteractionPlugin()],

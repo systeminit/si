@@ -9,7 +9,7 @@ import { setContext } from "apollo-link-context";
 import { InMemoryCache } from "apollo-cache-inmemory";
 import { SubscriptionClient } from "subscriptions-transport-ws";
 import * as api from "@opentelemetry/api";
-import { telemetry, tracer } from "@/telemetry";
+import { telemetry, tracer } from "@/utils/telemetry";
 import { print as printGql } from "graphql/language/printer";
 
 // Install the vue plugin

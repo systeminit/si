@@ -4,7 +4,7 @@
 
 <script lang="ts">
 import WorkspacePage from "@/pages/WorkspacePage/index.vue";
-import { auth } from "@/auth";
+import { auth } from "@/utils/auth";
 
 export default {
   name: "home",

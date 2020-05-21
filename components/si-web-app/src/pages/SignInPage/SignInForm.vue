@@ -98,9 +98,9 @@
 <script lang="ts">
 import Vue from "vue";
 import { UserIcon, MailIcon, LockIcon } from "vue-feather-icons";
-import { billingAccountList, auth } from "@/auth";
+import { billingAccountList, auth } from "@/utils/auth";
 import { registry, PropMethod } from "si-registry";
-import { tracer } from "@/telemetry";
+import { tracer } from "@/utils/telemetry";
 
 const user = registry.get("user");
 
