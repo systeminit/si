@@ -5,8 +5,8 @@
 </template>
 
 <script lang="ts">
-import { telemetry } from "@/telemetry";
-import { auth } from "@/auth";
+import { telemetry } from "@/utils/telemetry";
+import { auth } from "@/utils/auth";
 
 export default {
   name: "App",

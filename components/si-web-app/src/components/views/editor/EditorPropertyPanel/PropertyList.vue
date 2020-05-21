@@ -1,19 +1,14 @@
 <template>
-  <div
-    id="property-panel-list"
-    class="flex-grow property-editor-bg-color h-full"
-  >
+  <div id="property-panel-list" class="w-full h-full">
+    
     <PropObject
       :propObject="kubernetesDeploymentEntityCreate.request"
       :propObjectModel="kubernetesDeploymentEntityCreateVars"
       @propChangeMsg="propChangeMsg"
     />
+
     <div class="flex flex-row-reverse pr-8 pb-4">
-      <button
-        class="bg-teal-700 px-4 py-2 text-white hover:bg-teal-600"
-        @click="createEntity()"
-        type="button"
-      >
+      <button class="bg-teal-700 px-4 py-2 text-white hover:bg-teal-600" @click="createEntity()" type="button">
         Create
       </button>
     </div>
@@ -22,16 +17,7 @@
 
 <script>
 import { registry } from "si-registry";
-// console.log(k8sDeploymentE.fields.attrs)
-// k8sDeploymentE.fields.attrs
-// hidden on fields (render it or not)
-// kind (text, objects, enums,...) - link kind... (resole link to show content by calling lookup() or some)
-// field constraints, propObject.
-// create(), editingK8sProps and yaml.
-
-//import { LinkIcon } from "vue-feather-icons";
-
-import { auth } from "@/auth";
+import { auth } from "@/utils/auth";
 
 import PropObject from "./PropObject.vue";
 

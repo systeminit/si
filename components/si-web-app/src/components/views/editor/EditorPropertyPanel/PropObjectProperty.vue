@@ -1,26 +1,36 @@
 <template>
-  <div>
-    <div class="px-1 py-2 group-hover:border-teal-500">
+  <div class="w-full bg-red-500">
+    <div class="pl-1 py-2">
+      
       <div v-if="propObjectProperty.repeated">
-        <button
-          class="bg-teal-700 px-4 py-2 text-white hover:bg-teal-600"
-          type="button"
-        >
-          Add Item
-        </button>
+        <button class="bg-teal-700 px-4 py-2 text-white" type="button"> Add Item </button>
       </div>
+      
       <div v-else-if="propObjectProperty.kind() == 'text'">
-        <input
-          class="appearance-none input-bg-color border-none text-gray-400 mr-3 py-1 px-2 leading-tight focus:outline-none"
-          type="text"
-          :aria-label="propObjectProperty.name"
-          v-model="objectModel"
-          placeholder="text"
-        />
+
+        <div class="flex">
+          <div class="px-2 py-2 text-gray-400">
+            {{ propObjectProperty.name }}
+          </div>
+
+          <input
+            class="appearance-none input-bg-color border-none text-gray-400 mr-3 py-1 px-2 leading-tight focus:outline-none"
+            type="text"
+            :aria-label="propObjectProperty.name"
+            v-model="objectModel"
+            placeholder="text"
+          />
+        </div>
       </div>
 
       <div v-else-if="propObjectProperty.kind() == 'code'">
-        Derived!
+        
+        <div class="px-2 py-2 text-gray-400">
+          {{ propObjectProperty.name }}
+        </div>
+
+        <p> Derived </p>
+
       </div>
 
       <div v-else-if="propObjectProperty.kind() == 'number'">
@@ -34,6 +44,7 @@
       </div>
 
       <div v-else-if="propObjectProperty.kind() == 'enum'">
+        
         <select :aria-label="propObjectProperty.name">
           <option
             v-for="option in propObjectProperty.variants"
@@ -41,16 +52,16 @@
             >{{ option }}</option
           >
         </select>
+
       </div>
 
       <!-- A map has some number of Key/Value pairs. -->
       <div v-else-if="propObjectProperty.kind() == 'map'">
-        <button
-          class="bg-teal-700 px-4 py-2 text-white hover:bg-teal-600"
-          type="button"
-        >
+        
+        <button class="bg-teal-700 px-4 py-2 text-white hover:bg-teal-600" type="button">
           Add Row
         </button>
+        
         <input
           class="appearance-none input-bg-color border-none text-gray-400 mr-3 py-1 px-2 leading-tight focus:outline-none"
           type="text"
@@ -58,6 +69,7 @@
           v-model="objectModel"
           placeholder="text"
         />
+        
         <input
           class="appearance-none input-bg-color border-none text-gray-400 mr-3 py-1 px-2 leading-tight focus:outline-none"
           type="text"
@@ -65,15 +77,26 @@
           v-model="objectModel"
           placeholder="text"
         />
+
       </div>
 
       <div v-else-if="propObjectProperty.kind() == 'link'">
         <div v-if="propObjectProperty.lookupMyself().kind() == 'object'">
-          <PropObject
-            :propObject="propObjectProperty.lookupMyself()"
-            :propObjectModel="objectModel"
-          />
+
+          <div class="flex flex-col">
+            
+            <div class="pl-2 py-2 text-white bg-gray-800">
+              {{ propObjectProperty.name }}
+            </div>
+
+            <PropObject
+              :propObject="propObjectProperty.lookupMyself()"
+              :propObjectModel="objectModel"
+            />
+
+          </div>
         </div>
+
         <div v-else>
           <PropObjectProperty
             :propObject="propObject"
@@ -96,22 +119,13 @@
       </div>
     </div>
 
-    <div class="text-left px-2 py-2">
-      <link-icon size="1x" class="text-left text-white"></link-icon>
-    </div>
   </div>
 </template>
 
 <script lang="ts">
 import Vue from "vue";
 import { registry } from "si-registry";
-
-import { LinkIcon } from "vue-feather-icons";
-
-import { auth } from "@/auth";
-
-//import PropObject from "./PropObject.vue";
-//console.log("you didn't get a real propobject", { PropObject });
+import { auth } from "@/utils/auth";
 
 // @ts-ignore
 export default Vue.extend({
@@ -125,7 +139,6 @@ export default Vue.extend({
     },
   },
   components: {
-    LinkIcon,
     PropObject: () => import("./PropObject.vue"),
   },
   data() {

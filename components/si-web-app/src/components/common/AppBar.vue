@@ -28,7 +28,7 @@
 
 <script>
 import { UserIcon, HelpCircleIcon } from "vue-feather-icons";
-import { auth } from "@/auth";
+import { auth } from "@/utils/auth";
 
 export default {
   name: "AppBar",

@@ -4,8 +4,8 @@ import VueRouter from "vue-router";
 // @ts-ignore: Unreachable code error
 import routes from "./routes";
 
-import { auth } from "@/auth";
-import { telemetry } from "@/telemetry";
+import { auth } from "@/utils/auth";
+import { telemetry } from "@/utils/telemetry";
 
 Vue.use(VueRouter);
 
