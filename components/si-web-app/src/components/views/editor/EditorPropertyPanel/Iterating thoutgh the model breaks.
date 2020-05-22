@@ -1,0 +1,2 @@
+Iterating thoutgh the model breaks.
+Need to turn object that can be incremented to an array so that we can increment the binded model.

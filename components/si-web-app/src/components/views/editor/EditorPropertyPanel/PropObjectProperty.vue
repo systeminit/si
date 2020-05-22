@@ -6,46 +6,133 @@
     <div class="pl-1 py-1">
       
       <div v-if="propObjectProperty.repeated">
-        <button class="text-teal-700 text-center" type="button">
-          <plus-square-icon size="1.25x" class="custom-class"></plus-square-icon>
-        </button>
-
 
         <div class="px-2 text-sm text-gray-400">
           {{ propObjectProperty.name }}
         </div>
 
-        <!-- pull label of propObject if link -> prop and then render propObjectProperty -->
         <div v-if="propObjectProperty.kind() == 'link'">
 
           <div v-if="propObjectProperty.lookupMyself().kind() == 'object'">
+            <div ref="container" class="flex flex-col">
+              <button class="text-red-500 text-center w-4 focus:outline-none" type="button" @click="onClickB($event, propObjectProperty)">                
+                <plus-square-icon size="1.25x" class=""></plus-square-icon>
+              </button>
 
-            <!-- plus button push "resolved link or object to array, if neither push what it is " to [] -->
-            <!-- figure out the type of object I am then variablesObject -->
-            <!-- call variablesObject for property  propObject.graphql.variableObjectForProperty(propObjectProperty ot propObjectProperty.myself if link-->
+              <ul>
+                <li v-for="(object, index) in objectModel" :key="object.name">                
+                  <PropObject
+                    :propObject="propObjectProperty.lookupMyself()"
+                    :propObjectModel="objectModel[index]"
+                  />
+                </li>
+              </ul>
 
-            <button class="text-red-500 text-center" type="button" @click="onClick(propObjectProperty)">
-              <plus-square-icon size="1.25x" class="custom-class"></plus-square-icon>
-            </button>    
+            </div>
+          </div>
 
-<!--             <vue-json-pretty
-              class="text-white"
-              :path="'res'"
-              :data="propObjectProperty.lookupMyself()">
-            </vue-json-pretty> -->
-
-
-        <!-- if dance -->
+          <div v-else>
             <PropObjectProperty
               :propObject="propObject"
-              :propObjectProperty="propObjectProperty"
-              :propObjectPropertyModel="objectModel[0]"
+              :propObjectProperty="propObjectProperty.lookupMyself()"
+              :propObjectPropertyModel="objectModel"
             />
+          </div>
 
-            <!-- need to  -->
+        </div>
+
+        <div v-else-if="propObjectProperty.kind() == 'object'">
+          <button class="text-green-500 text-center w-4 focus:outline-none" type="button" @click="onClickB($event, propObjectProperty)">   
+            <plus-square-icon size="1.25x" class=""></plus-square-icon>
+          </button>
+
+          <!-- Not working -->
+          <ul>
+            <li v-for="(object, index) in objectModel" :key="object.name">                
+              <PropObject
+                :propObject="propObjectProperty"
+                :propObjectModel="objectModel[index]"
+              />
+            </li>
+          </ul>
+
+        </div>
+
+        <div v-else-if="propObjectProperty.kind() == 'text'">
+          <div class="flex items-center">
+            <div class="px-2 text-sm text-gray-400">
+              {{ propObjectProperty.name }}
+            </div>
+            <input
+              class="appearance-none input-bg-color border-none text-gray-400 pl-2 h-5 text-sm leading-tight focus:outline-none"
+              type="text"
+              :aria-label="propObjectProperty.name"
+              v-model="objectModel"
+              placeholder="text"
+            />
           </div>
         </div>
 
+        <div v-else-if="propObjectProperty.kind() == 'code'">
+          <div class="flex items-center">
+            <div class="px-2 text-sm text-gray-400">
+              {{ propObjectProperty.name }}
+            </div>
+          </div>
+        </div>
+
+        <div v-else-if="propObjectProperty.kind() == 'number'">
+          <div class="flex items-center">
+            <div class="px-2 text-sm text-gray-400">
+              {{ propObjectProperty.name }}
+            </div>
+            <input
+              class="appearance-none input-bg-color border-none text-gray-400 ml-3 pl-2 h-5 text-sm leading-tight focus:outline-none"
+              type="text"
+              :aria-label="propObjectProperty.name"
+              v-model="objectModel"
+              placeholder="number"
+            />
+          </div>
+        </div>
+
+        <div v-else-if="propObjectProperty.kind() == 'enum'">
+          <select 
+            class="block appearance-none bg-gray-200 border border-gray-200 text-gray-700 px-4 rounded leading-tight focus:outline-none "
+            :aria-label="propObjectProperty.name">
+            <option
+              v-for="option in propObjectProperty.variants"
+              v-bind:key="option"
+              >{{ option }}</option
+            >
+          </select>
+        </div>
+
+        <div v-else-if="propObjectProperty.kind() == 'map'">
+          <div class="flex items-center">
+
+            <button class="text-yellow-500 text-center w-4" type="button" @click="onClickB(propObjectProperty)">                
+              <plus-square-icon size="1.25x" class=""></plus-square-icon>
+            </button>
+   
+            <input
+              class="appearance-none input-bg-color border-none text-gray-400 ml-3 pl-2 h-5 text-sm leading-tight focus:outline-none"
+              type="text"
+              :aria-label="propObjectProperty.name + ' key'"
+              v-model="objectModel"
+              placeholder="text"
+            />
+            
+            <input
+              class="appearance-none input-bg-color border-none text-gray-400 ml-3 pl-2 h-5 text-sm leading-tight focus:outline-none"
+              type="text"
+              :aria-label="propObjectProperty.name + ' value'"
+              v-model="objectModel"
+              placeholder="text"
+            />
+          </div>
+        </div>
+      
       </div>
       
       <div v-else-if="propObjectProperty.kind() == 'text'">
@@ -109,32 +196,21 @@
       <!-- A map has some number of Key/Value pairs. -->
       <div v-else-if="propObjectProperty.kind() == 'map'">
         
-        <div class="flex items-center">
-          <button class="text-teal-700 text-center" type="button">
-            <plus-square-icon size="1.25x" class="custom-class"></plus-square-icon>
-          </button>
- 
-<!--           <vue-json-pretty
-            class="text-white"
-            :path="'res'"
-            :data="propObjectProperty">
-          </vue-json-pretty> -->
+        <div class="flex flex-col">
+            <button class="text-blue-500 text-center w-4 focus:outline-none" type="button" @click="onClickB($event, propObjectProperty)">
+              <plus-square-icon size="1.25x" class=""></plus-square-icon>
+            </button>
 
-          <input
-            class="appearance-none input-bg-color border-none text-gray-400 ml-3 pl-2 h-5 text-sm leading-tight focus:outline-none"
-            type="text"
-            :aria-label="propObjectProperty.name + ' key'"
-            v-model="objectModel"
-            placeholder="text"
-          />
-          
-          <input
-            class="appearance-none input-bg-color border-none text-gray-400 ml-3 pl-2 h-5 text-sm leading-tight focus:outline-none"
-            type="text"
-            :aria-label="propObjectProperty.name + ' value'"
-            v-model="objectModel"
-            placeholder="text"
-          />
+            <!-- Not working -->
+            <ul>
+              <li v-for="(object, index) in objectModel" :key="object.name">                
+                <PropObject
+                  :propObject="propObjectProperty.lookupMyself()"
+                  :propObjectModel="objectModel[index]"
+                />
+              </li>
+            </ul>
+
         </div>
       </div>
 
@@ -190,6 +266,9 @@ import { registry, variablesObjectForProperty } from "si-registry";
 import { auth } from "@/utils/auth";
 import { PlusSquareIcon, ChevronDownIcon } from "vue-feather-icons"
 
+import Button  from "./Button.vue"
+
+import PropObject from "./PropObject.vue";
 
 // @ts-ignore
 import VueJsonPretty from "vue-json-pretty"
@@ -220,6 +299,7 @@ export default Vue.extend({
 
     return {
       objectModel: this.propObjectPropertyModel,
+      items: []
     };
   },
   watch: {
@@ -232,18 +312,47 @@ export default Vue.extend({
   },
   methods: {
     // @ts-ignore
-    onClick(propObjectProperty) {
+    onClickB(event, propObjectProperty) {
+      var varsObjectForProperty;
 
       switch (propObjectProperty.kind()) {
-        case "link":
+          case "link":
 
-          if (propObjectProperty.lookupMyself().kind() == "object") {
-            let variablesObjectForPropertyK = variablesObjectForProperty(propObjectProperty.lookupMyself())
-            this.objectModel.unshift(variablesObjectForPropertyK)
+            console.log("we have a link")
+            console.log("propObjectProperty:", propObjectProperty)
+            console.log("objectModel:", this.objectModel)
+            if (propObjectProperty.lookupMyself().kind() == "object") {
+              varsObjectForProperty = variablesObjectForProperty(propObjectProperty.lookupMyself())
+              console.log("varsObjectForProperty:", varsObjectForProperty)
+              this.objectModel.push(varsObjectForProperty)
+              console.log(this.objectModel.length)
           }
+          break;
+        
+        case "object":
+          console.log("we have an object")
+          console.log("propObjectProperty:", propObjectProperty)
+          console.log(this.objectModel)
+          varsObjectForProperty = variablesObjectForProperty(propObjectProperty)
+          console.log("varsObjectForProperty:", varsObjectForProperty)
+          
+          // this.objectModel.push(varsObjectForProperty)
+          
 
           break;
-      }      
+
+        case "map":
+          console.log("we have a map")
+          console.log("propObjectProperty:", propObjectProperty)
+          console.log("objectModel:", this.objectModel)
+          varsObjectForProperty = variablesObjectForProperty(propObjectProperty)
+          console.log("varsObjectForProperty:", varsObjectForProperty)
+
+          // this.objectModel.push(varsObjectForProperty)
+
+          break;
+
+        }
     }
   }
 });

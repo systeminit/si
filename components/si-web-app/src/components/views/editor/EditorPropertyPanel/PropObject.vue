@@ -10,10 +10,6 @@
           @propChangeMsg="propChangeMsg"
         />
 
-<!--     <div class="text-left px-2 py-2">
-      <link-icon size="1x" class="text-left text-white"></link-icon>
-    </div>
- -->
     </div>
   </div>
 </template>
@@ -22,7 +18,6 @@
 import Vue from "vue";
 import { registry } from "si-registry";
 
-// import { LinkIcon } from "vue-feather-icons";
 import PropObjectProperty from "./PropObjectProperty.vue";
 
 import { auth } from "@/utils/auth";
@@ -46,6 +41,9 @@ export default Vue.extend({
         value: this.objectModel,
       });
     },
+    mounted(){
+      console.log("PropObject Mounted")
+    }
   },
   data() {
     return {
