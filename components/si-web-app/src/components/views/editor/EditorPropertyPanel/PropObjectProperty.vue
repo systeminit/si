@@ -10,16 +10,41 @@
           <plus-square-icon size="1.25x" class="custom-class"></plus-square-icon>
         </button>
 
-        <vue-json-pretty
-          class="text-white"
-          :path="'res'"
-          :data="propObjectProperty">
-        </vue-json-pretty>
 
         <div class="px-2 text-sm text-gray-400">
           {{ propObjectProperty.name }}
         </div>
 
+        <!-- pull label of propObject if link -> prop and then render propObjectProperty -->
+        <div v-if="propObjectProperty.kind() == 'link'">
+
+          <div v-if="propObjectProperty.lookupMyself().kind() == 'object'">
+
+            <!-- plus button push "resolved link or object to array, if neither push what it is " to [] -->
+            <!-- figure out the type of object I am then variablesObject -->
+            <!-- call variablesObject for property  propObject.graphql.variableObjectForProperty(propObjectProperty ot propObjectProperty.myself if link-->
+
+            <button class="text-red-500 text-center" type="button" @click="onClick(propObjectProperty)">
+              <plus-square-icon size="1.25x" class="custom-class"></plus-square-icon>
+            </button>    
+
+<!--             <vue-json-pretty
+              class="text-white"
+              :path="'res'"
+              :data="propObjectProperty.lookupMyself()">
+            </vue-json-pretty> -->
+
+
+        <!-- if dance -->
+            <PropObjectProperty
+              :propObject="propObject"
+              :propObjectProperty="propObjectProperty"
+              :propObjectPropertyModel="objectModel[0]"
+            />
+
+            <!-- need to  -->
+          </div>
+        </div>
 
       </div>
       
@@ -88,7 +113,13 @@
           <button class="text-teal-700 text-center" type="button">
             <plus-square-icon size="1.25x" class="custom-class"></plus-square-icon>
           </button>
-          
+ 
+<!--           <vue-json-pretty
+            class="text-white"
+            :path="'res'"
+            :data="propObjectProperty">
+          </vue-json-pretty> -->
+
           <input
             class="appearance-none input-bg-color border-none text-gray-400 ml-3 pl-2 h-5 text-sm leading-tight focus:outline-none"
             type="text"
@@ -155,9 +186,10 @@
 /* eslint-disable vue/no-unused-components */
 
 import Vue from "vue";
-import { registry } from "si-registry";
+import { registry, variablesObjectForProperty } from "si-registry";
 import { auth } from "@/utils/auth";
 import { PlusSquareIcon, ChevronDownIcon } from "vue-feather-icons"
+
 
 // @ts-ignore
 import VueJsonPretty from "vue-json-pretty"
@@ -180,6 +212,12 @@ export default Vue.extend({
     PropObject: () => import("./PropObject.vue"),
   },
   data() {
+    const kubernetesMetadata = registry.get(
+      "kubernetesMetadata",
+    );
+
+    console.log(kubernetesMetadata)
+
     return {
       objectModel: this.propObjectPropertyModel,
     };
@@ -192,6 +230,22 @@ export default Vue.extend({
       });
     },
   },
+  methods: {
+    // @ts-ignore
+    onClick(propObjectProperty) {
+
+      switch (propObjectProperty.kind()) {
+        case "link":
+
+          if (propObjectProperty.lookupMyself().kind() == "object") {
+            let variablesObjectForPropertyK = variablesObjectForProperty(propObjectProperty.lookupMyself())
+            this.objectModel.unshift(variablesObjectForPropertyK)
+          }
+
+          break;
+      }      
+    }
+  }
 });
 </script>
 
