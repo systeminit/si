@@ -1,4 +1,4 @@
-import api, { CanonicalCode } from "@opentelemetry/api";
+import api, { CanonicalCode, context, propagation } from "@opentelemetry/api";
 
 import { ApolloServer } from "apollo-server";
 import * as path from "path";
@@ -11,6 +11,7 @@ import { registryGenerator } from "@/schema/registryGenerator";
 import { loginTypes } from "@/schema/login";
 import { GrpcServiceBroker, Grpc } from "@/datasources/grpc";
 import { DataSources } from "apollo-server-core/dist/graphqlOptions";
+import { tracingExtensionFactory } from "@/otel-apollo-server";
 
 export interface DataSourceContext {
   grpc: any;
@@ -46,6 +47,7 @@ export function main(): void {
   const dataSources = (): DataSources<DataSourceContext> => ({
     grpc: new Grpc({ broker: serviceBroker }),
   });
+  const apolloServerTracing = tracingExtensionFactory({ tracer });
   const server = new ApolloServer({
     cors: {
       origin: "*", // <- allow request from all domains; public api
@@ -53,10 +55,11 @@ export function main(): void {
     },
     schema,
     dataSources,
-    formatError: error => {
+    plugins: [apolloServerTracing()],
+    formatError: (error) => {
       let span = tracer.getCurrentSpan();
       if (span == undefined) {
-        span = tracer.startSpan("request without root span");
+        span = tracer.startSpan("error without root span");
       }
       if (error && error.message) {
         span.setAttributes({

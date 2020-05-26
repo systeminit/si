@@ -7,13 +7,11 @@ let id = inner.id.ok_or_else(|| si_data::DataError::RequiredField("id".to_string
 let property = inner.property.ok_or_else(|| si_data::DataError::RequiredField("property".to_string()))?;
 
 let mut entity = <%- fmt.structName() %>::get(&self.db, &id).await?;
-info!(?entity);
 let previous_entity = entity.clone();
 
 entity.set_entity_state_transition();
 entity.<%- fmt.entityEditMethodName(propMethod) %>(property)?;
 entity.save(&self.db).await?;
-info!(?entity);
 
 let entity_event = <%- fmt.entityEventName() %>::create_with_previous_entity(
     &self.db,
@@ -23,7 +21,6 @@ let entity_event = <%- fmt.entityEventName() %>::create_with_previous_entity(
     previous_entity,
 )
 .await?;
-info!(?entity_event);
 
 Ok(tonic::Response::new(
     <%- fmt.implServiceReplyType(propMethod, { option: false, reference: false }) %> {

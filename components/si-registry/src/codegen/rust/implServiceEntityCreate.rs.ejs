@@ -15,7 +15,6 @@ let workspace = si_account::Workspace::get(&self.db, &workspace_id).await?;
 
 let (implicit_constraints, component) =
     <%- fmt.componentName() %>::pick(&self.db, constraints.clone()).await?;
-info!(?implicit_constraints, ?component);
 
 let si_properties = si_cea::EntitySiProperties::new(
     &workspace,
@@ -39,14 +38,12 @@ let entity = <%- fmt.structName() %>::create(
     Some(si_properties),
     change_set_id,
 ).await?;
-info!(?entity);
 let entity_event = <%- fmt.entityEventName() %>::create(
     &self.db,
     auth.user_id(),
     "create",
     &entity,
 ).await?;
-info!(?entity_event);
 self.agent.dispatch(&entity_event).await?;
 
 Ok(tonic::Response::new(

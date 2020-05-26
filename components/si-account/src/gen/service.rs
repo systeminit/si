@@ -43,7 +43,7 @@ impl crate::protobuf::account_server::Account for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "billing_account_create",
+            "account.billing_account_create",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -73,8 +73,6 @@ impl crate::protobuf::account_server::Account for Service {
         }
 
         async {
-            info!(?request);
-
             crate::authorize::authnz(&self.db, &request, "billing_account_create").await?;
 
             let inner = request.into_inner();
@@ -83,7 +81,6 @@ impl crate::protobuf::account_server::Account for Service {
 
             let output =
                 crate::protobuf::BillingAccount::create(&self.db, name, display_name).await?;
-            info!(?output);
 
             Ok(tonic::Response::new(
                 crate::protobuf::BillingAccountCreateReply { item: Some(output) },
@@ -106,7 +103,7 @@ impl crate::protobuf::account_server::Account for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "billing_account_get",
+            "account.billing_account_get",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -136,8 +133,6 @@ impl crate::protobuf::account_server::Account for Service {
         }
 
         async {
-            info!(?request);
-
             crate::authorize::authnz(&self.db, &request, "billing_account_get").await?;
 
             let inner = request.into_inner();
@@ -146,7 +141,6 @@ impl crate::protobuf::account_server::Account for Service {
                 .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))?;
 
             let output = crate::protobuf::BillingAccount::get(&self.db, &id).await?;
-            info!(?output);
 
             Ok(tonic::Response::new(
                 crate::protobuf::BillingAccountGetReply { item: Some(output) },
@@ -169,7 +163,7 @@ impl crate::protobuf::account_server::Account for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "billing_account_list",
+            "account.billing_account_list",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -199,8 +193,6 @@ impl crate::protobuf::account_server::Account for Service {
         }
 
         async {
-            info!(?request);
-
             #[allow(unused_variables)]
             let auth = crate::authorize::authnz(&self.db, &request, "billing_account_list").await?;
 
@@ -210,7 +202,6 @@ impl crate::protobuf::account_server::Account for Service {
             }
 
             let output = crate::protobuf::BillingAccount::list(&self.db, inner).await?;
-            info!(?output);
 
             Ok(tonic::Response::new(
                 crate::protobuf::BillingAccountListReply {
@@ -239,7 +230,7 @@ impl crate::protobuf::account_server::Account for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "billing_account_signup",
+            "account.billing_account_signup",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -269,14 +260,11 @@ impl crate::protobuf::account_server::Account for Service {
         }
 
         async {
-            info!(?request);
-
             // Authentication is skipped on `billing_account_signup`
 
             let inner = request.into_inner();
 
             let output = crate::model::BillingAccount::signup(&self.db, inner).await?;
-            info!(?output);
 
             Ok(tonic::Response::new(output))
         }
@@ -297,7 +285,7 @@ impl crate::protobuf::account_server::Account for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "change_set_create",
+            "account.change_set_create",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -327,8 +315,6 @@ impl crate::protobuf::account_server::Account for Service {
         }
 
         async {
-            info!(?request);
-
             crate::authorize::authnz(&self.db, &request, "change_set_create").await?;
 
             let inner = request.into_inner();
@@ -345,7 +331,6 @@ impl crate::protobuf::account_server::Account for Service {
                 created_by_user_id,
             )
             .await?;
-            info!(?output);
 
             Ok(tonic::Response::new(
                 crate::protobuf::ChangeSetCreateReply { item: Some(output) },
@@ -368,7 +353,7 @@ impl crate::protobuf::account_server::Account for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "change_set_get",
+            "account.change_set_get",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -398,8 +383,6 @@ impl crate::protobuf::account_server::Account for Service {
         }
 
         async {
-            info!(?request);
-
             crate::authorize::authnz(&self.db, &request, "change_set_get").await?;
 
             let inner = request.into_inner();
@@ -408,7 +391,6 @@ impl crate::protobuf::account_server::Account for Service {
                 .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))?;
 
             let output = crate::protobuf::ChangeSet::get(&self.db, &id).await?;
-            info!(?output);
 
             Ok(tonic::Response::new(crate::protobuf::ChangeSetGetReply {
                 item: Some(output),
@@ -431,7 +413,7 @@ impl crate::protobuf::account_server::Account for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "change_set_list",
+            "account.change_set_list",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -461,8 +443,6 @@ impl crate::protobuf::account_server::Account for Service {
         }
 
         async {
-            info!(?request);
-
             #[allow(unused_variables)]
             let auth = crate::authorize::authnz(&self.db, &request, "change_set_list").await?;
 
@@ -472,7 +452,6 @@ impl crate::protobuf::account_server::Account for Service {
             }
 
             let output = crate::protobuf::ChangeSet::list(&self.db, inner).await?;
-            info!(?output);
 
             Ok(tonic::Response::new(crate::protobuf::ChangeSetListReply {
                 items: output.items,
@@ -499,7 +478,7 @@ impl crate::protobuf::account_server::Account for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "change_set_entry_create",
+            "account.change_set_entry_create",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -529,8 +508,6 @@ impl crate::protobuf::account_server::Account for Service {
         }
 
         async {
-            info!(?request);
-
             crate::authorize::authnz(&self.db, &request, "change_set_entry_create").await?;
 
             let inner = request.into_inner();
@@ -547,7 +524,6 @@ impl crate::protobuf::account_server::Account for Service {
                 created_by_user_id,
             )
             .await?;
-            info!(?output);
 
             Ok(tonic::Response::new(
                 crate::protobuf::ChangeSetEntryCreateReply { item: Some(output) },
@@ -570,7 +546,7 @@ impl crate::protobuf::account_server::Account for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "change_set_entry_get",
+            "account.change_set_entry_get",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -600,8 +576,6 @@ impl crate::protobuf::account_server::Account for Service {
         }
 
         async {
-            info!(?request);
-
             crate::authorize::authnz(&self.db, &request, "change_set_entry_get").await?;
 
             let inner = request.into_inner();
@@ -610,7 +584,6 @@ impl crate::protobuf::account_server::Account for Service {
                 .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))?;
 
             let output = crate::protobuf::ChangeSetEntry::get(&self.db, &id).await?;
-            info!(?output);
 
             Ok(tonic::Response::new(
                 crate::protobuf::ChangeSetEntryGetReply { item: Some(output) },
@@ -633,7 +606,7 @@ impl crate::protobuf::account_server::Account for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "change_set_entry_list",
+            "account.change_set_entry_list",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -663,8 +636,6 @@ impl crate::protobuf::account_server::Account for Service {
         }
 
         async {
-            info!(?request);
-
             #[allow(unused_variables)]
             let auth =
                 crate::authorize::authnz(&self.db, &request, "change_set_entry_list").await?;
@@ -675,7 +646,6 @@ impl crate::protobuf::account_server::Account for Service {
             }
 
             let output = crate::protobuf::ChangeSetEntry::list(&self.db, inner).await?;
-            info!(?output);
 
             Ok(tonic::Response::new(
                 crate::protobuf::ChangeSetEntryListReply {
@@ -702,7 +672,7 @@ impl crate::protobuf::account_server::Account for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "group_create",
+            "account.group_create",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -732,8 +702,6 @@ impl crate::protobuf::account_server::Account for Service {
         }
 
         async {
-            info!(?request);
-
             crate::authorize::authnz(&self.db, &request, "group_create").await?;
 
             let inner = request.into_inner();
@@ -752,7 +720,6 @@ impl crate::protobuf::account_server::Account for Service {
                 capabilities,
             )
             .await?;
-            info!(?output);
 
             Ok(tonic::Response::new(crate::protobuf::GroupCreateReply {
                 item: Some(output),
@@ -774,7 +741,7 @@ impl crate::protobuf::account_server::Account for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "group_get",
+            "account.group_get",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -804,8 +771,6 @@ impl crate::protobuf::account_server::Account for Service {
         }
 
         async {
-            info!(?request);
-
             crate::authorize::authnz(&self.db, &request, "group_get").await?;
 
             let inner = request.into_inner();
@@ -814,7 +779,6 @@ impl crate::protobuf::account_server::Account for Service {
                 .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))?;
 
             let output = crate::protobuf::Group::get(&self.db, &id).await?;
-            info!(?output);
 
             Ok(tonic::Response::new(crate::protobuf::GroupGetReply {
                 item: Some(output),
@@ -836,7 +800,7 @@ impl crate::protobuf::account_server::Account for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "group_list",
+            "account.group_list",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -866,8 +830,6 @@ impl crate::protobuf::account_server::Account for Service {
         }
 
         async {
-            info!(?request);
-
             #[allow(unused_variables)]
             let auth = crate::authorize::authnz(&self.db, &request, "group_list").await?;
 
@@ -877,7 +839,6 @@ impl crate::protobuf::account_server::Account for Service {
             }
 
             let output = crate::protobuf::Group::list(&self.db, inner).await?;
-            info!(?output);
 
             Ok(tonic::Response::new(crate::protobuf::GroupListReply {
                 items: output.items,
@@ -902,7 +863,7 @@ impl crate::protobuf::account_server::Account for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "integration_create",
+            "account.integration_create",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -932,8 +893,6 @@ impl crate::protobuf::account_server::Account for Service {
         }
 
         async {
-            info!(?request);
-
             crate::authorize::authnz(&self.db, &request, "integration_create").await?;
 
             let inner = request.into_inner();
@@ -950,7 +909,6 @@ impl crate::protobuf::account_server::Account for Service {
                 si_properties,
             )
             .await?;
-            info!(?output);
 
             Ok(tonic::Response::new(
                 crate::protobuf::IntegrationCreateReply { item: Some(output) },
@@ -973,7 +931,7 @@ impl crate::protobuf::account_server::Account for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "integration_get",
+            "account.integration_get",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -1003,8 +961,6 @@ impl crate::protobuf::account_server::Account for Service {
         }
 
         async {
-            info!(?request);
-
             crate::authorize::authnz(&self.db, &request, "integration_get").await?;
 
             let inner = request.into_inner();
@@ -1013,7 +969,6 @@ impl crate::protobuf::account_server::Account for Service {
                 .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))?;
 
             let output = crate::protobuf::Integration::get(&self.db, &id).await?;
-            info!(?output);
 
             Ok(tonic::Response::new(crate::protobuf::IntegrationGetReply {
                 item: Some(output),
@@ -1036,7 +991,7 @@ impl crate::protobuf::account_server::Account for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "integration_list",
+            "account.integration_list",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -1066,8 +1021,6 @@ impl crate::protobuf::account_server::Account for Service {
         }
 
         async {
-            info!(?request);
-
             #[allow(unused_variables)]
             let auth = crate::authorize::authnz(&self.db, &request, "integration_list").await?;
 
@@ -1077,7 +1030,6 @@ impl crate::protobuf::account_server::Account for Service {
             }
 
             let output = crate::protobuf::Integration::list(&self.db, inner).await?;
-            info!(?output);
 
             Ok(tonic::Response::new(
                 crate::protobuf::IntegrationListReply {
@@ -1106,7 +1058,7 @@ impl crate::protobuf::account_server::Account for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "integration_instance_create",
+            "account.integration_instance_create",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -1136,8 +1088,6 @@ impl crate::protobuf::account_server::Account for Service {
         }
 
         async {
-            info!(?request);
-
             crate::authorize::authnz(&self.db, &request, "integration_instance_create").await?;
 
             let inner = request.into_inner();
@@ -1154,7 +1104,6 @@ impl crate::protobuf::account_server::Account for Service {
                 si_properties,
             )
             .await?;
-            info!(?output);
 
             Ok(tonic::Response::new(
                 crate::protobuf::IntegrationInstanceCreateReply { item: Some(output) },
@@ -1179,7 +1128,7 @@ impl crate::protobuf::account_server::Account for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "integration_instance_get",
+            "account.integration_instance_get",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -1209,8 +1158,6 @@ impl crate::protobuf::account_server::Account for Service {
         }
 
         async {
-            info!(?request);
-
             crate::authorize::authnz(&self.db, &request, "integration_instance_get").await?;
 
             let inner = request.into_inner();
@@ -1219,7 +1166,6 @@ impl crate::protobuf::account_server::Account for Service {
                 .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))?;
 
             let output = crate::protobuf::IntegrationInstance::get(&self.db, &id).await?;
-            info!(?output);
 
             Ok(tonic::Response::new(
                 crate::protobuf::IntegrationInstanceGetReply { item: Some(output) },
@@ -1244,7 +1190,7 @@ impl crate::protobuf::account_server::Account for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "integration_instance_list",
+            "account.integration_instance_list",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -1274,8 +1220,6 @@ impl crate::protobuf::account_server::Account for Service {
         }
 
         async {
-            info!(?request);
-
             #[allow(unused_variables)]
             let auth =
                 crate::authorize::authnz(&self.db, &request, "integration_instance_list").await?;
@@ -1286,7 +1230,6 @@ impl crate::protobuf::account_server::Account for Service {
             }
 
             let output = crate::protobuf::IntegrationInstance::list(&self.db, inner).await?;
-            info!(?output);
 
             Ok(tonic::Response::new(
                 crate::protobuf::IntegrationInstanceListReply {
@@ -1315,7 +1258,7 @@ impl crate::protobuf::account_server::Account for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "integration_service_create",
+            "account.integration_service_create",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -1345,8 +1288,6 @@ impl crate::protobuf::account_server::Account for Service {
         }
 
         async {
-            info!(?request);
-
             crate::authorize::authnz(&self.db, &request, "integration_service_create").await?;
 
             let inner = request.into_inner();
@@ -1361,7 +1302,6 @@ impl crate::protobuf::account_server::Account for Service {
                 si_properties,
             )
             .await?;
-            info!(?output);
 
             Ok(tonic::Response::new(
                 crate::protobuf::IntegrationServiceCreateReply { item: Some(output) },
@@ -1386,7 +1326,7 @@ impl crate::protobuf::account_server::Account for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "integration_service_get",
+            "account.integration_service_get",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -1416,8 +1356,6 @@ impl crate::protobuf::account_server::Account for Service {
         }
 
         async {
-            info!(?request);
-
             crate::authorize::authnz(&self.db, &request, "integration_service_get").await?;
 
             let inner = request.into_inner();
@@ -1426,7 +1364,6 @@ impl crate::protobuf::account_server::Account for Service {
                 .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))?;
 
             let output = crate::protobuf::IntegrationService::get(&self.db, &id).await?;
-            info!(?output);
 
             Ok(tonic::Response::new(
                 crate::protobuf::IntegrationServiceGetReply { item: Some(output) },
@@ -1451,7 +1388,7 @@ impl crate::protobuf::account_server::Account for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "integration_service_list",
+            "account.integration_service_list",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -1481,8 +1418,6 @@ impl crate::protobuf::account_server::Account for Service {
         }
 
         async {
-            info!(?request);
-
             #[allow(unused_variables)]
             let auth =
                 crate::authorize::authnz(&self.db, &request, "integration_service_list").await?;
@@ -1493,7 +1428,6 @@ impl crate::protobuf::account_server::Account for Service {
             }
 
             let output = crate::protobuf::IntegrationService::list(&self.db, inner).await?;
-            info!(?output);
 
             Ok(tonic::Response::new(
                 crate::protobuf::IntegrationServiceListReply {
@@ -1519,7 +1453,7 @@ impl crate::protobuf::account_server::Account for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "item_get",
+            "account.item_get",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -1549,8 +1483,6 @@ impl crate::protobuf::account_server::Account for Service {
         }
 
         async {
-            info!(?request);
-
             crate::authorize::authnz(&self.db, &request, "item_get").await?;
 
             let inner = request.into_inner();
@@ -1559,7 +1491,6 @@ impl crate::protobuf::account_server::Account for Service {
                 .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))?;
 
             let output = crate::protobuf::Item::get(&self.db, &id).await?;
-            info!(?output);
 
             Ok(tonic::Response::new(crate::protobuf::ItemGetReply {
                 item: Some(output),
@@ -1581,7 +1512,7 @@ impl crate::protobuf::account_server::Account for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "item_list",
+            "account.item_list",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -1611,8 +1542,6 @@ impl crate::protobuf::account_server::Account for Service {
         }
 
         async {
-            info!(?request);
-
             #[allow(unused_variables)]
             let auth = crate::authorize::authnz(&self.db, &request, "item_list").await?;
 
@@ -1622,7 +1551,6 @@ impl crate::protobuf::account_server::Account for Service {
             }
 
             let output = crate::protobuf::Item::list(&self.db, inner).await?;
-            info!(?output);
 
             Ok(tonic::Response::new(crate::protobuf::ItemListReply {
                 items: output.items,
@@ -1647,7 +1575,7 @@ impl crate::protobuf::account_server::Account for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "organization_create",
+            "account.organization_create",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -1677,8 +1605,6 @@ impl crate::protobuf::account_server::Account for Service {
         }
 
         async {
-            info!(?request);
-
             crate::authorize::authnz(&self.db, &request, "organization_create").await?;
 
             let inner = request.into_inner();
@@ -1689,7 +1615,6 @@ impl crate::protobuf::account_server::Account for Service {
             let output =
                 crate::protobuf::Organization::create(&self.db, name, display_name, si_properties)
                     .await?;
-            info!(?output);
 
             Ok(tonic::Response::new(
                 crate::protobuf::OrganizationCreateReply { item: Some(output) },
@@ -1712,7 +1637,7 @@ impl crate::protobuf::account_server::Account for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "organization_get",
+            "account.organization_get",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -1742,8 +1667,6 @@ impl crate::protobuf::account_server::Account for Service {
         }
 
         async {
-            info!(?request);
-
             crate::authorize::authnz(&self.db, &request, "organization_get").await?;
 
             let inner = request.into_inner();
@@ -1752,7 +1675,6 @@ impl crate::protobuf::account_server::Account for Service {
                 .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))?;
 
             let output = crate::protobuf::Organization::get(&self.db, &id).await?;
-            info!(?output);
 
             Ok(tonic::Response::new(
                 crate::protobuf::OrganizationGetReply { item: Some(output) },
@@ -1775,7 +1697,7 @@ impl crate::protobuf::account_server::Account for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "organization_list",
+            "account.organization_list",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -1805,8 +1727,6 @@ impl crate::protobuf::account_server::Account for Service {
         }
 
         async {
-            info!(?request);
-
             #[allow(unused_variables)]
             let auth = crate::authorize::authnz(&self.db, &request, "organization_list").await?;
 
@@ -1816,7 +1736,6 @@ impl crate::protobuf::account_server::Account for Service {
             }
 
             let output = crate::protobuf::Organization::list(&self.db, inner).await?;
-            info!(?output);
 
             Ok(tonic::Response::new(
                 crate::protobuf::OrganizationListReply {
@@ -1842,7 +1761,7 @@ impl crate::protobuf::account_server::Account for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "user_create",
+            "account.user_create",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -1872,8 +1791,6 @@ impl crate::protobuf::account_server::Account for Service {
         }
 
         async {
-            info!(?request);
-
             crate::authorize::authnz(&self.db, &request, "user_create").await?;
 
             let inner = request.into_inner();
@@ -1892,7 +1809,6 @@ impl crate::protobuf::account_server::Account for Service {
                 si_properties,
             )
             .await?;
-            info!(?output);
 
             Ok(tonic::Response::new(crate::protobuf::UserCreateReply {
                 item: Some(output),
@@ -1914,7 +1830,7 @@ impl crate::protobuf::account_server::Account for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "user_get",
+            "account.user_get",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -1944,8 +1860,6 @@ impl crate::protobuf::account_server::Account for Service {
         }
 
         async {
-            info!(?request);
-
             crate::authorize::authnz(&self.db, &request, "user_get").await?;
 
             let inner = request.into_inner();
@@ -1954,7 +1868,6 @@ impl crate::protobuf::account_server::Account for Service {
                 .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))?;
 
             let output = crate::protobuf::User::get(&self.db, &id).await?;
-            info!(?output);
 
             Ok(tonic::Response::new(crate::protobuf::UserGetReply {
                 item: Some(output),
@@ -1976,7 +1889,7 @@ impl crate::protobuf::account_server::Account for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "user_list",
+            "account.user_list",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -2006,8 +1919,6 @@ impl crate::protobuf::account_server::Account for Service {
         }
 
         async {
-            info!(?request);
-
             #[allow(unused_variables)]
             let auth = crate::authorize::authnz(&self.db, &request, "user_list").await?;
 
@@ -2017,7 +1928,6 @@ impl crate::protobuf::account_server::Account for Service {
             }
 
             let output = crate::protobuf::User::list(&self.db, inner).await?;
-            info!(?output);
 
             Ok(tonic::Response::new(crate::protobuf::UserListReply {
                 items: output.items,
@@ -2042,7 +1952,7 @@ impl crate::protobuf::account_server::Account for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "user_login_internal",
+            "account.user_login_internal",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -2072,14 +1982,11 @@ impl crate::protobuf::account_server::Account for Service {
         }
 
         async {
-            info!(?request);
-
             // Authentication is skipped on `user_login_internal`
 
             let inner = request.into_inner();
 
             let output = crate::model::User::login_internal(&self.db, inner).await?;
-            info!(?output);
 
             Ok(tonic::Response::new(output))
         }
@@ -2100,7 +2007,7 @@ impl crate::protobuf::account_server::Account for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "workspace_create",
+            "account.workspace_create",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -2130,8 +2037,6 @@ impl crate::protobuf::account_server::Account for Service {
         }
 
         async {
-            info!(?request);
-
             crate::authorize::authnz(&self.db, &request, "workspace_create").await?;
 
             let inner = request.into_inner();
@@ -2142,7 +2047,6 @@ impl crate::protobuf::account_server::Account for Service {
             let output =
                 crate::protobuf::Workspace::create(&self.db, name, display_name, si_properties)
                     .await?;
-            info!(?output);
 
             Ok(tonic::Response::new(
                 crate::protobuf::WorkspaceCreateReply { item: Some(output) },
@@ -2165,7 +2069,7 @@ impl crate::protobuf::account_server::Account for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "workspace_get",
+            "account.workspace_get",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -2195,8 +2099,6 @@ impl crate::protobuf::account_server::Account for Service {
         }
 
         async {
-            info!(?request);
-
             crate::authorize::authnz(&self.db, &request, "workspace_get").await?;
 
             let inner = request.into_inner();
@@ -2205,7 +2107,6 @@ impl crate::protobuf::account_server::Account for Service {
                 .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))?;
 
             let output = crate::protobuf::Workspace::get(&self.db, &id).await?;
-            info!(?output);
 
             Ok(tonic::Response::new(crate::protobuf::WorkspaceGetReply {
                 item: Some(output),
@@ -2228,7 +2129,7 @@ impl crate::protobuf::account_server::Account for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "workspace_list",
+            "account.workspace_list",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -2258,8 +2159,6 @@ impl crate::protobuf::account_server::Account for Service {
         }
 
         async {
-            info!(?request);
-
             #[allow(unused_variables)]
             let auth = crate::authorize::authnz(&self.db, &request, "workspace_list").await?;
 
@@ -2269,7 +2168,6 @@ impl crate::protobuf::account_server::Account for Service {
             }
 
             let output = crate::protobuf::Workspace::list(&self.db, inner).await?;
-            info!(?output);
 
             Ok(tonic::Response::new(crate::protobuf::WorkspaceListReply {
                 items: output.items,

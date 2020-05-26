@@ -73,6 +73,33 @@ class Telemetry {
     return this.currentRoute;
   }
 
+  activitySpan(name: string): api.Span {
+    let links: api.Link[] = [];
+    if (this.session) {
+      links.push({
+        context: this.session.context(),
+        attributes: { name: "session" },
+      });
+    }
+    if (this.currentRoute) {
+      links.push({
+        context: this.currentRoute.context(),
+        attributes: { name: "route" },
+      });
+    }
+    const span = tracer.startSpan(name, { links });
+    if (auth.profile) {
+      const profile = auth.profile;
+      span.setAttributes({
+        user_id: profile.user.id,
+        billing_account_id: profile.billingAccount.id,
+        organization: profile.organization.id,
+        workspace: profile.workspaceDefault.id,
+      });
+    }
+    return span;
+  }
+
   createSpan(
     name: string,
     options?: api.SpanOptions,

@@ -10,7 +10,7 @@ async fn <%- fmt.implServiceMethodName(propMethod) %>(
     };
     let span = tracing::span!(
       tracing::Level::INFO,
-      "<%- fmt.implServiceMethodName(propMethod) %>",
+      "<%- fmt.implServiceTraceName(propMethod) %>",
       metadata.content_type = tracing::field::Empty,
       authenticated = tracing::field::Empty,
       userId = tracing::field::Empty,
@@ -37,11 +37,9 @@ async fn <%- fmt.implServiceMethodName(propMethod) %>(
             let value = raw_value.to_str().unwrap_or("unserializable");
             span.record("http.user_agent", &tracing::field::display(value));
         }
-    }
+      }
 
     async {
-        info!(?request);
-
         <%_ if (fmt.isEntityEditMethod(propMethod)) { _%>
             <%- fmt.implServiceEntityEdit(propMethod) %>
         <%_ } else if (fmt.isEntityActionMethod(propMethod)) { _%>

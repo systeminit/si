@@ -396,6 +396,17 @@ export class RustFormatter {
     return this.rustTypeForProp(propMethod.reply, renderOptions);
   }
 
+  implServiceTraceName(
+    propMethod: PropPrelude.PropMethod | PropPrelude.PropAction,
+  ): string {
+    return `${this.systemObject.serviceName}.${snakeCase(
+      this.rustTypeForProp(propMethod, {
+        option: false,
+        reference: false,
+      }),
+    )}`;
+  }
+
   implServiceMethodName(
     propMethod: PropPrelude.PropMethod | PropPrelude.PropAction,
   ): string {
