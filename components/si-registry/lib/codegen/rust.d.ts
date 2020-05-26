@@ -58,6 +58,7 @@ export declare class RustFormatter {
     implListReplyType(renderOptions?: RustTypeAsPropOptions): string;
     implServiceRequestType(propMethod: PropPrelude.PropMethod, renderOptions?: RustTypeAsPropOptions): string;
     implServiceReplyType(propMethod: PropPrelude.PropMethod, renderOptions?: RustTypeAsPropOptions): string;
+    implServiceTraceName(propMethod: PropPrelude.PropMethod | PropPrelude.PropAction): string;
     implServiceMethodName(propMethod: PropPrelude.PropMethod | PropPrelude.PropAction): string;
     implServiceEntityAction(propMethod: PropPrelude.PropMethod): string;
     implServiceEntityEdit(propMethod: PropPrelude.PropMethod): string;

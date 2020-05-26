@@ -6,6 +6,7 @@ import {
 } from "vue-cli-plugin-apollo/graphql-client";
 import ApolloClient from "apollo-client";
 import { setContext } from "apollo-link-context";
+import { ApolloLink } from "apollo-link";
 import { InMemoryCache } from "apollo-cache-inmemory";
 import { SubscriptionClient } from "subscriptions-transport-ws";
 import * as api from "@opentelemetry/api";
@@ -34,7 +35,7 @@ const telemetryLink = setContext((request, prevContext) => {
   } else {
     spanName += "anon";
   }
-  const span = telemetry.createSpan(`${spanName}`);
+  const span = telemetry.activitySpan(`${spanName}`);
   span.setAttributes({
     "web.graphql.name": request.operationName || "anon",
     "web.graphql.operationName": request.operationName,
@@ -48,13 +49,29 @@ const telemetryLink = setContext((request, prevContext) => {
     });
     return headers;
   });
-  console.log("headers", headers);
-  console.log("prevContext", prevContext);
-  span.end();
   return {
     headers: { traceparent: headers["traceparent"], ...prevContext["headers"] },
+    telemetrySpan: span,
   };
 });
+
+const afterwareLink = new ApolloLink((operation, forward) => {
+  return forward(operation).map(response => {
+    const context = operation.getContext();
+    if (context.telemetrySpan) {
+      if (response.errors) {
+        context.telemetrySpan.setAttribute({ error: true });
+        context.telemetrySpan.setAttribute({
+          "web.graphql.errors": JSON.stringify(response.errors),
+        });
+      }
+      context.telemetrySpan.end();
+    }
+    return response;
+  });
+});
+
+const customLink = afterwareLink.concat(telemetryLink);
 
 // Config
 const defaultOptions = {
@@ -76,7 +93,7 @@ const defaultOptions = {
   // Override default apollo link
   // note: don't override httpLink here, specify httpLink options in the
   // httpLinkOptions property of defaultOptions.
-  link: telemetryLink,
+  link: customLink,
 
   // Override default cache
   // cache: myCache

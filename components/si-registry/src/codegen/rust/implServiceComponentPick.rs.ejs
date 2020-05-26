@@ -4,7 +4,6 @@ let inner = request.into_inner();
 let constraints = inner.constraints;
 
 let (implicit_constraints, component) = <%- fmt.structName() %>::pick(&self.db, constraints).await?;
-info!(?implicit_constraints, ?component);
 
 Ok(tonic::Response::new(
     <%- fmt.implServiceReplyType(propMethod, { option: false, reference: false }) %> {

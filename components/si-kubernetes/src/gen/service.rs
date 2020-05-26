@@ -43,7 +43,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "kubernetes_deployment_component_create",
+            "kubernetes.kubernetes_deployment_component_create",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -73,8 +73,6 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
         }
 
         async {
-            info!(?request);
-
             si_account::authorize::authnz(
                 &self.db,
                 &request,
@@ -98,7 +96,6 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
                 si_properties,
             )
             .await?;
-            info!(?output);
 
             Ok(tonic::Response::new(
                 crate::protobuf::KubernetesDeploymentComponentCreateReply { item: Some(output) },
@@ -123,7 +120,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "kubernetes_deployment_component_get",
+            "kubernetes.kubernetes_deployment_component_get",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -153,8 +150,6 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
         }
 
         async {
-            info!(?request);
-
             si_account::authorize::authnz(
                 &self.db,
                 &request,
@@ -168,7 +163,6 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
                 .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))?;
 
             let output = crate::protobuf::KubernetesDeploymentComponent::get(&self.db, &id).await?;
-            info!(?output);
 
             Ok(tonic::Response::new(
                 crate::protobuf::KubernetesDeploymentComponentGetReply { item: Some(output) },
@@ -193,7 +187,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "kubernetes_deployment_component_list",
+            "kubernetes.kubernetes_deployment_component_list",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -223,8 +217,6 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
         }
 
         async {
-            info!(?request);
-
             #[allow(unused_variables)]
             let auth = si_account::authorize::authnz(
                 &self.db,
@@ -240,7 +232,6 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
 
             let output =
                 crate::protobuf::KubernetesDeploymentComponent::list(&self.db, inner).await?;
-            info!(?output);
 
             Ok(tonic::Response::new(
                 crate::protobuf::KubernetesDeploymentComponentListReply {
@@ -269,7 +260,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "kubernetes_deployment_component_pick",
+            "kubernetes.kubernetes_deployment_component_pick",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -299,8 +290,6 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
         }
 
         async {
-            info!(?request);
-
             si_account::authorize::authnz(
                 &self.db,
                 &request,
@@ -313,7 +302,6 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
 
             let (implicit_constraints, component) =
                 crate::protobuf::KubernetesDeploymentComponent::pick(&self.db, constraints).await?;
-            info!(?implicit_constraints, ?component);
 
             Ok(tonic::Response::new(
                 crate::protobuf::KubernetesDeploymentComponentPickReply {
@@ -341,7 +329,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "kubernetes_deployment_entity_create",
+            "kubernetes.kubernetes_deployment_entity_create",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -371,8 +359,6 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
         }
 
         async {
-            info!(?request);
-
             use si_cea::EntityEvent;
 
             let auth = si_account::authorize::authnz(
@@ -402,7 +388,6 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             let (implicit_constraints, component) =
                 crate::protobuf::KubernetesDeploymentComponent::pick(&self.db, constraints.clone())
                     .await?;
-            info!(?implicit_constraints, ?component);
 
             let si_properties = si_cea::EntitySiProperties::new(
                 &workspace,
@@ -427,7 +412,6 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
                 change_set_id,
             )
             .await?;
-            info!(?entity);
             let entity_event = crate::protobuf::KubernetesDeploymentEntityEvent::create(
                 &self.db,
                 auth.user_id(),
@@ -435,7 +419,6 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
                 &entity,
             )
             .await?;
-            info!(?entity_event);
             self.agent.dispatch(&entity_event).await?;
 
             Ok(tonic::Response::new(
@@ -467,7 +450,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "kubernetes_deployment_entity_get",
+            "kubernetes.kubernetes_deployment_entity_get",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -497,8 +480,6 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
         }
 
         async {
-            info!(?request);
-
             si_account::authorize::authnz(&self.db, &request, "kubernetes_deployment_entity_get")
                 .await?;
 
@@ -508,7 +489,6 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
                 .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))?;
 
             let output = crate::protobuf::KubernetesDeploymentEntity::get(&self.db, &id).await?;
-            info!(?output);
 
             Ok(tonic::Response::new(
                 crate::protobuf::KubernetesDeploymentEntityGetReply { item: Some(output) },
@@ -535,7 +515,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "kubernetes_deployment_entity_kubernetes_object_edit",
+            "kubernetes.kubernetes_deployment_entity_kubernetes_object_edit",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -565,8 +545,6 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
         }
 
         async {
-            info!(?request);
-
             use si_cea::{Entity, EntityEvent};
 
             let auth = si_account::authorize::authnz(
@@ -586,13 +564,11 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
 
             let mut entity =
                 crate::protobuf::KubernetesDeploymentEntity::get(&self.db, &id).await?;
-            info!(?entity);
             let previous_entity = entity.clone();
 
             entity.set_entity_state_transition();
             entity.edit_kubernetes_object(property)?;
             entity.save(&self.db).await?;
-            info!(?entity);
 
             let entity_event =
                 crate::protobuf::KubernetesDeploymentEntityEvent::create_with_previous_entity(
@@ -603,7 +579,6 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
                     previous_entity,
                 )
                 .await?;
-            info!(?entity_event);
 
             Ok(tonic::Response::new(
                 crate::protobuf::KubernetesDeploymentEntityKubernetesObjectEditReply {
@@ -632,7 +607,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "kubernetes_deployment_entity_kubernetes_object_yaml_edit",
+            "kubernetes.kubernetes_deployment_entity_kubernetes_object_yaml_edit",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -662,8 +637,6 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
         }
 
         async {
-            info!(?request);
-
             use si_cea::{Entity, EntityEvent};
 
             let auth = si_account::authorize::authnz(
@@ -683,13 +656,11 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
 
             let mut entity =
                 crate::protobuf::KubernetesDeploymentEntity::get(&self.db, &id).await?;
-            info!(?entity);
             let previous_entity = entity.clone();
 
             entity.set_entity_state_transition();
             entity.edit_kubernetes_object_yaml(property)?;
             entity.save(&self.db).await?;
-            info!(?entity);
 
             let entity_event =
                 crate::protobuf::KubernetesDeploymentEntityEvent::create_with_previous_entity(
@@ -700,7 +671,6 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
                     previous_entity,
                 )
                 .await?;
-            info!(?entity_event);
 
             Ok(tonic::Response::new(
                 crate::protobuf::KubernetesDeploymentEntityKubernetesObjectYamlEditReply {
@@ -727,7 +697,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "kubernetes_deployment_entity_list",
+            "kubernetes.kubernetes_deployment_entity_list",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -757,8 +727,6 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
         }
 
         async {
-            info!(?request);
-
             #[allow(unused_variables)]
             let auth = si_account::authorize::authnz(
                 &self.db,
@@ -773,7 +741,6 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             }
 
             let output = crate::protobuf::KubernetesDeploymentEntity::list(&self.db, inner).await?;
-            info!(?output);
 
             Ok(tonic::Response::new(
                 crate::protobuf::KubernetesDeploymentEntityListReply {
@@ -802,7 +769,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "kubernetes_deployment_entity_sync",
+            "kubernetes.kubernetes_deployment_entity_sync",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -832,8 +799,6 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
         }
 
         async {
-            info!(?request);
-
             use si_cea::EntityEvent;
 
             let auth = si_account::authorize::authnz(
@@ -849,7 +814,6 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
                 .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))?;
 
             let entity = crate::protobuf::KubernetesDeploymentEntity::get(&self.db, &id).await?;
-            info!(?entity);
             let entity_event = crate::protobuf::KubernetesDeploymentEntityEvent::create(
                 &self.db,
                 auth.user_id(),
@@ -857,7 +821,6 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
                 &entity,
             )
             .await?;
-            info!(?entity_event);
             self.agent.dispatch(&entity_event).await?;
 
             Ok(tonic::Response::new(
@@ -885,7 +848,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
         };
         let span = tracing::span!(
             tracing::Level::INFO,
-            "kubernetes_deployment_entity_event_list",
+            "kubernetes.kubernetes_deployment_entity_event_list",
             metadata.content_type = tracing::field::Empty,
             authenticated = tracing::field::Empty,
             userId = tracing::field::Empty,
@@ -915,8 +878,6 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
         }
 
         async {
-            info!(?request);
-
             #[allow(unused_variables)]
             let auth = si_account::authorize::authnz(
                 &self.db,
@@ -932,7 +893,6 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
 
             let output =
                 crate::protobuf::KubernetesDeploymentEntityEvent::list(&self.db, inner).await?;
-            info!(?output);
 
             Ok(tonic::Response::new(
                 crate::protobuf::KubernetesDeploymentEntityEventListReply {

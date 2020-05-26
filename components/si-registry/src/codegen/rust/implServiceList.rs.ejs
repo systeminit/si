@@ -15,7 +15,6 @@ if inner.scope_by_tenant_id.is_none() {
 <%_ } %>
 
 let output = <%- fmt.structName() %>::list(&self.db, inner).await?;
-info!(?output);
 
 Ok(tonic::Response::new(
     <%- fmt.implServiceReplyType(propMethod, { option: false, reference: false }) %> {
