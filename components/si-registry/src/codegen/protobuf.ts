@@ -3,6 +3,7 @@ import ejs from "ejs";
 import { Props, PropObject } from "../attrList";
 import { PropEnum } from "../prop/enum";
 import * as PropPrelude from "../components/prelude";
+import * as codeFs from "./fs";
 
 import { snakeCase, pascalCase, constantCase } from "change-case";
 
@@ -266,6 +267,13 @@ export class ProtobufFormatter {
       }
     }
     return result;
+  }
+
+  async generateProto() {
+    await codeFs.writeCode(
+      `./proto/si.${this.systemObjects[0].serviceName}.proto`,
+      this.generateString(),
+    );
   }
 
   generateString(): string {

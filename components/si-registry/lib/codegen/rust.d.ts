@@ -133,7 +133,6 @@ export declare class CodegenRust {
     generateGenModel(systemObject: ObjectTypes): Promise<void>;
     generateGenAgentMod(): Promise<void>;
     generateGenAgent(agent: AgentIntegrationService): Promise<void>;
-    makePath(pathPart: string): Promise<string>;
     formatCode(): Promise<void>;
     writeCode(filename: string, code: string): Promise<void>;
 }
