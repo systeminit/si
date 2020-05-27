@@ -183,7 +183,9 @@
         
         <select 
           class="block appearance-none bg-gray-200 border border-gray-200 text-gray-700 px-4 rounded leading-tight focus:outline-none "
-          :aria-label="propObjectProperty.name">
+          :aria-label="propObjectProperty.name"
+          v-model="objectModel"
+          >
           <option
             v-for="option in propObjectProperty.variants"
             v-bind:key="option"
@@ -274,6 +276,8 @@
 
 /* eslint-disable vue/no-unused-components */
 
+// import { pascalCase, camelCase } from "change-case";constantCase...
+
 import Vue from "vue";
 import { registry, variablesObjectForProperty } from "si-registry";
 import { auth } from "@/utils/auth";
@@ -311,13 +315,22 @@ export default Vue.extend({
   },
   watch: {
     objectModel(newVal, _oldVal) {
+      console.log("PropObjectProperty.watch.objectModel() with ::",this.propObjectProperty.name, newVal)
       this.$emit("propChangeMsg", {
         fieldName: this.propObjectProperty.name,
         value: newVal,
       });
     },
   },
+  
+  // watch: {
+  //   objectModel(event){
+  //     console.log("PropObjectProperty.watch(objectModel):", event)
+  //   }
+  // },
+
   methods: {
+    // @ts-ignore
     onMetadataKeyChange(event, object) {
       // Add input validation - keys must be unique.
       console.log("Metadata key changed: ", event)
@@ -391,11 +404,6 @@ export default Vue.extend({
           break;
 
         }
-    }
-  },
-  watch: {
-    objectModel(event){
-      console.log("PropObjectProperty.watch(objectModel):", event)
     }
   },
 });

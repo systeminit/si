@@ -37,11 +37,20 @@ export default Vue.extend({
   },
   methods: {
     propChangeMsg(event: any) {
-      this.objectModel[event["fieldName"]] = event["value"];
-      this.$emit("propChangeMsg", {
-        fieldName: this.propObject.name,
-        value: this.objectModel,
-      });
+
+      try {
+        console.log("PropObject.methods.propChangeMsg() with :: ", event)
+        this.objectModel[event["fieldName"]] = event["value"];
+        this.$emit("propChangeMsg", {
+          fieldName: this.propObject.name,
+          value: this.objectModel,
+        });
+      } 
+      catch(err) {
+        console.log("err: ", err)
+      }
+
+    console.log("PropObject.methods.propChangeMsg() completed")
     },
     mounted(){
       console.log("PropObject Mounted")

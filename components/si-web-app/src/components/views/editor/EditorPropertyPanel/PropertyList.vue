@@ -19,7 +19,7 @@
       :path="'res'"
       :data="kubernetesDeploymentEntityCreateVars"
       @click="handleClick">
-      v-model="kubernetesDeploymentEntityCreateVars"
+      :v-model="kubernetesDeploymentEntityCreateVars"
     </vue-json-pretty>
 
   </div>
@@ -64,10 +64,11 @@ export default {
   },
   methods: {
     propChangeMsg(event) {
-      // console.log("propChangeMsg received by PropertyList.vue")
+      console.log("PropertyList.methods.propChangeMsg() with:", event["value"])
       this.kubernetesDeploymentEntityCreateVars = event["value"];
     },
     createEntity() {
+      console.log("PropertyList.methods.createEntity()")
       const mutation = this.kubernetesDeploymentEntity.graphql.mutation({
         methodName: "create",
       });
@@ -93,7 +94,7 @@ export default {
         //   },
         // });
 
-
+        console.log("PropertyList.methods.createEntity() with:", this.kubernetesDeploymentEntityCreateVars)
         // pass object to mutate here
         this.$apollo.mutate({
           mutation,
@@ -125,7 +126,7 @@ export default {
     },
     onKeyUp(event) {
       if (event.key == "Enter") {
-        console.log("PropertyList.onKeyUp()");
+        console.log("PropertyList.methods.onKeyUp() :: Enter");
         // console.log(event);
         // console.log(event.target);
         // console.log(event.target["aria-label"]);
@@ -135,17 +136,19 @@ export default {
   apollo: {
     kubernetesDeploymentEntityList: {
       query() {
+        console.log("PropertyList.apollo.kubernetesDeploymentEntityList.query()");
         return this.kubernetesDeploymentEntity.graphql.query({
           methodName: "list",
         });
       },
       variables() {
+        console.log("PropertyList.apollo.kubernetesDeploymentEntityList.variables()");
         return {
           pageSize: "1000",
         };
       },
       update(data) {
-        console.log("PropertyList.update()");
+        console.log("PropertyList.apollo.kubernetesDeploymentEntityList.update()");
       },
     },
     // kubernetesDeploymentEntityGet: {

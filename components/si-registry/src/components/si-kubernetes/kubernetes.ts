@@ -3,6 +3,7 @@ import {
   PropText,
   PropLink,
   PropNumber,
+  PropMap,
 } from "../../components/prelude";
 
 import { registry } from "../../registry";
@@ -39,6 +40,9 @@ registry.base({
     c.fields.addMap({
       name: "labels",
       label: "Labels",
+      // options(p: PropMap) {
+      //   p.repeated = true;
+      // }
     });
   },
 });
@@ -94,7 +98,8 @@ registry.base({
       },
     });
     c.fields.addText({
-      name: "hostIP",
+      name: "hostIp", // disabled auto/camelcase in graphql.ts for testing ...
+      // name: "hostIP", 
       label: "Host IP",
     });
     c.fields.addNumber({

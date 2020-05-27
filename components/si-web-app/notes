@@ -1,26 +1,24 @@
-# Alex's notes
-
-# AKA thePoorlyNamedFunction :)
-# si-registry/src/systemObject/graphql.ts
-variablesObjectForProperty() 
+The 
 
 
-systemComponent.ts -> Object level 
-prop.ts -> object property level Prop{}
-registry.ts -> full index of all objects :: grouping / kinds
-systemComponent.ts -> rootProp stores all props, methodsProp stores methods,
-exetned BaseObject {}
+Map model: c.fields.addMap({name: "labels",label: "Labels"})
 
-graphql.ts -> line 106 variablesObject() 
---> this.variablesObjectForProperty(request, false); was set to true, false
-should return more data.
+GraphQL variablesObjectForProperty() : returns -> []
 
+When passing [] back to create the deployment object we get: Field "0" is not defined by type "LabelsRequest".
+  message: 'Variable "$properties" got invalid value [{ key: "this key ", value: "this value" }] at "properties.kubernetesObject.spec.template.metadata.labels"; Field "0" is not defined by type "LabelsRequest".',
 
+because LabelsRequest isn't an array
 
-  get graphql(): SiGraphql {
-    if (this.internalGraphql == undefined) {
-      this.internalGraphql = new SiGraphql(this);
-    }
-    return this.internalGraphql;
-  }
-  systemComponent.ts line 80 ^^
+"""Labels"""
+input LabelsRequest {
+  key: String
+  value: String
+}
+
+I can 
+
+A) update the prop map code: mapFromArray()
+B) format the array as map object when sending the request from the fe
+C) update the grapql request to convert arrays of k:v to map objects
+

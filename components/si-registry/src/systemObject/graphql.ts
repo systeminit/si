@@ -181,7 +181,8 @@ export class SiGraphql {
       if (prop.hidden || prop.skip) {
         continue;
       }
-      result.push(`${camelCase(prop.name)}`); // added camelCase
+      result.push(`${prop.name}`); // without camelCase
+      // result.push(`${camelCase(prop.name)}`); // with camelCase
       if (prop.kind() == "object") {
         result.push("{");
         result.push(
@@ -223,9 +224,11 @@ export class SiGraphql {
     const inputVariables = [];
     for (const prop of request.properties.attrs) {
       requestVariables.push(
-        `$${camelCase(prop.name)}: ${this.graphqlTypeName(prop, true)}`, // added camelCase
+        `$${prop.name}: ${this.graphqlTypeName(prop, true)}`, // without camelCase
+        // `$${camelCase(prop.name)}: ${this.graphqlTypeName(prop, true)}`, // with camelCase
       );
-      inputVariables.push(`${camelCase(prop.name)}: $${camelCase(prop.name)}`); // added camelCase
+      inputVariables.push(`${prop.name}: $${prop.name}`); // without camelCase
+      // inputVariables.push(`${camelCase(prop.name)}: $${camelCase(prop.name)}`); // with camelCase
     }
 
     const reply = method.reply;
@@ -259,9 +262,11 @@ export class SiGraphql {
     const inputVariables = [];
     for (const prop of request.properties.attrs) {
       requestVariables.push(
-        `$${camelCase(prop.name)}: ${this.graphqlTypeName(prop, true)}`, // added camelCase
+        `$${prop.name}: ${this.graphqlTypeName(prop, true)}`, // without camelCase
+        // `$${camelCase(prop.name)}: ${this.graphqlTypeName(prop, true)}`, // with camelCase
       );
-      inputVariables.push(`${camelCase(prop.name)}: $${camelCase(prop.name)}`); // added camelCase
+      inputVariables.push(`${prop.name}: $${prop.name}`); // without camelCase
+      // inputVariables.push(`${camelCase(prop.name)}: $${camelCase(prop.name)}`); // with camelCase
     }
 
     const reply = method.reply;
