@@ -1508,7 +1508,7 @@ input KubernetesDeploymentEntitySyncRequest {
 
 type KubernetesMetadata {
   """Labels"""
-  labels: Labels
+  labels: [Labels!]
 
   """Name"""
   name: String
@@ -1516,7 +1516,7 @@ type KubernetesMetadata {
 
 input KubernetesMetadataRequest {
   """Labels"""
-  labels: LabelsRequest
+  labels: [LabelsRequest!]
 
   """Name"""
   name: String!
@@ -1550,12 +1550,12 @@ input KubernetesPodTemplateSpecRequest {
 
 type KubernetesSelector {
   """Match Labels"""
-  matchLabels: MatchLabels
+  matchLabels: [MatchLabels!]
 }
 
 input KubernetesSelectorRequest {
   """Match Labels"""
-  matchLabels: MatchLabelsRequest
+  matchLabels: [MatchLabelsRequest!]
 }
 
 """Labels"""

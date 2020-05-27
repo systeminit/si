@@ -235,7 +235,7 @@ export interface NexusGenInputs {
     id: string; // ID!
   }
   KubernetesMetadataRequest: { // input type
-    labels?: NexusGenInputs['LabelsRequest'] | null; // LabelsRequest
+    labels?: NexusGenInputs['LabelsRequest'][] | null; // [LabelsRequest!]
     name: string; // String!
   }
   KubernetesPodSpecRequest: { // input type
@@ -246,7 +246,7 @@ export interface NexusGenInputs {
     spec?: NexusGenInputs['KubernetesPodSpecRequest'] | null; // KubernetesPodSpecRequest
   }
   KubernetesSelectorRequest: { // input type
-    matchLabels?: NexusGenInputs['MatchLabelsRequest'] | null; // MatchLabelsRequest
+    matchLabels?: NexusGenInputs['MatchLabelsRequest'][] | null; // [MatchLabelsRequest!]
   }
   LabelsRequest: { // input type
     key?: string | null; // String
@@ -690,7 +690,7 @@ export interface NexusGenRootTypes {
     item?: NexusGenRootTypes['KubernetesDeploymentEntityEvent'] | null; // KubernetesDeploymentEntityEvent
   }
   KubernetesMetadata: { // root type
-    labels?: NexusGenRootTypes['Labels'] | null; // Labels
+    labels?: NexusGenRootTypes['Labels'][] | null; // [Labels!]
     name?: string | null; // String
   }
   KubernetesPodSpec: { // root type
@@ -701,7 +701,7 @@ export interface NexusGenRootTypes {
     spec?: NexusGenRootTypes['KubernetesPodSpec'] | null; // KubernetesPodSpec
   }
   KubernetesSelector: { // root type
-    matchLabels?: NexusGenRootTypes['MatchLabels'] | null; // MatchLabels
+    matchLabels?: NexusGenRootTypes['MatchLabels'][] | null; // [MatchLabels!]
   }
   Labels: { // root type
     key?: string | null; // String
@@ -1261,7 +1261,7 @@ export interface NexusGenFieldTypes {
     item: NexusGenRootTypes['KubernetesDeploymentEntityEvent'] | null; // KubernetesDeploymentEntityEvent
   }
   KubernetesMetadata: { // field return type
-    labels: NexusGenRootTypes['Labels'] | null; // Labels
+    labels: NexusGenRootTypes['Labels'][] | null; // [Labels!]
     name: string | null; // String
   }
   KubernetesPodSpec: { // field return type
@@ -1272,7 +1272,7 @@ export interface NexusGenFieldTypes {
     spec: NexusGenRootTypes['KubernetesPodSpec'] | null; // KubernetesPodSpec
   }
   KubernetesSelector: { // field return type
-    matchLabels: NexusGenRootTypes['MatchLabels'] | null; // MatchLabels
+    matchLabels: NexusGenRootTypes['MatchLabels'][] | null; // [MatchLabels!]
   }
   Labels: { // field return type
     key: string | null; // String
