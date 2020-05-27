@@ -84,9 +84,7 @@ function generateProtobuf(): Listr {
         const cp = new ProtobufFormatter(
           registry.getObjectsForServiceName(serviceName),
         );
-        const protoFile = path.join("./proto", `si.${serviceName}.proto`);
-        const writeFileAsync = promisify(fs.writeFile);
-        await writeFileAsync(protoFile, cp.generateString());
+        await cp.generateProto();
       },
     });
   }
@@ -168,13 +166,6 @@ function generateRust(): Listr {
           });
         }
       }
-
-      tasks.push({
-        title: `Rust format ${serviceName}`,
-        task: async (): Promise<void> => {
-          await codegenRust.formatCode();
-        },
-      });
     }
   }
 

@@ -15,5 +15,6 @@ export declare class ProtobufFormatter {
     protobufMessageForPropObject(prop: PropObject | PropEnum): string;
     protobufImports(): string;
     protobufImportWalk(props: Props[]): Set<string>;
+    generateProto(): Promise<void>;
     generateString(): string;
 }
