@@ -1120,6 +1120,9 @@ export class SiRegistryGenerator {
 
     if (nexusTypeDef) {
       if (prop.repeated) {
+        // There might be a bug lingering here, where a repeated map isn't
+        // quite what you expected.
+        //
         // @ts-ignore
         nexusTypeDef.list.field(this.graphqlFieldName(prop), {
           // @ts-ignore
@@ -1128,7 +1131,7 @@ export class SiRegistryGenerator {
         });
       } else {
         // @ts-ignore
-        nexusTypeDef.field(this.graphqlFieldName(prop), {
+        nexusTypeDef.list.field(this.graphqlFieldName(prop), {
           // @ts-ignore
           type: this.graphqlTypeName(prop, inputType),
           ...fieldConfig,
