@@ -28,6 +28,7 @@ interface ValidateResultArgs {
 }
 
 // Second argument is if you want a repeated field
+// AKA thePoorlyNamedFunction() :)
 export function variablesObjectForProperty(prop: Props, repeated = false): any {
   if (
     prop.kind() == "text" ||
@@ -44,7 +45,7 @@ export function variablesObjectForProperty(prop: Props, repeated = false): any {
     if (prop.repeated && repeated) {
       return [];
     } else {
-      return {};
+      return [];
     }
   } else if (prop.kind() == "link") {
     const propLink = prop as PropLink;
@@ -180,7 +181,7 @@ export class SiGraphql {
       if (prop.hidden || prop.skip) {
         continue;
       }
-      result.push(`${prop.name}`);
+      result.push(`${camelCase(prop.name)}`); // added camelCase
       if (prop.kind() == "object") {
         result.push("{");
         result.push(
@@ -222,9 +223,9 @@ export class SiGraphql {
     const inputVariables = [];
     for (const prop of request.properties.attrs) {
       requestVariables.push(
-        `$${prop.name}: ${this.graphqlTypeName(prop, true)}`,
+        `$${camelCase(prop.name)}: ${this.graphqlTypeName(prop, true)}`, // added camelCase
       );
-      inputVariables.push(`${prop.name}: $${prop.name}`);
+      inputVariables.push(`${camelCase(prop.name)}: $${camelCase(prop.name)}`); // added camelCase
     }
 
     const reply = method.reply;
@@ -258,9 +259,9 @@ export class SiGraphql {
     const inputVariables = [];
     for (const prop of request.properties.attrs) {
       requestVariables.push(
-        `$${prop.name}: ${this.graphqlTypeName(prop, true)}`,
+        `$${camelCase(prop.name)}: ${this.graphqlTypeName(prop, true)}`, // added camelCase
       );
-      inputVariables.push(`${prop.name}: $${prop.name}`);
+      inputVariables.push(`${camelCase(prop.name)}: $${camelCase(prop.name)}`); // added camelCase
     }
 
     const reply = method.reply;

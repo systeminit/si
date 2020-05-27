@@ -1,0 +1,26 @@
+# Alex's notes
+
+# AKA thePoorlyNamedFunction :)
+# si-registry/src/systemObject/graphql.ts
+variablesObjectForProperty() 
+
+
+systemComponent.ts -> Object level 
+prop.ts -> object property level Prop{}
+registry.ts -> full index of all objects :: grouping / kinds
+systemComponent.ts -> rootProp stores all props, methodsProp stores methods,
+exetned BaseObject {}
+
+graphql.ts -> line 106 variablesObject() 
+--> this.variablesObjectForProperty(request, false); was set to true, false
+should return more data.
+
+
+
+  get graphql(): SiGraphql {
+    if (this.internalGraphql == undefined) {
+      this.internalGraphql = new SiGraphql(this);
+    }
+    return this.internalGraphql;
+  }
+  systemComponent.ts line 80 ^^

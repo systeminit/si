@@ -20,7 +20,7 @@
               </button>
 
               <ul>
-                <li v-for="(object, index) in objectModel" :key="object.name">                
+                <li v-for="(object, index) in objectModel" :key="index">             
                   <PropObject
                     :propObject="propObjectProperty.lookupMyself()"
                     :propObjectModel="objectModel[index]"
@@ -48,11 +48,11 @@
 
           <!-- Not working -->
           <ul>
-            <li v-for="(object, index) in objectModel" :key="object.name">                
-              <PropObject
-                :propObject="propObjectProperty"
-                :propObjectModel="objectModel[index]"
-              />
+            <li v-for="(object) in objectModel" :key="object.name">       
+<!--               <PropObject
+                :propObject="propObjectProperty.lookupMyself()"
+                :propObjectModel="objectModel[index][propObjectProperty.name]"
+              /> -->
             </li>
           </ul>
 
@@ -201,14 +201,27 @@
               <plus-square-icon size="1.25x" class=""></plus-square-icon>
             </button>
 
-            <!-- Not working -->
             <ul>
-              <li v-for="(object, index) in objectModel" :key="object.name">                
-                <PropObject
-                  :propObject="propObjectProperty.lookupMyself()"
-                  :propObjectModel="objectModel[index]"
+
+              <li v-for="(object, index) in objectModel" :key="index">  
+                <input
+                  class="appearance-none input-bg-color border-none text-gray-400 ml-3 pl-2 h-5 text-sm leading-tight focus:outline-none"
+                  type="text"
+                  :aria-label="key"
+                  v-model="objectModel[index].key"
+                  placeholder="key"
+                  @change="onMetadataKeyChange($event, objectModel[index].key)"
+                />
+
+                <input
+                  class="appearance-none input-bg-color border-none text-gray-400 ml-3 pl-2 h-5 text-sm leading-tight focus:outline-none"
+                  type="text"
+                  :aria-label="val"
+                  v-model="objectModel[index].value"
+                  placeholder="value"
                 />
               </li>
+
             </ul>
 
         </div>
@@ -221,7 +234,7 @@
             
             <div class="flex pl-2 text-sm text-white property-title-bg-color">
               <chevron-down-icon size="1.5x" class="custom-class"></chevron-down-icon>
-              {{ propObjectProperty.name }}
+              {{ propObjectProperty.label }}
             </div>
 
             <PropObject
@@ -271,9 +284,6 @@ import Button  from "./Button.vue"
 import PropObject from "./PropObject.vue";
 
 // @ts-ignore
-import VueJsonPretty from "vue-json-pretty"
-
-// @ts-ignore
 export default Vue.extend({
   name: "PropObjectProperty",
   props: {
@@ -287,15 +297,12 @@ export default Vue.extend({
   components: {
     PlusSquareIcon,
     ChevronDownIcon,
-    VueJsonPretty,
     PropObject: () => import("./PropObject.vue"),
   },
   data() {
     const kubernetesMetadata = registry.get(
       "kubernetesMetadata",
     );
-
-    console.log(kubernetesMetadata)
 
     return {
       objectModel: this.propObjectPropertyModel,
@@ -311,9 +318,16 @@ export default Vue.extend({
     },
   },
   methods: {
+    onMetadataKeyChange(event, object) {
+      // Add input validation - keys must be unique.
+      console.log("Metadata key changed: ", event)
+      console.log("Metadata Key value: ", object)
+
+    },
     // @ts-ignore
     onClickB(event, propObjectProperty) {
       var varsObjectForProperty;
+      var keyValueMapObject;
 
       switch (propObjectProperty.kind()) {
           case "link":
@@ -321,11 +335,21 @@ export default Vue.extend({
             console.log("we have a link")
             console.log("propObjectProperty:", propObjectProperty)
             console.log("objectModel:", this.objectModel)
+            
             if (propObjectProperty.lookupMyself().kind() == "object") {
-              varsObjectForProperty = variablesObjectForProperty(propObjectProperty.lookupMyself())
+              
+              console.log("we have a link and it's an object")
+              varsObjectForProperty = variablesObjectForProperty(propObjectProperty.lookupMyself(), true)
               console.log("varsObjectForProperty:", varsObjectForProperty)
+              
+            try {
               this.objectModel.push(varsObjectForProperty)
-              console.log(this.objectModel.length)
+              console.log("length: ", this.objectModel.length)
+            }
+            catch(err) {
+              console.log("err: ", err)
+            }
+
           }
           break;
         
@@ -336,7 +360,12 @@ export default Vue.extend({
           varsObjectForProperty = variablesObjectForProperty(propObjectProperty)
           console.log("varsObjectForProperty:", varsObjectForProperty)
           
-          // this.objectModel.push(varsObjectForProperty)
+          keyValueMapObject = {
+            [varsObjectForProperty.name]: ''
+          }
+
+          console.log("keyValueMapObject: ", keyValueMapObject)
+          this.objectModel.push(keyValueMapObject)
           
 
           break;
@@ -348,13 +377,27 @@ export default Vue.extend({
           varsObjectForProperty = variablesObjectForProperty(propObjectProperty)
           console.log("varsObjectForProperty:", varsObjectForProperty)
 
-          // this.objectModel.push(varsObjectForProperty)
+          // let keyValueMap = new Map()
+          // keyValueMap.set('key', '')
+          // keyValueMap.set('value', '')
+
+          keyValueMapObject = {
+            'key': '',
+            'value': ''
+          }
+
+          this.objectModel.push(keyValueMapObject)
 
           break;
 
         }
     }
-  }
+  },
+  watch: {
+    objectModel(event){
+      console.log("PropObjectProperty.watch(objectModel):", event)
+    }
+  },
 });
 </script>
 

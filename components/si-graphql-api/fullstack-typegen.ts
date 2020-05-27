@@ -150,16 +150,17 @@ export interface NexusGenInputs {
     query?: NexusGenInputs['DataQueryRequest'] | null; // DataQueryRequest
     scopeByTenantId?: string | null; // String
   }
-  KubernetesContainerPortsPortValuesRequest: { // input type
+  KubernetesContainerPortRequest: { // input type
     containerPort?: string | null; // String
-  }
-  KubernetesContainerPortsRequest: { // input type
-    portValues?: NexusGenInputs['KubernetesContainerPortsPortValuesRequest'] | null; // KubernetesContainerPortsPortValuesRequest
+    hostIp?: string | null; // String
+    hostPort?: string | null; // String
+    name?: string | null; // String
+    protocol?: string | null; // String
   }
   KubernetesContainerRequest: { // input type
     image?: string | null; // String
     name?: string | null; // String
-    ports?: NexusGenInputs['KubernetesContainerPortsRequest'][] | null; // [KubernetesContainerPortsRequest!]
+    ports?: NexusGenInputs['KubernetesContainerPortRequest'][] | null; // [KubernetesContainerPortRequest!]
   }
   KubernetesDeploymentComponentConstraintsRequest: { // input type
     componentDisplayName?: string | null; // String
@@ -584,13 +585,14 @@ export interface NexusGenRootTypes {
   KubernetesContainer: { // root type
     image?: string | null; // String
     name?: string | null; // String
-    ports?: NexusGenRootTypes['KubernetesContainerPorts'][] | null; // [KubernetesContainerPorts!]
+    ports?: NexusGenRootTypes['KubernetesContainerPort'][] | null; // [KubernetesContainerPort!]
   }
-  KubernetesContainerPorts: { // root type
-    portValues?: NexusGenRootTypes['KubernetesContainerPortsPortValues'] | null; // KubernetesContainerPortsPortValues
-  }
-  KubernetesContainerPortsPortValues: { // root type
+  KubernetesContainerPort: { // root type
     containerPort?: string | null; // String
+    hostIp?: string | null; // String
+    hostPort?: string | null; // String
+    name?: string | null; // String
+    protocol?: string | null; // String
   }
   KubernetesDeploymentComponent: { // root type
     constraints?: NexusGenRootTypes['KubernetesDeploymentComponentConstraints'] | null; // KubernetesDeploymentComponentConstraints
@@ -821,8 +823,7 @@ export interface NexusGenAllTypes extends NexusGenRootTypes {
   IntegrationServiceGetRequest: NexusGenInputs['IntegrationServiceGetRequest'];
   ItemGetRequest: NexusGenInputs['ItemGetRequest'];
   ItemListRequest: NexusGenInputs['ItemListRequest'];
-  KubernetesContainerPortsPortValuesRequest: NexusGenInputs['KubernetesContainerPortsPortValuesRequest'];
-  KubernetesContainerPortsRequest: NexusGenInputs['KubernetesContainerPortsRequest'];
+  KubernetesContainerPortRequest: NexusGenInputs['KubernetesContainerPortRequest'];
   KubernetesContainerRequest: NexusGenInputs['KubernetesContainerRequest'];
   KubernetesDeploymentComponentConstraintsRequest: NexusGenInputs['KubernetesDeploymentComponentConstraintsRequest'];
   KubernetesDeploymentComponentGetRequest: NexusGenInputs['KubernetesDeploymentComponentGetRequest'];
@@ -1152,13 +1153,14 @@ export interface NexusGenFieldTypes {
   KubernetesContainer: { // field return type
     image: string | null; // String
     name: string | null; // String
-    ports: NexusGenRootTypes['KubernetesContainerPorts'][] | null; // [KubernetesContainerPorts!]
+    ports: NexusGenRootTypes['KubernetesContainerPort'][] | null; // [KubernetesContainerPort!]
   }
-  KubernetesContainerPorts: { // field return type
-    portValues: NexusGenRootTypes['KubernetesContainerPortsPortValues'] | null; // KubernetesContainerPortsPortValues
-  }
-  KubernetesContainerPortsPortValues: { // field return type
+  KubernetesContainerPort: { // field return type
     containerPort: string | null; // String
+    hostIp: string | null; // String
+    hostPort: string | null; // String
+    name: string | null; // String
+    protocol: string | null; // String
   }
   KubernetesDeploymentComponent: { // field return type
     constraints: NexusGenRootTypes['KubernetesDeploymentComponentConstraints'] | null; // KubernetesDeploymentComponentConstraints
@@ -1575,9 +1577,9 @@ export interface NexusGenAbstractResolveReturnTypes {
 
 export interface NexusGenInheritedFields {}
 
-export type NexusGenObjectNames = "BillingAccount" | "BillingAccountAssociations" | "BillingAccountGetReply" | "BillingAccountListReply" | "BillingAccountSignupReply" | "Capability" | "ChangeSet" | "ChangeSetAssociations" | "ChangeSetCreateReply" | "ChangeSetEntry" | "ChangeSetEntryAssociations" | "ChangeSetEntryGetReply" | "ChangeSetEntryListReply" | "ChangeSetEntrySiProperties" | "ChangeSetGetReply" | "ChangeSetListReply" | "ChangeSetSiProperties" | "ComponentSiProperties" | "DataPageToken" | "DataQuery" | "DataQueryItems" | "DataQueryItemsExpression" | "DataStorable" | "EntityEventSiProperties" | "EntitySiProperties" | "Group" | "GroupCreateReply" | "GroupGetReply" | "GroupListReply" | "GroupSiProperties" | "Integration" | "IntegrationAssociations" | "IntegrationGetReply" | "IntegrationInstance" | "IntegrationInstanceAssociations" | "IntegrationInstanceGetReply" | "IntegrationInstanceListReply" | "IntegrationInstanceOptionValues" | "IntegrationInstanceSiProperties" | "IntegrationListReply" | "IntegrationOptions" | "IntegrationService" | "IntegrationServiceAssociations" | "IntegrationServiceGetReply" | "IntegrationServiceSiProperties" | "IntegrationSiProperties" | "Item" | "ItemAssociations" | "ItemGetReply" | "ItemListReply" | "ItemSiProperties" | "KubernetesContainer" | "KubernetesContainerPorts" | "KubernetesContainerPortsPortValues" | "KubernetesDeploymentComponent" | "KubernetesDeploymentComponentConstraints" | "KubernetesDeploymentComponentGetReply" | "KubernetesDeploymentComponentListReply" | "KubernetesDeploymentComponentPickReply" | "KubernetesDeploymentEntity" | "KubernetesDeploymentEntityAssociations" | "KubernetesDeploymentEntityCreateReply" | "KubernetesDeploymentEntityEvent" | "KubernetesDeploymentEntityEventListReply" | "KubernetesDeploymentEntityGetReply" | "KubernetesDeploymentEntityKubernetesObjectEditReply" | "KubernetesDeploymentEntityKubernetesObjectYamlEditReply" | "KubernetesDeploymentEntityListReply" | "KubernetesDeploymentEntityProperties" | "KubernetesDeploymentEntityPropertiesKubernetesObject" | "KubernetesDeploymentEntityPropertiesKubernetesObjectSpec" | "KubernetesDeploymentEntitySyncReply" | "KubernetesMetadata" | "KubernetesPodSpec" | "KubernetesPodTemplateSpec" | "KubernetesSelector" | "Labels" | "MatchLabels" | "Mutation" | "Organization" | "OrganizationAssociations" | "OrganizationCreateReply" | "OrganizationGetReply" | "OrganizationListReply" | "OrganizationSiProperties" | "Query" | "User" | "UserAssociations" | "UserCreateReply" | "UserGetReply" | "UserListReply" | "UserLoginReply" | "UserSiProperties" | "Workspace" | "WorkspaceAssociations" | "WorkspaceCreateReply" | "WorkspaceGetReply" | "WorkspaceListReply" | "WorkspaceSiProperties";
+export type NexusGenObjectNames = "BillingAccount" | "BillingAccountAssociations" | "BillingAccountGetReply" | "BillingAccountListReply" | "BillingAccountSignupReply" | "Capability" | "ChangeSet" | "ChangeSetAssociations" | "ChangeSetCreateReply" | "ChangeSetEntry" | "ChangeSetEntryAssociations" | "ChangeSetEntryGetReply" | "ChangeSetEntryListReply" | "ChangeSetEntrySiProperties" | "ChangeSetGetReply" | "ChangeSetListReply" | "ChangeSetSiProperties" | "ComponentSiProperties" | "DataPageToken" | "DataQuery" | "DataQueryItems" | "DataQueryItemsExpression" | "DataStorable" | "EntityEventSiProperties" | "EntitySiProperties" | "Group" | "GroupCreateReply" | "GroupGetReply" | "GroupListReply" | "GroupSiProperties" | "Integration" | "IntegrationAssociations" | "IntegrationGetReply" | "IntegrationInstance" | "IntegrationInstanceAssociations" | "IntegrationInstanceGetReply" | "IntegrationInstanceListReply" | "IntegrationInstanceOptionValues" | "IntegrationInstanceSiProperties" | "IntegrationListReply" | "IntegrationOptions" | "IntegrationService" | "IntegrationServiceAssociations" | "IntegrationServiceGetReply" | "IntegrationServiceSiProperties" | "IntegrationSiProperties" | "Item" | "ItemAssociations" | "ItemGetReply" | "ItemListReply" | "ItemSiProperties" | "KubernetesContainer" | "KubernetesContainerPort" | "KubernetesDeploymentComponent" | "KubernetesDeploymentComponentConstraints" | "KubernetesDeploymentComponentGetReply" | "KubernetesDeploymentComponentListReply" | "KubernetesDeploymentComponentPickReply" | "KubernetesDeploymentEntity" | "KubernetesDeploymentEntityAssociations" | "KubernetesDeploymentEntityCreateReply" | "KubernetesDeploymentEntityEvent" | "KubernetesDeploymentEntityEventListReply" | "KubernetesDeploymentEntityGetReply" | "KubernetesDeploymentEntityKubernetesObjectEditReply" | "KubernetesDeploymentEntityKubernetesObjectYamlEditReply" | "KubernetesDeploymentEntityListReply" | "KubernetesDeploymentEntityProperties" | "KubernetesDeploymentEntityPropertiesKubernetesObject" | "KubernetesDeploymentEntityPropertiesKubernetesObjectSpec" | "KubernetesDeploymentEntitySyncReply" | "KubernetesMetadata" | "KubernetesPodSpec" | "KubernetesPodTemplateSpec" | "KubernetesSelector" | "Labels" | "MatchLabels" | "Mutation" | "Organization" | "OrganizationAssociations" | "OrganizationCreateReply" | "OrganizationGetReply" | "OrganizationListReply" | "OrganizationSiProperties" | "Query" | "User" | "UserAssociations" | "UserCreateReply" | "UserGetReply" | "UserListReply" | "UserLoginReply" | "UserSiProperties" | "Workspace" | "WorkspaceAssociations" | "WorkspaceCreateReply" | "WorkspaceGetReply" | "WorkspaceListReply" | "WorkspaceSiProperties";
 
-export type NexusGenInputNames = "BillingAccountGetRequest" | "BillingAccountListRequest" | "BillingAccountSignupRequest" | "BillingAccountSignupRequestBillingAccountRequest" | "BillingAccountSignupRequestUserRequest" | "CapabilityRequest" | "ChangeSetCreateRequest" | "ChangeSetEntryGetRequest" | "ChangeSetEntryListRequest" | "ChangeSetGetRequest" | "ChangeSetListRequest" | "ChangeSetSiPropertiesRequest" | "DataQueryItemsExpressionRequest" | "DataQueryItemsRequest" | "DataQueryRequest" | "GroupCreateRequest" | "GroupGetRequest" | "GroupListRequest" | "GroupSiPropertiesRequest" | "IntegrationGetRequest" | "IntegrationInstanceGetRequest" | "IntegrationInstanceListRequest" | "IntegrationListRequest" | "IntegrationServiceGetRequest" | "ItemGetRequest" | "ItemListRequest" | "KubernetesContainerPortsPortValuesRequest" | "KubernetesContainerPortsRequest" | "KubernetesContainerRequest" | "KubernetesDeploymentComponentConstraintsRequest" | "KubernetesDeploymentComponentGetRequest" | "KubernetesDeploymentComponentListRequest" | "KubernetesDeploymentComponentPickRequest" | "KubernetesDeploymentEntityCreateRequest" | "KubernetesDeploymentEntityEventListRequest" | "KubernetesDeploymentEntityGetRequest" | "KubernetesDeploymentEntityKubernetesObjectEditRequest" | "KubernetesDeploymentEntityKubernetesObjectYamlEditRequest" | "KubernetesDeploymentEntityListRequest" | "KubernetesDeploymentEntityPropertiesKubernetesObjectRequest" | "KubernetesDeploymentEntityPropertiesKubernetesObjectSpecRequest" | "KubernetesDeploymentEntityPropertiesRequest" | "KubernetesDeploymentEntitySyncRequest" | "KubernetesMetadataRequest" | "KubernetesPodSpecRequest" | "KubernetesPodTemplateSpecRequest" | "KubernetesSelectorRequest" | "LabelsRequest" | "MatchLabelsRequest" | "OrganizationCreateRequest" | "OrganizationGetRequest" | "OrganizationListRequest" | "OrganizationSiPropertiesRequest" | "UserCreateRequest" | "UserGetRequest" | "UserListRequest" | "UserLoginRequest" | "UserSiPropertiesRequest" | "WorkspaceCreateRequest" | "WorkspaceGetRequest" | "WorkspaceListRequest" | "WorkspaceSiPropertiesRequest";
+export type NexusGenInputNames = "BillingAccountGetRequest" | "BillingAccountListRequest" | "BillingAccountSignupRequest" | "BillingAccountSignupRequestBillingAccountRequest" | "BillingAccountSignupRequestUserRequest" | "CapabilityRequest" | "ChangeSetCreateRequest" | "ChangeSetEntryGetRequest" | "ChangeSetEntryListRequest" | "ChangeSetGetRequest" | "ChangeSetListRequest" | "ChangeSetSiPropertiesRequest" | "DataQueryItemsExpressionRequest" | "DataQueryItemsRequest" | "DataQueryRequest" | "GroupCreateRequest" | "GroupGetRequest" | "GroupListRequest" | "GroupSiPropertiesRequest" | "IntegrationGetRequest" | "IntegrationInstanceGetRequest" | "IntegrationInstanceListRequest" | "IntegrationListRequest" | "IntegrationServiceGetRequest" | "ItemGetRequest" | "ItemListRequest" | "KubernetesContainerPortRequest" | "KubernetesContainerRequest" | "KubernetesDeploymentComponentConstraintsRequest" | "KubernetesDeploymentComponentGetRequest" | "KubernetesDeploymentComponentListRequest" | "KubernetesDeploymentComponentPickRequest" | "KubernetesDeploymentEntityCreateRequest" | "KubernetesDeploymentEntityEventListRequest" | "KubernetesDeploymentEntityGetRequest" | "KubernetesDeploymentEntityKubernetesObjectEditRequest" | "KubernetesDeploymentEntityKubernetesObjectYamlEditRequest" | "KubernetesDeploymentEntityListRequest" | "KubernetesDeploymentEntityPropertiesKubernetesObjectRequest" | "KubernetesDeploymentEntityPropertiesKubernetesObjectSpecRequest" | "KubernetesDeploymentEntityPropertiesRequest" | "KubernetesDeploymentEntitySyncRequest" | "KubernetesMetadataRequest" | "KubernetesPodSpecRequest" | "KubernetesPodTemplateSpecRequest" | "KubernetesSelectorRequest" | "LabelsRequest" | "MatchLabelsRequest" | "OrganizationCreateRequest" | "OrganizationGetRequest" | "OrganizationListRequest" | "OrganizationSiPropertiesRequest" | "UserCreateRequest" | "UserGetRequest" | "UserListRequest" | "UserLoginRequest" | "UserSiPropertiesRequest" | "WorkspaceCreateRequest" | "WorkspaceGetRequest" | "WorkspaceListRequest" | "WorkspaceSiPropertiesRequest";
 
 export type NexusGenEnumNames = "ChangeSetEntryStatus" | "ChangeSetStatus" | "DataPageTokenOrderByDirection" | "DataQueryBooleanTerm" | "DataQueryItemsExpressionComparison" | "DataQueryItemsExpressionFieldType" | "EntitySiPropertiesEntityState" | "IntegrationOptionsOptionType" | "KubernetesDeploymentComponentConstraintsKubernetesVersion";
 

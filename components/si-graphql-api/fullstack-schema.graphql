@@ -1047,28 +1047,42 @@ type KubernetesContainer {
   """Name"""
   name: String
 
-  """Kubernetes Container Definition"""
-  ports: [KubernetesContainerPorts!]
-}
-
-type KubernetesContainerPorts {
   """Ports"""
-  portValues: KubernetesContainerPortsPortValues
+  ports: [KubernetesContainerPort!]
 }
 
-type KubernetesContainerPortsPortValues {
+type KubernetesContainerPort {
   """Container Port"""
   containerPort: String
+
+  """Host IP"""
+  hostIp: String
+
+  """Host Port"""
+  hostPort: String
+
+  """Name"""
+  name: String
+
+  """Protocol"""
+  protocol: String
 }
 
-input KubernetesContainerPortsPortValuesRequest {
+input KubernetesContainerPortRequest {
   """Container Port"""
   containerPort: String
-}
 
-input KubernetesContainerPortsRequest {
-  """Ports"""
-  portValues: KubernetesContainerPortsPortValuesRequest
+  """Host IP"""
+  hostIp: String
+
+  """Host Port"""
+  hostPort: String
+
+  """Name"""
+  name: String
+
+  """Protocol"""
+  protocol: String
 }
 
 input KubernetesContainerRequest {
@@ -1078,8 +1092,8 @@ input KubernetesContainerRequest {
   """Name"""
   name: String
 
-  """Kubernetes Container Definition"""
-  ports: [KubernetesContainerPortsRequest!]
+  """Ports"""
+  ports: [KubernetesContainerPortRequest!]
 }
 
 type KubernetesDeploymentComponent {
