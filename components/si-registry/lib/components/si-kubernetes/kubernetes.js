@@ -92,7 +92,10 @@ _registry.registry.base({
       name: "hostIp",
       // disabled auto/camelcase in graphql.ts for testing ...
       // name: "hostIP", 
-      label: "Host IP"
+      label: "Host IP",
+      options: function options(p) {
+        p.hidden = true;
+      }
     });
     c.fields.addNumber({
       name: "hostPort",
@@ -104,11 +107,17 @@ _registry.registry.base({
     });
     c.fields.addText({
       name: "name",
-      label: "Name"
+      label: "Name",
+      options: function options(p) {
+        p.hidden = true;
+      }
     });
     c.fields.addText({
       name: "protocol",
-      label: "Protocol"
+      label: "Protocol",
+      options: function options(p) {
+        p.hidden = true;
+      }
     });
   }
 });

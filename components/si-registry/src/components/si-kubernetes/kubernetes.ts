@@ -101,6 +101,9 @@ registry.base({
       name: "hostIp", // disabled auto/camelcase in graphql.ts for testing ...
       // name: "hostIP", 
       label: "Host IP",
+      options(p: PropText) {
+        p.hidden = true;
+      },
     });
     c.fields.addNumber({
       name: "hostPort",
@@ -113,10 +116,16 @@ registry.base({
     c.fields.addText({
       name: "name",
       label: "Name",
+      options(p: PropText) {
+        p.hidden = true;
+      },
     });
     c.fields.addText({
       name: "protocol",
       label: "Protocol",
+      options(p: PropText) {
+        p.hidden = true;
+      },
     });
   },
 });
