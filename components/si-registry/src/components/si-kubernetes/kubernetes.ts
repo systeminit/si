@@ -3,9 +3,27 @@ import {
   PropText,
   PropLink,
   PropNumber,
+  PropMap,
 } from "../../components/prelude";
 
 import { registry } from "../../registry";
+
+
+
+/**
+ * Field model for UI
+ *
+ * Alex's Notes...
+ *
+ * c.fields.addText({
+ *   name: field ID
+ *   label: UI display name
+ *   description: short description of this field
+ *   tooltip: quick info mouseover
+ *   documentation: link to native docs
+ * })
+ *
+ */
 
 registry.base({
   typeName: "kubernetesMetadata",
@@ -22,6 +40,9 @@ registry.base({
     c.fields.addMap({
       name: "labels",
       label: "Labels",
+      // options(p: PropMap) {
+      //   p.repeated = true;
+      // }
     });
   },
 });
@@ -51,25 +72,50 @@ registry.base({
       name: "image",
       label: "Image",
     });
-    c.fields.addObject({
+    c.fields.addLink({
       name: "ports",
       label: "Ports",
-      options(p: PropObject) {
+      options(p: PropLink) {
         p.repeated = true;
-        p.properties.addObject({
-          name: "portValues",
-          label: "Port Values",
-          options(p: PropObject) {
-            p.properties.addNumber({
-              name: "containerPort",
-              label: "Container Port",
-              options(p: PropNumber) {
-                p.numberKind = "uint32";
-              },
-            });
-          },
-        });
+        p.lookup = {
+          typeName: "kubernetesContainerPort",
+        };
       },
+    });
+  },
+});
+
+registry.base({
+  typeName: "kubernetesContainerPort",
+  displayTypeName: "Kubernetes Container Port Definition",
+  serviceName: "kubernetes",
+  options(c) {
+    c.fields.addNumber({
+      name: "containerPort",
+      label: "Container Port",
+      options(p: PropNumber) {
+        p.numberKind = "uint32";
+      },
+    });
+    c.fields.addText({
+      name: "hostIp", // disabled auto/camelcase in graphql.ts for testing ...
+      // name: "hostIP", 
+      label: "Host IP",
+    });
+    c.fields.addNumber({
+      name: "hostPort",
+      label: "Host Port",
+      options(p: PropNumber) {
+        p.numberKind = "uint32";
+      },
+    });
+    c.fields.addText({
+      name: "name",
+      label: "Name",
+    });
+    c.fields.addText({
+      name: "protocol",
+      label: "Protocol",
     });
   },
 });

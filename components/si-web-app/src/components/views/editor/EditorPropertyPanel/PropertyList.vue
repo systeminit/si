@@ -1,4 +1,5 @@
 <template>
+  <!-- eslint-disable vue/no-unused-components -->
   <div id="property-panel-list" class="w-full h-full">
     
     <PropObject
@@ -12,26 +13,41 @@
         Create
       </button>
     </div>
+
+    <vue-json-pretty
+      class="text-white text-lg"
+      :path="'res'"
+      :data="kubernetesDeploymentEntityCreateVars"
+      @click="handleClick">
+      :v-model="kubernetesDeploymentEntityCreateVars"
+    </vue-json-pretty>
+
   </div>
 </template>
 
 <script>
+/* eslint-disable vue/no-unused-components */
 import { registry } from "si-registry";
 import { auth } from "@/utils/auth";
 
 import PropObject from "./PropObject.vue";
+
+// @ts-ignore
+import VueJsonPretty from "vue-json-pretty"
 
 export default {
   name: "PropertyList",
   components: {
     //LinkIcon,
     PropObject,
+    VueJsonPretty,
   },
   mounted() {},
   data() {
     const kubernetesDeploymentEntity = registry.get(
       "kubernetesDeploymentEntity",
     );
+
     const kubernetesDeploymentEntityCreate = kubernetesDeploymentEntity.methods.getEntry(
       "create",
     );
@@ -39,8 +55,7 @@ export default {
     const kubernetesDeploymentEntityCreateVars = kubernetesDeploymentEntity.graphql.variablesObject(
       { methodName: "create" },
     );
-    console.log(kubernetesDeploymentEntityCreateVars);
-
+  
     return {
       kubernetesDeploymentEntity,
       kubernetesDeploymentEntityCreate,
@@ -49,78 +64,95 @@ export default {
   },
   methods: {
     propChangeMsg(event) {
+      console.log("PropertyList.methods.propChangeMsg() with:", event["value"])
       this.kubernetesDeploymentEntityCreateVars = event["value"];
     },
     createEntity() {
+      console.log("PropertyList.methods.createEntity()")
       const mutation = this.kubernetesDeploymentEntity.graphql.mutation({
         methodName: "create",
       });
-      console.log(mutation);
+      // console.log(mutation);
 
       try {
+        // this.$apollo.mutate({
+        //   mutation,
+        //   variables: {
+        //     name: this.kubernetesDeploymentEntityCreateVars.name,
+        //     displayName: this.kubernetesDeploymentEntityCreateVars.displayName,
+        //     description: this.kubernetesDeploymentEntityCreateVars.description,
+        //     workspaceId: auth.getProfile().workspaceDefault.id,
+        //     properties: {
+        //       kubernetesObject: {
+        //         kind: "your butt",
+        //         apiVersion: "1.0",
+        //       },
+        //     },
+        //     constraints: {
+        //       kubernetesVersion: "V1_15",
+        //     },
+        //   },
+        // });
+
+        console.log("PropertyList.methods.createEntity() with:", this.kubernetesDeploymentEntityCreateVars)
+        // pass object to mutate here
+        
+        this.kubernetesDeploymentEntityCreateVars.workspaceId = auth.getProfile().workspaceDefault.id
+
+        delete this.kubernetesDeploymentEntityCreateVars.properties.kubernetesObjectYaml
+
         this.$apollo.mutate({
           mutation,
-          variables: {
-            name: this.kubernetesDeploymentEntityCreateVars.name,
-            displayName: this.kubernetesDeploymentEntityCreateVars.displayName,
-            description: this.kubernetesDeploymentEntityCreateVars.description,
-            workspaceId: auth.getProfile().workspaceDefault.id,
-            properties: {
-              kubernetesObject: {
-                kind: "your butt",
-                apiVersion: "1.0",
-              },
-            },
-            constraints: {
-              kubernetesVersion: "V1_15",
-            },
-          },
+          variables: this.kubernetesDeploymentEntityCreateVars
         });
+
+
       } catch (error) {
         console.log("not today, homie", { error });
       }
 
-      try {
-        consol.log(this.kubernetesDeploymentEntityList);
-        // let objE = registry.objects
-        // let listTest = this.kubernetesDeploymentEntityList()
+      // try {
+      //   console.log(this.kubernetesDeploymentEntityList);
+      //   // let objE = registry.objects
+      //   // let listTest = this.kubernetesDeploymentEntityList()
 
-        // let KubernetesDeploymentEntityListRequest = registry.KubernetesDeploymentEntityListRequest()
-        // let KubernetesDeploymentEntityList = this.kubernetesDeploymentEntity.methods.getEntry("list");
+      //   // let KubernetesDeploymentEntityListRequest = registry.KubernetesDeploymentEntityListRequest()
+      //   // let KubernetesDeploymentEntityList = this.kubernetesDeploymentEntity.methods.getEntry("list");
 
-        // let KubernetesDeploymentEntityList = registry.KubernetesDeploymentEntityListKubernetesDeploymentEntityListRequest)
-        // let listA = registry.get("kubernetesDeploymentEntityList", );
-        // console.log(KubernetesDeploymentEntityList)
-      } catch (error) {
-        console.log("oops", { error });
-      }
+      //   // let KubernetesDeploymentEntityList = registry.KubernetesDeploymentEntityListKubernetesDeploymentEntityListRequest)
+      //   // let listA = registry.get("kubernetesDeploymentEntityList", );
+      //   // console.log(KubernetesDeploymentEntityList)
+      // } catch (error) {
+      //   console.log("oops", { error });
+      // }
 
       console.log("done");
     },
     onKeyUp(event) {
       if (event.key == "Enter") {
-        console.log("Enter was pressed");
-        console.log(event);
-        console.log(event.target);
-        console.log(event.target["aria-label"]);
+        console.log("PropertyList.methods.onKeyUp() :: Enter");
+        // console.log(event);
+        // console.log(event.target);
+        // console.log(event.target["aria-label"]);
       }
     },
   },
   apollo: {
     kubernetesDeploymentEntityList: {
       query() {
+        console.log("PropertyList.apollo.kubernetesDeploymentEntityList.query()");
         return this.kubernetesDeploymentEntity.graphql.query({
           methodName: "list",
         });
       },
       variables() {
+        console.log("PropertyList.apollo.kubernetesDeploymentEntityList.variables()");
         return {
           pageSize: "1000",
         };
       },
       update(data) {
-        console.log(data);
-        console.log(data.kubernetesDeploymentEntityList);
+        console.log("PropertyList.apollo.kubernetesDeploymentEntityList.update()");
       },
     },
     // kubernetesDeploymentEntityGet: {
@@ -143,13 +175,3 @@ export default {
   },
 };
 </script>
-
-<style>
-.property-editor-bg-color {
-  background-color: #212324;
-}
-
-.input-bg-color {
-  background-color: #25788a;
-}
-</style>

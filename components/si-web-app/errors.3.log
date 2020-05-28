@@ -1,0 +1,339 @@
+-------------------REQUEST----------------------
+{
+  operationName: 'kubernetesDeploymentEntityCreate',
+  variables: {
+    name: 'myNameIsQ',
+    displayName: 'displaythis',
+    description: 'desribe this',
+    workspaceId: '',
+    changeSetId: '',
+    properties: {
+      kubernetesObject: {
+        apiVersion: '11',
+        kind: 'this kind',
+        metadata: {
+          name: 'this name',
+          labels: [ { key: 'this key', value: 'this value' } ]
+        },
+        spec: {
+          replicas: '5',
+          selector: { matchLabels: [ { key: 'this key', value: 'this value' } ] },
+          template: {
+            metadata: {
+              name: 'this name',
+              labels: [ { key: 'this key ', value: 'this value' } ]
+            },
+            spec: {
+              containers: [
+                {
+                  name: 'this name',
+                  image: 'this image',
+                  ports: [
+                    {
+                      containerPort: '8',
+                      hostIp: 'this host ip',
+                      hostPort: '5',
+                      name: 'this name ',
+                      protocol: 'this proto'
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      },
+      kubernetesObjectYaml: ''
+    },
+    constraints: {
+      componentName: 'this comp name',
+      componentDisplayName: 'this comp display',
+      kubernetesVersion: 'v1.15'
+    }
+  },
+  query: 'mutation kubernetesDeploymentEntityCreate($name: String!, $displayName: String!, $description: String!, $workspaceId: String!, $changeSetId: String, $properties: KubernetesDeploymentEntityPropertiesRequest!, $constraints: KubernetesDeploymentComponentConstraintsRequest!) {\n' +
+    '  kubernetesDeploymentEntityCreate(input: {name: $name, displayName: $displayName, description: $description, workspaceId: $workspaceId, changeSetId: $changeSetId, properties: $properties, constraints: $constraints}) {\n' +
+    '    item {\n' +
+    '      id\n' +
+    '      name\n' +
+    '      displayName\n' +
+    '      description\n' +
+    '      siProperties {\n' +
+    '        entityState\n' +
+    '        __typename\n' +
+    '      }\n' +
+    '      properties {\n' +
+    '        kubernetesObject {\n' +
+    '          apiVersion\n' +
+    '          kind\n' +
+    '          metadata {\n' +
+    '            name\n' +
+    '            labels {\n' +
+    '              key\n' +
+    '              value\n' +
+    '              __typename\n' +
+    '            }\n' +
+    '            __typename\n' +
+    '          }\n' +
+    '          spec {\n' +
+    '            replicas\n' +
+    '            selector {\n' +
+    '              matchLabels {\n' +
+    '                key\n' +
+    '                value\n' +
+    '                __typename\n' +
+    '              }\n' +
+    '              __typename\n' +
+    '            }\n' +
+    '            template {\n' +
+    '              metadata {\n' +
+    '                name\n' +
+    '                labels {\n' +
+    '                  key\n' +
+    '                  value\n' +
+    '                  __typename\n' +
+    '                }\n' +
+    '                __typename\n' +
+    '              }\n' +
+    '              spec {\n' +
+    '                containers {\n' +
+    '                  name\n' +
+    '                  image\n' +
+    '                  ports {\n' +
+    '                    containerPort\n' +
+    '                    hostIp\n' +
+    '                    hostPort\n' +
+    '                    name\n' +
+    '                    protocol\n' +
+    '                    __typename\n' +
+    '                  }\n' +
+    '                  __typename\n' +
+    '                }\n' +
+    '                __typename\n' +
+    '              }\n' +
+    '              __typename\n' +
+    '            }\n' +
+    '            __typename\n' +
+    '          }\n' +
+    '          __typename\n' +
+    '        }\n' +
+    '        kubernetesObjectYaml\n' +
+    '        __typename\n' +
+    '      }\n' +
+    '      constraints {\n' +
+    '        componentName\n' +
+    '        componentDisplayName\n' +
+    '        kubernetesVersion\n' +
+    '        __typename\n' +
+    '      }\n' +
+    '      implicitConstraints {\n' +
+    '        componentName\n' +
+    '        componentDisplayName\n' +
+    '        kubernetesVersion\n' +
+    '        __typename\n' +
+    '      }\n' +
+    '      __typename\n' +
+    '    }\n' +
+    '    entityEvent {\n' +
+    '      id\n' +
+    '      actionName\n' +
+    '      createTime\n' +
+    '      updatedTime\n' +
+    '      finalTime\n' +
+    '      success\n' +
+    '      finalized\n' +
+    '      userId\n' +
+    '      outputLines\n' +
+    '      errorLines\n' +
+    '      errorMessage\n' +
+    '      __typename\n' +
+    '    }\n' +
+    '    __typename\n' +
+    '  }\n' +
+    '}\n'
+}
+-------------------ERROR----------------------
+[GraphQLError [Object]: Variable "$properties" got invalid value [{ key: "this key", value: "this value" }] at "properties.kubernetesObject.metadata.labels"; Field "0" is not defined by type "LabelsRequest".] {
+  locations: [ { line: 1, column: 150 } ],
+  path: undefined,
+  extensions: {
+    code: 'INTERNAL_SERVER_ERROR',
+    exception: {
+      stacktrace: [
+        'GraphQLError: Variable "$properties" got invalid value [{ key: "this key", value: "this value" }] at "properties.kubernetesObject.metadata.labels"; Field "0" is not defined by type "LabelsRequest".',
+        '    at /Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/execution/values.js:116:15',
+        '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:115:9)',
+        '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:106:34)',
+        '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:106:34)',
+        '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:56:14)',
+        '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:106:34)',
+        '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:56:14)',
+        '    at coerceInputValue (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:39:10)',
+        '    at _loop (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/execution/values.js:109:69)',
+        '    at coerceVariableValues (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/execution/values.js:121:16)'
+      ]
+    }
+  }
+}
+-------------------ERROR----------------------
+[GraphQLError [Object]: Variable "$properties" got invalid value [{ key: "this key", value: "this value" }] at "properties.kubernetesObject.spec.selector.matchLabels"; Field "0" is not defined by type "MatchLabelsRequest".] {
+  locations: [ { line: 1, column: 150 } ],
+  path: undefined,
+  extensions: {
+    code: 'INTERNAL_SERVER_ERROR',
+    exception: {
+      stacktrace: [
+        'GraphQLError: Variable "$properties" got invalid value [{ key: "this key", value: "this value" }] at "properties.kubernetesObject.spec.selector.matchLabels"; Field "0" is not defined by type "MatchLabelsRequest".',
+        '    at /Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/execution/values.js:116:15',
+        '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:115:9)',
+        '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:106:34)',
+        '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:106:34)',
+        '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:106:34)',
+        '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:56:14)',
+        '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:106:34)',
+        '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:56:14)',
+        '    at coerceInputValue (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:39:10)',
+        '    at _loop (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/execution/values.js:109:69)'
+      ]
+    }
+  }
+}
+-------------------ERROR----------------------
+[GraphQLError [Object]: Variable "$properties" got invalid value [{ key: "this key ", value: "this value" }] at "properties.kubernetesObject.spec.template.metadata.labels"; Field "0" is not defined by type "LabelsRequest".] {
+  locations: [ { line: 1, column: 150 } ],
+  path: undefined,
+  extensions: {
+    code: 'INTERNAL_SERVER_ERROR',
+    exception: {
+      stacktrace: [
+        'GraphQLError: Variable "$properties" got invalid value [{ key: "this key ", value: "this value" }] at "properties.kubernetesObject.spec.template.metadata.labels"; Field "0" is not defined by type "LabelsRequest".',
+        '    at /Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/execution/values.js:116:15',
+        '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:115:9)',
+        '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:106:34)',
+        '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:106:34)',
+        '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:106:34)',
+        '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:106:34)',
+        '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:56:14)',
+        '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:106:34)',
+        '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:56:14)',
+        '    at coerceInputValue (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:39:10)'
+      ]
+    }
+  }
+}
+-------------------ERROR----------------------
+[GraphQLError [Object]: Variable "$constraints" got invalid value "v1.15" at "constraints.kubernetesVersion"; Value "v1.15" does not exist in "KubernetesDeploymentComponentConstraintsKubernetesVersion" enum. Did you mean the enum value "V1_15", "V1_12", "V1_13", or "V1_14"?] {
+  locations: [ { line: 1, column: 209 } ],
+  path: undefined,
+  extensions: {
+    code: 'INTERNAL_SERVER_ERROR',
+    exception: {
+      stacktrace: [
+        'GraphQLError: Variable "$constraints" got invalid value "v1.15" at "constraints.kubernetesVersion"; Value "v1.15" does not exist in "KubernetesDeploymentComponentConstraintsKubernetesVersion" enum. Did you mean the enum value "V1_15", "V1_12", "V1_13", or "V1_14"?',
+        '    at /Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/execution/values.js:116:15',
+        '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:132:9)',
+        '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:106:34)',
+        '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:56:14)',
+        '    at coerceInputValue (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:39:10)',
+        '    at _loop (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/execution/values.js:109:69)',
+        '    at coerceVariableValues (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/execution/values.js:121:16)',
+        '    at getVariableValues (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/execution/values.js:50:19)',
+        '    at buildExecutionContext (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/execution/execute.js:190:61)',
+        '    at executeImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/execution/execute.js:87:20)'
+      ]
+    }
+  }
+}
+-------------------RESPONSE----------------------
+{
+  errors: [
+    {
+      message: 'Variable "$properties" got invalid value [{ key: "this key", value: "this value" }] at "properties.kubernetesObject.metadata.labels"; Field "0" is not defined by type "LabelsRequest".',
+      locations: [ { line: 1, column: 150 } ],
+      extensions: {
+        code: 'INTERNAL_SERVER_ERROR',
+        exception: {
+          stacktrace: [
+            'GraphQLError: Variable "$properties" got invalid value [{ key: "this key", value: "this value" }] at "properties.kubernetesObject.metadata.labels"; Field "0" is not defined by type "LabelsRequest".',
+            '    at /Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/execution/values.js:116:15',
+            '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:115:9)',
+            '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:106:34)',
+            '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:106:34)',
+            '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:56:14)',
+            '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:106:34)',
+            '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:56:14)',
+            '    at coerceInputValue (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:39:10)',
+            '    at _loop (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/execution/values.js:109:69)',
+            '    at coerceVariableValues (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/execution/values.js:121:16)'
+          ]
+        }
+      }
+    },
+    {
+      message: 'Variable "$properties" got invalid value [{ key: "this key", value: "this value" }] at "properties.kubernetesObject.spec.selector.matchLabels"; Field "0" is not defined by type "MatchLabelsRequest".',
+      locations: [ { line: 1, column: 150 } ],
+      extensions: {
+        code: 'INTERNAL_SERVER_ERROR',
+        exception: {
+          stacktrace: [
+            'GraphQLError: Variable "$properties" got invalid value [{ key: "this key", value: "this value" }] at "properties.kubernetesObject.spec.selector.matchLabels"; Field "0" is not defined by type "MatchLabelsRequest".',
+            '    at /Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/execution/values.js:116:15',
+            '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:115:9)',
+            '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:106:34)',
+            '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:106:34)',
+            '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:106:34)',
+            '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:56:14)',
+            '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:106:34)',
+            '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:56:14)',
+            '    at coerceInputValue (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:39:10)',
+            '    at _loop (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/execution/values.js:109:69)'
+          ]
+        }
+      }
+    },
+    {
+      message: 'Variable "$properties" got invalid value [{ key: "this key ", value: "this value" }] at "properties.kubernetesObject.spec.template.metadata.labels"; Field "0" is not defined by type "LabelsRequest".',
+      locations: [ { line: 1, column: 150 } ],
+      extensions: {
+        code: 'INTERNAL_SERVER_ERROR',
+        exception: {
+          stacktrace: [
+            'GraphQLError: Variable "$properties" got invalid value [{ key: "this key ", value: "this value" }] at "properties.kubernetesObject.spec.template.metadata.labels"; Field "0" is not defined by type "LabelsRequest".',
+            '    at /Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/execution/values.js:116:15',
+            '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:115:9)',
+            '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:106:34)',
+            '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:106:34)',
+            '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:106:34)',
+            '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:106:34)',
+            '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:56:14)',
+            '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:106:34)',
+            '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:56:14)',
+            '    at coerceInputValue (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:39:10)'
+          ]
+        }
+      }
+    },
+    {
+      message: 'Variable "$constraints" got invalid value "v1.15" at "constraints.kubernetesVersion"; Value "v1.15" does not exist in "KubernetesDeploymentComponentConstraintsKubernetesVersion" enum. Did you mean the enum value "V1_15", "V1_12", "V1_13", or "V1_14"?',
+      locations: [ { line: 1, column: 209 } ],
+      extensions: {
+        code: 'INTERNAL_SERVER_ERROR',
+        exception: {
+          stacktrace: [
+            'GraphQLError: Variable "$constraints" got invalid value "v1.15" at "constraints.kubernetesVersion"; Value "v1.15" does not exist in "KubernetesDeploymentComponentConstraintsKubernetesVersion" enum. Did you mean the enum value "V1_15", "V1_12", "V1_13", or "V1_14"?',
+            '    at /Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/execution/values.js:116:15',
+            '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:132:9)',
+            '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:106:34)',
+            '    at coerceInputValueImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:56:14)',
+            '    at coerceInputValue (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/utilities/coerceInputValue.js:39:10)',
+            '    at _loop (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/execution/values.js:109:69)',
+            '    at coerceVariableValues (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/execution/values.js:121:16)',
+            '    at getVariableValues (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/execution/values.js:50:19)',
+            '    at buildExecutionContext (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/execution/execute.js:190:61)',
+            '    at executeImpl (/Users/alex/workspace/dvlp/repos/github.com/systeminit/si/components/si-graphql-api/node_modules/graphql/execution/execute.js:87:20)'
+          ]
+        }
+      }
+    }
+  ]
+}
