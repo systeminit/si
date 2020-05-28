@@ -96,6 +96,7 @@ ifdef TMUX
 else
 	@ echo "*** Starting new tmux session ***"
 	@ tmux -2 new-session -d -s si
+	@ tmux send-keys "make dev_deps" C-m
 	@ echo "tmux attach -t si"
 endif
 
@@ -134,6 +135,6 @@ force_clean:
 	sudo rm -rf ./target
 
 dev_deps:
-	./components/couchbase/run.sh; exit 0
-	./components/jaeger/run.sh; exit 0
-	./components/vernemq/run.sh; exit 0
+	./components/couchbase/run.sh || docker start db; exit 0
+	./components/vernemq/run.sh || docker start vernemq; exit 0
+	./components/opentelemetry-collector/run.sh || docker start otelcol; exit 0
