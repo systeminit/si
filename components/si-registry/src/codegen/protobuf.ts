@@ -114,7 +114,8 @@ export class ProtobufFormatter {
         return this.protobufTypeForProp(realProp);
       }
     } else if (prop instanceof PropPrelude.PropMap) {
-      return "map<string, string>";
+      return "map<string, google.protobuf.StringValue>";
+      // return "map<string, string>";
     } else if (prop instanceof PropPrelude.PropNumber) {
       if (prop.numberKind == "int32") {
         return "google.protobuf.Int32Value";

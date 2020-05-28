@@ -23,10 +23,10 @@ service Kubernetes {
 }
 message KubernetesMetadata {
   google.protobuf.StringValue name = 1001;
-  map<string, string> labels = 1002;
+  map<string, google.protobuf.StringValue> labels = 1002;
 }
 message KubernetesSelector {
-  map<string, string> match_labels = 1001;
+  map<string, google.protobuf.StringValue> match_labels = 1001;
 }
 message KubernetesContainer {
   google.protobuf.StringValue name = 1001;
