@@ -182,9 +182,10 @@
       <div v-else-if="propObjectProperty.kind() == 'enum'">
         
         <select 
-          class="block appearance-none bg-gray-200 border border-gray-200 text-gray-700 px-4 rounded leading-tight focus:outline-none "
+          class="block appearance-none bg-gray-200 border border-red-200 text-gray-700 px-4 rounded leading-tight focus:outline-none "
           :aria-label="propObjectProperty.name"
           v-model="objectModel"
+          @change="formatSelector"
           >
           <option
             v-for="option in propObjectProperty.variants"
@@ -275,9 +276,6 @@
 <script lang="ts">
 
 /* eslint-disable vue/no-unused-components */
-
-// import { pascalCase, camelCase } from "change-case";constantCase...
-
 import Vue from "vue";
 import { registry, variablesObjectForProperty } from "si-registry";
 import { auth } from "@/utils/auth";
@@ -286,6 +284,8 @@ import { PlusSquareIcon, ChevronDownIcon } from "vue-feather-icons"
 import Button  from "./Button.vue"
 
 import PropObject from "./PropObject.vue";
+
+import { constantCase } from "change-case";
 
 // @ts-ignore
 export default Vue.extend({
@@ -330,6 +330,13 @@ export default Vue.extend({
   // },
 
   methods: {
+    formatSelector() {
+      console.log("PropObjectProperty.methods.formatSelector()")
+      // this.objectModel = constantCase(this.objectModel.replace(/\./g, '_'));
+
+      this.objectModel = constantCase(this.objectModel);
+
+    },
     // @ts-ignore
     onMetadataKeyChange(event, object) {
       // Add input validation - keys must be unique.

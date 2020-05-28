@@ -22,3 +22,4 @@ A) update the prop map code: mapFromArray()
 B) format the array as map object when sending the request from the fe
 C) update the grapql request to convert arrays of k:v to map objects
 
+siStorable.typeName="kubernetes_deployment_entity"

@@ -96,10 +96,14 @@ export default {
 
         console.log("PropertyList.methods.createEntity() with:", this.kubernetesDeploymentEntityCreateVars)
         // pass object to mutate here
+        
+        this.kubernetesDeploymentEntityCreateVars.workspaceId = auth.getProfile().workspaceDefault.id
+
+        delete this.kubernetesDeploymentEntityCreateVars.properties.kubernetesObjectYaml
+
         this.$apollo.mutate({
           mutation,
           variables: this.kubernetesDeploymentEntityCreateVars
-      
         });
 
 
