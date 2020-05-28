@@ -45,17 +45,6 @@
           <button class="text-green-500 text-center w-4 focus:outline-none" type="button" @click="onClickB($event, propObjectProperty)">   
             <plus-square-icon size="1.25x" class=""></plus-square-icon>
           </button>
-
-          <!-- Not working -->
-          <ul>
-            <li v-for="(object) in objectModel" :key="object.name">       
-<!--               <PropObject
-                :propObject="propObjectProperty.lookupMyself()"
-                :propObjectModel="objectModel[index][propObjectProperty.name]"
-              /> -->
-            </li>
-          </ul>
-
         </div>
 
         <div v-else-if="propObjectProperty.kind() == 'text'">
@@ -164,7 +153,7 @@
 
       <div v-else-if="propObjectProperty.kind() == 'number'">
         <div class="flex items-center">
-          
+
           <div class="px-2 text-sm text-gray-400">
             {{ propObjectProperty.name }}
           </div>
@@ -196,10 +185,14 @@
 
       </div>
 
-      <!-- A map has some number of Key/Value pairs. -->
       <div v-else-if="propObjectProperty.kind() == 'map'">
         
         <div class="flex flex-col">
+
+            <div class="px-2 text-sm text-gray-400">
+              {{propObjectProperty.name}}
+            </div>
+
             <button class="text-blue-500 text-center w-4 focus:outline-none" type="button" @click="onClickB($event, propObjectProperty)">
               <plus-square-icon size="1.25x" class=""></plus-square-icon>
             </button>
@@ -229,23 +222,22 @@
 
         </div>
       </div>
-
+      
       <div v-else-if="propObjectProperty.kind() == 'link'">
+
         <div v-if="propObjectProperty.lookupMyself().kind() == 'object'">
 
-          <div class="flex flex-col"> 
-            
-            <div class="flex pl-2 text-sm text-white property-title-bg-color">
-              <chevron-down-icon size="1.5x" class="custom-class"></chevron-down-icon>
-              {{ propObjectProperty.label }}
-            </div>
+          <PropertySection
+            class="flex flex-col"
+            :sectionTitle="propObjectProperty.name"
+            > 
 
             <PropObject
               :propObject="propObjectProperty.lookupMyself()"
               :propObjectModel="objectModel"
             />
 
-          </div>
+          </PropertySection>
         </div>
 
         <div v-else>
@@ -258,10 +250,17 @@
       </div>
 
       <div v-else-if="propObjectProperty.kind() == 'object'">
-        <PropObject
-          :propObject="propObjectProperty"
-          :propObjectModel="objectModel"
-        />
+          <PropertySection
+            class="flex flex-col"
+            :sectionTitle="propObjectProperty.name"
+            > 
+
+            <PropObject
+              :propObject="propObjectProperty"
+              :propObjectModel="objectModel"
+            />
+
+          </PropertySection>
       </div>
 
       <div v-else>
@@ -284,6 +283,7 @@ import { PlusSquareIcon, ChevronDownIcon } from "vue-feather-icons"
 import Button  from "./Button.vue"
 
 import PropObject from "./PropObject.vue";
+import PropertySection from "./PropertySection.vue";
 
 import { constantCase } from "change-case";
 
@@ -301,6 +301,7 @@ export default Vue.extend({
   components: {
     PlusSquareIcon,
     ChevronDownIcon,
+    PropertySection,
     PropObject: () => import("./PropObject.vue"),
   },
   data() {
