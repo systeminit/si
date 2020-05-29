@@ -417,7 +417,7 @@ message ChangeSet {
   si.data.DataStorable si_storable = 4;
   si.account.ChangeSetSiProperties si_properties = 1001;
   google.protobuf.StringValue created_by_user_id = 1002;
-  repeated google.protobuf.StringValue change_set_item_order = 1003;
+  google.protobuf.UInt64Value entry_count = 1003;
   ChangeSetStatus status = 1004;
 }
 message ChangeSetListRequest {

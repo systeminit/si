@@ -3,6 +3,7 @@ import {
   PropObject,
   PropMethod,
   PropLink,
+  PropNumber,
 } from "../../components/prelude";
 import { registry } from "../../registry";
 import { SystemObject } from "../../systemComponent";
@@ -62,11 +63,12 @@ registry.system({
         p.required = true;
       },
     });
-    c.fields.addText({
-      name: "changeSetItemOrder",
-      label: "The list of change set items, in order",
-      options(p) {
-        p.repeated = true;
+    c.fields.addNumber({
+      name: "entryCount",
+      label: "Entry Count",
+      options(p: PropNumber) {
+        p.numberKind = "uint64";
+        p.baseDefaultValue = "0";
       },
     });
     c.fields.addEnum({

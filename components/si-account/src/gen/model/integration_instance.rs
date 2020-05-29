@@ -134,8 +134,56 @@ impl si_data::Storable for crate::protobuf::IntegrationInstance {
         self.id = Some(id.into());
     }
 
+    fn change_set_id(&self) -> si_data::Result<Option<&str>> {
+        Ok(self
+            .si_storable
+            .as_ref()
+            .ok_or_else(|| si_data::DataError::RequiredField("si_storable".to_string()))?
+            .change_set_id
+            .as_ref()
+            .map(String::as_str))
+    }
+
+    fn set_change_set_entry_count(&mut self, entry_count: u64) -> si_data::Result<()> {
+        self.si_storable
+            .as_mut()
+            .ok_or_else(|| si_data::DataError::RequiredField("si_storable".to_string()))?
+            .change_set_entry_count
+            .replace(entry_count);
+        Ok(())
+    }
+
     fn generate_id(&mut self) {
-        self.set_id(format!("{}:{}", Self::type_name(), si_data::uuid_string(),));
+        let mut id = format!("{}:{}", Self::type_name(), si_data::uuid_string(),);
+        if self.si_storable.is_some() {
+            if self.si_storable.as_ref().unwrap().change_set_id.is_some() {
+                if self
+                    .si_storable
+                    .as_ref()
+                    .unwrap()
+                    .change_set_entry_count
+                    .is_some()
+                {
+                    self.si_storable.as_mut().unwrap().item_id = Some(id.clone());
+                    id = format!(
+                        "{}:{}:{}",
+                        self.si_storable
+                            .as_ref()
+                            .unwrap()
+                            .change_set_id
+                            .as_ref()
+                            .unwrap(),
+                        self.si_storable
+                            .as_ref()
+                            .unwrap()
+                            .change_set_entry_count
+                            .unwrap(),
+                        id
+                    );
+                }
+            }
+        }
+        self.set_id(id);
     }
 
     fn natural_key(&self) -> si_data::Result<Option<&str>> {

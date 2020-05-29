@@ -12,6 +12,13 @@ pub trait Storable {
     fn set_id(&mut self, id: impl Into<String>);
     fn generate_id(&mut self);
 
+    fn change_set_id(&self) -> Result<Option<&str>> {
+        Ok(None)
+    }
+    fn set_change_set_entry_count(&mut self, _entry_count: u64) -> Result<()> {
+        Ok(())
+    }
+
     fn natural_key(&self) -> Result<Option<&str>> {
         Ok(None)
     }
@@ -54,6 +61,7 @@ impl DataStorable {
             type_name: Some(type_name.into()),
             view_context: None,
             change_set_id: None,
+            change_set_entry_count: None,
             item_id: None,
         }
     }
