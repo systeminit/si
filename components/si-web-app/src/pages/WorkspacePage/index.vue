@@ -2,13 +2,13 @@
   <div id="app-main-layout" class="flex flex-col h-screen w-screen">
     <AppBar />
 
-    <div id="workspace-view" class="flex flex-row h-full w-full">
+    <div id="workspace-view" class="flex flex-row h-full w-full overflow-hidden">
       <WorkspaceNav
         :organizationId="organizationId"
         :workspaceId="workspaceId"
       />
 
-      <router-view class="w-full" />
+      <router-view class="w-full h-full overflow-auto" />
     </div>
   </div>
 </template>

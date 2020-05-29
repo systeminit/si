@@ -22,6 +22,7 @@
     "@opentelemetry/web": "^0.8.1",
     "@types/node-fetch": "^2.5.4",
     "@types/vue-feather-icons": "^5.0.0",
+    "@types/vue-select": "^2.5.0",
     "apollo-client": "2.6.8",
     "core-js": "^3.6.4",
     "jsonwebtoken": "^8.5.1",
@@ -34,6 +35,7 @@
     "vue-gtag": "^1.1.1",
     "vue-json-pretty": "^1.6.3",
     "vue-router": "^3.1.6",
+    "vue-select": "^3.10.3",
     "vue-tailwind": "^0.4.6",
     "yaml": "^1.7.2"
   },

@@ -4,6 +4,7 @@ import App from "@/App.vue";
 import router from "@/router";
 
 import VueGtag from "vue-gtag";
+import vSelect from 'vue-select'
 import { createProvider } from "@/plugins/vue-apollo";
 import { auth } from "@/utils/auth";
 
@@ -26,6 +27,8 @@ if (process.env.NODE_ENV == "production") {
     disableScriptLoad: true,
   });
 }
+
+Vue.component('v-select', vSelect)
 
 new Vue({
   router,

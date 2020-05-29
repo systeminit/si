@@ -2,15 +2,14 @@
   <!-- eslint-disable vue/no-unused-components -->
   <div>
     <div v-for="field of propObject.properties.attrs.filter(i => !i.hidden)" v-bind:key="field.name" class="flex flex-row">
-
-      <div class="px-2 py-2 text-gray-400"/>
-        <PropObjectProperty
-          :propObject="propObject"
-          :propObjectProperty="field"
-          :propObjectPropertyModel="objectModel[field.name]"
-          @propChangeMsg="propChangeMsg"
-        />
-
+      
+      <PropObjectProperty
+        :propObject="propObject"
+        :propObjectProperty="field"
+        :propObjectPropertyModel="objectModel[field.name]"
+        @propChangeMsg="propChangeMsg"
+      />
+      
     </div>
   </div>
 </template>

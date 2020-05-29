@@ -14,14 +14,6 @@
       </button>
     </div>
 
-    <vue-json-pretty
-      class="text-white text-lg"
-      :path="'res'"
-      :data="kubernetesDeploymentEntityCreateVars"
-      @click="handleClick">
-      :v-model="kubernetesDeploymentEntityCreateVars"
-    </vue-json-pretty>
-
   </div>
 </template>
 
@@ -38,7 +30,6 @@ import VueJsonPretty from "vue-json-pretty"
 export default {
   name: "PropertyList",
   components: {
-    //LinkIcon,
     PropObject,
     VueJsonPretty,
   },
@@ -75,25 +66,6 @@ export default {
       // console.log(mutation);
 
       try {
-        // this.$apollo.mutate({
-        //   mutation,
-        //   variables: {
-        //     name: this.kubernetesDeploymentEntityCreateVars.name,
-        //     displayName: this.kubernetesDeploymentEntityCreateVars.displayName,
-        //     description: this.kubernetesDeploymentEntityCreateVars.description,
-        //     workspaceId: auth.getProfile().workspaceDefault.id,
-        //     properties: {
-        //       kubernetesObject: {
-        //         kind: "your butt",
-        //         apiVersion: "1.0",
-        //       },
-        //     },
-        //     constraints: {
-        //       kubernetesVersion: "V1_15",
-        //     },
-        //   },
-        // });
-
         console.log("PropertyList.methods.createEntity() with:", this.kubernetesDeploymentEntityCreateVars)
         // pass object to mutate here
         
@@ -131,9 +103,6 @@ export default {
     onKeyUp(event) {
       if (event.key == "Enter") {
         console.log("PropertyList.methods.onKeyUp() :: Enter");
-        // console.log(event);
-        // console.log(event.target);
-        // console.log(event.target["aria-label"]);
       }
     },
   },

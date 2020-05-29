@@ -3,32 +3,42 @@
 <!-- eslint-disable vue/no-unused-components -->
 
   <div class="w-full">
-    <div class="pl-1 py-1">
+    <div class="py-1">
       
       <div v-if="propObjectProperty.repeated">
-
-        <div class="px-2 text-sm text-gray-400">
-          {{ propObjectProperty.name }}
-        </div>
 
         <div v-if="propObjectProperty.kind() == 'link'">
 
           <div v-if="propObjectProperty.lookupMyself().kind() == 'object'">
-            <div ref="container" class="flex flex-col">
-              <button class="text-red-500 text-center w-4 focus:outline-none" type="button" @click="onClickB($event, propObjectProperty)">                
-                <plus-square-icon size="1.25x" class=""></plus-square-icon>
-              </button>
+            
+            <div class="flex flex-row">
 
-              <ul>
-                <li v-for="(object, index) in objectModel" :key="index">             
+              <div class="px-2 text-sm text-gray-400">
+                {{ propObjectProperty.name }}
+              </div>
+
+              <div>
+
+                <div v-for="(object, index) in objectModel" :key="index" class="flex pt-1">             
                   <PropObject
                     :propObject="propObjectProperty.lookupMyself()"
                     :propObjectModel="objectModel[index]"
                   />
-                </li>
-              </ul>
+                </div>
 
+                <div class="flex text-gray-500 pt-1">
+
+                  <button class="text-center w-4 focus:outline-none" type="button" @click="onClickB($event, propObjectProperty)">                
+                    <plus-square-icon size="1.25x" class=""></plus-square-icon>
+                  </button>
+                  
+                  <p class="ml-2">{{ propObjectProperty.name }}</p>
+                </div>
+
+              </div>
+            
             </div>
+
           </div>
 
           <div v-else>
@@ -41,14 +51,14 @@
 
         </div>
 
-        <div v-else-if="propObjectProperty.kind() == 'object'">
-          <button class="text-green-500 text-center w-4 focus:outline-none" type="button" @click="onClickB($event, propObjectProperty)">   
+<!--         <div v-else-if="propObjectProperty.kind() == 'object'">
+          <button class="text-yellow-500 text-center w-4 focus:outline-none" type="button" @click="onClickB($event, propObjectProperty)">   
             <plus-square-icon size="1.25x" class=""></plus-square-icon>
           </button>
         </div>
 
         <div v-else-if="propObjectProperty.kind() == 'text'">
-          <div class="flex items-center">
+          <div class="flex items-center text-yellow-500">
             <div class="px-2 text-sm text-gray-400">
               {{ propObjectProperty.name }}
             </div>
@@ -64,7 +74,7 @@
 
         <div v-else-if="propObjectProperty.kind() == 'code'">
           <div class="flex items-center">
-            <div class="px-2 text-sm text-gray-400">
+            <div class="px-2 text-sm text-yellow-500">
               {{ propObjectProperty.name }}
             </div>
           </div>
@@ -72,7 +82,7 @@
 
         <div v-else-if="propObjectProperty.kind() == 'number'">
           <div class="flex items-center">
-            <div class="px-2 text-sm text-gray-400">
+            <div class="px-2 text-sm text-yellow-500">
               {{ propObjectProperty.name }}
             </div>
             <input
@@ -87,7 +97,7 @@
 
         <div v-else-if="propObjectProperty.kind() == 'enum'">
           <select 
-            class="block appearance-none bg-gray-200 border border-gray-200 text-gray-700 px-4 rounded leading-tight focus:outline-none "
+            class="block appearance-none bg-gray-200 border border-gray-200 text-yellow-500 px-4 rounded leading-tight focus:outline-none "
             :aria-label="propObjectProperty.name">
             <option
               v-for="option in propObjectProperty.variants"
@@ -120,49 +130,51 @@
               placeholder="text"
             />
           </div>
-        </div>
+        </div> -->
       
       </div>
       
       <div v-else-if="propObjectProperty.kind() == 'text'">
 
-        <div class="flex items-center">
+          <div class="flex">
 
-          <div class="px-2 text-sm text-gray-400">
+          <div class="input-label">
             {{ propObjectProperty.name }}
           </div>
 
           <input
-            class="appearance-none input-bg-color border-none text-gray-400 pl-2 h-5 text-sm leading-tight focus:outline-none"
+            class="appearance-none text-sm leading-tight focus:outline-none input-bg-color appearance-none border-none text-gray-400 pl-2 h-5 w-32"
             type="text"
             :aria-label="propObjectProperty.name"
             v-model="objectModel"
             placeholder="text"
           />
+
+<!--           <div v-if="!propObjectProperty.required">
+            <button class="text-red-600 pl-1 focus:outline-none" type="button" @click="removeItem($event, index)">
+              <x-icon size="0.8x"></x-icon>
+            </button>
+          </div> -->
+
         </div>
       </div>
 
       <div v-else-if="propObjectProperty.kind() == 'code'">
-        
-        <div class="flex items-center">
-          <div class="px-2 text-sm text-gray-400">
-            {{ propObjectProperty.name }}
-          </div>
-        </div>
+      <!-- do nothing -->
       </div>
 
       <div v-else-if="propObjectProperty.kind() == 'number'">
         <div class="flex items-center">
 
-          <div class="px-2 text-sm text-gray-400">
+          <div class="input-label">
             {{ propObjectProperty.name }}
           </div>
 
           <input
-            class="appearance-none input-bg-color border-none text-gray-400 ml-3 pl-2 h-5 text-sm leading-tight focus:outline-none"
-            type="text"
+            class="appearance-none text-sm leading-tight focus focus:outline-none input-bg-color border-none text-gray-400 pl-2 h-5 w-32"
+            type="number"
             :aria-label="propObjectProperty.name"
-            v-model="objectModel"
+            v-model.number="objectModel"
             placeholder="number"
           />
         </div>
@@ -170,55 +182,74 @@
 
       <div v-else-if="propObjectProperty.kind() == 'enum'">
         
-        <select 
-          class="block appearance-none bg-gray-200 border border-red-200 text-gray-700 px-4 rounded leading-tight focus:outline-none "
-          :aria-label="propObjectProperty.name"
-          v-model="objectModel"
-          @change="formatSelector"
-          >
-          <option
-            v-for="option in propObjectProperty.variants"
-            v-bind:key="option"
-            >{{ option }}</option
-          >
-        </select>
+        <div class="flex items-center">
 
+          <div class="input-label">
+            {{ propObjectProperty.name }}
+          </div>
+
+          <select 
+            class="bg-gray-800 border text-gray-400 text-sm px-4 leading-tight focus:outline-none"
+            :aria-label="propObjectProperty.name"
+            :v-model="objectModel"
+            @change="formatSelector"
+            >
+            <option
+              v-for="option in propObjectProperty.variants"
+              v-bind:key="option"
+              >{{ option }}</option
+            >
+          </select>
+
+        </div>
       </div>
 
       <div v-else-if="propObjectProperty.kind() == 'map'">
         
-        <div class="flex flex-col">
+        <div class="flex flex-row">
 
-            <div class="px-2 text-sm text-gray-400">
+            <div class="input-label">
               {{propObjectProperty.name}}
+             </div>
+
+             <div>
+                <div v-for="(object, index) in objectModel" :key="index" class="flex pb-2">  
+                  <input
+                    class="appearance-none text-sm leading-tight focus:outline-none input-bg-color appearance-none border-none text-gray-400 pl-2 h-5 w-32"
+                    type="text"
+                    :aria-label="key"
+                    v-model="objectModel[index].key"
+                    placeholder="key"
+                    @change="onMetadataKeyChange($event, objectModel[index].key)"
+                  />
+
+                  <input
+                    class="appearance-none text-sm leading-tight focus:outline-none input-bg-color appearance-none border-none text-gray-400 pl-2 ml-2 h-5 w-32"
+                    type="text"
+                    :aria-label="val"
+                    v-model="objectModel[index].value"
+                    placeholder="value"
+                  />
+
+                  <button class="text-gray-600 pl-1 focus:outline-none" type="button" @click="removeItem($event, objectModel, index)">
+                    <x-icon size="0.8x"></x-icon>
+                  </button>
+
+                </div>
+
+              <div class="flex text-gray-500">
+                <button class="focus:outline-none" type="button" @click="onClickB($event, propObjectProperty)">
+                  <plus-square-icon size="1.25x"></plus-square-icon>
+                </button>
+              </div>
+
+<!--               <div v-if="!propObjectProperty.required">
+                <button class="text-gray-600 pl-1 focus:outline-none" type="button" @click="removeProperty(propObjectProperty)">
+                  <x-icon size="0.8x"></x-icon>
+                </button>
+              </div> -->
+
             </div>
-
-            <button class="text-blue-500 text-center w-4 focus:outline-none" type="button" @click="onClickB($event, propObjectProperty)">
-              <plus-square-icon size="1.25x" class=""></plus-square-icon>
-            </button>
-
-            <ul>
-
-              <li v-for="(object, index) in objectModel" :key="index">  
-                <input
-                  class="appearance-none input-bg-color border-none text-gray-400 ml-3 pl-2 h-5 text-sm leading-tight focus:outline-none"
-                  type="text"
-                  :aria-label="key"
-                  v-model="objectModel[index].key"
-                  placeholder="key"
-                  @change="onMetadataKeyChange($event, objectModel[index].key)"
-                />
-
-                <input
-                  class="appearance-none input-bg-color border-none text-gray-400 ml-3 pl-2 h-5 text-sm leading-tight focus:outline-none"
-                  type="text"
-                  :aria-label="val"
-                  v-model="objectModel[index].value"
-                  placeholder="value"
-                />
-              </li>
-
-            </ul>
 
         </div>
       </div>
@@ -278,7 +309,7 @@
 import Vue from "vue";
 import { registry, variablesObjectForProperty } from "si-registry";
 import { auth } from "@/utils/auth";
-import { PlusSquareIcon, ChevronDownIcon } from "vue-feather-icons"
+import { PlusSquareIcon, ChevronDownIcon, Trash2Icon, XIcon } from "vue-feather-icons"
 
 import Button  from "./Button.vue"
 
@@ -302,6 +333,8 @@ export default Vue.extend({
     PlusSquareIcon,
     ChevronDownIcon,
     PropertySection,
+    Trash2Icon,
+    XIcon,
     PropObject: () => import("./PropObject.vue"),
   },
   data() {
@@ -334,7 +367,6 @@ export default Vue.extend({
     formatSelector() {
       console.log("PropObjectProperty.methods.formatSelector()")
       // this.objectModel = constantCase(this.objectModel.replace(/\./g, '_'));
-
       this.objectModel = constantCase(this.objectModel);
 
     },
@@ -346,7 +378,23 @@ export default Vue.extend({
 
     },
     // @ts-ignore
+    removeProperty(propObjectProperty) {
+      console.log(propObjectProperty)
+      if (!propObjectProperty.required) {
+        console.log("not required", this.objectModel)
+        // delete this.objectModel;
+      } else {
+        console.log("required")
+      }
+      // delete this.objectModel[propObjectProperty.name];
+    },
+    // @ts-ignore
+    removeItem($event, index) {
+      this.objectModel.splice(index, 1);
+    },
+    // @ts-ignore
     onClickB(event, propObjectProperty) {
+      console.log("click")
       var varsObjectForProperty;
       var keyValueMapObject;
 
@@ -398,10 +446,6 @@ export default Vue.extend({
           varsObjectForProperty = variablesObjectForProperty(propObjectProperty)
           console.log("varsObjectForProperty:", varsObjectForProperty)
 
-          // let keyValueMap = new Map()
-          // keyValueMap.set('key', '')
-          // keyValueMap.set('value', '')
-
           keyValueMapObject = {
             'key': '',
             'value': ''
@@ -428,6 +472,16 @@ export default Vue.extend({
 
 .input-bg-color {
   background-color: #25788a;
+}
+
+.input-label {
+  @apply pr-2 text-sm text-gray-400 text-right w-40
+}
+
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { 
+  -webkit-appearance: none; 
+  margin: 0; 
 }
 
 </style>

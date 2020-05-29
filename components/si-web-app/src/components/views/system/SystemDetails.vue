@@ -1,10 +1,10 @@
 <template>
-  <div id="system-details" class="flex flex-col flex-no-wrap w-full">
+  <div id="system-details" class="flex flex-col flex-no-wrap">
     <div id="system-summary" class="flex-none h-40">
       {{ systemName }}
     </div>
 
-    <div id="system-editor" class="flex h-full w-full">
+    <div id="system-editor" class="flex h-full w-full overflow-hidden">
       <Editor />
     </div>
   </div>

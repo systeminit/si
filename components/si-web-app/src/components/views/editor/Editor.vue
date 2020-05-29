@@ -7,13 +7,13 @@
     v-on:mousedown="mouseDown"
     v-on:mouseup="mouseUp"
   >
-<!--     <div ref="leftPanel" class="box-border flex-auto bg-gray-900">
+    <div ref="leftPanel" class="box-border flex-auto bg-gray-900">
       <SchematicPanel />
     </div>
 
-    <div ref="resizeHandle" class="w-1 bg-gray-800 flex-none cursor-resize" />
- -->
-    <div ref="rightPanel" class="box-border flex-auto bg-gray-900 h-full">
+    <div ref="resizeHandle" class="w-1 bg-gray-800 flex-none cursor-resize"/>
+
+    <div ref="rightPanel" class="box-border flex-auto bg-gray-900">
       <PropertyPanel />
     </div>
   </div>
@@ -26,7 +26,7 @@ import PropertyPanel from "./EditorPropertyPanel";
 export default {
   name: "Editor",
   components: {
-    // SchematicPanel,
+    SchematicPanel,
     PropertyPanel,
   },
   data: function() {

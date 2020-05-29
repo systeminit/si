@@ -17,7 +17,7 @@
 
     </div>
 
-    <div class="section-content">
+    <div class="section-content pl-2 ">
       <slot/>
     </div>
 

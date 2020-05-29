@@ -1,6 +1,6 @@
 <template>
-  <div ref="property-panel" class="w-full flex-col h-full w-full property-editor-bg-color">
-    <div id="property-panel-menu" class="flex-row flex-no-wrap content-between bg-black h-30 w-full">
+  <div ref="property-panel" class="flex flex-col h-full w-full property-editor-bg-color">
+    <div id="property-panel-menu" class="flex flex-row flex-no-wrap content-between bg-black h-30 w-full">
       
       <ui-button ref="submitButton" kind="icon">
         <filter-icon size="1.5x" class="custom-class"></filter-icon>
