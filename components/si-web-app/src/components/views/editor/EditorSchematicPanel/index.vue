@@ -1,32 +1,26 @@
 <template>
   <!-- eslint-disable vue/no-unused-components -->
   <div ref="schematic-panel" class="flex flex-col h-full w-full">
-
-    <div id="schematic-panel-menu" class="flex flex-row flex-no-wrap content-between bg-black h-30 w-full">
       
-      <ui-button kind="icon">
-        <filter-icon size="1x" class="custom-class"></filter-icon>
-      </ui-button>
+    <div id="schematic-panel-menu" class="flex flex-row justify-between flex-no-wrap content-between bg-black w-full">
+      
+      <div class="flex flex-row justify-start mx-3">      
+        
+        <button class="text-white px-4 py-2 focus:outline-none">
+          <plus-square-icon size="1.1x"/>
+        </button>
 
-      <ui-button kind="icon">
-        <code-icon size="1x" class="custom-class"></code-icon>
-      </ui-button>
+      </div>
 
-      <ui-button kind="icon">
-        <search-icon size="1x" class="custom-class"></search-icon>
-      </ui-button>
+      <div class="mx-3">
+        <button class="text-white px-4 py-2 focus:outline-none">
+          <settings-icon size="1.1x"/>
+        </button>
 
-      <ui-button kind="icon">
-        <filter-icon size="1x" class="custom-class"></filter-icon>
-      </ui-button>
-
-      <ui-button kind="icon">
-        <settings-icon size="1x" class="custom-class"></settings-icon>
-      </ui-button>
-
-      <ui-button kind="icon">
-        <maximize-2-icon size="1x" class="custom-class"></maximize-2-icon>
-      </ui-button>
+        <button class="text-white px-4 py-2 focus:outline-none" @click="maximizePanel()" type="button">
+          <maximize-2-icon size="1.1x"></maximize-2-icon>
+        </button>
+      </div>
     
     </div>
 
@@ -44,6 +38,7 @@ import {
   FilterIcon,
   SearchIcon,
   CodeIcon,
+  PlusSquareIcon,
 } from "vue-feather-icons";
 import UiButton from "@/components/ui/button/UiButton.vue";
 import NodeEditor from "./NodeEditor.vue";
@@ -58,10 +53,15 @@ export default {
     CodeIcon,
     UiButton,
     NodeEditor,
+    PlusSquareIcon,
   },
-  data() {
-    return {
-      isVisible: true
+  methods: {
+    maximizePanel() {
+      this.$emit("maximizePanelMsg", {
+        panel: {
+          id: "schematic"
+        },
+      })
     }
   }
 };

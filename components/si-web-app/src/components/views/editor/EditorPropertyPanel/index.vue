@@ -1,34 +1,33 @@
 <template>
-  <div ref="property-panel" class="flex flex-col h-full w-full property-editor-bg-color">
-    <div id="property-panel-menu" class="flex flex-row flex-no-wrap content-between bg-black h-30 w-full">
+  <div ref="property-panel" class="h-full w-full property-editor-bg-color">
+
+
+    <div id="property-panel-menu" class="flex flex-row justify-between flex-no-wrap content-between bg-black w-full">
       
-      <ui-button kind="icon">
-        <filter-icon size="1x" class="custom-class"></filter-icon>
-      </ui-button>
+      <div class="flex flex-row justify-start mx-3">      
+        
+        <button class="text-white px-4 py-2 focus:outline-none">
+          <search-icon size="1.1x"/>
+        </button>
 
-      <ui-button kind="icon">
-        <code-icon size="1x" class="custom-class"></code-icon>
-      </ui-button>
+        <button class="text-white px-4 py-2 focus:outline-none">
+          <filter-icon size="1.1x"/>
+        </button>
 
-      <ui-button kind="icon">
-        <search-icon size="1x" class="custom-class"></search-icon>
-      </ui-button>
+        <button class="text-white px-4 py-2 focus:outline-none">
+          <code-icon size="1.1x"/>
+        </button>
+      </div>
 
-      <ui-button kind="icon">
-        <filter-icon size="1x" class="custom-class"></filter-icon>
-      </ui-button>
-
-      <ui-button kind="icon">
-        <settings-icon size="1x" class="custom-class"></settings-icon>
-      </ui-button>
-
-      <ui-button kind="icon" @click="maximizePanel">
-        <maximize-2-icon size="1x" class="custom-class"></maximize-2-icon>
-      </ui-button>
+      <div class="mx-3">
+        <button class="text-white px-4 py-2 focus:outline-none" @click="maximizePanel()" type="button">
+          <maximize-2-icon size="1x"></maximize-2-icon>
+        </button>
+      </div>
     
     </div>
 
-    <div class="flex w-full h-full overflow-auto">
+    <div class="flex w-full h-full overflow-auto mt-5">
       <PropertyList />
     </div>
   </div>
@@ -42,18 +41,15 @@ import {
   SearchIcon,
   CodeIcon,
 } from "vue-feather-icons";
-import UiButton from "@/components/ui/button/UiButton.vue";
 import PropertyList from "./PropertyList.vue";
 
 export default {
   name: "EditorPropertyPanel",
   components: {
     Maximize2Icon,
-    SettingsIcon,
     FilterIcon,
     SearchIcon,
     CodeIcon,
-    UiButton,
     PropertyList,
   },
   methods: {

@@ -8,13 +8,15 @@
     v-on:mousedown="mouseDown"
     v-on:mouseup="mouseUp"
   >
-    <div ref="leftPanel" class="box-border flex-auto bg-gray-900">
-      <SchematicPanel/>
+    <div ref="leftPanel" class="bg-gray-900" :class="leftPanelVisibilityClasses">
+      <SchematicPanel
+        @maximizePanelMsg="maximizePanel"
+      />
     </div>
 
-    <div ref="resizeHandle" class="w-1 bg-gray-800 flex-none cursor-resize"/>
+    <div ref="resizeHandle" class="bg-gray-800 cursor-resize" :class="resizeHandleVisibilityClasses"/>
 
-    <div ref="rightPanel" class="box-border flex-auto bg-gray-900">
+    <div ref="rightPanel" class="bg-gray-900" :class="rightPanelVisibilityClasses">
       <PropertyPanel
         @maximizePanelMsg="maximizePanel"
       />
@@ -44,7 +46,13 @@ export default {
         height: 0,
       },
       panel: {
-        schematic:{
+        schematic: {
+          isVisible: true
+        },
+        resizeHandle:{
+          isVisible: true
+        },
+        property: {
           isVisible: true
         }
       },
@@ -88,35 +96,41 @@ export default {
       this.window.height = window.innerHeight;
     },
     maximizePanel(msg) {
+      console.log("event")
       switch (msg.panel.id) {
         case "property":
+          this.togglePanelVisibility("schematic")
+          break;
 
-        console.log("about to hide")
-        this.togglePanelVisibility("schematic")
-        console.log("sent hide")
+        case "schematic":
+          this.togglePanelVisibility("property")
+          console.log("AAAAAA")
           break;
       }
 
     },
     togglePanelVisibility: function(panelName) {
-      console.log("togglePanelVisibility begin")
       this.panel[panelName].isVisible = !this.panel[panelName].isVisible;
-      console.log("togglePanelVisibility done")
-
-      console.log(this.panel["schematic"].isVisible)
+      this.panel.resizeHandle.isVisible = !this.panel.resizeHandle.isVisible
     },
   },
   computed: {
     leftPanelVisibilityClasses: function() {
-      console.log("computing")
       return {
-        'is-hidden': !this.panel["schematic"].isVisible,
+        'panel-is-hidden': !this.panel["schematic"].isVisible,
+        'panel-is-visible': this.panel["schematic"].isVisible,
       };
     },
     resizeHandleVisibilityClasses: function() {
-      console.log("computing")
       return {
-        'is-hidden': !this.panel["schematic"].isVisible,
+        'resize-handle-is-hidden': !this.panel["resizeHandle"].isVisible,
+        'resize-handle-is-visible': this.panel["resizeHandle"].isVisible,
+      };
+    },
+    rightPanelVisibilityClasses: function() {
+      return {
+        'panel-is-hidden': !this.panel["property"].isVisible,
+        'panel-is-visible': this.panel["property"].isVisible,
       };
     },
   }
@@ -124,9 +138,27 @@ export default {
 </script>
 
 <style scoped>
-.is-hidden {
-  @apply overflow-hidden h-0 w-0;
+.panel-is-hidden {
+  @apply overflow-hidden hidden;
 }
 
+.panel-is-visible {
+  @apply flex-auto;
+}
+
+/*.panel-property-is-visible {
+  @apply flex-auto flex-grow
+}*/
+
+.resize-handle-is-visible {
+  @apply w-1 flex-none
+}
+.resize-handle-is-hidden {
+  @apply overflow-hidden hidden;
+}
+
+/*.resize-handle-is-hidden {
+  @apply overflow-hidden order-last w-0;
+}*/
 
 </style>
