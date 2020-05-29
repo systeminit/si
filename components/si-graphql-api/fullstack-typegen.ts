@@ -361,9 +361,9 @@ export interface NexusGenRootTypes {
     subject?: string | null; // String
   }
   ChangeSet: { // root type
-    changeSetItemOrder?: string[] | null; // [String!]
     createdByUserId?: string | null; // String
     displayName?: string | null; // String
+    entryCount?: string | null; // String
     id?: string | null; // ID
     name?: string | null; // String
     siProperties?: NexusGenRootTypes['ChangeSetSiProperties'] | null; // ChangeSetSiProperties
@@ -443,6 +443,7 @@ export interface NexusGenRootTypes {
     value?: string | null; // String
   }
   DataStorable: { // root type
+    changeSetEntryCount?: string | null; // String
     changeSetId?: string | null; // String
     itemId?: string | null; // String
     naturalKey?: string | null; // String
@@ -901,9 +902,9 @@ export interface NexusGenFieldTypes {
   }
   ChangeSet: { // field return type
     associations: NexusGenRootTypes['ChangeSetAssociations'] | null; // ChangeSetAssociations
-    changeSetItemOrder: string[] | null; // [String!]
     createdByUserId: string | null; // String
     displayName: string | null; // String
+    entryCount: string | null; // String
     id: string | null; // ID
     name: string | null; // String
     siProperties: NexusGenRootTypes['ChangeSetSiProperties'] | null; // ChangeSetSiProperties
@@ -993,6 +994,7 @@ export interface NexusGenFieldTypes {
     value: string | null; // String
   }
   DataStorable: { // field return type
+    changeSetEntryCount: string | null; // String
     changeSetId: string | null; // String
     itemId: string | null; // String
     naturalKey: string | null; // String

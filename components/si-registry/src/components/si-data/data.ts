@@ -65,6 +65,14 @@ registry.base({
         p.universal = true;
       },
     });
+    c.fields.addNumber({
+      name: "changeSetEntryCount",
+      label: "Order for the Change Set Entry",
+      options(p: PropNumber) {
+        p.numberKind = "uint64";
+        p.universal = true;
+      },
+    });
   },
 });
 

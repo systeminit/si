@@ -14,6 +14,7 @@ message DataStorable {
   google.protobuf.StringValue view_context = 4;
   google.protobuf.StringValue change_set_id = 5;
   google.protobuf.StringValue item_id = 6;
+  google.protobuf.UInt64Value change_set_entry_count = 7;
 }
 enum DataPageTokenOrderByDirection {
   DATA_PAGE_TOKEN_ORDER_BY_DIRECTION_UNKNOWN = 0;

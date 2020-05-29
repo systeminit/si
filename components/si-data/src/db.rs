@@ -1,4 +1,7 @@
-use couchbase::{options::QueryOptions, options::ScanConsistency, SharedBucket, SharedCluster};
+use couchbase::{
+    options::QueryOptions, options::ReplaceOptions, options::ScanConsistency, CouchbaseError,
+    SharedBucket, SharedCluster,
+};
 use futures::stream::StreamExt;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{self, json};
@@ -8,6 +11,8 @@ use tracing::{debug, event, info_span, span, Level};
 use tracing_futures::Instrument as _;
 
 use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 
 use crate::error::{DataError, Result};
@@ -73,7 +78,6 @@ impl std::fmt::Display for DataPageTokenOrderByDirection {
 
 #[derive(Debug, Clone)]
 pub struct Db {
-    // Eventually, this should become a real thread pool.
     pub cluster: SharedCluster,
     pub bucket: Arc<SharedBucket>,
     pub bucket_name: Arc<String>,
@@ -194,7 +198,16 @@ impl Db {
         );
         async {
             let span = tracing::Span::current();
+
+            // If we have a change set id, we need to use it to get this items
+            // position in the count of entries.
+            if let Some(change_set_id) = content.change_set_id()? {
+                event!(Level::TRACE, "change_set_entry_count");
+                let entry_count = self.change_set_next_entry(change_set_id).await?;
+                content.set_change_set_entry_count(entry_count)?;
+            }
             event!(Level::TRACE, "generating_id");
+
             // We generate a new ID for every inserted object, no matter what
             content.generate_id();
             span.record("db.storable.id", &tracing::field::display(content.id()?));
@@ -358,6 +371,88 @@ impl Db {
         }
         .instrument(span)
         .await
+    }
+
+    // Returns the next entry count number from this change set. This function is atomic - you are
+    // guaranteed to be the only process with this number.
+    pub fn change_set_next_entry(
+        &self,
+        id: impl Into<String>,
+    ) -> Pin<Box<dyn Future<Output = Result<u64>> + Send + Sync>> {
+        let change_set_id = id.into();
+        let span = tracing::debug_span!(
+            "db.change_set_next_entry",
+            db.change_set.id = tracing::field::display(&change_set_id),
+            db.change_set.status = tracing::field::Empty,
+            db.change_set.entry_count = tracing::field::Empty,
+            db.change_set.next_entry_count = tracing::field::Empty,
+            component = tracing::field::display("si-account"),
+        );
+        // This is low cost - we're just taking an extra Arc counter, and defeating the
+        // borrow checker.
+        let db = self.clone();
+        Box::pin(
+            async move {
+                let span = tracing::Span::current();
+                let change_set_item = db
+                    .bucket
+                    .default_collection()
+                    .get(&change_set_id, None)
+                    .await?;
+                let cas = change_set_item.cas();
+                let mut change_set: serde_json::Value = change_set_item.content_as()?;
+                span.record(
+                    "db.change_set.status",
+                    &tracing::field::debug(&change_set["status"]),
+                );
+                if change_set["entryCount"].is_number() {
+                    span.record(
+                        "db.change_set.entry_count",
+                        &tracing::field::display(&change_set["entryCount"]),
+                    );
+                }
+                let new_entry_count = match &change_set["entryCount"] {
+                    serde_json::Value::Number(json_number) => {
+                        let number = json_number.as_u64().unwrap_or_default();
+                        number + 1
+                    }
+                    _ => 0,
+                };
+                span.record(
+                    "db.change_set.next_entry_count",
+                    &tracing::field::display(&new_entry_count),
+                );
+
+                if change_set["entryCount"].is_null() {
+                    match change_set.as_object_mut() {
+                        Some(obj) => {
+                            obj.insert("entryCount".to_string(), json!(new_entry_count));
+                        }
+                        None => unreachable!(),
+                    }
+                } else {
+                    *change_set.get_mut("entryCount").unwrap() = json!(new_entry_count);
+                }
+
+                match db
+                    .bucket
+                    .default_collection()
+                    .replace(
+                        &change_set_id,
+                        change_set,
+                        Some(ReplaceOptions::new().set_cas(cas)),
+                    )
+                    .await
+                {
+                    Ok(_) => return Ok(new_entry_count),
+                    Err(CouchbaseError::KeyExists) => {
+                        return db.change_set_next_entry(change_set_id).await;
+                    }
+                    Err(err) => return Err(DataError::CouchbaseError(err)),
+                };
+            }
+            .instrument(span),
+        )
     }
 
     pub async fn list_by_page_token_raw<S>(

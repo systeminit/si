@@ -137,14 +137,14 @@ input CapabilityRequest {
 type ChangeSet {
   associations: ChangeSetAssociations
 
-  """The list of change set items, in order"""
-  changeSetItemOrder: [String!]
-
   """User ID who created this Change Set"""
   createdByUserId: String
 
   """A change set for your system Display Name"""
   displayName: String
+
+  """Entry Count"""
+  entryCount: String
 
   """A change set for your system ID"""
   id: ID
@@ -521,6 +521,9 @@ input DataQueryRequest {
 }
 
 type DataStorable {
+  """Order for the Change Set Entry"""
+  changeSetEntryCount: String
+
   """The Change Set ID for this item"""
   changeSetId: String
 
