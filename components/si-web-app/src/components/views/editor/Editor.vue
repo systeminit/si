@@ -4,17 +4,15 @@
     ref="editor"
     id="editor"
     class="flex flex-row h-full w-full"
-    @mousemove="mouseMove"
-    @mousedown="mouseDown"
-    @mouseup="mouseUp"
+    v-on:mousemove="mouseMove"
+    v-on:mousedown="mouseDown"
+    v-on:mouseup="mouseUp"
   >
-    <div ref="leftPanel" class="box-border flex-auto bg-gray-900" :class="leftPanelVisibilityClasses">
-      <SchematicPanel
-        :message="msgSchematicPanel"
-      />
+    <div ref="leftPanel" class="box-border flex-auto bg-gray-900">
+      <SchematicPanel/>
     </div>
 
-    <div ref="resizeHandle" class="w-1 bg-gray-800 flex-none cursor-resize" :class="resizeHandleVisibilityClasses"/>
+    <div ref="resizeHandle" class="w-1 bg-gray-800 flex-none cursor-resize"/>
 
     <div ref="rightPanel" class="box-border flex-auto bg-gray-900">
       <PropertyPanel

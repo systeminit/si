@@ -1,8 +1,8 @@
 <template>
   <!-- eslint-disable vue/no-unused-components -->
-  <div ref="schematic-editor" class="flex flex-col h-full w-full">
+  <div ref="schematic-panel" class="flex flex-col h-full w-full">
 
-    <div id="schematic-editor-menu" class="flex flex-row flex-no-wrap content-between bg-black h-30 w-full">
+    <div id="schematic-panel-menu" class="flex flex-row flex-no-wrap content-between bg-black h-30 w-full">
       
       <ui-button kind="icon">
         <filter-icon size="1x" class="custom-class"></filter-icon>
@@ -49,10 +49,7 @@ import UiButton from "@/components/ui/button/UiButton.vue";
 import NodeEditor from "./NodeEditor.vue";
 
 export default {
-  name: "EditorPropertyPanel",
-  props: {
-    message: {}
-  },
+  name: "EditorSchematicPanel",
   components: {
     Maximize2Icon,
     SettingsIcon,
@@ -66,34 +63,7 @@ export default {
     return {
       isVisible: true
     }
-  },
-  watch: {
-    message: function(msg) {
-      console.log("watching and got a message")
-      this.messageEvent(msg)
-    }
-  },
-  methods: {
-    toggleVisibility: function() {
-      this.isVisible = !this.isVisible;
-    },
-    messageEvent(msg) {
-      console.log("a new message with: ", msg)
-      switch (msg.action) {
-        case "hide":
-          this.toggleVisibility();
-          break;
-      }
-    }
-  },
-  computed: {
-    visibilityClasses: function() {
-      return {
-        'is-hidden': !this.isVisible,
-      };
-    }
   }
-
 };
 </script>
 

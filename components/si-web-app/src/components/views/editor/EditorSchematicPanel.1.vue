@@ -146,15 +146,7 @@ export default {
   mounted: function() {
     this.canvas.element = this.$refs.canvas;
     this.grid.element = this.$refs.grid;
-
-    /**
-     * TODO
-     *
-     * the next line is dangerous and it sucks!
-     * (this.editor.element = this.$parent.$parent.$refs.editor)
-     * -> need to find a better way to do this
-     */
-    this.editor.element = this.$parent.$parent.$refs.editor;
+    this.editor.element = this.$parent.$refs.editor;
 
     // Position grid
     let canvasOrigin = {
