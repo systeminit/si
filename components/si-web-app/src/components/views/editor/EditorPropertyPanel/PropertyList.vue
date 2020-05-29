@@ -8,11 +8,11 @@
       @propChangeMsg="propChangeMsg"
     />
 
-    <div class="flex flex-row-reverse pr-8 pb-4">
+<!--     <div class="flex flex-row-reverse pr-8 pb-4">
       <button class="bg-teal-700 px-4 py-2 text-white hover:bg-teal-600" @click="createEntity()" type="button">
         Create
       </button>
-    </div>
+    </div> -->
 
   </div>
 </template>

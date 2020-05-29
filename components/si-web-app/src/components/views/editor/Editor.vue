@@ -1,26 +1,32 @@
 <template>
+   <!-- eslint-disable vue/no-unused-components -->
   <div
     ref="editor"
     id="editor"
     class="flex flex-row h-full w-full"
-    v-on:mousemove="mouseMove"
-    v-on:mousedown="mouseDown"
-    v-on:mouseup="mouseUp"
+    @mousemove="mouseMove"
+    @mousedown="mouseDown"
+    @mouseup="mouseUp"
   >
-    <div ref="leftPanel" class="box-border flex-auto bg-gray-900">
-      <SchematicPanel />
+    <div ref="leftPanel" class="box-border flex-auto bg-gray-900" :class="leftPanelVisibilityClasses">
+      <SchematicPanel
+        :message="msgSchematicPanel"
+      />
     </div>
 
-    <div ref="resizeHandle" class="w-1 bg-gray-800 flex-none cursor-resize"/>
+    <div ref="resizeHandle" class="w-1 bg-gray-800 flex-none cursor-resize" :class="resizeHandleVisibilityClasses"/>
 
     <div ref="rightPanel" class="box-border flex-auto bg-gray-900">
-      <PropertyPanel />
+      <PropertyPanel
+        @maximizePanelMsg="maximizePanel"
+      />
     </div>
   </div>
 </template>
 
 <script>
-import SchematicPanel from "./EditorSchematicPanel.vue";
+/* eslint-disable vue/no-unused-components */
+import SchematicPanel from "./EditorSchematicPanel";
 import PropertyPanel from "./EditorPropertyPanel";
 
 export default {
@@ -39,6 +45,12 @@ export default {
         width: 0,
         height: 0,
       },
+      panel: {
+        schematic:{
+          isVisible: true
+        }
+      },
+      msgSchematicPanel: ""
     };
   },
   mounted: function() {
@@ -76,14 +88,47 @@ export default {
       // Will need to implement left panel resize to maintain proportion when resizing the browser.
       this.window.width = window.innerWidth;
       this.window.height = window.innerHeight;
-      // console.log(this.window.width)
-      // console.log(this.window.height)
+    },
+    maximizePanel(msg) {
+      switch (msg.panel.id) {
+        case "property":
 
-      // get size ratio between left and right side panel
-      // transform width of the right pannel while maintaining ratios
-      // set right panel width while resizing window.
-      // simulate resizeHandle transform...
+        console.log("about to hide")
+        this.togglePanelVisibility("schematic")
+        console.log("sent hide")
+          break;
+      }
+
+    },
+    togglePanelVisibility: function(panelName) {
+      console.log("togglePanelVisibility begin")
+      this.panel[panelName].isVisible = !this.panel[panelName].isVisible;
+      console.log("togglePanelVisibility done")
+
+      console.log(this.panel["schematic"].isVisible)
     },
   },
+  computed: {
+    leftPanelVisibilityClasses: function() {
+      console.log("computing")
+      return {
+        'is-hidden': !this.panel["schematic"].isVisible,
+      };
+    },
+    resizeHandleVisibilityClasses: function() {
+      console.log("computing")
+      return {
+        'is-hidden': !this.panel["schematic"].isVisible,
+      };
+    },
+  }
 };
 </script>
+
+<style scoped>
+.is-hidden {
+  @apply overflow-hidden h-0 w-0;
+}
+
+
+</style>

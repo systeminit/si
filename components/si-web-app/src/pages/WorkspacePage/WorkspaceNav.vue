@@ -15,6 +15,7 @@
     </div>
 
     <div id="workspace-content" class="flex px-4 py-2 m-2">
+  
       <span
         class="self-center flex-1 font-source-code-pro font-medium subpixel-antialiased text-white text-l tracking-tight align-middle"
       >

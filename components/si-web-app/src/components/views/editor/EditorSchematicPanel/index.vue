@@ -1,6 +1,8 @@
 <template>
-  <div ref="property-panel" class="flex flex-col h-full w-full property-editor-bg-color">
-    <div id="property-panel-menu" class="flex flex-row flex-no-wrap content-between bg-black h-30 w-full">
+  <!-- eslint-disable vue/no-unused-components -->
+  <div ref="schematic-editor" class="flex flex-col h-full w-full">
+
+    <div id="schematic-editor-menu" class="flex flex-row flex-no-wrap content-between bg-black h-30 w-full">
       
       <ui-button kind="icon">
         <filter-icon size="1x" class="custom-class"></filter-icon>
@@ -22,19 +24,20 @@
         <settings-icon size="1x" class="custom-class"></settings-icon>
       </ui-button>
 
-      <ui-button kind="icon" @click="maximizePanel">
+      <ui-button kind="icon">
         <maximize-2-icon size="1x" class="custom-class"></maximize-2-icon>
       </ui-button>
     
     </div>
 
     <div class="flex w-full h-full overflow-auto">
-      <PropertyList />
+      <NodeEditor/>
     </div>
   </div>
 </template>
 
 <script>
+  /* eslint-disable vue/no-unused-components */
 import {
   Maximize2Icon,
   SettingsIcon,
@@ -43,10 +46,13 @@ import {
   CodeIcon,
 } from "vue-feather-icons";
 import UiButton from "@/components/ui/button/UiButton.vue";
-import PropertyList from "./PropertyList.vue";
+import NodeEditor from "./NodeEditor.vue";
 
 export default {
   name: "EditorPropertyPanel",
+  props: {
+    message: {}
+  },
   components: {
     Maximize2Icon,
     SettingsIcon,
@@ -54,17 +60,40 @@ export default {
     SearchIcon,
     CodeIcon,
     UiButton,
-    PropertyList,
+    NodeEditor,
+  },
+  data() {
+    return {
+      isVisible: true
+    }
+  },
+  watch: {
+    message: function(msg) {
+      console.log("watching and got a message")
+      this.messageEvent(msg)
+    }
   },
   methods: {
-    maximizePanel() {
-      this.$emit("maximizePanelMsg", {
-        panel: {
-          id: "property"
-        },
-      })
+    toggleVisibility: function() {
+      this.isVisible = !this.isVisible;
+    },
+    messageEvent(msg) {
+      console.log("a new message with: ", msg)
+      switch (msg.action) {
+        case "hide":
+          this.toggleVisibility();
+          break;
+      }
+    }
+  },
+  computed: {
+    visibilityClasses: function() {
+      return {
+        'is-hidden': !this.isVisible,
+      };
     }
   }
+
 };
 </script>
 
@@ -76,5 +105,10 @@ export default {
 .property-title-bg-color {
   background-color: #292C2D;
 }
+
+.is-hidden .schematic-editor {
+  @apply overflow-hidden h-0;
+}
+
 
 </style>
