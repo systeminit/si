@@ -191,7 +191,7 @@
           <select 
             class="bg-gray-800 border text-gray-400 text-sm px-4 leading-tight focus:outline-none"
             :aria-label="propObjectProperty.name"
-            :v-model="objectModel"
+            v-model="objectModel"
             @change="formatSelector"
             >
             <option
@@ -366,6 +366,8 @@ export default Vue.extend({
   methods: {
     formatSelector() {
       console.log("PropObjectProperty.methods.formatSelector()")
+
+      console.log("aa with:", this.objectModel)
       // this.objectModel = constantCase(this.objectModel.replace(/\./g, '_'));
       this.objectModel = constantCase(this.objectModel);
 
