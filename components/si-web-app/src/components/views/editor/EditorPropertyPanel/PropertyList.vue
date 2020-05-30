@@ -8,20 +8,19 @@
       @propChangeMsg="propChangeMsg"
     />
 
-<!--     <div class="flex flex-row-reverse pr-8 pb-4">
+    <div class="flex flex-row-reverse pr-8 pb-4">
       <button class="bg-teal-700 px-4 py-2 text-white hover:bg-teal-600" @click="createEntity()" type="button">
         Create
       </button>
-    </div> -->
+    </div>
 
   </div>
 </template>
 
 <script>
 /* eslint-disable vue/no-unused-components */
-import { registry } from "si-registry";
 import { auth } from "@/utils/auth";
-
+import { registry } from "si-registry";
 import PropObject from "./PropObject.vue";
 
 // @ts-ignore
@@ -33,7 +32,6 @@ export default {
     PropObject,
     VueJsonPretty,
   },
-  mounted() {},
   data() {
     const kubernetesDeploymentEntity = registry.get(
       "kubernetesDeploymentEntity",
@@ -83,64 +81,8 @@ export default {
         console.log("not today, homie", { error });
       }
 
-      // try {
-      //   console.log(this.kubernetesDeploymentEntityList);
-      //   // let objE = registry.objects
-      //   // let listTest = this.kubernetesDeploymentEntityList()
-
-      //   // let KubernetesDeploymentEntityListRequest = registry.KubernetesDeploymentEntityListRequest()
-      //   // let KubernetesDeploymentEntityList = this.kubernetesDeploymentEntity.methods.getEntry("list");
-
-      //   // let KubernetesDeploymentEntityList = registry.KubernetesDeploymentEntityListKubernetesDeploymentEntityListRequest)
-      //   // let listA = registry.get("kubernetesDeploymentEntityList", );
-      //   // console.log(KubernetesDeploymentEntityList)
-      // } catch (error) {
-      //   console.log("oops", { error });
-      // }
-
       console.log("done");
     },
-    onKeyUp(event) {
-      if (event.key == "Enter") {
-        console.log("PropertyList.methods.onKeyUp() :: Enter");
-      }
-    },
-  },
-  apollo: {
-    kubernetesDeploymentEntityList: {
-      query() {
-        console.log("PropertyList.apollo.kubernetesDeploymentEntityList.query()");
-        return this.kubernetesDeploymentEntity.graphql.query({
-          methodName: "list",
-        });
-      },
-      variables() {
-        console.log("PropertyList.apollo.kubernetesDeploymentEntityList.variables()");
-        return {
-          pageSize: "1000",
-        };
-      },
-      update(data) {
-        console.log("PropertyList.apollo.kubernetesDeploymentEntityList.update()");
-      },
-    },
-    // kubernetesDeploymentEntityGet: {
-    //   query() {
-    //     return this.kubernetesDeploymentEntity.graphql.query({
-    //       methodName:"get"
-    //     });
-    //   },
-    //   variables(myVar) {
-    //     return {
-    //       pageSize: myVar
-    //     }
-    //   },
-    //   update(data) {
-    //     console.log(data)
-    //     // this.me == data.what.I.want
-    //   }
-    // }
-    // -> Item List... look into our item list
-  },
+  }
 };
 </script>
