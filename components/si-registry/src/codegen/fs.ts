@@ -29,13 +29,14 @@ export async function writeCode(filename: string, code: string): Promise<void> {
       const rustfmtChild = childProcess.spawn("rustfmt", ["--emit", "stdout"], {
         stdio: ["pipe", "pipe", "pipe"],
       });
-      onExit(rustfmtChild);
+      const exitPromise = onExit(rustfmtChild);
       await streamWrite(rustfmtChild.stdin, code);
       await streamEnd(rustfmtChild.stdin);
       codeOutput = "";
       for await (const line of chunksToLinesAsync(rustfmtChild.stdout)) {
         codeOutput += line;
       }
+      await exitPromise;
     }
     const codeHash = XXHash.hash64(Buffer.from(codeOutput), 1234, "base64");
     const existingCode = await fs.promises.readFile(codeFilename);

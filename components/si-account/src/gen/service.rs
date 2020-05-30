@@ -320,15 +320,56 @@ impl crate::protobuf::account_server::Account for Service {
             let inner = request.into_inner();
             let name = inner.name;
             let display_name = inner.display_name;
-            let si_properties = inner.si_properties;
+            let note = inner.note;
+            let workspace_id = inner.workspace_id;
             let created_by_user_id = inner.created_by_user_id;
+
+            let real_workspace_id = workspace_id.clone().ok_or_else(|| {
+                si_data::DataError::ValidationError(
+                    "missing required workspace_id value".to_string(),
+                )
+            })?;
+
+            let workspace = crate::protobuf::Workspace::get(&self.db, &real_workspace_id).await?;
+            let organization_id = Some(
+                workspace
+                    .si_properties
+                    .as_ref()
+                    .ok_or_else(|| si_data::DataError::RequiredField("si_properties".to_string()))?
+                    .organization_id
+                    .as_ref()
+                    .ok_or_else(|| {
+                        si_data::DataError::RequiredField("organization_id".to_string())
+                    })?
+                    .clone(),
+            );
+            let billing_account_id = Some(
+                workspace
+                    .si_properties
+                    .as_ref()
+                    .ok_or_else(|| si_data::DataError::RequiredField("si_properties".to_string()))?
+                    .billing_account_id
+                    .as_ref()
+                    .ok_or_else(|| {
+                        si_data::DataError::RequiredField("billing_account_id".to_string())
+                    })?
+                    .clone(),
+            );
+
+            let si_properties = crate::protobuf::ChangeSetSiProperties {
+                workspace_id: Some(real_workspace_id.clone()),
+                organization_id,
+                billing_account_id,
+            };
 
             let output = crate::protobuf::ChangeSet::create(
                 &self.db,
                 name,
                 display_name,
-                si_properties,
+                note,
+                workspace_id,
                 created_by_user_id,
+                Some(si_properties),
             )
             .await?;
 

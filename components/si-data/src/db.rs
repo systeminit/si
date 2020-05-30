@@ -640,19 +640,19 @@ impl Db {
                         } else {
                             // View Context Filter & Change Set ID & Query
                             format!(
-                                    "SELECT {bucket}.* \
-                                       FROM `{bucket}` \
-                                       WHERE {type_check} \
-                                           AND ARRAY_CONTAINS(siStorable.tenantIds, $tenant_id) \
-                                           AND ARRAY_CONTAINS(siStorable.viewContext, $view_context) \
+                                    "SELECT a.* \
+                                       FROM `{bucket}` AS a \
+                                       WHERE a.{type_check} \
+                                           AND ARRAY_CONTAINS(a.siStorable.tenantIds, $tenant_id) \
+                                           AND ARRAY_CONTAINS(a.siStorable.viewContext, $view_context) \
                                            AND {query} \
                                            AND (a.siStorable.changeSetId = $change_set_id \
                                                 OR (a.siStorable.changeSetId IS NOT VALUED \
                                                     AND a.id NOT IN ( \
                                                       SELECT RAW siStorable.itemId FROM `{bucket}` AS b WHERE b.{type_check} \
                                                              AND b.siStorable.changeSetId = $change_set_id))) \
-                                       ORDER BY {bucket}.[$order_by] {order_by_direction}",
-                                    query=q.as_n1ql(&self.bucket_name)?,
+                                       ORDER BY a.[$order_by] {order_by_direction}",
+                                    query=q.as_n1ql("a")?,
                                     order_by_direction=order_by_direction.to_string(),
                                     bucket=self.bucket_name,
                                     type_check=type_check,
@@ -662,13 +662,13 @@ impl Db {
                         if q.items.is_empty() {
                             // View Context Filter
                             format!(
-                                    "SELECT {bucket}.* \
-                                       FROM `{bucket}` \
-                                       WHERE {type_check} \
-                                           AND siStorable.changeSetId IS NOT VALUED \
-                                           AND ARRAY_CONTAINS(siStorable.tenantIds, $tenant_id) \
-                                           AND ARRAY_CONTAINS(siStorable.viewContext, $view_context) \
-                                       ORDER BY {bucket}.[$order_by] {order_by_direction}",
+                                    "SELECT a.* \
+                                       FROM `{bucket}` AS a \
+                                       WHERE a.{type_check} \
+                                           AND a.siStorable.changeSetId IS NOT VALUED \
+                                           AND ARRAY_CONTAINS(a.siStorable.tenantIds, $tenant_id) \
+                                           AND ARRAY_CONTAINS(a.siStorable.viewContext, $view_context) \
+                                       ORDER BY a.[$order_by] {order_by_direction}",
                                     order_by_direction=order_by_direction.to_string(),
                                     bucket=self.bucket_name,
                                     type_check=type_check,
@@ -676,15 +676,15 @@ impl Db {
                         } else {
                             // View Context Filter & Query
                             format!(
-                                    "SELECT {bucket}.* \
-                                       FROM `{bucket}` \
-                                       WHERE {type_check} \
-                                           AND siStorable.changeSetId IS NOT VALUED \
-                                           AND ARRAY_CONTAINS(siStorable.tenantIds, $tenant_id) \
-                                           AND ARRAY_CONTAINS(siStorable.viewContext, $view_context) \
+                                    "SELECT a.* \
+                                       FROM `{bucket}` AS a \
+                                       WHERE a.{type_check} \
+                                           AND a.siStorable.changeSetId IS NOT VALUED \
+                                           AND ARRAY_CONTAINS(a.siStorable.tenantIds, $tenant_id) \
+                                           AND ARRAY_CONTAINS(a.siStorable.viewContext, $view_context) \
                                            AND {query} \
-                                       ORDER BY {bucket}.[$order_by] {order_by_direction}",
-                                    query=q.as_n1ql(&self.bucket_name)?,
+                                       ORDER BY a.[$order_by] {order_by_direction}",
+                                    query=q.as_n1ql("a")?,
                                     order_by_direction=order_by_direction.to_string(),
                                     bucket=self.bucket_name,
                                     type_check=type_check,
@@ -724,8 +724,8 @@ impl Db {
                                                     AND a.id NOT IN ( \
                                                       SELECT RAW siStorable.itemId FROM `{bucket}` AS b WHERE b.{type_check}  \
                                                              AND b.siStorable.changeSetId = $change_set_id))) \
-                                       ORDER BY {bucket}.[$order_by] {order_by_direction}",
-                                       query=q.as_n1ql(&self.bucket_name)?,
+                                       ORDER BY a.[$order_by] {order_by_direction}",
+                                       query=q.as_n1ql("a")?,
                                        order_by_direction=order_by_direction.to_string(),
                                        bucket=self.bucket_name,
                                        type_check=type_check,
@@ -735,14 +735,14 @@ impl Db {
                     // No filters or change set id, but a query was provided - it must have items to
                     // complete
                     format!(
-                        "SELECT {bucket}.* \
-                               FROM `{bucket}` \
-                               WHERE {type_check} \
-                                 AND siStorable.changeSetId IS NOT VALUED \
-                                 AND ARRAY_CONTAINS(siStorable.tenantIds, $tenant_id) \
+                        "SELECT a.* \
+                               FROM `{bucket}` AS a \
+                               WHERE a.{type_check} \
+                                 AND a.siStorable.changeSetId IS NOT VALUED \
+                                 AND ARRAY_CONTAINS(a.siStorable.tenantIds, $tenant_id) \
                                  AND {query} \
-                                 ORDER BY {bucket}.[$order_by] {order_by_direction}",
-                        query = q.as_n1ql(&self.bucket_name)?,
+                                 ORDER BY a.[$order_by] {order_by_direction}",
+                        query = q.as_n1ql("a")?,
                         order_by_direction = order_by_direction.to_string(),
                         bucket = self.bucket_name,
                         type_check = type_check,
@@ -750,12 +750,12 @@ impl Db {
                 }
             }
             None => format!(
-                "SELECT {bucket}.* \
-                                  FROM `{bucket}` \
-                                  WHERE {type_check} \
-                                    AND siStorable.changeSetId IS NOT VALUED \
-                                    AND ARRAY_CONTAINS(siStorable.tenantIds, $tenant_id) \
-                                    ORDER BY {bucket}.[$order_by] {}",
+                "SELECT a.* \
+                                  FROM `{bucket}` AS a \
+                                  WHERE a.{type_check} \
+                                    AND a.siStorable.changeSetId IS NOT VALUED \
+                                    AND ARRAY_CONTAINS(a.siStorable.tenantIds, $tenant_id) \
+                                    ORDER BY a.[$order_by] {}",
                 order_by_direction,
                 bucket = self.bucket_name,
                 type_check = type_check,

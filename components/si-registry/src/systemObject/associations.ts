@@ -59,10 +59,12 @@ interface HasManyConstructor
   fromFieldPath?: HasMany["fromFieldPath"];
   methodName?: Association["methodName"];
   methodArgumentName?: Association["methodArgumentName"];
+  queryField?: HasMany["queryField"];
 }
 
 export class HasMany extends Association {
   fromFieldPath: string[];
+  queryField: string;
 
   constructor(args: HasManyConstructor) {
     if (args.methodName == undefined) {
@@ -76,6 +78,11 @@ export class HasMany extends Association {
       this.fromFieldPath = args.fromFieldPath;
     } else {
       this.fromFieldPath = ["id"];
+    }
+    if (args.queryField) {
+      this.queryField = args.queryField;
+    } else {
+      this.queryField = "scopeByTenantId";
     }
   }
 
@@ -181,13 +188,13 @@ export class AssociationList {
     return assoc;
   }
 
-  hasList(args: HasListConstructor): HasMany {
+  hasList(args: HasListConstructor): HasList {
     const assoc = new HasList(args);
     this.associations.push(assoc);
     return assoc;
   }
 
-  inList(args: InListConstructor): HasMany {
+  inList(args: InListConstructor): InList {
     const assoc = new InList(args);
     this.associations.push(assoc);
     return assoc;

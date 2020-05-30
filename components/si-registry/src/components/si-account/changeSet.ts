@@ -26,6 +26,11 @@ registry.system({
       fromFieldPath: ["siProperties", "workspaceId"],
       typeName: "workspace",
     });
+    c.associations.hasMany({
+      fieldName: "changeSetEntries",
+      typeName: "item",
+      queryField: "siStorable.changeSetId",
+    });
 
     c.fields.addObject({
       name: "siProperties",
@@ -79,6 +84,10 @@ registry.system({
         p.baseDefaultValue = "open";
       },
     });
+    c.fields.addText({
+      name: "note",
+      label: "Note",
+    });
 
     c.addListMethod();
     c.addGetMethod();
@@ -90,27 +99,25 @@ registry.system({
         p.mutation = true;
         p.request.properties.addText({
           name: "name",
-          label: "Name of the changeset",
+          label: "Name",
           options(p) {
             p.required = true;
           },
         });
         p.request.properties.addText({
           name: "displayName",
-          label: "Change Set display name",
+          label: "Display Name",
+        });
+        p.request.properties.addText({
+          name: "note",
+          label: "Note",
+        });
+        p.request.properties.addText({
+          name: "workspaceId",
+          label: `Workspace ID`,
           options(p) {
             p.required = true;
-          },
-        });
-        p.request.properties.addLink({
-          name: "siProperties",
-          label: "The SI Properties for this User",
-          options(p: PropLink) {
-            p.required = true;
-            p.lookup = {
-              typeName: "changeSet",
-              names: ["siProperties"],
-            };
+            p.hidden = true;
           },
         });
         p.request.properties.addText({

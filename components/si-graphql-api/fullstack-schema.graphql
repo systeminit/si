@@ -152,6 +152,9 @@ type ChangeSet {
   """A change set for your system Name"""
   name: String
 
+  """Note"""
+  note: String
+
   """A change set for your system"""
   siProperties: ChangeSetSiProperties
 
@@ -166,6 +169,9 @@ type ChangeSet {
 type ChangeSetAssociations {
   """System Initiative Billing Account"""
   billingAccount: BillingAccountGetReply
+
+  """An item"""
+  changeSetEntries(input: ItemListRequest): ItemListReply
 
   """A System Initiative Organization"""
   organization: OrganizationGetReply
@@ -185,14 +191,17 @@ input ChangeSetCreateRequest {
   """User ID who created this Change Set"""
   createdByUserId: String!
 
-  """Change Set display name"""
-  displayName: String!
+  """Display Name"""
+  displayName: String
 
-  """Name of the changeset"""
+  """Name"""
   name: String!
 
-  """The SI Properties for this User"""
-  siProperties: ChangeSetSiPropertiesRequest!
+  """Note"""
+  note: String
+
+  """Workspace ID"""
+  workspaceId: String!
 }
 
 type ChangeSetEntry {
@@ -359,17 +368,6 @@ type ChangeSetSiProperties {
 
   """Organization ID"""
   workspaceId: String
-}
-
-input ChangeSetSiPropertiesRequest {
-  """Billing Account ID"""
-  billingAccountId: String!
-
-  """Organization ID"""
-  organizationId: String!
-
-  """Organization ID"""
-  workspaceId: String!
 }
 
 """The status of this Change Set"""
@@ -1262,7 +1260,7 @@ type KubernetesDeploymentEntityCreateReply {
 """Create Entity Request"""
 input KubernetesDeploymentEntityCreateRequest {
   """Change Set ID"""
-  changeSetId: String
+  changeSetId: String!
 
   """Constraints"""
   constraints: KubernetesDeploymentComponentConstraintsRequest

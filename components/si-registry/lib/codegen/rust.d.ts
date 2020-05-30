@@ -31,6 +31,7 @@ export declare class RustFormatter {
     isEntityEditMethod(propMethod: PropPrelude.PropMethod): boolean;
     isEntityEventObject(): boolean;
     isEntityObject(): boolean;
+    isChangeSetObject(): boolean;
     isMigrateable(): boolean;
     isStorable(): boolean;
     actionProps(): PropPrelude.PropAction[];
@@ -63,6 +64,7 @@ export declare class RustFormatter {
     implServiceEntityAction(propMethod: PropPrelude.PropMethod): string;
     implServiceEntityEdit(propMethod: PropPrelude.PropMethod): string;
     implServiceCommonCreate(propMethod: PropPrelude.PropMethod): string;
+    implServiceChangeSetCreate(propMethod: PropPrelude.PropMethod): string;
     implServiceEntityCreate(propMethod: PropPrelude.PropMethod): string;
     implServiceGet(propMethod: PropPrelude.PropMethod): string;
     implServiceList(propMethod: PropPrelude.PropMethod): string;

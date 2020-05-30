@@ -419,6 +419,7 @@ message ChangeSet {
   google.protobuf.StringValue created_by_user_id = 1002;
   google.protobuf.UInt64Value entry_count = 1003;
   ChangeSetStatus status = 1004;
+  google.protobuf.StringValue note = 1005;
 }
 message ChangeSetListRequest {
   si.data.DataQuery query = 1;
@@ -442,8 +443,9 @@ message ChangeSetGetReply {
 message ChangeSetCreateRequest {
   google.protobuf.StringValue name = 1001;
   google.protobuf.StringValue display_name = 1002;
-  si.account.ChangeSetSiProperties si_properties = 1003;
-  google.protobuf.StringValue created_by_user_id = 1004;
+  google.protobuf.StringValue note = 1003;
+  google.protobuf.StringValue workspace_id = 1004;
+  google.protobuf.StringValue created_by_user_id = 1005;
 }
 message ChangeSetCreateReply {
   si.account.ChangeSet item = 1001;

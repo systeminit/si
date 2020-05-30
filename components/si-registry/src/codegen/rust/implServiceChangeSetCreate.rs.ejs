@@ -1,0 +1,47 @@
+<%- fmt.implServiceAuth(propMethod) %>
+
+let inner = request.into_inner();
+<%- fmt.implServiceMethodCreateDestructure() %>
+
+let real_workspace_id = workspace_id.clone().ok_or_else(|| {
+  si_data::DataError::ValidationError(
+    "missing required workspace_id value".to_string(),
+  )
+})?;
+
+let workspace = crate::protobuf::Workspace::get(&self.db, &real_workspace_id).await?;
+let organization_id = Some(
+  workspace
+    .si_properties
+    .as_ref()
+    .ok_or_else(|| si_data::DataError::RequiredField("si_properties".to_string()))?
+    .organization_id
+    .as_ref()
+    .ok_or_else(|| si_data::DataError::RequiredField("organization_id".to_string()))?
+    .clone(),
+);
+let billing_account_id = Some(
+  workspace
+    .si_properties
+    .as_ref()
+    .ok_or_else(|| si_data::DataError::RequiredField("si_properties".to_string()))?
+    .billing_account_id
+    .as_ref()
+    .ok_or_else(|| si_data::DataError::RequiredField("billing_account_id".to_string()))?
+    .clone(),
+);
+
+let si_properties = crate::protobuf::ChangeSetSiProperties {
+  workspace_id: Some(real_workspace_id.clone()),
+  organization_id,
+  billing_account_id,
+};
+
+let output = <%- fmt.structName() %>::create(&self.db, <%- fmt.implCreatePassNewArgs() %>, Some(si_properties)).await?;
+
+Ok(tonic::Response::new(
+     <%- fmt.implServiceReplyType(propMethod, { option: false, reference: false }) %>{
+        item: Some(output),
+    },
+))
+
