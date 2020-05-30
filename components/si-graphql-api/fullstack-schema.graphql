@@ -204,116 +204,6 @@ input ChangeSetCreateRequest {
   workspaceId: String!
 }
 
-type ChangeSetEntry {
-  associations: ChangeSetEntryAssociations
-
-  """User ID who created this Change Set Entry"""
-  createdByUserId: String
-
-  """An entry inside of a change set Display Name"""
-  displayName: String
-
-  """An entry inside of a change set ID"""
-  id: ID
-
-  """The ID of the item this Change Set Entry points at"""
-  itemId: String
-
-  """An entry inside of a change set Name"""
-  name: String
-
-  """An entry inside of a change set"""
-  siProperties: ChangeSetEntrySiProperties
-
-  """SI Storable"""
-  siStorable: DataStorable
-
-  """The status of this Change Set Entry"""
-  status: ChangeSetEntryStatus
-}
-
-"""An entry inside of a change set Associations"""
-type ChangeSetEntryAssociations {
-  """System Initiative Billing Account"""
-  billingAccount: BillingAccountGetReply
-
-  """A change set for your system"""
-  changeSet: ChangeSetGetReply
-
-  """A System Initiative Organization"""
-  organization: OrganizationGetReply
-
-  """A System Initiative Workspace"""
-  workspace: WorkspaceGetReply
-}
-
-"""Get a An entry inside of a change set Reply"""
-type ChangeSetEntryGetReply {
-  """An entry inside of a change set Item"""
-  item: ChangeSetEntry
-}
-
-"""Get a An entry inside of a change set Request"""
-input ChangeSetEntryGetRequest {
-  """An entry inside of a change set ID"""
-  id: ID!
-}
-
-"""List An entry inside of a change set Reply"""
-type ChangeSetEntryListReply {
-  """Items"""
-  items: [ChangeSetEntry!]
-
-  """Next Page Token"""
-  nextPageToken: String
-
-  """Total Count"""
-  totalCount: String
-}
-
-"""List An entry inside of a change set Request"""
-input ChangeSetEntryListRequest {
-  """Order By"""
-  orderBy: String
-
-  """Order By Direction"""
-  orderByDirection: DataPageTokenOrderByDirection
-
-  """Page Size"""
-  pageSize: String
-
-  """Page Token"""
-  pageToken: String
-
-  """Query"""
-  query: DataQueryRequest
-
-  """Scope By Tenant ID"""
-  scopeByTenantId: String
-}
-
-type ChangeSetEntrySiProperties {
-  """Billing Account ID"""
-  billingAccountId: String
-
-  """Change Set ID"""
-  changeSetId: String
-
-  """Organization ID"""
-  organizationId: String
-
-  """Organization ID"""
-  workspaceId: String
-}
-
-"""The status of this Change Set Entry"""
-enum ChangeSetEntryStatus {
-  ABANDONED
-  CLOSED
-  OPEN
-  UNKNOWN
-}
-
 """Get a A change set for your system Reply"""
 type ChangeSetGetReply {
   """A change set for your system Item"""
@@ -1714,8 +1604,6 @@ input OrganizationSiPropertiesRequest {
 type Query {
   billingAccountGet(input: BillingAccountGetRequest): BillingAccountGetReply
   billingAccountList(input: BillingAccountListRequest): BillingAccountListReply
-  changeSetEntryGet(input: ChangeSetEntryGetRequest): ChangeSetEntryGetReply
-  changeSetEntryList(input: ChangeSetEntryListRequest): ChangeSetEntryListReply
   changeSetGet(input: ChangeSetGetRequest): ChangeSetGetReply
   changeSetList(input: ChangeSetListRequest): ChangeSetListReply
   groupGet(input: GroupGetRequest): GroupGetReply
