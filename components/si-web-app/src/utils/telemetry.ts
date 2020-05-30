@@ -22,7 +22,7 @@ provider.addSpanProcessor(
     }),
   ),
 );
-provider.addSpanProcessor(new SimpleSpanProcessor(new ConsoleSpanExporter()));
+// provider.addSpanProcessor(new SimpleSpanProcessor(new ConsoleSpanExporter()));
 provider.register({
   contextManager: new ZoneContextManager(),
 });
