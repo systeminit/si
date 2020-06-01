@@ -1,5 +1,9 @@
 #!/bin/sh
 
+# Configuration Environemnt Variables
+# This files is copied from the Dockerfile
+. /etc/service/config-couchbase/env
+
 # Log all subsequent commands to logfile. FD 3 is now the console
 # for things we want to show up in "docker logs".
 LOGFILE=/opt/couchbase/var/lib/couchbase/logs/container-startup.log
@@ -73,7 +77,7 @@ curl_check() {
 wait_for_uri http://127.0.0.1:8091/ui/index.html 200
 
 echo "Setting memory quotas with curl:"
-curl_check http://127.0.0.1:8091/pools/default -d memoryQuota=2048 -d indexMemoryQuota=512 -d ftsMemoryQuota=512
+curl_check http://127.0.0.1:8091/pools/default -d memoryQuota=${DATA_RAM_QUOTA:-2048} -d indexMemoryQuota=${INDEX_RAM_QUOTA:-512} -d ftsMemoryQuota=${FULL_TEXT_RAM_QUOTA:-512}
 echo
 
 echo "Configuring Services with curl:"
@@ -94,8 +98,8 @@ echo
 wait_for_uri http://127.0.0.1:8094/api/index 403
 
 echo "Create buckets with curl:"
-curl_check -u si:bugbear -X POST http://127.0.0.1:8091/pools/default/buckets -d name=si -d ramQuotaMB=512 -d bucketType=couchbase -d authType=sasl 
-curl_check -u si:bugbear -X POST http://127.0.0.1:8091/pools/default/buckets -d name=si_integration -d ramQuotaMB=512 -d bucketType=couchbase -d authType=sasl -d flushEnabled=1
+curl_check -u si:bugbear -X POST http://127.0.0.1:8091/pools/default/buckets -d name=si -d ramQuotaMB=${BUCKET_SI_RAM_QUOTA:-512} -d bucketType=couchbase -d authType=sasl 
+curl_check -u si:bugbear -X POST http://127.0.0.1:8091/pools/default/buckets -d name=si_integration -d ramQuotaMB=${BUCKET_SI_INTEGRATION_RAM_QUOTA:-512} -d bucketType=couchbase -d authType=sasl -d flushEnabled=1
 
 echo "Create primary indexes:"
 cbq -u si -p bugbear -script 'create primary index `si_integration_primary_index` on `si_integration`'
