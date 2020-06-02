@@ -121,7 +121,12 @@ export class SiGraphql {
         result = "String";
       }
     } else if (prop.kind() == "number") {
-      result = "String";
+        // @ts-ignore - we don't know about numberKind below
+        if (prop.numberKind == "int32") {
+          result = "Int";
+        } else {
+        result = "String";
+    }
     } else if (prop.kind() == "link") {
       const linkProp = prop as PropLink;
       const realProp = linkProp.lookupMyself();

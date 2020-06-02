@@ -320,15 +320,56 @@ impl crate::protobuf::account_server::Account for Service {
             let inner = request.into_inner();
             let name = inner.name;
             let display_name = inner.display_name;
-            let si_properties = inner.si_properties;
+            let note = inner.note;
+            let workspace_id = inner.workspace_id;
             let created_by_user_id = inner.created_by_user_id;
+
+            let real_workspace_id = workspace_id.clone().ok_or_else(|| {
+                si_data::DataError::ValidationError(
+                    "missing required workspace_id value".to_string(),
+                )
+            })?;
+
+            let workspace = crate::protobuf::Workspace::get(&self.db, &real_workspace_id).await?;
+            let organization_id = Some(
+                workspace
+                    .si_properties
+                    .as_ref()
+                    .ok_or_else(|| si_data::DataError::RequiredField("si_properties".to_string()))?
+                    .organization_id
+                    .as_ref()
+                    .ok_or_else(|| {
+                        si_data::DataError::RequiredField("organization_id".to_string())
+                    })?
+                    .clone(),
+            );
+            let billing_account_id = Some(
+                workspace
+                    .si_properties
+                    .as_ref()
+                    .ok_or_else(|| si_data::DataError::RequiredField("si_properties".to_string()))?
+                    .billing_account_id
+                    .as_ref()
+                    .ok_or_else(|| {
+                        si_data::DataError::RequiredField("billing_account_id".to_string())
+                    })?
+                    .clone(),
+            );
+
+            let si_properties = crate::protobuf::ChangeSetSiProperties {
+                workspace_id: Some(real_workspace_id.clone()),
+                organization_id,
+                billing_account_id,
+            };
 
             let output = crate::protobuf::ChangeSet::create(
                 &self.db,
                 name,
                 display_name,
-                si_properties,
+                note,
+                workspace_id,
                 created_by_user_id,
+                Some(si_properties),
             )
             .await?;
 
@@ -458,202 +499,6 @@ impl crate::protobuf::account_server::Account for Service {
                 total_count: Some(output.total_count),
                 next_page_token: Some(output.page_token),
             }))
-        }
-        .instrument(span)
-        .await
-    }
-
-    async fn change_set_entry_create(
-        &self,
-        mut request: tonic::Request<crate::protobuf::ChangeSetEntryCreateRequest>,
-    ) -> std::result::Result<
-        tonic::Response<crate::protobuf::ChangeSetEntryCreateReply>,
-        tonic::Status,
-    > {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
-        let span = tracing::span!(
-            tracing::Level::INFO,
-            "account.change_set_entry_create",
-            metadata.content_type = tracing::field::Empty,
-            authenticated = tracing::field::Empty,
-            userId = tracing::field::Empty,
-            billingAccountId = tracing::field::Empty,
-            http.user_agent = tracing::field::Empty,
-        );
-        span.set_parent(span_context);
-
-        {
-            let metadata = request.metadata();
-            if let Some(raw_value) = metadata.get("authenticated") {
-                let value = raw_value.to_str().unwrap_or("unserializable");
-                span.record("authenticated", &tracing::field::display(value));
-            }
-            if let Some(raw_value) = metadata.get("userid") {
-                let value = raw_value.to_str().unwrap_or("unserializable");
-                span.record("userId", &tracing::field::display(value));
-            }
-            if let Some(raw_value) = metadata.get("billingAccountId") {
-                let value = raw_value.to_str().unwrap_or("unserializable");
-                span.record("billingAccountId", &tracing::field::display(value));
-            }
-            if let Some(raw_value) = metadata.get("user-agent") {
-                let value = raw_value.to_str().unwrap_or("unserializable");
-                span.record("http.user_agent", &tracing::field::display(value));
-            }
-        }
-
-        async {
-            crate::authorize::authnz(&self.db, &request, "change_set_entry_create").await?;
-
-            let inner = request.into_inner();
-            let name = inner.name;
-            let display_name = inner.display_name;
-            let si_properties = inner.si_properties;
-            let created_by_user_id = inner.created_by_user_id;
-
-            let output = crate::protobuf::ChangeSetEntry::create(
-                &self.db,
-                name,
-                display_name,
-                si_properties,
-                created_by_user_id,
-            )
-            .await?;
-
-            Ok(tonic::Response::new(
-                crate::protobuf::ChangeSetEntryCreateReply { item: Some(output) },
-            ))
-        }
-        .instrument(span)
-        .await
-    }
-
-    async fn change_set_entry_get(
-        &self,
-        mut request: tonic::Request<crate::protobuf::ChangeSetEntryGetRequest>,
-    ) -> std::result::Result<tonic::Response<crate::protobuf::ChangeSetEntryGetReply>, tonic::Status>
-    {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
-        let span = tracing::span!(
-            tracing::Level::INFO,
-            "account.change_set_entry_get",
-            metadata.content_type = tracing::field::Empty,
-            authenticated = tracing::field::Empty,
-            userId = tracing::field::Empty,
-            billingAccountId = tracing::field::Empty,
-            http.user_agent = tracing::field::Empty,
-        );
-        span.set_parent(span_context);
-
-        {
-            let metadata = request.metadata();
-            if let Some(raw_value) = metadata.get("authenticated") {
-                let value = raw_value.to_str().unwrap_or("unserializable");
-                span.record("authenticated", &tracing::field::display(value));
-            }
-            if let Some(raw_value) = metadata.get("userid") {
-                let value = raw_value.to_str().unwrap_or("unserializable");
-                span.record("userId", &tracing::field::display(value));
-            }
-            if let Some(raw_value) = metadata.get("billingAccountId") {
-                let value = raw_value.to_str().unwrap_or("unserializable");
-                span.record("billingAccountId", &tracing::field::display(value));
-            }
-            if let Some(raw_value) = metadata.get("user-agent") {
-                let value = raw_value.to_str().unwrap_or("unserializable");
-                span.record("http.user_agent", &tracing::field::display(value));
-            }
-        }
-
-        async {
-            crate::authorize::authnz(&self.db, &request, "change_set_entry_get").await?;
-
-            let inner = request.into_inner();
-            let id = inner
-                .id
-                .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))?;
-
-            let output = crate::protobuf::ChangeSetEntry::get(&self.db, &id).await?;
-
-            Ok(tonic::Response::new(
-                crate::protobuf::ChangeSetEntryGetReply { item: Some(output) },
-            ))
-        }
-        .instrument(span)
-        .await
-    }
-
-    async fn change_set_entry_list(
-        &self,
-        mut request: tonic::Request<crate::protobuf::ChangeSetEntryListRequest>,
-    ) -> std::result::Result<tonic::Response<crate::protobuf::ChangeSetEntryListReply>, tonic::Status>
-    {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
-        let span = tracing::span!(
-            tracing::Level::INFO,
-            "account.change_set_entry_list",
-            metadata.content_type = tracing::field::Empty,
-            authenticated = tracing::field::Empty,
-            userId = tracing::field::Empty,
-            billingAccountId = tracing::field::Empty,
-            http.user_agent = tracing::field::Empty,
-        );
-        span.set_parent(span_context);
-
-        {
-            let metadata = request.metadata();
-            if let Some(raw_value) = metadata.get("authenticated") {
-                let value = raw_value.to_str().unwrap_or("unserializable");
-                span.record("authenticated", &tracing::field::display(value));
-            }
-            if let Some(raw_value) = metadata.get("userid") {
-                let value = raw_value.to_str().unwrap_or("unserializable");
-                span.record("userId", &tracing::field::display(value));
-            }
-            if let Some(raw_value) = metadata.get("billingAccountId") {
-                let value = raw_value.to_str().unwrap_or("unserializable");
-                span.record("billingAccountId", &tracing::field::display(value));
-            }
-            if let Some(raw_value) = metadata.get("user-agent") {
-                let value = raw_value.to_str().unwrap_or("unserializable");
-                span.record("http.user_agent", &tracing::field::display(value));
-            }
-        }
-
-        async {
-            #[allow(unused_variables)]
-            let auth =
-                crate::authorize::authnz(&self.db, &request, "change_set_entry_list").await?;
-
-            let mut inner = request.into_inner();
-            if inner.scope_by_tenant_id.is_none() {
-                inner.scope_by_tenant_id = Some(auth.billing_account_id().into());
-            }
-
-            let output = crate::protobuf::ChangeSetEntry::list(&self.db, inner).await?;
-
-            Ok(tonic::Response::new(
-                crate::protobuf::ChangeSetEntryListReply {
-                    items: output.items,
-                    total_count: Some(output.total_count),
-                    next_page_token: Some(output.page_token),
-                },
-            ))
         }
         .instrument(span)
         .await

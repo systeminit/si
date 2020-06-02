@@ -238,7 +238,43 @@ export class SiRegistryGenerator {
                       }
                       lookupValue = lookupValue[key];
                     }
-                    input["scopeByTenantId"] = lookupValue;
+                    // @ts-ignore
+                    if (association.queryField == "scopeByTenantId") {
+                      input["scopeByTenantId"] = lookupValue;
+                    } else {
+                      if (lookupValue.startsWith("change_set:")) {
+                        input["query"] = {
+                          changeSetId: lookupValue,
+                          items: [
+                            {
+                              expression: {
+                                // @ts-ignore
+                                field: association.queryField,
+                                value: lookupValue,
+                                comparison: "EQUALS",
+                                fieldType: "STRING",
+                              },
+                            },
+                          ],
+                        };
+                      } else {
+                        input["query"] = {
+                          items: [
+                            {
+                              expression: {
+                                // @ts-ignore
+                                field: association.queryField,
+                                value: lookupValue,
+                                comparison: "EQUALS",
+                                fieldType: "STRING",
+                              },
+                            },
+                          ],
+                        };
+                      }
+                    }
+
+                    console.dir({ input }, { depth: Infinity });
 
                     const reqInput = thisGenerator.transformGraphqlToGrpc(
                       input,

@@ -26,9 +26,11 @@ interface HasManyConstructor extends Omit<AssociationConstructor, "methodName" |
     fromFieldPath?: HasMany["fromFieldPath"];
     methodName?: Association["methodName"];
     methodArgumentName?: Association["methodArgumentName"];
+    queryField?: HasMany["queryField"];
 }
 export declare class HasMany extends Association {
     fromFieldPath: string[];
+    queryField: string;
     constructor(args: HasManyConstructor);
     kind(): string;
 }
@@ -61,7 +63,7 @@ export declare class AssociationList {
     getByTypeName(typeName: string): Associations;
     belongsTo(args: BelongsToConstructor): BelongsTo;
     hasMany(args: HasManyConstructor): HasMany;
-    hasList(args: HasListConstructor): HasMany;
-    inList(args: InListConstructor): HasMany;
+    hasList(args: HasListConstructor): HasList;
+    inList(args: InListConstructor): InList;
 }
 export {};
