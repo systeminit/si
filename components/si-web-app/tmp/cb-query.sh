@@ -1,0 +1,1 @@
+cbq --engine http://localhost:8091 -u si -p bugbear -script "SELECT * FROM \`si\` WHERE id = \"$1\" ;"
