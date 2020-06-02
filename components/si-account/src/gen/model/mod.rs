@@ -3,7 +3,6 @@
 
 pub mod billing_account;
 pub mod change_set;
-pub mod change_set_entry;
 pub mod group;
 pub mod integration;
 pub mod integration_instance;

@@ -131,6 +131,10 @@ export class RustFormatter {
     return this.systemObject instanceof EntityObject;
   }
 
+  isChangeSetObject(): boolean {
+    return this.systemObject.typeName == "changeSet";
+  }
+
   isMigrateable(): boolean {
     return (
       this.systemObject instanceof SystemObject && this.systemObject.migrateable
@@ -437,6 +441,14 @@ export class RustFormatter {
   implServiceCommonCreate(propMethod: PropPrelude.PropMethod): string {
     return ejs.render(
       "<%- include('src/codegen/rust/implServiceCommonCreate.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
+      { fmt: this, propMethod: propMethod },
+      { filename: "." },
+    );
+  }
+
+  implServiceChangeSetCreate(propMethod: PropPrelude.PropMethod): string {
+    return ejs.render(
+      "<%- include('src/codegen/rust/implServiceChangeSetCreate.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
       { fmt: this, propMethod: propMethod },
       { filename: "." },
     );

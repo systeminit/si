@@ -5,8 +5,10 @@ impl crate::protobuf::ChangeSet {
     pub fn new(
         name: Option<String>,
         display_name: Option<String>,
-        si_properties: Option<crate::protobuf::ChangeSetSiProperties>,
+        note: Option<String>,
+        workspace_id: Option<String>,
         created_by_user_id: Option<String>,
+        si_properties: Option<crate::protobuf::ChangeSetSiProperties>,
     ) -> si_data::Result<crate::protobuf::ChangeSet> {
         let mut si_storable = si_data::protobuf::DataStorable::default();
         si_properties
@@ -43,10 +45,11 @@ impl crate::protobuf::ChangeSet {
         let mut result: crate::protobuf::ChangeSet = Default::default();
         result.name = name;
         result.display_name = display_name;
-        result.si_properties = si_properties;
+        result.note = note;
         result.created_by_user_id = created_by_user_id;
         result.set_status(crate::protobuf::ChangeSetStatus::Open);
         result.si_storable = Some(si_storable);
+        result.si_properties = si_properties;
 
         Ok(result)
     }
@@ -55,11 +58,19 @@ impl crate::protobuf::ChangeSet {
         db: &si_data::Db,
         name: Option<String>,
         display_name: Option<String>,
-        si_properties: Option<crate::protobuf::ChangeSetSiProperties>,
+        note: Option<String>,
+        workspace_id: Option<String>,
         created_by_user_id: Option<String>,
+        si_properties: Option<crate::protobuf::ChangeSetSiProperties>,
     ) -> si_data::Result<crate::protobuf::ChangeSet> {
-        let mut result =
-            crate::protobuf::ChangeSet::new(name, display_name, si_properties, created_by_user_id)?;
+        let mut result = crate::protobuf::ChangeSet::new(
+            name,
+            display_name,
+            note,
+            workspace_id,
+            created_by_user_id,
+            si_properties,
+        )?;
         db.validate_and_insert_as_new(&mut result).await?;
 
         Ok(result)
@@ -306,6 +317,7 @@ impl si_data::Storable for crate::protobuf::ChangeSet {
             "createdByUserId",
             "entryCount",
             "status",
+            "note",
         ]
     }
 }
