@@ -13,17 +13,26 @@
         @propChangeMsg="propChangeMsg"
       />
  -->
+        <vue-json-pretty
+        class ="text-white overflow-auto"
+        :path="'res'"
+        :data="kubernetesDeploymentEntityList"
+        />
+
     <div v-for="item in kubernetesDeploymentEntityList.items" :key="item.id">
+      
+      {{item}}
+      
       <div v-if="itemIsKubernetesEntity(item)">
 
-      <NodeObject
+<!--       <NodeObject
         :nodeObject="item"
-       />
-<!--        <vue-json-pretty
+       /> -->
+       <vue-json-pretty
         class ="text-white overflow-auto"
         :path="'res'"
         :data="item"
-        /> -->
+        />
 
       </div>
     </div>
@@ -62,10 +71,13 @@ export default {
   apollo: {
     kubernetesDeploymentEntityList: {
       query() {
-        // kubernetesDeploymentEntity
-        // si storable.typeName
-        return registry.get("kubernetesDeploymentEntity").graphql.query({methodName: "list",});
+
+        // KubernetesDeploymentEntityListRequest from fullstack-schema.graphql
+        let result = registry.get("kubernetesDeploymentEntity").graphql.query({methodName: "list",});
+        console.log("result with:", result)
+        return result;
       },
+
       variables() {
         return {
           pageSize: "1000",

@@ -170,11 +170,15 @@
             {{ propObjectProperty.name }}
           </div>
 
+<!-- 
+  type="number"
+  v-model.number="objectModel" below isn't wokring because the api want string.
+-->
           <input
             class="appearance-none text-sm leading-tight focus focus:outline-none input-bg-color border-none text-gray-400 pl-2 h-5 w-32"
-            type="number"
+            type="text"
             :aria-label="propObjectProperty.name"
-            v-model.number="objectModel"
+            v-model="objectModel"
             placeholder="number"
           />
         </div>
