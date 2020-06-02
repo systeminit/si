@@ -1,7 +1,7 @@
 import { PropObject, Props } from "../attrList";
 import { ObjectTypes } from "../systemComponent";
 import { DocumentNode } from "graphql";
-interface QueryArgs {
+export interface QueryArgs {
     methodName: string;
     overrideName?: string;
     overrideFields?: string;
@@ -9,10 +9,10 @@ interface QueryArgs {
         [key: string]: string[];
     };
 }
-interface VariablesObjectArgs {
+export interface VariablesObjectArgs {
     methodName: string;
 }
-interface ValidateResultArgs {
+export interface ValidateResultArgs {
     methodName: string;
     data: Record<string, any>;
     overrideName?: string;
@@ -29,4 +29,3 @@ export declare class SiGraphql {
     query(args: QueryArgs): DocumentNode;
     mutation(args: QueryArgs): DocumentNode;
 }
-export {};

@@ -24,6 +24,7 @@
                 type="text"
                 :placeholder="form.account.label"
                 :aria-label="form.account.id"
+                data-cy="billingAccountName"
                 v-model="objVariables[form.account.id]"
               />
             </div>
@@ -44,6 +45,7 @@
                 type="text"
                 :placeholder="form.email.label"
                 :aria-label="form.email.id"
+                data-cy="userEmail"
                 v-model="objVariables[form.email.id]"
               />
             </div>
@@ -64,6 +66,7 @@
                 type="password"
                 :placeholder="form.password.label"
                 :aria-label="form.password.id"
+                data-cy="userPassword"
                 v-model="objVariables[form.password.id]"
               />
             </div>
@@ -73,6 +76,7 @@
         <div class="flex flex-row-reverse pr-8 pb-4">
           <button
             class="bg-teal-700 px-4 py-2 text-white hover:bg-teal-600"
+            data-cy="signInButton"
             @click="checkLogin()"
             type="button"
           >

@@ -202,9 +202,11 @@ impl Db {
             // If we have a change set id, we need to use it to get this items
             // position in the count of entries.
             if let Some(change_set_id) = content.change_set_id()? {
-                event!(Level::TRACE, "change_set_entry_count");
-                let entry_count = self.change_set_next_entry(change_set_id).await?;
-                content.set_change_set_entry_count(entry_count)?;
+                if change_set_id != "" {
+                    event!(Level::TRACE, "change_set_entry_count");
+                    let entry_count = self.change_set_next_entry(change_set_id, 0).await?;
+                    content.set_change_set_entry_count(entry_count)?;
+                }
             }
             event!(Level::TRACE, "generating_id");
 
@@ -378,6 +380,7 @@ impl Db {
     pub fn change_set_next_entry(
         &self,
         id: impl Into<String>,
+        mut count: usize,
     ) -> Pin<Box<dyn Future<Output = Result<u64>> + Send + Sync>> {
         let change_set_id = id.into();
         let span = tracing::debug_span!(
@@ -446,7 +449,11 @@ impl Db {
                 {
                     Ok(_) => return Ok(new_entry_count),
                     Err(CouchbaseError::KeyExists) => {
-                        return db.change_set_next_entry(change_set_id).await;
+                        if count > 30 {
+                            return Err(DataError::ChangeSetEntryUpdateFailure);
+                        }
+                        count = count + 1;
+                        return db.change_set_next_entry(change_set_id, count).await;
                     }
                     Err(err) => return Err(DataError::CouchbaseError(err)),
                 };

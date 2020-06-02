@@ -8,7 +8,7 @@ import gql from "graphql-tag";
 import { DocumentNode } from "graphql";
 import { Association } from "./associations";
 
-interface QueryArgs {
+export interface QueryArgs {
   methodName: string;
   overrideName?: string;
   overrideFields?: string;
@@ -17,11 +17,11 @@ interface QueryArgs {
   };
 }
 
-interface VariablesObjectArgs {
+export interface VariablesObjectArgs {
   methodName: string;
 }
 
-interface ValidateResultArgs {
+export interface ValidateResultArgs {
   methodName: string;
   data: Record<string, any>;
   overrideName?: string;
@@ -55,10 +55,7 @@ export function variablesObjectForProperty(prop: Props, repeated = false): any {
       // TODO: There might be a bug here, where the name of the prop itself
       // and the name of the linked prop don't match, and so we get the
       // wrong field name if the prop is an object.
-      return variablesObjectForProperty(
-        propLink.lookupMyself(),
-        repeated,
-      );
+      return variablesObjectForProperty(propLink.lookupMyself(), repeated);
     }
   } else if (prop.kind() == "object" || prop.kind() == "method") {
     const propObject = prop as PropObject;
@@ -249,6 +246,7 @@ export class SiGraphql {
     )}) { ${methodName}(input: { ${inputVariables.join(
       ", ",
     )} }) { ${fieldList} } }`;
+    console.log(`query ${resultString}`);
     return gql`
       ${resultString}
     `;

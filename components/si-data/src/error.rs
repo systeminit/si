@@ -7,6 +7,8 @@ pub type Result<T> = std::result::Result<T, DataError>;
 pub enum DataError {
     #[error("cannot decode base64 value")]
     Base64DecodeError(#[from] base64::DecodeError),
+    #[error("cannot get an incremented change set entry id")]
+    ChangeSetEntryUpdateFailure,
     #[error("couchbase error: {0}")]
     CouchbaseError(#[from] couchbase::CouchbaseError),
     #[error("cannot encode data via cbor")]
