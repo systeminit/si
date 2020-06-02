@@ -400,6 +400,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
                 })?,
             )?;
 
+            debug!("we should be creating a new entity");
             let entity = crate::protobuf::KubernetesDeploymentEntity::create(
                 &self.db,
                 name,
@@ -412,6 +413,8 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
                 change_set_id,
             )
             .await?;
+            debug!("we created a new entity");
+            debug!("we should be creating a new entity event");
             let entity_event = crate::protobuf::KubernetesDeploymentEntityEvent::create(
                 &self.db,
                 auth.user_id(),
@@ -419,7 +422,10 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
                 &entity,
             )
             .await?;
+            debug!("we created a new entity event");
+            debug!("we should be dispatching");
             self.agent.dispatch(&entity_event).await?;
+            debug!("we def dispatched");
 
             Ok(tonic::Response::new(
                 crate::protobuf::KubernetesDeploymentEntityCreateReply {

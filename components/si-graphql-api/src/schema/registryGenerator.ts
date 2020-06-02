@@ -716,7 +716,7 @@ export class SiRegistryGenerator {
       }
       for (const entry of input) {
         // TODO: not sure that we need the `${}` around entry.value, need to test.
-        newMap[entry.key] = { value: `${entry.value}`};
+        newMap[entry.key] = { value: `${entry.value}` };
       }
       return newMap;
     } else if (prop.kind() == "object") {
