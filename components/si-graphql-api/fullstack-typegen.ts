@@ -136,9 +136,9 @@ export interface NexusGenInputs {
     scopeByTenantId?: string | null; // String
   }
   KubernetesContainerPortRequest: { // input type
-    containerPort?: string | null; // String
+    containerPort?: number | null; // Int
     hostIp?: string | null; // String
-    hostPort?: string | null; // String
+    hostPort?: number | null; // Int
     name?: string | null; // String
     protocol?: string | null; // String
   }
@@ -209,7 +209,7 @@ export interface NexusGenInputs {
     spec?: NexusGenInputs['KubernetesDeploymentEntityPropertiesKubernetesObjectSpecRequest'] | null; // KubernetesDeploymentEntityPropertiesKubernetesObjectSpecRequest
   }
   KubernetesDeploymentEntityPropertiesKubernetesObjectSpecRequest: { // input type
-    replicas?: string | null; // String
+    replicas?: number | null; // Int
     selector?: NexusGenInputs['KubernetesSelectorRequest'] | null; // KubernetesSelectorRequest
     template?: NexusGenInputs['KubernetesPodTemplateSpecRequest'] | null; // KubernetesPodTemplateSpecRequest
   }
@@ -549,9 +549,9 @@ export interface NexusGenRootTypes {
     ports?: NexusGenRootTypes['KubernetesContainerPort'][] | null; // [KubernetesContainerPort!]
   }
   KubernetesContainerPort: { // root type
-    containerPort?: string | null; // String
+    containerPort?: number | null; // Int
     hostIp?: string | null; // String
-    hostPort?: string | null; // String
+    hostPort?: number | null; // Int
     name?: string | null; // String
     protocol?: string | null; // String
   }
@@ -645,7 +645,7 @@ export interface NexusGenRootTypes {
     spec?: NexusGenRootTypes['KubernetesDeploymentEntityPropertiesKubernetesObjectSpec'] | null; // KubernetesDeploymentEntityPropertiesKubernetesObjectSpec
   }
   KubernetesDeploymentEntityPropertiesKubernetesObjectSpec: { // root type
-    replicas?: string | null; // String
+    replicas?: number | null; // Int
     selector?: NexusGenRootTypes['KubernetesSelector'] | null; // KubernetesSelector
     template?: NexusGenRootTypes['KubernetesPodTemplateSpec'] | null; // KubernetesPodTemplateSpec
   }
@@ -1085,9 +1085,9 @@ export interface NexusGenFieldTypes {
     ports: NexusGenRootTypes['KubernetesContainerPort'][] | null; // [KubernetesContainerPort!]
   }
   KubernetesContainerPort: { // field return type
-    containerPort: string | null; // String
+    containerPort: number | null; // Int
     hostIp: string | null; // String
-    hostPort: string | null; // String
+    hostPort: number | null; // Int
     name: string | null; // String
     protocol: string | null; // String
   }
@@ -1184,7 +1184,7 @@ export interface NexusGenFieldTypes {
     spec: NexusGenRootTypes['KubernetesDeploymentEntityPropertiesKubernetesObjectSpec'] | null; // KubernetesDeploymentEntityPropertiesKubernetesObjectSpec
   }
   KubernetesDeploymentEntityPropertiesKubernetesObjectSpec: { // field return type
-    replicas: string | null; // String
+    replicas: number | null; // Int
     selector: NexusGenRootTypes['KubernetesSelector'] | null; // KubernetesSelector
     template: NexusGenRootTypes['KubernetesPodTemplateSpec'] | null; // KubernetesPodTemplateSpec
   }

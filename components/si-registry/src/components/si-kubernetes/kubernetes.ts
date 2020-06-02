@@ -94,7 +94,7 @@ registry.base({
       name: "containerPort",
       label: "Container Port",
       options(p: PropNumber) {
-        p.numberKind = "uint32";
+        p.numberKind = "int32";
       },
     });
     c.fields.addText({
@@ -106,7 +106,8 @@ registry.base({
       name: "hostPort",
       label: "Host Port",
       options(p: PropNumber) {
-        p.numberKind = "uint32";
+        p.numberKind = "int32";
+        p.hidden = true;
       },
     });
     c.fields.addText({
