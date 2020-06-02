@@ -77,7 +77,7 @@ export default {
         console.log("result with:", result)
         return result;
       },
-
+      fetchPolicy: "no-cache",
       variables() {
         return {
           pageSize: "1000",
