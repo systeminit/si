@@ -97,7 +97,6 @@ impl crate::protobuf::KubernetesDeploymentEntity {
         si_properties: Option<si_cea::protobuf::EntitySiProperties>,
         change_set_id: Option<String>,
     ) -> si_cea::CeaResult<crate::protobuf::KubernetesDeploymentEntity> {
-        tracing::debug!("you made it inside create, congrats");
         let mut result = crate::protobuf::KubernetesDeploymentEntity::new(
             name,
             display_name,
@@ -108,8 +107,6 @@ impl crate::protobuf::KubernetesDeploymentEntity {
             si_properties,
             change_set_id,
         )?;
-        tracing::debug!("you returnedd from new");
-        tracing::debug!("inserting into the datbase");
         db.validate_and_insert_as_new(&mut result).await?;
 
         Ok(result)
