@@ -34,9 +34,9 @@ message KubernetesContainer {
   repeated si.kubernetes.KubernetesContainerPort ports = 1003;
 }
 message KubernetesContainerPort {
-  google.protobuf.UInt32Value container_port = 1001;
+  google.protobuf.Int32Value container_port = 1001;
   google.protobuf.StringValue host_ip = 1002;
-  google.protobuf.UInt32Value host_port = 1003;
+  google.protobuf.Int32Value host_port = 1003;
   google.protobuf.StringValue name = 1004;
   google.protobuf.StringValue protocol = 1005;
 }
@@ -105,7 +105,7 @@ message KubernetesDeploymentComponentPickReply {
   si.kubernetes.KubernetesDeploymentComponent component = 2;
 }
 message KubernetesDeploymentEntityPropertiesKubernetesObjectSpec {
-  google.protobuf.UInt32Value replicas = 1001;
+  google.protobuf.Int32Value replicas = 1001;
   si.kubernetes.KubernetesSelector selector = 1002;
   si.kubernetes.KubernetesPodTemplateSpec template = 1003;
 }

@@ -81,7 +81,7 @@ registry.componentAndEntity({
               name: "replicas",
               label: "Replicas",
               options(p: PropNumber) {
-                p.numberKind = "uint32";
+                p.numberKind = "int32";
               },
             });
             p.properties.addLink({

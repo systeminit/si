@@ -944,13 +944,13 @@ type KubernetesContainer {
 
 type KubernetesContainerPort {
   """Container Port"""
-  containerPort: String
+  containerPort: Int
 
   """Host IP"""
   hostIp: String
 
   """Host Port"""
-  hostPort: String
+  hostPort: Int
 
   """Name"""
   name: String
@@ -961,13 +961,13 @@ type KubernetesContainerPort {
 
 input KubernetesContainerPortRequest {
   """Container Port"""
-  containerPort: String
+  containerPort: Int
 
   """Host IP"""
   hostIp: String
 
   """Host Port"""
-  hostPort: String
+  hostPort: Int
 
   """Name"""
   name: String
@@ -1371,7 +1371,7 @@ input KubernetesDeploymentEntityPropertiesKubernetesObjectRequest {
 
 type KubernetesDeploymentEntityPropertiesKubernetesObjectSpec {
   """Replicas"""
-  replicas: String
+  replicas: Int
 
   """Selector"""
   selector: KubernetesSelector
@@ -1382,7 +1382,7 @@ type KubernetesDeploymentEntityPropertiesKubernetesObjectSpec {
 
 input KubernetesDeploymentEntityPropertiesKubernetesObjectSpecRequest {
   """Replicas"""
-  replicas: String
+  replicas: Int
 
   """Selector"""
   selector: KubernetesSelectorRequest
