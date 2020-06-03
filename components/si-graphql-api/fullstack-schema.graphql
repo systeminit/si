@@ -155,7 +155,7 @@ type ChangeSet {
   """Note"""
   note: String
 
-  """A change set for your system"""
+  """SI Internal Properties"""
   siProperties: ChangeSetSiProperties
 
   """SI Storable"""
@@ -316,7 +316,7 @@ type DataQuery {
   """Is Not"""
   isNot: Boolean
 
-  """Query"""
+  """Expression Option"""
   items: [DataQueryItems!]
 
   """Filter by View Context Tag"""
@@ -331,7 +331,7 @@ enum DataQueryBooleanTerm {
 }
 
 type DataQueryItems {
-  """Expression Option"""
+  """Query Expression"""
   expression: DataQueryItemsExpression
 
   """Query"""
@@ -384,7 +384,7 @@ input DataQueryItemsExpressionRequest {
 }
 
 input DataQueryItemsRequest {
-  """Expression Option"""
+  """Query Expression"""
   expression: DataQueryItemsExpressionRequest
 
   """Query"""
@@ -401,7 +401,7 @@ input DataQueryRequest {
   """Is Not"""
   isNot: Boolean
 
-  """Query"""
+  """Expression Option"""
   items: [DataQueryItemsRequest!]
 
   """Filter by View Context Tag"""
@@ -504,7 +504,7 @@ type Group {
   """A System Initiative User Group Name"""
   name: String
 
-  """A System Initiative User Group"""
+  """SI Internal Properties"""
   siProperties: GroupSiProperties
 
   """SI Storable"""
@@ -605,10 +605,10 @@ type Integration {
   """An integration with another system Name"""
   name: String
 
-  """An integration with another system"""
+  """Options for this Integration"""
   options: [IntegrationOptions!]
 
-  """An integration with another system"""
+  """SI Internal Properties"""
   siProperties: IntegrationSiProperties
 
   """SI Storable"""
@@ -648,10 +648,10 @@ type IntegrationInstance {
   """An instance of an integration with another system Name"""
   name: String
 
-  """An instance of an integration with another system"""
+  """Options for this Integration"""
   optionValues: [IntegrationInstanceOptionValues!]
 
-  """An instance of an integration with another system"""
+  """SI Internal Properties"""
   siProperties: IntegrationInstanceSiProperties
 
   """SI Storable"""
@@ -806,7 +806,7 @@ type IntegrationService {
   """An service within an integration Name"""
   name: String
 
-  """An service within an integration"""
+  """SI Internal Properties"""
   siProperties: IntegrationServiceSiProperties
 
   """SI Storable"""
@@ -856,7 +856,7 @@ type Item {
   """An item Name"""
   name: String
 
-  """An item"""
+  """SI Internal Properties"""
   siProperties: ItemSiProperties
 
   """SI Storable"""
@@ -988,7 +988,7 @@ input KubernetesContainerRequest {
 }
 
 type KubernetesDeploymentComponent {
-  """Kubernetes Deployment Object Component"""
+  """Component Constraints"""
   constraints: KubernetesDeploymentComponentConstraints
 
   """Component Description"""
@@ -1122,7 +1122,7 @@ type KubernetesDeploymentEntity {
   """Kubernetes Deployment Object Entity Name"""
   name: String
 
-  """Kubernetes Deployment Object Entity"""
+  """Properties"""
   properties: KubernetesDeploymentEntityProperties
 
   """SI Properties"""
@@ -1150,7 +1150,7 @@ type KubernetesDeploymentEntityCreateReply {
 """Create Entity Request"""
 input KubernetesDeploymentEntityCreateRequest {
   """Change Set ID"""
-  changeSetId: String!
+  changeSetId: String
 
   """Constraints"""
   constraints: KubernetesDeploymentComponentConstraintsRequest
@@ -1334,7 +1334,7 @@ input KubernetesDeploymentEntityListRequest {
 }
 
 type KubernetesDeploymentEntityProperties {
-  """Properties"""
+  """Kubernetes Object"""
   kubernetesObject: KubernetesDeploymentEntityPropertiesKubernetesObject
 
   """Kubernetes Object YAML"""
@@ -1351,7 +1351,7 @@ type KubernetesDeploymentEntityPropertiesKubernetesObject {
   """Metadata"""
   metadata: KubernetesMetadata
 
-  """Kubernetes Object"""
+  """Deployment Spec"""
   spec: KubernetesDeploymentEntityPropertiesKubernetesObjectSpec
 }
 
@@ -1365,7 +1365,7 @@ input KubernetesDeploymentEntityPropertiesKubernetesObjectRequest {
   """Metadata"""
   metadata: KubernetesMetadataRequest
 
-  """Kubernetes Object"""
+  """Deployment Spec"""
   spec: KubernetesDeploymentEntityPropertiesKubernetesObjectSpecRequest
 }
 
@@ -1392,8 +1392,8 @@ input KubernetesDeploymentEntityPropertiesKubernetesObjectSpecRequest {
 }
 
 input KubernetesDeploymentEntityPropertiesRequest {
-  """Properties"""
-  kubernetesObject: KubernetesDeploymentEntityPropertiesKubernetesObjectRequest!
+  """Kubernetes Object"""
+  kubernetesObject: KubernetesDeploymentEntityPropertiesKubernetesObjectRequest
 
   """Kubernetes Object YAML"""
   kubernetesObjectYaml: String
@@ -1512,7 +1512,7 @@ type Organization {
   """A System Initiative Organization Name"""
   name: String
 
-  """A System Initiative Organization"""
+  """SI Internal Properties"""
   siProperties: OrganizationSiProperties
 
   """SI Storable"""
@@ -1648,7 +1648,7 @@ type User {
   """A System Initiative User Name"""
   name: String
 
-  """A System Initiative User"""
+  """SI Internal Properties"""
   siProperties: UserSiProperties
 
   """SI Storable"""
@@ -1764,7 +1764,7 @@ type Workspace {
   """A System Initiative Workspace Name"""
   name: String
 
-  """A System Initiative Workspace"""
+  """SI Internal Properties"""
   siProperties: WorkspaceSiProperties
 
   """SI Storable"""

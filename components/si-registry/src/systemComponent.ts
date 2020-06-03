@@ -562,7 +562,6 @@ export class EntityObject extends SystemObject {
           name: "changeSetId",
           label: `Change Set ID`,
           options(p) {
-            p.required = true;
             p.hidden = true;
           },
         });

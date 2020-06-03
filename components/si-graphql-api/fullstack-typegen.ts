@@ -167,7 +167,7 @@ export interface NexusGenInputs {
     constraints?: NexusGenInputs['KubernetesDeploymentComponentConstraintsRequest'] | null; // KubernetesDeploymentComponentConstraintsRequest
   }
   KubernetesDeploymentEntityCreateRequest: { // input type
-    changeSetId: string; // String!
+    changeSetId?: string | null; // String
     constraints?: NexusGenInputs['KubernetesDeploymentComponentConstraintsRequest'] | null; // KubernetesDeploymentComponentConstraintsRequest
     description: string; // String!
     displayName: string; // String!
@@ -214,7 +214,7 @@ export interface NexusGenInputs {
     template?: NexusGenInputs['KubernetesPodTemplateSpecRequest'] | null; // KubernetesPodTemplateSpecRequest
   }
   KubernetesDeploymentEntityPropertiesRequest: { // input type
-    kubernetesObject: NexusGenInputs['KubernetesDeploymentEntityPropertiesKubernetesObjectRequest']; // KubernetesDeploymentEntityPropertiesKubernetesObjectRequest!
+    kubernetesObject?: NexusGenInputs['KubernetesDeploymentEntityPropertiesKubernetesObjectRequest'] | null; // KubernetesDeploymentEntityPropertiesKubernetesObjectRequest
     kubernetesObjectYaml?: string | null; // String
   }
   KubernetesDeploymentEntitySyncRequest: { // input type
