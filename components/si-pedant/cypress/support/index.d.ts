@@ -34,6 +34,7 @@ declare namespace Cypress {
       email: string,
       password: string,
     ): Chainable<Record<string, any>>;
+    logout(): Chainable<boolean>;
     loginBobo(): Chainable<Record<string, any>>;
 
     createUser(args: CreateUserArgs): Chainable<Element>;

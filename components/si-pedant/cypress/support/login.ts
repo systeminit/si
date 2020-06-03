@@ -68,3 +68,9 @@ export async function login(
 export async function loginBobo(): Promise<Record<string, any>> {
   return login("boboCorp", "bobo@bobotclown.co", "bobotclown42");
 }
+
+export async function logout(): Promise<boolean> {
+  localStorage.removeItem("profile");
+  localStorage.removeItem("apollo-token");
+  return true;
+}

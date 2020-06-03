@@ -1,70 +1,17 @@
-function generateEntity(
-  workspaceId: string,
-  number: number,
-): Record<string, any> {
-  return {
-    name: `poop${number}`,
-    displayName: "poopy pants",
-    description: "really poopy",
-    workspaceId: workspaceId,
-    properties: {
-      kubernetesObject: {
-        kind: "your butt",
-        apiVersion: "1.0",
-      },
-    },
-    constraints: { kubernetesVersion: "V1_15" },
-  };
-}
-
-function generateEntityFromVariables(
-  workspaceId: string,
-  number: number,
-): Record<string, any> {
-  return {
-    name: `motherLoveBone${number}`,
-    displayName: "Mother Love Bone",
-    description: "Mother Love Bone",
-    workspaceId: workspaceId,
-    properties: {
-      kubernetesObject: {
-        apiVersion: "rr",
-        kind: "rr",
-        metadata: { name: "", labels: [] },
-        spec: {
-          replicas: 44,
-          selector: { matchLabels: [] },
-          template: {
-            metadata: { name: "", labels: [] },
-            spec: { containers: [] },
-          },
-        },
-      },
-    },
-    constraints: {
-      componentName: "",
-      componentDisplayName: "",
-      kubernetesVersion: "V1_15",
-    },
-  };
-}
+import {
+  generateEntity,
+  generateEntityFromVariables,
+} from "../../generators/kubernetesDeploymentEntity";
 
 describe("kubernetesDeploymentEntity", () => {
   beforeEach(() => {
+    cy.logout();
+    cy.task("db:deleteBoboCorp");
     cy.createUserBobo();
     cy.loginBobo().as("profile");
   });
 
   describe("create", () => {
-    beforeEach(() => {
-      cy.get("@profile").then((profile: Record<string, any>) => {
-        cy.task("db:deleteByTypeName", {
-          typeName: "kubernetes_deployment_entity",
-          billingAccountId: profile["billingAccount"]["id"],
-        });
-      });
-    });
-
     it("creates the entity", () => {
       cy.get("@profile").then((profile: Record<string, any>) => {
         cy.graphqlMutation({
@@ -145,15 +92,6 @@ describe("kubernetesDeploymentEntity", () => {
   });
 
   describe("get", () => {
-    beforeEach(() => {
-      cy.get("@profile").then((profile: Record<string, any>) => {
-        cy.task("db:deleteByTypeName", {
-          typeName: "kubernetes_deployment_entity",
-          billingAccountId: profile["billingAccount"]["id"],
-        });
-      });
-    });
-
     it("returns the entity", () => {
       cy.get("@profile").then((profile: Record<string, any>) => {
         cy.graphqlMutation({
@@ -189,15 +127,6 @@ describe("kubernetesDeploymentEntity", () => {
   });
 
   describe("list", () => {
-    beforeEach(() => {
-      cy.get("@profile").then((profile: Record<string, any>) => {
-        cy.task("db:deleteByTypeName", {
-          typeName: "kubernetes_deployment_entity",
-          billingAccountId: profile["billingAccount"]["id"],
-        });
-      });
-    });
-
     it("is empty without any items", () => {
       cy.graphqlQuery({
         typeName: "kubernetesDeploymentEntity",

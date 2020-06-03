@@ -6,6 +6,41 @@ const cluster = new couchbase.Cluster("couchbase://localhost", {
 const bucket = cluster.bucket("si");
 const collection = bucket.defaultCollection();
 
+export async function dbDeleteBoboCorp(): Promise<boolean> {
+  try {
+    const lookupResult = await collection.get(
+      "global:billing_account:boboCorp",
+    );
+    console.log("delete lookup result", lookupResult);
+    const result = await dbDeleteByBillingAccount(
+      lookupResult["value"]["objectId"],
+    );
+    console.log("delete result", result);
+  } catch (err) {
+    console.log(err);
+  }
+  return true;
+}
+
+export async function dbDeleteByBillingAccount(
+  billingAccountId: string,
+): Promise<boolean> {
+  const query = `
+      DELETE FROM si AS s
+        WHERE ANY t IN s.siStorable.tenantIds 
+          SATISFIES t = "${billingAccountId}" END 
+        RETURNING s
+  `;
+  try {
+    console.log(`delete query\n${query}`);
+    const result = await cluster.query(query);
+    console.log("delete result", result);
+  } catch (err) {
+    console.log(err);
+  }
+  return true;
+}
+
 export async function dbDeleteByTypeName(
   typeName: string,
   billingAccountId: string,
