@@ -32,7 +32,7 @@ function generateEntityFromVariables(
         kind: "rr",
         metadata: { name: "", labels: [] },
         spec: {
-          replicas: "44",
+          replicas: 44,
           selector: { matchLabels: [] },
           template: {
             metadata: { name: "", labels: [] },
@@ -73,7 +73,7 @@ describe("kubernetesDeploymentEntity", () => {
             methodName: "create",
           },
           variables: generateEntity(profile["workspaceDefault"]["id"], 0),
-        }).then((results: Record<string, any>) => {
+        }).should((results: Record<string, any>) => {
           expect(results).to.have.property("data");
           expect(results["data"]).to.have.property(
             "kubernetesDeploymentEntityCreate",
@@ -118,7 +118,7 @@ describe("kubernetesDeploymentEntity", () => {
               0,
             ),
           },
-        }).then((results: Record<string, any>) => {
+        }).should((results: Record<string, any>) => {
           expect(results).to.have.property("data");
           expect(results["data"]).to.have.property(
             "kubernetesDeploymentEntityCreate",
@@ -174,7 +174,7 @@ describe("kubernetesDeploymentEntity", () => {
             variables: {
               id: itemId,
             },
-          }).then((results: Record<string, any>) => {
+          }).should((results: Record<string, any>) => {
             expect(results).to.have.property("data");
             expect(results["data"]).to.have.property(
               "kubernetesDeploymentEntityGet",
@@ -204,7 +204,7 @@ describe("kubernetesDeploymentEntity", () => {
         queryArgs: {
           methodName: "list",
         },
-      }).then((results: Record<string, any>) => {
+      }).should((results: Record<string, any>) => {
         expect(results).to.have.property("data");
         expect(results["data"]).to.have.property(
           "kubernetesDeploymentEntityList",
@@ -235,7 +235,7 @@ describe("kubernetesDeploymentEntity", () => {
         queryArgs: {
           methodName: "list",
         },
-      }).then((results: Record<string, any>) => {
+      }).should((results: Record<string, any>) => {
         expect(results).to.have.property("data");
         expect(results["data"]).to.have.property(
           "kubernetesDeploymentEntityList",
@@ -270,7 +270,7 @@ describe("kubernetesDeploymentEntity", () => {
           pageSize: "10",
           orderBy: "name",
         },
-      }).then((results: Record<string, any>) => {
+      }).should((results: Record<string, any>) => {
         expect(results).to.have.property("data");
         expect(results["data"]).to.have.property(
           "kubernetesDeploymentEntityList",

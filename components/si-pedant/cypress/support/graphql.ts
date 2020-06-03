@@ -8,10 +8,24 @@ export async function graphqlQuery(
 ): Promise<ApolloQueryResult<Record<string, any>>> {
   const siObject = registry.get(args.typeName);
   const query = siObject.graphql.query(args.queryArgs);
-  return await apollo.query({
-    query,
-    variables: args.variables,
-  });
+  const getValue = () => {
+    return apollo
+      .query({
+        query,
+        variables: args.variables,
+      })
+      .then((result) => {
+        return result;
+      });
+  };
+  const resolveValue = () => {
+    return Cypress.Promise.try(getValue).then((value) => {
+      return cy.verifyUpcomingAssertions(value, args, {
+        onRetry: resolveValue,
+      });
+    });
+  };
+  return resolveValue();
 }
 
 export async function graphqlMutation(
@@ -19,8 +33,23 @@ export async function graphqlMutation(
 ): Promise<FetchResult> {
   const siObject = registry.get(args.typeName);
   const mutation = siObject.graphql.mutation(args.queryArgs);
-  return await apollo.mutate({
-    mutation,
-    variables: args.variables,
-  });
+  const getValue = () => {
+    return apollo
+      .mutate({
+        mutation,
+        variables: args.variables,
+      })
+      .then((result) => {
+        return result;
+      });
+  };
+  const resolveValue = () => {
+    return Cypress.Promise.try(getValue).then((value) => {
+      return cy.verifyUpcomingAssertions(value, args, {
+        onRetry: resolveValue,
+      });
+    });
+  };
+  return resolveValue();
 }
+
