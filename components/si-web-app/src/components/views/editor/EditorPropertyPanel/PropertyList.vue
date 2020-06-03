@@ -71,6 +71,40 @@ export default {
 
         delete this.kubernetesDeploymentEntityCreateVars.properties.kubernetesObjectYaml
 
+
+        // let targetVariables = {
+        //   name: "motherLoveBone899",
+        //   displayName: "Mother Love Bone",
+        //   description: "Mother Love Bone",
+        //   changeSetId: "",
+        //   workspaceId: auth.getProfile().workspaceDefault.id,
+        //   properties: {
+        //     kubernetesObject: {
+        //       apiVersion: "rr",
+        //       kind: "rr",
+        //       metadata: { name: "", labels: [] },
+        //       spec: {
+        //         replicas: 44,
+        //         selector: { matchLabels: [] },
+        //         template: {
+        //           metadata: { name: "", labels: [] },
+        //           spec: { containers: [] },
+        //         },
+        //       },
+        //     },
+        //   },
+        //   constraints: {
+        //     componentName: "",
+        //     componentDisplayName: "",
+        //     kubernetesVersion: "V1_15",
+        //   },
+        // }
+
+        // console.log(console.log(JSON.stringify(this.kubernetesDeploymentEntityCreateVars)))
+        // console.log("and")
+        // console.log(console.log(JSON.stringify(targetVariables)))
+
+
         this.$apollo.mutate({
           mutation,
           variables: this.kubernetesDeploymentEntityCreateVars
