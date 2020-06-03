@@ -81,3 +81,7 @@ impl From<DataError> for tonic::Status {
         }
     }
 }
+
+pub fn required_field_err(field: impl Into<String>) -> DataError {
+    DataError::RequiredField(field.into())
+}
