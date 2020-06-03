@@ -19,6 +19,7 @@ service Kubernetes {
   rpc KubernetesDeploymentEntitySync(KubernetesDeploymentEntitySyncRequest) returns (KubernetesDeploymentEntitySyncReply);
   rpc KubernetesDeploymentEntityKubernetesObjectEdit(KubernetesDeploymentEntityKubernetesObjectEditRequest) returns (KubernetesDeploymentEntityKubernetesObjectEditReply);
   rpc KubernetesDeploymentEntityKubernetesObjectYamlEdit(KubernetesDeploymentEntityKubernetesObjectYamlEditRequest) returns (KubernetesDeploymentEntityKubernetesObjectYamlEditReply);
+  rpc KubernetesDeploymentEntityApply(KubernetesDeploymentEntityApplyRequest) returns (KubernetesDeploymentEntityApplyReply);
   rpc KubernetesDeploymentEntityEventList(KubernetesDeploymentEntityEventListRequest) returns (KubernetesDeploymentEntityEventListReply);
 }
 message KubernetesMetadata {
@@ -180,6 +181,12 @@ message KubernetesDeploymentEntityKubernetesObjectYamlEditRequest {
   google.protobuf.StringValue property = 1001;
 }
 message KubernetesDeploymentEntityKubernetesObjectYamlEditReply {
+  si.kubernetes.KubernetesDeploymentEntityEvent item = 1;
+}
+message KubernetesDeploymentEntityApplyRequest {
+  google.protobuf.StringValue id = 1;
+}
+message KubernetesDeploymentEntityApplyReply {
   si.kubernetes.KubernetesDeploymentEntityEvent item = 1;
 }
 message KubernetesDeploymentEntityEvent {

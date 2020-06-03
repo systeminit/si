@@ -65,6 +65,7 @@ impl si_cea::EntityEvent for crate::protobuf::KubernetesDeploymentEntityEvent {
     fn action_names() -> &'static [&'static str] {
         &[
             "create",
+            "apply",
             "edit_kubernetes_object",
             "edit_kubernetes_object_yaml",
             "sync",
