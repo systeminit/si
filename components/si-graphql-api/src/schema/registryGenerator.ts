@@ -1124,18 +1124,22 @@ export class SiRegistryGenerator {
         definition(t) {
           // @ts-ignore
           for (const p of prop.properties.attrs) {
+            const pFieldConfig = thisGenerator.makeFieldConfig(p, {
+              inputType,
+            });
+
             if (p.kind() == "object") {
               if (p.repeated) {
                 t.list.field(thisGenerator.graphqlFieldName(p), {
                   // @ts-ignore
                   type: thisGenerator.graphqlTypeName(p, inputType),
-                  ...fieldConfig,
+                  ...pFieldConfig,
                 });
               } else {
                 t.field(thisGenerator.graphqlFieldName(p), {
                   // @ts-ignore
                   type: thisGenerator.graphqlTypeName(p, inputType),
-                  ...fieldConfig,
+                  ...pFieldConfig,
                 });
               }
             } else {
