@@ -7,8 +7,9 @@ use std::collections::HashMap;
 pub mod prelude {
     pub use super::IntegrationActions;
     pub use crate::agent::mqtt::MqttClient;
+    pub use crate::entity::Entity as _;
     pub use crate::entity_event::EntityEvent as _;
-    pub use crate::error::CeaResult;
+    pub use crate::error::{CeaError, CeaResult};
     pub use async_trait::async_trait;
     pub use tracing::debug_span;
     pub use tracing_futures::Instrument as _;

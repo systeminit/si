@@ -1,7 +1,7 @@
 use crate::error::{CeaError, CeaResult};
 use crate::{EntityEvent, MqttClient};
 use std::process::{ExitStatus, Stdio};
-use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::Command;
 use tokio::sync::mpsc;
 
@@ -71,6 +71,10 @@ impl CommandResult {
     pub fn stderr(&self) -> Option<&String> {
         self.stderr.as_ref()
     }
+
+    pub fn into_outputs(self) -> (Option<String>, Option<String>) {
+        (self.stdout, self.stderr)
+    }
 }
 
 impl std::fmt::Display for CommandResult {
@@ -112,8 +116,7 @@ async fn read_stderr(
     Ok(())
 }
 
-/// Spawns a `Command` with data for the standard input stream, indents the output stream contents,
-/// and returns its `CommandResult`.
+/// Spawns a `Command`, manages the output streams, and returns its `CommandResult`.
 ///
 /// # Errors
 ///
@@ -125,9 +128,30 @@ async fn read_stderr(
 /// * The command wasn't running
 pub async fn spawn_command(
     mqtt_client: &MqttClient,
+    cmd: Command,
+    entity_event: &mut impl EntityEvent,
+    capture_output: CaptureOutput,
+) -> CeaResult<CommandResult> {
+    spawn_command_with_stdin(mqtt_client, cmd, entity_event, capture_output, None::<&str>).await
+}
+
+/// Spawns a `Command` with data for the standard input stream, manages the output streams, and
+/// returns its `CommandResult`.
+///
+/// # Errors
+///
+/// Returns an `Err` if:
+///
+/// * The command failed to spawn
+/// * One of the I/O streams failed to be properly captured
+/// * One of the output-reading threads panics
+/// * The command wasn't running
+pub async fn spawn_command_with_stdin(
+    mqtt_client: &MqttClient,
     mut cmd: Command,
     entity_event: &mut impl EntityEvent,
     capture_output: CaptureOutput,
+    stdin_bytes: Option<impl AsRef<[u8]>>,
 ) -> CeaResult<CommandResult> {
     entity_event.log(format!("---- Running Command ----"));
     entity_event.log(format!("{:?}", cmd));
@@ -139,9 +163,12 @@ pub async fn spawn_command(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
 
-    // Close STDIN by dropping it
     let mut child = cmd.spawn()?;
-    let stdin = child.stdin.take().ok_or(CeaError::NoIoPipe)?;
+
+    let mut stdin = child.stdin.take().ok_or(CeaError::NoIoPipe)?;
+    if let Some(stdin_bytes) = stdin_bytes {
+        stdin.write_all(stdin_bytes.as_ref()).await?;
+    }
     drop(stdin);
 
     let (tx, mut rx) = mpsc::channel(100000);
