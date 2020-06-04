@@ -71,38 +71,13 @@ export default {
 
         delete this.kubernetesDeploymentEntityCreateVars.properties.kubernetesObjectYaml
 
-
-        // let targetVariables = {
-        //   name: "motherLoveBone899",
-        //   displayName: "Mother Love Bone",
-        //   description: "Mother Love Bone",
-        //   changeSetId: "",
-        //   workspaceId: auth.getProfile().workspaceDefault.id,
-        //   properties: {
-        //     kubernetesObject: {
-        //       apiVersion: "rr",
-        //       kind: "rr",
-        //       metadata: { name: "", labels: [] },
-        //       spec: {
-        //         replicas: 44,
-        //         selector: { matchLabels: [] },
-        //         template: {
-        //           metadata: { name: "", labels: [] },
-        //           spec: { containers: [] },
-        //         },
-        //       },
-        //     },
-        //   },
-        //   constraints: {
-        //     componentName: "",
-        //     componentDisplayName: "",
-        //     kubernetesVersion: "V1_15",
-        //   },
-        // }
-
+        // We need to make sure the changesetId is valid, invalida changset ID is bad,...
+        // Should error on invalid changeSetId.
+        delete this.kubernetesDeploymentEntityCreateVars.changeSetId
+  
+        // DEBUG logging to confirm what we are passing to the mutation below
+        // console.log("kubernetesDeploymentEntityCreateVars as json below:")
         // console.log(console.log(JSON.stringify(this.kubernetesDeploymentEntityCreateVars)))
-        // console.log("and")
-        // console.log(console.log(JSON.stringify(targetVariables)))
 
 
         this.$apollo.mutate({

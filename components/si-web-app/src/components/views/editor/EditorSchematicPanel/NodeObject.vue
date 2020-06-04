@@ -1,7 +1,18 @@
 <template>
   <!-- eslint-disable vue/no-unused-components -->
   <div>
-    <div class="node draggable absolute">{{nodeObject.id}}</div>
+    <div :ref="entityId" class="node draggable absolute cursor-move border-solid">
+      
+      <div class="flex flex-col select-none">
+
+        <div class="flex flex-col text-white ml-1 mt-1">
+          <div class="font-light text-xs">name:</div>
+          <div class="font-normal text-xs ml-2">{{entityName}}</div>
+        </div>
+      
+      </div>
+
+    </div>
   </div>
 </template>
 
@@ -26,26 +37,10 @@ export default {
     // });
   
     return {
-      kubernetesDeploymentEntityGet: {
-        item: null
-      }
+      entityId: this.nodeObject.id,
+      entityName: this.nodeObject.name
     };
   },
-  apollo: {
-    kubernetesDeploymentEntityGet: {
-      query() {
-        // kubernetesDeploymentEntity
-        // si storable.typeName
-
-        return registry.get("kubernetesDeploymentEntity").graphql.query({methodName: "get",});
-      },
-      variables() {
-        return {
-          id: this.nodeObject.id,
-        }
-      },
-    }
-  }
 }
 // fullstack-schema.graphql
 // NodeObject.vue

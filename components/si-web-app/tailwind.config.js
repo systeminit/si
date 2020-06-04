@@ -4,7 +4,8 @@ module.exports = {
   theme: {
     cursor: {
       resize: "ew-resize",
-      pointer: "pointer"
+      pointer: "pointer",
+      move: "move"
     },
     fontFamily: {
       sans: ["Roboto", "Sans-serif"],

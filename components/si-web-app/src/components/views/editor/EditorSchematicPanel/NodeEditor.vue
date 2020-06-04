@@ -54,6 +54,7 @@ export default {
   },
   data() {
     return {
+      selectedNode: "",
       gridWidth: "100%",
       gridHeight: "100%",
       isPanning: false,
@@ -244,6 +245,10 @@ export default {
         // console.log(this.selection.object);
 
         if (this.selection.object.classList.contains("node")) {
+
+          console.log(this.selection.object)
+          console.log(event);
+
           let selectionOffsetLeft = event.target.offsetLeft;
           let selectionOffsetTop = event.target.offsetTop;
 
