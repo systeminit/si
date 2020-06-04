@@ -104,7 +104,14 @@ impl<
                         warn!(?err, "missing input entity on event");
                         return;
                     }
+                    if let Err(err) = entity_event.init_output_entity() {
+                        warn!(?err, "cannot initialize output entity");
+                        return;
+                    }
                     debug!(?entity_event, "dispatch");
+
+                    // TODO: fix
+                    // Setup tracing *outside* the dispatch function call
 
                     match dispatch.dispatch(&mqtt_client, &mut entity_event).await {
                         Ok(()) => {
