@@ -2,7 +2,6 @@
 // No-Touchy!
 
 use opentelemetry::api::propagation::text_propagator::HttpTextFormat;
-use tracing::{debug, info};
 use tracing_futures::Instrument as _;
 use tracing_opentelemetry::OpenTelemetrySpanExt as _;
 
@@ -2033,7 +2032,7 @@ impl<'a> opentelemetry::api::propagation::Carrier for TonicMetaWrapper<'a> {
         match raw_value.to_str() {
             Ok(value) => Some(value),
             Err(_e) => {
-                debug!("Cannot extract header for trace parent, not a string");
+                tracing::debug!("Cannot extract header for trace parent, not a string");
                 None
             }
         }
@@ -2043,8 +2042,8 @@ impl<'a> opentelemetry::api::propagation::Carrier for TonicMetaWrapper<'a> {
         let value = match tonic::metadata::MetadataValue::from_str(&raw_value) {
             Ok(value) => value,
             Err(_e) => {
-                debug!("Cannot insert header for trace parent, not a string");
-                debug!("Inserting the empty string");
+                tracing::debug!("Cannot insert header for trace parent, not a string");
+                tracing::debug!("Inserting the empty string");
                 tonic::metadata::MetadataValue::from_str("").unwrap()
             }
         };
