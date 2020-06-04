@@ -32,6 +32,12 @@ pub struct LookupObject {
     id: String,
     object_id: String,
     type_name: String,
+    si_storable: Option<LookupSiStorable>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LookupSiStorable {
     tenant_ids: Vec<String>,
 }
 
@@ -152,6 +158,20 @@ impl Db {
                 None => debug!("created primary index"),
             }
 
+            debug!("creating index on siStorable.tenantIds");
+            let mut result = self
+                .cluster
+                .query(
+                    format!("CREATE INDEX `idx_si_storable_tenancy` ON `{}` (DISTINCT ARRAY `t` FOR t IN siStorable.tenantIds END)", self.bucket_name),
+                    None,
+                )
+                .await?;
+            debug!("awaiting results");
+            let meta = result.meta().await?;
+            match meta.errors {
+                Some(error) => debug!(?error, "index already exists"),
+                None => debug!("created primary index"),
+            }
             Ok(())
         }
         .instrument(info_span!("db.create_indexes"))
@@ -320,7 +340,9 @@ impl Db {
                     id: String::from(nk),
                     object_id: content.id()?.to_string(),
                     type_name: "lookup_object".to_string(),
-                    tenant_ids: Vec::from(content.tenant_ids()?),
+                    si_storable: Some(LookupSiStorable {
+                        tenant_ids: Vec::from(content.tenant_ids()?),
+                    }),
                 };
                 let bucket = self.bucket.clone();
                 let collection = bucket.default_collection();
@@ -1277,7 +1299,7 @@ impl Db {
             );
             span.record(
                 "db.storable.tenant_ids",
-                &tracing::field::debug(&lookup_object.tenant_ids),
+                &tracing::field::debug(&lookup_object.si_storable.unwrap().tenant_ids),
             );
             self.get(lookup_object.object_id).await
         }
@@ -1321,7 +1343,7 @@ impl Db {
             );
             span.record(
                 "db.storable.tenant_ids",
-                &tracing::field::debug(&lookup_object.tenant_ids),
+                &tracing::field::debug(&lookup_object.si_storable.unwrap().tenant_ids),
             );
             self.get(lookup_object.object_id).await
         }

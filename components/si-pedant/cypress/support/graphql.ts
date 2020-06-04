@@ -7,8 +7,11 @@ export async function graphqlQuery(
   args: GraphqlQueryArgs,
 ): Promise<ApolloQueryResult<Record<string, any>>> {
   const siObject = registry.get(args.typeName);
+  console.log("got it motherfucker");
   const query = siObject.graphql.query(args.queryArgs);
+  console.log("whatsup");
   const getValue = () => {
+    console.log("inside");
     return apollo
       .query({
         query,
@@ -33,23 +36,8 @@ export async function graphqlMutation(
 ): Promise<FetchResult> {
   const siObject = registry.get(args.typeName);
   const mutation = siObject.graphql.mutation(args.queryArgs);
-  const getValue = () => {
-    return apollo
-      .mutate({
-        mutation,
-        variables: args.variables,
-      })
-      .then((result) => {
-        return result;
-      });
-  };
-  const resolveValue = () => {
-    return Cypress.Promise.try(getValue).then((value) => {
-      return cy.verifyUpcomingAssertions(value, args, {
-        onRetry: resolveValue,
-      });
-    });
-  };
-  return resolveValue();
+  return apollo.mutate({
+    mutation,
+    variables: args.variables,
+  });
 }
-

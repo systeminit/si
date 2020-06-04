@@ -6,6 +6,12 @@ pub struct LookupObject {
     id: String,
     object_id: String,
     type_name: String,
+    si_storable: Option<LookupSiStorable>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LookupSiStorable {
     tenant_ids: Vec<String>,
 }
 
@@ -66,11 +72,11 @@ impl Storable for LookupObject {
     }
 
     fn get_tenant_ids(&self) -> Vec<String> {
-        self.tenant_ids.clone()
+        self.si_storable.unwrap().tenant_ids.clone()
     }
 
     fn add_to_tenant_ids(&mut self, id: String) {
-        self.tenant_ids.push(id);
+        self.si_storable.unwrap().tenant_ids.push(id);
     }
 
     fn referential_fields(&self) -> Vec<Reference> {

@@ -12,7 +12,12 @@
 // This function is called when a project is opened or re-opened (e.g. due to
 // the project's config changing)
 
-const { dbDeleteByName, dbDeleteByTypeName } = require("./db");
+const {
+  dbDeleteByName,
+  dbDeleteByTypeName,
+  dbDeleteByBillingAccount,
+  dbDeleteBoboCorp,
+} = require("./db");
 
 /**
  * @type {Cypress.PluginConfig}
@@ -21,8 +26,11 @@ module.exports = (on, _config) => {
   // `on` is used to hook into various events Cypress emits
   // `config` is the resolved Cypress config
   on("task", {
-    "db:seed": async () => {
-      return dbSeed();
+    "db:deleteBoboCorp": async () => {
+      return dbDeleteBoboCorp();
+    },
+    "db:deleteByBillingAccount": async ({ billingAccountId }) => {
+      return dbDeleteByBillingAccount(billingAccountId);
     },
     "db:deleteByName": async ({ typeName, name, billingAccountId }) => {
       return dbDeleteByName(typeName, name, billingAccountId);

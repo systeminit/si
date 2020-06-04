@@ -11,7 +11,7 @@
 //
 // -- This is a parent command --
 
-import { login, loginBobo } from "./login";
+import { login, loginBobo, logout } from "./login";
 import { createUser, createUserBobo } from "./createUser";
 import { graphqlQuery, graphqlMutation } from "./graphql";
 
@@ -19,6 +19,7 @@ Cypress.Commands.add("createUser", createUser);
 Cypress.Commands.add("createUserBobo", createUserBobo);
 Cypress.Commands.add("login", login);
 Cypress.Commands.add("loginBobo", loginBobo);
+Cypress.Commands.add("logout", logout);
 Cypress.Commands.add("graphqlQuery", graphqlQuery);
 Cypress.Commands.add("graphqlMutation", graphqlMutation);
 

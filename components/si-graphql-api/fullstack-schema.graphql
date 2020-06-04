@@ -1143,7 +1143,7 @@ type KubernetesDeploymentEntityCreateReply {
   """Entity Event"""
   entityEvent: KubernetesDeploymentEntityEvent
 
-  """${baseTypeName}Entity Item"""
+  """kubernetesDeploymentEntity Item"""
   item: KubernetesDeploymentEntity
 }
 
