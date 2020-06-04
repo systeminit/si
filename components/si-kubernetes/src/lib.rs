@@ -4,4 +4,5 @@ pub mod protobuf {
 
 pub mod agent;
 pub mod gen;
+pub mod kubectl;
 pub mod model;
