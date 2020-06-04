@@ -1,7 +1,7 @@
 <template>
   <!-- eslint-disable vue/no-unused-components -->
   <div>
-    <div :ref="entityId" class="node draggable absolute cursor-move border-solid">
+    <div :ref="entityId" class="node absolute cursor-move border-solid" @mousedown="selectNode">
       
       <div class="flex flex-col select-none">
 
@@ -41,6 +41,11 @@ export default {
       entityName: this.nodeObject.name
     };
   },
+  methods: {
+    selectNode() {
+      console.log("node selected")
+    }
+  }
 }
 // fullstack-schema.graphql
 // NodeObject.vue
