@@ -1,0 +1,1 @@
+cbq --engine http://localhost:8091 -u si -p bugbear -script "SELECT * FROM \`si\` WHERE id = \"kubernetes_deployment_entity_event:5739bcc6-13d2-405b-83d4-2a1a24c1d0ea\" ;" -o
