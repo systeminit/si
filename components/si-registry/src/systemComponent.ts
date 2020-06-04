@@ -593,7 +593,7 @@ export class EntityObject extends SystemObject {
         });
         p.reply.properties.addLink({
           name: "item",
-          label: "${baseTypeName}Entity Item",
+          label: `${baseTypeName}Entity Item`,
           options(p: PropLink) {
             p.universal = true;
             p.readOnly = true;
