@@ -14,7 +14,7 @@ pub mod query;
 pub mod storable;
 
 pub use db::{Db, ListResult};
-pub use error::{DataError, Result};
+pub use error::{required_field_err, DataError, Result};
 pub use migrateable::Migrateable;
 pub use query::{
     DataQuery, DataQueryBooleanTerm, DataQueryItems, DataQueryItemsExpression,
