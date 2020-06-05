@@ -4,10 +4,9 @@
     <div v-for="field of propObject.properties.attrs.filter(i => !i.hidden)" v-bind:key="field.name" class="flex flex-row">
             
       <!-- something not right here because a browser reload breaks but a code reload works -->
-      <!-- <div class="text-yellow-500">{{objectModel[field.name]}}</div> -->
-
+      <div class="text-yellow-500">{{objectModel}}</div>
       
-      <PropObjectProperty
+      <PropObjectPropertyView
         :propObject="propObject"
         :propObjectProperty="field"
         :propObjectPropertyModel="objectModel[field.name]"
@@ -23,7 +22,7 @@
 import Vue from "vue";
 import { registry } from "si-registry";
 
-import PropObjectProperty from "./PropObjectProperty.vue";
+import PropObjectPropertyView from "./PropObjectPropertyView.vue";
 
 import { auth } from "@/utils/auth";
 
@@ -36,7 +35,7 @@ export default Vue.extend({
   },
   components: {
  // LinkIcon,
-    PropObjectProperty,
+    PropObjectPropertyView,
   },
   methods: {
     propChangeMsg(event: any) {
