@@ -8,10 +8,12 @@
       @propChangeMsg="propChangeMsg"
     />
 
-    <div class="flex flex-row-reverse pr-8 pb-4">
-      <button class="bg-teal-700 px-4 py-2 text-white hover:bg-teal-600" @click="createEntity()" type="button">
-        Create
-      </button>
+    <div v-if="mode == 'create'">
+      <div class="flex flex-row-reverse pr-8 pb-4">
+        <button class="bg-teal-700 px-4 py-2 text-white hover:bg-teal-600" @click="createEntity()" type="button">
+          Create
+        </button>
+      </div>
     </div>
 
   </div>
@@ -41,14 +43,18 @@ export default {
       "create",
     );
 
+    console.log("B")
     const kubernetesDeploymentEntityCreateVars = kubernetesDeploymentEntity.graphql.variablesObject(
       { methodName: "create" },
     );
-  
+
     return {
       kubernetesDeploymentEntity,
       kubernetesDeploymentEntityCreate,
       kubernetesDeploymentEntityCreateVars,
+      kubernetesDeploymentEntityGet: {
+        item: {}
+      },
     };
   },
   methods: {
@@ -92,6 +98,25 @@ export default {
 
       console.log("done");
     },
+  },
+  apollo: {
+    kubernetesDeploymentEntityGet: {
+      query() {
+        console.log("query with: ", this.nodeId)
+        let result = registry.get("kubernetesDeploymentEntity").graphql.query({methodName: "get"});
+        return result;
+      },
+      fetchPolicy: "no-cache",
+      variables() {
+        return {
+          id: "kubernetes_deployment_entity:f17c2635-ce32-4a17-857d-033d68b62ba7", // this.nodeId,
+        }
+      },
+      update(data) {
+        this.viewData = data.item
+
+      }
+    }
   }
 };
 </script>

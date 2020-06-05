@@ -27,8 +27,15 @@
     
     </div>
 
+    <div class="text-red-600">
+      {{selectedNodeId}}
+    </div>
+
     <div class="flex w-full h-full overflow-auto mt-5">
-      <PropertyList />
+      <PropertyListView
+        :nodeId="nodeId"
+      />
+
     </div>
   </div>
 </template>
@@ -41,7 +48,8 @@ import {
   SearchIcon,
   CodeIcon,
 } from "vue-feather-icons";
-import PropertyList from "./PropertyList.vue";
+import PropertyListView from "./PropertyListView.vue";
+import { mapState, mapActions } from 'vuex'
 
 export default {
   name: "EditorPropertyPanel",
@@ -50,7 +58,16 @@ export default {
     FilterIcon,
     SearchIcon,
     CodeIcon,
-    PropertyList,
+    PropertyListView,
+  },
+  data() {
+    let mode = "view"
+    // let nodeId = this.selectedNodeId
+    let nodeId = "kubernetes_deployment_entity:f17c2635-ce32-4a17-857d-033d68b62ba7"
+    return {
+      mode,
+      nodeId
+    }
   },
   methods: {
     maximizePanel() {
@@ -60,7 +77,10 @@ export default {
         },
       })
     }
-  }
+  },
+  computed: mapState({
+    selectedNodeId: state => state.editor.selectedNodeId
+  }),
 };
 </script>
 

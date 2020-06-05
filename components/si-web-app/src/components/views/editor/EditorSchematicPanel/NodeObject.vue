@@ -1,7 +1,7 @@
 <template>
   <!-- eslint-disable vue/no-unused-components -->
   <div>
-    <div :ref="entityId" class="node absolute cursor-move border-solid" @mousedown="selectNode">
+    <div :ref="entityId" class="node absolute cursor-move border-solid" @mousedown="selectNode(entityId)">
       
       <div class="flex flex-col select-none">
 
@@ -18,6 +18,7 @@
 
 <script>
 import { registry } from "si-registry";
+import { mapState, mapActions } from 'vuex'
 
 export default {
   name: "NodeObject",
@@ -41,11 +42,7 @@ export default {
       entityName: this.nodeObject.name
     };
   },
-  methods: {
-    selectNode() {
-      console.log("node selected")
-    }
-  }
+  methods: mapActions('editor', ['selectNode'])
 }
 // fullstack-schema.graphql
 // NodeObject.vue
