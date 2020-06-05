@@ -2,11 +2,16 @@
   <!-- eslint-disable vue/no-unused-components -->
   <div>
     <div v-for="field of propObject.properties.attrs.filter(i => !i.hidden)" v-bind:key="field.name" class="flex flex-row">
+            
+      <!-- something not right here because a browser reload breaks but a code reload works -->
+      <!-- <div class="text-yellow-500">{{objectModel[field.name]}}</div> -->
+
       
-      <PropObjectPropertyView
+      <PropObjectProperty
         :propObject="propObject"
         :propObjectProperty="field"
         :propObjectPropertyModel="objectModel[field.name]"
+        @propChangeMsg="propChangeMsg"
       />
       
     </div>
@@ -18,7 +23,7 @@
 import Vue from "vue";
 import { registry } from "si-registry";
 
-import PropObjectPropertyView from "./PropObjectPropertyView.vue";
+import PropObjectProperty from "./PropObjectProperty.vue";
 
 import { auth } from "@/utils/auth";
 
@@ -31,7 +36,7 @@ export default Vue.extend({
   },
   components: {
  // LinkIcon,
-    PropObjectPropertyView,
+    PropObjectProperty,
   },
   methods: {
     propChangeMsg(event: any) {
@@ -61,3 +66,4 @@ export default Vue.extend({
   },
 });
 </script>
+

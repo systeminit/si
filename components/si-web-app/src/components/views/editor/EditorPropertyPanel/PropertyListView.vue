@@ -4,8 +4,7 @@
     
     <PropObjectView
       :propObject="kubernetesDeploymentEntity"
-      :propObjectModel="kubernetesDeploymentEntity"
-      :entityObject="kubernetesDeploymentEntityGet.item"
+      :propObjectModel="kubernetesDeploymentEntityGet.item"
     />
 
 <!--     <vue-json-pretty
@@ -38,20 +37,23 @@ export default {
   data() {
 
     // const kubernetesDeploymentEntity = registry.get("kubernetesDeployment")
-    const kubernetesDeploymentEntity = registry.get("kubernetesDeploymentEntity").fields
+    const kubernetesDeploymentEntity = {
+      properties:  registry.get("kubernetesDeploymentEntity").fields
+    }
+
     // const kubernetesDeploymentEntity = registry.get("kubernetesDeploymentEntity").graphql
     // const kubernetesDeploymentEntity = registry.get("kubernetesDeploymentEntity").graphql.systemObject.methodsProp
     // const kubernetesDeploymentEntity = registry.get("kubernetesDeploymentEntity").methods.getEntry("get")
 
 
-    const kubernetesDeploymentEntityCreate = registry.get("kubernetesDeploymentEntity").methods.getEntry("create");
-    const kubernetesDeploymentEntityCreateVars = registry.get("kubernetesDeploymentEntity").graphql.variablesObject(
-      { methodName: "create" },
-    );
+    // const kubernetesDeploymentEntityCreate = registry.get("kubernetesDeploymentEntity").methods.getEntry("create");
+    // const kubernetesDeploymentEntityCreateVars = registry.get("kubernetesDeploymentEntity").graphql.variablesObject(
+    //   { methodName: "create" },
+    // );
     return {
       kubernetesDeploymentEntity,
-      kubernetesDeploymentEntityCreate,
-      kubernetesDeploymentEntityCreateVars,
+      // kubernetesDeploymentEntityCreate,
+      // kubernetesDeploymentEntityCreateVars,
       kubernetesDeploymentEntityGet: {
         item: {}
       },
