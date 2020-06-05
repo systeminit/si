@@ -7,7 +7,9 @@ import Cookies from "js-cookie";
 import editor from "./modules/editor";
 // @ts-ignore
 import applications from "./modules/applications";
-import { user, Authentication } from "./modules/user";
+import { entity, EntityStore } from "./modules/entity";
+import { user, UserStore } from "./modules/user";
+import { changeSet, ChangeSetStore } from "./modules/changeSet";
 
 Vue.use(Vuex);
 
@@ -29,25 +31,30 @@ const vuexLocal = new VuexPersistence({
 });
 
 export interface RootStore {
-  user: {
-    auth: Authentication;
-  };
-  applications: {
-    id: string;
-    name: string;
-  };
   editor: {
     selectedNodeId: string;
-    selectedNode: Record<string, any>;
-    nodeList: Record<string, any>[];
+    selectedNode: {};
+    nodeList: any[];
   };
+  applications: {
+    applicationList: any[];
+  };
+  user: UserStore;
+  entity: EntityStore;
+  changeSet: ChangeSetStore;
+  version: string;
 }
 
 const store: Store<RootStore> = new Vuex.Store({
+  state: {
+    version: "1",
+  },
   modules: {
     applications,
     editor,
     user,
+    entity,
+    changeSet,
   },
   strict: debug,
   plugins: [vuexCookie.plugin, vuexLocal.plugin],

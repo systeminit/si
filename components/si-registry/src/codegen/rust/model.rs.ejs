@@ -5,7 +5,7 @@ impl <%- fmt.structName() %> {
     <%_ if (fmt.hasCreateMethod() && fmt.isEntityObject()) { _%>
         <%- include('implEntityCreate.rs.ejs', { fmt: fmt }) %>
     <%_ } else if (fmt.hasCreateMethod() && fmt.isChangeSetObject()) { _%>
-        <%- include('implChangeSetCreate.rs.ejs', { fmt: fmt }) %>
+      <%- include('implChangeSetCreate.rs.ejs', { fmt: fmt }) %>
     <%_ } else if (fmt.hasCreateMethod()) { _%>
         <%- include('implCreate.rs.ejs', { fmt: fmt }) %>
     <%_ } _%>
@@ -14,7 +14,8 @@ impl <%- fmt.structName() %> {
         <%- include('implPick.rs.ejs', { fmt: fmt }) %>
     <%_ } _%>
     <%_ if (fmt.isEntityObject()) { _%>
-        <%- include('implEdit.rs.ejs', { fmt: fmt }) %>
+      <%- include('implEdit.rs.ejs', { fmt: fmt }) %>
+      <%- include('implUpdateAndDelete.rs.ejs', { fmt: fmt }) %>
     <%_ } _%>
 }
 

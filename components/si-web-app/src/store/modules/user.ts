@@ -40,9 +40,13 @@ export class Authentication {
   profile: Profile | undefined;
 }
 
+export interface UserStore {
+  auth: Authentication;
+}
+
 export const auth = new Authentication();
 
-export const user: Module<{ auth: Authentication }, any> = {
+export const user: Module<UserStore, any> = {
   namespaced: true,
   state: {
     auth,
@@ -62,6 +66,12 @@ export const user: Module<{ auth: Authentication }, any> = {
       }
       return state.auth.profile;
     },
+    userId(state): string {
+      if (state.auth.profile?.user.id == undefined) {
+        throw new Error("Cannot get userId; user is not logged in!");
+      }
+      return state.auth.profile.user.id;
+    },
     currentWorkspace(state): Workspace {
       if (state.auth.profile == undefined) {
         throw new Error(
@@ -69,6 +79,14 @@ export const user: Module<{ auth: Authentication }, any> = {
         );
       }
       return state.auth.profile.workspaceDefault;
+    },
+    currentWorkspaceId(state): string {
+      if (state.auth.profile?.workspaceDefault?.id == undefined) {
+        throw new Error(
+          "Cannot get profile; user is not logged in. So cannot get the current workspace, either!",
+        );
+      }
+      return state.auth.profile.workspaceDefault.id;
     },
   },
   actions: {
@@ -98,7 +116,7 @@ export const user: Module<{ auth: Authentication }, any> = {
     },
 
     async login(
-      { commit },
+      { commit, dispatch },
       {
         email,
         password,
@@ -148,6 +166,13 @@ export const user: Module<{ auth: Authentication }, any> = {
       });
       commit("profile", profile);
       commit("loggedIn", true);
+      for (const workspace of profile.workspaces) {
+        dispatch(
+          "entity/loadFromWorkspace",
+          { workspaceId: workspace["id"] },
+          { root: true },
+        );
+      }
       localStorage.setItem("profile", JSON.stringify(profile));
     },
 

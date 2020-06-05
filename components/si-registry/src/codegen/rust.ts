@@ -103,7 +103,9 @@ export class RustFormatter {
           this.hasEditUpdatesForAction(propAction),
       );
     } else {
-      throw "You ran 'hasEditUpdatesAndEithers()' on a non-entity object; this is a bug!";
+      throw new Error(
+        "You ran 'hasEditUpdatesAndEithers()' on a non-entity object; this is a bug!",
+      );
     }
   }
 
@@ -161,7 +163,9 @@ export class RustFormatter {
         this.systemObject.baseTypeName,
       )}Component`;
     } else {
-      throw "You asked for an component name on a non-component object; this is a bug!";
+      throw new Error(
+        "You asked for an component name on a non-component object; this is a bug!",
+      );
     }
   }
 
@@ -175,7 +179,9 @@ export class RustFormatter {
         this.systemObject.baseTypeName,
       )}ComponentConstraints`;
     } else {
-      throw "You asked for a component constraints name on a non-component object; this is a bug!";
+      throw new Error(
+        "You asked for a component constraints name on a non-component object; this is a bug!",
+      );
     }
   }
 
@@ -198,7 +204,9 @@ export class RustFormatter {
         "",
       )}`;
     } else {
-      throw "You asked for an edit method name on a non-entity object; this is a bug!";
+      throw new Error(
+        "You asked for an edit method name on a non-entity object; this is a bug!",
+      );
     }
   }
 
@@ -292,7 +300,9 @@ export class RustFormatter {
         this.systemObject.baseTypeName,
       )}EntityEvent`;
     } else {
-      throw "You asked for an entityEvent name on a non-component object; this is a bug!";
+      throw new Error(
+        "You asked for an entityEvent name on a non-component object; this is a bug!",
+      );
     }
   }
 
@@ -306,7 +316,9 @@ export class RustFormatter {
         this.systemObject.baseTypeName,
       )}Entity`;
     } else {
-      throw "You asked for an entity name on a non-component object; this is a bug!";
+      throw new Error(
+        "You asked for an entity name on a non-component object; this is a bug!",
+      );
     }
   }
 
@@ -320,7 +332,9 @@ export class RustFormatter {
         this.systemObject.baseTypeName,
       )}EntityProperties`;
     } else {
-      throw "You asked for an entityProperties name on a non-component object; this is a bug!";
+      throw new Error(
+        "You asked for an entityProperties name on a non-component object; this is a bug!",
+      );
     }
   }
 
@@ -361,12 +375,16 @@ export class RustFormatter {
           if (to instanceof PropPrelude.PropObject) {
             return `Ok(serde_yaml::from_str(value)?)`;
           } else {
-            throw `conversion from language '${
-              from.language
-            }' to type '${to.kind()}' is not supported`;
+            throw new Error(
+              `conversion from language '${
+                from.language
+              }' to type '${to.kind()}' is not supported`,
+            );
           }
         default:
-          throw `conversion from language '${from.language}' is not supported`;
+          throw new Error(
+            `conversion from language '${from.language}' is not supported`,
+          );
       }
     } else if (from instanceof PropPrelude.PropObject) {
       if (to instanceof PropPrelude.PropCode) {
@@ -374,14 +392,28 @@ export class RustFormatter {
           case "yaml":
             return `Ok(serde_yaml::to_string(value)?)`;
           default:
-            throw `conversion from PropObject to language '${to.language}' is not supported`;
+            throw new Error(
+              `conversion from PropObject to language '${to.language}' is not supported`,
+            );
         }
       } else {
-        throw `conversion from PropObject to type '${to.kind()}' is not supported`;
+        throw new Error(
+          `conversion from PropObject to type '${to.kind()}' is not supported`,
+        );
       }
     } else {
-      throw `conversion from type '${from.kind()}' to type '${to.kind()}' is not supported`;
+      throw new Error(
+        `conversion from type '${from.kind()}' to type '${to.kind()}' is not supported`,
+      );
     }
+  }
+
+  implUpdateRequestType(renderOptions: RustTypeAsPropOptions = {}): string {
+    const list = this.systemObject.methods.getEntry(
+      "update",
+    ) as PropPrelude.PropMethod;
+    const updateProp = list.request.properties.getEntry("update");
+    return this.rustTypeForProp(updateProp, renderOptions);
   }
 
   implListRequestType(renderOptions: RustTypeAsPropOptions = {}): string {
@@ -477,6 +509,22 @@ export class RustFormatter {
   implServiceEntityCreate(propMethod: PropPrelude.PropMethod): string {
     return ejs.render(
       "<%- include('src/codegen/rust/implServiceEntityCreate.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
+      { fmt: this, propMethod: propMethod },
+      { filename: "." },
+    );
+  }
+
+  implServiceEntityDelete(propMethod: PropPrelude.PropMethod): string {
+    return ejs.render(
+      "<%- include('src/codegen/rust/implServiceEntityDelete.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
+      { fmt: this, propMethod: propMethod },
+      { filename: "." },
+    );
+  }
+
+  implServiceEntityUpdate(propMethod: PropPrelude.PropMethod): string {
+    return ejs.render(
+      "<%- include('src/codegen/rust/implServiceEntityUpdate.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
       { fmt: this, propMethod: propMethod },
       { filename: "." },
     );
@@ -903,7 +951,7 @@ export class RustFormatter {
         siProperties = siProperties.lookupMyself();
       }
       if (!(siProperties instanceof PropPrelude.PropObject)) {
-        throw "Cannot get properties of a non object in ref check";
+        throw new Error("Cannot get properties of a non object in ref check");
       }
       for (const prop of siProperties.properties.attrs) {
         if (prop.reference) {

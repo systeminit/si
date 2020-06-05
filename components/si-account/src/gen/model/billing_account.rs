@@ -250,6 +250,19 @@ impl si_data::Storable for crate::protobuf::BillingAccount {
     }
 
     fn order_by_fields() -> Vec<&'static str> {
-        vec!["siStorable.naturalKey", "id", "name", "displayName"]
+        vec![
+            "siStorable.naturalKey",
+            "id",
+            "name",
+            "displayName",
+            "siStorable.naturalKey",
+            "dataStorable.viewContext",
+            "dataStorable.changeSetId",
+            "dataStorable.itemId",
+            "dataStorable.changeSetEntryCount",
+            "dataStorable.changeSetEventType",
+            "dataStorable.changeSetExecuted",
+            "dataStorable.deleted",
+        ]
     }
 }

@@ -21,6 +21,7 @@ export declare function variablesObjectForProperty(prop: Props, repeated?: boole
 export declare class SiGraphql {
     systemObject: ObjectTypes;
     constructor(systemObject: SiGraphql["systemObject"]);
+    extractResult(args: ValidateResultArgs): Record<string, any>;
     validateResult(args: ValidateResultArgs): Record<string, any>;
     variablesObject(args: VariablesObjectArgs): Record<string, any>;
     graphqlTypeName(prop: Props, inputType?: boolean): string;

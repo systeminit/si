@@ -37,6 +37,7 @@ service Account {
   rpc ChangeSetList(ChangeSetListRequest) returns (ChangeSetListReply);
   rpc ChangeSetGet(ChangeSetGetRequest) returns (ChangeSetGetReply);
   rpc ChangeSetCreate(ChangeSetCreateRequest) returns (ChangeSetCreateReply);
+  rpc ChangeSetExecute(ChangeSetExecuteRequest) returns (ChangeSetExecuteReply);
   rpc ItemGet(ItemGetRequest) returns (ItemGetReply);
   rpc ItemList(ItemListRequest) returns (ItemListReply);
 }
@@ -406,6 +407,8 @@ enum ChangeSetStatus {
   CHANGE_SET_STATUS_OPEN = 1;
   CHANGE_SET_STATUS_CLOSED = 2;
   CHANGE_SET_STATUS_ABANDONED = 3;
+  CHANGE_SET_STATUS_EXECUTING = 4;
+  CHANGE_SET_STATUS_FAILED = 5;
 }
 message ChangeSet {
   google.protobuf.StringValue id = 1;
@@ -445,6 +448,12 @@ message ChangeSetCreateRequest {
   google.protobuf.StringValue created_by_user_id = 1005;
 }
 message ChangeSetCreateReply {
+  si.account.ChangeSet item = 1001;
+}
+message ChangeSetExecuteRequest {
+  google.protobuf.StringValue id = 1001;
+}
+message ChangeSetExecuteReply {
   si.account.ChangeSet item = 1001;
 }
 message ItemSiProperties {

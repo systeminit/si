@@ -29,14 +29,14 @@ export class PropLink extends Prop {
 
   lookupObject(): ObjectTypes {
     if (this.lookup == undefined) {
-      throw "Link must have a lookup object defined on `p.lookup`";
+      throw new Error("Link must have a lookup object defined on `p.lookup`");
     }
     return registry.get(this.lookup.typeName);
   }
 
   lookupMyself(): Props {
     if (this.lookup == undefined) {
-      throw "Link must have a lookup object defined on `p.lookup`";
+      throw new Error("Link must have a lookup object defined on `p.lookup`");
     }
     return registry.lookupProp(this.lookup);
   }

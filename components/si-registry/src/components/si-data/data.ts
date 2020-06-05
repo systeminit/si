@@ -4,6 +4,7 @@ import {
   PropText,
   PropLink,
   PropNumber,
+  PropBool,
 } from "../../components/prelude";
 
 import { registry } from "../../registry";
@@ -71,6 +72,30 @@ registry.base({
       options(p: PropNumber) {
         p.numberKind = "uint64";
         p.universal = true;
+      },
+    });
+    c.fields.addEnum({
+      name: "changeSetEventType",
+      label: "The Change Set event type",
+      options(p: PropEnum) {
+        p.universal = true;
+        p.variants = ["create", "update", "delete", "action"];
+      },
+    });
+    c.fields.addBool({
+      name: "changeSetExecuted",
+      label: "has this been executed",
+      options(p: PropBool) {
+        p.universal = true;
+        p.baseDefaultValue = false;
+      },
+    });
+    c.fields.addBool({
+      name: "deleted",
+      label: "has this been deleted",
+      options(p: PropBool) {
+        p.universal = true;
+        p.baseDefaultValue = false;
       },
     });
   },

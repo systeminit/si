@@ -14,6 +14,8 @@ impl crate::protobuf::KubernetesServiceEntity {
     ) -> si_cea::CeaResult<crate::protobuf::KubernetesServiceEntity> {
         let mut si_storable = si_data::protobuf::DataStorable::default();
         si_storable.change_set_id = change_set_id;
+        si_storable.change_set_event_type =
+            si_data::protobuf::DataStorableChangeSetEventType::Create as i32;
         si_properties
             .as_ref()
             .ok_or_else(|| si_data::DataError::ValidationError("siProperties".into()))?;
@@ -207,6 +209,58 @@ impl crate::protobuf::KubernetesServiceEntity {
             self.properties_mut()?.kubernetes_object = Some(kubernetes_object_yaml.try_into()?);
         }
 
+        Ok(())
+    }
+
+    pub async fn delete(
+        &mut self,
+        db: &si_data::Db,
+        change_set_id: Option<String>,
+    ) -> si_data::Result<()> {
+        let item_id = self.id.clone();
+        self.si_storable.as_mut().map(|si_storable| {
+            si_storable.change_set_id = change_set_id;
+            si_storable.deleted = Some(true);
+            si_storable.set_change_set_event_type(si_data::DataStorableChangeSetEventType::Delete);
+            si_storable.item_id = item_id;
+            si_storable.change_set_executed = Some(false);
+            si_storable
+        });
+
+        db.delete(self).await?;
+        Ok(())
+    }
+
+    pub async fn update(
+        &mut self,
+        db: &si_data::Db,
+        change_set_id: Option<String>,
+        update: Option<crate::protobuf::KubernetesServiceEntityUpdateRequestUpdate>,
+    ) -> si_data::Result<()> {
+        let item_id = self.id.clone();
+        self.si_storable.as_mut().map(|si_storable| {
+            si_storable.change_set_id = change_set_id;
+            si_storable.deleted = Some(false);
+            si_storable.set_change_set_event_type(si_data::DataStorableChangeSetEventType::Update);
+            si_storable.item_id = item_id;
+            si_storable.change_set_executed = Some(false);
+            si_storable
+        });
+
+        if update.is_some() {
+            let real_update = update.unwrap();
+            if real_update.description.is_some() {
+                self.description = real_update.description;
+            }
+            if real_update.properties.is_some() {
+                self.properties = real_update.properties;
+            }
+            if real_update.name.is_some() {
+                self.name = real_update.name;
+            }
+        }
+
+        db.update(self).await?;
         Ok(())
     }
 }
@@ -460,37 +514,10 @@ impl si_data::Storable for crate::protobuf::KubernetesServiceEntity {
     }
 
     fn natural_key(&self) -> si_data::Result<Option<&str>> {
-        Ok(self
-            .si_storable
-            .as_ref()
-            .ok_or_else(|| si_data::DataError::RequiredField("si_storable".to_string()))?
-            .natural_key
-            .as_ref()
-            .map(String::as_str))
+        Ok(None)
     }
 
     fn set_natural_key(&mut self) -> si_data::Result<()> {
-        let natural_key = format!(
-            "{}:{}:{}",
-            self.tenant_ids()?
-                .first()
-                .ok_or_else(|| si_data::DataError::MissingTenantIds)?,
-            Self::type_name(),
-            self.name
-                .as_ref()
-                .ok_or_else(|| si_data::DataError::RequiredField("name".to_string()))?,
-        );
-
-        if self.si_storable.is_none() {
-            self.si_storable = Some(Default::default());
-        }
-
-        let si_storable = self.si_storable.as_mut().expect(
-            "crate::protobuf::KubernetesServiceEntity.si_storable \
-                has been set or initialized",
-        );
-        si_storable.natural_key = Some(natural_key);
-
         Ok(())
     }
 
@@ -565,6 +592,14 @@ impl si_data::Storable for crate::protobuf::KubernetesServiceEntity {
             "id",
             "name",
             "displayName",
+            "siStorable.naturalKey",
+            "dataStorable.viewContext",
+            "dataStorable.changeSetId",
+            "dataStorable.itemId",
+            "dataStorable.changeSetEntryCount",
+            "dataStorable.changeSetEventType",
+            "dataStorable.changeSetExecuted",
+            "dataStorable.deleted",
             "description",
             "siStorable.naturalKey",
             "entitySiProperties.entityState",

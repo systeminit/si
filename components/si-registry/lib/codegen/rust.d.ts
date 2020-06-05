@@ -56,6 +56,7 @@ export declare class RustFormatter {
     structName(): string;
     typeName(): string;
     implTryFromForPropertyUpdate(propertyUpdate: PropertyUpdate): string;
+    implUpdateRequestType(renderOptions?: RustTypeAsPropOptions): string;
     implListRequestType(renderOptions?: RustTypeAsPropOptions): string;
     implListReplyType(renderOptions?: RustTypeAsPropOptions): string;
     implServiceRequestType(propMethod: PropPrelude.PropMethod, renderOptions?: RustTypeAsPropOptions): string;
@@ -68,6 +69,8 @@ export declare class RustFormatter {
     implServiceCommonCreate(propMethod: PropPrelude.PropMethod): string;
     implServiceChangeSetCreate(propMethod: PropPrelude.PropMethod): string;
     implServiceEntityCreate(propMethod: PropPrelude.PropMethod): string;
+    implServiceEntityDelete(propMethod: PropPrelude.PropMethod): string;
+    implServiceEntityUpdate(propMethod: PropPrelude.PropMethod): string;
     implServiceGet(propMethod: PropPrelude.PropMethod): string;
     implServiceList(propMethod: PropPrelude.PropMethod): string;
     implServiceComponentPick(propMethod: PropPrelude.PropMethod): string;

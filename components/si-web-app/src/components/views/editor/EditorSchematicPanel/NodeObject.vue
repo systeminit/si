@@ -13,6 +13,12 @@
         <div class="flex flex-col text-white ml-1 mt-1">
           <div class="font-light text-xs">name:</div>
           <div class="font-normal text-xs ml-2">{{ nodeObject.name }}</div>
+          <span v-if="nodeObject.changeSetId" class="text-xs">
+            <span class="font-light">changeSet:</span>
+            <div class="ml-2">
+              {{ changeSetName(nodeObject.changeSetId) }}
+            </div>
+          </span>
         </div>
       </div>
       <!-- 
@@ -70,6 +76,14 @@ export default {
     },
     optionClicked1(event) {
       window.alert(JSON.stringify(event));
+    },
+    changeSetName(changeSetId) {
+      if (changeSetId) {
+        const changeSet = this.$store.getters["changeSet/byId"](changeSetId);
+        return changeSet.name;
+      } else {
+        return "";
+      }
     },
   },
   computed: {

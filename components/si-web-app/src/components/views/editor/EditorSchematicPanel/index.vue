@@ -55,6 +55,7 @@ export default {
         id: Date.now().toString(),
         name: "new",
         isEntity: false,
+        changeSetId: this.$store.getters["changeSet/currentId"],
       };
       this.$store.dispatch("editor/addNode", payload);
     },

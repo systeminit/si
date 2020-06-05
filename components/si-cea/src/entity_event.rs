@@ -83,6 +83,8 @@ pub trait EntityEvent:
     fn entity_id(&self) -> DataResult<&str>;
     fn set_entity_id(&mut self, entity_id: impl Into<String>);
 
+    fn set_change_set_id(&mut self, change_set_id: impl Into<String>);
+
     fn new(
         user_id: impl Into<String>,
         action_name: impl Into<String>,
@@ -104,6 +106,10 @@ pub trait EntityEvent:
         entity_event.set_integration_id(entity.integration_id()?);
         entity_event.set_integration_service_id(entity.integration_service_id()?);
         entity_event.set_component_id(entity.component_id()?);
+        // This can probably become an unwrap once we're all the
+        // way finished, and know we won't be going back to the
+        // old world without changesets.
+        entity_event.set_change_set_id(entity.change_set_id()?.unwrap_or(""));
         entity_event.set_entity_id(entity.id()?);
 
         Ok(entity_event)
@@ -211,11 +217,15 @@ pub trait EntityEvent:
     }
 
     async fn send_via_mqtt(&self, mqtt_client: &MqttClient) -> CeaResult<()> {
-        let mut payload = Vec::new();
-        let finalized = {
-            self.encode(&mut payload)?;
-            self.finalized()
-        };
+        let payload = serde_json::to_string(self)?;
+        let finalized = self.finalized();
+
+        // When we were so young, and everything was typed.
+        //
+        //let mut payload = Vec::new();
+        //self.encode(&mut payload)?;
+        //   self.finalized()
+        //};
         if finalized.unwrap_or(false) {
             let msg = mqtt::Message::new(self.result_topic()?, payload.clone(), 0);
             mqtt_client.publish(msg).compat().await?;

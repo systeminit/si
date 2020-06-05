@@ -6,18 +6,14 @@
       </button>
     </div> -->
 
-    <div v-if="kubernetesDeploymentEntityGet">
-      <PropObject
-        :propObject="kubernetesDeploymentEntity"
-        :propObjectModel="kubernetesDeploymentEntityGet.item"
-      />
-    </div>
+      <PropObject :propObject="entitySchema" :propObjectModel="entity" />
   </div>
 </template>
 
 <script>
 import { registry } from "si-registry";
 import PropObject from "./PropObject.vue";
+import { mapGetters } from "vuex";
 
 export default {
   name: "PropertyListView",
@@ -26,50 +22,26 @@ export default {
   },
   props: {
     nodeId: String, // make this more generic later...
+    typeName: String,
   },
   data() {
-    // const kubernetesDeploymentEntity = registry.get("kubernetesDeployment")
-    const kubernetesDeploymentEntity = {
-      properties: registry.get("kubernetesDeploymentEntity").fields,
+    const entitySchema = {
+      properties: registry.get(this.typeName).fields,
     };
     return {
-      kubernetesDeploymentEntity,
-      kubernetesDeploymentEntityGet: {
-        item: {},
-      },
+      entitySchema,
+      entity: {},
     };
   },
-  methods: {
-    onClick() {
-      this.$apollo.queries.kubernetesDeploymentEntityGet.refetch();
+  watch: {
+    async nodeId() {
+      await this.$store.dispatch("entity/get", {
+        id: this.nodeId,
+        typeName: this.typeName,
+      })
+      const entity = this.$store.getters["entity/get"](this.nodeId);
+      this.entity = entity;
     },
-  },
-  apollo: {
-    kubernetesDeploymentEntityGet: {
-      query() {
-        console.log("PropertyListView.kubernetesDeploymentEntityGet.query()");
-        let result = registry
-          .get("kubernetesDeploymentEntity")
-          .graphql.query({ methodName: "get" });
-        return result;
-      },
-      fetchPolicy: "no-cache",
-      // fetchPolicy: "cache-first",
-      variables() {
-        return {
-          id: this.nodeId, // this.nodeId,
-        };
-      },
-      // update(data) {
-      //   return data.kubernetesDeploymentEntityGet
-      // },
-    },
-  },
-  mounted() {
-    console.log("PropertyListView.mounted()");
-  },
-  updated() {
-    console.log("PropertyListView.updated()");
   },
 };
 </script>

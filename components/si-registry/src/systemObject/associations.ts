@@ -163,7 +163,9 @@ export class AssociationList {
   getByFieldName(fieldName: string): Associations {
     const result = this.associations.find(a => a.fieldName == fieldName);
     if (result == undefined) {
-      throw `Cannot get association field ${fieldName}; it does not exist on the object`;
+      throw new Error(
+        `Cannot get association field ${fieldName}; it does not exist on the object`,
+      );
     }
     return result;
   }
@@ -171,7 +173,9 @@ export class AssociationList {
   getByTypeName(typeName: string): Associations {
     const result = this.associations.find(a => a.typeName == typeName);
     if (result == undefined) {
-      throw `Cannot get association type ${typeName}; it does not exist on the object`;
+      throw new Error(
+        `Cannot get association type ${typeName}; it does not exist on the object`,
+      );
     }
     return result;
   }

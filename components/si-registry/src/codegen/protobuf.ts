@@ -14,7 +14,7 @@ export class ProtobufFormatter {
 
   constructor(systemObjects: ObjectTypes[]) {
     if (systemObjects.length == 0) {
-      throw "You must provide objects to generate";
+      throw new Error("You must provide objects to generate");
     }
     this.systemObjects = systemObjects;
   }
@@ -64,7 +64,9 @@ export class ProtobufFormatter {
             );
             results.push(this.protobufMessageForPropObject(methodHolder.reply));
           } else {
-            throw `Error generating protobuf - non method/action prop found on ${object.typeName}`;
+            throw new Error(
+              `Error generating protobuf - non method/action prop found on ${object.typeName}`,
+            );
           }
         }
       }
@@ -147,7 +149,7 @@ export class ProtobufFormatter {
       return "google.protobuf.StringValue";
     } else {
       // @ts-ignore
-      throw `Unknown property type for rendering protobuf! Fix me: ${prop.kind()}`;
+      throw new Error(`Unknown property type for rendering protobuf! Fix me`);
     }
     return "unreachable!";
   }

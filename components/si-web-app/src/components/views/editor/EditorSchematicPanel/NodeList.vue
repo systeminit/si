@@ -15,7 +15,7 @@ import { registry } from "si-registry";
 // import VueJsonPretty from "vue-json-pretty";
 import NodeObject from "./NodeObject.vue";
 
-import { mapState, mapActions } from "vuex";
+import { mapGetters, mapActions } from "vuex";
 
 export default {
   name: "NodeList",
@@ -36,9 +36,12 @@ export default {
     };
   },
   computed: {
-    ...mapState({
-      nodeList: state => state.editor.nodeList,
+    ...mapGetters({
+      nodeList: "editor/nodeList",
     }),
+    //...mapState({
+    //  nodeList: state => state.editor.nodeList,
+    //}),
   },
   watch: {
     nodeList(newState, previousState) {

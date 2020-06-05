@@ -5,6 +5,7 @@ pub mod protobuf {
 pub mod gen;
 
 pub mod authorize;
+pub mod change_set_agent;
 pub mod error;
 pub mod model;
 

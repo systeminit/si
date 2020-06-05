@@ -93,10 +93,31 @@ impl<
                         }
                     };
 
-                    let mut entity_event = match <EE as Message>::decode(msg.payload()) {
-                        Ok(e) => e,
+                    // In the halcyon days before we had a demo, this was a protocol buffer.
+                    // But then, changesets arrived, and we needed to be able to inject
+                    // and manipulate those payloads on the wire without knowing their
+                    // eventual structure. Them's the breaks. This code is here because
+                    // we may, some day, decide we want it back. But for now, see you later,
+                    // protocol buffer: welcome your new JSON overlords.
+                    //
+                    //let mut entity_event = match <EE as Message>::decode(msg.payload()) {
+                    //    Ok(e) => e,
+                    //    Err(err) => {
+                    //        warn!(?err, "deserializing error - bad message");
+                    //        return;
+                    //    }
+                    //};
+                    let payload_str = match std::str::from_utf8(msg.payload()) {
+                        Ok(payload_str) => payload_str,
                         Err(err) => {
-                            warn!(?err, "deserializing error - bad message");
+                            warn!(?err, "utf8 error deserializing message");
+                            return;
+                        }
+                    };
+                    let mut entity_event: EE = match serde_json::from_str(payload_str) {
+                        Ok(entity_event) => entity_event,
+                        Err(err) => {
+                            warn!(?err, "error deserializing json from payload buffer");
                             return;
                         }
                     };

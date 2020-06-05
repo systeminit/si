@@ -140,7 +140,7 @@ impl Db {
             let meta = result.meta().await?;
             match meta.errors {
                 Some(error) => debug!(?error, "index already exists"),
-                None => debug!("created primary index"),
+                None => debug!("created index"),
             }
 
             debug!("creating index on siStorable.typeName and siStorable.tenantIds");
@@ -155,7 +155,7 @@ impl Db {
             let meta = result.meta().await?;
             match meta.errors {
                 Some(error) => debug!(?error, "index already exists"),
-                None => debug!("created primary index"),
+                None => debug!("created index"),
             }
 
             debug!("creating index on siStorable.tenantIds");
@@ -170,8 +170,25 @@ impl Db {
             let meta = result.meta().await?;
             match meta.errors {
                 Some(error) => debug!(?error, "index already exists"),
-                None => debug!("created primary index"),
+                None => debug!("created index"),
             }
+
+            debug!("creating index on siStorable.changeSetId");
+            let mut result = self
+                .cluster
+                .query(
+                    format!("CREATE INDEX `idx_si_storable_changeSetId` ON `{}` (siStorable.changeSetId)", self.bucket_name),
+                    None,
+                )
+                .await?;
+            debug!("awaiting results");
+            let meta = result.meta().await?;
+            match meta.errors {
+                Some(error) => debug!(?error, "index already exists"),
+                None => debug!("created index"),
+            }
+
+
             Ok(())
         }
         .instrument(info_span!("db.create_indexes"))
@@ -201,6 +218,38 @@ impl Db {
         }
         .instrument(span)
         .await
+    }
+
+    pub async fn delete<'a, T>(&self, content: &'a mut T) -> Result<&'a mut T>
+    where
+        T: Storable + Serialize + std::fmt::Debug,
+    {
+        if let Some(change_set_id) = content.change_set_id()? {
+            if change_set_id != "" {
+                event!(Level::TRACE, "change_set_entry_count");
+                let entry_count = self.change_set_next_entry(change_set_id, 0).await?;
+                content.set_change_set_entry_count(entry_count)?;
+            }
+        }
+        content.generate_id();
+        self.upsert(content).await?;
+        Ok(content)
+    }
+
+    pub async fn update<'a, T>(&self, content: &'a mut T) -> Result<&'a mut T>
+    where
+        T: Storable + Serialize + std::fmt::Debug,
+    {
+        if let Some(change_set_id) = content.change_set_id()? {
+            if change_set_id != "" {
+                event!(Level::TRACE, "change_set_entry_count");
+                let entry_count = self.change_set_next_entry(change_set_id, 0).await?;
+                content.set_change_set_entry_count(entry_count)?;
+            }
+        }
+        content.generate_id();
+        self.upsert(content).await?;
+        Ok(content)
     }
 
     pub async fn validate_and_insert_as_new<'a, T>(&self, content: &'a mut T) -> Result<&'a mut T>
@@ -833,9 +882,9 @@ impl Db {
             span.record("db.storable.type_name", &tracing::field::display("*"));
 
             // The empty string is the default order_by; and it should be
-            // naturalKey
+            // id
             let order_by = match order_by.as_ref() {
-                "" => "siStorable.naturalKey",
+                "" => "id",
                 ob => ob,
             };
             span.record("db.list.order_by", &tracing::field::display(&order_by));
@@ -1027,7 +1076,7 @@ impl Db {
             // The empty string is the default order_by; and it should be
             // naturalKey
             let order_by = match order_by.as_ref() {
-                "" => "siStorable.naturalKey",
+                "" => "id",
                 ob => ob,
             };
             span.record("db.list.order_by", &tracing::field::display(&order_by));
@@ -1274,6 +1323,35 @@ impl Db {
         .await
     }
 
+    pub async fn upsert_raw<T>(
+        &self,
+        id: impl AsRef<str>,
+        content: &T,
+    ) -> Result<couchbase::result::MutationResult>
+    where
+        T: Serialize + std::fmt::Debug,
+    {
+        let bucket_name = format!("{}", self.bucket_name);
+        let span = info_span!(
+            "db.upsert_raw",
+            db.storable.id = %id.as_ref(),
+            db.bucket_name = tracing::field::display(&bucket_name[..]),
+            component = tracing::field::display("si-data"),
+        );
+        async {
+            let bucket = self.bucket.clone();
+            let collection = bucket.default_collection();
+            let id = id.as_ref();
+
+            collection
+                .upsert(id, content, None)
+                .await
+                .map_err(DataError::CouchbaseError)
+        }
+        .instrument(span)
+        .await
+    }
+
     pub async fn lookup_by_natural_key<S1, T>(&self, natural_key: S1) -> Result<T>
     where
         S1: Into<String> + std::fmt::Debug,
@@ -1363,6 +1441,9 @@ impl Db {
             db.bucket_name = tracing::field::display(&self.bucket_name),
             component = tracing::field::display("si-data"),
         );
+        if id_string == "" {
+            return Err(DataError::RequiredField("document id".into()));
+        }
         async {
             let item = {
                 let bucket = self.bucket.clone();

@@ -272,6 +272,14 @@ impl si_data::Storable for crate::protobuf::Organization {
             "name",
             "displayName",
             "siStorable.naturalKey",
+            "dataStorable.viewContext",
+            "dataStorable.changeSetId",
+            "dataStorable.itemId",
+            "dataStorable.changeSetEntryCount",
+            "dataStorable.changeSetEventType",
+            "dataStorable.changeSetExecuted",
+            "dataStorable.deleted",
+            "siStorable.naturalKey",
             "siProperties.billingAccountId",
         ]
     }

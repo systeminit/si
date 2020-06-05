@@ -62,8 +62,18 @@ impl AgentClient {
 
     pub async fn send(&self, entity_event: &impl EntityEvent) -> CeaResult<()> {
         async {
-            let mut payload = Vec::new();
-            entity_event.encode(&mut payload)?;
+            // You used to a protocol buffer. That was before we needed to
+            // deal with the data without having a schema anymore. So.. JSON
+            // is youre future, you lovely little monkey.
+            //
+            // Leaving this here in case we decide our future is once again
+            // strong typed serialization.
+            //
+            //let mut payload = Vec::new();
+            //entity_event.encode(&mut payload)?;
+
+            let payload = serde_json::to_string(entity_event)?;
+
             // We are very close to the broker - so no need to pretend that we are at
             // risk of not receiving our messages. Right?
             let topic = self.generate_topic(entity_event)?;

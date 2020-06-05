@@ -277,6 +277,14 @@ impl si_data::Storable for crate::protobuf::IntegrationService {
             "name",
             "displayName",
             "siStorable.naturalKey",
+            "dataStorable.viewContext",
+            "dataStorable.changeSetId",
+            "dataStorable.itemId",
+            "dataStorable.changeSetEntryCount",
+            "dataStorable.changeSetEventType",
+            "dataStorable.changeSetExecuted",
+            "dataStorable.deleted",
+            "siStorable.naturalKey",
             "siProperties.integrationId",
         ]
     }

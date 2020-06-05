@@ -79,6 +79,18 @@ export class SiGraphql {
     this.systemObject = systemObject;
   }
 
+  extractResult(args: ValidateResultArgs): Record<string, any> {
+    const method = this.systemObject.methods.getEntry(
+      args.methodName,
+    ) as PropMethod;
+    const reply = method.reply;
+    const lookupName =
+      args.overrideName ||
+      `${camelCase(this.systemObject.typeName)}${pascalCase(args.methodName)}`;
+    const result = args.data.data[lookupName];
+    return result;
+  }
+
   validateResult(args: ValidateResultArgs): Record<string, any> {
     const method = this.systemObject.methods.getEntry(
       args.methodName,
@@ -90,7 +102,7 @@ export class SiGraphql {
     const result = args.data.data[lookupName];
     for (const field of reply.properties.attrs) {
       if (field.required && result[field.name] == undefined) {
-        throw `response incomplete; missing required field ${field}`;
+        throw new Error(`response incomplete; missing required field ${field}`);
       }
     }
     return result;
@@ -181,7 +193,7 @@ export class SiGraphql {
     }
     const result: string[] = [];
     for (const prop of propObject.properties.attrs) {
-      if (prop.hidden || prop.skip) {
+      if (prop.skip) {
         continue;
       }
       result.push(`${prop.name}`); // without camelCase

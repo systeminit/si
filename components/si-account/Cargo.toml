@@ -19,7 +19,7 @@ bytes = "0.5"
 prost = "0.6" 
 prost-derive = "0.6"
 tokio = { version = "0.2", features = ["full"] }
-futures = { version = "0.3", features = ["alloc"]}
+futures = { version = "0.3", features = ["alloc", "compat"]}
 async-stream = "0.2"
 http = "0.2"
 tower = "0.3" 
@@ -43,6 +43,9 @@ serde_cbor = "0.10"
 base64 = "0.10.1"
 names = "0.11"
 tempfile = "3.1"
+
+# MQTT
+paho-mqtt = "0.6"
 
 # Local Deps
 si-settings = { path = "../si-settings" }

@@ -62,6 +62,9 @@ impl DataStorable {
             view_context: None,
             change_set_id: None,
             change_set_entry_count: None,
+            change_set_event_type: crate::protobuf::DataStorableChangeSetEventType::Unknown as i32,
+            change_set_executed: Some(false),
+            deleted: Some(false),
             item_id: None,
         }
     }
