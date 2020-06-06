@@ -13,9 +13,9 @@
         />
       </div>
 
-      <div v-else class="text-red-800">
+<!--       <div v-else class="text-red-800">
         propObjectModel[field.name] is undefined
-      </div>
+      </div> -->
       
     </div>
   </div>
