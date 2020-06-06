@@ -1,7 +1,7 @@
 <template>
   <!-- eslint-disable vue/no-unused-components -->
   <div>
-    <div :ref="entityId" class="node absolute cursor-move border-solid border-2" :class="nodeIsSelected" @mousedown="toggleSelection(true); selectNode(entityId)">
+    <div :ref="entityId" class="node absolute cursor-move border-solid border-2 shadow-md" :class="nodeIsSelected" @mousedown="toggleSelection(true); selectNode(entityId)">
       <div class="flex flex-col select-none">
 
         <div class="flex flex-col text-white ml-1 mt-1">
@@ -71,7 +71,7 @@ export default {
 
 .node-is-selected {
   /*@apply border-2;*/
-  
+  @apply z-10;
   border-color: #00B0B1;
 }
 </style>
