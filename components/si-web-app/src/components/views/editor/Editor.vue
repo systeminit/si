@@ -8,7 +8,7 @@
     v-on:mousedown="mouseDown"
     v-on:mouseup="mouseUp"
   >
-    <div ref="leftPanel" class="bg-gray-900" :class="leftPanelVisibilityClasses">
+    <div ref="leftPanel" class="bg-gray-900 w-2/3" :class="leftPanelVisibilityClasses">
       <SchematicPanel
         @maximizePanelMsg="maximizePanel"
       />
@@ -16,7 +16,7 @@
 
     <div ref="resizeHandle" class="bg-gray-800 cursor-resize" :class="resizeHandleVisibilityClasses"/>
 
-    <div ref="rightPanel" class="bg-gray-900" :class="rightPanelVisibilityClasses">
+    <div ref="rightPanel" class="bg-gray-900 w-1/3" :class="rightPanelVisibilityClasses">
       <PropertyPanel
         @maximizePanelMsg="maximizePanel"
       />
