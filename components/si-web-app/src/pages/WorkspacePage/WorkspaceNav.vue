@@ -12,12 +12,12 @@
       :options=workspaces
     />
 
-    <div class="text-white"> Changeset </div>
+<!--     <div class="text-white"> Changeset </div>
     <Dropdown
       class=""
       :default=currentWorkspace
       :options=workspaces
-    />
+    /> -->
 
     <div id="workspace-content" class="flex px-4 py-2 ml-2">
   
