@@ -96,7 +96,7 @@ export default {
       this.window.height = window.innerHeight;
     },
     maximizePanel(msg) {
-      console.log("event")
+      // console.log("event")
       switch (msg.panel.id) {
         case "property":
           this.togglePanelVisibility("schematic")
@@ -104,7 +104,6 @@ export default {
 
         case "schematic":
           this.togglePanelVisibility("property")
-          console.log("AAAAAA")
           break;
       }
 

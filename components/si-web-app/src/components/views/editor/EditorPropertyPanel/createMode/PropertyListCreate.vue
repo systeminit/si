@@ -43,7 +43,6 @@ export default {
       "create",
     );
 
-    console.log("B")
     const kubernetesDeploymentEntityCreateVars = kubernetesDeploymentEntity.graphql.variablesObject(
       { methodName: "create" },
     );
@@ -59,18 +58,15 @@ export default {
   },
   methods: {
     propChangeMsg(event) {
-      console.log("PropertyList.methods.propChangeMsg() with:", event["value"])
       this.kubernetesDeploymentEntityCreateVars = event["value"];
     },
     createEntity() {
-      console.log("PropertyList.methods.createEntity()")
       const mutation = this.kubernetesDeploymentEntity.graphql.mutation({
         methodName: "create",
       });
       // console.log(mutation);
 
       try {
-        console.log("PropertyList.methods.createEntity() with:", this.kubernetesDeploymentEntityCreateVars)
         // pass object to mutate here
         
         this.kubernetesDeploymentEntityCreateVars.workspaceId = auth.getProfile().workspaceDefault.id
@@ -93,16 +89,16 @@ export default {
 
 
       } catch (error) {
-        console.log("not today, homie", { error });
+        console.log("error", { error });
       }
 
-      console.log("done");
+      // console.log("done");
     },
   },
   apollo: {
     kubernetesDeploymentEntityGet: {
       query() {
-        console.log("query with: ", this.nodeId)
+        // console.log("query with: ", this.nodeId)
         let result = registry.get("kubernetesDeploymentEntity").graphql.query({methodName: "get"});
         return result;
       },

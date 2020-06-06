@@ -2,16 +2,16 @@
   <!-- eslint-disable vue/no-unused-components -->
   <div id="property-panel-list" class="w-full h-full">
     
-    <PropObjectView
+<!--     <div class="mx-3">
+      <button class="text-yellow-500 px-4 py-2 focus:outline-none" @click="onClick()" type="button">
+        apollo.queries.kubernetesDeploymentEntityGet.refetch()
+      </button>
+    </div> -->
+
+    <PropObject
       :propObject="kubernetesDeploymentEntity"
       :propObjectModel="kubernetesDeploymentEntityGet.item"
     />
-
-<!--     <vue-json-pretty
-      :path="'res'"
-      :data="kubernetesDeploymentEntityGet.item"
-      @click="handleClick">
-    </vue-json-pretty> -->
 
   </div>
 </template>
@@ -20,64 +20,58 @@
 /* eslint-disable vue/no-unused-components */
 import { auth } from "@/utils/auth";
 import { registry } from "si-registry";
-import PropObjectView from "./PropObjectView.vue";
-
-// @ts-ignore
-import VueJsonPretty from "vue-json-pretty"
+import PropObject from "./PropObject.vue";
 
 export default {
   name: "PropertyListView",
   components: {
-    PropObjectView,
-    VueJsonPretty,
+    PropObject,
   },
   props: {
     nodeId: String // make this more generic later...
   },
   data() {
-
     // const kubernetesDeploymentEntity = registry.get("kubernetesDeployment")
     const kubernetesDeploymentEntity = {
       properties:  registry.get("kubernetesDeploymentEntity").fields
     }
-
-    // const kubernetesDeploymentEntity = registry.get("kubernetesDeploymentEntity").graphql
-    // const kubernetesDeploymentEntity = registry.get("kubernetesDeploymentEntity").graphql.systemObject.methodsProp
-    // const kubernetesDeploymentEntity = registry.get("kubernetesDeploymentEntity").methods.getEntry("get")
-
-
-    // const kubernetesDeploymentEntityCreate = registry.get("kubernetesDeploymentEntity").methods.getEntry("create");
-    // const kubernetesDeploymentEntityCreateVars = registry.get("kubernetesDeploymentEntity").graphql.variablesObject(
-    //   { methodName: "create" },
-    // );
     return {
       kubernetesDeploymentEntity,
-      // kubernetesDeploymentEntityCreate,
-      // kubernetesDeploymentEntityCreateVars,
       kubernetesDeploymentEntityGet: {
         item: {}
       },
     };
   },
   methods: {
+    onClick() {
+      this.$apollo.queries.kubernetesDeploymentEntityGet.refetch()
+    }
   },
   apollo: {
     kubernetesDeploymentEntityGet: {
       query() {
-        console.log("query with: ", this.nodeId)
+        console.log("PropertyListView.kubernetesDeploymentEntityGet.query()")
         let result = registry.get("kubernetesDeploymentEntity").graphql.query({methodName: "get"});
         return result;
       },
       fetchPolicy: "no-cache",
+      // fetchPolicy: "cache-first",
       variables() {
         return {
-          id: "kubernetes_deployment_entity:f17c2635-ce32-4a17-857d-033d68b62ba7", // this.nodeId,
+          id: this.nodeId, // this.nodeId,
         }
       },
-      // update(data) {
-      //   this.viewData = data.item
-      // }
+      update(data) {
+        console.log("PropertyListView.kubernetesDeploymentEntityGet.update() with:", data.kubernetesDeploymentEntityGet.item.id)
+        return data.kubernetesDeploymentEntityGet
+      },
     }
+  },
+  mounted() {
+    console.log("PropertyListView.mounted()")
+  },
+  updated() {
+    console.log("PropertyListView.updated()")
   }
 };
 </script>

@@ -19,20 +19,11 @@
 
               <div>
 
-                <div v-for="(object, index) in objectModel" :key="index" class="flex pt-1">             
+                <div v-for="(object, index) in propObjectPropertyModel" :key="index" class="flex pt-1">             
                   <PropObject
                     :propObject="propObjectProperty.lookupMyself()"
-                    :propObjectModel="objectModel[index]"
+                    :propObjectModel="propObjectPropertyModel[index]"
                   />
-                </div>
-
-                <div class="flex text-gray-500 pt-1">
-
-                  <button class="text-center w-4 focus:outline-none" type="button" @click="onClickB($event, propObjectProperty)">                
-                    <plus-square-icon size="1.25x" class=""></plus-square-icon>
-                  </button>
-                  
-                  <p class="ml-2">{{ propObjectProperty.name }}</p>
                 </div>
 
               </div>
@@ -45,92 +36,11 @@
             <PropObjectProperty
               :propObject="propObject"
               :propObjectProperty="propObjectProperty.lookupMyself()"
-              :propObjectPropertyModel="objectModel"
+              :propObjectPropertyModel="propObjectPropertyModel"
             />
           </div>
 
         </div>
-
-<!--         <div v-else-if="propObjectProperty.kind() == 'object'">
-          <button class="text-yellow-500 text-center w-4 focus:outline-none" type="button" @click="onClickB($event, propObjectProperty)">   
-            <plus-square-icon size="1.25x" class=""></plus-square-icon>
-          </button>
-        </div>
-
-        <div v-else-if="propObjectProperty.kind() == 'text'">
-          <div class="flex items-center text-yellow-500">
-            <div class="px-2 text-sm text-gray-400">
-              {{ propObjectProperty.name }}
-            </div>
-            <input
-              class="appearance-none input-bg-color border-none text-gray-400 pl-2 h-5 text-sm leading-tight focus:outline-none"
-              type="text"
-              :aria-label="propObjectProperty.name"
-              v-model="objectModel"
-              placeholder="text"
-            />
-          </div>
-        </div>
-
-        <div v-else-if="propObjectProperty.kind() == 'code'">
-          <div class="flex items-center">
-            <div class="px-2 text-sm text-yellow-500">
-              {{ propObjectProperty.name }}
-            </div>
-          </div>
-        </div>
-
-        <div v-else-if="propObjectProperty.kind() == 'number'">
-          <div class="flex items-center">
-            <div class="px-2 text-sm text-yellow-500">
-              {{ propObjectProperty.name }}
-            </div>
-            <input
-              class="appearance-none input-bg-color border-none text-gray-400 ml-3 pl-2 h-5 text-sm leading-tight focus:outline-none"
-              type="text"
-              :aria-label="propObjectProperty.name"
-              v-model="objectModel"
-              placeholder="number"
-            />
-          </div>
-        </div>
-
-        <div v-else-if="propObjectProperty.kind() == 'enum'">
-          <select 
-            class="block appearance-none bg-gray-200 border border-gray-200 text-yellow-500 px-4 rounded leading-tight focus:outline-none "
-            :aria-label="propObjectProperty.name">
-            <option
-              v-for="option in propObjectProperty.variants"
-              v-bind:key="option"
-              >{{ option }}</option
-            >
-          </select>
-        </div>
-
-        <div v-else-if="propObjectProperty.kind() == 'map'">
-          <div class="flex items-center">
-
-            <button class="text-yellow-500 text-center w-4" type="button" @click="onClickB(propObjectProperty)">                
-              <plus-square-icon size="1.25x" class=""></plus-square-icon>
-            </button>
-   
-            <input
-              class="appearance-none input-bg-color border-none text-gray-400 ml-3 pl-2 h-5 text-sm leading-tight focus:outline-none"
-              type="text"
-              :aria-label="propObjectProperty.name + ' key'"
-              v-model="objectModel"
-              placeholder="text"
-            />
-            
-            <input
-              class="appearance-none input-bg-color border-none text-gray-400 ml-3 pl-2 h-5 text-sm leading-tight focus:outline-none"
-              type="text"
-              :aria-label="propObjectProperty.name + ' value'"
-              v-model="objectModel"
-              placeholder="text"
-            />
-          </div>
-        </div> -->
       
       </div>
       
@@ -146,15 +56,10 @@
             class="appearance-none text-sm leading-tight focus:outline-none input-bg-color appearance-none border-none text-gray-400 pl-2 h-5 w-32"
             type="text"
             :aria-label="propObjectProperty.name"
-            v-model="objectModel"
+            v-model="propObjectPropertyModel"
             placeholder="text"
+            readonly
           />
-
-<!--           <div v-if="!propObjectProperty.required">
-            <button class="text-red-600 pl-1 focus:outline-none" type="button" @click="removeItem($event, index)">
-              <x-icon size="0.8x"></x-icon>
-            </button>
-          </div> -->
 
         </div>
       </div>
@@ -169,19 +74,14 @@
           <div class="input-label">
             {{ propObjectProperty.name }}
           </div>
-
-<!-- 
-  type="text"
-  type="number"
-  v-model.number="objectModel" below isn't wokring because the api want string.
-  v-model="objectModel"
--->  
+ 
           <input
             class="appearance-none text-sm leading-tight focus focus:outline-none input-bg-color border-none text-gray-400 pl-2 h-5 w-32"
             type="number"
             :aria-label="propObjectProperty.name"
-            v-model.number="objectModel"
+            v-model.number="propObjectPropertyModel"
             placeholder="number"
+            readonly
           />
         </div>
       </div>
@@ -197,8 +97,9 @@
           <select 
             class="bg-gray-800 border text-gray-400 text-sm px-4 leading-tight focus:outline-none"
             :aria-label="propObjectProperty.name"
-            v-model="objectModel"
+            v-model="propObjectPropertyModel"
             @change="formatSelector"
+            readonly
             >
             <option
               v-for="option in propObjectProperty.variants"
@@ -219,42 +120,26 @@
              </div>
 
              <div>
-                <div v-for="(object, index) in objectModel" :key="index" class="flex pb-2">  
+                <div v-for="(object, index) in propObjectPropertyModel" :key="index" class="flex pb-2">  
                   <input
                     class="appearance-none text-sm leading-tight focus:outline-none input-bg-color appearance-none border-none text-gray-400 pl-2 h-5 w-32"
                     type="text"
                     :aria-label="key"
-                    v-model="objectModel[index].key"
+                    v-model="propObjectPropertyModel[index].key"
                     placeholder="key"
-                    @change="onMetadataKeyChange($event, objectModel[index].key)"
+                    @change="onMetadataKeyChange($event, propObjectPropertyModel[index].key)"
+                    readonly
                   />
 
                   <input
                     class="appearance-none text-sm leading-tight focus:outline-none input-bg-color appearance-none border-none text-gray-400 pl-2 ml-2 h-5 w-32"
                     type="text"
                     :aria-label="val"
-                    v-model="objectModel[index].value"
+                    v-model="propObjectPropertyModel[index].value"
                     placeholder="value"
+                    readonly
                   />
-
-                  <button class="text-gray-600 pl-1 focus:outline-none" type="button" @click="removeItem($event, objectModel, index)">
-                    <x-icon size="0.8x"></x-icon>
-                  </button>
-
                 </div>
-
-              <div class="flex text-gray-500">
-                <button class="focus:outline-none" type="button" @click="onClickB($event, propObjectProperty)">
-                  <plus-square-icon size="1.25x"></plus-square-icon>
-                </button>
-              </div>
-
-<!--               <div v-if="!propObjectProperty.required">
-                <button class="text-gray-600 pl-1 focus:outline-none" type="button" @click="removeProperty(propObjectProperty)">
-                  <x-icon size="0.8x"></x-icon>
-                </button>
-              </div> -->
-
             </div>
 
         </div>
@@ -264,40 +149,40 @@
 
         <div v-if="propObjectProperty.lookupMyself().kind() == 'object'">
 
-          <PropertySection
+          <PropertySectionView
             class="flex flex-col"
             :sectionTitle="propObjectProperty.name"
             > 
 
             <PropObject
               :propObject="propObjectProperty.lookupMyself()"
-              :propObjectModel="objectModel"
+              :propObjectModel="propObjectPropertyModel"
             />
 
-          </PropertySection>
+          </PropertySectionView>
         </div>
 
         <div v-else>
-          <PropObjectProperty
+          <PropObjectPropertyView
             :propObject="propObject"
             :propObjectProperty="propObjectProperty.lookupMyself()"
-            :propObjectPropertyModel="objectModel"
+            :propObjectPropertyModel="propObjectPropertyModel"
           />
         </div>
       </div>
 
       <div v-else-if="propObjectProperty.kind() == 'object'">
-          <PropertySection
+          <PropertySectionView
             class="flex flex-col"
             :sectionTitle="propObjectProperty.name"
             > 
 
             <PropObject
               :propObject="propObjectProperty"
-              :propObjectModel="objectModel"
+              :propObjectModel="propObjectPropertyModel"
             />
 
-          </PropertySection>
+          </PropertySectionView>
       </div>
 
       <div v-else>
@@ -315,20 +200,16 @@
 import Vue from "vue";
 import { registry, variablesObjectForProperty } from "si-registry";
 import { auth } from "@/utils/auth";
-import { PlusSquareIcon, ChevronDownIcon, Trash2Icon, XIcon } from "vue-feather-icons"
-
-import Button from "./Button.vue"
+import { ChevronDownIcon, Trash2Icon, XIcon } from "vue-feather-icons"
 
 import PropObject from "./PropObject.vue";
-import PropertySection from "./PropertySection.vue";
-
-import { constantCase } from "change-case";
+import PropertySectionView from "./PropertySectionView.vue";
 
 // @ts-ignore
 export default Vue.extend({
   name: "PropObjectPropertyView",
   props: {
-    PropObject: { type: Object, required: true },
+    propObject: { type: Object, required: true },
     propObjectProperty: { type: Object, required: true },
     propObjectPropertyModel: {
       type: [Object, String, Number, Array],
@@ -336,9 +217,8 @@ export default Vue.extend({
     },
   },
   components: {
-    PlusSquareIcon,
     ChevronDownIcon,
-    PropertySection,
+    PropertySectionView,
     Trash2Icon,
     XIcon,
     PropObject: () => import("./PropObject.vue"),
@@ -349,122 +229,8 @@ export default Vue.extend({
     );
 
     return {
-      objectModel: this.propObjectPropertyModel,
       items: []
     };
-  },
-  watch: {
-    objectModel(newVal, _oldVal) {
-      console.log("PropObjectProperty.watch.objectModel() with ::",this.propObjectProperty.name, newVal)
-      this.$emit("propChangeMsg", {
-        fieldName: this.propObjectProperty.name,
-        value: newVal,
-      });
-    },
-  },
-  
-  // watch: {
-  //   objectModel(event){
-  //     console.log("PropObjectProperty.watch(objectModel):", event)
-  //   }
-  // },
-
-  methods: {
-    formatSelector() {
-      console.log("PropObjectProperty.methods.formatSelector()")
-
-      console.log("aa with:", this.objectModel)
-      // this.objectModel = constantCase(this.objectModel.replace(/\./g, '_'));
-      this.objectModel = constantCase(this.objectModel);
-
-    },
-    // @ts-ignore
-    onMetadataKeyChange(event, object) {
-      // Add input validation - keys must be unique.
-      console.log("Metadata key changed: ", event)
-      console.log("Metadata Key value: ", object)
-
-    },
-    // @ts-ignore
-    removeProperty(propObjectProperty) {
-      console.log(propObjectProperty)
-      if (!propObjectProperty.required) {
-        console.log("not required", this.objectModel)
-        // delete this.objectModel;
-      } else {
-        console.log("required")
-      }
-      // delete this.objectModel[propObjectProperty.name];
-    },
-    // @ts-ignore
-    removeItem($event, index) {
-      this.objectModel.splice(index, 1);
-    },
-    // @ts-ignore
-    onClickB(event, propObjectProperty) {
-      console.log("click")
-      var varsObjectForProperty;
-      var keyValueMapObject;
-
-      switch (propObjectProperty.kind()) {
-          case "link":
-
-            console.log("we have a link")
-            console.log("propObjectProperty:", propObjectProperty)
-            console.log("objectModel:", this.objectModel)
-            
-            if (propObjectProperty.lookupMyself().kind() == "object") {
-              
-              console.log("we have a link and it's an object")
-              varsObjectForProperty = variablesObjectForProperty(propObjectProperty.lookupMyself(), true)
-              console.log("varsObjectForProperty:", varsObjectForProperty)
-              
-            try {
-              this.objectModel.push(varsObjectForProperty)
-              console.log("length: ", this.objectModel.length)
-            }
-            catch(err) {
-              console.log("err: ", err)
-            }
-
-          }
-          break;
-        
-        case "object":
-          console.log("we have an object")
-          console.log("propObjectProperty:", propObjectProperty)
-          console.log(this.objectModel)
-          varsObjectForProperty = variablesObjectForProperty(propObjectProperty)
-          console.log("varsObjectForProperty:", varsObjectForProperty)
-          
-          keyValueMapObject = {
-            [varsObjectForProperty.name]: ''
-          }
-
-          console.log("keyValueMapObject: ", keyValueMapObject)
-          this.objectModel.push(keyValueMapObject)
-          
-
-          break;
-
-        case "map":
-          console.log("we have a map")
-          console.log("propObjectProperty:", propObjectProperty)
-          console.log("objectModel:", this.objectModel)
-          varsObjectForProperty = variablesObjectForProperty(propObjectProperty)
-          console.log("varsObjectForProperty:", varsObjectForProperty)
-
-          keyValueMapObject = {
-            'key': '',
-            'value': ''
-          }
-
-          this.objectModel.push(keyValueMapObject)
-
-          break;
-
-        }
-    }
   },
 });
 </script>

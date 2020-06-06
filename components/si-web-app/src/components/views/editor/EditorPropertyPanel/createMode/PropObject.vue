@@ -25,7 +25,7 @@ import { auth } from "@/utils/auth";
 
 //@ts-ignore
 export default Vue.extend({
-  name: "PropObject",
+  name: "PropObjectView",
   props: {
     propObject: { type: Object, required: true },
     propObjectModel: { type: [Object, Array], required: true },
