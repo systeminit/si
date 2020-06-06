@@ -27,10 +27,12 @@
     
     </div>
 
-    <div class="flex w-full h-full overflow-auto mt-5">
-      <PropertyListView
-        :nodeId="selectedNodeId"
-      />
+    <div v-if="typeof selectedNodeId !== 'undefined'">
+      <div class="flex w-full h-full overflow-auto mt-5">
+        <PropertyListView
+          :nodeId="selectedNodeId"
+        />
+    </div>
 
     </div>
   </div>
@@ -55,9 +57,6 @@ export default {
     SearchIcon,
     CodeIcon,
     PropertyListView,
-  },
-  data() {
-    // let nodeId = "kubernetes_deployment_entity:f17c2635-ce32-4a17-857d-033d68b62ba7"
   },
   methods: {
     maximizePanel() {

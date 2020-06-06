@@ -98,7 +98,6 @@
             class="bg-gray-800 border text-gray-400 text-sm px-4 leading-tight focus:outline-none"
             :aria-label="propObjectProperty.name"
             v-model="propObjectPropertyModel"
-            @change="formatSelector"
             readonly
             >
             <option

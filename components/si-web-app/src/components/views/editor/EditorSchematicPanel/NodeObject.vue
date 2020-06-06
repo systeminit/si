@@ -1,8 +1,7 @@
 <template>
   <!-- eslint-disable vue/no-unused-components -->
   <div>
-    <div :ref="entityId" class="node absolute cursor-move border-solid" @mousedown="selectNode(entityId)">
-      
+    <div :ref="entityId" class="node absolute cursor-move border-solid" :class="nodeIsSelected" @mousedown="toggleSelection(true); selectNode(entityId)">
       <div class="flex flex-col select-none">
 
         <div class="flex flex-col text-white ml-1 mt-1">
@@ -26,23 +25,36 @@ export default {
     nodeObject: {},
   },
   data() {
-    // const kubernetesDeploymentEntity = registry.get("kubernetesDeploymentEntity");
-
-    // // const kubernetesDeploymentEntityObject = kubernetesDeploymentEntity.methods.getEntry("get");
-
-    // const kubernetesDeploymentEntityObject = kubernetesDeploymentEntity.graphql.query({
-    //   methodName: "get",
-    //   associations: {
-    //     id: this.nodeObject.id
-    //   }
-    // });
-  
     return {
       entityId: this.nodeObject.id,
-      entityName: this.nodeObject.name
+      entityName: this.nodeObject.name,
+      isSelected: false
     };
   },
-  methods: mapActions('editor', ['selectNode'])
+  methods: {
+  ...mapActions('editor', ['selectNode']),
+
+    toggleSelection(value) {
+      this.isSelected = value;
+    },
+  },
+  computed: {
+    nodeIsSelected: function() {
+      return {
+        'node-is-selected': this.isSelected,
+      };
+    },
+    ...mapState({
+      selectedNodeId: state => state.editor.selectedNodeId
+    }),
+  },
+  watch: {
+    selectedNodeId (newState, previousState) {
+      if (newState != this.nodeObject.id) {
+        this.toggleSelection(false)
+      }
+    }
+  }
 }
 // fullstack-schema.graphql
 // NodeObject.vue
@@ -54,5 +66,11 @@ export default {
   height: 100px;
   background-color: teal;
   color: #fff;
+}
+
+.node-is-selected {
+  @apply border-2;
+  
+  border-color: #00B0B1;
 }
 </style>
