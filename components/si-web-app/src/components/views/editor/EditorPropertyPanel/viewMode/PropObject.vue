@@ -5,7 +5,7 @@
       <!-- {{objectModel[field.name]}} -->
 
 
-      <div v-if="typeof propObjectModel[field.name] !== 'undefined'">
+      <div v-if="propObjectModel[field.name]">
         <PropObjectPropertyView
           :propObject="propObject"
           :propObjectProperty="field"

@@ -27,10 +27,10 @@
     
     </div>
 
-    <div v-if="typeof selectedNodeId !== 'undefined'">
+    <div v-if="selectedNode.len !== ''">
       <div class="flex w-full h-full overflow-auto mt-5">
         <PropertyListView
-          :nodeId="selectedNodeId"
+          :nodeId="selectedNode"
         />
       </div>
     </div>
@@ -67,6 +67,16 @@ export default {
     CodeIcon,
     PropertyListView,
     PropertyListCreate,
+  },
+  data() {
+    return {
+      selectedNode: ""
+    }
+  },
+  watch: {
+    selectedNodeId (newState, previousState) {
+      this.selectedNode = newState
+    }
   },
   methods: {
     maximizePanel() {

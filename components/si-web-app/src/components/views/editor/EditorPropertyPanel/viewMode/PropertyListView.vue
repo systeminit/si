@@ -61,10 +61,9 @@ export default {
           id: this.nodeId, // this.nodeId,
         }
       },
-      update(data) {
-        console.log("PropertyListView.kubernetesDeploymentEntityGet.update() with:", data.kubernetesDeploymentEntityGet.item.id)
-        return data.kubernetesDeploymentEntityGet
-      },
+      // update(data) {
+      //   return data.kubernetesDeploymentEntityGet
+      // },
     }
   },
   mounted() {
