@@ -13,9 +13,6 @@
       </div>
 
       <div class="mx-3">
-        <button class="text-white px-4 py-2 focus:outline-none">
-          <settings-icon size="1.1x"/>
-        </button>
 
         <button class="text-white px-4 py-2 focus:outline-none" @click="maximizePanel()" type="button">
           <maximize-2-icon size="1.1x"></maximize-2-icon>

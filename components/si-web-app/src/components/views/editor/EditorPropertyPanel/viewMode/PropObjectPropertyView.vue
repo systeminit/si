@@ -123,7 +123,7 @@
                   <input
                     class="appearance-none text-sm leading-tight focus:outline-none input-bg-color appearance-none border-none text-gray-400 pl-2 h-5 w-32"
                     type="text"
-                    :aria-label="key"
+                    aria-label="key"
                     v-model="propObjectPropertyModel[index].key"
                     placeholder="key"
                     @change="onMetadataKeyChange($event, propObjectPropertyModel[index].key)"
@@ -133,7 +133,7 @@
                   <input
                     class="appearance-none text-sm leading-tight focus:outline-none input-bg-color appearance-none border-none text-gray-400 pl-2 ml-2 h-5 w-32"
                     type="text"
-                    :aria-label="val"
+                    aria-label="val"
                     v-model="propObjectPropertyModel[index].value"
                     placeholder="value"
                     readonly
