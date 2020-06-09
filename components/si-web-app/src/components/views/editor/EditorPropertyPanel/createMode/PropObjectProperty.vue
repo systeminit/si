@@ -176,15 +176,18 @@
   v-model.number="objectModel" below isn't wokring because the api want string.
   v-model="objectModel"
 -->  
+<!-- TYPE SHOULD BE NUMBER... but gql api doesn't seem to like numbers on numbers -->
           <input
-            class="appearance-none text-sm leading-tight focus focus:outline-none input-bg-color border-none text-gray-400 pl-2 h-5 w-32"
-            type="number"
+            class="appearance-none text-sm leading-tight focus focus:outline-none input-bg-color border-none font-bold text-red-700 pl-2 h-5 w-32"
+            type="text"
             :aria-label="propObjectProperty.name"
             v-model.number="objectModel"
             placeholder="number"
           />
         </div>
       </div>
+
+
 
       <div v-else-if="propObjectProperty.kind() == 'enum'">
         
@@ -223,7 +226,7 @@
                   <input
                     class="appearance-none text-sm leading-tight focus:outline-none input-bg-color appearance-none border-none text-gray-400 pl-2 h-5 w-32"
                     type="text"
-                    :aria-label="key"
+                    aria-label="key"
                     v-model="objectModel[index].key"
                     placeholder="key"
                     @change="onMetadataKeyChange($event, objectModel[index].key)"
@@ -232,7 +235,7 @@
                   <input
                     class="appearance-none text-sm leading-tight focus:outline-none input-bg-color appearance-none border-none text-gray-400 pl-2 ml-2 h-5 w-32"
                     type="text"
-                    :aria-label="val"
+                    aria-label="val"
                     v-model="objectModel[index].value"
                     placeholder="value"
                   />
