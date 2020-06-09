@@ -27,17 +27,20 @@
     
     </div>
 
-    <div v-if="selectedNode.len !== ''">
-      <div class="flex w-full h-full overflow-auto mt-5">
-        <PropertyListView
-          :nodeId="selectedNode"
-        />
-      </div>
-    </div>
+    <div v-if="selectedNode">
 
-    <div v-else>
-      <div class="flex w-full h-full overflow-auto mt-5">
-        <PropertyListCreate/>
+      <div v-if="selectedNode.name === 'new'">
+        <div class="flex w-full h-full overflow-auto mt-5">
+          <PropertyListCreate/>
+        </div>
+      </div>
+
+      <div v-else>
+        <div class="flex w-full h-full overflow-auto mt-5">
+          <PropertyListView
+            :nodeId="selectedNode.id"
+          />
+        </div>
       </div>
     </div>
 
@@ -70,14 +73,15 @@ export default {
   },
   data() {
     return {
-      selectedNode: ""
+      // selectedNode: {}
+      // selectedNode
     }
   },
-  watch: {
-    selectedNodeId (newState, previousState) {
-      this.selectedNode = newState
-    }
-  },
+  // watch: {
+  //   selectedNode (newState, previousState) {
+  //     this.selectedNode = newState
+  //   }
+  // },
   methods: {
     maximizePanel() {
       this.$emit("maximizePanelMsg", {
@@ -88,7 +92,7 @@ export default {
     }
   },
   computed: mapState({
-    selectedNodeId: state => state.editor.selectedNodeId
+    selectedNode: state => state.editor.selectedNode
   }),
 };
 </script>

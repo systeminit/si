@@ -8,10 +8,13 @@
       </button>
     </div> -->
 
-    <PropObject
-      :propObject="kubernetesDeploymentEntity"
-      :propObjectModel="kubernetesDeploymentEntityGet.item"
-    />
+    
+    <div v-if="kubernetesDeploymentEntityGet">
+      <PropObject
+        :propObject="kubernetesDeploymentEntity"
+        :propObjectModel="kubernetesDeploymentEntityGet.item"
+      />
+    </div>
 
   </div>
 </template>

@@ -62,6 +62,14 @@ export default {
           id: "schematic"
         },
       })
+    },
+    addNode() {
+      let payload = {
+        id: Date.now().toString(),
+        name: "new",
+        isEntity:false
+      }
+      this.$store.dispatch('editor/addNode', payload)
     }
   }
 };

@@ -13,6 +13,7 @@ class Node {
 // initial state
 const state = () => ({
   selectedNodeId: String,
+  selectedNode: {},
   nodeList: []
 })
 
@@ -20,8 +21,11 @@ const state = () => ({
 const getters = {}
 
 const actions = {
-  selectNode({ state, commit }, nodeId) {
-    commit('setSelectedNodeId', nodeId)
+  // selectNode({ state, commit }, nodeId) {
+  //   commit('setSelectedNodeId', nodeId)
+  // },
+  selectNode({ state, commit }, nodeObject) {
+    commit('setSelectedNode', nodeObject)
   },
   addNode({ state, commit }, payload) {
     let nodeObject = new Node(payload.id, payload.name, payload.isEntity);
@@ -37,6 +41,9 @@ const actions = {
 const mutations = {
   setSelectedNodeId(state, nodeId) {
     state.selectedNodeId = nodeId
+  },
+  setSelectedNode(state, nodeObject) {
+    state.selectedNode = nodeObject
   },
   addtoNodeList(state, nodeObject) {
     state.nodeList.push(nodeObject)

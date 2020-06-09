@@ -1,12 +1,12 @@
 <template>
   <!-- eslint-disable vue/no-unused-components -->
   <div>
-    <div :ref="entityId" class="node absolute cursor-move border-solid border-2 shadow-md" :class="nodeIsSelected" @mousedown="toggleSelection(true); selectNode(entityId)">
+    <div class="node absolute cursor-move border-solid border-2 shadow-md" :class="nodeIsSelected" @mousedown="toggleSelection(true); selectNode()">
       <div class="flex flex-col select-none">
 
         <div class="flex flex-col text-white ml-1 mt-1">
           <div class="font-light text-xs">name:</div>
-          <div class="font-normal text-xs ml-2">{{entityName}}</div>
+          <div class="font-normal text-xs ml-2">{{nodeObject.name}}</div>
         </div>
       
       </div>
@@ -26,14 +26,17 @@ export default {
   },
   data() {
     return {
-      entityId: this.nodeObject.id,
-      entityName: this.nodeObject.name,
+      // entityId: this.nodeObject.id,
+      // entityName: this.nodeObject.name,
       isSelected: false
     };
   },
   methods: {
-  ...mapActions('editor', ['selectNode']),
+  // ...mapActions('editor', ['selectNode']),
+    selectNode() {
+      this.$store.dispatch('editor/selectNode', this.nodeObject)
 
+    },
     toggleSelection(value) {
       this.isSelected = value;
     },
@@ -45,12 +48,13 @@ export default {
       };
     },
     ...mapState({
-      selectedNodeId: state => state.editor.selectedNodeId
+      selectedNode: state => state.editor.selectedNode
     }),
   },
   watch: {
-    selectedNodeId (newState, previousState) {
-      if (newState != this.nodeObject.id) {
+    selectedNode (newState, previousState) {
+      console.log("new state:", newState)
+      if (newState.id != this.nodeObject.id) {
         this.toggleSelection(false)
       }
     }
