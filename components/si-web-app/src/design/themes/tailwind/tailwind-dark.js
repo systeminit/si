@@ -6,7 +6,7 @@ const colors = {
   info: "#2196F3",
   success: "#4CAF50",
   warning: "#FB8C00",
-  black: "#000000",
+  black: "#000000"
 };
 
 const height = {

@@ -1,6 +1,6 @@
 <template>
   <!-- eslint-disable vue/no-unused-components -->
-  <div id="property-panel-list" class="w-full h-full">
+  <div id="property-panel-list" class="property-bg-color w-full h-full">
     
 <!--     <div class="mx-3">
       <button class="text-yellow-500 px-4 py-2 focus:outline-none" @click="onClick()" type="button">
@@ -77,3 +77,14 @@ export default {
   }
 };
 </script>
+
+<style scoped>
+.property-bg-color {
+  background-color: #212324;
+}
+
+.property-title-bg-color {
+  background-color: #292C2D;
+}
+
+</style>

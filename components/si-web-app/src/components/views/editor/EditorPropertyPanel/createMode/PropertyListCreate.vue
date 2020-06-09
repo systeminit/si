@@ -1,13 +1,13 @@
 <template>
   <!-- eslint-disable vue/no-unused-components -->
-  <div id="property-panel-list" class="w-full h-full">
+  <div id="property-panel-list" class="w-full h-full property-bg-color">
     
-        <div class="flex flex-row-reverse pr-8 pb-4">
+    <div class="flex flex-row-reverse pr-8 pb-4">
       <button class="bg-teal-700 px-4 py-2 text-white hover:bg-teal-600" @click="createEntity()" type="button">
         Create
       </button>
     </div>
-    
+
     <PropObject
       :propObject="kubernetesDeploymentEntityCreate.request"
       :propObjectModel="kubernetesDeploymentEntityCreateVars"
@@ -30,6 +30,9 @@ import VueJsonPretty from "vue-json-pretty"
 
 export default {
   name: "PropertyList",
+  props: {
+    node: String
+  },
   components: {
     PropObject,
     VueJsonPretty,
@@ -51,9 +54,6 @@ export default {
       kubernetesDeploymentEntity,
       kubernetesDeploymentEntityCreate,
       kubernetesDeploymentEntityCreateVars,
-      kubernetesDeploymentEntityGet: {
-        item: {}
-      },
     };
   },
   methods: {
@@ -87,6 +87,9 @@ export default {
           variables: this.kubernetesDeploymentEntityCreateVars
         });
 
+        // clearVueX cache
+        this.$store.dispatch('editor/removeNode', this.node)
+
 
       } catch (error) {
         console.log("error", { error });
@@ -95,24 +98,17 @@ export default {
       // console.log("done");
     },
   },
-  apollo: {
-    kubernetesDeploymentEntityGet: {
-      query() {
-        // console.log("query with: ", this.nodeId)
-        let result = registry.get("kubernetesDeploymentEntity").graphql.query({methodName: "get"});
-        return result;
-      },
-      fetchPolicy: "no-cache",
-      variables() {
-        return {
-          id: "kubernetes_deployment_entity:f17c2635-ce32-4a17-857d-033d68b62ba7", // this.nodeId,
-        }
-      },
-      update(data) {
-        this.viewData = data.item
-
-      }
-    }
-  }
 };
 </script>
+
+<style scoped>
+.property-bg-color {
+  background-color: #212324;
+}
+
+.property-title-bg-color {
+  background-color: #292C2D;
+}
+
+</style>
+

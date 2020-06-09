@@ -24,7 +24,7 @@
     
     </div>
 
-    <div class="flex w-full h-full overflow-auto">
+    <div class="flex w-full h-full">
       <NodeEditor/>
     </div>
   </div>

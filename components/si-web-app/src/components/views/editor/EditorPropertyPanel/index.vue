@@ -30,13 +30,15 @@
     <div v-if="selectedNode">
 
       <div v-if="selectedNode.name === 'new'">
-        <div class="flex w-full h-full overflow-auto mt-5">
-          <PropertyListCreate/>
+        <div class="flex w-full h-full mt-5 overflow-auto">
+          <PropertyListCreate
+            :node="selectedNode"
+          />
         </div>
       </div>
 
       <div v-else>
-        <div class="flex w-full h-full overflow-auto mt-5">
+        <div class="flex w-full h-fullmt-5 overflow-auto">
           <PropertyListView
             :nodeId="selectedNode.id"
           />

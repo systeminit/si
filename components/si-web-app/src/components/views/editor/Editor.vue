@@ -181,7 +181,7 @@ export default {
 }
 
 .panel-is-visible {
-  @apply flex-auto;
+  @apply flex-auto overflow-auto;
 }
 
 /*.panel-property-is-visible {

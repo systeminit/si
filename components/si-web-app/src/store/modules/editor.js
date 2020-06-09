@@ -31,8 +31,8 @@ const actions = {
     let nodeObject = new Node(payload.id, payload.name, payload.isEntity);
     commit('addtoNodeList', nodeObject)
   },
-  removeNode({ state, commit }, nodeId) {
-    commit('removeNodeFromList', nodeId)
+  removeNode({ state, commit }, nodeObject) {
+    commit('removeNodeFromList', nodeObject)
   },
 
 }
@@ -49,7 +49,10 @@ const mutations = {
     state.nodeList.push(nodeObject)
   },
   removeNodeFromList(state, nodeObject) {
-    array.remove(state.nodeList, nodeObject => removeItem.includes(nodeObject.id))
+    let index = state.nodeList.findIndex(obj => obj.id === nodeObject.id)
+    if (index > -1) {
+      state.nodeList.splice(index, 1);
+    }
   }
 }
 
