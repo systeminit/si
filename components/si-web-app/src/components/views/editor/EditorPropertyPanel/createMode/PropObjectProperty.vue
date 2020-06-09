@@ -27,8 +27,8 @@
                 </div>
 
                 <div class="flex text-gray-500 pt-1">
-
-                  <button class="text-center w-4 focus:outline-none" type="button" @click="onClickB($event, propObjectProperty)">                
+                  
+                  <button class="text-center w-4 focus:outline-none" type="button" @click="onClickB($event, propObjectProperty)">          
                     <plus-square-icon size="1.25x" class=""></plus-square-icon>
                   </button>
                   

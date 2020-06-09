@@ -6,7 +6,7 @@
       
       <div class="flex flex-row justify-start mx-3">      
         
-        <button class="text-white px-4 py-2 focus:outline-none">
+        <button class="text-white px-4 py-2 focus:outline-none" @click="addNode()" type="button">
           <plus-square-icon size="1.1x"/>
         </button>
 

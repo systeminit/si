@@ -26,8 +26,12 @@
 
 <script>
 /* eslint-disable vue/no-unused-components */
+import { auth } from "@/utils/auth";
+import { registry } from "si-registry";
+
 import SchematicPanel from "./EditorSchematicPanel";
 import PropertyPanel from "./EditorPropertyPanel";
+
 
 export default {
   name: "Editor",
@@ -56,7 +60,10 @@ export default {
           isVisible: true
         }
       },
-      msgSchematicPanel: ""
+      msgSchematicPanel: "",
+      kubernetesDeploymentEntityList: {
+        items: []
+      }
     };
   },
   mounted: function() {
@@ -132,6 +139,29 @@ export default {
         'panel-is-visible': this.panel["property"].isVisible,
       };
     },
+    nodeList: function () {
+      let nodes = []
+      nodes.concat(this.kubernetesDeploymentEntityList.items)
+      return nodes
+    }
+  },
+  apollo: {
+    kubernetesDeploymentEntityList: {
+      query() {
+        let result = registry.get("kubernetesDeploymentEntity").graphql.query({methodName: "list",});
+        return result;
+      },
+      fetchPolicy: "no-cache",
+      variables() {
+        return {
+          pageSize: "1000",
+        }
+      },
+      // update(data) {
+      //   console.log("NodeList.apollo.kubernetesDeploymentEntityGet.update()");
+      //   console.log("my data: ", data)
+      // }
+    }
   }
 };
 </script>

@@ -32,9 +32,16 @@
         <PropertyListView
           :nodeId="selectedNodeId"
         />
+      </div>
     </div>
 
+    <div v-else>
+      <div class="flex w-full h-full overflow-auto mt-5">
+        <PropertyListCreate/>
+      </div>
     </div>
+
+
   </div>
 </template>
 
@@ -47,6 +54,8 @@ import {
   CodeIcon,
 } from "vue-feather-icons";
 import PropertyListView from "./viewMode/PropertyListView.vue";
+import PropertyListCreate from "./createMode/PropertyListCreate.vue";
+
 import { mapState, mapActions } from 'vuex'
 
 export default {
@@ -57,6 +66,7 @@ export default {
     SearchIcon,
     CodeIcon,
     PropertyListView,
+    PropertyListCreate,
   },
   methods: {
     maximizePanel() {
