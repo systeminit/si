@@ -5,6 +5,7 @@ import {
   PropNumber,
   PropEnum,
   PropCode,
+  PropAction,
 } from "../../components/prelude";
 import { registry } from "../../registry";
 
@@ -106,7 +107,6 @@ registry.componentAndEntity({
         });
       },
     });
-
     c.properties.addCode({
       name: "kubernetesObjectYaml",
       label: "Kubernetes Object YAML",
@@ -124,6 +124,15 @@ registry.componentAndEntity({
           },
         });
         p.language = "yaml";
+      },
+    });
+
+    // Entity Actions
+    c.entity.methods.addAction({
+      name: "apply",
+      label: "Apply",
+      options(p: PropAction) {
+        p.mutation = true;
       },
     });
   },

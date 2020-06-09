@@ -1132,6 +1132,18 @@ type KubernetesDeploymentEntity {
   siStorable: DataStorable
 }
 
+"""Apply Reply"""
+type KubernetesDeploymentEntityApplyReply {
+  """Entity Event"""
+  item: KubernetesDeploymentEntityEvent
+}
+
+"""Apply Request"""
+input KubernetesDeploymentEntityApplyRequest {
+  """Entity ID"""
+  id: ID!
+}
+
 """Kubernetes Deployment Object Entity Associations"""
 type KubernetesDeploymentEntityAssociations {
   """System Initiative Billing Account"""
@@ -1491,6 +1503,7 @@ type Mutation {
   billingAccountSignup(input: BillingAccountSignupRequest): BillingAccountSignupReply
   changeSetCreate(input: ChangeSetCreateRequest): ChangeSetCreateReply
   groupCreate(input: GroupCreateRequest): GroupCreateReply
+  kubernetesDeploymentEntityApply(input: KubernetesDeploymentEntityApplyRequest): KubernetesDeploymentEntityApplyReply
   kubernetesDeploymentEntityCreate(input: KubernetesDeploymentEntityCreateRequest): KubernetesDeploymentEntityCreateReply
   kubernetesDeploymentEntityKubernetesObjectEdit(input: KubernetesDeploymentEntityKubernetesObjectEditRequest): KubernetesDeploymentEntityKubernetesObjectEditReply
   kubernetesDeploymentEntityKubernetesObjectYamlEdit(input: KubernetesDeploymentEntityKubernetesObjectYamlEditRequest): KubernetesDeploymentEntityKubernetesObjectYamlEditReply
