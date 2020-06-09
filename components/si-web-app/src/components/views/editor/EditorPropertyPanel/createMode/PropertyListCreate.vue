@@ -31,7 +31,7 @@ import VueJsonPretty from "vue-json-pretty"
 export default {
   name: "PropertyList",
   props: {
-    node: String
+    node: {}
   },
   components: {
     PropObject,

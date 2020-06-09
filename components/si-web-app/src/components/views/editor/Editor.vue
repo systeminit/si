@@ -158,7 +158,6 @@ export default {
         }
       },
       result ({ data, loading, networkStatus }) {
-
         data.kubernetesDeploymentEntityList.items.forEach((item) => { 
           let payload = {
             id: item.id,
@@ -167,8 +166,12 @@ export default {
           }
           this.$store.dispatch('editor/addNode', payload)
         });
-
-
+      },
+      update (data) {
+        console.log("apollo update!")
+      // The returned value will update
+      // the vue property 'pingMessage'
+      // return data.ping
       },
     }
   }
