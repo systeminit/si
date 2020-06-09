@@ -3,9 +3,10 @@ import array from 'lodash/array'
 // NodeEditor Cache
 
 class Node {
-  constructor(nodeId, isEntity) {
-    this.id = nodeId;
-    this.status = isEntity; // bool
+  constructor(nodeId, nodeName, isEntity) {
+    this.id = nodeId
+    this.name = nodeName
+    this.status = isEntity // bool
   }
 }
 
@@ -22,8 +23,8 @@ const actions = {
   selectNode({ state, commit }, nodeId) {
     commit('setSelectedNodeId', nodeId)
   },
-  addNode({ state, commit }, nodeId, isEntity=true) {
-    let nodeObject = new Node(nodeId, isEntity);
+  addNode({ state, commit }, payload) {
+    let nodeObject = new Node(payload.id, payload.name, payload.isEntity);
     commit('addtoNodeList', nodeObject)
   },
   removeNode({ state, commit }, nodeId) {

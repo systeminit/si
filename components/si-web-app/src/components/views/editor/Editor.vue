@@ -157,10 +157,19 @@ export default {
           pageSize: "1000",
         }
       },
-      // update(data) {
-      //   console.log("NodeList.apollo.kubernetesDeploymentEntityGet.update()");
-      //   console.log("my data: ", data)
-      // }
+      result ({ data, loading, networkStatus }) {
+
+        data.kubernetesDeploymentEntityList.items.forEach((item) => { 
+          let payload = {
+            id: item.id,
+            name: item.name,
+            isEntity:true
+          }
+          this.$store.dispatch('editor/addNode', payload)
+        });
+
+
+      },
     }
   }
 };

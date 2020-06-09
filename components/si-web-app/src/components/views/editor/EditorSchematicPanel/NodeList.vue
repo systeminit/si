@@ -2,7 +2,7 @@
   <!-- eslint-disable vue/no-unused-components -->
   <div id="node-list">
     
-    <div v-for="item in kubernetesDeploymentEntityList.items" :key="item.id">
+    <div v-for="item in nodeList" :key="item.id">
       
       <div v-if="itemIsKubernetesEntity(item)">
 
@@ -25,6 +25,8 @@ import { registry } from "si-registry";
 import VueJsonPretty from "vue-json-pretty"
 import NodeObject from "./NodeObject.vue"
 
+import { mapState, mapActions } from 'vuex'
+
 export default {
   name: "NodeList",
   components: {
@@ -44,22 +46,14 @@ export default {
       }
     }
   },
-  apollo: {
-    kubernetesDeploymentEntityList: {
-      query() {
-        let result = registry.get("kubernetesDeploymentEntity").graphql.query({methodName: "list",});
-        return result;
-      },
-      fetchPolicy: "no-cache",
-      variables() {
-        return {
-          pageSize: "1000",
-        }
-      },
-      // update(data) {
-      //   console.log("NodeList.apollo.kubernetesDeploymentEntityGet.update()");
-      //   console.log("my data: ", data)
-      // }
+  computed: {
+    ...mapState({
+      nodeList: state => state.editor.nodeList
+    }),
+  },
+  watch: {
+    nodeList (newState, previousState) {
+      console.log("allo")
     }
   }
 }
