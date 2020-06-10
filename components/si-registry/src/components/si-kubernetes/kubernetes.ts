@@ -105,14 +105,16 @@ registry.base({
         p.hidden = true;
       },
     });
-    c.fields.addNumber({
-      name: "hostPort",
-      label: "Host Port",
-      options(p: PropNumber) {
-        p.numberKind = "int32";
-        p.hidden = true;
-      },
-    });
+    // temporary commenting out because it must be a number not a string.
+    // need to clear empty fields before submitting..
+    // c.fields.addNumber({
+    //   name: "hostPort",
+    //   label: "Host Port",
+    //   options(p: PropNumber) {
+    //     p.numberKind = "int32";
+    //     p.hidden = false;
+    //   },
+    // });
     c.fields.addText({
       name: "name",
       label: "Name",
