@@ -179,7 +179,7 @@
 <!-- TYPE SHOULD BE NUMBER... but gql api doesn't seem to like numbers on numbers -->
           <input
             class="appearance-none text-sm leading-tight focus focus:outline-none input-bg-color border-none font-bold text-red-700 pl-2 h-5 w-32"
-            type="text"
+            type="number"
             :aria-label="propObjectProperty.name"
             v-model.number="objectModel"
             placeholder="number"
