@@ -12,29 +12,38 @@
       :options=workspaces
     />
 
-<!--     <div class="text-white"> Changeset </div>
-    <Dropdown
-      class=""
-      :default=currentWorkspace
-      :options=workspaces
-    /> -->
-
     <div id="workspace-content" class="flex px-4 py-2 ml-2">
   
-      <div
-        class="self-center flex-1 font-source-code-pro font-medium subpixel-antialiased text-white text-l tracking-tight align-middle"
-      >
-        <router-link
-          :to="{
-            name: 'system',
-            params: {
-              systemId: 'demo',
-              organizationId: organizationId,
-              workspaceId: workspaceId,
-            },
-          }"
-          >systems</router-link
-        >
+
+      <div class="flex flex-col">
+
+        <div class="self-end font-source-code-pro font-medium subpixel-antialiased text-white text-l tracking-tight">
+          <router-link
+            :to="{
+              name: 'system',
+              params: {
+                systemId: 'demo',
+                organizationId: organizationId,
+                workspaceId: workspaceId,
+              },
+            }"
+            >systems</router-link
+          >
+        </div>
+
+        <div class="self-end font-source-code-pro font-medium subpixel-antialiased text-white text-l tracking-tight">
+          <router-link
+            :to="{
+              name: 'application',
+              params: {
+                applicationId: 'my-app',
+                organizationId: organizationId,
+                workspaceId: workspaceId,
+              },
+            }"
+            >applications</router-link
+          >
+        </div>
       </div>
     </div>
   </nav>

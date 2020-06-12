@@ -1,7 +1,7 @@
 <template>
   <!-- eslint-disable vue/no-unused-components -->
   <div>
-    <div class="node absolute cursor-move border-solid border-2 shadow-md" :class="nodeIsSelected" @mousedown="toggleSelection(true); selectNode()">
+    <div class="node absolute cursor-move border-solid border-2 shadow-md" :class="nodeIsSelected" @mousedown="toggleSelection(true); selectNode()" @contextmenu="contextMenu($event)">
       <div class="flex flex-col select-none">
 
         <div class="flex flex-col text-white ml-1 mt-1">
@@ -10,6 +10,14 @@
         </div>
       
       </div>
+<!-- 
+      <vue-simple-context-menu
+        :elementId="'myFirstMenu'"
+        :options="optionsArray1"
+        :ref="'vueSimpleContextMenu1'"
+        @option-clicked="optionClicked1"
+      /> -->
+  
 
     </div>
   </div>
@@ -28,7 +36,21 @@ export default {
     return {
       // entityId: this.nodeObject.id,
       // entityName: this.nodeObject.name,
-      isSelected: false
+      isSelected: false,
+      optionsArray1: [
+        {
+          name: 'Duplicate',
+          slug: 'duplicate'
+        },
+        {
+          name: 'Edit',
+          slug: 'edit'
+        },
+        {
+          name: 'Delete',
+          slug: 'delete'
+        }
+      ],
     };
   },
   methods: {
@@ -39,6 +61,13 @@ export default {
     },
     toggleSelection(value) {
       this.isSelected = value;
+    },
+    contextMenu(e) {
+      e.preventDefault();
+      this.$refs.vueSimpleContextMenu1.showMenu(event, null)
+    },
+    optionClicked1 (event) {
+      window.alert(JSON.stringify(event))
     },
   },
   computed: {

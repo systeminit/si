@@ -3,6 +3,8 @@ import Home from "@/pages/HomePage.vue";
 import SignInPage from "@/pages/SignInPage";
 import WorkspacePage from "@/pages/WorkspacePage";
 import SystemDetails from "@/components/views/system/SystemDetails.vue";
+import ApplicationList from "@/components/views/application/ApplicationList.vue";
+import ApplicationDetails from "@/components/views/application/ApplicationDetails.vue";
 
 const routes = [
   {
@@ -29,6 +31,18 @@ const routes = [
         path: "/o/:organizationId/w/:workspaceId/s/:systemId",
         name: "system",
         component: SystemDetails,
+        props: true,
+      },
+      {
+        path: "/o/:organizationId/w/:workspaceId/a",
+        name: "application",
+        component: ApplicationList,
+        props: true,
+      },
+      {
+        path: "/o/:organizationId/w/:workspaceId/a/:applicationId",
+        name: "applicationDetails",
+        component: ApplicationDetails,
         props: true,
       },
     ],

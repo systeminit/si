@@ -26,9 +26,20 @@ import { mapState, mapActions } from 'vuex'
 import { registry } from "si-registry";
 
 export default {
-  name: "SystemDetails",
+  name: "ApplicationDetails",
   components: {
     Editor,
+  },
+  props: {
+    organizationId: {
+      type: String,
+    },
+    workspaceId: {
+      type: String,
+    },
+    applicationId: {
+      type: String,
+    }
   },
   data: function() {
     return {
