@@ -25,6 +25,7 @@
     "@types/vue-select": "^2.5.0",
     "apollo-client": "2.6.8",
     "core-js": "^3.6.4",
+    "js-cookie": "^2.2.1",
     "jsonwebtoken": "^8.5.1",
     "lodash": "^4.17.15",
     "si-registry": "file:../si-registry",
@@ -41,6 +42,7 @@
     "vue-simple-context-menu": "^3.1.10",
     "vue-tailwind": "^0.4.6",
     "vuex": "^3.4.0",
+    "vuex-persist": "^2.2.0",
     "yaml": "^1.7.2"
   },
   "devDependencies": {

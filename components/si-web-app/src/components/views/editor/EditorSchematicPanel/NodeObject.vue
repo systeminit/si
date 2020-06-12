@@ -82,7 +82,6 @@ export default {
   },
   watch: {
     selectedNode (newState, previousState) {
-      console.log("new state:", newState)
       if (newState.id != this.nodeObject.id) {
         this.toggleSelection(false)
       }

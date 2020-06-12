@@ -28,13 +28,15 @@ const actions = {
     commit('setSelectedNode', nodeObject)
   },
   addNode({ state, commit }, payload) {
+    if(state.nodeList.some(node => node.id === payload.id)) {
+      commit('removeNodeFromList', payload)
+    }
     let nodeObject = new Node(payload.id, payload.name, payload.isEntity);
     commit('addtoNodeList', nodeObject)
   },
   removeNode({ state, commit }, nodeObject) {
     commit('removeNodeFromList', nodeObject)
   },
-
 }
 
 // mutations
