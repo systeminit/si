@@ -1,6 +1,6 @@
 <template>
-  <div id="system-details" class="flex flex-col flex-no-wrap">
-    <div id="system-summary" class="flex-none h-40">
+  <div id="application-details" class="flex flex-col flex-no-wrap">
+    <div id="application-summary" class="flex-none h-40">
       {{ systemName }}
 
       <div class="flex flex-row-reverse pr-8 pb-4">
@@ -14,7 +14,7 @@
       </div>
     </div>
 
-    <div id="system-editor" class="flex h-full w-full overflow-hidden">
+    <div id="editor" class="flex h-full w-full overflow-hidden">
       <Editor />
     </div>
   </div>
@@ -81,11 +81,8 @@ export default {
 </script>
 
 <style type="text/css" scoped>
-#system-summary {
+#application-summary {
   background-color: #2a2f32;
 }
 
-#system-editor {
-  background-color: #000000;
-}
 </style>
