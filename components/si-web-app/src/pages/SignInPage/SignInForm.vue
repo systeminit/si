@@ -102,7 +102,6 @@
 <script lang="ts">
 import Vue from "vue";
 import { UserIcon, MailIcon, LockIcon } from "vue-feather-icons";
-import { billingAccountList, auth } from "@/utils/auth";
 import { registry, PropMethod } from "si-registry";
 import { tracer } from "@/utils/telemetry";
 
@@ -174,23 +173,7 @@ export default Vue.extend({
           "web.SignInForm.billingAccountName": this.objVariables
             .billingAccountName,
         });
-        const loginResult = await this.$apollo.query({
-          query: user.graphql.query({
-            methodName: "loginInternal",
-            overrideName: "userLogin",
-            overrideFields: "jwt, userId, billingAccountId",
-          }),
-          variables: this.objVariables,
-        });
-        let data = loginResult.data.userLogin;
-
-        billingAccountList.addAccount({
-          id: data.billingAccountId,
-          name: this.billingAccountSelect,
-        });
-        this.billingAccounts = billingAccountList.getAccounts();
-
-        await auth.login(data.jwt, data.userId);
+        await this.$store.dispatch("user/login", this.objVariables);
       } catch (err) {
         this.error = err;
         console.log(err);

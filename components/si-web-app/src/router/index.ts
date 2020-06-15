@@ -4,7 +4,7 @@ import VueRouter from "vue-router";
 // @ts-ignore: Unreachable code error
 import routes from "./routes";
 
-import { auth } from "@/utils/auth";
+import store from "@/store";
 import { telemetry } from "@/utils/telemetry";
 
 Vue.use(VueRouter);
@@ -29,7 +29,7 @@ router.beforeEach(async (to, from, next) => {
     "web.route.from.query": from.query,
     "web.route.from.redirected_from": from.redirectedFrom,
   });
-  if ((await auth.isAuthenticated()) || to.path == "/signin") {
+  if ((await store.dispatch("user/isAuthenticated")) || to.path == "/signin") {
     return next();
   } else {
     span.setAttribute("web.route.to.redirected", "/signin");

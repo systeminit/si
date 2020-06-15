@@ -3,13 +3,18 @@
 </template>
 
 <script lang="ts">
+import Vue from "vue";
 import WorkspacePage from "@/pages/WorkspacePage/index.vue";
-import { auth } from "@/utils/auth";
 
-export default {
+interface HomePageData {
+  organizationId: string;
+  workspaceId: string;
+}
+
+export default Vue.extend({
   name: "home",
-  data() {
-    const profile = auth.getProfile();
+  data(): HomePageData {
+    const profile = this.$store.state.user.auth.profile;
     const organization = profile.organization;
     const workspace = profile.workspaceDefault;
 
@@ -23,5 +28,5 @@ export default {
   components: {
     WorkspacePage,
   },
-};
+});
 </script>

@@ -1,9 +1,12 @@
 <template>
   <!-- eslint-disable vue/no-unused-components -->
   <div id="property-panel-list" class="w-full h-full property-bg-color">
-    
     <div class="flex flex-row-reverse pr-8 pb-4">
-      <button class="bg-teal-700 px-4 py-2 text-white hover:bg-teal-600" @click="createEntity()" type="button">
+      <button
+        class="bg-teal-700 px-4 py-2 text-white hover:bg-teal-600"
+        @click="createEntity()"
+        type="button"
+      >
         Create
       </button>
     </div>
@@ -13,25 +16,21 @@
       :propObjectModel="kubernetesDeploymentEntityCreateVars"
       @propChangeMsg="propChangeMsg"
     />
-
-
-
   </div>
 </template>
 
 <script>
 /* eslint-disable vue/no-unused-components */
-import { auth } from "@/utils/auth";
 import { registry } from "si-registry";
 import PropObject from "./PropObject.vue";
 
 // @ts-ignore
-import VueJsonPretty from "vue-json-pretty"
+import VueJsonPretty from "vue-json-pretty";
 
 export default {
   name: "PropertyList",
   props: {
-    node: {}
+    node: {},
   },
   components: {
     PropObject,
@@ -68,29 +67,27 @@ export default {
 
       try {
         // pass object to mutate here
-        
-        this.kubernetesDeploymentEntityCreateVars.workspaceId = auth.getProfile().workspaceDefault.id
 
-        delete this.kubernetesDeploymentEntityCreateVars.properties.kubernetesObjectYaml
+        this.kubernetesDeploymentEntityCreateVars.workspaceId = auth.getProfile().workspaceDefault.id;
+
+        delete this.kubernetesDeploymentEntityCreateVars.properties
+          .kubernetesObjectYaml;
 
         // We need to make sure the changesetId is valid, invalida changset ID is bad,...
         // Should error on invalid changeSetId.
-        delete this.kubernetesDeploymentEntityCreateVars.changeSetId
-  
+        delete this.kubernetesDeploymentEntityCreateVars.changeSetId;
+
         // DEBUG logging to confirm what we are passing to the mutation below
         // console.log("kubernetesDeploymentEntityCreateVars as json below:")
         // console.log(console.log(JSON.stringify(this.kubernetesDeploymentEntityCreateVars)))
 
-
         this.$apollo.mutate({
           mutation,
-          variables: this.kubernetesDeploymentEntityCreateVars
+          variables: this.kubernetesDeploymentEntityCreateVars,
         });
 
         // clearVueX cache
-        this.$store.dispatch('editor/removeNode', this.node)
-
-
+        this.$store.dispatch("editor/removeNode", this.node);
       } catch (error) {
         console.log("error", { error });
       }
@@ -107,8 +104,7 @@ export default {
 }
 
 .property-title-bg-color {
-  background-color: #292C2D;
+  background-color: #292c2d;
 }
-
 </style>
 
