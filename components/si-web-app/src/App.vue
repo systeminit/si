@@ -6,7 +6,6 @@
 
 <script lang="ts">
 import { telemetry } from "@/utils/telemetry";
-import { auth } from "@/utils/auth";
 
 export default {
   name: "App",

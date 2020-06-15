@@ -1,5 +1,5 @@
 <template>
-   <!-- eslint-disable vue/no-unused-components -->
+  <!-- eslint-disable vue/no-unused-components -->
   <div
     ref="editor"
     id="editor"
@@ -8,30 +8,36 @@
     v-on:mousedown="mouseDown"
     v-on:mouseup="mouseUp"
   >
-    <div ref="leftPanel" class="bg-gray-900 w-3/5" :class="leftPanelVisibilityClasses">
-      <SchematicPanel
-        @maximizePanelMsg="maximizePanel"
-      />
+    <div
+      ref="leftPanel"
+      class="bg-gray-900 w-3/5"
+      :class="leftPanelVisibilityClasses"
+    >
+      <SchematicPanel @maximizePanelMsg="maximizePanel" />
     </div>
 
-    <div ref="resizeHandle" class="bg-gray-800 cursor-resize" :class="resizeHandleVisibilityClasses"/>
+    <div
+      ref="resizeHandle"
+      class="bg-gray-800 cursor-resize"
+      :class="resizeHandleVisibilityClasses"
+    />
 
-    <div ref="rightPanel" class="bg-gray-900 w-2/5" :class="rightPanelVisibilityClasses">
-      <PropertyPanel
-        @maximizePanelMsg="maximizePanel"
-      />
+    <div
+      ref="rightPanel"
+      class="bg-gray-900 w-2/5"
+      :class="rightPanelVisibilityClasses"
+    >
+      <PropertyPanel @maximizePanelMsg="maximizePanel" />
     </div>
   </div>
 </template>
 
 <script>
 /* eslint-disable vue/no-unused-components */
-import { auth } from "@/utils/auth";
 import { registry } from "si-registry";
 
 import SchematicPanel from "./EditorSchematicPanel";
 import PropertyPanel from "./EditorPropertyPanel";
-
 
 export default {
   name: "Editor",
@@ -51,19 +57,19 @@ export default {
       },
       panel: {
         schematic: {
-          isVisible: true
+          isVisible: true,
         },
-        resizeHandle:{
-          isVisible: true
+        resizeHandle: {
+          isVisible: true,
         },
         property: {
-          isVisible: true
-        }
+          isVisible: true,
+        },
       },
       msgSchematicPanel: "",
       kubernetesDeploymentEntityList: {
-        items: []
-      }
+        items: [],
+      },
     };
   },
   mounted: function() {
@@ -106,75 +112,76 @@ export default {
       // console.log("event")
       switch (msg.panel.id) {
         case "property":
-          this.togglePanelVisibility("schematic")
+          this.togglePanelVisibility("schematic");
           break;
 
         case "schematic":
-          this.togglePanelVisibility("property")
+          this.togglePanelVisibility("property");
           break;
       }
-
     },
     togglePanelVisibility: function(panelName) {
       this.panel[panelName].isVisible = !this.panel[panelName].isVisible;
-      this.panel.resizeHandle.isVisible = !this.panel.resizeHandle.isVisible
+      this.panel.resizeHandle.isVisible = !this.panel.resizeHandle.isVisible;
     },
   },
   computed: {
     leftPanelVisibilityClasses: function() {
       return {
-        'panel-is-hidden': !this.panel["schematic"].isVisible,
-        'panel-is-visible': this.panel["schematic"].isVisible,
+        "panel-is-hidden": !this.panel["schematic"].isVisible,
+        "panel-is-visible": this.panel["schematic"].isVisible,
       };
     },
     resizeHandleVisibilityClasses: function() {
       return {
-        'resize-handle-is-hidden': !this.panel["resizeHandle"].isVisible,
-        'resize-handle-is-visible': this.panel["resizeHandle"].isVisible,
+        "resize-handle-is-hidden": !this.panel["resizeHandle"].isVisible,
+        "resize-handle-is-visible": this.panel["resizeHandle"].isVisible,
       };
     },
     rightPanelVisibilityClasses: function() {
       return {
-        'panel-is-hidden': !this.panel["property"].isVisible,
-        'panel-is-visible': this.panel["property"].isVisible,
+        "panel-is-hidden": !this.panel["property"].isVisible,
+        "panel-is-visible": this.panel["property"].isVisible,
       };
     },
-    nodeList: function () {
-      let nodes = []
-      nodes.concat(this.kubernetesDeploymentEntityList.items)
-      return nodes
-    }
+    nodeList: function() {
+      let nodes = [];
+      nodes.concat(this.kubernetesDeploymentEntityList.items);
+      return nodes;
+    },
   },
   apollo: {
     kubernetesDeploymentEntityList: {
       query() {
-        let result = registry.get("kubernetesDeploymentEntity").graphql.query({methodName: "list",});
+        let result = registry
+          .get("kubernetesDeploymentEntity")
+          .graphql.query({ methodName: "list" });
         return result;
       },
       fetchPolicy: "no-cache",
       variables() {
         return {
           pageSize: "1000",
-        }
+        };
       },
-      result ({ data, loading, networkStatus }) {
-        data.kubernetesDeploymentEntityList.items.forEach((item) => { 
+      result({ data, loading, networkStatus }) {
+        data.kubernetesDeploymentEntityList.items.forEach(item => {
           let payload = {
             id: item.id,
             name: item.name,
-            isEntity:true
-          }
-          this.$store.dispatch('editor/addNode', payload)
+            isEntity: true,
+          };
+          this.$store.dispatch("editor/addNode", payload);
         });
       },
-      update (data) {
-        console.log("apollo update!")
-      // The returned value will update
-      // the vue property 'pingMessage'
-      // return data.ping
+      update(data) {
+        console.log("apollo update!");
+        // The returned value will update
+        // the vue property 'pingMessage'
+        // return data.ping
       },
-    }
-  }
+    },
+  },
 };
 </script>
 
@@ -192,7 +199,7 @@ export default {
 }*/
 
 .resize-handle-is-visible {
-  @apply w-1 flex-none
+  @apply w-1 flex-none;
 }
 .resize-handle-is-hidden {
   @apply overflow-hidden hidden;
@@ -201,5 +208,4 @@ export default {
 /*.resize-handle-is-hidden {
   @apply overflow-hidden order-last w-0;
 }*/
-
 </style>

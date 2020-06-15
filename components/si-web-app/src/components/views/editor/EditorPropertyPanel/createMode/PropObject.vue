@@ -1,15 +1,17 @@
 <template>
   <!-- eslint-disable vue/no-unused-components -->
   <div>
-    <div v-for="field of propObject.properties.attrs.filter(i => !i.hidden)" v-bind:key="field.name" class="flex flex-row">
-      
+    <div
+      v-for="field of propObject.properties.attrs.filter(i => !i.hidden)"
+      v-bind:key="field.name"
+      class="flex flex-row"
+    >
       <PropObjectProperty
         :propObject="propObject"
         :propObjectProperty="field"
         :propObjectPropertyModel="objectModel[field.name]"
         @propChangeMsg="propChangeMsg"
       />
-      
     </div>
   </div>
 </template>
@@ -21,8 +23,6 @@ import { registry } from "si-registry";
 
 import PropObjectProperty from "./PropObjectProperty.vue";
 
-import { auth } from "@/utils/auth";
-
 //@ts-ignore
 export default Vue.extend({
   name: "PropObjectView",
@@ -31,29 +31,27 @@ export default Vue.extend({
     propObjectModel: { type: [Object, Array], required: true },
   },
   components: {
- // LinkIcon,
+    // LinkIcon,
     PropObjectProperty,
   },
   methods: {
     propChangeMsg(event: any) {
-
       try {
-        console.log("PropObject.methods.propChangeMsg() with :: ", event)
+        console.log("PropObject.methods.propChangeMsg() with :: ", event);
         this.objectModel[event["fieldName"]] = event["value"];
         this.$emit("propChangeMsg", {
           fieldName: this.propObject.name,
           value: this.objectModel,
         });
-      } 
-      catch(err) {
-        console.log("err: ", err)
+      } catch (err) {
+        console.log("err: ", err);
       }
 
-    console.log("PropObject.methods.propChangeMsg() completed")
+      console.log("PropObject.methods.propChangeMsg() completed");
     },
-    mounted(){
-      console.log("PropObject Mounted")
-    }
+    mounted() {
+      console.log("PropObject Mounted");
+    },
   },
   data() {
     return {

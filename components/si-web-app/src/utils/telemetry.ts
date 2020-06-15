@@ -9,7 +9,8 @@ import { ZoneContextManager } from "@opentelemetry/context-zone";
 import { CollectorExporter } from "@opentelemetry/exporter-collector";
 import * as api from "@opentelemetry/api";
 
-import { auth } from "@/utils/auth";
+// @ts-ignore
+import store from "@/store";
 
 const provider = new WebTracerProvider({
   //plugins: [new DocumentLoad() as any, new UserInteractionPlugin()],
@@ -88,8 +89,8 @@ class Telemetry {
       });
     }
     const span = tracer.startSpan(name, { links });
-    if (auth.profile) {
-      const profile = auth.profile;
+    if (store.state.user.auth.profile) {
+      const profile = store.state.user.auth.profile;
       span.setAttributes({
         user_id: profile.user.id,
         billing_account_id: profile.billingAccount.id,
@@ -117,8 +118,8 @@ class Telemetry {
         options,
         context || api.context.active(),
       );
-      if (auth.profile) {
-        const profile = auth.profile;
+      if (store.state.user.auth.profile) {
+        const profile = store.state.user.auth.profile;
         span.setAttributes({
           user_id: profile.user.id,
           billing_account_id: profile.billingAccount.id,
@@ -196,7 +197,7 @@ class Telemetry {
       this.currentRoute.end();
     }
     if (this.session.isRecording()) {
-      const profile = auth.profile;
+      const profile = store.state.user.auth.profile;
       if (profile) {
         this.session.setAttributes({
           user_id: profile.user.id,

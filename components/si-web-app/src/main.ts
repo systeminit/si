@@ -4,12 +4,11 @@ import App from "@/App.vue";
 import router from "@/router";
 
 import VueGtag from "vue-gtag";
-import vSelect from 'vue-select'
+import vSelect from "vue-select";
 import { createProvider } from "@/plugins/vue-apollo";
-import { auth } from "@/utils/auth";
 
 // @ts-ignore
-import store from '@/store'
+import store from "@/store";
 
 import "@/assets/main.css";
 import "@/assets/tailwind.css";
@@ -21,7 +20,6 @@ import "@/plugins/vue-simple-context-menu.js";
 Vue.config.productionTip = false;
 
 let apolloProvider = createProvider();
-auth.setApollo(apolloProvider);
 
 if (process.env.NODE_ENV == "production") {
   Vue.use(VueGtag, {
@@ -34,7 +32,7 @@ if (process.env.NODE_ENV == "production") {
   });
 }
 
-Vue.component('v-select', vSelect)
+Vue.component("v-select", vSelect);
 
 new Vue({
   router,

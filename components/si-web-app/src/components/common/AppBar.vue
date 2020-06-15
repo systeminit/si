@@ -28,7 +28,6 @@
 
 <script>
 import { UserIcon, HelpCircleIcon } from "vue-feather-icons";
-import { auth } from "@/utils/auth";
 
 export default {
   name: "AppBar",
@@ -37,9 +36,9 @@ export default {
     HelpCircleIcon,
   },
   methods: {
-    onLogout(event) {
+    async onLogout(event) {
       console.log("logout clicked");
-      auth.logout();
+      await this.$store.dispatch("user/logout");
       this.$router.push({ name: "signin" });
     },
   },
