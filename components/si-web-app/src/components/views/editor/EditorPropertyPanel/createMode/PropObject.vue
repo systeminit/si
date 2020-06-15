@@ -3,14 +3,13 @@
   <div>
     <div v-for="field of propObject.properties.attrs.filter(i => !i.hidden)" v-bind:key="field.name" class="flex flex-row">
       
-      <div class="px-2 py-2 text-gray-400"/>
-        <PropObjectProperty
-          :propObject="propObject"
-          :propObjectProperty="field"
-          :propObjectPropertyModel="objectModel[field.name]"
-          @propChangeMsg="propChangeMsg"
-        />
-
+      <PropObjectProperty
+        :propObject="propObject"
+        :propObjectProperty="field"
+        :propObjectPropertyModel="objectModel[field.name]"
+        @propChangeMsg="propChangeMsg"
+      />
+      
     </div>
   </div>
 </template>
@@ -26,7 +25,7 @@ import { auth } from "@/utils/auth";
 
 //@ts-ignore
 export default Vue.extend({
-  name: "PropObject",
+  name: "PropObjectView",
   props: {
     propObject: { type: Object, required: true },
     propObjectModel: { type: [Object, Array], required: true },

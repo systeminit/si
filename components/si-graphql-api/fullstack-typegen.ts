@@ -138,7 +138,6 @@ export interface NexusGenInputs {
   KubernetesContainerPortRequest: { // input type
     containerPort?: number | null; // Int
     hostIp?: string | null; // String
-    hostPort?: number | null; // Int
     name?: string | null; // String
     protocol?: string | null; // String
   }
@@ -554,7 +553,6 @@ export interface NexusGenRootTypes {
   KubernetesContainerPort: { // root type
     containerPort?: number | null; // Int
     hostIp?: string | null; // String
-    hostPort?: number | null; // Int
     name?: string | null; // String
     protocol?: string | null; // String
   }
@@ -1094,7 +1092,6 @@ export interface NexusGenFieldTypes {
   KubernetesContainerPort: { // field return type
     containerPort: number | null; // Int
     hostIp: string | null; // String
-    hostPort: number | null; // Int
     name: string | null; // String
     protocol: string | null; // String
   }

@@ -225,7 +225,7 @@ describe("changeSet", () => {
       });
     });
 
-    describe.only("apply", () => {
+    describe("apply", () => {
       it("does nothing on an empty changeSet", () => {
         cy.get("@changeSet").then((changeSet: Record<string, any>) => {
           const changeSetId =

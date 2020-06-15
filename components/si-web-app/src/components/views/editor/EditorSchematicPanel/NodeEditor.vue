@@ -1,4 +1,5 @@
 <template>
+  <!-- eslint-disable vue/no-unused-components -->
   <div id="schematic-panel" class="h-full w-full grid-background">
     <div
       ref="canvasParent"
@@ -8,12 +9,9 @@
       @mousemove="mouseMove"
       @mouseup="mouseUp"
     >
-      <div
-        ref="canvas"
-        id="canvas"
-        class="flex-auto relative w-full h-full canvas block"
-      >
-        <div class="node draggable absolute">Node</div>
+      <div ref="canvas" id="canvas" class="flex-auto relative w-full h-full canvas block">
+
+        <NodeList/>
 
         <svg
           ref="grid"
@@ -46,15 +44,17 @@
 </template>
 
 <script>
-// import Node from '@/components/node/Node.vue'
+/* eslint-disable vue/no-unused-components */
+import NodeList from "./NodeList.vue"
 
 export default {
   name: "SchematicPanel",
   components: {
-    // Node
+    NodeList,
   },
   data() {
     return {
+      selectedNode: "",
       gridWidth: "100%",
       gridHeight: "100%",
       isPanning: false,
@@ -97,7 +97,8 @@ export default {
           y: 0,
         },
         factor: 1,
-        min: 0.25,
+        // min: 0.25,
+        min: 1,
         max: 1,
       },
       canvas: {
@@ -146,7 +147,15 @@ export default {
   mounted: function() {
     this.canvas.element = this.$refs.canvas;
     this.grid.element = this.$refs.grid;
-    this.editor.element = this.$parent.$refs.editor;
+
+    /**
+     * TODO
+     *
+     * the next line is dangerous and it sucks!
+     * (this.editor.element = this.$parent.$parent.$refs.editor)
+     * -> need to find a better way to do this
+     */
+    this.editor.element = this.$parent.$parent.$refs.editor;
 
     // Position grid
     let canvasOrigin = {
@@ -174,7 +183,10 @@ export default {
 
     // console.log(gridDimension);
 
-    let scaleFactor = 4;
+
+    // Initial grid size!
+    // let scaleFactor = 4;
+    let scaleFactor = 1;
 
     let gridUpdatedDimension = {
       x: 100 * scaleFactor,
@@ -233,6 +245,10 @@ export default {
         // console.log(this.selection.object);
 
         if (this.selection.object.classList.contains("node")) {
+
+          console.log(this.selection.object)
+          console.log(event);
+
           let selectionOffsetLeft = event.target.offsetLeft;
           let selectionOffsetTop = event.target.offsetTop;
 

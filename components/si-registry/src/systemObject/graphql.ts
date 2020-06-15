@@ -247,7 +247,10 @@ export class SiGraphql {
     )}) { ${methodName}(input: { ${inputVariables.join(
       ", ",
     )} }) { ${fieldList} } }`;
-    console.log(`query ${resultString}`);
+
+    // Log query
+    // console.log(`query ${resultString}`);
+
     return gql`
       ${resultString}
     `;

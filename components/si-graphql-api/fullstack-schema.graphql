@@ -949,9 +949,6 @@ type KubernetesContainerPort {
   """Host IP"""
   hostIp: String
 
-  """Host Port"""
-  hostPort: Int
-
   """Name"""
   name: String
 
@@ -965,9 +962,6 @@ input KubernetesContainerPortRequest {
 
   """Host IP"""
   hostIp: String
-
-  """Host Port"""
-  hostPort: Int
 
   """Name"""
   name: String

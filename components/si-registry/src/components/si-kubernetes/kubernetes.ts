@@ -101,22 +101,33 @@ registry.base({
       name: "hostIp", // disabled auto/camelcase in graphql.ts for testing ...
       // name: "hostIP", 
       label: "Host IP",
+      options(p: PropText) {
+        p.hidden = true;
+      },
     });
-    c.fields.addNumber({
-      name: "hostPort",
-      label: "Host Port",
-      options(p: PropNumber) {
-        p.numberKind = "int32";
+    // temporary commenting out because it must be a number not a string.
+    // need to clear empty fields before submitting..
+    // c.fields.addNumber({
+    //   name: "hostPort",
+    //   label: "Host Port",
+    //   options(p: PropNumber) {
+    //     p.numberKind = "int32";
+    //     p.hidden = false;
+    //   },
+    // });
+    c.fields.addText({
+      name: "name",
+      label: "Name",
+      options(p: PropText) {
         p.hidden = true;
       },
     });
     c.fields.addText({
-      name: "name",
-      label: "Name",
-    });
-    c.fields.addText({
       name: "protocol",
       label: "Protocol",
+      options(p: PropText) {
+        p.hidden = true;
+      },
     });
   },
 });
