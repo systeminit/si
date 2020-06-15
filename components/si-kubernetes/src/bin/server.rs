@@ -2,7 +2,7 @@ use anyhow::Context;
 use si_cea::binary::server::prelude::*;
 use si_kubernetes::agent::aws_eks_kubernetes_deployment;
 use si_kubernetes::gen::service::{Server, Service};
-use si_kubernetes::model::KubernetesDeploymentEntityEvent;
+use si_kubernetes::model::{KubernetesDeploymentEntityEvent, KubernetesServiceEntityEvent};
 
 use opentelemetry::{api::Provider, sdk};
 use opentelemetry_jaeger;
@@ -68,6 +68,20 @@ async fn main() -> anyhow::Result<()> {
     let mut agent_server = AgentServer::new(server_name, agent_dispatcher, &settings);
     tokio::spawn(async move { agent_server.run().await });
 
+    // TODO(fnichol): We need to add an envelope to the payload before activating this code,
+    // otherwise both Deployments and Services will be consumed by both Agents
+    //
+    println!(
+        "*** (NOT YET) Spawning the {} Agent Server ***",
+        KubernetesServiceEntityEvent::type_name()
+    );
+    // let mut agent_dispatcher = Dispatcher::default();
+    // agent_dispatcher
+    //     .add(&db, aws_eks_kubernetes_service::dispatcher())
+    //     .await?;
+    // let mut agent_server = AgentServer::new(server_name, agent_dispatcher, &settings);
+    // tokio::spawn(async move { agent_server.run().await });
+
     println!(
         "*** Spawning the {} Agent Finalizer ***",
         KubernetesDeploymentEntityEvent::type_name()
@@ -78,6 +92,20 @@ async fn main() -> anyhow::Result<()> {
         &settings,
     );
     tokio::spawn(async move { finalizer.run::<KubernetesDeploymentEntityEvent>().await });
+
+    // TODO(fnichol): We need to add an envelope to the payload before activating this code,
+    // otherwise both Deployments and Services will be consumed by both Finalizers
+    //
+    println!(
+        "*** (NOT YET) Spawning the {} Agent Finalizer ***",
+        KubernetesServiceEntityEvent::type_name()
+    );
+    // let mut finalizer = AgentFinalizer::new(
+    //     db.clone(),
+    //     KubernetesServiceEntityEvent::type_name(),
+    //     &settings,
+    // );
+    // tokio::spawn(async move { finalizer.run::<KubernetesServiceEntityEvent>().await });
 
     let addr = format!("0.0.0.0:{}", settings.service.port)
         .parse()

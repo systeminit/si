@@ -1,4 +1,5 @@
 import {
+  PropEnum,
   PropObject,
   PropText,
   PropLink,
@@ -7,8 +8,6 @@ import {
 } from "../../components/prelude";
 
 import { registry } from "../../registry";
-
-
 
 /**
  * Field model for UI
@@ -99,7 +98,7 @@ registry.base({
     });
     c.fields.addText({
       name: "hostIp", // disabled auto/camelcase in graphql.ts for testing ...
-      // name: "hostIP", 
+      // name: "hostIP",
       label: "Host IP",
       options(p: PropText) {
         p.hidden = true;
@@ -171,6 +170,29 @@ registry.base({
         p.lookup = {
           typeName: "kubernetesPodSpec",
         };
+      },
+    });
+  },
+});
+
+registry.base({
+  typeName: "kubernetesLoadBalancerStatus",
+  displayTypeName: "Kubernetes Load Balancer Status",
+  serviceName: "kubernetes",
+  options(c) {
+    c.fields.addObject({
+      name: "ingress",
+      label: "Load Balancer Ingress",
+      options(p: PropObject) {
+        p.repeated = true;
+        p.properties.addText({
+          name: "hostname",
+          label: "Hostname",
+        });
+        p.properties.addText({
+          name: "ip",
+          label: "IP",
+        });
       },
     });
   },

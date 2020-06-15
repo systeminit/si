@@ -1417,6 +1417,32 @@ input KubernetesDeploymentEntitySyncRequest {
   id: ID!
 }
 
+type KubernetesLoadBalancerStatus {
+  """Load Balancer Ingress"""
+  ingress: [KubernetesLoadBalancerStatusIngress!]
+}
+
+type KubernetesLoadBalancerStatusIngress {
+  """Hostname"""
+  hostname: String
+
+  """IP"""
+  ip: String
+}
+
+input KubernetesLoadBalancerStatusIngressRequest {
+  """Hostname"""
+  hostname: String
+
+  """IP"""
+  ip: String
+}
+
+input KubernetesLoadBalancerStatusRequest {
+  """Load Balancer Ingress"""
+  ingress: [KubernetesLoadBalancerStatusIngressRequest!]
+}
+
 type KubernetesMetadata {
   """Labels"""
   labels: [Labels!]
@@ -1469,6 +1495,614 @@ input KubernetesSelectorRequest {
   matchLabels: [MatchLabelsRequest!]
 }
 
+type KubernetesServiceComponent {
+  """Component Constraints"""
+  constraints: KubernetesServiceComponentConstraints
+
+  """Component Description"""
+  description: String
+
+  """Kubernetes Service Object Component Display Name"""
+  displayName: String
+
+  """Kubernetes Service Object Component ID"""
+  id: ID
+
+  """Kubernetes Service Object Component Name"""
+  name: String
+
+  """SI Properties"""
+  siProperties: ComponentSiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+}
+
+type KubernetesServiceComponentConstraints {
+  """Component Display Name"""
+  componentDisplayName: String
+
+  """Component Name"""
+  componentName: String
+
+  """Kubernetes Version"""
+  kubernetesVersion: KubernetesServiceComponentConstraintsKubernetesVersion
+}
+
+"""Kubernetes Version"""
+enum KubernetesServiceComponentConstraintsKubernetesVersion {
+  UNKNOWN
+  V1_12
+  V1_13
+  V1_14
+  V1_15
+}
+
+input KubernetesServiceComponentConstraintsRequest {
+  """Component Display Name"""
+  componentDisplayName: String
+
+  """Component Name"""
+  componentName: String
+
+  """Kubernetes Version"""
+  kubernetesVersion: KubernetesServiceComponentConstraintsKubernetesVersion
+}
+
+"""Get a Kubernetes Service Object Component Reply"""
+type KubernetesServiceComponentGetReply {
+  """Kubernetes Service Object Component Item"""
+  item: KubernetesServiceComponent
+}
+
+"""Get a Kubernetes Service Object Component Request"""
+input KubernetesServiceComponentGetRequest {
+  """Kubernetes Service Object Component ID"""
+  id: ID!
+}
+
+"""List Kubernetes Service Object Component Reply"""
+type KubernetesServiceComponentListReply {
+  """Items"""
+  items: [KubernetesServiceComponent!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: String
+}
+
+"""List Kubernetes Service Object Component Request"""
+input KubernetesServiceComponentListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: String
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+"""Pick Component Reply"""
+type KubernetesServiceComponentPickReply {
+  """Chosen Component"""
+  component: KubernetesServiceComponent
+
+  """Implicit Constraints"""
+  implicitConstraints: KubernetesServiceComponentConstraints
+}
+
+"""Pick Component Request"""
+input KubernetesServiceComponentPickRequest {
+  """Constraints"""
+  constraints: KubernetesServiceComponentConstraintsRequest
+}
+
+type KubernetesServiceEntity {
+  associations: KubernetesServiceEntityAssociations
+
+  """Constraints"""
+  constraints: KubernetesServiceComponentConstraints
+
+  """Entity Description"""
+  description: String
+
+  """Kubernetes Service Object Entity Display Name"""
+  displayName: String
+
+  """Kubernetes Service Object Entity ID"""
+  id: ID
+
+  """Implicit Constraints"""
+  implicitConstraints: KubernetesServiceComponentConstraints
+
+  """Kubernetes Service Object Entity Name"""
+  name: String
+
+  """Properties"""
+  properties: KubernetesServiceEntityProperties
+
+  """SI Properties"""
+  siProperties: EntitySiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+}
+
+"""Kubernetes Service Object Entity Associations"""
+type KubernetesServiceEntityAssociations {
+  """System Initiative Billing Account"""
+  billingAccount: BillingAccountGetReply
+}
+
+"""Create Entity Reply"""
+type KubernetesServiceEntityCreateReply {
+  """Entity Event"""
+  entityEvent: KubernetesServiceEntityEvent
+
+  """kubernetesServiceEntity Item"""
+  item: KubernetesServiceEntity
+}
+
+"""Create Entity Request"""
+input KubernetesServiceEntityCreateRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """Constraints"""
+  constraints: KubernetesServiceComponentConstraintsRequest
+
+  """Description"""
+  description: String!
+
+  """Display Name"""
+  displayName: String!
+
+  """Name"""
+  name: String!
+
+  """Properties"""
+  properties: KubernetesServiceEntityPropertiesRequest!
+
+  """Workspace ID"""
+  workspaceId: String!
+}
+
+type KubernetesServiceEntityEvent {
+  """Action Name"""
+  actionName: String
+
+  """Creation Time"""
+  createTime: String
+
+  """Error Lines"""
+  errorLines: [String!]
+
+  """Error Message"""
+  errorMessage: String
+
+  """Finalized"""
+  finalized: Boolean
+
+  """Final Time"""
+  finalTime: String
+
+  """Kubernetes Service Object EntityEvent ID"""
+  id: ID
+
+  """Input Entity"""
+  inputEntity: KubernetesServiceEntity
+
+  """Output Entity"""
+  outputEntity: KubernetesServiceEntity
+
+  """Output Lines"""
+  outputLines: [String!]
+
+  """Previous Entity"""
+  previousEntity: KubernetesServiceEntity
+
+  """SI Properties"""
+  siProperties: EntityEventSiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+
+  """success"""
+  success: Boolean
+
+  """Updated Time"""
+  updatedTime: String
+
+  """User ID"""
+  userId: String
+}
+
+"""List Kubernetes Service Object EntityEvent Reply"""
+type KubernetesServiceEntityEventListReply {
+  """Items"""
+  items: [KubernetesServiceEntityEvent!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: String
+}
+
+"""List Kubernetes Service Object EntityEvent Request"""
+input KubernetesServiceEntityEventListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: String
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+"""Get a Kubernetes Service Object Entity Reply"""
+type KubernetesServiceEntityGetReply {
+  """Kubernetes Service Object Entity Item"""
+  item: KubernetesServiceEntity
+}
+
+"""Get a Kubernetes Service Object Entity Request"""
+input KubernetesServiceEntityGetRequest {
+  """Kubernetes Service Object Entity ID"""
+  id: ID!
+}
+
+"""Edit kubernetesServiceEntityPropertiesKubernetesObject Property Reply"""
+type KubernetesServiceEntityKubernetesObjectEditReply {
+  """Entity Event"""
+  item: KubernetesServiceEntityEvent
+}
+
+"""
+Edit kubernetesServiceEntityPropertiesKubernetesObject Property Request
+"""
+input KubernetesServiceEntityKubernetesObjectEditRequest {
+  """Entity ID"""
+  id: ID!
+
+  """The Kubernetes Object property value"""
+  property: KubernetesServiceEntityPropertiesKubernetesObjectRequest
+}
+
+"""Edit KubernetesObjectYaml Property Reply"""
+type KubernetesServiceEntityKubernetesObjectYamlEditReply {
+  """Entity Event"""
+  item: KubernetesServiceEntityEvent
+}
+
+"""Edit KubernetesObjectYaml Property Request"""
+input KubernetesServiceEntityKubernetesObjectYamlEditRequest {
+  """Entity ID"""
+  id: ID!
+
+  """The Kubernetes Object YAML property value"""
+  property: String
+}
+
+"""List Kubernetes Service Object Entity Reply"""
+type KubernetesServiceEntityListReply {
+  """Items"""
+  items: [KubernetesServiceEntity!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: String
+}
+
+"""List Kubernetes Service Object Entity Request"""
+input KubernetesServiceEntityListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: String
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+type KubernetesServiceEntityProperties {
+  """Kubernetes Object"""
+  kubernetesObject: KubernetesServiceEntityPropertiesKubernetesObject
+
+  """Kubernetes Object YAML"""
+  kubernetesObjectYaml: String
+}
+
+type KubernetesServiceEntityPropertiesKubernetesObject {
+  """API Version"""
+  apiVersion: String
+
+  """Kind"""
+  kind: String
+
+  """Metadat"""
+  metadata: KubernetesMetadata
+
+  """Service Spec"""
+  spec: KubernetesServiceEntityPropertiesKubernetesObjectSpec
+
+  """Service Status"""
+  status: KubernetesServiceEntityPropertiesKubernetesObjectStatus
+}
+
+input KubernetesServiceEntityPropertiesKubernetesObjectRequest {
+  """API Version"""
+  apiVersion: String!
+
+  """Kind"""
+  kind: String!
+
+  """Metadat"""
+  metadata: KubernetesMetadataRequest
+
+  """Service Spec"""
+  spec: KubernetesServiceEntityPropertiesKubernetesObjectSpecRequest
+
+  """Service Status"""
+  status: KubernetesServiceEntityPropertiesKubernetesObjectStatusRequest
+}
+
+type KubernetesServiceEntityPropertiesKubernetesObjectSpec {
+  """Host IP"""
+  clusterIp: String
+
+  """External IPs"""
+  externalIps: [String!]
+
+  """External Name"""
+  externalName: String
+
+  """External Traffic Policy"""
+  externalTrafficPolicy: KubernetesServiceEntityPropertiesKubernetesObjectSpecExternalTrafficPolicy
+
+  """Health Check Node Port"""
+  healthCheckNodePort: String
+
+  """IP Family"""
+  ipFamily: KubernetesServiceEntityPropertiesKubernetesObjectSpecIpFamily
+
+  """Load Balancer IP"""
+  loadBalancerIp: String
+
+  """Load Balancer Source Ranges"""
+  loadBalancerSourceRanges: [String!]
+
+  """Ports"""
+  ports: [KubernetesServicePort!]
+
+  """Publish Not Ready Address"""
+  publishNotReadyAddress: Boolean
+
+  """Selector"""
+  selector: KubernetesSelector
+
+  """Session Affinity"""
+  sessionAffinity: KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinity
+
+  """Session Affinity Config"""
+  sessionAffinityConfig: KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinityConfig
+
+  """Topology Keys"""
+  topologyKeys: [String!]
+
+  """Type"""
+  type: KubernetesServiceEntityPropertiesKubernetesObjectSpecType
+}
+
+"""External Traffic Policy"""
+enum KubernetesServiceEntityPropertiesKubernetesObjectSpecExternalTrafficPolicy {
+  CLUSTER
+  LOCAL
+  UNKNOWN
+}
+
+"""IP Family"""
+enum KubernetesServiceEntityPropertiesKubernetesObjectSpecIpFamily {
+  I_PV4
+  I_PV6
+  UNKNOWN
+}
+
+input KubernetesServiceEntityPropertiesKubernetesObjectSpecRequest {
+  """Host IP"""
+  clusterIp: String
+
+  """External IPs"""
+  externalIps: [String!]
+
+  """External Name"""
+  externalName: String
+
+  """External Traffic Policy"""
+  externalTrafficPolicy: KubernetesServiceEntityPropertiesKubernetesObjectSpecExternalTrafficPolicy
+
+  """Health Check Node Port"""
+  healthCheckNodePort: String
+
+  """IP Family"""
+  ipFamily: KubernetesServiceEntityPropertiesKubernetesObjectSpecIpFamily
+
+  """Load Balancer IP"""
+  loadBalancerIp: String
+
+  """Load Balancer Source Ranges"""
+  loadBalancerSourceRanges: [String!]
+
+  """Ports"""
+  ports: [KubernetesServicePortRequest!]
+
+  """Publish Not Ready Address"""
+  publishNotReadyAddress: Boolean
+
+  """Selector"""
+  selector: KubernetesSelectorRequest
+
+  """Session Affinity"""
+  sessionAffinity: KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinity
+
+  """Session Affinity Config"""
+  sessionAffinityConfig: KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinityConfigRequest
+
+  """Topology Keys"""
+  topologyKeys: [String!]
+
+  """Type"""
+  type: KubernetesServiceEntityPropertiesKubernetesObjectSpecType
+}
+
+"""Session Affinity"""
+enum KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinity {
+  CLIENT_IP
+  NONE
+  UNKNOWN
+}
+
+type KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinityConfig {
+  """Client IP Config"""
+  clientIp: KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinityConfigClientIp
+}
+
+type KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinityConfigClientIp {
+  """Timeout Seconds"""
+  timeoutSeconds: String
+}
+
+input KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinityConfigClientIpRequest {
+  """Timeout Seconds"""
+  timeoutSeconds: String
+}
+
+input KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinityConfigRequest {
+  """Client IP Config"""
+  clientIp: KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinityConfigClientIpRequest
+}
+
+"""Type"""
+enum KubernetesServiceEntityPropertiesKubernetesObjectSpecType {
+  CLUSTER_IP
+  EXTERNAL_NAME
+  LOAD_BALANCER
+  NODE_PORT
+  UNKNOWN
+}
+
+type KubernetesServiceEntityPropertiesKubernetesObjectStatus {
+  """Load Balancer Status"""
+  loadBalancer: KubernetesLoadBalancerStatus
+}
+
+input KubernetesServiceEntityPropertiesKubernetesObjectStatusRequest {
+  """Load Balancer Status"""
+  loadBalancer: KubernetesLoadBalancerStatusRequest
+}
+
+input KubernetesServiceEntityPropertiesRequest {
+  """Kubernetes Object"""
+  kubernetesObject: KubernetesServiceEntityPropertiesKubernetesObjectRequest
+
+  """Kubernetes Object YAML"""
+  kubernetesObjectYaml: String
+}
+
+"""Sync State Reply"""
+type KubernetesServiceEntitySyncReply {
+  """Entity Event"""
+  item: KubernetesServiceEntityEvent
+}
+
+"""Sync State Request"""
+input KubernetesServiceEntitySyncRequest {
+  """Entity ID"""
+  id: ID!
+}
+
+type KubernetesServicePort {
+  """App Protocol"""
+  appProtocol: String
+
+  """Name"""
+  name: String
+
+  """Node Port"""
+  nodePort: String
+
+  """Port"""
+  port: String
+
+  """Protocol"""
+  protocol: KubernetesServicePortProtocol
+
+  """Target Port"""
+  targetPort: String
+}
+
+"""Protocol"""
+enum KubernetesServicePortProtocol {
+  SCTP
+  TCP
+  UDP
+  UNKNOWN
+}
+
+input KubernetesServicePortRequest {
+  """App Protocol"""
+  appProtocol: String
+
+  """Name"""
+  name: String
+
+  """Node Port"""
+  nodePort: String
+
+  """Port"""
+  port: String
+
+  """Protocol"""
+  protocol: KubernetesServicePortProtocol
+
+  """Target Port"""
+  targetPort: String
+}
+
 """Labels"""
 type Labels {
   key: String
@@ -1502,6 +2136,10 @@ type Mutation {
   kubernetesDeploymentEntityKubernetesObjectEdit(input: KubernetesDeploymentEntityKubernetesObjectEditRequest): KubernetesDeploymentEntityKubernetesObjectEditReply
   kubernetesDeploymentEntityKubernetesObjectYamlEdit(input: KubernetesDeploymentEntityKubernetesObjectYamlEditRequest): KubernetesDeploymentEntityKubernetesObjectYamlEditReply
   kubernetesDeploymentEntitySync(input: KubernetesDeploymentEntitySyncRequest): KubernetesDeploymentEntitySyncReply
+  kubernetesServiceEntityCreate(input: KubernetesServiceEntityCreateRequest): KubernetesServiceEntityCreateReply
+  kubernetesServiceEntityKubernetesObjectEdit(input: KubernetesServiceEntityKubernetesObjectEditRequest): KubernetesServiceEntityKubernetesObjectEditReply
+  kubernetesServiceEntityKubernetesObjectYamlEdit(input: KubernetesServiceEntityKubernetesObjectYamlEditRequest): KubernetesServiceEntityKubernetesObjectYamlEditReply
+  kubernetesServiceEntitySync(input: KubernetesServiceEntitySyncRequest): KubernetesServiceEntitySyncReply
   organizationCreate(input: OrganizationCreateRequest): OrganizationCreateReply
   userCreate(input: UserCreateRequest): UserCreateReply
   workspaceCreate(input: WorkspaceCreateRequest): WorkspaceCreateReply
@@ -1628,6 +2266,12 @@ type Query {
   kubernetesDeploymentEntityEventList(input: KubernetesDeploymentEntityEventListRequest): KubernetesDeploymentEntityEventListReply
   kubernetesDeploymentEntityGet(input: KubernetesDeploymentEntityGetRequest): KubernetesDeploymentEntityGetReply
   kubernetesDeploymentEntityList(input: KubernetesDeploymentEntityListRequest): KubernetesDeploymentEntityListReply
+  kubernetesServiceComponentGet(input: KubernetesServiceComponentGetRequest): KubernetesServiceComponentGetReply
+  kubernetesServiceComponentList(input: KubernetesServiceComponentListRequest): KubernetesServiceComponentListReply
+  kubernetesServiceComponentPick(input: KubernetesServiceComponentPickRequest): KubernetesServiceComponentPickReply
+  kubernetesServiceEntityEventList(input: KubernetesServiceEntityEventListRequest): KubernetesServiceEntityEventListReply
+  kubernetesServiceEntityGet(input: KubernetesServiceEntityGetRequest): KubernetesServiceEntityGetReply
+  kubernetesServiceEntityList(input: KubernetesServiceEntityListRequest): KubernetesServiceEntityListReply
   organizationGet(input: OrganizationGetRequest): OrganizationGetReply
   organizationList(input: OrganizationListRequest): OrganizationListReply
   userGet(input: UserGetRequest): UserGetReply

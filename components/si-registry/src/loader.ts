@@ -23,3 +23,4 @@ import "./components/si-account/item";
 
 import "./components/si-kubernetes/kubernetes";
 import "./components/si-kubernetes/deployment";
+import "./components/si-kubernetes/service";
