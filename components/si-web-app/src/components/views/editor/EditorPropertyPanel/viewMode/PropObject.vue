@@ -1,5 +1,4 @@
 <template>
-  <!-- eslint-disable vue/no-unused-components -->
   <div>
     <div
       v-for="field of propObject.properties.attrs.filter(i => !i.hidden)"
@@ -24,7 +23,6 @@
 </template>
 
 <script lang="ts">
-/* eslint-disable vue/no-unused-components */
 import Vue from "vue";
 import { registry } from "si-registry";
 

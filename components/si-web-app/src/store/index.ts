@@ -54,4 +54,3 @@ const store: Store<RootStore> = new Vuex.Store({
 });
 
 export default store;
-

@@ -25,25 +25,33 @@ text-l text-white font-medium subpixel-antialiased tracking-tight relative w-56
 
 <template>
   <div class="flex flex-col subpixel-antialiased tracking-tight">
-
     <div class="flex flex-row">
-      <dir class="w-40 text-white text-left text-l font-medium truncate">{{selected}}</dir>
-      
-      <button @click="isOpen = !isOpen" class="ml-4 focus:outline-none focus:border-white">
-         <menu-icon size="1.5x" class="text-white"></menu-icon>
-      </button>
-      <button v-if="isOpen" @click="isOpen = false" class="cursor-default"></button>
-    </div>
-    
-    
-    <div v-if="isOpen" class="w-48 bg-transparent text-white">
+      <dir class="w-40 text-white text-left text-l font-medium truncate">
+        {{ selected }}
+      </dir>
 
+      <button
+        @click="isOpen = !isOpen"
+        class="ml-4 focus:outline-none focus:border-white"
+      >
+        <menu-icon size="1.5x" class="text-white"></menu-icon>
+      </button>
+      <button
+        v-if="isOpen"
+        @click="isOpen = false"
+        class="cursor-default"
+      ></button>
+    </div>
+
+    <div v-if="isOpen" class="w-48 bg-transparent text-white">
       <div
         class="w-48 text-left bg-gray-600 text-sm hover:bg-indigo-500 hover:text-white cursor-pointer"
         v-for="(option, i) of options"
         :key="i"
         @click="onSelect(option)"
-      >{{ option }}</div>
+      >
+        {{ option }}
+      </div>
     </div>
   </div>
 </template>
@@ -54,50 +62,45 @@ import { MenuIcon } from "vue-feather-icons";
 export default {
   name: "Dropdown",
   components: {
-    MenuIcon
+    MenuIcon,
   },
   props: {
     default: {
       type: String,
-      required: true
+      required: true,
     },
     options: {
       type: Array,
-      required: true
-    }
+      required: true,
+    },
   },
   data() {
-
-    let selected = this.default
+    let selected = this.default;
     return {
       isOpen: false,
-      selected
-    }
+      selected,
+    };
   },
   created() {
-    const handleEscape = (e) => {
-      if (e.key === 'Esc' || e.key === 'Escape') {
-        this.isOpen = false
+    const handleEscape = e => {
+      if (e.key === "Esc" || e.key === "Escape") {
+        this.isOpen = false;
       }
-    }
-    document.addEventListener('keydown', handleEscape)
-    this.$once('hook:beforeDestroy', () => {
-      document.removeEventListener('keydown', handleEscape)
-    })
+    };
+    document.addEventListener("keydown", handleEscape);
+    this.$once("hook:beforeDestroy", () => {
+      document.removeEventListener("keydown", handleEscape);
+    });
   },
   methods: {
     onSelect(option) {
-      this.selected = option
-      this.$emit('selected', option)
-      this.isOpen = false
-    }
-  }
-}
+      this.selected = option;
+      this.$emit("selected", option);
+      this.isOpen = false;
+    },
+  },
+};
 </script>
-
-
-
-
 
 <!-- <script>
 export default {

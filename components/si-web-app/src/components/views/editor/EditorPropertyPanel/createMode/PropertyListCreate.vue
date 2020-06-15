@@ -1,5 +1,4 @@
 <template>
-  <!-- eslint-disable vue/no-unused-components -->
   <div id="property-panel-list" class="w-full h-full property-bg-color">
     <div class="flex flex-row-reverse pr-8 pb-4">
       <button
@@ -20,12 +19,8 @@
 </template>
 
 <script>
-/* eslint-disable vue/no-unused-components */
 import { registry } from "si-registry";
 import PropObject from "./PropObject.vue";
-
-// @ts-ignore
-import VueJsonPretty from "vue-json-pretty";
 
 export default {
   name: "PropertyList",
@@ -34,7 +29,6 @@ export default {
   },
   components: {
     PropObject,
-    VueJsonPretty,
   },
   data() {
     const kubernetesDeploymentEntity = registry.get(
@@ -107,4 +101,3 @@ export default {
   background-color: #292c2d;
 }
 </style>
-

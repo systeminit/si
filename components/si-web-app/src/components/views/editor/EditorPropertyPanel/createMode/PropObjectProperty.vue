@@ -1,6 +1,4 @@
 <template>
-  <!-- eslint-disable vue/no-unused-components -->
-
   <div class="w-full">
     <div class="py-1">
       <div v-if="propObjectProperty.repeated">
@@ -299,15 +297,9 @@
 </template>
 
 <script lang="ts">
-/* eslint-disable vue/no-unused-components */
 import Vue from "vue";
 import { registry, variablesObjectForProperty } from "si-registry";
-import {
-  PlusSquareIcon,
-  ChevronDownIcon,
-  Trash2Icon,
-  XIcon,
-} from "vue-feather-icons";
+import { PlusSquareIcon, XIcon } from "vue-feather-icons";
 
 import Button from "./Button.vue";
 
@@ -329,9 +321,7 @@ export default Vue.extend({
   },
   components: {
     PlusSquareIcon,
-    ChevronDownIcon,
     PropertySection,
-    Trash2Icon,
     XIcon,
     PropObject: () => import("./PropObject.vue"),
   },

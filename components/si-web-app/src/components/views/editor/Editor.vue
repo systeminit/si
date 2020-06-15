@@ -1,5 +1,4 @@
 <template>
-  <!-- eslint-disable vue/no-unused-components -->
   <div
     ref="editor"
     id="editor"
@@ -33,7 +32,6 @@
 </template>
 
 <script>
-/* eslint-disable vue/no-unused-components */
 import { registry } from "si-registry";
 
 import SchematicPanel from "./EditorSchematicPanel";
