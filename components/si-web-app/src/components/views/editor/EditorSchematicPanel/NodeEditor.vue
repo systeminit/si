@@ -1,5 +1,4 @@
 <template>
-  <!-- eslint-disable vue/no-unused-components -->
   <div id="schematic-panel" class="h-full w-full grid-background">
     <div
       ref="canvasParent"
@@ -9,9 +8,12 @@
       @mousemove="mouseMove"
       @mouseup="mouseUp"
     >
-      <div ref="canvas" id="canvas" class="flex-auto relative w-full h-full canvas block">
-
-        <NodeList/>
+      <div
+        ref="canvas"
+        id="canvas"
+        class="flex-auto relative w-full h-full canvas block"
+      >
+        <NodeList />
 
         <svg
           ref="grid"
@@ -44,8 +46,7 @@
 </template>
 
 <script>
-/* eslint-disable vue/no-unused-components */
-import NodeList from "./NodeList.vue"
+import NodeList from "./NodeList.vue";
 
 export default {
   name: "SchematicPanel",
@@ -183,7 +184,6 @@ export default {
 
     // console.log(gridDimension);
 
-
     // Initial grid size!
     // let scaleFactor = 4;
     let scaleFactor = 1;
@@ -245,8 +245,7 @@ export default {
         // console.log(this.selection.object);
 
         if (this.selection.object.classList.contains("node")) {
-
-          console.log(this.selection.object)
+          console.log(this.selection.object);
           console.log(event);
 
           let selectionOffsetLeft = event.target.offsetLeft;

@@ -1,39 +1,39 @@
 class Application {
   constructor(id, name) {
-    this.id = id
-    this.name = name
+    this.id = id;
+    this.name = name;
   }
 }
 
 // initial state
 const state = () => ({
   applicationList: [],
-})
+});
 
 // getters
 const getters = {
-  list (state) {
-    return state.applicationList
-  }
-}
+  list(state) {
+    return state.applicationList;
+  },
+};
 
 const actions = {
   initializeStore({ state, commit }) {
     let applicationObject = new Application("tmp", "tmp");
-    commit('addtoApplicationList', applicationObject)
+    commit("addtoApplicationList", applicationObject);
   },
   addApplication({ state, commit }, payload) {
     let applicationObject = new Application(payload.id, payload.name);
-    commit('addtoApplicationList', applicationObject)
-  }
-}
+    commit("addtoApplicationList", applicationObject);
+  },
+};
 
 // mutations
 const mutations = {
   addtoApplicationList(state, applicationObject) {
-    state.applicationList.push(applicationObject)
-  }
-}
+    state.applicationList.push(applicationObject);
+  },
+};
 
 export default {
   namespaced: true,
@@ -41,4 +41,4 @@ export default {
   getters,
   actions,
   mutations,
-}
+};

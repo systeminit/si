@@ -1,11 +1,11 @@
 <template>
   <transition name="fade">
     <div class="modal" v-if="show">
-      <div class="modal__backdrop" @click="closeModal()"/>
+      <div class="modal__backdrop" @click="closeModal()" />
 
       <div class="modal__dialog">
         <div class="modal__header">
-          <slot name="header"/>
+          <slot name="header" />
           <button type="button" class="modal__close" @click="closeModal()">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 352 512">
               <path
@@ -17,11 +17,11 @@
         </div>
 
         <div class="modal__body">
-          <slot name="body"/>
+          <slot name="body" />
         </div>
 
         <div class="modal__footer">
-          <slot name="footer"/>
+          <slot name="footer" />
         </div>
       </div>
     </div>
@@ -33,7 +33,7 @@ export default {
   name: "Modal",
   data() {
     return {
-      show: false
+      show: false,
     };
   },
   methods: {
@@ -44,11 +44,10 @@ export default {
     openModal() {
       this.show = true;
       document.querySelector("body").classList.add("overflow-hidden");
-    }
-  }
+    },
+  },
 };
 </script>
-
 
 <style lang="scss" scoped>
 .modal {

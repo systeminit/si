@@ -5,7 +5,7 @@ module.exports = {
     cursor: {
       resize: "ew-resize",
       pointer: "pointer",
-      move: "move"
+      move: "move",
     },
     fontFamily: {
       sans: ["Roboto", "Sans-serif"],

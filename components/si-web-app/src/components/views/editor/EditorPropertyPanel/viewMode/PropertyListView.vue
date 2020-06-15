@@ -1,5 +1,4 @@
 <template>
-  <!-- eslint-disable vue/no-unused-components -->
   <div id="property-panel-list" class="property-bg-color w-full h-full">
     <!--     <div class="mx-3">
       <button class="text-yellow-500 px-4 py-2 focus:outline-none" @click="onClick()" type="button">
@@ -17,7 +16,6 @@
 </template>
 
 <script>
-/* eslint-disable vue/no-unused-components */
 import { registry } from "si-registry";
 import PropObject from "./PropObject.vue";
 
