@@ -18,9 +18,31 @@ pub mod codegen_prelude {
 pub mod prelude {
     pub use crate::component::Component;
     pub use crate::error::CeaResult;
+    pub use crate::tracing_pick_span;
     pub use si_account::{Integration, IntegrationService};
-    pub use si_data::Storable;
-    pub use si_data::{Db, Result as DataResult};
+    pub use si_data::{
+        DataQueryBooleanTerm, DataQueryItems, DataQueryItemsExpressionComparison, Db,
+        Result as DataResult, Storable,
+    };
+    pub use tracing::{self, debug, field, Span};
+    pub use tracing_futures::Instrument as _;
+}
+
+#[macro_export]
+macro_rules! tracing_pick_span {
+    (
+        $name:expr, $raw_constraints:expr $(,)?
+    ) => {
+        tracing::span!(
+            tracing::Level::DEBUG,
+            concat!($name, "_pick"),
+            pick.raw_constraints = tracing::field::debug($raw_constraints),
+            pick.implicit_constraints = tracing::field::Empty,
+            pick.constraints = tracing::field::Empty,
+            pick.component_name = tracing::field::display(concat!($name, "_component")),
+            pick.component = tracing::field::Empty,
+        )
+    };
 }
 
 #[async_trait]
