@@ -1,51 +1,22 @@
-<!-- <template>
-  <div class="custom-select" :tabindex="tabindex" @blur="open = false">
-    <div class="selected" :class="{open: open}" @click="open = !open">{{ selected }}</div>
-    <div class="items" :class="{selectHide: !open}">
-      <div
-        class="item"
-        v-for="(option, i) of options"
-        :key="i"
-        @click="selected=option; open=false; $emit('input', option)"
-      >{{ option }}</div>
-    </div>
-  </div>
-</template>
-
-    <div class="flex-1 px-2 py-2 ml-2">
-      <menu-icon size="1.5x" class="text-white"></menu-icon>
-    </div>
-          <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-indigo-500 hover:text-white">Account settings</a>
-      <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-indigo-500 hover:text-white">Support</a>
-      <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-indigo-500 hover:text-white">Sign out</a>
- 
-
-text-l text-white font-medium subpixel-antialiased tracking-tight relative w-56
- -->
-
 <template>
-  <div class="flex flex-col subpixel-antialiased tracking-tight">
-    <div class="flex flex-row">
-      <dir class="w-40 text-white text-left text-l font-medium truncate">
-        {{ selected }}
-      </dir>
+  <div class="relative w-auto">
+    
+    <button @click="isOpen = !isOpen" class="w-full focus:outline-none">
+      <div class="flex flex-row justify-end items-center h-4">
+      
+        <dir class="block mr-2 text-white text-l font-medium truncate subpixel-antialiased tracking-tight">
+          {{ selected }}
+        </dir>
 
-      <button
-        @click="isOpen = !isOpen"
-        class="ml-4 focus:outline-none focus:border-white"
-      >
         <menu-icon size="1.5x" class="text-white"></menu-icon>
-      </button>
-      <button
-        v-if="isOpen"
-        @click="isOpen = false"
-        class="cursor-default"
-      ></button>
-    </div>
+      </div>
+    </button>
 
-    <div v-if="isOpen" class="w-48 bg-transparent text-white">
+    <button v-if="isOpen" @click="isOpen = false" tabindex="-1" class="fixed inset-0 h-full w-full cursor-default focus:outline-none"/>
+
+    <div v-if="isOpen" class="absolute right-0 w-full bg-gray-700 shadow-md border border-gray-600">
       <div
-        class="w-48 text-left bg-gray-600 text-sm hover:bg-indigo-500 hover:text-white cursor-pointer"
+        class="block px-4 text-gray-300 text-sm subpixel-antialiased tracking-tight hover:bg-teal-600 hover:text-white cursor-pointer"
         v-for="(option, i) of options"
         :key="i"
         @click="onSelect(option)"
@@ -101,23 +72,3 @@ export default {
   },
 };
 </script>
-
-<!-- <script>
-export default {
-  props: {
-    options: {
-      type: Array,
-      required: true
-    }
-  },
-  data() {
-    return {
-      selected: this.options.length > 0 ? this.options[0] : null,
-      open: false
-    };
-  },
-  mounted() {
-    this.$emit("input", this.selected);
-  }
-};
-</script> -->
