@@ -1,6 +1,6 @@
 <template>
   <div
-    id="system-details"
+    id="application-list"
     class="application-list-bg-color flex flex-col flex-no-wrap"
   >
     <div class="flex flex-row mt-4 h-10 application-list-menu-bar">
@@ -32,6 +32,7 @@
             placeholder="application name"
             v-model="applicationName"
           />
+
         </div>
         <button
           class="bg-teal-700 ml-4 mt-4 w-16 text-white hover:bg-teal-600"
