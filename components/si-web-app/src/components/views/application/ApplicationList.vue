@@ -1,8 +1,5 @@
 <template>
-  <div
-    id="application-list"
-    class="application-list-bg-color flex flex-col flex-no-wrap"
-  >
+  <div id="application-list" class="application-list-bg-color flex flex-col flex-no-wrap">
     <div class="flex flex-row mt-4 h-10 application-list-menu-bar">
       <button
         class="bg-teal-700 ml-4 px-2 h-8 mt-1 text-white hover:bg-teal-600"
@@ -44,37 +41,28 @@
       </div>
     </modal>
 
-    <div v-if="applications" class="mx-4">
-      <table class="table-auto text-white">
-        <thead>
-          <tr>
-            <th class="px-4 py-2">Applications</th>
-          </tr>
-        </thead>
+    <div v-if="applications">
 
-        <tbody v-for="app in applications" :key="app.id">
-          <tr
-            class="border border-teal-800 px-4 py-2"
-            @click="clickApp(app.id)"
-          >
-            <td>{{ app.name }}</td>
-          </tr>
-        </tbody>
-      </table>
+      <div v-for="app in applications" :key="app.id">
+
+        <ApplicationCard
+          :application=app
+        />
+
+      </div>
     </div>
   </div>
 </template>
 
 <script>
 import { registry } from "si-registry";
+import ApplicationCard from "./ApplicationCard.vue"
 
 export default {
   name: "ApplicationList",
-  // data: function() {
-  //   return {
-  //     applicationListOld: ["demo", "aaa"],
-  //   };
-  // },
+  components: {
+    ApplicationCard
+  },
   props: {
     organizationId: {
       type: String,
@@ -103,6 +91,7 @@ export default {
     hideModal() {
       this.$modal.hide("hello-world");
     },
+    // @click="clickApp(app.id)"
     clickApp(appId) {
       "/o/:organizationId/w/:workspaceId/a/:applicationId";
       this.$router.push({
