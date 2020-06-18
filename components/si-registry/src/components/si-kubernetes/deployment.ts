@@ -30,6 +30,7 @@ registry.componentAndEntity({
       label: "Kubernetes Version",
       options(p: PropEnum) {
         p.variants = ["v1.12", "v1.13", "v1.14", "v1.15"];
+        p.baseDefaultValue = "v1.15";
       },
     });
 

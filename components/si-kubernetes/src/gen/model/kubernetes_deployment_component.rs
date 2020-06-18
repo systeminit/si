@@ -441,3 +441,57 @@ impl si_data::Migrateable for crate::protobuf::KubernetesDeploymentComponent {
         }
     }
 }
+
+impl crate::protobuf::KubernetesDeploymentComponentConstraintsKubernetesVersion {
+    pub fn iterator() -> impl Iterator<Item = Self> {
+        [Self::V112, Self::V113, Self::V114, Self::V115]
+            .iter()
+            .copied()
+    }
+
+    pub fn default_value() -> Self {
+        Self::V115
+    }
+
+    pub fn to_i32_string(&self) -> String {
+        (*self as i32).to_string()
+    }
+}
+
+impl std::fmt::Display
+    for crate::protobuf::KubernetesDeploymentComponentConstraintsKubernetesVersion
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Unknown => f.write_str("<UNKNOWN>"),
+            Self::V112 => f.write_str("v1.12"),
+            Self::V113 => f.write_str("v1.13"),
+            Self::V114 => f.write_str("v1.14"),
+            Self::V115 => f.write_str("v1.15"),
+        }
+    }
+}
+
+#[derive(thiserror::Error, Debug)]
+#[error("invalid KubernetesDeploymentComponentConstraintsKubernetesVersion value: {0}")]
+pub struct InvalidKubernetesDeploymentComponentConstraintsKubernetesVersion(String);
+
+impl std::str::FromStr
+    for crate::protobuf::KubernetesDeploymentComponentConstraintsKubernetesVersion
+{
+    type Err = InvalidKubernetesDeploymentComponentConstraintsKubernetesVersion;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s {
+            "v1.12" => Ok(Self::V112),
+            "v1.13" => Ok(Self::V113),
+            "v1.14" => Ok(Self::V114),
+            "v1.15" => Ok(Self::V115),
+            invalid => Err(
+                InvalidKubernetesDeploymentComponentConstraintsKubernetesVersion(
+                    invalid.to_string(),
+                ),
+            ),
+        }
+    }
+}

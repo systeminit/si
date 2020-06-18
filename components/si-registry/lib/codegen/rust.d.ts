@@ -37,6 +37,7 @@ export declare class RustFormatter {
     actionProps(): PropPrelude.PropAction[];
     componentName(): string;
     componentConstraintsName(): string;
+    componentContraintsEnums(): PropPrelude.PropEnum[];
     entityEditMethodName(propMethod: PropPrelude.PropMethod): string;
     entityEditMethods(): PropPrelude.PropAction[];
     entityEditProperty(propAction: PropPrelude.PropAction): Props;
@@ -61,6 +62,7 @@ export declare class RustFormatter {
     implServiceReplyType(propMethod: PropPrelude.PropMethod, renderOptions?: RustTypeAsPropOptions): string;
     implServiceTraceName(propMethod: PropPrelude.PropMethod | PropPrelude.PropAction): string;
     implServiceMethodName(propMethod: PropPrelude.PropMethod | PropPrelude.PropAction): string;
+    implProtobufEnum(propEnum: PropPrelude.PropEnum): string;
     implServiceEntityAction(propMethod: PropPrelude.PropMethod): string;
     implServiceEntityEdit(propMethod: PropPrelude.PropMethod): string;
     implServiceCommonCreate(propMethod: PropPrelude.PropMethod): string;
@@ -75,6 +77,7 @@ export declare class RustFormatter {
     serviceMethods(): string;
     rustFieldNameForProp(prop: Props): string;
     rustTypeForProp(prop: Props, renderOptions?: RustTypeAsPropOptions): string;
+    rustNameForEnumVariant(variant: string): string;
     implCreateNewArgs(): string;
     implCreatePassNewArgs(): string;
     implServiceMethodListResultToReply(): string;

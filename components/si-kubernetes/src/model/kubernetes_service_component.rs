@@ -130,34 +130,3 @@ impl KubernetesServiceComponent {
         Ok(())
     }
 }
-
-// TODO(fnichol) Code gen this
-impl KubernetesServiceComponentConstraintsKubernetesVersion {
-    pub fn iterator() -> impl Iterator<Item = Self> {
-        [Self::V112, Self::V113, Self::V114, Self::V115]
-            .iter()
-            .copied()
-    }
-
-    fn default_value() -> Self {
-        Self::V115
-    }
-
-    fn to_i32_string(&self) -> String {
-        (*self as i32).to_string()
-    }
-}
-
-// TODO(fnichol) Code gen this
-impl std::fmt::Display for KubernetesServiceComponentConstraintsKubernetesVersion {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let msg = match self {
-            Self::Unknown => "<UNKNOWN>",
-            Self::V112 => "v1.12",
-            Self::V113 => "v1.13",
-            Self::V114 => "v1.14",
-            Self::V115 => "v1.15",
-        };
-        write!(f, "{}", msg)
-    }
-}

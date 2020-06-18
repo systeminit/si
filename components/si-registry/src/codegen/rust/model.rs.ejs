@@ -32,3 +32,9 @@ impl <%- fmt.structName() %> {
 <%_ if (fmt.isEntityObject()) { _%>
     <%- include('implEntityPropertyTryFroms.rs.ejs', { fmt: fmt }) %>
 <%_ } _%>
+
+<%_ if (fmt.isComponentObject()) { _%>
+    <%_ for (const propEnum of fmt.componentContraintsEnums()) { _%>
+        <%- fmt.implProtobufEnum(propEnum) %>
+    <%_ } _%>
+<%_ } _%>
