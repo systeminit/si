@@ -1,20 +1,54 @@
 <template>
   <div id="application-details" class="flex flex-col flex-no-wrap">
-    <div id="application-summary" class="flex-none w-full h-40">
-      {{ systemName }}
+    
+    <div id="application-summary" class="flex flex-col w-full h-40">
+      
+      <StatusBar class=""/>
 
-      <div class="flex flex-row-reverse pr-8 pb-4">
+      <div class="flex flex-row">
 
-        <button
-          class="bg-teal-700 px-4 py-2 text-white hover:bg-teal-600"
-          @click="execute()"
-          type="button"
-        >
-          execute
-        </button>
+        <div class="flex flex-col w-2/3">
+          <div class="text-white">
+            Applications/{{ systemName }}
+          </div>
 
-        <div>
-          <Dropdown class="mr-8" :default="options[0]" :options="options" />
+          <div class="flex mx-4 my-4 w-full justify-start">
+            <LastUpdatedVisualization class="mx-2"/>
+            <ServicesVisualization class="mx-2"/>
+            <SystemsVisualization class="mx-2"/>
+          </div>
+        </div>
+
+        <div class="flex flex-col w-1/3 justify-end">
+
+          <div class="flex text-sm text-gray-400">
+            <div class="block font-light">
+              ChangeSet:
+            </div>
+            <div class="font-normal">
+              <Dropdown :default="options[0]" :options="options" />
+            </div>
+          </div>
+
+        <div class="flex flex-row-reverse pr-4 mt-4">
+
+          <button
+            class="bg-teal-700 px-2 py-1 text-white text-sm hover:bg-teal-600"
+            @click="execute()"
+            type="button"
+          >
+            execute
+          </button>
+
+          <button
+            class="bg-teal-700 mr-2 px-2 py-1 text-white text-sm hover:bg-teal-600"
+            @click="execute()"
+            type="button"
+          >
+            edit
+          </button>
+
+          </div>
         </div>
 
       </div>
@@ -28,7 +62,12 @@
 
 <script>
 import Editor from "@/components/views/editor/Editor.vue";
+import StatusBar from "@/components/common/StatusBar.vue"
+import ServicesVisualization from "@/components/visualization/ServicesVisualization.vue"
+import SystemsVisualization from "@/components/visualization/SystemsVisualization.vue"
+import LastUpdatedVisualization from "@/components/visualization/LastUpdatedVisualization.vue"
 import Dropdown from "@/components/ui/Dropdown";
+
 import { mapState, mapActions } from "vuex";
 import { registry } from "si-registry";
 
@@ -36,7 +75,11 @@ export default {
   name: "ApplicationDetails",
   components: {
     Editor,
-    Dropdown,
+    StatusBar,
+    ServicesVisualization,
+    SystemsVisualization,
+    LastUpdatedVisualization,
+    Dropdown
   },
   props: {
     organizationId: {
@@ -52,7 +95,10 @@ export default {
   data: function() {
     return {
       systemName: "demo",
-      options: ["orange", "blue", "red"],
+      options: ["alex/my-glorious-changeset", "blue", "red"],
+      app: {
+        id: this.applicationId
+      }
     };
   },
   methods: {
@@ -93,5 +139,4 @@ export default {
 #application-summary {
   background-color: #2a2f32;
 }
-
 </style>

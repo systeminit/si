@@ -44,10 +44,12 @@
     <div v-if="applications">
 
       <div v-for="app in applications" :key="app.id">
-
-        <ApplicationCard
-          :application=app
-        />
+          
+          <ApplicationCard
+            class="mx-8 my-4"
+            :application=app
+            :session=session
+          />
 
       </div>
     </div>
@@ -74,6 +76,10 @@ export default {
   data() {
     return {
       applicationName: "",
+      session: {
+        organizationId: this.organizationId,
+        workspaceId: this.workspaceId
+      }
     };
   },
   methods: {
@@ -90,18 +96,6 @@ export default {
     },
     hideModal() {
       this.$modal.hide("hello-world");
-    },
-    // @click="clickApp(app.id)"
-    clickApp(appId) {
-      "/o/:organizationId/w/:workspaceId/a/:applicationId";
-      this.$router.push({
-        name: "applicationDetails",
-        params: {
-          organizationId: this.organizationId,
-          workspaceId: this.workspaceId,
-          applicationId: appId,
-        },
-      });
     },
   },
   computed: {

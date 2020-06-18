@@ -1,15 +1,12 @@
 <template>
-  <nav
-    id="workspace-nav"
-    class="flex flex-col flex-shrink-0 flex-no-wrap bg-primary w-56"
-  >
-    <!-- <WorkspaceSelector/> -->
+  <nav id="workspace-nav" class="flex flex-col flex-shrink-0 flex-no-wrap bg-primary w-56">
 
-    <Dropdown class="" :default="currentWorkspace" :options="workspaces" />
+    <div class="flex justify-end mr-4 mt-6">
+      <Dropdown :default="currentWorkspace" :options="workspaces" />
+    </div>
 
-    <div id="workspace-content" class="flex px-4 py-2 ml-2">
-      <div class="flex flex-col">
-        <div
+    <div id="workspace-content" class="flex flex-col mt-10 self-end mr-4">
+<!--         <div
           class="self-end font-source-code-pro font-medium subpixel-antialiased text-white text-l tracking-tight"
         >
           <router-link
@@ -23,11 +20,9 @@
             }"
             >systems</router-link
           >
-        </div>
+        </div> -->
 
-        <div
-          class="self-end font-source-code-pro font-medium subpixel-antialiased text-white text-l tracking-tight"
-        >
+        <div class=" font-source-code-pro font-normal subpixel-antialiased text-white text-md tracking-tight">
           <router-link
             :to="{
               name: 'application',
@@ -37,10 +32,9 @@
                 workspaceId: workspaceId,
               },
             }"
-            >applications</router-link
-          >
+            >applications</router-link>
         </div>
-      </div>
+
     </div>
   </nav>
 </template>

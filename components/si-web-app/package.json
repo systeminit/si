@@ -20,6 +20,7 @@
     "@opentelemetry/plugin-user-interaction": "^0.7.0",
     "@opentelemetry/tracing": "^0.8.1",
     "@opentelemetry/web": "^0.8.1",
+    "@types/chart.js": "^2.9.22",
     "@types/js-cookie": "^2.2.6",
     "@types/node-fetch": "^2.5.4",
     "@types/vue-feather-icons": "^5.0.0",
