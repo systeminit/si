@@ -2,7 +2,7 @@
   <nav id="workspace-nav" class="flex flex-col flex-shrink-0 flex-no-wrap bg-primary w-56">
 
     <div class="flex justify-end mr-4 mt-6">
-      <Dropdown :default="currentWorkspace" :options="workspaces" />
+      <Dropdown :optionDefault="currentWorkspace" :optionList="workspaces" />
     </div>
 
     <div id="workspace-content" class="flex flex-col mt-10 self-end mr-4">

@@ -26,7 +26,12 @@
               ChangeSet:
             </div>
             <div class="font-normal">
-              <Dropdown :default="options[0]" :options="options" />
+              <Dropdown
+                class="ml-1"
+                :optionDefault="options[0]"
+                :optionList="options"
+                optionListOrientation="left"
+              />
             </div>
           </div>
 
