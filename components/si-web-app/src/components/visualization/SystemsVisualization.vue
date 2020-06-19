@@ -3,10 +3,10 @@
     <div class="text-sm font-bold text-gray-400">
       systems
     </div>
-    <div class="flex">
+    <div class="flex mt-1">
       <div v-for="n in 2" class="mr-1" :key="n">
         <SquareChart
-          rgbColor="255,64,161"
+          rgbColor="115, 76, 118"
         />
       </div>
     </div>

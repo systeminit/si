@@ -4,10 +4,14 @@
     services
     </div>
     
-    <div class="flex">
-      <div v-for="n in 3" class="mr-1" :key="n">
+    <div class="flex mt-1">
+      <div v-for="n in 3" class="flex flex-row mr-1" :key="n">
         <SquareChart
-          rgbColor="6,142,255"
+          :rgbColor="serviceColor"
+        />
+        <SquareChart
+          :width=7
+          :rgbColor="statusColor"
         />
       </div>
     </div>
@@ -20,6 +24,19 @@ export default {
   name: "ServicesVisualization",
   components: {
     SquareChart
+  },
+  data() {
+    return {
+      serviceColor: "78,141,171",
+    }
+  },
+  computed: {
+    statusColor() {
+      let stateSuccessColor = "0,179,79"
+      let stateFailureColor = "187,107,0"
+      let colors = [stateSuccessColor, stateFailureColor]
+      return colors[Math.floor(Math.random() * 2)]
+    }
   }
 }
 

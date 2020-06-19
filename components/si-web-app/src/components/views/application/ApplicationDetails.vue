@@ -13,7 +13,7 @@
           </div>
 
           <div class="flex mx-4 my-4 w-full justify-start">
-            <LastUpdatedVisualization class="mx-2"/>
+            <ActivityVisualization class="mx-2"/>
             <ServicesVisualization class="mx-2"/>
             <SystemsVisualization class="mx-2"/>
           </div>
@@ -70,7 +70,7 @@ import Editor from "@/components/views/editor/Editor.vue";
 import StatusBar from "@/components/common/StatusBar.vue"
 import ServicesVisualization from "@/components/visualization/ServicesVisualization.vue"
 import SystemsVisualization from "@/components/visualization/SystemsVisualization.vue"
-import LastUpdatedVisualization from "@/components/visualization/LastUpdatedVisualization.vue"
+import ActivityVisualization from "@/components/visualization/ActivityVisualization.vue"
 import Dropdown from "@/components/ui/Dropdown";
 
 import { mapState, mapActions } from "vuex";
@@ -83,7 +83,7 @@ export default {
     StatusBar,
     ServicesVisualization,
     SystemsVisualization,
-    LastUpdatedVisualization,
+    ActivityVisualization,
     Dropdown
   },
   props: {
