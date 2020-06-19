@@ -4,7 +4,7 @@
     services
     </div>
     
-    <div class="flex mt-1">
+    <div class="flex mt-1 pl-1">
       <div v-for="n in 3" class="flex flex-row mr-1" :key="n">
         <SquareChart
           :rgbColor="serviceColor"

@@ -1,23 +1,22 @@
 <template>
-  <div class="relative w-auto">
+  <div class="relative w-full">
     
-    <button @click="isOpen = !isOpen" class="w-full focus:outline-none">
-     
-     <div class="flex flex-row items-center">
-        <menu-icon size="1.0x" class="text-gray-200"/>
-
-        <div class="ml-1 text-gray-200 text-left font-medium truncate subpixel-antialiased tracking-tight">
+      <button @click="isOpen = !isOpen" class="w-full focus:outline-none">
+      <div class="flex flex-row justify-end items-center h-4 w-full">
+      
+        <div class="block mr-2 text-gray-200 text-l font-medium truncate subpixel-antialiased tracking-tight">
           {{ selected }}
         </div>
-      </div>
 
+        <menu-icon size="1.5x" class="self-center text-gray-200"></menu-icon>
+      </div>
     </button>
 
     <button v-if="isOpen" @click="isOpen = false" tabindex="-1" class="fixed inset-0 h-full w-full cursor-default focus:outline-none"/>
 
-    <div v-if="isOpen" class="absolute left-0 w-56 bg-gray-700 shadow-md border border-gray-600">
+    <div v-if="isOpen" class="absolute right-0 -mt-05 w-full options shadow-md border">
       <div
-        class="block px-4 text-gray-300 text-sm subpixel-antialiased tracking-tight hover:bg-teal-600 hover:text-white cursor-pointer"
+        class="block text-left px-4 text-gray-300 text-sm font-light subpixel-antialiased tracking-tight options hover:text-white cursor-pointer"
         v-for="(option, i) of options"
         :key="i"
         @click="onSelect(option)"
@@ -32,7 +31,7 @@
 import { MenuIcon } from "vue-feather-icons";
 
 export default {
-  name: "DropdownLeftSided",
+  name: "DropdownStandardRightSided",
   components: {
     MenuIcon,
   },
@@ -73,3 +72,21 @@ export default {
   },
 };
 </script>
+
+<style>
+  
+.menu {
+  background-color: #2D3748;
+  border-color: #485359
+}
+
+.options {
+  background-color: #1F2631;
+  border-color: #485359
+}
+.options:hover {
+  background-color: #3D4B62;
+  border-color: #454D3E
+}
+
+</style>

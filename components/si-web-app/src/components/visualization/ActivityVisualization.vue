@@ -3,9 +3,10 @@
     <div class="flex text-sm text-gray-400 font-bold">Activity</div>
 
     <div class="flex flex-col">
+      
       <div class="flex">
-        <div class="text-xs font-normal chart-title-service">services</div>
-        <div class="ml-5 w-16">
+        <div class="text-xs pl-2 font-normal chart-title-service">services</div>
+        <div class="ml-3 w-16">
           <line-chart
             class="relative"
             :height="100"
@@ -43,6 +44,7 @@ export default {
       datacollectionService: {},
       datacollectionResource: {},
       chartOptions: {
+        responsive: true,
         legend: {
           display: false,
         },

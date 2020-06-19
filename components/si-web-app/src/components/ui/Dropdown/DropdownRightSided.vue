@@ -31,7 +31,7 @@
 import { MenuIcon } from "vue-feather-icons";
 
 export default {
-  name: "Dropdown",
+  name: "DropdownRightSided",
   components: {
     MenuIcon,
   },

@@ -5,7 +5,7 @@
       changes
     </div>
 
-    <div class="flex">
+    <div class="flex pl-1">
       <div class="ml-1 text-xs font-bold text-gray-400">
         open:
       </div>

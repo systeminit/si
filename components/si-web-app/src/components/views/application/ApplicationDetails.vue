@@ -5,56 +5,101 @@
       
       <StatusBar class=""/>
 
-      <div class="flex flex-row">
+      <div class="flex flex-col">
 
-        <div class="flex flex-col w-2/3">
-          <div class="text-white">
+        <div class="flex flex-row mt-3 mx-3">
+          <div class="text-gray-300 font-normal">
             Applications/{{ systemName }}
           </div>
 
-          <div class="flex mx-4 my-4 w-full justify-start">
-            <ActivityVisualization class="mx-2"/>
-            <ServicesVisualization class="mx-2"/>
-            <SystemsVisualization class="mx-2"/>
+          <div class="flex w-full flex-row-reverse">
+            <button
+              class="mx-1 px-1  w-auto text-white text-sm button-standard"
+              @click="execute()"
+              type="button"
+            >
+              <div class="flex">
+                <play-icon size="1.25x" class="self-center text-gray-200"/>
+                <div class="ml-1 font-normal text-gray-100">execute</div>
+              </div>
+            </button>
+
+            <button
+              class="mx-1 px-2 text-white text-sm button-standard"
+              @click="edit()"
+              type="button"
+            >
+              <div class="flex">
+                <edit-icon size="1.25x" class="self-center text-gray-200"/>
+                <div class="ml-1 font-normal text-gray-100">edit</div>
+              </div>
+            </button>
           </div>
         </div>
 
-        <div class="flex flex-col w-1/3 justify-end">
 
-          <div class="flex text-sm text-gray-400">
-            <div class="block font-light">
-              ChangeSet:
-            </div>
-            <div class="font-normal">
-              <Dropdown
-                class="ml-1"
-                :optionDefault="options[0]"
-                :optionList="options"
-                optionListOrientation="left"
-              />
+        <div class="flex mx-4 my-4 justify-start">
+
+          <div class="mx-2 w-40 border card-section">
+            <ActivityVisualization class="mx-2 my-1"/>
+          </div>
+
+          <div class="mx-2 w-3/12 border card-section">
+            <ServicesVisualization class="mx-2 my-1"/>
+          </div>
+
+          <div class="mx-2 w-3/12 border card-section">
+            <div class="mx-2 my-1 text-sm font-bold text-gray-400">
+              
+              <div class="flex">
+                <div>systems:</div>
+                <div class="ml-1 font-normal">2</div>
+              </div>
+                
+              <div class="flex mt-1">
+                <div class="ml-1 font-light">system:</div>
+
+                <div class="ml-1 w-full">
+                  <Dropdown
+                    class="w-auto"
+                    :optionDefault="systems[0]"
+                    :optionList="systems"
+                    menuStyle="standard"
+                  />
+                </div>
+              </div>
+
             </div>
           </div>
 
-        <div class="flex flex-row-reverse pr-4 mt-4">
+          <div class="mx-2 w-4/12 border card-section">
+            <div class="mx-2 my-1 text-sm font-bold text-gray-400">
+              
+              <div class="flex">
+                <div>Changes:</div>
+                <div class="ml-1 font-normal">3</div>
+                <alert-circle-icon size="1x" class="ml-1 self-center text-orange-600"/>
+              </div>
+                
+              <div class="flex mt-1">
+                <div class="ml-1 font-light">changeset:</div>
 
-          <button
-            class="bg-teal-700 px-2 py-1 text-white text-sm hover:bg-teal-600"
-            @click="execute()"
-            type="button"
-          >
-            execute
-          </button>
+                <div class="ml-1 w-full">
+                  <Dropdown
+                    class="w-auto"
+                    :optionDefault="changesets[0]"
+                    :optionList="changesets"
+                    menuStyle="standard"
+                  />
+                </div>
+              </div>
 
-          <button
-            class="bg-teal-700 mr-2 px-2 py-1 text-white text-sm hover:bg-teal-600"
-            @click="execute()"
-            type="button"
-          >
-            edit
-          </button>
-
+            </div>
           </div>
+
         </div>
+
+
 
       </div>
     </div>
@@ -66,15 +111,16 @@
 </template>
 
 <script>
+import { mapState, mapActions } from "vuex";
+import { registry } from "si-registry";
+
 import Editor from "@/components/views/editor/Editor.vue";
 import StatusBar from "@/components/common/StatusBar.vue"
 import ServicesVisualization from "@/components/visualization/ServicesVisualization.vue"
-import SystemsVisualization from "@/components/visualization/SystemsVisualization.vue"
 import ActivityVisualization from "@/components/visualization/ActivityVisualization.vue"
 import Dropdown from "@/components/ui/Dropdown";
 
-import { mapState, mapActions } from "vuex";
-import { registry } from "si-registry";
+import { PlayIcon, EditIcon, AlertCircleIcon } from 'vue-feather-icons'
 
 export default {
   name: "ApplicationDetails",
@@ -82,9 +128,11 @@ export default {
     Editor,
     StatusBar,
     ServicesVisualization,
-    SystemsVisualization,
     ActivityVisualization,
-    Dropdown
+    Dropdown,
+    PlayIcon,
+    EditIcon,
+    AlertCircleIcon
   },
   props: {
     organizationId: {
@@ -100,7 +148,8 @@ export default {
   data: function() {
     return {
       systemName: "demo",
-      options: ["alex/my-glorious-changeset", "blue", "red"],
+      systems: ["dev", "production"],
+      changesets: ["a changeset", "another changeset", "the changeset"],
       app: {
         id: this.applicationId
       }
@@ -142,6 +191,20 @@ export default {
 
 <style type="text/css" scoped>
 #application-summary {
-  background-color: #2a2f32;
+  background-color: #292F32;
+}
+
+.button-standard {
+  background-color: #50928B;
+}
+
+.button-standard:hover {
+  background-color: #42A69B
+}
+
+.card-section {
+  background-color: #242A2C;
+  border-color: #384145;
 }
 </style>
+

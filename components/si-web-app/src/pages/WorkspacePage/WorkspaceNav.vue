@@ -1,8 +1,13 @@
 <template>
   <nav id="workspace-nav" class="flex flex-col flex-shrink-0 flex-no-wrap bg-primary w-56">
 
-    <div class="flex justify-end mr-4 mt-6">
-      <Dropdown :optionDefault="currentWorkspace" :optionList="workspaces" />
+    <div class="flex justify-end mt-6">
+      <Dropdown
+        class="w-full mx-4"
+        :optionDefault="currentWorkspace"
+        :optionList="workspaces"
+        menuStyle="standard-rs"
+        />
     </div>
 
     <div id="workspace-content" class="flex flex-col mt-10 self-end mr-4">
