@@ -14,7 +14,7 @@
 
           <div class="flex w-full flex-row-reverse">
             <button
-              class="mx-1 px-1  w-auto text-white text-sm button-standard"
+              class="mx-1 px-1 h-7 w-auto text-white text-sm button-standard"
               @click="execute()"
               type="button"
             >
@@ -24,16 +24,46 @@
               </div>
             </button>
 
-            <button
-              class="mx-1 px-2 text-white text-sm button-standard"
-              @click="edit()"
-              type="button"
-            >
-              <div class="flex">
-                <edit-icon size="1.25x" class="self-center text-gray-200"/>
-                <div class="ml-1 font-normal text-gray-100">edit</div>
-              </div>
-            </button>
+            <div v-if="isEditMode===false" class="flex">
+              <button
+                class="mx-1 px-2 h-7 w-auto text-white text-sm button-standard"
+                @click="toggleEditMode(true)"
+                type="button"
+              >
+
+                <div class="flex">
+                  <edit-icon size="1.25x" class="self-center text-gray-200"/>
+                  <div class="ml-1 font-normal text-gray-100">edit</div>
+                </div>
+              </button>
+            </div>
+
+            <div v-else-if="isEditMode===true" class="flex">
+              <button
+                class="mx-1 px-2 h-7 w-auto text-white text-sm button-save"
+                @click="toggleEditMode(false)"
+                type="button"
+              >
+
+                <div class="flex">
+                  <save-icon size="1.25x" class="self-center text-gray-200"/>
+                  <div class="ml-1 font-normal text-gray-100">save</div>
+                </div>
+              </button>
+
+              <button
+                class="mx-1 px-2 h-7 w-auto text-white text-sm button-abort"
+                @click="toggleEditMode(false)"
+                type="button"
+              >
+
+                <div class="flex">
+                  <trash-icon size="1.25x" class="self-center text-gray-200"/>
+                  <div class="ml-1 font-normal text-gray-100">abort</div>
+                </div>
+              </button>
+
+            </div>
           </div>
         </div>
 
@@ -120,7 +150,7 @@ import ServicesVisualization from "@/components/visualization/ServicesVisualizat
 import ActivityVisualization from "@/components/visualization/ActivityVisualization.vue"
 import Dropdown from "@/components/ui/Dropdown";
 
-import { PlayIcon, EditIcon, AlertCircleIcon } from 'vue-feather-icons'
+import { PlayIcon, EditIcon, AlertCircleIcon, TrashIcon, SaveIcon } from 'vue-feather-icons'
 
 export default {
   name: "ApplicationDetails",
@@ -132,7 +162,9 @@ export default {
     Dropdown,
     PlayIcon,
     EditIcon,
-    AlertCircleIcon
+    AlertCircleIcon,
+    TrashIcon,
+    SaveIcon
   },
   props: {
     organizationId: {
@@ -152,7 +184,8 @@ export default {
       changesets: ["a changeset", "another changeset", "the changeset"],
       app: {
         id: this.applicationId
-      }
+      },
+      isEditMode: false,
     };
   },
   methods: {
@@ -175,6 +208,10 @@ export default {
         console.log("error", { error });
       }
     },
+    toggleEditMode(value) {
+      this.isEditMode = value
+      console.log(value)
+    }
   },
   computed: {
     ...mapState({
@@ -200,6 +237,21 @@ export default {
 
 .button-standard:hover {
   background-color: #42A69B
+}
+
+.button-save {
+  background-color: #2DA06F
+}
+.button-save:hover {
+  background-color: #32B27B
+}
+
+.button-abort {
+  background-color: #A94D50
+}
+
+.button-abort:hover {
+
 }
 
 .card-section {
