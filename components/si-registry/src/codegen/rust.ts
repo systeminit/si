@@ -179,6 +179,18 @@ export class RustFormatter {
     }
   }
 
+  componentContraintsEnums(): PropPrelude.PropEnum[] {
+    if (this.systemObject instanceof ComponentObject) {
+      return this.systemObject.constraints.attrs
+        .filter(c => c instanceof PropPrelude.PropEnum)
+        .map(c => c as PropPrelude.PropEnum);
+    } else {
+      throw new Error(
+        "You asked for component contraints on a non-component object; this is a bug!",
+      );
+    }
+  }
+
   entityEditMethodName(propMethod: PropPrelude.PropMethod): string {
     if (this.systemObject instanceof EntityObject) {
       return `edit_${this.rustFieldNameForProp(propMethod).replace(
@@ -422,6 +434,14 @@ export class RustFormatter {
     );
   }
 
+  implProtobufEnum(propEnum: PropPrelude.PropEnum): string {
+    return ejs.render(
+      "<%- include('src/codegen/rust/implProtobufEnum.rs.ejs', { fmt: fmt, propEnum: propEnum }) %>",
+      { fmt: this, propEnum: propEnum },
+      { filename: "." },
+    );
+  }
+
   implServiceEntityAction(propMethod: PropPrelude.PropMethod): string {
     return ejs.render(
       "<%- include('src/codegen/rust/implServiceEntityAction.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
@@ -570,6 +590,7 @@ export class RustFormatter {
       }
     } else if (
       prop instanceof PropPrelude.PropBool ||
+      prop instanceof PropPrelude.PropEnum ||
       prop instanceof PropPrelude.PropObject
     ) {
       typeName = `crate::protobuf::${pascalCase(prop.parentName)}${pascalCase(
@@ -605,7 +626,7 @@ export class RustFormatter {
     ) {
       typeName = "String";
     } else {
-      throw `Cannot generate type for ${prop.name} kind ${prop.kind()} - Bug!`;
+      throw new Error("All Props types covered; this code is unreachable!");
     }
     if (reference) {
       // @ts-ignore - we do assign it, you just cant tell
@@ -627,6 +648,10 @@ export class RustFormatter {
     }
     // @ts-ignore - we do assign it, you just cant tell
     return typeName;
+  }
+
+  rustNameForEnumVariant(variant: string): string {
+    return pascalCase(variant.replace(".", ""));
   }
 
   implCreateNewArgs(): string {
