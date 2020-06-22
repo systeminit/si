@@ -15,8 +15,8 @@ export default Vue.extend({
   name: "home",
   data(): HomePageData {
     const profile = this.$store.state.user.auth.profile;
-    const organization = profile.organization.id;
-    const workspace = profile.workspaceDefault.id;
+    const organization = profile.organization;
+    const workspace = profile.workspaceDefault;
 
     console.log(profile);
 
