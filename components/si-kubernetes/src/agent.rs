@@ -4,6 +4,7 @@ use si_cea::{CeaError, CeaResult, EntityEvent, MqttClient};
 use std::env;
 
 pub mod aws_eks_kubernetes_deployment;
+pub mod aws_eks_kubernetes_service;
 
 // TODO(fnichol): this should be entity/workspace/upstream info and not hardcoded
 const NAMESPACE_VAR: &str = "KUBERNETES_NAMESPACE";

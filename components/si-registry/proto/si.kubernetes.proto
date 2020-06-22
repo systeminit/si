@@ -21,6 +21,17 @@ service Kubernetes {
   rpc KubernetesDeploymentEntityKubernetesObjectYamlEdit(KubernetesDeploymentEntityKubernetesObjectYamlEditRequest) returns (KubernetesDeploymentEntityKubernetesObjectYamlEditReply);
   rpc KubernetesDeploymentEntityApply(KubernetesDeploymentEntityApplyRequest) returns (KubernetesDeploymentEntityApplyReply);
   rpc KubernetesDeploymentEntityEventList(KubernetesDeploymentEntityEventListRequest) returns (KubernetesDeploymentEntityEventListReply);
+  rpc KubernetesServiceComponentGet(KubernetesServiceComponentGetRequest) returns (KubernetesServiceComponentGetReply);
+  rpc KubernetesServiceComponentList(KubernetesServiceComponentListRequest) returns (KubernetesServiceComponentListReply);
+  rpc KubernetesServiceComponentCreate(KubernetesServiceComponentCreateRequest) returns (KubernetesServiceComponentCreateReply);
+  rpc KubernetesServiceComponentPick(KubernetesServiceComponentPickRequest) returns (KubernetesServiceComponentPickReply);
+  rpc KubernetesServiceEntityGet(KubernetesServiceEntityGetRequest) returns (KubernetesServiceEntityGetReply);
+  rpc KubernetesServiceEntityList(KubernetesServiceEntityListRequest) returns (KubernetesServiceEntityListReply);
+  rpc KubernetesServiceEntityCreate(KubernetesServiceEntityCreateRequest) returns (KubernetesServiceEntityCreateReply);
+  rpc KubernetesServiceEntitySync(KubernetesServiceEntitySyncRequest) returns (KubernetesServiceEntitySyncReply);
+  rpc KubernetesServiceEntityKubernetesObjectEdit(KubernetesServiceEntityKubernetesObjectEditRequest) returns (KubernetesServiceEntityKubernetesObjectEditReply);
+  rpc KubernetesServiceEntityKubernetesObjectYamlEdit(KubernetesServiceEntityKubernetesObjectYamlEditRequest) returns (KubernetesServiceEntityKubernetesObjectYamlEditReply);
+  rpc KubernetesServiceEntityEventList(KubernetesServiceEntityEventListRequest) returns (KubernetesServiceEntityEventListReply);
 }
 message KubernetesMetadata {
   google.protobuf.StringValue name = 1001;
@@ -46,6 +57,13 @@ message KubernetesPodSpec {
 message KubernetesPodTemplateSpec {
   si.kubernetes.KubernetesMetadata metadata = 1001;
   si.kubernetes.KubernetesPodSpec spec = 1002;
+}
+message KubernetesLoadBalancerStatusIngress {
+  google.protobuf.StringValue hostname = 1001;
+  google.protobuf.StringValue ip = 1002;
+}
+message KubernetesLoadBalancerStatus {
+  repeated si.kubernetes.KubernetesLoadBalancerStatusIngress ingress = 1001;
 }
 enum KubernetesDeploymentComponentConstraintsKubernetesVersion {
   KUBERNETES_DEPLOYMENT_COMPONENT_CONSTRAINTS_KUBERNETES_VERSION_UNKNOWN = 0;
@@ -218,4 +236,228 @@ message KubernetesDeploymentEntityEventListReply {
   repeated si.kubernetes.KubernetesDeploymentEntityEvent items = 1;
   google.protobuf.UInt32Value total_count = 2;
   google.protobuf.StringValue next_page_token = 3;
+}
+enum KubernetesServiceComponentConstraintsKubernetesVersion {
+  KUBERNETES_SERVICE_COMPONENT_CONSTRAINTS_KUBERNETES_VERSION_UNKNOWN = 0;
+  KUBERNETES_SERVICE_COMPONENT_CONSTRAINTS_KUBERNETES_VERSION_V1_12 = 1;
+  KUBERNETES_SERVICE_COMPONENT_CONSTRAINTS_KUBERNETES_VERSION_V1_13 = 2;
+  KUBERNETES_SERVICE_COMPONENT_CONSTRAINTS_KUBERNETES_VERSION_V1_14 = 3;
+  KUBERNETES_SERVICE_COMPONENT_CONSTRAINTS_KUBERNETES_VERSION_V1_15 = 4;
+}
+message KubernetesServiceComponentConstraints {
+  google.protobuf.StringValue component_name = 1;
+  google.protobuf.StringValue component_display_name = 2;
+  KubernetesServiceComponentConstraintsKubernetesVersion kubernetes_version = 1001;
+}
+message KubernetesServiceComponent {
+  google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue name = 2;
+  google.protobuf.StringValue display_name = 3;
+  si.data.DataStorable si_storable = 4;
+  google.protobuf.StringValue description = 5;
+  si.kubernetes.KubernetesServiceComponentConstraints constraints = 6;
+  si.cea.ComponentSiProperties si_properties = 7;
+}
+message KubernetesServiceComponentGetRequest {
+  google.protobuf.StringValue id = 1001;
+}
+message KubernetesServiceComponentGetReply {
+  si.kubernetes.KubernetesServiceComponent item = 1001;
+}
+message KubernetesServiceComponentListRequest {
+  si.data.DataQuery query = 1;
+  google.protobuf.UInt32Value page_size = 2;
+  google.protobuf.StringValue order_by = 3;
+  si.data.DataPageTokenOrderByDirection order_by_direction = 4;
+  google.protobuf.StringValue page_token = 5;
+  google.protobuf.StringValue scope_by_tenant_id = 6;
+}
+message KubernetesServiceComponentListReply {
+  repeated si.kubernetes.KubernetesServiceComponent items = 1;
+  google.protobuf.UInt32Value total_count = 2;
+  google.protobuf.StringValue next_page_token = 3;
+}
+message KubernetesServiceComponentCreateRequest {
+  google.protobuf.StringValue name = 1001;
+  google.protobuf.StringValue display_name = 1002;
+  google.protobuf.StringValue description = 1003;
+  si.kubernetes.KubernetesServiceComponentConstraints constraints = 1;
+  si.cea.ComponentSiProperties si_properties = 1004;
+}
+message KubernetesServiceComponentCreateReply {
+  si.kubernetes.KubernetesServiceComponent item = 1;
+}
+message KubernetesServiceComponentPickRequest {
+  si.kubernetes.KubernetesServiceComponentConstraints constraints = 1;
+}
+message KubernetesServiceComponentPickReply {
+  si.kubernetes.KubernetesServiceComponentConstraints implicit_constraints = 1;
+  si.kubernetes.KubernetesServiceComponent component = 2;
+}
+enum KubernetesServiceEntityPropertiesKubernetesObjectSpecExternalTrafficPolicy {
+  KUBERNETES_SERVICE_ENTITY_PROPERTIES_KUBERNETES_OBJECT_SPEC_EXTERNAL_TRAFFIC_POLICY_UNKNOWN = 0;
+  KUBERNETES_SERVICE_ENTITY_PROPERTIES_KUBERNETES_OBJECT_SPEC_EXTERNAL_TRAFFIC_POLICY_LOCAL = 1;
+  KUBERNETES_SERVICE_ENTITY_PROPERTIES_KUBERNETES_OBJECT_SPEC_EXTERNAL_TRAFFIC_POLICY_CLUSTER = 2;
+}
+enum KubernetesServiceEntityPropertiesKubernetesObjectSpecIpFamily {
+  KUBERNETES_SERVICE_ENTITY_PROPERTIES_KUBERNETES_OBJECT_SPEC_IP_FAMILY_UNKNOWN = 0;
+  KUBERNETES_SERVICE_ENTITY_PROPERTIES_KUBERNETES_OBJECT_SPEC_IP_FAMILY_I_PV4 = 1;
+  KUBERNETES_SERVICE_ENTITY_PROPERTIES_KUBERNETES_OBJECT_SPEC_IP_FAMILY_I_PV6 = 2;
+}
+enum KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinity {
+  KUBERNETES_SERVICE_ENTITY_PROPERTIES_KUBERNETES_OBJECT_SPEC_SESSION_AFFINITY_UNKNOWN = 0;
+  KUBERNETES_SERVICE_ENTITY_PROPERTIES_KUBERNETES_OBJECT_SPEC_SESSION_AFFINITY_CLIENT_IP = 1;
+  KUBERNETES_SERVICE_ENTITY_PROPERTIES_KUBERNETES_OBJECT_SPEC_SESSION_AFFINITY_NONE = 2;
+}
+message KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinityConfigClientIp {
+  google.protobuf.UInt32Value timeout_seconds = 1001;
+}
+message KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinityConfig {
+  si.kubernetes.KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinityConfigClientIp client_ip = 1001;
+}
+enum KubernetesServiceEntityPropertiesKubernetesObjectSpecType {
+  KUBERNETES_SERVICE_ENTITY_PROPERTIES_KUBERNETES_OBJECT_SPEC_TYPE_UNKNOWN = 0;
+  KUBERNETES_SERVICE_ENTITY_PROPERTIES_KUBERNETES_OBJECT_SPEC_TYPE_EXTERNAL_NAME = 1;
+  KUBERNETES_SERVICE_ENTITY_PROPERTIES_KUBERNETES_OBJECT_SPEC_TYPE_CLUSTER_IP = 2;
+  KUBERNETES_SERVICE_ENTITY_PROPERTIES_KUBERNETES_OBJECT_SPEC_TYPE_NODE_PORT = 3;
+  KUBERNETES_SERVICE_ENTITY_PROPERTIES_KUBERNETES_OBJECT_SPEC_TYPE_LOAD_BALANCER = 4;
+}
+message KubernetesServiceEntityPropertiesKubernetesObjectSpec {
+  google.protobuf.StringValue cluster_ip = 1001;
+  repeated google.protobuf.StringValue external_ips = 1002;
+  google.protobuf.StringValue external_name = 1003;
+  KubernetesServiceEntityPropertiesKubernetesObjectSpecExternalTrafficPolicy external_traffic_policy = 1004;
+  google.protobuf.UInt32Value health_check_node_port = 1005;
+  KubernetesServiceEntityPropertiesKubernetesObjectSpecIpFamily ip_family = 1006;
+  google.protobuf.StringValue load_balancer_ip = 1007;
+  repeated google.protobuf.StringValue load_balancer_source_ranges = 1008;
+  repeated si.kubernetes.KubernetesServicePort ports = 1009;
+  google.protobuf.BoolValue publish_not_ready_address = 1010;
+  si.kubernetes.KubernetesSelector selector = 1011;
+  KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinity session_affinity = 1012;
+  si.kubernetes.KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinityConfig session_affinity_config = 1013;
+  repeated google.protobuf.StringValue topology_keys = 1014;
+  KubernetesServiceEntityPropertiesKubernetesObjectSpecType type = 1015;
+}
+message KubernetesServiceEntityPropertiesKubernetesObjectStatus {
+  si.kubernetes.KubernetesLoadBalancerStatus load_balancer = 1001;
+}
+message KubernetesServiceEntityPropertiesKubernetesObject {
+  google.protobuf.StringValue api_version = 1001;
+  google.protobuf.StringValue kind = 1002;
+  si.kubernetes.KubernetesMetadata metadata = 1003;
+  si.kubernetes.KubernetesServiceEntityPropertiesKubernetesObjectSpec spec = 1004;
+  si.kubernetes.KubernetesServiceEntityPropertiesKubernetesObjectStatus status = 1005;
+}
+message KubernetesServiceEntityProperties {
+  si.kubernetes.KubernetesServiceEntityPropertiesKubernetesObject kubernetes_object = 1001;
+  google.protobuf.StringValue kubernetes_object_yaml = 1002;
+}
+message KubernetesServiceEntity {
+  google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue name = 2;
+  google.protobuf.StringValue display_name = 3;
+  si.data.DataStorable si_storable = 4;
+  google.protobuf.StringValue description = 5;
+  si.cea.EntitySiProperties si_properties = 6;
+  si.kubernetes.KubernetesServiceEntityProperties properties = 7;
+  si.kubernetes.KubernetesServiceComponentConstraints constraints = 8;
+  si.kubernetes.KubernetesServiceComponentConstraints implicit_constraints = 9;
+}
+message KubernetesServiceEntityGetRequest {
+  google.protobuf.StringValue id = 1001;
+}
+message KubernetesServiceEntityGetReply {
+  si.kubernetes.KubernetesServiceEntity item = 1001;
+}
+message KubernetesServiceEntityListRequest {
+  si.data.DataQuery query = 1;
+  google.protobuf.UInt32Value page_size = 2;
+  google.protobuf.StringValue order_by = 3;
+  si.data.DataPageTokenOrderByDirection order_by_direction = 4;
+  google.protobuf.StringValue page_token = 5;
+  google.protobuf.StringValue scope_by_tenant_id = 6;
+}
+message KubernetesServiceEntityListReply {
+  repeated si.kubernetes.KubernetesServiceEntity items = 1;
+  google.protobuf.UInt32Value total_count = 2;
+  google.protobuf.StringValue next_page_token = 3;
+}
+message KubernetesServiceEntityCreateRequest {
+  google.protobuf.StringValue name = 1;
+  google.protobuf.StringValue display_name = 2;
+  google.protobuf.StringValue description = 3;
+  google.protobuf.StringValue workspace_id = 1001;
+  google.protobuf.StringValue change_set_id = 1002;
+  si.kubernetes.KubernetesServiceEntityProperties properties = 4;
+  si.kubernetes.KubernetesServiceComponentConstraints constraints = 5;
+}
+message KubernetesServiceEntityCreateReply {
+  si.kubernetes.KubernetesServiceEntity item = 1;
+  si.kubernetes.KubernetesServiceEntityEvent entity_event = 2;
+}
+message KubernetesServiceEntitySyncRequest {
+  google.protobuf.StringValue id = 1;
+}
+message KubernetesServiceEntitySyncReply {
+  si.kubernetes.KubernetesServiceEntityEvent item = 1;
+}
+message KubernetesServiceEntityKubernetesObjectEditRequest {
+  google.protobuf.StringValue id = 1;
+  si.kubernetes.KubernetesServiceEntityPropertiesKubernetesObject property = 1001;
+}
+message KubernetesServiceEntityKubernetesObjectEditReply {
+  si.kubernetes.KubernetesServiceEntityEvent item = 1;
+}
+message KubernetesServiceEntityKubernetesObjectYamlEditRequest {
+  google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue property = 1001;
+}
+message KubernetesServiceEntityKubernetesObjectYamlEditReply {
+  si.kubernetes.KubernetesServiceEntityEvent item = 1;
+}
+message KubernetesServiceEntityEvent {
+  google.protobuf.StringValue id = 1;
+  si.data.DataStorable si_storable = 2;
+  google.protobuf.StringValue action_name = 3;
+  google.protobuf.StringValue create_time = 4;
+  google.protobuf.StringValue updated_time = 5;
+  google.protobuf.StringValue final_time = 6;
+  google.protobuf.BoolValue success = 7;
+  google.protobuf.BoolValue finalized = 8;
+  google.protobuf.StringValue user_id = 9;
+  repeated google.protobuf.StringValue output_lines = 10;
+  repeated google.protobuf.StringValue error_lines = 11;
+  google.protobuf.StringValue error_message = 12;
+  si.kubernetes.KubernetesServiceEntity previous_entity = 13;
+  si.kubernetes.KubernetesServiceEntity input_entity = 14;
+  si.kubernetes.KubernetesServiceEntity output_entity = 15;
+  si.cea.EntityEventSiProperties si_properties = 16;
+}
+message KubernetesServiceEntityEventListRequest {
+  si.data.DataQuery query = 1;
+  google.protobuf.UInt32Value page_size = 2;
+  google.protobuf.StringValue order_by = 3;
+  si.data.DataPageTokenOrderByDirection order_by_direction = 4;
+  google.protobuf.StringValue page_token = 5;
+  google.protobuf.StringValue scope_by_tenant_id = 6;
+}
+message KubernetesServiceEntityEventListReply {
+  repeated si.kubernetes.KubernetesServiceEntityEvent items = 1;
+  google.protobuf.UInt32Value total_count = 2;
+  google.protobuf.StringValue next_page_token = 3;
+}
+enum KubernetesServicePortProtocol {
+  KUBERNETES_SERVICE_PORT_PROTOCOL_UNKNOWN = 0;
+  KUBERNETES_SERVICE_PORT_PROTOCOL_TCP = 1;
+  KUBERNETES_SERVICE_PORT_PROTOCOL_UDP = 2;
+  KUBERNETES_SERVICE_PORT_PROTOCOL_SCTP = 3;
+}
+message KubernetesServicePort {
+  google.protobuf.StringValue app_protocol = 1001;
+  google.protobuf.StringValue name = 1002;
+  google.protobuf.UInt32Value node_port = 1003;
+  google.protobuf.UInt32Value port = 1004;
+  KubernetesServicePortProtocol protocol = 1005;
+  google.protobuf.StringValue target_port = 1006;
 }
