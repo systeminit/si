@@ -1,22 +1,24 @@
 <template>
   <div>
     <div v-if="menuStyle === 'right'">
-      <DropdownRightSided :default="optionDefault" :options="optionList"/>
+      <DropdownRightSided :default="optionDefault" :options="optionList" />
     </div>
 
     <div v-else-if="menuStyle === 'left'">
-      <DropdownLeftSided :default="optionDefault" :options="optionList"/>
+      <DropdownLeftSided :default="optionDefault" :options="optionList" />
     </div>
 
     <div v-else-if="menuStyle === 'standard'">
-      <DropdownStandard :default="optionDefault" :options="optionList"/>
+      <DropdownStandard :default="optionDefault" :options="optionList" />
     </div>
 
     <div v-else-if="menuStyle === 'standard-rs'">
-      <DropdownStandardRightSided :default="optionDefault" :options="optionList"/>
+      <DropdownStandardRightSided
+        :default="optionDefault"
+        :options="optionList"
+      />
     </div>
   </div>
-
 </template>
 
 <script>
@@ -31,7 +33,7 @@ export default {
     DropdownLeftSided,
     DropdownRightSided,
     DropdownStandard,
-    DropdownStandardRightSided
+    DropdownStandardRightSided,
   },
   props: {
     optionDefault: {
@@ -44,8 +46,7 @@ export default {
     },
     menuStyle: {
       type: String,
-      default: "right"
-
+      default: "right",
     },
   },
 };

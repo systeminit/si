@@ -1,5 +1,8 @@
 <template>
-  <div id="application-list" class="application-list-bg-color flex flex-col flex-no-wrap">
+  <div
+    id="application-list"
+    class="application-list-bg-color flex flex-col flex-no-wrap"
+  >
     <div class="flex flex-row mt-4 h-10 application-list-menu-bar">
       <button
         class="bg-teal-700 ml-4 px-2 h-8 mt-1 text-white hover:bg-teal-600"
@@ -29,7 +32,6 @@
             placeholder="application name"
             v-model="applicationName"
           />
-
         </div>
         <button
           class="bg-teal-700 ml-4 mt-4 w-16 text-white hover:bg-teal-600"
@@ -42,15 +44,12 @@
     </modal>
 
     <div v-if="applications">
-
       <div v-for="app in applications" :key="app.id">
-          
-          <ApplicationCard
-            class="mx-8 my-4"
-            :application=app
-            :session=session
-          />
-
+        <ApplicationCard
+          class="mx-8 my-4"
+          :application="app"
+          :session="session"
+        />
       </div>
     </div>
   </div>
@@ -58,12 +57,12 @@
 
 <script>
 import { registry } from "si-registry";
-import ApplicationCard from "./ApplicationCard.vue"
+import ApplicationCard from "./ApplicationCard.vue";
 
 export default {
   name: "ApplicationList",
   components: {
-    ApplicationCard
+    ApplicationCard,
   },
   props: {
     organizationId: {
@@ -78,8 +77,8 @@ export default {
       applicationName: "",
       session: {
         organizationId: this.organizationId,
-        workspaceId: this.workspaceId
-      }
+        workspaceId: this.workspaceId,
+      },
     };
   },
   methods: {

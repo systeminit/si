@@ -1,10 +1,10 @@
 <template>
   <div class="relative w-full">
-    
-      <button @click="isOpen = !isOpen" class="w-full focus:outline-none">
+    <button @click="isOpen = !isOpen" class="w-full focus:outline-none">
       <div class="flex flex-row justify-end items-center h-4 w-full">
-      
-        <div class="block mr-2 text-gray-200 text-l font-medium truncate subpixel-antialiased tracking-tight">
+        <div
+          class="block mr-2 text-gray-200 text-l font-medium truncate subpixel-antialiased tracking-tight"
+        >
           {{ selected }}
         </div>
 
@@ -12,9 +12,17 @@
       </div>
     </button>
 
-    <button v-if="isOpen" @click="isOpen = false" tabindex="-1" class="fixed inset-0 h-full w-full cursor-default focus:outline-none"/>
+    <button
+      v-if="isOpen"
+      @click="isOpen = false"
+      tabindex="-1"
+      class="fixed inset-0 h-full w-full cursor-default focus:outline-none"
+    />
 
-    <div v-if="isOpen" class="absolute right-0 -mt-05 w-full options shadow-md border">
+    <div
+      v-if="isOpen"
+      class="absolute right-0 -mt-05 w-full options shadow-md border"
+    >
       <div
         class="block text-left px-4 text-gray-300 text-sm font-light subpixel-antialiased tracking-tight options hover:text-white cursor-pointer"
         v-for="(option, i) of options"
@@ -74,19 +82,17 @@ export default {
 </script>
 
 <style>
-  
 .menu {
-  background-color: #2D3748;
-  border-color: #485359
+  background-color: #2d3748;
+  border-color: #485359;
 }
 
 .options {
-  background-color: #1F2631;
-  border-color: #485359
+  background-color: #1f2631;
+  border-color: #485359;
 }
 .options:hover {
-  background-color: #3D4B62;
-  border-color: #454D3E
+  background-color: #3d4b62;
+  border-color: #454d3e;
 }
-
 </style>

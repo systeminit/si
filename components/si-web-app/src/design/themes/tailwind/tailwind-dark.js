@@ -33,10 +33,9 @@ const spacing = {
 };
 
 const margin = {
-  "-05": "-0.05rem"
-}
+  "-05": "-0.05rem",
+};
 
 exports.colors = colors;
 exports.spacing = spacing;
 exports.margin = margin;
-

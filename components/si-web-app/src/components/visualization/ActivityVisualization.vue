@@ -3,7 +3,6 @@
     <div class="flex text-sm text-gray-400 font-bold">Activity</div>
 
     <div class="flex flex-col">
-      
       <div class="flex">
         <div class="text-xs pl-2 font-normal chart-title-service">services</div>
         <div class="ml-3 w-16">
@@ -27,19 +26,18 @@
           />
         </div>
       </div>
-
     </div>
   </div>
 </template>
 
 <script>
-import LineChart from "@/components/visualization/charts/LineChart.vue"
+import LineChart from "@/components/visualization/charts/LineChart.vue";
 export default {
   name: "ActivityVisualization",
   components: {
-    LineChart
+    LineChart,
   },
-  data () {
+  data() {
     return {
       datacollectionService: {},
       datacollectionResource: {},
@@ -49,66 +47,68 @@ export default {
           display: false,
         },
         scales: {
-          xAxes: [{
-            display: false
-          }],
-          yAxes: [{
-            display: false
-          }],
-        }
+          xAxes: [
+            {
+              display: false,
+            },
+          ],
+          yAxes: [
+            {
+              display: false,
+            },
+          ],
+        },
         // responsive: false
       },
-    }
+    };
   },
-  mounted () {
-    this.fillData()
+  mounted() {
+    this.fillData();
   },
   methods: {
-    fillData () {
-      this.datacollectionService = {
+    fillData() {
+      (this.datacollectionService = {
         labels: this.getData(),
         datasets: [
           {
-            label: 'Data One',
-            borderColor: '#0092B4',
+            label: "Data One",
+            borderColor: "#0092B4",
             lineTension: 0,
             pointRadius: 0,
             fill: false,
             borderWidth: 1,
-            data: this.getData()
-          }
-        ]
-      },
-      this.datacollectionResource = {
-        labels: this.getData(),
-        datasets: [
-          {
-            label: 'Data One',
-            borderColor: '#B88100',
-            lineTension: 0,
-            pointRadius: 0,
-            fill: false,
-            borderWidth: 1,
-            data: this.getData()
-          }
-        ]
-      }
+            data: this.getData(),
+          },
+        ],
+      }),
+        (this.datacollectionResource = {
+          labels: this.getData(),
+          datasets: [
+            {
+              label: "Data One",
+              borderColor: "#B88100",
+              lineTension: 0,
+              pointRadius: 0,
+              fill: false,
+              borderWidth: 1,
+              data: this.getData(),
+            },
+          ],
+        });
     },
-    getData () {
-      return [3,2,4,3,3,5,4,6,5,4,3,5,3]
+    getData() {
+      return [3, 2, 4, 3, 3, 5, 4, 6, 5, 4, 3, 5, 3];
     },
-  }
-}
-
+  },
+};
 </script>
 
 <style>
 .chart-title-service {
-  color: #0092B4
+  color: #0092b4;
 }
 
 .chart-title-resources {
-  color: #B88100
+  color: #b88100;
 }
-
 </style>

@@ -1,10 +1,10 @@
 <template>
   <div class="relative w-auto">
-    
     <button @click="isOpen = !isOpen" class="w-full focus:outline-none">
       <div class="flex flex-row justify-end items-center h-4">
-      
-        <div class="block mr-2 text-gray-200 text-l font-medium truncate subpixel-antialiased tracking-tight">
+        <div
+          class="block mr-2 text-gray-200 text-l font-medium truncate subpixel-antialiased tracking-tight"
+        >
           {{ selected }}
         </div>
 
@@ -12,9 +12,17 @@
       </div>
     </button>
 
-    <button v-if="isOpen" @click="isOpen = false" tabindex="-1" class="fixed inset-0 h-full w-full cursor-default focus:outline-none"/>
+    <button
+      v-if="isOpen"
+      @click="isOpen = false"
+      tabindex="-1"
+      class="fixed inset-0 h-full w-full cursor-default focus:outline-none"
+    />
 
-    <div v-if="isOpen" class="absolute right-0 w-48 bg-gray-700 shadow-md border border-gray-600">
+    <div
+      v-if="isOpen"
+      class="absolute right-0 w-48 bg-gray-700 shadow-md border border-gray-600"
+    >
       <div
         class="block text-right px-4 text-gray-300 text-sm subpixel-antialiased tracking-tight hover:bg-teal-600 hover:text-white cursor-pointer"
         v-for="(option, i) of options"
