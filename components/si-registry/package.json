@@ -9,6 +9,7 @@
   },
   "scripts": {
     "bundle": "webpack",
+    "generate": "node --enable-source-maps ./dist/binary.bundle.js",
     "watch": "webpack --watch",
     "type-check": "tsc --noEmit",
     "type-check:watch": "npm run type-check -- --watch",

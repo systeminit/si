@@ -21,9 +21,9 @@
 
 include ./components/build/deps.mk
 
-COMPONENTS = components/si-data components/si-account components/si-settings components/si-graphql-api components/si-web-app components/si-external-api-gateway components/si-kubernetes components/si-registry
+COMPONENTS = components/si-registry components/si-data components/si-account components/si-settings components/si-graphql-api components/si-web-app components/si-external-api-gateway components/si-kubernetes
 RELEASEABLE_COMPONENTS = components/si-account components/si-graphql-api components/si-external-api-gateway components/si-kubernetes
-RUNNABLE_COMPONENTS = components/si-account components/si-graphql-api components/si-web-app components/si-external-api-gateway components/si-kubernetes components/si-registry
+RUNNABLE_COMPONENTS = components/si-registry components/si-account components/si-graphql-api components/si-web-app components/si-external-api-gateway components/si-kubernetes
 BUILDABLE = $(patsubst %,build//%,$(COMPONENTS))
 TESTABLE = $(patsubst %,test//%,$(COMPONENTS))
 RELEASEABLE = $(patsubst %,release//%,$(RELEASEABLE_COMPONENTS))
