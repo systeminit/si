@@ -24,11 +24,18 @@ const screens = {
 };
 
 const spacing = {
+  "52": "13rem",
+  "56": "14rem",
+  "64": "16rem",
   "72": "18rem",
   "80": "20rem",
   "96": "24rem",
 };
 
-exports.spacing = spacing;
+const margin = {
+  "-05": "-0.05rem",
+};
 
 exports.colors = colors;
+exports.spacing = spacing;
+exports.margin = margin;

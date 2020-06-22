@@ -13,6 +13,7 @@ module.exports = {
     extend: {
       spacing: theme.spacing,
       colors: theme.colors,
+      margin: theme.margin,
     },
   },
   variants: {

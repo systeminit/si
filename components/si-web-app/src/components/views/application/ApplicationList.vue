@@ -32,7 +32,6 @@
             placeholder="application name"
             v-model="applicationName"
           />
-
         </div>
         <button
           class="bg-teal-700 ml-4 mt-4 w-16 text-white hover:bg-teal-600"
@@ -44,37 +43,27 @@
       </div>
     </modal>
 
-    <div v-if="applications" class="mx-4">
-      <table class="table-auto text-white">
-        <thead>
-          <tr>
-            <th class="px-4 py-2">Applications</th>
-          </tr>
-        </thead>
-
-        <tbody v-for="app in applications" :key="app.id">
-          <tr
-            class="border border-teal-800 px-4 py-2"
-            @click="clickApp(app.id)"
-          >
-            <td>{{ app.name }}</td>
-          </tr>
-        </tbody>
-      </table>
+    <div v-if="applications">
+      <div v-for="app in applications" :key="app.id">
+        <ApplicationCard
+          class="mx-8 my-4"
+          :application="app"
+          :session="session"
+        />
+      </div>
     </div>
   </div>
 </template>
 
 <script>
 import { registry } from "si-registry";
+import ApplicationCard from "./ApplicationCard.vue";
 
 export default {
   name: "ApplicationList",
-  // data: function() {
-  //   return {
-  //     applicationListOld: ["demo", "aaa"],
-  //   };
-  // },
+  components: {
+    ApplicationCard,
+  },
   props: {
     organizationId: {
       type: String,
@@ -86,6 +75,10 @@ export default {
   data() {
     return {
       applicationName: "",
+      session: {
+        organizationId: this.organizationId,
+        workspaceId: this.workspaceId,
+      },
     };
   },
   methods: {
@@ -102,17 +95,6 @@ export default {
     },
     hideModal() {
       this.$modal.hide("hello-world");
-    },
-    clickApp(appId) {
-      "/o/:organizationId/w/:workspaceId/a/:applicationId";
-      this.$router.push({
-        name: "applicationDetails",
-        params: {
-          organizationId: this.organizationId,
-          workspaceId: this.workspaceId,
-          applicationId: appId,
-        },
-      });
     },
   },
   computed: {

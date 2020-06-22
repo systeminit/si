@@ -15,7 +15,6 @@ import "@/assets/tailwind.css";
 import "@/plugins/vue-tailwind.js";
 
 import "@/plugins/vue-js-modal.js";
-import "@/plugins/vue-simple-context-menu.js";
 
 Vue.config.productionTip = false;
 
