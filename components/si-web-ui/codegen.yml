@@ -1,8 +1,0 @@
-schema: ../si-graphql-api/fullstack-schema.graphql
-# Why?
-documents: src/graphql/**/*.gql
-generates:
-  ./src/graphql-types.ts:
-    plugins:
-      - typescript
-      - typescript-operations
