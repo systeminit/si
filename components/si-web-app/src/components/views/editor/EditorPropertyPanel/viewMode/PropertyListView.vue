@@ -6,7 +6,7 @@
       </button>
     </div> -->
 
-      <PropObject :propObject="entitySchema" :propObjectModel="entity" />
+    <PropObject :propObject="entitySchema" :propObjectModel="entity" />
   </div>
 </template>
 
@@ -38,7 +38,7 @@ export default {
       await this.$store.dispatch("entity/get", {
         id: this.nodeId,
         typeName: this.typeName,
-      })
+      });
       const entity = this.$store.getters["entity/get"](this.nodeId);
       this.entity = entity;
     },

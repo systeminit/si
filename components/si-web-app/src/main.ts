@@ -5,7 +5,6 @@ import router from "@/router";
 
 import VueGtag from "vue-gtag";
 import vSelect from "vue-select";
-import { createProvider } from "@/plugins/vue-apollo";
 
 // @ts-ignore
 import store from "@/store";
@@ -17,8 +16,6 @@ import "@/plugins/vue-tailwind.js";
 import "@/plugins/vue-js-modal.js";
 
 Vue.config.productionTip = false;
-
-let apolloProvider = createProvider();
 
 if (process.env.NODE_ENV == "production") {
   Vue.use(VueGtag, {
@@ -35,7 +32,6 @@ Vue.component("v-select", vSelect);
 
 new Vue({
   router,
-  apolloProvider,
   store,
   render: h => h(App),
 }).$mount("#app");
