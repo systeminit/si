@@ -11,6 +11,7 @@ pub fn new(
 <%_ if (fmt.isStorable()) { _%>
     let mut si_storable = si_data::protobuf::DataStorable::default();
     si_storable.change_set_id = change_set_id;
+    si_storable.change_set_event_type = si_data::protobuf::DataStorableChangeSetEventType::Create as i32;
     <%- fmt.implCreateAddToTenancy() %>
 <%_ } _%>
 

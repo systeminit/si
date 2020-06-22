@@ -1,12 +1,14 @@
-import array from "lodash/array";
+import _ from "lodash";
 
 // NodeEditor Cache
 
 class Node {
-  constructor(nodeId, nodeName, isEntity) {
+  constructor(nodeId, nodeName, isEntity, changeSetId) {
+    console.log("changesetid", changeSetId);
     this.id = nodeId;
     this.name = nodeName;
     this.status = isEntity; // bool
+    this.changeSetId = changeSetId;
   }
 }
 
@@ -18,7 +20,33 @@ const state = () => ({
 });
 
 // getters
-const getters = {};
+const getters = {
+  nodeList(state, _getters, _rootState, rootGetters) {
+    let currentChangeSetId = undefined;
+    try {
+      currentChangeSetId = rootGetters["changeSet/currentId"];
+    } catch (err) {
+      // Not logged in, or not in a changeSet!
+      return state.nodeList;
+    }
+    if (currentChangeSetId) {
+      let nodeList = _.filter(state.nodeList, function(node) {
+        if (
+          node.changeSetId == "" ||
+          node.changeSetId == undefined ||
+          node.changeSetId == currentChangeSetId
+        ) {
+          return true;
+        } else {
+          return false;
+        }
+      });
+      return nodeList;
+    } else {
+      return state.nodeList;
+    }
+  },
+};
 
 const actions = {
   // selectNode({ state, commit }, nodeId) {
@@ -31,8 +59,13 @@ const actions = {
     if (state.nodeList.some(node => node.id === payload.id)) {
       commit("removeNodeFromList", payload);
     }
-    let nodeObject = new Node(payload.id, payload.name, payload.isEntity);
-    commit("addtoNodeList", nodeObject);
+    let nodeObject = new Node(
+      payload.id,
+      payload.name,
+      payload.isEntity,
+      payload.changeSetId,
+    );
+    commit("addToNodeList", nodeObject);
   },
   removeNode({ state, commit }, nodeObject) {
     commit("removeNodeFromList", nodeObject);
@@ -47,7 +80,7 @@ const mutations = {
   setSelectedNode(state, nodeObject) {
     state.selectedNode = nodeObject;
   },
-  addtoNodeList(state, nodeObject) {
+  addToNodeList(state, nodeObject) {
     state.nodeList.push(nodeObject);
   },
   removeNodeFromList(state, nodeObject) {

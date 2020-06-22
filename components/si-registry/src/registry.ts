@@ -27,7 +27,7 @@ export class Registry {
     if (result) {
       return result;
     } else {
-      throw `Cannot get object named ${typeName} in the registry`;
+      throw new Error(`Cannot get object named ${typeName} in the registry`);
     }
   }
 
@@ -59,7 +59,7 @@ export class Registry {
   lookupProp(lookup: PropLookup): Props {
     const foundObject = this.objects.find(c => c.typeName == lookup.typeName);
     if (!foundObject) {
-      throw `Cannot find object: ${foundObject}`;
+      throw new Error(`Cannot find object: ${foundObject}`);
     }
     if (!lookup.names) {
       return foundObject.rootProp;
@@ -67,17 +67,23 @@ export class Registry {
     const firstName = lookup.names[0];
     let returnProp = foundObject.fields.getEntry(firstName);
     if (!returnProp) {
-      throw `Cannot find prop on object ${foundObject.typeName}: ${firstName}`;
+      throw new Error(
+        `Cannot find prop on object ${foundObject.typeName}: ${firstName}`,
+      );
     }
     if (returnProp.kind() != "object" && lookup.names.length > 1) {
-      throw `You asked for sub-properties of a non-object type on ${foundObject.typeName} property ${firstName}`;
+      throw new Error(
+        `You asked for sub-properties of a non-object type on ${foundObject.typeName} property ${firstName}`,
+      );
     }
     for (let i = 1; i < lookup.names.length; i++) {
       const lookupName = lookup.names[i];
       // @ts-ignore
       const lookupResult = returnProp["properties"].getEntry(lookupName);
       if (!lookupResult) {
-        throw `Cannot find prop "${lookupName}" on ${returnProp.name}`;
+        throw new Error(
+          `Cannot find prop "${lookupName}" on ${returnProp.name}`,
+        );
       }
 
       if (i != lookup.names.length - 1 && lookupResult.kind() != "object") {
@@ -87,9 +93,11 @@ export class Registry {
           lookupName,
           lookupResult,
         });
-        throw `Cannot look up a sub-property of a non object Prop: ${
-          foundObject.typeName
-        } property ${lookupName} is ${lookupResult.kind()}`;
+        throw new Error(
+          `Cannot look up a sub-property of a non object Prop: ${
+            foundObject.typeName
+          } property ${lookupName} is ${lookupResult.kind()}`,
+        );
       }
 
       returnProp = lookupResult;

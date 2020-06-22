@@ -1,5 +1,8 @@
 <template>
   <div id="property-panel-list" class="w-full h-full property-bg-color">
+    <div class="flex flex-row-reverse pr-8 pb-4 text-white" v-if="errorMsg">
+      {{ errorMsg }}
+    </div>
     <div class="flex flex-row-reverse pr-8 pb-4">
       <button
         class="bg-teal-700 px-4 py-2 text-white hover:bg-teal-600"
@@ -11,8 +14,8 @@
     </div>
 
     <PropObject
-      :propObject="kubernetesDeploymentEntityCreate.request"
-      :propObjectModel="kubernetesDeploymentEntityCreateVars"
+      :propObject="entityCreate.request"
+      :propObjectModel="entityCreateVars"
       @propChangeMsg="propChangeMsg"
     />
   </div>
@@ -23,70 +26,45 @@ import { registry } from "si-registry";
 import PropObject from "./PropObject.vue";
 
 export default {
-  name: "PropertyList",
+  name: "PropertyListCreate",
   props: {
-    node: {},
+    node: Object,
+    typeName: String,
   },
   components: {
     PropObject,
   },
   data() {
-    const kubernetesDeploymentEntity = registry.get(
-      "kubernetesDeploymentEntity",
-    );
+    const entity = registry.get(this.typeName);
 
-    const kubernetesDeploymentEntityCreate = kubernetesDeploymentEntity.methods.getEntry(
-      "create",
-    );
+    const entityCreate = entity.methods.getEntry("create");
 
-    const kubernetesDeploymentEntityCreateVars = kubernetesDeploymentEntity.graphql.variablesObject(
-      { methodName: "create" },
-    );
+    const entityCreateVars = entity.graphql.variablesObject({
+      methodName: "create",
+    });
 
     return {
-      kubernetesDeploymentEntity,
-      kubernetesDeploymentEntityCreate,
-      kubernetesDeploymentEntityCreateVars,
+      entity,
+      entityCreate,
+      entityCreateVars,
+      errorMsg: null,
     };
   },
   methods: {
     propChangeMsg(event) {
-      this.kubernetesDeploymentEntityCreateVars = event["value"];
+      this.entityCreateVars = event["value"];
     },
-    createEntity() {
-      const mutation = this.kubernetesDeploymentEntity.graphql.mutation({
-        methodName: "create",
-      });
-      // console.log(mutation);
-
+    async createEntity() {
       try {
-        // pass object to mutate here
-
-        this.kubernetesDeploymentEntityCreateVars.workspaceId = auth.getProfile().workspaceDefault.id;
-
-        delete this.kubernetesDeploymentEntityCreateVars.properties
-          .kubernetesObjectYaml;
-
-        // We need to make sure the changesetId is valid, invalida changset ID is bad,...
-        // Should error on invalid changeSetId.
-        delete this.kubernetesDeploymentEntityCreateVars.changeSetId;
-
-        // DEBUG logging to confirm what we are passing to the mutation below
-        // console.log("kubernetesDeploymentEntityCreateVars as json below:")
-        // console.log(console.log(JSON.stringify(this.kubernetesDeploymentEntityCreateVars)))
-
-        this.$apollo.mutate({
-          mutation,
-          variables: this.kubernetesDeploymentEntityCreateVars,
+        await this.$store.dispatch("entity/create", {
+          typeName: this.typeName,
+          data: this.entityCreateVars,
         });
-
-        // clearVueX cache
-        this.$store.dispatch("editor/removeNode", this.node);
-      } catch (error) {
-        console.log("error", { error });
+        await this.$store.dispatch("editor/removeNode", this.node);
+      } catch (err) {
+        this.errorMsg = `${err.name}: ${err.message}`;
+        throw err;
       }
-
-      // console.log("done");
     },
   },
 };

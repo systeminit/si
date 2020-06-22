@@ -80,7 +80,9 @@ export class AttrList {
   getEntry(name: string): Props {
     const result = this.attrs.find(e => e.name == name);
     if (result == undefined) {
-      throw `Cannot find property ${name} for ${this.componentTypeName}`;
+      throw new Error(
+        `Cannot find property ${name} for ${this.componentTypeName}`,
+      );
     }
     return result;
   }

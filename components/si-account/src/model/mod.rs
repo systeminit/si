@@ -4,5 +4,7 @@ pub mod integration;
 pub mod integration_service;
 pub mod user;
 pub use user::User;
+pub mod change_set;
+pub use change_set::ChangeSet;
 pub mod item;
 pub use item::Item;

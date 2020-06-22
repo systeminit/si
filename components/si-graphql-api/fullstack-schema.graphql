@@ -204,6 +204,18 @@ input ChangeSetCreateRequest {
   workspaceId: String!
 }
 
+"""Execute a Change Set Reply"""
+type ChangeSetExecuteReply {
+  """ChangeSet Item"""
+  item: ChangeSet
+}
+
+"""Execute a Change Set Request"""
+input ChangeSetExecuteRequest {
+  """Change Set ID"""
+  id: ID!
+}
+
 """Get a A change set for your system Reply"""
 type ChangeSetGetReply {
   """A change set for your system Item"""
@@ -264,6 +276,8 @@ type ChangeSetSiProperties {
 enum ChangeSetStatus {
   ABANDONED
   CLOSED
+  EXECUTING
+  FAILED
   OPEN
   UNKNOWN
 }
@@ -412,8 +426,17 @@ type DataStorable {
   """Order for the Change Set Entry"""
   changeSetEntryCount: String
 
+  """The Change Set event type"""
+  changeSetEventType: DataStorableChangeSetEventType
+
+  """has this been executed"""
+  changeSetExecuted: Boolean
+
   """The Change Set ID for this item"""
   changeSetId: String
+
+  """has this been deleted"""
+  deleted: Boolean
 
   """The canonical ID for this item"""
   itemId: String
@@ -429,6 +452,15 @@ type DataStorable {
 
   """View context tags"""
   viewContext: String
+}
+
+"""The Change Set event type"""
+enum DataStorableChangeSetEventType {
+  ACTION
+  CREATE
+  DELETE
+  UNKNOWN
+  UPDATE
 }
 
 type EntityEventSiProperties {
@@ -1146,9 +1178,6 @@ type KubernetesDeploymentEntityAssociations {
 
 """Create Entity Reply"""
 type KubernetesDeploymentEntityCreateReply {
-  """Entity Event"""
-  entityEvent: KubernetesDeploymentEntityEvent
-
   """kubernetesDeploymentEntity Item"""
   item: KubernetesDeploymentEntity
 }
@@ -1156,7 +1185,7 @@ type KubernetesDeploymentEntityCreateReply {
 """Create Entity Request"""
 input KubernetesDeploymentEntityCreateRequest {
   """Change Set ID"""
-  changeSetId: String
+  changeSetId: String!
 
   """Constraints"""
   constraints: KubernetesDeploymentComponentConstraintsRequest
@@ -1171,10 +1200,25 @@ input KubernetesDeploymentEntityCreateRequest {
   name: String!
 
   """Properties"""
-  properties: KubernetesDeploymentEntityPropertiesRequest!
+  properties: KubernetesDeploymentEntityPropertiesRequest
 
   """Workspace ID"""
   workspaceId: String!
+}
+
+"""Delete Entity Reply"""
+type KubernetesDeploymentEntityDeleteReply {
+  """kubernetesDeployment Item"""
+  item: KubernetesDeploymentEntity
+}
+
+"""Delete Entity Request"""
+input KubernetesDeploymentEntityDeleteRequest {
+  """Change Set ID"""
+  changeSetId: String!
+
+  """kubernetesDeploymentEntity ID"""
+  id: ID!
 }
 
 type KubernetesDeploymentEntityEvent {
@@ -1417,6 +1461,35 @@ input KubernetesDeploymentEntitySyncRequest {
   id: ID!
 }
 
+"""Update an Entity Reply"""
+type KubernetesDeploymentEntityUpdateReply {
+  """kubernetesDeployment Item"""
+  item: KubernetesDeploymentEntity
+}
+
+"""Update an Entity Request"""
+input KubernetesDeploymentEntityUpdateRequest {
+  """Change Set ID"""
+  changeSetId: String!
+
+  """kubernetesDeploymentEntity ID"""
+  id: ID!
+
+  """kubernetesDeployment Item Update"""
+  update: KubernetesDeploymentEntityUpdateRequestUpdateRequest
+}
+
+input KubernetesDeploymentEntityUpdateRequestUpdateRequest {
+  """description"""
+  description: String
+
+  """name"""
+  name: String
+
+  """properties"""
+  properties: KubernetesDeploymentEntityPropertiesRequest
+}
+
 type KubernetesLoadBalancerStatus {
   """Load Balancer Ingress"""
   ingress: [KubernetesLoadBalancerStatusIngress!]
@@ -1648,9 +1721,6 @@ type KubernetesServiceEntityAssociations {
 
 """Create Entity Reply"""
 type KubernetesServiceEntityCreateReply {
-  """Entity Event"""
-  entityEvent: KubernetesServiceEntityEvent
-
   """kubernetesServiceEntity Item"""
   item: KubernetesServiceEntity
 }
@@ -1658,7 +1728,7 @@ type KubernetesServiceEntityCreateReply {
 """Create Entity Request"""
 input KubernetesServiceEntityCreateRequest {
   """Change Set ID"""
-  changeSetId: String
+  changeSetId: String!
 
   """Constraints"""
   constraints: KubernetesServiceComponentConstraintsRequest
@@ -1673,10 +1743,25 @@ input KubernetesServiceEntityCreateRequest {
   name: String!
 
   """Properties"""
-  properties: KubernetesServiceEntityPropertiesRequest!
+  properties: KubernetesServiceEntityPropertiesRequest
 
   """Workspace ID"""
   workspaceId: String!
+}
+
+"""Delete Entity Reply"""
+type KubernetesServiceEntityDeleteReply {
+  """kubernetesService Item"""
+  item: KubernetesServiceEntity
+}
+
+"""Delete Entity Request"""
+input KubernetesServiceEntityDeleteRequest {
+  """Change Set ID"""
+  changeSetId: String!
+
+  """kubernetesServiceEntity ID"""
+  id: ID!
 }
 
 type KubernetesServiceEntityEvent {
@@ -2055,6 +2140,35 @@ input KubernetesServiceEntitySyncRequest {
   id: ID!
 }
 
+"""Update an Entity Reply"""
+type KubernetesServiceEntityUpdateReply {
+  """kubernetesService Item"""
+  item: KubernetesServiceEntity
+}
+
+"""Update an Entity Request"""
+input KubernetesServiceEntityUpdateRequest {
+  """Change Set ID"""
+  changeSetId: String!
+
+  """kubernetesServiceEntity ID"""
+  id: ID!
+
+  """kubernetesService Item Update"""
+  update: KubernetesServiceEntityUpdateRequestUpdateRequest
+}
+
+input KubernetesServiceEntityUpdateRequestUpdateRequest {
+  """description"""
+  description: String
+
+  """name"""
+  name: String
+
+  """properties"""
+  properties: KubernetesServiceEntityPropertiesRequest
+}
+
 type KubernetesServicePort {
   """App Protocol"""
   appProtocol: String
@@ -2130,16 +2244,21 @@ input MatchLabelsRequest {
 type Mutation {
   billingAccountSignup(input: BillingAccountSignupRequest): BillingAccountSignupReply
   changeSetCreate(input: ChangeSetCreateRequest): ChangeSetCreateReply
+  changeSetExecute(input: ChangeSetExecuteRequest): ChangeSetExecuteReply
   groupCreate(input: GroupCreateRequest): GroupCreateReply
   kubernetesDeploymentEntityApply(input: KubernetesDeploymentEntityApplyRequest): KubernetesDeploymentEntityApplyReply
   kubernetesDeploymentEntityCreate(input: KubernetesDeploymentEntityCreateRequest): KubernetesDeploymentEntityCreateReply
+  kubernetesDeploymentEntityDelete(input: KubernetesDeploymentEntityDeleteRequest): KubernetesDeploymentEntityDeleteReply
   kubernetesDeploymentEntityKubernetesObjectEdit(input: KubernetesDeploymentEntityKubernetesObjectEditRequest): KubernetesDeploymentEntityKubernetesObjectEditReply
   kubernetesDeploymentEntityKubernetesObjectYamlEdit(input: KubernetesDeploymentEntityKubernetesObjectYamlEditRequest): KubernetesDeploymentEntityKubernetesObjectYamlEditReply
   kubernetesDeploymentEntitySync(input: KubernetesDeploymentEntitySyncRequest): KubernetesDeploymentEntitySyncReply
+  kubernetesDeploymentEntityUpdate(input: KubernetesDeploymentEntityUpdateRequest): KubernetesDeploymentEntityUpdateReply
   kubernetesServiceEntityCreate(input: KubernetesServiceEntityCreateRequest): KubernetesServiceEntityCreateReply
+  kubernetesServiceEntityDelete(input: KubernetesServiceEntityDeleteRequest): KubernetesServiceEntityDeleteReply
   kubernetesServiceEntityKubernetesObjectEdit(input: KubernetesServiceEntityKubernetesObjectEditRequest): KubernetesServiceEntityKubernetesObjectEditReply
   kubernetesServiceEntityKubernetesObjectYamlEdit(input: KubernetesServiceEntityKubernetesObjectYamlEditRequest): KubernetesServiceEntityKubernetesObjectYamlEditReply
   kubernetesServiceEntitySync(input: KubernetesServiceEntitySyncRequest): KubernetesServiceEntitySyncReply
+  kubernetesServiceEntityUpdate(input: KubernetesServiceEntityUpdateRequest): KubernetesServiceEntityUpdateReply
   organizationCreate(input: OrganizationCreateRequest): OrganizationCreateReply
   userCreate(input: UserCreateRequest): UserCreateReply
   workspaceCreate(input: WorkspaceCreateRequest): WorkspaceCreateReply

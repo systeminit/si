@@ -351,6 +351,14 @@ impl si_cea::EntityEvent for crate::protobuf::KubernetesDeploymentEntityEvent {
         );
         si_properties.entity_id = Some(entity_id.into());
     }
+
+    fn set_change_set_id(&mut self, change_set_id: impl Into<String>) {
+        self.si_storable.as_mut().map(|storable| {
+            storable.change_set_id = Some(change_set_id.into());
+            storable.change_set_event_type =
+                si_data::protobuf::DataStorableChangeSetEventType::Action as i32;
+        });
+    }
 }
 
 impl si_data::Storable for crate::protobuf::KubernetesDeploymentEntityEvent {
@@ -495,6 +503,14 @@ impl si_data::Storable for crate::protobuf::KubernetesDeploymentEntityEvent {
         vec![
             "siStorable.naturalKey",
             "id",
+            "siStorable.naturalKey",
+            "dataStorable.viewContext",
+            "dataStorable.changeSetId",
+            "dataStorable.itemId",
+            "dataStorable.changeSetEntryCount",
+            "dataStorable.changeSetEventType",
+            "dataStorable.changeSetExecuted",
+            "dataStorable.deleted",
             "actionName",
             "createTime",
             "updatedTime",

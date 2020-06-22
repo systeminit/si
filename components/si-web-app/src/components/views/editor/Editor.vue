@@ -65,15 +65,13 @@ export default {
         },
       },
       msgSchematicPanel: "",
-      kubernetesDeploymentEntityList: {
-        items: [],
-      },
     };
   },
-  mounted: function() {
+  mounted: async function() {
     this.resizeHandle = this.$refs.resizeHandle;
     this.leftPanel = this.$refs.leftPanel;
     this.rightPanel = this.$refs.rightPanel;
+    const workspace = this.$store.getters["user/currentWorkspace"];
   },
   created() {
     window.addEventListener("resize", this.handleResize);
@@ -122,6 +120,10 @@ export default {
       this.panel[panelName].isVisible = !this.panel[panelName].isVisible;
       this.panel.resizeHandle.isVisible = !this.panel.resizeHandle.isVisible;
     },
+    nodeList() {
+      const workspace = this.$store.getters["user/currentWorkspace"];
+      return this.$store.getters.entity.forWorkspace(workspace["id"]);
+    },
   },
   computed: {
     leftPanelVisibilityClasses: function() {
@@ -142,44 +144,39 @@ export default {
         "panel-is-visible": this.panel["property"].isVisible,
       };
     },
-    nodeList: function() {
-      let nodes = [];
-      nodes.concat(this.kubernetesDeploymentEntityList.items);
-      return nodes;
-    },
   },
-  apollo: {
-    kubernetesDeploymentEntityList: {
-      query() {
-        let result = registry
-          .get("kubernetesDeploymentEntity")
-          .graphql.query({ methodName: "list" });
-        return result;
-      },
-      fetchPolicy: "no-cache",
-      variables() {
-        return {
-          pageSize: "1000",
-        };
-      },
-      result({ data, loading, networkStatus }) {
-        data.kubernetesDeploymentEntityList.items.forEach(item => {
-          let payload = {
-            id: item.id,
-            name: item.name,
-            isEntity: true,
-          };
-          this.$store.dispatch("editor/addNode", payload);
-        });
-      },
-      update(data) {
-        console.log("apollo update!");
-        // The returned value will update
-        // the vue property 'pingMessage'
-        // return data.ping
-      },
-    },
-  },
+  //apollo: {
+  //  kubernetesDeploymentEntityList: {
+  //    query() {
+  //      let result = registry
+  //        .get("kubernetesDeploymentEntity")
+  //        .graphql.query({ methodName: "list" });
+  //      return result;
+  //    },
+  //    fetchPolicy: "no-cache",
+  //    variables() {
+  //      return {
+  //        pageSize: "1000",
+  //      };
+  //    },
+  //    result({ data, loading, networkStatus }) {
+  //      data.kubernetesDeploymentEntityList.items.forEach(item => {
+  //        let payload = {
+  //          id: item.id,
+  //          name: item.name,
+  //          isEntity: true,
+  //        };
+  //        this.$store.dispatch("editor/addNode", payload);
+  //      });
+  //    },
+  //    update(data) {
+  //      console.log("apollo update!");
+  //      // The returned value will update
+  //      // the vue property 'pingMessage'
+  //      // return data.ping
+  //    },
+  //  },
+  //},
 };
 </script>
 

@@ -133,7 +133,7 @@ export class SystemObject extends BaseObject {
       label: "SI Storable",
       options(p: PropLink) {
         p.universal = true;
-        p.hidden = true;
+        p.hidden = false;
         p.lookup = {
           typeName: "dataStorable",
         };
@@ -562,7 +562,7 @@ export class EntityObject extends SystemObject {
           name: "changeSetId",
           label: `Change Set ID`,
           options(p) {
-            p.required = false;
+            p.required = true;
             p.hidden = true;
           },
         });
@@ -572,7 +572,7 @@ export class EntityObject extends SystemObject {
           options(p: PropLink) {
             p.universal = true;
             p.readOnly = true;
-            p.required = true;
+            p.required = false;
             p.lookup = {
               typeName: `${baseTypeName}Entity`,
               names: ["properties"],
@@ -602,14 +602,106 @@ export class EntityObject extends SystemObject {
             };
           },
         });
+      },
+    });
+
+    this.methods.addMethod({
+      name: "delete",
+      label: "Delete Entity",
+      options(p: PropMethod) {
+        p.mutation = true;
+        p.request.properties.addText({
+          name: "id",
+          label: `${baseTypeName}Entity ID`,
+          options(p) {
+            p.required = true;
+          },
+        });
+        p.request.properties.addText({
+          name: "changeSetId",
+          label: `Change Set ID`,
+          options(p) {
+            p.required = true;
+            p.hidden = true;
+          },
+        });
         p.reply.properties.addLink({
-          name: "entityEvent",
-          label: "Entity Event",
+          name: "item",
+          label: `${baseTypeName} Item`,
           options(p: PropLink) {
-            p.universal = true;
-            p.readOnly = true;
             p.lookup = {
-              typeName: `${baseTypeName}EntityEvent`,
+              typeName: `${baseTypeName}Entity`,
+            };
+          },
+        });
+      },
+    });
+
+    this.methods.addMethod({
+      name: "update",
+      label: "Update an Entity",
+      options(p: PropMethod) {
+        p.mutation = true;
+        p.request.properties.addText({
+          name: "id",
+          label: `${baseTypeName}Entity ID`,
+          options(p) {
+            p.required = true;
+          },
+        });
+        p.request.properties.addText({
+          name: "changeSetId",
+          label: `Change Set ID`,
+          options(p) {
+            p.required = true;
+            p.hidden = true;
+          },
+        });
+        p.request.properties.addObject({
+          name: "update",
+          label: `${baseTypeName} Item Update`,
+          options(p: PropObject) {
+            p.properties.addLink({
+              name: "name",
+              label: "name",
+              options(p: PropLink) {
+                p.required = false;
+                p.lookup = {
+                  typeName: `${baseTypeName}Entity`,
+                  names: ["name"],
+                };
+              },
+            });
+            p.properties.addLink({
+              name: "description",
+              label: "description",
+              options(p: PropLink) {
+                p.required = false;
+                p.lookup = {
+                  typeName: `${baseTypeName}Entity`,
+                  names: ["description"],
+                };
+              },
+            });
+            p.properties.addLink({
+              name: "properties",
+              label: "properties",
+              options(p: PropLink) {
+                p.required = false;
+                p.lookup = {
+                  typeName: `${baseTypeName}Entity`,
+                  names: ["properties"],
+                };
+              },
+            });
+          },
+        });
+        p.reply.properties.addLink({
+          name: "item",
+          label: `${baseTypeName} Item`,
+          options(p: PropLink) {
+            p.lookup = {
+              typeName: `${baseTypeName}Entity`,
             };
           },
         });

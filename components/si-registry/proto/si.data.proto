@@ -7,6 +7,13 @@ syntax = "proto3";
 package si.data;
 import "google/protobuf/wrappers.proto";
 // No Services
+enum DataStorableChangeSetEventType {
+  DATA_STORABLE_CHANGE_SET_EVENT_TYPE_UNKNOWN = 0;
+  DATA_STORABLE_CHANGE_SET_EVENT_TYPE_CREATE = 1;
+  DATA_STORABLE_CHANGE_SET_EVENT_TYPE_UPDATE = 2;
+  DATA_STORABLE_CHANGE_SET_EVENT_TYPE_DELETE = 3;
+  DATA_STORABLE_CHANGE_SET_EVENT_TYPE_ACTION = 4;
+}
 message DataStorable {
   repeated google.protobuf.StringValue tenant_ids = 1;
   google.protobuf.StringValue natural_key = 2;
@@ -15,6 +22,9 @@ message DataStorable {
   google.protobuf.StringValue change_set_id = 5;
   google.protobuf.StringValue item_id = 6;
   google.protobuf.UInt64Value change_set_entry_count = 7;
+  DataStorableChangeSetEventType change_set_event_type = 8;
+  google.protobuf.BoolValue change_set_executed = 9;
+  google.protobuf.BoolValue deleted = 10;
 }
 enum DataPageTokenOrderByDirection {
   DATA_PAGE_TOKEN_ORDER_BY_DIRECTION_UNKNOWN = 0;

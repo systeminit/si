@@ -80,7 +80,7 @@ registry.system({
       name: "status",
       label: "The status of this Change Set",
       options(p: PropEnum) {
-        p.variants = ["open", "closed", "abandoned"];
+        p.variants = ["open", "closed", "abandoned", "executing", "failed"];
         p.baseDefaultValue = "open";
       },
     });
@@ -130,6 +130,30 @@ registry.system({
         p.reply.properties.addLink({
           name: "item",
           label: `${c.displayTypeName} Item`,
+          options(p: PropLink) {
+            p.lookup = {
+              typeName: "changeSet",
+            };
+          },
+        });
+      },
+    });
+
+    c.methods.addMethod({
+      name: "execute",
+      label: "Execute a Change Set",
+      options(p: PropMethod) {
+        p.mutation = true;
+        p.request.properties.addText({
+          name: "id",
+          label: "Change Set ID",
+          options(p) {
+            p.required = true;
+          },
+        });
+        p.reply.properties.addLink({
+          name: "item",
+          label: `ChangeSet Item`,
           options(p: PropLink) {
             p.lookup = {
               typeName: "changeSet",

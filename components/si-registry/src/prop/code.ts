@@ -53,7 +53,7 @@ export class PropCode extends Prop {
         const objectData = TOML.parse(value);
         return objectData;
       } else {
-        throw "Do not know how to parse this thing";
+        throw new Error("Do not know how to parse this thing");
       }
     } else {
       return value;

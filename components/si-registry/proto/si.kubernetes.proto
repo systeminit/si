@@ -16,6 +16,8 @@ service Kubernetes {
   rpc KubernetesDeploymentEntityGet(KubernetesDeploymentEntityGetRequest) returns (KubernetesDeploymentEntityGetReply);
   rpc KubernetesDeploymentEntityList(KubernetesDeploymentEntityListRequest) returns (KubernetesDeploymentEntityListReply);
   rpc KubernetesDeploymentEntityCreate(KubernetesDeploymentEntityCreateRequest) returns (KubernetesDeploymentEntityCreateReply);
+  rpc KubernetesDeploymentEntityDelete(KubernetesDeploymentEntityDeleteRequest) returns (KubernetesDeploymentEntityDeleteReply);
+  rpc KubernetesDeploymentEntityUpdate(KubernetesDeploymentEntityUpdateRequest) returns (KubernetesDeploymentEntityUpdateReply);
   rpc KubernetesDeploymentEntitySync(KubernetesDeploymentEntitySyncRequest) returns (KubernetesDeploymentEntitySyncReply);
   rpc KubernetesDeploymentEntityKubernetesObjectEdit(KubernetesDeploymentEntityKubernetesObjectEditRequest) returns (KubernetesDeploymentEntityKubernetesObjectEditReply);
   rpc KubernetesDeploymentEntityKubernetesObjectYamlEdit(KubernetesDeploymentEntityKubernetesObjectYamlEditRequest) returns (KubernetesDeploymentEntityKubernetesObjectYamlEditReply);
@@ -28,6 +30,8 @@ service Kubernetes {
   rpc KubernetesServiceEntityGet(KubernetesServiceEntityGetRequest) returns (KubernetesServiceEntityGetReply);
   rpc KubernetesServiceEntityList(KubernetesServiceEntityListRequest) returns (KubernetesServiceEntityListReply);
   rpc KubernetesServiceEntityCreate(KubernetesServiceEntityCreateRequest) returns (KubernetesServiceEntityCreateReply);
+  rpc KubernetesServiceEntityDelete(KubernetesServiceEntityDeleteRequest) returns (KubernetesServiceEntityDeleteReply);
+  rpc KubernetesServiceEntityUpdate(KubernetesServiceEntityUpdateRequest) returns (KubernetesServiceEntityUpdateReply);
   rpc KubernetesServiceEntitySync(KubernetesServiceEntitySyncRequest) returns (KubernetesServiceEntitySyncReply);
   rpc KubernetesServiceEntityKubernetesObjectEdit(KubernetesServiceEntityKubernetesObjectEditRequest) returns (KubernetesServiceEntityKubernetesObjectEditReply);
   rpc KubernetesServiceEntityKubernetesObjectYamlEdit(KubernetesServiceEntityKubernetesObjectYamlEditRequest) returns (KubernetesServiceEntityKubernetesObjectYamlEditReply);
@@ -178,7 +182,26 @@ message KubernetesDeploymentEntityCreateRequest {
 }
 message KubernetesDeploymentEntityCreateReply {
   si.kubernetes.KubernetesDeploymentEntity item = 1;
-  si.kubernetes.KubernetesDeploymentEntityEvent entity_event = 2;
+}
+message KubernetesDeploymentEntityDeleteRequest {
+  google.protobuf.StringValue id = 1001;
+  google.protobuf.StringValue change_set_id = 1002;
+}
+message KubernetesDeploymentEntityDeleteReply {
+  si.kubernetes.KubernetesDeploymentEntity item = 1001;
+}
+message KubernetesDeploymentEntityUpdateRequestUpdate {
+  google.protobuf.StringValue name = 1001;
+  google.protobuf.StringValue description = 1002;
+  si.kubernetes.KubernetesDeploymentEntityProperties properties = 1003;
+}
+message KubernetesDeploymentEntityUpdateRequest {
+  google.protobuf.StringValue id = 1001;
+  google.protobuf.StringValue change_set_id = 1002;
+  si.kubernetes.KubernetesDeploymentEntityUpdateRequestUpdate update = 1003;
+}
+message KubernetesDeploymentEntityUpdateReply {
+  si.kubernetes.KubernetesDeploymentEntity item = 1001;
 }
 message KubernetesDeploymentEntitySyncRequest {
   google.protobuf.StringValue id = 1;
@@ -394,7 +417,26 @@ message KubernetesServiceEntityCreateRequest {
 }
 message KubernetesServiceEntityCreateReply {
   si.kubernetes.KubernetesServiceEntity item = 1;
-  si.kubernetes.KubernetesServiceEntityEvent entity_event = 2;
+}
+message KubernetesServiceEntityDeleteRequest {
+  google.protobuf.StringValue id = 1001;
+  google.protobuf.StringValue change_set_id = 1002;
+}
+message KubernetesServiceEntityDeleteReply {
+  si.kubernetes.KubernetesServiceEntity item = 1001;
+}
+message KubernetesServiceEntityUpdateRequestUpdate {
+  google.protobuf.StringValue name = 1001;
+  google.protobuf.StringValue description = 1002;
+  si.kubernetes.KubernetesServiceEntityProperties properties = 1003;
+}
+message KubernetesServiceEntityUpdateRequest {
+  google.protobuf.StringValue id = 1001;
+  google.protobuf.StringValue change_set_id = 1002;
+  si.kubernetes.KubernetesServiceEntityUpdateRequestUpdate update = 1003;
+}
+message KubernetesServiceEntityUpdateReply {
+  si.kubernetes.KubernetesServiceEntity item = 1001;
 }
 message KubernetesServiceEntitySyncRequest {
   google.protobuf.StringValue id = 1;

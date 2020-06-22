@@ -48,6 +48,10 @@ async fn <%- fmt.implServiceMethodName(propMethod) %>(
             <%- fmt.implServiceGet(propMethod) %>
         <%_ } else if (propMethod.name == "create" && fmt.isEntityObject()) { _%>
             <%- fmt.implServiceEntityCreate(propMethod) %>
+        <%_ } else if (propMethod.name == "delete" && fmt.isEntityObject()) { _%>
+            <%- fmt.implServiceEntityDelete(propMethod) %>
+        <%_ } else if (propMethod.name == "update" && fmt.isEntityObject()) { _%>
+            <%- fmt.implServiceEntityUpdate(propMethod) %>
         <%_ } else if (propMethod.name == "create" && fmt.isChangeSetObject()) { _%>
             <%- fmt.implServiceChangeSetCreate(propMethod) %>
         <%_ } else if (propMethod.name == "create") { _%>

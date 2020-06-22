@@ -26,6 +26,14 @@ pub enum AccountError {
     Utf8Error(#[from] std::str::Utf8Error),
     #[error("Missing required field {0}")]
     MissingField(String),
+    #[error("Couchbase error: {0}")]
+    CouchbaseError(#[from] couchbase::CouchbaseError),
+    #[error("Invalid JSON type; expected an object, but did not receive one")]
+    InvalidJsonObject,
+    #[error("Change Set MQTT Agent Error: {0}")]
+    ChangeSetAgentClient(#[from] crate::change_set_agent::client::ChangeSetAgentClientError),
+    #[error("Change Set Entity Event timeout")]
+    ChangeSetEntityEventTimeout,
 }
 
 impl From<AccountError> for tonic::Status {

@@ -2,7 +2,7 @@ use crate::entity_event::EntityEvent;
 use crate::{CeaResult, MqttClient};
 use futures::compat::{Future01CompatExt, Stream01CompatExt};
 use futures::StreamExt;
-use prost::Message;
+//use prost::Message;
 use si_data::{uuid_string, Db};
 use si_settings::Settings;
 use tracing::debug;
@@ -87,13 +87,30 @@ impl AgentFinalizer {
                     continue;
                 }
             };
-            let entity_event = match <T as Message>::decode(msg.payload()) {
-                Ok(e) => e,
+            let payload_str = match std::str::from_utf8(msg.payload()) {
+                Ok(payload_str) => payload_str,
                 Err(err) => {
-                    debug!(?err, "deserialzing error - bad message");
+                    debug!(?err, "utf8 error deserializing message");
                     continue;
                 }
             };
+            let entity_event: T = match serde_json::from_str(payload_str) {
+                Ok(entity_event) => entity_event,
+                Err(err) => {
+                    debug!(?err, "error deserializing json from payload buffer");
+                    continue;
+                }
+            };
+
+            // Alas, poor protocol buffer - I knew him well.
+            //
+            //let entity_event = match <T as Message>::decode(msg.payload()) {
+            //    Ok(e) => e,
+            //    Err(err) => {
+            //        debug!(?err, "deserialzing error - bad message");
+            //        continue;
+            //    }
+            //};
             let mut self_ref: AgentFinalizer = self.clone();
             tokio::spawn(async move { self_ref.dispatch(entity_event).await });
         }

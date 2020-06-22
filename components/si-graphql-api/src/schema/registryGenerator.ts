@@ -245,6 +245,7 @@ export class SiRegistryGenerator {
                       if (lookupValue.startsWith("change_set:")) {
                         input["query"] = {
                           changeSetId: lookupValue,
+                          orderBy: "id",
                           items: [
                             {
                               expression: {
@@ -259,6 +260,7 @@ export class SiRegistryGenerator {
                         };
                       } else {
                         input["query"] = {
+                          orderBy: "id",
                           items: [
                             {
                               expression: {

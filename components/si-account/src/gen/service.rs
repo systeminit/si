@@ -380,6 +380,61 @@ impl crate::protobuf::account_server::Account for Service {
         .await
     }
 
+    async fn change_set_execute(
+        &self,
+        mut request: tonic::Request<crate::protobuf::ChangeSetExecuteRequest>,
+    ) -> std::result::Result<tonic::Response<crate::protobuf::ChangeSetExecuteReply>, tonic::Status>
+    {
+        let trace_propagator =
+            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
+        let span_context = {
+            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
+            trace_propagator.extract(&metadata_wrapper)
+        };
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "account.change_set_execute",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
+        async {
+            crate::authorize::authnz(&self.db, &request, "change_set_execute").await?;
+
+            let inner = request.into_inner();
+
+            let output = crate::model::ChangeSet::execute(&self.db, inner).await?;
+
+            Ok(tonic::Response::new(output))
+        }
+        .instrument(span)
+        .await
+    }
+
     async fn change_set_get(
         &self,
         mut request: tonic::Request<crate::protobuf::ChangeSetGetRequest>,

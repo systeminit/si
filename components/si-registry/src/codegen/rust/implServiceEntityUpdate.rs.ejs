@@ -1,0 +1,16 @@
+<%- fmt.implServiceAuth(propMethod) %>
+
+let inner = request.into_inner();
+let id = inner
+    .id
+    .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))?;
+
+let mut entity = <%- fmt.structName() %>::get(&self.db, &id).await?;
+
+entity
+    .update(&self.db, inner.change_set_id, inner.update)
+    .await?;
+
+Ok(tonic::Response::new(
+  <%- fmt.implServiceReplyType(propMethod, { option: false, reference: false }) %> { item: Some(entity) },
+))
