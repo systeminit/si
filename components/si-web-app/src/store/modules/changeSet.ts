@@ -138,10 +138,9 @@ export const changeSet: Module<ChangeSetStore, RootStore> = {
               clearInterval(poller);
               commit("add", { changeSets: [res.item] });
               console.log("Dispatching a new load event");
-              dispatch("entity/load", {}, { root: true });
-              dispatch("entity/load", { changeSetId }, { root: true });
               commit("add", { changeSets: [res.item] });
               commit("setCurrent", res.item);
+              dispatch("entity/load", {}, { root: true });
             }
           })
           .catch(err => {

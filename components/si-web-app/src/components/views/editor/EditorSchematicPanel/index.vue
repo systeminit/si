@@ -50,14 +50,21 @@ export default {
         },
       });
     },
-    addNode() {
-      let payload = {
-        id: Date.now().toString(),
-        name: "new",
-        isEntity: false,
-        changeSetId: this.$store.getters["changeSet/currentId"],
-      };
-      this.$store.dispatch("editor/addNode", payload);
+    async addNode() {
+      // TODO: The data.properties here should be automatically determined by the system. That they aren't is
+      // a bug. I'm not sure if it belongs in the Registry or in the API - I expect its the API that
+      // should fill in the correct defaults. This will work for now.
+      await this.$store.dispatch("entity/create", {
+        typeName: "kubernetesDeploymentEntity",
+        data: {
+          properties: {
+            kubernetesObject: {
+              apiVersion: "apps/v1",
+              kind: "Deployment",
+            },
+          },
+        },
+      });
     },
   },
 };

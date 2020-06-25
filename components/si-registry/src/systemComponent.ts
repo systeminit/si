@@ -572,7 +572,6 @@ export class EntityObject extends SystemObject {
           options(p: PropLink) {
             p.universal = true;
             p.readOnly = true;
-            p.required = false;
             p.lookup = {
               typeName: `${baseTypeName}Entity`,
               names: ["properties"],
@@ -669,6 +668,17 @@ export class EntityObject extends SystemObject {
                 p.lookup = {
                   typeName: `${baseTypeName}Entity`,
                   names: ["name"],
+                };
+              },
+            });
+            p.properties.addLink({
+              name: "displayName",
+              label: "displayName",
+              options(p: PropLink) {
+                p.required = false;
+                p.lookup = {
+                  typeName: `${baseTypeName}Entity`,
+                  names: ["displayName"],
                 };
               },
             });

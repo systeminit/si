@@ -166,13 +166,7 @@ export const user: Module<UserStore, any> = {
       });
       commit("profile", profile);
       commit("loggedIn", true);
-      for (const workspace of profile.workspaces) {
-        dispatch(
-          "entity/loadFromWorkspace",
-          { workspaceId: workspace["id"] },
-          { root: true },
-        );
-      }
+      dispatch("entity/load", { root: true });
       localStorage.setItem("profile", JSON.stringify(profile));
     },
 

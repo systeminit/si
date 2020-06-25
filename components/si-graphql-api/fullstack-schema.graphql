@@ -1483,6 +1483,9 @@ input KubernetesDeploymentEntityUpdateRequestUpdateRequest {
   """description"""
   description: String
 
+  """displayName"""
+  displayName: String
+
   """name"""
   name: String
 
@@ -2161,6 +2164,9 @@ input KubernetesServiceEntityUpdateRequest {
 input KubernetesServiceEntityUpdateRequestUpdateRequest {
   """description"""
   description: String
+
+  """displayName"""
+  displayName: String
 
   """name"""
   name: String

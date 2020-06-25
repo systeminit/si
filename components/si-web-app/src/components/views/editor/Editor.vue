@@ -26,7 +26,7 @@
       class="bg-gray-900 w-2/5"
       :class="rightPanelVisibilityClasses"
     >
-      <PropertyPanel @maximizePanelMsg="maximizePanel" />
+      <EditorPropertyPanel @maximizePanelMsg="maximizePanel" />
     </div>
   </div>
 </template>
@@ -35,13 +35,13 @@
 import { registry } from "si-registry";
 
 import SchematicPanel from "./EditorSchematicPanel";
-import PropertyPanel from "./EditorPropertyPanel";
+import EditorPropertyPanel from "./EditorPropertyPanel";
 
 export default {
   name: "Editor",
   components: {
     SchematicPanel,
-    PropertyPanel,
+    EditorPropertyPanel,
   },
   data: function() {
     return {
@@ -145,38 +145,6 @@ export default {
       };
     },
   },
-  //apollo: {
-  //  kubernetesDeploymentEntityList: {
-  //    query() {
-  //      let result = registry
-  //        .get("kubernetesDeploymentEntity")
-  //        .graphql.query({ methodName: "list" });
-  //      return result;
-  //    },
-  //    fetchPolicy: "no-cache",
-  //    variables() {
-  //      return {
-  //        pageSize: "1000",
-  //      };
-  //    },
-  //    result({ data, loading, networkStatus }) {
-  //      data.kubernetesDeploymentEntityList.items.forEach(item => {
-  //        let payload = {
-  //          id: item.id,
-  //          name: item.name,
-  //          isEntity: true,
-  //        };
-  //        this.$store.dispatch("editor/addNode", payload);
-  //      });
-  //    },
-  //    update(data) {
-  //      console.log("apollo update!");
-  //      // The returned value will update
-  //      // the vue property 'pingMessage'
-  //      // return data.ping
-  //    },
-  //  },
-  //},
 };
 </script>
 
