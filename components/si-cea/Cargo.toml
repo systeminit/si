@@ -6,29 +6,25 @@ edition = "2018"
 
 [dependencies]
 async-trait = "0.1"
-
-paho-mqtt = "0.6"
+bytes = "0.5"
 chrono = { version = "0.4", features = ["serde"] }
+dyn-clone = "1.0.1"
+futures = { version = "0.3", features = ["alloc", "compat"] }
+paho-mqtt = "0.7"
 prost = "0.6"
 prost-derive = "0.6"
-thiserror = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_yaml = "0.8"
-futures = { version = "0.3", features = ["alloc", "compat"]}
-tonic = "0.1"
-bytes = "0.5"
+si-account = { path = "../si-account" }
+si-data = { path = "../si-data" }
+si-settings = { path = "../si-settings" }
+thiserror = "1.0"
 tokio = { version = "0.2", features = ["full"] }
-
+tonic = "0.2"
 tracing = "0.1.12"
 tracing-futures = { version = "0.2.2", features = ["tokio", "std-future"] }
 tracing-subscriber = "0.2.1"
 
-si-data = { path = "../si-data" }
-si-account = { path = "../si-account" }
-si-settings = { path = "../si-settings" }
-
-dyn-clone = "1.0.1"
-
 [build-dependencies]
-tonic-build = "0.1"
+tonic-build = "0.2"

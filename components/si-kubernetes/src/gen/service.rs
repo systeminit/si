@@ -1,7 +1,7 @@
 // Auto-generated rust code!
 // No-Touchy!
 
-use opentelemetry::api::propagation::text_propagator::HttpTextFormat;
+use opentelemetry::api::HttpTextFormat;
 use tracing_futures::Instrument as _;
 use tracing_opentelemetry::OpenTelemetrySpanExt as _;
 
@@ -30,17 +30,13 @@ impl Service {
 impl crate::protobuf::kubernetes_server::Kubernetes for Service {
     async fn kubernetes_deployment_component_create(
         &self,
-        mut request: tonic::Request<crate::protobuf::KubernetesDeploymentComponentCreateRequest>,
+        request: tonic::Request<crate::protobuf::KubernetesDeploymentComponentCreateRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::KubernetesDeploymentComponentCreateReply>,
         tonic::Status,
     > {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "kubernetes.kubernetes_deployment_component_create",
@@ -50,7 +46,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -107,17 +103,13 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
 
     async fn kubernetes_deployment_component_get(
         &self,
-        mut request: tonic::Request<crate::protobuf::KubernetesDeploymentComponentGetRequest>,
+        request: tonic::Request<crate::protobuf::KubernetesDeploymentComponentGetRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::KubernetesDeploymentComponentGetReply>,
         tonic::Status,
     > {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "kubernetes.kubernetes_deployment_component_get",
@@ -127,7 +119,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -174,17 +166,13 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
 
     async fn kubernetes_deployment_component_list(
         &self,
-        mut request: tonic::Request<crate::protobuf::KubernetesDeploymentComponentListRequest>,
+        request: tonic::Request<crate::protobuf::KubernetesDeploymentComponentListRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::KubernetesDeploymentComponentListReply>,
         tonic::Status,
     > {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "kubernetes.kubernetes_deployment_component_list",
@@ -194,7 +182,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -247,17 +235,13 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
 
     async fn kubernetes_deployment_component_pick(
         &self,
-        mut request: tonic::Request<crate::protobuf::KubernetesDeploymentComponentPickRequest>,
+        request: tonic::Request<crate::protobuf::KubernetesDeploymentComponentPickRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::KubernetesDeploymentComponentPickReply>,
         tonic::Status,
     > {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "kubernetes.kubernetes_deployment_component_pick",
@@ -267,7 +251,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -316,17 +300,13 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
 
     async fn kubernetes_deployment_entity_apply(
         &self,
-        mut request: tonic::Request<crate::protobuf::KubernetesDeploymentEntityApplyRequest>,
+        request: tonic::Request<crate::protobuf::KubernetesDeploymentEntityApplyRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::KubernetesDeploymentEntityApplyReply>,
         tonic::Status,
     > {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "kubernetes.kubernetes_deployment_entity_apply",
@@ -336,7 +316,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -382,9 +362,6 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             )
             .await?;
 
-            // You belong to execute now, homie
-            //self.agent.dispatch(&entity_event).await?;
-
             Ok(tonic::Response::new(
                 crate::protobuf::KubernetesDeploymentEntityApplyReply {
                     item: Some(entity_event),
@@ -397,17 +374,13 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
 
     async fn kubernetes_deployment_entity_create(
         &self,
-        mut request: tonic::Request<crate::protobuf::KubernetesDeploymentEntityCreateRequest>,
+        request: tonic::Request<crate::protobuf::KubernetesDeploymentEntityCreateRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::KubernetesDeploymentEntityCreateReply>,
         tonic::Status,
     > {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "kubernetes.kubernetes_deployment_entity_create",
@@ -417,7 +390,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -440,9 +413,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
         }
 
         async {
-            use si_cea::EntityEvent;
-
-            let auth = si_account::authorize::authnz(
+            si_account::authorize::authnz(
                 &self.db,
                 &request,
                 "kubernetes_deployment_entity_create",
@@ -493,13 +464,6 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
                 change_set_id,
             )
             .await?;
-            //let entity_event = crate::protobuf::KubernetesDeploymentEntityEvent::create(
-            //    &self.db,
-            //    auth.user_id(),
-            //    "create",
-            //    &entity,
-            //).await?;
-            //self.agent.dispatch(&entity_event).await?;
 
             Ok(tonic::Response::new(
                 crate::protobuf::KubernetesDeploymentEntityCreateReply { item: Some(entity) },
@@ -511,17 +475,13 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
 
     async fn kubernetes_deployment_entity_delete(
         &self,
-        mut request: tonic::Request<crate::protobuf::KubernetesDeploymentEntityDeleteRequest>,
+        request: tonic::Request<crate::protobuf::KubernetesDeploymentEntityDeleteRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::KubernetesDeploymentEntityDeleteReply>,
         tonic::Status,
     > {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "kubernetes.kubernetes_deployment_entity_delete",
@@ -531,7 +491,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -581,17 +541,13 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
 
     async fn kubernetes_deployment_entity_get(
         &self,
-        mut request: tonic::Request<crate::protobuf::KubernetesDeploymentEntityGetRequest>,
+        request: tonic::Request<crate::protobuf::KubernetesDeploymentEntityGetRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::KubernetesDeploymentEntityGetReply>,
         tonic::Status,
     > {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "kubernetes.kubernetes_deployment_entity_get",
@@ -601,7 +557,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -644,19 +600,15 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
 
     async fn kubernetes_deployment_entity_kubernetes_object_edit(
         &self,
-        mut request: tonic::Request<
+        request: tonic::Request<
             crate::protobuf::KubernetesDeploymentEntityKubernetesObjectEditRequest,
         >,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::KubernetesDeploymentEntityKubernetesObjectEditReply>,
         tonic::Status,
     > {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "kubernetes.kubernetes_deployment_entity_kubernetes_object_edit",
@@ -666,7 +618,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -736,19 +688,15 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
 
     async fn kubernetes_deployment_entity_kubernetes_object_yaml_edit(
         &self,
-        mut request: tonic::Request<
+        request: tonic::Request<
             crate::protobuf::KubernetesDeploymentEntityKubernetesObjectYamlEditRequest,
         >,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::KubernetesDeploymentEntityKubernetesObjectYamlEditReply>,
         tonic::Status,
     > {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "kubernetes.kubernetes_deployment_entity_kubernetes_object_yaml_edit",
@@ -758,7 +706,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -828,17 +776,13 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
 
     async fn kubernetes_deployment_entity_list(
         &self,
-        mut request: tonic::Request<crate::protobuf::KubernetesDeploymentEntityListRequest>,
+        request: tonic::Request<crate::protobuf::KubernetesDeploymentEntityListRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::KubernetesDeploymentEntityListReply>,
         tonic::Status,
     > {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "kubernetes.kubernetes_deployment_entity_list",
@@ -848,7 +792,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -900,17 +844,13 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
 
     async fn kubernetes_deployment_entity_sync(
         &self,
-        mut request: tonic::Request<crate::protobuf::KubernetesDeploymentEntitySyncRequest>,
+        request: tonic::Request<crate::protobuf::KubernetesDeploymentEntitySyncRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::KubernetesDeploymentEntitySyncReply>,
         tonic::Status,
     > {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "kubernetes.kubernetes_deployment_entity_sync",
@@ -920,7 +860,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -966,9 +906,6 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             )
             .await?;
 
-            // You belong to execute now, homie
-            //self.agent.dispatch(&entity_event).await?;
-
             Ok(tonic::Response::new(
                 crate::protobuf::KubernetesDeploymentEntitySyncReply {
                     item: Some(entity_event),
@@ -981,17 +918,13 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
 
     async fn kubernetes_deployment_entity_update(
         &self,
-        mut request: tonic::Request<crate::protobuf::KubernetesDeploymentEntityUpdateRequest>,
+        request: tonic::Request<crate::protobuf::KubernetesDeploymentEntityUpdateRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::KubernetesDeploymentEntityUpdateReply>,
         tonic::Status,
     > {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "kubernetes.kubernetes_deployment_entity_update",
@@ -1001,7 +934,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -1053,17 +986,13 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
 
     async fn kubernetes_deployment_entity_event_list(
         &self,
-        mut request: tonic::Request<crate::protobuf::KubernetesDeploymentEntityEventListRequest>,
+        request: tonic::Request<crate::protobuf::KubernetesDeploymentEntityEventListRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::KubernetesDeploymentEntityEventListReply>,
         tonic::Status,
     > {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "kubernetes.kubernetes_deployment_entity_event_list",
@@ -1073,7 +1002,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -1126,17 +1055,13 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
 
     async fn kubernetes_service_component_create(
         &self,
-        mut request: tonic::Request<crate::protobuf::KubernetesServiceComponentCreateRequest>,
+        request: tonic::Request<crate::protobuf::KubernetesServiceComponentCreateRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::KubernetesServiceComponentCreateReply>,
         tonic::Status,
     > {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "kubernetes.kubernetes_service_component_create",
@@ -1146,7 +1071,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -1203,17 +1128,13 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
 
     async fn kubernetes_service_component_get(
         &self,
-        mut request: tonic::Request<crate::protobuf::KubernetesServiceComponentGetRequest>,
+        request: tonic::Request<crate::protobuf::KubernetesServiceComponentGetRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::KubernetesServiceComponentGetReply>,
         tonic::Status,
     > {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "kubernetes.kubernetes_service_component_get",
@@ -1223,7 +1144,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -1266,17 +1187,13 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
 
     async fn kubernetes_service_component_list(
         &self,
-        mut request: tonic::Request<crate::protobuf::KubernetesServiceComponentListRequest>,
+        request: tonic::Request<crate::protobuf::KubernetesServiceComponentListRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::KubernetesServiceComponentListReply>,
         tonic::Status,
     > {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "kubernetes.kubernetes_service_component_list",
@@ -1286,7 +1203,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -1338,17 +1255,13 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
 
     async fn kubernetes_service_component_pick(
         &self,
-        mut request: tonic::Request<crate::protobuf::KubernetesServiceComponentPickRequest>,
+        request: tonic::Request<crate::protobuf::KubernetesServiceComponentPickRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::KubernetesServiceComponentPickReply>,
         tonic::Status,
     > {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "kubernetes.kubernetes_service_component_pick",
@@ -1358,7 +1271,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -1403,17 +1316,13 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
 
     async fn kubernetes_service_entity_create(
         &self,
-        mut request: tonic::Request<crate::protobuf::KubernetesServiceEntityCreateRequest>,
+        request: tonic::Request<crate::protobuf::KubernetesServiceEntityCreateRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::KubernetesServiceEntityCreateReply>,
         tonic::Status,
     > {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "kubernetes.kubernetes_service_entity_create",
@@ -1423,7 +1332,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -1446,14 +1355,8 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
         }
 
         async {
-            use si_cea::EntityEvent;
-
-            let auth = si_account::authorize::authnz(
-                &self.db,
-                &request,
-                "kubernetes_service_entity_create",
-            )
-            .await?;
+            si_account::authorize::authnz(&self.db, &request, "kubernetes_service_entity_create")
+                .await?;
 
             let inner = request.into_inner();
             let name = inner.name;
@@ -1499,13 +1402,6 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
                 change_set_id,
             )
             .await?;
-            //let entity_event = crate::protobuf::KubernetesServiceEntityEvent::create(
-            //    &self.db,
-            //    auth.user_id(),
-            //    "create",
-            //    &entity,
-            //).await?;
-            //self.agent.dispatch(&entity_event).await?;
 
             Ok(tonic::Response::new(
                 crate::protobuf::KubernetesServiceEntityCreateReply { item: Some(entity) },
@@ -1517,17 +1413,13 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
 
     async fn kubernetes_service_entity_delete(
         &self,
-        mut request: tonic::Request<crate::protobuf::KubernetesServiceEntityDeleteRequest>,
+        request: tonic::Request<crate::protobuf::KubernetesServiceEntityDeleteRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::KubernetesServiceEntityDeleteReply>,
         tonic::Status,
     > {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "kubernetes.kubernetes_service_entity_delete",
@@ -1537,7 +1429,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -1582,17 +1474,13 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
 
     async fn kubernetes_service_entity_get(
         &self,
-        mut request: tonic::Request<crate::protobuf::KubernetesServiceEntityGetRequest>,
+        request: tonic::Request<crate::protobuf::KubernetesServiceEntityGetRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::KubernetesServiceEntityGetReply>,
         tonic::Status,
     > {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "kubernetes.kubernetes_service_entity_get",
@@ -1602,7 +1490,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -1645,19 +1533,15 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
 
     async fn kubernetes_service_entity_kubernetes_object_edit(
         &self,
-        mut request: tonic::Request<
+        request: tonic::Request<
             crate::protobuf::KubernetesServiceEntityKubernetesObjectEditRequest,
         >,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::KubernetesServiceEntityKubernetesObjectEditReply>,
         tonic::Status,
     > {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "kubernetes.kubernetes_service_entity_kubernetes_object_edit",
@@ -1667,7 +1551,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -1736,19 +1620,15 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
 
     async fn kubernetes_service_entity_kubernetes_object_yaml_edit(
         &self,
-        mut request: tonic::Request<
+        request: tonic::Request<
             crate::protobuf::KubernetesServiceEntityKubernetesObjectYamlEditRequest,
         >,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::KubernetesServiceEntityKubernetesObjectYamlEditReply>,
         tonic::Status,
     > {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "kubernetes.kubernetes_service_entity_kubernetes_object_yaml_edit",
@@ -1758,7 +1638,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -1827,17 +1707,13 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
 
     async fn kubernetes_service_entity_list(
         &self,
-        mut request: tonic::Request<crate::protobuf::KubernetesServiceEntityListRequest>,
+        request: tonic::Request<crate::protobuf::KubernetesServiceEntityListRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::KubernetesServiceEntityListReply>,
         tonic::Status,
     > {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "kubernetes.kubernetes_service_entity_list",
@@ -1847,7 +1723,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -1896,17 +1772,13 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
 
     async fn kubernetes_service_entity_sync(
         &self,
-        mut request: tonic::Request<crate::protobuf::KubernetesServiceEntitySyncRequest>,
+        request: tonic::Request<crate::protobuf::KubernetesServiceEntitySyncRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::KubernetesServiceEntitySyncReply>,
         tonic::Status,
     > {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "kubernetes.kubernetes_service_entity_sync",
@@ -1916,7 +1788,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -1959,9 +1831,6 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             )
             .await?;
 
-            // You belong to execute now, homie
-            //self.agent.dispatch(&entity_event).await?;
-
             Ok(tonic::Response::new(
                 crate::protobuf::KubernetesServiceEntitySyncReply {
                     item: Some(entity_event),
@@ -1974,17 +1843,13 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
 
     async fn kubernetes_service_entity_update(
         &self,
-        mut request: tonic::Request<crate::protobuf::KubernetesServiceEntityUpdateRequest>,
+        request: tonic::Request<crate::protobuf::KubernetesServiceEntityUpdateRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::KubernetesServiceEntityUpdateReply>,
         tonic::Status,
     > {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "kubernetes.kubernetes_service_entity_update",
@@ -1994,7 +1859,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -2041,17 +1906,13 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
 
     async fn kubernetes_service_entity_event_list(
         &self,
-        mut request: tonic::Request<crate::protobuf::KubernetesServiceEntityEventListRequest>,
+        request: tonic::Request<crate::protobuf::KubernetesServiceEntityEventListRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::KubernetesServiceEntityEventListReply>,
         tonic::Status,
     > {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "kubernetes.kubernetes_service_entity_event_list",
@@ -2061,7 +1922,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -2110,32 +1971,5 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
         }
         .instrument(span)
         .await
-    }
-}
-
-struct TonicMetaWrapper<'a>(&'a mut tonic::metadata::MetadataMap);
-
-impl<'a> opentelemetry::api::propagation::Carrier for TonicMetaWrapper<'a> {
-    fn get(&self, key: &'static str) -> Option<&str> {
-        let raw_value = self.0.get(key)?;
-        match raw_value.to_str() {
-            Ok(value) => Some(value),
-            Err(_e) => {
-                tracing::debug!("Cannot extract header for trace parent, not a string");
-                None
-            }
-        }
-    }
-
-    fn set(&mut self, key: &'static str, raw_value: String) {
-        let value = match tonic::metadata::MetadataValue::from_str(&raw_value) {
-            Ok(value) => value,
-            Err(_e) => {
-                tracing::debug!("Cannot insert header for trace parent, not a string");
-                tracing::debug!("Inserting the empty string");
-                tonic::metadata::MetadataValue::from_str("").unwrap()
-            }
-        };
-        self.0.insert(key, value);
     }
 }

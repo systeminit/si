@@ -707,7 +707,14 @@ export class RustFormatter {
     const createMethod = this.systemObject.methods.getEntry("create");
     if (createMethod instanceof PropPrelude.PropMethod) {
       for (const prop of createMethod.request.properties.attrs) {
-        result.push(`${snakeCase(prop.name)}: ${this.rustTypeForProp(prop)}`);
+        if (
+          this.systemObject.typeName == "changeSet" &&
+          prop.name == "workspaceId"
+        ) {
+          continue;
+        } else {
+          result.push(`${snakeCase(prop.name)}: ${this.rustTypeForProp(prop)}`);
+        }
       }
     }
     return result.join(", ");
@@ -718,7 +725,14 @@ export class RustFormatter {
     const createMethod = this.systemObject.methods.getEntry("create");
     if (createMethod instanceof PropPrelude.PropMethod) {
       for (const prop of createMethod.request.properties.attrs) {
-        result.push(snakeCase(prop.name));
+        if (
+          this.systemObject.typeName == "changeSet" &&
+          prop.name == "workspaceId"
+        ) {
+          continue;
+        } else {
+          result.push(snakeCase(prop.name));
+        }
       }
     }
     return result.join(", ");

@@ -5,13 +5,12 @@ authors = ["Adam Jacob <adam@systeminit.com>"]
 edition = "2018"
 
 [dependencies]
-config = { version = "0.9.3", features = [ "toml" ] }
-toml = "0.5"
+config = { version = "0.10", features = ["toml"] }
+serde = { version = "1.0", features = ["derive"] }
 sodiumoxide = "0.2"
-serde = { version = "1.0", features = [ "derive" ] }
-tracing = "0.1.10"
 thiserror = "1.0"
-uuid = { version = "0.7", features = [ "serde", "v4" ] }
+toml = "0.5"
+tracing = "0.1.10"
 
 [dev-dependencies]
 lazy_static = "1.4"

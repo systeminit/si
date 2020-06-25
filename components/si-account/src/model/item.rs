@@ -1,7 +1,5 @@
-use si_data::{Db, ListResult, Result};
-
 pub use crate::protobuf::{Item, ItemGetReply, ItemGetRequest, ItemListReply, ItemListRequest};
-use tracing::debug;
+use si_data::{Db, ListResult, Result};
 
 // TODO: Make create and get changeset aware.
 

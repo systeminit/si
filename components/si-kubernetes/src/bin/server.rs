@@ -7,7 +7,7 @@ use si_kubernetes::model::{KubernetesDeploymentEntityEvent, KubernetesServiceEnt
 use opentelemetry::{api::Provider, sdk};
 use opentelemetry_jaeger;
 use tracing;
-use tracing_opentelemetry::OpenTelemetryLayer;
+use tracing_opentelemetry::layer;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::{self, fmt, EnvFilter, Registry};
 
@@ -30,7 +30,7 @@ async fn main() -> anyhow::Result<()> {
     let tracer = provider.get_tracer("si-kubernetes");
 
     let fmt_layer = fmt::Layer::default();
-    let opentelemetry_layer = OpenTelemetryLayer::with_tracer(tracer);
+    let opentelemetry_layer = layer().with_tracer(tracer);
     let env_filter_layer = EnvFilter::from_default_env();
 
     let subscriber = Registry::default()

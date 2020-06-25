@@ -1,7 +1,7 @@
 // Auto-generated rust code!
 // No-Touchy!
 
-use opentelemetry::api::propagation::text_propagator::HttpTextFormat;
+use opentelemetry::api::HttpTextFormat;
 use tracing_futures::Instrument as _;
 use tracing_opentelemetry::OpenTelemetrySpanExt as _;
 
@@ -29,17 +29,13 @@ impl Service {
 impl crate::protobuf::account_server::Account for Service {
     async fn billing_account_create(
         &self,
-        mut request: tonic::Request<crate::protobuf::BillingAccountCreateRequest>,
+        request: tonic::Request<crate::protobuf::BillingAccountCreateRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::BillingAccountCreateReply>,
         tonic::Status,
     > {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "account.billing_account_create",
@@ -49,7 +45,7 @@ impl crate::protobuf::account_server::Account for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -91,15 +87,11 @@ impl crate::protobuf::account_server::Account for Service {
 
     async fn billing_account_get(
         &self,
-        mut request: tonic::Request<crate::protobuf::BillingAccountGetRequest>,
+        request: tonic::Request<crate::protobuf::BillingAccountGetRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::BillingAccountGetReply>, tonic::Status>
     {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "account.billing_account_get",
@@ -109,7 +101,7 @@ impl crate::protobuf::account_server::Account for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -151,15 +143,11 @@ impl crate::protobuf::account_server::Account for Service {
 
     async fn billing_account_list(
         &self,
-        mut request: tonic::Request<crate::protobuf::BillingAccountListRequest>,
+        request: tonic::Request<crate::protobuf::BillingAccountListRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::BillingAccountListReply>, tonic::Status>
     {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "account.billing_account_list",
@@ -169,7 +157,7 @@ impl crate::protobuf::account_server::Account for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -216,17 +204,13 @@ impl crate::protobuf::account_server::Account for Service {
 
     async fn billing_account_signup(
         &self,
-        mut request: tonic::Request<crate::protobuf::BillingAccountSignupRequest>,
+        request: tonic::Request<crate::protobuf::BillingAccountSignupRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::BillingAccountSignupReply>,
         tonic::Status,
     > {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "account.billing_account_signup",
@@ -236,7 +220,7 @@ impl crate::protobuf::account_server::Account for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -273,15 +257,11 @@ impl crate::protobuf::account_server::Account for Service {
 
     async fn change_set_create(
         &self,
-        mut request: tonic::Request<crate::protobuf::ChangeSetCreateRequest>,
+        request: tonic::Request<crate::protobuf::ChangeSetCreateRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::ChangeSetCreateReply>, tonic::Status>
     {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "account.change_set_create",
@@ -291,7 +271,7 @@ impl crate::protobuf::account_server::Account for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -366,7 +346,6 @@ impl crate::protobuf::account_server::Account for Service {
                 name,
                 display_name,
                 note,
-                workspace_id,
                 created_by_user_id,
                 Some(si_properties),
             )
@@ -382,15 +361,11 @@ impl crate::protobuf::account_server::Account for Service {
 
     async fn change_set_execute(
         &self,
-        mut request: tonic::Request<crate::protobuf::ChangeSetExecuteRequest>,
+        request: tonic::Request<crate::protobuf::ChangeSetExecuteRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::ChangeSetExecuteReply>, tonic::Status>
     {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "account.change_set_execute",
@@ -400,7 +375,7 @@ impl crate::protobuf::account_server::Account for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -437,15 +412,11 @@ impl crate::protobuf::account_server::Account for Service {
 
     async fn change_set_get(
         &self,
-        mut request: tonic::Request<crate::protobuf::ChangeSetGetRequest>,
+        request: tonic::Request<crate::protobuf::ChangeSetGetRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::ChangeSetGetReply>, tonic::Status>
     {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "account.change_set_get",
@@ -455,7 +426,7 @@ impl crate::protobuf::account_server::Account for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -497,15 +468,11 @@ impl crate::protobuf::account_server::Account for Service {
 
     async fn change_set_list(
         &self,
-        mut request: tonic::Request<crate::protobuf::ChangeSetListRequest>,
+        request: tonic::Request<crate::protobuf::ChangeSetListRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::ChangeSetListReply>, tonic::Status>
     {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "account.change_set_list",
@@ -515,7 +482,7 @@ impl crate::protobuf::account_server::Account for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -560,15 +527,11 @@ impl crate::protobuf::account_server::Account for Service {
 
     async fn group_create(
         &self,
-        mut request: tonic::Request<crate::protobuf::GroupCreateRequest>,
+        request: tonic::Request<crate::protobuf::GroupCreateRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::GroupCreateReply>, tonic::Status>
     {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "account.group_create",
@@ -578,7 +541,7 @@ impl crate::protobuf::account_server::Account for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -630,14 +593,10 @@ impl crate::protobuf::account_server::Account for Service {
 
     async fn group_get(
         &self,
-        mut request: tonic::Request<crate::protobuf::GroupGetRequest>,
+        request: tonic::Request<crate::protobuf::GroupGetRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::GroupGetReply>, tonic::Status> {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "account.group_get",
@@ -647,7 +606,7 @@ impl crate::protobuf::account_server::Account for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -689,14 +648,10 @@ impl crate::protobuf::account_server::Account for Service {
 
     async fn group_list(
         &self,
-        mut request: tonic::Request<crate::protobuf::GroupListRequest>,
+        request: tonic::Request<crate::protobuf::GroupListRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::GroupListReply>, tonic::Status> {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "account.group_list",
@@ -706,7 +661,7 @@ impl crate::protobuf::account_server::Account for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -751,15 +706,11 @@ impl crate::protobuf::account_server::Account for Service {
 
     async fn integration_create(
         &self,
-        mut request: tonic::Request<crate::protobuf::IntegrationCreateRequest>,
+        request: tonic::Request<crate::protobuf::IntegrationCreateRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::IntegrationCreateReply>, tonic::Status>
     {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "account.integration_create",
@@ -769,7 +720,7 @@ impl crate::protobuf::account_server::Account for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -819,15 +770,11 @@ impl crate::protobuf::account_server::Account for Service {
 
     async fn integration_get(
         &self,
-        mut request: tonic::Request<crate::protobuf::IntegrationGetRequest>,
+        request: tonic::Request<crate::protobuf::IntegrationGetRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::IntegrationGetReply>, tonic::Status>
     {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "account.integration_get",
@@ -837,7 +784,7 @@ impl crate::protobuf::account_server::Account for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -879,15 +826,11 @@ impl crate::protobuf::account_server::Account for Service {
 
     async fn integration_list(
         &self,
-        mut request: tonic::Request<crate::protobuf::IntegrationListRequest>,
+        request: tonic::Request<crate::protobuf::IntegrationListRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::IntegrationListReply>, tonic::Status>
     {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "account.integration_list",
@@ -897,7 +840,7 @@ impl crate::protobuf::account_server::Account for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -944,17 +887,13 @@ impl crate::protobuf::account_server::Account for Service {
 
     async fn integration_instance_create(
         &self,
-        mut request: tonic::Request<crate::protobuf::IntegrationInstanceCreateRequest>,
+        request: tonic::Request<crate::protobuf::IntegrationInstanceCreateRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::IntegrationInstanceCreateReply>,
         tonic::Status,
     > {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "account.integration_instance_create",
@@ -964,7 +903,7 @@ impl crate::protobuf::account_server::Account for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -1014,17 +953,13 @@ impl crate::protobuf::account_server::Account for Service {
 
     async fn integration_instance_get(
         &self,
-        mut request: tonic::Request<crate::protobuf::IntegrationInstanceGetRequest>,
+        request: tonic::Request<crate::protobuf::IntegrationInstanceGetRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::IntegrationInstanceGetReply>,
         tonic::Status,
     > {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "account.integration_instance_get",
@@ -1034,7 +969,7 @@ impl crate::protobuf::account_server::Account for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -1076,17 +1011,13 @@ impl crate::protobuf::account_server::Account for Service {
 
     async fn integration_instance_list(
         &self,
-        mut request: tonic::Request<crate::protobuf::IntegrationInstanceListRequest>,
+        request: tonic::Request<crate::protobuf::IntegrationInstanceListRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::IntegrationInstanceListReply>,
         tonic::Status,
     > {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "account.integration_instance_list",
@@ -1096,7 +1027,7 @@ impl crate::protobuf::account_server::Account for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -1144,17 +1075,13 @@ impl crate::protobuf::account_server::Account for Service {
 
     async fn integration_service_create(
         &self,
-        mut request: tonic::Request<crate::protobuf::IntegrationServiceCreateRequest>,
+        request: tonic::Request<crate::protobuf::IntegrationServiceCreateRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::IntegrationServiceCreateReply>,
         tonic::Status,
     > {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "account.integration_service_create",
@@ -1164,7 +1091,7 @@ impl crate::protobuf::account_server::Account for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -1212,17 +1139,13 @@ impl crate::protobuf::account_server::Account for Service {
 
     async fn integration_service_get(
         &self,
-        mut request: tonic::Request<crate::protobuf::IntegrationServiceGetRequest>,
+        request: tonic::Request<crate::protobuf::IntegrationServiceGetRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::IntegrationServiceGetReply>,
         tonic::Status,
     > {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "account.integration_service_get",
@@ -1232,7 +1155,7 @@ impl crate::protobuf::account_server::Account for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -1274,17 +1197,13 @@ impl crate::protobuf::account_server::Account for Service {
 
     async fn integration_service_list(
         &self,
-        mut request: tonic::Request<crate::protobuf::IntegrationServiceListRequest>,
+        request: tonic::Request<crate::protobuf::IntegrationServiceListRequest>,
     ) -> std::result::Result<
         tonic::Response<crate::protobuf::IntegrationServiceListReply>,
         tonic::Status,
     > {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "account.integration_service_list",
@@ -1294,7 +1213,7 @@ impl crate::protobuf::account_server::Account for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -1342,14 +1261,10 @@ impl crate::protobuf::account_server::Account for Service {
 
     async fn item_get(
         &self,
-        mut request: tonic::Request<crate::protobuf::ItemGetRequest>,
+        request: tonic::Request<crate::protobuf::ItemGetRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::ItemGetReply>, tonic::Status> {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "account.item_get",
@@ -1359,7 +1274,7 @@ impl crate::protobuf::account_server::Account for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -1401,14 +1316,10 @@ impl crate::protobuf::account_server::Account for Service {
 
     async fn item_list(
         &self,
-        mut request: tonic::Request<crate::protobuf::ItemListRequest>,
+        request: tonic::Request<crate::protobuf::ItemListRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::ItemListReply>, tonic::Status> {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "account.item_list",
@@ -1418,7 +1329,7 @@ impl crate::protobuf::account_server::Account for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -1463,15 +1374,11 @@ impl crate::protobuf::account_server::Account for Service {
 
     async fn organization_create(
         &self,
-        mut request: tonic::Request<crate::protobuf::OrganizationCreateRequest>,
+        request: tonic::Request<crate::protobuf::OrganizationCreateRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::OrganizationCreateReply>, tonic::Status>
     {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "account.organization_create",
@@ -1481,7 +1388,7 @@ impl crate::protobuf::account_server::Account for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -1525,15 +1432,11 @@ impl crate::protobuf::account_server::Account for Service {
 
     async fn organization_get(
         &self,
-        mut request: tonic::Request<crate::protobuf::OrganizationGetRequest>,
+        request: tonic::Request<crate::protobuf::OrganizationGetRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::OrganizationGetReply>, tonic::Status>
     {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "account.organization_get",
@@ -1543,7 +1446,7 @@ impl crate::protobuf::account_server::Account for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -1585,15 +1488,11 @@ impl crate::protobuf::account_server::Account for Service {
 
     async fn organization_list(
         &self,
-        mut request: tonic::Request<crate::protobuf::OrganizationListRequest>,
+        request: tonic::Request<crate::protobuf::OrganizationListRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::OrganizationListReply>, tonic::Status>
     {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "account.organization_list",
@@ -1603,7 +1502,7 @@ impl crate::protobuf::account_server::Account for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -1650,14 +1549,10 @@ impl crate::protobuf::account_server::Account for Service {
 
     async fn user_create(
         &self,
-        mut request: tonic::Request<crate::protobuf::UserCreateRequest>,
+        request: tonic::Request<crate::protobuf::UserCreateRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::UserCreateReply>, tonic::Status> {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "account.user_create",
@@ -1667,7 +1562,7 @@ impl crate::protobuf::account_server::Account for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -1719,14 +1614,10 @@ impl crate::protobuf::account_server::Account for Service {
 
     async fn user_get(
         &self,
-        mut request: tonic::Request<crate::protobuf::UserGetRequest>,
+        request: tonic::Request<crate::protobuf::UserGetRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::UserGetReply>, tonic::Status> {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "account.user_get",
@@ -1736,7 +1627,7 @@ impl crate::protobuf::account_server::Account for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -1778,14 +1669,10 @@ impl crate::protobuf::account_server::Account for Service {
 
     async fn user_list(
         &self,
-        mut request: tonic::Request<crate::protobuf::UserListRequest>,
+        request: tonic::Request<crate::protobuf::UserListRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::UserListReply>, tonic::Status> {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "account.user_list",
@@ -1795,7 +1682,7 @@ impl crate::protobuf::account_server::Account for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -1840,15 +1727,11 @@ impl crate::protobuf::account_server::Account for Service {
 
     async fn user_login_internal(
         &self,
-        mut request: tonic::Request<crate::protobuf::UserLoginInternalRequest>,
+        request: tonic::Request<crate::protobuf::UserLoginInternalRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::UserLoginInternalReply>, tonic::Status>
     {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "account.user_login_internal",
@@ -1858,7 +1741,7 @@ impl crate::protobuf::account_server::Account for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -1895,15 +1778,11 @@ impl crate::protobuf::account_server::Account for Service {
 
     async fn workspace_create(
         &self,
-        mut request: tonic::Request<crate::protobuf::WorkspaceCreateRequest>,
+        request: tonic::Request<crate::protobuf::WorkspaceCreateRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::WorkspaceCreateReply>, tonic::Status>
     {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "account.workspace_create",
@@ -1913,7 +1792,7 @@ impl crate::protobuf::account_server::Account for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -1957,15 +1836,11 @@ impl crate::protobuf::account_server::Account for Service {
 
     async fn workspace_get(
         &self,
-        mut request: tonic::Request<crate::protobuf::WorkspaceGetRequest>,
+        request: tonic::Request<crate::protobuf::WorkspaceGetRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::WorkspaceGetReply>, tonic::Status>
     {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "account.workspace_get",
@@ -1975,7 +1850,7 @@ impl crate::protobuf::account_server::Account for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -2017,15 +1892,11 @@ impl crate::protobuf::account_server::Account for Service {
 
     async fn workspace_list(
         &self,
-        mut request: tonic::Request<crate::protobuf::WorkspaceListRequest>,
+        request: tonic::Request<crate::protobuf::WorkspaceListRequest>,
     ) -> std::result::Result<tonic::Response<crate::protobuf::WorkspaceListReply>, tonic::Status>
     {
-        let trace_propagator =
-            opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-        let span_context = {
-            let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-            trace_propagator.extract(&metadata_wrapper)
-        };
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
         let span = tracing::span!(
             tracing::Level::INFO,
             "account.workspace_list",
@@ -2035,7 +1906,7 @@ impl crate::protobuf::account_server::Account for Service {
             billingAccountId = tracing::field::Empty,
             http.user_agent = tracing::field::Empty,
         );
-        span.set_parent(span_context);
+        span.set_parent(&span_context);
 
         {
             let metadata = request.metadata();
@@ -2076,32 +1947,5 @@ impl crate::protobuf::account_server::Account for Service {
         }
         .instrument(span)
         .await
-    }
-}
-
-struct TonicMetaWrapper<'a>(&'a mut tonic::metadata::MetadataMap);
-
-impl<'a> opentelemetry::api::propagation::Carrier for TonicMetaWrapper<'a> {
-    fn get(&self, key: &'static str) -> Option<&str> {
-        let raw_value = self.0.get(key)?;
-        match raw_value.to_str() {
-            Ok(value) => Some(value),
-            Err(_e) => {
-                tracing::debug!("Cannot extract header for trace parent, not a string");
-                None
-            }
-        }
-    }
-
-    fn set(&mut self, key: &'static str, raw_value: String) {
-        let value = match tonic::metadata::MetadataValue::from_str(&raw_value) {
-            Ok(value) => value,
-            Err(_e) => {
-                tracing::debug!("Cannot insert header for trace parent, not a string");
-                tracing::debug!("Inserting the empty string");
-                tonic::metadata::MetadataValue::from_str("").unwrap()
-            }
-        };
-        self.0.insert(key, value);
     }
 }

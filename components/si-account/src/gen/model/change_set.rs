@@ -6,7 +6,6 @@ impl crate::protobuf::ChangeSet {
         name: Option<String>,
         display_name: Option<String>,
         note: Option<String>,
-        workspace_id: Option<String>,
         created_by_user_id: Option<String>,
         si_properties: Option<crate::protobuf::ChangeSetSiProperties>,
     ) -> si_data::Result<crate::protobuf::ChangeSet> {
@@ -59,7 +58,6 @@ impl crate::protobuf::ChangeSet {
         name: Option<String>,
         display_name: Option<String>,
         note: Option<String>,
-        workspace_id: Option<String>,
         created_by_user_id: Option<String>,
         si_properties: Option<crate::protobuf::ChangeSetSiProperties>,
     ) -> si_data::Result<crate::protobuf::ChangeSet> {
@@ -67,7 +65,6 @@ impl crate::protobuf::ChangeSet {
             name,
             display_name,
             note,
-            workspace_id,
             created_by_user_id,
             si_properties,
         )?;
