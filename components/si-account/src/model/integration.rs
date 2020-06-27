@@ -14,15 +14,26 @@ impl Integration {
                     si_properties: Some(IntegrationSiProperties { version: Some(1) }),
                     ..Default::default()
                 },
-                vec![IntegrationService {
-                    name: Some("ssh_key".to_string()),
-                    display_name: Some("SSH Key".to_string()),
-                    si_properties: Some(IntegrationServiceSiProperties {
-                        version: Some(1),
+                vec![
+                    IntegrationService {
+                        name: Some("core".to_string()),
+                        display_name: Some("Core".to_string()),
+                        si_properties: Some(IntegrationServiceSiProperties {
+                            version: Some(1),
+                            ..Default::default()
+                        }),
                         ..Default::default()
-                    }),
-                    ..Default::default()
-                }],
+                    },
+                    IntegrationService {
+                        name: Some("ssh_key".to_string()),
+                        display_name: Some("SSH Key".to_string()),
+                        si_properties: Some(IntegrationServiceSiProperties {
+                            version: Some(1),
+                            ..Default::default()
+                        }),
+                        ..Default::default()
+                    },
+                ],
             ),
             (
                 Integration {

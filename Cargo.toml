@@ -6,6 +6,7 @@ members = [
   "components/si-account",
   # "components/si-aws-eks-cluster-runtime",
   "components/si-cea",
+  "components/si-core",
   "components/si-data",
   # "components/si-external-api-gateway/rust-client",
   "components/si-kubernetes",
