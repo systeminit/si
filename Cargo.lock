@@ -2251,6 +2251,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "si-core"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "opentelemetry",
+ "opentelemetry-jaeger",
+ "prost",
+ "serde 1.0.114",
+ "si-account",
+ "si-cea",
+ "si-data",
+ "si-settings",
+ "tokio 0.2.21",
+ "tonic",
+ "tonic-build",
+ "tracing",
+ "tracing-futures",
+ "tracing-opentelemetry",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "si-data"
 version = "0.1.0"
 dependencies = [

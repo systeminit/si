@@ -2266,6 +2266,14 @@ type Mutation {
   kubernetesServiceEntitySync(input: KubernetesServiceEntitySyncRequest): KubernetesServiceEntitySyncReply
   kubernetesServiceEntityUpdate(input: KubernetesServiceEntityUpdateRequest): KubernetesServiceEntityUpdateReply
   organizationCreate(input: OrganizationCreateRequest): OrganizationCreateReply
+  serviceEntityCreate(input: ServiceEntityCreateRequest): ServiceEntityCreateReply
+  serviceEntityDelete(input: ServiceEntityDeleteRequest): ServiceEntityDeleteReply
+  serviceEntityDeploy(input: ServiceEntityDeployRequest): ServiceEntityDeployReply
+  serviceEntityImageEdit(input: ServiceEntityImageEditRequest): ServiceEntityImageEditReply
+  serviceEntityPortEdit(input: ServiceEntityPortEditRequest): ServiceEntityPortEditReply
+  serviceEntityReplicasEdit(input: ServiceEntityReplicasEditRequest): ServiceEntityReplicasEditReply
+  serviceEntitySync(input: ServiceEntitySyncRequest): ServiceEntitySyncReply
+  serviceEntityUpdate(input: ServiceEntityUpdateRequest): ServiceEntityUpdateReply
   userCreate(input: UserCreateRequest): UserCreateReply
   workspaceCreate(input: WorkspaceCreateRequest): WorkspaceCreateReply
 }
@@ -2399,11 +2407,449 @@ type Query {
   kubernetesServiceEntityList(input: KubernetesServiceEntityListRequest): KubernetesServiceEntityListReply
   organizationGet(input: OrganizationGetRequest): OrganizationGetReply
   organizationList(input: OrganizationListRequest): OrganizationListReply
+  serviceComponentGet(input: ServiceComponentGetRequest): ServiceComponentGetReply
+  serviceComponentList(input: ServiceComponentListRequest): ServiceComponentListReply
+  serviceComponentPick(input: ServiceComponentPickRequest): ServiceComponentPickReply
+  serviceEntityEventList(input: ServiceEntityEventListRequest): ServiceEntityEventListReply
+  serviceEntityGet(input: ServiceEntityGetRequest): ServiceEntityGetReply
+  serviceEntityList(input: ServiceEntityListRequest): ServiceEntityListReply
   userGet(input: UserGetRequest): UserGetReply
   userList(input: UserListRequest): UserListReply
   userLogin(input: UserLoginRequest): UserLoginReply
   workspaceGet(input: WorkspaceGetRequest): WorkspaceGetReply
   workspaceList(input: WorkspaceListRequest): WorkspaceListReply
+}
+
+type ServiceComponent {
+  """Component Constraints"""
+  constraints: ServiceComponentConstraints
+
+  """Component Description"""
+  description: String
+
+  """Service Component Display Name"""
+  displayName: String
+
+  """Service Component ID"""
+  id: ID
+
+  """Service Component Name"""
+  name: String
+
+  """SI Properties"""
+  siProperties: ComponentSiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+}
+
+type ServiceComponentConstraints {
+  """Component Display Name"""
+  componentDisplayName: String
+
+  """Component Name"""
+  componentName: String
+}
+
+input ServiceComponentConstraintsRequest {
+  """Component Display Name"""
+  componentDisplayName: String
+
+  """Component Name"""
+  componentName: String
+}
+
+"""Get a Service Component Reply"""
+type ServiceComponentGetReply {
+  """Service Component Item"""
+  item: ServiceComponent
+}
+
+"""Get a Service Component Request"""
+input ServiceComponentGetRequest {
+  """Service Component ID"""
+  id: ID!
+}
+
+"""List Service Component Reply"""
+type ServiceComponentListReply {
+  """Items"""
+  items: [ServiceComponent!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: String
+}
+
+"""List Service Component Request"""
+input ServiceComponentListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: String
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+"""Pick Component Reply"""
+type ServiceComponentPickReply {
+  """Chosen Component"""
+  component: ServiceComponent
+
+  """Implicit Constraints"""
+  implicitConstraints: ServiceComponentConstraints
+}
+
+"""Pick Component Request"""
+input ServiceComponentPickRequest {
+  """Constraints"""
+  constraints: ServiceComponentConstraintsRequest
+}
+
+type ServiceEntity {
+  associations: ServiceEntityAssociations
+
+  """Constraints"""
+  constraints: ServiceComponentConstraints
+
+  """Entity Description"""
+  description: String
+
+  """Service Entity Display Name"""
+  displayName: String
+
+  """Service Entity ID"""
+  id: ID
+
+  """Implicit Constraints"""
+  implicitConstraints: ServiceComponentConstraints
+
+  """Service Entity Name"""
+  name: String
+
+  """Properties"""
+  properties: ServiceEntityProperties
+
+  """SI Properties"""
+  siProperties: EntitySiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+}
+
+"""Service Entity Associations"""
+type ServiceEntityAssociations {
+  """System Initiative Billing Account"""
+  billingAccount: BillingAccountGetReply
+}
+
+"""Create Entity Reply"""
+type ServiceEntityCreateReply {
+  """serviceEntity Item"""
+  item: ServiceEntity
+}
+
+"""Create Entity Request"""
+input ServiceEntityCreateRequest {
+  """Change Set ID"""
+  changeSetId: String!
+
+  """Constraints"""
+  constraints: ServiceComponentConstraintsRequest
+
+  """Description"""
+  description: String!
+
+  """Display Name"""
+  displayName: String!
+
+  """Name"""
+  name: String!
+
+  """Properties"""
+  properties: ServiceEntityPropertiesRequest
+
+  """Workspace ID"""
+  workspaceId: String!
+}
+
+"""Delete Entity Reply"""
+type ServiceEntityDeleteReply {
+  """service Item"""
+  item: ServiceEntity
+}
+
+"""Delete Entity Request"""
+input ServiceEntityDeleteRequest {
+  """Change Set ID"""
+  changeSetId: String!
+
+  """serviceEntity ID"""
+  id: ID!
+}
+
+"""Deploy Reply"""
+type ServiceEntityDeployReply {
+  """Entity Event"""
+  item: ServiceEntityEvent
+}
+
+"""Deploy Request"""
+input ServiceEntityDeployRequest {
+  """Entity ID"""
+  id: ID!
+}
+
+type ServiceEntityEvent {
+  """Action Name"""
+  actionName: String
+
+  """Creation Time"""
+  createTime: String
+
+  """Error Lines"""
+  errorLines: [String!]
+
+  """Error Message"""
+  errorMessage: String
+
+  """Finalized"""
+  finalized: Boolean
+
+  """Final Time"""
+  finalTime: String
+
+  """Service EntityEvent ID"""
+  id: ID
+
+  """Input Entity"""
+  inputEntity: ServiceEntity
+
+  """Output Entity"""
+  outputEntity: ServiceEntity
+
+  """Output Lines"""
+  outputLines: [String!]
+
+  """Previous Entity"""
+  previousEntity: ServiceEntity
+
+  """SI Properties"""
+  siProperties: EntityEventSiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+
+  """success"""
+  success: Boolean
+
+  """Updated Time"""
+  updatedTime: String
+
+  """User ID"""
+  userId: String
+}
+
+"""List Service EntityEvent Reply"""
+type ServiceEntityEventListReply {
+  """Items"""
+  items: [ServiceEntityEvent!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: String
+}
+
+"""List Service EntityEvent Request"""
+input ServiceEntityEventListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: String
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+"""Get a Service Entity Reply"""
+type ServiceEntityGetReply {
+  """Service Entity Item"""
+  item: ServiceEntity
+}
+
+"""Get a Service Entity Request"""
+input ServiceEntityGetRequest {
+  """Service Entity ID"""
+  id: ID!
+}
+
+"""Edit Image Property Reply"""
+type ServiceEntityImageEditReply {
+  """Entity Event"""
+  item: ServiceEntityEvent
+}
+
+"""Edit Image Property Request"""
+input ServiceEntityImageEditRequest {
+  """Entity ID"""
+  id: ID!
+
+  """The Container Image property value"""
+  property: String
+}
+
+"""List Service Entity Reply"""
+type ServiceEntityListReply {
+  """Items"""
+  items: [ServiceEntity!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: String
+}
+
+"""List Service Entity Request"""
+input ServiceEntityListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: String
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+"""Edit Port Property Reply"""
+type ServiceEntityPortEditReply {
+  """Entity Event"""
+  item: ServiceEntityEvent
+}
+
+"""Edit Port Property Request"""
+input ServiceEntityPortEditRequest {
+  """Entity ID"""
+  id: ID!
+
+  """The Container Port property value"""
+  property: String
+}
+
+type ServiceEntityProperties {
+  """Container Image"""
+  image: String
+
+  """Container Port"""
+  port: String
+
+  """Replicas"""
+  replicas: String
+}
+
+input ServiceEntityPropertiesRequest {
+  """Container Image"""
+  image: String!
+
+  """Container Port"""
+  port: String!
+
+  """Replicas"""
+  replicas: String
+}
+
+"""Edit Replicas Property Reply"""
+type ServiceEntityReplicasEditReply {
+  """Entity Event"""
+  item: ServiceEntityEvent
+}
+
+"""Edit Replicas Property Request"""
+input ServiceEntityReplicasEditRequest {
+  """Entity ID"""
+  id: ID!
+
+  """The Replicas property value"""
+  property: String
+}
+
+"""Sync State Reply"""
+type ServiceEntitySyncReply {
+  """Entity Event"""
+  item: ServiceEntityEvent
+}
+
+"""Sync State Request"""
+input ServiceEntitySyncRequest {
+  """Entity ID"""
+  id: ID!
+}
+
+"""Update an Entity Reply"""
+type ServiceEntityUpdateReply {
+  """service Item"""
+  item: ServiceEntity
+}
+
+"""Update an Entity Request"""
+input ServiceEntityUpdateRequest {
+  """Change Set ID"""
+  changeSetId: String!
+
+  """serviceEntity ID"""
+  id: ID!
+
+  """service Item Update"""
+  update: ServiceEntityUpdateRequestUpdateRequest
+}
+
+input ServiceEntityUpdateRequestUpdateRequest {
+  """description"""
+  description: String
+
+  """displayName"""
+  displayName: String
+
+  """name"""
+  name: String
+
+  """properties"""
+  properties: ServiceEntityPropertiesRequest
 }
 
 type User {

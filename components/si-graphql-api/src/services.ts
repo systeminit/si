@@ -74,6 +74,13 @@ export const services = [
   //   address: environment.services["si-aws-eks-cluster-runtime"],
   // }),
   new ServiceDescription({
+    serviceName: "core",
+    protoPackageName: "si.core",
+    grpcServiceName: "Core",
+    graphqlTypePrefix: "",
+    address: environment.services["si-core"],
+  }),
+  new ServiceDescription({
     serviceName: "kubernetes",
     protoPackageName: "si.kubernetes",
     grpcServiceName: "Kubernetes",
