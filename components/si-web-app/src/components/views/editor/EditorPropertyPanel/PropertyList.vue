@@ -1,6 +1,9 @@
 <template>
   <div>
     <div v-if="selectedNode">
+      <div class="text-red-700" v-if="selectedNode.deleted">
+        Will be deleted!
+      </div>
       <div
         v-for="entityProperty in propertiesList"
         :key="entityProperty.path.join('-')"

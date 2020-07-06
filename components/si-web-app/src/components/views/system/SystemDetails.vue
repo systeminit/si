@@ -46,6 +46,14 @@
         </button>
         <button
           class="bg-teal-700 px-4 py-2 text-white hover:bg-teal-600"
+          @click="deleteNode()"
+          type="button"
+        >
+          delete
+        </button>
+
+        <button
+          class="bg-teal-700 px-4 py-2 text-white hover:bg-teal-600"
           @click="modeSwitch()"
           type="button"
         >
@@ -96,6 +104,10 @@ export default {
     },
     execute() {
       this.$store.dispatch("changeSet/execute");
+    },
+    deleteNode() {
+      console.log("doing delete entity");
+      this.$store.dispatch("entity/deleteEntity");
     },
     modeSwitch() {
       this.$store.dispatch("editor/modeSwitch");

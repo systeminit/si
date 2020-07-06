@@ -12,7 +12,15 @@
       <div class="flex flex-col select-none">
         <div class="flex flex-col text-white ml-1 mt-1">
           <div class="font-light text-xs">name:</div>
-          <div class="font-normal text-xs ml-2">{{ nodeObject.name }}</div>
+          <div
+            class="font-normal text-xs ml-2 text-red-700"
+            v-if="nodeObject.deleted"
+          >
+            {{ nodeObject.name }}
+          </div>
+          <div class="font-normal text-xs ml-2" v-else>
+            {{ nodeObject.name }}
+          </div>
           <span v-if="nodeObject.changeSetId" class="text-xs">
             <span class="font-light">changeSet:</span>
             <div class="ml-2">

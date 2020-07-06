@@ -30,29 +30,6 @@
     </div>
 
     <PropertyList />
-    <!--
-    <div v-if="selectedNode">
-
-      <div v-if="selectedNode.name === 'new'">
-        <div class="flex w-full h-full mt-5 overflow-auto">
-          <PropertyListCombined
-            :node="selectedNode"
-            typeName="kubernetesDeploymentEntity"
-            viewMode="create"
-          />
-        </div>
-      </div>
-
-      <div v-else>
-        <div class="flex w-full h-fullmt-5 overflow-auto">
-          <PropertyListView
-            :nodeId="selectedNode.id"
-            typeName="kubernetesDeploymentEntity"
-          />
-        </div>
-      </div>
-    </div>
-    -->
   </div>
 </template>
 
@@ -65,9 +42,6 @@ import {
   SearchIcon,
   CodeIcon,
 } from "vue-feather-icons";
-//import PropertyListView from "./viewMode/PropertyListView.vue";
-//import PropertyListCreate from "./createMode/PropertyListCreate.vue";
-//import PropertyListCombined from "./combinedMode/PropertyList.vue";
 
 import PropertyList from "./PropertyList.vue";
 
@@ -81,9 +55,6 @@ export default Vue.extend({
     SearchIcon,
     CodeIcon,
     PropertyList,
-    //PropertyListView,
-    //PropertyListCombined,
-    //PropertyListCreate,
   },
   data() {
     const propertyList = this.$store.getters["editor/propertiesList"];

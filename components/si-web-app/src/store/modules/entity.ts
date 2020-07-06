@@ -304,6 +304,51 @@ export const entity: Module<EntityStore, RootStore> = {
     },
   },
   actions: {
+    async deleteEntity({
+      commit,
+      getters,
+      rootGetters,
+      rootState,
+      dispatch,
+    }): Promise<void> {
+      const changeSetId = rootGetters["changeSet/currentId"];
+      const workspaceId = rootGetters["user/currentWorkspaceId"];
+      const selectedNodeId = rootState.editor.selectedNode?.id;
+      if (!selectedNodeId) {
+        throw new Error("Cannot delete, because no node is selected!");
+      }
+      const entityToDelete: Entity = getters["get"](selectedNodeId);
+      if (!entityToDelete?.siStorable) {
+        throw new Error(
+          "Cannot delete, because no entity for the selected node could be found",
+        );
+      }
+      const result = await graphqlMutation({
+        typeName: entityToDelete.siStorable.typeName,
+        methodName: "delete",
+        variables: {
+          id: entityToDelete.id,
+          changeSetId,
+        },
+      });
+      const entity = result["item"];
+      const addPayload: AddEntitiesToWorkspacePayload = {
+        workspaceId,
+        partial: false,
+        entities: [entity],
+      };
+      commit("add", addPayload);
+      let node = {
+        id: entity["id"],
+        name: entity["name"],
+        isEntity: true,
+        changeSetId: changeSetId,
+        deleted: true,
+      };
+      await dispatch("editor/addEditNode", entity, { root: true });
+      await dispatch("editor/addNode", node, { root: true });
+      await dispatch("editor/selectNode", node, { root: true });
+    },
     async update(
       { commit, dispatch, rootGetters },
       payload: UpdateEntityPayload,
@@ -496,6 +541,7 @@ export const entity: Module<EntityStore, RootStore> = {
               isEntity: true,
               changeSetId: entity["siStorable"]["changeSetId"],
               typeName: entity["siStorable"]["typeName"],
+              deleted: entity["siStorable"]["deleted"],
             },
             { root: true },
           );

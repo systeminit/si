@@ -132,12 +132,8 @@ export const changeSet: Module<ChangeSetStore, RootStore> = {
           },
         })
           .then((res: ChangeSetGetReply) => {
-            console.log("I got a reply", { res });
             if (res.item?.status == "CLOSED" || res.item?.status == "FAILED") {
-              console.log(`It was ${res.item.status}`);
               clearInterval(poller);
-              commit("add", { changeSets: [res.item] });
-              console.log("Dispatching a new load event");
               commit("add", { changeSets: [res.item] });
               commit("setCurrent", res.item);
               dispatch("entity/load", {}, { root: true });
