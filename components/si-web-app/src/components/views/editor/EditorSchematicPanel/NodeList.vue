@@ -1,9 +1,7 @@
 <template>
   <div id="node-list">
     <div v-for="item in nodeList" :key="item.id">
-      <div v-if="itemIsKubernetesEntity(item)">
-        <NodeObject :nodeObject="item" />
-      </div>
+      <NodeObject :nodeObject="item" />
     </div>
   </div>
 </template>
@@ -22,19 +20,6 @@ export default {
   components: {
     NodeObject,
   },
-  methods: {
-    itemIsKubernetesEntity(item) {
-      // item.id.includes("kubernetes_deployment_entity:")
-      return true;
-    },
-  },
-  data() {
-    return {
-      kubernetesDeploymentEntityList: {
-        items: [],
-      },
-    };
-  },
   computed: {
     ...mapGetters({
       nodeList: "editor/nodeList",
@@ -42,11 +27,6 @@ export default {
     //...mapState({
     //  nodeList: state => state.editor.nodeList,
     //}),
-  },
-  watch: {
-    nodeList(newState, previousState) {
-      console.log("allo");
-    },
   },
 };
 </script>

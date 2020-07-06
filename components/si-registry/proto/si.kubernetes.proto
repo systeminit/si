@@ -192,8 +192,9 @@ message KubernetesDeploymentEntityDeleteReply {
 }
 message KubernetesDeploymentEntityUpdateRequestUpdate {
   google.protobuf.StringValue name = 1001;
-  google.protobuf.StringValue description = 1002;
-  si.kubernetes.KubernetesDeploymentEntityProperties properties = 1003;
+  google.protobuf.StringValue display_name = 1002;
+  google.protobuf.StringValue description = 1003;
+  si.kubernetes.KubernetesDeploymentEntityProperties properties = 1004;
 }
 message KubernetesDeploymentEntityUpdateRequest {
   google.protobuf.StringValue id = 1001;
@@ -427,8 +428,9 @@ message KubernetesServiceEntityDeleteReply {
 }
 message KubernetesServiceEntityUpdateRequestUpdate {
   google.protobuf.StringValue name = 1001;
-  google.protobuf.StringValue description = 1002;
-  si.kubernetes.KubernetesServiceEntityProperties properties = 1003;
+  google.protobuf.StringValue display_name = 1002;
+  google.protobuf.StringValue description = 1003;
+  si.kubernetes.KubernetesServiceEntityProperties properties = 1004;
 }
 message KubernetesServiceEntityUpdateRequest {
   google.protobuf.StringValue id = 1001;

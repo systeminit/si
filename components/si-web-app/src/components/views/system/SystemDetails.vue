@@ -1,8 +1,16 @@
 <template>
   <div id="system-details" class="flex flex-col flex-no-wrap">
     <div id="system-summary" class="flex-none h-40">
+      <div>
+        <span class="text-white">
+          Saving: {{ isSaving ? "true" : "false" }}
+        </span>
+        <span v-if="editSaveError" class="text-white">
+          Save Error: {{ editSaveError.message }}
+        </span>
+      </div>
       <span class="text-white">
-        System: {{ systemName }} ChangeSet: {{ changeSet.name }} Status:
+        Mode: {{ mode }} System: {{ systemName }} Change Set Status:
         {{ changeSet.status }} Change Sets:
         <select
           label="Change Sets"
@@ -15,7 +23,7 @@
             :key="changeSet.id"
             :value="changeSet.id"
           >
-            {{ changeSet.name }}
+            {{ changeSet.name }} ({{ changeSet.status }})
           </option>
         </select>
       </span>
@@ -23,10 +31,30 @@
       <div class="flex flex-row-reverse pr-8 pb-4">
         <button
           class="bg-teal-700 px-4 py-2 text-white hover:bg-teal-600"
+          @click="createChangeSet()"
+          type="button"
+        >
+          new changeSet
+        </button>
+
+        <button
+          class="bg-teal-700 px-4 py-2 text-white hover:bg-teal-600"
           @click="execute()"
           type="button"
         >
           execute
+        </button>
+        <button
+          class="bg-teal-700 px-4 py-2 text-white hover:bg-teal-600"
+          @click="modeSwitch()"
+          type="button"
+        >
+          <template v-if="mode == 'view'">
+            edit
+          </template>
+          <template v-else>
+            view
+          </template>
         </button>
       </div>
     </div>
@@ -52,19 +80,25 @@ export default {
       systemName: "demo",
     };
   },
+  async created() {
+    await this.$store.dispatch("changeSet/load");
+    await this.$store.dispatch("entity/load");
+  },
   async mounted() {
     // This will work for now; but I can already feel you want to actually just
     // document the dispatch behavior as internal application state, so it is always
     // "just" updating.
     await this.$store.dispatch("changeSet/load");
-    if (!this.$store.state.changeSet.current) {
-      await this.$store.dispatch("changeSet/createDefault");
-    }
-    await this.$store.dispatch("entity/load");
   },
   methods: {
+    createChangeSet() {
+      this.$store.dispatch("changeSet/createDefault");
+    },
     execute() {
       this.$store.dispatch("changeSet/execute");
+    },
+    modeSwitch() {
+      this.$store.dispatch("editor/modeSwitch");
     },
   },
   computed: {
@@ -81,6 +115,9 @@ export default {
       selectedNode: state => state.editor.selectedNode,
       changeSet: state => state.changeSet.current || {},
       changeSets: state => state.changeSet.changeSets,
+      mode: state => state.editor.mode,
+      isSaving: state => state.editor.isSaving,
+      editSaveError: state => state.editor.editSaveError,
     }),
   },
 };

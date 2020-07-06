@@ -406,37 +406,65 @@ impl si_data::Storable for crate::protobuf::KubernetesServiceEntityEvent {
         Ok(())
     }
 
+    // How this should work:
+    //
+    //  * Do we have an ID?
+    //      * Are we in a change set?
+    //          * Update the order
+    //          * Set the new ID
+    //      * keep the current ID
+    //  * We don't have an ID
+    //      * Generate a new real object id
+    //          * Set the item ID to it
+    //      * Make the change-set id, and set that as the real one.
+    //
+    // This needs to possibly error now!
     fn generate_id(&mut self) {
-        let mut id = format!("{}:{}", Self::type_name(), si_data::uuid_string(),);
-        if self.si_storable.is_some() {
-            if self.si_storable.as_ref().unwrap().change_set_id.is_some() {
-                if self
+        if let Ok(_current_id) = self.id() {
+            if let Some(change_set_id) = self
+                .si_storable
+                .as_ref()
+                .map(|si_storable| si_storable.change_set_id.as_ref())
+                .flatten()
+            {
+                let real_id = self
                     .si_storable
                     .as_ref()
-                    .unwrap()
-                    .change_set_entry_count
-                    .is_some()
-                {
-                    self.si_storable.as_mut().unwrap().item_id = Some(id.clone());
-                    id = format!(
-                        "{}:{}:{}",
-                        self.si_storable
-                            .as_ref()
-                            .unwrap()
-                            .change_set_id
-                            .as_ref()
-                            .unwrap(),
-                        self.si_storable
-                            .as_ref()
-                            .unwrap()
-                            .change_set_entry_count
-                            .unwrap(),
-                        id
-                    );
-                }
+                    .map(|si_storable| si_storable.item_id.as_ref())
+                    .flatten()
+                    .expect("must have a real item_id");
+                let change_set_entry_count = self
+                    .si_storable
+                    .as_ref()
+                    .map(|si_storable| si_storable.change_set_entry_count.as_ref())
+                    .flatten()
+                    .expect("must have a change_set_entry_count");
+                let new_id = format!("{}:{}:{}", change_set_id, change_set_entry_count, real_id);
+                self.set_id(new_id);
+            }
+        } else {
+            let real_id = format!("{}:{}", Self::type_name(), si_data::uuid_string(),);
+            self.si_storable
+                .as_mut()
+                .map(|si_storable| si_storable.item_id = Some(real_id.clone()));
+            if let Some(change_set_id) = self
+                .si_storable
+                .as_ref()
+                .map(|si_storable| si_storable.change_set_id.as_ref())
+                .flatten()
+            {
+                let change_set_entry_count = self
+                    .si_storable
+                    .as_ref()
+                    .map(|si_storable| si_storable.change_set_entry_count.as_ref())
+                    .flatten()
+                    .expect("must have a change_set_entry_count");
+                let new_id = format!("{}:{}:{}", change_set_id, change_set_entry_count, real_id);
+                self.set_id(new_id);
+            } else {
+                self.set_id(real_id);
             }
         }
-        self.set_id(id);
     }
 
     fn natural_key(&self) -> si_data::Result<Option<&str>> {

@@ -4,12 +4,13 @@ import { Store } from "vuex";
 import VuexPersistence from "vuex-persist";
 import Cookies from "js-cookie";
 // @ts-ignore
-import editor from "./modules/editor";
+import { editor, EditorStore } from "./modules/editor";
 // @ts-ignore
 import applications from "./modules/applications";
 import { entity, EntityStore } from "./modules/entity";
 import { user, UserStore } from "./modules/user";
 import { changeSet, ChangeSetStore } from "./modules/changeSet";
+import { persistEdits } from "./plugins/persistEdits";
 
 Vue.use(Vuex);
 
@@ -31,11 +32,7 @@ const vuexLocal = new VuexPersistence({
 });
 
 export interface RootStore {
-  editor: {
-    selectedNodeId: string;
-    selectedNode: {};
-    nodeList: any[];
-  };
+  editor: EditorStore;
   applications: {
     applicationList: any[];
   };
@@ -46,6 +43,7 @@ export interface RootStore {
 }
 
 const store: Store<RootStore> = new Vuex.Store({
+  // @ts-ignore - we know its incomplete, but it isn't really
   state: {
     version: "1",
   },
@@ -57,7 +55,7 @@ const store: Store<RootStore> = new Vuex.Store({
     changeSet,
   },
   strict: debug,
-  plugins: [vuexCookie.plugin, vuexLocal.plugin],
+  plugins: [vuexCookie.plugin, vuexLocal.plugin, persistEdits],
 });
 
 export default store;

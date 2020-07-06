@@ -29,12 +29,16 @@
       </div>
     </div>
 
+    <PropertyList />
+    <!--
     <div v-if="selectedNode">
+
       <div v-if="selectedNode.name === 'new'">
         <div class="flex w-full h-full mt-5 overflow-auto">
-          <PropertyListCreate
+          <PropertyListCombined
             :node="selectedNode"
             typeName="kubernetesDeploymentEntity"
+            viewMode="create"
           />
         </div>
       </div>
@@ -48,10 +52,12 @@
         </div>
       </div>
     </div>
+    -->
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import Vue from "vue";
 import {
   Maximize2Icon,
   SettingsIcon,
@@ -59,34 +65,33 @@ import {
   SearchIcon,
   CodeIcon,
 } from "vue-feather-icons";
-import PropertyListView from "./viewMode/PropertyListView.vue";
-import PropertyListCreate from "./createMode/PropertyListCreate.vue";
+//import PropertyListView from "./viewMode/PropertyListView.vue";
+//import PropertyListCreate from "./createMode/PropertyListCreate.vue";
+//import PropertyListCombined from "./combinedMode/PropertyList.vue";
+
+import PropertyList from "./PropertyList.vue";
 
 import { mapState, mapActions } from "vuex";
 
-export default {
+export default Vue.extend({
   name: "EditorPropertyPanel",
   components: {
     Maximize2Icon,
     FilterIcon,
     SearchIcon,
     CodeIcon,
-    PropertyListView,
-    PropertyListCreate,
+    PropertyList,
+    //PropertyListView,
+    //PropertyListCombined,
+    //PropertyListCreate,
   },
   data() {
-    return {
-      // selectedNode: {}
-      // selectedNode
-    };
+    const propertyList = this.$store.getters["editor/propertiesList"];
+    console.log("You have propertiesList", { propertyList });
+    return {};
   },
-  // watch: {
-  //   selectedNode (newState, previousState) {
-  //     this.selectedNode = newState
-  //   }
-  // },
   methods: {
-    maximizePanel() {
+    maximizePanel(): void {
       this.$emit("maximizePanelMsg", {
         panel: {
           id: "property",
@@ -95,9 +100,9 @@ export default {
     },
   },
   computed: mapState({
-    selectedNode: state => state.editor.selectedNode,
+    selectedNode: (state: any): any => state.editor.selectedNode,
   }),
-};
+});
 </script>
 
 <style scoped>

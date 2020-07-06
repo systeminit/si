@@ -9,6 +9,7 @@ import {
   ComponentAndEntityObjectConstructor,
 } from "./systemComponent";
 import { Props } from "./attrList";
+import { camelCase } from "change-case";
 
 export interface PropLookup {
   typeName: string;
@@ -23,7 +24,7 @@ export class Registry {
   }
 
   get(typeName: string): ObjectTypes {
-    const result = this.objects.find(v => v.typeName == typeName);
+    const result = this.objects.find(v => v.typeName == camelCase(typeName));
     if (result) {
       return result;
     } else {

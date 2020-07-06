@@ -24,7 +24,9 @@ if (process.env.NODE_ENV === "production") {
   httpEndpoint = "https://graphql.systeminit.com/graphql";
 }
 
-const cache = new InMemoryCache();
+const cache = new InMemoryCache({
+  addTypename: false,
+});
 
 const httpLink = new HttpLink({
   uri: httpEndpoint,
@@ -157,6 +159,21 @@ export async function graphqlQuery(
     methodName: args.methodName,
     data: rawResults,
   });
+}
+
+// This function appears courtesy of Stack Overflow:
+//
+// https://stackoverflow.com/questions/286141/remove-blank-attributes-from-an-object-in-javascript
+function removeEmptyData(obj: any): any {
+  return Object.keys(obj)
+    .filter(k => obj[k] != null) // Remove undef. and null.
+    .reduce(
+      (newObj, k) =>
+        typeof obj[k] === "object"
+          ? { ...newObj, [k]: removeEmptyData(obj[k]) } // Recurse.
+          : { ...newObj, [k]: obj[k] }, // Copy value.
+      {},
+    );
 }
 
 export async function graphqlMutation(

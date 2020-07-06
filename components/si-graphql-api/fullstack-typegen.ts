@@ -236,6 +236,7 @@ export interface NexusGenInputs {
   }
   KubernetesDeploymentEntityUpdateRequestUpdateRequest: { // input type
     description?: string | null; // String
+    displayName?: string | null; // String
     name?: string | null; // String
     properties?: NexusGenInputs['KubernetesDeploymentEntityPropertiesRequest'] | null; // KubernetesDeploymentEntityPropertiesRequest
   }
@@ -366,6 +367,7 @@ export interface NexusGenInputs {
   }
   KubernetesServiceEntityUpdateRequestUpdateRequest: { // input type
     description?: string | null; // String
+    displayName?: string | null; // String
     name?: string | null; // String
     properties?: NexusGenInputs['KubernetesServiceEntityPropertiesRequest'] | null; // KubernetesServiceEntityPropertiesRequest
   }

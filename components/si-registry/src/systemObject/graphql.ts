@@ -116,7 +116,11 @@ export class SiGraphql {
     return variablesObjectForProperty(request, true);
   }
 
-  graphqlTypeName(prop: Props, inputType?: boolean): string {
+  graphqlTypeName(
+    prop: Props,
+    inputType?: boolean,
+    linkProp?: PropLink,
+  ): string {
     let result = "";
     if (prop.kind() == "object" || prop.kind() == "enum") {
       let request = "";
@@ -142,12 +146,20 @@ export class SiGraphql {
     } else if (prop.kind() == "link") {
       const linkProp = prop as PropLink;
       const realProp = linkProp.lookupMyself();
-      return this.graphqlTypeName(realProp, inputType);
+      return this.graphqlTypeName(realProp, inputType, linkProp);
     }
-    if (prop.required) {
-      return `${result}!`;
+    if (linkProp) {
+      if (linkProp.required) {
+        return `${result}!`;
+      } else {
+        return result;
+      }
     } else {
-      return result;
+      if (prop.required) {
+        return `${result}!`;
+      } else {
+        return result;
+      }
     }
   }
 
@@ -301,7 +313,6 @@ export class SiGraphql {
     )}) { ${methodName}(input: { ${inputVariables.join(
       ", ",
     )} }) { ${fieldList} } }`;
-    console.log(resultString);
     return gql`
       ${resultString}
     `;
