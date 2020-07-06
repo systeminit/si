@@ -810,21 +810,36 @@ impl Db {
                             )
                     }
                 } else {
-                    // No filters or change set id, but a query was provided - it must have items to
-                    // complete
-                    format!(
-                        "SELECT a.* \
+                    if q.items.is_empty() {
+                        // No filters or change set id, and no query was provided
+                        format!(
+                            "SELECT a.* \
+                               FROM `{bucket}` AS a \
+                               WHERE a.{type_check} \
+                                 AND a.siStorable.changeSetId IS NOT VALUED \
+                                 AND ARRAY_CONTAINS(a.siStorable.tenantIds, $tenant_id) \
+                                 ORDER BY a.[$order_by] {order_by_direction}",
+                            order_by_direction = order_by_direction.to_string(),
+                            bucket = self.bucket_name,
+                            type_check = type_check,
+                        )
+                    } else {
+                        // No filters or change set id, but a query was provided - it must have items to
+                        // complete
+                        format!(
+                            "SELECT a.* \
                                FROM `{bucket}` AS a \
                                WHERE a.{type_check} \
                                  AND a.siStorable.changeSetId IS NOT VALUED \
                                  AND ARRAY_CONTAINS(a.siStorable.tenantIds, $tenant_id) \
                                  AND {query} \
                                  ORDER BY a.[$order_by] {order_by_direction}",
-                        query = q.as_n1ql("a")?,
-                        order_by_direction = order_by_direction.to_string(),
-                        bucket = self.bucket_name,
-                        type_check = type_check,
-                    )
+                            query = q.as_n1ql("a")?,
+                            order_by_direction = order_by_direction.to_string(),
+                            bucket = self.bucket_name,
+                            type_check = type_check,
+                        )
+                    }
                 }
             }
             None => format!(
