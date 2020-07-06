@@ -1,6 +1,4 @@
-use si_cea::EntityEvent;
-
-let auth = <%- fmt.implServiceAuth(propMethod) %>
+<%- fmt.implServiceAuth(propMethod) %>
 
 let inner = request.into_inner();
 <%- fmt.implServiceMethodCreateDestructure() %>
@@ -38,13 +36,6 @@ let entity = <%- fmt.structName() %>::create(
     Some(si_properties),
     change_set_id,
 ).await?;
-//let entity_event = <%- fmt.entityEventName() %>::create(
-//    &self.db,
-//    auth.user_id(),
-//    "create",
-//    &entity,
-//).await?;
-//self.agent.dispatch(&entity_event).await?;
 
 Ok(tonic::Response::new(
      <%- fmt.implServiceReplyType(propMethod, { option: false, reference: false }) %> {

@@ -1,14 +1,11 @@
-use futures::stream::StreamExt;
-
-use crate::change_set_agent::client::{ChangeSetAgentClient, ChangeSetAgentClientError};
+use crate::change_set_agent::client::ChangeSetAgentClientError;
 use crate::error::{AccountError, Result};
 pub use crate::protobuf::{
     ChangeSet, ChangeSetExecuteReply, ChangeSetExecuteRequest, ChangeSetStatus, Item,
 };
-
-use si_data::{DataError, DataStorableChangeSetEventType, Db, Storable};
-
-use tracing::{debug, info_span, span};
+use futures::stream::StreamExt;
+use si_data::{DataError, DataStorableChangeSetEventType, Db};
+use tracing::{debug, info_span};
 use tracing_futures::Instrument as _;
 
 // TODO: We should switch from doing associations through the item lookup, and instead

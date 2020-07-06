@@ -4,13 +4,13 @@ debug = true
 [workspace]
 members = [
   "components/si-account",
-  "components/si-aws-eks-cluster-runtime",
+  # "components/si-aws-eks-cluster-runtime",
   "components/si-cea",
   "components/si-data",
-  "components/si-external-api-gateway/rust-client",
+  # "components/si-external-api-gateway/rust-client",
   "components/si-kubernetes",
   "components/si-settings",
-  "components/si-ssh-key",
+  # "components/si-ssh-key",
   "vendor/couchbase-rs/couchbase",
   "vendor/couchbase-rs/couchbase-sys",
 ]

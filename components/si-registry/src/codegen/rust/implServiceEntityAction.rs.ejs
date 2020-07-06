@@ -13,9 +13,6 @@ let entity_event = <%- fmt.entityEventName() %>::create(
     &entity
 ).await?;
 
-// You belong to execute now, homie
-//self.agent.dispatch(&entity_event).await?;
-
 Ok(tonic::Response::new(
     <%- fmt.implServiceReplyType(propMethod, { option: false, reference: false }) %> {
         item: Some(entity_event),

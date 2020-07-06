@@ -1,5 +1,5 @@
 use futures::compat::Future01CompatExt;
-use paho_mqtt::{AsyncClient, AsyncClientBuilder, ConnectOptions, MqttError};
+use paho_mqtt::{AsyncClient, AsyncClientBuilder, ConnectOptions, MqttError, ServerResponse};
 use std::fmt;
 use std::ops::{Deref, DerefMut};
 use std::result;
@@ -18,7 +18,7 @@ impl MqttClient {
         }
     }
 
-    pub async fn default_connect(&self) -> result::Result<(String, i32, bool), MqttError> {
+    pub async fn default_connect(&self) -> result::Result<ServerResponse, MqttError> {
         self.inner.connect(ConnectOptions::new()).compat().await
     }
 }

@@ -12,63 +12,22 @@ edition = "2018"
 [dependencies]
 anyhow = "1.0"
 async-trait = "0.1"
-
-# Tonic Deps
-tonic = "0.1"
-bytes = "0.5"
+opentelemetry = { version = "0.6", features = ["tonic"] }
+opentelemetry-jaeger = "0.5"
 prost = "0.6"
-prost-derive = "0.6"
-prost-types = "0.6"
-tokio = { version = "0.2", features = ["full"] }
-futures = { version = "0.3", features = ["alloc", "compat"]}
-async-stream = "0.2"
-http = "0.2"
-tower = "0.3"
-
-# Serde
 serde = { version = "1.0.104", features = ["derive"] }
-serde_json = "1.0"
 serde_yaml = "0.8"
-#yaml_rust = "0.4"
-
-# Couchbase
-couchbase = { path = "../../vendor/couchbase-rs/couchbase" }
-
-# Tracing
-tracing = "0.1"
-tracing-futures = { version = "0.2", features = ["tokio", "std-future"] }
-tracing-subscriber = "0.2.0-alpha.2"
-thiserror = "1.0"
-config = { version = "0.9.3", features = [ "toml" ] }
-sodiumoxide = "0.2"
-toml = "0.5"
-serde_cbor = "0.10"
-base64 = "0.10.1"
-names = "0.11"
-tempfile = "3.1"
-
-# MQTT
-paho-mqtt = "0.6"
-
-# Time
-chrono = { version = "0.4", features = ["serde"] }
-
-# Local Deps
-si-settings = { path = "../si-settings" }
-si-data = { path = "../si-data" }
 si-account = { path = "../si-account" }
 si-cea = { path = "../si-cea" }
-si-external-api-gateway = { path = "../si-external-api-gateway/rust-client" }
-
-tracing-opentelemetry = "0.3"
-opentelemetry = "0.4"
-opentelemetry-jaeger = "0.3"
-
-[dev-dependencies]
-lazy_static = "1.4"
+si-data = { path = "../si-data" }
+si-settings = { path = "../si-settings" }
+thiserror = "1.0"
+tokio = { version = "0.2", features = ["full"] }
+tonic = "0.2"
+tracing = "0.1"
+tracing-futures = { version = "0.2", features = ["tokio", "std-future"] }
+tracing-opentelemetry = "0.5"
 tracing-subscriber = "0.2.0-alpha.2"
-tracing-opentelemetry = "0.1.0"
-opentelemetry = "0.1"
 
 [build-dependencies]
-tonic-build = "0.1"
+tonic-build = "0.2"

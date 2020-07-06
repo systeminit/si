@@ -2,7 +2,6 @@ use crate::entity_event::EntityEvent;
 use crate::{CeaResult, MqttClient};
 use futures::compat::{Future01CompatExt, Stream01CompatExt};
 use futures::StreamExt;
-//use prost::Message;
 use si_data::{uuid_string, Db};
 use si_settings::Settings;
 use tracing::debug;
@@ -59,7 +58,12 @@ impl AgentFinalizer {
         // Whats the right value? Who knows? God only knows. Ask the Beach Boys.
         let mut rx = self.mqtt.get_stream(1000).compat();
         println!("Finalizer connecting to the MQTT server...");
-        let (server_uri, ver, session_present) = self.mqtt.default_connect().await?;
+        let (server_uri, ver, session_present) = self
+            .mqtt
+            .default_connect()
+            .await?
+            .connect_response()
+            .expect("should contain a connection response");
         // Make the connection to the broker
         println!("Connected to: '{}' with MQTT version {}", server_uri, ver);
         if !session_present {

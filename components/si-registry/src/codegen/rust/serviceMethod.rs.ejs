@@ -1,13 +1,9 @@
 async fn <%- fmt.implServiceMethodName(propMethod) %>(
     &self,
-    mut request: tonic::Request<<%- fmt.implServiceRequestType(propMethod, { option: false, reference: false }) %>>,
+    request: tonic::Request<<%- fmt.implServiceRequestType(propMethod, { option: false, reference: false }) %>>,
     ) -> std::result::Result<tonic::Response<<%- fmt.implServiceReplyType(propMethod, { option: false, reference: false }) %>>, tonic::Status> {
-    let trace_propagator =
-      opentelemetry::api::trace::trace_context_propagator::TraceContextPropagator::new();
-    let span_context = {
-      let metadata_wrapper = TonicMetaWrapper(request.metadata_mut());
-        trace_propagator.extract(&metadata_wrapper)
-    };
+    let span_context =
+        opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
     let span = tracing::span!(
       tracing::Level::INFO,
       "<%- fmt.implServiceTraceName(propMethod) %>",
@@ -17,7 +13,7 @@ async fn <%- fmt.implServiceMethodName(propMethod) %>(
       billingAccountId = tracing::field::Empty,
       http.user_agent = tracing::field::Empty,
     );
-    span.set_parent(span_context);
+    span.set_parent(&span_context);
 
     {
         let metadata = request.metadata();

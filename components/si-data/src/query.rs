@@ -472,6 +472,7 @@ mod query_test {
                         ],
                         boolean_term: DataQueryBooleanTerm::Or as i32,
                         is_not: Some(true),
+                        ..Default::default()
                     }),
                     ..Default::default()
                 },
