@@ -19,17 +19,20 @@ export class Node {
   name: string;
   status: boolean;
   changeSetId: string;
+  deleted: boolean;
 
   constructor(
     nodeId: Node["id"],
     nodeName: Node["name"],
     isEntity: Node["status"],
     changeSetId: Node["changeSetId"],
+    deleted: Node["deleted"],
   ) {
     this.id = nodeId;
     this.name = nodeName;
     this.status = isEntity; // bool
     this.changeSetId = changeSetId;
+    this.deleted = deleted || false;
   }
 }
 
@@ -92,7 +95,7 @@ export const editor: Module<EditorStore, RootStore> = {
         currentChangeSetId = rootGetters["changeSet/currentId"];
       } catch (err) {
         // Not logged in, or not in a changeSet!
-        return state.nodeList;
+        return _.filter(state.nodeList, ["deleted", false]);
       }
       if (currentChangeSetId) {
         // Collect all the nodes in our changeset, keeping only the one with the latest change set entry
@@ -125,13 +128,17 @@ export const editor: Module<EditorStore, RootStore> = {
           nodeList.push(meta.node);
         }
         for (const node of state.nodeList) {
-          if (!latestChangeSetNodes[node.id] && !node.changeSetId) {
+          if (
+            !latestChangeSetNodes[node.id] &&
+            !node.changeSetId &&
+            !node.deleted
+          ) {
             nodeList.push(node);
           }
         }
         return nodeList;
       } else {
-        return state.nodeList;
+        return _.filter(state.nodeList, ["deleted", false]);
       }
     },
   },
@@ -174,6 +181,7 @@ export const editor: Module<EditorStore, RootStore> = {
         payload.name,
         payload.isEntity,
         payload.changeSetId,
+        payload.deleted || false,
       );
       commit("addToNodeList", nodeObject);
     },
