@@ -50,7 +50,7 @@ type ApplicationComponentGetReply {
 """Get a A System Initiative Application Component Request"""
 input ApplicationComponentGetRequest {
   """A System Initiative Application Component ID"""
-  id: ID!
+  id: ID
 }
 
 """List A System Initiative Application Component Reply"""
@@ -139,25 +139,25 @@ type ApplicationEntityCreateReply {
 """Create Entity Request"""
 input ApplicationEntityCreateRequest {
   """Change Set ID"""
-  changeSetId: String!
+  changeSetId: String
 
   """Constraints"""
   constraints: ApplicationComponentConstraintsRequest
 
   """Description"""
-  description: String!
+  description: String
 
   """Display Name"""
-  displayName: String!
+  displayName: String
 
   """Name"""
-  name: String!
+  name: String
 
   """Properties"""
   properties: ApplicationEntityPropertiesRequest
 
   """Workspace ID"""
-  workspaceId: String!
+  workspaceId: String
 }
 
 """Delete Entity Reply"""
@@ -169,10 +169,10 @@ type ApplicationEntityDeleteReply {
 """Delete Entity Request"""
 input ApplicationEntityDeleteRequest {
   """Change Set ID"""
-  changeSetId: String!
+  changeSetId: String
 
   """applicationEntity ID"""
-  id: ID!
+  id: ID
 }
 
 type ApplicationEntityEvent {
@@ -267,7 +267,7 @@ type ApplicationEntityGetReply {
 """Get a A System Initiative Application Entity Request"""
 input ApplicationEntityGetRequest {
   """A System Initiative Application Entity ID"""
-  id: ID!
+  id: ID
 }
 
 """List A System Initiative Application Entity Reply"""
@@ -312,7 +312,7 @@ type ApplicationEntityPhantomEditReply {
 """Edit Phantom Property Request"""
 input ApplicationEntityPhantomEditRequest {
   """Entity ID"""
-  id: ID!
+  id: ID
 
   """The Phantom Data property value"""
   property: Boolean
@@ -337,7 +337,7 @@ type ApplicationEntitySyncReply {
 """Sync State Request"""
 input ApplicationEntitySyncRequest {
   """Entity ID"""
-  id: ID!
+  id: ID
 }
 
 """Update an Entity Reply"""
@@ -349,10 +349,10 @@ type ApplicationEntityUpdateReply {
 """Update an Entity Request"""
 input ApplicationEntityUpdateRequest {
   """Change Set ID"""
-  changeSetId: String!
+  changeSetId: String
 
   """applicationEntity ID"""
-  id: ID!
+  id: ID
 
   """application Item Update"""
   update: ApplicationEntityUpdateRequestUpdateRequest
@@ -412,7 +412,7 @@ type BillingAccountGetReply {
 """Get a System Initiative Billing Account Request"""
 input BillingAccountGetRequest {
   """System Initiative Billing Account ID"""
-  id: ID!
+  id: ID
 }
 
 """List System Initiative Billing Account Reply"""
@@ -460,32 +460,32 @@ type BillingAccountSignupReply {
 """Create a Billing Account and Administrative User Request"""
 input BillingAccountSignupRequest {
   """Billing Account Information"""
-  billingAccount: BillingAccountSignupRequestBillingAccountRequest!
+  billingAccount: BillingAccountSignupRequestBillingAccountRequest
 
   """User Information"""
-  user: BillingAccountSignupRequestUserRequest!
+  user: BillingAccountSignupRequestUserRequest
 }
 
 input BillingAccountSignupRequestBillingAccountRequest {
   """Billing Account Display Name"""
-  displayName: String!
+  displayName: String
 
   """Billing Account Name"""
-  name: String!
+  name: String
 }
 
 input BillingAccountSignupRequestUserRequest {
   """User Display Name"""
-  displayName: String!
+  displayName: String
 
   """A valid email address"""
-  email: String!
+  email: String
 
   """User Name"""
-  name: String!
+  name: String
 
   """The users password hash"""
-  password: String!
+  password: String
 }
 
 type Capability {
@@ -498,10 +498,10 @@ type Capability {
 
 input CapabilityRequest {
   """The actions this capability allows"""
-  actions: [String!]!
+  actions: [String!]
 
   """The object the capability applies to"""
-  subject: String!
+  subject: String
 }
 
 type ChangeSet {
@@ -559,19 +559,19 @@ type ChangeSetCreateReply {
 """Create a Change Set Request"""
 input ChangeSetCreateRequest {
   """User ID who created this Change Set"""
-  createdByUserId: String!
+  createdByUserId: String
 
   """Display Name"""
   displayName: String
 
   """Name"""
-  name: String!
+  name: String
 
   """Note"""
   note: String
 
   """Workspace ID"""
-  workspaceId: String!
+  workspaceId: String
 }
 
 """Execute a Change Set Reply"""
@@ -583,7 +583,7 @@ type ChangeSetExecuteReply {
 """Execute a Change Set Request"""
 input ChangeSetExecuteRequest {
   """Change Set ID"""
-  id: ID!
+  id: ID
 }
 
 """Get a A change set for your system Reply"""
@@ -595,7 +595,7 @@ type ChangeSetGetReply {
 """Get a A change set for your system Request"""
 input ChangeSetGetRequest {
   """A change set for your system ID"""
-  id: ID!
+  id: ID
 }
 
 """List A change set for your system Reply"""
@@ -758,13 +758,13 @@ input DataQueryItemsExpressionRequest {
   comparison: DataQueryItemsExpressionComparison
 
   """Field"""
-  field: String!
+  field: String
 
   """Query Field Type"""
   fieldType: DataQueryItemsExpressionFieldType
 
   """Value"""
-  value: String!
+  value: String
 }
 
 input DataQueryItemsRequest {
@@ -928,13 +928,13 @@ input GroupCreateRequest {
   capabilities: [CapabilityRequest!]
 
   """Group Display Name"""
-  displayName: String!
+  displayName: String
 
   """Group Name"""
-  name: String!
+  name: String
 
   """The SI Properties for this User"""
-  siProperties: GroupSiPropertiesRequest!
+  siProperties: GroupSiPropertiesRequest
 
   """Group user IDs"""
   userIds: [String!]
@@ -949,7 +949,7 @@ type GroupGetReply {
 """Get a A System Initiative User Group Request"""
 input GroupGetRequest {
   """A System Initiative User Group ID"""
-  id: ID!
+  id: ID
 }
 
 """List A System Initiative User Group Reply"""
@@ -992,7 +992,7 @@ type GroupSiProperties {
 
 input GroupSiPropertiesRequest {
   """Billing Account ID"""
-  billingAccountId: String!
+  billingAccountId: String
 }
 
 type Integration {
@@ -1035,7 +1035,7 @@ type IntegrationGetReply {
 """Get a An integration with another system Request"""
 input IntegrationGetRequest {
   """An integration with another system ID"""
-  id: ID!
+  id: ID
 }
 
 type IntegrationInstance {
@@ -1084,7 +1084,7 @@ type IntegrationInstanceGetReply {
 """Get a An instance of an integration with another system Request"""
 input IntegrationInstanceGetRequest {
   """An instance of an integration with another system ID"""
-  id: ID!
+  id: ID
 }
 
 """List An instance of an integration with another system Reply"""
@@ -1230,7 +1230,7 @@ type IntegrationServiceGetReply {
 """Get a An service within an integration Request"""
 input IntegrationServiceGetRequest {
   """An service within an integration ID"""
-  id: ID!
+  id: ID
 }
 
 type IntegrationServiceSiProperties {
@@ -1286,7 +1286,7 @@ type ItemGetReply {
 """Get an Item Request"""
 input ItemGetRequest {
   """Item ID"""
-  id: ID!
+  id: ID
 }
 
 """List Items Reply"""
@@ -1446,7 +1446,7 @@ type KubernetesDeploymentComponentGetReply {
 """Get a Kubernetes Deployment Object Component Request"""
 input KubernetesDeploymentComponentGetRequest {
   """Kubernetes Deployment Object Component ID"""
-  id: ID!
+  id: ID
 }
 
 """List Kubernetes Deployment Object Component Reply"""
@@ -1537,7 +1537,7 @@ type KubernetesDeploymentEntityApplyReply {
 """Apply Request"""
 input KubernetesDeploymentEntityApplyRequest {
   """Entity ID"""
-  id: ID!
+  id: ID
 }
 
 """Kubernetes Deployment Object Entity Associations"""
@@ -1555,25 +1555,25 @@ type KubernetesDeploymentEntityCreateReply {
 """Create Entity Request"""
 input KubernetesDeploymentEntityCreateRequest {
   """Change Set ID"""
-  changeSetId: String!
+  changeSetId: String
 
   """Constraints"""
   constraints: KubernetesDeploymentComponentConstraintsRequest
 
   """Description"""
-  description: String!
+  description: String
 
   """Display Name"""
-  displayName: String!
+  displayName: String
 
   """Name"""
-  name: String!
+  name: String
 
   """Properties"""
   properties: KubernetesDeploymentEntityPropertiesRequest
 
   """Workspace ID"""
-  workspaceId: String!
+  workspaceId: String
 }
 
 """Delete Entity Reply"""
@@ -1585,10 +1585,10 @@ type KubernetesDeploymentEntityDeleteReply {
 """Delete Entity Request"""
 input KubernetesDeploymentEntityDeleteRequest {
   """Change Set ID"""
-  changeSetId: String!
+  changeSetId: String
 
   """kubernetesDeploymentEntity ID"""
-  id: ID!
+  id: ID
 }
 
 type KubernetesDeploymentEntityEvent {
@@ -1683,7 +1683,7 @@ type KubernetesDeploymentEntityGetReply {
 """Get a Kubernetes Deployment Object Entity Request"""
 input KubernetesDeploymentEntityGetRequest {
   """Kubernetes Deployment Object Entity ID"""
-  id: ID!
+  id: ID
 }
 
 """
@@ -1699,7 +1699,7 @@ Edit kubernetesDeploymentEntityPropertiesKubernetesObject Property Request
 """
 input KubernetesDeploymentEntityKubernetesObjectEditRequest {
   """Entity ID"""
-  id: ID!
+  id: ID
 
   """The Kubernetes Object property value"""
   property: KubernetesDeploymentEntityPropertiesKubernetesObjectRequest
@@ -1714,7 +1714,7 @@ type KubernetesDeploymentEntityKubernetesObjectYamlEditReply {
 """Edit KubernetesObjectYaml Property Request"""
 input KubernetesDeploymentEntityKubernetesObjectYamlEditRequest {
   """Entity ID"""
-  id: ID!
+  id: ID
 
   """The Kubernetes Object YAML property value"""
   property: String
@@ -1777,10 +1777,10 @@ type KubernetesDeploymentEntityPropertiesKubernetesObject {
 
 input KubernetesDeploymentEntityPropertiesKubernetesObjectRequest {
   """API Version"""
-  apiVersion: String!
+  apiVersion: String
 
   """Kind"""
-  kind: String!
+  kind: String
 
   """Metadata"""
   metadata: KubernetesMetadataRequest
@@ -1828,7 +1828,7 @@ type KubernetesDeploymentEntitySyncReply {
 """Sync State Request"""
 input KubernetesDeploymentEntitySyncRequest {
   """Entity ID"""
-  id: ID!
+  id: ID
 }
 
 """Update an Entity Reply"""
@@ -1840,10 +1840,10 @@ type KubernetesDeploymentEntityUpdateReply {
 """Update an Entity Request"""
 input KubernetesDeploymentEntityUpdateRequest {
   """Change Set ID"""
-  changeSetId: String!
+  changeSetId: String
 
   """kubernetesDeploymentEntity ID"""
-  id: ID!
+  id: ID
 
   """kubernetesDeployment Item Update"""
   update: KubernetesDeploymentEntityUpdateRequestUpdateRequest
@@ -1902,7 +1902,7 @@ input KubernetesMetadataRequest {
   labels: [LabelsRequest!]
 
   """Name"""
-  name: String!
+  name: String
 }
 
 type KubernetesPodSpec {
@@ -2004,7 +2004,7 @@ type KubernetesServiceComponentGetReply {
 """Get a Kubernetes Service Object Component Request"""
 input KubernetesServiceComponentGetRequest {
   """Kubernetes Service Object Component ID"""
-  id: ID!
+  id: ID
 }
 
 """List Kubernetes Service Object Component Reply"""
@@ -2101,25 +2101,25 @@ type KubernetesServiceEntityCreateReply {
 """Create Entity Request"""
 input KubernetesServiceEntityCreateRequest {
   """Change Set ID"""
-  changeSetId: String!
+  changeSetId: String
 
   """Constraints"""
   constraints: KubernetesServiceComponentConstraintsRequest
 
   """Description"""
-  description: String!
+  description: String
 
   """Display Name"""
-  displayName: String!
+  displayName: String
 
   """Name"""
-  name: String!
+  name: String
 
   """Properties"""
   properties: KubernetesServiceEntityPropertiesRequest
 
   """Workspace ID"""
-  workspaceId: String!
+  workspaceId: String
 }
 
 """Delete Entity Reply"""
@@ -2131,10 +2131,10 @@ type KubernetesServiceEntityDeleteReply {
 """Delete Entity Request"""
 input KubernetesServiceEntityDeleteRequest {
   """Change Set ID"""
-  changeSetId: String!
+  changeSetId: String
 
   """kubernetesServiceEntity ID"""
-  id: ID!
+  id: ID
 }
 
 type KubernetesServiceEntityEvent {
@@ -2229,7 +2229,7 @@ type KubernetesServiceEntityGetReply {
 """Get a Kubernetes Service Object Entity Request"""
 input KubernetesServiceEntityGetRequest {
   """Kubernetes Service Object Entity ID"""
-  id: ID!
+  id: ID
 }
 
 """Edit kubernetesServiceEntityPropertiesKubernetesObject Property Reply"""
@@ -2243,7 +2243,7 @@ Edit kubernetesServiceEntityPropertiesKubernetesObject Property Request
 """
 input KubernetesServiceEntityKubernetesObjectEditRequest {
   """Entity ID"""
-  id: ID!
+  id: ID
 
   """The Kubernetes Object property value"""
   property: KubernetesServiceEntityPropertiesKubernetesObjectRequest
@@ -2258,7 +2258,7 @@ type KubernetesServiceEntityKubernetesObjectYamlEditReply {
 """Edit KubernetesObjectYaml Property Request"""
 input KubernetesServiceEntityKubernetesObjectYamlEditRequest {
   """Entity ID"""
-  id: ID!
+  id: ID
 
   """The Kubernetes Object YAML property value"""
   property: String
@@ -2324,10 +2324,10 @@ type KubernetesServiceEntityPropertiesKubernetesObject {
 
 input KubernetesServiceEntityPropertiesKubernetesObjectRequest {
   """API Version"""
-  apiVersion: String!
+  apiVersion: String
 
   """Kind"""
-  kind: String!
+  kind: String
 
   """Metadat"""
   metadata: KubernetesMetadataRequest
@@ -2510,7 +2510,7 @@ type KubernetesServiceEntitySyncReply {
 """Sync State Request"""
 input KubernetesServiceEntitySyncRequest {
   """Entity ID"""
-  id: ID!
+  id: ID
 }
 
 """Update an Entity Reply"""
@@ -2522,10 +2522,10 @@ type KubernetesServiceEntityUpdateReply {
 """Update an Entity Request"""
 input KubernetesServiceEntityUpdateRequest {
   """Change Set ID"""
-  changeSetId: String!
+  changeSetId: String
 
   """kubernetesServiceEntity ID"""
-  id: ID!
+  id: ID
 
   """kubernetesService Item Update"""
   update: KubernetesServiceEntityUpdateRequestUpdateRequest
@@ -2695,13 +2695,13 @@ type OrganizationCreateReply {
 """Create an Organization Request"""
 input OrganizationCreateRequest {
   """User Display Name"""
-  displayName: String!
+  displayName: String
 
   """User Name"""
-  name: String!
+  name: String
 
   """The SI Properties for this User"""
-  siProperties: OrganizationSiPropertiesRequest!
+  siProperties: OrganizationSiPropertiesRequest
 }
 
 """Get a A System Initiative Organization Reply"""
@@ -2713,7 +2713,7 @@ type OrganizationGetReply {
 """Get a A System Initiative Organization Request"""
 input OrganizationGetRequest {
   """A System Initiative Organization ID"""
-  id: ID!
+  id: ID
 }
 
 """List A System Initiative Organization Reply"""
@@ -2756,7 +2756,7 @@ type OrganizationSiProperties {
 
 input OrganizationSiPropertiesRequest {
   """Billing Account ID"""
-  billingAccountId: String!
+  billingAccountId: String
 }
 
 type Query {
@@ -2860,7 +2860,7 @@ type ServiceComponentGetReply {
 """Get a Service Component Request"""
 input ServiceComponentGetRequest {
   """Service Component ID"""
-  id: ID!
+  id: ID
 }
 
 """List Service Component Reply"""
@@ -2957,25 +2957,25 @@ type ServiceEntityCreateReply {
 """Create Entity Request"""
 input ServiceEntityCreateRequest {
   """Change Set ID"""
-  changeSetId: String!
+  changeSetId: String
 
   """Constraints"""
   constraints: ServiceComponentConstraintsRequest
 
   """Description"""
-  description: String!
+  description: String
 
   """Display Name"""
-  displayName: String!
+  displayName: String
 
   """Name"""
-  name: String!
+  name: String
 
   """Properties"""
   properties: ServiceEntityPropertiesRequest
 
   """Workspace ID"""
-  workspaceId: String!
+  workspaceId: String
 }
 
 """Delete Entity Reply"""
@@ -2987,10 +2987,10 @@ type ServiceEntityDeleteReply {
 """Delete Entity Request"""
 input ServiceEntityDeleteRequest {
   """Change Set ID"""
-  changeSetId: String!
+  changeSetId: String
 
   """serviceEntity ID"""
-  id: ID!
+  id: ID
 }
 
 """Deploy Reply"""
@@ -3002,7 +3002,7 @@ type ServiceEntityDeployReply {
 """Deploy Request"""
 input ServiceEntityDeployRequest {
   """Entity ID"""
-  id: ID!
+  id: ID
 }
 
 type ServiceEntityEvent {
@@ -3097,7 +3097,7 @@ type ServiceEntityGetReply {
 """Get a Service Entity Request"""
 input ServiceEntityGetRequest {
   """Service Entity ID"""
-  id: ID!
+  id: ID
 }
 
 """Edit Image Property Reply"""
@@ -3109,7 +3109,7 @@ type ServiceEntityImageEditReply {
 """Edit Image Property Request"""
 input ServiceEntityImageEditRequest {
   """Entity ID"""
-  id: ID!
+  id: ID
 
   """The Container Image property value"""
   property: String
@@ -3157,7 +3157,7 @@ type ServiceEntityPortEditReply {
 """Edit Port Property Request"""
 input ServiceEntityPortEditRequest {
   """Entity ID"""
-  id: ID!
+  id: ID
 
   """The Container Port property value"""
   property: String
@@ -3176,10 +3176,10 @@ type ServiceEntityProperties {
 
 input ServiceEntityPropertiesRequest {
   """Container Image"""
-  image: String!
+  image: String
 
   """Container Port"""
-  port: String!
+  port: String
 
   """Replicas"""
   replicas: String
@@ -3194,7 +3194,7 @@ type ServiceEntityReplicasEditReply {
 """Edit Replicas Property Request"""
 input ServiceEntityReplicasEditRequest {
   """Entity ID"""
-  id: ID!
+  id: ID
 
   """The Replicas property value"""
   property: String
@@ -3209,7 +3209,7 @@ type ServiceEntitySyncReply {
 """Sync State Request"""
 input ServiceEntitySyncRequest {
   """Entity ID"""
-  id: ID!
+  id: ID
 }
 
 """Update an Entity Reply"""
@@ -3221,10 +3221,10 @@ type ServiceEntityUpdateReply {
 """Update an Entity Request"""
 input ServiceEntityUpdateRequest {
   """Change Set ID"""
-  changeSetId: String!
+  changeSetId: String
 
   """serviceEntity ID"""
-  id: ID!
+  id: ID
 
   """service Item Update"""
   update: ServiceEntityUpdateRequestUpdateRequest
@@ -3292,7 +3292,7 @@ type SystemComponentGetReply {
 """Get a A System Initiative System Component Request"""
 input SystemComponentGetRequest {
   """A System Initiative System Component ID"""
-  id: ID!
+  id: ID
 }
 
 """List A System Initiative System Component Reply"""
@@ -3381,25 +3381,25 @@ type SystemEntityCreateReply {
 """Create Entity Request"""
 input SystemEntityCreateRequest {
   """Change Set ID"""
-  changeSetId: String!
+  changeSetId: String
 
   """Constraints"""
   constraints: SystemComponentConstraintsRequest
 
   """Description"""
-  description: String!
+  description: String
 
   """Display Name"""
-  displayName: String!
+  displayName: String
 
   """Name"""
-  name: String!
+  name: String
 
   """Properties"""
   properties: SystemEntityPropertiesRequest
 
   """Workspace ID"""
-  workspaceId: String!
+  workspaceId: String
 }
 
 """Delete Entity Reply"""
@@ -3411,10 +3411,10 @@ type SystemEntityDeleteReply {
 """Delete Entity Request"""
 input SystemEntityDeleteRequest {
   """Change Set ID"""
-  changeSetId: String!
+  changeSetId: String
 
   """systemEntity ID"""
-  id: ID!
+  id: ID
 }
 
 type SystemEntityEvent {
@@ -3509,7 +3509,7 @@ type SystemEntityGetReply {
 """Get a A System Initiative System Entity Request"""
 input SystemEntityGetRequest {
   """A System Initiative System Entity ID"""
-  id: ID!
+  id: ID
 }
 
 """List A System Initiative System Entity Reply"""
@@ -3554,7 +3554,7 @@ type SystemEntityPhantomEditReply {
 """Edit Phantom Property Request"""
 input SystemEntityPhantomEditRequest {
   """Entity ID"""
-  id: ID!
+  id: ID
 
   """The Phantom Data property value"""
   property: Boolean
@@ -3579,7 +3579,7 @@ type SystemEntitySyncReply {
 """Sync State Request"""
 input SystemEntitySyncRequest {
   """Entity ID"""
-  id: ID!
+  id: ID
 }
 
 """Update an Entity Reply"""
@@ -3591,10 +3591,10 @@ type SystemEntityUpdateReply {
 """Update an Entity Request"""
 input SystemEntityUpdateRequest {
   """Change Set ID"""
-  changeSetId: String!
+  changeSetId: String
 
   """systemEntity ID"""
-  id: ID!
+  id: ID
 
   """system Item Update"""
   update: SystemEntityUpdateRequestUpdateRequest
@@ -3654,19 +3654,19 @@ type UserCreateReply {
 """Create a User Request"""
 input UserCreateRequest {
   """User Display Name"""
-  displayName: String!
+  displayName: String
 
   """Users email address"""
-  email: String!
+  email: String
 
   """User Name"""
-  name: String!
+  name: String
 
   """Users password"""
-  password: String!
+  password: String
 
   """The SI Properties for this User"""
-  siProperties: UserSiPropertiesRequest!
+  siProperties: UserSiPropertiesRequest
 }
 
 """Get a A System Initiative User Reply"""
@@ -3678,7 +3678,7 @@ type UserGetReply {
 """Get a A System Initiative User Request"""
 input UserGetRequest {
   """A System Initiative User ID"""
-  id: ID!
+  id: ID
 }
 
 """List A System Initiative User Reply"""
@@ -3733,7 +3733,7 @@ type UserSiProperties {
 
 input UserSiPropertiesRequest {
   """Billing Account ID"""
-  billingAccountId: String!
+  billingAccountId: String
 }
 
 type Workspace {
@@ -3776,13 +3776,13 @@ type WorkspaceCreateReply {
 """Create an Organization Request"""
 input WorkspaceCreateRequest {
   """User Display Name"""
-  displayName: String!
+  displayName: String
 
   """User Name"""
-  name: String!
+  name: String
 
   """The SI Properties for this User"""
-  siProperties: WorkspaceSiPropertiesRequest!
+  siProperties: WorkspaceSiPropertiesRequest
 }
 
 """Get a A System Initiative Workspace Reply"""
@@ -3794,7 +3794,7 @@ type WorkspaceGetReply {
 """Get a A System Initiative Workspace Request"""
 input WorkspaceGetRequest {
   """A System Initiative Workspace ID"""
-  id: ID!
+  id: ID
 }
 
 """List A System Initiative Workspace Reply"""
@@ -3840,8 +3840,8 @@ type WorkspaceSiProperties {
 
 input WorkspaceSiPropertiesRequest {
   """Billing Account ID"""
-  billingAccountId: String!
+  billingAccountId: String
 
   """Organization ID"""
-  organizationId: String!
+  organizationId: String
 }

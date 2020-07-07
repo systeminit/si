@@ -1056,7 +1056,11 @@ export class SiRegistryGenerator {
       description: prop.label,
     };
     if (inputType) {
-      fieldConfig["nullable"] = !prop.required;
+      // TODO: Eventually, we should figure out how to model this properly.
+      // It is disabled for now, as we are working to ensure that we
+      // get the right high level behavior for entities.
+      //
+      //fieldConfig["nullable"] = !prop.required;
     }
     return fieldConfig;
   }

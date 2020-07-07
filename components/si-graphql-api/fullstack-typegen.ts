@@ -19,7 +19,7 @@ export interface NexusGenInputs {
     componentName?: string | null; // String
   }
   ApplicationComponentGetRequest: { // input type
-    id: string; // ID!
+    id?: string | null; // ID
   }
   ApplicationComponentListRequest: { // input type
     orderBy?: string | null; // String
@@ -33,17 +33,17 @@ export interface NexusGenInputs {
     constraints?: NexusGenInputs['ApplicationComponentConstraintsRequest'] | null; // ApplicationComponentConstraintsRequest
   }
   ApplicationEntityCreateRequest: { // input type
-    changeSetId: string; // String!
+    changeSetId?: string | null; // String
     constraints?: NexusGenInputs['ApplicationComponentConstraintsRequest'] | null; // ApplicationComponentConstraintsRequest
-    description: string; // String!
-    displayName: string; // String!
-    name: string; // String!
+    description?: string | null; // String
+    displayName?: string | null; // String
+    name?: string | null; // String
     properties?: NexusGenInputs['ApplicationEntityPropertiesRequest'] | null; // ApplicationEntityPropertiesRequest
-    workspaceId: string; // String!
+    workspaceId?: string | null; // String
   }
   ApplicationEntityDeleteRequest: { // input type
-    changeSetId: string; // String!
-    id: string; // ID!
+    changeSetId?: string | null; // String
+    id?: string | null; // ID
   }
   ApplicationEntityEventListRequest: { // input type
     orderBy?: string | null; // String
@@ -54,7 +54,7 @@ export interface NexusGenInputs {
     scopeByTenantId?: string | null; // String
   }
   ApplicationEntityGetRequest: { // input type
-    id: string; // ID!
+    id?: string | null; // ID
   }
   ApplicationEntityListRequest: { // input type
     orderBy?: string | null; // String
@@ -65,18 +65,18 @@ export interface NexusGenInputs {
     scopeByTenantId?: string | null; // String
   }
   ApplicationEntityPhantomEditRequest: { // input type
-    id: string; // ID!
+    id?: string | null; // ID
     property?: boolean | null; // Boolean
   }
   ApplicationEntityPropertiesRequest: { // input type
     phantom?: boolean | null; // Boolean
   }
   ApplicationEntitySyncRequest: { // input type
-    id: string; // ID!
+    id?: string | null; // ID
   }
   ApplicationEntityUpdateRequest: { // input type
-    changeSetId: string; // String!
-    id: string; // ID!
+    changeSetId?: string | null; // String
+    id?: string | null; // ID
     update?: NexusGenInputs['ApplicationEntityUpdateRequestUpdateRequest'] | null; // ApplicationEntityUpdateRequestUpdateRequest
   }
   ApplicationEntityUpdateRequestUpdateRequest: { // input type
@@ -86,7 +86,7 @@ export interface NexusGenInputs {
     properties?: NexusGenInputs['ApplicationEntityPropertiesRequest'] | null; // ApplicationEntityPropertiesRequest
   }
   BillingAccountGetRequest: { // input type
-    id: string; // ID!
+    id?: string | null; // ID
   }
   BillingAccountListRequest: { // input type
     orderBy?: string | null; // String
@@ -97,35 +97,35 @@ export interface NexusGenInputs {
     scopeByTenantId?: string | null; // String
   }
   BillingAccountSignupRequest: { // input type
-    billingAccount: NexusGenInputs['BillingAccountSignupRequestBillingAccountRequest']; // BillingAccountSignupRequestBillingAccountRequest!
-    user: NexusGenInputs['BillingAccountSignupRequestUserRequest']; // BillingAccountSignupRequestUserRequest!
+    billingAccount?: NexusGenInputs['BillingAccountSignupRequestBillingAccountRequest'] | null; // BillingAccountSignupRequestBillingAccountRequest
+    user?: NexusGenInputs['BillingAccountSignupRequestUserRequest'] | null; // BillingAccountSignupRequestUserRequest
   }
   BillingAccountSignupRequestBillingAccountRequest: { // input type
-    displayName: string; // String!
-    name: string; // String!
+    displayName?: string | null; // String
+    name?: string | null; // String
   }
   BillingAccountSignupRequestUserRequest: { // input type
-    displayName: string; // String!
-    email: string; // String!
-    name: string; // String!
-    password: string; // String!
+    displayName?: string | null; // String
+    email?: string | null; // String
+    name?: string | null; // String
+    password?: string | null; // String
   }
   CapabilityRequest: { // input type
-    actions: string[]; // [String!]!
-    subject: string; // String!
+    actions?: string[] | null; // [String!]
+    subject?: string | null; // String
   }
   ChangeSetCreateRequest: { // input type
-    createdByUserId: string; // String!
+    createdByUserId?: string | null; // String
     displayName?: string | null; // String
-    name: string; // String!
+    name?: string | null; // String
     note?: string | null; // String
-    workspaceId: string; // String!
+    workspaceId?: string | null; // String
   }
   ChangeSetExecuteRequest: { // input type
-    id: string; // ID!
+    id?: string | null; // ID
   }
   ChangeSetGetRequest: { // input type
-    id: string; // ID!
+    id?: string | null; // ID
   }
   ChangeSetListRequest: { // input type
     orderBy?: string | null; // String
@@ -137,9 +137,9 @@ export interface NexusGenInputs {
   }
   DataQueryItemsExpressionRequest: { // input type
     comparison?: NexusGenEnums['DataQueryItemsExpressionComparison'] | null; // DataQueryItemsExpressionComparison
-    field: string; // String!
+    field?: string | null; // String
     fieldType?: NexusGenEnums['DataQueryItemsExpressionFieldType'] | null; // DataQueryItemsExpressionFieldType
-    value: string; // String!
+    value?: string | null; // String
   }
   DataQueryItemsRequest: { // input type
     expression?: NexusGenInputs['DataQueryItemsExpressionRequest'] | null; // DataQueryItemsExpressionRequest
@@ -154,13 +154,13 @@ export interface NexusGenInputs {
   }
   GroupCreateRequest: { // input type
     capabilities?: NexusGenInputs['CapabilityRequest'][] | null; // [CapabilityRequest!]
-    displayName: string; // String!
-    name: string; // String!
-    siProperties: NexusGenInputs['GroupSiPropertiesRequest']; // GroupSiPropertiesRequest!
+    displayName?: string | null; // String
+    name?: string | null; // String
+    siProperties?: NexusGenInputs['GroupSiPropertiesRequest'] | null; // GroupSiPropertiesRequest
     userIds?: string[] | null; // [String!]
   }
   GroupGetRequest: { // input type
-    id: string; // ID!
+    id?: string | null; // ID
   }
   GroupListRequest: { // input type
     orderBy?: string | null; // String
@@ -171,13 +171,13 @@ export interface NexusGenInputs {
     scopeByTenantId?: string | null; // String
   }
   GroupSiPropertiesRequest: { // input type
-    billingAccountId: string; // String!
+    billingAccountId?: string | null; // String
   }
   IntegrationGetRequest: { // input type
-    id: string; // ID!
+    id?: string | null; // ID
   }
   IntegrationInstanceGetRequest: { // input type
-    id: string; // ID!
+    id?: string | null; // ID
   }
   IntegrationInstanceListRequest: { // input type
     orderBy?: string | null; // String
@@ -196,10 +196,10 @@ export interface NexusGenInputs {
     scopeByTenantId?: string | null; // String
   }
   IntegrationServiceGetRequest: { // input type
-    id: string; // ID!
+    id?: string | null; // ID
   }
   ItemGetRequest: { // input type
-    id: string; // ID!
+    id?: string | null; // ID
   }
   ItemListRequest: { // input type
     orderBy?: string | null; // String
@@ -226,7 +226,7 @@ export interface NexusGenInputs {
     kubernetesVersion?: NexusGenEnums['KubernetesDeploymentComponentConstraintsKubernetesVersion'] | null; // KubernetesDeploymentComponentConstraintsKubernetesVersion
   }
   KubernetesDeploymentComponentGetRequest: { // input type
-    id: string; // ID!
+    id?: string | null; // ID
   }
   KubernetesDeploymentComponentListRequest: { // input type
     orderBy?: string | null; // String
@@ -240,20 +240,20 @@ export interface NexusGenInputs {
     constraints?: NexusGenInputs['KubernetesDeploymentComponentConstraintsRequest'] | null; // KubernetesDeploymentComponentConstraintsRequest
   }
   KubernetesDeploymentEntityApplyRequest: { // input type
-    id: string; // ID!
+    id?: string | null; // ID
   }
   KubernetesDeploymentEntityCreateRequest: { // input type
-    changeSetId: string; // String!
+    changeSetId?: string | null; // String
     constraints?: NexusGenInputs['KubernetesDeploymentComponentConstraintsRequest'] | null; // KubernetesDeploymentComponentConstraintsRequest
-    description: string; // String!
-    displayName: string; // String!
-    name: string; // String!
+    description?: string | null; // String
+    displayName?: string | null; // String
+    name?: string | null; // String
     properties?: NexusGenInputs['KubernetesDeploymentEntityPropertiesRequest'] | null; // KubernetesDeploymentEntityPropertiesRequest
-    workspaceId: string; // String!
+    workspaceId?: string | null; // String
   }
   KubernetesDeploymentEntityDeleteRequest: { // input type
-    changeSetId: string; // String!
-    id: string; // ID!
+    changeSetId?: string | null; // String
+    id?: string | null; // ID
   }
   KubernetesDeploymentEntityEventListRequest: { // input type
     orderBy?: string | null; // String
@@ -264,14 +264,14 @@ export interface NexusGenInputs {
     scopeByTenantId?: string | null; // String
   }
   KubernetesDeploymentEntityGetRequest: { // input type
-    id: string; // ID!
+    id?: string | null; // ID
   }
   KubernetesDeploymentEntityKubernetesObjectEditRequest: { // input type
-    id: string; // ID!
+    id?: string | null; // ID
     property?: NexusGenInputs['KubernetesDeploymentEntityPropertiesKubernetesObjectRequest'] | null; // KubernetesDeploymentEntityPropertiesKubernetesObjectRequest
   }
   KubernetesDeploymentEntityKubernetesObjectYamlEditRequest: { // input type
-    id: string; // ID!
+    id?: string | null; // ID
     property?: string | null; // String
   }
   KubernetesDeploymentEntityListRequest: { // input type
@@ -283,8 +283,8 @@ export interface NexusGenInputs {
     scopeByTenantId?: string | null; // String
   }
   KubernetesDeploymentEntityPropertiesKubernetesObjectRequest: { // input type
-    apiVersion: string; // String!
-    kind: string; // String!
+    apiVersion?: string | null; // String
+    kind?: string | null; // String
     metadata?: NexusGenInputs['KubernetesMetadataRequest'] | null; // KubernetesMetadataRequest
     spec?: NexusGenInputs['KubernetesDeploymentEntityPropertiesKubernetesObjectSpecRequest'] | null; // KubernetesDeploymentEntityPropertiesKubernetesObjectSpecRequest
   }
@@ -298,11 +298,11 @@ export interface NexusGenInputs {
     kubernetesObjectYaml?: string | null; // String
   }
   KubernetesDeploymentEntitySyncRequest: { // input type
-    id: string; // ID!
+    id?: string | null; // ID
   }
   KubernetesDeploymentEntityUpdateRequest: { // input type
-    changeSetId: string; // String!
-    id: string; // ID!
+    changeSetId?: string | null; // String
+    id?: string | null; // ID
     update?: NexusGenInputs['KubernetesDeploymentEntityUpdateRequestUpdateRequest'] | null; // KubernetesDeploymentEntityUpdateRequestUpdateRequest
   }
   KubernetesDeploymentEntityUpdateRequestUpdateRequest: { // input type
@@ -320,7 +320,7 @@ export interface NexusGenInputs {
   }
   KubernetesMetadataRequest: { // input type
     labels?: NexusGenInputs['LabelsRequest'][] | null; // [LabelsRequest!]
-    name: string; // String!
+    name?: string | null; // String
   }
   KubernetesPodSpecRequest: { // input type
     containers?: NexusGenInputs['KubernetesContainerRequest'][] | null; // [KubernetesContainerRequest!]
@@ -338,7 +338,7 @@ export interface NexusGenInputs {
     kubernetesVersion?: NexusGenEnums['KubernetesServiceComponentConstraintsKubernetesVersion'] | null; // KubernetesServiceComponentConstraintsKubernetesVersion
   }
   KubernetesServiceComponentGetRequest: { // input type
-    id: string; // ID!
+    id?: string | null; // ID
   }
   KubernetesServiceComponentListRequest: { // input type
     orderBy?: string | null; // String
@@ -352,17 +352,17 @@ export interface NexusGenInputs {
     constraints?: NexusGenInputs['KubernetesServiceComponentConstraintsRequest'] | null; // KubernetesServiceComponentConstraintsRequest
   }
   KubernetesServiceEntityCreateRequest: { // input type
-    changeSetId: string; // String!
+    changeSetId?: string | null; // String
     constraints?: NexusGenInputs['KubernetesServiceComponentConstraintsRequest'] | null; // KubernetesServiceComponentConstraintsRequest
-    description: string; // String!
-    displayName: string; // String!
-    name: string; // String!
+    description?: string | null; // String
+    displayName?: string | null; // String
+    name?: string | null; // String
     properties?: NexusGenInputs['KubernetesServiceEntityPropertiesRequest'] | null; // KubernetesServiceEntityPropertiesRequest
-    workspaceId: string; // String!
+    workspaceId?: string | null; // String
   }
   KubernetesServiceEntityDeleteRequest: { // input type
-    changeSetId: string; // String!
-    id: string; // ID!
+    changeSetId?: string | null; // String
+    id?: string | null; // ID
   }
   KubernetesServiceEntityEventListRequest: { // input type
     orderBy?: string | null; // String
@@ -373,14 +373,14 @@ export interface NexusGenInputs {
     scopeByTenantId?: string | null; // String
   }
   KubernetesServiceEntityGetRequest: { // input type
-    id: string; // ID!
+    id?: string | null; // ID
   }
   KubernetesServiceEntityKubernetesObjectEditRequest: { // input type
-    id: string; // ID!
+    id?: string | null; // ID
     property?: NexusGenInputs['KubernetesServiceEntityPropertiesKubernetesObjectRequest'] | null; // KubernetesServiceEntityPropertiesKubernetesObjectRequest
   }
   KubernetesServiceEntityKubernetesObjectYamlEditRequest: { // input type
-    id: string; // ID!
+    id?: string | null; // ID
     property?: string | null; // String
   }
   KubernetesServiceEntityListRequest: { // input type
@@ -392,8 +392,8 @@ export interface NexusGenInputs {
     scopeByTenantId?: string | null; // String
   }
   KubernetesServiceEntityPropertiesKubernetesObjectRequest: { // input type
-    apiVersion: string; // String!
-    kind: string; // String!
+    apiVersion?: string | null; // String
+    kind?: string | null; // String
     metadata?: NexusGenInputs['KubernetesMetadataRequest'] | null; // KubernetesMetadataRequest
     spec?: NexusGenInputs['KubernetesServiceEntityPropertiesKubernetesObjectSpecRequest'] | null; // KubernetesServiceEntityPropertiesKubernetesObjectSpecRequest
     status?: NexusGenInputs['KubernetesServiceEntityPropertiesKubernetesObjectStatusRequest'] | null; // KubernetesServiceEntityPropertiesKubernetesObjectStatusRequest
@@ -429,11 +429,11 @@ export interface NexusGenInputs {
     kubernetesObjectYaml?: string | null; // String
   }
   KubernetesServiceEntitySyncRequest: { // input type
-    id: string; // ID!
+    id?: string | null; // ID
   }
   KubernetesServiceEntityUpdateRequest: { // input type
-    changeSetId: string; // String!
-    id: string; // ID!
+    changeSetId?: string | null; // String
+    id?: string | null; // ID
     update?: NexusGenInputs['KubernetesServiceEntityUpdateRequestUpdateRequest'] | null; // KubernetesServiceEntityUpdateRequestUpdateRequest
   }
   KubernetesServiceEntityUpdateRequestUpdateRequest: { // input type
@@ -459,12 +459,12 @@ export interface NexusGenInputs {
     value?: string | null; // String
   }
   OrganizationCreateRequest: { // input type
-    displayName: string; // String!
-    name: string; // String!
-    siProperties: NexusGenInputs['OrganizationSiPropertiesRequest']; // OrganizationSiPropertiesRequest!
+    displayName?: string | null; // String
+    name?: string | null; // String
+    siProperties?: NexusGenInputs['OrganizationSiPropertiesRequest'] | null; // OrganizationSiPropertiesRequest
   }
   OrganizationGetRequest: { // input type
-    id: string; // ID!
+    id?: string | null; // ID
   }
   OrganizationListRequest: { // input type
     orderBy?: string | null; // String
@@ -475,14 +475,14 @@ export interface NexusGenInputs {
     scopeByTenantId?: string | null; // String
   }
   OrganizationSiPropertiesRequest: { // input type
-    billingAccountId: string; // String!
+    billingAccountId?: string | null; // String
   }
   ServiceComponentConstraintsRequest: { // input type
     componentDisplayName?: string | null; // String
     componentName?: string | null; // String
   }
   ServiceComponentGetRequest: { // input type
-    id: string; // ID!
+    id?: string | null; // ID
   }
   ServiceComponentListRequest: { // input type
     orderBy?: string | null; // String
@@ -496,20 +496,20 @@ export interface NexusGenInputs {
     constraints?: NexusGenInputs['ServiceComponentConstraintsRequest'] | null; // ServiceComponentConstraintsRequest
   }
   ServiceEntityCreateRequest: { // input type
-    changeSetId: string; // String!
+    changeSetId?: string | null; // String
     constraints?: NexusGenInputs['ServiceComponentConstraintsRequest'] | null; // ServiceComponentConstraintsRequest
-    description: string; // String!
-    displayName: string; // String!
-    name: string; // String!
+    description?: string | null; // String
+    displayName?: string | null; // String
+    name?: string | null; // String
     properties?: NexusGenInputs['ServiceEntityPropertiesRequest'] | null; // ServiceEntityPropertiesRequest
-    workspaceId: string; // String!
+    workspaceId?: string | null; // String
   }
   ServiceEntityDeleteRequest: { // input type
-    changeSetId: string; // String!
-    id: string; // ID!
+    changeSetId?: string | null; // String
+    id?: string | null; // ID
   }
   ServiceEntityDeployRequest: { // input type
-    id: string; // ID!
+    id?: string | null; // ID
   }
   ServiceEntityEventListRequest: { // input type
     orderBy?: string | null; // String
@@ -520,10 +520,10 @@ export interface NexusGenInputs {
     scopeByTenantId?: string | null; // String
   }
   ServiceEntityGetRequest: { // input type
-    id: string; // ID!
+    id?: string | null; // ID
   }
   ServiceEntityImageEditRequest: { // input type
-    id: string; // ID!
+    id?: string | null; // ID
     property?: string | null; // String
   }
   ServiceEntityListRequest: { // input type
@@ -535,24 +535,24 @@ export interface NexusGenInputs {
     scopeByTenantId?: string | null; // String
   }
   ServiceEntityPortEditRequest: { // input type
-    id: string; // ID!
+    id?: string | null; // ID
     property?: string | null; // String
   }
   ServiceEntityPropertiesRequest: { // input type
-    image: string; // String!
-    port: string; // String!
+    image?: string | null; // String
+    port?: string | null; // String
     replicas?: string | null; // String
   }
   ServiceEntityReplicasEditRequest: { // input type
-    id: string; // ID!
+    id?: string | null; // ID
     property?: string | null; // String
   }
   ServiceEntitySyncRequest: { // input type
-    id: string; // ID!
+    id?: string | null; // ID
   }
   ServiceEntityUpdateRequest: { // input type
-    changeSetId: string; // String!
-    id: string; // ID!
+    changeSetId?: string | null; // String
+    id?: string | null; // ID
     update?: NexusGenInputs['ServiceEntityUpdateRequestUpdateRequest'] | null; // ServiceEntityUpdateRequestUpdateRequest
   }
   ServiceEntityUpdateRequestUpdateRequest: { // input type
@@ -566,7 +566,7 @@ export interface NexusGenInputs {
     componentName?: string | null; // String
   }
   SystemComponentGetRequest: { // input type
-    id: string; // ID!
+    id?: string | null; // ID
   }
   SystemComponentListRequest: { // input type
     orderBy?: string | null; // String
@@ -580,17 +580,17 @@ export interface NexusGenInputs {
     constraints?: NexusGenInputs['SystemComponentConstraintsRequest'] | null; // SystemComponentConstraintsRequest
   }
   SystemEntityCreateRequest: { // input type
-    changeSetId: string; // String!
+    changeSetId?: string | null; // String
     constraints?: NexusGenInputs['SystemComponentConstraintsRequest'] | null; // SystemComponentConstraintsRequest
-    description: string; // String!
-    displayName: string; // String!
-    name: string; // String!
+    description?: string | null; // String
+    displayName?: string | null; // String
+    name?: string | null; // String
     properties?: NexusGenInputs['SystemEntityPropertiesRequest'] | null; // SystemEntityPropertiesRequest
-    workspaceId: string; // String!
+    workspaceId?: string | null; // String
   }
   SystemEntityDeleteRequest: { // input type
-    changeSetId: string; // String!
-    id: string; // ID!
+    changeSetId?: string | null; // String
+    id?: string | null; // ID
   }
   SystemEntityEventListRequest: { // input type
     orderBy?: string | null; // String
@@ -601,7 +601,7 @@ export interface NexusGenInputs {
     scopeByTenantId?: string | null; // String
   }
   SystemEntityGetRequest: { // input type
-    id: string; // ID!
+    id?: string | null; // ID
   }
   SystemEntityListRequest: { // input type
     orderBy?: string | null; // String
@@ -612,18 +612,18 @@ export interface NexusGenInputs {
     scopeByTenantId?: string | null; // String
   }
   SystemEntityPhantomEditRequest: { // input type
-    id: string; // ID!
+    id?: string | null; // ID
     property?: boolean | null; // Boolean
   }
   SystemEntityPropertiesRequest: { // input type
     phantom?: boolean | null; // Boolean
   }
   SystemEntitySyncRequest: { // input type
-    id: string; // ID!
+    id?: string | null; // ID
   }
   SystemEntityUpdateRequest: { // input type
-    changeSetId: string; // String!
-    id: string; // ID!
+    changeSetId?: string | null; // String
+    id?: string | null; // ID
     update?: NexusGenInputs['SystemEntityUpdateRequestUpdateRequest'] | null; // SystemEntityUpdateRequestUpdateRequest
   }
   SystemEntityUpdateRequestUpdateRequest: { // input type
@@ -633,14 +633,14 @@ export interface NexusGenInputs {
     properties?: NexusGenInputs['SystemEntityPropertiesRequest'] | null; // SystemEntityPropertiesRequest
   }
   UserCreateRequest: { // input type
-    displayName: string; // String!
-    email: string; // String!
-    name: string; // String!
-    password: string; // String!
-    siProperties: NexusGenInputs['UserSiPropertiesRequest']; // UserSiPropertiesRequest!
+    displayName?: string | null; // String
+    email?: string | null; // String
+    name?: string | null; // String
+    password?: string | null; // String
+    siProperties?: NexusGenInputs['UserSiPropertiesRequest'] | null; // UserSiPropertiesRequest
   }
   UserGetRequest: { // input type
-    id: string; // ID!
+    id?: string | null; // ID
   }
   UserListRequest: { // input type
     orderBy?: string | null; // String
@@ -656,15 +656,15 @@ export interface NexusGenInputs {
     password: string; // String!
   }
   UserSiPropertiesRequest: { // input type
-    billingAccountId: string; // String!
+    billingAccountId?: string | null; // String
   }
   WorkspaceCreateRequest: { // input type
-    displayName: string; // String!
-    name: string; // String!
-    siProperties: NexusGenInputs['WorkspaceSiPropertiesRequest']; // WorkspaceSiPropertiesRequest!
+    displayName?: string | null; // String
+    name?: string | null; // String
+    siProperties?: NexusGenInputs['WorkspaceSiPropertiesRequest'] | null; // WorkspaceSiPropertiesRequest
   }
   WorkspaceGetRequest: { // input type
-    id: string; // ID!
+    id?: string | null; // ID
   }
   WorkspaceListRequest: { // input type
     orderBy?: string | null; // String
@@ -675,8 +675,8 @@ export interface NexusGenInputs {
     scopeByTenantId?: string | null; // String
   }
   WorkspaceSiPropertiesRequest: { // input type
-    billingAccountId: string; // String!
-    organizationId: string; // String!
+    billingAccountId?: string | null; // String
+    organizationId?: string | null; // String
   }
 }
 
