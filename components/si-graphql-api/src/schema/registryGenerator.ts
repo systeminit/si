@@ -966,6 +966,8 @@ export class SiRegistryGenerator {
         this.stringField(prop, { nexusTypeDef, inputType });
       } else if (realProp.kind() == "number") {
         this.intField(prop, { nexusTypeDef, inputType });
+      } else if (realProp.kind() == "bool") {
+        this.booleanField(prop, { nexusTypeDef, inputType });
       } else if (realProp.kind() == "enum") {
         if (prop.repeated) {
           // @ts-ignore
