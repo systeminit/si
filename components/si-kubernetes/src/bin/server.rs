@@ -65,7 +65,7 @@ async fn main() -> anyhow::Result<()> {
     agent_dispatcher
         .add(&db, aws_eks_kubernetes_deployment::dispatcher())
         .await?;
-    let mut agent_server = AgentServer::new(server_name, agent_dispatcher, &settings);
+    let mut agent_server = AgentServer::new(server_name, agent_dispatcher, &settings)?;
     tokio::spawn(async move { agent_server.run().await });
 
     // TODO(fnichol): We need to add an envelope to the payload before activating this code,
@@ -90,7 +90,7 @@ async fn main() -> anyhow::Result<()> {
         db.clone(),
         KubernetesDeploymentEntityEvent::type_name(),
         &settings,
-    );
+    )?;
     tokio::spawn(async move { finalizer.run::<KubernetesDeploymentEntityEvent>().await });
 
     // TODO(fnichol): We need to add an envelope to the payload before activating this code,

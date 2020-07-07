@@ -73,7 +73,7 @@ pub enum CeaError {
 
     // MQTT
     #[error("mqtt failed: {0}")]
-    Mqtt(#[from] mqtt::errors::MqttError),
+    Mqtt(#[from] mqtt::Error),
 
     // Prost
     #[error("prost failed to encode: {0}")]

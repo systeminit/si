@@ -1,12 +1,11 @@
 use crate::agent::dispatch::{Dispatch, SubscribeKeys};
 use crate::entity_event::EntityEvent;
-use crate::{CeaResult, MqttClient};
-use futures::compat::{Future01CompatExt, Stream01CompatExt};
+use crate::{agent::mqtt::PersistenceType, CeaResult, MqttClient};
 use futures::StreamExt;
 use si_data::uuid_string;
 use si_settings::Settings;
 use tokio;
-use tracing::{debug, debug_span, warn};
+use tracing::{debug, debug_span, info, warn};
 use tracing_futures::Instrument as _;
 
 pub struct AgentServer<
@@ -23,23 +22,28 @@ impl<
         D: Dispatch<EntityEvent = EE> + SubscribeKeys + Send + Sync + Clone + 'static,
     > AgentServer<EE, D>
 {
-    pub fn new(name: impl Into<String>, dispatch: D, settings: &Settings) -> AgentServer<EE, D> {
+    pub fn new(
+        name: impl Into<String>,
+        dispatch: D,
+        settings: &Settings,
+    ) -> CeaResult<AgentServer<EE, D>> {
         let name = name.into();
 
         let client_id = format!("agent_server:{}:{}", name.clone(), uuid_string());
 
         let mqtt = MqttClient::new()
-            .server_uri(settings.vernemq_server_uri().as_ref())
-            .client_id(client_id.as_ref())
-            .persistence(false)
-            .finalize();
+            .server_uri(settings.vernemq_server_uri())
+            .client_id(client_id)
+            .persistence(PersistenceType::None)
+            .create_client()?;
 
         let server: AgentServer<EE, D> = AgentServer {
             name,
             mqtt,
             dispatch,
         };
-        server
+
+        Ok(server)
     }
 
     fn subscribe_topics(&self) -> Vec<String> {
@@ -58,20 +62,23 @@ impl<
 
     pub async fn run(&mut self) -> CeaResult<()> {
         // Whats the right value? Who knows? God only knows. Ask the Beach Boys.
-        let mut rx = self.mqtt.get_stream(1000).compat();
+        let mut rx = self.mqtt.get_stream(1000);
         println!("Connecting to the MQTT server...");
-        let (server_uri, ver, session_present) = self
+        let response = self
             .mqtt
             .default_connect()
             .await?
             .connect_response()
             .expect("should contain a connection response");
+        let server_uri = response.server_uri;
+        let ver = response.mqtt_version;
+        let session_present = response.session_present;
         // Make the connection to the broker
         println!("Connected to: '{}' with MQTT version {}", server_uri, ver);
         if !session_present {
             for topic in self.subscribe_topics() {
                 println!("Subscribing to {}", topic);
-                self.mqtt.subscribe(&topic, 2).compat().await?;
+                self.mqtt.subscribe(&topic, 2).await?;
             }
         }
 
@@ -84,15 +91,14 @@ impl<
             tokio::spawn(async move {
                 async {
                     let msg = match stream_msg {
-                        Ok(maybe_msg) => match maybe_msg {
-                            Some(msg) => msg,
-                            None => {
-                                warn!("no message; aborting");
-                                return;
+                        Some(msg) => msg,
+                        None => {
+                            info!("lost connection to mqtt, attempting to reconnect");
+                            while let Err(err) = mqtt_client.reconnect().await {
+                                warn!(?err, "error reconnecting to MQTT");
+                                tokio::time::delay_for(std::time::Duration::from_millis(1000))
+                                    .await;
                             }
-                        },
-                        Err(e) => {
-                            warn!(?e, "error fetching message from stream, aborting");
                             return;
                         }
                     };

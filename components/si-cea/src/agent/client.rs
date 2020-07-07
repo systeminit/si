@@ -1,7 +1,6 @@
-use crate::agent::mqtt::{Message, MqttClient};
+use crate::agent::mqtt::{Message, MqttClient, PersistenceType};
 use crate::entity_event::EntityEvent;
 use crate::error::CeaResult;
-use futures::compat::Future01CompatExt;
 use si_data::uuid_string;
 use si_settings::Settings;
 
@@ -19,10 +18,10 @@ impl AgentClient {
         let client_id = format!("agent_client:{}:{}", name, uuid_string());
 
         let mqtt = MqttClient::new()
-            .server_uri(settings.vernemq_server_uri().as_ref())
-            .client_id(client_id.as_ref())
-            .persistence(false)
-            .finalize();
+            .server_uri(settings.vernemq_server_uri())
+            .client_id(client_id)
+            .persistence(PersistenceType::None)
+            .create_client()?;
         mqtt.default_connect().await?;
 
         Ok(AgentClient { mqtt })
@@ -79,7 +78,7 @@ impl AgentClient {
             let topic = self.generate_topic(entity_event)?;
             debug!(?topic, "topic");
             let msg = Message::new(self.generate_topic(entity_event)?, payload, 0);
-            self.mqtt.publish(msg).compat().await?;
+            self.mqtt.publish(msg).await?;
             Ok(())
         }
         .instrument(debug_span!("async_client_send", ?entity_event))

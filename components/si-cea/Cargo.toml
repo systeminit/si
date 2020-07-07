@@ -9,8 +9,8 @@ async-trait = "0.1"
 bytes = "0.5"
 chrono = { version = "0.4", features = ["serde"] }
 dyn-clone = "1.0.1"
-futures = { version = "0.3", features = ["alloc", "compat"] }
-paho-mqtt = "0.7"
+futures = { version = "0.3", features = ["alloc"] }
+paho-mqtt = "0.8"
 prost = "0.6"
 prost-derive = "0.6"
 serde = { version = "1.0", features = ["derive"] }
