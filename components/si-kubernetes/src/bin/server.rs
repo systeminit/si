@@ -39,7 +39,7 @@ async fn main() -> anyhow::Result<()> {
         .with(opentelemetry_layer);
 
     tracing::subscriber::set_global_default(subscriber)
-        .context("cannot set the global tracing defalt")?;
+        .context("cannot set the global tracing default")?;
 
     let server_name = "kubernetes";
 

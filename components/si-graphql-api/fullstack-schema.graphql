@@ -2,6 +2,376 @@
 ### Do not make changes to this file directly
 
 
+type ApplicationComponent {
+  """Component Constraints"""
+  constraints: ApplicationComponentConstraints
+
+  """Component Description"""
+  description: String
+
+  """A System Initiative Application Component Display Name"""
+  displayName: String
+
+  """A System Initiative Application Component ID"""
+  id: ID
+
+  """A System Initiative Application Component Name"""
+  name: String
+
+  """SI Properties"""
+  siProperties: ComponentSiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+}
+
+type ApplicationComponentConstraints {
+  """Component Display Name"""
+  componentDisplayName: String
+
+  """Component Name"""
+  componentName: String
+}
+
+input ApplicationComponentConstraintsRequest {
+  """Component Display Name"""
+  componentDisplayName: String
+
+  """Component Name"""
+  componentName: String
+}
+
+"""Get a A System Initiative Application Component Reply"""
+type ApplicationComponentGetReply {
+  """A System Initiative Application Component Item"""
+  item: ApplicationComponent
+}
+
+"""Get a A System Initiative Application Component Request"""
+input ApplicationComponentGetRequest {
+  """A System Initiative Application Component ID"""
+  id: ID!
+}
+
+"""List A System Initiative Application Component Reply"""
+type ApplicationComponentListReply {
+  """Items"""
+  items: [ApplicationComponent!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: String
+}
+
+"""List A System Initiative Application Component Request"""
+input ApplicationComponentListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: String
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+"""Pick Component Reply"""
+type ApplicationComponentPickReply {
+  """Chosen Component"""
+  component: ApplicationComponent
+
+  """Implicit Constraints"""
+  implicitConstraints: ApplicationComponentConstraints
+}
+
+"""Pick Component Request"""
+input ApplicationComponentPickRequest {
+  """Constraints"""
+  constraints: ApplicationComponentConstraintsRequest
+}
+
+type ApplicationEntity {
+  """Constraints"""
+  constraints: ApplicationComponentConstraints
+
+  """Entity Description"""
+  description: String
+
+  """A System Initiative Application Entity Display Name"""
+  displayName: String
+
+  """A System Initiative Application Entity ID"""
+  id: ID
+
+  """Implicit Constraints"""
+  implicitConstraints: ApplicationComponentConstraints
+
+  """A System Initiative Application Entity Name"""
+  name: String
+
+  """Properties"""
+  properties: ApplicationEntityProperties
+
+  """SI Properties"""
+  siProperties: EntitySiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+}
+
+"""Create Entity Reply"""
+type ApplicationEntityCreateReply {
+  """applicationEntity Item"""
+  item: ApplicationEntity
+}
+
+"""Create Entity Request"""
+input ApplicationEntityCreateRequest {
+  """Change Set ID"""
+  changeSetId: String!
+
+  """Constraints"""
+  constraints: ApplicationComponentConstraintsRequest
+
+  """Description"""
+  description: String!
+
+  """Display Name"""
+  displayName: String!
+
+  """Name"""
+  name: String!
+
+  """Properties"""
+  properties: ApplicationEntityPropertiesRequest
+
+  """Workspace ID"""
+  workspaceId: String!
+}
+
+"""Delete Entity Reply"""
+type ApplicationEntityDeleteReply {
+  """application Item"""
+  item: ApplicationEntity
+}
+
+"""Delete Entity Request"""
+input ApplicationEntityDeleteRequest {
+  """Change Set ID"""
+  changeSetId: String!
+
+  """applicationEntity ID"""
+  id: ID!
+}
+
+type ApplicationEntityEvent {
+  """Action Name"""
+  actionName: String
+
+  """Creation Time"""
+  createTime: String
+
+  """Error Lines"""
+  errorLines: [String!]
+
+  """Error Message"""
+  errorMessage: String
+
+  """Finalized"""
+  finalized: Boolean
+
+  """Final Time"""
+  finalTime: String
+
+  """A System Initiative Application EntityEvent ID"""
+  id: ID
+
+  """Input Entity"""
+  inputEntity: ApplicationEntity
+
+  """Output Entity"""
+  outputEntity: ApplicationEntity
+
+  """Output Lines"""
+  outputLines: [String!]
+
+  """Previous Entity"""
+  previousEntity: ApplicationEntity
+
+  """SI Properties"""
+  siProperties: EntityEventSiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+
+  """success"""
+  success: Boolean
+
+  """Updated Time"""
+  updatedTime: String
+
+  """User ID"""
+  userId: String
+}
+
+"""List A System Initiative Application EntityEvent Reply"""
+type ApplicationEntityEventListReply {
+  """Items"""
+  items: [ApplicationEntityEvent!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: String
+}
+
+"""List A System Initiative Application EntityEvent Request"""
+input ApplicationEntityEventListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: String
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+"""Get a A System Initiative Application Entity Reply"""
+type ApplicationEntityGetReply {
+  """A System Initiative Application Entity Item"""
+  item: ApplicationEntity
+}
+
+"""Get a A System Initiative Application Entity Request"""
+input ApplicationEntityGetRequest {
+  """A System Initiative Application Entity ID"""
+  id: ID!
+}
+
+"""List A System Initiative Application Entity Reply"""
+type ApplicationEntityListReply {
+  """Items"""
+  items: [ApplicationEntity!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: String
+}
+
+"""List A System Initiative Application Entity Request"""
+input ApplicationEntityListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: String
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+"""Edit Phantom Property Reply"""
+type ApplicationEntityPhantomEditReply {
+  """Entity Event"""
+  item: ApplicationEntityEvent
+}
+
+"""Edit Phantom Property Request"""
+input ApplicationEntityPhantomEditRequest {
+  """Entity ID"""
+  id: ID!
+
+  """The Phantom Data property value"""
+  property: Boolean
+}
+
+type ApplicationEntityProperties {
+  """Phantom Data"""
+  phantom: Boolean
+}
+
+input ApplicationEntityPropertiesRequest {
+  """Phantom Data"""
+  phantom: Boolean
+}
+
+"""Sync State Reply"""
+type ApplicationEntitySyncReply {
+  """Entity Event"""
+  item: ApplicationEntityEvent
+}
+
+"""Sync State Request"""
+input ApplicationEntitySyncRequest {
+  """Entity ID"""
+  id: ID!
+}
+
+"""Update an Entity Reply"""
+type ApplicationEntityUpdateReply {
+  """application Item"""
+  item: ApplicationEntity
+}
+
+"""Update an Entity Request"""
+input ApplicationEntityUpdateRequest {
+  """Change Set ID"""
+  changeSetId: String!
+
+  """applicationEntity ID"""
+  id: ID!
+
+  """application Item Update"""
+  update: ApplicationEntityUpdateRequestUpdateRequest
+}
+
+input ApplicationEntityUpdateRequestUpdateRequest {
+  """description"""
+  description: String
+
+  """displayName"""
+  displayName: String
+
+  """name"""
+  name: String
+
+  """properties"""
+  properties: ApplicationEntityPropertiesRequest
+}
+
 type BillingAccount {
   associations: BillingAccountAssociations
 
@@ -2248,6 +2618,11 @@ input MatchLabelsRequest {
 }
 
 type Mutation {
+  applicationEntityCreate(input: ApplicationEntityCreateRequest): ApplicationEntityCreateReply
+  applicationEntityDelete(input: ApplicationEntityDeleteRequest): ApplicationEntityDeleteReply
+  applicationEntityPhantomEdit(input: ApplicationEntityPhantomEditRequest): ApplicationEntityPhantomEditReply
+  applicationEntitySync(input: ApplicationEntitySyncRequest): ApplicationEntitySyncReply
+  applicationEntityUpdate(input: ApplicationEntityUpdateRequest): ApplicationEntityUpdateReply
   billingAccountSignup(input: BillingAccountSignupRequest): BillingAccountSignupReply
   changeSetCreate(input: ChangeSetCreateRequest): ChangeSetCreateReply
   changeSetExecute(input: ChangeSetExecuteRequest): ChangeSetExecuteReply
@@ -2274,6 +2649,11 @@ type Mutation {
   serviceEntityReplicasEdit(input: ServiceEntityReplicasEditRequest): ServiceEntityReplicasEditReply
   serviceEntitySync(input: ServiceEntitySyncRequest): ServiceEntitySyncReply
   serviceEntityUpdate(input: ServiceEntityUpdateRequest): ServiceEntityUpdateReply
+  systemEntityCreate(input: SystemEntityCreateRequest): SystemEntityCreateReply
+  systemEntityDelete(input: SystemEntityDeleteRequest): SystemEntityDeleteReply
+  systemEntityPhantomEdit(input: SystemEntityPhantomEditRequest): SystemEntityPhantomEditReply
+  systemEntitySync(input: SystemEntitySyncRequest): SystemEntitySyncReply
+  systemEntityUpdate(input: SystemEntityUpdateRequest): SystemEntityUpdateReply
   userCreate(input: UserCreateRequest): UserCreateReply
   workspaceCreate(input: WorkspaceCreateRequest): WorkspaceCreateReply
 }
@@ -2380,6 +2760,12 @@ input OrganizationSiPropertiesRequest {
 }
 
 type Query {
+  applicationComponentGet(input: ApplicationComponentGetRequest): ApplicationComponentGetReply
+  applicationComponentList(input: ApplicationComponentListRequest): ApplicationComponentListReply
+  applicationComponentPick(input: ApplicationComponentPickRequest): ApplicationComponentPickReply
+  applicationEntityEventList(input: ApplicationEntityEventListRequest): ApplicationEntityEventListReply
+  applicationEntityGet(input: ApplicationEntityGetRequest): ApplicationEntityGetReply
+  applicationEntityList(input: ApplicationEntityListRequest): ApplicationEntityListReply
   billingAccountGet(input: BillingAccountGetRequest): BillingAccountGetReply
   billingAccountList(input: BillingAccountListRequest): BillingAccountListReply
   changeSetGet(input: ChangeSetGetRequest): ChangeSetGetReply
@@ -2413,6 +2799,12 @@ type Query {
   serviceEntityEventList(input: ServiceEntityEventListRequest): ServiceEntityEventListReply
   serviceEntityGet(input: ServiceEntityGetRequest): ServiceEntityGetReply
   serviceEntityList(input: ServiceEntityListRequest): ServiceEntityListReply
+  systemComponentGet(input: SystemComponentGetRequest): SystemComponentGetReply
+  systemComponentList(input: SystemComponentListRequest): SystemComponentListReply
+  systemComponentPick(input: SystemComponentPickRequest): SystemComponentPickReply
+  systemEntityEventList(input: SystemEntityEventListRequest): SystemEntityEventListReply
+  systemEntityGet(input: SystemEntityGetRequest): SystemEntityGetReply
+  systemEntityList(input: SystemEntityListRequest): SystemEntityListReply
   userGet(input: UserGetRequest): UserGetReply
   userList(input: UserListRequest): UserListReply
   userLogin(input: UserLoginRequest): UserLoginReply
@@ -2850,6 +3242,376 @@ input ServiceEntityUpdateRequestUpdateRequest {
 
   """properties"""
   properties: ServiceEntityPropertiesRequest
+}
+
+type SystemComponent {
+  """Component Constraints"""
+  constraints: SystemComponentConstraints
+
+  """Component Description"""
+  description: String
+
+  """A System Initiative System Component Display Name"""
+  displayName: String
+
+  """A System Initiative System Component ID"""
+  id: ID
+
+  """A System Initiative System Component Name"""
+  name: String
+
+  """SI Properties"""
+  siProperties: ComponentSiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+}
+
+type SystemComponentConstraints {
+  """Component Display Name"""
+  componentDisplayName: String
+
+  """Component Name"""
+  componentName: String
+}
+
+input SystemComponentConstraintsRequest {
+  """Component Display Name"""
+  componentDisplayName: String
+
+  """Component Name"""
+  componentName: String
+}
+
+"""Get a A System Initiative System Component Reply"""
+type SystemComponentGetReply {
+  """A System Initiative System Component Item"""
+  item: SystemComponent
+}
+
+"""Get a A System Initiative System Component Request"""
+input SystemComponentGetRequest {
+  """A System Initiative System Component ID"""
+  id: ID!
+}
+
+"""List A System Initiative System Component Reply"""
+type SystemComponentListReply {
+  """Items"""
+  items: [SystemComponent!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: String
+}
+
+"""List A System Initiative System Component Request"""
+input SystemComponentListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: String
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+"""Pick Component Reply"""
+type SystemComponentPickReply {
+  """Chosen Component"""
+  component: SystemComponent
+
+  """Implicit Constraints"""
+  implicitConstraints: SystemComponentConstraints
+}
+
+"""Pick Component Request"""
+input SystemComponentPickRequest {
+  """Constraints"""
+  constraints: SystemComponentConstraintsRequest
+}
+
+type SystemEntity {
+  """Constraints"""
+  constraints: SystemComponentConstraints
+
+  """Entity Description"""
+  description: String
+
+  """A System Initiative System Entity Display Name"""
+  displayName: String
+
+  """A System Initiative System Entity ID"""
+  id: ID
+
+  """Implicit Constraints"""
+  implicitConstraints: SystemComponentConstraints
+
+  """A System Initiative System Entity Name"""
+  name: String
+
+  """Properties"""
+  properties: SystemEntityProperties
+
+  """SI Properties"""
+  siProperties: EntitySiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+}
+
+"""Create Entity Reply"""
+type SystemEntityCreateReply {
+  """systemEntity Item"""
+  item: SystemEntity
+}
+
+"""Create Entity Request"""
+input SystemEntityCreateRequest {
+  """Change Set ID"""
+  changeSetId: String!
+
+  """Constraints"""
+  constraints: SystemComponentConstraintsRequest
+
+  """Description"""
+  description: String!
+
+  """Display Name"""
+  displayName: String!
+
+  """Name"""
+  name: String!
+
+  """Properties"""
+  properties: SystemEntityPropertiesRequest
+
+  """Workspace ID"""
+  workspaceId: String!
+}
+
+"""Delete Entity Reply"""
+type SystemEntityDeleteReply {
+  """system Item"""
+  item: SystemEntity
+}
+
+"""Delete Entity Request"""
+input SystemEntityDeleteRequest {
+  """Change Set ID"""
+  changeSetId: String!
+
+  """systemEntity ID"""
+  id: ID!
+}
+
+type SystemEntityEvent {
+  """Action Name"""
+  actionName: String
+
+  """Creation Time"""
+  createTime: String
+
+  """Error Lines"""
+  errorLines: [String!]
+
+  """Error Message"""
+  errorMessage: String
+
+  """Finalized"""
+  finalized: Boolean
+
+  """Final Time"""
+  finalTime: String
+
+  """A System Initiative System EntityEvent ID"""
+  id: ID
+
+  """Input Entity"""
+  inputEntity: SystemEntity
+
+  """Output Entity"""
+  outputEntity: SystemEntity
+
+  """Output Lines"""
+  outputLines: [String!]
+
+  """Previous Entity"""
+  previousEntity: SystemEntity
+
+  """SI Properties"""
+  siProperties: EntityEventSiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+
+  """success"""
+  success: Boolean
+
+  """Updated Time"""
+  updatedTime: String
+
+  """User ID"""
+  userId: String
+}
+
+"""List A System Initiative System EntityEvent Reply"""
+type SystemEntityEventListReply {
+  """Items"""
+  items: [SystemEntityEvent!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: String
+}
+
+"""List A System Initiative System EntityEvent Request"""
+input SystemEntityEventListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: String
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+"""Get a A System Initiative System Entity Reply"""
+type SystemEntityGetReply {
+  """A System Initiative System Entity Item"""
+  item: SystemEntity
+}
+
+"""Get a A System Initiative System Entity Request"""
+input SystemEntityGetRequest {
+  """A System Initiative System Entity ID"""
+  id: ID!
+}
+
+"""List A System Initiative System Entity Reply"""
+type SystemEntityListReply {
+  """Items"""
+  items: [SystemEntity!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: String
+}
+
+"""List A System Initiative System Entity Request"""
+input SystemEntityListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: String
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+"""Edit Phantom Property Reply"""
+type SystemEntityPhantomEditReply {
+  """Entity Event"""
+  item: SystemEntityEvent
+}
+
+"""Edit Phantom Property Request"""
+input SystemEntityPhantomEditRequest {
+  """Entity ID"""
+  id: ID!
+
+  """The Phantom Data property value"""
+  property: Boolean
+}
+
+type SystemEntityProperties {
+  """Phantom Data"""
+  phantom: Boolean
+}
+
+input SystemEntityPropertiesRequest {
+  """Phantom Data"""
+  phantom: Boolean
+}
+
+"""Sync State Reply"""
+type SystemEntitySyncReply {
+  """Entity Event"""
+  item: SystemEntityEvent
+}
+
+"""Sync State Request"""
+input SystemEntitySyncRequest {
+  """Entity ID"""
+  id: ID!
+}
+
+"""Update an Entity Reply"""
+type SystemEntityUpdateReply {
+  """system Item"""
+  item: SystemEntity
+}
+
+"""Update an Entity Request"""
+input SystemEntityUpdateRequest {
+  """Change Set ID"""
+  changeSetId: String!
+
+  """systemEntity ID"""
+  id: ID!
+
+  """system Item Update"""
+  update: SystemEntityUpdateRequestUpdateRequest
+}
+
+input SystemEntityUpdateRequestUpdateRequest {
+  """description"""
+  description: String
+
+  """displayName"""
+  displayName: String
+
+  """name"""
+  name: String
+
+  """properties"""
+  properties: SystemEntityPropertiesRequest
 }
 
 type User {

@@ -45,6 +45,7 @@ impl GlobalCoreServiceDispatchFunctions for GlobalCoreServiceDispatchFunctionsIm
     ) -> CeaResult<()> {
         async { Ok(()) }.instrument(debug_span!("deploy")).await
     }
+
     async fn sync(
         _mqtt_client: &MqttClient,
         _entity_event: &mut Self::EntityEvent,

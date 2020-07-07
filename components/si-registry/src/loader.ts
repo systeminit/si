@@ -21,7 +21,9 @@ import "./components/si-account/integrationInstance";
 import "./components/si-account/changeSet";
 import "./components/si-account/item";
 
+import "./components/si-core/application";
 import "./components/si-core/service";
+import "./components/si-core/system";
 
 import "./components/si-kubernetes/kubernetes";
 import "./components/si-kubernetes/deployment";
