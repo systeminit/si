@@ -1,6 +1,5 @@
-import { PropAction, PropText } from "../../components/prelude";
+import { PropAction, PropNumber, PropText } from "../../components/prelude";
 import { registry } from "../../registry";
-import { PropNumber } from "@/prop/number";
 
 registry.componentAndEntity({
   typeName: "service",

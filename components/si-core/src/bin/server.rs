@@ -3,7 +3,7 @@ use opentelemetry::{api::Provider, sdk};
 use si_cea::binary::server::prelude::*;
 use si_core::agent::global_core_service;
 use si_core::gen::service::{Server, Service};
-use si_core::model::ServiceEntityEvent;
+use si_core::model::{ApplicationEntityEvent, ServiceEntityEvent, SystemEntityEvent};
 use tracing_opentelemetry::layer;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::{self, fmt, EnvFilter, Registry};
@@ -36,7 +36,7 @@ async fn main() -> anyhow::Result<()> {
         .with(opentelemetry_layer);
 
     tracing::subscriber::set_global_default(subscriber)
-        .context("cannot set the global tracing defalt")?;
+        .context("cannot set the global tracing default")?;
 
     let server_name = "core";
 
@@ -64,6 +64,34 @@ async fn main() -> anyhow::Result<()> {
     let mut agent_server = AgentServer::new(server_name, agent_dispatcher, &settings)?;
     tokio::spawn(async move { agent_server.run().await });
 
+    // TODO(fnichol): We need to add an envelope to the payload before activating this code,
+    // otherwise both Deployments and Services will be consumed by both Agents
+    //
+    println!(
+        "*** (NOT YET) Spawning the {} Agent Server ***",
+        ApplicationEntityEvent::type_name()
+    );
+    // let mut agent_dispatcher = Dispatcher::default();
+    // agent_dispatcher
+    //     .add(&db, global_core_application::dispatcher())
+    //     .await?;
+    // let mut agent_server = AgentServer::new(server_name, agent_dispatcher, &settings);
+    // tokio::spawn(async move { agent_server.run().await });
+
+    // TODO(fnichol): We need to add an envelope to the payload before activating this code,
+    // otherwise both Deployments and Services will be consumed by both Agents
+    //
+    println!(
+        "*** (NOT YET) Spawning the {} Agent Server ***",
+        SystemEntityEvent::type_name()
+    );
+    // let mut agent_dispatcher = Dispatcher::default();
+    // agent_dispatcher
+    //     .add(&db, global_core_system::dispatcher())
+    //     .await?;
+    // let mut agent_server = AgentServer::new(server_name, agent_dispatcher, &settings);
+    // tokio::spawn(async move { agent_server.run().await });
+
     println!(
         "*** Spawning the {} Agent Finalizer ***",
         ServiceEntityEvent::type_name()
@@ -71,6 +99,34 @@ async fn main() -> anyhow::Result<()> {
     let mut finalizer =
         AgentFinalizer::new(db.clone(), ServiceEntityEvent::type_name(), &settings)?;
     tokio::spawn(async move { finalizer.run::<ServiceEntityEvent>().await });
+
+    // TODO(fnichol): We need to add an envelope to the payload before activating this code,
+    // otherwise both Deployments and Services will be consumed by both Finalizers
+    //
+    println!(
+        "*** (NOT YET) Spawning the {} Agent Finalizer ***",
+        ApplicationEntityEvent::type_name()
+    );
+    // let mut finalizer = AgentFinalizer::new(
+    //     db.clone(),
+    //     ApplicationEntityEvent::type_name(),
+    //     &settings,
+    // );
+    // tokio::spawn(async move { finalizer.run::<ApplicationEntityEvent>().await });
+
+    // TODO(fnichol): We need to add an envelope to the payload before activating this code,
+    // otherwise both Deployments and Services will be consumed by both Finalizers
+    //
+    println!(
+        "*** (NOT YET) Spawning the {} Agent Finalizer ***",
+        SystemEntityEvent::type_name()
+    );
+    // let mut finalizer = AgentFinalizer::new(
+    //     db.clone(),
+    //     SystemEntityEvent::type_name(),
+    //     &settings,
+    // );
+    // tokio::spawn(async move { finalizer.run::<SystemEntityEvent>().await });
 
     let addr = format!("0.0.0.0:{}", settings.service.port)
         .parse()
