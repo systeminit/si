@@ -12,6 +12,20 @@
         >
           <plus-square-icon size="1.1x" />
         </button>
+        <div class="text-black">
+          <select
+            class="bg-gray-800 border text-gray-400 my-2 text-xs leading-tight focus:outline-none"
+            v-model="selectedEntityType"
+          >
+            <option
+              v-for="entity in entityTypeList"
+              :key="entity.typeName"
+              :value="entity.typeName"
+            >
+              {{ entity.typeName }}
+            </option>
+          </select>
+        </div>
       </div>
 
       <div class="mx-3">
@@ -34,6 +48,8 @@
 <script>
 import { Maximize2Icon, PlusSquareIcon } from "vue-feather-icons";
 import NodeEditor from "./NodeEditor.vue";
+import { registry } from "si-registry";
+import _ from "lodash";
 
 export default {
   name: "EditorSchematicPanel",
@@ -41,6 +57,13 @@ export default {
     Maximize2Icon,
     NodeEditor,
     PlusSquareIcon,
+  },
+  data() {
+    const entityTypeList = _.sortBy(registry.listEntities(), ["typeName"]);
+    return {
+      selectedEntityType: "serviceEntity",
+      entityTypeList,
+    };
   },
   methods: {
     maximizePanel() {
@@ -51,20 +74,29 @@ export default {
       });
     },
     async addNode() {
+      const options = {
+        typeName: this.selectedEntityType,
+        data: { properties: {} },
+      };
       // TODO: The data.properties here should be automatically determined by the system. That they aren't is
       // a bug. I'm not sure if it belongs in the Registry or in the API - I expect its the API that
       // should fill in the correct defaults. This will work for now.
-      await this.$store.dispatch("entity/create", {
-        typeName: "kubernetesDeploymentEntity",
-        data: {
-          properties: {
-            kubernetesObject: {
-              apiVersion: "apps/v1",
-              kind: "Deployment",
+      switch (this.selectedEntityType) {
+        case "kubernetesDeploymentEntity":
+        case "kubernetesServiceEntity":
+          options["data"] = {
+            properties: {
+              kubernetesObject: {
+                apiVersion: "apps/v1",
+                kind: "Deployment",
+              },
             },
-          },
-        },
-      });
+          };
+          break;
+        default:
+        // Nothing to do.
+      }
+      await this.$store.dispatch("entity/create", options);
     },
   },
 };
