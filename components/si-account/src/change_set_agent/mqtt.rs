@@ -1,10 +1,9 @@
-use futures::compat::Future01CompatExt;
-use paho_mqtt::{AsyncClient, AsyncClientBuilder, ConnectOptions, MqttError, ServerResponse};
+use paho_mqtt::{AsyncClient, ConnectOptions, Error, ServerResponse};
 use std::fmt;
 use std::ops::{Deref, DerefMut};
 use std::result;
 
-pub use paho_mqtt::Message;
+pub use paho_mqtt::{ClientPersistence, Message, PersistenceType, UserData};
 
 #[derive(Clone)]
 pub struct MqttClient {
@@ -12,14 +11,14 @@ pub struct MqttClient {
 }
 
 impl MqttClient {
-    pub fn new() -> ClientBuilder {
-        ClientBuilder {
-            inner: AsyncClientBuilder::new(),
+    pub fn new() -> CreateOptionsBuilder {
+        CreateOptionsBuilder {
+            inner: paho_mqtt::CreateOptionsBuilder::new(),
         }
     }
 
-    pub async fn default_connect(&self) -> result::Result<ServerResponse, MqttError> {
-        self.inner.connect(ConnectOptions::new()).compat().await
+    pub async fn default_connect(&self) -> result::Result<ServerResponse, Error> {
+        self.inner.connect(ConnectOptions::new()).await
     }
 }
 
@@ -45,86 +44,115 @@ impl DerefMut for MqttClient {
     }
 }
 
-pub struct ClientBuilder {
-    inner: AsyncClientBuilder,
+pub struct CreateOptionsBuilder {
+    inner: paho_mqtt::CreateOptionsBuilder,
 }
 
-impl ClientBuilder {
-    /// Sets the address for the MQTT broker/server.
+impl CreateOptionsBuilder {
+    /// Sets the the URI to the MQTT broker.
+    /// Alternately, the application can specify multiple servers via the
+    /// connect options.
     ///
     /// # Arguments
     ///
-    /// `server_uri` The address of the MQTT broker. It takes the form
-    ///              <i>protocol://host:port</i>, where <i>protocol</i> must
-    ///              be <i>tcp</i> or <i>ssl</i>. For <i>host</i>, you can
-    ///              specify either an IP address or a host name. For instance,
-    ///              to connect to a server running on the local machines with
-    ///              the default MQTT port, specify <i>tcp://localhost:1883</i>.
-    pub fn server_uri(&mut self, server_uri: &str) -> &mut ClientBuilder {
-        self.inner.server_uri(server_uri);
+    /// `server_uri` The URI string to specify the server in the form
+    ///              _protocol://host:port_, where the protocol can be
+    ///              _tcp_ or _ssl_, and the host can be an IP address
+    ///              or domain name.
+    pub fn server_uri(mut self, server_uri: impl Into<String>) -> Self {
+        self.inner = self.inner.server_uri(server_uri);
         self
     }
 
-    /// Sets the client identifier for connection to the broker.
+    /// Sets the client identifier string that is sent to the server.
+    /// The client ID is a unique name to identify the client to the server,
+    /// which can be used if the client desires the server to hold state
+    /// about the session. If the client requests a clean sesstion, this can
+    /// be an empty string.
+    ///
+    /// The broker is required to honor a client ID of up to 23 bytes, but
+    /// could honor longer ones, depending on the broker.
+    ///
+    /// Note that if this is an empty string, the clean session parameter
+    /// *must* be set to _true_.
     ///
     /// # Arguments
     ///
-    /// `client_id` A unique identifier string to be passed to the broker
-    ///             when the connection is made. This must be a UTF-8 encoded
-    ///             string. If it is empty, the broker will create and assign
-    ///             a unique name for the client.
-    pub fn client_id(&mut self, client_id: &str) -> &mut ClientBuilder {
-        self.inner.client_id(client_id);
+    /// `client_id` A UTF-8 string identifying the client to the server.
+    pub fn client_id(mut self, client_id: impl Into<String>) -> Self {
+        self.inner = self.inner.client_id(client_id);
         self
     }
 
-    /// Turns default file persistence on or off.
-    /// When turned on, the client will use the default, file-based,
-    /// persistence mechanism. This stores information about in-flight
-    /// messages in persistent storage on the file system, and provides
-    /// some protection against message loss in the case of unexpected
-    /// failure.
-    /// When turned off, the client uses in-memory persistence. If the
-    /// client crashes or system power fails, the client could lose
-    /// messages.
+    /// Sets the type of persistence used by the client.
+    /// The default is for the library to automatically use file persistence,
+    /// although this can be turned off by specify `None` for a more
+    /// performant, though possibly less reliable system.
     ///
     /// # Arguments
     ///
-    /// `on` Whether to turn on file-based message persistence.
-    pub fn persistence(&mut self, on: bool) -> &mut ClientBuilder {
-        self.inner.persistence(on);
+    /// `persist` The type of persistence to use.
+    pub fn persistence(mut self, persist: PersistenceType) -> Self {
+        self.inner = self.inner.persistence(persist);
         self
     }
 
-    /// Enables or disables off-line buffering of out-going messages when
-    /// the client is disconnected.
+    /// Sets a user-defined persistence store.
+    /// This sets the persistence to use a custom one defined by the
+    /// application. This can be anything that implements the
+    /// `ClientPersistence` trait.
     ///
     /// # Arguments
     ///
-    /// `on` Whether or not the application is allowed to publish messages
-    ///      if the client is off-line.
-    pub fn offline_buffering(&mut self, on: bool) -> &mut ClientBuilder {
-        self.inner.offline_buffering(on);
+    /// `persist` An application-defined custom persistence store.
+    pub fn user_persistence<T>(mut self, persistence: T) -> Self
+    where
+        T: ClientPersistence + 'static,
+    {
+        self.inner = self.inner.user_persistence(persistence);
         self
     }
 
-    /// Enables off-line buffering of out-going messages when the client is
-    /// disconnected and sets the maximum number of messages that can be
-    /// buffered.
+    /// Sets the maximum number of messages that can be buffered for delivery
+    /// when the client is off-line.
+    /// The client has limited support for bufferering messages when the
+    /// client is temporarily disconnected. This specifies the maximum number
+    /// of messages that can be buffered.
     ///
     /// # Arguments
     ///
-    /// `max_buffered_msgs` The maximum number of messages that the client
-    ///                     will buffer while off-line.
-    pub fn max_buffered_messages(&mut self, max_buffered_messages: i32) -> &mut ClientBuilder {
-        self.inner.max_buffered_messages(max_buffered_messages);
+    /// `n` The maximum number of messages that can be buffered. Setting this
+    ///     to zero disables off-line buffering.
+    pub fn max_buffered_messages(mut self, n: i32) -> Self {
+        self.inner = self.inner.max_buffered_messages(n);
+        self
+    }
+
+    /// Sets the version of MQTT to use on the connect.
+    ///
+    /// # Arguments
+    ///
+    /// `ver` The version of MQTT to use when connecting to the broker.
+    ///       * (0) try the latest version (3.1.1) and work backwards
+    ///       * (3) only try v3.1
+    ///       * (4) only try v3.1.1
+    ///       * (5) only try v5
+    ///
+    pub fn mqtt_version(mut self, ver: u32) -> Self {
+        self.inner = self.inner.mqtt_version(ver);
+        self
+    }
+
+    /// Sets the uer-defined data structure for the client.
+    pub fn user_data(mut self, data: UserData) -> Self {
+        self.inner = self.inner.user_data(data);
         self
     }
 
     /// Finalize the builder and create an asynchronous client.
-    pub fn finalize(&self) -> MqttClient {
-        MqttClient {
-            inner: self.inner.finalize(),
-        }
+    pub fn create_client(self) -> paho_mqtt::Result<MqttClient> {
+        Ok(MqttClient {
+            inner: self.inner.create_client()?,
+        })
     }
 }

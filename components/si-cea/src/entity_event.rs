@@ -2,7 +2,6 @@ use crate::entity::{Entity, EntitySiPropertiesEntityState};
 use crate::{CeaError, CeaResult, MqttClient};
 use async_trait::async_trait;
 use chrono::prelude::{DateTime, Utc};
-use futures::compat::Future01CompatExt;
 use paho_mqtt as mqtt;
 use prost::Message;
 use serde::de::DeserializeOwned;
@@ -228,12 +227,12 @@ pub trait EntityEvent:
         //};
         if finalized.unwrap_or(false) {
             let msg = mqtt::Message::new(self.result_topic()?, payload.clone(), 0);
-            mqtt_client.publish(msg).compat().await?;
+            mqtt_client.publish(msg).await?;
             let msg = mqtt::Message::new(self.finalized_topic()?, payload, 2);
-            mqtt_client.publish(msg).compat().await?;
+            mqtt_client.publish(msg).await?;
         } else {
             let msg = mqtt::Message::new(self.result_topic()?, payload, 0);
-            mqtt_client.publish(msg).compat().await?;
+            mqtt_client.publish(msg).await?;
         }
         Ok(())
     }

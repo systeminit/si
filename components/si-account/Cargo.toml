@@ -12,10 +12,10 @@ edition = "2018"
 [dependencies]
 anyhow = "1.0"
 couchbase = { path = "../../vendor/couchbase-rs/couchbase" }
-futures = { version = "0.3", features = ["alloc", "compat"] }
+futures = { version = "0.3", features = ["alloc"] }
 opentelemetry = { version = "0.6", features = ["tonic"] }
 opentelemetry-jaeger = "0.5"
-paho-mqtt = "0.7"
+paho-mqtt = "0.8"
 prost = "0.6"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

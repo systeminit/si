@@ -1,7 +1,6 @@
 use crate::change_set_agent::envelope::ChangeSetEnvelopeError;
-use crate::change_set_agent::mqtt::{Message, MqttClient};
-use futures::compat::Future01CompatExt;
-use paho_mqtt::errors::MqttError;
+use crate::change_set_agent::mqtt::{Message, MqttClient, PersistenceType};
+use paho_mqtt::Error as MqttError;
 use si_data::uuid_string;
 use std::fmt::Debug;
 use thiserror::Error;
@@ -34,9 +33,9 @@ impl ChangeSetAgentClient {
 
         let mqtt = MqttClient::new()
             .server_uri(vernemq_url)
-            .client_id(client_id.as_ref())
-            .persistence(false)
-            .finalize();
+            .client_id(client_id)
+            .persistence(PersistenceType::None)
+            .create_client()?;
         mqtt.default_connect().await?;
 
         Ok(ChangeSetAgentClient { mqtt })
@@ -118,7 +117,7 @@ impl ChangeSetAgentClient {
             let topic = self.generate_topic(&change_set_entry)?;
             debug!(?topic, "topic");
             let msg = Message::new(topic, payload, 0);
-            self.mqtt.publish(msg).compat().await?;
+            self.mqtt.publish(msg).await?;
             Ok(())
         }
         .instrument(debug_span!(

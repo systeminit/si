@@ -61,14 +61,15 @@ async fn main() -> anyhow::Result<()> {
     agent_dispatcher
         .add(&db, global_core_service::dispatcher())
         .await?;
-    let mut agent_server = AgentServer::new(server_name, agent_dispatcher, &settings);
+    let mut agent_server = AgentServer::new(server_name, agent_dispatcher, &settings)?;
     tokio::spawn(async move { agent_server.run().await });
 
     println!(
         "*** Spawning the {} Agent Finalizer ***",
         ServiceEntityEvent::type_name()
     );
-    let mut finalizer = AgentFinalizer::new(db.clone(), ServiceEntityEvent::type_name(), &settings);
+    let mut finalizer =
+        AgentFinalizer::new(db.clone(), ServiceEntityEvent::type_name(), &settings)?;
     tokio::spawn(async move { finalizer.run::<ServiceEntityEvent>().await });
 
     let addr = format!("0.0.0.0:{}", settings.service.port)
