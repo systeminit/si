@@ -405,6 +405,7 @@ export const entity: Module<EntityStore, RootStore> = {
       { commit, dispatch, rootGetters },
       payload: CreateEntityPayload,
     ): Promise<void> {
+      console.log(payload);
       const variables = payload.data;
       const workspaceId = rootGetters["user/currentWorkspaceId"];
       const changeSetId = rootGetters["changeSet/currentId"];
@@ -437,6 +438,7 @@ export const entity: Module<EntityStore, RootStore> = {
         name: entity["name"],
         isEntity: true,
         changeSetId: changeSetId,
+        deleted: false,
       };
       await dispatch("editor/addEditNode", entity, { root: true });
       await dispatch("editor/addNode", node, { root: true });

@@ -106,6 +106,16 @@ export class Registry {
     return returnProp;
   }
 
+  listEntities(): EntityObject[] {
+    const results: EntityObject[] = [];
+    for (const object of this.objects) {
+      if (object instanceof EntityObject) {
+        results.push(object);
+      }
+    }
+    return results;
+  }
+
   // These are "basic" objects - they don't have any extra behavior or
   // automatic fields. They just store the fields you give them.
   base(constructorArgs: BaseObjectConstructor): BaseObject {

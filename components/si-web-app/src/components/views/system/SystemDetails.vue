@@ -15,7 +15,7 @@
         <select
           label="Change Sets"
           aria-label="Change Sets"
-          class="text-black"
+          class="bg-gray-800 border text-gray-400 text-sm px-4 leading-tight focus:outline-none"
           v-model="selectedChangeSetId"
         >
           <option

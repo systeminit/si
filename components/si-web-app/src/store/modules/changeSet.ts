@@ -118,7 +118,6 @@ export const changeSet: Module<ChangeSetStore, RootStore> = {
       commit("setCurrent", changeSetExecuteResult.item);
       let pollerCount = 0;
       let poller = setInterval(() => {
-        console.log(`POLLING ${pollerCount}`);
         pollerCount++;
         if (pollerCount >= 30) {
           clearInterval(poller);
@@ -141,6 +140,7 @@ export const changeSet: Module<ChangeSetStore, RootStore> = {
           })
           .catch(err => {
             console.log("Polling changeset execute error", err);
+            clearInterval(poller);
           });
       }, 1000);
     },

@@ -35,6 +35,10 @@
                 <PropEnum :entityProperty="entityProperty" />
               </div>
 
+              <div v-else-if="propKind(entityProperty, 'bool')">
+                <PropBool :entityProperty="entityProperty" />
+              </div>
+
               <div v-else-if="propKind(entityProperty, 'map')">
                 <PropMap :entityProperty="entityProperty" />
               </div>
@@ -62,6 +66,7 @@ import PropNumber from "./PropNumber.vue";
 import PropEnum from "./PropEnum.vue";
 import PropMap from "./PropMap.vue";
 import PropRepeated from "./PropRepeated.vue";
+import PropBool from "./PropBool.vue";
 
 export default Vue.extend({
   name: "PropertyList",
@@ -72,6 +77,7 @@ export default Vue.extend({
     PropEnum,
     PropMap,
     PropRepeated,
+    PropBool,
   },
   methods: {
     propKind(prop: EntityProperty, kindToCheck: string): boolean {
