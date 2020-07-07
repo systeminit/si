@@ -637,7 +637,6 @@ export class RustFormatter {
         typeName = "u128";
       }
     } else if (
-      prop instanceof PropPrelude.PropBool ||
       prop instanceof PropPrelude.PropEnum ||
       prop instanceof PropPrelude.PropObject
     ) {
@@ -667,6 +666,8 @@ export class RustFormatter {
       }
     } else if (prop instanceof PropPrelude.PropMap) {
       typeName = `std::collections::HashMap<String, String>`;
+    } else if (prop instanceof PropPrelude.PropBool) {
+      typeName = "bool";
     } else if (
       prop instanceof PropPrelude.PropText ||
       prop instanceof PropPrelude.PropCode ||
