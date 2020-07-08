@@ -6,6 +6,7 @@ import {
   ChangeSetCreateRequest,
   ChangeSetCreateReply,
   ChangeSetGetReply,
+  ItemListReply,
 } from "@/graphql-types";
 import {
   graphqlQuery,
@@ -20,7 +21,7 @@ export interface ChangeSetStore {
   current: null | ChangeSet;
 }
 
-interface AddMutationPayload {
+interface AddMutation {
   changeSets: ChangeSet[];
 }
 
@@ -31,10 +32,10 @@ export const changeSet: Module<ChangeSetStore, RootStore> = {
     current: null,
   },
   mutations: {
-    add(state, payload: AddMutationPayload) {
+    add(state, payload: AddMutation) {
       state.changeSets = _.unionBy(payload.changeSets, state.changeSets, "id");
     },
-    setCurrent(state, payload: ChangeSet) {
+    current(state, payload: ChangeSet) {
       state.current = payload;
     },
     setCurrentById(state, payload: string) {
@@ -45,6 +46,13 @@ export const changeSet: Module<ChangeSetStore, RootStore> = {
     },
   },
   getters: {
+    current(state): ChangeSet {
+      if (state.current) {
+        return state.current;
+      } else {
+        throw new Error("Cannot get current changeSet; it is not set!");
+      }
+    },
     currentId(state): string {
       if (!state.current?.id) {
         throw new Error(
@@ -71,12 +79,6 @@ export const changeSet: Module<ChangeSetStore, RootStore> = {
       });
       if (changeSets.length > 0) {
         commit("add", { changeSets });
-        //for (let changeSet of changeSets) {
-        //  if (changeSet.status == "OPEN") {
-        //    commit("setCurrent", changeSet);
-        //    break;
-        //  }
-        //}
       }
     },
     async createDefault({ dispatch, rootGetters }) {
@@ -99,7 +101,7 @@ export const changeSet: Module<ChangeSetStore, RootStore> = {
       });
       if (changeSet.item) {
         commit("add", { changeSets: [changeSet.item] });
-        commit("setCurrent", changeSet.item);
+        commit("current", changeSet.item);
       }
     },
     async execute({ commit, getters, dispatch }) {
@@ -115,7 +117,7 @@ export const changeSet: Module<ChangeSetStore, RootStore> = {
         },
       });
       commit("add", { changeSets: [changeSetExecuteResult.item] });
-      commit("setCurrent", changeSetExecuteResult.item);
+      commit("current", changeSetExecuteResult.item);
       let pollerCount = 0;
       let poller = setInterval(() => {
         pollerCount++;
@@ -129,13 +131,60 @@ export const changeSet: Module<ChangeSetStore, RootStore> = {
           variables: {
             id: changeSetId,
           },
+          associations: {
+            changeSet: ["changeSetEntries"],
+          },
         })
-          .then((res: ChangeSetGetReply) => {
+          .then(async (res: ChangeSetGetReply) => {
             if (res.item?.status == "CLOSED" || res.item?.status == "FAILED") {
               clearInterval(poller);
               commit("add", { changeSets: [res.item] });
-              commit("setCurrent", res.item);
-              dispatch("entity/load", {}, { root: true });
+              commit("current", res.item);
+              if (res.item?.associations?.changeSetEntries?.items) {
+                let remainingItems = true;
+                let nextPageToken =
+                  res.item.associations.changeSetEntries.nextPageToken;
+                let changeSetEntryItems =
+                  res.item.associations.changeSetEntries.items;
+                while (remainingItems) {
+                  for (const changeSetEntry of changeSetEntryItems) {
+                    dispatch(
+                      "entity/get",
+                      {
+                        id: changeSetEntry.id,
+                        typeName: changeSetEntry.siStorable?.typeName,
+                      },
+                      { root: true },
+                    );
+                    dispatch(
+                      "entity/get",
+                      {
+                        id: changeSetEntry.siStorable?.itemId,
+                        typeName: changeSetEntry.siStorable?.typeName,
+                      },
+                      { root: true },
+                    );
+                  }
+                  if (nextPageToken) {
+                    const nextResults: ItemListReply = await graphqlQuery({
+                      typeName: "item",
+                      methodName: "list",
+                      variables: {
+                        pageToken: nextPageToken,
+                      },
+                    });
+                    if (nextResults.items) {
+                      nextPageToken = nextResults.nextPageToken;
+                      changeSetEntryItems = nextResults.items;
+                    } else {
+                      // But how did we get here?
+                      remainingItems = false;
+                    }
+                  } else {
+                    remainingItems = false;
+                  }
+                }
+              }
             }
           })
           .catch(err => {

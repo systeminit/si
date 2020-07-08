@@ -89,10 +89,10 @@ export default Vue.extend({
   },
   computed: {
     ...mapGetters({
-      propertiesList: "editor/propertiesList",
+      propertiesList: "node/propertiesList",
     }),
     ...mapState({
-      selectedNode: (state: any): any => state.editor.selectedNode,
+      selectedNode: (state: any): any => state.node.current,
     }),
   },
 });

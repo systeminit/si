@@ -6,11 +6,12 @@ import { RootStore } from "@/store";
 export function persistEdits(store: Store<RootStore>): void {
   const updateFunctions: Record<string, any> = {};
   store.subscribe((mutation, state) => {
-    if (mutation.type == "editor/setEditValue") {
-      let id = state.editor?.selectedNode?.id;
-      if (!id) {
+    if (mutation.type == "node/setFieldValue") {
+      let currentNode = state.node.current;
+      if (!currentNode) {
         return;
       }
+      let id = currentNode.id;
       if (!updateFunctions[id]) {
         updateFunctions[id] = _.debounce(async (entity: any) => {
           console.log("updating graphql for", { entity });
@@ -21,18 +22,16 @@ export function persistEdits(store: Store<RootStore>): void {
                 currentEditTree,
                 mutation.payload.path,
               );
+              console.log("damage is here");
               _.set(
                 currentEditTree,
                 mutation.payload.path,
                 _.filter(currentMapValue, "key"),
               );
+              console.log("damage is there");
               await store.dispatch("entity/update", {
                 typeName: entity["siStorable"]["typeName"],
                 data: currentEditTree,
-                hypotheticalState: {
-                  path: mutation.payload.path,
-                  value: currentMapValue,
-                },
               });
             } else {
               await store.dispatch("entity/update", {
@@ -44,11 +43,23 @@ export function persistEdits(store: Store<RootStore>): void {
             store.commit("editor/setEditSaveError", err);
           }
           store.commit("editor/setIsSaving", false);
-        }, 200);
+        }, 500);
       }
       store.commit("editor/setEditSaveError", undefined);
       store.commit("editor/setIsSaving", true);
-      updateFunctions[id](state.editor.editTree[id]);
+      let entity;
+      if (state.changeSet.current?.id) {
+        let currentChangeSetId = state.changeSet.current.id;
+        if (currentNode.display[currentChangeSetId]) {
+          entity = currentNode.display[currentChangeSetId];
+        } else {
+          entity = currentNode.display["saved"];
+        }
+      } else {
+        entity = currentNode.display["saved"];
+      }
+
+      updateFunctions[id](entity);
     }
   });
 }

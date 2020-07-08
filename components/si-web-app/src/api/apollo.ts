@@ -95,7 +95,7 @@ const errorLink = onError(({ operation, graphQLErrors, networkError }) => {
           operation.operationName
         }, Message: ${message}, Location: ${locations?.join(
           ", ",
-        )}, Path: ${path}`,
+        )}, Path: ${path}, Variables: ${JSON.stringify(operation.variables)}`,
       ),
     );
   if (networkError) console.log(`[Network error]: ${networkError}`);
@@ -159,21 +159,6 @@ export async function graphqlQuery(
     methodName: args.methodName,
     data: rawResults,
   });
-}
-
-// This function appears courtesy of Stack Overflow:
-//
-// https://stackoverflow.com/questions/286141/remove-blank-attributes-from-an-object-in-javascript
-function removeEmptyData(obj: any): any {
-  return Object.keys(obj)
-    .filter(k => obj[k] != null) // Remove undef. and null.
-    .reduce(
-      (newObj, k) =>
-        typeof obj[k] === "object"
-          ? { ...newObj, [k]: removeEmptyData(obj[k]) } // Recurse.
-          : { ...newObj, [k]: obj[k] }, // Copy value.
-      {},
-    );
 }
 
 export async function graphqlMutation(

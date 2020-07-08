@@ -56,11 +56,6 @@ export default Vue.extend({
     CodeIcon,
     PropertyList,
   },
-  data() {
-    const propertyList = this.$store.getters["editor/propertiesList"];
-    console.log("You have propertiesList", { propertyList });
-    return {};
-  },
   methods: {
     maximizePanel(): void {
       this.$emit("maximizePanelMsg", {

@@ -22,11 +22,8 @@ export default {
   },
   computed: {
     ...mapGetters({
-      nodeList: "editor/nodeList",
+      nodeList: "node/list",
     }),
-    //...mapState({
-    //  nodeList: state => state.editor.nodeList,
-    //}),
   },
 };
 </script>

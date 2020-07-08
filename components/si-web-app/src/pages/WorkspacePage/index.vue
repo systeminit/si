@@ -3,8 +3,17 @@
     <AppBar />
 
     <div
+      v-if="loading"
+      class="flex flex-row h-full w-full bg-black text-white h-center"
+    >
+      <div class="object-center">
+        Loading your workspace! Sit tight!
+      </div>
+    </div>
+    <div
       id="workspace-view"
       class="flex flex-row h-full w-full overflow-hidden"
+      v-else
     >
       <WorkspaceNav
         :organizationId="organizationId"
@@ -19,6 +28,8 @@
 </template>
 
 <script>
+import { mapState } from "vuex";
+
 import WorkspaceNav from "./WorkspaceNav.vue";
 import AppBar from "@/components/common/AppBar.vue";
 
@@ -35,6 +46,14 @@ export default {
   components: {
     AppBar,
     WorkspaceNav,
+  },
+  computed: {
+    ...mapState({
+      loading: state => state.loader.loading,
+    }),
+  },
+  async created() {
+    await this.$store.dispatch("loader/load");
   },
 };
 </script>

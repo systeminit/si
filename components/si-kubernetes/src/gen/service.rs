@@ -589,6 +589,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
                 .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))?;
 
             let output = crate::protobuf::KubernetesDeploymentEntity::get(&self.db, &id).await?;
+            tracing::warn!(?output, "output from get");
 
             Ok(tonic::Response::new(
                 crate::protobuf::KubernetesDeploymentEntityGetReply { item: Some(output) },
