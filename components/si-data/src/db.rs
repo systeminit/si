@@ -17,7 +17,6 @@ use std::sync::Arc;
 
 use crate::error::{DataError, Result};
 use crate::migrateable::Migrateable;
-use crate::mvcc::TxnId;
 use crate::protobuf::{DataPageToken, DataPageTokenOrderByDirection, DataQuery};
 use crate::storable::{Reference, Storable};
 

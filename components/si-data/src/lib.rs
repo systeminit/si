@@ -7,7 +7,6 @@ pub mod protobuf {
 pub mod db;
 pub mod error;
 pub mod migrateable;
-pub mod mvcc;
 pub mod page_token;
 pub mod password;
 pub mod query;
