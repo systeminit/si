@@ -28,14 +28,12 @@ import { Store, mapState, mapGetters } from "vuex";
 import _ from "lodash";
 
 import { RootStore } from "@/store";
-import { EntityProperty } from "@/store/modules/entity";
-import { debouncedFieldValueSet } from "@/store/modules/editor";
+import { RegistryProperty, debouncedSetFieldValue } from "@/store/modules/node";
 
 export default Vue.extend({
   name: "PropBool",
   props: {
-    entityProperty: Object as () => EntityProperty,
-    editEntry: Object as () => Record<string, any>,
+    entityProperty: Object as () => RegistryProperty,
   },
   computed: {
     ...mapState({
@@ -44,12 +42,12 @@ export default Vue.extend({
     }),
     fieldValue: {
       get(): string {
-        return this.$store.getters["editor/getEditValue"](
+        return this.$store.getters["node/getFieldValue"](
           this.entityProperty.path,
         );
       },
       async set(value: any) {
-        debouncedFieldValueSet({
+        debouncedSetFieldValue({
           store: this.$store,
           path: this.entityProperty.path,
           value,

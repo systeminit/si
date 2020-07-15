@@ -64,8 +64,7 @@ import { PlusSquareIcon, XIcon } from "vue-feather-icons";
 import _ from "lodash";
 
 import { RootStore } from "@/store";
-import { EntityProperty } from "@/store/modules/entity";
-import { debouncedFieldValueSet } from "@/store/modules/editor";
+import { RegistryProperty, debouncedSetFieldValue } from "@/store/modules/node";
 
 interface MapEntries {
   [index: number]: { key: string; value: string };
@@ -74,7 +73,7 @@ interface MapEntries {
 export default Vue.extend({
   name: "PropMap",
   props: {
-    entityProperty: Object as () => EntityProperty,
+    entityProperty: Object as () => RegistryProperty,
   },
   components: {
     PlusSquareIcon,
@@ -87,13 +86,14 @@ export default Vue.extend({
       value: string,
       ...event: any[]
     ): void {
-      let current = this.fieldValue;
+      let current = _.cloneDeep(this.fieldValue);
       current[index] = { key, value };
       this.fieldValue = current;
     },
     addToMap(): void {
-      let current = this.fieldValue;
-      current.push({ key: "", value: "" });
+      let current = _.cloneDeep(this.fieldValue);
+      let index = current.length;
+      current.push({ key: `key${index}`, value: `value${index}` });
       this.fieldValue = current;
     },
     removeFromMap(index: number): void {
@@ -106,21 +106,20 @@ export default Vue.extend({
     ...mapState({
       editorMode: (state: any): RootStore["editor"]["mode"] =>
         state.editor.mode,
-      selectedNode: (state: any): any => state.editor.selectedNode,
     }),
     fieldValue: {
       get(): MapEntries {
-        let mapValues = this.$store.getters["editor/getEditValue"](
+        let mapValues = this.$store.getters["node/getFieldValue"](
           this.entityProperty.path,
         );
         if (mapValues != undefined) {
-          return mapValues;
+          return _.cloneDeep(mapValues);
         } else {
           return [];
         }
       },
       async set(value: any) {
-        await debouncedFieldValueSet({
+        await debouncedSetFieldValue({
           store: this.$store,
           path: this.entityProperty.path,
           value: value,

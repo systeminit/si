@@ -7,7 +7,7 @@
       <div class="flex flex-row justify-start mx-3">
         <button
           class="text-white px-4 py-2 focus:outline-none"
-          @click="addNode()"
+          @click="createNode()"
           type="button"
         >
           <plus-square-icon size="1.1x" />
@@ -73,30 +73,11 @@ export default {
         },
       });
     },
-    async addNode() {
-      const options = {
+    async createNode() {
+      await this.$store.dispatch("node/create", {
+        nodeType: "Entity",
         typeName: this.selectedEntityType,
-        data: { properties: {} },
-      };
-      // TODO: The data.properties here should be automatically determined by the system. That they aren't is
-      // a bug. I'm not sure if it belongs in the Registry or in the API - I expect its the API that
-      // should fill in the correct defaults. This will work for now.
-      switch (this.selectedEntityType) {
-        case "kubernetesDeploymentEntity":
-        case "kubernetesServiceEntity":
-          options["data"] = {
-            properties: {
-              kubernetesObject: {
-                apiVersion: "apps/v1",
-                kind: "Deployment",
-              },
-            },
-          };
-          break;
-        default:
-        // Nothing to do.
-      }
-      await this.$store.dispatch("entity/create", options);
+      });
     },
   },
 };

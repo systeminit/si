@@ -3,39 +3,32 @@
     <div
       class="node absolute cursor-move border-solid border-2 shadow-md"
       :class="nodeIsSelected"
-      @mousedown="
-        toggleSelection(true);
-        selectNode();
-      "
+      @mousedown="selectNode()"
       @contextmenu="contextMenu($event)"
     >
       <div class="flex flex-col select-none">
         <div class="flex flex-col text-white ml-1 mt-1">
+          <div class="text-xs">
+            {{ displayItem.siStorable.typeName }}
+          </div>
           <div class="font-light text-xs">name:</div>
           <div
             class="font-normal text-xs ml-2 text-red-700"
-            v-if="nodeObject.deleted"
+            v-if="displayItem.siStorable.deleted"
           >
             {{ nodeObject.name }}
           </div>
           <div class="font-normal text-xs ml-2" v-else>
             {{ nodeObject.name }}
           </div>
-          <span v-if="nodeObject.changeSetId" class="text-xs">
+          <span v-if="displayItem.siStorable.changeSetId" class="text-xs">
             <span class="font-light">changeSet:</span>
             <div class="ml-2">
-              {{ changeSetName(nodeObject.changeSetId) }}
+              {{ changeSetName(displayItem.siStorable.changeSetId) }}
             </div>
           </span>
         </div>
       </div>
-      <!-- 
-      <vue-simple-context-menu
-        :elementId="'myFirstMenu'"
-        :options="optionsArray1"
-        :ref="'vueSimpleContextMenu1'"
-        @option-clicked="optionClicked1"
-      /> -->
     </div>
   </div>
 </template>
@@ -43,42 +36,18 @@
 <script>
 import { registry } from "si-registry";
 import { mapState, mapActions } from "vuex";
+import _ from "lodash";
 
 export default {
   name: "NodeObject",
   props: {
     nodeObject: {},
   },
-  data() {
-    return {
-      // entityId: this.nodeObject.id,
-      // entityName: this.nodeObject.name,
-      isSelected: false,
-      optionsArray1: [
-        {
-          name: "Duplicate",
-          slug: "duplicate",
-        },
-        {
-          name: "Edit",
-          slug: "edit",
-        },
-        {
-          name: "Delete",
-          slug: "delete",
-        },
-      ],
-    };
-  },
   methods: {
-    // ...mapActions('editor', ['selectNode']),
     selectNode() {
-      this.$store.dispatch("editor/selectNode", this.nodeObject);
+      this.$store.dispatch("node/current", { node: this.nodeObject });
     },
-    toggleSelection(value) {
-      this.isSelected = value;
-    },
-    contextMenu(e) {
+    ontextMenu(e) {
       e.preventDefault();
       this.$refs.vueSimpleContextMenu1.showMenu(event, null);
     },
@@ -95,21 +64,36 @@ export default {
     },
   },
   computed: {
-    nodeIsSelected: function() {
-      return {
-        "node-is-selected": this.isSelected,
-      };
-    },
-    ...mapState({
-      selectedNode: state => state.editor.selectedNode,
-    }),
-  },
-  watch: {
-    selectedNode(newState, previousState) {
-      if (newState.id != this.nodeObject.id) {
-        this.toggleSelection(false);
+    nodeIsSelected() {
+      if (
+        this.nodeObject &&
+        this.selectedNode &&
+        this.selectedNode.id == this.nodeObject.id
+      ) {
+        return {
+          "node-is-selected": true,
+        };
+      } else {
+        return {
+          "node-is-selected": false,
+        };
       }
     },
+    displayItem() {
+      let node = _.find(this.$store.state.node.nodes, [
+        "id",
+        this.nodeObject.id,
+      ]);
+      if (this.currentChangeSet && node.display[this.currentChangeSet.id]) {
+        return node.display[this.currentChangeSet.id];
+      } else {
+        return node.display["saved"];
+      }
+    },
+    ...mapState({
+      selectedNode: state => state.node.current,
+      currentChangeSet: state => state.changeSet.current,
+    }),
   },
 };
 // fullstack-schema.graphql

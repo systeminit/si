@@ -165,9 +165,9 @@ export const user: Module<UserStore, any> = {
             .items[0].associations.workspaces.items,
       });
       commit("profile", profile);
-      commit("loggedIn", true);
-      dispatch("entity/load", { root: true });
       localStorage.setItem("profile", JSON.stringify(profile));
+      commit("loggedIn", true);
+      dispatch("loader/load", { root: true });
     },
 
     async logout({ commit }): Promise<void> {

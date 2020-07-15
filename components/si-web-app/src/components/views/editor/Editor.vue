@@ -71,7 +71,6 @@ export default {
     this.resizeHandle = this.$refs.resizeHandle;
     this.leftPanel = this.$refs.leftPanel;
     this.rightPanel = this.$refs.rightPanel;
-    const workspace = this.$store.getters["user/currentWorkspace"];
   },
   created() {
     window.addEventListener("resize", this.handleResize);
@@ -119,10 +118,6 @@ export default {
     togglePanelVisibility: function(panelName) {
       this.panel[panelName].isVisible = !this.panel[panelName].isVisible;
       this.panel.resizeHandle.isVisible = !this.panel.resizeHandle.isVisible;
-    },
-    nodeList() {
-      const workspace = this.$store.getters["user/currentWorkspace"];
-      return this.$store.getters.entity.forWorkspace(workspace["id"]);
     },
   },
   computed: {

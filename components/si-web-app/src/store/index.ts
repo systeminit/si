@@ -11,6 +11,10 @@ import { entity, EntityStore } from "./modules/entity";
 import { user, UserStore } from "./modules/user";
 import { changeSet, ChangeSetStore } from "./modules/changeSet";
 import { persistEdits } from "./plugins/persistEdits";
+import { workspace, WorkspaceStore } from "./modules/workspace";
+import { billingAccount, BillingAccountStore } from "./modules/billingAccount";
+import { node, NodeStore } from "./modules/node";
+import { loader, LoaderStore } from "./modules/loader";
 
 Vue.use(Vuex);
 
@@ -39,6 +43,10 @@ export interface RootStore {
   user: UserStore;
   entity: EntityStore;
   changeSet: ChangeSetStore;
+  workspace: WorkspaceStore;
+  billingAccount: BillingAccountStore;
+  node: NodeStore;
+  loader: LoaderStore;
   version: string;
 }
 
@@ -53,6 +61,10 @@ const store: Store<RootStore> = new Vuex.Store({
     user,
     entity,
     changeSet,
+    workspace,
+    billingAccount,
+    node,
+    loader,
   },
   strict: debug,
   plugins: [vuexCookie.plugin, vuexLocal.plugin, persistEdits],

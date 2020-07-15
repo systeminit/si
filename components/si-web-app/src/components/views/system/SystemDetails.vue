@@ -88,16 +88,6 @@ export default {
       systemName: "demo",
     };
   },
-  async created() {
-    await this.$store.dispatch("changeSet/load");
-    await this.$store.dispatch("entity/load");
-  },
-  async mounted() {
-    // This will work for now; but I can already feel you want to actually just
-    // document the dispatch behavior as internal application state, so it is always
-    // "just" updating.
-    await this.$store.dispatch("changeSet/load");
-  },
   methods: {
     createChangeSet() {
       this.$store.dispatch("changeSet/createDefault");
@@ -106,8 +96,7 @@ export default {
       this.$store.dispatch("changeSet/execute");
     },
     deleteNode() {
-      console.log("doing delete entity");
-      this.$store.dispatch("entity/deleteEntity");
+      this.$store.dispatch("node/delete");
     },
     modeSwitch() {
       this.$store.dispatch("editor/modeSwitch");
@@ -120,11 +109,9 @@ export default {
       },
       async set(value) {
         await this.$store.commit("changeSet/setCurrentById", value);
-        this.$store.dispatch("entity/load");
       },
     },
     ...mapState({
-      selectedNode: state => state.editor.selectedNode,
       changeSet: state => state.changeSet.current || {},
       changeSets: state => state.changeSet.changeSets,
       mode: state => state.editor.mode,

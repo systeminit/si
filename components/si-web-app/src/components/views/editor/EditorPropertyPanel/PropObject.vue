@@ -22,7 +22,7 @@ import Vue from "vue";
 import { mapState } from "vuex";
 import { ChevronDownIcon, ChevronRightIcon } from "vue-feather-icons";
 
-import { EntityProperty } from "@/store/modules/entity";
+import { RegistryProperty } from "@/store/modules/node";
 
 interface PropObjectData {
   isOpen: boolean;
@@ -35,7 +35,7 @@ export default Vue.extend({
     ChevronRightIcon,
   },
   props: {
-    entityProperty: Object as () => EntityProperty,
+    entityProperty: Object as () => RegistryProperty,
   },
   data(): PropObjectData {
     return {
@@ -58,19 +58,11 @@ export default Vue.extend({
         // 'is-dark': !this.isOpen
       };
     },
-    fieldValue: {
-      get(): Object {
-        let value = this.$store.getters["editor/getEditValue"](
-          this.entityProperty.path,
-        );
-        return value;
-      },
-      async set(value: any) {
-        await this.$store.dispatch("editor/setEditValue", {
-          path: this.entityProperty.path,
-          value,
-        });
-      },
+    fieldValue(): any {
+      let value = this.$store.getters["node/getFieldValue"](
+        this.entityProperty.path,
+      );
+      return value;
     },
   },
 });

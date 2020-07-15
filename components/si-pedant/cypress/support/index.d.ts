@@ -23,6 +23,15 @@ interface CreateUserArgs {
   };
 }
 
+interface VuexStore {
+  dispatch(path: string, payload?: any): Promise<any>;
+  state: any;
+  commit(path: string, payload?: any): void;
+  getters: {
+    [path: string]: any;
+  };
+}
+
 declare namespace Cypress {
   interface Chainable {
     /**
@@ -42,5 +51,6 @@ declare namespace Cypress {
 
     graphqlQuery(args: GraphqlQueryArgs): Chainable<Element>;
     graphqlMutation(args: GraphqlQueryArgs): Chainable<Element>;
+    vuex(): Chainable<VuexStore>;
   }
 }

@@ -85,8 +85,7 @@ import {
 import _ from "lodash";
 
 import { RootStore } from "@/store";
-import { EntityProperty } from "@/store/modules/entity";
-import { debouncedFieldValueSet } from "@/store/modules/editor";
+import { RegistryProperty, debouncedSetFieldValue } from "@/store/modules/node";
 import PropText from "./PropText.vue";
 import PropObject from "./PropObject.vue";
 import PropNumber from "./PropNumber.vue";
@@ -100,7 +99,7 @@ import PropMap from "./PropMap.vue";
 export default Vue.extend({
   name: "PropRepeated",
   props: {
-    entityProperty: Object as () => EntityProperty,
+    entityProperty: Object as () => RegistryProperty,
   },
   components: {
     PropText,
@@ -121,14 +120,14 @@ export default Vue.extend({
     toggleAccordion(): void {
       this.isOpen = !this.isOpen;
     },
-    propKind(prop: EntityProperty, kindToCheck: string): boolean {
+    propKind(prop: RegistryProperty, kindToCheck: string): boolean {
       return prop.kind == kindToCheck;
     },
-    repeated(prop: EntityProperty): boolean {
+    repeated(prop: RegistryProperty): boolean {
       return prop.repeated;
     },
     addToList(): void {
-      let current = this.fieldValue;
+      let current = _.cloneDeep(this.fieldValue);
       current.push({});
       this.fieldValue = current;
     },
@@ -144,7 +143,7 @@ export default Vue.extend({
         state.editor.mode,
     }),
     ...mapGetters({
-      propertiesList: "entity/propertiesListRepeated",
+      propertiesList: "node/propertiesListRepeated",
     }),
     accordionClasses(): { "is-closed": boolean } {
       return {
@@ -155,17 +154,17 @@ export default Vue.extend({
     },
     fieldValue: {
       get(): any[] {
-        let objectValues = this.$store.getters["editor/getEditValue"](
+        let objectValues = this.$store.getters["node/getFieldValue"](
           this.entityProperty.path,
         );
         if (objectValues != undefined) {
-          return objectValues;
+          return _.cloneDeep(objectValues);
         } else {
           return [];
         }
       },
       async set(value: any) {
-        await debouncedFieldValueSet({
+        await debouncedSetFieldValue({
           store: this.$store,
           path: this.entityProperty.path,
           value: value,

@@ -32,13 +32,12 @@ import { mapState, mapGetters } from "vuex";
 import _ from "lodash";
 
 import { RootStore } from "@/store";
-import { EntityProperty } from "@/store/modules/entity";
+import { RegistryProperty, debouncedSetFieldValue } from "@/store/modules/node";
 
 export default Vue.extend({
   name: "PropEnum",
   props: {
-    entityProperty: Object as () => EntityProperty,
-    editEntry: Object as () => Record<string, any>,
+    entityProperty: Object as () => RegistryProperty,
   },
   computed: {
     ...mapState({
@@ -47,12 +46,13 @@ export default Vue.extend({
     }),
     fieldValue: {
       get(): string {
-        return this.$store.getters["editor/getEditValue"](
+        return this.$store.getters["node/getFieldValue"](
           this.entityProperty.path,
         );
       },
       async set(value: any) {
-        await this.$store.dispatch("editor/setEditValue", {
+        debouncedSetFieldValue({
+          store: this.$store,
           path: this.entityProperty.path,
           value,
         });

@@ -28,13 +28,12 @@ import { mapState, mapGetters } from "vuex";
 import _ from "lodash";
 
 import { RootStore } from "@/store";
-import { EntityProperty } from "@/store/modules/entity";
-import { debouncedFieldValueSet } from "@/store/modules/editor";
+import { RegistryProperty, debouncedSetFieldValue } from "@/store/modules/node";
 
 export default Vue.extend({
   name: "PropNumber",
   props: {
-    entityProperty: Object as () => EntityProperty,
+    entityProperty: Object as () => RegistryProperty,
     editEntry: Object as () => Record<string, any>,
   },
   computed: {
@@ -44,7 +43,7 @@ export default Vue.extend({
     }),
     fieldValue: {
       get(): string {
-        return this.$store.getters["editor/getEditValue"](
+        return this.$store.getters["node/getFieldValue"](
           this.entityProperty.path,
         );
       },
@@ -53,7 +52,7 @@ export default Vue.extend({
         if (this.entityProperty.prop.numberKind == "int32") {
           value = parseInt(value);
         }
-        debouncedFieldValueSet({
+        debouncedSetFieldValue({
           store: this.$store,
           path: this.entityProperty.path,
           value,

@@ -14,6 +14,7 @@
 import { login, loginBobo, logout } from "./login";
 import { createUser, createUserBobo } from "./createUser";
 import { graphqlQuery, graphqlMutation } from "./graphql";
+import { vuex } from "./vuex";
 
 Cypress.Commands.add("createUser", createUser);
 Cypress.Commands.add("createUserBobo", createUserBobo);
@@ -22,6 +23,7 @@ Cypress.Commands.add("loginBobo", loginBobo);
 Cypress.Commands.add("logout", logout);
 Cypress.Commands.add("graphqlQuery", graphqlQuery);
 Cypress.Commands.add("graphqlMutation", graphqlMutation);
+Cypress.Commands.add("vuex", vuex);
 
 //
 //
