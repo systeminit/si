@@ -303,21 +303,6 @@ input ApplicationEntityListRequest {
   scopeByTenantId: String
 }
 
-"""Edit Phantom Property Reply"""
-type ApplicationEntityPhantomEditReply {
-  """Entity Event"""
-  item: ApplicationEntityEvent
-}
-
-"""Edit Phantom Property Request"""
-input ApplicationEntityPhantomEditRequest {
-  """Entity ID"""
-  id: ID
-
-  """The Phantom Data property value"""
-  property: Boolean
-}
-
 type ApplicationEntityProperties {
   """Phantom Data"""
   phantom: Boolean
@@ -336,6 +321,9 @@ type ApplicationEntitySyncReply {
 
 """Sync State Request"""
 input ApplicationEntitySyncRequest {
+  """Change Set ID"""
+  changeSetId: String
+
   """Entity ID"""
   id: ID
 }
@@ -1536,6 +1524,9 @@ type KubernetesDeploymentEntityApplyReply {
 
 """Apply Request"""
 input KubernetesDeploymentEntityApplyRequest {
+  """Change Set ID"""
+  changeSetId: String
+
   """Entity ID"""
   id: ID
 }
@@ -1686,40 +1677,6 @@ input KubernetesDeploymentEntityGetRequest {
   id: ID
 }
 
-"""
-Edit kubernetesDeploymentEntityPropertiesKubernetesObject Property Reply
-"""
-type KubernetesDeploymentEntityKubernetesObjectEditReply {
-  """Entity Event"""
-  item: KubernetesDeploymentEntityEvent
-}
-
-"""
-Edit kubernetesDeploymentEntityPropertiesKubernetesObject Property Request
-"""
-input KubernetesDeploymentEntityKubernetesObjectEditRequest {
-  """Entity ID"""
-  id: ID
-
-  """The Kubernetes Object property value"""
-  property: KubernetesDeploymentEntityPropertiesKubernetesObjectRequest
-}
-
-"""Edit KubernetesObjectYaml Property Reply"""
-type KubernetesDeploymentEntityKubernetesObjectYamlEditReply {
-  """Entity Event"""
-  item: KubernetesDeploymentEntityEvent
-}
-
-"""Edit KubernetesObjectYaml Property Request"""
-input KubernetesDeploymentEntityKubernetesObjectYamlEditRequest {
-  """Entity ID"""
-  id: ID
-
-  """The Kubernetes Object YAML property value"""
-  property: String
-}
-
 """List Kubernetes Deployment Object Entity Reply"""
 type KubernetesDeploymentEntityListReply {
   """Items"""
@@ -1827,6 +1784,9 @@ type KubernetesDeploymentEntitySyncReply {
 
 """Sync State Request"""
 input KubernetesDeploymentEntitySyncRequest {
+  """Change Set ID"""
+  changeSetId: String
+
   """Entity ID"""
   id: ID
 }
@@ -2232,38 +2192,6 @@ input KubernetesServiceEntityGetRequest {
   id: ID
 }
 
-"""Edit kubernetesServiceEntityPropertiesKubernetesObject Property Reply"""
-type KubernetesServiceEntityKubernetesObjectEditReply {
-  """Entity Event"""
-  item: KubernetesServiceEntityEvent
-}
-
-"""
-Edit kubernetesServiceEntityPropertiesKubernetesObject Property Request
-"""
-input KubernetesServiceEntityKubernetesObjectEditRequest {
-  """Entity ID"""
-  id: ID
-
-  """The Kubernetes Object property value"""
-  property: KubernetesServiceEntityPropertiesKubernetesObjectRequest
-}
-
-"""Edit KubernetesObjectYaml Property Reply"""
-type KubernetesServiceEntityKubernetesObjectYamlEditReply {
-  """Entity Event"""
-  item: KubernetesServiceEntityEvent
-}
-
-"""Edit KubernetesObjectYaml Property Request"""
-input KubernetesServiceEntityKubernetesObjectYamlEditRequest {
-  """Entity ID"""
-  id: ID
-
-  """The Kubernetes Object YAML property value"""
-  property: String
-}
-
 """List Kubernetes Service Object Entity Reply"""
 type KubernetesServiceEntityListReply {
   """Items"""
@@ -2509,6 +2437,9 @@ type KubernetesServiceEntitySyncReply {
 
 """Sync State Request"""
 input KubernetesServiceEntitySyncRequest {
+  """Change Set ID"""
+  changeSetId: String
+
   """Entity ID"""
   id: ID
 }
@@ -2620,7 +2551,6 @@ input MatchLabelsRequest {
 type Mutation {
   applicationEntityCreate(input: ApplicationEntityCreateRequest): ApplicationEntityCreateReply
   applicationEntityDelete(input: ApplicationEntityDeleteRequest): ApplicationEntityDeleteReply
-  applicationEntityPhantomEdit(input: ApplicationEntityPhantomEditRequest): ApplicationEntityPhantomEditReply
   applicationEntitySync(input: ApplicationEntitySyncRequest): ApplicationEntitySyncReply
   applicationEntityUpdate(input: ApplicationEntityUpdateRequest): ApplicationEntityUpdateReply
   billingAccountSignup(input: BillingAccountSignupRequest): BillingAccountSignupReply
@@ -2630,28 +2560,20 @@ type Mutation {
   kubernetesDeploymentEntityApply(input: KubernetesDeploymentEntityApplyRequest): KubernetesDeploymentEntityApplyReply
   kubernetesDeploymentEntityCreate(input: KubernetesDeploymentEntityCreateRequest): KubernetesDeploymentEntityCreateReply
   kubernetesDeploymentEntityDelete(input: KubernetesDeploymentEntityDeleteRequest): KubernetesDeploymentEntityDeleteReply
-  kubernetesDeploymentEntityKubernetesObjectEdit(input: KubernetesDeploymentEntityKubernetesObjectEditRequest): KubernetesDeploymentEntityKubernetesObjectEditReply
-  kubernetesDeploymentEntityKubernetesObjectYamlEdit(input: KubernetesDeploymentEntityKubernetesObjectYamlEditRequest): KubernetesDeploymentEntityKubernetesObjectYamlEditReply
   kubernetesDeploymentEntitySync(input: KubernetesDeploymentEntitySyncRequest): KubernetesDeploymentEntitySyncReply
   kubernetesDeploymentEntityUpdate(input: KubernetesDeploymentEntityUpdateRequest): KubernetesDeploymentEntityUpdateReply
   kubernetesServiceEntityCreate(input: KubernetesServiceEntityCreateRequest): KubernetesServiceEntityCreateReply
   kubernetesServiceEntityDelete(input: KubernetesServiceEntityDeleteRequest): KubernetesServiceEntityDeleteReply
-  kubernetesServiceEntityKubernetesObjectEdit(input: KubernetesServiceEntityKubernetesObjectEditRequest): KubernetesServiceEntityKubernetesObjectEditReply
-  kubernetesServiceEntityKubernetesObjectYamlEdit(input: KubernetesServiceEntityKubernetesObjectYamlEditRequest): KubernetesServiceEntityKubernetesObjectYamlEditReply
   kubernetesServiceEntitySync(input: KubernetesServiceEntitySyncRequest): KubernetesServiceEntitySyncReply
   kubernetesServiceEntityUpdate(input: KubernetesServiceEntityUpdateRequest): KubernetesServiceEntityUpdateReply
   organizationCreate(input: OrganizationCreateRequest): OrganizationCreateReply
   serviceEntityCreate(input: ServiceEntityCreateRequest): ServiceEntityCreateReply
   serviceEntityDelete(input: ServiceEntityDeleteRequest): ServiceEntityDeleteReply
   serviceEntityDeploy(input: ServiceEntityDeployRequest): ServiceEntityDeployReply
-  serviceEntityImageEdit(input: ServiceEntityImageEditRequest): ServiceEntityImageEditReply
-  serviceEntityPortEdit(input: ServiceEntityPortEditRequest): ServiceEntityPortEditReply
-  serviceEntityReplicasEdit(input: ServiceEntityReplicasEditRequest): ServiceEntityReplicasEditReply
   serviceEntitySync(input: ServiceEntitySyncRequest): ServiceEntitySyncReply
   serviceEntityUpdate(input: ServiceEntityUpdateRequest): ServiceEntityUpdateReply
   systemEntityCreate(input: SystemEntityCreateRequest): SystemEntityCreateReply
   systemEntityDelete(input: SystemEntityDeleteRequest): SystemEntityDeleteReply
-  systemEntityPhantomEdit(input: SystemEntityPhantomEditRequest): SystemEntityPhantomEditReply
   systemEntitySync(input: SystemEntitySyncRequest): SystemEntitySyncReply
   systemEntityUpdate(input: SystemEntityUpdateRequest): SystemEntityUpdateReply
   userCreate(input: UserCreateRequest): UserCreateReply
@@ -3001,6 +2923,9 @@ type ServiceEntityDeployReply {
 
 """Deploy Request"""
 input ServiceEntityDeployRequest {
+  """Change Set ID"""
+  changeSetId: String
+
   """Entity ID"""
   id: ID
 }
@@ -3100,21 +3025,6 @@ input ServiceEntityGetRequest {
   id: ID
 }
 
-"""Edit Image Property Reply"""
-type ServiceEntityImageEditReply {
-  """Entity Event"""
-  item: ServiceEntityEvent
-}
-
-"""Edit Image Property Request"""
-input ServiceEntityImageEditRequest {
-  """Entity ID"""
-  id: ID
-
-  """The Container Image property value"""
-  property: String
-}
-
 """List Service Entity Reply"""
 type ServiceEntityListReply {
   """Items"""
@@ -3148,21 +3058,6 @@ input ServiceEntityListRequest {
   scopeByTenantId: String
 }
 
-"""Edit Port Property Reply"""
-type ServiceEntityPortEditReply {
-  """Entity Event"""
-  item: ServiceEntityEvent
-}
-
-"""Edit Port Property Request"""
-input ServiceEntityPortEditRequest {
-  """Entity ID"""
-  id: ID
-
-  """The Container Port property value"""
-  property: String
-}
-
 type ServiceEntityProperties {
   """Container Image"""
   image: String
@@ -3185,21 +3080,6 @@ input ServiceEntityPropertiesRequest {
   replicas: String
 }
 
-"""Edit Replicas Property Reply"""
-type ServiceEntityReplicasEditReply {
-  """Entity Event"""
-  item: ServiceEntityEvent
-}
-
-"""Edit Replicas Property Request"""
-input ServiceEntityReplicasEditRequest {
-  """Entity ID"""
-  id: ID
-
-  """The Replicas property value"""
-  property: String
-}
-
 """Sync State Reply"""
 type ServiceEntitySyncReply {
   """Entity Event"""
@@ -3208,6 +3088,9 @@ type ServiceEntitySyncReply {
 
 """Sync State Request"""
 input ServiceEntitySyncRequest {
+  """Change Set ID"""
+  changeSetId: String
+
   """Entity ID"""
   id: ID
 }
@@ -3545,21 +3428,6 @@ input SystemEntityListRequest {
   scopeByTenantId: String
 }
 
-"""Edit Phantom Property Reply"""
-type SystemEntityPhantomEditReply {
-  """Entity Event"""
-  item: SystemEntityEvent
-}
-
-"""Edit Phantom Property Request"""
-input SystemEntityPhantomEditRequest {
-  """Entity ID"""
-  id: ID
-
-  """The Phantom Data property value"""
-  property: Boolean
-}
-
 type SystemEntityProperties {
   """Phantom Data"""
   phantom: Boolean
@@ -3578,6 +3446,9 @@ type SystemEntitySyncReply {
 
 """Sync State Request"""
 input SystemEntitySyncRequest {
+  """Change Set ID"""
+  changeSetId: String
+
   """Entity ID"""
   id: ID
 }

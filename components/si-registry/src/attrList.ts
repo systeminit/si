@@ -9,9 +9,7 @@ import { PropBool } from "./prop/bool";
 import { PropLink } from "./prop/link";
 import { PropPassword } from "./prop/password";
 
-import { pascalCase, camelCase } from "change-case";
-
-import { registry } from "./registry";
+import { pascalCase } from "change-case";
 
 export type Props =
   | PropText
@@ -201,31 +199,34 @@ export class AttrList {
     this.addProp(p, addArgs);
   }
 
-  autoCreateEditAction(p: Props): void {
-    const notAllowedKinds = ["method", "action"];
-    if (notAllowedKinds.includes(p.kind())) {
-      return;
-    }
-    const systemObject = registry.get(p.componentTypeName);
-
-    systemObject.methods.addAction({
-      name: `${camelCase(p.name)}Edit`,
-      label: `Edit ${camelCase(p.parentName)}${pascalCase(p.name)} Property`,
-      options(pa: PropAction) {
-        pa.universal = true;
-        pa.mutation = true;
-        pa.request.properties.addLink({
-          name: "property",
-          label: `The ${p.label} property value`,
-          options(pl: PropLink) {
-            pl.lookup = {
-              typeName: p.componentTypeName,
-              names: ["properties", p.name],
-            };
-          },
-        });
-      },
-    });
+  autoCreateEditAction(_p: Props): void {
+    //We went another way, and no longer need to auto create edits.
+    //
+    //I'm leaving this code here, just in case we decide to change our minds.
+    //
+    //const notAllowedKinds = ["method", "action"];
+    //if (notAllowedKinds.includes(p.kind())) {
+    //  return;
+    //}
+    //const systemObject = registry.get(p.componentTypeName);
+    //systemObject.methods.addAction({
+    //  name: `${camelCase(p.name)}Edit`,
+    //  label: `Edit ${camelCase(p.parentName)}${pascalCase(p.name)} Property`,
+    //  options(pa: PropAction) {
+    //    pa.universal = true;
+    //    pa.mutation = true;
+    //    pa.request.properties.addLink({
+    //      name: "property",
+    //      label: `The ${p.label} property value`,
+    //      options(pl: PropLink) {
+    //        pl.lookup = {
+    //          typeName: p.componentTypeName,
+    //          names: ["properties", p.name],
+    //        };
+    //      },
+    //    });
+    //  },
+    //});
   }
 }
 
@@ -366,6 +367,14 @@ export class PropAction extends PropMethod {
     this.request.properties.addText({
       name: "id",
       label: "Entity ID",
+      options(p) {
+        p.universal = true;
+        p.required = true;
+      },
+    });
+    this.request.properties.addText({
+      name: "changeSetId",
+      label: "Change Set ID",
       options(p) {
         p.universal = true;
         p.required = true;

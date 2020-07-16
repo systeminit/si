@@ -26,6 +26,26 @@
             </option>
           </select>
         </div>
+        <button
+          class="text-white px-4 py-2 focus:outline-none"
+          @click="sendAction()"
+          type="button"
+        >
+          <CommandIcon size="1.1x" />
+        </button>
+        <div class="text-black">
+          <select
+            class="bg-gray-800 border text-gray-400 my-2 text-xs leading-tight focus:outline-none"
+            v-model="selectedAction"
+          >
+            <option key="delete" value="delete">
+              delete (node)
+            </option>
+            <option v-for="action in actionList" :key="action" :value="action">
+              {{ action }}
+            </option>
+          </select>
+        </div>
       </div>
 
       <div class="mx-3">
@@ -45,42 +65,72 @@
   </div>
 </template>
 
-<script>
-import { Maximize2Icon, PlusSquareIcon } from "vue-feather-icons";
+<script lang="ts">
+import Vue from "vue";
+import { Maximize2Icon, PlusSquareIcon, CommandIcon } from "vue-feather-icons";
 import NodeEditor from "./NodeEditor.vue";
-import { registry } from "si-registry";
+import { registry, EntityObject } from "si-registry";
 import _ from "lodash";
+import { mapState } from "vuex";
+import { RootStore } from "@/store";
+import { camelCase } from "change-case";
 
-export default {
+interface Data {
+  selectedEntityType: string;
+  selectedAction: string;
+  entityTypeList: EntityObject[];
+}
+
+export default Vue.extend({
   name: "EditorSchematicPanel",
   components: {
     Maximize2Icon,
     NodeEditor,
     PlusSquareIcon,
+    CommandIcon,
   },
-  data() {
+  data(): Data {
     const entityTypeList = _.sortBy(registry.listEntities(), ["typeName"]);
     return {
       selectedEntityType: "serviceEntity",
+      selectedAction: "delete",
       entityTypeList,
     };
   },
   methods: {
-    maximizePanel() {
+    maximizePanel(): void {
       this.$emit("maximizePanelMsg", {
         panel: {
           id: "schematic",
         },
       });
     },
-    async createNode() {
+    async createNode(): Promise<void> {
       await this.$store.dispatch("node/create", {
         nodeType: "Entity",
         typeName: this.selectedEntityType,
       });
     },
+    async sendAction(): Promise<void> {
+      await this.$store.dispatch("node/sendAction", {
+        action: this.selectedAction,
+      });
+    },
   },
-};
+  computed: {
+    actionList(): string[] {
+      if (this.$store.state.node.current) {
+        const actionList = registry.listActions();
+        const currentNode = this.$store.state.node.current;
+        let result =
+          actionList[camelCase(currentNode.stack[0].siStorable.typeName)];
+        return result;
+      } else {
+        return [];
+      }
+    },
+  },
+});
 </script>
 
 <style scoped>

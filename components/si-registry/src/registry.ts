@@ -8,7 +8,7 @@ import {
   ComponentAndEntityObject,
   ComponentAndEntityObjectConstructor,
 } from "./systemComponent";
-import { Props } from "./attrList";
+import { Props, PropAction } from "./attrList";
 import { camelCase } from "change-case";
 
 export interface PropLookup {
@@ -111,6 +111,21 @@ export class Registry {
     for (const object of this.objects) {
       if (object instanceof EntityObject) {
         results.push(object);
+      }
+    }
+    return results;
+  }
+
+  listActions(): { [key: string]: string[] } {
+    const results: { [key: string]: string[] } = {};
+    for (const entity of this.objects) {
+      results[entity.typeName] = [];
+      if (entity instanceof EntityObject) {
+        for (const attr of entity.methods.attrs) {
+          if (attr instanceof PropAction) {
+            results[entity.typeName].push(attr.name);
+          }
+        }
       }
     }
     return results;

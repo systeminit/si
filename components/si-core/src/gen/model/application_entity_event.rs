@@ -62,7 +62,7 @@ impl si_cea::EntityEvent for crate::protobuf::ApplicationEntityEvent {
     type Entity = crate::protobuf::ApplicationEntity;
 
     fn action_names() -> &'static [&'static str] {
-        &["create", "edit_phantom", "sync"]
+        &["create", "sync"]
     }
 
     fn action_name(&self) -> si_data::Result<&str> {

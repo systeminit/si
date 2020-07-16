@@ -22,13 +22,7 @@ impl<T: AwsEksKubernetesKubernetesDeploymentDispatchFunctions>
     for AwsEksKubernetesKubernetesDeploymentDispatcher<T>
 {
     fn integration_actions(&self) -> &'static [&'static str] {
-        &[
-            "create",
-            "apply",
-            "edit_kubernetes_object",
-            "edit_kubernetes_object_yaml",
-            "sync",
-        ]
+        &["create", "apply", "sync"]
     }
 }
 
@@ -59,10 +53,6 @@ impl<T: AwsEksKubernetesKubernetesDeploymentDispatchFunctions + Sync>
         match entity_event.action_name()? {
             "create" => T::create(mqtt_client, entity_event).await,
             "apply" => T::apply(mqtt_client, entity_event).await,
-            "edit_kubernetes_object" => T::edit_kubernetes_object(mqtt_client, entity_event).await,
-            "edit_kubernetes_object_yaml" => {
-                T::edit_kubernetes_object_yaml(mqtt_client, entity_event).await
-            }
             "sync" => T::sync(mqtt_client, entity_event).await,
             invalid => Err(si_cea::CeaError::DispatchFunctionMissing(
                 entity_event.integration_service_id()?.to_string(),
@@ -88,16 +78,6 @@ pub trait AwsEksKubernetesKubernetesDeploymentDispatchFunctions {
     ) -> si_cea::CeaResult<()>;
 
     async fn apply(
-        mqtt_client: &si_cea::MqttClient,
-        entity_event: &mut Self::EntityEvent,
-    ) -> si_cea::CeaResult<()>;
-
-    async fn edit_kubernetes_object(
-        mqtt_client: &si_cea::MqttClient,
-        entity_event: &mut Self::EntityEvent,
-    ) -> si_cea::CeaResult<()>;
-
-    async fn edit_kubernetes_object_yaml(
         mqtt_client: &si_cea::MqttClient,
         entity_event: &mut Self::EntityEvent,
     ) -> si_cea::CeaResult<()>;

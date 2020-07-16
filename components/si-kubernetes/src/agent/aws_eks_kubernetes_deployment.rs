@@ -32,24 +32,6 @@ impl AwsEksKubernetesKubernetesDeploymentDispatchFunctions
         async { Ok(()) }.instrument(debug_span!("create")).await
     }
 
-    async fn edit_kubernetes_object(
-        _mqtt_client: &MqttClient,
-        _entity_event: &mut Self::EntityEvent,
-    ) -> CeaResult<()> {
-        async { Ok(()) }
-            .instrument(debug_span!("edit_kubernetes_object"))
-            .await
-    }
-
-    async fn edit_kubernetes_object_yaml(
-        _mqtt_client: &MqttClient,
-        _entity_event: &mut Self::EntityEvent,
-    ) -> CeaResult<()> {
-        async { Ok(()) }
-            .instrument(debug_span!("edit_kubernetes_object_yaml"))
-            .await
-    }
-
     async fn sync(
         _mqtt_client: &MqttClient,
         _entity_event: &mut Self::EntityEvent,

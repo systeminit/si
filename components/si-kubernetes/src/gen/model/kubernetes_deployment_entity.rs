@@ -57,34 +57,6 @@ impl crate::protobuf::KubernetesDeploymentEntity {
         result.si_properties = si_properties;
         result.si_storable = Some(si_storable);
 
-        use si_cea::Entity;
-
-        match (
-            result.properties()?.kubernetes_object.as_ref(),
-            result.properties()?.kubernetes_object_yaml.as_ref(),
-        ) {
-            (Some(_), None) => {
-                result.update_kubernetes_object_yaml_from_kubernetes_object()?;
-            }
-            (None, Some(_)) => {
-                result.update_kubernetes_object_from_kubernetes_object_yaml()?;
-            }
-            (Some(_), Some(_)) => {
-                return Err(si_data::DataError::MultipleEithersProvided2(
-                    "kubernetes_object".to_string(),
-                    "kubernetes_object_yaml".to_string(),
-                )
-                .into());
-            }
-            (None, None) => {
-                return Err(si_data::DataError::NeitherEithersProvided2(
-                    "kubernetes_object".to_string(),
-                    "kubernetes_object_yaml".to_string(),
-                )
-                .into());
-            }
-        }
-
         Ok(result)
     }
 
@@ -167,49 +139,6 @@ impl crate::protobuf::KubernetesDeploymentEntity {
             }
         };
         Ok(result)
-    }
-
-    pub fn edit_kubernetes_object(
-        &mut self,
-        property: crate::protobuf::KubernetesDeploymentEntityPropertiesKubernetesObject,
-    ) -> si_cea::CeaResult<()> {
-        use si_cea::Entity;
-
-        self.properties_mut()?.kubernetes_object = Some(property);
-        self.update_kubernetes_object_yaml_from_kubernetes_object()?;
-
-        Ok(())
-    }
-
-    pub fn edit_kubernetes_object_yaml(&mut self, property: String) -> si_cea::CeaResult<()> {
-        use si_cea::Entity;
-
-        self.properties_mut()?.kubernetes_object_yaml = Some(property);
-        self.update_kubernetes_object_from_kubernetes_object_yaml()?;
-
-        Ok(())
-    }
-
-    fn update_kubernetes_object_yaml_from_kubernetes_object(&mut self) -> si_cea::CeaResult<()> {
-        use si_cea::Entity;
-        use std::convert::TryInto;
-
-        if let Some(ref kubernetes_object) = self.properties()?.kubernetes_object {
-            self.properties_mut()?.kubernetes_object_yaml = Some(kubernetes_object.try_into()?);
-        }
-
-        Ok(())
-    }
-
-    fn update_kubernetes_object_from_kubernetes_object_yaml(&mut self) -> si_cea::CeaResult<()> {
-        use si_cea::Entity;
-        use std::convert::TryInto;
-
-        if let Some(ref kubernetes_object_yaml) = self.properties()?.kubernetes_object_yaml {
-            self.properties_mut()?.kubernetes_object = Some(kubernetes_object_yaml.try_into()?);
-        }
-
-        Ok(())
     }
 
     pub async fn delete(
@@ -632,27 +561,5 @@ impl si_data::Storable for crate::protobuf::KubernetesDeploymentEntity {
 
     fn order_by_fields() -> Vec<&'static str> {
         vec!["siStorable.naturalKey", "id", "name", "displayName", "siStorable.naturalKey", "dataStorable.viewContext", "dataStorable.changeSetId", "dataStorable.itemId", "dataStorable.changeSetEntryCount", "dataStorable.changeSetEventType", "dataStorable.changeSetExecuted", "dataStorable.deleted", "description", "siStorable.naturalKey", "entitySiProperties.entityState", "siStorable.naturalKey", "siStorable.naturalKey", "properties.kubernetesObject.apiVersion", "properties.kubernetesObject.kind", "siStorable.naturalKey", "properties.kubernetesObject.kubernetesMetadata.name", "properties.kubernetesObject.kubernetesMetadata.labels", "siStorable.naturalKey", "properties.kubernetesObject.spec.replicas", "siStorable.naturalKey", "properties.kubernetesObject.spec.kubernetesSelector.matchLabels", "siStorable.naturalKey", "siStorable.naturalKey", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesMetadata.name", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesMetadata.labels", "siStorable.naturalKey", "siStorable.naturalKey", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesPodSpec.kubernetesContainer.name", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesPodSpec.kubernetesContainer.image", "siStorable.naturalKey", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesPodSpec.kubernetesContainer.kubernetesContainerPort.containerPort", "properties.kubernetesObjectYaml", "siStorable.naturalKey", "constraints.componentName", "constraints.componentDisplayName", "constraints.kubernetesVersion", "siStorable.naturalKey", "constraints.componentName", "constraints.componentDisplayName", "constraints.kubernetesVersion"]
-    }
-}
-
-impl std::convert::TryFrom<&crate::protobuf::KubernetesDeploymentEntityPropertiesKubernetesObject>
-    for String
-{
-    type Error = si_cea::CeaError;
-
-    fn try_from(
-        value: &crate::protobuf::KubernetesDeploymentEntityPropertiesKubernetesObject,
-    ) -> std::result::Result<Self, Self::Error> {
-        Ok(serde_yaml::to_string(value)?)
-    }
-}
-
-impl std::convert::TryFrom<&String>
-    for crate::protobuf::KubernetesDeploymentEntityPropertiesKubernetesObject
-{
-    type Error = si_cea::CeaError;
-
-    fn try_from(value: &String) -> std::result::Result<Self, Self::Error> {
-        Ok(serde_yaml::from_str(value)?)
     }
 }

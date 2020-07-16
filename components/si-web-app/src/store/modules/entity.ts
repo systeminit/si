@@ -129,6 +129,7 @@ export const entity: Module<EntityStore, RootStore> = {
         },
         { root: true },
       );
+      await dispatch("changeSet/get", { changeSetId }, { root: true });
     },
     async create(
       { commit, dispatch, rootGetters },
@@ -190,6 +191,7 @@ export const entity: Module<EntityStore, RootStore> = {
         },
         { root: true },
       );
+      await dispatch("changeSet/get", { changeSetId }, { root: true });
     },
     async delete(
       { commit, getters, rootGetters, rootState, dispatch },
@@ -226,6 +228,7 @@ export const entity: Module<EntityStore, RootStore> = {
         },
         { root: true },
       );
+      await dispatch("changeSet/get", { changeSetId }, { root: true });
     },
 
     async get(

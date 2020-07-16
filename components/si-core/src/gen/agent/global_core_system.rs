@@ -17,7 +17,7 @@ impl<T: GlobalCoreSystemDispatchFunctions> si_cea::agent::dispatch::IntegrationA
     for GlobalCoreSystemDispatcher<T>
 {
     fn integration_actions(&self) -> &'static [&'static str] {
-        &["create", "edit_phantom", "sync"]
+        &["create", "sync"]
     }
 }
 
@@ -46,7 +46,6 @@ impl<T: GlobalCoreSystemDispatchFunctions + Sync> si_cea::agent::dispatch::Dispa
     ) -> si_cea::CeaResult<()> {
         match entity_event.action_name()? {
             "create" => T::create(mqtt_client, entity_event).await,
-            "edit_phantom" => T::edit_phantom(mqtt_client, entity_event).await,
             "sync" => T::sync(mqtt_client, entity_event).await,
             invalid => Err(si_cea::CeaError::DispatchFunctionMissing(
                 entity_event.integration_service_id()?.to_string(),
@@ -66,11 +65,6 @@ pub trait GlobalCoreSystemDispatchFunctions {
     type EntityEvent: si_cea::EntityEvent + Send;
 
     async fn create(
-        mqtt_client: &si_cea::MqttClient,
-        entity_event: &mut Self::EntityEvent,
-    ) -> si_cea::CeaResult<()>;
-
-    async fn edit_phantom(
         mqtt_client: &si_cea::MqttClient,
         entity_event: &mut Self::EntityEvent,
     ) -> si_cea::CeaResult<()>;

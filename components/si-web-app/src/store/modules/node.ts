@@ -3,6 +3,7 @@ import _ from "lodash";
 import { registry, Props, PropMethod, PropLink, PropObject } from "si-registry";
 
 import { RootStore } from "@/store";
+import { graphqlMutation } from "@/api/apollo";
 
 interface NodeConstructor {
   id: Node["id"];
@@ -48,6 +49,10 @@ interface CreateAction {
 
 interface CurrentAction {
   node: Node;
+}
+
+interface SendActionAction {
+  action: string;
 }
 
 interface SetFieldValueAction {
@@ -433,6 +438,44 @@ export const node: Module<NodeStore, RootStore> = {
     },
   },
   actions: {
+    async sendAction(
+      { getters, rootGetters, dispatch },
+      payload: SendActionAction,
+    ) {
+      if (payload.action == "delete") {
+        await dispatch("delete");
+        return;
+      }
+      let currentNode = getters["current"];
+      let currentChangeSet;
+      try {
+        currentChangeSet = rootGetters["changeSet/current"];
+      } catch (err) {
+        await dispatch("changeSet/createDefault", {}, { root: true });
+        currentChangeSet = rootGetters["changeSet/current"];
+      }
+      let entity;
+      if (currentNode.display[currentChangeSet.id]) {
+        entity = currentNode.display[currentChangeSet.id];
+      } else {
+        entity = currentNode.display["saved"];
+      }
+      await graphqlMutation({
+        typeName: entity.siStorable.typeName,
+        methodName: payload.action,
+        variables: {
+          // How is this not a bug? If we haven't made a change already, we won't have an
+          // object with the ID. I bet we still have to pass the changeSet ID through.
+          id: entity.id,
+          changeSetId: currentChangeSet.id,
+        },
+      });
+      await dispatch(
+        "changeSet/get",
+        { changeSetId: currentChangeSet.id },
+        { root: true },
+      );
+    },
     async setFieldValue(
       { commit, getters, rootState },
       payload: SetFieldValueAction,

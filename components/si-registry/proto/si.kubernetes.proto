@@ -19,8 +19,6 @@ service Kubernetes {
   rpc KubernetesDeploymentEntityDelete(KubernetesDeploymentEntityDeleteRequest) returns (KubernetesDeploymentEntityDeleteReply);
   rpc KubernetesDeploymentEntityUpdate(KubernetesDeploymentEntityUpdateRequest) returns (KubernetesDeploymentEntityUpdateReply);
   rpc KubernetesDeploymentEntitySync(KubernetesDeploymentEntitySyncRequest) returns (KubernetesDeploymentEntitySyncReply);
-  rpc KubernetesDeploymentEntityKubernetesObjectEdit(KubernetesDeploymentEntityKubernetesObjectEditRequest) returns (KubernetesDeploymentEntityKubernetesObjectEditReply);
-  rpc KubernetesDeploymentEntityKubernetesObjectYamlEdit(KubernetesDeploymentEntityKubernetesObjectYamlEditRequest) returns (KubernetesDeploymentEntityKubernetesObjectYamlEditReply);
   rpc KubernetesDeploymentEntityApply(KubernetesDeploymentEntityApplyRequest) returns (KubernetesDeploymentEntityApplyReply);
   rpc KubernetesDeploymentEntityEventList(KubernetesDeploymentEntityEventListRequest) returns (KubernetesDeploymentEntityEventListReply);
   rpc KubernetesServiceComponentGet(KubernetesServiceComponentGetRequest) returns (KubernetesServiceComponentGetReply);
@@ -33,8 +31,6 @@ service Kubernetes {
   rpc KubernetesServiceEntityDelete(KubernetesServiceEntityDeleteRequest) returns (KubernetesServiceEntityDeleteReply);
   rpc KubernetesServiceEntityUpdate(KubernetesServiceEntityUpdateRequest) returns (KubernetesServiceEntityUpdateReply);
   rpc KubernetesServiceEntitySync(KubernetesServiceEntitySyncRequest) returns (KubernetesServiceEntitySyncReply);
-  rpc KubernetesServiceEntityKubernetesObjectEdit(KubernetesServiceEntityKubernetesObjectEditRequest) returns (KubernetesServiceEntityKubernetesObjectEditReply);
-  rpc KubernetesServiceEntityKubernetesObjectYamlEdit(KubernetesServiceEntityKubernetesObjectYamlEditRequest) returns (KubernetesServiceEntityKubernetesObjectYamlEditReply);
   rpc KubernetesServiceEntityEventList(KubernetesServiceEntityEventListRequest) returns (KubernetesServiceEntityEventListReply);
 }
 message KubernetesMetadata {
@@ -206,26 +202,14 @@ message KubernetesDeploymentEntityUpdateReply {
 }
 message KubernetesDeploymentEntitySyncRequest {
   google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue change_set_id = 2;
 }
 message KubernetesDeploymentEntitySyncReply {
   si.kubernetes.KubernetesDeploymentEntityEvent item = 1;
 }
-message KubernetesDeploymentEntityKubernetesObjectEditRequest {
-  google.protobuf.StringValue id = 1;
-  si.kubernetes.KubernetesDeploymentEntityPropertiesKubernetesObject property = 1001;
-}
-message KubernetesDeploymentEntityKubernetesObjectEditReply {
-  si.kubernetes.KubernetesDeploymentEntityEvent item = 1;
-}
-message KubernetesDeploymentEntityKubernetesObjectYamlEditRequest {
-  google.protobuf.StringValue id = 1;
-  google.protobuf.StringValue property = 1001;
-}
-message KubernetesDeploymentEntityKubernetesObjectYamlEditReply {
-  si.kubernetes.KubernetesDeploymentEntityEvent item = 1;
-}
 message KubernetesDeploymentEntityApplyRequest {
   google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue change_set_id = 2;
 }
 message KubernetesDeploymentEntityApplyReply {
   si.kubernetes.KubernetesDeploymentEntityEvent item = 1;
@@ -442,22 +426,9 @@ message KubernetesServiceEntityUpdateReply {
 }
 message KubernetesServiceEntitySyncRequest {
   google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue change_set_id = 2;
 }
 message KubernetesServiceEntitySyncReply {
-  si.kubernetes.KubernetesServiceEntityEvent item = 1;
-}
-message KubernetesServiceEntityKubernetesObjectEditRequest {
-  google.protobuf.StringValue id = 1;
-  si.kubernetes.KubernetesServiceEntityPropertiesKubernetesObject property = 1001;
-}
-message KubernetesServiceEntityKubernetesObjectEditReply {
-  si.kubernetes.KubernetesServiceEntityEvent item = 1;
-}
-message KubernetesServiceEntityKubernetesObjectYamlEditRequest {
-  google.protobuf.StringValue id = 1;
-  google.protobuf.StringValue property = 1001;
-}
-message KubernetesServiceEntityKubernetesObjectYamlEditReply {
   si.kubernetes.KubernetesServiceEntityEvent item = 1;
 }
 message KubernetesServiceEntityEvent {
