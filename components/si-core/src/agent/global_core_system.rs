@@ -16,15 +16,6 @@ impl GlobalCoreSystemDispatchFunctions for GlobalCoreSystemDispatchFunctionsImpl
         async { Ok(()) }.instrument(debug_span!("create")).await
     }
 
-    async fn edit_phantom(
-        _mqtt_client: &MqttClient,
-        _entity_event: &mut Self::EntityEvent,
-    ) -> CeaResult<()> {
-        async { Ok(()) }
-            .instrument(debug_span!("edit_phantom"))
-            .await
-    }
-
     async fn sync(
         _mqtt_client: &MqttClient,
         _entity_event: &mut Self::EntityEvent,

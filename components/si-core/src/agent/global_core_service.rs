@@ -16,29 +16,6 @@ impl GlobalCoreServiceDispatchFunctions for GlobalCoreServiceDispatchFunctionsIm
         async { Ok(()) }.instrument(debug_span!("create")).await
     }
 
-    async fn edit_image(
-        _mqtt_client: &MqttClient,
-        _entity_event: &mut Self::EntityEvent,
-    ) -> CeaResult<()> {
-        async { Ok(()) }.instrument(debug_span!("edit_image")).await
-    }
-
-    async fn edit_port(
-        _mqtt_client: &MqttClient,
-        _entity_event: &mut Self::EntityEvent,
-    ) -> CeaResult<()> {
-        async { Ok(()) }.instrument(debug_span!("edit_port")).await
-    }
-
-    async fn edit_replicas(
-        _mqtt_client: &MqttClient,
-        _entity_event: &mut Self::EntityEvent,
-    ) -> CeaResult<()> {
-        async { Ok(()) }
-            .instrument(debug_span!("edit_replicas"))
-            .await
-    }
-
     async fn deploy(
         _mqtt_client: &MqttClient,
         _entity_event: &mut Self::EntityEvent,

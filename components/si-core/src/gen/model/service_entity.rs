@@ -141,30 +141,6 @@ impl crate::protobuf::ServiceEntity {
         Ok(result)
     }
 
-    pub fn edit_image(&mut self, property: String) -> si_cea::CeaResult<()> {
-        use si_cea::Entity;
-
-        self.properties_mut()?.image = Some(property);
-
-        Ok(())
-    }
-
-    pub fn edit_port(&mut self, property: u32) -> si_cea::CeaResult<()> {
-        use si_cea::Entity;
-
-        self.properties_mut()?.port = Some(property);
-
-        Ok(())
-    }
-
-    pub fn edit_replicas(&mut self, property: u32) -> si_cea::CeaResult<()> {
-        use si_cea::Entity;
-
-        self.properties_mut()?.replicas = Some(property);
-
-        Ok(())
-    }
-
     pub async fn delete(
         &mut self,
         db: &si_data::Db,

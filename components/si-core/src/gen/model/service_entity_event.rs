@@ -62,14 +62,7 @@ impl si_cea::EntityEvent for crate::protobuf::ServiceEntityEvent {
     type Entity = crate::protobuf::ServiceEntity;
 
     fn action_names() -> &'static [&'static str] {
-        &[
-            "create",
-            "deploy",
-            "edit_image",
-            "edit_port",
-            "edit_replicas",
-            "sync",
-        ]
+        &["create", "deploy", "sync"]
     }
 
     fn action_name(&self) -> si_data::Result<&str> {

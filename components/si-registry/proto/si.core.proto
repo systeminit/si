@@ -19,7 +19,6 @@ service Core {
   rpc ApplicationEntityDelete(ApplicationEntityDeleteRequest) returns (ApplicationEntityDeleteReply);
   rpc ApplicationEntityUpdate(ApplicationEntityUpdateRequest) returns (ApplicationEntityUpdateReply);
   rpc ApplicationEntitySync(ApplicationEntitySyncRequest) returns (ApplicationEntitySyncReply);
-  rpc ApplicationEntityPhantomEdit(ApplicationEntityPhantomEditRequest) returns (ApplicationEntityPhantomEditReply);
   rpc ApplicationEntityEventList(ApplicationEntityEventListRequest) returns (ApplicationEntityEventListReply);
   rpc ServiceComponentGet(ServiceComponentGetRequest) returns (ServiceComponentGetReply);
   rpc ServiceComponentList(ServiceComponentListRequest) returns (ServiceComponentListReply);
@@ -31,9 +30,6 @@ service Core {
   rpc ServiceEntityDelete(ServiceEntityDeleteRequest) returns (ServiceEntityDeleteReply);
   rpc ServiceEntityUpdate(ServiceEntityUpdateRequest) returns (ServiceEntityUpdateReply);
   rpc ServiceEntitySync(ServiceEntitySyncRequest) returns (ServiceEntitySyncReply);
-  rpc ServiceEntityImageEdit(ServiceEntityImageEditRequest) returns (ServiceEntityImageEditReply);
-  rpc ServiceEntityPortEdit(ServiceEntityPortEditRequest) returns (ServiceEntityPortEditReply);
-  rpc ServiceEntityReplicasEdit(ServiceEntityReplicasEditRequest) returns (ServiceEntityReplicasEditReply);
   rpc ServiceEntityDeploy(ServiceEntityDeployRequest) returns (ServiceEntityDeployReply);
   rpc ServiceEntityEventList(ServiceEntityEventListRequest) returns (ServiceEntityEventListReply);
   rpc SystemComponentGet(SystemComponentGetRequest) returns (SystemComponentGetReply);
@@ -46,7 +42,6 @@ service Core {
   rpc SystemEntityDelete(SystemEntityDeleteRequest) returns (SystemEntityDeleteReply);
   rpc SystemEntityUpdate(SystemEntityUpdateRequest) returns (SystemEntityUpdateReply);
   rpc SystemEntitySync(SystemEntitySyncRequest) returns (SystemEntitySyncReply);
-  rpc SystemEntityPhantomEdit(SystemEntityPhantomEditRequest) returns (SystemEntityPhantomEditReply);
   rpc SystemEntityEventList(SystemEntityEventListRequest) returns (SystemEntityEventListReply);
 }
 message ApplicationComponentConstraints {
@@ -166,15 +161,9 @@ message ApplicationEntityUpdateReply {
 }
 message ApplicationEntitySyncRequest {
   google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue change_set_id = 2;
 }
 message ApplicationEntitySyncReply {
-  si.core.ApplicationEntityEvent item = 1;
-}
-message ApplicationEntityPhantomEditRequest {
-  google.protobuf.StringValue id = 1;
-  google.protobuf.BoolValue property = 1001;
-}
-message ApplicationEntityPhantomEditReply {
   si.core.ApplicationEntityEvent item = 1;
 }
 message ApplicationEntityEvent {
@@ -327,33 +316,14 @@ message ServiceEntityUpdateReply {
 }
 message ServiceEntitySyncRequest {
   google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue change_set_id = 2;
 }
 message ServiceEntitySyncReply {
   si.core.ServiceEntityEvent item = 1;
 }
-message ServiceEntityImageEditRequest {
-  google.protobuf.StringValue id = 1;
-  google.protobuf.StringValue property = 1001;
-}
-message ServiceEntityImageEditReply {
-  si.core.ServiceEntityEvent item = 1;
-}
-message ServiceEntityPortEditRequest {
-  google.protobuf.StringValue id = 1;
-  google.protobuf.UInt32Value property = 1001;
-}
-message ServiceEntityPortEditReply {
-  si.core.ServiceEntityEvent item = 1;
-}
-message ServiceEntityReplicasEditRequest {
-  google.protobuf.StringValue id = 1;
-  google.protobuf.UInt32Value property = 1001;
-}
-message ServiceEntityReplicasEditReply {
-  si.core.ServiceEntityEvent item = 1;
-}
 message ServiceEntityDeployRequest {
   google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue change_set_id = 2;
 }
 message ServiceEntityDeployReply {
   si.core.ServiceEntityEvent item = 1;
@@ -506,15 +476,9 @@ message SystemEntityUpdateReply {
 }
 message SystemEntitySyncRequest {
   google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue change_set_id = 2;
 }
 message SystemEntitySyncReply {
-  si.core.SystemEntityEvent item = 1;
-}
-message SystemEntityPhantomEditRequest {
-  google.protobuf.StringValue id = 1;
-  google.protobuf.BoolValue property = 1001;
-}
-message SystemEntityPhantomEditReply {
   si.core.SystemEntityEvent item = 1;
 }
 message SystemEntityEvent {

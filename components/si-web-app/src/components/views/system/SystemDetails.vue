@@ -11,7 +11,7 @@
       </div>
       <span class="text-white">
         Mode: {{ mode }} System: {{ systemName }} Change Set Status:
-        {{ changeSet.status }} Change Sets:
+        <span v-if="changeSet">{{ changeSet.status }}</span> Change Sets:
         <select
           label="Change Sets"
           aria-label="Change Sets"
@@ -65,6 +65,25 @@
           </template>
         </button>
       </div>
+      <div v-if="changeSet">
+        <div class="h-10 overflow-auto">
+          <ol>
+            <li
+              class="text-gray-500"
+              v-for="entry in changeSet.associations.changeSetEntries.items"
+              :key="entry.id"
+            >
+              <template v-if="entry.siStorable.changeSetEventType == 'ACTION'">
+                {{ entry.siStorable.changeSetEventType }}:
+                {{ entry.siStorable.itemId }}
+              </template>
+              <template v-else>
+                {{ entry.siStorable.changeSetEventType }}: {{ entry.name }}
+              </template>
+            </li>
+          </ol>
+        </div>
+      </div>
     </div>
 
     <div id="system-editor" class="flex h-full w-full overflow-hidden">
@@ -105,14 +124,18 @@ export default {
   computed: {
     selectedChangeSetId: {
       get() {
-        return this.changeSet.id;
+        if (this.changeSet) {
+          return this.changeSet.id;
+        } else {
+          return "";
+        }
       },
       async set(value) {
         await this.$store.commit("changeSet/setCurrentById", value);
       },
     },
     ...mapState({
-      changeSet: state => state.changeSet.current || {},
+      changeSet: state => state.changeSet.current,
       changeSets: state => state.changeSet.changeSets,
       mode: state => state.editor.mode,
       isSaving: state => state.editor.isSaving,

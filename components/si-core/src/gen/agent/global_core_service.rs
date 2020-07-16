@@ -17,14 +17,7 @@ impl<T: GlobalCoreServiceDispatchFunctions> si_cea::agent::dispatch::Integration
     for GlobalCoreServiceDispatcher<T>
 {
     fn integration_actions(&self) -> &'static [&'static str] {
-        &[
-            "create",
-            "deploy",
-            "edit_image",
-            "edit_port",
-            "edit_replicas",
-            "sync",
-        ]
+        &["create", "deploy", "sync"]
     }
 }
 
@@ -54,9 +47,6 @@ impl<T: GlobalCoreServiceDispatchFunctions + Sync> si_cea::agent::dispatch::Disp
         match entity_event.action_name()? {
             "create" => T::create(mqtt_client, entity_event).await,
             "deploy" => T::deploy(mqtt_client, entity_event).await,
-            "edit_image" => T::edit_image(mqtt_client, entity_event).await,
-            "edit_port" => T::edit_port(mqtt_client, entity_event).await,
-            "edit_replicas" => T::edit_replicas(mqtt_client, entity_event).await,
             "sync" => T::sync(mqtt_client, entity_event).await,
             invalid => Err(si_cea::CeaError::DispatchFunctionMissing(
                 entity_event.integration_service_id()?.to_string(),
@@ -81,21 +71,6 @@ pub trait GlobalCoreServiceDispatchFunctions {
     ) -> si_cea::CeaResult<()>;
 
     async fn deploy(
-        mqtt_client: &si_cea::MqttClient,
-        entity_event: &mut Self::EntityEvent,
-    ) -> si_cea::CeaResult<()>;
-
-    async fn edit_image(
-        mqtt_client: &si_cea::MqttClient,
-        entity_event: &mut Self::EntityEvent,
-    ) -> si_cea::CeaResult<()>;
-
-    async fn edit_port(
-        mqtt_client: &si_cea::MqttClient,
-        entity_event: &mut Self::EntityEvent,
-    ) -> si_cea::CeaResult<()>;
-
-    async fn edit_replicas(
         mqtt_client: &si_cea::MqttClient,
         entity_event: &mut Self::EntityEvent,
     ) -> si_cea::CeaResult<()>;

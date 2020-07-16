@@ -76,9 +76,33 @@ export const changeSet: Module<ChangeSetStore, RootStore> = {
     async load({ commit }): Promise<void> {
       const changeSets: ChangeSet[] = await graphqlQueryListAll({
         typeName: "changeSet",
+        associations: {
+          changeSet: ["changeSetEntries"],
+        },
       });
       if (changeSets.length > 0) {
         commit("add", { changeSets });
+      }
+    },
+    async get(
+      { commit, state },
+      { changeSetId }: { changeSetId: string },
+    ): Promise<void> {
+      const changeSetReply: ChangeSetGetReply = await graphqlQuery({
+        typeName: "changeSet",
+        methodName: "get",
+        variables: {
+          id: changeSetId,
+        },
+        associations: {
+          changeSet: ["changeSetEntries"],
+        },
+      });
+      if (changeSetReply.item) {
+        commit("add", { changeSets: [changeSetReply.item] });
+        if (state.current?.id == changeSetReply.item?.id) {
+          commit("current", changeSetReply.item);
+        }
       }
     },
     async createDefault({ dispatch, rootGetters }) {
@@ -98,6 +122,9 @@ export const changeSet: Module<ChangeSetStore, RootStore> = {
         typeName: "changeSet",
         methodName: "create",
         variables: payload,
+        associations: {
+          changeSet: ["changeSetEntries"],
+        },
       });
       if (changeSet.item) {
         commit("add", { changeSets: [changeSet.item] });
@@ -148,22 +175,28 @@ export const changeSet: Module<ChangeSetStore, RootStore> = {
                   res.item.associations.changeSetEntries.items;
                 while (remainingItems) {
                   for (const changeSetEntry of changeSetEntryItems) {
-                    dispatch(
-                      "entity/get",
-                      {
-                        id: changeSetEntry.id,
-                        typeName: changeSetEntry.siStorable?.typeName,
-                      },
-                      { root: true },
-                    );
-                    dispatch(
-                      "entity/get",
-                      {
-                        id: changeSetEntry.siStorable?.itemId,
-                        typeName: changeSetEntry.siStorable?.typeName,
-                      },
-                      { root: true },
-                    );
+                    if (
+                      !changeSetEntry.siStorable?.typeName?.endsWith(
+                        "entity_event",
+                      )
+                    ) {
+                      await dispatch(
+                        "entity/get",
+                        {
+                          id: changeSetEntry.id,
+                          typeName: changeSetEntry.siStorable?.typeName,
+                        },
+                        { root: true },
+                      );
+                      await dispatch(
+                        "entity/get",
+                        {
+                          id: changeSetEntry.siStorable?.itemId,
+                          typeName: changeSetEntry.siStorable?.typeName,
+                        },
+                        { root: true },
+                      );
+                    }
                   }
                   if (nextPageToken) {
                     const nextResults: ItemListReply = await graphqlQuery({

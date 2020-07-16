@@ -141,14 +141,6 @@ impl crate::protobuf::ApplicationEntity {
         Ok(result)
     }
 
-    pub fn edit_phantom(&mut self, property: bool) -> si_cea::CeaResult<()> {
-        use si_cea::Entity;
-
-        self.properties_mut()?.phantom = Some(property);
-
-        Ok(())
-    }
-
     pub async fn delete(
         &mut self,
         db: &si_data::Db,

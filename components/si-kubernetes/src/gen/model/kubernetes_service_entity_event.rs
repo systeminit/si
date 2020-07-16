@@ -62,12 +62,7 @@ impl si_cea::EntityEvent for crate::protobuf::KubernetesServiceEntityEvent {
     type Entity = crate::protobuf::KubernetesServiceEntity;
 
     fn action_names() -> &'static [&'static str] {
-        &[
-            "create",
-            "edit_kubernetes_object",
-            "edit_kubernetes_object_yaml",
-            "sync",
-        ]
+        &["create", "sync"]
     }
 
     fn action_name(&self) -> si_data::Result<&str> {
