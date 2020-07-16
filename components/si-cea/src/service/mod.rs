@@ -6,7 +6,6 @@ pub mod auth;
 
 pub mod prelude {
     pub use super::authnz;
-    pub use crate::agent::client::AgentClient;
     pub use crate::component::Component as _;
     pub use crate::entity::Entity as _;
     pub use crate::entity_event::EntityEvent as _;

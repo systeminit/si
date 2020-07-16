@@ -107,6 +107,13 @@ impl crate::protobuf::KubernetesDeploymentEntity {
         Ok(())
     }
 
+    pub async fn finalize(&self, db: &si_data::Db) -> si_data::Result<()> {
+        tracing::debug!("finalizing_kubernetes_deployment_entity");
+        db.upsert(self).await?;
+
+        Ok(())
+    }
+
     pub async fn list(
         db: &si_data::Db,
         list_request: crate::protobuf::KubernetesDeploymentEntityListRequest,
@@ -375,6 +382,12 @@ impl si_cea::Entity for crate::protobuf::KubernetesDeploymentEntity {
                 has been set or initialized",
         );
         si_properties.billing_account_id = Some(billing_account_id.into());
+    }
+}
+
+impl si_agent::TypeHint for crate::protobuf::KubernetesDeploymentEntity {
+    fn type_name() -> &'static str {
+        "kubernetes_deployment_entity"
     }
 }
 

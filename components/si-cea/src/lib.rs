@@ -17,8 +17,7 @@ pub mod entity;
 pub mod entity_event;
 pub mod list;
 
-pub use crate::agent::client::AgentClient;
-pub use crate::agent::mqtt::MqttClient;
+pub use crate::agent::finalized_listener::{Finalize, FinalizeBuilder, FinalizeKey, Finalizeable};
 pub use crate::entity::{Entity, EntitySiProperties, EntitySiPropertiesEntityState};
 pub use crate::entity_event::EntityEvent;
 pub use crate::error::{CeaError, CeaResult};

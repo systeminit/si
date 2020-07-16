@@ -7,7 +7,10 @@ pub mod aws_eks_kubernetes_kubernetes_service;
 pub use aws_eks_kubernetes_kubernetes_deployment::{
     AwsEksKubernetesKubernetesDeploymentDispatchFunctions,
     AwsEksKubernetesKubernetesDeploymentDispatcher,
+    AwsEksKubernetesKubernetesDeploymentDispatcherBuilder,
 };
 pub use aws_eks_kubernetes_kubernetes_service::{
-    AwsEksKubernetesKubernetesServiceDispatchFunctions, AwsEksKubernetesKubernetesServiceDispatcher,
+    AwsEksKubernetesKubernetesServiceDispatchFunctions,
+    AwsEksKubernetesKubernetesServiceDispatcher,
+    AwsEksKubernetesKubernetesServiceDispatcherBuilder,
 };

@@ -1,4 +1,4 @@
-use crate::change_set_agent::client::ChangeSetAgentClientError;
+use crate::agent_execute_sender::{AgentExecuteSender, AgentExecuteSenderError};
 use crate::error::{AccountError, Result};
 pub use crate::protobuf::{
     ChangeSet, ChangeSetExecuteReply, ChangeSetExecuteRequest, ChangeSetStatus, Item,
@@ -141,22 +141,16 @@ impl ChangeSet {
                 .ok_or(AccountError::MissingField("id".into()))?;
             db.upsert_raw(change_set_object_id, &entry_json).await?;
             if event_type == DataStorableChangeSetEventType::Action {
-                // This should not happen here, but fuck it - it's a hack for now
+                // TODO: This should not happen here, but fuck it - it's a hack for now
                 // anyway!
-                let client = crate::change_set_agent::client::ChangeSetAgentClient::new(
-                    "change_set",
-                    "tcp://localhost:1883",
-                )
-                .await?;
+                let mut client =
+                    AgentExecuteSender::create("change_set", "tcp://localhost:1883").await?;
+                client.send(&entry_json).await?;
 
                 let id = entry_json["id"]
                     .as_str()
-                    .ok_or(ChangeSetAgentClientError::MissingField("id".into()))?
+                    .ok_or(AgentExecuteSenderError::MissingField("id".into()))?
                     .to_string();
-
-                let entry_json_copy = entry_json.clone();
-
-                client.dispatch(entry_json).await?;
 
                 let to_check_count: isize = 18000;
                 let mut check_count: isize = 0;
@@ -175,7 +169,7 @@ impl ChangeSet {
                         return Err(AccountError::ChangeSetEntityEventTimeout);
                     }
                 }
-                crate::EventLog::change_set_entry_execute(&db, &user_id, &entry_json_copy).await?;
+                crate::EventLog::change_set_entry_execute(&db, &user_id, &entry_json).await?;
             } else {
                 crate::EventLog::change_set_entry_execute(&db, &user_id, &entry_json).await?;
             }

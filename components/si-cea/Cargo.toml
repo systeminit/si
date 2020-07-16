@@ -10,7 +10,8 @@ bytes = "0.5"
 chrono = { version = "0.4", features = ["serde"] }
 dyn-clone = "1.0.1"
 futures = { version = "0.3", features = ["alloc"] }
-paho-mqtt = "0.8"
+opentelemetry = { version = "0.6", features = ["tonic"] }
+opentelemetry-jaeger = "0.5"
 prost = "0.6"
 prost-derive = "0.6"
 serde = { version = "1.0", features = ["derive"] }
@@ -19,12 +20,15 @@ serde_yaml = "0.8"
 si-account = { path = "../si-account" }
 si-data = { path = "../si-data" }
 si-settings = { path = "../si-settings" }
+si-transport = { path = "../si-transport" }
 thiserror = "1.0"
 tokio = { version = "0.2", features = ["full"] }
 tonic = "0.2"
 tracing = "0.1.12"
 tracing-futures = { version = "0.2.2", features = ["tokio", "std-future"] }
+tracing-opentelemetry = "0.5"
 tracing-subscriber = "0.2.1"
+typed-builder = "0.6.0"
 
 [build-dependencies]
 tonic-build = "0.2"

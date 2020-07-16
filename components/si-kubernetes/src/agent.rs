@@ -1,10 +1,14 @@
 use crate::kubectl::KubectlCommand;
-use si_cea::agent::utility::spawn_command::{spawn_command_with_stdin, CaptureOutput};
-use si_cea::{CeaError, CeaResult, EntityEvent, MqttClient};
+use si_agent::{
+    spawn::{spawn_command_with_stdin, CaptureOutput, OutputLine},
+    AgentResult, Error, Header, Message, QoS, Transport,
+};
+use si_cea::EntityEvent;
 use std::env;
+use tokio::sync::mpsc;
 
-pub mod aws_eks_kubernetes_deployment;
-pub mod aws_eks_kubernetes_service;
+pub mod aws_eks_kubernetes_kubernetes_deployment;
+pub mod aws_eks_kubernetes_kubernetes_service;
 
 // TODO(fnichol): this should be entity/workspace/upstream info and not hardcoded
 const NAMESPACE_VAR: &str = "KUBERNETES_NAMESPACE";
@@ -21,33 +25,75 @@ macro_rules! yaml_bytes {
         $entity_event:expr, $property:ident $(,)?
     ) => {
         $entity_event
-            .input_entity()?
-            .properties()?
+            .input_entity()
+            .map_err(si_agent::Error::execute)?
+            .properties()
+            .map_err(si_agent::Error::execute)?
             .$property
             .as_ref()
-            .ok_or_else(|| si_data::required_field_err(stringify!($property)))?
+            .ok_or_else(|| si_data::required_field_err(stringify!($property)))
+            .map_err(si_agent::Error::execute)?
             .clone()
+            .into_bytes()
     };
 }
 
 pub async fn agent_apply(
-    mqtt_client: &MqttClient,
+    transport: &Transport,
+    header: Header,
     entity_event: &mut impl EntityEvent,
-    stdin_bytes: impl AsRef<[u8]>,
-) -> CeaResult<()> {
+    stdin_bytes: Vec<u8>,
+) -> AgentResult<()> {
     let cmd = KubectlCommand::new(namespace())
         .apply()
-        .map_err(|err| CeaError::ActionError(err.to_string()))?;
+        .map_err(Error::execute)?;
 
-    spawn_command_with_stdin(
-        mqtt_client,
+    let (tx, mut rx) = mpsc::channel(100000);
+
+    let child = tokio::spawn(spawn_command_with_stdin(
         cmd,
-        entity_event,
         CaptureOutput::None,
         Some(stdin_bytes),
-    )
-    .await?
-    .success()?;
+        tx,
+    ));
+
+    while let Some(output) = rx.recv().await {
+        match output {
+            OutputLine::Stdout(line) => {
+                entity_event.log(line);
+                // TODO(fnichol): send once, or twice or what?
+                transport
+                    .send(Message::new(
+                        header.clone(),
+                        QoS::AtMostOnce,
+                        None::<Header>,
+                        &entity_event,
+                    ))
+                    .await?;
+            }
+            OutputLine::Stderr(line) => {
+                entity_event.error_log(line);
+                // TODO(fnichol): send once, or twice or what?
+                transport
+                    .send(Message::new(
+                        header.clone(),
+                        QoS::AtMostOnce,
+                        None::<Header>,
+                        &entity_event,
+                    ))
+                    .await?;
+            }
+            OutputLine::Finished => {
+                break;
+            }
+        }
+    }
+
+    child
+        .await
+        .map_err(si_agent::Error::execute)?
+        .map_err(si_agent::Error::execute)?
+        .success()?;
 
     Ok(())
 }

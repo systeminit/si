@@ -104,6 +104,13 @@ impl crate::protobuf::SystemEntity {
         Ok(())
     }
 
+    pub async fn finalize(&self, db: &si_data::Db) -> si_data::Result<()> {
+        tracing::debug!("finalizing_system_entity");
+        db.upsert(self).await?;
+
+        Ok(())
+    }
+
     pub async fn list(
         db: &si_data::Db,
         list_request: crate::protobuf::SystemEntityListRequest,
@@ -372,6 +379,12 @@ impl si_cea::Entity for crate::protobuf::SystemEntity {
                 has been set or initialized",
         );
         si_properties.billing_account_id = Some(billing_account_id.into());
+    }
+}
+
+impl si_agent::TypeHint for crate::protobuf::SystemEntity {
+    fn type_name() -> &'static str {
+        "system_entity"
     }
 }
 

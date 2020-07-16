@@ -2269,6 +2269,7 @@ dependencies = [
  "serde_json",
  "si-data",
  "si-settings",
+ "si-transport",
  "thiserror",
  "tokio 0.2.21",
  "tonic",
@@ -2280,6 +2281,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "si-agent"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "futures 0.3.5",
+ "si-transport",
+ "thiserror",
+ "tokio 0.2.21",
+ "tracing",
+]
+
+[[package]]
 name = "si-cea"
 version = "0.1.0"
 dependencies = [
@@ -2288,7 +2301,8 @@ dependencies = [
  "chrono",
  "dyn-clone",
  "futures 0.3.5",
- "paho-mqtt",
+ "opentelemetry",
+ "opentelemetry-jaeger",
  "prost",
  "prost-derive",
  "serde 1.0.114",
@@ -2297,13 +2311,16 @@ dependencies = [
  "si-account",
  "si-data",
  "si-settings",
+ "si-transport",
  "thiserror",
  "tokio 0.2.21",
  "tonic",
  "tonic-build",
  "tracing",
  "tracing-futures",
+ "tracing-opentelemetry",
  "tracing-subscriber",
+ "typed-builder",
 ]
 
 [[package]]
@@ -2313,10 +2330,10 @@ dependencies = [
  "anyhow",
  "async-trait",
  "opentelemetry",
- "opentelemetry-jaeger",
  "prost",
  "serde 1.0.114",
  "si-account",
+ "si-agent",
  "si-cea",
  "si-data",
  "si-settings",
@@ -2366,11 +2383,11 @@ dependencies = [
  "anyhow",
  "async-trait",
  "opentelemetry",
- "opentelemetry-jaeger",
  "prost",
  "serde 1.0.114",
  "serde_yaml",
  "si-account",
+ "si-agent",
  "si-cea",
  "si-data",
  "si-settings",
@@ -2395,6 +2412,21 @@ dependencies = [
  "thiserror",
  "toml",
  "tracing",
+]
+
+[[package]]
+name = "si-transport"
+version = "0.1.0"
+dependencies = [
+ "futures 0.3.5",
+ "paho-mqtt",
+ "serde 1.0.114",
+ "serde_json",
+ "thiserror",
+ "tokio 0.2.21",
+ "tracing",
+ "typed-builder",
+ "uuid 0.8.1",
 ]
 
 [[package]]
@@ -3296,6 +3328,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "283d3b89e1368717881a9d51dad843cc435380d8109c9e47d38780a324698d8b"
 dependencies = [
  "cfg-if",
+]
+
+[[package]]
+name = "typed-builder"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "85fc4459191c621a53ef6c6ca5642e6e0e5ccc61f3e5b8ad6b6ab5317f0200fb"
+dependencies = [
+ "proc-macro2 1.0.18",
+ "quote 1.0.7",
+ "syn",
 ]
 
 [[package]]

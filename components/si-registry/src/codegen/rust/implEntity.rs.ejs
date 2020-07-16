@@ -164,3 +164,9 @@ impl si_cea::Entity for <%- fmt.structName() %> {
         si_properties.billing_account_id = Some(billing_account_id.into());
     }
 }
+
+impl si_agent::TypeHint for <%- fmt.structName() %> {
+    fn type_name() -> &'static str {
+        "<%- fmt.typeName() %>"
+    }
+}

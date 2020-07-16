@@ -31,7 +31,7 @@ pub enum AccountError {
     #[error("Invalid JSON type; expected an object, but did not receive one")]
     InvalidJsonObject,
     #[error("Change Set MQTT Agent Error: {0}")]
-    ChangeSetAgentClient(#[from] crate::change_set_agent::client::ChangeSetAgentClientError),
+    AgentExecuteSender(#[from] crate::agent_execute_sender::AgentExecuteSenderError),
     #[error("Change Set Entity Event timeout")]
     ChangeSetEntityEventTimeout,
 }

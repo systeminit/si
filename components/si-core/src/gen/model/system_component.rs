@@ -85,6 +85,13 @@ impl crate::protobuf::SystemComponent {
         Ok(())
     }
 
+    pub async fn finalize(&self, db: &si_data::Db) -> si_data::Result<()> {
+        tracing::debug!("finalizing_system_component");
+        db.upsert(self).await?;
+
+        Ok(())
+    }
+
     pub async fn list(
         db: &si_data::Db,
         list_request: crate::protobuf::SystemComponentListRequest,
