@@ -11,7 +11,12 @@
         <div v-if="!entityProperty.hidden" class="flex flex-row">
           <div class="w-full">
             <div class="py-1">
-              <div v-if="repeated(entityProperty)">
+              <div
+                v-if="
+                  repeated(entityProperty) &&
+                    !propKind(entityProperty, 'select')
+                "
+              >
                 <PropRepeated :entityProperty="entityProperty" />
               </div>
 
@@ -43,6 +48,10 @@
                 <PropMap :entityProperty="entityProperty" />
               </div>
 
+              <div v-else-if="propKind(entityProperty, 'select')">
+                <PropSelect :entityProperty="entityProperty" />
+              </div>
+
               <div v-else class="text-red-700">
                 {{ entityProperty.name }}
               </div>
@@ -67,6 +76,7 @@ import PropEnum from "./PropEnum.vue";
 import PropMap from "./PropMap.vue";
 import PropRepeated from "./PropRepeated.vue";
 import PropBool from "./PropBool.vue";
+import PropSelect from "./PropSelect.vue";
 
 export default Vue.extend({
   name: "PropertyList",
@@ -78,6 +88,7 @@ export default Vue.extend({
     PropMap,
     PropRepeated,
     PropBool,
+    PropSelect,
   },
   methods: {
     propKind(prop: EntityProperty, kindToCheck: string): boolean {

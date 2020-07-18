@@ -141,6 +141,12 @@ export class AttrList {
     this.addProp(p, addArgs);
   }
 
+  addSelect(addArgs: AddArguments): void {
+    addArgs.componentTypeName = this.componentTypeName;
+    const p = new PropSelect(addArgs as PropConstructor);
+    this.addProp(p, addArgs);
+  }
+
   addPassword(addArgs: AddArguments): void {
     addArgs.componentTypeName = this.componentTypeName;
     const p = new PropPassword(addArgs as PropConstructor);

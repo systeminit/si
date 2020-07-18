@@ -43,6 +43,17 @@ service Core {
   rpc SystemEntityUpdate(SystemEntityUpdateRequest) returns (SystemEntityUpdateReply);
   rpc SystemEntitySync(SystemEntitySyncRequest) returns (SystemEntitySyncReply);
   rpc SystemEntityEventList(SystemEntityEventListRequest) returns (SystemEntityEventListReply);
+  rpc EdgeComponentGet(EdgeComponentGetRequest) returns (EdgeComponentGetReply);
+  rpc EdgeComponentList(EdgeComponentListRequest) returns (EdgeComponentListReply);
+  rpc EdgeComponentCreate(EdgeComponentCreateRequest) returns (EdgeComponentCreateReply);
+  rpc EdgeComponentPick(EdgeComponentPickRequest) returns (EdgeComponentPickReply);
+  rpc EdgeEntityGet(EdgeEntityGetRequest) returns (EdgeEntityGetReply);
+  rpc EdgeEntityList(EdgeEntityListRequest) returns (EdgeEntityListReply);
+  rpc EdgeEntityCreate(EdgeEntityCreateRequest) returns (EdgeEntityCreateReply);
+  rpc EdgeEntityDelete(EdgeEntityDeleteRequest) returns (EdgeEntityDeleteReply);
+  rpc EdgeEntityUpdate(EdgeEntityUpdateRequest) returns (EdgeEntityUpdateReply);
+  rpc EdgeEntitySync(EdgeEntitySyncRequest) returns (EdgeEntitySyncReply);
+  rpc EdgeEntityEventList(EdgeEntityEventListRequest) returns (EdgeEntityEventListReply);
 }
 message ApplicationComponentConstraints {
   google.protobuf.StringValue component_name = 1;
@@ -94,7 +105,7 @@ message ApplicationComponentPickReply {
   si.core.ApplicationComponent component = 2;
 }
 message ApplicationEntityProperties {
-  google.protobuf.BoolValue phantom = 1001;
+  repeated google.protobuf.StringValue in_systems = 1001;
 }
 message ApplicationEntity {
   google.protobuf.StringValue id = 1;
@@ -509,6 +520,174 @@ message SystemEntityEventListRequest {
 }
 message SystemEntityEventListReply {
   repeated si.core.SystemEntityEvent items = 1;
+  google.protobuf.UInt32Value total_count = 2;
+  google.protobuf.StringValue next_page_token = 3;
+}
+enum EdgeComponentConstraintsEdgeKind {
+  EDGE_COMPONENT_CONSTRAINTS_EDGE_KIND_UNKNOWN = 0;
+  EDGE_COMPONENT_CONSTRAINTS_EDGE_KIND_CONNECTED = 1;
+}
+message EdgeComponentConstraints {
+  google.protobuf.StringValue component_name = 1;
+  google.protobuf.StringValue component_display_name = 2;
+  EdgeComponentConstraintsEdgeKind edge_kind = 1001;
+}
+message EdgeComponent {
+  google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue name = 2;
+  google.protobuf.StringValue display_name = 3;
+  si.data.DataStorable si_storable = 4;
+  google.protobuf.StringValue description = 5;
+  si.core.EdgeComponentConstraints constraints = 6;
+  si.cea.ComponentSiProperties si_properties = 7;
+}
+message EdgeComponentGetRequest {
+  google.protobuf.StringValue id = 1001;
+}
+message EdgeComponentGetReply {
+  si.core.EdgeComponent item = 1001;
+}
+message EdgeComponentListRequest {
+  si.data.DataQuery query = 1;
+  google.protobuf.UInt32Value page_size = 2;
+  google.protobuf.StringValue order_by = 3;
+  si.data.DataPageTokenOrderByDirection order_by_direction = 4;
+  google.protobuf.StringValue page_token = 5;
+  google.protobuf.StringValue scope_by_tenant_id = 6;
+}
+message EdgeComponentListReply {
+  repeated si.core.EdgeComponent items = 1;
+  google.protobuf.UInt32Value total_count = 2;
+  google.protobuf.StringValue next_page_token = 3;
+}
+message EdgeComponentCreateRequest {
+  google.protobuf.StringValue name = 1001;
+  google.protobuf.StringValue display_name = 1002;
+  google.protobuf.StringValue description = 1003;
+  si.core.EdgeComponentConstraints constraints = 1;
+  si.cea.ComponentSiProperties si_properties = 1004;
+}
+message EdgeComponentCreateReply {
+  si.core.EdgeComponent item = 1;
+}
+message EdgeComponentPickRequest {
+  si.core.EdgeComponentConstraints constraints = 1;
+}
+message EdgeComponentPickReply {
+  si.core.EdgeComponentConstraints implicit_constraints = 1;
+  si.core.EdgeComponent component = 2;
+}
+message EdgeEntityPropertiesHeadVertex {
+  google.protobuf.StringValue id = 1001;
+  google.protobuf.StringValue type_name = 1002;
+}
+message EdgeEntityPropertiesTailVertex {
+  google.protobuf.StringValue id = 1001;
+  google.protobuf.StringValue type_name = 1002;
+}
+message EdgeEntityProperties {
+  si.core.EdgeEntityPropertiesHeadVertex head_vertex = 1001;
+  si.core.EdgeEntityPropertiesTailVertex tail_vertex = 1002;
+  google.protobuf.BoolValue bidirectional = 1003;
+}
+message EdgeEntity {
+  google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue name = 2;
+  google.protobuf.StringValue display_name = 3;
+  si.data.DataStorable si_storable = 4;
+  google.protobuf.StringValue description = 5;
+  si.cea.EntitySiProperties si_properties = 6;
+  si.core.EdgeEntityProperties properties = 7;
+  si.core.EdgeComponentConstraints constraints = 8;
+  si.core.EdgeComponentConstraints implicit_constraints = 9;
+}
+message EdgeEntityGetRequest {
+  google.protobuf.StringValue id = 1001;
+}
+message EdgeEntityGetReply {
+  si.core.EdgeEntity item = 1001;
+}
+message EdgeEntityListRequest {
+  si.data.DataQuery query = 1;
+  google.protobuf.UInt32Value page_size = 2;
+  google.protobuf.StringValue order_by = 3;
+  si.data.DataPageTokenOrderByDirection order_by_direction = 4;
+  google.protobuf.StringValue page_token = 5;
+  google.protobuf.StringValue scope_by_tenant_id = 6;
+}
+message EdgeEntityListReply {
+  repeated si.core.EdgeEntity items = 1;
+  google.protobuf.UInt32Value total_count = 2;
+  google.protobuf.StringValue next_page_token = 3;
+}
+message EdgeEntityCreateRequest {
+  google.protobuf.StringValue name = 1;
+  google.protobuf.StringValue display_name = 2;
+  google.protobuf.StringValue description = 3;
+  google.protobuf.StringValue workspace_id = 1001;
+  google.protobuf.StringValue change_set_id = 1002;
+  si.core.EdgeEntityProperties properties = 4;
+  si.core.EdgeComponentConstraints constraints = 5;
+}
+message EdgeEntityCreateReply {
+  si.core.EdgeEntity item = 1;
+}
+message EdgeEntityDeleteRequest {
+  google.protobuf.StringValue id = 1001;
+  google.protobuf.StringValue change_set_id = 1002;
+}
+message EdgeEntityDeleteReply {
+  si.core.EdgeEntity item = 1001;
+}
+message EdgeEntityUpdateRequestUpdate {
+  google.protobuf.StringValue name = 1001;
+  google.protobuf.StringValue display_name = 1002;
+  google.protobuf.StringValue description = 1003;
+  si.core.EdgeEntityProperties properties = 1004;
+}
+message EdgeEntityUpdateRequest {
+  google.protobuf.StringValue id = 1001;
+  google.protobuf.StringValue change_set_id = 1002;
+  si.core.EdgeEntityUpdateRequestUpdate update = 1003;
+}
+message EdgeEntityUpdateReply {
+  si.core.EdgeEntity item = 1001;
+}
+message EdgeEntitySyncRequest {
+  google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue change_set_id = 2;
+}
+message EdgeEntitySyncReply {
+  si.core.EdgeEntityEvent item = 1;
+}
+message EdgeEntityEvent {
+  google.protobuf.StringValue id = 1;
+  si.data.DataStorable si_storable = 2;
+  google.protobuf.StringValue action_name = 3;
+  google.protobuf.StringValue create_time = 4;
+  google.protobuf.StringValue updated_time = 5;
+  google.protobuf.StringValue final_time = 6;
+  google.protobuf.BoolValue success = 7;
+  google.protobuf.BoolValue finalized = 8;
+  google.protobuf.StringValue user_id = 9;
+  repeated google.protobuf.StringValue output_lines = 10;
+  repeated google.protobuf.StringValue error_lines = 11;
+  google.protobuf.StringValue error_message = 12;
+  si.core.EdgeEntity previous_entity = 13;
+  si.core.EdgeEntity input_entity = 14;
+  si.core.EdgeEntity output_entity = 15;
+  si.cea.EntityEventSiProperties si_properties = 16;
+}
+message EdgeEntityEventListRequest {
+  si.data.DataQuery query = 1;
+  google.protobuf.UInt32Value page_size = 2;
+  google.protobuf.StringValue order_by = 3;
+  si.data.DataPageTokenOrderByDirection order_by_direction = 4;
+  google.protobuf.StringValue page_token = 5;
+  google.protobuf.StringValue scope_by_tenant_id = 6;
+}
+message EdgeEntityEventListReply {
+  repeated si.core.EdgeEntityEvent items = 1;
   google.protobuf.UInt32Value total_count = 2;
   google.protobuf.StringValue next_page_token = 3;
 }

@@ -1,6 +1,6 @@
 <template>
   <div class="h-32 application-card">
-    <div class="block mx-3 pt-3 text-white">
+    <div class="block mx-3 pt-3 text-white" data-cy="application-card-name">
       {{ application.name }}
     </div>
 
@@ -15,11 +15,17 @@
         </div>
 
         <div class="block mx-3 pt-1 w-1/4 h-full card-section border">
-          <SystemsVisualization class="mx-2 mb-2" />
+          <SystemsVisualization
+            class="mx-2 mb-2"
+            :applicationId="application.id"
+          />
         </div>
 
         <div class="block mx-3 pt-1 w-1/4 h-full card-section border">
-          <ChangeSetVisualization class="mx-2 mb-2" />
+          <ChangeSetVisualization
+            class="mx-2 mb-2"
+            :applicationId="application.id"
+          />
         </div>
       </div>
 
@@ -36,18 +42,18 @@
   </div>
 </template>
 
-<script>
+<script type="ts">
+import Vue from "vue";
 import { ChevronRightIcon } from "vue-feather-icons";
 import ServicesVisualization from "@/components/visualization/ServicesVisualization.vue";
 import SystemsVisualization from "@/components/visualization/SystemsVisualization.vue";
 import ChangeSetVisualization from "@/components/visualization/ChangeSetVisualization.vue";
 import ActivityVisualization from "@/components/visualization/ActivityVisualization.vue";
 
-export default {
+export default Vue.extend({
   name: "ApplicationCard",
   props: {
     application: {},
-    session: {},
   },
   components: {
     ChevronRightIcon,
@@ -57,19 +63,20 @@ export default {
     ChangeSetVisualization,
   },
   methods: {
-    goToApplication(appId) {
+    goToApplication() {
       "/o/:organizationId/w/:workspaceId/a/:applicationId";
+      this.workspace = this.$store.getters["workspace/current"];
       this.$router.push({
         name: "applicationDetails",
         params: {
-          organizationId: this.session.organizationId,
-          workspaceId: this.session.workspaceId,
-          applicationId: appId,
+          organizationId: this.workspace.siProperties.organizationId,
+          workspaceId: this.workspace.id,
+          applicationId: this.application.id,
         },
       });
     },
   },
-};
+});
 </script>
 
 <style>

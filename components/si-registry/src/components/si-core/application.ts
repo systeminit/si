@@ -1,4 +1,4 @@
-import { PropBool } from "../../components/prelude";
+import { PropBool, PropText, PropSelect } from "../../components/prelude";
 import { registry } from "../../registry";
 
 registry.componentAndEntity({
@@ -12,15 +12,12 @@ registry.componentAndEntity({
       integrationServiceName: "core",
     });
 
-    // Properties
-    // TODO(fnichol): we don't have properties, but GraphQL will not accept an empty
-    // *Properties type so... phantom data for now?
-    c.properties.addBool({
-      name: "phantom",
-      label: "Phantom Data",
-      options(p: PropBool) {
-        p.hidden = true;
-        p.baseDefaultValue = true;
+    c.properties.addSelect({
+      name: "inSystems",
+      label: "In Systems",
+      options(p: PropSelect) {
+        p.optionsFromType = "systemEntity";
+        p.repeated = true;
       },
     });
   },

@@ -19,6 +19,7 @@ si-account = { path = "../si-account" }
 si-cea = { path = "../si-cea" }
 si-data = { path = "../si-data" }
 si-settings = { path = "../si-settings" }
+thiserror = "1.0"
 tokio = { version = "0.2", features = ["full"] }
 tonic = "0.2"
 tracing = "0.1"

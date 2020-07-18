@@ -1,7 +1,7 @@
-import NotFoundPage from "@/pages/NotFoundPage";
+import NotFoundPage from "@/pages/NotFoundPage.vue";
 import Home from "@/pages/HomePage.vue";
-import SignInPage from "@/pages/SignInPage";
-import WorkspacePage from "@/pages/WorkspacePage";
+import SignInPage from "@/pages/SignInPage/index.vue";
+import WorkspacePage from "@/pages/WorkspacePage/index.vue";
 import SystemDetails from "@/components/views/system/SystemDetails.vue";
 import ApplicationList from "@/components/views/application/ApplicationList.vue";
 import ApplicationDetails from "@/components/views/application/ApplicationDetails.vue";
@@ -43,6 +43,12 @@ const routes = [
         path: "/o/:organizationId/w/:workspaceId/a/:applicationId",
         name: "applicationDetails",
         component: ApplicationDetails,
+        props: true,
+      },
+      {
+        path: "/o/:organizationId/w/:workspaceId/global",
+        name: "global",
+        component: SystemDetails,
         props: true,
       },
     ],

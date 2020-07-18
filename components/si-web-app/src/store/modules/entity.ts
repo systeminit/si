@@ -1,5 +1,6 @@
 import { Module } from "vuex";
 import _ from "lodash";
+import { snakeCase } from "change-case";
 import { registry, Props, PropMethod, PropLink, PropObject } from "si-registry";
 
 import { generateName } from "@/api/names";
@@ -19,6 +20,7 @@ interface Entity {
   description: string;
   siStorable: {
     typeName: string;
+    changeSetId: string;
     [key: string]: any;
   };
   siProperties: {
@@ -61,6 +63,10 @@ interface DeleteEntityAction {
 
 interface CreateEntityPayload {
   typeName: string;
+  data?: {
+    name?: string;
+    [key: string]: any;
+  };
 }
 
 interface UpdateEntityPayload {
@@ -86,6 +92,56 @@ export const entity: Module<EntityStore, RootStore> = {
     add(state, payload: AddMutation) {
       state.entities = _.unionBy(payload.entities, state.entities, "id");
     },
+  },
+  getters: {
+    // prettier-ignore
+    get: (state) => (filter: any): Entity => {
+      const result = _.find(state.entities, filter);
+      if (result) {
+        return result;
+      } else {
+        throw new Error(`Cannot get entity for entity with filter: ${JSON.stringify(filter)}`);
+      }
+    },
+    // Prettier cannot handle the glory of this syntax. Bow before the functions.
+    // prettier-ignore
+    optionsFromType: (state, getters, rootState, rootGetters) => (camelFromType: string, ): {key: string; value: string}[] => {
+      const fromType = snakeCase(camelFromType);
+      const all: Entity[] = _.filter(state.entities, ["siStorable.typeName", fromType]);
+      let inChangeSet: Entity[];
+      if (rootState.changeSet.current) {
+        inChangeSet = _.filter(all, (entity, _index, collection) => {
+          if (!entity.siStorable.changeSetId || entity.siStorable.changeSetId == rootState.changeSet?.current?.id) {
+            return true;
+          } else {
+            return false;
+          }
+        });
+      } else {
+        inChangeSet = _.filter(all, (entity) => {
+          if (!entity.siStorable.changeSetId) {
+            return true
+          } else {
+            return false;
+          }
+        });
+      }
+
+      const results = _.uniqBy(
+        _.map(
+          _.orderBy(inChangeSet, ["siStorable.changeSetEntryCount"], ["desc"]),
+          (entity) => {
+            return {
+              key: entity.name,
+              value: entity.siStorable.itemId || entity.id
+            }
+          }
+        ),
+        'value'
+      );
+      console.log("results from optionsFromType", {results});
+      return results;
+    }
   },
   actions: {
     async update(
@@ -134,7 +190,7 @@ export const entity: Module<EntityStore, RootStore> = {
     async create(
       { commit, dispatch, rootGetters },
       payload: CreateEntityPayload,
-    ): Promise<void> {
+    ): Promise<Entity> {
       const variables: Record<string, any> = {};
       const workspaceId = rootGetters["workspace/current"].id;
       let changeSetId: string;
@@ -146,11 +202,18 @@ export const entity: Module<EntityStore, RootStore> = {
       }
       variables.changeSetId = changeSetId;
       variables.workspaceId = workspaceId;
-      let name = generateName();
+      let name: string;
+      if (payload.data?.name) {
+        name = payload.data?.name;
+      } else {
+        name = generateName();
+      }
       variables.name = name;
       variables.displayName = name;
       variables.description = name;
-      if (payload.typeName == "kubernetesDeploymentEntity") {
+      if (payload.data?.properties) {
+        variables.properties = payload.data.properties;
+      } else if (payload.typeName == "kubernetesDeploymentEntity") {
         variables.properties = {
           kubernetesObject: {
             apiVersion: "apps/v1",
@@ -160,8 +223,11 @@ export const entity: Module<EntityStore, RootStore> = {
       } else {
         variables.properties = {};
       }
-      variables.constraints = {};
-
+      if (payload.data?.constraints) {
+        variables.constraints = payload.data.constraints;
+      } else {
+        variables.constraints = {};
+      }
       const result = await graphqlMutation({
         typeName: payload.typeName,
         methodName: "create",
@@ -172,6 +238,17 @@ export const entity: Module<EntityStore, RootStore> = {
         entities: [entity],
       };
       commit("add", addPayload);
+      if (payload.typeName == "application_entity") {
+        await dispatch(
+          "application/add",
+          { applications: [entity] },
+          { root: true },
+        );
+      } else if (payload.typeName == "system_entity") {
+        await dispatch("system/add", { systems: [entity] }, { root: true });
+      } else if (payload.typeName == "edge_entity") {
+        await dispatch("edge/add", { edges: [entity] }, { root: true });
+      }
       let entityId: string;
       if (entity.siStorable.itemId) {
         entityId = entity.siStorable.itemId;
@@ -192,6 +269,7 @@ export const entity: Module<EntityStore, RootStore> = {
         { root: true },
       );
       await dispatch("changeSet/get", { changeSetId }, { root: true });
+      return entity;
     },
     async delete(
       { commit, getters, rootGetters, rootState, dispatch },
@@ -230,7 +308,6 @@ export const entity: Module<EntityStore, RootStore> = {
       );
       await dispatch("changeSet/get", { changeSetId }, { root: true });
     },
-
     async get(
       { state, commit, rootGetters, dispatch },
       { id, typeName }: { id: string; typeName: string },
@@ -244,6 +321,17 @@ export const entity: Module<EntityStore, RootStore> = {
       });
       const entity = entityGetResult["item"];
       commit("add", { entities: [entity] });
+      if (typeName == "application_entity") {
+        await dispatch(
+          "application/add",
+          { applications: [entity] },
+          { root: true },
+        );
+      } else if (typeName == "system_entity") {
+        await dispatch("system/add", { systems: [entity] }, { root: true });
+      } else if (typeName == "edge_entity") {
+        await dispatch("edge/add", { edges: [entity] }, { root: true });
+      }
       let node;
       if (entity.siStorable.itemId) {
         node = {
@@ -338,6 +426,37 @@ export const entity: Module<EntityStore, RootStore> = {
       commit("add", {
         entities: fullEntities,
       });
+      // Populate the application store
+      await dispatch(
+        "application/add",
+        {
+          applications: _.filter(fullEntities, [
+            "siStorable.typeName",
+            "application_entity",
+          ]),
+        },
+        { root: true },
+      );
+      // Populate the system store
+      await dispatch(
+        "system/add",
+        {
+          systems: _.filter(fullEntities, [
+            "siStorable.typeName",
+            "system_entity",
+          ]),
+        },
+        { root: true },
+      );
+      // Populate the edge store
+      await dispatch(
+        "edge/add",
+        {
+          edges: _.filter(fullEntities, ["siStorable.typeName", "edge_entity"]),
+        },
+        { root: true },
+      );
+
       let addEntitiesToNodes: Item[] = _.map(fullEntities, entity => {
         if (entity.siStorable.itemId) {
           return {

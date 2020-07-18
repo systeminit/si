@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div class="flex text-sm text-gray-400 font-bold">Activity</div>
+    <div class="flex text-sm text-gray-400 font-bold">activity (1d)</div>
 
     <div class="flex flex-col">
       <div class="flex">

@@ -25,6 +25,11 @@ interface AddMutation {
   changeSets: ChangeSet[];
 }
 
+interface CountGetter {
+  status: ChangeSet["status"];
+  forId?: string;
+}
+
 export const changeSet: Module<ChangeSetStore, RootStore> = {
   namespaced: true,
   state: {
@@ -46,6 +51,21 @@ export const changeSet: Module<ChangeSetStore, RootStore> = {
     },
   },
   getters: {
+    // prettier-ignore
+    count: (state) => (payload: CountGetter): number => {
+      let results = _.filter(state.changeSets, (changeSet) => {
+        if (changeSet.associations?.changeSetEntries?.items && changeSet.status == payload.status) {
+          return _.find(changeSet.associations.changeSetEntries.items, (entry: any) => {
+            if (entry.siStorable?.itemId == payload.forId) {
+              return true;
+            } else {
+              return false;
+            }
+          });
+        }
+      });
+      return results.length;
+    },
     current(state): ChangeSet {
       if (state.current) {
         return state.current;
@@ -131,7 +151,8 @@ export const changeSet: Module<ChangeSetStore, RootStore> = {
         commit("current", changeSet.item);
       }
     },
-    async execute({ commit, getters, dispatch }) {
+    async execute({ commit, getters, dispatch }, payload: { wait?: boolean }) {
+      const wait = payload.wait ? payload.wait : false;
       let changeSetId = getters.currentId;
       let changeSetExecuteResult = await graphqlMutation({
         typeName: "changeSet",
@@ -146,9 +167,10 @@ export const changeSet: Module<ChangeSetStore, RootStore> = {
       commit("add", { changeSets: [changeSetExecuteResult.item] });
       commit("current", changeSetExecuteResult.item);
       let pollerCount = 0;
+      let finished = false;
       let poller = setInterval(() => {
         pollerCount++;
-        if (pollerCount >= 30) {
+        if (pollerCount >= 300) {
           clearInterval(poller);
           return;
         }
@@ -218,13 +240,25 @@ export const changeSet: Module<ChangeSetStore, RootStore> = {
                   }
                 }
               }
+              finished = true;
             }
           })
           .catch(err => {
             console.log("Polling changeset execute error", err);
+            finished = true;
             clearInterval(poller);
           });
-      }, 1000);
+      }, 100);
+      if (wait) {
+        let finishCounter = 0;
+        while (!finished) {
+          if (finishCounter > 100) {
+            return;
+          }
+          await new Promise(resolve => setTimeout(resolve, 100));
+          finishCounter++;
+        }
+      }
     },
   },
 };
