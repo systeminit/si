@@ -1,17 +1,17 @@
 // Auth-generated code!
 // No touchy!
 
-impl crate::protobuf::ApplicationEntity {
+impl crate::protobuf::EdgeEntity {
     pub fn new(
         name: Option<String>,
         display_name: Option<String>,
         description: Option<String>,
-        constraints: Option<crate::protobuf::ApplicationComponentConstraints>,
-        implicit_constraints: Option<crate::protobuf::ApplicationComponentConstraints>,
-        properties: Option<crate::protobuf::ApplicationEntityProperties>,
+        constraints: Option<crate::protobuf::EdgeComponentConstraints>,
+        implicit_constraints: Option<crate::protobuf::EdgeComponentConstraints>,
+        properties: Option<crate::protobuf::EdgeEntityProperties>,
         si_properties: Option<si_cea::protobuf::EntitySiProperties>,
         change_set_id: Option<String>,
-    ) -> si_cea::CeaResult<crate::protobuf::ApplicationEntity> {
+    ) -> si_cea::CeaResult<crate::protobuf::EdgeEntity> {
         let mut si_storable = si_data::protobuf::DataStorable::default();
         si_storable.change_set_id = change_set_id;
         si_storable.change_set_event_type =
@@ -47,7 +47,7 @@ impl crate::protobuf::ApplicationEntity {
             })?;
         si_storable.add_to_tenant_ids(workspace_id);
 
-        let mut result: crate::protobuf::ApplicationEntity = Default::default();
+        let mut result: crate::protobuf::EdgeEntity = Default::default();
         result.name = name;
         result.display_name = display_name;
         result.description = description;
@@ -65,13 +65,13 @@ impl crate::protobuf::ApplicationEntity {
         name: Option<String>,
         display_name: Option<String>,
         description: Option<String>,
-        constraints: Option<crate::protobuf::ApplicationComponentConstraints>,
-        implicit_constraints: Option<crate::protobuf::ApplicationComponentConstraints>,
-        properties: Option<crate::protobuf::ApplicationEntityProperties>,
+        constraints: Option<crate::protobuf::EdgeComponentConstraints>,
+        implicit_constraints: Option<crate::protobuf::EdgeComponentConstraints>,
+        properties: Option<crate::protobuf::EdgeEntityProperties>,
         si_properties: Option<si_cea::protobuf::EntitySiProperties>,
         change_set_id: Option<String>,
-    ) -> si_cea::CeaResult<crate::protobuf::ApplicationEntity> {
-        let mut result = crate::protobuf::ApplicationEntity::new(
+    ) -> si_cea::CeaResult<crate::protobuf::EdgeEntity> {
+        let mut result = crate::protobuf::EdgeEntity::new(
             name,
             display_name,
             description,
@@ -86,10 +86,7 @@ impl crate::protobuf::ApplicationEntity {
         Ok(result)
     }
 
-    pub async fn get(
-        db: &si_data::Db,
-        id: &str,
-    ) -> si_data::Result<crate::protobuf::ApplicationEntity> {
+    pub async fn get(db: &si_data::Db, id: &str) -> si_data::Result<crate::protobuf::EdgeEntity> {
         let obj = db.get(id).await?;
         Ok(obj)
     }
@@ -97,7 +94,7 @@ impl crate::protobuf::ApplicationEntity {
     pub async fn get_by_natural_key(
         db: &si_data::Db,
         natural_key: &str,
-    ) -> si_data::Result<crate::protobuf::ApplicationEntity> {
+    ) -> si_data::Result<crate::protobuf::EdgeEntity> {
         let obj = db.lookup_by_natural_key(natural_key).await?;
         Ok(obj)
     }
@@ -109,8 +106,8 @@ impl crate::protobuf::ApplicationEntity {
 
     pub async fn list(
         db: &si_data::Db,
-        list_request: crate::protobuf::ApplicationEntityListRequest,
-    ) -> si_data::Result<si_data::ListResult<crate::protobuf::ApplicationEntity>> {
+        list_request: crate::protobuf::EdgeEntityListRequest,
+    ) -> si_data::Result<si_data::ListResult<crate::protobuf::EdgeEntity>> {
         let result = match list_request.page_token {
             Some(token) => db.list_by_page_token(token).await?,
             None => {
@@ -172,7 +169,7 @@ impl crate::protobuf::ApplicationEntity {
         &mut self,
         db: &si_data::Db,
         change_set_id: Option<String>,
-        update: Option<crate::protobuf::ApplicationEntityUpdateRequestUpdate>,
+        update: Option<crate::protobuf::EdgeEntityUpdateRequestUpdate>,
     ) -> si_data::Result<()> {
         let item_id = self.id.as_ref().map(|change_set_enabled_id| {
             let split_result: Vec<&str> = change_set_enabled_id.split(":").collect();
@@ -210,8 +207,8 @@ impl crate::protobuf::ApplicationEntity {
     }
 }
 
-impl si_cea::Entity for crate::protobuf::ApplicationEntity {
-    type EntityProperties = crate::protobuf::ApplicationEntityProperties;
+impl si_cea::Entity for crate::protobuf::EdgeEntity {
+    type EntityProperties = crate::protobuf::EdgeEntityProperties;
 
     fn entity_state(&self) -> si_data::Result<si_cea::EntitySiPropertiesEntityState> {
         Ok(self
@@ -227,7 +224,7 @@ impl si_cea::Entity for crate::protobuf::ApplicationEntity {
         }
 
         let si_properties = self.si_properties.as_mut().expect(
-            "crate::protobuf::ApplicationEntity.si_properties \
+            "crate::protobuf::EdgeEntity.si_properties \
                 has been set or initialized",
         );
         si_properties.set_entity_state(state);
@@ -261,7 +258,7 @@ impl si_cea::Entity for crate::protobuf::ApplicationEntity {
         }
 
         let si_properties = self.si_properties.as_mut().expect(
-            "crate::protobuf::ApplicationEntity.si_properties \
+            "crate::protobuf::EdgeEntity.si_properties \
                 has been set or initialized",
         );
         si_properties.integration_id = Some(integration_id.into());
@@ -283,7 +280,7 @@ impl si_cea::Entity for crate::protobuf::ApplicationEntity {
         }
 
         let si_properties = self.si_properties.as_mut().expect(
-            "crate::protobuf::ApplicationEntity.si_properties \
+            "crate::protobuf::EdgeEntity.si_properties \
                 has been set or initialized",
         );
         si_properties.integration_service_id = Some(integration_service_id.into());
@@ -305,7 +302,7 @@ impl si_cea::Entity for crate::protobuf::ApplicationEntity {
         }
 
         let si_properties = self.si_properties.as_mut().expect(
-            "crate::protobuf::ApplicationEntity.si_properties \
+            "crate::protobuf::EdgeEntity.si_properties \
                 has been set or initialized",
         );
         si_properties.component_id = Some(component_id.into());
@@ -327,7 +324,7 @@ impl si_cea::Entity for crate::protobuf::ApplicationEntity {
         }
 
         let si_properties = self.si_properties.as_mut().expect(
-            "crate::protobuf::ApplicationEntity.si_properties \
+            "crate::protobuf::EdgeEntity.si_properties \
                 has been set or initialized",
         );
         si_properties.workspace_id = Some(workspace_id.into());
@@ -349,7 +346,7 @@ impl si_cea::Entity for crate::protobuf::ApplicationEntity {
         }
 
         let si_properties = self.si_properties.as_mut().expect(
-            "crate::protobuf::ApplicationEntity.si_properties \
+            "crate::protobuf::EdgeEntity.si_properties \
                 has been set or initialized",
         );
         si_properties.organization_id = Some(organization_id.into());
@@ -371,16 +368,16 @@ impl si_cea::Entity for crate::protobuf::ApplicationEntity {
         }
 
         let si_properties = self.si_properties.as_mut().expect(
-            "crate::protobuf::ApplicationEntity.si_properties \
+            "crate::protobuf::EdgeEntity.si_properties \
                 has been set or initialized",
         );
         si_properties.billing_account_id = Some(billing_account_id.into());
     }
 }
 
-impl si_data::Storable for crate::protobuf::ApplicationEntity {
+impl si_data::Storable for crate::protobuf::EdgeEntity {
     fn type_name() -> &'static str {
-        "application_entity"
+        "edge_entity"
     }
 
     fn set_type_name(&mut self) {
@@ -389,7 +386,7 @@ impl si_data::Storable for crate::protobuf::ApplicationEntity {
         }
 
         let si_storable = self.si_storable.as_mut().expect(
-            "crate::protobuf::ApplicationEntity.si_storable \
+            "crate::protobuf::EdgeEntity.si_storable \
                 has been set or initialized",
         );
         si_storable.type_name = Some(Self::type_name().to_string());
@@ -509,7 +506,7 @@ impl si_data::Storable for crate::protobuf::ApplicationEntity {
         }
 
         let si_storable = self.si_storable.as_mut().expect(
-            "crate::protobuf::ApplicationEntity.si_storable \
+            "crate::protobuf::EdgeEntity.si_storable \
                 has been set or initialized",
         );
         si_storable.tenant_ids.push(id.into());
@@ -577,13 +574,21 @@ impl si_data::Storable for crate::protobuf::ApplicationEntity {
             "siStorable.naturalKey",
             "entitySiProperties.entityState",
             "siStorable.naturalKey",
-            "properties.inSystems",
+            "siStorable.naturalKey",
+            "properties.headVertex.id",
+            "properties.headVertex.typeName",
+            "siStorable.naturalKey",
+            "properties.tailVertex.id",
+            "properties.tailVertex.typeName",
+            "properties.bidirectional",
             "siStorable.naturalKey",
             "constraints.componentName",
             "constraints.componentDisplayName",
+            "constraints.edgeKind",
             "siStorable.naturalKey",
             "constraints.componentName",
             "constraints.componentDisplayName",
+            "constraints.edgeKind",
         ]
     }
 }

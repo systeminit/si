@@ -1,12 +1,12 @@
 import Vue from "vue";
 import Vuex from "vuex";
 import { Store } from "vuex";
-import VuexPersistence from "vuex-persist";
-import Cookies from "js-cookie";
-// @ts-ignore
+//import VuexPersistence from "vuex-persist";
+//import Cookies from "js-cookie";
 import { editor, EditorStore } from "./modules/editor";
-// @ts-ignore
-import applications from "./modules/applications";
+import { application, ApplicationStore } from "./modules/application";
+import { edge, EdgeStore } from "./modules/edge";
+import { system, SystemStore } from "./modules/system";
 import { entity, EntityStore } from "./modules/entity";
 import { user, UserStore } from "./modules/user";
 import { changeSet, ChangeSetStore } from "./modules/changeSet";
@@ -20,26 +20,22 @@ Vue.use(Vuex);
 
 const debug = process.env.NODE_ENV !== "production";
 
-const vuexCookie = new VuexPersistence({
-  restoreState: (key, _storage) => Cookies.getJSON(key),
-  saveState: async (key, state, _storage): Promise<void> => {
-    Cookies.set(key, state, {
-      expires: 3,
-    });
-  },
-  modules: ["applications"],
-});
-
-const vuexLocal = new VuexPersistence({
-  storage: window.localStorage,
-  reducer: (state: any) => ({ applications: state.applications }),
-});
+//const vuexCookie = new VuexPersistence({
+//  restoreState: (key, _storage) => Cookies.getJSON(key),
+//  saveState: async (key, state, _storage): Promise<void> => {
+//    Cookies.set(key, state, {
+//      expires: 3,
+//    });
+//  },
+//});
+//
+//const vuexLocal = new VuexPersistence({
+//  storage: window.localStorage,
+//  reducer: (state: any) => ({ applications: state.applications }),
+//});
 
 export interface RootStore {
   editor: EditorStore;
-  applications: {
-    applicationList: any[];
-  };
   user: UserStore;
   entity: EntityStore;
   changeSet: ChangeSetStore;
@@ -47,6 +43,9 @@ export interface RootStore {
   billingAccount: BillingAccountStore;
   node: NodeStore;
   loader: LoaderStore;
+  application: ApplicationStore;
+  edge: EdgeStore;
+  system: SystemStore;
   version: string;
 }
 
@@ -56,7 +55,9 @@ const store: Store<RootStore> = new Vuex.Store({
     version: "1",
   },
   modules: {
-    applications,
+    edge,
+    application,
+    system,
     editor,
     user,
     entity,
@@ -67,7 +68,7 @@ const store: Store<RootStore> = new Vuex.Store({
     loader,
   },
   strict: debug,
-  plugins: [vuexCookie.plugin, vuexLocal.plugin, persistEdits],
+  plugins: [persistEdits],
 });
 
 export default store;

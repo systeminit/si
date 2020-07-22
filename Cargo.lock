@@ -2319,6 +2319,7 @@ dependencies = [
  "si-cea",
  "si-data",
  "si-settings",
+ "thiserror",
  "tokio 0.2.21",
  "tonic",
  "tonic-build",

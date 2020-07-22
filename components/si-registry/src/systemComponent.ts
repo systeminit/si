@@ -923,6 +923,14 @@ export class ComponentAndEntityObject {
     });
   }
 
+  get associations(): AssociationList {
+    return this.entity.associations;
+  }
+
+  set associations(value: AssociationList) {
+    this.entity.associations = value;
+  }
+
   get properties(): EntityObject["rootProp"]["properties"] {
     const prop = this.entity.fields.getEntry("properties") as PropObject;
     prop.properties.autoCreateEdits = true;

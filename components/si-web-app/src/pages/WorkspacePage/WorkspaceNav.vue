@@ -14,25 +14,10 @@
 
     <div id="workspace-content" class="flex flex-col mt-10 self-end mr-4">
       <div
-        class="self-end font-source-code-pro font-medium subpixel-antialiased text-white text-l tracking-tight"
+        class="self-end font-source-code-pro font-normal subpixel-antialiased text-white text-md tracking-tight"
       >
         <router-link
-          :to="{
-            name: 'system',
-            params: {
-              systemId: 'demo',
-              organizationId: organizationId,
-              workspaceId: workspaceId,
-            },
-          }"
-          >systems</router-link
-        >
-      </div>
-
-      <div
-        class=" font-source-code-pro font-normal subpixel-antialiased text-white text-md tracking-tight"
-      >
-        <router-link
+          data-cy="application-nav-link"
           :to="{
             name: 'application',
             params: {
@@ -41,16 +26,52 @@
               workspaceId: workspaceId,
             },
           }"
-          >applications</router-link
         >
+          applications
+        </router-link>
+      </div>
+
+      <div
+        class="self-end font-source-code-pro font-normal subpixel-antialiased text-white text-md tracking-tight"
+      >
+        <router-link
+          data-cy="system-nav-link"
+          :to="{
+            name: 'system',
+            params: {
+              systemId: 'demo',
+              organizationId: organizationId,
+              workspaceId: workspaceId,
+            },
+          }"
+        >
+          systems
+        </router-link>
+      </div>
+
+      <div
+        class="self-end font-source-code-pro font-normal subpixel-antialiased text-white text-md tracking-tight"
+      >
+        <router-link
+          data-cy="global-nav-link"
+          :to="{
+            name: 'global',
+            params: {
+              organizationId: organizationId,
+              workspaceId: workspaceId,
+            },
+          }"
+        >
+          global
+        </router-link>
       </div>
     </div>
   </nav>
 </template>
 
-<script>
+<script lang="ts">
 // import WorkspaceSelector from "./WorkspaceSelector.vue";
-import Dropdown from "@/components/ui/Dropdown";
+import Dropdown from "@/components/ui/Dropdown/index.vue";
 
 export default {
   name: "WorkspaceNav",
@@ -74,3 +95,9 @@ export default {
   },
 };
 </script>
+
+<style scoped>
+.router-link-active {
+  @apply font-semibold;
+}
+</style>

@@ -63,6 +63,10 @@
                 <PropMap :entityProperty="ep" />
               </div>
 
+              <div v-else-if="propKind(ep, 'select')">
+                <PropSelect :entityProperty="ep" />
+              </div>
+
               <div v-else class="text-red-700">
                 {{ ep.name }}
               </div>
@@ -91,6 +95,7 @@ import PropObject from "./PropObject.vue";
 import PropNumber from "./PropNumber.vue";
 import PropEnum from "./PropEnum.vue";
 import PropMap from "./PropMap.vue";
+import PropSelect from "./PropSelect.vue";
 
 // This component only works with repeated objects! When we need it to work with
 // repeated fields of other types, we're going to have to extend it. For now,
@@ -157,10 +162,14 @@ export default Vue.extend({
         let objectValues = this.$store.getters["node/getFieldValue"](
           this.entityProperty.path,
         );
-        if (objectValues != undefined) {
-          return _.cloneDeep(objectValues);
-        } else {
+        if (objectValues == undefined) {
           return [];
+        } else {
+          console.log("but I have an ", {
+            objectValues: _.cloneDeep(objectValues),
+            ep: this.entityProperty,
+          });
+          return _.cloneDeep(objectValues);
         }
       },
       async set(value: any) {

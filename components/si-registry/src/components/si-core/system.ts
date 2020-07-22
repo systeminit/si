@@ -12,6 +12,12 @@ registry.componentAndEntity({
       integrationServiceName: "core",
     });
 
+    c.associations.inList({
+      fieldName: "applications",
+      typeName: "applicationEntity",
+      toFieldPath: ["inSystems"],
+    });
+
     // Properties
     // TODO(fnichol): we don't have properties, but GraphQL will not accept an empty
     // *Properties type so... phantom data for now?

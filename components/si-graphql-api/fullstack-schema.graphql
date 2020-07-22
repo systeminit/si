@@ -304,13 +304,13 @@ input ApplicationEntityListRequest {
 }
 
 type ApplicationEntityProperties {
-  """Phantom Data"""
-  phantom: Boolean
+  """In Systems"""
+  inSystems: [String!]
 }
 
 input ApplicationEntityPropertiesRequest {
-  """Phantom Data"""
-  phantom: Boolean
+  """In Systems"""
+  inSystems: [String!]
 }
 
 """Sync State Reply"""
@@ -819,6 +819,420 @@ enum DataStorableChangeSetEventType {
   DELETE
   UNKNOWN
   UPDATE
+}
+
+type EdgeComponent {
+  """Component Constraints"""
+  constraints: EdgeComponentConstraints
+
+  """Component Description"""
+  description: String
+
+  """A System Initiative Edge Component Display Name"""
+  displayName: String
+
+  """A System Initiative Edge Component ID"""
+  id: ID
+
+  """A System Initiative Edge Component Name"""
+  name: String
+
+  """SI Properties"""
+  siProperties: ComponentSiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+}
+
+type EdgeComponentConstraints {
+  """Component Display Name"""
+  componentDisplayName: String
+
+  """Component Name"""
+  componentName: String
+
+  """The kind of edge this is"""
+  edgeKind: EdgeComponentConstraintsEdgeKind
+}
+
+"""The kind of edge this is"""
+enum EdgeComponentConstraintsEdgeKind {
+  CONNECTED
+  UNKNOWN
+}
+
+input EdgeComponentConstraintsRequest {
+  """Component Display Name"""
+  componentDisplayName: String
+
+  """Component Name"""
+  componentName: String
+
+  """The kind of edge this is"""
+  edgeKind: EdgeComponentConstraintsEdgeKind
+}
+
+"""Get a A System Initiative Edge Component Reply"""
+type EdgeComponentGetReply {
+  """A System Initiative Edge Component Item"""
+  item: EdgeComponent
+}
+
+"""Get a A System Initiative Edge Component Request"""
+input EdgeComponentGetRequest {
+  """A System Initiative Edge Component ID"""
+  id: ID
+}
+
+"""List A System Initiative Edge Component Reply"""
+type EdgeComponentListReply {
+  """Items"""
+  items: [EdgeComponent!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: String
+}
+
+"""List A System Initiative Edge Component Request"""
+input EdgeComponentListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: String
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+"""Pick Component Reply"""
+type EdgeComponentPickReply {
+  """Chosen Component"""
+  component: EdgeComponent
+
+  """Implicit Constraints"""
+  implicitConstraints: EdgeComponentConstraints
+}
+
+"""Pick Component Request"""
+input EdgeComponentPickRequest {
+  """Constraints"""
+  constraints: EdgeComponentConstraintsRequest
+}
+
+type EdgeEntity {
+  """Constraints"""
+  constraints: EdgeComponentConstraints
+
+  """Entity Description"""
+  description: String
+
+  """A System Initiative Edge Entity Display Name"""
+  displayName: String
+
+  """A System Initiative Edge Entity ID"""
+  id: ID
+
+  """Implicit Constraints"""
+  implicitConstraints: EdgeComponentConstraints
+
+  """A System Initiative Edge Entity Name"""
+  name: String
+
+  """Properties"""
+  properties: EdgeEntityProperties
+
+  """SI Properties"""
+  siProperties: EntitySiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+}
+
+"""Create Entity Reply"""
+type EdgeEntityCreateReply {
+  """edgeEntity Item"""
+  item: EdgeEntity
+}
+
+"""Create Entity Request"""
+input EdgeEntityCreateRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """Constraints"""
+  constraints: EdgeComponentConstraintsRequest
+
+  """Description"""
+  description: String
+
+  """Display Name"""
+  displayName: String
+
+  """Name"""
+  name: String
+
+  """Properties"""
+  properties: EdgeEntityPropertiesRequest
+
+  """Workspace ID"""
+  workspaceId: String
+}
+
+"""Delete Entity Reply"""
+type EdgeEntityDeleteReply {
+  """edge Item"""
+  item: EdgeEntity
+}
+
+"""Delete Entity Request"""
+input EdgeEntityDeleteRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """edgeEntity ID"""
+  id: ID
+}
+
+type EdgeEntityEvent {
+  """Action Name"""
+  actionName: String
+
+  """Creation Time"""
+  createTime: String
+
+  """Error Lines"""
+  errorLines: [String!]
+
+  """Error Message"""
+  errorMessage: String
+
+  """Finalized"""
+  finalized: Boolean
+
+  """Final Time"""
+  finalTime: String
+
+  """A System Initiative Edge EntityEvent ID"""
+  id: ID
+
+  """Input Entity"""
+  inputEntity: EdgeEntity
+
+  """Output Entity"""
+  outputEntity: EdgeEntity
+
+  """Output Lines"""
+  outputLines: [String!]
+
+  """Previous Entity"""
+  previousEntity: EdgeEntity
+
+  """SI Properties"""
+  siProperties: EntityEventSiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+
+  """success"""
+  success: Boolean
+
+  """Updated Time"""
+  updatedTime: String
+
+  """User ID"""
+  userId: String
+}
+
+"""List A System Initiative Edge EntityEvent Reply"""
+type EdgeEntityEventListReply {
+  """Items"""
+  items: [EdgeEntityEvent!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: String
+}
+
+"""List A System Initiative Edge EntityEvent Request"""
+input EdgeEntityEventListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: String
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+"""Get a A System Initiative Edge Entity Reply"""
+type EdgeEntityGetReply {
+  """A System Initiative Edge Entity Item"""
+  item: EdgeEntity
+}
+
+"""Get a A System Initiative Edge Entity Request"""
+input EdgeEntityGetRequest {
+  """A System Initiative Edge Entity ID"""
+  id: ID
+}
+
+"""List A System Initiative Edge Entity Reply"""
+type EdgeEntityListReply {
+  """Items"""
+  items: [EdgeEntity!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: String
+}
+
+"""List A System Initiative Edge Entity Request"""
+input EdgeEntityListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: String
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+type EdgeEntityProperties {
+  """Bidirectional"""
+  bidirectional: Boolean
+
+  """Head Vertex"""
+  headVertex: EdgeEntityPropertiesHeadVertex
+
+  """Tail Vertex"""
+  tailVertex: EdgeEntityPropertiesTailVertex
+}
+
+type EdgeEntityPropertiesHeadVertex {
+  """Head Vertex ID"""
+  id: ID
+
+  """Head Vertex Type Name"""
+  typeName: String
+}
+
+input EdgeEntityPropertiesHeadVertexRequest {
+  """Head Vertex ID"""
+  id: ID
+
+  """Head Vertex Type Name"""
+  typeName: String
+}
+
+input EdgeEntityPropertiesRequest {
+  """Bidirectional"""
+  bidirectional: Boolean
+
+  """Head Vertex"""
+  headVertex: EdgeEntityPropertiesHeadVertexRequest
+
+  """Tail Vertex"""
+  tailVertex: EdgeEntityPropertiesTailVertexRequest
+}
+
+type EdgeEntityPropertiesTailVertex {
+  """Tail Vertex ID"""
+  id: ID
+
+  """Tail Vertex Type Name"""
+  typeName: String
+}
+
+input EdgeEntityPropertiesTailVertexRequest {
+  """Tail Vertex ID"""
+  id: ID
+
+  """Tail Vertex Type Name"""
+  typeName: String
+}
+
+"""Sync State Reply"""
+type EdgeEntitySyncReply {
+  """Entity Event"""
+  item: EdgeEntityEvent
+}
+
+"""Sync State Request"""
+input EdgeEntitySyncRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """Entity ID"""
+  id: ID
+}
+
+"""Update an Entity Reply"""
+type EdgeEntityUpdateReply {
+  """edge Item"""
+  item: EdgeEntity
+}
+
+"""Update an Entity Request"""
+input EdgeEntityUpdateRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """edgeEntity ID"""
+  id: ID
+
+  """edge Item Update"""
+  update: EdgeEntityUpdateRequestUpdateRequest
+}
+
+input EdgeEntityUpdateRequestUpdateRequest {
+  """description"""
+  description: String
+
+  """displayName"""
+  displayName: String
+
+  """name"""
+  name: String
+
+  """properties"""
+  properties: EdgeEntityPropertiesRequest
 }
 
 type EntityEventSiProperties {
@@ -2556,6 +2970,10 @@ type Mutation {
   billingAccountSignup(input: BillingAccountSignupRequest): BillingAccountSignupReply
   changeSetCreate(input: ChangeSetCreateRequest): ChangeSetCreateReply
   changeSetExecute(input: ChangeSetExecuteRequest): ChangeSetExecuteReply
+  edgeEntityCreate(input: EdgeEntityCreateRequest): EdgeEntityCreateReply
+  edgeEntityDelete(input: EdgeEntityDeleteRequest): EdgeEntityDeleteReply
+  edgeEntitySync(input: EdgeEntitySyncRequest): EdgeEntitySyncReply
+  edgeEntityUpdate(input: EdgeEntityUpdateRequest): EdgeEntityUpdateReply
   groupCreate(input: GroupCreateRequest): GroupCreateReply
   kubernetesDeploymentEntityApply(input: KubernetesDeploymentEntityApplyRequest): KubernetesDeploymentEntityApplyReply
   kubernetesDeploymentEntityCreate(input: KubernetesDeploymentEntityCreateRequest): KubernetesDeploymentEntityCreateReply
@@ -2692,6 +3110,12 @@ type Query {
   billingAccountList(input: BillingAccountListRequest): BillingAccountListReply
   changeSetGet(input: ChangeSetGetRequest): ChangeSetGetReply
   changeSetList(input: ChangeSetListRequest): ChangeSetListReply
+  edgeComponentGet(input: EdgeComponentGetRequest): EdgeComponentGetReply
+  edgeComponentList(input: EdgeComponentListRequest): EdgeComponentListReply
+  edgeComponentPick(input: EdgeComponentPickRequest): EdgeComponentPickReply
+  edgeEntityEventList(input: EdgeEntityEventListRequest): EdgeEntityEventListReply
+  edgeEntityGet(input: EdgeEntityGetRequest): EdgeEntityGetReply
+  edgeEntityList(input: EdgeEntityListRequest): EdgeEntityListReply
   groupGet(input: GroupGetRequest): GroupGetReply
   groupList(input: GroupListRequest): GroupListReply
   integrationGet(input: IntegrationGetRequest): IntegrationGetReply
@@ -3227,6 +3651,8 @@ input SystemComponentPickRequest {
 }
 
 type SystemEntity {
+  associations: SystemEntityAssociations
+
   """Constraints"""
   constraints: SystemComponentConstraints
 
@@ -3253,6 +3679,12 @@ type SystemEntity {
 
   """SI Storable"""
   siStorable: DataStorable
+}
+
+"""A System Initiative System Entity Associations"""
+type SystemEntityAssociations {
+  """A System Initiative Application Entity"""
+  applications(input: ApplicationEntityListRequest): ApplicationEntityListReply
 }
 
 """Create Entity Reply"""
