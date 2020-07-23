@@ -139,7 +139,6 @@ export const entity: Module<EntityStore, RootStore> = {
         ),
         'value'
       );
-      console.log("results from optionsFromType", {results});
       return results;
     }
   },

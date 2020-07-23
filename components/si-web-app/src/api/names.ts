@@ -1,13 +1,9 @@
-import {
-  uniqueNamesGenerator,
-  adjectives,
-  colors,
-  animals,
-} from "unique-names-generator";
+import { uniqueNamesGenerator, colors, animals } from "unique-names-generator";
 
 export function generateName(): string {
   return uniqueNamesGenerator({
-    dictionaries: [adjectives, colors, animals],
+    dictionaries: [colors, animals],
     separator: "-",
+    length: 2,
   });
 }

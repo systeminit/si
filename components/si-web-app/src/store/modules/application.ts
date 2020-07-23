@@ -17,6 +17,10 @@ interface CreateMutation {
   name: string;
 }
 
+interface GetGetter {
+  id: string;
+}
+
 export const application: Module<ApplicationStore, RootStore> = {
   namespaced: true,
   state: {
@@ -40,6 +44,15 @@ export const application: Module<ApplicationStore, RootStore> = {
         }
       });
     },
+    // prettier-ignore
+    get: (state) => (filter: GetGetter): ApplicationEntity => {
+      const app = _.find(state.applications, ["id", filter.id]);
+      if (app) {
+        return app;
+      } else {
+        throw new Error(`cannot find application id ${filter.id}`);
+      }
+    }
   },
   mutations: {
     add(state, payload: AddMutation) {

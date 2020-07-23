@@ -4,16 +4,14 @@ import App from "@/App.vue";
 import router from "@/router";
 
 import VueGtag from "vue-gtag";
-import vSelect from "vue-select";
 
 // @ts-ignore
 import store from "@/store";
 
 import "@/assets/main.css";
 import "@/assets/tailwind.css";
-import "@/plugins/vue-tailwind.js";
 
-import "@/plugins/vue-js-modal.js";
+import "@/plugins/vue-js-modal";
 
 Vue.config.productionTip = false;
 
@@ -27,8 +25,6 @@ if (process.env.NODE_ENV == "production") {
     disableScriptLoad: true,
   });
 }
-
-Vue.component("v-select", vSelect);
 
 new Vue({
   router,
