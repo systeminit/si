@@ -40,7 +40,7 @@ export const changeSet: Module<ChangeSetStore, RootStore> = {
     add(state, payload: AddMutation) {
       state.changeSets = _.unionBy(payload.changeSets, state.changeSets, "id");
     },
-    current(state, payload: ChangeSet) {
+    current(state, payload: ChangeSet | null) {
       state.current = payload;
     },
     setCurrentById(state, payload: string) {
@@ -66,6 +66,9 @@ export const changeSet: Module<ChangeSetStore, RootStore> = {
       });
       return results.length;
     },
+    open(state): ChangeSet[] {
+      return _.filter(state.changeSets, ["status", "OPEN"]);
+    },
     current(state): ChangeSet {
       if (state.current) {
         return state.current;
@@ -81,18 +84,25 @@ export const changeSet: Module<ChangeSetStore, RootStore> = {
       }
       return state.current.id;
     },
-    byId: (state: ChangeSetStore) => (
-      changeSetId: string,
-    ): ChangeSet | undefined => {
+    // prettier-ignore
+    byId: (state: ChangeSetStore) => (changeSetId: string): ChangeSet | null => {
       let changeSet = _.find(state.changeSets, ["id", changeSetId]);
       if (changeSet) {
         return changeSet;
       } else {
-        return undefined;
+        return null;
       }
-    },
+    }
   },
   actions: {
+    setCurrentById({ commit, getters }, changeSetId: string | null) {
+      if (changeSetId) {
+        let changeSet = getters["byId"](changeSetId);
+        commit("current", changeSet);
+      } else {
+        commit("current", null);
+      }
+    },
     async load({ commit }): Promise<void> {
       const changeSets: ChangeSet[] = await graphqlQueryListAll({
         typeName: "changeSet",
@@ -151,8 +161,11 @@ export const changeSet: Module<ChangeSetStore, RootStore> = {
         commit("current", changeSet.item);
       }
     },
-    async execute({ commit, getters, dispatch }, payload: { wait?: boolean }) {
-      const wait = payload.wait ? payload.wait : false;
+    async execute(
+      { commit, getters, state, dispatch },
+      payload?: { wait?: boolean },
+    ) {
+      const wait = payload?.wait ? true : false;
       let changeSetId = getters.currentId;
       let changeSetExecuteResult = await graphqlMutation({
         typeName: "changeSet",
@@ -239,6 +252,9 @@ export const changeSet: Module<ChangeSetStore, RootStore> = {
                     remainingItems = false;
                   }
                 }
+              }
+              if (state.current && res.item.id == state.current.id) {
+                commit("current", null);
               }
               finished = true;
             }

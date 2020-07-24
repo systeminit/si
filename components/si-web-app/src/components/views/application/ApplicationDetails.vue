@@ -1,142 +1,229 @@
 <template>
-  <div id="application-details" class="flex flex-col flex-no-wrap">
-    <div id="application-summary" class="flex flex-col w-full h-40">
+  <div id="application-details" class="flex flex-col">
+    <div id="application-summary" class="flex flex-col w-full pb-3">
       <StatusBar class="" />
 
-      <div class="flex flex-col">
-        <div class="flex flex-row mt-3 mx-3">
-          <div class="text-gray-300 font-normal">
-            Applications/{{ systemName }}
-          </div>
-
-          <div class="flex w-full flex-row-reverse">
-            <button
-              class="mx-1 px-1 h-7 w-auto text-white text-sm button-standard"
-              @click="execute()"
-              type="button"
-            >
-              <div class="flex">
-                <play-icon size="1.25x" class="self-center text-gray-200" />
-                <div class="ml-1 font-normal text-gray-100">execute</div>
-              </div>
-            </button>
-
-            <div v-if="isEditMode === false" class="flex">
-              <button
-                class="mx-1 px-2 h-7 w-auto text-white text-sm button-standard"
-                @click="toggleEditMode(true)"
-                type="button"
-              >
-                <div class="flex">
-                  <edit-icon size="1.25x" class="self-center text-gray-200" />
-                  <div class="ml-1 font-normal text-gray-100">edit</div>
-                </div>
-              </button>
-            </div>
-
-            <div v-else-if="isEditMode === true" class="flex">
-              <button
-                class="mx-1 px-2 h-7 w-auto text-white text-sm button-save"
-                @click="toggleEditMode(false)"
-                type="button"
-              >
-                <div class="flex">
-                  <save-icon size="1.25x" class="self-center text-gray-200" />
-                  <div class="ml-1 font-normal text-gray-100">save</div>
-                </div>
-              </button>
-
-              <button
-                class="mx-1 px-2 h-7 w-auto text-white text-sm button-abort"
-                @click="toggleEditMode(false)"
-                type="button"
-              >
-                <div class="flex">
-                  <trash-icon size="1.25x" class="self-center text-gray-200" />
-                  <div class="ml-1 font-normal text-gray-100">abort</div>
-                </div>
-              </button>
-            </div>
+      <div class="flex mt-3">
+        <div class="items-center w-1/2">
+          <button
+            @click="toggleDetails"
+            class="focus:outline-none"
+            data-cy="application-details-toggle"
+          >
+            <ChevronDownIcon
+              v-if="showDetails"
+              class="inline-flex text-gray-300"
+            />
+            <ChevronRightIcon v-else class="inline-flex text-gray-300" />
+          </button>
+          <div
+            class="inline-flex font-normal text-gray-300"
+            data-cy="application-details-application-name"
+          >
+            applications/{{ application.name }}
           </div>
         </div>
-
-        <div class="flex mx-4 my-4 justify-start">
-          <div class="mx-2 w-40 border card-section">
-            <ActivityVisualization class="mx-2 my-1" />
+        <div class="flex items-center justify-end w-1/2 mr-2">
+          <div
+            class="inline-flex justify-end w-8 mr-2 font-normal text-gray-400"
+            data-cy="application-details-current-mode"
+          >
+            <template v-if="isEditMode">
+              edit
+            </template>
+            <template v-else>
+              view
+            </template>
           </div>
-
-          <div class="mx-2 w-3/12 border card-section">
-            <ServicesVisualization class="mx-2 my-1" />
-          </div>
-
-          <div class="mx-2 w-3/12 border card-section">
-            <div class="mx-2 my-1 text-sm font-bold text-gray-400">
-              <div class="flex">
-                <div>systems:</div>
-                <div class="ml-1 font-normal">2</div>
+          <button
+            @click="modeSwitch"
+            class="focus:outline-none"
+            data-cy="application-details-mode-toggle"
+          >
+            <ToggleRightIcon
+              class="inline-flex text-gray-300"
+              v-if="isEditMode"
+            />
+            <ToggleLeftIcon class="inline-flex text-gray-300" v-else />
+          </button>
+          <SiModal
+            name="changeSetCreate"
+            title="Select or create a changeSet"
+            :show.sync="showChangeSetCreateModal"
+            class="overflow-visible"
+          >
+            <div class="flex-row w-full">
+              <div class="w-full text-right text-red-400">
+                ! a changeSet is required to make edits
               </div>
-
-              <div class="flex mt-1">
-                <div class="ml-1 font-light">system:</div>
-
-                <div class="ml-1 w-full">
-                  <Dropdown
-                    class="w-auto"
-                    :optionDefault="systems[0]"
-                    :optionList="systems"
-                    menuStyle="standard"
-                  />
+              <div class="items-center w-full">
+                <div class="flex items-center w-full">
+                  <div class="w-1/3 mr-2 text-right">
+                    changeSet:
+                  </div>
+                  <div class="w-3/6">
+                    <SiSelect
+                      size="sm"
+                      :options="changeSetOpenList"
+                      v-model="currentChangeSet"
+                      name="popup"
+                      @change.native="modalChangeSetCreateSelected"
+                    />
+                  </div>
+                </div>
+                <div class="flex items-center w-full mt-4">
+                  <div class="w-1/3 mr-2 text-right">
+                    name:
+                  </div>
+                  <div class="w-3/6">
+                    <SiTextBox
+                      class="w-full"
+                      name="new-change-set-name"
+                      size="sm"
+                      placeholder="new change set name"
+                      v-model="newChangeSetName"
+                      v-on:keyup.enter.native="createChangeSetOnEnter()"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-
-          <div class="mx-2 w-4/12 border card-section">
-            <div class="mx-2 my-1 text-sm font-bold text-gray-400">
-              <div class="flex">
-                <div>Changes:</div>
-                <div class="ml-1 font-normal">3</div>
-                <alert-circle-icon
-                  size="1x"
-                  class="ml-1 self-center text-orange-600"
-                />
-              </div>
-
-              <div class="flex mt-1">
-                <div class="ml-1 font-light">changeset:</div>
-
-                <div class="ml-1 w-full">
-                  <Dropdown
-                    class="w-auto"
-                    :optionDefault="changesets[0]"
-                    :optionList="changesets"
-                    menuStyle="standard"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
+            <template v-slot:buttons>
+              <Button2
+                size="sm"
+                label="cancel"
+                class="m-1"
+                icon="cancel"
+                kind="cancel"
+                @click.native="closeChangeSetCreate()"
+              />
+              <Button2
+                size="sm"
+                label="create"
+                class="m-1"
+                icon="save"
+                kind="save"
+                :disabled="!newChangeSetName"
+                @click.native="createChangeSet()"
+              />
+            </template>
+          </SiModal>
         </div>
       </div>
+      <transition
+        enter-active-class="transition-all delay-75 ease-out"
+        leave-active-class="transition-all delay-75 ease-in"
+        enter-class="opacity-0 scale-0"
+        enter-to-class="opacity-100 scale-100"
+        leave-class="opacity-100 scale-100"
+        leave-to-class="opacity-0 scale-75"
+      >
+        <div
+          class="flex w-full"
+          data-cy="application-details-extended"
+          v-show="showDetails"
+        >
+          <div
+            class="w-1/4 pt-2 pb-2 pl-2 mx-3 mt-2 border border-solid card-section"
+          >
+            <ActivityVisualization />
+          </div>
+          <div
+            class="w-1/4 pt-2 pb-2 pl-2 mx-3 mt-2 border border-solid card-section"
+          >
+            <ServicesVisualization :applicationId="applicationId" />
+          </div>
+          <div
+            class="w-1/4 pt-2 pb-2 pl-2 mx-3 mt-2 border border-solid card-section"
+          >
+            <div class="flex">
+              <div class="flex-row w-full text-sm font-bold text-gray-400">
+                systems: {{ systems.length }}
+              </div>
+            </div>
+            <div class="flex">
+              <div
+                class="flex items-center justify-end w-1/4 pr-1 text-xs text-gray-400"
+              >
+                system:
+              </div>
+              <div class="flex items-center w-full">
+                <SiSelect
+                  size="xs"
+                  class="mr-4"
+                  :options="systemList"
+                  v-model="currentSystem"
+                  name="systemSelect"
+                />
+              </div>
+            </div>
+          </div>
+          <div
+            class="w-1/4 pt-2 pb-2 pl-2 mx-3 mt-2 border border-solid card-section"
+          >
+            <div class="flex">
+              <div class="flex-row w-full text-sm font-bold text-gray-400">
+                change: {{ changeSetOpenCount }}
+              </div>
+            </div>
+            <div class="flex">
+              <div
+                class="flex items-center justify-end w-2/6 pr-1 text-xs text-gray-400"
+              >
+                changeSet:
+              </div>
+              <div class="flex items-center w-full pr-1">
+                <SiSelect
+                  size="xs"
+                  class="mr-4"
+                  :options="changeSetOpenList"
+                  v-model="currentChangeSet"
+                  name="box"
+                />
+              </div>
+            </div>
+            <div class="flex justify-end w-full pt-2 pr-1">
+              <Button2
+                label="execute"
+                icon="play"
+                size="xs"
+                :disabled="!currentChangeSet"
+                @click.native="changeSetExecute"
+              />
+            </div>
+          </div>
+        </div>
+      </transition>
     </div>
-
-    <div id="editor" class="flex h-full w-full overflow-hidden">
+    <div id="editor" class="flex w-full h-full overflow-hidden">
       <Editor />
     </div>
   </div>
 </template>
 
-<script>
-import { mapState, mapActions } from "vuex";
+<script lang="ts">
+import Vue from "vue";
+import { mapState, mapActions, Store } from "vuex";
 import { registry } from "si-registry";
 
 import Editor from "@/components/views/editor/Editor.vue";
 import StatusBar from "@/components/common/StatusBar.vue";
 import ServicesVisualization from "@/components/visualization/ServicesVisualization.vue";
 import ActivityVisualization from "@/components/visualization/ActivityVisualization.vue";
-import Dropdown from "@/components/ui/Dropdown";
+import Button2 from "@/components/ui/Button2.vue";
+import SiModal from "@/components/ui/SiModal.vue";
+import SiSelect from "@/components/ui/SiSelect.vue";
+import SiTextBox from "@/components/ui/SiTextBox.vue";
+import { DropdownProps } from "@/components/ui/Dropdown2.vue";
+import { RootStore } from "@/store";
+import { ChangeSet, ApplicationEntity, SystemEntity } from "@/graphql-types";
+import _ from "lodash";
 
 import {
+  ChevronRightIcon,
+  ChevronDownIcon,
+  ToggleLeftIcon,
+  ToggleRightIcon,
   PlayIcon,
   EditIcon,
   AlertCircleIcon,
@@ -144,19 +231,33 @@ import {
   SaveIcon,
 } from "vue-feather-icons";
 
-export default {
+interface Data {
+  showDetails: boolean;
+  selected: string;
+  showChangeSetCreateModal: boolean;
+  newChangeSetName: string;
+}
+
+export default Vue.extend({
   name: "ApplicationDetails",
   components: {
     Editor,
     StatusBar,
-    ServicesVisualization,
+    ChevronRightIcon,
+    ChevronDownIcon,
+    ToggleLeftIcon,
+    ToggleRightIcon,
     ActivityVisualization,
-    Dropdown,
-    PlayIcon,
-    EditIcon,
-    AlertCircleIcon,
-    TrashIcon,
-    SaveIcon,
+    ServicesVisualization,
+    Button2,
+    SiModal,
+    SiSelect,
+    SiTextBox,
+    //PlayIcon,
+    //EditIcon,
+    //AlertCircleIcon,
+    //TrashIcon,
+    //SaveIcon,
   },
   props: {
     organizationId: {
@@ -169,53 +270,131 @@ export default {
       type: String,
     },
   },
-  data: function() {
+  data(): Data {
     return {
-      systemName: "demo",
-      systems: ["dev", "production"],
-      changesets: ["a changeset", "another changeset", "the changeset"],
-      app: {
-        id: this.applicationId,
-      },
-      isEditMode: false,
+      showDetails: true,
+      selected: "",
+      showChangeSetCreateModal: false,
+      newChangeSetName: "",
     };
   },
   methods: {
-    execute() {
-      try {
-        let mutation = registry
-          .get("kubernetesDeploymentEntity")
-          .graphql.mutation({ methodName: "apply" });
-        let variables = registry
-          .get("kubernetesDeploymentEntity")
-          .graphql.variablesObject({ methodName: "apply" });
-
-        variables.id = this.selectedNode.id;
-
-        this.$apollo.mutate({
-          mutation,
-          variables,
-        });
-      } catch (error) {
-        console.log("error", { error });
+    changeSetExecute() {
+      this.$store.dispatch("changeSet/execute");
+      this.$store.commit("editor/setMode", "view");
+    },
+    toggleDetails() {
+      this.showDetails = !this.showDetails;
+    },
+    closeChangeSetCreate() {
+      this.showChangeSetCreateModal = false;
+    },
+    modalChangeSetCreateSelected() {
+      this.modeSwitch();
+      this.showChangeSetCreateModal = false;
+    },
+    modeSwitch() {
+      if (this.mode == "view" && !this.currentChangeSet) {
+        this.showChangeSetCreateModal = true;
+      } else {
+        this.$store.dispatch("editor/modeSwitch");
       }
     },
-    toggleEditMode(value) {
-      this.isEditMode = value;
-      console.log(value);
+    async createChangeSetOnEnter() {
+      if (this.newChangeSetName) {
+        await this.createChangeSet();
+      }
+    },
+    async createChangeSet() {
+      const createdByUserId: string = this.$store.getters["user/userId"];
+      const workspaceId: string = this.$store.getters[
+        "user/currentWorkspaceId"
+      ];
+      await this.$store.dispatch("changeSet/create", {
+        name: this.newChangeSetName,
+        displayName: this.newChangeSetName,
+        createdByUserId,
+        workspaceId,
+      });
+      this.showChangeSetCreateModal = false;
+      this.newChangeSetName = "";
+      this.$store.dispatch("editor/modeSwitch");
     },
   },
   computed: {
     ...mapState({
-      selectedNode: state => state.editor.selectedNode,
+      mode: (state: any): RootStore["editor"]["mode"] => state.editor.mode,
     }),
+    currentChangeSet: {
+      get(): RootStore["changeSet"]["current"] {
+        return this.$store.state.changeSet.current;
+      },
+      set(changeSetId: null | string) {
+        if (this.mode == "edit" && changeSetId == null) {
+          this.$store.commit("editor/setMode", "view");
+        }
+        this.$store.dispatch("changeSet/setCurrentById", changeSetId);
+      },
+    },
+    systems(): SystemEntity[] {
+      return this.$store.getters["system/forApplicationId"](this.applicationId);
+    },
+    changeSetOpenCount(): number {
+      return this.$store.getters["changeSet/count"]({
+        forId: this.applicationId,
+        status: "OPEN",
+      });
+    },
+    changeSetOpenList(): DropdownProps["options"] {
+      let result: DropdownProps["options"] = _.map(
+        this.$store.getters["changeSet/open"],
+        (changeSet: ChangeSet) => {
+          return {
+            value: changeSet.id || "no id",
+            label: changeSet.name || "no name",
+          };
+        },
+      );
+      result.unshift({ label: "none", value: null });
+      return result;
+    },
+    currentSystem: {
+      get(): SystemEntity {
+        if (
+          !this.$store.state.system.current &&
+          this.$store.state.system.systems &&
+          this.$store.state.system.systems[0]
+        ) {
+          this.$store.commit(
+            "system/current",
+            this.$store.state.system.systems[0],
+          );
+        }
+        return this.$store.state.system.current;
+      },
+      set(systemId: null | string) {
+        this.$store.dispatch("system/setCurrentById", systemId);
+      },
+    },
+    systemList(): DropdownProps["options"] {
+      const systemList = _.map(this.systems, system => {
+        return { value: system.id || "no id", label: system.name || "no name" };
+      });
+
+      if (systemList) {
+        return systemList;
+      } else {
+        return [];
+      }
+    },
+    isEditMode(): boolean {
+      return this.mode == "edit";
+    },
+    application(): ApplicationEntity {
+      return this.$store.getters["application/get"]({ id: this.applicationId });
+    },
   },
-  // watch: {
-  //   selectedNode (newState, previousState) {
-  //     // console.log("new state:", newState)
-  //   }
-  // },
-};
+});
 </script>
 
 <style type="text/css" scoped>

@@ -69,7 +69,10 @@
 
     <div v-if="applications">
       <div v-for="app in applications" :key="app.id">
-        <router-link :to="applicationLink(app.id)">
+        <router-link
+          :to="applicationLink(app.id)"
+          :data-cy="'application-list-link-' + app.name"
+        >
           <ApplicationCard
             class="mx-8 my-4"
             :application="app"

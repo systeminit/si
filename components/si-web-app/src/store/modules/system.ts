@@ -41,6 +41,15 @@ export const system: Module<SystemStore, RootStore> = {
       });
     },
     // prettier-ignore
+    byId: (state: SystemStore) => (systemId: string): SystemEntity | null => {
+      let system = _.find(state.systems, ["id", systemId]);
+      if (system) {
+        return system;
+      } else {
+        return null;
+      }
+    },
+    // prettier-ignore
     forApplicationId: (state, _getters, _rootState, rootGetters) => (applicationId: string): SystemStore["systems"] => {
       let edges = rootGetters["edge/fromIdForType"]({id: applicationId, typeName: "system_entity"});
       // @ts-ignore
@@ -96,6 +105,14 @@ export const system: Module<SystemStore, RootStore> = {
       });
       if (defaultSystem) {
         commit("current", defaultSystem);
+      }
+    },
+    setCurrentById({ commit, getters }, systemId: string | null) {
+      if (systemId) {
+        const system = getters["byId"](systemId);
+        commit("current", system);
+      } else {
+        commit("current", null);
       }
     },
   },
