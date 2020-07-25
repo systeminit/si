@@ -13,10 +13,13 @@
         id="canvas"
         class="flex-auto relative w-full h-full canvas block"
       >
+        <ConnectionObject class="connections" />
+
         <NodeList />
 
         <svg
           ref="grid"
+          id="node-grid"
           :width="gridWidth"
           :height="gridHeight"
           xmlns="http://www.w3.org/2000/svg"
@@ -29,11 +32,11 @@
               patternUnits="userSpaceOnUse"
               class="grid-background"
             >
-              <rect fill="#272727" width="20" height="20" />
+              <rect fill="#1E1E1E" width="20" height="20" />
               <path
                 d="M 20 0 L 0 0 0 20"
                 fill="none"
-                stroke="#575757"
+                stroke="#323537"
                 stroke-width="1"
               />
             </pattern>
@@ -47,11 +50,22 @@
 
 <script>
 import NodeList from "./NodeList.vue";
+import ConnectionObject from "./ConnectionObject.vue";
+
+import { mapGetters, Store } from "vuex";
 
 export default {
   name: "SchematicPanel",
   components: {
     NodeList,
+    ConnectionObject,
+  },
+  computed: {
+    ...mapGetters({
+      nodeList: "node/list",
+      nodeSelection: "node/current",
+      mouseTrackSelection: "node/mouseTrackSelection",
+    }),
   },
   data() {
     return {
@@ -223,45 +237,74 @@ export default {
     this.canvas.offset.y = canvasOffset.y;
   },
   methods: {
+    updateSelectedNodePosition(posX, posY) {
+      let nodePosition = {
+        x: posX,
+        y: posY,
+      };
+      // find the right node in the nodeList by ID
+      this.$store.dispatch("node/setNodePosition", nodePosition);
+    },
     mouseOver() {},
     mouseDown(event) {
       // console.log("mouseDown");
+      // Enable alt key to drag the whole editor canvas
+      // if (event.altKey) {
+      //   let mousePositionInScreenSpace = {
+      //     x: event.clientX,
+      //     y: event.clientY,
+      //   };
+      //   this.log(
+      //     `mousePositionInScreenSpace - x:${mousePositionInScreenSpace.x} y:${mousePositionInScreenSpace.y}`,
+      //   );
 
-      if (event.altKey) {
-        let mousePositionInScreenSpace = {
-          x: event.clientX,
-          y: event.clientY,
-        };
-        this.log(
-          `mousePositionInScreenSpace - x:${mousePositionInScreenSpace.x} y:${mousePositionInScreenSpace.y}`,
-        );
+      //   this.mouse.position.screen.x = mousePositionInScreenSpace.x;
+      //   this.mouse.position.screen.y = mousePositionInScreenSpace.y;
 
-        this.mouse.position.screen.x = mousePositionInScreenSpace.x;
-        this.mouse.position.screen.y = mousePositionInScreenSpace.y;
+      //   this.isPanning = true;
+      // } else {
+      //   this.selection.object = event.target;
+      //   // console.log(this.selection.object);
 
-        this.isPanning = true;
-      } else {
-        this.selection.object = event.target;
-        // console.log(this.selection.object);
+      // console.log(this.nodeSelection)
+      // if (this.nodeSelection.id) {
+      //   this.selection.object = document.getElementById(this.nodeSelection.id)
+      // } else {
+      //   this.selection.object = event.target;
+      // }
 
-        if (this.selection.object.classList.contains("node")) {
-          console.log(this.selection.object);
-          console.log(event);
-
-          let selectionOffsetLeft = event.target.offsetLeft;
-          let selectionOffsetTop = event.target.offsetTop;
-
-          let mousePositionX = event.clientX;
-          let mousePositionY = event.clientY;
-
-          this.selection.offset.x = mousePositionX - selectionOffsetLeft;
-          this.selection.offset.y = mousePositionY - selectionOffsetTop;
+      if (event.target.classList.contains("node")) {
+        if (this.nodeSelection.id) {
+          this.selection.object = document.getElementById(
+            this.nodeSelection.id,
+          );
         } else {
           this.selection.object = null;
         }
+      } else {
+        this.selection.object = null;
+      }
+
+      if (this.selection.object) {
+        // console.log(this.selection.object);
+        // console.log(this.selection.object.$root);
+        // console.log(event);
+
+        let selectionOffsetLeft = this.selection.object.offsetLeft;
+        let selectionOffsetTop = this.selection.object.offsetTop;
+
+        let mousePositionX = event.clientX;
+        let mousePositionY = event.clientY;
+
+        this.selection.offset.x = mousePositionX - selectionOffsetLeft;
+        this.selection.offset.y = mousePositionY - selectionOffsetTop;
       }
     },
     mouseUp() {
+      if (this.mouseTrackSelection) {
+        this.$store.dispatch("node/unsetMouseTrackSelection");
+      }
+
       this.selection.object = null;
 
       if (this.isPanning == true) {
@@ -277,7 +320,13 @@ export default {
       }
     },
     mouseMove(event) {
-      let selectedObject = this.selection.object;
+      if (this.mouseTrackSelection) {
+        this.selection.object = document.getElementById(
+          this.mouseTrackSelection,
+        );
+      }
+
+      const selectedObject = this.selection.object;
 
       if (this.isPanning == true) {
         this.panCanvas();
@@ -291,8 +340,12 @@ export default {
             let newPositionX = mousePositionX - this.selection.offset.x;
             let newPositionY = mousePositionY - this.selection.offset.y;
 
+            // We can refactor this to work via the node component instead of this here.
+            // need to test performance...
             selectedObject.style.left = newPositionX + "px";
             selectedObject.style.top = newPositionY + "px";
+
+            this.updateSelectedNodePosition(newPositionX, newPositionY);
           }
         }
       }
@@ -303,7 +356,7 @@ export default {
       }
     },
     log(msg) {
-      // console.log(msg);
+      console.log(msg);
     },
     canvasConstraint() {
       let left = this.canvas.element.offsetRight;
@@ -607,14 +660,16 @@ export default {
 </script>
 
 <style type="text/css" scoped>
-.node {
-  width: 140px;
-  height: 100px;
-  background-color: teal;
-  color: #fff;
+.connections {
+  /*position: absolute;*/
+  z-index: 2; /* Need to decide zindex ranges for the editor layers */
+  left: 0;
+  top: 0;
 }
 
+/* The grid is underneith everything */
 .grid-background {
+  z-index: 1;
   background-color: #111718;
 }
 </style>

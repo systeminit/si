@@ -9,8 +9,6 @@
 <script>
 import { registry } from "si-registry";
 
-// @ts-ignore
-// import VueJsonPretty from "vue-json-pretty";
 import NodeObject from "./NodeObject.vue";
 
 import { mapGetters, mapActions } from "vuex";

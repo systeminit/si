@@ -1,29 +1,42 @@
 <template>
   <div>
     <div
-      class="node absolute cursor-move border-solid border-2 shadow-md"
+      class="node-container absolute cursor-move shadow-md node"
+      :id="nodeObject.id"
       :class="nodeIsSelected"
       @mousedown="selectNode()"
       @contextmenu="contextMenu($event)"
     >
-      <div class="flex flex-col select-none">
-        <div class="flex flex-col text-white ml-1 mt-1">
-          <div class="text-xs">
-            {{ displayItem.siStorable.typeName }}
+      <span
+        ref="`${nodeObject.id}.socket.input`"
+        class="socket-input node"
+        @mousedown="selectSocket($event)"
+      />
+      <span
+        ref="`${nodeObject.id}.socket.output`"
+        class="socket-output node"
+        @mousedown="selectSocket($event)"
+      />
+
+      <div class="flex flex-col select-none node">
+        <div class="flex flex-col text-white node">
+          <div class="node-title-bar node">
+            <div class="text-xs text-center font-medium mt-1 node">
+              {{ displayItem.siStorable.typeName.split("_")[0] }}
+            </div>
           </div>
-          <div class="font-light text-xs">name:</div>
           <div
-            class="font-normal text-xs ml-2 text-red-700"
+            class="font-normal text-center text-xs text-red-700 mt-2 node"
             v-if="displayItem.siStorable.deleted"
           >
             {{ nodeObject.name }}
           </div>
-          <div class="font-normal text-xs ml-2" v-else>
+          <div class="font-normal text-center text-xs mt-2 node" v-else>
             {{ nodeObject.name }}
           </div>
-          <span v-if="displayItem.siStorable.changeSetId" class="text-xs">
-            <span class="font-light">changeSet:</span>
-            <div class="ml-2">
+          <span v-if="displayItem.siStorable.changeSetId" class="text-xs node">
+            <span class="font-light node">changeSet:</span>
+            <div class="ml-2 node">
               {{ changeSetName(displayItem.siStorable.changeSetId) }}
             </div>
           </span>
@@ -39,6 +52,40 @@ import { mapState, mapActions } from "vuex";
 import _ from "lodash";
 
 export default {
+  /**
+   * NodeObject
+   *
+   * A Node
+   *  id
+   *  kind # the lkind of node, defines the color of the node actions, and more...
+   *  name # the name displayed on a node.
+   *  inputs [] # a list of input sockets setting properties on this node.
+   *  outputs [] # a list of output sockets exposing properties from this this node.
+   *  connections [] # a list of connections between this and other node(s).
+   *  position # the node position (x,y). Position has to be relative to the main coordinate system.
+   *  data # the actual node data.
+   *  Note: the inputs and outputs list could be combined into a single list: sockets[]. A socket would be of kind input or output.
+   *
+   * A Socket (input or output)
+   *  id
+   *  name # maps to a property on this node.
+   *  kind # the kind of socket, input or output.
+   *  type # the type of socket, string, int, float, bool, service, k8s-blah, ...
+   *  position # to draw connections.
+   *
+   * A Connection (input or output) - local representation of a connection.
+   *  id
+   *  socket # a socket on this node.
+   *  path # a socket to connect with.
+   * kind i/o
+   *
+   * A Connection (input or output) - global representation of a connection, what goes in the connectionList
+   *  id
+   *  source # a node socket.
+   *  destination # a socket to connect with.
+   *
+   */
+
   name: "NodeObject",
   props: {
     nodeObject: {},
@@ -46,6 +93,11 @@ export default {
   methods: {
     selectNode() {
       this.$store.dispatch("node/current", { node: this.nodeObject });
+    },
+    selectSocket(event) {
+      console.log("socket");
+      console.log(event);
+      console.log(this.nodeObject.id + ".socket.input");
     },
     ontextMenu(e) {
       e.preventDefault();
@@ -96,22 +148,60 @@ export default {
     }),
   },
 };
-// fullstack-schema.graphql
-// NodeObject.vue
 </script>
 
 <style type="text/css" scoped>
-.node {
+/*node size and color*/
+.node-container {
   width: 140px;
   height: 100px;
-  background-color: teal;
-  color: #fff;
-  border-color: teal;
+  background-color: #282e30;
+  border-radius: 6px;
+  border-width: 1px;
+  border-color: transparent;
+}
+
+.node-title-bar {
+  background-color: #008ed2;
+  border-radius: 4px 4px 0px 0px;
+}
+
+.node-details {
+  background-color: #282e30;
+}
+
+.socket-input {
+  display: block;
+  height: 12px;
+  width: 12px;
+  background-color: #282e30;
+  border-radius: 50%;
+  border-width: 1px;
+  border-color: #008ed2;
+  position: absolute;
+  top: 0px;
+  left: 62px;
+  margin-top: -6px;
+}
+
+.socket-output {
+  display: block;
+  height: 12px;
+  width: 12px;
+  background-color: #282e30;
+  border-radius: 50%;
+  border-width: 1px;
+  border-color: #008ed2;
+  position: absolute;
+  bottom: 0px;
+  left: 62px;
+  margin-bottom: -6px;
 }
 
 .node-is-selected {
-  /*@apply border-2;*/
   @apply z-10;
-  border-color: #00b0b1;
+  border-radius: 6px;
+  border-width: 1px;
+  border-color: #5cb1b1;
 }
 </style>
