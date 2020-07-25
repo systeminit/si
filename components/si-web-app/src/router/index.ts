@@ -29,11 +29,33 @@ router.beforeEach(async (to, from, next) => {
     "web.route.from.query": from.query,
     "web.route.from.redirected_from": from.redirectedFrom,
   });
-  if ((await store.dispatch("user/isAuthenticated")) || to.path == "/signin") {
+
+  // 1. Is the user asking to sign in? If so, route there.
+  // 2. Is the user authenticated? If not, route there.
+  // 3. Is the system loaded? If not, route to the loading screen, then redirect to the URL the user asked for.
+  // 4. Route to the requested location.
+
+  if (to.path == "/signin") {
+    console.log("going to signin");
+    return next();
+  }
+
+  let authenticated = await store.dispatch("user/isAuthenticated");
+
+  if (!authenticated) {
+    span.setAttribute("web.route.to.redirected", "/signin");
+    return next("/signin");
+  }
+
+  if (store.state.loader.loaded) {
     return next();
   } else {
-    span.setAttribute("web.route.to.redirected", "/signin");
-    next("/signin");
+    if (to.path == "/loading") {
+      return next();
+    } else {
+      store.commit("loader/nextUp", to);
+      return next("/loading");
+    }
   }
 });
 

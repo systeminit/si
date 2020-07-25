@@ -1,6 +1,7 @@
 import NotFoundPage from "@/pages/NotFoundPage.vue";
 import Home from "@/pages/HomePage.vue";
 import SignInPage from "@/pages/SignInPage/index.vue";
+import LoadingPage from "@/pages/LoadingPage.vue";
 import WorkspacePage from "@/pages/WorkspacePage/index.vue";
 import SystemDetails from "@/components/views/system/SystemDetails.vue";
 import ApplicationList from "@/components/views/application/ApplicationList.vue";
@@ -20,6 +21,11 @@ const routes = [
     path: "/signin",
     name: "signin",
     component: SignInPage,
+  },
+  {
+    path: "/loading",
+    name: "loading",
+    component: LoadingPage,
   },
   {
     path: "/o/:organizationId/w/:workspaceId",

@@ -99,6 +99,7 @@ export const user: Module<UserStore, any> = {
         }) as any;
         if (decodedToken && currentTime >= decodedToken["payload"]["exp"]) {
           await dispatch("logout");
+          console.log("not authenticated, token invalidated");
           return false;
         }
         // If this is false, it means we have an apolloToken, but we aren't actually
@@ -111,8 +112,10 @@ export const user: Module<UserStore, any> = {
             commit("loggedIn", true);
           }
         }
+        return true;
+      } else {
+        return false;
       }
-      return true;
     },
 
     async login(
@@ -167,12 +170,12 @@ export const user: Module<UserStore, any> = {
       commit("profile", profile);
       localStorage.setItem("profile", JSON.stringify(profile));
       commit("loggedIn", true);
-      dispatch("loader/load", { root: true });
     },
 
     async logout({ commit }): Promise<void> {
       commit("profile", undefined);
       commit("loggedIn", false);
+      commit("loader/loaded", false, { root: true });
       await onLogout();
       localStorage.removeItem("profile");
     },
