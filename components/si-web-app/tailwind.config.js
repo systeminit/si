@@ -19,6 +19,7 @@ module.exports = {
   variants: {
     borderColor: ["group-hover"],
     textColor: ["group-hover"],
+    backgroundColor: ["odd", "even"],
   },
   plugins: [],
 };

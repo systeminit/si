@@ -74,6 +74,7 @@ impl ChangeSet {
             .id
             .as_ref()
             .ok_or_else(|| DataError::RequiredField("id".into()))?;
+        let user_id = change_set.created_by_user_id.clone().unwrap();
 
         let entries = change_set.entries(&db).await?;
         for entry_id in entries.into_iter() {
@@ -153,6 +154,8 @@ impl ChangeSet {
                     .ok_or(ChangeSetAgentClientError::MissingField("id".into()))?
                     .to_string();
 
+                let entry_json_copy = entry_json.clone();
+
                 client.dispatch(entry_json).await?;
 
                 let to_check_count: isize = 18000;
@@ -172,11 +175,19 @@ impl ChangeSet {
                         return Err(AccountError::ChangeSetEntityEventTimeout);
                     }
                 }
+                crate::EventLog::change_set_entry_execute(&db, &user_id, &entry_json_copy).await?;
+            } else {
+                crate::EventLog::change_set_entry_execute(&db, &user_id, &entry_json).await?;
             }
         }
 
         change_set.set_status(ChangeSetStatus::Closed);
         change_set.save(&db).await?;
+        let user_id = change_set
+            .created_by_user_id
+            .clone()
+            .unwrap_or("bug".into());
+        crate::EventLog::change_set_closed(&db, &user_id, &change_set).await?;
         tracing::error!("donezo chief");
         Ok(())
     }
@@ -192,15 +203,20 @@ impl ChangeSet {
         );
         async {
             let span = tracing::Span::current();
+
             let change_set_id = request
                 .id
                 .ok_or_else(|| DataError::RequiredField("id".into()))?;
+
             span.record("change_set.id", &tracing::field::display(&change_set_id));
             let mut change_set = ChangeSet::get(db, &change_set_id).await?;
             span.record("change_set.name", &tracing::field::debug(&change_set.name));
 
             change_set.set_status(ChangeSetStatus::Executing);
             change_set.save(db).await?;
+
+            let user_id = change_set.created_by_user_id.clone().unwrap();
+            crate::EventLog::change_set_execute(db, &user_id, &change_set).await?;
 
             let change_set_copy = change_set.clone();
             let new_db = db.clone();

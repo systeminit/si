@@ -771,7 +771,7 @@ export type EdgeComponentConstraints = {
 
 /** The kind of edge this is */
 export enum EdgeComponentConstraintsEdgeKind {
-  Contains = "CONTAINS",
+  Connected = "CONNECTED",
   Unknown = "UNKNOWN",
 }
 
@@ -1143,6 +1143,157 @@ export enum EntitySiPropertiesEntityState {
   Transition = "TRANSITION",
   Unknown = "UNKNOWN",
 }
+
+export type EventLog = {
+  __typename?: "EventLog";
+  associations?: Maybe<EventLogAssociations>;
+  /** User ID who created this Change Set */
+  createdByUserId?: Maybe<Scalars["String"]>;
+  /** Event Log Entry Display Name */
+  displayName?: Maybe<Scalars["String"]>;
+  /** Event Log Entry ID */
+  id?: Maybe<Scalars["ID"]>;
+  /** Event Level */
+  level?: Maybe<EventLogLevel>;
+  /** Message */
+  message?: Maybe<Scalars["String"]>;
+  /** Event Log Entry Name */
+  name?: Maybe<Scalars["String"]>;
+  /** Structured Event Payload */
+  payload?: Maybe<EventLogPayload>;
+  /** Related IDs for this Event */
+  relatedIds?: Maybe<Array<Scalars["String"]>>;
+  /** SI Internal Properties */
+  siProperties?: Maybe<EventLogSiProperties>;
+  /** SI Storable */
+  siStorable?: Maybe<DataStorable>;
+  /** The timestamp for this event */
+  timestamp?: Maybe<Scalars["String"]>;
+};
+
+/** Event Log Entry Associations */
+export type EventLogAssociations = {
+  __typename?: "EventLogAssociations";
+  /** System Initiative Billing Account */
+  billingAccount?: Maybe<BillingAccountGetReply>;
+  /** A System Initiative Organization */
+  organization?: Maybe<OrganizationGetReply>;
+  /** A System Initiative Workspace */
+  workspace?: Maybe<WorkspaceGetReply>;
+};
+
+/** Create an Event Log Entry Reply */
+export type EventLogCreateReply = {
+  __typename?: "EventLogCreateReply";
+  /** Event Log Entry Item */
+  item?: Maybe<EventLog>;
+};
+
+/** Create an Event Log Entry Request */
+export type EventLogCreateRequest = {
+  /** User ID for this event */
+  createdByUserId?: Maybe<Scalars["String"]>;
+  /** Display Name */
+  displayName?: Maybe<Scalars["String"]>;
+  /** Event Level */
+  level?: Maybe<EventLogLevel>;
+  /** Message */
+  message?: Maybe<Scalars["String"]>;
+  /** Name */
+  name?: Maybe<Scalars["String"]>;
+  /** Structured Event Payload */
+  payload?: Maybe<EventLogPayloadRequest>;
+  /** Related IDs for this Event */
+  relatedIds?: Maybe<Array<Scalars["String"]>>;
+  /** Si Properties */
+  siProperties?: Maybe<EventLogSiPropertiesRequest>;
+  /** Timestamp this Event */
+  timestamp?: Maybe<Scalars["String"]>;
+};
+
+/** Get a Event Log Entry Reply */
+export type EventLogGetReply = {
+  __typename?: "EventLogGetReply";
+  /** Event Log Entry Item */
+  item?: Maybe<EventLog>;
+};
+
+/** Get a Event Log Entry Request */
+export type EventLogGetRequest = {
+  /** Event Log Entry ID */
+  id?: Maybe<Scalars["ID"]>;
+};
+
+/** Event Level */
+export enum EventLogLevel {
+  Debug = "DEBUG",
+  Error = "ERROR",
+  Info = "INFO",
+  Trace = "TRACE",
+  Unknown = "UNKNOWN",
+  Warn = "WARN",
+}
+
+/** List Event Log Entry Reply */
+export type EventLogListReply = {
+  __typename?: "EventLogListReply";
+  /** Items */
+  items?: Maybe<Array<EventLog>>;
+  /** Next Page Token */
+  nextPageToken?: Maybe<Scalars["String"]>;
+  /** Total Count */
+  totalCount?: Maybe<Scalars["String"]>;
+};
+
+/** List Event Log Entry Request */
+export type EventLogListRequest = {
+  /** Order By */
+  orderBy?: Maybe<Scalars["String"]>;
+  /** Order By Direction */
+  orderByDirection?: Maybe<DataPageTokenOrderByDirection>;
+  /** Page Size */
+  pageSize?: Maybe<Scalars["String"]>;
+  /** Page Token */
+  pageToken?: Maybe<Scalars["String"]>;
+  /** Query */
+  query?: Maybe<DataQueryRequest>;
+  /** Scope By Tenant ID */
+  scopeByTenantId?: Maybe<Scalars["String"]>;
+};
+
+export type EventLogPayload = {
+  __typename?: "EventLogPayload";
+  /** JSON data */
+  data?: Maybe<Scalars["String"]>;
+  /** Type of Event */
+  kind?: Maybe<Scalars["String"]>;
+};
+
+export type EventLogPayloadRequest = {
+  /** JSON data */
+  data?: Maybe<Scalars["String"]>;
+  /** Type of Event */
+  kind?: Maybe<Scalars["String"]>;
+};
+
+export type EventLogSiProperties = {
+  __typename?: "EventLogSiProperties";
+  /** Billing Account ID */
+  billingAccountId?: Maybe<Scalars["String"]>;
+  /** Organization ID */
+  organizationId?: Maybe<Scalars["String"]>;
+  /** Organization ID */
+  workspaceId?: Maybe<Scalars["String"]>;
+};
+
+export type EventLogSiPropertiesRequest = {
+  /** Billing Account ID */
+  billingAccountId?: Maybe<Scalars["String"]>;
+  /** Organization ID */
+  organizationId?: Maybe<Scalars["String"]>;
+  /** Organization ID */
+  workspaceId?: Maybe<Scalars["String"]>;
+};
 
 export type Group = {
   __typename?: "Group";
@@ -2661,6 +2812,7 @@ export type Mutation = {
   edgeEntityDelete?: Maybe<EdgeEntityDeleteReply>;
   edgeEntitySync?: Maybe<EdgeEntitySyncReply>;
   edgeEntityUpdate?: Maybe<EdgeEntityUpdateReply>;
+  eventLogCreate?: Maybe<EventLogCreateReply>;
   groupCreate?: Maybe<GroupCreateReply>;
   kubernetesDeploymentEntityApply?: Maybe<KubernetesDeploymentEntityApplyReply>;
   kubernetesDeploymentEntityCreate?: Maybe<
@@ -2733,6 +2885,10 @@ export type MutationEdgeEntitySyncArgs = {
 
 export type MutationEdgeEntityUpdateArgs = {
   input?: Maybe<EdgeEntityUpdateRequest>;
+};
+
+export type MutationEventLogCreateArgs = {
+  input?: Maybe<EventLogCreateRequest>;
 };
 
 export type MutationGroupCreateArgs = {
@@ -2938,6 +3094,8 @@ export type Query = {
   edgeEntityEventList?: Maybe<EdgeEntityEventListReply>;
   edgeEntityGet?: Maybe<EdgeEntityGetReply>;
   edgeEntityList?: Maybe<EdgeEntityListReply>;
+  eventLogGet?: Maybe<EventLogGetReply>;
+  eventLogList?: Maybe<EventLogListReply>;
   groupGet?: Maybe<GroupGetReply>;
   groupList?: Maybe<GroupListReply>;
   integrationGet?: Maybe<IntegrationGetReply>;
@@ -3052,6 +3210,14 @@ export type QueryEdgeEntityGetArgs = {
 
 export type QueryEdgeEntityListArgs = {
   input?: Maybe<EdgeEntityListRequest>;
+};
+
+export type QueryEventLogGetArgs = {
+  input?: Maybe<EventLogGetRequest>;
+};
+
+export type QueryEventLogListArgs = {
+  input?: Maybe<EventLogListRequest>;
 };
 
 export type QueryGroupGetArgs = {

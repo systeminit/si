@@ -9,4 +9,5 @@ pub mod change_set_agent;
 pub mod error;
 pub mod model;
 
+pub use model::event_log::EventLog;
 pub use protobuf::{BillingAccount, Integration, IntegrationService, Workspace};

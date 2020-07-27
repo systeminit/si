@@ -325,6 +325,13 @@ impl crate::protobuf::core_server::Core for Service {
         async {
             si_account::authorize::authnz(&self.db, &request, "application_entity_create").await?;
 
+            let user_id = request
+                .metadata()
+                .get("userid")
+                .map(|r| r.to_str().unwrap_or("no_user_id_bug_live_here"))
+                .unwrap()
+                .to_string();
+
             let inner = request.into_inner();
             let name = inner.name;
             let display_name = inner.display_name;
@@ -368,6 +375,8 @@ impl crate::protobuf::core_server::Core for Service {
                 change_set_id,
             )
             .await?;
+
+            si_account::EventLog::entity_create(&self.db, &user_id, &entity).await?;
 
             Ok(tonic::Response::new(
                 crate::protobuf::ApplicationEntityCreateReply { item: Some(entity) },
@@ -420,6 +429,13 @@ impl crate::protobuf::core_server::Core for Service {
         async {
             si_account::authorize::authnz(&self.db, &request, "application_entity_delete").await?;
 
+            let user_id = request
+                .metadata()
+                .get("userid")
+                .map(|r| r.to_str().unwrap_or("no_user_id_bug_live_here"))
+                .unwrap()
+                .to_string();
+
             let inner = request.into_inner();
             let id = inner
                 .id
@@ -428,6 +444,8 @@ impl crate::protobuf::core_server::Core for Service {
             let mut entity = crate::protobuf::ApplicationEntity::get(&self.db, &id).await?;
 
             entity.delete(&self.db, inner.change_set_id).await?;
+
+            si_account::EventLog::entity_delete(&self.db, &user_id, &entity).await?;
 
             Ok(tonic::Response::new(
                 crate::protobuf::ApplicationEntityDeleteReply { item: Some(entity) },
@@ -676,6 +694,13 @@ impl crate::protobuf::core_server::Core for Service {
         async {
             si_account::authorize::authnz(&self.db, &request, "application_entity_update").await?;
 
+            let user_id = request
+                .metadata()
+                .get("userid")
+                .map(|r| r.to_str().unwrap_or("no_user_id_bug_live_here"))
+                .unwrap()
+                .to_string();
+
             let inner = request.into_inner();
             let id = inner
                 .id
@@ -686,6 +711,8 @@ impl crate::protobuf::core_server::Core for Service {
             entity
                 .update(&self.db, inner.change_set_id, inner.update)
                 .await?;
+
+            si_account::EventLog::entity_update(&self.db, &user_id, &entity).await?;
 
             Ok(tonic::Response::new(
                 crate::protobuf::ApplicationEntityUpdateReply { item: Some(entity) },
@@ -1045,6 +1072,13 @@ impl crate::protobuf::core_server::Core for Service {
         async {
             si_account::authorize::authnz(&self.db, &request, "edge_entity_create").await?;
 
+            let user_id = request
+                .metadata()
+                .get("userid")
+                .map(|r| r.to_str().unwrap_or("no_user_id_bug_live_here"))
+                .unwrap()
+                .to_string();
+
             let inner = request.into_inner();
             let name = inner.name;
             let display_name = inner.display_name;
@@ -1088,6 +1122,8 @@ impl crate::protobuf::core_server::Core for Service {
                 change_set_id,
             )
             .await?;
+
+            si_account::EventLog::entity_create(&self.db, &user_id, &entity).await?;
 
             Ok(tonic::Response::new(
                 crate::protobuf::EdgeEntityCreateReply { item: Some(entity) },
@@ -1138,6 +1174,13 @@ impl crate::protobuf::core_server::Core for Service {
         async {
             si_account::authorize::authnz(&self.db, &request, "edge_entity_delete").await?;
 
+            let user_id = request
+                .metadata()
+                .get("userid")
+                .map(|r| r.to_str().unwrap_or("no_user_id_bug_live_here"))
+                .unwrap()
+                .to_string();
+
             let inner = request.into_inner();
             let id = inner
                 .id
@@ -1146,6 +1189,8 @@ impl crate::protobuf::core_server::Core for Service {
             let mut entity = crate::protobuf::EdgeEntity::get(&self.db, &id).await?;
 
             entity.delete(&self.db, inner.change_set_id).await?;
+
+            si_account::EventLog::entity_delete(&self.db, &user_id, &entity).await?;
 
             Ok(tonic::Response::new(
                 crate::protobuf::EdgeEntityDeleteReply { item: Some(entity) },
@@ -1382,6 +1427,13 @@ impl crate::protobuf::core_server::Core for Service {
         async {
             si_account::authorize::authnz(&self.db, &request, "edge_entity_update").await?;
 
+            let user_id = request
+                .metadata()
+                .get("userid")
+                .map(|r| r.to_str().unwrap_or("no_user_id_bug_live_here"))
+                .unwrap()
+                .to_string();
+
             let inner = request.into_inner();
             let id = inner
                 .id
@@ -1392,6 +1444,8 @@ impl crate::protobuf::core_server::Core for Service {
             entity
                 .update(&self.db, inner.change_set_id, inner.update)
                 .await?;
+
+            si_account::EventLog::entity_update(&self.db, &user_id, &entity).await?;
 
             Ok(tonic::Response::new(
                 crate::protobuf::EdgeEntityUpdateReply { item: Some(entity) },
@@ -1758,6 +1812,13 @@ impl crate::protobuf::core_server::Core for Service {
         async {
             si_account::authorize::authnz(&self.db, &request, "service_entity_create").await?;
 
+            let user_id = request
+                .metadata()
+                .get("userid")
+                .map(|r| r.to_str().unwrap_or("no_user_id_bug_live_here"))
+                .unwrap()
+                .to_string();
+
             let inner = request.into_inner();
             let name = inner.name;
             let display_name = inner.display_name;
@@ -1801,6 +1862,8 @@ impl crate::protobuf::core_server::Core for Service {
                 change_set_id,
             )
             .await?;
+
+            si_account::EventLog::entity_create(&self.db, &user_id, &entity).await?;
 
             Ok(tonic::Response::new(
                 crate::protobuf::ServiceEntityCreateReply { item: Some(entity) },
@@ -1853,6 +1916,13 @@ impl crate::protobuf::core_server::Core for Service {
         async {
             si_account::authorize::authnz(&self.db, &request, "service_entity_delete").await?;
 
+            let user_id = request
+                .metadata()
+                .get("userid")
+                .map(|r| r.to_str().unwrap_or("no_user_id_bug_live_here"))
+                .unwrap()
+                .to_string();
+
             let inner = request.into_inner();
             let id = inner
                 .id
@@ -1861,6 +1931,8 @@ impl crate::protobuf::core_server::Core for Service {
             let mut entity = crate::protobuf::ServiceEntity::get(&self.db, &id).await?;
 
             entity.delete(&self.db, inner.change_set_id).await?;
+
+            si_account::EventLog::entity_delete(&self.db, &user_id, &entity).await?;
 
             Ok(tonic::Response::new(
                 crate::protobuf::ServiceEntityDeleteReply { item: Some(entity) },
@@ -2177,6 +2249,13 @@ impl crate::protobuf::core_server::Core for Service {
         async {
             si_account::authorize::authnz(&self.db, &request, "service_entity_update").await?;
 
+            let user_id = request
+                .metadata()
+                .get("userid")
+                .map(|r| r.to_str().unwrap_or("no_user_id_bug_live_here"))
+                .unwrap()
+                .to_string();
+
             let inner = request.into_inner();
             let id = inner
                 .id
@@ -2187,6 +2266,8 @@ impl crate::protobuf::core_server::Core for Service {
             entity
                 .update(&self.db, inner.change_set_id, inner.update)
                 .await?;
+
+            si_account::EventLog::entity_update(&self.db, &user_id, &entity).await?;
 
             Ok(tonic::Response::new(
                 crate::protobuf::ServiceEntityUpdateReply { item: Some(entity) },
@@ -2550,6 +2631,13 @@ impl crate::protobuf::core_server::Core for Service {
         async {
             si_account::authorize::authnz(&self.db, &request, "system_entity_create").await?;
 
+            let user_id = request
+                .metadata()
+                .get("userid")
+                .map(|r| r.to_str().unwrap_or("no_user_id_bug_live_here"))
+                .unwrap()
+                .to_string();
+
             let inner = request.into_inner();
             let name = inner.name;
             let display_name = inner.display_name;
@@ -2593,6 +2681,8 @@ impl crate::protobuf::core_server::Core for Service {
                 change_set_id,
             )
             .await?;
+
+            si_account::EventLog::entity_create(&self.db, &user_id, &entity).await?;
 
             Ok(tonic::Response::new(
                 crate::protobuf::SystemEntityCreateReply { item: Some(entity) },
@@ -2643,6 +2733,13 @@ impl crate::protobuf::core_server::Core for Service {
         async {
             si_account::authorize::authnz(&self.db, &request, "system_entity_delete").await?;
 
+            let user_id = request
+                .metadata()
+                .get("userid")
+                .map(|r| r.to_str().unwrap_or("no_user_id_bug_live_here"))
+                .unwrap()
+                .to_string();
+
             let inner = request.into_inner();
             let id = inner
                 .id
@@ -2651,6 +2748,8 @@ impl crate::protobuf::core_server::Core for Service {
             let mut entity = crate::protobuf::SystemEntity::get(&self.db, &id).await?;
 
             entity.delete(&self.db, inner.change_set_id).await?;
+
+            si_account::EventLog::entity_delete(&self.db, &user_id, &entity).await?;
 
             Ok(tonic::Response::new(
                 crate::protobuf::SystemEntityDeleteReply { item: Some(entity) },
@@ -2891,6 +2990,13 @@ impl crate::protobuf::core_server::Core for Service {
         async {
             si_account::authorize::authnz(&self.db, &request, "system_entity_update").await?;
 
+            let user_id = request
+                .metadata()
+                .get("userid")
+                .map(|r| r.to_str().unwrap_or("no_user_id_bug_live_here"))
+                .unwrap()
+                .to_string();
+
             let inner = request.into_inner();
             let id = inner
                 .id
@@ -2901,6 +3007,8 @@ impl crate::protobuf::core_server::Core for Service {
             entity
                 .update(&self.db, inner.change_set_id, inner.update)
                 .await?;
+
+            si_account::EventLog::entity_update(&self.db, &user_id, &entity).await?;
 
             Ok(tonic::Response::new(
                 crate::protobuf::SystemEntityUpdateReply { item: Some(entity) },

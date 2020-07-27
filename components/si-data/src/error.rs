@@ -49,7 +49,7 @@ pub enum DataError {
     SodiumOxideOpen,
     #[error("error validating item for insertion: {0}")]
     ValidationError(String),
-    #[error("a protobuf field was required, and it was absent: {0})")]
+    #[error("a field was required, and it was absent: {0})")]
     RequiredField(String),
     #[error("only one of property fields '{0}' or '{1}' can be set")]
     MultipleEithersProvided2(String, String),
