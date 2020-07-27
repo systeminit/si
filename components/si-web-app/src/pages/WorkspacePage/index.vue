@@ -1,10 +1,10 @@
 <template>
-  <div id="app-main-layout" class="flex flex-col h-screen w-screen">
+  <div id="app-main-layout" class="flex flex-col w-screen h-screen">
     <AppBar />
 
     <div
       v-if="loading"
-      class="flex flex-row h-full w-full bg-black text-white h-center"
+      class="flex flex-row w-full h-full text-white bg-black h-center"
     >
       <div class="object-center">
         Loading your workspace! Sit tight!
@@ -12,7 +12,7 @@
     </div>
     <div
       id="workspace-view"
-      class="flex flex-row h-full w-full overflow-hidden"
+      class="flex flex-row w-full h-full overflow-hidden"
       v-else
     >
       <WorkspaceNav
@@ -20,7 +20,7 @@
         :workspaceId="workspaceId"
       />
 
-      <div class="flex flex-col h-full w-full">
+      <div class="flex flex-col w-full h-full">
         <router-view class="w-full h-full overflow-auto" />
       </div>
     </div>
@@ -51,9 +51,6 @@ export default {
     ...mapState({
       loading: state => state.loader.loading,
     }),
-  },
-  async created() {
-    await this.$store.dispatch("loader/load");
   },
 };
 </script>
