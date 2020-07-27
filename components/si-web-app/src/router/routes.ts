@@ -6,6 +6,8 @@ import WorkspacePage from "@/pages/WorkspacePage/index.vue";
 import SystemDetails from "@/components/views/system/SystemDetails.vue";
 import ApplicationList from "@/components/views/application/ApplicationList.vue";
 import ApplicationDetails from "@/components/views/application/ApplicationDetails.vue";
+import { RouteObject } from "vue-router";
+import store from "@/store";
 
 const routes = [
   {
@@ -50,6 +52,10 @@ const routes = [
         name: "applicationDetails",
         component: ApplicationDetails,
         props: true,
+        beforeEnter: async (to: RouteObject, _from: RouteObject, next: any) => {
+          store.dispatch("application/setCurrentById", to.params.applicationId);
+          return next();
+        },
       },
       {
         path: "/o/:organizationId/w/:workspaceId/global",
