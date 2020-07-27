@@ -67,6 +67,14 @@ export const application: Module<ApplicationStore, RootStore> = {
     },
   },
   actions: {
+    setCurrentById({ commit, state }, applicationId: string) {
+      let app = _.find(state.applications, ["id", applicationId]);
+      if (app) {
+        commit("current", app);
+      } else {
+        throw new Error(`cannot find application for ${applicationId}`);
+      }
+    },
     add({ commit }, payload: AddMutation) {
       commit("add", payload);
     },
