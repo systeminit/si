@@ -13,10 +13,10 @@ edition = "2018"
 anyhow = "1.0"
 async-trait = "0.1"
 opentelemetry = { version = "0.6", features = ["tonic"] }
-opentelemetry-jaeger = "0.5"
 prost = "0.6"
 serde = { version = "1.0.104", features = ["derive"] }
 serde_yaml = "0.8"
+si-agent = { path = "../si-agent" }
 si-account = { path = "../si-account" }
 si-cea = { path = "../si-cea" }
 si-data = { path = "../si-data" }

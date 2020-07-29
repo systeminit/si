@@ -165,6 +165,30 @@ function generateRust(): Listr {
             },
           });
         }
+
+        tasks.push({
+          title: `Rust ${chalk.keyword("orange")(
+            "gen/finalize/mod.rs",
+          )} for ${serviceName}`,
+          task: async (): Promise<void> => {
+            await codegenRust.generateGenFinalizeMod();
+          },
+        });
+
+        for (const systemObject of registry.getObjectsForServiceName(
+          serviceName,
+        )) {
+          if (systemObject.kind() != "baseObject") {
+            tasks.push({
+              title: `Rust finalizer ${chalk.keyword("orange")(serviceName)} ${
+                systemObject.typeName
+              }`,
+              task: async (): Promise<void> => {
+                await codegenRust.generateGenFinalize(systemObject);
+              },
+            });
+          }
+        }
       }
     }
   }

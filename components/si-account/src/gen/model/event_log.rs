@@ -111,6 +111,13 @@ impl crate::protobuf::EventLog {
         Ok(())
     }
 
+    pub async fn finalize(&self, db: &si_data::Db) -> si_data::Result<()> {
+        tracing::debug!("finalizing_event_log");
+        db.upsert(self).await?;
+
+        Ok(())
+    }
+
     pub async fn list(
         db: &si_data::Db,
         list_request: crate::protobuf::EventLogListRequest,

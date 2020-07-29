@@ -10,12 +10,11 @@ pub use crate::protobuf::core_server::CoreServer as Server;
 #[derive(Debug)]
 pub struct Service {
     db: si_data::Db,
-    agent: si_cea::AgentClient,
 }
 
 impl Service {
-    pub fn new(db: si_data::Db, agent: si_cea::AgentClient) -> Service {
-        Service { db, agent }
+    pub fn new(db: si_data::Db) -> Service {
+        Service { db }
     }
 
     pub async fn migrate(&self) -> si_data::Result<()> {

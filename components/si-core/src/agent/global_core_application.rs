@@ -1,29 +1,31 @@
-use crate::gen::agent::{GlobalCoreApplicationDispatchFunctions, GlobalCoreApplicationDispatcher};
-use crate::model::ApplicationEntityEvent;
-use si_cea::agent::dispatch::prelude::*;
+use crate::gen::agent::{
+    GlobalCoreApplicationDispatchFunctions, GlobalCoreApplicationDispatcherBuilder,
+};
+use si_agent::prelude::*;
+use si_cea::agent::prelude::*;
 
-#[derive(Clone)]
 pub struct GlobalCoreApplicationDispatchFunctionsImpl;
 
 #[async_trait]
 impl GlobalCoreApplicationDispatchFunctions for GlobalCoreApplicationDispatchFunctionsImpl {
-    type EntityEvent = ApplicationEntityEvent;
-
     async fn create(
-        _mqtt_client: &MqttClient,
-        _entity_event: &mut Self::EntityEvent,
-    ) -> CeaResult<()> {
+        _transport: &si_agent::Transport,
+        _stream_header: si_agent::Header,
+        _entity_event: &mut crate::protobuf::ApplicationEntityEvent,
+    ) -> si_agent::AgentResult<()> {
         async { Ok(()) }.instrument(debug_span!("create")).await
     }
 
     async fn sync(
-        _mqtt_client: &MqttClient,
-        _entity_event: &mut Self::EntityEvent,
-    ) -> CeaResult<()> {
+        _transport: &si_agent::Transport,
+        _stream_header: si_agent::Header,
+        _entity_event: &mut crate::protobuf::ApplicationEntityEvent,
+    ) -> si_agent::AgentResult<()> {
         async { Ok(()) }.instrument(debug_span!("sync")).await
     }
 }
 
-pub fn dispatcher() -> GlobalCoreApplicationDispatcher<GlobalCoreApplicationDispatchFunctionsImpl> {
-    GlobalCoreApplicationDispatcher::<GlobalCoreApplicationDispatchFunctionsImpl>::new()
+pub fn dispatcher_builder(
+) -> GlobalCoreApplicationDispatcherBuilder<GlobalCoreApplicationDispatchFunctionsImpl> {
+    GlobalCoreApplicationDispatcherBuilder::new()
 }

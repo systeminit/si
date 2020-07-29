@@ -310,6 +310,20 @@ export class RustFormatter {
     }
   }
 
+  entityEventBasename(): string {
+    if (
+      this.systemObject instanceof ComponentObject ||
+      this.systemObject instanceof EntityObject ||
+      this.systemObject instanceof EntityEventObject
+    ) {
+      return `${pascalCase(this.systemObject.baseTypeName)}EntityEvent`;
+    } else {
+      throw new Error(
+        "You asked for an entityEvent name on a non-component object; this is a bug!",
+      );
+    }
+  }
+
   entityName(): string {
     if (
       this.systemObject instanceof ComponentObject ||
@@ -319,6 +333,20 @@ export class RustFormatter {
       return `crate::protobuf::${pascalCase(
         this.systemObject.baseTypeName,
       )}Entity`;
+    } else {
+      throw new Error(
+        "You asked for an entity name on a non-component object; this is a bug!",
+      );
+    }
+  }
+
+  entityTypeName(): string {
+    if (
+      this.systemObject instanceof ComponentObject ||
+      this.systemObject instanceof EntityObject ||
+      this.systemObject instanceof EntityEventObject
+    ) {
+      return snakeCase(`${this.systemObject.baseTypeName}Entity`);
     } else {
       throw new Error(
         "You asked for an entity name on a non-component object; this is a bug!",
@@ -344,6 +372,10 @@ export class RustFormatter {
 
   errorType(): string {
     return `crate::error::${pascalCase(this.systemObject.serviceName)}Error`;
+  }
+
+  finalizerTypeName(): string {
+    return `${pascalCase(this.systemObject.typeName)}Finalizer`;
   }
 
   modelName(): string {
@@ -1070,25 +1102,15 @@ export class RustFormatterService {
 
   implServiceStructBody(): string {
     const result = ["db: si_data::Db,"];
-    if (this.hasEntities()) {
-      result.push("agent: si_cea::AgentClient,");
-    }
     return result.join("\n");
   }
 
   implServiceNewConstructorArgs(): string {
-    if (this.hasEntities()) {
-      return "db: si_data::Db, agent: si_cea::AgentClient";
-    } else {
-      return "db: si_data::Db";
-    }
+    return "db: si_data::Db";
   }
 
   implServiceStructConstructorReturn(): string {
     const result = ["db"];
-    if (this.hasEntities()) {
-      result.push("agent");
-    }
     return result.join(",");
   }
 
@@ -1172,6 +1194,14 @@ export class RustFormatterAgent {
     }
 
     return results;
+  }
+
+  entityEventType(): string {
+    return this.entityFormatter.entityEventName();
+  }
+
+  entityEventTypeName(): string {
+    return snakeCase(this.entityFormatter.entityEventBasename());
   }
 
   dispatcherBaseTypeName(): string {
@@ -1264,6 +1294,7 @@ export class CodegenRust {
     const results = ["// Auto-generated code!", "// No touchy!", ""];
     if (this.hasEntityIntegrationServcices()) {
       results.push("pub mod agent;");
+      results.push("pub mod finalize;");
     }
     if (this.hasModels()) {
       results.push("pub mod model;");
@@ -1327,8 +1358,8 @@ export class CodegenRust {
       const fmt = new RustFormatterAgent(this.serviceName, agent);
       results.push(
         `pub use ${
-        agent.agentName
-        }::{${fmt.dispatchFunctionTraitName()}, ${fmt.dispatcherTypeName()}};`,
+          agent.agentName
+        }::{${fmt.dispatchFunctionTraitName()}, ${fmt.dispatcherTypeName()}, ${fmt.dispatcherTypeName()}Builder};`,
       );
     }
     await this.writeCode("gen/agent/mod.rs", results.join("\n"));
@@ -1345,6 +1376,35 @@ export class CodegenRust {
       },
     );
     await this.writeCode(`gen/agent/${snakeCase(agent.agentName)}.rs`, output);
+  }
+
+  // Generate the 'gen/finalize/mod.rs'
+  async generateGenFinalizeMod(): Promise<void> {
+    const results = ["// Auto-generated code!", "// No touchy!", ""];
+    for (const systemObject of registry.getObjectsForServiceName(
+      this.serviceName,
+    )) {
+      if (systemObject.kind() != "baseObject") {
+        results.push(`pub mod ${snakeCase(systemObject.typeName)};`);
+      }
+    }
+    await this.writeCode("gen/finalize/mod.rs", results.join("\n"));
+  }
+
+  async generateGenFinalize(systemObject: ObjectTypes): Promise<void> {
+    const output = ejs.render(
+      "<%- include('src/codegen/rust/finalize.rs.ejs', { fmt: fmt }) %>",
+      {
+        fmt: new RustFormatter(systemObject),
+      },
+      {
+        filename: ".",
+      },
+    );
+    await this.writeCode(
+      `gen/finalize/${snakeCase(systemObject.typeName)}.rs`,
+      output,
+    );
   }
 
   //async makePath(pathPart: string): Promise<string> {

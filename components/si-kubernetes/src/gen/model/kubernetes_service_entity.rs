@@ -107,6 +107,13 @@ impl crate::protobuf::KubernetesServiceEntity {
         Ok(())
     }
 
+    pub async fn finalize(&self, db: &si_data::Db) -> si_data::Result<()> {
+        tracing::debug!("finalizing_kubernetes_service_entity");
+        db.upsert(self).await?;
+
+        Ok(())
+    }
+
     pub async fn list(
         db: &si_data::Db,
         list_request: crate::protobuf::KubernetesServiceEntityListRequest,
@@ -375,6 +382,12 @@ impl si_cea::Entity for crate::protobuf::KubernetesServiceEntity {
                 has been set or initialized",
         );
         si_properties.billing_account_id = Some(billing_account_id.into());
+    }
+}
+
+impl si_agent::TypeHint for crate::protobuf::KubernetesServiceEntity {
+    fn type_name() -> &'static str {
+        "kubernetes_service_entity"
     }
 }
 

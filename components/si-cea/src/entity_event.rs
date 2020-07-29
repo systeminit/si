@@ -1,12 +1,12 @@
 use crate::entity::{Entity, EntitySiPropertiesEntityState};
-use crate::{CeaError, CeaResult, MqttClient};
+use crate::{CeaError, CeaResult};
 use async_trait::async_trait;
 use chrono::prelude::{DateTime, Utc};
-use paho_mqtt as mqtt;
 use prost::Message;
 use serde::de::DeserializeOwned;
 use serde::ser::Serialize;
 use si_data::{Db, Result as DataResult, Storable};
+use si_transport::TypeHint;
 
 pub mod prelude {
     pub use super::EntityEvent;
@@ -16,7 +16,7 @@ pub mod prelude {
 
 #[async_trait]
 pub trait EntityEvent:
-    Clone + std::fmt::Debug + Default + DeserializeOwned + Message + Serialize + Storable
+    Clone + std::fmt::Debug + Default + DeserializeOwned + Message + Serialize + Storable + TypeHint
 {
     type Entity: Entity;
 
@@ -215,26 +215,8 @@ pub trait EntityEvent:
         Ok(())
     }
 
-    async fn send_via_mqtt(&self, mqtt_client: &MqttClient) -> CeaResult<()> {
-        let payload = serde_json::to_string(self)?;
-        let finalized = self.finalized();
-
-        // When we were so young, and everything was typed.
-        //
-        //let mut payload = Vec::new();
-        //self.encode(&mut payload)?;
-        //   self.finalized()
-        //};
-        if finalized.unwrap_or(false) {
-            let msg = mqtt::Message::new(self.result_topic()?, payload.clone(), 0);
-            mqtt_client.publish(msg).await?;
-            let msg = mqtt::Message::new(self.finalized_topic()?, payload, 2);
-            mqtt_client.publish(msg).await?;
-        } else {
-            let msg = mqtt::Message::new(self.result_topic()?, payload, 0);
-            mqtt_client.publish(msg).await?;
-        }
-        Ok(())
+    fn type_name(&self) -> &'static str {
+        <Self as TypeHint>::type_name()
     }
 
     fn result_topic(&self) -> DataResult<String> {
@@ -262,7 +244,7 @@ pub trait EntityEvent:
             self.workspace_id()?,
             self.integration_id()?,
             self.integration_service_id()?,
-            Self::type_name(),
+            <Self as Storable>::type_name(),
             self.entity_id()?,
             "action",
             self.action_name()?,

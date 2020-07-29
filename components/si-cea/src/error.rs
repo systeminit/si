@@ -1,14 +1,10 @@
-use paho_mqtt as mqtt;
 use prost;
-use thiserror::Error;
-use tonic;
-use tracing;
-
 use si_account::error::AccountError;
 use si_data::error::DataError;
 use si_settings::error::SettingsError;
-
-use crate::agent::utility::spawn_command::CommandResult;
+use thiserror::Error;
+use tonic;
+use tracing;
 
 pub type CeaResult<T> = std::result::Result<T, CeaError>;
 pub type TonicResult<T> = std::result::Result<tonic::Response<T>, tonic::Status>;
@@ -30,22 +26,22 @@ pub enum CeaError {
     ValidationError(String),
     #[error("error picking a component: {0}")]
     PickComponent(String),
-    #[error("no dispatch function for action - integration service id: {0}, action name: {1}")]
-    DispatchFunctionMissing(String, String),
     #[error("external request has failed")]
     ExternalRequest,
-    #[error("command failed: {0}")]
-    CommandFailed(CommandResult),
     #[error("command expected output, and has none")]
     CommandExpectedOutput,
-    #[error("no I/O pipe during command call")]
-    NoIoPipe,
     #[error("conversion error: {0}")]
     ConversionError(Box<dyn std::error::Error + Send + Sync>),
     #[error("action error: {0}")]
-    ActionError(String),
+    ActionError(Box<dyn std::error::Error + Send + Sync>),
     #[error("request is missing a required prop value")]
     RequestMissingProp,
+
+    #[error("tracing error: {0}")]
+    TracingError(Box<dyn std::error::Error + Send + Sync>),
+
+    #[error("missing finalize key; this is a programmer error!")]
+    MissingFinalizeKey,
 
     #[error("entity is missing constraints object")]
     MissingEntityConstraints,
@@ -70,10 +66,6 @@ pub enum CeaError {
     InvalidComponentGetRequestMissingId,
     #[error("pick component request invalid; missing constraints")]
     InvalidComponentPickRequestMissingConstraints,
-
-    // MQTT
-    #[error("mqtt failed: {0}")]
-    Mqtt(#[from] mqtt::Error),
 
     // Prost
     #[error("prost failed to encode: {0}")]
@@ -100,6 +92,10 @@ pub enum CeaError {
     #[error("settings operation failed: {0}")]
     SettingsError(#[from] SettingsError),
 
+    // SI Transport
+    #[error("transport operation failed: {0}")]
+    TransportError(#[from] si_transport::Error),
+
     // Tonic
     #[error("transport error: {0}")]
     TonicTransportError(#[from] tonic::transport::Error),
@@ -116,13 +112,6 @@ pub enum CeaError {
     #[error("cannot convert string to utf-8: {0}")]
     FromUtf8Error(#[from] std::string::FromUtf8Error),
 
-    // Tokio
-    #[error("channel send error: {0}")]
-    CommandOuputChannelSend(
-        #[from]
-        tokio::sync::mpsc::error::SendError<crate::agent::utility::spawn_command::OutputLine>,
-    ),
-
     // Serde
     #[error("serde cannot convert json from a string: {0}")]
     JsonString(#[from] serde_json::error::Error),
@@ -138,8 +127,11 @@ impl CeaError {
         Self::ConversionError(Box::new(error))
     }
 
-    pub fn action_error(msg: impl Into<String>) -> Self {
-        Self::ActionError(msg.into())
+    pub fn action_error<E>(error: E) -> Self
+    where
+        E: std::error::Error + Send + Sync + 'static,
+    {
+        Self::ActionError(Box::new(error))
     }
 }
 

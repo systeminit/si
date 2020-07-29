@@ -13,6 +13,21 @@ pub async fn save(&self, db: &si_data::Db) -> si_data::Result<()> {
     Ok(())
 }
 
+pub async fn finalize(&self, db: &si_data::Db) -> si_data::Result<()> {
+    tracing::debug!("finalizing_<%- fmt.typeName() %>");
+    db.upsert(self).await?;
+
+<%_ if (fmt.isEntityEventObject()) { _%>
+    // No output entity means we didn't mutate anything
+    if let Some(ref entity) = self.output_entity {
+       tracing::debug!("finalizing_<%- fmt.entityTypeName() %>");
+       db.upsert(entity).await?;
+    }
+<%_ } _%>
+
+    Ok(())
+}
+
 pub async fn list(db: &si_data::Db, list_request: <%- fmt.implListRequestType({ reference: false, option: false }) %>) -> si_data::Result<si_data::ListResult<<%- fmt.structName() %>>> {
     let result = match list_request.page_token {
         Some(token) => db.list_by_page_token(token).await?,

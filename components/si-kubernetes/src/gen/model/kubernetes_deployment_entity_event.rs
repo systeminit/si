@@ -23,6 +23,19 @@ impl crate::protobuf::KubernetesDeploymentEntityEvent {
         Ok(())
     }
 
+    pub async fn finalize(&self, db: &si_data::Db) -> si_data::Result<()> {
+        tracing::debug!("finalizing_kubernetes_deployment_entity_event");
+        db.upsert(self).await?;
+
+        // No output entity means we didn't mutate anything
+        if let Some(ref entity) = self.output_entity {
+            tracing::debug!("finalizing_kubernetes_deployment_entity");
+            db.upsert(entity).await?;
+        }
+
+        Ok(())
+    }
+
     pub async fn list(
         db: &si_data::Db,
         list_request: crate::protobuf::KubernetesDeploymentEntityEventListRequest,
@@ -352,6 +365,12 @@ impl si_cea::EntityEvent for crate::protobuf::KubernetesDeploymentEntityEvent {
             storable.change_set_event_type =
                 si_data::protobuf::DataStorableChangeSetEventType::Action as i32;
         });
+    }
+}
+
+impl si_agent::TypeHint for crate::protobuf::KubernetesDeploymentEntityEvent {
+    fn type_name() -> &'static str {
+        "kubernetes_deployment_entity_event"
     }
 }
 

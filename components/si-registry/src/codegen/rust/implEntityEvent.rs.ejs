@@ -296,3 +296,9 @@ impl si_cea::EntityEvent for <%- fmt.structName() %> {
     }
 
 }
+
+impl si_agent::TypeHint for <%- fmt.structName() %> {
+    fn type_name() -> &'static str {
+        "<%- fmt.typeName() %>"
+    }
+}

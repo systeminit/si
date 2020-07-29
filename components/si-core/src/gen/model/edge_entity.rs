@@ -104,6 +104,13 @@ impl crate::protobuf::EdgeEntity {
         Ok(())
     }
 
+    pub async fn finalize(&self, db: &si_data::Db) -> si_data::Result<()> {
+        tracing::debug!("finalizing_edge_entity");
+        db.upsert(self).await?;
+
+        Ok(())
+    }
+
     pub async fn list(
         db: &si_data::Db,
         list_request: crate::protobuf::EdgeEntityListRequest,
@@ -372,6 +379,12 @@ impl si_cea::Entity for crate::protobuf::EdgeEntity {
                 has been set or initialized",
         );
         si_properties.billing_account_id = Some(billing_account_id.into());
+    }
+}
+
+impl si_agent::TypeHint for crate::protobuf::EdgeEntity {
+    fn type_name() -> &'static str {
+        "edge_entity"
     }
 }
 
