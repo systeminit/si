@@ -41,6 +41,7 @@ export const loader: Module<LoaderStore, RootStore> = {
       );
       await dispatch("changeSet/load", {}, { root: true });
       await dispatch("entity/load", {}, { root: true });
+      await dispatch("eventLog/load", {}, { root: true });
       commit("loading", false);
       commit("loaded", true);
     },

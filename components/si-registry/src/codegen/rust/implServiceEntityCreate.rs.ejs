@@ -1,5 +1,10 @@
 <%- fmt.implServiceAuth(propMethod) %>
 
+let user_id = request
+    .metadata()
+    .get("userid")
+    .map(|r| r.to_str().unwrap_or("no_user_id_bug_live_here")).unwrap().to_string();
+
 let inner = request.into_inner();
 <%- fmt.implServiceMethodCreateDestructure() %>
 
@@ -36,6 +41,8 @@ let entity = <%- fmt.structName() %>::create(
     Some(si_properties),
     change_set_id,
 ).await?;
+
+si_account::EventLog::entity_create(&self.db, &user_id, &entity).await?; 
 
 Ok(tonic::Response::new(
      <%- fmt.implServiceReplyType(propMethod, { option: false, reference: false }) %> {

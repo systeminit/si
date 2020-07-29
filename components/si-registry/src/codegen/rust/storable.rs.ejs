@@ -106,7 +106,7 @@ impl si_data::Storable for <%- fmt.structName() %> {
     }
 
     fn natural_key(&self) -> si_data::Result<Option<&str>> {
-    <%_ if (fmt.isEntityEventObject() || fmt.isEntityObject()) { _%>
+    <%_ if (fmt.isEntityEventObject() || fmt.isEntityObject() || fmt.isEventLogObject()) { _%>
         Ok(None)
     <%_ } else { _%>
         Ok(self.si_storable
@@ -119,7 +119,7 @@ impl si_data::Storable for <%- fmt.structName() %> {
     }
 
     fn set_natural_key(&mut self) -> si_data::Result<()> {
-    <%_ if (fmt.isEntityEventObject() || fmt.isEntityObject()) { _%>
+    <%_ if (fmt.isEntityEventObject() || fmt.isEntityObject() || fmt.isEventLogObject()) { _%>
         Ok(())
     <%_ } else { _%>
         let natural_key = format!(

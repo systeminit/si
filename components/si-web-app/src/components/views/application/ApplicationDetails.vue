@@ -198,6 +198,9 @@
     <div id="editor" class="flex w-full h-full overflow-hidden">
       <Editor />
     </div>
+    <div id="eventBar" class="w-full">
+      <EventBar />
+    </div>
   </div>
 </template>
 
@@ -208,6 +211,7 @@ import { registry } from "si-registry";
 
 import Editor from "@/components/views/editor/Editor.vue";
 import StatusBar from "@/components/common/StatusBar.vue";
+import EventBar from "@/components/common/EventBar.vue";
 import ServicesVisualization from "@/components/visualization/ServicesVisualization.vue";
 import ActivityVisualization from "@/components/visualization/ActivityVisualization.vue";
 import Button2 from "@/components/ui/Button2.vue";
@@ -253,6 +257,7 @@ export default Vue.extend({
     SiModal,
     SiSelect,
     SiTextBox,
+    EventBar,
     //PlayIcon,
     //EditIcon,
     //AlertCircleIcon,

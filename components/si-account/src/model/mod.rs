@@ -8,3 +8,5 @@ pub mod change_set;
 pub use change_set::ChangeSet;
 pub mod item;
 pub use item::Item;
+pub mod event_log;
+pub use event_log::EventLog;

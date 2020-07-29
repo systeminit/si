@@ -20,6 +20,7 @@ import "./components/si-account/integrationService";
 import "./components/si-account/integrationInstance";
 import "./components/si-account/changeSet";
 import "./components/si-account/item";
+import "./components/si-account/eventLog";
 
 import "./components/si-core/application";
 import "./components/si-core/service";

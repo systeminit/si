@@ -11,6 +11,7 @@ edition = "2018"
 
 [dependencies]
 anyhow = "1.0"
+chrono = "0.4.13"
 couchbase = { path = "../../vendor/couchbase-rs/couchbase" }
 futures = { version = "0.3", features = ["alloc"] }
 opentelemetry = { version = "0.6", features = ["tonic"] }

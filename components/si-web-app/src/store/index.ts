@@ -14,6 +14,7 @@ import { persistEdits } from "./plugins/persistEdits";
 import { workspace, WorkspaceStore } from "./modules/workspace";
 import { billingAccount, BillingAccountStore } from "./modules/billingAccount";
 import { node, NodeStore } from "./modules/node";
+import { eventLog, EventLogStore } from "./modules/eventLog";
 import { loader, LoaderStore } from "./modules/loader";
 
 Vue.use(Vuex);
@@ -46,6 +47,7 @@ export interface RootStore {
   application: ApplicationStore;
   edge: EdgeStore;
   system: SystemStore;
+  eventLog: EventLogStore;
   version: string;
 }
 
@@ -65,6 +67,7 @@ const store: Store<RootStore> = new Vuex.Store({
     workspace,
     billingAccount,
     node,
+    eventLog,
     loader,
   },
   strict: debug,

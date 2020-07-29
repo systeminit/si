@@ -7,10 +7,10 @@ import {
   EntityEventObject,
 } from "../systemComponent";
 import * as PropPrelude from "../components/prelude";
-import { registry } from "../registry";
-import { Props, IntegrationService } from "../attrList";
+import {registry} from "../registry";
+import {Props, IntegrationService} from "../attrList";
 
-import { snakeCase, pascalCase } from "change-case";
+import {snakeCase, pascalCase} from "change-case";
 import ejs from "ejs";
 import path from "path";
 import childProcess from "child_process";
@@ -131,6 +131,10 @@ export class RustFormatter {
 
   isEntityObject(): boolean {
     return this.systemObject instanceof EntityObject;
+  }
+
+  isEventLogObject(): boolean {
+    return this.systemObject.typeName == "eventLog";
   }
 
   isChangeSetObject(): boolean {
@@ -377,7 +381,7 @@ export class RustFormatter {
           } else {
             throw new Error(
               `conversion from language '${
-                from.language
+              from.language
               }' to type '${to.kind()}' is not supported`,
             );
           }
@@ -469,96 +473,96 @@ export class RustFormatter {
   implProtobufEnum(propEnum: PropPrelude.PropEnum): string {
     return ejs.render(
       "<%- include('src/codegen/rust/implProtobufEnum.rs.ejs', { fmt: fmt, propEnum: propEnum }) %>",
-      { fmt: this, propEnum: propEnum },
-      { filename: "." },
+      {fmt: this, propEnum: propEnum},
+      {filename: "."},
     );
   }
 
   implServiceEntityAction(propMethod: PropPrelude.PropMethod): string {
     return ejs.render(
       "<%- include('src/codegen/rust/implServiceEntityAction.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
-      { fmt: this, propMethod: propMethod },
-      { filename: "." },
+      {fmt: this, propMethod: propMethod},
+      {filename: "."},
     );
   }
 
   implServiceEntityEdit(propMethod: PropPrelude.PropMethod): string {
     return ejs.render(
       "<%- include('src/codegen/rust/implServiceEntityEdit.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
-      { fmt: this, propMethod: propMethod },
-      { filename: "." },
+      {fmt: this, propMethod: propMethod},
+      {filename: "."},
     );
   }
 
   implServiceCommonCreate(propMethod: PropPrelude.PropMethod): string {
     return ejs.render(
       "<%- include('src/codegen/rust/implServiceCommonCreate.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
-      { fmt: this, propMethod: propMethod },
-      { filename: "." },
+      {fmt: this, propMethod: propMethod},
+      {filename: "."},
     );
   }
 
   implServiceChangeSetCreate(propMethod: PropPrelude.PropMethod): string {
     return ejs.render(
       "<%- include('src/codegen/rust/implServiceChangeSetCreate.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
-      { fmt: this, propMethod: propMethod },
-      { filename: "." },
+      {fmt: this, propMethod: propMethod},
+      {filename: "."},
     );
   }
 
   implServiceEntityCreate(propMethod: PropPrelude.PropMethod): string {
     return ejs.render(
       "<%- include('src/codegen/rust/implServiceEntityCreate.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
-      { fmt: this, propMethod: propMethod },
-      { filename: "." },
+      {fmt: this, propMethod: propMethod},
+      {filename: "."},
     );
   }
 
   implServiceEntityDelete(propMethod: PropPrelude.PropMethod): string {
     return ejs.render(
       "<%- include('src/codegen/rust/implServiceEntityDelete.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
-      { fmt: this, propMethod: propMethod },
-      { filename: "." },
+      {fmt: this, propMethod: propMethod},
+      {filename: "."},
     );
   }
 
   implServiceEntityUpdate(propMethod: PropPrelude.PropMethod): string {
     return ejs.render(
       "<%- include('src/codegen/rust/implServiceEntityUpdate.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
-      { fmt: this, propMethod: propMethod },
-      { filename: "." },
+      {fmt: this, propMethod: propMethod},
+      {filename: "."},
     );
   }
 
   implServiceGet(propMethod: PropPrelude.PropMethod): string {
     return ejs.render(
       "<%- include('src/codegen/rust/implServiceGet.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
-      { fmt: this, propMethod: propMethod },
-      { filename: "." },
+      {fmt: this, propMethod: propMethod},
+      {filename: "."},
     );
   }
 
   implServiceList(propMethod: PropPrelude.PropMethod): string {
     return ejs.render(
       "<%- include('src/codegen/rust/implServiceList.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
-      { fmt: this, propMethod: propMethod },
-      { filename: "." },
+      {fmt: this, propMethod: propMethod},
+      {filename: "."},
     );
   }
 
   implServiceComponentPick(propMethod: PropPrelude.PropMethod): string {
     return ejs.render(
       "<%- include('src/codegen/rust/implServiceComponentPick.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
-      { fmt: this, propMethod: propMethod },
-      { filename: "." },
+      {fmt: this, propMethod: propMethod},
+      {filename: "."},
     );
   }
 
   implServiceCustomMethod(propMethod: PropPrelude.PropMethod): string {
     return ejs.render(
       "<%- include('src/codegen/rust/implServiceCustomMethod.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
-      { fmt: this, propMethod: propMethod },
-      { filename: "." },
+      {fmt: this, propMethod: propMethod},
+      {filename: "."},
     );
   }
 
@@ -763,7 +767,29 @@ export class RustFormatter {
     if (createMethod instanceof PropPrelude.PropMethod) {
       for (const prop of createMethod.request.properties.attrs) {
         const fieldName = snakeCase(prop.name);
-        result.push(`let ${fieldName} = inner.${fieldName};`);
+        if (prop.kind() == "enum") {
+          result.push(
+            `let ${fieldName} = ${this.rustTypeForProp(prop, {
+              option: false,
+              reference: false,
+            })}::from_i32(inner.${fieldName});`,
+          );
+        } else if (prop.kind() == "link") {
+          // @ts-ignore
+          const rprop = prop.lookupMyself();
+          if (rprop.kind() == "enum") {
+            result.push(
+              `let ${fieldName} = ${this.rustTypeForProp(rprop, {
+                option: false,
+                reference: false,
+              })}::from_i32(inner.${fieldName});`,
+            );
+          } else {
+            result.push(`let ${fieldName} = inner.${fieldName};`);
+          }
+        } else {
+          result.push(`let ${fieldName} = inner.${fieldName};`);
+        }
       }
     }
     return result.join("\n");
@@ -787,6 +813,20 @@ export class RustFormatter {
           result.push(
             `result.${variableName} = Some(si_data::password::encrypt_password(${variableName})?);`,
           );
+        } else if (prop.kind() == "enum") {
+          result.push(
+            `result.${variableName} = ${variableName}.map(|l| { let value: i32 = l.into(); value }).unwrap_or(0);`,
+          );
+        } else if (prop.kind() == "link") {
+          // @ts-ignore
+          const rprop = prop.lookupMyself();
+          if (rprop.kind() == "enum") {
+            result.push(
+              `result.${variableName} = ${variableName}.map(|l| { let value: i32 = l.into(); value }).unwrap_or(0);`,
+            );
+          } else {
+            result.push(`result.${variableName} = ${variableName};`);
+          }
         } else {
           result.push(`result.${variableName} = ${variableName};`);
         }
@@ -1287,7 +1327,7 @@ export class CodegenRust {
       const fmt = new RustFormatterAgent(this.serviceName, agent);
       results.push(
         `pub use ${
-          agent.agentName
+        agent.agentName
         }::{${fmt.dispatchFunctionTraitName()}, ${fmt.dispatcherTypeName()}};`,
       );
     }

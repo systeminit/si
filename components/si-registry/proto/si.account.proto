@@ -40,6 +40,9 @@ service Account {
   rpc ChangeSetExecute(ChangeSetExecuteRequest) returns (ChangeSetExecuteReply);
   rpc ItemGet(ItemGetRequest) returns (ItemGetReply);
   rpc ItemList(ItemListRequest) returns (ItemListReply);
+  rpc EventLogList(EventLogListRequest) returns (EventLogListReply);
+  rpc EventLogGet(EventLogGetRequest) returns (EventLogGetReply);
+  rpc EventLogCreate(EventLogCreateRequest) returns (EventLogCreateReply);
 }
 message BillingAccount {
   google.protobuf.StringValue id = 1;
@@ -486,4 +489,67 @@ message ItemListReply {
   repeated si.account.Item items = 1;
   google.protobuf.UInt32Value total_count = 2;
   google.protobuf.StringValue next_page_token = 3;
+}
+message EventLogSiProperties {
+  google.protobuf.StringValue billing_account_id = 1001;
+  google.protobuf.StringValue organization_id = 1002;
+  google.protobuf.StringValue workspace_id = 1003;
+}
+enum EventLogLevel {
+  EVENT_LOG_LEVEL_UNKNOWN = 0;
+  EVENT_LOG_LEVEL_TRACE = 1;
+  EVENT_LOG_LEVEL_DEBUG = 2;
+  EVENT_LOG_LEVEL_INFO = 3;
+  EVENT_LOG_LEVEL_WARN = 4;
+  EVENT_LOG_LEVEL_ERROR = 5;
+}
+message EventLogPayload {
+  google.protobuf.StringValue kind = 1001;
+  google.protobuf.StringValue data = 1002;
+}
+message EventLog {
+  google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue name = 2;
+  google.protobuf.StringValue display_name = 3;
+  si.data.DataStorable si_storable = 4;
+  si.account.EventLogSiProperties si_properties = 1001;
+  EventLogLevel level = 1002;
+  google.protobuf.StringValue message = 1003;
+  si.account.EventLogPayload payload = 1004;
+  repeated google.protobuf.StringValue related_ids = 1005;
+  google.protobuf.StringValue timestamp = 1006;
+  google.protobuf.StringValue created_by_user_id = 1007;
+}
+message EventLogListRequest {
+  si.data.DataQuery query = 1;
+  google.protobuf.UInt32Value page_size = 2;
+  google.protobuf.StringValue order_by = 3;
+  si.data.DataPageTokenOrderByDirection order_by_direction = 4;
+  google.protobuf.StringValue page_token = 5;
+  google.protobuf.StringValue scope_by_tenant_id = 6;
+}
+message EventLogListReply {
+  repeated si.account.EventLog items = 1;
+  google.protobuf.UInt32Value total_count = 2;
+  google.protobuf.StringValue next_page_token = 3;
+}
+message EventLogGetRequest {
+  google.protobuf.StringValue id = 1001;
+}
+message EventLogGetReply {
+  si.account.EventLog item = 1001;
+}
+message EventLogCreateRequest {
+  google.protobuf.StringValue name = 1001;
+  google.protobuf.StringValue display_name = 1002;
+  si.account.EventLogLevel level = 1003;
+  si.account.EventLogSiProperties si_properties = 1004;
+  google.protobuf.StringValue message = 1005;
+  si.account.EventLogPayload payload = 1006;
+  repeated google.protobuf.StringValue related_ids = 1007;
+  google.protobuf.StringValue timestamp = 1008;
+  google.protobuf.StringValue created_by_user_id = 1009;
+}
+message EventLogCreateReply {
+  si.account.EventLog item = 1001;
 }

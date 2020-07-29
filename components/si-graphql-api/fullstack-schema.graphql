@@ -1295,6 +1295,184 @@ enum EntitySiPropertiesEntityState {
   UNKNOWN
 }
 
+type EventLog {
+  associations: EventLogAssociations
+
+  """User ID who created this Change Set"""
+  createdByUserId: String
+
+  """Event Log Entry Display Name"""
+  displayName: String
+
+  """Event Log Entry ID"""
+  id: ID
+
+  """Event Level"""
+  level: EventLogLevel
+
+  """Message"""
+  message: String
+
+  """Event Log Entry Name"""
+  name: String
+
+  """Structured Event Payload"""
+  payload: EventLogPayload
+
+  """Related IDs for this Event"""
+  relatedIds: [String!]
+
+  """SI Internal Properties"""
+  siProperties: EventLogSiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+
+  """The timestamp for this event"""
+  timestamp: String
+}
+
+"""Event Log Entry Associations"""
+type EventLogAssociations {
+  """System Initiative Billing Account"""
+  billingAccount: BillingAccountGetReply
+
+  """A System Initiative Organization"""
+  organization: OrganizationGetReply
+
+  """A System Initiative Workspace"""
+  workspace: WorkspaceGetReply
+}
+
+"""Create an Event Log Entry Reply"""
+type EventLogCreateReply {
+  """Event Log Entry Item"""
+  item: EventLog
+}
+
+"""Create an Event Log Entry Request"""
+input EventLogCreateRequest {
+  """User ID for this event"""
+  createdByUserId: String
+
+  """Display Name"""
+  displayName: String
+
+  """Event Level"""
+  level: EventLogLevel
+
+  """Message"""
+  message: String
+
+  """Name"""
+  name: String
+
+  """Structured Event Payload"""
+  payload: EventLogPayloadRequest
+
+  """Related IDs for this Event"""
+  relatedIds: [String!]
+
+  """Si Properties"""
+  siProperties: EventLogSiPropertiesRequest
+
+  """Timestamp this Event"""
+  timestamp: String
+}
+
+"""Get a Event Log Entry Reply"""
+type EventLogGetReply {
+  """Event Log Entry Item"""
+  item: EventLog
+}
+
+"""Get a Event Log Entry Request"""
+input EventLogGetRequest {
+  """Event Log Entry ID"""
+  id: ID
+}
+
+"""Event Level"""
+enum EventLogLevel {
+  DEBUG
+  ERROR
+  INFO
+  TRACE
+  UNKNOWN
+  WARN
+}
+
+"""List Event Log Entry Reply"""
+type EventLogListReply {
+  """Items"""
+  items: [EventLog!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: String
+}
+
+"""List Event Log Entry Request"""
+input EventLogListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: String
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+type EventLogPayload {
+  """JSON data"""
+  data: String
+
+  """Type of Event"""
+  kind: String
+}
+
+input EventLogPayloadRequest {
+  """JSON data"""
+  data: String
+
+  """Type of Event"""
+  kind: String
+}
+
+type EventLogSiProperties {
+  """Billing Account ID"""
+  billingAccountId: String
+
+  """Organization ID"""
+  organizationId: String
+
+  """Organization ID"""
+  workspaceId: String
+}
+
+input EventLogSiPropertiesRequest {
+  """Billing Account ID"""
+  billingAccountId: String
+
+  """Organization ID"""
+  organizationId: String
+
+  """Organization ID"""
+  workspaceId: String
+}
+
 type Group {
   """Authorized capabilities for this user"""
   capabilities: [Capability!]
@@ -2974,6 +3152,7 @@ type Mutation {
   edgeEntityDelete(input: EdgeEntityDeleteRequest): EdgeEntityDeleteReply
   edgeEntitySync(input: EdgeEntitySyncRequest): EdgeEntitySyncReply
   edgeEntityUpdate(input: EdgeEntityUpdateRequest): EdgeEntityUpdateReply
+  eventLogCreate(input: EventLogCreateRequest): EventLogCreateReply
   groupCreate(input: GroupCreateRequest): GroupCreateReply
   kubernetesDeploymentEntityApply(input: KubernetesDeploymentEntityApplyRequest): KubernetesDeploymentEntityApplyReply
   kubernetesDeploymentEntityCreate(input: KubernetesDeploymentEntityCreateRequest): KubernetesDeploymentEntityCreateReply
@@ -3116,6 +3295,8 @@ type Query {
   edgeEntityEventList(input: EdgeEntityEventListRequest): EdgeEntityEventListReply
   edgeEntityGet(input: EdgeEntityGetRequest): EdgeEntityGetReply
   edgeEntityList(input: EdgeEntityListRequest): EdgeEntityListReply
+  eventLogGet(input: EventLogGetRequest): EventLogGetReply
+  eventLogList(input: EventLogListRequest): EventLogListReply
   groupGet(input: GroupGetRequest): GroupGetReply
   groupList(input: GroupListRequest): GroupListReply
   integrationGet(input: IntegrationGetRequest): IntegrationGetReply

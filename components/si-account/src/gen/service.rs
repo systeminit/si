@@ -525,6 +525,195 @@ impl crate::protobuf::account_server::Account for Service {
         .await
     }
 
+    async fn event_log_create(
+        &self,
+        request: tonic::Request<crate::protobuf::EventLogCreateRequest>,
+    ) -> std::result::Result<tonic::Response<crate::protobuf::EventLogCreateReply>, tonic::Status>
+    {
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "account.event_log_create",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(&span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
+        async {
+            crate::authorize::authnz(&self.db, &request, "event_log_create").await?;
+
+            let inner = request.into_inner();
+            let name = inner.name;
+            let display_name = inner.display_name;
+            let level = crate::protobuf::EventLogLevel::from_i32(inner.level);
+            let si_properties = inner.si_properties;
+            let message = inner.message;
+            let payload = inner.payload;
+            let related_ids = inner.related_ids;
+            let timestamp = inner.timestamp;
+            let created_by_user_id = inner.created_by_user_id;
+
+            let output = crate::protobuf::EventLog::create(
+                &self.db,
+                name,
+                display_name,
+                level,
+                si_properties,
+                message,
+                payload,
+                related_ids,
+                timestamp,
+                created_by_user_id,
+            )
+            .await?;
+
+            Ok(tonic::Response::new(crate::protobuf::EventLogCreateReply {
+                item: Some(output),
+            }))
+        }
+        .instrument(span)
+        .await
+    }
+
+    async fn event_log_get(
+        &self,
+        request: tonic::Request<crate::protobuf::EventLogGetRequest>,
+    ) -> std::result::Result<tonic::Response<crate::protobuf::EventLogGetReply>, tonic::Status>
+    {
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "account.event_log_get",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(&span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
+        async {
+            crate::authorize::authnz(&self.db, &request, "event_log_get").await?;
+
+            let inner = request.into_inner();
+            let id = inner
+                .id
+                .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))?;
+
+            let output = crate::protobuf::EventLog::get(&self.db, &id).await?;
+
+            Ok(tonic::Response::new(crate::protobuf::EventLogGetReply {
+                item: Some(output),
+            }))
+        }
+        .instrument(span)
+        .await
+    }
+
+    async fn event_log_list(
+        &self,
+        request: tonic::Request<crate::protobuf::EventLogListRequest>,
+    ) -> std::result::Result<tonic::Response<crate::protobuf::EventLogListReply>, tonic::Status>
+    {
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "account.event_log_list",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(&span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
+        async {
+            #[allow(unused_variables)]
+            let auth = crate::authorize::authnz(&self.db, &request, "event_log_list").await?;
+
+            let mut inner = request.into_inner();
+            if inner.scope_by_tenant_id.is_none() {
+                inner.scope_by_tenant_id = Some(auth.billing_account_id().into());
+            }
+
+            let output = crate::protobuf::EventLog::list(&self.db, inner).await?;
+
+            Ok(tonic::Response::new(crate::protobuf::EventLogListReply {
+                items: output.items,
+                total_count: Some(output.total_count),
+                next_page_token: Some(output.page_token),
+            }))
+        }
+        .instrument(span)
+        .await
+    }
+
     async fn group_create(
         &self,
         request: tonic::Request<crate::protobuf::GroupCreateRequest>,
