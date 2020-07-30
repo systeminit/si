@@ -5,6 +5,8 @@
   "scripts": {
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
+    "test:unit": "vue-cli-service test:unit",
+    "test:unit:watch": "vue-cli-service test:unit --watch",
     "test:e2e": "vue-cli-service test:e2e",
     "lint": "vue-cli-service lint",
     "eslint": "eslint --debug src/",
@@ -35,6 +37,7 @@
     "change-case": "^4.1.1",
     "chart.js": "^2.9.3",
     "core-js": "^3.6.4",
+    "deep-diff": "^1.0.2",
     "graphql": "^14.0.0",
     "js-cookie": "^2.2.1",
     "jsonwebtoken": "^8.5.1",
@@ -60,7 +63,10 @@
     "@graphql-codegen/cli": "^1.12.1",
     "@graphql-codegen/typescript": "^1.12.1",
     "@graphql-codegen/typescript-operations": "^1.12.1",
+    "@types/chai": "^4.2.11",
+    "@types/deep-diff": "^1.0.0",
     "@types/jsonwebtoken": "^8.3.5",
+    "@types/mocha": "^5.2.4",
     "@types/yaml": "^1.2.0",
     "@typescript-eslint/eslint-plugin": "^2.18.0",
     "@typescript-eslint/parser": "^2.18.0",
@@ -68,10 +74,13 @@
     "@vue/cli-plugin-eslint": "^4.3.1",
     "@vue/cli-plugin-router": "^4.3.1",
     "@vue/cli-plugin-typescript": "^4.3.1",
+    "@vue/cli-plugin-unit-mocha": "^4.4.6",
     "@vue/cli-service": "^4.3.1",
     "@vue/eslint-config-prettier": "^6.0.0",
     "@vue/eslint-config-typescript": "^5.0.1",
+    "@vue/test-utils": "^1.0.3",
     "babel-eslint": "^10.1.0",
+    "chai": "^4.1.2",
     "eslint": "^6.7.2",
     "eslint-plugin-graphql": "^3.1.0",
     "eslint-plugin-prettier": "^3.1.1",
@@ -88,6 +97,17 @@
   "eslintConfig": {
     "parserOptions": {
       "parser": "@typescript-eslint/parser"
-    }
+    },
+    "overrides": [
+      {
+        "files": [
+          "**/__tests__/*.{j,t}s?(x)",
+          "**/tests/unit/**/*.spec.{j,t}s?(x)"
+        ],
+        "env": {
+          "mocha": true
+        }
+      }
+    ]
   }
 }

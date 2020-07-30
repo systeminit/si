@@ -851,7 +851,8 @@ export class SiRegistryGenerator {
       return input["value"];
     } else if (prop.kind() == "map") {
       const newMapArray = [];
-      for (const key in input) {
+      const keys = Object.keys(input).sort();
+      for (const key of keys) {
         newMapArray.push({key, value: input[key]["value"]});
       }
       return newMapArray;

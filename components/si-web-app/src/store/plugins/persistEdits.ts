@@ -39,6 +39,11 @@ export function persistEdits(store: Store<RootStore>): void {
                 data: entity,
               });
             }
+            if (store.state.changeSet.current?.id) {
+              await store.dispatch("changeSet/get", {
+                changeSetId: store.state.changeSet.current?.id,
+              });
+            }
           } catch (err) {
             store.commit("editor/setEditSaveError", err);
           }

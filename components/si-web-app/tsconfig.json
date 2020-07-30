@@ -13,7 +13,9 @@
     "types": [
       "webpack-env",
       "vue-apollo",
-      "vue-cli-plugin-apollo"
+      "vue-cli-plugin-apollo",
+      "mocha",
+      "chai"
     ],
     "paths": {
       "@/*": [

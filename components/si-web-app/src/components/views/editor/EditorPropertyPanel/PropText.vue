@@ -1,18 +1,23 @@
 <template>
-  <div class="flex" v-if="fieldValue || editorMode == 'edit'">
-    <div class="input-label text-sm leading-tight pl-2 text-white">
-      {{ entityProperty.name }}:
+  <div class="flex items-center mt-2" v-if="fieldValue || editorMode == 'edit'">
+    <div class="w-40 px-2 text-sm leading-tight text-right text-white">
+      {{ entityProperty.name }}
     </div>
 
     <div
       v-if="editorMode == 'view'"
-      class="text-sm leading-tight text-gray-400 pl-2 h-5"
+      class="w-4/5 pl-2 mr-2 text-sm leading-tight text-gray-400"
+      v-bind:class="textClasses"
     >
       {{ fieldValue }}
     </div>
-    <div v-else-if="editorMode == 'edit'">
+    <div
+      class="w-4/5 pl-2 mr-2 text-sm leading-tight text-gray-400"
+      v-else-if="editorMode == 'edit'"
+    >
       <input
-        class="appearance-none text-sm leading-tight focus:outline-none input-bg-color appearance-none border-none text-gray-400 pl-2 h-5"
+        class="w-4/5 pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none"
+        v-bind:class="inputClasses"
         type="text"
         :aria-label="entityProperty.name"
         v-model="fieldValue"
@@ -30,11 +35,10 @@ import _ from "lodash";
 import { RootStore } from "@/store";
 import { RegistryProperty, debouncedSetFieldValue } from "@/store/modules/node";
 
-export default Vue.extend({
+import PropMixin from "./PropMixin";
+
+export default PropMixin.extend({
   name: "PropText",
-  props: {
-    entityProperty: Object as () => RegistryProperty,
-  },
   computed: {
     ...mapState({
       editorMode: (state: any): RootStore["editor"]["mode"] =>
@@ -65,19 +69,5 @@ export default Vue.extend({
 
 .property-title-bg-color {
   background-color: #292c2d;
-}
-
-.input-bg-color {
-  background-color: #25788a;
-}
-
-.input-label {
-  @apply pr-2 text-sm text-gray-400 text-right w-40;
-}
-
-input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
 }
 </style>

@@ -1,15 +1,22 @@
 <template>
   <section :class="accordionClasses" v-if="fieldValue || editorMode == 'edit'">
     <div
-      class="section-header cursor-pointer pl-2 text-sm text-white property-section-title-bg-color"
+      v-if="isProperties"
+      class="mt-1 mb-1 ml-6 text-base text-white align-middle"
+    >
+      Properties
+    </div>
+    <div
+      v-else
+      class="pl-2 text-sm text-white cursor-pointer section-header"
       @click="toggleAccordion"
     >
-      <div v-if="isOpen" :class="`flex ml-${entityProperty.path.length}`">
+      <div v-if="isOpen" class="flex" :style="propObjectStyle">
         <chevron-down-icon size="1.5x"></chevron-down-icon>
         {{ entityProperty.name }}
       </div>
 
-      <div v-else-if="!isOpen" :class="`flex ml-${entityProperty.path.length}`">
+      <div v-else-if="!isOpen" class="flex" :style="propObjectStyle">
         <chevron-right-icon size="1.5x"></chevron-right-icon>
         {{ entityProperty.name }}
       </div>
@@ -36,21 +43,30 @@ export default Vue.extend({
   },
   props: {
     entityProperty: Object as () => RegistryProperty,
-  },
-  data(): PropObjectData {
-    return {
-      isOpen: true,
-    };
+    isOpen: Boolean,
   },
   methods: {
     toggleAccordion(): void {
-      this.isOpen = !this.isOpen;
+      this.$emit("toggle-path", this.entityProperty.path);
     },
   },
   computed: {
+    isProperties(): boolean {
+      return (
+        this.entityProperty.name == "properties" &&
+        this.entityProperty.path.length == 1
+      );
+    },
     ...mapState({
       editorMode: (state: any) => state.editor.mode,
     }),
+    propObjectStyle(): string {
+      if (this.entityProperty.path.length == 1) {
+        return "";
+      }
+      let results = `margin-left: ${this.entityProperty.path.length * 10}px`;
+      return results;
+    },
     accordionClasses(): { "is-closed": boolean } {
       return {
         "is-closed": !this.isOpen,
