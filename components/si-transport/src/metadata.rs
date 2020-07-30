@@ -210,7 +210,7 @@ impl fmt::Display for AgentDataHeader {
         let data = self.data.to_string();
 
         let parts = vec![
-            CMD,
+            DT,
             AGENT,
             self.agent_id.as_ref(),
             self.agent_installation_id.as_ref(),
@@ -502,7 +502,7 @@ impl fmt::Display for AgentDataTopic {
         let data = self.data.as_ref().map(|c| c.to_string());
 
         let mut parts = vec![
-            CMD,
+            DT,
             AGENT,
             self.agent_id.as_ref().map(String::as_str).unwrap_or("+"),
             self.agent_installation_id

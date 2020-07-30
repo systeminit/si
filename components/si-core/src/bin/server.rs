@@ -52,6 +52,7 @@ async fn spawn_finalized_listener(
     transport_server_uri: impl Into<String>,
     db: Db,
 ) -> anyhow::Result<()> {
+    println!("*** Spawning the FinalizedListener ***");
     let mut listener_builder = FinalizedListener::builder(server_name, transport_server_uri, db);
     listener_builder.finalizer(application_entity_event::finalizer()?);
     listener_builder.finalizer(edge_entity_event::finalizer()?);
