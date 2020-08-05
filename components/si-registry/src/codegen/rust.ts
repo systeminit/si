@@ -37,6 +37,10 @@ interface PropertyUpdate {
   to: PropPrelude.Props;
 }
 
+interface PropertyUpdateSet {
+  entries: PropertyUpdate[];
+}
+
 interface PropertyEitherSet {
   entries: PropPrelude.Props[];
 }
@@ -106,6 +110,105 @@ export class RustFormatter {
     } else {
       throw new Error(
         "You ran 'hasEditUpdatesAndEithers()' on a non-entity object; this is a bug!",
+      );
+    }
+  }
+
+  newHasEntityPropertyEithers(): boolean {
+    if (this.isEntityObject()) {
+      return (this.systemObject.fields.getEntry(
+        "properties",
+      ) as PropPrelude.PropObject).properties.attrs.some(property =>
+        property.relationships
+          .all()
+          .some(rel => rel instanceof PropPrelude.Either),
+      );
+    } else {
+      throw new Error(
+        "You ran 'newHasEntityPropertyEithers()' on a non-entity object; this is a bug!",
+      );
+    }
+  }
+
+  newEntityPropertyEithers(): PropertyEitherSet[] {
+    if (this.isEntityObject()) {
+      const results = new Map();
+      const properties = (this.systemObject.fields.getEntry(
+        "properties",
+      ) as PropPrelude.PropObject).properties.attrs;
+
+      for (const property of properties) {
+        const propEithers = property.relationships
+          .all()
+          .filter(rel => rel instanceof PropPrelude.Either);
+
+        if (propEithers.length > 0) {
+          const eithers = new Set<PropPrelude.Props>();
+          eithers.add(property);
+          for (const property of propEithers) {
+            eithers.add(property.partnerProp());
+          }
+
+          const eithersArray = Array.from(eithers).sort((a, b) =>
+            a.name > b.name ? 1 : -1,
+          );
+          results.set(eithersArray.map(e => e.name).join(","), {
+            entries: eithersArray,
+          });
+        }
+      }
+
+      return Array.from(results.values()).sort();
+    } else {
+      throw new Error(
+        "You ran 'newEntityPropertyEithers()' on a non-entity object; this is a bug!",
+      );
+    }
+  }
+
+  newHasEntityPropertyUpdates(): boolean {
+    if (this.isEntityObject()) {
+      return (this.systemObject.fields.getEntry(
+        "properties",
+      ) as PropPrelude.PropObject).properties.attrs.some(property =>
+        property.relationships
+          .all()
+          .some(rel => rel instanceof PropPrelude.Updates),
+      );
+    } else {
+      throw new Error(
+        "You ran 'newHasEntityPropertyUpdates()' on a non-entity object; this is a bug!",
+      );
+    }
+  }
+
+  newEntityPropertyUpdates(): PropertyUpdateSet[] {
+    if (this.isEntityObject()) {
+      const results = new Map();
+      const properties = (this.systemObject.fields.getEntry(
+        "properties",
+      ) as PropPrelude.PropObject).properties.attrs;
+
+      for (const property of properties) {
+        const propUpdates = property.relationships
+          .all()
+          .filter(rel => rel instanceof PropPrelude.Updates);
+
+        if (propUpdates.length > 0) {
+          for (const propUpdate of propUpdates) {
+            const from = property;
+            const to = propUpdate.partnerProp();
+            results.set(`${from.name},${to.name}`, { from, to });
+          }
+        }
+      }
+
+      return Array.from(results.values()).sort((a, b) =>
+        `${a.from.name},${a.to.name}` > `${b.from.name},${b.to.name}` ? 1 : -1,
+      );
+    } else {
+      throw new Error(
+        "You ran 'newEntityPropertyUpdates()' on a non-entity object; this is a bug!",
       );
     }
   }
