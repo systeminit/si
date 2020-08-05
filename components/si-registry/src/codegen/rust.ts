@@ -7,15 +7,16 @@ import {
   EntityEventObject,
 } from "../systemComponent";
 import * as PropPrelude from "../components/prelude";
-import {registry} from "../registry";
-import {Props, IntegrationService} from "../attrList";
+import { registry } from "../registry";
+import { Props, IntegrationService } from "../attrList";
 
-import {snakeCase, pascalCase} from "change-case";
+import { snakeCase, pascalCase } from "change-case";
 import ejs from "ejs";
 import path from "path";
 import childProcess from "child_process";
 import util from "util";
 import * as codeFs from "./fs";
+import { promises } from "dns";
 
 const execCmd = util.promisify(childProcess.exec);
 
@@ -413,7 +414,7 @@ export class RustFormatter {
           } else {
             throw new Error(
               `conversion from language '${
-              from.language
+                from.language
               }' to type '${to.kind()}' is not supported`,
             );
           }
@@ -505,96 +506,96 @@ export class RustFormatter {
   implProtobufEnum(propEnum: PropPrelude.PropEnum): string {
     return ejs.render(
       "<%- include('src/codegen/rust/implProtobufEnum.rs.ejs', { fmt: fmt, propEnum: propEnum }) %>",
-      {fmt: this, propEnum: propEnum},
-      {filename: "."},
+      { fmt: this, propEnum: propEnum },
+      { filename: "." },
     );
   }
 
   implServiceEntityAction(propMethod: PropPrelude.PropMethod): string {
     return ejs.render(
       "<%- include('src/codegen/rust/implServiceEntityAction.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
-      {fmt: this, propMethod: propMethod},
-      {filename: "."},
+      { fmt: this, propMethod: propMethod },
+      { filename: "." },
     );
   }
 
   implServiceEntityEdit(propMethod: PropPrelude.PropMethod): string {
     return ejs.render(
       "<%- include('src/codegen/rust/implServiceEntityEdit.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
-      {fmt: this, propMethod: propMethod},
-      {filename: "."},
+      { fmt: this, propMethod: propMethod },
+      { filename: "." },
     );
   }
 
   implServiceCommonCreate(propMethod: PropPrelude.PropMethod): string {
     return ejs.render(
       "<%- include('src/codegen/rust/implServiceCommonCreate.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
-      {fmt: this, propMethod: propMethod},
-      {filename: "."},
+      { fmt: this, propMethod: propMethod },
+      { filename: "." },
     );
   }
 
   implServiceChangeSetCreate(propMethod: PropPrelude.PropMethod): string {
     return ejs.render(
       "<%- include('src/codegen/rust/implServiceChangeSetCreate.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
-      {fmt: this, propMethod: propMethod},
-      {filename: "."},
+      { fmt: this, propMethod: propMethod },
+      { filename: "." },
     );
   }
 
   implServiceEntityCreate(propMethod: PropPrelude.PropMethod): string {
     return ejs.render(
       "<%- include('src/codegen/rust/implServiceEntityCreate.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
-      {fmt: this, propMethod: propMethod},
-      {filename: "."},
+      { fmt: this, propMethod: propMethod },
+      { filename: "." },
     );
   }
 
   implServiceEntityDelete(propMethod: PropPrelude.PropMethod): string {
     return ejs.render(
       "<%- include('src/codegen/rust/implServiceEntityDelete.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
-      {fmt: this, propMethod: propMethod},
-      {filename: "."},
+      { fmt: this, propMethod: propMethod },
+      { filename: "." },
     );
   }
 
   implServiceEntityUpdate(propMethod: PropPrelude.PropMethod): string {
     return ejs.render(
       "<%- include('src/codegen/rust/implServiceEntityUpdate.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
-      {fmt: this, propMethod: propMethod},
-      {filename: "."},
+      { fmt: this, propMethod: propMethod },
+      { filename: "." },
     );
   }
 
   implServiceGet(propMethod: PropPrelude.PropMethod): string {
     return ejs.render(
       "<%- include('src/codegen/rust/implServiceGet.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
-      {fmt: this, propMethod: propMethod},
-      {filename: "."},
+      { fmt: this, propMethod: propMethod },
+      { filename: "." },
     );
   }
 
   implServiceList(propMethod: PropPrelude.PropMethod): string {
     return ejs.render(
       "<%- include('src/codegen/rust/implServiceList.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
-      {fmt: this, propMethod: propMethod},
-      {filename: "."},
+      { fmt: this, propMethod: propMethod },
+      { filename: "." },
     );
   }
 
   implServiceComponentPick(propMethod: PropPrelude.PropMethod): string {
     return ejs.render(
       "<%- include('src/codegen/rust/implServiceComponentPick.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
-      {fmt: this, propMethod: propMethod},
-      {filename: "."},
+      { fmt: this, propMethod: propMethod },
+      { filename: "." },
     );
   }
 
   implServiceCustomMethod(propMethod: PropPrelude.PropMethod): string {
     return ejs.render(
       "<%- include('src/codegen/rust/implServiceCustomMethod.rs.ejs', { fmt: fmt, propMethod: propMethod }) %>",
-      {fmt: this, propMethod: propMethod},
-      {filename: "."},
+      { fmt: this, propMethod: propMethod },
+      { filename: "." },
     );
   }
 
