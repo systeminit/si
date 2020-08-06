@@ -1,7 +1,5 @@
 <template>
   <div id="app-main-layout" class="flex flex-col w-screen h-screen">
-    <AppBar />
-
     <div
       v-if="loading"
       class="flex flex-row w-full h-full text-white bg-black h-center"
@@ -31,7 +29,6 @@
 import { mapState } from "vuex";
 
 import WorkspaceNav from "./WorkspaceNav.vue";
-import AppBar from "@/components/common/AppBar.vue";
 
 export default {
   name: "WorkspacePage",
@@ -44,7 +41,6 @@ export default {
     },
   },
   components: {
-    AppBar,
     WorkspaceNav,
   },
   computed: {
