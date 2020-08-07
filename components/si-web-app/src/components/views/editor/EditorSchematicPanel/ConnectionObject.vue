@@ -54,11 +54,11 @@ export default {
             y: "77",
           };
         }
-      } catch(err) {
+      } catch (err) {
         return {
-            x: "397",
-            y: "77",
-          };
+          x: "397",
+          y: "77",
+        };
       }
     },
     // We get the position of the destination socket
@@ -84,11 +84,11 @@ export default {
             y: "100",
           };
         }
-      } catch(err) {
-          return {
-            x: "100",
-            y: "100",
-          };
+      } catch (err) {
+        return {
+          x: "100",
+          y: "100",
+        };
       }
     },
   },
