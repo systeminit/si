@@ -33,46 +33,62 @@ export default {
   computed: {
     // We get the position of the source socket
     sourceSocketPosition() {
-      let nodeId = "system_entity:24a30b19-a3be-4230-a89b-9100fc09b155"; // should be sourceNode.id
-      const node = this.$store.getters["node/getNodebyId"](nodeId);
+      try {
+        // the node list get updated so I can't just pull node[i]
+        let nodeId = "system_entity:24a30b19-a3be-4230-a89b-9100fc09b155"; // should be sourceNode.id
+        const node = this.$store.getters["node/getNodebyId"](nodeId);
 
-      const outputSocketOffset = {
-        x: 68.5, // node center.
-        y: 100, // bottom line of a node
-      };
+        const outputSocketOffset = {
+          x: 68.5, // node center.
+          y: 100, // bottom line of a node
+        };
 
-      if ("position" in node) {
+        if ("position" in node) {
+          return {
+            x: node.position.x + outputSocketOffset.x,
+            y: node.position.y + outputSocketOffset.y,
+          };
+        } else {
+          return {
+            x: "397",
+            y: "77",
+          };
+        }
+      } catch(err) {
         return {
-          x: node.position.x + outputSocketOffset.x,
-          y: node.position.y + outputSocketOffset.y,
-        };
-      } else {
-        return {
-          x: "397",
-          y: "77",
-        };
+            x: "397",
+            y: "77",
+          };
       }
     },
     // We get the position of the destination socket
     destinationSocketPosition() {
-      let nodeId = "application_entity:9d06874f-222c-4ede-9873-f61bdbc9b1ad"; // should be destinationNode.id
-      const node = this.$store.getters["node/getNodebyId"](nodeId);
+      try {
+        // the node list get updated so I can't just pull node[i]
+        let nodeId = "application_entity:9d06874f-222c-4ede-9873-f61bdbc9b1ad"; // should be destinationNode.id
+        const node = this.$store.getters["node/getNodebyId"](nodeId);
 
-      const inputSocketOffset = {
-        x: 68.5, // node center.
-        y: 0, // top line of a node
-      };
+        const inputSocketOffset = {
+          x: 68.5, // node center.
+          y: 0, // top line of a node
+        };
 
-      if ("position" in node) {
-        return {
-          x: node.position.x + inputSocketOffset.x,
-          y: node.position.y + inputSocketOffset.y,
-        };
-      } else {
-        return {
-          x: "100",
-          y: "100",
-        };
+        if ("position" in node) {
+          return {
+            x: node.position.x + inputSocketOffset.x,
+            y: node.position.y + inputSocketOffset.y,
+          };
+        } else {
+          return {
+            x: "100",
+            y: "100",
+          };
+        }
+      } catch(err) {
+          return {
+            x: "100",
+            y: "100",
+          };
       }
     },
   },
