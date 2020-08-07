@@ -24,6 +24,8 @@ const screens = {
 };
 
 const spacing = {
+  "13": "3.25rem",
+  "14": "3.5rem",
   "52": "13rem",
   "56": "14rem",
   "64": "16rem",
