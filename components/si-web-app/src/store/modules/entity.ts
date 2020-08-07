@@ -267,7 +267,14 @@ export const entity: Module<EntityStore, RootStore> = {
         },
         { root: true },
       );
+
+      await dispatch(
+        "node/setMouseTrackSelection",
+        { id: entity.siStorable.itemId },
+        { root: true },
+      );
       await dispatch("changeSet/get", { changeSetId }, { root: true });
+
       return entity;
     },
     async delete(

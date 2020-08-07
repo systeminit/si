@@ -14,10 +14,47 @@ export enum NodeType {
   Entity = "Entity",
 }
 
+interface Position {
+  x: number;
+  y: number;
+}
+
+// -- alex tmp --
+// interface Socket {
+//   id: string;
+//   // name: string; // name that could be displayed
+//   socketType: NodeType; // input or output
+//   position: Position;
+//   // data: any; // Data this socket it accessing or exposing.
+// }
+
+// -- alex tmp --
+// export enum SocketType {
+//   Input = "Input",
+//   Output = "Output",
+// }
+
+// -- alex tmp --
+// interface NodeConnection {
+//   id: string;
+//   socket: Socket; // a socket on this node.
+//   path: Socket; // a socket on another node.
+// }
+
+// -- alex tmp --
+// interface NodeFlags {
+//   trackMouse: boolean;
+//   selected: boolean;
+//   visible: boolean;
+// }
+
 interface Node {
   id: string;
   name: string;
   nodeType: NodeType;
+  position: Position;
+  // sockets: Socket[]; -- alex tmp --
+  // connections: NodeConnection[]; -- alex tmp --
   stack: any[];
   display: Record<string, any>;
 }
@@ -25,6 +62,7 @@ interface Node {
 export interface NodeStore {
   nodes: Node[];
   current: null | Node;
+  mouseTrackSelection: null | string;
 }
 
 interface AddMutation {
@@ -49,6 +87,11 @@ interface CreateAction {
 
 interface CurrentAction {
   node: Node;
+}
+
+// -- alex tmp --
+interface SetMouseTrackSelectionAction {
+  id: string;
 }
 
 interface SendActionAction {
@@ -103,14 +146,20 @@ export const node: Module<NodeStore, RootStore> = {
   state: {
     nodes: [],
     current: null,
+    mouseTrackSelection: null,
   },
   getters: {
     current(state): Node {
+      // This should probably move to state.selection: node[]. -- alex tmp --
       if (state.current) {
         return state.current;
       } else {
         throw new Error("Cannot get current node; it is not set!");
       }
+    },
+    mouseTrackSelection(state): string | null {
+      // will need refactor, this is a hack to imnplement mouse tracking on new nodes. -- alex tmp --
+      return state.mouseTrackSelection;
     },
     list(state, _getters, rootState): Node[] {
       let changeSetId = rootState.changeSet.current?.id;
@@ -164,6 +213,12 @@ export const node: Module<NodeStore, RootStore> = {
           }
         });
       }
+    },
+    getNodebyId: state => (nodeId: string): Node => {
+      // returns a node by id. need to refactor and remove the ts-ignore. -- alex tmp --
+      // @ts-ignore
+      return _.find(state.nodes, ["id", nodeId]);
+      // throw an error if the node isn't found and return null. -- alex tmp --
     },
     getFieldValue: (_state, getters, rootState) => (path: string[]): any => {
       const currentNode = getters["current"];
@@ -439,6 +494,15 @@ export const node: Module<NodeStore, RootStore> = {
 
       state.current = node;
     },
+    // This is a hack to implement mouse tracking on node creation. -- alex tmp --
+    setMouseTrackSelection(state, payload: string) {
+      let nodeId = payload;
+      state.mouseTrackSelection = nodeId;
+    },
+    // This is a hack to implement mouse tracking on node creation. -- alex tmp --
+    unsetMouseTrackSelection(state, payload: string) {
+      state.mouseTrackSelection = null;
+    },
     setFieldValue(state, payload: SetFieldValueMutation) {
       if (!state.current) {
         throw new Error(
@@ -452,6 +516,11 @@ export const node: Module<NodeStore, RootStore> = {
         payload.path,
         payload.value,
       );
+    },
+    setNodePosition(state, payload: Position) {
+      if (state.current) {
+        state.current.position = payload;
+      }
     },
   },
   actions: {
@@ -520,6 +589,19 @@ export const node: Module<NodeStore, RootStore> = {
     },
     current({ commit }, payload: CurrentAction) {
       commit("current", payload.node);
+    },
+    // This is a hack to implement mouse tracking on node creation. -- alex tmp --
+    setMouseTrackSelection({ commit }, payload: SetMouseTrackSelectionAction) {
+      commit("setMouseTrackSelection", payload.id);
+    },
+    // This is a hack to implement mouse tracking on node creation. -- alex tmp --
+    unsetMouseTrackSelection({ commit }) {
+      commit("unsetMouseTrackSelection");
+    },
+    setNodePosition({ commit, getters }, payload: Position) {
+      commit("setNodePosition", payload);
+      const currentNode = getters["current"];
+      commit("add", { nodes: [currentNode] });
     },
     async delete({ getters, dispatch, rootGetters }) {
       let currentNode = getters["current"];
