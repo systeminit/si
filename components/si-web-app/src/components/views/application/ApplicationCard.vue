@@ -42,7 +42,7 @@
   </div>
 </template>
 
-<script type="ts">
+<script lang="ts">
 import Vue from "vue";
 import { ChevronRightIcon } from "vue-feather-icons";
 import ServicesVisualization from "@/components/visualization/ServicesVisualization.vue";
