@@ -2,6 +2,30 @@ use crate::{entity_event::EntityEvent, error::CeaResult};
 use si_transport::{Header, Message, QoS, Transport};
 use tracing::{debug, warn};
 
+/// Quality of service level for the last status/stream message.
+///
+/// Currently, lines of output (that is, a line of standard out or standard error) are aggregated
+/// in an `EntityEvent` object, the output for all prior messages are contained in all subsequent
+/// messages. This means that if the delivery of one message cannot be guaranteed this isn't the
+/// end of the world and at most some output might be missing on the consumer side. In this way,
+/// the last message is no more special than any other message that preceded it.
+///
+/// Therefore, all last messages are sent with `QoS::AtMostOnce` which doesn't enforce delivery
+/// guarantees.
+const SEND_LAST_QOS: QoS = QoS::AtMostOnce;
+
+/// Quality of service level for finalize messages.
+///
+/// A finalize message is assumed to be either [idempotent] or at least eventually consistent. That
+/// is, in the event that there are multiple finalize messages for an object, a finalizing
+/// operation should succeed when called more than once.
+///
+/// Therefore all finalize message are sent with `QoS::AtLeastOnce` to guarantee delivery of at
+/// least *one* message.
+///
+/// [idempotent]: https://en.wikipedia.org/wiki/Idempotence
+const SEND_FINALIZED_QOS: QoS = QoS::AtLeastOnce;
+
 pub struct EntityEventDispatch;
 
 impl EntityEventDispatch {
@@ -46,7 +70,7 @@ impl EntityEventDispatch {
         if let Err(err) = transport
             .send(Message::new(
                 stream_header,
-                QoS::AtMostOnce,
+                SEND_LAST_QOS,
                 None::<Header>,
                 &entity_event,
             ))
@@ -60,7 +84,7 @@ impl EntityEventDispatch {
             if let Err(err) = transport
                 .send(Message::new(
                     finalized_header,
-                    QoS::ExactlyOnce,
+                    SEND_FINALIZED_QOS,
                     None::<Header>,
                     &entity_event,
                 ))

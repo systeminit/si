@@ -5,6 +5,18 @@ use std::{borrow::Cow, collections::HashMap, sync::Arc};
 use thiserror::Error;
 use tracing::warn;
 
+/// Quality of service level for topic subscriptions.
+///
+/// As an agent is essentially a consuming worker that is processing tasks which have potential
+/// real world side effects (such as provisioning cloud resources, destroying deployments,
+/// allocating switch ports, etc.), we only want *one* agent to process any given task *once*. That
+/// is, a task for an agent is not assumed to be [idempotent].
+///
+/// Therefore, all Agent subscriptions will be `QoS::ExactlyOnce`. Make sense, dear reader?
+///
+/// [idempotent]: https://en.wikipedia.org/wiki/Idempotence
+const SUBSCRIBE_QOS: QoS = QoS::ExactlyOnce;
+
 pub mod spawn;
 
 pub mod prelude {
@@ -93,7 +105,7 @@ impl Agent {
     fn subscriptions(&self) -> Result<Vec<(Topic, QoS)>, Error> {
         let mut subscriptions = Vec::new();
         for topic_str in self.dispatchers.keys() {
-            subscriptions.push((topic_str.parse()?, QoS::ExactlyOnce));
+            subscriptions.push((topic_str.parse()?, SUBSCRIBE_QOS));
         }
 
         Ok(subscriptions)
