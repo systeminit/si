@@ -2,7 +2,7 @@ use crate::error::Error;
 use std::{fmt, str::FromStr};
 use typed_builder::TypedBuilder;
 
-const SHARED: &str = "$shared";
+const SHARED: &str = "$share";
 const CMD: &str = "cmd";
 const DT: &str = "dt";
 const AGENT: &str = "agent";
@@ -534,7 +534,7 @@ impl fmt::Display for AgentDataTopic {
             data.as_ref().map(String::as_str).unwrap_or("+"),
         ];
         if self.shared {
-            parts.insert(0, "$shared");
+            parts.insert(0, SHARED);
         }
 
         f.write_str(&parts.join("/"))
