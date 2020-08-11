@@ -7,6 +7,17 @@ use si_cea::EntityEvent;
 use std::env;
 use tokio::sync::mpsc;
 
+/// Quality of service level for sending lines of output.
+///
+/// Currently, lines of output (that is, a line of standard out or standard error) are aggregated
+/// in an `EntityEvent` object, the output for all prior messages are contained in all subsequent
+/// messages. This means that if the delivery of one message cannot be guaranteed this isn't the
+/// end of the world and at most some output might be missing on the consumer side.
+///
+/// Therefore, all output lines are sent with `QoS::AtMostOnce` which doesn't enforce delivery
+/// guarantees.
+const SEND_QOS: QoS = QoS::AtMostOnce;
+
 pub mod aws_eks_kubernetes_kubernetes_deployment;
 pub mod aws_eks_kubernetes_kubernetes_service;
 
@@ -65,7 +76,7 @@ pub async fn agent_apply(
                 transport
                     .send(Message::new(
                         header.clone(),
-                        QoS::AtMostOnce,
+                        SEND_QOS,
                         None::<Header>,
                         &entity_event,
                     ))
@@ -77,7 +88,7 @@ pub async fn agent_apply(
                 transport
                     .send(Message::new(
                         header.clone(),
-                        QoS::AtMostOnce,
+                        SEND_QOS,
                         None::<Header>,
                         &entity_event,
                     ))

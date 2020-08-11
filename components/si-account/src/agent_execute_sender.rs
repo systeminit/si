@@ -2,6 +2,18 @@ use si_transport::{AgentCommand, AgentData, Header, QoS, Transport, WireMessage}
 use std::fmt::Debug;
 use thiserror::Error;
 
+/// Quality of service level for dispatching agent events.
+///
+/// As an agent is essentially a consuming worker that is processing tasks which have potential
+/// real world side effects (such as provisioning cloud resources, destroying deployments,
+/// allocating switch ports, etc.), we only want *one* agent to process any given task *once*. That
+/// is, a task for an agent is not assumed to be [idempotent].
+///
+/// Therefore, all Agent event dispatches will be `QoS::ExactlyOnce`. Make sense, dear reader?
+///
+/// [idempotent]: https://en.wikipedia.org/wiki/Idempotence
+const SEND_QOS: QoS = QoS::ExactlyOnce;
+
 pub type Result<T> = std::result::Result<T, AgentExecuteSenderError>;
 
 #[derive(Error, Debug)]
@@ -33,7 +45,7 @@ impl AgentExecuteSender {
 
     pub async fn send(&mut self, entry: &serde_json::Value) -> Result<()> {
         let topic = header_for_entry(entry)?.to_string();
-        let qos = QoS::AtMostOnce;
+        let qos = SEND_QOS;
         let response_topic = Some(response_topic_for_entry(entry)?.to_string());
         let payload_type = object_type_for_entry(entry)?;
 

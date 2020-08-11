@@ -6,6 +6,18 @@ use si_transport::{AgentData, AgentDataTopic, QoS, Topic, Transport, WireMessage
 use std::{borrow::Cow, collections::HashMap, sync::Arc};
 use tracing::warn;
 
+/// Quality of service level for topic subscriptions.
+///
+/// A `FinalizedListener` will finalize objects, and this operation is assumed to be either
+/// [idempotent] or at least eventually consistent. That is, in the event that there are multiple
+/// finalize messages for an object, this operation should succeed when called more than once.
+///
+/// Therefore, all `FinalizedListener` subscriptions will be `QoS::AtLeastOnce` to guarantee
+/// delivery of at least *one* message.
+///
+/// [idempotent]: https://en.wikipedia.org/wiki/Idempotence
+const SUBSCRIBE_QOS: QoS = QoS::AtLeastOnce;
+
 #[async_trait]
 pub trait Finalize {
     async fn finalize(&self, db: &Db, message: WireMessage) -> CeaResult<()>;
@@ -77,7 +89,7 @@ impl FinalizedListener {
     fn subscriptions(&self) -> CeaResult<Vec<(Topic, QoS)>> {
         let mut subscriptions = Vec::new();
         for topic_str in self.finalizers.keys() {
-            subscriptions.push((topic_str.parse()?, QoS::ExactlyOnce));
+            subscriptions.push((topic_str.parse()?, SUBSCRIBE_QOS));
         }
 
         Ok(subscriptions)
