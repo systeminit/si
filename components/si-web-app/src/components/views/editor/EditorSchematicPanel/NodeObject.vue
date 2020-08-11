@@ -1,7 +1,7 @@
 <template>
   <div>
     <div
-      class="node-container absolute cursor-move shadow-md node"
+      class="absolute shadow-md cursor-move node-container node"
       :id="nodeObject.id"
       :class="nodeIsSelected"
       @mousedown="selectNode()"
@@ -21,17 +21,17 @@
       <div class="flex flex-col select-none node">
         <div class="flex flex-col text-white node">
           <div class="node-title-bar node">
-            <div class="text-xs text-center font-medium mt-1 node">
+            <div class="mt-1 text-xs font-medium text-center node">
               {{ displayItem.siStorable.typeName.split("_")[0] }}
             </div>
           </div>
           <div
-            class="font-normal text-center text-xs text-red-700 mt-2 node"
+            class="mt-2 text-xs font-normal text-center text-red-700 node"
             v-if="displayItem.siStorable.deleted"
           >
             {{ nodeObject.name }}
           </div>
-          <div class="font-normal text-center text-xs mt-2 node" v-else>
+          <div class="mt-2 text-xs font-normal text-center node" v-else>
             {{ nodeObject.name }}
           </div>
           <span v-if="displayItem.siStorable.changeSetId" class="text-xs node">

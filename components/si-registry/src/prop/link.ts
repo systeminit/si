@@ -1,3 +1,5 @@
+import Joi from "joi";
+
 import { Prop, PropValue } from "../prop";
 import { PropLookup, registry } from "../registry";
 import { Props } from "../attrList";
@@ -51,5 +53,17 @@ export class PropLink extends Prop {
 
   bagNames(): string[] {
     return this.lookupMyself().bagNames();
+  }
+
+  validation(): Joi.StringSchema;
+  validation(): Joi.NumberSchema;
+  validation(): Joi.DateSchema;
+  validation(): Joi.ObjectSchema;
+  validation(): Joi.ArraySchema;
+  validation(): Joi.AnySchema;
+  validation(): Prop["baseValidation"] {
+    return this.lookupMyself()
+      .validation()
+      .label(this.name);
   }
 }

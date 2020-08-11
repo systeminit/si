@@ -55,8 +55,9 @@ export default Vue.extend({
       changeSetId: (state: any): string =>
         state.changeSet.current?.id || "none",
       nodeType(state: any): string {
+        console.log("evaluating node type");
         let typeName;
-        if (state.node.current) {
+        if (this.node.name != "none") {
           if (this.changeSet == "none") {
             typeName = state.node.current?.display?.saved?.siStorable?.typeName;
           } else {
@@ -64,17 +65,14 @@ export default Vue.extend({
               typeName =
                 state.node.current?.display[this.changeSetId].siStorable
                   ?.typeName;
-              console.log("set it from the change set");
             } else {
               typeName =
                 state.node.current?.display?.saved?.siStorable?.typeName;
-              console.log("did not it from the change set");
             }
           }
         } else {
           typeName = "none";
         }
-        console.log("type name", { typeName });
         return camelCase(typeName);
       },
     }),

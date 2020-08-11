@@ -1,5 +1,6 @@
 import { Prop, PropValue } from "../prop";
 import { pascalCase, constantCase } from "change-case";
+import Joi from "joi";
 
 export class PropEnum extends Prop {
   baseDefaultValue: string;
@@ -26,6 +27,7 @@ export class PropEnum extends Prop {
     this.variants = [];
     this.parentName = parentName || "";
     this.baseDefaultValue = defaultValue || "";
+    this.baseValidation = Joi.string().label(this.name);
   }
 
   kind(): string {

@@ -1,4 +1,5 @@
 import { Prop, PropValue } from "../prop";
+import Joi from "joi";
 
 export class PropText extends Prop {
   baseDefaultValue: string;
@@ -20,6 +21,7 @@ export class PropText extends Prop {
   }) {
     super({ name, label, componentTypeName, rules, required });
     this.baseDefaultValue = defaultValue || "";
+    this.baseValidation = Joi.string().label(this.name);
   }
 
   kind(): string {

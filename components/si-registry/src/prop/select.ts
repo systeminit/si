@@ -1,3 +1,4 @@
+import Joi from "joi";
 import { Prop, PropValue } from "../prop";
 
 export interface SelectOption {
@@ -29,6 +30,7 @@ export class PropSelect extends Prop {
     this.options = [];
     this.baseDefaultValue = defaultValue || "";
     this.optionsFromType = undefined;
+    this.baseValidation = Joi.string().label(this.name);
   }
 
   kind(): string {

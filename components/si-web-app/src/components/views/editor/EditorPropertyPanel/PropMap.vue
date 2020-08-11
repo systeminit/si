@@ -65,6 +65,7 @@
           <plus-square-icon size="1.25x"></plus-square-icon>
         </button>
       </div>
+      <ValidationWidget :value="fieldValue" :entityProperty="entityProperty" />
     </div>
   </div>
 </template>
@@ -79,6 +80,7 @@ import { RootStore } from "@/store";
 import { RegistryProperty, debouncedSetFieldValue } from "@/store/modules/node";
 
 import PropMixin from "./PropMixin";
+import ValidationWidget from "@/components/ui/ValidationWidget.vue";
 
 interface MapEntries {
   [index: number]: { key: string; value: string };
@@ -89,6 +91,7 @@ export default PropMixin.extend({
   components: {
     PlusSquareIcon,
     XIcon,
+    ValidationWidget,
   },
   methods: {
     updateMap(

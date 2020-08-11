@@ -60,4 +60,3 @@ export class PropCode extends Prop {
     }
   }
 }
-

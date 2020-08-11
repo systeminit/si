@@ -64,6 +64,11 @@ registry.componentAndEntity({
           options(p: PropText) {
             p.required = true;
             p.baseDefaultValue = "Deployment";
+            p.baseValidation = p
+              .validation()
+              .min(3)
+              .max(10)
+              .required();
           },
         });
         p.properties.addLink({

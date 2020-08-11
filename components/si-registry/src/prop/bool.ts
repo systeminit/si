@@ -1,4 +1,5 @@
 import { Prop, PropValue } from "../prop";
+import Joi from "joi";
 
 export class PropBool extends Prop {
   baseDefaultValue: boolean;
@@ -20,6 +21,7 @@ export class PropBool extends Prop {
   }) {
     super({ name, label, componentTypeName, rules, required });
     this.baseDefaultValue = defaultValue || false;
+    this.baseValidation = Joi.bool().label(this.name);
   }
 
   kind(): string {

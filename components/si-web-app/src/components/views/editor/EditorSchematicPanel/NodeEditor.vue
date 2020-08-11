@@ -1,5 +1,5 @@
 <template>
-  <div id="schematic-panel" class="h-full w-full grid-background">
+  <div id="schematic-panel" class="w-full h-full grid-background">
     <div
       ref="canvasParent"
       class="w-full h-full overflow-hidden"
@@ -11,9 +11,9 @@
       <div
         ref="canvas"
         id="canvas"
-        class="flex-auto relative w-full h-full canvas block"
+        class="relative flex-auto block w-full h-full canvas"
       >
-        <ConnectionObject class="connections" />
+        <!-- <ConnectionObject class="connections" /> -->
 
         <NodeList />
 
@@ -50,7 +50,7 @@
 
 <script>
 import NodeList from "./NodeList.vue";
-import ConnectionObject from "./ConnectionObject.vue";
+// import ConnectionObject from "./ConnectionObject.vue";
 
 import { mapGetters, Store } from "vuex";
 
@@ -58,7 +58,7 @@ export default {
   name: "SchematicPanel",
   components: {
     NodeList,
-    ConnectionObject,
+    //ConnectionObject,
   },
   computed: {
     ...mapGetters({
@@ -345,7 +345,7 @@ export default {
             selectedObject.style.left = newPositionX + "px";
             selectedObject.style.top = newPositionY + "px";
 
-            this.updateSelectedNodePosition(newPositionX, newPositionY);
+            //this.updateSelectedNodePosition(newPositionX, newPositionY);
           }
         }
       }

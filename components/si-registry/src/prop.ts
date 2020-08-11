@@ -1,4 +1,5 @@
 import { RelationshipList } from "./prop/relationships";
+import Joi from "joi";
 
 export interface PropConstructor {
   name: string;
@@ -24,6 +25,8 @@ export abstract class Prop {
   required: boolean;
   readOnly: boolean;
   relationships: RelationshipList;
+
+  baseValidation: Joi.AnySchema;
 
   // Hidden from the UI
   hidden: boolean;
@@ -69,10 +72,21 @@ export abstract class Prop {
     this.reference = false;
     this.skip = false;
     this.relationships = new RelationshipList();
+    this.baseValidation = Joi.any().label(this.name);
   }
 
   abstract kind(): string;
   abstract defaultValue(): PropValue;
+
+  validation(): Joi.StringSchema;
+  validation(): Joi.NumberSchema;
+  validation(): Joi.DateSchema;
+  validation(): Joi.ObjectSchema;
+  validation(): Joi.ArraySchema;
+  validation(): Joi.AnySchema;
+  validation(): Prop["baseValidation"] {
+    return this.baseValidation;
+  }
 
   bagNames(): string[] {
     return [];

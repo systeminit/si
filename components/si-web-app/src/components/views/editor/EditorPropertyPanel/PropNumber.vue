@@ -25,6 +25,7 @@
         v-model="fieldValue"
         placeholder="number"
       />
+      <ValidationWidget :value="fieldValue" :entityProperty="entityProperty" />
     </div>
   </div>
 </template>
@@ -38,11 +39,15 @@ import { RootStore } from "@/store";
 import { RegistryProperty, debouncedSetFieldValue } from "@/store/modules/node";
 
 import PropMixin from "./PropMixin";
+import ValidationWidget from "@/components/ui/ValidationWidget.vue";
 
 export default PropMixin.extend({
   name: "PropNumber",
   props: {
     entityProperty: Object as () => RegistryProperty,
+  },
+  components: {
+    ValidationWidget,
   },
   computed: {
     ...mapState({

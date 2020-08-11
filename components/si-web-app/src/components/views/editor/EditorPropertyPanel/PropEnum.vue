@@ -29,6 +29,7 @@
           >{{ option }}</option
         >
       </select>
+      <ValidationWidget :value="fieldValue" :entityProperty="entityProperty" />
     </div>
   </div>
 </template>
@@ -42,9 +43,13 @@ import { RootStore } from "@/store";
 import { RegistryProperty, debouncedSetFieldValue } from "@/store/modules/node";
 
 import PropMixin from "./PropMixin";
+import ValidationWidget from "@/components/ui/ValidationWidget.vue";
 
 export default PropMixin.extend({
   name: "PropEnum",
+  components: {
+    ValidationWidget,
+  },
   computed: {
     ...mapState({
       editorMode: (state: any): RootStore["editor"]["mode"] =>
