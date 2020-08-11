@@ -25,8 +25,8 @@ pub fn new(
     result.si_properties = si_properties;
     result.si_storable = Some(si_storable);
 
-<%_ if (fmt.hasEditUpdatesAndEithers()) { _%>
-    <%- include('implEntityCreateUpdatesAndEithers.rs.ejs', { fmt: fmt }) %>
+<%_ if (fmt.newEntityPropertyUpdates() || fmt.newEntityPropertyEithers()) { _%>
+    <%- include('implEntityCreateUpdatesAndEithers.rs.ejs', { fmt: fmt, variable: 'result' }) %>
 <%_ } _%>
 
     Ok(result)

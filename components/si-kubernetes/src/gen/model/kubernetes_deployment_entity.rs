@@ -57,6 +57,34 @@ impl crate::protobuf::KubernetesDeploymentEntity {
         result.si_properties = si_properties;
         result.si_storable = Some(si_storable);
 
+        use si_cea::Entity;
+
+        match (
+            result.properties()?.kubernetes_object.as_ref(),
+            result.properties()?.kubernetes_object_yaml.as_ref(),
+        ) {
+            (Some(_), None) => {
+                result.update_kubernetes_object_yaml_from_kubernetes_object()?;
+            }
+            (None, Some(_)) => {
+                result.update_kubernetes_object_from_kubernetes_object_yaml()?;
+            }
+            (Some(_), Some(_)) => {
+                return Err(si_data::DataError::MultipleEithersProvided2(
+                    "kubernetes_object".to_string(),
+                    "kubernetes_object_yaml".to_string(),
+                )
+                .into());
+            }
+            (None, None) => {
+                return Err(si_data::DataError::NeitherEithersProvided2(
+                    "kubernetes_object".to_string(),
+                    "kubernetes_object_yaml".to_string(),
+                )
+                .into());
+            }
+        }
+
         Ok(result)
     }
 
@@ -148,11 +176,82 @@ impl crate::protobuf::KubernetesDeploymentEntity {
         Ok(result)
     }
 
+    pub async fn update(
+        &mut self,
+        db: &si_data::Db,
+        change_set_id: Option<String>,
+        update: Option<crate::protobuf::KubernetesDeploymentEntityUpdateRequestUpdate>,
+    ) -> si_cea::CeaResult<()> {
+        let item_id = self.id.as_ref().map(|change_set_enabled_id| {
+            let split_result: Vec<&str> = change_set_enabled_id.split(":").collect();
+            let item_id = if split_result.len() == 2 {
+                format!("{}:{}", split_result[0], split_result[1])
+            } else {
+                format!("{}:{}", split_result[3], split_result[4])
+            };
+            item_id
+        });
+        self.si_storable.as_mut().map(|si_storable| {
+            si_storable.change_set_id = change_set_id;
+            si_storable.deleted = Some(false);
+            si_storable.set_change_set_event_type(si_data::DataStorableChangeSetEventType::Update);
+            si_storable.item_id = item_id;
+            si_storable.change_set_executed = Some(false);
+            si_storable
+        });
+
+        if let Some(update) = update {
+            if update.name.is_some() {
+                self.name = update.name;
+            }
+            if update.display_name.is_some() {
+                self.display_name = update.display_name;
+            }
+            if update.description.is_some() {
+                self.description = update.description;
+            }
+            if update.properties.is_some() {
+                self.properties = update.properties;
+            }
+
+            use si_cea::Entity;
+
+            match (
+                self.properties()?.kubernetes_object.as_ref(),
+                self.properties()?.kubernetes_object_yaml.as_ref(),
+            ) {
+                (Some(_), None) => {
+                    self.update_kubernetes_object_yaml_from_kubernetes_object()?;
+                }
+                (None, Some(_)) => {
+                    self.update_kubernetes_object_from_kubernetes_object_yaml()?;
+                }
+                (Some(_), Some(_)) => {
+                    return Err(si_data::DataError::MultipleEithersProvided2(
+                        "kubernetes_object".to_string(),
+                        "kubernetes_object_yaml".to_string(),
+                    )
+                    .into());
+                }
+                (None, None) => {
+                    return Err(si_data::DataError::NeitherEithersProvided2(
+                        "kubernetes_object".to_string(),
+                        "kubernetes_object_yaml".to_string(),
+                    )
+                    .into());
+                }
+            }
+        }
+
+        db.update(self).await?;
+        Ok(())
+    }
+
     pub async fn delete(
         &mut self,
         db: &si_data::Db,
         change_set_id: Option<String>,
-    ) -> si_data::Result<()> {
+    ) -> si_cea::CeaResult<()> {
         let item_id = self.id.as_ref().map(|change_set_enabled_id| {
             let split_result: Vec<&str> = change_set_enabled_id.split(":").collect();
             let item_id = if split_result.len() == 2 {
@@ -175,44 +274,25 @@ impl crate::protobuf::KubernetesDeploymentEntity {
         Ok(())
     }
 
-    pub async fn update(
-        &mut self,
-        db: &si_data::Db,
-        change_set_id: Option<String>,
-        update: Option<crate::protobuf::KubernetesDeploymentEntityUpdateRequestUpdate>,
-    ) -> si_data::Result<()> {
-        let item_id = self.id.as_ref().map(|change_set_enabled_id| {
-            let split_result: Vec<&str> = change_set_enabled_id.split(":").collect();
-            let item_id = if split_result.len() == 2 {
-                format!("{}:{}", split_result[0], split_result[1])
-            } else {
-                format!("{}:{}", split_result[3], split_result[4])
-            };
-            item_id
-        });
-        self.si_storable.as_mut().map(|si_storable| {
-            si_storable.change_set_id = change_set_id;
-            si_storable.deleted = Some(false);
-            si_storable.set_change_set_event_type(si_data::DataStorableChangeSetEventType::Update);
-            si_storable.item_id = item_id;
-            si_storable.change_set_executed = Some(false);
-            si_storable
-        });
+    fn update_kubernetes_object_yaml_from_kubernetes_object(&mut self) -> si_cea::CeaResult<()> {
+        use si_cea::Entity;
+        use std::convert::TryInto;
 
-        if update.is_some() {
-            let real_update = update.unwrap();
-            if real_update.description.is_some() {
-                self.description = real_update.description;
-            }
-            if real_update.properties.is_some() {
-                self.properties = real_update.properties;
-            }
-            if real_update.name.is_some() {
-                self.name = real_update.name;
-            }
+        if let Some(ref kubernetes_object) = self.properties()?.kubernetes_object {
+            self.properties_mut()?.kubernetes_object_yaml = Some(kubernetes_object.try_into()?);
         }
 
-        db.update(self).await?;
+        Ok(())
+    }
+
+    fn update_kubernetes_object_from_kubernetes_object_yaml(&mut self) -> si_cea::CeaResult<()> {
+        use si_cea::Entity;
+        use std::convert::TryInto;
+
+        if let Some(ref kubernetes_object_yaml) = self.properties()?.kubernetes_object_yaml {
+            self.properties_mut()?.kubernetes_object = Some(kubernetes_object_yaml.try_into()?);
+        }
+
         Ok(())
     }
 }
@@ -574,5 +654,27 @@ impl si_data::Storable for crate::protobuf::KubernetesDeploymentEntity {
 
     fn order_by_fields() -> Vec<&'static str> {
         vec!["siStorable.naturalKey", "id", "name", "displayName", "siStorable.naturalKey", "dataStorable.viewContext", "dataStorable.changeSetId", "dataStorable.itemId", "dataStorable.changeSetEntryCount", "dataStorable.changeSetEventType", "dataStorable.changeSetExecuted", "dataStorable.deleted", "description", "siStorable.naturalKey", "entitySiProperties.entityState", "siStorable.naturalKey", "siStorable.naturalKey", "properties.kubernetesObject.apiVersion", "properties.kubernetesObject.kind", "siStorable.naturalKey", "properties.kubernetesObject.kubernetesMetadata.name", "properties.kubernetesObject.kubernetesMetadata.labels", "siStorable.naturalKey", "properties.kubernetesObject.spec.replicas", "siStorable.naturalKey", "properties.kubernetesObject.spec.kubernetesSelector.matchLabels", "siStorable.naturalKey", "siStorable.naturalKey", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesMetadata.name", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesMetadata.labels", "siStorable.naturalKey", "siStorable.naturalKey", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesPodSpec.kubernetesContainer.name", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesPodSpec.kubernetesContainer.image", "siStorable.naturalKey", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesPodSpec.kubernetesContainer.kubernetesContainerPort.containerPort", "properties.kubernetesObjectYaml", "siStorable.naturalKey", "constraints.componentName", "constraints.componentDisplayName", "constraints.kubernetesVersion", "siStorable.naturalKey", "constraints.componentName", "constraints.componentDisplayName", "constraints.kubernetesVersion"]
+    }
+}
+
+impl std::convert::TryFrom<&crate::protobuf::KubernetesDeploymentEntityPropertiesKubernetesObject>
+    for String
+{
+    type Error = si_cea::CeaError;
+
+    fn try_from(
+        value: &crate::protobuf::KubernetesDeploymentEntityPropertiesKubernetesObject,
+    ) -> std::result::Result<Self, Self::Error> {
+        Ok(serde_yaml::to_string(value)?)
+    }
+}
+
+impl std::convert::TryFrom<&String>
+    for crate::protobuf::KubernetesDeploymentEntityPropertiesKubernetesObject
+{
+    type Error = si_cea::CeaError;
+
+    fn try_from(value: &String) -> std::result::Result<Self, Self::Error> {
+        Ok(serde_yaml::from_str(value)?)
     }
 }

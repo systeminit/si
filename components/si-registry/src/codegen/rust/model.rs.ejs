@@ -14,8 +14,8 @@ impl <%- fmt.structName() %> {
         <%- include('implPick.rs.ejs', { fmt: fmt }) %>
     <%_ } _%>
     <%_ if (fmt.isEntityObject()) { _%>
-      <%- include('implEdit.rs.ejs', { fmt: fmt }) %>
       <%- include('implUpdateAndDelete.rs.ejs', { fmt: fmt }) %>
+      <%- include('implEntityPropertyUpdates.rs.ejs', { fmt: fmt }) %>
     <%_ } _%>
 }
 

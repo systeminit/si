@@ -1,5 +1,5 @@
 <%_ const printedAConversionImpl = new Set(); _%>
-<%_ for (const pu of fmt.allEntityEditPropertyUpdates()) { _%>
+<%_ for (const pu of fmt.newEntityPropertyUpdates()) { _%>
     <%_ const fromRustType = fmt.rustTypeForProp(pu.from, { option: false }); _%>
     <%_ const toRustType = fmt.rustTypeForProp(pu.to, { option: false }); _%>
     <%_ if (

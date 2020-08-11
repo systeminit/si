@@ -3,15 +3,15 @@
 
     <%_ if (eithers.length == 2) { _%>
         match (
-          result.properties()?.<%- fmt.rustFieldNameForProp(eithers[0]) %>.as_ref(),
-          result.properties()?.<%- fmt.rustFieldNameForProp(eithers[1]) %>.as_ref(),
+          <%- variable %>.properties()?.<%- fmt.rustFieldNameForProp(eithers[0]) %>.as_ref(),
+          <%- variable %>.properties()?.<%- fmt.rustFieldNameForProp(eithers[1]) %>.as_ref(),
         ) {
             (Some(_), None) => {
-                result
+                <%- variable %>
                     .<%- fmt.entityEditPropertyUpdateMethodName({ from: eithers[0], to: eithers[1] }) %>()?;
             }
             (None, Some(_)) => {
-                result
+                <%- variable %>
                     .<%- fmt.entityEditPropertyUpdateMethodName({ from: eithers[1], to: eithers[0] }) %>()?;
             }
             (Some(_), Some(_)) => {
@@ -31,26 +31,26 @@
         }
     <%_ } else if (eithers.length == 3) { _%>
         match (
-          result.properties()?.<%- fmt.rustFieldNameForProp(eithers[0]) %>.as_ref(),
-          result.properties()?.<%- fmt.rustFieldNameForProp(eithers[1]) %>.as_ref(),
-          result.properties()?.<%- fmt.rustFieldNameForProp(eithers[2]) %>.as_ref(),
+          <%- variable %>.properties()?.<%- fmt.rustFieldNameForProp(eithers[0]) %>.as_ref(),
+          <%- variable %>.properties()?.<%- fmt.rustFieldNameForProp(eithers[1]) %>.as_ref(),
+          <%- variable %>.properties()?.<%- fmt.rustFieldNameForProp(eithers[2]) %>.as_ref(),
         ) {
             (Some(_), None, None) => {
-                result
+                <%- variable %>
                     .<%- fmt.entityEditPropertyUpdateMethodName({ from: eithers[0], to: eithers[1] }) %>()?;
-                result
+                <%- variable %>
                     .<%- fmt.entityEditPropertyUpdateMethodName({ from: eithers[0], to: eithers[2] }) %>()?;
             }
             (None, Some(_), None) => {
-                result
+                <%- variable %>
                     .<%- fmt.entityEditPropertyUpdateMethodName({ from: eithers[1], to: eithers[0] }) %>()?;
-                result
+                <%- variable %>
                     .<%- fmt.entityEditPropertyUpdateMethodName({ from: eithers[1], to: eithers[2] }) %>()?;
             }
             (None, None, Some(_)) => {
-                result
+                <%- variable %>
                     .<%- fmt.entityEditPropertyUpdateMethodName({ from: eithers[2], to: eithers[0] }) %>()?;
-                result
+                <%- variable %>
                     .<%- fmt.entityEditPropertyUpdateMethodName({ from: eithers[2], to: eithers[1] }) %>()?;
             }
             (None, Some(_), Some(_)) => {
