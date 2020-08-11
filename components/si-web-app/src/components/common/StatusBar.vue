@@ -52,24 +52,29 @@ export default Vue.extend({
       node: (state: any): string => state.node.current?.name || "none",
       changeSet: (state: any): string =>
         state.changeSet.current?.name || "none",
+      changeSetId: (state: any): string =>
+        state.changeSet.current?.id || "none",
       nodeType(state: any): string {
         let typeName;
         if (state.node.current) {
           if (this.changeSet == "none") {
             typeName = state.node.current?.display?.saved?.siStorable?.typeName;
           } else {
-            if (state.node.current?.display[this.changeSet]) {
+            if (state.node.current?.display[this.changeSetId]) {
               typeName =
-                state.node.current?.display[this.changeSet].siStorable
+                state.node.current?.display[this.changeSetId].siStorable
                   ?.typeName;
+              console.log("set it from the change set");
             } else {
               typeName =
                 state.node.current?.display?.saved?.siStorable?.typeName;
+              console.log("did not it from the change set");
             }
           }
         } else {
           typeName = "none";
         }
+        console.log("type name", { typeName });
         return camelCase(typeName);
       },
     }),

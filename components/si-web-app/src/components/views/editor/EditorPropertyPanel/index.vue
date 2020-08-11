@@ -1,26 +1,26 @@
 <template>
-  <div ref="property-panel" class="h-full w-full property-editor-bg-color">
+  <div ref="property-panel" class="w-full property-editor-bg-color">
     <div
       id="property-panel-menu"
-      class="flex flex-row justify-between flex-no-wrap content-between bg-black w-full"
+      class="flex flex-row flex-no-wrap content-between justify-between w-full bg-black"
     >
       <div class="flex flex-row justify-start mx-3">
-        <button class="text-white px-4 py-2 focus:outline-none">
+        <button class="px-4 py-2 text-white focus:outline-none">
           <search-icon size="1.1x" />
         </button>
 
-        <button class="text-white px-4 py-2 focus:outline-none">
+        <button class="px-4 py-2 text-white focus:outline-none">
           <filter-icon size="1.1x" />
         </button>
 
-        <button class="text-white px-4 py-2 focus:outline-none">
+        <button class="px-4 py-2 text-white focus:outline-none">
           <code-icon size="1.1x" />
         </button>
       </div>
 
       <div class="mx-3">
         <button
-          class="text-white px-4 py-2 focus:outline-none"
+          class="px-4 py-2 text-white focus:outline-none"
           @click="maximizePanel()"
           type="button"
         >
@@ -65,9 +65,6 @@ export default Vue.extend({
       });
     },
   },
-  computed: mapState({
-    selectedNode: (state: any): any => state.editor.selectedNode,
-  }),
 });
 </script>
 

@@ -1,7 +1,8 @@
 .PHONY: sync deps package_sync
 
 PATH := $(PATH):$(HOME)/.cargo/bin
-SHELL := env PATH=$(PATH) /bin/bash
+SHELL := /bin/bash
+#SHELL := env PATH=$(PATH) /bin/bash
 USE_PACMAN=$(wildcard /usr/bin/pacman)
 USE_APT=$(wildcard /usr/bin/apt-get)
 RUST_EXISTS=$(wildcard $(HOME)/.cargo/bin/cargo)

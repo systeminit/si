@@ -1,9 +1,12 @@
 import { Module, Store } from "vuex";
 import _ from "lodash";
+
 import { registry, Props, PropMethod, PropLink, PropObject } from "si-registry";
 
 import { RootStore } from "@/store";
 import { graphqlMutation } from "@/api/apollo";
+import { ChangeSet } from "@/graphql-types";
+import { diffEntity, DiffResult } from "@/utils/diff";
 
 interface NodeConstructor {
   id: Node["id"];
@@ -149,6 +152,72 @@ export const node: Module<NodeStore, RootStore> = {
     mouseTrackSelection: null,
   },
   getters: {
+    // For the current node, produce the diff between the base state and the current state
+    diffCurrent(state, _getters, rootState, _rootGetters): DiffResult {
+      const currentNode: Node | null = state.current;
+      const currentChangeSet: ChangeSet | null = rootState.changeSet.current;
+      if (currentNode && currentChangeSet) {
+        if (currentChangeSet?.id) {
+          // We have changes, and the node has been saved before
+          if (
+            currentNode.display[currentChangeSet.id] &&
+            currentNode.display["saved"]
+          ) {
+            const result = diffEntity(
+              currentNode.display["saved"],
+              currentNode.display[currentChangeSet.id],
+            );
+            return result || [];
+            // We have a change, and the node hasn't been saved
+          } else if (currentNode.display[currentChangeSet.id]) {
+            let startEntity;
+            let finalEntity;
+            for (const entity of currentNode.stack) {
+              if (!startEntity) {
+                startEntity = entity;
+              }
+              if (!finalEntity) {
+                finalEntity = entity;
+              }
+              const entityCount = parseInt(
+                entity.siStorable?.changeSetEntryCount,
+                10,
+              );
+              const startCount = parseInt(
+                startEntity.siStorable?.changeSetEntryCount,
+                10,
+              );
+              const endCount = parseInt(
+                finalEntity.siStorable?.changeSetEntryCount,
+                10,
+              );
+
+              if (entityCount < startCount) {
+                startEntity = entity;
+              }
+              if (entityCount > endCount) {
+                finalEntity = entity;
+              }
+            }
+            const result = diffEntity(
+              startEntity,
+              finalEntity,
+              //currentNode.display[currentChangeSet.id],
+            );
+            return result;
+          } else {
+            return {
+              entries: [],
+              count: 0,
+            };
+          }
+        }
+      }
+      return {
+        entries: [],
+        count: 0,
+      };
+    },
     current(state): Node {
       // This should probably move to state.selection: node[]. -- alex tmp --
       if (state.current) {
@@ -452,13 +521,13 @@ export const node: Module<NodeStore, RootStore> = {
               );
 
               if (toCheckCount > currentCheckCount) {
-                displayData[item.siStorable?.changeSetId] = item;
+                displayData[item.siStorable?.changeSetId] = _.cloneDeep(item);
               }
             } else {
-              displayData[item.siStorable.changeSetId] = item;
+              displayData[item.siStorable.changeSetId] = _.cloneDeep(item);
             }
           } else {
-            displayData["saved"] = item;
+            displayData["saved"] = _.cloneDeep(item);
           }
         }
         node.display = displayData;
@@ -481,13 +550,13 @@ export const node: Module<NodeStore, RootStore> = {
               10,
             );
             if (toCheckCount > currentCheckCount) {
-              displayData[item.siStorable?.changeSetId] = item;
+              displayData[item.siStorable?.changeSetId] = _.cloneDeep(item);
             }
           } else {
-            displayData[item.siStorable.changeSetId] = item;
+            displayData[item.siStorable.changeSetId] = _.cloneDeep(item);
           }
         } else {
-          displayData["saved"] = item;
+          displayData["saved"] = _.cloneDeep(item);
         }
       }
       node.display = displayData;

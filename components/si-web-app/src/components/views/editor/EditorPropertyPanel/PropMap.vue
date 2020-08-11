@@ -1,21 +1,32 @@
 <template>
-  <div class="flex flex-row" v-if="fieldValue.length || editorMode == 'edit'">
-    <div class="input-label">{{ entityProperty.name }}:</div>
+  <div
+    class="flex flex-row mt-2 items-top"
+    v-if="fieldValue.length || editorMode == 'edit'"
+  >
+    <div
+      class="w-40 px-2 text-sm leading-tight text-right text-white input-label"
+    >
+      {{ entityProperty.name }}
+    </div>
 
-    <div>
+    <div class="w-4/5 ml-2">
       <div
         v-for="(mapEntry, index) in fieldValue"
         :key="index"
         class="flex pb-2"
       >
-        <div v-if="editorMode == 'view'">
-          <div class="input-label text-sm leading-tight text-white">
+        <div class="flex w-full row" v-if="editorMode == 'view'">
+          <div
+            class="w-4/5 pl-2 mr-2 text-sm leading-tight text-gray-400"
+            v-bind:class="mapTextClasses(index, 'value')"
+          >
             {{ mapEntry.key }}: {{ mapEntry.value }}
           </div>
         </div>
-        <div v-else>
+        <div class="items-center" v-else>
           <input
-            class="appearance-none text-sm leading-tight focus:outline-none input-bg-color appearance-none border-none text-gray-400 pl-2 h-5 w-32"
+            class="w-2/5 pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none"
+            v-bind:class="mapInputClasses(index, 'key')"
             type="text"
             aria-label="key"
             v-model="mapEntry.key"
@@ -26,7 +37,8 @@
           />
 
           <input
-            class="appearance-none text-sm leading-tight focus:outline-none input-bg-color appearance-none border-none text-gray-400 pl-2 ml-2 h-5 w-32"
+            class="w-2/5 pl-2 ml-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none"
+            v-bind:class="mapInputClasses(index, 'value')"
             type="text"
             aria-label="val"
             v-model="mapEntry.value"
@@ -37,7 +49,7 @@
           />
 
           <button
-            class="text-gray-600 pl-1 focus:outline-none"
+            class="pl-1 text-gray-600 focus:outline-none"
             type="button"
             @click="removeFromMap(index)"
           >
@@ -66,15 +78,14 @@ import _ from "lodash";
 import { RootStore } from "@/store";
 import { RegistryProperty, debouncedSetFieldValue } from "@/store/modules/node";
 
+import PropMixin from "./PropMixin";
+
 interface MapEntries {
   [index: number]: { key: string; value: string };
 }
 
-export default Vue.extend({
+export default PropMixin.extend({
   name: "PropMap",
-  props: {
-    entityProperty: Object as () => RegistryProperty,
-  },
   components: {
     PlusSquareIcon,
     XIcon,
@@ -100,6 +111,41 @@ export default Vue.extend({
       let current = _.cloneDeep(this.fieldValue);
       current.splice(index, 1);
       this.fieldValue = current;
+    },
+    mapTextClasses(index: number, part: string): Record<string, boolean> {
+      let results: Record<string, boolean> = {};
+      if (this.mapHasBeenEdited(index, part)) {
+        results["input-border-gold"] = true;
+        results["border"] = true;
+      } else {
+        results["input-border-grey"] = true;
+      }
+      return results;
+    },
+    mapInputClasses(index: number, part: string): Record<string, boolean> {
+      let results: Record<string, boolean> = {};
+      results["si-property"] = true;
+      if (this.mapHasBeenEdited(index, part)) {
+        results["input-border-gold"] = true;
+        results["input-bg-color-grey"] = true;
+      } else {
+        results["input-border-grey"] = true;
+        results["input-bg-color-grey"] = true;
+      }
+      return results;
+    },
+    mapHasBeenEdited(index: number, part: string): boolean {
+      const path = _.cloneDeep(this.entityProperty.path);
+      path.push(index);
+      path.push(part);
+      let result = _.find(this.diff.entries, diffEntry => {
+        return _.isEqual(diffEntry.path, path);
+      });
+      if (result) {
+        return true;
+      } else {
+        return false;
+      }
     },
   },
   computed: {
@@ -138,19 +184,5 @@ export default Vue.extend({
 
 .property-title-bg-color {
   background-color: #292c2d;
-}
-
-.input-bg-color {
-  background-color: #25788a;
-}
-
-.input-label {
-  @apply pr-2 text-sm text-gray-400 text-right w-40;
-}
-
-input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
 }
 </style>

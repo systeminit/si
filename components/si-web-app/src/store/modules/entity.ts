@@ -14,7 +14,7 @@ interface EntityMeta {
   entity: Entity;
 }
 
-interface Entity {
+export interface Entity {
   id: string;
   name: string;
   description: string;

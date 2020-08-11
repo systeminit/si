@@ -1,12 +1,13 @@
 <template>
-  <div class="flex">
-    <div class="input-label text-sm leading-tight pl-2 text-white">
-      {{ entityProperty.name }}:
+  <div class="flex items-center mt-2" v-if="fieldValue || editorMode == 'edit'">
+    <div class="w-40 px-2 text-sm leading-tight text-right text-white">
+      {{ entityProperty.name }}
     </div>
 
     <div
       v-if="editorMode == 'view'"
-      class="text-sm leading-tight text-gray-400 pl-2 h-5"
+      class="w-4/5 pl-2 mr-2 text-sm leading-tight text-gray-400"
+      v-bind:class="textClasses"
     >
       <template v-if="entityProperty.repeated">
         <ol>
@@ -19,17 +20,21 @@
         {{ fieldValue }}
       </template>
     </div>
-    <div v-else-if="editorMode == 'edit'">
+    <div
+      class="w-4/5 pl-2 mr-2 text-sm leading-tight text-gray-400"
+      v-else-if="editorMode == 'edit'"
+    >
       <template v-if="entityProperty.repeated">
         <div v-for="option in this.options" :key="option.key">
           <input
             type="checkbox"
             :id="option.key"
             :value="option.value"
+            v-bind:class="inputClasses"
             v-model="fieldValue"
           />
           <label
-            class="pl-2 text-sm text-white leading-tight input-label"
+            class="pl-2 text-sm leading-tight text-white input-label"
             :for="option.key"
             :aria-label="option"
           >
@@ -39,7 +44,8 @@
       </template>
       <template v-else>
         <select
-          class="bg-gray-800 border text-gray-400 text-sm px-4 leading-tight focus:outline-none"
+          class="w-4/5 pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none"
+          v-bind:class="inputClasses"
           :aria-label="entityProperty.name"
           v-model="fieldValue"
         >
@@ -64,11 +70,10 @@ import _ from "lodash";
 import { RootStore } from "@/store";
 import { RegistryProperty, debouncedSetFieldValue } from "@/store/modules/node";
 
-export default Vue.extend({
+import PropMixin from "./PropMixin";
+
+export default PropMixin.extend({
   name: "PropSelect",
-  props: {
-    entityProperty: Object as () => RegistryProperty,
-  },
   methods: {
     labelForValue(value: string): string {
       const option = _.find(this.options, ["value", value]);
@@ -125,27 +130,3 @@ export default Vue.extend({
   },
 });
 </script>
-
-<style scoped>
-.property-editor-bg-color {
-  background-color: #212324;
-}
-
-.property-title-bg-color {
-  background-color: #292c2d;
-}
-
-.input-bg-color {
-  background-color: #25788a;
-}
-
-.input-label {
-  @apply pr-2 text-sm text-gray-400 text-right w-40;
-}
-
-input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-</style>

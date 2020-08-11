@@ -1,19 +1,26 @@
 <template>
-  <div class="flex">
-    <div class="input-label text-sm leading-tight pl-2 text-white">
-      {{ entityProperty.name }}:
+  <div class="flex items-center mt-2">
+    <div
+      class="w-40 px-2 text-sm leading-tight text-right text-white input-label"
+    >
+      {{ entityProperty.name }}
     </div>
 
     <div
       v-if="editorMode == 'view'"
-      class="text-sm leading-tight text-gray-400 pl-2 h-5"
+      class="w-4/5 pl-2 mr-2 text-sm leading-tight text-gray-400"
+      v-bind:class="textClasses"
     >
       {{ fieldValue }}
     </div>
-    <div v-else-if="editorMode == 'edit'">
+    <div
+      class="w-4/5 pl-2 mr-2 text-sm leading-tight text-gray-400"
+      v-else-if="editorMode == 'edit'"
+    >
       <select
-        class="bg-gray-800 border text-gray-400 text-sm px-4 leading-tight focus:outline-none"
+        class="w-4/5 pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none"
         :aria-label="entityProperty.name"
+        v-bind:class="inputClasses"
         v-model="fieldValue"
       >
         <option
@@ -34,11 +41,10 @@ import _ from "lodash";
 import { RootStore } from "@/store";
 import { RegistryProperty, debouncedSetFieldValue } from "@/store/modules/node";
 
-export default Vue.extend({
+import PropMixin from "./PropMixin";
+
+export default PropMixin.extend({
   name: "PropEnum",
-  props: {
-    entityProperty: Object as () => RegistryProperty,
-  },
   computed: {
     ...mapState({
       editorMode: (state: any): RootStore["editor"]["mode"] =>
@@ -61,27 +67,3 @@ export default Vue.extend({
   },
 });
 </script>
-
-<style scoped>
-.property-editor-bg-color {
-  background-color: #212324;
-}
-
-.property-title-bg-color {
-  background-color: #292c2d;
-}
-
-.input-bg-color {
-  background-color: #25788a;
-}
-
-.input-label {
-  @apply pr-2 text-sm text-gray-400 text-right w-40;
-}
-
-input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-</style>
