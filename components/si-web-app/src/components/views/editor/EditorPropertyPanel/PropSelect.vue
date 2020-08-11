@@ -58,6 +58,7 @@
           </option>
         </select>
       </template>
+      <ValidationWidget :value="fieldValue" :entityProperty="entityProperty" />
     </div>
   </div>
 </template>
@@ -71,9 +72,13 @@ import { RootStore } from "@/store";
 import { RegistryProperty, debouncedSetFieldValue } from "@/store/modules/node";
 
 import PropMixin from "./PropMixin";
+import ValidationWidget from "@/components/ui/ValidationWidget.vue";
 
 export default PropMixin.extend({
   name: "PropSelect",
+  components: {
+    ValidationWidget,
+  },
   methods: {
     labelForValue(value: string): string {
       const option = _.find(this.options, ["value", value]);

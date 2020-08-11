@@ -1,3 +1,4 @@
+import Joi from "joi";
 import { Prop, PropValue } from "../prop";
 
 export class PropMap extends Prop {
@@ -16,6 +17,14 @@ export class PropMap extends Prop {
   }) {
     super({ name, label, componentTypeName });
     this.baseDefaultValue = defaultValue || {};
+    this.baseValidation = Joi.array()
+      .items(
+        Joi.object({
+          key: Joi.string(),
+          value: Joi.string(),
+        }),
+      )
+      .label(this.name);
   }
 
   kind(): string {
