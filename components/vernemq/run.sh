@@ -1,3 +1,12 @@
-#!/bin/bash
+#!/usr/bin/env sh
 
-docker run -e "DOCKER_VERNEMQ_ACCEPT_EULA=yes" -e "DOCKER_VERNEMQ_ALLOW_ANONYMOUS=on" -p 1883:1883 -p 8081:8080 --name vernemq -d erlio/docker-vernemq
+VERSION=1.10.4.1-alpine
+
+docker run \
+  --env "DOCKER_VERNEMQ_ACCEPT_EULA=yes" \
+  --env "DOCKER_VERNEMQ_ALLOW_ANONYMOUS=on" \
+  --env "DOCKER_VERNEMQ_LISTENER__TCP__ALLOWED_PROTOCOL_VERSIONS=3,4,131,5" \
+  --publish 1883:1883 \
+  --name mqtt \
+  --detach \
+  "vernemq/vernemq:$VERSION"
