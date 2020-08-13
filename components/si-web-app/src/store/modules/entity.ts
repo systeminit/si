@@ -219,6 +219,13 @@ export const entity: Module<EntityStore, RootStore> = {
             kind: "Deployment",
           },
         };
+      } else if (payload.typeName == "kubernetesServiceEntity") {
+        variables.properties = {
+          kubernetesObject: {
+            apiVersion: "apps/v1",
+            kind: "Service",
+          },
+        };
       } else {
         variables.properties = {};
       }

@@ -38,7 +38,7 @@ impl ChangeSet {
                 "SELECT `{bucket_name}`.* 
                            FROM `{bucket_name}`
                            WHERE siStorable.changeSetId = \"{change_set_id}\"
-                           ORDER BY $meta.id",
+                           ORDER BY siStorable.changeSetEntryCount",
                 bucket_name = db.bucket_name,
                 change_set_id = change_set_id,
             );
@@ -95,6 +95,9 @@ impl ChangeSet {
                     .unwrap_or(0) as i32,
             )
             .unwrap();
+            crate::EventLog::change_set_entry_execute_start(&db, &user_id, &entry_json)
+                .await
+                .expect("you die like a dead person");
             let mut real_json = entry_json.clone();
             match real_json.as_object_mut() {
                 Some(entry) => {
@@ -166,12 +169,14 @@ impl ChangeSet {
                     if check_count == to_check_count {
                         change_set.set_status(ChangeSetStatus::Failed);
                         change_set.save(&db).await?;
+                        crate::EventLog::change_set_entry_execute_end(&db, &user_id, &entry_json)
+                            .await?;
                         return Err(AccountError::ChangeSetEntityEventTimeout);
                     }
                 }
-                crate::EventLog::change_set_entry_execute(&db, &user_id, &entry_json).await?;
+                crate::EventLog::change_set_entry_execute_end(&db, &user_id, &entry_json).await?;
             } else {
-                crate::EventLog::change_set_entry_execute(&db, &user_id, &entry_json).await?;
+                crate::EventLog::change_set_entry_execute_end(&db, &user_id, &entry_json).await?;
             }
         }
 
