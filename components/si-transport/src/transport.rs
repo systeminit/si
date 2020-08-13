@@ -6,8 +6,9 @@ use crate::{
 };
 use futures::{Stream, StreamExt};
 use paho_mqtt::{
-    AsyncClient, ConnectOptions, CreateOptionsBuilder, Message as MqttMessage, MessageBuilder,
-    PersistenceType, Properties, Property, PropertyCode,
+    AsyncClient, ConnectOptions, ConnectOptionsBuilder, CreateOptionsBuilder,
+    Message as MqttMessage, MessageBuilder, PersistenceType, Properties, PropertyCode,
+    MQTT_VERSION_5,
 };
 use std::{convert::TryInto, fmt, marker::Unpin, time::Duration};
 use tokio::sync::mpsc::{self, Sender};
@@ -25,17 +26,13 @@ impl Transport {
     ) -> Result<Self> {
         let mqtt = CreateOptionsBuilder::new()
             .server_uri(server_uri)
-            .client_id(format!(
-                "{}:{}",
-                client_name.as_ref(),
-                crate::uuid::uuid_string()
-            ))
+            .client_id(client_name.as_ref())
             .persistence(PersistenceType::None)
-            .mqtt_version(paho_mqtt::MQTT_VERSION_5)
+            .mqtt_version(MQTT_VERSION_5)
             .max_buffered_messages(100)
             .create_client()?;
 
-        mqtt.connect(ConnectOptions::new()).await?;
+        mqtt.connect(connect_options()).await?;
 
         Ok(Self { mqtt })
     }
@@ -48,13 +45,16 @@ impl Transport {
         let message = message.try_into().map_err(Into::into)?;
 
         let mut props = Properties::new();
-        props.push(Property::new(PropertyCode::PayloadFormatIndicator, 1u8)?)?;
-        props.push(Property::new(
+        props.push_byte(PropertyCode::PayloadFormatIndicator, 1)?;
+        props.push_string(
             PropertyCode::ContentType,
-            content_type(message.payload_type),
-        )?)?;
+            &content_type(message.payload_type),
+        )?;
+        if let Some(response_header) = message.response_header {
+            props.push_string(PropertyCode::ResponseTopic, &response_header.to_string())?;
+        }
         let mqtt_msg = MessageBuilder::new()
-            .topic(message.topic)
+            .topic(message.header.to_string())
             .qos(message.qos.into())
             .payload(message.payload)
             .properties(props)
@@ -73,7 +73,7 @@ impl Transport {
 
         let (topics, qoses): (Vec<_>, Vec<_>) = subscriptions
             .into_iter()
-            .map(|(topic, qos)| (String::from(topic), i32::from(qos)))
+            .map(|(topic, qos)| (topic.to_string(), i32::from(qos)))
             .unzip();
 
         let mqtt = self.mqtt.clone();
@@ -114,6 +114,12 @@ impl<R: Stream<Item = Option<MqttMessage>> + Send + Unpin + 'static + fmt::Debug
             .field("rx", &self.rx)
             .finish()
     }
+}
+
+fn connect_options() -> ConnectOptions {
+    ConnectOptionsBuilder::new()
+        .mqtt_version(MQTT_VERSION_5)
+        .finalize()
 }
 
 async fn stream_with_reconnect<R: Stream<Item = Option<MqttMessage>> + Send + Unpin + 'static>(

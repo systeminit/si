@@ -50,7 +50,7 @@ impl si_cea::Finalize for SystemEntityFinalizer {
         db: &si_data::Db,
         message: si_agent::WireMessage,
     ) -> si_cea::CeaResult<()> {
-        let (_header, _qos, _response_topic, object) = {
+        let (_header, _qos, _response_header, object) = {
             let msg: si_agent::Message<crate::protobuf::SystemEntity> = message.try_into()?;
             msg.into_parts()
         };

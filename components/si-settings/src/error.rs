@@ -9,4 +9,6 @@ pub enum SettingsError {
     SodiumOxideInit,
     #[error("error deserializing the configuration")]
     ConfigError(#[from] config::ConfigError),
+    #[error("required settings value for: {0}")]
+    Required(&'static str),
 }

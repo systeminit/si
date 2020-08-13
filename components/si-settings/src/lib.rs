@@ -51,13 +51,15 @@ impl Default for Paging {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Vernemq {
-    pub server_uri: String,
+    pub server_uri: Option<String>,
+    pub shared_topic_id: Option<String>,
 }
 
 impl Default for Vernemq {
     fn default() -> Self {
         Vernemq {
-            server_uri: String::from("tcp://localhost:1883"),
+            server_uri: Some(String::from("tcp://localhost:1883")),
+            shared_topic_id: None,
         }
     }
 }
@@ -72,12 +74,24 @@ pub struct Settings {
 
 impl Settings {
     pub fn vernemq_server_uri(&self) -> String {
-        if self.vernemq.is_some() {
-            let v = self.vernemq.as_ref().unwrap();
-            v.server_uri.clone()
-        } else {
-            let v = Vernemq::default().server_uri;
-            v
+        match self.vernemq {
+            Some(ref vernemq) => match vernemq.server_uri {
+                Some(ref server_uri) => server_uri.to_string(),
+                None => Vernemq::default().server_uri.unwrap(),
+            },
+            None => Vernemq::default().server_uri.unwrap(),
+        }
+    }
+
+    pub fn vernemq_shared_topic_id(&self) -> Result<&str> {
+        let key = "vernemq.shared_topic_id";
+
+        match self.vernemq {
+            Some(ref vernemq) => match vernemq.shared_topic_id {
+                Some(ref shared_topic_id) => Ok(shared_topic_id),
+                None => Err(SettingsError::Required(key)),
+            },
+            None => Err(SettingsError::Required(key)),
         }
     }
 

@@ -97,25 +97,25 @@ where
         transport: &si_agent::Transport,
         message: si_agent::WireMessage,
     ) -> si_agent::AgentResult<()> {
-        let (_header, _qos, response_topic, mut entity_event) = {
+        let (_header, _qos, response_header, mut entity_event) = {
             let msg: si_agent::Message<crate::protobuf::ServiceEntityEvent> = message.try_into()?;
             msg.into_parts()
         };
 
         // Extract the response topic from the message, which must be a data header
-        let mut response_topic =
-            match response_topic.ok_or(si_agent::Error::MissingResponseTopic)? {
-                si_agent::Header::AgentData(agent_data_topic) => agent_data_topic,
-                topic => {
-                    tracing::warn!(?topic, "response topic must be Header::AgentData type");
-                    return Err(si_agent::Error::InvalidTopicType(topic));
+        let mut response_header =
+            match response_header.ok_or(si_agent::Error::MissingResponseTopic)? {
+                si_agent::Header::AgentData(agent_data_header) => agent_data_header,
+                header => {
+                    tracing::warn!(?header, "response header must be Header::AgentData type");
+                    return Err(si_agent::Error::InvalidTopicType(header));
                 }
             };
-        let stream_header: si_agent::Header = response_topic.clone().into();
+        let stream_header: si_agent::Header = response_header.clone().into();
 
         // Modify the response topic to determine the finalized topic
-        response_topic.set_data(si_agent::AgentData::Finalize);
-        let finalized_header = response_topic.into();
+        response_header.set_data(si_agent::AgentData::Finalize);
+        let finalized_header = response_header.into();
 
         si_cea::agent::EntityEventDispatch::prepare_entity_event(&mut entity_event)
             .map_err(si_agent::Error::execute)?;

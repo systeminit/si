@@ -44,12 +44,12 @@ impl AgentExecuteSender {
     }
 
     pub async fn send(&mut self, entry: &serde_json::Value) -> Result<()> {
-        let topic = header_for_entry(entry)?.to_string();
+        let header = header_for_entry(entry)?;
         let qos = SEND_QOS;
-        let response_topic = Some(response_topic_for_entry(entry)?.to_string());
+        let response_header = Some(response_header_for_entry(entry)?);
         let payload_type = object_type_for_entry(entry)?;
 
-        let message = WireMessage::from_parts(topic, qos, response_topic, payload_type, entry)?;
+        let message = WireMessage::from_parts(header, qos, response_header, payload_type, entry)?;
 
         self.transport.send(message).await?;
 
@@ -88,7 +88,7 @@ fn header_for_entry(entry: &serde_json::Value) -> Result<Header> {
     ))
 }
 
-fn response_topic_for_entry(entry: &serde_json::Value) -> Result<Header> {
+fn response_header_for_entry(entry: &serde_json::Value) -> Result<Header> {
     let billing_account_id = entry["siProperties"]["billingAccountId"].as_str().ok_or(
         AgentExecuteSenderError::MissingField("billingAccountId".into()),
     )?;
