@@ -11,6 +11,7 @@ import { entity, EntityStore } from "./modules/entity";
 import { user, UserStore } from "./modules/user";
 import { changeSet, ChangeSetStore } from "./modules/changeSet";
 import { persistEdits } from "./plugins/persistEdits";
+import { persistNodes } from "./plugins/persistNodes";
 import { workspace, WorkspaceStore } from "./modules/workspace";
 import { billingAccount, BillingAccountStore } from "./modules/billingAccount";
 import { node, NodeStore } from "./modules/node";
@@ -71,7 +72,7 @@ const store: Store<RootStore> = new Vuex.Store({
     loader,
   },
   strict: debug,
-  plugins: [persistEdits],
+  plugins: [persistEdits, persistNodes],
 });
 
 export default store;

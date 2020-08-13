@@ -4,8 +4,8 @@ import _ from "lodash";
 import { registry, Props, PropMethod, PropLink, PropObject } from "si-registry";
 
 import { RootStore } from "@/store";
-import { graphqlMutation } from "@/api/apollo";
-import { ChangeSet } from "@/graphql-types";
+import { graphqlMutation, graphqlQueryListAll } from "@/api/apollo";
+import { ChangeSet, Node as GqlNode, NodePosition } from "@/graphql-types";
 import { diffEntity, DiffResult } from "@/utils/diff";
 
 interface NodeConstructor {
@@ -15,11 +15,6 @@ interface NodeConstructor {
 
 export enum NodeType {
   Entity = "Entity",
-}
-
-interface Position {
-  x: number;
-  y: number;
 }
 
 // -- alex tmp --
@@ -50,14 +45,12 @@ interface Position {
 //   selected: boolean;
 //   visible: boolean;
 // }
+//
+// Node
+// sockets: Socket[]; -- alex tmp --
+// connections: NodeConnection[]; -- alex tmp --
 
-interface Node {
-  id: string;
-  name: string;
-  nodeType: NodeType;
-  position: Position;
-  // sockets: Socket[]; -- alex tmp --
-  // connections: NodeConnection[]; -- alex tmp --
+interface Node extends GqlNode {
   stack: any[];
   display: Record<string, any>;
 }
@@ -73,7 +66,7 @@ interface AddMutation {
 }
 
 export interface Item {
-  id: string;
+  entityId: string;
   name: string;
   nodeType: NodeType;
   object: any;
@@ -140,6 +133,22 @@ export const debouncedSetFieldValue = _.debounce(async function({
     path,
     value,
     map,
+  });
+},
+100);
+
+export const debouncedSetPosition = _.debounce(async function({
+  store,
+  nodeId,
+  nodePosition,
+}: {
+  store: Store<RootStore>;
+  nodeId: string;
+  nodePosition: NodePosition;
+}) {
+  await store.dispatch("node/setNodePosition", {
+    id: nodeId,
+    position: nodePosition,
   });
 },
 100);
@@ -506,31 +515,33 @@ export const node: Module<NodeStore, RootStore> = {
   mutations: {
     add(state, payload: AddMutation) {
       for (let node of payload.nodes) {
-        const displayData: Record<string, any> = {};
-        for (let item of node.stack) {
-          if (item.siStorable?.changeSetId) {
-            if (displayData[item.siStorable.changeSetId]) {
-              let toCheckCount = parseInt(
-                item.siStorable?.changeSetEntryCount,
-                10,
-              );
-              let currentCheckCount = parseInt(
-                displayData[item.siStorable?.changeSetId].siStorable
-                  ?.changeSetEntryCount,
-                10,
-              );
+        if (node.stack) {
+          const displayData: Record<string, any> = {};
+          for (let item of node.stack) {
+            if (item.siStorable?.changeSetId) {
+              if (displayData[item.siStorable.changeSetId]) {
+                let toCheckCount = parseInt(
+                  item.siStorable?.changeSetEntryCount,
+                  10,
+                );
+                let currentCheckCount = parseInt(
+                  displayData[item.siStorable?.changeSetId].siStorable
+                    ?.changeSetEntryCount,
+                  10,
+                );
 
-              if (toCheckCount > currentCheckCount) {
-                displayData[item.siStorable?.changeSetId] = _.cloneDeep(item);
+                if (toCheckCount > currentCheckCount) {
+                  displayData[item.siStorable?.changeSetId] = _.cloneDeep(item);
+                }
+              } else {
+                displayData[item.siStorable.changeSetId] = _.cloneDeep(item);
               }
             } else {
-              displayData[item.siStorable.changeSetId] = _.cloneDeep(item);
+              displayData["saved"] = _.cloneDeep(item);
             }
-          } else {
-            displayData["saved"] = _.cloneDeep(item);
           }
+          node.display = displayData;
         }
-        node.display = displayData;
       }
       state.nodes = _.unionBy(payload.nodes, state.nodes, "id");
     },
@@ -586,9 +597,13 @@ export const node: Module<NodeStore, RootStore> = {
         payload.value,
       );
     },
-    setNodePosition(state, payload: Position) {
-      if (state.current) {
-        state.current.position = payload;
+    setNodePosition(state, payload: { id: string; position: NodePosition }) {
+      const node = _.find(state.nodes, ["id", payload.id]);
+      if (node) {
+        node.position = payload.position;
+      }
+      if (state.current?.id == payload.id) {
+        state.current.position = payload.position;
       }
     },
   },
@@ -667,10 +682,11 @@ export const node: Module<NodeStore, RootStore> = {
     unsetMouseTrackSelection({ commit }) {
       commit("unsetMouseTrackSelection");
     },
-    setNodePosition({ commit, getters }, payload: Position) {
+    setNodePosition(
+      { commit },
+      payload: { position: NodePosition; id: string },
+    ) {
       commit("setNodePosition", payload);
-      const currentNode = getters["current"];
-      commit("add", { nodes: [currentNode] });
     },
     async delete({ getters, dispatch, rootGetters }) {
       let currentNode = getters["current"];
@@ -699,9 +715,11 @@ export const node: Module<NodeStore, RootStore> = {
         );
       }
     },
-    add({ commit, state }, payload: AddAction) {
+    async add({ commit, state, rootGetters }, payload: AddAction) {
       for (let item of payload.items) {
-        let existingNode = _.cloneDeep(_.find(state.nodes, ["id", item.id]));
+        let existingNode = _.cloneDeep(
+          _.find(state.nodes, ["entityId", item.entityId]),
+        );
         if (existingNode) {
           existingNode.stack = _.unionBy(
             [item.object],
@@ -710,23 +728,51 @@ export const node: Module<NodeStore, RootStore> = {
           );
           existingNode.name = item.name;
           commit("add", { nodes: [existingNode] });
-          if (state.current?.id == item.id) {
+          if (state.current?.entityId == item.entityId) {
             commit("current", existingNode);
           }
         } else {
-          let newNode = {
-            id: item.id,
-            name: item.name,
-            nodeType: NodeType.Entity,
-            stack: [item.object],
-          };
+          let workspace = rootGetters["workspace/current"];
+          let profile = rootGetters["user/profile"];
+          // TODO: You have to create a node, and you need to do loader? Tricky!
+          //       probably finish the whole create/entity process.
+          const result = await graphqlMutation({
+            typeName: "node",
+            methodName: "create",
+            variables: {
+              name: item.name,
+              displayName: item.name,
+              siProperties: {
+                workspaceId: workspace.id,
+                billingAccountId: profile.billingAccount?.id,
+                organizationId: profile.organization?.id,
+              },
+              entityId: item.entityId,
+              position: {
+                x: 0,
+                y: 0,
+              },
+              sockets: [{ name: "input" }, { name: "output" }],
+              nodeKind: "ENTITY",
+            },
+          });
+          const newNode = result.item;
+          newNode["stack"] = [item.object];
           commit("add", {
             nodes: [newNode],
           });
-          if (state.current?.id == item.id) {
+          if (state.current?.entityId == item.entityId) {
             commit("current", newNode);
           }
         }
+      }
+    },
+    async load({ commit }): Promise<void> {
+      const nodes: GqlNode[] = await graphqlQueryListAll({
+        typeName: "node",
+      });
+      if (nodes.length > 0) {
+        commit("add", { nodes });
       }
     },
   },

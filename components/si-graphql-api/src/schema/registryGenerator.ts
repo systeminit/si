@@ -1,4 +1,4 @@
-import {Metadata} from "grpc";
+import { Metadata } from "grpc";
 import {
   registry,
   Props,
@@ -21,11 +21,11 @@ import {
   mutationField,
   extendType,
 } from "@nexus/schema";
-import {logger} from "@/logger";
-import {camelCase, pascalCase, constantCase} from "change-case";
-import {AuthenticationError} from "apollo-server";
+import { logger } from "@/logger";
+import { camelCase, pascalCase, constantCase } from "change-case";
+import { AuthenticationError } from "apollo-server";
 import traceApi from "@opentelemetry/api";
-import {resolverSpan} from "@/tracing/resolver";
+import { resolverSpan } from "@/tracing/resolver";
 
 interface NexusBlockOptions {
   nexusTypeDef?: NexusTypeDefBlock;
@@ -198,7 +198,7 @@ export class SiRegistryGenerator {
                 // @ts-ignore
                 type: `${methodName}Reply`,
                 // @ts-ignore
-                args: {input: arg({type: `${methodName}Request`})},
+                args: { input: arg({ type: `${methodName}Request` }) },
                 description: returnType.displayTypeName,
                 async resolve(_root, input, context: any) {
                   const tracer = traceApi.trace.getTracer("si-graphql-api");
@@ -276,7 +276,7 @@ export class SiRegistryGenerator {
                       }
                     }
 
-                    console.dir({input}, {depth: Infinity});
+                    console.dir({ input }, { depth: Infinity });
 
                     const reqInput = thisGenerator.transformGraphqlToGrpc(
                       input,
@@ -311,7 +311,7 @@ export class SiRegistryGenerator {
                 // @ts-ignore
                 type: `${methodName}Reply`,
                 // @ts-ignore
-                args: {input: arg({type: `${methodName}Request`})},
+                args: { input: arg({ type: `${methodName}Request` }) },
                 description: returnType.displayTypeName,
                 async resolve(_root, input, context: any) {
                   const tracer = traceApi.trace.getTracer("si-graphql-api");
@@ -405,7 +405,7 @@ export class SiRegistryGenerator {
                 // @ts-ignore
                 type: `${methodName}Reply`,
                 // @ts-ignore
-                args: {input: arg({type: `${methodName}Request`})},
+                args: { input: arg({ type: `${methodName}Request` }) },
                 description: returnType.displayTypeName,
                 async resolve(_root, input, context: any) {
                   const tracer = traceApi.trace.getTracer("si-graphql-api");
@@ -531,18 +531,18 @@ export class SiRegistryGenerator {
     if (prop.kind() == "object") {
       // @ts-ignore
       iteratorField = prop.properties.attrs;
-      this.propAsType(prop, {inputType: true});
+      this.propAsType(prop, { inputType: true });
     } else if (prop.kind() == "link") {
       // @ts-ignore
       const realprop = prop.lookupMyself();
       if (realprop.kind() == "object") {
-        this.propAsType(realprop, {inputType: true});
+        this.propAsType(realprop, { inputType: true });
         iteratorField = realprop.properties.attrs;
       } else {
         return;
       }
     } else if (prop.kind() == "map") {
-      this.propAsType(prop, {inputType: true});
+      this.propAsType(prop, { inputType: true });
       return;
     } else {
       return;
@@ -604,7 +604,7 @@ export class SiRegistryGenerator {
         description: `${prop.label} Request`,
         definition(t) {
           for (const rp of prop.request.properties.attrs) {
-            thisGenerator.propAsType(rp, {nexusTypeDef: t, inputType: true});
+            thisGenerator.propAsType(rp, { nexusTypeDef: t, inputType: true });
           }
         },
       });
@@ -618,7 +618,7 @@ export class SiRegistryGenerator {
         description: `${prop.label} Reply`,
         definition(t) {
           for (const rp of prop.reply.properties.attrs) {
-            thisGenerator.propAsType(rp, {nexusTypeDef: t, inputType: false});
+            thisGenerator.propAsType(rp, { nexusTypeDef: t, inputType: false });
           }
         },
       });
@@ -642,7 +642,7 @@ export class SiRegistryGenerator {
           nullable: !prop.required,
         }),
       },
-      async resolve(_root, {input}, context: any): Promise<any> {
+      async resolve(_root, { input }, context: any): Promise<any> {
         const tracer = traceApi.trace.getTracer("si-graphql-api");
         const span = resolverSpan(thisGenerator.graphqlTypeName(prop), {
           context,
@@ -755,7 +755,7 @@ export class SiRegistryGenerator {
       }
       for (const entry of input) {
         // TODO: not sure that we need the `${}` around entry.value, need to test.
-        newMap[entry.key] = {value: `${entry.value}`};
+        newMap[entry.key] = { value: `${entry.value}` };
       }
       return newMap;
     } else if (prop.kind() == "object") {
@@ -779,6 +779,7 @@ export class SiRegistryGenerator {
         // @ts-ignore
         prop.lookupMyself(),
         component,
+        ignoreRepeated,
       );
     } else if (prop.kind() == "enum") {
       const enumProp = prop as PropEnum;
@@ -790,7 +791,7 @@ export class SiRegistryGenerator {
           return index + 1;
         }
       }
-      logger.log("warn", "Unknown enum", {prop, input});
+      logger.log("warn", "Unknown enum", { prop, input });
       return 0;
     } else {
       console.log(
@@ -853,7 +854,7 @@ export class SiRegistryGenerator {
       const newMapArray = [];
       const keys = Object.keys(input).sort();
       for (const key of keys) {
-        newMapArray.push({key, value: input[key]["value"]});
+        newMapArray.push({ key, value: input[key]["value"] });
       }
       return newMapArray;
     } else if (prop.kind() == "object") {
@@ -897,9 +898,9 @@ export class SiRegistryGenerator {
 
   stringField(
     prop: Props,
-    {nexusTypeDef, inputType}: NexusBlockOptions,
+    { nexusTypeDef, inputType }: NexusBlockOptions,
   ): void {
-    const fieldConfig = this.makeFieldConfig(prop, {inputType});
+    const fieldConfig = this.makeFieldConfig(prop, { inputType });
 
     if (nexusTypeDef) {
       if (prop.repeated) {
@@ -918,8 +919,8 @@ export class SiRegistryGenerator {
     }
   }
 
-  intField(prop: Props, {nexusTypeDef, inputType}: NexusBlockOptions): void {
-    const fieldConfig = this.makeFieldConfig(prop, {inputType});
+  intField(prop: Props, { nexusTypeDef, inputType }: NexusBlockOptions): void {
+    const fieldConfig = this.makeFieldConfig(prop, { inputType });
 
     if (nexusTypeDef) {
       const numberProp = prop as PropNumber;
@@ -941,9 +942,9 @@ export class SiRegistryGenerator {
 
   transformLinkField(
     prop: Props,
-    {nexusTypeDef, inputType}: NexusBlockOptions,
+    { nexusTypeDef, inputType }: NexusBlockOptions,
   ): void {
-    const fieldConfig = this.makeFieldConfig(prop, {inputType});
+    const fieldConfig = this.makeFieldConfig(prop, { inputType });
 
     // @ts-ignore
     const realProp = prop.lookupMyself();
@@ -970,11 +971,11 @@ export class SiRegistryGenerator {
         realProp.kind() == "select" ||
         realProp.kind() == "code"
       ) {
-        this.stringField(prop, {nexusTypeDef, inputType});
+        this.stringField(prop, { nexusTypeDef, inputType });
       } else if (realProp.kind() == "number") {
-        this.intField(prop, {nexusTypeDef, inputType});
+        this.intField(prop, { nexusTypeDef, inputType });
       } else if (realProp.kind() == "bool") {
-        this.booleanField(prop, {nexusTypeDef, inputType});
+        this.booleanField(prop, { nexusTypeDef, inputType });
       } else if (realProp.kind() == "enum") {
         if (prop.repeated) {
           // @ts-ignore
@@ -989,6 +990,8 @@ export class SiRegistryGenerator {
             ...fieldConfig,
           });
         }
+      } else if (realProp.kind() == "link") {
+        this.transformLinkField(realProp, { nexusTypeDef, inputType });
       } else {
         console.log("um, not sure what to do for you", {
           realProp,
@@ -1002,16 +1005,16 @@ export class SiRegistryGenerator {
           return;
         }
         this.loopDetector[this.graphqlTypeName(realProp, inputType)] = true;
-        this.propAsType(realProp, {inputType});
+        this.propAsType(realProp, { inputType });
       }
     }
   }
 
   booleanField(
     prop: Props,
-    {nexusTypeDef, inputType}: NexusBlockOptions,
+    { nexusTypeDef, inputType }: NexusBlockOptions,
   ): void {
-    const fieldConfig = this.makeFieldConfig(prop, {inputType});
+    const fieldConfig = this.makeFieldConfig(prop, { inputType });
 
     if (nexusTypeDef) {
       if (prop.repeated) {
@@ -1022,8 +1025,8 @@ export class SiRegistryGenerator {
     }
   }
 
-  enumField(prop: Props, {nexusTypeDef, inputType}: NexusBlockOptions): void {
-    const fieldConfig = this.makeFieldConfig(prop, {inputType});
+  enumField(prop: Props, { nexusTypeDef, inputType }: NexusBlockOptions): void {
+    const fieldConfig = this.makeFieldConfig(prop, { inputType });
 
     if (nexusTypeDef) {
       if (prop.repeated) {
@@ -1058,7 +1061,7 @@ export class SiRegistryGenerator {
     }
   }
 
-  makeFieldConfig(prop: Props, {inputType}: NexusBlockOptions): FieldConfig {
+  makeFieldConfig(prop: Props, { inputType }: NexusBlockOptions): FieldConfig {
     const fieldConfig: FieldConfig = {
       description: prop.label,
     };
@@ -1074,9 +1077,9 @@ export class SiRegistryGenerator {
 
   objectField(
     prop: Props,
-    {nexusTypeDef, inputType}: NexusBlockOptions,
+    { nexusTypeDef, inputType }: NexusBlockOptions,
   ): void {
-    const fieldConfig = this.makeFieldConfig(prop, {inputType});
+    const fieldConfig = this.makeFieldConfig(prop, { inputType });
 
     if (nexusTypeDef) {
       if (prop.repeated) {
@@ -1106,11 +1109,11 @@ export class SiRegistryGenerator {
     // @ts-ignore
     for (const p of prop.properties.attrs) {
       if (p.kind() == "object") {
-        thisGenerator.propAsType(p, {inputType});
+        thisGenerator.propAsType(p, { inputType });
       } else if (p.kind() == "enum") {
-        thisGenerator.propAsType(p, {inputType});
+        thisGenerator.propAsType(p, { inputType });
       } else if (p.kind() == "map") {
-        thisGenerator.propAsType(p, {inputType});
+        thisGenerator.propAsType(p, { inputType });
       } else if (p.kind() == "link") {
         const realProp = p.lookupMyself();
         //if (
@@ -1119,7 +1122,7 @@ export class SiRegistryGenerator {
         //) {
         //}
         if (realProp.kind() == "object") {
-          thisGenerator.propAsType(p, {inputType});
+          thisGenerator.propAsType(p, { inputType });
           // TODO: the issue is that when we recurse for input types,
           // or any other kind for that matter, we can get in big fucking
           // trouble with loops, like the one we have in query. its bad.
@@ -1158,7 +1161,7 @@ export class SiRegistryGenerator {
                 });
               }
             } else {
-              thisGenerator.propAsType(p, {nexusTypeDef: t, inputType});
+              thisGenerator.propAsType(p, { nexusTypeDef: t, inputType });
             }
           }
         },
@@ -1170,9 +1173,9 @@ export class SiRegistryGenerator {
 
   transformMapField(
     prop: Props,
-    {nexusTypeDef, inputType}: NexusBlockOptions,
+    { nexusTypeDef, inputType }: NexusBlockOptions,
   ): void {
-    const fieldConfig = this.makeFieldConfig(prop, {inputType});
+    const fieldConfig = this.makeFieldConfig(prop, { inputType });
 
     if (nexusTypeDef) {
       if (prop.repeated) {
@@ -1219,7 +1222,7 @@ export class SiRegistryGenerator {
 
   propAsType(
     prop: Props,
-    {nexusTypeDef, inputType}: NexusBlockOptions,
+    { nexusTypeDef, inputType }: NexusBlockOptions,
   ): void {
     if (prop.skip) {
       return;
@@ -1227,24 +1230,24 @@ export class SiRegistryGenerator {
     // yes, this is a binding of this. I need it. Shut your face.
     // eslint-disable-next-line
     if (prop.kind() == "object") {
-      this.objectField(prop, {nexusTypeDef, inputType});
+      this.objectField(prop, { nexusTypeDef, inputType });
     } else if (
       prop.kind() == "text" ||
       prop.kind() == "code" ||
       prop.kind() == "select" ||
       prop.kind() == "password"
     ) {
-      this.stringField(prop, {nexusTypeDef, inputType});
+      this.stringField(prop, { nexusTypeDef, inputType });
     } else if (prop.kind() == "number") {
-      this.intField(prop, {nexusTypeDef, inputType});
+      this.intField(prop, { nexusTypeDef, inputType });
     } else if (prop.kind() == "bool") {
-      this.booleanField(prop, {nexusTypeDef, inputType});
+      this.booleanField(prop, { nexusTypeDef, inputType });
     } else if (prop.kind() == "link") {
-      this.transformLinkField(prop, {nexusTypeDef, inputType});
+      this.transformLinkField(prop, { nexusTypeDef, inputType });
     } else if (prop.kind() == "enum") {
-      this.enumField(prop, {nexusTypeDef, inputType});
+      this.enumField(prop, { nexusTypeDef, inputType });
     } else if (prop.kind() == "map") {
-      this.transformMapField(prop, {nexusTypeDef, inputType});
+      this.transformMapField(prop, { nexusTypeDef, inputType });
     } else {
       console.dir(prop);
       throw `Cannot transform this prop to a graphql type - bug: ${prop.kind()}`;
@@ -1253,9 +1256,9 @@ export class SiRegistryGenerator {
 
   entityField(
     prop: Props,
-    {nexusTypeDef, inputType}: NexusBlockOptions,
+    { nexusTypeDef, inputType }: NexusBlockOptions,
   ): void {
-    const fieldConfig = this.makeFieldConfig(prop, {inputType});
+    const fieldConfig = this.makeFieldConfig(prop, { inputType });
 
     if (nexusTypeDef) {
       if (prop.repeated) {
@@ -1305,7 +1308,7 @@ export class SiRegistryGenerator {
   //}
 
   generateComponent(systemObject: ObjectTypes): void {
-    this.propAsType(systemObject.rootProp, {inputType: false});
+    this.propAsType(systemObject.rootProp, { inputType: false });
   }
 }
 

@@ -53,6 +53,7 @@ import NodeList from "./NodeList.vue";
 // import ConnectionObject from "./ConnectionObject.vue";
 
 import { mapGetters, Store } from "vuex";
+import { debouncedSetPosition } from "@/store/modules/node";
 
 export default {
   name: "SchematicPanel",
@@ -242,8 +243,11 @@ export default {
         x: posX,
         y: posY,
       };
-      // find the right node in the nodeList by ID
-      this.$store.dispatch("node/setNodePosition", nodePosition);
+      debouncedSetPosition({
+        store: this.$store,
+        nodeId: this.nodeSelection.id,
+        nodePosition,
+      });
     },
     mouseOver() {},
     mouseDown(event) {
@@ -345,7 +349,7 @@ export default {
             selectedObject.style.left = newPositionX + "px";
             selectedObject.style.top = newPositionY + "px";
 
-            //this.updateSelectedNodePosition(newPositionX, newPositionY);
+            this.updateSelectedNodePosition(newPositionX, newPositionY);
           }
         }
       }

@@ -821,73 +821,103 @@ enum DataStorableChangeSetEventType {
   UPDATE
 }
 
-type EdgeComponent {
-  """Component Constraints"""
-  constraints: EdgeComponentConstraints
+type Edge {
+  """Bidirectional"""
+  bidirectional: Boolean
 
-  """Component Description"""
-  description: String
-
-  """A System Initiative Edge Component Display Name"""
+  """A System Initiative Edge Display Name"""
   displayName: String
 
-  """A System Initiative Edge Component ID"""
+  """The kind of edge this is"""
+  edgeKind: EdgeEdgeKind
+
+  """Head Vertex"""
+  headVertex: EdgeHeadVertex
+
+  """A System Initiative Edge ID"""
   id: ID
 
-  """A System Initiative Edge Component Name"""
+  """A System Initiative Edge Name"""
   name: String
 
-  """SI Properties"""
-  siProperties: ComponentSiProperties
+  """SI Internal Properties"""
+  siProperties: EdgeSiProperties
 
   """SI Storable"""
   siStorable: DataStorable
+
+  """Tail Vertex"""
+  tailVertex: EdgeTailVertex
 }
 
-type EdgeComponentConstraints {
-  """Component Display Name"""
-  componentDisplayName: String
+"""Create a A System Initiative Edge Reply"""
+type EdgeCreateReply {
+  """A System Initiative Edge Item"""
+  item: Edge
+}
 
-  """Component Name"""
-  componentName: String
+"""Create a A System Initiative Edge Request"""
+input EdgeCreateRequest {
+  """Bidirectional"""
+  bidirectional: Boolean
+
+  """A System Initiative Edge Display Name"""
+  displayName: String
 
   """The kind of edge this is"""
-  edgeKind: EdgeComponentConstraintsEdgeKind
+  edgeKind: EdgeEdgeKind
+
+  """Head Vertex"""
+  headVertex: EdgeHeadVertexRequest
+
+  """A System Initiative Edge Name"""
+  name: String
+
+  """SI Internal Properties"""
+  siProperties: EdgeSiPropertiesRequest
+
+  """Tail Vertex"""
+  tailVertex: EdgeTailVertexRequest
 }
 
 """The kind of edge this is"""
-enum EdgeComponentConstraintsEdgeKind {
+enum EdgeEdgeKind {
   CONNECTED
   UNKNOWN
 }
 
-input EdgeComponentConstraintsRequest {
-  """Component Display Name"""
-  componentDisplayName: String
-
-  """Component Name"""
-  componentName: String
-
-  """The kind of edge this is"""
-  edgeKind: EdgeComponentConstraintsEdgeKind
+"""Get a A System Initiative Edge Reply"""
+type EdgeGetReply {
+  """A System Initiative Edge Item"""
+  item: Edge
 }
 
-"""Get a A System Initiative Edge Component Reply"""
-type EdgeComponentGetReply {
-  """A System Initiative Edge Component Item"""
-  item: EdgeComponent
-}
-
-"""Get a A System Initiative Edge Component Request"""
-input EdgeComponentGetRequest {
-  """A System Initiative Edge Component ID"""
+"""Get a A System Initiative Edge Request"""
+input EdgeGetRequest {
+  """A System Initiative Edge ID"""
   id: ID
 }
 
-"""List A System Initiative Edge Component Reply"""
-type EdgeComponentListReply {
+type EdgeHeadVertex {
+  """Head Vertex ID"""
+  id: ID
+
+  """Head Vertex Type Name"""
+  typeName: String
+}
+
+input EdgeHeadVertexRequest {
+  """Head Vertex ID"""
+  id: ID
+
+  """Head Vertex Type Name"""
+  typeName: String
+}
+
+"""List A System Initiative Edge Reply"""
+type EdgeListReply {
   """Items"""
-  items: [EdgeComponent!]
+  items: [Edge!]
 
   """Next Page Token"""
   nextPageToken: String
@@ -896,8 +926,8 @@ type EdgeComponentListReply {
   totalCount: String
 }
 
-"""List A System Initiative Edge Component Request"""
-input EdgeComponentListRequest {
+"""List A System Initiative Edge Request"""
+input EdgeListRequest {
   """Order By"""
   orderBy: String
 
@@ -917,262 +947,29 @@ input EdgeComponentListRequest {
   scopeByTenantId: String
 }
 
-"""Pick Component Reply"""
-type EdgeComponentPickReply {
-  """Chosen Component"""
-  component: EdgeComponent
+type EdgeSiProperties {
+  """Billing Account ID"""
+  billingAccountId: String
 
-  """Implicit Constraints"""
-  implicitConstraints: EdgeComponentConstraints
-}
+  """Organization ID"""
+  organizationId: String
 
-"""Pick Component Request"""
-input EdgeComponentPickRequest {
-  """Constraints"""
-  constraints: EdgeComponentConstraintsRequest
-}
-
-type EdgeEntity {
-  """Constraints"""
-  constraints: EdgeComponentConstraints
-
-  """Entity Description"""
-  description: String
-
-  """A System Initiative Edge Entity Display Name"""
-  displayName: String
-
-  """A System Initiative Edge Entity ID"""
-  id: ID
-
-  """Implicit Constraints"""
-  implicitConstraints: EdgeComponentConstraints
-
-  """A System Initiative Edge Entity Name"""
-  name: String
-
-  """Properties"""
-  properties: EdgeEntityProperties
-
-  """SI Properties"""
-  siProperties: EntitySiProperties
-
-  """SI Storable"""
-  siStorable: DataStorable
-}
-
-"""Create Entity Reply"""
-type EdgeEntityCreateReply {
-  """edgeEntity Item"""
-  item: EdgeEntity
-}
-
-"""Create Entity Request"""
-input EdgeEntityCreateRequest {
-  """Change Set ID"""
-  changeSetId: String
-
-  """Constraints"""
-  constraints: EdgeComponentConstraintsRequest
-
-  """Description"""
-  description: String
-
-  """Display Name"""
-  displayName: String
-
-  """Name"""
-  name: String
-
-  """Properties"""
-  properties: EdgeEntityPropertiesRequest
-
-  """Workspace ID"""
+  """Organization ID"""
   workspaceId: String
 }
 
-"""Delete Entity Reply"""
-type EdgeEntityDeleteReply {
-  """edge Item"""
-  item: EdgeEntity
+input EdgeSiPropertiesRequest {
+  """Billing Account ID"""
+  billingAccountId: String
+
+  """Organization ID"""
+  organizationId: String
+
+  """Organization ID"""
+  workspaceId: String
 }
 
-"""Delete Entity Request"""
-input EdgeEntityDeleteRequest {
-  """Change Set ID"""
-  changeSetId: String
-
-  """edgeEntity ID"""
-  id: ID
-}
-
-type EdgeEntityEvent {
-  """Action Name"""
-  actionName: String
-
-  """Creation Time"""
-  createTime: String
-
-  """Error Lines"""
-  errorLines: [String!]
-
-  """Error Message"""
-  errorMessage: String
-
-  """Finalized"""
-  finalized: Boolean
-
-  """Final Time"""
-  finalTime: String
-
-  """A System Initiative Edge EntityEvent ID"""
-  id: ID
-
-  """Input Entity"""
-  inputEntity: EdgeEntity
-
-  """Output Entity"""
-  outputEntity: EdgeEntity
-
-  """Output Lines"""
-  outputLines: [String!]
-
-  """Previous Entity"""
-  previousEntity: EdgeEntity
-
-  """SI Properties"""
-  siProperties: EntityEventSiProperties
-
-  """SI Storable"""
-  siStorable: DataStorable
-
-  """success"""
-  success: Boolean
-
-  """Updated Time"""
-  updatedTime: String
-
-  """User ID"""
-  userId: String
-}
-
-"""List A System Initiative Edge EntityEvent Reply"""
-type EdgeEntityEventListReply {
-  """Items"""
-  items: [EdgeEntityEvent!]
-
-  """Next Page Token"""
-  nextPageToken: String
-
-  """Total Count"""
-  totalCount: String
-}
-
-"""List A System Initiative Edge EntityEvent Request"""
-input EdgeEntityEventListRequest {
-  """Order By"""
-  orderBy: String
-
-  """Order By Direction"""
-  orderByDirection: DataPageTokenOrderByDirection
-
-  """Page Size"""
-  pageSize: String
-
-  """Page Token"""
-  pageToken: String
-
-  """Query"""
-  query: DataQueryRequest
-
-  """Scope By Tenant ID"""
-  scopeByTenantId: String
-}
-
-"""Get a A System Initiative Edge Entity Reply"""
-type EdgeEntityGetReply {
-  """A System Initiative Edge Entity Item"""
-  item: EdgeEntity
-}
-
-"""Get a A System Initiative Edge Entity Request"""
-input EdgeEntityGetRequest {
-  """A System Initiative Edge Entity ID"""
-  id: ID
-}
-
-"""List A System Initiative Edge Entity Reply"""
-type EdgeEntityListReply {
-  """Items"""
-  items: [EdgeEntity!]
-
-  """Next Page Token"""
-  nextPageToken: String
-
-  """Total Count"""
-  totalCount: String
-}
-
-"""List A System Initiative Edge Entity Request"""
-input EdgeEntityListRequest {
-  """Order By"""
-  orderBy: String
-
-  """Order By Direction"""
-  orderByDirection: DataPageTokenOrderByDirection
-
-  """Page Size"""
-  pageSize: String
-
-  """Page Token"""
-  pageToken: String
-
-  """Query"""
-  query: DataQueryRequest
-
-  """Scope By Tenant ID"""
-  scopeByTenantId: String
-}
-
-type EdgeEntityProperties {
-  """Bidirectional"""
-  bidirectional: Boolean
-
-  """Head Vertex"""
-  headVertex: EdgeEntityPropertiesHeadVertex
-
-  """Tail Vertex"""
-  tailVertex: EdgeEntityPropertiesTailVertex
-}
-
-type EdgeEntityPropertiesHeadVertex {
-  """Head Vertex ID"""
-  id: ID
-
-  """Head Vertex Type Name"""
-  typeName: String
-}
-
-input EdgeEntityPropertiesHeadVertexRequest {
-  """Head Vertex ID"""
-  id: ID
-
-  """Head Vertex Type Name"""
-  typeName: String
-}
-
-input EdgeEntityPropertiesRequest {
-  """Bidirectional"""
-  bidirectional: Boolean
-
-  """Head Vertex"""
-  headVertex: EdgeEntityPropertiesHeadVertexRequest
-
-  """Tail Vertex"""
-  tailVertex: EdgeEntityPropertiesTailVertexRequest
-}
-
-type EdgeEntityPropertiesTailVertex {
+type EdgeTailVertex {
   """Tail Vertex ID"""
   id: ID
 
@@ -1180,59 +977,12 @@ type EdgeEntityPropertiesTailVertex {
   typeName: String
 }
 
-input EdgeEntityPropertiesTailVertexRequest {
+input EdgeTailVertexRequest {
   """Tail Vertex ID"""
   id: ID
 
   """Tail Vertex Type Name"""
   typeName: String
-}
-
-"""Sync State Reply"""
-type EdgeEntitySyncReply {
-  """Entity Event"""
-  item: EdgeEntityEvent
-}
-
-"""Sync State Request"""
-input EdgeEntitySyncRequest {
-  """Change Set ID"""
-  changeSetId: String
-
-  """Entity ID"""
-  id: ID
-}
-
-"""Update an Entity Reply"""
-type EdgeEntityUpdateReply {
-  """edge Item"""
-  item: EdgeEntity
-}
-
-"""Update an Entity Request"""
-input EdgeEntityUpdateRequest {
-  """Change Set ID"""
-  changeSetId: String
-
-  """edgeEntity ID"""
-  id: ID
-
-  """edge Item Update"""
-  update: EdgeEntityUpdateRequestUpdateRequest
-}
-
-input EdgeEntityUpdateRequestUpdateRequest {
-  """description"""
-  description: String
-
-  """displayName"""
-  displayName: String
-
-  """name"""
-  name: String
-
-  """properties"""
-  properties: EdgeEntityPropertiesRequest
 }
 
 type EntityEventSiProperties {
@@ -3107,10 +2857,7 @@ type Mutation {
   billingAccountSignup(input: BillingAccountSignupRequest): BillingAccountSignupReply
   changeSetCreate(input: ChangeSetCreateRequest): ChangeSetCreateReply
   changeSetExecute(input: ChangeSetExecuteRequest): ChangeSetExecuteReply
-  edgeEntityCreate(input: EdgeEntityCreateRequest): EdgeEntityCreateReply
-  edgeEntityDelete(input: EdgeEntityDeleteRequest): EdgeEntityDeleteReply
-  edgeEntitySync(input: EdgeEntitySyncRequest): EdgeEntitySyncReply
-  edgeEntityUpdate(input: EdgeEntityUpdateRequest): EdgeEntityUpdateReply
+  edgeCreate(input: EdgeCreateRequest): EdgeCreateReply
   eventLogCreate(input: EventLogCreateRequest): EventLogCreateReply
   groupCreate(input: GroupCreateRequest): GroupCreateReply
   kubernetesDeploymentEntityApply(input: KubernetesDeploymentEntityApplyRequest): KubernetesDeploymentEntityApplyReply
@@ -3123,18 +2870,190 @@ type Mutation {
   kubernetesServiceEntityDelete(input: KubernetesServiceEntityDeleteRequest): KubernetesServiceEntityDeleteReply
   kubernetesServiceEntitySync(input: KubernetesServiceEntitySyncRequest): KubernetesServiceEntitySyncReply
   kubernetesServiceEntityUpdate(input: KubernetesServiceEntityUpdateRequest): KubernetesServiceEntityUpdateReply
+  nodeCreate(input: NodeCreateRequest): NodeCreateReply
+  nodeSetPosition(input: NodeSetPositionRequest): NodeSetPositionReply
   organizationCreate(input: OrganizationCreateRequest): OrganizationCreateReply
   serviceEntityCreate(input: ServiceEntityCreateRequest): ServiceEntityCreateReply
   serviceEntityDelete(input: ServiceEntityDeleteRequest): ServiceEntityDeleteReply
   serviceEntityDeploy(input: ServiceEntityDeployRequest): ServiceEntityDeployReply
   serviceEntitySync(input: ServiceEntitySyncRequest): ServiceEntitySyncReply
   serviceEntityUpdate(input: ServiceEntityUpdateRequest): ServiceEntityUpdateReply
-  systemEntityCreate(input: SystemEntityCreateRequest): SystemEntityCreateReply
-  systemEntityDelete(input: SystemEntityDeleteRequest): SystemEntityDeleteReply
-  systemEntitySync(input: SystemEntitySyncRequest): SystemEntitySyncReply
-  systemEntityUpdate(input: SystemEntityUpdateRequest): SystemEntityUpdateReply
+  systemCreate(input: SystemCreateRequest): SystemCreateReply
   userCreate(input: UserCreateRequest): UserCreateReply
   workspaceCreate(input: WorkspaceCreateRequest): WorkspaceCreateReply
+}
+
+type Node {
+  """A System Initiative Node Display Name"""
+  displayName: String
+
+  """Entity ID"""
+  entityId: String
+
+  """A System Initiative Node ID"""
+  id: ID
+
+  """A System Initiative Node Name"""
+  name: String
+
+  """The kind of node this is"""
+  nodeKind: NodeNodeKind
+
+  """Node Position"""
+  position: NodePosition
+
+  """SI Internal Properties"""
+  siProperties: NodeSiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+
+  """Node Sockets"""
+  sockets: [NodeSockets!]
+}
+
+"""Create a A System Initiative Node Reply"""
+type NodeCreateReply {
+  """A System Initiative Node Item"""
+  item: Node
+}
+
+"""Create a A System Initiative Node Request"""
+input NodeCreateRequest {
+  """A System Initiative Node Display Name"""
+  displayName: String
+
+  """Entity ID"""
+  entityId: String
+
+  """A System Initiative Node Name"""
+  name: String
+
+  """The kind of node this is"""
+  nodeKind: NodeNodeKind
+
+  """Node Position"""
+  position: NodePositionRequest
+
+  """SI Internal Properties"""
+  siProperties: NodeSiPropertiesRequest
+
+  """Node Sockets"""
+  sockets: [NodeSocketsRequest!]
+}
+
+"""Get a A System Initiative Node Reply"""
+type NodeGetReply {
+  """A System Initiative Node Item"""
+  item: Node
+}
+
+"""Get a A System Initiative Node Request"""
+input NodeGetRequest {
+  """A System Initiative Node ID"""
+  id: ID
+}
+
+"""List A System Initiative Node Reply"""
+type NodeListReply {
+  """Items"""
+  items: [Node!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: String
+}
+
+"""List A System Initiative Node Request"""
+input NodeListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: String
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+"""The kind of node this is"""
+enum NodeNodeKind {
+  ENTITY
+  UNKNOWN
+}
+
+type NodePosition {
+  """X position"""
+  x: Int
+
+  """Y position"""
+  y: Int
+}
+
+input NodePositionRequest {
+  """X position"""
+  x: Int
+
+  """Y position"""
+  y: Int
+}
+
+"""Set a nodes position Reply"""
+type NodeSetPositionReply {
+  """Updated item"""
+  item: Node
+}
+
+"""Set a nodes position Request"""
+input NodeSetPositionRequest {
+  """Node ID"""
+  id: ID
+
+  """Node Position"""
+  position: NodePositionRequest
+}
+
+type NodeSiProperties {
+  """Billing Account ID"""
+  billingAccountId: String
+
+  """Organization ID"""
+  organizationId: String
+
+  """Organization ID"""
+  workspaceId: String
+}
+
+input NodeSiPropertiesRequest {
+  """Billing Account ID"""
+  billingAccountId: String
+
+  """Organization ID"""
+  organizationId: String
+
+  """Organization ID"""
+  workspaceId: String
+}
+
+type NodeSockets {
+  """Socket name"""
+  name: String
+}
+
+input NodeSocketsRequest {
+  """Socket name"""
+  name: String
 }
 
 type Organization {
@@ -3249,12 +3168,8 @@ type Query {
   billingAccountList(input: BillingAccountListRequest): BillingAccountListReply
   changeSetGet(input: ChangeSetGetRequest): ChangeSetGetReply
   changeSetList(input: ChangeSetListRequest): ChangeSetListReply
-  edgeComponentGet(input: EdgeComponentGetRequest): EdgeComponentGetReply
-  edgeComponentList(input: EdgeComponentListRequest): EdgeComponentListReply
-  edgeComponentPick(input: EdgeComponentPickRequest): EdgeComponentPickReply
-  edgeEntityEventList(input: EdgeEntityEventListRequest): EdgeEntityEventListReply
-  edgeEntityGet(input: EdgeEntityGetRequest): EdgeEntityGetReply
-  edgeEntityList(input: EdgeEntityListRequest): EdgeEntityListReply
+  edgeGet(input: EdgeGetRequest): EdgeGetReply
+  edgeList(input: EdgeListRequest): EdgeListReply
   eventLogGet(input: EventLogGetRequest): EventLogGetReply
   eventLogList(input: EventLogListRequest): EventLogListReply
   groupGet(input: GroupGetRequest): GroupGetReply
@@ -3278,6 +3193,8 @@ type Query {
   kubernetesServiceEntityEventList(input: KubernetesServiceEntityEventListRequest): KubernetesServiceEntityEventListReply
   kubernetesServiceEntityGet(input: KubernetesServiceEntityGetRequest): KubernetesServiceEntityGetReply
   kubernetesServiceEntityList(input: KubernetesServiceEntityListRequest): KubernetesServiceEntityListReply
+  nodeGet(input: NodeGetRequest): NodeGetReply
+  nodeList(input: NodeListRequest): NodeListReply
   organizationGet(input: OrganizationGetRequest): OrganizationGetReply
   organizationList(input: OrganizationListRequest): OrganizationListReply
   serviceComponentGet(input: ServiceComponentGetRequest): ServiceComponentGetReply
@@ -3286,12 +3203,8 @@ type Query {
   serviceEntityEventList(input: ServiceEntityEventListRequest): ServiceEntityEventListReply
   serviceEntityGet(input: ServiceEntityGetRequest): ServiceEntityGetReply
   serviceEntityList(input: ServiceEntityListRequest): ServiceEntityListReply
-  systemComponentGet(input: SystemComponentGetRequest): SystemComponentGetReply
-  systemComponentList(input: SystemComponentListRequest): SystemComponentListReply
-  systemComponentPick(input: SystemComponentPickRequest): SystemComponentPickReply
-  systemEntityEventList(input: SystemEntityEventListRequest): SystemEntityEventListReply
-  systemEntityGet(input: SystemEntityGetRequest): SystemEntityGetReply
-  systemEntityList(input: SystemEntityListRequest): SystemEntityListReply
+  systemGet(input: SystemGetRequest): SystemGetReply
+  systemList(input: SystemListRequest): SystemListReply
   userGet(input: UserGetRequest): UserGetReply
   userList(input: UserListRequest): UserListReply
   userLogin(input: UserLoginRequest): UserLoginReply
@@ -3704,370 +3617,114 @@ input ServiceEntityUpdateRequestUpdateRequest {
   properties: ServiceEntityPropertiesRequest
 }
 
-type SystemComponent {
-  """Component Constraints"""
-  constraints: SystemComponentConstraints
+type System {
+  associations: SystemAssociations
 
-  """Component Description"""
-  description: String
-
-  """A System Initiative System Component Display Name"""
+  """A System Initiative System Display Name"""
   displayName: String
 
-  """A System Initiative System Component ID"""
+  """A System Initiative System ID"""
   id: ID
 
-  """A System Initiative System Component Name"""
+  """A System Initiative System Name"""
   name: String
 
-  """SI Properties"""
-  siProperties: ComponentSiProperties
+  """SI Internal Properties"""
+  siProperties: SystemSiProperties
 
   """SI Storable"""
   siStorable: DataStorable
 }
 
-type SystemComponentConstraints {
-  """Component Display Name"""
-  componentDisplayName: String
-
-  """Component Name"""
-  componentName: String
-}
-
-input SystemComponentConstraintsRequest {
-  """Component Display Name"""
-  componentDisplayName: String
-
-  """Component Name"""
-  componentName: String
-}
-
-"""Get a A System Initiative System Component Reply"""
-type SystemComponentGetReply {
-  """A System Initiative System Component Item"""
-  item: SystemComponent
-}
-
-"""Get a A System Initiative System Component Request"""
-input SystemComponentGetRequest {
-  """A System Initiative System Component ID"""
-  id: ID
-}
-
-"""List A System Initiative System Component Reply"""
-type SystemComponentListReply {
-  """Items"""
-  items: [SystemComponent!]
-
-  """Next Page Token"""
-  nextPageToken: String
-
-  """Total Count"""
-  totalCount: String
-}
-
-"""List A System Initiative System Component Request"""
-input SystemComponentListRequest {
-  """Order By"""
-  orderBy: String
-
-  """Order By Direction"""
-  orderByDirection: DataPageTokenOrderByDirection
-
-  """Page Size"""
-  pageSize: String
-
-  """Page Token"""
-  pageToken: String
-
-  """Query"""
-  query: DataQueryRequest
-
-  """Scope By Tenant ID"""
-  scopeByTenantId: String
-}
-
-"""Pick Component Reply"""
-type SystemComponentPickReply {
-  """Chosen Component"""
-  component: SystemComponent
-
-  """Implicit Constraints"""
-  implicitConstraints: SystemComponentConstraints
-}
-
-"""Pick Component Request"""
-input SystemComponentPickRequest {
-  """Constraints"""
-  constraints: SystemComponentConstraintsRequest
-}
-
-type SystemEntity {
-  associations: SystemEntityAssociations
-
-  """Constraints"""
-  constraints: SystemComponentConstraints
-
-  """Entity Description"""
-  description: String
-
-  """A System Initiative System Entity Display Name"""
-  displayName: String
-
-  """A System Initiative System Entity ID"""
-  id: ID
-
-  """Implicit Constraints"""
-  implicitConstraints: SystemComponentConstraints
-
-  """A System Initiative System Entity Name"""
-  name: String
-
-  """Properties"""
-  properties: SystemEntityProperties
-
-  """SI Properties"""
-  siProperties: EntitySiProperties
-
-  """SI Storable"""
-  siStorable: DataStorable
-}
-
-"""A System Initiative System Entity Associations"""
-type SystemEntityAssociations {
+"""A System Initiative System Associations"""
+type SystemAssociations {
   """A System Initiative Application Entity"""
   applications(input: ApplicationEntityListRequest): ApplicationEntityListReply
 }
 
-"""Create Entity Reply"""
-type SystemEntityCreateReply {
-  """systemEntity Item"""
-  item: SystemEntity
+"""Create a A System Initiative System Reply"""
+type SystemCreateReply {
+  """A System Initiative System Item"""
+  item: System
 }
 
-"""Create Entity Request"""
-input SystemEntityCreateRequest {
-  """Change Set ID"""
-  changeSetId: String
-
-  """Constraints"""
-  constraints: SystemComponentConstraintsRequest
-
-  """Description"""
-  description: String
-
-  """Display Name"""
+"""Create a A System Initiative System Request"""
+input SystemCreateRequest {
+  """A System Initiative System Display Name"""
   displayName: String
 
-  """Name"""
+  """A System Initiative System Name"""
   name: String
 
-  """Properties"""
-  properties: SystemEntityPropertiesRequest
+  """SI Internal Properties"""
+  siProperties: SystemSiPropertiesRequest
+}
 
-  """Workspace ID"""
+"""Get a A System Initiative System Reply"""
+type SystemGetReply {
+  """A System Initiative System Item"""
+  item: System
+}
+
+"""Get a A System Initiative System Request"""
+input SystemGetRequest {
+  """A System Initiative System ID"""
+  id: ID
+}
+
+"""List A System Initiative System Reply"""
+type SystemListReply {
+  """Items"""
+  items: [System!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: String
+}
+
+"""List A System Initiative System Request"""
+input SystemListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: String
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+type SystemSiProperties {
+  """Billing Account ID"""
+  billingAccountId: String
+
+  """Organization ID"""
+  organizationId: String
+
+  """Organization ID"""
   workspaceId: String
 }
 
-"""Delete Entity Reply"""
-type SystemEntityDeleteReply {
-  """system Item"""
-  item: SystemEntity
-}
+input SystemSiPropertiesRequest {
+  """Billing Account ID"""
+  billingAccountId: String
 
-"""Delete Entity Request"""
-input SystemEntityDeleteRequest {
-  """Change Set ID"""
-  changeSetId: String
+  """Organization ID"""
+  organizationId: String
 
-  """systemEntity ID"""
-  id: ID
-}
-
-type SystemEntityEvent {
-  """Action Name"""
-  actionName: String
-
-  """Creation Time"""
-  createTime: String
-
-  """Error Lines"""
-  errorLines: [String!]
-
-  """Error Message"""
-  errorMessage: String
-
-  """Finalized"""
-  finalized: Boolean
-
-  """Final Time"""
-  finalTime: String
-
-  """A System Initiative System EntityEvent ID"""
-  id: ID
-
-  """Input Entity"""
-  inputEntity: SystemEntity
-
-  """Output Entity"""
-  outputEntity: SystemEntity
-
-  """Output Lines"""
-  outputLines: [String!]
-
-  """Previous Entity"""
-  previousEntity: SystemEntity
-
-  """SI Properties"""
-  siProperties: EntityEventSiProperties
-
-  """SI Storable"""
-  siStorable: DataStorable
-
-  """success"""
-  success: Boolean
-
-  """Updated Time"""
-  updatedTime: String
-
-  """User ID"""
-  userId: String
-}
-
-"""List A System Initiative System EntityEvent Reply"""
-type SystemEntityEventListReply {
-  """Items"""
-  items: [SystemEntityEvent!]
-
-  """Next Page Token"""
-  nextPageToken: String
-
-  """Total Count"""
-  totalCount: String
-}
-
-"""List A System Initiative System EntityEvent Request"""
-input SystemEntityEventListRequest {
-  """Order By"""
-  orderBy: String
-
-  """Order By Direction"""
-  orderByDirection: DataPageTokenOrderByDirection
-
-  """Page Size"""
-  pageSize: String
-
-  """Page Token"""
-  pageToken: String
-
-  """Query"""
-  query: DataQueryRequest
-
-  """Scope By Tenant ID"""
-  scopeByTenantId: String
-}
-
-"""Get a A System Initiative System Entity Reply"""
-type SystemEntityGetReply {
-  """A System Initiative System Entity Item"""
-  item: SystemEntity
-}
-
-"""Get a A System Initiative System Entity Request"""
-input SystemEntityGetRequest {
-  """A System Initiative System Entity ID"""
-  id: ID
-}
-
-"""List A System Initiative System Entity Reply"""
-type SystemEntityListReply {
-  """Items"""
-  items: [SystemEntity!]
-
-  """Next Page Token"""
-  nextPageToken: String
-
-  """Total Count"""
-  totalCount: String
-}
-
-"""List A System Initiative System Entity Request"""
-input SystemEntityListRequest {
-  """Order By"""
-  orderBy: String
-
-  """Order By Direction"""
-  orderByDirection: DataPageTokenOrderByDirection
-
-  """Page Size"""
-  pageSize: String
-
-  """Page Token"""
-  pageToken: String
-
-  """Query"""
-  query: DataQueryRequest
-
-  """Scope By Tenant ID"""
-  scopeByTenantId: String
-}
-
-type SystemEntityProperties {
-  """Phantom Data"""
-  phantom: Boolean
-}
-
-input SystemEntityPropertiesRequest {
-  """Phantom Data"""
-  phantom: Boolean
-}
-
-"""Sync State Reply"""
-type SystemEntitySyncReply {
-  """Entity Event"""
-  item: SystemEntityEvent
-}
-
-"""Sync State Request"""
-input SystemEntitySyncRequest {
-  """Change Set ID"""
-  changeSetId: String
-
-  """Entity ID"""
-  id: ID
-}
-
-"""Update an Entity Reply"""
-type SystemEntityUpdateReply {
-  """system Item"""
-  item: SystemEntity
-}
-
-"""Update an Entity Request"""
-input SystemEntityUpdateRequest {
-  """Change Set ID"""
-  changeSetId: String
-
-  """systemEntity ID"""
-  id: ID
-
-  """system Item Update"""
-  update: SystemEntityUpdateRequestUpdateRequest
-}
-
-input SystemEntityUpdateRequestUpdateRequest {
-  """description"""
-  description: String
-
-  """displayName"""
-  displayName: String
-
-  """name"""
-  name: String
-
-  """properties"""
-  properties: SystemEntityPropertiesRequest
+  """Organization ID"""
+  workspaceId: String
 }
 
 type User {

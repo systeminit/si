@@ -1,33 +1,50 @@
-import { PropBool } from "../../components/prelude";
+import { PropBool, PropObject } from "../../components/prelude";
 import { registry } from "../../registry";
+import { SystemObject } from "../../systemComponent";
 
-registry.componentAndEntity({
+registry.system({
   typeName: "system",
   displayTypeName: "A System Initiative System",
   siPathName: "si-core",
   serviceName: "core",
-  options(c) {
-    c.entity.integrationServices.push({
-      integrationName: "global",
-      integrationServiceName: "core",
-    });
-
+  options(c: SystemObject) {
     c.associations.inList({
       fieldName: "applications",
       typeName: "applicationEntity",
       toFieldPath: ["inSystems"],
     });
 
-    // Properties
-    // TODO(fnichol): we don't have properties, but GraphQL will not accept an empty
-    // *Properties type so... phantom data for now?
-    c.properties.addBool({
-      name: "phantom",
-      label: "Phantom Data",
-      options(p: PropBool) {
-        p.hidden = true;
-        p.baseDefaultValue = true;
+    c.fields.addObject({
+      name: "siProperties",
+      label: "SI Internal Properties",
+      options(p: PropObject) {
+        p.required = true;
+        p.properties.addText({
+          name: "billingAccountId",
+          label: "Billing Account ID",
+          options(p) {
+            p.required = true;
+          },
+        });
+        p.properties.addText({
+          name: "organizationId",
+          label: "Organization ID",
+          options(p) {
+            p.required = true;
+          },
+        });
+        p.properties.addText({
+          name: "workspaceId",
+          label: "Organization ID",
+          options(p) {
+            p.required = true;
+          },
+        });
       },
     });
+
+    c.addListMethod();
+    c.addGetMethod();
+    c.addCreateMethod();
   },
 });

@@ -1,16 +1,17 @@
 import { Module } from "vuex";
 import _ from "lodash";
 
-import { EdgeEntity, EdgeComponentConstraintsEdgeKind } from "@/graphql-types";
+import { Edge, EdgeEdgeKind } from "@/graphql-types";
 import { RootStore } from "@/store";
+import { graphqlMutation, graphqlQueryListAll } from "@/api/apollo";
 
 export interface EdgeStore {
-  edges: EdgeEntity[];
-  current: null | EdgeEntity;
+  edges: Edge[];
+  current: null | Edge;
 }
 
 interface AddMutation {
-  edges: EdgeEntity[];
+  edges: Edge[];
 }
 
 interface CreateMutation {
@@ -18,7 +19,7 @@ interface CreateMutation {
   headVertex: string;
   tailVertex: string;
   bidirectional?: boolean;
-  edgeKind: EdgeComponentConstraintsEdgeKind;
+  edgeKind: EdgeEdgeKind;
 }
 
 interface FromIdForTypeGetter {
@@ -44,7 +45,7 @@ export const edge: Module<EdgeStore, RootStore> = {
         "siStorable.typeName",
         filter.typeName,
       ]);
-      let edges = _.filter(state.edges, (edge: EdgeEntity) => {
+      let edges = _.filter(state.edges, (edge: Edge) => {
         if (currentChangeSetId) {
           if (edge.siStorable?.changeSetId) {
             if (edge.siStorable?.changeSetId != currentChangeSetId) {
@@ -57,13 +58,13 @@ export const edge: Module<EdgeStore, RootStore> = {
           }
         }
         if (
-          edge.properties?.headVertex?.id == filter.id &&
-          _.find(entities, ["id", edge.properties?.tailVertex?.id])
+          edge.headVertex?.id == filter.id &&
+          _.find(entities, ["id", edge.tailVertex?.id])
         ) {
           return true;
         } else if (
-          edge.properties?.tailVertex?.id == filter.id &&
-          _.find(entities, ["id", edge.properties?.headVertex?.id])
+          edge.tailVertex?.id == filter.id &&
+          _.find(entities, ["id", edge.headVertex?.id])
         ) {
           return true;
         } else {
@@ -72,14 +73,14 @@ export const edge: Module<EdgeStore, RootStore> = {
       });
       return edges;
     },
-    current(state): EdgeEntity {
+    current(state): Edge {
       if (state.current) {
         return state.current;
       } else {
         throw new Error("Cannot get current edge; it is not set!");
       }
     },
-    saved(state): EdgeEntity[] {
+    saved(state): Edge[] {
       return _.filter(state.edges, entity => {
         if (!entity.siStorable?.changeSetId) {
           return true;
@@ -93,7 +94,7 @@ export const edge: Module<EdgeStore, RootStore> = {
     add(state, payload: AddMutation) {
       state.edges = _.unionBy(payload.edges, state.edges, "id");
     },
-    current(state, payload: EdgeEntity) {
+    current(state, payload: Edge) {
       state.current = payload;
     },
   },
@@ -101,32 +102,33 @@ export const edge: Module<EdgeStore, RootStore> = {
     add({ commit }, payload: AddMutation) {
       commit("add", payload);
     },
-    async create({ dispatch, rootGetters }, payload: CreateMutation) {
+    async create({ commit, rootGetters }, payload: CreateMutation) {
+      const workspace = rootGetters["workspace/current"];
+      const profile = rootGetters["user/profile"];
+
       let head = rootGetters["entity/get"](["id", payload.headVertex]);
       let tail = rootGetters["entity/get"](["id", payload.tailVertex]);
       let data: Record<string, any> = {
-        properties: {
-          bidirectional: payload.bidirectional ? true : false,
-        },
+        bidirectional: payload.bidirectional ? true : false,
       };
       if (head.siStorable?.changeSetId) {
-        data.properties.headVertex = {
+        data.headVertex = {
           id: head.siStorable?.itemId,
           typeName: head.siStorable?.typeName,
         };
       } else {
-        data.properties.headVertex = {
+        data.headVertex = {
           id: head.id,
           typeName: head.siStorable?.typeName,
         };
       }
       if (tail.siStorable?.changeSetId) {
-        data.properties.tailVertex = {
+        data.tailVertex = {
           id: tail.siStorable?.itemId,
           typeName: tail.siStorable?.typeName,
         };
       } else {
-        data.properties.tailVertex = {
+        data.tailVertex = {
           id: tail.id,
           typeName: tail.siStorable?.typeName,
         };
@@ -135,23 +137,33 @@ export const edge: Module<EdgeStore, RootStore> = {
         data.name = payload.name;
       }
       if (payload.edgeKind) {
-        data["constraints"] = {
-          edgeKind: payload.edgeKind,
-        };
+        data["edgeKind"] = payload.edgeKind;
       } else {
-        data["constraints"] = {
-          edgeKind: "CONNECTED",
-        };
+        data["edgeKind"] = "CONNECTED";
       }
-
-      await dispatch(
-        "entity/create",
-        {
-          typeName: "edge_entity",
-          data,
+      const edge = await graphqlMutation({
+        typeName: "edge",
+        methodName: "create",
+        variables: {
+          name: `${head.id}:${tail.id}`,
+          displayName: `${head.id}:${tail.id}`,
+          siProperties: {
+            workspaceId: workspace.id,
+            billingAccountId: profile.billingAccount?.id,
+            organizationId: profile.organization?.id,
+          },
+          ...data,
         },
-        { root: true },
-      );
+      });
+      commit("add", { edges: [edge] });
+    },
+    async load({ commit }): Promise<void> {
+      const edges: Edge[] = await graphqlQueryListAll({
+        typeName: "edge",
+      });
+      if (edges.length > 0) {
+        commit("add", { edges });
+      }
     },
   },
 };

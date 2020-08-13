@@ -32,28 +32,16 @@ service Core {
   rpc ServiceEntitySync(ServiceEntitySyncRequest) returns (ServiceEntitySyncReply);
   rpc ServiceEntityDeploy(ServiceEntityDeployRequest) returns (ServiceEntityDeployReply);
   rpc ServiceEntityEventList(ServiceEntityEventListRequest) returns (ServiceEntityEventListReply);
-  rpc SystemComponentGet(SystemComponentGetRequest) returns (SystemComponentGetReply);
-  rpc SystemComponentList(SystemComponentListRequest) returns (SystemComponentListReply);
-  rpc SystemComponentCreate(SystemComponentCreateRequest) returns (SystemComponentCreateReply);
-  rpc SystemComponentPick(SystemComponentPickRequest) returns (SystemComponentPickReply);
-  rpc SystemEntityGet(SystemEntityGetRequest) returns (SystemEntityGetReply);
-  rpc SystemEntityList(SystemEntityListRequest) returns (SystemEntityListReply);
-  rpc SystemEntityCreate(SystemEntityCreateRequest) returns (SystemEntityCreateReply);
-  rpc SystemEntityDelete(SystemEntityDeleteRequest) returns (SystemEntityDeleteReply);
-  rpc SystemEntityUpdate(SystemEntityUpdateRequest) returns (SystemEntityUpdateReply);
-  rpc SystemEntitySync(SystemEntitySyncRequest) returns (SystemEntitySyncReply);
-  rpc SystemEntityEventList(SystemEntityEventListRequest) returns (SystemEntityEventListReply);
-  rpc EdgeComponentGet(EdgeComponentGetRequest) returns (EdgeComponentGetReply);
-  rpc EdgeComponentList(EdgeComponentListRequest) returns (EdgeComponentListReply);
-  rpc EdgeComponentCreate(EdgeComponentCreateRequest) returns (EdgeComponentCreateReply);
-  rpc EdgeComponentPick(EdgeComponentPickRequest) returns (EdgeComponentPickReply);
-  rpc EdgeEntityGet(EdgeEntityGetRequest) returns (EdgeEntityGetReply);
-  rpc EdgeEntityList(EdgeEntityListRequest) returns (EdgeEntityListReply);
-  rpc EdgeEntityCreate(EdgeEntityCreateRequest) returns (EdgeEntityCreateReply);
-  rpc EdgeEntityDelete(EdgeEntityDeleteRequest) returns (EdgeEntityDeleteReply);
-  rpc EdgeEntityUpdate(EdgeEntityUpdateRequest) returns (EdgeEntityUpdateReply);
-  rpc EdgeEntitySync(EdgeEntitySyncRequest) returns (EdgeEntitySyncReply);
-  rpc EdgeEntityEventList(EdgeEntityEventListRequest) returns (EdgeEntityEventListReply);
+  rpc SystemList(SystemListRequest) returns (SystemListReply);
+  rpc SystemGet(SystemGetRequest) returns (SystemGetReply);
+  rpc SystemCreate(SystemCreateRequest) returns (SystemCreateReply);
+  rpc EdgeList(EdgeListRequest) returns (EdgeListReply);
+  rpc EdgeGet(EdgeGetRequest) returns (EdgeGetReply);
+  rpc EdgeCreate(EdgeCreateRequest) returns (EdgeCreateReply);
+  rpc NodeList(NodeListRequest) returns (NodeListReply);
+  rpc NodeGet(NodeGetRequest) returns (NodeGetReply);
+  rpc NodeCreate(NodeCreateRequest) returns (NodeCreateReply);
+  rpc NodeSetPosition(NodeSetPositionRequest) returns (NodeSetPositionReply);
 }
 message ApplicationComponentConstraints {
   google.protobuf.StringValue component_name = 1;
@@ -370,26 +358,19 @@ message ServiceEntityEventListReply {
   google.protobuf.UInt32Value total_count = 2;
   google.protobuf.StringValue next_page_token = 3;
 }
-message SystemComponentConstraints {
-  google.protobuf.StringValue component_name = 1;
-  google.protobuf.StringValue component_display_name = 2;
+message SystemSiProperties {
+  google.protobuf.StringValue billing_account_id = 1001;
+  google.protobuf.StringValue organization_id = 1002;
+  google.protobuf.StringValue workspace_id = 1003;
 }
-message SystemComponent {
+message System {
   google.protobuf.StringValue id = 1;
   google.protobuf.StringValue name = 2;
   google.protobuf.StringValue display_name = 3;
   si.data.DataStorable si_storable = 4;
-  google.protobuf.StringValue description = 5;
-  si.core.SystemComponentConstraints constraints = 6;
-  si.cea.ComponentSiProperties si_properties = 7;
+  si.core.SystemSiProperties si_properties = 1001;
 }
-message SystemComponentGetRequest {
-  google.protobuf.StringValue id = 1001;
-}
-message SystemComponentGetReply {
-  si.core.SystemComponent item = 1001;
-}
-message SystemComponentListRequest {
+message SystemListRequest {
   si.data.DataQuery query = 1;
   google.protobuf.UInt32Value page_size = 2;
   google.protobuf.StringValue order_by = 3;
@@ -397,217 +378,54 @@ message SystemComponentListRequest {
   google.protobuf.StringValue page_token = 5;
   google.protobuf.StringValue scope_by_tenant_id = 6;
 }
-message SystemComponentListReply {
-  repeated si.core.SystemComponent items = 1;
+message SystemListReply {
+  repeated si.core.System items = 1;
   google.protobuf.UInt32Value total_count = 2;
   google.protobuf.StringValue next_page_token = 3;
 }
-message SystemComponentCreateRequest {
+message SystemGetRequest {
+  google.protobuf.StringValue id = 1001;
+}
+message SystemGetReply {
+  si.core.System item = 1001;
+}
+message SystemCreateRequest {
   google.protobuf.StringValue name = 1001;
   google.protobuf.StringValue display_name = 1002;
-  google.protobuf.StringValue description = 1003;
-  si.core.SystemComponentConstraints constraints = 1;
-  si.cea.ComponentSiProperties si_properties = 1004;
+  si.core.SystemSiProperties si_properties = 1003;
 }
-message SystemComponentCreateReply {
-  si.core.SystemComponent item = 1;
+message SystemCreateReply {
+  si.core.System item = 1001;
 }
-message SystemComponentPickRequest {
-  si.core.SystemComponentConstraints constraints = 1;
+message EdgeSiProperties {
+  google.protobuf.StringValue billing_account_id = 1001;
+  google.protobuf.StringValue organization_id = 1002;
+  google.protobuf.StringValue workspace_id = 1003;
 }
-message SystemComponentPickReply {
-  si.core.SystemComponentConstraints implicit_constraints = 1;
-  si.core.SystemComponent component = 2;
-}
-message SystemEntityProperties {
-  google.protobuf.BoolValue phantom = 1001;
-}
-message SystemEntity {
-  google.protobuf.StringValue id = 1;
-  google.protobuf.StringValue name = 2;
-  google.protobuf.StringValue display_name = 3;
-  si.data.DataStorable si_storable = 4;
-  google.protobuf.StringValue description = 5;
-  si.cea.EntitySiProperties si_properties = 6;
-  si.core.SystemEntityProperties properties = 7;
-  si.core.SystemComponentConstraints constraints = 8;
-  si.core.SystemComponentConstraints implicit_constraints = 9;
-}
-message SystemEntityGetRequest {
-  google.protobuf.StringValue id = 1001;
-}
-message SystemEntityGetReply {
-  si.core.SystemEntity item = 1001;
-}
-message SystemEntityListRequest {
-  si.data.DataQuery query = 1;
-  google.protobuf.UInt32Value page_size = 2;
-  google.protobuf.StringValue order_by = 3;
-  si.data.DataPageTokenOrderByDirection order_by_direction = 4;
-  google.protobuf.StringValue page_token = 5;
-  google.protobuf.StringValue scope_by_tenant_id = 6;
-}
-message SystemEntityListReply {
-  repeated si.core.SystemEntity items = 1;
-  google.protobuf.UInt32Value total_count = 2;
-  google.protobuf.StringValue next_page_token = 3;
-}
-message SystemEntityCreateRequest {
-  google.protobuf.StringValue name = 1;
-  google.protobuf.StringValue display_name = 2;
-  google.protobuf.StringValue description = 3;
-  google.protobuf.StringValue workspace_id = 1001;
-  google.protobuf.StringValue change_set_id = 1002;
-  si.core.SystemEntityProperties properties = 4;
-  si.core.SystemComponentConstraints constraints = 5;
-}
-message SystemEntityCreateReply {
-  si.core.SystemEntity item = 1;
-}
-message SystemEntityDeleteRequest {
-  google.protobuf.StringValue id = 1001;
-  google.protobuf.StringValue change_set_id = 1002;
-}
-message SystemEntityDeleteReply {
-  si.core.SystemEntity item = 1001;
-}
-message SystemEntityUpdateRequestUpdate {
-  google.protobuf.StringValue name = 1001;
-  google.protobuf.StringValue display_name = 1002;
-  google.protobuf.StringValue description = 1003;
-  si.core.SystemEntityProperties properties = 1004;
-}
-message SystemEntityUpdateRequest {
-  google.protobuf.StringValue id = 1001;
-  google.protobuf.StringValue change_set_id = 1002;
-  si.core.SystemEntityUpdateRequestUpdate update = 1003;
-}
-message SystemEntityUpdateReply {
-  si.core.SystemEntity item = 1001;
-}
-message SystemEntitySyncRequest {
-  google.protobuf.StringValue id = 1;
-  google.protobuf.StringValue change_set_id = 2;
-}
-message SystemEntitySyncReply {
-  si.core.SystemEntityEvent item = 1;
-}
-message SystemEntityEvent {
-  google.protobuf.StringValue id = 1;
-  si.data.DataStorable si_storable = 2;
-  google.protobuf.StringValue action_name = 3;
-  google.protobuf.StringValue create_time = 4;
-  google.protobuf.StringValue updated_time = 5;
-  google.protobuf.StringValue final_time = 6;
-  google.protobuf.BoolValue success = 7;
-  google.protobuf.BoolValue finalized = 8;
-  google.protobuf.StringValue user_id = 9;
-  repeated google.protobuf.StringValue output_lines = 10;
-  repeated google.protobuf.StringValue error_lines = 11;
-  google.protobuf.StringValue error_message = 12;
-  si.core.SystemEntity previous_entity = 13;
-  si.core.SystemEntity input_entity = 14;
-  si.core.SystemEntity output_entity = 15;
-  si.cea.EntityEventSiProperties si_properties = 16;
-}
-message SystemEntityEventListRequest {
-  si.data.DataQuery query = 1;
-  google.protobuf.UInt32Value page_size = 2;
-  google.protobuf.StringValue order_by = 3;
-  si.data.DataPageTokenOrderByDirection order_by_direction = 4;
-  google.protobuf.StringValue page_token = 5;
-  google.protobuf.StringValue scope_by_tenant_id = 6;
-}
-message SystemEntityEventListReply {
-  repeated si.core.SystemEntityEvent items = 1;
-  google.protobuf.UInt32Value total_count = 2;
-  google.protobuf.StringValue next_page_token = 3;
-}
-enum EdgeComponentConstraintsEdgeKind {
-  EDGE_COMPONENT_CONSTRAINTS_EDGE_KIND_UNKNOWN = 0;
-  EDGE_COMPONENT_CONSTRAINTS_EDGE_KIND_CONNECTED = 1;
-}
-message EdgeComponentConstraints {
-  google.protobuf.StringValue component_name = 1;
-  google.protobuf.StringValue component_display_name = 2;
-  EdgeComponentConstraintsEdgeKind edge_kind = 1001;
-}
-message EdgeComponent {
-  google.protobuf.StringValue id = 1;
-  google.protobuf.StringValue name = 2;
-  google.protobuf.StringValue display_name = 3;
-  si.data.DataStorable si_storable = 4;
-  google.protobuf.StringValue description = 5;
-  si.core.EdgeComponentConstraints constraints = 6;
-  si.cea.ComponentSiProperties si_properties = 7;
-}
-message EdgeComponentGetRequest {
-  google.protobuf.StringValue id = 1001;
-}
-message EdgeComponentGetReply {
-  si.core.EdgeComponent item = 1001;
-}
-message EdgeComponentListRequest {
-  si.data.DataQuery query = 1;
-  google.protobuf.UInt32Value page_size = 2;
-  google.protobuf.StringValue order_by = 3;
-  si.data.DataPageTokenOrderByDirection order_by_direction = 4;
-  google.protobuf.StringValue page_token = 5;
-  google.protobuf.StringValue scope_by_tenant_id = 6;
-}
-message EdgeComponentListReply {
-  repeated si.core.EdgeComponent items = 1;
-  google.protobuf.UInt32Value total_count = 2;
-  google.protobuf.StringValue next_page_token = 3;
-}
-message EdgeComponentCreateRequest {
-  google.protobuf.StringValue name = 1001;
-  google.protobuf.StringValue display_name = 1002;
-  google.protobuf.StringValue description = 1003;
-  si.core.EdgeComponentConstraints constraints = 1;
-  si.cea.ComponentSiProperties si_properties = 1004;
-}
-message EdgeComponentCreateReply {
-  si.core.EdgeComponent item = 1;
-}
-message EdgeComponentPickRequest {
-  si.core.EdgeComponentConstraints constraints = 1;
-}
-message EdgeComponentPickReply {
-  si.core.EdgeComponentConstraints implicit_constraints = 1;
-  si.core.EdgeComponent component = 2;
-}
-message EdgeEntityPropertiesHeadVertex {
+message EdgeHeadVertex {
   google.protobuf.StringValue id = 1001;
   google.protobuf.StringValue type_name = 1002;
 }
-message EdgeEntityPropertiesTailVertex {
+message EdgeTailVertex {
   google.protobuf.StringValue id = 1001;
   google.protobuf.StringValue type_name = 1002;
 }
-message EdgeEntityProperties {
-  si.core.EdgeEntityPropertiesHeadVertex head_vertex = 1001;
-  si.core.EdgeEntityPropertiesTailVertex tail_vertex = 1002;
-  google.protobuf.BoolValue bidirectional = 1003;
+enum EdgeEdgeKind {
+  EDGE_EDGE_KIND_UNKNOWN = 0;
+  EDGE_EDGE_KIND_CONNECTED = 1;
 }
-message EdgeEntity {
+message Edge {
   google.protobuf.StringValue id = 1;
   google.protobuf.StringValue name = 2;
   google.protobuf.StringValue display_name = 3;
   si.data.DataStorable si_storable = 4;
-  google.protobuf.StringValue description = 5;
-  si.cea.EntitySiProperties si_properties = 6;
-  si.core.EdgeEntityProperties properties = 7;
-  si.core.EdgeComponentConstraints constraints = 8;
-  si.core.EdgeComponentConstraints implicit_constraints = 9;
+  si.core.EdgeSiProperties si_properties = 1001;
+  si.core.EdgeHeadVertex head_vertex = 1002;
+  si.core.EdgeTailVertex tail_vertex = 1003;
+  google.protobuf.BoolValue bidirectional = 1004;
+  EdgeEdgeKind edge_kind = 1005;
 }
-message EdgeEntityGetRequest {
-  google.protobuf.StringValue id = 1001;
-}
-message EdgeEntityGetReply {
-  si.core.EdgeEntity item = 1001;
-}
-message EdgeEntityListRequest {
+message EdgeListRequest {
   si.data.DataQuery query = 1;
   google.protobuf.UInt32Value page_size = 2;
   google.protobuf.StringValue order_by = 3;
@@ -615,70 +433,57 @@ message EdgeEntityListRequest {
   google.protobuf.StringValue page_token = 5;
   google.protobuf.StringValue scope_by_tenant_id = 6;
 }
-message EdgeEntityListReply {
-  repeated si.core.EdgeEntity items = 1;
+message EdgeListReply {
+  repeated si.core.Edge items = 1;
   google.protobuf.UInt32Value total_count = 2;
   google.protobuf.StringValue next_page_token = 3;
 }
-message EdgeEntityCreateRequest {
-  google.protobuf.StringValue name = 1;
-  google.protobuf.StringValue display_name = 2;
-  google.protobuf.StringValue description = 3;
-  google.protobuf.StringValue workspace_id = 1001;
-  google.protobuf.StringValue change_set_id = 1002;
-  si.core.EdgeEntityProperties properties = 4;
-  si.core.EdgeComponentConstraints constraints = 5;
-}
-message EdgeEntityCreateReply {
-  si.core.EdgeEntity item = 1;
-}
-message EdgeEntityDeleteRequest {
+message EdgeGetRequest {
   google.protobuf.StringValue id = 1001;
-  google.protobuf.StringValue change_set_id = 1002;
 }
-message EdgeEntityDeleteReply {
-  si.core.EdgeEntity item = 1001;
+message EdgeGetReply {
+  si.core.Edge item = 1001;
 }
-message EdgeEntityUpdateRequestUpdate {
+message EdgeCreateRequest {
   google.protobuf.StringValue name = 1001;
   google.protobuf.StringValue display_name = 1002;
-  google.protobuf.StringValue description = 1003;
-  si.core.EdgeEntityProperties properties = 1004;
+  si.core.EdgeSiProperties si_properties = 1003;
+  si.core.EdgeHeadVertex head_vertex = 1004;
+  si.core.EdgeTailVertex tail_vertex = 1005;
+  google.protobuf.BoolValue bidirectional = 1006;
+  si.core.EdgeEdgeKind edge_kind = 1007;
 }
-message EdgeEntityUpdateRequest {
-  google.protobuf.StringValue id = 1001;
-  google.protobuf.StringValue change_set_id = 1002;
-  si.core.EdgeEntityUpdateRequestUpdate update = 1003;
+message EdgeCreateReply {
+  si.core.Edge item = 1001;
 }
-message EdgeEntityUpdateReply {
-  si.core.EdgeEntity item = 1001;
+message NodeSockets {
+  google.protobuf.StringValue name = 1001;
 }
-message EdgeEntitySyncRequest {
+message NodePosition {
+  google.protobuf.Int32Value x = 1001;
+  google.protobuf.Int32Value y = 1002;
+}
+enum NodeNodeKind {
+  NODE_NODE_KIND_UNKNOWN = 0;
+  NODE_NODE_KIND_ENTITY = 1;
+}
+message NodeSiProperties {
+  google.protobuf.StringValue billing_account_id = 1001;
+  google.protobuf.StringValue organization_id = 1002;
+  google.protobuf.StringValue workspace_id = 1003;
+}
+message Node {
   google.protobuf.StringValue id = 1;
-  google.protobuf.StringValue change_set_id = 2;
+  google.protobuf.StringValue name = 2;
+  google.protobuf.StringValue display_name = 3;
+  si.data.DataStorable si_storable = 4;
+  google.protobuf.StringValue entity_id = 1001;
+  repeated si.core.NodeSockets sockets = 1002;
+  si.core.NodePosition position = 1003;
+  NodeNodeKind node_kind = 1004;
+  si.core.NodeSiProperties si_properties = 1005;
 }
-message EdgeEntitySyncReply {
-  si.core.EdgeEntityEvent item = 1;
-}
-message EdgeEntityEvent {
-  google.protobuf.StringValue id = 1;
-  si.data.DataStorable si_storable = 2;
-  google.protobuf.StringValue action_name = 3;
-  google.protobuf.StringValue create_time = 4;
-  google.protobuf.StringValue updated_time = 5;
-  google.protobuf.StringValue final_time = 6;
-  google.protobuf.BoolValue success = 7;
-  google.protobuf.BoolValue finalized = 8;
-  google.protobuf.StringValue user_id = 9;
-  repeated google.protobuf.StringValue output_lines = 10;
-  repeated google.protobuf.StringValue error_lines = 11;
-  google.protobuf.StringValue error_message = 12;
-  si.core.EdgeEntity previous_entity = 13;
-  si.core.EdgeEntity input_entity = 14;
-  si.core.EdgeEntity output_entity = 15;
-  si.cea.EntityEventSiProperties si_properties = 16;
-}
-message EdgeEntityEventListRequest {
+message NodeListRequest {
   si.data.DataQuery query = 1;
   google.protobuf.UInt32Value page_size = 2;
   google.protobuf.StringValue order_by = 3;
@@ -686,8 +491,33 @@ message EdgeEntityEventListRequest {
   google.protobuf.StringValue page_token = 5;
   google.protobuf.StringValue scope_by_tenant_id = 6;
 }
-message EdgeEntityEventListReply {
-  repeated si.core.EdgeEntityEvent items = 1;
+message NodeListReply {
+  repeated si.core.Node items = 1;
   google.protobuf.UInt32Value total_count = 2;
   google.protobuf.StringValue next_page_token = 3;
+}
+message NodeGetRequest {
+  google.protobuf.StringValue id = 1001;
+}
+message NodeGetReply {
+  si.core.Node item = 1001;
+}
+message NodeCreateRequest {
+  google.protobuf.StringValue name = 1001;
+  google.protobuf.StringValue display_name = 1002;
+  google.protobuf.StringValue entity_id = 1003;
+  repeated si.core.NodeSockets sockets = 1004;
+  si.core.NodePosition position = 1005;
+  si.core.NodeNodeKind node_kind = 1006;
+  si.core.NodeSiProperties si_properties = 1007;
+}
+message NodeCreateReply {
+  si.core.Node item = 1001;
+}
+message NodeSetPositionRequest {
+  google.protobuf.StringValue id = 1001;
+  si.core.NodePosition position = 1002;
+}
+message NodeSetPositionReply {
+  si.core.Node item = 1001;
 }
