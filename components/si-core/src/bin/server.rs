@@ -30,13 +30,23 @@ async fn main() -> anyhow::Result<()> {
     println!("*** Running service migrations ***");
     service.migrate().await?;
 
-    spawn_finalized_listener(server_name, settings.vernemq_server_uri(), db.clone())
-        .await
-        .context("failed to spawn finalized listener")?;
+    spawn_finalized_listener(
+        server_name,
+        settings.vernemq_server_uri(),
+        settings.vernemq_shared_topic_id()?,
+        db.clone(),
+    )
+    .await
+    .context("failed to spawn finalized listener")?;
 
-    spawn_agent(server_name, settings.vernemq_server_uri(), &db)
-        .await
-        .context("failed to spawn agent")?;
+    spawn_agent(
+        server_name,
+        settings.vernemq_server_uri(),
+        format!("{}_agent", settings.vernemq_shared_topic_id()?),
+        &db,
+    )
+    .await
+    .context("failed to spawn agent")?;
 
     spawn_service(server_name, service, settings.service.port)
         .await
@@ -50,10 +60,12 @@ async fn main() -> anyhow::Result<()> {
 async fn spawn_finalized_listener(
     server_name: &str,
     transport_server_uri: impl Into<String>,
+    shared_topic_id: impl Into<String>,
     db: Db,
 ) -> anyhow::Result<()> {
     println!("*** Spawning the FinalizedListener ***");
-    let mut listener_builder = FinalizedListener::builder(server_name, transport_server_uri, db);
+    let mut listener_builder =
+        FinalizedListener::builder(server_name, transport_server_uri, shared_topic_id, db);
     listener_builder.finalizer(application_entity_event::finalizer()?);
     listener_builder.finalizer(edge_entity_event::finalizer()?);
     listener_builder.finalizer(service_entity_event::finalizer()?);
@@ -70,22 +82,49 @@ async fn spawn_finalized_listener(
 async fn spawn_agent(
     server_name: &str,
     transport_server_uri: impl Into<String>,
+    shared_topic_id: impl Into<String>,
     db: &Db,
 ) -> anyhow::Result<()> {
     println!("*** Spawning the Agent ***");
+    let shared_topic_id = shared_topic_id.into();
     let mut agent_builder = Agent::builder(
         server_name,
         transport_server_uri,
         si_agent::TEMP_AGENT_ID,
         si_agent::TEMP_AGENT_INSTALLATION_ID,
     );
-    agent_builder
-        .dispatcher(build_dispatcher(&db, global_core_application::dispatcher_builder()).await?);
-    agent_builder.dispatcher(build_dispatcher(&db, global_core_edge::dispatcher_builder()).await?);
-    agent_builder
-        .dispatcher(build_dispatcher(&db, global_core_service::dispatcher_builder()).await?);
-    agent_builder
-        .dispatcher(build_dispatcher(&db, global_core_system::dispatcher_builder()).await?);
+    agent_builder.dispatcher(
+        build_dispatcher(
+            shared_topic_id.clone(),
+            &db,
+            global_core_application::dispatcher_builder(),
+        )
+        .await?,
+    );
+    agent_builder.dispatcher(
+        build_dispatcher(
+            shared_topic_id.clone(),
+            &db,
+            global_core_edge::dispatcher_builder(),
+        )
+        .await?,
+    );
+    agent_builder.dispatcher(
+        build_dispatcher(
+            shared_topic_id.clone(),
+            &db,
+            global_core_service::dispatcher_builder(),
+        )
+        .await?,
+    );
+    agent_builder.dispatcher(
+        build_dispatcher(
+            shared_topic_id.clone(),
+            &db,
+            global_core_system::dispatcher_builder(),
+        )
+        .await?,
+    );
     let agent = agent_builder.build().await?;
 
     tokio::spawn(agent.run());
@@ -108,10 +147,11 @@ async fn spawn_service(server_name: &str, service: Service, port: u16) -> anyhow
 
 /// Builds a dispatcher implementation from a given `DispatchBuilder`.
 async fn build_dispatcher(
+    shared_topic_id: String,
     db: &Db,
     mut dispatch_builder: impl DispatchBuilder,
 ) -> anyhow::Result<impl Dispatchable> {
-    let dispatch_key = dispatch_key_for(db, &dispatch_builder).await?;
+    let dispatch_key = dispatch_key_for(shared_topic_id, db, &dispatch_builder).await?;
     dispatch_builder.dispatch_key(dispatch_key);
 
     Ok(dispatch_builder.build()?)
@@ -125,7 +165,11 @@ async fn build_dispatcher(
 /// integration and integration service identifiers would be configured and provided the `Settings`
 /// interface. In this way, we avoid Agents having awareness or the power to use a database
 /// connection within their implementations.
-async fn dispatch_key_for(db: &Db, builder: &impl DispatchBuilder) -> anyhow::Result<DispatchKey> {
+async fn dispatch_key_for(
+    shared_topic_id: String,
+    db: &Db,
+    builder: &impl DispatchBuilder,
+) -> anyhow::Result<DispatchKey> {
     let integration_name = builder.integration_name();
     let integration_service_name = builder.integration_service_name();
     let object_type = builder.object_type();
@@ -146,6 +190,7 @@ async fn dispatch_key_for(db: &Db, builder: &impl DispatchBuilder) -> anyhow::Re
         .await?;
 
     Ok(DispatchKey::new(
+        shared_topic_id,
         integration.id()?,
         integration_service.id()?,
         object_type,

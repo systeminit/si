@@ -2,7 +2,7 @@ use crate::CeaResult;
 use async_trait::async_trait;
 use futures::StreamExt;
 use si_data::Db;
-use si_transport::{AgentData, AgentDataTopic, QoS, Topic, Transport, WireMessage};
+use si_transport::{AgentData, AgentDataTopic, Header, QoS, Topic, Transport, WireMessage};
 use std::{borrow::Cow, collections::HashMap, sync::Arc};
 use tracing::warn;
 
@@ -40,18 +40,20 @@ pub trait FinalizeBuilder {
 pub struct FinalizedListener {
     transport: Transport,
     db: Db,
-    finalizers: HashMap<String, Arc<dyn Finalizeable>>,
+    finalizers: HashMap<Topic, Arc<dyn Finalizeable>>,
 }
 
 impl FinalizedListener {
     pub fn builder<'a>(
         server_name: impl Into<Cow<'a, str>>,
         transport_server_uri: impl Into<String>,
+        shared_topic_id: impl Into<String>,
         db: Db,
     ) -> FinalizedListenerBuilder<'a> {
         FinalizedListenerBuilder {
             server_name: server_name.into(),
             transport_server_uri: transport_server_uri.into(),
+            shared_topic_id: shared_topic_id.into(),
             db,
             finalizers: HashMap::new(),
         }
@@ -60,12 +62,25 @@ impl FinalizedListener {
     pub async fn run(mut self) -> CeaResult<()> {
         let mut messages = self
             .transport
-            .subscribe_to(self.subscriptions()?)
+            .subscribe_to(self.subscriptions())
             .await?
             .messages();
+        let mut finalizer_topics: Vec<_> = self.finalizers.keys().collect();
+        finalizer_topics.sort_unstable();
 
         while let Some(message) = messages.next().await {
-            match self.finalizers.get(message.topic_str()) {
+            let topic = match match_topic(message.header(), &finalizer_topics) {
+                Some(key) => key,
+                None => {
+                    warn!(
+                        "no finalizer to handle message from subscription, topic={}",
+                        message.header()
+                    );
+                    continue;
+                }
+            };
+
+            match self.finalizers.get(topic) {
                 Some(finalizer) => {
                     tokio::spawn(finalize_message(
                         self.db.clone(),
@@ -76,7 +91,7 @@ impl FinalizedListener {
                 None => {
                     warn!(
                         "no finalizer to handle message from subscription, topic={}",
-                        message.topic_str()
+                        message.header()
                     );
                     continue;
                 }
@@ -86,13 +101,13 @@ impl FinalizedListener {
         Ok(())
     }
 
-    fn subscriptions(&self) -> CeaResult<Vec<(Topic, QoS)>> {
+    fn subscriptions(&self) -> Vec<(Topic, QoS)> {
         let mut subscriptions = Vec::new();
-        for topic_str in self.finalizers.keys() {
-            subscriptions.push((topic_str.parse()?, SUBSCRIBE_QOS));
+        for topic in self.finalizers.keys() {
+            subscriptions.push((topic.clone(), SUBSCRIBE_QOS));
         }
 
-        Ok(subscriptions)
+        subscriptions
     }
 }
 
@@ -100,6 +115,7 @@ pub struct FinalizedListenerBuilder<'a> {
     server_name: Cow<'a, str>,
     transport_server_uri: String,
     db: Db,
+    shared_topic_id: String,
     finalizers: HashMap<FinalizeKey, Arc<dyn Finalizeable>>,
 }
 
@@ -121,11 +137,11 @@ impl<'a> FinalizedListenerBuilder<'a> {
         for (finalize_key, finalizer) in self.finalizers.into_iter() {
             finalizers.insert(
                 AgentDataTopic::builder()
-                    .shared(true)
+                    .shared_id(&self.shared_topic_id)
                     .object_type(finalize_key.object_type)
                     .data(AgentData::Finalize)
                     .build()
-                    .to_string(),
+                    .into(),
                 finalizer,
             );
         }
@@ -149,6 +165,13 @@ impl FinalizeKey {
             object_type: object_type.into(),
         }
     }
+}
+
+fn match_topic<'a>(header: &Header, topics: &[&'a Topic]) -> Option<&'a Topic> {
+    topics
+        .iter()
+        .find(|topic| header.satisfies(topic))
+        .map(|topic| *topic)
 }
 
 async fn finalize_message(

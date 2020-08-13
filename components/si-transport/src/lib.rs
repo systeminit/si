@@ -3,7 +3,6 @@ mod message;
 mod metadata;
 mod qos;
 mod transport;
-mod uuid;
 
 pub use error::{Error, Result};
 pub use message::{Message, TypeHint, WireMessage};

@@ -6,8 +6,9 @@ const SHARED: &str = "$share";
 const CMD: &str = "cmd";
 const DT: &str = "dt";
 const AGENT: &str = "agent";
+const WILDCARD: &str = "+";
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq)]
 pub enum Header {
     AgentCommand(AgentCommandHeader),
     AgentData(AgentDataHeader),
@@ -63,6 +64,14 @@ impl Header {
     pub fn into_topic(self) -> Topic {
         self.into()
     }
+
+    pub fn satisfies(&self, topic: &Topic) -> bool {
+        match (self, topic) {
+            (Self::AgentCommand(header), Topic::AgentCommand(topic)) => header.satisfies(topic),
+            (Self::AgentData(header), Topic::AgentData(topic)) => header.satisfies(topic),
+            (_, _) => false,
+        }
+    }
 }
 
 impl fmt::Display for Header {
@@ -88,7 +97,7 @@ impl FromStr for Header {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq)]
 pub struct AgentCommandHeader {
     agent_id: String,
     agent_installation_id: String,
@@ -97,6 +106,28 @@ pub struct AgentCommandHeader {
     object_type: String,
     id: String,
     command: AgentCommand,
+}
+
+impl AgentCommandHeader {
+    pub fn satisfies(&self, topic: &AgentCommandTopic) -> bool {
+        if topic_matches(&self.agent_id, &topic.agent_id)
+            && topic_matches(&self.agent_installation_id, &topic.agent_installation_id)
+            && topic_matches(&self.integration_id, &topic.integration_id)
+            && topic_matches(&self.integration_service_id, &topic.integration_service_id)
+            && topic_matches(&self.object_type, &topic.object_type)
+            && topic_matches(&self.id, &topic.id)
+        {
+            if let Some(ref command) = topic.command {
+                if command != &self.command {
+                    return false;
+                }
+            }
+
+            true
+        } else {
+            false
+        }
+    }
 }
 
 impl fmt::Display for AgentCommandHeader {
@@ -125,7 +156,7 @@ impl FromStr for AgentCommandHeader {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let topic = AgentCommandTopic::from_str(s)?;
 
-        if topic.shared {
+        if topic.shared_id.is_some() {
             return Err(Error::InvalidHeaderShared(s.to_string()));
         }
 
@@ -185,7 +216,7 @@ impl From<AgentCommandHeader> for Header {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq)]
 pub struct AgentDataHeader {
     agent_id: String,
     agent_installation_id: String,
@@ -202,6 +233,29 @@ pub struct AgentDataHeader {
 impl AgentDataHeader {
     pub fn set_data(&mut self, data: AgentData) {
         self.data = data;
+    }
+
+    pub fn satisfies(&self, topic: &AgentDataTopic) -> bool {
+        if topic_matches(&self.agent_id, &topic.agent_id)
+            && topic_matches(&self.agent_installation_id, &topic.agent_installation_id)
+            && topic_matches(&self.billing_account_id, &topic.billing_account_id)
+            && topic_matches(&self.organization_id, &topic.organization_id)
+            && topic_matches(&self.workspace_id, &topic.workspace_id)
+            && topic_matches(&self.integration_id, &topic.integration_id)
+            && topic_matches(&self.integration_service_id, &topic.integration_service_id)
+            && topic_matches(&self.object_type, &topic.object_type)
+            && topic_matches(&self.id, &topic.id)
+        {
+            if let Some(ref data) = topic.data {
+                if data != &self.data {
+                    return false;
+                }
+            }
+
+            true
+        } else {
+            false
+        }
     }
 }
 
@@ -234,7 +288,7 @@ impl FromStr for AgentDataHeader {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let topic = AgentDataTopic::from_str(s)?;
 
-        if topic.shared {
+        if topic.shared_id.is_some() {
             return Err(Error::InvalidHeaderShared(s.to_string()));
         }
 
@@ -313,7 +367,7 @@ impl From<AgentDataHeader> for Header {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Topic {
     AgentCommand(AgentCommandTopic),
     AgentData(AgentDataTopic),
@@ -332,16 +386,21 @@ impl FromStr for Topic {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.starts_with(&format!("{}/{}/{}", SHARED, CMD, AGENT))
-            || s.starts_with(&format!("{}/{}", CMD, AGENT))
-        {
-            Ok(Self::AgentCommand(AgentCommandTopic::from_str(s)?))
-        } else if s.starts_with(&format!("{}/{}/{}", SHARED, DT, AGENT))
-            || s.starts_with(&format!("{}/{}", DT, AGENT))
-        {
-            Ok(Self::AgentData(AgentDataTopic::from_str(s)?))
-        } else {
-            Err(Error::InvalidHeaderOrTopic(s.to_string()))
+        let mut parts = s.split('/');
+        let mut current = parts.next();
+
+        if let Some(SHARED) = current {
+            current = parts.next();
+            if current.is_none() {
+                return Err(Error::InvalidHeaderOrTopic(s.to_string()));
+            }
+            current = parts.next();
+        }
+
+        match (current, parts.next()) {
+            (Some(CMD), Some(AGENT)) => Ok(Self::AgentCommand(AgentCommandTopic::from_str(s)?)),
+            (Some(DT), Some(AGENT)) => Ok(Self::AgentData(AgentDataTopic::from_str(s)?)),
+            (_, _) => Err(Error::InvalidHeaderOrTopic(s.to_string())),
         }
     }
 }
@@ -355,10 +414,10 @@ impl From<Topic> for String {
     }
 }
 
-#[derive(Debug, Clone, TypedBuilder)]
+#[derive(Debug, Clone, Eq, Hash, Ord, PartialEq, PartialOrd, TypedBuilder)]
 pub struct AgentCommandTopic {
-    #[builder(default = false)]
-    shared: bool,
+    #[builder(default, setter(strip_option, into))]
+    shared_id: Option<String>,
     #[builder(default, setter(strip_option, into))]
     agent_id: Option<String>,
     #[builder(default, setter(strip_option, into))]
@@ -399,7 +458,8 @@ impl fmt::Display for AgentCommandTopic {
             self.id.as_ref().map(String::as_str).unwrap_or("+"),
             command.as_ref().map(String::as_str).unwrap_or("+"),
         ];
-        if self.shared {
+        if let Some(ref shared_id) = self.shared_id {
+            parts.insert(0, shared_id);
             parts.insert(0, SHARED);
         }
 
@@ -422,13 +482,16 @@ impl FromStr for AgentCommandTopic {
         let mut current = parts
             .next()
             .ok_or_else(|| Error::InvalidHeaderOrTopic(s.to_string()))?;
-        let shared = if current == SHARED {
+        let shared_id = if current == SHARED {
+            let shared_id = parts
+                .next()
+                .ok_or_else(|| Error::InvalidHeaderOrTopic(s.to_string()))?;
             current = parts
                 .next()
                 .ok_or_else(|| Error::InvalidHeaderOrTopic(s.to_string()))?;
-            true
+            Some(shared_id.to_string())
         } else {
-            false
+            None
         };
         if topic_part(current).as_ref().map(String::as_str) != Some(CMD) {
             return Err(Error::missing_part(CMD, s));
@@ -453,7 +516,7 @@ impl FromStr for AgentCommandTopic {
         }
 
         Ok(Self {
-            shared,
+            shared_id,
             agent_id,
             agent_installation_id,
             integration_id,
@@ -471,10 +534,10 @@ impl From<AgentCommandTopic> for Topic {
     }
 }
 
-#[derive(Debug, Clone, TypedBuilder)]
+#[derive(Debug, Clone, Eq, Hash, Ord, PartialEq, PartialOrd, TypedBuilder)]
 pub struct AgentDataTopic {
-    #[builder(default = false)]
-    shared: bool,
+    #[builder(default, setter(strip_option, into))]
+    shared_id: Option<String>,
     #[builder(default, setter(strip_option, into))]
     agent_id: Option<String>,
     #[builder(default, setter(strip_option, into))]
@@ -533,7 +596,8 @@ impl fmt::Display for AgentDataTopic {
             self.id.as_ref().map(String::as_str).unwrap_or("+"),
             data.as_ref().map(String::as_str).unwrap_or("+"),
         ];
-        if self.shared {
+        if let Some(ref shared_id) = self.shared_id {
+            parts.insert(0, shared_id);
             parts.insert(0, SHARED);
         }
 
@@ -556,13 +620,16 @@ impl FromStr for AgentDataTopic {
         let mut current = parts
             .next()
             .ok_or_else(|| Error::InvalidHeaderOrTopic(s.to_string()))?;
-        let shared = if current == SHARED {
+        let shared_id = if current == SHARED {
+            let shared_id = parts
+                .next()
+                .ok_or_else(|| Error::InvalidHeaderOrTopic(s.to_string()))?;
             current = parts
                 .next()
                 .ok_or_else(|| Error::InvalidHeaderOrTopic(s.to_string()))?;
-            true
+            Some(shared_id.to_string())
         } else {
-            false
+            None
         };
         if topic_part(current).as_ref().map(String::as_str) != Some(DT) {
             return Err(Error::missing_part(DT, s));
@@ -590,7 +657,7 @@ impl FromStr for AgentDataTopic {
         }
 
         Ok(Self {
-            shared,
+            shared_id,
             agent_id,
             agent_installation_id,
             billing_account_id,
@@ -623,7 +690,7 @@ impl From<Header> for Topic {
 impl From<AgentCommandHeader> for AgentCommandTopic {
     fn from(value: AgentCommandHeader) -> Self {
         Self {
-            shared: false,
+            shared_id: None,
             agent_id: Some(value.agent_id),
             agent_installation_id: Some(value.agent_installation_id),
             integration_id: Some(value.integration_id),
@@ -638,7 +705,7 @@ impl From<AgentCommandHeader> for AgentCommandTopic {
 impl From<AgentDataHeader> for AgentDataTopic {
     fn from(value: AgentDataHeader) -> Self {
         Self {
-            shared: false,
+            shared_id: None,
             agent_id: Some(value.agent_id),
             agent_installation_id: Some(value.agent_installation_id),
             billing_account_id: Some(value.billing_account_id),
@@ -653,7 +720,7 @@ impl From<AgentDataHeader> for AgentDataTopic {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum AgentCommand {
     Execute,
 }
@@ -677,7 +744,7 @@ impl fmt::Display for AgentCommand {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum AgentData {
     Finalize,
     Status,
@@ -714,10 +781,1653 @@ fn topic_part(s: &str) -> Option<String> {
     }
 }
 
+fn topic_matches(header_part: &str, topic_part: &Option<String>) -> bool {
+    match topic_part.as_ref().map(String::as_str) {
+        Some(topic_part) => {
+            if topic_part == WILDCARD || topic_part == header_part {
+                true
+            } else {
+                false
+            }
+        }
+        None => true,
+    }
+}
+
 fn next_topic_part(iter: &mut std::str::Split<'_, char>, s: &str) -> Result<Option<String>, Error> {
     let part = iter
         .next()
         .ok_or_else(|| Error::InvalidHeaderOrTopic(s.to_string()))?;
 
     Ok(topic_part(part))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    mod header {
+        use super::*;
+
+        fn agent_command_header() -> Header {
+            Header::new_command(
+                "AID",
+                "AIID",
+                "IID",
+                "ISID",
+                "OTYPE",
+                "ID",
+                AgentCommand::Execute,
+            )
+        }
+
+        fn agent_data_header() -> Header {
+            Header::new_data(
+                "AID",
+                "AIID",
+                "BAID",
+                "OID",
+                "WID",
+                "IID",
+                "ISID",
+                "OTYPE",
+                "ID",
+                AgentData::Stream,
+            )
+        }
+
+        fn agent_command_topic() -> Topic {
+            AgentCommandTopic::builder()
+                .shared_id("fans")
+                .agent_id("AID")
+                .agent_installation_id("AIID")
+                .integration_id("IID")
+                .integration_service_id("ISID")
+                .object_type("OTYPE")
+                .id("ID")
+                .command(AgentCommand::Execute)
+                .build()
+                .into()
+        }
+
+        fn agent_data_topic() -> Topic {
+            AgentDataTopic::builder()
+                .shared_id("fans")
+                .agent_id("AID")
+                .agent_installation_id("AIID")
+                .billing_account_id("BAID")
+                .organization_id("OID")
+                .workspace_id("WID")
+                .integration_id("IID")
+                .integration_service_id("ISID")
+                .object_type("OTYPE")
+                .id("ID")
+                .data(AgentData::Stream)
+                .build()
+                .into()
+        }
+
+        #[test]
+        fn display_agent_command() {
+            let h = agent_command_header();
+
+            assert_eq!(
+                "cmd/agent/AID/AIID/IID/ISID/OTYPE/ID/execute",
+                h.to_string()
+            );
+        }
+
+        #[test]
+        fn display_agent_data() {
+            let h = agent_data_header();
+
+            assert_eq!(
+                "dt/agent/AID/AIID/BAID/OID/WID/IID/ISID/OTYPE/ID/stream",
+                h.to_string()
+            );
+        }
+
+        #[test]
+        fn from_str_agent_command() {
+            let h = agent_command_header();
+
+            assert_eq!(
+                h,
+                "cmd/agent/AID/AIID/IID/ISID/OTYPE/ID/execute"
+                    .parse()
+                    .unwrap()
+            );
+        }
+
+        #[test]
+        fn satisfies_agent_command() {
+            let h = agent_command_header();
+            let t = agent_command_topic();
+
+            assert!(h.satisfies(&t));
+        }
+
+        #[test]
+        fn satisfies_agent_data() {
+            let h = agent_data_header();
+            let t = agent_data_topic();
+
+            assert!(h.satisfies(&t));
+        }
+
+        #[test]
+        fn satisfies_agent_command_against_agent_data_topic() {
+            let h = agent_command_header();
+            let t = agent_data_topic();
+
+            assert_eq!(false, h.satisfies(&t));
+        }
+
+        #[test]
+        fn satisfies_agent_data_against_agent_command_topic() {
+            let h = agent_data_header();
+            let t = agent_command_topic();
+
+            assert_eq!(false, h.satisfies(&t));
+        }
+    }
+
+    mod agent_command_header {
+        use super::*;
+
+        macro_rules! missing_parts {
+            ($header_str:expr, $part:expr) => {
+                match AgentCommandHeader::from_str($header_str) {
+                    Err(Error::MissingHeaderOrTopicPart(p, s)) => {
+                        assert_eq!(p, $part);
+                        assert_eq!(s, $header_str);
+                    }
+                    Err(err) => panic!("wrong error type expected: {:?}", err),
+                    Ok(_) => panic!("not expected to succeed"),
+                }
+            };
+        }
+
+        fn header() -> AgentCommandHeader {
+            AgentCommandHeader {
+                agent_id: "AID".to_string(),
+                agent_installation_id: "AIID".to_string(),
+                integration_id: "IID".to_string(),
+                integration_service_id: "ISID".to_string(),
+                object_type: "OTYPE".to_string(),
+                id: "ID".to_string(),
+                command: AgentCommand::Execute,
+            }
+        }
+
+        fn topic() -> AgentCommandTopic {
+            AgentCommandTopic::builder()
+                .shared_id("fans")
+                .agent_id("AID")
+                .agent_installation_id("AIID")
+                .integration_id("IID")
+                .integration_service_id("ISID")
+                .object_type("OTYPE")
+                .id("ID")
+                .command(AgentCommand::Execute)
+                .build()
+        }
+
+        #[test]
+        fn display() {
+            let h = header();
+
+            assert_eq!(
+                "cmd/agent/AID/AIID/IID/ISID/OTYPE/ID/execute",
+                h.to_string()
+            );
+        }
+
+        #[test]
+        fn from_str() {
+            assert_eq!(
+                header(),
+                "cmd/agent/AID/AIID/IID/ISID/OTYPE/ID/execute"
+                    .parse()
+                    .unwrap()
+            );
+        }
+
+        #[test]
+        fn from_str_shared_invalid() {
+            match AgentCommandHeader::from_str(
+                "$share/fans/cmd/agent/AID/AIID/IID/ISID/OTYPE/ID/execute",
+            ) {
+                Err(Error::InvalidHeaderShared(_)) => assert!(true),
+                Err(err) => panic!("wrong error type expected: {:?}", err),
+                Ok(_) => panic!("not expected to succeed"),
+            }
+        }
+
+        #[test]
+        fn from_str_no_agent_id() {
+            missing_parts!("cmd/agent/+/AIID/IID/ISID/OTYPE/ID/execute", "agent_id");
+            missing_parts!("cmd/agent//AIID/IID/ISID/OTYPE/ID/execute", "agent_id");
+        }
+
+        #[test]
+        fn from_str_no_agent_installation_id() {
+            missing_parts!(
+                "cmd/agent/AID/+/IID/ISID/OTYPE/ID/execute",
+                "agent_installation_id"
+            );
+            missing_parts!(
+                "cmd/agent/AID//IID/ISID/OTYPE/ID/execute",
+                "agent_installation_id"
+            );
+        }
+
+        #[test]
+        fn from_str_no_integration_id() {
+            missing_parts!(
+                "cmd/agent/AID/AIID/+/ISID/OTYPE/ID/execute",
+                "integration_id"
+            );
+            missing_parts!(
+                "cmd/agent/AID/AIID//ISID/OTYPE/ID/execute",
+                "integration_id"
+            );
+        }
+
+        #[test]
+        fn from_str_no_integration_service_id() {
+            missing_parts!(
+                "cmd/agent/AID/AIID/IID/+/OTYPE/ID/execute",
+                "integration_service_id"
+            );
+            missing_parts!(
+                "cmd/agent/AID/AIID/IID//OTYPE/ID/execute",
+                "integration_service_id"
+            );
+        }
+
+        #[test]
+        fn from_str_no_object_type() {
+            missing_parts!("cmd/agent/AID/AIID/IID/ISID/+/ID/execute", "object_type");
+            missing_parts!("cmd/agent/AID/AIID/IID/ISID//ID/execute", "object_type");
+        }
+
+        #[test]
+        fn from_str_no_id() {
+            missing_parts!("cmd/agent/AID/AIID/IID/ISID/OTYPE/+/execute", "id");
+            missing_parts!("cmd/agent/AID/AIID/IID/ISID/OTYPE//execute", "id");
+        }
+
+        #[test]
+        fn from_str_no_command() {
+            missing_parts!("cmd/agent/AID/AIID/IID/ISID/OTYPE/ID/+", "command");
+            missing_parts!("cmd/agent/AID/AIID/IID/ISID/OTYPE/ID/", "command");
+        }
+
+        #[test]
+        fn satisfies() {
+            let t = topic();
+
+            assert!(header().satisfies(&t.into()));
+        }
+
+        #[test]
+        fn satisfies_wildcard_agent_id() {
+            let mut t = topic();
+            t.agent_id = None;
+
+            assert!(header().satisfies(&t.into()));
+        }
+
+        #[test]
+        fn satisfies_wildcard_agent_installation_id() {
+            let mut t = topic();
+            t.agent_installation_id = None;
+
+            assert!(header().satisfies(&t.into()));
+        }
+
+        #[test]
+        fn satisfies_wildcard_integration_id() {
+            let mut t = topic();
+            t.integration_id = None;
+
+            assert!(header().satisfies(&t.into()));
+        }
+
+        #[test]
+        fn satisfies_wildcard_integration_service_id() {
+            let mut t = topic();
+            t.integration_service_id = None;
+
+            assert!(header().satisfies(&t.into()));
+        }
+
+        #[test]
+        fn satisfies_wildcard_object_type() {
+            let mut t = topic();
+            t.object_type = None;
+
+            assert!(header().satisfies(&t.into()));
+        }
+
+        #[test]
+        fn satisfies_wildcard_id() {
+            let mut t = topic();
+            t.id = None;
+
+            assert!(header().satisfies(&t.into()));
+        }
+
+        #[test]
+        fn satisfies_wildcard_command() {
+            let mut t = topic();
+            t.command = None;
+
+            assert!(header().satisfies(&t.into()));
+        }
+
+        #[test]
+        fn satisfies_wildcard_multiple() {
+            let mut t = topic();
+            t.agent_id = None;
+            t.agent_installation_id = None;
+            t.id = None;
+            t.command = None;
+
+            assert!(header().satisfies(&t.into()));
+        }
+
+        #[test]
+        fn satisfies_no_matches() {
+            let mut t = topic();
+            t.id = Some("nope".to_string());
+
+            assert_eq!(false, header().satisfies(&t.into()));
+        }
+    }
+
+    mod agent_data_header {
+        use super::*;
+
+        macro_rules! missing_parts {
+            ($header_str:expr, $part:expr) => {
+                match AgentDataHeader::from_str($header_str) {
+                    Err(Error::MissingHeaderOrTopicPart(p, s)) => {
+                        assert_eq!(p, $part);
+                        assert_eq!(s, $header_str);
+                    }
+                    Err(err) => panic!("wrong error type expected: {:?}", err),
+                    Ok(_) => panic!("not expected to succeed"),
+                }
+            };
+        }
+
+        fn header() -> AgentDataHeader {
+            AgentDataHeader {
+                agent_id: "AID".to_string(),
+                agent_installation_id: "AIID".to_string(),
+                billing_account_id: "BAID".to_string(),
+                organization_id: "OID".to_string(),
+                workspace_id: "WID".to_string(),
+                integration_id: "IID".to_string(),
+                integration_service_id: "ISID".to_string(),
+                object_type: "OTYPE".to_string(),
+                id: "ID".to_string(),
+                data: AgentData::Stream,
+            }
+        }
+
+        fn topic() -> AgentDataTopic {
+            AgentDataTopic::builder()
+                .shared_id("fans")
+                .agent_id("AID")
+                .agent_installation_id("AIID")
+                .billing_account_id("BAID")
+                .organization_id("OID")
+                .workspace_id("WID")
+                .integration_id("IID")
+                .integration_service_id("ISID")
+                .object_type("OTYPE")
+                .id("ID")
+                .data(AgentData::Stream)
+                .build()
+        }
+
+        #[test]
+        fn display() {
+            let h = header();
+
+            assert_eq!(
+                "dt/agent/AID/AIID/BAID/OID/WID/IID/ISID/OTYPE/ID/stream",
+                h.to_string()
+            );
+        }
+
+        #[test]
+        fn from_str() {
+            assert_eq!(
+                header(),
+                "dt/agent/AID/AIID/BAID/OID/WID/IID/ISID/OTYPE/ID/stream"
+                    .parse()
+                    .unwrap()
+            );
+        }
+
+        #[test]
+        fn from_str_shared_invalid() {
+            match AgentDataHeader::from_str(
+                "$share/fans/dt/agent/AID/AIID/BAID/OID/WID/IID/ISID/OTYPE/ID/stream",
+            ) {
+                Err(Error::InvalidHeaderShared(_)) => assert!(true),
+                Err(err) => panic!("wrong error type expected: {:?}", err),
+                Ok(_) => panic!("not expected to succeed"),
+            }
+        }
+
+        #[test]
+        fn from_str_no_agent_id() {
+            missing_parts!(
+                "dt/agent/+/AIID/BAID/OID/WID/IID/ISID/OTYPE/ID/stream",
+                "agent_id"
+            );
+            missing_parts!(
+                "dt/agent//AIID/BAID/OID/WID/IID/ISID/OTYPE/ID/stream",
+                "agent_id"
+            );
+        }
+
+        #[test]
+        fn from_str_no_agent_installation_id() {
+            missing_parts!(
+                "dt/agent/AID/+/BAID/OID/WID/IID/ISID/OTYPE/ID/stream",
+                "agent_installation_id"
+            );
+            missing_parts!(
+                "dt/agent/AID//BAID/OID/WID/IID/ISID/OTYPE/ID/stream",
+                "agent_installation_id"
+            );
+        }
+
+        #[test]
+        fn from_str_shared_no_billing_account_id() {
+            missing_parts!(
+                "dt/agent/AID/AIID/+/OID/WID/IID/ISID/OTYPE/ID/stream",
+                "billing_account_id"
+            );
+            missing_parts!(
+                "dt/agent/AID/AIID//OID/WID/IID/ISID/OTYPE/ID/stream",
+                "billing_account_id"
+            );
+        }
+
+        #[test]
+        fn from_str_shared_no_organization_id() {
+            missing_parts!(
+                "dt/agent/AID/AIID/BAID/+/WID/IID/ISID/OTYPE/ID/stream",
+                "organization_id"
+            );
+            missing_parts!(
+                "dt/agent/AID/AIID/BAID//WID/IID/ISID/OTYPE/ID/stream",
+                "organization_id"
+            );
+        }
+
+        #[test]
+        fn from_str_shared_no_workspace_id() {
+            missing_parts!(
+                "dt/agent/AID/AIID/BAID/OID/+/IID/ISID/OTYPE/ID/stream",
+                "workspace_id"
+            );
+            missing_parts!(
+                "dt/agent/AID/AIID/BAID/OID//IID/ISID/OTYPE/ID/stream",
+                "workspace_id"
+            );
+        }
+
+        #[test]
+        fn from_str_no_integration_id() {
+            missing_parts!(
+                "dt/agent/AID/AIID/BAID/OID/WID/+/ISID/OTYPE/ID/stream",
+                "integration_id"
+            );
+            missing_parts!(
+                "dt/agent/AID/AIID/BAID/OID/WID//ISID/OTYPE/ID/stream",
+                "integration_id"
+            );
+        }
+
+        #[test]
+        fn from_str_no_integration_service_id() {
+            missing_parts!(
+                "dt/agent/AID/AIID/BAID/OID/WID/IID/+/OTYPE/ID/stream",
+                "integration_service_id"
+            );
+            missing_parts!(
+                "dt/agent/AID/AIID/BAID/OID/WID/IID//OTYPE/ID/stream",
+                "integration_service_id"
+            );
+        }
+
+        #[test]
+        fn from_str_no_object_type() {
+            missing_parts!(
+                "dt/agent/AID/AIID/BAID/OID/WID/IID/ISID/+/ID/stream",
+                "object_type"
+            );
+            missing_parts!(
+                "dt/agent/AID/AIID/BAID/OID/WID/IID/ISID//ID/stream",
+                "object_type"
+            );
+        }
+
+        #[test]
+        fn from_str_no_id() {
+            missing_parts!(
+                "dt/agent/AID/AIID/BAID/OID/WID/IID/ISID/OTYPE/+/stream",
+                "id"
+            );
+            missing_parts!(
+                "dt/agent/AID/AIID/BAID/OID/WID/IID/ISID/OTYPE//stream",
+                "id"
+            );
+        }
+
+        #[test]
+        fn from_str_no_data() {
+            missing_parts!("dt/agent/AID/AIID/BAID/OID/WID/IID/ISID/OTYPE/ID/+", "data");
+            missing_parts!("dt/agent/AID/AIID/BAID/OID/WID/IID/ISID/OTYPE/ID/", "data");
+        }
+
+        #[test]
+        fn satisfies() {
+            let t = topic();
+
+            assert!(header().satisfies(&t.into()));
+        }
+
+        #[test]
+        fn satisfies_wildcard_agent_id() {
+            let mut t = topic();
+            t.agent_id = None;
+
+            assert!(header().satisfies(&t.into()));
+        }
+
+        #[test]
+        fn satisfies_wildcard_agent_installation_id() {
+            let mut t = topic();
+            t.agent_installation_id = None;
+
+            assert!(header().satisfies(&t.into()));
+        }
+
+        #[test]
+        fn satisfies_wildcard_billing_account_id() {
+            let mut t = topic();
+            t.billing_account_id = None;
+
+            assert!(header().satisfies(&t.into()));
+        }
+
+        #[test]
+        fn satisfies_wildcard_organization_id() {
+            let mut t = topic();
+            t.organization_id = None;
+
+            assert!(header().satisfies(&t.into()));
+        }
+
+        #[test]
+        fn satisfies_wildcard_workspace_id() {
+            let mut t = topic();
+            t.workspace_id = None;
+
+            assert!(header().satisfies(&t.into()));
+        }
+
+        #[test]
+        fn satisfies_wildcard_integration_id() {
+            let mut t = topic();
+            t.integration_id = None;
+
+            assert!(header().satisfies(&t.into()));
+        }
+
+        #[test]
+        fn satisfies_wildcard_integration_service_id() {
+            let mut t = topic();
+            t.integration_service_id = None;
+
+            assert!(header().satisfies(&t.into()));
+        }
+
+        #[test]
+        fn satisfies_wildcard_object_type() {
+            let mut t = topic();
+            t.object_type = None;
+
+            assert!(header().satisfies(&t.into()));
+        }
+
+        #[test]
+        fn satisfies_wildcard_id() {
+            let mut t = topic();
+            t.id = None;
+
+            assert!(header().satisfies(&t.into()));
+        }
+
+        #[test]
+        fn satisfies_wildcard_data() {
+            let mut t = topic();
+            t.data = None;
+
+            assert!(header().satisfies(&t.into()));
+        }
+
+        #[test]
+        fn satisfies_wildcard_multiple() {
+            let mut t = topic();
+            t.agent_id = None;
+            t.agent_installation_id = None;
+            t.id = None;
+            t.data = None;
+
+            assert!(header().satisfies(&t.into()));
+        }
+
+        #[test]
+        fn satisfies_no_matches() {
+            let mut t = topic();
+            t.id = Some("nope".to_string());
+
+            assert_eq!(false, header().satisfies(&t.into()));
+        }
+    }
+
+    mod topic {
+        use super::*;
+
+        fn agent_command_topic(shared: bool) -> Topic {
+            let builder = AgentCommandTopic::builder()
+                .agent_id("AID")
+                .agent_installation_id("AIID")
+                .integration_id("IID")
+                .integration_service_id("ISID")
+                .object_type("OTYPE")
+                .id("ID")
+                .command(AgentCommand::Execute);
+
+            Topic::AgentCommand(if shared {
+                builder.shared_id("fans").build()
+            } else {
+                builder.build()
+            })
+        }
+
+        fn agent_data_topic(shared: bool) -> Topic {
+            let builder = AgentDataTopic::builder()
+                .agent_id("AID")
+                .agent_installation_id("AIID")
+                .billing_account_id("BAID")
+                .organization_id("OID")
+                .workspace_id("WID")
+                .integration_id("IID")
+                .integration_service_id("ISID")
+                .object_type("OTYPE")
+                .id("ID")
+                .data(AgentData::Stream);
+
+            Topic::AgentData(if shared {
+                builder.shared_id("fans").build()
+            } else {
+                builder.build()
+            })
+        }
+
+        #[test]
+        fn display_agent_command() {
+            let t = agent_command_topic(true);
+
+            assert_eq!(
+                "$share/fans/cmd/agent/AID/AIID/IID/ISID/OTYPE/ID/execute",
+                t.to_string(),
+            );
+        }
+
+        #[test]
+        fn display_agent_data() {
+            let t = agent_data_topic(true);
+
+            assert_eq!(
+                "$share/fans/dt/agent/AID/AIID/BAID/OID/WID/IID/ISID/OTYPE/ID/stream",
+                t.to_string(),
+            );
+        }
+
+        #[test]
+        fn from_str_agent_command() {
+            let t = agent_command_topic(false);
+
+            assert_eq!(
+                t,
+                "cmd/agent/AID/AIID/IID/ISID/OTYPE/ID/execute"
+                    .parse()
+                    .unwrap(),
+            );
+        }
+
+        #[test]
+        fn from_str_agent_command_shared() {
+            let t = agent_command_topic(true);
+
+            assert_eq!(
+                t,
+                "$share/fans/cmd/agent/AID/AIID/IID/ISID/OTYPE/ID/execute"
+                    .parse()
+                    .unwrap(),
+            );
+        }
+
+        #[test]
+        fn from_str_agent_data() {
+            let t = agent_data_topic(false);
+
+            assert_eq!(
+                t,
+                "dt/agent/AID/AIID/BAID/OID/WID/IID/ISID/OTYPE/ID/stream"
+                    .parse()
+                    .unwrap(),
+            );
+        }
+
+        #[test]
+        fn from_str_agent_data_shared() {
+            let t = agent_data_topic(true);
+
+            assert_eq!(
+                t,
+                "$share/fans/dt/agent/AID/AIID/BAID/OID/WID/IID/ISID/OTYPE/ID/stream"
+                    .parse()
+                    .unwrap(),
+            );
+        }
+
+        #[test]
+        fn from_str_invalid() {
+            match Topic::from_str("$share/fans/ack/geez/nope") {
+                Err(Error::InvalidHeaderOrTopic(_)) => assert!(true),
+                Err(err) => panic!("wrong error type expected: {:?}", err),
+                Ok(_) => panic!("not expected to succeed"),
+            }
+        }
+
+        #[test]
+        fn from_agent_command_topic_for_string() {
+            assert_eq!(
+                "$share/fans/cmd/agent/AID/AIID/IID/ISID/OTYPE/ID/execute",
+                String::from(agent_command_topic(true)),
+            );
+        }
+
+        #[test]
+        fn from_agent_data_topic_for_string() {
+            assert_eq!(
+                "$share/fans/dt/agent/AID/AIID/BAID/OID/WID/IID/ISID/OTYPE/ID/stream",
+                String::from(agent_data_topic(true)),
+            );
+        }
+    }
+
+    mod agent_command_topic {
+        use super::*;
+
+        macro_rules! missing_parts {
+            ($topic_str:expr) => {
+                match AgentCommandTopic::from_str($topic_str) {
+                    Err(Error::InvalidHeaderOrTopic(_)) => assert!(true),
+                    Err(err) => panic!("wrong error type expected: {:?}", err),
+                    Ok(_) => panic!("not expected to succeed"),
+                }
+            };
+        }
+
+        fn topic() -> AgentCommandTopic {
+            AgentCommandTopic::builder()
+                .shared_id("fans")
+                .agent_id("AID")
+                .agent_installation_id("AIID")
+                .integration_id("IID")
+                .integration_service_id("ISID")
+                .object_type("OTYPE")
+                .id("ID")
+                .command(AgentCommand::Execute)
+                .build()
+        }
+
+        #[test]
+        fn defaults() {
+            let t = AgentCommandTopic::builder().build();
+
+            assert_eq!(None, t.shared_id);
+            assert_eq!(None, t.agent_id);
+            assert_eq!(None, t.agent_installation_id);
+            assert_eq!(None, t.integration_id);
+            assert_eq!(None, t.integration_service_id);
+            assert_eq!(None, t.object_type);
+            assert_eq!(None, t.id);
+            assert_eq!(None, t.command);
+        }
+
+        #[test]
+        fn display() {
+            let t = topic();
+
+            assert_eq!(
+                "$share/fans/cmd/agent/AID/AIID/IID/ISID/OTYPE/ID/execute",
+                t.to_string()
+            );
+        }
+
+        #[test]
+        fn display_no_shared() {
+            let mut t = topic();
+            t.shared_id = None;
+
+            assert_eq!(
+                "cmd/agent/AID/AIID/IID/ISID/OTYPE/ID/execute",
+                t.to_string()
+            );
+        }
+
+        #[test]
+        fn display_wildcard_agent_id() {
+            let mut t = topic();
+            t.agent_id = None;
+
+            assert_eq!(
+                "$share/fans/cmd/agent/+/AIID/IID/ISID/OTYPE/ID/execute",
+                t.to_string()
+            );
+        }
+
+        #[test]
+        fn display_wildcard_agent_installation_id() {
+            let mut t = topic();
+            t.agent_installation_id = None;
+
+            assert_eq!(
+                "$share/fans/cmd/agent/AID/+/IID/ISID/OTYPE/ID/execute",
+                t.to_string()
+            );
+        }
+
+        #[test]
+        fn display_wildcard_integration_id() {
+            let mut t = topic();
+            t.integration_id = None;
+
+            assert_eq!(
+                "$share/fans/cmd/agent/AID/AIID/+/ISID/OTYPE/ID/execute",
+                t.to_string()
+            );
+        }
+
+        #[test]
+        fn display_wildcard_integration_service_id() {
+            let mut t = topic();
+            t.integration_service_id = None;
+
+            assert_eq!(
+                "$share/fans/cmd/agent/AID/AIID/IID/+/OTYPE/ID/execute",
+                t.to_string()
+            );
+        }
+
+        #[test]
+        fn display_wildcard_object_type() {
+            let mut t = topic();
+            t.object_type = None;
+
+            assert_eq!(
+                "$share/fans/cmd/agent/AID/AIID/IID/ISID/+/ID/execute",
+                t.to_string()
+            );
+        }
+
+        #[test]
+        fn display_wildcard_id() {
+            let mut t = topic();
+            t.id = None;
+
+            assert_eq!(
+                "$share/fans/cmd/agent/AID/AIID/IID/ISID/OTYPE/+/execute",
+                t.to_string()
+            );
+        }
+
+        #[test]
+        fn display_wildcard_command() {
+            let mut t = topic();
+            t.command = None;
+
+            assert_eq!(
+                "$share/fans/cmd/agent/AID/AIID/IID/ISID/OTYPE/ID/+",
+                t.to_string()
+            );
+        }
+
+        #[test]
+        fn from_string() {
+            let s = "$share/fans/cmd/agent/AID/AIID/IID/ISID/OTYPE/ID/execute";
+
+            assert_eq!(s, String::from(topic()));
+            assert_eq!(s, Into::<String>::into(topic()));
+        }
+
+        #[test]
+        fn from_str() {
+            assert_eq!(
+                topic(),
+                "$share/fans/cmd/agent/AID/AIID/IID/ISID/OTYPE/ID/execute"
+                    .parse()
+                    .unwrap(),
+            );
+        }
+
+        #[test]
+        fn from_str_no_shared() {
+            let mut t = topic();
+            t.shared_id = None;
+
+            assert_eq!(
+                t,
+                "cmd/agent/AID/AIID/IID/ISID/OTYPE/ID/execute"
+                    .parse()
+                    .unwrap(),
+            );
+        }
+
+        #[test]
+        fn from_str_wildcard_agent_id() {
+            let mut t = topic();
+            t.agent_id = None;
+
+            assert_eq!(
+                t,
+                "$share/fans/cmd/agent/+/AIID/IID/ISID/OTYPE/ID/execute"
+                    .parse()
+                    .unwrap(),
+            );
+        }
+
+        #[test]
+        fn from_str_wildcard_agent_installation_id() {
+            let mut t = topic();
+            t.agent_installation_id = None;
+
+            assert_eq!(
+                t,
+                "$share/fans/cmd/agent/AID/+/IID/ISID/OTYPE/ID/execute"
+                    .parse()
+                    .unwrap(),
+            );
+        }
+
+        #[test]
+        fn from_str_wildcard_integration_id() {
+            let mut t = topic();
+            t.integration_id = None;
+
+            assert_eq!(
+                t,
+                "$share/fans/cmd/agent/AID/AIID/+/ISID/OTYPE/ID/execute"
+                    .parse()
+                    .unwrap(),
+            );
+        }
+
+        #[test]
+        fn from_str_wildcard_integration_service_id() {
+            let mut t = topic();
+            t.integration_service_id = None;
+
+            assert_eq!(
+                t,
+                "$share/fans/cmd/agent/AID/AIID/IID/+/OTYPE/ID/execute"
+                    .parse()
+                    .unwrap(),
+            );
+        }
+
+        #[test]
+        fn from_str_wildcard_object_type() {
+            let mut t = topic();
+            t.object_type = None;
+
+            assert_eq!(
+                t,
+                "$share/fans/cmd/agent/AID/AIID/IID/ISID/+/ID/execute"
+                    .parse()
+                    .unwrap(),
+            );
+        }
+
+        #[test]
+        fn from_str_wildcard_id() {
+            let mut t = topic();
+            t.id = None;
+
+            assert_eq!(
+                t,
+                "$share/fans/cmd/agent/AID/AIID/IID/ISID/OTYPE/+/execute"
+                    .parse()
+                    .unwrap(),
+            );
+        }
+
+        #[test]
+        fn from_str_wildcard_command() {
+            let mut t = topic();
+            t.command = None;
+
+            assert_eq!(
+                t,
+                "$share/fans/cmd/agent/AID/AIID/IID/ISID/OTYPE/ID/+"
+                    .parse()
+                    .unwrap(),
+            );
+        }
+
+        #[test]
+        fn from_str_shared_no_shared_id() {
+            match AgentCommandTopic::from_str("$share") {
+                Err(Error::InvalidHeaderOrTopic(a)) => assert_eq!(a, "$share"),
+                Err(err) => panic!("wrong error type expected: {:?}", err),
+                Ok(_) => panic!("not expected to succeed"),
+            }
+        }
+
+        #[test]
+        fn from_str_shared_no_cmd() {
+            match AgentCommandTopic::from_str("$share/wat") {
+                Err(Error::InvalidHeaderOrTopic(_)) => assert!(true),
+                Err(err) => panic!("wrong error type expected: {:?}", err),
+                Ok(_) => panic!("not expected to succeed"),
+            }
+        }
+
+        #[test]
+        fn from_str_no_cmd() {
+            match AgentCommandTopic::from_str("wat") {
+                Err(Error::MissingHeaderOrTopicPart(a, _)) => assert_eq!(a, "cmd"),
+                Err(err) => panic!("wrong error type expected: {:?}", err),
+                Ok(_) => panic!("not expected to succeed"),
+            }
+        }
+
+        #[test]
+        fn from_str_no_agent() {
+            match AgentCommandTopic::from_str("cmd/wat") {
+                Err(Error::MissingHeaderOrTopicPart(a, _)) => assert_eq!(a, "agent"),
+                Err(err) => panic!("wrong error type expected: {:?}", err),
+                Ok(_) => panic!("not expected to succeed"),
+            }
+        }
+
+        #[test]
+        fn from_str_no_agent_id() {
+            missing_parts!("cmd/agent");
+        }
+
+        #[test]
+        fn from_str_shared_no_agent_id() {
+            missing_parts!("$share/fans/cmd/agent");
+        }
+
+        #[test]
+        fn from_str_no_agent_installation_id() {
+            missing_parts!("cmd/agent/AID");
+        }
+
+        #[test]
+        fn from_str_shared_no_agent_installation_id() {
+            missing_parts!("$share/fans/cmd/agent/AID");
+        }
+
+        #[test]
+        fn from_str_no_integration_id() {
+            missing_parts!("cmd/agent/AID/AIID");
+        }
+
+        #[test]
+        fn from_str_shared_no_integration_id() {
+            missing_parts!("$share/fans/cmd/agent/AID/AIID");
+        }
+
+        #[test]
+        fn from_str_no_integration_service_id() {
+            missing_parts!("cmd/agent/AID/AIID/IID");
+        }
+
+        #[test]
+        fn from_str_no_shared_integration_service_id() {
+            missing_parts!("$share/fans/cmd/agent/AID/AIID/IID");
+        }
+
+        #[test]
+        fn from_str_no_object_type() {
+            missing_parts!("cmd/agent/AID/AIID/IID/ISID");
+        }
+
+        #[test]
+        fn from_str_shared_no_object_type() {
+            missing_parts!("$share/fans/cmd/agent/AID/AIID/IID/ISID");
+        }
+
+        #[test]
+        fn from_str_no_id() {
+            missing_parts!("cmd/agent/AID/AIID/IID/ISID/OTYPE");
+        }
+
+        #[test]
+        fn from_str_shared_no_id() {
+            missing_parts!("$share/fans/cmd/agent/AID/AIID/IID/ISID/OTYPE");
+        }
+
+        #[test]
+        fn from_str_no_command() {
+            missing_parts!("cmd/agent/AID/AIID/IID/ISID/OTYPE/ID");
+        }
+
+        #[test]
+        fn from_str_shared_no_command() {
+            missing_parts!("$share/fans/cmd/agent/AID/AIID/IID/ISID/OTYPE/ID");
+        }
+    }
+
+    mod agent_data_topic {
+        use super::*;
+
+        macro_rules! missing_parts {
+            ($topic_str:expr) => {
+                match AgentDataTopic::from_str($topic_str) {
+                    Err(Error::InvalidHeaderOrTopic(_)) => assert!(true),
+                    Err(err) => panic!("wrong error type expected: {:?}", err),
+                    Ok(_) => panic!("not expected to succeed"),
+                }
+            };
+        }
+
+        fn topic() -> AgentDataTopic {
+            AgentDataTopic::builder()
+                .shared_id("fans")
+                .agent_id("AID")
+                .agent_installation_id("AIID")
+                .billing_account_id("BAID")
+                .organization_id("OID")
+                .workspace_id("WID")
+                .integration_id("IID")
+                .integration_service_id("ISID")
+                .object_type("OTYPE")
+                .id("ID")
+                .data(AgentData::Stream)
+                .build()
+        }
+
+        #[test]
+        fn defaults() {
+            let t = AgentDataTopic::builder().build();
+
+            assert_eq!(None, t.shared_id);
+            assert_eq!(None, t.agent_id);
+            assert_eq!(None, t.agent_installation_id);
+            assert_eq!(None, t.billing_account_id);
+            assert_eq!(None, t.organization_id);
+            assert_eq!(None, t.workspace_id);
+            assert_eq!(None, t.integration_id);
+            assert_eq!(None, t.integration_service_id);
+            assert_eq!(None, t.object_type);
+            assert_eq!(None, t.id);
+            assert_eq!(None, t.data);
+        }
+
+        #[test]
+        fn display() {
+            let t = topic();
+
+            assert_eq!(
+                "$share/fans/dt/agent/AID/AIID/BAID/OID/WID/IID/ISID/OTYPE/ID/stream",
+                t.to_string()
+            );
+        }
+
+        #[test]
+        fn display_no_shared() {
+            let mut t = topic();
+            t.shared_id = None;
+
+            assert_eq!(
+                "dt/agent/AID/AIID/BAID/OID/WID/IID/ISID/OTYPE/ID/stream",
+                t.to_string()
+            );
+        }
+
+        #[test]
+        fn display_wildcard_agent_id() {
+            let mut t = topic();
+            t.agent_id = None;
+
+            assert_eq!(
+                "$share/fans/dt/agent/+/AIID/BAID/OID/WID/IID/ISID/OTYPE/ID/stream",
+                t.to_string()
+            );
+        }
+
+        #[test]
+        fn display_wildcard_agent_installation_id() {
+            let mut t = topic();
+            t.agent_installation_id = None;
+
+            assert_eq!(
+                "$share/fans/dt/agent/AID/+/BAID/OID/WID/IID/ISID/OTYPE/ID/stream",
+                t.to_string()
+            );
+        }
+
+        #[test]
+        fn display_wildcard_billing_account_id() {
+            let mut t = topic();
+            t.billing_account_id = None;
+
+            assert_eq!(
+                "$share/fans/dt/agent/AID/AIID/+/OID/WID/IID/ISID/OTYPE/ID/stream",
+                t.to_string()
+            );
+        }
+
+        #[test]
+        fn display_wildcard_organization_id() {
+            let mut t = topic();
+            t.organization_id = None;
+
+            assert_eq!(
+                "$share/fans/dt/agent/AID/AIID/BAID/+/WID/IID/ISID/OTYPE/ID/stream",
+                t.to_string()
+            );
+        }
+
+        #[test]
+        fn display_wildcard_workspace_id() {
+            let mut t = topic();
+            t.workspace_id = None;
+
+            assert_eq!(
+                "$share/fans/dt/agent/AID/AIID/BAID/OID/+/IID/ISID/OTYPE/ID/stream",
+                t.to_string()
+            );
+        }
+
+        #[test]
+        fn display_wildcard_integration_id() {
+            let mut t = topic();
+            t.integration_id = None;
+
+            assert_eq!(
+                "$share/fans/dt/agent/AID/AIID/BAID/OID/WID/+/ISID/OTYPE/ID/stream",
+                t.to_string()
+            );
+        }
+
+        #[test]
+        fn display_wildcard_integration_service_id() {
+            let mut t = topic();
+            t.integration_service_id = None;
+
+            assert_eq!(
+                "$share/fans/dt/agent/AID/AIID/BAID/OID/WID/IID/+/OTYPE/ID/stream",
+                t.to_string()
+            );
+        }
+
+        #[test]
+        fn display_wildcard_object_type() {
+            let mut t = topic();
+            t.object_type = None;
+
+            assert_eq!(
+                "$share/fans/dt/agent/AID/AIID/BAID/OID/WID/IID/ISID/+/ID/stream",
+                t.to_string()
+            );
+        }
+
+        #[test]
+        fn display_wildcard_id() {
+            let mut t = topic();
+            t.id = None;
+
+            assert_eq!(
+                "$share/fans/dt/agent/AID/AIID/BAID/OID/WID/IID/ISID/OTYPE/+/stream",
+                t.to_string()
+            );
+        }
+
+        #[test]
+        fn display_wildcard_data() {
+            let mut t = topic();
+            t.data = None;
+
+            assert_eq!(
+                "$share/fans/dt/agent/AID/AIID/BAID/OID/WID/IID/ISID/OTYPE/ID/+",
+                t.to_string()
+            );
+        }
+
+        #[test]
+        fn from_string() {
+            let s = "$share/fans/dt/agent/AID/AIID/BAID/OID/WID/IID/ISID/OTYPE/ID/stream";
+
+            assert_eq!(s, String::from(topic()));
+            assert_eq!(s, Into::<String>::into(topic()));
+        }
+
+        #[test]
+        fn from_str() {
+            assert_eq!(
+                topic(),
+                "$share/fans/dt/agent/AID/AIID/BAID/OID/WID/IID/ISID/OTYPE/ID/stream"
+                    .parse()
+                    .unwrap(),
+            );
+        }
+
+        #[test]
+        fn from_str_no_shared() {
+            let mut t = topic();
+            t.shared_id = None;
+
+            assert_eq!(
+                t,
+                "dt/agent/AID/AIID/BAID/OID/WID/IID/ISID/OTYPE/ID/stream"
+                    .parse()
+                    .unwrap(),
+            );
+        }
+
+        #[test]
+        fn from_str_wildcard_agent_id() {
+            let mut t = topic();
+            t.agent_id = None;
+
+            assert_eq!(
+                t,
+                "$share/fans/dt/agent/+/AIID/BAID/OID/WID/IID/ISID/OTYPE/ID/stream"
+                    .parse()
+                    .unwrap(),
+            );
+        }
+
+        #[test]
+        fn from_str_wildcard_agent_installation_id() {
+            let mut t = topic();
+            t.agent_installation_id = None;
+
+            assert_eq!(
+                t,
+                "$share/fans/dt/agent/AID/+/BAID/OID/WID/IID/ISID/OTYPE/ID/stream"
+                    .parse()
+                    .unwrap(),
+            );
+        }
+
+        #[test]
+        fn from_str_wildcard_integration_id() {
+            let mut t = topic();
+            t.integration_id = None;
+
+            assert_eq!(
+                t,
+                "$share/fans/dt/agent/AID/AIID/BAID/OID/WID/+/ISID/OTYPE/ID/stream"
+                    .parse()
+                    .unwrap(),
+            );
+        }
+
+        #[test]
+        fn from_str_wildcard_integration_service_id() {
+            let mut t = topic();
+            t.integration_service_id = None;
+
+            assert_eq!(
+                t,
+                "$share/fans/dt/agent/AID/AIID/BAID/OID/WID/IID/+/OTYPE/ID/stream"
+                    .parse()
+                    .unwrap(),
+            );
+        }
+
+        #[test]
+        fn from_str_wildcard_object_type() {
+            let mut t = topic();
+            t.object_type = None;
+
+            assert_eq!(
+                t,
+                "$share/fans/dt/agent/AID/AIID/BAID/OID/WID/IID/ISID/+/ID/stream"
+                    .parse()
+                    .unwrap(),
+            );
+        }
+
+        #[test]
+        fn from_str_wildcard_id() {
+            let mut t = topic();
+            t.id = None;
+
+            assert_eq!(
+                t,
+                "$share/fans/dt/agent/AID/AIID/BAID/OID/WID/IID/ISID/OTYPE/+/stream"
+                    .parse()
+                    .unwrap(),
+            );
+        }
+
+        #[test]
+        fn from_str_wildcard_data() {
+            let mut t = topic();
+            t.data = None;
+
+            assert_eq!(
+                t,
+                "$share/fans/dt/agent/AID/AIID/BAID/OID/WID/IID/ISID/OTYPE/ID/+"
+                    .parse()
+                    .unwrap(),
+            );
+        }
+
+        #[test]
+        fn from_str_shared_no_shared_id() {
+            match AgentDataTopic::from_str("$share") {
+                Err(Error::InvalidHeaderOrTopic(a)) => assert_eq!(a, "$share"),
+                Err(err) => panic!("wrong error type expected: {:?}", err),
+                Ok(_) => panic!("not expected to succeed"),
+            }
+        }
+
+        #[test]
+        fn from_str_shared_no_dt() {
+            match AgentDataTopic::from_str("$share/wat") {
+                Err(Error::InvalidHeaderOrTopic(_)) => assert!(true),
+                Err(err) => panic!("wrong error type expected: {:?}", err),
+                Ok(_) => panic!("not expected to succeed"),
+            }
+        }
+
+        #[test]
+        fn from_str_no_dt() {
+            match AgentDataTopic::from_str("wat") {
+                Err(Error::MissingHeaderOrTopicPart(a, _)) => assert_eq!(a, "dt"),
+                Err(err) => panic!("wrong error type expected: {:?}", err),
+                Ok(_) => panic!("not expected to succeed"),
+            }
+        }
+
+        #[test]
+        fn from_str_no_agent() {
+            match AgentDataTopic::from_str("dt/wat") {
+                Err(Error::MissingHeaderOrTopicPart(a, _)) => assert_eq!(a, "agent"),
+                Err(err) => panic!("wrong error type expected: {:?}", err),
+                Ok(_) => panic!("not expected to succeed"),
+            }
+        }
+
+        #[test]
+        fn from_str_no_agent_id() {
+            missing_parts!("dt/agent");
+        }
+
+        #[test]
+        fn from_str_shared_no_agent_id() {
+            missing_parts!("$share/fans/dt/agent");
+        }
+
+        #[test]
+        fn from_str_no_agent_installation_id() {
+            missing_parts!("dt/agent/AID");
+        }
+
+        #[test]
+        fn from_str_shared_no_agent_installation_id() {
+            missing_parts!("$share/fans/dt/agent/AID");
+        }
+
+        #[test]
+        fn from_str_no_billing_account_id() {
+            missing_parts!("dt/agent/AID/AIID");
+        }
+
+        #[test]
+        fn from_str_shared_no_billing_account_id() {
+            missing_parts!("$share/fans/dt/agent/AID/AIID");
+        }
+
+        #[test]
+        fn from_str_no_organization_id() {
+            missing_parts!("dt/agent/AID/AIID/BAID");
+        }
+
+        #[test]
+        fn from_str_shared_no_organization_id() {
+            missing_parts!("$share/fans/dt/agent/AID/AIID/BAID");
+        }
+
+        #[test]
+        fn from_str_no_workspace_id() {
+            missing_parts!("dt/agent/AID/AIID/BAID/OID");
+        }
+
+        #[test]
+        fn from_str_shared_no_workspace_id() {
+            missing_parts!("$share/fans/dt/agent/AID/AIID/BAID/OID");
+        }
+
+        #[test]
+        fn from_str_no_integration_id() {
+            missing_parts!("dt/agent/AID/AIID/BAID/OID/WID");
+        }
+
+        #[test]
+        fn from_str_shared_no_integration_id() {
+            missing_parts!("$share/fans/dt/agent/AID/AIID/BAID/OID/WID");
+        }
+
+        #[test]
+        fn from_str_no_integration_service_id() {
+            missing_parts!("dt/agent/AID/AIID/BAID/OID/WID/IID");
+        }
+
+        #[test]
+        fn from_str_no_shared_integration_service_id() {
+            missing_parts!("$share/fans/dt/agent/AID/AIID/BAID/OID/WID/IID");
+        }
+
+        #[test]
+        fn from_str_no_object_type() {
+            missing_parts!("dt/agent/AID/AIID/BAID/OID/WID/IID/ISID");
+        }
+
+        #[test]
+        fn from_str_shared_no_object_type() {
+            missing_parts!("$share/fans/dt/agent/AID/AIID/BAID/OID/WID/IID/ISID");
+        }
+
+        #[test]
+        fn from_str_no_id() {
+            missing_parts!("dt/agent/AID/AIID/BAID/OID/WID/IID/ISID/OTYPE");
+        }
+
+        #[test]
+        fn from_str_shared_no_id() {
+            missing_parts!("$share/fans/dt/agent/AID/AIID/BAID/OID/WID/IID/ISID/OTYPE");
+        }
+
+        #[test]
+        fn from_str_no_data() {
+            missing_parts!("dt/agent/AID/AIID/BAID/OID/WID/IID/ISID/OTYPE/ID");
+        }
+
+        #[test]
+        fn from_str_shared_no_data() {
+            missing_parts!("$share/fans/dt/agent/AID/AIID/BAID/OID/WID/IID/ISID/OTYPE/ID");
+        }
+    }
+
+    mod agent_command {
+        use super::*;
+
+        #[test]
+        fn display_execute() {
+            assert_eq!("execute", AgentCommand::Execute.to_string());
+        }
+
+        #[test]
+        fn from_str_execute() {
+            assert_eq!(AgentCommand::Execute, "execute".parse().unwrap());
+        }
+    }
+
+    mod agent_data {
+        use super::*;
+
+        #[test]
+        fn display_finalize() {
+            assert_eq!("finalize", AgentData::Finalize.to_string());
+        }
+
+        #[test]
+        fn display_status() {
+            assert_eq!("status", AgentData::Status.to_string());
+        }
+
+        #[test]
+        fn display_stream() {
+            assert_eq!("stream", AgentData::Stream.to_string());
+        }
+
+        #[test]
+        fn from_str_finalize() {
+            assert_eq!(AgentData::Finalize, "finalize".parse().unwrap());
+        }
+
+        #[test]
+        fn from_str_status() {
+            assert_eq!(AgentData::Status, "status".parse().unwrap());
+        }
+
+        #[test]
+        fn from_str_stream() {
+            assert_eq!(AgentData::Stream, "stream".parse().unwrap());
+        }
+    }
 }

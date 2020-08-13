@@ -53,7 +53,7 @@ pub trait DispatchBuilder {
 
 pub struct Agent {
     transport: Transport,
-    dispatchers: HashMap<String, Arc<dyn Dispatchable>>,
+    dispatchers: HashMap<Topic, Arc<dyn Dispatchable>>,
 }
 
 impl Agent {
@@ -75,13 +75,26 @@ impl Agent {
     pub async fn run(mut self) -> Result<(), Error> {
         let mut messages = self
             .transport
-            .subscribe_to(self.subscriptions()?)
+            .subscribe_to(self.subscriptions())
             .await?
             .messages();
         let transport = Arc::new(self.transport);
+        let mut dispatcher_topics: Vec<_> = self.dispatchers.keys().collect();
+        dispatcher_topics.sort_unstable();
 
         while let Some(message) = messages.next().await {
-            match self.dispatchers.get(message.topic_str()) {
+            let topic = match match_topic(message.header(), &dispatcher_topics) {
+                Some(key) => key,
+                None => {
+                    warn!(
+                        "no dispatcher to handle message from subscription, topic={}",
+                        message.header()
+                    );
+                    continue;
+                }
+            };
+
+            match self.dispatchers.get(topic) {
                 Some(dispatcher) => {
                     tokio::spawn(dispatch_message(
                         dispatcher.clone(),
@@ -92,7 +105,7 @@ impl Agent {
                 None => {
                     warn!(
                         "no dispatcher to handle message from subscription, topic={}",
-                        message.topic_str()
+                        message.header()
                     );
                     continue;
                 }
@@ -102,13 +115,13 @@ impl Agent {
         Ok(())
     }
 
-    fn subscriptions(&self) -> Result<Vec<(Topic, QoS)>, Error> {
+    fn subscriptions(&self) -> Vec<(Topic, QoS)> {
         let mut subscriptions = Vec::new();
-        for topic_str in self.dispatchers.keys() {
-            subscriptions.push((topic_str.parse()?, SUBSCRIBE_QOS));
+        for topic in self.dispatchers.keys() {
+            subscriptions.push((topic.clone(), SUBSCRIBE_QOS));
         }
 
-        Ok(subscriptions)
+        subscriptions
     }
 }
 
@@ -138,7 +151,7 @@ impl<'a> AgentBuilder<'a> {
         for (dispatch_key, dispatcher) in self.dispatchers.into_iter() {
             dispatchers.insert(
                 AgentCommandTopic::builder()
-                    .shared(true)
+                    .shared_id(dispatch_key.shared_topic_id)
                     .agent_id(self.agent_id.as_ref())
                     .agent_installation_id(self.agent_installation_id.as_ref())
                     .integration_id(dispatch_key.integration_id)
@@ -146,7 +159,7 @@ impl<'a> AgentBuilder<'a> {
                     .object_type(dispatch_key.object_type)
                     .command(AgentCommand::Execute)
                     .build()
-                    .to_string(),
+                    .into(),
                 dispatcher,
             );
         }
@@ -160,6 +173,7 @@ impl<'a> AgentBuilder<'a> {
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct DispatchKey {
+    shared_topic_id: String,
     integration_id: String,
     integration_service_id: String,
     object_type: String,
@@ -167,11 +181,13 @@ pub struct DispatchKey {
 
 impl DispatchKey {
     pub fn new(
+        shared_topic_id: impl Into<String>,
         integration_id: impl Into<String>,
         integration_service_id: impl Into<String>,
         object_type: impl Into<String>,
     ) -> Self {
         Self {
+            shared_topic_id: shared_topic_id.into(),
             integration_id: integration_id.into(),
             integration_service_id: integration_service_id.into(),
             object_type: object_type.into(),
@@ -204,6 +220,13 @@ impl Error {
     {
         Self::Execute(Box::new(err))
     }
+}
+
+fn match_topic<'a>(header: &Header, topics: &[&'a Topic]) -> Option<&'a Topic> {
+    topics
+        .iter()
+        .find(|topic| header.satisfies(topic))
+        .map(|topic| *topic)
 }
 
 async fn dispatch_message(
