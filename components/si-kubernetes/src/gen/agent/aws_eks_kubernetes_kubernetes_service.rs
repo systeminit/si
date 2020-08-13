@@ -78,6 +78,7 @@ where
             .map_err(si_agent::Error::execute)?
         {
             "create" => T::create(transport, stream_header, entity_event).await,
+            "apply" => T::apply(transport, stream_header, entity_event).await,
             "sync" => T::sync(transport, stream_header, entity_event).await,
             invalid => Err(si_agent::Error::MissingDispatchFunction(
                 entity_event
@@ -149,6 +150,12 @@ impl<T> si_agent::Dispatchable for AwsEksKubernetesKubernetesServiceDispatcher<T
 #[async_trait::async_trait]
 pub trait AwsEksKubernetesKubernetesServiceDispatchFunctions {
     async fn create(
+        transport: &si_agent::Transport,
+        stream_header: si_agent::Header,
+        entity_event: &mut crate::protobuf::KubernetesServiceEntityEvent,
+    ) -> si_agent::AgentResult<()>;
+
+    async fn apply(
         transport: &si_agent::Transport,
         stream_header: si_agent::Header,
         entity_event: &mut crate::protobuf::KubernetesServiceEntityEvent,
