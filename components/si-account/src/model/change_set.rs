@@ -158,23 +158,24 @@ impl ChangeSet {
                 let to_check_count: isize = 18000;
                 let mut check_count: isize = 0;
                 loop {
-                    tokio::time::delay_for(std::time::Duration::from_millis(100)).await;
+                    tokio::time::delay_for(std::time::Duration::from_millis(500)).await;
 
                     let raw_event: serde_json::Value = db.get(&id).await?;
                     let finalized = raw_event["finalized"].as_bool().unwrap_or(false);
                     if finalized {
+                        crate::EventLog::change_set_entry_execute_end(&db, &user_id, &raw_event)
+                            .await?;
                         break;
                     }
                     check_count = check_count + 1;
                     if check_count == to_check_count {
                         change_set.set_status(ChangeSetStatus::Failed);
                         change_set.save(&db).await?;
-                        crate::EventLog::change_set_entry_execute_end(&db, &user_id, &entry_json)
+                        crate::EventLog::change_set_entry_execute_end(&db, &user_id, &raw_event)
                             .await?;
                         return Err(AccountError::ChangeSetEntityEventTimeout);
                     }
                 }
-                crate::EventLog::change_set_entry_execute_end(&db, &user_id, &entry_json).await?;
             } else {
                 crate::EventLog::change_set_entry_execute_end(&db, &user_id, &entry_json).await?;
             }
