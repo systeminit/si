@@ -20,8 +20,14 @@ export const eventLog: Module<EventLogStore, RootStore> = {
   },
   mutations: {
     add(state, payload: AddMutation) {
+      const fullEventLogs = payload.eventLogs.map(eventLog => {
+        if (eventLog.payload?.data) {
+          eventLog.payload.data = JSON.parse(eventLog.payload.data);
+        }
+        return eventLog;
+      });
       state.eventLogs = _.orderBy(
-        _.unionBy(payload.eventLogs, state.eventLogs, "id"),
+        _.unionBy(fullEventLogs, state.eventLogs, "id"),
         ["timestamp"],
         ["desc"],
       );
@@ -40,11 +46,11 @@ export const eventLog: Module<EventLogStore, RootStore> = {
     add({ commit }, payload: AddMutation) {
       commit("add", payload);
     },
-    async load({ commit }): Promise<void> {
+    async load({ commit, state }): Promise<void> {
       const eventLogs: EventLog[] = await graphqlQueryListAll({
         typeName: "eventLog",
       });
-      if (eventLogs.length > 0) {
+      if (eventLogs.length > 0 && eventLogs.length > state.eventLogs.length) {
         commit("add", { eventLogs });
       }
     },

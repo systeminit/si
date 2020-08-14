@@ -136,5 +136,5 @@ force_clean:
 
 dev_deps:
 	./components/couchbase/run.sh || docker start db; exit 0
-	./components/vernemq/run.sh || docker start vernemq; exit 0
+	./components/vernemq/run.sh || docker start mqtt; exit 0
 	./components/opentelemetry-collector/run.sh || docker start otelcol; exit 0
