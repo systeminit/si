@@ -1,4 +1,5 @@
 import {
+  PropAction,
   PropBool,
   PropCode,
   PropEnum,
@@ -71,7 +72,7 @@ registry.componentAndEntity({
         });
         p.properties.addLink({
           name: "metadata",
-          label: "Metadat",
+          label: "Metadata",
           options(p: PropLink) {
             p.lookup = {
               typeName: "kubernetesMetadata",
@@ -90,22 +91,30 @@ registry.componentAndEntity({
             });
             // TODO(fnichol): The specification records this field in YAML as
             // `externalIPs`
-            p.properties.addText({
-              name: "externalIps",
-              label: "External IPs",
-              options(p: PropText) {
-                p.repeated = true;
-              },
-            });
+            //
+            // TODO(fnichol): Okay, this generates a protobuf repeated string
+            // entry (i.e. array), except it is *not* required, but rather
+            // optional. Except there is no such thing as an optional protobuf
+            // array. So I'm not adding this to the service spec for the
+            // moment. </rant>
+            //
+            /* p.properties.addText({ */
+            /*   name: "externalIps", */
+            /*   label: "External IPs", */
+            /*   options(p: PropText) { */
+            /*     p.repeated = true; */
+            /*   }, */
+            /* }); */
             p.properties.addText({
               name: "externalName",
               label: "External Name",
             });
-            p.properties.addEnum({
+            p.properties.addText({
               name: "externalTrafficPolicy",
               label: "External Traffic Policy",
-              options(p: PropEnum) {
-                p.variants = ["Local", "Cluster"];
+              options(p: PropText) {
+                /* p.variants = ["Local", "Cluster"]; */
+                p.baseValidation = p.validation().allow("Local", "Cluster");
               },
             });
             p.properties.addNumber({
@@ -115,11 +124,12 @@ registry.componentAndEntity({
                 p.numberKind = "uint32";
               },
             });
-            p.properties.addEnum({
+            p.properties.addText({
               name: "ipFamily",
               label: "IP Family",
-              options(p: PropEnum) {
-                p.variants = ["IPv4", "IPv6"];
+              options(p: PropText) {
+                /* p.variants = ["IPv4", "IPv6"]; */
+                p.baseValidation = p.validation().allow("IPv4", "IPv6");
               },
             });
             // TODO(fnichol); The specification records this field in YAML as
@@ -128,13 +138,19 @@ registry.componentAndEntity({
               name: "loadBalancerIp",
               label: "Load Balancer IP",
             });
-            p.properties.addText({
-              name: "loadBalancerSourceRanges",
-              label: "Load Balancer Source Ranges",
-              options(p: PropText) {
-                p.repeated = true;
-              },
-            });
+            // TODO(fnichol): Okay, this generates a protobuf repeated string
+            // entry (i.e. array), except it is *not* required, but rather
+            // optional. Except there is no such thing as an optional protobuf
+            // array. So I'm not adding this to the service spec for the
+            // moment. </rant>
+            //
+            /* p.properties.addText({ */
+            /*   name: "loadBalancerSourceRanges", */
+            /*   label: "Load Balancer Source Ranges", */
+            /*   options(p: PropText) { */
+            /*     p.repeated = true; */
+            /*   }, */
+            /* }); */
             p.properties.addLink({
               name: "ports",
               label: "Ports",
@@ -152,21 +168,17 @@ registry.componentAndEntity({
                 p.baseDefaultValue = false;
               },
             });
-            p.properties.addLink({
+            p.properties.addMap({
               name: "selector",
               label: "Selector",
-              options(p: PropLink) {
-                p.lookup = {
-                  typeName: "kubernetesSelector",
-                };
-              },
             });
-            p.properties.addEnum({
+            p.properties.addText({
               name: "sessionAffinity",
               label: "Session Affinity",
-              options(p: PropEnum) {
-                p.variants = ["ClientIP", "None"];
+              options(p: PropText) {
+                /* p.variants = ["ClientIP", "None"]; */
                 p.baseDefaultValue = "None";
+                p.baseValidation = p.validation().allow("ClientIP", "None");
               },
             });
             p.properties.addObject({
@@ -192,24 +204,38 @@ registry.componentAndEntity({
                 });
               },
             });
+            // TODO(fnichol): Okay, this generates a protobuf repeated string
+            // entry (i.e. array), except it is *not* required, but rather
+            // optional. Except there is no such thing as an optional protobuf
+            // array. So I'm not adding this to the service spec for the
+            // moment. </rant>
+            //
+            /* p.properties.addText({ */
+            /*   name: "topologyKeys", */
+            /*   label: "Topology Keys", */
+            /*   options(p: PropText) { */
+            /*     p.repeated = true; */
+            /*   }, */
+            /* }); */
             p.properties.addText({
-              name: "topologyKeys",
-              label: "Topology Keys",
-              options(p: PropText) {
-                p.repeated = true;
-              },
-            });
-            p.properties.addEnum({
               name: "type",
               label: "Type",
-              options(p: PropEnum) {
-                p.variants = [
-                  "ExternalName",
-                  "ClusterIP",
-                  "NodePort",
-                  "LoadBalancer",
-                ];
+              options(p: PropText) {
+                /* p.variants = [ */
+                /*   "ExternalName", */
+                /*   "ClusterIP", */
+                /*   "NodePort", */
+                /*   "LoadBalancer", */
+                /* ]; */
                 p.baseDefaultValue = "ClusterIP";
+                p.baseValidation = p
+                  .validation()
+                  .allow(
+                    "ExternalName",
+                    "ClusterIP",
+                    "NodePort",
+                    "LoadBalancer",
+                  );
               },
             });
           },
@@ -250,6 +276,15 @@ registry.componentAndEntity({
         p.language = "yaml";
       },
     });
+
+    // Entity Actions
+    c.entity.methods.addAction({
+      name: "apply",
+      label: "Apply",
+      options(p: PropAction) {
+        p.mutation = true;
+      },
+    });
   },
 });
 
@@ -280,12 +315,13 @@ registry.base({
         p.numberKind = "uint32";
       },
     });
-    c.fields.addEnum({
+    c.fields.addText({
       name: "protocol",
       label: "Protocol",
-      options(p: PropEnum) {
-        p.variants = ["TCP", "UDP", "SCTP"];
+      options(p: PropText) {
+        /* p.variants = ["TCP", "UDP", "SCTP"]; */
         p.baseDefaultValue = "TCP";
+        p.baseValidation = p.validation().allow("TCP", "UDP", "SCTP");
       },
     });
     // NOTE: "Number or name of the port...", implying either an integer or

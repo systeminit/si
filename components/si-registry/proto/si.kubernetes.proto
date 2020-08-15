@@ -31,6 +31,7 @@ service Kubernetes {
   rpc KubernetesServiceEntityDelete(KubernetesServiceEntityDeleteRequest) returns (KubernetesServiceEntityDeleteReply);
   rpc KubernetesServiceEntityUpdate(KubernetesServiceEntityUpdateRequest) returns (KubernetesServiceEntityUpdateReply);
   rpc KubernetesServiceEntitySync(KubernetesServiceEntitySyncRequest) returns (KubernetesServiceEntitySyncReply);
+  rpc KubernetesServiceEntityApply(KubernetesServiceEntityApplyRequest) returns (KubernetesServiceEntityApplyReply);
   rpc KubernetesServiceEntityEventList(KubernetesServiceEntityEventListRequest) returns (KubernetesServiceEntityEventListReply);
 }
 message KubernetesMetadata {
@@ -302,50 +303,25 @@ message KubernetesServiceComponentPickReply {
   si.kubernetes.KubernetesServiceComponentConstraints implicit_constraints = 1;
   si.kubernetes.KubernetesServiceComponent component = 2;
 }
-enum KubernetesServiceEntityPropertiesKubernetesObjectSpecExternalTrafficPolicy {
-  KUBERNETES_SERVICE_ENTITY_PROPERTIES_KUBERNETES_OBJECT_SPEC_EXTERNAL_TRAFFIC_POLICY_UNKNOWN = 0;
-  KUBERNETES_SERVICE_ENTITY_PROPERTIES_KUBERNETES_OBJECT_SPEC_EXTERNAL_TRAFFIC_POLICY_LOCAL = 1;
-  KUBERNETES_SERVICE_ENTITY_PROPERTIES_KUBERNETES_OBJECT_SPEC_EXTERNAL_TRAFFIC_POLICY_CLUSTER = 2;
-}
-enum KubernetesServiceEntityPropertiesKubernetesObjectSpecIpFamily {
-  KUBERNETES_SERVICE_ENTITY_PROPERTIES_KUBERNETES_OBJECT_SPEC_IP_FAMILY_UNKNOWN = 0;
-  KUBERNETES_SERVICE_ENTITY_PROPERTIES_KUBERNETES_OBJECT_SPEC_IP_FAMILY_I_PV4 = 1;
-  KUBERNETES_SERVICE_ENTITY_PROPERTIES_KUBERNETES_OBJECT_SPEC_IP_FAMILY_I_PV6 = 2;
-}
-enum KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinity {
-  KUBERNETES_SERVICE_ENTITY_PROPERTIES_KUBERNETES_OBJECT_SPEC_SESSION_AFFINITY_UNKNOWN = 0;
-  KUBERNETES_SERVICE_ENTITY_PROPERTIES_KUBERNETES_OBJECT_SPEC_SESSION_AFFINITY_CLIENT_IP = 1;
-  KUBERNETES_SERVICE_ENTITY_PROPERTIES_KUBERNETES_OBJECT_SPEC_SESSION_AFFINITY_NONE = 2;
-}
 message KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinityConfigClientIp {
   google.protobuf.UInt32Value timeout_seconds = 1001;
 }
 message KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinityConfig {
   si.kubernetes.KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinityConfigClientIp client_ip = 1001;
 }
-enum KubernetesServiceEntityPropertiesKubernetesObjectSpecType {
-  KUBERNETES_SERVICE_ENTITY_PROPERTIES_KUBERNETES_OBJECT_SPEC_TYPE_UNKNOWN = 0;
-  KUBERNETES_SERVICE_ENTITY_PROPERTIES_KUBERNETES_OBJECT_SPEC_TYPE_EXTERNAL_NAME = 1;
-  KUBERNETES_SERVICE_ENTITY_PROPERTIES_KUBERNETES_OBJECT_SPEC_TYPE_CLUSTER_IP = 2;
-  KUBERNETES_SERVICE_ENTITY_PROPERTIES_KUBERNETES_OBJECT_SPEC_TYPE_NODE_PORT = 3;
-  KUBERNETES_SERVICE_ENTITY_PROPERTIES_KUBERNETES_OBJECT_SPEC_TYPE_LOAD_BALANCER = 4;
-}
 message KubernetesServiceEntityPropertiesKubernetesObjectSpec {
   google.protobuf.StringValue cluster_ip = 1001;
-  repeated google.protobuf.StringValue external_ips = 1002;
-  google.protobuf.StringValue external_name = 1003;
-  KubernetesServiceEntityPropertiesKubernetesObjectSpecExternalTrafficPolicy external_traffic_policy = 1004;
-  google.protobuf.UInt32Value health_check_node_port = 1005;
-  KubernetesServiceEntityPropertiesKubernetesObjectSpecIpFamily ip_family = 1006;
-  google.protobuf.StringValue load_balancer_ip = 1007;
-  repeated google.protobuf.StringValue load_balancer_source_ranges = 1008;
-  repeated si.kubernetes.KubernetesServicePort ports = 1009;
-  google.protobuf.BoolValue publish_not_ready_address = 1010;
-  si.kubernetes.KubernetesSelector selector = 1011;
-  KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinity session_affinity = 1012;
-  si.kubernetes.KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinityConfig session_affinity_config = 1013;
-  repeated google.protobuf.StringValue topology_keys = 1014;
-  KubernetesServiceEntityPropertiesKubernetesObjectSpecType type = 1015;
+  google.protobuf.StringValue external_name = 1002;
+  google.protobuf.StringValue external_traffic_policy = 1003;
+  google.protobuf.UInt32Value health_check_node_port = 1004;
+  google.protobuf.StringValue ip_family = 1005;
+  google.protobuf.StringValue load_balancer_ip = 1006;
+  repeated si.kubernetes.KubernetesServicePort ports = 1007;
+  google.protobuf.BoolValue publish_not_ready_address = 1008;
+  map<string, google.protobuf.StringValue> selector = 1009;
+  google.protobuf.StringValue session_affinity = 1010;
+  si.kubernetes.KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinityConfig session_affinity_config = 1011;
+  google.protobuf.StringValue type = 1012;
 }
 message KubernetesServiceEntityPropertiesKubernetesObjectStatus {
   si.kubernetes.KubernetesLoadBalancerStatus load_balancer = 1001;
@@ -431,6 +407,13 @@ message KubernetesServiceEntitySyncRequest {
 message KubernetesServiceEntitySyncReply {
   si.kubernetes.KubernetesServiceEntityEvent item = 1;
 }
+message KubernetesServiceEntityApplyRequest {
+  google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue change_set_id = 2;
+}
+message KubernetesServiceEntityApplyReply {
+  si.kubernetes.KubernetesServiceEntityEvent item = 1;
+}
 message KubernetesServiceEntityEvent {
   google.protobuf.StringValue id = 1;
   si.data.DataStorable si_storable = 2;
@@ -462,17 +445,11 @@ message KubernetesServiceEntityEventListReply {
   google.protobuf.UInt32Value total_count = 2;
   google.protobuf.StringValue next_page_token = 3;
 }
-enum KubernetesServicePortProtocol {
-  KUBERNETES_SERVICE_PORT_PROTOCOL_UNKNOWN = 0;
-  KUBERNETES_SERVICE_PORT_PROTOCOL_TCP = 1;
-  KUBERNETES_SERVICE_PORT_PROTOCOL_UDP = 2;
-  KUBERNETES_SERVICE_PORT_PROTOCOL_SCTP = 3;
-}
 message KubernetesServicePort {
   google.protobuf.StringValue app_protocol = 1001;
   google.protobuf.StringValue name = 1002;
   google.protobuf.UInt32Value node_port = 1003;
   google.protobuf.UInt32Value port = 1004;
-  KubernetesServicePortProtocol protocol = 1005;
+  google.protobuf.StringValue protocol = 1005;
   google.protobuf.StringValue target_port = 1006;
 }

@@ -2638,6 +2638,21 @@ type KubernetesServiceEntity {
   siStorable: DataStorable
 }
 
+"""Apply Reply"""
+type KubernetesServiceEntityApplyReply {
+  """Entity Event"""
+  item: KubernetesServiceEntityEvent
+}
+
+"""Apply Request"""
+input KubernetesServiceEntityApplyRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """Entity ID"""
+  id: ID
+}
+
 """Kubernetes Service Object Entity Associations"""
 type KubernetesServiceEntityAssociations {
   """System Initiative Billing Account"""
@@ -2832,7 +2847,7 @@ type KubernetesServiceEntityPropertiesKubernetesObject {
   """Kind"""
   kind: String
 
-  """Metadat"""
+  """Metadata"""
   metadata: KubernetesMetadata
 
   """Service Spec"""
@@ -2849,7 +2864,7 @@ input KubernetesServiceEntityPropertiesKubernetesObjectRequest {
   """Kind"""
   kind: String
 
-  """Metadat"""
+  """Metadata"""
   metadata: KubernetesMetadataRequest
 
   """Service Spec"""
@@ -2863,26 +2878,20 @@ type KubernetesServiceEntityPropertiesKubernetesObjectSpec {
   """Host IP"""
   clusterIp: String
 
-  """External IPs"""
-  externalIps: [String!]
-
   """External Name"""
   externalName: String
 
   """External Traffic Policy"""
-  externalTrafficPolicy: KubernetesServiceEntityPropertiesKubernetesObjectSpecExternalTrafficPolicy
+  externalTrafficPolicy: String
 
   """Health Check Node Port"""
   healthCheckNodePort: String
 
   """IP Family"""
-  ipFamily: KubernetesServiceEntityPropertiesKubernetesObjectSpecIpFamily
+  ipFamily: String
 
   """Load Balancer IP"""
   loadBalancerIp: String
-
-  """Load Balancer Source Ranges"""
-  loadBalancerSourceRanges: [String!]
 
   """Ports"""
   ports: [KubernetesServicePort!]
@@ -2891,59 +2900,36 @@ type KubernetesServiceEntityPropertiesKubernetesObjectSpec {
   publishNotReadyAddress: Boolean
 
   """Selector"""
-  selector: KubernetesSelector
+  selector: [Selector!]
 
   """Session Affinity"""
-  sessionAffinity: KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinity
+  sessionAffinity: String
 
   """Session Affinity Config"""
   sessionAffinityConfig: KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinityConfig
 
-  """Topology Keys"""
-  topologyKeys: [String!]
-
   """Type"""
-  type: KubernetesServiceEntityPropertiesKubernetesObjectSpecType
-}
-
-"""External Traffic Policy"""
-enum KubernetesServiceEntityPropertiesKubernetesObjectSpecExternalTrafficPolicy {
-  CLUSTER
-  LOCAL
-  UNKNOWN
-}
-
-"""IP Family"""
-enum KubernetesServiceEntityPropertiesKubernetesObjectSpecIpFamily {
-  I_PV4
-  I_PV6
-  UNKNOWN
+  type: String
 }
 
 input KubernetesServiceEntityPropertiesKubernetesObjectSpecRequest {
   """Host IP"""
   clusterIp: String
 
-  """External IPs"""
-  externalIps: [String!]
-
   """External Name"""
   externalName: String
 
   """External Traffic Policy"""
-  externalTrafficPolicy: KubernetesServiceEntityPropertiesKubernetesObjectSpecExternalTrafficPolicy
+  externalTrafficPolicy: String
 
   """Health Check Node Port"""
   healthCheckNodePort: String
 
   """IP Family"""
-  ipFamily: KubernetesServiceEntityPropertiesKubernetesObjectSpecIpFamily
+  ipFamily: String
 
   """Load Balancer IP"""
   loadBalancerIp: String
-
-  """Load Balancer Source Ranges"""
-  loadBalancerSourceRanges: [String!]
 
   """Ports"""
   ports: [KubernetesServicePortRequest!]
@@ -2952,26 +2938,16 @@ input KubernetesServiceEntityPropertiesKubernetesObjectSpecRequest {
   publishNotReadyAddress: Boolean
 
   """Selector"""
-  selector: KubernetesSelectorRequest
+  selector: [SelectorRequest!]
 
   """Session Affinity"""
-  sessionAffinity: KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinity
+  sessionAffinity: String
 
   """Session Affinity Config"""
   sessionAffinityConfig: KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinityConfigRequest
 
-  """Topology Keys"""
-  topologyKeys: [String!]
-
   """Type"""
-  type: KubernetesServiceEntityPropertiesKubernetesObjectSpecType
-}
-
-"""Session Affinity"""
-enum KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinity {
-  CLIENT_IP
-  NONE
-  UNKNOWN
+  type: String
 }
 
 type KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinityConfig {
@@ -2992,15 +2968,6 @@ input KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinityConfig
 input KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinityConfigRequest {
   """Client IP Config"""
   clientIp: KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinityConfigClientIpRequest
-}
-
-"""Type"""
-enum KubernetesServiceEntityPropertiesKubernetesObjectSpecType {
-  CLUSTER_IP
-  EXTERNAL_NAME
-  LOAD_BALANCER
-  NODE_PORT
-  UNKNOWN
 }
 
 type KubernetesServiceEntityPropertiesKubernetesObjectStatus {
@@ -3082,18 +3049,10 @@ type KubernetesServicePort {
   port: String
 
   """Protocol"""
-  protocol: KubernetesServicePortProtocol
+  protocol: String
 
   """Target Port"""
   targetPort: String
-}
-
-"""Protocol"""
-enum KubernetesServicePortProtocol {
-  SCTP
-  TCP
-  UDP
-  UNKNOWN
 }
 
 input KubernetesServicePortRequest {
@@ -3110,7 +3069,7 @@ input KubernetesServicePortRequest {
   port: String
 
   """Protocol"""
-  protocol: KubernetesServicePortProtocol
+  protocol: String
 
   """Target Port"""
   targetPort: String
@@ -3159,6 +3118,7 @@ type Mutation {
   kubernetesDeploymentEntityDelete(input: KubernetesDeploymentEntityDeleteRequest): KubernetesDeploymentEntityDeleteReply
   kubernetesDeploymentEntitySync(input: KubernetesDeploymentEntitySyncRequest): KubernetesDeploymentEntitySyncReply
   kubernetesDeploymentEntityUpdate(input: KubernetesDeploymentEntityUpdateRequest): KubernetesDeploymentEntityUpdateReply
+  kubernetesServiceEntityApply(input: KubernetesServiceEntityApplyRequest): KubernetesServiceEntityApplyReply
   kubernetesServiceEntityCreate(input: KubernetesServiceEntityCreateRequest): KubernetesServiceEntityCreateReply
   kubernetesServiceEntityDelete(input: KubernetesServiceEntityDeleteRequest): KubernetesServiceEntityDeleteReply
   kubernetesServiceEntitySync(input: KubernetesServiceEntitySyncRequest): KubernetesServiceEntitySyncReply
@@ -3337,6 +3297,18 @@ type Query {
   userLogin(input: UserLoginRequest): UserLoginReply
   workspaceGet(input: WorkspaceGetRequest): WorkspaceGetReply
   workspaceList(input: WorkspaceListRequest): WorkspaceListReply
+}
+
+"""Selector"""
+type Selector {
+  key: String
+  value: String
+}
+
+"""Selector"""
+input SelectorRequest {
+  key: String
+  value: String
 }
 
 type ServiceComponent {

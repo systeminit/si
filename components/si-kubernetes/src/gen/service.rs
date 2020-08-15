@@ -1172,6 +1172,84 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
         .await
     }
 
+    async fn kubernetes_service_entity_apply(
+        &self,
+        request: tonic::Request<crate::protobuf::KubernetesServiceEntityApplyRequest>,
+    ) -> std::result::Result<
+        tonic::Response<crate::protobuf::KubernetesServiceEntityApplyReply>,
+        tonic::Status,
+    > {
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "kubernetes.kubernetes_service_entity_apply",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(&span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
+        async {
+            use si_cea::EntityEvent;
+
+            let auth = si_account::authorize::authnz(
+                &self.db,
+                &request,
+                "kubernetes_service_entity_apply",
+            )
+            .await?;
+
+            let inner = request.into_inner();
+            let id = inner
+                .id
+                .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))?;
+            let change_set_id = inner
+                .change_set_id
+                .ok_or_else(|| si_data::DataError::RequiredField("changeSetId".to_string()))?;
+
+            let entity = crate::protobuf::KubernetesServiceEntity::get(&self.db, &id).await?;
+            let entity_event = crate::protobuf::KubernetesServiceEntityEvent::create(
+                &self.db,
+                auth.user_id(),
+                "apply",
+                &change_set_id,
+                &entity,
+            )
+            .await?;
+
+            Ok(tonic::Response::new(
+                crate::protobuf::KubernetesServiceEntityApplyReply {
+                    item: Some(entity_event),
+                },
+            ))
+        }
+        .instrument(span)
+        .await
+    }
+
     async fn kubernetes_service_entity_create(
         &self,
         request: tonic::Request<crate::protobuf::KubernetesServiceEntityCreateRequest>,
