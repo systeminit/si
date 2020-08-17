@@ -715,7 +715,10 @@ export const node: Module<NodeStore, RootStore> = {
         );
       }
     },
-    async add({ commit, state, rootGetters }, payload: AddAction) {
+    async add(
+      { commit, state, rootState, rootGetters, dispatch },
+      payload: AddAction,
+    ) {
       for (let item of payload.items) {
         let existingNode = _.cloneDeep(
           _.find(state.nodes, ["entityId", item.entityId]),
@@ -752,7 +755,10 @@ export const node: Module<NodeStore, RootStore> = {
                 x: 0,
                 y: 0,
               },
-              sockets: [{ name: "input" }, { name: "output" }],
+              sockets: [
+                { name: "input", kind: "INPUT" },
+                { name: "output", kind: "OUTPUT" },
+              ],
               nodeKind: "ENTITY",
             },
           });
@@ -763,6 +769,36 @@ export const node: Module<NodeStore, RootStore> = {
           });
           if (state.current?.entityId == item.entityId) {
             commit("current", newNode);
+          }
+          if (item.object.siStorable?.typeName != "application_entity") {
+            let application = rootState.application.current;
+            if (application) {
+              let applicationNode = _.find(state.nodes, [
+                "entityId",
+                application.id,
+              ]);
+              if (applicationNode) {
+                await dispatch(
+                  "edge/create",
+                  {
+                    tailVertex: {
+                      id: applicationNode.id,
+                      socket: "output",
+                      typeName: applicationNode.stack[0].siStorable?.typeName,
+                    },
+                    headVertex: {
+                      id: newNode.id,
+                      socket: "input",
+                      typeName: newNode.stack[0].siStorable?.typeName,
+                    },
+                    bidirectional: true,
+                  },
+                  { root: true },
+                );
+              }
+            }
+          } else {
+            console.log("you are an application!", { item, newNode });
           }
         }
       }

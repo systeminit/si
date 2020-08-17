@@ -4,6 +4,7 @@
       class="absolute shadow-md cursor-move node-container node"
       :id="nodeObject.id"
       :class="nodeIsSelected"
+      v-bind:style="positionStyle"
       @mousedown="selectNode()"
       @contextmenu="contextMenu($event)"
     >
@@ -116,6 +117,12 @@ export default {
     },
   },
   computed: {
+    positionStyle() {
+      return {
+        left: `${this.nodeObject.position.x}px`,
+        top: `${this.nodeObject.position.y}px`,
+      };
+    },
     nodeIsSelected() {
       if (
         this.nodeObject &&

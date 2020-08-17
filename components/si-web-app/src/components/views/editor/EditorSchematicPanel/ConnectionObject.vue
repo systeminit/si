@@ -27,69 +27,43 @@ import { mapGetters } from "vuex";
 export default {
   name: "ConnectionObject",
   props: {
+    sourceNodePosition: Object,
+    destinationNodePosition: Object,
     // sourceNode: {}, //refactor to sourceSocket: {},
     // destinationNode: {}, // refactor to destinationSocket: {},
   },
   computed: {
     // We get the position of the source socket
     sourceSocketPosition() {
-      try {
-        // the node list get updated so I can't just pull node[i]
-        let nodeId = "system_entity:24a30b19-a3be-4230-a89b-9100fc09b155"; // should be sourceNode.id
-        const node = this.$store.getters["node/getNodebyId"](nodeId);
+      // the node list get updated so I can't just pull node[i]
+      //let nodeId = "node:3c235077-69bc-4416-99d9-610bf3c1a9fd"; // should be sourceNode.id
+      //const node = this.$store.getters["node/getNodebyId"](nodeId);
 
-        const outputSocketOffset = {
-          x: 68.5, // node center.
-          y: 100, // bottom line of a node
-        };
+      const outputSocketOffset = {
+        x: 68.5, // node center.
+        y: 100, // bottom line of a node
+      };
 
-        if ("position" in node) {
-          return {
-            x: node.position.x + outputSocketOffset.x,
-            y: node.position.y + outputSocketOffset.y,
-          };
-        } else {
-          return {
-            x: "397",
-            y: "77",
-          };
-        }
-      } catch (err) {
-        return {
-          x: "397",
-          y: "77",
-        };
-      }
+      return {
+        x: this.sourceNodePosition.x + outputSocketOffset.x,
+        y: this.sourceNodePosition.y + outputSocketOffset.y,
+      };
     },
     // We get the position of the destination socket
     destinationSocketPosition() {
-      try {
-        // the node list get updated so I can't just pull node[i]
-        let nodeId = "application_entity:9d06874f-222c-4ede-9873-f61bdbc9b1ad"; // should be destinationNode.id
-        const node = this.$store.getters["node/getNodebyId"](nodeId);
+      // the node list get updated so I can't just pull node[i]
+      //let nodeId = "node:4f004a6c-b4d3-48a8-b11e-4d31b5e3c5f0"; // should be destinationNode.id
+      //const node = this.$store.getters["node/getNodebyId"](nodeId);
 
-        const inputSocketOffset = {
-          x: 68.5, // node center.
-          y: 0, // top line of a node
-        };
+      const inputSocketOffset = {
+        x: 68.5, // node center.
+        y: 0, // top line of a node
+      };
 
-        if ("position" in node) {
-          return {
-            x: node.position.x + inputSocketOffset.x,
-            y: node.position.y + inputSocketOffset.y,
-          };
-        } else {
-          return {
-            x: "100",
-            y: "100",
-          };
-        }
-      } catch (err) {
-        return {
-          x: "100",
-          y: "100",
-        };
-      }
+      return {
+        x: this.destinationNodePosition.x + inputSocketOffset.x,
+        y: this.destinationNodePosition.y + inputSocketOffset.y,
+      };
     },
   },
 };

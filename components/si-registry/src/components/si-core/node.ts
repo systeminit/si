@@ -39,6 +39,14 @@ registry.system({
             p.required = true;
           },
         });
+        p.properties.addEnum({
+          name: "kind",
+          label: "Socket Kind",
+          options(p: PropEnum) {
+            p.required = true;
+            p.variants = ["input", "output"];
+          },
+        });
       },
     });
     c.fields.addObject({

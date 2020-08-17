@@ -376,6 +376,7 @@ impl si_data::Storable for crate::protobuf::Node {
             "entityId",
             "siStorable.naturalKey",
             "sockets.name",
+            "sockets.kind",
             "siStorable.naturalKey",
             "position.x",
             "position.y",

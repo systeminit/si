@@ -16,10 +16,10 @@ interface AddMutation {
 
 interface CreateMutation {
   name?: string;
-  headVertex: string;
-  tailVertex: string;
-  bidirectional?: boolean;
-  edgeKind: EdgeEdgeKind;
+  headVertex: Edge["headVertex"];
+  tailVertex: Edge["tailVertex"];
+  bidirectional?: Edge["bidirectional"];
+  edgeKind: Edge["edgeKind"];
 }
 
 interface FromIdForTypeGetter {
@@ -37,6 +37,32 @@ export const edge: Module<EdgeStore, RootStore> = {
     // prettier-ignore
     filter: (state) => (filter: any): EdgeStore["edges"] => {
       return _.filter(state.edges, filter);
+    },
+    connectionList: (
+      state,
+      _getters,
+      _rootState,
+      rootGetters,
+    ): EdgeStore["edges"] => {
+      const nodeList = rootGetters["node/list"];
+      const edgeList = _.filter(state.edges, edge => {
+        if (_.find(nodeList, ["id", edge.headVertex?.id])) {
+          return true;
+        }
+        if (_.find(nodeList, ["id", edge.tailVertex?.id])) {
+          return true;
+        }
+        return false;
+      });
+      if (edgeList) {
+        // @ts-ignore
+        return _.sortBy(edgeList, edge => {
+          // @ts-ignore
+          edge.id;
+        });
+      } else {
+        return [];
+      }
     },
     // prettier-ignore
     fromIdForType: (state, _getters, rootState) => (filter: FromIdForTypeGetter): EdgeStore["edges"] => {
@@ -106,56 +132,24 @@ export const edge: Module<EdgeStore, RootStore> = {
       const workspace = rootGetters["workspace/current"];
       const profile = rootGetters["user/profile"];
 
-      let head = rootGetters["entity/get"](["id", payload.headVertex]);
-      let tail = rootGetters["entity/get"](["id", payload.tailVertex]);
-      let data: Record<string, any> = {
-        bidirectional: payload.bidirectional ? true : false,
-      };
-      if (head.siStorable?.changeSetId) {
-        data.headVertex = {
-          id: head.siStorable?.itemId,
-          typeName: head.siStorable?.typeName,
-        };
-      } else {
-        data.headVertex = {
-          id: head.id,
-          typeName: head.siStorable?.typeName,
-        };
-      }
-      if (tail.siStorable?.changeSetId) {
-        data.tailVertex = {
-          id: tail.siStorable?.itemId,
-          typeName: tail.siStorable?.typeName,
-        };
-      } else {
-        data.tailVertex = {
-          id: tail.id,
-          typeName: tail.siStorable?.typeName,
-        };
-      }
-      if (payload.name) {
-        data.name = payload.name;
-      }
-      if (payload.edgeKind) {
-        data["edgeKind"] = payload.edgeKind;
-      } else {
-        data["edgeKind"] = "CONNECTED";
+      if (!payload.edgeKind) {
+        payload["edgeKind"] = EdgeEdgeKind.Connected;
       }
       const edge = await graphqlMutation({
         typeName: "edge",
         methodName: "create",
         variables: {
-          name: `${head.id}:${tail.id}`,
-          displayName: `${head.id}:${tail.id}`,
+          name: `${payload.headVertex?.id}:${payload.tailVertex?.id}`,
+          displayName: `${payload.headVertex?.id}:${payload.tailVertex?.id}`,
           siProperties: {
             workspaceId: workspace.id,
             billingAccountId: profile.billingAccount?.id,
             organizationId: profile.organization?.id,
           },
-          ...data,
+          ...payload,
         },
       });
-      commit("add", { edges: [edge] });
+      commit("add", { edges: [edge.item] });
     },
     async load({ commit }): Promise<void> {
       const edges: Edge[] = await graphqlQueryListAll({

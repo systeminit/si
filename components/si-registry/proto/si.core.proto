@@ -404,11 +404,13 @@ message EdgeSiProperties {
 }
 message EdgeHeadVertex {
   google.protobuf.StringValue id = 1001;
-  google.protobuf.StringValue type_name = 1002;
+  google.protobuf.StringValue socket = 1002;
+  google.protobuf.StringValue type_name = 1003;
 }
 message EdgeTailVertex {
   google.protobuf.StringValue id = 1001;
-  google.protobuf.StringValue type_name = 1002;
+  google.protobuf.StringValue socket = 1002;
+  google.protobuf.StringValue type_name = 1003;
 }
 enum EdgeEdgeKind {
   EDGE_EDGE_KIND_UNKNOWN = 0;
@@ -456,8 +458,14 @@ message EdgeCreateRequest {
 message EdgeCreateReply {
   si.core.Edge item = 1001;
 }
+enum NodeSocketsKind {
+  NODE_SOCKETS_KIND_UNKNOWN = 0;
+  NODE_SOCKETS_KIND_INPUT = 1;
+  NODE_SOCKETS_KIND_OUTPUT = 2;
+}
 message NodeSockets {
   google.protobuf.StringValue name = 1001;
+  NodeSocketsKind kind = 1002;
 }
 message NodePosition {
   google.protobuf.Int32Value x = 1001;

@@ -13,7 +13,13 @@
         id="canvas"
         class="relative flex-auto block w-full h-full canvas"
       >
-        <!-- <ConnectionObject class="connections" /> -->
+        <ConnectionObject
+          class="connections"
+          v-for="(connection, index) in connectionList"
+          v-bind:key="index"
+          :sourceNodePosition="connection.sourceNodePosition"
+          :destinationNodePosition="connection.destinationNodePosition"
+        />
 
         <NodeList />
 
@@ -49,24 +55,68 @@
 </template>
 
 <script>
+import Vue from "vue";
 import NodeList from "./NodeList.vue";
-// import ConnectionObject from "./ConnectionObject.vue";
+import ConnectionObject from "./ConnectionObject.vue";
 
 import { mapGetters, Store } from "vuex";
 import { debouncedSetPosition } from "@/store/modules/node";
+import _ from "lodash";
 
 export default {
   name: "SchematicPanel",
   components: {
     NodeList,
-    //ConnectionObject,
+    ConnectionObject,
   },
   computed: {
     ...mapGetters({
+      edgeConnectionList: "edge/connectionList",
       nodeList: "node/list",
       nodeSelection: "node/current",
       mouseTrackSelection: "node/mouseTrackSelection",
     }),
+    connectionList() {
+      const positions = [];
+      for (const edge of this.edgeConnectionList) {
+        let sourceNodePosition;
+        let destinationNodePosition;
+        if (this.nodeListPositions[edge.tailVertex.id]) {
+          sourceNodePosition = this.nodeListPositions[edge.tailVertex.id];
+        } else {
+          let sourceNode = _.find(this.nodeList, ["id", edge.tailVertex.id]);
+          if (sourceNode) {
+            sourceNodePosition = sourceNode.position;
+          } else {
+            continue;
+          }
+        }
+        if (this.nodeListPositions[edge.headVertex.id]) {
+          destinationNodePosition = this.nodeListPositions[edge.headVertex.id];
+        } else {
+          let destinationNode = _.find(this.nodeList, [
+            "id",
+            edge.headVertex.id,
+          ]);
+          if (destinationNode) {
+            destinationNodePosition = destinationNode.position;
+          } else {
+            continue;
+          }
+        }
+
+        positions.push({
+          sourceNodePosition,
+          destinationNodePosition,
+        });
+      }
+      return positions;
+    },
+  },
+  watch: {
+    edgeConnectionList(_new, _old) {
+      this.nodeListPositions = {};
+    },
   },
   data() {
     return {
@@ -158,6 +208,7 @@ export default {
           y: 0,
         },
       },
+      nodeListPositions: {},
     };
   },
   mounted: function() {
@@ -243,6 +294,7 @@ export default {
         x: posX,
         y: posY,
       };
+      Vue.set(this.nodeListPositions, this.nodeSelection.id, nodePosition);
       debouncedSetPosition({
         store: this.$store,
         nodeId: this.nodeSelection.id,

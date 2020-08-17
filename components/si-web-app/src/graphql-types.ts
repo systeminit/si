@@ -811,6 +811,8 @@ export type EdgeHeadVertex = {
   __typename?: "EdgeHeadVertex";
   /** Head Vertex ID */
   id?: Maybe<Scalars["ID"]>;
+  /** Socket name */
+  socket?: Maybe<Scalars["String"]>;
   /** Head Vertex Type Name */
   typeName?: Maybe<Scalars["String"]>;
 };
@@ -818,6 +820,8 @@ export type EdgeHeadVertex = {
 export type EdgeHeadVertexRequest = {
   /** Head Vertex ID */
   id?: Maybe<Scalars["ID"]>;
+  /** Socket name */
+  socket?: Maybe<Scalars["String"]>;
   /** Head Vertex Type Name */
   typeName?: Maybe<Scalars["String"]>;
 };
@@ -872,6 +876,8 @@ export type EdgeTailVertex = {
   __typename?: "EdgeTailVertex";
   /** Tail Vertex ID */
   id?: Maybe<Scalars["ID"]>;
+  /** Socket name */
+  socket?: Maybe<Scalars["String"]>;
   /** Tail Vertex Type Name */
   typeName?: Maybe<Scalars["String"]>;
 };
@@ -879,6 +885,8 @@ export type EdgeTailVertex = {
 export type EdgeTailVertexRequest = {
   /** Tail Vertex ID */
   id?: Maybe<Scalars["ID"]>;
+  /** Socket name */
+  socket?: Maybe<Scalars["String"]>;
   /** Tail Vertex Type Name */
   typeName?: Maybe<Scalars["String"]>;
 };
@@ -2132,6 +2140,21 @@ export type KubernetesServiceEntity = {
   siStorable?: Maybe<DataStorable>;
 };
 
+/** Apply Reply */
+export type KubernetesServiceEntityApplyReply = {
+  __typename?: "KubernetesServiceEntityApplyReply";
+  /** Entity Event */
+  item?: Maybe<KubernetesServiceEntityEvent>;
+};
+
+/** Apply Request */
+export type KubernetesServiceEntityApplyRequest = {
+  /** Change Set ID */
+  changeSetId?: Maybe<Scalars["String"]>;
+  /** Entity ID */
+  id?: Maybe<Scalars["ID"]>;
+};
+
 /** Kubernetes Service Object Entity Associations */
 export type KubernetesServiceEntityAssociations = {
   __typename?: "KubernetesServiceEntityAssociations";
@@ -2296,7 +2319,7 @@ export type KubernetesServiceEntityPropertiesKubernetesObject = {
   apiVersion?: Maybe<Scalars["String"]>;
   /** Kind */
   kind?: Maybe<Scalars["String"]>;
-  /** Metadat */
+  /** Metadata */
   metadata?: Maybe<KubernetesMetadata>;
   /** Service Spec */
   spec?: Maybe<KubernetesServiceEntityPropertiesKubernetesObjectSpec>;
@@ -2309,7 +2332,7 @@ export type KubernetesServiceEntityPropertiesKubernetesObjectRequest = {
   apiVersion?: Maybe<Scalars["String"]>;
   /** Kind */
   kind?: Maybe<Scalars["String"]>;
-  /** Metadat */
+  /** Metadata */
   metadata?: Maybe<KubernetesMetadataRequest>;
   /** Service Spec */
   spec?: Maybe<KubernetesServiceEntityPropertiesKubernetesObjectSpecRequest>;
@@ -2323,105 +2346,60 @@ export type KubernetesServiceEntityPropertiesKubernetesObjectSpec = {
   __typename?: "KubernetesServiceEntityPropertiesKubernetesObjectSpec";
   /** Host IP */
   clusterIp?: Maybe<Scalars["String"]>;
-  /** External IPs */
-  externalIps?: Maybe<Array<Scalars["String"]>>;
   /** External Name */
   externalName?: Maybe<Scalars["String"]>;
   /** External Traffic Policy */
-  externalTrafficPolicy?: Maybe<
-    KubernetesServiceEntityPropertiesKubernetesObjectSpecExternalTrafficPolicy
-  >;
+  externalTrafficPolicy?: Maybe<Scalars["String"]>;
   /** Health Check Node Port */
   healthCheckNodePort?: Maybe<Scalars["String"]>;
   /** IP Family */
-  ipFamily?: Maybe<
-    KubernetesServiceEntityPropertiesKubernetesObjectSpecIpFamily
-  >;
+  ipFamily?: Maybe<Scalars["String"]>;
   /** Load Balancer IP */
   loadBalancerIp?: Maybe<Scalars["String"]>;
-  /** Load Balancer Source Ranges */
-  loadBalancerSourceRanges?: Maybe<Array<Scalars["String"]>>;
   /** Ports */
   ports?: Maybe<Array<KubernetesServicePort>>;
   /** Publish Not Ready Address */
   publishNotReadyAddress?: Maybe<Scalars["Boolean"]>;
   /** Selector */
-  selector?: Maybe<KubernetesSelector>;
+  selector?: Maybe<Array<Selector>>;
   /** Session Affinity */
-  sessionAffinity?: Maybe<
-    KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinity
-  >;
+  sessionAffinity?: Maybe<Scalars["String"]>;
   /** Session Affinity Config */
   sessionAffinityConfig?: Maybe<
     KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinityConfig
   >;
-  /** Topology Keys */
-  topologyKeys?: Maybe<Array<Scalars["String"]>>;
   /** Type */
-  type?: Maybe<KubernetesServiceEntityPropertiesKubernetesObjectSpecType>;
+  type?: Maybe<Scalars["String"]>;
 };
-
-/** External Traffic Policy */
-export enum KubernetesServiceEntityPropertiesKubernetesObjectSpecExternalTrafficPolicy {
-  Cluster = "CLUSTER",
-  Local = "LOCAL",
-  Unknown = "UNKNOWN",
-}
-
-/** IP Family */
-export enum KubernetesServiceEntityPropertiesKubernetesObjectSpecIpFamily {
-  IPv4 = "I_PV4",
-  IPv6 = "I_PV6",
-  Unknown = "UNKNOWN",
-}
 
 export type KubernetesServiceEntityPropertiesKubernetesObjectSpecRequest = {
   /** Host IP */
   clusterIp?: Maybe<Scalars["String"]>;
-  /** External IPs */
-  externalIps?: Maybe<Array<Scalars["String"]>>;
   /** External Name */
   externalName?: Maybe<Scalars["String"]>;
   /** External Traffic Policy */
-  externalTrafficPolicy?: Maybe<
-    KubernetesServiceEntityPropertiesKubernetesObjectSpecExternalTrafficPolicy
-  >;
+  externalTrafficPolicy?: Maybe<Scalars["String"]>;
   /** Health Check Node Port */
   healthCheckNodePort?: Maybe<Scalars["String"]>;
   /** IP Family */
-  ipFamily?: Maybe<
-    KubernetesServiceEntityPropertiesKubernetesObjectSpecIpFamily
-  >;
+  ipFamily?: Maybe<Scalars["String"]>;
   /** Load Balancer IP */
   loadBalancerIp?: Maybe<Scalars["String"]>;
-  /** Load Balancer Source Ranges */
-  loadBalancerSourceRanges?: Maybe<Array<Scalars["String"]>>;
   /** Ports */
   ports?: Maybe<Array<KubernetesServicePortRequest>>;
   /** Publish Not Ready Address */
   publishNotReadyAddress?: Maybe<Scalars["Boolean"]>;
   /** Selector */
-  selector?: Maybe<KubernetesSelectorRequest>;
+  selector?: Maybe<Array<SelectorRequest>>;
   /** Session Affinity */
-  sessionAffinity?: Maybe<
-    KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinity
-  >;
+  sessionAffinity?: Maybe<Scalars["String"]>;
   /** Session Affinity Config */
   sessionAffinityConfig?: Maybe<
     KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinityConfigRequest
   >;
-  /** Topology Keys */
-  topologyKeys?: Maybe<Array<Scalars["String"]>>;
   /** Type */
-  type?: Maybe<KubernetesServiceEntityPropertiesKubernetesObjectSpecType>;
+  type?: Maybe<Scalars["String"]>;
 };
-
-/** Session Affinity */
-export enum KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinity {
-  ClientIp = "CLIENT_IP",
-  None = "NONE",
-  Unknown = "UNKNOWN",
-}
 
 export type KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinityConfig = {
   __typename?: "KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinityConfig";
@@ -2448,15 +2426,6 @@ export type KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinity
     KubernetesServiceEntityPropertiesKubernetesObjectSpecSessionAffinityConfigClientIpRequest
   >;
 };
-
-/** Type */
-export enum KubernetesServiceEntityPropertiesKubernetesObjectSpecType {
-  ClusterIp = "CLUSTER_IP",
-  ExternalName = "EXTERNAL_NAME",
-  LoadBalancer = "LOAD_BALANCER",
-  NodePort = "NODE_PORT",
-  Unknown = "UNKNOWN",
-}
 
 export type KubernetesServiceEntityPropertiesKubernetesObjectStatus = {
   __typename?: "KubernetesServiceEntityPropertiesKubernetesObjectStatus";
@@ -2532,18 +2501,10 @@ export type KubernetesServicePort = {
   /** Port */
   port?: Maybe<Scalars["String"]>;
   /** Protocol */
-  protocol?: Maybe<KubernetesServicePortProtocol>;
+  protocol?: Maybe<Scalars["String"]>;
   /** Target Port */
   targetPort?: Maybe<Scalars["String"]>;
 };
-
-/** Protocol */
-export enum KubernetesServicePortProtocol {
-  Sctp = "SCTP",
-  Tcp = "TCP",
-  Udp = "UDP",
-  Unknown = "UNKNOWN",
-}
 
 export type KubernetesServicePortRequest = {
   /** App Protocol */
@@ -2555,7 +2516,7 @@ export type KubernetesServicePortRequest = {
   /** Port */
   port?: Maybe<Scalars["String"]>;
   /** Protocol */
-  protocol?: Maybe<KubernetesServicePortProtocol>;
+  protocol?: Maybe<Scalars["String"]>;
   /** Target Port */
   targetPort?: Maybe<Scalars["String"]>;
 };
@@ -2609,11 +2570,13 @@ export type Mutation = {
   kubernetesDeploymentEntityUpdate?: Maybe<
     KubernetesDeploymentEntityUpdateReply
   >;
+  kubernetesServiceEntityApply?: Maybe<KubernetesServiceEntityApplyReply>;
   kubernetesServiceEntityCreate?: Maybe<KubernetesServiceEntityCreateReply>;
   kubernetesServiceEntityDelete?: Maybe<KubernetesServiceEntityDeleteReply>;
   kubernetesServiceEntitySync?: Maybe<KubernetesServiceEntitySyncReply>;
   kubernetesServiceEntityUpdate?: Maybe<KubernetesServiceEntityUpdateReply>;
   nodeCreate?: Maybe<NodeCreateReply>;
+  nodeSetPosition?: Maybe<NodeSetPositionReply>;
   organizationCreate?: Maybe<OrganizationCreateReply>;
   serviceEntityCreate?: Maybe<ServiceEntityCreateReply>;
   serviceEntityDelete?: Maybe<ServiceEntityDeleteReply>;
@@ -2685,6 +2648,10 @@ export type MutationKubernetesDeploymentEntityUpdateArgs = {
   input?: Maybe<KubernetesDeploymentEntityUpdateRequest>;
 };
 
+export type MutationKubernetesServiceEntityApplyArgs = {
+  input?: Maybe<KubernetesServiceEntityApplyRequest>;
+};
+
 export type MutationKubernetesServiceEntityCreateArgs = {
   input?: Maybe<KubernetesServiceEntityCreateRequest>;
 };
@@ -2703,6 +2670,10 @@ export type MutationKubernetesServiceEntityUpdateArgs = {
 
 export type MutationNodeCreateArgs = {
   input?: Maybe<NodeCreateRequest>;
+};
+
+export type MutationNodeSetPositionArgs = {
+  input?: Maybe<NodeSetPositionRequest>;
 };
 
 export type MutationOrganizationCreateArgs = {
@@ -2849,6 +2820,21 @@ export type NodePositionRequest = {
   y?: Maybe<Scalars["Int"]>;
 };
 
+/** Set a nodes position Reply */
+export type NodeSetPositionReply = {
+  __typename?: "NodeSetPositionReply";
+  /** Updated item */
+  item?: Maybe<Node>;
+};
+
+/** Set a nodes position Request */
+export type NodeSetPositionRequest = {
+  /** Node ID */
+  id?: Maybe<Scalars["ID"]>;
+  /** Node Position */
+  position?: Maybe<NodePositionRequest>;
+};
+
 export type NodeSiProperties = {
   __typename?: "NodeSiProperties";
   /** Billing Account ID */
@@ -2870,11 +2856,22 @@ export type NodeSiPropertiesRequest = {
 
 export type NodeSockets = {
   __typename?: "NodeSockets";
+  /** Socket Kind */
+  kind?: Maybe<NodeSocketsKind>;
   /** Socket name */
   name?: Maybe<Scalars["String"]>;
 };
 
+/** Socket Kind */
+export enum NodeSocketsKind {
+  Input = "INPUT",
+  Output = "OUTPUT",
+  Unknown = "UNKNOWN",
+}
+
 export type NodeSocketsRequest = {
+  /** Socket Kind */
+  kind?: Maybe<NodeSocketsKind>;
   /** Socket name */
   name?: Maybe<Scalars["String"]>;
 };
@@ -3250,6 +3247,19 @@ export type QueryWorkspaceListArgs = {
   input?: Maybe<WorkspaceListRequest>;
 };
 
+/** Selector */
+export type Selector = {
+  __typename?: "Selector";
+  key?: Maybe<Scalars["String"]>;
+  value?: Maybe<Scalars["String"]>;
+};
+
+/** Selector */
+export type SelectorRequest = {
+  key?: Maybe<Scalars["String"]>;
+  value?: Maybe<Scalars["String"]>;
+};
+
 export type ServiceComponent = {
   __typename?: "ServiceComponent";
   /** Component Constraints */
@@ -3597,8 +3607,6 @@ export type System = {
   id?: Maybe<Scalars["ID"]>;
   /** A System Initiative System Name */
   name?: Maybe<Scalars["String"]>;
-  /** Phantom Data */
-  phantom?: Maybe<Scalars["Boolean"]>;
   /** SI Internal Properties */
   siProperties?: Maybe<SystemSiProperties>;
   /** SI Storable */
@@ -3630,8 +3638,6 @@ export type SystemCreateRequest = {
   displayName?: Maybe<Scalars["String"]>;
   /** A System Initiative System Name */
   name?: Maybe<Scalars["String"]>;
-  /** Phantom Data */
-  phantom?: Maybe<Scalars["Boolean"]>;
   /** SI Internal Properties */
   siProperties?: Maybe<SystemSiPropertiesRequest>;
 };

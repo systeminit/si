@@ -147,6 +147,8 @@ export class SiGraphql {
       const linkProp = prop as PropLink;
       const realProp = linkProp.lookupMyself();
       return this.graphqlTypeName(realProp, inputType, linkProp);
+    } else if (prop.kind() == "bool") {
+      result = "Boolean";
     }
     if (prop.required || linkProp?.required) {
       result = `${result}!`;

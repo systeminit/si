@@ -220,7 +220,7 @@ import SiSelect from "@/components/ui/SiSelect.vue";
 import SiTextBox from "@/components/ui/SiTextBox.vue";
 import { DropdownProps } from "@/components/ui/Dropdown2.vue";
 import { RootStore } from "@/store";
-import { ChangeSet, ApplicationEntity, SystemEntity } from "@/graphql-types";
+import { ChangeSet, ApplicationEntity, System } from "@/graphql-types";
 import _ from "lodash";
 
 import {
@@ -341,7 +341,7 @@ export default Vue.extend({
         this.$store.dispatch("changeSet/setCurrentById", changeSetId);
       },
     },
-    systems(): SystemEntity[] {
+    systems(): System[] {
       return this.$store.getters["system/forApplicationId"](this.applicationId);
     },
     changeSetOpenCount(): number {
@@ -364,7 +364,7 @@ export default Vue.extend({
       return result;
     },
     currentSystem: {
-      get(): SystemEntity {
+      get(): System {
         if (
           !this.$store.state.system.current &&
           this.$store.state.system.systems &&
