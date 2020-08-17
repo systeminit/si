@@ -902,6 +902,9 @@ type EdgeHeadVertex {
   """Head Vertex ID"""
   id: ID
 
+  """Socket name"""
+  socket: String
+
   """Head Vertex Type Name"""
   typeName: String
 }
@@ -909,6 +912,9 @@ type EdgeHeadVertex {
 input EdgeHeadVertexRequest {
   """Head Vertex ID"""
   id: ID
+
+  """Socket name"""
+  socket: String
 
   """Head Vertex Type Name"""
   typeName: String
@@ -973,6 +979,9 @@ type EdgeTailVertex {
   """Tail Vertex ID"""
   id: ID
 
+  """Socket name"""
+  socket: String
+
   """Tail Vertex Type Name"""
   typeName: String
 }
@@ -980,6 +989,9 @@ type EdgeTailVertex {
 input EdgeTailVertexRequest {
   """Tail Vertex ID"""
   id: ID
+
+  """Socket name"""
+  socket: String
 
   """Tail Vertex Type Name"""
   typeName: String
@@ -3047,11 +3059,24 @@ input NodeSiPropertiesRequest {
 }
 
 type NodeSockets {
+  """Socket Kind"""
+  kind: NodeSocketsKind
+
   """Socket name"""
   name: String
 }
 
+"""Socket Kind"""
+enum NodeSocketsKind {
+  INPUT
+  OUTPUT
+  UNKNOWN
+}
+
 input NodeSocketsRequest {
+  """Socket Kind"""
+  kind: NodeSocketsKind
+
   """Socket name"""
   name: String
 }

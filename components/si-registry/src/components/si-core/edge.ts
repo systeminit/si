@@ -50,6 +50,13 @@ registry.system({
           },
         });
         p.properties.addText({
+          name: "socket",
+          label: "Socket name",
+          options(p: PropText) {
+            p.required = true;
+          },
+        });
+        p.properties.addText({
           name: "typeName",
           label: "Head Vertex Type Name",
           options(p: PropText) {
@@ -67,6 +74,13 @@ registry.system({
         p.properties.addText({
           name: "id",
           label: "Tail Vertex ID",
+          options(p: PropText) {
+            p.required = true;
+          },
+        });
+        p.properties.addText({
+          name: "socket",
+          label: "Socket name",
           options(p: PropText) {
             p.required = true;
           },
