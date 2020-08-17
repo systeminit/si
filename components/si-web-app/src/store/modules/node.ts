@@ -135,7 +135,7 @@ export const debouncedSetFieldValue = _.debounce(async function({
     map,
   });
 },
-100);
+1000);
 
 export const debouncedSetPosition = _.debounce(async function({
   store,

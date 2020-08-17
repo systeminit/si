@@ -46,7 +46,7 @@ export function persistEdits(store: Store<RootStore>): void {
             store.commit("editor/setEditSaveError", err);
           }
           store.commit("editor/setIsSaving", false);
-        }, 500);
+        }, 2000);
       }
       store.commit("editor/setEditSaveError", undefined);
       store.commit("editor/setIsSaving", true);
