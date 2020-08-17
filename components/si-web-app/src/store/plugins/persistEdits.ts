@@ -12,7 +12,7 @@ export function persistEdits(store: Store<RootStore>): void {
         return;
       }
       let id = currentNode.id;
-      if (!updateFunctions[id]) {
+      if (id && !updateFunctions[id]) {
         updateFunctions[id] = _.debounce(async (entity: any) => {
           console.log("updating graphql for", { entity });
           try {
@@ -22,13 +22,11 @@ export function persistEdits(store: Store<RootStore>): void {
                 currentEditTree,
                 mutation.payload.path,
               );
-              console.log("damage is here");
               _.set(
                 currentEditTree,
                 mutation.payload.path,
                 _.filter(currentMapValue, "key"),
               );
-              console.log("damage is there");
               await store.dispatch("entity/update", {
                 typeName: entity["siStorable"]["typeName"],
                 data: currentEditTree,
@@ -64,6 +62,7 @@ export function persistEdits(store: Store<RootStore>): void {
         entity = currentNode.display["saved"];
       }
 
+      // @ts-ignore
       updateFunctions[id](entity);
     }
   });

@@ -72,6 +72,9 @@ export const application: Module<ApplicationStore, RootStore> = {
       if (app) {
         commit("current", app);
       } else {
+        console.log("cannot find application", {
+          applications: state.applications,
+        });
         throw new Error(`cannot find application for ${applicationId}`);
       }
     },
@@ -79,11 +82,9 @@ export const application: Module<ApplicationStore, RootStore> = {
       commit("add", payload);
     },
     async create(
-      { dispatch, rootGetters },
+      { dispatch, rootGetters, commit },
       payload: CreateMutation,
     ): Promise<ApplicationEntity> {
-      await dispatch("system/createDefault", {}, { root: true });
-      await dispatch("system/setCurrentToDefault", {}, { root: true });
       await dispatch("changeSet/createDefault", {}, { root: true });
       let currentSystem = rootGetters["system/current"];
       let newApp = await dispatch(
@@ -97,16 +98,10 @@ export const application: Module<ApplicationStore, RootStore> = {
         },
         { root: true },
       );
-      await dispatch(
-        "edge/create",
-        {
-          headVertex: newApp.id,
-          tailVertex: currentSystem.id,
-          bidirectional: true,
-        },
-        { root: true },
-      );
       await dispatch("changeSet/execute", { wait: true }, { root: true });
+      const toCommit = _.cloneDeep(newApp);
+      toCommit.id = toCommit.siStorable.itemId;
+      commit("add", { applications: [toCommit] });
       return newApp;
     },
   },

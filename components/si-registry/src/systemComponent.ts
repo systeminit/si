@@ -175,6 +175,48 @@ export class SystemObject extends BaseObject {
     });
   }
 
+  addCreateMethod(args: AddMethodConstructor = {}): void {
+    // eslint-disable-next-line
+    const systemObject = this;
+
+    systemObject.methods.addMethod({
+      name: "create",
+      label: `Create a ${systemObject.displayTypeName}`,
+      options(p: PropMethod) {
+        p.isPrivate = args.isPrivate || false;
+        p.mutation = true;
+
+        for (const prop of systemObject.fields.attrs) {
+          if (prop.name == "id" || prop.name == "siStorable") {
+            continue;
+          }
+          p.request.properties.addLink({
+            name: prop.name,
+            label: prop.label,
+            options(l: PropLink) {
+              l.lookup = {
+                typeName: systemObject.typeName,
+                names: [prop.name],
+              };
+              if (prop.repeated) {
+                l.repeated = true;
+              }
+            },
+          });
+        }
+        p.reply.properties.addLink({
+          name: "item",
+          label: `${systemObject.displayTypeName} Item`,
+          options(p: PropLink) {
+            p.lookup = {
+              typeName: systemObject.typeName,
+            };
+          },
+        });
+      },
+    });
+  }
+
   addListMethod(args: AddMethodConstructor = {}): void {
     // eslint-disable-next-line
     const systemObject = this;

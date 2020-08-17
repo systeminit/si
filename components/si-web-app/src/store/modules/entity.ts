@@ -172,7 +172,7 @@ export const entity: Module<EntityStore, RootStore> = {
       const entity = result["item"];
       commit("add", { entities: [entity] });
       let node = {
-        id: entity.siStorable?.itemId,
+        entityId: entity.siStorable?.itemId,
         name: entity.name,
         nodeType: "Entity",
         object: entity,
@@ -250,10 +250,6 @@ export const entity: Module<EntityStore, RootStore> = {
           { applications: [entity] },
           { root: true },
         );
-      } else if (payload.typeName == "system_entity") {
-        await dispatch("system/add", { systems: [entity] }, { root: true });
-      } else if (payload.typeName == "edge_entity") {
-        await dispatch("edge/add", { edges: [entity] }, { root: true });
       }
       let entityId: string;
       if (entity.siStorable.itemId) {
@@ -262,7 +258,7 @@ export const entity: Module<EntityStore, RootStore> = {
         entityId = entity.id;
       }
       let node = {
-        id: entityId,
+        entityId: entityId,
         name: entity.name,
         nodeType: "Entity",
         object: entity,
@@ -280,7 +276,7 @@ export const entity: Module<EntityStore, RootStore> = {
         { id: entity.siStorable.itemId },
         { root: true },
       );
-      await dispatch("changeSet/get", { changeSetId }, { root: true });
+      //await dispatch("changeSet/get", { changeSetId }, { root: true });
 
       return entity;
     },
@@ -310,7 +306,7 @@ export const entity: Module<EntityStore, RootStore> = {
         {
           items: [
             {
-              id: entity.siStorable.itemId,
+              entityId: entity.siStorable.itemId,
               name: entity.name,
               nodeType: NodeType.Entity,
               object: entity,
@@ -334,28 +330,18 @@ export const entity: Module<EntityStore, RootStore> = {
       });
       const entity = entityGetResult["item"];
       commit("add", { entities: [entity] });
-      if (typeName == "application_entity") {
-        await dispatch(
-          "application/add",
-          { applications: [entity] },
-          { root: true },
-        );
-      } else if (typeName == "system_entity") {
-        await dispatch("system/add", { systems: [entity] }, { root: true });
-      } else if (typeName == "edge_entity") {
-        await dispatch("edge/add", { edges: [entity] }, { root: true });
-      }
+
       let node;
       if (entity.siStorable.itemId) {
         node = {
-          id: entity.siStorable.itemId,
+          entityId: entity.siStorable.itemId,
           name: entity.name,
           nodeType: NodeType.Entity,
           object: entity,
         };
       } else {
         node = {
-          id: entity.id,
+          entityId: entity.id,
           name: entity.name,
           nodeType: NodeType.Entity,
           object: entity,
@@ -450,37 +436,17 @@ export const entity: Module<EntityStore, RootStore> = {
         },
         { root: true },
       );
-      // Populate the system store
-      await dispatch(
-        "system/add",
-        {
-          systems: _.filter(fullEntities, [
-            "siStorable.typeName",
-            "system_entity",
-          ]),
-        },
-        { root: true },
-      );
-      // Populate the edge store
-      await dispatch(
-        "edge/add",
-        {
-          edges: _.filter(fullEntities, ["siStorable.typeName", "edge_entity"]),
-        },
-        { root: true },
-      );
-
       let addEntitiesToNodes: Item[] = _.map(fullEntities, entity => {
         if (entity.siStorable.itemId) {
           return {
-            id: entity.siStorable.itemId,
+            entityId: entity.siStorable.itemId,
             name: entity.name,
             nodeType: NodeType.Entity,
             object: entity,
           };
         } else {
           return {
-            id: entity.id,
+            entityId: entity.id,
             name: entity.name,
             nodeType: NodeType.Entity,
             object: entity,

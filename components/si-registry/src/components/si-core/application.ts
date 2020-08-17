@@ -16,7 +16,7 @@ registry.componentAndEntity({
       name: "inSystems",
       label: "In Systems",
       options(p: PropSelect) {
-        p.optionsFromType = "systemEntity";
+        p.optionsFromType = "system";
         p.repeated = true;
       },
     });

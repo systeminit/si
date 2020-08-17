@@ -39,6 +39,9 @@ export const loader: Module<LoaderStore, RootStore> = {
         },
         { root: true },
       );
+      await dispatch("system/load", {}, { root: true });
+      await dispatch("node/load", {}, { root: true });
+      await dispatch("edge/load", {}, { root: true });
       await dispatch("changeSet/load", {}, { root: true });
       await dispatch("entity/load", {}, { root: true });
       await dispatch("eventLog/load", {}, { root: true });

@@ -148,19 +148,13 @@ export class SiGraphql {
       const realProp = linkProp.lookupMyself();
       return this.graphqlTypeName(realProp, inputType, linkProp);
     }
-    if (linkProp) {
-      if (linkProp.required) {
-        return `${result}!`;
-      } else {
-        return result;
-      }
-    } else {
-      if (prop.required) {
-        return `${result}!`;
-      } else {
-        return result;
-      }
+    if (prop.required || linkProp?.required) {
+      result = `${result}!`;
     }
+    if (prop.repeated || linkProp?.repeated) {
+      result = `[${result}]`;
+    }
+    return result;
   }
 
   associationFieldList(
@@ -313,6 +307,7 @@ export class SiGraphql {
     )}) { ${methodName}(input: { ${inputVariables.join(
       ", ",
     )} }) { ${fieldList} } }`;
+    //console.log("mutation result string", { resultString });
     return gql`
       ${resultString}
     `;

@@ -2,11 +2,9 @@ use anyhow::Context;
 use si_agent::{prelude::*, Dispatchable};
 use si_cea::binary::server::prelude::*;
 use si_core::{
-    agent::{global_core_application, global_core_edge, global_core_service, global_core_system},
+    agent::{global_core_application, global_core_service},
     gen::{
-        finalize::{
-            application_entity_event, edge_entity_event, service_entity_event, system_entity_event,
-        },
+        finalize::{application_entity_event, service_entity_event},
         service::{Server, Service},
     },
 };
@@ -67,9 +65,7 @@ async fn spawn_finalized_listener(
     let mut listener_builder =
         FinalizedListener::builder(server_name, transport_server_uri, shared_topic_id, db);
     listener_builder.finalizer(application_entity_event::finalizer()?);
-    listener_builder.finalizer(edge_entity_event::finalizer()?);
     listener_builder.finalizer(service_entity_event::finalizer()?);
-    listener_builder.finalizer(system_entity_event::finalizer()?);
     let listener = listener_builder.build().await?;
 
     tokio::spawn(listener.run());
@@ -105,23 +101,7 @@ async fn spawn_agent(
         build_dispatcher(
             shared_topic_id.clone(),
             &db,
-            global_core_edge::dispatcher_builder(),
-        )
-        .await?,
-    );
-    agent_builder.dispatcher(
-        build_dispatcher(
-            shared_topic_id.clone(),
-            &db,
             global_core_service::dispatcher_builder(),
-        )
-        .await?,
-    );
-    agent_builder.dispatcher(
-        build_dispatcher(
-            shared_topic_id.clone(),
-            &db,
-            global_core_system::dispatcher_builder(),
         )
         .await?,
     );

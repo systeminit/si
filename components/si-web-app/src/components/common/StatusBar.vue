@@ -55,7 +55,6 @@ export default Vue.extend({
       changeSetId: (state: any): string =>
         state.changeSet.current?.id || "none",
       nodeType(state: any): string {
-        console.log("evaluating node type");
         let typeName;
         if (this.node.name != "none") {
           if (this.changeSet == "none") {
@@ -71,6 +70,9 @@ export default Vue.extend({
             }
           }
         } else {
+          typeName = "none";
+        }
+        if (!typeName) {
           typeName = "none";
         }
         return camelCase(typeName);
