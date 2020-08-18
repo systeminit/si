@@ -305,14 +305,14 @@ registry.base({
       name: "nodePort",
       label: "Node Port",
       options(p: PropNumber) {
-        p.numberKind = "uint32";
+        p.numberKind = "int32";
       },
     });
     c.fields.addNumber({
       name: "port",
       label: "Port",
       options(p: PropNumber) {
-        p.numberKind = "uint32";
+        p.numberKind = "int32";
       },
     });
     c.fields.addText({

@@ -35,10 +35,6 @@ export default {
   computed: {
     // We get the position of the source socket
     sourceSocketPosition() {
-      // the node list get updated so I can't just pull node[i]
-      //let nodeId = "node:3c235077-69bc-4416-99d9-610bf3c1a9fd"; // should be sourceNode.id
-      //const node = this.$store.getters["node/getNodebyId"](nodeId);
-
       const outputSocketOffset = {
         x: 68.5, // node center.
         y: 100, // bottom line of a node
@@ -51,10 +47,6 @@ export default {
     },
     // We get the position of the destination socket
     destinationSocketPosition() {
-      // the node list get updated so I can't just pull node[i]
-      //let nodeId = "node:4f004a6c-b4d3-48a8-b11e-4d31b5e3c5f0"; // should be destinationNode.id
-      //const node = this.$store.getters["node/getNodebyId"](nodeId);
-
       const inputSocketOffset = {
         x: 68.5, // node center.
         y: 0, // top line of a node

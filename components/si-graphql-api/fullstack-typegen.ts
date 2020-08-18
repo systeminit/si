@@ -496,8 +496,8 @@ export interface NexusGenInputs {
   KubernetesServicePortRequest: { // input type
     appProtocol?: string | null; // String
     name?: string | null; // String
-    nodePort?: string | null; // String
-    port?: string | null; // String
+    nodePort?: number | null; // Int
+    port?: number | null; // Int
     protocol?: string | null; // String
     targetPort?: string | null; // String
   }
@@ -624,6 +624,7 @@ export interface NexusGenInputs {
     scopeByTenantId?: string | null; // String
   }
   ServiceEntityPropertiesRequest: { // input type
+    deploymentTarget?: string | null; // String
     image?: string | null; // String
     port?: string | null; // String
     replicas?: string | null; // String
@@ -1363,8 +1364,8 @@ export interface NexusGenRootTypes {
   KubernetesServicePort: { // root type
     appProtocol?: string | null; // String
     name?: string | null; // String
-    nodePort?: string | null; // String
-    port?: string | null; // String
+    nodePort?: number | null; // Int
+    port?: number | null; // Int
     protocol?: string | null; // String
     targetPort?: string | null; // String
   }
@@ -1520,6 +1521,7 @@ export interface NexusGenRootTypes {
     totalCount?: string | null; // String
   }
   ServiceEntityProperties: { // root type
+    deploymentTarget?: string | null; // String
     image?: string | null; // String
     port?: string | null; // String
     replicas?: string | null; // String
@@ -2438,8 +2440,8 @@ export interface NexusGenFieldTypes {
   KubernetesServicePort: { // field return type
     appProtocol: string | null; // String
     name: string | null; // String
-    nodePort: string | null; // String
-    port: string | null; // String
+    nodePort: number | null; // Int
+    port: number | null; // Int
     protocol: string | null; // String
     targetPort: string | null; // String
   }
@@ -2687,6 +2689,7 @@ export interface NexusGenFieldTypes {
     totalCount: string | null; // String
   }
   ServiceEntityProperties: { // field return type
+    deploymentTarget: string | null; // String
     image: string | null; // String
     port: string | null; // String
     replicas: string | null; // String

@@ -22,7 +22,10 @@
       <div class="flex flex-col select-none node">
         <div class="flex flex-col text-white node">
           <div class="node-title-bar node">
-            <div class="mt-1 text-xs font-medium text-center node">
+            <div
+              class="mt-1 text-xs font-medium text-center node"
+              :class="nodeTitleClasses"
+            >
               {{ displayItem.siStorable.typeName.split("_")[0] }}
             </div>
           </div>
@@ -148,6 +151,21 @@ export default {
       } else {
         return node.display["saved"];
       }
+    },
+    nodeTitleClasses() {
+      if (this.currentChangeSet) {
+        if (this.nodeObject.display[this.currentChangeSet.id]) {
+          return {
+            "input-border-gold": true,
+            border: true,
+            "border-t-0": true,
+            "border-b-2": true,
+            "border-r-0": true,
+            "border-l-0": true,
+          };
+        }
+      }
+      return {};
     },
     ...mapState({
       selectedNode: state => state.node.current,

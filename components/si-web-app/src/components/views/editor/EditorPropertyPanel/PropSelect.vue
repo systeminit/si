@@ -85,10 +85,6 @@ export default PropMixin.extend({
       if (option) {
         return option.key;
       } else {
-        console.log("Cannot find the option for this value!", {
-          value,
-          options: this.options,
-        });
         return value;
       }
     },
@@ -106,7 +102,8 @@ export default PropMixin.extend({
           this.entityProperty.prop.optionsFromType,
         );
       } else {
-        return this.options;
+        // @ts-ignore
+        return this.entityProperty.prop.options;
       }
     },
     fieldValue: {

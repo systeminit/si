@@ -94,6 +94,13 @@ interface SendActionAction {
   action: string;
 }
 
+interface SetFieldValueByNodeAction {
+  nodeId: string;
+  path: (string | number)[];
+  value: any;
+  map?: boolean;
+}
+
 interface SetFieldValueAction {
   path: (string | number)[];
   value: any;
@@ -105,6 +112,7 @@ interface SetFieldValueMutation {
   value: any;
   map?: boolean;
   stackEntry: string;
+  nodeId?: string;
 }
 
 export interface RegistryProperty {
@@ -292,11 +300,12 @@ export const node: Module<NodeStore, RootStore> = {
         });
       }
     },
-    getNodebyId: state => (nodeId: string): Node => {
-      // returns a node by id. need to refactor and remove the ts-ignore. -- alex tmp --
-      // @ts-ignore
+    // prettier-ignore
+    getNodeByEntityId: state => (entityId: string): Node | undefined => {
+      return _.find(state.nodes, ["entityId", entityId]);
+    },
+    getNodeById: state => (nodeId: string): Node | undefined => {
       return _.find(state.nodes, ["id", nodeId]);
-      // throw an error if the node isn't found and return null. -- alex tmp --
     },
     getFieldValue: (_state, getters, rootState) => (path: string[]): any => {
       const currentNode = getters["current"];
@@ -584,15 +593,21 @@ export const node: Module<NodeStore, RootStore> = {
       state.mouseTrackSelection = null;
     },
     setFieldValue(state, payload: SetFieldValueMutation) {
-      if (!state.current) {
+      let node;
+      if (payload.nodeId) {
+        node = _.find(state.nodes, ["id", payload.nodeId]);
+      } else if (state.current) {
+        node = state.current;
+      } else {
         throw new Error(
-          `Cannot set the field value - there is no current node: ${JSON.stringify(
+          `Cannot set the field value - there is no current node, and no node specified: ${JSON.stringify(
             payload,
           )}`,
         );
       }
       _.set(
-        state.current.display[payload.stackEntry],
+        // @ts-ignore yeah, we know it *could* be null, but we throw right above you - so fuck you.
+        node.display[payload.stackEntry],
         payload.path,
         payload.value,
       );
@@ -660,6 +675,30 @@ export const node: Module<NodeStore, RootStore> = {
       }
       commit("setFieldValue", { stackEntry, ...payload });
     },
+    async setFieldValueByNode(
+      { commit, state, rootState },
+      payload: SetFieldValueByNodeAction,
+    ) {
+      let currentNode = _.find(state.nodes, ["id", payload.nodeId]);
+      if (!currentNode) {
+        console.log(
+          "cannot find the value by node, because I cannot find the node",
+          { payload },
+        );
+        throw new Error(
+          "Cannot set field value by node, because I cannot find the node",
+        );
+      }
+      let stackEntry = "saved";
+      if (rootState.changeSet.current?.id) {
+        let currentChangeSetId = rootState.changeSet.current.id;
+        if (currentNode.display[currentChangeSetId]) {
+          stackEntry = currentChangeSetId;
+        }
+      }
+      commit("setFieldValue", { stackEntry, ...payload });
+    },
+
     async create({ dispatch }, payload: CreateAction) {
       if (payload.nodeType == NodeType.Entity) {
         await dispatch(
