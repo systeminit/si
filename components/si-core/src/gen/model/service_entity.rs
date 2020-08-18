@@ -595,6 +595,7 @@ impl si_data::Storable for crate::protobuf::ServiceEntity {
             "properties.image",
             "properties.port",
             "properties.replicas",
+            "properties.deploymentTarget",
             "siStorable.naturalKey",
             "constraints.componentName",
             "constraints.componentDisplayName",

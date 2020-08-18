@@ -249,6 +249,7 @@ message ServiceEntityProperties {
   google.protobuf.StringValue image = 1001;
   google.protobuf.UInt32Value port = 1002;
   google.protobuf.UInt32Value replicas = 1003;
+  google.protobuf.StringValue deployment_target = 1004;
 }
 message ServiceEntity {
   google.protobuf.StringValue id = 1;

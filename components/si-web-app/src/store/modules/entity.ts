@@ -7,6 +7,7 @@ import { generateName } from "@/api/names";
 import { graphqlQuery, graphqlMutation } from "@/api/apollo";
 import { RootStore } from "@/store";
 import { NodeType, Item } from "./node";
+import { ServiceEntity, Edge } from "@/graphql-types";
 
 interface EntityMeta {
   workspaceId: string;
@@ -143,8 +144,361 @@ export const entity: Module<EntityStore, RootStore> = {
     }
   },
   actions: {
+    async serviceEntityIntelligence(
+      { state, dispatch, rootGetters },
+      { entity }: { entity: ServiceEntity },
+    ): Promise<void> {
+      if (entity.properties?.deploymentTarget == "none") {
+      } else if (entity.properties?.deploymentTarget == "kubernetes-minikube") {
+        let serviceNode = rootGetters["node/getNodeByEntityId"](entity.id);
+        if (!serviceNode) {
+          serviceNode = rootGetters["node/getNodeByEntityId"](
+            entity.siStorable?.itemId,
+          );
+        }
+        const serviceDeploymentEdges: Edge[] = rootGetters["edge/filter"](
+          (edge: Edge) => {
+            if (
+              edge.tailVertex?.id == serviceNode.id &&
+              (edge.headVertex?.typeName == "kubernetes_deployment_entity" ||
+                edge.headVertex?.typeName == "kubernetes_service_entity")
+            ) {
+              return true;
+            } else {
+              return false;
+            }
+          },
+        );
+        if (serviceDeploymentEdges.length > 0) {
+          for (const kubeEdge of serviceDeploymentEdges) {
+            let kubeNode = rootGetters["node/getNodeById"](
+              kubeEdge.headVertex?.id,
+            );
+            if (kubeNode) {
+              // Kubernetes Deployment Entity Update
+              if (
+                kubeEdge.headVertex?.typeName == "kubernetes_deployment_entity"
+              ) {
+                for (const pathEntry of [
+                  ["name"],
+                  ["description"],
+                  ["displayName"],
+                  ["properties", "kubernetesObject", "metadata", "name"],
+                  [
+                    "properties",
+                    "kubernetesObject",
+                    "spec",
+                    "template",
+                    "spec",
+                    "containers",
+                    0,
+                    "name",
+                  ],
+                ]) {
+                  await dispatch(
+                    "node/setFieldValueByNode",
+                    {
+                      nodeId: kubeNode.id,
+                      path: pathEntry,
+                      value: `${entity.name}-deployment`,
+                    },
+                    { root: true },
+                  );
+                }
+                for (const pathEntry of [
+                  ["properties", "kubernetesObject", "metadata", "labels", 0],
+                  [
+                    "properties",
+                    "kubernetesObject",
+                    "spec",
+                    "selector",
+                    "matchLabels",
+                    0,
+                  ],
+                  [
+                    "properties",
+                    "kubernetesObject",
+                    "spec",
+                    "template",
+                    "metadata",
+                    "labels",
+                    0,
+                  ],
+                ]) {
+                  await dispatch(
+                    "node/setFieldValueByNode",
+                    {
+                      nodeId: kubeNode.id,
+                      path: pathEntry,
+                      value: { key: "app", value: `${entity.name}-deployment` },
+                    },
+                    { root: true },
+                  );
+                }
+                await dispatch(
+                  "node/setFieldValueByNode",
+                  {
+                    nodeId: kubeNode.id,
+                    path: [
+                      "properties",
+                      "kubernetesObject",
+                      "spec",
+                      "replicas",
+                    ],
+                    value: parseInt(`${entity.properties?.replicas || "0"}`),
+                  },
+                  { root: true },
+                );
+                await dispatch(
+                  "node/setFieldValueByNode",
+                  {
+                    nodeId: kubeNode.id,
+                    path: [
+                      "properties",
+                      "kubernetesObject",
+                      "spec",
+                      "template",
+                      "spec",
+                      "containers",
+                      0,
+                      "ports",
+                      0,
+                      "containerPort",
+                    ],
+                    value: parseInt(entity.properties.port || "0"),
+                  },
+                  { root: true },
+                );
+              } else if (
+                kubeEdge.headVertex?.typeName == "kubernetes_service_entity"
+              ) {
+                for (const pathEntry of [
+                  ["name"],
+                  ["description"],
+                  ["displayName"],
+                  ["properties", "kubernetesObject", "metadata", "name"],
+                ]) {
+                  await dispatch(
+                    "node/setFieldValueByNode",
+                    {
+                      nodeId: kubeNode.id,
+                      path: pathEntry,
+                      value: `${entity.name}-service`,
+                    },
+                    { root: true },
+                  );
+                }
+                await dispatch(
+                  "node/setFieldValueByNode",
+                  {
+                    nodeId: kubeNode.id,
+                    path: [
+                      "properties",
+                      "kubernetesObject",
+                      "metadata",
+                      "labels",
+                      0,
+                    ],
+                    value: { key: "app", value: `${entity.name}-service` },
+                  },
+                  { root: true },
+                );
+                await dispatch(
+                  "node/setFieldValueByNode",
+                  {
+                    nodeId: kubeNode.id,
+                    path: [
+                      "properties",
+                      "kubernetesObject",
+                      "spec",
+                      "ports",
+                      0,
+                      "name",
+                    ],
+                    value: `${entity.name}-port`,
+                  },
+                  { root: true },
+                );
+                await dispatch(
+                  "node/setFieldValueByNode",
+                  {
+                    nodeId: kubeNode.id,
+                    path: [
+                      "properties",
+                      "kubernetesObject",
+                      "spec",
+                      "ports",
+                      0,
+                      "port",
+                    ],
+                    value: parseInt(entity.properties.port || "0"),
+                  },
+                  { root: true },
+                );
+                await dispatch(
+                  "node/setFieldValueByNode",
+                  {
+                    nodeId: kubeNode.id,
+                    path: [
+                      "properties",
+                      "kubernetesObject",
+                      "spec",
+                      "selector",
+                      0,
+                    ],
+                    value: { key: "app", value: `${entity.name}-deployment` },
+                  },
+                  { root: true },
+                );
+              }
+            } else {
+              console.log(
+                "broken edge! the node does not exist, but the edge does!",
+                { kubeEdge, kubeNode },
+              );
+            }
+          }
+        } else {
+          // Create a Kubernetes Deployment if needed, filling in the blanks
+          // Create a Kubernetes Service if needed, filling in the blanks
+          // Create the edges for both, if needed
+          let newEntity: CreateEntityPayload = {
+            typeName: "kubernetesDeploymentEntity",
+            data: {
+              name: `${entity.name}-deployment`,
+              description: `${entity.name}-deployment`,
+              properties: {
+                kubernetesObject: {
+                  apiVersion: "apps/v1",
+                  kind: "Deployment",
+                  metadata: {
+                    name: `${entity.name}-deployment`,
+                    labels: [
+                      { key: "app", value: `${entity.name}-deployment` },
+                    ],
+                  },
+                  spec: {
+                    replicas: parseInt(`${entity.properties?.replicas || "0"}`),
+                    selector: {
+                      matchLabels: [
+                        { key: "app", value: `${entity.name}-deployment` },
+                      ],
+                    },
+                    template: {
+                      metadata: {
+                        labels: [
+                          { key: "app", value: `${entity.name}-deployment` },
+                        ],
+                      },
+                      spec: {
+                        containers: [
+                          {
+                            name: `${entity.name}-deployment`,
+                            image: `${entity.properties.image}`,
+                            ports: [
+                              {
+                                containerPort: parseInt(
+                                  entity.properties.port || "0",
+                                ),
+                              },
+                            ],
+                          },
+                        ],
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          };
+          let createdDeployment = await dispatch("create", newEntity);
+          let deploymentNode = rootGetters["node/getNodeByEntityId"](
+            createdDeployment.id,
+          );
+          if (!deploymentNode) {
+            deploymentNode = rootGetters["node/getNodeByEntityId"](
+              createdDeployment.siStorable?.itemId,
+            );
+          }
+          await dispatch(
+            "edge/create",
+            {
+              tailVertex: {
+                id: serviceNode.id,
+                socket: "output",
+                typeName: serviceNode.stack[0].siStorable?.typeName,
+              },
+              headVertex: {
+                id: deploymentNode.id,
+                socket: "input",
+                typeName: deploymentNode.stack[0].siStorable?.typeName,
+              },
+              bidirectional: true,
+            },
+            { root: true },
+          );
+
+          // kubernetesService! You're welcome. :)
+          let newService: CreateEntityPayload = {
+            typeName: "kubernetesServiceEntity",
+            data: {
+              name: `${entity.name}-service`,
+              description: `${entity.name}-service`,
+              properties: {
+                kubernetesObject: {
+                  apiVersion: "v1",
+                  kind: "Service",
+                  metadata: {
+                    name: `${entity.name}-service`,
+                    labels: [{ key: "app", value: `${entity.name}-service` }],
+                  },
+                  spec: {
+                    selector: [
+                      { key: "app", value: `${entity.name}-deployment` },
+                    ],
+                    ports: [
+                      {
+                        name: `${entity.name}-port`,
+                        port: parseInt(entity.properties.port || "0"),
+                      },
+                    ],
+                    type: "NodePort",
+                  },
+                },
+              },
+            },
+          };
+          let createdService = await dispatch("create", newService);
+          let k8sServiceNode = rootGetters["node/getNodeByEntityId"](
+            createdService.id,
+          );
+          if (!k8sServiceNode) {
+            k8sServiceNode = rootGetters["node/getNodeByEntityId"](
+              createdService.siStorable?.itemId,
+            );
+          }
+          await dispatch(
+            "edge/create",
+            {
+              tailVertex: {
+                id: serviceNode.id,
+                socket: "output",
+                typeName: serviceNode.stack[0].siStorable?.typeName,
+              },
+              headVertex: {
+                id: k8sServiceNode.id,
+                socket: "input",
+                typeName: k8sServiceNode.stack[0].siStorable?.typeName,
+              },
+              bidirectional: true,
+            },
+            { root: true },
+          );
+        }
+      }
+    },
     async update(
-      { commit, dispatch, rootGetters },
+      { state, commit, dispatch, rootGetters },
       payload: UpdateEntityPayload,
     ): Promise<void> {
       const variables: Record<string, any> = {
@@ -184,6 +538,9 @@ export const entity: Module<EntityStore, RootStore> = {
         },
         { root: true },
       );
+      if (entity.siStorable?.typeName == "service_entity") {
+        await dispatch("serviceEntityIntelligence", { entity });
+      }
       await dispatch("changeSet/get", { changeSetId }, { root: true });
     },
     async create(

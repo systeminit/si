@@ -1,4 +1,9 @@
-import { PropAction, PropNumber, PropText } from "../../components/prelude";
+import {
+  PropAction,
+  PropNumber,
+  PropText,
+  PropSelect,
+} from "../../components/prelude";
 import { registry } from "../../registry";
 
 registry.componentAndEntity({
@@ -38,6 +43,22 @@ registry.componentAndEntity({
       options(p: PropNumber) {
         p.numberKind = "uint32";
         p.baseDefaultValue = "1";
+      },
+    });
+    c.properties.addSelect({
+      name: "deploymentTarget",
+      label: "Deployment Target",
+      options(p: PropSelect) {
+        p.baseValidation = p.baseValidation.allow(
+          "none",
+          "kubernetes-minikube",
+          "kubernetes-aws",
+        );
+        p.options = [
+          { key: "none", value: "none" },
+          { key: "kubernetes-minikube", value: "kubernetes-minikube" },
+          { key: "kubernetes-aws-eks", value: "kubernetes-aws" },
+        ];
       },
     });
 

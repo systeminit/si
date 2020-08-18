@@ -2805,10 +2805,10 @@ type KubernetesServicePort {
   name: String
 
   """Node Port"""
-  nodePort: String
+  nodePort: Int
 
   """Port"""
-  port: String
+  port: Int
 
   """Protocol"""
   protocol: String
@@ -2825,10 +2825,10 @@ input KubernetesServicePortRequest {
   name: String
 
   """Node Port"""
-  nodePort: String
+  nodePort: Int
 
   """Port"""
-  port: String
+  port: Int
 
   """Protocol"""
   protocol: String
@@ -3574,6 +3574,9 @@ input ServiceEntityListRequest {
 }
 
 type ServiceEntityProperties {
+  """Deployment Target"""
+  deploymentTarget: String
+
   """Container Image"""
   image: String
 
@@ -3585,6 +3588,9 @@ type ServiceEntityProperties {
 }
 
 input ServiceEntityPropertiesRequest {
+  """Deployment Target"""
+  deploymentTarget: String
+
   """Container Image"""
   image: String
 

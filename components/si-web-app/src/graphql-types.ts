@@ -3538,6 +3538,8 @@ export type ServiceEntityListRequest = {
 
 export type ServiceEntityProperties = {
   __typename?: "ServiceEntityProperties";
+  /** Deployment Target */
+  deploymentTarget?: Maybe<Scalars["String"]>;
   /** Container Image */
   image?: Maybe<Scalars["String"]>;
   /** Container Port */
@@ -3547,6 +3549,8 @@ export type ServiceEntityProperties = {
 };
 
 export type ServiceEntityPropertiesRequest = {
+  /** Deployment Target */
+  deploymentTarget?: Maybe<Scalars["String"]>;
   /** Container Image */
   image?: Maybe<Scalars["String"]>;
   /** Container Port */

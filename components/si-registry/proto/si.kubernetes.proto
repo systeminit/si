@@ -448,8 +448,8 @@ message KubernetesServiceEntityEventListReply {
 message KubernetesServicePort {
   google.protobuf.StringValue app_protocol = 1001;
   google.protobuf.StringValue name = 1002;
-  google.protobuf.UInt32Value node_port = 1003;
-  google.protobuf.UInt32Value port = 1004;
+  google.protobuf.Int32Value node_port = 1003;
+  google.protobuf.Int32Value port = 1004;
   google.protobuf.StringValue protocol = 1005;
   google.protobuf.StringValue target_port = 1006;
 }

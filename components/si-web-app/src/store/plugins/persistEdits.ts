@@ -7,9 +7,22 @@ export function persistEdits(store: Store<RootStore>): void {
   const updateFunctions: Record<string, any> = {};
   store.subscribe((mutation, state) => {
     if (mutation.type == "node/setFieldValue") {
-      let currentNode = state.node.current;
-      if (!currentNode) {
-        return;
+      let currentNode;
+      if (mutation.payload.nodeId) {
+        currentNode = _.find(state.node.nodes, ["id", mutation.payload.nodeId]);
+        if (!currentNode) {
+          console.log("cannot persist this edit, node not found", { mutation });
+          return;
+        }
+      } else {
+        currentNode = state.node.current;
+        if (!currentNode) {
+          console.log(
+            "cannot persist this edit, node not found and none currently selected",
+            { mutation },
+          );
+          return;
+        }
       }
       let id = currentNode.id;
       if (id && !updateFunctions[id]) {
