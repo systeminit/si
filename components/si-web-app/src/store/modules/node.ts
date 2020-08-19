@@ -5,7 +5,12 @@ import { registry, Props, PropMethod, PropLink, PropObject } from "si-registry";
 
 import { RootStore } from "@/store";
 import { graphqlMutation, graphqlQueryListAll } from "@/api/apollo";
-import { ChangeSet, Node as GqlNode, NodePosition } from "@/graphql-types";
+import {
+  ChangeSet,
+  Node as GqlNode,
+  NodePosition,
+  Edge,
+} from "@/graphql-types";
 import { diffEntity, DiffResult } from "@/utils/diff";
 
 interface NodeConstructor {
@@ -247,7 +252,7 @@ export const node: Module<NodeStore, RootStore> = {
       // will need refactor, this is a hack to imnplement mouse tracking on new nodes. -- alex tmp --
       return state.mouseTrackSelection;
     },
-    list(state, _getters, rootState): Node[] {
+    list(state, getters, rootState, rootGetters): Node[] {
       let result: Node[] = [];
       let changeSetId = rootState.changeSet.current?.id;
       if (changeSetId) {
@@ -302,16 +307,29 @@ export const node: Module<NodeStore, RootStore> = {
       }
       let currentApplication = rootState.application.current;
       if (currentApplication) {
-        console.log("filter app", { currentApplication });
-        result = _.filter(result, node => {
-          if (node.entityId != currentApplication?.id) {
-            return true;
-          } else {
+        let applicationNode = getters["getNodeByEntityId"](
+          currentApplication.id,
+        );
+        if (applicationNode) {
+          let applicationEdges = rootGetters["edge/filter"]((edge: Edge) => {
+            if (edge.tailVertex?.id == applicationNode.id) {
+              return true;
+            }
             return false;
-          }
-        });
+          });
+          result = _.filter(result, node => {
+            // You are the current application, and we don't show you.
+            if (node.id == applicationNode.id) {
+              return false;
+            }
+            // If this node has an edge to this application, it is in the list.
+            if (_.find(applicationEdges, ["headVertex.id", node.id])) {
+              return true;
+            }
+            return false;
+          });
+        }
       }
-      console.log("node list results", { result });
       return result;
     },
     // prettier-ignore
