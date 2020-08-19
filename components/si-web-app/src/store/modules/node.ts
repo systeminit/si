@@ -8,6 +8,7 @@ import { graphqlMutation, graphqlQueryListAll } from "@/api/apollo";
 import {
   ChangeSet,
   Node as GqlNode,
+  NodeNodeKind,
   NodePosition,
   Edge,
 } from "@/graphql-types";
@@ -18,9 +19,10 @@ interface NodeConstructor {
   name: Node["name"];
 }
 
-export enum NodeType {
-  Entity = "Entity",
-}
+//export type NodeType = NodeNodeKind;
+//export enum NodeType {
+//  Entity = "Entity",
+//}
 
 // -- alex tmp --
 // interface Socket {
@@ -73,7 +75,7 @@ interface AddMutation {
 export interface Item {
   entityId: string;
   name: string;
-  nodeType: NodeType;
+  nodeType: NodeNodeKind;
   object: any;
 }
 
@@ -82,7 +84,7 @@ interface AddAction {
 }
 
 interface CreateAction {
-  nodeType: NodeType;
+  nodeType: NodeNodeKind;
   typeName: string;
 }
 
@@ -265,7 +267,15 @@ export const node: Module<NodeStore, RootStore> = {
             }
           });
           if (inChangeSet) {
-            return true;
+            if (
+              // @ts-ignore - we know it is a value, we checked it
+              node.display[changeSetId].siStorable?.deleted &&
+              !node.display["saved"]
+            ) {
+              return false;
+            } else {
+              return true;
+            }
           } else {
             let isSaved = _.find(node.stack, item => {
               if (!item.siStorable?.changeSetId && !item.siStorable?.deleted) {
@@ -732,7 +742,7 @@ export const node: Module<NodeStore, RootStore> = {
     },
 
     async create({ dispatch }, payload: CreateAction) {
-      if (payload.nodeType == NodeType.Entity) {
+      if (payload.nodeType == NodeNodeKind.Entity) {
         await dispatch(
           "entity/create",
           {
@@ -759,7 +769,7 @@ export const node: Module<NodeStore, RootStore> = {
     ) {
       commit("setNodePosition", payload);
     },
-    async delete({ getters, dispatch, rootGetters }) {
+    async delete({ state, getters, dispatch, rootGetters }) {
       let currentNode = getters["current"];
       let changeSetId;
       try {
@@ -775,7 +785,7 @@ export const node: Module<NodeStore, RootStore> = {
       } else {
         displayCurrentNode = currentNode.display["saved"];
       }
-      if (currentNode.nodeType == NodeType.Entity) {
+      if (currentNode.nodeKind == NodeNodeKind.Entity) {
         await dispatch(
           "entity/delete",
           {
@@ -784,6 +794,30 @@ export const node: Module<NodeStore, RootStore> = {
           },
           { root: true },
         );
+      }
+      const relatedNodeIds = rootGetters["edge/allRelatedNodes"](
+        currentNode.id,
+      );
+      for (const relatedNodeId of relatedNodeIds) {
+        const relatedNode = _.find(state.nodes, ["id", relatedNodeId]);
+        if (relatedNode) {
+          let displayRelatedNode;
+          if (relatedNode.display[changeSetId]) {
+            displayRelatedNode = relatedNode.display[changeSetId];
+          } else {
+            displayRelatedNode = relatedNode.display["saved"];
+          }
+          if (relatedNode.nodeKind == NodeNodeKind.Entity) {
+            await dispatch(
+              "entity/delete",
+              {
+                typeName: displayRelatedNode.siStorable?.typeName,
+                id: displayRelatedNode.id,
+              },
+              { root: true },
+            );
+          }
+        }
       }
     },
     async add(

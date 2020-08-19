@@ -6,8 +6,8 @@ import { registry, Props, PropMethod, PropLink, PropObject } from "si-registry";
 import { generateName } from "@/api/names";
 import { graphqlQuery, graphqlMutation } from "@/api/apollo";
 import { RootStore } from "@/store";
-import { NodeType, Item } from "./node";
-import { ServiceEntity, Edge } from "@/graphql-types";
+import { Item } from "./node";
+import { ServiceEntity, Edge, NodeNodeKind } from "@/graphql-types";
 
 interface EntityMeta {
   workspaceId: string;
@@ -528,7 +528,7 @@ export const entity: Module<EntityStore, RootStore> = {
       let node = {
         entityId: entity.siStorable?.itemId,
         name: entity.name,
-        nodeType: "Entity",
+        nodeType: NodeNodeKind.Entity,
         object: entity,
       };
       await dispatch(
@@ -617,7 +617,7 @@ export const entity: Module<EntityStore, RootStore> = {
       let node = {
         entityId: entityId,
         name: entity.name,
-        nodeType: "Entity",
+        nodeType: NodeNodeKind.Entity,
         object: entity,
       };
       await dispatch(
@@ -665,7 +665,7 @@ export const entity: Module<EntityStore, RootStore> = {
             {
               entityId: entity.siStorable.itemId,
               name: entity.name,
-              nodeType: NodeType.Entity,
+              nodeType: NodeNodeKind.Entity,
               object: entity,
             },
           ],
@@ -693,14 +693,14 @@ export const entity: Module<EntityStore, RootStore> = {
         node = {
           entityId: entity.siStorable.itemId,
           name: entity.name,
-          nodeType: NodeType.Entity,
+          nodeType: NodeNodeKind.Entity,
           object: entity,
         };
       } else {
         node = {
           entityId: entity.id,
           name: entity.name,
-          nodeType: NodeType.Entity,
+          nodeType: NodeNodeKind.Entity,
           object: entity,
         };
       }
@@ -798,14 +798,14 @@ export const entity: Module<EntityStore, RootStore> = {
           return {
             entityId: entity.siStorable.itemId,
             name: entity.name,
-            nodeType: NodeType.Entity,
+            nodeType: NodeNodeKind.Entity,
             object: entity,
           };
         } else {
           return {
             entityId: entity.id,
             name: entity.name,
-            nodeType: NodeType.Entity,
+            nodeType: NodeNodeKind.Entity,
             object: entity,
           };
         }

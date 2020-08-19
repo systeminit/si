@@ -35,6 +35,29 @@ export const edge: Module<EdgeStore, RootStore> = {
   },
   getters: {
     // prettier-ignore
+    allRelatedNodes: (state) => (startingNodeId: string): string[] => {
+      const relatedNodes = [startingNodeId];
+      for (const nodeId of relatedNodes) {
+        const relatedEdges = _.filter(state.edges, (edge) => {
+          if (edge.tailVertex?.id == nodeId) {
+            return true;
+          } else {
+            return false;
+          }
+        });
+        for (const relatedEdge of relatedEdges) {
+          if (relatedEdge.headVertex?.id) {
+            if (!_.find(relatedNodes, relatedEdge.headVertex?.id)) {
+              relatedNodes.push(relatedEdge.headVertex?.id);
+            }
+          }
+        }
+      }
+      // Remove the starting node
+      relatedNodes.shift();
+      return relatedNodes;
+    },
+    // prettier-ignore
     filter: (state) => (filter: any): EdgeStore["edges"] => {
       return _.filter(state.edges, filter);
     },
