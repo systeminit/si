@@ -111,6 +111,11 @@ export default Vue.extend({
         nodeType: NodeNodeKind.Entity,
         typeName: this.selectedEntityType,
       });
+      //await this.$store.dispatch(
+      //  "node/setMouseTrackSelection",
+      //  { id: newNode.id },
+      //  { root: true },
+      //);
     },
     async sendAction(): Promise<void> {
       await this.$store.dispatch("node/sendAction", {

@@ -741,15 +741,20 @@ export const node: Module<NodeStore, RootStore> = {
       commit("setFieldValue", { stackEntry, ...payload });
     },
 
-    async create({ dispatch }, payload: CreateAction) {
+    async create({ dispatch, getters, commit }, payload: CreateAction) {
       if (payload.nodeType == NodeNodeKind.Entity) {
-        await dispatch(
+        const newEntity = await dispatch(
           "entity/create",
           {
             typeName: payload.typeName,
           },
           { root: true },
         );
+        let newNode = getters["getNodeByEntityId"](
+          newEntity.siStorable?.itemId,
+        );
+        commit("current", newNode);
+        await dispatch("setMouseTrackSelection", { id: newNode.id });
       }
     },
     current({ commit }, payload: CurrentAction) {
@@ -872,7 +877,7 @@ export const node: Module<NodeStore, RootStore> = {
           commit("add", {
             nodes: [newNode],
           });
-          if (state.current?.entityId == item.entityId) {
+          if (state.current?.entityId == item.object.id) {
             commit("current", newNode);
           }
           if (item.object.siStorable?.typeName != "application_entity") {
