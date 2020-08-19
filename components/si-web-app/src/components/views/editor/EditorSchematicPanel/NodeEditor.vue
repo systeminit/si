@@ -380,6 +380,15 @@ export default {
         this.selection.object = document.getElementById(
           this.mouseTrackSelection,
         );
+        // Sometimes, the offset hasn't been set by the map down
+        if (!this.selection.offset.x || !this.selection.offset.y) {
+          let mousePositionX = event.clientX;
+          let mousePositionY = event.clientY;
+          let selectionOffsetLeft = this.selection.object.offsetLeft;
+          let selectionOffsetTop = this.selection.object.offsetTop;
+          this.selection.offset.x = mousePositionX - selectionOffsetLeft;
+          this.selection.offset.y = mousePositionY - selectionOffsetTop;
+        }
       }
 
       const selectedObject = this.selection.object;

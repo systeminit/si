@@ -438,6 +438,23 @@ export const entity: Module<EntityStore, RootStore> = {
             { root: true },
           );
 
+          let nodeSizeX = 140;
+          let nodeSizeY = 100;
+          let nodeOffsetY = nodeSizeY * 0.5;
+          let nodeOffsetX = nodeSizeX * 0.65;
+
+          await dispatch(
+            "node/setNodePosition",
+            {
+              position: {
+                x: serviceNode.position.x + nodeOffsetX,
+                y: serviceNode.position.y + nodeSizeY + nodeOffsetY,
+              },
+              id: deploymentNode.id,
+            },
+            { root: true },
+          );
+
           // kubernetesService! You're welcome. :)
           let newService: CreateEntityPayload = {
             typeName: "kubernetesServiceEntity",
@@ -491,6 +508,18 @@ export const entity: Module<EntityStore, RootStore> = {
                 typeName: k8sServiceNode.stack[0].siStorable?.typeName,
               },
               bidirectional: true,
+            },
+            { root: true },
+          );
+
+          await dispatch(
+            "node/setNodePosition",
+            {
+              position: {
+                x: serviceNode.position.x + -1 * nodeOffsetX,
+                y: serviceNode.position.y + nodeSizeY + nodeOffsetY,
+              },
+              id: k8sServiceNode.id,
             },
             { root: true },
           );
@@ -627,12 +656,12 @@ export const entity: Module<EntityStore, RootStore> = {
         },
         { root: true },
       );
-
-      await dispatch(
-        "node/setMouseTrackSelection",
-        { id: entity.siStorable.itemId },
-        { root: true },
-      );
+      const newNode = rootGetters["node/getNodeByEntityId"](entityId);
+      //await dispatch(
+      //  "node/setMouseTrackSelection",
+      //  { id: newNode.id },
+      //  { root: true },
+      //);
       //await dispatch("changeSet/get", { changeSetId }, { root: true });
 
       return entity;
