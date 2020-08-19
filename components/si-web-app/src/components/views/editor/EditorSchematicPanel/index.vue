@@ -1,12 +1,12 @@
 <template>
-  <div ref="schematic-panel" class="flex flex-col h-full w-full">
+  <div ref="schematic-panel" class="flex flex-col w-full h-full">
     <div
       id="schematic-panel-menu"
-      class="flex flex-row justify-between flex-no-wrap content-between bg-black w-full"
+      class="flex flex-row flex-no-wrap content-between justify-between w-full bg-black"
     >
       <div class="flex flex-row justify-start mx-3">
         <button
-          class="text-white px-4 py-2 focus:outline-none"
+          class="px-4 py-2 text-white focus:outline-none"
           @click="createNode()"
           type="button"
         >
@@ -14,7 +14,7 @@
         </button>
         <div class="text-black">
           <select
-            class="bg-gray-800 border text-gray-400 my-2 text-xs leading-tight focus:outline-none"
+            class="my-2 text-xs leading-tight text-gray-400 bg-gray-800 border focus:outline-none"
             v-model="selectedEntityType"
           >
             <option
@@ -27,7 +27,7 @@
           </select>
         </div>
         <button
-          class="text-white px-4 py-2 focus:outline-none"
+          class="px-4 py-2 text-white focus:outline-none"
           @click="sendAction()"
           type="button"
         >
@@ -35,7 +35,7 @@
         </button>
         <div class="text-black">
           <select
-            class="bg-gray-800 border text-gray-400 my-2 text-xs leading-tight focus:outline-none"
+            class="my-2 text-xs leading-tight text-gray-400 bg-gray-800 border focus:outline-none"
             v-model="selectedAction"
           >
             <option key="delete" value="delete">
@@ -50,7 +50,7 @@
 
       <div class="mx-3">
         <button
-          class="text-white px-4 py-2 focus:outline-none"
+          class="px-4 py-2 text-white focus:outline-none"
           @click="maximizePanel()"
           type="button"
         >
@@ -74,6 +74,7 @@ import _ from "lodash";
 import { mapState } from "vuex";
 import { RootStore } from "@/store";
 import { camelCase } from "change-case";
+import { NodeNodeKind } from "@/graphql-types";
 
 interface Data {
   selectedEntityType: string;
@@ -107,7 +108,7 @@ export default Vue.extend({
     },
     async createNode(): Promise<void> {
       await this.$store.dispatch("node/create", {
-        nodeType: "Entity",
+        nodeType: NodeNodeKind.Entity,
         typeName: this.selectedEntityType,
       });
     },
