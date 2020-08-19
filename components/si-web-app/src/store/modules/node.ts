@@ -248,9 +248,10 @@ export const node: Module<NodeStore, RootStore> = {
       return state.mouseTrackSelection;
     },
     list(state, _getters, rootState): Node[] {
+      let result: Node[] = [];
       let changeSetId = rootState.changeSet.current?.id;
       if (changeSetId) {
-        return _.filter(state.nodes, node => {
+        result = _.filter(state.nodes, node => {
           let inChangeSet = _.find(node.stack, item => {
             if (item.siStorable?.changeSetId == changeSetId) {
               return true;
@@ -280,7 +281,7 @@ export const node: Module<NodeStore, RootStore> = {
           }
         });
       } else {
-        return _.filter(state.nodes, node => {
+        result = _.filter(state.nodes, node => {
           let savedItem = _.find(node.stack, item => {
             if (!item.siStorable?.changeSetId) {
               if (!item.siStorable?.deleted) {
@@ -299,6 +300,19 @@ export const node: Module<NodeStore, RootStore> = {
           }
         });
       }
+      let currentApplication = rootState.application.current;
+      if (currentApplication) {
+        console.log("filter app", { currentApplication });
+        result = _.filter(result, node => {
+          if (node.entityId != currentApplication?.id) {
+            return true;
+          } else {
+            return false;
+          }
+        });
+      }
+      console.log("node list results", { result });
+      return result;
     },
     // prettier-ignore
     getNodeByEntityId: state => (entityId: string): Node | undefined => {
