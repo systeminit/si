@@ -56,8 +56,8 @@ registry.componentAndEntity({
         );
         p.options = [
           { key: "none", value: "none" },
-          { key: "kubernetes-minikube", value: "kubernetes-minikube" },
-          { key: "kubernetes-aws-eks", value: "kubernetes-aws" },
+          { key: "kubernetes", value: "kubernetes" },
+          { key: "docker", value: "docker" },
         ];
       },
     });

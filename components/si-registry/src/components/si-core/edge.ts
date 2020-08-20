@@ -104,7 +104,7 @@ registry.system({
       name: "edgeKind",
       label: "The kind of edge this is",
       options(p: PropEnum) {
-        p.variants = ["connected"];
+        p.variants = ["connected", "partOf"];
         p.baseDefaultValue = "connected";
       },
     });
