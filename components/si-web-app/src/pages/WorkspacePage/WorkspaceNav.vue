@@ -1,25 +1,20 @@
 <template>
   <nav
     id="workspace-nav"
-    class="flex items-center justify-between flex-col flex-shrink-0 flex-no-wrap bg-primary w-56"
+    class="flex flex-col flex-no-wrap items-center justify-between flex-shrink-0 bg-primary w-54"
   >
-    <div class="flex justify-center h-13 nav-header w-full">
-      <div class="flex justify-between items-center w-10/12">
+    <div class="flex justify-center w-full h-13 nav-header">
+      <div class="flex items-center justify-between w-10/12">
         <SysinitIcon :size="1.4"> </SysinitIcon>
-        <div class="text-white text-xl font-medium">Product</div>
+        <div class="text-xl font-medium text-white">System Init</div>
       </div>
     </div>
 
-    <div class="flex justify-center mt-6 h-10 w-full">
-      <div class="flex justify-between items-center w-10/12">
-        <!-- <div class="flex items-center justify-center mt-6 h-10"> -->
-        <!-- <Dropdown
-        class="w-full mx-4"
-        :optionDefault="currentWorkspace"
-        :optionList="workspaces"
-        menuStyle="standard-rs"
-      /> -->
-        <div class="color-grey-medium text-lg font-normal">Demo Workspace</div>
+    <div class="flex justify-center w-full h-10 mt-6">
+      <div class="flex items-center">
+        <div class="text-base font-normal color-grey-medium">
+          Demo Workspace
+        </div>
         <menu-icon size="1.5x" class="ml-3 color-grey-medium" />
       </div>
     </div>
@@ -29,80 +24,145 @@
     </svg>
 
     <div id="workspace-content" class="flex flex-col flex-grow w-full mt-12">
-      <div class="flex justify-center h-10 w-full">
-        <router-link
-          class="w-9/12"
-          data-cy="application-nav-link"
-          :to="{
-            name: 'application',
-            params: {
-              applicationId: 'my-app',
-              organizationId: organizationId,
-              workspaceId: workspaceId,
-            },
-          }"
-        >
-          <div class="flex justify-start items-center color-grey-light">
-            <share-2-icon
-              size="1.15x"
-              class="mr-3 transform rotate-90"
-            ></share-2-icon>
+      <div>
+        <!-- Dashboard Link -->
+        <div class="flex justify-center w-full h-10">
+          <div class="w-9/12 cursor-pointer">
             <div
-              class="font-source-code-pro font-normal subpixel-antialiased text-base font-normal tracking-tight"
+              class="flex items-center justify-start color-disabled focus:text-white"
             >
-              Applications
+              <activity-icon size="1.1x" class="mr-3" />
+              <div
+                class="text-sm subpixel-antialiased font-normal tracking-tight font-source-code-pro"
+              >
+                Dashboard
+              </div>
             </div>
           </div>
-        </router-link>
-      </div>
+        </div>
 
-      <div class="flex justify-center h-10 w-full mt-6">
-        <router-link
-          class="w-9/12"
-          data-cy="system-nav-link"
-          :to="{
-            name: 'system',
-            params: {
-              systemId: 'demo',
-              organizationId: organizationId,
-              workspaceId: workspaceId,
-            },
-          }"
-        >
-          <div
-            class="flex justify-start items-center color-disabled focus:text-white"
+        <!-- Applicasions Link -->
+        <div class="container-link">
+          <router-link
+            class="w-9/12"
+            data-cy="application-nav-link"
+            :to="{
+              name: 'application',
+              params: {
+                applicationId: 'my-app',
+                organizationId: organizationId,
+                workspaceId: workspaceId,
+              },
+            }"
           >
-            <code-icon size="1.3x" class="mr-3" />
+            <div class="flex items-center justify-start color-grey-light">
+              <code-icon size="1.1x" class="mr-3" />
+              <div
+                class="text-sm subpixel-antialiased font-normal tracking-tight font-source-code-pro"
+              >
+                Applications
+              </div>
+            </div>
+          </router-link>
+        </div>
+
+        <!-- Systems Link -->
+        <div class="container-link">
+          <div class="w-9/12 cursor-pointer">
             <div
-              class="font-source-code-pro font-normal subpixel-antialiased text-base font-normal tracking-tight"
+              class="flex items-center justify-start color-disabled focus:text-white"
             >
-              Systems (dev)
+              <share-2-icon size="1.2x" class="mr-3 transform rotate-90" />
+              <div
+                class="text-sm subpixel-antialiased font-normal tracking-tight font-source-code-pro"
+              >
+                Systems
+              </div>
             </div>
           </div>
-        </router-link>
+        </div>
+
+        <!-- Components Link -->
+        <div class="container-link">
+          <div class="w-9/12 cursor-pointer">
+            <div
+              class="flex items-center justify-start color-disabled focus:text-white"
+            >
+              <box-icon size="1.1x" class="mr-3" />
+              <div
+                class="text-sm subpixel-antialiased font-normal tracking-tight font-source-code-pro"
+              >
+                Components
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Resources Link -->
+        <div class="container-link">
+          <div class="w-9/12 cursor-pointer">
+            <div
+              class="flex items-center justify-start color-disabled focus:text-white"
+            >
+              <grid-icon size="1.2x" class="mr-3" />
+              <div
+                class="text-sm subpixel-antialiased font-normal tracking-tight font-source-code-pro"
+              >
+                Resources
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Environment Link  AKA computing environment -->
+        <div class="container-link">
+          <div class="w-9/12 cursor-pointer">
+            <div
+              class="flex items-center justify-start color-disabled focus:text-white"
+            >
+              <layers-icon size="1.1x" class="mr-3" />
+              <div
+                class="text-sm subpixel-antialiased font-normal tracking-tight font-source-code-pro"
+              >
+                Environment
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Catalogue Link -->
+        <div class="container-link">
+          <div class="w-9/12 cursor-pointer">
+            <div
+              class="flex items-center justify-start color-disabled focus:text-white"
+            >
+              <book-open-icon size="1.1x" class="mr-3" />
+              <div
+                class="text-sm subpixel-antialiased font-normal tracking-tight font-source-code-pro"
+              >
+                Catalogue
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div class="flex justify-center h-10 w-full mt-6">
-        <router-link
-          class="w-9/12"
-          data-cy="global-nav-link"
-          :to="{
-            name: 'global',
-            params: {
-              organizationId: organizationId,
-              workspaceId: workspaceId,
-            },
-          }"
-        >
-          <div class="flex justify-start items-center color-disabled">
-            <code-icon size="1.3x" class="mr-3" />
+      <div class="flex flex-col flex-grow justify-end">
+        <!-- Settings Link -->
+        <div class="container-link">
+          <div class="w-9/12 cursor-pointer">
             <div
-              class="font-source-code-pro font-normal subpixel-antialiased text-base font-normal tracking-tight"
+              class="flex items-center justify-start color-disabled focus:text-white"
             >
-              Global (dev)
+              <settings-icon size="1.1x" class="mr-3" />
+              <div
+                class="text-sm subpixel-antialiased font-normal tracking-tight font-source-code-pro"
+              >
+                Settings
+              </div>
             </div>
           </div>
-        </router-link>
+        </div>
       </div>
     </div>
 
@@ -110,12 +170,12 @@
       <line x1="5" y1="0" x2="95" y2="0" stroke="#313639" />
     </svg>
 
-    <div class="flex justify-end items-center h-12 color-grey-medium w-full">
+    <div class="flex items-center justify-end w-full h-12 color-grey-medium">
       <div class="flex self-center mr-8">
         <div class="self-center flex-1 text-center">
           <user-icon
             size="1.2x"
-            class="text-center color-grey-light cursor-pointer"
+            class="text-center cursor-pointer color-grey-light"
             @click="onLogout"
           />
         </div>
@@ -125,25 +185,36 @@
 </template>
 
 <script lang="ts">
-// import WorkspaceSelector from "./WorkspaceSelector.vue";
-// import Dropdown from "@/components/ui/Dropdown/index.vue";
-import { MenuIcon } from "vue-feather-icons";
-import { Share2Icon } from "vue-feather-icons";
-import { CodeIcon } from "vue-feather-icons";
-import { UserIcon } from "vue-feather-icons";
+import {
+  MenuIcon,
+  Share2Icon,
+  CodeIcon,
+  UserIcon,
+  SysinitIcon,
+  ActivityIcon,
+  BoxIcon,
+  SettingsIcon,
+  LayersIcon,
+  BookOpenIcon,
+  GridIcon,
+} from "vue-feather-icons";
 
 import SysinitIcon from "@/components/icons/SysinitIcon.vue";
 
 export default {
   name: "WorkspaceNav",
   components: {
-    // WorkspaceSelector,
-    // Dropdown,
     MenuIcon,
     Share2Icon,
     CodeIcon,
     UserIcon,
     SysinitIcon,
+    ActivityIcon,
+    BoxIcon,
+    SettingsIcon,
+    LayersIcon,
+    BookOpenIcon,
+    GridIcon,
   },
   props: {
     organizationId: {
@@ -188,5 +259,9 @@ export default {
 
 .color-grey-light {
   color: #c7cacd;
+}
+
+.container-link {
+  @apply flex justify-center w-full h-10 mt-3;
 }
 </style>
