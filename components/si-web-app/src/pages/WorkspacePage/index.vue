@@ -48,5 +48,13 @@ export default {
       loading: state => state.loader.loading,
     }),
   },
+  mounted: function () {
+    // Navigate to the default page: applications
+    let userProfile = this.$store.getters["user/profile"];
+    let workspace = this.$store.getters["workspace/current"];
+    let url = `/o/:${userProfile.organization.id}/w/:${workspace.id}/a`;
+    if (this.$route.path !== url) this.$router.push(url);
+  }
+
 };
 </script>

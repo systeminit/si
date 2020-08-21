@@ -147,7 +147,7 @@
         </div>
       </div>
 
-      <div class="flex flex-col flex-grow justify-end">
+      <div class="flex flex-col justify-end flex-grow">
         <!-- Settings Link -->
         <div class="container-link">
           <div class="w-9/12 cursor-pointer">
@@ -190,7 +190,6 @@ import {
   Share2Icon,
   CodeIcon,
   UserIcon,
-  SysinitIcon,
   ActivityIcon,
   BoxIcon,
   SettingsIcon,
@@ -231,6 +230,7 @@ export default {
     };
   },
   methods: {
+    // @ts-ignore
     async onLogout(event) {
       console.log("logout clicked");
       await this.$store.dispatch("user/logout");
