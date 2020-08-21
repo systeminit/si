@@ -26,40 +26,44 @@ export function persistEdits(store: Store<RootStore>): void {
       }
       let id = currentNode.id;
       if (id && !updateFunctions[id]) {
-        updateFunctions[id] = _.debounce(async (entity: any) => {
-          console.log("updating graphql for", { entity });
-          try {
-            if (mutation.payload.map) {
-              let currentEditTree = _.cloneDeep(entity);
-              let currentMapValue = _.get(
-                currentEditTree,
-                mutation.payload.path,
-              );
-              _.set(
-                currentEditTree,
-                mutation.payload.path,
-                _.filter(currentMapValue, "key"),
-              );
-              await store.dispatch("entity/update", {
-                typeName: entity["siStorable"]["typeName"],
-                data: currentEditTree,
-              });
-            } else {
-              await store.dispatch("entity/update", {
-                typeName: entity["siStorable"]["typeName"],
-                data: entity,
-              });
+        updateFunctions[id] = _.debounce(
+          async (entity: any, isCode: boolean) => {
+            console.log("updating graphql for", { entity });
+            try {
+              if (mutation.payload.map) {
+                let currentEditTree = _.cloneDeep(entity);
+                let currentMapValue = _.get(
+                  currentEditTree,
+                  mutation.payload.path,
+                );
+                _.set(
+                  currentEditTree,
+                  mutation.payload.path,
+                  _.filter(currentMapValue, "key"),
+                );
+                await store.dispatch("entity/update", {
+                  typeName: entity["siStorable"]["typeName"],
+                  data: currentEditTree,
+                });
+              } else {
+                await store.dispatch("entity/update", {
+                  typeName: entity["siStorable"]["typeName"],
+                  data: entity,
+                  code: isCode,
+                });
+              }
+              if (store.state.changeSet.current?.id) {
+                await store.dispatch("changeSet/get", {
+                  changeSetId: store.state.changeSet.current?.id,
+                });
+              }
+            } catch (err) {
+              store.commit("editor/setEditSaveError", err);
             }
-            if (store.state.changeSet.current?.id) {
-              await store.dispatch("changeSet/get", {
-                changeSetId: store.state.changeSet.current?.id,
-              });
-            }
-          } catch (err) {
-            store.commit("editor/setEditSaveError", err);
-          }
-          store.commit("editor/setIsSaving", false);
-        }, 2000);
+            store.commit("editor/setIsSaving", false);
+          },
+          2000,
+        );
       }
       store.commit("editor/setEditSaveError", undefined);
       store.commit("editor/setIsSaving", true);
@@ -74,9 +78,12 @@ export function persistEdits(store: Store<RootStore>): void {
       } else {
         entity = currentNode.display["saved"];
       }
-
+      const isCode = _.isEqual(mutation.payload.path, [
+        "properties",
+        "kubernetesObjectYaml",
+      ]);
       // @ts-ignore
-      updateFunctions[id](entity);
+      updateFunctions[id](entity, isCode);
     }
   });
 }
