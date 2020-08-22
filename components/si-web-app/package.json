@@ -43,6 +43,8 @@
     "js-cookie": "^2.2.1",
     "jsonwebtoken": "^8.5.1",
     "lodash": "^4.17.15",
+    "monaco-editor": "^0.20.0",
+    "monaco-editor-webpack-plugin": "^1.9.0",
     "si-registry": "file:../si-registry",
     "tailwindcss": "^1.4.6",
     "unique-names-generator": "^4.2.0",

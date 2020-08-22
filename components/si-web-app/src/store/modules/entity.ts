@@ -85,6 +85,7 @@ interface UpdateEntityPayload {
     displayName?: string;
     [field: string]: any;
   };
+  code?: boolean;
   hypotheticalState?: {
     path: string[];
     value: any;
@@ -1174,8 +1175,15 @@ export const entity: Module<EntityStore, RootStore> = {
       const changeSetId = rootGetters["changeSet/current"].id;
       variables.changeSetId = changeSetId;
       variables.workspaceId = workspaceId;
-      if (variables.update.properties?.kubernetesObjectYaml != undefined) {
-        delete variables.update.properties.kubernetesObjectYaml;
+
+      if (payload.code) {
+        if (variables.update.properties?.kubernetesObject != undefined) {
+          delete variables.update.properties.kubernetesObject;
+        }
+      } else {
+        if (variables.update.properties?.kubernetesObjectYaml != undefined) {
+          delete variables.update.properties.kubernetesObjectYaml;
+        }
       }
 
       const result = await graphqlMutation({

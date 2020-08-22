@@ -1,5 +1,5 @@
 <template>
-  <div ref="property-panel" class="w-full property-editor-bg-color">
+  <div ref="property-panel" class="w-full h-full property-editor-bg-color">
     <div
       id="property-panel-menu"
       class="flex flex-row flex-no-wrap content-between justify-between w-full bg-black"
@@ -13,7 +13,10 @@
           <filter-icon size="1.1x" />
         </button>
 
-        <button class="px-4 py-2 text-white focus:outline-none">
+        <button
+          class="px-4 py-2 text-white focus:outline-none"
+          @click="toggleCodeEditor"
+        >
           <code-icon size="1.1x" />
         </button>
       </div>
@@ -29,7 +32,8 @@
       </div>
     </div>
 
-    <PropertyList />
+    <Monaco v-if="codeEditor" />
+    <PropertyList v-else />
   </div>
 </template>
 
@@ -42,6 +46,7 @@ import {
   SearchIcon,
   CodeIcon,
 } from "vue-feather-icons";
+import Monaco from "@/components/ui/Monaco.vue";
 
 import PropertyList from "./PropertyList.vue";
 
@@ -55,8 +60,17 @@ export default Vue.extend({
     SearchIcon,
     CodeIcon,
     PropertyList,
+    Monaco,
+  },
+  data() {
+    return {
+      codeEditor: false,
+    };
   },
   methods: {
+    toggleCodeEditor(): void {
+      this.codeEditor = !this.codeEditor;
+    },
     maximizePanel(): void {
       this.$emit("maximizePanelMsg", {
         panel: {

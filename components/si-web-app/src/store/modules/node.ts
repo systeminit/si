@@ -58,7 +58,7 @@ interface NodeConstructor {
 // sockets: Socket[]; -- alex tmp --
 // connections: NodeConnection[]; -- alex tmp --
 
-interface Node extends GqlNode {
+export interface Node extends GqlNode {
   stack: any[];
   display: Record<string, any>;
 }
@@ -177,6 +177,15 @@ export const node: Module<NodeStore, RootStore> = {
     mouseTrackSelection: null,
   },
   getters: {
+    codeProperty(_state, getters): undefined | RegistryProperty {
+      const propertiesList: RegistryProperty[] = getters["propertiesList"];
+      for (const prop of propertiesList) {
+        if (prop.kind == "code") {
+          return prop;
+        }
+      }
+      return undefined;
+    },
     // For the current node, produce the diff between the base state and the current state
     diffCurrent(state, _getters, rootState, _rootGetters): DiffResult {
       const currentNode: Node | null = state.current;
