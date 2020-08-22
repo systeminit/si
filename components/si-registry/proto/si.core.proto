@@ -42,6 +42,59 @@ service Core {
   rpc NodeGet(NodeGetRequest) returns (NodeGetReply);
   rpc NodeCreate(NodeCreateRequest) returns (NodeCreateReply);
   rpc NodeSetPosition(NodeSetPositionRequest) returns (NodeSetPositionReply);
+  rpc ServerComponentGet(ServerComponentGetRequest) returns (ServerComponentGetReply);
+  rpc ServerComponentList(ServerComponentListRequest) returns (ServerComponentListReply);
+  rpc ServerComponentCreate(ServerComponentCreateRequest) returns (ServerComponentCreateReply);
+  rpc ServerComponentPick(ServerComponentPickRequest) returns (ServerComponentPickReply);
+  rpc ServerEntityGet(ServerEntityGetRequest) returns (ServerEntityGetReply);
+  rpc ServerEntityList(ServerEntityListRequest) returns (ServerEntityListReply);
+  rpc ServerEntityCreate(ServerEntityCreateRequest) returns (ServerEntityCreateReply);
+  rpc ServerEntityDelete(ServerEntityDeleteRequest) returns (ServerEntityDeleteReply);
+  rpc ServerEntityUpdate(ServerEntityUpdateRequest) returns (ServerEntityUpdateReply);
+  rpc ServerEntitySync(ServerEntitySyncRequest) returns (ServerEntitySyncReply);
+  rpc ServerEntityStart(ServerEntityStartRequest) returns (ServerEntityStartReply);
+  rpc ServerEntityStop(ServerEntityStopRequest) returns (ServerEntityStopReply);
+  rpc ServerEntityEventList(ServerEntityEventListRequest) returns (ServerEntityEventListReply);
+  rpc UbuntuComponentGet(UbuntuComponentGetRequest) returns (UbuntuComponentGetReply);
+  rpc UbuntuComponentList(UbuntuComponentListRequest) returns (UbuntuComponentListReply);
+  rpc UbuntuComponentCreate(UbuntuComponentCreateRequest) returns (UbuntuComponentCreateReply);
+  rpc UbuntuComponentPick(UbuntuComponentPickRequest) returns (UbuntuComponentPickReply);
+  rpc UbuntuEntityGet(UbuntuEntityGetRequest) returns (UbuntuEntityGetReply);
+  rpc UbuntuEntityList(UbuntuEntityListRequest) returns (UbuntuEntityListReply);
+  rpc UbuntuEntityCreate(UbuntuEntityCreateRequest) returns (UbuntuEntityCreateReply);
+  rpc UbuntuEntityDelete(UbuntuEntityDeleteRequest) returns (UbuntuEntityDeleteReply);
+  rpc UbuntuEntityUpdate(UbuntuEntityUpdateRequest) returns (UbuntuEntityUpdateReply);
+  rpc UbuntuEntitySync(UbuntuEntitySyncRequest) returns (UbuntuEntitySyncReply);
+  rpc UbuntuEntityReboot(UbuntuEntityRebootRequest) returns (UbuntuEntityRebootReply);
+  rpc UbuntuEntityHalt(UbuntuEntityHaltRequest) returns (UbuntuEntityHaltReply);
+  rpc UbuntuEntityEventList(UbuntuEntityEventListRequest) returns (UbuntuEntityEventListReply);
+  rpc AmiComponentGet(AmiComponentGetRequest) returns (AmiComponentGetReply);
+  rpc AmiComponentList(AmiComponentListRequest) returns (AmiComponentListReply);
+  rpc AmiComponentCreate(AmiComponentCreateRequest) returns (AmiComponentCreateReply);
+  rpc AmiComponentPick(AmiComponentPickRequest) returns (AmiComponentPickReply);
+  rpc AmiEntityGet(AmiEntityGetRequest) returns (AmiEntityGetReply);
+  rpc AmiEntityList(AmiEntityListRequest) returns (AmiEntityListReply);
+  rpc AmiEntityCreate(AmiEntityCreateRequest) returns (AmiEntityCreateReply);
+  rpc AmiEntityDelete(AmiEntityDeleteRequest) returns (AmiEntityDeleteReply);
+  rpc AmiEntityUpdate(AmiEntityUpdateRequest) returns (AmiEntityUpdateReply);
+  rpc AmiEntitySync(AmiEntitySyncRequest) returns (AmiEntitySyncReply);
+  rpc AmiEntityEventList(AmiEntityEventListRequest) returns (AmiEntityEventListReply);
+  rpc Ec2InstanceComponentGet(Ec2InstanceComponentGetRequest) returns (Ec2InstanceComponentGetReply);
+  rpc Ec2InstanceComponentList(Ec2InstanceComponentListRequest) returns (Ec2InstanceComponentListReply);
+  rpc Ec2InstanceComponentCreate(Ec2InstanceComponentCreateRequest) returns (Ec2InstanceComponentCreateReply);
+  rpc Ec2InstanceComponentPick(Ec2InstanceComponentPickRequest) returns (Ec2InstanceComponentPickReply);
+  rpc Ec2InstanceEntityGet(Ec2InstanceEntityGetRequest) returns (Ec2InstanceEntityGetReply);
+  rpc Ec2InstanceEntityList(Ec2InstanceEntityListRequest) returns (Ec2InstanceEntityListReply);
+  rpc Ec2InstanceEntityCreate(Ec2InstanceEntityCreateRequest) returns (Ec2InstanceEntityCreateReply);
+  rpc Ec2InstanceEntityDelete(Ec2InstanceEntityDeleteRequest) returns (Ec2InstanceEntityDeleteReply);
+  rpc Ec2InstanceEntityUpdate(Ec2InstanceEntityUpdateRequest) returns (Ec2InstanceEntityUpdateReply);
+  rpc Ec2InstanceEntitySync(Ec2InstanceEntitySyncRequest) returns (Ec2InstanceEntitySyncReply);
+  rpc Ec2InstanceEntityLaunch(Ec2InstanceEntityLaunchRequest) returns (Ec2InstanceEntityLaunchReply);
+  rpc Ec2InstanceEntityStart(Ec2InstanceEntityStartRequest) returns (Ec2InstanceEntityStartReply);
+  rpc Ec2InstanceEntityStop(Ec2InstanceEntityStopRequest) returns (Ec2InstanceEntityStopReply);
+  rpc Ec2InstanceEntityReboot(Ec2InstanceEntityRebootRequest) returns (Ec2InstanceEntityRebootReply);
+  rpc Ec2InstanceEntityTerminate(Ec2InstanceEntityTerminateRequest) returns (Ec2InstanceEntityTerminateReply);
+  rpc Ec2InstanceEntityEventList(Ec2InstanceEntityEventListRequest) returns (Ec2InstanceEntityEventListReply);
 }
 message ApplicationComponentConstraints {
   google.protobuf.StringValue component_name = 1;
@@ -416,6 +469,7 @@ message EdgeTailVertex {
 enum EdgeEdgeKind {
   EDGE_EDGE_KIND_UNKNOWN = 0;
   EDGE_EDGE_KIND_CONNECTED = 1;
+  EDGE_EDGE_KIND_PART_OF = 2;
 }
 message Edge {
   google.protobuf.StringValue id = 1;
@@ -529,4 +583,686 @@ message NodeSetPositionRequest {
 }
 message NodeSetPositionReply {
   si.core.Node item = 1001;
+}
+message ServerComponentConstraints {
+  google.protobuf.StringValue component_name = 1;
+  google.protobuf.StringValue component_display_name = 2;
+}
+message ServerComponent {
+  google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue name = 2;
+  google.protobuf.StringValue display_name = 3;
+  si.data.DataStorable si_storable = 4;
+  google.protobuf.StringValue description = 5;
+  si.core.ServerComponentConstraints constraints = 6;
+  si.cea.ComponentSiProperties si_properties = 7;
+}
+message ServerComponentGetRequest {
+  google.protobuf.StringValue id = 1001;
+}
+message ServerComponentGetReply {
+  si.core.ServerComponent item = 1001;
+}
+message ServerComponentListRequest {
+  si.data.DataQuery query = 1;
+  google.protobuf.UInt32Value page_size = 2;
+  google.protobuf.StringValue order_by = 3;
+  si.data.DataPageTokenOrderByDirection order_by_direction = 4;
+  google.protobuf.StringValue page_token = 5;
+  google.protobuf.StringValue scope_by_tenant_id = 6;
+}
+message ServerComponentListReply {
+  repeated si.core.ServerComponent items = 1;
+  google.protobuf.UInt32Value total_count = 2;
+  google.protobuf.StringValue next_page_token = 3;
+}
+message ServerComponentCreateRequest {
+  google.protobuf.StringValue name = 1001;
+  google.protobuf.StringValue display_name = 1002;
+  google.protobuf.StringValue description = 1003;
+  si.core.ServerComponentConstraints constraints = 1;
+  si.cea.ComponentSiProperties si_properties = 1004;
+}
+message ServerComponentCreateReply {
+  si.core.ServerComponent item = 1;
+}
+message ServerComponentPickRequest {
+  si.core.ServerComponentConstraints constraints = 1;
+}
+message ServerComponentPickReply {
+  si.core.ServerComponentConstraints implicit_constraints = 1;
+  si.core.ServerComponent component = 2;
+}
+message ServerEntityProperties {
+  google.protobuf.StringValue operating_system = 1001;
+  google.protobuf.StringValue cpu = 1002;
+  google.protobuf.StringValue memory = 1003;
+}
+message ServerEntity {
+  google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue name = 2;
+  google.protobuf.StringValue display_name = 3;
+  si.data.DataStorable si_storable = 4;
+  google.protobuf.StringValue description = 5;
+  si.cea.EntitySiProperties si_properties = 6;
+  si.core.ServerEntityProperties properties = 7;
+  si.core.ServerComponentConstraints constraints = 8;
+  si.core.ServerComponentConstraints implicit_constraints = 9;
+}
+message ServerEntityGetRequest {
+  google.protobuf.StringValue id = 1001;
+}
+message ServerEntityGetReply {
+  si.core.ServerEntity item = 1001;
+}
+message ServerEntityListRequest {
+  si.data.DataQuery query = 1;
+  google.protobuf.UInt32Value page_size = 2;
+  google.protobuf.StringValue order_by = 3;
+  si.data.DataPageTokenOrderByDirection order_by_direction = 4;
+  google.protobuf.StringValue page_token = 5;
+  google.protobuf.StringValue scope_by_tenant_id = 6;
+}
+message ServerEntityListReply {
+  repeated si.core.ServerEntity items = 1;
+  google.protobuf.UInt32Value total_count = 2;
+  google.protobuf.StringValue next_page_token = 3;
+}
+message ServerEntityCreateRequest {
+  google.protobuf.StringValue name = 1;
+  google.protobuf.StringValue display_name = 2;
+  google.protobuf.StringValue description = 3;
+  google.protobuf.StringValue workspace_id = 1001;
+  google.protobuf.StringValue change_set_id = 1002;
+  si.core.ServerEntityProperties properties = 4;
+  si.core.ServerComponentConstraints constraints = 5;
+}
+message ServerEntityCreateReply {
+  si.core.ServerEntity item = 1;
+}
+message ServerEntityDeleteRequest {
+  google.protobuf.StringValue id = 1001;
+  google.protobuf.StringValue change_set_id = 1002;
+}
+message ServerEntityDeleteReply {
+  si.core.ServerEntity item = 1001;
+}
+message ServerEntityUpdateRequestUpdate {
+  google.protobuf.StringValue name = 1001;
+  google.protobuf.StringValue display_name = 1002;
+  google.protobuf.StringValue description = 1003;
+  si.core.ServerEntityProperties properties = 1004;
+}
+message ServerEntityUpdateRequest {
+  google.protobuf.StringValue id = 1001;
+  google.protobuf.StringValue change_set_id = 1002;
+  si.core.ServerEntityUpdateRequestUpdate update = 1003;
+}
+message ServerEntityUpdateReply {
+  si.core.ServerEntity item = 1001;
+}
+message ServerEntitySyncRequest {
+  google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue change_set_id = 2;
+}
+message ServerEntitySyncReply {
+  si.core.ServerEntityEvent item = 1;
+}
+message ServerEntityStartRequest {
+  google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue change_set_id = 2;
+}
+message ServerEntityStartReply {
+  si.core.ServerEntityEvent item = 1;
+}
+message ServerEntityStopRequest {
+  google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue change_set_id = 2;
+}
+message ServerEntityStopReply {
+  si.core.ServerEntityEvent item = 1;
+}
+message ServerEntityEvent {
+  google.protobuf.StringValue id = 1;
+  si.data.DataStorable si_storable = 2;
+  google.protobuf.StringValue action_name = 3;
+  google.protobuf.StringValue create_time = 4;
+  google.protobuf.StringValue updated_time = 5;
+  google.protobuf.StringValue final_time = 6;
+  google.protobuf.BoolValue success = 7;
+  google.protobuf.BoolValue finalized = 8;
+  google.protobuf.StringValue user_id = 9;
+  repeated google.protobuf.StringValue output_lines = 10;
+  repeated google.protobuf.StringValue error_lines = 11;
+  google.protobuf.StringValue error_message = 12;
+  si.core.ServerEntity previous_entity = 13;
+  si.core.ServerEntity input_entity = 14;
+  si.core.ServerEntity output_entity = 15;
+  si.cea.EntityEventSiProperties si_properties = 16;
+}
+message ServerEntityEventListRequest {
+  si.data.DataQuery query = 1;
+  google.protobuf.UInt32Value page_size = 2;
+  google.protobuf.StringValue order_by = 3;
+  si.data.DataPageTokenOrderByDirection order_by_direction = 4;
+  google.protobuf.StringValue page_token = 5;
+  google.protobuf.StringValue scope_by_tenant_id = 6;
+}
+message ServerEntityEventListReply {
+  repeated si.core.ServerEntityEvent items = 1;
+  google.protobuf.UInt32Value total_count = 2;
+  google.protobuf.StringValue next_page_token = 3;
+}
+message UbuntuComponentConstraints {
+  google.protobuf.StringValue component_name = 1;
+  google.protobuf.StringValue component_display_name = 2;
+}
+message UbuntuComponent {
+  google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue name = 2;
+  google.protobuf.StringValue display_name = 3;
+  si.data.DataStorable si_storable = 4;
+  google.protobuf.StringValue description = 5;
+  si.core.UbuntuComponentConstraints constraints = 6;
+  si.cea.ComponentSiProperties si_properties = 7;
+}
+message UbuntuComponentGetRequest {
+  google.protobuf.StringValue id = 1001;
+}
+message UbuntuComponentGetReply {
+  si.core.UbuntuComponent item = 1001;
+}
+message UbuntuComponentListRequest {
+  si.data.DataQuery query = 1;
+  google.protobuf.UInt32Value page_size = 2;
+  google.protobuf.StringValue order_by = 3;
+  si.data.DataPageTokenOrderByDirection order_by_direction = 4;
+  google.protobuf.StringValue page_token = 5;
+  google.protobuf.StringValue scope_by_tenant_id = 6;
+}
+message UbuntuComponentListReply {
+  repeated si.core.UbuntuComponent items = 1;
+  google.protobuf.UInt32Value total_count = 2;
+  google.protobuf.StringValue next_page_token = 3;
+}
+message UbuntuComponentCreateRequest {
+  google.protobuf.StringValue name = 1001;
+  google.protobuf.StringValue display_name = 1002;
+  google.protobuf.StringValue description = 1003;
+  si.core.UbuntuComponentConstraints constraints = 1;
+  si.cea.ComponentSiProperties si_properties = 1004;
+}
+message UbuntuComponentCreateReply {
+  si.core.UbuntuComponent item = 1;
+}
+message UbuntuComponentPickRequest {
+  si.core.UbuntuComponentConstraints constraints = 1;
+}
+message UbuntuComponentPickReply {
+  si.core.UbuntuComponentConstraints implicit_constraints = 1;
+  si.core.UbuntuComponent component = 2;
+}
+message UbuntuEntityProperties {
+  google.protobuf.StringValue version = 1001;
+}
+message UbuntuEntity {
+  google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue name = 2;
+  google.protobuf.StringValue display_name = 3;
+  si.data.DataStorable si_storable = 4;
+  google.protobuf.StringValue description = 5;
+  si.cea.EntitySiProperties si_properties = 6;
+  si.core.UbuntuEntityProperties properties = 7;
+  si.core.UbuntuComponentConstraints constraints = 8;
+  si.core.UbuntuComponentConstraints implicit_constraints = 9;
+}
+message UbuntuEntityGetRequest {
+  google.protobuf.StringValue id = 1001;
+}
+message UbuntuEntityGetReply {
+  si.core.UbuntuEntity item = 1001;
+}
+message UbuntuEntityListRequest {
+  si.data.DataQuery query = 1;
+  google.protobuf.UInt32Value page_size = 2;
+  google.protobuf.StringValue order_by = 3;
+  si.data.DataPageTokenOrderByDirection order_by_direction = 4;
+  google.protobuf.StringValue page_token = 5;
+  google.protobuf.StringValue scope_by_tenant_id = 6;
+}
+message UbuntuEntityListReply {
+  repeated si.core.UbuntuEntity items = 1;
+  google.protobuf.UInt32Value total_count = 2;
+  google.protobuf.StringValue next_page_token = 3;
+}
+message UbuntuEntityCreateRequest {
+  google.protobuf.StringValue name = 1;
+  google.protobuf.StringValue display_name = 2;
+  google.protobuf.StringValue description = 3;
+  google.protobuf.StringValue workspace_id = 1001;
+  google.protobuf.StringValue change_set_id = 1002;
+  si.core.UbuntuEntityProperties properties = 4;
+  si.core.UbuntuComponentConstraints constraints = 5;
+}
+message UbuntuEntityCreateReply {
+  si.core.UbuntuEntity item = 1;
+}
+message UbuntuEntityDeleteRequest {
+  google.protobuf.StringValue id = 1001;
+  google.protobuf.StringValue change_set_id = 1002;
+}
+message UbuntuEntityDeleteReply {
+  si.core.UbuntuEntity item = 1001;
+}
+message UbuntuEntityUpdateRequestUpdate {
+  google.protobuf.StringValue name = 1001;
+  google.protobuf.StringValue display_name = 1002;
+  google.protobuf.StringValue description = 1003;
+  si.core.UbuntuEntityProperties properties = 1004;
+}
+message UbuntuEntityUpdateRequest {
+  google.protobuf.StringValue id = 1001;
+  google.protobuf.StringValue change_set_id = 1002;
+  si.core.UbuntuEntityUpdateRequestUpdate update = 1003;
+}
+message UbuntuEntityUpdateReply {
+  si.core.UbuntuEntity item = 1001;
+}
+message UbuntuEntitySyncRequest {
+  google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue change_set_id = 2;
+}
+message UbuntuEntitySyncReply {
+  si.core.UbuntuEntityEvent item = 1;
+}
+message UbuntuEntityRebootRequest {
+  google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue change_set_id = 2;
+}
+message UbuntuEntityRebootReply {
+  si.core.UbuntuEntityEvent item = 1;
+}
+message UbuntuEntityHaltRequest {
+  google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue change_set_id = 2;
+}
+message UbuntuEntityHaltReply {
+  si.core.UbuntuEntityEvent item = 1;
+}
+message UbuntuEntityEvent {
+  google.protobuf.StringValue id = 1;
+  si.data.DataStorable si_storable = 2;
+  google.protobuf.StringValue action_name = 3;
+  google.protobuf.StringValue create_time = 4;
+  google.protobuf.StringValue updated_time = 5;
+  google.protobuf.StringValue final_time = 6;
+  google.protobuf.BoolValue success = 7;
+  google.protobuf.BoolValue finalized = 8;
+  google.protobuf.StringValue user_id = 9;
+  repeated google.protobuf.StringValue output_lines = 10;
+  repeated google.protobuf.StringValue error_lines = 11;
+  google.protobuf.StringValue error_message = 12;
+  si.core.UbuntuEntity previous_entity = 13;
+  si.core.UbuntuEntity input_entity = 14;
+  si.core.UbuntuEntity output_entity = 15;
+  si.cea.EntityEventSiProperties si_properties = 16;
+}
+message UbuntuEntityEventListRequest {
+  si.data.DataQuery query = 1;
+  google.protobuf.UInt32Value page_size = 2;
+  google.protobuf.StringValue order_by = 3;
+  si.data.DataPageTokenOrderByDirection order_by_direction = 4;
+  google.protobuf.StringValue page_token = 5;
+  google.protobuf.StringValue scope_by_tenant_id = 6;
+}
+message UbuntuEntityEventListReply {
+  repeated si.core.UbuntuEntityEvent items = 1;
+  google.protobuf.UInt32Value total_count = 2;
+  google.protobuf.StringValue next_page_token = 3;
+}
+message AmiComponentConstraints {
+  google.protobuf.StringValue component_name = 1;
+  google.protobuf.StringValue component_display_name = 2;
+}
+message AmiComponent {
+  google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue name = 2;
+  google.protobuf.StringValue display_name = 3;
+  si.data.DataStorable si_storable = 4;
+  google.protobuf.StringValue description = 5;
+  si.core.AmiComponentConstraints constraints = 6;
+  si.cea.ComponentSiProperties si_properties = 7;
+}
+message AmiComponentGetRequest {
+  google.protobuf.StringValue id = 1001;
+}
+message AmiComponentGetReply {
+  si.core.AmiComponent item = 1001;
+}
+message AmiComponentListRequest {
+  si.data.DataQuery query = 1;
+  google.protobuf.UInt32Value page_size = 2;
+  google.protobuf.StringValue order_by = 3;
+  si.data.DataPageTokenOrderByDirection order_by_direction = 4;
+  google.protobuf.StringValue page_token = 5;
+  google.protobuf.StringValue scope_by_tenant_id = 6;
+}
+message AmiComponentListReply {
+  repeated si.core.AmiComponent items = 1;
+  google.protobuf.UInt32Value total_count = 2;
+  google.protobuf.StringValue next_page_token = 3;
+}
+message AmiComponentCreateRequest {
+  google.protobuf.StringValue name = 1001;
+  google.protobuf.StringValue display_name = 1002;
+  google.protobuf.StringValue description = 1003;
+  si.core.AmiComponentConstraints constraints = 1;
+  si.cea.ComponentSiProperties si_properties = 1004;
+}
+message AmiComponentCreateReply {
+  si.core.AmiComponent item = 1;
+}
+message AmiComponentPickRequest {
+  si.core.AmiComponentConstraints constraints = 1;
+}
+message AmiComponentPickReply {
+  si.core.AmiComponentConstraints implicit_constraints = 1;
+  si.core.AmiComponent component = 2;
+}
+message AmiEntityProperties {
+  google.protobuf.StringValue region = 1001;
+  google.protobuf.StringValue operating_system = 1002;
+  google.protobuf.StringValue ami_id = 1003;
+  google.protobuf.StringValue root_device_type = 1004;
+  google.protobuf.StringValue virtualization = 1005;
+}
+message AmiEntity {
+  google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue name = 2;
+  google.protobuf.StringValue display_name = 3;
+  si.data.DataStorable si_storable = 4;
+  google.protobuf.StringValue description = 5;
+  si.cea.EntitySiProperties si_properties = 6;
+  si.core.AmiEntityProperties properties = 7;
+  si.core.AmiComponentConstraints constraints = 8;
+  si.core.AmiComponentConstraints implicit_constraints = 9;
+}
+message AmiEntityGetRequest {
+  google.protobuf.StringValue id = 1001;
+}
+message AmiEntityGetReply {
+  si.core.AmiEntity item = 1001;
+}
+message AmiEntityListRequest {
+  si.data.DataQuery query = 1;
+  google.protobuf.UInt32Value page_size = 2;
+  google.protobuf.StringValue order_by = 3;
+  si.data.DataPageTokenOrderByDirection order_by_direction = 4;
+  google.protobuf.StringValue page_token = 5;
+  google.protobuf.StringValue scope_by_tenant_id = 6;
+}
+message AmiEntityListReply {
+  repeated si.core.AmiEntity items = 1;
+  google.protobuf.UInt32Value total_count = 2;
+  google.protobuf.StringValue next_page_token = 3;
+}
+message AmiEntityCreateRequest {
+  google.protobuf.StringValue name = 1;
+  google.protobuf.StringValue display_name = 2;
+  google.protobuf.StringValue description = 3;
+  google.protobuf.StringValue workspace_id = 1001;
+  google.protobuf.StringValue change_set_id = 1002;
+  si.core.AmiEntityProperties properties = 4;
+  si.core.AmiComponentConstraints constraints = 5;
+}
+message AmiEntityCreateReply {
+  si.core.AmiEntity item = 1;
+}
+message AmiEntityDeleteRequest {
+  google.protobuf.StringValue id = 1001;
+  google.protobuf.StringValue change_set_id = 1002;
+}
+message AmiEntityDeleteReply {
+  si.core.AmiEntity item = 1001;
+}
+message AmiEntityUpdateRequestUpdate {
+  google.protobuf.StringValue name = 1001;
+  google.protobuf.StringValue display_name = 1002;
+  google.protobuf.StringValue description = 1003;
+  si.core.AmiEntityProperties properties = 1004;
+}
+message AmiEntityUpdateRequest {
+  google.protobuf.StringValue id = 1001;
+  google.protobuf.StringValue change_set_id = 1002;
+  si.core.AmiEntityUpdateRequestUpdate update = 1003;
+}
+message AmiEntityUpdateReply {
+  si.core.AmiEntity item = 1001;
+}
+message AmiEntitySyncRequest {
+  google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue change_set_id = 2;
+}
+message AmiEntitySyncReply {
+  si.core.AmiEntityEvent item = 1;
+}
+message AmiEntityEvent {
+  google.protobuf.StringValue id = 1;
+  si.data.DataStorable si_storable = 2;
+  google.protobuf.StringValue action_name = 3;
+  google.protobuf.StringValue create_time = 4;
+  google.protobuf.StringValue updated_time = 5;
+  google.protobuf.StringValue final_time = 6;
+  google.protobuf.BoolValue success = 7;
+  google.protobuf.BoolValue finalized = 8;
+  google.protobuf.StringValue user_id = 9;
+  repeated google.protobuf.StringValue output_lines = 10;
+  repeated google.protobuf.StringValue error_lines = 11;
+  google.protobuf.StringValue error_message = 12;
+  si.core.AmiEntity previous_entity = 13;
+  si.core.AmiEntity input_entity = 14;
+  si.core.AmiEntity output_entity = 15;
+  si.cea.EntityEventSiProperties si_properties = 16;
+}
+message AmiEntityEventListRequest {
+  si.data.DataQuery query = 1;
+  google.protobuf.UInt32Value page_size = 2;
+  google.protobuf.StringValue order_by = 3;
+  si.data.DataPageTokenOrderByDirection order_by_direction = 4;
+  google.protobuf.StringValue page_token = 5;
+  google.protobuf.StringValue scope_by_tenant_id = 6;
+}
+message AmiEntityEventListReply {
+  repeated si.core.AmiEntityEvent items = 1;
+  google.protobuf.UInt32Value total_count = 2;
+  google.protobuf.StringValue next_page_token = 3;
+}
+message Ec2InstanceComponentConstraints {
+  google.protobuf.StringValue component_name = 1;
+  google.protobuf.StringValue component_display_name = 2;
+}
+message Ec2InstanceComponent {
+  google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue name = 2;
+  google.protobuf.StringValue display_name = 3;
+  si.data.DataStorable si_storable = 4;
+  google.protobuf.StringValue description = 5;
+  si.core.Ec2InstanceComponentConstraints constraints = 6;
+  si.cea.ComponentSiProperties si_properties = 7;
+}
+message Ec2InstanceComponentGetRequest {
+  google.protobuf.StringValue id = 1001;
+}
+message Ec2InstanceComponentGetReply {
+  si.core.Ec2InstanceComponent item = 1001;
+}
+message Ec2InstanceComponentListRequest {
+  si.data.DataQuery query = 1;
+  google.protobuf.UInt32Value page_size = 2;
+  google.protobuf.StringValue order_by = 3;
+  si.data.DataPageTokenOrderByDirection order_by_direction = 4;
+  google.protobuf.StringValue page_token = 5;
+  google.protobuf.StringValue scope_by_tenant_id = 6;
+}
+message Ec2InstanceComponentListReply {
+  repeated si.core.Ec2InstanceComponent items = 1;
+  google.protobuf.UInt32Value total_count = 2;
+  google.protobuf.StringValue next_page_token = 3;
+}
+message Ec2InstanceComponentCreateRequest {
+  google.protobuf.StringValue name = 1001;
+  google.protobuf.StringValue display_name = 1002;
+  google.protobuf.StringValue description = 1003;
+  si.core.Ec2InstanceComponentConstraints constraints = 1;
+  si.cea.ComponentSiProperties si_properties = 1004;
+}
+message Ec2InstanceComponentCreateReply {
+  si.core.Ec2InstanceComponent item = 1;
+}
+message Ec2InstanceComponentPickRequest {
+  si.core.Ec2InstanceComponentConstraints constraints = 1;
+}
+message Ec2InstanceComponentPickReply {
+  si.core.Ec2InstanceComponentConstraints implicit_constraints = 1;
+  si.core.Ec2InstanceComponent component = 2;
+}
+message Ec2InstanceEntityProperties {
+  google.protobuf.StringValue region = 1001;
+  google.protobuf.StringValue instance_type = 1002;
+}
+message Ec2InstanceEntity {
+  google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue name = 2;
+  google.protobuf.StringValue display_name = 3;
+  si.data.DataStorable si_storable = 4;
+  google.protobuf.StringValue description = 5;
+  si.cea.EntitySiProperties si_properties = 6;
+  si.core.Ec2InstanceEntityProperties properties = 7;
+  si.core.Ec2InstanceComponentConstraints constraints = 8;
+  si.core.Ec2InstanceComponentConstraints implicit_constraints = 9;
+}
+message Ec2InstanceEntityGetRequest {
+  google.protobuf.StringValue id = 1001;
+}
+message Ec2InstanceEntityGetReply {
+  si.core.Ec2InstanceEntity item = 1001;
+}
+message Ec2InstanceEntityListRequest {
+  si.data.DataQuery query = 1;
+  google.protobuf.UInt32Value page_size = 2;
+  google.protobuf.StringValue order_by = 3;
+  si.data.DataPageTokenOrderByDirection order_by_direction = 4;
+  google.protobuf.StringValue page_token = 5;
+  google.protobuf.StringValue scope_by_tenant_id = 6;
+}
+message Ec2InstanceEntityListReply {
+  repeated si.core.Ec2InstanceEntity items = 1;
+  google.protobuf.UInt32Value total_count = 2;
+  google.protobuf.StringValue next_page_token = 3;
+}
+message Ec2InstanceEntityCreateRequest {
+  google.protobuf.StringValue name = 1;
+  google.protobuf.StringValue display_name = 2;
+  google.protobuf.StringValue description = 3;
+  google.protobuf.StringValue workspace_id = 1001;
+  google.protobuf.StringValue change_set_id = 1002;
+  si.core.Ec2InstanceEntityProperties properties = 4;
+  si.core.Ec2InstanceComponentConstraints constraints = 5;
+}
+message Ec2InstanceEntityCreateReply {
+  si.core.Ec2InstanceEntity item = 1;
+}
+message Ec2InstanceEntityDeleteRequest {
+  google.protobuf.StringValue id = 1001;
+  google.protobuf.StringValue change_set_id = 1002;
+}
+message Ec2InstanceEntityDeleteReply {
+  si.core.Ec2InstanceEntity item = 1001;
+}
+message Ec2InstanceEntityUpdateRequestUpdate {
+  google.protobuf.StringValue name = 1001;
+  google.protobuf.StringValue display_name = 1002;
+  google.protobuf.StringValue description = 1003;
+  si.core.Ec2InstanceEntityProperties properties = 1004;
+}
+message Ec2InstanceEntityUpdateRequest {
+  google.protobuf.StringValue id = 1001;
+  google.protobuf.StringValue change_set_id = 1002;
+  si.core.Ec2InstanceEntityUpdateRequestUpdate update = 1003;
+}
+message Ec2InstanceEntityUpdateReply {
+  si.core.Ec2InstanceEntity item = 1001;
+}
+message Ec2InstanceEntitySyncRequest {
+  google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue change_set_id = 2;
+}
+message Ec2InstanceEntitySyncReply {
+  si.core.Ec2InstanceEntityEvent item = 1;
+}
+message Ec2InstanceEntityLaunchRequest {
+  google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue change_set_id = 2;
+}
+message Ec2InstanceEntityLaunchReply {
+  si.core.Ec2InstanceEntityEvent item = 1;
+}
+message Ec2InstanceEntityStartRequest {
+  google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue change_set_id = 2;
+}
+message Ec2InstanceEntityStartReply {
+  si.core.Ec2InstanceEntityEvent item = 1;
+}
+message Ec2InstanceEntityStopRequest {
+  google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue change_set_id = 2;
+}
+message Ec2InstanceEntityStopReply {
+  si.core.Ec2InstanceEntityEvent item = 1;
+}
+message Ec2InstanceEntityRebootRequest {
+  google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue change_set_id = 2;
+}
+message Ec2InstanceEntityRebootReply {
+  si.core.Ec2InstanceEntityEvent item = 1;
+}
+message Ec2InstanceEntityTerminateRequest {
+  google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue change_set_id = 2;
+}
+message Ec2InstanceEntityTerminateReply {
+  si.core.Ec2InstanceEntityEvent item = 1;
+}
+message Ec2InstanceEntityEvent {
+  google.protobuf.StringValue id = 1;
+  si.data.DataStorable si_storable = 2;
+  google.protobuf.StringValue action_name = 3;
+  google.protobuf.StringValue create_time = 4;
+  google.protobuf.StringValue updated_time = 5;
+  google.protobuf.StringValue final_time = 6;
+  google.protobuf.BoolValue success = 7;
+  google.protobuf.BoolValue finalized = 8;
+  google.protobuf.StringValue user_id = 9;
+  repeated google.protobuf.StringValue output_lines = 10;
+  repeated google.protobuf.StringValue error_lines = 11;
+  google.protobuf.StringValue error_message = 12;
+  si.core.Ec2InstanceEntity previous_entity = 13;
+  si.core.Ec2InstanceEntity input_entity = 14;
+  si.core.Ec2InstanceEntity output_entity = 15;
+  si.cea.EntityEventSiProperties si_properties = 16;
+}
+message Ec2InstanceEntityEventListRequest {
+  si.data.DataQuery query = 1;
+  google.protobuf.UInt32Value page_size = 2;
+  google.protobuf.StringValue order_by = 3;
+  si.data.DataPageTokenOrderByDirection order_by_direction = 4;
+  google.protobuf.StringValue page_token = 5;
+  google.protobuf.StringValue scope_by_tenant_id = 6;
+}
+message Ec2InstanceEntityEventListReply {
+  repeated si.core.Ec2InstanceEntityEvent items = 1;
+  google.protobuf.UInt32Value total_count = 2;
+  google.protobuf.StringValue next_page_token = 3;
 }

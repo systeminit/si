@@ -11,6 +11,7 @@ import {
   NodeNodeKind,
   NodePosition,
   Edge,
+  EdgeEdgeKind,
 } from "@/graphql-types";
 import { diffEntity, DiffResult } from "@/utils/diff";
 
@@ -255,10 +256,43 @@ export const node: Module<NodeStore, RootStore> = {
       return state.mouseTrackSelection;
     },
     list(state, getters, rootState, rootGetters): Node[] {
+      // Given a starting node
+      //  Get all the related nodes
+      //  Filter for visibility re: changeSet/saved
+      //  return results
+
       let result: Node[] = [];
       let changeSetId = rootState.changeSet.current?.id;
+      let possibleNodeList: Node[] = state.nodes;
+      let currentApplication = rootState.application.current;
+      if (currentApplication) {
+        const currentApplicationNode = rootGetters["node/getNodeByEntityId"](
+          currentApplication.id,
+        );
+        const relatedEdges = rootGetters["edge/allRelatedEdges"](
+          currentApplicationNode.id,
+        );
+        let nodeIds = _.uniq(
+          _.map(relatedEdges, (edge: Edge) => {
+            return edge.headVertex?.id;
+          }),
+        );
+        if (nodeIds) {
+          possibleNodeList = _.map(nodeIds, nodeId => {
+            let foundNode = _.find(state.nodes, ["id", nodeId]);
+            if (foundNode) {
+              return foundNode;
+            } else {
+              throw new Error(
+                "cannot find a node that was in the node list - broken edge!",
+              );
+            }
+          });
+        }
+      }
+
       if (changeSetId) {
-        result = _.filter(state.nodes, node => {
+        result = _.filter(possibleNodeList, node => {
           let inChangeSet = _.find(node.stack, item => {
             if (item.siStorable?.changeSetId == changeSetId) {
               return true;
@@ -296,7 +330,7 @@ export const node: Module<NodeStore, RootStore> = {
           }
         });
       } else {
-        result = _.filter(state.nodes, node => {
+        result = _.filter(possibleNodeList, node => {
           let savedItem = _.find(node.stack, item => {
             if (!item.siStorable?.changeSetId) {
               if (!item.siStorable?.deleted) {
@@ -314,31 +348,6 @@ export const node: Module<NodeStore, RootStore> = {
             return false;
           }
         });
-      }
-      let currentApplication = rootState.application.current;
-      if (currentApplication) {
-        let applicationNode = getters["getNodeByEntityId"](
-          currentApplication.id,
-        );
-        if (applicationNode) {
-          let applicationEdges = rootGetters["edge/filter"]((edge: Edge) => {
-            if (edge.tailVertex?.id == applicationNode.id) {
-              return true;
-            }
-            return false;
-          });
-          result = _.filter(result, node => {
-            // You are the current application, and we don't show you.
-            if (node.id == applicationNode.id) {
-              return false;
-            }
-            // If this node has an edge to this application, it is in the list.
-            if (_.find(applicationEdges, ["headVertex.id", node.id])) {
-              return true;
-            }
-            return false;
-          });
-        }
       }
       return result;
     },
@@ -879,6 +888,27 @@ export const node: Module<NodeStore, RootStore> = {
           });
           if (state.current?.entityId == item.object.id) {
             commit("current", newNode);
+          }
+          let system = rootState.system.current;
+          if (system && item.object.siStorable?.typeName != "system") {
+            await dispatch(
+              "edge/create",
+              {
+                tailVertex: {
+                  id: system.id,
+                  socket: "output",
+                  typeName: "system",
+                },
+                headVertex: {
+                  id: newNode.id,
+                  socket: "input",
+                  typeName: newNode.stack[0].siStorable?.typeName,
+                },
+                bidirectional: true,
+                edgeKind: EdgeEdgeKind.PartOf,
+              },
+              { root: true },
+            );
           }
           if (item.object.siStorable?.typeName != "application_entity") {
             let application = rootState.application.current;

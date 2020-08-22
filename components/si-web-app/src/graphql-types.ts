@@ -8,6 +8,337 @@ export type Scalars = {
   Float: number;
 };
 
+export type AmiComponent = {
+  __typename?: "AmiComponent";
+  /** Component Constraints */
+  constraints?: Maybe<AmiComponentConstraints>;
+  /** Component Description */
+  description?: Maybe<Scalars["String"]>;
+  /** ami Component Display Name */
+  displayName?: Maybe<Scalars["String"]>;
+  /** ami Component ID */
+  id?: Maybe<Scalars["ID"]>;
+  /** ami Component Name */
+  name?: Maybe<Scalars["String"]>;
+  /** SI Properties */
+  siProperties?: Maybe<ComponentSiProperties>;
+  /** SI Storable */
+  siStorable?: Maybe<DataStorable>;
+};
+
+export type AmiComponentConstraints = {
+  __typename?: "AmiComponentConstraints";
+  /** Component Display Name */
+  componentDisplayName?: Maybe<Scalars["String"]>;
+  /** Component Name */
+  componentName?: Maybe<Scalars["String"]>;
+};
+
+export type AmiComponentConstraintsRequest = {
+  /** Component Display Name */
+  componentDisplayName?: Maybe<Scalars["String"]>;
+  /** Component Name */
+  componentName?: Maybe<Scalars["String"]>;
+};
+
+/** Get a ami Component Reply */
+export type AmiComponentGetReply = {
+  __typename?: "AmiComponentGetReply";
+  /** ami Component Item */
+  item?: Maybe<AmiComponent>;
+};
+
+/** Get a ami Component Request */
+export type AmiComponentGetRequest = {
+  /** ami Component ID */
+  id?: Maybe<Scalars["ID"]>;
+};
+
+/** List ami Component Reply */
+export type AmiComponentListReply = {
+  __typename?: "AmiComponentListReply";
+  /** Items */
+  items?: Maybe<Array<AmiComponent>>;
+  /** Next Page Token */
+  nextPageToken?: Maybe<Scalars["String"]>;
+  /** Total Count */
+  totalCount?: Maybe<Scalars["String"]>;
+};
+
+/** List ami Component Request */
+export type AmiComponentListRequest = {
+  /** Order By */
+  orderBy?: Maybe<Scalars["String"]>;
+  /** Order By Direction */
+  orderByDirection?: Maybe<DataPageTokenOrderByDirection>;
+  /** Page Size */
+  pageSize?: Maybe<Scalars["String"]>;
+  /** Page Token */
+  pageToken?: Maybe<Scalars["String"]>;
+  /** Query */
+  query?: Maybe<DataQueryRequest>;
+  /** Scope By Tenant ID */
+  scopeByTenantId?: Maybe<Scalars["String"]>;
+};
+
+/** Pick Component Reply */
+export type AmiComponentPickReply = {
+  __typename?: "AmiComponentPickReply";
+  /** Chosen Component */
+  component?: Maybe<AmiComponent>;
+  /** Implicit Constraints */
+  implicitConstraints?: Maybe<AmiComponentConstraints>;
+};
+
+/** Pick Component Request */
+export type AmiComponentPickRequest = {
+  /** Constraints */
+  constraints?: Maybe<AmiComponentConstraintsRequest>;
+};
+
+export type AmiEntity = {
+  __typename?: "AmiEntity";
+  associations?: Maybe<AmiEntityAssociations>;
+  /** Constraints */
+  constraints?: Maybe<AmiComponentConstraints>;
+  /** Entity Description */
+  description?: Maybe<Scalars["String"]>;
+  /** ami Entity Display Name */
+  displayName?: Maybe<Scalars["String"]>;
+  /** ami Entity ID */
+  id?: Maybe<Scalars["ID"]>;
+  /** Implicit Constraints */
+  implicitConstraints?: Maybe<AmiComponentConstraints>;
+  /** ami Entity Name */
+  name?: Maybe<Scalars["String"]>;
+  /** Properties */
+  properties?: Maybe<AmiEntityProperties>;
+  /** SI Properties */
+  siProperties?: Maybe<EntitySiProperties>;
+  /** SI Storable */
+  siStorable?: Maybe<DataStorable>;
+};
+
+/** ami Entity Associations */
+export type AmiEntityAssociations = {
+  __typename?: "AmiEntityAssociations";
+  /** System Initiative Billing Account */
+  billingAccount?: Maybe<BillingAccountGetReply>;
+};
+
+/** Create Entity Reply */
+export type AmiEntityCreateReply = {
+  __typename?: "AmiEntityCreateReply";
+  /** amiEntity Item */
+  item?: Maybe<AmiEntity>;
+};
+
+/** Create Entity Request */
+export type AmiEntityCreateRequest = {
+  /** Change Set ID */
+  changeSetId?: Maybe<Scalars["String"]>;
+  /** Constraints */
+  constraints?: Maybe<AmiComponentConstraintsRequest>;
+  /** Description */
+  description?: Maybe<Scalars["String"]>;
+  /** Display Name */
+  displayName?: Maybe<Scalars["String"]>;
+  /** Name */
+  name?: Maybe<Scalars["String"]>;
+  /** Properties */
+  properties?: Maybe<AmiEntityPropertiesRequest>;
+  /** Workspace ID */
+  workspaceId?: Maybe<Scalars["String"]>;
+};
+
+/** Delete Entity Reply */
+export type AmiEntityDeleteReply = {
+  __typename?: "AmiEntityDeleteReply";
+  /** ami Item */
+  item?: Maybe<AmiEntity>;
+};
+
+/** Delete Entity Request */
+export type AmiEntityDeleteRequest = {
+  /** Change Set ID */
+  changeSetId?: Maybe<Scalars["String"]>;
+  /** amiEntity ID */
+  id?: Maybe<Scalars["ID"]>;
+};
+
+export type AmiEntityEvent = {
+  __typename?: "AmiEntityEvent";
+  /** Action Name */
+  actionName?: Maybe<Scalars["String"]>;
+  /** Creation Time */
+  createTime?: Maybe<Scalars["String"]>;
+  /** Error Lines */
+  errorLines?: Maybe<Array<Scalars["String"]>>;
+  /** Error Message */
+  errorMessage?: Maybe<Scalars["String"]>;
+  /** Finalized */
+  finalized?: Maybe<Scalars["Boolean"]>;
+  /** Final Time */
+  finalTime?: Maybe<Scalars["String"]>;
+  /** ami EntityEvent ID */
+  id?: Maybe<Scalars["ID"]>;
+  /** Input Entity */
+  inputEntity?: Maybe<AmiEntity>;
+  /** Output Entity */
+  outputEntity?: Maybe<AmiEntity>;
+  /** Output Lines */
+  outputLines?: Maybe<Array<Scalars["String"]>>;
+  /** Previous Entity */
+  previousEntity?: Maybe<AmiEntity>;
+  /** SI Properties */
+  siProperties?: Maybe<EntityEventSiProperties>;
+  /** SI Storable */
+  siStorable?: Maybe<DataStorable>;
+  /** success */
+  success?: Maybe<Scalars["Boolean"]>;
+  /** Updated Time */
+  updatedTime?: Maybe<Scalars["String"]>;
+  /** User ID */
+  userId?: Maybe<Scalars["String"]>;
+};
+
+/** List ami EntityEvent Reply */
+export type AmiEntityEventListReply = {
+  __typename?: "AmiEntityEventListReply";
+  /** Items */
+  items?: Maybe<Array<AmiEntityEvent>>;
+  /** Next Page Token */
+  nextPageToken?: Maybe<Scalars["String"]>;
+  /** Total Count */
+  totalCount?: Maybe<Scalars["String"]>;
+};
+
+/** List ami EntityEvent Request */
+export type AmiEntityEventListRequest = {
+  /** Order By */
+  orderBy?: Maybe<Scalars["String"]>;
+  /** Order By Direction */
+  orderByDirection?: Maybe<DataPageTokenOrderByDirection>;
+  /** Page Size */
+  pageSize?: Maybe<Scalars["String"]>;
+  /** Page Token */
+  pageToken?: Maybe<Scalars["String"]>;
+  /** Query */
+  query?: Maybe<DataQueryRequest>;
+  /** Scope By Tenant ID */
+  scopeByTenantId?: Maybe<Scalars["String"]>;
+};
+
+/** Get a ami Entity Reply */
+export type AmiEntityGetReply = {
+  __typename?: "AmiEntityGetReply";
+  /** ami Entity Item */
+  item?: Maybe<AmiEntity>;
+};
+
+/** Get a ami Entity Request */
+export type AmiEntityGetRequest = {
+  /** ami Entity ID */
+  id?: Maybe<Scalars["ID"]>;
+};
+
+/** List ami Entity Reply */
+export type AmiEntityListReply = {
+  __typename?: "AmiEntityListReply";
+  /** Items */
+  items?: Maybe<Array<AmiEntity>>;
+  /** Next Page Token */
+  nextPageToken?: Maybe<Scalars["String"]>;
+  /** Total Count */
+  totalCount?: Maybe<Scalars["String"]>;
+};
+
+/** List ami Entity Request */
+export type AmiEntityListRequest = {
+  /** Order By */
+  orderBy?: Maybe<Scalars["String"]>;
+  /** Order By Direction */
+  orderByDirection?: Maybe<DataPageTokenOrderByDirection>;
+  /** Page Size */
+  pageSize?: Maybe<Scalars["String"]>;
+  /** Page Token */
+  pageToken?: Maybe<Scalars["String"]>;
+  /** Query */
+  query?: Maybe<DataQueryRequest>;
+  /** Scope By Tenant ID */
+  scopeByTenantId?: Maybe<Scalars["String"]>;
+};
+
+export type AmiEntityProperties = {
+  __typename?: "AmiEntityProperties";
+  /** amiId */
+  amiId?: Maybe<Scalars["String"]>;
+  /** operatingSystem */
+  operatingSystem?: Maybe<Scalars["String"]>;
+  /** region */
+  region?: Maybe<Scalars["String"]>;
+  /** rootDeviceType */
+  rootDeviceType?: Maybe<Scalars["String"]>;
+  /** virtualization */
+  virtualization?: Maybe<Scalars["String"]>;
+};
+
+export type AmiEntityPropertiesRequest = {
+  /** amiId */
+  amiId?: Maybe<Scalars["String"]>;
+  /** operatingSystem */
+  operatingSystem?: Maybe<Scalars["String"]>;
+  /** region */
+  region?: Maybe<Scalars["String"]>;
+  /** rootDeviceType */
+  rootDeviceType?: Maybe<Scalars["String"]>;
+  /** virtualization */
+  virtualization?: Maybe<Scalars["String"]>;
+};
+
+/** Sync State Reply */
+export type AmiEntitySyncReply = {
+  __typename?: "AmiEntitySyncReply";
+  /** Entity Event */
+  item?: Maybe<AmiEntityEvent>;
+};
+
+/** Sync State Request */
+export type AmiEntitySyncRequest = {
+  /** Change Set ID */
+  changeSetId?: Maybe<Scalars["String"]>;
+  /** Entity ID */
+  id?: Maybe<Scalars["ID"]>;
+};
+
+/** Update an Entity Reply */
+export type AmiEntityUpdateReply = {
+  __typename?: "AmiEntityUpdateReply";
+  /** ami Item */
+  item?: Maybe<AmiEntity>;
+};
+
+/** Update an Entity Request */
+export type AmiEntityUpdateRequest = {
+  /** Change Set ID */
+  changeSetId?: Maybe<Scalars["String"]>;
+  /** amiEntity ID */
+  id?: Maybe<Scalars["ID"]>;
+  /** ami Item Update */
+  update?: Maybe<AmiEntityUpdateRequestUpdateRequest>;
+};
+
+export type AmiEntityUpdateRequestUpdateRequest = {
+  /** description */
+  description?: Maybe<Scalars["String"]>;
+  /** displayName */
+  displayName?: Maybe<Scalars["String"]>;
+  /** name */
+  name?: Maybe<Scalars["String"]>;
+  /** properties */
+  properties?: Maybe<AmiEntityPropertiesRequest>;
+};
+
 export type ApplicationComponent = {
   __typename?: "ApplicationComponent";
   /** Component Constraints */
@@ -741,6 +1072,400 @@ export enum DataStorableChangeSetEventType {
   Update = "UPDATE",
 }
 
+export type Ec2InstanceComponent = {
+  __typename?: "Ec2InstanceComponent";
+  /** Component Constraints */
+  constraints?: Maybe<Ec2InstanceComponentConstraints>;
+  /** Component Description */
+  description?: Maybe<Scalars["String"]>;
+  /** ec2Instance Component Display Name */
+  displayName?: Maybe<Scalars["String"]>;
+  /** ec2Instance Component ID */
+  id?: Maybe<Scalars["ID"]>;
+  /** ec2Instance Component Name */
+  name?: Maybe<Scalars["String"]>;
+  /** SI Properties */
+  siProperties?: Maybe<ComponentSiProperties>;
+  /** SI Storable */
+  siStorable?: Maybe<DataStorable>;
+};
+
+export type Ec2InstanceComponentConstraints = {
+  __typename?: "Ec2InstanceComponentConstraints";
+  /** Component Display Name */
+  componentDisplayName?: Maybe<Scalars["String"]>;
+  /** Component Name */
+  componentName?: Maybe<Scalars["String"]>;
+};
+
+export type Ec2InstanceComponentConstraintsRequest = {
+  /** Component Display Name */
+  componentDisplayName?: Maybe<Scalars["String"]>;
+  /** Component Name */
+  componentName?: Maybe<Scalars["String"]>;
+};
+
+/** Get a ec2Instance Component Reply */
+export type Ec2InstanceComponentGetReply = {
+  __typename?: "Ec2InstanceComponentGetReply";
+  /** ec2Instance Component Item */
+  item?: Maybe<Ec2InstanceComponent>;
+};
+
+/** Get a ec2Instance Component Request */
+export type Ec2InstanceComponentGetRequest = {
+  /** ec2Instance Component ID */
+  id?: Maybe<Scalars["ID"]>;
+};
+
+/** List ec2Instance Component Reply */
+export type Ec2InstanceComponentListReply = {
+  __typename?: "Ec2InstanceComponentListReply";
+  /** Items */
+  items?: Maybe<Array<Ec2InstanceComponent>>;
+  /** Next Page Token */
+  nextPageToken?: Maybe<Scalars["String"]>;
+  /** Total Count */
+  totalCount?: Maybe<Scalars["String"]>;
+};
+
+/** List ec2Instance Component Request */
+export type Ec2InstanceComponentListRequest = {
+  /** Order By */
+  orderBy?: Maybe<Scalars["String"]>;
+  /** Order By Direction */
+  orderByDirection?: Maybe<DataPageTokenOrderByDirection>;
+  /** Page Size */
+  pageSize?: Maybe<Scalars["String"]>;
+  /** Page Token */
+  pageToken?: Maybe<Scalars["String"]>;
+  /** Query */
+  query?: Maybe<DataQueryRequest>;
+  /** Scope By Tenant ID */
+  scopeByTenantId?: Maybe<Scalars["String"]>;
+};
+
+/** Pick Component Reply */
+export type Ec2InstanceComponentPickReply = {
+  __typename?: "Ec2InstanceComponentPickReply";
+  /** Chosen Component */
+  component?: Maybe<Ec2InstanceComponent>;
+  /** Implicit Constraints */
+  implicitConstraints?: Maybe<Ec2InstanceComponentConstraints>;
+};
+
+/** Pick Component Request */
+export type Ec2InstanceComponentPickRequest = {
+  /** Constraints */
+  constraints?: Maybe<Ec2InstanceComponentConstraintsRequest>;
+};
+
+export type Ec2InstanceEntity = {
+  __typename?: "Ec2InstanceEntity";
+  associations?: Maybe<Ec2InstanceEntityAssociations>;
+  /** Constraints */
+  constraints?: Maybe<Ec2InstanceComponentConstraints>;
+  /** Entity Description */
+  description?: Maybe<Scalars["String"]>;
+  /** ec2Instance Entity Display Name */
+  displayName?: Maybe<Scalars["String"]>;
+  /** ec2Instance Entity ID */
+  id?: Maybe<Scalars["ID"]>;
+  /** Implicit Constraints */
+  implicitConstraints?: Maybe<Ec2InstanceComponentConstraints>;
+  /** ec2Instance Entity Name */
+  name?: Maybe<Scalars["String"]>;
+  /** Properties */
+  properties?: Maybe<Ec2InstanceEntityProperties>;
+  /** SI Properties */
+  siProperties?: Maybe<EntitySiProperties>;
+  /** SI Storable */
+  siStorable?: Maybe<DataStorable>;
+};
+
+/** ec2Instance Entity Associations */
+export type Ec2InstanceEntityAssociations = {
+  __typename?: "Ec2InstanceEntityAssociations";
+  /** System Initiative Billing Account */
+  billingAccount?: Maybe<BillingAccountGetReply>;
+};
+
+/** Create Entity Reply */
+export type Ec2InstanceEntityCreateReply = {
+  __typename?: "Ec2InstanceEntityCreateReply";
+  /** ec2InstanceEntity Item */
+  item?: Maybe<Ec2InstanceEntity>;
+};
+
+/** Create Entity Request */
+export type Ec2InstanceEntityCreateRequest = {
+  /** Change Set ID */
+  changeSetId?: Maybe<Scalars["String"]>;
+  /** Constraints */
+  constraints?: Maybe<Ec2InstanceComponentConstraintsRequest>;
+  /** Description */
+  description?: Maybe<Scalars["String"]>;
+  /** Display Name */
+  displayName?: Maybe<Scalars["String"]>;
+  /** Name */
+  name?: Maybe<Scalars["String"]>;
+  /** Properties */
+  properties?: Maybe<Ec2InstanceEntityPropertiesRequest>;
+  /** Workspace ID */
+  workspaceId?: Maybe<Scalars["String"]>;
+};
+
+/** Delete Entity Reply */
+export type Ec2InstanceEntityDeleteReply = {
+  __typename?: "Ec2InstanceEntityDeleteReply";
+  /** ec2Instance Item */
+  item?: Maybe<Ec2InstanceEntity>;
+};
+
+/** Delete Entity Request */
+export type Ec2InstanceEntityDeleteRequest = {
+  /** Change Set ID */
+  changeSetId?: Maybe<Scalars["String"]>;
+  /** ec2InstanceEntity ID */
+  id?: Maybe<Scalars["ID"]>;
+};
+
+export type Ec2InstanceEntityEvent = {
+  __typename?: "Ec2InstanceEntityEvent";
+  /** Action Name */
+  actionName?: Maybe<Scalars["String"]>;
+  /** Creation Time */
+  createTime?: Maybe<Scalars["String"]>;
+  /** Error Lines */
+  errorLines?: Maybe<Array<Scalars["String"]>>;
+  /** Error Message */
+  errorMessage?: Maybe<Scalars["String"]>;
+  /** Finalized */
+  finalized?: Maybe<Scalars["Boolean"]>;
+  /** Final Time */
+  finalTime?: Maybe<Scalars["String"]>;
+  /** ec2Instance EntityEvent ID */
+  id?: Maybe<Scalars["ID"]>;
+  /** Input Entity */
+  inputEntity?: Maybe<Ec2InstanceEntity>;
+  /** Output Entity */
+  outputEntity?: Maybe<Ec2InstanceEntity>;
+  /** Output Lines */
+  outputLines?: Maybe<Array<Scalars["String"]>>;
+  /** Previous Entity */
+  previousEntity?: Maybe<Ec2InstanceEntity>;
+  /** SI Properties */
+  siProperties?: Maybe<EntityEventSiProperties>;
+  /** SI Storable */
+  siStorable?: Maybe<DataStorable>;
+  /** success */
+  success?: Maybe<Scalars["Boolean"]>;
+  /** Updated Time */
+  updatedTime?: Maybe<Scalars["String"]>;
+  /** User ID */
+  userId?: Maybe<Scalars["String"]>;
+};
+
+/** List ec2Instance EntityEvent Reply */
+export type Ec2InstanceEntityEventListReply = {
+  __typename?: "Ec2InstanceEntityEventListReply";
+  /** Items */
+  items?: Maybe<Array<Ec2InstanceEntityEvent>>;
+  /** Next Page Token */
+  nextPageToken?: Maybe<Scalars["String"]>;
+  /** Total Count */
+  totalCount?: Maybe<Scalars["String"]>;
+};
+
+/** List ec2Instance EntityEvent Request */
+export type Ec2InstanceEntityEventListRequest = {
+  /** Order By */
+  orderBy?: Maybe<Scalars["String"]>;
+  /** Order By Direction */
+  orderByDirection?: Maybe<DataPageTokenOrderByDirection>;
+  /** Page Size */
+  pageSize?: Maybe<Scalars["String"]>;
+  /** Page Token */
+  pageToken?: Maybe<Scalars["String"]>;
+  /** Query */
+  query?: Maybe<DataQueryRequest>;
+  /** Scope By Tenant ID */
+  scopeByTenantId?: Maybe<Scalars["String"]>;
+};
+
+/** Get a ec2Instance Entity Reply */
+export type Ec2InstanceEntityGetReply = {
+  __typename?: "Ec2InstanceEntityGetReply";
+  /** ec2Instance Entity Item */
+  item?: Maybe<Ec2InstanceEntity>;
+};
+
+/** Get a ec2Instance Entity Request */
+export type Ec2InstanceEntityGetRequest = {
+  /** ec2Instance Entity ID */
+  id?: Maybe<Scalars["ID"]>;
+};
+
+/** launch Reply */
+export type Ec2InstanceEntityLaunchReply = {
+  __typename?: "Ec2InstanceEntityLaunchReply";
+  /** Entity Event */
+  item?: Maybe<Ec2InstanceEntityEvent>;
+};
+
+/** launch Request */
+export type Ec2InstanceEntityLaunchRequest = {
+  /** Change Set ID */
+  changeSetId?: Maybe<Scalars["String"]>;
+  /** Entity ID */
+  id?: Maybe<Scalars["ID"]>;
+};
+
+/** List ec2Instance Entity Reply */
+export type Ec2InstanceEntityListReply = {
+  __typename?: "Ec2InstanceEntityListReply";
+  /** Items */
+  items?: Maybe<Array<Ec2InstanceEntity>>;
+  /** Next Page Token */
+  nextPageToken?: Maybe<Scalars["String"]>;
+  /** Total Count */
+  totalCount?: Maybe<Scalars["String"]>;
+};
+
+/** List ec2Instance Entity Request */
+export type Ec2InstanceEntityListRequest = {
+  /** Order By */
+  orderBy?: Maybe<Scalars["String"]>;
+  /** Order By Direction */
+  orderByDirection?: Maybe<DataPageTokenOrderByDirection>;
+  /** Page Size */
+  pageSize?: Maybe<Scalars["String"]>;
+  /** Page Token */
+  pageToken?: Maybe<Scalars["String"]>;
+  /** Query */
+  query?: Maybe<DataQueryRequest>;
+  /** Scope By Tenant ID */
+  scopeByTenantId?: Maybe<Scalars["String"]>;
+};
+
+export type Ec2InstanceEntityProperties = {
+  __typename?: "Ec2InstanceEntityProperties";
+  /** instanceType */
+  instanceType?: Maybe<Scalars["String"]>;
+  /** region */
+  region?: Maybe<Scalars["String"]>;
+};
+
+export type Ec2InstanceEntityPropertiesRequest = {
+  /** instanceType */
+  instanceType?: Maybe<Scalars["String"]>;
+  /** region */
+  region?: Maybe<Scalars["String"]>;
+};
+
+/** Reboot Reply */
+export type Ec2InstanceEntityRebootReply = {
+  __typename?: "Ec2InstanceEntityRebootReply";
+  /** Entity Event */
+  item?: Maybe<Ec2InstanceEntityEvent>;
+};
+
+/** Reboot Request */
+export type Ec2InstanceEntityRebootRequest = {
+  /** Change Set ID */
+  changeSetId?: Maybe<Scalars["String"]>;
+  /** Entity ID */
+  id?: Maybe<Scalars["ID"]>;
+};
+
+/** Start Reply */
+export type Ec2InstanceEntityStartReply = {
+  __typename?: "Ec2InstanceEntityStartReply";
+  /** Entity Event */
+  item?: Maybe<Ec2InstanceEntityEvent>;
+};
+
+/** Start Request */
+export type Ec2InstanceEntityStartRequest = {
+  /** Change Set ID */
+  changeSetId?: Maybe<Scalars["String"]>;
+  /** Entity ID */
+  id?: Maybe<Scalars["ID"]>;
+};
+
+/** Stop Reply */
+export type Ec2InstanceEntityStopReply = {
+  __typename?: "Ec2InstanceEntityStopReply";
+  /** Entity Event */
+  item?: Maybe<Ec2InstanceEntityEvent>;
+};
+
+/** Stop Request */
+export type Ec2InstanceEntityStopRequest = {
+  /** Change Set ID */
+  changeSetId?: Maybe<Scalars["String"]>;
+  /** Entity ID */
+  id?: Maybe<Scalars["ID"]>;
+};
+
+/** Sync State Reply */
+export type Ec2InstanceEntitySyncReply = {
+  __typename?: "Ec2InstanceEntitySyncReply";
+  /** Entity Event */
+  item?: Maybe<Ec2InstanceEntityEvent>;
+};
+
+/** Sync State Request */
+export type Ec2InstanceEntitySyncRequest = {
+  /** Change Set ID */
+  changeSetId?: Maybe<Scalars["String"]>;
+  /** Entity ID */
+  id?: Maybe<Scalars["ID"]>;
+};
+
+/** Terminate Reply */
+export type Ec2InstanceEntityTerminateReply = {
+  __typename?: "Ec2InstanceEntityTerminateReply";
+  /** Entity Event */
+  item?: Maybe<Ec2InstanceEntityEvent>;
+};
+
+/** Terminate Request */
+export type Ec2InstanceEntityTerminateRequest = {
+  /** Change Set ID */
+  changeSetId?: Maybe<Scalars["String"]>;
+  /** Entity ID */
+  id?: Maybe<Scalars["ID"]>;
+};
+
+/** Update an Entity Reply */
+export type Ec2InstanceEntityUpdateReply = {
+  __typename?: "Ec2InstanceEntityUpdateReply";
+  /** ec2Instance Item */
+  item?: Maybe<Ec2InstanceEntity>;
+};
+
+/** Update an Entity Request */
+export type Ec2InstanceEntityUpdateRequest = {
+  /** Change Set ID */
+  changeSetId?: Maybe<Scalars["String"]>;
+  /** ec2InstanceEntity ID */
+  id?: Maybe<Scalars["ID"]>;
+  /** ec2Instance Item Update */
+  update?: Maybe<Ec2InstanceEntityUpdateRequestUpdateRequest>;
+};
+
+export type Ec2InstanceEntityUpdateRequestUpdateRequest = {
+  /** description */
+  description?: Maybe<Scalars["String"]>;
+  /** displayName */
+  displayName?: Maybe<Scalars["String"]>;
+  /** name */
+  name?: Maybe<Scalars["String"]>;
+  /** properties */
+  properties?: Maybe<Ec2InstanceEntityPropertiesRequest>;
+};
+
 export type Edge = {
   __typename?: "Edge";
   /** Bidirectional */
@@ -791,6 +1516,7 @@ export type EdgeCreateRequest = {
 /** The kind of edge this is */
 export enum EdgeEdgeKind {
   Connected = "CONNECTED",
+  PartOf = "PART_OF",
   Unknown = "UNKNOWN",
 }
 
@@ -1493,6 +2219,321 @@ export type ItemSiProperties = {
   organizationId?: Maybe<Scalars["String"]>;
   /** Organization ID */
   workspaceId?: Maybe<Scalars["String"]>;
+};
+
+export type KubernetesClusterComponent = {
+  __typename?: "KubernetesClusterComponent";
+  /** Component Constraints */
+  constraints?: Maybe<KubernetesClusterComponentConstraints>;
+  /** Component Description */
+  description?: Maybe<Scalars["String"]>;
+  /** Kubernetes Cluster Component Display Name */
+  displayName?: Maybe<Scalars["String"]>;
+  /** Kubernetes Cluster Component ID */
+  id?: Maybe<Scalars["ID"]>;
+  /** Kubernetes Cluster Component Name */
+  name?: Maybe<Scalars["String"]>;
+  /** SI Properties */
+  siProperties?: Maybe<ComponentSiProperties>;
+  /** SI Storable */
+  siStorable?: Maybe<DataStorable>;
+};
+
+export type KubernetesClusterComponentConstraints = {
+  __typename?: "KubernetesClusterComponentConstraints";
+  /** Component Display Name */
+  componentDisplayName?: Maybe<Scalars["String"]>;
+  /** Component Name */
+  componentName?: Maybe<Scalars["String"]>;
+};
+
+export type KubernetesClusterComponentConstraintsRequest = {
+  /** Component Display Name */
+  componentDisplayName?: Maybe<Scalars["String"]>;
+  /** Component Name */
+  componentName?: Maybe<Scalars["String"]>;
+};
+
+/** Get a Kubernetes Cluster Component Reply */
+export type KubernetesClusterComponentGetReply = {
+  __typename?: "KubernetesClusterComponentGetReply";
+  /** Kubernetes Cluster Component Item */
+  item?: Maybe<KubernetesClusterComponent>;
+};
+
+/** Get a Kubernetes Cluster Component Request */
+export type KubernetesClusterComponentGetRequest = {
+  /** Kubernetes Cluster Component ID */
+  id?: Maybe<Scalars["ID"]>;
+};
+
+/** List Kubernetes Cluster Component Reply */
+export type KubernetesClusterComponentListReply = {
+  __typename?: "KubernetesClusterComponentListReply";
+  /** Items */
+  items?: Maybe<Array<KubernetesClusterComponent>>;
+  /** Next Page Token */
+  nextPageToken?: Maybe<Scalars["String"]>;
+  /** Total Count */
+  totalCount?: Maybe<Scalars["String"]>;
+};
+
+/** List Kubernetes Cluster Component Request */
+export type KubernetesClusterComponentListRequest = {
+  /** Order By */
+  orderBy?: Maybe<Scalars["String"]>;
+  /** Order By Direction */
+  orderByDirection?: Maybe<DataPageTokenOrderByDirection>;
+  /** Page Size */
+  pageSize?: Maybe<Scalars["String"]>;
+  /** Page Token */
+  pageToken?: Maybe<Scalars["String"]>;
+  /** Query */
+  query?: Maybe<DataQueryRequest>;
+  /** Scope By Tenant ID */
+  scopeByTenantId?: Maybe<Scalars["String"]>;
+};
+
+/** Pick Component Reply */
+export type KubernetesClusterComponentPickReply = {
+  __typename?: "KubernetesClusterComponentPickReply";
+  /** Chosen Component */
+  component?: Maybe<KubernetesClusterComponent>;
+  /** Implicit Constraints */
+  implicitConstraints?: Maybe<KubernetesClusterComponentConstraints>;
+};
+
+/** Pick Component Request */
+export type KubernetesClusterComponentPickRequest = {
+  /** Constraints */
+  constraints?: Maybe<KubernetesClusterComponentConstraintsRequest>;
+};
+
+export type KubernetesClusterEntity = {
+  __typename?: "KubernetesClusterEntity";
+  associations?: Maybe<KubernetesClusterEntityAssociations>;
+  /** Constraints */
+  constraints?: Maybe<KubernetesClusterComponentConstraints>;
+  /** Entity Description */
+  description?: Maybe<Scalars["String"]>;
+  /** Kubernetes Cluster Entity Display Name */
+  displayName?: Maybe<Scalars["String"]>;
+  /** Kubernetes Cluster Entity ID */
+  id?: Maybe<Scalars["ID"]>;
+  /** Implicit Constraints */
+  implicitConstraints?: Maybe<KubernetesClusterComponentConstraints>;
+  /** Kubernetes Cluster Entity Name */
+  name?: Maybe<Scalars["String"]>;
+  /** Properties */
+  properties?: Maybe<KubernetesClusterEntityProperties>;
+  /** SI Properties */
+  siProperties?: Maybe<EntitySiProperties>;
+  /** SI Storable */
+  siStorable?: Maybe<DataStorable>;
+};
+
+/** Kubernetes Cluster Entity Associations */
+export type KubernetesClusterEntityAssociations = {
+  __typename?: "KubernetesClusterEntityAssociations";
+  /** System Initiative Billing Account */
+  billingAccount?: Maybe<BillingAccountGetReply>;
+};
+
+/** Create Entity Reply */
+export type KubernetesClusterEntityCreateReply = {
+  __typename?: "KubernetesClusterEntityCreateReply";
+  /** kubernetesClusterEntity Item */
+  item?: Maybe<KubernetesClusterEntity>;
+};
+
+/** Create Entity Request */
+export type KubernetesClusterEntityCreateRequest = {
+  /** Change Set ID */
+  changeSetId?: Maybe<Scalars["String"]>;
+  /** Constraints */
+  constraints?: Maybe<KubernetesClusterComponentConstraintsRequest>;
+  /** Description */
+  description?: Maybe<Scalars["String"]>;
+  /** Display Name */
+  displayName?: Maybe<Scalars["String"]>;
+  /** Name */
+  name?: Maybe<Scalars["String"]>;
+  /** Properties */
+  properties?: Maybe<KubernetesClusterEntityPropertiesRequest>;
+  /** Workspace ID */
+  workspaceId?: Maybe<Scalars["String"]>;
+};
+
+/** Delete Entity Reply */
+export type KubernetesClusterEntityDeleteReply = {
+  __typename?: "KubernetesClusterEntityDeleteReply";
+  /** kubernetesCluster Item */
+  item?: Maybe<KubernetesClusterEntity>;
+};
+
+/** Delete Entity Request */
+export type KubernetesClusterEntityDeleteRequest = {
+  /** Change Set ID */
+  changeSetId?: Maybe<Scalars["String"]>;
+  /** kubernetesClusterEntity ID */
+  id?: Maybe<Scalars["ID"]>;
+};
+
+export type KubernetesClusterEntityEvent = {
+  __typename?: "KubernetesClusterEntityEvent";
+  /** Action Name */
+  actionName?: Maybe<Scalars["String"]>;
+  /** Creation Time */
+  createTime?: Maybe<Scalars["String"]>;
+  /** Error Lines */
+  errorLines?: Maybe<Array<Scalars["String"]>>;
+  /** Error Message */
+  errorMessage?: Maybe<Scalars["String"]>;
+  /** Finalized */
+  finalized?: Maybe<Scalars["Boolean"]>;
+  /** Final Time */
+  finalTime?: Maybe<Scalars["String"]>;
+  /** Kubernetes Cluster EntityEvent ID */
+  id?: Maybe<Scalars["ID"]>;
+  /** Input Entity */
+  inputEntity?: Maybe<KubernetesClusterEntity>;
+  /** Output Entity */
+  outputEntity?: Maybe<KubernetesClusterEntity>;
+  /** Output Lines */
+  outputLines?: Maybe<Array<Scalars["String"]>>;
+  /** Previous Entity */
+  previousEntity?: Maybe<KubernetesClusterEntity>;
+  /** SI Properties */
+  siProperties?: Maybe<EntityEventSiProperties>;
+  /** SI Storable */
+  siStorable?: Maybe<DataStorable>;
+  /** success */
+  success?: Maybe<Scalars["Boolean"]>;
+  /** Updated Time */
+  updatedTime?: Maybe<Scalars["String"]>;
+  /** User ID */
+  userId?: Maybe<Scalars["String"]>;
+};
+
+/** List Kubernetes Cluster EntityEvent Reply */
+export type KubernetesClusterEntityEventListReply = {
+  __typename?: "KubernetesClusterEntityEventListReply";
+  /** Items */
+  items?: Maybe<Array<KubernetesClusterEntityEvent>>;
+  /** Next Page Token */
+  nextPageToken?: Maybe<Scalars["String"]>;
+  /** Total Count */
+  totalCount?: Maybe<Scalars["String"]>;
+};
+
+/** List Kubernetes Cluster EntityEvent Request */
+export type KubernetesClusterEntityEventListRequest = {
+  /** Order By */
+  orderBy?: Maybe<Scalars["String"]>;
+  /** Order By Direction */
+  orderByDirection?: Maybe<DataPageTokenOrderByDirection>;
+  /** Page Size */
+  pageSize?: Maybe<Scalars["String"]>;
+  /** Page Token */
+  pageToken?: Maybe<Scalars["String"]>;
+  /** Query */
+  query?: Maybe<DataQueryRequest>;
+  /** Scope By Tenant ID */
+  scopeByTenantId?: Maybe<Scalars["String"]>;
+};
+
+/** Get a Kubernetes Cluster Entity Reply */
+export type KubernetesClusterEntityGetReply = {
+  __typename?: "KubernetesClusterEntityGetReply";
+  /** Kubernetes Cluster Entity Item */
+  item?: Maybe<KubernetesClusterEntity>;
+};
+
+/** Get a Kubernetes Cluster Entity Request */
+export type KubernetesClusterEntityGetRequest = {
+  /** Kubernetes Cluster Entity ID */
+  id?: Maybe<Scalars["ID"]>;
+};
+
+/** List Kubernetes Cluster Entity Reply */
+export type KubernetesClusterEntityListReply = {
+  __typename?: "KubernetesClusterEntityListReply";
+  /** Items */
+  items?: Maybe<Array<KubernetesClusterEntity>>;
+  /** Next Page Token */
+  nextPageToken?: Maybe<Scalars["String"]>;
+  /** Total Count */
+  totalCount?: Maybe<Scalars["String"]>;
+};
+
+/** List Kubernetes Cluster Entity Request */
+export type KubernetesClusterEntityListRequest = {
+  /** Order By */
+  orderBy?: Maybe<Scalars["String"]>;
+  /** Order By Direction */
+  orderByDirection?: Maybe<DataPageTokenOrderByDirection>;
+  /** Page Size */
+  pageSize?: Maybe<Scalars["String"]>;
+  /** Page Token */
+  pageToken?: Maybe<Scalars["String"]>;
+  /** Query */
+  query?: Maybe<DataQueryRequest>;
+  /** Scope By Tenant ID */
+  scopeByTenantId?: Maybe<Scalars["String"]>;
+};
+
+export type KubernetesClusterEntityProperties = {
+  __typename?: "KubernetesClusterEntityProperties";
+  /** Class */
+  class?: Maybe<Scalars["String"]>;
+};
+
+export type KubernetesClusterEntityPropertiesRequest = {
+  /** Class */
+  class?: Maybe<Scalars["String"]>;
+};
+
+/** Sync State Reply */
+export type KubernetesClusterEntitySyncReply = {
+  __typename?: "KubernetesClusterEntitySyncReply";
+  /** Entity Event */
+  item?: Maybe<KubernetesClusterEntityEvent>;
+};
+
+/** Sync State Request */
+export type KubernetesClusterEntitySyncRequest = {
+  /** Change Set ID */
+  changeSetId?: Maybe<Scalars["String"]>;
+  /** Entity ID */
+  id?: Maybe<Scalars["ID"]>;
+};
+
+/** Update an Entity Reply */
+export type KubernetesClusterEntityUpdateReply = {
+  __typename?: "KubernetesClusterEntityUpdateReply";
+  /** kubernetesCluster Item */
+  item?: Maybe<KubernetesClusterEntity>;
+};
+
+/** Update an Entity Request */
+export type KubernetesClusterEntityUpdateRequest = {
+  /** Change Set ID */
+  changeSetId?: Maybe<Scalars["String"]>;
+  /** kubernetesClusterEntity ID */
+  id?: Maybe<Scalars["ID"]>;
+  /** kubernetesCluster Item Update */
+  update?: Maybe<KubernetesClusterEntityUpdateRequestUpdateRequest>;
+};
+
+export type KubernetesClusterEntityUpdateRequestUpdateRequest = {
+  /** description */
+  description?: Maybe<Scalars["String"]>;
+  /** displayName */
+  displayName?: Maybe<Scalars["String"]>;
+  /** name */
+  name?: Maybe<Scalars["String"]>;
+  /** properties */
+  properties?: Maybe<KubernetesClusterEntityPropertiesRequest>;
 };
 
 export type KubernetesContainer = {
@@ -2497,9 +3538,9 @@ export type KubernetesServicePort = {
   /** Name */
   name?: Maybe<Scalars["String"]>;
   /** Node Port */
-  nodePort?: Maybe<Scalars["String"]>;
+  nodePort?: Maybe<Scalars["Int"]>;
   /** Port */
-  port?: Maybe<Scalars["String"]>;
+  port?: Maybe<Scalars["Int"]>;
   /** Protocol */
   protocol?: Maybe<Scalars["String"]>;
   /** Target Port */
@@ -2512,9 +3553,9 @@ export type KubernetesServicePortRequest = {
   /** Name */
   name?: Maybe<Scalars["String"]>;
   /** Node Port */
-  nodePort?: Maybe<Scalars["String"]>;
+  nodePort?: Maybe<Scalars["Int"]>;
   /** Port */
-  port?: Maybe<Scalars["String"]>;
+  port?: Maybe<Scalars["Int"]>;
   /** Protocol */
   protocol?: Maybe<Scalars["String"]>;
   /** Target Port */
@@ -2547,8 +3588,361 @@ export type MatchLabelsRequest = {
   value?: Maybe<Scalars["String"]>;
 };
 
+export type MinikubeComponent = {
+  __typename?: "MinikubeComponent";
+  /** Component Constraints */
+  constraints?: Maybe<MinikubeComponentConstraints>;
+  /** Component Description */
+  description?: Maybe<Scalars["String"]>;
+  /** Minikube Component Display Name */
+  displayName?: Maybe<Scalars["String"]>;
+  /** Minikube Component ID */
+  id?: Maybe<Scalars["ID"]>;
+  /** Minikube Component Name */
+  name?: Maybe<Scalars["String"]>;
+  /** SI Properties */
+  siProperties?: Maybe<ComponentSiProperties>;
+  /** SI Storable */
+  siStorable?: Maybe<DataStorable>;
+};
+
+export type MinikubeComponentConstraints = {
+  __typename?: "MinikubeComponentConstraints";
+  /** Component Display Name */
+  componentDisplayName?: Maybe<Scalars["String"]>;
+  /** Component Name */
+  componentName?: Maybe<Scalars["String"]>;
+};
+
+export type MinikubeComponentConstraintsRequest = {
+  /** Component Display Name */
+  componentDisplayName?: Maybe<Scalars["String"]>;
+  /** Component Name */
+  componentName?: Maybe<Scalars["String"]>;
+};
+
+/** Get a Minikube Component Reply */
+export type MinikubeComponentGetReply = {
+  __typename?: "MinikubeComponentGetReply";
+  /** Minikube Component Item */
+  item?: Maybe<MinikubeComponent>;
+};
+
+/** Get a Minikube Component Request */
+export type MinikubeComponentGetRequest = {
+  /** Minikube Component ID */
+  id?: Maybe<Scalars["ID"]>;
+};
+
+/** List Minikube Component Reply */
+export type MinikubeComponentListReply = {
+  __typename?: "MinikubeComponentListReply";
+  /** Items */
+  items?: Maybe<Array<MinikubeComponent>>;
+  /** Next Page Token */
+  nextPageToken?: Maybe<Scalars["String"]>;
+  /** Total Count */
+  totalCount?: Maybe<Scalars["String"]>;
+};
+
+/** List Minikube Component Request */
+export type MinikubeComponentListRequest = {
+  /** Order By */
+  orderBy?: Maybe<Scalars["String"]>;
+  /** Order By Direction */
+  orderByDirection?: Maybe<DataPageTokenOrderByDirection>;
+  /** Page Size */
+  pageSize?: Maybe<Scalars["String"]>;
+  /** Page Token */
+  pageToken?: Maybe<Scalars["String"]>;
+  /** Query */
+  query?: Maybe<DataQueryRequest>;
+  /** Scope By Tenant ID */
+  scopeByTenantId?: Maybe<Scalars["String"]>;
+};
+
+/** Pick Component Reply */
+export type MinikubeComponentPickReply = {
+  __typename?: "MinikubeComponentPickReply";
+  /** Chosen Component */
+  component?: Maybe<MinikubeComponent>;
+  /** Implicit Constraints */
+  implicitConstraints?: Maybe<MinikubeComponentConstraints>;
+};
+
+/** Pick Component Request */
+export type MinikubeComponentPickRequest = {
+  /** Constraints */
+  constraints?: Maybe<MinikubeComponentConstraintsRequest>;
+};
+
+export type MinikubeEntity = {
+  __typename?: "MinikubeEntity";
+  associations?: Maybe<MinikubeEntityAssociations>;
+  /** Constraints */
+  constraints?: Maybe<MinikubeComponentConstraints>;
+  /** Entity Description */
+  description?: Maybe<Scalars["String"]>;
+  /** Minikube Entity Display Name */
+  displayName?: Maybe<Scalars["String"]>;
+  /** Minikube Entity ID */
+  id?: Maybe<Scalars["ID"]>;
+  /** Implicit Constraints */
+  implicitConstraints?: Maybe<MinikubeComponentConstraints>;
+  /** Minikube Entity Name */
+  name?: Maybe<Scalars["String"]>;
+  /** Properties */
+  properties?: Maybe<MinikubeEntityProperties>;
+  /** SI Properties */
+  siProperties?: Maybe<EntitySiProperties>;
+  /** SI Storable */
+  siStorable?: Maybe<DataStorable>;
+};
+
+/** Minikube Entity Associations */
+export type MinikubeEntityAssociations = {
+  __typename?: "MinikubeEntityAssociations";
+  /** System Initiative Billing Account */
+  billingAccount?: Maybe<BillingAccountGetReply>;
+};
+
+/** Create Entity Reply */
+export type MinikubeEntityCreateReply = {
+  __typename?: "MinikubeEntityCreateReply";
+  /** minikubeEntity Item */
+  item?: Maybe<MinikubeEntity>;
+};
+
+/** Create Entity Request */
+export type MinikubeEntityCreateRequest = {
+  /** Change Set ID */
+  changeSetId?: Maybe<Scalars["String"]>;
+  /** Constraints */
+  constraints?: Maybe<MinikubeComponentConstraintsRequest>;
+  /** Description */
+  description?: Maybe<Scalars["String"]>;
+  /** Display Name */
+  displayName?: Maybe<Scalars["String"]>;
+  /** Name */
+  name?: Maybe<Scalars["String"]>;
+  /** Properties */
+  properties?: Maybe<MinikubeEntityPropertiesRequest>;
+  /** Workspace ID */
+  workspaceId?: Maybe<Scalars["String"]>;
+};
+
+/** Delete Entity Reply */
+export type MinikubeEntityDeleteReply = {
+  __typename?: "MinikubeEntityDeleteReply";
+  /** minikube Item */
+  item?: Maybe<MinikubeEntity>;
+};
+
+/** Delete Entity Request */
+export type MinikubeEntityDeleteRequest = {
+  /** Change Set ID */
+  changeSetId?: Maybe<Scalars["String"]>;
+  /** minikubeEntity ID */
+  id?: Maybe<Scalars["ID"]>;
+};
+
+export type MinikubeEntityEvent = {
+  __typename?: "MinikubeEntityEvent";
+  /** Action Name */
+  actionName?: Maybe<Scalars["String"]>;
+  /** Creation Time */
+  createTime?: Maybe<Scalars["String"]>;
+  /** Error Lines */
+  errorLines?: Maybe<Array<Scalars["String"]>>;
+  /** Error Message */
+  errorMessage?: Maybe<Scalars["String"]>;
+  /** Finalized */
+  finalized?: Maybe<Scalars["Boolean"]>;
+  /** Final Time */
+  finalTime?: Maybe<Scalars["String"]>;
+  /** Minikube EntityEvent ID */
+  id?: Maybe<Scalars["ID"]>;
+  /** Input Entity */
+  inputEntity?: Maybe<MinikubeEntity>;
+  /** Output Entity */
+  outputEntity?: Maybe<MinikubeEntity>;
+  /** Output Lines */
+  outputLines?: Maybe<Array<Scalars["String"]>>;
+  /** Previous Entity */
+  previousEntity?: Maybe<MinikubeEntity>;
+  /** SI Properties */
+  siProperties?: Maybe<EntityEventSiProperties>;
+  /** SI Storable */
+  siStorable?: Maybe<DataStorable>;
+  /** success */
+  success?: Maybe<Scalars["Boolean"]>;
+  /** Updated Time */
+  updatedTime?: Maybe<Scalars["String"]>;
+  /** User ID */
+  userId?: Maybe<Scalars["String"]>;
+};
+
+/** List Minikube EntityEvent Reply */
+export type MinikubeEntityEventListReply = {
+  __typename?: "MinikubeEntityEventListReply";
+  /** Items */
+  items?: Maybe<Array<MinikubeEntityEvent>>;
+  /** Next Page Token */
+  nextPageToken?: Maybe<Scalars["String"]>;
+  /** Total Count */
+  totalCount?: Maybe<Scalars["String"]>;
+};
+
+/** List Minikube EntityEvent Request */
+export type MinikubeEntityEventListRequest = {
+  /** Order By */
+  orderBy?: Maybe<Scalars["String"]>;
+  /** Order By Direction */
+  orderByDirection?: Maybe<DataPageTokenOrderByDirection>;
+  /** Page Size */
+  pageSize?: Maybe<Scalars["String"]>;
+  /** Page Token */
+  pageToken?: Maybe<Scalars["String"]>;
+  /** Query */
+  query?: Maybe<DataQueryRequest>;
+  /** Scope By Tenant ID */
+  scopeByTenantId?: Maybe<Scalars["String"]>;
+};
+
+/** Get a Minikube Entity Reply */
+export type MinikubeEntityGetReply = {
+  __typename?: "MinikubeEntityGetReply";
+  /** Minikube Entity Item */
+  item?: Maybe<MinikubeEntity>;
+};
+
+/** Get a Minikube Entity Request */
+export type MinikubeEntityGetRequest = {
+  /** Minikube Entity ID */
+  id?: Maybe<Scalars["ID"]>;
+};
+
+/** List Minikube Entity Reply */
+export type MinikubeEntityListReply = {
+  __typename?: "MinikubeEntityListReply";
+  /** Items */
+  items?: Maybe<Array<MinikubeEntity>>;
+  /** Next Page Token */
+  nextPageToken?: Maybe<Scalars["String"]>;
+  /** Total Count */
+  totalCount?: Maybe<Scalars["String"]>;
+};
+
+/** List Minikube Entity Request */
+export type MinikubeEntityListRequest = {
+  /** Order By */
+  orderBy?: Maybe<Scalars["String"]>;
+  /** Order By Direction */
+  orderByDirection?: Maybe<DataPageTokenOrderByDirection>;
+  /** Page Size */
+  pageSize?: Maybe<Scalars["String"]>;
+  /** Page Token */
+  pageToken?: Maybe<Scalars["String"]>;
+  /** Query */
+  query?: Maybe<DataQueryRequest>;
+  /** Scope By Tenant ID */
+  scopeByTenantId?: Maybe<Scalars["String"]>;
+};
+
+export type MinikubeEntityProperties = {
+  __typename?: "MinikubeEntityProperties";
+  /** driver */
+  driver?: Maybe<Scalars["String"]>;
+  /** Kubernetes Version */
+  kubernetesVersion?: Maybe<Scalars["String"]>;
+};
+
+export type MinikubeEntityPropertiesRequest = {
+  /** driver */
+  driver?: Maybe<Scalars["String"]>;
+  /** Kubernetes Version */
+  kubernetesVersion?: Maybe<Scalars["String"]>;
+};
+
+/** Start Reply */
+export type MinikubeEntityStartReply = {
+  __typename?: "MinikubeEntityStartReply";
+  /** Entity Event */
+  item?: Maybe<MinikubeEntityEvent>;
+};
+
+/** Start Request */
+export type MinikubeEntityStartRequest = {
+  /** Change Set ID */
+  changeSetId?: Maybe<Scalars["String"]>;
+  /** Entity ID */
+  id?: Maybe<Scalars["ID"]>;
+};
+
+/** Stop Reply */
+export type MinikubeEntityStopReply = {
+  __typename?: "MinikubeEntityStopReply";
+  /** Entity Event */
+  item?: Maybe<MinikubeEntityEvent>;
+};
+
+/** Stop Request */
+export type MinikubeEntityStopRequest = {
+  /** Change Set ID */
+  changeSetId?: Maybe<Scalars["String"]>;
+  /** Entity ID */
+  id?: Maybe<Scalars["ID"]>;
+};
+
+/** Sync State Reply */
+export type MinikubeEntitySyncReply = {
+  __typename?: "MinikubeEntitySyncReply";
+  /** Entity Event */
+  item?: Maybe<MinikubeEntityEvent>;
+};
+
+/** Sync State Request */
+export type MinikubeEntitySyncRequest = {
+  /** Change Set ID */
+  changeSetId?: Maybe<Scalars["String"]>;
+  /** Entity ID */
+  id?: Maybe<Scalars["ID"]>;
+};
+
+/** Update an Entity Reply */
+export type MinikubeEntityUpdateReply = {
+  __typename?: "MinikubeEntityUpdateReply";
+  /** minikube Item */
+  item?: Maybe<MinikubeEntity>;
+};
+
+/** Update an Entity Request */
+export type MinikubeEntityUpdateRequest = {
+  /** Change Set ID */
+  changeSetId?: Maybe<Scalars["String"]>;
+  /** minikubeEntity ID */
+  id?: Maybe<Scalars["ID"]>;
+  /** minikube Item Update */
+  update?: Maybe<MinikubeEntityUpdateRequestUpdateRequest>;
+};
+
+export type MinikubeEntityUpdateRequestUpdateRequest = {
+  /** description */
+  description?: Maybe<Scalars["String"]>;
+  /** displayName */
+  displayName?: Maybe<Scalars["String"]>;
+  /** name */
+  name?: Maybe<Scalars["String"]>;
+  /** properties */
+  properties?: Maybe<MinikubeEntityPropertiesRequest>;
+};
+
 export type Mutation = {
   __typename?: "Mutation";
+  amiEntityCreate?: Maybe<AmiEntityCreateReply>;
+  amiEntityDelete?: Maybe<AmiEntityDeleteReply>;
+  amiEntitySync?: Maybe<AmiEntitySyncReply>;
+  amiEntityUpdate?: Maybe<AmiEntityUpdateReply>;
   applicationEntityCreate?: Maybe<ApplicationEntityCreateReply>;
   applicationEntityDelete?: Maybe<ApplicationEntityDeleteReply>;
   applicationEntitySync?: Maybe<ApplicationEntitySyncReply>;
@@ -2556,9 +3950,22 @@ export type Mutation = {
   billingAccountSignup?: Maybe<BillingAccountSignupReply>;
   changeSetCreate?: Maybe<ChangeSetCreateReply>;
   changeSetExecute?: Maybe<ChangeSetExecuteReply>;
+  ec2InstanceEntityCreate?: Maybe<Ec2InstanceEntityCreateReply>;
+  ec2InstanceEntityDelete?: Maybe<Ec2InstanceEntityDeleteReply>;
+  ec2InstanceEntityLaunch?: Maybe<Ec2InstanceEntityLaunchReply>;
+  ec2InstanceEntityReboot?: Maybe<Ec2InstanceEntityRebootReply>;
+  ec2InstanceEntityStart?: Maybe<Ec2InstanceEntityStartReply>;
+  ec2InstanceEntityStop?: Maybe<Ec2InstanceEntityStopReply>;
+  ec2InstanceEntitySync?: Maybe<Ec2InstanceEntitySyncReply>;
+  ec2InstanceEntityTerminate?: Maybe<Ec2InstanceEntityTerminateReply>;
+  ec2InstanceEntityUpdate?: Maybe<Ec2InstanceEntityUpdateReply>;
   edgeCreate?: Maybe<EdgeCreateReply>;
   eventLogCreate?: Maybe<EventLogCreateReply>;
   groupCreate?: Maybe<GroupCreateReply>;
+  kubernetesClusterEntityCreate?: Maybe<KubernetesClusterEntityCreateReply>;
+  kubernetesClusterEntityDelete?: Maybe<KubernetesClusterEntityDeleteReply>;
+  kubernetesClusterEntitySync?: Maybe<KubernetesClusterEntitySyncReply>;
+  kubernetesClusterEntityUpdate?: Maybe<KubernetesClusterEntityUpdateReply>;
   kubernetesDeploymentEntityApply?: Maybe<KubernetesDeploymentEntityApplyReply>;
   kubernetesDeploymentEntityCreate?: Maybe<
     KubernetesDeploymentEntityCreateReply
@@ -2575,17 +3982,51 @@ export type Mutation = {
   kubernetesServiceEntityDelete?: Maybe<KubernetesServiceEntityDeleteReply>;
   kubernetesServiceEntitySync?: Maybe<KubernetesServiceEntitySyncReply>;
   kubernetesServiceEntityUpdate?: Maybe<KubernetesServiceEntityUpdateReply>;
+  minikubeEntityCreate?: Maybe<MinikubeEntityCreateReply>;
+  minikubeEntityDelete?: Maybe<MinikubeEntityDeleteReply>;
+  minikubeEntityStart?: Maybe<MinikubeEntityStartReply>;
+  minikubeEntityStop?: Maybe<MinikubeEntityStopReply>;
+  minikubeEntitySync?: Maybe<MinikubeEntitySyncReply>;
+  minikubeEntityUpdate?: Maybe<MinikubeEntityUpdateReply>;
   nodeCreate?: Maybe<NodeCreateReply>;
   nodeSetPosition?: Maybe<NodeSetPositionReply>;
   organizationCreate?: Maybe<OrganizationCreateReply>;
+  serverEntityCreate?: Maybe<ServerEntityCreateReply>;
+  serverEntityDelete?: Maybe<ServerEntityDeleteReply>;
+  serverEntityStart?: Maybe<ServerEntityStartReply>;
+  serverEntityStop?: Maybe<ServerEntityStopReply>;
+  serverEntitySync?: Maybe<ServerEntitySyncReply>;
+  serverEntityUpdate?: Maybe<ServerEntityUpdateReply>;
   serviceEntityCreate?: Maybe<ServiceEntityCreateReply>;
   serviceEntityDelete?: Maybe<ServiceEntityDeleteReply>;
   serviceEntityDeploy?: Maybe<ServiceEntityDeployReply>;
   serviceEntitySync?: Maybe<ServiceEntitySyncReply>;
   serviceEntityUpdate?: Maybe<ServiceEntityUpdateReply>;
   systemCreate?: Maybe<SystemCreateReply>;
+  ubuntuEntityCreate?: Maybe<UbuntuEntityCreateReply>;
+  ubuntuEntityDelete?: Maybe<UbuntuEntityDeleteReply>;
+  ubuntuEntityHalt?: Maybe<UbuntuEntityHaltReply>;
+  ubuntuEntityReboot?: Maybe<UbuntuEntityRebootReply>;
+  ubuntuEntitySync?: Maybe<UbuntuEntitySyncReply>;
+  ubuntuEntityUpdate?: Maybe<UbuntuEntityUpdateReply>;
   userCreate?: Maybe<UserCreateReply>;
   workspaceCreate?: Maybe<WorkspaceCreateReply>;
+};
+
+export type MutationAmiEntityCreateArgs = {
+  input?: Maybe<AmiEntityCreateRequest>;
+};
+
+export type MutationAmiEntityDeleteArgs = {
+  input?: Maybe<AmiEntityDeleteRequest>;
+};
+
+export type MutationAmiEntitySyncArgs = {
+  input?: Maybe<AmiEntitySyncRequest>;
+};
+
+export type MutationAmiEntityUpdateArgs = {
+  input?: Maybe<AmiEntityUpdateRequest>;
 };
 
 export type MutationApplicationEntityCreateArgs = {
@@ -2616,6 +4057,42 @@ export type MutationChangeSetExecuteArgs = {
   input?: Maybe<ChangeSetExecuteRequest>;
 };
 
+export type MutationEc2InstanceEntityCreateArgs = {
+  input?: Maybe<Ec2InstanceEntityCreateRequest>;
+};
+
+export type MutationEc2InstanceEntityDeleteArgs = {
+  input?: Maybe<Ec2InstanceEntityDeleteRequest>;
+};
+
+export type MutationEc2InstanceEntityLaunchArgs = {
+  input?: Maybe<Ec2InstanceEntityLaunchRequest>;
+};
+
+export type MutationEc2InstanceEntityRebootArgs = {
+  input?: Maybe<Ec2InstanceEntityRebootRequest>;
+};
+
+export type MutationEc2InstanceEntityStartArgs = {
+  input?: Maybe<Ec2InstanceEntityStartRequest>;
+};
+
+export type MutationEc2InstanceEntityStopArgs = {
+  input?: Maybe<Ec2InstanceEntityStopRequest>;
+};
+
+export type MutationEc2InstanceEntitySyncArgs = {
+  input?: Maybe<Ec2InstanceEntitySyncRequest>;
+};
+
+export type MutationEc2InstanceEntityTerminateArgs = {
+  input?: Maybe<Ec2InstanceEntityTerminateRequest>;
+};
+
+export type MutationEc2InstanceEntityUpdateArgs = {
+  input?: Maybe<Ec2InstanceEntityUpdateRequest>;
+};
+
 export type MutationEdgeCreateArgs = {
   input?: Maybe<EdgeCreateRequest>;
 };
@@ -2626,6 +4103,22 @@ export type MutationEventLogCreateArgs = {
 
 export type MutationGroupCreateArgs = {
   input?: Maybe<GroupCreateRequest>;
+};
+
+export type MutationKubernetesClusterEntityCreateArgs = {
+  input?: Maybe<KubernetesClusterEntityCreateRequest>;
+};
+
+export type MutationKubernetesClusterEntityDeleteArgs = {
+  input?: Maybe<KubernetesClusterEntityDeleteRequest>;
+};
+
+export type MutationKubernetesClusterEntitySyncArgs = {
+  input?: Maybe<KubernetesClusterEntitySyncRequest>;
+};
+
+export type MutationKubernetesClusterEntityUpdateArgs = {
+  input?: Maybe<KubernetesClusterEntityUpdateRequest>;
 };
 
 export type MutationKubernetesDeploymentEntityApplyArgs = {
@@ -2668,6 +4161,30 @@ export type MutationKubernetesServiceEntityUpdateArgs = {
   input?: Maybe<KubernetesServiceEntityUpdateRequest>;
 };
 
+export type MutationMinikubeEntityCreateArgs = {
+  input?: Maybe<MinikubeEntityCreateRequest>;
+};
+
+export type MutationMinikubeEntityDeleteArgs = {
+  input?: Maybe<MinikubeEntityDeleteRequest>;
+};
+
+export type MutationMinikubeEntityStartArgs = {
+  input?: Maybe<MinikubeEntityStartRequest>;
+};
+
+export type MutationMinikubeEntityStopArgs = {
+  input?: Maybe<MinikubeEntityStopRequest>;
+};
+
+export type MutationMinikubeEntitySyncArgs = {
+  input?: Maybe<MinikubeEntitySyncRequest>;
+};
+
+export type MutationMinikubeEntityUpdateArgs = {
+  input?: Maybe<MinikubeEntityUpdateRequest>;
+};
+
 export type MutationNodeCreateArgs = {
   input?: Maybe<NodeCreateRequest>;
 };
@@ -2678,6 +4195,30 @@ export type MutationNodeSetPositionArgs = {
 
 export type MutationOrganizationCreateArgs = {
   input?: Maybe<OrganizationCreateRequest>;
+};
+
+export type MutationServerEntityCreateArgs = {
+  input?: Maybe<ServerEntityCreateRequest>;
+};
+
+export type MutationServerEntityDeleteArgs = {
+  input?: Maybe<ServerEntityDeleteRequest>;
+};
+
+export type MutationServerEntityStartArgs = {
+  input?: Maybe<ServerEntityStartRequest>;
+};
+
+export type MutationServerEntityStopArgs = {
+  input?: Maybe<ServerEntityStopRequest>;
+};
+
+export type MutationServerEntitySyncArgs = {
+  input?: Maybe<ServerEntitySyncRequest>;
+};
+
+export type MutationServerEntityUpdateArgs = {
+  input?: Maybe<ServerEntityUpdateRequest>;
 };
 
 export type MutationServiceEntityCreateArgs = {
@@ -2702,6 +4243,30 @@ export type MutationServiceEntityUpdateArgs = {
 
 export type MutationSystemCreateArgs = {
   input?: Maybe<SystemCreateRequest>;
+};
+
+export type MutationUbuntuEntityCreateArgs = {
+  input?: Maybe<UbuntuEntityCreateRequest>;
+};
+
+export type MutationUbuntuEntityDeleteArgs = {
+  input?: Maybe<UbuntuEntityDeleteRequest>;
+};
+
+export type MutationUbuntuEntityHaltArgs = {
+  input?: Maybe<UbuntuEntityHaltRequest>;
+};
+
+export type MutationUbuntuEntityRebootArgs = {
+  input?: Maybe<UbuntuEntityRebootRequest>;
+};
+
+export type MutationUbuntuEntitySyncArgs = {
+  input?: Maybe<UbuntuEntitySyncRequest>;
+};
+
+export type MutationUbuntuEntityUpdateArgs = {
+  input?: Maybe<UbuntuEntityUpdateRequest>;
 };
 
 export type MutationUserCreateArgs = {
@@ -2975,6 +4540,12 @@ export type OrganizationSiPropertiesRequest = {
 
 export type Query = {
   __typename?: "Query";
+  amiComponentGet?: Maybe<AmiComponentGetReply>;
+  amiComponentList?: Maybe<AmiComponentListReply>;
+  amiComponentPick?: Maybe<AmiComponentPickReply>;
+  amiEntityEventList?: Maybe<AmiEntityEventListReply>;
+  amiEntityGet?: Maybe<AmiEntityGetReply>;
+  amiEntityList?: Maybe<AmiEntityListReply>;
   applicationComponentGet?: Maybe<ApplicationComponentGetReply>;
   applicationComponentList?: Maybe<ApplicationComponentListReply>;
   applicationComponentPick?: Maybe<ApplicationComponentPickReply>;
@@ -2985,6 +4556,12 @@ export type Query = {
   billingAccountList?: Maybe<BillingAccountListReply>;
   changeSetGet?: Maybe<ChangeSetGetReply>;
   changeSetList?: Maybe<ChangeSetListReply>;
+  ec2InstanceComponentGet?: Maybe<Ec2InstanceComponentGetReply>;
+  ec2InstanceComponentList?: Maybe<Ec2InstanceComponentListReply>;
+  ec2InstanceComponentPick?: Maybe<Ec2InstanceComponentPickReply>;
+  ec2InstanceEntityEventList?: Maybe<Ec2InstanceEntityEventListReply>;
+  ec2InstanceEntityGet?: Maybe<Ec2InstanceEntityGetReply>;
+  ec2InstanceEntityList?: Maybe<Ec2InstanceEntityListReply>;
   edgeGet?: Maybe<EdgeGetReply>;
   edgeList?: Maybe<EdgeListReply>;
   eventLogGet?: Maybe<EventLogGetReply>;
@@ -2998,6 +4575,14 @@ export type Query = {
   integrationServiceGet?: Maybe<IntegrationServiceGetReply>;
   itemGet?: Maybe<ItemGetReply>;
   itemList?: Maybe<ItemListReply>;
+  kubernetesClusterComponentGet?: Maybe<KubernetesClusterComponentGetReply>;
+  kubernetesClusterComponentList?: Maybe<KubernetesClusterComponentListReply>;
+  kubernetesClusterComponentPick?: Maybe<KubernetesClusterComponentPickReply>;
+  kubernetesClusterEntityEventList?: Maybe<
+    KubernetesClusterEntityEventListReply
+  >;
+  kubernetesClusterEntityGet?: Maybe<KubernetesClusterEntityGetReply>;
+  kubernetesClusterEntityList?: Maybe<KubernetesClusterEntityListReply>;
   kubernetesDeploymentComponentGet?: Maybe<
     KubernetesDeploymentComponentGetReply
   >;
@@ -3020,10 +4605,22 @@ export type Query = {
   >;
   kubernetesServiceEntityGet?: Maybe<KubernetesServiceEntityGetReply>;
   kubernetesServiceEntityList?: Maybe<KubernetesServiceEntityListReply>;
+  minikubeComponentGet?: Maybe<MinikubeComponentGetReply>;
+  minikubeComponentList?: Maybe<MinikubeComponentListReply>;
+  minikubeComponentPick?: Maybe<MinikubeComponentPickReply>;
+  minikubeEntityEventList?: Maybe<MinikubeEntityEventListReply>;
+  minikubeEntityGet?: Maybe<MinikubeEntityGetReply>;
+  minikubeEntityList?: Maybe<MinikubeEntityListReply>;
   nodeGet?: Maybe<NodeGetReply>;
   nodeList?: Maybe<NodeListReply>;
   organizationGet?: Maybe<OrganizationGetReply>;
   organizationList?: Maybe<OrganizationListReply>;
+  serverComponentGet?: Maybe<ServerComponentGetReply>;
+  serverComponentList?: Maybe<ServerComponentListReply>;
+  serverComponentPick?: Maybe<ServerComponentPickReply>;
+  serverEntityEventList?: Maybe<ServerEntityEventListReply>;
+  serverEntityGet?: Maybe<ServerEntityGetReply>;
+  serverEntityList?: Maybe<ServerEntityListReply>;
   serviceComponentGet?: Maybe<ServiceComponentGetReply>;
   serviceComponentList?: Maybe<ServiceComponentListReply>;
   serviceComponentPick?: Maybe<ServiceComponentPickReply>;
@@ -3032,11 +4629,41 @@ export type Query = {
   serviceEntityList?: Maybe<ServiceEntityListReply>;
   systemGet?: Maybe<SystemGetReply>;
   systemList?: Maybe<SystemListReply>;
+  ubuntuComponentGet?: Maybe<UbuntuComponentGetReply>;
+  ubuntuComponentList?: Maybe<UbuntuComponentListReply>;
+  ubuntuComponentPick?: Maybe<UbuntuComponentPickReply>;
+  ubuntuEntityEventList?: Maybe<UbuntuEntityEventListReply>;
+  ubuntuEntityGet?: Maybe<UbuntuEntityGetReply>;
+  ubuntuEntityList?: Maybe<UbuntuEntityListReply>;
   userGet?: Maybe<UserGetReply>;
   userList?: Maybe<UserListReply>;
   userLogin?: Maybe<UserLoginReply>;
   workspaceGet?: Maybe<WorkspaceGetReply>;
   workspaceList?: Maybe<WorkspaceListReply>;
+};
+
+export type QueryAmiComponentGetArgs = {
+  input?: Maybe<AmiComponentGetRequest>;
+};
+
+export type QueryAmiComponentListArgs = {
+  input?: Maybe<AmiComponentListRequest>;
+};
+
+export type QueryAmiComponentPickArgs = {
+  input?: Maybe<AmiComponentPickRequest>;
+};
+
+export type QueryAmiEntityEventListArgs = {
+  input?: Maybe<AmiEntityEventListRequest>;
+};
+
+export type QueryAmiEntityGetArgs = {
+  input?: Maybe<AmiEntityGetRequest>;
+};
+
+export type QueryAmiEntityListArgs = {
+  input?: Maybe<AmiEntityListRequest>;
 };
 
 export type QueryApplicationComponentGetArgs = {
@@ -3077,6 +4704,30 @@ export type QueryChangeSetGetArgs = {
 
 export type QueryChangeSetListArgs = {
   input?: Maybe<ChangeSetListRequest>;
+};
+
+export type QueryEc2InstanceComponentGetArgs = {
+  input?: Maybe<Ec2InstanceComponentGetRequest>;
+};
+
+export type QueryEc2InstanceComponentListArgs = {
+  input?: Maybe<Ec2InstanceComponentListRequest>;
+};
+
+export type QueryEc2InstanceComponentPickArgs = {
+  input?: Maybe<Ec2InstanceComponentPickRequest>;
+};
+
+export type QueryEc2InstanceEntityEventListArgs = {
+  input?: Maybe<Ec2InstanceEntityEventListRequest>;
+};
+
+export type QueryEc2InstanceEntityGetArgs = {
+  input?: Maybe<Ec2InstanceEntityGetRequest>;
+};
+
+export type QueryEc2InstanceEntityListArgs = {
+  input?: Maybe<Ec2InstanceEntityListRequest>;
 };
 
 export type QueryEdgeGetArgs = {
@@ -3131,6 +4782,30 @@ export type QueryItemListArgs = {
   input?: Maybe<ItemListRequest>;
 };
 
+export type QueryKubernetesClusterComponentGetArgs = {
+  input?: Maybe<KubernetesClusterComponentGetRequest>;
+};
+
+export type QueryKubernetesClusterComponentListArgs = {
+  input?: Maybe<KubernetesClusterComponentListRequest>;
+};
+
+export type QueryKubernetesClusterComponentPickArgs = {
+  input?: Maybe<KubernetesClusterComponentPickRequest>;
+};
+
+export type QueryKubernetesClusterEntityEventListArgs = {
+  input?: Maybe<KubernetesClusterEntityEventListRequest>;
+};
+
+export type QueryKubernetesClusterEntityGetArgs = {
+  input?: Maybe<KubernetesClusterEntityGetRequest>;
+};
+
+export type QueryKubernetesClusterEntityListArgs = {
+  input?: Maybe<KubernetesClusterEntityListRequest>;
+};
+
 export type QueryKubernetesDeploymentComponentGetArgs = {
   input?: Maybe<KubernetesDeploymentComponentGetRequest>;
 };
@@ -3179,6 +4854,30 @@ export type QueryKubernetesServiceEntityListArgs = {
   input?: Maybe<KubernetesServiceEntityListRequest>;
 };
 
+export type QueryMinikubeComponentGetArgs = {
+  input?: Maybe<MinikubeComponentGetRequest>;
+};
+
+export type QueryMinikubeComponentListArgs = {
+  input?: Maybe<MinikubeComponentListRequest>;
+};
+
+export type QueryMinikubeComponentPickArgs = {
+  input?: Maybe<MinikubeComponentPickRequest>;
+};
+
+export type QueryMinikubeEntityEventListArgs = {
+  input?: Maybe<MinikubeEntityEventListRequest>;
+};
+
+export type QueryMinikubeEntityGetArgs = {
+  input?: Maybe<MinikubeEntityGetRequest>;
+};
+
+export type QueryMinikubeEntityListArgs = {
+  input?: Maybe<MinikubeEntityListRequest>;
+};
+
 export type QueryNodeGetArgs = {
   input?: Maybe<NodeGetRequest>;
 };
@@ -3193,6 +4892,30 @@ export type QueryOrganizationGetArgs = {
 
 export type QueryOrganizationListArgs = {
   input?: Maybe<OrganizationListRequest>;
+};
+
+export type QueryServerComponentGetArgs = {
+  input?: Maybe<ServerComponentGetRequest>;
+};
+
+export type QueryServerComponentListArgs = {
+  input?: Maybe<ServerComponentListRequest>;
+};
+
+export type QueryServerComponentPickArgs = {
+  input?: Maybe<ServerComponentPickRequest>;
+};
+
+export type QueryServerEntityEventListArgs = {
+  input?: Maybe<ServerEntityEventListRequest>;
+};
+
+export type QueryServerEntityGetArgs = {
+  input?: Maybe<ServerEntityGetRequest>;
+};
+
+export type QueryServerEntityListArgs = {
+  input?: Maybe<ServerEntityListRequest>;
 };
 
 export type QueryServiceComponentGetArgs = {
@@ -3227,6 +4950,30 @@ export type QuerySystemListArgs = {
   input?: Maybe<SystemListRequest>;
 };
 
+export type QueryUbuntuComponentGetArgs = {
+  input?: Maybe<UbuntuComponentGetRequest>;
+};
+
+export type QueryUbuntuComponentListArgs = {
+  input?: Maybe<UbuntuComponentListRequest>;
+};
+
+export type QueryUbuntuComponentPickArgs = {
+  input?: Maybe<UbuntuComponentPickRequest>;
+};
+
+export type QueryUbuntuEntityEventListArgs = {
+  input?: Maybe<UbuntuEntityEventListRequest>;
+};
+
+export type QueryUbuntuEntityGetArgs = {
+  input?: Maybe<UbuntuEntityGetRequest>;
+};
+
+export type QueryUbuntuEntityListArgs = {
+  input?: Maybe<UbuntuEntityListRequest>;
+};
+
 export type QueryUserGetArgs = {
   input?: Maybe<UserGetRequest>;
 };
@@ -3258,6 +5005,359 @@ export type Selector = {
 export type SelectorRequest = {
   key?: Maybe<Scalars["String"]>;
   value?: Maybe<Scalars["String"]>;
+};
+
+export type ServerComponent = {
+  __typename?: "ServerComponent";
+  /** Component Constraints */
+  constraints?: Maybe<ServerComponentConstraints>;
+  /** Component Description */
+  description?: Maybe<Scalars["String"]>;
+  /** Server Component Display Name */
+  displayName?: Maybe<Scalars["String"]>;
+  /** Server Component ID */
+  id?: Maybe<Scalars["ID"]>;
+  /** Server Component Name */
+  name?: Maybe<Scalars["String"]>;
+  /** SI Properties */
+  siProperties?: Maybe<ComponentSiProperties>;
+  /** SI Storable */
+  siStorable?: Maybe<DataStorable>;
+};
+
+export type ServerComponentConstraints = {
+  __typename?: "ServerComponentConstraints";
+  /** Component Display Name */
+  componentDisplayName?: Maybe<Scalars["String"]>;
+  /** Component Name */
+  componentName?: Maybe<Scalars["String"]>;
+};
+
+export type ServerComponentConstraintsRequest = {
+  /** Component Display Name */
+  componentDisplayName?: Maybe<Scalars["String"]>;
+  /** Component Name */
+  componentName?: Maybe<Scalars["String"]>;
+};
+
+/** Get a Server Component Reply */
+export type ServerComponentGetReply = {
+  __typename?: "ServerComponentGetReply";
+  /** Server Component Item */
+  item?: Maybe<ServerComponent>;
+};
+
+/** Get a Server Component Request */
+export type ServerComponentGetRequest = {
+  /** Server Component ID */
+  id?: Maybe<Scalars["ID"]>;
+};
+
+/** List Server Component Reply */
+export type ServerComponentListReply = {
+  __typename?: "ServerComponentListReply";
+  /** Items */
+  items?: Maybe<Array<ServerComponent>>;
+  /** Next Page Token */
+  nextPageToken?: Maybe<Scalars["String"]>;
+  /** Total Count */
+  totalCount?: Maybe<Scalars["String"]>;
+};
+
+/** List Server Component Request */
+export type ServerComponentListRequest = {
+  /** Order By */
+  orderBy?: Maybe<Scalars["String"]>;
+  /** Order By Direction */
+  orderByDirection?: Maybe<DataPageTokenOrderByDirection>;
+  /** Page Size */
+  pageSize?: Maybe<Scalars["String"]>;
+  /** Page Token */
+  pageToken?: Maybe<Scalars["String"]>;
+  /** Query */
+  query?: Maybe<DataQueryRequest>;
+  /** Scope By Tenant ID */
+  scopeByTenantId?: Maybe<Scalars["String"]>;
+};
+
+/** Pick Component Reply */
+export type ServerComponentPickReply = {
+  __typename?: "ServerComponentPickReply";
+  /** Chosen Component */
+  component?: Maybe<ServerComponent>;
+  /** Implicit Constraints */
+  implicitConstraints?: Maybe<ServerComponentConstraints>;
+};
+
+/** Pick Component Request */
+export type ServerComponentPickRequest = {
+  /** Constraints */
+  constraints?: Maybe<ServerComponentConstraintsRequest>;
+};
+
+export type ServerEntity = {
+  __typename?: "ServerEntity";
+  associations?: Maybe<ServerEntityAssociations>;
+  /** Constraints */
+  constraints?: Maybe<ServerComponentConstraints>;
+  /** Entity Description */
+  description?: Maybe<Scalars["String"]>;
+  /** Server Entity Display Name */
+  displayName?: Maybe<Scalars["String"]>;
+  /** Server Entity ID */
+  id?: Maybe<Scalars["ID"]>;
+  /** Implicit Constraints */
+  implicitConstraints?: Maybe<ServerComponentConstraints>;
+  /** Server Entity Name */
+  name?: Maybe<Scalars["String"]>;
+  /** Properties */
+  properties?: Maybe<ServerEntityProperties>;
+  /** SI Properties */
+  siProperties?: Maybe<EntitySiProperties>;
+  /** SI Storable */
+  siStorable?: Maybe<DataStorable>;
+};
+
+/** Server Entity Associations */
+export type ServerEntityAssociations = {
+  __typename?: "ServerEntityAssociations";
+  /** System Initiative Billing Account */
+  billingAccount?: Maybe<BillingAccountGetReply>;
+};
+
+/** Create Entity Reply */
+export type ServerEntityCreateReply = {
+  __typename?: "ServerEntityCreateReply";
+  /** serverEntity Item */
+  item?: Maybe<ServerEntity>;
+};
+
+/** Create Entity Request */
+export type ServerEntityCreateRequest = {
+  /** Change Set ID */
+  changeSetId?: Maybe<Scalars["String"]>;
+  /** Constraints */
+  constraints?: Maybe<ServerComponentConstraintsRequest>;
+  /** Description */
+  description?: Maybe<Scalars["String"]>;
+  /** Display Name */
+  displayName?: Maybe<Scalars["String"]>;
+  /** Name */
+  name?: Maybe<Scalars["String"]>;
+  /** Properties */
+  properties?: Maybe<ServerEntityPropertiesRequest>;
+  /** Workspace ID */
+  workspaceId?: Maybe<Scalars["String"]>;
+};
+
+/** Delete Entity Reply */
+export type ServerEntityDeleteReply = {
+  __typename?: "ServerEntityDeleteReply";
+  /** server Item */
+  item?: Maybe<ServerEntity>;
+};
+
+/** Delete Entity Request */
+export type ServerEntityDeleteRequest = {
+  /** Change Set ID */
+  changeSetId?: Maybe<Scalars["String"]>;
+  /** serverEntity ID */
+  id?: Maybe<Scalars["ID"]>;
+};
+
+export type ServerEntityEvent = {
+  __typename?: "ServerEntityEvent";
+  /** Action Name */
+  actionName?: Maybe<Scalars["String"]>;
+  /** Creation Time */
+  createTime?: Maybe<Scalars["String"]>;
+  /** Error Lines */
+  errorLines?: Maybe<Array<Scalars["String"]>>;
+  /** Error Message */
+  errorMessage?: Maybe<Scalars["String"]>;
+  /** Finalized */
+  finalized?: Maybe<Scalars["Boolean"]>;
+  /** Final Time */
+  finalTime?: Maybe<Scalars["String"]>;
+  /** Server EntityEvent ID */
+  id?: Maybe<Scalars["ID"]>;
+  /** Input Entity */
+  inputEntity?: Maybe<ServerEntity>;
+  /** Output Entity */
+  outputEntity?: Maybe<ServerEntity>;
+  /** Output Lines */
+  outputLines?: Maybe<Array<Scalars["String"]>>;
+  /** Previous Entity */
+  previousEntity?: Maybe<ServerEntity>;
+  /** SI Properties */
+  siProperties?: Maybe<EntityEventSiProperties>;
+  /** SI Storable */
+  siStorable?: Maybe<DataStorable>;
+  /** success */
+  success?: Maybe<Scalars["Boolean"]>;
+  /** Updated Time */
+  updatedTime?: Maybe<Scalars["String"]>;
+  /** User ID */
+  userId?: Maybe<Scalars["String"]>;
+};
+
+/** List Server EntityEvent Reply */
+export type ServerEntityEventListReply = {
+  __typename?: "ServerEntityEventListReply";
+  /** Items */
+  items?: Maybe<Array<ServerEntityEvent>>;
+  /** Next Page Token */
+  nextPageToken?: Maybe<Scalars["String"]>;
+  /** Total Count */
+  totalCount?: Maybe<Scalars["String"]>;
+};
+
+/** List Server EntityEvent Request */
+export type ServerEntityEventListRequest = {
+  /** Order By */
+  orderBy?: Maybe<Scalars["String"]>;
+  /** Order By Direction */
+  orderByDirection?: Maybe<DataPageTokenOrderByDirection>;
+  /** Page Size */
+  pageSize?: Maybe<Scalars["String"]>;
+  /** Page Token */
+  pageToken?: Maybe<Scalars["String"]>;
+  /** Query */
+  query?: Maybe<DataQueryRequest>;
+  /** Scope By Tenant ID */
+  scopeByTenantId?: Maybe<Scalars["String"]>;
+};
+
+/** Get a Server Entity Reply */
+export type ServerEntityGetReply = {
+  __typename?: "ServerEntityGetReply";
+  /** Server Entity Item */
+  item?: Maybe<ServerEntity>;
+};
+
+/** Get a Server Entity Request */
+export type ServerEntityGetRequest = {
+  /** Server Entity ID */
+  id?: Maybe<Scalars["ID"]>;
+};
+
+/** List Server Entity Reply */
+export type ServerEntityListReply = {
+  __typename?: "ServerEntityListReply";
+  /** Items */
+  items?: Maybe<Array<ServerEntity>>;
+  /** Next Page Token */
+  nextPageToken?: Maybe<Scalars["String"]>;
+  /** Total Count */
+  totalCount?: Maybe<Scalars["String"]>;
+};
+
+/** List Server Entity Request */
+export type ServerEntityListRequest = {
+  /** Order By */
+  orderBy?: Maybe<Scalars["String"]>;
+  /** Order By Direction */
+  orderByDirection?: Maybe<DataPageTokenOrderByDirection>;
+  /** Page Size */
+  pageSize?: Maybe<Scalars["String"]>;
+  /** Page Token */
+  pageToken?: Maybe<Scalars["String"]>;
+  /** Query */
+  query?: Maybe<DataQueryRequest>;
+  /** Scope By Tenant ID */
+  scopeByTenantId?: Maybe<Scalars["String"]>;
+};
+
+export type ServerEntityProperties = {
+  __typename?: "ServerEntityProperties";
+  /** cpu */
+  cpu?: Maybe<Scalars["String"]>;
+  /** memory */
+  memory?: Maybe<Scalars["String"]>;
+  /** operatingSystem */
+  operatingSystem?: Maybe<Scalars["String"]>;
+};
+
+export type ServerEntityPropertiesRequest = {
+  /** cpu */
+  cpu?: Maybe<Scalars["String"]>;
+  /** memory */
+  memory?: Maybe<Scalars["String"]>;
+  /** operatingSystem */
+  operatingSystem?: Maybe<Scalars["String"]>;
+};
+
+/** Start Reply */
+export type ServerEntityStartReply = {
+  __typename?: "ServerEntityStartReply";
+  /** Entity Event */
+  item?: Maybe<ServerEntityEvent>;
+};
+
+/** Start Request */
+export type ServerEntityStartRequest = {
+  /** Change Set ID */
+  changeSetId?: Maybe<Scalars["String"]>;
+  /** Entity ID */
+  id?: Maybe<Scalars["ID"]>;
+};
+
+/** Stop Reply */
+export type ServerEntityStopReply = {
+  __typename?: "ServerEntityStopReply";
+  /** Entity Event */
+  item?: Maybe<ServerEntityEvent>;
+};
+
+/** Stop Request */
+export type ServerEntityStopRequest = {
+  /** Change Set ID */
+  changeSetId?: Maybe<Scalars["String"]>;
+  /** Entity ID */
+  id?: Maybe<Scalars["ID"]>;
+};
+
+/** Sync State Reply */
+export type ServerEntitySyncReply = {
+  __typename?: "ServerEntitySyncReply";
+  /** Entity Event */
+  item?: Maybe<ServerEntityEvent>;
+};
+
+/** Sync State Request */
+export type ServerEntitySyncRequest = {
+  /** Change Set ID */
+  changeSetId?: Maybe<Scalars["String"]>;
+  /** Entity ID */
+  id?: Maybe<Scalars["ID"]>;
+};
+
+/** Update an Entity Reply */
+export type ServerEntityUpdateReply = {
+  __typename?: "ServerEntityUpdateReply";
+  /** server Item */
+  item?: Maybe<ServerEntity>;
+};
+
+/** Update an Entity Request */
+export type ServerEntityUpdateRequest = {
+  /** Change Set ID */
+  changeSetId?: Maybe<Scalars["String"]>;
+  /** serverEntity ID */
+  id?: Maybe<Scalars["ID"]>;
+  /** server Item Update */
+  update?: Maybe<ServerEntityUpdateRequestUpdateRequest>;
+};
+
+export type ServerEntityUpdateRequestUpdateRequest = {
+  /** description */
+  description?: Maybe<Scalars["String"]>;
+  /** displayName */
+  displayName?: Maybe<Scalars["String"]>;
+  /** name */
+  name?: Maybe<Scalars["String"]>;
+  /** properties */
+  properties?: Maybe<ServerEntityPropertiesRequest>;
 };
 
 export type ServiceComponent = {
@@ -3703,6 +5803,351 @@ export type SystemSiPropertiesRequest = {
   organizationId?: Maybe<Scalars["String"]>;
   /** Organization ID */
   workspaceId?: Maybe<Scalars["String"]>;
+};
+
+export type UbuntuComponent = {
+  __typename?: "UbuntuComponent";
+  /** Component Constraints */
+  constraints?: Maybe<UbuntuComponentConstraints>;
+  /** Component Description */
+  description?: Maybe<Scalars["String"]>;
+  /** ubuntu Component Display Name */
+  displayName?: Maybe<Scalars["String"]>;
+  /** ubuntu Component ID */
+  id?: Maybe<Scalars["ID"]>;
+  /** ubuntu Component Name */
+  name?: Maybe<Scalars["String"]>;
+  /** SI Properties */
+  siProperties?: Maybe<ComponentSiProperties>;
+  /** SI Storable */
+  siStorable?: Maybe<DataStorable>;
+};
+
+export type UbuntuComponentConstraints = {
+  __typename?: "UbuntuComponentConstraints";
+  /** Component Display Name */
+  componentDisplayName?: Maybe<Scalars["String"]>;
+  /** Component Name */
+  componentName?: Maybe<Scalars["String"]>;
+};
+
+export type UbuntuComponentConstraintsRequest = {
+  /** Component Display Name */
+  componentDisplayName?: Maybe<Scalars["String"]>;
+  /** Component Name */
+  componentName?: Maybe<Scalars["String"]>;
+};
+
+/** Get a ubuntu Component Reply */
+export type UbuntuComponentGetReply = {
+  __typename?: "UbuntuComponentGetReply";
+  /** ubuntu Component Item */
+  item?: Maybe<UbuntuComponent>;
+};
+
+/** Get a ubuntu Component Request */
+export type UbuntuComponentGetRequest = {
+  /** ubuntu Component ID */
+  id?: Maybe<Scalars["ID"]>;
+};
+
+/** List ubuntu Component Reply */
+export type UbuntuComponentListReply = {
+  __typename?: "UbuntuComponentListReply";
+  /** Items */
+  items?: Maybe<Array<UbuntuComponent>>;
+  /** Next Page Token */
+  nextPageToken?: Maybe<Scalars["String"]>;
+  /** Total Count */
+  totalCount?: Maybe<Scalars["String"]>;
+};
+
+/** List ubuntu Component Request */
+export type UbuntuComponentListRequest = {
+  /** Order By */
+  orderBy?: Maybe<Scalars["String"]>;
+  /** Order By Direction */
+  orderByDirection?: Maybe<DataPageTokenOrderByDirection>;
+  /** Page Size */
+  pageSize?: Maybe<Scalars["String"]>;
+  /** Page Token */
+  pageToken?: Maybe<Scalars["String"]>;
+  /** Query */
+  query?: Maybe<DataQueryRequest>;
+  /** Scope By Tenant ID */
+  scopeByTenantId?: Maybe<Scalars["String"]>;
+};
+
+/** Pick Component Reply */
+export type UbuntuComponentPickReply = {
+  __typename?: "UbuntuComponentPickReply";
+  /** Chosen Component */
+  component?: Maybe<UbuntuComponent>;
+  /** Implicit Constraints */
+  implicitConstraints?: Maybe<UbuntuComponentConstraints>;
+};
+
+/** Pick Component Request */
+export type UbuntuComponentPickRequest = {
+  /** Constraints */
+  constraints?: Maybe<UbuntuComponentConstraintsRequest>;
+};
+
+export type UbuntuEntity = {
+  __typename?: "UbuntuEntity";
+  associations?: Maybe<UbuntuEntityAssociations>;
+  /** Constraints */
+  constraints?: Maybe<UbuntuComponentConstraints>;
+  /** Entity Description */
+  description?: Maybe<Scalars["String"]>;
+  /** ubuntu Entity Display Name */
+  displayName?: Maybe<Scalars["String"]>;
+  /** ubuntu Entity ID */
+  id?: Maybe<Scalars["ID"]>;
+  /** Implicit Constraints */
+  implicitConstraints?: Maybe<UbuntuComponentConstraints>;
+  /** ubuntu Entity Name */
+  name?: Maybe<Scalars["String"]>;
+  /** Properties */
+  properties?: Maybe<UbuntuEntityProperties>;
+  /** SI Properties */
+  siProperties?: Maybe<EntitySiProperties>;
+  /** SI Storable */
+  siStorable?: Maybe<DataStorable>;
+};
+
+/** ubuntu Entity Associations */
+export type UbuntuEntityAssociations = {
+  __typename?: "UbuntuEntityAssociations";
+  /** System Initiative Billing Account */
+  billingAccount?: Maybe<BillingAccountGetReply>;
+};
+
+/** Create Entity Reply */
+export type UbuntuEntityCreateReply = {
+  __typename?: "UbuntuEntityCreateReply";
+  /** ubuntuEntity Item */
+  item?: Maybe<UbuntuEntity>;
+};
+
+/** Create Entity Request */
+export type UbuntuEntityCreateRequest = {
+  /** Change Set ID */
+  changeSetId?: Maybe<Scalars["String"]>;
+  /** Constraints */
+  constraints?: Maybe<UbuntuComponentConstraintsRequest>;
+  /** Description */
+  description?: Maybe<Scalars["String"]>;
+  /** Display Name */
+  displayName?: Maybe<Scalars["String"]>;
+  /** Name */
+  name?: Maybe<Scalars["String"]>;
+  /** Properties */
+  properties?: Maybe<UbuntuEntityPropertiesRequest>;
+  /** Workspace ID */
+  workspaceId?: Maybe<Scalars["String"]>;
+};
+
+/** Delete Entity Reply */
+export type UbuntuEntityDeleteReply = {
+  __typename?: "UbuntuEntityDeleteReply";
+  /** ubuntu Item */
+  item?: Maybe<UbuntuEntity>;
+};
+
+/** Delete Entity Request */
+export type UbuntuEntityDeleteRequest = {
+  /** Change Set ID */
+  changeSetId?: Maybe<Scalars["String"]>;
+  /** ubuntuEntity ID */
+  id?: Maybe<Scalars["ID"]>;
+};
+
+export type UbuntuEntityEvent = {
+  __typename?: "UbuntuEntityEvent";
+  /** Action Name */
+  actionName?: Maybe<Scalars["String"]>;
+  /** Creation Time */
+  createTime?: Maybe<Scalars["String"]>;
+  /** Error Lines */
+  errorLines?: Maybe<Array<Scalars["String"]>>;
+  /** Error Message */
+  errorMessage?: Maybe<Scalars["String"]>;
+  /** Finalized */
+  finalized?: Maybe<Scalars["Boolean"]>;
+  /** Final Time */
+  finalTime?: Maybe<Scalars["String"]>;
+  /** ubuntu EntityEvent ID */
+  id?: Maybe<Scalars["ID"]>;
+  /** Input Entity */
+  inputEntity?: Maybe<UbuntuEntity>;
+  /** Output Entity */
+  outputEntity?: Maybe<UbuntuEntity>;
+  /** Output Lines */
+  outputLines?: Maybe<Array<Scalars["String"]>>;
+  /** Previous Entity */
+  previousEntity?: Maybe<UbuntuEntity>;
+  /** SI Properties */
+  siProperties?: Maybe<EntityEventSiProperties>;
+  /** SI Storable */
+  siStorable?: Maybe<DataStorable>;
+  /** success */
+  success?: Maybe<Scalars["Boolean"]>;
+  /** Updated Time */
+  updatedTime?: Maybe<Scalars["String"]>;
+  /** User ID */
+  userId?: Maybe<Scalars["String"]>;
+};
+
+/** List ubuntu EntityEvent Reply */
+export type UbuntuEntityEventListReply = {
+  __typename?: "UbuntuEntityEventListReply";
+  /** Items */
+  items?: Maybe<Array<UbuntuEntityEvent>>;
+  /** Next Page Token */
+  nextPageToken?: Maybe<Scalars["String"]>;
+  /** Total Count */
+  totalCount?: Maybe<Scalars["String"]>;
+};
+
+/** List ubuntu EntityEvent Request */
+export type UbuntuEntityEventListRequest = {
+  /** Order By */
+  orderBy?: Maybe<Scalars["String"]>;
+  /** Order By Direction */
+  orderByDirection?: Maybe<DataPageTokenOrderByDirection>;
+  /** Page Size */
+  pageSize?: Maybe<Scalars["String"]>;
+  /** Page Token */
+  pageToken?: Maybe<Scalars["String"]>;
+  /** Query */
+  query?: Maybe<DataQueryRequest>;
+  /** Scope By Tenant ID */
+  scopeByTenantId?: Maybe<Scalars["String"]>;
+};
+
+/** Get a ubuntu Entity Reply */
+export type UbuntuEntityGetReply = {
+  __typename?: "UbuntuEntityGetReply";
+  /** ubuntu Entity Item */
+  item?: Maybe<UbuntuEntity>;
+};
+
+/** Get a ubuntu Entity Request */
+export type UbuntuEntityGetRequest = {
+  /** ubuntu Entity ID */
+  id?: Maybe<Scalars["ID"]>;
+};
+
+/** Halt Reply */
+export type UbuntuEntityHaltReply = {
+  __typename?: "UbuntuEntityHaltReply";
+  /** Entity Event */
+  item?: Maybe<UbuntuEntityEvent>;
+};
+
+/** Halt Request */
+export type UbuntuEntityHaltRequest = {
+  /** Change Set ID */
+  changeSetId?: Maybe<Scalars["String"]>;
+  /** Entity ID */
+  id?: Maybe<Scalars["ID"]>;
+};
+
+/** List ubuntu Entity Reply */
+export type UbuntuEntityListReply = {
+  __typename?: "UbuntuEntityListReply";
+  /** Items */
+  items?: Maybe<Array<UbuntuEntity>>;
+  /** Next Page Token */
+  nextPageToken?: Maybe<Scalars["String"]>;
+  /** Total Count */
+  totalCount?: Maybe<Scalars["String"]>;
+};
+
+/** List ubuntu Entity Request */
+export type UbuntuEntityListRequest = {
+  /** Order By */
+  orderBy?: Maybe<Scalars["String"]>;
+  /** Order By Direction */
+  orderByDirection?: Maybe<DataPageTokenOrderByDirection>;
+  /** Page Size */
+  pageSize?: Maybe<Scalars["String"]>;
+  /** Page Token */
+  pageToken?: Maybe<Scalars["String"]>;
+  /** Query */
+  query?: Maybe<DataQueryRequest>;
+  /** Scope By Tenant ID */
+  scopeByTenantId?: Maybe<Scalars["String"]>;
+};
+
+export type UbuntuEntityProperties = {
+  __typename?: "UbuntuEntityProperties";
+  /** version */
+  version?: Maybe<Scalars["String"]>;
+};
+
+export type UbuntuEntityPropertiesRequest = {
+  /** version */
+  version?: Maybe<Scalars["String"]>;
+};
+
+/** Reboot Reply */
+export type UbuntuEntityRebootReply = {
+  __typename?: "UbuntuEntityRebootReply";
+  /** Entity Event */
+  item?: Maybe<UbuntuEntityEvent>;
+};
+
+/** Reboot Request */
+export type UbuntuEntityRebootRequest = {
+  /** Change Set ID */
+  changeSetId?: Maybe<Scalars["String"]>;
+  /** Entity ID */
+  id?: Maybe<Scalars["ID"]>;
+};
+
+/** Sync State Reply */
+export type UbuntuEntitySyncReply = {
+  __typename?: "UbuntuEntitySyncReply";
+  /** Entity Event */
+  item?: Maybe<UbuntuEntityEvent>;
+};
+
+/** Sync State Request */
+export type UbuntuEntitySyncRequest = {
+  /** Change Set ID */
+  changeSetId?: Maybe<Scalars["String"]>;
+  /** Entity ID */
+  id?: Maybe<Scalars["ID"]>;
+};
+
+/** Update an Entity Reply */
+export type UbuntuEntityUpdateReply = {
+  __typename?: "UbuntuEntityUpdateReply";
+  /** ubuntu Item */
+  item?: Maybe<UbuntuEntity>;
+};
+
+/** Update an Entity Request */
+export type UbuntuEntityUpdateRequest = {
+  /** Change Set ID */
+  changeSetId?: Maybe<Scalars["String"]>;
+  /** ubuntuEntity ID */
+  id?: Maybe<Scalars["ID"]>;
+  /** ubuntu Item Update */
+  update?: Maybe<UbuntuEntityUpdateRequestUpdateRequest>;
+};
+
+export type UbuntuEntityUpdateRequestUpdateRequest = {
+  /** description */
+  description?: Maybe<Scalars["String"]>;
+  /** displayName */
+  displayName?: Maybe<Scalars["String"]>;
+  /** name */
+  name?: Maybe<Scalars["String"]>;
+  /** properties */
+  properties?: Maybe<UbuntuEntityPropertiesRequest>;
 };
 
 export type User = {

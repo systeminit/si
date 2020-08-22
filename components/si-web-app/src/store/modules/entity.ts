@@ -1,13 +1,20 @@
 import { Module } from "vuex";
 import _ from "lodash";
-import { snakeCase } from "change-case";
+import { snakeCase, camelCase } from "change-case";
 import { registry, Props, PropMethod, PropLink, PropObject } from "si-registry";
 
 import { generateName } from "@/api/names";
 import { graphqlQuery, graphqlMutation } from "@/api/apollo";
 import { RootStore } from "@/store";
-import { Item } from "./node";
-import { ServiceEntity, Edge, NodeNodeKind } from "@/graphql-types";
+import { Item, Node } from "./node";
+import {
+  ServiceEntity,
+  Edge,
+  NodeNodeKind,
+  KubernetesClusterEntity,
+  MinikubeEntity,
+  ServerEntity,
+} from "@/graphql-types";
 
 interface EntityMeta {
   workspaceId: string;
@@ -144,12 +151,636 @@ export const entity: Module<EntityStore, RootStore> = {
     }
   },
   actions: {
+    async serverIntelligence(
+      { state, rootState, dispatch, rootGetters },
+      { entity }: { entity: ServerEntity },
+    ): Promise<void> {
+      dispatch("serverIntelligenceSoftware", { entity });
+      dispatch("serverIntelligenceHardware", { entity });
+    },
+    async serverIntelligenceSoftware(
+      { state, rootState, dispatch, rootGetters },
+      { entity }: { entity: ServerEntity },
+    ): Promise<void> {
+      let targetType = `ubuntu_entity`;
+
+      // It just needs to create a cluster! ha!
+      let smartNode = rootGetters["node/getNodeByEntityId"](entity.id);
+      if (!smartNode) {
+        smartNode = rootGetters["node/getNodeByEntityId"](
+          entity.siStorable?.itemId,
+        );
+      }
+      const smartEdges: Edge[] = rootGetters["edge/filter"]((edge: Edge) => {
+        if (
+          edge.tailVertex?.id == smartNode.id &&
+          edge.headVertex?.typeName == targetType
+        ) {
+          return true;
+        } else {
+          return false;
+        }
+      });
+      // Update
+      if (smartEdges.length > 0) {
+        for (const edge of smartEdges) {
+          let edgeNode = rootGetters["node/getNodeById"](edge.headVertex?.id);
+          if (edgeNode) {
+            // Kubernetes Deployment Entity Update
+            if (edge.headVertex?.typeName == targetType) {
+              // Do nothing! :)
+            }
+          } else {
+            console.log(
+              "broken edge! the node does not exist, but the edge does!",
+              { edge, edgeNode },
+            );
+          }
+        }
+      } else {
+        const currentSystem = rootGetters["system/current"];
+        const systemEdges = rootGetters["edge/allRelatedEdges"](
+          currentSystem.id,
+        );
+        const possibleTargetEdges: Edge[] = _.filter(systemEdges, edge => {
+          if (edge.headVertex.typeName == targetType) {
+            return true;
+          } else {
+            return false;
+          }
+        });
+
+        let targetNode: Node | undefined;
+
+        if (possibleTargetEdges) {
+          // Find the correct target node, since one might exist
+          for (const possibleTargetEdge of possibleTargetEdges) {
+            const possibleTargetNode = rootGetters["node/getNodeById"](
+              possibleTargetEdge.headVertex?.id,
+            );
+            if (
+              rootState.changeSet.current?.id &&
+              possibleTargetNode.display[rootState.changeSet.current.id]
+            ) {
+              targetNode = possibleTargetNode;
+              break;
+            } else if (possibleTargetNode.display["saved"]) {
+              targetNode = possibleTargetNode;
+              break;
+            }
+          }
+        }
+        if (!targetNode) {
+          // Create the new target node, since one does not exist
+          let newEntityPayload: CreateEntityPayload = {
+            typeName: camelCase(targetType),
+            data: {
+              name: `${currentSystem.name}-ubuntu`,
+              description: `${currentSystem.name}-ubuntu`,
+              properties: {
+                version: "20.04 LTS",
+              },
+            },
+          };
+          const createdEntity = await dispatch("create", newEntityPayload);
+          targetNode = rootGetters["node/getNodeByEntityId"](
+            createdEntity.siStorable?.itemId,
+          );
+          let nodeSizeY = 100;
+          let nodeOffsetY = nodeSizeY * 0.5;
+          let nodeOffsetX = 0;
+
+          await dispatch(
+            "node/setNodePosition",
+            {
+              position: {
+                x: smartNode.position.x + nodeOffsetX,
+                y: smartNode.position.y + nodeSizeY + nodeOffsetY,
+              },
+              id: targetNode?.id,
+            },
+            { root: true },
+          );
+        }
+        await dispatch(
+          "edge/create",
+          {
+            tailVertex: {
+              id: smartNode.id,
+              socket: "output",
+              typeName: smartNode.stack[0].siStorable?.typeName,
+            },
+            headVertex: {
+              id: targetNode?.id,
+              socket: "input",
+              typeName: targetNode?.stack[0].siStorable?.typeName,
+            },
+            bidirectional: true,
+          },
+          { root: true },
+        );
+      }
+    },
+    async serverIntelligenceHardware(
+      { state, rootState, dispatch, rootGetters },
+      { entity }: { entity: ServerEntity },
+    ): Promise<void> {
+      let targetType = `ec2_instance_entity`;
+
+      // It just needs to create a cluster! ha!
+      let smartNode = rootGetters["node/getNodeByEntityId"](entity.id);
+      if (!smartNode) {
+        smartNode = rootGetters["node/getNodeByEntityId"](
+          entity.siStorable?.itemId,
+        );
+      }
+      const smartEdges: Edge[] = rootGetters["edge/filter"]((edge: Edge) => {
+        if (
+          edge.tailVertex?.id == smartNode.id &&
+          edge.headVertex?.typeName == targetType
+        ) {
+          return true;
+        } else {
+          return false;
+        }
+      });
+      // Update
+      if (smartEdges.length > 0) {
+        for (const edge of smartEdges) {
+          let edgeNode = rootGetters["node/getNodeById"](edge.headVertex?.id);
+          if (edgeNode) {
+            // Kubernetes Deployment Entity Update
+            if (edge.headVertex?.typeName == targetType) {
+              // Do nothing! :)
+            }
+          } else {
+            console.log(
+              "broken edge! the node does not exist, but the edge does!",
+              { edge, edgeNode },
+            );
+          }
+        }
+      } else {
+        const currentSystem = rootGetters["system/current"];
+        const systemEdges = rootGetters["edge/allRelatedEdges"](
+          currentSystem.id,
+        );
+        const possibleTargetEdges: Edge[] = _.filter(systemEdges, edge => {
+          if (edge.headVertex.typeName == targetType) {
+            return true;
+          } else {
+            return false;
+          }
+        });
+
+        let targetNode: Node | undefined;
+
+        if (possibleTargetEdges) {
+          // Find the correct target node, since one might exist
+          for (const possibleTargetEdge of possibleTargetEdges) {
+            const possibleTargetNode = rootGetters["node/getNodeById"](
+              possibleTargetEdge.headVertex?.id,
+            );
+            if (
+              rootState.changeSet.current?.id &&
+              possibleTargetNode.display[rootState.changeSet.current.id]
+            ) {
+              targetNode = possibleTargetNode;
+              break;
+            } else if (possibleTargetNode.display["saved"]) {
+              targetNode = possibleTargetNode;
+              break;
+            }
+          }
+        }
+        if (!targetNode) {
+          // Create the new target node, since one does not exist
+          let newEntityPayload: CreateEntityPayload = {
+            typeName: camelCase(targetType),
+            data: {
+              name: `${currentSystem.name}-ec2-instance`,
+              description: `${currentSystem.name}-ec2-instance`,
+              properties: {
+                region: "us-east-2",
+                instanceType: "t2.micro",
+              },
+            },
+          };
+          const createdEntity = await dispatch("create", newEntityPayload);
+          targetNode = rootGetters["node/getNodeByEntityId"](
+            createdEntity.siStorable?.itemId,
+          );
+          let nodeSizeY = 100;
+          let nodeOffsetY = nodeSizeY * 0.5;
+          let nodeOffsetX = 0;
+
+          await dispatch(
+            "node/setNodePosition",
+            {
+              position: {
+                x: smartNode.position.x + nodeOffsetX,
+                y: smartNode.position.y + nodeSizeY + nodeOffsetY,
+              },
+              id: targetNode?.id,
+            },
+            { root: true },
+          );
+        }
+        await dispatch(
+          "edge/create",
+          {
+            tailVertex: {
+              id: smartNode.id,
+              socket: "output",
+              typeName: smartNode.stack[0].siStorable?.typeName,
+            },
+            headVertex: {
+              id: targetNode?.id,
+              socket: "input",
+              typeName: targetNode?.stack[0].siStorable?.typeName,
+            },
+            bidirectional: true,
+          },
+          { root: true },
+        );
+      }
+    },
+    async minikubeIntelligence(
+      { state, rootState, dispatch, rootGetters },
+      { entity }: { entity: MinikubeEntity },
+    ): Promise<void> {
+      const targetType = `server_entity`;
+
+      // It just needs to create a cluster! ha!
+      let smartNode = rootGetters["node/getNodeByEntityId"](entity.id);
+      if (!smartNode) {
+        smartNode = rootGetters["node/getNodeByEntityId"](
+          entity.siStorable?.itemId,
+        );
+      }
+      const smartEdges: Edge[] = rootGetters["edge/filter"]((edge: Edge) => {
+        if (
+          edge.tailVertex?.id == smartNode.id &&
+          edge.headVertex?.typeName == targetType
+        ) {
+          return true;
+        } else {
+          return false;
+        }
+      });
+      // Update
+      if (smartEdges.length > 0) {
+        for (const edge of smartEdges) {
+          let edgeNode = rootGetters["node/getNodeById"](edge.headVertex?.id);
+          if (edgeNode) {
+            // Kubernetes Deployment Entity Update
+            if (edge.headVertex?.typeName == targetType) {
+              // Do nothing! :)
+            }
+          } else {
+            console.log(
+              "broken edge! the node does not exist, but the edge does!",
+              { edge, edgeNode },
+            );
+          }
+        }
+      } else {
+        const currentSystem = rootGetters["system/current"];
+        const systemEdges = rootGetters["edge/allRelatedEdges"](
+          currentSystem.id,
+        );
+        const possibleTargetEdges: Edge[] = _.filter(systemEdges, edge => {
+          if (edge.headVertex.typeName == targetType) {
+            return true;
+          } else {
+            return false;
+          }
+        });
+
+        let targetNode: Node | undefined;
+
+        if (possibleTargetEdges) {
+          // Find the correct target node, since one might exist
+          for (const possibleTargetEdge of possibleTargetEdges) {
+            const possibleTargetNode = rootGetters["node/getNodeById"](
+              possibleTargetEdge.headVertex?.id,
+            );
+            if (
+              rootState.changeSet.current?.id &&
+              possibleTargetNode.display[rootState.changeSet.current.id]
+            ) {
+              targetNode = possibleTargetNode;
+              break;
+            } else if (possibleTargetNode.display["saved"]) {
+              targetNode = possibleTargetNode;
+              break;
+            }
+          }
+        }
+        if (!targetNode) {
+          // Create the new target node, since one does not exist
+          let newEntityPayload: CreateEntityPayload = {
+            typeName: camelCase(targetType),
+            data: {
+              name: `${currentSystem.name}-minikube-server`,
+              description: `${currentSystem.name}-minikube-server`,
+              properties: {
+                operatingSystem: "Ubuntu 20.04 LTS",
+                cpu: "Intel x86_64",
+                memory: "1GiB",
+              },
+            },
+          };
+          const createdEntity = await dispatch("create", newEntityPayload);
+          targetNode = rootGetters["node/getNodeByEntityId"](
+            createdEntity.siStorable?.itemId,
+          );
+          let nodeSizeY = 100;
+          let nodeOffsetY = nodeSizeY * 0.5;
+          let nodeOffsetX = 0;
+
+          await dispatch(
+            "node/setNodePosition",
+            {
+              position: {
+                x: smartNode.position.x + nodeOffsetX,
+                y: smartNode.position.y + nodeSizeY + nodeOffsetY,
+              },
+              id: targetNode?.id,
+            },
+            { root: true },
+          );
+        }
+        await dispatch(
+          "edge/create",
+          {
+            tailVertex: {
+              id: smartNode.id,
+              socket: "output",
+              typeName: smartNode.stack[0].siStorable?.typeName,
+            },
+            headVertex: {
+              id: targetNode?.id,
+              socket: "input",
+              typeName: targetNode?.stack[0].siStorable?.typeName,
+            },
+            bidirectional: true,
+          },
+          { root: true },
+        );
+      }
+    },
+    async kubernetesClusterIntelligence(
+      { state, rootState, dispatch, rootGetters },
+      { entity }: { entity: KubernetesClusterEntity },
+    ): Promise<void> {
+      const targetType = `${entity.properties?.class || "minikube"}_entity`;
+
+      // It just needs to create a cluster! ha!
+      let smartNode = rootGetters["node/getNodeByEntityId"](entity.id);
+      if (!smartNode) {
+        smartNode = rootGetters["node/getNodeByEntityId"](
+          entity.siStorable?.itemId,
+        );
+      }
+      const smartEdges: Edge[] = rootGetters["edge/filter"]((edge: Edge) => {
+        if (
+          edge.tailVertex?.id == smartNode.id &&
+          edge.headVertex?.typeName == targetType
+        ) {
+          return true;
+        } else {
+          return false;
+        }
+      });
+      // Update
+      if (smartEdges.length > 0) {
+        for (const edge of smartEdges) {
+          let edgeNode = rootGetters["node/getNodeById"](edge.headVertex?.id);
+          if (edgeNode) {
+            // Kubernetes Deployment Entity Update
+            if (edge.headVertex?.typeName == targetType) {
+              // Do nothing! :)
+            }
+          } else {
+            console.log(
+              "broken edge! the node does not exist, but the edge does!",
+              { edge, edgeNode },
+            );
+          }
+        }
+      } else {
+        const currentSystem = rootGetters["system/current"];
+        const systemEdges = rootGetters["edge/allRelatedEdges"](
+          currentSystem.id,
+        );
+        const possibleTargetEdges: Edge[] = _.filter(systemEdges, edge => {
+          if (edge.headVertex.typeName == targetType) {
+            return true;
+          } else {
+            return false;
+          }
+        });
+
+        let targetNode: Node | undefined;
+
+        if (possibleTargetEdges) {
+          // Find the correct target node, since one might exist
+          for (const possibleTargetEdge of possibleTargetEdges) {
+            const possibleTargetNode = rootGetters["node/getNodeById"](
+              possibleTargetEdge.headVertex?.id,
+            );
+            if (
+              rootState.changeSet.current?.id &&
+              possibleTargetNode.display[rootState.changeSet.current.id]
+            ) {
+              targetNode = possibleTargetNode;
+              break;
+            } else if (possibleTargetNode.display["saved"]) {
+              targetNode = possibleTargetNode;
+              break;
+            }
+          }
+        }
+        if (!targetNode) {
+          // Create the new target node, since one does not exist
+          let newEntityPayload: CreateEntityPayload = {
+            typeName: camelCase(targetType),
+            data: {
+              name: `${currentSystem.name}-minikube`,
+              description: `${currentSystem.name}-minikube`,
+              properties: {
+                kubernetesVersion: "v1.18",
+                driver: "docker",
+              },
+            },
+          };
+          const createdEntity = await dispatch("create", newEntityPayload);
+          targetNode = rootGetters["node/getNodeByEntityId"](
+            createdEntity.siStorable?.itemId,
+          );
+          let nodeSizeY = 100;
+          let nodeOffsetY = nodeSizeY * 0.5;
+          let nodeOffsetX = 0;
+
+          await dispatch(
+            "node/setNodePosition",
+            {
+              position: {
+                x: smartNode.position.x + nodeOffsetX,
+                y: smartNode.position.y + nodeSizeY + nodeOffsetY,
+              },
+              id: targetNode?.id,
+            },
+            { root: true },
+          );
+        }
+        await dispatch(
+          "edge/create",
+          {
+            tailVertex: {
+              id: smartNode.id,
+              socket: "output",
+              typeName: smartNode.stack[0].siStorable?.typeName,
+            },
+            headVertex: {
+              id: targetNode?.id,
+              socket: "input",
+              typeName: targetNode?.stack[0].siStorable?.typeName,
+            },
+            bidirectional: true,
+          },
+          { root: true },
+        );
+      }
+    },
+    async kubernetesObjectIntelligence(
+      { state, rootState, dispatch, rootGetters },
+      { entity }: { entity: ServiceEntity },
+    ): Promise<void> {
+      // It just needs to create a cluster! ha!
+      let smartNode = rootGetters["node/getNodeByEntityId"](entity.id);
+      if (!smartNode) {
+        smartNode = rootGetters["node/getNodeByEntityId"](
+          entity.siStorable?.itemId,
+        );
+      }
+      const smartEdges: Edge[] = rootGetters["edge/filter"]((edge: Edge) => {
+        if (
+          edge.tailVertex?.id == smartNode.id &&
+          edge.headVertex?.typeName == "kubernetes_cluster_entity"
+        ) {
+          return true;
+        } else {
+          return false;
+        }
+      });
+      // Update
+      if (smartEdges.length > 0) {
+        for (const edge of smartEdges) {
+          let edgeNode = rootGetters["node/getNodeById"](edge.headVertex?.id);
+          if (edgeNode) {
+            // Kubernetes Deployment Entity Update
+            if (edge.headVertex?.typeName == "kubernetes_cluster_entity") {
+              // Do nothing! :)
+            }
+          } else {
+            console.log(
+              "broken edge! the node does not exist, but the edge does!",
+              { edge, edgeNode },
+            );
+          }
+        }
+      } else {
+        const currentSystem = rootGetters["system/current"];
+        const systemEdges = rootGetters["edge/allRelatedEdges"](
+          currentSystem.id,
+        );
+        const possibleTargetEdges: Edge[] = _.filter(systemEdges, edge => {
+          if (edge.headVertex.typeName == "kubernetes_cluster_entity") {
+            return true;
+          } else {
+            return false;
+          }
+        });
+
+        let targetNode: Node | undefined;
+
+        if (possibleTargetEdges) {
+          // Find the correct target node, since one might exist
+          for (const possibleTargetEdge of possibleTargetEdges) {
+            const possibleTargetNode = rootGetters["node/getNodeById"](
+              possibleTargetEdge.headVertex?.id,
+            );
+            if (
+              rootState.changeSet.current?.id &&
+              possibleTargetNode.display[rootState.changeSet.current.id]
+            ) {
+              targetNode = possibleTargetNode;
+              break;
+            } else if (possibleTargetNode.display["saved"]) {
+              targetNode = possibleTargetNode;
+              break;
+            }
+          }
+        }
+        if (!targetNode) {
+          // Create the new target node, since one does not exist
+          let newEntityPayload: CreateEntityPayload = {
+            typeName: "kubernetesClusterEntity",
+            data: {
+              name: `${currentSystem.name}-cluster`,
+              description: `${currentSystem.name}-cluster`,
+              properties: {
+                class: "minikube",
+              },
+            },
+          };
+          const createdEntity = await dispatch("create", newEntityPayload);
+          targetNode = rootGetters["node/getNodeByEntityId"](
+            createdEntity.siStorable?.itemId,
+          );
+          let nodeSizeY = 100;
+          let nodeOffsetY = nodeSizeY * 0.5;
+          let nodeOffsetX = 0;
+
+          await dispatch(
+            "node/setNodePosition",
+            {
+              position: {
+                x: smartNode.position.x + nodeOffsetX,
+                y: smartNode.position.y + nodeSizeY + nodeOffsetY,
+              },
+              id: targetNode?.id,
+            },
+            { root: true },
+          );
+        }
+        await dispatch(
+          "edge/create",
+          {
+            tailVertex: {
+              id: smartNode.id,
+              socket: "output",
+              typeName: smartNode.stack[0].siStorable?.typeName,
+            },
+            headVertex: {
+              id: targetNode?.id,
+              socket: "input",
+              typeName: targetNode?.stack[0].siStorable?.typeName,
+            },
+            bidirectional: true,
+          },
+          { root: true },
+        );
+      }
+    },
     async serviceEntityIntelligence(
       { state, dispatch, rootGetters },
       { entity }: { entity: ServiceEntity },
     ): Promise<void> {
       if (entity.properties?.deploymentTarget == "none") {
-      } else if (entity.properties?.deploymentTarget == "kubernetes-minikube") {
+      } else if (entity.properties?.deploymentTarget == "kubernetes") {
         let serviceNode = rootGetters["node/getNodeByEntityId"](entity.id);
         if (!serviceNode) {
           serviceNode = rootGetters["node/getNodeByEntityId"](
@@ -569,6 +1200,17 @@ export const entity: Module<EntityStore, RootStore> = {
       );
       if (entity.siStorable?.typeName == "service_entity") {
         await dispatch("serviceEntityIntelligence", { entity });
+      } else if (
+        entity.siStorable?.typeName == "kubernetes_service_entity" ||
+        entity.siStorable?.typeName == "kubernetes_deployment_entity"
+      ) {
+        await dispatch("kubernetesObjectIntelligence", { entity });
+      } else if (entity.siStorable?.typeName == "kubernetes_cluster_entity") {
+        await dispatch("kubernetesClusterIntelligence", { entity });
+      } else if (entity.siStorable?.typeName == "minikube_entity") {
+        await dispatch("minikubeIntelligence", { entity });
+      } else if (entity.siStorable?.typeName == "server_entity") {
+        await dispatch("serverIntelligence", { entity });
       }
       await dispatch("changeSet/get", { changeSetId }, { root: true });
     },
@@ -656,6 +1298,20 @@ export const entity: Module<EntityStore, RootStore> = {
         },
         { root: true },
       );
+      if (entity.siStorable?.typeName == "service_entity") {
+        await dispatch("serviceEntityIntelligence", { entity });
+      } else if (
+        entity.siStorable?.typeName == "kubernetes_service_entity" ||
+        entity.siStorable?.typeName == "kubernetes_deployment_entity"
+      ) {
+        await dispatch("kubernetesObjectIntelligence", { entity });
+      } else if (entity.siStorable?.typeName == "kubernetes_cluster_entity") {
+        await dispatch("kubernetesClusterIntelligence", { entity });
+      } else if (entity.siStorable?.typeName == "minikube_entity") {
+        await dispatch("minikubeIntelligence", { entity });
+      } else if (entity.siStorable?.typeName == "server_entity") {
+        await dispatch("serverIntelligence", { entity });
+      }
       const newNode = rootGetters["node/getNodeByEntityId"](entityId);
       //await dispatch(
       //  "node/setMouseTrackSelection",

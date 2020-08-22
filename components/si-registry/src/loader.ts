@@ -27,7 +27,13 @@ import "./components/si-core/service";
 import "./components/si-core/system";
 import "./components/si-core/edge";
 import "./components/si-core/node";
+import "./components/si-core/server";
+import "./components/si-core/ubuntu";
+import "./components/si-core/ami";
+import "./components/si-core/ec2instance";
 
 import "./components/si-kubernetes/kubernetes";
+import "./components/si-kubernetes/cluster";
+import "./components/si-kubernetes/minikube";
 import "./components/si-kubernetes/deployment";
 import "./components/si-kubernetes/service";

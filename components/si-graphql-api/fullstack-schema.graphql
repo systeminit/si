@@ -2,6 +2,396 @@
 ### Do not make changes to this file directly
 
 
+type AmiComponent {
+  """Component Constraints"""
+  constraints: AmiComponentConstraints
+
+  """Component Description"""
+  description: String
+
+  """ami Component Display Name"""
+  displayName: String
+
+  """ami Component ID"""
+  id: ID
+
+  """ami Component Name"""
+  name: String
+
+  """SI Properties"""
+  siProperties: ComponentSiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+}
+
+type AmiComponentConstraints {
+  """Component Display Name"""
+  componentDisplayName: String
+
+  """Component Name"""
+  componentName: String
+}
+
+input AmiComponentConstraintsRequest {
+  """Component Display Name"""
+  componentDisplayName: String
+
+  """Component Name"""
+  componentName: String
+}
+
+"""Get a ami Component Reply"""
+type AmiComponentGetReply {
+  """ami Component Item"""
+  item: AmiComponent
+}
+
+"""Get a ami Component Request"""
+input AmiComponentGetRequest {
+  """ami Component ID"""
+  id: ID
+}
+
+"""List ami Component Reply"""
+type AmiComponentListReply {
+  """Items"""
+  items: [AmiComponent!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: String
+}
+
+"""List ami Component Request"""
+input AmiComponentListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: String
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+"""Pick Component Reply"""
+type AmiComponentPickReply {
+  """Chosen Component"""
+  component: AmiComponent
+
+  """Implicit Constraints"""
+  implicitConstraints: AmiComponentConstraints
+}
+
+"""Pick Component Request"""
+input AmiComponentPickRequest {
+  """Constraints"""
+  constraints: AmiComponentConstraintsRequest
+}
+
+type AmiEntity {
+  associations: AmiEntityAssociations
+
+  """Constraints"""
+  constraints: AmiComponentConstraints
+
+  """Entity Description"""
+  description: String
+
+  """ami Entity Display Name"""
+  displayName: String
+
+  """ami Entity ID"""
+  id: ID
+
+  """Implicit Constraints"""
+  implicitConstraints: AmiComponentConstraints
+
+  """ami Entity Name"""
+  name: String
+
+  """Properties"""
+  properties: AmiEntityProperties
+
+  """SI Properties"""
+  siProperties: EntitySiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+}
+
+"""ami Entity Associations"""
+type AmiEntityAssociations {
+  """System Initiative Billing Account"""
+  billingAccount: BillingAccountGetReply
+}
+
+"""Create Entity Reply"""
+type AmiEntityCreateReply {
+  """amiEntity Item"""
+  item: AmiEntity
+}
+
+"""Create Entity Request"""
+input AmiEntityCreateRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """Constraints"""
+  constraints: AmiComponentConstraintsRequest
+
+  """Description"""
+  description: String
+
+  """Display Name"""
+  displayName: String
+
+  """Name"""
+  name: String
+
+  """Properties"""
+  properties: AmiEntityPropertiesRequest
+
+  """Workspace ID"""
+  workspaceId: String
+}
+
+"""Delete Entity Reply"""
+type AmiEntityDeleteReply {
+  """ami Item"""
+  item: AmiEntity
+}
+
+"""Delete Entity Request"""
+input AmiEntityDeleteRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """amiEntity ID"""
+  id: ID
+}
+
+type AmiEntityEvent {
+  """Action Name"""
+  actionName: String
+
+  """Creation Time"""
+  createTime: String
+
+  """Error Lines"""
+  errorLines: [String!]
+
+  """Error Message"""
+  errorMessage: String
+
+  """Finalized"""
+  finalized: Boolean
+
+  """Final Time"""
+  finalTime: String
+
+  """ami EntityEvent ID"""
+  id: ID
+
+  """Input Entity"""
+  inputEntity: AmiEntity
+
+  """Output Entity"""
+  outputEntity: AmiEntity
+
+  """Output Lines"""
+  outputLines: [String!]
+
+  """Previous Entity"""
+  previousEntity: AmiEntity
+
+  """SI Properties"""
+  siProperties: EntityEventSiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+
+  """success"""
+  success: Boolean
+
+  """Updated Time"""
+  updatedTime: String
+
+  """User ID"""
+  userId: String
+}
+
+"""List ami EntityEvent Reply"""
+type AmiEntityEventListReply {
+  """Items"""
+  items: [AmiEntityEvent!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: String
+}
+
+"""List ami EntityEvent Request"""
+input AmiEntityEventListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: String
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+"""Get a ami Entity Reply"""
+type AmiEntityGetReply {
+  """ami Entity Item"""
+  item: AmiEntity
+}
+
+"""Get a ami Entity Request"""
+input AmiEntityGetRequest {
+  """ami Entity ID"""
+  id: ID
+}
+
+"""List ami Entity Reply"""
+type AmiEntityListReply {
+  """Items"""
+  items: [AmiEntity!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: String
+}
+
+"""List ami Entity Request"""
+input AmiEntityListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: String
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+type AmiEntityProperties {
+  """amiId"""
+  amiId: String
+
+  """operatingSystem"""
+  operatingSystem: String
+
+  """region"""
+  region: String
+
+  """rootDeviceType"""
+  rootDeviceType: String
+
+  """virtualization"""
+  virtualization: String
+}
+
+input AmiEntityPropertiesRequest {
+  """amiId"""
+  amiId: String
+
+  """operatingSystem"""
+  operatingSystem: String
+
+  """region"""
+  region: String
+
+  """rootDeviceType"""
+  rootDeviceType: String
+
+  """virtualization"""
+  virtualization: String
+}
+
+"""Sync State Reply"""
+type AmiEntitySyncReply {
+  """Entity Event"""
+  item: AmiEntityEvent
+}
+
+"""Sync State Request"""
+input AmiEntitySyncRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """Entity ID"""
+  id: ID
+}
+
+"""Update an Entity Reply"""
+type AmiEntityUpdateReply {
+  """ami Item"""
+  item: AmiEntity
+}
+
+"""Update an Entity Request"""
+input AmiEntityUpdateRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """amiEntity ID"""
+  id: ID
+
+  """ami Item Update"""
+  update: AmiEntityUpdateRequestUpdateRequest
+}
+
+input AmiEntityUpdateRequestUpdateRequest {
+  """description"""
+  description: String
+
+  """displayName"""
+  displayName: String
+
+  """name"""
+  name: String
+
+  """properties"""
+  properties: AmiEntityPropertiesRequest
+}
+
 type ApplicationComponent {
   """Component Constraints"""
   constraints: ApplicationComponentConstraints
@@ -821,6 +1211,453 @@ enum DataStorableChangeSetEventType {
   UPDATE
 }
 
+type Ec2InstanceComponent {
+  """Component Constraints"""
+  constraints: Ec2InstanceComponentConstraints
+
+  """Component Description"""
+  description: String
+
+  """ec2Instance Component Display Name"""
+  displayName: String
+
+  """ec2Instance Component ID"""
+  id: ID
+
+  """ec2Instance Component Name"""
+  name: String
+
+  """SI Properties"""
+  siProperties: ComponentSiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+}
+
+type Ec2InstanceComponentConstraints {
+  """Component Display Name"""
+  componentDisplayName: String
+
+  """Component Name"""
+  componentName: String
+}
+
+input Ec2InstanceComponentConstraintsRequest {
+  """Component Display Name"""
+  componentDisplayName: String
+
+  """Component Name"""
+  componentName: String
+}
+
+"""Get a ec2Instance Component Reply"""
+type Ec2InstanceComponentGetReply {
+  """ec2Instance Component Item"""
+  item: Ec2InstanceComponent
+}
+
+"""Get a ec2Instance Component Request"""
+input Ec2InstanceComponentGetRequest {
+  """ec2Instance Component ID"""
+  id: ID
+}
+
+"""List ec2Instance Component Reply"""
+type Ec2InstanceComponentListReply {
+  """Items"""
+  items: [Ec2InstanceComponent!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: String
+}
+
+"""List ec2Instance Component Request"""
+input Ec2InstanceComponentListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: String
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+"""Pick Component Reply"""
+type Ec2InstanceComponentPickReply {
+  """Chosen Component"""
+  component: Ec2InstanceComponent
+
+  """Implicit Constraints"""
+  implicitConstraints: Ec2InstanceComponentConstraints
+}
+
+"""Pick Component Request"""
+input Ec2InstanceComponentPickRequest {
+  """Constraints"""
+  constraints: Ec2InstanceComponentConstraintsRequest
+}
+
+type Ec2InstanceEntity {
+  associations: Ec2InstanceEntityAssociations
+
+  """Constraints"""
+  constraints: Ec2InstanceComponentConstraints
+
+  """Entity Description"""
+  description: String
+
+  """ec2Instance Entity Display Name"""
+  displayName: String
+
+  """ec2Instance Entity ID"""
+  id: ID
+
+  """Implicit Constraints"""
+  implicitConstraints: Ec2InstanceComponentConstraints
+
+  """ec2Instance Entity Name"""
+  name: String
+
+  """Properties"""
+  properties: Ec2InstanceEntityProperties
+
+  """SI Properties"""
+  siProperties: EntitySiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+}
+
+"""ec2Instance Entity Associations"""
+type Ec2InstanceEntityAssociations {
+  """System Initiative Billing Account"""
+  billingAccount: BillingAccountGetReply
+}
+
+"""Create Entity Reply"""
+type Ec2InstanceEntityCreateReply {
+  """ec2InstanceEntity Item"""
+  item: Ec2InstanceEntity
+}
+
+"""Create Entity Request"""
+input Ec2InstanceEntityCreateRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """Constraints"""
+  constraints: Ec2InstanceComponentConstraintsRequest
+
+  """Description"""
+  description: String
+
+  """Display Name"""
+  displayName: String
+
+  """Name"""
+  name: String
+
+  """Properties"""
+  properties: Ec2InstanceEntityPropertiesRequest
+
+  """Workspace ID"""
+  workspaceId: String
+}
+
+"""Delete Entity Reply"""
+type Ec2InstanceEntityDeleteReply {
+  """ec2Instance Item"""
+  item: Ec2InstanceEntity
+}
+
+"""Delete Entity Request"""
+input Ec2InstanceEntityDeleteRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """ec2InstanceEntity ID"""
+  id: ID
+}
+
+type Ec2InstanceEntityEvent {
+  """Action Name"""
+  actionName: String
+
+  """Creation Time"""
+  createTime: String
+
+  """Error Lines"""
+  errorLines: [String!]
+
+  """Error Message"""
+  errorMessage: String
+
+  """Finalized"""
+  finalized: Boolean
+
+  """Final Time"""
+  finalTime: String
+
+  """ec2Instance EntityEvent ID"""
+  id: ID
+
+  """Input Entity"""
+  inputEntity: Ec2InstanceEntity
+
+  """Output Entity"""
+  outputEntity: Ec2InstanceEntity
+
+  """Output Lines"""
+  outputLines: [String!]
+
+  """Previous Entity"""
+  previousEntity: Ec2InstanceEntity
+
+  """SI Properties"""
+  siProperties: EntityEventSiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+
+  """success"""
+  success: Boolean
+
+  """Updated Time"""
+  updatedTime: String
+
+  """User ID"""
+  userId: String
+}
+
+"""List ec2Instance EntityEvent Reply"""
+type Ec2InstanceEntityEventListReply {
+  """Items"""
+  items: [Ec2InstanceEntityEvent!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: String
+}
+
+"""List ec2Instance EntityEvent Request"""
+input Ec2InstanceEntityEventListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: String
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+"""Get a ec2Instance Entity Reply"""
+type Ec2InstanceEntityGetReply {
+  """ec2Instance Entity Item"""
+  item: Ec2InstanceEntity
+}
+
+"""Get a ec2Instance Entity Request"""
+input Ec2InstanceEntityGetRequest {
+  """ec2Instance Entity ID"""
+  id: ID
+}
+
+"""launch Reply"""
+type Ec2InstanceEntityLaunchReply {
+  """Entity Event"""
+  item: Ec2InstanceEntityEvent
+}
+
+"""launch Request"""
+input Ec2InstanceEntityLaunchRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """Entity ID"""
+  id: ID
+}
+
+"""List ec2Instance Entity Reply"""
+type Ec2InstanceEntityListReply {
+  """Items"""
+  items: [Ec2InstanceEntity!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: String
+}
+
+"""List ec2Instance Entity Request"""
+input Ec2InstanceEntityListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: String
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+type Ec2InstanceEntityProperties {
+  """instanceType"""
+  instanceType: String
+
+  """region"""
+  region: String
+}
+
+input Ec2InstanceEntityPropertiesRequest {
+  """instanceType"""
+  instanceType: String
+
+  """region"""
+  region: String
+}
+
+"""Reboot Reply"""
+type Ec2InstanceEntityRebootReply {
+  """Entity Event"""
+  item: Ec2InstanceEntityEvent
+}
+
+"""Reboot Request"""
+input Ec2InstanceEntityRebootRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """Entity ID"""
+  id: ID
+}
+
+"""Start Reply"""
+type Ec2InstanceEntityStartReply {
+  """Entity Event"""
+  item: Ec2InstanceEntityEvent
+}
+
+"""Start Request"""
+input Ec2InstanceEntityStartRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """Entity ID"""
+  id: ID
+}
+
+"""Stop Reply"""
+type Ec2InstanceEntityStopReply {
+  """Entity Event"""
+  item: Ec2InstanceEntityEvent
+}
+
+"""Stop Request"""
+input Ec2InstanceEntityStopRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """Entity ID"""
+  id: ID
+}
+
+"""Sync State Reply"""
+type Ec2InstanceEntitySyncReply {
+  """Entity Event"""
+  item: Ec2InstanceEntityEvent
+}
+
+"""Sync State Request"""
+input Ec2InstanceEntitySyncRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """Entity ID"""
+  id: ID
+}
+
+"""Terminate Reply"""
+type Ec2InstanceEntityTerminateReply {
+  """Entity Event"""
+  item: Ec2InstanceEntityEvent
+}
+
+"""Terminate Request"""
+input Ec2InstanceEntityTerminateRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """Entity ID"""
+  id: ID
+}
+
+"""Update an Entity Reply"""
+type Ec2InstanceEntityUpdateReply {
+  """ec2Instance Item"""
+  item: Ec2InstanceEntity
+}
+
+"""Update an Entity Request"""
+input Ec2InstanceEntityUpdateRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """ec2InstanceEntity ID"""
+  id: ID
+
+  """ec2Instance Item Update"""
+  update: Ec2InstanceEntityUpdateRequestUpdateRequest
+}
+
+input Ec2InstanceEntityUpdateRequestUpdateRequest {
+  """description"""
+  description: String
+
+  """displayName"""
+  displayName: String
+
+  """name"""
+  name: String
+
+  """properties"""
+  properties: Ec2InstanceEntityPropertiesRequest
+}
+
 type Edge {
   """Bidirectional"""
   bidirectional: Boolean
@@ -883,6 +1720,7 @@ input EdgeCreateRequest {
 """The kind of edge this is"""
 enum EdgeEdgeKind {
   CONNECTED
+  PART_OF
   UNKNOWN
 }
 
@@ -1673,6 +2511,372 @@ type ItemSiProperties {
 
   """Organization ID"""
   workspaceId: String
+}
+
+type KubernetesClusterComponent {
+  """Component Constraints"""
+  constraints: KubernetesClusterComponentConstraints
+
+  """Component Description"""
+  description: String
+
+  """Kubernetes Cluster Component Display Name"""
+  displayName: String
+
+  """Kubernetes Cluster Component ID"""
+  id: ID
+
+  """Kubernetes Cluster Component Name"""
+  name: String
+
+  """SI Properties"""
+  siProperties: ComponentSiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+}
+
+type KubernetesClusterComponentConstraints {
+  """Component Display Name"""
+  componentDisplayName: String
+
+  """Component Name"""
+  componentName: String
+}
+
+input KubernetesClusterComponentConstraintsRequest {
+  """Component Display Name"""
+  componentDisplayName: String
+
+  """Component Name"""
+  componentName: String
+}
+
+"""Get a Kubernetes Cluster Component Reply"""
+type KubernetesClusterComponentGetReply {
+  """Kubernetes Cluster Component Item"""
+  item: KubernetesClusterComponent
+}
+
+"""Get a Kubernetes Cluster Component Request"""
+input KubernetesClusterComponentGetRequest {
+  """Kubernetes Cluster Component ID"""
+  id: ID
+}
+
+"""List Kubernetes Cluster Component Reply"""
+type KubernetesClusterComponentListReply {
+  """Items"""
+  items: [KubernetesClusterComponent!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: String
+}
+
+"""List Kubernetes Cluster Component Request"""
+input KubernetesClusterComponentListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: String
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+"""Pick Component Reply"""
+type KubernetesClusterComponentPickReply {
+  """Chosen Component"""
+  component: KubernetesClusterComponent
+
+  """Implicit Constraints"""
+  implicitConstraints: KubernetesClusterComponentConstraints
+}
+
+"""Pick Component Request"""
+input KubernetesClusterComponentPickRequest {
+  """Constraints"""
+  constraints: KubernetesClusterComponentConstraintsRequest
+}
+
+type KubernetesClusterEntity {
+  associations: KubernetesClusterEntityAssociations
+
+  """Constraints"""
+  constraints: KubernetesClusterComponentConstraints
+
+  """Entity Description"""
+  description: String
+
+  """Kubernetes Cluster Entity Display Name"""
+  displayName: String
+
+  """Kubernetes Cluster Entity ID"""
+  id: ID
+
+  """Implicit Constraints"""
+  implicitConstraints: KubernetesClusterComponentConstraints
+
+  """Kubernetes Cluster Entity Name"""
+  name: String
+
+  """Properties"""
+  properties: KubernetesClusterEntityProperties
+
+  """SI Properties"""
+  siProperties: EntitySiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+}
+
+"""Kubernetes Cluster Entity Associations"""
+type KubernetesClusterEntityAssociations {
+  """System Initiative Billing Account"""
+  billingAccount: BillingAccountGetReply
+}
+
+"""Create Entity Reply"""
+type KubernetesClusterEntityCreateReply {
+  """kubernetesClusterEntity Item"""
+  item: KubernetesClusterEntity
+}
+
+"""Create Entity Request"""
+input KubernetesClusterEntityCreateRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """Constraints"""
+  constraints: KubernetesClusterComponentConstraintsRequest
+
+  """Description"""
+  description: String
+
+  """Display Name"""
+  displayName: String
+
+  """Name"""
+  name: String
+
+  """Properties"""
+  properties: KubernetesClusterEntityPropertiesRequest
+
+  """Workspace ID"""
+  workspaceId: String
+}
+
+"""Delete Entity Reply"""
+type KubernetesClusterEntityDeleteReply {
+  """kubernetesCluster Item"""
+  item: KubernetesClusterEntity
+}
+
+"""Delete Entity Request"""
+input KubernetesClusterEntityDeleteRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """kubernetesClusterEntity ID"""
+  id: ID
+}
+
+type KubernetesClusterEntityEvent {
+  """Action Name"""
+  actionName: String
+
+  """Creation Time"""
+  createTime: String
+
+  """Error Lines"""
+  errorLines: [String!]
+
+  """Error Message"""
+  errorMessage: String
+
+  """Finalized"""
+  finalized: Boolean
+
+  """Final Time"""
+  finalTime: String
+
+  """Kubernetes Cluster EntityEvent ID"""
+  id: ID
+
+  """Input Entity"""
+  inputEntity: KubernetesClusterEntity
+
+  """Output Entity"""
+  outputEntity: KubernetesClusterEntity
+
+  """Output Lines"""
+  outputLines: [String!]
+
+  """Previous Entity"""
+  previousEntity: KubernetesClusterEntity
+
+  """SI Properties"""
+  siProperties: EntityEventSiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+
+  """success"""
+  success: Boolean
+
+  """Updated Time"""
+  updatedTime: String
+
+  """User ID"""
+  userId: String
+}
+
+"""List Kubernetes Cluster EntityEvent Reply"""
+type KubernetesClusterEntityEventListReply {
+  """Items"""
+  items: [KubernetesClusterEntityEvent!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: String
+}
+
+"""List Kubernetes Cluster EntityEvent Request"""
+input KubernetesClusterEntityEventListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: String
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+"""Get a Kubernetes Cluster Entity Reply"""
+type KubernetesClusterEntityGetReply {
+  """Kubernetes Cluster Entity Item"""
+  item: KubernetesClusterEntity
+}
+
+"""Get a Kubernetes Cluster Entity Request"""
+input KubernetesClusterEntityGetRequest {
+  """Kubernetes Cluster Entity ID"""
+  id: ID
+}
+
+"""List Kubernetes Cluster Entity Reply"""
+type KubernetesClusterEntityListReply {
+  """Items"""
+  items: [KubernetesClusterEntity!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: String
+}
+
+"""List Kubernetes Cluster Entity Request"""
+input KubernetesClusterEntityListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: String
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+type KubernetesClusterEntityProperties {
+  """Class"""
+  class: String
+}
+
+input KubernetesClusterEntityPropertiesRequest {
+  """Class"""
+  class: String
+}
+
+"""Sync State Reply"""
+type KubernetesClusterEntitySyncReply {
+  """Entity Event"""
+  item: KubernetesClusterEntityEvent
+}
+
+"""Sync State Request"""
+input KubernetesClusterEntitySyncRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """Entity ID"""
+  id: ID
+}
+
+"""Update an Entity Reply"""
+type KubernetesClusterEntityUpdateReply {
+  """kubernetesCluster Item"""
+  item: KubernetesClusterEntity
+}
+
+"""Update an Entity Request"""
+input KubernetesClusterEntityUpdateRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """kubernetesClusterEntity ID"""
+  id: ID
+
+  """kubernetesCluster Item Update"""
+  update: KubernetesClusterEntityUpdateRequestUpdateRequest
+}
+
+input KubernetesClusterEntityUpdateRequestUpdateRequest {
+  """description"""
+  description: String
+
+  """displayName"""
+  displayName: String
+
+  """name"""
+  name: String
+
+  """properties"""
+  properties: KubernetesClusterEntityPropertiesRequest
 }
 
 type KubernetesContainer {
@@ -2861,7 +4065,413 @@ input MatchLabelsRequest {
   value: String
 }
 
+type MinikubeComponent {
+  """Component Constraints"""
+  constraints: MinikubeComponentConstraints
+
+  """Component Description"""
+  description: String
+
+  """Minikube Component Display Name"""
+  displayName: String
+
+  """Minikube Component ID"""
+  id: ID
+
+  """Minikube Component Name"""
+  name: String
+
+  """SI Properties"""
+  siProperties: ComponentSiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+}
+
+type MinikubeComponentConstraints {
+  """Component Display Name"""
+  componentDisplayName: String
+
+  """Component Name"""
+  componentName: String
+}
+
+input MinikubeComponentConstraintsRequest {
+  """Component Display Name"""
+  componentDisplayName: String
+
+  """Component Name"""
+  componentName: String
+}
+
+"""Get a Minikube Component Reply"""
+type MinikubeComponentGetReply {
+  """Minikube Component Item"""
+  item: MinikubeComponent
+}
+
+"""Get a Minikube Component Request"""
+input MinikubeComponentGetRequest {
+  """Minikube Component ID"""
+  id: ID
+}
+
+"""List Minikube Component Reply"""
+type MinikubeComponentListReply {
+  """Items"""
+  items: [MinikubeComponent!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: String
+}
+
+"""List Minikube Component Request"""
+input MinikubeComponentListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: String
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+"""Pick Component Reply"""
+type MinikubeComponentPickReply {
+  """Chosen Component"""
+  component: MinikubeComponent
+
+  """Implicit Constraints"""
+  implicitConstraints: MinikubeComponentConstraints
+}
+
+"""Pick Component Request"""
+input MinikubeComponentPickRequest {
+  """Constraints"""
+  constraints: MinikubeComponentConstraintsRequest
+}
+
+type MinikubeEntity {
+  associations: MinikubeEntityAssociations
+
+  """Constraints"""
+  constraints: MinikubeComponentConstraints
+
+  """Entity Description"""
+  description: String
+
+  """Minikube Entity Display Name"""
+  displayName: String
+
+  """Minikube Entity ID"""
+  id: ID
+
+  """Implicit Constraints"""
+  implicitConstraints: MinikubeComponentConstraints
+
+  """Minikube Entity Name"""
+  name: String
+
+  """Properties"""
+  properties: MinikubeEntityProperties
+
+  """SI Properties"""
+  siProperties: EntitySiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+}
+
+"""Minikube Entity Associations"""
+type MinikubeEntityAssociations {
+  """System Initiative Billing Account"""
+  billingAccount: BillingAccountGetReply
+}
+
+"""Create Entity Reply"""
+type MinikubeEntityCreateReply {
+  """minikubeEntity Item"""
+  item: MinikubeEntity
+}
+
+"""Create Entity Request"""
+input MinikubeEntityCreateRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """Constraints"""
+  constraints: MinikubeComponentConstraintsRequest
+
+  """Description"""
+  description: String
+
+  """Display Name"""
+  displayName: String
+
+  """Name"""
+  name: String
+
+  """Properties"""
+  properties: MinikubeEntityPropertiesRequest
+
+  """Workspace ID"""
+  workspaceId: String
+}
+
+"""Delete Entity Reply"""
+type MinikubeEntityDeleteReply {
+  """minikube Item"""
+  item: MinikubeEntity
+}
+
+"""Delete Entity Request"""
+input MinikubeEntityDeleteRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """minikubeEntity ID"""
+  id: ID
+}
+
+type MinikubeEntityEvent {
+  """Action Name"""
+  actionName: String
+
+  """Creation Time"""
+  createTime: String
+
+  """Error Lines"""
+  errorLines: [String!]
+
+  """Error Message"""
+  errorMessage: String
+
+  """Finalized"""
+  finalized: Boolean
+
+  """Final Time"""
+  finalTime: String
+
+  """Minikube EntityEvent ID"""
+  id: ID
+
+  """Input Entity"""
+  inputEntity: MinikubeEntity
+
+  """Output Entity"""
+  outputEntity: MinikubeEntity
+
+  """Output Lines"""
+  outputLines: [String!]
+
+  """Previous Entity"""
+  previousEntity: MinikubeEntity
+
+  """SI Properties"""
+  siProperties: EntityEventSiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+
+  """success"""
+  success: Boolean
+
+  """Updated Time"""
+  updatedTime: String
+
+  """User ID"""
+  userId: String
+}
+
+"""List Minikube EntityEvent Reply"""
+type MinikubeEntityEventListReply {
+  """Items"""
+  items: [MinikubeEntityEvent!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: String
+}
+
+"""List Minikube EntityEvent Request"""
+input MinikubeEntityEventListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: String
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+"""Get a Minikube Entity Reply"""
+type MinikubeEntityGetReply {
+  """Minikube Entity Item"""
+  item: MinikubeEntity
+}
+
+"""Get a Minikube Entity Request"""
+input MinikubeEntityGetRequest {
+  """Minikube Entity ID"""
+  id: ID
+}
+
+"""List Minikube Entity Reply"""
+type MinikubeEntityListReply {
+  """Items"""
+  items: [MinikubeEntity!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: String
+}
+
+"""List Minikube Entity Request"""
+input MinikubeEntityListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: String
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+type MinikubeEntityProperties {
+  """driver"""
+  driver: String
+
+  """Kubernetes Version"""
+  kubernetesVersion: String
+}
+
+input MinikubeEntityPropertiesRequest {
+  """driver"""
+  driver: String
+
+  """Kubernetes Version"""
+  kubernetesVersion: String
+}
+
+"""Start Reply"""
+type MinikubeEntityStartReply {
+  """Entity Event"""
+  item: MinikubeEntityEvent
+}
+
+"""Start Request"""
+input MinikubeEntityStartRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """Entity ID"""
+  id: ID
+}
+
+"""Stop Reply"""
+type MinikubeEntityStopReply {
+  """Entity Event"""
+  item: MinikubeEntityEvent
+}
+
+"""Stop Request"""
+input MinikubeEntityStopRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """Entity ID"""
+  id: ID
+}
+
+"""Sync State Reply"""
+type MinikubeEntitySyncReply {
+  """Entity Event"""
+  item: MinikubeEntityEvent
+}
+
+"""Sync State Request"""
+input MinikubeEntitySyncRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """Entity ID"""
+  id: ID
+}
+
+"""Update an Entity Reply"""
+type MinikubeEntityUpdateReply {
+  """minikube Item"""
+  item: MinikubeEntity
+}
+
+"""Update an Entity Request"""
+input MinikubeEntityUpdateRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """minikubeEntity ID"""
+  id: ID
+
+  """minikube Item Update"""
+  update: MinikubeEntityUpdateRequestUpdateRequest
+}
+
+input MinikubeEntityUpdateRequestUpdateRequest {
+  """description"""
+  description: String
+
+  """displayName"""
+  displayName: String
+
+  """name"""
+  name: String
+
+  """properties"""
+  properties: MinikubeEntityPropertiesRequest
+}
+
 type Mutation {
+  amiEntityCreate(input: AmiEntityCreateRequest): AmiEntityCreateReply
+  amiEntityDelete(input: AmiEntityDeleteRequest): AmiEntityDeleteReply
+  amiEntitySync(input: AmiEntitySyncRequest): AmiEntitySyncReply
+  amiEntityUpdate(input: AmiEntityUpdateRequest): AmiEntityUpdateReply
   applicationEntityCreate(input: ApplicationEntityCreateRequest): ApplicationEntityCreateReply
   applicationEntityDelete(input: ApplicationEntityDeleteRequest): ApplicationEntityDeleteReply
   applicationEntitySync(input: ApplicationEntitySyncRequest): ApplicationEntitySyncReply
@@ -2869,9 +4479,22 @@ type Mutation {
   billingAccountSignup(input: BillingAccountSignupRequest): BillingAccountSignupReply
   changeSetCreate(input: ChangeSetCreateRequest): ChangeSetCreateReply
   changeSetExecute(input: ChangeSetExecuteRequest): ChangeSetExecuteReply
+  ec2InstanceEntityCreate(input: Ec2InstanceEntityCreateRequest): Ec2InstanceEntityCreateReply
+  ec2InstanceEntityDelete(input: Ec2InstanceEntityDeleteRequest): Ec2InstanceEntityDeleteReply
+  ec2InstanceEntityLaunch(input: Ec2InstanceEntityLaunchRequest): Ec2InstanceEntityLaunchReply
+  ec2InstanceEntityReboot(input: Ec2InstanceEntityRebootRequest): Ec2InstanceEntityRebootReply
+  ec2InstanceEntityStart(input: Ec2InstanceEntityStartRequest): Ec2InstanceEntityStartReply
+  ec2InstanceEntityStop(input: Ec2InstanceEntityStopRequest): Ec2InstanceEntityStopReply
+  ec2InstanceEntitySync(input: Ec2InstanceEntitySyncRequest): Ec2InstanceEntitySyncReply
+  ec2InstanceEntityTerminate(input: Ec2InstanceEntityTerminateRequest): Ec2InstanceEntityTerminateReply
+  ec2InstanceEntityUpdate(input: Ec2InstanceEntityUpdateRequest): Ec2InstanceEntityUpdateReply
   edgeCreate(input: EdgeCreateRequest): EdgeCreateReply
   eventLogCreate(input: EventLogCreateRequest): EventLogCreateReply
   groupCreate(input: GroupCreateRequest): GroupCreateReply
+  kubernetesClusterEntityCreate(input: KubernetesClusterEntityCreateRequest): KubernetesClusterEntityCreateReply
+  kubernetesClusterEntityDelete(input: KubernetesClusterEntityDeleteRequest): KubernetesClusterEntityDeleteReply
+  kubernetesClusterEntitySync(input: KubernetesClusterEntitySyncRequest): KubernetesClusterEntitySyncReply
+  kubernetesClusterEntityUpdate(input: KubernetesClusterEntityUpdateRequest): KubernetesClusterEntityUpdateReply
   kubernetesDeploymentEntityApply(input: KubernetesDeploymentEntityApplyRequest): KubernetesDeploymentEntityApplyReply
   kubernetesDeploymentEntityCreate(input: KubernetesDeploymentEntityCreateRequest): KubernetesDeploymentEntityCreateReply
   kubernetesDeploymentEntityDelete(input: KubernetesDeploymentEntityDeleteRequest): KubernetesDeploymentEntityDeleteReply
@@ -2882,15 +4505,33 @@ type Mutation {
   kubernetesServiceEntityDelete(input: KubernetesServiceEntityDeleteRequest): KubernetesServiceEntityDeleteReply
   kubernetesServiceEntitySync(input: KubernetesServiceEntitySyncRequest): KubernetesServiceEntitySyncReply
   kubernetesServiceEntityUpdate(input: KubernetesServiceEntityUpdateRequest): KubernetesServiceEntityUpdateReply
+  minikubeEntityCreate(input: MinikubeEntityCreateRequest): MinikubeEntityCreateReply
+  minikubeEntityDelete(input: MinikubeEntityDeleteRequest): MinikubeEntityDeleteReply
+  minikubeEntityStart(input: MinikubeEntityStartRequest): MinikubeEntityStartReply
+  minikubeEntityStop(input: MinikubeEntityStopRequest): MinikubeEntityStopReply
+  minikubeEntitySync(input: MinikubeEntitySyncRequest): MinikubeEntitySyncReply
+  minikubeEntityUpdate(input: MinikubeEntityUpdateRequest): MinikubeEntityUpdateReply
   nodeCreate(input: NodeCreateRequest): NodeCreateReply
   nodeSetPosition(input: NodeSetPositionRequest): NodeSetPositionReply
   organizationCreate(input: OrganizationCreateRequest): OrganizationCreateReply
+  serverEntityCreate(input: ServerEntityCreateRequest): ServerEntityCreateReply
+  serverEntityDelete(input: ServerEntityDeleteRequest): ServerEntityDeleteReply
+  serverEntityStart(input: ServerEntityStartRequest): ServerEntityStartReply
+  serverEntityStop(input: ServerEntityStopRequest): ServerEntityStopReply
+  serverEntitySync(input: ServerEntitySyncRequest): ServerEntitySyncReply
+  serverEntityUpdate(input: ServerEntityUpdateRequest): ServerEntityUpdateReply
   serviceEntityCreate(input: ServiceEntityCreateRequest): ServiceEntityCreateReply
   serviceEntityDelete(input: ServiceEntityDeleteRequest): ServiceEntityDeleteReply
   serviceEntityDeploy(input: ServiceEntityDeployRequest): ServiceEntityDeployReply
   serviceEntitySync(input: ServiceEntitySyncRequest): ServiceEntitySyncReply
   serviceEntityUpdate(input: ServiceEntityUpdateRequest): ServiceEntityUpdateReply
   systemCreate(input: SystemCreateRequest): SystemCreateReply
+  ubuntuEntityCreate(input: UbuntuEntityCreateRequest): UbuntuEntityCreateReply
+  ubuntuEntityDelete(input: UbuntuEntityDeleteRequest): UbuntuEntityDeleteReply
+  ubuntuEntityHalt(input: UbuntuEntityHaltRequest): UbuntuEntityHaltReply
+  ubuntuEntityReboot(input: UbuntuEntityRebootRequest): UbuntuEntityRebootReply
+  ubuntuEntitySync(input: UbuntuEntitySyncRequest): UbuntuEntitySyncReply
+  ubuntuEntityUpdate(input: UbuntuEntityUpdateRequest): UbuntuEntityUpdateReply
   userCreate(input: UserCreateRequest): UserCreateReply
   workspaceCreate(input: WorkspaceCreateRequest): WorkspaceCreateReply
 }
@@ -3183,6 +4824,12 @@ input OrganizationSiPropertiesRequest {
 }
 
 type Query {
+  amiComponentGet(input: AmiComponentGetRequest): AmiComponentGetReply
+  amiComponentList(input: AmiComponentListRequest): AmiComponentListReply
+  amiComponentPick(input: AmiComponentPickRequest): AmiComponentPickReply
+  amiEntityEventList(input: AmiEntityEventListRequest): AmiEntityEventListReply
+  amiEntityGet(input: AmiEntityGetRequest): AmiEntityGetReply
+  amiEntityList(input: AmiEntityListRequest): AmiEntityListReply
   applicationComponentGet(input: ApplicationComponentGetRequest): ApplicationComponentGetReply
   applicationComponentList(input: ApplicationComponentListRequest): ApplicationComponentListReply
   applicationComponentPick(input: ApplicationComponentPickRequest): ApplicationComponentPickReply
@@ -3193,6 +4840,12 @@ type Query {
   billingAccountList(input: BillingAccountListRequest): BillingAccountListReply
   changeSetGet(input: ChangeSetGetRequest): ChangeSetGetReply
   changeSetList(input: ChangeSetListRequest): ChangeSetListReply
+  ec2InstanceComponentGet(input: Ec2InstanceComponentGetRequest): Ec2InstanceComponentGetReply
+  ec2InstanceComponentList(input: Ec2InstanceComponentListRequest): Ec2InstanceComponentListReply
+  ec2InstanceComponentPick(input: Ec2InstanceComponentPickRequest): Ec2InstanceComponentPickReply
+  ec2InstanceEntityEventList(input: Ec2InstanceEntityEventListRequest): Ec2InstanceEntityEventListReply
+  ec2InstanceEntityGet(input: Ec2InstanceEntityGetRequest): Ec2InstanceEntityGetReply
+  ec2InstanceEntityList(input: Ec2InstanceEntityListRequest): Ec2InstanceEntityListReply
   edgeGet(input: EdgeGetRequest): EdgeGetReply
   edgeList(input: EdgeListRequest): EdgeListReply
   eventLogGet(input: EventLogGetRequest): EventLogGetReply
@@ -3206,6 +4859,12 @@ type Query {
   integrationServiceGet(input: IntegrationServiceGetRequest): IntegrationServiceGetReply
   itemGet(input: ItemGetRequest): ItemGetReply
   itemList(input: ItemListRequest): ItemListReply
+  kubernetesClusterComponentGet(input: KubernetesClusterComponentGetRequest): KubernetesClusterComponentGetReply
+  kubernetesClusterComponentList(input: KubernetesClusterComponentListRequest): KubernetesClusterComponentListReply
+  kubernetesClusterComponentPick(input: KubernetesClusterComponentPickRequest): KubernetesClusterComponentPickReply
+  kubernetesClusterEntityEventList(input: KubernetesClusterEntityEventListRequest): KubernetesClusterEntityEventListReply
+  kubernetesClusterEntityGet(input: KubernetesClusterEntityGetRequest): KubernetesClusterEntityGetReply
+  kubernetesClusterEntityList(input: KubernetesClusterEntityListRequest): KubernetesClusterEntityListReply
   kubernetesDeploymentComponentGet(input: KubernetesDeploymentComponentGetRequest): KubernetesDeploymentComponentGetReply
   kubernetesDeploymentComponentList(input: KubernetesDeploymentComponentListRequest): KubernetesDeploymentComponentListReply
   kubernetesDeploymentComponentPick(input: KubernetesDeploymentComponentPickRequest): KubernetesDeploymentComponentPickReply
@@ -3218,10 +4877,22 @@ type Query {
   kubernetesServiceEntityEventList(input: KubernetesServiceEntityEventListRequest): KubernetesServiceEntityEventListReply
   kubernetesServiceEntityGet(input: KubernetesServiceEntityGetRequest): KubernetesServiceEntityGetReply
   kubernetesServiceEntityList(input: KubernetesServiceEntityListRequest): KubernetesServiceEntityListReply
+  minikubeComponentGet(input: MinikubeComponentGetRequest): MinikubeComponentGetReply
+  minikubeComponentList(input: MinikubeComponentListRequest): MinikubeComponentListReply
+  minikubeComponentPick(input: MinikubeComponentPickRequest): MinikubeComponentPickReply
+  minikubeEntityEventList(input: MinikubeEntityEventListRequest): MinikubeEntityEventListReply
+  minikubeEntityGet(input: MinikubeEntityGetRequest): MinikubeEntityGetReply
+  minikubeEntityList(input: MinikubeEntityListRequest): MinikubeEntityListReply
   nodeGet(input: NodeGetRequest): NodeGetReply
   nodeList(input: NodeListRequest): NodeListReply
   organizationGet(input: OrganizationGetRequest): OrganizationGetReply
   organizationList(input: OrganizationListRequest): OrganizationListReply
+  serverComponentGet(input: ServerComponentGetRequest): ServerComponentGetReply
+  serverComponentList(input: ServerComponentListRequest): ServerComponentListReply
+  serverComponentPick(input: ServerComponentPickRequest): ServerComponentPickReply
+  serverEntityEventList(input: ServerEntityEventListRequest): ServerEntityEventListReply
+  serverEntityGet(input: ServerEntityGetRequest): ServerEntityGetReply
+  serverEntityList(input: ServerEntityListRequest): ServerEntityListReply
   serviceComponentGet(input: ServiceComponentGetRequest): ServiceComponentGetReply
   serviceComponentList(input: ServiceComponentListRequest): ServiceComponentListReply
   serviceComponentPick(input: ServiceComponentPickRequest): ServiceComponentPickReply
@@ -3230,6 +4901,12 @@ type Query {
   serviceEntityList(input: ServiceEntityListRequest): ServiceEntityListReply
   systemGet(input: SystemGetRequest): SystemGetReply
   systemList(input: SystemListRequest): SystemListReply
+  ubuntuComponentGet(input: UbuntuComponentGetRequest): UbuntuComponentGetReply
+  ubuntuComponentList(input: UbuntuComponentListRequest): UbuntuComponentListReply
+  ubuntuComponentPick(input: UbuntuComponentPickRequest): UbuntuComponentPickReply
+  ubuntuEntityEventList(input: UbuntuEntityEventListRequest): UbuntuEntityEventListReply
+  ubuntuEntityGet(input: UbuntuEntityGetRequest): UbuntuEntityGetReply
+  ubuntuEntityList(input: UbuntuEntityListRequest): UbuntuEntityListReply
   userGet(input: UserGetRequest): UserGetReply
   userList(input: UserListRequest): UserListReply
   userLogin(input: UserLoginRequest): UserLoginReply
@@ -3247,6 +4924,414 @@ type Selector {
 input SelectorRequest {
   key: String
   value: String
+}
+
+type ServerComponent {
+  """Component Constraints"""
+  constraints: ServerComponentConstraints
+
+  """Component Description"""
+  description: String
+
+  """Server Component Display Name"""
+  displayName: String
+
+  """Server Component ID"""
+  id: ID
+
+  """Server Component Name"""
+  name: String
+
+  """SI Properties"""
+  siProperties: ComponentSiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+}
+
+type ServerComponentConstraints {
+  """Component Display Name"""
+  componentDisplayName: String
+
+  """Component Name"""
+  componentName: String
+}
+
+input ServerComponentConstraintsRequest {
+  """Component Display Name"""
+  componentDisplayName: String
+
+  """Component Name"""
+  componentName: String
+}
+
+"""Get a Server Component Reply"""
+type ServerComponentGetReply {
+  """Server Component Item"""
+  item: ServerComponent
+}
+
+"""Get a Server Component Request"""
+input ServerComponentGetRequest {
+  """Server Component ID"""
+  id: ID
+}
+
+"""List Server Component Reply"""
+type ServerComponentListReply {
+  """Items"""
+  items: [ServerComponent!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: String
+}
+
+"""List Server Component Request"""
+input ServerComponentListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: String
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+"""Pick Component Reply"""
+type ServerComponentPickReply {
+  """Chosen Component"""
+  component: ServerComponent
+
+  """Implicit Constraints"""
+  implicitConstraints: ServerComponentConstraints
+}
+
+"""Pick Component Request"""
+input ServerComponentPickRequest {
+  """Constraints"""
+  constraints: ServerComponentConstraintsRequest
+}
+
+type ServerEntity {
+  associations: ServerEntityAssociations
+
+  """Constraints"""
+  constraints: ServerComponentConstraints
+
+  """Entity Description"""
+  description: String
+
+  """Server Entity Display Name"""
+  displayName: String
+
+  """Server Entity ID"""
+  id: ID
+
+  """Implicit Constraints"""
+  implicitConstraints: ServerComponentConstraints
+
+  """Server Entity Name"""
+  name: String
+
+  """Properties"""
+  properties: ServerEntityProperties
+
+  """SI Properties"""
+  siProperties: EntitySiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+}
+
+"""Server Entity Associations"""
+type ServerEntityAssociations {
+  """System Initiative Billing Account"""
+  billingAccount: BillingAccountGetReply
+}
+
+"""Create Entity Reply"""
+type ServerEntityCreateReply {
+  """serverEntity Item"""
+  item: ServerEntity
+}
+
+"""Create Entity Request"""
+input ServerEntityCreateRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """Constraints"""
+  constraints: ServerComponentConstraintsRequest
+
+  """Description"""
+  description: String
+
+  """Display Name"""
+  displayName: String
+
+  """Name"""
+  name: String
+
+  """Properties"""
+  properties: ServerEntityPropertiesRequest
+
+  """Workspace ID"""
+  workspaceId: String
+}
+
+"""Delete Entity Reply"""
+type ServerEntityDeleteReply {
+  """server Item"""
+  item: ServerEntity
+}
+
+"""Delete Entity Request"""
+input ServerEntityDeleteRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """serverEntity ID"""
+  id: ID
+}
+
+type ServerEntityEvent {
+  """Action Name"""
+  actionName: String
+
+  """Creation Time"""
+  createTime: String
+
+  """Error Lines"""
+  errorLines: [String!]
+
+  """Error Message"""
+  errorMessage: String
+
+  """Finalized"""
+  finalized: Boolean
+
+  """Final Time"""
+  finalTime: String
+
+  """Server EntityEvent ID"""
+  id: ID
+
+  """Input Entity"""
+  inputEntity: ServerEntity
+
+  """Output Entity"""
+  outputEntity: ServerEntity
+
+  """Output Lines"""
+  outputLines: [String!]
+
+  """Previous Entity"""
+  previousEntity: ServerEntity
+
+  """SI Properties"""
+  siProperties: EntityEventSiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+
+  """success"""
+  success: Boolean
+
+  """Updated Time"""
+  updatedTime: String
+
+  """User ID"""
+  userId: String
+}
+
+"""List Server EntityEvent Reply"""
+type ServerEntityEventListReply {
+  """Items"""
+  items: [ServerEntityEvent!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: String
+}
+
+"""List Server EntityEvent Request"""
+input ServerEntityEventListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: String
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+"""Get a Server Entity Reply"""
+type ServerEntityGetReply {
+  """Server Entity Item"""
+  item: ServerEntity
+}
+
+"""Get a Server Entity Request"""
+input ServerEntityGetRequest {
+  """Server Entity ID"""
+  id: ID
+}
+
+"""List Server Entity Reply"""
+type ServerEntityListReply {
+  """Items"""
+  items: [ServerEntity!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: String
+}
+
+"""List Server Entity Request"""
+input ServerEntityListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: String
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+type ServerEntityProperties {
+  """cpu"""
+  cpu: String
+
+  """memory"""
+  memory: String
+
+  """operatingSystem"""
+  operatingSystem: String
+}
+
+input ServerEntityPropertiesRequest {
+  """cpu"""
+  cpu: String
+
+  """memory"""
+  memory: String
+
+  """operatingSystem"""
+  operatingSystem: String
+}
+
+"""Start Reply"""
+type ServerEntityStartReply {
+  """Entity Event"""
+  item: ServerEntityEvent
+}
+
+"""Start Request"""
+input ServerEntityStartRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """Entity ID"""
+  id: ID
+}
+
+"""Stop Reply"""
+type ServerEntityStopReply {
+  """Entity Event"""
+  item: ServerEntityEvent
+}
+
+"""Stop Request"""
+input ServerEntityStopRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """Entity ID"""
+  id: ID
+}
+
+"""Sync State Reply"""
+type ServerEntitySyncReply {
+  """Entity Event"""
+  item: ServerEntityEvent
+}
+
+"""Sync State Request"""
+input ServerEntitySyncRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """Entity ID"""
+  id: ID
+}
+
+"""Update an Entity Reply"""
+type ServerEntityUpdateReply {
+  """server Item"""
+  item: ServerEntity
+}
+
+"""Update an Entity Request"""
+input ServerEntityUpdateRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """serverEntity ID"""
+  id: ID
+
+  """server Item Update"""
+  update: ServerEntityUpdateRequestUpdateRequest
+}
+
+input ServerEntityUpdateRequestUpdateRequest {
+  """description"""
+  description: String
+
+  """displayName"""
+  displayName: String
+
+  """name"""
+  name: String
+
+  """properties"""
+  properties: ServerEntityPropertiesRequest
 }
 
 type ServiceComponent {
@@ -3756,6 +5841,402 @@ input SystemSiPropertiesRequest {
 
   """Organization ID"""
   workspaceId: String
+}
+
+type UbuntuComponent {
+  """Component Constraints"""
+  constraints: UbuntuComponentConstraints
+
+  """Component Description"""
+  description: String
+
+  """ubuntu Component Display Name"""
+  displayName: String
+
+  """ubuntu Component ID"""
+  id: ID
+
+  """ubuntu Component Name"""
+  name: String
+
+  """SI Properties"""
+  siProperties: ComponentSiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+}
+
+type UbuntuComponentConstraints {
+  """Component Display Name"""
+  componentDisplayName: String
+
+  """Component Name"""
+  componentName: String
+}
+
+input UbuntuComponentConstraintsRequest {
+  """Component Display Name"""
+  componentDisplayName: String
+
+  """Component Name"""
+  componentName: String
+}
+
+"""Get a ubuntu Component Reply"""
+type UbuntuComponentGetReply {
+  """ubuntu Component Item"""
+  item: UbuntuComponent
+}
+
+"""Get a ubuntu Component Request"""
+input UbuntuComponentGetRequest {
+  """ubuntu Component ID"""
+  id: ID
+}
+
+"""List ubuntu Component Reply"""
+type UbuntuComponentListReply {
+  """Items"""
+  items: [UbuntuComponent!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: String
+}
+
+"""List ubuntu Component Request"""
+input UbuntuComponentListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: String
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+"""Pick Component Reply"""
+type UbuntuComponentPickReply {
+  """Chosen Component"""
+  component: UbuntuComponent
+
+  """Implicit Constraints"""
+  implicitConstraints: UbuntuComponentConstraints
+}
+
+"""Pick Component Request"""
+input UbuntuComponentPickRequest {
+  """Constraints"""
+  constraints: UbuntuComponentConstraintsRequest
+}
+
+type UbuntuEntity {
+  associations: UbuntuEntityAssociations
+
+  """Constraints"""
+  constraints: UbuntuComponentConstraints
+
+  """Entity Description"""
+  description: String
+
+  """ubuntu Entity Display Name"""
+  displayName: String
+
+  """ubuntu Entity ID"""
+  id: ID
+
+  """Implicit Constraints"""
+  implicitConstraints: UbuntuComponentConstraints
+
+  """ubuntu Entity Name"""
+  name: String
+
+  """Properties"""
+  properties: UbuntuEntityProperties
+
+  """SI Properties"""
+  siProperties: EntitySiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+}
+
+"""ubuntu Entity Associations"""
+type UbuntuEntityAssociations {
+  """System Initiative Billing Account"""
+  billingAccount: BillingAccountGetReply
+}
+
+"""Create Entity Reply"""
+type UbuntuEntityCreateReply {
+  """ubuntuEntity Item"""
+  item: UbuntuEntity
+}
+
+"""Create Entity Request"""
+input UbuntuEntityCreateRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """Constraints"""
+  constraints: UbuntuComponentConstraintsRequest
+
+  """Description"""
+  description: String
+
+  """Display Name"""
+  displayName: String
+
+  """Name"""
+  name: String
+
+  """Properties"""
+  properties: UbuntuEntityPropertiesRequest
+
+  """Workspace ID"""
+  workspaceId: String
+}
+
+"""Delete Entity Reply"""
+type UbuntuEntityDeleteReply {
+  """ubuntu Item"""
+  item: UbuntuEntity
+}
+
+"""Delete Entity Request"""
+input UbuntuEntityDeleteRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """ubuntuEntity ID"""
+  id: ID
+}
+
+type UbuntuEntityEvent {
+  """Action Name"""
+  actionName: String
+
+  """Creation Time"""
+  createTime: String
+
+  """Error Lines"""
+  errorLines: [String!]
+
+  """Error Message"""
+  errorMessage: String
+
+  """Finalized"""
+  finalized: Boolean
+
+  """Final Time"""
+  finalTime: String
+
+  """ubuntu EntityEvent ID"""
+  id: ID
+
+  """Input Entity"""
+  inputEntity: UbuntuEntity
+
+  """Output Entity"""
+  outputEntity: UbuntuEntity
+
+  """Output Lines"""
+  outputLines: [String!]
+
+  """Previous Entity"""
+  previousEntity: UbuntuEntity
+
+  """SI Properties"""
+  siProperties: EntityEventSiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+
+  """success"""
+  success: Boolean
+
+  """Updated Time"""
+  updatedTime: String
+
+  """User ID"""
+  userId: String
+}
+
+"""List ubuntu EntityEvent Reply"""
+type UbuntuEntityEventListReply {
+  """Items"""
+  items: [UbuntuEntityEvent!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: String
+}
+
+"""List ubuntu EntityEvent Request"""
+input UbuntuEntityEventListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: String
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+"""Get a ubuntu Entity Reply"""
+type UbuntuEntityGetReply {
+  """ubuntu Entity Item"""
+  item: UbuntuEntity
+}
+
+"""Get a ubuntu Entity Request"""
+input UbuntuEntityGetRequest {
+  """ubuntu Entity ID"""
+  id: ID
+}
+
+"""Halt Reply"""
+type UbuntuEntityHaltReply {
+  """Entity Event"""
+  item: UbuntuEntityEvent
+}
+
+"""Halt Request"""
+input UbuntuEntityHaltRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """Entity ID"""
+  id: ID
+}
+
+"""List ubuntu Entity Reply"""
+type UbuntuEntityListReply {
+  """Items"""
+  items: [UbuntuEntity!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: String
+}
+
+"""List ubuntu Entity Request"""
+input UbuntuEntityListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: String
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+type UbuntuEntityProperties {
+  """version"""
+  version: String
+}
+
+input UbuntuEntityPropertiesRequest {
+  """version"""
+  version: String
+}
+
+"""Reboot Reply"""
+type UbuntuEntityRebootReply {
+  """Entity Event"""
+  item: UbuntuEntityEvent
+}
+
+"""Reboot Request"""
+input UbuntuEntityRebootRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """Entity ID"""
+  id: ID
+}
+
+"""Sync State Reply"""
+type UbuntuEntitySyncReply {
+  """Entity Event"""
+  item: UbuntuEntityEvent
+}
+
+"""Sync State Request"""
+input UbuntuEntitySyncRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """Entity ID"""
+  id: ID
+}
+
+"""Update an Entity Reply"""
+type UbuntuEntityUpdateReply {
+  """ubuntu Item"""
+  item: UbuntuEntity
+}
+
+"""Update an Entity Request"""
+input UbuntuEntityUpdateRequest {
+  """Change Set ID"""
+  changeSetId: String
+
+  """ubuntuEntity ID"""
+  id: ID
+
+  """ubuntu Item Update"""
+  update: UbuntuEntityUpdateRequestUpdateRequest
+}
+
+input UbuntuEntityUpdateRequestUpdateRequest {
+  """description"""
+  description: String
+
+  """displayName"""
+  displayName: String
+
+  """name"""
+  name: String
+
+  """properties"""
+  properties: UbuntuEntityPropertiesRequest
 }
 
 type User {
