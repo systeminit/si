@@ -175,7 +175,6 @@ export const user: Module<UserStore, any> = {
     async logout({ commit }): Promise<void> {
       commit("profile", undefined);
       commit("loggedIn", false);
-      commit("loader/loaded", false, { root: true });
       await onLogout();
       localStorage.removeItem("profile");
     },

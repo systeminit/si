@@ -29,24 +29,27 @@ export const loader: Module<LoaderStore, RootStore> = {
     },
   },
   actions: {
-    async load({ commit, dispatch, rootState }): Promise<void> {
-      commit("loading", true);
-      await dispatch("workspace/load", {}, { root: true });
-      await dispatch(
-        "billingAccount/get",
-        {
-          billingAccountId: rootState.user.auth.profile?.billingAccount?.id,
-        },
-        { root: true },
-      );
-      await dispatch("system/load", {}, { root: true });
-      await dispatch("node/load", {}, { root: true });
-      await dispatch("edge/load", {}, { root: true });
-      await dispatch("changeSet/load", {}, { root: true });
-      await dispatch("entity/load", {}, { root: true });
-      await dispatch("eventLog/load", {}, { root: true });
-      commit("loading", false);
-      commit("loaded", true);
+    async load({ state, commit, dispatch, rootState }): Promise<void> {
+      console.log("why?", { state, rootState });
+      if (!state.loaded) {
+        commit("loading", true);
+        await dispatch("workspace/load", {}, { root: true });
+        await dispatch(
+          "billingAccount/get",
+          {
+            billingAccountId: rootState.user.auth.profile?.billingAccount?.id,
+          },
+          { root: true },
+        );
+        await dispatch("system/load", {}, { root: true });
+        await dispatch("node/load", {}, { root: true });
+        await dispatch("edge/load", {}, { root: true });
+        await dispatch("changeSet/load", {}, { root: true });
+        await dispatch("entity/load", {}, { root: true });
+        await dispatch("eventLog/load", {}, { root: true });
+        commit("loading", false);
+        commit("loaded", true);
+      }
     },
   },
 };
