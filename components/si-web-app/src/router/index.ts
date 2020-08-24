@@ -6,6 +6,7 @@ import routes from "./routes";
 
 import store from "@/store";
 import { telemetry } from "@/utils/telemetry";
+import _ from "lodash";
 
 Vue.use(VueRouter);
 
@@ -15,7 +16,12 @@ const router = new VueRouter({
   routes,
 });
 
-router.beforeEach(async (to, from, next) => {
+const waitForStorageToBeReady = async (to, from, next) => {
+  await store.restored;
+  //next();
+};
+
+const routeCheck = async (to, from, next) => {
   const span = telemetry.routeSpan(`web.router ${to.path}`);
   span.setAttributes({
     "web.route.to.path": to.path,
@@ -53,10 +59,20 @@ router.beforeEach(async (to, from, next) => {
     if (to.path == "/loading") {
       return next();
     } else {
-      store.commit("loader/nextUp", to);
+      console.log("to", { to });
+      store.commit("loader/nextUp", {
+        name: _.cloneDeep(to.name),
+        params: _.cloneDeep(to.params),
+        query: _.cloneDeep(to.query),
+      });
       return next("/loading");
     }
   }
+};
+
+router.beforeEach(async (to, from, next) => {
+  await store.restored;
+  await routeCheck(to, from, next);
 });
 
 export default router;

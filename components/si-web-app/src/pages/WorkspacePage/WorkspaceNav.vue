@@ -170,14 +170,24 @@
       <line x1="5" y1="0" x2="95" y2="0" stroke="#313639" />
     </svg>
 
-    <div class="flex items-center justify-end w-full h-12 color-grey-medium">
-      <div class="flex self-center mr-8">
-        <div class="self-center flex-1 text-center">
-          <user-icon
-            size="1.2x"
-            class="text-center cursor-pointer color-grey-light"
-            @click="onLogout"
-          />
+    <div class="flex items-center w-full h-12 justify-left color-grey-medium">
+      <div class="flex self-center ml-8">
+        <RefreshCwIcon
+          size="1.2x"
+          class="text-center cursor-pointer color-grey-light"
+          @click="clearLogout"
+        />
+      </div>
+
+      <div class="flex justify-end w-full">
+        <div class="flex self-center mr-8">
+          <div class="self-center flex-1 text-center">
+            <user-icon
+              size="1.2x"
+              class="text-center cursor-pointer color-grey-light"
+              @click="onLogout"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -196,9 +206,12 @@ import {
   LayersIcon,
   BookOpenIcon,
   GridIcon,
+  RefreshCwIcon,
 } from "vue-feather-icons";
 
 import SysinitIcon from "@/components/icons/SysinitIcon.vue";
+
+import localforage from "localforage";
 
 export default {
   name: "WorkspaceNav",
@@ -214,6 +227,7 @@ export default {
     LayersIcon,
     BookOpenIcon,
     GridIcon,
+    RefreshCwIcon,
   },
   props: {
     organizationId: {
@@ -230,10 +244,18 @@ export default {
     };
   },
   methods: {
-    // @ts-ignore
-    async onLogout(event) {
+    async onLogout(event: any) {
       console.log("logout clicked");
       await this.$store.dispatch("user/logout");
+      this.$router.push({ name: "signin" });
+    },
+    async clearLogout(event: any) {
+      console.log("clear logout clicked");
+      await this.$store.dispatch("user/logout");
+      await localforage.dropInstance({
+        name: "si-store",
+        storeName: "vuex",
+      });
       this.$router.push({ name: "signin" });
     },
   },

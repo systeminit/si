@@ -69,7 +69,7 @@ export default Vue.extend({
       loaded: (state: any) => state.loader.loading,
     }),
   },
-  mounted(): void {
+  async mounted(): Promise<void> {
     // @ts-ignore
     const handle = setInterval(() => {
       this.getQuote();
