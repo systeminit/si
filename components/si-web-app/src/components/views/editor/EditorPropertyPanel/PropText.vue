@@ -22,6 +22,8 @@
         :aria-label="entityProperty.name"
         v-model="fieldValue"
         placeholder="text"
+        @focus="storeStartingValue"
+        @blur="saveIfModified"
       />
       <ValidationWidget :value="fieldValue" :entityProperty="entityProperty" />
     </div>
@@ -39,6 +41,10 @@ import { RegistryProperty, debouncedSetFieldValue } from "@/store/modules/node";
 import PropMixin from "./PropMixin";
 import ValidationWidget from "@/components/ui/ValidationWidget.vue";
 
+interface Data {
+  originalValue: any;
+}
+
 export default PropMixin.extend({
   name: "PropText",
   components: {
@@ -49,20 +55,6 @@ export default PropMixin.extend({
       editorMode: (state: any): RootStore["editor"]["mode"] =>
         state.editor.mode,
     }),
-    fieldValue: {
-      get(): string {
-        return this.$store.getters["node/getFieldValue"](
-          this.entityProperty.path,
-        );
-      },
-      async set(value: any) {
-        debouncedSetFieldValue({
-          store: this.$store,
-          path: this.entityProperty.path,
-          value,
-        });
-      },
-    },
   },
 });
 </script>
