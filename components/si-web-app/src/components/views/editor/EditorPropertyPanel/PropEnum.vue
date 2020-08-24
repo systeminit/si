@@ -22,6 +22,8 @@
         :aria-label="entityProperty.name"
         v-bind:class="inputClasses"
         v-model="fieldValue"
+        @focus="storeStartingValue"
+        @blur="saveIfModified"
       >
         <option
           v-for="option in entityProperty.prop.variants"
@@ -55,20 +57,6 @@ export default PropMixin.extend({
       editorMode: (state: any): RootStore["editor"]["mode"] =>
         state.editor.mode,
     }),
-    fieldValue: {
-      get(): string {
-        return this.$store.getters["node/getFieldValue"](
-          this.entityProperty.path,
-        );
-      },
-      async set(value: any) {
-        debouncedSetFieldValue({
-          store: this.$store,
-          path: this.entityProperty.path,
-          value,
-        });
-      },
-    },
   },
 });
 </script>

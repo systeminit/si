@@ -32,6 +32,8 @@
             :value="option.value"
             v-bind:class="inputClasses"
             v-model="fieldValue"
+            @focus="storeStartingValue"
+            @blur="saveIfModified"
           />
           <label
             class="pl-2 text-sm leading-tight text-white input-label"
@@ -48,6 +50,8 @@
           v-bind:class="inputClasses"
           :aria-label="entityProperty.name"
           v-model="fieldValue"
+          @focus="storeStartingValue"
+          @blur="saveIfModified"
         >
           <option
             v-for="option in this.options"
@@ -106,29 +110,29 @@ export default PropMixin.extend({
         return this.entityProperty.prop.options;
       }
     },
-    fieldValue: {
-      get(): string | string[] {
-        let value = this.$store.getters["node/getFieldValue"](
-          this.entityProperty.path,
-        );
-        if (this.entityProperty.repeated) {
-          if (value) {
-            return value;
-          } else {
-            return [];
-          }
-        } else {
-          return value;
-        }
-      },
-      async set(value: any) {
-        debouncedSetFieldValue({
-          store: this.$store,
-          path: this.entityProperty.path,
-          value,
-        });
-      },
-    },
+    //fieldValue: {
+    //  get(): string | string[] {
+    //    let value = this.$store.getters["node/getFieldValue"](
+    //      this.entityProperty.path,
+    //    );
+    //    if (this.entityProperty.repeated) {
+    //      if (value) {
+    //        return value;
+    //      } else {
+    //        return [];
+    //      }
+    //    } else {
+    //      return value;
+    //    }
+    //  },
+    //  async set(value: any) {
+    //    debouncedSetFieldValue({
+    //      store: this.$store,
+    //      path: this.entityProperty.path,
+    //      value,
+    //    });
+    //  },
+    //},
   },
 });
 </script>

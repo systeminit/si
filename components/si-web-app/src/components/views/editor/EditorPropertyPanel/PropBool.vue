@@ -24,6 +24,8 @@
         type="checkbox"
         :aria-label="entityProperty.name"
         v-model="fieldValue"
+        @focus="storeStartingValue"
+        @blur="saveIfModified"
       />
       <ValidationWidget :value="fieldValue" :entityProperty="entityProperty" />
     </div>
@@ -51,20 +53,6 @@ export default PropMixin.extend({
       editorMode: (state: any): RootStore["editor"]["mode"] =>
         state.editor.mode,
     }),
-    fieldValue: {
-      get(): string {
-        return this.$store.getters["node/getFieldValue"](
-          this.entityProperty.path,
-        );
-      },
-      async set(value: any) {
-        debouncedSetFieldValue({
-          store: this.$store,
-          path: this.entityProperty.path,
-          value,
-        });
-      },
-    },
   },
 });
 </script>

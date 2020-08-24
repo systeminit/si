@@ -33,6 +33,7 @@
             @input="
               updateMap(index, mapEntry.key, mapEntry.value, ...arguments)
             "
+            @blur="saveIfModified"
             placeholder="key"
           />
 
@@ -45,6 +46,7 @@
             @input="
               updateMap(index, mapEntry.key, mapEntry.value, ...arguments)
             "
+            @blur="saveIfModified"
             placeholder="value"
           />
 
@@ -86,12 +88,21 @@ interface MapEntries {
   [index: number]: { key: string; value: string };
 }
 
+// TODO: Make saving the map work - something is wrong on the detection algo!
+// Also, it really wants to track the blur state as a function of the whole map, so that we
+// don't wind up getting a bunch of shitty behavior and overwriting values.
+
 export default PropMixin.extend({
   name: "PropMap",
   components: {
     PlusSquareIcon,
     XIcon,
     ValidationWidget,
+  },
+  data() {
+    return {
+      save: false,
+    };
   },
   methods: {
     updateMap(
@@ -100,20 +111,22 @@ export default PropMixin.extend({
       value: string,
       ...event: any[]
     ): void {
-      let current = _.cloneDeep(this.fieldValue);
+      let current = this.fieldValue;
       current[index] = { key, value };
       this.fieldValue = current;
     },
     addToMap(): void {
-      let current = _.cloneDeep(this.fieldValue);
+      let current = this.fieldValue;
       let index = current.length;
       current.push({ key: `key${index}`, value: `value${index}` });
       this.fieldValue = current;
+      this.saveIfModified();
     },
     removeFromMap(index: number): void {
-      let current = _.cloneDeep(this.fieldValue);
+      let current = this.fieldValue;
       current.splice(index, 1);
       this.fieldValue = current;
+      this.saveIfModified();
     },
     mapTextClasses(index: number, part: string): Record<string, boolean> {
       let results: Record<string, boolean> = {};
@@ -156,26 +169,6 @@ export default PropMixin.extend({
       editorMode: (state: any): RootStore["editor"]["mode"] =>
         state.editor.mode,
     }),
-    fieldValue: {
-      get(): MapEntries {
-        let mapValues = this.$store.getters["node/getFieldValue"](
-          this.entityProperty.path,
-        );
-        if (mapValues != undefined) {
-          return _.cloneDeep(mapValues);
-        } else {
-          return [];
-        }
-      },
-      async set(value: any) {
-        await debouncedSetFieldValue({
-          store: this.$store,
-          path: this.entityProperty.path,
-          value: value,
-          map: true,
-        });
-      },
-    },
   },
 });
 </script>

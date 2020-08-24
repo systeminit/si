@@ -17,12 +17,12 @@
     <div>
       <div class="flex flex-col text-gray-400">
         <div
-          class="flex flex-row pl-2 ml-16 mr-12 items-center"
+          class="flex flex-row items-center pl-2 ml-16 mr-12"
           v-for="(repeatedEntry, index) in fieldValue"
           :key="index"
           v-show="showPath(entityProperty, index)"
         >
-          <div class="repeated-border border rounded-sm mb-2 w-full">
+          <div class="w-full mb-2 border rounded-sm repeated-border">
             <div
               class="text-white"
               v-for="ep in propertiesList(entityProperty, index)"
@@ -93,7 +93,7 @@
         </div>
         <div>
           <div
-            class="flex align-middle justify-center text-gray-500"
+            class="flex justify-center text-gray-500 align-middle"
             v-if="editorMode == 'edit'"
           >
             <button
@@ -129,6 +129,7 @@ import PropNumber from "./PropNumber.vue";
 import PropEnum from "./PropEnum.vue";
 import PropMap from "./PropMap.vue";
 import PropSelect from "./PropSelect.vue";
+import PropMixin from "./PropMixin";
 
 // This component only works with repeated objects! When we need it to work with
 // repeated fields of other types, we're going to have to extend it. For now,
@@ -137,7 +138,7 @@ interface Data {
   collapsedPaths: (string | number)[][];
 }
 
-export default Vue.extend({
+export default PropMixin.extend({
   name: "PropRepeated",
   props: {
     entityProperty: Object as () => RegistryProperty,
@@ -170,11 +171,13 @@ export default Vue.extend({
       let current = _.cloneDeep(this.fieldValue);
       current.push({});
       this.fieldValue = current;
+      this.saveIfModified();
     },
     removeFromList(index: number): void {
       let current = _.cloneDeep(this.fieldValue);
       current.splice(index, 1);
       this.fieldValue = current;
+      this.saveIfModified();
     },
     showPath(prop: RegistryProperty, index: number): boolean {
       let propPath = _.cloneDeep(prop.path);
@@ -264,25 +267,6 @@ export default Vue.extend({
         // 'is-primary': this.isOpen,
         // 'is-dark': !this.isOpen
       };
-    },
-    fieldValue: {
-      get(): any[] {
-        let objectValues = this.$store.getters["node/getFieldValue"](
-          this.entityProperty.path,
-        );
-        if (objectValues == undefined) {
-          return [];
-        } else {
-          return _.cloneDeep(objectValues);
-        }
-      },
-      async set(value: any) {
-        await debouncedSetFieldValue({
-          store: this.$store,
-          path: this.entityProperty.path,
-          value: value,
-        });
-      },
     },
   },
 });

@@ -24,6 +24,8 @@
         :aria-label="entityProperty.name"
         v-model="fieldValue"
         placeholder="number"
+        @focus="storeStartingValue"
+        @blur="saveIfModified"
       />
       <ValidationWidget :value="fieldValue" :entityProperty="entityProperty" />
     </div>
@@ -54,24 +56,6 @@ export default PropMixin.extend({
       editorMode: (state: any): RootStore["editor"]["mode"] =>
         state.editor.mode,
     }),
-    fieldValue: {
-      get(): string {
-        return this.$store.getters["node/getFieldValue"](
-          this.entityProperty.path,
-        );
-      },
-      async set(value: any) {
-        // @ts-ignore - we know you're a number
-        if (this.entityProperty.prop.numberKind == "int32") {
-          value = parseInt(value);
-        }
-        debouncedSetFieldValue({
-          store: this.$store,
-          path: this.entityProperty.path,
-          value,
-        });
-      },
-    },
   },
 });
 </script>
