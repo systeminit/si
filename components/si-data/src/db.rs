@@ -251,6 +251,22 @@ impl Db {
         Ok(content)
     }
 
+    pub async fn update_raw<'a, T>(&self, content: &'a mut T) -> Result<&'a mut T>
+    where
+        T: Storable + Serialize + std::fmt::Debug,
+    {
+        if let Some(change_set_id) = content.change_set_id()? {
+            if change_set_id != "" {
+                event!(Level::TRACE, "change_set_entry_count");
+                let entry_count = self.change_set_next_entry(change_set_id, 0).await?;
+                content.set_change_set_entry_count(entry_count)?;
+            }
+        }
+        content.generate_id();
+        self.upsert(content).await?;
+        Ok(content)
+    }
+
     pub async fn validate_and_insert_as_new<'a, T>(&self, content: &'a mut T) -> Result<&'a mut T>
     where
         T: Storable + Serialize + std::fmt::Debug,
