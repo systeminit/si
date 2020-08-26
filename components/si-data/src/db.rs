@@ -600,6 +600,81 @@ impl Db {
         .await
     }
 
+    pub async fn list_by_page_token_raw_by_type<S>(
+        &self,
+        page_token: S,
+        type_name: impl AsRef<str> + std::fmt::Debug,
+    ) -> Result<ListResult<serde_json::Value>>
+    where
+        S: AsRef<str> + std::fmt::Debug,
+    {
+        let span = info_span!(
+            "db.list_by_page_token_raw",
+            db.list.query = tracing::field::Empty,
+            db.list.order_by = tracing::field::Empty,
+            db.list.page_size = tracing::field::Empty,
+            db.list.item_id = tracing::field::Empty,
+            db.list.order_by_direction = tracing::field::Empty,
+            db.list.scope_by_tenant_id = tracing::field::Empty,
+            db.list.type_name = tracing::field::Empty,
+            component = tracing::field::display("si-data"),
+        );
+        async {
+            let span = tracing::Span::current();
+            let page_token = DataPageToken::unseal(page_token.as_ref(), &self.page_secret_key)?;
+            let query = page_token.query;
+            span.record("db.list.query", &tracing::field::debug(&query));
+
+            let order_by = page_token
+                .order_by
+                .ok_or_else(|| DataError::RequiredField("page_token.order_by".into()))?;
+            span.record("db.list.order_by", &tracing::field::display(&order_by));
+            span.record(
+                "db.list.type_name",
+                &tracing::field::display(type_name.as_ref()),
+            );
+
+            let page_size = page_token
+                .page_size
+                .ok_or_else(|| DataError::RequiredField("page_token.page_size".into()))?;
+            span.record("db.list.page_size", &tracing::field::display(&page_size));
+
+            let item_id = page_token
+                .item_id
+                .ok_or_else(|| DataError::RequiredField("page_token.item_id".into()))?;
+            span.record("db.list.item_id", &tracing::field::display(&item_id));
+
+            let order_by_direction = page_token.order_by_direction;
+            span.record(
+                "db.list.order_by_direction",
+                &tracing::field::display(&order_by_direction),
+            );
+
+            let contained_within = page_token
+                .contained_within
+                .ok_or_else(|| DataError::RequiredField("page_token.contained_within".into()))?;
+            span.record(
+                "db.list.contained_within",
+                &tracing::field::display(&contained_within),
+            );
+
+            //let order_by_direction = OrderByDirection::from_i32(page_token.order_by_direction)
+            //.ok_or_else(|| DataError::InvalidOrderByDirection)?;
+            self.list_raw_by_type(
+                &query,
+                page_size,
+                &order_by,
+                order_by_direction,
+                &contained_within,
+                &item_id,
+                type_name.as_ref(),
+            )
+            .await
+        }
+        .instrument(span)
+        .await
+    }
+
     pub async fn list_by_page_token<S, I>(&self, page_token: S) -> Result<ListResult<I>>
     where
         S: AsRef<str> + std::fmt::Debug,
@@ -854,6 +929,202 @@ impl Db {
             ),
         };
         Ok((named_params, cbquery))
+    }
+
+    pub async fn list_raw_by_type<
+        O: AsRef<str> + std::fmt::Debug,
+        C: AsRef<str> + std::fmt::Debug + std::fmt::Display,
+        S: AsRef<str> + std::fmt::Debug,
+    >(
+        &self,
+        query: &Option<DataQuery>,
+        page_size: u32,
+        order_by: O,
+        order_by_direction: i32,
+        contained_within: C,
+        item_id: S,
+        type_name: impl AsRef<str> + std::fmt::Debug,
+    ) -> Result<ListResult<serde_json::Value>> {
+        let span = info_span!(
+            "db.list_raw",
+            db.list.query = tracing::field::Empty,
+            db.list.order_by = tracing::field::Empty,
+            db.list.page_size = tracing::field::Empty,
+            db.list.item_id = tracing::field::Empty,
+            db.list.order_by_direction = tracing::field::Empty,
+            db.list.scope_by_tenant_id = tracing::field::Empty,
+            db.list.next_page_token = tracing::field::Empty,
+            db.list.items_count = tracing::field::Empty,
+            db.storable.type_name = tracing::field::Empty,
+            db.cb.querymeta.request_id = tracing::field::Empty,
+            db.cb.querymeta.status = tracing::field::Empty,
+            db.cb.querymeta.errors = tracing::field::Empty,
+            db.cb.querymeta.client_context_id = tracing::field::Empty,
+            db.cb.querymeta.elapsed_time = tracing::field::Empty,
+            db.cb.querymeta.execution_time = tracing::field::Empty,
+            db.cb.querymeta.result_count = tracing::field::Empty,
+            db.cb.querymeta.result_size = tracing::field::Empty,
+            component = tracing::field::display("si-data"),
+        );
+        async {
+            let span = tracing::Span::current();
+
+            span.record(
+                "db.storable.type_name",
+                &tracing::field::display(type_name.as_ref()),
+            );
+
+            // The empty string is the default order_by; and it should be
+            // id
+            let order_by = match order_by.as_ref() {
+                "" => "id",
+                ob => ob,
+            };
+            span.record("db.list.order_by", &tracing::field::display(&order_by));
+
+            //<I as Storable>::is_order_by_valid(order_by, <I as Storable>::order_by_fields())?;
+
+            // If you don't send a valid order by direction, you fucked with
+            // the protobuf you sent by hand
+            let order_by_direction = DataPageTokenOrderByDirection::from_i32(order_by_direction)
+                .ok_or_else(|| DataError::InvalidOrderByDirection)?;
+            span.record(
+                "db.list.order_by_direction",
+                &tracing::field::display(&order_by_direction),
+            );
+
+            // The default page size is 10, and the inbound default is 0
+            let page_size = if page_size == 0 { 10 } else { page_size };
+            span.record("db.list.page_size", &tracing::field::display(&order_by));
+
+            let raw_query = if type_name.as_ref() == "" {
+                true
+            } else {
+                false
+            };
+            let (named_params, cbquery) = self.create_cb_query(
+                query,
+                type_name.as_ref(),
+                order_by,
+                order_by_direction,
+                contained_within.as_ref(),
+                raw_query,
+            )?;
+
+            span.record("db.list.query", &tracing::field::display(&cbquery));
+
+            let mut result = {
+                let span = info_span!(
+                    "db.cb.query",
+                    db.cb.query = &tracing::field::display(&cbquery),
+                    db.cb.named_params = &tracing::field::debug(&named_params),
+                    db.cb.query.success = tracing::field::Empty
+                );
+                let named_options = QueryOptions::new()
+                    .set_named_parameters(named_params)
+                    .set_scan_consistency(self.scan_consistency);
+                let result = self.cluster.query(cbquery, Some(named_options)).await?;
+                span.record("db.cb.query.success", &tracing::field::display(true));
+                result
+            };
+
+            let mut result_stream = result.rows_as::<serde_json::Value>()?;
+            let result_meta = result.meta().await?;
+            span.record(
+                "db.cb.querymeta.request_id",
+                &tracing::field::display(&result_meta.request_id),
+            );
+            span.record(
+                "db.cb.querymeta.status",
+                &tracing::field::display(&result_meta.status),
+            );
+            span.record(
+                "db.cb.querymeta.errors",
+                &tracing::field::debug(&result_meta.errors),
+            );
+            span.record(
+                "db.cb.querymeta.client_context_id",
+                &tracing::field::display(&result_meta.client_context_id),
+            );
+            span.record(
+                "db.cb.querymeta.elapsed_time",
+                &tracing::field::display(&result_meta.metrics.elapsed_time),
+            );
+            span.record(
+                "db.cb.querymeta.execution_time",
+                &tracing::field::display(&result_meta.metrics.execution_time),
+            );
+            span.record(
+                "db.cb.querymeta.result_count",
+                &tracing::field::display(&result_meta.metrics.result_count),
+            );
+            span.record(
+                "db.cb.querymeta.result_size",
+                &tracing::field::display(&result_meta.metrics.result_size),
+            );
+
+            let mut final_vec: Vec<serde_json::Value> = Vec::new();
+
+            let mut real_item_id = item_id.as_ref().to_string();
+            let mut include = false;
+            let mut count = 0;
+            let mut next_item_id = String::new();
+
+            // Probably a way to optimize this for really long result sets by
+            // using some fancy combinator on the stream iterator; but... this is
+            // fine until it ain't. :)
+            while let Some(r) = result_stream.next().await {
+                match r {
+                    Ok(item) => {
+                        if count == 0 && real_item_id == "" {
+                            real_item_id = item.get("id").ok_or(DataError::MissingId)?.to_string();
+                        }
+                        if real_item_id == item.get("id").ok_or(DataError::MissingId)?.to_string() {
+                            include = true;
+                            count = count + 1;
+                            final_vec.push(item);
+                        } else if count == page_size {
+                            next_item_id = item.get("id").ok_or(DataError::MissingId)?.to_string();
+                            break;
+                        } else if include {
+                            final_vec.push(item);
+                            count = count + 1;
+                        }
+                    }
+                    Err(e) => return Err(DataError::CouchbaseError(e)),
+                }
+            }
+
+            let page_token = if next_item_id == "" {
+                String::from("")
+            } else {
+                let mut next_page_token = DataPageToken::default();
+                next_page_token.query = query.clone();
+                next_page_token.page_size = Some(page_size);
+                next_page_token.order_by = Some(String::from(order_by));
+                next_page_token.order_by_direction = order_by_direction as i32;
+                next_page_token.item_id = Some(next_item_id.clone());
+                next_page_token.contained_within = Some(contained_within.to_string());
+                next_page_token.seal(&self.page_secret_key)?
+            };
+            span.record(
+                "db.list.next_page_token",
+                &tracing::field::display(&page_token),
+            );
+            span.record(
+                "db.list.items_count",
+                &tracing::field::display(&final_vec.len()),
+            );
+
+            Ok(ListResult {
+                items: final_vec,
+                total_count: result_meta.metrics.result_count as u32,
+                next_item_id,
+                page_token,
+            })
+        }
+        .instrument(span)
+        .await
     }
 
     pub async fn list_raw<

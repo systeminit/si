@@ -1,0 +1,25 @@
+[package]
+name = "si-entity"
+version = "0.1.0"
+authors = ["Adam Jacob <adam@systeminit.com>"]
+edition = "2018"
+
+[[bin]]
+name = "si-entity"
+path = "src/bin/server.rs"
+
+[dependencies]
+anyhow = "1.0"
+tokio = { version = "0.2", features = ["full"] }
+warp = "0.2"
+tracing = "0.1"
+tracing-futures = { version = "0.2", features = ["tokio", "std-future"]}
+tracing-subscriber = "0.2.11"
+tracing-opentelemetry = "0.7"
+si-cea = { path = "../si-cea" }
+si-data = { path = "../si-data" }
+si-settings = { path = "../si-settings" }
+si-account = { path = "../si-account" }
+serde = { version = "1.0.104", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
