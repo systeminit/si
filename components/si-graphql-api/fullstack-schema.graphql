@@ -233,6 +233,18 @@ type AmiEntityEvent {
   userId: String
 }
 
+"""Get a ami EntityEvent Reply"""
+type AmiEntityEventGetReply {
+  """ami EntityEvent Item"""
+  item: AmiEntityEvent
+}
+
+"""Get a ami EntityEvent Request"""
+input AmiEntityEventGetRequest {
+  """ami EntityEvent ID"""
+  id: ID
+}
+
 """List ami EntityEvent Reply"""
 type AmiEntityEventListReply {
   """Items"""
@@ -613,6 +625,18 @@ type ApplicationEntityEvent {
 
   """User ID"""
   userId: String
+}
+
+"""Get a A System Initiative Application EntityEvent Reply"""
+type ApplicationEntityEventGetReply {
+  """A System Initiative Application EntityEvent Item"""
+  item: ApplicationEntityEvent
+}
+
+"""Get a A System Initiative Application EntityEvent Request"""
+input ApplicationEntityEventGetRequest {
+  """A System Initiative Application EntityEvent ID"""
+  id: ID
 }
 
 """List A System Initiative Application EntityEvent Reply"""
@@ -1440,6 +1464,18 @@ type Ec2InstanceEntityEvent {
 
   """User ID"""
   userId: String
+}
+
+"""Get a ec2Instance EntityEvent Reply"""
+type Ec2InstanceEntityEventGetReply {
+  """ec2Instance EntityEvent Item"""
+  item: Ec2InstanceEntityEvent
+}
+
+"""Get a ec2Instance EntityEvent Request"""
+input Ec2InstanceEntityEventGetRequest {
+  """ec2Instance EntityEvent ID"""
+  id: ID
 }
 
 """List ec2Instance EntityEvent Reply"""
@@ -2744,6 +2780,18 @@ type KubernetesClusterEntityEvent {
   userId: String
 }
 
+"""Get a Kubernetes Cluster EntityEvent Reply"""
+type KubernetesClusterEntityEventGetReply {
+  """Kubernetes Cluster EntityEvent Item"""
+  item: KubernetesClusterEntityEvent
+}
+
+"""Get a Kubernetes Cluster EntityEvent Request"""
+input KubernetesClusterEntityEventGetRequest {
+  """Kubernetes Cluster EntityEvent ID"""
+  id: ID
+}
+
 """List Kubernetes Cluster EntityEvent Reply"""
 type KubernetesClusterEntityEventListReply {
   """Items"""
@@ -3188,6 +3236,18 @@ type KubernetesDeploymentEntityEvent {
 
   """User ID"""
   userId: String
+}
+
+"""Get a Kubernetes Deployment Object EntityEvent Reply"""
+type KubernetesDeploymentEntityEventGetReply {
+  """Kubernetes Deployment Object EntityEvent Item"""
+  item: KubernetesDeploymentEntityEvent
+}
+
+"""Get a Kubernetes Deployment Object EntityEvent Request"""
+input KubernetesDeploymentEntityEventGetRequest {
+  """Kubernetes Deployment Object EntityEvent ID"""
+  id: ID
 }
 
 """List Kubernetes Deployment Object EntityEvent Reply"""
@@ -3718,6 +3778,18 @@ type KubernetesServiceEntityEvent {
 
   """User ID"""
   userId: String
+}
+
+"""Get a Kubernetes Service Object EntityEvent Reply"""
+type KubernetesServiceEntityEventGetReply {
+  """Kubernetes Service Object EntityEvent Item"""
+  item: KubernetesServiceEntityEvent
+}
+
+"""Get a Kubernetes Service Object EntityEvent Request"""
+input KubernetesServiceEntityEventGetRequest {
+  """Kubernetes Service Object EntityEvent ID"""
+  id: ID
 }
 
 """List Kubernetes Service Object EntityEvent Reply"""
@@ -4296,6 +4368,18 @@ type MinikubeEntityEvent {
   userId: String
 }
 
+"""Get a Minikube EntityEvent Reply"""
+type MinikubeEntityEventGetReply {
+  """Minikube EntityEvent Item"""
+  item: MinikubeEntityEvent
+}
+
+"""Get a Minikube EntityEvent Request"""
+input MinikubeEntityEventGetRequest {
+  """Minikube EntityEvent ID"""
+  id: ID
+}
+
 """List Minikube EntityEvent Reply"""
 type MinikubeEntityEventListReply {
   """Items"""
@@ -4514,6 +4598,8 @@ type Mutation {
   nodeCreate(input: NodeCreateRequest): NodeCreateReply
   nodeSetPosition(input: NodeSetPositionRequest): NodeSetPositionReply
   organizationCreate(input: OrganizationCreateRequest): OrganizationCreateReply
+  resourceCreate(input: ResourceCreateRequest): ResourceCreateReply
+  resourceUpdate(input: ResourceUpdateRequest): ResourceUpdateReply
   serverEntityCreate(input: ServerEntityCreateRequest): ServerEntityCreateReply
   serverEntityDelete(input: ServerEntityDeleteRequest): ServerEntityDeleteReply
   serverEntityStart(input: ServerEntityStartRequest): ServerEntityStartReply
@@ -4827,12 +4913,14 @@ type Query {
   amiComponentGet(input: AmiComponentGetRequest): AmiComponentGetReply
   amiComponentList(input: AmiComponentListRequest): AmiComponentListReply
   amiComponentPick(input: AmiComponentPickRequest): AmiComponentPickReply
+  amiEntityEventGet(input: AmiEntityEventGetRequest): AmiEntityEventGetReply
   amiEntityEventList(input: AmiEntityEventListRequest): AmiEntityEventListReply
   amiEntityGet(input: AmiEntityGetRequest): AmiEntityGetReply
   amiEntityList(input: AmiEntityListRequest): AmiEntityListReply
   applicationComponentGet(input: ApplicationComponentGetRequest): ApplicationComponentGetReply
   applicationComponentList(input: ApplicationComponentListRequest): ApplicationComponentListReply
   applicationComponentPick(input: ApplicationComponentPickRequest): ApplicationComponentPickReply
+  applicationEntityEventGet(input: ApplicationEntityEventGetRequest): ApplicationEntityEventGetReply
   applicationEntityEventList(input: ApplicationEntityEventListRequest): ApplicationEntityEventListReply
   applicationEntityGet(input: ApplicationEntityGetRequest): ApplicationEntityGetReply
   applicationEntityList(input: ApplicationEntityListRequest): ApplicationEntityListReply
@@ -4843,6 +4931,7 @@ type Query {
   ec2InstanceComponentGet(input: Ec2InstanceComponentGetRequest): Ec2InstanceComponentGetReply
   ec2InstanceComponentList(input: Ec2InstanceComponentListRequest): Ec2InstanceComponentListReply
   ec2InstanceComponentPick(input: Ec2InstanceComponentPickRequest): Ec2InstanceComponentPickReply
+  ec2InstanceEntityEventGet(input: Ec2InstanceEntityEventGetRequest): Ec2InstanceEntityEventGetReply
   ec2InstanceEntityEventList(input: Ec2InstanceEntityEventListRequest): Ec2InstanceEntityEventListReply
   ec2InstanceEntityGet(input: Ec2InstanceEntityGetRequest): Ec2InstanceEntityGetReply
   ec2InstanceEntityList(input: Ec2InstanceEntityListRequest): Ec2InstanceEntityListReply
@@ -4862,24 +4951,28 @@ type Query {
   kubernetesClusterComponentGet(input: KubernetesClusterComponentGetRequest): KubernetesClusterComponentGetReply
   kubernetesClusterComponentList(input: KubernetesClusterComponentListRequest): KubernetesClusterComponentListReply
   kubernetesClusterComponentPick(input: KubernetesClusterComponentPickRequest): KubernetesClusterComponentPickReply
+  kubernetesClusterEntityEventGet(input: KubernetesClusterEntityEventGetRequest): KubernetesClusterEntityEventGetReply
   kubernetesClusterEntityEventList(input: KubernetesClusterEntityEventListRequest): KubernetesClusterEntityEventListReply
   kubernetesClusterEntityGet(input: KubernetesClusterEntityGetRequest): KubernetesClusterEntityGetReply
   kubernetesClusterEntityList(input: KubernetesClusterEntityListRequest): KubernetesClusterEntityListReply
   kubernetesDeploymentComponentGet(input: KubernetesDeploymentComponentGetRequest): KubernetesDeploymentComponentGetReply
   kubernetesDeploymentComponentList(input: KubernetesDeploymentComponentListRequest): KubernetesDeploymentComponentListReply
   kubernetesDeploymentComponentPick(input: KubernetesDeploymentComponentPickRequest): KubernetesDeploymentComponentPickReply
+  kubernetesDeploymentEntityEventGet(input: KubernetesDeploymentEntityEventGetRequest): KubernetesDeploymentEntityEventGetReply
   kubernetesDeploymentEntityEventList(input: KubernetesDeploymentEntityEventListRequest): KubernetesDeploymentEntityEventListReply
   kubernetesDeploymentEntityGet(input: KubernetesDeploymentEntityGetRequest): KubernetesDeploymentEntityGetReply
   kubernetesDeploymentEntityList(input: KubernetesDeploymentEntityListRequest): KubernetesDeploymentEntityListReply
   kubernetesServiceComponentGet(input: KubernetesServiceComponentGetRequest): KubernetesServiceComponentGetReply
   kubernetesServiceComponentList(input: KubernetesServiceComponentListRequest): KubernetesServiceComponentListReply
   kubernetesServiceComponentPick(input: KubernetesServiceComponentPickRequest): KubernetesServiceComponentPickReply
+  kubernetesServiceEntityEventGet(input: KubernetesServiceEntityEventGetRequest): KubernetesServiceEntityEventGetReply
   kubernetesServiceEntityEventList(input: KubernetesServiceEntityEventListRequest): KubernetesServiceEntityEventListReply
   kubernetesServiceEntityGet(input: KubernetesServiceEntityGetRequest): KubernetesServiceEntityGetReply
   kubernetesServiceEntityList(input: KubernetesServiceEntityListRequest): KubernetesServiceEntityListReply
   minikubeComponentGet(input: MinikubeComponentGetRequest): MinikubeComponentGetReply
   minikubeComponentList(input: MinikubeComponentListRequest): MinikubeComponentListReply
   minikubeComponentPick(input: MinikubeComponentPickRequest): MinikubeComponentPickReply
+  minikubeEntityEventGet(input: MinikubeEntityEventGetRequest): MinikubeEntityEventGetReply
   minikubeEntityEventList(input: MinikubeEntityEventListRequest): MinikubeEntityEventListReply
   minikubeEntityGet(input: MinikubeEntityGetRequest): MinikubeEntityGetReply
   minikubeEntityList(input: MinikubeEntityListRequest): MinikubeEntityListReply
@@ -4887,15 +4980,19 @@ type Query {
   nodeList(input: NodeListRequest): NodeListReply
   organizationGet(input: OrganizationGetRequest): OrganizationGetReply
   organizationList(input: OrganizationListRequest): OrganizationListReply
+  resourceGet(input: ResourceGetRequest): ResourceGetReply
+  resourceList(input: ResourceListRequest): ResourceListReply
   serverComponentGet(input: ServerComponentGetRequest): ServerComponentGetReply
   serverComponentList(input: ServerComponentListRequest): ServerComponentListReply
   serverComponentPick(input: ServerComponentPickRequest): ServerComponentPickReply
+  serverEntityEventGet(input: ServerEntityEventGetRequest): ServerEntityEventGetReply
   serverEntityEventList(input: ServerEntityEventListRequest): ServerEntityEventListReply
   serverEntityGet(input: ServerEntityGetRequest): ServerEntityGetReply
   serverEntityList(input: ServerEntityListRequest): ServerEntityListReply
   serviceComponentGet(input: ServiceComponentGetRequest): ServiceComponentGetReply
   serviceComponentList(input: ServiceComponentListRequest): ServiceComponentListReply
   serviceComponentPick(input: ServiceComponentPickRequest): ServiceComponentPickReply
+  serviceEntityEventGet(input: ServiceEntityEventGetRequest): ServiceEntityEventGetReply
   serviceEntityEventList(input: ServiceEntityEventListRequest): ServiceEntityEventListReply
   serviceEntityGet(input: ServiceEntityGetRequest): ServiceEntityGetReply
   serviceEntityList(input: ServiceEntityListRequest): ServiceEntityListReply
@@ -4904,6 +5001,7 @@ type Query {
   ubuntuComponentGet(input: UbuntuComponentGetRequest): UbuntuComponentGetReply
   ubuntuComponentList(input: UbuntuComponentListRequest): UbuntuComponentListReply
   ubuntuComponentPick(input: UbuntuComponentPickRequest): UbuntuComponentPickReply
+  ubuntuEntityEventGet(input: UbuntuEntityEventGetRequest): UbuntuEntityEventGetReply
   ubuntuEntityEventList(input: UbuntuEntityEventListRequest): UbuntuEntityEventListReply
   ubuntuEntityGet(input: UbuntuEntityGetRequest): UbuntuEntityGetReply
   ubuntuEntityList(input: UbuntuEntityListRequest): UbuntuEntityListReply
@@ -4912,6 +5010,180 @@ type Query {
   userLogin(input: UserLoginRequest): UserLoginReply
   workspaceGet(input: WorkspaceGetRequest): WorkspaceGetReply
   workspaceList(input: WorkspaceListRequest): WorkspaceListReply
+}
+
+type Resource {
+  """data"""
+  data: String
+
+  """A System Initiative Resource Display Name"""
+  displayName: String
+
+  """entityId"""
+  entityId: String
+
+  """health"""
+  health: String
+
+  """A System Initiative Resource ID"""
+  id: ID
+
+  """kind"""
+  kind: String
+
+  """A System Initiative Resource Name"""
+  name: String
+
+  """nodeId"""
+  nodeId: String
+
+  """SI Internal Properties"""
+  siProperties: ResourceSiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+
+  """status"""
+  status: String
+}
+
+"""Create a A System Initiative Resource Reply"""
+type ResourceCreateReply {
+  """A System Initiative Resource Item"""
+  item: Resource
+}
+
+"""Create a A System Initiative Resource Request"""
+input ResourceCreateRequest {
+  """data"""
+  data: String
+
+  """A System Initiative Resource Display Name"""
+  displayName: String
+
+  """entityId"""
+  entityId: String
+
+  """health"""
+  health: String
+
+  """kind"""
+  kind: String
+
+  """A System Initiative Resource Name"""
+  name: String
+
+  """nodeId"""
+  nodeId: String
+
+  """SI Internal Properties"""
+  siProperties: ResourceSiPropertiesRequest
+
+  """status"""
+  status: String
+}
+
+"""Get a A System Initiative Resource Reply"""
+type ResourceGetReply {
+  """A System Initiative Resource Item"""
+  item: Resource
+}
+
+"""Get a A System Initiative Resource Request"""
+input ResourceGetRequest {
+  """A System Initiative Resource ID"""
+  id: ID
+}
+
+"""List A System Initiative Resource Reply"""
+type ResourceListReply {
+  """Items"""
+  items: [Resource!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: String
+}
+
+"""List A System Initiative Resource Request"""
+input ResourceListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: String
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+type ResourceSiProperties {
+  """Billing Account ID"""
+  billingAccountId: String
+
+  """Organization ID"""
+  organizationId: String
+
+  """Organization ID"""
+  workspaceId: String
+}
+
+input ResourceSiPropertiesRequest {
+  """Billing Account ID"""
+  billingAccountId: String
+
+  """Organization ID"""
+  organizationId: String
+
+  """Organization ID"""
+  workspaceId: String
+}
+
+"""Update a A System Initiative Resource Reply"""
+type ResourceUpdateReply {
+  """A System Initiative Resource Item"""
+  item: Resource
+}
+
+"""Update a A System Initiative Resource Request"""
+input ResourceUpdateRequest {
+  """data"""
+  data: String
+
+  """A System Initiative Resource Display Name"""
+  displayName: String
+
+  """entityId"""
+  entityId: String
+
+  """health"""
+  health: String
+
+  """A System Initiative Resource ID"""
+  id: ID
+
+  """kind"""
+  kind: String
+
+  """A System Initiative Resource Name"""
+  name: String
+
+  """nodeId"""
+  nodeId: String
+
+  """status"""
+  status: String
 }
 
 """Selector"""
@@ -5155,6 +5427,18 @@ type ServerEntityEvent {
 
   """User ID"""
   userId: String
+}
+
+"""Get a Server EntityEvent Reply"""
+type ServerEntityEventGetReply {
+  """Server EntityEvent Item"""
+  item: ServerEntityEvent
+}
+
+"""Get a Server EntityEvent Request"""
+input ServerEntityEventGetRequest {
+  """Server EntityEvent ID"""
+  id: ID
 }
 
 """List Server EntityEvent Reply"""
@@ -5578,6 +5862,18 @@ type ServiceEntityEvent {
 
   """User ID"""
   userId: String
+}
+
+"""Get a Service EntityEvent Reply"""
+type ServiceEntityEventGetReply {
+  """Service EntityEvent Item"""
+  item: ServiceEntityEvent
+}
+
+"""Get a Service EntityEvent Request"""
+input ServiceEntityEventGetRequest {
+  """Service EntityEvent ID"""
+  id: ID
 }
 
 """List Service EntityEvent Reply"""
@@ -6072,6 +6368,18 @@ type UbuntuEntityEvent {
 
   """User ID"""
   userId: String
+}
+
+"""Get a ubuntu EntityEvent Reply"""
+type UbuntuEntityEventGetReply {
+  """ubuntu EntityEvent Item"""
+  item: UbuntuEntityEvent
+}
+
+"""Get a ubuntu EntityEvent Request"""
+input UbuntuEntityEventGetRequest {
+  """ubuntu EntityEvent ID"""
+  id: ID
 }
 
 """List ubuntu EntityEvent Reply"""

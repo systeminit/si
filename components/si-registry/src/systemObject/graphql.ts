@@ -34,7 +34,8 @@ export function variablesObjectForProperty(prop: Props, repeated = false): any {
     prop.kind() == "text" ||
     prop.kind() == "number" ||
     prop.kind() == "code" ||
-    prop.kind() == "enum"
+    prop.kind() == "enum" ||
+    prop.kind() == "select"
   ) {
     if (prop.repeated && repeated) {
       return [];
@@ -130,7 +131,11 @@ export class SiGraphql {
       result = `${pascalCase(prop.parentName)}${pascalCase(
         prop.name,
       )}${request}`;
-    } else if (prop.kind() == "text" || prop.kind() == "password") {
+    } else if (
+      prop.kind() == "text" ||
+      prop.kind() == "password" ||
+      prop.kind() == "select"
+    ) {
       if (prop.name == "id") {
         result = "ID";
       } else {

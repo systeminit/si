@@ -3991,6 +3991,8 @@ export type Mutation = {
   nodeCreate?: Maybe<NodeCreateReply>;
   nodeSetPosition?: Maybe<NodeSetPositionReply>;
   organizationCreate?: Maybe<OrganizationCreateReply>;
+  resourceCreate?: Maybe<ResourceCreateReply>;
+  resourceUpdate?: Maybe<ResourceUpdateReply>;
   serverEntityCreate?: Maybe<ServerEntityCreateReply>;
   serverEntityDelete?: Maybe<ServerEntityDeleteReply>;
   serverEntityStart?: Maybe<ServerEntityStartReply>;
@@ -4195,6 +4197,14 @@ export type MutationNodeSetPositionArgs = {
 
 export type MutationOrganizationCreateArgs = {
   input?: Maybe<OrganizationCreateRequest>;
+};
+
+export type MutationResourceCreateArgs = {
+  input?: Maybe<ResourceCreateRequest>;
+};
+
+export type MutationResourceUpdateArgs = {
+  input?: Maybe<ResourceUpdateRequest>;
 };
 
 export type MutationServerEntityCreateArgs = {
@@ -4615,6 +4625,8 @@ export type Query = {
   nodeList?: Maybe<NodeListReply>;
   organizationGet?: Maybe<OrganizationGetReply>;
   organizationList?: Maybe<OrganizationListReply>;
+  resourceGet?: Maybe<ResourceGetReply>;
+  resourceList?: Maybe<ResourceListReply>;
   serverComponentGet?: Maybe<ServerComponentGetReply>;
   serverComponentList?: Maybe<ServerComponentListReply>;
   serverComponentPick?: Maybe<ServerComponentPickReply>;
@@ -4894,6 +4906,14 @@ export type QueryOrganizationListArgs = {
   input?: Maybe<OrganizationListRequest>;
 };
 
+export type QueryResourceGetArgs = {
+  input?: Maybe<ResourceGetRequest>;
+};
+
+export type QueryResourceListArgs = {
+  input?: Maybe<ResourceListRequest>;
+};
+
 export type QueryServerComponentGetArgs = {
   input?: Maybe<ServerComponentGetRequest>;
 };
@@ -4992,6 +5012,149 @@ export type QueryWorkspaceGetArgs = {
 
 export type QueryWorkspaceListArgs = {
   input?: Maybe<WorkspaceListRequest>;
+};
+
+export type Resource = {
+  __typename?: "Resource";
+  /** data */
+  data?: Maybe<Scalars["String"]>;
+  /** A System Initiative Resource Display Name */
+  displayName?: Maybe<Scalars["String"]>;
+  /** entityId */
+  entityId?: Maybe<Scalars["String"]>;
+  /** health */
+  health?: Maybe<Scalars["String"]>;
+  /** A System Initiative Resource ID */
+  id?: Maybe<Scalars["ID"]>;
+  /** kind */
+  kind?: Maybe<Scalars["String"]>;
+  /** A System Initiative Resource Name */
+  name?: Maybe<Scalars["String"]>;
+  /** nodeId */
+  nodeId?: Maybe<Scalars["String"]>;
+  /** SI Internal Properties */
+  siProperties?: Maybe<ResourceSiProperties>;
+  /** SI Storable */
+  siStorable?: Maybe<DataStorable>;
+  /** status */
+  status?: Maybe<Scalars["String"]>;
+};
+
+/** Create a A System Initiative Resource Reply */
+export type ResourceCreateReply = {
+  __typename?: "ResourceCreateReply";
+  /** A System Initiative Resource Item */
+  item?: Maybe<Resource>;
+};
+
+/** Create a A System Initiative Resource Request */
+export type ResourceCreateRequest = {
+  /** data */
+  data?: Maybe<Scalars["String"]>;
+  /** A System Initiative Resource Display Name */
+  displayName?: Maybe<Scalars["String"]>;
+  /** entityId */
+  entityId?: Maybe<Scalars["String"]>;
+  /** health */
+  health?: Maybe<Scalars["String"]>;
+  /** kind */
+  kind?: Maybe<Scalars["String"]>;
+  /** A System Initiative Resource Name */
+  name?: Maybe<Scalars["String"]>;
+  /** nodeId */
+  nodeId?: Maybe<Scalars["String"]>;
+  /** SI Internal Properties */
+  siProperties?: Maybe<ResourceSiPropertiesRequest>;
+  /** status */
+  status?: Maybe<Scalars["String"]>;
+};
+
+/** Get a A System Initiative Resource Reply */
+export type ResourceGetReply = {
+  __typename?: "ResourceGetReply";
+  /** A System Initiative Resource Item */
+  item?: Maybe<Resource>;
+};
+
+/** Get a A System Initiative Resource Request */
+export type ResourceGetRequest = {
+  /** A System Initiative Resource ID */
+  id?: Maybe<Scalars["ID"]>;
+};
+
+/** List A System Initiative Resource Reply */
+export type ResourceListReply = {
+  __typename?: "ResourceListReply";
+  /** Items */
+  items?: Maybe<Array<Resource>>;
+  /** Next Page Token */
+  nextPageToken?: Maybe<Scalars["String"]>;
+  /** Total Count */
+  totalCount?: Maybe<Scalars["String"]>;
+};
+
+/** List A System Initiative Resource Request */
+export type ResourceListRequest = {
+  /** Order By */
+  orderBy?: Maybe<Scalars["String"]>;
+  /** Order By Direction */
+  orderByDirection?: Maybe<DataPageTokenOrderByDirection>;
+  /** Page Size */
+  pageSize?: Maybe<Scalars["String"]>;
+  /** Page Token */
+  pageToken?: Maybe<Scalars["String"]>;
+  /** Query */
+  query?: Maybe<DataQueryRequest>;
+  /** Scope By Tenant ID */
+  scopeByTenantId?: Maybe<Scalars["String"]>;
+};
+
+export type ResourceSiProperties = {
+  __typename?: "ResourceSiProperties";
+  /** Billing Account ID */
+  billingAccountId?: Maybe<Scalars["String"]>;
+  /** Organization ID */
+  organizationId?: Maybe<Scalars["String"]>;
+  /** Organization ID */
+  workspaceId?: Maybe<Scalars["String"]>;
+};
+
+export type ResourceSiPropertiesRequest = {
+  /** Billing Account ID */
+  billingAccountId?: Maybe<Scalars["String"]>;
+  /** Organization ID */
+  organizationId?: Maybe<Scalars["String"]>;
+  /** Organization ID */
+  workspaceId?: Maybe<Scalars["String"]>;
+};
+
+/** Update a A System Initiative Resource Reply */
+export type ResourceUpdateReply = {
+  __typename?: "ResourceUpdateReply";
+  /** A System Initiative Resource Item */
+  item?: Maybe<Resource>;
+};
+
+/** Update a A System Initiative Resource Request */
+export type ResourceUpdateRequest = {
+  /** data */
+  data?: Maybe<Scalars["String"]>;
+  /** A System Initiative Resource Display Name */
+  displayName?: Maybe<Scalars["String"]>;
+  /** entityId */
+  entityId?: Maybe<Scalars["String"]>;
+  /** health */
+  health?: Maybe<Scalars["String"]>;
+  /** A System Initiative Resource ID */
+  id?: Maybe<Scalars["ID"]>;
+  /** kind */
+  kind?: Maybe<Scalars["String"]>;
+  /** A System Initiative Resource Name */
+  name?: Maybe<Scalars["String"]>;
+  /** nodeId */
+  nodeId?: Maybe<Scalars["String"]>;
+  /** status */
+  status?: Maybe<Scalars["String"]>;
 };
 
 /** Selector */

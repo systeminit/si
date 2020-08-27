@@ -99,9 +99,6 @@ export const application: Module<ApplicationStore, RootStore> = {
         { root: true },
       );
       await dispatch("changeSet/execute", { wait: true }, { root: true });
-      const toCommit = _.cloneDeep(newApp);
-      toCommit.id = toCommit.siStorable.itemId;
-      commit("add", { applications: [toCommit] });
       return newApp;
     },
   },
