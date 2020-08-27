@@ -211,10 +211,28 @@ export const changeSet: Module<ChangeSetStore, RootStore> = {
                 while (remainingItems) {
                   for (const changeSetEntry of changeSetEntryItems) {
                     if (
-                      !changeSetEntry.siStorable?.typeName?.endsWith(
+                      changeSetEntry.siStorable?.typeName?.endsWith(
                         "entity_event",
                       )
                     ) {
+                      let entityEventResponse = await graphqlQuery({
+                        typeName: changeSetEntry.siStorable?.typeName,
+                        methodName: "get",
+                        variables: {
+                          id: changeSetEntry.id,
+                        },
+                      });
+                      let entityEvent = entityEventResponse.item;
+                      setTimeout(async function() {
+                        await dispatch(
+                          "resource/updateOnAction",
+                          {
+                            entityId: entityEvent.inputEntity.siStorable.itemId,
+                          },
+                          { root: true },
+                        );
+                      }, Math.floor(Math.random() * 1001));
+                    } else {
                       await dispatch(
                         "entity/get",
                         {

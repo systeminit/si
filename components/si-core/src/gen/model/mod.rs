@@ -12,6 +12,7 @@ pub mod ec2_instance_entity;
 pub mod ec2_instance_entity_event;
 pub mod edge;
 pub mod node;
+pub mod resource;
 pub mod server_component;
 pub mod server_entity;
 pub mod server_entity_event;

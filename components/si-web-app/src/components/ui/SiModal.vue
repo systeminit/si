@@ -27,7 +27,9 @@
           </div>
         </div>
         <div class="flex flex-row justify-end w-full mr-2">
-          <slot name="buttons" />
+          <div>
+            <slot name="buttons" />
+          </div>
         </div>
       </div>
     </div>

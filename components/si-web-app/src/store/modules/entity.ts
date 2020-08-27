@@ -1328,6 +1328,21 @@ export const entity: Module<EntityStore, RootStore> = {
       //);
       //await dispatch("changeSet/get", { changeSetId }, { root: true });
 
+      console.log("going to create a resource...", { name: newNode.name });
+      await dispatch(
+        "resource/create",
+        {
+          nodeName: newNode.name,
+          nodeId: newNode.id,
+          entityId: entity.siStorable?.itemId,
+          kind: entity.siStorable.typeName,
+          status: "PENDING",
+          health: "UNKNOWN",
+          data: JSON.stringify({ music: "is fun!" }),
+        },
+        { root: true },
+      );
+
       return entity;
     },
     async delete(
@@ -1380,6 +1395,13 @@ export const entity: Module<EntityStore, RootStore> = {
       });
       const entity = entityGetResult["item"];
       commit("add", { entities: [entity] });
+      if (entity.siStorable?.typeName == "application_entity") {
+        await dispatch(
+          "application/add",
+          { applications: [entity] },
+          { root: true },
+        );
+      }
 
       let node;
       if (entity.siStorable.itemId) {

@@ -20,6 +20,7 @@ service Core {
   rpc ApplicationEntityUpdate(ApplicationEntityUpdateRequest) returns (ApplicationEntityUpdateReply);
   rpc ApplicationEntitySync(ApplicationEntitySyncRequest) returns (ApplicationEntitySyncReply);
   rpc ApplicationEntityEventList(ApplicationEntityEventListRequest) returns (ApplicationEntityEventListReply);
+  rpc ApplicationEntityEventGet(ApplicationEntityEventGetRequest) returns (ApplicationEntityEventGetReply);
   rpc ServiceComponentGet(ServiceComponentGetRequest) returns (ServiceComponentGetReply);
   rpc ServiceComponentList(ServiceComponentListRequest) returns (ServiceComponentListReply);
   rpc ServiceComponentCreate(ServiceComponentCreateRequest) returns (ServiceComponentCreateReply);
@@ -32,12 +33,17 @@ service Core {
   rpc ServiceEntitySync(ServiceEntitySyncRequest) returns (ServiceEntitySyncReply);
   rpc ServiceEntityDeploy(ServiceEntityDeployRequest) returns (ServiceEntityDeployReply);
   rpc ServiceEntityEventList(ServiceEntityEventListRequest) returns (ServiceEntityEventListReply);
+  rpc ServiceEntityEventGet(ServiceEntityEventGetRequest) returns (ServiceEntityEventGetReply);
   rpc SystemList(SystemListRequest) returns (SystemListReply);
   rpc SystemGet(SystemGetRequest) returns (SystemGetReply);
   rpc SystemCreate(SystemCreateRequest) returns (SystemCreateReply);
   rpc EdgeList(EdgeListRequest) returns (EdgeListReply);
   rpc EdgeGet(EdgeGetRequest) returns (EdgeGetReply);
   rpc EdgeCreate(EdgeCreateRequest) returns (EdgeCreateReply);
+  rpc ResourceList(ResourceListRequest) returns (ResourceListReply);
+  rpc ResourceGet(ResourceGetRequest) returns (ResourceGetReply);
+  rpc ResourceCreate(ResourceCreateRequest) returns (ResourceCreateReply);
+  rpc ResourceUpdate(ResourceUpdateRequest) returns (ResourceUpdateReply);
   rpc NodeList(NodeListRequest) returns (NodeListReply);
   rpc NodeGet(NodeGetRequest) returns (NodeGetReply);
   rpc NodeCreate(NodeCreateRequest) returns (NodeCreateReply);
@@ -55,6 +61,7 @@ service Core {
   rpc ServerEntityStart(ServerEntityStartRequest) returns (ServerEntityStartReply);
   rpc ServerEntityStop(ServerEntityStopRequest) returns (ServerEntityStopReply);
   rpc ServerEntityEventList(ServerEntityEventListRequest) returns (ServerEntityEventListReply);
+  rpc ServerEntityEventGet(ServerEntityEventGetRequest) returns (ServerEntityEventGetReply);
   rpc UbuntuComponentGet(UbuntuComponentGetRequest) returns (UbuntuComponentGetReply);
   rpc UbuntuComponentList(UbuntuComponentListRequest) returns (UbuntuComponentListReply);
   rpc UbuntuComponentCreate(UbuntuComponentCreateRequest) returns (UbuntuComponentCreateReply);
@@ -68,6 +75,7 @@ service Core {
   rpc UbuntuEntityReboot(UbuntuEntityRebootRequest) returns (UbuntuEntityRebootReply);
   rpc UbuntuEntityHalt(UbuntuEntityHaltRequest) returns (UbuntuEntityHaltReply);
   rpc UbuntuEntityEventList(UbuntuEntityEventListRequest) returns (UbuntuEntityEventListReply);
+  rpc UbuntuEntityEventGet(UbuntuEntityEventGetRequest) returns (UbuntuEntityEventGetReply);
   rpc AmiComponentGet(AmiComponentGetRequest) returns (AmiComponentGetReply);
   rpc AmiComponentList(AmiComponentListRequest) returns (AmiComponentListReply);
   rpc AmiComponentCreate(AmiComponentCreateRequest) returns (AmiComponentCreateReply);
@@ -79,6 +87,7 @@ service Core {
   rpc AmiEntityUpdate(AmiEntityUpdateRequest) returns (AmiEntityUpdateReply);
   rpc AmiEntitySync(AmiEntitySyncRequest) returns (AmiEntitySyncReply);
   rpc AmiEntityEventList(AmiEntityEventListRequest) returns (AmiEntityEventListReply);
+  rpc AmiEntityEventGet(AmiEntityEventGetRequest) returns (AmiEntityEventGetReply);
   rpc Ec2InstanceComponentGet(Ec2InstanceComponentGetRequest) returns (Ec2InstanceComponentGetReply);
   rpc Ec2InstanceComponentList(Ec2InstanceComponentListRequest) returns (Ec2InstanceComponentListReply);
   rpc Ec2InstanceComponentCreate(Ec2InstanceComponentCreateRequest) returns (Ec2InstanceComponentCreateReply);
@@ -95,6 +104,7 @@ service Core {
   rpc Ec2InstanceEntityReboot(Ec2InstanceEntityRebootRequest) returns (Ec2InstanceEntityRebootReply);
   rpc Ec2InstanceEntityTerminate(Ec2InstanceEntityTerminateRequest) returns (Ec2InstanceEntityTerminateReply);
   rpc Ec2InstanceEntityEventList(Ec2InstanceEntityEventListRequest) returns (Ec2InstanceEntityEventListReply);
+  rpc Ec2InstanceEntityEventGet(Ec2InstanceEntityEventGetRequest) returns (Ec2InstanceEntityEventGetReply);
 }
 message ApplicationComponentConstraints {
   google.protobuf.StringValue component_name = 1;
@@ -248,6 +258,12 @@ message ApplicationEntityEventListReply {
   repeated si.core.ApplicationEntityEvent items = 1;
   google.protobuf.UInt32Value total_count = 2;
   google.protobuf.StringValue next_page_token = 3;
+}
+message ApplicationEntityEventGetRequest {
+  google.protobuf.StringValue id = 1001;
+}
+message ApplicationEntityEventGetReply {
+  si.core.ApplicationEntityEvent item = 1001;
 }
 message ServiceComponentConstraints {
   google.protobuf.StringValue component_name = 1;
@@ -412,6 +428,12 @@ message ServiceEntityEventListReply {
   google.protobuf.UInt32Value total_count = 2;
   google.protobuf.StringValue next_page_token = 3;
 }
+message ServiceEntityEventGetRequest {
+  google.protobuf.StringValue id = 1001;
+}
+message ServiceEntityEventGetReply {
+  si.core.ServiceEntityEvent item = 1001;
+}
 message SystemSiProperties {
   google.protobuf.StringValue billing_account_id = 1001;
   google.protobuf.StringValue organization_id = 1002;
@@ -512,6 +534,71 @@ message EdgeCreateRequest {
 }
 message EdgeCreateReply {
   si.core.Edge item = 1001;
+}
+message ResourceSiProperties {
+  google.protobuf.StringValue billing_account_id = 1001;
+  google.protobuf.StringValue organization_id = 1002;
+  google.protobuf.StringValue workspace_id = 1003;
+}
+message Resource {
+  google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue name = 2;
+  google.protobuf.StringValue display_name = 3;
+  si.data.DataStorable si_storable = 4;
+  si.core.ResourceSiProperties si_properties = 1001;
+  google.protobuf.StringValue entity_id = 1002;
+  google.protobuf.StringValue node_id = 1003;
+  google.protobuf.StringValue kind = 1004;
+  google.protobuf.StringValue status = 1005;
+  google.protobuf.StringValue health = 1006;
+  google.protobuf.StringValue data = 1007;
+}
+message ResourceListRequest {
+  si.data.DataQuery query = 1;
+  google.protobuf.UInt32Value page_size = 2;
+  google.protobuf.StringValue order_by = 3;
+  si.data.DataPageTokenOrderByDirection order_by_direction = 4;
+  google.protobuf.StringValue page_token = 5;
+  google.protobuf.StringValue scope_by_tenant_id = 6;
+}
+message ResourceListReply {
+  repeated si.core.Resource items = 1;
+  google.protobuf.UInt32Value total_count = 2;
+  google.protobuf.StringValue next_page_token = 3;
+}
+message ResourceGetRequest {
+  google.protobuf.StringValue id = 1001;
+}
+message ResourceGetReply {
+  si.core.Resource item = 1001;
+}
+message ResourceCreateRequest {
+  google.protobuf.StringValue name = 1001;
+  google.protobuf.StringValue display_name = 1002;
+  si.core.ResourceSiProperties si_properties = 1003;
+  google.protobuf.StringValue entity_id = 1004;
+  google.protobuf.StringValue node_id = 1005;
+  google.protobuf.StringValue kind = 1006;
+  google.protobuf.StringValue status = 1007;
+  google.protobuf.StringValue health = 1008;
+  google.protobuf.StringValue data = 1009;
+}
+message ResourceCreateReply {
+  si.core.Resource item = 1001;
+}
+message ResourceUpdateRequest {
+  google.protobuf.StringValue id = 1001;
+  google.protobuf.StringValue name = 1002;
+  google.protobuf.StringValue display_name = 1003;
+  google.protobuf.StringValue entity_id = 1004;
+  google.protobuf.StringValue node_id = 1005;
+  google.protobuf.StringValue kind = 1006;
+  google.protobuf.StringValue status = 1007;
+  google.protobuf.StringValue health = 1008;
+  google.protobuf.StringValue data = 1009;
+}
+message ResourceUpdateReply {
+  si.core.Resource item = 1001;
 }
 enum NodeSocketsKind {
   NODE_SOCKETS_KIND_UNKNOWN = 0;
@@ -753,6 +840,12 @@ message ServerEntityEventListReply {
   google.protobuf.UInt32Value total_count = 2;
   google.protobuf.StringValue next_page_token = 3;
 }
+message ServerEntityEventGetRequest {
+  google.protobuf.StringValue id = 1001;
+}
+message ServerEntityEventGetReply {
+  si.core.ServerEntityEvent item = 1001;
+}
 message UbuntuComponentConstraints {
   google.protobuf.StringValue component_name = 1;
   google.protobuf.StringValue component_display_name = 2;
@@ -920,6 +1013,12 @@ message UbuntuEntityEventListReply {
   google.protobuf.UInt32Value total_count = 2;
   google.protobuf.StringValue next_page_token = 3;
 }
+message UbuntuEntityEventGetRequest {
+  google.protobuf.StringValue id = 1001;
+}
+message UbuntuEntityEventGetReply {
+  si.core.UbuntuEntityEvent item = 1001;
+}
 message AmiComponentConstraints {
   google.protobuf.StringValue component_name = 1;
   google.protobuf.StringValue component_display_name = 2;
@@ -1076,6 +1175,12 @@ message AmiEntityEventListReply {
   repeated si.core.AmiEntityEvent items = 1;
   google.protobuf.UInt32Value total_count = 2;
   google.protobuf.StringValue next_page_token = 3;
+}
+message AmiEntityEventGetRequest {
+  google.protobuf.StringValue id = 1001;
+}
+message AmiEntityEventGetReply {
+  si.core.AmiEntityEvent item = 1001;
 }
 message Ec2InstanceComponentConstraints {
   google.protobuf.StringValue component_name = 1;
@@ -1265,4 +1370,10 @@ message Ec2InstanceEntityEventListReply {
   repeated si.core.Ec2InstanceEntityEvent items = 1;
   google.protobuf.UInt32Value total_count = 2;
   google.protobuf.StringValue next_page_token = 3;
+}
+message Ec2InstanceEntityEventGetRequest {
+  google.protobuf.StringValue id = 1001;
+}
+message Ec2InstanceEntityEventGetReply {
+  si.core.Ec2InstanceEntityEvent item = 1001;
 }

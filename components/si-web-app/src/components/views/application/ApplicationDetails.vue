@@ -25,6 +25,20 @@
         </div>
         <div class="flex items-center justify-end w-1/2 mr-2">
           <div
+            class="flex items-center justify-end w-1/4 pr-1 text-xs text-gray-400"
+          >
+            system:
+          </div>
+          <div class="flex items-center">
+            <SiSelect
+              size="xs"
+              class="mr-4"
+              :options="systemList"
+              v-model="currentSystem"
+              name="systemSelect"
+            />
+          </div>
+          <div
             class="inline-flex justify-end w-8 mr-2 font-normal text-gray-400"
             data-cy="application-details-current-mode"
           >
@@ -136,27 +150,7 @@
           <div
             class="w-1/4 pt-2 pb-2 pl-2 mx-3 mt-2 border border-solid card-section"
           >
-            <div class="flex">
-              <div class="flex-row w-full text-sm font-bold text-gray-400">
-                systems: {{ systems.length }}
-              </div>
-            </div>
-            <div class="flex">
-              <div
-                class="flex items-center justify-end w-1/4 pr-1 text-xs text-gray-400"
-              >
-                system:
-              </div>
-              <div class="flex items-center w-full">
-                <SiSelect
-                  size="xs"
-                  class="mr-4"
-                  :options="systemList"
-                  v-model="currentSystem"
-                  name="systemSelect"
-                />
-              </div>
-            </div>
+            <ResourcesVisualization />
           </div>
           <div
             class="w-1/4 pt-2 pb-2 pl-2 mx-3 mt-2 border border-solid card-section"
@@ -214,6 +208,7 @@ import StatusBar from "@/components/common/StatusBar.vue";
 import EventBar from "@/components/common/EventBar.vue";
 import ServicesVisualization from "@/components/visualization/ServicesVisualization.vue";
 import ActivityVisualization from "@/components/visualization/ActivityVisualization.vue";
+import ResourcesVisualization from "@/components/visualization/ResourcesVisualization.vue";
 import Button2 from "@/components/ui/Button2.vue";
 import SiModal from "@/components/ui/SiModal.vue";
 import SiSelect from "@/components/ui/SiSelect.vue";
@@ -253,6 +248,7 @@ export default Vue.extend({
     ToggleRightIcon,
     ActivityVisualization,
     ServicesVisualization,
+    ResourcesVisualization,
     Button2,
     SiModal,
     SiSelect,

@@ -18,6 +18,7 @@ import { billingAccount, BillingAccountStore } from "./modules/billingAccount";
 import { node, NodeStore } from "./modules/node";
 import { eventLog, EventLogStore } from "./modules/eventLog";
 import { loader, LoaderStore } from "./modules/loader";
+import { resource, ResourceStore } from "./modules/resource";
 
 Vue.use(Vuex);
 
@@ -63,6 +64,7 @@ export interface RootStore {
   edge: EdgeStore;
   system: SystemStore;
   eventLog: EventLogStore;
+  resource: ResourceStore;
   version: string;
 }
 
@@ -83,6 +85,7 @@ const store: Store<RootStore> = new Vuex.Store({
     billingAccount,
     node,
     eventLog,
+    resource,
     loader,
   },
   strict: debug,

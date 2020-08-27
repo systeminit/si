@@ -20,6 +20,7 @@ service Kubernetes {
   rpc KubernetesClusterEntityUpdate(KubernetesClusterEntityUpdateRequest) returns (KubernetesClusterEntityUpdateReply);
   rpc KubernetesClusterEntitySync(KubernetesClusterEntitySyncRequest) returns (KubernetesClusterEntitySyncReply);
   rpc KubernetesClusterEntityEventList(KubernetesClusterEntityEventListRequest) returns (KubernetesClusterEntityEventListReply);
+  rpc KubernetesClusterEntityEventGet(KubernetesClusterEntityEventGetRequest) returns (KubernetesClusterEntityEventGetReply);
   rpc MinikubeComponentGet(MinikubeComponentGetRequest) returns (MinikubeComponentGetReply);
   rpc MinikubeComponentList(MinikubeComponentListRequest) returns (MinikubeComponentListReply);
   rpc MinikubeComponentCreate(MinikubeComponentCreateRequest) returns (MinikubeComponentCreateReply);
@@ -33,6 +34,7 @@ service Kubernetes {
   rpc MinikubeEntityStart(MinikubeEntityStartRequest) returns (MinikubeEntityStartReply);
   rpc MinikubeEntityStop(MinikubeEntityStopRequest) returns (MinikubeEntityStopReply);
   rpc MinikubeEntityEventList(MinikubeEntityEventListRequest) returns (MinikubeEntityEventListReply);
+  rpc MinikubeEntityEventGet(MinikubeEntityEventGetRequest) returns (MinikubeEntityEventGetReply);
   rpc KubernetesDeploymentComponentGet(KubernetesDeploymentComponentGetRequest) returns (KubernetesDeploymentComponentGetReply);
   rpc KubernetesDeploymentComponentList(KubernetesDeploymentComponentListRequest) returns (KubernetesDeploymentComponentListReply);
   rpc KubernetesDeploymentComponentCreate(KubernetesDeploymentComponentCreateRequest) returns (KubernetesDeploymentComponentCreateReply);
@@ -45,6 +47,7 @@ service Kubernetes {
   rpc KubernetesDeploymentEntitySync(KubernetesDeploymentEntitySyncRequest) returns (KubernetesDeploymentEntitySyncReply);
   rpc KubernetesDeploymentEntityApply(KubernetesDeploymentEntityApplyRequest) returns (KubernetesDeploymentEntityApplyReply);
   rpc KubernetesDeploymentEntityEventList(KubernetesDeploymentEntityEventListRequest) returns (KubernetesDeploymentEntityEventListReply);
+  rpc KubernetesDeploymentEntityEventGet(KubernetesDeploymentEntityEventGetRequest) returns (KubernetesDeploymentEntityEventGetReply);
   rpc KubernetesServiceComponentGet(KubernetesServiceComponentGetRequest) returns (KubernetesServiceComponentGetReply);
   rpc KubernetesServiceComponentList(KubernetesServiceComponentListRequest) returns (KubernetesServiceComponentListReply);
   rpc KubernetesServiceComponentCreate(KubernetesServiceComponentCreateRequest) returns (KubernetesServiceComponentCreateReply);
@@ -57,6 +60,7 @@ service Kubernetes {
   rpc KubernetesServiceEntitySync(KubernetesServiceEntitySyncRequest) returns (KubernetesServiceEntitySyncReply);
   rpc KubernetesServiceEntityApply(KubernetesServiceEntityApplyRequest) returns (KubernetesServiceEntityApplyReply);
   rpc KubernetesServiceEntityEventList(KubernetesServiceEntityEventListRequest) returns (KubernetesServiceEntityEventListReply);
+  rpc KubernetesServiceEntityEventGet(KubernetesServiceEntityEventGetRequest) returns (KubernetesServiceEntityEventGetReply);
 }
 message KubernetesMetadata {
   google.protobuf.StringValue name = 1001;
@@ -243,6 +247,12 @@ message KubernetesClusterEntityEventListReply {
   google.protobuf.UInt32Value total_count = 2;
   google.protobuf.StringValue next_page_token = 3;
 }
+message KubernetesClusterEntityEventGetRequest {
+  google.protobuf.StringValue id = 1001;
+}
+message KubernetesClusterEntityEventGetReply {
+  si.kubernetes.KubernetesClusterEntityEvent item = 1001;
+}
 message MinikubeComponentConstraints {
   google.protobuf.StringValue component_name = 1;
   google.protobuf.StringValue component_display_name = 2;
@@ -410,6 +420,12 @@ message MinikubeEntityEventListReply {
   repeated si.kubernetes.MinikubeEntityEvent items = 1;
   google.protobuf.UInt32Value total_count = 2;
   google.protobuf.StringValue next_page_token = 3;
+}
+message MinikubeEntityEventGetRequest {
+  google.protobuf.StringValue id = 1001;
+}
+message MinikubeEntityEventGetReply {
+  si.kubernetes.MinikubeEntityEvent item = 1001;
 }
 enum KubernetesDeploymentComponentConstraintsKubernetesVersion {
   KUBERNETES_DEPLOYMENT_COMPONENT_CONSTRAINTS_KUBERNETES_VERSION_UNKNOWN = 0;
@@ -590,6 +606,12 @@ message KubernetesDeploymentEntityEventListReply {
   repeated si.kubernetes.KubernetesDeploymentEntityEvent items = 1;
   google.protobuf.UInt32Value total_count = 2;
   google.protobuf.StringValue next_page_token = 3;
+}
+message KubernetesDeploymentEntityEventGetRequest {
+  google.protobuf.StringValue id = 1001;
+}
+message KubernetesDeploymentEntityEventGetReply {
+  si.kubernetes.KubernetesDeploymentEntityEvent item = 1001;
 }
 enum KubernetesServiceComponentConstraintsKubernetesVersion {
   KUBERNETES_SERVICE_COMPONENT_CONSTRAINTS_KUBERNETES_VERSION_UNKNOWN = 0;
@@ -789,6 +811,12 @@ message KubernetesServiceEntityEventListReply {
   repeated si.kubernetes.KubernetesServiceEntityEvent items = 1;
   google.protobuf.UInt32Value total_count = 2;
   google.protobuf.StringValue next_page_token = 3;
+}
+message KubernetesServiceEntityEventGetRequest {
+  google.protobuf.StringValue id = 1001;
+}
+message KubernetesServiceEntityEventGetReply {
+  si.kubernetes.KubernetesServiceEntityEvent item = 1001;
 }
 message KubernetesServicePort {
   google.protobuf.StringValue app_protocol = 1001;

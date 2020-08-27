@@ -16,13 +16,14 @@ const provider = new WebTracerProvider({
   //plugins: [new DocumentLoad() as any, new UserInteractionPlugin()],
   plugins: [new DocumentLoad() as any],
 });
-provider.addSpanProcessor(
-  new SimpleSpanProcessor(
-    new CollectorExporter({
-      serviceName: "si-web-app",
-    }),
-  ),
-);
+//provider.addSpanProcessor(
+//  new SimpleSpanProcessor(
+////    new ConsoleSpanExporter(),
+//    //new CollectorExporter({
+//    //  serviceName: "si-web-app",
+//    //}),
+//  ),
+//);
 // provider.addSpanProcessor(new SimpleSpanProcessor(new ConsoleSpanExporter()));
 provider.register({
   contextManager: new ZoneContextManager(),

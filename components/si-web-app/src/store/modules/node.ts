@@ -709,8 +709,6 @@ export const node: Module<NodeStore, RootStore> = {
         typeName: entity.siStorable.typeName,
         methodName: payload.action,
         variables: {
-          // How is this not a bug? If we haven't made a change already, we won't have an
-          // object with the ID. I bet we still have to pass the changeSet ID through.
           id: entity.id,
           changeSetId: currentChangeSet.id,
         },
@@ -768,7 +766,7 @@ export const node: Module<NodeStore, RootStore> = {
           },
           { root: true },
         );
-        let newNode = getters["getNodeByEntityId"](
+        let newNode: Node = getters["getNodeByEntityId"](
           newEntity.siStorable?.itemId,
         );
         commit("current", newNode);
