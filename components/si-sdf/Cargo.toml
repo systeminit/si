@@ -1,0 +1,40 @@
+[package]
+name = "si-sdf"
+version = "0.1.0"
+authors = ["Adam Jacob <adam@systeminit.com>"]
+edition = "2018"
+
+[[bin]]
+name = "si-sdf"
+path = "src/bin/server.rs"
+
+[dependencies]
+anyhow = "1.0"
+couchbase = { path = "../../vendor/couchbase-rs/couchbase" }
+tokio = { version = "0.2", features = ["full"] }
+warp = "0.2"
+tracing = "0.1"
+tracing-futures = { version = "0.2", features = ["tokio", "std-future"]}
+tracing-subscriber = "0.2.11"
+tracing-opentelemetry = "0.7"
+opentelemetry = "0.8"
+opentelemetry-jaeger = "0.7"
+si-settings = { path = "../si-settings" }
+serde = { version = "1.0.104", features = ["derive"] }
+serde_json = { version = "1.0", features = ["preserve_order"] }
+thiserror = "1.0"
+names = "0.11"
+uuid = { version = "0.8", features = ["serde", "v4"] }
+reqwest = { version = "0.10", features = ["default-tls", "json"] }
+sodiumoxide = "0.2"
+jwt-simple = "0.1"
+base64 = "0.12"
+nats = { git = "https://github.com/systeminit/nats.rs", branch = "nkeys-upgrade" }
+futures = { version = "0.3", features = ["alloc"] }
+lazy_static = "1.4"
+crossbeam = "0.7.3"
+chrono = "0.4"
+
+[dev-dependencies]
+lazy_static = "1.4"
+tokio-test = "0.2"

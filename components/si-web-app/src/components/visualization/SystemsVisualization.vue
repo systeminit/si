@@ -3,7 +3,7 @@
     <div class="text-sm font-bold text-gray-400">
       systems
     </div>
-    <div class="flex mt-1 pl-1">
+    <div class="flex pl-1 mt-1">
       <div v-for="system in systems" class="mr-1" :key="system.id">
         <SquareChart
           rgbColor="115, 76, 118"
@@ -16,9 +16,9 @@
 
 <script lang="ts">
 import Vue from "vue";
-import { mapGetters } from "vuex";
+import { mapState } from "vuex";
 
-import { SystemStore } from "@/store/modules/system";
+import { RootStore } from "@/store";
 import SquareChart from "@/components/visualization/charts/SquareChart.vue";
 
 export default Vue.extend({
@@ -30,9 +30,11 @@ export default Vue.extend({
     applicationId: String,
   },
   computed: {
-    systems(): SystemStore["systems"][] {
-      return this.$store.getters["system/forApplicationId"](this.applicationId);
-    },
+    ...mapState({
+      systems(state: RootStore) {
+        return state.application.systems[this.applicationId];
+      },
+    }),
   },
 });
 </script>

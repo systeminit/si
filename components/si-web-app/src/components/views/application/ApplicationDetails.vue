@@ -1,8 +1,7 @@
 <template>
-  <div id="application-details" class="flex flex-col">
+  <div id="application-details" class="flex flex-col" v-if="application">
     <div id="application-summary" class="flex flex-col w-full pb-3">
       <StatusBar class="" />
-
       <div class="flex mt-3">
         <div class="items-center w-1/2">
           <button
@@ -23,43 +22,61 @@
             applications/{{ application.name }}
           </div>
         </div>
+
         <div class="flex items-center justify-end w-1/2 mr-2">
           <div
             class="flex items-center justify-end w-1/4 pr-1 text-xs text-gray-400"
           >
             system:
           </div>
-          <div class="flex items-center">
+          <div class="flex items-center mr-5">
             <SiSelect
               size="xs"
               class="mr-4"
               :options="systemList"
               v-model="currentSystem"
               name="systemSelect"
+              :disabled="isEditMode"
             />
           </div>
           <div
-            class="inline-flex justify-end w-8 mr-2 font-normal text-gray-400"
-            data-cy="application-details-current-mode"
+            class="inline-flex justify-end mr-2 font-normal text-gray-400 w-14"
           >
-            <template v-if="isEditMode">
-              edit
-            </template>
-            <template v-else>
-              view
-            </template>
-          </div>
-          <button
-            @click="modeSwitch"
-            class="focus:outline-none"
-            data-cy="application-details-mode-toggle"
-          >
-            <ToggleRightIcon
-              class="inline-flex text-gray-300"
+            <Button2
+              @click.native="cancelEditSession"
+              data-cy="application-details-mode-toggle"
+              label="cancel"
+              icon="cancel"
+              kind="cancel"
+              size="xs"
               v-if="isEditMode"
             />
-            <ToggleLeftIcon class="inline-flex text-gray-300" v-else />
-          </button>
+          </div>
+          <div
+            class="inline-flex justify-end w-16 mr-2 font-normal text-gray-400"
+            data-cy="application-details-current-mode"
+          >
+            <Button2
+              @click.native="finishEditSession"
+              data-cy="application-details-mode-toggle"
+              class="w-16"
+              label="done"
+              icon="save"
+              kind="save"
+              size="xs"
+              v-if="isEditMode"
+            />
+
+            <Button2
+              class="w-16"
+              @click.native="startEditSession"
+              data-cy="application-details-mode-toggle"
+              label="edit"
+              icon="edit"
+              size="xs"
+              v-else
+            />
+          </div>
           <SiModal
             name="changeSetCreate"
             title="Select or create a changeSet"
@@ -145,8 +162,12 @@
           <div
             class="w-1/4 pt-2 pb-2 pl-2 mx-3 mt-2 border border-solid card-section"
           >
-            <ServicesVisualization :applicationId="applicationId" />
+            <ServicesVisualization
+              :applicationId="applicationId"
+              inEditor="true"
+            />
           </div>
+
           <div
             class="w-1/4 pt-2 pb-2 pl-2 mx-3 mt-2 border border-solid card-section"
           >
@@ -155,25 +176,35 @@
           <div
             class="w-1/4 pt-2 pb-2 pl-2 mx-3 mt-2 border border-solid card-section"
           >
-            <div class="flex">
-              <div class="flex-row w-full text-sm font-bold text-gray-400">
-                change: {{ changeSetOpenCount }}
+            <div class="flex flex-col">
+              <div class="flex flex-row align-middle">
+                <div class="self-center text-sm font-bold text-gray-400">
+                  changeset:
+                </div>
+                <div class="flex ml-2">
+                  <SiSelect
+                    size="xs"
+                    :options="changeSetOpenList"
+                    v-model="currentChangeSet"
+                    name="box"
+                    :disabled="isEditMode"
+                  />
+                </div>
               </div>
-            </div>
-            <div class="flex">
-              <div
-                class="flex items-center justify-end w-2/6 pr-1 text-xs text-gray-400"
-              >
-                changeSet:
-              </div>
-              <div class="flex items-center w-full pr-1">
-                <SiSelect
-                  size="xs"
-                  class="mr-4"
-                  :options="changeSetOpenList"
-                  v-model="currentChangeSet"
-                  name="box"
-                />
+              <div class="flex flex-row text-xs text-gray-400 align-middle">
+                <div>
+                  participants:
+                </div>
+                <div class="ml-2">
+                  <template v-if="changeSetParticipantCount == 0">
+                    {{ changeSetParticipantCount }}
+                  </template>
+                  <template v-else>
+                    <span class="text-gold">
+                      {{ changeSetParticipantCount }}
+                    </span>
+                  </template>
+                </div>
               </div>
             </div>
             <div class="flex justify-end w-full pt-2 pr-1">
@@ -189,6 +220,7 @@
         </div>
       </transition>
     </div>
+
     <div id="editor" class="flex w-full h-full overflow-hidden">
       <Editor />
     </div>
@@ -200,7 +232,7 @@
 
 <script lang="ts">
 import Vue from "vue";
-import { mapState, mapActions, Store } from "vuex";
+import { mapState, mapGetters, mapActions, Store } from "vuex";
 import { registry } from "si-registry";
 
 import Editor from "@/components/views/editor/Editor.vue";
@@ -215,14 +247,14 @@ import SiSelect from "@/components/ui/SiSelect.vue";
 import SiTextBox from "@/components/ui/SiTextBox.vue";
 import { DropdownProps } from "@/components/ui/Dropdown2.vue";
 import { RootStore } from "@/store";
-import { ChangeSet, ApplicationEntity, System } from "@/graphql-types";
-import _ from "lodash";
+import { Entity } from "@/api/sdf/model/entity";
+import { System } from "@/api/sdf/model/system";
+import { ChangeSet } from "@/api/sdf/model/changeSet";
 
+import _ from "lodash";
 import {
   ChevronRightIcon,
   ChevronDownIcon,
-  ToggleLeftIcon,
-  ToggleRightIcon,
   PlayIcon,
   EditIcon,
   AlertCircleIcon,
@@ -244,8 +276,6 @@ export default Vue.extend({
     StatusBar,
     ChevronRightIcon,
     ChevronDownIcon,
-    ToggleLeftIcon,
-    ToggleRightIcon,
     ActivityVisualization,
     ServicesVisualization,
     ResourcesVisualization,
@@ -279,9 +309,65 @@ export default Vue.extend({
       newChangeSetName: "",
     };
   },
+  computed: {
+    ...mapState({
+      application(state: RootStore) {
+        return state.editor.application;
+      },
+      systems(state: RootStore) {
+        return state.editor.systems;
+      },
+      system(state: RootStore) {
+        return state.editor.system;
+      },
+      mode: (state: any): RootStore["editor"]["mode"] => state.editor.mode,
+      changeSetParticipantCount(state: RootStore) {
+        return state.editor.changeSetParticipantCount;
+      },
+    }),
+    currentChangeSet: {
+      get(): RootStore["editor"]["changeSet"] | undefined {
+        return this.$store.state.editor.changeSet?.id;
+      },
+      set(changeSetId: null | string) {
+        this.$store.dispatch("editor/setChangeSet", { id: changeSetId });
+      },
+    },
+    changeSetOpenList(): DropdownProps["options"] {
+      let result: DropdownProps["options"] = _.map(
+        this.$store.state.editor.changeSetsOpen,
+        (changeSet: ChangeSet) => {
+          return {
+            value: changeSet.id,
+            label: changeSet.name,
+          };
+        },
+      );
+      result.unshift({ label: "none", value: null });
+      console.log("the full list of change sets open", { result });
+      return result;
+    },
+    currentSystem: {
+      get(): System | undefined {
+        return this.$store.state.editor.system.id;
+      },
+      set(systemId: null | string) {
+        this.$store.dispatch("system/setCurrentById", systemId);
+      },
+    },
+    systemList(): DropdownProps["options"] {
+      const systemList = _.map(this.systems, system => {
+        return { value: system.id, label: system.name };
+      });
+      return systemList;
+    },
+    isEditMode(): boolean {
+      return this.mode == "edit";
+    },
+  },
   methods: {
     changeSetExecute() {
-      this.$store.dispatch("changeSet/execute");
+      this.$store.dispatch("editor/changeSetExecute");
       this.$store.commit("editor/setMode", "view");
     },
     toggleDetails() {
@@ -291,15 +377,27 @@ export default Vue.extend({
       this.showChangeSetCreateModal = false;
     },
     modalChangeSetCreateSelected() {
-      this.modeSwitch();
+      this.$store.dispatch("editor/modeSwitch");
       this.showChangeSetCreateModal = false;
     },
-    modeSwitch() {
+    async startEditSession() {
       if (this.mode == "view" && !this.currentChangeSet) {
         this.showChangeSetCreateModal = true;
+        return;
       } else {
-        this.$store.dispatch("editor/modeSwitch");
+        await this.$store.dispatch("editor/editSessionCreate");
+        await this.$store.dispatch("editor/modeSwitch");
       }
+    },
+    async cancelEditSession() {
+      // TODO: Add edit session revert - going to be a lot easier
+      //       after we add the rest of the logic.
+      await this.$store.dispatch("editor/setEditSession", { id: undefined });
+      await this.$store.dispatch("editor/modeSwitch");
+    },
+    async finishEditSession() {
+      await this.$store.dispatch("editor/setEditSession", { id: undefined });
+      await this.$store.dispatch("editor/modeSwitch");
     },
     async createChangeSetOnEnter() {
       if (this.newChangeSetName) {
@@ -307,93 +405,17 @@ export default Vue.extend({
       }
     },
     async createChangeSet() {
-      const createdByUserId: string = this.$store.getters["user/userId"];
-      const workspaceId: string = this.$store.getters[
-        "user/currentWorkspaceId"
-      ];
-      await this.$store.dispatch("changeSet/create", {
+      await this.$store.dispatch("editor/changeSetCreate", {
         name: this.newChangeSetName,
-        displayName: this.newChangeSetName,
-        createdByUserId,
-        workspaceId,
       });
       this.showChangeSetCreateModal = false;
       this.newChangeSetName = "";
-      this.$store.dispatch("editor/modeSwitch");
     },
   },
-  computed: {
-    ...mapState({
-      mode: (state: any): RootStore["editor"]["mode"] => state.editor.mode,
-    }),
-    currentChangeSet: {
-      get(): RootStore["changeSet"]["current"] {
-        return this.$store.state.changeSet.current;
-      },
-      set(changeSetId: null | string) {
-        if (this.mode == "edit" && changeSetId == null) {
-          this.$store.commit("editor/setMode", "view");
-        }
-        this.$store.dispatch("changeSet/setCurrentById", changeSetId);
-      },
-    },
-    systems(): System[] {
-      return this.$store.getters["system/forApplicationId"](this.applicationId);
-    },
-    changeSetOpenCount(): number {
-      return this.$store.getters["changeSet/count"]({
-        forId: this.applicationId,
-        status: "OPEN",
-      });
-    },
-    changeSetOpenList(): DropdownProps["options"] {
-      let result: DropdownProps["options"] = _.map(
-        this.$store.getters["changeSet/open"],
-        (changeSet: ChangeSet) => {
-          return {
-            value: changeSet.id || "no id",
-            label: changeSet.name || "no name",
-          };
-        },
-      );
-      result.unshift({ label: "none", value: null });
-      return result;
-    },
-    currentSystem: {
-      get(): System {
-        if (
-          !this.$store.state.system.current &&
-          this.$store.state.system.systems &&
-          this.$store.state.system.systems[0]
-        ) {
-          this.$store.commit(
-            "system/current",
-            this.$store.state.system.systems[0],
-          );
-        }
-        return this.$store.state.system.current;
-      },
-      set(systemId: null | string) {
-        this.$store.dispatch("system/setCurrentById", systemId);
-      },
-    },
-    systemList(): DropdownProps["options"] {
-      const systemList = _.map(this.systems, system => {
-        return { value: system.id || "no id", label: system.name || "no name" };
-      });
-
-      if (systemList) {
-        return systemList;
-      } else {
-        return [];
-      }
-    },
-    isEditMode(): boolean {
-      return this.mode == "edit";
-    },
-    application(): ApplicationEntity {
-      return this.$store.getters["application/get"]({ id: this.applicationId });
-    },
+  async created() {
+    await this.$store.dispatch("editor/restore", {
+      applicationId: this.applicationId,
+    });
   },
 });
 </script>

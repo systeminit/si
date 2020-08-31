@@ -1,6 +1,0 @@
-# CEA
-
-The Component/Entity/Actor framework, which will eventually house our
-in-house framework for developing new components/entities/actors. 
-
-Right this second, it's going to hold some protobuf definitions.

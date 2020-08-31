@@ -1,5 +1,0 @@
-[si-graphql]
-plan_path = "components/si-graphql/habitat"
-paths = [
-  "components/si-graphql/*"
-]

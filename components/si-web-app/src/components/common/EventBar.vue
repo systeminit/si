@@ -43,7 +43,10 @@
               </div>
             </div>
             <div class="ml-16 mr-10" v-if="isEventExpanded(eventLog.id)">
-              <div v-if="eventLog.payload.kind == 'entity'" class="flex-col">
+              <div
+                v-if="eventLog.payload.siStorable.typeName == 'entity'"
+                class="flex-col"
+              >
                 <div class="flex flex-row w-full">
                   <div class="flex justify-end w-1/12 mr-2 text-white">
                     <div>
@@ -275,7 +278,11 @@
               </div>
 
               <div v-else>
-                {{ eventLog.payload.kind }}
+                <pre>
+                <code>
+{{ JSON.stringify(eventLog, null, 2) }}
+                </code>
+                </pre>
               </div>
             </div>
           </div>
@@ -284,7 +291,7 @@
     </div>
 
     <div v-else class="flex items-center w-full h-6 text-xs event-bar">
-      <div class="flex items-center">
+      <div class="flex items-center" v-if="eventLogLatest">
         <div class="ml-6 text-xs text-gray-100">event</div>
         <div class="ml-4 text-gray-400">
           <span class="text-gray-500">
@@ -318,7 +325,7 @@ import {
 import { mapState, mapGetters } from "vuex";
 import { camelCase } from "change-case";
 import { RootStore } from "@/store";
-import { EventLog } from "@/graphql-types";
+import { EventLog } from "@/api/sdf/model/eventLog";
 
 interface Data {
   expanded: boolean;
@@ -364,31 +371,19 @@ export default Vue.extend({
     },
   },
   computed: {
-    ...mapGetters({
-      eventLogLatest: "eventLog/latest",
-    }),
+    eventLogLatest(): EventLog | undefined {
+      console.log("event log latest", this.eventLogs[0]);
+      if (this.eventLogs.length > 0) {
+        return this.eventLogs[0];
+      } else {
+        return undefined;
+      }
+    },
     ...mapState({
-      eventLogs: (state: any): RootStore["eventLog"]["eventLogs"] => {
-        if (state.eventLog.eventLogs.length > 40) {
-          return state.eventLog.eventLogs.slice(0, 40);
-        } else {
-          return state.eventLog.eventLogs;
-        }
+      eventLogs: (state: any): RootStore["editor"]["eventLogs"] => {
+        return state.editor.eventLogs;
       },
     }),
-  },
-  mounted(): void {
-    const handle = setInterval(() => {
-      this.$store.dispatch("eventLog/load");
-    }, 5000);
-    // @ts-ignore
-    this.interval = handle;
-  },
-  beforeDestroy(): void {
-    if (this.interval != undefined) {
-      // @ts-ignore
-      clearInterval(this.interval);
-    }
   },
 });
 </script>

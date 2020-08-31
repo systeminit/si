@@ -6,9 +6,11 @@
     >
       <div class="flex flex-row justify-start mx-3">
         <button
-          class="px-4 py-2 text-white focus:outline-none"
+          class="px-4 py-2 focus:outline-none"
+          v-bind:class="buttonClass"
           @click="createNode()"
           type="button"
+          :disabled="!isEditMode"
         >
           <plus-square-icon size="1.1x" />
         </button>
@@ -16,6 +18,7 @@
           <select
             class="my-2 text-xs leading-tight text-gray-400 bg-gray-800 border focus:outline-none"
             v-model="selectedEntityType"
+            :disabled="!isEditMode"
           >
             <option
               v-for="entity in entityTypeList"
@@ -27,8 +30,10 @@
           </select>
         </div>
         <button
-          class="px-4 py-2 text-white focus:outline-none"
+          class="px-4 py-2 focus:outline-none"
+          v-bind:class="buttonClass"
           @click="sendAction()"
+          :disabled="!isEditMode"
           type="button"
         >
           <CommandIcon size="1.1x" />
@@ -36,6 +41,7 @@
         <div class="text-black">
           <select
             class="my-2 text-xs leading-tight text-gray-400 bg-gray-800 border focus:outline-none"
+            :disabled="!isEditMode"
             v-model="selectedAction"
           >
             <option key="delete" value="delete">
@@ -69,17 +75,17 @@
 import Vue from "vue";
 import { Maximize2Icon, PlusSquareIcon, CommandIcon } from "vue-feather-icons";
 import NodeEditor from "./NodeEditor.vue";
-import { registry, EntityObject } from "si-registry";
+import { registry } from "si-registry";
 import _ from "lodash";
 import { mapState } from "vuex";
 import { RootStore } from "@/store";
 import { camelCase } from "change-case";
-import { NodeNodeKind } from "@/graphql-types";
+import { NodeKind } from "@/api/sdf/model/node";
 
 interface Data {
   selectedEntityType: string;
   selectedAction: string;
-  entityTypeList: EntityObject[];
+  entityTypeList: any[];
 }
 
 export default Vue.extend({
@@ -93,7 +99,7 @@ export default Vue.extend({
   data(): Data {
     const entityTypeList = _.sortBy(registry.listEntities(), ["typeName"]);
     return {
-      selectedEntityType: "serviceEntity",
+      selectedEntityType: "service",
       selectedAction: "delete",
       entityTypeList,
     };
@@ -107,30 +113,33 @@ export default Vue.extend({
       });
     },
     async createNode(): Promise<void> {
-      await this.$store.dispatch("node/create", {
-        nodeType: NodeNodeKind.Entity,
-        typeName: this.selectedEntityType,
+      await this.$store.dispatch("editor/nodeCreate", {
+        kind: NodeKind.Entity,
+        objectType: this.selectedEntityType,
       });
-      //await this.$store.dispatch(
-      //  "node/setMouseTrackSelection",
-      //  { id: newNode.id },
-      //  { root: true },
-      //);
     },
     async sendAction(): Promise<void> {
-      await this.$store.dispatch("node/sendAction", {
-        action: this.selectedAction,
-      });
+      await this.$store.dispatch("editor/sendAction", this.selectedAction);
     },
   },
   computed: {
+    isEditMode(): boolean {
+      return this.$store.state.editor.mode == "edit";
+    },
+    buttonClass(): Record<string, boolean> {
+      if (this.isEditMode) {
+        return {
+          "text-white": true,
+        };
+      } else {
+        return {
+          "text-gray-600": true,
+        };
+      }
+    },
     actionList(): string[] {
-      if (this.$store.state.node.current) {
-        const actionList = registry.listActions();
-        const currentNode = this.$store.state.node.current;
-        let result =
-          actionList[camelCase(currentNode.stack[0].siStorable.typeName)];
-        return result;
+      if (this.$store.state.editor.node) {
+        return this.$store.state.editor.node.actionList();
       } else {
         return [];
       }

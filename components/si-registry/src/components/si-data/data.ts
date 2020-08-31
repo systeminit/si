@@ -83,6 +83,14 @@ registry.base({
       },
     });
     c.fields.addBool({
+      name: "changeSetReverted",
+      label: "has this been reverted",
+      options(p: PropBool) {
+        p.universal = true;
+        p.baseDefaultValue = false;
+      },
+    });
+    c.fields.addBool({
       name: "changeSetExecuted",
       label: "has this been executed",
       options(p: PropBool) {
@@ -93,6 +101,22 @@ registry.base({
     c.fields.addBool({
       name: "deleted",
       label: "has this been deleted",
+      options(p: PropBool) {
+        p.universal = true;
+        p.baseDefaultValue = false;
+      },
+    });
+    c.fields.addText({
+      name: "editSessionId",
+      label: "the edit session id this was a part of",
+      options(p: PropBool) {
+        p.universal = true;
+        p.baseDefaultValue = false;
+      },
+    });
+    c.fields.addBool({
+      name: "reverted",
+      label: "has this been reverted",
       options(p: PropBool) {
         p.universal = true;
         p.baseDefaultValue = false;

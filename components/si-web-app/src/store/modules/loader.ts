@@ -1,7 +1,15 @@
 import { Module } from "vuex";
 import _ from "lodash";
 
-import { graphqlQuery } from "@/api/apollo";
+import { sdf } from "@/api/sdf";
+import { ChangeSet, ChangeSetParticipant } from "@/api/sdf/model/changeSet";
+import { Edge } from "@/api/sdf/model/edge";
+import { EditSession } from "@/api/sdf/model/editSession";
+import { Entity } from "@/api/sdf/model/entity";
+import { Node } from "@/api/sdf/model/node";
+import { Organization } from "@/api/sdf/model/organization";
+import { System } from "@/api/sdf/model/system";
+import { Resource } from "@/api/sdf/model/resource";
 import { RootStore } from "@/store";
 
 export interface LoaderStore {
@@ -27,30 +35,42 @@ export const loader: Module<LoaderStore, RootStore> = {
     nextUp(state, payload: any) {
       state.nextUp = payload;
     },
+    clear(state) {
+      state.loading = false;
+      state.loaded = false;
+      state.nextUp = null;
+    },
   },
   actions: {
     async load({ state, commit, dispatch, rootState }): Promise<void> {
-      console.log("why?", { state, rootState });
       if (!state.loaded) {
         commit("loading", true);
-        await dispatch("workspace/load", {}, { root: true });
-        await dispatch(
-          "billingAccount/get",
-          {
-            billingAccountId: rootState.user.auth.profile?.billingAccount?.id,
-          },
-          { root: true },
-        );
-        await dispatch("system/load", {}, { root: true });
-        await dispatch("node/load", {}, { root: true });
-        await dispatch("edge/load", {}, { root: true });
-        await dispatch("resource/load", {}, { root: true });
-        await dispatch("changeSet/load", {}, { root: true });
-        await dispatch("entity/load", {}, { root: true });
-        await dispatch("eventLog/load", {}, { root: true });
+        await sdf.startUpdate();
+        await dispatch("billingAccount/forUser", {}, { root: true });
+        await dispatch("organization/default", {}, { root: true });
+        await dispatch("workspace/default", {}, { root: true });
+        await dispatch("system/default", {}, { root: true });
+        let workspaceId = rootState.workspace.current?.id;
+        if (sdf.update && workspaceId) {
+          await sdf.update.loadData(workspaceId);
+        }
+        await ChangeSet.restore();
+        await ChangeSetParticipant.restore();
+        await Edge.restore();
+        await EditSession.restore();
+        await Entity.restore();
+        await Node.restore();
+        await Organization.restore();
+        await System.restore();
+        await Resource.restore();
         commit("loading", false);
-        commit("loaded", true);
       }
+    },
+    async logout({ commit }) {
+      commit("loaded", false);
+    },
+    async clear({ commit }) {
+      commit("clear");
     },
   },
 };

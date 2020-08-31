@@ -1,5 +1,7 @@
 import { PropAction, PropSelect } from "../../components/prelude";
 import { registry } from "../../registry";
+import _ from "lodash";
+import { CalculateConfiguresReply } from "@/veritech/intelligence";
 
 registry.componentAndEntity({
   typeName: "server",
@@ -175,5 +177,32 @@ registry.componentAndEntity({
         p.mutation = true;
       },
     });
+
+    // Entity Intelligence
+    c.entity.intelligence.calculateConfigures = (
+      entity,
+      configures,
+      systems,
+    ): CalculateConfiguresReply => {
+      const allSystems = _.map(systems, s => s.id);
+      const keep = _.map(configures, c => {
+        return { id: c.id, systems: allSystems };
+      });
+      const result: CalculateConfiguresReply = {
+        keep,
+      };
+      if (!_.find(configures, ["objectType", "ubuntu"])) {
+        const create: CalculateConfiguresReply["create"] = [
+          {
+            objectType: "ubuntu",
+            name: `${entity.name} OS`,
+            systems: allSystems,
+          },
+        ];
+        result.create = create;
+      }
+      console.log("please do", { result });
+      return result;
+    };
   },
 });

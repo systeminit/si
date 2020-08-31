@@ -13,11 +13,11 @@
           class="flex ml-1 text-xs font-normal text-gray-400"
           data-cy="change-set-visualization-open-count"
         >
-          {{ openCount }}
+          {{ count.open }}
           <alert-circle-icon
-            v-if="openCount"
+            v-if="count.open"
             size="0.75x"
-            class="ml-1 self-center text-orange-600"
+            class="self-center ml-1 text-orange-600"
           />
         </div>
       </div>
@@ -30,7 +30,7 @@
         class="flex w-3/4 ml-1 text-xs font-normal text-gray-400"
         data-cy="change-set-visualization-closed-count"
       >
-        {{ closedCount }}
+        {{ count.closed }}
       </div>
     </div>
   </div>
@@ -38,7 +38,10 @@
 
 <script lang="ts">
 import Vue from "vue";
+import { mapState } from "vuex";
 import { AlertCircleIcon } from "vue-feather-icons";
+
+import { RootStore } from "@/store";
 
 export default Vue.extend({
   name: "ChangeSetVisualization",
@@ -49,18 +52,15 @@ export default Vue.extend({
     AlertCircleIcon,
   },
   computed: {
-    openCount(): number {
-      return this.$store.getters["changeSet/count"]({
-        forId: this.applicationId,
-        status: "OPEN",
-      });
-    },
-    closedCount(): number {
-      return this.$store.getters["changeSet/count"]({
-        forId: this.applicationId,
-        status: "CLOSED",
-      });
-    },
+    ...mapState({
+      count(state: RootStore) {
+        if (state.application.changeSetCounts[this.applicationId]) {
+          return state.application.changeSetCounts[this.applicationId];
+        } else {
+          return { open: "loading", count: "loading" };
+        }
+      },
+    }),
   },
 });
 </script>

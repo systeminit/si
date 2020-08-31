@@ -73,7 +73,6 @@ import { mapState, mapGetters } from "vuex";
 import _ from "lodash";
 
 import { RootStore } from "@/store";
-import { RegistryProperty, debouncedSetFieldValue } from "@/store/modules/node";
 
 import PropMixin from "./PropMixin";
 import ValidationWidget from "@/components/ui/ValidationWidget.vue";
@@ -110,29 +109,6 @@ export default PropMixin.extend({
         return this.entityProperty.prop.options;
       }
     },
-    //fieldValue: {
-    //  get(): string | string[] {
-    //    let value = this.$store.getters["node/getFieldValue"](
-    //      this.entityProperty.path,
-    //    );
-    //    if (this.entityProperty.repeated) {
-    //      if (value) {
-    //        return value;
-    //      } else {
-    //        return [];
-    //      }
-    //    } else {
-    //      return value;
-    //    }
-    //  },
-    //  async set(value: any) {
-    //    debouncedSetFieldValue({
-    //      store: this.$store,
-    //      path: this.entityProperty.path,
-    //      value,
-    //    });
-    //  },
-    //},
   },
 });
 </script>
