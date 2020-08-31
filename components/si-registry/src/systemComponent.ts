@@ -650,6 +650,14 @@ export class EntityObject extends SystemObject {
             p.hidden = true;
           },
         });
+        p.request.properties.addText({
+          name: "editSessionId",
+          label: `Edit Session ID`,
+          options(p) {
+            p.required = true;
+            p.hidden = true;
+          },
+        });
         p.request.properties.addLink({
           name: "properties",
           label: "Properties",
@@ -708,6 +716,14 @@ export class EntityObject extends SystemObject {
             p.hidden = true;
           },
         });
+        p.request.properties.addText({
+          name: "editSessionId",
+          label: `Edit Session ID`,
+          options(p) {
+            p.required = true;
+            p.hidden = true;
+          },
+        });
         p.reply.properties.addLink({
           name: "item",
           label: `${baseTypeName} Item`,
@@ -735,6 +751,14 @@ export class EntityObject extends SystemObject {
         p.request.properties.addText({
           name: "changeSetId",
           label: `Change Set ID`,
+          options(p) {
+            p.required = true;
+            p.hidden = true;
+          },
+        });
+        p.request.properties.addText({
+          name: "editSessionId",
+          label: `Edit Session ID`,
           options(p) {
             p.required = true;
             p.hidden = true;

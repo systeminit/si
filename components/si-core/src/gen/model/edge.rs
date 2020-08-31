@@ -366,8 +366,11 @@ impl si_data::Storable for crate::protobuf::Edge {
             "dataStorable.itemId",
             "dataStorable.changeSetEntryCount",
             "dataStorable.changeSetEventType",
+            "dataStorable.changeSetReverted",
             "dataStorable.changeSetExecuted",
             "dataStorable.deleted",
+            "dataStorable.editSessionId",
+            "dataStorable.reverted",
             "siStorable.naturalKey",
             "siProperties.billingAccountId",
             "siProperties.organizationId",
@@ -383,5 +386,15 @@ impl si_data::Storable for crate::protobuf::Edge {
             "bidirectional",
             "edgeKind",
         ]
+    }
+
+    fn edit_session_id(&self) -> si_data::Result<Option<&str>> {
+        Ok(self
+            .si_storable
+            .as_ref()
+            .ok_or_else(|| si_data::DataError::RequiredField("si_storable".to_string()))?
+            .edit_session_id
+            .as_ref()
+            .map(String::as_str))
     }
 }

@@ -7,11 +7,13 @@ pub fn new(
     properties: Option<<%- fmt.entityPropertiesName() %>>,
     si_properties: Option<si_cea::protobuf::EntitySiProperties>,
     change_set_id: Option<String>,
+    edit_session_id: Option<String>,
 ) -> si_cea::CeaResult<<%- fmt.structName() %>> {
 <%_ if (fmt.isStorable()) { _%>
     let mut si_storable = si_data::protobuf::DataStorable::default();
     si_storable.change_set_id = change_set_id;
     si_storable.change_set_event_type = si_data::protobuf::DataStorableChangeSetEventType::Create as i32;
+    si_storable.edit_session_id = edit_session_id;
     <%- fmt.implCreateAddToTenancy() %>
 <%_ } _%>
 
@@ -42,6 +44,7 @@ pub async fn create(
     properties: Option<<%- fmt.entityPropertiesName() %>>,
     si_properties: Option<si_cea::protobuf::EntitySiProperties>,
     change_set_id: Option<String>,
+    edit_session_id: Option<String>,
 ) -> si_cea::CeaResult<<%- fmt.structName() %>> {
     let mut result = <%- fmt.structName() %>::new(
         name,
@@ -52,6 +55,7 @@ pub async fn create(
         properties,
         si_properties,
         change_set_id,
+        edit_session_id,
     )?;
     db.validate_and_insert_as_new(&mut result).await?;
 

@@ -9,6 +9,7 @@ import { application, ApplicationStore } from "./modules/application";
 import { edge, EdgeStore } from "./modules/edge";
 import { system, SystemStore } from "./modules/system";
 import { entity, EntityStore } from "./modules/entity";
+import { editSession, EditSessionStore } from "./modules/editSession";
 import { user, UserStore } from "./modules/user";
 import { changeSet, ChangeSetStore } from "./modules/changeSet";
 import { persistEdits } from "./plugins/persistEdits";
@@ -65,6 +66,7 @@ export interface RootStore {
   system: SystemStore;
   eventLog: EventLogStore;
   resource: ResourceStore;
+  editSession: EditSessionStore;
   version: string;
 }
 
@@ -86,6 +88,7 @@ const store: Store<RootStore> = new Vuex.Store({
     node,
     eventLog,
     resource,
+    editSession,
     loader,
   },
   strict: debug,

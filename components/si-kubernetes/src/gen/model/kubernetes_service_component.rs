@@ -456,8 +456,11 @@ impl si_data::Storable for crate::protobuf::KubernetesServiceComponent {
             "dataStorable.itemId",
             "dataStorable.changeSetEntryCount",
             "dataStorable.changeSetEventType",
+            "dataStorable.changeSetReverted",
             "dataStorable.changeSetExecuted",
             "dataStorable.deleted",
+            "dataStorable.editSessionId",
+            "dataStorable.reverted",
             "description",
             "siStorable.naturalKey",
             "constraints.componentName",
@@ -465,6 +468,16 @@ impl si_data::Storable for crate::protobuf::KubernetesServiceComponent {
             "constraints.kubernetesVersion",
             "siStorable.naturalKey",
         ]
+    }
+
+    fn edit_session_id(&self) -> si_data::Result<Option<&str>> {
+        Ok(self
+            .si_storable
+            .as_ref()
+            .ok_or_else(|| si_data::DataError::RequiredField("si_storable".to_string()))?
+            .edit_session_id
+            .as_ref()
+            .map(String::as_str))
     }
 }
 

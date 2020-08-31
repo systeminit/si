@@ -177,5 +177,15 @@ impl si_data::Storable for <%- fmt.structName() %> {
 
     fn order_by_fields() -> Vec<&'static str> {
       <%- fmt.storableOrderByFieldsFunction() %>
-    }
+      }
+
+    fn edit_session_id(&self) -> si_data::Result<Option<&str>> {
+        Ok(self.si_storable
+            .as_ref()
+            .ok_or_else(|| si_data::DataError::RequiredField("si_storable".to_string()))?
+            .edit_session_id
+            .as_ref()
+            .map(String::as_str))
+            }
+
 }

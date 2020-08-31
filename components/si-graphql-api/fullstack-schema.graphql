@@ -158,6 +158,9 @@ input AmiEntityCreateRequest {
   """Display Name"""
   displayName: String
 
+  """Edit Session ID"""
+  editSessionId: String
+
   """Name"""
   name: String
 
@@ -178,6 +181,9 @@ type AmiEntityDeleteReply {
 input AmiEntityDeleteRequest {
   """Change Set ID"""
   changeSetId: String
+
+  """Edit Session ID"""
+  editSessionId: String
 
   """amiEntity ID"""
   id: ID
@@ -383,6 +389,9 @@ input AmiEntityUpdateRequest {
   """Change Set ID"""
   changeSetId: String
 
+  """Edit Session ID"""
+  editSessionId: String
+
   """amiEntity ID"""
   id: ID
 
@@ -552,6 +561,9 @@ input ApplicationEntityCreateRequest {
   """Display Name"""
   displayName: String
 
+  """Edit Session ID"""
+  editSessionId: String
+
   """Name"""
   name: String
 
@@ -572,6 +584,9 @@ type ApplicationEntityDeleteReply {
 input ApplicationEntityDeleteRequest {
   """Change Set ID"""
   changeSetId: String
+
+  """Edit Session ID"""
+  editSessionId: String
 
   """applicationEntity ID"""
   id: ID
@@ -752,6 +767,9 @@ type ApplicationEntityUpdateReply {
 input ApplicationEntityUpdateRequest {
   """Change Set ID"""
   changeSetId: String
+
+  """Edit Session ID"""
+  editSessionId: String
 
   """applicationEntity ID"""
   id: ID
@@ -1207,14 +1225,23 @@ type DataStorable {
   """The Change Set ID for this item"""
   changeSetId: String
 
+  """has this been reverted"""
+  changeSetReverted: Boolean
+
   """has this been deleted"""
   deleted: Boolean
+
+  """the edit session id this was a part of"""
+  editSessionId: String
 
   """The canonical ID for this item"""
   itemId: String
 
   """Natural Key"""
   naturalKey: String
+
+  """has this been reverted"""
+  reverted: Boolean
 
   """Tenant IDs"""
   tenantIds: [String!]
@@ -1391,6 +1418,9 @@ input Ec2InstanceEntityCreateRequest {
   """Display Name"""
   displayName: String
 
+  """Edit Session ID"""
+  editSessionId: String
+
   """Name"""
   name: String
 
@@ -1411,6 +1441,9 @@ type Ec2InstanceEntityDeleteReply {
 input Ec2InstanceEntityDeleteRequest {
   """Change Set ID"""
   changeSetId: String
+
+  """Edit Session ID"""
+  editSessionId: String
 
   """ec2InstanceEntity ID"""
   id: ID
@@ -1673,6 +1706,9 @@ input Ec2InstanceEntityUpdateRequest {
   """Change Set ID"""
   changeSetId: String
 
+  """Edit Session ID"""
+  editSessionId: String
+
   """ec2InstanceEntity ID"""
   id: ID
 
@@ -1869,6 +1905,185 @@ input EdgeTailVertexRequest {
 
   """Tail Vertex Type Name"""
   typeName: String
+}
+
+type EditSession {
+  associations: EditSessionAssociations
+
+  """List of change set entry ids"""
+  changeSetEntryIds: [String!]
+
+  """An edit session Display Name"""
+  displayName: String
+
+  """An edit session ID"""
+  id: ID
+
+  """An edit session Name"""
+  name: String
+
+  """Node for this edit session"""
+  note: String
+
+  """If this edit session is reverted"""
+  reverted: Boolean
+
+  """SI Internal Properties"""
+  siProperties: EditSessionSiProperties
+
+  """SI Storable"""
+  siStorable: DataStorable
+}
+
+"""An edit session Associations"""
+type EditSessionAssociations {
+  """System Initiative Billing Account"""
+  billingAccount: BillingAccountGetReply
+
+  """A change set for your system"""
+  changeSet: ChangeSetGetReply
+
+  """An item"""
+  changeSetEntries(input: ItemListRequest): ItemListReply
+
+  """A System Initiative Organization"""
+  organization: OrganizationGetReply
+
+  """A System Initiative User"""
+  user: UserGetReply
+
+  """A System Initiative Workspace"""
+  workspace: WorkspaceGetReply
+}
+
+"""Create a An edit session Reply"""
+type EditSessionCreateReply {
+  """An edit session Item"""
+  item: EditSession
+}
+
+"""Create a An edit session Request"""
+input EditSessionCreateRequest {
+  """List of change set entry ids"""
+  changeSetEntryIds: [String!]
+
+  """An edit session Display Name"""
+  displayName: String
+
+  """An edit session Name"""
+  name: String
+
+  """Node for this edit session"""
+  note: String
+
+  """If this edit session is reverted"""
+  reverted: Boolean
+
+  """SI Internal Properties"""
+  siProperties: EditSessionSiPropertiesRequest
+}
+
+"""Get a An edit session Reply"""
+type EditSessionGetReply {
+  """An edit session Item"""
+  item: EditSession
+}
+
+"""Get a An edit session Request"""
+input EditSessionGetRequest {
+  """An edit session ID"""
+  id: ID
+}
+
+"""List An edit session Reply"""
+type EditSessionListReply {
+  """Items"""
+  items: [EditSession!]
+
+  """Next Page Token"""
+  nextPageToken: String
+
+  """Total Count"""
+  totalCount: String
+}
+
+"""List An edit session Request"""
+input EditSessionListRequest {
+  """Order By"""
+  orderBy: String
+
+  """Order By Direction"""
+  orderByDirection: DataPageTokenOrderByDirection
+
+  """Page Size"""
+  pageSize: String
+
+  """Page Token"""
+  pageToken: String
+
+  """Query"""
+  query: DataQueryRequest
+
+  """Scope By Tenant ID"""
+  scopeByTenantId: String
+}
+
+"""Revert an Edit Session Reply"""
+type EditSessionRevertReply {
+  """Edit Session Item"""
+  item: EditSession
+}
+
+"""Revert an Edit Session Request"""
+input EditSessionRevertRequest {
+  """Edit Session ID"""
+  id: ID
+}
+
+type EditSessionSiProperties {
+  """Billing Account ID"""
+  billingAccountId: String
+
+  """Change Set ID"""
+  changeSetId: String
+
+  """Organization ID"""
+  organizationId: String
+
+  """The user this edit session belongs to"""
+  userId: String
+
+  """Organization ID"""
+  workspaceId: String
+}
+
+input EditSessionSiPropertiesRequest {
+  """Billing Account ID"""
+  billingAccountId: String
+
+  """Change Set ID"""
+  changeSetId: String
+
+  """Organization ID"""
+  organizationId: String
+
+  """The user this edit session belongs to"""
+  userId: String
+
+  """Organization ID"""
+  workspaceId: String
+}
+
+"""Un-Revert an Edit Session Reply"""
+type EditSessionUnrevertReply {
+  """Edit Session Item"""
+  item: EditSession
+}
+
+"""Un-Revert an Edit Session Request"""
+input EditSessionUnrevertRequest {
+  """Edit Session ID"""
+  id: ID
 }
 
 type EntityEventSiProperties {
@@ -2705,6 +2920,9 @@ input KubernetesClusterEntityCreateRequest {
   """Display Name"""
   displayName: String
 
+  """Edit Session ID"""
+  editSessionId: String
+
   """Name"""
   name: String
 
@@ -2725,6 +2943,9 @@ type KubernetesClusterEntityDeleteReply {
 input KubernetesClusterEntityDeleteRequest {
   """Change Set ID"""
   changeSetId: String
+
+  """Edit Session ID"""
+  editSessionId: String
 
   """kubernetesClusterEntity ID"""
   id: ID
@@ -2905,6 +3126,9 @@ type KubernetesClusterEntityUpdateReply {
 input KubernetesClusterEntityUpdateRequest {
   """Change Set ID"""
   changeSetId: String
+
+  """Edit Session ID"""
+  editSessionId: String
 
   """kubernetesClusterEntity ID"""
   id: ID
@@ -3163,6 +3387,9 @@ input KubernetesDeploymentEntityCreateRequest {
   """Display Name"""
   displayName: String
 
+  """Edit Session ID"""
+  editSessionId: String
+
   """Name"""
   name: String
 
@@ -3183,6 +3410,9 @@ type KubernetesDeploymentEntityDeleteReply {
 input KubernetesDeploymentEntityDeleteRequest {
   """Change Set ID"""
   changeSetId: String
+
+  """Edit Session ID"""
+  editSessionId: String
 
   """kubernetesDeploymentEntity ID"""
   id: ID
@@ -3419,6 +3649,9 @@ type KubernetesDeploymentEntityUpdateReply {
 input KubernetesDeploymentEntityUpdateRequest {
   """Change Set ID"""
   changeSetId: String
+
+  """Edit Session ID"""
+  editSessionId: String
 
   """kubernetesDeploymentEntity ID"""
   id: ID
@@ -3705,6 +3938,9 @@ input KubernetesServiceEntityCreateRequest {
   """Display Name"""
   displayName: String
 
+  """Edit Session ID"""
+  editSessionId: String
+
   """Name"""
   name: String
 
@@ -3725,6 +3961,9 @@ type KubernetesServiceEntityDeleteReply {
 input KubernetesServiceEntityDeleteRequest {
   """Change Set ID"""
   changeSetId: String
+
+  """Edit Session ID"""
+  editSessionId: String
 
   """kubernetesServiceEntity ID"""
   id: ID
@@ -4052,6 +4291,9 @@ input KubernetesServiceEntityUpdateRequest {
   """Change Set ID"""
   changeSetId: String
 
+  """Edit Session ID"""
+  editSessionId: String
+
   """kubernetesServiceEntity ID"""
   id: ID
 
@@ -4293,6 +4535,9 @@ input MinikubeEntityCreateRequest {
   """Display Name"""
   displayName: String
 
+  """Edit Session ID"""
+  editSessionId: String
+
   """Name"""
   name: String
 
@@ -4313,6 +4558,9 @@ type MinikubeEntityDeleteReply {
 input MinikubeEntityDeleteRequest {
   """Change Set ID"""
   changeSetId: String
+
+  """Edit Session ID"""
+  editSessionId: String
 
   """minikubeEntity ID"""
   id: ID
@@ -4530,6 +4778,9 @@ input MinikubeEntityUpdateRequest {
   """Change Set ID"""
   changeSetId: String
 
+  """Edit Session ID"""
+  editSessionId: String
+
   """minikubeEntity ID"""
   id: ID
 
@@ -4573,6 +4824,9 @@ type Mutation {
   ec2InstanceEntityTerminate(input: Ec2InstanceEntityTerminateRequest): Ec2InstanceEntityTerminateReply
   ec2InstanceEntityUpdate(input: Ec2InstanceEntityUpdateRequest): Ec2InstanceEntityUpdateReply
   edgeCreate(input: EdgeCreateRequest): EdgeCreateReply
+  editSessionCreate(input: EditSessionCreateRequest): EditSessionCreateReply
+  editSessionRevert(input: EditSessionRevertRequest): EditSessionRevertReply
+  editSessionUnrevert(input: EditSessionUnrevertRequest): EditSessionUnrevertReply
   eventLogCreate(input: EventLogCreateRequest): EventLogCreateReply
   groupCreate(input: GroupCreateRequest): GroupCreateReply
   kubernetesClusterEntityCreate(input: KubernetesClusterEntityCreateRequest): KubernetesClusterEntityCreateReply
@@ -4937,6 +5191,8 @@ type Query {
   ec2InstanceEntityList(input: Ec2InstanceEntityListRequest): Ec2InstanceEntityListReply
   edgeGet(input: EdgeGetRequest): EdgeGetReply
   edgeList(input: EdgeListRequest): EdgeListReply
+  editSessionGet(input: EditSessionGetRequest): EditSessionGetReply
+  editSessionList(input: EditSessionListRequest): EditSessionListReply
   eventLogGet(input: EventLogGetRequest): EventLogGetReply
   eventLogList(input: EventLogListRequest): EventLogListReply
   groupGet(input: GroupGetRequest): GroupGetReply
@@ -5354,6 +5610,9 @@ input ServerEntityCreateRequest {
   """Display Name"""
   displayName: String
 
+  """Edit Session ID"""
+  editSessionId: String
+
   """Name"""
   name: String
 
@@ -5374,6 +5633,9 @@ type ServerEntityDeleteReply {
 input ServerEntityDeleteRequest {
   """Change Set ID"""
   changeSetId: String
+
+  """Edit Session ID"""
+  editSessionId: String
 
   """serverEntity ID"""
   id: ID
@@ -5597,6 +5859,9 @@ input ServerEntityUpdateRequest {
   """Change Set ID"""
   changeSetId: String
 
+  """Edit Session ID"""
+  editSessionId: String
+
   """serverEntity ID"""
   id: ID
 
@@ -5774,6 +6039,9 @@ input ServiceEntityCreateRequest {
   """Display Name"""
   displayName: String
 
+  """Edit Session ID"""
+  editSessionId: String
+
   """Name"""
   name: String
 
@@ -5794,6 +6062,9 @@ type ServiceEntityDeleteReply {
 input ServiceEntityDeleteRequest {
   """Change Set ID"""
   changeSetId: String
+
+  """Edit Session ID"""
+  editSessionId: String
 
   """serviceEntity ID"""
   id: ID
@@ -6007,6 +6278,9 @@ type ServiceEntityUpdateReply {
 input ServiceEntityUpdateRequest {
   """Change Set ID"""
   changeSetId: String
+
+  """Edit Session ID"""
+  editSessionId: String
 
   """serviceEntity ID"""
   id: ID
@@ -6295,6 +6569,9 @@ input UbuntuEntityCreateRequest {
   """Display Name"""
   displayName: String
 
+  """Edit Session ID"""
+  editSessionId: String
+
   """Name"""
   name: String
 
@@ -6315,6 +6592,9 @@ type UbuntuEntityDeleteReply {
 input UbuntuEntityDeleteRequest {
   """Change Set ID"""
   changeSetId: String
+
+  """Edit Session ID"""
+  editSessionId: String
 
   """ubuntuEntity ID"""
   id: ID
@@ -6525,6 +6805,9 @@ type UbuntuEntityUpdateReply {
 input UbuntuEntityUpdateRequest {
   """Change Set ID"""
   changeSetId: String
+
+  """Edit Session ID"""
+  editSessionId: String
 
   """ubuntuEntity ID"""
   id: ID

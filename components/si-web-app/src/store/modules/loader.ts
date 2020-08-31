@@ -30,7 +30,6 @@ export const loader: Module<LoaderStore, RootStore> = {
   },
   actions: {
     async load({ state, commit, dispatch, rootState }): Promise<void> {
-      console.log("why?", { state, rootState });
       if (!state.loaded) {
         commit("loading", true);
         await dispatch("workspace/load", {}, { root: true });
@@ -45,6 +44,7 @@ export const loader: Module<LoaderStore, RootStore> = {
         await dispatch("node/load", {}, { root: true });
         await dispatch("edge/load", {}, { root: true });
         await dispatch("resource/load", {}, { root: true });
+        await dispatch("editSession/load", {}, { root: true });
         await dispatch("changeSet/load", {}, { root: true });
         await dispatch("entity/load", {}, { root: true });
         await dispatch("eventLog/load", {}, { root: true });

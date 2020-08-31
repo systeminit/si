@@ -46,6 +46,10 @@ pub trait Storable {
             None => Err(DataError::InvalidOrderBy),
         }
     }
+
+    fn edit_session_id(&self) -> Result<Option<&str>> {
+        Ok(None)
+    }
 }
 
 pub enum Reference<'a> {
@@ -62,9 +66,12 @@ impl DataStorable {
             view_context: None,
             change_set_id: None,
             change_set_entry_count: None,
+            change_set_reverted: None,
             change_set_event_type: crate::protobuf::DataStorableChangeSetEventType::Unknown as i32,
             change_set_executed: Some(false),
             deleted: Some(false),
+            edit_session_id: None,
+            reverted: Some(false),
             item_id: None,
         }
     }

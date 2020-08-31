@@ -159,7 +159,11 @@ export class SiGraphql {
       result = `${result}!`;
     }
     if (prop.repeated || linkProp?.repeated) {
-      result = `[${result}]`;
+      if (!result.endsWith("!")) {
+        result = `[${result}!]`;
+      } else {
+        result = `[${result}]`;
+      }
     }
     return result;
   }

@@ -1,44 +1,54 @@
 // Auth-generated code!
 // No touchy!
 
-impl crate::protobuf::ApplicationComponent {
+impl crate::protobuf::EditSession {
     pub fn new(
         name: Option<String>,
         display_name: Option<String>,
-        description: Option<String>,
-        constraints: Option<crate::protobuf::ApplicationComponentConstraints>,
-        si_properties: Option<si_cea::protobuf::ComponentSiProperties>,
-    ) -> si_data::Result<crate::protobuf::ApplicationComponent> {
+        si_properties: Option<crate::protobuf::EditSessionSiProperties>,
+        note: Option<String>,
+        reverted: Option<bool>,
+        change_set_entry_ids: Vec<String>,
+    ) -> si_data::Result<crate::protobuf::EditSession> {
         let mut si_storable = si_data::protobuf::DataStorable::default();
-        si_storable.add_to_tenant_ids("global");
         si_properties
             .as_ref()
             .ok_or_else(|| si_data::DataError::ValidationError("siProperties".into()))?;
-        let integration_id = si_properties
+        let billing_account_id = si_properties
             .as_ref()
             .unwrap()
-            .integration_id
+            .billing_account_id
             .as_ref()
             .ok_or_else(|| {
-                si_data::DataError::ValidationError("siProperties.integrationId".into())
+                si_data::DataError::ValidationError("siProperties.billingAccountId".into())
             })?;
-        si_storable.add_to_tenant_ids(integration_id);
-        let integration_service_id = si_properties
+        si_storable.add_to_tenant_ids(billing_account_id);
+        let organization_id = si_properties
             .as_ref()
             .unwrap()
-            .integration_service_id
+            .organization_id
             .as_ref()
             .ok_or_else(|| {
-                si_data::DataError::ValidationError("siProperties.integrationServiceId".into())
+                si_data::DataError::ValidationError("siProperties.organizationId".into())
             })?;
-        si_storable.add_to_tenant_ids(integration_service_id);
+        si_storable.add_to_tenant_ids(organization_id);
+        let workspace_id = si_properties
+            .as_ref()
+            .unwrap()
+            .workspace_id
+            .as_ref()
+            .ok_or_else(|| {
+                si_data::DataError::ValidationError("siProperties.workspaceId".into())
+            })?;
+        si_storable.add_to_tenant_ids(workspace_id);
 
-        let mut result: crate::protobuf::ApplicationComponent = Default::default();
+        let mut result: crate::protobuf::EditSession = Default::default();
         result.name = name;
         result.display_name = display_name;
-        result.description = description;
-        result.constraints = constraints;
         result.si_properties = si_properties;
+        result.note = note;
+        result.reverted = reverted;
+        result.change_set_entry_ids = change_set_entry_ids;
         result.si_storable = Some(si_storable);
 
         Ok(result)
@@ -48,26 +58,25 @@ impl crate::protobuf::ApplicationComponent {
         db: &si_data::Db,
         name: Option<String>,
         display_name: Option<String>,
-        description: Option<String>,
-        constraints: Option<crate::protobuf::ApplicationComponentConstraints>,
-        si_properties: Option<si_cea::protobuf::ComponentSiProperties>,
-    ) -> si_data::Result<crate::protobuf::ApplicationComponent> {
-        let mut result = crate::protobuf::ApplicationComponent::new(
+        si_properties: Option<crate::protobuf::EditSessionSiProperties>,
+        note: Option<String>,
+        reverted: Option<bool>,
+        change_set_entry_ids: Vec<String>,
+    ) -> si_data::Result<crate::protobuf::EditSession> {
+        let mut result = crate::protobuf::EditSession::new(
             name,
             display_name,
-            description,
-            constraints,
             si_properties,
+            note,
+            reverted,
+            change_set_entry_ids,
         )?;
         db.validate_and_insert_as_new(&mut result).await?;
 
         Ok(result)
     }
 
-    pub async fn get(
-        db: &si_data::Db,
-        id: &str,
-    ) -> si_data::Result<crate::protobuf::ApplicationComponent> {
+    pub async fn get(db: &si_data::Db, id: &str) -> si_data::Result<crate::protobuf::EditSession> {
         let obj = db.get(id).await?;
         Ok(obj)
     }
@@ -75,7 +84,7 @@ impl crate::protobuf::ApplicationComponent {
     pub async fn get_by_natural_key(
         db: &si_data::Db,
         natural_key: &str,
-    ) -> si_data::Result<crate::protobuf::ApplicationComponent> {
+    ) -> si_data::Result<crate::protobuf::EditSession> {
         let obj = db.lookup_by_natural_key(natural_key).await?;
         Ok(obj)
     }
@@ -86,7 +95,7 @@ impl crate::protobuf::ApplicationComponent {
     }
 
     pub async fn finalize(&self, db: &si_data::Db) -> si_data::Result<()> {
-        tracing::debug!("finalizing_application_component");
+        tracing::debug!("finalizing_edit_session");
         db.upsert(self).await?;
 
         Ok(())
@@ -94,8 +103,8 @@ impl crate::protobuf::ApplicationComponent {
 
     pub async fn list(
         db: &si_data::Db,
-        list_request: crate::protobuf::ApplicationComponentListRequest,
-    ) -> si_data::Result<si_data::ListResult<crate::protobuf::ApplicationComponent>> {
+        list_request: crate::protobuf::EditSessionListRequest,
+    ) -> si_data::Result<si_data::ListResult<crate::protobuf::EditSession>> {
         let result = match list_request.page_token {
             Some(token) => db.list_by_page_token(token).await?,
             None => {
@@ -125,99 +134,11 @@ impl crate::protobuf::ApplicationComponent {
         };
         Ok(result)
     }
-
-    pub async fn pick_by_expressions(
-        db: &si_data::Db,
-        items: Vec<si_data::DataQueryItems>,
-        boolean_term: si_data::DataQueryBooleanTerm,
-    ) -> si_data::Result<Self> {
-        let query = si_data::DataQuery {
-            items,
-            boolean_term: boolean_term as i32,
-            ..Default::default()
-        };
-
-        let mut check_result: si_data::ListResult<Self> =
-            db.list(&Some(query), 1, "", 0, "global", "").await?;
-        if check_result.len() == 1 {
-            return Ok(check_result.items.pop().unwrap());
-        } else {
-            return Err(si_data::DataError::PickComponent(
-                "a match was not found".to_string(),
-            ));
-        }
-    }
-
-    pub async fn pick_by_string_field<F, V>(
-        db: &si_data::Db,
-        field: F,
-        value: V,
-    ) -> si_data::Result<Option<Self>>
-    where
-        F: Into<String> + Send,
-        V: Into<String> + Send,
-    {
-        let value = value.into();
-        let field = field.into();
-
-        if value != "" {
-            let query = si_data::DataQuery::generate_for_string(
-                field.clone(),
-                si_data::DataQueryItemsExpressionComparison::Equals,
-                value.clone(),
-            );
-            let mut check_result: si_data::ListResult<Self> =
-                db.list(&Some(query), 1, "", 0, "global", "").await?;
-            if check_result.len() == 1 {
-                return Ok(Some(check_result.items.pop().unwrap()));
-            } else {
-                return Err(si_data::DataError::PickComponent(format!(
-                    "{}={} must match exactly, and was not found",
-                    field, value
-                )));
-            }
-        }
-        Ok(None)
-    }
-
-    pub async fn pick_by_component_name(
-        db: &si_data::Db,
-        req: &crate::protobuf::ApplicationComponentConstraints,
-    ) -> si_data::Result<Option<(crate::protobuf::ApplicationComponentConstraints, Self)>> {
-        match &req.component_name {
-            Some(name) => match Self::pick_by_string_field(db, "name", name).await? {
-                Some(component) => Ok(Some((
-                    crate::protobuf::ApplicationComponentConstraints::default(),
-                    component,
-                ))),
-                None => Ok(None),
-            },
-            None => Ok(None),
-        }
-    }
-
-    pub async fn pick_by_component_display_name(
-        db: &si_data::Db,
-        req: &crate::protobuf::ApplicationComponentConstraints,
-    ) -> si_data::Result<Option<(crate::protobuf::ApplicationComponentConstraints, Self)>> {
-        match &req.component_display_name {
-            Some(display_name) => {
-                match Self::pick_by_string_field(db, "displayName", display_name).await? {
-                    Some(component) => Ok(Some((
-                        crate::protobuf::ApplicationComponentConstraints::default(),
-                        component,
-                    ))),
-                    None => Ok(None),
-                }
-            }
-            None => Ok(None),
-        }
-    }
 }
 
-impl si_data::Storable for crate::protobuf::ApplicationComponent {
+impl si_data::Storable for crate::protobuf::EditSession {
     fn type_name() -> &'static str {
-        "application_component"
+        "edit_session"
     }
 
     fn set_type_name(&mut self) {
@@ -226,7 +147,7 @@ impl si_data::Storable for crate::protobuf::ApplicationComponent {
         }
 
         let si_storable = self.si_storable.as_mut().expect(
-            "crate::protobuf::ApplicationComponent.si_storable \
+            "crate::protobuf::EditSession.si_storable \
                 has been set or initialized",
         );
         si_storable.type_name = Some(Self::type_name().to_string());
@@ -350,7 +271,7 @@ impl si_data::Storable for crate::protobuf::ApplicationComponent {
         }
 
         let si_storable = self.si_storable.as_mut().expect(
-            "crate::protobuf::ApplicationComponent.si_storable \
+            "crate::protobuf::EditSession.si_storable \
                 has been set or initialized",
         );
         si_storable.natural_key = Some(natural_key);
@@ -373,7 +294,7 @@ impl si_data::Storable for crate::protobuf::ApplicationComponent {
         }
 
         let si_storable = self.si_storable.as_mut().expect(
-            "crate::protobuf::ApplicationComponent.si_storable \
+            "crate::protobuf::EditSession.si_storable \
                 has been set or initialized",
         );
         si_storable.tenant_ids.push(id.into());
@@ -400,16 +321,6 @@ impl si_data::Storable for crate::protobuf::ApplicationComponent {
                 "missing required si_storable value".into(),
             ));
         }
-        if self.description.is_none() {
-            return Err(si_data::DataError::ValidationError(
-                "missing required description value".into(),
-            ));
-        }
-        if self.constraints.is_none() {
-            return Err(si_data::DataError::ValidationError(
-                "missing required constraints value".into(),
-            ));
-        }
         if self.si_properties.is_none() {
             return Err(si_data::DataError::ValidationError(
                 "missing required si_properties value".into(),
@@ -420,26 +331,7 @@ impl si_data::Storable for crate::protobuf::ApplicationComponent {
     }
 
     fn referential_fields(&self) -> Vec<si_data::Reference> {
-        let integration_id = match &self.si_properties {
-            Some(cip) => cip
-                .integration_id
-                .as_ref()
-                .map(String::as_ref)
-                .unwrap_or("No integration_id found for referential integrity check"),
-            None => "No integration_id found for referential integrity check",
-        };
-        let integration_service_id = match &self.si_properties {
-            Some(cip) => cip
-                .integration_service_id
-                .as_ref()
-                .map(String::as_ref)
-                .unwrap_or("No integration_service_id found for referential integrity check"),
-            None => "No integration_service_id found for referential integrity check",
-        };
-        vec![
-            si_data::Reference::HasOne("integration_id", integration_id),
-            si_data::Reference::HasOne("integration_service_id", integration_service_id),
-        ]
+        Vec::new()
     }
 
     fn order_by_fields() -> Vec<&'static str> {
@@ -459,11 +351,15 @@ impl si_data::Storable for crate::protobuf::ApplicationComponent {
             "dataStorable.deleted",
             "dataStorable.editSessionId",
             "dataStorable.reverted",
-            "description",
             "siStorable.naturalKey",
-            "constraints.componentName",
-            "constraints.componentDisplayName",
-            "siStorable.naturalKey",
+            "siProperties.billingAccountId",
+            "siProperties.organizationId",
+            "siProperties.workspaceId",
+            "siProperties.changeSetId",
+            "siProperties.userId",
+            "note",
+            "reverted",
+            "changeSetEntryIds",
         ]
     }
 
@@ -475,14 +371,5 @@ impl si_data::Storable for crate::protobuf::ApplicationComponent {
             .edit_session_id
             .as_ref()
             .map(String::as_str))
-    }
-}
-
-impl si_data::Migrateable for crate::protobuf::ApplicationComponent {
-    fn get_version(&self) -> i32 {
-        match self.si_properties.as_ref().map(|p| p.version) {
-            Some(v) => v.unwrap_or(0),
-            None => 0,
-        }
     }
 }

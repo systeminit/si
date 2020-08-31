@@ -11,11 +11,13 @@ impl crate::protobuf::ServerEntity {
         properties: Option<crate::protobuf::ServerEntityProperties>,
         si_properties: Option<si_cea::protobuf::EntitySiProperties>,
         change_set_id: Option<String>,
+        edit_session_id: Option<String>,
     ) -> si_cea::CeaResult<crate::protobuf::ServerEntity> {
         let mut si_storable = si_data::protobuf::DataStorable::default();
         si_storable.change_set_id = change_set_id;
         si_storable.change_set_event_type =
             si_data::protobuf::DataStorableChangeSetEventType::Create as i32;
+        si_storable.edit_session_id = edit_session_id;
         si_properties
             .as_ref()
             .ok_or_else(|| si_data::DataError::ValidationError("siProperties".into()))?;
@@ -70,6 +72,7 @@ impl crate::protobuf::ServerEntity {
         properties: Option<crate::protobuf::ServerEntityProperties>,
         si_properties: Option<si_cea::protobuf::EntitySiProperties>,
         change_set_id: Option<String>,
+        edit_session_id: Option<String>,
     ) -> si_cea::CeaResult<crate::protobuf::ServerEntity> {
         let mut result = crate::protobuf::ServerEntity::new(
             name,
@@ -80,6 +83,7 @@ impl crate::protobuf::ServerEntity {
             properties,
             si_properties,
             change_set_id,
+            edit_session_id,
         )?;
         db.validate_and_insert_as_new(&mut result).await?;
 
@@ -149,6 +153,7 @@ impl crate::protobuf::ServerEntity {
         &mut self,
         db: &si_data::Db,
         change_set_id: Option<String>,
+        edit_session_id: Option<String>,
         update: Option<crate::protobuf::ServerEntityUpdateRequestUpdate>,
     ) -> si_cea::CeaResult<()> {
         let item_id = self.id.as_ref().map(|change_set_enabled_id| {
@@ -162,6 +167,7 @@ impl crate::protobuf::ServerEntity {
         });
         self.si_storable.as_mut().map(|si_storable| {
             si_storable.change_set_id = change_set_id;
+            si_storable.edit_session_id = edit_session_id;
             si_storable.deleted = Some(false);
             si_storable.set_change_set_event_type(si_data::DataStorableChangeSetEventType::Update);
             si_storable.item_id = item_id;
@@ -192,6 +198,7 @@ impl crate::protobuf::ServerEntity {
         &mut self,
         db: &si_data::Db,
         change_set_id: Option<String>,
+        edit_session_id: Option<String>,
     ) -> si_cea::CeaResult<()> {
         let item_id = self.id.as_ref().map(|change_set_enabled_id| {
             let split_result: Vec<&str> = change_set_enabled_id.split(":").collect();
@@ -204,6 +211,7 @@ impl crate::protobuf::ServerEntity {
         });
         self.si_storable.as_mut().map(|si_storable| {
             si_storable.change_set_id = change_set_id;
+            si_storable.edit_session_id = edit_session_id;
             si_storable.deleted = Some(true);
             si_storable.set_change_set_event_type(si_data::DataStorableChangeSetEventType::Delete);
             si_storable.item_id = item_id;
@@ -583,8 +591,11 @@ impl si_data::Storable for crate::protobuf::ServerEntity {
             "dataStorable.itemId",
             "dataStorable.changeSetEntryCount",
             "dataStorable.changeSetEventType",
+            "dataStorable.changeSetReverted",
             "dataStorable.changeSetExecuted",
             "dataStorable.deleted",
+            "dataStorable.editSessionId",
+            "dataStorable.reverted",
             "description",
             "siStorable.naturalKey",
             "entitySiProperties.entityState",
@@ -599,5 +610,15 @@ impl si_data::Storable for crate::protobuf::ServerEntity {
             "constraints.componentName",
             "constraints.componentDisplayName",
         ]
+    }
+
+    fn edit_session_id(&self) -> si_data::Result<Option<&str>> {
+        Ok(self
+            .si_storable
+            .as_ref()
+            .ok_or_else(|| si_data::DataError::RequiredField("si_storable".to_string()))?
+            .edit_session_id
+            .as_ref()
+            .map(String::as_str))
     }
 }

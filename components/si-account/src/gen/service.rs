@@ -525,6 +525,295 @@ impl crate::protobuf::account_server::Account for Service {
         .await
     }
 
+    async fn edit_session_create(
+        &self,
+        request: tonic::Request<crate::protobuf::EditSessionCreateRequest>,
+    ) -> std::result::Result<tonic::Response<crate::protobuf::EditSessionCreateReply>, tonic::Status>
+    {
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "account.edit_session_create",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(&span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
+        async {
+            crate::authorize::authnz(&self.db, &request, "edit_session_create").await?;
+
+            let inner = request.into_inner();
+            let name = inner.name;
+            let display_name = inner.display_name;
+            let si_properties = inner.si_properties;
+            let note = inner.note;
+            let reverted = inner.reverted;
+            let change_set_entry_ids = inner.change_set_entry_ids;
+
+            let output = crate::protobuf::EditSession::create(
+                &self.db,
+                name,
+                display_name,
+                si_properties,
+                note,
+                reverted,
+                change_set_entry_ids,
+            )
+            .await?;
+
+            Ok(tonic::Response::new(
+                crate::protobuf::EditSessionCreateReply { item: Some(output) },
+            ))
+        }
+        .instrument(span)
+        .await
+    }
+
+    async fn edit_session_get(
+        &self,
+        request: tonic::Request<crate::protobuf::EditSessionGetRequest>,
+    ) -> std::result::Result<tonic::Response<crate::protobuf::EditSessionGetReply>, tonic::Status>
+    {
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "account.edit_session_get",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(&span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
+        async {
+            crate::authorize::authnz(&self.db, &request, "edit_session_get").await?;
+
+            let inner = request.into_inner();
+            let id = inner
+                .id
+                .ok_or_else(|| si_data::DataError::RequiredField("id".to_string()))?;
+
+            let output = crate::protobuf::EditSession::get(&self.db, &id).await?;
+
+            Ok(tonic::Response::new(crate::protobuf::EditSessionGetReply {
+                item: Some(output),
+            }))
+        }
+        .instrument(span)
+        .await
+    }
+
+    async fn edit_session_list(
+        &self,
+        request: tonic::Request<crate::protobuf::EditSessionListRequest>,
+    ) -> std::result::Result<tonic::Response<crate::protobuf::EditSessionListReply>, tonic::Status>
+    {
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "account.edit_session_list",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(&span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
+        async {
+            #[allow(unused_variables)]
+            let auth = crate::authorize::authnz(&self.db, &request, "edit_session_list").await?;
+
+            let mut inner = request.into_inner();
+            if inner.scope_by_tenant_id.is_none() {
+                inner.scope_by_tenant_id = Some(auth.billing_account_id().into());
+            }
+
+            let output = crate::protobuf::EditSession::list(&self.db, inner).await?;
+
+            Ok(tonic::Response::new(
+                crate::protobuf::EditSessionListReply {
+                    items: output.items,
+                    total_count: Some(output.total_count),
+                    next_page_token: Some(output.page_token),
+                },
+            ))
+        }
+        .instrument(span)
+        .await
+    }
+
+    async fn edit_session_revert(
+        &self,
+        request: tonic::Request<crate::protobuf::EditSessionRevertRequest>,
+    ) -> std::result::Result<tonic::Response<crate::protobuf::EditSessionRevertReply>, tonic::Status>
+    {
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "account.edit_session_revert",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(&span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
+        async {
+            crate::authorize::authnz(&self.db, &request, "edit_session_revert").await?;
+
+            let inner = request.into_inner();
+
+            let output = crate::model::EditSession::revert(&self.db, inner).await?;
+
+            Ok(tonic::Response::new(output))
+        }
+        .instrument(span)
+        .await
+    }
+
+    async fn edit_session_unrevert(
+        &self,
+        request: tonic::Request<crate::protobuf::EditSessionUnrevertRequest>,
+    ) -> std::result::Result<
+        tonic::Response<crate::protobuf::EditSessionUnrevertReply>,
+        tonic::Status,
+    > {
+        let span_context =
+            opentelemetry::api::TraceContextPropagator::new().extract(request.metadata());
+        let span = tracing::span!(
+            tracing::Level::INFO,
+            "account.edit_session_unrevert",
+            metadata.content_type = tracing::field::Empty,
+            authenticated = tracing::field::Empty,
+            userId = tracing::field::Empty,
+            billingAccountId = tracing::field::Empty,
+            http.user_agent = tracing::field::Empty,
+        );
+        span.set_parent(&span_context);
+
+        {
+            let metadata = request.metadata();
+            if let Some(raw_value) = metadata.get("authenticated") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("authenticated", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("userid") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("userId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("billingAccountId") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("billingAccountId", &tracing::field::display(value));
+            }
+            if let Some(raw_value) = metadata.get("user-agent") {
+                let value = raw_value.to_str().unwrap_or("unserializable");
+                span.record("http.user_agent", &tracing::field::display(value));
+            }
+        }
+
+        async {
+            crate::authorize::authnz(&self.db, &request, "edit_session_unrevert").await?;
+
+            let inner = request.into_inner();
+
+            let output = crate::model::EditSession::unrevert(&self.db, inner).await?;
+
+            Ok(tonic::Response::new(output))
+        }
+        .instrument(span)
+        .await
+    }
+
     async fn event_log_create(
         &self,
         request: tonic::Request<crate::protobuf::EventLogCreateRequest>,

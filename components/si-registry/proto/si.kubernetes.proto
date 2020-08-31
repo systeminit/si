@@ -182,6 +182,7 @@ message KubernetesClusterEntityCreateRequest {
   google.protobuf.StringValue description = 3;
   google.protobuf.StringValue workspace_id = 1001;
   google.protobuf.StringValue change_set_id = 1002;
+  google.protobuf.StringValue edit_session_id = 1003;
   si.kubernetes.KubernetesClusterEntityProperties properties = 4;
   si.kubernetes.KubernetesClusterComponentConstraints constraints = 5;
 }
@@ -191,6 +192,7 @@ message KubernetesClusterEntityCreateReply {
 message KubernetesClusterEntityDeleteRequest {
   google.protobuf.StringValue id = 1001;
   google.protobuf.StringValue change_set_id = 1002;
+  google.protobuf.StringValue edit_session_id = 1003;
 }
 message KubernetesClusterEntityDeleteReply {
   si.kubernetes.KubernetesClusterEntity item = 1001;
@@ -204,7 +206,8 @@ message KubernetesClusterEntityUpdateRequestUpdate {
 message KubernetesClusterEntityUpdateRequest {
   google.protobuf.StringValue id = 1001;
   google.protobuf.StringValue change_set_id = 1002;
-  si.kubernetes.KubernetesClusterEntityUpdateRequestUpdate update = 1003;
+  google.protobuf.StringValue edit_session_id = 1003;
+  si.kubernetes.KubernetesClusterEntityUpdateRequestUpdate update = 1004;
 }
 message KubernetesClusterEntityUpdateReply {
   si.kubernetes.KubernetesClusterEntity item = 1001;
@@ -342,6 +345,7 @@ message MinikubeEntityCreateRequest {
   google.protobuf.StringValue description = 3;
   google.protobuf.StringValue workspace_id = 1001;
   google.protobuf.StringValue change_set_id = 1002;
+  google.protobuf.StringValue edit_session_id = 1003;
   si.kubernetes.MinikubeEntityProperties properties = 4;
   si.kubernetes.MinikubeComponentConstraints constraints = 5;
 }
@@ -351,6 +355,7 @@ message MinikubeEntityCreateReply {
 message MinikubeEntityDeleteRequest {
   google.protobuf.StringValue id = 1001;
   google.protobuf.StringValue change_set_id = 1002;
+  google.protobuf.StringValue edit_session_id = 1003;
 }
 message MinikubeEntityDeleteReply {
   si.kubernetes.MinikubeEntity item = 1001;
@@ -364,7 +369,8 @@ message MinikubeEntityUpdateRequestUpdate {
 message MinikubeEntityUpdateRequest {
   google.protobuf.StringValue id = 1001;
   google.protobuf.StringValue change_set_id = 1002;
-  si.kubernetes.MinikubeEntityUpdateRequestUpdate update = 1003;
+  google.protobuf.StringValue edit_session_id = 1003;
+  si.kubernetes.MinikubeEntityUpdateRequestUpdate update = 1004;
 }
 message MinikubeEntityUpdateReply {
   si.kubernetes.MinikubeEntity item = 1001;
@@ -535,6 +541,7 @@ message KubernetesDeploymentEntityCreateRequest {
   google.protobuf.StringValue description = 3;
   google.protobuf.StringValue workspace_id = 1001;
   google.protobuf.StringValue change_set_id = 1002;
+  google.protobuf.StringValue edit_session_id = 1003;
   si.kubernetes.KubernetesDeploymentEntityProperties properties = 4;
   si.kubernetes.KubernetesDeploymentComponentConstraints constraints = 5;
 }
@@ -544,6 +551,7 @@ message KubernetesDeploymentEntityCreateReply {
 message KubernetesDeploymentEntityDeleteRequest {
   google.protobuf.StringValue id = 1001;
   google.protobuf.StringValue change_set_id = 1002;
+  google.protobuf.StringValue edit_session_id = 1003;
 }
 message KubernetesDeploymentEntityDeleteReply {
   si.kubernetes.KubernetesDeploymentEntity item = 1001;
@@ -557,7 +565,8 @@ message KubernetesDeploymentEntityUpdateRequestUpdate {
 message KubernetesDeploymentEntityUpdateRequest {
   google.protobuf.StringValue id = 1001;
   google.protobuf.StringValue change_set_id = 1002;
-  si.kubernetes.KubernetesDeploymentEntityUpdateRequestUpdate update = 1003;
+  google.protobuf.StringValue edit_session_id = 1003;
+  si.kubernetes.KubernetesDeploymentEntityUpdateRequestUpdate update = 1004;
 }
 message KubernetesDeploymentEntityUpdateReply {
   si.kubernetes.KubernetesDeploymentEntity item = 1001;
@@ -740,6 +749,7 @@ message KubernetesServiceEntityCreateRequest {
   google.protobuf.StringValue description = 3;
   google.protobuf.StringValue workspace_id = 1001;
   google.protobuf.StringValue change_set_id = 1002;
+  google.protobuf.StringValue edit_session_id = 1003;
   si.kubernetes.KubernetesServiceEntityProperties properties = 4;
   si.kubernetes.KubernetesServiceComponentConstraints constraints = 5;
 }
@@ -749,6 +759,7 @@ message KubernetesServiceEntityCreateReply {
 message KubernetesServiceEntityDeleteRequest {
   google.protobuf.StringValue id = 1001;
   google.protobuf.StringValue change_set_id = 1002;
+  google.protobuf.StringValue edit_session_id = 1003;
 }
 message KubernetesServiceEntityDeleteReply {
   si.kubernetes.KubernetesServiceEntity item = 1001;
@@ -762,7 +773,8 @@ message KubernetesServiceEntityUpdateRequestUpdate {
 message KubernetesServiceEntityUpdateRequest {
   google.protobuf.StringValue id = 1001;
   google.protobuf.StringValue change_set_id = 1002;
-  si.kubernetes.KubernetesServiceEntityUpdateRequestUpdate update = 1003;
+  google.protobuf.StringValue edit_session_id = 1003;
+  si.kubernetes.KubernetesServiceEntityUpdateRequestUpdate update = 1004;
 }
 message KubernetesServiceEntityUpdateReply {
   si.kubernetes.KubernetesServiceEntity item = 1001;

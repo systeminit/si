@@ -12,7 +12,7 @@ let id = inner
 
 let mut entity = <%- fmt.structName() %>::get(&self.db, &id).await?;
 
-entity.delete(&self.db, inner.change_set_id).await?;
+entity.delete(&self.db, inner.change_set_id, inner.edit_session_id).await?;
 
 si_account::EventLog::entity_delete(&self.db, &user_id, &entity).await?; 
 

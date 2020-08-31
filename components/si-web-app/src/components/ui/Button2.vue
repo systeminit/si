@@ -4,12 +4,13 @@
     v-bind:class="buttonStyle"
     :disabled="disabled"
   >
-    <div class="flex">
+    <div class="flex justify-center">
       <div class="flex self-center" v-if="icon">
         <PlayIcon :size="iconSize" v-if="icon == 'play'" />
         <SaveIcon :size="iconSize" v-else-if="icon == 'save'" />
         <XIcon :size="iconSize" v-else-if="icon == 'cancel'" />
         <RefreshCcwIcon :size="iconSize" v-else-if="icon == 'refresh'" />
+        <EditIcon :size="iconSize" v-else-if="icon == 'edit'" />
       </div>
       <div class="ml-1 font-normal" v-if="label">
         {{ label }}
@@ -21,12 +22,18 @@
 <script lang="ts">
 import Vue from "vue";
 
-import { RefreshCcwIcon, PlayIcon, SaveIcon, XIcon } from "vue-feather-icons";
+import {
+  RefreshCcwIcon,
+  PlayIcon,
+  SaveIcon,
+  XIcon,
+  EditIcon,
+} from "vue-feather-icons";
 
 interface ButtonProps {
   kind: "standard" | "save" | "cancel";
   label: null | string;
-  icon: null | "play" | "save" | "cancel" | "refresh";
+  icon: null | "play" | "save" | "cancel" | "refresh" | "edit";
   size: "xs" | "sm" | "base" | "lg";
   disabled: boolean;
 }
@@ -38,6 +45,7 @@ export default Vue.extend({
     SaveIcon,
     XIcon,
     RefreshCcwIcon,
+    EditIcon,
   },
   props: {
     kind: {

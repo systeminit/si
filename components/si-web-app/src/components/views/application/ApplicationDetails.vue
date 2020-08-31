@@ -29,37 +29,55 @@
           >
             system:
           </div>
-          <div class="flex items-center">
+          <div class="flex items-center mr-5">
             <SiSelect
               size="xs"
               class="mr-4"
               :options="systemList"
               v-model="currentSystem"
               name="systemSelect"
+              :disabled="isEditMode"
             />
           </div>
           <div
-            class="inline-flex justify-end w-8 mr-2 font-normal text-gray-400"
-            data-cy="application-details-current-mode"
+            class="inline-flex justify-end mr-2 font-normal text-gray-400 w-14"
           >
-            <template v-if="isEditMode">
-              edit
-            </template>
-            <template v-else>
-              view
-            </template>
-          </div>
-          <button
-            @click="modeSwitch"
-            class="focus:outline-none"
-            data-cy="application-details-mode-toggle"
-          >
-            <ToggleRightIcon
-              class="inline-flex text-gray-300"
+            <Button2
+              @click.native="cancelEditSession"
+              data-cy="application-details-mode-toggle"
+              label="cancel"
+              icon="cancel"
+              kind="cancel"
+              size="xs"
               v-if="isEditMode"
             />
-            <ToggleLeftIcon class="inline-flex text-gray-300" v-else />
-          </button>
+          </div>
+
+          <div
+            class="inline-flex justify-end w-16 mr-2 font-normal text-gray-400"
+            data-cy="application-details-current-mode"
+          >
+            <Button2
+              @click.native="modeSwitch"
+              data-cy="application-details-mode-toggle"
+              class="w-16"
+              label="done"
+              icon="save"
+              kind="save"
+              size="xs"
+              v-if="isEditMode"
+            />
+
+            <Button2
+              class="w-16"
+              @click.native="startEditSession"
+              data-cy="application-details-mode-toggle"
+              label="edit"
+              icon="edit"
+              size="xs"
+              v-else
+            />
+          </div>
           <SiModal
             name="changeSetCreate"
             title="Select or create a changeSet"
@@ -155,25 +173,33 @@
           <div
             class="w-1/4 pt-2 pb-2 pl-2 mx-3 mt-2 border border-solid card-section"
           >
-            <div class="flex">
-              <div class="flex-row w-full text-sm font-bold text-gray-400">
-                change: {{ changeSetOpenCount }}
+            <div class="flex flex-col">
+              <div class="flex flex-row align-middle">
+                <div class="self-center text-sm font-bold text-gray-400">
+                  changeset:
+                </div>
+                <div class="flex ml-2">
+                  <SiSelect
+                    size="xs"
+                    :options="changeSetOpenList"
+                    v-model="currentChangeSet"
+                    name="box"
+                    :disabled="isEditMode"
+                  />
+                </div>
               </div>
-            </div>
-            <div class="flex">
-              <div
-                class="flex items-center justify-end w-2/6 pr-1 text-xs text-gray-400"
-              >
-                changeSet:
-              </div>
-              <div class="flex items-center w-full pr-1">
-                <SiSelect
-                  size="xs"
-                  class="mr-4"
-                  :options="changeSetOpenList"
-                  v-model="currentChangeSet"
-                  name="box"
-                />
+              <div class="flex flex-row text-xs text-gray-400 align-middle">
+                <div>
+                  changes:
+                </div>
+                <div class="ml-2">
+                  <template v-if="changeSetEntryCount == 0">
+                    {{ changeSetEntryCount }}
+                  </template>
+                  <template v-else>
+                    <span class="text-gold"> {{ changeSetEntryCount }} </span>
+                  </template>
+                </div>
               </div>
             </div>
             <div class="flex justify-end w-full pt-2 pr-1">
@@ -221,8 +247,6 @@ import _ from "lodash";
 import {
   ChevronRightIcon,
   ChevronDownIcon,
-  ToggleLeftIcon,
-  ToggleRightIcon,
   PlayIcon,
   EditIcon,
   AlertCircleIcon,
@@ -244,8 +268,6 @@ export default Vue.extend({
     StatusBar,
     ChevronRightIcon,
     ChevronDownIcon,
-    ToggleLeftIcon,
-    ToggleRightIcon,
     ActivityVisualization,
     ServicesVisualization,
     ResourcesVisualization,
@@ -294,6 +316,20 @@ export default Vue.extend({
       this.modeSwitch();
       this.showChangeSetCreateModal = false;
     },
+    async startEditSession() {
+      if (this.mode == "view" && !this.currentChangeSet) {
+        this.showChangeSetCreateModal = true;
+        return;
+      } else {
+        this.$store.dispatch("editor/modeSwitch");
+        const editSession = await this.$store.dispatch("editSession/create");
+        console.log("the new edit session", { editSession });
+      }
+    },
+    async cancelEditSession() {
+      await this.$store.dispatch("editSession/revert");
+      this.$store.dispatch("editor/modeSwitch");
+    },
     modeSwitch() {
       if (this.mode == "view" && !this.currentChangeSet) {
         this.showChangeSetCreateModal = true;
@@ -319,7 +355,8 @@ export default Vue.extend({
       });
       this.showChangeSetCreateModal = false;
       this.newChangeSetName = "";
-      this.$store.dispatch("editor/modeSwitch");
+      await this.startEditSession();
+      //this.$store.dispatch("editor/modeSwitch");
     },
   },
   computed: {
@@ -339,6 +376,14 @@ export default Vue.extend({
     },
     systems(): System[] {
       return this.$store.getters["system/forApplicationId"](this.applicationId);
+    },
+    changeSetEntryCount(): number {
+      const changeSet = this.$store.state.changeSet.current;
+      if (changeSet) {
+        return changeSet.associations?.changeSetEntries?.totalCount || 0;
+      } else {
+        return 0;
+      }
     },
     changeSetOpenCount(): number {
       return this.$store.getters["changeSet/count"]({

@@ -11,11 +11,13 @@ impl crate::protobuf::KubernetesDeploymentEntity {
         properties: Option<crate::protobuf::KubernetesDeploymentEntityProperties>,
         si_properties: Option<si_cea::protobuf::EntitySiProperties>,
         change_set_id: Option<String>,
+        edit_session_id: Option<String>,
     ) -> si_cea::CeaResult<crate::protobuf::KubernetesDeploymentEntity> {
         let mut si_storable = si_data::protobuf::DataStorable::default();
         si_storable.change_set_id = change_set_id;
         si_storable.change_set_event_type =
             si_data::protobuf::DataStorableChangeSetEventType::Create as i32;
+        si_storable.edit_session_id = edit_session_id;
         si_properties
             .as_ref()
             .ok_or_else(|| si_data::DataError::ValidationError("siProperties".into()))?;
@@ -98,6 +100,7 @@ impl crate::protobuf::KubernetesDeploymentEntity {
         properties: Option<crate::protobuf::KubernetesDeploymentEntityProperties>,
         si_properties: Option<si_cea::protobuf::EntitySiProperties>,
         change_set_id: Option<String>,
+        edit_session_id: Option<String>,
     ) -> si_cea::CeaResult<crate::protobuf::KubernetesDeploymentEntity> {
         let mut result = crate::protobuf::KubernetesDeploymentEntity::new(
             name,
@@ -108,6 +111,7 @@ impl crate::protobuf::KubernetesDeploymentEntity {
             properties,
             si_properties,
             change_set_id,
+            edit_session_id,
         )?;
         db.validate_and_insert_as_new(&mut result).await?;
 
@@ -180,6 +184,7 @@ impl crate::protobuf::KubernetesDeploymentEntity {
         &mut self,
         db: &si_data::Db,
         change_set_id: Option<String>,
+        edit_session_id: Option<String>,
         update: Option<crate::protobuf::KubernetesDeploymentEntityUpdateRequestUpdate>,
     ) -> si_cea::CeaResult<()> {
         let item_id = self.id.as_ref().map(|change_set_enabled_id| {
@@ -193,6 +198,7 @@ impl crate::protobuf::KubernetesDeploymentEntity {
         });
         self.si_storable.as_mut().map(|si_storable| {
             si_storable.change_set_id = change_set_id;
+            si_storable.edit_session_id = edit_session_id;
             si_storable.deleted = Some(false);
             si_storable.set_change_set_event_type(si_data::DataStorableChangeSetEventType::Update);
             si_storable.item_id = item_id;
@@ -251,6 +257,7 @@ impl crate::protobuf::KubernetesDeploymentEntity {
         &mut self,
         db: &si_data::Db,
         change_set_id: Option<String>,
+        edit_session_id: Option<String>,
     ) -> si_cea::CeaResult<()> {
         let item_id = self.id.as_ref().map(|change_set_enabled_id| {
             let split_result: Vec<&str> = change_set_enabled_id.split(":").collect();
@@ -263,6 +270,7 @@ impl crate::protobuf::KubernetesDeploymentEntity {
         });
         self.si_storable.as_mut().map(|si_storable| {
             si_storable.change_set_id = change_set_id;
+            si_storable.edit_session_id = edit_session_id;
             si_storable.deleted = Some(true);
             si_storable.set_change_set_event_type(si_data::DataStorableChangeSetEventType::Delete);
             si_storable.item_id = item_id;
@@ -653,7 +661,17 @@ impl si_data::Storable for crate::protobuf::KubernetesDeploymentEntity {
     }
 
     fn order_by_fields() -> Vec<&'static str> {
-        vec!["siStorable.naturalKey", "id", "name", "displayName", "siStorable.naturalKey", "dataStorable.viewContext", "dataStorable.changeSetId", "dataStorable.itemId", "dataStorable.changeSetEntryCount", "dataStorable.changeSetEventType", "dataStorable.changeSetExecuted", "dataStorable.deleted", "description", "siStorable.naturalKey", "entitySiProperties.entityState", "siStorable.naturalKey", "siStorable.naturalKey", "properties.kubernetesObject.apiVersion", "properties.kubernetesObject.kind", "siStorable.naturalKey", "properties.kubernetesObject.kubernetesMetadata.name", "properties.kubernetesObject.kubernetesMetadata.labels", "siStorable.naturalKey", "properties.kubernetesObject.spec.replicas", "siStorable.naturalKey", "properties.kubernetesObject.spec.kubernetesSelector.matchLabels", "siStorable.naturalKey", "siStorable.naturalKey", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesMetadata.name", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesMetadata.labels", "siStorable.naturalKey", "siStorable.naturalKey", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesPodSpec.kubernetesContainer.name", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesPodSpec.kubernetesContainer.image", "siStorable.naturalKey", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesPodSpec.kubernetesContainer.kubernetesContainerPort.containerPort", "properties.kubernetesObjectYaml", "siStorable.naturalKey", "constraints.componentName", "constraints.componentDisplayName", "constraints.kubernetesVersion", "siStorable.naturalKey", "constraints.componentName", "constraints.componentDisplayName", "constraints.kubernetesVersion"]
+        vec!["siStorable.naturalKey", "id", "name", "displayName", "siStorable.naturalKey", "dataStorable.viewContext", "dataStorable.changeSetId", "dataStorable.itemId", "dataStorable.changeSetEntryCount", "dataStorable.changeSetEventType", "dataStorable.changeSetReverted", "dataStorable.changeSetExecuted", "dataStorable.deleted", "dataStorable.editSessionId", "dataStorable.reverted", "description", "siStorable.naturalKey", "entitySiProperties.entityState", "siStorable.naturalKey", "siStorable.naturalKey", "properties.kubernetesObject.apiVersion", "properties.kubernetesObject.kind", "siStorable.naturalKey", "properties.kubernetesObject.kubernetesMetadata.name", "properties.kubernetesObject.kubernetesMetadata.labels", "siStorable.naturalKey", "properties.kubernetesObject.spec.replicas", "siStorable.naturalKey", "properties.kubernetesObject.spec.kubernetesSelector.matchLabels", "siStorable.naturalKey", "siStorable.naturalKey", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesMetadata.name", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesMetadata.labels", "siStorable.naturalKey", "siStorable.naturalKey", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesPodSpec.kubernetesContainer.name", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesPodSpec.kubernetesContainer.image", "siStorable.naturalKey", "properties.kubernetesObject.spec.kubernetesPodTemplateSpec.kubernetesPodSpec.kubernetesContainer.kubernetesContainerPort.containerPort", "properties.kubernetesObjectYaml", "siStorable.naturalKey", "constraints.componentName", "constraints.componentDisplayName", "constraints.kubernetesVersion", "siStorable.naturalKey", "constraints.componentName", "constraints.componentDisplayName", "constraints.kubernetesVersion"]
+    }
+
+    fn edit_session_id(&self) -> si_data::Result<Option<&str>> {
+        Ok(self
+            .si_storable
+            .as_ref()
+            .ok_or_else(|| si_data::DataError::RequiredField("si_storable".to_string()))?
+            .edit_session_id
+            .as_ref()
+            .map(String::as_str))
     }
 }
 

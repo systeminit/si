@@ -23,8 +23,11 @@ message DataStorable {
   google.protobuf.StringValue item_id = 6;
   google.protobuf.UInt64Value change_set_entry_count = 7;
   DataStorableChangeSetEventType change_set_event_type = 8;
-  google.protobuf.BoolValue change_set_executed = 9;
-  google.protobuf.BoolValue deleted = 10;
+  google.protobuf.BoolValue change_set_reverted = 9;
+  google.protobuf.BoolValue change_set_executed = 10;
+  google.protobuf.BoolValue deleted = 11;
+  google.protobuf.StringValue edit_session_id = 12;
+  google.protobuf.BoolValue reverted = 13;
 }
 enum DataPageTokenOrderByDirection {
   DATA_PAGE_TOKEN_ORDER_BY_DIRECTION_UNKNOWN = 0;

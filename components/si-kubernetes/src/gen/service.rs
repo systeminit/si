@@ -347,6 +347,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             let description = inner.description;
             let workspace_id = inner.workspace_id;
             let change_set_id = inner.change_set_id;
+            let edit_session_id = inner.edit_session_id;
             let properties = inner.properties;
             let constraints = inner.constraints;
 
@@ -383,6 +384,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
                 properties,
                 Some(si_properties),
                 change_set_id,
+                edit_session_id,
             )
             .await?;
 
@@ -454,7 +456,9 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
 
             let mut entity = crate::protobuf::KubernetesClusterEntity::get(&self.db, &id).await?;
 
-            entity.delete(&self.db, inner.change_set_id).await?;
+            entity
+                .delete(&self.db, inner.change_set_id, inner.edit_session_id)
+                .await?;
 
             si_account::EventLog::entity_delete(&self.db, &user_id, &entity).await?;
 
@@ -724,7 +728,12 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             let mut entity = crate::protobuf::KubernetesClusterEntity::get(&self.db, &id).await?;
 
             entity
-                .update(&self.db, inner.change_set_id, inner.update)
+                .update(
+                    &self.db,
+                    inner.change_set_id,
+                    inner.edit_session_id,
+                    inner.update,
+                )
                 .await?;
 
             si_account::EventLog::entity_update(&self.db, &user_id, &entity).await?;
@@ -1278,6 +1287,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             let description = inner.description;
             let workspace_id = inner.workspace_id;
             let change_set_id = inner.change_set_id;
+            let edit_session_id = inner.edit_session_id;
             let properties = inner.properties;
             let constraints = inner.constraints;
 
@@ -1314,6 +1324,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
                 properties,
                 Some(si_properties),
                 change_set_id,
+                edit_session_id,
             )
             .await?;
 
@@ -1390,7 +1401,9 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             let mut entity =
                 crate::protobuf::KubernetesDeploymentEntity::get(&self.db, &id).await?;
 
-            entity.delete(&self.db, inner.change_set_id).await?;
+            entity
+                .delete(&self.db, inner.change_set_id, inner.edit_session_id)
+                .await?;
 
             si_account::EventLog::entity_delete(&self.db, &user_id, &entity).await?;
 
@@ -1671,7 +1684,12 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
                 crate::protobuf::KubernetesDeploymentEntity::get(&self.db, &id).await?;
 
             entity
-                .update(&self.db, inner.change_set_id, inner.update)
+                .update(
+                    &self.db,
+                    inner.change_set_id,
+                    inner.edit_session_id,
+                    inner.update,
+                )
                 .await?;
 
             si_account::EventLog::entity_update(&self.db, &user_id, &entity).await?;
@@ -2213,6 +2231,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             let description = inner.description;
             let workspace_id = inner.workspace_id;
             let change_set_id = inner.change_set_id;
+            let edit_session_id = inner.edit_session_id;
             let properties = inner.properties;
             let constraints = inner.constraints;
 
@@ -2249,6 +2268,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
                 properties,
                 Some(si_properties),
                 change_set_id,
+                edit_session_id,
             )
             .await?;
 
@@ -2320,7 +2340,9 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
 
             let mut entity = crate::protobuf::KubernetesServiceEntity::get(&self.db, &id).await?;
 
-            entity.delete(&self.db, inner.change_set_id).await?;
+            entity
+                .delete(&self.db, inner.change_set_id, inner.edit_session_id)
+                .await?;
 
             si_account::EventLog::entity_delete(&self.db, &user_id, &entity).await?;
 
@@ -2590,7 +2612,12 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             let mut entity = crate::protobuf::KubernetesServiceEntity::get(&self.db, &id).await?;
 
             entity
-                .update(&self.db, inner.change_set_id, inner.update)
+                .update(
+                    &self.db,
+                    inner.change_set_id,
+                    inner.edit_session_id,
+                    inner.update,
+                )
                 .await?;
 
             si_account::EventLog::entity_update(&self.db, &user_id, &entity).await?;
@@ -3041,6 +3068,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             let description = inner.description;
             let workspace_id = inner.workspace_id;
             let change_set_id = inner.change_set_id;
+            let edit_session_id = inner.edit_session_id;
             let properties = inner.properties;
             let constraints = inner.constraints;
 
@@ -3076,6 +3104,7 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
                 properties,
                 Some(si_properties),
                 change_set_id,
+                edit_session_id,
             )
             .await?;
 
@@ -3146,7 +3175,9 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
 
             let mut entity = crate::protobuf::MinikubeEntity::get(&self.db, &id).await?;
 
-            entity.delete(&self.db, inner.change_set_id).await?;
+            entity
+                .delete(&self.db, inner.change_set_id, inner.edit_session_id)
+                .await?;
 
             si_account::EventLog::entity_delete(&self.db, &user_id, &entity).await?;
 
@@ -3552,7 +3583,12 @@ impl crate::protobuf::kubernetes_server::Kubernetes for Service {
             let mut entity = crate::protobuf::MinikubeEntity::get(&self.db, &id).await?;
 
             entity
-                .update(&self.db, inner.change_set_id, inner.update)
+                .update(
+                    &self.db,
+                    inner.change_set_id,
+                    inner.edit_session_id,
+                    inner.update,
+                )
                 .await?;
 
             si_account::EventLog::entity_update(&self.db, &user_id, &entity).await?;

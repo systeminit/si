@@ -10,3 +10,5 @@ pub mod item;
 pub use item::Item;
 pub mod event_log;
 pub use event_log::EventLog;
+pub mod edit_session;
+pub use edit_session::EditSession;

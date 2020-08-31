@@ -3,6 +3,7 @@
 
 pub mod billing_account;
 pub mod change_set;
+pub mod edit_session;
 pub mod event_log;
 pub mod group;
 pub mod integration;

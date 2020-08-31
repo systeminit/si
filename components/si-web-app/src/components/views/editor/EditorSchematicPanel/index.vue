@@ -6,9 +6,11 @@
     >
       <div class="flex flex-row justify-start mx-3">
         <button
-          class="px-4 py-2 text-white focus:outline-none"
+          class="px-4 py-2 focus:outline-none"
+          v-bind:class="buttonClass"
           @click="createNode()"
           type="button"
+          :disabled="!isEditMode"
         >
           <plus-square-icon size="1.1x" />
         </button>
@@ -16,6 +18,7 @@
           <select
             class="my-2 text-xs leading-tight text-gray-400 bg-gray-800 border focus:outline-none"
             v-model="selectedEntityType"
+            :disabled="!isEditMode"
           >
             <option
               v-for="entity in entityTypeList"
@@ -27,8 +30,10 @@
           </select>
         </div>
         <button
-          class="px-4 py-2 text-white focus:outline-none"
+          class="px-4 py-2 focus:outline-none"
+          v-bind:class="buttonClass"
           @click="sendAction()"
+          :disabled="!isEditMode"
           type="button"
         >
           <CommandIcon size="1.1x" />
@@ -36,6 +41,7 @@
         <div class="text-black">
           <select
             class="my-2 text-xs leading-tight text-gray-400 bg-gray-800 border focus:outline-none"
+            :disabled="!isEditMode"
             v-model="selectedAction"
           >
             <option key="delete" value="delete">
@@ -124,6 +130,20 @@ export default Vue.extend({
     },
   },
   computed: {
+    isEditMode(): boolean {
+      return this.$store.state.editor.mode == "edit";
+    },
+    buttonClass(): Record<string, boolean> {
+      if (this.isEditMode) {
+        return {
+          "text-white": true,
+        };
+      } else {
+        return {
+          "text-gray-600": true,
+        };
+      }
+    },
     actionList(): string[] {
       if (this.$store.state.node.current) {
         const actionList = registry.listActions();

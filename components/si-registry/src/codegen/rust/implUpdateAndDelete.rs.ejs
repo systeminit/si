@@ -2,6 +2,7 @@ pub async fn update(
     &mut self,
     db: &si_data::Db,
     change_set_id: Option<String>,
+    edit_session_id: Option<String>,
     update: <%- fmt.implUpdateRequestType({ reference: false, option: true }) %>,
 ) -> si_cea::CeaResult<()> {
     let item_id = self.id.as_ref().map(|change_set_enabled_id| {
@@ -15,6 +16,7 @@ pub async fn update(
     });
     self.si_storable.as_mut().map(|si_storable| {
         si_storable.change_set_id = change_set_id;
+        si_storable.edit_session_id = edit_session_id;
         si_storable.deleted = Some(false);
         si_storable.set_change_set_event_type(si_data::DataStorableChangeSetEventType::Update);
         si_storable.item_id = item_id;
@@ -49,6 +51,7 @@ pub async fn delete(
     &mut self,
     db: &si_data::Db,
     change_set_id: Option<String>,
+    edit_session_id: Option<String>,
 ) -> si_cea::CeaResult<()> {
     let item_id = self.id.as_ref().map(|change_set_enabled_id| {
         let split_result: Vec<&str> = change_set_enabled_id.split(":").collect();
@@ -61,6 +64,7 @@ pub async fn delete(
     });
     self.si_storable.as_mut().map(|si_storable| {
         si_storable.change_set_id = change_set_id;
+        si_storable.edit_session_id = edit_session_id;
         si_storable.deleted = Some(true);
         si_storable.set_change_set_event_type(si_data::DataStorableChangeSetEventType::Delete);
         si_storable.item_id = item_id;

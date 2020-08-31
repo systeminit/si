@@ -13,7 +13,7 @@ let id = inner
 let mut entity = <%- fmt.structName() %>::get(&self.db, &id).await?;
 
 entity
-    .update(&self.db, inner.change_set_id, inner.update)
+    .update(&self.db, inner.change_set_id, inner.edit_session_id, inner.update)
     .await?;
 
 si_account::EventLog::entity_update(&self.db, &user_id, &entity).await?; 

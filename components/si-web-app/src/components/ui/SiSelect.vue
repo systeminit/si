@@ -2,6 +2,7 @@
   <div class="relative inline-block w-full" v-bind:class="textClasses">
     <select
       class="block w-full px-2 py-1 pr-8 leading-tight text-gray-400 border border-gray-800 border-solid shadow appearance-none focus:outline-none select"
+      :disabled="disabled"
       @change="selected"
     >
       <option
@@ -53,6 +54,10 @@ export default Vue.extend({
     },
     value: {
       type: [String, Object, Number],
+    },
+    disabled: {
+      type: Boolean,
+      default: false,
     },
   },
   methods: {

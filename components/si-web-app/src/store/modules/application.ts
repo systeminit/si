@@ -86,6 +86,7 @@ export const application: Module<ApplicationStore, RootStore> = {
       payload: CreateMutation,
     ): Promise<ApplicationEntity> {
       await dispatch("changeSet/createDefault", {}, { root: true });
+      await dispatch("editSession/create", {}, { root: true });
       let currentSystem = rootGetters["system/current"];
       let newApp = await dispatch(
         "entity/create",

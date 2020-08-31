@@ -194,6 +194,7 @@ message ApplicationEntityCreateRequest {
   google.protobuf.StringValue description = 3;
   google.protobuf.StringValue workspace_id = 1001;
   google.protobuf.StringValue change_set_id = 1002;
+  google.protobuf.StringValue edit_session_id = 1003;
   si.core.ApplicationEntityProperties properties = 4;
   si.core.ApplicationComponentConstraints constraints = 5;
 }
@@ -203,6 +204,7 @@ message ApplicationEntityCreateReply {
 message ApplicationEntityDeleteRequest {
   google.protobuf.StringValue id = 1001;
   google.protobuf.StringValue change_set_id = 1002;
+  google.protobuf.StringValue edit_session_id = 1003;
 }
 message ApplicationEntityDeleteReply {
   si.core.ApplicationEntity item = 1001;
@@ -216,7 +218,8 @@ message ApplicationEntityUpdateRequestUpdate {
 message ApplicationEntityUpdateRequest {
   google.protobuf.StringValue id = 1001;
   google.protobuf.StringValue change_set_id = 1002;
-  si.core.ApplicationEntityUpdateRequestUpdate update = 1003;
+  google.protobuf.StringValue edit_session_id = 1003;
+  si.core.ApplicationEntityUpdateRequestUpdate update = 1004;
 }
 message ApplicationEntityUpdateReply {
   si.core.ApplicationEntity item = 1001;
@@ -356,6 +359,7 @@ message ServiceEntityCreateRequest {
   google.protobuf.StringValue description = 3;
   google.protobuf.StringValue workspace_id = 1001;
   google.protobuf.StringValue change_set_id = 1002;
+  google.protobuf.StringValue edit_session_id = 1003;
   si.core.ServiceEntityProperties properties = 4;
   si.core.ServiceComponentConstraints constraints = 5;
 }
@@ -365,6 +369,7 @@ message ServiceEntityCreateReply {
 message ServiceEntityDeleteRequest {
   google.protobuf.StringValue id = 1001;
   google.protobuf.StringValue change_set_id = 1002;
+  google.protobuf.StringValue edit_session_id = 1003;
 }
 message ServiceEntityDeleteReply {
   si.core.ServiceEntity item = 1001;
@@ -378,7 +383,8 @@ message ServiceEntityUpdateRequestUpdate {
 message ServiceEntityUpdateRequest {
   google.protobuf.StringValue id = 1001;
   google.protobuf.StringValue change_set_id = 1002;
-  si.core.ServiceEntityUpdateRequestUpdate update = 1003;
+  google.protobuf.StringValue edit_session_id = 1003;
+  si.core.ServiceEntityUpdateRequestUpdate update = 1004;
 }
 message ServiceEntityUpdateReply {
   si.core.ServiceEntity item = 1001;
@@ -761,6 +767,7 @@ message ServerEntityCreateRequest {
   google.protobuf.StringValue description = 3;
   google.protobuf.StringValue workspace_id = 1001;
   google.protobuf.StringValue change_set_id = 1002;
+  google.protobuf.StringValue edit_session_id = 1003;
   si.core.ServerEntityProperties properties = 4;
   si.core.ServerComponentConstraints constraints = 5;
 }
@@ -770,6 +777,7 @@ message ServerEntityCreateReply {
 message ServerEntityDeleteRequest {
   google.protobuf.StringValue id = 1001;
   google.protobuf.StringValue change_set_id = 1002;
+  google.protobuf.StringValue edit_session_id = 1003;
 }
 message ServerEntityDeleteReply {
   si.core.ServerEntity item = 1001;
@@ -783,7 +791,8 @@ message ServerEntityUpdateRequestUpdate {
 message ServerEntityUpdateRequest {
   google.protobuf.StringValue id = 1001;
   google.protobuf.StringValue change_set_id = 1002;
-  si.core.ServerEntityUpdateRequestUpdate update = 1003;
+  google.protobuf.StringValue edit_session_id = 1003;
+  si.core.ServerEntityUpdateRequestUpdate update = 1004;
 }
 message ServerEntityUpdateReply {
   si.core.ServerEntity item = 1001;
@@ -934,6 +943,7 @@ message UbuntuEntityCreateRequest {
   google.protobuf.StringValue description = 3;
   google.protobuf.StringValue workspace_id = 1001;
   google.protobuf.StringValue change_set_id = 1002;
+  google.protobuf.StringValue edit_session_id = 1003;
   si.core.UbuntuEntityProperties properties = 4;
   si.core.UbuntuComponentConstraints constraints = 5;
 }
@@ -943,6 +953,7 @@ message UbuntuEntityCreateReply {
 message UbuntuEntityDeleteRequest {
   google.protobuf.StringValue id = 1001;
   google.protobuf.StringValue change_set_id = 1002;
+  google.protobuf.StringValue edit_session_id = 1003;
 }
 message UbuntuEntityDeleteReply {
   si.core.UbuntuEntity item = 1001;
@@ -956,7 +967,8 @@ message UbuntuEntityUpdateRequestUpdate {
 message UbuntuEntityUpdateRequest {
   google.protobuf.StringValue id = 1001;
   google.protobuf.StringValue change_set_id = 1002;
-  si.core.UbuntuEntityUpdateRequestUpdate update = 1003;
+  google.protobuf.StringValue edit_session_id = 1003;
+  si.core.UbuntuEntityUpdateRequestUpdate update = 1004;
 }
 message UbuntuEntityUpdateReply {
   si.core.UbuntuEntity item = 1001;
@@ -1111,6 +1123,7 @@ message AmiEntityCreateRequest {
   google.protobuf.StringValue description = 3;
   google.protobuf.StringValue workspace_id = 1001;
   google.protobuf.StringValue change_set_id = 1002;
+  google.protobuf.StringValue edit_session_id = 1003;
   si.core.AmiEntityProperties properties = 4;
   si.core.AmiComponentConstraints constraints = 5;
 }
@@ -1120,6 +1133,7 @@ message AmiEntityCreateReply {
 message AmiEntityDeleteRequest {
   google.protobuf.StringValue id = 1001;
   google.protobuf.StringValue change_set_id = 1002;
+  google.protobuf.StringValue edit_session_id = 1003;
 }
 message AmiEntityDeleteReply {
   si.core.AmiEntity item = 1001;
@@ -1133,7 +1147,8 @@ message AmiEntityUpdateRequestUpdate {
 message AmiEntityUpdateRequest {
   google.protobuf.StringValue id = 1001;
   google.protobuf.StringValue change_set_id = 1002;
-  si.core.AmiEntityUpdateRequestUpdate update = 1003;
+  google.protobuf.StringValue edit_session_id = 1003;
+  si.core.AmiEntityUpdateRequestUpdate update = 1004;
 }
 message AmiEntityUpdateReply {
   si.core.AmiEntity item = 1001;
@@ -1271,6 +1286,7 @@ message Ec2InstanceEntityCreateRequest {
   google.protobuf.StringValue description = 3;
   google.protobuf.StringValue workspace_id = 1001;
   google.protobuf.StringValue change_set_id = 1002;
+  google.protobuf.StringValue edit_session_id = 1003;
   si.core.Ec2InstanceEntityProperties properties = 4;
   si.core.Ec2InstanceComponentConstraints constraints = 5;
 }
@@ -1280,6 +1296,7 @@ message Ec2InstanceEntityCreateReply {
 message Ec2InstanceEntityDeleteRequest {
   google.protobuf.StringValue id = 1001;
   google.protobuf.StringValue change_set_id = 1002;
+  google.protobuf.StringValue edit_session_id = 1003;
 }
 message Ec2InstanceEntityDeleteReply {
   si.core.Ec2InstanceEntity item = 1001;
@@ -1293,7 +1310,8 @@ message Ec2InstanceEntityUpdateRequestUpdate {
 message Ec2InstanceEntityUpdateRequest {
   google.protobuf.StringValue id = 1001;
   google.protobuf.StringValue change_set_id = 1002;
-  si.core.Ec2InstanceEntityUpdateRequestUpdate update = 1003;
+  google.protobuf.StringValue edit_session_id = 1003;
+  si.core.Ec2InstanceEntityUpdateRequestUpdate update = 1004;
 }
 message Ec2InstanceEntityUpdateReply {
   si.core.Ec2InstanceEntity item = 1001;

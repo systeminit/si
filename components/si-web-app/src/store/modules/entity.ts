@@ -1173,6 +1173,8 @@ export const entity: Module<EntityStore, RootStore> = {
       };
       const workspaceId = rootGetters["workspace/current"].id;
       const changeSetId = rootGetters["changeSet/current"].id;
+      const editSessionId = rootGetters["editSession/current"].id;
+      variables.editSessionId = editSessionId;
       variables.changeSetId = changeSetId;
       variables.workspaceId = workspaceId;
 
@@ -1235,8 +1237,10 @@ export const entity: Module<EntityStore, RootStore> = {
         await dispatch("changeSet/createDefault", {}, { root: true });
         changeSetId = rootGetters["changeSet/currentId"];
       }
+      const editSessionId = rootGetters["editSession/current"].id;
       variables.changeSetId = changeSetId;
       variables.workspaceId = workspaceId;
+      variables.editSessionId = editSessionId;
       let name: string;
       if (payload.data?.name) {
         name = payload.data?.name;
@@ -1356,12 +1360,14 @@ export const entity: Module<EntityStore, RootStore> = {
         await dispatch("changeSet/createDefault", {}, { root: true });
         changeSetId = rootGetters["changeSet/current"].id;
       }
+      const editSessionId = rootGetters["editSession/current"].id;
       const result = await graphqlMutation({
         typeName: payload.typeName,
         methodName: "delete",
         variables: {
           id: payload.id,
           changeSetId,
+          editSessionId,
         },
       });
       const entity = result["item"];

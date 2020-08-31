@@ -38,6 +38,11 @@ service Account {
   rpc ChangeSetGet(ChangeSetGetRequest) returns (ChangeSetGetReply);
   rpc ChangeSetCreate(ChangeSetCreateRequest) returns (ChangeSetCreateReply);
   rpc ChangeSetExecute(ChangeSetExecuteRequest) returns (ChangeSetExecuteReply);
+  rpc EditSessionCreate(EditSessionCreateRequest) returns (EditSessionCreateReply);
+  rpc EditSessionList(EditSessionListRequest) returns (EditSessionListReply);
+  rpc EditSessionGet(EditSessionGetRequest) returns (EditSessionGetReply);
+  rpc EditSessionRevert(EditSessionRevertRequest) returns (EditSessionRevertReply);
+  rpc EditSessionUnrevert(EditSessionUnrevertRequest) returns (EditSessionUnrevertReply);
   rpc ItemGet(ItemGetRequest) returns (ItemGetReply);
   rpc ItemList(ItemListRequest) returns (ItemListReply);
   rpc EventLogList(EventLogListRequest) returns (EventLogListReply);
@@ -458,6 +463,65 @@ message ChangeSetExecuteRequest {
 }
 message ChangeSetExecuteReply {
   si.account.ChangeSet item = 1001;
+}
+message EditSessionSiProperties {
+  google.protobuf.StringValue billing_account_id = 1001;
+  google.protobuf.StringValue organization_id = 1002;
+  google.protobuf.StringValue workspace_id = 1003;
+  google.protobuf.StringValue change_set_id = 1004;
+  google.protobuf.StringValue user_id = 1005;
+}
+message EditSession {
+  google.protobuf.StringValue id = 1;
+  google.protobuf.StringValue name = 2;
+  google.protobuf.StringValue display_name = 3;
+  si.data.DataStorable si_storable = 4;
+  si.account.EditSessionSiProperties si_properties = 1001;
+  google.protobuf.StringValue note = 1002;
+  google.protobuf.BoolValue reverted = 1003;
+  repeated google.protobuf.StringValue change_set_entry_ids = 1004;
+}
+message EditSessionCreateRequest {
+  google.protobuf.StringValue name = 1001;
+  google.protobuf.StringValue display_name = 1002;
+  si.account.EditSessionSiProperties si_properties = 1003;
+  google.protobuf.StringValue note = 1004;
+  google.protobuf.BoolValue reverted = 1005;
+  repeated google.protobuf.StringValue change_set_entry_ids = 1006;
+}
+message EditSessionCreateReply {
+  si.account.EditSession item = 1001;
+}
+message EditSessionListRequest {
+  si.data.DataQuery query = 1;
+  google.protobuf.UInt32Value page_size = 2;
+  google.protobuf.StringValue order_by = 3;
+  si.data.DataPageTokenOrderByDirection order_by_direction = 4;
+  google.protobuf.StringValue page_token = 5;
+  google.protobuf.StringValue scope_by_tenant_id = 6;
+}
+message EditSessionListReply {
+  repeated si.account.EditSession items = 1;
+  google.protobuf.UInt32Value total_count = 2;
+  google.protobuf.StringValue next_page_token = 3;
+}
+message EditSessionGetRequest {
+  google.protobuf.StringValue id = 1001;
+}
+message EditSessionGetReply {
+  si.account.EditSession item = 1001;
+}
+message EditSessionRevertRequest {
+  google.protobuf.StringValue id = 1001;
+}
+message EditSessionRevertReply {
+  si.account.EditSession item = 1001;
+}
+message EditSessionUnrevertRequest {
+  google.protobuf.StringValue id = 1001;
+}
+message EditSessionUnrevertReply {
+  si.account.EditSession item = 1001;
 }
 message ItemSiProperties {
   google.protobuf.StringValue billing_account_id = 1001;

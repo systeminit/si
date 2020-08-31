@@ -40,6 +40,7 @@ let entity = <%- fmt.structName() %>::create(
     properties,
     Some(si_properties),
     change_set_id,
+    edit_session_id,
 ).await?;
 
 si_account::EventLog::entity_create(&self.db, &user_id, &entity).await?; 
