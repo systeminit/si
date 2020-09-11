@@ -4,9 +4,7 @@ pub use crate::protobuf::{
     EventLog, EventLogGetReply, EventLogGetRequest, EventLogLevel, EventLogListReply,
     EventLogListRequest, EventLogPayload, EventLogSiProperties,
 };
-use si_data::{DataError, Db, ListResult, Result};
-
-use tracing::warn;
+use si_data::{DataError, Db, Result};
 
 impl EventLog {
     pub async fn entity_create(
@@ -465,7 +463,7 @@ impl EventLog {
             .as_str()
             .ok_or(DataError::RequiredField("id".into()))?;
 
-        let type_name = change_set_json["siStorable"]["typeName"]
+        let _type_name = change_set_json["siStorable"]["typeName"]
             .as_str()
             .ok_or(DataError::RequiredField("siStorable.typeName".into()))?;
         let name = change_set_json["name"]
@@ -533,7 +531,7 @@ impl EventLog {
             .as_str()
             .ok_or(DataError::RequiredField("id".into()))?;
 
-        let type_name = change_set_json["siStorable"]["typeName"]
+        let _type_name = change_set_json["siStorable"]["typeName"]
             .as_str()
             .ok_or(DataError::RequiredField("siStorable.typeName".into()))?;
         let name = change_set_json["name"]

@@ -2,7 +2,7 @@ use anyhow::Context;
 use std::env;
 
 use si_cea::binary::server::prelude::*;
-use si_entity::start;
+use si_sdf::start;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

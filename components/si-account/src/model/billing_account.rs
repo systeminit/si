@@ -140,6 +140,8 @@ impl BillingAccount {
         Ok(BillingAccountSignupReply {
             billing_account: Some(billing_account),
             user: Some(user),
+            organization: Some(organization),
+            workspace: Some(workspace),
         })
     }
 }

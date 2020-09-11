@@ -1,13 +1,14 @@
-mod filters;
+mod data;
+pub mod filters;
 mod handlers;
-mod models;
+pub mod models;
 
 use si_data::Db;
 use si_settings::Settings;
 use warp::Filter;
 
 pub async fn start(db: Db, settings: Settings) {
-    let api = filters::entities(&db);
+    let api = filters::api(&db);
     let routes = api
         .with(warp::trace::request())
         .recover(handlers::handle_rejection);

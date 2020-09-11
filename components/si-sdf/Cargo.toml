@@ -1,15 +1,16 @@
 [package]
-name = "si-entity"
+name = "si-sdf"
 version = "0.1.0"
 authors = ["Adam Jacob <adam@systeminit.com>"]
 edition = "2018"
 
 [[bin]]
-name = "si-entity"
+name = "si-sdf"
 path = "src/bin/server.rs"
 
 [dependencies]
 anyhow = "1.0"
+couchbase = { path = "../../vendor/couchbase-rs/couchbase" }
 tokio = { version = "0.2", features = ["full"] }
 warp = "0.2"
 tracing = "0.1"
@@ -21,5 +22,13 @@ si-data = { path = "../si-data" }
 si-settings = { path = "../si-settings" }
 si-account = { path = "../si-account" }
 serde = { version = "1.0.104", features = ["derive"] }
-serde_json = "1.0"
+serde_json = { version = "1.0", features = ["preserve_order"] }
 thiserror = "1.0"
+names = "0.11"
+uuid = { version = "0.8", features = ["serde", "v4"] }
+
+[dev-dependencies]
+lazy_static = "1.4"
+futures = { version = "0.3", features = ["alloc"] }
+tonic = "0.2"
+tokio-test = "0.2"

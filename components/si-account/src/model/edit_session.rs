@@ -5,7 +5,6 @@ pub use crate::protobuf::{
     EditSessionUnrevertReply, EditSessionUnrevertRequest,
 };
 
-use futures::stream::StreamExt;
 use tracing::info_span;
 use tracing_futures::Instrument as _;
 

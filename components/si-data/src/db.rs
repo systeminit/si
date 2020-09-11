@@ -1874,7 +1874,7 @@ impl Db {
         named_params: Option<HashMap<String, serde_json::Value>>,
     ) -> Result<Vec<I>>
     where
-        I: DeserializeOwned + Storable + std::fmt::Debug,
+        I: DeserializeOwned + std::fmt::Debug,
     {
         let span = info_span!(
             "db.query",

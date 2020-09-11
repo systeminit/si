@@ -91,6 +91,8 @@ message BillingAccountSignupRequest {
 message BillingAccountSignupReply {
   si.account.BillingAccount billing_account = 1001;
   si.account.User user = 1002;
+  si.account.Workspace workspace = 1003;
+  si.account.Organization organization = 1004;
 }
 message BillingAccountCreateRequest {
   google.protobuf.StringValue name = 1001;

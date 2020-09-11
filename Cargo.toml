@@ -9,7 +9,7 @@ members = [
   "components/si-cea",
   "components/si-core",
   "components/si-data",
-  "components/si-entity",
+  "components/si-sdf",
   # "components/si-external-api-gateway/rust-client",
   "components/si-kubernetes",
   "components/si-settings",

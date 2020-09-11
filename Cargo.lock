@@ -1484,6 +1484,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "names"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ef320dab323286b50fb5cdda23f61c796a72a89998ab565ca32525c5c556f2da"
+dependencies = [
+ "rand 0.3.23",
+]
+
+[[package]]
 name = "native-tls"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1976,6 +1985,29 @@ dependencies = [
 
 [[package]]
 name = "rand"
+version = "0.3.23"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "64ac302d8f83c0c1974bf758f6b041c6c8ada916fbb44a609158ca8b064cc76c"
+dependencies = [
+ "libc",
+ "rand 0.4.6",
+]
+
+[[package]]
+name = "rand"
+version = "0.4.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "552840b97013b1a26992c11eac34bdd778e464601a4c2054b5f0bff7c6761293"
+dependencies = [
+ "fuchsia-cprng",
+ "libc",
+ "rand_core 0.3.1",
+ "rdrand",
+ "winapi 0.3.8",
+]
+
+[[package]]
+name = "rand"
 version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6d71dacdc3c88c1fde3885a3be3fbab9f35724e6ce99467f7d9c5026132184ca"
@@ -2421,6 +2453,7 @@ version = "1.0.57"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "164eacbdb13512ec2745fb09d51fd5b22b0d65ed294a1dcf7285a360c80a675c"
 dependencies = [
+ "indexmap",
  "itoa",
  "ryu",
  "serde 1.0.114",
@@ -2623,26 +2656,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "si-entity"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "serde 1.0.114",
- "serde_json",
- "si-account",
- "si-cea",
- "si-data",
- "si-settings",
- "thiserror",
- "tokio 0.2.21",
- "tracing",
- "tracing-futures",
- "tracing-opentelemetry 0.7.0",
- "tracing-subscriber",
- "warp",
-]
-
-[[package]]
 name = "si-kubernetes"
 version = "0.1.0"
 dependencies = [
@@ -2665,6 +2678,33 @@ dependencies = [
  "tracing-futures",
  "tracing-opentelemetry 0.5.0",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "si-sdf"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "couchbase",
+ "futures 0.3.5",
+ "lazy_static",
+ "names",
+ "serde 1.0.114",
+ "serde_json",
+ "si-account",
+ "si-cea",
+ "si-data",
+ "si-settings",
+ "thiserror",
+ "tokio 0.2.21",
+ "tokio-test",
+ "tonic",
+ "tracing",
+ "tracing-futures",
+ "tracing-opentelemetry 0.7.0",
+ "tracing-subscriber",
+ "uuid 0.8.1",
+ "warp",
 ]
 
 [[package]]
@@ -3182,6 +3222,17 @@ dependencies = [
  "mio",
  "tokio-io",
  "tokio-reactor",
+]
+
+[[package]]
+name = "tokio-test"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ed0049c119b6d505c4447f5c64873636c7af6c75ab0d45fd9f618d82acb8016d"
+dependencies = [
+ "bytes 0.5.5",
+ "futures-core",
+ "tokio 0.2.21",
 ]
 
 [[package]]
