@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::data::Db;
@@ -18,6 +18,10 @@ pub enum NodeError {
     Entity(#[from] EntityError),
     #[error("error in core model functions: {0}")]
     Model(#[from] ModelError),
+    #[error("no head object found; logic error")]
+    NoHead,
+    #[error("data layer error: {0}")]
+    Data(#[from] si_data::DataError),
 }
 
 pub type NodeResult<T> = Result<T, NodeError>;
@@ -100,6 +104,7 @@ impl Node {
             None,
             id,
             object_type,
+            true,
             billing_account_id,
             organization_id,
             workspace_id,
@@ -110,5 +115,30 @@ impl Node {
         .await?;
 
         Ok(node)
+    }
+
+    pub async fn get_head_object<T: DeserializeOwned + std::fmt::Debug>(
+        &self,
+        db: &Db,
+    ) -> NodeResult<T> {
+        let query = format!(
+            "SELECT a.*
+          FROM `{bucket}` AS a
+          WHERE a.siStorable.typeName = \"entity\"
+            AND a.nodeId = $node_id
+            AND a.head = true
+          LIMIT 1
+        ",
+            bucket = db.bucket_name
+        );
+        let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
+        named_params.insert("node_id".into(), serde_json::json![&self.id]);
+        let mut query_results: Vec<T> = db.query(query, Some(named_params)).await?;
+        if query_results.len() == 0 {
+            Err(NodeError::NoHead)
+        } else {
+            let result = query_results.pop().unwrap();
+            Ok(result)
+        }
     }
 }

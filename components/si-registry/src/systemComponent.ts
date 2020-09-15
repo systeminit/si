@@ -9,6 +9,7 @@ import {
 import { camelCase } from "change-case";
 import { AssociationList } from "./systemObject/associations";
 import { SiGraphql } from "./systemObject/graphql";
+import { Entity } from "./veritech/intelligence";
 
 export type ObjectTypes =
   | BaseObject
@@ -528,9 +529,16 @@ export class ComponentObject extends SystemObject {
   }
 }
 
+interface EntityObjectIntelligence {
+  // prettier-ignore
+  //calculateProperties: (setProperties: Record<string, any>,) => Record<string, any>; // eslint-disable-line
+  inferProperties?: (entity: Entity) => void;
+}
+
 export class EntityObject extends SystemObject {
   baseTypeName: string;
   integrationServices: IntegrationService[];
+  intelligence: EntityObjectIntelligence;
 
   constructor(args: BaseObjectConstructor) {
     const typeName = `${args.typeName}Entity`;
@@ -543,6 +551,23 @@ export class EntityObject extends SystemObject {
     this.baseTypeName = args.typeName;
     this.integrationServices = [];
     this.setEntityDefaults();
+    this.intelligence = {};
+  }
+
+  // Based on the manual properties and expression properties, pass the results to the inference
+  calculateProperties(entity: Entity): void {
+    // First calculate the entire baseline
+    // Then calculate manual properties
+    // Then calculate expression properties, preffering existing manual
+    // - For each system an
+    // Get the manual properties
+    // Calculte the expression properties, and merge with manual, preferring manual properties
+    // Finally pass the results to the inferProperties function, get the results
+    //
+    if (this.intelligence.inferProperties) {
+      //let properties
+      this.intelligence.inferProperties(entity);
+    }
   }
 
   setEntityDefaults(): void {

@@ -71,13 +71,17 @@ pub fn nodes_object_get(
 // changeSets
 //   change_set_create: POST
 //   {change_set_id}
+//      PATCH
+//          - { execute?hypothetical }
 //      editSessions
 //          edit_session_create: POST
 //
 pub fn change_sets(
     db: &Db,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    change_set_create(db.clone()).or(edit_session_create(db.clone()))
+    change_set_create(db.clone())
+        .or(edit_session_create(db.clone()))
+        .or(change_set_patch(db.clone()))
     //  .or(entities_get(db.clone()))
     //  .or(entities_update_field(db.clone()))
 }
@@ -94,6 +98,20 @@ pub fn change_set_create(
         .and(warp::header::<String>("workspaceId"))
         .and(warp::query::<models::change_set::CreateRequest>())
         .and_then(handlers::change_sets::create)
+}
+
+pub fn change_set_patch(
+    db: Db,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("changeSets" / String)
+        .and(warp::patch())
+        .and(with_db(db))
+        .and(warp::header::<String>("userId"))
+        .and(warp::header::<String>("billingAccountId"))
+        .and(warp::header::<String>("organizationId"))
+        .and(warp::header::<String>("workspaceId"))
+        .and(warp::body::json::<models::change_set::PatchRequest>())
+        .and_then(handlers::change_sets::patch)
 }
 
 pub fn edit_session_create(

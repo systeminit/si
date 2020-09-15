@@ -12,6 +12,7 @@ module.exports = {
   entry: {
     main: "./src/index",
     binary: "./src/bin/si-generate",
+    server: "./src/bin/si-veritech",
   },
   output: {
     path: path.resolve(__dirname, "dist"),
