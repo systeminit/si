@@ -1,7 +1,7 @@
 <template>
   <div id="application-details" class="flex flex-col">
     <div id="application-summary" class="flex flex-col w-full pb-3">
-      <StatusBar class="" />
+      <StatusBar class />
 
       <div class="flex mt-3">
         <div class="items-center w-1/2">
@@ -42,12 +42,8 @@
             class="inline-flex justify-end w-8 mr-2 font-normal text-gray-400"
             data-cy="application-details-current-mode"
           >
-            <template v-if="isEditMode">
-              edit
-            </template>
-            <template v-else>
-              view
-            </template>
+            <template v-if="isEditMode">edit</template>
+            <template v-else>view</template>
           </div>
           <button
             @click="modeSwitch"
@@ -72,9 +68,7 @@
               </div>
               <div class="items-center w-full">
                 <div class="flex items-center w-full">
-                  <div class="w-1/3 mr-2 text-right">
-                    changeSet:
-                  </div>
+                  <div class="w-1/3 mr-2 text-right">changeSet:</div>
                   <div class="w-3/6">
                     <SiSelect
                       size="sm"
@@ -86,9 +80,7 @@
                   </div>
                 </div>
                 <div class="flex items-center w-full mt-4">
-                  <div class="w-1/3 mr-2 text-right">
-                    name:
-                  </div>
+                  <div class="w-1/3 mr-2 text-right">name:</div>
                   <div class="w-3/6">
                     <SiTextBox
                       class="w-full"

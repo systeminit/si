@@ -29,9 +29,7 @@
         <div
           class="flex text-white bg-black pl-1 text-sm justify-between items-center"
         >
-          <div>
-            Create new application
-          </div>
+          <div>Create new application</div>
           <div>
             <button @click="hideModal" class="flex">
               <XIcon @click="hideModal"></XIcon>
@@ -41,9 +39,7 @@
 
         <div class="p-4">
           <div class="flex flex-row mx-2 my-2">
-            <div class="text-white">
-              applicationName:
-            </div>
+            <div class="text-white">applicationName:</div>
 
             <input
               data-cy="new-application-form-application-name"
@@ -56,7 +52,7 @@
           <div class="flex flex-row">
             <button
               data-cy="new-application-form-create-button"
-              class="bg-teal-700 ml-4 mt-4 w-16 text-white hover:bg-teal-600"
+              class="w-16 mt-4 ml-4 text-white bg-teal-700 hover:bg-teal-600"
               @click="createApplication"
               type="button"
             >
