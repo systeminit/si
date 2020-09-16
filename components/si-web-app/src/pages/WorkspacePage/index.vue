@@ -4,9 +4,7 @@
       v-if="loading"
       class="flex flex-row w-full h-full text-white bg-black h-center"
     >
-      <div class="object-center">
-        Loading your workspace! Sit tight!
-      </div>
+      <div class="object-center">Loading your workspace! Sit tight!</div>
     </div>
     <div
       id="workspace-view"

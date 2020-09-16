@@ -5,7 +5,7 @@
   >
     <div class="flex justify-center w-full h-13 nav-header">
       <div class="flex items-center justify-between w-10/12">
-        <SysinitIcon :size="1.4"> </SysinitIcon>
+        <SysinitIcon :size="1.4"></SysinitIcon>
         <div class="text-xl font-medium text-white">System Init</div>
       </div>
     </div>
