@@ -26,6 +26,7 @@ RELEASEABLE_COMPONENTS = components/si-account components/si-graphql-api compone
 RUNNABLE_COMPONENTS = components/si-registry components/si-account components/si-core components/si-kubernetes components/si-graphql-api components/si-web-app components/si-external-api-gateway
 BUILDABLE = $(patsubst %,build//%,$(COMPONENTS))
 TESTABLE = $(patsubst %,test//%,$(COMPONENTS))
+CLEANABLE = $(patsubst %,clean//%,$(COMPONENTS))
 RELEASEABLE = $(patsubst %,release//%,$(RELEASEABLE_COMPONENTS))
 CONTAINABLE = $(patsubst %,container//%,$(RELEASEABLE_COMPONENTS))
 WATCHABLE = $(patsubst %,watch//%,$(RUNNABLE_COMPONENTS))
@@ -52,8 +53,8 @@ test//components/si-settings//RDEPS: test//components/si-data test//components/s
 %//RDEPS:
 	@ echo "*** No dependencies for $@ ***"
 
-$(BUILDABLE): 
-	@ pushd $(patsubst build//%,%,$@); $(MAKE) 
+$(BUILDABLE):
+	@ pushd $(patsubst build//%,%,$@); $(MAKE)
 
 build: $(BUILDABLE)
 
@@ -125,10 +126,10 @@ release_from_git: $(patsubst %,release//%,$(TO_RELEASE))
 release: $(RELEASEABLE)
 	@ echo "--> You have released the System Initative! <--"
 
-clean:
-	rm -rf ./components/*/node_modules
-	rm -rf ./components/*/target
-	rm -rf ./target
+$(CLEANABLE):
+	@ pushd $(patsubst clean//%,%,$@); $(MAKE) clean
+
+clean: $(CLEANABLE)
 
 force_clean:
 	sudo rm -rf ./components/*/node_modules

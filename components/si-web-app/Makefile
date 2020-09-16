@@ -1,3 +1,3 @@
 include ../build/typescript.mk
 COMPONENT:=si-web-app
-.DEFAULT_GOAL := build
+.DEFAULT_GOAL := install
