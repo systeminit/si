@@ -7,11 +7,11 @@ use tracing_subscriber::{self, fmt, EnvFilter, Registry};
 
 use std::env;
 
-use si_account::{gen::service::Service, protobuf, protobuf::account_server::Account};
 use si_data::Db;
 use si_settings::Settings;
 
 mod filters;
+mod handlers;
 mod models;
 
 pub struct TestAccount {
@@ -39,45 +39,16 @@ lazy_static! {
         let db = Db::new(&SETTINGS).expect("cannot connect to database");
         db
     };
-    pub static ref ACCOUNT_SERVICE: Service = {
-        let service = Service::new(DB.clone());
-        service
-    };
 }
 
 pub async fn test_setup() -> Result<TestAccount> {
-    let fake_name = si_sdf::models::generate_id("fakename");
-    ACCOUNT_SERVICE.migrate().await?;
-    let response = ACCOUNT_SERVICE
-        .billing_account_signup(tonic::Request::new(protobuf::BillingAccountSignupRequest {
-            billing_account: Some(protobuf::BillingAccountSignupRequestBillingAccount {
-                name: Some(fake_name),
-                display_name: Some("Bobo Corp".to_string()),
-            }),
-            user: Some(protobuf::BillingAccountSignupRequestUser {
-                name: Some("Bobo T. Clown".to_string()),
-                display_name: Some("Bobo T. Clown".to_string()),
-                email: Some("bobo@tclown.com".to_string()),
-                password: Some("bobor0cks".to_string()),
-            }),
-        }))
-        .await
-        .expect("failed to signup with the billing account");
-    let signup_response = response.into_inner();
-    let user_id = signup_response
-        .user
-        .expect("no user in response")
-        .id
-        .expect("no user id in response");
-    let billing_account_id = signup_response.billing_account.unwrap().id.unwrap();
-    let workspace_id = signup_response.workspace.unwrap().id.unwrap();
-    let organization_id = signup_response.organization.unwrap().id.unwrap();
+    let reply = crate::filters::billing_accounts::signup().await;
 
     Ok(TestAccount {
-        user_id,
-        billing_account_id,
-        workspace_id,
-        organization_id,
+        user_id: reply.user.id,
+        billing_account_id: reply.billing_account.id,
+        workspace_id: reply.workspace.id,
+        organization_id: reply.organization.id,
     })
 }
 

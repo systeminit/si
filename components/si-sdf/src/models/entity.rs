@@ -25,6 +25,8 @@ pub enum EntityError {
     NoHead,
     #[error("data layer error: {0}")]
     Data(#[from] si_data::DataError),
+    #[error("no override system found: {0}")]
+    Override(String),
 }
 
 pub type EntityResult<T> = Result<T, EntityError>;
@@ -77,6 +79,22 @@ impl EntityProperties {
         }
         // Safe! We check right above.
         self.0.get_mut(k).unwrap()
+    }
+
+    pub fn get_property(
+        &self,
+        pointer: impl AsRef<str>,
+        override_system: Option<&str>,
+    ) -> EntityResult<Option<&serde_json::Value>> {
+        let pointer = pointer.as_ref();
+        let override_system = match override_system {
+            Some(override_system) => override_system,
+            None => "__baseline",
+        };
+        let properties = self
+            .get(override_system)
+            .ok_or(EntityError::Override(override_system.into()))?;
+        Ok(properties.pointer(pointer))
     }
 }
 
@@ -137,7 +155,7 @@ impl Entity {
             billing_account_id,
             organization_id,
             workspace_id,
-            created_by_user_id,
+            Some(created_by_user_id),
         )
         .await?;
         let expression_properties = EntityProperties::new();

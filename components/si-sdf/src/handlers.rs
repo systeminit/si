@@ -1,24 +1,28 @@
 use serde::Serialize;
 use si_data::Db;
-use std::convert::Infallible;
 use warp::http::StatusCode;
 use warp::{reject::Reject, Rejection, Reply};
-
+use thiserror::Error;
 use tracing::error;
 
-use crate::models::{ChangeSetError, EditSessionError, ModelError, NodeError, SiStorableError};
-use thiserror::Error;
+use std::collections::HashMap;
+use std::convert::Infallible;
 
+use crate::models::{
+    BillingAccountError, ChangeSetError, EditSessionError, ModelError, NodeError, OpError,
+    SiStorableError, UserError
+};
+
+pub mod billing_accounts;
 pub mod change_sets;
 pub mod edit_sessions;
 pub mod nodes;
+pub mod users;
 
 #[derive(Error, Debug)]
 pub enum HandlerError {
     #[error("database error: {0}")]
     Database(#[from] si_data::DataError),
-    #[error("account error: {0}")]
-    Account(#[from] si_account::error::AccountError),
     #[error("invalid json pointer: {0}")]
     InvalidJsonPointer(String),
     #[error("invalid json value: {0}")]
@@ -35,7 +39,17 @@ pub enum HandlerError {
     ChangeSet(#[from] ChangeSetError),
     #[error("edit session error: {0}")]
     EditSession(#[from] EditSessionError),
+    #[error("op error: {0}")]
+    OpError(#[from] OpError),
+    #[error("billing account error: {0}")]
+    BillingAccount(#[from] BillingAccountError),
+    #[error("user error: {0}")]
+    User(#[from] UserError),
+    #[error("call is unauthorized")]
+    Unauthorized
 }
+
+pub type HandlerResult<T> = Result<T, HandlerError>;
 
 impl Reject for HandlerError {}
 impl From<HandlerError> for warp::reject::Rejection {
@@ -44,7 +58,7 @@ impl From<HandlerError> for warp::reject::Rejection {
     }
 }
 
-pub async fn get_model(
+pub async fn get_model_change_set(
     id: String,
     db: Db,
     user_id: String,
@@ -54,9 +68,9 @@ pub async fn get_model(
     type_name: String,
     request: crate::models::GetRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    authorize(&db, &user_id, &billing_account_id).await?;
+    authorize(&db, &user_id, &billing_account_id, &type_name, "get").await?;
 
-    let item = crate::models::get_model(
+    let item = crate::models::get_model_change_set(
         &db,
         id,
         type_name,
@@ -163,16 +177,40 @@ struct ErrorMessage {
     message: String,
 }
 
-async fn authorize(
+pub async fn authorize(
     db: &Db,
     user_id: impl Into<String>,
     billing_account_id: impl Into<String>,
-) -> Result<si_account::authorize::Authentication, HandlerError> {
+    subject: impl AsRef<str>,
+    action: impl AsRef<str>,
+) -> HandlerResult<()> {
     let user_id = user_id.into();
     let billing_account_id = billing_account_id.into();
-    let auth = si_account::authorize::Authentication::new(user_id, billing_account_id);
-    auth.authorize_on_billing_account(db, "entity").await?;
-    Ok(auth)
+    let subject = subject.as_ref();
+    let action = action.as_ref();
+
+    let query = format!(
+        "SELECT a.*
+           FROM `{bucket}` AS a
+           WHERE (
+                (a.siStorable.typeName = \"user\" AND a.id = $user_id) 
+                OR 
+                (a.siStorable.typeName = \"group\" AND ARRAY_CONTAINS(a.userIds, $user_id)))
+             AND ARRAY_CONTAINS(a.siStorable.tenantIds, $tenant_id)
+             AND (ARRAY_CONTAINS(a.capabilities, $capability) OR ARRAY_CONTAINS(a.capabilities, $any))", 
+         bucket = db.bucket_name, 
+     );
+    let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
+    named_params.insert("user_id".into(), serde_json::json![&user_id]);
+    named_params.insert("tenant_id".into(), serde_json::json![&billing_account_id]);
+    named_params.insert("capability".into(), serde_json::json![{ "subject": subject, "action": action }]);
+    named_params.insert("any".into(), serde_json::json![{ "subject": "any", "action": "any" }]);
+    let results: Vec<serde_json::Value> = db.query(query, Some(named_params)).await?;
+    if results.len() > 0 {
+        Ok(())
+    } else {
+        Err(HandlerError::Unauthorized)
+    }
 }
 
 // This function receives a `Rejection` and tries to return a custom
@@ -187,10 +225,9 @@ pub async fn handle_rejection(err: Rejection) -> Result<impl Reply, Infallible> 
     } else if let Some(HandlerError::Database(err)) = err.find() {
         code = StatusCode::INTERNAL_SERVER_ERROR;
         message = err.to_string();
-    } else if let Some(HandlerError::Account(err)) = err.find() {
+    } else if let Some(HandlerError::Unauthorized) = err.find() {
         code = StatusCode::UNAUTHORIZED;
-        tracing::debug!("request unauthorized: {}", err);
-        message = err.to_string();
+        message = String::from("request is unauthorized");
     } else if let Some(header) = err.find::<warp::reject::MissingHeader>() {
         code = StatusCode::UNAUTHORIZED;
         message = format!("{}", header);

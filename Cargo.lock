@@ -1684,6 +1684,7 @@ dependencies = [
  "lazy_static",
  "percent-encoding 2.1.0",
  "pin-project",
+ "prometheus",
  "rand 0.7.3",
 ]
 
@@ -1694,6 +1695,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "adb48b02de79b2d67c2d04e8a0c6140b63830fc6bfde0fdb1e55e74bbb710f57"
 dependencies = [
  "opentelemetry 0.6.0",
+ "thrift",
+]
+
+[[package]]
+name = "opentelemetry-jaeger"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "02a885963fd184822847d08527f3d53164a9fb6f770ceae61ea9388dc208690b"
+dependencies = [
+ "opentelemetry 0.8.0",
  "thrift",
 ]
 
@@ -2605,7 +2616,7 @@ dependencies = [
  "futures 0.3.5",
  "lazy_static",
  "opentelemetry 0.6.0",
- "opentelemetry-jaeger",
+ "opentelemetry-jaeger 0.5.0",
  "paho-mqtt",
  "prost",
  "serde 1.0.114",
@@ -2645,7 +2656,7 @@ dependencies = [
  "dyn-clone",
  "futures 0.3.5",
  "opentelemetry 0.6.0",
- "opentelemetry-jaeger",
+ "opentelemetry-jaeger 0.5.0",
  "prost",
  "prost-derive",
  "serde 1.0.114",
@@ -2754,13 +2765,14 @@ dependencies = [
  "json-pointer",
  "lazy_static",
  "names",
+ "opentelemetry 0.8.0",
+ "opentelemetry-jaeger 0.7.0",
  "reqwest 0.10.8",
  "serde 1.0.114",
  "serde_json",
- "si-account",
- "si-cea",
  "si-data",
  "si-settings",
+ "sodiumoxide",
  "thiserror",
  "tokio 0.2.21",
  "tokio-test",

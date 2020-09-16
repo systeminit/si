@@ -1,6 +1,6 @@
-mod data;
+pub mod data;
 pub mod filters;
-mod handlers;
+pub mod handlers;
 pub mod models;
 
 use si_data::Db;

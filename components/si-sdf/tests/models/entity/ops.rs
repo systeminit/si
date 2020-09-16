@@ -3,7 +3,6 @@ use crate::{
     filters::nodes::create_node, test_cleanup, test_setup, DB,
 };
 
-use si_sdf::filters::api;
 use si_sdf::models::entity::ops::OpSetString;
 use si_sdf::models::Entity;
 
@@ -41,7 +40,7 @@ async fn op_set_string() {
         .apply(&mut head_entity)
         .expect("cannot apply op set string");
 
-    tracing::error!(?op_set_string, ?head_entity, "slipknot?");
+    tracing::debug!(?op_set_string, ?head_entity, "slipknot?");
 
     let baseline = head_entity
         .manual_properties

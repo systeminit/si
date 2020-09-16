@@ -1,5 +1,5 @@
 use names;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json;
 use thiserror::Error;
 use uuid::Uuid;
@@ -10,12 +10,23 @@ use std::collections::HashMap;
 
 use crate::data::Db;
 
+pub mod billing_account;
+pub use billing_account::{BillingAccount, BillingAccountError, BillingAccountResult};
+pub mod user;
+pub use user::{User, UserError, UserResult};
+pub mod group;
+pub use group::{Capability, Group, GroupError, GroupResult};
+pub mod organization;
+pub use organization::{Organization, OrganizationError, OrganizationResult};
+pub mod workspace;
+pub use workspace::{Workspace, WorkspaceError, WorkspaceResult};
 pub mod node;
 pub use node::{Node, NodeError, NodeKind, NodeResult};
 pub mod entity;
+pub use entity::ops::{OpError, OpResult};
 pub use entity::{Entity, EntityError, EntityResult};
 pub mod si_storable;
-pub use si_storable::{SiStorable, SiStorableError, SiStorableResult};
+pub use si_storable::{SiStorable, SiStorableError, SiStorableResult, SimpleStorable};
 pub mod change_set;
 pub mod si_change_set;
 pub use change_set::{ChangeSet, ChangeSetError, ChangeSetResult};
@@ -35,6 +46,8 @@ pub enum ModelError {
     Tenancy,
     #[error("no document found for get request with parameters")]
     GetNotFound,
+    #[error("problem in serialization: {0}")]
+    Serialization(#[from] serde_json::Error),
 }
 
 pub type ModelResult<T> = Result<T, ModelError>;
@@ -135,8 +148,23 @@ pub fn check_tenancy(object: &serde_json::Value, id: impl Into<String>) -> Model
     }
 }
 
+pub async fn get_model<T: DeserializeOwned + std::fmt::Debug>(
+    db: &Db,
+    id: impl AsRef<str> + std::fmt::Debug,
+    billing_account_id: impl AsRef<str> + std::fmt::Debug,
+) -> ModelResult<T> {
+    let id = id.as_ref();
+    let billing_account_id = billing_account_id.as_ref();
+    let collection = db.bucket.default_collection();
+    let response = collection.get(id, None).await?;
+    let json_response: serde_json::Value = response.content_as()?;
+    check_tenancy(&json_response, billing_account_id)?;
+    let object: T = serde_json::from_value(json_response)?;
+    Ok(object)
+}
+
 #[tracing::instrument(level = "trace")]
-pub async fn get_model(
+pub async fn get_model_change_set(
     db: &Db,
     id: impl Into<String> + std::fmt::Debug,
     type_name: impl Into<String> + std::fmt::Debug,
@@ -177,5 +205,71 @@ pub async fn get_model(
             check_tenancy(&result, &billing_account_id)?;
             Ok(result)
         }
+    }
+}
+
+pub async fn check_secondary_key_universal(
+    db: &Db,
+    type_name: impl AsRef<str>,
+    key: impl AsRef<str>,
+    value: impl AsRef<str>,
+) -> ModelResult<bool> {
+    let key = key.as_ref();
+    let value = value.as_ref();
+    let type_name = type_name.as_ref();
+
+    let query = format!(
+        "SELECT a.*
+               FROM `{bucket}` AS a 
+               WHERE a.siStorable.typeName = $type_name 
+                 AND a.{key} = $value
+               LIMIT 1
+                 ",
+        bucket = db.bucket_name,
+        key = key,
+    );
+    let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
+    named_params.insert("type_name".into(), serde_json::json![type_name]);
+    named_params.insert("value".into(), serde_json::json![value]);
+    let query_results: Vec<serde_json::Value> = db.query(query, Some(named_params)).await?;
+    if query_results.len() == 1 {
+        Ok(true)
+    } else {
+        Ok(false)
+    }
+}
+
+pub async fn check_secondary_key(
+    db: &Db,
+    tenant_id: impl AsRef<str>,
+    type_name: impl AsRef<str>,
+    key: impl AsRef<str>,
+    value: impl AsRef<str>,
+) -> ModelResult<bool> {
+    let key = key.as_ref();
+    let tenant_id = tenant_id.as_ref();
+    let value = value.as_ref();
+    let type_name = type_name.as_ref();
+
+    let query = format!(
+        "SELECT a.*
+               FROM `{bucket}` AS a 
+               WHERE a.siStorable.typeName = $type_name 
+                 AND ARRAY_CONTAINS(a.siStorable.tenantIds, $tenant_id)
+                 AND a.{key} = $value
+               LIMIT 1
+                 ",
+        bucket = db.bucket_name,
+        key = key,
+    );
+    let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
+    named_params.insert("type_name".into(), serde_json::json![type_name]);
+    named_params.insert("tenant_id".into(), serde_json::json![tenant_id]);
+    named_params.insert("value".into(), serde_json::json![value]);
+    let query_results: Vec<serde_json::Value> = db.query(query, Some(named_params)).await?;
+    if query_results.len() == 1 {
+        Ok(true)
+    } else {
+        Ok(false)
     }
 }

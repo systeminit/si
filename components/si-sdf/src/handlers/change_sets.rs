@@ -13,7 +13,7 @@ pub async fn create(
     workspace_id: String,
     request: CreateRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    authorize(&db, &user_id, &billing_account_id).await?;
+    authorize(&db, &user_id, &billing_account_id, "changeSet", "create").await?;
 
     let change_set = ChangeSet::new(
         &db,
@@ -35,11 +35,11 @@ pub async fn patch(
     db: Db,
     user_id: String,
     billing_account_id: String,
-    organization_id: String,
-    workspace_id: String,
+    _organization_id: String,
+    _workspace_id: String,
     request: PatchRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    authorize(&db, &user_id, &billing_account_id).await?;
+    authorize(&db, &user_id, &billing_account_id, "changeSet", "patch").await?;
 
     let reply = match request {
         PatchRequest::Execute(execute_request) => {

@@ -54,7 +54,7 @@ impl EditSession {
             billing_account_id,
             organization_id,
             workspace_id,
-            created_by_user_id,
+            Some(created_by_user_id),
         )
         .await?;
         let id = si_storable.object_id.clone();

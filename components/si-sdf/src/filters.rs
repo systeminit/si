@@ -7,7 +7,27 @@ use crate::models;
 
 // The full API for this service
 pub fn api(db: &Db) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    nodes(db).or(change_sets(db))
+    billing_accounts(db).or(nodes(db)).or(change_sets(db))
+}
+
+// Billing Account API
+//
+// billingAccount
+//   billing_account_create: POST
+pub fn billing_accounts(
+    db: &Db,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    billing_account_create(db.clone())
+}
+
+pub fn billing_account_create(
+    db: Db,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("billingAccounts")
+        .and(warp::post())
+        .and(with_db(db))
+        .and(warp::body::json::<models::billing_account::CreateRequest>())
+        .and_then(handlers::billing_accounts::create)
 }
 
 // Nodes API
@@ -15,7 +35,10 @@ pub fn api(db: &Db) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rej
 // nodes
 //   nodes_create: POST
 pub fn nodes(db: &Db) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    nodes_create(db.clone()).or(nodes_get(db.clone()))
+    nodes_create(db.clone())
+        .or(nodes_get(db.clone()))
+        .or(nodes_object_get(db.clone()))
+        .or(nodes_object_patch(db.clone()))
     //  .or(entities_get(db.clone()))
     //  .or(entities_update_field(db.clone()))
 }
@@ -32,7 +55,7 @@ pub fn nodes_get(
         .and(warp::header::<String>("workspaceId"))
         .and(with_string("node".into()))
         .and(warp::query::<models::GetRequest>())
-        .and_then(handlers::get_model)
+        .and_then(handlers::get_model_change_set)
 }
 
 pub fn nodes_create(
@@ -63,7 +86,23 @@ pub fn nodes_object_get(
         .and(warp::header::<String>("workspaceId"))
         .and(with_string("entity".into()))
         .and(warp::query::<models::GetRequest>())
-        .and_then(handlers::get_model)
+        .and_then(handlers::get_model_change_set)
+}
+
+pub fn nodes_object_patch(
+    db: Db,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("nodes" / String / "object")
+        .and(warp::patch())
+        .and(with_db(db))
+        .and(warp::header::<String>("userId"))
+        .and(warp::header::<String>("billingAccountId"))
+        .and(warp::header::<String>("organizationId"))
+        .and(warp::header::<String>("workspaceId"))
+        .and(warp::header::<String>("changeSetId"))
+        .and(warp::header::<String>("editSessionId"))
+        .and(warp::body::json::<models::node::PatchRequest>())
+        .and_then(handlers::nodes::patch)
 }
 
 // Change Sets API

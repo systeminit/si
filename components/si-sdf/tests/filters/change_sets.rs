@@ -51,9 +51,6 @@ async fn create() {
         .expect("failed to finish test");
 }
 
-// TODO: Your mission, if you choose to accept it: add an operation to the node/entity object, and
-// then fix this test to proove that it works. then celebrate!
-
 #[tokio::test]
 async fn execute() {
     let test_account = test_setup().await.expect("failed to setup test");
@@ -62,7 +59,6 @@ async fn execute() {
     let change_set_id = create_change_set(&test_account).await;
     let request =
         change_set::PatchRequest::Execute(change_set::ExecuteRequest { hypothetical: true });
-    let json = serde_json::json![request];
 
     let res = warp::test::request()
         .method("PATCH")
@@ -71,13 +67,11 @@ async fn execute() {
         .header("organizationId", &test_account.organization_id)
         .header("workspaceId", &test_account.workspace_id)
         .path(format!("/changeSets/{}", &change_set_id).as_ref())
-        .json(&change_set::PatchRequest::Execute(
-            change_set::ExecuteRequest { hypothetical: true },
-        ))
+        .json(&request)
         .reply(&filter)
         .await;
     println!("{:?}", res);
-    assert_eq!(res.status(), 200, "change set is created");
+    assert_eq!(res.status(), 200, "change set is executed");
 
     test_cleanup(test_account)
         .await

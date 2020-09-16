@@ -21,6 +21,8 @@ pub enum ChangeSetError {
     Data(#[from] si_data::DataError),
     #[error("unknown op; this is a bug! add it to the dispatch table: {0}")]
     UnknownOp(String),
+    #[error("op error: {0}")]
+    Op(#[from] ops::OpError),
     #[error("error creating our object from json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("error in entity: {0}")]
@@ -101,7 +103,7 @@ impl ChangeSet {
             billing_account_id,
             organization_id,
             workspace_id,
-            created_by_user_id,
+            Some(created_by_user_id),
         )
         .await?;
         let id = si_storable.object_id.clone();
@@ -123,15 +125,7 @@ impl ChangeSet {
     ) -> ChangeSetResult<ChangeSet> {
         let change_set_id = change_set_id.as_ref();
         let billing_account_id = billing_account_id.as_ref();
-        let json_change_set: serde_json::Value = get_model(
-            db,
-            change_set_id,
-            "changeSet",
-            String::from(billing_account_id),
-            None,
-        )
-        .await?;
-        let change_set: ChangeSet = serde_json::from_value(json_change_set)?;
+        let change_set: ChangeSet = get_model(db, change_set_id, billing_account_id).await?;
         Ok(change_set)
     }
 
@@ -148,7 +142,7 @@ impl ChangeSet {
         );
         let mut change_set_entry_named_params: HashMap<String, serde_json::Value> = HashMap::new();
         change_set_entry_named_params.insert("change_set_id".into(), serde_json::json![&self.id]);
-        let mut change_set_entry_query_results: Vec<serde_json::Value> = db
+        let change_set_entry_query_results: Vec<serde_json::Value> = db
             .query(change_set_entry_query, Some(change_set_entry_named_params))
             .await?;
 
@@ -162,7 +156,7 @@ impl ChangeSet {
                     let op: ops::OpSetString = serde_json::from_value(result)?;
                     if last_entity_id.is_some() {
                         let lei = last_entity_id.as_ref().unwrap();
-                        if (lei != &op.entity_id) {
+                        if lei != &op.entity_id {
                             let last_entity = entity_map.get_mut(&last_entity_id.unwrap()).unwrap();
                             last_entity.calculate_properties().await?;
                         }
@@ -175,7 +169,7 @@ impl ChangeSet {
                         entity_map.get_mut(&op.entity_id).unwrap()
                     };
                     last_entity_id = Some(op.entity_id.clone());
-                    op.apply(entity);
+                    op.apply(entity)?;
                 }
                 Some(unknown) => return Err(ChangeSetError::UnknownOp(unknown.into())),
                 None => return Err(ChangeSetError::TypeMissing),
@@ -198,6 +192,7 @@ impl ChangeSet {
                 upsert_model(db, projection_id, entity).await?;
             } else {
                 let projection_id = format!("{}:{}", entity_id, &self.id);
+                entity.head = false;
                 upsert_model(db, projection_id, entity).await?;
                 entity.head = true;
                 upsert_model(db, entity_id, entity).await?

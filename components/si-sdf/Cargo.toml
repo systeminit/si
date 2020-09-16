@@ -17,10 +17,10 @@ tracing = "0.1"
 tracing-futures = { version = "0.2", features = ["tokio", "std-future"]}
 tracing-subscriber = "0.2.11"
 tracing-opentelemetry = "0.7"
-si-cea = { path = "../si-cea" }
+opentelemetry = "0.8"
+opentelemetry-jaeger = "0.7"
 si-data = { path = "../si-data" }
 si-settings = { path = "../si-settings" }
-si-account = { path = "../si-account" }
 serde = { version = "1.0.104", features = ["derive"] }
 serde_json = { version = "1.0", features = ["preserve_order"] }
 thiserror = "1.0"
@@ -28,6 +28,7 @@ names = "0.11"
 uuid = { version = "0.8", features = ["serde", "v4"] }
 reqwest = { version = "0.10", features = ["default-tls", "json"] }
 json-pointer = "0.3"
+sodiumoxide = "0.2"
 
 [dev-dependencies]
 lazy_static = "1.4"

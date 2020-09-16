@@ -19,6 +19,18 @@ pub enum OpError {
     Failed(String, serde_json::Value),
 }
 
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub enum OpRequest {
+    SetString(OpSetStringRequest),
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct OpReply {
+    pub item_ids: Vec<String>,
+}
+
 pub type OpResult<T> = Result<T, OpError>;
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -39,6 +51,14 @@ impl SiOp {
     fn skip(&self) -> bool {
         self.skip
     }
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct OpSetStringRequest {
+    pub pointer: String,
+    pub value: String,
+    pub override_system: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -76,7 +96,7 @@ impl OpSetString {
             billing_account_id,
             organization_id,
             workspace_id,
-            created_by_user_id,
+            Some(created_by_user_id),
         )
         .await?;
 

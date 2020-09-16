@@ -12,7 +12,7 @@ pub async fn create(
     workspace_id: String,
     request: CreateRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    authorize(&db, &user_id, &billing_account_id).await?;
+    authorize(&db, &user_id, &billing_account_id, "editSession", "create").await?;
 
     let edit_session = EditSession::new(
         &db,

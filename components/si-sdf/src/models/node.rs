@@ -2,8 +2,10 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::data::Db;
+use crate::models::entity::ops::{OpReply, OpRequest};
 use crate::models::{
-    insert_model, Entity, EntityError, ModelError, SiChangeSetError, SiStorable, SiStorableError,
+    get_model, insert_model, Entity, EntityError, ModelError, SiChangeSetError, SiStorable,
+    SiStorableError,
 };
 
 use std::collections::HashMap;
@@ -20,6 +22,8 @@ pub enum NodeError {
     Model(#[from] ModelError),
     #[error("no head object found; logic error")]
     NoHead,
+    #[error("no projection object found")]
+    NoProjection,
     #[error("data layer error: {0}")]
     Data(#[from] si_data::DataError),
 }
@@ -27,6 +31,7 @@ pub enum NodeError {
 pub type NodeResult<T> = Result<T, NodeError>;
 
 #[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateRequest {
     pub name: Option<String>,
     pub kind: NodeKind,
@@ -34,8 +39,21 @@ pub struct CreateRequest {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateReply {
     pub item: Node,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub enum PatchRequest {
+    Op(OpRequest),
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub enum PatchReply {
+    Op(OpReply),
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
@@ -82,7 +100,7 @@ impl Node {
             billing_account_id.clone(),
             organization_id.clone(),
             workspace_id.clone(),
-            created_by_user_id.clone(),
+            Some(created_by_user_id.clone()),
         )
         .await?;
 
@@ -140,5 +158,46 @@ impl Node {
             let result = query_results.pop().unwrap();
             Ok(result)
         }
+    }
+
+    pub async fn get_object_projection<T: DeserializeOwned + std::fmt::Debug>(
+        &self,
+        db: &Db,
+        change_set_id: impl AsRef<str>,
+    ) -> NodeResult<T> {
+        let change_set_id = change_set_id.as_ref();
+        let query = format!(
+            "SELECT a.*
+          FROM `{bucket}` AS a
+          WHERE a.siStorable.typeName = \"entity\"
+            AND a.siChangeSet.changeSetId = $change_set_id
+            AND a.nodeId = $node_id
+            AND a.head = false
+          LIMIT 1
+        ",
+            bucket = db.bucket_name
+        );
+        let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
+        named_params.insert("node_id".into(), serde_json::json![&self.id]);
+        named_params.insert("change_set_id".into(), serde_json::json![change_set_id]);
+        let mut query_results: Vec<T> = db.query(query, Some(named_params)).await?;
+        if query_results.len() == 0 {
+            Err(NodeError::NoProjection)
+        } else {
+            let result = query_results.pop().unwrap();
+            Ok(result)
+        }
+    }
+
+    pub async fn get(
+        db: &Db,
+        node_id: impl AsRef<str>,
+        billing_account_id: impl AsRef<str>,
+    ) -> NodeResult<Node> {
+        let node_id = node_id.as_ref();
+        let billing_account_id = billing_account_id.as_ref();
+
+        let node: Node = get_model(db, node_id, billing_account_id).await?;
+        Ok(node)
     }
 }
