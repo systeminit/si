@@ -13,7 +13,7 @@ use crate::data::Db;
 pub mod billing_account;
 pub use billing_account::{BillingAccount, BillingAccountError, BillingAccountResult};
 pub mod user;
-pub use user::{User, UserError, UserResult};
+pub use user::{LoginReply, LoginRequest, User, UserError, UserResult};
 pub mod group;
 pub use group::{Capability, Group, GroupError, GroupResult};
 pub mod organization;
@@ -26,15 +26,21 @@ pub mod entity;
 pub use entity::ops::{OpError, OpResult};
 pub use entity::{Entity, EntityError, EntityResult};
 pub mod si_storable;
-pub use si_storable::{SiStorable, SiStorableError, SiStorableResult, SimpleStorable};
+pub use si_storable::{
+    MinimalStorable, SiStorable, SiStorableError, SiStorableResult, SimpleStorable,
+};
 pub mod change_set;
 pub mod si_change_set;
-pub use change_set::{ChangeSet, ChangeSetError, ChangeSetResult};
+pub use change_set::{
+    ChangeSet, ChangeSetError, ChangeSetResult, PatchOps, PatchReply, PatchRequest,
+};
 pub use si_change_set::{SiChangeSet, SiChangeSetError, SiChangeSetEvent, SiChangeSetResult};
 pub mod update_clock;
 pub use update_clock::{UpdateClock, UpdateClockError};
 pub mod edit_session;
 pub use edit_session::{EditSession, EditSessionError, EditSessionResult};
+pub mod jwt_key;
+pub use jwt_key::{JwtKeyError, JwtKeyPrivate, JwtKeyPublic, JwtKeyResult};
 
 #[derive(Error, Debug)]
 pub enum ModelError {

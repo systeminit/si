@@ -1,19 +1,21 @@
 use serde_json;
 
-use crate::DB;
 use crate::{test_cleanup, test_setup, TestAccount};
+use crate::{DB, SETTINGS};
 
 use si_sdf::filters::api;
 use si_sdf::models::change_set;
 
 pub async fn create_change_set(test_account: &TestAccount) -> String {
-    let filter = api(&DB);
+    let filter = api(&DB, &SETTINGS.jwt_encrypt.key);
     let res = warp::test::request()
         .method("POST")
-        .header("userId", &test_account.user_id)
-        .header("billingAccountId", &test_account.billing_account_id)
-        .header("organizationId", &test_account.organization_id)
-        .header("workspaceId", &test_account.workspace_id)
+        .header("authorization", &test_account.authorization)
+        .json(&change_set::CreateRequest {
+            name: None,
+            workspace_id: test_account.workspace_id.clone(),
+            organization_id: test_account.organization_id.clone(),
+        })
         .path("/changeSets")
         .reply(&filter)
         .await;
@@ -32,18 +34,19 @@ pub async fn create_change_set(test_account: &TestAccount) -> String {
 async fn create() {
     let test_account = test_setup().await.expect("failed to setup test");
 
-    let filter = api(&DB);
+    let filter = api(&DB, &SETTINGS.jwt_encrypt.key);
 
     let res = warp::test::request()
         .method("POST")
-        .header("userId", &test_account.user_id)
-        .header("billingAccountId", &test_account.billing_account_id)
-        .header("organizationId", &test_account.organization_id)
-        .header("workspaceId", &test_account.workspace_id)
+        .header("authorization", &test_account.authorization)
+        .json(&change_set::CreateRequest {
+            name: None,
+            workspace_id: test_account.workspace_id.clone(),
+            organization_id: test_account.organization_id.clone(),
+        })
         .path("/changeSets")
         .reply(&filter)
         .await;
-    println!("{:?}", res);
     assert_eq!(res.status(), 200, "change set is created");
 
     test_cleanup(test_account)
@@ -55,22 +58,21 @@ async fn create() {
 async fn execute() {
     let test_account = test_setup().await.expect("failed to setup test");
 
-    let filter = api(&DB);
+    let filter = api(&DB, &SETTINGS.jwt_encrypt.key);
     let change_set_id = create_change_set(&test_account).await;
-    let request =
-        change_set::PatchRequest::Execute(change_set::ExecuteRequest { hypothetical: true });
+    let request = change_set::PatchRequest {
+        op: change_set::PatchOps::Execute(change_set::ExecuteRequest { hypothetical: true }),
+        workspace_id: test_account.workspace_id.clone(),
+        organization_id: test_account.organization_id.clone(),
+    };
 
     let res = warp::test::request()
         .method("PATCH")
-        .header("userId", &test_account.user_id)
-        .header("billingAccountId", &test_account.billing_account_id)
-        .header("organizationId", &test_account.organization_id)
-        .header("workspaceId", &test_account.workspace_id)
+        .header("authorization", &test_account.authorization)
         .path(format!("/changeSets/{}", &change_set_id).as_ref())
         .json(&request)
         .reply(&filter)
         .await;
-    println!("{:?}", res);
     assert_eq!(res.status(), 200, "change set is executed");
 
     test_cleanup(test_account)

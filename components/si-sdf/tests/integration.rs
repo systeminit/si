@@ -8,6 +8,7 @@ use tracing_subscriber::{self, fmt, EnvFilter, Registry};
 use std::env;
 
 use si_data::Db;
+use si_sdf::models::{BillingAccount, User};
 use si_settings::Settings;
 
 mod filters;
@@ -19,6 +20,9 @@ pub struct TestAccount {
     pub billing_account_id: String,
     pub workspace_id: String,
     pub organization_id: String,
+    pub user: User,
+    pub billing_account: BillingAccount,
+    pub authorization: String,
 }
 
 lazy_static! {
@@ -42,13 +46,25 @@ lazy_static! {
 }
 
 pub async fn test_setup() -> Result<TestAccount> {
+    si_sdf::models::jwt_key::create_if_missing(
+        &DB,
+        "config/public.pem",
+        "config/private.pem",
+        &SETTINGS.jwt_encrypt.key,
+    )
+    .await?;
     let reply = crate::filters::billing_accounts::signup().await;
+    let jwt =
+        crate::filters::users::login_user(&reply.billing_account.name, &reply.user.email).await;
 
     Ok(TestAccount {
-        user_id: reply.user.id,
-        billing_account_id: reply.billing_account.id,
+        user_id: reply.user.id.clone(),
+        billing_account_id: reply.billing_account.id.clone(),
         workspace_id: reply.workspace.id,
         organization_id: reply.organization.id,
+        billing_account: reply.billing_account,
+        user: reply.user,
+        authorization: format!("Bearer {}", jwt),
     })
 }
 

@@ -14,3 +14,8 @@ shared_topic_id = "entity"
 [paging]
 # A serialized sodiumoxide key; never use this one in production!
 key = [72, 101, 88, 174, 45, 162, 35, 16, 122, 81, 137, 180, 201, 83, 106, 53, 206, 160, 51, 245, 153, 200, 55, 225, 152, 8, 192, 66, 151, 232, 192, 139]
+
+[jwt_encrypt]
+# A serialized sodiumoxide key; never use this one in production!
+key = [72, 101, 88, 174, 45, 162, 35, 16, 122, 81, 137, 180, 201, 83, 106, 53, 206, 160, 51, 245, 153, 200, 55, 225, 152, 8, 192, 66, 151, 232, 192, 139]
+

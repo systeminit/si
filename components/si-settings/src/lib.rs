@@ -50,6 +50,19 @@ impl Default for Paging {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+pub struct JwtEncrypt {
+    pub key: sodiumoxide::crypto::secretbox::Key,
+}
+
+impl Default for JwtEncrypt {
+    fn default() -> Self {
+        JwtEncrypt {
+            key: sodiumoxide::crypto::secretbox::gen_key(),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Clone)]
 pub struct Vernemq {
     pub server_uri: Option<String>,
     pub shared_topic_id: Option<String>,
@@ -69,6 +82,7 @@ pub struct Settings {
     pub db: Db,
     pub service: Service,
     pub paging: Paging,
+    pub jwt_encrypt: JwtEncrypt,
     pub vernemq: Option<Vernemq>,
 }
 

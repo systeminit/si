@@ -1,7 +1,7 @@
 use crate::filters::change_sets::create_change_set;
 use crate::filters::edit_sessions::create_edit_session;
-use crate::DB;
 use crate::{test_cleanup, test_setup, TestAccount};
+use crate::{DB, SETTINGS};
 use si_sdf::filters::api;
 use si_sdf::models::{entity, node, Node};
 
@@ -14,19 +14,18 @@ pub async fn create_node(
     let change_set_id = change_set_id.as_ref();
     let edit_session_id = edit_session_id.as_ref();
     let object_type = object_type.into();
-    let filter = api(&DB);
+    let filter = api(&DB, &SETTINGS.jwt_encrypt.key);
     let res = warp::test::request()
         .method("POST")
-        .header("userId", &test_account.user_id)
-        .header("billingAccountId", &test_account.billing_account_id)
-        .header("organizationId", &test_account.organization_id)
-        .header("workspaceId", &test_account.workspace_id)
-        .header("changeSetId", change_set_id)
-        .header("editSessionId", edit_session_id)
+        .header("authorization", &test_account.authorization)
         .json(&node::CreateRequest {
             name: None,
             kind: node::NodeKind::Entity,
             object_type,
+            organization_id: test_account.organization_id.clone(),
+            workspace_id: test_account.workspace_id.clone(),
+            change_set_id: change_set_id.into(),
+            edit_session_id: edit_session_id.into(),
         })
         .path("/nodes")
         .reply(&filter)
@@ -41,22 +40,21 @@ pub async fn create_node(
 async fn create() {
     let test_account = test_setup().await.expect("failed to setup test");
 
-    let filter = api(&DB);
+    let filter = api(&DB, &SETTINGS.jwt_encrypt.key);
     let change_set_id = create_change_set(&test_account).await;
     let edit_session_id = create_edit_session(&test_account, &change_set_id).await;
 
     let res = warp::test::request()
         .method("POST")
-        .header("userId", &test_account.user_id)
-        .header("billingAccountId", &test_account.billing_account_id)
-        .header("organizationId", &test_account.organization_id)
-        .header("workspaceId", &test_account.workspace_id)
-        .header("changeSetId", &change_set_id)
-        .header("editSessionId", &edit_session_id)
+        .header("authorization", &test_account.authorization)
         .json(&node::CreateRequest {
             name: None,
             kind: node::NodeKind::Entity,
             object_type: "service".into(),
+            organization_id: test_account.organization_id.clone(),
+            workspace_id: test_account.workspace_id.clone(),
+            change_set_id,
+            edit_session_id,
         })
         .path("/nodes")
         .reply(&filter)
@@ -74,17 +72,14 @@ async fn create() {
 async fn get() {
     let test_account = test_setup().await.expect("failed to setup test");
 
-    let filter = api(&DB);
+    let filter = api(&DB, &SETTINGS.jwt_encrypt.key);
     let change_set_id = create_change_set(&test_account).await;
     let edit_session_id = create_edit_session(&test_account, &change_set_id).await;
     let node_reply = create_node(&test_account, &change_set_id, &edit_session_id, "service").await;
 
     let res = warp::test::request()
         .method("GET")
-        .header("userId", &test_account.user_id)
-        .header("billingAccountId", &test_account.billing_account_id)
-        .header("organizationId", &test_account.organization_id)
-        .header("workspaceId", &test_account.workspace_id)
+        .header("authorization", &test_account.authorization)
         .path(format!("/nodes/{}", &node_reply.item.id).as_ref())
         .reply(&filter)
         .await;
@@ -107,7 +102,7 @@ async fn get() {
 async fn patch() {
     let test_account = test_setup().await.expect("failed to setup test");
 
-    let filter = api(&DB);
+    let filter = api(&DB, &SETTINGS.jwt_encrypt.key);
     let change_set_id = create_change_set(&test_account).await;
     let edit_session_id = create_edit_session(&test_account, &change_set_id).await;
     let node_reply = create_node(&test_account, &change_set_id, &edit_session_id, "service").await;
@@ -117,22 +112,21 @@ async fn patch() {
         .await
         .expect("cannot get head object for node");
 
-    let request = node::PatchRequest::Op(entity::ops::OpRequest::SetString(
-        entity::ops::OpSetStringRequest {
+    let request = node::PatchRequest {
+        op: entity::ops::OpRequest::SetString(entity::ops::OpSetStringRequest {
             pointer: "/strahd".into(),
             value: "von zarovich".into(),
             override_system: None,
-        },
-    ));
+        }),
+        organization_id: test_account.organization_id.clone(),
+        workspace_id: test_account.workspace_id.clone(),
+        change_set_id: change_set_id.clone(),
+        edit_session_id: edit_session_id.clone(),
+    };
 
     let res = warp::test::request()
         .method("PATCH")
-        .header("userId", &test_account.user_id)
-        .header("billingAccountId", &test_account.billing_account_id)
-        .header("organizationId", &test_account.organization_id)
-        .header("workspaceId", &test_account.workspace_id)
-        .header("changeSetId", &change_set_id)
-        .header("editSessionId", &edit_session_id)
+        .header("authorization", &test_account.authorization)
         .json(&request)
         .path(format!("/nodes/{}/object", &node.id).as_ref())
         .reply(&filter)

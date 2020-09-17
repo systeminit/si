@@ -1,14 +1,14 @@
 use serde_json;
 
-use crate::DB;
-use crate::{test_cleanup, test_setup, TestAccount};
+use crate::{test_cleanup, TestAccount};
+use crate::{DB, SETTINGS};
 
 use si_sdf::filters::api;
-use si_sdf::models::{billing_account, generate_id};
+use si_sdf::models::billing_account;
 
 pub async fn signup() -> billing_account::CreateReply {
     let fake_name = si_sdf::models::generate_id("clown");
-    let filter = api(&DB);
+    let filter = api(&DB, &SETTINGS.jwt_encrypt.key);
     let request = billing_account::CreateRequest {
         billing_account_name: fake_name.clone(),
         billing_account_description: "The Clown Company".into(),
@@ -32,7 +32,7 @@ pub async fn signup() -> billing_account::CreateReply {
 
 #[tokio::test]
 async fn create() {
-    let filter = api(&DB);
+    let filter = api(&DB, &SETTINGS.jwt_encrypt.key);
     let request = billing_account::CreateRequest {
         billing_account_name: "alice".into(),
         billing_account_description: "the rooster".into(),
@@ -53,10 +53,13 @@ async fn create() {
         serde_json::from_slice(res.body()).expect("could not deserialize response");
 
     let test_account = TestAccount {
-        user_id: reply.user.id,
-        billing_account_id: reply.billing_account.id,
+        user_id: reply.user.id.clone(),
+        billing_account_id: reply.billing_account.id.clone(),
         workspace_id: reply.workspace.id,
         organization_id: reply.organization.id,
+        user: reply.user,
+        billing_account: reply.billing_account,
+        authorization: String::from("poop"),
     };
 
     test_cleanup(test_account)

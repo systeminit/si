@@ -35,6 +35,8 @@ pub type ChangeSetResult<T> = Result<T, ChangeSetError>;
 #[serde(rename_all = "camelCase")]
 pub struct CreateRequest {
     pub name: Option<String>,
+    pub organization_id: String,
+    pub workspace_id: String,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -45,7 +47,15 @@ pub struct CreateReply {
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub enum PatchRequest {
+pub struct PatchRequest {
+    pub op: PatchOps,
+    pub organization_id: String,
+    pub workspace_id: String,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub enum PatchOps {
     Execute(ExecuteRequest),
 }
 

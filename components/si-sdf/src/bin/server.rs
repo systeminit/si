@@ -50,6 +50,15 @@ async fn main() -> anyhow::Result<()> {
     println!("*** Connecting to the database ***");
     let db = si_data::Db::new(&settings).context("failed to connect to the database")?;
 
+    println!("*** Checking for JWT keys ***");
+    si_sdf::models::jwt_key::create_if_missing(
+        &db,
+        "config/public.pem",
+        "config/private.pem",
+        &settings.jwt_encrypt.key,
+    )
+    .await?;
+
     println!("*** Starting service ***");
     start(db, settings).await;
 

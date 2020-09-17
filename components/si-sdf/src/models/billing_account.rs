@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+use std::collections::HashMap;
+
 use crate::data::Db;
 use crate::models::{
     check_secondary_key_universal, generate_id, get_model, insert_model, Capability, Group,
@@ -24,6 +26,10 @@ pub enum BillingAccountError {
     Organization(#[from] OrganizationError),
     #[error("error in workspace model: {0}")]
     Workspace(#[from] WorkspaceError),
+    #[error("database error: {0}")]
+    Data(#[from] si_data::DataError),
+    #[error("billing account is not found")]
+    NotFound,
 }
 
 pub type BillingAccountResult<T> = Result<T, BillingAccountError>;
@@ -48,7 +54,7 @@ pub struct CreateReply {
     pub workspace: Workspace,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct BillingAccount {
     pub id: String,
@@ -121,5 +127,32 @@ impl BillingAccount {
         let id = billing_account_id.as_ref();
         let object: BillingAccount = get_model(db, id, id).await?;
         Ok(object)
+    }
+
+    pub async fn get_by_name(
+        db: &Db,
+        billing_account_name: impl AsRef<str>,
+    ) -> BillingAccountResult<BillingAccount> {
+        let billing_account_name = billing_account_name.as_ref();
+
+        let query = format!(
+            "SELECT a.*
+               FROM `{bucket}` AS a
+               WHERE a.siStorable.typeName = \"billingAccount\"
+                 AND a.name = $billing_account_name
+               LIMIT 1",
+            bucket = db.bucket_name,
+        );
+        let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
+        named_params.insert(
+            "billing_account_name".into(),
+            serde_json::json![billing_account_name],
+        );
+        let mut results: Vec<BillingAccount> = db.query(query, Some(named_params)).await?;
+        if let Some(billing_account) = results.pop() {
+            Ok(billing_account)
+        } else {
+            Err(BillingAccountError::NotFound)
+        }
     }
 }

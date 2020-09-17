@@ -29,6 +29,8 @@ uuid = { version = "0.8", features = ["serde", "v4"] }
 reqwest = { version = "0.10", features = ["default-tls", "json"] }
 json-pointer = "0.3"
 sodiumoxide = "0.2"
+jwt-simple = "0.1"
+base64 = "0.12"
 
 [dev-dependencies]
 lazy_static = "1.4"

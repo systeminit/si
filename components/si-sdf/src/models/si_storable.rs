@@ -62,7 +62,7 @@ impl SiStorable {
     }
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SimpleStorable {
     pub type_name: String,
@@ -93,6 +93,27 @@ impl SimpleStorable {
             object_id,
             billing_account_id,
             tenant_ids,
+            deleted,
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct MinimalStorable {
+    pub type_name: String,
+    pub object_id: String,
+    pub deleted: bool,
+}
+
+impl MinimalStorable {
+    pub fn new(object_id: impl Into<String>, type_name: impl Into<String>) -> MinimalStorable {
+        let object_id = object_id.into();
+        let type_name = type_name.into();
+        let deleted = false;
+        MinimalStorable {
+            type_name,
+            object_id,
             deleted,
         }
     }

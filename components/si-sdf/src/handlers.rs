@@ -1,16 +1,16 @@
 use serde::Serialize;
 use si_data::Db;
-use warp::http::StatusCode;
-use warp::{reject::Reject, Rejection, Reply};
 use thiserror::Error;
 use tracing::error;
+use warp::http::StatusCode;
+use warp::{reject::Reject, Rejection, Reply};
 
 use std::collections::HashMap;
 use std::convert::Infallible;
 
 use crate::models::{
-    BillingAccountError, ChangeSetError, EditSessionError, ModelError, NodeError, OpError,
-    SiStorableError, UserError
+    BillingAccountError, ChangeSetError, EditSessionError, JwtKeyError, ModelError, NodeError,
+    OpError, SiStorableError, UserError,
 };
 
 pub mod billing_accounts;
@@ -46,7 +46,11 @@ pub enum HandlerError {
     #[error("user error: {0}")]
     User(#[from] UserError),
     #[error("call is unauthorized")]
-    Unauthorized
+    Unauthorized,
+    #[error("jwt error fetching signing key: {0}")]
+    JwtKey(#[from] JwtKeyError),
+    #[error("error signing jwt claim: {0}")]
+    JwtClaim(String),
 }
 
 pub type HandlerResult<T> = Result<T, HandlerError>;
@@ -61,20 +65,25 @@ impl From<HandlerError> for warp::reject::Rejection {
 pub async fn get_model_change_set(
     id: String,
     db: Db,
-    user_id: String,
-    billing_account_id: String,
-    _organization_id: String,
-    _workspace_id: String,
+    token: String,
     type_name: String,
     request: crate::models::GetRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    authorize(&db, &user_id, &billing_account_id, &type_name, "get").await?;
+    let claim = authenticate(&db, &token).await?;
+    authorize(
+        &db,
+        &claim.user_id,
+        &claim.billing_account_id,
+        &type_name,
+        "get",
+    )
+    .await?;
 
     let item = crate::models::get_model_change_set(
         &db,
         id,
         type_name,
-        billing_account_id,
+        claim.billing_account_id,
         request.change_set_id,
     )
     .await
@@ -177,6 +186,12 @@ struct ErrorMessage {
     message: String,
 }
 
+pub async fn authenticate(db: &Db, token: impl AsRef<str>) -> HandlerResult<users::SiClaims> {
+    let token = token.as_ref();
+    let claims = crate::models::jwt_key::JwtKeyPublic::validate_bearer_token(&db, token).await?;
+    Ok(claims.custom)
+}
+
 pub async fn authorize(
     db: &Db,
     user_id: impl Into<String>,
@@ -203,8 +218,14 @@ pub async fn authorize(
     let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
     named_params.insert("user_id".into(), serde_json::json![&user_id]);
     named_params.insert("tenant_id".into(), serde_json::json![&billing_account_id]);
-    named_params.insert("capability".into(), serde_json::json![{ "subject": subject, "action": action }]);
-    named_params.insert("any".into(), serde_json::json![{ "subject": "any", "action": "any" }]);
+    named_params.insert(
+        "capability".into(),
+        serde_json::json![{ "subject": subject, "action": action }],
+    );
+    named_params.insert(
+        "any".into(),
+        serde_json::json![{ "subject": "any", "action": "any" }],
+    );
     let results: Vec<serde_json::Value> = db.query(query, Some(named_params)).await?;
     if results.len() > 0 {
         Ok(())

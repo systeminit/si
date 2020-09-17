@@ -8,7 +8,7 @@ use si_settings::Settings;
 use warp::Filter;
 
 pub async fn start(db: Db, settings: Settings) {
-    let api = filters::api(&db);
+    let api = filters::api(&db, &settings.jwt_encrypt.key);
     let routes = api
         .with(warp::trace::request())
         .recover(handlers::handle_rejection);

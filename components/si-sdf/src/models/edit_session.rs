@@ -18,6 +18,8 @@ pub type EditSessionResult<T> = Result<T, EditSessionError>;
 #[serde(rename_all = "camelCase")]
 pub struct CreateRequest {
     pub name: Option<String>,
+    pub workspace_id: String,
+    pub organization_id: String,
 }
 
 #[derive(Deserialize, Serialize, Debug)]

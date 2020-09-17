@@ -36,6 +36,10 @@ pub struct CreateRequest {
     pub name: Option<String>,
     pub kind: NodeKind,
     pub object_type: String,
+    pub organization_id: String,
+    pub workspace_id: String,
+    pub change_set_id: String,
+    pub edit_session_id: String,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -46,8 +50,12 @@ pub struct CreateReply {
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub enum PatchRequest {
-    Op(OpRequest),
+pub struct PatchRequest {
+    pub op: OpRequest,
+    pub organization_id: String,
+    pub workspace_id: String,
+    pub change_set_id: String,
+    pub edit_session_id: String,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
