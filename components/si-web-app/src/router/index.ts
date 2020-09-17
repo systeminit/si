@@ -1,5 +1,5 @@
 import Vue from "vue";
-import VueRouter from "vue-router";
+import VueRouter, { NavigationGuard } from "vue-router";
 
 // @ts-ignore: Unreachable code error
 import routes from "./routes";
@@ -16,12 +16,7 @@ const router = new VueRouter({
   routes,
 });
 
-const waitForStorageToBeReady = async (to, from, next) => {
-  await store.restored;
-  //next();
-};
-
-const routeCheck = async (to, from, next) => {
+const routeCheck: NavigationGuard = async (to, from, next) => {
   const span = telemetry.routeSpan(`web.router ${to.path}`);
   span.setAttributes({
     "web.route.to.path": to.path,
@@ -70,9 +65,10 @@ const routeCheck = async (to, from, next) => {
   }
 };
 
-router.beforeEach(async (to, from, next) => {
+router.beforeEach((async (to, from, next) => {
+  // @ts-ignore: (fnichol) Man...I'm really not sure where `.restored` comes from...
   await store.restored;
   await routeCheck(to, from, next);
-});
+}) as NavigationGuard);
 
 export default router;

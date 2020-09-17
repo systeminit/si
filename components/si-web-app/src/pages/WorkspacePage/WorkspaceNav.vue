@@ -195,6 +195,7 @@
 </template>
 
 <script lang="ts">
+import Vue from "vue";
 import {
   MenuIcon,
   Share2Icon,
@@ -213,7 +214,7 @@ import SysinitIcon from "@/components/icons/SysinitIcon.vue";
 
 import localforage from "localforage";
 
-export default {
+export default Vue.extend({
   name: "WorkspaceNav",
   components: {
     MenuIcon,
@@ -259,7 +260,7 @@ export default {
       this.$router.push({ name: "signin" });
     },
   },
-};
+});
 </script>
 
 <style scoped>

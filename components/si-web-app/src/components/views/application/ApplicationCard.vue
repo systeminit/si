@@ -53,7 +53,7 @@ import ActivityVisualization from "@/components/visualization/ActivityVisualizat
 export default Vue.extend({
   name: "ApplicationCard",
   props: {
-    application: {},
+    application: Object,
   },
   components: {
     ChevronRightIcon,
@@ -65,12 +65,12 @@ export default Vue.extend({
   methods: {
     goToApplication() {
       "/o/:organizationId/w/:workspaceId/a/:applicationId";
-      this.workspace = this.$store.getters["workspace/current"];
+      const workspace = this.$store.getters["workspace/current"];
       this.$router.push({
         name: "applicationDetails",
         params: {
-          organizationId: this.workspace.siProperties.organizationId,
-          workspaceId: this.workspace.id,
+          organizationId: workspace.siProperties.organizationId,
+          workspaceId: workspace.id,
           applicationId: this.application.id,
         },
       });
