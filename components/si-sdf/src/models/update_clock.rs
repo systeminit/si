@@ -19,8 +19,8 @@ pub type UpdateClockResult<T> = Result<T, UpdateClockError>;
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateClock {
-    pub epoch: u64,
-    pub update_count: u64,
+    pub epoch: u32, // These are u32 because javascript hates 64 bit numbers
+    pub update_count: u32,
 }
 
 impl UpdateClock {

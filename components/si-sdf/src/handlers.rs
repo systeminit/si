@@ -18,6 +18,7 @@ pub mod change_sets;
 pub mod edit_sessions;
 pub mod nodes;
 pub mod users;
+pub mod updates;
 
 #[derive(Error, Debug)]
 pub enum HandlerError {

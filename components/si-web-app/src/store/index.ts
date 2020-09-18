@@ -1,8 +1,8 @@
 import Vue from "vue";
-import Vuex, { Payload } from "vuex";
+import Vuex from "vuex";
 import { Store } from "vuex";
-import localforage from "localforage";
-import VuexPersistence from "vuex-persist";
+//import localforage from "localforage";
+//import VuexPersistence from "vuex-persist";
 //import Cookies from "js-cookie";
 import { editor, EditorStore } from "./modules/editor";
 import { application, ApplicationStore } from "./modules/application";
@@ -25,18 +25,18 @@ Vue.use(Vuex);
 
 const debug = process.env.NODE_ENV !== "production";
 
-const localForage = localforage.createInstance({
-  driver: localforage.INDEXEDDB,
-  name: "si-store",
-  storeName: "vuex",
-  description: "the vuex state, stored",
-});
-
-// @ts-ignore types?
-const vuexPersist = new VuexPersistence<any>({
-  storage: localForage,
-  asyncStorage: true,
-});
+//const localForage = localforage.createInstance({
+//  driver: localforage.INDEXEDDB,
+//  name: "si-store",
+//  storeName: "vuex",
+//  description: "the vuex state, stored",
+//});
+//
+//// @ts-ignore types?
+//const vuexPersist = new VuexPersistence<any>({
+//  storage: localForage,
+//  asyncStorage: true,
+//});
 
 //const vuexCookie = new VuexPersistence({
 //  restoreState: (key, _storage) => Cookies.getJSON(key),
@@ -92,7 +92,7 @@ const store: Store<RootStore> = new Vuex.Store({
     loader,
   },
   strict: debug,
-  plugins: [persistEdits, persistNodes, vuexPersist.plugin],
+  plugins: [persistEdits, persistNodes],
 });
 
 export default store;

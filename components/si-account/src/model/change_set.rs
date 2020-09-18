@@ -188,7 +188,6 @@ impl ChangeSet {
             .clone()
             .unwrap_or("bug".into());
         crate::EventLog::change_set_closed(&db, &user_id, &change_set).await?;
-        tracing::error!("donezo chief");
         Ok(())
     }
 

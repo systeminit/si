@@ -1,4 +1,5 @@
 use names;
+use nats::asynk::Connection;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json;
 use thiserror::Error;
@@ -10,6 +11,8 @@ use std::collections::HashMap;
 
 use crate::data::Db;
 
+pub mod update;
+pub use update::{websocket_run, UpdateQuery};
 pub mod billing_account;
 pub use billing_account::{BillingAccount, BillingAccountError, BillingAccountResult};
 pub mod user;
@@ -54,6 +57,8 @@ pub enum ModelError {
     GetNotFound,
     #[error("problem in serialization: {0}")]
     Serialization(#[from] serde_json::Error),
+    #[error("io error: {0}")]
+    Io(#[from] std::io::Error),
 }
 
 pub type ModelResult<T> = Result<T, ModelError>;
@@ -114,6 +119,28 @@ pub fn generate_name(name: Option<String>) -> String {
 pub fn generate_id(type_name: impl AsRef<str>) -> String {
     let uuid = Uuid::new_v4();
     format!("{}:{}", type_name.as_ref(), uuid.to_simple().to_string())
+}
+
+#[tracing::instrument(level = "trace")]
+pub async fn publish_model<T: Serialize + std::fmt::Debug>(
+    nats: &Connection,
+    model: &T,
+) -> ModelResult<()> {
+    let model_json: serde_json::Value = serde_json::to_value(model)?;
+    let mut subject_array: Vec<String> = Vec::new();
+    if let Some(tenant_ids_values) = model_json["siStorable"]["tenantIds"].as_array() {
+        for tenant_id_value in tenant_ids_values.iter() {
+            let tenant_id = tenant_id_value.to_string();
+            subject_array.push(tenant_id);
+        }
+    }
+    if subject_array.len() != 0 {
+        let subject: String = subject_array.join(".");
+        nats.publish(&subject, model_json.to_string()).await?;
+    } else {
+        tracing::error!("tried to publish a model that has no tenancy!");
+    }
+    Ok(())
 }
 
 #[tracing::instrument(level = "trace")]

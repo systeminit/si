@@ -27,13 +27,13 @@ thiserror = "1.0"
 names = "0.11"
 uuid = { version = "0.8", features = ["serde", "v4"] }
 reqwest = { version = "0.10", features = ["default-tls", "json"] }
-json-pointer = "0.3"
+#json-pointer = "0.3"
 sodiumoxide = "0.2"
 jwt-simple = "0.1"
 base64 = "0.12"
+nats = { git = "https://github.com/systeminit/nats.rs", branch = "nkeys-upgrade" }
+futures = { version = "0.3", features = ["alloc"] }
 
 [dev-dependencies]
 lazy_static = "1.4"
-futures = { version = "0.3", features = ["alloc"] }
-tonic = "0.2"
 tokio-test = "0.2"

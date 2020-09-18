@@ -1,4 +1,5 @@
 use anyhow::Context;
+use nats;
 use opentelemetry::{api::Provider, sdk};
 use tracing;
 use tracing_opentelemetry::layer;
@@ -50,6 +51,12 @@ async fn main() -> anyhow::Result<()> {
     println!("*** Connecting to the database ***");
     let db = si_data::Db::new(&settings).context("failed to connect to the database")?;
 
+    println!("*** Connecting to NATS ***");
+    let nats = nats::asynk::connect("localhost").await?;
+
+    println!("*** Creating indexes ***");
+    si_sdf::data::create_indexes(&db).await?;
+
     println!("*** Checking for JWT keys ***");
     si_sdf::models::jwt_key::create_if_missing(
         &db,
@@ -60,7 +67,7 @@ async fn main() -> anyhow::Result<()> {
     .await?;
 
     println!("*** Starting service ***");
-    start(db, settings).await;
+    start(db, nats, settings).await;
 
     Ok(())
 }

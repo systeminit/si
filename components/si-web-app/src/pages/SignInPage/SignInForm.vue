@@ -3,9 +3,9 @@
 <template>
   <div id="signin-form">
     <form>
-      <div class="flex flex-col w-80 border border-teal-800">
-        <div class="flex items-center bg-teal-800 px-4 py-2 h-16">
-          <p class="text-left text-xl text-white ">{{ form.title.label }}</p>
+      <div class="flex flex-col border border-teal-800 w-80">
+        <div class="flex items-center h-16 px-4 py-2 bg-teal-800">
+          <p class="text-xl text-left text-white ">{{ form.title.label }}</p>
         </div>
 
         <div class="flex flex-col px-8 py-4">
@@ -13,14 +13,14 @@
             <div class="pr-4">
               <UserIcon
                 size="1.5x"
-                class="custom-class text-teal-700 group-hover:text-teal-500"
+                class="text-teal-700 custom-class group-hover:text-teal-500"
               ></UserIcon>
             </div>
             <div
-              class="flex-1 group border-b border-b-2 border-teal-800 group-hover:border-teal-500"
+              class="flex-1 border-b border-b-2 border-teal-800 group group-hover:border-teal-500"
             >
               <input
-                class="appearance-none bg-transparent border-none w-full text-gray-400 mr-3 py-1 px-2 leading-tight focus:outline-none"
+                class="w-full px-2 py-1 mr-3 leading-tight text-gray-400 bg-transparent border-none appearance-none focus:outline-none"
                 type="text"
                 :placeholder="form.account.label"
                 :aria-label="form.account.id"
@@ -34,14 +34,14 @@
             <div class="pr-4">
               <mail-icon
                 size="1.5x"
-                class="custom-class text-teal-700 group-hover:text-teal-500"
+                class="text-teal-700 custom-class group-hover:text-teal-500"
               ></mail-icon>
             </div>
             <div
               class="flex-1 border-b border-b-2 border-teal-800 group-hover:border-teal-500"
             >
               <input
-                class="appearance-none bg-transparent border-none w-full text-gray-400 mr-3 py-1 px-2 leading-tight focus:outline-none"
+                class="w-full px-2 py-1 mr-3 leading-tight text-gray-400 bg-transparent border-none appearance-none focus:outline-none"
                 type="text"
                 :placeholder="form.email.label"
                 :aria-label="form.email.id"
@@ -55,14 +55,14 @@
             <div class="pr-4">
               <lock-icon
                 size="1.5x"
-                class="custom-class text-teal-700 group-hover:text-teal-500"
+                class="text-teal-700 custom-class group-hover:text-teal-500"
               ></lock-icon>
             </div>
             <div
-              class="flex-1 group border-b border-b-2 border-teal-800 group-hover:border-teal-500"
+              class="flex-1 border-b border-b-2 border-teal-800 group group-hover:border-teal-500"
             >
               <input
-                class="appearance-none bg-transparent border-none w-full text-gray-400 mr-3 py-1 px-2 leading-tight focus:outline-none"
+                class="w-full px-2 py-1 mr-3 leading-tight text-gray-400 bg-transparent border-none appearance-none focus:outline-none"
                 type="password"
                 :placeholder="form.password.label"
                 :aria-label="form.password.id"
@@ -73,9 +73,9 @@
           </div>
         </div>
 
-        <div class="flex flex-row-reverse pr-8 pb-4">
+        <div class="flex flex-row-reverse pb-4 pr-8">
           <button
-            class="bg-teal-700 px-4 py-2 text-white hover:bg-teal-600"
+            class="px-4 py-2 text-white bg-teal-700 hover:bg-teal-600"
             data-cy="signInButton"
             @click="checkLogin()"
             type="button"
@@ -85,14 +85,14 @@
         </div>
 
         <div
-          class="flex flex-col bg-red-100 border border-red-400 text-red-700"
+          class="flex flex-col text-red-700 bg-red-100 border border-red-400"
           role="alert"
           v-if="error"
         >
-          <strong class="text-center font-bold bg-red-200 py-2"
+          <strong class="py-2 font-bold text-center bg-red-200"
             >Sign in failed; try again?</strong
           >
-          <span class="font-normal text-sm px-4 py-3">({{ error }})</span>
+          <span class="px-4 py-3 text-sm font-normal">({{ error }})</span>
         </div>
       </div>
     </form>
@@ -158,28 +158,8 @@ export default Vue.extend({
   },
   methods: {
     async checkLogin() {
-      let span = tracer.getCurrentSpan();
-      if (span) {
-        const parentSpan = span;
-        span = tracer.startSpan("web.SignInForm.checkLogin", {
-          parent: parentSpan,
-        });
-      } else {
-        span = tracer.startSpan("web.SignInForm.checkLogin");
-      }
-      try {
-        span.setAttributes({
-          "web.SignInForm.email": this.objVariables.email,
-          "web.SignInForm.billingAccountName": this.objVariables
-            .billingAccountName,
-        });
-        await this.$store.dispatch("user/login", this.objVariables);
-      } catch (err) {
-        this.error = err;
-        console.log(err);
-        return;
-      }
-      await this.$router.push("/");
+      await this.$store.dispatch("user/login", this.objVariables);
+      this.$router.push("/");
     },
   },
 });

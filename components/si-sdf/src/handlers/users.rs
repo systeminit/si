@@ -8,17 +8,13 @@ use sodiumoxide::crypto::secretbox;
 use crate::handlers::HandlerError;
 use crate::models::{BillingAccount, JwtKeyPrivate, LoginReply, LoginRequest, User};
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SiClaims {
     pub user_id: String,
     pub billing_account_id: String,
 }
 
-// TODO: Your mission, if you choose to accept it: get a validation working for the JWT, then
-//       use it to populate the right values in the requests like before.
-//
-//       Then put the sign up form on the web ui, and start refactoring the store!
 pub async fn login(
     db: Db,
     secret_key: secretbox::Key,

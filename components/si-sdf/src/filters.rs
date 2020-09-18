@@ -1,3 +1,4 @@
+use nats::asynk::Connection;
 use sodiumoxide::crypto::secretbox;
 use warp::Filter;
 
@@ -9,21 +10,35 @@ use crate::models;
 // The full API for this service
 pub fn api(
     db: &Db,
+    nats: &Connection,
     secret_key: &secretbox::Key,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    billing_accounts(db)
-        .or(nodes(db))
-        .or(change_sets(db))
-        .or(users(db, secret_key))
+    billing_accounts(db, nats)
+        .or(nodes(db, nats))
+        .or(change_sets(db, nats))
+        .or(users(db, nats, secret_key))
+        .or(updates(db, nats))
 }
 
-// Authentication header check - rejects anything without
+// The Web Socket Update API
+pub fn updates(
+    db: &Db,
+    nats: &Connection,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("updates")
+        .and(warp::ws())
+        .and(with_db(db.clone()))
+        .and(with_nats(nats.clone()))
+        .and(warp::header::<String>("authorization"))
+        .and_then(handlers::updates::update)
+}
 
 // User API
 //
 // users/login: POST
 pub fn users(
     db: &Db,
+    nats: &Connection,
     secret_key: &secretbox::Key,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     users_login(db.clone(), secret_key.clone())
@@ -47,16 +62,19 @@ pub fn users_login(
 //   billing_account_create: POST
 pub fn billing_accounts(
     db: &Db,
+    nats: &Connection,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    billing_accounts_create(db.clone())
+    billing_accounts_create(db.clone(), nats.clone())
 }
 
 pub fn billing_accounts_create(
     db: Db,
+    nats: Connection,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("billingAccounts")
         .and(warp::post())
         .and(with_db(db))
+        .and(with_nats(nats))
         .and(warp::body::json::<models::billing_account::CreateRequest>())
         .and_then(handlers::billing_accounts::create)
 }
@@ -65,7 +83,10 @@ pub fn billing_accounts_create(
 //
 // nodes
 //   nodes_create: POST
-pub fn nodes(db: &Db) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+pub fn nodes(
+    db: &Db,
+    nats: &Connection,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     nodes_create(db.clone())
         .or(nodes_get(db.clone()))
         .or(nodes_object_get(db.clone()))
@@ -130,6 +151,7 @@ pub fn nodes_object_patch(
 //
 pub fn change_sets(
     db: &Db,
+    nats: &Connection,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     change_set_create(db.clone())
         .or(change_set_patch(db.clone()))
@@ -171,6 +193,12 @@ pub fn edit_session_create(
 
 fn with_db(db: Db) -> impl Filter<Extract = (Db,), Error = std::convert::Infallible> + Clone {
     warp::any().map(move || db.clone())
+}
+
+fn with_nats(
+    nats: Connection,
+) -> impl Filter<Extract = (Connection,), Error = std::convert::Infallible> + Clone {
+    warp::any().map(move || nats.clone())
 }
 
 fn with_secret_key(

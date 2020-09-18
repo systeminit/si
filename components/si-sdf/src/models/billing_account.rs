@@ -1,3 +1,4 @@
+use nats::asynk::Connection;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -5,9 +6,9 @@ use std::collections::HashMap;
 
 use crate::data::Db;
 use crate::models::{
-    check_secondary_key_universal, generate_id, get_model, insert_model, Capability, Group,
-    GroupError, ModelError, Organization, OrganizationError, SiStorableError, SimpleStorable, User,
-    UserError, Workspace, WorkspaceError,
+    check_secondary_key_universal, generate_id, get_model, insert_model, publish_model, Capability,
+    Group, GroupError, ModelError, Organization, OrganizationError, SiStorableError,
+    SimpleStorable, User, UserError, Workspace, WorkspaceError,
 };
 
 #[derive(Error, Debug)]
@@ -66,6 +67,7 @@ pub struct BillingAccount {
 impl BillingAccount {
     pub async fn new(
         db: &Db,
+        nats: &Connection,
         name: String,
         description: String,
     ) -> BillingAccountResult<BillingAccount> {
@@ -81,11 +83,13 @@ impl BillingAccount {
             si_storable,
         };
         insert_model(db, &object.id, &object).await?;
+        publish_model(nats, &object).await?;
         Ok(object)
     }
 
     pub async fn signup(
         db: &Db,
+        nats: &Connection,
         billing_account_name: String,
         billing_account_description: String,
         user_name: String,
@@ -93,7 +97,8 @@ impl BillingAccount {
         user_password: String,
     ) -> BillingAccountResult<(BillingAccount, User, Group, Organization, Workspace)> {
         let billing_account =
-            BillingAccount::new(db, billing_account_name, billing_account_description).await?;
+            BillingAccount::new(db, nats, billing_account_name, billing_account_description)
+                .await?;
 
         let user = User::new(
             db,

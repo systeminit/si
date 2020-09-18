@@ -1,6 +1,6 @@
 use serde_json;
 
-use crate::{test_cleanup, TestAccount};
+use crate::{one_time_setup, test_cleanup, TestAccount};
 use crate::{DB, SETTINGS};
 
 use si_sdf::filters::api;
@@ -32,6 +32,7 @@ pub async fn signup() -> billing_account::CreateReply {
 
 #[tokio::test]
 async fn create() {
+    one_time_setup().await.expect("failed one time setup");
     let filter = api(&DB, &SETTINGS.jwt_encrypt.key);
     let request = billing_account::CreateRequest {
         billing_account_name: "alice".into(),

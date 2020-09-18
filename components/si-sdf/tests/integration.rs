@@ -6,6 +6,10 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::{self, fmt, EnvFilter, Registry};
 
 use std::env;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::sync::Mutex;
+use std::sync::Once;
 
 use si_data::Db;
 use si_sdf::models::{BillingAccount, User};
@@ -14,16 +18,6 @@ use si_settings::Settings;
 mod filters;
 mod handlers;
 mod models;
-
-pub struct TestAccount {
-    pub user_id: String,
-    pub billing_account_id: String,
-    pub workspace_id: String,
-    pub organization_id: String,
-    pub user: User,
-    pub billing_account: BillingAccount,
-    pub authorization: String,
-}
 
 lazy_static! {
     pub static ref SETTINGS: Settings = {
@@ -43,9 +37,39 @@ lazy_static! {
         let db = Db::new(&SETTINGS).expect("cannot connect to database");
         db
     };
+    pub static ref INIT_LOCK: Arc<tokio::sync::Mutex<bool>> =
+        Arc::new(tokio::sync::Mutex::new(false));
+}
+
+pub struct TestAccount {
+    pub user_id: String,
+    pub billing_account_id: String,
+    pub workspace_id: String,
+    pub organization_id: String,
+    pub user: User,
+    pub billing_account: BillingAccount,
+    pub authorization: String,
+}
+
+pub async fn one_time_setup() -> Result<()> {
+    let mut finished = INIT_LOCK.lock().await;
+    if *finished {
+        return Ok(());
+    }
+    match si_sdf::data::create_indexes(&DB).await {
+        Ok(_) => (),
+        Err(err) => println!("failed to create indexes: {}", err),
+    }
+    match si_sdf::data::delete_data(&DB).await {
+        Ok(_) => (),
+        Err(err) => println!("failed to delete data: {}", err),
+    }
+    *finished = true;
+    return Ok(());
 }
 
 pub async fn test_setup() -> Result<TestAccount> {
+    one_time_setup().await?;
     si_sdf::models::jwt_key::create_if_missing(
         &DB,
         "config/public.pem",
