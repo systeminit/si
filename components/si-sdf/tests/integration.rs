@@ -1,15 +1,13 @@
 use anyhow::Result;
 use futures::StreamExt;
 use lazy_static::lazy_static;
+use nats::asynk::Connection;
 use tracing;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::{self, fmt, EnvFilter, Registry};
 
 use std::env;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::sync::Mutex;
-use std::sync::Once;
 
 use si_data::Db;
 use si_sdf::models::{BillingAccount, User};
@@ -36,6 +34,11 @@ lazy_static! {
     pub static ref DB: Db = {
         let db = Db::new(&SETTINGS).expect("cannot connect to database");
         db
+    };
+    pub static ref NATS: Connection = {
+        let nats = futures::executor::block_on(nats::asynk::connect("localhost"))
+            .expect("failed to connect to nats");
+        nats
     };
     pub static ref INIT_LOCK: Arc<tokio::sync::Mutex<bool>> =
         Arc::new(tokio::sync::Mutex::new(false));

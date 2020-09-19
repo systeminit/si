@@ -1,5 +1,6 @@
 import { sdf } from "@/api/sdf";
-import { db, ISimpleStorable } from "@/api/sdf/dexie";
+import { db } from "@/api/sdf/dexie";
+import { ISimpleStorable } from "@/api/sdf/model/siStorable";
 import store from "@/store";
 
 export interface IBillingAccount {

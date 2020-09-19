@@ -1,14 +1,14 @@
 use serde_json;
 
 use crate::{one_time_setup, test_cleanup, TestAccount};
-use crate::{DB, SETTINGS};
+use crate::{DB, NATS, SETTINGS};
 
 use si_sdf::filters::api;
 use si_sdf::models::billing_account;
 
 pub async fn signup() -> billing_account::CreateReply {
     let fake_name = si_sdf::models::generate_id("clown");
-    let filter = api(&DB, &SETTINGS.jwt_encrypt.key);
+    let filter = api(&DB, &NATS, &SETTINGS.jwt_encrypt.key);
     let request = billing_account::CreateRequest {
         billing_account_name: fake_name.clone(),
         billing_account_description: "The Clown Company".into(),
@@ -33,7 +33,7 @@ pub async fn signup() -> billing_account::CreateReply {
 #[tokio::test]
 async fn create() {
     one_time_setup().await.expect("failed one time setup");
-    let filter = api(&DB, &SETTINGS.jwt_encrypt.key);
+    let filter = api(&DB, &NATS, &SETTINGS.jwt_encrypt.key);
     let request = billing_account::CreateRequest {
         billing_account_name: "alice".into(),
         billing_account_description: "the rooster".into(),

@@ -14,6 +14,7 @@ pub fn api(
     secret_key: &secretbox::Key,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     billing_accounts(db, nats)
+        .or(organizations(db, nats))
         .or(nodes(db, nats))
         .or(change_sets(db, nats))
         .or(users(db, nats, secret_key))
@@ -29,7 +30,7 @@ pub fn updates(
         .and(warp::ws())
         .and(with_db(db.clone()))
         .and(with_nats(nats.clone()))
-        .and(warp::header::<String>("authorization"))
+        .and(warp::query::<models::update::WebsocketToken>())
         .and_then(handlers::updates::update)
 }
 
@@ -38,10 +39,22 @@ pub fn updates(
 // users/login: POST
 pub fn users(
     db: &Db,
-    nats: &Connection,
+    _nats: &Connection,
     secret_key: &secretbox::Key,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     users_login(db.clone(), secret_key.clone())
+}
+
+pub fn users_get(
+    db: Db,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("users" / String)
+        .and(warp::get())
+        .and(with_db(db))
+        .and(warp::header::<String>("authorization"))
+        .and(with_string("user".into()))
+        .and(warp::query::<models::GetRequest>())
+        .and_then(handlers::get_model_change_set)
 }
 
 pub fn users_login(
@@ -79,13 +92,35 @@ pub fn billing_accounts_create(
         .and_then(handlers::billing_accounts::create)
 }
 
+// Organization API
+// organizations
+//   organization_get: GET
+pub fn organizations(
+    db: &Db,
+    _nats: &Connection,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    organizations_get(db.clone())
+}
+
+pub fn organizations_get(
+    db: Db,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("organizations" / String)
+        .and(warp::get())
+        .and(with_db(db))
+        .and(warp::header::<String>("authorization"))
+        .and(with_string("organization".into()))
+        .and(warp::query::<models::GetRequest>())
+        .and_then(handlers::get_model_change_set)
+}
+
 // Nodes API
 //
 // nodes
 //   nodes_create: POST
 pub fn nodes(
     db: &Db,
-    nats: &Connection,
+    _nats: &Connection,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     nodes_create(db.clone())
         .or(nodes_get(db.clone()))
@@ -151,7 +186,7 @@ pub fn nodes_object_patch(
 //
 pub fn change_sets(
     db: &Db,
-    nats: &Connection,
+    _nats: &Connection,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     change_set_create(db.clone())
         .or(change_set_patch(db.clone()))

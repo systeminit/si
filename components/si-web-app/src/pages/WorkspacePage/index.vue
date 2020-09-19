@@ -1,14 +1,6 @@
 <template>
   <div id="app-main-layout" class="flex flex-col w-screen h-screen">
     <div
-      v-if="loading"
-      class="flex flex-row w-full h-full text-white bg-black h-center"
-    >
-      <div class="object-center">
-        Loading your workspace! Sit tight!
-      </div>
-    </div>
-    <div
       id="workspace-view"
       class="flex flex-row w-full h-full overflow-hidden"
       v-else
@@ -32,23 +24,13 @@ import WorkspaceNav from "./WorkspaceNav.vue";
 
 export default {
   name: "WorkspacePage",
-  props: {
-    organizationId: {
-      type: String,
-    },
-    workspaceId: {
-      type: String,
-    },
-  },
   components: {
     WorkspaceNav,
   },
-  computed: {
-    ...mapState({
-      loading: state => state.loader.loading,
-    }),
-  },
-  mounted: function() {
+  mounted: function () {
+    // TODO: Get the workspace and organization loaded into Vuex; back into the system.
+    //
+    //let user = this.$store.getters["user"];
     // Navigate to the default page: applications
     let userProfile = this.$store.getters["user/profile"];
     let workspace = this.$store.getters["workspace/current"];

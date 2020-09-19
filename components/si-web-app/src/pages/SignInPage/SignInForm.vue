@@ -103,7 +103,6 @@
 import Vue from "vue";
 import { UserIcon, MailIcon, LockIcon } from "vue-feather-icons";
 import { registry, PropMethod } from "si-registry";
-import { tracer } from "@/utils/telemetry";
 
 const user = registry.get("user");
 

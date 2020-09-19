@@ -1,11 +1,16 @@
 use crate::handlers::users::SiClaims;
-use crate::models::UpdateClock;
 
 use futures::{FutureExt, StreamExt};
 use nats::asynk::Connection;
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 use warp::ws::{Message, WebSocket};
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct WebsocketToken {
+    pub token: String,
+}
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -16,16 +21,26 @@ pub struct Payload {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub enum UpdateOp {
-    Model(String),
+    Model(serde_json::Value),
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub enum ControlOp {
+    Stop(serde_json::Value),
 }
 
 pub async fn websocket_run(websocket: WebSocket, nats: Connection, claim: SiClaims) {
-    // Split the socket into a sender and receive of messages.
+    // Split the socket into a sender and receiver of messages.
     let (ws_tx, mut ws_rx) = websocket.split();
 
     // Use an unbounded channel to handle buffering and flushing of messages
     // to the websocket...
-    let (tx, rx) = mpsc::unbounded_channel();
+    //let (outbound_ws_tx, rx): (
+    //    mpsc::UnboundedSender<Result<Message, warp::Error>>,
+    //    mpsc::UnboundedReceiver<Result<Message, warp::Error>>,
+    //) = mpsc::unbounded_channel();
+    let (outbound_ws_tx, rx) = mpsc::unbounded_channel();
 
     // For debugging!
     let claim2 = claim.clone();
@@ -35,38 +50,52 @@ pub async fn websocket_run(websocket: WebSocket, nats: Connection, claim: SiClai
         }
     }));
 
-    // Consumer Web Socket
-    //      * Sends us ControlOps
-    //      * Receives UpdateOps
-    //
-    //  We should create some kind of shared data structure that gets
-    //  updated. A seperate tokio task should manage the control
-    //  ops, and then a seperate tokio task should send the updateops
-    //  based on subscriptions given by the ops requested.
-    //
-    //  TODO: Your mission, should you choose to accept it: get the websocket implementation
-    //  working, so we can get the models in the typescript side of SDF to be correct.
+    // Send matching data to the web socket
+    match nats
+        .subscribe(&format!("{}.>", &claim.billing_account_id))
+        .await
+    {
+        Ok(mut sub) => {
+            tokio::task::spawn(async move {
+                while let Some(msg) = sub.next().await {
+                    match serde_json::from_slice(&msg.data) {
+                        Ok(data_json) => match serde_json::to_string(&UpdateOp::Model(data_json)) {
+                            Ok(op_json) => match outbound_ws_tx.send(Ok(Message::text(op_json))) {
+                                Ok(_) => (),
+                                Err(err) => tracing::error!("cannot send outbound op: {}", err),
+                            },
+                            Err(err) => {
+                                tracing::error!("cannot serialize op as json: {}", err);
+                            }
+                        },
+                        Err(err) => tracing::error!("bad data from nats: {} / {:#?}", err, msg),
+                    }
+                }
+            });
+        }
+        Err(err) => tracing::error!("websocket error creating subscriber: {}", err),
+    }
 
-    // Return a `Future` that is basically a state machine managing
-    // this specific user's connection.
-
-    // Make an extra clone to give to our disconnection handler...
-    //let users2 = users.clone();
-
-    //// Every time the user sends a message, broadcast it to
-    //// all other users...
-    //while let Some(result) = user_ws_rx.next().await {
-    //    let msg = match result {
-    //        Ok(msg) => msg,
-    //        Err(e) => {
-    //            eprintln!("websocket error(uid={}): {}", my_id, e);
-    //            break;
-    //        }
-    //    };
-    //    user_message(my_id, msg, &users).await;
-    //}
-
-    //// user_ws_rx stream will keep processing as long as the user stays
-    //// connected. Once they disconnect, then...
-    //user_disconnected(my_id, &users2).await;
+    // Listen to ControlOps from the websocket
+    while let Some(control_op_msg_result) = ws_rx.next().await {
+        match control_op_msg_result {
+            Ok(control_op_msg) => {
+                match serde_json::from_slice::<ControlOp>(&control_op_msg.into_bytes()) {
+                    Ok(control_op) => match control_op {
+                        ControlOp::Stop(value) => {
+                            tracing::debug!("graceful stop: {}", value);
+                            break;
+                        }
+                    },
+                    Err(err) => {
+                        tracing::error!("error deserializing control op: {}", err);
+                    }
+                }
+            }
+            Err(err) => {
+                tracing::error!("client has departed: {}", err);
+                break;
+            }
+        }
+    }
 }

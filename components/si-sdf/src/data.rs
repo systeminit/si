@@ -1,4 +1,3 @@
-use nats::asynk::Connection;
 use thiserror::Error;
 
 pub use si_data::Db;

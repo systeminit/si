@@ -1,3 +1,5 @@
+import _ from "lodash";
+
 export class FetchError extends Error {
   response: Response;
 
@@ -10,7 +12,8 @@ export class FetchError extends Error {
 
 export class SDF {
   baseUrl: string;
-  token?: string;
+  wsBaseUrl: string;
+  currentToken?: string;
 
   constructor() {
     let baseUrl = process.env.VUE_APP_SDF || "http://localhost:5156";
@@ -18,15 +21,69 @@ export class SDF {
       baseUrl = "https://api.systeminit.com";
     }
     this.baseUrl = baseUrl;
+
+    let wsBaseUrl = process.env.VUE_APP_SDF_WS || "ws://localhost:5156/updates";
+    if (process.env.NODE_ENV === "production") {
+      wsBaseUrl = "https://api.systeminit.com/updates";
+    }
+    this.wsBaseUrl = wsBaseUrl;
   }
 
-  async post<T>(pathString: string, args: Record<string, any>): Promise<T> {
-    const url = new URL(pathString, this.baseUrl);
+  set token(token: SDF["currentToken"]) {
+    this.currentToken = token;
+    if (token) {
+      localStorage.setItem("si-sdf-token", token);
+    } else {
+      localStorage.removeItem("si-sdf-token");
+    }
+  }
+
+  get token(): SDF["currentToken"] {
+    if (this.currentToken) {
+      return this.currentToken;
+    } else {
+      const storedToken = localStorage.getItem("si-sdf-token");
+      if (storedToken) {
+        this.currentToken = storedToken;
+      }
+      return this.currentToken;
+    }
+  }
+
+  standard_headers(): Headers {
     const headers = new Headers();
     headers.set("Content-Type", "application/json");
     if (this.token) {
       headers.set("Authorization", `Bearer ${this.token}`);
     }
+    return headers;
+  }
+
+  async get<T>(
+    pathString: string,
+    queryParams?: Record<string, any>,
+  ): Promise<T> {
+    let headers = this.standard_headers();
+
+    const url = new URL(pathString, this.baseUrl);
+    if (queryParams) {
+      Object.keys(queryParams).forEach(key =>
+        url.searchParams.set(key, queryParams[key]),
+      );
+    }
+
+    const request = new Request(url.toString(), {
+      method: "GET",
+      mode: "cors",
+      headers,
+    });
+    const response: T = await this.send_request(request);
+    return response;
+  }
+
+  async post<T>(pathString: string, args: Record<string, any>): Promise<T> {
+    let headers = this.standard_headers();
+    const url = new URL(pathString, this.baseUrl);
     const request = new Request(url.toString(), {
       method: "POST",
       mode: "cors",

@@ -1,7 +1,7 @@
 use crate::filters::change_sets::create_change_set;
 use crate::filters::edit_sessions::create_edit_session;
 use crate::{test_cleanup, test_setup, TestAccount};
-use crate::{DB, SETTINGS};
+use crate::{DB, NATS, SETTINGS};
 use si_sdf::filters::api;
 use si_sdf::models::{entity, node, Node};
 
@@ -14,7 +14,7 @@ pub async fn create_node(
     let change_set_id = change_set_id.as_ref();
     let edit_session_id = edit_session_id.as_ref();
     let object_type = object_type.into();
-    let filter = api(&DB, &SETTINGS.jwt_encrypt.key);
+    let filter = api(&DB, &NATS, &SETTINGS.jwt_encrypt.key);
     let res = warp::test::request()
         .method("POST")
         .header("authorization", &test_account.authorization)
@@ -40,7 +40,7 @@ pub async fn create_node(
 async fn create() {
     let test_account = test_setup().await.expect("failed to setup test");
 
-    let filter = api(&DB, &SETTINGS.jwt_encrypt.key);
+    let filter = api(&DB, &NATS, &SETTINGS.jwt_encrypt.key);
     let change_set_id = create_change_set(&test_account).await;
     let edit_session_id = create_edit_session(&test_account, &change_set_id).await;
 
@@ -72,7 +72,7 @@ async fn create() {
 async fn get() {
     let test_account = test_setup().await.expect("failed to setup test");
 
-    let filter = api(&DB, &SETTINGS.jwt_encrypt.key);
+    let filter = api(&DB, &NATS, &SETTINGS.jwt_encrypt.key);
     let change_set_id = create_change_set(&test_account).await;
     let edit_session_id = create_edit_session(&test_account, &change_set_id).await;
     let node_reply = create_node(&test_account, &change_set_id, &edit_session_id, "service").await;
@@ -102,7 +102,7 @@ async fn get() {
 async fn patch() {
     let test_account = test_setup().await.expect("failed to setup test");
 
-    let filter = api(&DB, &SETTINGS.jwt_encrypt.key);
+    let filter = api(&DB, &NATS, &SETTINGS.jwt_encrypt.key);
     let change_set_id = create_change_set(&test_account).await;
     let edit_session_id = create_edit_session(&test_account, &change_set_id).await;
     let node_reply = create_node(&test_account, &change_set_id, &edit_session_id, "service").await;
@@ -158,7 +158,6 @@ async fn patch() {
         .manual_properties
         .get_property("/strahd", None)
         .expect("invalid override system");
-    tracing::error!(?updated_entity_strahd, ?updated_entity);
 
     assert_eq!(
         updated_entity_strahd,

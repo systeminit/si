@@ -108,7 +108,6 @@ impl User {
             "billing_account_id".into(),
             serde_json::json![billing_account_id],
         );
-        tracing::error!(?query, ?named_params);
         let mut results: Vec<User> = db.query(query, Some(named_params)).await?;
         if let Some(user) = results.pop() {
             Ok(user)

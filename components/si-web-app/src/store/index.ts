@@ -25,6 +25,14 @@ Vue.use(Vuex);
 
 const debug = process.env.NODE_ENV !== "production";
 
+export class GetCurrentError extends Error {
+  constructor(modelName: string) {
+    let message = `no current ${modelName}`;
+    super(message);
+    this.name = "GetCurrentError";
+  }
+}
+
 //const localForage = localforage.createInstance({
 //  driver: localforage.INDEXEDDB,
 //  name: "si-store",

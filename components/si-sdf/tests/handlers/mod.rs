@@ -1,7 +1,7 @@
 use si_sdf::handlers;
 
+use crate::test_setup;
 use crate::DB;
-use crate::{test_cleanup, test_setup};
 
 #[tokio::test]
 async fn authorize() {

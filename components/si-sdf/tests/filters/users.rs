@@ -2,7 +2,7 @@ use si_sdf::filters::api;
 use si_sdf::models::{LoginReply, LoginRequest};
 
 use crate::{test_cleanup, test_setup};
-use crate::{DB, SETTINGS};
+use crate::{DB, NATS, SETTINGS};
 
 pub async fn login_user(
     billing_account_name: impl Into<String>,
@@ -11,7 +11,7 @@ pub async fn login_user(
     let billing_account_name = billing_account_name.into();
     let email = email.into();
 
-    let filter = api(&DB, &SETTINGS.jwt_encrypt.key);
+    let filter = api(&DB, &NATS, &SETTINGS.jwt_encrypt.key);
 
     let request = LoginRequest {
         billing_account_name,
@@ -33,14 +33,13 @@ pub async fn login_user(
 async fn login() {
     let test_account = test_setup().await.expect("failed to setup test");
 
-    let filter = api(&DB, &SETTINGS.jwt_encrypt.key);
+    let filter = api(&DB, &NATS, &SETTINGS.jwt_encrypt.key);
 
     let request = LoginRequest {
         billing_account_name: test_account.billing_account.name.clone(),
         email: test_account.user.email.clone(),
         password: String::from("boboR0cks"),
     };
-    tracing::error!(?request);
 
     let res = warp::test::request()
         .method("POST")
@@ -51,8 +50,7 @@ async fn login() {
 
     assert!(res.status().is_success());
 
-    let reply: LoginReply = serde_json::from_slice(res.body()).expect("cannot deserialize reply");
-    tracing::error!(?reply.jwt);
+    let _reply: LoginReply = serde_json::from_slice(res.body()).expect("cannot deserialize reply");
 
     test_cleanup(test_account)
         .await

@@ -11,8 +11,12 @@ use std::collections::HashMap;
 
 use crate::data::Db;
 
+pub mod query;
+pub use query::{
+    BooleanTerm, Comparison, Expression, FieldType, Item, Query, QueryError, QueryResult,
+};
 pub mod update;
-pub use update::{websocket_run, UpdateQuery};
+pub use update::{websocket_run, WebsocketToken};
 pub mod billing_account;
 pub use billing_account::{BillingAccount, BillingAccountError, BillingAccountResult};
 pub mod user;
@@ -44,6 +48,8 @@ pub mod edit_session;
 pub use edit_session::{EditSession, EditSessionError, EditSessionResult};
 pub mod jwt_key;
 pub use jwt_key::{JwtKeyError, JwtKeyPrivate, JwtKeyPublic, JwtKeyResult};
+pub mod page_token;
+pub use page_token::{PageToken, PageTokenError, PageTokenResult};
 
 #[derive(Error, Debug)]
 pub enum ModelError {
@@ -69,32 +75,6 @@ pub enum OrderByDirection {
     DSC,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ListQuery {
-    pub query: Option<DataQuery>,
-    pub page_size: Option<u32>,
-    pub order_by: Option<String>,
-    pub order_by_direction: Option<OrderByDirection>,
-    pub page_token: Option<String>,
-    pub scope_by_tenant_id: Option<String>,
-    pub type_name: Option<String>,
-}
-
-#[derive(Serialize, Debug)]
-pub struct ListResponse {
-    pub items: Vec<serde_json::Value>,
-    pub total_count: u32,
-    pub next_item_id: String,
-    pub page_token: String,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct SetField {
-    pub pointer: String,
-    pub value: String,
-}
-
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct GetRequest {
@@ -105,6 +85,23 @@ pub struct GetRequest {
 #[serde(rename_all = "camelCase")]
 pub struct GetReply {
     pub item: serde_json::Value,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ListRequest {
+    pub query: Option<String>, // internally, it is JSON
+    pub page_size: Option<u32>,
+    pub order_by: Option<String>,
+    pub order_by_direction: Option<OrderByDirection>,
+    pub page_token: Option<String>,
+}
+
+#[derive(Debug)]
+pub struct ListReply<I: DeserializeOwned + std::fmt::Debug> {
+    pub items: Vec<I>,
+    pub total_count: u32,
+    pub page_token: Option<String>,
 }
 
 pub fn generate_name(name: Option<String>) -> String {
@@ -167,20 +164,7 @@ pub async fn upsert_model<T: Serialize + std::fmt::Debug>(
     Ok(())
 }
 
-pub fn check_tenancy(object: &serde_json::Value, id: impl Into<String>) -> ModelResult<()> {
-    let id = id.into();
-    if !(object["siStorable"]["tenantIds"].is_array()
-        && object["siStorable"]["tenantIds"]
-            .as_array()
-            .unwrap()
-            .contains(&serde_json::Value::String(id)))
-    {
-        Err(ModelError::Tenancy)
-    } else {
-        Ok(())
-    }
-}
-
+#[tracing::instrument(level = "trace")]
 pub async fn get_model<T: DeserializeOwned + std::fmt::Debug>(
     db: &Db,
     id: impl AsRef<str> + std::fmt::Debug,
@@ -238,6 +222,20 @@ pub async fn get_model_change_set(
             check_tenancy(&result, &billing_account_id)?;
             Ok(result)
         }
+    }
+}
+
+pub fn check_tenancy(object: &serde_json::Value, id: impl Into<String>) -> ModelResult<()> {
+    let id = id.into();
+    if !(object["siStorable"]["tenantIds"].is_array()
+        && object["siStorable"]["tenantIds"]
+            .as_array()
+            .unwrap()
+            .contains(&serde_json::Value::String(id)))
+    {
+        Err(ModelError::Tenancy)
+    } else {
+        Ok(())
     }
 }
 

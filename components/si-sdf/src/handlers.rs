@@ -63,6 +63,37 @@ impl From<HandlerError> for warp::reject::Rejection {
     }
 }
 
+pub async fn list_models(
+    id: String,
+    db: Db,
+    token: String,
+    type_name: String,
+    request: crate::models::GetRequest,
+) -> Result<impl warp::Reply, warp::reject::Rejection> {
+    let claim = authenticate(&db, &token).await?;
+    authorize(
+        &db,
+        &claim.user_id,
+        &claim.billing_account_id,
+        &type_name,
+        "get",
+    )
+    .await?;
+
+    let item = crate::models::get_model_change_set(
+        &db,
+        id,
+        type_name,
+        claim.billing_account_id,
+        request.change_set_id,
+    )
+    .await
+    .map_err(HandlerError::from)?;
+
+    let reply = crate::models::GetReply { item };
+    Ok(warp::reply::json(&reply))
+}
+
 pub async fn get_model_change_set(
     id: String,
     db: Db,

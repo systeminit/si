@@ -6,18 +6,12 @@ import { RootStore } from "@/store";
 import { graphqlQueryListAll } from "@/api/apollo";
 
 export interface WorkspaceStore {
-  workspaces: Workspace[];
   current: null | Workspace;
-}
-
-interface AddMutation {
-  workspaces: Workspace[];
 }
 
 export const workspace: Module<WorkspaceStore, RootStore> = {
   namespaced: true,
   state: {
-    workspaces: [],
     current: null,
   },
   getters: {
@@ -30,9 +24,6 @@ export const workspace: Module<WorkspaceStore, RootStore> = {
     },
   },
   mutations: {
-    add(state, payload: AddMutation) {
-      state.workspaces = _.unionBy(payload.workspaces, state.workspaces, "id");
-    },
     current(state, payload: Workspace) {
       state.current = payload;
     },

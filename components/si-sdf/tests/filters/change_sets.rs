@@ -1,13 +1,13 @@
 use serde_json;
 
 use crate::{test_cleanup, test_setup, TestAccount};
-use crate::{DB, SETTINGS};
+use crate::{DB, NATS, SETTINGS};
 
 use si_sdf::filters::api;
 use si_sdf::models::change_set;
 
 pub async fn create_change_set(test_account: &TestAccount) -> String {
-    let filter = api(&DB, &SETTINGS.jwt_encrypt.key);
+    let filter = api(&DB, &NATS, &SETTINGS.jwt_encrypt.key);
     let res = warp::test::request()
         .method("POST")
         .header("authorization", &test_account.authorization)
@@ -34,7 +34,7 @@ pub async fn create_change_set(test_account: &TestAccount) -> String {
 async fn create() {
     let test_account = test_setup().await.expect("failed to setup test");
 
-    let filter = api(&DB, &SETTINGS.jwt_encrypt.key);
+    let filter = api(&DB, &NATS, &SETTINGS.jwt_encrypt.key);
 
     let res = warp::test::request()
         .method("POST")
@@ -58,7 +58,7 @@ async fn create() {
 async fn execute() {
     let test_account = test_setup().await.expect("failed to setup test");
 
-    let filter = api(&DB, &SETTINGS.jwt_encrypt.key);
+    let filter = api(&DB, &NATS, &SETTINGS.jwt_encrypt.key);
     let change_set_id = create_change_set(&test_account).await;
     let request = change_set::PatchRequest {
         op: change_set::PatchOps::Execute(change_set::ExecuteRequest { hypothetical: true }),
