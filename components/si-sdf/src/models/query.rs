@@ -1,3 +1,4 @@
+use base64;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use thiserror::Error;
@@ -12,6 +13,10 @@ pub enum QueryError {
     MissingExpressionOrQuery,
     #[error("a query field should be an integer, but it wasn't: {0}")]
     IntegerError(#[from] std::num::ParseIntError),
+    #[error("failed to serialize query to json: {0}")]
+    Json(#[from] serde_json::Error),
+    #[error("failed to decode base64 string: {0}")]
+    Base64Decode(#[from] base64::DecodeError),
 }
 
 pub type QueryResult<T> = Result<T, QueryError>;
@@ -42,6 +47,24 @@ pub struct Expression {
     pub field_type: FieldType,
 }
 
+impl Expression {
+    pub fn new(
+        field: impl Into<String>,
+        value: impl Into<String>,
+        comparison: Comparison,
+        field_type: FieldType,
+    ) -> Expression {
+        let field = field.into();
+        let value = value.into();
+        Expression {
+            field,
+            value,
+            comparison,
+            field_type,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Item {
@@ -49,11 +72,57 @@ pub struct Item {
     pub expression: Option<Expression>,
 }
 
+impl Item {
+    pub fn query(query: Query) -> Item {
+        Item {
+            query: Some(query),
+            expression: None,
+        }
+    }
+
+    pub fn expression(
+        field: impl Into<String>,
+        value: impl Into<String>,
+        comparison: Comparison,
+        field_type: FieldType,
+    ) -> Item {
+        let field = field.into();
+        let value = value.into();
+        Item {
+            query: None,
+            expression: Some(Expression::new(field, value, comparison, field_type)),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub enum BooleanTerm {
     And,
     Or,
+}
+
+impl fmt::Display for Comparison {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let msg = match self {
+            &Comparison::Equals => "=".to_string(),
+            &Comparison::NotEquals => "!=".to_string(),
+            &Comparison::Contains => "CONTAINS".to_string(),
+            &Comparison::Like => "LIKE".to_string(),
+            &Comparison::NotLike => "NOT LIKE".to_string(),
+        };
+        write!(f, "{}", msg)
+    }
+}
+
+impl fmt::Display for BooleanTerm {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let msg = match self {
+            &BooleanTerm::And => "AND".to_string(),
+            &BooleanTerm::Or => "OR".to_string(),
+        };
+        write!(f, "{}", msg)
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
@@ -80,30 +149,27 @@ pub struct Query {
 //  evaluated, with eevery expression joined together with AND.
 //
 
-impl fmt::Display for Comparison {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let msg = match self {
-            &Comparison::Equals => "=".to_string(),
-            &Comparison::NotEquals => "!=".to_string(),
-            &Comparison::Contains => "CONTAINS".to_string(),
-            &Comparison::Like => "LIKE".to_string(),
-            &Comparison::NotLike => "NOT LIKE".to_string(),
-        };
-        write!(f, "{}", msg)
-    }
-}
-
-impl fmt::Display for BooleanTerm {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let msg = match self {
-            &BooleanTerm::And => "AND".to_string(),
-            &BooleanTerm::Or => "OR".to_string(),
-        };
-        write!(f, "{}", msg)
-    }
-}
-
 impl Query {
+    pub fn new(items: Vec<Item>, boolean_term: Option<BooleanTerm>, is_not: Option<bool>) -> Self {
+        Query {
+            items,
+            boolean_term,
+            is_not,
+        }
+    }
+
+    pub fn to_url_string(&self) -> QueryResult<String> {
+        let query_json = serde_json::to_string(self)?;
+        Ok(base64::encode_config(&query_json, base64::URL_SAFE_NO_PAD))
+    }
+
+    pub fn from_url_string(url_string: String) -> QueryResult<Query> {
+        let query_json_bytes =
+            base64::decode_config(&url_string.as_bytes(), base64::URL_SAFE_NO_PAD)?;
+        let query = serde_json::from_slice(&query_json_bytes)?;
+        Ok(query)
+    }
+
     pub fn generate_for_string(
         field: impl Into<String>,
         comparison: Comparison,

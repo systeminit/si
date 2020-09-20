@@ -4,6 +4,11 @@ use serde_json;
 use sodiumoxide::crypto::secretbox;
 use thiserror::Error;
 
+// TODO: your mission, should you choose to accept it, is to re-wire page tokens in to a new,
+//       generic, raw JSON list handler for the API. Then wire it to the front-end model in
+//       a nice way, and then get the workspace/organization/billing account information
+//       back into the web ui.
+
 #[derive(Error, Debug)]
 pub enum PageTokenError {
     #[error("failed to decrypt a page token")]

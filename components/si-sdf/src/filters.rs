@@ -34,6 +34,28 @@ pub fn updates(
         .and_then(handlers::updates::update)
 }
 
+// Workspace API
+//   workspaces: GET
+pub fn workspaces(
+    db: &Db,
+    _nats: &Connection,
+    secret_key: &secretbox::Key,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    workspaces_list(db.clone())
+}
+
+pub fn workspaces_list(
+    db: Db,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("workspaces")
+        .and(warp::get())
+        .and(with_db(db))
+        .and(warp::header::<String>("authorization"))
+        .and(with_string("workspaces".into()))
+        .and(warp::query::<models::ListRequest>())
+        .and_then(handlers::list_models)
+}
+
 // User API
 //
 // users/login: POST

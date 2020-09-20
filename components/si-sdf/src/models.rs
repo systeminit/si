@@ -5,8 +5,6 @@ use serde_json;
 use thiserror::Error;
 use uuid::Uuid;
 
-use si_data::DataQuery;
-
 use std::collections::HashMap;
 
 use crate::data::Db;
@@ -65,14 +63,31 @@ pub enum ModelError {
     Serialization(#[from] serde_json::Error),
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
+    #[error("a list model call resulted in no possible query")]
+    NoQuery,
+    #[error("invalid query")]
+    Query(#[from] QueryError),
+    #[error("page token error: {0}")]
+    PageToken(#[from] PageTokenError),
+    #[error("malformed list item body; missing id")]
+    ListItemNoId,
 }
 
 pub type ModelResult<T> = Result<T, ModelError>;
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub enum OrderByDirection {
     ASC,
-    DSC,
+    DESC,
+}
+
+impl std::fmt::Display for OrderByDirection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            &OrderByDirection::ASC => write!(f, "ASC"),
+            &OrderByDirection::DESC => write!(f, "DESC"),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -90,14 +105,15 @@ pub struct GetReply {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListRequest {
-    pub query: Option<String>, // internally, it is JSON
+    pub query: Option<String>,
     pub page_size: Option<u32>,
     pub order_by: Option<String>,
     pub order_by_direction: Option<OrderByDirection>,
     pub page_token: Option<String>,
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct ListReply<I: DeserializeOwned + std::fmt::Debug> {
     pub items: Vec<I>,
     pub total_count: u32,
@@ -178,6 +194,146 @@ pub async fn get_model<T: DeserializeOwned + std::fmt::Debug>(
     check_tenancy(&json_response, billing_account_id)?;
     let object: T = serde_json::from_value(json_response)?;
     Ok(object)
+}
+
+pub async fn list_model(
+    db: &Db,
+    query: Option<Query>,
+    mut page_size: Option<u32>,
+    mut order_by: Option<String>,
+    mut order_by_direction: Option<OrderByDirection>,
+    page_token: Option<PageToken>,
+    type_name: Option<String>,
+    tenant_id: Option<String>,
+) -> ModelResult<ListReply<serde_json::Value>> {
+    let mut query_items: Vec<Item> = vec![];
+    let mut item_id: Option<String> = None;
+
+    let user_query = if let Some(page_token) = page_token {
+        let user_query = page_token.query;
+        page_size = Some(page_token.page_size);
+        order_by = Some(page_token.order_by);
+        order_by_direction = Some(page_token.order_by_direction);
+        item_id = Some(page_token.item_id);
+        user_query.unwrap()
+    } else {
+        if page_size.is_none() {
+            page_size = Some(10);
+        }
+
+        if order_by.is_none() {
+            order_by = Some(String::from("id"));
+        }
+
+        if order_by_direction.is_none() {
+            order_by_direction = Some(OrderByDirection::ASC)
+        }
+
+        // Restrict by type name if one was given
+        if let Some(type_name) = type_name {
+            query_items.push(Item::expression(
+                "siStorable.typeName",
+                &type_name,
+                Comparison::Equals,
+                FieldType::String,
+            ));
+        }
+
+        // Restrict by tenancy if one was given
+        if let Some(tenant_id) = tenant_id {
+            query_items.push(Item::expression(
+                "siStorable.tenantIds",
+                &tenant_id,
+                Comparison::Contains,
+                FieldType::String,
+            ));
+        }
+
+        // The users query, if one was given
+        if let Some(query) = query {
+            query_items.push(Item::query(query));
+        }
+
+        if query_items.len() == 0 {
+            return Err(ModelError::NoQuery);
+        }
+        Query::new(query_items, Some(BooleanTerm::And), None)
+    };
+
+    let query_string = format!(
+        "SELECT a.* FROM `{bucket}` AS a 
+           WHERE {query} 
+           ORDER BY a.[{order_by}] {order_by_direction}",
+        bucket = db.bucket_name,
+        query = user_query.as_n1ql("a")?,
+        order_by = serde_json::json![order_by.as_ref().unwrap()],
+        order_by_direction = order_by_direction.as_ref().unwrap(),
+    );
+
+    let results: Vec<serde_json::Value> = db.query(query_string, None).await?;
+    let total_count = results.len() as u32;
+
+    if total_count <= page_size.unwrap() {
+        Ok(ListReply {
+            items: results,
+            total_count,
+            page_token: None,
+        })
+    } else {
+        let (return_items, next_item_id) = if let Some(item_id) = item_id {
+            let mut return_items: Vec<serde_json::Value> = Vec::new();
+            let mut start = false;
+            let mut this_page_count = 0;
+            let mut next_item_id = String::new();
+            for item in results.into_iter() {
+                if let Some(id) = item["id"].as_str() {
+                    if !start && item_id == id {
+                        start = true;
+                    }
+                    if page_size.unwrap() == this_page_count + 1 {
+                        next_item_id = String::from(id);
+                        break;
+                    }
+                }
+                if start {
+                    return_items.push(item);
+                    this_page_count = this_page_count + 1;
+                }
+            }
+            (return_items, next_item_id)
+        } else {
+            let next_item_id = if let Some(id) = results[page_size.unwrap() as usize]["id"].as_str()
+            {
+                String::from(id)
+            } else {
+                return Err(ModelError::ListItemNoId);
+            };
+            let one_page = results
+                .into_iter()
+                .take(page_size.unwrap() as usize)
+                .collect();
+            (one_page, next_item_id)
+        };
+        let sealed_token = if next_item_id != "" {
+            let page_token = PageToken {
+                query: Some(user_query),
+                page_size: page_size.unwrap(),
+                order_by: order_by.unwrap(),
+                order_by_direction: order_by_direction.unwrap(),
+                item_id: next_item_id,
+            };
+            let sealed_token = page_token.seal(&db.page_secret_key)?;
+            Some(sealed_token)
+        } else {
+            None
+        };
+
+        Ok(ListReply {
+            items: return_items,
+            total_count,
+            page_token: sealed_token,
+        })
+    }
 }
 
 #[tracing::instrument(level = "trace")]

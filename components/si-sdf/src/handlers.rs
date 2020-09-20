@@ -10,7 +10,7 @@ use std::convert::Infallible;
 
 use crate::models::{
     BillingAccountError, ChangeSetError, EditSessionError, JwtKeyError, ModelError, NodeError,
-    OpError, SiStorableError, UserError,
+    OpError, SiStorableError, UserError, Query, QueryError, PageTokenError, PageToken,
 };
 
 pub mod billing_accounts;
@@ -52,6 +52,11 @@ pub enum HandlerError {
     JwtKey(#[from] JwtKeyError),
     #[error("error signing jwt claim: {0}")]
     JwtClaim(String),
+    #[error("query error: {0}")]
+    Query(#[from] QueryError),
+    #[error("page token error: {0}")]
+    PageToken(#[from] PageTokenError),
+
 }
 
 pub type HandlerResult<T> = Result<T, HandlerError>;
@@ -64,11 +69,10 @@ impl From<HandlerError> for warp::reject::Rejection {
 }
 
 pub async fn list_models(
-    id: String,
     db: Db,
     token: String,
     type_name: String,
-    request: crate::models::GetRequest,
+    request: crate::models::ListRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
     let claim = authenticate(&db, &token).await?;
     authorize(
@@ -76,21 +80,35 @@ pub async fn list_models(
         &claim.user_id,
         &claim.billing_account_id,
         &type_name,
-        "get",
+        "list",
     )
     .await?;
 
-    let item = crate::models::get_model_change_set(
-        &db,
-        id,
-        type_name,
-        claim.billing_account_id,
-        request.change_set_id,
+    let query = if let Some(query) = request.query {
+        Some(Query::from_url_string(query).map_err(HandlerError::from)?)
+    } else {
+        None
+    };
+
+    let page_token = if let Some(page_token) = request.page_token {
+        Some(PageToken::unseal(&page_token, &db.page_secret_key).map_err(HandlerError::from)?)
+    } else {
+        None
+    };
+
+    let reply = crate::models::list_model(
+        &db, 
+        query,
+        request.page_size, 
+        request.order_by, 
+        request.order_by_direction, 
+        page_token, 
+        Some(type_name), 
+        Some(claim.billing_account_id.clone())
     )
     .await
     .map_err(HandlerError::from)?;
 
-    let reply = crate::models::GetReply { item };
     Ok(warp::reply::json(&reply))
 }
 
