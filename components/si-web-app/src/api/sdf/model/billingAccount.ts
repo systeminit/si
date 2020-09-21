@@ -56,7 +56,6 @@ export class BillingAccount implements IBillingAccount {
       billingAccountReply.billingAccount,
     );
     await billingAccount.save();
-    store.commit("billingAccount/current", billingAccount);
     return billingAccountReply;
   }
 }

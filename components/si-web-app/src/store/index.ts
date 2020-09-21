@@ -1,8 +1,8 @@
 import Vue from "vue";
 import Vuex from "vuex";
 import { Store } from "vuex";
-//import localforage from "localforage";
-//import VuexPersistence from "vuex-persist";
+import localforage from "localforage";
+import VuexPersistence from "vuex-persist";
 //import Cookies from "js-cookie";
 import { editor, EditorStore } from "./modules/editor";
 import { application, ApplicationStore } from "./modules/application";
@@ -20,6 +20,7 @@ import { node, NodeStore } from "./modules/node";
 import { eventLog, EventLogStore } from "./modules/eventLog";
 import { loader, LoaderStore } from "./modules/loader";
 import { resource, ResourceStore } from "./modules/resource";
+import { organization, OrganizationStore } from "./modules/organization";
 
 Vue.use(Vuex);
 
@@ -33,38 +34,20 @@ export class GetCurrentError extends Error {
   }
 }
 
-//const localForage = localforage.createInstance({
-//  driver: localforage.INDEXEDDB,
-//  name: "si-store",
-//  storeName: "vuex",
-//  description: "the vuex state, stored",
-//});
-//
-//// @ts-ignore types?
-//const vuexPersist = new VuexPersistence<any>({
-//  storage: localForage,
-//  asyncStorage: true,
-//});
+export interface AddMutation<T> {
+  items: T[];
+}
 
-//const vuexCookie = new VuexPersistence({
-//  restoreState: (key, _storage) => Cookies.getJSON(key),
-//  saveState: async (key, state, _storage): Promise<void> => {
-//    Cookies.set(key, state, {
-//      expires: 3,
-//    });
-//  },
-//});
-//
-//const vuexLocal = new VuexPersistence({
-//  storage: window.localStorage,
-//  reducer: (state: any) => ({ applications: state.applications }),
-//});
+const vuexLocal = new VuexPersistence({
+  storage: window.localStorage,
+});
 
 export interface RootStore {
   editor: EditorStore;
   user: UserStore;
   entity: EntityStore;
   changeSet: ChangeSetStore;
+  organization: OrganizationStore;
   workspace: WorkspaceStore;
   billingAccount: BillingAccountStore;
   node: NodeStore;
@@ -91,6 +74,7 @@ const store: Store<RootStore> = new Vuex.Store({
     user,
     entity,
     changeSet,
+    organization,
     workspace,
     billingAccount,
     node,
@@ -100,7 +84,7 @@ const store: Store<RootStore> = new Vuex.Store({
     loader,
   },
   strict: debug,
-  plugins: [persistEdits, persistNodes],
+  plugins: [persistEdits, persistNodes, vuexLocal.plugin],
 });
 
 export default store;

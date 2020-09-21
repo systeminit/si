@@ -100,14 +100,14 @@ export default Vue.extend({
   },
   methods: {
     async create(): Promise<void> {
-      const result = await this.$store.dispatch("billingAccount/create", {
+      const _result = await this.$store.dispatch("billingAccount/create", {
         billingAccountName: this.billingAccountName,
         billingAccountDescription: this.billingAccountDescription,
         userName: this.userName,
         userEmail: this.userEmail,
         userPassword: this.userPassword,
       });
-      //this.$router.push("/signin");
+      this.$router.push("/signin");
     },
   },
 });

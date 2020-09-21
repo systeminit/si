@@ -30,11 +30,12 @@ export const billingAccount: Module<BillingAccountStore, RootStore> = {
       }
     },
     async create(
-      _,
+      { commit },
       payload: IBillingAccountCreateRequest,
     ): Promise<IBillingAccountCreateReply> {
-      let response = await BillingAccount.create(payload);
-      return response;
+      let obj = await BillingAccount.create(payload);
+      commit("current", obj);
+      return obj;
     },
   },
 };

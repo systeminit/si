@@ -53,13 +53,18 @@ export const user: Module<UserStore, any> = {
         return false;
       }
     },
-    async login({ commit }, payload: IUserLoginRequest): Promise<void> {
+    async login(
+      { commit, dispatch },
+      payload: IUserLoginRequest,
+    ): Promise<void> {
       const user = await User.login(payload);
       commit("current", user);
+      await dispatch("workspace/default", {}, { root: true });
+      await dispatch("organization/default", {}, { root: true });
     },
     async logout({ commit, state }): Promise<void> {
       if (state.current) {
-        state.current.logout();
+        User.upgrade(state.current).logout();
         commit("current", null);
       }
     },

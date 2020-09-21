@@ -18,6 +18,7 @@ pub fn api(
         .or(nodes(db, nats))
         .or(change_sets(db, nats))
         .or(users(db, nats, secret_key))
+        .or(workspaces(db, nats))
         .or(updates(db, nats))
 }
 
@@ -34,14 +35,25 @@ pub fn updates(
         .and_then(handlers::updates::update)
 }
 
-// Workspace API
+// Workspaces API
 //   workspaces: GET
 pub fn workspaces(
     db: &Db,
     _nats: &Connection,
-    secret_key: &secretbox::Key,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    workspaces_list(db.clone())
+    workspaces_list(db.clone()).or(workspaces_get(db.clone()))
+}
+
+pub fn workspaces_get(
+    db: Db,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("workspaces" / String)
+        .and(warp::get())
+        .and(with_db(db))
+        .and(warp::header::<String>("authorization"))
+        .and(with_string("workspace".into()))
+        .and(warp::query::<models::GetRequest>())
+        .and_then(handlers::get_model_change_set)
 }
 
 pub fn workspaces_list(
@@ -51,7 +63,7 @@ pub fn workspaces_list(
         .and(warp::get())
         .and(with_db(db))
         .and(warp::header::<String>("authorization"))
-        .and(with_string("workspaces".into()))
+        .and(with_string("workspace".into()))
         .and(warp::query::<models::ListRequest>())
         .and_then(handlers::list_models)
 }
@@ -121,7 +133,7 @@ pub fn organizations(
     db: &Db,
     _nats: &Connection,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    organizations_get(db.clone())
+    organizations_list(db.clone()).or(organizations_get(db.clone()))
 }
 
 pub fn organizations_get(
@@ -134,6 +146,18 @@ pub fn organizations_get(
         .and(with_string("organization".into()))
         .and(warp::query::<models::GetRequest>())
         .and_then(handlers::get_model_change_set)
+}
+
+pub fn organizations_list(
+    db: Db,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("organizations")
+        .and(warp::get())
+        .and(with_db(db))
+        .and(warp::header::<String>("authorization"))
+        .and(with_string("organization".into()))
+        .and(warp::query::<models::ListRequest>())
+        .and_then(handlers::list_models)
 }
 
 // Nodes API

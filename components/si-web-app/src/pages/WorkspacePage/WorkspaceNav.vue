@@ -50,8 +50,8 @@
               name: 'application',
               params: {
                 applicationId: 'my-app',
-                organizationId: organizationId,
-                workspaceId: workspaceId,
+                organizationId: organization.id,
+                workspaceId: workspace.id,
               },
             }"
           >
@@ -212,6 +212,7 @@ import {
 import SysinitIcon from "@/components/icons/SysinitIcon.vue";
 
 import localforage from "localforage";
+import { mapGetters } from "vuex";
 
 export default {
   name: "WorkspaceNav",
@@ -229,27 +230,25 @@ export default {
     GridIcon,
     RefreshCwIcon,
   },
-  props: {
-    organizationId: {
-      type: String,
-    },
-    workspaceId: {
-      type: String,
-    },
-  },
   data() {
     return {
       workspaces: ["my workspace", "another workspace"],
       currentWorkspace: "my workspace",
     };
   },
+  computed: {
+    ...mapGetters({
+      organization: "organization/current",
+      workspace: "workspace/current",
+    }),
+  },
   methods: {
-    async onLogout(event: any) {
+    async onLogout(event: any): Promise<void> {
       console.log("logout clicked");
       await this.$store.dispatch("user/logout");
       this.$router.push({ name: "signin" });
     },
-    async clearLogout(event: any) {
+    async clearLogout(event: any): Promise<void> {
       console.log("clear logout clicked");
       await this.$store.dispatch("user/logout");
       await localforage.dropInstance({

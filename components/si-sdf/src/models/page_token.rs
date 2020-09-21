@@ -25,7 +25,7 @@ pub type PageTokenResult<T> = Result<T, PageTokenError>;
 
 use crate::models::{OrderByDirection, Query};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct PageToken {
     pub query: Option<Query>,

@@ -1,12 +1,12 @@
 <template>
   <div
     id="application-list"
-    class="application-list-bg-color flex flex-col flex-no-wrap"
+    class="flex flex-col flex-no-wrap application-list-bg-color"
   >
-    <div class="flex flex-row mt-4 h-10 application-list-menu-bar">
+    <div class="flex flex-row h-10 mt-4 application-list-menu-bar">
       <button
         data-cy="new-application-button"
-        class="bg-teal-700 ml-4 px-2 h-8 mt-1 text-white hover:bg-teal-600"
+        class="h-8 px-2 mt-1 ml-4 text-white bg-teal-700 hover:bg-teal-600"
         @click="showModal()"
         type="button"
       >
@@ -27,7 +27,7 @@
     >
       <div class="flex flex-col">
         <div
-          class="flex text-white bg-black pl-1 text-sm justify-between items-center"
+          class="flex items-center justify-between pl-1 text-sm text-white bg-black"
         >
           <div>
             Create new application
@@ -47,7 +47,7 @@
 
             <input
               data-cy="new-application-form-application-name"
-              class="appearance-none bg-transparent border-none ml-4 text-gray-400 leading-tight focus:outline-none input-bg-color"
+              class="ml-4 leading-tight text-gray-400 bg-transparent border-none appearance-none focus:outline-none input-bg-color"
               type="text"
               placeholder="application name"
               v-model="applicationName"
@@ -56,7 +56,7 @@
           <div class="flex flex-row">
             <button
               data-cy="new-application-form-create-button"
-              class="bg-teal-700 ml-4 mt-4 w-16 text-white hover:bg-teal-600"
+              class="w-16 mt-4 ml-4 text-white bg-teal-700 hover:bg-teal-600"
               @click="createApplication"
               type="button"
             >
@@ -119,11 +119,12 @@ export default Vue.extend({
   },
   methods: {
     applicationLink(applicationId: string): Record<string, any> {
+      const organization = this.$store.getters["organization/current"];
       const workspace = this.$store.getters["workspace/current"];
       return {
         name: "applicationDetails",
         params: {
-          organizationId: workspace.siProperties.organizationId,
+          organizationId: organization.id,
           workspaceId: workspace.id,
           applicationId,
         },

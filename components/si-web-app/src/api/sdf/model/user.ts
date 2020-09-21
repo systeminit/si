@@ -3,6 +3,7 @@ import { db } from "@/api/sdf/dexie";
 import { ISimpleStorable } from "@/api/sdf/model/siStorable";
 import { IGetRequest, IGetReply } from "@/api/sdf/model";
 import store from "@/store";
+import _ from "lodash";
 
 export interface IUser {
   id: string;
@@ -35,7 +36,15 @@ export class User implements IUser {
     this.siStorable = args.siStorable;
   }
 
-  static async login(request: IUserLoginRequest): Promise<IUserLoginReply> {
+  static upgrade(obj: User | IUser): User {
+    if (obj instanceof User) {
+      return obj;
+    } else {
+      return new User(obj);
+    }
+  }
+
+  static async login(request: IUserLoginRequest): Promise<User> {
     let userLoginReply: IUserLoginReply = await sdf.post(
       "users/login",
       request,
@@ -46,7 +55,7 @@ export class User implements IUser {
     // Store the token, so all requests in the future are authenticated
     sdf.token = userLoginReply.jwt;
 
-    return userLoginReply;
+    return user;
   }
 
   static async get(request: IGetRequest<IUser["id"]>): Promise<User> {
@@ -56,7 +65,7 @@ export class User implements IUser {
     }
     const reply: IGetReply<IUser> = await sdf.get(`users/${request.id}`);
     const fetched: User = new User(reply.item);
-    fetched.save();
+    await fetched.save();
     return fetched;
   }
 
@@ -64,10 +73,12 @@ export class User implements IUser {
     sdf.token = undefined;
   }
 
-  async save(): Promise<string> {
-    let result = await db.users.put(this);
-    await store.dispatch("users/fromDb", this);
-    return result;
+  async save(): Promise<void> {
+    const currentObj = await db.users.get(this.id);
+    if (!_.eq(currentObj, this)) {
+      await db.users.put(this);
+      await store.dispatch("users/fromDb", this);
+    }
   }
 }
 

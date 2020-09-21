@@ -3,12 +3,8 @@
     <div
       id="workspace-view"
       class="flex flex-row w-full h-full overflow-hidden"
-      v-else
     >
-      <WorkspaceNav
-        :organizationId="organizationId"
-        :workspaceId="workspaceId"
-      />
+      <WorkspaceNav />
 
       <div class="flex flex-col w-full h-full">
         <router-view class="w-full h-full overflow-auto" />
@@ -27,14 +23,10 @@ export default {
   components: {
     WorkspaceNav,
   },
-  mounted: function () {
-    // TODO: Get the workspace and organization loaded into Vuex; back into the system.
-    //
-    //let user = this.$store.getters["user"];
-    // Navigate to the default page: applications
-    let userProfile = this.$store.getters["user/profile"];
+  async mounted() {
+    let organization = this.$store.getters["organization/current"];
     let workspace = this.$store.getters["workspace/current"];
-    let url = `/o/:${userProfile.organization.id}/w/:${workspace.id}/a`;
+    let url = `/o/:${organization.id}/w/:${workspace.id}/a`;
     if (this.$route.path !== url) this.$router.push(url);
   },
 };

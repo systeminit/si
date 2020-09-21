@@ -1,22 +1,28 @@
 import Dexie from "dexie";
 import { IBillingAccount } from "@/api/sdf/model/billingAccount";
 import { IUser } from "@/api/sdf/model/user";
+import { IOrganization } from "@/api/sdf/model/organization";
 import { IWorkspace } from "@/api/sdf/model/workspace";
+import { IChangeSet } from "@/api/sdf/model/changeSet";
 
 class SiDatabase extends Dexie {
   // Declare implicit table properties.
   // (just to inform Typescript. Instanciated by Dexie in stores() method)
   billingAccounts: Dexie.Table<IBillingAccount, string>;
   users: Dexie.Table<IUser, string>;
+  organizations: Dexie.Table<IOrganization, string>;
   workspaces: Dexie.Table<IWorkspace, string>;
+  changeSets: Dexie.Table<IChangeSet, string>;
 
   constructor() {
     super("SiDatabase");
     this.version(1).stores({
       billingAccounts: "id, name",
       users: "id, email",
+      organizations: "id, name",
       workspaces:
         "id, name, [siStorable.billingAccountId+siStorable.organizationId+name]",
+      changeSets: "id, name",
     });
 
     // The following line is needed if your typescript
@@ -24,6 +30,8 @@ class SiDatabase extends Dexie {
     this.billingAccounts = this.table("billingAccounts");
     this.users = this.table("users");
     this.workspaces = this.table("workspaces");
+    this.organizations = this.table("organizations");
+    this.changeSets = this.table("changeSets");
   }
 }
 

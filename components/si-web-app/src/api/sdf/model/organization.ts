@@ -11,70 +11,75 @@ import { Query, Comparison } from "@/api/sdf/model/query";
 import store from "@/store";
 import _ from "lodash";
 
-export interface IWorkspace {
+export interface IOrganization {
   id: string;
   name: string;
   siStorable: ISimpleStorable;
 }
 
-export class Workspace implements IWorkspace {
-  id: IWorkspace["id"];
-  name: IWorkspace["name"];
-  siStorable: IWorkspace["siStorable"];
+export class Organization implements IOrganization {
+  id: IOrganization["id"];
+  name: IOrganization["name"];
+  siStorable: IOrganization["siStorable"];
 
-  constructor(args: IWorkspace) {
+  constructor(args: IOrganization) {
     this.id = args.id;
     this.name = args.name;
     this.siStorable = args.siStorable;
   }
 
-  static async get(request: IGetRequest<IWorkspace["id"]>): Promise<Workspace> {
-    const obj = await db.workspaces.get(request.id);
+  static async get(
+    request: IGetRequest<IOrganization["id"]>,
+  ): Promise<Organization> {
+    const obj = await db.organizations.get(request.id);
     if (obj) {
-      return new Workspace(obj);
+      return new Organization(obj);
     }
-    const reply: IGetReply<IWorkspace> = await sdf.get(
-      `workspaces/${request.id}`,
+    const reply: IGetReply<IOrganization> = await sdf.get(
+      `organizations/${request.id}`,
     );
-    const fetched: Workspace = new Workspace(reply.item);
+    const fetched: Organization = new Organization(reply.item);
     fetched.save();
     return fetched;
   }
 
-  static async find(index: "id" | "name", value: string): Promise<Workspace[]> {
-    let items = await db.workspaces
+  static async find(
+    index: "id" | "name",
+    value: string,
+  ): Promise<Organization[]> {
+    let organizations = await db.organizations
       .where(index)
       .equals(value)
       .toArray();
-    if (!items.length) {
-      const results = await Workspace.list({
+    if (!organizations.length) {
+      const results = await Organization.list({
         query: Query.for_simple_string(index, value, Comparison.Equals),
       });
       return results.items;
     } else {
-      return items.map(obj => new Workspace(obj));
+      return organizations.map(obj => new Organization(obj));
     }
   }
 
-  static async list(request?: IListRequest): Promise<IListReply<Workspace>> {
-    const items: Workspace[] = [];
+  static async list(request?: IListRequest): Promise<IListReply<Organization>> {
+    const items: Organization[] = [];
     let totalCount = 0;
 
-    db.workspaces.each(obj => {
-      items.push(new Workspace(obj));
+    db.organizations.each(obj => {
+      items.push(new Organization(obj));
       totalCount++;
     });
 
     if (!totalCount) {
       let finished = false;
       while (!finished) {
-        const reply: IListReply<IWorkspace> = await sdf.list(
-          "workspaces",
+        const reply: IListReply<IOrganization> = await sdf.list(
+          "organizations",
           request,
         );
         if (reply.items.length) {
           for (let item of reply.items) {
-            let objItem = new Workspace(item);
+            let objItem = new Organization(item);
             objItem.save();
             items.push(objItem);
           }
@@ -97,12 +102,12 @@ export class Workspace implements IWorkspace {
   }
 
   async save(): Promise<void> {
-    const currentObj = await db.workspaces.get(this.id);
+    const currentObj = await db.organizations.get(this.id);
     if (!_.eq(currentObj, this)) {
-      await db.workspaces.put(this);
-      await store.dispatch("workspace/fromDb", this);
+      await db.organizations.put(this);
+      await store.dispatch("organizations/fromDb", this);
     }
   }
 }
 
-db.users.mapToClass(Workspace);
+db.organizations.mapToClass(Organization);

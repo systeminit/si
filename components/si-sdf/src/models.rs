@@ -76,6 +76,7 @@ pub enum ModelError {
 pub type ModelResult<T> = Result<T, ModelError>;
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub enum OrderByDirection {
     ASC,
     DESC,
@@ -112,10 +113,10 @@ pub struct ListRequest {
     pub page_token: Option<String>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct ListReply<I: DeserializeOwned + std::fmt::Debug> {
-    pub items: Vec<I>,
+pub struct ListReply {
+    pub items: Vec<serde_json::Value>,
     pub total_count: u32,
     pub page_token: Option<String>,
 }
@@ -196,6 +197,7 @@ pub async fn get_model<T: DeserializeOwned + std::fmt::Debug>(
     Ok(object)
 }
 
+#[tracing::instrument(level = "trace")]
 pub async fn list_model(
     db: &Db,
     query: Option<Query>,
@@ -205,7 +207,7 @@ pub async fn list_model(
     page_token: Option<PageToken>,
     type_name: Option<String>,
     tenant_id: Option<String>,
-) -> ModelResult<ListReply<serde_json::Value>> {
+) -> ModelResult<ListReply> {
     let mut query_items: Vec<Item> = vec![];
     let mut item_id: Option<String> = None;
 
@@ -270,8 +272,10 @@ pub async fn list_model(
         order_by_direction = order_by_direction.as_ref().unwrap(),
     );
 
+    tracing::trace!(?query_string, "query model");
     let results: Vec<serde_json::Value> = db.query(query_string, None).await?;
     let total_count = results.len() as u32;
+    tracing::trace!(?total_count, ?results, "query model results");
 
     if total_count <= page_size.unwrap() {
         Ok(ListReply {

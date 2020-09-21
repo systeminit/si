@@ -1,4 +1,6 @@
 import _ from "lodash";
+import { urlSafeBase64Encode } from "@/api/sdf/base64";
+import { IListRequest, IListReply } from "@/api/sdf/model";
 
 export class FetchError extends Error {
   response: Response;
@@ -57,6 +59,17 @@ export class SDF {
       headers.set("Authorization", `Bearer ${this.token}`);
     }
     return headers;
+  }
+
+  async list<T>(
+    pathString: string,
+    request?: IListRequest,
+  ): Promise<IListReply<T>> {
+    let args: Record<string, any> = { ...request };
+    if (request?.query) {
+      args["query"] = urlSafeBase64Encode(JSON.stringify(request.query));
+    }
+    return this.get(pathString, args);
   }
 
   async get<T>(

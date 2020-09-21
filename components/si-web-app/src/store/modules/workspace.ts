@@ -1,9 +1,8 @@
 import { Module } from "vuex";
 import _ from "lodash";
 
-import { Workspace } from "@/graphql-types";
+import { Workspace } from "@/api/sdf/model/workspace";
 import { RootStore } from "@/store";
-import { graphqlQueryListAll } from "@/api/apollo";
 
 export interface WorkspaceStore {
   current: null | Workspace;
@@ -24,23 +23,24 @@ export const workspace: Module<WorkspaceStore, RootStore> = {
     },
   },
   mutations: {
-    current(state, payload: Workspace) {
+    current(state, payload: Workspace | null) {
       state.current = payload;
     },
   },
   actions: {
-    async load({ commit }): Promise<void> {
-      const workspaces: Workspace[] = await graphqlQueryListAll({
-        typeName: "workspace",
-      });
-      if (workspaces.length > 0) {
-        commit("add", { workspaces });
-        const defaultWorkspace = _.find(workspaces, ["name", "default"]);
-        if (defaultWorkspace) {
-          commit("current", defaultWorkspace);
-        } else {
-          commit("current", workspaces[0]);
-        }
+    async default({ commit, state }): Promise<Workspace> {
+      const items = await Workspace.find("name", "default");
+      if (items.length) {
+        commit("current", items[0]);
+      } else {
+        throw new Error("cannot find default workspace");
+      }
+      // @ts-ignore - we know you think it could be null, but it can't!
+      return state.current;
+    },
+    async fromDb({ commit, state }, payload: Workspace): Promise<void> {
+      if (state.current?.id === payload.id) {
+        commit("current", payload);
       }
     },
   },
