@@ -25,7 +25,7 @@ pub enum UserError {
     #[error("user is not found")]
     NotFound,
     #[error("database error: {0}")]
-    Data(#[from] si_data::DataError),
+    Data(#[from] crate::data::DataError),
 }
 
 pub type UserResult<T> = Result<T, UserError>;

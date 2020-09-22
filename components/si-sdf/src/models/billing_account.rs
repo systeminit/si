@@ -28,7 +28,7 @@ pub enum BillingAccountError {
     #[error("error in workspace model: {0}")]
     Workspace(#[from] WorkspaceError),
     #[error("database error: {0}")]
-    Data(#[from] si_data::DataError),
+    Data(#[from] crate::data::DataError),
     #[error("billing account is not found")]
     NotFound,
 }

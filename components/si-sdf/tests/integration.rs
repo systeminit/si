@@ -9,7 +9,7 @@ use tracing_subscriber::{self, fmt, EnvFilter, Registry};
 use std::env;
 use std::sync::Arc;
 
-use si_data::Db;
+use crate::data::Db;
 use si_sdf::models::{BillingAccount, User};
 use si_settings::Settings;
 

@@ -2,10 +2,9 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::data::Db;
-use crate::models::entity::ops::{OpReply, OpRequest};
 use crate::models::{
-    get_model, insert_model, Entity, EntityError, ModelError, SiChangeSetError, SiStorable,
-    SiStorableError,
+    get_model, insert_model, Entity, EntityError, ModelError, OpReply, OpRequest, SiChangeSetError,
+    SiStorable, SiStorableError, System, SystemError,
 };
 
 use std::collections::HashMap;
@@ -18,6 +17,8 @@ pub enum NodeError {
     SiChangeSet(#[from] SiChangeSetError),
     #[error("error with linked entity: {0}")]
     Entity(#[from] EntityError),
+    #[error("error with linked system: {0}")]
+    System(#[from] SystemError),
     #[error("error in core model functions: {0}")]
     Model(#[from] ModelError),
     #[error("no head object found; logic error")]
@@ -25,7 +26,7 @@ pub enum NodeError {
     #[error("no projection object found")]
     NoProjection,
     #[error("data layer error: {0}")]
-    Data(#[from] si_data::DataError),
+    Data(#[from] crate::data::DataError),
 }
 
 pub type NodeResult<T> = Result<T, NodeError>;
@@ -73,6 +74,7 @@ pub struct Position {
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
 pub enum NodeKind {
     Entity,
+    System,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
@@ -124,21 +126,41 @@ impl Node {
         };
         insert_model(db, &node.id, &node).await?;
 
-        let _entity = Entity::new(
-            db,
-            Some(name),
-            None,
-            id,
-            object_type,
-            true,
-            billing_account_id,
-            organization_id,
-            workspace_id,
-            change_set_id,
-            edit_session_id,
-            created_by_user_id,
-        )
-        .await?;
+        match node.kind {
+            NodeKind::Entity => {
+                Entity::new(
+                    db,
+                    Some(name),
+                    None,
+                    id,
+                    object_type,
+                    true,
+                    billing_account_id,
+                    organization_id,
+                    workspace_id,
+                    change_set_id,
+                    edit_session_id,
+                    created_by_user_id,
+                )
+                .await?;
+            }
+            NodeKind::System => {
+                System::new(
+                    db,
+                    Some(name),
+                    None,
+                    id,
+                    false,
+                    billing_account_id,
+                    organization_id,
+                    workspace_id,
+                    change_set_id,
+                    edit_session_id,
+                    created_by_user_id,
+                )
+                .await?;
+            }
+        }
 
         Ok(node)
     }

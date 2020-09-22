@@ -5,8 +5,8 @@ use std::collections::HashMap;
 
 use crate::data::Db;
 use crate::models::{
-    entity::ops, get_model, insert_model, upsert_model, Entity, EntityError, ModelError,
-    SiStorable, SiStorableError,
+    get_model, insert_model, ops, upsert_model, Entity, EntityError, ModelError, SiStorable,
+    SiStorableError,
 };
 
 #[derive(Error, Debug)]
@@ -18,7 +18,7 @@ pub enum ChangeSetError {
     #[error("malformed change set entry; type is missing")]
     TypeMissing,
     #[error("data layer error: {0}")]
-    Data(#[from] si_data::DataError),
+    Data(#[from] crate::data::DataError),
     #[error("unknown op; this is a bug! add it to the dispatch table: {0}")]
     UnknownOp(String),
     #[error("op error: {0}")]
@@ -139,6 +139,17 @@ impl ChangeSet {
         Ok(change_set)
     }
 
+    // TODO: Your mission, should you choose to accept it. We're implementing Systems right now,
+    // and in order to do that, we need to implement the system of operations that will allow us
+    // to configure them. That means change sets need to become more ephemeral than they were -
+    // right now, we create the ehntity directly, and we nee dit to just be json, for example.
+    //
+    // And then we need to do the same calculations we have done historically.
+    //
+    // Then we can wire it back to the top, and we'll be cooking with some motehrfucking gas.
+    //
+    // Well, sort of - we need to also create the edges appropriately, and figure out how those
+    // get bundled throughout the lifecycle. Little pieces, tho.
     pub async fn execute(&mut self, db: &Db, hypothetical: bool) -> ChangeSetResult<Vec<String>> {
         let change_set_entry_query = format!(
             "SELECT a.*
@@ -162,8 +173,8 @@ impl ChangeSet {
         // Apply all the operations, in order!
         for result in change_set_entry_query_results.into_iter() {
             match result["siStorable"]["typeName"].as_str() {
-                Some("opSetString") => {
-                    let op: ops::OpSetString = serde_json::from_value(result)?;
+                Some("opEntitySetString") => {
+                    let op: ops::OpEntitySetString = serde_json::from_value(result)?;
                     if last_entity_id.is_some() {
                         let lei = last_entity_id.as_ref().unwrap();
                         if lei != &op.entity_id {
@@ -192,8 +203,8 @@ impl ChangeSet {
             last_entity.calculate_properties().await?;
         }
 
-        // Now save all the entities new representations. If it is not a hypothetical execution,
-        // then save all the models to thier changeSet views. If it is hypothetical, then save
+        // Now save all the entities new representations. If it is a hypothetical execution,
+        // then save all the models to thier changeSet views. If it is not hypothetical, then save
         // their changeSet views *and* their final form, updating the head bit.
         for (entity_id, entity) in entity_map.iter_mut() {
             if hypothetical {

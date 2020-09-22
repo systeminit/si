@@ -2,7 +2,7 @@ use jwt_simple::algorithms::RSAKeyPairLike;
 use jwt_simple::claims::Claims;
 use jwt_simple::coarsetime::Duration;
 use serde::{Deserialize, Serialize};
-use si_data::Db;
+use crate::data::Db;
 use sodiumoxide::crypto::secretbox;
 
 use crate::handlers::HandlerError;

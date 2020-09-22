@@ -28,8 +28,13 @@ pub use workspace::{Workspace, WorkspaceError, WorkspaceResult};
 pub mod node;
 pub use node::{Node, NodeError, NodeKind, NodeResult};
 pub mod entity;
-pub use entity::ops::{OpError, OpResult};
 pub use entity::{Entity, EntityError, EntityResult};
+pub mod ops;
+pub use ops::{OpError, OpReply, OpRequest, OpResult};
+pub mod system;
+pub use system::{System, SystemError, SystemResult};
+pub mod edge;
+
 pub mod si_storable;
 pub use si_storable::{
     MinimalStorable, SiStorable, SiStorableError, SiStorableResult, SimpleStorable,
@@ -54,7 +59,7 @@ pub enum ModelError {
     #[error("couchbase error: {0}")]
     Couchbase(#[from] couchbase::error::CouchbaseError),
     #[error("data layer error: {0}")]
-    Data(#[from] si_data::DataError),
+    Data(#[from] crate::data::DataError),
     #[error("invalid tenancy")]
     Tenancy,
     #[error("no document found for get request with parameters")]

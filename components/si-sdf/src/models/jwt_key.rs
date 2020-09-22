@@ -19,7 +19,7 @@ use crate::models::{
 #[derive(Error, Debug)]
 pub enum JwtKeyError {
     #[error("database error: {0}")]
-    Data(#[from] si_data::DataError),
+    Data(#[from] crate::data::DataError),
     #[error("error in core model functions: {0}")]
     Model(#[from] ModelError),
     #[error("failed to decrypt secret data")]

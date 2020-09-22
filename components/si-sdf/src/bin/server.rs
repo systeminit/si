@@ -49,7 +49,7 @@ async fn main() -> anyhow::Result<()> {
     let settings = si_settings::Settings::new()?;
 
     println!("*** Connecting to the database ***");
-    let db = si_data::Db::new(&settings).context("failed to connect to the database")?;
+    let db = si_sdf::data::Db::new(&settings).context("failed to connect to the database")?;
 
     println!("*** Connecting to NATS ***");
     let nats = nats::asynk::connect("localhost").await?;

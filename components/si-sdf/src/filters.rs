@@ -2,7 +2,7 @@ use nats::asynk::Connection;
 use sodiumoxide::crypto::secretbox;
 use warp::Filter;
 
-use si_data::Db;
+use crate::data::Db;
 
 use crate::handlers;
 use crate::models;

@@ -1,11 +1,11 @@
-use si_data::Db;
+use crate::data::Db;
 
 use crate::handlers::{authenticate, authorize, HandlerError};
 use crate::models;
 use crate::models::change_set::ChangeSet;
-use crate::models::entity::ops::{OpReply, OpRequest, OpSetString};
 use crate::models::entity::Entity;
 use crate::models::node::{Node, PatchReply, PatchRequest};
+use crate::models::ops::{OpEntitySetString, OpReply, OpRequest};
 
 #[tracing::instrument(level = "trace", target = "nodes::create")]
 pub async fn create(
@@ -73,7 +73,7 @@ pub async fn patch(
             .map_err(HandlerError::from)?;
 
     let _op = match request.op {
-        OpRequest::SetString(op_request) => OpSetString::new(
+        OpRequest::EntitySetString(op_request) => OpEntitySetString::new(
             &db,
             &entity.id,
             &op_request.pointer,

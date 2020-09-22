@@ -3,24 +3,24 @@ debug = true
 
 [workspace]
 members = [
-  "components/si-account",
-  "components/si-agent",
+  #"components/si-account",
+  #"components/si-agent",
   # "components/si-aws-eks-cluster-runtime",
-  "components/si-cea",
-  "components/si-core",
-  "components/si-data",
+  #"components/si-cea",
+  #"components/si-core",
+  #"components/si-data",
   "components/si-sdf",
   # "components/si-external-api-gateway/rust-client",
-  "components/si-kubernetes",
+  #"components/si-kubernetes",
   "components/si-settings",
   # "components/si-ssh-key",
-  "components/si-transport",
+  #"components/si-transport",
   "vendor/couchbase-rs/couchbase",
   "vendor/couchbase-rs/couchbase-sys",
 ]
 
-[patch.crates-io]
+#[patch.crates-io]
 # Pending release of `paho-mqtt` 0.8.0 and `paho-mqtt-sys` 0.4.0 which
 # resolves: https://github.com/eclipse/paho.mqtt.rust/issues/75
-paho-mqtt = { git = "https://github.com/eclipse/paho.mqtt.rust" }
+#paho-mqtt = { git = "https://github.com/eclipse/paho.mqtt.rust" }
 

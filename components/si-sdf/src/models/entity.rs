@@ -9,8 +9,6 @@ use crate::models::{
     SiStorableError,
 };
 
-pub mod ops;
-
 #[derive(Error, Debug)]
 pub enum EntityError {
     #[error("si_storable error: {0}")]
@@ -24,7 +22,7 @@ pub enum EntityError {
     #[error("no head entity found; logic error")]
     NoHead,
     #[error("data layer error: {0}")]
-    Data(#[from] si_data::DataError),
+    Data(#[from] crate::data::DataError),
     #[error("no override system found: {0}")]
     Override(String),
 }

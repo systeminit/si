@@ -1,5 +1,5 @@
 use serde::Serialize;
-use si_data::Db;
+use crate::data::Db;
 use thiserror::Error;
 use tracing::error;
 use warp::http::StatusCode;
@@ -23,7 +23,7 @@ pub mod updates;
 #[derive(Error, Debug)]
 pub enum HandlerError {
     #[error("database error: {0}")]
-    Database(#[from] si_data::DataError),
+    Database(#[from] crate::data::DataError),
     #[error("invalid json pointer: {0}")]
     InvalidJsonPointer(String),
     #[error("invalid json value: {0}")]
@@ -201,7 +201,7 @@ pub async fn get_model_change_set(
 //                Some(contained_within) => contained_within,
 //                None => {
 //                    return Err(HandlerError::from(
-//                        si_data::DataError::MissingScopeByTenantId,
+//                        crate::data::DataError::MissingScopeByTenantId,
 //                    ))?
 //                }
 //            };

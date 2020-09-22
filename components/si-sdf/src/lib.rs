@@ -4,7 +4,7 @@ pub mod handlers;
 pub mod models;
 
 use nats::asynk::Connection;
-use si_data::Db;
+use crate::data::Db;
 use si_settings::Settings;
 use warp::Filter;
 
