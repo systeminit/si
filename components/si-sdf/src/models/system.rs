@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use thiserror::Error;
 
-use crate::data::Db;
+use crate::data::{Connection, Db};
 use crate::models::{
     insert_model, ModelError, SiChangeSet, SiChangeSetError, SiChangeSetEvent, SiStorable,
     SiStorableError,
@@ -52,6 +52,7 @@ impl System {
     #[tracing::instrument(level = "trace")]
     pub async fn new(
         db: &Db,
+        nats: &Connection,
         name: Option<String>,
         description: Option<String>,
         node_id: String,
@@ -90,7 +91,7 @@ impl System {
             si_storable,
             si_change_set: Some(si_change_set),
         };
-        insert_model(db, &system.id, &system).await?;
+        insert_model(db, nats, &system.id, &system).await?;
 
         Ok(system)
     }

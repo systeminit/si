@@ -37,6 +37,24 @@ export interface IChangeSetCreateReply {
   item: IChangeSet;
 }
 
+export interface IChangeSetExecuteRequest {
+  hypothetical: boolean;
+}
+
+export interface IChangeSetPatchOps {
+  execute?: IChangeSetExecuteRequest;
+}
+
+export interface IChangeSetPatchRequest {
+  op: IChangeSetPatchOps;
+  organizationId: string;
+  workspaceId: string;
+}
+
+export interface IChangeSetPatchReply {
+  execute?: string[];
+}
+
 export class ChangeSet implements IChangeSet {
   id: IChangeSet["id"];
   name: IChangeSet["name"];
@@ -128,6 +146,17 @@ export class ChangeSet implements IChangeSet {
       items,
       totalCount,
     };
+  }
+
+  async execute(request: IChangeSetExecuteRequest): Promise<void> {
+    let full_request: IChangeSetPatchRequest = {
+      op: {
+        execute: request,
+      },
+      workspaceId: this.siStorable.workspaceId,
+      organizationId: this.siStorable.organizationId,
+    };
+    await sdf.patch(`changeSets/${this.id}`, full_request);
   }
 
   async save(): Promise<void> {

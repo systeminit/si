@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::data::Db;
+use crate::data::{Connection, Db};
 use crate::models::{insert_model, ModelError, SiStorable, SiStorableError};
 
 #[derive(Error, Debug)]
@@ -42,6 +42,7 @@ pub struct EditSession {
 impl EditSession {
     pub async fn new(
         db: &Db,
+        nats: &Connection,
         name: Option<String>,
         change_set_id: String,
         billing_account_id: String,
@@ -68,7 +69,7 @@ impl EditSession {
             reverted: false,
             si_storable,
         };
-        insert_model(db, &edit_session.id, &edit_session).await?;
+        insert_model(db, nats, &edit_session.id, &edit_session).await?;
         Ok(edit_session)
     }
 }

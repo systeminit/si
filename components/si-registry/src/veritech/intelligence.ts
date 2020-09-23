@@ -1,4 +1,6 @@
 import * as express from "express";
+import _ from "lodash";
+
 import { registry } from "@/registry";
 import { EntityObject } from "@/systemComponent";
 
@@ -33,12 +35,12 @@ export interface Entity {
   };
 }
 
-interface IntelligenceRequest {
+interface CalculatePropertiesRequest {
   objectType: string;
   entity: Entity;
 }
 
-interface IntelligenceResponse {
+interface CalculatePropertiesReply {
   entity: Entity;
 }
 
@@ -48,12 +50,12 @@ interface IntelligenceResponse {
 // manualProperties
 // inferredProperties
 
-export function intelligence(
+export function calculateProperties(
   req: express.Request,
   res: express.Response,
 ): void {
-  console.log("POST /intelligence resolver begins");
-  const intelReq: IntelligenceRequest = req.body;
+  console.log("POST /calculateProperties resolver begins");
+  const intelReq: CalculatePropertiesRequest = req.body;
   let registryObj;
   try {
     registryObj = registry.get(intelReq.objectType + "Entity") as EntityObject;
@@ -66,8 +68,49 @@ export function intelligence(
     return;
   }
   registryObj.calculateProperties(intelReq.entity);
-  const intelRes: IntelligenceResponse = {
+  const intelRes: CalculatePropertiesReply = {
     entity: intelReq.entity,
   };
   res.send(intelRes);
+}
+
+enum Operation {
+  Set = "set",
+  Unset = "unset",
+}
+
+interface ApplyOpRequest {
+  operation: Operation;
+  toId: string;
+  path: string;
+  // eslint-disable-next-line
+  value?: any;
+  object: object;
+}
+
+interface ApplyOpReply {
+  object: object;
+}
+
+export function applyOp(req: express.Request, res: express.Response): void {
+  console.log("POST /applyOp resolver begins");
+  const opRequest: ApplyOpRequest = req.body;
+  const object = opRequest.object;
+  if (opRequest.operation == Operation.Set) {
+    if (opRequest.value) {
+      _.set(object, opRequest.path, opRequest.value);
+    } else {
+      res.status(400).send({
+        error: "operation was set, but no value was passed!",
+      });
+      return;
+    }
+  } else if (opRequest.operation == Operation.Unset) {
+    _.unset(object, opRequest.path);
+  }
+
+  const opReply: ApplyOpReply = {
+    object,
+  };
+  res.send(opReply);
 }

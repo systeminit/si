@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::data::Db;
+use crate::data::{Connection, Db};
 use crate::models::{insert_model, ModelError, SiStorable, SiStorableError};
 
 #[derive(Error, Debug)]
@@ -56,6 +56,7 @@ impl Edge {
     #[tracing::instrument(level = "trace")]
     pub async fn new(
         db: &Db,
+        nats: &Connection,
         head_vertex: Vertex,
         tail_vertex: Vertex,
         bidirectional: bool,
@@ -83,7 +84,7 @@ impl Edge {
             kind,
             si_storable,
         };
-        insert_model(db, &edge.id, &edge).await?;
+        insert_model(db, nats, &edge.id, &edge).await?;
 
         Ok(edge)
     }

@@ -1,6 +1,7 @@
 import _ from "lodash";
 import { urlSafeBase64Encode } from "@/api/sdf/base64";
 import { IListRequest, IListReply } from "@/api/sdf/model";
+import { Update } from "@/api/sdf/model/update";
 
 export class FetchError extends Error {
   response: Response;
@@ -16,6 +17,7 @@ export class SDF {
   baseUrl: string;
   wsBaseUrl: string;
   currentToken?: string;
+  update?: Update;
 
   constructor() {
     let baseUrl = process.env.VUE_APP_SDF || "http://localhost:5156";
@@ -31,10 +33,23 @@ export class SDF {
     this.wsBaseUrl = wsBaseUrl;
   }
 
+  async startUpdate() {
+    if (!this.update) {
+      this.setupUpdate();
+    }
+  }
+
+  async setupUpdate() {
+    const url = new URL(this.wsBaseUrl);
+    url.searchParams.set("token", `Bearer ${this.token}`);
+    this.update = new Update(url.toString());
+  }
+
   set token(token: SDF["currentToken"]) {
     this.currentToken = token;
     if (token) {
       localStorage.setItem("si-sdf-token", token);
+      this.setupUpdate();
     } else {
       localStorage.removeItem("si-sdf-token");
     }
@@ -99,6 +114,19 @@ export class SDF {
     const url = new URL(pathString, this.baseUrl);
     const request = new Request(url.toString(), {
       method: "POST",
+      mode: "cors",
+      headers,
+      body: JSON.stringify(args),
+    });
+    const response: T = await this.send_request(request);
+    return response;
+  }
+
+  async patch<T>(pathString: string, args: Record<string, any>): Promise<T> {
+    let headers = this.standard_headers();
+    const url = new URL(pathString, this.baseUrl);
+    const request = new Request(url.toString(), {
+      method: "PATCH",
       mode: "cors",
       headers,
       body: JSON.stringify(args),

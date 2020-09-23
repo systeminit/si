@@ -1,4 +1,4 @@
-use crate::data::Db;
+use crate::data::{Connection, Db};
 
 use crate::handlers::{authenticate, authorize, HandlerError};
 use crate::models;
@@ -10,6 +10,7 @@ use crate::models::ops::{OpEntitySetString, OpReply, OpRequest};
 #[tracing::instrument(level = "trace", target = "nodes::create")]
 pub async fn create(
     db: Db,
+    nats: Connection,
     token: String,
     request: models::node::CreateRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
@@ -25,6 +26,7 @@ pub async fn create(
 
     let node = models::node::Node::new(
         &db,
+        &nats,
         request.name,
         request.kind,
         request.object_type,
@@ -46,6 +48,7 @@ pub async fn create(
 pub async fn patch(
     node_id: String,
     db: Db,
+    nats: Connection,
     token: String,
     request: PatchRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
@@ -72,28 +75,67 @@ pub async fn patch(
             .await
             .map_err(HandlerError::from)?;
 
-    let _op = match request.op {
-        OpRequest::EntitySetString(op_request) => OpEntitySetString::new(
-            &db,
-            &entity.id,
-            &op_request.pointer,
-            &op_request.value,
-            op_request.override_system,
-            claim.billing_account_id,
-            request.organization_id,
-            request.workspace_id,
-            request.change_set_id,
-            request.edit_session_id,
-            claim.user_id,
-        )
-        .await
-        .map_err(HandlerError::from)?,
-    };
+    match request.op {
+        OpRequest::EntitySetString(op_request) => {
+            OpEntitySetString::new(
+                &db,
+                &nats,
+                &entity.id,
+                &op_request.path,
+                &op_request.value,
+                op_request.override_system,
+                claim.billing_account_id,
+                request.organization_id,
+                request.workspace_id,
+                request.change_set_id,
+                request.edit_session_id,
+                claim.user_id,
+            )
+            .await
+            .map_err(HandlerError::from)?;
+        }
+    }
 
     let item_ids = change_set
-        .execute(&db, true)
+        .execute(&db, &nats, true)
         .await
         .map_err(HandlerError::from)?;
     let reply = PatchReply::Op(OpReply { item_ids });
+    Ok(warp::reply::json(&reply))
+}
+
+#[tracing::instrument(level = "trace", target = "nodes::create")]
+pub async fn get_object(
+    node_id: String,
+    db: Db,
+    token: String,
+    request: models::GetRequest,
+) -> Result<impl warp::Reply, warp::reject::Rejection> {
+    let claim = authenticate(&db, &token).await?;
+    authorize(
+        &db,
+        &claim.user_id,
+        &claim.billing_account_id,
+        "node",
+        "objectGet",
+    )
+    .await?;
+
+    tracing::error!("wtf");
+    let node = models::node::Node::get(&db, node_id, claim.billing_account_id)
+        .await
+        .map_err(HandlerError::from)?;
+    let object: serde_json::Value = if let Some(change_set_id) = request.change_set_id {
+        node.get_object_projection(&db, change_set_id)
+            .await
+            .map_err(HandlerError::from)?
+    } else {
+        node.get_head_object(&db)
+            .await
+            .map_err(HandlerError::from)?
+    };
+    tracing::error!(?object, "got the obj");
+
+    let reply = models::GetReply { item: object };
     Ok(warp::reply::json(&reply))
 }

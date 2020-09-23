@@ -1,4 +1,4 @@
-use crate::data::Db;
+use crate::data::{Connection, Db};
 
 use crate::handlers::{authenticate, authorize, HandlerError};
 use crate::models::change_set::{
@@ -7,6 +7,7 @@ use crate::models::change_set::{
 
 pub async fn create(
     db: Db,
+    nats: Connection,
     token: String,
     request: CreateRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
@@ -22,6 +23,7 @@ pub async fn create(
 
     let change_set = ChangeSet::new(
         &db,
+        &nats,
         request.name,
         claim.billing_account_id,
         request.organization_id,
@@ -38,6 +40,7 @@ pub async fn create(
 pub async fn patch(
     change_set_id: String,
     db: Db,
+    nats: Connection,
     token: String,
     request: PatchRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
@@ -58,7 +61,7 @@ pub async fn patch(
                     .await
                     .map_err(HandlerError::from)?;
             let impacted_ids = change_set
-                .execute(&db, execute_request.hypothetical)
+                .execute(&db, &nats, execute_request.hypothetical)
                 .await
                 .map_err(HandlerError::from)?;
             PatchReply::Execute(ExecuteReply {

@@ -9,7 +9,7 @@ use tracing_subscriber::{self, fmt, EnvFilter, Registry};
 use std::env;
 use std::sync::Arc;
 
-use crate::data::Db;
+use si_sdf::data::Db;
 use si_sdf::models::{BillingAccount, User};
 use si_settings::Settings;
 
@@ -75,6 +75,7 @@ pub async fn test_setup() -> Result<TestAccount> {
     one_time_setup().await?;
     si_sdf::models::jwt_key::create_if_missing(
         &DB,
+        &NATS,
         "config/public.pem",
         "config/private.pem",
         &SETTINGS.jwt_encrypt.key,

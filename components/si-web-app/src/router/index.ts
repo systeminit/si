@@ -52,23 +52,21 @@ const routeCheck = async (to, from, next) => {
     return next("/signin");
   }
 
-  return next();
-
-  //if (store.state.loader.loaded) {
-  //  return next();
-  //} else {
-  //  if (to.path == "/loading") {
-  //    return next();
-  //  } else {
-  //    console.log("to", { to });
-  //    store.commit("loader/nextUp", {
-  //      name: _.cloneDeep(to.name),
-  //      params: _.cloneDeep(to.params),
-  //      query: _.cloneDeep(to.query),
-  //    });
-  //    return next("/loading");
-  //  }
-  //}
+  if (store.state.loader.loaded) {
+    return next();
+  } else {
+    if (to.path == "/loading") {
+      return next();
+    } else {
+      console.log("to", { to });
+      store.commit("loader/nextUp", {
+        name: _.cloneDeep(to.name),
+        params: _.cloneDeep(to.params),
+        query: _.cloneDeep(to.query),
+      });
+      return next("/loading");
+    }
+  }
 };
 
 router.beforeEach(async (to, from, next) => {

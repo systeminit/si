@@ -1,4 +1,4 @@
-use crate::data::Db;
+use crate::data::{Connection, Db};
 
 use crate::handlers::{authenticate, authorize, HandlerError};
 use crate::models::edit_session::{CreateReply, CreateRequest, EditSession};
@@ -6,6 +6,7 @@ use crate::models::edit_session::{CreateReply, CreateRequest, EditSession};
 pub async fn create(
     change_set_id: String,
     db: Db,
+    nats: Connection,
     token: String,
     request: CreateRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
@@ -21,6 +22,7 @@ pub async fn create(
 
     let edit_session = EditSession::new(
         &db,
+        &nats,
         request.name,
         change_set_id,
         claim.billing_account_id,

@@ -28,7 +28,7 @@ pub use workspace::{Workspace, WorkspaceError, WorkspaceResult};
 pub mod node;
 pub use node::{Node, NodeError, NodeKind, NodeResult};
 pub mod entity;
-pub use entity::{Entity, EntityError, EntityResult};
+pub use entity::{calculate_properties, Entity, EntityError, EntityResult};
 pub mod ops;
 pub use ops::{OpError, OpReply, OpRequest, OpResult};
 pub mod system;
@@ -76,6 +76,10 @@ pub enum ModelError {
     PageToken(#[from] PageTokenError),
     #[error("malformed list item body; missing id")]
     ListItemNoId,
+    #[error("no head object found")]
+    NoHead,
+    #[error("object is missing a typeName")]
+    MissingTypeName,
 }
 
 pub type ModelResult<T> = Result<T, ModelError>;
@@ -146,18 +150,27 @@ pub async fn publish_model<T: Serialize + std::fmt::Debug>(
     model: &T,
 ) -> ModelResult<()> {
     let model_json: serde_json::Value = serde_json::to_value(model)?;
+    if let Some(type_name) = model_json["siStorable"]["typeName"].as_str() {
+        match type_name {
+            "userPassword" | "jwtKeyPrivate" | "jwtKeyPublic" => return Ok(()),
+            _ => (),
+        }
+    } else {
+        return Err(ModelError::MissingTypeName);
+    }
     let mut subject_array: Vec<String> = Vec::new();
     if let Some(tenant_ids_values) = model_json["siStorable"]["tenantIds"].as_array() {
         for tenant_id_value in tenant_ids_values.iter() {
-            let tenant_id = tenant_id_value.to_string();
+            let tenant_id = String::from(tenant_id_value.as_str().unwrap());
             subject_array.push(tenant_id);
         }
     }
     if subject_array.len() != 0 {
         let subject: String = subject_array.join(".");
+        tracing::trace!(?subject, "publishing model");
         nats.publish(&subject, model_json.to_string()).await?;
     } else {
-        tracing::error!("tried to publish a model that has no tenancy!");
+        tracing::error!(?model, "tried to publish a model that has no tenancy!");
     }
     Ok(())
 }
@@ -165,11 +178,13 @@ pub async fn publish_model<T: Serialize + std::fmt::Debug>(
 #[tracing::instrument(level = "trace")]
 pub async fn insert_model<T: Serialize + std::fmt::Debug>(
     db: &Db,
+    nats: &Connection,
     id: impl AsRef<str> + std::fmt::Debug,
     model: &T,
 ) -> ModelResult<()> {
     let collection = db.bucket.default_collection();
     collection.insert(id.as_ref(), model, None).await?;
+    publish_model(nats, model).await?;
     tracing::trace!("inserted model");
     Ok(())
 }
@@ -177,11 +192,13 @@ pub async fn insert_model<T: Serialize + std::fmt::Debug>(
 #[tracing::instrument(level = "trace")]
 pub async fn upsert_model<T: Serialize + std::fmt::Debug>(
     db: &Db,
+    nats: &Connection,
     id: impl AsRef<str> + std::fmt::Debug,
     model: &T,
 ) -> ModelResult<()> {
     let collection = db.bucket.default_collection();
     collection.upsert(id.as_ref(), model, None).await?;
+    publish_model(nats, model).await?;
     tracing::trace!("upserted model");
     Ok(())
 }
@@ -467,5 +484,27 @@ pub async fn check_secondary_key(
         Ok(true)
     } else {
         Ok(false)
+    }
+}
+
+pub async fn get_head_object(db: &Db, id: impl AsRef<str>) -> ModelResult<serde_json::Value> {
+    let id = id.as_ref();
+    let query = format!(
+        "SELECT a.*
+          FROM `{bucket}` AS a
+          WHERE a.siStorable.objectId = $id 
+            AND a.head = true
+          LIMIT 1
+        ",
+        bucket = db.bucket_name
+    );
+    let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
+    named_params.insert("id".into(), serde_json::json![id]);
+    let mut query_results: Vec<serde_json::Value> = db.query(query, Some(named_params)).await?;
+    if query_results.len() == 0 {
+        Err(ModelError::NoHead)
+    } else {
+        let result = query_results.pop().unwrap();
+        Ok(result)
     }
 }

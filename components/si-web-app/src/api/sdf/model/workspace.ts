@@ -105,4 +105,4 @@ export class Workspace implements IWorkspace {
   }
 }
 
-db.users.mapToClass(Workspace);
+db.workspaces.mapToClass(Workspace);

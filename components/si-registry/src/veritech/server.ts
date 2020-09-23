@@ -3,16 +3,20 @@ import morgan from "morgan";
 import chalk from "chalk";
 import "@/loader";
 
-import { intelligence } from "@/veritech/intelligence";
+import { calculateProperties, applyOp } from "@/veritech/intelligence";
 
 export const app = express();
 app.use(express.json());
 app.use(morgan("tiny"));
 
-app.post("/intelligence", intelligence);
+app.post("/calculateProperties", calculateProperties);
+app.post("/applyOp", applyOp);
 
 export function start(port: number): void {
-  app.listen(port, () => {
+  const server = app.listen(port, () => {
     console.log(`Starting ${chalk.cyanBright("veritech")} on ${port}`);
   });
+  // This is probably way, way too high. But still!
+  server.keepAliveTimeout = 600000;
+  server.headersTimeout = 601000;
 }

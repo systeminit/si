@@ -11,7 +11,7 @@ pub async fn update(
     db: Db,
     nats: Connection,
     ws_token: WebsocketToken,
-) -> Result<impl warp::Reply, warp::reject::Rejection> {
+) -> Result<impl warp::reply::Reply, warp::reject::Rejection> {
     let token = ws_token.token;
     let claim = authenticate(&db, &token).await?;
     authorize(
@@ -23,7 +23,5 @@ pub async fn update(
     )
     .await?;
 
-    ws.on_upgrade(move |websocket| websocket_run(websocket, nats, claim));
-
-    Ok(warp::reply())
+    Ok(ws.on_upgrade(move |websocket| websocket_run(websocket, nats, claim)))
 }

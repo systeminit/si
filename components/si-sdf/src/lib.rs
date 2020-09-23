@@ -3,8 +3,8 @@ pub mod filters;
 pub mod handlers;
 pub mod models;
 
-use nats::asynk::Connection;
 use crate::data::Db;
+use nats::asynk::Connection;
 use si_settings::Settings;
 use warp::Filter;
 

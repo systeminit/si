@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::data::Db;
+use crate::data::{Connection, Db, REQWEST};
 use crate::models::{
     insert_model, Entity, ModelError, SiChangeSet, SiChangeSetError, SiChangeSetEvent, SiStorable,
     SiStorableError,
@@ -17,6 +17,10 @@ pub enum OpError {
     Model(#[from] ModelError),
     #[error("cannot set value: path({0}) value({1})")]
     Failed(String, serde_json::Value),
+    #[error("malformed target")]
+    MalformedTarget,
+    #[error("error making http call: {0}")]
+    Reqwest(#[from] reqwest::Error),
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -56,7 +60,7 @@ impl SiOp {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct OpEntitySetStringRequest {
-    pub pointer: String,
+    pub path: String,
     pub value: String,
     pub override_system: Option<String>,
 }
@@ -65,8 +69,8 @@ pub struct OpEntitySetStringRequest {
 #[serde(rename_all = "camelCase")]
 pub struct OpEntitySetString {
     pub id: String,
-    pub entity_id: String,
-    pub pointer: String,
+    pub to_id: String,
+    pub path: String,
     pub value: String,
     pub si_op: SiOp,
     pub si_storable: SiStorable,
@@ -76,8 +80,9 @@ pub struct OpEntitySetString {
 impl OpEntitySetString {
     pub async fn new(
         db: &Db,
-        entity_id: impl Into<String>,
-        pointer: impl Into<String>,
+        nats: &Connection,
+        to_id: impl Into<String>,
+        path: impl Into<String>,
         value: impl Into<String>,
         override_system: Option<String>,
         billing_account_id: String,
@@ -87,8 +92,8 @@ impl OpEntitySetString {
         edit_session_id: String,
         created_by_user_id: String,
     ) -> OpResult<Self> {
-        let entity_id = entity_id.into();
-        let pointer = pointer.into();
+        let to_id = to_id.into();
+        let path = path.into();
         let value = value.into();
         let si_storable = SiStorable::new(
             db,
@@ -114,14 +119,14 @@ impl OpEntitySetString {
 
         let op = OpEntitySetString {
             id,
-            entity_id,
-            pointer,
+            to_id,
+            path,
             value,
             si_op,
             si_storable,
             si_change_set,
         };
-        insert_model(db, &op.id, &op).await?;
+        insert_model(db, nats, &op.id, &op).await?;
         Ok(op)
     }
 
@@ -129,48 +134,22 @@ impl OpEntitySetString {
         self.si_op.skip()
     }
 
-    pub fn apply(&self, entity: &mut Entity) -> OpResult<()> {
-        let fallback_system = String::from("__baseline");
-        let override_system = match self.si_op.override_system {
-            Some(ref override_system) => override_system,
-            None => &fallback_system,
-        };
-        let properties = entity.manual_properties.get_or_create_mut(&override_system);
+    pub async fn apply(&self, to: &mut serde_json::Value) -> OpResult<()> {
+        let override_system = self
+            .si_op
+            .override_system
+            .as_deref()
+            .unwrap_or("__baseline");
 
-        match properties.pointer_mut(&self.pointer) {
-            Some(property) => {
-                let replaced =
-                    std::mem::replace(property, serde_json::Value::String(self.value.clone()));
-                tracing::debug!(?replaced, ?self.value, "replaced string");
-            }
-            None => {
-                let part_number = self.pointer.rfind('/');
-                // TODO: You know this is buggy. I *think* its okay, because essentially we won't
-                //       allow you to call it if it parents don't exist (because of the nature of
-                //       our structured editing - you would have to add the object before the
-                //       string!)
-                //
-                //       We make an exception for top level strings, but we make no attempt to
-                //       safely do that. so it's pretty sketchy, but moves us forward.
-                if part_number.is_some() && part_number.unwrap() == 0 {
-                    let mut new_pointer = self.pointer.clone();
-                    new_pointer.remove(0);
-                    if let Some(mprop) = properties.as_object_mut() {
-                        mprop.insert(new_pointer, serde_json::Value::String(self.value.clone()));
-                    } else {
-                        return Err(OpError::Failed(
-                            self.pointer.clone(),
-                            serde_json::json![self.value],
-                        ));
-                    }
-                } else {
-                    return Err(OpError::Failed(
-                        self.pointer.clone(),
-                        serde_json::json![self.value],
-                    ));
-                }
-            }
-        }
+        let apply_req = ApplyOpRequest::new(
+            ApplyOperation::Set,
+            &self.to_id,
+            format!("manualProperties.{}.{}", override_system, self.path),
+            Some(serde_json::json![self.value]),
+            to,
+        );
+        let result = apply_op(apply_req).await?;
+        *to = result;
         Ok(())
     }
 }
@@ -189,6 +168,7 @@ pub struct OpSetName {
 impl OpSetName {
     pub async fn new(
         db: &Db,
+        nats: &Connection,
         to_id: impl Into<String>,
         value: impl Into<String>,
         billing_account_id: String,
@@ -230,7 +210,7 @@ impl OpSetName {
             si_storable,
             si_change_set,
         };
-        insert_model(db, &op.id, &op).await?;
+        insert_model(db, nats, &op.id, &op).await?;
         Ok(op)
     }
 
@@ -238,14 +218,69 @@ impl OpSetName {
         self.si_op.skip()
     }
 
-    pub fn apply(&self, to: &mut serde_json::Value) -> OpResult<()> {
-        if let Some(name) = to.pointer_mut("/name") {
-            if let Some(name_string) = name.as_str() {
-                if name_string != self.value {
-                    *name = serde_json::json!(self.value);
-                }
-            }
-        }
+    pub async fn apply<'a>(&'a self, to: &'a mut serde_json::Value) -> OpResult<()> {
+        let apply_req = ApplyOpRequest::new(
+            ApplyOperation::Set,
+            &self.to_id,
+            "name",
+            Some(serde_json::json![self.value]),
+            to,
+        );
+        let result = apply_op(apply_req).await?;
+        *to = result;
         Ok(())
     }
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub enum ApplyOperation {
+    Set,
+    Unset,
+}
+
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ApplyOpRequest<'a> {
+    operation: ApplyOperation,
+    to_id: String,
+    path: String,
+    value: Option<serde_json::Value>,
+    object: &'a serde_json::Value,
+}
+
+impl<'a> ApplyOpRequest<'a> {
+    pub fn new(
+        operation: ApplyOperation,
+        to_id: impl Into<String>,
+        path: impl Into<String>,
+        value: Option<serde_json::Value>,
+        object: &'a serde_json::Value,
+    ) -> ApplyOpRequest {
+        let to_id = to_id.into();
+        let path = path.into();
+        ApplyOpRequest {
+            operation,
+            to_id,
+            path,
+            value,
+            object,
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ApplyOpReply {
+    object: serde_json::Value,
+}
+
+pub async fn apply_op<'a>(apply_op: ApplyOpRequest<'a>) -> OpResult<serde_json::Value> {
+    let res = REQWEST
+        .post("http://localhost:5157/applyOp")
+        .json(&apply_op)
+        .send()
+        .await?;
+    let apply_op_reply: ApplyOpReply = res.json().await?;
+    Ok(apply_op_reply.object)
 }

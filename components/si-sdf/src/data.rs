@@ -1,5 +1,6 @@
 use couchbase::{options::QueryOptions, options::ScanConsistency, SharedBucket, SharedCluster};
 use futures::stream::StreamExt;
+use reqwest;
 use serde::de::DeserializeOwned;
 use si_settings::Settings;
 use sodiumoxide::crypto::secretbox;
@@ -8,6 +9,10 @@ use thiserror::Error;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+lazy_static::lazy_static! {
+    pub static ref REQWEST: reqwest::Client = reqwest::Client::new();
+}
+
 #[derive(Error, Debug)]
 pub enum DataError {
     #[error("couchbase error: {0}")]
@@ -15,6 +20,8 @@ pub enum DataError {
 }
 
 pub type DataResult<T> = Result<T, DataError>;
+
+pub use nats::asynk::Connection;
 
 #[derive(Debug, Clone)]
 pub struct Db {
@@ -69,6 +76,7 @@ impl Db {
             Some(hashmap) => Some(query_options.set_named_parameters(hashmap)),
             None => Some(query_options),
         };
+        tracing::trace!("calling query");
         let mut result = self.cluster.query(query, named_options).await?;
         let mut result_stream = result.rows_as::<I>()?;
         let mut final_vec: Vec<I> = Vec::new();

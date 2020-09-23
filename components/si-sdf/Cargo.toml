@@ -31,6 +31,7 @@ jwt-simple = "0.1"
 base64 = "0.12"
 nats = { git = "https://github.com/systeminit/nats.rs", branch = "nkeys-upgrade" }
 futures = { version = "0.3", features = ["alloc"] }
+lazy_static = "1.4"
 
 [dev-dependencies]
 lazy_static = "1.4"

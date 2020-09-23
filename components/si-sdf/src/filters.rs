@@ -20,6 +20,7 @@ pub fn api(
         .or(users(db, nats, secret_key))
         .or(workspaces(db, nats))
         .or(updates(db, nats))
+        .or(entities(db))
 }
 
 // The Web Socket Update API
@@ -111,7 +112,7 @@ pub fn billing_accounts(
     db: &Db,
     nats: &Connection,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    billing_accounts_create(db.clone(), nats.clone())
+    billing_accounts_create(db.clone(), nats.clone()).or(billing_accounts_get(db.clone()))
 }
 
 pub fn billing_accounts_create(
@@ -124,6 +125,18 @@ pub fn billing_accounts_create(
         .and(with_nats(nats))
         .and(warp::body::json::<models::billing_account::CreateRequest>())
         .and_then(handlers::billing_accounts::create)
+}
+
+pub fn billing_accounts_get(
+    db: Db,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("billingAccounts" / String)
+        .and(warp::get())
+        .and(with_db(db))
+        .and(warp::header::<String>("authorization"))
+        .and(with_string("billingAccounts".into()))
+        .and(warp::query::<models::GetRequest>())
+        .and_then(handlers::get_model_change_set)
 }
 
 // Organization API
@@ -166,12 +179,12 @@ pub fn organizations_list(
 //   nodes_create: POST
 pub fn nodes(
     db: &Db,
-    _nats: &Connection,
+    nats: &Connection,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    nodes_create(db.clone())
+    nodes_create(db.clone(), nats.clone())
         .or(nodes_get(db.clone()))
         .or(nodes_object_get(db.clone()))
-        .or(nodes_object_patch(db.clone()))
+        .or(nodes_object_patch(db.clone(), nats.clone()))
 }
 
 pub fn nodes_get(
@@ -188,10 +201,12 @@ pub fn nodes_get(
 
 pub fn nodes_create(
     db: Db,
+    nats: Connection,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("nodes")
         .and(warp::post())
         .and(with_db(db))
+        .and(with_nats(nats))
         .and(warp::header::<String>("authorization"))
         .and(warp::body::json::<models::node::CreateRequest>())
         .and_then(handlers::nodes::create)
@@ -204,20 +219,43 @@ pub fn nodes_object_get(
         .and(warp::get())
         .and(with_db(db))
         .and(warp::header::<String>("authorization"))
-        .and(with_string("entity".into()))
         .and(warp::query::<models::GetRequest>())
-        .and_then(handlers::get_model_change_set)
+        .and_then(handlers::nodes::get_object)
 }
 
 pub fn nodes_object_patch(
     db: Db,
+    nats: Connection,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("nodes" / String / "object")
         .and(warp::patch())
         .and(with_db(db))
+        .and(with_nats(nats))
         .and(warp::header::<String>("authorization"))
         .and(warp::body::json::<models::node::PatchRequest>())
         .and_then(handlers::nodes::patch)
+}
+
+// Entity API
+//
+// entities
+//   entities_list: GET
+pub fn entities(
+    db: &Db,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    entities_list(db.clone())
+}
+
+pub fn entities_list(
+    db: Db,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("entities")
+        .and(warp::get())
+        .and(with_db(db))
+        .and(warp::header::<String>("authorization"))
+        .and(with_string("entity".into()))
+        .and(warp::query::<models::ListRequest>())
+        .and_then(handlers::list_models)
 }
 
 // Change Sets API
@@ -232,19 +270,21 @@ pub fn nodes_object_patch(
 //
 pub fn change_sets(
     db: &Db,
-    _nats: &Connection,
+    nats: &Connection,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    change_set_create(db.clone())
-        .or(change_set_patch(db.clone()))
-        .or(edit_session_create(db.clone()))
+    change_set_create(db.clone(), nats.clone())
+        .or(change_set_patch(db.clone(), nats.clone()))
+        .or(edit_session_create(db.clone(), nats.clone()))
 }
 
 pub fn change_set_create(
     db: Db,
+    nats: Connection,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("changeSets")
         .and(warp::post())
         .and(with_db(db))
+        .and(with_nats(nats))
         .and(warp::header::<String>("authorization"))
         .and(warp::body::json::<models::change_set::CreateRequest>())
         .and_then(handlers::change_sets::create)
@@ -252,10 +292,12 @@ pub fn change_set_create(
 
 pub fn change_set_patch(
     db: Db,
+    nats: Connection,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("changeSets" / String)
         .and(warp::patch())
         .and(with_db(db))
+        .and(with_nats(nats))
         .and(warp::header::<String>("authorization"))
         .and(warp::body::json::<models::change_set::PatchRequest>())
         .and_then(handlers::change_sets::patch)
@@ -263,10 +305,12 @@ pub fn change_set_patch(
 
 pub fn edit_session_create(
     db: Db,
+    nats: Connection,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("changeSets" / String / "editSessions")
         .and(warp::post())
         .and(with_db(db))
+        .and(with_nats(nats))
         .and(warp::header::<String>("authorization"))
         .and(warp::body::json::<models::edit_session::CreateRequest>())
         .and_then(handlers::edit_sessions::create)

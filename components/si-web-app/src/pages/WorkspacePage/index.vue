@@ -17,11 +17,17 @@
 import { mapState } from "vuex";
 
 import WorkspaceNav from "./WorkspaceNav.vue";
+import { sdf } from "@/api/sdf";
 
 export default {
   name: "WorkspacePage",
   components: {
     WorkspaceNav,
+  },
+  async beforeCreate() {
+    await sdf.startUpdate();
+    await this.$store.dispatch("organization/default");
+    await this.$store.dispatch("workspace/default");
   },
   async mounted() {
     let organization = this.$store.getters["organization/current"];

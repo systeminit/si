@@ -1,7 +1,7 @@
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::data::Db;
+use crate::data::{Connection, Db};
 use crate::models::{
     get_model, insert_model, Entity, EntityError, ModelError, OpReply, OpRequest, SiChangeSetError,
     SiStorable, SiStorableError, System, SystemError,
@@ -77,11 +77,20 @@ pub enum NodeKind {
     System,
 }
 
+impl std::fmt::Display for NodeKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let node_kind_string = match self {
+            NodeKind::System => "system",
+            NodeKind::Entity => "entity",
+        };
+        write!(f, "{}", node_kind_string)
+    }
+}
+
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Node {
     pub id: String,
-    pub name: String,
     pub positions: HashMap<String, Position>,
     pub kind: NodeKind,
     pub object_type: String,
@@ -92,6 +101,7 @@ impl Node {
     #[tracing::instrument(level = "trace")]
     pub async fn new(
         db: &Db,
+        nats: &Connection,
         name: Option<String>,
         kind: NodeKind,
         object_type: impl Into<String> + std::fmt::Debug,
@@ -118,18 +128,18 @@ impl Node {
 
         let node = Node {
             id: id.clone(),
-            name: name.clone(),
             positions: HashMap::new(),
             kind,
             object_type: object_type.clone(),
             si_storable,
         };
-        insert_model(db, &node.id, &node).await?;
+        insert_model(db, nats, &node.id, &node).await?;
 
         match node.kind {
             NodeKind::Entity => {
                 Entity::new(
                     db,
+                    nats,
                     Some(name),
                     None,
                     id,
@@ -147,6 +157,7 @@ impl Node {
             NodeKind::System => {
                 System::new(
                     db,
+                    nats,
                     Some(name),
                     None,
                     id,
@@ -172,12 +183,13 @@ impl Node {
         let query = format!(
             "SELECT a.*
           FROM `{bucket}` AS a
-          WHERE a.siStorable.typeName = \"entity\"
+          WHERE a.siStorable.typeName = \"{type_name}\"
             AND a.nodeId = $node_id
             AND a.head = true
           LIMIT 1
         ",
-            bucket = db.bucket_name
+            bucket = db.bucket_name,
+            type_name = self.kind,
         );
         let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
         named_params.insert("node_id".into(), serde_json::json![&self.id]);
@@ -199,13 +211,14 @@ impl Node {
         let query = format!(
             "SELECT a.*
           FROM `{bucket}` AS a
-          WHERE a.siStorable.typeName = \"entity\"
+          WHERE a.siStorable.typeName = \"{type_name}\"
             AND a.siChangeSet.changeSetId = $change_set_id
             AND a.nodeId = $node_id
             AND a.head = false
           LIMIT 1
         ",
-            bucket = db.bucket_name
+            bucket = db.bucket_name,
+            type_name = self.kind,
         );
         let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
         named_params.insert("node_id".into(), serde_json::json![&self.id]);

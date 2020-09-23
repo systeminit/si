@@ -13,15 +13,15 @@ export interface ISiStorable {
 }
 
 export interface ISimpleStorable {
-  typeName: String;
-  objectId: String;
-  billingAccountId: String;
-  tenantIds: String[];
+  typeName: string;
+  objectId: string;
+  billingAccountId: string;
+  tenantIds: string[];
   deleted: boolean;
 }
 
 export interface IMinimalStorable {
-  typeName: String;
-  objectId: String;
+  typeName: string;
+  objectId: string;
   deleted: boolean;
 }

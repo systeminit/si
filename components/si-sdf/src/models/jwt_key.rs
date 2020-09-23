@@ -10,7 +10,7 @@ use thiserror::Error;
 use std::fs::File;
 use std::io::prelude::*;
 
-use crate::data::Db;
+use crate::data::{Connection, Db};
 use crate::handlers::users::SiClaims;
 use crate::models::{
     generate_id, insert_model, MinimalStorable, ModelError, UpdateClock, UpdateClockError,
@@ -64,6 +64,7 @@ pub struct JwtKeyPublic {
 impl JwtKeyPublic {
     pub async fn new(
         db: &Db,
+        nats: &Connection,
         id: impl AsRef<str>,
         key_type: JwtKeyType,
         key: impl Into<String>,
@@ -80,7 +81,7 @@ impl JwtKeyPublic {
             si_storable,
             update_clock,
         };
-        insert_model(db, &object.id, &object).await?;
+        insert_model(db, nats, &object.id, &object).await?;
         Ok(object)
     }
 
@@ -132,6 +133,7 @@ pub struct JwtKeyPrivate {
 impl JwtKeyPrivate {
     pub async fn new(
         db: &Db,
+        nats: &Connection,
         id: impl AsRef<str>,
         key_type: JwtKeyType,
         key: impl Into<String>,
@@ -155,7 +157,7 @@ impl JwtKeyPrivate {
             si_storable,
             update_clock,
         };
-        insert_model(db, &object.id, &object).await?;
+        insert_model(db, nats, &object.id, &object).await?;
         Ok(object)
     }
 
@@ -198,6 +200,7 @@ impl JwtKeyPrivate {
 
 pub async fn create_if_missing(
     db: &Db,
+    nats: &Connection,
     public_filename: impl AsRef<str>,
     private_filename: impl AsRef<str>,
     secret_key: &secretbox::Key,
@@ -223,12 +226,12 @@ pub async fn create_if_missing(
     let mut private_key = String::new();
     private_file.read_to_string(&mut private_key)?;
     let _jwt_key_private =
-        JwtKeyPrivate::new(db, &id, JwtKeyType::RS256, private_key, secret_key).await?;
+        JwtKeyPrivate::new(db, nats, &id, JwtKeyType::RS256, private_key, secret_key).await?;
 
     let mut public_file = File::open(public_filename)?;
     let mut public_key = String::new();
     public_file.read_to_string(&mut public_key)?;
-    let _jwt_key_public = JwtKeyPublic::new(db, &id, JwtKeyType::RS256, public_key).await?;
+    let _jwt_key_public = JwtKeyPublic::new(db, nats, &id, JwtKeyType::RS256, public_key).await?;
 
     Ok(())
 }

@@ -3,6 +3,7 @@ import _ from "lodash";
 
 import { RootStore } from "@/store";
 
+import { IUser } from "@/api/sdf/model/user";
 import {
   BillingAccount,
   IBillingAccountCreateRequest,
@@ -24,6 +25,13 @@ export const billingAccount: Module<BillingAccountStore, RootStore> = {
     },
   },
   actions: {
+    async forUser({ commit, rootGetters }): Promise<void> {
+      let user: IUser = rootGetters["user/current"];
+      let billingAccount = await BillingAccount.get({
+        id: user.siStorable.billingAccountId,
+      });
+      commit("current", billingAccount);
+    },
     async fromDb({ commit, state }, payload: BillingAccount): Promise<void> {
       if (state.current?.id === payload.id) {
         commit("current", payload);

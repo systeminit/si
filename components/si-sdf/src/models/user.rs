@@ -4,7 +4,7 @@ use thiserror::Error;
 
 use std::collections::HashMap;
 
-use crate::data::Db;
+use crate::data::{Connection, Db};
 use crate::models::{
     check_secondary_key, generate_id, get_model, insert_model, ModelError, SiStorableError,
     SimpleStorable,
@@ -57,6 +57,7 @@ pub struct User {
 impl User {
     pub async fn new(
         db: &Db,
+        nats: &Connection,
         name: impl Into<String>,
         email: impl Into<String>,
         billing_account_id: impl Into<String>,
@@ -78,9 +79,9 @@ impl User {
             email,
             si_storable,
         };
-        insert_model(db, &object.id, &object).await?;
+        insert_model(db, nats, &object.id, &object).await?;
 
-        let _user_password = UserPassword::new(db, id, password, billing_account_id).await?;
+        let _user_password = UserPassword::new(db, nats, id, password, billing_account_id).await?;
 
         Ok(object)
     }
@@ -144,6 +145,7 @@ pub struct UserPassword {
 impl UserPassword {
     pub async fn new(
         db: &Db,
+        nats: &Connection,
         user_id: impl Into<String>,
         password: impl Into<String>,
         billing_account_id: impl Into<String>,
@@ -160,7 +162,7 @@ impl UserPassword {
             password_hash,
             si_storable,
         };
-        insert_model(db, &object.id, &object).await?;
+        insert_model(db, nats, &object.id, &object).await?;
 
         Ok(object)
     }

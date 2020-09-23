@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::data::Db;
+use crate::data::{Connection, Db};
 use crate::models::{
     check_secondary_key, generate_id, get_model, insert_model, ModelError, SiStorableError,
     SimpleStorable,
@@ -30,6 +30,7 @@ pub struct Workspace {
 impl Workspace {
     pub async fn new(
         db: &Db,
+        nats: &Connection,
         name: impl Into<String>,
         billing_account_id: impl Into<String>,
     ) -> WorkspaceResult<Workspace> {
@@ -47,7 +48,7 @@ impl Workspace {
             name,
             si_storable,
         };
-        insert_model(db, &object.id, &object).await?;
+        insert_model(db, nats, &object.id, &object).await?;
         Ok(object)
     }
 

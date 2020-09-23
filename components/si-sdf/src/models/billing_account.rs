@@ -1,10 +1,9 @@
-use nats::asynk::Connection;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use std::collections::HashMap;
 
-use crate::data::Db;
+use crate::data::{Connection, Db};
 use crate::models::{
     check_secondary_key_universal, generate_id, get_model, insert_model, publish_model, Capability,
     Group, GroupError, ModelError, Organization, OrganizationError, SiStorableError,
@@ -82,8 +81,7 @@ impl BillingAccount {
             description,
             si_storable,
         };
-        insert_model(db, &object.id, &object).await?;
-        publish_model(nats, &object).await?;
+        insert_model(db, nats, &object.id, &object).await?;
         Ok(object)
     }
 
@@ -102,6 +100,7 @@ impl BillingAccount {
 
         let user = User::new(
             db,
+            nats,
             user_name,
             user_email,
             &billing_account.id,
@@ -111,6 +110,7 @@ impl BillingAccount {
 
         let admin_group = Group::new(
             db,
+            nats,
             "administrators",
             vec![user.id.clone()],
             vec![Capability::new("any", "any")],
@@ -118,9 +118,9 @@ impl BillingAccount {
         )
         .await?;
 
-        let organization = Organization::new(db, "default", &billing_account.id).await?;
+        let organization = Organization::new(db, nats, "default", &billing_account.id).await?;
 
-        let workspace = Workspace::new(db, "default", &billing_account.id).await?;
+        let workspace = Workspace::new(db, nats, "default", &billing_account.id).await?;
 
         Ok((billing_account, user, admin_group, organization, workspace))
     }

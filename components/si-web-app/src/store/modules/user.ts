@@ -4,6 +4,7 @@ import * as jwtLib from "jsonwebtoken";
 import { GetCurrentError } from "@/store";
 import { User, IUserLoginRequest } from "@/api/sdf/model/user";
 import { sdf } from "@/api/sdf";
+import { wipe } from "@/api/sdf/dexie";
 
 export interface UserStore {
   current: null | User;
@@ -44,7 +45,9 @@ export const user: Module<UserStore, any> = {
         // associated user object. Lets fix that.
         if (state.current == null) {
           if (decodedToken["payload"]["userId"]) {
-            let user = User.get({ id: decodedToken["payload"]["userId"] });
+            let user = await User.get({
+              id: decodedToken["payload"]["userId"],
+            });
             commit("current", user);
           }
         }
@@ -53,18 +56,14 @@ export const user: Module<UserStore, any> = {
         return false;
       }
     },
-    async login(
-      { commit, dispatch },
-      payload: IUserLoginRequest,
-    ): Promise<void> {
+    async login({ commit }, payload: IUserLoginRequest): Promise<void> {
       const user = await User.login(payload);
       commit("current", user);
-      await dispatch("workspace/default", {}, { root: true });
-      await dispatch("organization/default", {}, { root: true });
     },
     async logout({ commit, state }): Promise<void> {
       if (state.current) {
         User.upgrade(state.current).logout();
+        await wipe();
         commit("current", null);
       }
     },

@@ -34,7 +34,7 @@ async fn main() -> anyhow::Result<()> {
 
     let tracer = provider.get_tracer(service_name);
 
-    let fmt_layer = fmt::Layer::default();
+    let fmt_layer = fmt::Layer::default().compact();
     let opentelemetry_layer = layer().with_tracer(tracer);
     let env_filter_layer = EnvFilter::from_default_env();
 
@@ -60,6 +60,7 @@ async fn main() -> anyhow::Result<()> {
     println!("*** Checking for JWT keys ***");
     si_sdf::models::jwt_key::create_if_missing(
         &db,
+        &nats,
         "config/public.pem",
         "config/private.pem",
         &settings.jwt_encrypt.key,

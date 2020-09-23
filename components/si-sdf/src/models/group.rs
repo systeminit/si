@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::data::Db;
+use crate::data::{Connection, Db};
 use crate::models::{
     check_secondary_key, generate_id, get_model, insert_model, ModelError, SiStorableError,
     SimpleStorable,
@@ -51,6 +51,7 @@ pub struct Group {
 impl Group {
     pub async fn new(
         db: &Db,
+        nats: &Connection,
         name: impl Into<String>,
         user_ids: Vec<String>,
         capabilities: Vec<Capability>,
@@ -72,7 +73,7 @@ impl Group {
             capabilities,
             si_storable,
         };
-        insert_model(db, &object.id, &object).await?;
+        insert_model(db, nats, &object.id, &object).await?;
         Ok(object)
     }
 

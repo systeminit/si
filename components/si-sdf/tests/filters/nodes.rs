@@ -3,7 +3,7 @@ use crate::filters::edit_sessions::create_edit_session;
 use crate::{test_cleanup, test_setup, TestAccount};
 use crate::{DB, NATS, SETTINGS};
 use si_sdf::filters::api;
-use si_sdf::models::{entity, node, Node};
+use si_sdf::models::{entity, node, ops, Entity, Node};
 
 pub async fn create_node(
     test_account: &TestAccount,
@@ -99,6 +99,37 @@ async fn get() {
 }
 
 #[tokio::test]
+async fn get_object() {
+    let test_account = test_setup().await.expect("failed to setup test");
+
+    let filter = api(&DB, &NATS, &SETTINGS.jwt_encrypt.key);
+    let change_set_id = create_change_set(&test_account).await;
+    let edit_session_id = create_edit_session(&test_account, &change_set_id).await;
+    let node_reply = create_node(&test_account, &change_set_id, &edit_session_id, "service").await;
+
+    let res = warp::test::request()
+        .method("GET")
+        .header("authorization", &test_account.authorization)
+        .path(format!("/nodes/{}/object", &node_reply.item.id).as_ref())
+        .reply(&filter)
+        .await;
+    let get_reply: si_sdf::models::GetReply =
+        serde_json::from_slice(res.body()).expect("cannot deserialize get reply");
+
+    let entity: Entity =
+        serde_json::from_value(get_reply.item).expect("cannot extract object from reply");
+
+    assert_eq!(
+        entity.object_type, "service",
+        "fetched object must be the same object type"
+    );
+
+    test_cleanup(test_account)
+        .await
+        .expect("failed to finish test");
+}
+
+#[tokio::test]
 async fn patch() {
     let test_account = test_setup().await.expect("failed to setup test");
 
@@ -113,8 +144,8 @@ async fn patch() {
         .expect("cannot get head object for node");
 
     let request = node::PatchRequest {
-        op: entity::ops::OpRequest::SetString(entity::ops::OpSetStringRequest {
-            pointer: "/strahd".into(),
+        op: ops::OpRequest::EntitySetString(ops::OpEntitySetStringRequest {
+            path: "strahd".into(),
             value: "von zarovich".into(),
             override_system: None,
         }),
@@ -131,6 +162,7 @@ async fn patch() {
         .path(format!("/nodes/{}/object", &node.id).as_ref())
         .reply(&filter)
         .await;
+    tracing::error!(?res);
     let reply: node::PatchReply =
         serde_json::from_slice(res.body()).expect("cannot deserialize reply");
 

@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use thiserror::Error;
 
-use crate::data::Db;
+use crate::data::{Connection, Db, REQWEST};
 use crate::models::{
     insert_model, ModelError, SiChangeSet, SiChangeSetError, SiChangeSetEvent, SiStorable,
     SiStorableError,
@@ -25,6 +25,10 @@ pub enum EntityError {
     Data(#[from] crate::data::DataError),
     #[error("no override system found: {0}")]
     Override(String),
+    #[error("invalid entity; missing object type")]
+    MissingObjectType,
+    #[error("json serialization error: {0}")]
+    Json(#[from] serde_json::Error),
 }
 
 pub type EntityResult<T> = Result<T, EntityError>;
@@ -43,15 +47,15 @@ pub struct CreateReply {
 
 #[derive(Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct IntelligenceRequest<'a> {
+pub struct CalculatePropertiesRequest<'a> {
     object_type: &'a str,
-    entity: &'a Entity,
+    entity: &'a serde_json::Value,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct IntelligenceResponse {
-    entity: Entity,
+pub struct CalculatePropertiesResponse {
+    entity: serde_json::Value,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
@@ -129,6 +133,7 @@ impl Entity {
     #[tracing::instrument(level = "trace")]
     pub async fn new(
         db: &Db,
+        nats: &Connection,
         name: Option<String>,
         description: Option<String>,
         node_id: String,
@@ -178,23 +183,16 @@ impl Entity {
             si_change_set: Some(si_change_set),
         };
         entity.calculate_properties().await?;
-        insert_model(db, &entity.id, &entity).await?;
+        insert_model(db, nats, &entity.id, &entity).await?;
 
         Ok(entity)
     }
 
     pub async fn calculate_properties(&mut self) -> EntityResult<()> {
-        let client = reqwest::Client::new();
-        let res = client
-            .post("http://localhost:5157/intelligence")
-            .json(&IntelligenceRequest {
-                object_type: &self.object_type,
-                entity: &self,
-            })
-            .send()
-            .await?;
-        let entity_result: IntelligenceResponse = res.json().await?;
-        let _old_value = std::mem::replace(self, entity_result.entity);
+        let mut json = serde_json::json![self];
+        calculate_properties(&mut json).await?;
+        let new_entity: Entity = serde_json::from_value(json)?;
+        *self = new_entity;
         Ok(())
     }
 
@@ -220,4 +218,21 @@ impl Entity {
             Ok(result)
         }
     }
+}
+
+pub async fn calculate_properties(json: &mut serde_json::Value) -> EntityResult<()> {
+    let object_type = json["objectType"]
+        .as_str()
+        .ok_or(EntityError::MissingObjectType)?;
+    let res = REQWEST
+        .post("http://localhost:5157/calculateProperties")
+        .json(&CalculatePropertiesRequest {
+            object_type,
+            entity: json,
+        })
+        .send()
+        .await?;
+    let entity_result: CalculatePropertiesResponse = res.json().await?;
+    *json = entity_result.entity;
+    Ok(())
 }

@@ -86,11 +86,11 @@
 
 <script lang="ts">
 import Vue from "vue";
-import { mapGetters } from "vuex";
+import { mapState } from "vuex";
 import { registry } from "si-registry";
 import { PlusSquareIcon, XIcon } from "vue-feather-icons";
 
-import { RootStore } from "@/store";
+import { RootStore } from "../../../store";
 import ApplicationCard from "./ApplicationCard.vue";
 
 interface Data {
@@ -156,11 +156,15 @@ export default Vue.extend({
     },
   },
   computed: {
-    ...mapGetters({
-      applications: "application/saved",
+    ...mapState({
+      applications(state: RootStore): RootStore["application"]["list"] {
+        return state.application.list;
+      },
     }),
   },
-  created() {},
+  async mounted() {
+    await this.$store.dispatch("application/list");
+  },
 });
 </script>
 

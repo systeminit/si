@@ -38,9 +38,10 @@ export interface AddMutation<T> {
   items: T[];
 }
 
-const vuexLocal = new VuexPersistence({
-  storage: window.localStorage,
-});
+//const vuexLocal = new VuexPersistence({
+//  storage: window.localStorage,
+//  modules: ["user", "billingAccount", "workspace", "organization"],
+//});
 
 export interface RootStore {
   editor: EditorStore;
@@ -84,7 +85,7 @@ const store: Store<RootStore> = new Vuex.Store({
     loader,
   },
   strict: debug,
-  plugins: [persistEdits, persistNodes, vuexLocal.plugin],
+  plugins: [persistEdits, persistNodes], //vuexLocal.plugin],
 });
 
 export default store;

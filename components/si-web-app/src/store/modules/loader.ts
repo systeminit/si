@@ -1,7 +1,6 @@
 import { Module } from "vuex";
 import _ from "lodash";
 
-import { graphqlQuery } from "@/api/apollo";
 import { RootStore } from "@/store";
 
 export interface LoaderStore {
@@ -32,22 +31,9 @@ export const loader: Module<LoaderStore, RootStore> = {
     async load({ state, commit, dispatch, rootState }): Promise<void> {
       if (!state.loaded) {
         commit("loading", true);
-        await dispatch("workspace/load", {}, { root: true });
-        await dispatch(
-          "billingAccount/get",
-          {
-            billingAccountId: rootState.user.auth.profile?.billingAccount?.id,
-          },
-          { root: true },
-        );
-        await dispatch("system/load", {}, { root: true });
-        await dispatch("node/load", {}, { root: true });
-        await dispatch("edge/load", {}, { root: true });
-        await dispatch("resource/load", {}, { root: true });
-        await dispatch("editSession/load", {}, { root: true });
-        await dispatch("changeSet/load", {}, { root: true });
-        await dispatch("entity/load", {}, { root: true });
-        await dispatch("eventLog/load", {}, { root: true });
+        await dispatch("billingAccount/forUser", {}, { root: true });
+        await dispatch("workspace/default", {}, { root: true });
+        await dispatch("organization/default", {}, { root: true });
         commit("loading", false);
         commit("loaded", true);
       }

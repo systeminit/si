@@ -3,10 +3,10 @@ use thiserror::Error;
 
 use std::collections::HashMap;
 
-use crate::data::Db;
+use crate::data::{Connection, Db};
 use crate::models::{
-    get_model, insert_model, ops, upsert_model, Entity, EntityError, ModelError, SiStorable,
-    SiStorableError,
+    calculate_properties, get_head_object, get_model, insert_model, ops, upsert_model, Entity,
+    EntityError, ModelError, SiStorable, SiStorableError, System,
 };
 
 #[derive(Error, Debug)]
@@ -17,6 +17,10 @@ pub enum ChangeSetError {
     Model(#[from] ModelError),
     #[error("malformed change set entry; type is missing")]
     TypeMissing,
+    #[error("malformed change set entry; id is missing")]
+    IdMissing,
+    #[error("malformed change set entry; to_id is missing")]
+    ToIdMissing,
     #[error("data layer error: {0}")]
     Data(#[from] crate::data::DataError),
     #[error("unknown op; this is a bug! add it to the dispatch table: {0}")]
@@ -27,6 +31,8 @@ pub enum ChangeSetError {
     SerdeJson(#[from] serde_json::Error),
     #[error("error in entity: {0}")]
     Entity(#[from] EntityError),
+    #[error("missing head value in object")]
+    MissingHead,
 }
 
 pub type ChangeSetResult<T> = Result<T, ChangeSetError>;
@@ -97,9 +103,15 @@ pub struct ChangeSet {
     pub si_storable: SiStorable,
 }
 
+enum ChangeSetMapObject {
+    Entity(Entity),
+    System(System),
+}
+
 impl ChangeSet {
     pub async fn new(
         db: &Db,
+        nats: &Connection,
         name: Option<String>,
         billing_account_id: String,
         organization_id: String,
@@ -124,7 +136,7 @@ impl ChangeSet {
             status: ChangeSetStatus::Open,
             si_storable,
         };
-        insert_model(db, &change_set.id, &change_set).await?;
+        insert_model(db, nats, &change_set.id, &change_set).await?;
         Ok(change_set)
     }
 
@@ -139,18 +151,12 @@ impl ChangeSet {
         Ok(change_set)
     }
 
-    // TODO: Your mission, should you choose to accept it. We're implementing Systems right now,
-    // and in order to do that, we need to implement the system of operations that will allow us
-    // to configure them. That means change sets need to become more ephemeral than they were -
-    // right now, we create the ehntity directly, and we nee dit to just be json, for example.
-    //
-    // And then we need to do the same calculations we have done historically.
-    //
-    // Then we can wire it back to the top, and we'll be cooking with some motehrfucking gas.
-    //
-    // Well, sort of - we need to also create the edges appropriately, and figure out how those
-    // get bundled throughout the lifecycle. Little pieces, tho.
-    pub async fn execute(&mut self, db: &Db, hypothetical: bool) -> ChangeSetResult<Vec<String>> {
+    pub async fn execute(
+        &mut self,
+        db: &Db,
+        nats: &Connection,
+        hypothetical: bool,
+    ) -> ChangeSetResult<Vec<String>> {
         let change_set_entry_query = format!(
             "SELECT a.*
           FROM `{bucket}` AS a
@@ -167,60 +173,86 @@ impl ChangeSet {
             .query(change_set_entry_query, Some(change_set_entry_named_params))
             .await?;
 
-        let mut entity_map: HashMap<String, Entity> = HashMap::new();
-        let mut last_entity_id: Option<String> = None;
+        let mut seen_map: HashMap<String, serde_json::Value> = HashMap::new();
+        let mut last_id: Option<String> = None;
+        let mut last_type_name: Option<String> = None;
 
-        // Apply all the operations, in order!
-        for result in change_set_entry_query_results.into_iter() {
-            match result["siStorable"]["typeName"].as_str() {
-                Some("opEntitySetString") => {
-                    let op: ops::OpEntitySetString = serde_json::from_value(result)?;
-                    if last_entity_id.is_some() {
-                        let lei = last_entity_id.as_ref().unwrap();
-                        if lei != &op.entity_id {
-                            let last_entity = entity_map.get_mut(&last_entity_id.unwrap()).unwrap();
-                            last_entity.calculate_properties().await?;
-                        }
-                    };
-                    let entity = if entity_map.contains_key(&op.entity_id) {
-                        entity_map.get_mut(&op.entity_id).unwrap()
-                    } else {
-                        let head_entity = Entity::get_head(db, &op.entity_id).await?;
-                        entity_map.insert(op.entity_id.clone(), head_entity);
-                        entity_map.get_mut(&op.entity_id).unwrap()
-                    };
-                    last_entity_id = Some(op.entity_id.clone());
-                    op.apply(entity)?;
+        for change_set_entry in change_set_entry_query_results.into_iter() {
+            let entry_type_name = change_set_entry["siStorable"]["typeName"]
+                .as_str()
+                .ok_or(ChangeSetError::TypeMissing)?;
+            last_type_name = Some(String::from(entry_type_name));
+            let to_id = change_set_entry["toId"]
+                .as_str()
+                .ok_or(ChangeSetError::ToIdMissing)?;
+
+            if last_id.is_some() {
+                let lei = last_id.as_ref().unwrap();
+                if lei != to_id && entry_type_name == "entity" {
+                    let last_obj = seen_map.get_mut(&last_id.unwrap()).unwrap();
+                    calculate_properties(last_obj).await?;
                 }
-                Some(unknown) => return Err(ChangeSetError::UnknownOp(unknown.into())),
-                None => return Err(ChangeSetError::TypeMissing),
+            };
+            let obj = if seen_map.contains_key(to_id) {
+                seen_map.get_mut(to_id).unwrap()
+            } else {
+                let head_obj = get_head_object(db, to_id).await?;
+                seen_map.insert(String::from(to_id), head_obj);
+                seen_map.get_mut(to_id).unwrap()
+            };
+            last_id = Some(String::from(to_id));
+            match entry_type_name {
+                "opEntitySetString" => {
+                    let op: ops::OpEntitySetString = serde_json::from_value(change_set_entry)?;
+                    op.apply(obj).await?;
+                }
+                "opSetName" => {
+                    let op: ops::OpSetName = serde_json::from_value(change_set_entry)?;
+                    op.apply(obj).await?;
+                }
+                unknown => tracing::error!("cannot find an op for {}", unknown),
             }
         }
 
-        // Calculate the final entities properties
-        if last_entity_id.is_some() {
-            let last_entity = entity_map.get_mut(&last_entity_id.unwrap()).unwrap();
-            last_entity.calculate_properties().await?;
+        //// Calculate the final entities properties
+        if last_type_name.is_some() && last_type_name.unwrap() == "entity" {
+            let mut last_entity = seen_map.get_mut(&last_id.unwrap()).unwrap();
+            calculate_properties(&mut last_entity).await?;
         }
 
-        // Now save all the entities new representations. If it is a hypothetical execution,
+        // Now save all the new representations. If it is a hypothetical execution,
         // then save all the models to thier changeSet views. If it is not hypothetical, then save
         // their changeSet views *and* their final form, updating the head bit.
-        for (entity_id, entity) in entity_map.iter_mut() {
+        for (id, obj) in seen_map.iter_mut() {
             if hypothetical {
-                let projection_id = format!("{}:{}", entity_id, &self.id);
-                entity.head = false;
-                upsert_model(db, projection_id, entity).await?;
+                let projection_id = format!("{}:{}", id, &self.id);
+                {
+                    let head = obj
+                        .pointer_mut("/head")
+                        .ok_or(ChangeSetError::MissingHead)?;
+                    *head = serde_json::Value::Bool(false);
+                }
+                upsert_model(db, nats, projection_id, obj).await?;
             } else {
-                let projection_id = format!("{}:{}", entity_id, &self.id);
-                entity.head = false;
-                upsert_model(db, projection_id, entity).await?;
-                entity.head = true;
-                upsert_model(db, entity_id, entity).await?
+                let projection_id = format!("{}:{}", id, &self.id);
+                {
+                    let head = obj
+                        .pointer_mut("/head")
+                        .ok_or(ChangeSetError::MissingHead)?;
+                    *head = serde_json::Value::Bool(false);
+                }
+                upsert_model(db, nats, projection_id, obj).await?;
+                {
+                    let head = obj
+                        .pointer_mut("/head")
+                        .ok_or(ChangeSetError::MissingHead)?;
+                    *head = serde_json::Value::Bool(true);
+                }
+                upsert_model(db, nats, id, obj).await?
             }
         }
 
-        let response: Vec<String> = entity_map.keys().map(|k| String::from(k)).collect();
+        let response: Vec<String> = seen_map.keys().map(|k| String::from(k)).collect();
 
         Ok(response)
     }
