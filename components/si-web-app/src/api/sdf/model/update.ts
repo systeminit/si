@@ -2,13 +2,11 @@ import { IEntity, Entity } from "@/api/sdf/model/entity";
 import { ISystem, System } from "@/api/sdf/model/system";
 import { IEdge, Edge } from "@/api/sdf/model/edge";
 import { IUpdateClock } from "@/api/sdf/model/updateClock";
-import { sdf } from "@/api/sdf";
+import { db } from "@/api/sdf/dexie";
 
-export interface IUpdateClockGlobal {
-  [key: string]: IUpdateClock;
+export interface IUpdateClockGlobal extends IUpdateClock {
+  id: string;
 }
-
-export const UPDATECLOCK: IUpdateClockGlobal = {};
 
 export interface IUpdateLoadDataRequest {
   loadData: {
@@ -44,11 +42,10 @@ export class Update {
 
   async loadData(workspaceId: string) {
     await this.opened();
-    let updateClock: IUpdateClock;
-    if (UPDATECLOCK[workspaceId]) {
-      updateClock = UPDATECLOCK[workspaceId];
-    } else {
+    let updateClock = await db.globalUpdateClock.get(workspaceId);
+    if (!updateClock) {
       updateClock = {
+        id: workspaceId,
         epoch: 0,
         updateCount: 0,
       };
@@ -65,19 +62,29 @@ export class Update {
 
 function onMessage(ev: MessageEvent) {
   const model_data = JSON.parse(ev.data);
-  console.log("typename", {
-    model_data,
-    typeName: model_data.model.siStorable?.typeName,
-  });
+
   if (model_data.model?.siStorable?.updateClock) {
     let modelUpdateClock = model_data.model.siStorable.updateClock;
-    if (
-      modelUpdateClock.epoch >= UPDATECLOCK.epoch &&
-      modelUpdateClock.updateCount > UPDATECLOCK.updateCount
-    ) {
-      UPDATECLOCK.epoch = modelUpdateClock.epoch;
-      UPDATECLOCK.updateCount = modelUpdateClock.updateCount;
-    }
+    let workspaceId = model_data.model.siStorable.workspaceId;
+    db.globalUpdateClock.get(workspaceId).then(currentUpdateClock => {
+      if (
+        currentUpdateClock &&
+        modelUpdateClock.epoch >= currentUpdateClock.epoch &&
+        modelUpdateClock.updateCount > currentUpdateClock.updateCount
+      ) {
+        console.log("updating clock", {
+          modelUpdateClock,
+          workspaceId,
+          currentUpdateClock,
+        });
+        db.globalUpdateClock.put({ id: workspaceId, ...modelUpdateClock });
+      } else {
+        if (modelUpdateClock.epoch && modelUpdateClock.updateCount) {
+          console.log("updating clock new", { modelUpdateClock, workspaceId });
+          db.globalUpdateClock.put({ id: workspaceId, ...modelUpdateClock });
+        }
+      }
+    });
   }
   if (model_data.model?.siStorable?.typeName == "entity") {
     const model = new Entity(model_data.model as IEntity);
@@ -89,6 +96,4 @@ function onMessage(ev: MessageEvent) {
     const model = new Edge(model_data.model as IEdge);
     model.save();
   }
-
-  console.log("I have a message", { ev });
 }

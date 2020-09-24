@@ -4,16 +4,10 @@ import _ from "lodash";
 import { ChangeSet, IChangeSetCreateRequest } from "@/api/sdf/model/changeSet";
 
 import { RootStore, AddMutation } from "@/store";
-import { generateName } from "@/api/names";
 
 export interface ChangeSetStore {
   changeSets: ChangeSet[];
   current: null | ChangeSet;
-}
-
-interface CountGetter {
-  status: ChangeSet["status"];
-  forId?: string;
 }
 
 export const changeSet: Module<ChangeSetStore, RootStore> = {

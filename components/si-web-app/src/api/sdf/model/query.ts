@@ -37,19 +37,19 @@ export interface IItem {
 }
 
 export interface IQuery {
-  boolean_term?: BooleanTerm;
-  is_not?: boolean;
+  booleanTerm?: BooleanTerm;
+  isNot?: boolean;
   items: IItem[];
 }
 
 export class Query implements IQuery {
-  boolean_term?: IQuery["boolean_term"];
-  is_not?: IQuery["is_not"];
+  booleanTerm?: IQuery["booleanTerm"];
+  isNot?: IQuery["isNot"];
   items: IQuery["items"];
 
   constructor(args: IQuery) {
-    this.boolean_term = args.boolean_term;
-    this.is_not = args.is_not;
+    this.booleanTerm = args.booleanTerm;
+    this.isNot = args.isNot;
     this.items = args.items;
   }
 

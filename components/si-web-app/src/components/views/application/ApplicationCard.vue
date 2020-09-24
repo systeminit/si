@@ -62,7 +62,7 @@ export default Vue.extend({
     ActivityVisualization,
     ServicesVisualization,
     SystemsVisualization,
-    //    ChangeSetVisualization,
+    //   ChangeSetVisualization,
   },
   methods: {
     goToApplication() {

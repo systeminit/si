@@ -6,13 +6,12 @@ import { Entity } from "@/api/sdf/model/entity";
 import { ChangeSet } from "@/api/sdf/model/changeSet";
 import { EditSession } from "@/api/sdf/model/editSession";
 import { Node, NodeKind } from "@/api/sdf/model/node";
-import { Edge } from "@/api/sdf/model/edge";
+import { Edge, EdgeKind } from "@/api/sdf/model/edge";
 import { System } from "@/api/sdf/model/system";
 import { RootStore } from "@/store";
 
 export interface ApplicationStore {
   list: Entity[];
-  current: null | Entity;
   systems: {
     [key: string]: System[];
   };
@@ -30,7 +29,6 @@ export interface MutationUpdateSystem {
 export const application: Module<ApplicationStore, RootStore> = {
   namespaced: true,
   state: {
-    current: null,
     list: [],
     systems: {},
   },
@@ -99,6 +97,23 @@ export const application: Module<ApplicationStore, RootStore> = {
       let application = await Entity.get({ id: payload.headVertex.objectId });
       commit("updateList", application);
       commit("updateSystem", { system, application });
+    },
+    async restore({ commit }) {
+      let applications = await Entity.list_by_object_type("application");
+      commit("bulkUpdateList", applications.items);
+
+      let systemEdges = await Edge.byVertexTypes(
+        "includes",
+        "system",
+        "application",
+      );
+      for (let systemEdge of systemEdges) {
+        let system = await System.get({ id: systemEdge.tailVertex.objectId });
+        let application = await Entity.get({
+          id: systemEdge.headVertex.objectId,
+        });
+        commit("updateSystem", { system, application });
+      }
     },
   },
 };

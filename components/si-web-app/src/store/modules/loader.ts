@@ -37,6 +37,7 @@ export const loader: Module<LoaderStore, RootStore> = {
         await dispatch("workspace/default", {}, { root: true });
         await dispatch("organization/default", {}, { root: true });
         await dispatch("system/default", {}, { root: true });
+        await dispatch("application/restore", {}, { root: true });
         let workspaceId = rootState.workspace.current?.id;
         if (sdf.update && workspaceId) {
           await sdf.update.loadData(workspaceId);

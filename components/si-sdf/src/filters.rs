@@ -22,6 +22,7 @@ pub fn api(
         .or(updates(db, nats))
         .or(entities(db))
         .or(systems(db))
+        .or(edges(db, nats))
         .boxed()
 }
 
@@ -84,6 +85,39 @@ pub fn workspaces_list(
         .and(with_db(db))
         .and(warp::header::<String>("authorization"))
         .and(with_string("workspace".into()))
+        .and(warp::query::<models::ListRequest>())
+        .and_then(handlers::list_models)
+}
+
+// Edges API
+//   workspaces: GET
+pub fn edges(
+    db: &Db,
+    _nats: &Connection,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    edges_list(db.clone()).or(edges_get(db.clone()))
+}
+
+pub fn edges_get(
+    db: Db,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("edges" / String)
+        .and(warp::get())
+        .and(with_db(db))
+        .and(warp::header::<String>("authorization"))
+        .and(with_string("edge".into()))
+        .and(warp::query::<models::GetRequest>())
+        .and_then(handlers::get_model_change_set)
+}
+
+pub fn edges_list(
+    db: Db,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("edges")
+        .and(warp::get())
+        .and(with_db(db))
+        .and(warp::header::<String>("authorization"))
+        .and(with_string("edge".into()))
         .and(warp::query::<models::ListRequest>())
         .and_then(handlers::list_models)
 }

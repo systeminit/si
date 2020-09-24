@@ -1,7 +1,6 @@
 import Vue from "vue";
 import Vuex from "vuex";
 import { Store } from "vuex";
-import localforage from "localforage";
 import VuexPersistence from "vuex-persist";
 //import Cookies from "js-cookie";
 import { editor, EditorStore } from "./modules/editor";
@@ -37,11 +36,6 @@ export class GetCurrentError extends Error {
 export interface AddMutation<T> {
   items: T[];
 }
-
-//const vuexLocal = new VuexPersistence({
-//  storage: window.localStorage,
-//  modules: ["user", "billingAccount", "workspace", "organization"],
-//});
 
 export interface RootStore {
   editor: EditorStore;
@@ -85,7 +79,7 @@ const store: Store<RootStore> = new Vuex.Store({
     loader,
   },
   strict: debug,
-  plugins: [persistEdits, persistNodes], //vuexLocal.plugin],
+  plugins: [persistEdits, persistNodes],
 });
 
 export default store;

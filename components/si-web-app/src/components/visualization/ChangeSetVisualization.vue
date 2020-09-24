@@ -17,7 +17,7 @@
           <alert-circle-icon
             v-if="openCount"
             size="0.75x"
-            class="ml-1 self-center text-orange-600"
+            class="self-center ml-1 text-orange-600"
           />
         </div>
       </div>

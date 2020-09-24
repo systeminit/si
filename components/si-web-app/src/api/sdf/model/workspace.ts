@@ -60,7 +60,7 @@ export class Workspace implements IWorkspace {
     const items: Workspace[] = [];
     let totalCount = 0;
 
-    db.workspaces.each(obj => {
+    await db.workspaces.each(obj => {
       items.push(new Workspace(obj));
       totalCount++;
     });

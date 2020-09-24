@@ -9,6 +9,7 @@ import { INode } from "@/api/sdf/model/node";
 import { IEntity } from "@/api/sdf/model/entity";
 import { ISystem } from "@/api/sdf/model/system";
 import { IEdge } from "@/api/sdf/model/edge";
+import { IUpdateClockGlobal } from "@/api/sdf/model/update";
 
 class SiDatabase extends Dexie {
   // Declare implicit table properties.
@@ -23,6 +24,7 @@ class SiDatabase extends Dexie {
   entities: Dexie.Table<IEntity, string>;
   systems: Dexie.Table<ISystem, string>;
   edges: Dexie.Table<IEdge, string>;
+  globalUpdateClock: Dexie.Table<IUpdateClockGlobal, string>;
 
   constructor() {
     super("SiDatabase");
@@ -37,7 +39,8 @@ class SiDatabase extends Dexie {
       entities: "id, nodeId, objectType",
       editSessions: "id, name, changeSetId",
       systems: "id, name, nodeId",
-      edges: "id",
+      edges: "id, [kind+tailVertex.typeName+headVertex.typeName]",
+      globalUpdateClock: "id, [epoch+updateClock]",
     });
 
     // The following line is needed if your typescript
@@ -52,6 +55,7 @@ class SiDatabase extends Dexie {
     this.editSessions = this.table("editSessions");
     this.systems = this.table("systems");
     this.edges = this.table("edges");
+    this.globalUpdateClock = this.table("globalUpdateClock");
   }
 }
 

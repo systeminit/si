@@ -62,9 +62,11 @@ export const system: Module<SystemStore, RootStore> = {
         await changeSet.execute({ hypothetical: false });
         let system = (await appNode.head_object()) as System;
         commit("current", system);
+        commit("updateList", system);
         return system;
       } else {
         commit("current", matchingSystems[0]);
+        commit("updateList", matchingSystems[0]);
         return matchingSystems[0];
       }
     },
