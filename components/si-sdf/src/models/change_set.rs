@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 use crate::data::{Connection, Db};
 use crate::models::{
-    calculate_properties, get_head_object, get_model, insert_model, ops, upsert_model, Entity,
+    calculate_properties, get_base_object, get_model, insert_model, ops, upsert_model, Entity,
     EntityError, ModelError, SiStorable, SiStorableError, System,
 };
 
@@ -33,6 +33,8 @@ pub enum ChangeSetError {
     Entity(#[from] EntityError),
     #[error("missing head value in object")]
     MissingHead,
+    #[error("missing change set event field")]
+    EventMissing,
 }
 
 pub type ChangeSetResult<T> = Result<T, ChangeSetError>;
@@ -151,6 +153,7 @@ impl ChangeSet {
         Ok(change_set)
     }
 
+    #[tracing::instrument(level = "info")]
     pub async fn execute(
         &mut self,
         db: &Db,
@@ -162,7 +165,6 @@ impl ChangeSet {
           FROM `{bucket}` AS a
           WHERE a.siChangeSet.changeSetId = $change_set_id 
             AND (a.siChangeSet.event = \"Operation\" OR a.siChangeSet.event = \"Delete\" OR a.siChangeSet.event = \"Create\")
-            AND a.siOp.skip = false
           ORDER BY a.siChangeSet.orderClock.epoch ASC, a.siChangeSet.orderClock.update_count ASC
         ",
             bucket = db.bucket_name,
@@ -173,18 +175,27 @@ impl ChangeSet {
             .query(change_set_entry_query, Some(change_set_entry_named_params))
             .await?;
 
+        tracing::error!(?change_set_entry_query_results, "change set exec results");
+
         let mut seen_map: HashMap<String, serde_json::Value> = HashMap::new();
         let mut last_id: Option<String> = None;
         let mut last_type_name: Option<String> = None;
 
         for change_set_entry in change_set_entry_query_results.into_iter() {
+            tracing::error!(?change_set_entry, "entry");
+            let change_set_event = change_set_entry["siChangeSet"]["event"]
+                .as_str()
+                .ok_or(ChangeSetError::EventMissing)?;
             let entry_type_name = change_set_entry["siStorable"]["typeName"]
                 .as_str()
                 .ok_or(ChangeSetError::TypeMissing)?;
             last_type_name = Some(String::from(entry_type_name));
-            let to_id = change_set_entry["toId"]
-                .as_str()
-                .ok_or(ChangeSetError::ToIdMissing)?;
+            let to_id = match change_set_entry["toId"].as_str() {
+                Some(to_id) => to_id,
+                None => change_set_entry["siStorable"]["objectId"]
+                    .as_str()
+                    .ok_or(ChangeSetError::ToIdMissing)?,
+            };
 
             if last_id.is_some() {
                 let lei = last_id.as_ref().unwrap();
@@ -196,21 +207,28 @@ impl ChangeSet {
             let obj = if seen_map.contains_key(to_id) {
                 seen_map.get_mut(to_id).unwrap()
             } else {
-                let head_obj = get_head_object(db, to_id).await?;
+                let head_obj = get_base_object(db, to_id, &self.id).await?;
                 seen_map.insert(String::from(to_id), head_obj);
                 seen_map.get_mut(to_id).unwrap()
             };
             last_id = Some(String::from(to_id));
-            match entry_type_name {
-                "opEntitySetString" => {
-                    let op: ops::OpEntitySetString = serde_json::from_value(change_set_entry)?;
-                    op.apply(obj).await?;
+
+            match change_set_event {
+                "Create" => {
+                    tracing::error!("creating some shit");
                 }
-                "opSetName" => {
-                    let op: ops::OpSetName = serde_json::from_value(change_set_entry)?;
-                    op.apply(obj).await?;
-                }
-                unknown => tracing::error!("cannot find an op for {}", unknown),
+                "Operation" => match entry_type_name {
+                    "opEntitySetString" => {
+                        let op: ops::OpEntitySetString = serde_json::from_value(change_set_entry)?;
+                        op.apply(obj).await?;
+                    }
+                    "opSetName" => {
+                        let op: ops::OpSetName = serde_json::from_value(change_set_entry)?;
+                        op.apply(obj).await?;
+                    }
+                    unknown => tracing::error!("cannot find an op for {}", unknown),
+                },
+                unknown => tracing::error!("unknkown change set event {}", unknown),
             }
         }
 
@@ -232,6 +250,7 @@ impl ChangeSet {
                         .ok_or(ChangeSetError::MissingHead)?;
                     *head = serde_json::Value::Bool(false);
                 }
+                tracing::error!(?projection_id, "upserting projection");
                 upsert_model(db, nats, projection_id, obj).await?;
             } else {
                 let projection_id = format!("{}:{}", id, &self.id);
@@ -241,6 +260,7 @@ impl ChangeSet {
                         .ok_or(ChangeSetError::MissingHead)?;
                     *head = serde_json::Value::Bool(false);
                 }
+                tracing::error!(?projection_id, "upserting projection");
                 upsert_model(db, nats, projection_id, obj).await?;
                 {
                     let head = obj
@@ -248,6 +268,7 @@ impl ChangeSet {
                         .ok_or(ChangeSetError::MissingHead)?;
                     *head = serde_json::Value::Bool(true);
                 }
+                tracing::error!(?id, "upserting true model");
                 upsert_model(db, nats, id, obj).await?
             }
         }

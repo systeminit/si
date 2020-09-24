@@ -1,20 +1,30 @@
+import Vue from "vue";
 import { Module } from "vuex";
 import _ from "lodash";
 
 import { Entity } from "@/api/sdf/model/entity";
-import { Query, Comparison } from "@/api/sdf/model/query";
 import { ChangeSet } from "@/api/sdf/model/changeSet";
 import { EditSession } from "@/api/sdf/model/editSession";
 import { Node, NodeKind } from "@/api/sdf/model/node";
+import { Edge } from "@/api/sdf/model/edge";
+import { System } from "@/api/sdf/model/system";
 import { RootStore } from "@/store";
 
 export interface ApplicationStore {
   list: Entity[];
   current: null | Entity;
+  systems: {
+    [key: string]: System[];
+  };
 }
 
 export interface ActionCreate {
   name: string;
+}
+
+export interface MutationUpdateSystem {
+  system: System;
+  application: Entity;
 }
 
 export const application: Module<ApplicationStore, RootStore> = {
@@ -22,6 +32,7 @@ export const application: Module<ApplicationStore, RootStore> = {
   state: {
     current: null,
     list: [],
+    systems: {},
   },
   getters: {},
   mutations: {
@@ -30,6 +41,15 @@ export const application: Module<ApplicationStore, RootStore> = {
     },
     bulkUpdateList(state, payload: Entity[]) {
       state.list = _.unionBy(payload, state.list, "id");
+    },
+    updateSystem(state, payload: MutationUpdateSystem) {
+      if (!state.hasOwnProperty(payload.application.id)) {
+        Vue.set(state.systems, payload.application.id, []);
+      }
+      state.systems[payload.application.id] = _.unionBy(
+        [payload.system],
+        state.systems[payload.application.id],
+      );
     },
   },
   actions: {
@@ -40,15 +60,13 @@ export const application: Module<ApplicationStore, RootStore> = {
       }
       return state.list;
     },
-    // TODO: Get the periodic sync on the websocket working. It should
-    //       report every now and again on the data it has for the
-    //       workspace.
     async create(
       { commit, rootGetters },
       payload: ActionCreate,
     ): Promise<Entity> {
       let workspace = rootGetters["workspace/current"];
       let organization = rootGetters["organization/current"];
+      let system = rootGetters["system/current"];
 
       let changeSet = await ChangeSet.create({
         workspaceId: workspace.id,
@@ -67,6 +85,7 @@ export const application: Module<ApplicationStore, RootStore> = {
         changeSetId: changeSet.id,
         editSessionId: editSession.id,
       });
+      await appNode.include_in_system(system.id);
       await changeSet.execute({ hypothetical: false });
       let entity = (await appNode.head_object()) as Entity;
       commit("updateList", entity);
@@ -74,6 +93,12 @@ export const application: Module<ApplicationStore, RootStore> = {
     },
     async fromDb({ commit }, payload: Entity) {
       commit("updateList", payload);
+    },
+    async fromEdge({ commit }, payload: Edge) {
+      let system = await System.get({ id: payload.tailVertex.objectId });
+      let application = await Entity.get({ id: payload.headVertex.objectId });
+      commit("updateList", application);
+      commit("updateSystem", { system, application });
     },
   },
 };

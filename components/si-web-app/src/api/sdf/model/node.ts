@@ -8,6 +8,7 @@ import {
   IListReply,
   ICreateReply,
 } from "@/api/sdf/model";
+import { IEdge, Edge } from "@/api/sdf/model/edge";
 import { Query, Comparison } from "@/api/sdf/model/query";
 import { Entity, IEntity } from "@/api/sdf/model/entity";
 import { System, ISystem } from "@/api/sdf/model/system";
@@ -46,6 +47,28 @@ export interface INodeCreateRequest {
   changeSetId: string;
   editSessionId: string;
 }
+
+export interface INodePatchIncludeSystemRequest {
+  includeSystem: {
+    systemId: string;
+  };
+}
+
+export interface INodePatchIncludeSystemReply {
+  includeSystem: {
+    edge: IEdge;
+  };
+}
+
+export type INodePatchOpRequest = INodePatchIncludeSystemRequest;
+
+export interface INodePatchRequest {
+  op: INodePatchOpRequest;
+  organizationId: string;
+  workspaceId: string;
+}
+
+export type INodePatchReply = INodePatchIncludeSystemReply;
 
 export class Node implements INode {
   id: INode["id"];
@@ -130,6 +153,18 @@ export class Node implements INode {
       items,
       totalCount,
     };
+  }
+
+  async include_in_system(systemId: string): Promise<Edge> {
+    let request: INodePatchRequest = {
+      op: { includeSystem: { systemId } },
+      organizationId: this.siStorable.organizationId,
+      workspaceId: this.siStorable.workspaceId,
+    };
+    let reply: INodePatchReply = await sdf.patch(`nodes/${this.id}`, request);
+    let edge = new Edge(reply.includeSystem.edge);
+    await edge.save();
+    return edge;
   }
 
   async head_object(): Promise<NodeObject> {

@@ -34,7 +34,7 @@ pub use ops::{OpError, OpReply, OpRequest, OpResult};
 pub mod system;
 pub use system::{System, SystemError, SystemResult};
 pub mod edge;
-
+pub use edge::{Edge, EdgeError, EdgeKind, EdgeResult, EdgeSystemList, Vertex};
 pub mod si_storable;
 pub use si_storable::{
     MinimalStorable, SiStorable, SiStorableError, SiStorableResult, SimpleStorable,
@@ -76,8 +76,8 @@ pub enum ModelError {
     PageToken(#[from] PageTokenError),
     #[error("malformed list item body; missing id")]
     ListItemNoId,
-    #[error("no head object found")]
-    NoHead,
+    #[error("no base object found")]
+    NoBase,
     #[error("object is missing a typeName")]
     MissingTypeName,
 }
@@ -217,6 +217,33 @@ pub async fn get_model<T: DeserializeOwned + std::fmt::Debug>(
     check_tenancy(&json_response, billing_account_id)?;
     let object: T = serde_json::from_value(json_response)?;
     Ok(object)
+}
+
+pub async fn load_data_model(
+    db: &Db,
+    workspace_id: String,
+    update_clock: UpdateClock,
+) -> ModelResult<Vec<serde_json::Value>> {
+    let query_string = format!(
+        "SELECT a.*
+          FROM `{bucket}` AS a
+          WHERE a.siStorable.workspaceId = $workspace_id 
+            AND a.siStorable.updateClock.epoch >= $epoch
+            AND a.siStorable.updateClock.updateCount > $update_count
+          ORDER BY a.siChangeSet.updateClock.epoch ASC, a.siChangeSet.updateClock.updateCount ASC
+        ",
+        bucket = db.bucket_name,
+    );
+    let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
+    named_params.insert("workspace_id".into(), serde_json::json![workspace_id]);
+    named_params.insert("epoch".into(), serde_json::json![update_clock.epoch]);
+    named_params.insert(
+        "update_count".into(),
+        serde_json::json![update_clock.update_count],
+    );
+    tracing::error!(?query_string, ?named_params, "loading data model query");
+    let results: Vec<serde_json::Value> = db.query(query_string, Some(named_params)).await?;
+    return Ok(results);
 }
 
 #[tracing::instrument(level = "trace")]
@@ -487,22 +514,28 @@ pub async fn check_secondary_key(
     }
 }
 
-pub async fn get_head_object(db: &Db, id: impl AsRef<str>) -> ModelResult<serde_json::Value> {
+pub async fn get_base_object(
+    db: &Db,
+    id: impl AsRef<str>,
+    change_set_id: impl AsRef<str>,
+) -> ModelResult<serde_json::Value> {
     let id = id.as_ref();
+    let change_set_id = change_set_id.as_ref();
     let query = format!(
         "SELECT a.*
           FROM `{bucket}` AS a
-          WHERE a.siStorable.objectId = $id 
-            AND a.head = true
+          WHERE (a.siStorable.objectId = $id AND a.head = true) OR (a.siStorable.objectId = $id AND a.siChangeSet.changeSetId = $change_set_id)
           LIMIT 1
         ",
         bucket = db.bucket_name
     );
     let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
     named_params.insert("id".into(), serde_json::json![id]);
+    named_params.insert("change_set_id".into(), serde_json::json![change_set_id]);
+    tracing::error!(?query, ?named_params, "get base object");
     let mut query_results: Vec<serde_json::Value> = db.query(query, Some(named_params)).await?;
     if query_results.len() == 0 {
-        Err(ModelError::NoHead)
+        Err(ModelError::NoBase)
     } else {
         let result = query_results.pop().unwrap();
         Ok(result)

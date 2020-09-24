@@ -125,6 +125,7 @@ pub async fn create_indexes(db: &Db) -> DataResult<()> {
         ),
     )
     .await?;
+
     create_index(
         &db,
         format!(
@@ -133,10 +134,27 @@ pub async fn create_indexes(db: &Db) -> DataResult<()> {
         ),
     )
     .await?;
+
     create_index(
         &db,
         format!(
             "CREATE INDEX `idx_id` on `{bucket}`(id)",
+            bucket = db.bucket_name
+        ),
+    )
+    .await?;
+
+    create_index(
+        &db,
+        format!("CREATE INDEX idx_siStorable_workspaceId_siStorable_updateClock_epoch_siStorable_updateClock_updateCount ON 
+            `{bucket}`(`siStorable`.`workspaceId`,`siStorable`.`updateClock`.`epoch`,`siStorable`.`updateClock`.`updateCount`)", 
+            bucket = db.bucket_name),
+    ).await?;
+
+    create_index(
+        &db,
+        format!(
+            "CREATE INDEX `idx_base_objects` on `{bucket}`(siStorable.objectId, siChangeSet.changeSetId)",
             bucket = db.bucket_name
         ),
     )

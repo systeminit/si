@@ -1,6 +1,7 @@
 import { Module } from "vuex";
 import _ from "lodash";
 
+import { sdf } from "@/api/sdf";
 import { RootStore } from "@/store";
 
 export interface LoaderStore {
@@ -31,9 +32,15 @@ export const loader: Module<LoaderStore, RootStore> = {
     async load({ state, commit, dispatch, rootState }): Promise<void> {
       if (!state.loaded) {
         commit("loading", true);
+        await sdf.startUpdate();
         await dispatch("billingAccount/forUser", {}, { root: true });
         await dispatch("workspace/default", {}, { root: true });
         await dispatch("organization/default", {}, { root: true });
+        await dispatch("system/default", {}, { root: true });
+        let workspaceId = rootState.workspace.current?.id;
+        if (sdf.update && workspaceId) {
+          await sdf.update.loadData(workspaceId);
+        }
         commit("loading", false);
         commit("loaded", true);
       }

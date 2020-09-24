@@ -23,5 +23,5 @@ pub async fn update(
     )
     .await?;
 
-    Ok(ws.on_upgrade(move |websocket| websocket_run(websocket, nats, claim)))
+    Ok(ws.on_upgrade(move |websocket| websocket_run(websocket, db, nats, claim)))
 }

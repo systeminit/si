@@ -2,7 +2,12 @@ import { db } from "@/api/sdf/dexie";
 import { ISiStorable } from "@/api/sdf/model/siStorable";
 import { ISiChangeSet } from "@/api/sdf/model/siChangeSet";
 import { Query, Comparison } from "@/api/sdf/model/query";
-import { IListRequest, IListReply } from "@/api/sdf/model";
+import {
+  IListRequest,
+  IListReply,
+  IGetRequest,
+  IGetReply,
+} from "@/api/sdf/model";
 import { sdf } from "@/api/sdf";
 import _ from "lodash";
 import store from "@/store";
@@ -59,10 +64,21 @@ export class Entity implements IEntity {
     this.siChangeSet = args.siChangeSet;
   }
 
+  static async get(request: IGetRequest<IEntity["id"]>): Promise<Entity> {
+    const obj = await db.entities.get(request.id);
+    if (obj) {
+      return new Entity(obj);
+    }
+    const reply: IGetReply<IEntity> = await sdf.get(`entities/${request.id}`);
+    const fetched: Entity = new Entity(reply.item);
+    await fetched.save();
+    return fetched;
+  }
+
   static async list_by_object_type(
     objectType: string,
   ): Promise<IListReply<Entity>> {
-    const items: Entity[] = [];
+    let items: Entity[] = [];
     let totalCount = 0;
 
     await db.entities
@@ -73,14 +89,16 @@ export class Entity implements IEntity {
         totalCount = totalCount + 1;
       });
 
-    if (!totalCount) {
-      return await Entity.list({
+    if (totalCount == 0) {
+      const result = await Entity.list({
         query: Query.for_simple_string(
           "objectType",
           "application",
           Comparison.Equals,
         ),
       });
+      items = result.items;
+      totalCount = result.totalCount;
     }
 
     return {

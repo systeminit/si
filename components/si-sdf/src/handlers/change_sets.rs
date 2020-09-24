@@ -37,6 +37,7 @@ pub async fn create(
     Ok(warp::reply::json(&reply))
 }
 
+#[tracing::instrument(level = "info")]
 pub async fn patch(
     change_set_id: String,
     db: Db,
@@ -56,6 +57,7 @@ pub async fn patch(
 
     let reply = match request.op {
         PatchOps::Execute(execute_request) => {
+            tracing::error!("executing changeset");
             let mut change_set: ChangeSet =
                 ChangeSet::get(&db, &change_set_id, &claim.billing_account_id)
                     .await

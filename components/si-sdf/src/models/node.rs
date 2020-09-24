@@ -3,8 +3,9 @@ use thiserror::Error;
 
 use crate::data::{Connection, Db};
 use crate::models::{
-    get_model, insert_model, Entity, EntityError, ModelError, OpReply, OpRequest, SiChangeSetError,
-    SiStorable, SiStorableError, System, SystemError,
+    get_model, insert_model, Edge, EdgeError, EdgeKind, EdgeSystemList, Entity, EntityError,
+    ModelError, OpReply, OpRequest, SiChangeSetError, SiStorable, SiStorableError, System,
+    SystemError, Vertex,
 };
 
 use std::collections::HashMap;
@@ -27,6 +28,10 @@ pub enum NodeError {
     NoProjection,
     #[error("data layer error: {0}")]
     Data(#[from] crate::data::DataError),
+    #[error("edge error: {0}")]
+    Edge(#[from] EdgeError),
+    #[error("no object id; bug!")]
+    NoObjectId,
 }
 
 pub type NodeResult<T> = Result<T, NodeError>;
@@ -51,7 +56,39 @@ pub struct CreateReply {
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
+pub struct PatchIncludeSystemRequest {
+    pub system_id: String,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct PatchIncludeSystemReply {
+    pub edge: Edge,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub enum PatchOp {
+    IncludeSystem(PatchIncludeSystemRequest),
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub enum PatchReply {
+    IncludeSystem(PatchIncludeSystemReply),
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct PatchRequest {
+    pub op: PatchOp,
+    pub organization_id: String,
+    pub workspace_id: String,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ObjectPatchRequest {
     pub op: OpRequest,
     pub organization_id: String,
     pub workspace_id: String,
@@ -61,7 +98,7 @@ pub struct PatchRequest {
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub enum PatchReply {
+pub enum ObjectPatchReply {
     Op(OpReply),
 }
 
@@ -174,6 +211,59 @@ impl Node {
         }
 
         Ok(node)
+    }
+
+    pub async fn include_in_system(
+        &self,
+        db: &Db,
+        nats: &Connection,
+        system_id: impl Into<String>,
+    ) -> NodeResult<Edge> {
+        let system_id = system_id.into();
+        let system = System::get_any(db, &system_id).await?;
+        let object_id = self.get_object_id(db).await?;
+        let edge = Edge::new(
+            db,
+            nats,
+            Vertex::new(
+                &system.node_id,
+                &system.id,
+                "output",
+                &system.si_storable.type_name,
+            ),
+            Vertex::new(&self.id, object_id, "input", &self.object_type),
+            false,
+            EdgeKind::Includes,
+            self.si_storable.billing_account_id.clone(),
+            self.si_storable.organization_id.clone(),
+            self.si_storable.workspace_id.clone(),
+            None,
+        )
+        .await?;
+        Ok(edge)
+    }
+
+    pub async fn get_object_id(&self, db: &Db) -> NodeResult<String> {
+        let query = format!(
+            "SELECT a.*
+          FROM `{bucket}` AS a
+          WHERE a.siStorable.typeName = \"{type_name}\"
+            AND a.nodeId = $node_id
+          LIMIT 1
+        ",
+            bucket = db.bucket_name,
+            type_name = self.kind,
+        );
+        let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
+        named_params.insert("node_id".into(), serde_json::json![&self.id]);
+        let mut query_results: Vec<serde_json::Value> = db.query(query, Some(named_params)).await?;
+        if query_results.len() == 0 {
+            Err(NodeError::NoHead)
+        } else {
+            let result = query_results.pop().unwrap();
+            let object_id = String::from(result["id"].as_str().ok_or(NodeError::NoObjectId)?);
+            Ok(object_id)
+        }
     }
 
     pub async fn get_head_object<T: DeserializeOwned + std::fmt::Debug>(

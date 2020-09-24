@@ -8,6 +8,7 @@ import { IEditSession } from "@/api/sdf/model/editSession";
 import { INode } from "@/api/sdf/model/node";
 import { IEntity } from "@/api/sdf/model/entity";
 import { ISystem } from "@/api/sdf/model/system";
+import { IEdge } from "@/api/sdf/model/edge";
 
 class SiDatabase extends Dexie {
   // Declare implicit table properties.
@@ -21,6 +22,7 @@ class SiDatabase extends Dexie {
   nodes: Dexie.Table<INode, string>;
   entities: Dexie.Table<IEntity, string>;
   systems: Dexie.Table<ISystem, string>;
+  edges: Dexie.Table<IEdge, string>;
 
   constructor() {
     super("SiDatabase");
@@ -34,7 +36,8 @@ class SiDatabase extends Dexie {
       nodes: "id",
       entities: "id, nodeId, objectType",
       editSessions: "id, name, changeSetId",
-      systems: "id, nodeId",
+      systems: "id, name, nodeId",
+      edges: "id",
     });
 
     // The following line is needed if your typescript
@@ -48,6 +51,7 @@ class SiDatabase extends Dexie {
     this.entities = this.table("entities");
     this.editSessions = this.table("editSessions");
     this.systems = this.table("systems");
+    this.edges = this.table("edges");
   }
 }
 

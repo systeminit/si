@@ -4,7 +4,10 @@ use crate::handlers::{authenticate, authorize, HandlerError};
 use crate::models;
 use crate::models::change_set::ChangeSet;
 use crate::models::entity::Entity;
-use crate::models::node::{Node, PatchReply, PatchRequest};
+use crate::models::node::{
+    Node, ObjectPatchReply, ObjectPatchRequest, PatchIncludeSystemReply, PatchOp, PatchReply,
+    PatchRequest,
+};
 use crate::models::ops::{OpEntitySetString, OpReply, OpRequest};
 
 #[tracing::instrument(level = "trace", target = "nodes::create")]
@@ -44,13 +47,48 @@ pub async fn create(
     Ok(warp::reply::json(&reply))
 }
 
-#[tracing::instrument(level = "trace", target = "nodes::object::patch")]
+#[tracing::instrument(level = "trace")]
 pub async fn patch(
     node_id: String,
     db: Db,
     nats: Connection,
     token: String,
     request: PatchRequest,
+) -> Result<impl warp::Reply, warp::reject::Rejection> {
+    let claim = authenticate(&db, &token).await?;
+    authorize(
+        &db,
+        &claim.user_id,
+        &claim.billing_account_id,
+        "node",
+        "patch",
+    )
+    .await?;
+
+    let node: Node = Node::get(&db, &node_id, &claim.billing_account_id)
+        .await
+        .map_err(HandlerError::from)?;
+
+    let reply = match request.op {
+        PatchOp::IncludeSystem(system_req) => {
+            let edge = node
+                .include_in_system(&db, &nats, &system_req.system_id)
+                .await
+                .map_err(HandlerError::from)?;
+            PatchReply::IncludeSystem(PatchIncludeSystemReply { edge })
+        }
+    };
+
+    Ok(warp::reply::json(&reply))
+}
+
+#[tracing::instrument(level = "trace")]
+pub async fn object_patch(
+    node_id: String,
+    db: Db,
+    nats: Connection,
+    token: String,
+    request: ObjectPatchRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
     let claim = authenticate(&db, &token).await?;
     authorize(
@@ -100,7 +138,7 @@ pub async fn patch(
         .execute(&db, &nats, true)
         .await
         .map_err(HandlerError::from)?;
-    let reply = PatchReply::Op(OpReply { item_ids });
+    let reply = ObjectPatchReply::Op(OpReply { item_ids });
     Ok(warp::reply::json(&reply))
 }
 
@@ -121,7 +159,6 @@ pub async fn get_object(
     )
     .await?;
 
-    tracing::error!("wtf");
     let node = models::node::Node::get(&db, node_id, claim.billing_account_id)
         .await
         .map_err(HandlerError::from)?;

@@ -166,6 +166,7 @@ impl Entity {
         let inferred_properties = EntityProperties::new();
         let properties = EntityProperties::new();
         let id = si_storable.object_id.clone();
+        let key = format!("{}:{}", si_storable.object_id, &change_set_id);
         let si_change_set =
             SiChangeSet::new(db, change_set_id, edit_session_id, SiChangeSetEvent::Create).await?;
         let mut entity = Entity {
@@ -183,7 +184,7 @@ impl Entity {
             si_change_set: Some(si_change_set),
         };
         entity.calculate_properties().await?;
-        insert_model(db, nats, &entity.id, &entity).await?;
+        insert_model(db, nats, &key, &entity).await?;
 
         Ok(entity)
     }

@@ -62,8 +62,7 @@ export const user: Module<UserStore, any> = {
     },
     async logout({ commit, state }): Promise<void> {
       if (state.current) {
-        User.upgrade(state.current).logout();
-        await wipe();
+        await User.upgrade(state.current).logout();
         commit("current", null);
       }
     },

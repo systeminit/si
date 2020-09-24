@@ -80,6 +80,7 @@ impl System {
         )
         .await?;
         let id = si_storable.object_id.clone();
+        let key = format!("{}:{}", si_storable.object_id, &change_set_id);
         let si_change_set =
             SiChangeSet::new(db, change_set_id, edit_session_id, SiChangeSetEvent::Create).await?;
         let system = System {
@@ -91,9 +92,32 @@ impl System {
             si_storable,
             si_change_set: Some(si_change_set),
         };
-        insert_model(db, nats, &system.id, &system).await?;
+        insert_model(db, nats, &key, &system).await?;
 
         Ok(system)
+    }
+
+    pub async fn get_any(db: &Db, id: impl AsRef<str>) -> SystemResult<System> {
+        let id = id.as_ref();
+        let query = format!(
+            "SELECT a.*
+          FROM `{bucket}` AS a
+          WHERE a.siStorable.typeName = \"system\"
+            AND a.siStorable.objectId = $id 
+          LIMIT 1
+        ",
+            bucket = db.bucket_name
+        );
+        let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
+        named_params.insert("id".into(), serde_json::json![id]);
+        tracing::error!(?query, ?named_params, "fuck it");
+        let mut query_results: Vec<System> = db.query(query, Some(named_params)).await?;
+        if query_results.len() == 0 {
+            Err(SystemError::NoHead)
+        } else {
+            let result = query_results.pop().unwrap();
+            Ok(result)
+        }
     }
 
     pub async fn get_head(db: &Db, id: impl AsRef<str>) -> SystemResult<System> {

@@ -1,13 +1,31 @@
 use nats::asynk::Connection;
 use sodiumoxide::crypto::secretbox;
-use warp::Filter;
+use warp::{filters::BoxedFilter, Filter};
 
 use crate::data::Db;
 
 use crate::handlers;
 use crate::models;
 
-// The full API for this service
+#[cfg(debug_assertions)]
+pub fn api(
+    db: &Db,
+    nats: &Connection,
+    secret_key: &secretbox::Key,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    billing_accounts(db, nats)
+        .or(organizations(db, nats))
+        .or(nodes(db, nats))
+        .or(change_sets(db, nats))
+        .or(users(db, nats, secret_key))
+        .or(workspaces(db, nats))
+        .or(updates(db, nats))
+        .or(entities(db))
+        .or(systems(db))
+        .boxed()
+}
+
+#[cfg(not(debug_assertions))]
 pub fn api(
     db: &Db,
     nats: &Connection,
@@ -21,6 +39,7 @@ pub fn api(
         .or(workspaces(db, nats))
         .or(updates(db, nats))
         .or(entities(db))
+        .or(systems(db))
 }
 
 // The Web Socket Update API
@@ -183,6 +202,7 @@ pub fn nodes(
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     nodes_create(db.clone(), nats.clone())
         .or(nodes_get(db.clone()))
+        .or(nodes_patch(db.clone(), nats.clone()))
         .or(nodes_object_get(db.clone()))
         .or(nodes_object_patch(db.clone(), nats.clone()))
 }
@@ -197,6 +217,19 @@ pub fn nodes_get(
         .and(with_string("node".into()))
         .and(warp::query::<models::GetRequest>())
         .and_then(handlers::get_model_change_set)
+}
+
+pub fn nodes_patch(
+    db: Db,
+    nats: Connection,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("nodes" / String)
+        .and(warp::patch())
+        .and(with_db(db))
+        .and(with_nats(nats))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::body::json::<models::node::PatchRequest>())
+        .and_then(handlers::nodes::patch)
 }
 
 pub fn nodes_create(
@@ -232,8 +265,8 @@ pub fn nodes_object_patch(
         .and(with_db(db))
         .and(with_nats(nats))
         .and(warp::header::<String>("authorization"))
-        .and(warp::body::json::<models::node::PatchRequest>())
-        .and_then(handlers::nodes::patch)
+        .and(warp::body::json::<models::node::ObjectPatchRequest>())
+        .and_then(handlers::nodes::object_patch)
 }
 
 // Entity API
@@ -254,6 +287,28 @@ pub fn entities_list(
         .and(with_db(db))
         .and(warp::header::<String>("authorization"))
         .and(with_string("entity".into()))
+        .and(warp::query::<models::ListRequest>())
+        .and_then(handlers::list_models)
+}
+
+// Systems API
+//
+// systems
+//   systems_list: GET
+pub fn systems(
+    db: &Db,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    systems_list(db.clone())
+}
+
+pub fn systems_list(
+    db: Db,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("systems")
+        .and(warp::get())
+        .and(with_db(db))
+        .and(warp::header::<String>("authorization"))
+        .and(with_string("system".into()))
         .and(warp::query::<models::ListRequest>())
         .and_then(handlers::list_models)
 }

@@ -2,6 +2,7 @@ import { sdf } from "@/api/sdf";
 import { db } from "@/api/sdf/dexie";
 import { ISimpleStorable } from "@/api/sdf/model/siStorable";
 import { IGetRequest, IGetReply } from "@/api/sdf/model";
+import { wipe } from "@/api/sdf/dexie";
 import store from "@/store";
 import _ from "lodash";
 
@@ -69,8 +70,12 @@ export class User implements IUser {
     return fetched;
   }
 
-  logout() {
+  async logout() {
     sdf.token = undefined;
+    if (sdf.update) {
+      sdf.update.socket.close();
+    }
+    await wipe();
   }
 
   async save(): Promise<void> {

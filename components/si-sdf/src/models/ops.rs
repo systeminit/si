@@ -135,6 +135,9 @@ impl OpEntitySetString {
     }
 
     pub async fn apply(&self, to: &mut serde_json::Value) -> OpResult<()> {
+        if self.skip() {
+            return Ok(());
+        }
         let override_system = self
             .si_op
             .override_system
@@ -219,6 +222,9 @@ impl OpSetName {
     }
 
     pub async fn apply<'a>(&'a self, to: &'a mut serde_json::Value) -> OpResult<()> {
+        if self.skip() {
+            return Ok(());
+        }
         let apply_req = ApplyOpRequest::new(
             ApplyOperation::Set,
             &self.to_id,

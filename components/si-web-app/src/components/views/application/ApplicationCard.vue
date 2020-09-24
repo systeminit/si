@@ -4,7 +4,6 @@
       {{ application.name }}
     </div>
 
-    <!--
     <div class="flex mt-1">
       <div class="flex flex-row items-start justify-between w-11/12">
         <div class="block w-1/4 h-full pt-1 mx-3 border card-section">
@@ -22,12 +21,14 @@
           />
         </div>
 
+        <!--
         <div class="block w-1/4 h-full pt-1 mx-3 border card-section">
           <ChangeSetVisualization
             class="mx-2 mb-2"
             :applicationId="application.id"
           />
         </div>
+        -->
       </div>
 
       <div class="relative w-1/12 mt-5 mr-3 text-sm font-bold">
@@ -40,17 +41,16 @@
         </button>
       </div>
     </div>
-    -->
   </div>
 </template>
 
 <script lang="ts">
 import Vue from "vue";
-//import { ChevronRightIcon } from "vue-feather-icons";
-//import ServicesVisualization from "@/components/visualization/ServicesVisualization.vue";
-//import SystemsVisualization from "@/components/visualization/SystemsVisualization.vue";
+import { ChevronRightIcon } from "vue-feather-icons";
+import ServicesVisualization from "@/components/visualization/ServicesVisualization.vue";
+import SystemsVisualization from "@/components/visualization/SystemsVisualization.vue";
 //import ChangeSetVisualization from "@/components/visualization/ChangeSetVisualization.vue";
-//import ActivityVisualization from "@/components/visualization/ActivityVisualization.vue";
+import ActivityVisualization from "@/components/visualization/ActivityVisualization.vue";
 
 export default Vue.extend({
   name: "ApplicationCard",
@@ -58,10 +58,10 @@ export default Vue.extend({
     application: {},
   },
   components: {
-    //    ChevronRightIcon,
-    //    ActivityVisualization,
-    //    ServicesVisualization,
-    //    SystemsVisualization,
+    ChevronRightIcon,
+    ActivityVisualization,
+    ServicesVisualization,
+    SystemsVisualization,
     //    ChangeSetVisualization,
   },
   methods: {

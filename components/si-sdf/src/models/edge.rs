@@ -19,15 +19,26 @@ pub type EdgeResult<T> = Result<T, EdgeError>;
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Vertex {
-    pub id: String,
+    pub node_id: String,
+    pub object_id: String,
     pub socket: String,
     pub type_name: String,
 }
 
 impl Vertex {
-    pub fn new(id: String, socket: String, type_name: String) -> Vertex {
+    pub fn new(
+        node_id: impl Into<String>,
+        object_id: impl Into<String>,
+        socket: impl Into<String>,
+        type_name: impl Into<String>,
+    ) -> Vertex {
+        let node_id = node_id.into();
+        let object_id = object_id.into();
+        let socket = socket.into();
+        let type_name = type_name.into();
         Vertex {
-            id,
+            node_id,
+            object_id,
             socket,
             type_name,
         }
@@ -36,8 +47,14 @@ impl Vertex {
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+pub struct EdgeSystemList {
+    system_ids: Vec<String>,
+}
+
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub enum EdgeKind {
-    Configures,
+    Configures(EdgeSystemList), // an array of systemIds this connection configures
     Includes,
 }
 
@@ -45,8 +62,8 @@ pub enum EdgeKind {
 #[serde(rename_all = "camelCase")]
 pub struct Edge {
     pub id: String,
-    pub head_vertex: Vertex,
     pub tail_vertex: Vertex,
+    pub head_vertex: Vertex,
     pub bidirectional: bool,
     pub kind: EdgeKind,
     pub si_storable: SiStorable,
@@ -57,14 +74,14 @@ impl Edge {
     pub async fn new(
         db: &Db,
         nats: &Connection,
-        head_vertex: Vertex,
         tail_vertex: Vertex,
+        head_vertex: Vertex,
         bidirectional: bool,
         kind: EdgeKind,
         billing_account_id: String,
         organization_id: String,
         workspace_id: String,
-        created_by_user_id: String,
+        created_by_user_id: Option<String>,
     ) -> EdgeResult<Edge> {
         let si_storable = SiStorable::new(
             db,
@@ -72,7 +89,7 @@ impl Edge {
             billing_account_id,
             organization_id,
             workspace_id,
-            Some(created_by_user_id),
+            created_by_user_id,
         )
         .await?;
         let id = si_storable.object_id.clone();
