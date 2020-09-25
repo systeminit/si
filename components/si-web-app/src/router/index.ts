@@ -15,7 +15,7 @@ const router = new VueRouter({
   routes,
 });
 
-const routeCheck = async (to, from, next) => {
+const routeCheck = async (to: any, _from: any, next: any) => {
   //const span = telemetry.routeSpan(`web.router ${to.path}`);
   //span.setAttributes({
   //  "web.route.to.path": to.path,

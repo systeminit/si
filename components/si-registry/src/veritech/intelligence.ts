@@ -35,6 +35,14 @@ export interface Entity {
   };
 }
 
+export interface System {
+  id: string;
+  name: string;
+  description: string;
+  nodeId: string;
+  head: boolean;
+}
+
 interface CalculatePropertiesRequest {
   objectType: string;
   entity: Entity;
@@ -113,4 +121,52 @@ export function applyOp(req: express.Request, res: express.Response): void {
     object,
   };
   res.send(opReply);
+}
+
+interface CalculateConfiguresRequest {
+  entity: Entity;
+  configures: Entity[];
+  systems: System[];
+}
+
+export interface CalculateConfiguresReply {
+  keep?: {
+    id: string;
+    systems: string[];
+  }[];
+  create?: {
+    objectType: string;
+    name?: string;
+    systems: string[];
+  }[];
+}
+
+export function calculateConfigures(
+  req: express.Request,
+  res: express.Response,
+): void {
+  console.log("POST /calculateConfigures resolver begins");
+  const intelReq: CalculateConfiguresRequest = req.body;
+  const entity = intelReq.entity;
+  const configures = intelReq.configures;
+  const systems = intelReq.systems;
+  const objectType = intelReq.entity.objectType;
+  let registryObj;
+  try {
+    registryObj = registry.get(objectType + "Entity") as EntityObject;
+  } catch (err) {
+    res.status(400);
+    res.send({
+      code: 400,
+      message: `Cannot find registry object for ${objectType}Entity`,
+    });
+    return;
+  }
+  const response: CalculateConfiguresReply = registryObj.calculateConfigures(
+    entity,
+    configures,
+    systems,
+  );
+  console.log("sending response", { response });
+  res.send(response);
 }

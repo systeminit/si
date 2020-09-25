@@ -28,8 +28,8 @@ pub async fn create(
     .await?;
 
     let node = models::node::Node::new(
-        &db,
-        &nats,
+        db,
+        nats,
         request.name,
         request.kind,
         request.object_type,
@@ -38,7 +38,8 @@ pub async fn create(
         request.workspace_id,
         request.change_set_id,
         request.edit_session_id,
-        claim.user_id,
+        Some(claim.user_id),
+        request.system_ids,
     )
     .await
     .map_err(HandlerError::from)?;
@@ -103,10 +104,7 @@ pub async fn object_patch(
     let node = Node::get(&db, &node_id, &claim.billing_account_id)
         .await
         .map_err(HandlerError::from)?;
-    let entity: Entity = node
-        .get_head_object(&db)
-        .await
-        .map_err(HandlerError::from)?;
+    let entity_id = node.get_object_id(&db).await.map_err(HandlerError::from)?;
 
     let mut change_set: ChangeSet =
         ChangeSet::get(&db, &request.change_set_id, &claim.billing_account_id)
@@ -118,7 +116,7 @@ pub async fn object_patch(
             OpEntitySetString::new(
                 &db,
                 &nats,
-                &entity.id,
+                &entity_id,
                 &op_request.path,
                 &op_request.value,
                 op_request.override_system,

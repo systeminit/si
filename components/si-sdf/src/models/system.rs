@@ -62,7 +62,7 @@ impl System {
         workspace_id: String,
         change_set_id: String,
         edit_session_id: String,
-        created_by_user_id: String,
+        created_by_user_id: Option<String>,
     ) -> SystemResult<System> {
         let name = crate::models::generate_name(name);
         let description = if description.is_some() {
@@ -73,16 +73,24 @@ impl System {
         let si_storable = SiStorable::new(
             db,
             "system",
-            billing_account_id,
+            billing_account_id.clone(),
             organization_id,
             workspace_id,
-            Some(created_by_user_id),
+            created_by_user_id,
         )
         .await?;
         let id = si_storable.object_id.clone();
         let key = format!("{}:{}", si_storable.object_id, &change_set_id);
-        let si_change_set =
-            SiChangeSet::new(db, change_set_id, edit_session_id, SiChangeSetEvent::Create).await?;
+        let si_change_set = SiChangeSet::new(
+            db,
+            nats,
+            change_set_id,
+            edit_session_id,
+            &id,
+            billing_account_id,
+            SiChangeSetEvent::Create,
+        )
+        .await?;
         let system = System {
             id,
             name,
@@ -110,7 +118,6 @@ impl System {
         );
         let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
         named_params.insert("id".into(), serde_json::json![id]);
-        tracing::error!(?query, ?named_params, "fuck it");
         let mut query_results: Vec<System> = db.query(query, Some(named_params)).await?;
         if query_results.len() == 0 {
             Err(SystemError::NoHead)

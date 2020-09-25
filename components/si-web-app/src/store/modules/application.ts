@@ -10,10 +10,18 @@ import { Edge, EdgeKind } from "@/api/sdf/model/edge";
 import { System } from "@/api/sdf/model/system";
 import { RootStore } from "@/store";
 
+export type Application = Entity;
+
 export interface ApplicationStore {
   list: Entity[];
   systems: {
     [key: string]: System[];
+  };
+  changeSets: {
+    [key: string]: {
+      openCount: number;
+      closedCount: number;
+    };
   };
 }
 
@@ -31,6 +39,7 @@ export const application: Module<ApplicationStore, RootStore> = {
   state: {
     list: [],
     systems: {},
+    changeSets: {},
   },
   getters: {},
   mutations: {
@@ -89,7 +98,7 @@ export const application: Module<ApplicationStore, RootStore> = {
       commit("updateList", entity);
       return entity;
     },
-    async fromDb({ commit }, payload: Entity) {
+    async fromEntity({ commit }, payload: Entity) {
       commit("updateList", payload);
     },
     async fromEdge({ commit }, payload: Edge) {

@@ -332,7 +332,19 @@ pub fn entities_list(
 pub fn systems(
     db: &Db,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    systems_list(db.clone())
+    systems_list(db.clone()).or(systems_get(db.clone()))
+}
+
+pub fn systems_get(
+    db: Db,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("systems" / String)
+        .and(warp::get())
+        .and(with_db(db))
+        .and(warp::header::<String>("authorization"))
+        .and(with_string("system".into()))
+        .and(warp::query::<models::GetRequest>())
+        .and_then(handlers::get_model_change_set)
 }
 
 pub fn systems_list(

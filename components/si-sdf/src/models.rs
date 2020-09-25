@@ -34,7 +34,7 @@ pub use ops::{OpError, OpReply, OpRequest, OpResult};
 pub mod system;
 pub use system::{System, SystemError, SystemResult};
 pub mod edge;
-pub use edge::{Edge, EdgeError, EdgeKind, EdgeResult, EdgeSystemList, Vertex};
+pub use edge::{Edge, EdgeError, EdgeKind, EdgeResult, Vertex};
 pub mod si_storable;
 pub use si_storable::{
     MinimalStorable, SiStorable, SiStorableError, SiStorableResult, SimpleStorable,
@@ -42,7 +42,8 @@ pub use si_storable::{
 pub mod change_set;
 pub mod si_change_set;
 pub use change_set::{
-    ChangeSet, ChangeSetError, ChangeSetResult, PatchOps, PatchReply, PatchRequest,
+    ChangeSet, ChangeSetError, ChangeSetParticipant, ChangeSetResult, PatchOps, PatchReply,
+    PatchRequest,
 };
 pub use si_change_set::{SiChangeSet, SiChangeSetError, SiChangeSetEvent, SiChangeSetResult};
 pub mod update_clock;
@@ -176,6 +177,58 @@ pub async fn publish_model<T: Serialize + std::fmt::Debug>(
 }
 
 #[tracing::instrument(level = "trace")]
+pub async fn publish_model_delete<T: Serialize + std::fmt::Debug>(
+    nats: &Connection,
+    model: &T,
+) -> ModelResult<()> {
+    let model_json: serde_json::Value = serde_json::to_value(model)?;
+    if let Some(type_name) = model_json["siStorable"]["typeName"].as_str() {
+        match type_name {
+            "userPassword" | "jwtKeyPrivate" | "jwtKeyPublic" => return Ok(()),
+            _ => (),
+        }
+    } else {
+        return Err(ModelError::MissingTypeName);
+    }
+    let mut subject_array: Vec<String> = Vec::new();
+    if let Some(tenant_ids_values) = model_json["siStorable"]["tenantIds"].as_array() {
+        for tenant_id_value in tenant_ids_values.iter() {
+            let tenant_id = String::from(tenant_id_value.as_str().unwrap());
+            subject_array.push(tenant_id);
+        }
+    }
+    if subject_array.len() != 0 {
+        let subject: String = subject_array.join(".");
+        tracing::trace!(?subject, "publishing model");
+        nats.publish(
+            &subject,
+            serde_json::json![{ "deleted": model_json }].to_string(),
+        )
+        .await?;
+    } else {
+        tracing::error!(
+            ?model,
+            "tried to publish a model delete that has no tenancy!"
+        );
+    }
+    Ok(())
+}
+
+#[tracing::instrument(level = "trace")]
+pub async fn delete_model<T: Serialize + std::fmt::Debug>(
+    db: &Db,
+    nats: &Connection,
+    id: impl AsRef<str> + std::fmt::Debug,
+    model: &T,
+) -> ModelResult<()> {
+    let collection = db.bucket.default_collection();
+    collection.remove(id.as_ref(), None).await?;
+    publish_model_delete(nats, model).await?;
+    tracing::trace!("inserted model");
+    Ok(())
+}
+
+#[tracing::instrument(level = "trace")]
 pub async fn insert_model<T: Serialize + std::fmt::Debug>(
     db: &Db,
     nats: &Connection,
@@ -187,6 +240,23 @@ pub async fn insert_model<T: Serialize + std::fmt::Debug>(
     publish_model(nats, model).await?;
     tracing::trace!("inserted model");
     Ok(())
+}
+
+#[tracing::instrument(level = "trace")]
+pub async fn insert_model_if_missing<T: Serialize + std::fmt::Debug>(
+    db: &Db,
+    nats: &Connection,
+    id: impl AsRef<str> + std::fmt::Debug,
+    model: &T,
+) -> ModelResult<()> {
+    let id = id.as_ref();
+    let collection = db.bucket.default_collection();
+    match collection.exists(id, None).await {
+        Ok(_exists) => Ok(()),
+        Err(couchbase::CouchbaseError::KeyDoesNotExist) => insert_model(db, nats, id, model).await,
+        Err(couchbase::CouchbaseError::Success) => insert_model(db, nats, id, model).await,
+        Err(err) => Err(ModelError::from(err)),
+    }
 }
 
 #[tracing::instrument(level = "trace")]

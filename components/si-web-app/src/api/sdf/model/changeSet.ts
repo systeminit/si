@@ -163,7 +163,7 @@ export class ChangeSet implements IChangeSet {
     const currentObj = await db.changeSets.get(this.id);
     if (!_.eq(currentObj, this)) {
       await db.changeSets.put(this);
-      await store.dispatch("changeSets/fromDb", this);
+      await store.dispatch("application/fromDb", this);
     }
   }
 }

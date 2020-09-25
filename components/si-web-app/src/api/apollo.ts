@@ -7,7 +7,7 @@ import { HttpLink } from "apollo-link-http";
 import * as api from "@opentelemetry/api";
 import { print as printGql } from "graphql/language/printer";
 
-import { telemetry, tracer } from "@/utils/telemetry";
+//import { telemetry, tracer } from "@/utils/telemetry";
 import { registry, QueryArgs } from "si-registry";
 
 interface GraphqlQueryArgs extends QueryArgs {
@@ -44,45 +44,35 @@ const authLink = new ApolloLink((operation, forward) => {
   return forward(operation);
 });
 
-const telemetryLink = setContext((request, prevContext) => {
-  let spanName = `web.graphql.`;
-  if (request.operationName) {
-    spanName += request.operationName;
-  } else {
-    spanName += "anon";
-  }
-  const span = telemetry.activitySpan(`${spanName}`);
-  span.setAttributes({
-    "web.graphql.name": request.operationName || "anon",
-    "web.graphql.operationName": request.operationName,
-    "web.graphql.query": printGql(request.query),
-    "web.graphql.variables": JSON.stringify(request.variables),
-  });
-  const headers = tracer.withSpan(span, () => {
-    const headers: Record<string, unknown> = {};
-    api.propagation.inject(headers, (headers, k, v) => {
-      headers[k] = v;
-    });
-    return headers;
-  });
-  return {
-    headers: { traceparent: headers["traceparent"], ...prevContext["headers"] },
-    telemetrySpan: span,
-  };
-});
+// const telemetryLink = setContext((request, prevContext) => {
+//   let spanName = `web.graphql.`;
+//   if (request.operationName) {
+//     spanName += request.operationName;
+//   } else {
+//     spanName += "anon";
+//   }
+//   const span = telemetry.activitySpan(`${spanName}`);
+//   span.setAttributes({
+//     "web.graphql.name": request.operationName || "anon",
+//     "web.graphql.operationName": request.operationName,
+//     "web.graphql.query": printGql(request.query),
+//     "web.graphql.variables": JSON.stringify(request.variables),
+//   });
+//   const headers = tracer.withSpan(span, () => {
+//     const headers: Record<string, unknown> = {};
+//     api.propagation.inject(headers, (headers, k, v) => {
+//       headers[k] = v;
+//     });
+//     return headers;
+//   });
+//   return {
+//     headers: { traceparent: headers["traceparent"], ...prevContext["headers"] },
+//     telemetrySpan: span,
+//   };
+// });
 
 const afterwareLink = new ApolloLink((operation, forward) => {
   return forward(operation).map(response => {
-    const context = operation.getContext();
-    if (context.telemetrySpan) {
-      if (response.errors) {
-        context.telemetrySpan.setAttribute({ error: true });
-        context.telemetrySpan.setAttribute({
-          "web.graphql.errors": JSON.stringify(response.errors),
-        });
-      }
-      context.telemetrySpan.end();
-    }
     return response;
   });
 });
@@ -101,13 +91,7 @@ const errorLink = onError(({ operation, graphQLErrors, networkError }) => {
   if (networkError) console.log(`[Network error]: ${networkError}`);
 });
 
-const link = ApolloLink.from([
-  authLink,
-  telemetryLink,
-  afterwareLink,
-  errorLink,
-  httpLink,
-]);
+const link = ApolloLink.from([authLink, afterwareLink, errorLink, httpLink]);
 
 export const apollo = new ApolloClient({
   // Provide required constructor fields

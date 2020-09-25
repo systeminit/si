@@ -1,9 +1,24 @@
-use crate::filters::change_sets::create_change_set;
+use crate::filters::change_sets::{create_change_set, execute_change_set};
 use crate::filters::edit_sessions::create_edit_session;
 use crate::{test_cleanup, test_setup, TestAccount};
 use crate::{DB, NATS, SETTINGS};
 use si_sdf::filters::api;
 use si_sdf::models::{entity, node, ops, Entity, Node};
+
+pub async fn create_system(test_account: &TestAccount) -> Vec<String> {
+    let change_set_id = create_change_set(test_account).await;
+    let edit_session_id = create_edit_session(test_account, &change_set_id).await;
+    let response = create_node(test_account, &change_set_id, &edit_session_id, "system").await;
+
+    execute_change_set(test_account, &change_set_id).await;
+
+    let node = response.item;
+    let system_id = node
+        .get_object_id(&DB)
+        .await
+        .expect("cannot get newly created system id");
+    vec![system_id]
+}
 
 pub async fn create_node(
     test_account: &TestAccount,
@@ -15,17 +30,23 @@ pub async fn create_node(
     let edit_session_id = edit_session_id.as_ref();
     let object_type = object_type.into();
     let filter = api(&DB, &NATS, &SETTINGS.jwt_encrypt.key);
+    let kind = if object_type == "system" {
+        node::NodeKind::System
+    } else {
+        node::NodeKind::Entity
+    };
     let res = warp::test::request()
         .method("POST")
         .header("authorization", &test_account.authorization)
         .json(&node::CreateRequest {
             name: None,
-            kind: node::NodeKind::Entity,
+            kind,
             object_type,
             organization_id: test_account.organization_id.clone(),
             workspace_id: test_account.workspace_id.clone(),
             change_set_id: change_set_id.into(),
             edit_session_id: edit_session_id.into(),
+            system_ids: test_account.system_ids.clone(),
         })
         .path("/nodes")
         .reply(&filter)
@@ -55,6 +76,7 @@ async fn create() {
             workspace_id: test_account.workspace_id.clone(),
             change_set_id,
             edit_session_id,
+            system_ids: test_account.system_ids.clone(),
         })
         .path("/nodes")
         .reply(&filter)
@@ -105,7 +127,9 @@ async fn get_object() {
     let filter = api(&DB, &NATS, &SETTINGS.jwt_encrypt.key);
     let change_set_id = create_change_set(&test_account).await;
     let edit_session_id = create_edit_session(&test_account, &change_set_id).await;
+
     let node_reply = create_node(&test_account, &change_set_id, &edit_session_id, "service").await;
+    execute_change_set(&test_account, &change_set_id).await;
 
     let res = warp::test::request()
         .method("GET")
@@ -113,6 +137,7 @@ async fn get_object() {
         .path(format!("/nodes/{}/object", &node_reply.item.id).as_ref())
         .reply(&filter)
         .await;
+
     let get_reply: si_sdf::models::GetReply =
         serde_json::from_slice(res.body()).expect("cannot deserialize get reply");
 
@@ -130,7 +155,7 @@ async fn get_object() {
 }
 
 #[tokio::test]
-async fn patch() {
+async fn patch_object() {
     let test_account = test_setup().await.expect("failed to setup test");
 
     let filter = api(&DB, &NATS, &SETTINGS.jwt_encrypt.key);
@@ -139,11 +164,11 @@ async fn patch() {
     let node_reply = create_node(&test_account, &change_set_id, &edit_session_id, "service").await;
     let node = node_reply.item;
     let entity: entity::Entity = node
-        .get_head_object(&DB)
+        .get_object_projection(&DB, &change_set_id)
         .await
         .expect("cannot get head object for node");
 
-    let request = node::PatchRequest {
+    let request = node::ObjectPatchRequest {
         op: ops::OpRequest::EntitySetString(ops::OpEntitySetStringRequest {
             path: "strahd".into(),
             value: "von zarovich".into(),
@@ -162,12 +187,13 @@ async fn patch() {
         .path(format!("/nodes/{}/object", &node.id).as_ref())
         .reply(&filter)
         .await;
-    tracing::error!(?res);
-    let reply: node::PatchReply =
+    let wtf = String::from_utf8(res.body().to_vec()).expect("cannot amke string fromb ody");
+    tracing::error!(?wtf, "wtf");
+    let reply: node::ObjectPatchReply =
         serde_json::from_slice(res.body()).expect("cannot deserialize reply");
 
     let op_reply = match reply {
-        node::PatchReply::Op(op_reply) => op_reply,
+        node::ObjectPatchReply::Op(op_reply) => op_reply,
     };
     assert_eq!(
         op_reply.item_ids,

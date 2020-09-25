@@ -19,11 +19,9 @@ export interface IVertex {
   typeName: string;
 }
 
-export type EdgeKind = "includes" | IEdgeKindConfigures;
-export interface IEdgeKindConfigures {
-  configures: {
-    systemIds: string[];
-  };
+export enum EdgeKind {
+  Configures = "configures",
+  Includes = "includes",
 }
 
 export interface IEdge {

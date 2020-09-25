@@ -30,6 +30,28 @@ pub async fn create_change_set(test_account: &TestAccount) -> String {
     }
 }
 
+pub async fn execute_change_set(test_account: &TestAccount, change_set_id: impl AsRef<str>) {
+    let filter = api(&DB, &NATS, &SETTINGS.jwt_encrypt.key);
+    let change_set_id = change_set_id.as_ref();
+
+    let request = change_set::PatchRequest {
+        op: change_set::PatchOps::Execute(change_set::ExecuteRequest {
+            hypothetical: false,
+        }),
+        workspace_id: test_account.workspace_id.clone(),
+        organization_id: test_account.organization_id.clone(),
+    };
+
+    let res = warp::test::request()
+        .method("PATCH")
+        .header("authorization", &test_account.authorization)
+        .path(format!("/changeSets/{}", change_set_id).as_ref())
+        .json(&request)
+        .reply(&filter)
+        .await;
+    assert_eq!(res.status(), 200, "change set is executed");
+}
+
 #[tokio::test]
 async fn create() {
     let test_account = test_setup().await.expect("failed to setup test");

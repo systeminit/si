@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::data::{Connection, Db};
-use crate::models::{insert_model, ModelError, SiStorable, SiStorableError};
+use crate::models::{delete_model, insert_model, ModelError, SiStorable, SiStorableError};
 
 #[derive(Error, Debug)]
 pub enum EdgeError {
@@ -47,15 +47,19 @@ impl Vertex {
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct EdgeSystemList {
-    system_ids: Vec<String>,
+pub enum EdgeKind {
+    Configures,
+    Includes,
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub enum EdgeKind {
-    Configures(EdgeSystemList), // an array of systemIds this connection configures
-    Includes,
+impl std::fmt::Display for EdgeKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let msg = match self {
+            EdgeKind::Configures => "configures".to_string(),
+            EdgeKind::Includes => "includes".to_string(),
+        };
+        write!(f, "{}", msg)
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
@@ -104,5 +108,124 @@ impl Edge {
         insert_model(db, nats, &edge.id, &edge).await?;
 
         Ok(edge)
+    }
+
+    pub async fn by_kind_and_head_node_id(
+        db: &Db,
+        edge_kind: EdgeKind,
+        head_node_id: impl AsRef<str>,
+    ) -> EdgeResult<Vec<Edge>> {
+        let head_node_id = head_node_id.as_ref();
+
+        let query = format!(
+            "SELECT a.*
+           FROM `{bucket}` AS a
+          WHERE a.siStorable.typeName = \"edge\"
+            AND a.kind = \"{edge_kind}\"
+            AND a.headVertex.nodeId = \"{node_id}\"
+        ",
+            bucket = db.bucket_name,
+            edge_kind = edge_kind,
+            node_id = head_node_id,
+        );
+        let query_results: Vec<Edge> = db.query(query, None).await?;
+        Ok(query_results)
+    }
+
+    pub async fn by_kind_and_head_object_id(
+        db: &Db,
+        edge_kind: EdgeKind,
+        head_object_id: impl AsRef<str>,
+    ) -> EdgeResult<Vec<Edge>> {
+        let head_object_id = head_object_id.as_ref();
+
+        let query = format!(
+            "SELECT a.*
+           FROM `{bucket}` AS a
+          WHERE a.siStorable.typeName = \"edge\"
+            AND a.kind = \"{edge_kind}\"
+            AND a.headVertex.objectId = \"{object_id}\"
+        ",
+            bucket = db.bucket_name,
+            edge_kind = edge_kind,
+            object_id = head_object_id,
+        );
+        let query_results: Vec<Edge> = db.query(query, None).await?;
+        Ok(query_results)
+    }
+
+    pub async fn by_kind_and_head_object_id_and_tail_type_name(
+        db: &Db,
+        edge_kind: EdgeKind,
+        head_object_id: impl AsRef<str>,
+        tail_type_name: impl AsRef<str>,
+    ) -> EdgeResult<Vec<Edge>> {
+        let head_object_id = head_object_id.as_ref();
+        let tail_type_name = tail_type_name.as_ref();
+
+        let query = format!(
+            "SELECT a.*
+           FROM `{bucket}` AS a
+          WHERE a.siStorable.typeName = \"edge\"
+            AND a.kind = \"{edge_kind}\"
+            AND a.headVertex.objectId = \"{object_id}\"
+            AND a.tailVertex.typeName = \"{type_name}\"
+        ",
+            bucket = db.bucket_name,
+            edge_kind = edge_kind,
+            object_id = head_object_id,
+            type_name = tail_type_name,
+        );
+        let query_results: Vec<Edge> = db.query(query, None).await?;
+        Ok(query_results)
+    }
+
+    pub async fn by_kind_and_tail_node_id(
+        db: &Db,
+        edge_kind: EdgeKind,
+        tail_node_id: impl AsRef<str>,
+    ) -> EdgeResult<Vec<Edge>> {
+        let tail_node_id = tail_node_id.as_ref();
+
+        let query = format!(
+            "SELECT a.*
+           FROM `{bucket}` AS a
+          WHERE a.siStorable.typeName = \"edge\"
+            AND a.kind = \"{edge_kind}\"
+            AND a.tailVertex.nodeId = \"{node_id}\"
+        ",
+            bucket = db.bucket_name,
+            edge_kind = edge_kind,
+            node_id = tail_node_id,
+        );
+        let query_results: Vec<Edge> = db.query(query, None).await?;
+        Ok(query_results)
+    }
+
+    pub async fn by_kind_and_tail_object_id(
+        db: &Db,
+        edge_kind: EdgeKind,
+        tail_object_id: impl AsRef<str>,
+    ) -> EdgeResult<Vec<Edge>> {
+        let tail_object_id = tail_object_id.as_ref();
+
+        let query = format!(
+            "SELECT a.*
+           FROM `{bucket}` AS a
+          WHERE a.siStorable.typeName = \"edge\"
+            AND a.kind = \"{edge_kind}\"
+            AND a.tailVertex.objectId = \"{object_id}\"
+        ",
+            bucket = db.bucket_name,
+            edge_kind = edge_kind,
+            object_id = tail_object_id,
+        );
+        let query_results: Vec<Edge> = db.query(query, None).await?;
+        Ok(query_results)
+    }
+
+    pub async fn delete(&self, db: &Db, nats: &Connection) -> EdgeResult<()> {
+        delete_model(db, nats, &self.id, self).await?;
+        Ok(())
     }
 }

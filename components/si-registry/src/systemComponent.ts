@@ -9,7 +9,12 @@ import {
 import { camelCase } from "change-case";
 import { AssociationList } from "./systemObject/associations";
 import { SiGraphql } from "./systemObject/graphql";
-import { Entity } from "./veritech/intelligence";
+import {
+  Entity,
+  CalculateConfiguresReply,
+  System,
+} from "./veritech/intelligence";
+import _ from "lodash";
 
 export type ObjectTypes =
   | BaseObject
@@ -533,6 +538,11 @@ interface EntityObjectIntelligence {
   // prettier-ignore
   //calculateProperties: (setProperties: Record<string, any>,) => Record<string, any>; // eslint-disable-line
   inferProperties?: (entity: Entity) => void;
+  calculateConfigures?: (
+    entity: Entity,
+    configures: Entity[],
+    systems: System[],
+  ) => CalculateConfiguresReply;
 }
 
 export class EntityObject extends SystemObject {
@@ -567,6 +577,22 @@ export class EntityObject extends SystemObject {
     if (this.intelligence.inferProperties) {
       //let properties
       this.intelligence.inferProperties(entity);
+    }
+  }
+
+  calculateConfigures(
+    entity: Entity,
+    configures: Entity[],
+    systems: System[],
+  ): CalculateConfiguresReply {
+    if (this.intelligence.calculateConfigures) {
+      return this.intelligence.calculateConfigures(entity, configures, systems);
+    } else {
+      return {
+        keep: _.map(configures, entity => {
+          return { id: entity.id, systems: _.map(systems, s => s.id) };
+        }),
+      };
     }
   }
 

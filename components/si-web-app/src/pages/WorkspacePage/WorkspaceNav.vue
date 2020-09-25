@@ -195,6 +195,7 @@
 </template>
 
 <script lang="ts">
+import Vue from "vue";
 import {
   MenuIcon,
   Share2Icon,
@@ -211,10 +212,14 @@ import {
 
 import SysinitIcon from "@/components/icons/SysinitIcon.vue";
 
-import localforage from "localforage";
 import { mapGetters } from "vuex";
 
-export default {
+interface IData {
+  workspaces: string[];
+  currentWorkspace: string;
+}
+
+export default Vue.extend({
   name: "WorkspaceNav",
   components: {
     MenuIcon,
@@ -230,7 +235,7 @@ export default {
     GridIcon,
     RefreshCwIcon,
   },
-  data() {
+  data(): IData {
     return {
       workspaces: ["my workspace", "another workspace"],
       currentWorkspace: "my workspace",
@@ -243,22 +248,16 @@ export default {
     }),
   },
   methods: {
-    async onLogout(event: any): Promise<void> {
-      console.log("logout clicked");
+    async onLogout(): Promise<void> {
       await this.$store.dispatch("user/logout");
       this.$router.push({ name: "signin" });
     },
-    async clearLogout(event: any): Promise<void> {
-      console.log("clear logout clicked");
+    async clearLogout(): Promise<void> {
       await this.$store.dispatch("user/logout");
-      await localforage.dropInstance({
-        name: "si-store",
-        storeName: "vuex",
-      });
       this.$router.push({ name: "signin" });
     },
   },
-};
+});
 </script>
 
 <style scoped>

@@ -5,8 +5,9 @@ use std::collections::HashMap;
 
 use crate::data::{Connection, Db};
 use crate::models::{
-    calculate_properties, get_base_object, get_model, insert_model, ops, upsert_model, Entity,
-    EntityError, ModelError, SiStorable, SiStorableError, System,
+    calculate_properties, get_base_object, get_model, insert_model, insert_model_if_missing, ops,
+    upsert_model, Entity, EntityError, ModelError, SiStorable, SiStorableError, SimpleStorable,
+    System,
 };
 
 #[derive(Error, Debug)]
@@ -103,11 +104,6 @@ pub struct ChangeSet {
     pub note: String,
     pub status: ChangeSetStatus,
     pub si_storable: SiStorable,
-}
-
-enum ChangeSetMapObject {
-    Entity(Entity),
-    System(System),
 }
 
 impl ChangeSet {
@@ -250,7 +246,6 @@ impl ChangeSet {
                         .ok_or(ChangeSetError::MissingHead)?;
                     *head = serde_json::Value::Bool(false);
                 }
-                tracing::error!(?projection_id, "upserting projection");
                 upsert_model(db, nats, projection_id, obj).await?;
             } else {
                 let projection_id = format!("{}:{}", id, &self.id);
@@ -260,7 +255,6 @@ impl ChangeSet {
                         .ok_or(ChangeSetError::MissingHead)?;
                     *head = serde_json::Value::Bool(false);
                 }
-                tracing::error!(?projection_id, "upserting projection");
                 upsert_model(db, nats, projection_id, obj).await?;
                 {
                     let head = obj
@@ -268,7 +262,6 @@ impl ChangeSet {
                         .ok_or(ChangeSetError::MissingHead)?;
                     *head = serde_json::Value::Bool(true);
                 }
-                tracing::error!(?id, "upserting true model");
                 upsert_model(db, nats, id, obj).await?
             }
         }
@@ -276,5 +269,46 @@ impl ChangeSet {
         let response: Vec<String> = seen_map.keys().map(|k| String::from(k)).collect();
 
         Ok(response)
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangeSetParticipant {
+    pub id: String,
+    pub change_set_id: String,
+    pub object_id: String,
+    pub si_storable: SimpleStorable,
+}
+
+// TODO: Get changeset participation working backwards, by looking at the Configures edges that lead
+// in to this entity, and making sure they all have change set participant records as well.
+impl ChangeSetParticipant {
+    pub async fn new(
+        db: &Db,
+        nats: &Connection,
+        change_set_id: impl Into<String>,
+        object_id: impl Into<String>,
+        billing_account_id: String,
+    ) -> ChangeSetResult<ChangeSetParticipant> {
+        let change_set_id = change_set_id.into();
+        let object_id = object_id.into();
+        let id = format!("{}:{}", &change_set_id, &object_id);
+
+        let si_storable = SimpleStorable::new(&id, "changeSetParticipant", billing_account_id);
+        let change_set_participant = ChangeSetParticipant {
+            id,
+            change_set_id,
+            object_id,
+            si_storable,
+        };
+        insert_model_if_missing(
+            db,
+            nats,
+            &change_set_participant.id,
+            &change_set_participant,
+        )
+        .await?;
+        Ok(change_set_participant)
     }
 }

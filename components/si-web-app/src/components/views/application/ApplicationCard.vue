@@ -21,14 +21,12 @@
           />
         </div>
 
-        <!--
         <div class="block w-1/4 h-full pt-1 mx-3 border card-section">
           <ChangeSetVisualization
             class="mx-2 mb-2"
             :applicationId="application.id"
           />
         </div>
-        -->
       </div>
 
       <div class="relative w-1/12 mt-5 mr-3 text-sm font-bold">
@@ -45,34 +43,37 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import Vue, { PropType } from "vue";
 import { ChevronRightIcon } from "vue-feather-icons";
 import ServicesVisualization from "@/components/visualization/ServicesVisualization.vue";
 import SystemsVisualization from "@/components/visualization/SystemsVisualization.vue";
-//import ChangeSetVisualization from "@/components/visualization/ChangeSetVisualization.vue";
+import ChangeSetVisualization from "@/components/visualization/ChangeSetVisualization.vue";
 import ActivityVisualization from "@/components/visualization/ActivityVisualization.vue";
+import { Application } from "@/store/modules/application";
 
 export default Vue.extend({
   name: "ApplicationCard",
   props: {
-    application: {},
+    application: {
+      type: Object as PropType<Application>,
+    },
   },
   components: {
     ChevronRightIcon,
     ActivityVisualization,
     ServicesVisualization,
     SystemsVisualization,
-    //   ChangeSetVisualization,
+    ChangeSetVisualization,
   },
   methods: {
     goToApplication() {
       "/o/:organizationId/w/:workspaceId/a/:applicationId";
-      this.workspace = this.$store.getters["workspace/current"];
+      let workspace = this.$store.getters["workspace/current"];
       this.$router.push({
         name: "applicationDetails",
         params: {
-          organizationId: this.workspace.siProperties.organizationId,
-          workspaceId: this.workspace.id,
+          organizationId: workspace.siProperties.organizationId,
+          workspaceId: workspace.id,
           applicationId: this.application.id,
         },
       });

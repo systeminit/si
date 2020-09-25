@@ -32,7 +32,7 @@ async fn list_model_basic() {
     .expect("failed to list");
 
     assert_eq!(result.items.len(), 10, "should have 10 items");
-    assert_eq!(result.total_count, 18, "should have 18 items total");
+    assert_eq!(result.total_count, 19, "should have 19 items total"); // One system is created!
     assert!(result.page_token.is_some(), "has a page token");
 
     let next_page_token = PageToken::unseal(&result.page_token.unwrap(), &DB.page_secret_key)
@@ -50,8 +50,8 @@ async fn list_model_basic() {
     )
     .await
     .expect("failed to list next set of results");
-    assert_eq!(next_result.items.len(), 8, "should have 8 items");
-    assert_eq!(next_result.total_count, 18, "should have 18 items total");
+    assert_eq!(next_result.items.len(), 9, "should have 9 items");
+    assert_eq!(next_result.total_count, 19, "should have 19 items total");
     assert!(
         next_result.page_token.is_none(),
         "does not have a page token"

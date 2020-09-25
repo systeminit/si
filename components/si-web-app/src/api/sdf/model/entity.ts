@@ -152,7 +152,7 @@ export class Entity implements IEntity {
       await db.entities.put(this);
 
       if (this.objectType == "application") {
-        await store.dispatch("application/fromDb", this);
+        await store.dispatch("application/fromEntity", this);
       }
     }
   }

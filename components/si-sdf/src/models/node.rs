@@ -3,9 +3,8 @@ use thiserror::Error;
 
 use crate::data::{Connection, Db};
 use crate::models::{
-    get_model, insert_model, Edge, EdgeError, EdgeKind, EdgeSystemList, Entity, EntityError,
-    ModelError, OpReply, OpRequest, SiChangeSetError, SiStorable, SiStorableError, System,
-    SystemError, Vertex,
+    get_model, insert_model, Edge, EdgeError, EdgeKind, Entity, EntityError, ModelError, OpReply,
+    OpRequest, SiChangeSetError, SiStorable, SiStorableError, System, SystemError, Vertex,
 };
 
 use std::collections::HashMap;
@@ -32,6 +31,8 @@ pub enum NodeError {
     Edge(#[from] EdgeError),
     #[error("no object id; bug!")]
     NoObjectId,
+    #[error("entity nodes require at least one system")]
+    EntityRequiresSystem,
 }
 
 pub type NodeResult<T> = Result<T, NodeError>;
@@ -46,6 +47,7 @@ pub struct CreateRequest {
     pub workspace_id: String,
     pub change_set_id: String,
     pub edit_session_id: String,
+    pub system_ids: Option<Vec<String>>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -137,8 +139,8 @@ pub struct Node {
 impl Node {
     #[tracing::instrument(level = "trace")]
     pub async fn new(
-        db: &Db,
-        nats: &Connection,
+        db: Db,
+        nats: Connection,
         name: Option<String>,
         kind: NodeKind,
         object_type: impl Into<String> + std::fmt::Debug,
@@ -147,17 +149,23 @@ impl Node {
         workspace_id: String,
         change_set_id: String,
         edit_session_id: String,
-        created_by_user_id: String,
+        created_by_user_id: Option<String>,
+        system_ids: Option<Vec<String>>,
     ) -> NodeResult<Node> {
+        if kind == NodeKind::Entity
+            && (system_ids.is_none() || system_ids.as_ref().unwrap().len() == 0)
+        {
+            return Err(NodeError::EntityRequiresSystem);
+        }
         let name = crate::models::generate_name(name);
         let object_type = object_type.into();
         let si_storable = SiStorable::new(
-            db,
+            &db,
             "node",
             billing_account_id.clone(),
             organization_id.clone(),
             workspace_id.clone(),
-            Some(created_by_user_id.clone()),
+            created_by_user_id.clone(),
         )
         .await?;
 
@@ -170,31 +178,32 @@ impl Node {
             object_type: object_type.clone(),
             si_storable,
         };
-        insert_model(db, nats, &node.id, &node).await?;
+        insert_model(&db, &nats, &node.id, &node).await?;
 
         match node.kind {
             NodeKind::Entity => {
                 Entity::new(
-                    db,
-                    nats,
+                    db.clone(),
+                    nats.clone(),
                     Some(name),
                     None,
                     id,
                     object_type,
-                    true,
+                    false,
                     billing_account_id,
                     organization_id,
                     workspace_id,
                     change_set_id,
                     edit_session_id,
                     created_by_user_id,
+                    system_ids.unwrap(),
                 )
                 .await?;
             }
             NodeKind::System => {
                 System::new(
-                    db,
-                    nats,
+                    &db,
+                    &nats,
                     Some(name),
                     None,
                     id,

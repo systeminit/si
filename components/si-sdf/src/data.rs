@@ -103,6 +103,18 @@ impl Db {
         };
         Ok(item.content_as::<T>()?)
     }
+
+    #[tracing::instrument(level = "trace")]
+    pub async fn delete<S>(&self, id: S) -> DataResult<()>
+    where
+        S: Into<String> + std::fmt::Debug,
+    {
+        let id_string = id.into();
+        let bucket = self.bucket.clone();
+        let collection = bucket.default_collection();
+        collection.remove(id_string, None).await?;
+        Ok(())
+    }
 }
 
 pub async fn create_index(db: &Db, index: impl AsRef<str>) -> DataResult<()> {

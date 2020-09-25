@@ -163,7 +163,7 @@ export default Vue.extend({
     }),
   },
   async mounted() {
-    await this.$store.dispatch("application/list");
+    await this.$store.dispatch("application/restore");
   },
 });
 </script>

@@ -16,6 +16,7 @@ use si_settings::Settings;
 mod filters;
 mod handlers;
 mod models;
+mod use_case;
 
 lazy_static! {
     pub static ref SETTINGS: Settings = {
@@ -52,6 +53,7 @@ pub struct TestAccount {
     pub user: User,
     pub billing_account: BillingAccount,
     pub authorization: String,
+    pub system_ids: Option<Vec<String>>,
 }
 
 pub async fn one_time_setup() -> Result<()> {
@@ -84,8 +86,7 @@ pub async fn test_setup() -> Result<TestAccount> {
     let reply = crate::filters::billing_accounts::signup().await;
     let jwt =
         crate::filters::users::login_user(&reply.billing_account.name, &reply.user.email).await;
-
-    Ok(TestAccount {
+    let mut test_account = TestAccount {
         user_id: reply.user.id.clone(),
         billing_account_id: reply.billing_account.id.clone(),
         workspace_id: reply.workspace.id,
@@ -93,7 +94,13 @@ pub async fn test_setup() -> Result<TestAccount> {
         billing_account: reply.billing_account,
         user: reply.user,
         authorization: format!("Bearer {}", jwt),
-    })
+        system_ids: None,
+    };
+
+    let system_ids = crate::filters::nodes::create_system(&test_account).await;
+    test_account.system_ids = Some(system_ids);
+
+    Ok(test_account)
 }
 
 pub async fn test_cleanup(test_account: TestAccount) -> Result<()> {

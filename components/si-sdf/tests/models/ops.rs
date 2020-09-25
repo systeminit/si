@@ -15,9 +15,9 @@ async fn op_set_string() {
     let node_reply = create_node(&test_account, &change_set_id, &edit_session_id, "service").await;
     let node = node_reply.item;
     let head_entity: Entity = node
-        .get_head_object(&DB)
+        .get_object_projection(&DB, &change_set_id)
         .await
-        .expect("cannot get head object for node");
+        .expect("cannot get object projection for node");
 
     // Test the creation of a new top level key
     let op_set_string = OpEntitySetString::new(

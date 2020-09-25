@@ -98,7 +98,7 @@ impl OpEntitySetString {
         let si_storable = SiStorable::new(
             db,
             "opEntitySetString",
-            billing_account_id,
+            billing_account_id.clone(),
             organization_id,
             workspace_id,
             Some(created_by_user_id),
@@ -109,8 +109,11 @@ impl OpEntitySetString {
 
         let si_change_set = SiChangeSet::new(
             db,
+            nats,
             change_set_id,
             edit_session_id,
+            &id,
+            billing_account_id,
             SiChangeSetEvent::Operation,
         )
         .await?;
@@ -186,7 +189,7 @@ impl OpSetName {
         let si_storable = SiStorable::new(
             db,
             "opSetName",
-            billing_account_id,
+            billing_account_id.clone(),
             organization_id,
             workspace_id,
             Some(created_by_user_id),
@@ -197,8 +200,11 @@ impl OpSetName {
 
         let si_change_set = SiChangeSet::new(
             db,
+            nats,
             change_set_id,
             edit_session_id,
+            &id,
+            billing_account_id,
             SiChangeSetEvent::Operation,
         )
         .await?;
