@@ -238,19 +238,23 @@ export class Entity implements IEntity {
 
   async changeSetCounts(): Promise<{ open: number; closed: number }> {
     const reply = { open: 0, closed: 0 };
+
     const successors = await this.successors();
-    const object_ids = _.map(successors, e => e.id);
-    object_ids.push(this.id);
-    let change_sets: Set<string> = new Set([]);
+    console.log("changeSetCount successors", { entity: this, successors });
+    const objectIds = _.map(successors, e => e.id);
+    console.log("changeSetCount objectIds", { entity: this, objectIds });
+    objectIds.push(this.id);
+    let changeSets: Set<string> = new Set([]);
     await db.changeSetParticipants
       .where("objectId")
-      .anyOf(object_ids)
+      .anyOf(objectIds)
       .each(csp => {
-        change_sets.add(csp.changeSetId);
+        changeSets.add(csp.changeSetId);
       });
+    console.log("changeSetCount changeSets", { entity: this, changeSets });
     await db.changeSets
       .where("id")
-      .anyOf(Array.from(change_sets))
+      .anyOf(Array.from(changeSets))
       .each(changeSet => {
         if (changeSet.status == ChangeSetStatus.Open) {
           reply.open++;
@@ -258,6 +262,7 @@ export class Entity implements IEntity {
           reply.closed++;
         }
       });
+    console.log("changeSetCount reply", { entity: this, reply });
 
     return reply;
   }

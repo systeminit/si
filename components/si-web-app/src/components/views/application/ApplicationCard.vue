@@ -67,12 +67,12 @@ export default Vue.extend({
   },
   methods: {
     goToApplication() {
-      "/o/:organizationId/w/:workspaceId/a/:applicationId";
       let workspace = this.$store.getters["workspace/current"];
+      let organization = this.$store.getters["organization/current"];
       this.$router.push({
         name: "applicationDetails",
         params: {
-          organizationId: workspace.siProperties.organizationId,
+          organizationId: organization.id,
           workspaceId: workspace.id,
           applicationId: this.application.id,
         },

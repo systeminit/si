@@ -60,10 +60,13 @@ export const user: Module<UserStore, any> = {
       const user = await User.login(payload);
       commit("current", user);
     },
-    async logout({ commit, state }): Promise<void> {
+    async logout({ commit, state, dispatch }): Promise<void> {
       if (state.current) {
         await User.upgrade(state.current).logout();
         commit("current", null);
+        await dispatch("loader/clear", {}, { root: true });
+        await dispatch("application/clear", {}, { root: true });
+        localStorage.removeItem("vuex");
       }
     },
     async fromDb({ commit, state }, payload: User): Promise<void> {

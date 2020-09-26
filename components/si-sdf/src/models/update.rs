@@ -23,6 +23,7 @@ pub struct Payload {
 #[serde(rename_all = "camelCase")]
 pub enum UpdateOp {
     Model(serde_json::Value),
+    LoadFinished,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -138,6 +139,19 @@ pub async fn websocket_run(websocket: WebSocket, db: Db, nats: Connection, claim
                                     Err(err) => {
                                         tracing::error!("cannot serialize op as json: {}", err);
                                     }
+                                }
+                            }
+                            match serde_json::to_string(&UpdateOp::LoadFinished) {
+                                Ok(op_json) => {
+                                    match outbound_ws_tx.send(Ok(Message::text(op_json))) {
+                                        Ok(_) => (),
+                                        Err(err) => {
+                                            tracing::error!("cannot send outbound op: {}", err)
+                                        }
+                                    }
+                                }
+                                Err(err) => {
+                                    tracing::error!("cannot serialize op as json: {}", err);
                                 }
                             }
                         }

@@ -9,6 +9,7 @@ import {
 } from "@/api/sdf/model/changeSet";
 import { IUpdateClock } from "@/api/sdf/model/updateClock";
 import { db } from "@/api/sdf/dexie";
+import store from "@/store";
 
 export interface IUpdateClockGlobal extends IUpdateClock {
   id: string;
@@ -68,6 +69,13 @@ export class Update {
 
 function onMessage(ev: MessageEvent) {
   const model_data = JSON.parse(ev.data);
+
+  console.log("onMessage", { ev, model_data });
+  if (model_data == "loadFinished") {
+    console.log("loading finished");
+    store.commit("loader/loaded", true);
+    return;
+  }
 
   if (model_data.model?.siStorable?.updateClock) {
     let modelUpdateClock = model_data.model.siStorable.updateClock;

@@ -2,7 +2,7 @@
   <div id="application-details" class="flex flex-col">
     <div id="application-summary" class="flex flex-col w-full pb-3">
       <StatusBar class="" />
-
+      <!--
       <div class="flex mt-3">
         <div class="items-center w-1/2">
           <button
@@ -214,13 +214,17 @@
           </div>
         </div>
       </transition>
+      -->
     </div>
+
+    <!--
     <div id="editor" class="flex w-full h-full overflow-hidden">
       <Editor />
     </div>
     <div id="eventBar" class="w-full">
       <EventBar />
     </div>
+    -->
   </div>
 </template>
 
@@ -264,18 +268,18 @@ interface Data {
 export default Vue.extend({
   name: "ApplicationDetails",
   components: {
-    Editor,
+    //Editor,
     StatusBar,
-    ChevronRightIcon,
-    ChevronDownIcon,
-    ActivityVisualization,
-    ServicesVisualization,
-    ResourcesVisualization,
-    Button2,
-    SiModal,
-    SiSelect,
-    SiTextBox,
-    EventBar,
+    //ChevronRightIcon,
+    //ChevronDownIcon,
+    //ActivityVisualization,
+    //ServicesVisualization,
+    //ResourcesVisualization,
+    //Button2,
+    //SiModal,
+    //SiSelect,
+    //SiTextBox,
+    //EventBar,
     //PlayIcon,
     //EditIcon,
     //AlertCircleIcon,
@@ -300,64 +304,6 @@ export default Vue.extend({
       showChangeSetCreateModal: false,
       newChangeSetName: "",
     };
-  },
-  methods: {
-    changeSetExecute() {
-      this.$store.dispatch("changeSet/execute");
-      this.$store.commit("editor/setMode", "view");
-    },
-    toggleDetails() {
-      this.showDetails = !this.showDetails;
-    },
-    closeChangeSetCreate() {
-      this.showChangeSetCreateModal = false;
-    },
-    modalChangeSetCreateSelected() {
-      this.modeSwitch();
-      this.showChangeSetCreateModal = false;
-    },
-    async startEditSession() {
-      if (this.mode == "view" && !this.currentChangeSet) {
-        this.showChangeSetCreateModal = true;
-        return;
-      } else {
-        this.$store.dispatch("editor/modeSwitch");
-        const editSession = await this.$store.dispatch("editSession/create");
-        console.log("the new edit session", { editSession });
-      }
-    },
-    async cancelEditSession() {
-      await this.$store.dispatch("editSession/revert");
-      this.$store.dispatch("editor/modeSwitch");
-    },
-    modeSwitch() {
-      if (this.mode == "view" && !this.currentChangeSet) {
-        this.showChangeSetCreateModal = true;
-      } else {
-        this.$store.dispatch("editor/modeSwitch");
-      }
-    },
-    async createChangeSetOnEnter() {
-      if (this.newChangeSetName) {
-        await this.createChangeSet();
-      }
-    },
-    async createChangeSet() {
-      const createdByUserId: string = this.$store.getters["user/userId"];
-      const workspaceId: string = this.$store.getters[
-        "user/currentWorkspaceId"
-      ];
-      await this.$store.dispatch("changeSet/create", {
-        name: this.newChangeSetName,
-        displayName: this.newChangeSetName,
-        createdByUserId,
-        workspaceId,
-      });
-      this.showChangeSetCreateModal = false;
-      this.newChangeSetName = "";
-      await this.startEditSession();
-      //this.$store.dispatch("editor/modeSwitch");
-    },
   },
   computed: {
     ...mapState({
@@ -438,6 +384,65 @@ export default Vue.extend({
     },
     application(): ApplicationEntity {
       return this.$store.getters["application/get"]({ id: this.applicationId });
+    },
+  },
+
+  methods: {
+    changeSetExecute() {
+      this.$store.dispatch("changeSet/execute");
+      this.$store.commit("editor/setMode", "view");
+    },
+    toggleDetails() {
+      this.showDetails = !this.showDetails;
+    },
+    closeChangeSetCreate() {
+      this.showChangeSetCreateModal = false;
+    },
+    modalChangeSetCreateSelected() {
+      this.modeSwitch();
+      this.showChangeSetCreateModal = false;
+    },
+    async startEditSession() {
+      if (this.mode == "view" && !this.currentChangeSet) {
+        this.showChangeSetCreateModal = true;
+        return;
+      } else {
+        this.$store.dispatch("editor/modeSwitch");
+        const editSession = await this.$store.dispatch("editSession/create");
+        console.log("the new edit session", { editSession });
+      }
+    },
+    async cancelEditSession() {
+      await this.$store.dispatch("editSession/revert");
+      this.$store.dispatch("editor/modeSwitch");
+    },
+    modeSwitch() {
+      if (this.mode == "view" && !this.currentChangeSet) {
+        this.showChangeSetCreateModal = true;
+      } else {
+        this.$store.dispatch("editor/modeSwitch");
+      }
+    },
+    async createChangeSetOnEnter() {
+      if (this.newChangeSetName) {
+        await this.createChangeSet();
+      }
+    },
+    async createChangeSet() {
+      const createdByUserId: string = this.$store.getters["user/userId"];
+      const workspaceId: string = this.$store.getters[
+        "user/currentWorkspaceId"
+      ];
+      await this.$store.dispatch("changeSet/create", {
+        name: this.newChangeSetName,
+        displayName: this.newChangeSetName,
+        createdByUserId,
+        workspaceId,
+      });
+      this.showChangeSetCreateModal = false;
+      this.newChangeSetName = "";
+      await this.startEditSession();
+      //this.$store.dispatch("editor/modeSwitch");
     },
   },
 });

@@ -23,6 +23,7 @@ pub fn api(
         .or(entities(db))
         .or(systems(db))
         .or(edges(db, nats))
+        .or(change_set_participants(db, nats))
         .boxed()
 }
 

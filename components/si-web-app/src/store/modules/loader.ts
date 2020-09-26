@@ -27,6 +27,11 @@ export const loader: Module<LoaderStore, RootStore> = {
     nextUp(state, payload: any) {
       state.nextUp = payload;
     },
+    clear(state) {
+      state.loading = false;
+      state.loaded = false;
+      state.nextUp = null;
+    },
   },
   actions: {
     async load({ state, commit, dispatch, rootState }): Promise<void> {
@@ -42,8 +47,13 @@ export const loader: Module<LoaderStore, RootStore> = {
           await sdf.update.loadData(workspaceId);
         }
         commit("loading", false);
-        commit("loaded", true);
       }
+    },
+    async logout({ commit }) {
+      commit("loaded", false);
+    },
+    async clear({ commit }) {
+      commit("clear");
     },
   },
 };

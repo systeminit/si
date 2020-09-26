@@ -7,7 +7,15 @@ import {
   IListRequest,
   IListReply,
 } from "@/api/sdf/model";
-import { Query, Comparison } from "@/api/sdf/model/query";
+import {
+  Query,
+  Comparison,
+  BooleanTerm,
+  FieldType,
+} from "@/api/sdf/model/query";
+import { Entity } from "@/api/sdf/model/entity";
+import { System } from "@/api/sdf/model/system";
+import { NodeObject } from "@/api/sdf/model/node";
 import store from "@/store";
 import _ from "lodash";
 
@@ -104,11 +112,30 @@ export class ChangeSet implements IChangeSet {
     await sdf.patch(`changeSets/${this.id}`, full_request);
   }
 
+  async participants(): Promise<NodeObject[]> {
+    let results: NodeObject[] = [];
+    let cspResults = await ChangeSetParticipant.forChangeSet(this.id);
+    for (let csp of cspResults) {
+      if (csp.objectId.startsWith("system:")) {
+        let system = await System.get({ id: csp.objectId });
+        results.push(system);
+      } else if (csp.objectId.startsWith("entity:")) {
+        let entity = await Entity.get_projection({
+          id: csp.objectId,
+          changeSetId: this.id,
+        });
+        results.push(entity);
+      }
+    }
+    return results;
+  }
+
   async save(): Promise<void> {
     const currentObj = await db.changeSets.get(this.id);
     if (!_.eq(currentObj, this)) {
       await db.changeSets.put(this);
       await store.dispatch("changeSet/fromChangeSet", this);
+      console.log("dispatched on save", { changeSet: this });
       await store.dispatch("application/fromChangeSet", this);
     }
   }
@@ -136,12 +163,36 @@ export class ChangeSetParticipant implements IChangeSetParticipant {
     this.siStorable = args.siStorable;
   }
 
-  // To get the list of changesets that apply to a given application, we need to know
-  // the full set of descendent edges for the application, and then we need to know all
-  // the changeSets those edges participate in.
-  //
-  // We really want to make a request as simple as entity/changeSets - and then have it
-  // find all the right ones!
+  static async forChangeSet(
+    changeSetId: string,
+  ): Promise<ChangeSetParticipant[]> {
+    let result: ChangeSetParticipant[] = [];
+
+    await db.changeSetParticipants.where({ changeSetId }).each(icsp => {
+      let csp = new ChangeSetParticipant(icsp);
+      result.push(csp);
+    });
+
+    if (result.length) {
+      return result;
+    }
+
+    let response = await ChangeSetParticipant.list({
+      query: {
+        items: [
+          {
+            expression: {
+              field: "changeSetId",
+              value: changeSetId,
+              fieldType: FieldType.String,
+              comparison: Comparison.Equals,
+            },
+          },
+        ],
+      },
+    });
+    return response.items;
+  }
 
   static async list(
     request?: IListRequest,
