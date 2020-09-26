@@ -1,6 +1,6 @@
 import { sdf } from "@/api/sdf";
 import { db } from "@/api/sdf/dexie";
-import { ISiStorable } from "@/api/sdf/model/siStorable";
+import { ISiStorable, ISimpleStorable } from "@/api/sdf/model/siStorable";
 import {
   IGetRequest,
   IGetReply,
@@ -93,40 +93,79 @@ export class ChangeSet implements IChangeSet {
     return fetched;
   }
 
-  static async find(index: "id" | "name", value: string): Promise<ChangeSet[]> {
-    let items = await db.changeSets
-      .where(index)
-      .equals(value)
-      .toArray();
-    if (!items.length) {
-      const results = await ChangeSet.list({
-        query: Query.for_simple_string(index, value, Comparison.Equals),
-      });
-      return results.items;
-    } else {
-      return items.map(obj => new ChangeSet(obj));
-    }
+  async execute(request: IChangeSetExecuteRequest): Promise<void> {
+    let full_request: IChangeSetPatchRequest = {
+      op: {
+        execute: request,
+      },
+      workspaceId: this.siStorable.workspaceId,
+      organizationId: this.siStorable.organizationId,
+    };
+    await sdf.patch(`changeSets/${this.id}`, full_request);
   }
 
-  static async list(request?: IListRequest): Promise<IListReply<ChangeSet>> {
-    const items: ChangeSet[] = [];
+  async save(): Promise<void> {
+    const currentObj = await db.changeSets.get(this.id);
+    if (!_.eq(currentObj, this)) {
+      await db.changeSets.put(this);
+      await store.dispatch("changeSet/fromChangeSet", this);
+      await store.dispatch("application/fromChangeSet", this);
+    }
+  }
+}
+
+db.changeSets.mapToClass(ChangeSet);
+
+export interface IChangeSetParticipant {
+  id: string;
+  changeSetId: string;
+  objectId: string;
+  siStorable: ISimpleStorable;
+}
+
+export class ChangeSetParticipant implements IChangeSetParticipant {
+  id: IChangeSetParticipant["id"];
+  changeSetId: IChangeSetParticipant["changeSetId"];
+  objectId: IChangeSetParticipant["objectId"];
+  siStorable: IChangeSetParticipant["siStorable"];
+
+  constructor(args: IChangeSetParticipant) {
+    this.id = args.id;
+    this.changeSetId = args.changeSetId;
+    this.objectId = args.objectId;
+    this.siStorable = args.siStorable;
+  }
+
+  // To get the list of changesets that apply to a given application, we need to know
+  // the full set of descendent edges for the application, and then we need to know all
+  // the changeSets those edges participate in.
+  //
+  // We really want to make a request as simple as entity/changeSets - and then have it
+  // find all the right ones!
+
+  static async list(
+    request?: IListRequest,
+  ): Promise<IListReply<ChangeSetParticipant>> {
+    const items: ChangeSetParticipant[] = [];
     let totalCount = 0;
 
-    db.changeSets.each(obj => {
-      items.push(new ChangeSet(obj));
-      totalCount++;
-    });
+    if (!request?.query) {
+      await db.changeSetParticipants.each(obj => {
+        items.push(new ChangeSetParticipant(obj));
+        totalCount = totalCount + 1;
+      });
+    }
 
     if (!totalCount) {
       let finished = false;
       while (!finished) {
-        const reply: IListReply<IChangeSet> = await sdf.list(
-          "changeSets",
+        const reply: IListReply<IChangeSetParticipant> = await sdf.list(
+          "changeSetParticipants",
           request,
         );
         if (reply.items.length) {
           for (let item of reply.items) {
-            let objItem = new ChangeSet(item);
+            let objItem = new ChangeSetParticipant(item);
             objItem.save();
             items.push(objItem);
           }
@@ -148,24 +187,13 @@ export class ChangeSet implements IChangeSet {
     };
   }
 
-  async execute(request: IChangeSetExecuteRequest): Promise<void> {
-    let full_request: IChangeSetPatchRequest = {
-      op: {
-        execute: request,
-      },
-      workspaceId: this.siStorable.workspaceId,
-      organizationId: this.siStorable.organizationId,
-    };
-    await sdf.patch(`changeSets/${this.id}`, full_request);
-  }
-
   async save(): Promise<void> {
-    const currentObj = await db.changeSets.get(this.id);
+    const currentObj = await db.changeSetParticipants.get(this.id);
     if (!_.eq(currentObj, this)) {
-      await db.changeSets.put(this);
-      await store.dispatch("application/fromDb", this);
+      await db.changeSetParticipants.put(this);
+      await store.dispatch("application/fromChangeSetParticipant", this);
     }
   }
 }
 
-db.changeSets.mapToClass(ChangeSet);
+db.changeSetParticipants.mapToClass(ChangeSetParticipant);

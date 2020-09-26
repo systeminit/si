@@ -3,7 +3,7 @@ import { IBillingAccount } from "@/api/sdf/model/billingAccount";
 import { IUser } from "@/api/sdf/model/user";
 import { IOrganization } from "@/api/sdf/model/organization";
 import { IWorkspace } from "@/api/sdf/model/workspace";
-import { IChangeSet } from "@/api/sdf/model/changeSet";
+import { IChangeSet, IChangeSetParticipant } from "@/api/sdf/model/changeSet";
 import { IEditSession } from "@/api/sdf/model/editSession";
 import { INode } from "@/api/sdf/model/node";
 import { IEntity } from "@/api/sdf/model/entity";
@@ -19,9 +19,11 @@ class SiDatabase extends Dexie {
   organizations: Dexie.Table<IOrganization, string>;
   workspaces: Dexie.Table<IWorkspace, string>;
   changeSets: Dexie.Table<IChangeSet, string>;
+  changeSetParticipants: Dexie.Table<IChangeSetParticipant, string>;
   editSessions: Dexie.Table<IEditSession, string>;
   nodes: Dexie.Table<INode, string>;
-  entities: Dexie.Table<IEntity, string>;
+  headEntities: Dexie.Table<IEntity, string>;
+  projectionEntities: Dexie.Table<IEntity, string>;
   systems: Dexie.Table<ISystem, string>;
   edges: Dexie.Table<IEdge, string>;
   globalUpdateClock: Dexie.Table<IUpdateClockGlobal, string>;
@@ -35,11 +37,15 @@ class SiDatabase extends Dexie {
       workspaces:
         "id, name, [siStorable.billingAccountId+siStorable.organizationId+name]",
       changeSets: "id, name",
+      changeSetParticipants: "id, changeSetId, objectId",
       nodes: "id",
-      entities: "id, nodeId, objectType",
+      headEntities: "id, nodeId, objectType",
+      projectionEntities:
+        "[id+siChangeSet.changeSetId], id, nodeId, objectType",
       editSessions: "id, name, changeSetId",
       systems: "id, name, nodeId",
-      edges: "id, [kind+tailVertex.typeName+headVertex.typeName]",
+      edges:
+        "id, [kind+headVertex.nodeId], [kind+tailVertex.nodeId], [kind+tailVertex.objectId], [kind+headVertex.objectId], [kind+tailVertex.typeName+headVertex.typeName]",
       globalUpdateClock: "id, [epoch+updateClock]",
     });
 
@@ -50,8 +56,10 @@ class SiDatabase extends Dexie {
     this.workspaces = this.table("workspaces");
     this.organizations = this.table("organizations");
     this.changeSets = this.table("changeSets");
+    this.changeSetParticipants = this.table("changeSetParticipants");
     this.nodes = this.table("nodes");
-    this.entities = this.table("entities");
+    this.headEntities = this.table("headEntities");
+    this.projectionEntities = this.table("projectionEntities");
     this.editSessions = this.table("editSessions");
     this.systems = this.table("systems");
     this.edges = this.table("edges");

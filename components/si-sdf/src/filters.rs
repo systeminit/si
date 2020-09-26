@@ -90,12 +90,39 @@ pub fn workspaces_list(
 }
 
 // Edges API
-//   workspaces: GET
+//   edges: GET - list
+//     edges/{id}: GET - get
+//     edges/allPredecessorEdges?object_id|node_id: GET - get_all_predecessor_edges
 pub fn edges(
     db: &Db,
     _nats: &Connection,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    edges_list(db.clone()).or(edges_get(db.clone()))
+    edges_list(db.clone())
+        .or(edges_all_predecessors(db.clone()))
+        .or(edges_all_successors(db.clone()))
+        .or(edges_get(db.clone()))
+}
+
+pub fn edges_all_predecessors(
+    db: Db,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("edges" / "allPredecessors")
+        .and(warp::get())
+        .and(with_db(db))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::query::<models::edge::AllPredecessorsRequest>())
+        .and_then(handlers::edges::all_predecessors)
+}
+
+pub fn edges_all_successors(
+    db: Db,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("edges" / "allSuccessors")
+        .and(warp::get())
+        .and(with_db(db))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::query::<models::edge::AllSuccessorsRequest>())
+        .and_then(handlers::edges::all_successors)
 }
 
 pub fn edges_get(
@@ -310,7 +337,17 @@ pub fn nodes_object_patch(
 pub fn entities(
     db: &Db,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    entities_list(db.clone())
+    entities_list(db.clone()).or(entities_get(db.clone()))
+}
+
+pub fn entities_get(
+    db: Db,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("entities" / String)
+        .and(warp::get())
+        .and(with_db(db))
+        .and(warp::header::<String>("authorization"))
+        .and_then(handlers::entities::get)
 }
 
 pub fn entities_list(
@@ -415,6 +452,27 @@ pub fn edit_session_create(
         .and(warp::header::<String>("authorization"))
         .and(warp::body::json::<models::edit_session::CreateRequest>())
         .and_then(handlers::edit_sessions::create)
+}
+
+// changeSetParticipants
+//   list
+pub fn change_set_participants(
+    db: &Db,
+    _nats: &Connection,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    change_set_participants_list(db.clone())
+}
+
+pub fn change_set_participants_list(
+    db: Db,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("changeSetParticipants")
+        .and(warp::get())
+        .and(with_db(db))
+        .and(warp::header::<String>("authorization"))
+        .and(with_string("changeSetParticipant".into()))
+        .and(warp::query::<models::ListRequest>())
+        .and_then(handlers::list_models)
 }
 
 fn with_db(db: Db) -> impl Filter<Extract = (Db,), Error = std::convert::Infallible> + Clone {

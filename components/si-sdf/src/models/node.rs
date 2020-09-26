@@ -222,6 +222,40 @@ impl Node {
         Ok(node)
     }
 
+    pub async fn configure_node(
+        &self,
+        db: &Db,
+        nats: &Connection,
+        head_node_id: impl Into<String>,
+    ) -> NodeResult<Edge> {
+        let head_node_id = head_node_id.into();
+        let head_node = Node::get(&db, &head_node_id, &self.si_storable.billing_account_id).await?;
+        let head_object_id = head_node.get_object_id(db).await?;
+
+        let object_id = self.get_object_id(db).await?;
+
+        let edge = Edge::new(
+            db,
+            nats,
+            Vertex::new(&self.id, &object_id, "output", &self.si_storable.type_name),
+            Vertex::new(
+                head_node_id,
+                head_object_id,
+                "input",
+                &head_node.object_type,
+            ),
+            false,
+            EdgeKind::Configures,
+            self.si_storable.billing_account_id.clone(),
+            self.si_storable.organization_id.clone(),
+            self.si_storable.workspace_id.clone(),
+            None,
+        )
+        .await?;
+
+        Ok(edge)
+    }
+
     pub async fn include_in_system(
         &self,
         db: &Db,

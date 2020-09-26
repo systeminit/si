@@ -46,6 +46,7 @@ export interface INodeCreateRequest {
   workspaceId: string;
   changeSetId: string;
   editSessionId: string;
+  systemIds?: string[];
 }
 
 export interface INodePatchIncludeSystemRequest {

@@ -165,6 +165,11 @@ pub async fn publish_model<T: Serialize + std::fmt::Debug>(
             let tenant_id = String::from(tenant_id_value.as_str().unwrap());
             subject_array.push(tenant_id);
         }
+    } else {
+        match model_json["siStorable"]["billingAccountId"].as_str() {
+            Some(billing_account_id) => subject_array.push(billing_account_id.into()),
+            None => return Ok(()),
+        }
     }
     if subject_array.len() != 0 {
         let subject: String = subject_array.join(".");
@@ -248,13 +253,19 @@ pub async fn insert_model_if_missing<T: Serialize + std::fmt::Debug>(
     nats: &Connection,
     id: impl AsRef<str> + std::fmt::Debug,
     model: &T,
-) -> ModelResult<()> {
+) -> ModelResult<bool> {
     let id = id.as_ref();
     let collection = db.bucket.default_collection();
     match collection.exists(id, None).await {
-        Ok(_exists) => Ok(()),
-        Err(couchbase::CouchbaseError::KeyDoesNotExist) => insert_model(db, nats, id, model).await,
-        Err(couchbase::CouchbaseError::Success) => insert_model(db, nats, id, model).await,
+        Ok(_exists) => Ok(false),
+        Err(couchbase::CouchbaseError::KeyDoesNotExist) => {
+            insert_model(db, nats, id, model).await?;
+            Ok(true)
+        }
+        Err(couchbase::CouchbaseError::Success) => {
+            insert_model(db, nats, id, model).await?;
+            Ok(true)
+        }
         Err(err) => Err(ModelError::from(err)),
     }
 }
@@ -289,6 +300,34 @@ pub async fn get_model<T: DeserializeOwned + std::fmt::Debug>(
     Ok(object)
 }
 
+pub async fn load_billing_account_model(
+    db: &Db,
+    billing_account_id: impl AsRef<str>,
+) -> ModelResult<Vec<serde_json::Value>> {
+    let billing_account_id = billing_account_id.as_ref();
+    let query_string = format!(
+        "SELECT a.*
+          FROM `{bucket}` AS a
+          WHERE a.siStorable.billingAccountId = $billing_account_id 
+                AND (a.siStorable.typeName = \"billingAccount\" 
+                      OR a.siStorable.typeName = \"changeSetParticipant\")
+        ",
+        bucket = db.bucket_name,
+    );
+    let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
+    named_params.insert(
+        "billing_account_id".into(),
+        serde_json::json![billing_account_id],
+    );
+    tracing::error!(
+        ?query_string,
+        ?named_params,
+        "loading billing account model query"
+    );
+    let results: Vec<serde_json::Value> = db.query(query_string, Some(named_params)).await?;
+    return Ok(results);
+}
+
 pub async fn load_data_model(
     db: &Db,
     workspace_id: String,
@@ -298,8 +337,8 @@ pub async fn load_data_model(
         "SELECT a.*
           FROM `{bucket}` AS a
           WHERE a.siStorable.workspaceId = $workspace_id 
-            AND a.siStorable.updateClock.epoch >= $epoch
-            AND a.siStorable.updateClock.updateCount > $update_count
+                AND a.siStorable.updateClock.epoch >= $epoch
+                AND a.siStorable.updateClock.updateCount > $update_count
           ORDER BY a.siChangeSet.updateClock.epoch ASC, a.siChangeSet.updateClock.updateCount ASC
         ",
         bucket = db.bucket_name,

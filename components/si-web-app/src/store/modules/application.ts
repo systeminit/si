@@ -3,7 +3,7 @@ import { Module } from "vuex";
 import _ from "lodash";
 
 import { Entity } from "@/api/sdf/model/entity";
-import { ChangeSet } from "@/api/sdf/model/changeSet";
+import { ChangeSet, ChangeSetParticipant } from "@/api/sdf/model/changeSet";
 import { EditSession } from "@/api/sdf/model/editSession";
 import { Node, NodeKind } from "@/api/sdf/model/node";
 import { Edge, EdgeKind } from "@/api/sdf/model/edge";
@@ -17,10 +17,10 @@ export interface ApplicationStore {
   systems: {
     [key: string]: System[];
   };
-  changeSets: {
+  changeSetCounts: {
     [key: string]: {
-      openCount: number;
-      closedCount: number;
+      open: number;
+      closed: number;
     };
   };
 }
@@ -31,7 +31,17 @@ export interface ActionCreate {
 
 export interface MutationUpdateSystem {
   system: System;
+  application: {
+    id: string;
+  };
+}
+
+export interface MutationUpdateChangeSetCount {
   application: Entity;
+  changeSetCounts: {
+    open: number;
+    closed: number;
+  };
 }
 
 export const application: Module<ApplicationStore, RootStore> = {
@@ -39,7 +49,7 @@ export const application: Module<ApplicationStore, RootStore> = {
   state: {
     list: [],
     systems: {},
-    changeSets: {},
+    changeSetCounts: {},
   },
   getters: {},
   mutations: {
@@ -58,11 +68,18 @@ export const application: Module<ApplicationStore, RootStore> = {
         state.systems[payload.application.id],
       );
     },
+    updateChangeSetCount(state, payload: MutationUpdateChangeSetCount) {
+      Vue.set(
+        state.changeSetCounts,
+        payload.application.id,
+        payload.changeSetCounts,
+      );
+    },
   },
   actions: {
     async list({ state, commit }): Promise<ApplicationStore["list"]> {
       if (state.list.length == 0) {
-        let applications = await Entity.list_by_object_type("application");
+        let applications = await Entity.list_head_by_object_type("application");
         commit("bulkUpdateList", applications.items);
       }
       return state.list;
@@ -91,37 +108,85 @@ export const application: Module<ApplicationStore, RootStore> = {
         workspaceId: workspace.id,
         changeSetId: changeSet.id,
         editSessionId: editSession.id,
+        systemIds: [system.id],
       });
-      await appNode.include_in_system(system.id);
       await changeSet.execute({ hypothetical: false });
       let entity = (await appNode.head_object()) as Entity;
       commit("updateList", entity);
+      commit("updateChangeSetCount", {
+        application: entity,
+        changeSetCounts: { open: 0, closed: 0 },
+      });
       return entity;
     },
+    async fromChangeSet({ state, commit }, _payload: ChangeSet) {
+      for (let application of state.list) {
+        let changeSetCounts = await Entity.upgrade(
+          application,
+        ).changeSetCounts();
+        commit("updateChangeSetCount", { application, changeSetCounts });
+      }
+    },
     async fromEntity({ commit }, payload: Entity) {
-      commit("updateList", payload);
+      if (payload.objectType == "application") {
+        commit("updateList", payload);
+      }
+    },
+    async fromChangeSetParticipant({ commit }, payload: ChangeSetParticipant) {
+      if (payload.objectId.startsWith("entity:")) {
+        let application;
+        try {
+          application = await Entity.get_head({ id: payload.objectId });
+        } catch (err) {
+          try {
+            application = await Entity.get_projection({
+              id: payload.objectId,
+              changeSetId: payload.changeSetId,
+            });
+          } catch (err) {}
+        }
+        if (application?.objectType == "application") {
+          let changeSetCounts = await application.changeSetCounts();
+          commit("updateChangeSetCount", { application, changeSetCounts });
+        }
+      }
     },
     async fromEdge({ commit }, payload: Edge) {
-      let system = await System.get({ id: payload.tailVertex.objectId });
-      let application = await Entity.get({ id: payload.headVertex.objectId });
-      commit("updateList", application);
-      commit("updateSystem", { system, application });
+      if (
+        payload.kind == EdgeKind.Includes &&
+        payload.tailVertex.typeName == "system" &&
+        payload.headVertex.typeName == "application"
+      ) {
+        let system = await System.get({ id: payload.tailVertex.objectId });
+        commit("updateSystem", {
+          system,
+          application: { id: payload.headVertex.objectId },
+        });
+      }
     },
     async restore({ commit }) {
-      let applications = await Entity.list_by_object_type("application");
+      // Restore the list of applications
+      let applications = await Entity.list_head_by_object_type("application");
       commit("bulkUpdateList", applications.items);
 
+      // Restore the list of systems per application
       let systemEdges = await Edge.byVertexTypes(
-        "includes",
+        EdgeKind.Includes,
         "system",
         "application",
       );
       for (let systemEdge of systemEdges) {
         let system = await System.get({ id: systemEdge.tailVertex.objectId });
-        let application = await Entity.get({
+        let application = await Entity.get_head({
           id: systemEdge.headVertex.objectId,
         });
         commit("updateSystem", { system, application });
+      }
+
+      // Restore the count of change sets
+      for (let application of applications.items) {
+        const changeSetCounts = await application.changeSetCounts();
+        commit("updateChangeSetCount", { application, changeSetCounts });
       }
     },
   },

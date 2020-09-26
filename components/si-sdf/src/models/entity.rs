@@ -44,9 +44,17 @@ pub enum EntityError {
     System(#[from] SystemError),
     #[error("no systems were provided; must have at least 1!")]
     NotEnoughSystems,
+    #[error("not found")]
+    NotFound,
 }
 
 pub type EntityResult<T> = Result<T, EntityError>;
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct GetReply {
+    pub items: Vec<Entity>,
+}
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -309,6 +317,26 @@ impl Entity {
         } else {
             let result = query_results.pop().unwrap();
             Ok(result)
+        }
+    }
+
+    pub async fn get_all(db: &Db, entity_id: impl AsRef<str>) -> EntityResult<Vec<Entity>> {
+        let entity_id = entity_id.as_ref();
+        let query = format!(
+            "SELECT a.*
+          FROM `{bucket}` AS a
+          WHERE a.siStorable.typeName = \"entity\"
+            AND a.siStorable.objectId = $entity_id 
+        ",
+            bucket = db.bucket_name
+        );
+        let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
+        named_params.insert("entity_id".into(), serde_json::json![entity_id]);
+        let query_results: Vec<Entity> = db.query(query, Some(named_params)).await?;
+        if query_results.len() == 0 {
+            Err(EntityError::NotFound)
+        } else {
+            Ok(query_results)
         }
     }
 }

@@ -119,8 +119,8 @@ export default Vue.extend({
   },
   methods: {
     applicationLink(applicationId: string): Record<string, any> {
-      const organization = this.$store.getters["organization/current"];
       const workspace = this.$store.getters["workspace/current"];
+      const organization = this.$store.getters["organization/current"];
       return {
         name: "applicationDetails",
         params: {
@@ -137,10 +137,11 @@ export default Vue.extend({
       const newApp = await this.$store.dispatch("application/create", payload);
       this.hideModal();
       const workspace = this.$store.getters["workspace/current"];
+      const organization = this.$store.getters["organization/current"];
       this.$router.push({
         name: "applicationDetails",
         params: {
-          organizationId: workspace.siProperties.organizationId,
+          organizationId: organization.id,
           workspaceId: workspace.id,
           applicationId: newApp.siStorable?.itemId,
         },

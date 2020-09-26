@@ -22,6 +22,7 @@ export enum Comparison {
 export enum FieldType {
   String = "string",
   Int = "int",
+  Boolean = "boolean",
 }
 
 export interface IExpression {

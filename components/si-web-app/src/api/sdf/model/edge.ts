@@ -12,6 +12,26 @@ import {
 import store from "@/store";
 import { sdf } from "@/api/sdf";
 
+export interface IAllPredecessorsRequest {
+  objectId?: string;
+  nodeId?: string;
+  edgeKind: EdgeKind;
+}
+
+export interface IAllPredecessorsReply {
+  edges: IEdge[];
+}
+
+export interface IAllSuccessorsRequest {
+  objectId?: string;
+  nodeId?: string;
+  edgeKind: EdgeKind;
+}
+
+export interface IAllSuccessorsReply {
+  edges: IEdge[];
+}
+
 export interface IVertex {
   nodeId: string;
   objectId: string;
@@ -56,6 +76,106 @@ export class Edge implements IEdge {
     } else {
       return new Edge(obj);
     }
+  }
+
+  static async allPredecessors(
+    request: IAllPredecessorsRequest,
+  ): Promise<Edge[]> {
+    const items: Edge[] = [];
+
+    if (request.nodeId) {
+      const vertexes_to_check = [request.nodeId];
+
+      for (let x = 0; x < vertexes_to_check.length; x++) {
+        await db.edges
+          .where({
+            kind: request.edgeKind,
+            "headVertex.nodeId": request.nodeId,
+          })
+          .each(edge => {
+            vertexes_to_check.push(edge.tailVertex.nodeId);
+            items.push(Edge.upgrade(edge));
+          });
+      }
+    } else {
+      const vertexes_to_check = [request.objectId];
+
+      for (let x = 0; x < vertexes_to_check.length; x++) {
+        await db.edges
+          .where({
+            kind: request.edgeKind,
+            "headVertex.objectId": request.objectId,
+          })
+          .each(edge => {
+            vertexes_to_check.push(edge.tailVertex.objectId);
+            items.push(Edge.upgrade(edge));
+          });
+      }
+    }
+
+    if (items.length) {
+      return items;
+    }
+
+    const reply: IAllPredecessorsReply = await sdf.get(
+      "edges/allPredecessors",
+      request,
+    );
+    for (let item of reply.edges) {
+      const obj = new Edge(item);
+      obj.save();
+      items.push(obj);
+    }
+    return items;
+  }
+
+  static async allSuccessors(request: IAllSuccessorsRequest): Promise<Edge[]> {
+    const items: Edge[] = [];
+
+    if (request.nodeId) {
+      const vertexes_to_check = [request.nodeId];
+
+      for (let x = 0; x < vertexes_to_check.length; x++) {
+        await db.edges
+          .where({
+            kind: request.edgeKind,
+            "tailVertex.nodeId": request.nodeId,
+          })
+          .each(edge => {
+            vertexes_to_check.push(edge.headVertex.nodeId);
+            items.push(Edge.upgrade(edge));
+          });
+      }
+    } else {
+      const vertexes_to_check = [request.objectId];
+
+      for (let x = 0; x < vertexes_to_check.length; x++) {
+        await db.edges
+          .where({
+            kind: request.edgeKind,
+            "tailVertex.objectId": request.objectId,
+          })
+          .each(edge => {
+            vertexes_to_check.push(edge.headVertex.objectId);
+            items.push(Edge.upgrade(edge));
+          });
+      }
+    }
+
+    if (items.length) {
+      return items;
+    }
+
+    const reply: IAllSuccessorsReply = await sdf.get(
+      "edges/allSuccessors",
+      request,
+    );
+    for (let item of reply.edges) {
+      const obj = new Edge(item);
+      obj.save();
+      items.push(obj);
+    }
+    return items;
   }
 
   static async byVertexTypes(

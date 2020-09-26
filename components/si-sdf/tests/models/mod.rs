@@ -1,3 +1,4 @@
+pub mod edge;
 pub mod ops;
 pub mod update_clock;
 

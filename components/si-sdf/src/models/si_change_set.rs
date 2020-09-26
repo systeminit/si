@@ -2,7 +2,9 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::data::{Connection, Db};
-use crate::models::{ChangeSetParticipant, UpdateClock, UpdateClockError};
+use crate::models::{
+    ChangeSetParticipant, Edge, EdgeError, EdgeKind, UpdateClock, UpdateClockError,
+};
 
 #[derive(Error, Debug)]
 pub enum SiChangeSetError {
@@ -10,6 +12,8 @@ pub enum SiChangeSetError {
     UpdateCount(#[from] UpdateClockError),
     #[error("change set participation error: {0}")]
     ChangeSetParticipant(String),
+    #[error("edge error: {0}")]
+    Edge(#[from] EdgeError),
 }
 
 pub type SiChangeSetResult<T> = Result<T, SiChangeSetError>;
@@ -45,10 +49,35 @@ impl SiChangeSet {
         let edit_session_id = edit_session_id.into();
         let object_id = object_id.into();
         let billing_account_id = billing_account_id.into();
-        ChangeSetParticipant::new(&db, &nats, &change_set_id, object_id, billing_account_id)
-            .await
-            .map_err(|e| SiChangeSetError::ChangeSetParticipant(e.to_string()))?;
+        let (_, inserted) = ChangeSetParticipant::new(
+            &db,
+            &nats,
+            &change_set_id,
+            &object_id,
+            billing_account_id.clone(),
+        )
+        .await
+        .map_err(|e| SiChangeSetError::ChangeSetParticipant(e.to_string()))?;
+
+        if inserted {
+            let edges =
+                Edge::all_predecessor_edges_by_object_id(&db, EdgeKind::Configures, &object_id)
+                    .await?;
+            for edge in edges.iter() {
+                ChangeSetParticipant::new(
+                    &db,
+                    &nats,
+                    &change_set_id,
+                    &edge.tail_vertex.object_id,
+                    billing_account_id.clone(),
+                )
+                .await
+                .map_err(|e| SiChangeSetError::ChangeSetParticipant(e.to_string()))?;
+            }
+        }
+
         let order_clock = UpdateClock::create_or_update(db, &change_set_id, 0).await?;
+
         Ok(SiChangeSet {
             change_set_id,
             edit_session_id,

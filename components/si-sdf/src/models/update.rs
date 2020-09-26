@@ -5,7 +5,7 @@ use warp::ws::{Message, WebSocket};
 
 use crate::data::{Connection, Db};
 use crate::handlers::users::SiClaims;
-use crate::models::{load_data_model, UpdateClock};
+use crate::models::{load_billing_account_model, load_data_model, UpdateClock};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -100,7 +100,7 @@ pub async fn websocket_run(websocket: WebSocket, db: Db, nats: Connection, claim
                         }
                         ControlOp::LoadData(load_data) => {
                             tracing::debug!(?load_data, "loading data");
-                            let results = match load_data_model(
+                            let mut results = match load_data_model(
                                 &db,
                                 load_data.workspace_id,
                                 load_data.update_clock,
@@ -113,6 +113,18 @@ pub async fn websocket_run(websocket: WebSocket, db: Db, nats: Connection, claim
                                     continue;
                                 }
                             };
+                            let mut b_results =
+                                match load_billing_account_model(&db, &claim.billing_account_id)
+                                    .await
+                                {
+                                    Ok(b_results) => b_results,
+                                    Err(err) => {
+                                        tracing::error!(?err, "cannot load data");
+                                        continue;
+                                    }
+                                };
+                            results.append(&mut b_results);
+
                             for model in results.into_iter() {
                                 match serde_json::to_string(&UpdateOp::Model(model)) {
                                     Ok(op_json) => {

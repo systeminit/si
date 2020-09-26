@@ -72,7 +72,7 @@ export class System implements ISystem {
     let totalCount = 0;
 
     if (!request?.query) {
-      await db.entities.each(obj => {
+      await db.systems.each(obj => {
         items.push(new System(obj));
         totalCount = totalCount + 1;
       });

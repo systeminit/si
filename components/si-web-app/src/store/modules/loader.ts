@@ -34,8 +34,8 @@ export const loader: Module<LoaderStore, RootStore> = {
         commit("loading", true);
         await sdf.startUpdate();
         await dispatch("billingAccount/forUser", {}, { root: true });
-        await dispatch("workspace/default", {}, { root: true });
         await dispatch("organization/default", {}, { root: true });
+        await dispatch("workspace/default", {}, { root: true });
         await dispatch("system/default", {}, { root: true });
         let workspaceId = rootState.workspace.current?.id;
         if (sdf.update && workspaceId) {

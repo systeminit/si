@@ -175,16 +175,15 @@ pub async fn create_indexes(db: &Db) -> DataResult<()> {
     Ok(())
 }
 
-pub async fn delete_data(db: &Db) -> DataResult<()> {
-    let delete_query = format!(
-        "DELETE FROM `{bucket}` WHERE id IS VALUED",
-        bucket = db.bucket_name
-    );
-    let mut result = db.cluster.query(delete_query, None).await?;
-    let meta = result.meta().await?;
-    match meta.errors {
-        Some(error) => tracing::error!("issue deleting: {}", error),
-        None => (),
-    }
+// TODO: clean the data out before tests run - need a reliable way to do it. maybe go back tod
+// eleting the bucket.
+pub async fn delete_data(_db: &Db) -> DataResult<()> {
+    //let delete_query = format!("DELETE FROM `{bucket}`", bucket = db.bucket_name);
+    //let mut result = db.cluster.query(delete_query, None).await?;
+    //let meta = result.meta().await?;
+    //match meta.errors {
+    //    Some(error) => tracing::error!("issue deleting: {}", error),
+    //    None => (),
+    //}
     Ok(())
 }

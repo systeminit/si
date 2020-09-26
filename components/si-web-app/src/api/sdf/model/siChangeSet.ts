@@ -8,8 +8,8 @@ export enum SiChangeSetEvent {
 }
 
 export interface ISiChangeSet {
-  change_set_id: string;
-  edit_session_id: string;
+  changeSetId: string;
+  editSessionId: string;
   event: SiChangeSetEvent;
   order_clock: IUpdateClock;
 }

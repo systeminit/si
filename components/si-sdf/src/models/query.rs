@@ -24,6 +24,7 @@ pub type QueryResult<T> = Result<T, QueryError>;
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub enum FieldType {
+    Boolean,
     String,
     Int,
 }
@@ -214,6 +215,13 @@ impl Query {
                 match &query_e_option.expression {
                     Some(exp) => {
                         let value = match exp.field_type {
+                            FieldType::Boolean => {
+                                if (exp.value == "true") {
+                                    json![true]
+                                } else {
+                                    json![false]
+                                }
+                            }
                             FieldType::String => json![exp.value],
                             FieldType::Int => {
                                 // Elizabeth Jacob fixed this bug, her first, on 04-13-2020.

@@ -268,6 +268,11 @@ impl ChangeSet {
 
         let response: Vec<String> = seen_map.keys().map(|k| String::from(k)).collect();
 
+        if !hypothetical {
+            self.status = ChangeSetStatus::Closed;
+            upsert_model(&db, &nats, &self.id, &self).await?;
+        }
+
         Ok(response)
     }
 }
@@ -281,7 +286,6 @@ pub struct ChangeSetParticipant {
     pub si_storable: SimpleStorable,
 }
 
-// TODO: Get changeset participation working backwards, by looking at the Configures edges that lead
 // in to this entity, and making sure they all have change set participant records as well.
 impl ChangeSetParticipant {
     pub async fn new(
@@ -290,7 +294,7 @@ impl ChangeSetParticipant {
         change_set_id: impl Into<String>,
         object_id: impl Into<String>,
         billing_account_id: String,
-    ) -> ChangeSetResult<ChangeSetParticipant> {
+    ) -> ChangeSetResult<(ChangeSetParticipant, bool)> {
         let change_set_id = change_set_id.into();
         let object_id = object_id.into();
         let id = format!("{}:{}", &change_set_id, &object_id);
@@ -302,13 +306,13 @@ impl ChangeSetParticipant {
             object_id,
             si_storable,
         };
-        insert_model_if_missing(
+        let inserted = insert_model_if_missing(
             db,
             nats,
             &change_set_participant.id,
             &change_set_participant,
         )
         .await?;
-        Ok(change_set_participant)
+        Ok((change_set_participant, inserted))
     }
 }

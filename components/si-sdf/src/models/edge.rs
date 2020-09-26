@@ -1,3 +1,4 @@
+use crossbeam::queue::SegQueue;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -12,9 +13,39 @@ pub enum EdgeError {
     Model(#[from] ModelError),
     #[error("data layer error: {0}")]
     Data(#[from] crate::data::DataError),
+    #[error("crossbeam pop error")]
+    Crossbeam(String),
 }
 
 pub type EdgeResult<T> = Result<T, EdgeError>;
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct AllPredecessorsRequest {
+    pub object_id: Option<String>,
+    pub node_id: Option<String>,
+    pub edge_kind: EdgeKind,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct AllPredecessorsReply {
+    pub edges: Vec<Edge>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct AllSuccessorsRequest {
+    pub object_id: Option<String>,
+    pub node_id: Option<String>,
+    pub edge_kind: EdgeKind,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct AllSuccessorsReply {
+    pub edges: Vec<Edge>,
+}
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -108,6 +139,154 @@ impl Edge {
         insert_model(db, nats, &edge.id, &edge).await?;
 
         Ok(edge)
+    }
+
+    pub async fn all_successor_edges_by_node_id(
+        db: &Db,
+        edge_kind: EdgeKind,
+        tail_vertex_node_id: impl Into<String>,
+    ) -> EdgeResult<Vec<Edge>> {
+        let tail_vertex_node_id = tail_vertex_node_id.into();
+
+        let mut results: Vec<Edge> = Vec::new();
+
+        let vertexes_to_check = SegQueue::<String>::new();
+        vertexes_to_check.push(tail_vertex_node_id);
+
+        while !vertexes_to_check.is_empty() {
+            let tail_node_id = vertexes_to_check
+                .pop()
+                .map_err(|e| EdgeError::Crossbeam(e.to_string()))?;
+            let query = format!(
+                "SELECT a.*
+                   FROM `{bucket}` AS a
+                  WHERE a.siStorable.typeName = \"edge\"
+                    AND a.kind = \"{edge_kind}\"
+                    AND a.tailVertex.nodeId = \"{node_id}\"
+                ",
+                bucket = db.bucket_name,
+                edge_kind = edge_kind,
+                node_id = tail_node_id,
+            );
+            let query_results: Vec<Edge> = db.query(query, None).await?;
+            for qedge in query_results.into_iter() {
+                vertexes_to_check.push(qedge.head_vertex.node_id.clone());
+                results.push(qedge);
+            }
+        }
+
+        Ok(results)
+    }
+
+    pub async fn all_successor_edges_by_object_id(
+        db: &Db,
+        edge_kind: EdgeKind,
+        tail_vertex_object_id: impl Into<String>,
+    ) -> EdgeResult<Vec<Edge>> {
+        let tail_vertex_object_id = tail_vertex_object_id.into();
+
+        let mut results: Vec<Edge> = Vec::new();
+
+        let vertexes_to_check = SegQueue::<String>::new();
+        vertexes_to_check.push(tail_vertex_object_id);
+
+        while !vertexes_to_check.is_empty() {
+            let tail_object_id = vertexes_to_check
+                .pop()
+                .map_err(|e| EdgeError::Crossbeam(e.to_string()))?;
+            let query = format!(
+                "SELECT a.*
+                   FROM `{bucket}` AS a
+                  WHERE a.siStorable.typeName = \"edge\"
+                    AND a.kind = \"{edge_kind}\"
+                    AND a.tailVertex.objectId = \"{object_id}\"
+                ",
+                bucket = db.bucket_name,
+                edge_kind = edge_kind,
+                object_id = tail_object_id,
+            );
+            let query_results: Vec<Edge> = db.query(query, None).await?;
+            for qedge in query_results.into_iter() {
+                vertexes_to_check.push(qedge.head_vertex.object_id.clone());
+                results.push(qedge);
+            }
+        }
+
+        Ok(results)
+    }
+
+    pub async fn all_predecessor_edges_by_node_id(
+        db: &Db,
+        edge_kind: EdgeKind,
+        head_vertex_node_id: impl Into<String>,
+    ) -> EdgeResult<Vec<Edge>> {
+        let head_vertex_node_id = head_vertex_node_id.into();
+
+        let mut results: Vec<Edge> = Vec::new();
+
+        let vertexes_to_check = SegQueue::<String>::new();
+        vertexes_to_check.push(head_vertex_node_id);
+
+        while !vertexes_to_check.is_empty() {
+            let head_node_id = vertexes_to_check
+                .pop()
+                .map_err(|e| EdgeError::Crossbeam(e.to_string()))?;
+            let query = format!(
+                "SELECT a.*
+                   FROM `{bucket}` AS a
+                  WHERE a.siStorable.typeName = \"edge\"
+                    AND a.kind = \"{edge_kind}\"
+                    AND a.headVertex.nodeId = \"{node_id}\"
+                ",
+                bucket = db.bucket_name,
+                edge_kind = edge_kind,
+                node_id = head_node_id,
+            );
+            let query_results: Vec<Edge> = db.query(query, None).await?;
+            for qedge in query_results.into_iter() {
+                vertexes_to_check.push(qedge.tail_vertex.node_id.clone());
+                results.push(qedge);
+            }
+        }
+
+        Ok(results)
+    }
+
+    pub async fn all_predecessor_edges_by_object_id(
+        db: &Db,
+        edge_kind: EdgeKind,
+        head_vertex_object_id: impl Into<String>,
+    ) -> EdgeResult<Vec<Edge>> {
+        let head_vertex_object_id = head_vertex_object_id.into();
+
+        let mut results: Vec<Edge> = Vec::new();
+
+        let vertexes_to_check = SegQueue::<String>::new();
+        vertexes_to_check.push(head_vertex_object_id);
+
+        while !vertexes_to_check.is_empty() {
+            let head_object_id = vertexes_to_check
+                .pop()
+                .map_err(|e| EdgeError::Crossbeam(e.to_string()))?;
+            let query = format!(
+                "SELECT a.*
+                   FROM `{bucket}` AS a
+                  WHERE a.siStorable.typeName = \"edge\"
+                    AND a.kind = \"{edge_kind}\"
+                    AND a.headVertex.objectId = \"{object_id}\"
+                ",
+                bucket = db.bucket_name,
+                edge_kind = edge_kind,
+                object_id = head_object_id,
+            );
+            let query_results: Vec<Edge> = db.query(query, None).await?;
+            for qedge in query_results.into_iter() {
+                vertexes_to_check.push(qedge.tail_vertex.object_id.clone());
+                results.push(qedge);
+            }
+        }
+
+        Ok(results)
     }
 
     pub async fn by_kind_and_head_node_id(

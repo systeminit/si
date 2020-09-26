@@ -1,6 +1,12 @@
 import { IEntity, Entity } from "@/api/sdf/model/entity";
 import { ISystem, System } from "@/api/sdf/model/system";
 import { IEdge, Edge } from "@/api/sdf/model/edge";
+import {
+  IChangeSet,
+  ChangeSet,
+  IChangeSetParticipant,
+  ChangeSetParticipant,
+} from "@/api/sdf/model/changeSet";
 import { IUpdateClock } from "@/api/sdf/model/updateClock";
 import { db } from "@/api/sdf/dexie";
 
@@ -72,15 +78,9 @@ function onMessage(ev: MessageEvent) {
         modelUpdateClock.epoch >= currentUpdateClock.epoch &&
         modelUpdateClock.updateCount > currentUpdateClock.updateCount
       ) {
-        console.log("updating clock", {
-          modelUpdateClock,
-          workspaceId,
-          currentUpdateClock,
-        });
         db.globalUpdateClock.put({ id: workspaceId, ...modelUpdateClock });
       } else {
         if (modelUpdateClock.epoch && modelUpdateClock.updateCount) {
-          console.log("updating clock new", { modelUpdateClock, workspaceId });
           db.globalUpdateClock.put({ id: workspaceId, ...modelUpdateClock });
         }
       }
@@ -88,12 +88,25 @@ function onMessage(ev: MessageEvent) {
   }
   if (model_data.model?.siStorable?.typeName == "entity") {
     const model = new Entity(model_data.model as IEntity);
+    console.log("entity", { model });
     model.save();
   } else if (model_data.model?.siStorable?.typeName == "system") {
     const model = new System(model_data.model as ISystem);
+    console.log("system", { model });
     model.save();
   } else if (model_data.model?.siStorable?.typeName == "edge") {
     const model = new Edge(model_data.model as IEdge);
+    console.log("edge", { model });
+    model.save();
+  } else if (model_data.model?.siStorable?.typeName == "changeSet") {
+    const model = new ChangeSet(model_data.model as IChangeSet);
+    console.log("changeSet", { model });
+    model.save();
+  } else if (model_data.model?.siStorable?.typeName == "changeSetParticipant") {
+    const model = new ChangeSetParticipant(
+      model_data.model as IChangeSetParticipant,
+    );
+    console.log("change set participant", { model });
     model.save();
   }
 }

@@ -10,7 +10,8 @@ use std::convert::Infallible;
 
 use crate::models::{
     BillingAccountError, ChangeSetError, EditSessionError, JwtKeyError, ModelError, NodeError,
-    OpError, SiStorableError, UserError, Query, QueryError, PageTokenError, PageToken,
+    OpError, SiStorableError, UserError, Query, QueryError, PageTokenError, PageToken, EdgeError,
+    EntityError,
 };
 
 pub mod billing_accounts;
@@ -19,6 +20,8 @@ pub mod edit_sessions;
 pub mod nodes;
 pub mod users;
 pub mod updates;
+pub mod edges;
+pub mod entities;
 
 #[derive(Error, Debug)]
 pub enum HandlerError {
@@ -56,7 +59,12 @@ pub enum HandlerError {
     Query(#[from] QueryError),
     #[error("page token error: {0}")]
     PageToken(#[from] PageTokenError),
-
+    #[error("edge error: {0}")]
+    Edge(#[from] EdgeError),
+    #[error("entity error: {0}")]
+    Entity(#[from] EntityError),
+    #[error("invalid request")]
+    InvalidRequest,
 }
 
 pub type HandlerResult<T> = Result<T, HandlerError>;

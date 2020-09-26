@@ -1,16 +1,27 @@
 import { db } from "@/api/sdf/dexie";
+import { ChangeSetStatus } from "@/api/sdf/model/changeSet";
 import { ISiStorable } from "@/api/sdf/model/siStorable";
 import { ISiChangeSet } from "@/api/sdf/model/siChangeSet";
-import { Query, Comparison } from "@/api/sdf/model/query";
+import { Edge, EdgeKind } from "@/api/sdf/model/edge";
 import {
-  IListRequest,
-  IListReply,
-  IGetRequest,
-  IGetReply,
-} from "@/api/sdf/model";
+  Query,
+  Comparison,
+  BooleanTerm,
+  FieldType,
+} from "@/api/sdf/model/query";
+import { IListRequest, IListReply, IGetRequest } from "@/api/sdf/model";
 import { sdf } from "@/api/sdf";
 import _ from "lodash";
 import store from "@/store";
+
+export interface IEntityGetReply {
+  items: IEntity[];
+}
+
+export interface IEntityGetProjectionRequest {
+  id: string;
+  changeSetId: string;
+}
 
 export interface IEntity {
   id: string;
@@ -64,24 +75,87 @@ export class Entity implements IEntity {
     this.siChangeSet = args.siChangeSet;
   }
 
-  static async get(request: IGetRequest<IEntity["id"]>): Promise<Entity> {
-    const obj = await db.entities.get(request.id);
+  static upgrade(obj: Entity | IEntity): Entity {
+    if (obj instanceof Entity) {
+      return obj;
+    } else {
+      return new Entity(obj);
+    }
+  }
+
+  static async get_any(request: IGetRequest<IEntity["id"]>): Promise<Entity> {
+    let entity;
+    try {
+      entity = await Entity.get_head(request);
+    } catch (err) {
+      let iEntity = await db.projectionEntities
+        .where({ id: request.id })
+        .first();
+      if (iEntity) {
+        entity = new Entity(iEntity);
+      }
+    }
+    if (entity) {
+      return entity;
+    } else {
+      throw new Error("cannot find any entity");
+    }
+  }
+
+  static async get_head(request: IGetRequest<IEntity["id"]>): Promise<Entity> {
+    const obj = await db.headEntities.get(request.id);
     if (obj) {
       return new Entity(obj);
     }
-    const reply: IGetReply<IEntity> = await sdf.get(`entities/${request.id}`);
-    const fetched: Entity = new Entity(reply.item);
-    await fetched.save();
-    return fetched;
+    const reply: IEntityGetReply = await sdf.get(`entities/${request.id}`);
+    let head_entity: Entity | undefined;
+    for (let ientity of reply.items) {
+      let entity = new Entity(ientity);
+      if (entity.head) {
+        head_entity = entity;
+      }
+      entity.save();
+    }
+    if (head_entity) {
+      return head_entity;
+    } else {
+      throw new Error("cannot find head entity");
+    }
   }
 
-  static async list_by_object_type(
+  static async get_projection(
+    request: IEntityGetProjectionRequest,
+  ): Promise<Entity> {
+    const obj = await db.projectionEntities.get({
+      id: request.id,
+      "siChangeSet.changeSetId": request.changeSetId,
+    });
+    if (obj) {
+      return new Entity(obj);
+    }
+    const reply: IEntityGetReply = await sdf.get(`entities/${request.id}`);
+    let projection_entity: Entity | undefined;
+    for (let ientity of reply.items) {
+      let entity = new Entity(ientity);
+      if (entity.siChangeSet.changeSetId == request.changeSetId) {
+        projection_entity = entity;
+      }
+      entity.save();
+    }
+    if (projection_entity) {
+      return projection_entity;
+    } else {
+      throw new Error("cannot find projection entity");
+    }
+  }
+
+  static async list_head_by_object_type(
     objectType: string,
   ): Promise<IListReply<Entity>> {
     let items: Entity[] = [];
     let totalCount = 0;
 
-    await db.entities
+    await db.headEntities
       .where("objectType")
       .equals(objectType)
       .each(obj => {
@@ -90,12 +164,28 @@ export class Entity implements IEntity {
       });
 
     if (totalCount == 0) {
-      const result = await Entity.list({
-        query: Query.for_simple_string(
-          "objectType",
-          "application",
-          Comparison.Equals,
-        ),
+      const result = await Entity.list_head({
+        query: {
+          booleanTerm: BooleanTerm.And,
+          items: [
+            {
+              expression: {
+                field: "objectType",
+                value: "application",
+                comparison: Comparison.Equals,
+                fieldType: FieldType.String,
+              },
+            },
+            {
+              expression: {
+                field: "head",
+                value: "true",
+                comparison: Comparison.Equals,
+                fieldType: FieldType.Boolean,
+              },
+            },
+          ],
+        },
       });
       items = result.items;
       totalCount = result.totalCount;
@@ -107,12 +197,12 @@ export class Entity implements IEntity {
     };
   }
 
-  static async list(request?: IListRequest): Promise<IListReply<Entity>> {
+  static async list_head(request?: IListRequest): Promise<IListReply<Entity>> {
     const items: Entity[] = [];
     let totalCount = 0;
 
     if (!request?.query) {
-      await db.entities.each(obj => {
+      await db.headEntities.each(obj => {
         items.push(new Entity(obj));
         totalCount = totalCount + 1;
       });
@@ -146,16 +236,55 @@ export class Entity implements IEntity {
     };
   }
 
-  async save(): Promise<void> {
-    const currentObj = await db.entities.get(this.id);
-    if (!_.eq(currentObj, this)) {
-      await db.entities.put(this);
+  async changeSetCounts(): Promise<{ open: number; closed: number }> {
+    const reply = { open: 0, closed: 0 };
+    const successors = await this.successors();
+    const object_ids = _.map(successors, e => e.id);
+    object_ids.push(this.id);
+    let change_sets: Set<string> = new Set([]);
+    await db.changeSetParticipants
+      .where("objectId")
+      .anyOf(object_ids)
+      .each(csp => {
+        change_sets.add(csp.changeSetId);
+      });
+    await db.changeSets
+      .where("id")
+      .anyOf(Array.from(change_sets))
+      .each(changeSet => {
+        if (changeSet.status == ChangeSetStatus.Open) {
+          reply.open++;
+        } else if (changeSet.status == ChangeSetStatus.Closed) {
+          reply.closed++;
+        }
+      });
 
-      if (this.objectType == "application") {
-        await store.dispatch("application/fromEntity", this);
-      }
+    return reply;
+  }
+
+  // Returns the entities that are successors to this entity in the configuration graph
+  async successors(): Promise<Entity[]> {
+    let edges = await Edge.allSuccessors({
+      objectId: this.id,
+      edgeKind: EdgeKind.Configures,
+    });
+    let items: Entity[] = [];
+    for (let edge of edges) {
+      let entity = await Entity.get_any({ id: edge.headVertex.objectId });
+      items.push(entity);
+    }
+    return items;
+  }
+
+  async save(): Promise<void> {
+    if (this.head) {
+      await db.headEntities.put(this);
+      await store.dispatch("application/fromEntity", this);
+    } else {
+      await db.projectionEntities.put(this);
     }
   }
 }
 
-db.entities.mapToClass(Entity);
+db.headEntities.mapToClass(Entity);
+db.projectionEntities.mapToClass(Entity);

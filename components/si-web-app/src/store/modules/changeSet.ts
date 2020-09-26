@@ -6,19 +6,19 @@ import { ChangeSet, IChangeSetCreateRequest } from "@/api/sdf/model/changeSet";
 import { RootStore, AddMutation } from "@/store";
 
 export interface ChangeSetStore {
-  changeSets: ChangeSet[];
+  list: ChangeSet[];
   current: null | ChangeSet;
 }
 
 export const changeSet: Module<ChangeSetStore, RootStore> = {
   namespaced: true,
   state: {
-    changeSets: [],
+    list: [],
     current: null,
   },
   mutations: {
-    add(state, payload: AddMutation<ChangeSet>) {
-      state.changeSets = _.unionBy(payload.items, state.changeSets, "id");
+    updateList(state, payload: ChangeSet) {
+      state.list = _.unionBy([payload], state.list, "id");
     },
     current(state, payload: ChangeSet | null) {
       state.current = payload;
@@ -37,6 +37,9 @@ export const changeSet: Module<ChangeSetStore, RootStore> = {
     async create({ commit }, payload: IChangeSetCreateRequest) {
       let changeSet = await ChangeSet.create(payload);
       commit("current", changeSet);
+    },
+    async fromChangeSet({ commit }, payload: ChangeSet) {
+      commit("updateList", payload);
     },
   },
 };
