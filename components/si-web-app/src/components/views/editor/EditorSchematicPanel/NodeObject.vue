@@ -25,22 +25,22 @@
               class="mt-1 text-xs font-medium text-center node"
               :class="nodeTitleClasses"
             >
-              {{ displayItem.siStorable.typeName }}
+              {{ displayItem.objectType }}
             </div>
           </div>
           <div
             class="mt-2 text-xs font-normal text-center text-red-700 node"
             v-if="displayItem.siStorable.deleted"
           >
-            {{ node.name }}
+            {{ displayItem.name }}
           </div>
           <div class="mt-2 text-xs font-normal text-center node" v-else>
-            {{ node.name }}
+            {{ displayItem.name }}
           </div>
-          <span v-if="displayItem.siStorable.changeSetId" class="text-xs node">
+          <span v-if="displayItem.head == false" class="text-xs node">
             <span class="font-light node">changeSet:</span>
             <div class="ml-2 node">
-              {{ changeSetName(displayItem.siStorable.changeSetId) }}
+              {{ currentChangeSet.name }}
             </div>
           </span>
         </div>
@@ -108,14 +108,6 @@ export default Vue.extend({
       console.log(event);
       console.log(this.node.id + ".socket.input");
     },
-    changeSetName(changeSetId) {
-      if (changeSetId) {
-        const changeSet = this.$store.getters["changeSet/byId"](changeSetId);
-        return changeSet.name;
-      } else {
-        return "";
-      }
-    },
   },
   computed: {
     positionStyle(): Record<string, string> {
@@ -140,7 +132,7 @@ export default Vue.extend({
       }
     },
     displayItem(): NodeObject {
-      return this.$store.state.objects[this.node.id];
+      return this.$store.state.editor.objects[this.node.id];
     },
     nodeTitleClasses(): Record<string, boolean> {
       if (this.currentChangeSet) {

@@ -114,7 +114,8 @@ export const editor: Module<EditorStore, RootStore> = {
       state.system = undefined;
       state.systems = [];
       state.nodes = [];
-      state.objects = [];
+      state.objects = {};
+      state.node = undefined;
     },
   },
   actions: {
@@ -124,6 +125,9 @@ export const editor: Module<EditorStore, RootStore> = {
       } else {
         commit("setMode", "view");
       }
+    },
+    node({ commit }, payload: Node | undefined) {
+      commit("node", payload);
     },
     async setChangeSet({ commit }, payload: ActionSetChangeSet) {
       if (payload.id) {
