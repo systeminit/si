@@ -66,6 +66,7 @@ export const user: Module<UserStore, any> = {
         commit("current", null);
         await dispatch("loader/clear", {}, { root: true });
         await dispatch("application/clear", {}, { root: true });
+        await dispatch("editor/clear", {}, { root: true });
         localStorage.removeItem("vuex");
       }
     },

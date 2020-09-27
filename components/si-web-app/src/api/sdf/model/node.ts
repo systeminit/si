@@ -49,19 +49,26 @@ export interface INodeCreateRequest {
   systemIds?: string[];
 }
 
-export interface INodePatchIncludeSystemRequest {
-  includeSystem: {
-    systemId: string;
-  };
-}
-
 export interface INodePatchIncludeSystemReply {
   includeSystem: {
     edge: IEdge;
   };
 }
 
-export type INodePatchOpRequest = INodePatchIncludeSystemRequest;
+export interface INodePatchConfiguredByReply {
+  configuredBy: {
+    edge: IEdge;
+  };
+}
+
+export interface INodePatchOpRequest {
+  includeSystem?: {
+    systemId: string;
+  };
+  configuredBy?: {
+    nodeId: string;
+  };
+}
 
 export interface INodePatchRequest {
   op: INodePatchOpRequest;
@@ -69,7 +76,14 @@ export interface INodePatchRequest {
   workspaceId: string;
 }
 
-export type INodePatchReply = INodePatchIncludeSystemReply;
+export interface INodePatchReply {
+  includeSystem?: {
+    edge: IEdge;
+  };
+  configuredBy?: {
+    edge: IEdge;
+  };
+}
 
 export class Node implements INode {
   id: INode["id"];
@@ -156,6 +170,22 @@ export class Node implements INode {
     };
   }
 
+  async configured_by(nodeId: string): Promise<Edge> {
+    let request: INodePatchRequest = {
+      op: { configuredBy: { nodeId } },
+      organizationId: this.siStorable.organizationId,
+      workspaceId: this.siStorable.workspaceId,
+    };
+    let reply: INodePatchReply = await sdf.patch(`nodes/${this.id}`, request);
+    if (reply.configuredBy) {
+      let edge = new Edge(reply.configuredBy.edge);
+      await edge.save();
+      return edge;
+    } else {
+      throw new Error("incorrect response to patch call");
+    }
+  }
+
   async include_in_system(systemId: string): Promise<Edge> {
     let request: INodePatchRequest = {
       op: { includeSystem: { systemId } },
@@ -163,19 +193,71 @@ export class Node implements INode {
       workspaceId: this.siStorable.workspaceId,
     };
     let reply: INodePatchReply = await sdf.patch(`nodes/${this.id}`, request);
-    let edge = new Edge(reply.includeSystem.edge);
-    await edge.save();
-    return edge;
+    if (reply.includeSystem) {
+      let edge = new Edge(reply.includeSystem.edge);
+      await edge.save();
+      return edge;
+    } else {
+      throw new Error("incorrect response to patch call");
+    }
   }
 
-  async head_object(): Promise<NodeObject> {
-    let response: IGetReply<INodeObject> = await sdf.get(
-      `nodes/${this.id}/object`,
-    );
-    if (response.item.siStorable.typeName == "system") {
-      return new System(response.item as ISystem);
-    } else if (response.item.siStorable.typeName == "entity") {
-      return new Entity(response.item as IEntity);
+  async displayObject(changeSetId?: string): Promise<NodeObject> {
+    console.log("chekcing on the display", { changeSetId, node: this });
+    let displayObject;
+    try {
+      if (changeSetId) {
+        displayObject = await this.projectionObject(changeSetId);
+        return displayObject;
+      }
+    } catch {}
+    if (!displayObject) {
+      displayObject = await this.headObject();
+      return displayObject;
+    }
+    throw new Error("cannot get display object; no head or projection");
+  }
+
+  async headObject(): Promise<NodeObject> {
+    let iitem: INodeObject;
+    let cacheResult = await db.headEntities
+      .where({ nodeId: this.id })
+      .toArray();
+    if (cacheResult.length && cacheResult[0]) {
+      iitem = cacheResult[0];
+    } else {
+      let response: IGetReply<INodeObject> = await sdf.get(
+        `nodes/${this.id}/object`,
+      );
+      iitem = response.item;
+    }
+    if (iitem.siStorable.typeName == "system") {
+      return new System(iitem as ISystem);
+    } else if (iitem.siStorable.typeName == "entity") {
+      return new Entity(iitem as IEntity);
+    } else {
+      throw new Error("unknown object type");
+    }
+  }
+
+  async projectionObject(changeSetId: string): Promise<NodeObject> {
+    let iitem: INodeObject;
+    let cacheResult = await db.projectionEntities
+      .where({ nodeId: this.id, "siChangeSet.changeSetId": changeSetId })
+      .toArray();
+    if (cacheResult.length && cacheResult[0]) {
+      iitem = cacheResult[0];
+    } else {
+      let response: IGetReply<INodeObject> = await sdf.get(
+        `nodes/${this.id}/object`,
+        { changeSetId },
+      );
+      iitem = response.item;
+    }
+    if (iitem.siStorable.typeName == "system") {
+      return new System(iitem as ISystem);
+    } else if (iitem.siStorable.typeName == "entity") {
+      return new Entity(iitem as IEntity);
     } else {
       throw new Error("unknown object type");
     }
@@ -185,7 +267,7 @@ export class Node implements INode {
     const currentObj = await db.nodes.get(this.id);
     if (!_.eq(currentObj, this)) {
       await db.nodes.put(this);
-      await store.dispatch("nodes/fromDb", this);
+      await store.dispatch("editor/fromNode", this);
     }
   }
 }

@@ -5,8 +5,8 @@ use crate::models;
 use crate::models::change_set::ChangeSet;
 use crate::models::entity::Entity;
 use crate::models::node::{
-    Node, ObjectPatchReply, ObjectPatchRequest, PatchIncludeSystemReply, PatchOp, PatchReply,
-    PatchRequest,
+    Node, ObjectPatchReply, ObjectPatchRequest, PatchConfiguredByReply, PatchConfiguredByRequest,
+    PatchIncludeSystemReply, PatchOp, PatchReply, PatchRequest,
 };
 use crate::models::ops::{OpEntitySetString, OpReply, OpRequest};
 
@@ -78,6 +78,13 @@ pub async fn patch(
                 .map_err(HandlerError::from)?;
             PatchReply::IncludeSystem(PatchIncludeSystemReply { edge })
         }
+        PatchOp::ConfiguredBy(configured_by_req) => {
+            let edge = node
+                .configured_by(&db, &nats, configured_by_req.node_id)
+                .await
+                .map_err(HandlerError::from)?;
+            PatchReply::ConfiguredBy(PatchConfiguredByReply { edge })
+        }
     };
 
     Ok(warp::reply::json(&reply))
@@ -147,6 +154,7 @@ pub async fn get_object(
     token: String,
     request: models::GetRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
+    tracing::error!("you did call it, right?");
     let claim = authenticate(&db, &token).await?;
     authorize(
         &db,

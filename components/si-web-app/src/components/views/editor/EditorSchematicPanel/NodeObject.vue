@@ -2,19 +2,18 @@
   <div>
     <div
       class="absolute shadow-md cursor-move node-container node"
-      :id="nodeObject.id"
+      :id="node.id"
       :class="nodeIsSelected"
       v-bind:style="positionStyle"
       @mousedown="selectNode()"
-      @contextmenu="contextMenu($event)"
     >
       <span
-        ref="`${nodeObject.id}.socket.input`"
+        ref="`${node.id}.socket.input`"
         class="socket-input node"
         @mousedown="selectSocket($event)"
       />
       <span
-        ref="`${nodeObject.id}.socket.output`"
+        ref="`${node.id}.socket.output`"
         class="socket-output node"
         @mousedown="selectSocket($event)"
       />
@@ -26,17 +25,17 @@
               class="mt-1 text-xs font-medium text-center node"
               :class="nodeTitleClasses"
             >
-              {{ displayItem.siStorable.typeName.split("_")[0] }}
+              {{ displayItem.siStorable.typeName }}
             </div>
           </div>
           <div
             class="mt-2 text-xs font-normal text-center text-red-700 node"
             v-if="displayItem.siStorable.deleted"
           >
-            {{ nodeObject.name }}
+            {{ node.name }}
           </div>
           <div class="mt-2 text-xs font-normal text-center node" v-else>
-            {{ nodeObject.name }}
+            {{ node.name }}
           </div>
           <span v-if="displayItem.siStorable.changeSetId" class="text-xs node">
             <span class="font-light node">changeSet:</span>
@@ -50,65 +49,64 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+/**
+ * NodeObject
+ *
+ * A Node
+ *  id
+ *  kind # the lkind of node, defines the color of the node actions, and more...
+ *  name # the name displayed on a node.
+ *  inputs [] # a list of input sockets setting properties on this node.
+ *  outputs [] # a list of output sockets exposing properties from this this node.
+ *  connections [] # a list of connections between this and other node(s).
+ *  position # the node position (x,y). Position has to be relative to the main coordinate system.
+ *  data # the actual node data.
+ *  Note: the inputs and outputs list could be combined into a single list: sockets[]. A socket would be of kind input or output.
+ *
+ * A Socket (input or output)
+ *  id
+ *  name # maps to a property on this node.
+ *  kind # the kind of socket, input or output.
+ *  type # the type of socket, string, int, float, bool, service, k8s-blah, ...
+ *  position # to draw connections.
+ *
+ * A Connection (input or output) - local representation of a connection.
+ *  id
+ *  socket # a socket on this node.
+ *  path # a socket to connect with.
+ * kind i/o
+ *
+ * A Connection (input or output) - global representation of a connection, what goes in the connectionList
+ *  id
+ *  source # a node socket.
+ *  destination # a socket to connect with.
+ *
+ */
+
+import Vue, { PropType } from "vue";
 import { registry } from "si-registry";
 import { mapState, mapActions } from "vuex";
 import _ from "lodash";
 
-export default {
-  /**
-   * NodeObject
-   *
-   * A Node
-   *  id
-   *  kind # the lkind of node, defines the color of the node actions, and more...
-   *  name # the name displayed on a node.
-   *  inputs [] # a list of input sockets setting properties on this node.
-   *  outputs [] # a list of output sockets exposing properties from this this node.
-   *  connections [] # a list of connections between this and other node(s).
-   *  position # the node position (x,y). Position has to be relative to the main coordinate system.
-   *  data # the actual node data.
-   *  Note: the inputs and outputs list could be combined into a single list: sockets[]. A socket would be of kind input or output.
-   *
-   * A Socket (input or output)
-   *  id
-   *  name # maps to a property on this node.
-   *  kind # the kind of socket, input or output.
-   *  type # the type of socket, string, int, float, bool, service, k8s-blah, ...
-   *  position # to draw connections.
-   *
-   * A Connection (input or output) - local representation of a connection.
-   *  id
-   *  socket # a socket on this node.
-   *  path # a socket to connect with.
-   * kind i/o
-   *
-   * A Connection (input or output) - global representation of a connection, what goes in the connectionList
-   *  id
-   *  source # a node socket.
-   *  destination # a socket to connect with.
-   *
-   */
+import { RootStore } from "@/store";
+import { Node, NodeObject } from "@/api/sdf/model/node";
 
+export default Vue.extend({
   name: "NodeObject",
   props: {
-    nodeObject: {},
+    node: {
+      type: Object as PropType<Node>,
+    },
   },
   methods: {
     selectNode() {
-      this.$store.dispatch("node/current", { node: this.nodeObject });
+      this.$store.dispatch("editor/node", this.node);
     },
-    selectSocket(event) {
+    selectSocket(event: Event) {
       console.log("socket");
       console.log(event);
-      console.log(this.nodeObject.id + ".socket.input");
-    },
-    ontextMenu(e) {
-      e.preventDefault();
-      this.$refs.vueSimpleContextMenu1.showMenu(event, null);
-    },
-    optionClicked1(event) {
-      window.alert(JSON.stringify(event));
+      console.log(this.node.id + ".socket.input");
     },
     changeSetName(changeSetId) {
       if (changeSetId) {
@@ -120,17 +118,17 @@ export default {
     },
   },
   computed: {
-    positionStyle() {
+    positionStyle(): Record<string, string> {
       return {
-        left: `${this.nodeObject.position.x}px`,
-        top: `${this.nodeObject.position.y}px`,
+        left: `${this.node.positions.x}px`,
+        top: `${this.node.positions.y}px`,
       };
     },
-    nodeIsSelected() {
+    nodeIsSelected(): Record<string, boolean> {
       if (
-        this.nodeObject &&
+        this.node &&
         this.selectedNode &&
-        this.selectedNode.id == this.nodeObject.id
+        this.selectedNode.id == this.node.id
       ) {
         return {
           "node-is-selected": true,
@@ -141,20 +139,12 @@ export default {
         };
       }
     },
-    displayItem() {
-      let node = _.find(this.$store.state.node.nodes, [
-        "id",
-        this.nodeObject.id,
-      ]);
-      if (this.currentChangeSet && node.display[this.currentChangeSet.id]) {
-        return node.display[this.currentChangeSet.id];
-      } else {
-        return node.display["saved"];
-      }
+    displayItem(): NodeObject {
+      return this.$store.state.objects[this.node.id];
     },
-    nodeTitleClasses() {
+    nodeTitleClasses(): Record<string, boolean> {
       if (this.currentChangeSet) {
-        if (this.nodeObject.display[this.currentChangeSet.id]) {
+        if (this.displayItem.head) {
           return {
             "input-border-gold": true,
             border: true,
@@ -168,11 +158,15 @@ export default {
       return {};
     },
     ...mapState({
-      selectedNode: state => state.node.current,
-      currentChangeSet: state => state.changeSet.current,
+      selectedNode(state: RootStore) {
+        return state.editor.node;
+      },
+      currentChangeSet(state: RootStore) {
+        return state.editor.changeSet;
+      },
     }),
   },
-};
+});
 </script>
 
 <style type="text/css" scoped>

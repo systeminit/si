@@ -178,6 +178,56 @@ export class Edge implements IEdge {
     return items;
   }
 
+  static async byTailTypeForHeadObjectId(
+    kind: IEdge["kind"],
+    tailTypeName: string,
+    headObjectId: string,
+  ): Promise<Edge[]> {
+    let items = await db.edges
+      .where({
+        kind,
+        "tailVertex.typeName": tailTypeName,
+        "headVertex.objectId": headObjectId,
+      })
+      .toArray();
+    if (!items.length) {
+      const results = await Edge.list({
+        query: new Query({
+          booleanTerm: BooleanTerm.And,
+          items: [
+            {
+              expression: {
+                field: "kind",
+                value: kind.toString(),
+                comparison: Comparison.Equals,
+                fieldType: FieldType.String,
+              },
+            },
+            {
+              expression: {
+                field: "tailVertex.typeName",
+                value: tailTypeName,
+                comparison: Comparison.Equals,
+                fieldType: FieldType.String,
+              },
+            },
+            {
+              expression: {
+                field: "headVertex.objectId",
+                value: headObjectId,
+                comparison: Comparison.Equals,
+                fieldType: FieldType.String,
+              },
+            },
+          ],
+        }),
+      });
+      return results.items;
+    } else {
+      return items.map(obj => new Edge(obj));
+    }
+  }
+
   static async byVertexTypes(
     kind: IEdge["kind"],
     tailTypeName: string,

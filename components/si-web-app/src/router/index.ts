@@ -15,7 +15,7 @@ const router = new VueRouter({
   routes,
 });
 
-const routeCheck = async (to: any, _from: any, next: any) => {
+const routeCheck = async (to: any, from: any, next: any) => {
   //const span = telemetry.routeSpan(`web.router ${to.path}`);
   //span.setAttributes({
   //  "web.route.to.path": to.path,
@@ -58,7 +58,6 @@ const routeCheck = async (to: any, _from: any, next: any) => {
     if (to.path == "/loading") {
       return next();
     } else {
-      console.log("to", { to });
       store.commit("loader/nextUp", {
         name: _.cloneDeep(to.name),
         params: _.cloneDeep(to.params),

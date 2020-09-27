@@ -9,6 +9,7 @@ import {
   BooleanTerm,
   FieldType,
 } from "@/api/sdf/model/query";
+import { System } from "@/api/sdf/model/system";
 import { IListRequest, IListReply, IGetRequest } from "@/api/sdf/model";
 import { sdf } from "@/api/sdf";
 import _ from "lodash";
@@ -277,6 +278,20 @@ export class Entity implements IEntity {
     for (let edge of edges) {
       let entity = await Entity.get_any({ id: edge.headVertex.objectId });
       items.push(entity);
+    }
+    return items;
+  }
+
+  async systems(): Promise<System[]> {
+    let edges = await Edge.byTailTypeForHeadObjectId(
+      EdgeKind.Includes,
+      "system",
+      this.id,
+    );
+    let items: System[] = [];
+    for (let edge of edges) {
+      let system = await System.get({ id: edge.tailVertex.objectId });
+      items.push(system);
     }
     return items;
   }

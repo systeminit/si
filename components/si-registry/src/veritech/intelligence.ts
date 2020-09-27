@@ -66,12 +66,12 @@ export function calculateProperties(
   const intelReq: CalculatePropertiesRequest = req.body;
   let registryObj;
   try {
-    registryObj = registry.get(intelReq.objectType + "Entity") as EntityObject;
+    registryObj = registry.get(intelReq.objectType) as EntityObject;
   } catch (err) {
     res.status(400);
     res.send({
       code: 400,
-      message: `Cannot find registry object for ${intelReq.objectType}Entity`,
+      message: `Cannot find registry object for ${intelReq.objectType}`,
     });
     return;
   }

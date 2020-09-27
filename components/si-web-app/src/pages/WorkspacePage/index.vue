@@ -32,8 +32,9 @@ export default {
   async mounted() {
     let organization = this.$store.getters["organization/current"];
     let workspace = this.$store.getters["workspace/current"];
-    let url = `/o/:${organization.id}/w/:${workspace.id}/a`;
-    if (this.$route.path !== url) this.$router.push(url);
+    if (this.$route.name == "home") {
+      this.$router.push(`/o/${organization.id}/w/${workspace.id}/a`);
+    }
   },
 };
 </script>

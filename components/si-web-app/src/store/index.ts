@@ -5,6 +5,10 @@ import VuexPersistence from "vuex-persist";
 //import Cookies from "js-cookie";
 import { editor, EditorStore } from "./modules/editor";
 import { application, ApplicationStore } from "./modules/application";
+import {
+  applicationDetail,
+  ApplicationDetailStore,
+} from "./modules/applicationDetail";
 import { edge, EdgeStore } from "./modules/edge";
 import { system, SystemStore } from "./modules/system";
 import { entity, EntityStore } from "./modules/entity";
@@ -52,6 +56,7 @@ export interface RootStore {
   node: NodeStore;
   loader: LoaderStore;
   application: ApplicationStore;
+  applicationDetail: ApplicationDetailStore;
   edge: EdgeStore;
   system: SystemStore;
   eventLog: EventLogStore;
@@ -68,6 +73,7 @@ const store: Store<RootStore> = new Vuex.Store({
   modules: {
     edge,
     application,
+    applicationDetail,
     system,
     editor,
     user,

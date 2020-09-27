@@ -2,7 +2,6 @@
   <div id="application-details" class="flex flex-col">
     <div id="application-summary" class="flex flex-col w-full pb-3">
       <StatusBar class="" />
-      <!--
       <div class="flex mt-3">
         <div class="items-center w-1/2">
           <button
@@ -23,6 +22,7 @@
             applications/{{ application.name }}
           </div>
         </div>
+
         <div class="flex items-center justify-end w-1/2 mr-2">
           <div
             class="flex items-center justify-end w-1/4 pr-1 text-xs text-gray-400"
@@ -52,7 +52,6 @@
               v-if="isEditMode"
             />
           </div>
-
           <div
             class="inline-flex justify-end w-16 mr-2 font-normal text-gray-400"
             data-cy="application-details-current-mode"
@@ -165,6 +164,7 @@
           >
             <ServicesVisualization :applicationId="applicationId" />
           </div>
+
           <div
             class="w-1/4 pt-2 pb-2 pl-2 mx-3 mt-2 border border-solid card-section"
           >
@@ -214,13 +214,12 @@
           </div>
         </div>
       </transition>
-      -->
     </div>
 
-    <!--
     <div id="editor" class="flex w-full h-full overflow-hidden">
       <Editor />
     </div>
+    <!--
     <div id="eventBar" class="w-full">
       <EventBar />
     </div>
@@ -245,9 +244,11 @@ import SiSelect from "@/components/ui/SiSelect.vue";
 import SiTextBox from "@/components/ui/SiTextBox.vue";
 import { DropdownProps } from "@/components/ui/Dropdown2.vue";
 import { RootStore } from "@/store";
-import { ChangeSet, ApplicationEntity, System } from "@/graphql-types";
-import _ from "lodash";
+import { Entity } from "@/api/sdf/model/entity";
+import { System } from "@/api/sdf/model/system";
+import { ChangeSet } from "@/api/sdf/model/changeSet";
 
+import _ from "lodash";
 import {
   ChevronRightIcon,
   ChevronDownIcon,
@@ -257,6 +258,8 @@ import {
   TrashIcon,
   SaveIcon,
 } from "vue-feather-icons";
+
+// TODO: Get the system selector working again!
 
 interface Data {
   showDetails: boolean;
@@ -268,17 +271,17 @@ interface Data {
 export default Vue.extend({
   name: "ApplicationDetails",
   components: {
-    //Editor,
+    Editor,
     StatusBar,
-    //ChevronRightIcon,
-    //ChevronDownIcon,
-    //ActivityVisualization,
-    //ServicesVisualization,
-    //ResourcesVisualization,
-    //Button2,
-    //SiModal,
-    //SiSelect,
-    //SiTextBox,
+    ChevronRightIcon,
+    ChevronDownIcon,
+    ActivityVisualization,
+    ServicesVisualization,
+    ResourcesVisualization,
+    Button2,
+    SiModal,
+    SiSelect,
+    SiTextBox,
     //EventBar,
     //PlayIcon,
     //EditIcon,
@@ -307,23 +310,27 @@ export default Vue.extend({
   },
   computed: {
     ...mapState({
+      application(state: RootStore) {
+        return state.editor.application;
+      },
+      systems(state: RootStore) {
+        return state.editor.systems;
+      },
+      system(state: RootStore) {
+        return state.editor.system;
+      },
       mode: (state: any): RootStore["editor"]["mode"] => state.editor.mode,
     }),
     currentChangeSet: {
-      get(): RootStore["changeSet"]["current"] {
-        return this.$store.state.changeSet.current;
+      get(): RootStore["editor"]["changeSet"] | undefined {
+        return this.$store.state.editor.changeSet?.id;
       },
       set(changeSetId: null | string) {
-        if (this.mode == "edit" && changeSetId == null) {
-          this.$store.commit("editor/setMode", "view");
-        }
-        this.$store.dispatch("changeSet/setCurrentById", changeSetId);
+        this.$store.dispatch("editor/setChangeSet", { id: changeSetId });
       },
     },
-    systems(): System[] {
-      return this.$store.getters["system/forApplicationId"](this.applicationId);
-    },
     changeSetEntryCount(): number {
+      // TODO: This is not working yet - lets get some changes
       const changeSet = this.$store.state.changeSet.current;
       if (changeSet) {
         return changeSet.associations?.changeSetEntries?.totalCount || 0;
@@ -339,30 +346,21 @@ export default Vue.extend({
     },
     changeSetOpenList(): DropdownProps["options"] {
       let result: DropdownProps["options"] = _.map(
-        this.$store.getters["changeSet/open"],
+        this.$store.state.editor.changeSetsOpen,
         (changeSet: ChangeSet) => {
           return {
-            value: changeSet.id || "no id",
-            label: changeSet.name || "no name",
+            value: changeSet.id,
+            label: changeSet.name,
           };
         },
       );
       result.unshift({ label: "none", value: null });
+      console.log("the full list of change sets open", { result });
       return result;
     },
     currentSystem: {
-      get(): System {
-        if (
-          !this.$store.state.system.current &&
-          this.$store.state.system.systems &&
-          this.$store.state.system.systems[0]
-        ) {
-          this.$store.commit(
-            "system/current",
-            this.$store.state.system.systems[0],
-          );
-        }
-        return this.$store.state.system.current;
+      get(): System | undefined {
+        return this.$store.state.editor.system.id;
       },
       set(systemId: null | string) {
         this.$store.dispatch("system/setCurrentById", systemId);
@@ -370,23 +368,14 @@ export default Vue.extend({
     },
     systemList(): DropdownProps["options"] {
       const systemList = _.map(this.systems, system => {
-        return { value: system.id || "no id", label: system.name || "no name" };
+        return { value: system.id, label: system.name };
       });
-
-      if (systemList) {
-        return systemList;
-      } else {
-        return [];
-      }
+      return systemList;
     },
     isEditMode(): boolean {
       return this.mode == "edit";
     },
-    application(): ApplicationEntity {
-      return this.$store.getters["application/get"]({ id: this.applicationId });
-    },
   },
-
   methods: {
     changeSetExecute() {
       this.$store.dispatch("changeSet/execute");
@@ -407,19 +396,19 @@ export default Vue.extend({
         this.showChangeSetCreateModal = true;
         return;
       } else {
-        this.$store.dispatch("editor/modeSwitch");
-        const editSession = await this.$store.dispatch("editSession/create");
-        console.log("the new edit session", { editSession });
+        await this.modeSwitch();
       }
     },
     async cancelEditSession() {
-      await this.$store.dispatch("editSession/revert");
+      // TODO: Add edit session revert - going to be a lot easier
+      //       after we add the rest of the logic.
       this.$store.dispatch("editor/modeSwitch");
     },
-    modeSwitch() {
+    async modeSwitch() {
       if (this.mode == "view" && !this.currentChangeSet) {
         this.showChangeSetCreateModal = true;
       } else {
+        await this.$store.dispatch("editor/editSessionCreate");
         this.$store.dispatch("editor/modeSwitch");
       }
     },
@@ -429,21 +418,17 @@ export default Vue.extend({
       }
     },
     async createChangeSet() {
-      const createdByUserId: string = this.$store.getters["user/userId"];
-      const workspaceId: string = this.$store.getters[
-        "user/currentWorkspaceId"
-      ];
-      await this.$store.dispatch("changeSet/create", {
+      await this.$store.dispatch("editor/changeSetCreate", {
         name: this.newChangeSetName,
-        displayName: this.newChangeSetName,
-        createdByUserId,
-        workspaceId,
       });
       this.showChangeSetCreateModal = false;
       this.newChangeSetName = "";
-      await this.startEditSession();
-      //this.$store.dispatch("editor/modeSwitch");
     },
+  },
+  async mounted() {
+    await this.$store.dispatch("editor/setApplication", {
+      id: this.applicationId,
+    });
   },
 });
 </script>

@@ -139,7 +139,8 @@ export default Vue.extend({
   },
   computed: {
     resources(): Resource[] {
-      return this.$store.getters["resource/forNodeList"];
+      return [];
+      //return this.$store.getters["resource/forNodeList"];
     },
     statusColor(): string {
       let stateSuccessColor = "0,179,79";

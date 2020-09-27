@@ -551,8 +551,8 @@ export class EntityObject extends SystemObject {
   intelligence: EntityObjectIntelligence;
 
   constructor(args: BaseObjectConstructor) {
-    const typeName = `${args.typeName}Entity`;
-    const displayTypeName = `${args.displayTypeName} Entity`;
+    const typeName = `${args.typeName}`;
+    const displayTypeName = `${args.displayTypeName}`;
     super({
       typeName,
       displayTypeName,

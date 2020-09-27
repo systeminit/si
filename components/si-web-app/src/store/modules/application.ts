@@ -17,6 +17,9 @@ export interface ApplicationStore {
   systems: {
     [key: string]: System[];
   };
+  services: {
+    [key: string]: Entity[];
+  };
   changeSetCounts: {
     [key: string]: {
       open: number;
@@ -50,6 +53,7 @@ export const application: Module<ApplicationStore, RootStore> = {
     list: [],
     systems: {},
     changeSetCounts: {},
+    services: {},
   },
   getters: {},
   mutations: {

@@ -71,8 +71,8 @@ export default Vue.extend({
     isSelected(optionValue: any, newValue: any): boolean {
       let isSelected = false;
 
-      if (newValue === null) {
-        isSelected = optionValue === newValue;
+      if (newValue === null || newValue === undefined) {
+        isSelected = optionValue === null;
       } else if (newValue.id) {
         isSelected = optionValue == newValue.id;
       } else {

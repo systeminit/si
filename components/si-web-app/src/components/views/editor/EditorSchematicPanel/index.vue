@@ -80,7 +80,7 @@ import _ from "lodash";
 import { mapState } from "vuex";
 import { RootStore } from "@/store";
 import { camelCase } from "change-case";
-import { NodeNodeKind } from "@/graphql-types";
+import { NodeKind } from "@/api/sdf/model/node";
 
 interface Data {
   selectedEntityType: string;
@@ -99,7 +99,7 @@ export default Vue.extend({
   data(): Data {
     const entityTypeList = _.sortBy(registry.listEntities(), ["typeName"]);
     return {
-      selectedEntityType: "serviceEntity",
+      selectedEntityType: "service",
       selectedAction: "delete",
       entityTypeList,
     };
@@ -113,15 +113,10 @@ export default Vue.extend({
       });
     },
     async createNode(): Promise<void> {
-      await this.$store.dispatch("node/create", {
-        nodeType: NodeNodeKind.Entity,
-        typeName: this.selectedEntityType,
+      await this.$store.dispatch("editor/nodeCreate", {
+        kind: NodeKind.Entity,
+        objectType: this.selectedEntityType,
       });
-      //await this.$store.dispatch(
-      //  "node/setMouseTrackSelection",
-      //  { id: newNode.id },
-      //  { root: true },
-      //);
     },
     async sendAction(): Promise<void> {
       await this.$store.dispatch("node/sendAction", {

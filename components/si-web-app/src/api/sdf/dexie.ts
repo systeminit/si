@@ -41,11 +41,11 @@ class SiDatabase extends Dexie {
       nodes: "id",
       headEntities: "id, nodeId, objectType",
       projectionEntities:
-        "[id+siChangeSet.changeSetId], id, nodeId, objectType",
+        "[id+siChangeSet.changeSetId], [nodeId+siChangeSet.changeSetId], id, nodeId, objectType",
       editSessions: "id, name, changeSetId",
       systems: "id, name, nodeId",
       edges:
-        "id, [kind+headVertex.nodeId], [kind+tailVertex.nodeId], [kind+tailVertex.objectId], [kind+headVertex.objectId], [kind+tailVertex.typeName+headVertex.typeName]",
+        "id, [kind+headVertex.nodeId], [kind+tailVertex.nodeId], [kind+tailVertex.objectId], [kind+headVertex.objectId], [kind+tailVertex.typeName+headVertex.typeName], [kind+tailVertex.typeName+headVertex.objectId]",
       globalUpdateClock: "id, [epoch+updateClock]",
     });
 

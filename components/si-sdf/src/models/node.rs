@@ -70,14 +70,28 @@ pub struct PatchIncludeSystemReply {
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
+pub struct PatchConfiguredByRequest {
+    pub node_id: String,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct PatchConfiguredByReply {
+    pub edge: Edge,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub enum PatchOp {
     IncludeSystem(PatchIncludeSystemRequest),
+    ConfiguredBy(PatchConfiguredByRequest),
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub enum PatchReply {
     IncludeSystem(PatchIncludeSystemReply),
+    ConfiguredBy(PatchConfiguredByReply),
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -253,6 +267,33 @@ impl Node {
         )
         .await?;
 
+        Ok(edge)
+    }
+
+    pub async fn configured_by(
+        &self,
+        db: &Db,
+        nats: &Connection,
+        node_id: impl Into<String>,
+    ) -> NodeResult<Edge> {
+        let node_id = node_id.into();
+        let node = Node::get(db, node_id, &self.si_storable.billing_account_id).await?;
+        let node_object_id = node.get_object_id(db).await?;
+
+        let object_id = self.get_object_id(db).await?;
+        let edge = Edge::new(
+            db,
+            nats,
+            Vertex::new(&node.id, &node_object_id, "output", &node.object_type),
+            Vertex::new(&self.id, object_id, "input", &self.object_type),
+            false,
+            EdgeKind::Configures,
+            self.si_storable.billing_account_id.clone(),
+            self.si_storable.organization_id.clone(),
+            self.si_storable.workspace_id.clone(),
+            None,
+        )
+        .await?;
         Ok(edge)
     }
 

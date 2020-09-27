@@ -135,8 +135,8 @@ export class ChangeSet implements IChangeSet {
     if (!_.eq(currentObj, this)) {
       await db.changeSets.put(this);
       await store.dispatch("changeSet/fromChangeSet", this);
-      console.log("dispatched on save", { changeSet: this });
       await store.dispatch("application/fromChangeSet", this);
+      await store.dispatch("editor/fromChangeSet", this);
     }
   }
 }

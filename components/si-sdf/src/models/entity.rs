@@ -339,6 +339,12 @@ impl Entity {
             Ok(query_results)
         }
     }
+
+    pub async fn get_any(db: &Db, entity_id: impl AsRef<str>) -> EntityResult<Entity> {
+        let entity_id = entity_id.as_ref();
+        let mut entity_list = Entity::get_all(db, entity_id).await?;
+        entity_list.pop().ok_or(EntityError::NoHead)
+    }
 }
 
 pub async fn calculate_properties(json: &mut serde_json::Value) -> EntityResult<()> {

@@ -4,7 +4,7 @@
       services
     </div>
 
-    <div class="flex mt-1 pl-1">
+    <div class="flex pl-1 mt-1">
       <div
         v-for="service in services"
         class="flex flex-row mr-1"
@@ -39,26 +39,27 @@ export default Vue.extend({
   },
   computed: {
     services(): ServiceEntity[] {
-      const edges = this.$store.getters["edge/fromIdForType"]({
-        id: this.applicationId,
-        typeName: "service_entity",
-      });
-      const results: ServiceEntity[] = _.filter(
-        this.$store.state.entity.entities,
-        (entity: ServiceEntity) => {
-          for (const edge of edges) {
-            if (edge.properties.headVertex.typeName == "service_entity") {
-              return entity.id == edge.properties.headVertex.id;
-            } else if (
-              edge.properties.tailVertex.typeName == "service_entity"
-            ) {
-              return entity.id == edge.properties.tailVertex.id;
-            } else {
-              return false;
-            }
-          }
-        },
-      );
+      //const edges = this.$store.getters["edge/fromIdForType"]({
+      //  id: this.applicationId,
+      //  typeName: "service_entity",
+      //});
+      //const results: ServiceEntity[] = _.filter(
+      //  this.$store.state.entity.entities,
+      //  (entity: ServiceEntity) => {
+      //    for (const edge of edges) {
+      //      if (edge.properties.headVertex.typeName == "service_entity") {
+      //        return entity.id == edge.properties.headVertex.id;
+      //      } else if (
+      //        edge.properties.tailVertex.typeName == "service_entity"
+      //      ) {
+      //        return entity.id == edge.properties.tailVertex.id;
+      //      } else {
+      //        return false;
+      //      }
+      //    }
+      //  },
+      //);
+      const results: ServiceEntity[] = [];
       return results;
     },
     statusColor(): string {

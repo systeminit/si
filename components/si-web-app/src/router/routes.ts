@@ -42,29 +42,25 @@ const routes = [
     props: true,
     children: [
       {
-        path: "/o/:organizationId/w/:workspaceId/s/:systemId",
+        path: "s/:systemId",
         name: "system",
         component: SystemDetails,
         props: true,
       },
       {
-        path: "/o/:organizationId/w/:workspaceId/a",
+        path: "a/:applicationId",
+        name: "applicationDetails",
+        component: ApplicationDetails,
+        props: true,
+      },
+      {
+        path: "a",
         name: "application",
         component: ApplicationList,
         props: true,
       },
       {
-        path: "/o/:organizationId/w/:workspaceId/a/:applicationId",
-        name: "applicationDetails",
-        component: ApplicationDetails,
-        props: true,
-        beforeEnter: async (to: any, _from: any, next: any) => {
-          store.dispatch("application/setCurrentById", to.params.applicationId);
-          return next();
-        },
-      },
-      {
-        path: "/o/:organizationId/w/:workspaceId/global",
+        path: "global",
         name: "global",
         component: SystemDetails,
         props: true,
