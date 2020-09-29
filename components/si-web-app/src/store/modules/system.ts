@@ -60,7 +60,7 @@ export const system: Module<SystemStore, RootStore> = {
           editSessionId: editSession.id,
         });
         await changeSet.execute({ hypothetical: false });
-        let system = (await appNode.head_object()) as System;
+        let system = (await appNode.headObject()) as System;
         commit("current", system);
         commit("updateList", system);
         return system;

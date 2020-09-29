@@ -78,6 +78,14 @@ export class ChangeSet implements IChangeSet {
     this.siStorable = args.siStorable;
   }
 
+  static upgrade(obj: ChangeSet | IChangeSet): ChangeSet {
+    if (obj instanceof ChangeSet) {
+      return obj;
+    } else {
+      return new ChangeSet(obj);
+    }
+  }
+
   static async create(request: IChangeSetCreateRequest): Promise<ChangeSet> {
     const createReply: IChangeSetCreateReply = await sdf.post(
       "changeSets",

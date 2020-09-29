@@ -8,7 +8,7 @@
 
 <script lang="ts">
 import Vue from "vue";
-import { mapState, mapActions } from "vuex";
+import { mapGetters, mapActions } from "vuex";
 import { registry } from "si-registry";
 
 import { RootStore } from "@/store";
@@ -20,11 +20,9 @@ export default Vue.extend({
     NodeObject,
   },
   computed: {
-    ...mapState({
-      nodes(state: RootStore) {
-        return state.editor.nodes;
-      },
-    }),
+    nodes(): RootStore["editor"]["nodes"] {
+      return this.$store.getters["editor/nodeList"];
+    },
   },
 });
 </script>

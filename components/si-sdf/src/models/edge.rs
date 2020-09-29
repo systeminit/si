@@ -168,7 +168,7 @@ impl Edge {
                 edge_kind = edge_kind,
                 node_id = tail_node_id,
             );
-            let query_results: Vec<Edge> = db.query(query, None).await?;
+            let query_results: Vec<Edge> = db.query_consistent(query, None).await?;
             for qedge in query_results.into_iter() {
                 vertexes_to_check.push(qedge.head_vertex.node_id.clone());
                 results.push(qedge);
@@ -205,7 +205,7 @@ impl Edge {
                 edge_kind = edge_kind,
                 object_id = tail_object_id,
             );
-            let query_results: Vec<Edge> = db.query(query, None).await?;
+            let query_results: Vec<Edge> = db.query_consistent(query, None).await?;
             for qedge in query_results.into_iter() {
                 vertexes_to_check.push(qedge.head_vertex.object_id.clone());
                 results.push(qedge);
@@ -242,7 +242,7 @@ impl Edge {
                 edge_kind = edge_kind,
                 node_id = head_node_id,
             );
-            let query_results: Vec<Edge> = db.query(query, None).await?;
+            let query_results: Vec<Edge> = db.query_consistent(query, None).await?;
             for qedge in query_results.into_iter() {
                 vertexes_to_check.push(qedge.tail_vertex.node_id.clone());
                 results.push(qedge);
@@ -279,7 +279,7 @@ impl Edge {
                 edge_kind = edge_kind,
                 object_id = head_object_id,
             );
-            let query_results: Vec<Edge> = db.query(query, None).await?;
+            let query_results: Vec<Edge> = db.query_consistent(query, None).await?;
             for qedge in query_results.into_iter() {
                 vertexes_to_check.push(qedge.tail_vertex.object_id.clone());
                 results.push(qedge);
@@ -307,7 +307,7 @@ impl Edge {
             edge_kind = edge_kind,
             node_id = head_node_id,
         );
-        let query_results: Vec<Edge> = db.query(query, None).await?;
+        let query_results: Vec<Edge> = db.query_consistent(query, None).await?;
         Ok(query_results)
     }
 
@@ -329,7 +329,7 @@ impl Edge {
             edge_kind = edge_kind,
             object_id = head_object_id,
         );
-        let query_results: Vec<Edge> = db.query(query, None).await?;
+        let query_results: Vec<Edge> = db.query_consistent(query, None).await?;
         Ok(query_results)
     }
 
@@ -355,7 +355,8 @@ impl Edge {
             object_id = head_object_id,
             type_name = tail_type_name,
         );
-        let query_results: Vec<Edge> = db.query(query, None).await?;
+        tracing::error!(?query, "edge query");
+        let query_results: Vec<Edge> = db.query_consistent(query, None).await?;
         Ok(query_results)
     }
 
@@ -377,7 +378,7 @@ impl Edge {
             edge_kind = edge_kind,
             node_id = tail_node_id,
         );
-        let query_results: Vec<Edge> = db.query(query, None).await?;
+        let query_results: Vec<Edge> = db.query_consistent(query, None).await?;
         Ok(query_results)
     }
 
@@ -399,7 +400,7 @@ impl Edge {
             edge_kind = edge_kind,
             object_id = tail_object_id,
         );
-        let query_results: Vec<Edge> = db.query(query, None).await?;
+        let query_results: Vec<Edge> = db.query_consistent(query, None).await?;
         Ok(query_results)
     }
 

@@ -6,7 +6,8 @@ use crate::models::change_set::ChangeSet;
 use crate::models::entity::Entity;
 use crate::models::node::{
     Node, ObjectPatchReply, ObjectPatchRequest, PatchConfiguredByReply, PatchConfiguredByRequest,
-    PatchIncludeSystemReply, PatchOp, PatchReply, PatchRequest,
+    PatchIncludeSystemReply, PatchOp, PatchReply, PatchRequest, PatchSetPositionReply,
+    PatchSetPositionRequest,
 };
 use crate::models::ops::{OpEntitySetString, OpReply, OpRequest};
 
@@ -66,7 +67,7 @@ pub async fn patch(
     )
     .await?;
 
-    let node: Node = Node::get(&db, &node_id, &claim.billing_account_id)
+    let mut node: Node = Node::get(&db, &node_id, &claim.billing_account_id)
         .await
         .map_err(HandlerError::from)?;
 
@@ -84,6 +85,19 @@ pub async fn patch(
                 .await
                 .map_err(HandlerError::from)?;
             PatchReply::ConfiguredBy(PatchConfiguredByReply { edge })
+        }
+        PatchOp::SetPosition(set_position_req) => {
+            node.set_position(
+                set_position_req.context.clone(),
+                set_position_req.position.clone(),
+            );
+            models::upsert_model(&db, &nats, &node.id, &node)
+                .await
+                .map_err(HandlerError::from)?;
+            PatchReply::SetPosition(PatchSetPositionReply {
+                context: set_position_req.context,
+                position: set_position_req.position,
+            })
         }
     };
 
@@ -171,11 +185,11 @@ pub async fn get_object(
     let object: serde_json::Value = if let Some(change_set_id) = request.change_set_id {
         node.get_object_projection(&db, change_set_id)
             .await
-            .map_err(HandlerError::from)?
+            .map_err(|e| warp::reject::not_found())?
     } else {
         node.get_head_object(&db)
             .await
-            .map_err(HandlerError::from)?
+            .map_err(|e| warp::reject::not_found())?
     };
     tracing::error!(?object, "got the obj");
 

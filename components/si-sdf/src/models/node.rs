@@ -82,9 +82,24 @@ pub struct PatchConfiguredByReply {
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
+pub struct PatchSetPositionRequest {
+    pub context: String,
+    pub position: Position,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct PatchSetPositionReply {
+    pub context: String,
+    pub position: Position,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub enum PatchOp {
     IncludeSystem(PatchIncludeSystemRequest),
     ConfiguredBy(PatchConfiguredByRequest),
+    SetPosition(PatchSetPositionRequest),
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -92,6 +107,7 @@ pub enum PatchOp {
 pub enum PatchReply {
     IncludeSystem(PatchIncludeSystemReply),
     ConfiguredBy(PatchConfiguredByReply),
+    SetPosition(PatchSetPositionReply),
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -118,7 +134,7 @@ pub enum ObjectPatchReply {
     Op(OpReply),
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 pub struct Position {
     x: u64,
     y: u64,
@@ -234,6 +250,10 @@ impl Node {
         }
 
         Ok(node)
+    }
+
+    pub fn set_position(&mut self, context: String, position: Position) {
+        self.positions.insert(context, position);
     }
 
     pub async fn configure_node(

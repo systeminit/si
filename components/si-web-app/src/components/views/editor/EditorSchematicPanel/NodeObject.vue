@@ -111,9 +111,11 @@ export default Vue.extend({
   },
   computed: {
     positionStyle(): Record<string, string> {
+      let editorContext = this.$store.state.editor.context;
+      let position = Node.upgrade(this.node).position(editorContext);
       return {
-        left: `${this.node.positions.x}px`,
-        top: `${this.node.positions.y}px`,
+        left: `${position.x}px`,
+        top: `${position.y}px`,
       };
     },
     nodeIsSelected(): Record<string, boolean> {
@@ -136,7 +138,7 @@ export default Vue.extend({
     },
     nodeTitleClasses(): Record<string, boolean> {
       if (this.currentChangeSet) {
-        if (this.displayItem.head) {
+        if (this.displayItem.head == false) {
           return {
             "input-border-gold": true,
             border: true,

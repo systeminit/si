@@ -8,7 +8,7 @@ import {
   IListReply,
   ICreateReply,
 } from "@/api/sdf/model";
-import { IEdge, Edge } from "@/api/sdf/model/edge";
+import { IEdge, Edge, EdgeKind } from "@/api/sdf/model/edge";
 import { Query, Comparison } from "@/api/sdf/model/query";
 import { Entity, IEntity } from "@/api/sdf/model/entity";
 import { System, ISystem } from "@/api/sdf/model/system";
@@ -68,6 +68,10 @@ export interface INodePatchOpRequest {
   configuredBy?: {
     nodeId: string;
   };
+  setPosition?: {
+    context: string;
+    position: Position;
+  };
 }
 
 export interface INodePatchRequest {
@@ -82,6 +86,10 @@ export interface INodePatchReply {
   };
   configuredBy?: {
     edge: IEdge;
+  };
+  setPosition?: {
+    context: string;
+    position: Position;
   };
 }
 
@@ -98,6 +106,14 @@ export class Node implements INode {
     this.kind = args.kind;
     this.objectType = args.objectType;
     this.siStorable = args.siStorable;
+  }
+
+  static upgrade(obj: Node | INode): Node {
+    if (obj instanceof Node) {
+      return obj;
+    } else {
+      return new Node(obj);
+    }
   }
 
   static async create(request: INodeCreateRequest): Promise<Node> {
@@ -170,7 +186,7 @@ export class Node implements INode {
     };
   }
 
-  async configured_by(nodeId: string): Promise<Edge> {
+  async configuredBy(nodeId: string): Promise<Edge> {
     let request: INodePatchRequest = {
       op: { configuredBy: { nodeId } },
       organizationId: this.siStorable.organizationId,
@@ -186,7 +202,7 @@ export class Node implements INode {
     }
   }
 
-  async include_in_system(systemId: string): Promise<Edge> {
+  async includeInSystem(systemId: string): Promise<Edge> {
     let request: INodePatchRequest = {
       op: { includeSystem: { systemId } },
       organizationId: this.siStorable.organizationId,
@@ -202,18 +218,44 @@ export class Node implements INode {
     }
   }
 
+  async successors(): Promise<Node[]> {
+    let edges = await Edge.allSuccessors({
+      nodeId: this.id,
+      edgeKind: EdgeKind.Configures,
+    });
+    let items: Node[] = [];
+    for (let edge of edges) {
+      let node = await Node.get({ id: edge.headVertex.nodeId });
+      items.push(node);
+    }
+    return items;
+  }
+
+  async successorEdges(): Promise<Edge[]> {
+    let edges = await Edge.allSuccessors({
+      nodeId: this.id,
+      edgeKind: EdgeKind.Configures,
+    });
+    return edges;
+  }
+
   async displayObject(changeSetId?: string): Promise<NodeObject> {
-    console.log("chekcing on the display", { changeSetId, node: this });
     let displayObject;
     try {
       if (changeSetId) {
         displayObject = await this.projectionObject(changeSetId);
         return displayObject;
       }
-    } catch {}
+    } catch {
+      console.log("failed to find projection");
+    }
     if (!displayObject) {
-      displayObject = await this.headObject();
-      return displayObject;
+      try {
+        displayObject = await this.headObject();
+        return displayObject;
+      } catch {
+        console.log("failed to find head object");
+      }
     }
     throw new Error("cannot get display object; no head or projection");
   }
@@ -260,6 +302,29 @@ export class Node implements INode {
       return new Entity(iitem as IEntity);
     } else {
       throw new Error("unknown object type");
+    }
+  }
+
+  async setPosition(context: string, position: Position) {
+    this.positions[context] = position;
+    let request: INodePatchRequest = {
+      op: { setPosition: { context, position } },
+      organizationId: this.siStorable.organizationId,
+      workspaceId: this.siStorable.workspaceId,
+    };
+    await sdf.patch(`nodes/${this.id}`, request);
+    this.save();
+  }
+
+  position(context: string): Position {
+    if (this.positions[context]) {
+      return this.positions[context];
+    } else {
+      this.positions[context] = {
+        x: 0,
+        y: 0,
+      };
+      return this.positions[context];
     }
   }
 

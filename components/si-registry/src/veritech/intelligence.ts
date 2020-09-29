@@ -153,12 +153,12 @@ export function calculateConfigures(
   const objectType = intelReq.entity.objectType;
   let registryObj;
   try {
-    registryObj = registry.get(objectType + "Entity") as EntityObject;
+    registryObj = registry.get(objectType) as EntityObject;
   } catch (err) {
     res.status(400);
     res.send({
       code: 400,
-      message: `Cannot find registry object for ${objectType}Entity`,
+      message: `Cannot find registry object for ${objectType}`,
     });
     return;
   }
@@ -167,6 +167,7 @@ export function calculateConfigures(
     configures,
     systems,
   );
+  console.dir(response, { depth: Infinity });
   console.log("sending response", { response });
   res.send(response);
 }

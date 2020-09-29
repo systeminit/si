@@ -3,6 +3,7 @@ import { ChangeSetStatus } from "@/api/sdf/model/changeSet";
 import { ISiStorable } from "@/api/sdf/model/siStorable";
 import { ISiChangeSet } from "@/api/sdf/model/siChangeSet";
 import { Edge, EdgeKind } from "@/api/sdf/model/edge";
+import { Node } from "@/api/sdf/model/node";
 import {
   Query,
   Comparison,
@@ -241,9 +242,7 @@ export class Entity implements IEntity {
     const reply = { open: 0, closed: 0 };
 
     const successors = await this.successors();
-    console.log("changeSetCount successors", { entity: this, successors });
     const objectIds = _.map(successors, e => e.id);
-    console.log("changeSetCount objectIds", { entity: this, objectIds });
     objectIds.push(this.id);
     let changeSets: Set<string> = new Set([]);
     await db.changeSetParticipants
@@ -252,7 +251,6 @@ export class Entity implements IEntity {
       .each(csp => {
         changeSets.add(csp.changeSetId);
       });
-    console.log("changeSetCount changeSets", { entity: this, changeSets });
     await db.changeSets
       .where("id")
       .anyOf(Array.from(changeSets))
@@ -263,13 +261,12 @@ export class Entity implements IEntity {
           reply.closed++;
         }
       });
-    console.log("changeSetCount reply", { entity: this, reply });
 
     return reply;
   }
 
   // Returns the entities that are successors to this entity in the configuration graph
-  async successors(): Promise<Entity[]> {
+  async successors(changeSetId: string): Promise<Entity[]> {
     let edges = await Edge.allSuccessors({
       objectId: this.id,
       edgeKind: EdgeKind.Configures,
@@ -296,12 +293,20 @@ export class Entity implements IEntity {
     return items;
   }
 
+  async node(): Promise<Node> {
+    const node = await Node.get({ id: this.nodeId });
+    return node;
+  }
+
   async save(): Promise<void> {
     if (this.head) {
       await db.headEntities.put(this);
       await store.dispatch("application/fromEntity", this);
+      await store.dispatch("editor/fromEntity", this);
     } else {
       await db.projectionEntities.put(this);
+      await store.dispatch("application/fromEntity", this);
+      await store.dispatch("editor/fromEntity", this);
     }
   }
 }

@@ -90,7 +90,7 @@ export class Edge implements IEdge {
         await db.edges
           .where({
             kind: request.edgeKind,
-            "headVertex.nodeId": request.nodeId,
+            "headVertex.nodeId": vertexes_to_check[x],
           })
           .each(edge => {
             vertexes_to_check.push(edge.tailVertex.nodeId);
@@ -104,7 +104,7 @@ export class Edge implements IEdge {
         await db.edges
           .where({
             kind: request.edgeKind,
-            "headVertex.objectId": request.objectId,
+            "headVertex.objectId": vertexes_to_check[x],
           })
           .each(edge => {
             vertexes_to_check.push(edge.tailVertex.objectId);
@@ -139,10 +139,12 @@ export class Edge implements IEdge {
         await db.edges
           .where({
             kind: request.edgeKind,
-            "tailVertex.nodeId": request.nodeId,
+            "tailVertex.nodeId": vertexes_to_check[x],
           })
           .each(edge => {
-            vertexes_to_check.push(edge.headVertex.nodeId);
+            if (!vertexes_to_check.includes(edge.headVertex.nodeId)) {
+              vertexes_to_check.push(edge.headVertex.nodeId);
+            }
             items.push(Edge.upgrade(edge));
           });
       }
@@ -153,10 +155,12 @@ export class Edge implements IEdge {
         await db.edges
           .where({
             kind: request.edgeKind,
-            "tailVertex.objectId": request.objectId,
+            "tailVertex.objectId": vertexes_to_check[x],
           })
           .each(edge => {
-            vertexes_to_check.push(edge.headVertex.objectId);
+            if (!vertexes_to_check.includes(edge.headVertex.objectId)) {
+              vertexes_to_check.push(edge.headVertex.objectId);
+            }
             items.push(Edge.upgrade(edge));
           });
       }
@@ -321,12 +325,8 @@ export class Edge implements IEdge {
     const currentObj = await db.edges.get(this.id);
     if (!_.eq(currentObj, this)) {
       await db.edges.put(this);
-      if (
-        this.tailVertex.typeName == "system" &&
-        this.headVertex.typeName == "application"
-      ) {
-        await store.dispatch("application/fromEdge", this, { root: true });
-      }
+      await store.dispatch("application/fromEdge", this, { root: true });
+      await store.dispatch("editor/fromEdge", this, { root: true });
     }
   }
 }

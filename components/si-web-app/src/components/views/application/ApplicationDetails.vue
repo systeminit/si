@@ -259,8 +259,6 @@ import {
   SaveIcon,
 } from "vue-feather-icons";
 
-// TODO: Get the system selector working again!
-
 interface Data {
   showDetails: boolean;
   selected: string;
@@ -378,7 +376,7 @@ export default Vue.extend({
   },
   methods: {
     changeSetExecute() {
-      this.$store.dispatch("changeSet/execute");
+      this.$store.dispatch("editor/changeSetExecute");
       this.$store.commit("editor/setMode", "view");
     },
     toggleDetails() {

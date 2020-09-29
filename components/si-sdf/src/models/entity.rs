@@ -250,8 +250,11 @@ impl Entity {
                 si_change_set: Some(si_change_set),
             };
 
+            entity.calculate_properties().await?;
+            insert_model(&db, &nats, &key, &entity).await?;
             for system_id in system_ids {
-                let system = System::get_any(&db, system_id).await?;
+                let system = System::get_any(&db, &system_id).await?;
+                tracing::error!(?system_id, ?system, ?entity, "adding sytem edge");
                 Edge::new(
                     &db,
                     &nats,
@@ -266,9 +269,6 @@ impl Entity {
                 )
                 .await?;
             }
-
-            entity.calculate_properties().await?;
-            insert_model(&db, &nats, &key, &entity).await?;
             entity
                 .calculate_configures(db.clone(), nats.clone())
                 .await?;
@@ -403,6 +403,7 @@ pub fn calculate_configures(
             let system = System::get_any(&db, &system_edge.tail_vertex.object_id).await?;
             systems.push(system);
         }
+        tracing::error!(?systems, ?node_id, "making nodes with the list of systems");
 
         let res = REQWEST
             .post("http://localhost:5157/calculateConfigures")
@@ -443,7 +444,9 @@ pub fn calculate_configures(
                 .as_str()
                 .ok_or(EntityError::Missing("siChangeSet.editSessionId".into()))?;
 
+            tracing::error!(?create_list, "poop");
             for to_create in create_list.into_iter() {
+                tracing::error!(?to_create, "for create list");
                 if &to_create.object_type == object_type {
                     tracing::error!(?object_type, ?to_create, "calculate configures requested an object of the same type as this one, which is a recursive thing - skipping it!");
                     continue;

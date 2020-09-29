@@ -90,6 +90,33 @@ impl Db {
     }
 
     #[tracing::instrument(level = "trace")]
+    pub async fn query_consistent<I>(
+        &self,
+        query: String,
+        named_params: Option<HashMap<String, serde_json::Value>>,
+    ) -> DataResult<Vec<I>>
+    where
+        I: DeserializeOwned + std::fmt::Debug,
+    {
+        let query_options = QueryOptions::new().set_scan_consistency(ScanConsistency::RequestPlus);
+        let named_options = match named_params {
+            Some(hashmap) => Some(query_options.set_named_parameters(hashmap)),
+            None => Some(query_options),
+        };
+        tracing::trace!("calling query");
+        let mut result = self.cluster.query(query, named_options).await?;
+        let mut result_stream = result.rows_as::<I>()?;
+        let mut final_vec: Vec<I> = Vec::new();
+        while let Some(r) = result_stream.next().await {
+            match r {
+                Ok(v) => final_vec.push(v),
+                Err(e) => return Err(DataError::Couchbase(e)),
+            }
+        }
+        Ok(final_vec)
+    }
+
+    #[tracing::instrument(level = "trace")]
     pub async fn get<S, T>(&self, id: S) -> DataResult<T>
     where
         S: Into<String> + std::fmt::Debug,

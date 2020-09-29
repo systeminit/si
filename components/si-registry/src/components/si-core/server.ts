@@ -201,6 +201,7 @@ registry.componentAndEntity({
         ];
         result.create = create;
       }
+      console.log("please do", { result });
       return result;
     };
   },

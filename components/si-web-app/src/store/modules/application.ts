@@ -120,7 +120,7 @@ export const application: Module<ApplicationStore, RootStore> = {
         systemIds: [system.id],
       });
       await changeSet.execute({ hypothetical: false });
-      let entity = (await appNode.head_object()) as Entity;
+      let entity = (await appNode.headObject()) as Entity;
       commit("updateList", entity);
       return entity;
     },

@@ -1,5 +1,6 @@
 import { IEntity, Entity } from "@/api/sdf/model/entity";
 import { ISystem, System } from "@/api/sdf/model/system";
+import { INode, Node } from "@/api/sdf/model/node";
 import { IEdge, Edge } from "@/api/sdf/model/edge";
 import {
   IChangeSet,
@@ -7,6 +8,7 @@ import {
   IChangeSetParticipant,
   ChangeSetParticipant,
 } from "@/api/sdf/model/changeSet";
+import { sdf } from "@/api/sdf";
 import { IUpdateClock } from "@/api/sdf/model/updateClock";
 import { db } from "@/api/sdf/dexie";
 import store from "@/store";
@@ -28,6 +30,7 @@ export class Update {
   constructor(websocketUrl: string) {
     this.socket = new WebSocket(websocketUrl);
     this.socket.addEventListener("message", onMessage);
+    this.socket.addEventListener("close", onClose);
   }
 
   async opened(timeout = 10000) {
@@ -64,6 +67,24 @@ export class Update {
       },
     };
     this.socket.send(JSON.stringify(request));
+  }
+}
+
+function onClose(ev: MessageEvent) {
+  console.log("websocket has closed - reconnecting");
+  sdf.setupUpdate();
+  if (sdf.update) {
+    sdf.update
+      .opened()
+      .then(_success => {
+        console.log("websocket connection re-established");
+      })
+      .catch(_timeout => {
+        console.log("reconnect failed - scheduling another go");
+        setTimeout(() => {
+          onClose(ev);
+        }, Math.floor(Math.random() * 5000));
+      });
   }
 }
 
@@ -109,6 +130,10 @@ function onMessage(ev: MessageEvent) {
   } else if (model_data.model?.siStorable?.typeName == "changeSet") {
     const model = new ChangeSet(model_data.model as IChangeSet);
     console.log("changeSet", { model });
+    model.save();
+  } else if (model_data.model?.siStorable?.typeName == "node") {
+    const model = new Node(model_data.model as INode);
+    console.log("node", { model });
     model.save();
   } else if (model_data.model?.siStorable?.typeName == "changeSetParticipant") {
     const model = new ChangeSetParticipant(
