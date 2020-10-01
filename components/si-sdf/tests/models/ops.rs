@@ -3,7 +3,7 @@ use crate::{
     filters::nodes::create_node, test_cleanup, test_setup, DB, NATS,
 };
 
-use si_sdf::models::ops::OpEntitySetString;
+use si_sdf::models::ops::OpEntitySet;
 use si_sdf::models::Entity;
 
 #[tokio::test]
@@ -20,11 +20,11 @@ async fn op_set_string() {
         .expect("cannot get object projection for node");
 
     // Test the creation of a new top level key
-    let op_set_string = OpEntitySetString::new(
+    let op_set_string = OpEntitySet::new(
         &DB,
         &NATS,
         &head_entity.id,
-        "slipknot",
+        vec!["slipknot".into()],
         "heretic",
         None,
         test_account.billing_account_id.clone(),
@@ -59,11 +59,11 @@ async fn op_set_string() {
     );
 
     // Test that we can change an existing key
-    let op_set_string = OpEntitySetString::new(
+    let op_set_string = OpEntitySet::new(
         &DB,
         &NATS,
         &head_entity.id,
-        "slipknot",
+        vec!["slipknot".into()],
         "sic",
         None,
         test_account.billing_account_id.clone(),

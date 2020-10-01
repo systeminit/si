@@ -161,14 +161,14 @@ impl ChangeSet {
           FROM `{bucket}` AS a
           WHERE a.siChangeSet.changeSetId = $change_set_id 
             AND (a.siChangeSet.event = \"Operation\" OR a.siChangeSet.event = \"Delete\" OR a.siChangeSet.event = \"Create\")
-          ORDER BY a.siChangeSet.orderClock.epoch ASC, a.siChangeSet.orderClock.update_count ASC
+          ORDER BY a.siChangeSet.orderClock.epoch ASC, a.siChangeSet.orderClock.updateCount ASC
         ",
             bucket = db.bucket_name,
         );
         let mut change_set_entry_named_params: HashMap<String, serde_json::Value> = HashMap::new();
         change_set_entry_named_params.insert("change_set_id".into(), serde_json::json![&self.id]);
         let change_set_entry_query_results: Vec<serde_json::Value> = db
-            .query(change_set_entry_query, Some(change_set_entry_named_params))
+            .query_consistent(change_set_entry_query, Some(change_set_entry_named_params))
             .await?;
 
         tracing::error!(?change_set_entry_query_results, "change set exec results");
@@ -185,7 +185,6 @@ impl ChangeSet {
             let entry_type_name = change_set_entry["siStorable"]["typeName"]
                 .as_str()
                 .ok_or(ChangeSetError::TypeMissing)?;
-            last_type_name = Some(String::from(entry_type_name));
             let to_id = match change_set_entry["toId"].as_str() {
                 Some(to_id) => to_id,
                 None => change_set_entry["siStorable"]["objectId"]
@@ -195,11 +194,18 @@ impl ChangeSet {
 
             if last_id.is_some() {
                 let lei = last_id.as_ref().unwrap();
-                if lei != to_id && entry_type_name == "entity" {
-                    let last_obj = seen_map.get_mut(&last_id.unwrap()).unwrap();
-                    calculate_properties(last_obj).await?;
+                tracing::warn!(?lei, ?to_id, "comparing lei to to_id");
+                if lei != to_id {
+                    let last_obj = seen_map.get_mut(last_id.as_ref().unwrap()).unwrap();
+                    let last_obj_type_name = last_obj["siStorable"]["typeName"]
+                        .as_str()
+                        .ok_or(ChangeSetError::TypeMissing)?;
+                    if last_obj_type_name == "entity" {
+                        calculate_properties(last_obj).await?;
+                    }
                 }
             };
+
             let obj = if seen_map.contains_key(to_id) {
                 seen_map.get_mut(to_id).unwrap()
             } else {
@@ -207,6 +213,11 @@ impl ChangeSet {
                 seen_map.insert(String::from(to_id), head_obj);
                 seen_map.get_mut(to_id).unwrap()
             };
+            let obj_type_name = obj["siStorable"]["typeName"]
+                .as_str()
+                .ok_or(ChangeSetError::TypeMissing)?;
+            last_type_name = Some(String::from(obj_type_name));
+
             last_id = Some(String::from(to_id));
 
             match change_set_event {
@@ -214,8 +225,9 @@ impl ChangeSet {
                     tracing::error!("creating some shit");
                 }
                 "Operation" => match entry_type_name {
-                    "opEntitySetString" => {
-                        let op: ops::OpEntitySetString = serde_json::from_value(change_set_entry)?;
+                    "opEntitySet" => {
+                        let op: ops::OpEntitySet = serde_json::from_value(change_set_entry)?;
+                        tracing::warn!(?op, "applying op");
                         op.apply(obj).await?;
                     }
                     "opSetName" => {
@@ -229,7 +241,9 @@ impl ChangeSet {
         }
 
         //// Calculate the final entities properties
+        tracing::warn!(?last_type_name, "what is the last type name");
         if last_type_name.is_some() && last_type_name.unwrap() == "entity" {
+            tracing::warn!("why aren't you getting here");
             let mut last_entity = seen_map.get_mut(&last_id.unwrap()).unwrap();
             calculate_properties(&mut last_entity).await?;
         }

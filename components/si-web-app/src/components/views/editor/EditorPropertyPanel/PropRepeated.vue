@@ -168,6 +168,9 @@ export default PropMixin.extend({
       return prop.repeated;
     },
     addToList(): void {
+      if (!this.fieldValue) {
+        this.fieldValue = [];
+      }
       let current = _.cloneDeep(this.fieldValue);
       current.push({});
       this.fieldValue = current;

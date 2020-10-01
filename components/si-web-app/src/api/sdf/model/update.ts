@@ -8,6 +8,7 @@ import {
   IChangeSetParticipant,
   ChangeSetParticipant,
 } from "@/api/sdf/model/changeSet";
+import { IOpEntitySet, OpEntitySet } from "@/api/sdf/model/ops";
 import { sdf } from "@/api/sdf";
 import { IUpdateClock } from "@/api/sdf/model/updateClock";
 import { db } from "@/api/sdf/dexie";
@@ -70,21 +71,25 @@ export class Update {
   }
 }
 
-function onClose(ev: MessageEvent) {
-  console.log("websocket has closed - reconnecting");
-  sdf.setupUpdate();
-  if (sdf.update) {
-    sdf.update
-      .opened()
-      .then(_success => {
-        console.log("websocket connection re-established");
-      })
-      .catch(_timeout => {
-        console.log("reconnect failed - scheduling another go");
-        setTimeout(() => {
-          onClose(ev);
-        }, Math.floor(Math.random() * 5000));
-      });
+function onClose(ev: CloseEvent): any {
+  if (sdf.token) {
+    console.log("websocket has closed - reconnecting");
+    sdf.setupUpdate();
+    if (sdf.update) {
+      sdf.update
+        .opened()
+        .then(_success => {
+          console.log("websocket connection re-established");
+        })
+        .catch(_timeout => {
+          console.log("reconnect failed - scheduling another go");
+          setTimeout(() => {
+            onClose(ev);
+          }, Math.floor(Math.random() * 5000));
+        });
+    }
+  } else {
+    console.log("websocket closed, and no token provided - not reconnecting");
   }
 }
 
@@ -134,6 +139,10 @@ function onMessage(ev: MessageEvent) {
   } else if (model_data.model?.siStorable?.typeName == "node") {
     const model = new Node(model_data.model as INode);
     console.log("node", { model });
+    model.save();
+  } else if (model_data.model?.siStorable?.typeName == "opEntitySet") {
+    const model = new OpEntitySet(model_data.model as IOpEntitySet);
+    console.log("opEntitySet", { model });
     model.save();
   } else if (model_data.model?.siStorable?.typeName == "changeSetParticipant") {
     const model = new ChangeSetParticipant(

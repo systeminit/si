@@ -169,8 +169,8 @@ async fn patch_object() {
         .expect("cannot get head object for node");
 
     let request = node::ObjectPatchRequest {
-        op: ops::OpRequest::EntitySetString(ops::OpEntitySetStringRequest {
-            path: "strahd".into(),
+        op: ops::OpRequest::EntitySet(ops::OpEntitySetRequest {
+            path: vec!["strahd".into()],
             value: "von zarovich".into(),
             override_system: None,
         }),

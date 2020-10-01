@@ -5,8 +5,15 @@ import { Entity } from "@/api/sdf/model/entity";
 import { System } from "@/api/sdf/model/system";
 import { ChangeSet, ChangeSetStatus } from "@/api/sdf/model/changeSet";
 import { EditSession } from "@/api/sdf/model/editSession";
+import { IOpRequest, OpEntitySet } from "@/api/sdf/model/ops";
 import { User } from "@/api/sdf/model/user";
-import { Node, NodeKind, NodeObject, Position } from "@/api/sdf/model/node";
+import {
+  Node,
+  NodeKind,
+  NodeObject,
+  Position,
+  RegistryProperty,
+} from "@/api/sdf/model/node";
 import { Edge } from "@/api/sdf/model/edge";
 import { RootStore } from "@/store";
 
@@ -67,6 +74,8 @@ export interface EditorStore {
   };
   edges: Edge[];
   node: Node | undefined;
+  propertyList: RegistryProperty[];
+  editObject: Entity | undefined;
 }
 
 export let SET_POSITION_FUNCTIONS: Record<string, any> = {};
@@ -89,6 +98,8 @@ export const editor: Module<EditorStore, RootStore> = {
     objects: {},
     edges: [],
     node: undefined,
+    propertyList: [],
+    editObject: undefined,
   },
   mutations: {
     mouseTrackSelection(state, payload: string | undefined) {
@@ -108,6 +119,12 @@ export const editor: Module<EditorStore, RootStore> = {
     },
     setNodes(state, payload: Node[]) {
       state.nodes = payload;
+    },
+    setPropertyList(state, payload: RegistryProperty[]) {
+      state.propertyList = payload;
+    },
+    setEditObject(state, payload: Entity | undefined) {
+      state.editObject = payload;
     },
     setObjects(state, payload: EditorStore["objects"]) {
       state.objects = payload;
@@ -163,6 +180,8 @@ export const editor: Module<EditorStore, RootStore> = {
       state.objects = {};
       state.node = undefined;
       state.edges = [];
+      state.propertyList = [];
+      state.editObject = undefined;
       SET_POSITION_FUNCTIONS = {};
     },
   },
@@ -184,8 +203,12 @@ export const editor: Module<EditorStore, RootStore> = {
             "id",
             edge.tailVertex.nodeId,
           ]);
-          let sourceNodePosition: Position | undefined;
-          let destinationNodePosition: Position | undefined;
+          let sourceNodePosition:
+            | { nodeId: string; x: number; y: number }
+            | undefined;
+          let destinationNodePosition:
+            | { nodeId: string; x: number; y: number }
+            | undefined;
           if (sourceNode) {
             sourceNodePosition = {
               nodeId: sourceNode.id,
@@ -213,22 +236,51 @@ export const editor: Module<EditorStore, RootStore> = {
   actions: {
     async setNodePosition({ state, commit }, payload: ActionSetNodePosition) {
       let node = _.find(state.nodes, ["id", payload.nodeId]);
+      let context = state.context;
       if (node) {
         let unode = Node.upgrade(_.cloneDeep(node));
         unode.positions[state.context] = payload.position;
         commit("updateNodes", unode);
       }
       if (SET_POSITION_FUNCTIONS[payload.nodeId]) {
-        SET_POSITION_FUNCTIONS[payload.nodeId](payload.position);
+        SET_POSITION_FUNCTIONS[payload.nodeId](
+          payload.nodeId,
+          payload.position,
+          context,
+        );
       } else {
         SET_POSITION_FUNCTIONS[payload.nodeId] = _.debounce(
-          async (position: Position) => {
-            let node = await Node.get({ id: payload.nodeId });
-            await node.setPosition(state.context, position);
+          async (nodeId: string, position: Position, context: string) => {
+            let node = await Node.get({ id: nodeId });
+            await node.setPosition(context, position);
           },
           1000,
         );
-        SET_POSITION_FUNCTIONS[payload.nodeId](payload.position);
+        SET_POSITION_FUNCTIONS[payload.nodeId](
+          payload.nodeId,
+          payload.position,
+          context,
+        );
+      }
+    },
+    async entitySet({ state, rootGetters }, payload: IOpRequest["entitySet"]) {
+      let organization = rootGetters["organization/current"];
+      let workspace = rootGetters["workspace/current"];
+      let changeSet = state.changeSet;
+      let editSession = state.editSession;
+      let node = state.node;
+      if (organization && workspace && changeSet && editSession && node) {
+        let op = {
+          entitySet: payload,
+        };
+        let req = {
+          op,
+          organizationId: organization.id,
+          workspaceId: workspace.id,
+          changeSetId: changeSet.id,
+          editSessionId: editSession.id,
+        };
+        await OpEntitySet.create(node.id, req);
       }
     },
     async setMouseTrackSelection({ commit }, payload: string | undefined) {
@@ -252,8 +304,18 @@ export const editor: Module<EditorStore, RootStore> = {
         commit("setMode", "view");
       }
     },
-    node({ commit }, payload: Node | undefined) {
+    async node({ commit, state }, payload: Node | undefined) {
       commit("node", payload);
+      if (payload) {
+        const propertyList = await payload.propertyList(state.changeSet?.id);
+        const editObject = await payload.displayObject(state.changeSet?.id);
+        console.log("you have an edit object", { editObject, propertyList });
+        commit("setPropertyList", propertyList);
+        commit("setEditObject", editObject);
+      } else {
+        commit("setPropertyList", []);
+        commit("setEditObject", undefined);
+      }
     },
     async changeSetExecute({ commit, state }) {
       const changeSet = state.changeSet;
@@ -262,7 +324,10 @@ export const editor: Module<EditorStore, RootStore> = {
         commit("setMode", "view");
       }
     },
-    async setChangeSet({ commit, state }, payload: ActionSetChangeSet) {
+    async setChangeSet(
+      { commit, state, dispatch },
+      payload: ActionSetChangeSet,
+    ) {
       if (payload.id) {
         // @ts-ignore
         let changeSet = await ChangeSet.get(payload);
@@ -283,6 +348,7 @@ export const editor: Module<EditorStore, RootStore> = {
           } catch {}
         }
         commit("setObjects", objects);
+        dispatch("node", undefined);
       }
     },
     async setApplication(

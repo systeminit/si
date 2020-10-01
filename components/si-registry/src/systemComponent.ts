@@ -12,6 +12,7 @@ import { SiGraphql } from "./systemObject/graphql";
 import {
   Entity,
   CalculateConfiguresReply,
+  CalculatePropertiesResult,
   System,
 } from "./veritech/intelligence";
 import _ from "lodash";
@@ -537,7 +538,7 @@ export class ComponentObject extends SystemObject {
 interface EntityObjectIntelligence {
   // prettier-ignore
   //calculateProperties: (setProperties: Record<string, any>,) => Record<string, any>; // eslint-disable-line
-  inferProperties?: (entity: Entity) => void;
+  calculateProperties?: (entity: Entity) => CalculatePropertiesResult;
   calculateConfigures?: (
     entity: Entity,
     configures: Entity[],
@@ -565,7 +566,8 @@ export class EntityObject extends SystemObject {
   }
 
   // Based on the manual properties and expression properties, pass the results to the inference
-  calculateProperties(entity: Entity): void {
+  calculateProperties(entity: Entity): CalculatePropertiesResult {
+    //entity.properties = entity.manualProperties;
     // First calculate the entire baseline
     // Then calculate manual properties
     // Then calculate expression properties, preffering existing manual
@@ -574,10 +576,11 @@ export class EntityObject extends SystemObject {
     // Calculte the expression properties, and merge with manual, preferring manual properties
     // Finally pass the results to the inferProperties function, get the results
     //
-    if (this.intelligence.inferProperties) {
+    if (this.intelligence.calculateProperties) {
       //let properties
-      this.intelligence.inferProperties(entity);
+      //entity.properties = this.intelligence.calculateProperties(entity);
     }
+    return { properties: entity.manualProperties };
   }
 
   calculateConfigures(

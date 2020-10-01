@@ -17,14 +17,7 @@ export class PropMap extends Prop {
   }) {
     super({ name, label, componentTypeName });
     this.baseDefaultValue = defaultValue || {};
-    this.baseValidation = Joi.array()
-      .items(
-        Joi.object({
-          key: Joi.string(),
-          value: Joi.string(),
-        }),
-      )
-      .label(this.name);
+    this.baseValidation = Joi.object().label(this.name);
   }
 
   kind(): string {

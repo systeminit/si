@@ -33,12 +33,17 @@
     </div>
 
     <Monaco v-if="codeEditor" />
-    <PropertyList v-else />
+    <PropertyList
+      :selectedNode="selectedNode"
+      :propertiesList="propertiesList"
+      v-else
+    />
   </div>
 </template>
 
 <script lang="ts">
 import Vue from "vue";
+import { mapState } from "vuex";
 import {
   Maximize2Icon,
   SettingsIcon,
@@ -49,8 +54,7 @@ import {
 import Monaco from "@/components/ui/Monaco.vue";
 
 import PropertyList from "./PropertyList.vue";
-
-import { mapState, mapActions } from "vuex";
+import { RegistryProperty, Node } from "@/api/sdf/model/node";
 
 export default Vue.extend({
   name: "EditorPropertyPanel",
@@ -66,6 +70,13 @@ export default Vue.extend({
     return {
       codeEditor: false,
     };
+  },
+  computed: {
+    ...mapState({
+      propertiesList: (state: any): RegistryProperty[] =>
+        state.editor.propertyList,
+      selectedNode: (state: any): Node => state.editor.node,
+    }),
   },
   methods: {
     toggleCodeEditor(): void {

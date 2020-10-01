@@ -13,7 +13,21 @@ import { Query, Comparison } from "@/api/sdf/model/query";
 import { Entity, IEntity } from "@/api/sdf/model/entity";
 import { System, ISystem } from "@/api/sdf/model/system";
 import store from "@/store";
+
 import _ from "lodash";
+import { registry, Props, PropMethod, PropLink, PropObject } from "si-registry";
+
+export interface RegistryProperty {
+  id: string;
+  path: string[];
+  prop: Props;
+  name: string;
+  label: string;
+  required: boolean;
+  repeated: boolean;
+  kind: string;
+  hidden: boolean;
+}
 
 export type INodeObject = IEntity | ISystem;
 export type NodeObject = Entity | System;
@@ -326,6 +340,95 @@ export class Node implements INode {
       };
       return this.positions[context];
     }
+  }
+
+  async propertyList(changeSetId?: string): Promise<RegistryProperty[]> {
+    let entity = await this.displayObject(changeSetId);
+    let registryObject;
+    if (entity.siStorable.typeName == "entity") {
+      // @ts-ignore
+      registryObject = registry.get(entity.objectType);
+    } else {
+      registryObject = registry.get("system");
+    }
+
+    interface PropEntry {
+      prop: Props;
+      path: string[];
+    }
+
+    const properties = registryObject.fields.getEntry(
+      "properties",
+    ) as PropObject;
+    const objectProperties: PropEntry[] = properties.properties.attrs.map(
+      prop => {
+        return { prop, path: [] };
+      },
+    );
+    const result: RegistryProperty[] = [];
+
+    for (const propEntry of objectProperties) {
+      let path = propEntry.path;
+      let prop = propEntry.prop;
+      path.push(prop.name);
+
+      if (prop.kind() == "link") {
+        let cprop = prop as PropLink;
+        const realProp = cprop.lookupMyself();
+
+        result.push({
+          id: `${this.id}-${path.join("-")}-${changeSetId}`,
+          name: prop.name,
+          label: prop.label,
+          path,
+          prop: realProp,
+          required: prop.required,
+          repeated: prop.repeated,
+          kind: realProp.kind(),
+          hidden: prop.hidden,
+        });
+        if (realProp.kind() == "object" && prop.repeated == false) {
+          const rProp = realProp as PropObject;
+          let newProps = rProp.properties.attrs.map(prop => {
+            return { prop, path: _.clone(path) };
+          });
+          for (let nProp of newProps) {
+            objectProperties.push(nProp);
+          }
+        }
+      } else {
+        if (prop.kind() == "object" && prop.repeated == false) {
+          const rProp = prop as PropObject;
+          let newProps = rProp.properties.attrs.map(prop => {
+            return { prop, path: _.clone(path) };
+          });
+          for (let nProp of newProps) {
+            objectProperties.push(nProp);
+          }
+        }
+        result.push({
+          id: `${this.id}-${path.join("-")}-${changeSetId}`,
+          name: prop.name,
+          label: prop.label,
+          path,
+          prop,
+          required: prop.required,
+          repeated: prop.repeated,
+          kind: prop.kind(),
+          hidden: prop.hidden,
+        });
+      }
+    }
+    // This groups things according to their nesting, so we can just
+    // walk the results and have everything in the proper order.
+    const grouped = _.groupBy(result, value => {
+      if (value.kind == "object") {
+        return value.path;
+      } else {
+        return value.path.slice(0, -1);
+      }
+    });
+    return _.flatten(Object.values(grouped));
   }
 
   async save(): Promise<void> {

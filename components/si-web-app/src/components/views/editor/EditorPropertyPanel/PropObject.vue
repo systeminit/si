@@ -30,6 +30,7 @@ import { mapState } from "vuex";
 import { ChevronDownIcon, ChevronRightIcon } from "vue-feather-icons";
 
 import { RegistryProperty } from "@/store/modules/node";
+import _ from "lodash";
 
 interface PropObjectData {
   isOpen: boolean;
@@ -74,11 +75,12 @@ export default Vue.extend({
         // 'is-dark': !this.isOpen
       };
     },
-    fieldValue(): any {
-      let value = this.$store.getters["node/getFieldValue"](
+    fieldValue(): boolean {
+      let fieldValue: any = _.get(
+        this.$store.state.editor.editObject.properties["__baseline"],
         this.entityProperty.path,
       );
-      return value;
+      return !!fieldValue;
     },
   },
 });

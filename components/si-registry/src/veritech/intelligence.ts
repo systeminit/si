@@ -11,13 +11,16 @@ export interface Entity {
   description: string;
   nodeId: string;
   expressionProperties: {
-    baseline: Record<string, any>; // eslint-disable-line
+    __baseline: Record<string, any>; // eslint-disable-line
   };
   manualProperties: {
-    baseline: Record<string, any>; // eslint-disable-line
+    __baseline: Record<string, any>; // eslint-disable-line
   };
   inferredProperties: {
-    baseline: Record<string, any>; // eslint-disable-line
+    __baseline: Record<string, any>; // eslint-disable-line
+  };
+  properties: {
+    __baseline: Record<string, any>; //eslint-disable-line
   };
   siStorable: {
     typeName: string;
@@ -52,6 +55,13 @@ interface CalculatePropertiesReply {
   entity: Entity;
 }
 
+export interface CalculatePropertiesResult {
+  properties: {
+    __baseline: Record<string, any>; // eslint-disable-line
+    [key: string]: Record<string, any>; // eslint-disable-line
+  };
+}
+
 // TODO: Think through things like expression properties, setProperties, and the actual final properties.
 //
 // expressionProperties
@@ -64,6 +74,7 @@ export function calculateProperties(
 ): void {
   console.log("POST /calculateProperties resolver begins");
   const intelReq: CalculatePropertiesRequest = req.body;
+  const entity = intelReq.entity;
   let registryObj;
   try {
     registryObj = registry.get(intelReq.objectType) as EntityObject;
@@ -75,9 +86,14 @@ export function calculateProperties(
     });
     return;
   }
-  registryObj.calculateProperties(intelReq.entity);
+  const result: CalculatePropertiesResult = registryObj.calculateProperties(
+    entity,
+  );
+  entity.properties = result.properties;
+  console.dir(entity, { depth: Infinity });
+  //console.log("sending back the entity", { entity });
   const intelRes: CalculatePropertiesReply = {
-    entity: intelReq.entity,
+    entity,
   };
   res.send(intelRes);
 }
@@ -90,7 +106,7 @@ enum Operation {
 interface ApplyOpRequest {
   operation: Operation;
   toId: string;
-  path: string;
+  path: string[];
   // eslint-disable-next-line
   value?: any;
   object: object;
@@ -103,6 +119,7 @@ interface ApplyOpReply {
 export function applyOp(req: express.Request, res: express.Response): void {
   console.log("POST /applyOp resolver begins");
   const opRequest: ApplyOpRequest = req.body;
+  console.dir(opRequest, { depth: Infinity });
   const object = opRequest.object;
   if (opRequest.operation == Operation.Set) {
     if (opRequest.value) {
@@ -120,6 +137,8 @@ export function applyOp(req: express.Request, res: express.Response): void {
   const opReply: ApplyOpReply = {
     object,
   };
+  console.log("sending applyOp reply");
+  console.dir(opReply, { depth: Infinity });
   res.send(opReply);
 }
 

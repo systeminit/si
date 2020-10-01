@@ -18,10 +18,7 @@
       <div class="text-red-700" v-if="selectedNode.deleted">
         Will be deleted!
       </div>
-      <div
-        v-for="entityProperty in propertiesList"
-        :key="entityProperty.path.join('-')"
-      >
+      <div v-for="entityProperty in propertiesList" :key="entityProperty.id">
         <div v-if="!entityProperty.hidden" class="flex flex-row">
           <div
             class="w-full"
@@ -91,7 +88,7 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import Vue, { PropType } from "vue";
 import { mapState, mapGetters } from "vuex";
 
 import { EntityProperty } from "@/store/modules/entity";
@@ -103,7 +100,9 @@ import PropMap from "./PropMap.vue";
 import PropRepeated from "./PropRepeated.vue";
 import PropBool from "./PropBool.vue";
 import PropSelect from "./PropSelect.vue";
-import { RegistryProperty } from "../../../../store/modules/node";
+import { Node, RegistryProperty } from "@/api/sdf/model/node";
+//import { RegistryProperty } from "../../../../store/modules/node";
+
 import { capitalCase } from "change-case";
 import { EditIcon } from "vue-feather-icons";
 import _ from "lodash";
@@ -124,6 +123,14 @@ export default Vue.extend({
     PropBool,
     PropSelect,
     EditIcon,
+  },
+  props: {
+    propertiesList: {
+      type: Array as PropType<RegistryProperty[]>,
+    },
+    selectedNode: {
+      type: Object as PropType<Node | undefined>,
+    },
   },
   data(): Data {
     return {
@@ -248,16 +255,10 @@ export default Vue.extend({
   },
   computed: {
     typeName(): string {
-      return capitalCase(
-        this.selectedNode.stack[0].siStorable.typeName.replace(/_entity$/, ""),
-      );
+      return capitalCase(this.selectedNode?.objectType || "unknown");
     },
     ...mapGetters({
-      propertiesList: "node/propertiesList",
       diff: "node/diffCurrent",
-    }),
-    ...mapState({
-      selectedNode: (state: any): any => state.node.current,
     }),
     backgroundColors(): number[][] {
       let longestProp = 0;

@@ -397,7 +397,7 @@ export default Vue.extend({
       // }
 
       if (event.target.classList.contains("node")) {
-        if (this.nodeSelection.id) {
+        if (this.nodeSelection?.id) {
           this.selection.object = document.getElementById(
             this.nodeSelection.id,
           );

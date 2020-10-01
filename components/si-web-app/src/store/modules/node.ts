@@ -403,7 +403,7 @@ export const node: Module<NodeStore, RootStore> = {
         for (const propEntry of objectProperties) {
           let path = propEntry.path;
           let prop = propEntry.prop;
-          path.push(index);
+          path.push(`${index}`);
           path.push(prop.name);
 
           if (prop.kind() == "link") {
@@ -464,7 +464,7 @@ export const node: Module<NodeStore, RootStore> = {
       } else {
         let result: RegistryProperty[] = [];
         let path = entityProperty.path;
-        path.push(index);
+        path.push(`${index}`);
         result.push({
           name: entityProperty.name,
           label: entityProperty.label,

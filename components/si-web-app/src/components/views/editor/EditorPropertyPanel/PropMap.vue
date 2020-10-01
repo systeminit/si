@@ -1,7 +1,7 @@
 <template>
   <div
     class="flex flex-row mt-2 items-top"
-    v-if="fieldValue.length || editorMode == 'edit'"
+    v-if="Object.keys(fieldValue).length || editorMode == 'edit'"
   >
     <div
       class="w-40 px-2 text-sm leading-tight text-right text-white input-label"
@@ -11,57 +11,74 @@
 
     <div class="w-4/5 ml-2">
       <div
-        v-for="(mapEntry, index) in fieldValue"
-        :key="index"
+        v-for="[key, value] of Object.entries(fieldValue)"
+        :key="key"
         class="flex pb-2"
       >
         <div class="flex w-full row" v-if="editorMode == 'view'">
           <div
             class="w-4/5 pl-2 mr-2 text-sm leading-tight text-gray-400"
-            v-bind:class="mapTextClasses(index, 'value')"
+            v-bind:class="mapTextClasses(0, 'value')"
           >
-            {{ mapEntry.key }}: {{ mapEntry.value }}
+            {{ key }}: {{ value }}
           </div>
         </div>
-        <div class="items-center" v-else>
+        <div class="flex flex-row items-center" v-else>
+          <div
+            class="w-2/5 pl-2 text-sm leading-tight text-gray-400"
+            v-if="key"
+          >
+            {{ key }}:
+          </div>
           <input
-            class="w-2/5 pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none"
-            v-bind:class="mapInputClasses(index, 'key')"
-            type="text"
-            aria-label="key"
-            v-model="mapEntry.key"
-            @input="
-              updateMap(index, mapEntry.key, mapEntry.value, ...arguments)
-            "
-            @blur="saveIfModified"
-            placeholder="key"
-          />
-
-          <input
-            class="w-2/5 pl-2 ml-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none"
-            v-bind:class="mapInputClasses(index, 'value')"
+            class="w-3/5 pl-2 ml-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none"
+            v-bind:class="mapInputClasses(0, 'value')"
             type="text"
             aria-label="val"
-            v-model="mapEntry.value"
-            @input="
-              updateMap(index, mapEntry.key, mapEntry.value, ...arguments)
-            "
-            @blur="saveIfModified"
+            v-model="fieldValue[key]"
             placeholder="value"
+            @blur="saveIfModified()"
           />
 
           <button
             class="pl-1 text-gray-600 focus:outline-none"
             type="button"
-            @click="removeFromMap(index)"
+            @click="removeFromMap(key)"
           >
-            <!-- 
-                @click="removeItem($event, objectModel, index)"
-              -->
             <x-icon size="0.8x"></x-icon>
           </button>
         </div>
       </div>
+      <div v-if="hasNew" class="flex pb-2">
+        <div class="items-center">
+          <input
+            class="w-2/5 pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none"
+            v-bind:class="mapInputClasses(0, 'key')"
+            type="text"
+            aria-label="key"
+            v-model="newKey"
+            placeholder="key"
+          />
+          <input
+            class="w-2/5 pl-2 ml-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none"
+            v-bind:class="mapInputClasses(0, 'value')"
+            type="text"
+            aria-label="val"
+            v-model="newValue"
+            placeholder="value"
+            :disabled="!newKey"
+            @blur="addNew()"
+          />
+          <button
+            class="pl-1 text-gray-600 focus:outline-none"
+            type="button"
+            @click="cancelNew"
+          >
+            <x-icon size="0.8x"></x-icon>
+          </button>
+        </div>
+      </div>
+
       <div class="flex text-gray-500" v-if="editorMode == 'edit'">
         <button class="focus:outline-none" type="button" @click="addToMap">
           <plus-square-icon size="1.25x"></plus-square-icon>
@@ -88,10 +105,6 @@ interface MapEntries {
   [index: number]: { key: string; value: string };
 }
 
-// TODO: Make saving the map work - something is wrong on the detection algo!
-// Also, it really wants to track the blur state as a function of the whole map, so that we
-// don't wind up getting a bunch of shitty behavior and overwriting values.
-
 export default PropMixin.extend({
   name: "PropMap",
   components: {
@@ -102,9 +115,32 @@ export default PropMixin.extend({
   data() {
     return {
       save: false,
+      newKey: "",
+      newValue: "",
+      hasNew: false,
     };
   },
+  computed: {
+    ...mapState({
+      editorMode: (state: any): RootStore["editor"]["mode"] =>
+        state.editor.mode,
+    }),
+  },
   methods: {
+    async addNew() {
+      if (this.hasNew && this.newKey && this.newValue) {
+        Vue.set(this.fieldValue, this.newKey, this.newValue);
+        await this.saveIfModified();
+      }
+      this.hasNew = false;
+      this.newKey = "";
+      this.newValue = "";
+    },
+    cancelNew() {
+      this.hasNew = false;
+      this.newKey = "";
+      this.newValue = "";
+    },
     updateMap(
       index: number,
       key: string,
@@ -112,21 +148,16 @@ export default PropMixin.extend({
       ...event: any[]
     ): void {
       let current = this.fieldValue;
-      current[index] = { key, value };
       this.fieldValue = current;
     },
     addToMap(): void {
-      let current = this.fieldValue;
-      let index = current.length;
-      current.push({ key: `key${index}`, value: `value${index}` });
-      this.fieldValue = current;
-      this.saveIfModified();
+      this.newKey = "";
+      this.newValue = "";
+      this.hasNew = true;
     },
-    removeFromMap(index: number): void {
-      let current = this.fieldValue;
-      current.splice(index, 1);
-      this.fieldValue = current;
-      this.saveIfModified();
+    async removeFromMap(key: string): Promise<void> {
+      Vue.delete(this.fieldValue, key);
+      await this.saveIfModified();
     },
     mapTextClasses(index: number, part: string): Record<string, boolean> {
       let results: Record<string, boolean> = {};
@@ -163,12 +194,6 @@ export default PropMixin.extend({
         return false;
       }
     },
-  },
-  computed: {
-    ...mapState({
-      editorMode: (state: any): RootStore["editor"]["mode"] =>
-        state.editor.mode,
-    }),
   },
 });
 </script>

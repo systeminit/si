@@ -100,8 +100,8 @@ export default Vue.extend({
     },
   },
   methods: {
-    selectNode() {
-      this.$store.dispatch("editor/node", this.node);
+    async selectNode() {
+      await this.$store.dispatch("editor/node", this.node);
     },
     selectSocket(event: Event) {
       console.log("socket");

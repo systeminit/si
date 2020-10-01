@@ -1,9 +1,10 @@
 import Vue from "vue";
-import { mapGetters } from "vuex";
-import { RegistryProperty } from "@/store/modules/node";
+import { mapGetters, mapState } from "vuex";
+import { RegistryProperty } from "@/api/sdf/model/node";
 import _ from "lodash";
 
 interface Data {
+  fieldValue: any;
   originalValue: any;
 }
 
@@ -11,19 +12,21 @@ export default Vue.extend({
   props: {
     entityProperty: Object as () => RegistryProperty,
   },
-  data() {
-    let fieldValue = _.cloneDeep(
-      this.$store.getters["node/getFieldValue"](this.entityProperty.path),
+  data(): Data {
+    let fieldValue: any = _.get(
+      this.$store.state.editor.editObject.properties["__baseline"],
+      this.entityProperty.path,
     );
-    if (this.entityProperty.prop.kind() == "map") {
+    if (this.entityProperty.kind == "map") {
       if (fieldValue == undefined) {
-        fieldValue = [];
+        fieldValue = {};
       }
     } else if (this.entityProperty.prop.repeated) {
       if (!fieldValue) {
         fieldValue = [];
       }
     }
+
     return {
       fieldValue: _.cloneDeep(fieldValue),
       originalValue: _.cloneDeep(fieldValue),
@@ -34,25 +37,23 @@ export default Vue.extend({
       this.originalValue = this.fieldValue;
     },
     async saveIfModified(): Promise<void> {
-      let value = this.fieldValue;
-      let map = this.entityProperty.prop.kind() == "map";
-      if (
-        this.entityProperty.prop.kind() == "number" &&
-        // @ts-ignore - we know you don't have it everywhere
-        this.entityProperty.prop.numberKind == "int32"
-      ) {
-        value = parseInt(value);
-      }
       if (!_.isEqual(this.originalValue, this.fieldValue)) {
-        await this.$store.dispatch("node/setFieldValue", {
+        console.log("saving", {
+          ov: this.originalValue,
+          fv: this.fieldValue,
           path: this.entityProperty.path,
-          value,
-          map,
+        });
+        await this.$store.dispatch("editor/entitySet", {
+          path: this.entityProperty.path,
+          value: this.fieldValue,
         });
       }
     },
   },
   computed: {
+    ...mapState({
+      editObject: "editor/editObject",
+    }),
     ...mapGetters({
       diff: "node/diffCurrent",
     }),
@@ -87,24 +88,6 @@ export default Vue.extend({
       } else {
         return false;
       }
-    },
-  },
-  watch: {
-    entityProperty() {
-      let fieldValue = this.$store.getters["node/getFieldValue"](
-        this.entityProperty.path,
-      );
-      if (this.entityProperty.prop.kind() == "map") {
-        if (fieldValue == undefined) {
-          fieldValue = [];
-        }
-      } else if (this.entityProperty.prop.repeated) {
-        if (!fieldValue) {
-          fieldValue = [];
-        }
-      }
-      this.fieldValue = _.cloneDeep(fieldValue);
-      this.originalValue = _.cloneDeep(fieldValue);
     },
   },
 });

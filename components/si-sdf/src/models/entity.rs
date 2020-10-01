@@ -293,6 +293,7 @@ impl Entity {
         let mut json = serde_json::json![self];
         calculate_properties(&mut json).await?;
         let new_entity: Entity = serde_json::from_value(json)?;
+        tracing::warn!(?new_entity, "new entity from calculate properties");
         *self = new_entity;
         Ok(())
     }
@@ -348,6 +349,7 @@ impl Entity {
 }
 
 pub async fn calculate_properties(json: &mut serde_json::Value) -> EntityResult<()> {
+    tracing::warn!(?json, "calculating properites");
     let object_type = json["objectType"]
         .as_str()
         .ok_or(EntityError::MissingObjectType)?;
@@ -360,6 +362,10 @@ pub async fn calculate_properties(json: &mut serde_json::Value) -> EntityResult<
         .send()
         .await?;
     let entity_result: CalculatePropertiesResponse = res.json().await?;
+    tracing::warn!(
+        ?entity_result,
+        "calculate properties response from changeset"
+    );
     *json = entity_result.entity;
     Ok(())
 }

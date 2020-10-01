@@ -26,7 +26,7 @@ pub enum OpError {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub enum OpRequest {
-    EntitySetString(OpEntitySetStringRequest),
+    EntitySet(OpEntitySetRequest),
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -59,31 +59,31 @@ impl SiOp {
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct OpEntitySetStringRequest {
-    pub path: String,
-    pub value: String,
+pub struct OpEntitySetRequest {
+    pub path: Vec<String>,
+    pub value: serde_json::Value,
     pub override_system: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct OpEntitySetString {
+pub struct OpEntitySet {
     pub id: String,
     pub to_id: String,
-    pub path: String,
-    pub value: String,
+    pub path: Vec<String>,
+    pub value: serde_json::Value,
     pub si_op: SiOp,
     pub si_storable: SiStorable,
     pub si_change_set: SiChangeSet,
 }
 
-impl OpEntitySetString {
+impl OpEntitySet {
     pub async fn new(
         db: &Db,
         nats: &Connection,
         to_id: impl Into<String>,
-        path: impl Into<String>,
-        value: impl Into<String>,
+        path: Vec<String>,
+        value: impl Into<serde_json::Value>,
         override_system: Option<String>,
         billing_account_id: String,
         organization_id: String,
@@ -93,11 +93,10 @@ impl OpEntitySetString {
         created_by_user_id: String,
     ) -> OpResult<Self> {
         let to_id = to_id.into();
-        let path = path.into();
         let value = value.into();
         let si_storable = SiStorable::new(
             db,
-            "opEntitySetString",
+            "opEntitySet",
             billing_account_id.clone(),
             organization_id,
             workspace_id,
@@ -120,7 +119,7 @@ impl OpEntitySetString {
 
         let si_op = SiOp::new(override_system);
 
-        let op = OpEntitySetString {
+        let op = OpEntitySet {
             id,
             to_id,
             path,
@@ -147,10 +146,14 @@ impl OpEntitySetString {
             .as_deref()
             .unwrap_or("__baseline");
 
+        let mut op_path = self.path.clone();
+        let mut full_path: Vec<String> = vec!["manualProperties".into(), override_system.into()];
+        full_path.append(&mut op_path);
+
         let apply_req = ApplyOpRequest::new(
             ApplyOperation::Set,
             &self.to_id,
-            format!("manualProperties.{}.{}", override_system, self.path),
+            full_path,
             Some(serde_json::json![self.value]),
             to,
         );
@@ -234,7 +237,7 @@ impl OpSetName {
         let apply_req = ApplyOpRequest::new(
             ApplyOperation::Set,
             &self.to_id,
-            "name",
+            vec!["name".into()],
             Some(serde_json::json![self.value]),
             to,
         );
@@ -256,7 +259,7 @@ pub enum ApplyOperation {
 pub struct ApplyOpRequest<'a> {
     operation: ApplyOperation,
     to_id: String,
-    path: String,
+    path: Vec<String>,
     value: Option<serde_json::Value>,
     object: &'a serde_json::Value,
 }
@@ -265,12 +268,11 @@ impl<'a> ApplyOpRequest<'a> {
     pub fn new(
         operation: ApplyOperation,
         to_id: impl Into<String>,
-        path: impl Into<String>,
+        path: Vec<String>,
         value: Option<serde_json::Value>,
         object: &'a serde_json::Value,
     ) -> ApplyOpRequest {
         let to_id = to_id.into();
-        let path = path.into();
         ApplyOpRequest {
             operation,
             to_id,
