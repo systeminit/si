@@ -27,9 +27,9 @@ import { organization, OrganizationStore } from "./modules/organization";
 
 Vue.use(Vuex);
 
-const vuexLocal = new VuexPersistence<RootStore>({
-  storage: window.localStorage,
-});
+//const vuexLocal = new VuexPersistence<RootStore>({
+//  storage: window.localStorage,
+//});
 
 const debug = process.env.NODE_ENV !== "production";
 
@@ -89,7 +89,7 @@ const store: Store<RootStore> = new Vuex.Store({
     loader,
   },
   strict: debug,
-  plugins: [persistEdits, persistNodes, vuexLocal.plugin],
+  plugins: [persistEdits, persistNodes], //vuexLocal.plugin],
 });
 
 export default store;

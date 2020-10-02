@@ -301,12 +301,27 @@ export class Entity implements IEntity {
   async save(): Promise<void> {
     if (this.head) {
       await db.headEntities.put(this);
-      await store.dispatch("application/fromEntity", this);
-      await store.dispatch("editor/fromEntity", this);
     } else {
       await db.projectionEntities.put(this);
-      await store.dispatch("application/fromEntity", this);
-      await store.dispatch("editor/fromEntity", this);
+    }
+    this.dispatch();
+  }
+
+  async dispatch(): Promise<void> {
+    await store.dispatch("application/fromEntity", this);
+    await store.dispatch("editor/fromEntity", this);
+  }
+
+  static async restore(): Promise<void> {
+    let iObjects = await db.headEntities.toArray();
+    for (const iobj of iObjects) {
+      let obj = new Entity(iobj);
+      await obj.dispatch();
+    }
+    let iObjectsP = await db.projectionEntities.toArray();
+    for (const iobj of iObjectsP) {
+      let obj = new Entity(iobj);
+      await obj.dispatch();
     }
   }
 }

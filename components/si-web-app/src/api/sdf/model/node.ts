@@ -29,6 +29,11 @@ export interface RegistryProperty {
   hidden: boolean;
 }
 
+export interface PropEntry {
+  prop: Props;
+  path: string[];
+}
+
 export type INodeObject = IEntity | ISystem;
 export type NodeObject = Entity | System;
 
@@ -297,6 +302,10 @@ export class Node implements INode {
   }
 
   async projectionObject(changeSetId: string): Promise<NodeObject> {
+    console.log("looking for projection", {
+      nodeId: this.id,
+      changeSetId: changeSetId,
+    });
     let iitem: INodeObject;
     let cacheResult = await db.projectionEntities
       .where({ nodeId: this.id, "siChangeSet.changeSetId": changeSetId })
@@ -352,11 +361,6 @@ export class Node implements INode {
       registryObject = registry.get("system");
     }
 
-    interface PropEntry {
-      prop: Props;
-      path: string[];
-    }
-
     const properties = registryObject.fields.getEntry(
       "properties",
     ) as PropObject;
@@ -377,7 +381,9 @@ export class Node implements INode {
         const realProp = cprop.lookupMyself();
 
         result.push({
-          id: `${this.id}-${path.join("-")}-${changeSetId}`,
+          id: `${this.id}-${path.join("-")}-${changeSetId}-${
+            this.siStorable.updateClock.epoch
+          }-${this.siStorable.updateClock.updateCount}`,
           name: prop.name,
           label: prop.label,
           path,
@@ -407,7 +413,9 @@ export class Node implements INode {
           }
         }
         result.push({
-          id: `${this.id}-${path.join("-")}-${changeSetId}`,
+          id: `${this.id}-${path.join("-")}-${changeSetId}-${
+            this.siStorable.updateClock.epoch
+          }-${this.siStorable.updateClock.updateCount}`,
           name: prop.name,
           label: prop.label,
           path,
@@ -431,11 +439,125 @@ export class Node implements INode {
     return _.flatten(Object.values(grouped));
   }
 
+  async propertyListRepeated(
+    entityProperty: RegistryProperty,
+    index: number,
+    changeSetId?: string,
+  ): Promise<RegistryProperty[]> {
+    if (entityProperty.kind == "object") {
+      let updateField = entityProperty.prop as PropObject;
+
+      const objectProperties: PropEntry[] = updateField.properties.attrs.map(
+        prop => {
+          return { prop, path: _.clone(entityProperty.path) };
+        },
+      );
+      const result: RegistryProperty[] = [];
+
+      for (const propEntry of objectProperties) {
+        let path = propEntry.path;
+        let prop = propEntry.prop;
+        path.push(`${index}`);
+        path.push(prop.name);
+
+        if (prop.kind() == "link") {
+          let cprop = prop as PropLink;
+          const realProp = cprop.lookupMyself();
+
+          result.push({
+            id: `${this.id}-${path.join("-")}-${changeSetId}-${
+              this.siStorable.updateClock.epoch
+            }-${this.siStorable.updateClock.updateCount}`,
+            name: prop.name,
+            label: prop.label,
+            path,
+            prop: realProp,
+            required: prop.required,
+            repeated: prop.repeated,
+            kind: realProp.kind(),
+            hidden: prop.hidden,
+          });
+          if (realProp.kind() == "object" && prop.repeated == false) {
+            const rProp = realProp as PropObject;
+            let newProps = rProp.properties.attrs.map(prop => {
+              return { prop, path: _.clone(path) };
+            });
+            for (let nProp of newProps) {
+              objectProperties.push(nProp);
+            }
+          }
+        } else {
+          if (prop.kind() == "object" && prop.repeated == false) {
+            const rProp = prop as PropObject;
+            let newProps = rProp.properties.attrs.map(prop => {
+              return { prop, path: _.clone(path) };
+            });
+            for (let nProp of newProps) {
+              objectProperties.push(nProp);
+            }
+          }
+          result.push({
+            id: `${this.id}-${path.join("-")}-${changeSetId}-${
+              this.siStorable.updateClock.epoch
+            }-${this.siStorable.updateClock.updateCount}`,
+            name: prop.name,
+            label: prop.label,
+            path,
+            prop,
+            required: prop.required,
+            repeated: prop.repeated,
+            kind: prop.kind(),
+            hidden: prop.hidden,
+          });
+        }
+      }
+      // This groups things according to their nesting, so we can just
+      // walk the results and have everything in the proper order.
+      const grouped = _.groupBy(result, value => {
+        if (value.kind == "object") {
+          return value.path;
+        } else {
+          return value.path.slice(0, -1);
+        }
+      });
+      return _.flatten(Object.values(grouped));
+    } else {
+      let result: RegistryProperty[] = [];
+      let path = entityProperty.path;
+      path.push(`${index}`);
+      result.push({
+        id: `${this.id}-${path.join("-")}-${changeSetId}-${
+          this.siStorable.updateClock.epoch
+        }-${this.siStorable.updateClock.updateCount}`,
+        name: entityProperty.name,
+        label: entityProperty.label,
+        path,
+        prop: entityProperty.prop,
+        required: entityProperty.required,
+        repeated: entityProperty.repeated,
+        kind: entityProperty.kind,
+        hidden: entityProperty.hidden,
+      });
+      return result;
+    }
+  }
+
   async save(): Promise<void> {
     const currentObj = await db.nodes.get(this.id);
     if (!_.eq(currentObj, this)) {
       await db.nodes.put(this);
-      await store.dispatch("editor/fromNode", this);
+    }
+  }
+
+  async dispatch(): Promise<void> {
+    await store.dispatch("editor/fromNode", this);
+  }
+
+  static async restore(): Promise<void> {
+    let iObjects = await db.nodes.toArray();
+    for (const iobj of iObjects) {
+      let obj = new Node(iobj);
+      await obj.dispatch();
     }
   }
 }

@@ -33,11 +33,7 @@
     </div>
 
     <Monaco v-if="codeEditor" />
-    <PropertyList
-      :selectedNode="selectedNode"
-      :propertiesList="propertiesList"
-      v-else
-    />
+    <PropertyList :selectedNode="selectedNode" v-else />
   </div>
 </template>
 
@@ -73,8 +69,6 @@ export default Vue.extend({
   },
   computed: {
     ...mapState({
-      propertiesList: (state: any): RegistryProperty[] =>
-        state.editor.propertyList,
       selectedNode: (state: any): Node => state.editor.node,
     }),
   },

@@ -325,8 +325,19 @@ export class Edge implements IEdge {
     const currentObj = await db.edges.get(this.id);
     if (!_.eq(currentObj, this)) {
       await db.edges.put(this);
-      await store.dispatch("application/fromEdge", this, { root: true });
-      await store.dispatch("editor/fromEdge", this, { root: true });
+    }
+  }
+
+  async dispatch(): Promise<void> {
+    await store.dispatch("application/fromEdge", this, { root: true });
+    await store.dispatch("editor/fromEdge", this, { root: true });
+  }
+
+  static async restore(): Promise<void> {
+    let iObjects = await db.edges.toArray();
+    for (const iobj of iObjects) {
+      let obj = new Edge(iobj);
+      await obj.dispatch();
     }
   }
 }

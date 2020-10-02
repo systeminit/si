@@ -16,6 +16,7 @@ import {
   System,
 } from "./veritech/intelligence";
 import _ from "lodash";
+import YAML from "yaml";
 
 export type ObjectTypes =
   | BaseObject
@@ -580,7 +581,26 @@ export class EntityObject extends SystemObject {
       //let properties
       //entity.properties = this.intelligence.calculateProperties(entity);
     }
-    return { properties: entity.manualProperties };
+
+    // TODO: Please, refactor all this so that it makes fucking sense in the new world order. ;)
+    const properties = entity.manualProperties;
+    // @ts-ignore
+    const propArray = this.rootProp.properties.getEntry("properties").properties
+      .attrs;
+    for (const prop of propArray) {
+      if (prop.kind() == "code") {
+        for (const rel of prop.relationships.all()) {
+          if (rel.kind() == "updates") {
+            const otherProp = rel.partner.names[1];
+            properties["__baseline"][prop.name] = YAML.stringify(
+              properties["__baseline"][otherProp],
+            );
+          }
+        }
+      }
+    }
+    // Check if anything is a code property, and if it is, calculate it.
+    return { properties };
   }
 
   calculateConfigures(

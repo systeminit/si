@@ -6,8 +6,8 @@ use std::collections::HashMap;
 use crate::data::{Connection, Db};
 use crate::models::{
     calculate_properties, get_base_object, get_model, insert_model, insert_model_if_missing, ops,
-    upsert_model, Entity, EntityError, ModelError, SiStorable, SiStorableError, SimpleStorable,
-    System,
+    upsert_model, Entity, EntityError, ModelError, SiChangeSetEvent, SiStorable, SiStorableError,
+    SimpleStorable, System,
 };
 
 #[derive(Error, Debug)]
@@ -259,6 +259,18 @@ impl ChangeSet {
                         .pointer_mut("/head")
                         .ok_or(ChangeSetError::MissingHead)?;
                     *head = serde_json::Value::Bool(false);
+                    let change_set_id = obj
+                        .pointer_mut("/siChangeSet/changeSetId")
+                        .ok_or(ChangeSetError::IdMissing)?;
+                    *change_set_id = serde_json::Value::String(String::from(&self.id));
+                    let edit_session_id = obj
+                        .pointer_mut("/siChangeSet/editSessionId")
+                        .ok_or(ChangeSetError::IdMissing)?;
+                    *edit_session_id = serde_json::Value::String(String::from(""));
+                    let change_set_event = obj
+                        .pointer_mut("/siChangeSet/event")
+                        .ok_or(ChangeSetError::EventMissing)?;
+                    *change_set_event = serde_json::json![SiChangeSetEvent::Projection];
                 }
                 upsert_model(db, nats, projection_id, obj).await?;
             } else {
@@ -267,16 +279,28 @@ impl ChangeSet {
                     let head = obj
                         .pointer_mut("/head")
                         .ok_or(ChangeSetError::MissingHead)?;
-                    *head = serde_json::Value::Bool(false);
+                    *head = serde_json::Value::Bool(true);
                 }
-                upsert_model(db, nats, projection_id, obj).await?;
+                upsert_model(db, nats, id, obj).await?;
                 {
                     let head = obj
                         .pointer_mut("/head")
                         .ok_or(ChangeSetError::MissingHead)?;
-                    *head = serde_json::Value::Bool(true);
+                    *head = serde_json::Value::Bool(false);
+                    let change_set_id = obj
+                        .pointer_mut("/siChangeSet/changeSetId")
+                        .ok_or(ChangeSetError::IdMissing)?;
+                    *change_set_id = serde_json::Value::String(String::from(&self.id));
+                    let edit_session_id = obj
+                        .pointer_mut("/siChangeSet/editSessionId")
+                        .ok_or(ChangeSetError::IdMissing)?;
+                    *edit_session_id = serde_json::Value::String(String::from(""));
+                    let change_set_event = obj
+                        .pointer_mut("/siChangeSet/event")
+                        .ok_or(ChangeSetError::EventMissing)?;
+                    *change_set_event = serde_json::json![SiChangeSetEvent::Projection];
                 }
-                upsert_model(db, nats, id, obj).await?
+                upsert_model(db, nats, projection_id, obj).await?;
             }
         }
 

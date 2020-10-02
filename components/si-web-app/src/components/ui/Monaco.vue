@@ -12,6 +12,7 @@ import { mapState, mapGetters } from "vuex";
 import * as monaco from "monaco-editor";
 
 import { Node } from "@/store/modules/node";
+import _ from "lodash";
 
 interface Data {
   editor: monaco.editor.IEditor | undefined;
@@ -26,10 +27,10 @@ export default Vue.extend({
   },
   computed: {
     ...mapGetters({
-      codeProperty: "node/codeProperty",
+      codeProperty: "editor/codeProperty",
     }),
     ...mapState({
-      selectedNode: (state: any): any => state.node.current,
+      selectedNode: (state: any): any => state.editor.node,
     }),
     fieldValue: {
       set(value: any) {
@@ -37,16 +38,25 @@ export default Vue.extend({
           value,
           codePropertyPath: this.codeProperty.path,
         });
-        this.$store.dispatch("node/setFieldValue", {
+
+        this.$store.dispatch("editor/entitySet", {
           path: this.codeProperty.path,
           value,
         });
+        //this.$store.dispatch("node/setFieldValue", {
+        //  path: this.codeProperty.path,
+        //  value,
+        //});
       },
       get(): string {
         if (this.codeProperty) {
-          return this.$store.getters["node/getFieldValue"](
-            this.codeProperty.path,
+          let fieldValue: any = _.cloneDeep(
+            _.get(
+              this.$store.state.editor.editObject.properties["__baseline"],
+              this.codeProperty.path,
+            ),
           );
+          return fieldValue;
         } else {
           return "# No Code!";
         }
@@ -71,7 +81,8 @@ export default Vue.extend({
       }
     },
   },
-  mounted() {
+  async mounted() {
+    await this.$store.dispatch("editor/loadEditObject");
     const mountPoint = document.getElementById("monaco-mount");
     if (mountPoint) {
       let editor = monaco.editor.create(mountPoint, {

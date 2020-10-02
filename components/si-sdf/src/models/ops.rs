@@ -163,6 +163,8 @@ impl OpEntitySet {
     }
 }
 
+// TODO: wire the op set name through!
+
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct OpSetName {
@@ -234,15 +236,10 @@ impl OpSetName {
         if self.skip() {
             return Ok(());
         }
-        let apply_req = ApplyOpRequest::new(
-            ApplyOperation::Set,
-            &self.to_id,
-            vec!["name".into()],
-            Some(serde_json::json![self.value]),
-            to,
-        );
-        let result = apply_op(apply_req).await?;
-        *to = result;
+        match to.get_mut("name") {
+            Some(name) => *name = serde_json::Value::String(self.value.clone()),
+            None => return Err(OpError::Failed("name field missing".into(), to.clone())),
+        }
         Ok(())
     }
 }

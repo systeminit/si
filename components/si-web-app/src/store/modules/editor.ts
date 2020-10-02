@@ -16,6 +16,11 @@ import {
 } from "@/api/sdf/model/node";
 import { Edge } from "@/api/sdf/model/edge";
 import { RootStore } from "@/store";
+import router from "@/router/index";
+
+export interface ActionRestore {
+  applicationId: string;
+}
 
 export interface ActionSetCurrent {
   id: string;
@@ -26,6 +31,14 @@ export interface ActionSetSystem {
 }
 
 export interface ActionSetChangeSet {
+  id: string | undefined;
+}
+
+export interface ActionSetEditSession {
+  id: string | undefined;
+}
+
+export interface ActionSetNode {
   id: string | undefined;
 }
 
@@ -113,6 +126,13 @@ export const editor: Module<EditorStore, RootStore> = {
     },
     node(state, payload: Node | undefined) {
       state.node = payload;
+      router
+        .replace({
+          query: Object.assign({}, router.currentRoute.query, {
+            nodeId: payload?.id,
+          }),
+        })
+        .catch(_ => {});
     },
     updateNodes(state, payload: Node) {
       state.nodes = _.unionBy([payload], state.nodes, "id");
@@ -134,6 +154,17 @@ export const editor: Module<EditorStore, RootStore> = {
     },
     system(state, payload: System | undefined) {
       state.system = payload;
+      router
+        .replace({
+          query: Object.assign(
+            {},
+            { ...router.currentRoute.query },
+            {
+              systemId: payload?.id,
+            },
+          ),
+        })
+        .catch(_ => {});
     },
     setSystems(state, payload: System[]) {
       state.systems = payload;
@@ -146,6 +177,13 @@ export const editor: Module<EditorStore, RootStore> = {
     },
     setMode(state, mode: EditorStore["mode"]) {
       state.mode = mode;
+      router
+        .replace({
+          query: Object.assign({}, router.currentRoute.query, {
+            mode: mode,
+          }),
+        })
+        .catch(_ => {});
     },
     setEdges(state, edges: Edge[]) {
       state.edges = edges;
@@ -160,9 +198,23 @@ export const editor: Module<EditorStore, RootStore> = {
     },
     changeSet(state, payload: ChangeSet | undefined) {
       state.changeSet = payload;
+      router
+        .replace({
+          query: Object.assign({}, router.currentRoute.query, {
+            changeSetId: payload?.id,
+          }),
+        })
+        .catch(_ => {});
     },
     editSession(state, payload: EditSession | undefined) {
       state.editSession = payload;
+      router
+        .replace({
+          query: Object.assign({}, router.currentRoute.query, {
+            editSessionId: payload?.id,
+          }),
+        })
+        .catch(_ => {});
     },
     clear(state) {
       state.context = "none";
@@ -186,6 +238,15 @@ export const editor: Module<EditorStore, RootStore> = {
     },
   },
   getters: {
+    codeProperty(state): undefined | RegistryProperty {
+      let propertiesList = state.propertyList;
+      for (const prop of propertiesList) {
+        if (prop.kind == "code") {
+          return prop;
+        }
+      }
+      return undefined;
+    },
     nodeList(state): EditorStore["nodes"] {
       return _.filter(state.nodes, n => {
         if (state.objects[n.id]) {
@@ -304,12 +365,29 @@ export const editor: Module<EditorStore, RootStore> = {
         commit("setMode", "view");
       }
     },
+    async setNode({ commit, dispatch }, payload: ActionSetNode) {
+      if (payload?.id) {
+        // @ts-ignore
+        let node = await Node.get(payload);
+        await dispatch("node", node);
+      } else {
+        commit("node", undefined);
+      }
+    },
+    async loadEditObject({ state, commit }) {
+      let node = state.node;
+      if (node) {
+        const propertyList = await node.propertyList(state.changeSet?.id);
+        const editObject = await node.displayObject(state.changeSet?.id);
+        commit("setPropertyList", propertyList);
+        commit("setEditObject", editObject);
+      }
+    },
     async node({ commit, state }, payload: Node | undefined) {
       commit("node", payload);
       if (payload) {
         const propertyList = await payload.propertyList(state.changeSet?.id);
         const editObject = await payload.displayObject(state.changeSet?.id);
-        console.log("you have an edit object", { editObject, propertyList });
         commit("setPropertyList", propertyList);
         commit("setEditObject", editObject);
       } else {
@@ -324,6 +402,15 @@ export const editor: Module<EditorStore, RootStore> = {
         commit("setMode", "view");
       }
     },
+    async setEditSession({ commit }, payload: ActionSetEditSession) {
+      if (payload.id) {
+        // @ts-ignore
+        let editSession = await EditSession.get(payload);
+        commit("editSession", editSession);
+      } else {
+        commit("editSession", undefined);
+      }
+    },
     async setChangeSet(
       { commit, state, dispatch },
       payload: ActionSetChangeSet,
@@ -335,6 +422,8 @@ export const editor: Module<EditorStore, RootStore> = {
       } else {
         commit("changeSet", undefined);
       }
+      commit("editSession", undefined);
+
       let application = state.application;
       console.log("application", { application });
       if (application) {
@@ -348,7 +437,11 @@ export const editor: Module<EditorStore, RootStore> = {
           } catch {}
         }
         commit("setObjects", objects);
-        dispatch("node", undefined);
+        if (state.node && objects[state.node?.id]) {
+          dispatch("node", state.node);
+        } else {
+          dispatch("node", undefined);
+        }
       }
     },
     async setApplication(
@@ -531,6 +624,34 @@ export const editor: Module<EditorStore, RootStore> = {
         if (!_.isEqual(state.editSession, payload)) {
           commit("editSession", payload);
         }
+      }
+    },
+    async restore({ dispatch, commit }, payload: ActionRestore) {
+      if (router.currentRoute.query["changeSetId"]) {
+        await dispatch("setChangeSet", {
+          id: router.currentRoute.query["changeSetId"],
+        });
+      }
+      await dispatch("setApplication", {
+        id: payload.applicationId,
+      });
+      if (router.currentRoute.query["systemId"]) {
+        await dispatch("setSystem", {
+          id: router.currentRoute.query["systemId"],
+        });
+      }
+      if (router.currentRoute.query["nodeId"]) {
+        await dispatch("setNode", {
+          id: router.currentRoute.query["nodeId"],
+        });
+      }
+      if (router.currentRoute.query["editSessionId"]) {
+        await dispatch("setEditSession", {
+          id: router.currentRoute.query["editSessionId"],
+        });
+      }
+      if (router.currentRoute.query["mode"]) {
+        commit("setMode", router.currentRoute.query["mode"]);
       }
     },
     async clear({ commit }) {

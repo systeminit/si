@@ -110,7 +110,19 @@ export class System implements ISystem {
     const currentObj = await db.systems.get(this.id);
     if (!_.eq(currentObj, this)) {
       await db.systems.put(this);
-      await store.dispatch("system/fromDb", this);
+      await this.dispatch();
+    }
+  }
+
+  async dispatch(): Promise<void> {
+    await store.dispatch("system/fromDb", this);
+  }
+
+  static async restore(): Promise<void> {
+    let iObjects = await db.systems.toArray();
+    for (const iobj of iObjects) {
+      let obj = new System(iobj);
+      await obj.dispatch();
     }
   }
 }

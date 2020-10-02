@@ -38,21 +38,44 @@ export default Vue.extend({
     },
     async saveIfModified(): Promise<void> {
       if (!_.isEqual(this.originalValue, this.fieldValue)) {
-        console.log("saving", {
-          ov: this.originalValue,
-          fv: this.fieldValue,
-          path: this.entityProperty.path,
-        });
-        await this.$store.dispatch("editor/entitySet", {
-          path: this.entityProperty.path,
-          value: this.fieldValue,
-        });
+        if (this.entityProperty.kind == "number") {
+          let fieldValueAsNumber = parseInt(this.fieldValue, 10);
+          await this.$store.dispatch("editor/entitySet", {
+            path: this.entityProperty.path,
+            value: fieldValueAsNumber,
+          });
+        } else {
+          await this.$store.dispatch("editor/entitySet", {
+            path: this.entityProperty.path,
+            value: this.fieldValue,
+          });
+        }
       }
+    },
+  },
+  watch: {
+    editObject() {
+      let fieldValue: any = _.get(
+        this.editObject.properties["__baseline"],
+        this.entityProperty.path,
+      );
+      if (this.entityProperty.kind == "map") {
+        if (fieldValue == undefined) {
+          fieldValue = {};
+        }
+      } else if (this.entityProperty.prop.repeated) {
+        if (!fieldValue) {
+          fieldValue = [];
+        }
+      }
+
+      this.fieldValue = _.cloneDeep(fieldValue);
+      this.originalValue = _.cloneDeep(fieldValue);
     },
   },
   computed: {
     ...mapState({
-      editObject: "editor/editObject",
+      editObject: (state: any): any => state.editor.editObject,
     }),
     ...mapGetters({
       diff: "node/diffCurrent",

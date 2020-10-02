@@ -142,9 +142,21 @@ export class ChangeSet implements IChangeSet {
     const currentObj = await db.changeSets.get(this.id);
     if (!_.eq(currentObj, this)) {
       await db.changeSets.put(this);
-      await store.dispatch("changeSet/fromChangeSet", this);
-      await store.dispatch("application/fromChangeSet", this);
-      await store.dispatch("editor/fromChangeSet", this);
+      await this.dispatch();
+    }
+  }
+
+  async dispatch(): Promise<void> {
+    await store.dispatch("changeSet/fromChangeSet", this);
+    await store.dispatch("application/fromChangeSet", this);
+    await store.dispatch("editor/fromChangeSet", this);
+  }
+
+  static async restore(): Promise<void> {
+    let changeSets = await db.changeSets.toArray();
+    for (const iChangeSet of changeSets) {
+      let changeSet = new ChangeSet(iChangeSet);
+      await changeSet.dispatch();
     }
   }
 }
@@ -250,7 +262,19 @@ export class ChangeSetParticipant implements IChangeSetParticipant {
     const currentObj = await db.changeSetParticipants.get(this.id);
     if (!_.eq(currentObj, this)) {
       await db.changeSetParticipants.put(this);
-      await store.dispatch("application/fromChangeSetParticipant", this);
+      await this.dispatch();
+    }
+  }
+
+  async dispatch(): Promise<void> {
+    await store.dispatch("application/fromChangeSetParticipant", this);
+  }
+
+  static async restore(): Promise<void> {
+    let iObjects = await db.changeSetParticipants.toArray();
+    for (const iobj of iObjects) {
+      let obj = new ChangeSetParticipant(iobj);
+      await obj.dispatch();
     }
   }
 }

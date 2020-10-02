@@ -134,7 +134,19 @@ export class EditSession implements IEditSession {
     const currentObj = await db.editSessions.get(this.id);
     if (!_.eq(currentObj, this)) {
       await db.editSessions.put(this);
-      await store.dispatch("editor/fromEditSession", this, { root: true });
+      await this.dispatch();
+    }
+  }
+
+  async dispatch(): Promise<void> {
+    await store.dispatch("editor/fromEditSession", this, { root: true });
+  }
+
+  static async restore(): Promise<void> {
+    let iObjects = await db.editSessions.toArray();
+    for (const iobj of iObjects) {
+      let obj = new EditSession(iobj);
+      await obj.dispatch();
     }
   }
 }

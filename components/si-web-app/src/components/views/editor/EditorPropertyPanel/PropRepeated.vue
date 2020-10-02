@@ -26,7 +26,7 @@
             <div
               class="text-white"
               v-for="ep in propertiesList(entityProperty, index)"
-              :key="ep.path.join('-')"
+              :key="ep.id"
             >
               <div v-if="!ep.hidden" class="flex flex-row">
                 <div class="w-full" :style="propStyle(ep)">
@@ -174,7 +174,7 @@ export default PropMixin.extend({
       let current = _.cloneDeep(this.fieldValue);
       current.push({});
       this.fieldValue = current;
-      this.saveIfModified();
+      //this.saveIfModified();
     },
     removeFromList(index: number): void {
       let current = _.cloneDeep(this.fieldValue);

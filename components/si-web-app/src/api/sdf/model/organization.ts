@@ -105,7 +105,19 @@ export class Organization implements IOrganization {
     const currentObj = await db.organizations.get(this.id);
     if (!_.eq(currentObj, this)) {
       await db.organizations.put(this);
-      await store.dispatch("organizations/fromDb", this);
+      await this.dispatch();
+    }
+  }
+
+  async dispatch(): Promise<void> {
+    await store.dispatch("organizations/fromDb", this);
+  }
+
+  static async restore(): Promise<void> {
+    let iObjects = await db.organizations.toArray();
+    for (const iobj of iObjects) {
+      let obj = new Organization(iobj);
+      await obj.dispatch();
     }
   }
 }

@@ -1,8 +1,10 @@
 <template>
   <div>
     <div v-if="selectedNode">
-      <div class="flex mt-2 mb-2 ml-6 text-base text-white align-middle">
-        <div class="self-center w-3/4 text-base">
+      <div
+        class="flex pt-2 pb-2 pl-6 text-base text-white align-middle property-section-bg-color"
+      >
+        <div class="self-center w-3/4 text-lg ">
           {{ typeName }}
         </div>
         <div class="flex justify-end w-2/4">
@@ -18,6 +20,37 @@
       <div class="text-red-700" v-if="selectedNode.deleted">
         Will be deleted!
       </div>
+
+      <div class="flex items-center mt-2">
+        <div class="w-40 px-2 text-sm leading-tight text-right text-white">
+          name
+        </div>
+        <div
+          v-if="editorMode == 'view'"
+          class="w-4/5 pl-2 mr-2 text-sm leading-tight text-gray-400"
+        >
+          {{ editObject.name }}
+        </div>
+        <div
+          class="w-4/5 pl-2 mr-2 text-sm leading-tight text-gray-400"
+          v-else-if="editorMode == 'edit'"
+        >
+          <input
+            class="w-4/5 pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey input-border-grey si-property"
+            type="text"
+            aria-label="name"
+            v-model="nodeObjectName"
+            placeholder="text"
+          />
+        </div>
+      </div>
+
+      <div
+        class="pt-1 pb-1 pl-6 mt-2 text-base text-white align-middle property-section-bg-color"
+      >
+        Properties
+      </div>
+
       <div v-for="entityProperty in propertiesList" :key="entityProperty.id">
         <div v-if="!entityProperty.hidden" class="flex flex-row">
           <div
@@ -125,9 +158,6 @@ export default Vue.extend({
     EditIcon,
   },
   props: {
-    propertiesList: {
-      type: Array as PropType<RegistryProperty[]>,
-    },
     selectedNode: {
       type: Object as PropType<Node | undefined>,
     },
@@ -254,9 +284,21 @@ export default Vue.extend({
     },
   },
   computed: {
+    nodeObjectName: {
+      set(value: any) {},
+      get(): string {
+        return this.editObject.name;
+      },
+    },
     typeName(): string {
       return capitalCase(this.selectedNode?.objectType || "unknown");
     },
+    ...mapState({
+      propertiesList: (state: any): RegistryProperty[] =>
+        state.editor.propertyList,
+      editorMode: (state: any): any => state.editor.mode,
+      editObject: (state: any): any => state.editor.editObject,
+    }),
     ...mapGetters({
       diff: "node/diffCurrent",
     }),
@@ -283,11 +325,18 @@ export default Vue.extend({
       this.collapsedPaths = [];
     },
   },
+  async created() {
+    await this.$store.dispatch("editor/loadEditObject");
+  },
 });
 </script>
 
 <style scoped>
 .gold-bars-icon {
   color: #ce7f3e;
+}
+
+.property-section-bg-color {
+  background-color: #292c2d;
 }
 </style>

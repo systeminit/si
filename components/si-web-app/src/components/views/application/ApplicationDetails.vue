@@ -423,9 +423,9 @@ export default Vue.extend({
       this.newChangeSetName = "";
     },
   },
-  async mounted() {
-    await this.$store.dispatch("editor/setApplication", {
-      id: this.applicationId,
+  async created() {
+    await this.$store.dispatch("editor/restore", {
+      applicationId: this.applicationId,
     });
   },
 });

@@ -1,8 +1,11 @@
 import * as express from "express";
 import _ from "lodash";
+import YAML from "yaml";
 
 import { registry } from "@/registry";
 import { EntityObject } from "@/systemComponent";
+
+export type NodeObject = Entity | System;
 
 export interface Entity {
   id: string;
@@ -44,6 +47,7 @@ export interface System {
   description: string;
   nodeId: string;
   head: boolean;
+  siStorable: Entity["siStorable"];
 }
 
 interface CalculatePropertiesRequest {
@@ -109,7 +113,7 @@ interface ApplyOpRequest {
   path: string[];
   // eslint-disable-next-line
   value?: any;
-  object: object;
+  object: NodeObject;
 }
 
 interface ApplyOpReply {
@@ -123,6 +127,14 @@ export function applyOp(req: express.Request, res: express.Response): void {
   const object = opRequest.object;
   if (opRequest.operation == Operation.Set) {
     if (opRequest.value) {
+      if (opRequest.path.includes("kubernetesObjectYaml")) {
+        const jsYaml = YAML.parse(opRequest.value);
+        _.set(
+          object,
+          ["manualProperties", "__baseline", "kubernetesObject"],
+          jsYaml,
+        );
+      }
       _.set(object, opRequest.path, opRequest.value);
     } else {
       res.status(400).send({

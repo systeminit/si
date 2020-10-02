@@ -24,6 +24,7 @@ pub enum SiChangeSetEvent {
     Delete,
     Operation,
     Action,
+    Projection,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
