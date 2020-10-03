@@ -27,9 +27,10 @@
         </div>
         <div
           v-if="editorMode == 'view'"
+          v-bind:class="textClasses"
           class="w-4/5 pl-2 mr-2 text-sm leading-tight text-gray-400"
         >
-          {{ editObject.name }}
+          {{ nodeObjectName }}
         </div>
         <div
           class="w-4/5 pl-2 mr-2 text-sm leading-tight text-gray-400"
@@ -38,8 +39,10 @@
           <input
             class="w-4/5 pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey input-border-grey si-property"
             type="text"
+            v-bind:class="inputClasses"
             aria-label="name"
             v-model="nodeObjectName"
+            @blur="updateObjectName"
             placeholder="text"
           />
         </div>
@@ -142,6 +145,7 @@ import _ from "lodash";
 
 interface Data {
   collapsedPaths: (string | number)[][];
+  nodeObjectName: string;
 }
 
 export default Vue.extend({
@@ -165,9 +169,15 @@ export default Vue.extend({
   data(): Data {
     return {
       collapsedPaths: [],
+      nodeObjectName: "",
     };
   },
   methods: {
+    async updateObjectName() {
+      await this.$store.dispatch("editor/entityNameSet", {
+        value: this.nodeObjectName,
+      });
+    },
     togglePath(path: (string | number)[]) {
       if (
         _.find(this.collapsedPaths, item => {
@@ -284,12 +294,6 @@ export default Vue.extend({
     },
   },
   computed: {
-    nodeObjectName: {
-      set(value: any) {},
-      get(): string {
-        return this.editObject.name;
-      },
-    },
     typeName(): string {
       return capitalCase(this.selectedNode?.objectType || "unknown");
     },
@@ -298,9 +302,7 @@ export default Vue.extend({
         state.editor.propertyList,
       editorMode: (state: any): any => state.editor.mode,
       editObject: (state: any): any => state.editor.editObject,
-    }),
-    ...mapGetters({
-      diff: "node/diffCurrent",
+      diff: (state: any): any => state.editor.diff,
     }),
     backgroundColors(): number[][] {
       let longestProp = 0;
@@ -319,10 +321,47 @@ export default Vue.extend({
       );
       return colors;
     },
+    textClasses(): Record<string, boolean> {
+      let results: Record<string, boolean> = {};
+      if (this.hasBeenEdited) {
+        results["input-border-gold"] = true;
+        results["border"] = true;
+      } else {
+        results["input-border-grey"] = true;
+      }
+      return results;
+    },
+    inputClasses(): Record<string, boolean> {
+      let results: Record<string, boolean> = {};
+      results["si-property"] = true;
+      if (this.hasBeenEdited) {
+        results["input-border-gold"] = true;
+        results["input-bg-color-grey"] = true;
+      } else {
+        results["input-border-grey"] = true;
+        results["input-bg-color-grey"] = true;
+      }
+      return results;
+    },
+    hasBeenEdited(): boolean {
+      let result = _.find(this.diff.entries, diffEntry => {
+        return _.isEqual(diffEntry.path, ["name"]);
+      });
+      if (result) {
+        return true;
+      } else {
+        return false;
+      }
+    },
   },
   watch: {
     selectedNode(value: any): void {
       this.collapsedPaths = [];
+    },
+    editObject(value: any): void {
+      if (this.editObject?.name) {
+        this.nodeObjectName = _.cloneDeep(this.editObject.name);
+      }
     },
   },
   async created() {

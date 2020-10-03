@@ -1,9 +1,15 @@
+import Vue from "vue";
 import { Module } from "vuex";
 import _ from "lodash";
 
 import { Entity } from "@/api/sdf/model/entity";
 import { System } from "@/api/sdf/model/system";
-import { ChangeSet, ChangeSetStatus } from "@/api/sdf/model/changeSet";
+import {
+  ChangeSet,
+  ChangeSetStatus,
+  ChangeSetParticipant,
+} from "@/api/sdf/model/changeSet";
+import { EventLog } from "@/api/sdf/model/eventLog";
 import { EditSession } from "@/api/sdf/model/editSession";
 import { IOpRequest, OpEntitySet } from "@/api/sdf/model/ops";
 import { User } from "@/api/sdf/model/user";
@@ -17,6 +23,7 @@ import {
 import { Edge } from "@/api/sdf/model/edge";
 import { RootStore } from "@/store";
 import router from "@/router/index";
+import { DiffResult } from "@/utils/diff";
 
 export interface ActionRestore {
   applicationId: string;
@@ -77,6 +84,7 @@ export interface EditorStore {
   editSaveError: undefined | Error;
   changeSetsOpen: ChangeSet[];
   changeSet: ChangeSet | undefined;
+  changeSetParticipantCount: number;
   editSession: EditSession | undefined;
   application: Entity | undefined;
   system: System | undefined;
@@ -89,6 +97,8 @@ export interface EditorStore {
   node: Node | undefined;
   propertyList: RegistryProperty[];
   editObject: Entity | undefined;
+  diff: DiffResult;
+  eventLogs: EventLog[];
 }
 
 export let SET_POSITION_FUNCTIONS: Record<string, any> = {};
@@ -103,6 +113,7 @@ export const editor: Module<EditorStore, RootStore> = {
     editSaveError: undefined,
     changeSetsOpen: [],
     changeSet: undefined,
+    changeSetParticipantCount: 0,
     editSession: undefined,
     application: undefined,
     system: undefined,
@@ -113,6 +124,11 @@ export const editor: Module<EditorStore, RootStore> = {
     node: undefined,
     propertyList: [],
     editObject: undefined,
+    diff: {
+      entries: [],
+      count: 0,
+    },
+    eventLogs: [],
   },
   mutations: {
     mouseTrackSelection(state, payload: string | undefined) {
@@ -121,8 +137,18 @@ export const editor: Module<EditorStore, RootStore> = {
     context(state, payload: string) {
       state.context = payload;
     },
+    updateEventLogs(state, payload: EventLog) {
+      state.eventLogs = _.take(
+        _.orderBy(
+          _.unionBy([payload], state.eventLogs, "id"),
+          ["unixTimestamp"],
+          ["desc"],
+        ),
+        40,
+      );
+    },
     updateObjects(state, payload: NodeObject) {
-      state.objects[payload.nodeId] = payload;
+      Vue.set(state.objects, payload.nodeId, payload);
     },
     node(state, payload: Node | undefined) {
       state.node = payload;
@@ -196,6 +222,9 @@ export const editor: Module<EditorStore, RootStore> = {
       _.remove(changeSetsOpen, ["id", payload.id]);
       state.changeSetsOpen = changeSetsOpen;
     },
+    changeSetParticipantCount(state, payload: number) {
+      state.changeSetParticipantCount = payload;
+    },
     changeSet(state, payload: ChangeSet | undefined) {
       state.changeSet = payload;
       router
@@ -216,6 +245,9 @@ export const editor: Module<EditorStore, RootStore> = {
         })
         .catch(_ => {});
     },
+    diff(state, payload: DiffResult) {
+      state.diff = payload;
+    },
     clear(state) {
       state.context = "none";
       state.mode = "view";
@@ -234,6 +266,12 @@ export const editor: Module<EditorStore, RootStore> = {
       state.edges = [];
       state.propertyList = [];
       state.editObject = undefined;
+      state.changeSetParticipantCount = 0;
+      state.diff = {
+        entries: [],
+        count: 0,
+      };
+      state.eventLogs = [];
       SET_POSITION_FUNCTIONS = {};
     },
   },
@@ -324,6 +362,29 @@ export const editor: Module<EditorStore, RootStore> = {
         );
       }
     },
+    async entityNameSet(
+      { state, rootGetters },
+      payload: IOpRequest["nameSet"],
+    ) {
+      let organization = rootGetters["organization/current"];
+      let workspace = rootGetters["workspace/current"];
+      let changeSet = state.changeSet;
+      let editSession = state.editSession;
+      let node = state.node;
+      if (organization && workspace && changeSet && editSession && node) {
+        let op = {
+          nameSet: payload,
+        };
+        let req = {
+          op,
+          organizationId: organization.id,
+          workspaceId: workspace.id,
+          changeSetId: changeSet.id,
+          editSessionId: editSession.id,
+        };
+        await OpEntitySet.create(node.id, req);
+      }
+    },
     async entitySet({ state, rootGetters }, payload: IOpRequest["entitySet"]) {
       let organization = rootGetters["organization/current"];
       let workspace = rootGetters["workspace/current"];
@@ -390,9 +451,18 @@ export const editor: Module<EditorStore, RootStore> = {
         const editObject = await payload.displayObject(state.changeSet?.id);
         commit("setPropertyList", propertyList);
         commit("setEditObject", editObject);
+        if (editObject.siStorable.typeName == "entity") {
+          // @ts-ignore
+          let diffResult = await editObject.diff();
+          commit("diff", diffResult);
+        }
       } else {
         commit("setPropertyList", []);
         commit("setEditObject", undefined);
+        commit("diff", {
+          entries: [],
+          count: 0,
+        });
       }
     },
     async changeSetExecute({ commit, state }) {
@@ -419,8 +489,11 @@ export const editor: Module<EditorStore, RootStore> = {
         // @ts-ignore
         let changeSet = await ChangeSet.get(payload);
         commit("changeSet", changeSet);
+        let csp = await ChangeSetParticipant.forChangeSet(changeSet.id);
+        commit("changeSetParticipantCount", csp.length);
       } else {
         commit("changeSet", undefined);
+        commit("changeSetParticipantCount", 0);
       }
       commit("editSession", undefined);
 
@@ -552,9 +625,9 @@ export const editor: Module<EditorStore, RootStore> = {
     async fromEntity({ commit, state }, payload: Entity) {
       if (state.application) {
         let application = state.application;
-        let appNode = await Node.get({ id: application.id });
+        let appNode = await Node.get({ id: application.nodeId });
         let successors = await appNode.successors();
-        if (_.find(successors, ["tailVertex.objectId", payload.id])) {
+        if (_.find(successors, ["id", payload.nodeId])) {
           let changeSet = state.changeSet;
           if (changeSet) {
             if (
@@ -562,6 +635,10 @@ export const editor: Module<EditorStore, RootStore> = {
               payload.head == false
             ) {
               commit("updateObjects", payload);
+              if (state.editObject?.id == payload.id) {
+                let diffResult = await payload.diff();
+                commit("diff", diffResult);
+              }
             }
           } else {
             if (payload.head == true) {
@@ -625,6 +702,10 @@ export const editor: Module<EditorStore, RootStore> = {
           commit("editSession", payload);
         }
       }
+    },
+    fromEventLog({ commit }, payload: EventLog) {
+      // TODO: We should only show relevant event logs!
+      commit("updateEventLogs", payload);
     },
     async restore({ dispatch, commit }, payload: ActionRestore) {
       if (router.currentRoute.query["changeSetId"]) {

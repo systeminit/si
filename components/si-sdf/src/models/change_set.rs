@@ -231,7 +231,9 @@ impl ChangeSet {
                         op.apply(obj).await?;
                     }
                     "opSetName" => {
+                        tracing::warn!(?change_set_entry, "about to deserialize");
                         let op: ops::OpSetName = serde_json::from_value(change_set_entry)?;
+                        tracing::warn!(?op, "applying op");
                         op.apply(obj).await?;
                     }
                     unknown => tracing::error!("cannot find an op for {}", unknown),

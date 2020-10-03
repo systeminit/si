@@ -11,6 +11,7 @@ import { ISystem } from "@/api/sdf/model/system";
 import { IEdge } from "@/api/sdf/model/edge";
 import { IUpdateClockGlobal } from "@/api/sdf/model/update";
 import { IEntityOps } from "@/api/sdf/model/ops";
+import { IEventLog } from "@/api/sdf/model/eventLog";
 
 class SiDatabase extends Dexie {
   // Declare implicit table properties.
@@ -29,6 +30,7 @@ class SiDatabase extends Dexie {
   edges: Dexie.Table<IEdge, string>;
   globalUpdateClock: Dexie.Table<IUpdateClockGlobal, string>;
   entityOps: Dexie.Table<IEntityOps, string>;
+  eventLog: Dexie.Table<IEventLog, string>;
 
   constructor() {
     super("SiDatabase");
@@ -49,7 +51,9 @@ class SiDatabase extends Dexie {
       edges:
         "id, [kind+headVertex.nodeId], [kind+tailVertex.nodeId], [kind+tailVertex.objectId], [kind+headVertex.objectId], [kind+tailVertex.typeName+headVertex.typeName], [kind+tailVertex.typeName+headVertex.objectId]",
       globalUpdateClock: "id, [epoch+updateClock]",
-      entityOps: "id, siChangeSet.changeSetId",
+      entityOps:
+        "id, toId, siChangeSet.changeSetId, [siChangeSet.changeSetId+toId]",
+      eventLog: "id",
     });
 
     // The following line is needed if your typescript
@@ -68,6 +72,7 @@ class SiDatabase extends Dexie {
     this.edges = this.table("edges");
     this.globalUpdateClock = this.table("globalUpdateClock");
     this.entityOps = this.table("entityOps");
+    this.eventLog = this.table("eventLog");
   }
 }
 

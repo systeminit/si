@@ -237,6 +237,19 @@ export class Node implements INode {
     }
   }
 
+  async predecessors(): Promise<Node[]> {
+    let edges = await Edge.allPredecessors({
+      nodeId: this.id,
+      edgeKind: EdgeKind.Configures,
+    });
+    let items: Node[] = [];
+    for (let edge of edges) {
+      let node = await Node.get({ id: edge.tailVertex.nodeId });
+      items.push(node);
+    }
+    return items;
+  }
+
   async successors(): Promise<Node[]> {
     let edges = await Edge.allSuccessors({
       nodeId: this.id,
@@ -546,6 +559,7 @@ export class Node implements INode {
     const currentObj = await db.nodes.get(this.id);
     if (!_.eq(currentObj, this)) {
       await db.nodes.put(this);
+      await this.dispatch();
     }
   }
 

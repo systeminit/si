@@ -2900,6 +2900,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "base64 0.12.3",
+ "chrono",
  "couchbase",
  "crossbeam",
  "futures 0.3.5",

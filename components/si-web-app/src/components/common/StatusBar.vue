@@ -44,39 +44,21 @@ export default Vue.extend({
       }
       return result;
     },
+    nodeType(): string {
+      return this.editObject?.objectType || "none";
+    },
+    node(): string {
+      return this.editObject?.name || "none";
+    },
     ...mapState({
       mode: (state: any): string => state.editor.mode,
       application: (state: any): string =>
-        state.application.current?.name || "none",
-      system: (state: any): string => state.system.current?.name || "none",
-      node: (state: any): string => state.node.current?.name || "none",
-      changeSet: (state: any): string =>
-        state.changeSet.current?.name || "none",
+        state.editor.application?.name || "none",
+      system: (state: any): string => state.editor.system?.name || "none",
+      changeSet: (state: any): string => state.editor.changeSet?.name || "none",
       changeSetId: (state: any): string =>
-        state.changeSet.current?.id || "none",
-      nodeType(state: any): string {
-        let typeName;
-        if (this.node.name != "none") {
-          if (this.changeSet == "none") {
-            typeName = state.node.current?.display?.saved?.siStorable?.typeName;
-          } else {
-            if (state.node.current?.display[this.changeSetId]) {
-              typeName =
-                state.node.current?.display[this.changeSetId].siStorable
-                  ?.typeName;
-            } else {
-              typeName =
-                state.node.current?.display?.saved?.siStorable?.typeName;
-            }
-          }
-        } else {
-          typeName = "none";
-        }
-        if (!typeName) {
-          typeName = "none";
-        }
-        return camelCase(typeName);
-      },
+        state.changeSet.changeSet?.id || "none",
+      editObject: (state: any): any => state.editor.editObject,
     }),
   },
 });

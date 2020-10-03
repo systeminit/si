@@ -27,6 +27,7 @@ pub enum OpError {
 #[serde(rename_all = "camelCase")]
 pub enum OpRequest {
     EntitySet(OpEntitySetRequest),
+    NameSet(OpSetNameRequest),
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -163,7 +164,11 @@ impl OpEntitySet {
     }
 }
 
-// TODO: wire the op set name through!
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct OpSetNameRequest {
+    pub value: String,
+}
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

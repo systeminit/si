@@ -21,6 +21,9 @@ export interface IOpRequest {
     value: any;
     overrideSystem?: string;
   };
+  nameSet?: {
+    value: string;
+  };
 }
 
 export interface IOpReply {

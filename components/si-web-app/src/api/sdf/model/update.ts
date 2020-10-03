@@ -9,6 +9,7 @@ import {
   ChangeSetParticipant,
 } from "@/api/sdf/model/changeSet";
 import { IOpEntitySet, OpEntitySet } from "@/api/sdf/model/ops";
+import { EventLog, IEventLog } from "@/api/sdf/model/eventLog";
 import { sdf } from "@/api/sdf";
 import { IUpdateClock } from "@/api/sdf/model/updateClock";
 import { db } from "@/api/sdf/dexie";
@@ -122,33 +123,37 @@ function onMessage(ev: MessageEvent) {
   }
   if (model_data.model?.siStorable?.typeName == "entity") {
     const model = new Entity(model_data.model as IEntity);
-    console.log("entity", { model });
+    console.log("entity msg", { model });
     model.save();
   } else if (model_data.model?.siStorable?.typeName == "system") {
     const model = new System(model_data.model as ISystem);
-    console.log("system", { model });
+    console.log("system msg", { model });
     model.save();
   } else if (model_data.model?.siStorable?.typeName == "edge") {
     const model = new Edge(model_data.model as IEdge);
-    console.log("edge", { model });
+    console.log("edge msg", { model });
     model.save();
   } else if (model_data.model?.siStorable?.typeName == "changeSet") {
     const model = new ChangeSet(model_data.model as IChangeSet);
-    console.log("changeSet", { model });
+    console.log("changeSet msg", { model });
     model.save();
   } else if (model_data.model?.siStorable?.typeName == "node") {
     const model = new Node(model_data.model as INode);
-    console.log("node", { model });
+    console.log("node msg", { model });
     model.save();
   } else if (model_data.model?.siStorable?.typeName == "opEntitySet") {
     const model = new OpEntitySet(model_data.model as IOpEntitySet);
-    console.log("opEntitySet", { model });
+    console.log("opEntitySet msg", { model });
     model.save();
   } else if (model_data.model?.siStorable?.typeName == "changeSetParticipant") {
     const model = new ChangeSetParticipant(
       model_data.model as IChangeSetParticipant,
     );
-    console.log("change set participant", { model });
+    console.log("changeSetParticipant msg", { model });
+    model.save();
+  } else if (model_data.model?.siStorable?.typeName == "eventLog") {
+    const model = new EventLog(model_data.model as IEventLog);
+    console.log("eventLog msg", { model });
     model.save();
   }
 }

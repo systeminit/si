@@ -54,6 +54,8 @@ pub mod jwt_key;
 pub use jwt_key::{JwtKeyError, JwtKeyPrivate, JwtKeyPublic, JwtKeyResult};
 pub mod page_token;
 pub use page_token::{PageToken, PageTokenError, PageTokenResult};
+pub mod event_log;
+pub use event_log::{EventLog, EventLogError, EventLogLevel, EventLogResult};
 
 #[derive(Error, Debug)]
 pub enum ModelError {
@@ -310,7 +312,8 @@ pub async fn load_billing_account_model(
           FROM `{bucket}` AS a
           WHERE a.siStorable.billingAccountId = $billing_account_id 
                 AND (a.siStorable.typeName = \"billingAccount\" 
-                      OR a.siStorable.typeName = \"changeSetParticipant\")
+                      OR a.siStorable.typeName = \"changeSetParticipant\" 
+                      OR a.siStorable.typeName = \"eventLog\")
         ",
         bucket = db.bucket_name,
     );

@@ -4,6 +4,7 @@ import { ISiStorable } from "@/api/sdf/model/siStorable";
 import { ISiChangeSet } from "@/api/sdf/model/siChangeSet";
 import { Edge, EdgeKind } from "@/api/sdf/model/edge";
 import { Node } from "@/api/sdf/model/node";
+import { diffEntity, DiffEntry, DiffResult } from "@/utils/diff";
 import {
   Query,
   Comparison,
@@ -238,6 +239,25 @@ export class Entity implements IEntity {
     };
   }
 
+  async diff(): Promise<DiffResult> {
+    if (this.head) {
+      return {
+        entries: [],
+        count: 0,
+      };
+    }
+    try {
+      let node = await Node.get({ id: this.nodeId });
+      const headEntity = (await node.headObject()) as Entity;
+      return diffEntity(headEntity, this);
+    } catch {
+      return {
+        entries: [],
+        count: 0,
+      };
+    }
+  }
+
   async changeSetCounts(): Promise<{ open: number; closed: number }> {
     const reply = { open: 0, closed: 0 };
 
@@ -266,7 +286,7 @@ export class Entity implements IEntity {
   }
 
   // Returns the entities that are successors to this entity in the configuration graph
-  async successors(changeSetId: string): Promise<Entity[]> {
+  async successors(changeSetId?: string): Promise<Entity[]> {
     let edges = await Edge.allSuccessors({
       objectId: this.id,
       edgeKind: EdgeKind.Configures,

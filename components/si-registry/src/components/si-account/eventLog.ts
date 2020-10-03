@@ -9,9 +9,6 @@ import {
 import { registry } from "../../registry";
 import { SystemObject } from "../../systemComponent";
 
-// TODO: We are adding eventLog into the system, so that we can then call it from the backend
-// whenever things are created, updated, or deleted.
-
 registry.system({
   typeName: "eventLog",
   displayTypeName: "Event Log Entry",

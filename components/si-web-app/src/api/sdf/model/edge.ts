@@ -325,6 +325,7 @@ export class Edge implements IEdge {
     const currentObj = await db.edges.get(this.id);
     if (!_.eq(currentObj, this)) {
       await db.edges.put(this);
+      this.dispatch();
     }
   }
 

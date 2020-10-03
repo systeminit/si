@@ -18,7 +18,7 @@
         <div class="flex w-full row" v-if="editorMode == 'view'">
           <div
             class="w-4/5 pl-2 mr-2 text-sm leading-tight text-gray-400"
-            v-bind:class="mapTextClasses(0, 'value')"
+            v-bind:class="mapTextClasses(key)"
           >
             {{ key }}: {{ value }}
           </div>
@@ -32,7 +32,7 @@
           </div>
           <input
             class="w-3/5 pl-2 ml-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none"
-            v-bind:class="mapInputClasses(0, 'value')"
+            v-bind:class="mapInputClasses(key)"
             type="text"
             aria-label="val"
             v-model="fieldValue[key]"
@@ -53,7 +53,6 @@
         <div class="items-center">
           <input
             class="w-2/5 pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none"
-            v-bind:class="mapInputClasses(0, 'key')"
             type="text"
             aria-label="key"
             v-model="newKey"
@@ -61,7 +60,6 @@
           />
           <input
             class="w-2/5 pl-2 ml-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none"
-            v-bind:class="mapInputClasses(0, 'value')"
             type="text"
             aria-label="val"
             v-model="newValue"
@@ -159,9 +157,9 @@ export default PropMixin.extend({
       Vue.delete(this.fieldValue, key);
       await this.saveIfModified();
     },
-    mapTextClasses(index: number, part: string): Record<string, boolean> {
+    mapTextClasses(key: string): Record<string, boolean> {
       let results: Record<string, boolean> = {};
-      if (this.mapHasBeenEdited(index, part)) {
+      if (this.mapHasBeenEdited(key)) {
         results["input-border-gold"] = true;
         results["border"] = true;
       } else {
@@ -169,10 +167,10 @@ export default PropMixin.extend({
       }
       return results;
     },
-    mapInputClasses(index: number, part: string): Record<string, boolean> {
+    mapInputClasses(key: string): Record<string, boolean> {
       let results: Record<string, boolean> = {};
       results["si-property"] = true;
-      if (this.mapHasBeenEdited(index, part)) {
+      if (this.mapHasBeenEdited(key)) {
         results["input-border-gold"] = true;
         results["input-bg-color-grey"] = true;
       } else {
@@ -181,12 +179,15 @@ export default PropMixin.extend({
       }
       return results;
     },
-    mapHasBeenEdited(index: number, part: string): boolean {
+    mapHasBeenEdited(key: string): boolean {
       const path = _.cloneDeep(this.entityProperty.path);
-      path.push(index);
-      path.push(part);
+      path.push(key);
+
       let result = _.find(this.diff.entries, diffEntry => {
-        return _.isEqual(diffEntry.path, path);
+        return _.isEqual(
+          diffEntry.path,
+          ["properties", "__baseline"].concat(path),
+        );
       });
       if (result) {
         return true;

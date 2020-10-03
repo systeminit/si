@@ -11,7 +11,11 @@
         </div>
 
         <div class="block w-1/4 h-full pt-1 mx-3 border card-section">
-          <ServicesVisualization class="mx-2 mb-2" />
+          <ServicesVisualization
+            class="mx-2 mb-2"
+            :applicationId="application.id"
+            inEditor="false"
+          />
         </div>
 
         <div class="block w-1/4 h-full pt-1 mx-3 border card-section">

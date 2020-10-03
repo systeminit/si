@@ -2,14 +2,14 @@
   <div
     ref="editor"
     id="editor"
-    class="flex flex-row h-full w-full"
+    class="flex flex-row w-full h-full"
     v-on:mousemove="mouseMove"
     v-on:mousedown="mouseDown"
     v-on:mouseup="mouseUp"
   >
     <div
       ref="leftPanel"
-      class="bg-gray-900 w-3/5"
+      class="w-3/5 bg-gray-900"
       :class="leftPanelVisibilityClasses"
     >
       <SchematicPanel @maximizePanelMsg="maximizePanel" />
@@ -23,7 +23,7 @@
 
     <div
       ref="rightPanel"
-      class="bg-gray-900 w-2/5"
+      class="w-2/5 bg-gray-900"
       :class="rightPanelVisibilityClasses"
     >
       <EditorPropertyPanel @maximizePanelMsg="maximizePanel" />
@@ -43,7 +43,7 @@ export default {
     SchematicPanel,
     EditorPropertyPanel,
   },
-  data: function() {
+  data: function () {
     return {
       resizeHandle: {},
       leftPanel: {},
@@ -67,7 +67,7 @@ export default {
       msgSchematicPanel: "",
     };
   },
-  mounted: async function() {
+  mounted: async function () {
     this.resizeHandle = this.$refs.resizeHandle;
     this.leftPanel = this.$refs.leftPanel;
     this.rightPanel = this.$refs.rightPanel;
@@ -76,7 +76,7 @@ export default {
     window.addEventListener("resize", this.handleResize);
     this.handleResize();
   },
-  destroyed() {
+  async destroyed() {
     window.removeEventListener("resize", this.handleResize);
   },
   methods: {
@@ -115,25 +115,25 @@ export default {
           break;
       }
     },
-    togglePanelVisibility: function(panelName) {
+    togglePanelVisibility: function (panelName) {
       this.panel[panelName].isVisible = !this.panel[panelName].isVisible;
       this.panel.resizeHandle.isVisible = !this.panel.resizeHandle.isVisible;
     },
   },
   computed: {
-    leftPanelVisibilityClasses: function() {
+    leftPanelVisibilityClasses: function () {
       return {
         "panel-is-hidden": !this.panel["schematic"].isVisible,
         "panel-is-visible": this.panel["schematic"].isVisible,
       };
     },
-    resizeHandleVisibilityClasses: function() {
+    resizeHandleVisibilityClasses: function () {
       return {
         "resize-handle-is-hidden": !this.panel["resizeHandle"].isVisible,
         "resize-handle-is-visible": this.panel["resizeHandle"].isVisible,
       };
     },
-    rightPanelVisibilityClasses: function() {
+    rightPanelVisibilityClasses: function () {
       return {
         "panel-is-hidden": !this.panel["property"].isVisible,
         "panel-is-visible": this.panel["property"].isVisible,

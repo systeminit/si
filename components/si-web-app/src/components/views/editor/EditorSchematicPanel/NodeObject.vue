@@ -134,7 +134,7 @@ export default Vue.extend({
       }
     },
     displayItem(): NodeObject {
-      return this.$store.state.editor.objects[this.node.id];
+      return this.editObject;
     },
     nodeTitleClasses(): Record<string, boolean> {
       if (this.currentChangeSet) {
@@ -152,6 +152,9 @@ export default Vue.extend({
       return {};
     },
     ...mapState({
+      editObject(state: RootStore) {
+        return state.editor.objects[this.node.id];
+      },
       selectedNode(state: RootStore) {
         return state.editor.node;
       },

@@ -1,5 +1,5 @@
 <template>
-  <div id="application-details" class="flex flex-col">
+  <div id="application-details" class="flex flex-col" v-if="application">
     <div id="application-summary" class="flex flex-col w-full pb-3">
       <StatusBar class="" />
       <div class="flex mt-3">
@@ -162,7 +162,10 @@
           <div
             class="w-1/4 pt-2 pb-2 pl-2 mx-3 mt-2 border border-solid card-section"
           >
-            <ServicesVisualization :applicationId="applicationId" />
+            <ServicesVisualization
+              :applicationId="applicationId"
+              inEditor="true"
+            />
           </div>
 
           <div
@@ -190,14 +193,16 @@
               </div>
               <div class="flex flex-row text-xs text-gray-400 align-middle">
                 <div>
-                  changes:
+                  participants:
                 </div>
                 <div class="ml-2">
-                  <template v-if="changeSetEntryCount == 0">
-                    {{ changeSetEntryCount }}
+                  <template v-if="changeSetParticipantCount == 0">
+                    {{ changeSetParticipantCount }}
                   </template>
                   <template v-else>
-                    <span class="text-gold"> {{ changeSetEntryCount }} </span>
+                    <span class="text-gold">
+                      {{ changeSetParticipantCount }}
+                    </span>
                   </template>
                 </div>
               </div>
@@ -219,17 +224,15 @@
     <div id="editor" class="flex w-full h-full overflow-hidden">
       <Editor />
     </div>
-    <!--
     <div id="eventBar" class="w-full">
       <EventBar />
     </div>
-    -->
   </div>
 </template>
 
 <script lang="ts">
 import Vue from "vue";
-import { mapState, mapActions, Store } from "vuex";
+import { mapState, mapGetters, mapActions, Store } from "vuex";
 import { registry } from "si-registry";
 
 import Editor from "@/components/views/editor/Editor.vue";
@@ -280,7 +283,7 @@ export default Vue.extend({
     SiModal,
     SiSelect,
     SiTextBox,
-    //EventBar,
+    EventBar,
     //PlayIcon,
     //EditIcon,
     //AlertCircleIcon,
@@ -318,6 +321,9 @@ export default Vue.extend({
         return state.editor.system;
       },
       mode: (state: any): RootStore["editor"]["mode"] => state.editor.mode,
+      changeSetParticipantCount(state: RootStore) {
+        return state.editor.changeSetParticipantCount;
+      },
     }),
     currentChangeSet: {
       get(): RootStore["editor"]["changeSet"] | undefined {
@@ -326,21 +332,6 @@ export default Vue.extend({
       set(changeSetId: null | string) {
         this.$store.dispatch("editor/setChangeSet", { id: changeSetId });
       },
-    },
-    changeSetEntryCount(): number {
-      // TODO: This is not working yet - lets get some changes
-      const changeSet = this.$store.state.changeSet.current;
-      if (changeSet) {
-        return changeSet.associations?.changeSetEntries?.totalCount || 0;
-      } else {
-        return 0;
-      }
-    },
-    changeSetOpenCount(): number {
-      return this.$store.getters["changeSet/count"]({
-        forId: this.applicationId,
-        status: "OPEN",
-      });
     },
     changeSetOpenList(): DropdownProps["options"] {
       let result: DropdownProps["options"] = _.map(

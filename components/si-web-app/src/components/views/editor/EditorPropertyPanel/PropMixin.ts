@@ -76,9 +76,7 @@ export default Vue.extend({
   computed: {
     ...mapState({
       editObject: (state: any): any => state.editor.editObject,
-    }),
-    ...mapGetters({
-      diff: "node/diffCurrent",
+      diff: (state: any): any => state.editor.diff,
     }),
     textClasses(): Record<string, boolean> {
       let results: Record<string, boolean> = {};
@@ -104,7 +102,10 @@ export default Vue.extend({
     },
     hasBeenEdited(): boolean {
       let result = _.find(this.diff.entries, diffEntry => {
-        return _.isEqual(diffEntry.path, this.entityProperty.path);
+        return _.isEqual(
+          diffEntry.path,
+          ["properties", "__baseline"].concat(this.entityProperty.path),
+        );
       });
       if (result) {
         return true;

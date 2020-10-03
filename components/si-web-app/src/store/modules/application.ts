@@ -47,6 +47,11 @@ export interface MutationUpdateChangeSetCount {
   };
 }
 
+export interface MutationUpdateServices {
+  applicationNodeId: string;
+  entity: Entity;
+}
+
 export const application: Module<ApplicationStore, RootStore> = {
   namespaced: true,
   state: {
@@ -70,6 +75,14 @@ export const application: Module<ApplicationStore, RootStore> = {
       state.systems[payload.application.id] = _.unionBy(
         [payload.system],
         state.systems[payload.application.id],
+      );
+    },
+    updateServices(state, payload: MutationUpdateServices) {
+      let currentServices = state.services[payload.applicationNodeId] || [];
+      state.services[payload.applicationNodeId] = _.unionBy(
+        [payload.entity],
+        currentServices,
+        "id",
       );
     },
     updateChangeSetCount(state, payload: MutationUpdateChangeSetCount) {
@@ -141,8 +154,20 @@ export const application: Module<ApplicationStore, RootStore> = {
       }
     },
     async fromEntity({ commit }, payload: Entity) {
-      if (payload.objectType == "application") {
+      if (payload.objectType == "application" && payload.head == true) {
         commit("updateList", payload);
+      }
+      if (payload.objectType == "service" && payload.head == true) {
+        const node = await Node.get({ id: payload.nodeId });
+        const predecessors = await node.predecessors();
+        for (const pNode of predecessors) {
+          if (pNode.objectType == "application") {
+            commit("updateServices", {
+              applicationNodeId: pNode.id,
+              entity: payload,
+            });
+          }
+        }
       }
     },
     async fromChangeSetParticipant({ commit }, payload: ChangeSetParticipant) {

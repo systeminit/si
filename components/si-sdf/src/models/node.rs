@@ -3,8 +3,9 @@ use thiserror::Error;
 
 use crate::data::{Connection, Db};
 use crate::models::{
-    get_model, insert_model, Edge, EdgeError, EdgeKind, Entity, EntityError, ModelError, OpReply,
-    OpRequest, SiChangeSetError, SiStorable, SiStorableError, System, SystemError, Vertex,
+    get_model, insert_model, Edge, EdgeError, EdgeKind, Entity, EntityError, EventLog,
+    EventLogError, EventLogLevel, ModelError, OpReply, OpRequest, SiChangeSetError, SiStorable,
+    SiStorableError, System, SystemError, Vertex,
 };
 
 use std::collections::HashMap;
@@ -33,6 +34,8 @@ pub enum NodeError {
     NoObjectId,
     #[error("entity nodes require at least one system")]
     EntityRequiresSystem,
+    #[error("event log error: {0}")]
+    EventLog(#[from] EventLogError),
 }
 
 pub type NodeResult<T> = Result<T, NodeError>;
@@ -209,6 +212,19 @@ impl Node {
             si_storable,
         };
         insert_model(&db, &nats, &node.id, &node).await?;
+
+        EventLog::new(
+            &db,
+            &nats,
+            format!("created {} node named {}", &object_type, &name),
+            serde_json::json![&node],
+            EventLogLevel::Info,
+            billing_account_id.clone(),
+            organization_id.clone(),
+            workspace_id.clone(),
+            created_by_user_id.clone(),
+        )
+        .await?;
 
         match node.kind {
             NodeKind::Entity => {
