@@ -27,6 +27,10 @@ export interface IOpRequest {
   entityDelete?: {
     cascade: boolean;
   };
+  entityAction?: {
+    action: string;
+    systemId: string;
+  };
 }
 
 export interface IOpReply {

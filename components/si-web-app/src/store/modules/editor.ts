@@ -372,6 +372,39 @@ export const editor: Module<EditorStore, RootStore> = {
     async sendAction({ dispatch }, payload: string) {
       if (payload == "delete") {
         await dispatch("entityDelete", { cascade: true });
+      } else {
+        await dispatch("entityAction", payload);
+      }
+    },
+    async entityAction({ state, rootGetters }, payload: string) {
+      let organization = rootGetters["organization/current"];
+      let workspace = rootGetters["workspace/current"];
+      let changeSet = state.changeSet;
+      let editSession = state.editSession;
+      let system = state.system;
+      let node = state.node;
+      if (
+        organization &&
+        workspace &&
+        changeSet &&
+        editSession &&
+        node &&
+        system
+      ) {
+        let op = {
+          entityAction: {
+            action: payload,
+            systemId: system.id,
+          },
+        };
+        let req = {
+          op,
+          organizationId: organization.id,
+          workspaceId: workspace.id,
+          changeSetId: changeSet.id,
+          editSessionId: editSession.id,
+        };
+        await OpEntitySet.create(node.id, req);
       }
     },
     async entityDelete(

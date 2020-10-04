@@ -50,6 +50,40 @@ export interface System {
   siStorable: Entity["siStorable"];
 }
 
+export enum ResourceHealth {
+  Ok = "ok",
+  Warning = "warning",
+  Error = "error",
+  Unknown = "unknown",
+}
+
+export enum ResourceStatus {
+  Pending = "pending",
+  InProgress = "inProgress",
+  Created = "created",
+  Failed = "failed",
+  Deleted = "deleted",
+}
+
+export interface Resource {
+  id: string;
+  unixTimestamp: number;
+  timestamp: string;
+  data: any;
+  status: ResourceStatus;
+  health: ResourceHealth;
+  systemId: string;
+  nodeId: string;
+  entityId: string;
+  siStorable: Entity["siStorable"];
+}
+
+export interface ResourceUpdate {
+  data: any;
+  status: ResourceStatus;
+  health: ResourceHealth;
+}
+
 interface CalculatePropertiesRequest {
   objectType: string;
   entity: Entity;
@@ -201,4 +235,48 @@ export function calculateConfigures(
   console.dir(response, { depth: Infinity });
   console.log("sending response", { response });
   res.send(response);
+}
+
+export interface ActionRequest {
+  toId: string;
+  action: string;
+  systemId: string;
+  hypothetical: boolean;
+  entities: {
+    successors: Entity[];
+    predecessors: Entity[];
+  };
+  resources: {
+    successors: Resource[];
+    predecessors: Resource[];
+  };
+  entity: Entity;
+}
+
+export interface ActionReply {
+  resource: ResourceUpdate;
+  actions: {
+    action: string;
+    nodeId: string;
+  }[];
+}
+
+export function action(req: express.Request, res: express.Response): void {
+  console.log("POST /action resolver begins");
+  const request: ActionRequest = req.body;
+  console.dir(request, { depth: Infinity });
+
+  // TODO: Implement the action interface on the nodes, and then implement the resource creation
+  // loop. Then clean this shit up and commit the fuck out of it! :)
+  const reply: ActionReply = {
+    resource: {
+      data: {
+        nothing: "to see here",
+      },
+      status: ResourceStatus.Created,
+      health: ResourceHealth.Ok,
+    },
+    actions: [],
+  };
+  res.send(reply);
 }

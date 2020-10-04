@@ -3,12 +3,14 @@ use thiserror::Error;
 
 use crate::data::{Connection, Db, REQWEST};
 use crate::models::{
-    insert_model, EdgeError, Entity, ModelError, SiChangeSet, SiChangeSetError, SiChangeSetEvent,
-    SiStorable, SiStorableError,
+    insert_model, EdgeError, Entity, ModelError, NodeError, SiChangeSet, SiChangeSetError,
+    SiChangeSetEvent, SiStorable, SiStorableError,
 };
 
 pub mod entity_delete;
 pub use self::entity_delete::{OpEntityDelete, OpEntityDeleteRequest};
+pub mod entity_action;
+pub use self::entity_action::{run_action, OpEntityAction, OpEntityActionRequest};
 
 #[derive(Error, Debug)]
 pub enum OpError {
@@ -28,6 +30,8 @@ pub enum OpError {
     FromJson(#[from] serde_json::Error),
     #[error("edge error: {0}")]
     Edge(#[from] EdgeError),
+    #[error("node error: {0}")]
+    Node(#[from] NodeError),
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -36,6 +40,7 @@ pub enum OpRequest {
     EntitySet(OpEntitySetRequest),
     NameSet(OpSetNameRequest),
     EntityDelete(OpEntityDeleteRequest),
+    EntityAction(OpEntityActionRequest),
 }
 
 #[derive(Deserialize, Serialize, Debug)]

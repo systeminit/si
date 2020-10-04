@@ -7,53 +7,68 @@ use crate::data::{Connection, Db};
 use crate::models::{insert_model, ModelError, SiStorable, SiStorableError};
 
 #[derive(Error, Debug)]
-pub enum EventLogError {
+pub enum ResourceError {
     #[error("si_storable error: {0}")]
     SiStorable(#[from] SiStorableError),
     #[error("error in core model functions: {0}")]
     Model(#[from] ModelError),
 }
 
-pub type EventLogResult<T> = Result<T, EventLogError>;
+pub type ResourceResult<T> = Result<T, ResourceError>;
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub enum EventLogLevel {
-    Trace,
-    Debug,
-    Info,
-    Warn,
-    Error,
+pub enum ResourceStatus {
+    Pending,
+    InProgress,
+    Created,
+    Failed,
+    Deleted,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct EventLog {
+pub enum ResourceHealth {
+    Ok,
+    Warning,
+    Error,
+    Unknown,
+}
+
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct Resource {
     pub id: String,
-    pub message: String,
     pub unix_timestamp: i64,
     pub timestamp: String,
     pub si_storable: SiStorable,
-    pub payload: serde_json::Value,
-    pub level: EventLogLevel,
+    pub data: serde_json::Value,
+    pub status: ResourceStatus,
+    pub health: ResourceHealth,
+    pub system_id: String,
+    pub node_id: String,
+    pub entity_id: String,
 }
 
-impl EventLog {
+impl Resource {
     pub async fn new(
         db: &Db,
         nats: &Connection,
-        message: impl Into<String>,
-        payload: serde_json::Value,
-        level: EventLogLevel,
+        data: serde_json::Value,
+        system_id: impl Into<String>,
+        node_id: impl Into<String>,
+        entity_id: impl Into<String>,
         billing_account_id: String,
         organization_id: String,
         workspace_id: String,
         created_by_user_id: Option<String>,
-    ) -> EventLogResult<EventLog> {
-        let message = message.into();
+    ) -> ResourceResult<Resource> {
+        let system_id = system_id.into();
+        let node_id = node_id.into();
+        let entity_id = entity_id.into();
         let si_storable = SiStorable::new(
             db,
-            "eventLog",
+            "resource",
             billing_account_id,
             organization_id,
             workspace_id,
@@ -66,17 +81,20 @@ impl EventLog {
         let unix_timestamp = current_time.timestamp_millis();
         let timestamp = format!("{}", current_time);
 
-        let event_log = EventLog {
+        let resource = Resource {
             id,
-            message,
-            level,
+            data,
+            system_id,
+            node_id,
+            entity_id,
+            health: ResourceHealth::Unknown,
+            status: ResourceStatus::Pending,
             unix_timestamp,
             timestamp,
-            payload,
             si_storable,
         };
-        insert_model(db, nats, &event_log.id, &event_log).await?;
+        insert_model(db, nats, &resource.id, &resource).await?;
 
-        Ok(event_log)
+        Ok(resource)
     }
 }

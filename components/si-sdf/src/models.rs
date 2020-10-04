@@ -56,6 +56,8 @@ pub mod page_token;
 pub use page_token::{PageToken, PageTokenError, PageTokenResult};
 pub mod event_log;
 pub use event_log::{EventLog, EventLogError, EventLogLevel, EventLogResult};
+pub mod resource;
+pub use resource::{Resource, ResourceError, ResourceHealth, ResourceResult, ResourceStatus};
 
 #[derive(Error, Debug)]
 pub enum ModelError {

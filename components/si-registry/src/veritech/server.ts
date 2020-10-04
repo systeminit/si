@@ -7,6 +7,7 @@ import {
   calculateProperties,
   calculateConfigures,
   applyOp,
+  action,
 } from "@/veritech/intelligence";
 
 export const app = express();
@@ -16,6 +17,7 @@ app.use(morgan("tiny"));
 app.post("/calculateProperties", calculateProperties);
 app.post("/calculateConfigures", calculateConfigures);
 app.post("/applyOp", applyOp);
+app.post("/action", action);
 
 export function start(port: number): void {
   const server = app.listen(port, () => {

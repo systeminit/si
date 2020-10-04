@@ -10,7 +10,9 @@ use crate::models::node::{
     PatchIncludeSystemReply, PatchOp, PatchReply, PatchRequest, PatchSetPositionReply,
     PatchSetPositionRequest,
 };
-use crate::models::ops::{OpEntityDelete, OpEntitySet, OpReply, OpRequest, OpSetName};
+use crate::models::ops::{
+    OpEntityAction, OpEntityDelete, OpEntitySet, OpReply, OpRequest, OpSetName,
+};
 
 #[tracing::instrument(level = "trace", target = "nodes::create")]
 pub async fn create(
@@ -158,6 +160,23 @@ pub async fn object_patch(
                 &nats,
                 &entity_id,
                 op_request.value,
+                claim.billing_account_id,
+                request.organization_id,
+                request.workspace_id,
+                request.change_set_id,
+                request.edit_session_id,
+                claim.user_id,
+            )
+            .await
+            .map_err(HandlerError::from)?;
+        }
+        OpRequest::EntityAction(op_request) => {
+            OpEntityAction::new(
+                &db,
+                &nats,
+                &entity_id,
+                &op_request.action,
+                &op_request.system_id,
                 claim.billing_account_id,
                 request.organization_id,
                 request.workspace_id,

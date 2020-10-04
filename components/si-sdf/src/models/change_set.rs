@@ -242,6 +242,11 @@ impl ChangeSet {
                         tracing::warn!(?op, "applying op");
                         op.apply(obj).await?;
                     }
+                    "opEntityAction" => {
+                        let op: ops::OpEntityAction = serde_json::from_value(change_set_entry)?;
+                        tracing::warn!(?op, "applying op");
+                        op.apply(&db, &nats, hypothetical, obj).await?;
+                    }
                     unknown => tracing::error!("cannot find an op for {}", unknown),
                 },
                 unknown => tracing::error!("unknkown change set event {}", unknown),
