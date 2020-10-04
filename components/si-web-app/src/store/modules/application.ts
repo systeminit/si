@@ -63,10 +63,18 @@ export const application: Module<ApplicationStore, RootStore> = {
   getters: {},
   mutations: {
     updateList(state, payload: Entity) {
-      state.list = _.unionBy([payload], state.list, "id");
+      state.list = _.orderBy(
+        _.unionBy([payload], state.list, "id"),
+        ["name"],
+        ["asc"],
+      );
     },
     bulkUpdateList(state, payload: Entity[]) {
-      state.list = _.unionBy(payload, state.list, "id");
+      state.list = _.orderBy(
+        _.unionBy(payload, state.list, "id"),
+        ["name"],
+        ["asc"],
+      );
     },
     updateSystem(state, payload: MutationUpdateSystem) {
       if (!state.hasOwnProperty(payload.application.id)) {

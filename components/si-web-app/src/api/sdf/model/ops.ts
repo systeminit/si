@@ -24,6 +24,9 @@ export interface IOpRequest {
   nameSet?: {
     value: string;
   };
+  entityDelete?: {
+    cascade: boolean;
+  };
 }
 
 export interface IOpReply {

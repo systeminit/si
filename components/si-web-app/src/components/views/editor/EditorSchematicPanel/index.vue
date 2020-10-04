@@ -119,9 +119,7 @@ export default Vue.extend({
       });
     },
     async sendAction(): Promise<void> {
-      await this.$store.dispatch("node/sendAction", {
-        action: this.selectedAction,
-      });
+      await this.$store.dispatch("editor/sendAction", this.selectedAction);
     },
   },
   computed: {
@@ -140,12 +138,8 @@ export default Vue.extend({
       }
     },
     actionList(): string[] {
-      if (this.$store.state.node.current) {
-        const actionList = registry.listActions();
-        const currentNode = this.$store.state.node.current;
-        let result =
-          actionList[camelCase(currentNode.stack[0].siStorable.typeName)];
-        return result;
+      if (this.$store.state.editor.node) {
+        return this.$store.state.editor.node.actionList();
       } else {
         return [];
       }

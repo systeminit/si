@@ -57,7 +57,7 @@
             data-cy="application-details-current-mode"
           >
             <Button2
-              @click.native="modeSwitch"
+              @click.native="finishEditSession"
               data-cy="application-details-mode-toggle"
               class="w-16"
               label="done"
@@ -377,7 +377,7 @@ export default Vue.extend({
       this.showChangeSetCreateModal = false;
     },
     modalChangeSetCreateSelected() {
-      this.modeSwitch();
+      this.$store.dispatch("editor/modeSwitch");
       this.showChangeSetCreateModal = false;
     },
     async startEditSession() {
@@ -385,21 +385,19 @@ export default Vue.extend({
         this.showChangeSetCreateModal = true;
         return;
       } else {
-        await this.modeSwitch();
+        await this.$store.dispatch("editor/editSessionCreate");
+        await this.$store.dispatch("editor/modeSwitch");
       }
     },
     async cancelEditSession() {
       // TODO: Add edit session revert - going to be a lot easier
       //       after we add the rest of the logic.
-      this.$store.dispatch("editor/modeSwitch");
+      await this.$store.dispatch("editor/setEditSession", { id: undefined });
+      await this.$store.dispatch("editor/modeSwitch");
     },
-    async modeSwitch() {
-      if (this.mode == "view" && !this.currentChangeSet) {
-        this.showChangeSetCreateModal = true;
-      } else {
-        await this.$store.dispatch("editor/editSessionCreate");
-        this.$store.dispatch("editor/modeSwitch");
-      }
+    async finishEditSession() {
+      await this.$store.dispatch("editor/setEditSession", { id: undefined });
+      await this.$store.dispatch("editor/modeSwitch");
     },
     async createChangeSetOnEnter() {
       if (this.newChangeSetName) {

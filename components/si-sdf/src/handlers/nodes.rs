@@ -3,13 +3,14 @@ use crate::data::{Connection, Db};
 use crate::handlers::{authenticate, authorize, HandlerError};
 use crate::models;
 use crate::models::change_set::ChangeSet;
+use crate::models::edge::{Edge, EdgeKind};
 use crate::models::entity::Entity;
 use crate::models::node::{
     Node, ObjectPatchReply, ObjectPatchRequest, PatchConfiguredByReply, PatchConfiguredByRequest,
     PatchIncludeSystemReply, PatchOp, PatchReply, PatchRequest, PatchSetPositionReply,
     PatchSetPositionRequest,
 };
-use crate::models::ops::{OpEntitySet, OpReply, OpRequest, OpSetName};
+use crate::models::ops::{OpEntityDelete, OpEntitySet, OpReply, OpRequest, OpSetName};
 
 #[tracing::instrument(level = "trace", target = "nodes::create")]
 pub async fn create(
@@ -166,6 +167,46 @@ pub async fn object_patch(
             )
             .await
             .map_err(HandlerError::from)?;
+        }
+        OpRequest::EntityDelete(op_request) => {
+            OpEntityDelete::new(
+                &db,
+                &nats,
+                &entity_id,
+                claim.billing_account_id.clone(),
+                request.organization_id.clone(),
+                request.workspace_id.clone(),
+                request.change_set_id.clone(),
+                request.edit_session_id.clone(),
+                claim.user_id.clone(),
+            )
+            .await
+            .map_err(HandlerError::from)?;
+            if op_request.cascade {
+                let successors =
+                    Edge::all_successor_edges_by_object_id(&db, EdgeKind::Configures, &entity_id)
+                        .await
+                        .map_err(HandlerError::from)?;
+                // TODO: When we support changing completely the trees, or support more than one
+                // configures, we will have to deal with this less heavy handidly (in particular, we're
+                // going to have to look at each successor to make sure it doesn't have more than one
+                // predecessor). But for now, we can just delete them all too.
+                for successor in successors.iter() {
+                    OpEntityDelete::new(
+                        &db,
+                        &nats,
+                        &successor.head_vertex.object_id,
+                        claim.billing_account_id.clone(),
+                        request.organization_id.clone(),
+                        request.workspace_id.clone(),
+                        request.change_set_id.clone(),
+                        request.edit_session_id.clone(),
+                        claim.user_id.clone(),
+                    )
+                    .await
+                    .map_err(HandlerError::from)?;
+                }
+            }
         }
     }
 

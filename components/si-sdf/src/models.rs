@@ -30,7 +30,7 @@ pub use node::{Node, NodeError, NodeKind, NodeResult};
 pub mod entity;
 pub use entity::{calculate_properties, Entity, EntityError, EntityResult};
 pub mod ops;
-pub use ops::{OpError, OpReply, OpRequest, OpResult};
+pub use ops::{OpError, OpReply, OpRequest, OpResult, SiOp};
 pub mod system;
 pub use system::{System, SystemError, SystemResult};
 pub mod edge;

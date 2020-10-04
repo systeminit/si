@@ -3,9 +3,12 @@ use thiserror::Error;
 
 use crate::data::{Connection, Db, REQWEST};
 use crate::models::{
-    insert_model, Entity, ModelError, SiChangeSet, SiChangeSetError, SiChangeSetEvent, SiStorable,
-    SiStorableError,
+    insert_model, EdgeError, Entity, ModelError, SiChangeSet, SiChangeSetError, SiChangeSetEvent,
+    SiStorable, SiStorableError,
 };
+
+pub mod entity_delete;
+pub use self::entity_delete::{OpEntityDelete, OpEntityDeleteRequest};
 
 #[derive(Error, Debug)]
 pub enum OpError {
@@ -21,6 +24,10 @@ pub enum OpError {
     MalformedTarget,
     #[error("error making http call: {0}")]
     Reqwest(#[from] reqwest::Error),
+    #[error("cannot convert from a json value: {0}")]
+    FromJson(#[from] serde_json::Error),
+    #[error("edge error: {0}")]
+    Edge(#[from] EdgeError),
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -28,6 +35,7 @@ pub enum OpError {
 pub enum OpRequest {
     EntitySet(OpEntitySetRequest),
     NameSet(OpSetNameRequest),
+    EntityDelete(OpEntityDeleteRequest),
 }
 
 #[derive(Deserialize, Serialize, Debug)]

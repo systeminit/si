@@ -288,7 +288,14 @@ export const editor: Module<EditorStore, RootStore> = {
     nodeList(state): EditorStore["nodes"] {
       return _.filter(state.nodes, n => {
         if (state.objects[n.id]) {
-          return true;
+          if (
+            state.objects[n.id].head &&
+            state.objects[n.id].siStorable.deleted
+          ) {
+            return false;
+          } else {
+            return true;
+          }
         } else {
           return false;
         }
@@ -360,6 +367,40 @@ export const editor: Module<EditorStore, RootStore> = {
           payload.position,
           context,
         );
+      }
+    },
+    async sendAction({ dispatch }, payload: string) {
+      if (payload == "delete") {
+        await dispatch("entityDelete", { cascade: true });
+      }
+    },
+    async entityDelete(
+      { state, rootGetters },
+      payload: IOpRequest["entityDelete"],
+    ) {
+      let organization = rootGetters["organization/current"];
+      let workspace = rootGetters["workspace/current"];
+      let changeSet = state.changeSet;
+      let editSession = state.editSession;
+      let node = state.node;
+      if (organization && workspace && changeSet && editSession && node) {
+        let cascade = true;
+        if (payload?.cascade === false) {
+          cascade = false;
+        }
+        let op = {
+          entityDelete: {
+            cascade,
+          },
+        };
+        let req = {
+          op,
+          organizationId: organization.id,
+          workspaceId: workspace.id,
+          changeSetId: changeSet.id,
+          editSessionId: editSession.id,
+        };
+        await OpEntitySet.create(node.id, req);
       }
     },
     async entityNameSet(
@@ -495,7 +536,6 @@ export const editor: Module<EditorStore, RootStore> = {
         commit("changeSet", undefined);
         commit("changeSetParticipantCount", 0);
       }
-      commit("editSession", undefined);
 
       let application = state.application;
       console.log("application", { application });
@@ -578,6 +618,7 @@ export const editor: Module<EditorStore, RootStore> = {
       });
       commit("changeSet", changeSet);
       await dispatch("editSessionCreate");
+      await dispatch("modeSwitch");
     },
     async nodeCreate(
       { commit, rootGetters, state },
@@ -591,7 +632,9 @@ export const editor: Module<EditorStore, RootStore> = {
       let system = state.system;
       let application = state.application;
       if (!changeSetId || !editSessionId || !system || !application) {
-        throw new Error("invalid editor state; cannot add node");
+        throw new Error(
+          `invalid editor state; cannot add node: cs ${changeSetId} es ${editSessionId} s ${system} a ${application}`,
+        );
       }
 
       const node = await Node.create({
@@ -607,6 +650,7 @@ export const editor: Module<EditorStore, RootStore> = {
       const object = await node.displayObject(changeSetId);
       commit("updateObjects", object);
       commit("updateNodes", node);
+      commit("node", node);
       commit("mouseTrackSelection", node.id);
       console.log("finished create");
     },

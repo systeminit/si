@@ -555,6 +555,11 @@ export class Node implements INode {
     }
   }
 
+  actionList(): string[] {
+    let actions = registry.listActions();
+    return actions[this.objectType] || [];
+  }
+
   async save(): Promise<void> {
     const currentObj = await db.nodes.get(this.id);
     if (!_.eq(currentObj, this)) {

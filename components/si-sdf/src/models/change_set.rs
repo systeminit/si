@@ -209,6 +209,7 @@ impl ChangeSet {
             let obj = if seen_map.contains_key(to_id) {
                 seen_map.get_mut(to_id).unwrap()
             } else {
+                tracing::error!("getting base object: {} {}", to_id, &self.id);
                 let head_obj = get_base_object(db, to_id, &self.id).await?;
                 seen_map.insert(String::from(to_id), head_obj);
                 seen_map.get_mut(to_id).unwrap()
@@ -233,6 +234,11 @@ impl ChangeSet {
                     "opSetName" => {
                         tracing::warn!(?change_set_entry, "about to deserialize");
                         let op: ops::OpSetName = serde_json::from_value(change_set_entry)?;
+                        tracing::warn!(?op, "applying op");
+                        op.apply(obj).await?;
+                    }
+                    "opEntityDelete" => {
+                        let op: ops::OpEntityDelete = serde_json::from_value(change_set_entry)?;
                         tracing::warn!(?op, "applying op");
                         op.apply(obj).await?;
                     }

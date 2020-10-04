@@ -48,7 +48,7 @@ export default Vue.extend({
       if (this.inEditor == "true") {
         for (const entityId of Object.keys(this.objects)) {
           const entity: Entity = this.objects[entityId];
-          if (entity.objectType == "service") {
+          if (entity.objectType == "service" && !entity.siStorable.deleted) {
             results.push(entity);
           }
         }
@@ -59,7 +59,12 @@ export default Vue.extend({
           this.applicationId,
         ]);
         if (appEntity) {
-          return this.$store.state.application.services[appEntity.nodeId] || [];
+          return (
+            _.filter(this.$store.state.application.services[appEntity.nodeId], [
+              "siStorable.deleted",
+              false,
+            ]) || []
+          );
         }
       }
       return [];

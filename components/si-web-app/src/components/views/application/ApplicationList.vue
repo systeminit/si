@@ -143,7 +143,7 @@ export default Vue.extend({
         params: {
           organizationId: organization.id,
           workspaceId: workspace.id,
-          applicationId: newApp.siStorable?.itemId,
+          applicationId: newApp.id,
         },
       });
     },
