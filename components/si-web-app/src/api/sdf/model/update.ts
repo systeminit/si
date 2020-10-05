@@ -10,6 +10,7 @@ import {
 } from "@/api/sdf/model/changeSet";
 import { IOpEntitySet, OpEntitySet } from "@/api/sdf/model/ops";
 import { EventLog, IEventLog } from "@/api/sdf/model/eventLog";
+import { Resource, IResource } from "@/api/sdf/model/resource";
 import { sdf } from "@/api/sdf";
 import { IUpdateClock } from "@/api/sdf/model/updateClock";
 import { db } from "@/api/sdf/dexie";
@@ -154,6 +155,10 @@ function onMessage(ev: MessageEvent) {
   } else if (model_data.model?.siStorable?.typeName == "eventLog") {
     const model = new EventLog(model_data.model as IEventLog);
     console.log("eventLog msg", { model });
+    model.save();
+  } else if (model_data.model?.siStorable?.typeName == "resource") {
+    const model = new Resource(model_data.model as IResource);
+    console.log("resource msg", { model });
     model.save();
   }
 }

@@ -315,7 +315,8 @@ pub async fn load_billing_account_model(
           WHERE a.siStorable.billingAccountId = $billing_account_id 
                 AND (a.siStorable.typeName = \"billingAccount\" 
                       OR a.siStorable.typeName = \"changeSetParticipant\" 
-                      OR a.siStorable.typeName = \"eventLog\")
+                      OR a.siStorable.typeName = \"eventLog\"
+                      OR a.siStorable.typeName = \"resource\")
         ",
         bucket = db.bucket_name,
     );

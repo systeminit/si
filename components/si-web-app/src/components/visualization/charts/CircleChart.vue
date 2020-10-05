@@ -13,7 +13,11 @@
 
 <script lang="ts">
 import Vue from "vue";
-import { Resource } from "@/graphql-types";
+import {
+  Resource,
+  ResourceHealth,
+  ResourceStatus,
+} from "@/api/sdf/model/resource";
 
 export default Vue.extend({
   name: "CircleChart",
@@ -50,13 +54,13 @@ export default Vue.extend({
       let programmersSuckColor = "254,178,227,1"; // (yucky pink)
 
       let color;
-      if (this.resource.status == "CREATED") {
+      if (this.resource.status == ResourceStatus.Created) {
         color = createdColor;
-      } else if (this.resource.status == "FAILED") {
+      } else if (this.resource.status == ResourceStatus.Failed) {
         color = failedColor;
-      } else if (this.resource.status == "PENDING") {
+      } else if (this.resource.status == ResourceStatus.Pending) {
         color = pendingColor;
-      } else if (this.resource.status == "DELETED") {
+      } else if (this.resource.status == ResourceStatus.Deleted) {
         color = deletedColor;
       } else {
         console.log("resource status", { resource: this.resource });
@@ -72,13 +76,13 @@ export default Vue.extend({
       let programmersSuckColor = "254,178,227,1"; // (yucky pink)
 
       let color;
-      if (this.resource.health == "OK") {
+      if (this.resource.health == ResourceHealth.Ok) {
         color = okColor;
-      } else if (this.resource.health == "WARNING") {
+      } else if (this.resource.health == ResourceHealth.Warning) {
         color = warningColor;
-      } else if (this.resource.health == "ERROR") {
+      } else if (this.resource.health == ResourceHealth.Error) {
         color = errorColor;
-      } else if (this.resource.health == "UNKNOWN") {
+      } else if (this.resource.health == ResourceHealth.Unknown) {
         color = unknownColor;
       } else {
         console.log("resource health", { resource: this.resource });

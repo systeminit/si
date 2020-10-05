@@ -9,6 +9,7 @@ import { Entity } from "@/api/sdf/model/entity";
 import { Node } from "@/api/sdf/model/node";
 import { Organization } from "@/api/sdf/model/organization";
 import { System } from "@/api/sdf/model/system";
+import { Resource } from "@/api/sdf/model/resource";
 import { RootStore } from "@/store";
 
 export interface LoaderStore {
@@ -61,6 +62,7 @@ export const loader: Module<LoaderStore, RootStore> = {
         await Node.restore();
         await Organization.restore();
         await System.restore();
+        await Resource.restore();
         commit("loading", false);
       }
     },

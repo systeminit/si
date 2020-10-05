@@ -69,7 +69,7 @@ export interface Resource {
   id: string;
   unixTimestamp: number;
   timestamp: string;
-  data: any;
+  state: any;
   status: ResourceStatus;
   health: ResourceHealth;
   systemId: string;
@@ -79,7 +79,7 @@ export interface Resource {
 }
 
 export interface ResourceUpdate {
-  data: any;
+  state: any;
   status: ResourceStatus;
   health: ResourceHealth;
 }
@@ -265,18 +265,30 @@ export function action(req: express.Request, res: express.Response): void {
   console.log("POST /action resolver begins");
   const request: ActionRequest = req.body;
   console.dir(request, { depth: Infinity });
+  let registryObj;
+  try {
+    registryObj = registry.get(request.entity.objectType) as EntityObject;
+  } catch (err) {
+    res.status(400);
+    res.send({
+      code: 400,
+      message: `Cannot find registry object for ${request.entity.objectType}`,
+    });
+    return;
+  }
 
-  // TODO: Implement the action interface on the nodes, and then implement the resource creation
-  // loop. Then clean this shit up and commit the fuck out of it! :)
-  const reply: ActionReply = {
-    resource: {
-      data: {
-        nothing: "to see here",
-      },
-      status: ResourceStatus.Created,
-      health: ResourceHealth.Ok,
-    },
-    actions: [],
-  };
-  res.send(reply);
+  registryObj
+    .action(request)
+    .then(reply => {
+      console.log("action reply");
+      console.dir(reply, { depth: Infinity });
+      res.send(reply);
+    })
+    .catch(err => {
+      res.status(400);
+      res.send({
+        code: 400,
+        messsage: `Cannot execute action for ${request.entity.objectType}: ${err}`,
+      });
+    });
 }

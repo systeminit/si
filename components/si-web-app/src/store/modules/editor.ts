@@ -4,6 +4,7 @@ import _ from "lodash";
 
 import { Entity } from "@/api/sdf/model/entity";
 import { System } from "@/api/sdf/model/system";
+import { Resource } from "@/api/sdf/model/resource";
 import {
   ChangeSet,
   ChangeSetStatus,
@@ -99,6 +100,7 @@ export interface EditorStore {
   editObject: Entity | undefined;
   diff: DiffResult;
   eventLogs: EventLog[];
+  resources: Resource[];
 }
 
 export let SET_POSITION_FUNCTIONS: Record<string, any> = {};
@@ -129,6 +131,7 @@ export const editor: Module<EditorStore, RootStore> = {
       count: 0,
     },
     eventLogs: [],
+    resources: [],
   },
   mutations: {
     mouseTrackSelection(state, payload: string | undefined) {
@@ -149,6 +152,13 @@ export const editor: Module<EditorStore, RootStore> = {
     },
     updateObjects(state, payload: NodeObject) {
       Vue.set(state.objects, payload.nodeId, payload);
+    },
+    updateResources(state, payload: Resource) {
+      state.resources = _.orderBy(
+        _.unionBy([payload], state.resources, "id"),
+        ["id"],
+        ["desc"],
+      );
     },
     node(state, payload: Node | undefined) {
       state.node = payload;
@@ -272,6 +282,7 @@ export const editor: Module<EditorStore, RootStore> = {
         count: 0,
       };
       state.eventLogs = [];
+      state.resources = [];
       SET_POSITION_FUNCTIONS = {};
     },
   },
@@ -783,6 +794,12 @@ export const editor: Module<EditorStore, RootStore> = {
     fromEventLog({ commit }, payload: EventLog) {
       // TODO: We should only show relevant event logs!
       commit("updateEventLogs", payload);
+    },
+    fromResource({ commit, getters }, payload: Resource) {
+      let nodeList = getters["nodeList"];
+      if (_.find(nodeList, ["id", payload.nodeId])) {
+        commit("updateResources", payload);
+      }
     },
     async restore({ dispatch, commit }, payload: ActionRestore) {
       if (router.currentRoute.query["changeSetId"]) {

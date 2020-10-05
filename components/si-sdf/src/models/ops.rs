@@ -3,8 +3,8 @@ use thiserror::Error;
 
 use crate::data::{Connection, Db, REQWEST};
 use crate::models::{
-    insert_model, EdgeError, Entity, ModelError, NodeError, SiChangeSet, SiChangeSetError,
-    SiChangeSetEvent, SiStorable, SiStorableError,
+    insert_model, EdgeError, Entity, ModelError, NodeError, ResourceError, SiChangeSet,
+    SiChangeSetError, SiChangeSetEvent, SiStorable, SiStorableError,
 };
 
 pub mod entity_delete;
@@ -32,6 +32,10 @@ pub enum OpError {
     Edge(#[from] EdgeError),
     #[error("node error: {0}")]
     Node(#[from] NodeError),
+    #[error("missing: {0}")]
+    Missing(&'static str),
+    #[error("resource error: {0}")]
+    Resource(#[from] ResourceError),
 }
 
 #[derive(Deserialize, Serialize, Debug)]

@@ -14,6 +14,10 @@ import {
   CalculateConfiguresReply,
   CalculatePropertiesResult,
   System,
+  ActionRequest,
+  ActionReply,
+  ResourceHealth,
+  ResourceStatus,
 } from "./veritech/intelligence";
 import _ from "lodash";
 import YAML from "yaml";
@@ -545,6 +549,9 @@ interface EntityObjectIntelligence {
     configures: Entity[],
     systems: System[],
   ) => CalculateConfiguresReply;
+  actions?: {
+    [key: string]: (request: ActionRequest) => Promise<ActionReply>;
+  };
 }
 
 export class EntityObject extends SystemObject {
@@ -564,6 +571,26 @@ export class EntityObject extends SystemObject {
     this.integrationServices = [];
     this.setEntityDefaults();
     this.intelligence = {};
+  }
+
+  async action(request: ActionRequest): Promise<ActionReply> {
+    const actions = this.intelligence.actions;
+    if (actions && actions[request.action]) {
+      return actions[request.action](request);
+    } else if (request.action == "sync") {
+      return {
+        resource: {
+          health: ResourceHealth.Ok,
+          status: ResourceStatus.Created,
+          state: {
+            siDefaultSync: true,
+          },
+        },
+        actions: [],
+      };
+    } else {
+      throw new Error(`cannot find action ${request.action}`);
+    }
   }
 
   // Based on the manual properties and expression properties, pass the results to the inference

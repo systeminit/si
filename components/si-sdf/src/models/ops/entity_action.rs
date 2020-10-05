@@ -1,7 +1,7 @@
 use crate::data::{Connection, Db, REQWEST};
 use crate::models::{
-    insert_model, Edge, EdgeKind, Entity, Node, OpError, OpResult, Resource, SiChangeSet,
-    SiChangeSetEvent, SiOp, SiStorable,
+    insert_model, Edge, EdgeKind, Entity, Node, OpError, OpResult, Resource, ResourceHealth,
+    ResourceStatus, SiChangeSet, SiChangeSetEvent, SiOp, SiStorable,
 };
 use serde::{Deserialize, Serialize};
 
@@ -161,6 +161,33 @@ impl OpEntityAction {
         let response = run_action(action_request).await?;
         tracing::warn!(?response, "i dispatched your action!");
 
+        let node_id = to["nodeId"].as_str().ok_or(OpError::Missing("node_id"))?;
+        let entity_id = to["id"].as_str().ok_or(OpError::Missing("id"))?;
+
+        Resource::from_update(
+            &db,
+            &nats,
+            response.resource.state,
+            response.resource.status,
+            response.resource.health,
+            &self.system_id,
+            node_id,
+            entity_id,
+            self.si_storable.billing_account_id.clone(),
+            self.si_storable.organization_id.clone(),
+            self.si_storable.workspace_id.clone(),
+            self.si_storable.created_by_user_id.clone(),
+        )
+        .await?;
+
+        // TODO: Next up is to take the resource update, and see if there is a resource for
+        // this node. If there is, update it. If there is not, create it. Then integrate
+        // the resources into the UI.
+        //
+        // Then, for each action we are asked to take, validate that the nodeId is in the
+        // successors list (you are not allowed to notify predecessors). If it is, create
+        // a new OpEntityAction, save it, and apply it immediately.
+
         Ok(())
     }
 }
@@ -218,9 +245,24 @@ impl ActionRequest {
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
+pub struct ActionResourceUpdate {
+    state: serde_json::Value,
+    status: ResourceStatus,
+    health: ResourceHealth,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ActionUpdate {
+    action: String,
+    node_id: String,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct ActionReply {
-    resource: serde_json::Value,
-    actions: serde_json::Value,
+    resource: ActionResourceUpdate,
+    actions: Vec<ActionUpdate>,
 }
 
 pub async fn run_action(action_request: ActionRequest) -> OpResult<ActionReply> {

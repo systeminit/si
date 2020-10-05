@@ -16,7 +16,7 @@
           <template v-slot:tooltip>
             <div class="flex flex-col text-gray-400">
               <div class="text-sm">
-                {{ resource.name }}
+                {{ resourceName(resource) }}
               </div>
               <div class="flex flex-col ml-2 text-xs">
                 <div class="flex">
@@ -63,8 +63,13 @@ import Tooltip from "@/components/ui/Tooltip.vue";
 import CircleChart from "@/components/visualization/charts/CircleChart.vue";
 import Button2 from "@/components/ui/Button2.vue";
 import _ from "lodash";
-
-import { ServiceEntity, Resource } from "@/graphql-types";
+import { mapState } from "vuex";
+import {
+  Resource,
+  ResourceStatus,
+  ResourceHealth,
+} from "@/api/sdf/model/resource";
+import { Entity } from "@/api/sdf/model/entity";
 
 export default Vue.extend({
   name: "ResourcesVisualization",
@@ -90,16 +95,16 @@ export default Vue.extend({
       let programmersSuckColor = "254,178,227,1"; // (yucky pink)
 
       let color;
-      if (resource.status == "CREATED") {
+      if (resource.status == ResourceStatus.Created) {
         color = createdColor;
-      } else if (resource.status == "FAILED") {
+      } else if (resource.status == ResourceStatus.Failed) {
         color = failedColor;
-      } else if (resource.status == "PENDING") {
+      } else if (resource.status == ResourceStatus.Pending) {
         color = pendingColor;
-      } else if (resource.status == "DELETED") {
+      } else if (resource.status == ResourceStatus.Deleted) {
         color = deletedColor;
       } else {
-        console.log("resource status", { resource: resource });
+        // What about in progress colors? lets stay pink! yummy
         color = programmersSuckColor;
       }
       return `color:rgba(${color})`;
@@ -112,13 +117,13 @@ export default Vue.extend({
       let programmersSuckColor = "254,178,227,1"; // (yucky pink)
 
       let color;
-      if (resource.health == "OK") {
+      if (resource.health == ResourceHealth.Ok) {
         color = okColor;
-      } else if (resource.health == "WARNING") {
+      } else if (resource.health == ResourceHealth.Warning) {
         color = warningColor;
-      } else if (resource.health == "ERROR") {
+      } else if (resource.health == ResourceHealth.Error) {
         color = errorColor;
-      } else if (resource.health == "UNKNOWN") {
+      } else if (resource.health == ResourceHealth.Unknown) {
         color = unknownColor;
       } else {
         console.log("resource health", { resource: resource });
@@ -126,9 +131,22 @@ export default Vue.extend({
       }
       return `color:rgba(${color})`;
     },
+    resourceName(resource: Resource): string {
+      let entity: Entity | undefined = this.$store.state.editor.objects[
+        resource.nodeId
+      ];
+      if (entity) {
+        return entity.name;
+      } else {
+        return "";
+      }
+    },
     resourceKind(resource: Resource): string {
-      if (resource.kind) {
-        return resource.kind.replace("Entity", "");
+      let entity: Entity | undefined = this.$store.state.editor.objects[
+        resource.nodeId
+      ];
+      if (entity) {
+        return entity.objectType;
       } else {
         return "";
       }
@@ -138,10 +156,9 @@ export default Vue.extend({
     },
   },
   computed: {
-    resources(): Resource[] {
-      return [];
-      //return this.$store.getters["resource/forNodeList"];
-    },
+    ...mapState({
+      resources: (state: any): Resource[] => state.editor.resources,
+    }),
     statusColor(): string {
       let stateSuccessColor = "0,179,79";
       let stateFailureColor = "187,107,0";
