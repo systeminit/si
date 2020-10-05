@@ -7,9 +7,9 @@ use thiserror::Error;
 
 use crate::data::{Connection, Db, REQWEST};
 use crate::models::{
-    get_base_object, insert_model, Edge, EdgeError, EdgeKind, ModelError, Node, NodeKind,
-    SiChangeSet, SiChangeSetError, SiChangeSetEvent, SiStorable, SiStorableError, System,
-    SystemError, Vertex,
+    get_base_object, insert_model, Edge, EdgeError, EdgeKind, ModelError, Node, NodeKind, Resource,
+    ResourceError, SiChangeSet, SiChangeSetError, SiChangeSetEvent, SiStorable, SiStorableError,
+    System, SystemError, Vertex,
 };
 
 #[derive(Error, Debug)]
@@ -46,6 +46,8 @@ pub enum EntityError {
     NotEnoughSystems,
     #[error("not found")]
     NotFound,
+    #[error("resource error: {0}")]
+    Resource(#[from] ResourceError),
 }
 
 pub type EntityResult<T> = Result<T, EntityError>;
@@ -216,7 +218,7 @@ impl Entity {
                 billing_account_id.clone(),
                 organization_id.clone(),
                 workspace_id.clone(),
-                created_by_user_id,
+                created_by_user_id.clone(),
             )
             .await?;
             let expression_properties = EntityProperties::new();
@@ -236,7 +238,7 @@ impl Entity {
             )
             .await?;
             let mut entity = Entity {
-                id,
+                id: id.clone(),
                 name,
                 object_type,
                 head,
@@ -245,7 +247,7 @@ impl Entity {
                 manual_properties,
                 inferred_properties,
                 properties,
-                node_id,
+                node_id: node_id.clone(),
                 si_storable,
                 si_change_set: Some(si_change_set),
             };
@@ -266,6 +268,19 @@ impl Entity {
                     organization_id.clone(),
                     workspace_id.clone(),
                     None,
+                )
+                .await?;
+                Resource::new(
+                    &db,
+                    &nats,
+                    serde_json::json![{}],
+                    &system_id,
+                    &node_id,
+                    &id,
+                    billing_account_id.clone(),
+                    organization_id.clone(),
+                    workspace_id.clone(),
+                    created_by_user_id.clone(),
                 )
                 .await?;
             }

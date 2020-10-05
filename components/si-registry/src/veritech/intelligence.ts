@@ -2,8 +2,8 @@ import * as express from "express";
 import _ from "lodash";
 import YAML from "yaml";
 
-import { registry } from "@/registry";
-import { EntityObject } from "@/systemComponent";
+import { registry } from "../registry";
+import { EntityObject } from "../systemComponent";
 
 export type NodeObject = Entity | System;
 
@@ -289,6 +289,52 @@ export function action(req: express.Request, res: express.Response): void {
       res.send({
         code: 400,
         messsage: `Cannot execute action for ${request.entity.objectType}: ${err}`,
+      });
+    });
+}
+
+export interface SyncResourceRequest {
+  systemId: string;
+  node: Node;
+  entity: Entity;
+  resource: Resource;
+}
+
+export interface SyncResourceReply {
+  resource: ResourceUpdate;
+}
+
+export function syncResource(
+  req: express.Request,
+  res: express.Response,
+): void {
+  console.log("POST /syncResource resolver begins");
+  const request: SyncResourceRequest = req.body;
+  console.dir(request, { depth: Infinity });
+  let registryObj;
+  try {
+    registryObj = registry.get(request.entity.objectType) as EntityObject;
+  } catch (err) {
+    res.status(400);
+    res.send({
+      code: 400,
+      message: `Cannot find registry object for ${request.entity.objectType}`,
+    });
+    return;
+  }
+
+  registryObj
+    .syncResource(request)
+    .then(reply => {
+      console.log("sync reply");
+      console.dir(reply, { depth: Infinity });
+      res.send(reply);
+    })
+    .catch(err => {
+      res.status(400);
+      res.send({
+        code: 400,
+        messsage: `Cannot execute sync for ${request.entity.objectType}: ${err}`,
       });
     });
 }

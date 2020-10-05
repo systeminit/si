@@ -8,6 +8,7 @@ import {
   calculateConfigures,
   applyOp,
   action,
+  syncResource,
 } from "@/veritech/intelligence";
 
 export const app = express();
@@ -18,6 +19,7 @@ app.post("/calculateProperties", calculateProperties);
 app.post("/calculateConfigures", calculateConfigures);
 app.post("/applyOp", applyOp);
 app.post("/action", action);
+app.post("/syncResource", syncResource);
 
 export function start(port: number): void {
   const server = app.listen(port, () => {

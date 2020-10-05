@@ -57,6 +57,21 @@ export class Resource implements IResource {
     this.siStorable = args.siStorable;
   }
 
+  static async getByEntityIdAndSystemId(
+    nodeId: string,
+    systemId: string,
+  ): Promise<Resource | undefined> {
+    let iResults = await db.resources.where({ systemId, nodeId }).toArray();
+    let results = _.map(iResults, ir => {
+      return new Resource(ir);
+    });
+    if (results) {
+      return results[0];
+    } else {
+      return undefined;
+    }
+  }
+
   async save(): Promise<void> {
     const currentObj = await db.resources.get(this.id);
     if (!_.eq(currentObj, this)) {

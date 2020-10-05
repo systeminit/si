@@ -18,6 +18,8 @@ import {
   ActionReply,
   ResourceHealth,
   ResourceStatus,
+  SyncResourceRequest,
+  SyncResourceReply,
 } from "./veritech/intelligence";
 import _ from "lodash";
 import YAML from "yaml";
@@ -552,6 +554,7 @@ interface EntityObjectIntelligence {
   actions?: {
     [key: string]: (request: ActionRequest) => Promise<ActionReply>;
   };
+  syncResource?: (request: SyncResourceRequest) => Promise<SyncResourceReply>;
 }
 
 export class EntityObject extends SystemObject {
@@ -571,6 +574,23 @@ export class EntityObject extends SystemObject {
     this.integrationServices = [];
     this.setEntityDefaults();
     this.intelligence = {};
+  }
+
+  async syncResource(request: SyncResourceRequest): Promise<SyncResourceReply> {
+    const syncResourceFunc = this.intelligence.syncResource;
+    if (syncResourceFunc) {
+      return await syncResourceFunc(request);
+    } else {
+      return {
+        resource: {
+          health: ResourceHealth.Ok,
+          status: ResourceStatus.Created,
+          state: {
+            siDefaultSync: true,
+          },
+        },
+      };
+    }
   }
 
   async action(request: ActionRequest): Promise<ActionReply> {
@@ -924,15 +944,6 @@ export class EntityObject extends SystemObject {
             };
           },
         });
-      },
-    });
-
-    this.methods.addAction({
-      name: "sync",
-      label: "Sync State",
-      options(p: PropAction) {
-        p.mutation = true;
-        p.universal = true;
       },
     });
   }

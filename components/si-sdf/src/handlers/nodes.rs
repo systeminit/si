@@ -8,7 +8,7 @@ use crate::models::entity::Entity;
 use crate::models::node::{
     Node, ObjectPatchReply, ObjectPatchRequest, PatchConfiguredByReply, PatchConfiguredByRequest,
     PatchIncludeSystemReply, PatchOp, PatchReply, PatchRequest, PatchSetPositionReply,
-    PatchSetPositionRequest,
+    PatchSetPositionRequest, SyncResourceReply, SyncResourceRequest,
 };
 use crate::models::ops::{
     OpEntityAction, OpEntityDelete, OpEntitySet, OpReply, OpRequest, OpSetName,
@@ -101,6 +101,13 @@ pub async fn patch(
                 context: set_position_req.context,
                 position: set_position_req.position,
             })
+        }
+        PatchOp::SyncResource(sync_resource_req) => {
+            let resource = node
+                .sync_resource(&db, &nats, sync_resource_req.system_id)
+                .await
+                .map_err(HandlerError::from)?;
+            PatchReply::SyncResource(SyncResourceReply { resource })
         }
     };
 

@@ -1,11 +1,13 @@
+use chrono::{TimeZone, Utc};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::data::{Connection, Db};
+use crate::data::{Connection, Db, REQWEST};
 use crate::models::{
-    get_model, insert_model, Edge, EdgeError, EdgeKind, Entity, EntityError, EventLog,
-    EventLogError, EventLogLevel, ModelError, OpReply, OpRequest, SiChangeSetError, SiStorable,
-    SiStorableError, System, SystemError, Vertex,
+    get_model, insert_model, upsert_model, Edge, EdgeError, EdgeKind, Entity, EntityError,
+    EventLog, EventLogError, EventLogLevel, ModelError, OpReply, OpRequest, Resource,
+    ResourceError, ResourceHealth, ResourceStatus, SiChangeSetError, SiStorable, SiStorableError,
+    System, SystemError, Vertex,
 };
 
 use std::collections::HashMap;
@@ -36,6 +38,10 @@ pub enum NodeError {
     EntityRequiresSystem,
     #[error("event log error: {0}")]
     EventLog(#[from] EventLogError),
+    #[error("resource error: {0}")]
+    Resource(#[from] ResourceError),
+    #[error("reqwest error: {0}")]
+    Reqwest(#[from] reqwest::Error),
 }
 
 pub type NodeResult<T> = Result<T, NodeError>;
@@ -99,10 +105,46 @@ pub struct PatchSetPositionReply {
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
+pub struct SyncResourceRequest {
+    pub system_id: String,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncResourceReply {
+    pub resource: Resource,
+}
+
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct VeritechSyncResourceRequest<'a> {
+    pub system_id: &'a str,
+    pub node: &'a Node,
+    pub entity: &'a Entity,
+    pub resource: &'a Resource,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct VeritechSyncResourceUpdate {
+    pub state: serde_json::Value,
+    pub status: ResourceStatus,
+    pub health: ResourceHealth,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct VeritechSyncResourceReply {
+    pub resource: VeritechSyncResourceUpdate,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub enum PatchOp {
     IncludeSystem(PatchIncludeSystemRequest),
     ConfiguredBy(PatchConfiguredByRequest),
     SetPosition(PatchSetPositionRequest),
+    SyncResource(SyncResourceRequest),
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -111,6 +153,7 @@ pub enum PatchReply {
     IncludeSystem(PatchIncludeSystemReply),
     ConfiguredBy(PatchConfiguredByReply),
     SetPosition(PatchSetPositionReply),
+    SyncResource(SyncResourceReply),
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -270,6 +313,49 @@ impl Node {
 
     pub fn set_position(&mut self, context: String, position: Position) {
         self.positions.insert(context, position);
+    }
+
+    pub async fn sync_resource(
+        &self,
+        db: &Db,
+        nats: &Connection,
+        system_id: impl Into<String>,
+    ) -> NodeResult<Resource> {
+        let system_id = system_id.into();
+        let mut resource = Resource::get_by_node_id(db, &self.id, &system_id).await?;
+        let entity = if let Ok(entity) = self.get_head_object(db).await {
+            entity
+        } else {
+            let current_time = Utc::now();
+            let unix_timestamp = current_time.timestamp_millis();
+            let timestamp = format!("{}", current_time);
+            resource.unix_timestamp = unix_timestamp;
+            resource.timestamp = timestamp;
+            upsert_model(db, nats, &resource.id, &resource).await?;
+            return Ok(resource);
+        };
+        let request = VeritechSyncResourceRequest {
+            system_id: &system_id,
+            resource: &resource,
+            node: self,
+            entity: &entity,
+        };
+        let res = REQWEST
+            .post("http://localhost:5157/syncResource")
+            .json(&request)
+            .send()
+            .await?;
+        let sync_reply: VeritechSyncResourceReply = res.json().await?;
+        resource
+            .from_update_for_self(
+                db,
+                nats,
+                sync_reply.resource.state,
+                sync_reply.resource.status,
+                sync_reply.resource.health,
+            )
+            .await?;
+        Ok(resource)
     }
 
     pub async fn configure_node(

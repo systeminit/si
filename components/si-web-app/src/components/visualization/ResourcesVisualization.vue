@@ -43,6 +43,14 @@
                     {{ resource.health }}
                   </div>
                 </div>
+                <div class="flex">
+                  <div class="pr-2">
+                    Time
+                  </div>
+                  <div>
+                    {{ resource.timestamp }}
+                  </div>
+                </div>
               </div>
             </div>
           </template>
@@ -51,7 +59,21 @@
     </div>
     <div class="flex content-end justify-end flex-grow w-full pt-2 pr-1">
       <div class="self-end">
-        <Button2 label="sync" icon="refresh" size="xs" @click.native="sync" />
+        <Button2
+          label="sync"
+          icon="refresh"
+          size="xs"
+          @click.native="sync"
+          disabled
+          v-if="updating"
+        />
+        <Button2
+          label="sync"
+          icon="refresh"
+          size="xs"
+          @click.native="sync"
+          v-else
+        />
       </div>
     </div>
   </div>
@@ -84,6 +106,7 @@ export default Vue.extend({
   data() {
     return {
       serviceColor: "78,141,171",
+      updating: false,
     };
   },
   methods: {
@@ -152,7 +175,9 @@ export default Vue.extend({
       }
     },
     async sync(): Promise<void> {
-      await this.$store.dispatch("resource/sync");
+      this.updating = true;
+      await this.$store.dispatch("editor/syncResources");
+      this.updating = false;
     },
   },
   computed: {

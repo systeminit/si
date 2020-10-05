@@ -160,6 +160,9 @@ export const editor: Module<EditorStore, RootStore> = {
         ["desc"],
       );
     },
+    setResources(state, payload: Resource[]) {
+      state.resources = payload;
+    },
     node(state, payload: Node | undefined) {
       state.node = payload;
       router
@@ -587,12 +590,23 @@ export const editor: Module<EditorStore, RootStore> = {
         let applicationNode = await Node.get({ id: application.nodeId });
         let successors = await applicationNode.successors();
         let objects: Record<string, NodeObject> = {};
+        let resources: Resource[] = [];
         for (let n of successors) {
           try {
             let obj = await n.displayObject(payload.id);
             objects[obj.nodeId] = obj;
+            if (state.system) {
+              let resource = await Resource.getByEntityIdAndSystemId(
+                n.id,
+                state.system.id,
+              );
+              if (resource) {
+                resources.push(resource);
+              }
+            }
           } catch {}
         }
+        commit("setResources", resources);
         commit("setObjects", objects);
         if (state.node && objects[state.node?.id]) {
           dispatch("node", state.node);
@@ -613,10 +627,18 @@ export const editor: Module<EditorStore, RootStore> = {
       commit("setSystems", systems);
       commit("system", systems[0]);
       let objects: Record<string, NodeObject> = {};
+      let resources: Resource[] = [];
       for (let n of successors) {
         try {
           let obj = await n.displayObject(state.changeSet?.id);
           objects[obj.nodeId] = obj;
+          let resource = await Resource.getByEntityIdAndSystemId(
+            n.id,
+            systems[0].id,
+          );
+          if (resource) {
+            resources.push(resource);
+          }
         } catch {
           console.log("node object not included in this changeset");
         }
@@ -625,6 +647,7 @@ export const editor: Module<EditorStore, RootStore> = {
       commit("setNodes", successors);
       let edges = await applicationNode.successorEdges();
       commit("setEdges", edges);
+      commit("setResources", resources);
       await dispatch("context");
     },
     async setSystem({ commit, dispatch }, payload: ActionSetSystem) {
@@ -698,6 +721,16 @@ export const editor: Module<EditorStore, RootStore> = {
       commit("mouseTrackSelection", node.id);
       console.log("finished create");
     },
+    async syncResources({ commit, state, getters }) {
+      if (state.application && state.system) {
+        let nodeList: Node[] = getters["nodeList"];
+        for (const node of nodeList) {
+          let resource = await node.syncResource(state.system.id);
+          console.log("poopy pants", { resource });
+          commit("updateResources", resource);
+        }
+      }
+    },
     async fromNode({ commit, state }, payload: Node) {
       if (state.application) {
         let appNode = await state.application.node();
@@ -706,6 +739,13 @@ export const editor: Module<EditorStore, RootStore> = {
           commit("updateNodes", payload);
           if (state.node?.id == payload.id) {
             commit("node", payload);
+          }
+          if (state.system) {
+            let resource = await Resource.getByEntityIdAndSystemId(
+              payload.id,
+              state.system.id,
+            );
+            commit("updateResources", resource);
           }
         }
       }

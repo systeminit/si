@@ -12,6 +12,7 @@ import { IEdge, Edge, EdgeKind } from "@/api/sdf/model/edge";
 import { Query, Comparison } from "@/api/sdf/model/query";
 import { Entity, IEntity } from "@/api/sdf/model/entity";
 import { System, ISystem } from "@/api/sdf/model/system";
+import { Resource, IResource } from "@/api/sdf/model/resource";
 import store from "@/store";
 
 import _ from "lodash";
@@ -91,6 +92,9 @@ export interface INodePatchOpRequest {
     context: string;
     position: Position;
   };
+  syncResource?: {
+    systemId: string;
+  };
 }
 
 export interface INodePatchRequest {
@@ -109,6 +113,9 @@ export interface INodePatchReply {
   setPosition?: {
     context: string;
     position: Position;
+  };
+  syncResource?: {
+    resource: Resource;
   };
 }
 
@@ -338,6 +345,23 @@ export class Node implements INode {
       return new Entity(iitem as IEntity);
     } else {
       throw new Error("unknown object type");
+    }
+  }
+
+  async syncResource(systemId: string): Promise<Resource> {
+    let request: INodePatchRequest = {
+      op: { syncResource: { systemId } },
+      organizationId: this.siStorable.organizationId,
+      workspaceId: this.siStorable.workspaceId,
+    };
+    let reply: INodePatchReply = await sdf.patch(`nodes/${this.id}`, request);
+    if (reply.syncResource?.resource) {
+      let resource = new Resource(reply.syncResource.resource);
+      console.log("syncing the resource", { systemId, resource });
+      await resource.save();
+      return resource;
+    } else {
+      throw new Error("malformed resource sync reply");
     }
   }
 

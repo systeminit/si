@@ -136,6 +136,60 @@ impl Resource {
         }
     }
 
+    pub async fn get_by_node_id(
+        db: &Db,
+        node_id: impl AsRef<str>,
+        system_id: impl AsRef<str>,
+    ) -> ResourceResult<Resource> {
+        let node_id = node_id.as_ref();
+        let system_id = system_id.as_ref();
+        let query = format!(
+            "SELECT a.*
+          FROM `{bucket}` AS a
+          WHERE a.siStorable.typeName = \"resource\"
+            AND a.systemId = $system_id
+            AND a.nodeId = $node_id
+          LIMIT 1
+        ",
+            bucket = db.bucket_name,
+        );
+        let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
+        named_params.insert("system_id".into(), serde_json::json![system_id]);
+        named_params.insert("node_id".into(), serde_json::json![node_id]);
+        let mut query_results: Vec<Resource> = db.query(query, Some(named_params)).await?;
+        if query_results.len() == 0 {
+            Err(ResourceError::NoResource(
+                String::from(node_id),
+                String::from(system_id),
+            ))
+        } else {
+            let result = query_results.pop().unwrap();
+            Ok(result)
+        }
+    }
+
+    pub async fn from_update_for_self(
+        &mut self,
+        db: &Db,
+        nats: &Connection,
+        state: serde_json::Value,
+        status: ResourceStatus,
+        health: ResourceHealth,
+    ) -> ResourceResult<()> {
+        self.state = state;
+        self.status = status;
+        self.health = health;
+        let current_time = Utc::now();
+        let unix_timestamp = current_time.timestamp_millis();
+        let timestamp = format!("{}", current_time);
+        self.unix_timestamp = unix_timestamp;
+        self.timestamp = timestamp;
+
+        tracing::warn!(?self, "whats your deal");
+        upsert_model(db, nats, &self.id, &self).await?;
+        Ok(())
+    }
+
     pub async fn from_update(
         db: &Db,
         nats: &Connection,
