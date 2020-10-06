@@ -1,7 +1,7 @@
 use crate::{test_cleanup, test_setup};
 use crate::{DB, NATS, SETTINGS};
 use si_sdf::filters::api;
-use si_sdf::models::{Comparison, ListReply, ListRequest, Query};
+use si_sdf::models::{Comparison, ListReply, Query};
 
 #[tokio::test]
 async fn list() {

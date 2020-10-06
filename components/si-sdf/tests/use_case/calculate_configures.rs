@@ -1,8 +1,8 @@
 use crate::filters::change_sets::create_change_set;
 use crate::filters::edit_sessions::create_edit_session;
 use crate::filters::nodes::create_node;
-use crate::{test_cleanup, test_setup, TestAccount};
-use crate::{DB, NATS, SETTINGS};
+use crate::DB;
+use crate::{test_cleanup, test_setup};
 
 use si_sdf::models::{Edge, EdgeKind, Entity, Node};
 

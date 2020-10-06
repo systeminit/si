@@ -216,7 +216,7 @@ impl Query {
                     Some(exp) => {
                         let value = match exp.field_type {
                             FieldType::Boolean => {
-                                if (exp.value == "true") {
+                                if exp.value == "true" {
                                     json![true]
                                 } else {
                                     json![false]

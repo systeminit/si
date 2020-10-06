@@ -1,6 +1,6 @@
 use crate::data::{Connection, Db, REQWEST};
 use crate::models::{
-    insert_model, Edge, EdgeKind, Entity, Node, OpError, OpResult, Resource, ResourceHealth,
+    insert_model, Edge, EdgeKind, Node, OpError, OpResult, Resource, ResourceHealth,
     ResourceStatus, SiChangeSet, SiChangeSetEvent, SiOp, SiStorable,
 };
 use serde::{Deserialize, Serialize};

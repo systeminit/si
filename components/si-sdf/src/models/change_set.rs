@@ -6,8 +6,8 @@ use std::collections::HashMap;
 use crate::data::{Connection, Db};
 use crate::models::{
     calculate_properties, get_base_object, get_model, insert_model, insert_model_if_missing, ops,
-    upsert_model, Entity, EntityError, ModelError, SiChangeSetEvent, SiStorable, SiStorableError,
-    SimpleStorable, System,
+    upsert_model, EntityError, ModelError, SiChangeSetEvent, SiStorable, SiStorableError,
+    SimpleStorable,
 };
 
 #[derive(Error, Debug)]

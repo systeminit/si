@@ -4,11 +4,9 @@ use crate::handlers::{authenticate, authorize, HandlerError};
 use crate::models;
 use crate::models::change_set::ChangeSet;
 use crate::models::edge::{Edge, EdgeKind};
-use crate::models::entity::Entity;
 use crate::models::node::{
-    Node, ObjectPatchReply, ObjectPatchRequest, PatchConfiguredByReply, PatchConfiguredByRequest,
-    PatchIncludeSystemReply, PatchOp, PatchReply, PatchRequest, PatchSetPositionReply,
-    PatchSetPositionRequest, SyncResourceReply, SyncResourceRequest,
+    Node, ObjectPatchReply, ObjectPatchRequest, PatchConfiguredByReply, PatchIncludeSystemReply,
+    PatchOp, PatchReply, PatchRequest, PatchSetPositionReply, SyncResourceReply,
 };
 use crate::models::ops::{
     OpEntityAction, OpEntityDelete, OpEntitySet, OpReply, OpRequest, OpSetName,
@@ -268,11 +266,11 @@ pub async fn get_object(
     let object: serde_json::Value = if let Some(change_set_id) = request.change_set_id {
         node.get_object_projection(&db, change_set_id)
             .await
-            .map_err(|e| warp::reject::not_found())?
+            .map_err(|_e| warp::reject::not_found())?
     } else {
         node.get_head_object(&db)
             .await
-            .map_err(|e| warp::reject::not_found())?
+            .map_err(|_e| warp::reject::not_found())?
     };
     tracing::error!(?object, "got the obj");
 

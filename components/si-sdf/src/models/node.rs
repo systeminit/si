@@ -1,4 +1,4 @@
-use chrono::{TimeZone, Utc};
+use chrono::Utc;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use thiserror::Error;
 

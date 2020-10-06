@@ -3,8 +3,8 @@ use thiserror::Error;
 
 use crate::data::{Connection, Db, REQWEST};
 use crate::models::{
-    insert_model, EdgeError, Entity, ModelError, NodeError, ResourceError, SiChangeSet,
-    SiChangeSetError, SiChangeSetEvent, SiStorable, SiStorableError,
+    insert_model, EdgeError, ModelError, NodeError, ResourceError, SiChangeSet, SiChangeSetError,
+    SiChangeSetEvent, SiStorable, SiStorableError,
 };
 
 pub mod entity_delete;

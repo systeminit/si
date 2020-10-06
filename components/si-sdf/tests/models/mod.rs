@@ -7,7 +7,7 @@ use crate::filters::edit_sessions::create_edit_session;
 use crate::filters::nodes::create_node;
 use crate::{test_cleanup, test_setup, DB};
 
-use si_sdf::models::{list_model, PageToken, Query};
+use si_sdf::models::{list_model, PageToken};
 
 #[tokio::test]
 async fn list_model_basic() {
