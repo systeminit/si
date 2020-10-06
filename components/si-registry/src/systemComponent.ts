@@ -8,7 +8,20 @@ import {
 } from "./attrList";
 import { camelCase } from "change-case";
 import { AssociationList } from "./systemObject/associations";
-import { SiGraphql } from "./systemObject/graphql";
+import {
+  Entity,
+  CalculateConfiguresReply,
+  CalculatePropertiesResult,
+  System,
+  ActionRequest,
+  ActionReply,
+  ResourceHealth,
+  ResourceStatus,
+  SyncResourceRequest,
+  SyncResourceReply,
+} from "./veritech/intelligence";
+import _ from "lodash";
+import YAML from "yaml";
 
 export type ObjectTypes =
   | BaseObject
@@ -40,8 +53,6 @@ export class BaseObject {
   methodsProp: PropObject;
   associations: AssociationList;
 
-  private internalGraphql: undefined | SiGraphql;
-
   constructor({
     typeName,
     displayTypeName,
@@ -65,7 +76,6 @@ export class BaseObject {
       parentName: "",
     });
     this.associations = new AssociationList();
-    this.internalGraphql = undefined;
     this.mvcc = false;
   }
 
@@ -75,13 +85,6 @@ export class BaseObject {
 
   get methods(): BaseObject["methodsProp"]["properties"] {
     return this.methodsProp.properties;
-  }
-
-  get graphql(): SiGraphql {
-    if (this.internalGraphql == undefined) {
-      this.internalGraphql = new SiGraphql(this);
-    }
-    return this.internalGraphql;
   }
 
   kind(): string {
@@ -528,13 +531,29 @@ export class ComponentObject extends SystemObject {
   }
 }
 
+interface EntityObjectIntelligence {
+  // prettier-ignore
+  //calculateProperties: (setProperties: Record<string, any>,) => Record<string, any>; // eslint-disable-line
+  calculateProperties?: (entity: Entity) => CalculatePropertiesResult;
+  calculateConfigures?: (
+    entity: Entity,
+    configures: Entity[],
+    systems: System[],
+  ) => CalculateConfiguresReply;
+  actions?: {
+    [key: string]: (request: ActionRequest) => Promise<ActionReply>;
+  };
+  syncResource?: (request: SyncResourceRequest) => Promise<SyncResourceReply>;
+}
+
 export class EntityObject extends SystemObject {
   baseTypeName: string;
   integrationServices: IntegrationService[];
+  intelligence: EntityObjectIntelligence;
 
   constructor(args: BaseObjectConstructor) {
-    const typeName = `${args.typeName}Entity`;
-    const displayTypeName = `${args.displayTypeName} Entity`;
+    const typeName = `${args.typeName}`;
+    const displayTypeName = `${args.displayTypeName}`;
     super({
       typeName,
       displayTypeName,
@@ -543,6 +562,97 @@ export class EntityObject extends SystemObject {
     this.baseTypeName = args.typeName;
     this.integrationServices = [];
     this.setEntityDefaults();
+    this.intelligence = {};
+  }
+
+  async syncResource(request: SyncResourceRequest): Promise<SyncResourceReply> {
+    const syncResourceFunc = this.intelligence.syncResource;
+    if (syncResourceFunc) {
+      return await syncResourceFunc(request);
+    } else {
+      return {
+        resource: {
+          health: ResourceHealth.Ok,
+          status: ResourceStatus.Created,
+          state: {
+            siDefaultSync: true,
+          },
+        },
+      };
+    }
+  }
+
+  async action(request: ActionRequest): Promise<ActionReply> {
+    const actions = this.intelligence.actions;
+    if (actions && actions[request.action]) {
+      return actions[request.action](request);
+    } else if (request.action == "sync") {
+      return {
+        resource: {
+          health: ResourceHealth.Ok,
+          status: ResourceStatus.Created,
+          state: {
+            siDefaultSync: true,
+          },
+        },
+        actions: [],
+      };
+    } else {
+      throw new Error(`cannot find action ${request.action}`);
+    }
+  }
+
+  // Based on the manual properties and expression properties, pass the results to the inference
+  calculateProperties(entity: Entity): CalculatePropertiesResult {
+    //entity.properties = entity.manualProperties;
+    // First calculate the entire baseline
+    // Then calculate manual properties
+    // Then calculate expression properties, preffering existing manual
+    // - For each system an
+    // Get the manual properties
+    // Calculte the expression properties, and merge with manual, preferring manual properties
+    // Finally pass the results to the inferProperties function, get the results
+    //
+    if (this.intelligence.calculateProperties) {
+      //let properties
+      //entity.properties = this.intelligence.calculateProperties(entity);
+    }
+
+    // TODO: Please, refactor all this so that it makes fucking sense in the new world order. ;)
+    const properties = entity.manualProperties;
+    // @ts-ignore
+    const propArray = this.rootProp.properties.getEntry("properties").properties
+      .attrs;
+    for (const prop of propArray) {
+      if (prop.kind() == "code") {
+        for (const rel of prop.relationships.all()) {
+          if (rel.kind() == "updates") {
+            const otherProp = rel.partner.names[1];
+            properties["__baseline"][prop.name] = YAML.stringify(
+              properties["__baseline"][otherProp],
+            );
+          }
+        }
+      }
+    }
+    // Check if anything is a code property, and if it is, calculate it.
+    return { properties };
+  }
+
+  calculateConfigures(
+    entity: Entity,
+    configures: Entity[],
+    systems: System[],
+  ): CalculateConfiguresReply {
+    if (this.intelligence.calculateConfigures) {
+      return this.intelligence.calculateConfigures(entity, configures, systems);
+    } else {
+      return {
+        keep: _.map(configures, entity => {
+          return { id: entity.id, systems: _.map(systems, s => s.id) };
+        }),
+      };
+    }
   }
 
   setEntityDefaults(): void {
@@ -650,6 +760,14 @@ export class EntityObject extends SystemObject {
             p.hidden = true;
           },
         });
+        p.request.properties.addText({
+          name: "editSessionId",
+          label: `Edit Session ID`,
+          options(p) {
+            p.required = true;
+            p.hidden = true;
+          },
+        });
         p.request.properties.addLink({
           name: "properties",
           label: "Properties",
@@ -708,6 +826,14 @@ export class EntityObject extends SystemObject {
             p.hidden = true;
           },
         });
+        p.request.properties.addText({
+          name: "editSessionId",
+          label: `Edit Session ID`,
+          options(p) {
+            p.required = true;
+            p.hidden = true;
+          },
+        });
         p.reply.properties.addLink({
           name: "item",
           label: `${baseTypeName} Item`,
@@ -735,6 +861,14 @@ export class EntityObject extends SystemObject {
         p.request.properties.addText({
           name: "changeSetId",
           label: `Change Set ID`,
+          options(p) {
+            p.required = true;
+            p.hidden = true;
+          },
+        });
+        p.request.properties.addText({
+          name: "editSessionId",
+          label: `Edit Session ID`,
           options(p) {
             p.required = true;
             p.hidden = true;
@@ -799,15 +933,6 @@ export class EntityObject extends SystemObject {
             };
           },
         });
-      },
-    });
-
-    this.methods.addAction({
-      name: "sync",
-      label: "Sync State",
-      options(p: PropAction) {
-        p.mutation = true;
-        p.universal = true;
       },
     });
   }

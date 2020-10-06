@@ -4,11 +4,11 @@
       services
     </div>
 
-    <div class="flex mt-1 pl-1">
+    <div class="flex pl-1 mt-1">
       <div
         v-for="service in services"
         class="flex flex-row mr-1"
-        :key="service.id"
+        :key="service.nodeId"
       >
         <SquareChart :rgbColor="serviceColor" />
         <SquareChart :width="7" :rgbColor="statusColor" />
@@ -19,10 +19,11 @@
 
 <script lang="ts">
 import Vue from "vue";
+import { mapState } from "vuex";
 import SquareChart from "@/components/visualization/charts/SquareChart.vue";
 import _ from "lodash";
 
-import { ServiceEntity } from "@/graphql-types";
+import { Entity } from "@/api/sdf/model/entity";
 
 export default Vue.extend({
   name: "ServicesVisualization",
@@ -31,6 +32,7 @@ export default Vue.extend({
   },
   props: {
     applicationId: String,
+    inEditor: String,
   },
   data() {
     return {
@@ -38,28 +40,34 @@ export default Vue.extend({
     };
   },
   computed: {
-    services(): ServiceEntity[] {
-      const edges = this.$store.getters["edge/fromIdForType"]({
-        id: this.applicationId,
-        typeName: "service_entity",
-      });
-      const results: ServiceEntity[] = _.filter(
-        this.$store.state.entity.entities,
-        (entity: ServiceEntity) => {
-          for (const edge of edges) {
-            if (edge.properties.headVertex.typeName == "service_entity") {
-              return entity.id == edge.properties.headVertex.id;
-            } else if (
-              edge.properties.tailVertex.typeName == "service_entity"
-            ) {
-              return entity.id == edge.properties.tailVertex.id;
-            } else {
-              return false;
-            }
+    objects(): Record<string, Entity> {
+      return this.$store.state.editor.objects;
+    },
+    services(): Entity[] {
+      const results: Entity[] = [];
+      if (this.inEditor == "true") {
+        for (const entityId of Object.keys(this.objects)) {
+          const entity: Entity = this.objects[entityId];
+          if (entity.objectType == "service" && !entity.siStorable.deleted) {
+            results.push(entity);
           }
-        },
-      );
-      return results;
+        }
+        return results;
+      } else {
+        let appEntity = _.find(this.$store.state.application.list, [
+          "id",
+          this.applicationId,
+        ]);
+        if (appEntity) {
+          return (
+            _.filter(this.$store.state.application.services[appEntity.nodeId], [
+              "siStorable.deleted",
+              false,
+            ]) || []
+          );
+        }
+      }
+      return [];
     },
     statusColor(): string {
       let stateSuccessColor = "0,179,79";

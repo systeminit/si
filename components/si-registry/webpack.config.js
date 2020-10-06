@@ -11,11 +11,12 @@ module.exports = {
   // Change to your "entry-point".
   entry: {
     main: "./src/index",
-    binary: "./src/bin/si-generate",
+    server: "./src/bin/si-veritech",
   },
   output: {
     path: path.resolve(__dirname, "dist"),
     filename: "[name].bundle.js",
+    library: "main",
   },
   resolve: {
     extensions: [".ts", ".js", ".json"],
@@ -38,8 +39,8 @@ module.exports = {
     new WebpackBar(),
     new CleanWebpackPlugin(),
     new NodemonPlugin({
-      script: "./dist/binary.bundle.js",
-      watch: ["./dist", "./src/codegen/rust"],
+      script: "./dist/server.bundle.js",
+      watch: ["./dist"],
       nodeArgs: ["--enable-source-maps"],
       ext: "js,ejs",
     }),

@@ -5,15 +5,9 @@
 </template>
 
 <script lang="ts">
-import { telemetry } from "@/utils/telemetry";
-
 export default {
   name: "App",
 };
-
-window.addEventListener("beforeunload", () => {
-  telemetry.end();
-});
 </script>
 
 <style>

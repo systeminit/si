@@ -50,8 +50,8 @@
               name: 'application',
               params: {
                 applicationId: 'my-app',
-                organizationId: organizationId,
-                workspaceId: workspaceId,
+                organizationId: organization.id,
+                workspaceId: workspace.id,
               },
             }"
           >
@@ -195,6 +195,7 @@
 </template>
 
 <script lang="ts">
+import Vue from "vue";
 import {
   MenuIcon,
   Share2Icon,
@@ -211,9 +212,14 @@ import {
 
 import SysinitIcon from "@/components/icons/SysinitIcon.vue";
 
-import localforage from "localforage";
+import { mapGetters } from "vuex";
 
-export default {
+interface IData {
+  workspaces: string[];
+  currentWorkspace: string;
+}
+
+export default Vue.extend({
   name: "WorkspaceNav",
   components: {
     MenuIcon,
@@ -229,37 +235,29 @@ export default {
     GridIcon,
     RefreshCwIcon,
   },
-  props: {
-    organizationId: {
-      type: String,
-    },
-    workspaceId: {
-      type: String,
-    },
-  },
-  data() {
+  data(): IData {
     return {
       workspaces: ["my workspace", "another workspace"],
       currentWorkspace: "my workspace",
     };
   },
+  computed: {
+    ...mapGetters({
+      organization: "organization/current",
+      workspace: "workspace/current",
+    }),
+  },
   methods: {
-    async onLogout(event: any) {
-      console.log("logout clicked");
+    async onLogout(): Promise<void> {
       await this.$store.dispatch("user/logout");
       this.$router.push({ name: "signin" });
     },
-    async clearLogout(event: any) {
-      console.log("clear logout clicked");
+    async clearLogout(): Promise<void> {
       await this.$store.dispatch("user/logout");
-      await localforage.dropInstance({
-        name: "si-store",
-        storeName: "vuex",
-      });
       this.$router.push({ name: "signin" });
     },
   },
-};
+});
 </script>
 
 <style scoped>

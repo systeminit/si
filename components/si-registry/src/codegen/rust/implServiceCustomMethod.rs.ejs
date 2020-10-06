@@ -1,7 +1,0 @@
-<%- fmt.implServiceAuth(propMethod) %>
-
-let inner = request.into_inner();
-
-let output = <%- fmt.modelName() %>::<%- fmt.modelServiceMethodName(propMethod) %>(&self.db, inner).await?;
-
-Ok(tonic::Response::new(output))

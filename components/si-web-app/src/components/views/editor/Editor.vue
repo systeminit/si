@@ -2,14 +2,14 @@
   <div
     ref="editor"
     id="editor"
-    class="flex flex-row h-full w-full"
+    class="flex flex-row w-full h-full"
     v-on:mousemove="mouseMove"
     v-on:mousedown="mouseDown"
     v-on:mouseup="mouseUp"
   >
     <div
       ref="leftPanel"
-      class="bg-gray-900 w-3/5"
+      class="w-3/5 bg-gray-900"
       :class="leftPanelVisibilityClasses"
     >
       <SchematicPanel @maximizePanelMsg="maximizePanel" />
@@ -23,7 +23,7 @@
 
     <div
       ref="rightPanel"
-      class="bg-gray-900 w-2/5"
+      class="w-2/5 bg-gray-900"
       :class="rightPanelVisibilityClasses"
     >
       <EditorPropertyPanel @maximizePanelMsg="maximizePanel" />
@@ -76,7 +76,7 @@ export default {
     window.addEventListener("resize", this.handleResize);
     this.handleResize();
   },
-  destroyed() {
+  async destroyed() {
     window.removeEventListener("resize", this.handleResize);
   },
   methods: {

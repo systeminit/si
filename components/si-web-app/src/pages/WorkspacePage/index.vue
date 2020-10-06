@@ -1,22 +1,10 @@
 <template>
   <div id="app-main-layout" class="flex flex-col w-screen h-screen">
     <div
-      v-if="loading"
-      class="flex flex-row w-full h-full text-white bg-black h-center"
-    >
-      <div class="object-center">
-        Loading your workspace! Sit tight!
-      </div>
-    </div>
-    <div
       id="workspace-view"
       class="flex flex-row w-full h-full overflow-hidden"
-      v-else
     >
-      <WorkspaceNav
-        :organizationId="organizationId"
-        :workspaceId="workspaceId"
-      />
+      <WorkspaceNav />
 
       <div class="flex flex-col w-full h-full">
         <router-view class="w-full h-full overflow-auto" />
@@ -29,31 +17,24 @@
 import { mapState } from "vuex";
 
 import WorkspaceNav from "./WorkspaceNav.vue";
+import { sdf } from "@/api/sdf";
 
 export default {
   name: "WorkspacePage",
-  props: {
-    organizationId: {
-      type: String,
-    },
-    workspaceId: {
-      type: String,
-    },
-  },
   components: {
     WorkspaceNav,
   },
-  computed: {
-    ...mapState({
-      loading: state => state.loader.loading,
-    }),
+  async beforeCreate() {
+    await sdf.startUpdate();
+    await this.$store.dispatch("organization/default");
+    await this.$store.dispatch("workspace/default");
   },
-  mounted: function() {
-    // Navigate to the default page: applications
-    let userProfile = this.$store.getters["user/profile"];
+  async mounted() {
+    let organization = this.$store.getters["organization/current"];
     let workspace = this.$store.getters["workspace/current"];
-    let url = `/o/:${userProfile.organization.id}/w/:${workspace.id}/a`;
-    if (this.$route.path !== url) this.$router.push(url);
+    if (this.$route.name == "home") {
+      this.$router.push(`/o/${organization.id}/w/${workspace.id}/a`);
+    }
   },
 };
 </script>

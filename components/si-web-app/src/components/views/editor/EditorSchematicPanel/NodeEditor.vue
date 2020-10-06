@@ -54,71 +54,135 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
 import Vue from "vue";
 import NodeList from "./NodeList.vue";
 import ConnectionObject from "./ConnectionObject.vue";
 
-import { mapGetters, Store } from "vuex";
-import { debouncedSetPosition } from "@/store/modules/node";
+import { mapGetters, mapState, Store } from "vuex";
+import { Node, Position } from "@/api/sdf/model/node";
+import { Edge } from "@/api/sdf/model/edge";
+import { RootStore } from "@/store";
 import _ from "lodash";
 
-export default {
+interface IData {
+  selectedNode: string;
+  gridWidth: string;
+  gridHeight: string;
+  isPanning: boolean;
+  isDragging: boolean;
+  isZooming: boolean;
+  mouse: {
+    position: {
+      screen: {
+        x: number;
+        y: number;
+      };
+      element: {
+        x: number;
+        y: number;
+      };
+    };
+  };
+  pan: {
+    translation: {
+      x: number;
+      y: number;
+    };
+    mouse: {
+      x: number;
+      y: number;
+    };
+  };
+  zoom: {
+    sensitivity: number;
+    center: {
+      x: number;
+      y: number;
+    };
+    translation: {
+      x: number;
+      y: number;
+    };
+    mouse: {
+      x: number;
+      y: number;
+    };
+    factor: number;
+    // min: 0.25,
+    min: number;
+    max: number;
+  };
+  canvas: {
+    element: any;
+    translation: {
+      x: number;
+      y: number;
+    };
+    offset: {
+      x: number;
+      y: number;
+    };
+  };
+  grid: {
+    element: any;
+    dimension: {
+      width: number;
+      height: number;
+    };
+  };
+  editor: {
+    element: any;
+  };
+  selection: {
+    object: any;
+    objectPosition: {
+      x: number;
+      y: number;
+    };
+    element: any;
+    origin: {
+      x: number;
+      y: number;
+    };
+    offset: {
+      x: number;
+      y: number;
+    };
+    translation: {
+      x: number;
+      y: number;
+    };
+  };
+  nodeListPositions: Record<string, Position>;
+}
+
+export default Vue.extend({
   name: "SchematicPanel",
   components: {
     NodeList,
     ConnectionObject,
   },
   computed: {
-    ...mapGetters({
-      edgeConnectionList: "edge/connectionList",
-      nodeList: "node/list",
-      nodeSelection: "node/current",
-      mouseTrackSelection: "node/mouseTrackSelection",
+    ...mapState({
+      nodeSelection(state: RootStore): Node | undefined {
+        return state.editor.node;
+      },
+      nodeList(state: RootStore): Node[] {
+        return state.editor.nodes;
+      },
+      mouseTrackSelection(state: RootStore): string | undefined {
+        return state.editor.mouseTrackSelection;
+      },
+      edgeConnectionList(state: RootStore): Edge[] {
+        return state.editor.edges;
+      },
     }),
-    connectionList() {
-      const positions = [];
-      for (const edge of this.edgeConnectionList) {
-        let sourceNodePosition;
-        let destinationNodePosition;
-        if (this.nodeListPositions[edge.tailVertex.id]) {
-          sourceNodePosition = this.nodeListPositions[edge.tailVertex.id];
-        } else {
-          let sourceNode = _.find(this.nodeList, ["id", edge.tailVertex.id]);
-          if (sourceNode) {
-            sourceNodePosition = sourceNode.position;
-          } else {
-            continue;
-          }
-        }
-        if (this.nodeListPositions[edge.headVertex.id]) {
-          destinationNodePosition = this.nodeListPositions[edge.headVertex.id];
-        } else {
-          let destinationNode = _.find(this.nodeList, [
-            "id",
-            edge.headVertex.id,
-          ]);
-          if (destinationNode) {
-            destinationNodePosition = destinationNode.position;
-          } else {
-            continue;
-          }
-        }
-
-        positions.push({
-          sourceNodePosition,
-          destinationNodePosition,
-        });
-      }
-      return positions;
-    },
+    ...mapGetters({
+      connectionList: "editor/positions",
+    }),
   },
-  watch: {
-    edgeConnectionList(_new, _old) {
-      this.nodeListPositions = {};
-    },
-  },
-  data() {
+  data(): IData {
     return {
       selectedNode: "",
       gridWidth: "100%",
@@ -211,7 +275,7 @@ export default {
       nodeListPositions: {},
     };
   },
-  mounted: function() {
+  mounted(): void {
     this.canvas.element = this.$refs.canvas;
     this.grid.element = this.$refs.grid;
 
@@ -289,20 +353,23 @@ export default {
     this.canvas.offset.y = canvasOffset.y;
   },
   methods: {
-    updateSelectedNodePosition(posX, posY) {
-      let nodePosition = {
-        x: posX,
-        y: posY,
-      };
-      Vue.set(this.nodeListPositions, this.nodeSelection.id, nodePosition);
-      debouncedSetPosition({
-        store: this.$store,
-        nodeId: this.nodeSelection.id,
-        nodePosition,
-      });
+    async updateSelectedNodePosition(
+      posX: number,
+      posY: number,
+    ): Promise<void> {
+      if (this.nodeSelection) {
+        let nodePosition = {
+          x: posX,
+          y: posY,
+        };
+        Vue.set(this.nodeListPositions, this.nodeSelection.id, nodePosition);
+        await this.$store.dispatch("editor/setNodePosition", {
+          nodeId: this.nodeSelection.id,
+          position: nodePosition,
+        });
+      }
     },
-    mouseOver() {},
-    mouseDown(event) {
+    mouseDown(event: any): void {
       // console.log("mouseDown");
       // Enable alt key to drag the whole editor canvas
       // if (event.altKey) {
@@ -330,7 +397,7 @@ export default {
       // }
 
       if (event.target.classList.contains("node")) {
-        if (this.nodeSelection.id) {
+        if (this.nodeSelection?.id) {
           this.selection.object = document.getElementById(
             this.nodeSelection.id,
           );
@@ -356,9 +423,9 @@ export default {
         this.selection.offset.y = mousePositionY - selectionOffsetTop;
       }
     },
-    mouseUp() {
+    mouseUp(): void {
       if (this.mouseTrackSelection) {
-        this.$store.dispatch("node/unsetMouseTrackSelection");
+        this.$store.dispatch("editor/setMouseTrackSelection", undefined);
       }
 
       this.selection.object = null;
@@ -375,7 +442,7 @@ export default {
         this.isPanning = false;
       }
     },
-    mouseMove(event) {
+    mouseMove(event: any): void {
       if (this.mouseTrackSelection) {
         this.selection.object = document.getElementById(
           this.mouseTrackSelection,
@@ -415,15 +482,15 @@ export default {
         }
       }
     },
-    mouseWheel(event) {
+    mouseWheel(event: any): void {
       if (event.altKey) {
         this.zoomCanvas(event);
       }
     },
-    log(msg) {
+    log(msg: string): void {
       console.log(msg);
     },
-    canvasConstraint() {
+    canvasConstraint(): void {
       let left = this.canvas.element.offsetRight;
       let top = this.canvas.element.offsetBottom;
 
@@ -438,12 +505,14 @@ export default {
       //   this.canvas.element.offsetTop,
       // );
     },
-    panCanvas() {
+    panCanvas(): void {
       // console.log("==============");
       // console.log("panning canvas");
 
       let mousePositionInScreenSpace = {
+        // @ts-ignore
         x: event.clientX,
+        // @ts-ignore
         y: event.clientY,
       };
       this.log(
@@ -523,7 +592,7 @@ export default {
       this.canvas.translation.x = translation.x;
       this.canvas.translation.y = translation.y;
     },
-    linearEquation(point1, point2, value) {
+    linearEquation(point1: any, point2: any, value: number): number {
       /**
        * - solving the equation to limit pan -
        *
@@ -554,7 +623,7 @@ export default {
 
       return y;
     },
-    zoomCanvas(event) {
+    zoomCanvas(event: any): void {
       /**
        * - Zoom on cursor implementation -
        *
@@ -613,7 +682,7 @@ export default {
        * @canvas.offsetLeft :: offsetLeft position of the canvas <div> element
        * @canvas.offsetTop :: offsetTop position of the canvas <div> element
        */
-      let canvas = this.$refs.canvas;
+      let canvas: any = this.$refs.canvas;
       let canvasOrigin = {
         x: canvas.offsetLeft,
         y: canvas.offsetTop,
@@ -709,7 +778,7 @@ export default {
       this.canvas.offset.x = translation.x;
       this.canvas.offset.y = translation.y;
     },
-    updateGrid(scale) {
+    updateGrid(scale: number): void {
       // let grid = this.$refs.grid;
       let width = {
         x: 100 + 100 * (1 + (1 - scale)),
@@ -721,7 +790,7 @@ export default {
       // console.log(width);
     },
   },
-};
+});
 </script>
 
 <style type="text/css" scoped>

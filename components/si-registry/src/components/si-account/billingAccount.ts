@@ -111,6 +111,24 @@ registry.system({
             };
           },
         });
+        p.reply.properties.addLink({
+          name: "workspace",
+          label: "Default Workspace",
+          options(p: PropLink) {
+            p.lookup = {
+              typeName: "workspace",
+            };
+          },
+        });
+        p.reply.properties.addLink({
+          name: "organization",
+          label: "Default Organization",
+          options(p: PropLink) {
+            p.lookup = {
+              typeName: "organization",
+            };
+          },
+        });
       },
     });
 

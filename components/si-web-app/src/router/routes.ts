@@ -1,6 +1,7 @@
 import NotFoundPage from "@/pages/NotFoundPage.vue";
 import Home from "@/pages/HomePage.vue";
 import SignInPage from "@/pages/SignInPage/index.vue";
+import SignUpPage from "@/pages/SignUpPage.vue";
 import LoadingPage from "@/pages/LoadingPage.vue";
 import WorkspacePage from "@/pages/WorkspacePage/index.vue";
 import SystemDetails from "@/components/views/system/SystemDetails.vue";
@@ -24,6 +25,12 @@ const routes = [
     component: SignInPage,
   },
   {
+    path: "/signup",
+    name: "signup",
+    component: SignUpPage,
+  },
+
+  {
     path: "/loading",
     name: "loading",
     component: LoadingPage,
@@ -35,29 +42,25 @@ const routes = [
     props: true,
     children: [
       {
-        path: "/o/:organizationId/w/:workspaceId/s/:systemId",
+        path: "s/:systemId",
         name: "system",
         component: SystemDetails,
         props: true,
       },
       {
-        path: "/o/:organizationId/w/:workspaceId/a",
+        path: "a/:applicationId",
+        name: "applicationDetails",
+        component: ApplicationDetails,
+        props: true,
+      },
+      {
+        path: "a",
         name: "application",
         component: ApplicationList,
         props: true,
       },
       {
-        path: "/o/:organizationId/w/:workspaceId/a/:applicationId",
-        name: "applicationDetails",
-        component: ApplicationDetails,
-        props: true,
-        beforeEnter: async (to: any, _from: any, next: any) => {
-          store.dispatch("application/setCurrentById", to.params.applicationId);
-          return next();
-        },
-      },
-      {
-        path: "/o/:organizationId/w/:workspaceId/global",
+        path: "global",
         name: "global",
         component: SystemDetails,
         props: true,

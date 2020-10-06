@@ -1,8 +1,8 @@
-import { Entity } from "@/store/modules/entity";
+import { Entity } from "@/api/sdf/model/entity";
 import _ from "lodash";
 
 export interface DiffEntry {
-  path: (string | number)[];
+  path: string[];
   before: any | undefined;
   after: any;
   kind: string;
@@ -13,21 +13,13 @@ export interface DiffResult {
   count: number;
 }
 
-export function diffEntity(lhs: Entity | null, rhs: Entity): DiffResult {
+export function diffEntity(lhs: Entity, rhs: Entity): DiffResult {
   const result: DiffResult = {
     entries: [],
     count: 0,
   };
 
-  // Is the lhs null? if so, we've got no changes.
-  if (!lhs) {
-    return result;
-  }
-
-  let checkPaths: DiffEntry["path"][] = _.map(
-    ["name", "displayName", "description", "properties"],
-    key => [key],
-  );
+  let checkPaths: string[][] = [["name"], ["properties", "__baseline"]];
 
   for (const path of checkPaths) {
     let rhsValue = _.get(rhs, path);
@@ -43,74 +35,77 @@ export function diffEntity(lhs: Entity | null, rhs: Entity): DiffResult {
       // If the value looks like a map, we have to do some fancy
       // footwork. For each entry in the map, check and see if there
       // is a key/value pair that matches.
-      if (
-        rhsValue[0] &&
-        rhsValue[0].hasOwnProperty("key") &&
-        rhsValue[0].hasOwnProperty("value")
-      ) {
-        let sortedValue = _.sortBy(rhsValue, ["key"]);
-        rhsValue = sortedValue;
-        //_.set(rhs, path, sortedValue);
-        for (let x = 0; x < rhsValue.length; x++) {
-          let rhsEntry = rhsValue[x];
-          let matchEntry = _.find(lhsValue, lhsEntry => {
-            return lhsEntry.key == rhsEntry.key;
-          });
-          if (matchEntry) {
-            if (_.isEqual(matchEntry.value, rhsEntry.value)) {
-              continue;
-            }
-            const newPath = _.cloneDeep(path);
-            newPath.push(x);
-            newPath.push("value");
-            result.entries.push({
-              path: newPath,
-              before: matchEntry.value,
-              after: rhsEntry.value,
-              kind: "edit",
-            });
-          } else {
-            const keyPath = _.cloneDeep(path);
-            keyPath.push(x);
-            keyPath.push("key");
-            result.entries.push({
-              path: keyPath,
-              before: undefined,
-              after: rhsEntry.key,
-              kind: "add",
-            });
-            const valuePath = _.cloneDeep(path);
-            valuePath.push(x);
-            valuePath.push("value");
-            result.entries.push({
-              path: valuePath,
-              before: undefined,
-              after: rhsEntry.value,
-              kind: "add",
-            });
-          }
-        }
-        continue;
-      }
+      //if (
+      //  rhsValue[0] &&
+      //  rhsValue[0].hasOwnProperty("key") &&
+      //  rhsValue[0].hasOwnProperty("value")
+      //) {
+      //  let sortedValue = _.sortBy(rhsValue, ["key"]);
+      //  rhsValue = sortedValue;
+      //  //_.set(rhs, path, sortedValue);
+      //  for (let x = 0; x < rhsValue.length; x++) {
+      //    let rhsEntry = rhsValue[x];
+      //    let matchEntry = _.find(lhsValue, lhsEntry => {
+      //      return lhsEntry.key == rhsEntry.key;
+      //    });
+      //    if (matchEntry) {
+      //      if (_.isEqual(matchEntry.value, rhsEntry.value)) {
+      //        continue;
+      //      }
+      //      const newPath = _.cloneDeep(path);
+      //      newPath.push(`${x}`);
+      //      newPath.push("value");
+      //      result.entries.push({
+      //        path: newPath,
+      //        before: matchEntry.value,
+      //        after: rhsEntry.value,
+      //        kind: "edit",
+      //      });
+      //    } else {
+      //      const keyPath = _.cloneDeep(path);
+      //      keyPath.push(`${x}`);
+      //      keyPath.push("key");
+      //      result.entries.push({
+      //        path: keyPath,
+      //        before: undefined,
+      //        after: rhsEntry.key,
+      //        kind: "add",
+      //      });
+      //      const valuePath = _.cloneDeep(path);
+      //      valuePath.push(`${x}`);
+      //      valuePath.push("value");
+      //      result.entries.push({
+      //        path: valuePath,
+      //        before: undefined,
+      //        after: rhsEntry.value,
+      //        kind: "add",
+      //      });
+      //    }
+      //  }
+      //  continue;
+      //}
       // Add every entry of this object as a path to check
       for (let x = 0; x < rhsValue.length; x++) {
         const newPath = _.cloneDeep(path);
-        newPath.push(x);
+        newPath.push(`${x}`);
         checkPaths.push(newPath);
       }
       if (lhsValue && lhsValue.length > rhsValue.length) {
         for (let x = rhsValue.length; x < lhsValue.length; x++) {
           const newPath = _.cloneDeep(path);
-          newPath.push(x);
+          newPath.push(`${x}`);
           checkPaths.push(newPath);
         }
       }
     } else if (_.isObjectLike(rhsValue)) {
       // Add every key of this object as a path to check
       for (const key in rhsValue) {
-        const newPath = _.cloneDeep(path);
-        newPath.push(key);
-        checkPaths.push(newPath);
+        // TODO: This should actually check if its a code prop
+        if (key != "kubernetesObjectYaml") {
+          const newPath = _.cloneDeep(path);
+          newPath.push(key);
+          checkPaths.push(newPath);
+        }
       }
     } else {
       let kind = "edit";

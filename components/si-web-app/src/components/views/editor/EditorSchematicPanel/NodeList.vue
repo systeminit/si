@@ -1,27 +1,28 @@
 <template>
   <div id="node-list">
-    <div v-for="item in nodeList" :key="item.id">
-      <NodeObject :nodeObject="item" />
+    <div v-for="item in nodes" :key="item.id">
+      <NodeObject :node="item" />
     </div>
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import Vue from "vue";
+import { mapGetters, mapActions } from "vuex";
 import { registry } from "si-registry";
 
+import { RootStore } from "@/store";
 import NodeObject from "./NodeObject.vue";
 
-import { mapGetters, mapActions } from "vuex";
-
-export default {
+export default Vue.extend({
   name: "NodeList",
   components: {
     NodeObject,
   },
   computed: {
-    ...mapGetters({
-      nodeList: "node/list",
-    }),
+    nodes(): RootStore["editor"]["nodes"] {
+      return this.$store.getters["editor/nodeList"];
+    },
   },
-};
+});
 </script>

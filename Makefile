@@ -21,9 +21,9 @@
 
 include ./components/build/deps.mk
 
-COMPONENTS = components/si-registry components/si-data components/si-account components/si-settings components/si-transport components/si-agent components/si-graphql-api components/si-web-app components/si-external-api-gateway components/si-core components/si-kubernetes
-RELEASEABLE_COMPONENTS = components/si-account components/si-graphql-api components/si-external-api-gateway components/si-core components/si-kubernetes
-RUNNABLE_COMPONENTS = components/si-registry components/si-account components/si-core components/si-kubernetes components/si-graphql-api components/si-web-app components/si-external-api-gateway
+COMPONENTS = components/si-registry components/si-settings components/si-web-app components/si-sdf
+RELEASEABLE_COMPONENTS = components/si-registry components/si-sdf
+RUNNABLE_COMPONENTS = components/si-registry components/si-sdf components/si-web-app
 BUILDABLE = $(patsubst %,build//%,$(COMPONENTS))
 TESTABLE = $(patsubst %,test//%,$(COMPONENTS))
 RELEASEABLE = $(patsubst %,release//%,$(RELEASEABLE_COMPONENTS))
@@ -43,11 +43,7 @@ RELEASE := $(shell date +%Y%m%d%H%M%S)
 
 .PHONY: $(BUILDABLE) $(TESTABLE) $(RELEASEABLE) $(CONTAINABLE)
 
-test//components/si-data//RDEPS: test//components/si-account test//components/si-ssh-key
-
-test//components/si-account//RDEPS: test//components/si-graphql-api
-
-test//components/si-settings//RDEPS: test//components/si-data test//components/si-account
+test//components/si-sdf//RDEPS: test//components/si-settings
 
 %//RDEPS:
 	@ echo "*** No dependencies for $@ ***"
@@ -136,5 +132,5 @@ force_clean:
 
 dev_deps:
 	./components/couchbase/run.sh || docker start db; exit 0
-	./components/vernemq/run.sh || docker start mqtt; exit 0
 	./components/opentelemetry-collector/run.sh || docker start otelcol; exit 0
+	./components/nats/run.sh || docker start nats; exit 0
