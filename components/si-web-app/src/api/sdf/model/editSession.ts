@@ -12,6 +12,14 @@ import { Query, Comparison } from "@/api/sdf/model/query";
 import store from "@/store";
 import _ from "lodash";
 
+export interface IEditSessionPatchRequest {
+  cancel?: boolean;
+}
+
+export interface IEditSessionPatchReply {
+  cancel?: IEditSession;
+}
+
 export interface IEditSession {
   id: string;
   name: string;
@@ -128,6 +136,22 @@ export class EditSession implements IEditSession {
       items,
       totalCount,
     };
+  }
+
+  async cancel(): Promise<void> {
+    let request: IEditSessionPatchRequest = {
+      cancel: true,
+    };
+    let reply: IEditSessionPatchReply = await sdf.patch(
+      `changeSets/${this.changeSetId}/editSessions/${this.id}`,
+      request,
+    );
+    if (reply.cancel) {
+      console.log("you have been canceled");
+      return;
+    } else {
+      throw new Error("incorrect response to patch call");
+    }
   }
 
   async save(): Promise<void> {

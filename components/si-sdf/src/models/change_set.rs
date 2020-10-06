@@ -253,10 +253,7 @@ impl ChangeSet {
             }
         }
 
-        //// Calculate the final entities properties
-        tracing::warn!(?last_type_name, "what is the last type name");
         if last_type_name.is_some() && last_type_name.unwrap() == "entity" {
-            tracing::warn!("why aren't you getting here");
             let mut last_entity = seen_map.get_mut(&last_id.unwrap()).unwrap();
             calculate_properties(&mut last_entity).await?;
         }
@@ -272,6 +269,10 @@ impl ChangeSet {
                         .pointer_mut("/head")
                         .ok_or(ChangeSetError::MissingHead)?;
                     *head = serde_json::Value::Bool(false);
+                    let base = obj
+                        .pointer_mut("/base")
+                        .ok_or(ChangeSetError::MissingHead)?;
+                    *base = serde_json::Value::Bool(false);
                     let change_set_id = obj
                         .pointer_mut("/siChangeSet/changeSetId")
                         .ok_or(ChangeSetError::IdMissing)?;
@@ -293,6 +294,10 @@ impl ChangeSet {
                         .pointer_mut("/head")
                         .ok_or(ChangeSetError::MissingHead)?;
                     *head = serde_json::Value::Bool(true);
+                    let base = obj
+                        .pointer_mut("/base")
+                        .ok_or(ChangeSetError::MissingHead)?;
+                    *base = serde_json::Value::Bool(false);
                 }
                 upsert_model(db, nats, id, obj).await?;
                 {
@@ -300,6 +305,10 @@ impl ChangeSet {
                         .pointer_mut("/head")
                         .ok_or(ChangeSetError::MissingHead)?;
                     *head = serde_json::Value::Bool(false);
+                    let base = obj
+                        .pointer_mut("/base")
+                        .ok_or(ChangeSetError::MissingHead)?;
+                    *base = serde_json::Value::Bool(false);
                     let change_set_id = obj
                         .pointer_mut("/siChangeSet/changeSetId")
                         .ok_or(ChangeSetError::IdMissing)?;

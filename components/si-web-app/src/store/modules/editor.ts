@@ -655,6 +655,13 @@ export const editor: Module<EditorStore, RootStore> = {
       commit("system", system);
       await dispatch("context");
     },
+    async editSessionCancel({ state }) {
+      let editSession = state.editSession;
+      if (editSession) {
+        console.log("I am canceling the crap out of this session");
+        await editSession.cancel();
+      }
+    },
     async editSessionCreate({ commit, rootGetters, state }) {
       let workspace = rootGetters["workspace/current"];
       let organization = rootGetters["organization/current"];

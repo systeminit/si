@@ -45,6 +45,7 @@ export interface IEntity {
   };
   nodeId: string;
   head: boolean;
+  base: boolean;
   siStorable: ISiStorable;
   siChangeSet: ISiChangeSet;
 }
@@ -60,6 +61,7 @@ export class Entity implements IEntity {
   properties: IEntity["properties"];
   nodeId: IEntity["nodeId"];
   head: IEntity["head"];
+  base: IEntity["base"];
   siStorable: IEntity["siStorable"];
   siChangeSet: IEntity["siChangeSet"];
 
@@ -74,6 +76,7 @@ export class Entity implements IEntity {
     this.properties = args.properties;
     this.nodeId = args.nodeId;
     this.head = args.head;
+    this.base = args.base;
     this.siStorable = args.siStorable;
     this.siChangeSet = args.siChangeSet;
   }
@@ -322,7 +325,9 @@ export class Entity implements IEntity {
     if (this.head) {
       await db.headEntities.put(this);
     } else {
-      await db.projectionEntities.put(this);
+      if (!this.base) {
+        await db.projectionEntities.put(this);
+      }
     }
     this.dispatch();
   }
