@@ -6,18 +6,18 @@ module.exports = {
     "prettier/@typescript-eslint",
     "plugin:prettier/recommended",
   ],
-  plugins: ["graphql"],
+  plugins: [],
   parserOptions: {
     ecmaVersion: 2018, // Allows for the parsing of modern ECMAScript features
     sourceType: "module", // Allows for the use of imports
   },
   rules: {
-    "no-unused-vars": [2, { args: "after-used", argsIgnorePattern: "^_" }],
+    "no-unused-vars": [2, {args: "after-used", argsIgnorePattern: "^_"}],
     "no-use-before-define": "off",
     "@typescript-eslint/ban-ts-ignore": "off",
     "@typescript-eslint/no-unused-vars": [
       2,
-      { args: "after-used", argsIgnorePattern: "^_" },
+      {args: "after-used", argsIgnorePattern: "^_"},
     ],
     "@typescript-eslint/no-use-before-define": "off",
     // Place to specify ESLint rules. Can be used to overwrite rules specified from the extended configs

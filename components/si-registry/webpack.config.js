@@ -11,7 +11,6 @@ module.exports = {
   // Change to your "entry-point".
   entry: {
     main: "./src/index",
-    binary: "./src/bin/si-generate",
     server: "./src/bin/si-veritech",
   },
   output: {
@@ -39,8 +38,8 @@ module.exports = {
     new WebpackBar(),
     new CleanWebpackPlugin(),
     new NodemonPlugin({
-      script: "./dist/binary.bundle.js",
-      watch: ["./dist", "./src/codegen/rust"],
+      script: "./dist/server.bundle.js",
+      watch: ["./dist"],
       nodeArgs: ["--enable-source-maps"],
       ext: "js,ejs",
     }),

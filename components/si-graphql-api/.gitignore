@@ -1,6 +1,0 @@
-dist
-tags
-node_modules
-.env
-lib
-results/

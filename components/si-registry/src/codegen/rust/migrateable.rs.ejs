@@ -1,8 +1,0 @@
-impl si_data::Migrateable for <%- fmt.structName() %> {
-    fn get_version(&self) -> i32 {
-        match self.si_properties.as_ref().map(|p| p.version) {
-            Some(v) => v.unwrap_or(0),
-            None => 0,
-        }
-    }
-}

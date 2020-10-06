@@ -8,7 +8,6 @@ import {
 } from "./attrList";
 import { camelCase } from "change-case";
 import { AssociationList } from "./systemObject/associations";
-import { SiGraphql } from "./systemObject/graphql";
 import {
   Entity,
   CalculateConfiguresReply,
@@ -54,8 +53,6 @@ export class BaseObject {
   methodsProp: PropObject;
   associations: AssociationList;
 
-  private internalGraphql: undefined | SiGraphql;
-
   constructor({
     typeName,
     displayTypeName,
@@ -79,7 +76,6 @@ export class BaseObject {
       parentName: "",
     });
     this.associations = new AssociationList();
-    this.internalGraphql = undefined;
     this.mvcc = false;
   }
 
@@ -89,13 +85,6 @@ export class BaseObject {
 
   get methods(): BaseObject["methodsProp"]["properties"] {
     return this.methodsProp.properties;
-  }
-
-  get graphql(): SiGraphql {
-    if (this.internalGraphql == undefined) {
-      this.internalGraphql = new SiGraphql(this);
-    }
-    return this.internalGraphql;
   }
 
   kind(): string {
