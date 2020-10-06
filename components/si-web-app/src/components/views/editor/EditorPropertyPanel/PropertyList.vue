@@ -127,7 +127,6 @@
 import Vue, { PropType } from "vue";
 import { mapState, mapGetters } from "vuex";
 
-import { EntityProperty } from "@/store/modules/entity";
 import PropText from "./PropText.vue";
 import PropObject from "./PropObject.vue";
 import PropNumber from "./PropNumber.vue";
@@ -195,7 +194,7 @@ export default Vue.extend({
         this.collapsedPaths.push(path);
       }
     },
-    isOpen(prop: EntityProperty): boolean {
+    isOpen(prop: RegistryProperty): boolean {
       const collapsed = _.find(this.collapsedPaths, path => {
         if (_.isEqual(prop.path, path)) {
           return true;
@@ -209,7 +208,7 @@ export default Vue.extend({
         return true;
       }
     },
-    showPath(prop: EntityProperty): boolean {
+    showPath(prop: RegistryProperty): boolean {
       const collapsed = _.find(this.collapsedPaths, path => {
         if (prop.path.length >= path.length) {
           if (_.isEqual(prop.path, path)) {
@@ -228,10 +227,10 @@ export default Vue.extend({
         return true;
       }
     },
-    propKind(prop: EntityProperty, kindToCheck: string): boolean {
+    propKind(prop: RegistryProperty, kindToCheck: string): boolean {
       return prop.kind == kindToCheck;
     },
-    repeated(prop: EntityProperty): boolean {
+    repeated(prop: RegistryProperty): boolean {
       return prop.repeated;
     },
     // Returns a single rgb color interpolation between given rgb color

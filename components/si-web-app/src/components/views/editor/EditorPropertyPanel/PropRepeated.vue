@@ -122,7 +122,6 @@ import {
 import _ from "lodash";
 
 import { RootStore } from "@/store";
-import { RegistryProperty, debouncedSetFieldValue } from "@/store/modules/node";
 import PropText from "./PropText.vue";
 import PropObject from "./PropObject.vue";
 import PropNumber from "./PropNumber.vue";
@@ -130,6 +129,8 @@ import PropEnum from "./PropEnum.vue";
 import PropMap from "./PropMap.vue";
 import PropSelect from "./PropSelect.vue";
 import PropMixin from "./PropMixin";
+
+import { RegistryProperty } from "@/api/sdf/model/node";
 
 // This component only works with repeated objects! When we need it to work with
 // repeated fields of other types, we're going to have to extend it. For now,
@@ -184,7 +185,7 @@ export default PropMixin.extend({
     },
     showPath(prop: RegistryProperty, index: number): boolean {
       let propPath = _.cloneDeep(prop.path);
-      propPath.push(index);
+      propPath.push(`${index}`);
       const collapsed = _.find(
         this.collapsedPaths,
         (path: (string | number)[]) => {

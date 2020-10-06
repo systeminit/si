@@ -17,7 +17,7 @@
 import Vue from "vue";
 import Joi from "joi";
 import { AlertTriangleIcon } from "vue-feather-icons";
-import { RegistryProperty } from "@/store/modules/node";
+import { RegistryProperty } from "@/api/sdf/model/node";
 
 export default Vue.extend({
   name: "ValidationWidget",

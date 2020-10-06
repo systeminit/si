@@ -4,11 +4,8 @@
   "version": "0.1.0",
   "description": "Component/Entity Registry",
   "main": "lib/index.js",
-  "bin": {
-    "si-generate": "src/bin/si-generate.ts"
-  },
   "scripts": {
-    "bundle": "webpack",
+    "bundle": "webpack --mode production",
     "watch": "webpack --watch",
     "type-check": "tsc --noEmit",
     "type-check:watch": "npm run type-check -- --watch",

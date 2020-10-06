@@ -11,7 +11,7 @@ import Vue from "vue";
 import { mapState, mapGetters } from "vuex";
 import * as monaco from "monaco-editor";
 
-import { Node } from "@/store/modules/node";
+import { Node } from "@/api/sdf/model/node";
 import _ from "lodash";
 
 interface Data {

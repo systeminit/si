@@ -75,7 +75,7 @@
 import Vue from "vue";
 import { Maximize2Icon, PlusSquareIcon, CommandIcon } from "vue-feather-icons";
 import NodeEditor from "./NodeEditor.vue";
-import { registry, EntityObject } from "si-registry";
+import { registry } from "si-registry";
 import _ from "lodash";
 import { mapState } from "vuex";
 import { RootStore } from "@/store";
@@ -85,7 +85,7 @@ import { NodeKind } from "@/api/sdf/model/node";
 interface Data {
   selectedEntityType: string;
   selectedAction: string;
-  entityTypeList: EntityObject[];
+  entityTypeList: any[];
 }
 
 export default Vue.extend({

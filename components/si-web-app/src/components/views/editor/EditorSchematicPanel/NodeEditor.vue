@@ -369,7 +369,7 @@ export default Vue.extend({
         });
       }
     },
-    mouseDown(event): void {
+    mouseDown(event: any): void {
       // console.log("mouseDown");
       // Enable alt key to drag the whole editor canvas
       // if (event.altKey) {
@@ -442,7 +442,7 @@ export default Vue.extend({
         this.isPanning = false;
       }
     },
-    mouseMove(event): void {
+    mouseMove(event: any): void {
       if (this.mouseTrackSelection) {
         this.selection.object = document.getElementById(
           this.mouseTrackSelection,
@@ -482,12 +482,12 @@ export default Vue.extend({
         }
       }
     },
-    mouseWheel(event): void {
+    mouseWheel(event: any): void {
       if (event.altKey) {
         this.zoomCanvas(event);
       }
     },
-    log(msg): void {
+    log(msg: string): void {
       console.log(msg);
     },
     canvasConstraint(): void {
@@ -510,7 +510,9 @@ export default Vue.extend({
       // console.log("panning canvas");
 
       let mousePositionInScreenSpace = {
+        // @ts-ignore
         x: event.clientX,
+        // @ts-ignore
         y: event.clientY,
       };
       this.log(
@@ -590,7 +592,7 @@ export default Vue.extend({
       this.canvas.translation.x = translation.x;
       this.canvas.translation.y = translation.y;
     },
-    linearEquation(point1, point2, value): number {
+    linearEquation(point1: any, point2: any, value: number): number {
       /**
        * - solving the equation to limit pan -
        *
@@ -621,7 +623,7 @@ export default Vue.extend({
 
       return y;
     },
-    zoomCanvas(event): void {
+    zoomCanvas(event: any): void {
       /**
        * - Zoom on cursor implementation -
        *
@@ -680,7 +682,7 @@ export default Vue.extend({
        * @canvas.offsetLeft :: offsetLeft position of the canvas <div> element
        * @canvas.offsetTop :: offsetTop position of the canvas <div> element
        */
-      let canvas = this.$refs.canvas;
+      let canvas: any = this.$refs.canvas;
       let canvasOrigin = {
         x: canvas.offsetLeft,
         y: canvas.offsetTop,
@@ -776,7 +778,7 @@ export default Vue.extend({
       this.canvas.offset.x = translation.x;
       this.canvas.offset.y = translation.y;
     },
-    updateGrid(scale): void {
+    updateGrid(scale: number): void {
       // let grid = this.$refs.grid;
       let width = {
         x: 100 + 100 * (1 + (1 - scale)),

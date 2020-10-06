@@ -12,16 +12,16 @@ import { IEdge, Edge, EdgeKind } from "@/api/sdf/model/edge";
 import { Query, Comparison } from "@/api/sdf/model/query";
 import { Entity, IEntity } from "@/api/sdf/model/entity";
 import { System, ISystem } from "@/api/sdf/model/system";
-import { Resource, IResource } from "@/api/sdf/model/resource";
+import { Resource } from "@/api/sdf/model/resource";
 import store from "@/store";
 
 import _ from "lodash";
-import { registry, Props, PropMethod, PropLink, PropObject } from "si-registry";
+import { registry, PropLink, PropObject } from "si-registry";
 
 export interface RegistryProperty {
   id: string;
   path: string[];
-  prop: Props;
+  prop: any;
   name: string;
   label: string;
   required: boolean;
@@ -31,7 +31,7 @@ export interface RegistryProperty {
 }
 
 export interface PropEntry {
-  prop: Props;
+  prop: any;
   path: string[];
 }
 

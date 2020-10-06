@@ -38,7 +38,7 @@ import { Store, mapState, mapGetters } from "vuex";
 import _ from "lodash";
 
 import { RootStore } from "@/store";
-import { RegistryProperty, debouncedSetFieldValue } from "@/store/modules/node";
+import { RegistryProperty } from "@/api/sdf/model/node";
 
 import PropMixin from "./PropMixin";
 import ValidationWidget from "@/components/ui/ValidationWidget.vue";

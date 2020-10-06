@@ -119,11 +119,6 @@ export default Vue.extend({
     }
     let me = user.methods.getEntry("loginInternal") as PropMethod;
     return {
-      obj: user,
-      objVariables: user.graphql.variablesObject({
-        methodName: "loginInternal",
-      }),
-      objMethod: me.request,
       error: undefined,
       form: {
         /**

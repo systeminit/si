@@ -29,7 +29,7 @@ import Vue from "vue";
 import { mapState } from "vuex";
 import { ChevronDownIcon, ChevronRightIcon } from "vue-feather-icons";
 
-import { RegistryProperty } from "@/store/modules/node";
+import { RegistryProperty } from "@/api/sdf/model/node";
 import _ from "lodash";
 
 interface PropObjectData {
