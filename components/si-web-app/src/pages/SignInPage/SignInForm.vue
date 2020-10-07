@@ -148,6 +148,11 @@ export default Vue.extend({
           label: "SignIn",
         },
       },
+      objVariables: {
+        billingAccountName: "",
+        password: "",
+        email: "",
+      },
     };
   },
   methods: {
