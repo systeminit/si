@@ -180,6 +180,7 @@ pub struct Entity {
     pub properties: EntityProperties,
     pub node_id: String,
     pub head: bool,
+    pub base: bool,
     pub si_storable: SiStorable,
     pub si_change_set: Option<SiChangeSet>,
 }
@@ -226,7 +227,8 @@ impl Entity {
             let inferred_properties = EntityProperties::new();
             let properties = EntityProperties::new();
             let id = si_storable.object_id.clone();
-            let key = format!("{}:{}", si_storable.object_id, &change_set_id);
+            let key = format!("{}:{}", &si_storable.object_id, &change_set_id);
+            let base_key = format!("{}:{}:base", &si_storable.object_id, &change_set_id);
             let si_change_set = SiChangeSet::new(
                 &db,
                 &nats,
@@ -242,6 +244,7 @@ impl Entity {
                 name,
                 object_type,
                 head,
+                base: false,
                 description,
                 expression_properties,
                 manual_properties,
@@ -254,6 +257,8 @@ impl Entity {
 
             entity.calculate_properties().await?;
             insert_model(&db, &nats, &key, &entity).await?;
+            entity.base = true;
+            insert_model(&db, &nats, &base_key, &entity).await?;
             for system_id in system_ids {
                 let system = System::get_any(&db, &system_id).await?;
                 tracing::error!(?system_id, ?system, ?entity, "adding sytem edge");

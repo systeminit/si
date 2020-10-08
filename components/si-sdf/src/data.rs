@@ -177,6 +177,15 @@ pub async fn create_indexes(db: &Db) -> DataResult<()> {
     create_index(
         &db,
         format!(
+            "CREATE INDEX `idx_si_changeset_changesetid_si_changeset_editsessionid` on `{bucket}`(siChangeSet.changeSetId, siChangeSet.editSessionId)",
+            bucket = db.bucket_name
+        ),
+    )
+    .await?;
+
+    create_index(
+        &db,
+        format!(
             "CREATE INDEX `idx_id` on `{bucket}`(id)",
             bucket = db.bucket_name
         ),

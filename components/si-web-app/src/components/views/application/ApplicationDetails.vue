@@ -390,8 +390,7 @@ export default Vue.extend({
       }
     },
     async cancelEditSession() {
-      // TODO: Add edit session revert - going to be a lot easier
-      //       after we add the rest of the logic.
+      await this.$store.dispatch("editor/editSessionCancel");
       await this.$store.dispatch("editor/setEditSession", { id: undefined });
       await this.$store.dispatch("editor/modeSwitch");
     },

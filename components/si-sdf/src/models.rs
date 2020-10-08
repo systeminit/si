@@ -640,6 +640,7 @@ pub async fn get_base_object(
         "SELECT a.*
           FROM `{bucket}` AS a
           WHERE (a.siStorable.objectId = $id AND a.head = true) OR (a.siStorable.objectId = $id AND a.siChangeSet.changeSetId = $change_set_id)
+          ORDER BY head DESC, base DESC
           LIMIT 1
         ",
         bucket = db.bucket_name
@@ -648,7 +649,8 @@ pub async fn get_base_object(
     named_params.insert("id".into(), serde_json::json![id]);
     named_params.insert("change_set_id".into(), serde_json::json![change_set_id]);
     tracing::error!(?query, ?named_params, "get base object");
-    let mut query_results: Vec<serde_json::Value> = db.query(query, Some(named_params)).await?;
+    let mut query_results: Vec<serde_json::Value> =
+        db.query_consistent(query, Some(named_params)).await?;
     if query_results.len() == 0 {
         Err(ModelError::NoBase)
     } else {

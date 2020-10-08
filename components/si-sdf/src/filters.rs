@@ -414,6 +414,7 @@ pub fn change_sets(
     change_set_create(db.clone(), nats.clone())
         .or(change_set_patch(db.clone(), nats.clone()))
         .or(edit_session_create(db.clone(), nats.clone()))
+        .or(edit_session_patch(db.clone(), nats.clone()))
 }
 
 pub fn change_set_create(
@@ -453,6 +454,19 @@ pub fn edit_session_create(
         .and(warp::header::<String>("authorization"))
         .and(warp::body::json::<models::edit_session::CreateRequest>())
         .and_then(handlers::edit_sessions::create)
+}
+
+pub fn edit_session_patch(
+    db: Db,
+    nats: Connection,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("changeSets" / String / "editSessions" / String)
+        .and(warp::patch())
+        .and(with_db(db))
+        .and(with_nats(nats))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::body::json::<models::edit_session::PatchRequest>())
+        .and_then(handlers::edit_sessions::patch)
 }
 
 // changeSetParticipants
