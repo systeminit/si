@@ -5,8 +5,8 @@
     </div>
     <div class="flex pl-1 mt-1">
       <div v-for="system in systems" class="mr-1" :key="system.id">
-        <SquareChart
-          rgbColor="115, 76, 118"
+        <SystemChart
+          :system="system"
           :data-cy="'systems-visualization-' + system.name"
         />
       </div>
@@ -19,12 +19,12 @@ import Vue from "vue";
 import { mapState } from "vuex";
 
 import { RootStore } from "@/store";
-import SquareChart from "@/components/visualization/charts/SquareChart.vue";
+import SystemChart from "@/components/visualization/charts/SystemChart.vue";
 
 export default Vue.extend({
   name: "SystemsVisualization",
   components: {
-    SquareChart,
+    SystemChart,
   },
   props: {
     applicationId: String,

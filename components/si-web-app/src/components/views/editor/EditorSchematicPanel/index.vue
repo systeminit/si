@@ -119,7 +119,9 @@ export default Vue.extend({
       });
     },
     async sendAction(): Promise<void> {
-      await this.$store.dispatch("editor/sendAction", this.selectedAction);
+      await this.$store.dispatch("editor/sendAction", {
+        action: this.selectedAction,
+      });
     },
   },
   computed: {

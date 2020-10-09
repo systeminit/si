@@ -1,7 +1,10 @@
+use std::future::Future;
+use std::pin::Pin;
+
 use crate::data::{Connection, Db, REQWEST};
 use crate::models::{
-    insert_model, Edge, EdgeKind, Node, OpError, OpResult, Resource, ResourceHealth,
-    ResourceStatus, SiChangeSet, SiChangeSetEvent, SiOp, SiStorable,
+    get_base_object, insert_model, Edge, EdgeKind, Entity, Node, OpError, OpResult, Resource,
+    ResourceHealth, ResourceStatus, SiChangeSet, SiChangeSetEvent, SiOp, SiStorable,
 };
 use serde::{Deserialize, Serialize};
 
@@ -12,7 +15,7 @@ pub struct OpEntityActionRequest {
     pub system_id: String,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct OpEntityAction {
     pub id: String,
@@ -25,7 +28,60 @@ pub struct OpEntityAction {
 }
 
 impl OpEntityAction {
-    pub async fn new(
+    pub fn new(
+        db: Db,
+        nats: Connection,
+        to_id: String,
+        action: String,
+        system_id: String,
+        billing_account_id: String,
+        organization_id: String,
+        workspace_id: String,
+        change_set_id: String,
+        edit_session_id: String,
+        created_by_user_id: String,
+    ) -> Pin<Box<dyn Future<Output = OpResult<Self>> + Send>> {
+        Box::pin(async move {
+            let si_storable = SiStorable::new(
+                &db,
+                "opEntityAction",
+                billing_account_id.clone(),
+                organization_id,
+                workspace_id,
+                Some(created_by_user_id),
+            )
+            .await?;
+
+            let id = si_storable.object_id.clone();
+
+            let si_change_set = SiChangeSet::new(
+                &db,
+                &nats,
+                change_set_id,
+                edit_session_id,
+                &id,
+                billing_account_id,
+                SiChangeSetEvent::Operation,
+            )
+            .await?;
+
+            let si_op = SiOp::new(None);
+
+            let op = OpEntityAction {
+                id,
+                to_id,
+                action,
+                system_id,
+                si_op,
+                si_storable,
+                si_change_set,
+            };
+            insert_model(&db, &nats, &op.id, &op).await?;
+            Ok(op)
+        })
+    }
+
+    pub async fn new_no_persist(
         db: &Db,
         nats: &Connection,
         to_id: impl Into<String>,
@@ -75,7 +131,6 @@ impl OpEntityAction {
             si_storable,
             si_change_set,
         };
-        insert_model(db, nats, &op.id, &op).await?;
         Ok(op)
     }
 
@@ -83,112 +138,150 @@ impl OpEntityAction {
         self.si_op.skip()
     }
 
-    pub async fn apply(
+    pub fn apply(
         &self,
         db: &Db,
         nats: &Connection,
         hypothetical: bool,
         to: &mut serde_json::Value,
-    ) -> OpResult<()> {
-        if self.skip() {
-            return Ok(());
-        }
+    ) -> Pin<Box<dyn Future<Output = OpResult<()>> + Send>> {
+        let this_action = self.clone();
+        let db = db.clone();
+        let nats = nats.clone();
+        let to = to.clone();
+        Box::pin(async move {
+            if this_action.skip() {
+                return Ok(());
+            }
 
-        let successors =
-            Edge::all_successor_edges_by_object_id(db, EdgeKind::Configures, &self.to_id).await?;
-        let mut entity_successors = Vec::new();
-        for edge in successors.iter() {
-            tracing::warn!(?edge, ?self.to_id, "what we're trying to do here...");
-            let node = Node::get(
-                db,
-                &edge.head_vertex.node_id,
-                &self.si_storable.billing_account_id,
+            let successors = Edge::all_successor_edges_by_object_id(
+                &db,
+                EdgeKind::Configures,
+                &this_action.to_id,
             )
             .await?;
-            let entity: serde_json::Value = if let Ok(entity) = node
-                .get_object_projection(db, &self.si_change_set.change_set_id)
-                .await
-            {
-                entity
-            } else {
-                node.get_head_object(db).await?
-            };
-            entity_successors.push(entity);
-        }
+            let mut entity_successors = Vec::new();
+            for edge in successors.iter() {
+                tracing::warn!(?edge, ?this_action.to_id, "what we're trying to do here...");
+                let node = Node::get(
+                    &db,
+                    &edge.head_vertex.node_id,
+                    &this_action.si_storable.billing_account_id,
+                )
+                .await?;
+                let entity: serde_json::Value = if let Ok(entity) = node
+                    .get_object_projection(&db, &this_action.si_change_set.change_set_id)
+                    .await
+                {
+                    entity
+                } else {
+                    node.get_head_object(&db).await?
+                };
+                entity_successors.push(entity);
+            }
 
-        let predecessors =
-            Edge::all_predecessor_edges_by_object_id(db, EdgeKind::Configures, &self.to_id).await?;
-        let mut entity_predecessors = Vec::new();
-        for edge in predecessors.iter() {
-            tracing::warn!(?edge, ?self.to_id, "what we're trying to do here predecessors...");
-            let node = Node::get(
-                db,
-                &edge.tail_vertex.node_id,
-                &self.si_storable.billing_account_id,
+            let predecessors = Edge::all_predecessor_edges_by_object_id(
+                &db,
+                EdgeKind::Configures,
+                &this_action.to_id,
             )
             .await?;
-            let entity: serde_json::Value = if let Ok(entity) = node
-                .get_object_projection(db, &self.si_change_set.change_set_id)
-                .await
-            {
-                entity
-            } else {
-                node.get_head_object(db).await?
+            let mut entity_predecessors = Vec::new();
+            for edge in predecessors.iter() {
+                tracing::warn!(?edge, ?this_action.to_id, "what we're trying to do here predecessors...");
+                let node = Node::get(
+                    &db,
+                    &edge.tail_vertex.node_id,
+                    &this_action.si_storable.billing_account_id,
+                )
+                .await?;
+                let entity: serde_json::Value = if let Ok(entity) = node
+                    .get_object_projection(&db, &this_action.si_change_set.change_set_id)
+                    .await
+                {
+                    entity
+                } else {
+                    node.get_head_object(&db).await?
+                };
+                entity_predecessors.push(entity);
+            }
+
+            let action_request_entities = ActionRequestEntity {
+                predecessors: entity_predecessors,
+                successors: entity_successors,
             };
-            entity_predecessors.push(entity);
-        }
 
-        let action_request_entities = ActionRequestEntity {
-            predecessors: entity_predecessors,
-            successors: entity_successors,
-        };
+            let action_request_resources = ActionRequestResources {
+                predecessors: vec![],
+                successors: vec![],
+            };
 
-        let action_request_resources = ActionRequestResources {
-            predecessors: vec![],
-            successors: vec![],
-        };
+            let action_request = ActionRequest::new(
+                &this_action.to_id,
+                &this_action.action,
+                &this_action.system_id,
+                hypothetical,
+                action_request_entities,
+                action_request_resources,
+                to.clone(),
+            );
 
-        let action_request = ActionRequest::new(
-            &self.to_id,
-            &self.action,
-            &self.system_id,
-            hypothetical,
-            action_request_entities,
-            action_request_resources,
-            to.clone(),
-        );
+            let response = run_action(action_request).await?;
+            tracing::warn!(?response, "i dispatched your action!");
 
-        let response = run_action(action_request).await?;
-        tracing::warn!(?response, "i dispatched your action!");
+            let node_id = to["nodeId"].as_str().ok_or(OpError::Missing("node_id"))?;
+            let entity_id = to["id"].as_str().ok_or(OpError::Missing("id"))?;
 
-        let node_id = to["nodeId"].as_str().ok_or(OpError::Missing("node_id"))?;
-        let entity_id = to["id"].as_str().ok_or(OpError::Missing("id"))?;
+            Resource::from_update(
+                &db,
+                &nats,
+                response.resource.state,
+                response.resource.status,
+                response.resource.health,
+                &this_action.system_id,
+                node_id,
+                entity_id,
+                this_action.si_storable.billing_account_id.clone(),
+                this_action.si_storable.organization_id.clone(),
+                this_action.si_storable.workspace_id.clone(),
+                this_action.si_storable.created_by_user_id.clone(),
+            )
+            .await?;
 
-        Resource::from_update(
-            &db,
-            &nats,
-            response.resource.state,
-            response.resource.status,
-            response.resource.health,
-            &self.system_id,
-            node_id,
-            entity_id,
-            self.si_storable.billing_account_id.clone(),
-            self.si_storable.organization_id.clone(),
-            self.si_storable.workspace_id.clone(),
-            self.si_storable.created_by_user_id.clone(),
-        )
-        .await?;
+            for action in response.actions.iter() {
+                let new_action = OpEntityAction::new_no_persist(
+                    &db,
+                    &nats,
+                    &action.entity_id,
+                    &action.action,
+                    &this_action.system_id,
+                    this_action.si_storable.billing_account_id.clone(),
+                    this_action.si_storable.organization_id.clone(),
+                    this_action.si_storable.workspace_id.clone(),
+                    this_action.si_change_set.change_set_id.clone(),
+                    this_action.si_change_set.edit_session_id.clone(),
+                    this_action
+                        .si_storable
+                        .created_by_user_id
+                        .as_ref()
+                        .unwrap()
+                        .clone(),
+                )
+                .await?;
+                let mut object = get_base_object(
+                    &db,
+                    &action.entity_id,
+                    &this_action.si_change_set.change_set_id,
+                )
+                .await?;
 
-        // TODO: Next up is to take the resource update, and see if there is a resource for
-        // this node. If there is, update it. If there is not, create it. Then integrate
-        // the resources into the UI.
-        //
-        // Then, for each action we are asked to take, validate that the nodeId is in the
-        // successors list (you are not allowed to notify predecessors). If it is, create
-        // a new OpEntityAction, save it, and apply it immediately.
+                new_action
+                    .apply(&db, &nats, hypothetical, &mut object)
+                    .await?;
+            }
 
-        Ok(())
+            Ok(())
+        })
     }
 }
 
@@ -255,7 +348,7 @@ pub struct ActionResourceUpdate {
 #[serde(rename_all = "camelCase")]
 pub struct ActionUpdate {
     action: String,
-    node_id: String,
+    entity_id: String,
 }
 
 #[derive(Deserialize, Serialize, Debug)]

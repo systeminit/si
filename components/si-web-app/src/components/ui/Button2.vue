@@ -11,6 +11,7 @@
         <XIcon :size="iconSize" v-else-if="icon == 'cancel'" />
         <RefreshCcwIcon :size="iconSize" v-else-if="icon == 'refresh'" />
         <EditIcon :size="iconSize" v-else-if="icon == 'edit'" />
+        <UploadCloudIcon :size="iconSize" v-else-if="icon == 'deploy'" />
       </div>
       <div class="ml-1 font-normal" v-if="label">
         {{ label }}
@@ -28,12 +29,13 @@ import {
   SaveIcon,
   XIcon,
   EditIcon,
+  UploadCloudIcon,
 } from "vue-feather-icons";
 
 interface ButtonProps {
   kind: "standard" | "save" | "cancel";
   label: null | string;
-  icon: null | "play" | "save" | "cancel" | "refresh" | "edit";
+  icon: null | "play" | "save" | "cancel" | "refresh" | "edit" | "deploy";
   size: "xs" | "sm" | "base" | "lg";
   disabled: boolean;
 }
@@ -46,6 +48,7 @@ export default Vue.extend({
     XIcon,
     RefreshCcwIcon,
     EditIcon,
+    UploadCloudIcon,
   },
   props: {
     kind: {
