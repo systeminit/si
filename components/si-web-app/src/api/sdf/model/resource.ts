@@ -82,6 +82,7 @@ export class Resource implements IResource {
 
   async dispatch(): Promise<void> {
     await store.dispatch("editor/fromResource", this);
+    await store.dispatch("application/fromResource", this);
   }
 
   static async restore(): Promise<void> {

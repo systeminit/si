@@ -257,7 +257,7 @@ export interface ActionReply {
   resource: ResourceUpdate;
   actions: {
     action: string;
-    nodeId: string;
+    entityId: string;
   }[];
 }
 

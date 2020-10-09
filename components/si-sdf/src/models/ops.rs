@@ -55,7 +55,7 @@ pub struct OpReply {
 
 pub type OpResult<T> = Result<T, OpError>;
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SiOp {
     skip: bool,

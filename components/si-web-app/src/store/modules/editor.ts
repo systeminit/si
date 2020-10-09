@@ -54,6 +54,11 @@ export interface ActionChangeSetCreate {
   name: string;
 }
 
+export interface ActionEntityAction {
+  action: string;
+  nodeId?: string;
+}
+
 export interface ActionNodeCreate {
   kind: NodeKind;
   objectType: string;
@@ -390,13 +395,18 @@ export const editor: Module<EditorStore, RootStore> = {
         await dispatch("entityAction", payload);
       }
     },
-    async entityAction({ state, rootGetters }, payload: string) {
+    async entityAction({ state, rootGetters }, payload: ActionEntityAction) {
       let organization = rootGetters["organization/current"];
       let workspace = rootGetters["workspace/current"];
       let changeSet = state.changeSet;
       let editSession = state.editSession;
       let system = state.system;
-      let node = state.node;
+      let node: Node | undefined;
+      if (payload.nodeId) {
+        node = await Node.get({ id: payload.nodeId });
+      } else {
+        node = state.node;
+      }
       if (
         organization &&
         workspace &&
@@ -407,7 +417,7 @@ export const editor: Module<EditorStore, RootStore> = {
       ) {
         let op = {
           entityAction: {
-            action: payload,
+            action: payload.action,
             systemId: system.id,
           },
         };

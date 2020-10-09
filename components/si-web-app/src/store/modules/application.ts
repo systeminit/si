@@ -8,6 +8,7 @@ import { EditSession } from "@/api/sdf/model/editSession";
 import { Node, NodeKind } from "@/api/sdf/model/node";
 import { Edge, EdgeKind } from "@/api/sdf/model/edge";
 import { System } from "@/api/sdf/model/system";
+import { Resource } from "@/api/sdf/model/resource";
 import { RootStore } from "@/store";
 
 export type Application = Entity;
@@ -19,6 +20,9 @@ export interface ApplicationStore {
   };
   services: {
     [key: string]: Entity[];
+  };
+  resources: {
+    [key: string]: Resource[];
   };
   changeSetCounts: {
     [key: string]: {
@@ -59,6 +63,7 @@ export const application: Module<ApplicationStore, RootStore> = {
     systems: {},
     changeSetCounts: {},
     services: {},
+    resources: {},
   },
   getters: {},
   mutations: {
@@ -83,6 +88,17 @@ export const application: Module<ApplicationStore, RootStore> = {
       state.systems[payload.application.id] = _.unionBy(
         [payload.system],
         state.systems[payload.application.id],
+      );
+    },
+    updateResources(
+      state,
+      payload: { resource: Resource; applicationId: string },
+    ) {
+      let currentResources = state.resources[payload.applicationId] || [];
+      state.resources[payload.applicationId] = _.unionBy(
+        [payload.resource],
+        currentResources,
+        "id",
       );
     },
     updateServices(state, payload: MutationUpdateServices) {
@@ -158,6 +174,36 @@ export const application: Module<ApplicationStore, RootStore> = {
             application: p,
             changeSetCounts,
           });
+        }
+      }
+    },
+    async fromResource({ state, commit }, payload: Resource) {
+      const node = await Node.get({ id: payload.nodeId });
+      const predecessors = await node.predecessors();
+      let application: Node | undefined = undefined;
+      for (const pNode of predecessors) {
+        if (pNode.objectType == "application") {
+          application = pNode;
+          break;
+        }
+      }
+      let applicationEntity: Entity | undefined = undefined;
+      if (application) {
+        try {
+          applicationEntity = (await application.headObject()) as Entity;
+        } catch {
+          applicationEntity = undefined;
+        }
+      }
+      if (application && applicationEntity) {
+        let servicesList = state.services[applicationEntity.nodeId];
+        if (servicesList) {
+          if (_.find(servicesList, ["id", payload.entityId])) {
+            commit("updateResources", {
+              applicationId: applicationEntity.id,
+              resource: payload,
+            });
+          }
         }
       }
     },

@@ -177,11 +177,11 @@ pub async fn object_patch(
         }
         OpRequest::EntityAction(op_request) => {
             OpEntityAction::new(
-                &db,
-                &nats,
-                &entity_id,
-                &op_request.action,
-                &op_request.system_id,
+                db.clone(),
+                nats.clone(),
+                entity_id,
+                op_request.action,
+                op_request.system_id,
                 claim.billing_account_id,
                 request.organization_id,
                 request.workspace_id,

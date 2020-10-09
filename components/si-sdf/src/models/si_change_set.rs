@@ -18,7 +18,7 @@ pub enum SiChangeSetError {
 
 pub type SiChangeSetResult<T> = Result<T, SiChangeSetError>;
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub enum SiChangeSetEvent {
     Create,
     Delete,
@@ -27,7 +27,7 @@ pub enum SiChangeSetEvent {
     Projection,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SiChangeSet {
     pub change_set_id: String,

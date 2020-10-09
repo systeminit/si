@@ -12,7 +12,7 @@ pub enum SiStorableError {
 
 pub type SiStorableResult<T> = Result<T, SiStorableError>;
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SiStorable {
     pub type_name: String,

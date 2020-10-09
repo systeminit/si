@@ -4,6 +4,12 @@ import {
   PropText,
   PropSelect,
 } from "../../components/prelude";
+import {
+  ActionRequest,
+  ActionReply,
+  ResourceHealth,
+  ResourceStatus,
+} from "../../veritech/intelligence";
 import { registry } from "../../registry";
 
 registry.componentAndEntity({
@@ -70,5 +76,28 @@ registry.componentAndEntity({
         p.mutation = true;
       },
     });
+
+    c.entity.intelligence.actions = {
+      async deploy(request: ActionRequest): Promise<ActionReply> {
+        const actions: ActionReply["actions"] = [];
+        for (const child of request.entities.successors) {
+          if (child.objectType == "service") {
+            actions.push({ action: "deploy", nodeId: child.nodeId });
+          }
+        }
+        const reply: ActionReply = {
+          resource: {
+            state: {
+              alex: "van halen",
+              deployedBy: request.entities.predecessors.map(p => p.name),
+            },
+            health: ResourceHealth.Ok,
+            status: ResourceStatus.Created,
+          },
+          actions,
+        };
+        return reply;
+      },
+    };
   },
 });
