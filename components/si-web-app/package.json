@@ -62,6 +62,7 @@
     "@vue/eslint-config-typescript": "^5.0.1",
     "@vue/test-utils": "^1.0.3",
     "babel-eslint": "^10.1.0",
+    "babel-plugin-transform-remove-console": "^6.9.4",
     "chai": "^4.1.2",
     "eslint": "^6.7.2",
     "eslint-plugin-prettier": "^3.1.1",

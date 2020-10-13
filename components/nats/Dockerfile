@@ -1,0 +1,1 @@
+FROM nats:latest

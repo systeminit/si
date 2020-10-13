@@ -3,14 +3,16 @@ on:
   push:
     branches:
       - master
+    paths:
+      - 'components/si-sdf/**'
+      - 'components/si-registry/**'
+      - 'components/si-settings/**'
 
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - name: Unshallow the clone 
-      run: git fetch --unshallow
     - name: Notify Slack of Start
       id: slack
       uses: voxmedia/github-action-slack-notify-build@v1
@@ -21,13 +23,12 @@ jobs:
         color: warning
         channel: engineering
     - name: Docker login
-      run: docker login docker.pkg.github.com -u $GITHUB_ACTOR -p $GITHUB_TOKEN
-      env: 
-        GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
-    - name: Docker Pull Recent Base Image
-      run: docker pull docker.pkg.github.com/systeminit/si/si-base:latest
+      run: docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_PASSWORD
+      env:
+        DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+        DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
     - name: Release Components 
-      run: make release_from_git
+      run: make release
     - name: Notify Slack of Success
       if: success()
       uses: voxmedia/github-action-slack-notify-build@v1

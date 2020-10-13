@@ -35,15 +35,10 @@ test_container:
 
 container:
 	env BUILDKIT_PROGRESS=plain DOCKER_BUILDKIT=1 docker build \
-		-f $(CURDIR)/../build/Dockerfile-rust \
-		-t ${COMPONENT}-service:latest \
-		-t ${COMPONENT}-service:$(RELEASE) \
-		-t 835304779882.dkr.ecr.us-east-2.amazonaws.com/si/${COMPONENT}-service:latest \
-		-t 835304779882.dkr.ecr.us-east-2.amazonaws.com/si/${COMPONENT}-service:$(RELEASE) \
-		--build-arg component=${COMPONENT} \
+		-f $(CURDIR)/../${COMPONENT}/Dockerfile \
+		-t systeminit/${COMPONENT}:latest \
+		-t ${COMPONENT}:$(RELEASE) \
 		$(CURDIR)/../../
 
 release: container
-	docker push 835304779882.dkr.ecr.us-east-2.amazonaws.com/si/${COMPONENT}-service:latest
-	docker push 835304779882.dkr.ecr.us-east-2.amazonaws.com/si/${COMPONENT}-service:$(RELEASE)
-
+	docker push systeminit/${COMPONENT}:latest

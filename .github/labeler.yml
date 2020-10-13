@@ -1,16 +1,16 @@
-si-ssh-key:
-  - components/si-ssh-key/**/*
-si-settings:
-  - components/si-settings/**/*
-si-data:
-  - components/si-data/**/*
-si-account:
-  - components/si-account/**/*
-si-graphql-api:
-  - components/si-graphql-api/**/*
-si-web-ui:
-  - components/si-web-ui/**/*
-infra:
-  - components/infra/**/*
+si-sdf:
+  - components/si-sdf/**/*
+si-registry:
+  - components/si-registry/**/*
+si-web-app:
+  - components/si-web-app/**/*
+si-pedant:
+  - components/si-pedant/**/*
+nats:
+  - components/nats
+couchbase:
+  - components/couchbase
+opentelemetry:
+  - components/opentelemetry-collector
 ci:
   - .github/**/*
