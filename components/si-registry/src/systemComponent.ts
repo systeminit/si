@@ -12,6 +12,8 @@ import {
   Entity,
   CalculateConfiguresReply,
   CalculatePropertiesResult,
+  CalculatePropertiesFullResult,
+  CalculatePropertiesRequest,
   System,
   ActionRequest,
   ActionReply,
@@ -22,6 +24,7 @@ import {
 } from "./veritech/intelligence";
 import _ from "lodash";
 import YAML from "yaml";
+import { registry } from "./registry";
 
 export type ObjectTypes =
   | BaseObject
@@ -534,7 +537,7 @@ export class ComponentObject extends SystemObject {
 interface EntityObjectIntelligence {
   // prettier-ignore
   //calculateProperties: (setProperties: Record<string, any>,) => Record<string, any>; // eslint-disable-line
-  calculateProperties?: (entity: Entity) => CalculatePropertiesResult;
+  calculateProperties?: (req: CalculatePropertiesRequest) => CalculatePropertiesResult;
   calculateConfigures?: (
     entity: Entity,
     configures: Entity[],
@@ -550,6 +553,7 @@ export class EntityObject extends SystemObject {
   baseTypeName: string;
   integrationServices: IntegrationService[];
   intelligence: EntityObjectIntelligence;
+  inputTypes: EntityObject[];
 
   constructor(args: BaseObjectConstructor) {
     const typeName = `${args.typeName}`;
@@ -563,6 +567,12 @@ export class EntityObject extends SystemObject {
     this.integrationServices = [];
     this.setEntityDefaults();
     this.intelligence = {};
+    this.inputTypes = [];
+  }
+
+  inputType(typeName: string): void {
+    const entityObj = registry.get(typeName) as EntityObject;
+    this.inputTypes.push(entityObj);
   }
 
   async syncResource(request: SyncResourceRequest): Promise<SyncResourceReply> {
@@ -584,15 +594,16 @@ export class EntityObject extends SystemObject {
 
   async action(request: ActionRequest): Promise<ActionReply> {
     const actions = this.intelligence.actions;
+    console.log("doing some action shit", { actions, request });
     if (actions && actions[request.action]) {
       return actions[request.action](request);
-    } else if (request.action == "sync") {
+    } else if (request.action == "delete") {
       return {
         resource: {
-          health: ResourceHealth.Ok,
-          status: ResourceStatus.Created,
+          health: ResourceHealth.Unknown,
+          status: ResourceStatus.Deleted,
           state: {
-            siDefaultSync: true,
+            siDefaultDelete: true,
           },
         },
         actions: [],
@@ -603,7 +614,9 @@ export class EntityObject extends SystemObject {
   }
 
   // Based on the manual properties and expression properties, pass the results to the inference
-  calculateProperties(entity: Entity): CalculatePropertiesResult {
+  calculateProperties(
+    req: CalculatePropertiesRequest,
+  ): CalculatePropertiesFullResult {
     //entity.properties = entity.manualProperties;
     // First calculate the entire baseline
     // Then calculate manual properties
@@ -613,30 +626,40 @@ export class EntityObject extends SystemObject {
     // Calculte the expression properties, and merge with manual, preferring manual properties
     // Finally pass the results to the inferProperties function, get the results
     //
+    // @ts-ignore
+    //const propArray = this.rootProp.properties.getEntry("properties").properties
+    //  .attrs;
+    //for (const prop of propArray) {
+    //  if (prop.kind() == "code") {
+    //    for (const rel of prop.relationships.all()) {
+    //      if (rel.kind() == "updates") {
+    //        const otherProp = rel.partner.names[1];
+    //        properties["__baseline"][prop.name] = YAML.stringify(
+    //          properties["__baseline"][otherProp],
+    //        );
+    //      }
+    //    }
+    //  }
+    //}
+
+    const entity = req.entity;
+    let inferredProperties = entity.inferredProperties;
+    const manualProperties = entity.manualProperties;
     if (this.intelligence.calculateProperties) {
-      //let properties
-      //entity.properties = this.intelligence.calculateProperties(entity);
+      const response: CalculatePropertiesResult = this.intelligence.calculateProperties(
+        req,
+      );
+      inferredProperties = response.inferredProperties;
+    }
+    const properties = _.merge({}, inferredProperties, manualProperties);
+    if (properties.__baseline.kubernetesObject) {
+      properties.__baseline.kubernetesObjectYaml = YAML.stringify(
+        properties.__baseline.kubernetesObject,
+      );
     }
 
-    // TODO: Please, refactor all this so that it makes fucking sense in the new world order. ;)
-    const properties = entity.manualProperties;
-    // @ts-ignore
-    const propArray = this.rootProp.properties.getEntry("properties").properties
-      .attrs;
-    for (const prop of propArray) {
-      if (prop.kind() == "code") {
-        for (const rel of prop.relationships.all()) {
-          if (rel.kind() == "updates") {
-            const otherProp = rel.partner.names[1];
-            properties["__baseline"][prop.name] = YAML.stringify(
-              properties["__baseline"][otherProp],
-            );
-          }
-        }
-      }
-    }
     // Check if anything is a code property, and if it is, calculate it.
-    return { properties };
+    return { properties, inferredProperties };
   }
 
   calculateConfigures(

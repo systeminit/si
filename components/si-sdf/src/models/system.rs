@@ -44,6 +44,7 @@ pub struct System {
     pub description: String,
     pub node_id: String,
     pub head: bool,
+    pub base: bool,
     pub si_storable: SiStorable,
     pub si_change_set: Option<SiChangeSet>,
 }
@@ -81,6 +82,7 @@ impl System {
         .await?;
         let id = si_storable.object_id.clone();
         let key = format!("{}:{}", si_storable.object_id, &change_set_id);
+        let base_key = format!("{}:{}:base", &si_storable.object_id, &change_set_id);
         let si_change_set = SiChangeSet::new(
             db,
             nats,
@@ -91,16 +93,19 @@ impl System {
             SiChangeSetEvent::Create,
         )
         .await?;
-        let system = System {
+        let mut system = System {
             id,
             name,
             head,
             description,
             node_id,
+            base: false,
             si_storable,
             si_change_set: Some(si_change_set),
         };
         insert_model(db, nats, &key, &system).await?;
+        system.base = true;
+        insert_model(db, nats, &base_key, &system).await?;
 
         Ok(system)
     }

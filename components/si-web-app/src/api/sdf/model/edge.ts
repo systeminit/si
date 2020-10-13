@@ -114,11 +114,60 @@ export class Edge implements IEdge {
     }
 
     if (items.length) {
-      return items;
+      return _.filter(items, e => !e.siStorable.deleted);
     }
 
     const reply: IAllPredecessorsReply = await sdf.get(
       "edges/allPredecessors",
+      request,
+    );
+    for (let item of reply.edges) {
+      const obj = new Edge(item);
+      obj.save();
+      items.push(obj);
+    }
+    return items;
+  }
+
+  static async directSuccessors(
+    request: IAllSuccessorsRequest,
+  ): Promise<Edge[]> {
+    const items: Edge[] = [];
+
+    if (request.nodeId) {
+      const vertexes_to_check = [request.nodeId];
+
+      for (let x = 0; x < vertexes_to_check.length; x++) {
+        await db.edges
+          .where({
+            kind: request.edgeKind,
+            "tailVertex.nodeId": vertexes_to_check[x],
+          })
+          .each(edge => {
+            items.push(Edge.upgrade(edge));
+          });
+      }
+    } else {
+      const vertexes_to_check = [request.objectId];
+
+      for (let x = 0; x < vertexes_to_check.length; x++) {
+        await db.edges
+          .where({
+            kind: request.edgeKind,
+            "tailVertex.objectId": vertexes_to_check[x],
+          })
+          .each(edge => {
+            items.push(Edge.upgrade(edge));
+          });
+      }
+    }
+
+    if (items.length) {
+      return _.filter(items, e => !e.siStorable.deleted);
+    }
+
+    const reply: IAllSuccessorsReply = await sdf.get(
+      "edges/allSuccessors",
       request,
     );
     for (let item of reply.edges) {
@@ -167,7 +216,7 @@ export class Edge implements IEdge {
     }
 
     if (items.length) {
-      return items;
+      return _.filter(items, e => !e.siStorable.deleted);
     }
 
     const reply: IAllSuccessorsReply = await sdf.get(
@@ -180,6 +229,56 @@ export class Edge implements IEdge {
       items.push(obj);
     }
     return items;
+  }
+
+  static async byTailTypeAndHeadType(
+    kind: IEdge["kind"],
+    tailTypeName: string,
+    headTypeName: string,
+  ): Promise<Edge[]> {
+    let items = await db.edges
+      .where({
+        kind,
+        "tailVertex.typeName": tailTypeName,
+        "headVertex.typeName": headTypeName,
+      })
+      .toArray();
+    if (!items.length) {
+      const results = await Edge.list({
+        query: new Query({
+          booleanTerm: BooleanTerm.And,
+          items: [
+            {
+              expression: {
+                field: "kind",
+                value: kind.toString(),
+                comparison: Comparison.Equals,
+                fieldType: FieldType.String,
+              },
+            },
+            {
+              expression: {
+                field: "tailVertex.typeName",
+                value: tailTypeName,
+                comparison: Comparison.Equals,
+                fieldType: FieldType.String,
+              },
+            },
+            {
+              expression: {
+                field: "headVertex.typeName",
+                value: headTypeName,
+                comparison: Comparison.Equals,
+                fieldType: FieldType.String,
+              },
+            },
+          ],
+        }),
+      });
+      return results.items;
+    } else {
+      return items.map(obj => new Edge(obj));
+    }
   }
 
   static async byTailTypeForHeadObjectId(
@@ -319,6 +418,12 @@ export class Edge implements IEdge {
       items,
       totalCount,
     };
+  }
+
+  async delete(): Promise<void> {
+    this.siStorable.deleted = true;
+    this.save();
+    await sdf.delete(`edges/${this.id}`);
   }
 
   async save(): Promise<void> {

@@ -102,7 +102,12 @@ pub async fn patch(
         }
         PatchOp::SyncResource(sync_resource_req) => {
             let resource = node
-                .sync_resource(&db, &nats, sync_resource_req.system_id)
+                .sync_resource(
+                    &db,
+                    &nats,
+                    sync_resource_req.system_id,
+                    sync_resource_req.change_set_id,
+                )
                 .await
                 .map_err(HandlerError::from)?;
             PatchReply::SyncResource(SyncResourceReply { resource })
@@ -176,6 +181,7 @@ pub async fn object_patch(
             .map_err(HandlerError::from)?;
         }
         OpRequest::EntityAction(op_request) => {
+            tracing::warn!("You matched this entity action, and it should be a delete");
             OpEntityAction::new(
                 db.clone(),
                 nats.clone(),
@@ -192,7 +198,8 @@ pub async fn object_patch(
             .await
             .map_err(HandlerError::from)?;
         }
-        OpRequest::EntityDelete(op_request) => {
+        OpRequest::EntityDelete(_op_request) => {
+            tracing::warn!("You matched a delete");
             OpEntityDelete::new(
                 &db,
                 &nats,
@@ -206,31 +213,31 @@ pub async fn object_patch(
             )
             .await
             .map_err(HandlerError::from)?;
-            if op_request.cascade {
-                let successors =
-                    Edge::all_successor_edges_by_object_id(&db, EdgeKind::Configures, &entity_id)
-                        .await
-                        .map_err(HandlerError::from)?;
-                // TODO: When we support changing completely the trees, or support more than one
-                // configures, we will have to deal with this less heavy handidly (in particular, we're
-                // going to have to look at each successor to make sure it doesn't have more than one
-                // predecessor). But for now, we can just delete them all too.
-                for successor in successors.iter() {
-                    OpEntityDelete::new(
-                        &db,
-                        &nats,
-                        &successor.head_vertex.object_id,
-                        claim.billing_account_id.clone(),
-                        request.organization_id.clone(),
-                        request.workspace_id.clone(),
-                        request.change_set_id.clone(),
-                        request.edit_session_id.clone(),
-                        claim.user_id.clone(),
-                    )
-                    .await
-                    .map_err(HandlerError::from)?;
-                }
-            }
+            //if op_request.cascade {
+            //    let successors =
+            //        Edge::all_successor_edges_by_object_id(&db, EdgeKind::Configures, &entity_id)
+            //            .await
+            //            .map_err(HandlerError::from)?;
+            //    // TODO: When we support changing completely the trees, or support more than one
+            //    // configures, we will have to deal with this less heavy handidly (in particular, we're
+            //    // going to have to look at each successor to make sure it doesn't have more than one
+            //    // predecessor). But for now, we can just delete them all too.
+            //    for successor in successors.iter() {
+            //        OpEntityDelete::new(
+            //            &db,
+            //            &nats,
+            //            &successor.head_vertex.object_id,
+            //            claim.billing_account_id.clone(),
+            //            request.organization_id.clone(),
+            //            request.workspace_id.clone(),
+            //            request.change_set_id.clone(),
+            //            request.edit_session_id.clone(),
+            //            claim.user_id.clone(),
+            //        )
+            //        .await
+            //        .map_err(HandlerError::from)?;
+            //    }
+            //}
         }
     }
 

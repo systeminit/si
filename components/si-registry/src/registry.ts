@@ -10,6 +10,8 @@ import {
 } from "./systemComponent";
 import { Props, PropAction } from "./attrList";
 import { camelCase } from "change-case";
+import _ from "lodash";
+import { promises as fs } from "fs";
 
 export interface PropLookup {
   typeName: string;
@@ -21,6 +23,30 @@ export class Registry {
 
   constructor() {
     this.objects = [];
+  }
+
+  async serialize(): Promise<void> {
+    await fs.writeFile(
+      "/tmp/registry.json",
+      JSON.stringify(this.objects, null, 2),
+    );
+  }
+
+  inputTypesFor(typeName: string): EntityObject[] {
+    // @ts-ignore
+    const results: EntityObject[] = _.filter(this.objects, o => {
+      if (o.kind() == "entityObject") {
+        const eo = o as EntityObject;
+        if (_.find(eo.inputTypes, ["typeName", typeName])) {
+          return true;
+        } else {
+          return false;
+        }
+      } else {
+        return false;
+      }
+    });
+    return results;
   }
 
   get(typeName: string): ObjectTypes {

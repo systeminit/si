@@ -28,45 +28,45 @@ registry.componentAndEntity({
     });
 
     // Properties
-    c.properties.addText({
-      name: "image",
-      label: "Container Image",
-      options(p: PropText) {
-        p.required = true;
-      },
-    });
-    c.properties.addNumber({
-      name: "port",
-      label: "Container Port",
-      options(p: PropNumber) {
-        p.required = true;
-        p.numberKind = "uint32";
-      },
-    });
-    c.properties.addNumber({
-      name: "replicas",
-      label: "Replicas",
-      options(p: PropNumber) {
-        p.numberKind = "uint32";
-        p.baseDefaultValue = "1";
-      },
-    });
-    c.properties.addSelect({
-      name: "deploymentTarget",
-      label: "Deployment Target",
-      options(p: PropSelect) {
-        p.baseValidation = p.baseValidation.allow(
-          "none",
-          "kubernetes-minikube",
-          "kubernetes-aws",
-        );
-        p.options = [
-          { key: "none", value: "none" },
-          { key: "kubernetes", value: "kubernetes" },
-          { key: "docker", value: "docker" },
-        ];
-      },
-    });
+    //c.properties.addText({
+    //  name: "image",
+    //  label: "Container Image",
+    //  options(p: PropText) {
+    //    p.required = true;
+    //  },
+    //});
+    //c.properties.addNumber({
+    //  name: "port",
+    //  label: "Container Port",
+    //  options(p: PropNumber) {
+    //    p.required = true;
+    //    p.numberKind = "uint32";
+    //  },
+    //});
+    //c.properties.addNumber({
+    //  name: "replicas",
+    //  label: "Replicas",
+    //  options(p: PropNumber) {
+    //    p.numberKind = "uint32";
+    //    p.baseDefaultValue = "1";
+    //  },
+    //});
+    //c.properties.addSelect({
+    //  name: "deploymentTarget",
+    //  label: "Deployment Target",
+    //  options(p: PropSelect) {
+    //    p.baseValidation = p.baseValidation.allow(
+    //      "none",
+    //      "kubernetes-minikube",
+    //      "kubernetes-aws",
+    //    );
+    //    p.options = [
+    //      { key: "none", value: "none" },
+    //      { key: "kubernetes", value: "kubernetes" },
+    //      { key: "docker", value: "docker" },
+    //    ];
+    //  },
+    //});
 
     // Entity Actions
     c.entity.methods.addAction({
@@ -80,16 +80,16 @@ registry.componentAndEntity({
     c.entity.intelligence.actions = {
       async deploy(request: ActionRequest): Promise<ActionReply> {
         const actions: ActionReply["actions"] = [];
-        for (const child of request.entities.successors) {
-          if (child.objectType == "service") {
-            actions.push({ action: "deploy", nodeId: child.nodeId });
+        for (const child of request.successors) {
+          if (child.entity.objectType == "service") {
+            actions.push({ action: "deploy", entityId: child.entity.id });
           }
         }
         const reply: ActionReply = {
           resource: {
             state: {
               alex: "van halen",
-              deployedBy: request.entities.predecessors.map(p => p.name),
+              deployedBy: request.predecessors.map(p => p.entity.name),
             },
             health: ResourceHealth.Ok,
             status: ResourceStatus.Created,

@@ -119,6 +119,80 @@
           </div>
         </div>
       </div>
+
+      <div
+        class="pt-1 pb-1 pl-6 mt-2 text-base text-white align-middle property-section-bg-color"
+      >
+        Connections
+      </div>
+      <div
+        class="pt-1 pb-1 pl-8 mt-2 text-sm text-white align-middle property-section-bg-color"
+      >
+        Configures
+      </div>
+
+      <div>
+        <div class="flex flex-col text-gray-500">
+          <div
+            class="flex flex-row w-full"
+            v-for="successor in directSuccessors"
+            :key="successor.id"
+          >
+            <div class="pl-8 pr-5">
+              {{ successor.objectType }} :: {{ objects[successor.id].name }}
+            </div>
+            <div
+              class="justify-end flex-grow pr-5 align-middle"
+              v-if="editorMode == 'edit'"
+            >
+              <button
+                class="text-center focus:outline-none"
+                type="button"
+                @click="deleteSuccessorEdge(successor)"
+              >
+                <MinusSquareIcon size="1.25x" class=""></MinusSquareIcon>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div
+          class="flex justify-center pl-8 pr-5 text-gray-500 align-middle"
+          v-if="editorMode == 'edit'"
+        >
+          <SiSelect
+            name="newConfigures"
+            :options="newConfiguresInputTypes"
+            v-model="newConfigures"
+            size="xs"
+          ></SiSelect>
+          <button
+            class="text-center focus:outline-none"
+            type="button"
+            :disabled="newConfigures === null"
+            @click="createNewConfigures"
+          >
+            <PlusSquareIcon size="1.25x" class=""></PlusSquareIcon>
+          </button>
+        </div>
+      </div>
+      <div
+        class="pt-1 pb-1 pl-6 mt-2 text-base text-white align-middle property-section-bg-color"
+      >
+        Resources
+      </div>
+      <div class="flex flex-col w-full pl-5">
+        <div>
+          <Button2
+            label="sync"
+            icon="refresh"
+            size="xs"
+            @click.native="syncResource"
+          />
+        </div>
+        <div class="inline-block text-gray-500" v-if="currentResource">
+          <vue-json-pretty :data="currentResource.state" :deep="2" />
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -135,16 +209,21 @@ import PropMap from "./PropMap.vue";
 import PropRepeated from "./PropRepeated.vue";
 import PropBool from "./PropBool.vue";
 import PropSelect from "./PropSelect.vue";
+import SiSelect from "@/components/ui/SiSelect.vue";
 import { Node, RegistryProperty } from "@/api/sdf/model/node";
 //import { RegistryProperty } from "../../../../store/modules/node";
 
 import { capitalCase } from "change-case";
-import { EditIcon } from "vue-feather-icons";
+import { EditIcon, PlusSquareIcon, MinusSquareIcon } from "vue-feather-icons";
 import _ from "lodash";
+import VueJsonPretty from "vue-json-pretty";
+import "vue-json-pretty/lib/styles.css";
+import Button2 from "@/components/ui/Button2.vue";
 
 interface Data {
   collapsedPaths: (string | number)[][];
   nodeObjectName: string;
+  newConfigures: string | null;
 }
 
 export default Vue.extend({
@@ -159,6 +238,11 @@ export default Vue.extend({
     PropBool,
     PropSelect,
     EditIcon,
+    PlusSquareIcon,
+    MinusSquareIcon,
+    SiSelect,
+    VueJsonPretty,
+    Button2,
   },
   props: {
     selectedNode: {
@@ -169,9 +253,22 @@ export default Vue.extend({
     return {
       collapsedPaths: [],
       nodeObjectName: "",
+      newConfigures: null,
     };
   },
   methods: {
+    async syncResource() {
+      await this.$store.dispatch("editor/syncResource");
+    },
+    async deleteSuccessorEdge(successor: Node) {
+      await this.$store.dispatch("editor/deleteConfigures", successor);
+    },
+    async createNewConfigures() {
+      await this.$store.dispatch(
+        "editor/createNewConfigures",
+        this.newConfigures,
+      );
+    },
     async updateObjectName() {
       await this.$store.dispatch("editor/entityNameSet", {
         value: this.nodeObjectName,
@@ -301,7 +398,12 @@ export default Vue.extend({
         state.editor.propertyList,
       editorMode: (state: any): any => state.editor.mode,
       editObject: (state: any): any => state.editor.editObject,
+      objects: (state: any): any => state.editor.objects,
       diff: (state: any): any => state.editor.diff,
+      directSuccessors: (state: any): any => state.editor.directSuccessors,
+      currentResource: (state: any): any => state.editor.currentResource,
+      newConfiguresInputTypes: (state: any): any =>
+        state.editor.newConfiguresInputTypes,
     }),
     backgroundColors(): number[][] {
       let longestProp = 0;

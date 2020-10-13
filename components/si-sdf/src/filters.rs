@@ -93,15 +93,17 @@ pub fn workspaces_list(
 // Edges API
 //   edges: GET - list
 //     edges/{id}: GET - get
+//     edges/{id}: DELETE - delete
 //     edges/allPredecessorEdges?object_id|node_id: GET - get_all_predecessor_edges
 pub fn edges(
     db: &Db,
-    _nats: &Connection,
+    nats: &Connection,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     edges_list(db.clone())
         .or(edges_all_predecessors(db.clone()))
         .or(edges_all_successors(db.clone()))
         .or(edges_get(db.clone()))
+        .or(edges_delete(db.clone(), nats.clone()))
 }
 
 pub fn edges_all_predecessors(
@@ -136,6 +138,18 @@ pub fn edges_get(
         .and(with_string("edge".into()))
         .and(warp::query::<models::GetRequest>())
         .and_then(handlers::get_model_change_set)
+}
+
+pub fn edges_delete(
+    db: Db,
+    nats: Connection,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("edges" / String)
+        .and(warp::delete())
+        .and(with_db(db))
+        .and(with_nats(nats))
+        .and(warp::header::<String>("authorization"))
+        .and_then(handlers::edges::delete)
 }
 
 pub fn edges_list(

@@ -1,0 +1,26 @@
+FROM ubuntu:rolling
+LABEL maintainer="dev@systeminit.com"
+ENV DEBIAN_FRONTEND=noninteractive
+ARG NODE_VERSION=v14.10.1
+ARG NODE_DISTRO=linux-x64
+RUN apt-get update && apt-get install -y sudo \
+	git \
+	curl \ 
+	build-essential \
+	cmake \
+	clang \
+	openssl \
+	libev-dev \
+	libevent-dev \
+	libssl-dev \
+	pkg-config
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > /tmp/rustup.sh \
+	    && chmod a+x /tmp/rustup.sh \
+	    && /tmp/rustup.sh -y 
+RUN curl -sSf https://nodejs.org/dist/$NODE_VERSION/node-$NODE_VERSION-$NODE_DISTRO.tar.xz -o /tmp/node-$NODE_VERSION-$NODE_DISTRO.tar.xz && \
+  mkdir -p /usr/local/lib/nodejs && \
+  tar -xJvf /tmp/node-$NODE_VERSION-$NODE_DISTRO.tar.xz -C /usr/local/lib/nodejs && \
+  ln -sf /usr/local/lib/nodejs/node-$NODE_VERSION-$NODE_DISTRO/bin/node /usr/bin/node && \
+  ln -sf /usr/local/lib/nodejs/node-$NODE_VERSION-$NODE_DISTRO/bin/npm /usr/bin/npm && \
+  ln -sf /usr/local/lib/nodejs/node-$NODE_VERSION-$NODE_DISTRO/bin/npx /usr/bin/npx && \
+  rm /tmp/node-$NODE_VERSION-$NODE_DISTRO.tar.xz 

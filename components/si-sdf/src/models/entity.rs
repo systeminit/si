@@ -7,9 +7,9 @@ use thiserror::Error;
 
 use crate::data::{Connection, Db, REQWEST};
 use crate::models::{
-    get_base_object, insert_model, Edge, EdgeError, EdgeKind, ModelError, Node, NodeKind, Resource,
-    ResourceError, SiChangeSet, SiChangeSetError, SiChangeSetEvent, SiStorable, SiStorableError,
-    System, SystemError, Vertex,
+    get_base_object, insert_model, upsert_model, Edge, EdgeError, EdgeKind, ModelError, Node,
+    NodeKind, Resource, ResourceError, SiChangeSet, SiChangeSetError, SiChangeSetEvent, SiStorable,
+    SiStorableError, System, SystemError, Vertex,
 };
 
 #[derive(Error, Debug)]
@@ -72,9 +72,18 @@ pub struct CreateReply {
 
 #[derive(Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
+pub struct CalculatePropertiesPredecessor {
+    pub entity: Entity,
+    pub resources: Vec<Resource>,
+}
+
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct CalculatePropertiesRequest<'a> {
     object_type: &'a str,
     entity: &'a serde_json::Value,
+    predecessors: Vec<CalculatePropertiesPredecessor>,
+    resources: Vec<Resource>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -255,11 +264,11 @@ impl Entity {
                 si_change_set: Some(si_change_set),
             };
 
-            entity.calculate_properties().await?;
             insert_model(&db, &nats, &key, &entity).await?;
             entity.base = true;
             insert_model(&db, &nats, &base_key, &entity).await?;
             for system_id in system_ids {
+                tracing::error!(?system_id, ?entity, "getting system edge");
                 let system = System::get_any(&db, &system_id).await?;
                 tracing::error!(?system_id, ?system, ?entity, "adding sytem edge");
                 Edge::new(
@@ -289,9 +298,10 @@ impl Entity {
                 )
                 .await?;
             }
-            entity
-                .calculate_configures(db.clone(), nats.clone())
-                .await?;
+            entity.calculate_properties(&db).await?;
+            upsert_model(&db, &nats, &key, &entity).await?;
+            entity.base = true;
+            upsert_model(&db, &nats, &base_key, &entity).await?;
 
             Ok(entity)
         })
@@ -309,9 +319,9 @@ impl Entity {
         })
     }
 
-    pub async fn calculate_properties(&mut self) -> EntityResult<()> {
+    pub async fn calculate_properties(&mut self, db: &Db) -> EntityResult<()> {
         let mut json = serde_json::json![self];
-        calculate_properties(&mut json).await?;
+        calculate_properties(db, &mut json).await?;
         let new_entity: Entity = serde_json::from_value(json)?;
         tracing::warn!(?new_entity, "new entity from calculate properties");
         *self = new_entity;
@@ -368,8 +378,72 @@ impl Entity {
     }
 }
 
-pub async fn calculate_properties(json: &mut serde_json::Value) -> EntityResult<()> {
-    tracing::warn!(?json, "calculating properites");
+pub async fn calculate_properties(db: &Db, json: &mut serde_json::Value) -> EntityResult<()> {
+    tracing::warn!(?json, "calculating properties");
+    let entity: Entity = serde_json::from_value(json.clone())?;
+    let optional_change_set_id = if entity.head {
+        None
+    } else {
+        entity.si_change_set.map(|sic| sic.change_set_id.clone())
+    };
+    let node = Node::get(&db, entity.node_id, &entity.si_storable.billing_account_id)
+        .await
+        .map_err(|e| EntityError::Node(e.to_string()))?;
+    let system_edges = Edge::by_kind_and_head_object_id_and_tail_type_name(
+        &db,
+        EdgeKind::Includes,
+        &entity.id,
+        "system",
+    )
+    .await?;
+
+    let mut resources = Vec::new();
+    for system_edge in system_edges.iter() {
+        tracing::error!(?system_edge, "system edge");
+        let resource = Resource::get(&db, &entity.id, &system_edge.tail_vertex.object_id).await?;
+        resources.push(resource);
+    }
+
+    let predecessor_edges =
+        Edge::direct_predecessor_edges_by_node_id(db, EdgeKind::Configures, &node.id).await?;
+    let mut predecessors: Vec<CalculatePropertiesPredecessor> = Vec::new();
+    for edge in predecessor_edges {
+        let edge_node = Node::get(
+            &db,
+            &edge.tail_vertex.node_id,
+            &node.si_storable.billing_account_id,
+        )
+        .await
+        .map_err(|e| EntityError::Node(e.to_string()))?;
+        let edge_entity: Entity = if let Some(ref change_set_id) = optional_change_set_id {
+            match edge_node.get_object_projection(&db, change_set_id).await {
+                Ok(entity) => entity,
+                Err(_) => edge_node
+                    .get_head_object(db)
+                    .await
+                    .map_err(|e| EntityError::Node(e.to_string()))?,
+            }
+        } else if let Ok(entity) = edge_node.get_head_object(db).await {
+            entity
+        } else {
+            return Err(EntityError::Node("no head node!".to_string()));
+        };
+        let mut edge_resources: Vec<Resource> = Vec::new();
+        tracing::warn!(?system_edges, "calculating edge resources for system edges");
+        for system_edge in system_edges.iter() {
+            let edge_resource =
+                Resource::get(&db, &edge_entity.id, &system_edge.tail_vertex.object_id).await?;
+            tracing::warn!(?edge_resource, "no mas");
+            edge_resources.push(edge_resource);
+        }
+
+        let predecessor = CalculatePropertiesPredecessor {
+            entity: edge_entity,
+            resources: edge_resources,
+        };
+        predecessors.push(predecessor);
+    }
+
     let object_type = json["objectType"]
         .as_str()
         .ok_or(EntityError::MissingObjectType)?;
@@ -378,6 +452,8 @@ pub async fn calculate_properties(json: &mut serde_json::Value) -> EntityResult<
         .json(&CalculatePropertiesRequest {
             object_type,
             entity: json,
+            predecessors,
+            resources,
         })
         .send()
         .await?;

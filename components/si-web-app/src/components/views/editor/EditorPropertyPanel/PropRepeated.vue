@@ -256,7 +256,7 @@ export default PropMixin.extend({
         state.editor.mode,
     }),
     ...mapGetters({
-      propertiesList: "node/propertiesListRepeated",
+      propertiesList: "editor/propertiesListRepeated",
     }),
     propObjectStyle(): string {
       if (this.entityProperty.path.length == 1) {

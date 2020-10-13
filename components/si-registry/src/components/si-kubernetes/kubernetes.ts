@@ -124,9 +124,6 @@ registry.base({
     c.fields.addText({
       name: "protocol",
       label: "Protocol",
-      options(p: PropText) {
-        p.hidden = true;
-      },
     });
   },
 });

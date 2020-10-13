@@ -28,6 +28,8 @@ export abstract class Prop {
 
   baseValidation: Joi.AnySchema;
 
+  sync: boolean;
+
   // Hidden from the UI
   hidden: boolean;
   repeated: boolean;
@@ -67,6 +69,7 @@ export abstract class Prop {
     this.hidden = hidden || false;
     this.repeated = repeated || false;
     this.universal = false;
+    this.sync = false;
     this.lookupTag = null;
     this.parentName = "";
     this.reference = false;

@@ -94,6 +94,7 @@ export interface INodePatchOpRequest {
   };
   syncResource?: {
     systemId: string;
+    changeSetId?: string;
   };
 }
 
@@ -212,6 +213,39 @@ export class Node implements INode {
     };
   }
 
+  async inputTypes(
+    changeSetId?: string,
+  ): Promise<{ value: string | null; label: string }[]> {
+    let inputTypes = registry.inputTypesFor(this.objectType);
+    let results: { value: string | null; label: string }[] = [
+      { value: null, label: "none" },
+    ];
+    for (const inputType of inputTypes) {
+      results.push({ value: inputType.typeName, label: inputType.typeName });
+      // This will fail when the system is changeable ;)
+      let edges = await Edge.byTailTypeAndHeadType(
+        EdgeKind.Includes,
+        "system",
+        inputType.typeName,
+      );
+      for (const edge of edges) {
+        const node = await Node.get({ id: edge.headVertex.nodeId });
+        if (node) {
+          try {
+            const entity = (await node.displayObject(changeSetId)) as Entity;
+            results.push({
+              value: `${entity.objectType} ${entity.nodeId}`,
+              label: `${entity.objectType} ${entity.name}`,
+            });
+          } catch {
+            // Nothing to see here!
+          }
+        }
+      }
+    }
+    return results;
+  }
+
   async configuredBy(nodeId: string): Promise<Edge> {
     let request: INodePatchRequest = {
       op: { configuredBy: { nodeId } },
@@ -257,6 +291,41 @@ export class Node implements INode {
     return items;
   }
 
+  async deleteSuccessor(successor: Node) {
+    let successors = await this.directSuccessorEdges();
+    let edge = _.find(successors, ["headVertex.nodeId", successor.id]);
+    if (edge) {
+      await edge.delete();
+    } else {
+      console.log("You don't have an edge!", {
+        successor,
+        successors,
+        currentNode: this,
+      });
+    }
+  }
+
+  async directSuccessors(): Promise<Node[]> {
+    let edges = await Edge.directSuccessors({
+      nodeId: this.id,
+      edgeKind: EdgeKind.Configures,
+    });
+    let items: Node[] = [];
+    for (let edge of edges) {
+      let node = await Node.get({ id: edge.headVertex.nodeId });
+      items.push(node);
+    }
+    return items;
+  }
+
+  async directSuccessorEdges(): Promise<Edge[]> {
+    let edges = await Edge.directSuccessors({
+      nodeId: this.id,
+      edgeKind: EdgeKind.Configures,
+    });
+    return edges;
+  }
+
   async successors(): Promise<Node[]> {
     let edges = await Edge.allSuccessors({
       nodeId: this.id,
@@ -299,7 +368,7 @@ export class Node implements INode {
     throw new Error("cannot get display object; no head or projection");
   }
 
-  async headObject(): Promise<NodeObject> {
+  async headObject(load?: boolean): Promise<NodeObject> {
     let iitem: INodeObject;
     let cacheResult = await db.headEntities
       .where({ nodeId: this.id })
@@ -307,50 +376,58 @@ export class Node implements INode {
     if (cacheResult.length && cacheResult[0]) {
       iitem = cacheResult[0];
     } else {
-      let response: IGetReply<INodeObject> = await sdf.get(
-        `nodes/${this.id}/object`,
-      );
-      iitem = response.item;
+      if (load) {
+        let response: IGetReply<INodeObject> = await sdf.get(
+          `nodes/${this.id}/object`,
+        );
+        iitem = response.item;
+      } else {
+        throw new Error("cannot get head object from request");
+      }
     }
-    if (iitem.siStorable.typeName == "system") {
-      return new System(iitem as ISystem);
-    } else if (iitem.siStorable.typeName == "entity") {
-      return new Entity(iitem as IEntity);
+    if (iitem) {
+      if (iitem.siStorable.typeName == "system") {
+        return new System(iitem as ISystem);
+      } else if (iitem.siStorable.typeName == "entity") {
+        return new Entity(iitem as IEntity);
+      } else {
+        throw new Error("unknown head object type");
+      }
     } else {
-      throw new Error("unknown object type");
+      console.log("wtf", { iitem });
+      throw new Error("cannot get head object");
     }
   }
 
   async projectionObject(changeSetId: string): Promise<NodeObject> {
-    console.log("looking for projection", {
-      nodeId: this.id,
-      changeSetId: changeSetId,
-    });
     let iitem: INodeObject;
     let cacheResult = await db.projectionEntities
       .where({ nodeId: this.id, "siChangeSet.changeSetId": changeSetId })
       .toArray();
     if (cacheResult.length && cacheResult[0]) {
       iitem = cacheResult[0];
+      if (iitem.siStorable.typeName == "system") {
+        return new System(iitem as ISystem);
+      } else {
+        return new Entity(iitem as IEntity);
+      }
     } else {
-      let response: IGetReply<INodeObject> = await sdf.get(
-        `nodes/${this.id}/object`,
-        { changeSetId },
-      );
-      iitem = response.item;
-    }
-    if (iitem.siStorable.typeName == "system") {
-      return new System(iitem as ISystem);
-    } else if (iitem.siStorable.typeName == "entity") {
-      return new Entity(iitem as IEntity);
-    } else {
-      throw new Error("unknown object type");
+      throw new Error("cannot get projection object");
     }
   }
 
-  async syncResource(systemId: string): Promise<Resource> {
+  async syncResource(
+    systemId: string,
+    changeSetId?: string,
+  ): Promise<Resource> {
+    let op;
+    if (changeSetId) {
+      op = { syncResource: { systemId, changeSetId } };
+    } else {
+      op = { syncResource: { systemId } };
+    }
     let request: INodePatchRequest = {
-      op: { syncResource: { systemId } },
+      op,
       organizationId: this.siStorable.organizationId,
       workspaceId: this.siStorable.workspaceId,
     };
@@ -358,7 +435,7 @@ export class Node implements INode {
     if (reply.syncResource?.resource) {
       let resource = new Resource(reply.syncResource.resource);
       console.log("syncing the resource", { systemId, resource });
-      await resource.save();
+      //await resource.save();
       return resource;
     } else {
       throw new Error("malformed resource sync reply");
@@ -476,11 +553,11 @@ export class Node implements INode {
     return _.flatten(Object.values(grouped));
   }
 
-  async propertyListRepeated(
+  propertyListRepeated(
     entityProperty: RegistryProperty,
     index: number,
     changeSetId?: string,
-  ): Promise<RegistryProperty[]> {
+  ): RegistryProperty[] {
     if (entityProperty.kind == "object") {
       let updateField = entityProperty.prop as PropObject;
 

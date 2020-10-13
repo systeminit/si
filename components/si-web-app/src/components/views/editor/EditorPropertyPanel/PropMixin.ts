@@ -50,6 +50,9 @@ export default Vue.extend({
             value: this.fieldValue,
           });
         }
+        if (this.entityProperty.prop.sync) {
+          await this.$store.dispatch("editor/syncCurrentResource");
+        }
       }
     },
   },
