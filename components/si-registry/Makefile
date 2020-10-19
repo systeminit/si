@@ -1,7 +1,9 @@
 include ../build/typescript.mk
 COMPONENT = si-registry
-.DEFAULT_GOAL := generate
+.DEFAULT_GOAL := build
 
-generate: build
-	npm run generate
-.PHONY: generate
+build_js: node_modules
+	npm run build:js
+
+watch: build_js start
+	@ echo "Watching.."
