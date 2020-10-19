@@ -21,6 +21,9 @@ run:
 
 start: run
 
+clean:
+	cargo clean
+
 watch:
 	env RUST_LOG=$(RUST_LOG) cargo watch $(foreach path,$(WATCH_PATHS),-w $(path)) -x $(WATCH_TASK)
 
