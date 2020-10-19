@@ -30,9 +30,9 @@ registry.componentAndEntity({
     c.entity.intelligence.actions = {
       async deploy(request: ActionRequest): Promise<ActionReply> {
         const actions: ActionReply["actions"] = [];
-        for (const child of request.entities.successors) {
-          if (child.objectType == "service") {
-            actions.push({ action: "deploy", entityId: child.id });
+        for (const child of request.successors) {
+          if (child.entity.objectType == "service") {
+            actions.push({ action: "deploy", entityId: child.entity.id });
           }
         }
         const reply: ActionReply = {

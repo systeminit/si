@@ -7,5 +7,5 @@ cd /svc/$START_SERVICE
 if [[ -f $START_SERVICE-server ]]; then 
   exec ./$START_SERVICE-server "$@"
 else
-  exec env NODE_ENV=production npm run prod
+  exec env NODE_ENV=production node ./server.bundle.js
 fi

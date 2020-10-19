@@ -5,7 +5,7 @@ authors = ["Adam Jacob <adam@systeminit.com>"]
 edition = "2018"
 
 [[bin]]
-name = "si-sdf"
+name = "si-sdf-server"
 path = "src/bin/server.rs"
 
 [dependencies]

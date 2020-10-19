@@ -34,12 +34,9 @@ test_container:
 
 container:
 	env BUILDKIT_PROGRESS=plain DOCKER_BUILDKIT=1 docker build \
-		-f $(CURDIR)/../build/Dockerfile-typescript \
-		-t ${COMPONENT}-service:latest \
-		-t ${COMPONENT}-service:$(RELEASE) \
-		-t 835304779882.dkr.ecr.us-east-2.amazonaws.com/si/${COMPONENT}-service:latest \
-		-t 835304779882.dkr.ecr.us-east-2.amazonaws.com/si/${COMPONENT}-service:$(RELEASE) \
-		--build-arg component=${COMPONENT} \
+		-f $(CURDIR)/../${COMPONENT}/Dockerfile \
+		-t si-veritech-service:latest \
+		-t si-veritech-service:$(RELEASE) \
 		$(CURDIR)/../../
 
 release: container

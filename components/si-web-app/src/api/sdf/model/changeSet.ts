@@ -147,7 +147,6 @@ export class ChangeSet implements IChangeSet {
   }
 
   async dispatch(): Promise<void> {
-    await store.dispatch("changeSet/fromChangeSet", this);
     await store.dispatch("application/fromChangeSet", this);
     await store.dispatch("editor/fromChangeSet", this);
   }

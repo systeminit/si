@@ -62,6 +62,7 @@ export interface ActionEntityAction {
 export interface ActionNodeCreate {
   kind: NodeKind;
   objectType: string;
+  configuredByNodeId?: string;
 }
 
 export interface ActionSetNodePosition {
@@ -101,11 +102,14 @@ export interface EditorStore {
   };
   edges: Edge[];
   node: Node | undefined;
+  directSuccessors: Node[];
+  newConfiguresInputTypes: { value: string | null; label: string }[];
   propertyList: RegistryProperty[];
   editObject: Entity | undefined;
   diff: DiffResult;
   eventLogs: EventLog[];
   resources: Resource[];
+  currentResource: Resource | undefined;
 }
 
 export let SET_POSITION_FUNCTIONS: Record<string, any> = {};
@@ -129,6 +133,8 @@ export const editor: Module<EditorStore, RootStore> = {
     objects: {},
     edges: [],
     node: undefined,
+    directSuccessors: [],
+    newConfiguresInputTypes: [],
     propertyList: [],
     editObject: undefined,
     diff: {
@@ -137,8 +143,15 @@ export const editor: Module<EditorStore, RootStore> = {
     },
     eventLogs: [],
     resources: [],
+    currentResource: undefined,
   },
   mutations: {
+    currentResource(state, payload: Resource | undefined) {
+      state.currentResource = payload;
+    },
+    directSuccessors(state, payload: Node[]) {
+      state.directSuccessors = payload;
+    },
     mouseTrackSelection(state, payload: string | undefined) {
       state.mouseTrackSelection = payload;
     },
@@ -266,6 +279,12 @@ export const editor: Module<EditorStore, RootStore> = {
     diff(state, payload: DiffResult) {
       state.diff = payload;
     },
+    newConfiguresInputTypes(
+      state,
+      payload: { value: string | null; label: string }[],
+    ) {
+      state.newConfiguresInputTypes = payload;
+    },
     clear(state) {
       state.context = "none";
       state.mode = "view";
@@ -281,6 +300,7 @@ export const editor: Module<EditorStore, RootStore> = {
       state.nodes = [];
       state.objects = {};
       state.node = undefined;
+      state.directSuccessors = [];
       state.edges = [];
       state.propertyList = [];
       state.editObject = undefined;
@@ -291,10 +311,21 @@ export const editor: Module<EditorStore, RootStore> = {
       };
       state.eventLogs = [];
       state.resources = [];
+      state.currentResource = undefined;
       SET_POSITION_FUNCTIONS = {};
     },
   },
   getters: {
+    // prettier-ignore
+    propertiesListRepeated: (state) => (entityProperty: RegistryProperty, index: number): RegistryProperty[] => {
+      let node = state.node;
+      let changeSet = state.changeSet;
+      if (node) {
+        return node.propertyListRepeated(entityProperty, index, changeSet?.id);
+      } else {
+        throw new Error("no node object for repeated property list! bug!");
+      }
+    },
     codeProperty(state): undefined | RegistryProperty {
       let propertiesList = state.propertyList;
       for (const prop of propertiesList) {
@@ -359,6 +390,28 @@ export const editor: Module<EditorStore, RootStore> = {
     },
   },
   actions: {
+    async deleteConfigures({ state }, payload: Node) {
+      let selectedNode = state.node;
+      if (selectedNode) {
+        await selectedNode.deleteSuccessor(payload);
+      }
+    },
+    async createNewConfigures({ state, dispatch }, payload: string) {
+      let node = state.node;
+      if (node) {
+        if (payload.includes(" ")) {
+          let parts = payload.split(" ");
+          let successorNode = await Node.get({ id: parts[1] });
+          await successorNode.configuredBy(node.id);
+        } else {
+          await dispatch("nodeCreate", {
+            kind: NodeKind.Entity,
+            objectType: payload,
+            configuredByNodeId: node.id,
+          });
+        }
+      }
+    },
     async setNodePosition({ state, commit }, payload: ActionSetNodePosition) {
       let node = _.find(state.nodes, ["id", payload.nodeId]);
       let context = state.context;
@@ -388,8 +441,8 @@ export const editor: Module<EditorStore, RootStore> = {
         );
       }
     },
-    async sendAction({ dispatch }, payload: string) {
-      if (payload == "delete") {
+    async sendAction({ dispatch }, payload: { action: string }) {
+      if (payload.action == "delete") {
         await dispatch("entityDelete", { cascade: true });
       } else {
         await dispatch("entityAction", payload);
@@ -435,6 +488,7 @@ export const editor: Module<EditorStore, RootStore> = {
       { state, rootGetters },
       payload: IOpRequest["entityDelete"],
     ) {
+      console.log("this is a reckoning");
       let organization = rootGetters["organization/current"];
       let workspace = rootGetters["workspace/current"];
       let changeSet = state.changeSet;
@@ -457,6 +511,7 @@ export const editor: Module<EditorStore, RootStore> = {
           changeSetId: changeSet.id,
           editSessionId: editSession.id,
         };
+        console.log("your req", { req });
         await OpEntitySet.create(node.id, req);
       }
     },
@@ -549,6 +604,25 @@ export const editor: Module<EditorStore, RootStore> = {
         const editObject = await payload.displayObject(state.changeSet?.id);
         commit("setPropertyList", propertyList);
         commit("setEditObject", editObject);
+        let directSuccessors = await payload.directSuccessors();
+        commit("directSuccessors", directSuccessors);
+        let changeSetId = state.changeSet?.id;
+        let inputTypes = await payload.inputTypes(changeSetId);
+        inputTypes = _.filter(inputTypes, t => {
+          for (const successor of directSuccessors) {
+            if (t.value == `${successor.objectType} ${successor.id}`) {
+              return false;
+            }
+          }
+          return true;
+        });
+        commit("newConfiguresInputTypes", inputTypes);
+        let nodeResource = _.find(state.resources, ["nodeId", payload.id]);
+        if (nodeResource) {
+          commit("currentResource", nodeResource);
+        } else {
+          commit("currentResource", undefined);
+        }
         if (editObject.siStorable.typeName == "entity") {
           // @ts-ignore
           let diffResult = await editObject.diff();
@@ -557,6 +631,9 @@ export const editor: Module<EditorStore, RootStore> = {
       } else {
         commit("setPropertyList", []);
         commit("setEditObject", undefined);
+        commit("directSuccessors", []);
+        commit("newConfiguresInputTypes", []);
+        commit("currentResource", undefined);
         commit("diff", {
           entries: [],
           count: 0,
@@ -705,7 +782,7 @@ export const editor: Module<EditorStore, RootStore> = {
       await dispatch("modeSwitch");
     },
     async nodeCreate(
-      { commit, rootGetters, state },
+      { commit, dispatch, rootGetters, state },
       payload: ActionNodeCreate,
     ) {
       console.log("started create");
@@ -720,6 +797,10 @@ export const editor: Module<EditorStore, RootStore> = {
           `invalid editor state; cannot add node: cs ${changeSetId} es ${editSessionId} s ${system} a ${application}`,
         );
       }
+      let configuredByNodeId = payload.configuredByNodeId;
+      if (!configuredByNodeId) {
+        configuredByNodeId = application.nodeId;
+      }
 
       const node = await Node.create({
         kind: payload.kind,
@@ -730,19 +811,40 @@ export const editor: Module<EditorStore, RootStore> = {
         editSessionId,
         systemIds: [system.id],
       });
-      const edge = await node.configuredBy(application.nodeId);
+      const edge = await node.configuredBy(configuredByNodeId);
       const object = await node.displayObject(changeSetId);
       commit("updateObjects", object);
       commit("updateNodes", node);
-      commit("node", node);
+      commit("currentResource", undefined);
+      await dispatch("node", node);
       commit("mouseTrackSelection", node.id);
       console.log("finished create");
+    },
+    async syncCurrentResource({ state }) {
+      let systemId = state.system?.id;
+      let changeSetId = state.changeSet?.id;
+      if (state.node && systemId && changeSetId) {
+        await state.node.syncResource(systemId, changeSetId);
+      }
+    },
+    async syncResource({ commit, state, getters }) {
+      if (state.node && state.system) {
+        let node = state.node;
+        let resource = await node.syncResource(
+          state.system.id,
+          state.changeSet?.id,
+        );
+        commit("updateResources", resource);
+      }
     },
     async syncResources({ commit, state, getters }) {
       if (state.application && state.system) {
         let nodeList: Node[] = getters["nodeList"];
         for (const node of nodeList) {
-          let resource = await node.syncResource(state.system.id);
+          let resource = await node.syncResource(
+            state.system.id,
+            state.changeSet?.id,
+          );
           console.log("poopy pants", { resource });
           commit("updateResources", resource);
         }
@@ -852,10 +954,18 @@ export const editor: Module<EditorStore, RootStore> = {
       // TODO: We should only show relevant event logs!
       commit("updateEventLogs", payload);
     },
-    fromResource({ commit, getters }, payload: Resource) {
+    fromResource({ commit, state, getters }, payload: Resource) {
       let nodeList = getters["nodeList"];
       if (_.find(nodeList, ["id", payload.nodeId])) {
         commit("updateResources", payload);
+      }
+      if (state.currentResource?.id == payload.id) {
+        commit("currentResource", payload);
+      } else if (
+        payload.systemId == state.system?.id &&
+        payload.nodeId == state.node?.id
+      ) {
+        commit("currentResource", payload);
       }
     },
     async restore({ dispatch, commit }, payload: ActionRestore) {

@@ -153,77 +153,79 @@ impl OpEntityAction {
             if this_action.skip() {
                 return Ok(());
             }
+            let entity: Entity = serde_json::from_value(to.clone())?;
+            let node: Node =
+                Node::get(&db, &entity.node_id, &entity.si_storable.billing_account_id).await?;
+            let resource = Resource::get(&db, &entity.id, &this_action.system_id).await?;
 
-            let successors = Edge::all_successor_edges_by_object_id(
-                &db,
-                EdgeKind::Configures,
-                &this_action.to_id,
-            )
-            .await?;
-            let mut entity_successors = Vec::new();
-            for edge in successors.iter() {
-                tracing::warn!(?edge, ?this_action.to_id, "what we're trying to do here...");
-                let node = Node::get(
+            // Populate Successors
+            let successor_edges =
+                Edge::direct_successor_edges_by_node_id(&db, EdgeKind::Configures, &node.id)
+                    .await?;
+            let mut successors: Vec<ActionRequestThunk> = Vec::new();
+            for edge in successor_edges.iter() {
+                let edge_node: Node = Node::get(
                     &db,
                     &edge.head_vertex.node_id,
-                    &this_action.si_storable.billing_account_id,
+                    &entity.si_storable.billing_account_id,
                 )
                 .await?;
-                let entity: serde_json::Value = if let Ok(entity) = node
+                let edge_entity: Entity = match edge_node
                     .get_object_projection(&db, &this_action.si_change_set.change_set_id)
                     .await
                 {
-                    entity
-                } else {
-                    node.get_head_object(&db).await?
+                    Ok(edge_entity) => edge_entity,
+                    Err(_) => edge_node.get_head_object(&db).await?,
                 };
-                entity_successors.push(entity);
+
+                let edge_resource =
+                    Resource::get(&db, &edge_entity.id, &this_action.system_id).await?;
+                successors.push(ActionRequestThunk {
+                    entity: edge_entity,
+                    resource: edge_resource,
+                });
             }
 
-            let predecessors = Edge::all_predecessor_edges_by_object_id(
-                &db,
-                EdgeKind::Configures,
-                &this_action.to_id,
-            )
-            .await?;
-            let mut entity_predecessors = Vec::new();
-            for edge in predecessors.iter() {
-                tracing::warn!(?edge, ?this_action.to_id, "what we're trying to do here predecessors...");
-                let node = Node::get(
+            // Populate Predecessors
+            let predecessor_edges =
+                Edge::direct_predecessor_edges_by_node_id(&db, EdgeKind::Configures, &node.id)
+                    .await?;
+            dbg!(&predecessor_edges);
+            let mut predecessors: Vec<ActionRequestThunk> = Vec::new();
+            for edge in predecessor_edges.iter() {
+                let edge_node = Node::get(
                     &db,
                     &edge.tail_vertex.node_id,
-                    &this_action.si_storable.billing_account_id,
+                    &entity.si_storable.billing_account_id,
                 )
                 .await?;
-                let entity: serde_json::Value = if let Ok(entity) = node
+                let edge_entity: Entity = match edge_node
                     .get_object_projection(&db, &this_action.si_change_set.change_set_id)
                     .await
                 {
-                    entity
-                } else {
-                    node.get_head_object(&db).await?
+                    Ok(edge_entity) => edge_entity,
+                    Err(_) => edge_node.get_head_object(&db).await?,
                 };
-                entity_predecessors.push(entity);
+                dbg!("*********************************fucking poop monster********************");
+                dbg!(&edge_entity);
+                let edge_resource =
+                    Resource::get(&db, &edge_entity.id, &this_action.system_id).await?;
+                dbg!(&edge_resource);
+                predecessors.push(ActionRequestThunk {
+                    entity: edge_entity,
+                    resource: edge_resource,
+                });
             }
 
-            let action_request_entities = ActionRequestEntity {
-                predecessors: entity_predecessors,
-                successors: entity_successors,
-            };
-
-            let action_request_resources = ActionRequestResources {
-                predecessors: vec![],
-                successors: vec![],
-            };
-
             let action_request = ActionRequest::new(
-                &this_action.to_id,
                 &this_action.action,
                 &this_action.system_id,
+                node,
+                entity,
+                resource,
                 hypothetical,
-                action_request_entities,
-                action_request_resources,
-                to.clone(),
+                predecessors,
+                successors,
             );
 
             let response = run_action(action_request).await?;
@@ -287,51 +289,46 @@ impl OpEntityAction {
 
 #[derive(Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct ActionRequestEntity {
-    predecessors: Vec<serde_json::Value>,
-    successors: Vec<serde_json::Value>,
-}
-
-#[derive(Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ActionRequestResources {
-    predecessors: Vec<serde_json::Value>,
-    successors: Vec<serde_json::Value>,
+pub struct ActionRequestThunk {
+    entity: Entity,
+    resource: Resource,
 }
 
 #[derive(Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ActionRequest {
-    to_id: String,
     action: String,
     system_id: String,
+    node: Node,
+    entity: Entity,
+    resource: Resource,
     hypothetical: bool,
-    entities: ActionRequestEntity,
-    resources: ActionRequestResources,
-    entity: serde_json::Value,
+    predecessors: Vec<ActionRequestThunk>,
+    successors: Vec<ActionRequestThunk>,
 }
 
 impl ActionRequest {
     pub fn new(
-        to_id: impl Into<String>,
         action: impl Into<String>,
         system_id: impl Into<String>,
+        node: Node,
+        entity: Entity,
+        resource: Resource,
         hypothetical: bool,
-        entities: ActionRequestEntity,
-        resources: ActionRequestResources,
-        entity: serde_json::Value,
+        predecessors: Vec<ActionRequestThunk>,
+        successors: Vec<ActionRequestThunk>,
     ) -> ActionRequest {
-        let to_id = to_id.into();
         let action = action.into();
         let system_id = system_id.into();
         ActionRequest {
-            to_id,
             action,
             system_id,
-            hypothetical,
-            entities,
-            resources,
+            node,
             entity,
+            resource,
+            hypothetical,
+            predecessors,
+            successors,
         }
     }
 }

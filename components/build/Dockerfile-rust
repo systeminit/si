@@ -1,9 +1,19 @@
-FROM docker.pkg.github.com/systeminit/si/si-base:latest as component-builder
+FROM ubuntu:rolling as component-builder
 ARG component
-ARG release=debug
-RUN mkdir -p /src
+RUN mkdir /src
+WORKDIR /src
 COPY . /src
-RUN cd / && tar zxf /build-cache/cargo-cache.tgz
+RUN ./components/build/bootstrap.sh \ 
+  && make build_deps \
+  && make build build//components/${component} \
+  && apt-get autoremove -y \
+  && apt-get clean \
+  && find /var/lib/apt/lists -type f | xargs rm \
+  && find /var/log -type f -exec rm {} \;  \
+  && rm -rf /usr/share/man/* \
+  && rm -rf /usr/share/doc/* \
+  && rm -f /var/log/alternatives.log /var/log/apt/* \
+  && rm /var/cache/debconf/*-old 
 WORKDIR /src/component/${component}
 RUN . /root/.cargo/env && cd /src/component/${component} && cargo build 
 RUN cp $(find /src -name 'libcouchbase.so' | head -n 1) /usr/lib
@@ -30,5 +40,4 @@ COPY --from=component-builder /src/components/${component}/config/* /svc/${compo
 COPY --from=component-builder /src/components/build/run.sh /svc
 RUN chmod a+x /svc/run.sh
 ENV START_SERVICE=${component}
-ENV SI_SERVICE_PORT=5000
 ENTRYPOINT /svc/run.sh

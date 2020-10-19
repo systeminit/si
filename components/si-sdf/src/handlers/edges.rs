@@ -1,6 +1,36 @@
-use crate::data::Db;
+use crate::data::{Connection, Db};
 use crate::handlers::{authenticate, authorize, HandlerError};
-use crate::models::{edge, Edge};
+use crate::models::{edge, get_model, upsert_model, Edge};
+
+#[tracing::instrument(level = "trace", target = "nodes::create")]
+pub async fn delete(
+    edge_id: String,
+    db: Db,
+    nats: Connection,
+    token: String,
+) -> Result<impl warp::Reply, warp::reject::Rejection> {
+    let claim = authenticate(&db, &token).await?;
+    authorize(
+        &db,
+        &claim.user_id,
+        &claim.billing_account_id,
+        "edges",
+        "delete",
+    )
+    .await?;
+
+    let mut edge: Edge = get_model(&db, &edge_id, &claim.billing_account_id)
+        .await
+        .map_err(HandlerError::from)?;
+    edge.si_storable.deleted = true;
+    upsert_model(&db, &nats, &edge.id, &edge)
+        .await
+        .map_err(HandlerError::from)?;
+
+    let reply = edge::DeleteReply { edge };
+
+    Ok(warp::reply::json(&reply))
+}
 
 #[tracing::instrument(level = "trace", target = "nodes::create")]
 pub async fn all_predecessors(

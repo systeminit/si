@@ -15,6 +15,9 @@ registry.componentAndEntity({
   siPathName: "si-kubernetes",
   serviceName: "kubernetes",
   options(c) {
+    c.entity.inputType("dockerImage");
+    c.entity.inputType("kubernetesCluster");
+
     c.entity.associations.belongsTo({
       fromFieldPath: ["siProperties", "billingAccountId"],
       typeName: "billingAccount",

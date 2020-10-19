@@ -135,6 +135,18 @@ export class SDF {
     return response;
   }
 
+  async delete<T>(pathString: string): Promise<T> {
+    let headers = this.standard_headers();
+    const url = new URL(pathString, this.baseUrl);
+    const request = new Request(url.toString(), {
+      method: "DELETE",
+      mode: "cors",
+      headers,
+    });
+    const response: T = await this.send_request(request);
+    return response;
+  }
+
   async send_request<T>(request: Request): Promise<T> {
     let response = await fetch(request);
     if (!response.ok) {

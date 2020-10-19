@@ -201,7 +201,7 @@ impl ChangeSet {
                         .as_str()
                         .ok_or(ChangeSetError::TypeMissing)?;
                     if last_obj_type_name == "entity" {
-                        calculate_properties(last_obj).await?;
+                        calculate_properties(db, last_obj).await?;
                     }
                 }
             };
@@ -255,7 +255,7 @@ impl ChangeSet {
 
         if last_type_name.is_some() && last_type_name.unwrap() == "entity" {
             let mut last_entity = seen_map.get_mut(&last_id.unwrap()).unwrap();
-            calculate_properties(&mut last_entity).await?;
+            calculate_properties(db, &mut last_entity).await?;
         }
 
         // Now save all the new representations. If it is a hypothetical execution,

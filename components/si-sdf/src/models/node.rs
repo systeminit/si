@@ -107,6 +107,7 @@ pub struct PatchSetPositionReply {
 #[serde(rename_all = "camelCase")]
 pub struct SyncResourceRequest {
     pub system_id: String,
+    pub change_set_id: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -117,11 +118,19 @@ pub struct SyncResourceReply {
 
 #[derive(Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
+pub struct VeritechSyncPredecessor {
+    pub entity: Entity,
+    pub resource: Resource,
+}
+
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct VeritechSyncResourceRequest<'a> {
     pub system_id: &'a str,
     pub node: &'a Node,
     pub entity: &'a Entity,
     pub resource: &'a Resource,
+    pub predecessors: Vec<VeritechSyncPredecessor>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -186,7 +195,7 @@ pub struct Position {
     y: u64,
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 pub enum NodeKind {
     Entity,
     System,
@@ -202,7 +211,7 @@ impl std::fmt::Display for NodeKind {
     }
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Node {
     pub id: String,
@@ -271,6 +280,7 @@ impl Node {
 
         match node.kind {
             NodeKind::Entity => {
+                let system_ids = system_ids.unwrap();
                 Entity::new(
                     db.clone(),
                     nats.clone(),
@@ -282,12 +292,16 @@ impl Node {
                     billing_account_id,
                     organization_id,
                     workspace_id,
-                    change_set_id,
+                    change_set_id.clone(),
                     edit_session_id,
                     created_by_user_id,
-                    system_ids.unwrap(),
+                    system_ids.clone(),
                 )
                 .await?;
+                for system_id in system_ids.iter() {
+                    node.sync_resource(&db, &nats, system_id, Some(change_set_id.clone()))
+                        .await?;
+                }
             }
             NodeKind::System => {
                 System::new(
@@ -320,10 +334,18 @@ impl Node {
         db: &Db,
         nats: &Connection,
         system_id: impl Into<String>,
+        change_set_id: Option<String>,
     ) -> NodeResult<Resource> {
         let system_id = system_id.into();
         let mut resource = Resource::get_by_node_id(db, &self.id, &system_id).await?;
-        let entity = if let Ok(entity) = self.get_head_object(db).await {
+
+        let entity: Entity = if let Some(ref change_set_id) = change_set_id {
+            tracing::error!(?change_set_id, "you should really be getting a change set");
+            match self.get_object_projection(&db, change_set_id).await {
+                Ok(entity) => entity,
+                Err(_) => self.get_head_object(db).await?,
+            }
+        } else if let Ok(entity) = self.get_head_object(db).await {
             entity
         } else {
             let current_time = Utc::now();
@@ -334,28 +356,86 @@ impl Node {
             upsert_model(db, nats, &resource.id, &resource).await?;
             return Ok(resource);
         };
-        let request = VeritechSyncResourceRequest {
-            system_id: &system_id,
-            resource: &resource,
-            node: self,
-            entity: &entity,
-        };
-        let res = REQWEST
-            .post("http://localhost:5157/syncResource")
-            .json(&request)
-            .send()
-            .await?;
-        let sync_reply: VeritechSyncResourceReply = res.json().await?;
-        resource
-            .from_update_for_self(
-                db,
-                nats,
-                sync_reply.resource.state,
-                sync_reply.resource.status,
-                sync_reply.resource.health,
+        tracing::error!(?change_set_id, "you did it!");
+
+        let last_resource = resource.clone();
+        let this_node = self.clone();
+        let this_db = db.clone();
+        let this_nats = nats.clone();
+        let predecessor_edges =
+            Edge::direct_predecessor_edges_by_node_id(&db, EdgeKind::Configures, &self.id).await?;
+
+        let mut predecessors: Vec<VeritechSyncPredecessor> = Vec::new();
+        for edge in predecessor_edges {
+            let edge_node = Node::get(
+                &db,
+                &edge.tail_vertex.node_id,
+                &self.si_storable.billing_account_id,
             )
             .await?;
-        Ok(resource)
+            let edge_entity: Entity = if let Some(ref change_set_id) = change_set_id {
+                match edge_node.get_object_projection(&db, change_set_id).await {
+                    Ok(edge_entity) => edge_entity,
+                    Err(_) => edge_node.get_head_object(db).await?,
+                }
+            } else if let Ok(edge_entity) = edge_node.get_head_object(db).await {
+                edge_entity
+            } else {
+                return Err(NodeError::NoHead);
+            };
+            let edge_resource = Resource::get(&db, &edge_entity.id, &system_id).await?;
+            let predecessor = VeritechSyncPredecessor {
+                entity: edge_entity,
+                resource: edge_resource,
+            };
+            predecessors.push(predecessor);
+        }
+
+        tokio::spawn(async move {
+            let request = VeritechSyncResourceRequest {
+                system_id: &system_id,
+                resource: &resource,
+                node: &this_node,
+                entity: &entity,
+                predecessors,
+            };
+            let res = match REQWEST
+                .post("http://localhost:5157/syncResource")
+                .json(&request)
+                .send()
+                .await
+            {
+                Ok(res) => res,
+                Err(e) => {
+                    tracing::warn!("sync resource error: {}", e);
+                    return;
+                }
+            };
+            let sync_reply: VeritechSyncResourceReply = match res.json().await {
+                Ok(sync_reply) => sync_reply,
+                Err(e) => {
+                    tracing::warn!("cannot deserialize sync reply: {}", e);
+                    return;
+                }
+            };
+            match resource
+                .from_update_for_self(
+                    &this_db,
+                    &this_nats,
+                    sync_reply.resource.state,
+                    sync_reply.resource.status,
+                    sync_reply.resource.health,
+                )
+                .await
+            {
+                Ok(_) => {}
+                Err(e) => {
+                    tracing::warn!("cannot update resource from response: {}", e);
+                    return;
+                }
+            }
+        });
+        Ok(last_resource)
     }
 
     pub async fn configure_node(
@@ -462,7 +542,8 @@ impl Node {
         );
         let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
         named_params.insert("node_id".into(), serde_json::json![&self.id]);
-        let mut query_results: Vec<serde_json::Value> = db.query(query, Some(named_params)).await?;
+        let mut query_results: Vec<serde_json::Value> =
+            db.query_consistent(query, Some(named_params)).await?;
         if query_results.len() == 0 {
             Err(NodeError::NoHead)
         } else {
@@ -489,7 +570,7 @@ impl Node {
         );
         let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
         named_params.insert("node_id".into(), serde_json::json![&self.id]);
-        let mut query_results: Vec<T> = db.query(query, Some(named_params)).await?;
+        let mut query_results: Vec<T> = db.query_consistent(query, Some(named_params)).await?;
         if query_results.len() == 0 {
             Err(NodeError::NoHead)
         } else {
@@ -511,6 +592,7 @@ impl Node {
             AND a.siChangeSet.changeSetId = $change_set_id
             AND a.nodeId = $node_id
             AND a.head = false
+          ORDER BY a.base ASC
           LIMIT 1
         ",
             bucket = db.bucket_name,
@@ -519,7 +601,8 @@ impl Node {
         let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
         named_params.insert("node_id".into(), serde_json::json![&self.id]);
         named_params.insert("change_set_id".into(), serde_json::json![change_set_id]);
-        let mut query_results: Vec<T> = db.query(query, Some(named_params)).await?;
+        tracing::error!(?named_params, ?query, "getting obj projection");
+        let mut query_results: Vec<T> = db.query_consistent(query, Some(named_params)).await?;
         if query_results.len() == 0 {
             Err(NodeError::NoProjection)
         } else {

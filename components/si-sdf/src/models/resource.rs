@@ -22,7 +22,7 @@ pub enum ResourceError {
 
 pub type ResourceResult<T> = Result<T, ResourceError>;
 
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum ResourceStatus {
     Pending,
@@ -32,7 +32,7 @@ pub enum ResourceStatus {
     Deleted,
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum ResourceHealth {
     Ok,
@@ -41,7 +41,7 @@ pub enum ResourceHealth {
     Unknown,
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Resource {
     pub id: String,
@@ -124,7 +124,8 @@ impl Resource {
         let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
         named_params.insert("system_id".into(), serde_json::json![system_id]);
         named_params.insert("entity_id".into(), serde_json::json![entity_id]);
-        let mut query_results: Vec<Resource> = db.query(query, Some(named_params)).await?;
+        let mut query_results: Vec<Resource> =
+            db.query_consistent(query, Some(named_params)).await?;
         if query_results.len() == 0 {
             Err(ResourceError::NoResource(
                 String::from(entity_id),
@@ -156,7 +157,8 @@ impl Resource {
         let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
         named_params.insert("system_id".into(), serde_json::json![system_id]);
         named_params.insert("node_id".into(), serde_json::json![node_id]);
-        let mut query_results: Vec<Resource> = db.query(query, Some(named_params)).await?;
+        let mut query_results: Vec<Resource> =
+            db.query_consistent(query, Some(named_params)).await?;
         if query_results.len() == 0 {
             Err(ResourceError::NoResource(
                 String::from(node_id),

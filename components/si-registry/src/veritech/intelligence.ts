@@ -18,12 +18,15 @@ export interface Entity {
   };
   manualProperties: {
     __baseline: Record<string, any>; // eslint-disable-line
+    [key: string]: Record<string, any>; // eslint-disable-line
   };
   inferredProperties: {
     __baseline: Record<string, any>; // eslint-disable-line
+    [key: string]: Record<string, any>; // eslint-disable-line
   };
   properties: {
     __baseline: Record<string, any>; //eslint-disable-line
+    [key: string]: Record<string, any>; //eslint-disable-line
   };
   siStorable: {
     typeName: string;
@@ -84,16 +87,29 @@ export interface ResourceUpdate {
   health: ResourceHealth;
 }
 
-interface CalculatePropertiesRequest {
+export interface CalculatePropertiesRequest {
   objectType: string;
   entity: Entity;
+  resources: Resource[];
+  predecessors: {
+    entity: Entity;
+    resources: Resource[];
+  }[];
 }
 
-interface CalculatePropertiesReply {
+export interface CalculatePropertiesReply {
   entity: Entity;
 }
 
 export interface CalculatePropertiesResult {
+  inferredProperties: {
+    __baseline: Record<string, any>; // eslint-disable-line
+    [key: string]: Record<string, any>; // eslint-disable-line
+  };
+}
+
+export interface CalculatePropertiesFullResult {
+  inferredProperties: CalculatePropertiesResult["inferredProperties"];
   properties: {
     __baseline: Record<string, any>; // eslint-disable-line
     [key: string]: Record<string, any>; // eslint-disable-line
@@ -124,10 +140,11 @@ export function calculateProperties(
     });
     return;
   }
-  const result: CalculatePropertiesResult = registryObj.calculateProperties(
-    entity,
+  const result: CalculatePropertiesFullResult = registryObj.calculateProperties(
+    intelReq,
   );
   entity.properties = result.properties;
+  entity.inferredProperties = result.inferredProperties;
   console.dir(entity, { depth: Infinity });
   //console.log("sending back the entity", { entity });
   const intelRes: CalculatePropertiesReply = {
@@ -238,19 +255,20 @@ export function calculateConfigures(
 }
 
 export interface ActionRequest {
-  toId: string;
   action: string;
   systemId: string;
-  hypothetical: boolean;
-  entities: {
-    successors: Entity[];
-    predecessors: Entity[];
-  };
-  resources: {
-    successors: Resource[];
-    predecessors: Resource[];
-  };
+  node: Node;
   entity: Entity;
+  resource: Resource;
+  hypothetical: boolean;
+  predecessors: {
+    entity: Entity;
+    resource: Resource;
+  }[];
+  successors: {
+    entity: Entity;
+    resource: Resource;
+  }[];
 }
 
 export interface ActionReply {
@@ -298,6 +316,10 @@ export interface SyncResourceRequest {
   node: Node;
   entity: Entity;
   resource: Resource;
+  predecessors: {
+    entity: Entity;
+    resource: Resource;
+  }[];
 }
 
 export interface SyncResourceReply {
@@ -331,10 +353,15 @@ export function syncResource(
       res.send(reply);
     })
     .catch(err => {
+      console.log(`Failed to execute sync ${err}`, err);
+      const r = {
+        resource: {
+          state: { ...request.resource.state, errorMsg: `${err}` },
+          health: ResourceHealth.Error,
+          status: ResourceStatus.Failed,
+        },
+      };
       res.status(400);
-      res.send({
-        code: 400,
-        messsage: `Cannot execute sync for ${request.entity.objectType}: ${err}`,
-      });
+      res.send(r);
     });
 }

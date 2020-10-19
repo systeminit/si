@@ -233,7 +233,6 @@ pub async fn delete_model<T: Serialize + std::fmt::Debug>(
     let collection = db.bucket.default_collection();
     collection.remove(id.as_ref(), None).await?;
     publish_model_delete(nats, model).await?;
-    tracing::trace!("inserted model");
     Ok(())
 }
 

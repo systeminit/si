@@ -2,6 +2,10 @@ import express from "express";
 import morgan from "morgan";
 import chalk from "chalk";
 import "@/loader";
+import "@/veritech/components/dockerImage";
+import "@/veritech/components/kubernetesDeployment";
+import "@/veritech/components/kubernetesCluster";
+import { registry } from "@/registry";
 
 import {
   calculateProperties,
@@ -22,6 +26,7 @@ app.post("/action", action);
 app.post("/syncResource", syncResource);
 
 export function start(port: number): void {
+  registry.serialize();
   const server = app.listen(port, () => {
     console.log(`Starting ${chalk.cyanBright("veritech")} on ${port}`);
   });
