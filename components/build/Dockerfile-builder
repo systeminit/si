@@ -13,11 +13,14 @@ RUN apt-get update && apt-get install -y sudo \
 	libev-dev \
 	libevent-dev \
 	libssl-dev \
-	pkg-config
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > /tmp/rustup.sh \
+	lld \
+	pkg-config \ 
+	&& \
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > /tmp/rustup.sh \
 	    && chmod a+x /tmp/rustup.sh \
-	    && /tmp/rustup.sh -y 
-RUN curl -sSf https://nodejs.org/dist/$NODE_VERSION/node-$NODE_VERSION-$NODE_DISTRO.tar.xz -o /tmp/node-$NODE_VERSION-$NODE_DISTRO.tar.xz && \
+	    && /tmp/rustup.sh -y  \
+	&&  \
+  curl -sSf https://nodejs.org/dist/$NODE_VERSION/node-$NODE_VERSION-$NODE_DISTRO.tar.xz -o /tmp/node-$NODE_VERSION-$NODE_DISTRO.tar.xz && \
   mkdir -p /usr/local/lib/nodejs && \
   tar -xJvf /tmp/node-$NODE_VERSION-$NODE_DISTRO.tar.xz -C /usr/local/lib/nodejs && \
   ln -sf /usr/local/lib/nodejs/node-$NODE_VERSION-$NODE_DISTRO/bin/node /usr/bin/node && \

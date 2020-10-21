@@ -1,6 +1,7 @@
 const theme = require("./src/design/themes/tailwind/tailwind-dark");
 
 module.exports = {
+  purge: ["./src/**/*.html", "./src/**/*.vue"],
   theme: {
     cursor: {
       resize: "ew-resize",

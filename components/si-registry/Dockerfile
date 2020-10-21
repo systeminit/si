@@ -1,4 +1,4 @@
-FROM si-builder:latest as build
+FROM systeminit/si-builder:latest as build
 LABEL maintainer="dev@systeminit.com"
 RUN mkdir /src
 WORKDIR /src

@@ -4,14 +4,14 @@ RELEASE := $(shell date +%Y%m%d%H%M%S)
 
 .PHONY: build build_release clean test run install
 
-install:
+install: 
 	npm install
 
-node_modules:
-	$(MAKE) install
+node_modules: package.json
+	npm install
 
-build: install
-	npm run build
+build: node_modules
+	env NODE_ENV=production npm run build
 
 build_release: build
 
@@ -35,10 +35,9 @@ test_container:
 container:
 	env BUILDKIT_PROGRESS=plain DOCKER_BUILDKIT=1 docker build \
 		-f $(CURDIR)/../${COMPONENT}/Dockerfile \
-		-t si-veritech-service:latest \
-		-t si-veritech-service:$(RELEASE) \
+		-t systeminit/si-veritech:latest \
+		-t systeminit/si-veritech:$(RELEASE) \
 		$(CURDIR)/../../
 
 release: container
-	docker push 835304779882.dkr.ecr.us-east-2.amazonaws.com/si/${COMPONENT}-service:latest
-	docker push 835304779882.dkr.ecr.us-east-2.amazonaws.com/si/${COMPONENT}-service:$(RELEASE)
+	docker push systeminit/si-veritech:latest

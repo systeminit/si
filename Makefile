@@ -67,10 +67,10 @@ test: $(TESTABLE)
 
 test_from_git: $(patsubst %,test//%,$(TO_BUILD))
 
-$(CONTAINABLE): clean
+$(CONTAINABLE): 
 	@ pushd $(patsubst container//%,%,$@); $(MAKE) container RELEASE=$(RELEASE)
 
-$(RELEASEABLE): clean
+$(RELEASEABLE):
 	@ pushd $(patsubst release//%,%,$@); $(MAKE) release RELEASE=$(RELEASE)
 
 $(WATCHABLE):
@@ -103,16 +103,36 @@ tmux_windows:
 tmux_panes:
 	@ for x in $(RUNNABLE_COMPONENTS); do tmux split-window -v && tmux send-keys "make watch//$$x" C-m; done
 
-container//base: clean
+container//opentelemetry-collector-user: 
+	cd ./components/opentelemetry-collector && ./build.sh
+
+container//opentelemetry-collector: 
+	cd ./components/opentelemetry-collector && ./build.sh release
+
+release//opentelemetry-collector: container//opentelemetry-collector
+	docker push systeminit/otelcol:latest
+
+container//nats: 
+	cd ./components/nats && ./build.sh
+
+release//nats: container//nats
+	docker push systeminit/nats:latest
+
+container//couchbase: 
+	cd ./components/couchbase && ./build.sh
+
+release//couchbase: container//couchbase
+	docker push systeminit/couchbase:latest
+
+container//builder: 
 	env BUILDKIT_PROGRESS=plain DOCKER_BUILDKIT=1 docker build \
-		-f $(CURDIR)/components/build/Dockerfile-base \
-		-t si-base:latest \
-		-t si-base:$(RELEASE) \
-		-t docker.pkg.github.com/systeminit/si/si-base:latest \
+		-f $(CURDIR)/components/build/Dockerfile-builder \
+		-t si-builder:latest \
+		-t systeminit/si-builder:latest \
 		.
 
-release//base: container//base
-	docker push docker.pkg.github.com/systeminit/si/si-base:latest
+release//builder: container//builder
+	docker push systeminit/si-builder:latest
 
 release_from_git: $(patsubst %,release//%,$(TO_RELEASE))
 	@ echo "--> You have (maybe) released the System Initative! <--"
@@ -131,7 +151,11 @@ force_clean:
 	sudo rm -rf ./components/*/node_modules
 	sudo rm -rf ./target
 
-dev_deps:
+test_deps:
+	./components/couchbase/run.sh || docker start db; exit 0
+	./components/nats/run.sh || docker start nats; exit 0
+
+dev_deps: 
 	./components/couchbase/run.sh || docker start db; exit 0
 	./components/opentelemetry-collector/run.sh || docker start otelcol; exit 0
 	./components/nats/run.sh || docker start nats; exit 0
