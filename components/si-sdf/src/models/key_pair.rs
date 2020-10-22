@@ -90,3 +90,14 @@ impl PublicKey {
         Ok(object)
     }
 }
+
+impl From<KeyPair> for PublicKey {
+    fn from(value: KeyPair) -> Self {
+        Self {
+            id: value.id,
+            name: value.name,
+            public_key: value.public_key,
+            si_storable: value.si_storable,
+        }
+    }
+}

@@ -161,10 +161,14 @@ pub async fn publish_model<T: Serialize + std::fmt::Debug>(
     nats: &Connection,
     model: &T,
 ) -> ModelResult<()> {
-    let model_json: serde_json::Value = serde_json::to_value(model)?;
+    let mut model_json: serde_json::Value = serde_json::to_value(model)?;
     if let Some(type_name) = model_json["siStorable"]["typeName"].as_str() {
         match type_name {
             "userPassword" | "jwtKeyPrivate" | "jwtKeyPublic" => return Ok(()),
+            "keyPair" => {
+                let key_pair: key_pair::KeyPair = serde_json::from_value(model_json.clone())?;
+                model_json = serde_json::to_value(PublicKey::from(key_pair))?;
+            }
             _ => (),
         }
     } else {

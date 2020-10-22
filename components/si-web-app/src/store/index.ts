@@ -2,6 +2,7 @@ import Vue from "vue";
 import Vuex from "vuex";
 import { Store } from "vuex";
 import { application, ApplicationStore } from "./modules/application";
+import { secret, SecretStore } from "./modules/secret";
 import { system, SystemStore } from "./modules/system";
 import { user, UserStore } from "./modules/user";
 import { workspace, WorkspaceStore } from "./modules/workspace";
@@ -36,6 +37,7 @@ export interface RootStore {
   application: ApplicationStore;
   system: SystemStore;
   version: string;
+  secret: SecretStore;
 }
 
 const store: Store<RootStore> = new Vuex.Store({
@@ -52,6 +54,7 @@ const store: Store<RootStore> = new Vuex.Store({
     workspace,
     billingAccount,
     loader,
+    secret,
   },
   strict: debug,
 });

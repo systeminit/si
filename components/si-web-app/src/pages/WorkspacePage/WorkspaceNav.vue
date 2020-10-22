@@ -26,11 +26,9 @@
     <div id="workspace-content" class="flex flex-col flex-grow w-full mt-12">
       <div>
         <!-- Dashboard Link -->
-        <div class="flex justify-center w-full h-10">
-          <div class="w-9/12 cursor-pointer">
-            <div
-              class="flex items-center justify-start color-disabled focus:text-white"
-            >
+        <div class="container-link">
+          <div class="w-9/12">
+            <div class="flex items-center justify-start">
               <activity-icon size="1.1x" class="mr-3" />
               <div
                 class="text-sm subpixel-antialiased font-normal tracking-tight font-source-code-pro"
@@ -55,7 +53,7 @@
               },
             }"
           >
-            <div class="flex items-center justify-start color-grey-light">
+            <div class="flex items-center justify-start cursor-pointer">
               <code-icon size="1.1x" class="mr-3" />
               <div
                 class="text-sm subpixel-antialiased font-normal tracking-tight font-source-code-pro"
@@ -68,10 +66,8 @@
 
         <!-- Systems Link -->
         <div class="container-link">
-          <div class="w-9/12 cursor-pointer">
-            <div
-              class="flex items-center justify-start color-disabled focus:text-white"
-            >
+          <div class="w-9/12">
+            <div class="flex items-center justify-start">
               <share-2-icon size="1.2x" class="mr-3 transform rotate-90" />
               <div
                 class="text-sm subpixel-antialiased font-normal tracking-tight font-source-code-pro"
@@ -84,10 +80,8 @@
 
         <!-- Components Link -->
         <div class="container-link">
-          <div class="w-9/12 cursor-pointer">
-            <div
-              class="flex items-center justify-start color-disabled focus:text-white"
-            >
+          <div class="w-9/12">
+            <div class="flex items-center justify-start">
               <box-icon size="1.1x" class="mr-3" />
               <div
                 class="text-sm subpixel-antialiased font-normal tracking-tight font-source-code-pro"
@@ -100,10 +94,8 @@
 
         <!-- Resources Link -->
         <div class="container-link">
-          <div class="w-9/12 cursor-pointer">
-            <div
-              class="flex items-center justify-start color-disabled focus:text-white"
-            >
+          <div class="w-9/12">
+            <div class="flex items-center justify-start">
               <grid-icon size="1.2x" class="mr-3" />
               <div
                 class="text-sm subpixel-antialiased font-normal tracking-tight font-source-code-pro"
@@ -116,10 +108,8 @@
 
         <!-- Environment Link  AKA computing environment -->
         <div class="container-link">
-          <div class="w-9/12 cursor-pointer">
-            <div
-              class="flex items-center justify-start color-disabled focus:text-white"
-            >
+          <div class="w-9/12">
+            <div class="flex items-center justify-start">
               <layers-icon size="1.1x" class="mr-3" />
               <div
                 class="text-sm subpixel-antialiased font-normal tracking-tight font-source-code-pro"
@@ -132,10 +122,8 @@
 
         <!-- Catalogue Link -->
         <div class="container-link">
-          <div class="w-9/12 cursor-pointer">
-            <div
-              class="flex items-center justify-start color-disabled focus:text-white"
-            >
+          <div class="w-9/12">
+            <div class="flex items-center justify-start">
               <book-open-icon size="1.1x" class="mr-3" />
               <div
                 class="text-sm subpixel-antialiased font-normal tracking-tight font-source-code-pro"
@@ -147,12 +135,36 @@
         </div>
       </div>
 
+      <!-- Secrets Link -->
+      <div class="container-link">
+        <router-link
+          class="w-9/12"
+          data-cy="secret-nav-link"
+          :to="{
+            name: 'secret',
+            params: {
+              organizationId: organization.id,
+              workspaceId: workspace.id,
+            },
+          }"
+        >
+          <div class="flex items-center justify-start cursor-pointer">
+            <file-icon size="1.1x" class="mr-3" />
+            <div
+              class="text-sm subpixel-antialiased font-normal tracking-tight font-source-code-pro"
+            >
+              Secrets
+            </div>
+          </div>
+        </router-link>
+      </div>
+
       <div class="flex flex-col justify-end flex-grow">
         <!-- Settings Link -->
         <div class="container-link">
-          <div class="w-9/12 cursor-pointer">
+          <div class="w-9/12">
             <div
-              class="flex items-center justify-start color-disabled focus:text-white"
+              class="flex items-center justify-start color-disabled focus:text-white cursor-pointer"
             >
               <settings-icon size="1.1x" class="mr-3" />
               <div
@@ -208,6 +220,7 @@ import {
   BookOpenIcon,
   GridIcon,
   RefreshCwIcon,
+  FileIcon,
 } from "vue-feather-icons";
 
 import SysinitIcon from "@/components/icons/SysinitIcon.vue";
@@ -234,6 +247,7 @@ export default Vue.extend({
     BookOpenIcon,
     GridIcon,
     RefreshCwIcon,
+    FileIcon,
   },
   data(): IData {
     return {
@@ -283,5 +297,10 @@ export default Vue.extend({
 
 .container-link {
   @apply flex justify-center w-full h-10 mt-3;
+  color: #4a4b4c;
+}
+
+.router-link-active {
+  color: #c7cacd;
 }
 </style>

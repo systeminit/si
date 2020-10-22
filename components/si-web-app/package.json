@@ -30,6 +30,8 @@
     "monaco-editor-webpack-plugin": "^1.9.0",
     "si-registry": "file:../si-registry",
     "tailwindcss": "^1.4.6",
+    "tweetnacl": "^1.0.3",
+    "tweetnacl-sealedbox-js": "github:systeminit/tweetnacl-sealed-box#master",
     "vue": "^2.6.11",
     "vue-chartjs": "^3.5.0",
     "vue-codemirror": "^4.0.6",
