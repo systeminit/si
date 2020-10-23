@@ -41,7 +41,7 @@ pub async fn create(
 }
 
 pub async fn patch(
-    change_set_id: String,
+    _change_set_id: String,
     edit_session_id: String,
     db: Db,
     nats: Connection,

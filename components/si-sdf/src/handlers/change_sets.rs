@@ -1,4 +1,5 @@
 use crate::data::{Connection, Db};
+use tracing::trace;
 
 use crate::handlers::{authenticate, authorize, HandlerError};
 use crate::models::change_set::{
@@ -57,7 +58,7 @@ pub async fn patch(
 
     let reply = match request.op {
         PatchOps::Execute(execute_request) => {
-            tracing::error!("executing changeset");
+            trace!("executing changeset");
             let mut change_set: ChangeSet =
                 ChangeSet::get(&db, &change_set_id, &claim.billing_account_id)
                     .await

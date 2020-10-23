@@ -1,9 +1,7 @@
 use crate::data::{Connection, Db};
-
 use crate::handlers::{authenticate, authorize, HandlerError};
 use crate::models;
 use crate::models::change_set::ChangeSet;
-use crate::models::edge::{Edge, EdgeKind};
 use crate::models::node::{
     Node, ObjectPatchReply, ObjectPatchRequest, PatchConfiguredByReply, PatchIncludeSystemReply,
     PatchOp, PatchReply, PatchRequest, PatchSetPositionReply, SyncResourceReply,
@@ -11,6 +9,7 @@ use crate::models::node::{
 use crate::models::ops::{
     OpEntityAction, OpEntityDelete, OpEntitySet, OpReply, OpRequest, OpSetName,
 };
+use tracing::trace;
 
 #[tracing::instrument(level = "trace", target = "nodes::create")]
 pub async fn create(
@@ -181,7 +180,6 @@ pub async fn object_patch(
             .map_err(HandlerError::from)?;
         }
         OpRequest::EntityAction(op_request) => {
-            tracing::warn!("You matched this entity action, and it should be a delete");
             OpEntityAction::new(
                 db.clone(),
                 nats.clone(),
@@ -199,7 +197,6 @@ pub async fn object_patch(
             .map_err(HandlerError::from)?;
         }
         OpRequest::EntityDelete(_op_request) => {
-            tracing::warn!("You matched a delete");
             OpEntityDelete::new(
                 &db,
                 &nats,
@@ -256,7 +253,6 @@ pub async fn get_object(
     token: String,
     request: models::GetRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    tracing::error!("you did call it, right?");
     let claim = authenticate(&db, &token).await?;
     authorize(
         &db,
@@ -279,7 +275,7 @@ pub async fn get_object(
             .await
             .map_err(|_e| warp::reject::not_found())?
     };
-    tracing::error!(?object, "got the obj");
+    trace!(?object, "got the obj");
 
     let reply = models::GetReply { item: object };
     Ok(warp::reply::json(&reply))

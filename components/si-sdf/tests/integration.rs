@@ -126,3 +126,24 @@ pub async fn test_cleanup(test_account: TestAccount) -> Result<()> {
 
     Ok(())
 }
+
+pub async fn billing_account_cleanup() -> Result<()> {
+    let query = "DELETE FROM si_integration AS s
+        WHERE s.siStorable.typeName  = \"billingAccount\"
+          AND s.name = \"alice\"
+        RETURNING s";
+    let mut result = DB
+        .cluster
+        .query(query, None)
+        .await
+        .expect("could not delete the data for this billing account");
+    let mut result_stream = result.rows_as::<serde_json::Value>()?;
+    while let Some(r) = result_stream.next().await {
+        match r {
+            Ok(_) => (),
+            Err(e) => return Err(anyhow::Error::from(e)),
+        }
+    }
+
+    Ok(())
+}
