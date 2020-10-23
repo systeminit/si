@@ -1,6 +1,7 @@
 use crossbeam::queue::SegQueue;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use tracing::trace;
 
 use crate::data::{Connection, Db};
 use crate::models::{delete_model, insert_model, ModelError, SiStorable, SiStorableError};
@@ -433,7 +434,7 @@ impl Edge {
             object_id = head_object_id,
             type_name = tail_type_name,
         );
-        tracing::error!(?query, "edge query");
+        trace!(?query, "edge query");
         let query_results: Vec<Edge> = db.query_consistent(query, None).await?;
         Ok(query_results)
     }

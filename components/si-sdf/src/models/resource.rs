@@ -2,6 +2,7 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use thiserror::Error;
+use tracing::trace;
 
 use std::collections::HashMap;
 
@@ -187,7 +188,7 @@ impl Resource {
         self.unix_timestamp = unix_timestamp;
         self.timestamp = timestamp;
 
-        tracing::warn!(?self, "whats your deal");
+        trace!(?self, "whats your deal");
         upsert_model(db, nats, &self.id, &self).await?;
         Ok(())
     }

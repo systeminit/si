@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use thiserror::Error;
+use tracing::{error, info, trace};
 
 use crate::data::{Connection, Db, REQWEST};
 use crate::models::{
@@ -268,9 +269,9 @@ impl Entity {
             entity.base = true;
             insert_model(&db, &nats, &base_key, &entity).await?;
             for system_id in system_ids {
-                tracing::error!(?system_id, ?entity, "getting system edge");
+                trace!(?system_id, ?entity, "getting system edge");
                 let system = System::get_any(&db, &system_id).await?;
-                tracing::error!(?system_id, ?system, ?entity, "adding sytem edge");
+                trace!(?system_id, ?system, ?entity, "adding sytem edge");
                 Edge::new(
                     &db,
                     &nats,
@@ -323,7 +324,7 @@ impl Entity {
         let mut json = serde_json::json![self];
         calculate_properties(db, &mut json).await?;
         let new_entity: Entity = serde_json::from_value(json)?;
-        tracing::warn!(?new_entity, "new entity from calculate properties");
+        trace!(?new_entity, "new entity from calculate properties");
         *self = new_entity;
         Ok(())
     }
@@ -379,7 +380,7 @@ impl Entity {
 }
 
 pub async fn calculate_properties(db: &Db, json: &mut serde_json::Value) -> EntityResult<()> {
-    tracing::warn!(?json, "calculating properties");
+    info!(?json, "calculating properties");
     let entity: Entity = serde_json::from_value(json.clone())?;
     let optional_change_set_id = if entity.head {
         None
@@ -399,7 +400,7 @@ pub async fn calculate_properties(db: &Db, json: &mut serde_json::Value) -> Enti
 
     let mut resources = Vec::new();
     for system_edge in system_edges.iter() {
-        tracing::error!(?system_edge, "system edge");
+        trace!(?system_edge, "system edge");
         let resource = Resource::get(&db, &entity.id, &system_edge.tail_vertex.object_id).await?;
         resources.push(resource);
     }
@@ -429,11 +430,11 @@ pub async fn calculate_properties(db: &Db, json: &mut serde_json::Value) -> Enti
             return Err(EntityError::Node("no head node!".to_string()));
         };
         let mut edge_resources: Vec<Resource> = Vec::new();
-        tracing::warn!(?system_edges, "calculating edge resources for system edges");
+        trace!(?system_edges, "calculating edge resources for system edges");
         for system_edge in system_edges.iter() {
             let edge_resource =
                 Resource::get(&db, &edge_entity.id, &system_edge.tail_vertex.object_id).await?;
-            tracing::warn!(?edge_resource, "no mas");
+            trace!(?edge_resource, "no mas");
             edge_resources.push(edge_resource);
         }
 
@@ -458,7 +459,7 @@ pub async fn calculate_properties(db: &Db, json: &mut serde_json::Value) -> Enti
         .send()
         .await?;
     let entity_result: CalculatePropertiesResponse = res.json().await?;
-    tracing::warn!(
+    trace!(
         ?entity_result,
         "calculate properties response from changeset"
     );
@@ -505,7 +506,7 @@ pub fn calculate_configures(
             let system = System::get_any(&db, &system_edge.tail_vertex.object_id).await?;
             systems.push(system);
         }
-        tracing::error!(?systems, ?node_id, "making nodes with the list of systems");
+        trace!(?systems, ?node_id, "making nodes with the list of systems");
 
         let res = REQWEST
             .post("http://localhost:5157/calculateConfigures")
@@ -546,11 +547,15 @@ pub fn calculate_configures(
                 .as_str()
                 .ok_or(EntityError::Missing("siChangeSet.editSessionId".into()))?;
 
-            tracing::error!(?create_list, "poop");
             for to_create in create_list.into_iter() {
-                tracing::error!(?to_create, "for create list");
+                trace!(?to_create, "for create list");
                 if &to_create.object_type == object_type {
-                    tracing::error!(?object_type, ?to_create, "calculate configures requested an object of the same type as this one, which is a recursive thing - skipping it!");
+                    trace!(
+                        ?object_type,
+                        ?to_create,
+                        "calculate configures requested an object \
+                        of the same type as this one, which is a recursive thing - skipping it!"
+                    );
                     continue;
                 }
                 let new_node = Node::new(
@@ -586,7 +591,7 @@ pub fn calculate_configures(
                     None,
                 )
                 .await?;
-                tracing::debug!(?new_node, "created node as configured");
+                trace!(?new_node, "created node as configured");
             }
         }
 

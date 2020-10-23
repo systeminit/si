@@ -3,6 +3,7 @@ use nats::asynk::Connection;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json;
 use thiserror::Error;
+use tracing::{error, trace};
 use uuid::Uuid;
 
 use std::collections::HashMap;
@@ -177,10 +178,10 @@ pub async fn publish_model<T: Serialize + std::fmt::Debug>(
     }
     if subject_array.len() != 0 {
         let subject: String = subject_array.join(".");
-        tracing::trace!(?subject, "publishing model");
+        trace!(?subject, "publishing model");
         nats.publish(&subject, model_json.to_string()).await?;
     } else {
-        tracing::error!(?model, "tried to publish a model that has no tenancy!");
+        error!(?model, "tried to publish a model that has no tenancy!");
     }
     Ok(())
 }
@@ -208,14 +209,14 @@ pub async fn publish_model_delete<T: Serialize + std::fmt::Debug>(
     }
     if subject_array.len() != 0 {
         let subject: String = subject_array.join(".");
-        tracing::trace!(?subject, "publishing model");
+        trace!(?subject, "publishing model");
         nats.publish(
             &subject,
             serde_json::json![{ "deleted": model_json }].to_string(),
         )
         .await?;
     } else {
-        tracing::error!(
+        error!(
             ?model,
             "tried to publish a model delete that has no tenancy!"
         );
@@ -246,7 +247,7 @@ pub async fn insert_model<T: Serialize + std::fmt::Debug>(
     let collection = db.bucket.default_collection();
     collection.insert(id.as_ref(), model, None).await?;
     publish_model(nats, model).await?;
-    tracing::trace!("inserted model");
+    trace!("inserted model");
     Ok(())
 }
 
@@ -283,7 +284,7 @@ pub async fn upsert_model<T: Serialize + std::fmt::Debug>(
     let collection = db.bucket.default_collection();
     collection.upsert(id.as_ref(), model, None).await?;
     publish_model(nats, model).await?;
-    tracing::trace!("upserted model");
+    trace!("upserted model");
     Ok(())
 }
 
@@ -324,7 +325,7 @@ pub async fn load_billing_account_model(
         "billing_account_id".into(),
         serde_json::json![billing_account_id],
     );
-    tracing::error!(
+    trace!(
         ?query_string,
         ?named_params,
         "loading billing account model query"
@@ -355,7 +356,7 @@ pub async fn load_data_model(
         "update_count".into(),
         serde_json::json![update_clock.update_count],
     );
-    tracing::error!(?query_string, ?named_params, "loading data model query");
+    trace!(?query_string, ?named_params, "loading data model query");
     let results: Vec<serde_json::Value> = db.query(query_string, Some(named_params)).await?;
     return Ok(results);
 }
@@ -435,10 +436,10 @@ pub async fn list_model(
         order_by_direction = order_by_direction.as_ref().unwrap(),
     );
 
-    tracing::trace!(?query_string, "query model");
+    trace!(?query_string, "query model");
     let results: Vec<serde_json::Value> = db.query(query_string, None).await?;
     let total_count = results.len() as u32;
-    tracing::trace!(?total_count, ?results, "query model results");
+    trace!(?total_count, ?results, "query model results");
 
     if total_count <= page_size.unwrap() {
         Ok(ListReply {
@@ -647,7 +648,7 @@ pub async fn get_base_object(
     let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
     named_params.insert("id".into(), serde_json::json![id]);
     named_params.insert("change_set_id".into(), serde_json::json![change_set_id]);
-    tracing::error!(?query, ?named_params, "get base object");
+    trace!(?query, ?named_params, "get base object");
     let mut query_results: Vec<serde_json::Value> =
         db.query_consistent(query, Some(named_params)).await?;
     if query_results.len() == 0 {

@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use tracing::{trace, warn};
 
 use std::collections::HashMap;
 
@@ -171,14 +172,14 @@ impl ChangeSet {
             .query_consistent(change_set_entry_query, Some(change_set_entry_named_params))
             .await?;
 
-        tracing::error!(?change_set_entry_query_results, "change set exec results");
+        trace!(?change_set_entry_query_results, "change set exec results");
 
         let mut seen_map: HashMap<String, serde_json::Value> = HashMap::new();
         let mut last_id: Option<String> = None;
         let mut last_type_name: Option<String> = None;
 
         for change_set_entry in change_set_entry_query_results.into_iter() {
-            tracing::error!(?change_set_entry, "entry");
+            trace!(?change_set_entry, "entry");
             let change_set_event = change_set_entry["siChangeSet"]["event"]
                 .as_str()
                 .ok_or(ChangeSetError::EventMissing)?;
@@ -194,7 +195,7 @@ impl ChangeSet {
 
             if last_id.is_some() {
                 let lei = last_id.as_ref().unwrap();
-                tracing::warn!(?lei, ?to_id, "comparing lei to to_id");
+                trace!(?lei, ?to_id, "comparing lei to to_id");
                 if lei != to_id {
                     let last_obj = seen_map.get_mut(last_id.as_ref().unwrap()).unwrap();
                     let last_obj_type_name = last_obj["siStorable"]["typeName"]
@@ -209,7 +210,7 @@ impl ChangeSet {
             let obj = if seen_map.contains_key(to_id) {
                 seen_map.get_mut(to_id).unwrap()
             } else {
-                tracing::error!("getting base object: {} {}", to_id, &self.id);
+                trace!("getting base object: {} {}", to_id, &self.id);
                 let head_obj = get_base_object(db, to_id, &self.id).await?;
                 seen_map.insert(String::from(to_id), head_obj);
                 seen_map.get_mut(to_id).unwrap()
@@ -223,33 +224,33 @@ impl ChangeSet {
 
             match change_set_event {
                 "Create" => {
-                    tracing::error!("creating some shit");
+                    trace!("creating some shit");
                 }
                 "Operation" => match entry_type_name {
                     "opEntitySet" => {
                         let op: ops::OpEntitySet = serde_json::from_value(change_set_entry)?;
-                        tracing::warn!(?op, "applying op");
+                        trace!(?op, "applying op");
                         op.apply(obj).await?;
                     }
                     "opSetName" => {
-                        tracing::warn!(?change_set_entry, "about to deserialize");
+                        trace!(?change_set_entry, "about to deserialize");
                         let op: ops::OpSetName = serde_json::from_value(change_set_entry)?;
-                        tracing::warn!(?op, "applying op");
+                        trace!(?op, "applying op");
                         op.apply(obj).await?;
                     }
                     "opEntityDelete" => {
                         let op: ops::OpEntityDelete = serde_json::from_value(change_set_entry)?;
-                        tracing::warn!(?op, "applying op");
+                        trace!(?op, "applying op");
                         op.apply(obj).await?;
                     }
                     "opEntityAction" => {
                         let op: ops::OpEntityAction = serde_json::from_value(change_set_entry)?;
-                        tracing::warn!(?op, "applying op");
+                        trace!(?op, "applying op");
                         op.apply(&db, &nats, hypothetical, obj).await?;
                     }
-                    unknown => tracing::error!("cannot find an op for {}", unknown),
+                    unknown => warn!("cannot find an op for {}", unknown),
                 },
-                unknown => tracing::error!("unknkown change set event {}", unknown),
+                unknown => warn!("unknkown change set event {}", unknown),
             }
         }
 

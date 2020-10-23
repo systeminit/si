@@ -187,8 +187,6 @@ async fn patch_object() {
         .path(format!("/nodes/{}/object", &node.id).as_ref())
         .reply(&filter)
         .await;
-    let wtf = String::from_utf8(res.body().to_vec()).expect("cannot amke string fromb ody");
-    tracing::error!(?wtf, "wtf");
     let reply: node::ObjectPatchReply =
         serde_json::from_slice(res.body()).expect("cannot deserialize reply");
 

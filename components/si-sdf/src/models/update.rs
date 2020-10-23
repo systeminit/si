@@ -1,6 +1,7 @@
 use futures::{FutureExt, StreamExt};
 use serde::{Deserialize, Serialize};
-use tokio::sync::mpsc;
+use tokio::sync::mpsc::{self, UnboundedSender};
+use tracing::{error, trace, warn};
 use warp::ws::{Message, WebSocket};
 
 use crate::data::{Connection, Db};
@@ -40,6 +41,12 @@ pub enum ControlOp {
     Stop(serde_json::Value),
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+enum MessageStream {
+    Continue,
+    Finish,
+}
+
 pub async fn websocket_run(websocket: WebSocket, db: Db, nats: Connection, claim: SiClaims) {
     // Split the socket into a sender and receiver of messages.
     let (ws_tx, mut ws_rx) = websocket.split();
@@ -55,8 +62,16 @@ pub async fn websocket_run(websocket: WebSocket, db: Db, nats: Connection, claim
     // For debugging!
     let claim2 = claim.clone();
     tokio::task::spawn(rx.forward(ws_tx).map(move |result| {
-        if let Err(e) = result {
-            tracing::error!("websocket send error for {:#?}: {}", claim2, e);
+        if let Err(err) = result {
+            // Doesn't look like `warp::Error` can deref the inner error, which is rather sad. The
+            // "Connection closed normall" 'error' appears to be safe and benign, so we'll ignore
+            // this one and warn on all others
+            match err.to_string().as_ref() {
+                "Connection closed normally" => {
+                    trace!("ws client send closed normally; err={:?}", err)
+                }
+                _ => warn!("ws client send error; err={}, claim={:?}", err, claim2),
+            }
         }
     }));
 
@@ -74,97 +89,127 @@ pub async fn websocket_run(websocket: WebSocket, db: Db, nats: Connection, claim
                             Ok(op_json) => {
                                 match outbound_ws_tx_from_nats.send(Ok(Message::text(op_json))) {
                                     Ok(_) => (),
-                                    Err(err) => tracing::error!("cannot send outbound op: {}", err),
+                                    Err(err) => error!("cannot send outbound op; err={:?}", err),
                                 }
                             }
-                            Err(err) => {
-                                tracing::error!("cannot serialize op as json: {}", err);
-                            }
+                            Err(err) => error!("cannot serialize op as json: {}", err),
                         },
-                        Err(err) => tracing::error!("bad data from nats: {} / {:#?}", err, msg),
+                        Err(err) => error!("bad data from nats: {} / {:#?}", err, msg),
                     }
                 }
             });
         }
-        Err(err) => tracing::error!("websocket error creating subscriber: {}", err),
+        Err(err) => error!("websocket error creating subscriber: {}", err),
     }
 
     // Listen to ControlOps from the websocket
-    while let Some(control_op_msg_result) = ws_rx.next().await {
-        match control_op_msg_result {
-            Ok(control_op_msg) => {
-                match serde_json::from_slice::<ControlOp>(&control_op_msg.into_bytes()) {
-                    Ok(control_op) => match control_op {
-                        ControlOp::Stop(value) => {
-                            tracing::debug!("graceful stop: {}", value);
-                            break;
-                        }
-                        ControlOp::LoadData(load_data) => {
-                            tracing::debug!(?load_data, "loading data");
-                            let mut results = match load_data_model(
-                                &db,
-                                load_data.workspace_id,
-                                load_data.update_clock,
-                            )
-                            .await
-                            {
-                                Ok(results) => results,
-                                Err(err) => {
-                                    tracing::error!(?err, "cannot load data");
-                                    continue;
-                                }
-                            };
-                            let mut b_results =
-                                match load_billing_account_model(&db, &claim.billing_account_id)
-                                    .await
-                                {
-                                    Ok(b_results) => b_results,
-                                    Err(err) => {
-                                        tracing::error!(?err, "cannot load data");
-                                        continue;
-                                    }
-                                };
-                            results.append(&mut b_results);
-
-                            for model in results.into_iter() {
-                                match serde_json::to_string(&UpdateOp::Model(model)) {
-                                    Ok(op_json) => {
-                                        match outbound_ws_tx.send(Ok(Message::text(op_json))) {
-                                            Ok(_) => (),
-                                            Err(err) => {
-                                                tracing::error!("cannot send outbound op: {}", err)
-                                            }
-                                        }
-                                    }
-                                    Err(err) => {
-                                        tracing::error!("cannot serialize op as json: {}", err);
-                                    }
-                                }
-                            }
-                            match serde_json::to_string(&UpdateOp::LoadFinished) {
-                                Ok(op_json) => {
-                                    match outbound_ws_tx.send(Ok(Message::text(op_json))) {
-                                        Ok(_) => (),
-                                        Err(err) => {
-                                            tracing::error!("cannot send outbound op: {}", err)
-                                        }
-                                    }
-                                }
-                                Err(err) => {
-                                    tracing::error!("cannot serialize op as json: {}", err);
-                                }
-                            }
-                        }
-                    },
-                    Err(err) => {
-                        tracing::error!("error deserializing control op: {}", err);
-                    }
+    while let Some(message_result) = ws_rx.next().await {
+        match message_result {
+            Ok(message) => {
+                if MessageStream::Finish
+                    == process_message(&db, &claim, &outbound_ws_tx, message.clone()).await
+                {
+                    break;
                 }
             }
             Err(err) => {
-                tracing::error!("client has departed: {}", err);
+                trace!("ws client poll error; err={:?}", err);
                 break;
             }
         }
     }
+
+    trace!("ws client connection closed, good bye");
+}
+
+async fn process_message(
+    db: &Db,
+    claim: &SiClaims,
+    outbound_ws_tx: &UnboundedSender<Result<Message, warp::Error>>,
+    message: Message,
+) -> MessageStream {
+    // This `warp::ws::Message` wraps a `tungstenite::protocol::Message` which is an enum, but
+    // sadly the warp Message does not expose the underlying enum for pattern mataching. Instead
+    // we'll have to iterate through all the variants by hand with if statements
+    if message.is_text() {
+        trace!("recv ws text msg, processing; message={:?}", message);
+
+        match serde_json::from_slice::<ControlOp>(&message.into_bytes()) {
+            Ok(control_op) => match control_op {
+                ControlOp::Stop(value) => {
+                    trace!("recv control op stop; value={:?}", &value);
+                    return MessageStream::Finish;
+                }
+                ControlOp::LoadData(load_data) => {
+                    trace!("recv control op load data; load_data={:?}", &load_data);
+                    let mut results =
+                        match load_data_model(db, load_data.workspace_id, load_data.update_clock)
+                            .await
+                        {
+                            Ok(results) => results,
+                            Err(err) => {
+                                tracing::error!(?err, "cannot load data");
+                                return MessageStream::Continue;
+                            }
+                        };
+                    let mut b_results =
+                        match load_billing_account_model(db, &claim.billing_account_id).await {
+                            Ok(b_results) => b_results,
+                            Err(err) => {
+                                tracing::error!(?err, "cannot load data");
+                                return MessageStream::Continue;
+                            }
+                        };
+                    results.append(&mut b_results);
+
+                    for model in results.into_iter() {
+                        match serde_json::to_string(&UpdateOp::Model(model)) {
+                            Ok(op_json) => match outbound_ws_tx.send(Ok(Message::text(op_json))) {
+                                Ok(_) => (),
+                                Err(err) => tracing::error!("cannot send outbound op: {}", err),
+                            },
+                            Err(err) => {
+                                tracing::error!("cannot serialize op as json: {}", err);
+                            }
+                        }
+                    }
+                    match serde_json::to_string(&UpdateOp::LoadFinished) {
+                        Ok(op_json) => match outbound_ws_tx.send(Ok(Message::text(op_json))) {
+                            Ok(_) => (),
+                            Err(err) => tracing::error!("cannot send outbound op: {}", err),
+                        },
+                        Err(err) => {
+                            tracing::error!("cannot serialize op as json: {}", err);
+                        }
+                    }
+                }
+            },
+            Err(err) => {
+                tracing::error!("error deserializing control op: {}", err);
+            }
+        };
+    } else if message.is_close() {
+        trace!("recv ws close msg, skipping; message={:?}", message);
+    } else if message.is_ping() {
+        // Pings are automatically ponged via tungstenite so if we receive this message, there is
+        // nothing left to do
+        trace!("recv ws ping msg, skipping; message={:?}", message);
+    } else if message.is_pong() {
+        trace!("recv ws pong msg, skipping; message={:?}", message);
+    } else if message.is_binary() {
+        warn!(
+            "recv ws binary message which is not expected (text only), skipping; message={:#x?}",
+            message.as_bytes()
+        );
+    } else {
+        // If we trigger this error, then the underlying `tungstenite::protocol::Message` likely
+        // has a new variant that we are not not handling explicitly
+        error!(
+            "recv ws msg of unknown type, likely a new underlying variant, \
+            programmer intervention required; message={:?}",
+            message
+        );
+    }
+
+    MessageStream::Continue
 }

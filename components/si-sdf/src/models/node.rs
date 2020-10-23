@@ -1,6 +1,7 @@
 use chrono::Utc;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use thiserror::Error;
+use tracing::{error, trace, warn};
 
 use crate::data::{Connection, Db, REQWEST};
 use crate::models::{
@@ -340,7 +341,7 @@ impl Node {
         let mut resource = Resource::get_by_node_id(db, &self.id, &system_id).await?;
 
         let entity: Entity = if let Some(ref change_set_id) = change_set_id {
-            tracing::error!(?change_set_id, "you should really be getting a change set");
+            trace!(?change_set_id, "you should really be getting a change set");
             match self.get_object_projection(&db, change_set_id).await {
                 Ok(entity) => entity,
                 Err(_) => self.get_head_object(db).await?,
@@ -356,7 +357,6 @@ impl Node {
             upsert_model(db, nats, &resource.id, &resource).await?;
             return Ok(resource);
         };
-        tracing::error!(?change_set_id, "you did it!");
 
         let last_resource = resource.clone();
         let this_node = self.clone();
@@ -407,14 +407,14 @@ impl Node {
             {
                 Ok(res) => res,
                 Err(e) => {
-                    tracing::warn!("sync resource error: {}", e);
+                    warn!("sync resource error: {}", e);
                     return;
                 }
             };
             let sync_reply: VeritechSyncResourceReply = match res.json().await {
                 Ok(sync_reply) => sync_reply,
                 Err(e) => {
-                    tracing::warn!("cannot deserialize sync reply: {}", e);
+                    warn!("cannot deserialize sync reply: {}", e);
                     return;
                 }
             };
@@ -430,7 +430,7 @@ impl Node {
             {
                 Ok(_) => {}
                 Err(e) => {
-                    tracing::warn!("cannot update resource from response: {}", e);
+                    warn!("cannot update resource from response: {}", e);
                     return;
                 }
             }
@@ -601,7 +601,7 @@ impl Node {
         let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
         named_params.insert("node_id".into(), serde_json::json![&self.id]);
         named_params.insert("change_set_id".into(), serde_json::json![change_set_id]);
-        tracing::error!(?named_params, ?query, "getting obj projection");
+        trace!(?named_params, ?query, "getting obj projection");
         let mut query_results: Vec<T> = db.query_consistent(query, Some(named_params)).await?;
         if query_results.len() == 0 {
             Err(NodeError::NoProjection)
