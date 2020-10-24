@@ -8,6 +8,10 @@ edition = "2018"
 name = "si-sdf-server"
 path = "src/bin/server.rs"
 
+[[bin]]
+name = "si-sdf-keygen"
+path = "src/bin/keygen.rs"
+
 [dependencies]
 anyhow = "1.0"
 couchbase = { path = "../../vendor/couchbase-rs/couchbase" }
@@ -34,6 +38,7 @@ futures = { version = "0.3", features = ["alloc"] }
 lazy_static = "1.4"
 crossbeam = "0.7.3"
 chrono = "0.4"
+toml = "0.5"
 
 [dev-dependencies]
 lazy_static = "1.4"

@@ -31,6 +31,19 @@ impl Default for Db {
     }
 }
 
+#[derive(Debug, Deserialize, Clone)]
+pub struct Nats {
+    pub url: String,
+}
+
+impl Default for Nats {
+    fn default() -> Self {
+        Nats {
+            url: "localhost".to_string(),
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, Default, Clone)]
 pub struct Service {
     pub port: u16,
@@ -80,6 +93,7 @@ impl Default for Vernemq {
 #[derive(Debug, Deserialize, Default, Clone)]
 pub struct Settings {
     pub db: Db,
+    pub nats: Nats,
     pub service: Service,
     pub paging: Paging,
     pub jwt_encrypt: JwtEncrypt,

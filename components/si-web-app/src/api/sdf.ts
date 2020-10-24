@@ -21,13 +21,13 @@ export class SDF {
 
   constructor() {
     let baseUrl = process.env.VUE_APP_SDF || "http://localhost:5156";
-    if (process.env.NODE_ENV === "production") {
+    if (!process.env.VUE_APP_SDF && process.env.NODE_ENV === "production") {
       baseUrl = "https://api.systeminit.com";
     }
     this.baseUrl = baseUrl;
 
     let wsBaseUrl = process.env.VUE_APP_SDF_WS || "ws://localhost:5156/updates";
-    if (process.env.NODE_ENV === "production") {
+    if (!process.env.VUE_APP_SDF_WS && process.env.NODE_ENV === "production") {
       wsBaseUrl = "https://api.systeminit.com/updates";
     }
     this.wsBaseUrl = wsBaseUrl;

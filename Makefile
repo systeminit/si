@@ -22,7 +22,7 @@
 include ./components/build/deps.mk
 
 COMPONENTS = components/si-registry components/si-settings components/si-web-app components/si-sdf
-RELEASEABLE_COMPONENTS = components/si-registry components/si-sdf
+RELEASEABLE_COMPONENTS = components/si-registry components/si-sdf components/si-web-app
 RUNNABLE_COMPONENTS = components/si-registry components/si-sdf components/si-web-app
 BUILDABLE = $(patsubst %,build//%,$(COMPONENTS))
 TESTABLE = $(patsubst %,test//%,$(COMPONENTS))
@@ -32,11 +32,11 @@ CONTAINABLE = $(patsubst %,container//%,$(RELEASEABLE_COMPONENTS))
 WATCHABLE = $(patsubst %,watch//%,$(RUNNABLE_COMPONENTS))
 BUILDABLE_REGEX = $(shell echo $(COMPONENTS) | tr " " "|")
 RELEASEABLE_REGEX = $(shell echo $(RELEASEABLE_COMPONENTS) | tr " " "|")
-TO_BUILD=$(shell git diff --name-only origin/master...HEAD | grep -E "^($(BUILDABLE_REGEX))" | cut -d "/" -f 1,2 | sort | uniq | tr "\n" " ")
+#TO_BUILD=$(shell git diff --name-only origin/master...HEAD | grep -E "^($(BUILDABLE_REGEX))" | cut -d "/" -f 1,2 | sort | uniq | tr "\n" " ")
 
 GITHUB_SHA := HEAD
 
-TO_RELEASE=$(shell git diff --name-only HEAD^ | grep -E "^($(RELEASEABLE_REGEX))" | cut -d "/" -f 1,2 | sort | uniq | tr "\n" " ")
+#TO_RELEASE=$(shell git diff --name-only HEAD^ | grep -E "^($(RELEASEABLE_REGEX))" | cut -d "/" -f 1,2 | sort | uniq | tr "\n" " ")
 
 RELEASE := $(shell date +%Y%m%d%H%M%S)
 
@@ -54,7 +54,7 @@ $(BUILDABLE):
 
 build: $(BUILDABLE)
 
-build_from_git: $(patsubst %,build//%,$(TO_BUILD))
+#build_from_git: $(patsubst %,build//%,$(TO_BUILD))
 
 $(TESTABLE): % : %//RDEPS
 ifdef TEST_IN_CONTAINERS
@@ -65,7 +65,7 @@ endif
 
 test: $(TESTABLE)
 
-test_from_git: $(patsubst %,test//%,$(TO_BUILD))
+#test_from_git: $(patsubst %,test//%,$(TO_BUILD))
 
 $(CONTAINABLE): 
 	@ pushd $(patsubst container//%,%,$@); $(MAKE) container RELEASE=$(RELEASE)
@@ -134,10 +134,12 @@ container//builder:
 release//builder: container//builder
 	docker push systeminit/si-builder:latest
 
-release_from_git: $(patsubst %,release//%,$(TO_RELEASE))
-	@ echo "--> You have (maybe) released the System Initative! <--"
-	@ echo Released: $(TO_RELEASE)
+#release_from_git: $(patsubst %,release//%,$(TO_RELEASE))
+#	@ echo "--> You have (maybe) released the System Initative! <--"
+#	@ echo Released: $(TO_RELEASE)
 
+deploy//internal: release 
+	@ pushd components/aws-si-internal; env RELEASE=$(RELEASE) pulumi up -y
 
 release: $(RELEASEABLE)
 	@ echo "--> You have released the System Initative! <--"

@@ -5,6 +5,9 @@ cluster_password = "bugbear"
 bucket_name = "si_integration"
 scan_consistency = "RequestPlus"
 
+[nats]
+url = "localhost"
+
 [service]
 port = 50152
 
