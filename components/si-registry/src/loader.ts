@@ -37,6 +37,7 @@ import "./components/si-core/dockerImage";
 
 import "./components/si-kubernetes/kubernetes";
 import "./components/si-kubernetes/cluster";
+import "./components/si-kubernetes/namespace";
 import "./components/si-kubernetes/minikube";
 import "./components/si-kubernetes/deployment";
 import "./components/si-kubernetes/service";

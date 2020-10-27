@@ -5,6 +5,9 @@ cluster_password = "bugbear"
 bucket_name = "si"
 scan_consistency = "NotBounded"
 
+[nats]
+url = "localhost"
+
 [service]
 port = 5156
 

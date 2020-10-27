@@ -10,14 +10,13 @@ import {
 import { registry } from "../../registry";
 
 registry.componentAndEntity({
-  typeName: "kubernetesDeployment",
-  displayTypeName: "Kubernetes Deployment Object",
+  typeName: "kubernetesNamespace",
+  displayTypeName: "Kubernetes Namespace Object",
   siPathName: "si-kubernetes",
   serviceName: "kubernetes",
   options(c) {
-    c.entity.inputType("dockerImage");
+    c.entity.inputType("application");
     c.entity.inputType("kubernetesCluster");
-    c.entity.inputType("kubernetesNamespace");
 
     c.entity.associations.belongsTo({
       fromFieldPath: ["siProperties", "billingAccountId"],
@@ -45,13 +44,13 @@ registry.componentAndEntity({
       options(p: PropObject) {
         p.relationships.updates({
           partner: {
-            typeName: "kubernetesDeploymentEntity",
+            typeName: "kubernetesNamespace",
             names: ["properties", "kubernetesObjectYaml"],
           },
         });
         p.relationships.either({
           partner: {
-            typeName: "kubernetesDeploymentEntity",
+            typeName: "kubernetesNamespace",
             names: ["properties", "kubernetesObjectYaml"],
           },
         });
@@ -84,37 +83,6 @@ registry.componentAndEntity({
             };
           },
         });
-        p.properties.addObject({
-          name: "spec",
-          label: "Deployment Spec",
-          options(p: PropObject) {
-            p.properties.addNumber({
-              name: "replicas",
-              label: "Replicas",
-              options(p: PropNumber) {
-                p.numberKind = "int32";
-              },
-            });
-            p.properties.addLink({
-              name: "selector",
-              label: "Selector",
-              options(p: PropLink) {
-                p.lookup = {
-                  typeName: "kubernetesSelector",
-                };
-              },
-            });
-            p.properties.addLink({
-              name: "template",
-              label: "Pod Template Spec",
-              options(p: PropLink) {
-                p.lookup = {
-                  typeName: "kubernetesPodTemplateSpec",
-                };
-              },
-            });
-          },
-        });
       },
     });
     c.properties.addCode({
@@ -123,13 +91,13 @@ registry.componentAndEntity({
       options(p: PropCode) {
         p.relationships.updates({
           partner: {
-            typeName: "kubernetesDeploymentEntity",
+            typeName: "kubernetesNamespace",
             names: ["properties", "kubernetesObject"],
           },
         });
         p.relationships.either({
           partner: {
-            typeName: "kubernetesDeploymentEntity",
+            typeName: "kubernetesNamespace",
             names: ["properties", "kubernetesObject"],
           },
         });
