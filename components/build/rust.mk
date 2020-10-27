@@ -37,8 +37,10 @@ container:
 	env BUILDKIT_PROGRESS=plain DOCKER_BUILDKIT=1 docker build \
 		-f $(CURDIR)/../${COMPONENT}/Dockerfile \
 		-t systeminit/${COMPONENT}:latest \
+		-t systeminit/${COMPONENT}:$(RELEASE) \
 		-t ${COMPONENT}:$(RELEASE) \
 		$(CURDIR)/../../
 
 release: container
 	docker push systeminit/${COMPONENT}:latest
+	docker push systeminit/${COMPONENT}:$(RELEASE)

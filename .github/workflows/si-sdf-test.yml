@@ -2,9 +2,11 @@ name: Test si-sdf
 on: 
   push:
     paths:
-    - 'components/si-sdf/**'
-    - 'components/si-settings/**'
-    - 'components/si-registry/**'
+      - 'components/si-sdf/**'
+      - 'components/si-settings/**'
+      - 'components/si-registry/**'
+    branches:
+      - '!master'
 
 jobs:
   test:

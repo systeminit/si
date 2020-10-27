@@ -35,9 +35,11 @@ test_container:
 container:
 	env BUILDKIT_PROGRESS=plain DOCKER_BUILDKIT=1 docker build \
 		-f $(CURDIR)/../${COMPONENT}/Dockerfile \
-		-t systeminit/si-veritech:latest \
-		-t systeminit/si-veritech:$(RELEASE) \
+		-t systeminit/${CONTAINER}:latest \
+		-t systeminit/${CONTAINER}:$(RELEASE) \
 		$(CURDIR)/../../
 
 release: container
-	docker push systeminit/si-veritech:latest
+	docker push systeminit/${CONTAINER}:latest
+	docker push systeminit/${CONTAINER}:$(RELEASE)
+

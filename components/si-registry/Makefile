@@ -1,5 +1,6 @@
 include ../build/typescript.mk
 COMPONENT = si-registry
+CONTAINER = si-veritech
 .DEFAULT_GOAL := build
 
 build_js: node_modules

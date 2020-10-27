@@ -52,7 +52,7 @@ async fn main() -> anyhow::Result<()> {
     let db = si_sdf::data::Db::new(&settings).context("failed to connect to the database")?;
 
     println!("*** Connecting to NATS ***");
-    let nats = nats::asynk::connect("localhost").await?;
+    let nats = nats::asynk::connect(&settings.nats.url).await?;
 
     println!("*** Creating indexes ***");
     si_sdf::data::create_indexes(&db).await?;
