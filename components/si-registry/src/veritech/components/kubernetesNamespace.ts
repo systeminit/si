@@ -11,108 +11,37 @@ import {
   CalculatePropertiesResult,
 } from "../../veritech/intelligence";
 import _ from "lodash";
-import YAML from "yaml";
 import execa from "execa";
 
-const kubernetesDeployment = registry.get(
-  "kubernetesDeployment",
-) as EntityObject;
-const intelligence = kubernetesDeployment.intelligence;
+const kubernetesNamespace = registry.get("kubernetesNamespace") as EntityObject;
+const intelligence = kubernetesNamespace.intelligence;
 
 intelligence.calculateProperties = function(
   req: CalculatePropertiesRequest,
 ): CalculatePropertiesResult {
-  console.log(`calulating properties for kubernetesDeployment`, { req });
+  console.log(`calulating properties for kubernetesNamespace`, { req });
   console.dir(req, { depth: Infinity });
 
   const result: CalculatePropertiesResult = {
     inferredProperties: {
       __baseline: {
         kubernetesObject: {
-          apiVersion: "apps/v1",
-          kind: "Deployment",
+          apiVersion: "v1",
+          kind: "Namespace",
           metadata: {
-            name: `${req.entity.name}-deployment`,
-          },
-          spec: {
-            selector: {
-              matchLabels: {
-                app: `${req.entity.name}`,
-              },
-            },
-            replicas: 1,
-            template: {
-              metadata: {
-                labels: {
-                  app: `${req.entity.name}`,
-                },
-              },
-            },
+            name: `${req.entity.name}`,
           },
         },
       },
     },
   };
   for (const pred of req.predecessors) {
-    if (pred.entity.objectType == "dockerImage") {
-      if (
-        !Array.isArray(
-          result.inferredProperties.__baseline.kubernetesObject?.spec?.template
-            ?.spec?.containers,
-        )
-      ) {
-        _.set(
-          result.inferredProperties,
-          [
-            "__baseline",
-            "kubernetesObject",
-            "spec",
-            "template",
-            "spec",
-            "containers",
-          ],
-          [],
-        );
-      }
-      const containerSpec: Record<string, any> = {
-        name: pred.entity.name,
-        image: pred.entity.properties.__baseline["image"],
-      };
-      const ports = [];
-      for (const resource of pred.resources) {
-        if (resource.state["data"]) {
-          for (const portString of Object.keys(
-            resource.state.data?.Config?.ExposedPorts,
-          )) {
-            const portParts = portString.split("/");
-            const port = parseInt(portParts[0], 10);
-            const protocol = portParts[1].toUpperCase();
-            if (port) {
-              ports.push({
-                containerPort: port,
-                protocol: protocol,
-              });
-            }
-          }
-        }
-      }
-      if (ports.length > 0) {
-        containerSpec.ports = ports;
-      }
-
-      result.inferredProperties.__baseline["kubernetesObject"]["spec"][
-        "template"
-      ]["spec"]["containers"].push(containerSpec);
-    } else if (pred.entity.objectType == "kubernetesNamespace") {
-      console.log("you're a namesacpe");
-      if (pred.entity.properties.__baseline.kubernetesObject?.metadata?.name) {
-        console.log("setting namespace");
-        _.set(
-          result.inferredProperties,
-          ["__baseline", "kubernetesObject", "metadata", "namespace"],
-          pred.entity.properties.__baseline.kubernetesObject.metadata.name,
-        );
-      }
+    if (pred.entity.objectType == "application") {
+      _.set(
+        result.inferredProperties,
+        ["__baseline", "kubernetesObject", "metadata", "name"],
+        pred.entity.name,
+      );
     }
   }
   return result;
@@ -121,7 +50,7 @@ intelligence.calculateProperties = function(
 intelligence.syncResource = async function(
   request: SyncResourceRequest,
 ): Promise<SyncResourceReply> {
-  console.log(`syncing kubernetes deployment`);
+  console.log(`syncing kubernetes namespace`);
   console.dir(request, { depth: Infinity });
 
   const kubernetesCluster = _.find(request.predecessors, [
@@ -129,9 +58,7 @@ intelligence.syncResource = async function(
     "kubernetesCluster",
   ]);
   let currentContext = undefined;
-  console.log("find me?", { kubernetesCluster });
   if (kubernetesCluster?.resource.state.data) {
-    console.log("you get me");
     currentContext = kubernetesCluster.resource.state.data["current-context"];
   }
 
@@ -196,16 +123,14 @@ intelligence.syncResource = async function(
 intelligence.actions = {
   async apply(request: ActionRequest): Promise<ActionReply> {
     const actions: ActionReply["actions"] = [];
-    console.log(`applying kubernetes deployment`);
+    console.log(`applying kubernetes namespace`);
     console.dir(request, { depth: Infinity });
     const kubernetesCluster = _.find(request.predecessors, [
       "entity.objectType",
       "kubernetesCluster",
     ]);
     let currentContext = undefined;
-    console.log("find me?", { kubernetesCluster });
     if (kubernetesCluster?.resource.state.data) {
-      console.log("you get me");
       currentContext = kubernetesCluster.resource.state.data["current-context"];
     }
 

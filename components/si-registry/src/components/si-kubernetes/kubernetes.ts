@@ -36,6 +36,13 @@ registry.base({
         p.required = true;
       },
     });
+    c.fields.addText({
+      name: "namespace",
+      label: "Namespace",
+      options(p: PropText) {
+        p.required = true;
+      },
+    });
     c.fields.addMap({
       name: "labels",
       label: "Labels",
