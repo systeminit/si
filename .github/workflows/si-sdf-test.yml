@@ -5,8 +5,8 @@ on:
       - 'components/si-sdf/**'
       - 'components/si-settings/**'
       - 'components/si-registry/**'
-    branches:
-      - '!master'
+    branches-ignore:
+      - 'master'
 
 jobs:
   test:

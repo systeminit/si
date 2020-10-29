@@ -812,6 +812,9 @@ export const editor: Module<EditorStore, RootStore> = {
         systemIds: [system.id],
       });
       const edge = await node.configuredBy(configuredByNodeId);
+      if (state.changeSet) {
+        await state.changeSet.execute({ hypothetical: true });
+      }
       const object = await node.displayObject(changeSetId);
       commit("updateObjects", object);
       commit("updateNodes", node);
