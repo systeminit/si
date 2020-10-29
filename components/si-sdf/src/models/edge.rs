@@ -222,6 +222,42 @@ impl Edge {
         Ok(results)
     }
 
+    pub async fn direct_successor_edges_by_object_id(
+        db: &Db,
+        edge_kind: EdgeKind,
+        tail_vertex_object_id: impl Into<String>,
+    ) -> EdgeResult<Vec<Edge>> {
+        let tail_vertex_object_id = tail_vertex_object_id.into();
+
+        let mut results: Vec<Edge> = Vec::new();
+
+        let vertexes_to_check = SegQueue::<String>::new();
+        vertexes_to_check.push(tail_vertex_object_id);
+
+        while !vertexes_to_check.is_empty() {
+            let head_object_id = vertexes_to_check
+                .pop()
+                .map_err(|e| EdgeError::Crossbeam(e.to_string()))?;
+            let query = format!(
+                "SELECT a.*
+                   FROM `{bucket}` AS a
+                  WHERE a.siStorable.typeName = \"edge\"
+                    AND a.kind = \"{edge_kind}\"
+                    AND a.tailVertex.objectId = \"{object_id}\"
+                ",
+                bucket = db.bucket_name,
+                edge_kind = edge_kind,
+                object_id = head_object_id,
+            );
+            let query_results: Vec<Edge> = db.query_consistent(query, None).await?;
+            for qedge in query_results.into_iter() {
+                results.push(qedge);
+            }
+        }
+
+        Ok(results)
+    }
+
     pub async fn direct_successor_edges_by_node_id(
         db: &Db,
         edge_kind: EdgeKind,

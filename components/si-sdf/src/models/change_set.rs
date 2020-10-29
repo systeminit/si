@@ -7,8 +7,8 @@ use std::collections::HashMap;
 use crate::data::{Connection, Db};
 use crate::models::{
     calculate_properties, get_base_object, get_model, insert_model, insert_model_if_missing, ops,
-    upsert_model, EntityError, ModelError, SiChangeSetEvent, SiStorable, SiStorableError,
-    SimpleStorable,
+    upsert_model, Edge, EdgeError, EdgeKind, Entity, EntityError, ModelError, SiChangeSetEvent,
+    SiStorable, SiStorableError, SimpleStorable,
 };
 
 #[derive(Error, Debug)]
@@ -37,6 +37,8 @@ pub enum ChangeSetError {
     MissingHead,
     #[error("missing change set event field")]
     EventMissing,
+    #[error("edge error: {0}")]
+    Edge(#[from] EdgeError),
 }
 
 pub type ChangeSetResult<T> = Result<T, ChangeSetError>;
@@ -197,16 +199,20 @@ impl ChangeSet {
                 let lei = last_id.as_ref().unwrap();
                 trace!(?lei, ?to_id, "comparing lei to to_id");
                 if lei != to_id {
+                    // TODO: This is a pretty needless copy, but it makes it work
+                    // for now.
+                    let mc = seen_map.clone();
                     let last_obj = seen_map.get_mut(last_id.as_ref().unwrap()).unwrap();
                     let last_obj_type_name = last_obj["siStorable"]["typeName"]
                         .as_str()
                         .ok_or(ChangeSetError::TypeMissing)?;
                     if last_obj_type_name == "entity" {
-                        calculate_properties(db, last_obj).await?;
+                        calculate_properties(db, last_obj, Some(&mc)).await?;
                     }
                 }
             };
 
+            let mc = seen_map.clone();
             let obj = if seen_map.contains_key(to_id) {
                 seen_map.get_mut(to_id).unwrap()
             } else {
@@ -224,7 +230,12 @@ impl ChangeSet {
 
             match change_set_event {
                 "Create" => {
-                    trace!("creating some shit");
+                    let type_name = obj["siStorable"]["typeName"]
+                        .as_str()
+                        .ok_or(ChangeSetError::TypeMissing)?;
+                    if type_name == "entity" {
+                        calculate_properties(db, obj, Some(&mc)).await?;
+                    }
                 }
                 "Operation" => match entry_type_name {
                     "opEntitySet" => {
@@ -255,8 +266,40 @@ impl ChangeSet {
         }
 
         if last_type_name.is_some() && last_type_name.unwrap() == "entity" {
+            let mc = seen_map.clone();
             let mut last_entity = seen_map.get_mut(&last_id.unwrap()).unwrap();
-            calculate_properties(db, &mut last_entity).await?;
+            calculate_properties(db, &mut last_entity, Some(&mc)).await?;
+        }
+
+        // Now that we have reached the end of the changeset, we need to
+        // calculate the properties of every successor of every node in
+        // the change set.
+        //
+        // This is the most brute-force way possible - I'm 100% certain we can
+        // be dramatically more efficient, but this is going to work.
+        //
+        // There may be a bug here - we might actually need to do this any time we
+        // calculate properties in the core loop, to make sure all the values are
+        // right for any action we're about to take.
+        let seen_map_keys: Vec<String> = seen_map.keys().map(|k| k.clone()).collect();
+        for parent_id in seen_map_keys {
+            let successor_edges =
+                Edge::all_successor_edges_by_object_id(&db, EdgeKind::Configures, &parent_id)
+                    .await?;
+            for edge in successor_edges.iter() {
+                if seen_map.contains_key(&edge.head_vertex.object_id) {
+                    let mc = seen_map.clone();
+                    let mut entity_json = seen_map.get_mut(&edge.head_vertex.object_id).unwrap();
+                    calculate_properties(db, &mut entity_json, Some(&mc)).await?;
+                } else {
+                    let entity =
+                        Entity::get_projection(&db, &edge.head_vertex.object_id, &self.id).await?;
+                    let entity_id = entity.id.clone();
+                    let mut entity_json = serde_json::to_value(entity)?;
+                    calculate_properties(db, &mut entity_json, Some(&seen_map)).await?;
+                    seen_map.insert(entity_id, entity_json);
+                }
+            }
         }
 
         // Now save all the new representations. If it is a hypothetical execution,

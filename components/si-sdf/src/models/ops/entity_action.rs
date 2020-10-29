@@ -190,7 +190,6 @@ impl OpEntityAction {
             let predecessor_edges =
                 Edge::direct_predecessor_edges_by_node_id(&db, EdgeKind::Configures, &node.id)
                     .await?;
-            dbg!(&predecessor_edges);
             let mut predecessors: Vec<ActionRequestThunk> = Vec::new();
             for edge in predecessor_edges.iter() {
                 let edge_node = Node::get(
@@ -206,11 +205,8 @@ impl OpEntityAction {
                     Ok(edge_entity) => edge_entity,
                     Err(_) => edge_node.get_head_object(&db).await?,
                 };
-                dbg!("*********************************fucking poop monster********************");
-                dbg!(&edge_entity);
                 let edge_resource =
                     Resource::get(&db, &edge_entity.id, &this_action.system_id).await?;
-                dbg!(&edge_resource);
                 predecessors.push(ActionRequestThunk {
                     entity: edge_entity,
                     resource: edge_resource,

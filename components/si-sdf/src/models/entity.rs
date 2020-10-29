@@ -322,11 +322,42 @@ impl Entity {
 
     pub async fn calculate_properties(&mut self, db: &Db) -> EntityResult<()> {
         let mut json = serde_json::json![self];
-        calculate_properties(db, &mut json).await?;
+        calculate_properties(db, &mut json, None).await?;
         let new_entity: Entity = serde_json::from_value(json)?;
         trace!(?new_entity, "new entity from calculate properties");
         *self = new_entity;
         Ok(())
+    }
+
+    pub async fn get_projection(
+        db: &Db,
+        entity_id: impl AsRef<str>,
+        change_set_id: impl AsRef<str>,
+    ) -> EntityResult<Entity> {
+        let entity_id = entity_id.as_ref();
+        let change_set_id = change_set_id.as_ref();
+        let query = format!(
+            "SELECT a.*
+          FROM `{bucket}` AS a
+          WHERE a.siStorable.typeName = \"entity\"
+            AND a.siStorable.objectId = $entity_id 
+            AND a.siChangeSet.changeSetId = $change_set_id
+            AND a.head = false
+          ORDER BY a.base ASC
+          LIMIT 1
+        ",
+            bucket = db.bucket_name
+        );
+        let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
+        named_params.insert("entity_id".into(), serde_json::json![entity_id]);
+        named_params.insert("change_set_id".into(), serde_json::json![change_set_id]);
+        let mut query_results: Vec<Entity> = db.query(query, Some(named_params)).await?;
+        if query_results.len() == 0 {
+            Err(EntityError::NoHead)
+        } else {
+            let result = query_results.pop().unwrap();
+            Ok(result)
+        }
     }
 
     pub async fn get_head(db: &Db, entity_id: impl AsRef<str>) -> EntityResult<Entity> {
@@ -379,7 +410,11 @@ impl Entity {
     }
 }
 
-pub async fn calculate_properties(db: &Db, json: &mut serde_json::Value) -> EntityResult<()> {
+pub async fn calculate_properties(
+    db: &Db,
+    json: &mut serde_json::Value,
+    projections: Option<&HashMap<String, serde_json::Value>>,
+) -> EntityResult<()> {
     info!(?json, "calculating properties");
     let entity: Entity = serde_json::from_value(json.clone())?;
     let optional_change_set_id = if entity.head {
@@ -416,18 +451,33 @@ pub async fn calculate_properties(db: &Db, json: &mut serde_json::Value) -> Enti
         )
         .await
         .map_err(|e| EntityError::Node(e.to_string()))?;
-        let edge_entity: Entity = if let Some(ref change_set_id) = optional_change_set_id {
-            match edge_node.get_object_projection(&db, change_set_id).await {
-                Ok(entity) => entity,
-                Err(_) => edge_node
-                    .get_head_object(db)
-                    .await
-                    .map_err(|e| EntityError::Node(e.to_string()))?,
+        // OMG, I'm so sorry
+        let edge_entity: Entity = {
+            let mut pe: Option<Entity> = None;
+            if let Some(projection_map) = projections {
+                match projection_map.get(&edge.tail_vertex.object_id) {
+                    Some(entity_json) => {
+                        let real_entity: Entity = serde_json::from_value(entity_json.clone())?;
+                        pe = Some(real_entity);
+                    }
+                    None => pe = None,
+                }
             }
-        } else if let Ok(entity) = edge_node.get_head_object(db).await {
-            entity
-        } else {
-            return Err(EntityError::Node("no head node!".to_string()));
+            if let Some(entity) = pe {
+                entity
+            } else if let Some(ref change_set_id) = optional_change_set_id {
+                match edge_node.get_object_projection(&db, change_set_id).await {
+                    Ok(entity) => entity,
+                    Err(_) => edge_node
+                        .get_head_object(db)
+                        .await
+                        .map_err(|e| EntityError::Node(e.to_string()))?,
+                }
+            } else if let Ok(entity) = edge_node.get_head_object(db).await {
+                entity
+            } else {
+                return Err(EntityError::Node("no head node!".to_string()));
+            }
         };
         let mut edge_resources: Vec<Resource> = Vec::new();
         trace!(?system_edges, "calculating edge resources for system edges");

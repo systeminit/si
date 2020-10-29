@@ -57,6 +57,41 @@ pub async fn create_node(
     return node_reply;
 }
 
+pub async fn node_entity_set(
+    test_account: &TestAccount,
+    change_set_id: impl Into<String>,
+    edit_session_id: impl Into<String>,
+    node_id: impl AsRef<str>,
+    path: Vec<String>,
+    value: serde_json::Value,
+) -> node::ObjectPatchReply {
+    let filter = api(&DB, &NATS, &SETTINGS.jwt_encrypt.key);
+    let change_set_id = change_set_id.into();
+    let edit_session_id = edit_session_id.into();
+    let node_id = node_id.as_ref();
+    let request = node::ObjectPatchRequest {
+        op: ops::OpRequest::EntitySet(ops::OpEntitySetRequest {
+            path,
+            value,
+            override_system: None,
+        }),
+        organization_id: test_account.organization_id.clone(),
+        workspace_id: test_account.workspace_id.clone(),
+        change_set_id,
+        edit_session_id,
+    };
+    let res = warp::test::request()
+        .method("PATCH")
+        .header("authorization", &test_account.authorization)
+        .json(&request)
+        .path(format!("/nodes/{}/object", node_id).as_ref())
+        .reply(&filter)
+        .await;
+    let reply: node::ObjectPatchReply =
+        serde_json::from_slice(res.body()).expect("cannot deserialize reply");
+    reply
+}
+
 #[tokio::test]
 async fn create() {
     let test_account = test_setup().await.expect("failed to setup test");
