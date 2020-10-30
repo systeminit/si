@@ -7,6 +7,8 @@ import "@/veritech/components/kubernetesDeployment";
 import "@/veritech/components/kubernetesCluster";
 import "@/veritech/components/kubernetesNamespace";
 import "@/veritech/components/kubernetesService";
+import "@/veritech/components/kubernetesSecret";
+
 import { registry } from "@/registry";
 
 import {
