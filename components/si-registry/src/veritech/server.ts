@@ -6,6 +6,7 @@ import "@/veritech/components/dockerImage";
 import "@/veritech/components/kubernetesDeployment";
 import "@/veritech/components/kubernetesCluster";
 import "@/veritech/components/kubernetesNamespace";
+import "@/veritech/components/kubernetesService";
 import { registry } from "@/registry";
 
 import {
