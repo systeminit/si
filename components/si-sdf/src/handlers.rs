@@ -1,5 +1,5 @@
-use serde::Serialize;
 use crate::data::Db;
+use serde::Serialize;
 use thiserror::Error;
 use tracing::error;
 use warp::http::StatusCode;
@@ -9,19 +9,20 @@ use std::collections::HashMap;
 use std::convert::Infallible;
 
 use crate::models::{
-    BillingAccountError, ChangeSetError, EditSessionError, JwtKeyError, ModelError, NodeError,
-    OpError, SiStorableError, UserError, Query, QueryError, PageTokenError, PageToken, EdgeError,
-    EntityError,
+    BillingAccountError, ChangeSetError, EdgeError, EditSessionError, EntityError, JwtKeyError,
+    KeyPairError, ModelError, NodeError, OpError, PageToken, PageTokenError, Query, QueryError,
+    SecretError, SiStorableError, UserError,
 };
 
 pub mod billing_accounts;
 pub mod change_sets;
-pub mod edit_sessions;
-pub mod nodes;
-pub mod users;
-pub mod updates;
 pub mod edges;
+pub mod edit_sessions;
 pub mod entities;
+pub mod nodes;
+pub mod secrets;
+pub mod updates;
+pub mod users;
 
 #[derive(Error, Debug)]
 pub enum HandlerError {
@@ -63,6 +64,10 @@ pub enum HandlerError {
     Edge(#[from] EdgeError),
     #[error("entity error: {0}")]
     Entity(#[from] EntityError),
+    #[error("key pair error: {0}")]
+    KeyPair(#[from] KeyPairError),
+    #[error("secret error: {0}")]
+    Secret(#[from] SecretError),
     #[error("invalid request")]
     InvalidRequest,
 }
@@ -71,8 +76,17 @@ pub type HandlerResult<T> = Result<T, HandlerError>;
 
 impl Reject for HandlerError {}
 impl From<HandlerError> for warp::reject::Rejection {
-    fn from(e: HandlerError) -> Self {
-        warp::reject::custom(e)
+    fn from(err: HandlerError) -> Self {
+        match err {
+            HandlerError::Model(ref inner) => match inner {
+                ModelError::GetNotFound
+                | ModelError::Couchbase(couchbase::error::CouchbaseError::KeyDoesNotExist) => {
+                    warp::reject::not_found()
+                }
+                _ => warp::reject::custom(err),
+            },
+            _ => warp::reject::custom(err),
+        }
     }
 }
 
@@ -105,14 +119,14 @@ pub async fn list_models(
     };
 
     let reply = crate::models::list_model(
-        &db, 
+        &db,
         query,
-        request.page_size, 
-        request.order_by, 
-        request.order_by_direction, 
-        page_token, 
-        Some(type_name), 
-        Some(claim.billing_account_id.clone())
+        request.page_size,
+        request.order_by,
+        request.order_by_direction,
+        page_token,
+        Some(type_name),
+        Some(claim.billing_account_id.clone()),
     )
     .await
     .map_err(HandlerError::from)?;
@@ -266,12 +280,12 @@ pub async fn authorize(
         "SELECT a.*
            FROM `{bucket}` AS a
            WHERE (
-                (a.siStorable.typeName = \"user\" AND a.id = $user_id) 
-                OR 
+                (a.siStorable.typeName = \"user\" AND a.id = $user_id)
+                OR
                 (a.siStorable.typeName = \"group\" AND ARRAY_CONTAINS(a.userIds, $user_id)))
              AND ARRAY_CONTAINS(a.siStorable.tenantIds, $tenant_id)
-             AND (ARRAY_CONTAINS(a.capabilities, $capability) OR ARRAY_CONTAINS(a.capabilities, $any))", 
-         bucket = db.bucket_name, 
+             AND (ARRAY_CONTAINS(a.capabilities, $capability) OR ARRAY_CONTAINS(a.capabilities, $any))",
+         bucket = db.bucket_name,
      );
     let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
     named_params.insert("user_id".into(), serde_json::json![&user_id]);

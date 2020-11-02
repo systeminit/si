@@ -62,7 +62,7 @@ impl SiStorable {
     }
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SimpleStorable {
     pub type_name: String,

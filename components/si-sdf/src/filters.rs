@@ -24,6 +24,7 @@ pub fn api(
         .or(systems(db))
         .or(edges(db, nats))
         .or(change_set_participants(db, nats))
+        .or(secrets(db, nats))
         .boxed()
 }
 
@@ -207,7 +208,9 @@ pub fn billing_accounts(
     db: &Db,
     nats: &Connection,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    billing_accounts_create(db.clone(), nats.clone()).or(billing_accounts_get(db.clone()))
+    billing_accounts_create(db.clone(), nats.clone())
+        .or(billing_accounts_get(db.clone()))
+        .or(billing_accounts_get_public_key(db.clone()))
 }
 
 pub fn billing_accounts_create(
@@ -229,9 +232,20 @@ pub fn billing_accounts_get(
         .and(warp::get())
         .and(with_db(db))
         .and(warp::header::<String>("authorization"))
-        .and(with_string("billingAccounts".into()))
+        .and(with_string("billingAccount".into()))
         .and(warp::query::<models::GetRequest>())
         .and_then(handlers::get_model_change_set)
+}
+
+pub fn billing_accounts_get_public_key(
+    db: Db,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("billingAccounts" / String / "publicKey")
+        .and(warp::get())
+        .and(with_db(db))
+        .and(warp::header::<String>("authorization"))
+        .and(with_string("billingAccount".into()))
+        .and_then(handlers::billing_accounts::get_public_key)
 }
 
 // Organization API
@@ -502,6 +516,53 @@ pub fn change_set_participants_list(
         .and(with_string("changeSetParticipant".into()))
         .and(warp::query::<models::ListRequest>())
         .and_then(handlers::list_models)
+}
+
+// Secrets API
+pub fn secrets(
+    db: &Db,
+    nats: &Connection,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    secrets_list(db.clone())
+        .or(secrets_get(db.clone()))
+        .or(secrets_create(db.clone(), nats.clone()))
+}
+
+pub fn secrets_list(
+    db: Db,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("secrets")
+        .and(warp::get())
+        .and(with_db(db))
+        .and(warp::header::<String>("authorization"))
+        .and(with_string("secret".into()))
+        .and(warp::query::<models::ListRequest>())
+        .and_then(handlers::list_models)
+}
+
+pub fn secrets_get(
+    db: Db,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("secrets" / String)
+        .and(warp::get())
+        .and(with_db(db))
+        .and(warp::header::<String>("authorization"))
+        .and(with_string("secret".into()))
+        .and(warp::query::<models::GetRequest>())
+        .and_then(handlers::get_model_change_set)
+}
+
+pub fn secrets_create(
+    db: Db,
+    nats: Connection,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("secrets")
+        .and(warp::post())
+        .and(with_db(db))
+        .and(with_nats(nats))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::body::json::<models::secret::CreateRequest>())
+        .and_then(handlers::secrets::create)
 }
 
 fn with_db(db: Db) -> impl Filter<Extract = (Db,), Error = std::convert::Infallible> + Clone {

@@ -59,6 +59,12 @@ pub mod event_log;
 pub use event_log::{EventLog, EventLogError, EventLogLevel, EventLogResult};
 pub mod resource;
 pub use resource::{Resource, ResourceError, ResourceHealth, ResourceResult, ResourceStatus};
+pub mod key_pair;
+pub use key_pair::{KeyPairError, PublicKey};
+pub mod secret;
+pub use secret::{
+    Secret, SecretAlgorithm, SecretError, SecretKind, SecretObjectType, SecretVersion,
+};
 
 #[derive(Error, Debug)]
 pub enum ModelError {
@@ -316,6 +322,7 @@ pub async fn load_billing_account_model(
                 AND (a.siStorable.typeName = \"billingAccount\" 
                       OR a.siStorable.typeName = \"changeSetParticipant\" 
                       OR a.siStorable.typeName = \"eventLog\"
+                      OR a.siStorable.typeName = \"keyPair\"
                       OR a.siStorable.typeName = \"resource\")
         ",
         bucket = db.bucket_name,
@@ -509,11 +516,12 @@ pub async fn get_model_change_set(
     db: &Db,
     id: impl Into<String> + std::fmt::Debug,
     type_name: impl Into<String> + std::fmt::Debug,
-    billing_account_id: String,
+    billing_account_id: impl Into<String> + std::fmt::Debug,
     change_set_id: Option<String>,
 ) -> ModelResult<serde_json::Value> {
     let id = id.into();
     let type_name = type_name.into();
+    let billing_account_id = billing_account_id.into();
     if change_set_id.is_none() {
         let collection = db.bucket.default_collection();
         let response = collection.get(&id, None).await?;

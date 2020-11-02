@@ -5,9 +5,12 @@ use std::collections::HashMap;
 
 use crate::data::{Connection, Db};
 use crate::models::{
-    check_secondary_key_universal, generate_id, get_model, insert_model, Capability, Group,
-    GroupError, ModelError, Organization, OrganizationError, SiStorableError, SimpleStorable, User,
-    UserError, Workspace, WorkspaceError,
+    key_pair::KeyPair,
+    {
+        check_secondary_key_universal, generate_id, get_model, insert_model, upsert_model,
+        Capability, Group, GroupError, KeyPairError, ModelError, Organization, OrganizationError,
+        SiStorableError, SimpleStorable, User, UserError, Workspace, WorkspaceError,
+    },
 };
 
 #[derive(Error, Debug)]
@@ -24,6 +27,8 @@ pub enum BillingAccountError {
     Group(#[from] GroupError),
     #[error("error in organization model: {0}")]
     Organization(#[from] OrganizationError),
+    #[error("error in key pair model: {0}")]
+    KeyPair(#[from] KeyPairError),
     #[error("error in workspace model: {0}")]
     Workspace(#[from] WorkspaceError),
     #[error("database error: {0}")]
@@ -60,6 +65,7 @@ pub struct BillingAccount {
     pub id: String,
     pub name: String,
     pub description: String,
+    pub current_key_pair_id: String,
     pub si_storable: SimpleStorable,
 }
 
@@ -69,20 +75,23 @@ impl BillingAccount {
         nats: &Connection,
         name: String,
         description: String,
-    ) -> BillingAccountResult<BillingAccount> {
+    ) -> BillingAccountResult<Self> {
         if check_secondary_key_universal(db, "billingAccount", "name", &name).await? {
             return Err(BillingAccountError::AccountExists);
         }
         let id = generate_id("billingAccount");
         let si_storable = SimpleStorable::new(&id, "billingAccount", &id);
-        let object = BillingAccount {
+        let key_pair = KeyPair::new(db, nats, &name, id.clone()).await?;
+        let current_key_pair_id = key_pair.id;
+        let model = Self {
             id,
             name,
             description,
+            current_key_pair_id,
             si_storable,
         };
-        insert_model(db, nats, &object.id, &object).await?;
-        Ok(object)
+        insert_model(db, nats, &model.id, &model).await?;
+        Ok(model)
     }
 
     pub async fn signup(
@@ -159,5 +168,20 @@ impl BillingAccount {
         } else {
             Err(BillingAccountError::NotFound)
         }
+    }
+
+    pub async fn rotate_key_pair(
+        db: &Db,
+        nats: &Connection,
+        billing_account_id: impl AsRef<str>,
+    ) -> BillingAccountResult<()> {
+        let mut billing_account = Self::get(db, billing_account_id).await?;
+        let new_key_pair =
+            KeyPair::new(db, nats, &billing_account.name, &billing_account.id).await?;
+
+        billing_account.current_key_pair_id = new_key_pair.id;
+        upsert_model(db, nats, &billing_account.id, &billing_account).await?;
+
+        Ok(())
     }
 }
