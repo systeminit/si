@@ -127,111 +127,113 @@ async fn execute() {
         .expect("failed to finish test");
 }
 
-#[tokio::test]
-async fn calculates_properties_of_successors() {
-    let test_account = test_setup().await.expect("failed to setup test");
+#[test]
+fn calculates_properties_of_successors() {
+    tokio_test::block_on(Box::pin(async move {
+        let test_account = test_setup().await.expect("failed to setup test");
 
-    let filter = api(&DB, &NATS, &SETTINGS.jwt_encrypt.key);
-    let change_set_id = create_change_set(&test_account).await;
-    let edit_session_id = create_edit_session(&test_account, &change_set_id).await;
+        //let filter = api(&DB, &NATS, &SETTINGS.jwt_encrypt.key);
+        let change_set_id = create_change_set(&test_account).await;
+        let edit_session_id = create_edit_session(&test_account, &change_set_id).await;
 
-    let service_node_reply =
-        create_node(&test_account, &change_set_id, &edit_session_id, "service").await;
-    let docker_image_node_reply = create_node(
-        &test_account,
-        &change_set_id,
-        &edit_session_id,
-        "dockerImage",
-    )
-    .await;
-    let _docker_image_edge = docker_image_node_reply
-        .item
-        .configured_by(&DB, &NATS, &service_node_reply.item.id)
-        .await
-        .expect("failed to create configured by edge for docker image");
+        let service_node_reply =
+            create_node(&test_account, &change_set_id, &edit_session_id, "service").await;
+        let docker_image_node_reply = create_node(
+            &test_account,
+            &change_set_id,
+            &edit_session_id,
+            "dockerImage",
+        )
+        .await;
+        let _docker_image_edge = docker_image_node_reply
+            .item
+            .configured_by(&DB, &NATS, &service_node_reply.item.id)
+            .await
+            .expect("failed to create configured by edge for docker image");
 
-    let k8s_deployment_node_reply = create_node(
-        &test_account,
-        &change_set_id,
-        &edit_session_id,
-        "kubernetesDeployment",
-    )
-    .await;
-    let _k8s_deployment_edge = k8s_deployment_node_reply
-        .item
-        .configured_by(&DB, &NATS, &docker_image_node_reply.item.id)
-        .await
-        .expect("failed to create configured by edge for k8s deployment");
+        let k8s_deployment_node_reply = create_node(
+            &test_account,
+            &change_set_id,
+            &edit_session_id,
+            "kubernetesDeployment",
+        )
+        .await;
+        let _k8s_deployment_edge = k8s_deployment_node_reply
+            .item
+            .configured_by(&DB, &NATS, &docker_image_node_reply.item.id)
+            .await
+            .expect("failed to create configured by edge for k8s deployment");
 
-    execute_change_set_hypothetical(&test_account, &change_set_id).await;
+        execute_change_set_hypothetical(&test_account, &change_set_id).await;
 
-    let k8s_deployment_projection: Entity = k8s_deployment_node_reply
-        .item
-        .get_object_projection(&DB, &change_set_id)
-        .await
-        .expect("failed to get k8s deployment projection");
+        let k8s_deployment_projection: Entity = k8s_deployment_node_reply
+            .item
+            .get_object_projection(&DB, &change_set_id)
+            .await
+            .expect("failed to get k8s deployment projection");
 
-    let docker_image_projection: Entity = docker_image_node_reply
-        .item
-        .get_object_projection(&DB, &change_set_id)
-        .await
-        .expect("failed to get docker image projection");
+        let docker_image_projection: Entity = docker_image_node_reply
+            .item
+            .get_object_projection(&DB, &change_set_id)
+            .await
+            .expect("failed to get docker image projection");
 
-    let container_json = k8s_deployment_projection
-        .inferred_properties
-        .get_property("/kubernetesObject/spec/template/spec/containers/0", None)
-        .expect("could not find container for k8s deployment")
-        .expect("no value for k8s deployment container image 0");
-    let docker_image_projection_image_value = docker_image_projection
-        .properties
-        .get_property("/image", None)
-        .expect("cannot get dockerImage image value")
-        .expect("no value for dockerImage image value");
-    assert_eq!(
-        &container_json["image"],
-        docker_image_projection_image_value
-    );
+        let container_json = k8s_deployment_projection
+            .inferred_properties
+            .get_property("/kubernetesObject/spec/template/spec/containers/0", None)
+            .expect("could not find container for k8s deployment")
+            .expect("no value for k8s deployment container image 0");
+        let docker_image_projection_image_value = docker_image_projection
+            .properties
+            .get_property("/image", None)
+            .expect("cannot get dockerImage image value")
+            .expect("no value for dockerImage image value");
+        assert_eq!(
+            &container_json["image"],
+            docker_image_projection_image_value
+        );
 
-    node_entity_set(
-        &test_account,
-        &change_set_id,
-        &edit_session_id,
-        &docker_image_node_reply.item.id,
-        vec!["image".into()],
-        "systeminit/whiskers".into(),
-    )
-    .await;
+        node_entity_set(
+            &test_account,
+            &change_set_id,
+            &edit_session_id,
+            &docker_image_node_reply.item.id,
+            vec!["image".into()],
+            "systeminit/whiskers".into(),
+        )
+        .await;
 
-    execute_change_set_hypothetical(&test_account, &change_set_id).await;
+        execute_change_set_hypothetical(&test_account, &change_set_id).await;
 
-    let k8s_deployment_projection: Entity = k8s_deployment_node_reply
-        .item
-        .get_object_projection(&DB, &change_set_id)
-        .await
-        .expect("failed to get k8s deployment projection");
+        let k8s_deployment_projection: Entity = k8s_deployment_node_reply
+            .item
+            .get_object_projection(&DB, &change_set_id)
+            .await
+            .expect("failed to get k8s deployment projection");
 
-    let docker_image_projection: Entity = docker_image_node_reply
-        .item
-        .get_object_projection(&DB, &change_set_id)
-        .await
-        .expect("failed to get docker image projection");
+        let docker_image_projection: Entity = docker_image_node_reply
+            .item
+            .get_object_projection(&DB, &change_set_id)
+            .await
+            .expect("failed to get docker image projection");
 
-    let container_json = k8s_deployment_projection
-        .inferred_properties
-        .get_property("/kubernetesObject/spec/template/spec/containers/0", None)
-        .expect("could not find container for k8s deployment")
-        .expect("no value for k8s deployment container image 0");
-    let docker_image_projection_image_value = docker_image_projection
-        .properties
-        .get_property("/image", None)
-        .expect("cannot get dockerImage image value")
-        .expect("no value for dockerImage image value");
-    assert_eq!(
-        &container_json["image"], docker_image_projection_image_value,
-        "failed to compute the image value when it is set manually",
-    );
+        let container_json = k8s_deployment_projection
+            .inferred_properties
+            .get_property("/kubernetesObject/spec/template/spec/containers/0", None)
+            .expect("could not find container for k8s deployment")
+            .expect("no value for k8s deployment container image 0");
+        let docker_image_projection_image_value = docker_image_projection
+            .properties
+            .get_property("/image", None)
+            .expect("cannot get dockerImage image value")
+            .expect("no value for dockerImage image value");
+        assert_eq!(
+            &container_json["image"], docker_image_projection_image_value,
+            "failed to compute the image value when it is set manually",
+        );
 
-    test_cleanup(test_account)
-        .await
-        .expect("failed to finish test");
+        test_cleanup(test_account)
+            .await
+            .expect("failed to finish test");
+    }));
 }

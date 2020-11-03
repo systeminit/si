@@ -282,22 +282,29 @@ impl ChangeSet {
         // calculate properties in the core loop, to make sure all the values are
         // right for any action we're about to take.
         let seen_map_keys: Vec<String> = seen_map.keys().map(|k| k.clone()).collect();
+        let mut processed_list: Vec<String> = vec![];
         for parent_id in seen_map_keys {
             let successor_edges =
                 Edge::all_successor_edges_by_object_id(&db, EdgeKind::Configures, &parent_id)
                     .await?;
             for edge in successor_edges.iter() {
-                if seen_map.contains_key(&edge.head_vertex.object_id) {
-                    let mc = seen_map.clone();
-                    let mut entity_json = seen_map.get_mut(&edge.head_vertex.object_id).unwrap();
-                    calculate_properties(db, &mut entity_json, Some(&mc)).await?;
-                } else {
-                    let entity =
-                        Entity::get_projection(&db, &edge.head_vertex.object_id, &self.id).await?;
-                    let entity_id = entity.id.clone();
-                    let mut entity_json = serde_json::to_value(entity)?;
-                    calculate_properties(db, &mut entity_json, Some(&seen_map)).await?;
-                    seen_map.insert(entity_id, entity_json);
+                if !processed_list.contains(&edge.head_vertex.object_id) {
+                    if seen_map.contains_key(&edge.head_vertex.object_id) {
+                        let mc = seen_map.clone();
+                        let mut entity_json =
+                            seen_map.get_mut(&edge.head_vertex.object_id).unwrap();
+                        processed_list.push(edge.head_vertex.object_id.clone());
+                        calculate_properties(db, &mut entity_json, Some(&mc)).await?;
+                    } else {
+                        let entity =
+                            Entity::get_projection(&db, &edge.head_vertex.object_id, &self.id)
+                                .await?;
+                        let entity_id = entity.id.clone();
+                        let mut entity_json = serde_json::to_value(entity)?;
+                        processed_list.push(edge.head_vertex.object_id.clone());
+                        calculate_properties(db, &mut entity_json, Some(&seen_map)).await?;
+                        seen_map.insert(entity_id, entity_json);
+                    }
                 }
             }
         }
