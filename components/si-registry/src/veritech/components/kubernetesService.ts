@@ -23,7 +23,7 @@ intelligence.calculateProperties = function(
   console.log(`calulating properties for kubernetesService`, { req });
   console.dir(req, { depth: Infinity });
 
-  const result: CalculatePropertiesResult = {
+  let result: CalculatePropertiesResult = {
     inferredProperties: {
       __baseline: {
         kubernetesObject: {
@@ -106,7 +106,7 @@ intelligence.calculateProperties = function(
         }
       }
     } else if (pred.entity.objectType == "kubernetesNamespace") {
-      kubernetesNamespaceProperties(result, pred.entity);
+      result = kubernetesNamespaceProperties(result, pred.entity);
     }
   }
   return result;

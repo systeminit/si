@@ -41,3 +41,4 @@ import "./components/si-kubernetes/namespace";
 import "./components/si-kubernetes/minikube";
 import "./components/si-kubernetes/deployment";
 import "./components/si-kubernetes/service";
+import "./components/si-kubernetes/secret";
