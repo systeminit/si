@@ -35,8 +35,8 @@ class SiDatabase extends Dexie {
   entityOps: Dexie.Table<IEntityOps, string>;
   eventLog: Dexie.Table<IEventLog, string>;
   resources: Dexie.Table<IResource, string>;
-  keyPair: Dexie.Table<IPublicKey, string>;
-  secret: Dexie.Table<ISecret, string>;
+  keyPairs: Dexie.Table<IPublicKey, string>;
+  secrets: Dexie.Table<ISecret, string>;
 
   constructor() {
     super("SiDatabase");
@@ -61,8 +61,8 @@ class SiDatabase extends Dexie {
         "id, toId, siChangeSet.changeSetId, [siChangeSet.changeSetId+toId]",
       eventLog: "id",
       resources: "id, [systemId+entityId], [systemId+nodeId]",
-      keyPair: "id, name",
-      secret: "id, name",
+      keyPairs: "id, name",
+      secrets: "id, name, [objectType+kind]",
     });
 
     // The following line is needed if your typescript
@@ -83,8 +83,8 @@ class SiDatabase extends Dexie {
     this.entityOps = this.table("entityOps");
     this.eventLog = this.table("eventLog");
     this.resources = this.table("resources");
-    this.keyPair = this.table("keyPair");
-    this.secret = this.table("secret");
+    this.keyPairs = this.table("keyPairs");
+    this.secrets = this.table("secrets");
   }
 }
 

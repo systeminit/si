@@ -48,73 +48,113 @@
         </div>
       </div>
 
-      <div
-        class="pt-1 pb-1 pl-6 mt-2 text-base text-white align-middle property-section-bg-color"
-      >
-        Properties
-      </div>
+      <div v-if="secretList">
+        <div
+          class="pt-1 pb-1 pl-6 mt-2 text-base text-white align-middle property-section-bg-color"
+        >
+          Secret
+        </div>
 
-      <div v-for="entityProperty in propertiesList" :key="entityProperty.id">
-        <div v-if="!entityProperty.hidden" class="flex flex-row">
+        <div class="flex items-center mt-2">
+          <div class="w-40 px-2 text-sm leading-tight text-right text-white">
+            secretName
+          </div>
           <div
-            class="w-full"
-            :style="propStyle(entityProperty)"
-            v-show="showPath(entityProperty)"
+            class="w-4/5 pl-2 mr-2 text-sm leading-tight text-gray-400"
+            v-if="editorMode == 'edit'"
           >
-            <div
-              v-if="
-                repeated(entityProperty) && !propKind(entityProperty, 'select')
-              "
+            <select
+              class="w-4/5 pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none si-property input-bg-color-grey"
+              v-model="secretId"
+              @blur="saveSecretId"
             >
-              <PropRepeated
-                :entityProperty="entityProperty"
-                :isOpen="isOpen(entityProperty)"
-                :backgroundColors="backgroundColors"
-                :collapsedPaths="collapsedPaths"
-                class="py-2"
-                @toggle-path="togglePath($event)"
-              />
-            </div>
+              <option
+                v-for="secret in secretList"
+                :key="secret.value"
+                :value="secret.value"
+              >
+                {{ secret.label }}
+              </option>
+            </select>
+          </div>
+          <div
+            class="w-4/5 pl-2 mr-2 text-sm leading-tight text-gray-400"
+            v-else
+          >
+            {{ secretName }}
+          </div>
+        </div>
+      </div>
+      <div v-else>
+        <div
+          class="pt-1 pb-1 pl-6 mt-2 text-base text-white align-middle property-section-bg-color"
+        >
+          Properties
+        </div>
 
-            <div v-else-if="propKind(entityProperty, 'object')">
-              <PropObject
-                :entityProperty="entityProperty"
-                :isOpen="isOpen(entityProperty)"
-                class="py-2"
-                @toggle-path="togglePath($event)"
-              />
-            </div>
+        <div v-for="entityProperty in propertiesList" :key="entityProperty.id">
+          <div v-if="!entityProperty.hidden" class="flex flex-row">
+            <div
+              class="w-full"
+              :style="propStyle(entityProperty)"
+              v-show="showPath(entityProperty)"
+            >
+              <div
+                v-if="
+                  repeated(entityProperty) &&
+                    !propKind(entityProperty, 'select')
+                "
+              >
+                <PropRepeated
+                  :entityProperty="entityProperty"
+                  :isOpen="isOpen(entityProperty)"
+                  :backgroundColors="backgroundColors"
+                  :collapsedPaths="collapsedPaths"
+                  class="py-2"
+                  @toggle-path="togglePath($event)"
+                />
+              </div>
 
-            <div v-else-if="propKind(entityProperty, 'text')">
-              <PropText :entityProperty="entityProperty" class="py-1" />
-            </div>
+              <div v-else-if="propKind(entityProperty, 'object')">
+                <PropObject
+                  :entityProperty="entityProperty"
+                  :isOpen="isOpen(entityProperty)"
+                  class="py-2"
+                  @toggle-path="togglePath($event)"
+                />
+              </div>
 
-            <div v-else-if="propKind(entityProperty, 'code')">
-              <!-- for now, do nothing! -->
-            </div>
+              <div v-else-if="propKind(entityProperty, 'text')">
+                <PropText :entityProperty="entityProperty" class="py-1" />
+              </div>
 
-            <div v-else-if="propKind(entityProperty, 'number')">
-              <PropNumber :entityProperty="entityProperty" class="py-1" />
-            </div>
+              <div v-else-if="propKind(entityProperty, 'code')">
+                <!-- for now, do nothing! -->
+              </div>
 
-            <div v-else-if="propKind(entityProperty, 'enum')">
-              <PropEnum :entityProperty="entityProperty" class="py-1" />
-            </div>
+              <div v-else-if="propKind(entityProperty, 'number')">
+                <PropNumber :entityProperty="entityProperty" class="py-1" />
+              </div>
 
-            <div v-else-if="propKind(entityProperty, 'bool')">
-              <PropBool :entityProperty="entityProperty" class="py-1" />
-            </div>
+              <div v-else-if="propKind(entityProperty, 'enum')">
+                <PropEnum :entityProperty="entityProperty" class="py-1" />
+              </div>
 
-            <div v-else-if="propKind(entityProperty, 'map')">
-              <PropMap :entityProperty="entityProperty" class="py-1" />
-            </div>
+              <div v-else-if="propKind(entityProperty, 'bool')">
+                <PropBool :entityProperty="entityProperty" class="py-1" />
+              </div>
 
-            <div v-else-if="propKind(entityProperty, 'select')">
-              <PropSelect :entityProperty="entityProperty" class="py-1" />
-            </div>
+              <div v-else-if="propKind(entityProperty, 'map')">
+                <PropMap :entityProperty="entityProperty" class="py-1" />
+              </div>
 
-            <div v-else class="py-1 text-red-700">
-              {{ entityProperty.name }}
+              <div v-else-if="propKind(entityProperty, 'select')">
+                <PropSelect :entityProperty="entityProperty" class="py-1" />
+              </div>
+
+              <div v-else class="py-1 text-red-700">
+                {{ entityProperty.name }}
+              </div>
             </div>
           </div>
         </div>
@@ -211,6 +251,7 @@ import PropBool from "./PropBool.vue";
 import PropSelect from "./PropSelect.vue";
 import SiSelect from "@/components/ui/SiSelect.vue";
 import { Node, RegistryProperty } from "@/api/sdf/model/node";
+import { Secret } from "@/api/sdf/model/secret";
 //import { RegistryProperty } from "../../../../store/modules/node";
 
 import { capitalCase } from "change-case";
@@ -224,6 +265,7 @@ interface Data {
   collapsedPaths: (string | number)[][];
   nodeObjectName: string;
   newConfigures: string | null;
+  secretId: string | undefined;
 }
 
 export default Vue.extend({
@@ -254,6 +296,7 @@ export default Vue.extend({
       collapsedPaths: [],
       nodeObjectName: "",
       newConfigures: null,
+      secretId: undefined,
     };
   },
   methods: {
@@ -388,10 +431,36 @@ export default Vue.extend({
       }
       return `background-color: rgb(${rgb.join(",")});`;
     },
+    async saveSecretId(): Promise<void> {
+      if (
+        !_.isEqual(
+          this.editObject?.properties.__baseline.secretId,
+          this.secretId,
+        )
+      ) {
+        console.log("saving now");
+        await this.$store.dispatch("editor/entitySet", {
+          path: ["secretId"],
+          value: this.secretId,
+        });
+        await this.$store.dispatch("editor/syncCurrentResource");
+      }
+    },
   },
   computed: {
     typeName(): string {
       return capitalCase(this.selectedNode?.objectType || "unknown");
+    },
+    secretList(): { value: string | undefined; label: string }[] | undefined {
+      const result = [{ label: "", value: undefined }];
+      const secrets = this.$store.state.editor.secretList?.map((s: Secret) => {
+        return { label: s.name, value: s.id };
+      });
+      if (secrets?.length > 0) {
+        return result.concat(secrets);
+      } else {
+        return undefined;
+      }
     },
     ...mapState({
       propertiesList: (state: any): RegistryProperty[] =>
@@ -404,6 +473,7 @@ export default Vue.extend({
       currentResource: (state: any): any => state.editor.currentResource,
       newConfiguresInputTypes: (state: any): any =>
         state.editor.newConfiguresInputTypes,
+      secretName: (state: any): string | undefined => state.editor.secretName,
     }),
     backgroundColors(): number[][] {
       let longestProp = 0;
@@ -462,6 +532,11 @@ export default Vue.extend({
     editObject(value: any): void {
       if (this.editObject?.name) {
         this.nodeObjectName = _.cloneDeep(this.editObject.name);
+      }
+      if (this.editObject?.properties.__baseline.secretId) {
+        this.secretId = _.cloneDeep(
+          this.editObject?.properties.__baseline.secretId,
+        );
       }
     },
   },
