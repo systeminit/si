@@ -6,6 +6,7 @@ import LoadingPage from "@/pages/LoadingPage.vue";
 import WorkspacePage from "@/pages/WorkspacePage/index.vue";
 import SystemDetails from "@/components/views/system/SystemDetails.vue";
 import ApplicationList from "@/components/views/application/ApplicationList.vue";
+import SecretList from "@/components/views/secret/SecretList.vue";
 import ApplicationDetails from "@/components/views/application/ApplicationDetails.vue";
 import store from "@/store";
 
@@ -57,6 +58,12 @@ const routes = [
         path: "a",
         name: "application",
         component: ApplicationList,
+        props: true,
+      },
+      {
+        path: "secrets",
+        name: "secret",
+        component: SecretList,
         props: true,
       },
       {

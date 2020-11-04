@@ -11,6 +11,8 @@ import {
 import { IOpEntitySet, OpEntitySet } from "@/api/sdf/model/ops";
 import { EventLog, IEventLog } from "@/api/sdf/model/eventLog";
 import { Resource, IResource } from "@/api/sdf/model/resource";
+import { PublicKey, IPublicKey } from "@/api/sdf/model/keyPair";
+import { Secret, ISecret } from "@/api/sdf/model/secret";
 import { sdf } from "@/api/sdf";
 import { IUpdateClock } from "@/api/sdf/model/updateClock";
 import { db } from "@/api/sdf/dexie";
@@ -159,6 +161,14 @@ function onMessage(ev: MessageEvent) {
   } else if (model_data.model?.siStorable?.typeName == "resource") {
     const model = new Resource(model_data.model as IResource);
     console.log("resource msg", { model });
+    model.save();
+  } else if (model_data.model?.siStorable?.typeName == "keyPair") {
+    const model = new PublicKey(model_data.model as IPublicKey);
+    console.log("keyPair msg", { model });
+    model.save();
+  } else if (model_data.model?.siStorable?.typeName == "secret") {
+    const model = new Secret(model_data.model as ISecret);
+    console.log("secret msg", { model });
     model.save();
   }
 }

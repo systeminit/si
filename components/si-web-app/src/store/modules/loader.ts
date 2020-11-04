@@ -10,6 +10,7 @@ import { Node } from "@/api/sdf/model/node";
 import { Organization } from "@/api/sdf/model/organization";
 import { System } from "@/api/sdf/model/system";
 import { Resource } from "@/api/sdf/model/resource";
+import { PublicKey } from "@/api/sdf/model/keyPair";
 import { RootStore } from "@/store";
 
 export interface LoaderStore {
@@ -63,6 +64,7 @@ export const loader: Module<LoaderStore, RootStore> = {
         await Organization.restore();
         await System.restore();
         await Resource.restore();
+        await PublicKey.restore();
         commit("loading", false);
       }
     },

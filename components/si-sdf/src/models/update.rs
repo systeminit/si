@@ -6,7 +6,10 @@ use warp::ws::{Message, WebSocket};
 
 use crate::data::{Connection, Db};
 use crate::handlers::users::SiClaims;
-use crate::models::{load_billing_account_model, load_data_model, UpdateClock};
+use crate::models::{
+    key_pair::KeyPair, load_billing_account_model, load_data_model, secret::EncryptedSecret,
+    PublicKey, Secret, UpdateClock,
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -163,6 +166,33 @@ async fn process_message(
                     results.append(&mut b_results);
 
                     for model in results.into_iter() {
+                        let model =
+                            if let Some(type_name) = model["siStorable"]["typeName"].as_str() {
+                                match type_name {
+                                    "keyPair" => {
+                                        let key_pair: KeyPair =
+                                            serde_json::from_value(model.clone()).expect(
+                                                "deserialize into KeyPair failed, \
+                                                the document data is suspect",
+                                            );
+                                        serde_json::to_value(PublicKey::from(key_pair))
+                                            .expect("serialize into PublicKey failed")
+                                    }
+                                    "secret" => {
+                                        let secret: EncryptedSecret =
+                                            serde_json::from_value(model.clone()).expect(
+                                                "deserialize into EncryptedSecret failed, \
+                                                the document data is suspect",
+                                            );
+                                        serde_json::to_value(Secret::from(secret))
+                                            .expect("serialize into Secret failed")
+                                    }
+                                    _ => model,
+                                }
+                            } else {
+                                model
+                            };
+
                         match serde_json::to_string(&UpdateOp::Model(model)) {
                             Ok(op_json) => match outbound_ws_tx.send(Ok(Message::text(op_json))) {
                                 Ok(_) => (),
