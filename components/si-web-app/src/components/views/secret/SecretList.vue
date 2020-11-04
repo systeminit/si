@@ -136,7 +136,7 @@ import { mapState } from "vuex";
 import { registry } from "si-registry";
 import { PlusSquareIcon, XIcon } from "vue-feather-icons";
 import SiSelect, { SelectProps } from "@/components/ui/SiSelect.vue";
-import { SecretKind } from "@/api/sdf/model/secret"
+import { SecretKind } from "@/api/sdf/model/secret";
 
 import { RootStore } from "../../../store";
 
@@ -179,7 +179,7 @@ export default Vue.extend({
       await this.$store.dispatch("secret/createDockerHubCredential", {
         secretName: this.secretName,
         dockerHubUsername: this.dockerHubUsername,
-        dockerHubPassword: this.dockerHubPassword
+        dockerHubPassword: this.dockerHubPassword,
       });
       this.hideModal();
       this.secretName = "";
