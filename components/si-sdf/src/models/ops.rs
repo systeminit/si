@@ -3,8 +3,8 @@ use thiserror::Error;
 
 use crate::data::{Connection, Db, REQWEST};
 use crate::models::{
-    insert_model, EdgeError, ModelError, NodeError, ResourceError, SiChangeSet, SiChangeSetError,
-    SiChangeSetEvent, SiStorable, SiStorableError,
+    insert_model, EdgeError, EntityError, ModelError, NodeError, ResourceError, SiChangeSet,
+    SiChangeSetError, SiChangeSetEvent, SiStorable, SiStorableError,
 };
 
 pub mod entity_delete;
@@ -20,6 +20,8 @@ pub enum OpError {
     SiChangeSet(#[from] SiChangeSetError),
     #[error("error in core model functions: {0}")]
     Model(#[from] ModelError),
+    #[error("entity error: {0}")]
+    Entity(#[from] EntityError),
     #[error("cannot set value: path({0}) value({1})")]
     Failed(String, serde_json::Value),
     #[error("malformed target")]

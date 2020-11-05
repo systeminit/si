@@ -373,7 +373,7 @@ impl Node {
                 &self.si_storable.billing_account_id,
             )
             .await?;
-            let edge_entity: Entity = if let Some(ref change_set_id) = change_set_id {
+            let mut edge_entity: Entity = if let Some(ref change_set_id) = change_set_id {
                 match edge_node.get_object_projection(&db, change_set_id).await {
                     Ok(edge_entity) => edge_entity,
                     Err(_) => edge_node.get_head_object(db).await?,
@@ -383,6 +383,7 @@ impl Node {
             } else {
                 return Err(NodeError::NoHead);
             };
+            edge_entity.update_properties_if_secret(db).await?;
             let edge_resource = Resource::get(&db, &edge_entity.id, &system_id).await?;
             let predecessor = VeritechSyncPredecessor {
                 entity: edge_entity,

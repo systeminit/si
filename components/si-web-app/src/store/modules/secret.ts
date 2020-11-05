@@ -49,7 +49,7 @@ export const secret: Module<SecretStore, RootStore> = {
 
       const json = JSON.stringify(
         {
-          usename: payload.dockerHubUsername,
+          username: payload.dockerHubUsername,
           password: payload.dockerHubPassword,
         },
         null,
