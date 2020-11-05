@@ -53,8 +53,19 @@ intelligence.calculateProperties = function(
       },
     },
   };
+  const imagePullSecrets = [];
   for (const pred of req.predecessors) {
-    if (pred.entity.objectType == "dockerImage") {
+    if (pred.entity.objectType == "kubernetesSecret") {
+      if (
+        pred.entity.properties.__baseline.kubernetesObject?.type ==
+        "kubernetes.io/dockerconfigjson"
+      ) {
+        imagePullSecrets.push({
+          name:
+            pred.entity.properties.__baseline.kubernetesObject.metadata?.name,
+        });
+      }
+    } else if (pred.entity.objectType == "dockerImage") {
       if (
         !Array.isArray(
           result.inferredProperties.__baseline.kubernetesObject?.spec?.template
@@ -79,6 +90,7 @@ intelligence.calculateProperties = function(
         image: pred.entity.properties.__baseline["image"],
       };
       const ports = [];
+
       for (const resource of pred.resources) {
         if (resource.state["data"]) {
           for (const portString of Object.keys(
@@ -103,7 +115,9 @@ intelligence.calculateProperties = function(
       result.inferredProperties.__baseline["kubernetesObject"]["spec"][
         "template"
       ]["spec"]["containers"].push(containerSpec);
-    } else if (pred.entity.objectType == "kubernetesNamespace") {
+      // add the image pull secret
+    }
+    if (pred.entity.objectType == "kubernetesNamespace") {
       console.log("you're a namesacpe");
       if (pred.entity.properties.__baseline.kubernetesObject?.metadata?.name) {
         console.log("setting namespace");
@@ -114,6 +128,20 @@ intelligence.calculateProperties = function(
         );
       }
     }
+  }
+  if (imagePullSecrets.length > 0) {
+    _.set(
+      result.inferredProperties,
+      [
+        "__baseline",
+        "kubernetesObject",
+        "spec",
+        "template",
+        "spec",
+        "imagePullSecrets",
+      ],
+      imagePullSecrets,
+    );
   }
   return result;
 };

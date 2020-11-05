@@ -13,6 +13,7 @@ import {
   kubernetesSync,
   kubernetesApply,
 } from "./kubernetesShared";
+import yaml from "yaml";
 
 const kubernetesSecret = registry.get("kubernetesSecret") as EntityObject;
 const intelligence = kubernetesSecret.intelligence;
@@ -41,6 +42,13 @@ intelligence.calculateProperties = function(
     if (pred.entity.objectType == "kubernetesNamespace") {
       result = kubernetesNamespaceProperties(result, pred.entity);
     }
+    if (pred.entity.objectType == "dockerHubCredential") {
+      result.inferredProperties.__baseline.kubernetesObject["type"] =
+        "kubernetes.io/dockerconfigjson";
+      result.inferredProperties.__baseline.kubernetesObject["data"] = {
+        ".dockerconfigjson": `$entity[${pred.entity.id}]`,
+      };
+    }
   }
   return result;
 };
@@ -48,11 +56,59 @@ intelligence.calculateProperties = function(
 intelligence.syncResource = async function(
   request: SyncResourceRequest,
 ): Promise<SyncResourceReply> {
+  for (const pred of request.predecessors) {
+    if (pred.entity.objectType == "dockerHubCredential") {
+      const creds = pred.entity.properties.__baseline.decrypted;
+      const auth = Buffer.from(
+        `${creds?.username}:${creds?.password}`,
+      ).toString("base64");
+      const dockerConfig = {
+        auths: {
+          "https://index.docker.io/v1/": {
+            auth,
+          },
+        },
+      };
+      const dockerConfigBase64 = Buffer.from(
+        JSON.stringify(dockerConfig),
+      ).toString("base64");
+      request.entity.properties.__baseline.kubernetesObject["data"] = {
+        ".dockerconfigjson": dockerConfigBase64,
+      };
+      request.entity.properties.__baseline.kubernetesObjectYaml = yaml.stringify(
+        request.entity.properties.__baseline.kubernetesObject,
+      );
+    }
+  }
   return await kubernetesSync(request);
 };
 
 intelligence.actions = {
   async apply(request: ActionRequest): Promise<ActionReply> {
+    for (const pred of request.predecessors) {
+      if (pred.entity.objectType == "dockerHubCredential") {
+        const creds = pred.entity.properties.__baseline.decrypted;
+        const auth = Buffer.from(
+          `${creds?.username}:${creds?.password}`,
+        ).toString("base64");
+        const dockerConfig = {
+          auths: {
+            "https://index.docker.io/v1/": {
+              auth,
+            },
+          },
+        };
+        const dockerConfigBase64 = Buffer.from(
+          JSON.stringify(dockerConfig),
+        ).toString("base64");
+        request.entity.properties.__baseline.kubernetesObject["data"] = {
+          ".dockerconfigjson": dockerConfigBase64,
+        };
+        request.entity.properties.__baseline.kubernetesObjectYaml = yaml.stringify(
+          request.entity.properties.__baseline.kubernetesObject,
+        );
+      }
+    }
     return await kubernetesApply(request);
   },
 };

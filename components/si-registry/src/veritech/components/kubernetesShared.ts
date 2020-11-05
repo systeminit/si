@@ -41,6 +41,7 @@ export async function kubernetesSync(
   }
 
   if (kubernetesCluster && currentContext) {
+    console.log(request.entity.properties.__baseline["kubernetesObjectYaml"]);
     const kubectlApply = await execa(
       "kubectl",
       [
@@ -72,6 +73,10 @@ export async function kubernetesSync(
       return reply;
     } else {
       const kubectlApplyJson = JSON.parse(kubectlApply.stdout);
+      if (request.entity.objectType == "kubernetesSecret") {
+        _.set(kubectlApplyJson, ["data"], "redacted");
+        _.set(kubectlApplyJson, ["metadata", "annotations"], "redacted");
+      }
       const reply: SyncResourceReply = {
         resource: {
           state: {
@@ -146,6 +151,10 @@ export async function kubernetesApply(
       return reply;
     } else {
       const kubectlApplyJson = JSON.parse(kubectlApply.stdout);
+      if (request.entity.objectType == "kubernetesSecret") {
+        _.set(kubectlApplyJson, ["data"], "redacted");
+        _.set(kubectlApplyJson, ["metadata", "annotations"], "redacted");
+      }
       const reply: ActionReply = {
         resource: {
           state: {
