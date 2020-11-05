@@ -33,8 +33,8 @@ import "./components/si-core/server";
 import "./components/si-core/ubuntu";
 import "./components/si-core/ami";
 import "./components/si-core/ec2instance";
-import "./components/si-core/dockerImage";
 import "./components/si-core/dockerHubCredential";
+import "./components/si-core/dockerImage";
 
 import "./components/si-kubernetes/kubernetes";
 import "./components/si-kubernetes/cluster";

@@ -170,13 +170,14 @@ impl OpEntityAction {
                     &entity.si_storable.billing_account_id,
                 )
                 .await?;
-                let edge_entity: Entity = match edge_node
+                let mut edge_entity: Entity = match edge_node
                     .get_object_projection(&db, &this_action.si_change_set.change_set_id)
                     .await
                 {
                     Ok(edge_entity) => edge_entity,
                     Err(_) => edge_node.get_head_object(&db).await?,
                 };
+                edge_entity.update_properties_if_secret(&db).await?;
 
                 let edge_resource =
                     Resource::get(&db, &edge_entity.id, &this_action.system_id).await?;
@@ -198,13 +199,14 @@ impl OpEntityAction {
                     &entity.si_storable.billing_account_id,
                 )
                 .await?;
-                let edge_entity: Entity = match edge_node
+                let mut edge_entity: Entity = match edge_node
                     .get_object_projection(&db, &this_action.si_change_set.change_set_id)
                     .await
                 {
                     Ok(edge_entity) => edge_entity,
                     Err(_) => edge_node.get_head_object(&db).await?,
                 };
+                edge_entity.update_properties_if_secret(&db).await?;
                 let edge_resource =
                     Resource::get(&db, &edge_entity.id, &this_action.system_id).await?;
                 predecessors.push(ActionRequestThunk {

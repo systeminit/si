@@ -8,9 +8,9 @@ use tracing::{error, info, trace};
 
 use crate::data::{Connection, Db, REQWEST};
 use crate::models::{
-    get_base_object, insert_model, upsert_model, Edge, EdgeError, EdgeKind, ModelError, Node,
-    NodeKind, Resource, ResourceError, SiChangeSet, SiChangeSetError, SiChangeSetEvent, SiStorable,
-    SiStorableError, System, SystemError, Vertex,
+    get_base_object, insert_model, secret::EncryptedSecret, upsert_model, Edge, EdgeError,
+    EdgeKind, ModelError, Node, NodeKind, Resource, ResourceError, SecretError, SiChangeSet,
+    SiChangeSetError, SiChangeSetEvent, SiStorable, SiStorableError, System, SystemError, Vertex,
 };
 
 #[derive(Error, Debug)]
@@ -49,6 +49,8 @@ pub enum EntityError {
     NotFound,
     #[error("resource error: {0}")]
     Resource(#[from] ResourceError),
+    #[error("secret error: {0}")]
+    Secret(#[from] SecretError),
 }
 
 pub type EntityResult<T> = Result<T, EntityError>;
@@ -326,6 +328,35 @@ impl Entity {
         let new_entity: Entity = serde_json::from_value(json)?;
         trace!(?new_entity, "new entity from calculate properties");
         *self = new_entity;
+        Ok(())
+    }
+
+    pub async fn update_properties_if_secret(&mut self, db: &Db) -> EntityResult<()> {
+        if let Some(secret_id) = self
+            .properties
+            .get_property("/secretId", None)?
+            .map(|s| s.as_str())
+            .flatten()
+        {
+            let secret =
+                EncryptedSecret::get(db, secret_id, &self.si_storable.billing_account_id).await?;
+            let decrypted = secret.decrypt(db).await?;
+            self.properties
+                .get_or_create_mut("__baseline")
+                .as_object_mut()
+                .expect("__baseline must be a map")
+                .insert("decrypted".into(), decrypted.message);
+            self.properties
+                .get_or_create_mut("__baseline")
+                .as_object_mut()
+                .expect("__baseline must be a map")
+                .remove("secretId");
+            self.manual_properties
+                .get_or_create_mut("__baseline")
+                .as_object_mut()
+                .expect("__baseline must be a map")
+                .remove("secretId");
+        }
         Ok(())
     }
 

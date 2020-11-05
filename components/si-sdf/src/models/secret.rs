@@ -2,7 +2,7 @@ use crate::{
     data::{Connection, Db},
     models::{
         key_pair::KeyPair,
-        {insert_model, KeyPairError, ModelError, SiStorable, SiStorableError},
+        {get_model, insert_model, KeyPairError, ModelError, SiStorable, SiStorableError},
     },
 };
 use serde::{Deserialize, Serialize};
@@ -241,9 +241,16 @@ impl EncryptedSecret {
         Ok(model)
     }
 
-    // TODO(fnichol): this function is not yet used, so has `dead_code` allowed for the moment.
-    // Once the `veritech` prep code needs this, drop the lint.
-    #[allow(dead_code)]
+    pub(crate) async fn get(
+        db: &Db,
+        id: impl AsRef<str> + std::fmt::Debug,
+        billing_account_id: impl AsRef<str> + std::fmt::Debug,
+    ) -> SecretResult<Self> {
+        get_model(db, id, billing_account_id)
+            .await
+            .map_err(SecretError::from)
+    }
+
     pub(crate) async fn decrypt(self, db: &Db) -> SecretResult<DecryptedSecret> {
         let key_pair =
             KeyPair::get(db, &self.key_pair_id, &self.si_storable.billing_account_id).await?;
@@ -293,7 +300,7 @@ pub(crate) struct DecryptedSecret {
     pub name: String,
     pub object_type: SecretObjectType,
     pub kind: SecretKind,
-    message: Value,
+    pub message: Value,
 }
 
 #[cfg(test)]
