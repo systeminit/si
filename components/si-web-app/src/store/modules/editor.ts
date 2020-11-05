@@ -4,6 +4,7 @@ import _ from "lodash";
 
 import { Entity } from "@/api/sdf/model/entity";
 import { System } from "@/api/sdf/model/system";
+import { Secret } from "@/api/sdf/model/secret";
 import { Resource } from "@/api/sdf/model/resource";
 import {
   ChangeSet,
@@ -105,6 +106,8 @@ export interface EditorStore {
   directSuccessors: Node[];
   newConfiguresInputTypes: { value: string | null; label: string }[];
   propertyList: RegistryProperty[];
+  secretList: Secret[] | undefined;
+  secretName: string | undefined;
   editObject: Entity | undefined;
   diff: DiffResult;
   eventLogs: EventLog[];
@@ -136,6 +139,8 @@ export const editor: Module<EditorStore, RootStore> = {
     directSuccessors: [],
     newConfiguresInputTypes: [],
     propertyList: [],
+    secretList: undefined,
+    secretName: undefined,
     editObject: undefined,
     diff: {
       entries: [],
@@ -196,6 +201,12 @@ export const editor: Module<EditorStore, RootStore> = {
     },
     setNodes(state, payload: Node[]) {
       state.nodes = payload;
+    },
+    setSecretList(state, payload: Secret[] | undefined) {
+      state.secretList = payload;
+    },
+    setSecretName(state, payload: string | undefined) {
+      state.secretName = payload;
     },
     setPropertyList(state, payload: RegistryProperty[]) {
       state.propertyList = payload;
@@ -303,6 +314,8 @@ export const editor: Module<EditorStore, RootStore> = {
       state.directSuccessors = [];
       state.edges = [];
       state.propertyList = [];
+      state.secretList = undefined;
+      state.secretName = undefined;
       state.editObject = undefined;
       state.changeSetParticipantCount = 0;
       state.diff = {
@@ -591,8 +604,10 @@ export const editor: Module<EditorStore, RootStore> = {
     async loadEditObject({ state, commit }) {
       let node = state.node;
       if (node) {
+        const secretList = await node.secretList(state.changeSet?.id);
         const propertyList = await node.propertyList(state.changeSet?.id);
         const editObject = await node.displayObject(state.changeSet?.id);
+        commit("setSecretList", secretList);
         commit("setPropertyList", propertyList);
         commit("setEditObject", editObject);
       }
@@ -600,8 +615,14 @@ export const editor: Module<EditorStore, RootStore> = {
     async node({ commit, state }, payload: Node | undefined) {
       commit("node", payload);
       if (payload) {
+        const secretList = await payload.secretList(state.changeSet?.id);
         const propertyList = await payload.propertyList(state.changeSet?.id);
-        const editObject = await payload.displayObject(state.changeSet?.id);
+        const editObject = (await payload.displayObject(
+          state.changeSet?.id,
+        )) as Entity;
+        const secretName = await editObject.secretName();
+        commit("setSecretList", secretList);
+        commit("setSecretName", secretName);
         commit("setPropertyList", propertyList);
         commit("setEditObject", editObject);
         let directSuccessors = await payload.directSuccessors();
@@ -629,6 +650,8 @@ export const editor: Module<EditorStore, RootStore> = {
           commit("diff", diffResult);
         }
       } else {
+        commit("setSecretList", undefined);
+        commit("setSecretName", undefined);
         commit("setPropertyList", []);
         commit("setEditObject", undefined);
         commit("directSuccessors", []);

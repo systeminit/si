@@ -13,10 +13,12 @@ import { Query, Comparison } from "@/api/sdf/model/query";
 import { Entity, IEntity } from "@/api/sdf/model/entity";
 import { System, ISystem } from "@/api/sdf/model/system";
 import { Resource } from "@/api/sdf/model/resource";
+import { Secret } from "@/api/sdf/model/secret";
 import store from "@/store";
 
 import _ from "lodash";
 import { registry, PropLink, PropObject } from "si-registry";
+import { EntityObject } from "si-registry/lib/systemComponent";
 
 export interface RegistryProperty {
   id: string;
@@ -462,6 +464,24 @@ export class Node implements INode {
         y: 0,
       };
       return this.positions[context];
+    }
+  }
+
+  async secretList(changeSetId?: string): Promise<Secret[] | undefined> {
+    let entity = await this.displayObject(changeSetId);
+    if (entity.siStorable.typeName == "entity") {
+      // @ts-ignore
+      const registryObject = registry.get(entity.objectType) as EntityObject;
+      if (registryObject.secretObjectType && registryObject.secretKind) {
+        return await Secret.findByObjectTypeAndKind(
+          registryObject.secretObjectType,
+          registryObject.secretKind,
+        );
+      } else {
+        return undefined;
+      }
+    } else {
+      return undefined;
     }
   }
 

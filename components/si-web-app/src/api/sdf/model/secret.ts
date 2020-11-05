@@ -3,7 +3,7 @@ import { db } from "@/api/sdf/dexie";
 import _ from "lodash";
 import store from "@/store";
 import { ISiStorable } from "@/api/sdf/model/siStorable";
-import { ICreateReply } from "@/api/sdf/model";
+import { ICreateReply, IGetRequest } from "@/api/sdf/model";
 import { PublicKey } from "./keyPair";
 import sealedBox from "tweetnacl-sealedbox-js";
 
@@ -69,9 +69,9 @@ export class Secret implements ISecret {
   }
 
   async save(): Promise<void> {
-    const currentObj = await db.secret.get(this.id);
+    const currentObj = await db.secrets.get(this.id);
     if (!_.eq(currentObj, this)) {
-      await db.secret.put(this);
+      await db.secrets.put(this);
       await this.dispatch();
     }
   }
@@ -80,8 +80,17 @@ export class Secret implements ISecret {
     await store.dispatch("secret/fromSecret", this);
   }
 
+  static async get(request: IGetRequest<ISecret["id"]>): Promise<Secret> {
+    const obj = await db.secrets.get(request.id);
+    if (obj) {
+      return new Secret(obj);
+    } else {
+      throw new Error("secret not found");
+    }
+  }
+
   static async restore(): Promise<void> {
-    let iObjects = await db.secret.toArray();
+    let iObjects = await db.secrets.toArray();
     for (const iobj of iObjects) {
       let obj = new Secret(iobj);
       await obj.dispatch();
@@ -109,6 +118,14 @@ export class Secret implements ISecret {
     await obj.save();
     return obj;
   }
+
+  static async findByObjectTypeAndKind(
+    objectType: string,
+    kind: string,
+  ): Promise<Secret[]> {
+    let items = await db.secrets.where({ objectType, kind }).toArray();
+    return items.map(obj => new Secret(obj));
+  }
 }
 
-db.secret.mapToClass(Secret);
+db.secrets.mapToClass(Secret);

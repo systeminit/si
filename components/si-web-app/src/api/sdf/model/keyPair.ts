@@ -24,9 +24,9 @@ export class PublicKey implements IPublicKey {
   }
 
   async save(): Promise<void> {
-    const currentObj = await db.keyPair.get(this.id);
+    const currentObj = await db.keyPairs.get(this.id);
     if (!_.eq(currentObj, this)) {
-      await db.keyPair.put(this);
+      await db.keyPairs.put(this);
       await this.dispatch();
     }
   }
@@ -36,7 +36,7 @@ export class PublicKey implements IPublicKey {
   }
 
   static async restore(): Promise<void> {
-    let iObjects = await db.keyPair.toArray();
+    let iObjects = await db.keyPairs.toArray();
     for (const iobj of iObjects) {
       let obj = new PublicKey(iobj);
       await obj.dispatch();
@@ -44,4 +44,4 @@ export class PublicKey implements IPublicKey {
   }
 }
 
-db.keyPair.mapToClass(PublicKey);
+db.keyPairs.mapToClass(PublicKey);

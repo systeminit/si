@@ -554,6 +554,8 @@ export class EntityObject extends SystemObject {
   integrationServices: IntegrationService[];
   intelligence: EntityObjectIntelligence;
   inputTypes: EntityObject[];
+  secretObjectType: string | undefined;
+  secretKind: string | undefined;
 
   constructor(args: BaseObjectConstructor) {
     const typeName = `${args.typeName}`;
@@ -568,11 +570,21 @@ export class EntityObject extends SystemObject {
     this.setEntityDefaults();
     this.intelligence = {};
     this.inputTypes = [];
+    this.secretObjectType = undefined;
+    this.secretKind = undefined;
   }
 
   inputType(typeName: string): void {
     const entityObj = registry.get(typeName) as EntityObject;
     this.inputTypes.push(entityObj);
+  }
+
+  secretType(
+    secretObjectType: EntityObject["secretObjectType"],
+    secretKind: EntityObject["secretKind"],
+  ): void {
+    this.secretObjectType = secretObjectType;
+    this.secretKind = secretKind;
   }
 
   async syncResource(request: SyncResourceRequest): Promise<SyncResourceReply> {

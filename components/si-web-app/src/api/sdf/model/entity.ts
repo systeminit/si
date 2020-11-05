@@ -3,6 +3,7 @@ import { ChangeSetStatus } from "@/api/sdf/model/changeSet";
 import { ISiStorable } from "@/api/sdf/model/siStorable";
 import { ISiChangeSet } from "@/api/sdf/model/siChangeSet";
 import { Edge, EdgeKind } from "@/api/sdf/model/edge";
+import { Secret } from "@/api/sdf/model/secret";
 import { Node } from "@/api/sdf/model/node";
 import { diffEntity, DiffEntry, DiffResult } from "@/utils/diff";
 import {
@@ -300,6 +301,17 @@ export class Entity implements IEntity {
       items.push(entity);
     }
     return items;
+  }
+
+  async secretName(): Promise<string | undefined> {
+    if (this.properties.__baseline.secretId) {
+      const secret = await Secret.get({
+        id: this.properties.__baseline.secretId,
+      });
+      return secret.name;
+    } else {
+      return undefined;
+    }
   }
 
   async systems(): Promise<System[]> {
