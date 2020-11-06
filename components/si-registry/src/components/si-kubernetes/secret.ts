@@ -5,7 +5,6 @@ import {
   PropEnum,
   PropCode,
   PropAction,
-  PropMap,
 } from "../../components/prelude";
 import { registry } from "../../registry";
 
@@ -17,6 +16,7 @@ registry.componentAndEntity({
   options(c) {
     c.entity.inputType("kubernetesCluster");
     c.entity.inputType("kubernetesNamespace");
+    c.entity.inputType("dockerHubCredential");
 
     c.entity.associations.belongsTo({
       fromFieldPath: ["siProperties", "billingAccountId"],

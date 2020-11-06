@@ -18,6 +18,7 @@ registry.componentAndEntity({
     c.entity.inputType("dockerImage");
     c.entity.inputType("kubernetesCluster");
     c.entity.inputType("kubernetesNamespace");
+    c.entity.inputType("kubernetesSecret");
 
     c.entity.associations.belongsTo({
       fromFieldPath: ["siProperties", "billingAccountId"],

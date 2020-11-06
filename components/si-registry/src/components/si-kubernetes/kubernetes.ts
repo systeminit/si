@@ -140,6 +140,17 @@ registry.base({
   displayTypeName: "Kubernetes Pod Spec",
   serviceName: "kubernetes",
   options(c) {
+    c.fields.addObject({
+      name: "imagePullSecrets",
+      label: "Image Pull Secrets",
+      options(p: PropObject) {
+        p.repeated = true;
+        p.properties.addText({
+          name: "name",
+          label: "name",
+        });
+      },
+    });
     c.fields.addLink({
       name: "containers",
       label: "Containers",
