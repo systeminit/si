@@ -84,6 +84,11 @@ export interface IConnectionPosition {
   };
 }
 
+export interface ConfiguresConnection {
+  sourceNodeId: string;
+  destinationNodeId: string;
+}
+
 export interface EditorStore {
   mode: "view" | "edit";
   context: string;
@@ -423,6 +428,24 @@ export const editor: Module<EditorStore, RootStore> = {
             configuredByNodeId: node.id,
           });
         }
+      }
+    },
+    async createNewConfiguresConnection(
+      { state, dispatch },
+      payload: ConfiguresConnection,
+    ) {
+      var predecessorNode;
+      var successorNode;
+
+      if (payload.sourceNodeId) {
+        predecessorNode = await Node.get({ id: payload.sourceNodeId });
+      }
+      if (payload.destinationNodeId) {
+        successorNode = await Node.get({ id: payload.destinationNodeId });
+      }
+
+      if (predecessorNode && successorNode) {
+        await successorNode.configuredBy(predecessorNode.id);
       }
     },
     async setNodePosition({ state, commit }, payload: ActionSetNodePosition) {

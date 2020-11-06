@@ -8,14 +8,14 @@
       @mousedown="selectNode()"
     >
       <span
-        ref="`${node.id}.socket.input`"
-        class="socket-input node"
-        @mousedown="selectSocket($event)"
+        :ref="`${node.id}.socket.input`"
+        :id="`${node.id}.socket.input`"
+        class="socket-input socket node"
       />
       <span
-        ref="`${node.id}.socket.output`"
-        class="socket-output node"
-        @mousedown="selectSocket($event)"
+        :ref="`${node.id}.socket.output`"
+        :id="`${node.id}.socket.output`"
+        class="socket-output socket node"
       />
 
       <div class="flex flex-col select-none node">
@@ -102,11 +102,6 @@ export default Vue.extend({
   methods: {
     async selectNode() {
       await this.$store.dispatch("editor/node", this.node);
-    },
-    selectSocket(event: Event) {
-      console.log("socket");
-      console.log(event);
-      console.log(this.node.id + ".socket.input");
     },
   },
   computed: {
