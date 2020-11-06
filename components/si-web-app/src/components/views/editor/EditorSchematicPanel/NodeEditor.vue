@@ -69,6 +69,7 @@ import ConnectionObject from "./ConnectionObject.vue";
 import { mapGetters, mapState, Store } from "vuex";
 import { Node, Position } from "@/api/sdf/model/node";
 import { Edge } from "@/api/sdf/model/edge";
+import { ConfiguresConnection } from "@/store/modules/editor";
 import { RootStore } from "@/store";
 import _ from "lodash";
 
@@ -371,6 +372,7 @@ export default Vue.extend({
     this.canvas.offset.x = canvasOffset.x;
     this.canvas.offset.y = canvasOffset.y;
   },
+
   methods: {
     async updateSelectedNodePosition(
       posX: number,
@@ -527,42 +529,17 @@ export default Vue.extend({
         // @ts-ignore
         transientConnection.remove();
 
-        // @ts-ignore
-        let connectionPath =
-          this.transientConnection.sourceSocketId +
-          " >> " +
-          this.transientConnection.destinationSocketId;
-
         if (
           this.transientConnection.destinationSocketId !=
           this.transientConnection.sourceSocketId
         ) {
-          /**
-           * - Adam  Start -------------------------------
-           */
-
-          /**
-           *
-           * sourceSocket - The source socket
-           *  nodeId: the id of the socket parent node
-           *  socketId: input or output
-           *
-           * destinationSocket - The destination socket
-           *  nodeId: the id of the socket parent node
-           *  socketId: input or output
-           *
-           */
-
+          // Source socket (we draw the connection from this socket to the destination socket).
           let sourceElementString = this.transientConnection.sourceSocketId.split(
             ".",
           );
-
-          // Source socket (we draw the connection from this socket to the destination socket).
           let sourceSocket = {
-            // The socket node id.
-            nodeId: sourceElementString[0].split(":")[1],
-            // The socket it [input or output].
-            socketId: sourceElementString[2],
+            nodeId: sourceElementString[0],
+            socketId: sourceElementString[2], // not used at this time.
           };
 
           // Destination socket (we draw the connection from the source socket to this socket).
@@ -570,19 +547,28 @@ export default Vue.extend({
             ".",
           );
           let destinationSocket = {
-            // The socket node id.
-            nodeId: destinationElementString[0].split(":")[1],
-            // The socket it [input or output].
-            socketId: destinationElementString[2],
+            nodeId: destinationElementString[0],
+            socketId: destinationElementString[2], // not used at this time.
           };
 
+          // @ts-ignore
+          // let connectionPath =
+          //   this.transientConnection.sourceSocketId +
+          //   " >> " +
+          //   this.transientConnection.destinationSocketId;
           // console.log("-".repeat(connectionPath.length));
           // console.log(connectionPath);
           // console.log("-".repeat(connectionPath.length));
 
-          /**
-           * - Adam  END ---------------------------------
-           */
+          let configuresConnection: ConfiguresConnection = {
+            sourceNodeId: sourceSocket.nodeId,
+            destinationNodeId: destinationSocket.nodeId,
+          };
+
+          this.$store.dispatch(
+            "editor/createNewConfiguresConnection",
+            configuresConnection,
+          );
         }
       }
     },
