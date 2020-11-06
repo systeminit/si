@@ -93,6 +93,7 @@ enum_impls!(SecretObjectType);
 #[strum(serialize_all = "camelCase")]
 pub enum SecretKind {
     DockerHub,
+    AwsAccessKey,
 }
 
 enum_impls!(SecretKind);

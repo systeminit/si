@@ -11,10 +11,10 @@ export interface SecretStore {
   publicKey: PublicKey | undefined;
 }
 
-export interface ActionCreateDockerHubCredential {
+export interface ActionCreateCredential {
   secretName: string;
-  dockerHubUsername: string;
-  dockerHubPassword: string;
+  secretKind: SecretKind;
+  message: Record<string, any>;
 }
 
 export const secret: Module<SecretStore, RootStore> = {
@@ -39,22 +39,15 @@ export const secret: Module<SecretStore, RootStore> = {
     async fromSecret({ commit }, payload: Secret) {
       commit("updateSecrets", payload);
     },
-    async createDockerHubCredential(
+    async createCredential(
       { commit, state, rootGetters },
-      payload: ActionCreateDockerHubCredential,
+      payload: ActionCreateCredential,
     ) {
       if (!state.publicKey) {
         throw new Error("publicKey not set");
       }
 
-      const json = JSON.stringify(
-        {
-          username: payload.dockerHubUsername,
-          password: payload.dockerHubPassword,
-        },
-        null,
-        0,
-      );
+      const json = JSON.stringify(payload.message, null, 0);
       const message = new Uint8Array(json.length);
       for (let i = 0; i < json.length; i++) {
         message[i] = json.charCodeAt(i);
@@ -65,7 +58,7 @@ export const secret: Module<SecretStore, RootStore> = {
       const secret = await Secret.create({
         name: payload.secretName,
         objectType: SecretObjectType.Credential,
-        kind: SecretKind.DockerHub,
+        kind: payload.secretKind,
         message,
         publicKey: state.publicKey,
         organizationId: organization.id,

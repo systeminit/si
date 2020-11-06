@@ -11,8 +11,8 @@ import {
   CalculatePropertiesResult,
 } from "../../veritech/intelligence";
 import _ from "lodash";
-import YAML from "yaml";
 import execa from "execa";
+import { kubernetesSync, kubernetesApply } from "./kubernetesShared";
 
 const kubernetesDeployment = registry.get(
   "kubernetesDeployment",
@@ -149,152 +149,11 @@ intelligence.calculateProperties = function(
 intelligence.syncResource = async function(
   request: SyncResourceRequest,
 ): Promise<SyncResourceReply> {
-  console.log(`syncing kubernetes deployment`);
-  console.dir(request, { depth: Infinity });
-
-  const kubernetesCluster = _.find(request.predecessors, [
-    "entity.objectType",
-    "kubernetesCluster",
-  ]);
-  let currentContext = undefined;
-  console.log("find me?", { kubernetesCluster });
-  if (kubernetesCluster?.resource.state.data) {
-    console.log("you get me");
-    currentContext = kubernetesCluster.resource.state.data["current-context"];
-  }
-
-  if (kubernetesCluster && currentContext) {
-    const kubectlApply = await execa(
-      "kubectl",
-      [
-        "apply",
-        "-o",
-        "json",
-        "--context",
-        currentContext,
-        "--dry-run=server",
-        "-f",
-        "-",
-      ],
-      {
-        input: request.entity.properties.__baseline["kubernetesObjectYaml"],
-      },
-    );
-    if (kubectlApply.failed) {
-      const reply: SyncResourceReply = {
-        resource: {
-          state: {
-            data: request.resource.state?.data,
-            errorMsg: "kubectl apply failed",
-            errorOutput: kubectlApply.stderr,
-          },
-          health: ResourceHealth.Ok,
-          status: ResourceStatus.Created,
-        },
-      };
-      return reply;
-    } else {
-      const kubectlApplyJson = JSON.parse(kubectlApply.stdout);
-      const reply: SyncResourceReply = {
-        resource: {
-          state: {
-            data: kubectlApplyJson,
-          },
-          health: ResourceHealth.Ok,
-          status: ResourceStatus.Created,
-        },
-      };
-      return reply;
-    }
-  } else {
-    const reply: SyncResourceReply = {
-      resource: {
-        state: {
-          data: request.resource.state?.data,
-          errorMsg: "No kubernetesCluster attached!",
-        },
-        health: ResourceHealth.Error,
-        status: ResourceStatus.Failed,
-      },
-    };
-    return reply;
-  }
+  return await kubernetesSync(request);
 };
 
 intelligence.actions = {
   async apply(request: ActionRequest): Promise<ActionReply> {
-    const actions: ActionReply["actions"] = [];
-    console.log(`applying kubernetes deployment`);
-    console.dir(request, { depth: Infinity });
-    const kubernetesCluster = _.find(request.predecessors, [
-      "entity.objectType",
-      "kubernetesCluster",
-    ]);
-    let currentContext = undefined;
-    console.log("find me?", { kubernetesCluster });
-    if (kubernetesCluster?.resource.state.data) {
-      console.log("you get me");
-      currentContext = kubernetesCluster.resource.state.data["current-context"];
-    }
-
-    if (kubernetesCluster && currentContext) {
-      const applyArgs = [
-        "apply",
-        "-o",
-        "json",
-        "--context",
-        currentContext,
-        "-f",
-        "-",
-      ];
-      if (request.hypothetical) {
-        applyArgs.push("--dry-run=server");
-      }
-
-      const kubectlApply = await execa("kubectl", applyArgs, {
-        input: request.entity.properties.__baseline["kubernetesObjectYaml"],
-      });
-      if (kubectlApply.failed) {
-        const reply: ActionReply = {
-          resource: {
-            state: {
-              data: request.resource.state?.data,
-              errorMsg: "kubectl apply failed",
-              errorOutput: kubectlApply.stderr,
-            },
-            health: ResourceHealth.Ok,
-            status: ResourceStatus.Created,
-          },
-          actions,
-        };
-        return reply;
-      } else {
-        const kubectlApplyJson = JSON.parse(kubectlApply.stdout);
-        const reply: ActionReply = {
-          resource: {
-            state: {
-              data: kubectlApplyJson,
-            },
-            health: ResourceHealth.Ok,
-            status: ResourceStatus.Created,
-          },
-          actions,
-        };
-        return reply;
-      }
-    } else {
-      const reply: ActionReply = {
-        resource: {
-          state: {
-            data: request.resource.state?.data,
-            errorMsg: "No kubernetesCluster attached!",
-          },
-          health: ResourceHealth.Error,
-          status: ResourceStatus.Failed,
-        },
-        actions,
-      };
-      return reply;
-    }
+    return await kubernetesApply(request);
   },
 };

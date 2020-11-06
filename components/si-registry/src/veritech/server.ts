@@ -8,6 +8,7 @@ import "@/veritech/components/kubernetesCluster";
 import "@/veritech/components/kubernetesNamespace";
 import "@/veritech/components/kubernetesService";
 import "@/veritech/components/kubernetesSecret";
+import "@/veritech/components/awsEks.ts";
 
 import { registry } from "@/registry";
 
