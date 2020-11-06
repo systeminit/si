@@ -13,6 +13,13 @@
         id="canvas"
         class="relative flex-auto block w-full h-full canvas"
       >
+        <svg
+          id="transientConnectionSvg"
+          height="100%"
+          width="100%"
+          class="absolute"
+        />
+
         <ConnectionObject
           class="connections"
           v-for="(connection, index) in connectionList"
@@ -155,6 +162,12 @@ interface IData {
     };
   };
   nodeListPositions: Record<string, Position>;
+  isNodeConnectionMode: boolean;
+  transientConnectionId: string;
+  transientConnection: {
+    sourceSocketId: any; // ts hack for now
+    destinationSocketId: any; // ts hack for now
+  };
 }
 
 export default Vue.extend({
@@ -273,6 +286,12 @@ export default Vue.extend({
         },
       },
       nodeListPositions: {},
+      isNodeConnectionMode: false,
+      transientConnectionId: "transientConnection",
+      transientConnection: {
+        sourceSocketId: null,
+        destinationSocketId: null,
+      },
     };
   },
   mounted(): void {
@@ -408,11 +427,69 @@ export default Vue.extend({
         this.selection.object = null;
       }
 
-      if (this.selection.object) {
-        // console.log(this.selection.object);
-        // console.log(this.selection.object.$root);
-        // console.log(event);
+      // Prototype edge creation
+      if (event.target.classList.contains("socket")) {
+        /**
+         * - Socket Connection -
+         *
+         * V1 Connection
+         * create a new transient edge (p1,p2) and snap p2(xy) to cursor until mouse up.
+         * - user clicks on source socket
+         * - user drags connection edge to destination socket (on mouse move)
+         * - user connects connection edge by draging p2 over the destination socket. On mouse up if p2 is over the
+         *   destination socket, a new connection is made.
+         *
+         * V2 Disconnection
+         * - to disconnect a conneciton, user clicks on a socket and drags the connection edge away from any node
+         *   and mouse up while the connection edge p2 isn't over anohter socket.
+         *
+         */
+        // @ts-ignore
+        this.transientConnection.sourceSocketId = event.target.id;
 
+        let mousePositionX = event.clientX;
+        let mousePositionY = event.clientY;
+        // @ts-ignore
+        let selectionObjectOffset = {
+          x: mousePositionX - this.canvas.element.offsetLeft, //should be the center of the socket x...
+          y: mousePositionY - this.canvas.element.offsetTop, //should be the center of the socket y...
+        };
+
+        // Ccreate an edge
+        let transientConnection = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "line",
+        );
+        transientConnection.id = this.transientConnectionId;
+        // @ts-ignore
+        transientConnection.setAttribute("x1", selectionObjectOffset.x);
+        // @ts-ignore
+        transientConnection.setAttribute("y1", selectionObjectOffset.y);
+        // @ts-ignore
+        transientConnection.setAttribute("x2", selectionObjectOffset.x);
+        // @ts-ignore
+        transientConnection.setAttribute("y2", selectionObjectOffset.y);
+        // @ts-ignore
+        transientConnection.setAttribute("stroke", "rgb(71,99,113)");
+        // @ts-ignore
+        transientConnection.setAttribute("stroke-width", 2);
+
+        // Add the edge to the svg
+        let transientConnectionSvg = document.getElementById(
+          "transientConnectionSvg",
+        );
+        // @ts-ignore
+        transientConnectionSvg.appendChild(transientConnection);
+
+        // Sets state to update the edge when the mouse moves
+        // @ts-ignore
+        this.isNodeConnectionMode = true;
+        this.selection.object = document.getElementById(
+          this.transientConnectionId,
+        );
+      }
+
+      if (this.selection.object) {
         let selectionOffsetLeft = this.selection.object.offsetLeft;
         let selectionOffsetTop = this.selection.object.offsetTop;
 
@@ -441,6 +518,73 @@ export default Vue.extend({
 
         this.isPanning = false;
       }
+      if (this.isNodeConnectionMode) {
+        this.isNodeConnectionMode = false;
+        this.selection.object = null;
+        let transientConnection = document.getElementById(
+          this.transientConnectionId,
+        );
+        // @ts-ignore
+        transientConnection.remove();
+
+        // @ts-ignore
+        let connectionPath =
+          this.transientConnection.sourceSocketId +
+          " >> " +
+          this.transientConnection.destinationSocketId;
+
+        if (
+          this.transientConnection.destinationSocketId !=
+          this.transientConnection.sourceSocketId
+        ) {
+          /**
+           * - Adam  Start -------------------------------
+           */
+
+          /**
+           *
+           * sourceSocket - The source socket
+           *  nodeId: the id of the socket parent node
+           *  socketId: input or output
+           *
+           * destinationSocket - The destination socket
+           *  nodeId: the id of the socket parent node
+           *  socketId: input or output
+           *
+           */
+
+          let sourceElementString = this.transientConnection.sourceSocketId.split(
+            ".",
+          );
+
+          // Source socket (we draw the connection from this socket to the destination socket).
+          let sourceSocket = {
+            // The socket node id.
+            nodeId: sourceElementString[0].split(":")[1],
+            // The socket it [input or output].
+            socketId: sourceElementString[2],
+          };
+
+          // Destination socket (we draw the connection from the source socket to this socket).
+          let destinationElementString = this.transientConnection.destinationSocketId.split(
+            ".",
+          );
+          let destinationSocket = {
+            // The socket node id.
+            nodeId: destinationElementString[0].split(":")[1],
+            // The socket it [input or output].
+            socketId: destinationElementString[2],
+          };
+
+          // console.log("-".repeat(connectionPath.length));
+          // console.log(connectionPath);
+          // console.log("-".repeat(connectionPath.length));
+
+          /**
+           * - Adam  END ---------------------------------
+           */
+        }
+      }
     },
     mouseMove(event: any): void {
       if (this.mouseTrackSelection) {
@@ -455,6 +599,23 @@ export default Vue.extend({
           let selectionOffsetTop = this.selection.object.offsetTop;
           this.selection.offset.x = mousePositionX - selectionOffsetLeft;
           this.selection.offset.y = mousePositionY - selectionOffsetTop;
+        }
+      }
+
+      if (this.isNodeConnectionMode) {
+        let mousePositionX = event.clientX;
+        let mousePositionY = event.clientY;
+        this.selection.object.setAttribute(
+          "x2",
+          mousePositionX - this.canvas.element.offsetLeft,
+        );
+        this.selection.object.setAttribute(
+          "y2",
+          mousePositionY - this.canvas.element.offsetTop,
+        );
+
+        if (event.target.classList.contains("socket")) {
+          this.transientConnection.destinationSocketId = event.target.id;
         }
       }
 
