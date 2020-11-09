@@ -34,10 +34,12 @@ import "./components/si-core/ubuntu";
 import "./components/si-core/ami";
 import "./components/si-core/ec2instance";
 import "./components/si-core/dockerHubCredential";
+import "./components/si-core/awsAccessKeyCredential";
 import "./components/si-core/dockerImage";
 
 import "./components/si-kubernetes/kubernetes";
 import "./components/si-kubernetes/cluster";
+import "./components/si-core/awsEks";
 import "./components/si-kubernetes/namespace";
 import "./components/si-kubernetes/minikube";
 import "./components/si-kubernetes/secret";

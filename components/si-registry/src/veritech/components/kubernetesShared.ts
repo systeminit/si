@@ -10,6 +10,7 @@ import {
 } from "../intelligence";
 import _ from "lodash";
 import execa from "execa";
+import { awsCredential, awsKubeConfig, AwsCliEnv } from "./awsShared";
 
 export function kubernetesNamespaceProperties(
   result: CalculatePropertiesResult,
@@ -31,16 +32,22 @@ export async function kubernetesSync(
   console.log(`syncing kubernetes`);
   console.dir(request, { depth: Infinity });
 
-  const kubernetesCluster = _.find(request.predecessors, [
-    "entity.objectType",
-    "kubernetesCluster",
-  ]);
-  let currentContext = undefined;
-  if (kubernetesCluster?.resource.state.data) {
-    currentContext = kubernetesCluster.resource.state.data["current-context"];
+  const awsCredResult = awsCredential(request);
+  if (awsCredResult.syncResourceReply) {
+    return awsCredResult.syncResourceReply;
+  } else if (!awsCredResult.awsCliEnv) {
+    throw new Error("aws cli function didn't return an environment");
   }
+  const awsEnv: AwsCliEnv = awsCredResult.awsCliEnv;
+  const awsKubeConfigResult = await awsKubeConfig(request, awsEnv);
+  if (awsKubeConfigResult.syncResourceReply) {
+    return awsKubeConfigResult.syncResourceReply;
+  } else if (!awsKubeConfigResult.kubeconfig) {
+    throw new Error("no reply or resource for aws kube config");
+  }
+  const kubeconfigPath = awsKubeConfigResult.kubeconfig;
 
-  if (kubernetesCluster && currentContext) {
+  if (kubeconfigPath) {
     console.log(request.entity.properties.__baseline["kubernetesObjectYaml"]);
     const kubectlApply = await execa(
       "kubectl",
@@ -48,14 +55,15 @@ export async function kubernetesSync(
         "apply",
         "-o",
         "json",
-        "--context",
-        currentContext,
+        "--kubeconfig",
+        kubeconfigPath,
         "--dry-run=server",
         "-f",
         "-",
       ],
       {
         input: request.entity.properties.__baseline["kubernetesObjectYaml"],
+        env: awsEnv,
       },
     );
     if (kubectlApply.failed) {
@@ -109,22 +117,31 @@ export async function kubernetesApply(
   const actions: ActionReply["actions"] = [];
   console.log(`applying kubernetes`);
   console.dir(request, { depth: Infinity });
-  const kubernetesCluster = _.find(request.predecessors, [
-    "entity.objectType",
-    "kubernetesCluster",
-  ]);
-  let currentContext = undefined;
-  if (kubernetesCluster?.resource.state.data) {
-    currentContext = kubernetesCluster.resource.state.data["current-context"];
+  const awsCredResult = awsCredential(request);
+  if (awsCredResult.syncResourceReply) {
+    return { resource: awsCredResult.syncResourceReply.resource, actions };
+  } else if (!awsCredResult.awsCliEnv) {
+    throw new Error("aws cli function didn't return an environment");
   }
+  const awsEnv: AwsCliEnv = awsCredResult.awsCliEnv;
+  const awsKubeConfigResult = await awsKubeConfig(request, awsEnv);
+  if (awsKubeConfigResult.syncResourceReply) {
+    return {
+      resource: awsKubeConfigResult.syncResourceReply.resource,
+      actions,
+    };
+  } else if (!awsKubeConfigResult.kubeconfig) {
+    throw new Error("no reply or resource for aws kube config");
+  }
+  const kubeconfigPath = awsKubeConfigResult.kubeconfig;
 
-  if (kubernetesCluster && currentContext) {
+  if (kubeconfigPath) {
     const applyArgs = [
       "apply",
       "-o",
       "json",
-      "--context",
-      currentContext,
+      "--kubeconfig",
+      kubeconfigPath,
       "-f",
       "-",
     ];
@@ -134,6 +151,7 @@ export async function kubernetesApply(
 
     const kubectlApply = await execa("kubectl", applyArgs, {
       input: request.entity.properties.__baseline["kubernetesObjectYaml"],
+      env: awsEnv,
     });
     if (kubectlApply.failed) {
       const reply: ActionReply = {
@@ -172,7 +190,7 @@ export async function kubernetesApply(
       resource: {
         state: {
           data: request.resource.state?.data,
-          errorMsg: "No kubernetesCluster attached!",
+          errorMsg: "No awsEks node attached!",
         },
         health: ResourceHealth.Error,
         status: ResourceStatus.Failed,

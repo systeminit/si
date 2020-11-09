@@ -13,6 +13,7 @@ export enum SecretObjectType {
 
 export enum SecretKind {
   DockerHub = "dockerHub",
+  AwsAccessKey = "awsAccessKey",
 }
 
 export enum SecretVersion {
