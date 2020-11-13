@@ -189,74 +189,77 @@ async fn get_object() {
         .expect("failed to finish test");
 }
 
-#[tokio::test]
-async fn patch_object() {
-    let test_account = test_setup().await.expect("failed to setup test");
+#[test]
+fn patch_object() {
+    tokio_test::block_on(Box::pin(async move {
+        let test_account = test_setup().await.expect("failed to setup test");
 
-    let filter = api(&DB, &NATS, &SETTINGS.jwt_encrypt.key);
-    let change_set_id = create_change_set(&test_account).await;
-    let edit_session_id = create_edit_session(&test_account, &change_set_id).await;
-    let node_reply = create_node(&test_account, &change_set_id, &edit_session_id, "service").await;
-    let node = node_reply.item;
-    let entity: entity::Entity = node
-        .get_object_projection(&DB, &change_set_id)
-        .await
-        .expect("cannot get head object for node");
+        let filter = api(&DB, &NATS, &SETTINGS.jwt_encrypt.key);
+        let change_set_id = create_change_set(&test_account).await;
+        let edit_session_id = create_edit_session(&test_account, &change_set_id).await;
+        let node_reply =
+            create_node(&test_account, &change_set_id, &edit_session_id, "service").await;
+        let node = node_reply.item;
+        let entity: entity::Entity = node
+            .get_object_projection(&DB, &change_set_id)
+            .await
+            .expect("cannot get head object for node");
 
-    let request = node::ObjectPatchRequest {
-        op: ops::OpRequest::EntitySet(ops::OpEntitySetRequest {
-            path: vec!["strahd".into()],
-            value: "von zarovich".into(),
-            override_system: None,
-        }),
-        organization_id: test_account.organization_id.clone(),
-        workspace_id: test_account.workspace_id.clone(),
-        change_set_id: change_set_id.clone(),
-        edit_session_id: edit_session_id.clone(),
-    };
+        let request = node::ObjectPatchRequest {
+            op: ops::OpRequest::EntitySet(ops::OpEntitySetRequest {
+                path: vec!["strahd".into()],
+                value: "von zarovich".into(),
+                override_system: None,
+            }),
+            organization_id: test_account.organization_id.clone(),
+            workspace_id: test_account.workspace_id.clone(),
+            change_set_id: change_set_id.clone(),
+            edit_session_id: edit_session_id.clone(),
+        };
 
-    let res = warp::test::request()
-        .method("PATCH")
-        .header("authorization", &test_account.authorization)
-        .json(&request)
-        .path(format!("/nodes/{}/object", &node.id).as_ref())
-        .reply(&filter)
-        .await;
-    let reply: node::ObjectPatchReply =
-        serde_json::from_slice(res.body()).expect("cannot deserialize reply");
+        let res = warp::test::request()
+            .method("PATCH")
+            .header("authorization", &test_account.authorization)
+            .json(&request)
+            .path(format!("/nodes/{}/object", &node.id).as_ref())
+            .reply(&filter)
+            .await;
+        let reply: node::ObjectPatchReply =
+            serde_json::from_slice(res.body()).expect("cannot deserialize reply");
 
-    let op_reply = match reply {
-        node::ObjectPatchReply::Op(op_reply) => op_reply,
-    };
-    assert_eq!(
-        op_reply.item_ids,
-        vec![entity.id],
-        "expect the ids of all impacted objects back",
-    );
+        let op_reply = match reply {
+            node::ObjectPatchReply::Op(op_reply) => op_reply,
+        };
+        assert_eq!(
+            op_reply.item_ids,
+            vec![entity.id],
+            "expect the ids of all impacted objects back",
+        );
 
-    let updated_entity: entity::Entity = node
-        .get_object_projection(&DB, &change_set_id)
-        .await
-        .expect("cannot get updated head object for node");
+        let updated_entity: entity::Entity = node
+            .get_object_projection(&DB, &change_set_id)
+            .await
+            .expect("cannot get updated head object for node");
 
-    let entity_strahd = entity
-        .manual_properties
-        .get_property("/strahd", None)
-        .expect("invalid override system");
-    assert_eq!(entity_strahd, None, "old entity has no value");
+        let entity_strahd = entity
+            .manual_properties
+            .get_property("/strahd", None)
+            .expect("invalid override system");
+        assert_eq!(entity_strahd, None, "old entity has no value");
 
-    let updated_entity_strahd = updated_entity
-        .manual_properties
-        .get_property("/strahd", None)
-        .expect("invalid override system");
+        let updated_entity_strahd = updated_entity
+            .manual_properties
+            .get_property("/strahd", None)
+            .expect("invalid override system");
 
-    assert_eq!(
-        updated_entity_strahd,
-        Some(&serde_json::json!["von zarovich"]),
-        "new entity has correct value"
-    );
+        assert_eq!(
+            updated_entity_strahd,
+            Some(&serde_json::json!["von zarovich"]),
+            "new entity has correct value"
+        );
 
-    test_cleanup(test_account)
-        .await
-        .expect("failed to finish test");
+        test_cleanup(test_account)
+            .await
+            .expect("failed to finish test");
+    }));
 }
