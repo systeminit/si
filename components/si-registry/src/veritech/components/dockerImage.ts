@@ -49,7 +49,6 @@ intelligence.syncResource = async function(
     if (pred.entity.objectType == "dockerHubCredential") {
       tempdir = await fs.mkdtemp(path.join(os.tmpdir(), "docker-"));
       const creds = pred.entity.properties.__baseline.decrypted;
-      console.dir({ creds });
       const auth = Buffer.from(
         `${creds?.username}:${creds?.password}`,
       ).toString("base64");
@@ -68,37 +67,71 @@ intelligence.syncResource = async function(
     }
   }
 
-  let args: string[] = [];
+  // Pull the image with `docker image pull`
+  let pullArgs: string[] = [];
   if (tempdir) {
-    args = args.concat(["--config", tempdir]);
+    pullArgs = pullArgs.concat(["--config", tempdir]);
   }
-  args = args.concat([
+  pullArgs = pullArgs.concat([
+    "image",
+    "pull",
+    request.entity.properties.__baseline.image,
+  ]);
+  console.log(`running command; cmd="docker ${pullArgs.join(" ")}"`);
+  const dockerImagePull = await execa("docker", pullArgs, { all: true });
+
+  // If the image pull failed, early return
+  if (dockerImagePull.failed) {
+    state["data"] = request.resource.state;
+    state["errorMsg"] = dockerImagePull.stderr;
+
+    return {
+      resource: {
+        state,
+        health: ResourceHealth.Error,
+        status: ResourceStatus.Failed,
+      },
+    };
+  }
+
+  // Inspect the now-local image
+  let inspectArgs: string[] = [];
+  if (tempdir) {
+    inspectArgs = inspectArgs.concat(["--config", tempdir]);
+  }
+  inspectArgs = inspectArgs.concat([
     "image",
     "inspect",
     request.entity.properties.__baseline.image,
   ]);
+  console.log(`running command; cmd="docker ${inspectArgs.join(" ")}"`);
+  const dockerImageInspect = await execa("docker", inspectArgs, { all: true });
 
-  console.log(`about to exec: docker ${args.join(" ")}`);
-  const dockerImageInspect = await execa("docker", args, { all: true });
-  let health: ResourceHealth = ResourceHealth.Ok;
-  if (dockerImageInspect.failed) {
-    health = ResourceHealth.Error;
+  // If the image inspect failed, early return
+  if (dockerImagePull.failed) {
     state["data"] = request.resource.state;
     state["errorMsg"] = dockerImageInspect.stderr;
-  } else {
-    console.log("my outputs", { inspect: dockerImageInspect });
-    const dockerImageJson = JSON.parse(dockerImageInspect.stdout);
-    state["data"] = dockerImageJson[0];
+
+    return {
+      resource: {
+        state,
+        health: ResourceHealth.Error,
+        status: ResourceStatus.Failed,
+      },
+    };
   }
-  console.log("docker image pull", dockerImageInspect.all);
-  const reply: SyncResourceReply = {
+
+  // Set state data
+  const dockerImageJson = JSON.parse(dockerImageInspect.stdout);
+  state["data"] = dockerImageJson[0];
+
+  return {
     resource: {
       state,
-      health,
+      health: ResourceHealth.Ok,
       status: ResourceStatus.Created,
     },
   };
-  return reply;
 };
 
 intelligence.actions = {
