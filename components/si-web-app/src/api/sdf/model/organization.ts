@@ -110,7 +110,7 @@ export class Organization implements IOrganization {
   }
 
   async dispatch(): Promise<void> {
-    await store.dispatch("organizations/fromDb", this);
+    // await store.dispatch("organizations/fromDb", this);
   }
 
   static async restore(): Promise<void> {
