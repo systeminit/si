@@ -296,9 +296,12 @@ impl ChangeSet {
                         processed_list.push(edge.head_vertex.object_id.clone());
                         calculate_properties(db, &mut entity_json, Some(&mc)).await?;
                     } else {
-                        let entity =
-                            Entity::get_projection(&db, &edge.head_vertex.object_id, &self.id)
-                                .await?;
+                        let entity = Entity::get_projection_or_head(
+                            &db,
+                            &edge.head_vertex.object_id,
+                            &self.id,
+                        )
+                        .await?;
                         let entity_id = entity.id.clone();
                         let mut entity_json = serde_json::to_value(entity)?;
                         processed_list.push(edge.head_vertex.object_id.clone());
