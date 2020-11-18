@@ -414,6 +414,18 @@ impl Entity {
         }
     }
 
+    pub async fn get_projection_or_head(
+        db: &Db,
+        entity_id: impl AsRef<str>,
+        change_set_id: impl AsRef<str>,
+    ) -> EntityResult<Entity> {
+        match Self::get_projection(db, &entity_id, change_set_id).await {
+            Ok(entity) => Ok(entity),
+            Err(EntityError::NoHead) => Self::get_head(db, entity_id).await,
+            Err(e) => Err(e),
+        }
+    }
+
     pub async fn get_all(db: &Db, entity_id: impl AsRef<str>) -> EntityResult<Vec<Entity>> {
         let entity_id = entity_id.as_ref();
         let query = format!(
