@@ -3,6 +3,7 @@ import Vuex from "vuex";
 import { Store } from "vuex";
 import { application, ApplicationStore } from "./modules/application";
 import { secret, SecretStore } from "./modules/secret";
+import { client, ClientStore } from "./modules/client";
 import { system, SystemStore } from "./modules/system";
 import { user, UserStore } from "./modules/user";
 import { workspace, WorkspaceStore } from "./modules/workspace";
@@ -40,6 +41,7 @@ export interface RootStore {
   version: string;
   secret: SecretStore;
   event: EventStore;
+  client: ClientStore;
 }
 
 const store: Store<RootStore> = new Vuex.Store({
@@ -58,6 +60,7 @@ const store: Store<RootStore> = new Vuex.Store({
     loader,
     secret,
     event,
+    client,
   },
   strict: debug,
 });

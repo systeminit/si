@@ -118,7 +118,9 @@ export class SDF {
       headers,
       body: JSON.stringify(args),
     });
+    console.log("SDF.post ---> before")
     const response: T = await this.send_request(request);
+    console.log("SDF.post ---> after")
     return response;
   }
 
