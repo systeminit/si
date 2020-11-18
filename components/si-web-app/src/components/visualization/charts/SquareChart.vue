@@ -30,7 +30,7 @@
               Status
             </div>
             <div :style="statusTooltip">
-              {{ resource.status }}
+              {{ resource ? resource.status : 'unknown' }}
             </div>
           </div>
           <div class="flex">
@@ -38,7 +38,7 @@
               Health
             </div>
             <div :style="healthTooltip">
-              {{ resource.health }}
+              {{ resource ? resource.health : 'unknown' }}
             </div>
           </div>
           <div class="flex">
@@ -46,7 +46,7 @@
               Time
             </div>
             <div>
-              {{ resource.timestamp }}
+              {{ resource ? resource.timestamp : 'unknown' }}
             </div>
           </div>
         </div>
@@ -159,16 +159,17 @@ export default Vue.extend({
   computed: {
     resource(): Resource | undefined {
       if (this.inEditor == "true") {
-        return _.find(this.$store.state.editor.resources, [
+        const result = _.find(this.$store.state.editor.resources, [
           "nodeId",
           this.service.nodeId,
         ]);
+        return result;
       } else {
-        let results = _.find(
+        const result = _.find(
           this.$store.state.application.resources[this.applicationId],
           ["nodeId", this.service.nodeId],
         );
-        return results;
+        return result;
       }
     },
     deploymentTarget(): string {
