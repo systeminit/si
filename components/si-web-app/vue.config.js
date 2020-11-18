@@ -10,6 +10,7 @@ module.exports = {
     resolve: {
       symlinks: false,
     },
+    devtool: "source-map",
   },
   pluginOptions: {
     apollo: {
