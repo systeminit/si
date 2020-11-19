@@ -126,7 +126,7 @@ export function calculateProperties(
   req: express.Request,
   res: express.Response,
 ): void {
-  console.log("POST /calculateProperties resolver begins");
+  console.log("POST /calculateProperties BEGIN");
   const intelReq: CalculatePropertiesRequest = req.body;
   const entity = intelReq.entity;
   let registryObj;
@@ -145,8 +145,6 @@ export function calculateProperties(
   );
   entity.properties = result.properties;
   entity.inferredProperties = result.inferredProperties;
-  console.dir(entity, { depth: Infinity });
-  //console.log("sending back the entity", { entity });
   const intelRes: CalculatePropertiesReply = {
     entity,
   };
@@ -172,9 +170,8 @@ interface ApplyOpReply {
 }
 
 export function applyOp(req: express.Request, res: express.Response): void {
-  console.log("POST /applyOp resolver begins");
+  console.log("POST /applyOp BEGIN");
   const opRequest: ApplyOpRequest = req.body;
-  console.dir(opRequest, { depth: Infinity });
   const object = opRequest.object;
   if (opRequest.operation == Operation.Set) {
     if (opRequest.value) {
@@ -200,8 +197,6 @@ export function applyOp(req: express.Request, res: express.Response): void {
   const opReply: ApplyOpReply = {
     object,
   };
-  console.log("sending applyOp reply");
-  console.dir(opReply, { depth: Infinity });
   res.send(opReply);
 }
 
@@ -227,7 +222,7 @@ export function calculateConfigures(
   req: express.Request,
   res: express.Response,
 ): void {
-  console.log("POST /calculateConfigures resolver begins");
+  console.log("POST /calculateConfigures BEGIN");
   const intelReq: CalculateConfiguresRequest = req.body;
   const entity = intelReq.entity;
   const configures = intelReq.configures;
@@ -249,8 +244,6 @@ export function calculateConfigures(
     configures,
     systems,
   );
-  console.dir(response, { depth: Infinity });
-  console.log("sending response", { response });
   res.send(response);
 }
 
@@ -280,9 +273,8 @@ export interface ActionReply {
 }
 
 export function action(req: express.Request, res: express.Response): void {
-  console.log("POST /action resolver begins");
+  console.log("POST /action BEGIN");
   const request: ActionRequest = req.body;
-  console.dir(request, { depth: Infinity });
   let registryObj;
   try {
     registryObj = registry.get(request.entity.objectType) as EntityObject;
@@ -298,8 +290,6 @@ export function action(req: express.Request, res: express.Response): void {
   registryObj
     .action(request)
     .then(reply => {
-      console.log("action reply");
-      console.dir(reply, { depth: Infinity });
       res.send(reply);
     })
     .catch(err => {
@@ -330,9 +320,8 @@ export function syncResource(
   req: express.Request,
   res: express.Response,
 ): void {
-  console.log("POST /syncResource resolver begins");
+  console.log("POST /syncResource BEGIN");
   const request: SyncResourceRequest = req.body;
-  console.dir(request, { depth: Infinity });
   let registryObj;
   try {
     registryObj = registry.get(request.entity.objectType) as EntityObject;
@@ -348,8 +337,6 @@ export function syncResource(
   registryObj
     .syncResource(request)
     .then(reply => {
-      console.log("sync reply");
-      console.dir(reply, { depth: Infinity });
       res.send(reply);
     })
     .catch(err => {

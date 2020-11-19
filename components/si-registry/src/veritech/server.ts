@@ -2,13 +2,15 @@ import express from "express";
 import morgan from "morgan";
 import chalk from "chalk";
 import "@/loader";
-import "@/veritech/components/dockerImage";
-import "@/veritech/components/kubernetesDeployment";
-import "@/veritech/components/kubernetesCluster";
-import "@/veritech/components/kubernetesNamespace";
-import "@/veritech/components/kubernetesService";
-import "@/veritech/components/kubernetesSecret";
+import "@/veritech/components/application";
 import "@/veritech/components/awsEks.ts";
+import "@/veritech/components/dockerImage";
+import "@/veritech/components/kubernetesCluster";
+import "@/veritech/components/kubernetesDeployment";
+import "@/veritech/components/kubernetesNamespace";
+import "@/veritech/components/kubernetesSecret";
+import "@/veritech/components/kubernetesService";
+import "@/veritech/components/service";
 
 import { registry } from "@/registry";
 

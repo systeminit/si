@@ -1,11 +1,6 @@
 import { PropLink } from "./prop/link";
 import { PropNumber } from "./prop/number";
-import {
-  PropObject,
-  PropMethod,
-  PropAction,
-  IntegrationService,
-} from "./attrList";
+import { PropObject, PropMethod, IntegrationService } from "./attrList";
 import { camelCase } from "change-case";
 import { AssociationList } from "./systemObject/associations";
 import {
@@ -587,11 +582,31 @@ export class EntityObject extends SystemObject {
     this.secretKind = secretKind;
   }
 
+  display(entity: Entity, action?: string, hypothetical?: boolean): string {
+    let s = `${entity.objectType}${JSON.stringify(
+      { name: entity.name, id: entity.id },
+      undefined,
+      0,
+    )}`;
+    if (action) {
+      s += `.${action}()`;
+    }
+    if (hypothetical) {
+      s = `Hypothetical(${s})`;
+    }
+    return s;
+  }
+
   async syncResource(request: SyncResourceRequest): Promise<SyncResourceReply> {
     const syncResourceFunc = this.intelligence.syncResource;
+
     if (syncResourceFunc) {
+      console.log(`invoking syncResource(${this.display(request.entity)})`);
       return await syncResourceFunc(request);
     } else {
+      console.log(
+        `returning default syncResource() for ${this.display(request.entity)}`,
+      );
       return {
         resource: {
           health: ResourceHealth.Ok,
@@ -606,10 +621,24 @@ export class EntityObject extends SystemObject {
 
   async action(request: ActionRequest): Promise<ActionReply> {
     const actions = this.intelligence.actions;
-    console.log("doing some action shit", { actions, request });
+
     if (actions && actions[request.action]) {
+      console.log(
+        `invoking action(${this.display(
+          request.entity,
+          request.action,
+          request.hypothetical,
+        )})`,
+      );
       return actions[request.action](request);
     } else if (request.action == "delete") {
+      console.log(
+        `invoking delete(${this.display(
+          request.entity,
+          undefined,
+          request.hypothetical,
+        )}); marking resource state as deleted`,
+      );
       return {
         resource: {
           health: ResourceHealth.Unknown,
@@ -621,7 +650,13 @@ export class EntityObject extends SystemObject {
         actions: [],
       };
     } else {
-      throw new Error(`cannot find action ${request.action}`);
+      throw new Error(
+        `cannot find action '${request.action}' for ${this.display(
+          request.entity,
+          undefined,
+          request.hypothetical,
+        )}]`,
+      );
     }
   }
 
@@ -657,12 +692,15 @@ export class EntityObject extends SystemObject {
     const entity = req.entity;
     let inferredProperties = entity.inferredProperties;
     const manualProperties = entity.manualProperties;
-    if (this.intelligence.calculateProperties) {
-      const response: CalculatePropertiesResult = this.intelligence.calculateProperties(
-        req,
-      );
+
+    const calculatePropertiesFunc = this.intelligence.calculateProperties;
+
+    if (calculatePropertiesFunc) {
+      console.log(`invoking calculateProperties(${this.display(entity)})`);
+      const response: CalculatePropertiesResult = calculatePropertiesFunc(req);
       inferredProperties = response.inferredProperties;
     }
+
     const properties = _.merge({}, inferredProperties, manualProperties);
     if (properties.__baseline.kubernetesObject) {
       properties.__baseline.kubernetesObjectYaml = YAML.stringify(
@@ -679,9 +717,15 @@ export class EntityObject extends SystemObject {
     configures: Entity[],
     systems: System[],
   ): CalculateConfiguresReply {
-    if (this.intelligence.calculateConfigures) {
-      return this.intelligence.calculateConfigures(entity, configures, systems);
+    const calculateConfiguresFunc = this.intelligence.calculateConfigures;
+
+    if (calculateConfiguresFunc) {
+      console.log(`invoking calculateConfigures(${this.display(entity)})`);
+      return calculateConfiguresFunc(entity, configures, systems);
     } else {
+      console.log(
+        `returning default calculateConfigures() for ${this.display(entity)}`,
+      );
       return {
         keep: _.map(configures, entity => {
           return { id: entity.id, systems: _.map(systems, s => s.id) };

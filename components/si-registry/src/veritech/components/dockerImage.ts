@@ -15,15 +15,11 @@ import { promises as fs } from "fs";
 import os from "os";
 import path from "path";
 
-const dockerImage = registry.get("dockerImage") as EntityObject;
-const intelligence = dockerImage.intelligence;
+const intelligence = (registry.get("dockerImage") as EntityObject).intelligence;
 
 intelligence.calculateProperties = function(
   req: CalculatePropertiesRequest,
 ): CalculatePropertiesResult {
-  console.log(`calulating properties`, { req });
-  console.dir(req, { depth: Infinity });
-
   const result: CalculatePropertiesResult = {
     inferredProperties: {
       __baseline: {},
@@ -40,8 +36,6 @@ intelligence.calculateProperties = function(
 intelligence.syncResource = async function(
   request: SyncResourceRequest,
 ): Promise<SyncResourceReply> {
-  console.log(`syncing image`);
-  console.dir(request, { depth: Infinity });
   const state: Record<string, any> = {};
 
   let tempdir;
@@ -78,12 +72,18 @@ intelligence.syncResource = async function(
     request.entity.properties.__baseline.image,
   ]);
   console.log(`running command; cmd="docker ${pullArgs.join(" ")}"`);
-  const dockerImagePull = await execa("docker", pullArgs, { all: true });
+  const dockerImagePull = await execa("docker", pullArgs, {
+    reject: false,
+    all: true,
+  });
 
   // If the image pull failed, early return
   if (dockerImagePull.failed) {
-    state["data"] = request.resource.state;
-    state["errorMsg"] = dockerImagePull.stderr;
+    const state = {
+      data: request.resource.state?.data,
+      errorMsg: "docker image pull command failed",
+      errorOutput: dockerImagePull.stderr,
+    };
 
     return {
       resource: {
@@ -105,12 +105,18 @@ intelligence.syncResource = async function(
     request.entity.properties.__baseline.image,
   ]);
   console.log(`running command; cmd="docker ${inspectArgs.join(" ")}"`);
-  const dockerImageInspect = await execa("docker", inspectArgs, { all: true });
+  const dockerImageInspect = await execa("docker", inspectArgs, {
+    reject: false,
+    all: true,
+  });
 
   // If the image inspect failed, early return
   if (dockerImagePull.failed) {
-    state["data"] = request.resource.state;
-    state["errorMsg"] = dockerImageInspect.stderr;
+    const state = {
+      data: request.resource.state?.data,
+      errorMsg: "docker image inspect command failed",
+      errorOutput: dockerImageInspect.stderr,
+    };
 
     return {
       resource: {

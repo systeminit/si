@@ -3,28 +3,20 @@ import { EntityObject } from "@/systemComponent";
 import {
   ActionRequest,
   ActionReply,
-  ResourceHealth,
-  ResourceStatus,
   SyncResourceRequest,
   SyncResourceReply,
   CalculatePropertiesRequest,
   CalculatePropertiesResult,
 } from "../../veritech/intelligence";
 import _ from "lodash";
-import execa from "execa";
 import { kubernetesSync, kubernetesApply } from "./kubernetesShared";
 
-const kubernetesDeployment = registry.get(
-  "kubernetesDeployment",
-) as EntityObject;
-const intelligence = kubernetesDeployment.intelligence;
+const intelligence = (registry.get("kubernetesDeployment") as EntityObject)
+  .intelligence;
 
 intelligence.calculateProperties = function(
   req: CalculatePropertiesRequest,
 ): CalculatePropertiesResult {
-  console.log(`calulating properties for kubernetesDeployment`, { req });
-  console.dir(req, { depth: Infinity });
-
   const result: CalculatePropertiesResult = {
     inferredProperties: {
       __baseline: {
@@ -118,9 +110,7 @@ intelligence.calculateProperties = function(
       // add the image pull secret
     }
     if (pred.entity.objectType == "kubernetesNamespace") {
-      console.log("you're a namesacpe");
       if (pred.entity.properties.__baseline.kubernetesObject?.metadata?.name) {
-        console.log("setting namespace");
         _.set(
           result.inferredProperties,
           ["__baseline", "kubernetesObject", "metadata", "namespace"],

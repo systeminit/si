@@ -1,8 +1,6 @@
 import { registry } from "@/registry";
 import { EntityObject } from "@/systemComponent";
 import {
-  ActionRequest,
-  ActionReply,
   ResourceHealth,
   ResourceStatus,
   SyncResourceRequest,
@@ -12,21 +10,13 @@ import {
 } from "../../veritech/intelligence";
 import _ from "lodash";
 import execa from "execa";
-import { promises as fs } from "fs";
-import os from "os";
-import path from "path";
-
 import { awsCredential, AwsCliEnv, awsKubeConfig } from "./awsShared";
 
-const awsEks = registry.get("awsEks") as EntityObject;
-const intelligence = awsEks.intelligence;
+const intelligence = (registry.get("awsEks") as EntityObject).intelligence;
 
 intelligence.calculateProperties = function(
   req: CalculatePropertiesRequest,
 ): CalculatePropertiesResult {
-  console.log(`calulating properties for awsEks`, { req });
-  console.dir(req, { depth: Infinity });
-
   const result: CalculatePropertiesResult = {
     inferredProperties: {
       __baseline: {},
@@ -47,9 +37,6 @@ intelligence.calculateProperties = function(
 intelligence.syncResource = async function(
   request: SyncResourceRequest,
 ): Promise<SyncResourceReply> {
-  console.log(`syncing awsEks`);
-  console.dir(request, { depth: Infinity });
-
   const awsCredResult = awsCredential(request);
   if (awsCredResult.syncResourceReply) {
     return awsCredResult.syncResourceReply;
@@ -62,33 +49,32 @@ intelligence.syncResource = async function(
     throw new Error("aws cli function didn't return an environment");
   }
 
-  const awsCmd = await execa(
-    "aws",
-    [
-      "eks",
-      "describe-cluster",
-      "--region",
-      request.entity.properties.__baseline.region,
-      "--name",
-      request.entity.properties.__baseline.clusterName,
-    ],
-    {
-      env: awsEnv,
-    },
-  );
+  const awsArgs = [
+    "eks",
+    "describe-cluster",
+    "--region",
+    request.entity.properties.__baseline.region,
+    "--name",
+    request.entity.properties.__baseline.clusterName,
+  ];
+  console.log(`running command; cmd="aws ${awsArgs.join(" ")}"`);
+  const awsCmd = await execa("aws", awsArgs, { reject: false, env: awsEnv });
+
+  // If the describe-cluster failed, early return
   if (awsCmd.failed) {
-    const reply: SyncResourceReply = {
+    const state = {
+      data: request.resource.state?.data,
+      errorMsg: "aws eks describe-cluster failed",
+      errorOutput: awsCmd.stderr,
+    };
+
+    return {
       resource: {
-        state: {
-          data: request.resource.state?.data,
-          errorMsg: "aws eks describe-cluster failed",
-          errorOutput: awsCmd.stderr,
-        },
-        health: ResourceHealth.Ok,
-        status: ResourceStatus.Created,
+        state,
+        health: ResourceHealth.Error,
+        status: ResourceStatus.Failed,
       },
     };
-    return reply;
   }
 
   const awsKubeConfigResult = await awsKubeConfig(request, awsEnv);
@@ -100,26 +86,34 @@ intelligence.syncResource = async function(
   }
   const kubeconfigPath = awsKubeConfigResult.kubeconfig;
 
-  const kubectlVersionCmd = await execa(
-    "kubectl",
-    ["version", "--kubeconfig", kubeconfigPath, "--output", "json"],
-    {
-      env: awsEnv,
-    },
-  );
+  const kubectlVersionArgs = [
+    "version",
+    "--kubeconfig",
+    kubeconfigPath,
+    "--output",
+    "json",
+  ];
+  console.log(`running command; cmd="kubectl ${kubectlVersionArgs.join(" ")}"`);
+  const kubectlVersionCmd = await execa("kubectl", kubectlVersionArgs, {
+    reject: false,
+    env: awsEnv,
+  });
+
+  // If kubectl version failed, early return
   if (kubectlVersionCmd.failed) {
-    const reply: SyncResourceReply = {
+    const state = {
+      data: request.resource.state?.data,
+      errorMsg: "kubectl version command failed",
+      errorOutput: kubectlVersionCmd.stderr,
+    };
+
+    return {
       resource: {
-        state: {
-          data: request.resource.state?.data,
-          errorMsg: "kubectl version command failed",
-          errorOutput: kubectlVersionCmd.stderr,
-        },
-        health: ResourceHealth.Ok,
-        status: ResourceStatus.Created,
+        state,
+        health: ResourceHealth.Error,
+        status: ResourceStatus.Failed,
       },
     };
-    return reply;
   }
 
   const awsJson = JSON.parse(awsCmd.stdout);

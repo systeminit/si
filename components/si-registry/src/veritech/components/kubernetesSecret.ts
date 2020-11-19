@@ -15,15 +15,12 @@ import {
 } from "./kubernetesShared";
 import yaml from "yaml";
 
-const kubernetesSecret = registry.get("kubernetesSecret") as EntityObject;
-const intelligence = kubernetesSecret.intelligence;
+const intelligence = (registry.get("kubernetesSecret") as EntityObject)
+  .intelligence;
 
 intelligence.calculateProperties = function(
   req: CalculatePropertiesRequest,
 ): CalculatePropertiesResult {
-  console.log(`calulating properties for kubernetesSecret`, { req });
-  console.dir(req, { depth: Infinity });
-
   let result: CalculatePropertiesResult = {
     inferredProperties: {
       __baseline: {

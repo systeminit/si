@@ -1,56 +1,51 @@
 import { registry } from "@/registry";
 import { EntityObject } from "@/systemComponent";
 import {
-  ActionRequest,
-  ActionReply,
   ResourceHealth,
   ResourceStatus,
   SyncResourceRequest,
   SyncResourceReply,
-  CalculatePropertiesRequest,
-  CalculatePropertiesResult,
 } from "../../veritech/intelligence";
-import _ from "lodash";
 import execa from "execa";
 
-const kubernetesCluster = registry.get("kubernetesCluster") as EntityObject;
-const intelligence = kubernetesCluster.intelligence;
+const intelligence = (registry.get("kubernetesCluster") as EntityObject)
+  .intelligence;
 
 intelligence.syncResource = async function(
   request: SyncResourceRequest,
 ): Promise<SyncResourceReply> {
-  console.log(`syncing kubernetes cluster`);
-  console.dir(request, { depth: Infinity });
+  const kubectlArgs = ["config", "view", "-o", "json"];
+  console.log(`running command; cmd="kubectl ${kubectlArgs.join(" ")}"`);
+  const kubectlConfigView = await execa("kubectl", kubectlArgs, {
+    reject: false,
+  });
 
-  const kubectlConfigView = await execa("kubectl", [
-    "config",
-    "view",
-    "-o",
-    "json",
-  ]);
+  // If kubectl config failed, early return
   if (kubectlConfigView.failed) {
-    const reply: SyncResourceReply = {
+    const state = {
+      data: request.resource.state?.data,
+      errorMsg: "kubectl config command failed",
+      errorOutput: kubectlConfigView.stderr,
+    };
+
+    return {
       resource: {
-        state: {
-          data: request.resource.state,
-          errorMsg: kubectlConfigView.stderr,
-        },
+        state,
         health: ResourceHealth.Error,
         status: ResourceStatus.Failed,
       },
     };
-    return reply;
-  } else {
-    const kubectlConfigData = JSON.parse(kubectlConfigView.stdout);
-    const reply: SyncResourceReply = {
-      resource: {
-        state: {
-          data: kubectlConfigData,
-        },
-        health: ResourceHealth.Ok,
-        status: ResourceStatus.Created,
-      },
-    };
-    return reply;
   }
+
+  const kubectlConfigData = JSON.parse(kubectlConfigView.stdout);
+
+  return {
+    resource: {
+      state: {
+        data: kubectlConfigData,
+      },
+      health: ResourceHealth.Ok,
+      status: ResourceStatus.Created,
+    },
+  };
 };

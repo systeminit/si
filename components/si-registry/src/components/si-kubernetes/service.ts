@@ -16,10 +16,11 @@ registry.componentAndEntity({
   siPathName: "si-kubernetes",
   serviceName: "kubernetes",
   options(c) {
-    c.entity.inputType("awsEks");
     c.entity.inputType("awsAccessKeyCredential");
-    c.entity.inputType("kubernetesNamespace");
+    c.entity.inputType("awsEks");
     c.entity.inputType("kubernetesDeployment");
+    c.entity.inputType("kubernetesNamespace");
+    c.entity.inputType("service");
 
     c.entity.associations.belongsTo({
       fromFieldPath: ["siProperties", "billingAccountId"],

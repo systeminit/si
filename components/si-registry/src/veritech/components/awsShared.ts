@@ -96,30 +96,30 @@ export async function awsKubeConfig(
             errorMsg: "aws eks update-kubeconfig failed",
             errorOutput: "no awsEks entity attached!",
           },
-          health: ResourceHealth.Ok,
-          status: ResourceStatus.Created,
+          health: ResourceHealth.Error,
+          status: ResourceStatus.Failed,
         },
       };
       return { syncResourceReply: reply };
     }
   }
 
-  const awsKubeConfigCmd = await execa(
-    "aws",
-    [
-      "eks",
-      "--region",
-      region,
-      "update-kubeconfig",
-      "--name",
-      clusterName,
-      "--kubeconfig",
-      kubeconfigPath,
-    ],
-    {
-      env: awsEnv,
-    },
-  );
+  const awsArgs = [
+    "eks",
+    "--region",
+    region,
+    "update-kubeconfig",
+    "--name",
+    clusterName,
+    "--kubeconfig",
+    kubeconfigPath,
+  ];
+  console.log(`running command; cmd="aws ${awsArgs.join(" ")}"`);
+  const awsKubeConfigCmd = await execa("aws", awsArgs, {
+    reject: false,
+    env: awsEnv,
+  });
+
   if (awsKubeConfigCmd.failed) {
     const reply: SyncResourceReply = {
       resource: {
@@ -128,8 +128,8 @@ export async function awsKubeConfig(
           errorMsg: "aws eks update-kubeconfig failed",
           errorOutput: awsKubeConfigCmd.stderr,
         },
-        health: ResourceHealth.Ok,
-        status: ResourceStatus.Created,
+        health: ResourceHealth.Error,
+        status: ResourceStatus.Failed,
       },
     };
     return { syncResourceReply: reply };
