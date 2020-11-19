@@ -84,7 +84,6 @@ intelligence.syncResource = async function(
     "pull",
     request.entity.properties.__baseline.image,
   ]);
-  console.log(`running command; cmd="docker ${pullArgs.join(" ")}"`);
   const dockerImagePull = await siExec(event, "docker", pullArgs, {
     reject: false,
   });
@@ -150,13 +149,14 @@ intelligence.syncResource = async function(
 };
 
 intelligence.actions = {
-  async deploy(request: ActionRequest): Promise<ActionReply> {
+  async deploy(request: ActionRequest, event: Event): Promise<ActionReply> {
     const actions: ActionReply["actions"] = [];
     for (const child of request.successors) {
       if (child.entity.objectType == "service") {
         actions.push({ action: "deploy", entityId: child.entity.id });
       }
     }
+    event.log(EventLogLevel.Info, "fake it till you make it", {});
     const reply: ActionReply = {
       resource: {
         state: {

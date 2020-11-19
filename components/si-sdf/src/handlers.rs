@@ -9,9 +9,9 @@ use std::collections::HashMap;
 use std::convert::Infallible;
 
 use crate::models::{
-    BillingAccountError, ChangeSetError, EdgeError, EditSessionError, EntityError, JwtKeyError,
-    KeyPairError, ModelError, NodeError, OpError, PageToken, PageTokenError, Query, QueryError,
-    SecretError, SiStorableError, UserError,
+    BillingAccountError, ChangeSetError, EdgeError, EditSessionError, EntityError, EventError,
+    JwtKeyError, KeyPairError, ModelError, NodeError, OpError, PageToken, PageTokenError, Query,
+    QueryError, SecretError, SiStorableError, UserError,
 };
 
 pub mod billing_accounts;
@@ -68,6 +68,8 @@ pub enum HandlerError {
     KeyPair(#[from] KeyPairError),
     #[error("secret error: {0}")]
     Secret(#[from] SecretError),
+    #[error("event error: {0}")]
+    Event(#[from] EventError),
     #[error("invalid request")]
     InvalidRequest,
 }

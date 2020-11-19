@@ -93,7 +93,12 @@ impl EditSession {
         Ok(edit_session)
     }
 
-    pub async fn cancel(&self, db: &Db, nats: &Connection) -> EditSessionResult<()> {
+    pub async fn cancel(
+        &self,
+        db: &Db,
+        nats: &Connection,
+        event_parent_id: Option<&str>,
+    ) -> EditSessionResult<()> {
         let query = format!(
             "UPDATE `{bucket}`
                 SET siOp.skip = true
@@ -137,7 +142,7 @@ impl EditSession {
             &self.si_storable.billing_account_id,
         )
         .await?;
-        change_set.execute(db, nats, true).await?;
+        change_set.execute(db, nats, true, event_parent_id).await?;
 
         tracing::info!(?query_results, "cancel edit session");
         Ok(())

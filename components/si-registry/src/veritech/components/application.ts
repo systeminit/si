@@ -10,6 +10,7 @@ import {
   SyncResourceRequest,
   SyncResourceReply,
 } from "../../veritech/intelligence";
+import { Event } from "../../veritech/eventLog";
 import _ from "lodash";
 
 const intelligence = (registry.get("application") as EntityObject).intelligence;
@@ -28,6 +29,7 @@ intelligence.calculateProperties = function(
 
 intelligence.syncResource = async function(
   _request: SyncResourceRequest,
+  _event: Event,
 ): Promise<SyncResourceReply> {
   const state = {};
 
@@ -41,7 +43,7 @@ intelligence.syncResource = async function(
 };
 
 intelligence.actions = {
-  async deploy(request: ActionRequest): Promise<ActionReply> {
+  async deploy(request: ActionRequest, _event: Event): Promise<ActionReply> {
     const actions: ActionReply["actions"] = _.chain(request.successors)
       .filter(["entity.objectType", "service"])
       .map(s => ({ action: "deploy", entityId: s.entity.id }))

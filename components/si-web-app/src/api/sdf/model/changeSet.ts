@@ -7,12 +7,7 @@ import {
   IListRequest,
   IListReply,
 } from "@/api/sdf/model";
-import {
-  Query,
-  Comparison,
-  BooleanTerm,
-  FieldType,
-} from "@/api/sdf/model/query";
+import { Comparison, FieldType } from "@/api/sdf/model/query";
 import { Entity } from "@/api/sdf/model/entity";
 import { System } from "@/api/sdf/model/system";
 import { NodeObject } from "@/api/sdf/model/node";
@@ -49,8 +44,16 @@ export interface IChangeSetExecuteRequest {
   hypothetical: boolean;
 }
 
+export interface IChangeSetExecuteWithActionRequest {
+  nodeId: string;
+  action: string;
+  systemId: string;
+  editSessionId: string;
+}
+
 export interface IChangeSetPatchOps {
   execute?: IChangeSetExecuteRequest;
+  executeWithAction?: IChangeSetExecuteWithActionRequest;
 }
 
 export interface IChangeSetPatchRequest {
@@ -113,6 +116,19 @@ export class ChangeSet implements IChangeSet {
     let full_request: IChangeSetPatchRequest = {
       op: {
         execute: request,
+      },
+      workspaceId: this.siStorable.workspaceId,
+      organizationId: this.siStorable.organizationId,
+    };
+    await sdf.patch(`changeSets/${this.id}`, full_request);
+  }
+
+  async executeWithAction(
+    request: IChangeSetExecuteWithActionRequest,
+  ): Promise<void> {
+    let full_request: IChangeSetPatchRequest = {
+      op: {
+        executeWithAction: request,
       },
       workspaceId: this.siStorable.workspaceId,
       organizationId: this.siStorable.organizationId,

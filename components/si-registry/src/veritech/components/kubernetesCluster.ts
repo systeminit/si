@@ -6,19 +6,24 @@ import {
   SyncResourceRequest,
   SyncResourceReply,
 } from "../../veritech/intelligence";
-import execa from "execa";
+import { Event } from "../../veritech/eventLog";
+import { siExec } from "../siExec";
 
 const intelligence = (registry.get("kubernetesCluster") as EntityObject)
   .intelligence;
 
 intelligence.syncResource = async function(
   request: SyncResourceRequest,
+  event: Event,
 ): Promise<SyncResourceReply> {
-  const kubectlArgs = ["config", "view", "-o", "json"];
-  console.log(`running command; cmd="kubectl ${kubectlArgs.join(" ")}"`);
-  const kubectlConfigView = await execa("kubectl", kubectlArgs, {
-    reject: false,
-  });
+  const kubectlConfigView = await siExec(
+    event,
+    "kubectl",
+    ["config", "view", "-o", "json"],
+    {
+      reject: false,
+    },
+  );
 
   // If kubectl config failed, early return
   if (kubectlConfigView.failed) {

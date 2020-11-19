@@ -63,7 +63,7 @@ pub async fn patch(
         .map_err(HandlerError::from)?;
     match request {
         PatchRequest::Cancel(_) => edit_session
-            .cancel(&db, &nats)
+            .cancel(&db, &nats, None)
             .await
             .map_err(HandlerError::from)?,
     }

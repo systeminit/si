@@ -1,6 +1,7 @@
 import * as express from "express";
 import _ from "lodash";
 import YAML from "yaml";
+import WebSocket from "ws";
 
 import { registry } from "../registry";
 import { EntityObject } from "../systemComponent";
@@ -273,32 +274,35 @@ export interface ActionReply {
   }[];
 }
 
-export function action(req: express.Request, res: express.Response): void {
+export function action(ws: WebSocket, req: string): void {
   console.log("POST /action BEGIN");
-  const request: ActionRequest = req.body;
+  const request: ActionRequest = JSON.parse(req);
   let registryObj;
   try {
     registryObj = registry.get(request.entity.objectType) as EntityObject;
   } catch (err) {
-    res.status(400);
-    res.send({
-      code: 400,
-      message: `Cannot find registry object for ${request.entity.objectType}`,
-    });
+    ws.close(
+      4004,
+      `cannot find registry object for ${request.entity.objectType}`,
+    );
     return;
   }
 
+  const event = new Event(ws);
+
   registryObj
-    .action(request)
+    .action(request, event)
     .then(reply => {
-      res.send(reply);
+      console.log("action reply");
+      console.dir(reply, { depth: Infinity });
+      ws.send(JSON.stringify({ reply: reply }));
+      ws.close(1000, "finished");
     })
     .catch(err => {
-      res.status(400);
-      res.send({
-        code: 400,
-        messsage: `Cannot execute action for ${request.entity.objectType}: ${err}`,
-      });
+      ws.close(
+        4004,
+        `Cannot execute action for ${request.entity.objectType}: ${err}`,
+      );
     });
 }
 
@@ -317,7 +321,6 @@ export interface SyncResourceReply {
   resource: ResourceUpdate;
 }
 
-import WebSocket from "ws";
 export function syncResource(ws: WebSocket, req: string): void {
   console.log("/ws/syncResource resolver begins");
   const request = JSON.parse(req);

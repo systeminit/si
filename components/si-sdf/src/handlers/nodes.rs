@@ -238,8 +238,9 @@ pub async fn object_patch(
         }
     }
 
+    // TODO(fnichol): I don't think this will be here for long...
     let item_ids = change_set
-        .execute(&db, &nats, true)
+        .execute(&db, &nats, true, None)
         .await
         .map_err(HandlerError::from)?;
     let reply = ObjectPatchReply::Op(OpReply { item_ids });

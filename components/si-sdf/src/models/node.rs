@@ -292,7 +292,7 @@ impl Node {
                     system_ids.clone(),
                 )
                 .await?;
-                let event = Event::node_entity_create(&db, &nats, &node, &entity).await?;
+                let event = Event::node_entity_create(&db, &nats, &node, &entity, None).await?;
                 for system_id in system_ids.iter() {
                     node.sync_resource(&db, &nats, system_id, Some(change_set_id.clone()))
                         .await?;
@@ -385,7 +385,7 @@ impl Node {
             };
             predecessors.push(predecessor);
         }
-        let mut event = Event::sync_resource(&db, &nats, &entity, &system_id).await?;
+        let mut event = Event::sync_resource(&db, &nats, &entity, &system_id, None).await?;
 
         tokio::spawn(async move {
             let request = VeritechSyncResourceRequest {

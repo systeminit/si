@@ -691,6 +691,47 @@ export const editor: Module<EditorStore, RootStore> = {
         commit("setMode", "view");
       }
     },
+    async deployApplication({ commit, state }) {
+      const changeSet = state.changeSet;
+      if (!changeSet) {
+        console.log(
+          "changeSetExecuteWithAction called with no current changeSet--mistake??",
+        );
+        return;
+      }
+
+      const nodeId = state.application?.nodeId;
+      if (!nodeId) {
+        console.log(
+          "changeSetExecuteWithAction called with no current application--mistake??",
+        );
+        return;
+      }
+
+      const systemId = state.system?.id;
+      if (!systemId) {
+        console.log(
+          "changeSetExecuteWithAction called with no current system--mistake??",
+        );
+        return;
+      }
+
+      const editSessionId = state.editSession?.id;
+      if (!editSessionId) {
+        console.log(
+          "changeSetExecuteWithAction called with no current edit session--mistake??",
+        );
+        return;
+      }
+
+      await ChangeSet.upgrade(changeSet).executeWithAction({
+        nodeId,
+        action: "deploy",
+        systemId,
+        editSessionId,
+      });
+      commit("setMode", "view");
+    },
     async setEditSession({ commit }, payload: ActionSetEditSession) {
       if (payload.id) {
         // @ts-ignore

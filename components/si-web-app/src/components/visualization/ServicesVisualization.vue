@@ -104,15 +104,7 @@ export default Vue.extend({
   },
   methods: {
     async deployApplication() {
-      let nodeId = this.$store.state.editor.application?.nodeId;
-      if (nodeId) {
-        await this.$store.dispatch("editor/entityAction", {
-          action: "deploy",
-          nodeId,
-        });
-        await this.$store.dispatch("editor/changeSetExecute");
-        this.$store.commit("editor/setMode", "view");
-      }
+      await this.$store.dispatch("editor/deployApplication");
     },
   },
 });

@@ -7,8 +7,8 @@ use std::collections::HashMap;
 use crate::data::{Connection, Db};
 use crate::models::{
     calculate_properties, get_base_object, get_model, insert_model, insert_model_if_missing, ops,
-    upsert_model, Edge, EdgeError, EdgeKind, Entity, EntityError, ModelError, SiChangeSetEvent,
-    SiStorable, SiStorableError, SimpleStorable,
+    upsert_model, Edge, EdgeError, EdgeKind, Entity, EntityError, Event, EventError, ModelError,
+    SiChangeSetEvent, SiStorable, SiStorableError, SimpleStorable,
 };
 
 #[derive(Error, Debug)]
@@ -39,6 +39,8 @@ pub enum ChangeSetError {
     EventMissing,
     #[error("edge error: {0}")]
     Edge(#[from] EdgeError),
+    #[error("event error: {0}")]
+    Event(#[from] EventError),
 }
 
 pub type ChangeSetResult<T> = Result<T, ChangeSetError>;
@@ -69,12 +71,22 @@ pub struct PatchRequest {
 #[serde(rename_all = "camelCase")]
 pub enum PatchOps {
     Execute(ExecuteRequest),
+    ExecuteWithAction(ExecuteWithActionRequest),
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ExecuteRequest {
     pub hypothetical: bool,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ExecuteWithActionRequest {
+    pub node_id: String,
+    pub action: String,
+    pub system_id: String,
+    pub edit_session_id: String,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -158,6 +170,7 @@ impl ChangeSet {
         db: &Db,
         nats: &Connection,
         hypothetical: bool,
+        parent_event_id: Option<&str>,
     ) -> ChangeSetResult<Vec<String>> {
         let change_set_entry_query = format!(
             "SELECT a.*
@@ -175,6 +188,9 @@ impl ChangeSet {
             .await?;
 
         trace!(?change_set_entry_query_results, "change set exec results");
+
+        let event =
+            Event::change_set_execute(db, nats, &self, parent_event_id.map(|id| id.into())).await?;
 
         let mut seen_map: HashMap<String, serde_json::Value> = HashMap::new();
         let mut last_id: Option<String> = None;
@@ -257,7 +273,8 @@ impl ChangeSet {
                     "opEntityAction" => {
                         let op: ops::OpEntityAction = serde_json::from_value(change_set_entry)?;
                         trace!(?op, "applying op");
-                        op.apply(&db, &nats, hypothetical, obj).await?;
+                        op.apply(&db, &nats, hypothetical, obj, Some(event.id.clone()))
+                            .await?;
                     }
                     unknown => warn!("cannot find an op for {}", unknown),
                 },

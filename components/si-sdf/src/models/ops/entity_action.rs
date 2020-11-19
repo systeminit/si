@@ -3,9 +3,10 @@ use std::pin::Pin;
 
 use crate::data::{Connection, Db, REQWEST};
 use crate::models::{
-    get_base_object, insert_model, Edge, EdgeKind, Entity, Node, OpError, OpResult, Resource,
-    ResourceHealth, ResourceStatus, SiChangeSet, SiChangeSetEvent, SiOp, SiStorable,
+    get_base_object, insert_model, Edge, EdgeKind, Entity, Event, Node, OpError, OpResult,
+    Resource, ResourceHealth, ResourceStatus, SiChangeSet, SiChangeSetEvent, SiOp, SiStorable,
 };
+use crate::veritech::{Veritech, VeritechError};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -144,6 +145,7 @@ impl OpEntityAction {
         nats: &Connection,
         hypothetical: bool,
         to: &mut serde_json::Value,
+        event_parent_id: Option<String>,
     ) -> Pin<Box<dyn Future<Output = OpResult<()>> + Send>> {
         let this_action = self.clone();
         let db = db.clone();
@@ -215,6 +217,16 @@ impl OpEntityAction {
                 });
             }
 
+            let mut event = Event::entity_action(
+                &db,
+                &nats,
+                &this_action,
+                &entity,
+                &this_action.system_id,
+                event_parent_id,
+            )
+            .await?;
+
             let action_request = ActionRequest::new(
                 &this_action.action,
                 &this_action.system_id,
@@ -226,7 +238,17 @@ impl OpEntityAction {
                 successors,
             );
 
-            let response = run_action(action_request).await?;
+            let veritech: Veritech<ActionRequest, ActionReply> =
+                Veritech::new("ws://localhost:5157/ws/action");
+            let response = match veritech.send(&db, &nats, action_request, &event).await? {
+                Some(response) => response,
+                None => {
+                    event.unknown(&db, &nats).await?;
+                    return Err(OpError::Veritech(VeritechError::NoReply));
+                }
+            };
+
+            //let response = run_action(action_request).await?;
             tracing::warn!(?response, "i dispatched your action!");
 
             let node_id = to["nodeId"].as_str().ok_or(OpError::Missing("node_id"))?;
@@ -276,9 +298,17 @@ impl OpEntityAction {
                 .await?;
 
                 new_action
-                    .apply(&db, &nats, hypothetical, &mut object)
+                    .apply(
+                        &db,
+                        &nats,
+                        hypothetical,
+                        &mut object,
+                        Some(event.id.clone()),
+                    )
                     .await?;
             }
+
+            event.success(&db, &nats).await?;
 
             Ok(())
         })

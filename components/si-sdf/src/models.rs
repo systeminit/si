@@ -329,7 +329,6 @@ pub async fn load_billing_account_model(
           WHERE a.siStorable.billingAccountId = $billing_account_id 
                 AND (a.siStorable.typeName = \"billingAccount\" 
                       OR a.siStorable.typeName = \"changeSetParticipant\" 
-                      OR a.siStorable.typeName = \"eventLog\"
                       OR a.siStorable.typeName = \"keyPair\"
                       OR a.siStorable.typeName = \"resource\")
         ",
@@ -360,6 +359,9 @@ pub async fn load_data_model(
           WHERE a.siStorable.workspaceId = $workspace_id 
                 AND a.siStorable.updateClock.epoch >= $epoch
                 AND a.siStorable.updateClock.updateCount > $update_count
+                AND a.siStorable.typeName != 'event'
+                AND a.siStorable.typeName != 'eventLog'
+                AND a.siStorable.typeName != 'outputLine'
           ORDER BY a.siChangeSet.updateClock.epoch ASC, a.siChangeSet.updateClock.updateCount ASC
         ",
         bucket = db.bucket_name,
