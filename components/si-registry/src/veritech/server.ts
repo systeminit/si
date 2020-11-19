@@ -1,6 +1,7 @@
 import express from "express";
 import morgan from "morgan";
 import chalk from "chalk";
+import expressWs from "express-ws";
 import "@/loader";
 import "@/veritech/components/application";
 import "@/veritech/components/awsEks.ts";
@@ -22,7 +23,7 @@ import {
   syncResource,
 } from "@/veritech/intelligence";
 
-export const app = express();
+export const app = expressWs(express()).app;
 app.use(express.json());
 app.use(morgan("tiny"));
 
@@ -30,7 +31,13 @@ app.post("/calculateProperties", calculateProperties);
 app.post("/calculateConfigures", calculateConfigures);
 app.post("/applyOp", applyOp);
 app.post("/action", action);
-app.post("/syncResource", syncResource);
+//app.post("/syncResource", syncResource);
+
+app.ws("/ws/syncResource", (ws, _req) => {
+  ws.on("message", function(msg: string) {
+    syncResource(ws, msg);
+  });
+});
 
 export function start(port: number): void {
   registry.serialize();

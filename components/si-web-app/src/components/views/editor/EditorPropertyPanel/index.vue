@@ -5,19 +5,29 @@
       class="flex flex-row flex-no-wrap content-between justify-between w-full bg-black"
     >
       <div class="flex flex-row justify-start mx-3">
-        <button class="px-4 py-2 text-white focus:outline-none">
-          <search-icon size="1.1x" />
-        </button>
-
-        <button class="px-4 py-2 text-white focus:outline-none">
-          <filter-icon size="1.1x" />
+        <button
+          class="px-4 py-2 text-white focus:outline-none"
+          :class="{ activeMenuItem: isViewActive('propertyView') }"
+          @click="setActiveView('propertyView')"
+        >
+          <disc-icon size="1.1x" />
         </button>
 
         <button
           class="px-4 py-2 text-white focus:outline-none"
-          @click="toggleCodeEditor"
+          :class="{ activeMenuItem: isViewActive('codeView') }"
+          @click="setActiveView('codeView')"
         >
           <code-icon size="1.1x" />
+        </button>
+
+        <!-- FIX ME: Only show the code button if the node has "native configs that can be viewed as code" -->
+        <button
+          class="px-4 py-2 text-white focus:outline-none"
+          :class="{ activeMenuItem: isViewActive('eventView') }"
+          @click="setActiveView('eventView')"
+        >
+          <radio-icon size="1.1x" />
         </button>
       </div>
 
@@ -32,8 +42,17 @@
       </div>
     </div>
 
-    <Monaco v-if="codeEditor" />
-    <PropertyList :selectedNode="selectedNode" v-else />
+    <div class="relative w-full h-full property-panel-view">
+      <CodeViewer v-show="isViewActive('codeView')" :key="selectedNode.id" />
+      <PropertyViewer
+        v-show="isViewActive('propertyView')"
+        :selectedNode="selectedNode"
+      />
+      <EventViewer
+        v-show="isViewActive('eventView')"
+        :selectedNode="selectedNode"
+      />
+    </div>
   </div>
 </template>
 
@@ -43,28 +62,34 @@ import { mapState } from "vuex";
 import {
   Maximize2Icon,
   SettingsIcon,
-  FilterIcon,
-  SearchIcon,
   CodeIcon,
+  DiscIcon,
+  RadioIcon,
 } from "vue-feather-icons";
-import Monaco from "@/components/ui/Monaco.vue";
 
-import PropertyList from "./PropertyList.vue";
+import CodeViewer from "./CodeViewer.vue";
+
+// @ts-ignore
+import PropertyViewer from "./PropertyViewer";
+// @ts-ignore
+import EventViewer from "./EventViewer";
+
 import { RegistryProperty, Node } from "@/api/sdf/model/node";
 
 export default Vue.extend({
   name: "EditorPropertyPanel",
   components: {
     Maximize2Icon,
-    FilterIcon,
-    SearchIcon,
     CodeIcon,
-    PropertyList,
-    Monaco,
+    DiscIcon,
+    RadioIcon,
+    PropertyViewer,
+    CodeViewer,
+    EventViewer,
   },
   data() {
     return {
-      codeEditor: false,
+      activeView: "propertyView",
     };
   },
   computed: {
@@ -73,8 +98,11 @@ export default Vue.extend({
     }),
   },
   methods: {
-    toggleCodeEditor(): void {
-      this.codeEditor = !this.codeEditor;
+    setActiveView(view: string): void {
+      this.activeView = view;
+    },
+    isViewActive(view: string): boolean {
+      return this.activeView === view;
     },
     maximizePanel(): void {
       this.$emit("maximizePanelMsg", {
@@ -94,5 +122,9 @@ export default Vue.extend({
 
 .property-title-bg-color {
   background-color: #292c2d;
+}
+
+.activeMenuItem {
+  color: #b7e7ef;
 }
 </style>

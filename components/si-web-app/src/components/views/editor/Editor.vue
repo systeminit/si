@@ -43,7 +43,7 @@ export default {
     SchematicPanel,
     EditorPropertyPanel,
   },
-  data: function() {
+  data: function () {
     return {
       resizeHandle: {},
       leftPanel: {},
@@ -67,7 +67,7 @@ export default {
       msgSchematicPanel: "",
     };
   },
-  mounted: async function() {
+  mounted: async function () {
     this.resizeHandle = this.$refs.resizeHandle;
     this.leftPanel = this.$refs.leftPanel;
     this.rightPanel = this.$refs.rightPanel;
@@ -104,7 +104,6 @@ export default {
       this.window.height = window.innerHeight;
     },
     maximizePanel(msg) {
-      // console.log("event")
       switch (msg.panel.id) {
         case "property":
           this.togglePanelVisibility("schematic");
@@ -115,25 +114,25 @@ export default {
           break;
       }
     },
-    togglePanelVisibility: function(panelName) {
+    togglePanelVisibility: function (panelName) {
       this.panel[panelName].isVisible = !this.panel[panelName].isVisible;
       this.panel.resizeHandle.isVisible = !this.panel.resizeHandle.isVisible;
     },
   },
   computed: {
-    leftPanelVisibilityClasses: function() {
+    leftPanelVisibilityClasses: function () {
       return {
         "panel-is-hidden": !this.panel["schematic"].isVisible,
         "panel-is-visible": this.panel["schematic"].isVisible,
       };
     },
-    resizeHandleVisibilityClasses: function() {
+    resizeHandleVisibilityClasses: function () {
       return {
         "resize-handle-is-hidden": !this.panel["resizeHandle"].isVisible,
         "resize-handle-is-visible": this.panel["resizeHandle"].isVisible,
       };
     },
-    rightPanelVisibilityClasses: function() {
+    rightPanelVisibilityClasses: function () {
       return {
         "panel-is-hidden": !this.panel["property"].isVisible,
         "panel-is-visible": this.panel["property"].isVisible,
@@ -149,7 +148,8 @@ export default {
 }
 
 .panel-is-visible {
-  @apply flex-auto overflow-auto;
+  /*@apply flex-auto overflow-auto;*/
+  @apply flex-auto;
 }
 
 /*.panel-property-is-visible {

@@ -524,7 +524,6 @@ export const editor: Module<EditorStore, RootStore> = {
       { state, rootGetters },
       payload: IOpRequest["entityDelete"],
     ) {
-      console.log("this is a reckoning");
       let organization = rootGetters["organization/current"];
       let workspace = rootGetters["workspace/current"];
       let changeSet = state.changeSet;
@@ -547,7 +546,6 @@ export const editor: Module<EditorStore, RootStore> = {
           changeSetId: changeSet.id,
           editSessionId: editSession.id,
         };
-        console.log("your req", { req });
         await OpEntitySet.create(node.id, req);
       }
     },
@@ -831,7 +829,6 @@ export const editor: Module<EditorStore, RootStore> = {
       { commit, dispatch, rootGetters, state },
       payload: ActionNodeCreate,
     ) {
-      console.log("started create");
       let workspace = rootGetters["workspace/current"];
       let organization = rootGetters["organization/current"];
       let changeSetId = state.changeSet?.id;
@@ -867,7 +864,6 @@ export const editor: Module<EditorStore, RootStore> = {
       commit("currentResource", undefined);
       await dispatch("node", node);
       commit("mouseTrackSelection", node.id);
-      console.log("finished create");
     },
     async syncCurrentResource({ state }) {
       let systemId = state.system?.id;

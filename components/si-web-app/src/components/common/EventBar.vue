@@ -367,12 +367,10 @@ export default Vue.extend({
       } else {
         Vue.set(this.eventExpanded, eventLogId, true);
       }
-      console.log("toggling", { eventExpanded: this.eventExpanded });
     },
   },
   computed: {
     eventLogLatest(): EventLog | undefined {
-      console.log("event log latest", this.eventLogs[0]);
       if (this.eventLogs.length > 0) {
         return this.eventLogs[0];
       } else {

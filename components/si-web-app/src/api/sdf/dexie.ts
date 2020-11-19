@@ -15,6 +15,8 @@ import { IEventLog } from "@/api/sdf/model/eventLog";
 import { IResource } from "@/api/sdf/model/resource";
 import { IPublicKey } from "@/api/sdf/model/keyPair";
 import { ISecret } from "@/api/sdf/model/secret";
+import { IEvent } from "@/api/sdf/model/event";
+import { IOutputLine } from "@/api/sdf/model/outputLine";
 
 class SiDatabase extends Dexie {
   // Declare implicit table properties.
@@ -37,6 +39,8 @@ class SiDatabase extends Dexie {
   resources: Dexie.Table<IResource, string>;
   keyPairs: Dexie.Table<IPublicKey, string>;
   secrets: Dexie.Table<ISecret, string>;
+  events: Dexie.Table<IEvent, string>;
+  outputLines: Dexie.Table<IOutputLine, string>;
 
   constructor() {
     super("SiDatabase");
@@ -59,10 +63,12 @@ class SiDatabase extends Dexie {
       globalUpdateClock: "id, [epoch+updateClock]",
       entityOps:
         "id, toId, siChangeSet.changeSetId, [siChangeSet.changeSetId+toId]",
-      eventLog: "id",
+      eventLog: "id, eventId",
       resources: "id, [systemId+entityId], [systemId+nodeId]",
       keyPairs: "id, name",
       secrets: "id, name, [objectType+kind]",
+      events: "id, *context",
+      outputLines: "id, eventLogId",
     });
 
     // The following line is needed if your typescript
@@ -85,6 +91,8 @@ class SiDatabase extends Dexie {
     this.resources = this.table("resources");
     this.keyPairs = this.table("keyPairs");
     this.secrets = this.table("secrets");
+    this.events = this.table("events");
+    this.outputLines = this.table("outputLines");
   }
 }
 

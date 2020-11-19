@@ -87,7 +87,6 @@ export default Vue.extend({
   data(): Data {
     let secretKindList = [{ value: "", label: "none" }];
     for (const secretKind of Object.values(SecretKind)) {
-      console.log(secretKind);
       secretKindList.push({ value: secretKind, label: secretKind });
     }
     return {

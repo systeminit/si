@@ -356,16 +356,12 @@ export class Node implements INode {
         displayObject = await this.projectionObject(changeSetId);
         return displayObject;
       }
-    } catch {
-      console.log("failed to find projection");
-    }
+    } catch {}
     if (!displayObject) {
       try {
         displayObject = await this.headObject();
         return displayObject;
-      } catch {
-        console.log("failed to find head object");
-      }
+      } catch {}
     }
     throw new Error("cannot get display object; no head or projection");
   }
@@ -396,7 +392,6 @@ export class Node implements INode {
         throw new Error("unknown head object type");
       }
     } else {
-      console.log("wtf", { iitem });
       throw new Error("cannot get head object");
     }
   }

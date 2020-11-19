@@ -1,6 +1,6 @@
 <template>
-  <div>
-    <div v-if="selectedNode">
+  <div class="relative w-full h-full">
+    <div class="w-full h-full" v-if="selectedNode">
       <div
         class="flex pt-2 pb-2 pl-6 text-base text-white align-middle property-section-bg-color"
       >
@@ -21,216 +21,236 @@
         Will be deleted!
       </div>
 
-      <div class="flex items-center mt-2">
-        <div class="w-40 px-2 text-sm leading-tight text-right text-white">
-          name
-        </div>
-        <div
-          v-if="editorMode == 'view'"
-          v-bind:class="textClasses"
-          class="w-4/5 pl-2 mr-2 text-sm leading-tight text-gray-400"
-        >
-          {{ nodeObjectName }}
-        </div>
-        <div
-          class="w-4/5 pl-2 mr-2 text-sm leading-tight text-gray-400"
-          v-else-if="editorMode == 'edit'"
-        >
-          <input
-            class="w-4/5 pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey input-border-grey si-property"
-            type="text"
-            v-bind:class="inputClasses"
-            aria-label="name"
-            v-model="nodeObjectName"
-            @blur="updateObjectName"
-            placeholder="text"
-          />
-        </div>
-      </div>
-
-      <div v-if="secretList">
-        <div
-          class="pt-1 pb-1 pl-6 mt-2 text-base text-white align-middle property-section-bg-color"
-        >
-          Secret
-        </div>
-
+      <div class="flex flex-col w-full h-full overflow-auto">
         <div class="flex items-center mt-2">
           <div class="w-40 px-2 text-sm leading-tight text-right text-white">
-            secretName
+            name
+          </div>
+          <div
+            v-if="editorMode == 'view'"
+            v-bind:class="textClasses"
+            class="w-4/5 pl-2 mr-2 text-sm leading-tight text-gray-400"
+          >
+            {{ nodeObjectName }}
           </div>
           <div
             class="w-4/5 pl-2 mr-2 text-sm leading-tight text-gray-400"
-            v-if="editorMode == 'edit'"
+            v-else-if="editorMode == 'edit'"
           >
-            <select
-              class="w-4/5 pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none si-property input-bg-color-grey"
-              v-model="secretId"
-              @blur="saveSecretId"
-            >
-              <option
-                v-for="secret in secretList"
-                :key="secret.value"
-                :value="secret.value"
-              >
-                {{ secret.label }}
-              </option>
-            </select>
+            <input
+              class="w-4/5 pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey input-border-grey si-property"
+              type="text"
+              v-bind:class="inputClasses"
+              aria-label="name"
+              v-model="nodeObjectName"
+              @blur="updateObjectName"
+              placeholder="text"
+            />
           </div>
-          <div
-            class="w-4/5 pl-2 mr-2 text-sm leading-tight text-gray-400"
-            v-else
-          >
-            {{ secretName }}
-          </div>
-        </div>
-      </div>
-      <div v-else>
-        <div
-          class="pt-1 pb-1 pl-6 mt-2 text-base text-white align-middle property-section-bg-color"
-        >
-          Properties
         </div>
 
-        <div v-for="entityProperty in propertiesList" :key="entityProperty.id">
-          <div v-if="!entityProperty.hidden" class="flex flex-row">
+        <div v-if="secretList">
+          <div class="section-secrets">
             <div
-              class="w-full"
-              :style="propStyle(entityProperty)"
-              v-show="showPath(entityProperty)"
+              class="pt-1 pb-1 pl-6 mt-2 text-base text-white align-middle property-section-bg-color"
             >
+              Secret
+            </div>
+
+            <div class="flex items-center mt-2">
               <div
-                v-if="
-                  repeated(entityProperty) &&
-                    !propKind(entityProperty, 'select')
-                "
+                class="w-40 px-2 text-sm leading-tight text-right text-white"
               >
-                <PropRepeated
-                  :entityProperty="entityProperty"
-                  :isOpen="isOpen(entityProperty)"
-                  :backgroundColors="backgroundColors"
-                  :collapsedPaths="collapsedPaths"
-                  class="py-2"
-                  @toggle-path="togglePath($event)"
-                />
+                secretName
               </div>
-
-              <div v-else-if="propKind(entityProperty, 'object')">
-                <PropObject
-                  :entityProperty="entityProperty"
-                  :isOpen="isOpen(entityProperty)"
-                  class="py-2"
-                  @toggle-path="togglePath($event)"
-                />
+              <div
+                class="w-4/5 pl-2 mr-2 text-sm leading-tight text-gray-400"
+                v-if="editorMode == 'edit'"
+              >
+                <select
+                  class="w-4/5 pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none si-property input-bg-color-grey"
+                  v-model="secretId"
+                  @blur="saveSecretId"
+                >
+                  <option
+                    v-for="secret in secretList"
+                    :key="secret.value"
+                    :value="secret.value"
+                  >
+                    {{ secret.label }}
+                  </option>
+                </select>
               </div>
-
-              <div v-else-if="propKind(entityProperty, 'text')">
-                <PropText :entityProperty="entityProperty" class="py-1" />
-              </div>
-
-              <div v-else-if="propKind(entityProperty, 'code')">
-                <!-- for now, do nothing! -->
-              </div>
-
-              <div v-else-if="propKind(entityProperty, 'number')">
-                <PropNumber :entityProperty="entityProperty" class="py-1" />
-              </div>
-
-              <div v-else-if="propKind(entityProperty, 'enum')">
-                <PropEnum :entityProperty="entityProperty" class="py-1" />
-              </div>
-
-              <div v-else-if="propKind(entityProperty, 'bool')">
-                <PropBool :entityProperty="entityProperty" class="py-1" />
-              </div>
-
-              <div v-else-if="propKind(entityProperty, 'map')">
-                <PropMap :entityProperty="entityProperty" class="py-1" />
-              </div>
-
-              <div v-else-if="propKind(entityProperty, 'select')">
-                <PropSelect :entityProperty="entityProperty" class="py-1" />
-              </div>
-
-              <div v-else class="py-1 text-red-700">
-                {{ entityProperty.name }}
+              <div
+                class="w-4/5 pl-2 mr-2 text-sm leading-tight text-gray-400"
+                v-else
+              >
+                {{ secretName }}
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div
-        class="pt-1 pb-1 pl-6 mt-2 text-base text-white align-middle property-section-bg-color"
-      >
-        Connections
-      </div>
-      <div
-        class="pt-1 pb-1 pl-8 mt-2 text-sm text-white align-middle property-section-bg-color"
-      >
-        Configures
-      </div>
+        <div v-else>
+          <div class="section-properties">
+            <div
+              class="pt-1 pb-1 pl-6 mt-2 text-base text-white align-middle property-section-bg-color"
+            >
+              Properties
+            </div>
 
-      <div>
-        <div class="flex flex-col text-gray-500">
+            <div
+              v-for="entityProperty in propertiesList"
+              :key="entityProperty.id"
+            >
+              <div v-if="!entityProperty.hidden" class="flex flex-row">
+                <div
+                  class="w-full"
+                  :style="propStyle(entityProperty)"
+                  v-show="showPath(entityProperty)"
+                >
+                  <div
+                    v-if="
+                      repeated(entityProperty) &&
+                        !propKind(entityProperty, 'select')
+                    "
+                  >
+                    <PropRepeated
+                      :entityProperty="entityProperty"
+                      :isOpen="isOpen(entityProperty)"
+                      :backgroundColors="backgroundColors"
+                      :collapsedPaths="collapsedPaths"
+                      class="py-2"
+                      @toggle-path="togglePath($event)"
+                    />
+                  </div>
+
+                  <div v-else-if="propKind(entityProperty, 'object')">
+                    <PropObject
+                      :entityProperty="entityProperty"
+                      :isOpen="isOpen(entityProperty)"
+                      class="py-2"
+                      @toggle-path="togglePath($event)"
+                    />
+                  </div>
+
+                  <div v-else-if="propKind(entityProperty, 'text')">
+                    <PropText :entityProperty="entityProperty" class="py-1" />
+                  </div>
+
+                  <div v-else-if="propKind(entityProperty, 'code')">
+                    <!-- for now, do nothing! -->
+                  </div>
+
+                  <div v-else-if="propKind(entityProperty, 'number')">
+                    <PropNumber :entityProperty="entityProperty" class="py-1" />
+                  </div>
+
+                  <div v-else-if="propKind(entityProperty, 'enum')">
+                    <PropEnum :entityProperty="entityProperty" class="py-1" />
+                  </div>
+
+                  <div v-else-if="propKind(entityProperty, 'bool')">
+                    <PropBool :entityProperty="entityProperty" class="py-1" />
+                  </div>
+
+                  <div v-else-if="propKind(entityProperty, 'map')">
+                    <PropMap :entityProperty="entityProperty" class="py-1" />
+                  </div>
+
+                  <div v-else-if="propKind(entityProperty, 'select')">
+                    <PropSelect :entityProperty="entityProperty" class="py-1" />
+                  </div>
+
+                  <div v-else class="py-1 text-red-700">
+                    {{ entityProperty.name }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-connections">
           <div
-            class="flex flex-row w-full"
-            v-for="successor in directSuccessors"
-            :key="successor.id"
+            class="pt-1 pb-1 pl-6 mt-2 text-base text-white align-middle property-section-bg-color"
           >
-            <div class="pl-8 pr-5">
-              {{ successor.objectType }} :: {{ objects[successor.id].name }}
+            Connections
+          </div>
+        </div>
+
+        <div class="section-configures">
+          <div
+            class="pt-1 pb-1 pl-8 mt-2 text-sm text-white align-middle property-section-bg-color"
+          >
+            Configures
+          </div>
+
+          <div>
+            <div class="flex flex-col text-gray-500">
+              <div
+                class="flex flex-row w-full"
+                v-for="successor in directSuccessors"
+                :key="successor.id"
+              >
+                <div class="pl-8 pr-5">
+                  {{ successor.objectType }} :: {{ objects[successor.id].name }}
+                </div>
+                <div
+                  class="justify-end flex-grow pr-5 align-middle"
+                  v-if="editorMode == 'edit'"
+                >
+                  <button
+                    class="text-center focus:outline-none"
+                    type="button"
+                    @click="deleteSuccessorEdge(successor)"
+                  >
+                    <MinusSquareIcon size="1.25x" class=""></MinusSquareIcon>
+                  </button>
+                </div>
+              </div>
             </div>
             <div
-              class="justify-end flex-grow pr-5 align-middle"
+              class="flex justify-center pl-8 pr-5 text-gray-500 align-middle"
               v-if="editorMode == 'edit'"
             >
+              <SiSelect
+                name="newConfigures"
+                :options="newConfiguresInputTypes"
+                v-model="newConfigures"
+                size="xs"
+              ></SiSelect>
               <button
                 class="text-center focus:outline-none"
                 type="button"
-                @click="deleteSuccessorEdge(successor)"
+                :disabled="newConfigures === null"
+                @click="createNewConfigures"
               >
-                <MinusSquareIcon size="1.25x" class=""></MinusSquareIcon>
+                <PlusSquareIcon size="1.25x" class=""></PlusSquareIcon>
               </button>
             </div>
           </div>
         </div>
-        <div
-          class="flex justify-center pl-8 pr-5 text-gray-500 align-middle"
-          v-if="editorMode == 'edit'"
-        >
-          <SiSelect
-            name="newConfigures"
-            :options="newConfiguresInputTypes"
-            v-model="newConfigures"
-            size="xs"
-          ></SiSelect>
-          <button
-            class="text-center focus:outline-none"
-            type="button"
-            :disabled="newConfigures === null"
-            @click="createNewConfigures"
+
+        <div class="section-resources pb-24">
+          <div
+            class="pt-1 pb-1 pl-6 mt-2 text-base text-white align-middle property-section-bg-color"
           >
-            <PlusSquareIcon size="1.25x" class=""></PlusSquareIcon>
-          </button>
-        </div>
-      </div>
-      <div
-        class="pt-1 pb-1 pl-6 mt-2 text-base text-white align-middle property-section-bg-color"
-      >
-        Resources
-      </div>
-      <div class="flex flex-col w-full pl-5">
-        <div>
-          <Button2
-            label="sync"
-            icon="refresh"
-            size="xs"
-            @click.native="syncResource"
-          />
-        </div>
-        <div class="inline-block text-gray-500" v-if="currentResource">
-          <vue-json-pretty :data="currentResource.state" :deep="2" />
+            Resources
+          </div>
+          <div class="flex flex-col w-full pl-5">
+            <div>
+              <Button2
+                label="sync"
+                icon="refresh"
+                size="xs"
+                @click.native="syncResource"
+              />
+            </div>
+            <div class="text-gray-500" v-if="currentResource">
+              <vue-json-pretty :data="currentResource.state" :deep="2" />
+            </div>
+          </div>
         </div>
       </div>
     </div>
