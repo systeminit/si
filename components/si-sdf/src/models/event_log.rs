@@ -4,7 +4,10 @@ use serde_json;
 use thiserror::Error;
 
 use crate::data::{Connection, Db};
-use crate::models::{insert_model, ModelError, SiStorable, SiStorableError};
+use crate::models::{
+    insert_model, upsert_model, ModelError, OutputLine, OutputLineError, OutputLineStream,
+    SiStorable, SiStorableError,
+};
 
 #[derive(Error, Debug)]
 pub enum EventLogError {
@@ -12,6 +15,8 @@ pub enum EventLogError {
     SiStorable(#[from] SiStorableError),
     #[error("error in core model functions: {0}")]
     Model(#[from] ModelError),
+    #[error("outputLine error: {0}")]
+    OutputLine(#[from] OutputLineError),
 }
 
 pub type EventLogResult<T> = Result<T, EventLogError>;
@@ -24,6 +29,7 @@ pub enum EventLogLevel {
     Info,
     Warn,
     Error,
+    Fatal,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
@@ -36,6 +42,7 @@ pub struct EventLog {
     pub si_storable: SiStorable,
     pub payload: serde_json::Value,
     pub level: EventLogLevel,
+    pub event_id: String,
 }
 
 impl EventLog {
@@ -45,6 +52,7 @@ impl EventLog {
         message: impl Into<String>,
         payload: serde_json::Value,
         level: EventLogLevel,
+        event_id: String,
         billing_account_id: String,
         organization_id: String,
         workspace_id: String,
@@ -73,10 +81,39 @@ impl EventLog {
             unix_timestamp,
             timestamp,
             payload,
+            event_id,
             si_storable,
         };
         insert_model(db, nats, &event_log.id, &event_log).await?;
 
         Ok(event_log)
+    }
+
+    pub async fn output_line(
+        &self,
+        db: &Db,
+        nats: &Connection,
+        stream: OutputLineStream,
+        line: impl Into<String>,
+    ) -> EventLogResult<OutputLine> {
+        let output_line = OutputLine::new(
+            db,
+            nats,
+            line,
+            stream,
+            self.event_id.clone(),
+            self.id.clone(),
+            self.si_storable.billing_account_id.clone(),
+            self.si_storable.organization_id.clone(),
+            self.si_storable.workspace_id.clone(),
+            self.si_storable.created_by_user_id.clone(),
+        )
+        .await?;
+        Ok(output_line)
+    }
+
+    pub async fn save(&self, db: &Db, nats: &Connection) -> EventLogResult<()> {
+        upsert_model(db, nats, &self.id, self).await?;
+        Ok(())
     }
 }

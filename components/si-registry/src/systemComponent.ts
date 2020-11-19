@@ -20,6 +20,7 @@ import {
 import _ from "lodash";
 import YAML from "yaml";
 import { registry } from "./registry";
+import { Event, EventLogLevel } from "./veritech/eventLog";
 
 export type ObjectTypes =
   | BaseObject
@@ -541,7 +542,10 @@ interface EntityObjectIntelligence {
   actions?: {
     [key: string]: (request: ActionRequest) => Promise<ActionReply>;
   };
-  syncResource?: (request: SyncResourceRequest) => Promise<SyncResourceReply>;
+  syncResource?: (
+    request: SyncResourceRequest,
+    event: Event,
+  ) => Promise<SyncResourceReply>;
 }
 
 export class EntityObject extends SystemObject {
@@ -597,16 +601,21 @@ export class EntityObject extends SystemObject {
     return s;
   }
 
-  async syncResource(request: SyncResourceRequest): Promise<SyncResourceReply> {
+  async syncResource(
+    request: SyncResourceRequest,
+    event: Event,
+  ): Promise<SyncResourceReply> {
     const syncResourceFunc = this.intelligence.syncResource;
 
     if (syncResourceFunc) {
-      console.log(`invoking syncResource(${this.display(request.entity)})`);
-      return await syncResourceFunc(request);
+      event.log(EventLogLevel.Info, "resource sync", {
+        default: false,
+      });
+      return await syncResourceFunc(request, event);
     } else {
-      console.log(
-        `returning default syncResource() for ${this.display(request.entity)}`,
-      );
+      event.log(EventLogLevel.Info, "resource sync", {
+        default: true,
+      });
       return {
         resource: {
           health: ResourceHealth.Ok,

@@ -13,6 +13,8 @@ import { EventLog, IEventLog } from "@/api/sdf/model/eventLog";
 import { Resource, IResource } from "@/api/sdf/model/resource";
 import { PublicKey, IPublicKey } from "@/api/sdf/model/keyPair";
 import { Secret, ISecret } from "@/api/sdf/model/secret";
+import { Event, IEvent } from "@/api/sdf/model/event";
+import { OutputLine, IOutputLine } from "@/api/sdf/model/outputLine";
 import { sdf } from "@/api/sdf";
 import { IUpdateClock } from "@/api/sdf/model/updateClock";
 import { db } from "@/api/sdf/dexie";
@@ -169,6 +171,14 @@ function onMessage(ev: MessageEvent) {
   } else if (model_data.model?.siStorable?.typeName == "secret") {
     const model = new Secret(model_data.model as ISecret);
     console.log("secret msg", { model });
+    model.save();
+  } else if (model_data.model?.siStorable?.typeName == "event") {
+    const model = new Event(model_data.model as IEvent);
+    console.log("event msg", { model });
+    model.save();
+  } else if (model_data.model?.siStorable?.typeName == "outputLine") {
+    const model = new OutputLine(model_data.model as IOutputLine);
+    console.log("outputLine msg", { model });
     model.save();
   }
 }

@@ -3,6 +3,7 @@ pub mod data;
 pub mod filters;
 pub mod handlers;
 pub mod models;
+pub mod veritech;
 
 use crate::data::Db;
 use nats::asynk::Connection;

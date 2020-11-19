@@ -158,8 +158,4 @@ export default Vue.extend({
 .property-title-bg-color {
   background-color: #292c2d;
 }
-
-.is-hidden .schematic-editor {
-  @apply overflow-hidden h-0;
-}
 </style>

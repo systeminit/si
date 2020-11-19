@@ -10,6 +10,7 @@ import { billingAccount, BillingAccountStore } from "./modules/billingAccount";
 import { loader, LoaderStore } from "./modules/loader";
 import { organization, OrganizationStore } from "./modules/organization";
 import { editor, EditorStore } from "./modules/editor";
+import { event, EventStore } from "./modules/event";
 
 Vue.use(Vuex);
 
@@ -38,6 +39,7 @@ export interface RootStore {
   system: SystemStore;
   version: string;
   secret: SecretStore;
+  event: EventStore;
 }
 
 const store: Store<RootStore> = new Vuex.Store({
@@ -55,6 +57,7 @@ const store: Store<RootStore> = new Vuex.Store({
     billingAccount,
     loader,
     secret,
+    event,
   },
   strict: debug,
 });

@@ -1,15 +1,19 @@
 use chrono::Utc;
+use futures::{FutureExt, SinkExt, StreamExt};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use thiserror::Error;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio_tungstenite::tungstenite;
 use tracing::{error, trace, warn};
 
 use crate::data::{Connection, Db, REQWEST};
 use crate::models::{
-    get_model, insert_model, upsert_model, Edge, EdgeError, EdgeKind, Entity, EntityError,
-    EventLog, EventLogError, EventLogLevel, ModelError, OpReply, OpRequest, Resource,
+    get_model, insert_model, upsert_model, Edge, EdgeError, EdgeKind, Entity, EntityError, Event,
+    EventError, EventLog, EventLogError, EventLogLevel, ModelError, OpReply, OpRequest, Resource,
     ResourceError, ResourceHealth, ResourceStatus, SiChangeSetError, SiStorable, SiStorableError,
     System, SystemError, Vertex,
 };
+use crate::veritech::Veritech;
 
 use std::collections::HashMap;
 
@@ -43,6 +47,8 @@ pub enum NodeError {
     Resource(#[from] ResourceError),
     #[error("reqwest error: {0}")]
     Reqwest(#[from] reqwest::Error),
+    #[error("event error: {0}")]
+    Event(#[from] EventError),
 }
 
 pub type NodeResult<T> = Result<T, NodeError>;
@@ -266,23 +272,10 @@ impl Node {
         };
         insert_model(&db, &nats, &node.id, &node).await?;
 
-        EventLog::new(
-            &db,
-            &nats,
-            format!("created {} node named {}", &object_type, &name),
-            serde_json::json![&node],
-            EventLogLevel::Info,
-            billing_account_id.clone(),
-            organization_id.clone(),
-            workspace_id.clone(),
-            created_by_user_id.clone(),
-        )
-        .await?;
-
         match node.kind {
             NodeKind::Entity => {
                 let system_ids = system_ids.unwrap();
-                Entity::new(
+                let entity = Entity::new(
                     db.clone(),
                     nats.clone(),
                     Some(name),
@@ -299,6 +292,7 @@ impl Node {
                     system_ids.clone(),
                 )
                 .await?;
+                let event = Event::node_entity_create(&db, &nats, &node, &entity).await?;
                 for system_id in system_ids.iter() {
                     node.sync_resource(&db, &nats, system_id, Some(change_set_id.clone()))
                         .await?;
@@ -391,6 +385,7 @@ impl Node {
             };
             predecessors.push(predecessor);
         }
+        let mut event = Event::sync_resource(&db, &nats, &entity, &system_id).await?;
 
         tokio::spawn(async move {
             let request = VeritechSyncResourceRequest {
@@ -400,25 +395,47 @@ impl Node {
                 entity: &entity,
                 predecessors,
             };
-            let res = match REQWEST
-                .post("http://localhost:5157/syncResource")
-                .json(&request)
-                .send()
-                .await
-            {
-                Ok(res) => res,
+
+            let veritech: Veritech<VeritechSyncResourceRequest, VeritechSyncResourceReply> =
+                Veritech::new("ws://localhost:5157/ws/syncResource");
+            let sync_reply = match veritech.send(&this_db, &this_nats, request, &event).await {
+                Ok(Some(sync_reply)) => sync_reply,
+                Ok(None) => {
+                    warn!("request succeeded but no reply");
+                    match event.unknown(&this_db, &this_nats).await {
+                        Ok(_) => {}
+                        Err(e) => {
+                            warn!(?e, "cannot write event unknown to db");
+                        }
+                    }
+                    return;
+                }
                 Err(e) => {
-                    warn!("sync resource error: {}", e);
+                    warn!(?e, "veritech request failed");
+                    match event.unknown(&this_db, &this_nats).await {
+                        Ok(_) => {}
+                        Err(e) => {
+                            warn!(?e, "cannot write event unknown to db");
+                        }
+                    }
                     return;
                 }
             };
-            let sync_reply: VeritechSyncResourceReply = match res.json().await {
-                Ok(sync_reply) => sync_reply,
-                Err(e) => {
-                    warn!("cannot deserialize sync reply: {}", e);
-                    return;
+            if sync_reply.resource.status == ResourceStatus::Failed {
+                match event.error(&this_db, &this_nats).await {
+                    Ok(_) => {}
+                    Err(e) => {
+                        warn!(?e, "cannot write event error to db");
+                    }
                 }
-            };
+            } else {
+                match event.success(&this_db, &this_nats).await {
+                    Ok(_) => {}
+                    Err(e) => {
+                        warn!(?e, "cannot write event success to db");
+                    }
+                }
+            }
             match resource
                 .from_update_for_self(
                     &this_db,

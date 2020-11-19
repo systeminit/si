@@ -1,8 +1,6 @@
 <template>
-  <div class="flex flex-col" style="height: 90%">
-    <div class="w-full h-full">
-      <div id="monaco-mount" class="h-full"></div>
-    </div>
+  <div id="code-viewer" class="flex w-full h-full">
+    <div id="monaco-mount" class="flex-auto w-full h-full" />
   </div>
 </template>
 
@@ -19,7 +17,7 @@ interface Data {
 }
 
 export default Vue.extend({
-  name: "Monaco",
+  name: "CodeViewer",
   data(): Data {
     return {
       editor: undefined,
@@ -90,6 +88,9 @@ export default Vue.extend({
         automaticLayout: true,
         language: "yaml",
         scrollBeyondLastLine: false,
+        minimap: {
+          enabled: false,
+        },
       });
       const vx = this;
       editor.onDidBlurEditorText(function() {

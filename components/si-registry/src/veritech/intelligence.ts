@@ -4,6 +4,7 @@ import YAML from "yaml";
 
 import { registry } from "../registry";
 import { EntityObject } from "../systemComponent";
+import { Event, EventLogLevel } from "./eventLog";
 
 export type NodeObject = Entity | System;
 
@@ -316,31 +317,35 @@ export interface SyncResourceReply {
   resource: ResourceUpdate;
 }
 
-export function syncResource(
-  req: express.Request,
-  res: express.Response,
-): void {
-  console.log("POST /syncResource BEGIN");
-  const request: SyncResourceRequest = req.body;
+import WebSocket from "ws";
+export function syncResource(ws: WebSocket, req: string): void {
+  console.log("/ws/syncResource resolver begins");
+  const request = JSON.parse(req);
+  console.dir(request, { depth: Infinity });
   let registryObj;
   try {
     registryObj = registry.get(request.entity.objectType) as EntityObject;
   } catch (err) {
-    res.status(400);
-    res.send({
-      code: 400,
-      message: `Cannot find registry object for ${request.entity.objectType}`,
-    });
+    ws.close(
+      4004,
+      `cannot find registry object for ${request.entity.objectType}`,
+    );
     return;
   }
 
+  const event = new Event(ws);
+
   registryObj
-    .syncResource(request)
+    .syncResource(request, event)
     .then(reply => {
-      res.send(reply);
+      console.log("sync reply");
+      console.dir(reply, { depth: Infinity });
+      ws.send(JSON.stringify({ reply: reply }));
+      ws.close(1000, "finished");
     })
     .catch(err => {
       console.log(`Failed to execute sync ${err}`, err);
+      event.log(EventLogLevel.Fatal, `resource sync failed: ${err}`, { err });
       const r = {
         resource: {
           state: { ...request.resource.state, errorMsg: `${err}` },
@@ -348,7 +353,7 @@ export function syncResource(
           status: ResourceStatus.Failed,
         },
       };
-      res.status(400);
-      res.send(r);
+      ws.send(JSON.stringify({ reply: r }));
+      ws.close(1000, "finished");
     });
 }
