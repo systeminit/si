@@ -3,26 +3,20 @@ import { EntityObject } from "@/systemComponent";
 import {
   ActionRequest,
   ActionReply,
-  ResourceHealth,
-  ResourceStatus,
   SyncResourceRequest,
   SyncResourceReply,
   CalculatePropertiesRequest,
   CalculatePropertiesResult,
 } from "../../veritech/intelligence";
 import _ from "lodash";
-import execa from "execa";
 import { kubernetesApply, kubernetesSync } from "./kubernetesShared";
 
-const kubernetesNamespace = registry.get("kubernetesNamespace") as EntityObject;
-const intelligence = kubernetesNamespace.intelligence;
+const intelligence = (registry.get("kubernetesNamespace") as EntityObject)
+  .intelligence;
 
 intelligence.calculateProperties = function(
   req: CalculatePropertiesRequest,
 ): CalculatePropertiesResult {
-  console.log(`calulating properties for kubernetesNamespace`, { req });
-  console.dir(req, { depth: Infinity });
-
   const result: CalculatePropertiesResult = {
     inferredProperties: {
       __baseline: {

@@ -7,8 +7,8 @@ registry.componentAndEntity({
   siPathName: "si-core",
   serviceName: "core",
   options(c) {
-    c.entity.inputType("service");
     c.entity.inputType("dockerHubCredential");
+    c.entity.inputType("service");
 
     c.entity.associations.belongsTo({
       fromFieldPath: ["siProperties", "billingAccountId"],

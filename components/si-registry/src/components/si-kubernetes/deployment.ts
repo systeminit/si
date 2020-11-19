@@ -20,6 +20,7 @@ registry.componentAndEntity({
     c.entity.inputType("awsAccessKeyCredential");
     c.entity.inputType("kubernetesNamespace");
     c.entity.inputType("kubernetesSecret");
+    c.entity.inputType("service");
 
     c.entity.associations.belongsTo({
       fromFieldPath: ["siProperties", "billingAccountId"],

@@ -2,7 +2,6 @@ import {
   PropObject,
   PropText,
   PropLink,
-  PropNumber,
   PropEnum,
   PropCode,
   PropAction,
@@ -18,6 +17,7 @@ registry.componentAndEntity({
     c.entity.inputType("application");
     c.entity.inputType("awsEks");
     c.entity.inputType("awsAccessKeyCredential");
+    c.entity.inputType("service");
 
     c.entity.associations.belongsTo({
       fromFieldPath: ["siProperties", "billingAccountId"],

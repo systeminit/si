@@ -3,8 +3,6 @@ import { EntityObject } from "@/systemComponent";
 import {
   ActionRequest,
   ActionReply,
-  ResourceHealth,
-  ResourceStatus,
   SyncResourceRequest,
   SyncResourceReply,
   CalculatePropertiesRequest,
@@ -12,18 +10,14 @@ import {
 } from "../../veritech/intelligence";
 import { kubernetesNamespaceProperties } from "./kubernetesShared";
 import _ from "lodash";
-import execa from "execa";
 import { kubernetesSync, kubernetesApply } from "./kubernetesShared";
 
-const kubernetesService = registry.get("kubernetesService") as EntityObject;
-const intelligence = kubernetesService.intelligence;
+const intelligence = (registry.get("kubernetesService") as EntityObject)
+  .intelligence;
 
 intelligence.calculateProperties = function(
   req: CalculatePropertiesRequest,
 ): CalculatePropertiesResult {
-  console.log(`calulating properties for kubernetesService`, { req });
-  console.dir(req, { depth: Infinity });
-
   let result: CalculatePropertiesResult = {
     inferredProperties: {
       __baseline: {
@@ -72,8 +66,6 @@ intelligence.calculateProperties = function(
       if (containers) {
         const ports = [];
         for (const container of containers) {
-          console.log("I am containing the shit out of you");
-          console.dir(container);
           if (container.ports) {
             for (const port of container.ports) {
               if (port.containerPort) {
