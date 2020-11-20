@@ -63,7 +63,7 @@ export default Vue.extend({
   },
   methods: {
     updateModel(): void {
-      if (this.editor) {
+      if (this.editor && this.selectedNode) {
         let existingModel = monaco.editor.getModel(this.selectedNode.id);
         if (!existingModel) {
           const newModel = monaco.editor.createModel(

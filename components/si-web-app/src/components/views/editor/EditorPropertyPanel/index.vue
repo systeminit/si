@@ -43,7 +43,7 @@
     </div>
 
     <div class="relative w-full h-full property-panel-view">
-      <CodeViewer v-show="isViewActive('codeView')" :key="selectedNode.id" />
+      <CodeViewer v-show="isViewActive('codeView')" />
       <PropertyViewer
         v-show="isViewActive('propertyView')"
         :selectedNode="selectedNode"
