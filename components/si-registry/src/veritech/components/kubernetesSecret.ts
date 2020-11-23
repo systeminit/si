@@ -8,6 +8,7 @@ import {
   CalculatePropertiesRequest,
   CalculatePropertiesResult,
 } from "../../veritech/intelligence";
+import { Event } from "../../veritech/eventLog";
 import {
   kubernetesNamespaceProperties,
   kubernetesSync,
@@ -52,6 +53,7 @@ intelligence.calculateProperties = function(
 
 intelligence.syncResource = async function(
   request: SyncResourceRequest,
+  event: Event,
 ): Promise<SyncResourceReply> {
   for (const pred of request.predecessors) {
     if (pred.entity.objectType == "dockerHubCredential") {
@@ -77,11 +79,11 @@ intelligence.syncResource = async function(
       );
     }
   }
-  return await kubernetesSync(request);
+  return await kubernetesSync(request, event);
 };
 
 intelligence.actions = {
-  async apply(request: ActionRequest): Promise<ActionReply> {
+  async apply(request: ActionRequest, event: Event): Promise<ActionReply> {
     for (const pred of request.predecessors) {
       if (pred.entity.objectType == "dockerHubCredential") {
         const creds = pred.entity.properties.__baseline.decrypted;
@@ -106,6 +108,6 @@ intelligence.actions = {
         );
       }
     }
-    return await kubernetesApply(request);
+    return await kubernetesApply(request, event);
   },
 };

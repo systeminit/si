@@ -8,9 +8,10 @@ import {
   CalculatePropertiesRequest,
   CalculatePropertiesResult,
 } from "../../veritech/intelligence";
-import _ from "lodash";
-import execa from "execa";
+import { Event } from "../../veritech/eventLog";
+import { siExec } from "../siExec";
 import { awsCredential, AwsCliEnv, awsKubeConfig } from "./awsShared";
+import _ from "lodash";
 
 const intelligence = (registry.get("awsEks") as EntityObject).intelligence;
 
@@ -36,6 +37,7 @@ intelligence.calculateProperties = function(
 
 intelligence.syncResource = async function(
   request: SyncResourceRequest,
+  event: Event,
 ): Promise<SyncResourceReply> {
   const awsCredResult = awsCredential(request);
   if (awsCredResult.syncResourceReply) {
@@ -49,16 +51,22 @@ intelligence.syncResource = async function(
     throw new Error("aws cli function didn't return an environment");
   }
 
-  const awsArgs = [
-    "eks",
-    "describe-cluster",
-    "--region",
-    request.entity.properties.__baseline.region,
-    "--name",
-    request.entity.properties.__baseline.clusterName,
-  ];
-  console.log(`running command; cmd="aws ${awsArgs.join(" ")}"`);
-  const awsCmd = await execa("aws", awsArgs, { reject: false, env: awsEnv });
+  const awsCmd = await siExec(
+    event,
+    "aws",
+    [
+      "eks",
+      "describe-cluster",
+      "--region",
+      request.entity.properties.__baseline.region,
+      "--name",
+      request.entity.properties.__baseline.clusterName,
+    ],
+    {
+      reject: false,
+      env: awsEnv,
+    },
+  );
 
   // If the describe-cluster failed, early return
   if (awsCmd.failed) {
@@ -77,7 +85,7 @@ intelligence.syncResource = async function(
     };
   }
 
-  const awsKubeConfigResult = await awsKubeConfig(request, awsEnv);
+  const awsKubeConfigResult = await awsKubeConfig(request, event, awsEnv);
   if (awsKubeConfigResult.syncResourceReply) {
     return awsKubeConfigResult.syncResourceReply;
   }
@@ -86,18 +94,15 @@ intelligence.syncResource = async function(
   }
   const kubeconfigPath = awsKubeConfigResult.kubeconfig;
 
-  const kubectlVersionArgs = [
-    "version",
-    "--kubeconfig",
-    kubeconfigPath,
-    "--output",
-    "json",
-  ];
-  console.log(`running command; cmd="kubectl ${kubectlVersionArgs.join(" ")}"`);
-  const kubectlVersionCmd = await execa("kubectl", kubectlVersionArgs, {
-    reject: false,
-    env: awsEnv,
-  });
+  const kubectlVersionCmd = await siExec(
+    event,
+    "kubectl",
+    ["version", "--kubeconfig", kubeconfigPath, "--output", "json"],
+    {
+      reject: false,
+      env: awsEnv,
+    },
+  );
 
   // If kubectl version failed, early return
   if (kubectlVersionCmd.failed) {

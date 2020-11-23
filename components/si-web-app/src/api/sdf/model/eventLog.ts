@@ -2,9 +2,16 @@ import _ from "lodash";
 import { DateTime } from "luxon";
 
 import { db } from "@/api/sdf/dexie";
+import {
+  IGetReply,
+  IGetRequest,
+  IListRequest,
+  IListReply,
+} from "@/api/sdf/model";
 import { ISiStorable } from "@/api/sdf/model/siStorable";
 import store from "@/store";
 import { sdf } from "@/api/sdf";
+import { Comparison, FieldType } from "./query";
 
 export enum EventLogLevel {
   Trace = "trace",
@@ -83,7 +90,67 @@ export class EventLog implements IEventLog {
       .where("eventId")
       .equals(eventId)
       .toArray();
-    return items.map(obj => new EventLog(obj));
+    if (items.length) {
+      return items.map(obj => new EventLog(obj));
+    } else {
+      const listResult = await EventLog.list({
+        query: {
+          items: [
+            {
+              expression: {
+                field: "eventId",
+                value: eventId,
+                comparison: Comparison.Equals,
+                fieldType: FieldType.String,
+              },
+            },
+          ],
+        },
+        pageSize: 500,
+      });
+      return listResult.items;
+    }
+  }
+
+  static async list(request?: IListRequest): Promise<IListReply<EventLog>> {
+    const items: EventLog[] = [];
+    let totalCount = 0;
+    let finished = false;
+    while (!finished) {
+      const reply: IListReply<IEventLog> = await sdf.list("eventLogs", request);
+      if (reply.items.length) {
+        for (let item of reply.items) {
+          let objItem = new EventLog(item);
+          objItem.save();
+          items.push(objItem);
+        }
+      }
+      if (reply.pageToken) {
+        request = {
+          pageToken: reply.pageToken,
+        };
+      } else {
+        totalCount = reply.totalCount;
+        finished = true;
+      }
+    }
+    return {
+      items,
+      totalCount,
+    };
+  }
+
+  static async get(request: IGetRequest<IEventLog["id"]>): Promise<EventLog> {
+    const event = await db.eventLog.get(request.id);
+    if (event) {
+      return new EventLog(event);
+    }
+    const reply: IGetReply<IEventLog> = await sdf.get(
+      `eventLogs/${request.id}`,
+    );
+    const fetched: EventLog = new EventLog(reply.item);
+    await fetched.save();
+    return fetched;
   }
 
   static async restore(): Promise<void> {

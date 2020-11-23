@@ -8,8 +8,9 @@ import {
   CalculatePropertiesRequest,
   CalculatePropertiesResult,
 } from "../../veritech/intelligence";
-import _ from "lodash";
+import { Event } from "../../veritech/eventLog";
 import { kubernetesApply, kubernetesSync } from "./kubernetesShared";
+import _ from "lodash";
 
 const intelligence = (registry.get("kubernetesNamespace") as EntityObject)
   .intelligence;
@@ -44,12 +45,13 @@ intelligence.calculateProperties = function(
 
 intelligence.syncResource = async function(
   request: SyncResourceRequest,
+  event: Event,
 ): Promise<SyncResourceReply> {
-  return await kubernetesSync(request);
+  return await kubernetesSync(request, event);
 };
 
 intelligence.actions = {
-  async apply(request: ActionRequest): Promise<ActionReply> {
-    return await kubernetesApply(request);
+  async apply(request: ActionRequest, event: Event): Promise<ActionReply> {
+    return await kubernetesApply(request, event);
   },
 };

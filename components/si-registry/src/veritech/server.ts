@@ -30,8 +30,13 @@ app.use(morgan("tiny"));
 app.post("/calculateProperties", calculateProperties);
 app.post("/calculateConfigures", calculateConfigures);
 app.post("/applyOp", applyOp);
-app.post("/action", action);
+//app.post("/action", action);
 //app.post("/syncResource", syncResource);
+app.ws("/ws/action", (ws, _req) => {
+  ws.on("message", function(msg: string) {
+    action(ws, msg);
+  });
+});
 
 app.ws("/ws/syncResource", (ws, _req) => {
   ws.on("message", function(msg: string) {

@@ -5,8 +5,8 @@ use thiserror::Error;
 
 use crate::data::{Connection, Db};
 use crate::models::{
-    insert_model, upsert_model, Entity, EventLog, EventLogError, EventLogLevel, ModelError, Node,
-    SiStorable, SiStorableError,
+    insert_model, ops::OpEntityAction, upsert_model, ChangeSet, Entity, EventLog, EventLogError,
+    EventLogLevel, ModelError, Node, SiStorable, SiStorableError,
 };
 
 #[derive(Error, Debug)]
@@ -24,8 +24,10 @@ pub type EventResult<T> = Result<T, EventError>;
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum EventKind {
-    ResourceSync,
+    ChangeSetExecute,
+    EntityAction,
     NodeEntityCreate,
+    ResourceSync,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
@@ -62,6 +64,7 @@ impl Event {
         payload: impl Into<serde_json::Value>,
         kind: EventKind,
         context: Vec<String>,
+        parent_id: Option<String>,
         billing_account_id: String,
         organization_id: String,
         workspace_id: String,
@@ -96,7 +99,7 @@ impl Event {
             end_unix_timestamp: None,
             end_timestamp: None,
             si_storable,
-            parent_id: None,
+            parent_id,
         };
         insert_model(db, nats, &event.id, &event).await?;
 
@@ -110,6 +113,7 @@ impl Event {
         payload: impl Into<serde_json::Value>,
         kind: EventKind,
         context: Option<Vec<String>>,
+        parent_id: Option<String>,
         si_storable: &SiStorable,
     ) -> EventResult<Event> {
         let mut context_list = si_storable.tenant_ids.clone();
@@ -123,6 +127,7 @@ impl Event {
             payload,
             kind,
             context_list,
+            parent_id,
             si_storable.billing_account_id.clone(),
             si_storable.organization_id.clone(),
             si_storable.workspace_id.clone(),
@@ -136,6 +141,7 @@ impl Event {
         nats: &Connection,
         node: &Node,
         entity: &Entity,
+        parent_id: Option<String>,
     ) -> EventResult<Event> {
         let message = format!("created new {} node", node.object_type);
         let payload = serde_json::json!({
@@ -152,6 +158,7 @@ impl Event {
             payload,
             kind,
             Some(context),
+            parent_id,
             &node.si_storable,
         )
         .await
@@ -162,6 +169,7 @@ impl Event {
         nats: &Connection,
         entity: &Entity,
         system_id: &str,
+        event_parent_id: Option<String>,
     ) -> EventResult<Event> {
         let message = format!(
             "synchronizing resource for {} {}",
@@ -185,7 +193,65 @@ impl Event {
             payload,
             kind,
             Some(context),
+            event_parent_id,
             &entity.si_storable,
+        )
+        .await
+    }
+
+    pub async fn entity_action(
+        db: &Db,
+        nats: &Connection,
+        op_entity_action: &OpEntityAction,
+        entity: &Entity,
+        system_id: &str,
+        event_parent_id: Option<String>,
+    ) -> EventResult<Event> {
+        let message = format!(
+            "{} on {}[{}]",
+            &op_entity_action.action, entity.object_type, entity.name
+        );
+        let payload = serde_json::json!({
+            "objectType": entity.object_type,
+            "name": entity.name,
+            "action": op_entity_action.action.clone(),
+            "systemId": system_id,
+        });
+        let kind = EventKind::EntityAction;
+        let context = vec![entity.node_id.clone(), String::from(system_id)];
+        Event::from_si_storable(
+            &db,
+            &nats,
+            message,
+            payload,
+            kind,
+            Some(context),
+            event_parent_id,
+            &entity.si_storable,
+        )
+        .await
+    }
+
+    pub async fn change_set_execute(
+        db: &Db,
+        nats: &Connection,
+        change_set: &ChangeSet,
+        event_parent_id: Option<String>,
+    ) -> EventResult<Event> {
+        let message = format!("executing changeSet {}", &change_set.name);
+        let payload = serde_json::json!({
+            "name": change_set.name,
+        });
+        let kind = EventKind::ChangeSetExecute;
+        Event::from_si_storable(
+            &db,
+            &nats,
+            message,
+            payload,
+            kind,
+            None,
+            event_parent_id,
+            &change_set.si_storable,
         )
         .await
     }

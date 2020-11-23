@@ -29,6 +29,7 @@
     "luxon": "^1.25.0",
     "monaco-editor": "^0.20.0",
     "monaco-editor-webpack-plugin": "^1.9.0",
+    "p-queue": "^6.6.2",
     "si-registry": "file:../si-registry",
     "tailwindcss": "^1.4.6",
     "tweetnacl": "^1.0.3",

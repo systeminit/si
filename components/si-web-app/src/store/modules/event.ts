@@ -15,6 +15,10 @@ export interface ActionLoadLogs {
   eventId: string;
 }
 
+export interface ActionLoadParents {
+  eventId: string;
+}
+
 export interface ActionLoadOutputLines {
   eventLogId: string;
 }
@@ -22,6 +26,9 @@ export interface ActionLoadOutputLines {
 export interface EventStore {
   context: string[];
   list: Event[];
+  parents: {
+    [id: string]: Event[];
+  };
   logs: {
     [id: string]: EventLog[];
   };
@@ -37,6 +44,7 @@ export const event: Module<EventStore, RootStore> = {
     list: [],
     logs: {},
     output: {},
+    parents: {},
   },
   mutations: {
     updateOutput(state, payload: OutputLine) {
@@ -74,6 +82,10 @@ export const event: Module<EventStore, RootStore> = {
         _.orderBy(payload.outputLines, ["unixTimestamp"], ["asc"]),
       );
     },
+    setParents(state, payload: { eventId: string; parents: Event[] }) {
+      Vue.set(state.parents, payload.eventId, payload.parents);
+    },
+
     setLogs(state, payload: { eventId: string; eventLogs: EventLog[] }) {
       Vue.set(
         state.logs,
@@ -91,6 +103,7 @@ export const event: Module<EventStore, RootStore> = {
       state.list = [];
       state.logs = {};
       state.output = {};
+      state.parents = {};
       state.context = [];
     },
   },
@@ -103,6 +116,13 @@ export const event: Module<EventStore, RootStore> = {
         await event.loadOwner();
       }
       commit("setList", events);
+    },
+    async loadParents({ commit, state }, payload: ActionLoadParents) {
+      const event = _.find(state.list, ["id", payload.eventId]);
+      if (event) {
+        const parents = await event.parents();
+        commit("setParents", { eventId: payload.eventId, parents });
+      }
     },
     async loadLogs({ commit }, payload: ActionLoadLogs) {
       const eventLogs = await EventLog.listForEvent(payload.eventId);

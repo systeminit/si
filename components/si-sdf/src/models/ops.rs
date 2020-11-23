@@ -3,9 +3,10 @@ use thiserror::Error;
 
 use crate::data::{Connection, Db, REQWEST};
 use crate::models::{
-    insert_model, EdgeError, EntityError, ModelError, NodeError, ResourceError, SiChangeSet,
-    SiChangeSetError, SiChangeSetEvent, SiStorable, SiStorableError,
+    insert_model, EdgeError, EntityError, EventError, ModelError, NodeError, ResourceError,
+    SiChangeSet, SiChangeSetError, SiChangeSetEvent, SiStorable, SiStorableError,
 };
+use crate::veritech::VeritechError;
 
 pub mod entity_delete;
 pub use self::entity_delete::{OpEntityDelete, OpEntityDeleteRequest};
@@ -38,6 +39,10 @@ pub enum OpError {
     Missing(&'static str),
     #[error("resource error: {0}")]
     Resource(#[from] ResourceError),
+    #[error("event error: {0}")]
+    Event(#[from] EventError),
+    #[error("veritech error: {0}")]
+    Veritech(#[from] VeritechError),
 }
 
 #[derive(Deserialize, Serialize, Debug)]

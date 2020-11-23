@@ -8,6 +8,7 @@ export async function siExec(
   execaArgs?: readonly string[],
   execaOptions?: execa.Options<string>,
 ): Promise<execa.ExecaReturnValue<string>> {
+  console.log(`running command; cmd="${execaFile} ${execaArgs?.join(" ")}"`);
   const eventLog = event.log(
     EventLogLevel.Info,
     `running ${execaFile} ${execaArgs?.join(" ")}`,

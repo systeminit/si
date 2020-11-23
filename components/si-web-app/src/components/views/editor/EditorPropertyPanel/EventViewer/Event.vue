@@ -70,6 +70,13 @@
         display: this.showEventDetails,
       }"
     >
+      <div
+        v-for="parent in parents"
+        :key="parent.id"
+        class="ml-2 text-xs text-right text-gray-400"
+      >
+        via {{ parent.message }} ({{ parent.status }})
+      </div>
       <div v-for="log in eventLogs" :key="log.id" class="event-msg">
         <EventLogElem :eventLog="log" />
       </div>
@@ -135,6 +142,13 @@ export default Vue.extend({
         return false;
       }
     },
+    parents(): EventLog[] {
+      if (this.$store.state.event.parents[this.event.id]) {
+        return this.$store.state.event.parents[this.event.id];
+      } else {
+        return [];
+      }
+    },
     eventLogs(): EventLog[] {
       if (this.$store.state.event.logs[this.event.id]) {
         return this.$store.state.event.logs[this.event.id];
@@ -145,6 +159,9 @@ export default Vue.extend({
   },
   methods: {
     async expandEventDetails(): Promise<void> {
+      await this.$store.dispatch("event/loadParents", {
+        eventId: this.event.id,
+      });
       await this.$store.dispatch("event/loadLogs", { eventId: this.event.id });
       this.showEventDetails = true;
     },

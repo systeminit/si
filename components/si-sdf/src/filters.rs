@@ -7,7 +7,6 @@ use crate::data::Db;
 use crate::handlers;
 use crate::models;
 
-#[cfg(debug_assertions)]
 pub fn api(
     db: &Db,
     nats: &Connection,
@@ -25,24 +24,10 @@ pub fn api(
         .or(edges(db, nats))
         .or(change_set_participants(db, nats))
         .or(secrets(db, nats))
+        .or(events(db, nats))
+        .or(event_logs(db, nats))
+        .or(output_lines(db, nats))
         .boxed()
-}
-
-#[cfg(not(debug_assertions))]
-pub fn api(
-    db: &Db,
-    nats: &Connection,
-    secret_key: &secretbox::Key,
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    billing_accounts(db, nats)
-        .or(organizations(db, nats))
-        .or(nodes(db, nats))
-        .or(change_sets(db, nats))
-        .or(users(db, nats, secret_key))
-        .or(workspaces(db, nats))
-        .or(updates(db, nats))
-        .or(entities(db))
-        .or(systems(db))
 }
 
 // The Web Socket Update API
@@ -53,6 +38,88 @@ pub fn updates(db: &Db, nats: &Connection) -> BoxedFilter<(impl warp::Reply,)> {
         .and(with_nats(nats.clone()))
         .and(warp::query::<models::update::WebsocketToken>())
         .and_then(handlers::updates::update)
+        .boxed()
+}
+
+pub fn events(db: &Db, _nats: &Connection) -> BoxedFilter<(impl warp::Reply,)> {
+    events_list(db.clone()).or(events_get(db.clone())).boxed()
+}
+
+pub fn events_get(db: Db) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("events" / String)
+        .and(warp::get())
+        .and(with_db(db))
+        .and(warp::header::<String>("authorization"))
+        .and(with_string("event".into()))
+        .and(warp::query::<models::GetRequest>())
+        .and_then(handlers::get_model_change_set)
+        .boxed()
+}
+
+pub fn events_list(db: Db) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("events")
+        .and(warp::get())
+        .and(with_db(db))
+        .and(warp::header::<String>("authorization"))
+        .and(with_string("event".into()))
+        .and(warp::query::<models::ListRequest>())
+        .and_then(handlers::list_models)
+        .boxed()
+}
+
+pub fn event_logs(db: &Db, _nats: &Connection) -> BoxedFilter<(impl warp::Reply,)> {
+    event_logs_list(db.clone())
+        .or(event_logs_get(db.clone()))
+        .boxed()
+}
+
+pub fn event_logs_get(db: Db) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("eventLogs" / String)
+        .and(warp::get())
+        .and(with_db(db))
+        .and(warp::header::<String>("authorization"))
+        .and(with_string("eventLog".into()))
+        .and(warp::query::<models::GetRequest>())
+        .and_then(handlers::get_model_change_set)
+        .boxed()
+}
+
+pub fn event_logs_list(db: Db) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("eventLogs")
+        .and(warp::get())
+        .and(with_db(db))
+        .and(warp::header::<String>("authorization"))
+        .and(with_string("eventLog".into()))
+        .and(warp::query::<models::ListRequest>())
+        .and_then(handlers::list_models)
+        .boxed()
+}
+
+pub fn output_lines(db: &Db, _nats: &Connection) -> BoxedFilter<(impl warp::Reply,)> {
+    output_lines_list(db.clone())
+        .or(output_lines_get(db.clone()))
+        .boxed()
+}
+
+pub fn output_lines_get(db: Db) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("outputLines" / String)
+        .and(warp::get())
+        .and(with_db(db))
+        .and(warp::header::<String>("authorization"))
+        .and(with_string("outputLine".into()))
+        .and(warp::query::<models::GetRequest>())
+        .and_then(handlers::get_model_change_set)
+        .boxed()
+}
+
+pub fn output_lines_list(db: Db) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("outputLines")
+        .and(warp::get())
+        .and(with_db(db))
+        .and(warp::header::<String>("authorization"))
+        .and(with_string("outputLine".into()))
+        .and(warp::query::<models::ListRequest>())
+        .and_then(handlers::list_models)
         .boxed()
 }
 

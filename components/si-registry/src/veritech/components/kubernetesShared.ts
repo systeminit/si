@@ -8,9 +8,10 @@ import {
   ActionRequest,
   ActionReply,
 } from "../intelligence";
-import _ from "lodash";
-import execa from "execa";
+import { Event } from "../../veritech/eventLog";
+import { siExec } from "../siExec";
 import { awsCredential, awsKubeConfig, AwsCliEnv } from "./awsShared";
+import _ from "lodash";
 
 // A canonical apply/install order, thanks to the Helm project. This is the
 // order of applying Kubernetes object when running a `helm install` command.
@@ -69,6 +70,7 @@ export function kubernetesNamespaceProperties(
 
 export async function kubernetesSync(
   request: SyncResourceRequest,
+  event: Event,
 ): Promise<SyncResourceReply> {
   const awsCredResult = awsCredential(request);
   if (awsCredResult.syncResourceReply) {
@@ -77,7 +79,7 @@ export async function kubernetesSync(
     throw new Error("aws cli function didn't return an environment");
   }
   const awsEnv: AwsCliEnv = awsCredResult.awsCliEnv;
-  const awsKubeConfigResult = await awsKubeConfig(request, awsEnv);
+  const awsKubeConfigResult = await awsKubeConfig(request, event, awsEnv);
   if (awsKubeConfigResult.syncResourceReply) {
     return awsKubeConfigResult.syncResourceReply;
   } else if (!awsKubeConfigResult.kubeconfig) {
@@ -101,22 +103,25 @@ export async function kubernetesSync(
     };
   }
 
-  const kubectlArgs = [
-    "apply",
-    "-o",
-    "json",
-    "--kubeconfig",
-    kubeconfigPath,
-    "--dry-run=server",
-    "-f",
-    "-",
-  ];
-  console.log(`running command; cmd="kubectl ${kubectlArgs.join(" ")}"`);
-  const kubectlApply = await execa("kubectl", kubectlArgs, {
-    reject: false,
-    input: request.entity.properties.__baseline["kubernetesObjectYaml"],
-    env: awsEnv,
-  });
+  const kubectlApply = await siExec(
+    event,
+    "kubectl",
+    [
+      "apply",
+      "-o",
+      "json",
+      "--kubeconfig",
+      kubeconfigPath,
+      "--dry-run=server",
+      "-f",
+      "-",
+    ],
+    {
+      reject: false,
+      input: request.entity.properties.__baseline["kubernetesObjectYaml"],
+      env: awsEnv,
+    },
+  );
 
   // If kubectl apply failed, early return
   if (kubectlApply.failed) {
@@ -154,6 +159,7 @@ export async function kubernetesSync(
 
 export async function kubernetesApply(
   request: ActionRequest,
+  event: Event,
 ): Promise<ActionReply> {
   const actions: ActionReply["actions"] = [];
   const awsCredResult = awsCredential(request);
@@ -163,7 +169,7 @@ export async function kubernetesApply(
     throw new Error("aws cli function didn't return an environment");
   }
   const awsEnv: AwsCliEnv = awsCredResult.awsCliEnv;
-  const awsKubeConfigResult = await awsKubeConfig(request, awsEnv);
+  const awsKubeConfigResult = await awsKubeConfig(request, event, awsEnv);
   if (awsKubeConfigResult.syncResourceReply) {
     return {
       resource: awsKubeConfigResult.syncResourceReply.resource,
@@ -203,8 +209,7 @@ export async function kubernetesApply(
   if (request.hypothetical) {
     kubectlArgs.push("--dry-run=server");
   }
-  console.log(`running command; cmd="kubectl ${kubectlArgs.join(" ")}"`);
-  const kubectlApply = await execa("kubectl", kubectlArgs, {
+  const kubectlApply = await siExec(event, "kubectl", kubectlArgs, {
     reject: false,
     input: request.entity.properties.__baseline["kubernetesObjectYaml"],
     env: awsEnv,

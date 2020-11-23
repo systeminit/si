@@ -36,6 +36,8 @@ pub enum VeritechError {
     EventLog(#[from] EventLogError),
     #[error("missing eventLog: {0}")]
     MissingEventLog(u64),
+    #[error("no reply from veritech")]
+    NoReply,
 }
 
 pub type VeritechResult<T> = Result<T, VeritechError>;

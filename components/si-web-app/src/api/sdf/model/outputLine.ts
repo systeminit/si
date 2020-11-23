@@ -1,9 +1,16 @@
 import _ from "lodash";
 
 import { db } from "@/api/sdf/dexie";
+import {
+  IGetReply,
+  IGetRequest,
+  IListRequest,
+  IListReply,
+} from "@/api/sdf/model";
 import { ISiStorable } from "@/api/sdf/model/siStorable";
 import store from "@/store";
 import { sdf } from "@/api/sdf";
+import { Comparison, FieldType } from "./query";
 
 export enum OutputLineStream {
   Stdout = "stdout",
@@ -68,7 +75,73 @@ export class OutputLine implements IOutputLine {
       .where("eventLogId")
       .equals(eventLogId)
       .toArray();
-    return items.map(obj => new OutputLine(obj));
+
+    if (items.length) {
+      return items.map(obj => new OutputLine(obj));
+    } else {
+      const result = await OutputLine.list({
+        query: {
+          items: [
+            {
+              expression: {
+                field: "eventLogId",
+                value: eventLogId,
+                comparison: Comparison.Equals,
+                fieldType: FieldType.String,
+              },
+            },
+          ],
+        },
+        pageSize: 500,
+      });
+      return result.items;
+    }
+  }
+
+  static async list(request?: IListRequest): Promise<IListReply<OutputLine>> {
+    const items: OutputLine[] = [];
+    let totalCount = 0;
+    let finished = false;
+    while (!finished) {
+      const reply: IListReply<IOutputLine> = await sdf.list(
+        "outputLines",
+        request,
+      );
+      if (reply.items.length) {
+        for (let item of reply.items) {
+          let objItem = new OutputLine(item);
+          objItem.save();
+          items.push(objItem);
+        }
+      }
+      if (reply.pageToken) {
+        request = {
+          pageToken: reply.pageToken,
+        };
+      } else {
+        totalCount = reply.totalCount;
+        finished = true;
+      }
+    }
+    return {
+      items,
+      totalCount,
+    };
+  }
+
+  static async get(
+    request: IGetRequest<IOutputLine["id"]>,
+  ): Promise<OutputLine> {
+    const event = await db.outputLines.get(request.id);
+    if (event) {
+      return new OutputLine(event);
+    }
+    const reply: IGetReply<IOutputLine> = await sdf.get(
+      `outputLines/${request.id}`,
+    );
+    const fetched: OutputLine = new OutputLine(reply.item);
+    await fetched.save();
+    return fetched;
   }
 }
 

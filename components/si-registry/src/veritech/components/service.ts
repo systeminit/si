@@ -10,6 +10,7 @@ import {
   SyncResourceRequest,
   SyncResourceReply,
 } from "../../veritech/intelligence";
+import { Event } from "../../veritech/eventLog";
 import { kubernetesApplyOrder } from "./kubernetesShared";
 import _ from "lodash";
 
@@ -29,6 +30,7 @@ intelligence.calculateProperties = function(
 
 intelligence.syncResource = async function(
   _request: SyncResourceRequest,
+  _event: Event,
 ): Promise<SyncResourceReply> {
   const state = {};
 
@@ -42,7 +44,7 @@ intelligence.syncResource = async function(
 };
 
 intelligence.actions = {
-  async deploy(request: ActionRequest): Promise<ActionReply> {
+  async deploy(request: ActionRequest, _event: Event): Promise<ActionReply> {
     const actions = _.filter(request.successors, s =>
       kubernetesApplyOrder.includes(s.entity.objectType),
     );

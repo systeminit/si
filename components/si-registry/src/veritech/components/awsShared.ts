@@ -4,8 +4,9 @@ import {
   ResourceHealth,
   ResourceStatus,
 } from "../intelligence";
+import { Event } from "../../veritech/eventLog";
+import { siExec } from "../siExec";
 import _ from "lodash";
-import execa from "execa";
 import { promises as fs } from "fs";
 import os from "os";
 import path from "path";
@@ -70,6 +71,7 @@ export interface AwsKubeConfigResult {
 
 export async function awsKubeConfig(
   request: AwsInputRequest,
+  event: Event,
   awsEnv: AwsCliEnv,
 ): Promise<AwsKubeConfigResult> {
   const tempdir = await fs.mkdtemp(path.join(os.tmpdir(), "kubeconfig-"));
@@ -104,21 +106,24 @@ export async function awsKubeConfig(
     }
   }
 
-  const awsArgs = [
-    "eks",
-    "--region",
-    region,
-    "update-kubeconfig",
-    "--name",
-    clusterName,
-    "--kubeconfig",
-    kubeconfigPath,
-  ];
-  console.log(`running command; cmd="aws ${awsArgs.join(" ")}"`);
-  const awsKubeConfigCmd = await execa("aws", awsArgs, {
-    reject: false,
-    env: awsEnv,
-  });
+  const awsKubeConfigCmd = await siExec(
+    event,
+    "aws",
+    [
+      "eks",
+      "--region",
+      region,
+      "update-kubeconfig",
+      "--name",
+      clusterName,
+      "--kubeconfig",
+      kubeconfigPath,
+    ],
+    {
+      reject: false,
+      env: awsEnv,
+    },
+  );
 
   if (awsKubeConfigCmd.failed) {
     const reply: SyncResourceReply = {

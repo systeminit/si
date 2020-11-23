@@ -540,7 +540,10 @@ interface EntityObjectIntelligence {
     systems: System[],
   ) => CalculateConfiguresReply;
   actions?: {
-    [key: string]: (request: ActionRequest) => Promise<ActionReply>;
+    [key: string]: (
+      request: ActionRequest,
+      event: Event,
+    ) => Promise<ActionReply>;
   };
   syncResource?: (
     request: SyncResourceRequest,
@@ -628,10 +631,21 @@ export class EntityObject extends SystemObject {
     }
   }
 
-  async action(request: ActionRequest): Promise<ActionReply> {
+  async action(request: ActionRequest, event: Event): Promise<ActionReply> {
     const actions = this.intelligence.actions;
 
     if (actions && actions[request.action]) {
+      event.log(
+        EventLogLevel.Info,
+        `invoking action(${this.display(
+          request.entity,
+          request.action,
+          request.hypothetical,
+        )})`,
+        {
+          default: false,
+        },
+      );
       console.log(
         `invoking action(${this.display(
           request.entity,
@@ -639,8 +653,19 @@ export class EntityObject extends SystemObject {
           request.hypothetical,
         )})`,
       );
-      return actions[request.action](request);
+      return actions[request.action](request, event);
     } else if (request.action == "delete") {
+      event.log(
+        EventLogLevel.Info,
+        `invoking delete(${this.display(
+          request.entity,
+          undefined,
+          request.hypothetical,
+        )}); marking resource state as deleted`,
+        {
+          default: false,
+        },
+      );
       console.log(
         `invoking delete(${this.display(
           request.entity,
@@ -659,6 +684,15 @@ export class EntityObject extends SystemObject {
         actions: [],
       };
     } else {
+      event.log(
+        EventLogLevel.Fatal,
+        `cannot find action '${request.action}' for ${this.display(
+          request.entity,
+          undefined,
+          request.hypothetical,
+        )}]`,
+        {},
+      );
       throw new Error(
         `cannot find action '${request.action}' for ${this.display(
           request.entity,
