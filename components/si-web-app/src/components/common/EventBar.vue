@@ -15,274 +15,46 @@
       <div class="flex-col h-40 overflow-y-auto event-list">
         <div class="w-full text-xs event-list-row">
           <div
-            v-for="(eventLog, index) of eventLogs"
-            :key="index"
+            v-for="eventItem in events"
+            :key="eventItem.id"
             class="flex flex-col text-xs text-gray-400 event-list-row"
           >
             <div
               class="flex flex-row items-center"
-              @click="toggleEventExpansion(eventLog.id)"
+              @click="toggleEventExpansion(eventItem.id)"
             >
               <div class="ml-8">
                 <ChevronDownIcon
                   size="1.0x"
-                  v-if="isEventExpanded(eventLog.id)"
+                  v-if="isEventExpanded(eventItem.id)"
                 />
                 <ChevronRightIcon size="1.0x" v-else />
               </div>
               <div class="ml-2">
                 <span class="text-gray-500">
-                  {{ eventLog.level }}
+                  {{ eventItem.event.status }}
                 </span>
                 <span class="text-gray-600">
-                  {{ eventLog.timestamp }}
+                  {{ eventItem.event.relativeToNow() }}
                 </span>
                 <span class="text-gray-400">
-                  {{ eventLog.message }}
+                  {{ eventItem.event.name }}: {{ eventItem.event.message }}
                 </span>
               </div>
             </div>
-            <div class="ml-16 mr-10" v-if="isEventExpanded(eventLog.id)">
-              <div
-                v-if="eventLog.payload.siStorable.typeName == 'entity'"
-                class="flex-col"
-              >
-                <div class="flex flex-row w-full">
-                  <div class="flex justify-end w-1/12 mr-2 text-white">
-                    <div>
-                      name:
-                    </div>
+            <div class="ml-16 mr-10" v-if="isEventExpanded(eventItem.id)">
+              <div class="flex-row">
+                <div
+                  class="flex overflow-auto text-xs text-gray-700"
+                  v-for="eventLog in eventItem.logs"
+                  :key="eventLog.id"
+                >
+                  <div class="w-10 ml-2">{{ eventLog.level }}</div>
+                  <div class="ml-2">
+                    {{ eventLog.localTime() }}
                   </div>
-                  <div class="flex justify-start w-11/12">
-                    <div>
-                      {{ eventLog.payload.data.name }}
-                    </div>
-                  </div>
+                  <div class="ml-2">{{ eventLog.message }}</div>
                 </div>
-                <div class="flex flex-row w-full">
-                  <div class="flex justify-end w-1/12 mr-2 text-white">
-                    <div>
-                      type:
-                    </div>
-                  </div>
-                  <div class="flex justify-start w-11/12">
-                    <div>
-                      {{ eventLog.payload.data.siStorable.typeName }}
-                    </div>
-                  </div>
-                </div>
-                <div class="flex flex-row w-full">
-                  <div class="flex justify-end w-1/12 mr-2 text-white">
-                    event:
-                  </div>
-                  <div class="flex justify-start w-11/12">
-                    <div>
-                      {{ eventLog.name }}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div
-                v-else-if="eventLog.payload.kind == 'change_set'"
-                class="flex-col"
-              >
-                <div class="flex flex-row w-full">
-                  <div class="flex justify-end w-1/12 mr-2 text-white">
-                    <div>
-                      name:
-                    </div>
-                  </div>
-                  <div class="flex justify-start w-11/12">
-                    <div>
-                      {{ eventLog.payload.data.name }}
-                    </div>
-                  </div>
-                </div>
-                <div class="flex flex-row w-full">
-                  <div class="flex justify-end w-1/12 mr-2 text-white">
-                    <div>
-                      type:
-                    </div>
-                  </div>
-                  <div class="flex justify-start w-11/12">
-                    <div>
-                      {{ eventLog.payload.data.siStorable.typeName }}
-                    </div>
-                  </div>
-                </div>
-                <div class="flex flex-row w-full">
-                  <div class="flex justify-end w-1/12 mr-2 text-white">
-                    event:
-                  </div>
-                  <div class="flex justify-start w-11/12">
-                    <div>
-                      {{ eventLog.name }}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div
-                v-else-if="
-                  eventLog.payload.kind == 'change_set_entry' &&
-                    eventLog.payload.data.actionName
-                "
-                class="flex-col"
-              >
-                <div class="flex flex-row w-full">
-                  <div class="flex justify-end w-1/12 mr-2 text-white">
-                    <div>action:</div>
-                  </div>
-                  <div class="flex justify-start w-11/12">
-                    <div>
-                      {{ eventLog.payload.data.actionName }}
-                    </div>
-                  </div>
-                </div>
-                <div class="flex flex-row w-full">
-                  <div class="flex justify-end w-1/12 mr-2 text-white">
-                    <div>
-                      type:
-                    </div>
-                  </div>
-                  <div class="flex justify-start w-11/12">
-                    <div>
-                      {{ eventLog.payload.data.siStorable.typeName }}
-                    </div>
-                  </div>
-                </div>
-                <div class="flex flex-row w-full">
-                  <div class="flex justify-end w-1/12 mr-2 text-white">
-                    event:
-                  </div>
-                  <div class="flex justify-start w-11/12">
-                    <div>
-                      {{ eventLog.name }}
-                    </div>
-                  </div>
-                </div>
-                <div class="flex flex-row w-full">
-                  <div class="flex justify-end w-1/12 mr-2 text-white">
-                    entity name:
-                  </div>
-                  <div class="flex justify-start w-11/12">
-                    <div>
-                      {{ eventLog.payload.data.inputEntity.name }}
-                    </div>
-                  </div>
-                </div>
-                <div class="flex flex-row w-full">
-                  <div class="flex justify-end w-1/12 mr-2 text-white">
-                    entity type:
-                  </div>
-                  <div class="flex justify-start w-11/12">
-                    <div>
-                      {{
-                        eventLog.payload.data.inputEntity.siStorable.typeName
-                      }}
-                    </div>
-                  </div>
-                </div>
-                <div class="flex flex-row w-full">
-                  <div class="flex justify-end w-1/12 mr-2 text-white">
-                    success:
-                  </div>
-                  <div class="flex justify-start w-11/12">
-                    <div>
-                      {{ eventLog.payload.data.success }}
-                    </div>
-                  </div>
-                </div>
-                <div class="flex flex-row w-full">
-                  <div class="flex justify-end w-1/12 mr-2 text-white">
-                    stdout:
-                  </div>
-                  <div class="flex justify-start w-11/12">
-                    <div>
-                      <pre>{{
-                        eventLog.payload.data.outputLines.join("\n")
-                      }}</pre>
-                    </div>
-                  </div>
-                </div>
-                <div class="flex flex-row w-full">
-                  <div class="flex justify-end w-1/12 mr-2 text-white">
-                    stderr:
-                  </div>
-                  <div class="flex justify-start w-11/12">
-                    <div>
-                      <pre>{{
-                        eventLog.payload.data.errorLines.join("\n")
-                      }}</pre>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div
-                v-else-if="eventLog.payload.kind == 'change_set_entry'"
-                class="flex-col"
-              >
-                <div class="flex flex-row w-full">
-                  <div class="flex justify-end w-1/12 mr-2 text-white">
-                    <div>
-                      action:
-                    </div>
-                  </div>
-                  <div class="flex justify-start w-11/12">
-                    <div>
-                      edited
-                    </div>
-                  </div>
-                </div>
-                <div class="flex flex-row w-full">
-                  <div class="flex justify-end w-1/12 mr-2 text-white">
-                    <div>
-                      type:
-                    </div>
-                  </div>
-                  <div class="flex justify-start w-11/12">
-                    <div>
-                      {{ eventLog.payload.data.siStorable.typeName }}
-                    </div>
-                  </div>
-                </div>
-                <div class="flex flex-row w-full">
-                  <div class="flex justify-end w-1/12 mr-2 text-white">
-                    event:
-                  </div>
-                  <div class="flex justify-start w-11/12">
-                    <div>
-                      {{ eventLog.name }}
-                    </div>
-                  </div>
-                </div>
-                <div class="flex flex-row w-full">
-                  <div class="flex justify-end w-1/12 mr-2 text-white">
-                    entity name:
-                  </div>
-                  <div class="flex justify-start w-11/12">
-                    <div>
-                      {{ eventLog.payload.data.name }}
-                    </div>
-                  </div>
-                </div>
-                <div class="flex flex-row w-full">
-                  <div class="flex justify-end w-1/12 mr-2 text-white">
-                    entity type:
-                  </div>
-                  <div class="flex justify-start w-11/12">
-                    <div>
-                      {{ eventLog.payload.data.siStorable.typeName }}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div v-else>
-                <pre>
-                <code>
-{{ JSON.stringify(eventLog, null, 2) }}
-                </code>
-                </pre>
               </div>
             </div>
           </div>
@@ -291,17 +63,17 @@
     </div>
 
     <div v-else class="flex items-center w-full h-6 text-xs event-bar">
-      <div class="flex items-center" v-if="eventLogLatest">
+      <div class="flex items-center" v-if="eventLatest">
         <div class="ml-6 text-xs text-gray-100">event</div>
         <div class="ml-4 text-gray-400">
           <span class="text-gray-500">
-            {{ eventLogLatest.level }}
+            {{ eventLatest.event.status }}
           </span>
           <span class="text-gray-600">
-            {{ eventLogLatest.timestamp }}
+            {{ eventLatest.event.relativeToNow() }}
           </span>
           <span class="text-gray-400">
-            {{ eventLogLatest.message }}
+            {{ eventLatest.event.name }}: {{ eventLatest.event.message }}
           </span>
         </div>
       </div>
@@ -325,7 +97,7 @@ import {
 import { mapState, mapGetters } from "vuex";
 import { camelCase } from "change-case";
 import { RootStore } from "@/store";
-import { EventLog } from "@/api/sdf/model/eventLog";
+import { Event } from "@/api/sdf/model/event";
 
 interface Data {
   expanded: boolean;
@@ -370,16 +142,16 @@ export default Vue.extend({
     },
   },
   computed: {
-    eventLogLatest(): EventLog | undefined {
-      if (this.eventLogs.length > 0) {
-        return this.eventLogs[0];
+    eventLatest(): Event | undefined {
+      if (this.events.length > 0) {
+        return this.events[0];
       } else {
         return undefined;
       }
     },
     ...mapState({
-      eventLogs: (state: any): RootStore["editor"]["eventLogs"] => {
-        return state.editor.eventLogs;
+      events: (state: any): RootStore["editor"]["eventBar"] => {
+        return state.editor.eventBar;
       },
     }),
   },

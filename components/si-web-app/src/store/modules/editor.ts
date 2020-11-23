@@ -12,6 +12,8 @@ import {
   ChangeSetParticipant,
 } from "@/api/sdf/model/changeSet";
 import { EventLog } from "@/api/sdf/model/eventLog";
+import { Event } from "@/api/sdf/model/event";
+import { OutputLine } from "@/api/sdf/model/outputLine";
 import { EditSession } from "@/api/sdf/model/editSession";
 import { IOpRequest, OpEntitySet } from "@/api/sdf/model/ops";
 import { User } from "@/api/sdf/model/user";
@@ -89,6 +91,15 @@ export interface ConfiguresConnection {
   destinationNodeId: string;
 }
 
+export interface EventBarItem {
+  id: string;
+  event: Event;
+  logs: EventLog[];
+  output: {
+    [id: string]: OutputLine;
+  };
+}
+
 export interface EditorStore {
   mode: "view" | "edit";
   context: string;
@@ -115,7 +126,7 @@ export interface EditorStore {
   secretName: string | undefined;
   editObject: Entity | undefined;
   diff: DiffResult;
-  eventLogs: EventLog[];
+  eventBar: EventBarItem[];
   resources: Resource[];
   currentResource: Resource | undefined;
 }
@@ -151,7 +162,7 @@ export const editor: Module<EditorStore, RootStore> = {
       entries: [],
       count: 0,
     },
-    eventLogs: [],
+    eventBar: [],
     resources: [],
     currentResource: undefined,
   },
@@ -168,14 +179,25 @@ export const editor: Module<EditorStore, RootStore> = {
     context(state, payload: string) {
       state.context = payload;
     },
-    updateEventLogs(state, payload: EventLog) {
-      state.eventLogs = _.take(
+    updateEventBar(state, { event, logs }: { event: Event; logs: EventLog[] }) {
+      state.eventBar = _.take(
         _.orderBy(
-          _.unionBy([payload], state.eventLogs, "id"),
-          ["unixTimestamp"],
+          _.unionBy(
+            [
+              {
+                id: event.id,
+                event,
+                logs: _.orderBy(logs, ["unixTimestamp", "asc"]),
+                output: {},
+              },
+            ],
+            state.eventBar,
+            "id",
+          ),
+          ["event.startUnixTimestamp"],
           ["desc"],
         ),
-        40,
+        60,
       );
     },
     updateObjects(state, payload: NodeObject) {
@@ -327,7 +349,7 @@ export const editor: Module<EditorStore, RootStore> = {
         entries: [],
         count: 0,
       };
-      state.eventLogs = [];
+      state.eventBar = [];
       state.resources = [];
       state.currentResource = undefined;
       SET_POSITION_FUNCTIONS = {};
@@ -1036,9 +1058,14 @@ export const editor: Module<EditorStore, RootStore> = {
         }
       }
     },
+    async fromEvent({ commit }, payload: Event) {
+      await payload.loadOwner();
+      const eventLogs = await EventLog.listForEvent(payload.id);
+      commit("updateEventBar", { event: payload, logs: eventLogs });
+    },
     fromEventLog({ commit }, payload: EventLog) {
       // TODO: We should only show relevant event logs!
-      commit("updateEventLogs", payload);
+      //commit("updateEventLogs", payload);
     },
     fromResource({ commit, state, getters }, payload: Resource) {
       let nodeList = getters["nodeList"];

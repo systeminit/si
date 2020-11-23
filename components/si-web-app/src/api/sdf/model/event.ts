@@ -114,6 +114,7 @@ export class Event implements IEvent {
 
   async dispatch(): Promise<void> {
     await store.dispatch("event/fromEvent", this, { root: true });
+    await store.dispatch("editor/fromEvent", this, { root: true });
   }
 
   static async restore(): Promise<void> {
