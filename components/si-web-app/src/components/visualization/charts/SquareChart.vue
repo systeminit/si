@@ -30,7 +30,7 @@
               Status
             </div>
             <div :style="statusTooltip">
-              {{ resource ? resource.status : 'unknown' }}
+              {{ resource ? resource.status : "unknown" }}
             </div>
           </div>
           <div class="flex">
@@ -38,7 +38,7 @@
               Health
             </div>
             <div :style="healthTooltip">
-              {{ resource ? resource.health : 'unknown' }}
+              {{ resource ? resource.health : "unknown" }}
             </div>
           </div>
           <div class="flex">
@@ -46,7 +46,7 @@
               Time
             </div>
             <div>
-              {{ resource ? resource.timestamp : 'unknown' }}
+              {{ resource ? resource.timestamp : "unknown" }}
             </div>
           </div>
         </div>
