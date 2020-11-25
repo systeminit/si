@@ -63,4 +63,3 @@ export default Vue.extend({
   background-color: #25788a;
 }
 </style>
-
