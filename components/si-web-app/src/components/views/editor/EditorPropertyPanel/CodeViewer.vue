@@ -68,7 +68,7 @@ export default Vue.extend({
         if (!existingModel) {
           const newModel = monaco.editor.createModel(
             this.fieldValue,
-            "yaml",
+            this.codeProperty.language ? this.codeProperty.language : "yaml",
             this.selectedNode.id,
           );
           this.editor.setModel(newModel);
@@ -86,14 +86,16 @@ export default Vue.extend({
       let editor = monaco.editor.create(mountPoint, {
         theme: "vs-dark",
         automaticLayout: true,
-        language: "yaml",
+        language: this.codeProperty.language
+          ? this.codeProperty.language
+          : "yaml",
         scrollBeyondLastLine: false,
         minimap: {
           enabled: false,
         },
       });
       const vx = this;
-      editor.onDidBlurEditorText(function() {
+      editor.onDidBlurEditorText(function () {
         const model = editor.getModel();
         if (model) {
           let value = model.getValue();

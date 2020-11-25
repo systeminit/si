@@ -1,5 +1,6 @@
 import { Prop, PropDefaultValues, PropConstructor } from "./prop";
 import { PropText } from "./prop/text";
+import { PropTextArea } from "./prop/textArea";
 import { PropCode } from "./prop/code";
 import { PropSelect } from "./prop/select";
 import { PropNumber } from "./prop/number";
@@ -13,6 +14,7 @@ import { pascalCase } from "change-case";
 
 export type Props =
   | PropText
+  | PropTextArea
   | PropPassword
   | PropSelect
   | PropCode
@@ -138,6 +140,12 @@ export class AttrList {
   addText(addArgs: AddArguments): void {
     addArgs.componentTypeName = this.componentTypeName;
     const p = new PropText(addArgs as PropConstructor);
+    this.addProp(p, addArgs);
+  }
+
+  addTextArea(addArgs: AddArguments): void {
+    addArgs.componentTypeName = this.componentTypeName;
+    const p = new PropTextArea(addArgs as PropConstructor);
     this.addProp(p, addArgs);
   }
 
