@@ -2,9 +2,7 @@ use couchbase::options::{QueryOptions, ScanConsistency};
 use couchbase::{Cluster, CouchbaseError};
 use futures::executor::block_on;
 use futures::stream::StreamExt;
-use serde_json::{json, Value};
-
-use std::collections::HashMap;
+use serde_json::Value;
 
 fn main() -> Result<(), CouchbaseError> {
     env_logger::init();
@@ -19,17 +17,19 @@ fn main() -> Result<(), CouchbaseError> {
                 "select name, type from `travel-sample` where name = 'Texas Wings'",
                 Some(query_options),
             )
-            .await.expect("Had some data");
+            .await
+            .expect("Had some data");
 
         println!(
             "Rows:\n{:?}",
             request_plus_result
-                .rows_as().expect("rows consumed")
-                .collect::<Vec<Result<Value, CouchbaseError>>>().await
+                .rows_as()
+                .expect("rows consumed")
+                .collect::<Vec<Result<Value, CouchbaseError>>>()
+                .await
         );
         cluster.disconnect().expect("Could not shutdown properly");
     };
     block_on(f);
     Ok(())
 }
-

@@ -33,7 +33,7 @@ main() {
 }
 
 created() {
-  [ -n "$(docker container ls --filter "name=$1" --all --quiet)" ]
+  [ -n "$(docker container ls --filter "name=^$1" --all --quiet)" ]
 }
 
 image_built() {
@@ -42,7 +42,7 @@ image_built() {
 
 is_running() {
   [ -n "$(
-    docker container ls --filter "name=$1" --filter "status=running" --quiet
+    docker container ls --filter "name=^$1" --filter "status=running" --quiet
   )" ]
 }
 

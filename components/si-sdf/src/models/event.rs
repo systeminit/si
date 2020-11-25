@@ -9,6 +9,8 @@ use crate::models::{
     EventLogLevel, ModelError, Node, SiStorable, SiStorableError,
 };
 
+use super::get_model;
+
 #[derive(Error, Debug)]
 pub enum EventError {
     #[error("si_storable error: {0}")]
@@ -21,16 +23,17 @@ pub enum EventError {
 
 pub type EventResult<T> = Result<T, EventError>;
 
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum EventKind {
     ChangeSetExecute,
     EntityAction,
     NodeEntityCreate,
     ResourceSync,
+    CliChangeRun,
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum EventStatus {
     Unknown,
@@ -39,7 +42,7 @@ pub enum EventStatus {
     Error,
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Event {
     pub id: String,
@@ -256,6 +259,42 @@ impl Event {
         .await
     }
 
+    pub async fn cli_change_run(
+        db: &Db,
+        nats: &Connection,
+        entity: &Entity,
+        action: &str,
+        system_id: &str,
+        event_parent_id: Option<String>,
+    ) -> EventResult<Event> {
+        let message = format!("CLI {} {}[{}]", action, entity.object_type, entity.name);
+        let payload = serde_json::json!({
+            "objectType": entity.object_type,
+            "name": entity.name,
+            "systemId": system_id,
+        });
+        let kind = EventKind::CliChangeRun;
+        let context = vec![
+            entity.si_storable.billing_account_id.clone(),
+            entity.si_storable.workspace_id.clone(),
+            entity.si_storable.organization_id.clone(),
+            entity.id.clone(),
+            entity.node_id.clone(),
+            String::from(system_id),
+        ];
+        Event::from_si_storable(
+            &db,
+            &nats,
+            message,
+            payload,
+            kind,
+            Some(context),
+            event_parent_id,
+            &entity.si_storable,
+        )
+        .await
+    }
+
     pub async fn running(&mut self, db: &Db, nats: &Connection) -> EventResult<()> {
         self.status = EventStatus::Running;
         upsert_model(&db, &nats, &self.id, &self).await?;
@@ -304,5 +343,37 @@ impl Event {
         )
         .await?;
         Ok(log)
+    }
+
+    pub async fn has_parent(&self, db: &Db, parent_id: impl AsRef<str>) -> EventResult<bool> {
+        let parent_id = parent_id.as_ref();
+        let mut stack = vec![self.clone()];
+
+        while let Some(event) = stack.pop() {
+            match event.parent_id.as_ref() {
+                Some(my_parent_id) => {
+                    if my_parent_id == parent_id {
+                        return Ok(true);
+                    } else {
+                        let parent: Event = get_model(
+                            db,
+                            my_parent_id,
+                            event.si_storable.billing_account_id.clone(),
+                        )
+                        .await?;
+                        stack.push(parent);
+                    }
+                }
+                None => {
+                    return Ok(false);
+                }
+            }
+        }
+        Ok(false)
+    }
+
+    pub async fn save(&self, db: &Db, nats: &Connection) -> EventResult<()> {
+        upsert_model(db, nats, &self.id, self).await?;
+        Ok(())
     }
 }

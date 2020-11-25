@@ -16,6 +16,7 @@ use crate::models::{
 
 pub mod billing_accounts;
 pub mod change_sets;
+pub mod cli;
 pub mod clients;
 pub mod edges;
 pub mod edit_sessions;

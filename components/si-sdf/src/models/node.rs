@@ -1,17 +1,14 @@
 use chrono::Utc;
-use futures::{FutureExt, SinkExt, StreamExt};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use thiserror::Error;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio_tungstenite::tungstenite;
 use tracing::{error, trace, warn};
 
-use crate::data::{Connection, Db, REQWEST};
+use crate::data::{Connection, Db};
 use crate::models::{
     get_model, insert_model, upsert_model, Edge, EdgeError, EdgeKind, Entity, EntityError, Event,
-    EventError, EventLog, EventLogError, EventLogLevel, ModelError, OpReply, OpRequest, Resource,
-    ResourceError, ResourceHealth, ResourceStatus, SiChangeSetError, SiStorable, SiStorableError,
-    System, SystemError, Vertex,
+    EventError, EventLogError, ModelError, OpReply, OpRequest, Resource, ResourceError,
+    ResourceHealth, ResourceStatus, SiChangeSetError, SiStorable, SiStorableError, System,
+    SystemError, Vertex,
 };
 use crate::veritech::Veritech;
 
@@ -292,7 +289,7 @@ impl Node {
                     system_ids.clone(),
                 )
                 .await?;
-                let event = Event::node_entity_create(&db, &nats, &node, &entity, None).await?;
+                let _event = Event::node_entity_create(&db, &nats, &node, &entity, None).await?;
                 for system_id in system_ids.iter() {
                     node.sync_resource(&db, &nats, system_id, Some(change_set_id.clone()))
                         .await?;

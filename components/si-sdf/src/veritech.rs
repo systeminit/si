@@ -1,16 +1,13 @@
-use futures::{FutureExt, SinkExt, StreamExt};
+use futures::{FutureExt, StreamExt};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use thiserror::Error;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio_tungstenite::tungstenite;
 use tracing::{error, trace, warn};
 
 use std::collections::HashMap;
 
 use crate::data::{Connection, Db};
-use crate::models::{
-    Entity, Event, EventError, EventKind, EventLog, EventLogError, EventLogLevel, OutputLineStream,
-};
+use crate::models::{Event, EventError, EventLog, EventLogError, EventLogLevel, OutputLineStream};
 
 #[derive(Error, Debug)]
 pub enum VeritechError {
