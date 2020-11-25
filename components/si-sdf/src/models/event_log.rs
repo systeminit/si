@@ -43,6 +43,7 @@ pub struct EventLog {
     pub payload: serde_json::Value,
     pub level: EventLogLevel,
     pub event_id: String,
+    pub has_output_line: bool,
 }
 
 impl EventLog {
@@ -74,6 +75,8 @@ impl EventLog {
         let unix_timestamp = current_time.timestamp_millis();
         let timestamp = format!("{}", current_time);
 
+        let has_output_line = false;
+
         let event_log = EventLog {
             id,
             message,
@@ -83,6 +86,7 @@ impl EventLog {
             payload,
             event_id,
             si_storable,
+            has_output_line,
         };
         insert_model(db, nats, &event_log.id, &event_log).await?;
 
@@ -90,12 +94,18 @@ impl EventLog {
     }
 
     pub async fn output_line(
-        &self,
+        &mut self,
         db: &Db,
         nats: &Connection,
         stream: OutputLineStream,
         line: impl Into<String>,
     ) -> EventLogResult<OutputLine> {
+
+        if !self.has_output_line {
+            self.has_output_line = true;
+            self.save(db, nats).await?;
+        }
+
         let output_line = OutputLine::new(
             db,
             nats,

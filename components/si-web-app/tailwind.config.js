@@ -15,6 +15,7 @@ module.exports = {
       spacing: theme.spacing,
       colors: theme.colors,
       margin: theme.margin,
+      maxHeight: theme.maxHeight,
     },
   },
   variants: {
