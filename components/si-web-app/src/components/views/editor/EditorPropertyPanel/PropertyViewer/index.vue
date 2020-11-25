@@ -2,7 +2,7 @@
   <div class="relative w-full h-full">
     <div class="w-full h-full" v-if="selectedNode">
       <div
-        class="flex pt-2 pb-2 pl-6 text-base text-white align-middle property-section-bg-color"
+        class="flex pt-2 pb-2 pl-6 pr-6 text-base text-white align-middle property-section-bg-color"
       >
         <div class="self-center w-3/4 text-lg ">
           {{ typeName }}
@@ -15,6 +15,24 @@
             <EditIcon size="1x" class="inline mr-1 gold-bars-icon" />
             Edit Count: {{ diff.count }}
           </div>
+
+          <Tooltip alightRight :offset="tooltipOffset">
+            <info-icon size="1x" class="inline mr-1" />
+            <template v-slot:tooltip>
+              <div class="flex flex-col text-sm text-gray-400">
+                <div class="flex">
+                  <div v-if="selectedNode" class="pl-2">
+                    {{ selectedNode.id }}
+                  </div>
+                </div>
+                <div class="flex">
+                  <div v-if="editObject" class="pl-2">
+                    {{ editObject.id }}
+                  </div>
+                </div>
+              </div>
+            </template>
+          </Tooltip>
         </div>
       </div>
       <div class="text-red-700" v-if="selectedNode.deleted">
@@ -232,7 +250,7 @@
           </div>
         </div>
 
-        <div class="section-resources pb-24">
+        <div class="pb-24 section-resources">
           <div
             class="pt-1 pb-1 pl-6 mt-2 text-base text-white align-middle property-section-bg-color"
           >
@@ -275,21 +293,28 @@ import { Secret } from "@/api/sdf/model/secret";
 //import { RegistryProperty } from "../../../../store/modules/node";
 
 import { capitalCase } from "change-case";
-import { EditIcon, PlusSquareIcon, MinusSquareIcon } from "vue-feather-icons";
+import {
+  EditIcon,
+  InfoIcon,
+  PlusSquareIcon,
+  MinusSquareIcon,
+} from "vue-feather-icons";
 import _ from "lodash";
 import VueJsonPretty from "vue-json-pretty";
 import "vue-json-pretty/lib/styles.css";
 import Button2 from "@/components/ui/Button2.vue";
+import Tooltip from "@/components/ui/Tooltip.vue";
 
 interface Data {
   collapsedPaths: (string | number)[][];
   nodeObjectName: string;
   newConfigures: string | null;
   secretId: string | undefined;
+  tooltipOffset: number;
 }
 
 export default Vue.extend({
-  name: "PropertyList",
+  name: "PropertyViewer",
   components: {
     PropText,
     PropObject,
@@ -300,11 +325,13 @@ export default Vue.extend({
     PropBool,
     PropSelect,
     EditIcon,
+    InfoIcon,
     PlusSquareIcon,
     MinusSquareIcon,
     SiSelect,
     VueJsonPretty,
     Button2,
+    Tooltip,
   },
   props: {
     selectedNode: {
@@ -317,6 +344,7 @@ export default Vue.extend({
       nodeObjectName: "",
       newConfigures: null,
       secretId: undefined,
+      tooltipOffset: 7, //align the node info tooltip
     };
   },
   methods: {
