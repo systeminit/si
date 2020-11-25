@@ -10,7 +10,12 @@ import {
 } from "../../veritech/intelligence";
 import { Event } from "../../veritech/eventLog";
 import { siExec } from "../siExec";
-import { awsCredential, AwsCliEnv, awsKubeConfig } from "./awsShared";
+import {
+  AwsCliEnv,
+  awsCredential,
+  awsKubeConfig,
+  awsRegion,
+} from "./awsShared";
 import _ from "lodash";
 
 const intelligence = (registry.get("awsEks") as EntityObject).intelligence;
@@ -43,12 +48,22 @@ intelligence.syncResource = async function(
   if (awsCredResult.syncResourceReply) {
     return awsCredResult.syncResourceReply;
   }
-
   let awsEnv: AwsCliEnv;
   if (awsCredResult.awsCliEnv) {
     awsEnv = awsCredResult.awsCliEnv as AwsCliEnv;
   } else {
     throw new Error("aws cli function didn't return an environment");
+  }
+
+  let region: string;
+  const awsRegionResult = awsRegion(request);
+  if (awsRegionResult.syncResourceReply) {
+    return awsRegionResult.syncResourceReply;
+  }
+  if (awsRegionResult.region) {
+    region = awsRegionResult.region;
+  } else {
+    throw new Error("aws node didn't have a region set");
   }
 
   const awsCmd = await siExec(
@@ -58,7 +73,7 @@ intelligence.syncResource = async function(
       "eks",
       "describe-cluster",
       "--region",
-      request.entity.properties.__baseline.region,
+      region,
       "--name",
       request.entity.properties.__baseline.clusterName,
     ],

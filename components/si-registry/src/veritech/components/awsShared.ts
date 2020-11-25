@@ -6,6 +6,7 @@ import {
 } from "../intelligence";
 import { Event } from "../../veritech/eventLog";
 import { siExec } from "../siExec";
+import { failSyncResourceReply } from "../syncResource";
 import _ from "lodash";
 import { promises as fs } from "fs";
 import os from "os";
@@ -25,12 +26,33 @@ interface AwsInputRequest {
   }[];
   resource: {
     state?: any;
+    health: ResourceHealth;
+    status: ResourceStatus;
   };
+}
+
+export interface AwsRegionResult {
+  syncResourceReply?: SyncResourceReply;
+  region?: string;
 }
 
 export interface AwsCredentialResult {
   syncResourceReply?: SyncResourceReply;
   awsCliEnv?: AwsCliEnv;
+}
+
+export function awsRegion(request: AwsInputRequest): AwsRegionResult {
+  const aws = _.find(request.predecessors, ["entity.objectType", "aws"]);
+
+  if (!aws) {
+    return {
+      syncResourceReply: failSyncResourceReply(request, {
+        errorMsg: "No aws attached!",
+      }),
+    };
+  }
+
+  return { region: aws.entity.properties.__baseline.region };
 }
 
 export function awsCredential(request: AwsInputRequest): AwsCredentialResult {
@@ -40,17 +62,11 @@ export function awsCredential(request: AwsInputRequest): AwsCredentialResult {
   ]);
 
   if (!awsAccessKeyCredential) {
-    const reply: SyncResourceReply = {
-      resource: {
-        state: {
-          data: request.resource.state?.data,
-          errorMsg: "No awsAccessKeyCredential attached!",
-        },
-        health: ResourceHealth.Error,
-        status: ResourceStatus.Failed,
-      },
+    return {
+      syncResourceReply: failSyncResourceReply(request, {
+        errorMsg: "No awsAccessKeyCredential attached!",
+      }),
     };
-    return { syncResourceReply: reply };
   }
 
   const awsCliEnv = {
@@ -78,9 +94,18 @@ export async function awsKubeConfig(
   const kubeconfigPath = path.join(tempdir, "config");
 
   let region: string;
+  const awsRegionResult = awsRegion(request);
+  if (awsRegionResult.syncResourceReply) {
+    return { syncResourceReply: awsRegionResult.syncResourceReply };
+  }
+  if (awsRegionResult.region) {
+    region = awsRegionResult.region;
+  } else {
+    throw new Error("aws node didn't have a region set");
+  }
+
   let clusterName: string;
   if (request.entity.objectType == "awsEks") {
-    region = request.entity.properties.__baseline.region;
     clusterName = request.entity.properties.__baseline.clusterName;
   } else {
     const awsEksPred = _.find(request.predecessors, [
@@ -88,21 +113,16 @@ export async function awsKubeConfig(
       "awsEks",
     ]);
     if (awsEksPred) {
-      region = awsEksPred.entity.properties.__baseline.region;
       clusterName = awsEksPred.entity.properties.__baseline.clusterName;
     } else {
-      const reply: SyncResourceReply = {
-        resource: {
-          state: {
-            data: request.resource.state?.data,
-            errorMsg: "aws eks update-kubeconfig failed",
-            errorOutput: "no awsEks entity attached!",
-          },
+      return {
+        syncResourceReply: failSyncResourceReply(request, {
+          errorMsg: "aws eks update-kubeconfig failed",
+          errorOutput: "no awsEks entity attached!",
           health: ResourceHealth.Error,
           status: ResourceStatus.Failed,
-        },
+        }),
       };
-      return { syncResourceReply: reply };
     }
   }
 
@@ -126,18 +146,14 @@ export async function awsKubeConfig(
   );
 
   if (awsKubeConfigCmd.failed) {
-    const reply: SyncResourceReply = {
-      resource: {
-        state: {
-          data: request.resource.state?.data,
-          errorMsg: "aws eks update-kubeconfig failed",
-          errorOutput: awsKubeConfigCmd.stderr,
-        },
+    return {
+      syncResourceReply: failSyncResourceReply(request, {
+        errorMsg: "aws eks update-kubeconfig failed",
+        errorOutput: awsKubeConfigCmd.stderr,
         health: ResourceHealth.Error,
         status: ResourceStatus.Failed,
-      },
+      }),
     };
-    return { syncResourceReply: reply };
   }
 
   return { kubeconfig: kubeconfigPath };
