@@ -156,6 +156,10 @@
                     <PropText :entityProperty="entityProperty" class="py-1" />
                   </div>
 
+                  <div v-else-if="propKind(entityProperty, 'textArea')">
+                    <PropTextArea :entityProperty="entityProperty" class="py-1" />
+                  </div>
+
                   <div v-else-if="propKind(entityProperty, 'code')">
                     <!-- for now, do nothing! -->
                   </div>
@@ -280,6 +284,7 @@ import Vue, { PropType } from "vue";
 import { mapState, mapGetters } from "vuex";
 
 import PropText from "./PropText.vue";
+import PropTextArea from "./PropTextArea.vue";
 import PropObject from "./PropObject.vue";
 import PropNumber from "./PropNumber.vue";
 import PropEnum from "./PropEnum.vue";
@@ -317,6 +322,7 @@ export default Vue.extend({
   name: "PropertyViewer",
   components: {
     PropText,
+    PropTextArea,
     PropObject,
     PropNumber,
     PropEnum,
