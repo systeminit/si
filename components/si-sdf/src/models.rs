@@ -69,6 +69,8 @@ pub mod secret;
 pub use secret::{
     Secret, SecretAlgorithm, SecretError, SecretKind, SecretObjectType, SecretVersion,
 };
+pub mod client;
+pub use client::{Client, ClientError, ClientKind, ClientObjectType, ClientVersion,};
 
 #[derive(Error, Debug)]
 pub enum ModelError {

@@ -159,6 +159,30 @@
         </router-link>
       </div>
 
+      <!-- Clients Link -->
+      <div class="container-link">
+        <router-link
+          class="w-9/12"
+          data-cy="client-nav-link"
+          :to="{
+            name: 'client',
+            params: {
+              organizationId: organization.id,
+              workspaceId: workspace.id,
+            },
+          }"
+        >
+          <div class="flex items-center justify-start cursor-pointer">
+            <file-icon size="1.1x" class="mr-3" />
+            <div
+              class="text-sm subpixel-antialiased font-normal tracking-tight font-source-code-pro"
+            >
+              Clients
+            </div>
+          </div>
+        </router-link>
+      </div>
+
       <div class="flex flex-col justify-end flex-grow">
         <!-- Settings Link -->
         <div class="container-link">

@@ -17,6 +17,7 @@ import { IPublicKey } from "@/api/sdf/model/keyPair";
 import { ISecret } from "@/api/sdf/model/secret";
 import { IEvent } from "@/api/sdf/model/event";
 import { IOutputLine } from "@/api/sdf/model/outputLine";
+import { IClient } from "@/api/sdf/model/client";
 
 class SiDatabase extends Dexie {
   // Declare implicit table properties.
@@ -41,6 +42,7 @@ class SiDatabase extends Dexie {
   secrets: Dexie.Table<ISecret, string>;
   events: Dexie.Table<IEvent, string>;
   outputLines: Dexie.Table<IOutputLine, string>;
+  clients: Dexie.Table<IClient, string>;
 
   constructor() {
     super("SiDatabase");
@@ -69,6 +71,7 @@ class SiDatabase extends Dexie {
       secrets: "id, name, [objectType+kind]",
       events: "id, *context",
       outputLines: "id, eventLogId",
+      clients: "id, name, [objectType+kind]",
     });
 
     // The following line is needed if your typescript
@@ -93,6 +96,7 @@ class SiDatabase extends Dexie {
     this.secrets = this.table("secrets");
     this.events = this.table("events");
     this.outputLines = this.table("outputLines");
+    this.clients = this.table("clients");
   }
 }
 
