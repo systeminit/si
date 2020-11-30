@@ -5,9 +5,11 @@ use thiserror::Error;
 
 use crate::data::{Connection, Db};
 use crate::models::{
-    insert_model, upsert_model, ModelError, OutputLine, OutputLineError, OutputLineStream,
-    SiStorable, SiStorableError,
+    insert_model, upsert_model, Event, EventResult, ModelError, OutputLine, OutputLineError,
+    OutputLineStream, SiStorable, SiStorableError,
 };
+
+use super::get_model;
 
 #[derive(Error, Debug)]
 pub enum EventLogError {
@@ -87,6 +89,16 @@ impl EventLog {
         insert_model(db, nats, &event_log.id, &event_log).await?;
 
         Ok(event_log)
+    }
+
+    pub async fn has_parent(&self, db: &Db, parent_id: impl AsRef<str>) -> EventResult<bool> {
+        let parent_id = parent_id.as_ref();
+        if self.event_id == parent_id {
+            return Ok(true);
+        }
+        let event: Event =
+            get_model(db, &self.event_id, &self.si_storable.billing_account_id).await?;
+        event.has_parent(&db, parent_id).await
     }
 
     pub async fn output_line(

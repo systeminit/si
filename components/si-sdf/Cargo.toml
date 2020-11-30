@@ -10,6 +10,10 @@ name = "si-sdf-server"
 path = "src/bin/server.rs"
 
 [[bin]]
+name = "si"
+path = "src/cli/bin/si.rs"
+
+[[bin]]
 name = "si-sdf-keygen"
 path = "src/bin/keygen.rs"
 

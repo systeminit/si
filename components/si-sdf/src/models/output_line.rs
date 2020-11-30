@@ -1,10 +1,12 @@
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use serde_json;
 use thiserror::Error;
 
 use crate::data::{Connection, Db};
-use crate::models::{insert_model, upsert_model, ModelError, SiStorable, SiStorableError};
+use crate::models::{
+    get_model, insert_model, upsert_model, Event, EventResult, ModelError, SiStorable,
+    SiStorableError,
+};
 
 #[derive(Error, Debug)]
 pub enum OutputLineError {
@@ -79,6 +81,16 @@ impl OutputLine {
         insert_model(db, nats, &output_line.id, &output_line).await?;
 
         Ok(output_line)
+    }
+
+    pub async fn has_parent(&self, db: &Db, parent_id: impl AsRef<str>) -> EventResult<bool> {
+        let parent_id = parent_id.as_ref();
+        if self.event_id == parent_id {
+            return Ok(true);
+        }
+        let event: Event =
+            get_model(db, &self.event_id, &self.si_storable.billing_account_id).await?;
+        event.has_parent(&db, parent_id).await
     }
 
     pub async fn save(&self, db: &Db, nats: &Connection) -> OutputLineResult<()> {

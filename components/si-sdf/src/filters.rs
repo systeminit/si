@@ -28,6 +28,18 @@ pub fn api(
         .or(event_logs(db, nats))
         .or(output_lines(db, nats))
         .or(clients(db, nats))
+        .or(cli(db, nats))
+        .boxed()
+}
+
+// The Web Socket CLI API
+pub fn cli(db: &Db, nats: &Connection) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("cli")
+        .and(warp::ws())
+        .and(with_db(db.clone()))
+        .and(with_nats(nats.clone()))
+        .and(warp::query::<models::update::WebsocketToken>())
+        .and_then(handlers::cli::cli)
         .boxed()
 }
 
