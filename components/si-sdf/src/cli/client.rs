@@ -1,12 +1,13 @@
 use futures::{FutureExt, StreamExt};
 use serde_json;
+use std::convert::TryInto;
 use thiserror::Error;
 use tokio_tungstenite::tungstenite;
 use tracing::{trace, warn};
+use url::Url;
 
-pub use crate::cli::formatter;
-pub use crate::cli::formatter::DebugFormatter;
-pub use crate::cli::server::{ChangeRun, CliMessage, Command};
+pub use crate::cli::formatter::{self, DebugFormatter, SimpleFormatter};
+pub use crate::cli::server::{CliMessage, ClientCommand, NodeChangeRun};
 
 #[derive(Error, Debug)]
 pub enum ClientError {
@@ -28,23 +29,28 @@ pub enum ClientError {
             >,
         >,
     ),
+    #[error("error parsing host url")]
+    UrlParse,
 }
 
 pub type ClientResult<T> = Result<T, ClientError>;
 
-pub struct Client<F: formatter::Formatter> {
-    url: String,
-    formatter: F,
+pub struct Client {
+    url: Url,
+    formatter: Box<dyn formatter::Formatter>,
 }
 
-impl<F: formatter::Formatter> Client<F> {
-    pub fn new(url: impl Into<String>, formatter: F) -> Client<F> {
-        let url = url.into();
+impl Client {
+    pub fn new(
+        url: impl TryInto<Url>,
+        formatter: Box<dyn formatter::Formatter>,
+    ) -> ClientResult<Self> {
+        let url = url.try_into().map_err(|_| ClientError::UrlParse)?;
 
-        Client { url, formatter }
+        Ok(Client { url, formatter })
     }
 
-    pub async fn command(&mut self, command: Command) -> ClientResult<()> {
+    pub async fn command(&mut self, client_command: ClientCommand) -> ClientResult<()> {
         let (ws_stream, _) = tokio_tungstenite::connect_async(&self.url)
             .await
             .expect("cannot connect to websocket");
@@ -66,7 +72,7 @@ impl<F: formatter::Formatter> Client<F> {
             }
         }));
 
-        let req = serde_json::to_string(&command).expect("failed making request json");
+        let req = serde_json::to_string(&client_command).expect("failed making request json");
 
         ws_tx.send(Ok(tungstenite::protocol::Message::text(req)))?;
 
