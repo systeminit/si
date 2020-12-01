@@ -23,7 +23,7 @@ interface Data {
 export default Vue.extend({
   name: "Tooltip",
   props: {
-    alightRight: {
+    alignRight: {
       type: Boolean,
       required: false,
     },
@@ -55,7 +55,7 @@ export default Vue.extend({
     },
   },
   mounted() {
-    if (this.alightRight) {
+    if (this.alignRight) {
       this.positionAlignRight();
     }
   },
