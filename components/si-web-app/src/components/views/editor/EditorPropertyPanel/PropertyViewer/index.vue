@@ -16,7 +16,7 @@
             Edit Count: {{ diff.count }}
           </div>
 
-          <Tooltip alightRight :offset="tooltipOffset">
+          <Tooltip alightRight :offset="tooltipOffset" sticky>
             <info-icon size="1x" class="inline mr-1" />
             <template v-slot:tooltip>
               <div class="flex flex-col text-sm text-gray-400">
@@ -157,7 +157,10 @@
                   </div>
 
                   <div v-else-if="propKind(entityProperty, 'textArea')">
-                    <PropTextArea :entityProperty="entityProperty" class="py-1" />
+                    <PropTextArea
+                      :entityProperty="entityProperty"
+                      class="py-1"
+                    />
                   </div>
 
                   <div v-else-if="propKind(entityProperty, 'code')">
