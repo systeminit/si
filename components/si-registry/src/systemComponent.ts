@@ -34,7 +34,6 @@ export interface BaseObjectConstructor {
   displayTypeName: BaseObject["displayTypeName"];
   serviceName: string;
   siPathName?: string;
-  metadata?: object;
   options?(c: BaseObject): void;
 }
 
@@ -42,11 +41,16 @@ export interface AddMethodConstructor {
   isPrivate?: PropMethod["isPrivate"];
 }
 
+export interface iEntity {
+  uiVisible: boolean
+  uiMenuCategory?: string
+  uiMenuDisplayName?: string
+}
+
 export class BaseObject {
   typeName: string;
   displayTypeName: string;
   siPathName: string;
-  metadata: object;
   serviceName: string;
   mvcc: boolean;
 
@@ -59,12 +63,10 @@ export class BaseObject {
     displayTypeName,
     serviceName,
     siPathName = "",
-    metadata = {},
   }: BaseObjectConstructor) {
     this.typeName = camelCase(typeName);
     this.displayTypeName = displayTypeName;
     this.siPathName = siPathName;
-    this.metadata = metadata;
     this.serviceName = serviceName || typeName;
     this.rootProp = new PropObject({
       name: typeName,
@@ -366,7 +368,6 @@ export class ComponentObject extends SystemObject {
       typeName,
       displayTypeName,
       serviceName: args.serviceName,
-      metadata: args.metadata
     });
     this.baseTypeName = args.typeName;
     this.setComponentDefaults();
@@ -563,6 +564,7 @@ export class EntityObject extends SystemObject {
   inputTypes: EntityObject[];
   secretObjectType: string | undefined;
   secretKind: string | undefined;
+  iEntity: iEntity | undefined;
 
   constructor(args: BaseObjectConstructor) {
     const typeName = `${args.typeName}`;
@@ -571,7 +573,6 @@ export class EntityObject extends SystemObject {
       typeName,
       displayTypeName,
       serviceName: args.serviceName,
-      metadata: args.metadata,
     });
     this.baseTypeName = args.typeName;
     this.integrationServices = [];
@@ -1085,7 +1086,6 @@ export class EntityEventObject extends SystemObject {
       typeName,
       displayTypeName,
       serviceName: args.serviceName,
-      metadata: args.metadata,
     });
     this.baseTypeName = args.typeName;
     this.setEntityEventDefaults();
@@ -1233,7 +1233,7 @@ export interface ComponentAndEntityObjectConstructor {
   displayTypeName: BaseObject["displayTypeName"];
   siPathName?: string;
   serviceName: string;
-  metadata?: object;
+  iEntity?: iEntity;
   options?(c: ComponentAndEntityObject): void;
 }
 
@@ -1248,21 +1248,20 @@ export class ComponentAndEntityObject {
       displayTypeName: args.displayTypeName,
       siPathName: args.siPathName,
       serviceName: args.serviceName,
-      metadata: args.metadata,
     });
     this.entity = new EntityObject({
       typeName: args.typeName,
       displayTypeName: args.displayTypeName,
       siPathName: args.siPathName,
       serviceName: args.serviceName,
-      metadata: args.metadata,
     });
+    this.entity.iEntity = args.iEntity,
+
     this.entityEvent = new EntityEventObject({
       typeName: args.typeName,
       displayTypeName: args.displayTypeName,
       siPathName: args.siPathName,
       serviceName: args.serviceName,
-      metadata: args.metadata,
     });
   }
 

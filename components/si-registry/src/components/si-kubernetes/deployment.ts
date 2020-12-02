@@ -8,12 +8,18 @@ import {
   PropAction,
 } from "../../components/prelude";
 import { registry } from "../../registry";
+import { iEntity } from "../../systemComponent";
 
 registry.componentAndEntity({
   typeName: "kubernetesDeployment",
   displayTypeName: "Kubernetes Deployment Object",
   siPathName: "si-kubernetes",
   serviceName: "kubernetes",
+  iEntity: {
+    uiVisible: true,
+    uiMenuCategory: "kubernetes",
+    uiMenuDisplayName: "deployment"
+  },
   options(c) {
     c.entity.inputType("dockerImage");
     c.entity.inputType("awsEks");
