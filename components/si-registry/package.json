@@ -14,7 +14,8 @@
     "build:js": "babel src --out-dir lib --extensions \".ts,.tsx\" --source-maps inline",
     "start": "npm run watch",
     "test": "jest --passWithNoTests --detectOpenHandles --forceExit",
-    "test-watch": "jest --passWithNoTests --detectOpenHandles --forceExit --watch"
+    "test-watch": "jest --passWithNoTests --detectOpenHandles --forceExit --watch",
+    "format": "npx prettier --write src/**/*"
   },
   "author": "The System Initiative, Inc.",
   "license": "UNLICENSED",
