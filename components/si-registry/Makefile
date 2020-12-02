@@ -8,3 +8,6 @@ build_js: node_modules
 
 watch: build_js start
 	@ echo "Watching.."
+
+format: 
+	npm run format
