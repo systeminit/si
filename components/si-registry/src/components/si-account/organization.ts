@@ -77,4 +77,3 @@ registry.system({
     });
   },
 });
-

@@ -10,7 +10,7 @@ registry.componentAndEntity({
     c.entity.iEntity = {
       uiVisible: true,
       uiMenuCategory: "aws",
-      uiMenuDisplayName: "region"
+      uiMenuDisplayName: "region",
     };
     c.entity.integrationServices.push({
       integrationName: "aws",

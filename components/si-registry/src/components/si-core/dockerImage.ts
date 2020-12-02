@@ -10,7 +10,7 @@ registry.componentAndEntity({
     c.entity.iEntity = {
       uiVisible: true,
       uiMenuCategory: "docker",
-      uiMenuDisplayName: "image"
+      uiMenuDisplayName: "image",
     };
     c.entity.inputType("dockerHubCredential");
     c.entity.inputType("service");

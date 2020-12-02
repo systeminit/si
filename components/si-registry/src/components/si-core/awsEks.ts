@@ -11,7 +11,7 @@ registry.componentAndEntity({
       uiVisible: true,
       uiMenuCategory: "aws",
       uiMenuSubCategory: "eks",
-      uiMenuDisplayName: "cluster"
+      uiMenuDisplayName: "cluster",
     };
     c.entity.inputType("kubernetesCluster");
     c.entity.inputType("aws");

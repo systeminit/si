@@ -42,10 +42,10 @@ export interface AddMethodConstructor {
 }
 
 export interface IEntity {
-  uiVisible: boolean
-  uiMenuCategory?: UiMenuCategory | undefined
-  uiMenuSubCategory?: UiAwsMenuSubCategory
-  uiMenuDisplayName?: string
+  uiVisible: boolean;
+  uiMenuCategory?: UiMenuCategory | undefined;
+  uiMenuSubCategory?: UiAwsMenuSubCategory;
+  uiMenuDisplayName?: string;
 }
 
 export type UiMenuCategory =
@@ -55,9 +55,7 @@ export type UiMenuCategory =
   | "aws"
   | "none";
 
-export type UiAwsMenuSubCategory =
-  | "iam"
-  | "eks"
+export type UiAwsMenuSubCategory = "iam" | "eks";
 
 export class BaseObject {
   typeName: string;

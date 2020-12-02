@@ -9,7 +9,7 @@ registry.componentAndEntity({
     c.entity.iEntity = {
       uiVisible: true,
       uiMenuCategory: "docker",
-      uiMenuDisplayName: "credential"
+      uiMenuDisplayName: "credential",
     };
     c.entity.integrationServices.push({
       integrationName: "aws",

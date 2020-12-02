@@ -17,7 +17,7 @@ registry.componentAndEntity({
     c.entity.iEntity = {
       uiVisible: true,
       uiMenuCategory: "kubernetes",
-      uiMenuDisplayName: "namespace"
+      uiMenuDisplayName: "namespace",
     };
     c.entity.inputType("application");
     c.entity.inputType("aws");

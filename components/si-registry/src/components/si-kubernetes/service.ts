@@ -19,7 +19,7 @@ registry.componentAndEntity({
     c.entity.iEntity = {
       uiVisible: true,
       uiMenuCategory: "kubernetes",
-      uiMenuDisplayName: "service"
+      uiMenuDisplayName: "service",
     };
     c.entity.inputType("awsAccessKeyCredential");
     c.entity.inputType("aws");

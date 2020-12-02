@@ -21,7 +21,7 @@ registry.componentAndEntity({
     c.entity.iEntity = {
       uiVisible: true,
       uiMenuCategory: "application",
-      uiMenuDisplayName: "service"
+      uiMenuDisplayName: "service",
     };
     c.entity.associations.belongsTo({
       fromFieldPath: ["siProperties", "billingAccountId"],

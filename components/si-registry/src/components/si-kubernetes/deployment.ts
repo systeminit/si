@@ -18,7 +18,7 @@ registry.componentAndEntity({
     c.entity.iEntity = {
       uiVisible: true,
       uiMenuCategory: "kubernetes",
-      uiMenuDisplayName: "deployment"
+      uiMenuDisplayName: "deployment",
     };
     c.entity.inputType("dockerImage");
     c.entity.inputType("aws");

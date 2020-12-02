@@ -11,7 +11,7 @@ registry.componentAndEntity({
       uiVisible: true,
       uiMenuCategory: "aws",
       uiMenuSubCategory: "iam",
-      uiMenuDisplayName: "policy"
+      uiMenuDisplayName: "policy",
     };
     c.entity.inputType("awsAccessKeyCredential");
 

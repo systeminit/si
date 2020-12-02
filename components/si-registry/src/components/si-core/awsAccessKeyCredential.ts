@@ -9,7 +9,7 @@ registry.componentAndEntity({
     c.entity.iEntity = {
       uiVisible: true,
       uiMenuCategory: "aws",
-      uiMenuDisplayName: "access key"
+      uiMenuDisplayName: "access key",
     };
     c.entity.integrationServices.push({
       integrationName: "aws",
