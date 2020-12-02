@@ -9,15 +9,15 @@ use std::collections::HashMap;
 use std::convert::Infallible;
 
 use crate::models::{
-    BillingAccountError, ChangeSetError, ClientError, EdgeError, EditSessionError, EntityError,
-    EventError, JwtKeyError, KeyPairError, ModelError, NodeError, OpError, PageToken,
+    ApiClaim, ApiClientError, BillingAccountError, ChangeSetError, EdgeError, EditSessionError,
+    EntityError, EventError, JwtKeyError, KeyPairError, ModelError, NodeError, OpError, PageToken,
     PageTokenError, Query, QueryError, SecretError, SiStorableError, UserError,
 };
 
+pub mod api_clients;
 pub mod billing_accounts;
 pub mod change_sets;
 pub mod cli;
-pub mod clients;
 pub mod edges;
 pub mod edit_sessions;
 pub mod entities;
@@ -72,8 +72,8 @@ pub enum HandlerError {
     Secret(#[from] SecretError),
     #[error("event error: {0}")]
     Event(#[from] EventError),
-    #[error("invalid request")]
-    Client(#[from] ClientError),
+    #[error("api client error: {0}")]
+    ApiClient(#[from] ApiClientError),
     #[error("invalid request")]
     InvalidRequest,
 }
@@ -295,6 +295,52 @@ pub async fn authorize(
      );
     let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
     named_params.insert("user_id".into(), serde_json::json![&user_id]);
+    named_params.insert("tenant_id".into(), serde_json::json![&billing_account_id]);
+    named_params.insert(
+        "capability".into(),
+        serde_json::json![{ "subject": subject, "action": action }],
+    );
+    named_params.insert(
+        "any".into(),
+        serde_json::json![{ "subject": "any", "action": "any" }],
+    );
+    let results: Vec<serde_json::Value> = db.query(query, Some(named_params)).await?;
+    if results.len() > 0 {
+        Ok(())
+    } else {
+        Err(HandlerError::Unauthorized)
+    }
+}
+
+pub async fn authenticate_api_client(db: &Db, token: impl AsRef<str>) -> HandlerResult<ApiClaim> {
+    let token = token.as_ref();
+    let claims =
+        crate::models::jwt_key::JwtKeyPublic::validate_bearer_token_api_client(&db, token).await?;
+    Ok(claims.custom)
+}
+
+pub async fn authorize_api_client(
+    db: &Db,
+    api_client_id: impl Into<String>,
+    billing_account_id: impl Into<String>,
+    subject: impl AsRef<str>,
+    action: impl AsRef<str>,
+) -> HandlerResult<()> {
+    let api_client_id = api_client_id.into();
+    let billing_account_id = billing_account_id.into();
+    let subject = subject.as_ref();
+    let action = action.as_ref();
+
+    let query = format!(
+        "SELECT a.*
+           FROM `{bucket}` AS a
+           WHERE (a.siStorable.typeName = \"group\" AND ARRAY_CONTAINS(a.apiClientIds, $api_client_id))
+             AND ARRAY_CONTAINS(a.siStorable.tenantIds, $tenant_id)
+             AND (ARRAY_CONTAINS(a.capabilities, $capability) OR ARRAY_CONTAINS(a.capabilities, $any))",
+         bucket = db.bucket_name,
+     );
+    let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
+    named_params.insert("api_client_id".into(), serde_json::json![&api_client_id]);
     named_params.insert("tenant_id".into(), serde_json::json![&billing_account_id]);
     named_params.insert(
         "capability".into(),

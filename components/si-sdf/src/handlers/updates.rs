@@ -5,7 +5,7 @@ use crate::data::Db;
 use crate::handlers::{authenticate, authorize};
 use crate::models::{websocket_run, WebsocketToken};
 
-#[tracing::instrument(level = "trace", target = "nodes::create")]
+#[tracing::instrument(level = "trace", target = "websocket::update")]
 pub async fn update(
     ws: Ws,
     db: Db,

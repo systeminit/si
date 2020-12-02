@@ -11,7 +11,8 @@ use std::sync::Arc;
 
 use crate::data::{Connection, Db};
 use crate::models::{
-    ChangeSetError, EditSessionError, EntityError, Event, EventError, EventLog, OpError, OutputLine,
+    ApiClaim, ChangeSetError, EditSessionError, EntityError, Event, EventError, EventLog, OpError,
+    OutputLine,
 };
 
 pub mod command;
@@ -54,7 +55,7 @@ pub struct CommandContext {
     root_event: Arc<RwLock<Option<Event>>>,
     tracking_ids: Arc<RwLock<Vec<String>>>,
     billing_account_id: Arc<String>,
-    user_id: Arc<String>,
+    api_client_id: Arc<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -66,16 +67,19 @@ pub enum CliMessage {
 }
 
 impl CommandContext {
-    fn new(billing_account_id: impl Into<String>, user_id: impl Into<String>) -> CommandContext {
+    fn new(
+        billing_account_id: impl Into<String>,
+        api_client_id: impl Into<String>,
+    ) -> CommandContext {
         let billing_account_id = Arc::new(billing_account_id.into());
-        let user_id = Arc::new(user_id.into());
+        let api_client_id = Arc::new(api_client_id.into());
 
         CommandContext {
             command: Arc::new(RwLock::new(None)),
             root_event: Arc::new(RwLock::new(None)),
             tracking_ids: Arc::new(RwLock::new(Vec::new())),
             billing_account_id,
-            user_id,
+            api_client_id,
         }
     }
 
@@ -114,7 +118,7 @@ impl CommandContext {
     }
 }
 
-pub async fn websocket_run(websocket: WebSocket, db: Db, nats: Connection, claim: SiClaims) {
+pub async fn websocket_run(websocket: WebSocket, db: Db, nats: Connection, claim: ApiClaim) {
     dbg!("doing websocket");
     // Split the socket into a sender and receiver of messages.
     let (ws_tx, mut ws_rx) = websocket.split();
@@ -127,7 +131,7 @@ pub async fn websocket_run(websocket: WebSocket, db: Db, nats: Connection, claim
     //) = mpsc::unbounded_channel();
     let (outbound_ws_tx, rx) = mpsc::unbounded_channel();
 
-    let ctx = CommandContext::new(&claim.billing_account_id, &claim.user_id);
+    let ctx = CommandContext::new(&claim.billing_account_id, &claim.api_client_id);
 
     // For debugging!
     let claim2 = claim.clone();
@@ -310,7 +314,7 @@ pub async fn websocket_run(websocket: WebSocket, db: Db, nats: Connection, claim
 async fn process_message(
     db: &Db,
     nats: &Connection,
-    _claim: &SiClaims,
+    _claim: &ApiClaim,
     outbound_ws_tx: &UnboundedSender<Result<Message, warp::Error>>,
     ctx: &CommandContext,
     message: Message,

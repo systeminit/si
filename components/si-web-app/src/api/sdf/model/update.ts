@@ -21,6 +21,7 @@ import { sdf } from "@/api/sdf";
 import { IUpdateClock } from "@/api/sdf/model/updateClock";
 import { db } from "@/api/sdf/dexie";
 import store from "@/store";
+import { ApiClient, IApiClient } from "./apiClient";
 
 export interface IUpdateClockGlobal extends IUpdateClock {
   id: string;
@@ -177,6 +178,10 @@ function onMessage(ev: MessageEvent) {
   } else if (model_data.model?.siStorable?.typeName == "secret") {
     const model = new Secret(model_data.model as ISecret);
     console.log("secret msg", { model });
+    PQ.add(() => model.save());
+  } else if (model_data.model?.siStorable?.typeName == "apiClient") {
+    const model = new ApiClient(model_data.model as IApiClient);
+    console.log("apiClient msg", { model });
     PQ.add(() => model.save());
   } else if (model_data.model?.siStorable?.typeName == "event") {
     const model = new Event(model_data.model as IEvent);
