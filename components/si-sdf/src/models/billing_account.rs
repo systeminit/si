@@ -122,6 +122,7 @@ impl BillingAccount {
             nats,
             "administrators",
             vec![user.id.clone()],
+            vec![],
             vec![Capability::new("any", "any")],
             &billing_account.id,
         )

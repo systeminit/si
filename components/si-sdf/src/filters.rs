@@ -27,7 +27,7 @@ pub fn api(
         .or(events(db, nats))
         .or(event_logs(db, nats))
         .or(output_lines(db, nats))
-        .or(clients(db, nats))
+        .or(api_clients(db, nats, secret_key))
         .or(cli(db, nats))
         .boxed()
 }
@@ -261,6 +261,55 @@ pub fn users_login(db: Db, secret_key: secretbox::Key) -> BoxedFilter<(impl warp
         .and(with_secret_key(secret_key))
         .and(warp::body::json::<models::user::LoginRequest>())
         .and_then(handlers::users::login)
+        .boxed()
+}
+
+pub fn api_clients(
+    db: &Db,
+    nats: &Connection,
+    secret_key: &secretbox::Key,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    api_client_create(db.clone(), nats.clone(), secret_key.clone())
+        .or(api_client_get(db.clone()))
+        .or(api_client_list(db.clone()))
+        .boxed()
+}
+
+pub fn api_client_create(
+    db: Db,
+    nats: Connection,
+    secret_key: secretbox::Key,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("apiClients")
+        .and(warp::post())
+        .and(with_db(db))
+        .and(with_nats(nats))
+        .and(with_secret_key(secret_key))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::body::json::<models::api_client::CreateRequest>())
+        .and_then(handlers::api_clients::create)
+        .boxed()
+}
+
+pub fn api_client_get(db: Db) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("apiClients" / String)
+        .and(warp::get())
+        .and(with_db(db))
+        .and(warp::header::<String>("authorization"))
+        .and(with_string("apiClient".into()))
+        .and(warp::query::<models::GetRequest>())
+        .and_then(handlers::get_model_change_set)
+        .boxed()
+}
+
+pub fn api_client_list(db: Db) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("apiClients")
+        .and(warp::get())
+        .and(with_db(db))
+        .and(warp::header::<String>("authorization"))
+        .and(with_string("apiClient".into()))
+        .and(warp::query::<models::ListRequest>())
+        .and_then(handlers::list_models)
         .boxed()
 }
 
@@ -589,53 +638,6 @@ pub fn secrets_create(db: Db, nats: Connection) -> BoxedFilter<(impl warp::Reply
         .and(warp::body::json::<models::secret::CreateRequest>())
         .and_then(handlers::secrets::create)
         .boxed()
-}
-
-// Clients API
-pub fn clients(
-    db: &Db,
-    nats: &Connection,
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    clients_list(db.clone())
-        .or(clients_get(db.clone()))
-        .or(clients_create(db.clone(), nats.clone()))
-}
-
-pub fn clients_list(
-    db: Db,
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::path!("clients")
-        .and(warp::get())
-        .and(with_db(db))
-        .and(warp::header::<String>("authorization"))
-        .and(with_string("client".into()))
-        .and(warp::query::<models::ListRequest>())
-        .and_then(handlers::list_models)
-}
-
-pub fn clients_get(
-    db: Db,
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::path!("clients" / String)
-        .and(warp::get())
-        .and(with_db(db))
-        .and(warp::header::<String>("authorization"))
-        .and(with_string("client".into()))
-        .and(warp::query::<models::GetRequest>())
-        .and_then(handlers::get_model_change_set)
-}
-
-pub fn clients_create(
-    db: Db,
-    nats: Connection,
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::path!("clients")
-        .and(warp::post())
-        .and(with_db(db))
-        .and(with_nats(nats))
-        .and(warp::header::<String>("authorization"))
-        .and(warp::body::json::<models::client::CreateRequest>())
-        .and_then(handlers::clients::create)
 }
 
 fn with_db(db: Db) -> impl Filter<Extract = (Db,), Error = std::convert::Infallible> + Clone {

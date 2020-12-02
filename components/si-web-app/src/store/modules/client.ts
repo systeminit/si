@@ -1,18 +1,15 @@
 import { Module } from "vuex";
 import _ from "lodash";
-import { Organization } from "@/api/sdf/model/organization";
-import { Workspace } from "@/api/sdf/model/workspace";
-import { Client, ClientObjectType, ClientKind } from "@/api/sdf/model/client";
+import { ApiClient, ApiClientKind } from "@/api/sdf/model/apiClient";
 import { RootStore } from "@/store";
 
 export interface ClientStore {
-  clients: Client[];
+  clients: ApiClient[];
 }
 
 export interface ActionCreateClient {
-  clientName: string;
-  clientKind: ClientKind;
-  message: Record<string, any>;
+  name: string;
+  kind: ApiClientKind;
 }
 
 export const client: Module<ClientStore, RootStore> = {
@@ -22,36 +19,32 @@ export const client: Module<ClientStore, RootStore> = {
   },
   getters: {},
   mutations: {
-    updateClients(state, payload: Client) {
-      state.clients = _.unionBy([payload], state.clients, "id");
+    updateClients(state, payload: ApiClient) {
+      state.clients = _.orderBy(
+        _.unionBy([payload], state.clients, "id"),
+        ["kind", "name"],
+        ["asc", "asc"],
+      );
+    },
+    setClients(state, payload: ApiClient[]) {
+      state.clients = _.orderBy(payload, ["kind", "name"], ["asc", "asc"]);
     },
   },
   actions: {
-    async fromClient({ commit }, payload: Client) {
+    async loadClients({ commit }) {
+      let clients = await ApiClient.list({ pageSize: 500 });
+      commit("setClients", clients.items);
+    },
+    async fromApiClient({ commit }, payload: ApiClient) {
       commit("updateClients", payload);
     },
     async createClient(
-      { commit, state, rootGetters },
+      { commit },
       payload: ActionCreateClient,
-    ) {
-
-      const json = JSON.stringify(payload.message, null, 0);
-      const message = new Uint8Array(json.length);
-      for (let i = 0; i < json.length; i++) {
-        message[i] = json.charCodeAt(i);
-      }
-      const organization: Organization = rootGetters["organization/current"];
-      const workspace: Workspace = rootGetters["workspace/current"];
-
-      const client = await Client.create({
-        name: payload.clientName,
-        objectType: ClientObjectType.Api,
-        kind: payload.clientKind,
-        message,
-        organizationId: organization.id,
-        workspaceId: workspace.id,
-      });
-      commit("updateClients", client);
+    ): Promise<string> {
+      const apiClientResponse = await ApiClient.create(payload);
+      commit("updateClients", apiClientResponse.apiClient);
+      return apiClientResponse.token;
     },
   },
 };

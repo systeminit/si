@@ -13,7 +13,7 @@ use std::io::prelude::*;
 use crate::data::{Connection, Db};
 use crate::handlers::users::SiClaims;
 use crate::models::{
-    generate_id, insert_model, MinimalStorable, ModelError, UpdateClock, UpdateClockError,
+    generate_id, insert_model, ApiClaim, MinimalStorable, ModelError, UpdateClock, UpdateClockError,
 };
 
 #[derive(Error, Debug)]
@@ -114,6 +114,29 @@ impl JwtKeyPublic {
         let public_key = JwtKeyPublic::get_jwt_validation_key(&db, key_id).await?;
         let claims = public_key
             .verify_token::<SiClaims>(&token, None)
+            .map_err(|err| JwtKeyError::Verify(format!("{}", err)))?;
+        Ok(claims)
+    }
+
+    pub async fn validate_bearer_token_api_client(
+        db: &Db,
+        bearer_token: impl AsRef<str>,
+    ) -> JwtKeyResult<JWTClaims<ApiClaim>> {
+        let bearer_token = bearer_token.as_ref();
+        let token = if let Some(token) = bearer_token.strip_prefix("Bearer ") {
+            token
+        } else {
+            return Err(JwtKeyError::BearerToken);
+        };
+
+        let metadata = Token::decode_metadata(token)
+            .map_err(|err| JwtKeyError::Metadata(format!("{}", err)))?;
+        let key_id = metadata
+            .key_id()
+            .ok_or(JwtKeyError::Metadata("missing key id".into()))?;
+        let public_key = JwtKeyPublic::get_jwt_validation_key(&db, key_id).await?;
+        let claims = public_key
+            .verify_token::<ApiClaim>(&token, None)
             .map_err(|err| JwtKeyError::Verify(format!("{}", err)))?;
         Ok(claims)
     }

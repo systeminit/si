@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::data::{Connection, Db};
+use std::collections::HashMap;
+
+use crate::data::{Connection, DataError, Db};
 use crate::models::{
     check_secondary_key, generate_id, get_model, insert_model, ModelError, SiStorableError,
     SimpleStorable,
@@ -19,6 +21,10 @@ pub enum GroupError {
     Utf8(#[from] std::str::Utf8Error),
     #[error("error generating password hash")]
     PasswordHash,
+    #[error("group not found")]
+    NotFound,
+    #[error("data: {0}")]
+    Data(#[from] DataError),
 }
 
 pub type GroupResult<T> = Result<T, GroupError>;
@@ -44,6 +50,7 @@ pub struct Group {
     pub id: String,
     pub name: String,
     pub user_ids: Vec<String>,
+    pub api_client_ids: Vec<String>,
     pub capabilities: Vec<Capability>,
     pub si_storable: SimpleStorable,
 }
@@ -54,6 +61,7 @@ impl Group {
         nats: &Connection,
         name: impl Into<String>,
         user_ids: Vec<String>,
+        api_client_ids: Vec<String>,
         capabilities: Vec<Capability>,
         billing_account_id: impl Into<String>,
     ) -> GroupResult<Group> {
@@ -70,6 +78,7 @@ impl Group {
             id,
             name,
             user_ids,
+            api_client_ids,
             capabilities,
             si_storable,
         };
@@ -86,5 +95,32 @@ impl Group {
         let billing_account_id = billing_account_id.as_ref();
         let object: Group = get_model(db, id, billing_account_id).await?;
         Ok(object)
+    }
+
+    pub async fn get_administrators_group(
+        db: &Db,
+        billing_account_id: impl AsRef<str>,
+    ) -> GroupResult<Group> {
+        let billing_account_id = billing_account_id.as_ref();
+        let query = format!(
+            "SELECT a.*
+               FROM `{bucket}` AS a
+               WHERE a.siStorable.typeName = \"group\"
+                 AND a.siStorable.billingAccountId = $billing_account_id
+                 AND a.name = \"administrators\" 
+               LIMIT 1",
+            bucket = db.bucket_name,
+        );
+        let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
+        named_params.insert(
+            "billing_account_id".into(),
+            serde_json::json![billing_account_id],
+        );
+        let mut results: Vec<Group> = db.query(query, Some(named_params)).await?;
+        if let Some(group) = results.pop() {
+            Ok(group)
+        } else {
+            Err(GroupError::NotFound)
+        }
     }
 }

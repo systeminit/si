@@ -19,7 +19,6 @@
         <thead>
           <tr class="text-xs text-gray-200 client-table-title">
             <th class="w-1/2 px-4 py-2">Name</th>
-            <th class="w-1/4 px-4 py-2">Type</th>
             <th class="w-1/4 px-4 py-2">Kind</th>
           </tr>
         </thead>
@@ -27,9 +26,6 @@
           <tr v-for="client in clients" :key="client.name">
             <td class="client-table-row">
               <div class="px-4 py-2">{{ client.name }}</div>
-            </td>
-            <td class="client-table-row">
-              <div class="px-4 py-2">{{ client.objectType }}</div>
             </td>
             <td class="client-table-row">
               <div class="px-4 py-2">{{ client.kind }}</div>
@@ -56,7 +52,6 @@ import { mapState } from "vuex";
 import { registry } from "si-registry";
 import { PlusSquareIcon } from "vue-feather-icons";
 import SiSelect, { SelectProps } from "@/components/ui/SiSelect.vue";
-import { ClientKind } from "@/api/sdf/model/client";
 import ClientNew from "@/components/views/client/ClientNew.vue";
 
 import { RootStore } from "../../../store";
@@ -86,6 +81,9 @@ export default Vue.extend({
         return state.client.clients;
       },
     }),
+  },
+  async beforeCreate() {
+    await this.$store.dispatch("client/loadClients", { root: true });
   },
 });
 </script>

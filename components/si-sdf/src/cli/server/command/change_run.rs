@@ -73,7 +73,7 @@ impl ChangeRun {
             target_entity.si_storable.billing_account_id.clone(),
             target_entity.si_storable.organization_id.clone(),
             target_entity.si_storable.workspace_id.clone(),
-            String::from(ctx.user_id.as_ref()),
+            String::from(ctx.api_client_id.as_ref()),
         )
         .await?;
         ctx.add_tracking_id(change_set.id.clone()).await;
@@ -86,7 +86,7 @@ impl ChangeRun {
             change_set.si_storable.billing_account_id.clone(),
             change_set.si_storable.organization_id.clone(),
             change_set.si_storable.workspace_id.clone(),
-            String::from(ctx.user_id.as_ref()),
+            String::from(ctx.api_client_id.as_ref()),
         )
         .await?;
         ctx.add_tracking_id(edit_session.id.clone()).await;
@@ -104,7 +104,7 @@ impl ChangeRun {
                 target_entity.si_storable.workspace_id.clone(),
                 change_set.id.clone(),
                 edit_session.id.clone(),
-                String::from(ctx.user_id.as_ref()),
+                String::from(ctx.api_client_id.as_ref()),
             )
             .await?;
             ctx.add_tracking_id(op.id.clone()).await;
@@ -121,7 +121,7 @@ impl ChangeRun {
             target_entity.si_storable.workspace_id.clone(),
             change_set.id.clone(),
             edit_session.id.clone(),
-            String::from(ctx.user_id.as_ref()),
+            String::from(ctx.api_client_id.as_ref()),
         )
         .await?;
         ctx.add_tracking_id(act.id.clone()).await;
