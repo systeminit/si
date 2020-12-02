@@ -11,9 +11,6 @@ test("create component and entity", done => {
     displayTypeName: "Kubernetes Deployment Object",
     siPathName: "si-kubernetes",
     serviceName: "kubernetes",
-    metadata: {
-      name: "metaglorious"
-    },
     options(c) {
       c.constraints.addText({
         name: "mybutt",
@@ -22,9 +19,6 @@ test("create component and entity", done => {
     },
   });
   expect(registry.objects.length).toBe(3);
-  expect(registry.objects[0].metadata).toStrictEqual({name: "metaglorious"});
-  expect(registry.objects[1].metadata).toStrictEqual({name: "metaglorious"});
-  expect(registry.objects[2].metadata).toStrictEqual({name: "metaglorious"});
   done();
 });
 
