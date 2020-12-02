@@ -14,6 +14,11 @@ registry.componentAndEntity({
   siPathName: "si-kubernetes",
   serviceName: "kubernetes",
   options(c) {
+    c.entity.iEntity = {
+      uiVisible: true,
+      uiMenuCategory: "kubernetes",
+      uiMenuDisplayName: "secret"
+    };
     c.entity.inputType("awsAccessKeyCredential");
     c.entity.inputType("awsEks");
     c.entity.inputType("dockerHubCredential");

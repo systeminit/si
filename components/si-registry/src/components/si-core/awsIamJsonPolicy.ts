@@ -7,6 +7,12 @@ registry.componentAndEntity({
   siPathName: "si-core",
   serviceName: "core",
   options(c) {
+    c.entity.iEntity = {
+      uiVisible: true,
+      uiMenuCategory: "aws",
+      uiMenuSubCategory: "iam",
+      uiMenuDisplayName: "policy"
+    };
     c.entity.inputType("awsAccessKeyCredential");
 
     c.entity.integrationServices.push({

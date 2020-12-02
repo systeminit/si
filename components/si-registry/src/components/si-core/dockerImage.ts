@@ -7,6 +7,11 @@ registry.componentAndEntity({
   siPathName: "si-core",
   serviceName: "core",
   options(c) {
+    c.entity.iEntity = {
+      uiVisible: true,
+      uiMenuCategory: "docker",
+      uiMenuDisplayName: "image"
+    };
     c.entity.inputType("dockerHubCredential");
     c.entity.inputType("service");
 

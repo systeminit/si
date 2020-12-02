@@ -7,6 +7,9 @@ registry.componentAndEntity({
   siPathName: "si-kubernetes",
   serviceName: "kubernetes",
   options(c) {
+    c.entity.iEntity = {
+      uiVisible: false,
+    };
     c.entity.associations.belongsTo({
       fromFieldPath: ["siProperties", "billingAccountId"],
       typeName: "billingAccount",

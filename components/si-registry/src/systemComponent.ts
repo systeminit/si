@@ -43,9 +43,21 @@ export interface AddMethodConstructor {
 
 export interface IEntity {
   uiVisible: boolean
-  uiMenuCategory?: string | undefined
+  uiMenuCategory?: UiMenuCategory | undefined
+  uiMenuSubCategory?: UiAwsMenuSubCategory
   uiMenuDisplayName?: string
 }
+
+export type UiMenuCategory =
+  | "application"
+  | "kubernetes"
+  | "docker"
+  | "aws"
+  | "none";
+
+export type UiAwsMenuSubCategory =
+  | "iam"
+  | "eks"
 
 export class BaseObject {
   typeName: string;

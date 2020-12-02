@@ -14,6 +14,11 @@ registry.componentAndEntity({
   siPathName: "si-kubernetes",
   serviceName: "kubernetes",
   options(c) {
+    c.entity.iEntity = {
+      uiVisible: true,
+      uiMenuCategory: "kubernetes",
+      uiMenuDisplayName: "namespace"
+    };
     c.entity.inputType("application");
     c.entity.inputType("aws");
     c.entity.inputType("awsEks");

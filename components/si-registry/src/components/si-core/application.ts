@@ -7,6 +7,9 @@ registry.componentAndEntity({
   siPathName: "si-core",
   serviceName: "core",
   options(c) {
+    c.entity.iEntity = {
+      uiVisible: false,
+    };
     c.entity.integrationServices.push({
       integrationName: "global",
       integrationServiceName: "core",

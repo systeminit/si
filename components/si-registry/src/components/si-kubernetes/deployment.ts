@@ -8,7 +8,6 @@ import {
   PropAction,
 } from "../../components/prelude";
 import { registry } from "../../registry";
-import { iEntity } from "../../systemComponent";
 
 registry.componentAndEntity({
   typeName: "kubernetesDeployment",

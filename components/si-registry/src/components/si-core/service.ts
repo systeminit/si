@@ -18,6 +18,11 @@ registry.componentAndEntity({
   siPathName: "si-core",
   serviceName: "core",
   options(c) {
+    c.entity.iEntity = {
+      uiVisible: true,
+      uiMenuCategory: "application",
+      uiMenuDisplayName: "service"
+    };
     c.entity.associations.belongsTo({
       fromFieldPath: ["siProperties", "billingAccountId"],
       typeName: "billingAccount",
