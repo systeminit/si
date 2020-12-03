@@ -360,3 +360,15 @@ export function syncResource(ws: WebSocket, req: string): void {
       ws.close(1000, "finished");
     });
 }
+
+export function findEntityByType(
+  graph: { entity: Entity }[],
+  objectType: string,
+): Entity | undefined {
+  const result = _.find(graph, ["entity.objectType", objectType]);
+  if (result) {
+    return result.entity;
+  } else {
+    return undefined;
+  }
+}

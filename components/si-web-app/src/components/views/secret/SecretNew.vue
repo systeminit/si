@@ -3,9 +3,7 @@
     <div
       class="flex items-center justify-between pl-1 text-sm text-white bg-black"
     >
-      <div>
-        Create new secret
-      </div>
+      <div>Create new secret</div>
       <div>
         <button @click="hideModal" class="flex">
           <XIcon @click="hideModal"></XIcon>
@@ -15,9 +13,7 @@
 
     <div class="p-4">
       <div class="flex flex-row mx-2 my-2">
-        <div class="text-white">
-          name:
-        </div>
+        <div class="text-white">name:</div>
 
         <input
           data-cy="new-secret-form-secret-name"
@@ -28,9 +24,7 @@
         />
       </div>
       <div class="flex flex-row mx-2 my-2">
-        <div class="text-white">
-          kind:
-        </div>
+        <div class="text-white">kind:</div>
 
         <SiSelect
           size="xs"
@@ -45,6 +39,10 @@
       <AwsAccessKeyCredential
         v-model="message"
         v-else-if="secretKind == 'awsAccessKey'"
+      />
+      <HelmRepoCredential
+        v-model="message"
+        v-else-if="secretKind == 'helmRepo'"
       />
 
       <div class="flex flex-row" v-if="secretKind">
@@ -67,6 +65,7 @@ import { XIcon } from "vue-feather-icons";
 import SiSelect, { SelectProps } from "@/components/ui/SiSelect.vue";
 import DockerHubCredential from "@/components/views/secret/DockerHubCredential.vue";
 import AwsAccessKeyCredential from "@/components/views/secret/AwsAccessKeyCredential.vue";
+import HelmRepoCredential from "@/components/views/secret/HelmRepoCredential.vue";
 import { SecretKind } from "@/api/sdf/model/secret";
 
 interface Data {
@@ -83,6 +82,7 @@ export default Vue.extend({
     XIcon,
     DockerHubCredential,
     AwsAccessKeyCredential,
+    HelmRepoCredential,
   },
   data(): Data {
     let secretKindList = [{ value: "", label: "none" }];

@@ -2,12 +2,14 @@ import execa from "execa";
 import readline from "readline";
 import { Event, EventLogLevel } from "./eventLog";
 
+export type SiExecResult = execa.ExecaReturnValue<string>;
+
 export async function siExec(
   event: Event,
   execaFile: string,
   execaArgs?: readonly string[],
   execaOptions?: execa.Options<string>,
-): Promise<execa.ExecaReturnValue<string>> {
+): Promise<SiExecResult> {
   console.log(`running command; cmd="${execaFile} ${execaArgs?.join(" ")}"`);
   const eventLog = event.log(
     EventLogLevel.Info,
