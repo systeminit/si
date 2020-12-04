@@ -17,6 +17,7 @@ registry.componentAndEntity({
   serviceName: "kubernetes",
   options(c) {
     c.entity.inputType("awsAccessKeyCredential");
+    c.entity.inputType("aws");
     c.entity.inputType("awsEks");
     c.entity.inputType("kubernetesDeployment");
     c.entity.inputType("kubernetesNamespace");

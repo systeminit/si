@@ -1,19 +1,17 @@
-use crate::handlers::users::SiClaims;
-use futures::{FutureExt, StreamExt};
-use serde::{Deserialize, Serialize};
-use thiserror::Error;
-use tokio::sync::mpsc::{self, UnboundedSender};
-use tokio::sync::RwLock;
-use tracing::{error, trace, warn};
-use warp::ws::{Message, WebSocket};
-
-use std::sync::Arc;
-
+use crate::cli::server::command::change_run::{ChangeRun, ChangeRunError};
 use crate::data::{Connection, Db};
 use crate::models::{
     ApiClaim, ChangeSetError, EditSessionError, EntityError, Event, EventError, EventLog, OpError,
     OutputLine,
 };
+use futures::{FutureExt, StreamExt};
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use thiserror::Error;
+use tokio::sync::mpsc::{self, UnboundedSender};
+use tokio::sync::RwLock;
+use tracing::{error, trace, warn};
+use warp::ws::{Message, WebSocket};
 
 pub mod command;
 pub use crate::cli::server::command::*;
@@ -26,7 +24,9 @@ pub enum ServerError {
     Event(#[from] EventError),
     #[error("entity error: {0}")]
     Entity(#[from] EntityError),
-    #[error("changeSet error: {0}")]
+    #[error("change run error: {0}")]
+    ChangeRun(#[from] ChangeRunError),
+    #[error("editSession error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("editSession error: {0}")]
     EditSession(#[from] EditSessionError),
@@ -35,6 +35,30 @@ pub enum ServerError {
 }
 
 pub type ServerResult<T> = Result<T, ServerError>;
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub enum ClientCommand {
+    NodeChangeRun(NodeChangeRun),
+    Stop(serde_json::Value),
+}
+
+impl ClientCommand {
+    pub async fn into_command(
+        self,
+        db: &Db,
+        billing_account_id: impl AsRef<str>,
+    ) -> ServerResult<Command> {
+        match self {
+            Self::NodeChangeRun(node_change_run) => Ok(Command::ChangeRun(
+                node_change_run
+                    .into_change_run(db, billing_account_id)
+                    .await?,
+            )),
+            Self::Stop(value) => Ok(Command::Stop(value)),
+        }
+    }
+}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -314,7 +338,7 @@ pub async fn websocket_run(websocket: WebSocket, db: Db, nats: Connection, claim
 async fn process_message(
     db: &Db,
     nats: &Connection,
-    _claim: &ApiClaim,
+    claim: &ApiClaim,
     outbound_ws_tx: &UnboundedSender<Result<Message, warp::Error>>,
     ctx: &CommandContext,
     message: Message,
@@ -326,7 +350,22 @@ async fn process_message(
         trace!("recv ws text msg, processing; message={:?}", message);
 
         dbg!(&message);
-        match serde_json::from_slice::<Command>(&message.into_bytes()) {
+        // Deserialize the `ClientCommand`
+        let client_command = match serde_json::from_slice::<ClientCommand>(&message.into_bytes()) {
+            Ok(client_command) => client_command,
+            Err(err) => {
+                tracing::warn!("error deserializing client command: {}", err);
+                let _e = outbound_ws_tx.send(Ok(Message::close_with(
+                    4001 as u16,
+                    format!("error deserializing client command: {}", err),
+                )));
+                return MessageStream::Finish;
+            }
+        };
+        match client_command
+            .into_command(db, &claim.billing_account_id)
+            .await
+        {
             Ok(Command::Stop(_)) => {
                 return MessageStream::Finish;
             }

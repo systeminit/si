@@ -1,16 +1,41 @@
 use anyhow::Result;
+use cli::{ArgsNodeRun, OutputFormatter, SubCmd, SubCmdNode};
+use si_sdf::cli::client::{Client, ClientCommand, DebugFormatter, NodeChangeRun, SimpleFormatter};
 
-use si_sdf::cli::client::{ChangeRun, Client, Command, DebugFormatter};
+mod cli;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let mut client = Client::new("ws://localhost:5156/cli?token=Bearer+eyJhbGciOiJSUzI1NiIsImtpZCI6Imp3dEtleTpiYjc4MmIzOTQ5MTM0NGRiODVmMmE0N2JiNmUzNzgwMiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE2MDY4NjgwODIsImV4cCI6MjIzNzU4ODA4MiwibmJmIjoxNjA2ODY4MDgyLCJpc3MiOiJodHRwczovL2FwcC5zeXN0ZW1pbml0LmNvbSIsInN1YiI6ImFwaUNsaWVudDo2NDk2Nzc2ZTBjNTE0N2I5YTMwMWNjNjQwMWNhMDgxNiIsImF1ZCI6Imh0dHBzOi8vYXBwLnN5c3RlbWluaXQuY29tIiwiYXBpQ2xpZW50SWQiOiJhcGlDbGllbnQ6NjQ5Njc3NmUwYzUxNDdiOWEzMDFjYzY0MDFjYTA4MTYiLCJiaWxsaW5nQWNjb3VudElkIjoiYmlsbGluZ0FjY291bnQ6ZThmYTNjODI1NzY1NGFkM2E2NzNkZmRiMWU4ZjA3OWUifQ.PBQ9UED1cS3_jU7Q3cTVSz0DPW4rCePBQSXuwv6R0n1dNJ314u34j35OQZLki0-CCPJMTGDHW2CmOZa8hfz9M3PQ6ZoPN0jIpMVAzdLqCHUrUfrztlsyqn8oY8xjS9QWUsVvMoODQYJlQagVdlD90CKWQGYJPgBwDJdX1xfOfhKzHh8UEpHZJh5V-ONzhaEuoMTYJyqYPLTZHv_rV9n7y5g2NB0_1W2Q1pgyB0L-kH7CvrzhLHLdXVkkwBPXqdTRUy1nV9kKNDcoNKUVIlxo6KLqCj8cL0rwFwfHBWiDNdoVwwqjufWf3-6PX3EYHvxE1ciApMRV7Uxs6xNwrl1q7g", DebugFormatter::new());
-    let change_run = ChangeRun::new(
-        "entity:b1722e33d5824bc392284e2106fea967",
-        "system:187d49e584154a9fa64172e8910b3b5b",
-        "deploy",
-    );
-    let command = Command::ChangeRun(change_run);
+    let args = cli::parse();
+
+    match args.subcmd {
+        SubCmd::Node(subcmd) => match subcmd {
+            SubCmdNode::Run(args) => sub_node_run(args).await,
+        },
+    }
+}
+
+async fn sub_node_run(args: ArgsNodeRun) -> Result<()> {
+    let mut url = args.global.host;
+    if url.path() == "/" {
+        url.set_path("cli");
+    } else {
+        url.set_path(&[url.path().replacen("/", "", 1), "cli".to_string()].join("/"));
+    }
+    url.set_query(Some(&format!("token=Bearer+{}", args.global.token)));
+
+    let mut client = match args.formatter {
+        OutputFormatter::Debug => Client::new(url, Box::new(DebugFormatter::new()))?,
+        OutputFormatter::Simple => Client::new(url, Box::new(SimpleFormatter::new()))?,
+    };
+
+    let mut node_change_run = NodeChangeRun::new(args.node_id, args.system_id, args.action);
+    for set_command in args.set.into_iter() {
+        node_change_run.add_set_command(set_command.into());
+    }
+
+    let command = ClientCommand::NodeChangeRun(node_change_run);
     client.command(command).await?;
+
     Ok(())
 }

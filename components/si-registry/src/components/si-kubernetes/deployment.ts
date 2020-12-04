@@ -16,6 +16,7 @@ registry.componentAndEntity({
   serviceName: "kubernetes",
   options(c) {
     c.entity.inputType("dockerImage");
+    c.entity.inputType("aws");
     c.entity.inputType("awsEks");
     c.entity.inputType("awsAccessKeyCredential");
     c.entity.inputType("kubernetesNamespace");

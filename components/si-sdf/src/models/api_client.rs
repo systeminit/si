@@ -1,3 +1,9 @@
+use super::upsert_model;
+use crate::data::{Connection, Db};
+use crate::models::{
+    check_secondary_key, generate_id, get_model, insert_model, Group, GroupError, JwtKeyError,
+    JwtKeyPrivate, ModelError, SiStorableError, SimpleStorable,
+};
 use blake2::{Blake2b, Digest};
 use jwt_simple::algorithms::RSAKeyPairLike;
 use jwt_simple::claims::Claims;
@@ -5,16 +11,6 @@ use jwt_simple::coarsetime::Duration;
 use serde::{Deserialize, Serialize};
 use sodiumoxide::crypto::secretbox;
 use thiserror::Error;
-
-use std::collections::HashMap;
-
-use crate::data::{Connection, Db};
-use crate::models::{
-    check_secondary_key, generate_id, get_model, insert_model, Group, GroupError, JwtKeyError,
-    JwtKeyPrivate, ModelError, SiStorableError, SimpleStorable,
-};
-
-use super::upsert_model;
 
 #[derive(Error, Debug)]
 pub enum ApiClientError {
@@ -108,10 +104,8 @@ impl ApiClient {
         let jwt = signing_key
             .sign(claims)
             .map_err(|e| ApiClientError::SignError(e.to_string()))?;
-        let valid_token_hash = format!(
-            "{:x}",
-            blake2::Blake2b::digest(format!("Bearer {}", &jwt).as_ref())
-        );
+        let valid_token_hash =
+            format!("{:x}", Blake2b::digest(format!("Bearer {}", &jwt).as_ref()));
 
         let object = ApiClient {
             id: id.clone(),
