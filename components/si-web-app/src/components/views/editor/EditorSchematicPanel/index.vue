@@ -8,13 +8,17 @@
         <button
           class="px-4 py-2 focus:outline-none"
           v-bind:class="buttonClass"
-          @click="createNode()"
+          @click="toggleAddNodeMenu()"
           type="button"
           :disabled="!isEditMode"
         >
           <plus-square-icon size="1.1x" />
         </button>
-        <div class="text-black">
+
+        <NodeAddMenu :entityTypeList="entityTypeList" class="z-50"> </NodeAddMenu>
+
+
+        <div class="text-black" v-show="addNodeMenuIsVisible">
           <select
             class="my-2 text-xs leading-tight text-gray-400 bg-gray-800 border focus:outline-none"
             v-model="selectedEntityType"
@@ -81,11 +85,14 @@ import { mapState } from "vuex";
 import { RootStore } from "@/store";
 import { camelCase } from "change-case";
 import { NodeKind } from "@/api/sdf/model/node";
+import NodeAddMenu from "./NodeAddMenu.vue";
+import { EntityObject } from "si-registry/lib/systemComponent";
 
 interface Data {
   selectedEntityType: string;
   selectedAction: string;
-  entityTypeList: any[];
+  entityTypeList: EntityObject[];
+  addNodeMenuIsVisible: boolean;
 }
 
 export default Vue.extend({
@@ -95,6 +102,7 @@ export default Vue.extend({
     NodeEditor,
     PlusSquareIcon,
     CommandIcon,
+    NodeAddMenu,
   },
   data(): Data {
     const entityTypeList = _.sortBy(registry.listEntities(), ["typeName"]);
@@ -102,6 +110,7 @@ export default Vue.extend({
       selectedEntityType: "service",
       selectedAction: "delete",
       entityTypeList,
+      addNodeMenuIsVisible: false,
     };
   },
   methods: {
@@ -111,6 +120,12 @@ export default Vue.extend({
           id: "schematic",
         },
       });
+    },
+    filterEntityTypeList(): void {
+      console.log("filterEntityTypeList")
+    },
+    toggleAddNodeMenu(): void {
+      this.addNodeMenuIsVisible = !this.addNodeMenuIsVisible
     },
     async createNode(): Promise<void> {
       await this.$store.dispatch("editor/nodeCreate", {
@@ -147,6 +162,9 @@ export default Vue.extend({
       }
     },
   },
+  beforeUpdate(): void {
+    this.filterEntityTypeList()
+  }
 });
 </script>
 
