@@ -44,7 +44,9 @@ export interface AddMethodConstructor {
 export interface IEntity {
   uiVisible: boolean;
   uiMenuCategory?: UiMenuCategory | undefined;
-  uiMenuSubCategory?: UiAwsMenuSubCategory;
+  // Should implement path model instead of uiMenuSubCategory
+  // uiMenuCategory/my/path
+  uiMenuSubCategory?: UiMenuSubCategory;
   uiMenuDisplayName?: string;
 }
 
@@ -55,7 +57,10 @@ export type UiMenuCategory =
   | "aws"
   | "none";
 
-export type UiAwsMenuSubCategory = "iam" | "eks";
+export type UiMenuSubCategory = 
+  | UiAwsMenuCategory;
+
+export type UiAwsMenuCategory = "iam" | "eks";
 
 export class BaseObject {
   typeName: string;
