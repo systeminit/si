@@ -4,35 +4,14 @@
       id="schematic-panel-menu"
       class="flex flex-row flex-no-wrap content-between justify-between w-full bg-black"
     >
-      <div class="flex flex-row justify-start mx-3">
-        <button
-          class="px-4 py-2 focus:outline-none"
-          v-bind:class="buttonClass"
-          @click="toggleAddNodeMenu()"
-          type="button"
+      <div class="flex flex-row justify-start items-center mx-3">
+        <NodeAddMenu
+          :entityTypeList="entityTypeList"
+          class="z-50"
+          @selected="createNode"
           :disabled="!isEditMode"
-        >
-          <plus-square-icon size="1.1x" />
-        </button>
+        />
 
-        <NodeAddMenu :entityTypeList="entityTypeList" class="z-50"> </NodeAddMenu>
-
-
-        <div class="text-black" v-show="addNodeMenuIsVisible">
-          <select
-            class="my-2 text-xs leading-tight text-gray-400 bg-gray-800 border focus:outline-none"
-            v-model="selectedEntityType"
-            :disabled="!isEditMode"
-          >
-            <option
-              v-for="entity in entityTypeList"
-              :key="entity.typeName"
-              :value="entity.typeName"
-            >
-              {{ entity.typeName }}
-            </option>
-          </select>
-        </div>
         <button
           class="px-4 py-2 focus:outline-none"
           v-bind:class="buttonClass"
@@ -77,7 +56,7 @@
 
 <script lang="ts">
 import Vue from "vue";
-import { Maximize2Icon, PlusSquareIcon, CommandIcon } from "vue-feather-icons";
+import { Maximize2Icon, CommandIcon } from "vue-feather-icons";
 import NodeEditor from "./NodeEditor.vue";
 import { registry } from "si-registry";
 import _ from "lodash";
@@ -100,7 +79,6 @@ export default Vue.extend({
   components: {
     Maximize2Icon,
     NodeEditor,
-    PlusSquareIcon,
     CommandIcon,
     NodeAddMenu,
   },
@@ -121,16 +99,13 @@ export default Vue.extend({
         },
       });
     },
-    filterEntityTypeList(): void {
-      console.log("filterEntityTypeList")
-    },
     toggleAddNodeMenu(): void {
-      this.addNodeMenuIsVisible = !this.addNodeMenuIsVisible
+      this.addNodeMenuIsVisible = !this.addNodeMenuIsVisible;
     },
-    async createNode(): Promise<void> {
+    async createNode(entity: EntityObject): Promise<void> {
       await this.$store.dispatch("editor/nodeCreate", {
         kind: NodeKind.Entity,
-        objectType: this.selectedEntityType,
+        objectType: entity.typeName,
       });
     },
     async sendAction(): Promise<void> {
@@ -162,9 +137,6 @@ export default Vue.extend({
       }
     },
   },
-  beforeUpdate(): void {
-    this.filterEntityTypeList()
-  }
 });
 </script>
 
