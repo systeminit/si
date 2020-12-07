@@ -1,12 +1,13 @@
 import { PropText, PropSelect } from "../../components/prelude";
+import { ComponentAndEntityObject } from "../../systemComponent";
 import { registry } from "../../registry";
 
-registry.componentAndEntity({
+let awsEks = {
   typeName: "awsEks",
   displayTypeName: "AWS Elastic Kubernetes Service",
   siPathName: "si-core",
   serviceName: "core",
-  options(c) {
+  options(c: ComponentAndEntityObject) {
     c.entity.iEntity = {
       uiVisible: true,
       uiMenuCategory: "aws",
@@ -29,4 +30,7 @@ registry.componentAndEntity({
       },
     });
   },
-});
+};
+
+export { awsEks };
+registry.componentAndEntity(awsEks);

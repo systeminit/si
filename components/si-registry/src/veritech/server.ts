@@ -12,6 +12,7 @@ import "@/veritech/components/kubernetesDeployment";
 import "@/veritech/components/kubernetesNamespace";
 import "@/veritech/components/kubernetesSecret";
 import "@/veritech/components/kubernetesService";
+import "@/veritech/components/kubernetesIngress";
 import "@/veritech/components/service";
 import "@/veritech/components/helmRepo";
 import "@/veritech/components/helmChart";

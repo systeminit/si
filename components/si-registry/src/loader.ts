@@ -24,7 +24,7 @@ import "./components/si-account/item";
 import "./components/si-account/eventLog";
 
 import "./components/si-core/application";
-import "./components/si-core/service";
+import "./components/si-application/service";
 import "./components/si-core/system";
 import "./components/si-core/edge";
 import "./components/si-core/resource";
@@ -33,22 +33,42 @@ import "./components/si-core/server";
 import "./components/si-core/ubuntu";
 import "./components/si-core/ami";
 import "./components/si-core/ec2instance";
-import "./components/si-core/dockerHubCredential";
-import "./components/si-core/aws";
-import "./components/si-core/awsAccessKeyCredential";
-import "./components/si-core/dockerImage";
+import "./components/si-docker/dockerHubCredential";
+import "./components/si-aws/aws";
+import "./components/si-aws/awsAccessKeyCredential";
+import "./components/si-docker/dockerImage";
 
-import "./components/si-kubernetes/kubernetes";
-import "./components/si-kubernetes/cluster";
-import "./components/si-core/awsIamJsonPolicy";
-import "./components/si-core/awsEks";
-import "./components/si-kubernetes/namespace";
-import "./components/si-kubernetes/minikube";
-import "./components/si-kubernetes/secret";
-import "./components/si-kubernetes/deployment";
-import "./components/si-kubernetes/service";
+import "./components/si-kubernetes/base/container";
+import "./components/si-kubernetes/base/metadata";
+import "./components/si-kubernetes/base/podSpec";
+import "./components/si-kubernetes/base/podTemplateSpec";
+import "./components/si-kubernetes/base/loadBalancerStatus";
+import "./components/si-kubernetes/base/selector";
+import "./components/si-kubernetes/base/servicePort";
 
-import "./components/si-core/helmRepoCredential";
-import "./components/si-kubernetes/helmRepo";
-import "./components/si-kubernetes/helmChart";
-import "./components/si-kubernetes/helmRelease";
+import "./components/si-kubernetes/base/serviceBackendPort";
+import "./components/si-kubernetes/base/ingressServiceBackend";
+import "./components/si-kubernetes/base/typedLocalObjectReference";
+import "./components/si-kubernetes/base/ingressBackend";
+import "./components/si-kubernetes/base/ingressSpec";
+
+import "./components/si-kubernetes/base/httpIngressPath";
+import "./components/si-kubernetes/base/httpIngressRuleValue";
+import "./components/si-kubernetes/base/ingressRule";
+import "./components/si-kubernetes/base/ingressTls";
+import "./components/si-kubernetes/base/ingressStatus";
+import "./components/si-kubernetes/entity/cluster";
+
+import "./components/si-aws/awsIamJsonPolicy";
+import "./components/si-aws/awsEks";
+
+import "./components/si-helm/helmRepoCredential";
+import "./components/si-helm/helmRepo";
+import "./components/si-helm/helmChart";
+import "./components/si-helm/helmRelease";
+
+import "./components/si-kubernetes/entity/namespace";
+import "./components/si-kubernetes/entity/secret";
+import "./components/si-kubernetes/entity/deployment";
+import "./components/si-kubernetes/entity/service";
+import "./components/si-kubernetes/entity/ingress";

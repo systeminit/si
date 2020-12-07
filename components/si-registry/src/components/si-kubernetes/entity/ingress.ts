@@ -1,47 +1,42 @@
 import {
+  PropLink,
   PropObject,
   PropText,
-  PropLink,
-  PropEnum,
   PropCode,
   PropAction,
-} from "../../components/prelude";
-import { registry } from "../../registry";
+} from "../../../components/prelude";
 
-registry.componentAndEntity({
-  typeName: "kubernetesNamespace",
-  displayTypeName: "Kubernetes Namespace Object",
+import { ComponentAndEntityObject } from "../../../systemComponent";
+import { registry } from "../../../registry";
+
+// interface Ingress {
+//   apiVersion: Ingress.version;
+//   kind: Ingress.kind;
+//   metadata: ObjectMeta | undefined;
+//   spec: IngressSpec;
+//   status: IngressStatus;
+// }
+
+// Depends on:
+// - kubernetesMetadata
+// - kubernetesIngressSpec
+// - kubernetesIngressStatus
+
+let kubernetesIngress = {
+  typeName: "kubernetesIngress",
+  displayTypeName: "Kubernetes Ingress Object",
   siPathName: "si-kubernetes",
   serviceName: "kubernetes",
-  options(c) {
+  options(c: ComponentAndEntityObject) {
     c.entity.iEntity = {
       uiVisible: true,
       uiMenuCategory: "kubernetes",
-      uiMenuDisplayName: "namespace",
+      uiMenuDisplayName: "ingress",
     };
-    c.entity.inputType("application");
-    c.entity.inputType("aws");
-    c.entity.inputType("awsEks");
-    c.entity.inputType("awsAccessKeyCredential");
-    c.entity.inputType("service");
 
     c.entity.associations.belongsTo({
       fromFieldPath: ["siProperties", "billingAccountId"],
       typeName: "billingAccount",
-    });
-    c.entity.integrationServices.push({
-      integrationName: "aws",
-      integrationServiceName: "eks_kubernetes",
-    });
-
-    // Constraints
-    c.constraints.addEnum({
-      name: "kubernetesVersion",
-      label: "Kubernetes Version",
-      options(p: PropEnum) {
-        p.variants = ["v1.12", "v1.13", "v1.14", "v1.15"];
-        p.baseDefaultValue = "v1.15";
-      },
     });
 
     // Properties
@@ -51,13 +46,13 @@ registry.componentAndEntity({
       options(p: PropObject) {
         p.relationships.updates({
           partner: {
-            typeName: "kubernetesNamespace",
+            typeName: "kubernetesIngress",
             names: ["properties", "kubernetesObjectYaml"],
           },
         });
         p.relationships.either({
           partner: {
-            typeName: "kubernetesNamespace",
+            typeName: "kubernetesIngress",
             names: ["properties", "kubernetesObjectYaml"],
           },
         });
@@ -73,12 +68,7 @@ registry.componentAndEntity({
           label: "Kind",
           options(p: PropText) {
             p.required = true;
-            p.baseDefaultValue = "Deployment";
-            p.baseValidation = p
-              .validation()
-              .min(3)
-              .max(10)
-              .required();
+            p.baseDefaultValue = "Ingress";
           },
         });
         p.properties.addLink({
@@ -90,21 +80,40 @@ registry.componentAndEntity({
             };
           },
         });
+        p.properties.addLink({
+          name: "spec",
+          label: "Ingress Spec",
+          options(p: PropLink) {
+            p.lookup = {
+              typeName: "kubernetesIngressSpec",
+            };
+          },
+        });
+        p.properties.addLink({
+          name: "status",
+          label: "Ingress Status",
+          options(p: PropLink) {
+            p.lookup = {
+              typeName: "kubernetesIngressStatus",
+            };
+          },
+        });
       },
     });
+
     c.properties.addCode({
       name: "kubernetesObjectYaml",
       label: "Kubernetes Object YAML",
       options(p: PropCode) {
         p.relationships.updates({
           partner: {
-            typeName: "kubernetesNamespace",
+            typeName: "kubernetesIngress",
             names: ["properties", "kubernetesObject"],
           },
         });
         p.relationships.either({
           partner: {
-            typeName: "kubernetesNamespace",
+            typeName: "kubernetesIngress",
             names: ["properties", "kubernetesObject"],
           },
         });
@@ -121,4 +130,8 @@ registry.componentAndEntity({
       },
     });
   },
-});
+};
+
+export { kubernetesIngress };
+
+registry.componentAndEntity(kubernetesIngress);
