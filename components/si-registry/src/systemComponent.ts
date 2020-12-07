@@ -41,6 +41,27 @@ export interface AddMethodConstructor {
   isPrivate?: PropMethod["isPrivate"];
 }
 
+export interface IEntity {
+  uiVisible: boolean;
+  uiMenuCategory?: UiMenuCategory | undefined;
+  // Should implement path model instead of uiMenuSubCategory
+  // uiMenuCategory/my/path
+  uiMenuSubCategory?: UiMenuSubCategory;
+  uiMenuDisplayName?: string;
+}
+
+export type UiMenuCategory =
+  | "application"
+  | "kubernetes"
+  | "docker"
+  | "aws"
+  | "none";
+
+export type UiMenuSubCategory = 
+  | UiAwsMenuCategory;
+
+export type UiAwsMenuCategory = "iam" | "eks";
+
 export class BaseObject {
   typeName: string;
   displayTypeName: string;
@@ -558,6 +579,7 @@ export class EntityObject extends SystemObject {
   inputTypes: EntityObject[];
   secretObjectType: string | undefined;
   secretKind: string | undefined;
+  iEntity?: IEntity | undefined;
 
   constructor(args: BaseObjectConstructor) {
     const typeName = `${args.typeName}`;
@@ -1247,6 +1269,7 @@ export class ComponentAndEntityObject {
       siPathName: args.siPathName,
       serviceName: args.serviceName,
     });
+
     this.entityEvent = new EntityEventObject({
       typeName: args.typeName,
       displayTypeName: args.displayTypeName,

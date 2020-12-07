@@ -4,31 +4,14 @@
       id="schematic-panel-menu"
       class="flex flex-row flex-no-wrap content-between justify-between w-full bg-black"
     >
-      <div class="flex flex-row justify-start mx-3">
-        <button
-          class="px-4 py-2 focus:outline-none"
-          v-bind:class="buttonClass"
-          @click="createNode()"
-          type="button"
+      <div class="flex flex-row justify-start items-center mx-3">
+        <NodeAddMenu
+          :entityTypeList="entityTypeList"
+          class="z-50"
+          @selected="createNode"
           :disabled="!isEditMode"
-        >
-          <plus-square-icon size="1.1x" />
-        </button>
-        <div class="text-black">
-          <select
-            class="my-2 text-xs leading-tight text-gray-400 bg-gray-800 border focus:outline-none"
-            v-model="selectedEntityType"
-            :disabled="!isEditMode"
-          >
-            <option
-              v-for="entity in entityTypeList"
-              :key="entity.typeName"
-              :value="entity.typeName"
-            >
-              {{ entity.typeName }}
-            </option>
-          </select>
-        </div>
+        />
+
         <button
           class="px-4 py-2 focus:outline-none"
           v-bind:class="buttonClass"
@@ -73,7 +56,7 @@
 
 <script lang="ts">
 import Vue from "vue";
-import { Maximize2Icon, PlusSquareIcon, CommandIcon } from "vue-feather-icons";
+import { Maximize2Icon, CommandIcon } from "vue-feather-icons";
 import NodeEditor from "./NodeEditor.vue";
 import { registry } from "si-registry";
 import _ from "lodash";
@@ -81,11 +64,14 @@ import { mapState } from "vuex";
 import { RootStore } from "@/store";
 import { camelCase } from "change-case";
 import { NodeKind } from "@/api/sdf/model/node";
+import NodeAddMenu from "./NodeAddMenu.vue";
+import { EntityObject } from "si-registry/lib/systemComponent";
 
 interface Data {
   selectedEntityType: string;
   selectedAction: string;
-  entityTypeList: any[];
+  entityTypeList: EntityObject[];
+  addNodeMenuIsVisible: boolean;
 }
 
 export default Vue.extend({
@@ -93,8 +79,8 @@ export default Vue.extend({
   components: {
     Maximize2Icon,
     NodeEditor,
-    PlusSquareIcon,
     CommandIcon,
+    NodeAddMenu,
   },
   data(): Data {
     const entityTypeList = _.sortBy(registry.listEntities(), ["typeName"]);
@@ -102,6 +88,7 @@ export default Vue.extend({
       selectedEntityType: "service",
       selectedAction: "delete",
       entityTypeList,
+      addNodeMenuIsVisible: false,
     };
   },
   methods: {
@@ -112,10 +99,13 @@ export default Vue.extend({
         },
       });
     },
-    async createNode(): Promise<void> {
+    toggleAddNodeMenu(): void {
+      this.addNodeMenuIsVisible = !this.addNodeMenuIsVisible;
+    },
+    async createNode(entity: EntityObject): Promise<void> {
       await this.$store.dispatch("editor/nodeCreate", {
         kind: NodeKind.Entity,
-        objectType: this.selectedEntityType,
+        objectType: entity.typeName,
       });
     },
     async sendAction(): Promise<void> {

@@ -7,6 +7,12 @@ registry.componentAndEntity({
   siPathName: "si-core",
   serviceName: "core",
   options(c) {
+    c.entity.iEntity = {
+      uiVisible: true,
+      uiMenuCategory: "aws",
+      uiMenuSubCategory: "eks",
+      uiMenuDisplayName: "cluster",
+    };
     c.entity.inputType("kubernetesCluster");
     c.entity.inputType("aws");
     c.entity.inputType("awsAccessKeyCredential");
