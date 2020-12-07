@@ -1,43 +1,95 @@
 <template>
-  <div :id="event.id" class="mx-4 mt-3">
-    <div class="event-summary-bar">
-      <div class="">
-        <div class="flex justify-between">
-          <div class="flex flex-col m-2">
-            <div class="justify-center text-white text-md">
-              {{ event.name }}
-            </div>
-            <div class="justify-center text-xs text-white">
-              {{ event.owner }}
-            </div>
-            <div class="justify-center text-xs text-white">
+  <div :id="event.id" class="mx-4 mt-3 event">
+    <div class="event-summary">
+      <div class="flex flex-col">
+
+ 
+        <div class="flex justify-between event-summary-header pr-2 pl-2 py-1 text-gray-400 text-xs">
+
+          <div class="flex justify-between ">
+            <div class="">
               <Tooltip>
                 {{ event.localTime() }}
                 <template v-slot:tooltip>
-                  <div class="flex-col text-sm text-gray-400 felx">
+                  <div class="flex flex-col text-gray-500">
                     {{ event.relativeToNow() }}
                   </div>
                 </template>
               </Tooltip>
             </div>
-          </div>
 
-          <div class="flex flex-col justify-between">
-            <div
-              class="pt-1 mr-2 text-xs text-right text-white"
-              :class="{
-                'event-succeeded': eventSucceeded,
-                'event-failed': eventFailed,
-                'event-running': eventRunning,
-                'event-unknown': eventUnknown,
-              }"
-            >
-              {{ event.status }}
+            <div class="pl-1 pr-1">
+            |
             </div>
 
-            <div class="text-right text-white">
+            <div class="">
+            {{ event.name }}
+            </div>
+
+          </div>
+
+          <div
+            class="text-xs text-right"
+            :class="{
+              'event-succeeded': eventSucceeded,
+              'event-failed': eventFailed,
+              'event-running': eventRunning,
+              'event-unknown': eventUnknown,
+            }"
+          >
+          {{ event.status }}
+          </div>
+        </div>
+
+        <div class="flex justify-between w-full event-summary-body pr-2 pl-2 py-1 text-gray-400 text-xs">
+
+          <div class="flex flex-col mr-4">
+
+            <div class="flex items-start">
+              <alert-triangle-icon size="1.0x" class="text-red-500" v-if="eventFailed"/>
+              <div class="w-3" v-if="!eventFailed">
+
+              </div>
+              <div class="pl-2 pr-1">
+                Root event:
+              </div>
+           
+              <div class="">
+                {{ event.name }}
+              </div>           
+            </div>
+
+            <div class="pl-5">
+              {{ event.localTime() }}
+            </div> 
+
+          </div>
+
+          <div class="flex flex-col">
+            <div class="flex items-start">
+              <div class="pr-1">
+                Status:
+              </div>
+              <div class="justify-center">
+                Failed
+              </div>
+            </div>
+
+            <div class="flex items-start">
+              <div class="pr-1">
+                Triggered by:
+              </div>
+              <div class="justify-center">
+                {{ event.owner }}
+                <!-- Identify Root event -->
+              </div>
+            </div>
+
+          </div>
+
+            <div class="flex items-end text-right text-white">
               <button
-                class="justify-end mr-1 focus:outline-none"
+                class="mr-1 focus:outline-none"
                 :class="{
                   hidden: this.showEventDetails,
                   display: !this.showEventDetails,
@@ -58,27 +110,29 @@
                 <chevron-down-icon size="1.1x" class="custom-class" />
               </button>
             </div>
-          </div>
+
+
+
         </div>
       </div>
     </div>
 
     <div
-      class="event-data"
+      class="event-details"
       :class="{
         hidden: !this.showEventDetails,
         display: this.showEventDetails,
       }"
     >
-      <div
+<!--       <div
         v-for="parent in parents"
         :key="parent.id"
         class="ml-2 text-xs text-right text-gray-400"
       >
         via {{ parent.message }} ({{ parent.status }})
-      </div>
-      <div v-for="log in eventLogs" :key="log.id" class="event-msg">
-        <EventLogElem :eventLog="log" />
+      </div> -->
+      <div v-for="log in eventLogs" :key="log.id" class="event-operation">
+        <EventOperation :eventLog="log" />
       </div>
     </div>
   </div>
@@ -87,9 +141,9 @@
 <script lang="ts">
 import Vue, { PropType } from "vue";
 
-import { ChevronDownIcon, ChevronRightIcon } from "vue-feather-icons";
+import { ChevronDownIcon, ChevronRightIcon, AlertTriangleIcon } from "vue-feather-icons";
 
-import EventLogElem from "./EventLog.vue";
+import EventOperation from "./EventOperation.vue";
 import Tooltip from "@/components/ui/Tooltip.vue";
 import { Event, EventKind, EventStatus } from "@/api/sdf/model/event";
 import { User } from "@/api/sdf/model/user";
@@ -105,7 +159,8 @@ export default Vue.extend({
   components: {
     ChevronDownIcon,
     ChevronRightIcon,
-    EventLogElem,
+    AlertTriangleIcon,
+    EventOperation,
     Tooltip,
   },
   data() {
@@ -177,7 +232,7 @@ export default Vue.extend({
   background-color: #2a2c2d;
 }
 
-.event-summary-bar {
+.event-summary {
   background-color: #2a2c2d;
 }
 
@@ -197,11 +252,19 @@ export default Vue.extend({
   color: #ff624c;
 }
 
-.event-msg:nth-child(even) {
+.event-summary-header {
+  background-color: #2A2C2D;
+}
+
+.event-summary-body {
+  background-color:  #313536;
+}
+
+.event-operation:nth-child(even) {
   background-color: #121314;
 }
 
-.event-msg:nth-child(odd) {
+.event-operation:nth-child(odd) {
   background-color: #181a1b;
 }
 </style>

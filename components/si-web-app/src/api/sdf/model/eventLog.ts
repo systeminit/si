@@ -31,6 +31,7 @@ export interface IEventLog {
   payload: any;
   level: EventLogLevel;
   eventId: string;
+  hasOutputLine: boolean;
 }
 
 export class EventLog implements IEventLog {
@@ -42,6 +43,7 @@ export class EventLog implements IEventLog {
   payload: IEventLog["payload"];
   level: IEventLog["level"];
   eventId: IEventLog["eventId"];
+  hasOutputLine: IEventLog["hasOutputLine"];
 
   constructor(args: IEventLog) {
     this.id = args.id;
@@ -52,6 +54,7 @@ export class EventLog implements IEventLog {
     this.payload = args.payload;
     this.level = args.level;
     this.eventId = args.eventId;
+    this.hasOutputLine = args.hasOutputLine;
   }
 
   localTime(): string {

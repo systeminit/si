@@ -40,6 +40,14 @@ const margin = {
   "-05": "-0.05rem",
 };
 
+const maxHeight = {
+  "0": "0",
+  "1/4": "25%",
+  "1/2": "50%",
+  "3/4": "75%",
+}
+
 exports.colors = colors;
 exports.spacing = spacing;
 exports.margin = margin;
+exports.maxHeight = maxHeight;

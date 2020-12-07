@@ -166,7 +166,7 @@ impl<REQ: Serialize, REP: DeserializeOwned> Veritech<REQ, REP> {
                     } else if reply.has_output_line() {
                         let output_line_msg = reply.get_output_line();
                         let event_log = log_cache
-                            .get(&output_line_msg.event_log_id)
+                            .get_mut(&output_line_msg.event_log_id)
                             .ok_or(VeritechError::MissingEventLog(output_line_msg.event_log_id))?;
                         event_log
                             .output_line(&db, &nats, output_line_msg.stream, output_line_msg.line)

@@ -1,6 +1,6 @@
 <template>
   <div class="flex-row">
-    <div class="flex overflow-auto text-xs text-gray-700">
+    <div class="flex overflow-auto text-xs text-gray-700 event-operation-summary">
       <div class="w-10 ml-2">{{ eventLog.level }}</div>
       <div class="ml-2">
         <Tooltip>
@@ -16,7 +16,7 @@
       <div class="flex-grow text-right text-white">
         <button
           class="justify-end mr-1 focus:outline-none"
-          v-if="!showOutputLines"
+          v-if="!showOutputLines && eventLog.hasOutputLine"
           @click="expandOutputLines()"
         >
           <chevron-right-icon size="1.1x" class="custom-class" />
@@ -31,13 +31,13 @@
         </button>
       </div>
     </div>
-    <div class="flex-row" v-if="showOutputLines">
-      <div class="flex overflow-auto text-xs text-gray-300 h-60">
-        <pre class="whitespace-pre-wrap w-60">
-          <code class="whitespace-pre-wrap">
-{{ outputLines.map(obj => obj.line).join("\n") }}
-          </code>
-        </pre>
+    <div class="flex-row event-operation-details" v-if="showOutputLines">
+      <div class="flex overflow-auto text-xs text-gray-300 h-auto w-full event-operation-output">
+        
+        <div class="whitespace-pre-wrap w-full h-auto my-1 ml-3 mr-1 max-h-1/2">
+        {{ outputLines.map(obj => obj.line).join("\n") }}
+        </div>
+
       </div>
     </div>
   </div>
@@ -59,7 +59,7 @@ interface Data {
 }
 
 export default Vue.extend({
-  name: "EventLog",
+  name: "EventOperation",
   props: {
     eventLog: {
       type: Object as PropType<EventLog>,
@@ -101,3 +101,12 @@ export default Vue.extend({
   },
 });
 </script>
+
+
+<style type="text/css" scoped>
+
+.event-operation-output {
+  background-color: #090A0A;
+}
+
+</style>
