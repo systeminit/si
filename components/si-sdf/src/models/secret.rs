@@ -94,6 +94,7 @@ enum_impls!(SecretObjectType);
 pub enum SecretKind {
     DockerHub,
     AwsAccessKey,
+    HelmRepo,
 }
 
 enum_impls!(SecretKind);

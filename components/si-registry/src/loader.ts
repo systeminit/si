@@ -47,3 +47,8 @@ import "./components/si-kubernetes/minikube";
 import "./components/si-kubernetes/secret";
 import "./components/si-kubernetes/deployment";
 import "./components/si-kubernetes/service";
+
+import "./components/si-core/helmRepoCredential";
+import "./components/si-kubernetes/helmRepo";
+import "./components/si-kubernetes/helmChart";
+import "./components/si-kubernetes/helmRelease";

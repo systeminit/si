@@ -19,7 +19,7 @@ export interface AwsCliEnv {
   [key: string]: string;
 }
 
-interface AwsInputRequest {
+export interface AwsInputRequest {
   entity: Entity;
   predecessors: {
     entity: Entity;
@@ -154,6 +154,8 @@ export async function awsKubeConfig(
         status: ResourceStatus.Failed,
       }),
     };
+  } else {
+    await fs.chmod(kubeconfigPath, "0600");
   }
 
   return { kubeconfig: kubeconfigPath };
