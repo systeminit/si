@@ -134,6 +134,15 @@ container//builder:
 release//builder: container//builder
 	docker push systeminit/si-builder:latest
 
+build_release//cli:
+	@ pushd ./components/si-sdf; $(MAKE) $@
+
+container//cli:
+	@ pushd ./components/si-sdf; $(MAKE) $@
+
+release//cli:
+	@ pushd ./components/si-sdf; $(MAKE) $@
+
 #release_from_git: $(patsubst %,release//%,$(TO_RELEASE))
 #	@ echo "--> You have (maybe) released the System Initative! <--"
 #	@ echo Released: $(TO_RELEASE)
@@ -141,7 +150,7 @@ release//builder: container//builder
 deploy//internal: release 
 	@ pushd components/aws-si-internal; env RELEASE=$(RELEASE) pulumi up -y
 
-release: $(RELEASEABLE)
+release: $(RELEASEABLE) release//cli
 	@ echo "--> You have released the System Initative! <--"
 
 $(CLEANABLE):

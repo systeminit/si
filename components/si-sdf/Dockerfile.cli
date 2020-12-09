@@ -1,0 +1,13 @@
+FROM systeminit/si-builder:latest as build
+COPY . /src
+WORKDIR /src
+RUN make build_release//cli
+
+FROM ubuntu:rolling
+LABEL maintainer="dev@systeminit.com"
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update \
+  && apt-get install -y libssl1.1 \
+  && rm -rf /var/lib/apt/lists/*
+COPY --from=build /src/target/release/si /usr/local/bin/si
+ENTRYPOINT ["/usr/local/bin/si"]
