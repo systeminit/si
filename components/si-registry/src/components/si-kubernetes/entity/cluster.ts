@@ -1,12 +1,13 @@
-import { PropSelect } from "../../components/prelude";
-import { registry } from "../../registry";
+import { PropSelect } from "../../../components/prelude";
+import { ComponentAndEntityObject } from "../../../systemComponent";
+import { registry } from "../../../registry";
 
-registry.componentAndEntity({
+let kubernetesCluster = {
   typeName: "kubernetesCluster",
   displayTypeName: "Kubernetes Cluster",
   siPathName: "si-kubernetes",
   serviceName: "kubernetes",
-  options(c) {
+  options(c: ComponentAndEntityObject) {
     c.entity.iEntity = {
       uiVisible: false,
     };
@@ -20,4 +21,8 @@ registry.componentAndEntity({
       integrationServiceName: "eks_kubernetes",
     });
   },
-});
+};
+
+export { kubernetesCluster };
+
+registry.componentAndEntity(kubernetesCluster);

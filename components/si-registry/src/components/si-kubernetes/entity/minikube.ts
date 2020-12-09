@@ -1,5 +1,5 @@
-import { PropSelect, PropAction } from "../../components/prelude";
-import { registry } from "../../registry";
+import { PropSelect, PropAction } from "../../../components/prelude";
+import { registry } from "../../../registry";
 
 registry.componentAndEntity({
   typeName: "minikube",

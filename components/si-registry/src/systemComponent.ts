@@ -57,8 +57,7 @@ export type UiMenuCategory =
   | "aws"
   | "none";
 
-export type UiMenuSubCategory = 
-  | UiAwsMenuCategory;
+export type UiMenuSubCategory = UiAwsMenuCategory;
 
 export type UiAwsMenuCategory = "iam" | "eks";
 

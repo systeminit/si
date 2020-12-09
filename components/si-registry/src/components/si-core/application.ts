@@ -1,12 +1,13 @@
 import { PropSelect } from "../../components/prelude";
+import { ComponentAndEntityObject } from "../../systemComponent";
 import { registry } from "../../registry";
 
-registry.componentAndEntity({
+let application = {
   typeName: "application",
   displayTypeName: "A System Initiative Application",
   siPathName: "si-core",
   serviceName: "core",
-  options(c) {
+  options(c: ComponentAndEntityObject) {
     c.entity.iEntity = {
       uiVisible: false,
     };
@@ -24,4 +25,7 @@ registry.componentAndEntity({
       },
     });
   },
-});
+};
+
+export { application };
+registry.componentAndEntity(application);

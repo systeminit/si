@@ -2,30 +2,27 @@ import {
   PropObject,
   PropText,
   PropLink,
-  PropNumber,
   PropEnum,
   PropCode,
   PropAction,
-} from "../../components/prelude";
-import { registry } from "../../registry";
+} from "../../../components/prelude";
+import { registry } from "../../../registry";
 
 registry.componentAndEntity({
-  typeName: "kubernetesDeployment",
-  displayTypeName: "Kubernetes Deployment Object",
+  typeName: "kubernetesSecret",
+  displayTypeName: "Kubernetes Secret Object",
   siPathName: "si-kubernetes",
   serviceName: "kubernetes",
   options(c) {
     c.entity.iEntity = {
       uiVisible: true,
       uiMenuCategory: "kubernetes",
-      uiMenuDisplayName: "deployment",
+      uiMenuDisplayName: "secret",
     };
-    c.entity.inputType("dockerImage");
-    c.entity.inputType("aws");
-    c.entity.inputType("awsEks");
     c.entity.inputType("awsAccessKeyCredential");
+    c.entity.inputType("awsEks");
+    c.entity.inputType("dockerHubCredential");
     c.entity.inputType("kubernetesNamespace");
-    c.entity.inputType("kubernetesSecret");
     c.entity.inputType("service");
 
     c.entity.associations.belongsTo({
@@ -54,13 +51,13 @@ registry.componentAndEntity({
       options(p: PropObject) {
         p.relationships.updates({
           partner: {
-            typeName: "kubernetesDeploymentEntity",
+            typeName: "kubernetesNamespace",
             names: ["properties", "kubernetesObjectYaml"],
           },
         });
         p.relationships.either({
           partner: {
-            typeName: "kubernetesDeploymentEntity",
+            typeName: "kubernetesNamespace",
             names: ["properties", "kubernetesObjectYaml"],
           },
         });
@@ -76,7 +73,7 @@ registry.componentAndEntity({
           label: "Kind",
           options(p: PropText) {
             p.required = true;
-            p.baseDefaultValue = "Deployment";
+            p.baseDefaultValue = "Secret";
             p.baseValidation = p
               .validation()
               .min(3)
@@ -93,36 +90,21 @@ registry.componentAndEntity({
             };
           },
         });
-        p.properties.addObject({
-          name: "spec",
-          label: "Deployment Spec",
-          options(p: PropObject) {
-            p.properties.addNumber({
-              name: "replicas",
-              label: "Replicas",
-              options(p: PropNumber) {
-                p.numberKind = "int32";
-              },
-            });
-            p.properties.addLink({
-              name: "selector",
-              label: "Selector",
-              options(p: PropLink) {
-                p.lookup = {
-                  typeName: "kubernetesSelector",
-                };
-              },
-            });
-            p.properties.addLink({
-              name: "template",
-              label: "Pod Template Spec",
-              options(p: PropLink) {
-                p.lookup = {
-                  typeName: "kubernetesPodTemplateSpec",
-                };
-              },
-            });
-          },
+        p.properties.addMap({
+          name: "data",
+          label: "Data",
+        });
+        p.properties.addMap({
+          name: "stringData",
+          label: "StringData",
+        });
+        p.properties.addBool({
+          name: "immutable",
+          label: "immutable",
+        });
+        p.properties.addText({
+          name: "type",
+          label: "type",
         });
       },
     });
@@ -132,13 +114,13 @@ registry.componentAndEntity({
       options(p: PropCode) {
         p.relationships.updates({
           partner: {
-            typeName: "kubernetesDeploymentEntity",
+            typeName: "kubernetesNamespace",
             names: ["properties", "kubernetesObject"],
           },
         });
         p.relationships.either({
           partner: {
-            typeName: "kubernetesDeploymentEntity",
+            typeName: "kubernetesNamespace",
             names: ["properties", "kubernetesObject"],
           },
         });

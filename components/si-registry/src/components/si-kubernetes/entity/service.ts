@@ -7,8 +7,8 @@ import {
   PropNumber,
   PropObject,
   PropText,
-} from "../../components/prelude";
-import { registry } from "../../registry";
+} from "../../../components/prelude";
+import { registry } from "../../../registry";
 
 registry.componentAndEntity({
   typeName: "kubernetesService",

@@ -1,12 +1,13 @@
 import { PropSelect } from "../../components/prelude";
+import { ComponentAndEntityObject } from "../../systemComponent";
 import { registry } from "../../registry";
 
-registry.componentAndEntity({
+let aws = {
   typeName: "aws",
   displayTypeName: "AWS",
   siPathName: "si-core",
   serviceName: "core",
-  options(c) {
+  options(c: ComponentAndEntityObject) {
     c.entity.iEntity = {
       uiVisible: true,
       uiMenuCategory: "aws",
@@ -31,4 +32,8 @@ registry.componentAndEntity({
       },
     });
   },
-});
+};
+
+export { aws };
+
+registry.componentAndEntity(aws);
