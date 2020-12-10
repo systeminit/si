@@ -144,7 +144,7 @@ export default Vue.extend({
   computed: {
     eventLatest(): Event | undefined {
       if (this.events.length > 0) {
-        return this.events[0];
+        return this.events[0].event;
       } else {
         return undefined;
       }
