@@ -1,4 +1,4 @@
-use crate::{test_cleanup, test_setup, TestAccount};
+use crate::{test_cleanup, test_setup};
 use crate::{DB, NATS, SETTINGS};
 use si_sdf::filters::api;
 use si_sdf::models::api_client::{ApiClientKind, CreateReply, CreateRequest};
@@ -14,7 +14,7 @@ async fn create() {
         .header("authorization", &test_account.authorization)
         .json(&CreateRequest {
             name: String::from("killer be killed"),
-            kind: ApiClientKind::CLI,
+            kind: ApiClientKind::Cli,
         })
         .path(format!("/apiClients").as_ref())
         .reply(&filter)
