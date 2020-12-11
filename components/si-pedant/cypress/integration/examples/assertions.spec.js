@@ -164,5 +164,14 @@ context('Assertions', () => {
 
       assert.isObject(person, 'value is object')
     })
+
+    it('retries the should callback until assertions pass', () => {
+      cy.get('#random-number')
+        .should(($div) => {
+          const n = parseFloat($div.text())
+
+          expect(n).to.be.gte(1).and.be.lte(10)
+        })
+    })
   })
 })

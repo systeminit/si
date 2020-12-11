@@ -1,7 +1,11 @@
 <template>
   <div id="node-list">
-    <div v-for="item in nodes" :key="item.id">
-      <NodeObject :node="item" />
+    <div v-for="(item, index) in nodes" :key="item.id">
+      <NodeObject
+        :data-cy="'editor-schematic-panel-node-list-parent' + index"
+        :node="item"
+        :nodeIndex="index"
+      />
     </div>
   </div>
 </template>

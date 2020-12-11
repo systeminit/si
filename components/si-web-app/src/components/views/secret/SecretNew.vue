@@ -31,6 +31,7 @@
           class="mr-4"
           :options="secretKindList"
           v-model="secretKind"
+          dataCy="new-secret-form-kind"
           name="kind"
         />
       </div>

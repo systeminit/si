@@ -3,6 +3,7 @@
     <select
       class="block w-full px-2 py-1 pr-8 leading-tight text-gray-400 border border-gray-800 border-solid shadow appearance-none focus:outline-none select"
       :disabled="disabled"
+      :data-cy="dataCy"
       @change="selected"
     >
       <option
@@ -36,6 +37,7 @@ export interface SelectProps {
   size: "xs" | "sm" | "base" | "lg";
   options: SelectPropsOption[];
   value: string | null | Object | number;
+  dataCy: string;
 }
 
 export default Vue.extend({
@@ -58,6 +60,9 @@ export default Vue.extend({
     disabled: {
       type: Boolean,
       default: false,
+    },
+    dataCy: {
+      type: String,
     },
   },
   methods: {

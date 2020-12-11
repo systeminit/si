@@ -27,10 +27,10 @@ context('Utilities', () => {
 
   it('Cypress.Blob - blob utilities and base64 string conversion', () => {
     // https://on.cypress.io/blob
-    cy.get('.utility-blob').then(($div) =>
-    // https://github.com/nolanlawson/blob-util#imgSrcToDataURL
-    // get the dataUrl string for the javascript-logo
-      Cypress.Blob.imgSrcToDataURL('https://example.cypress.io/assets/img/javascript-logo.png', undefined, 'anonymous')
+    cy.get('.utility-blob').then(($div) => {
+      // https://github.com/nolanlawson/blob-util#imgSrcToDataURL
+      // get the dataUrl string for the javascript-logo
+      return Cypress.Blob.imgSrcToDataURL('https://example.cypress.io/assets/img/javascript-logo.png', undefined, 'anonymous')
       .then((dataUrl) => {
         // create an <img> element and set its src to the dataUrl
         let img = Cypress.$('<img />', { src: dataUrl })
@@ -42,7 +42,8 @@ context('Utilities', () => {
 
         cy.get('.utility-blob img').click()
           .should('have.attr', 'src', dataUrl)
-      }))
+      })
+    })
   })
 
   it('Cypress.minimatch - test out glob patterns against strings', () => {
@@ -56,12 +57,14 @@ context('Utilities', () => {
     matching = Cypress.minimatch('/users/1/comments/2', '/users/*/comments', {
       matchBase: true,
     })
+
     expect(matching, 'comments').to.be.false
 
     // ** matches against all downstream path segments
     matching = Cypress.minimatch('/foo/bar/baz/123/quux?a=b&c=2', '/foo/**', {
       matchBase: true,
     })
+
     expect(matching, 'comments').to.be.true
 
     // whereas * matches only the next path segment
@@ -69,9 +72,9 @@ context('Utilities', () => {
     matching = Cypress.minimatch('/foo/bar/baz/123/quux?a=b&c=2', '/foo/*', {
       matchBase: false,
     })
+
     expect(matching, 'comments').to.be.false
   })
-
 
   it('Cypress.moment() - format or parse dates using a moment method', () => {
     // https://on.cypress.io/moment
@@ -99,7 +102,6 @@ context('Utilities', () => {
       })
   })
 
-
   it('Cypress.Promise - instantiate a bluebird promise', () => {
     // https://on.cypress.io/promise
     let waited = false
@@ -121,13 +123,14 @@ context('Utilities', () => {
       })
     }
 
-    cy.then(() =>
-    // return a promise to cy.then() that
-    // is awaited until it resolves
+    cy.then(() => {
+      // return a promise to cy.then() that
+      // is awaited until it resolves
       // @ts-ignore TS7006
-      waitOneSecond().then((str) => {
+      return waitOneSecond().then((str) => {
         expect(str).to.eq('foo')
         expect(waited).to.be.true
-      }))
+      })
+    })
   })
 })

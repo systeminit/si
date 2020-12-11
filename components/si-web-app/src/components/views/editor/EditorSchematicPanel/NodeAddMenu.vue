@@ -4,9 +4,10 @@
       @click="isOpen = !isOpen"
       class="w-full focus:outline-none"
       :disabled="disabled"
+      data-cy="editor-schematic-node-add-button"
     >
       <div
-        class="items-center mx-2 w-full self-center text-sm subpixel-antialiased font-light tracking-tight"
+        class="items-center self-center w-full mx-2 text-sm subpixel-antialiased font-light tracking-tight"
         :class="{
           'text-gray-200': !isOpen,
           'menu-selected': isOpen,
@@ -18,27 +19,37 @@
     </button>
 
     <ul
-      v-if="isOpen"
-      class="absolute ml-2 w-auto border shadow-md options text-gray-200"
+      v-show="isOpen"
+      class="absolute w-auto ml-2 text-gray-200 border shadow-md options"
       @mouseleave="onMouseLeave"
     >
       <li
         class="w-full px-4 text-sm subpixel-antialiased font-light tracking-tight text-left text-gray-300 cursor-pointer options menu-category"
         v-for="item in menuList"
+        :data-cy="
+          'editor-schematic-node-add-menu-' +
+          item.id.replace(/\s/g, '-').replace(/:/g, '')
+        "
         :key="item.id"
       >
-        <div class="hover:text-white whitespace-no-wrap">
+        <div class="whitespace-no-wrap hover:text-white">
           {{ item.id }}
         </div>
 
         <ul
           v-if="item.childs"
-          class="relative category-items border shadow-md options w-auto"
+          class="relative w-auto border shadow-md category-items options"
         >
           <li
-            class="w-full px-4 text-sm subpixel-antialiased font-light tracking-tight text-left text-gray-300 cursor-pointer options whitespace-no-wrap"
+            class="w-full px-4 text-sm subpixel-antialiased font-light tracking-tight text-left text-gray-300 whitespace-no-wrap cursor-pointer options"
             v-for="child in item.childs"
             :key="child.id"
+            :data-cy="
+              'editor-schematic-node-add-menu-' +
+              item.id.replace(/\s/g, '-').replace(/:/g, '') +
+              '-' +
+              child.id.replace(/\s/g, '-').replace(/:/g, '')
+            "
             @click="onSelect(child)"
           >
             {{ child.id }}
@@ -106,25 +117,26 @@ export default Vue.extend({
     },
     menuItemList(): MenuElement[] {
       // Filter the entityTypeList for entities that are uiVisible
-      var filteredList = _.remove(this.entityTypeList, function(
-        entity: EntityObject,
-      ) {
-        if (entity.iEntity?.uiVisible) {
-          return entity;
-        }
-      });
+      var filteredList = _.remove(
+        this.entityTypeList,
+        function (entity: EntityObject) {
+          if (entity.iEntity?.uiVisible) {
+            return entity;
+          }
+        },
+      );
 
       // Sort the filtered list
       let sortedList = _.sortBy(filteredList, ["iEntity.uiMenuDisplayName"]);
 
       let menuList: MenuElement[] = [];
 
-      sortedList.forEach(function(entity: EntityObject) {
+      sortedList.forEach(function (entity: EntityObject) {
         // Check if this entity has a uiMenuCategory
         if (entity.iEntity?.uiMenuCategory) {
           let menuElement: any;
           // Find the menuElement tht represents the entity uiMenuCategory.
-          menuElement = _.find(menuList, function(e: MenuElement) {
+          menuElement = _.find(menuList, function (e: MenuElement) {
             return e?.id === entity.iEntity?.uiMenuCategory;
           });
 
@@ -141,7 +153,7 @@ export default Vue.extend({
               };
               menuList.push(menuCategory);
               menuList = _.sortBy(menuList, ["id"]);
-              menuElement = _.find(menuList, function(e: MenuElement) {
+              menuElement = _.find(menuList, function (e: MenuElement) {
                 return e?.id === entity.iEntity?.uiMenuCategory;
               });
             }
@@ -185,7 +197,7 @@ export default Vue.extend({
   created() {
     const handleEscape = (e: any) => {
       if (e.key === "Esc" || e.key === "Escape") {
-        if(this.isOpen) {
+        if (this.isOpen) {
           this.isOpen = false;
         }
       }

@@ -34,7 +34,6 @@ context('Cypress.Commands', () => {
   })
 })
 
-
 context('Cypress.Cookies', () => {
   beforeEach(() => {
     cy.visit('https://example.cypress.io/cypress-api')
@@ -67,25 +66,7 @@ context('Cypress.Cookies', () => {
     // now any cookie with the name 'session_id' will
     // not be cleared before each new test runs
     Cypress.Cookies.defaults({
-      whitelist: 'session_id',
-    })
-  })
-})
-
-
-context('Cypress.Server', () => {
-  beforeEach(() => {
-    cy.visit('https://example.cypress.io/cypress-api')
-  })
-
-  // Permanently override server options for
-  // all instances of cy.server()
-
-  // https://on.cypress.io/cypress-server
-  it('.defaults() - change default config of server', () => {
-    Cypress.Server.defaults({
-      delay: 0,
-      force404: false,
+      preserve: 'session_id',
     })
   })
 })
@@ -185,7 +166,6 @@ context('Cypress.log', () => {
     // https://on.cypress.io/cypress-log
   })
 })
-
 
 context('Cypress.platform', () => {
   beforeEach(() => {

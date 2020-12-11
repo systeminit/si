@@ -1,29 +1,25 @@
 <template>
   <div>
     <div class="flex flex-row mx-2 my-2">
-      <div class="text-white">
-        dockerHub username:
-      </div>
+      <div class="text-white">dockerHub username:</div>
 
       <input
-        data-cy="new-secret-form-secret-name"
         class="ml-4 leading-tight text-gray-400 bg-transparent border-none appearance-none focus:outline-none input-bg-color"
         type="text"
         placeholder="docker hub username"
+        data-cy="new-secret-form-docker-hub-username"
         v-model="username"
         @input="updateInput"
       />
     </div>
     <div class="flex flex-row mx-2 my-2">
-      <div class="text-white">
-        dockerHub password:
-      </div>
+      <div class="text-white">dockerHub password:</div>
 
       <input
-        data-cy="new-secret-form-secret-name"
         class="ml-4 leading-tight text-gray-400 bg-transparent border-none appearance-none focus:outline-none input-bg-color"
         type="password"
         placeholder="docker hub password"
+        data-cy="new-secret-form-docker-hub-password"
         v-model="password"
         @input="updateInput"
       />

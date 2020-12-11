@@ -26,7 +26,9 @@
         <tbody class="divide-y divide-gray-800" v-if="secrets">
           <tr v-for="secret in secrets" :key="secret.name">
             <td class="secret-table-row">
-              <div class="px-4 py-2">{{ secret.name }}</div>
+              <div :data-cy="'secret-list-' + secret.name" class="px-4 py-2">
+                {{ secret.name }}
+              </div>
             </td>
             <td class="secret-table-row">
               <div class="px-4 py-2">{{ secret.objectType }}</div>

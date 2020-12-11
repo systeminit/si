@@ -10,6 +10,7 @@
             id="billingAccountName"
             type="text"
             v-model="billingAccountName"
+            data-cy="billingAccountName"
           />
         </div>
       </div>
@@ -24,6 +25,7 @@
             id="billingAccountDescription"
             type="text"
             v-model="billingAccountDescription"
+            data-cy="billingAccountDescription"
           />
         </div>
       </div>
@@ -32,7 +34,12 @@
           <label for="userName">usersFullName</label>
         </div>
         <div class="justify-start text-black">
-          <input id="userName" type="text" v-model="userName" />
+          <input
+            id="userName"
+            type="text"
+            v-model="userName"
+            data-cy="userName"
+          />
         </div>
       </div>
       <div class="flex flex-row m-2">
@@ -40,7 +47,12 @@
           <label for="userEmail">userEmailAddress</label>
         </div>
         <div class="justify-start text-black">
-          <input id="userEmail" type="text" v-model="userEmail" />
+          <input
+            id="userEmail"
+            type="text"
+            v-model="userEmail"
+            data-cy="userEmail"
+          />
         </div>
       </div>
       <div class="flex flex-row m-2">
@@ -48,7 +60,12 @@
           <label for="userPassword">userPassword</label>
         </div>
         <div class="justify-start text-black">
-          <input type="password" id="userPassword" v-model="userPassword" />
+          <input
+            type="password"
+            id="userPassword"
+            v-model="userPassword"
+            data-cy="userPassword"
+          />
         </div>
       </div>
       <div class="flex flex-row m-2">
@@ -59,6 +76,7 @@
           <input
             type="password"
             id="userPasswordAgain"
+            data-cy="userPasswordAgain"
             v-model="userPasswordAgain"
           />
         </div>
@@ -69,6 +87,7 @@
         icon="save"
         kind="save"
         size="xl"
+        data-cy="create"
       />
     </div>
   </div>

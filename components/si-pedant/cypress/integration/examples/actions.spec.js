@@ -59,6 +59,7 @@ context('Actions', () => {
     // https://on.cypress.io/submit
     cy.get('.action-form')
       .find('[type="text"]').type('HALFOFF')
+
     cy.get('.action-form').submit()
       .next().should('contain', 'Your form has been submitted!')
   })
@@ -208,6 +209,7 @@ context('Actions', () => {
       .select(['fr-apples', 'fr-oranges', 'fr-bananas'])
       .invoke('val')
       .should('deep.equal', ['fr-apples', 'fr-oranges', 'fr-bananas'])
+
     // assert the selected values include oranges
     cy.get('.action-select-multiple')
       .invoke('val').should('include', 'fr-oranges')
@@ -259,7 +261,6 @@ context('Actions', () => {
   })
 
   it('cy.scrollTo() - scroll the window or element to a position', () => {
-
     // https://on.cypress.io/scrollTo
 
     // You can scroll to 9 specific positions of an element:
