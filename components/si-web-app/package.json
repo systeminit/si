@@ -17,6 +17,7 @@
     "@types/lodash": "^4.14.157",
     "@types/node-fetch": "^2.5.4",
     "@types/vue-feather-icons": "^5.0.0",
+    "@types/ws": "^7.4.0",
     "ajv": "^6.12.2",
     "change-case": "^4.1.1",
     "chart.js": "^2.9.3",

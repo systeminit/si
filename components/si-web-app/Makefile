@@ -4,6 +4,5 @@ CONTAINER = si-web-app
 .DEFAULT_GOAL := build
 
 build: node_modules
-	echo "floopy"
 	$(MAKE) -C ../si-registry build_js
-	npm run build
+	env NODE_ENV=production npm run build
