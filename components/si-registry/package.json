@@ -42,7 +42,6 @@
     "nodemon": "^2.0.4",
     "nodemon-webpack-plugin": "^4.3.1",
     "prettier": "^1.18.2",
-    "ts-essentials": "^7.0.1",
     "ts-jest": "^24.3.0",
     "tsconfig-paths": "^3.9.0",
     "typescript": "^3.6.4",
@@ -65,6 +64,7 @@
     "joi": "^17.2.0",
     "lodash": "^4.17.20",
     "morgan": "^1.10.0",
+    "ts-essentials": "^7.0.1",
     "yaml": "^1.10.0"
   }
 }

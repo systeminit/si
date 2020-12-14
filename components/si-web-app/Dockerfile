@@ -1,8 +1,7 @@
 FROM systeminit/si-builder:latest as build
 LABEL maintainer="dev@systeminit.com"
-RUN mkdir /src
-WORKDIR /src
 COPY . /src
+WORKDIR /src
 ENV NPM_CONFIG_ALLOW_ROOT=true
 ENV NPM_CONFIG_UNSAFE_PERM=true
 ENV VUE_APP_SDF=https://internal-api.systeminit.com
