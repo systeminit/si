@@ -9,10 +9,11 @@ use tracing_subscriber::{self, fmt, EnvFilter, Registry};
 use std::env;
 use std::sync::Arc;
 
-use si_sdf::data::Db;
+use si_sdf::data::{Db, PgPool};
 use si_sdf::models::{BillingAccount, User};
 use si_settings::Settings;
 
+mod data;
 mod filters;
 mod handlers;
 mod models;
@@ -54,6 +55,7 @@ pub struct TestAccount {
     pub billing_account: BillingAccount,
     pub authorization: String,
     pub system_ids: Option<Vec<String>>,
+    pub pg: PgPool,
 }
 
 pub async fn one_time_setup() -> Result<()> {
@@ -61,6 +63,14 @@ pub async fn one_time_setup() -> Result<()> {
     if *finished {
         return Ok(());
     }
+    let pg = PgPool::new(&SETTINGS)
+        .await
+        .expect("failed to connect to postgres");
+    pg.drop_and_create_public_schema()
+        .await
+        .expect("failed to drop the database");
+    pg.migrate().await.expect("migration failed!");
+
     match si_sdf::data::create_indexes(&DB).await {
         Ok(_) => (),
         Err(err) => println!("failed to create indexes: {}", err),
@@ -86,6 +96,9 @@ pub async fn test_setup() -> Result<TestAccount> {
     let reply = crate::filters::billing_accounts::signup().await;
     let jwt =
         crate::filters::users::login_user(&reply.billing_account.name, &reply.user.email).await;
+    let pg = PgPool::new(&SETTINGS)
+        .await
+        .expect("failed to connect to postgres");
     let mut test_account = TestAccount {
         user_id: reply.user.id.clone(),
         billing_account_id: reply.billing_account.id.clone(),
@@ -95,6 +108,7 @@ pub async fn test_setup() -> Result<TestAccount> {
         user: reply.user,
         authorization: format!("Bearer {}", jwt),
         system_ids: None,
+        pg,
     };
 
     let system_ids = crate::filters::nodes::create_system(&test_account).await;

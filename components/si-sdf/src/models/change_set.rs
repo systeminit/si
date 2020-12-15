@@ -164,7 +164,7 @@ impl ChangeSet {
         Ok(change_set)
     }
 
-    #[tracing::instrument(level = "info")]
+    
     pub async fn execute(
         &mut self,
         db: &Db,

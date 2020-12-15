@@ -112,7 +112,7 @@ pub struct Edge {
 }
 
 impl Edge {
-    #[tracing::instrument(level = "trace")]
+    
     pub async fn new(
         db: &Db,
         nats: &Connection,

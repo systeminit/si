@@ -11,7 +11,7 @@ use crate::models::ops::{
 };
 use tracing::trace;
 
-#[tracing::instrument(level = "trace", target = "nodes::create")]
+
 pub async fn create(
     db: Db,
     nats: Connection,
@@ -49,7 +49,7 @@ pub async fn create(
     Ok(warp::reply::json(&reply))
 }
 
-#[tracing::instrument(level = "trace")]
+
 pub async fn patch(
     node_id: String,
     db: Db,
@@ -116,7 +116,7 @@ pub async fn patch(
     Ok(warp::reply::json(&reply))
 }
 
-#[tracing::instrument(level = "trace")]
+
 pub async fn object_patch(
     node_id: String,
     db: Db,
@@ -247,7 +247,7 @@ pub async fn object_patch(
     Ok(warp::reply::json(&reply))
 }
 
-#[tracing::instrument(level = "trace", target = "nodes::create")]
+
 pub async fn get_object(
     node_id: String,
     db: Db,

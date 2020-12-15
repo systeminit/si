@@ -2,7 +2,7 @@ use crate::data::Db;
 use crate::handlers::{authenticate, authorize, HandlerError};
 use crate::models::{entity, Entity};
 
-#[tracing::instrument(level = "trace", target = "nodes::create")]
+
 pub async fn get(
     entity_id: String,
     db: Db,

@@ -4,7 +4,7 @@ use crate::{
     models::secret::{CreateReply, CreateRequest, Secret},
 };
 
-#[tracing::instrument(level = "trace", target = "secrets::create")]
+
 pub async fn create(
     db: Db,
     nats: Connection,

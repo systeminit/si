@@ -11,6 +11,29 @@ pub mod error;
 use crate::error::{Result, SettingsError};
 
 #[derive(Debug, Deserialize, Clone)]
+pub struct Pg {
+    pub user: String,
+    pub password: String,
+    pub dbname: String,
+    pub application_name: String,
+    pub hostname: String,
+    pub port: u16,
+}
+
+impl Default for Pg {
+    fn default() -> Self {
+        Pg {
+            user: String::from("si"),
+            password: String::from("bugbear"),
+            dbname: String::from("si"),
+            application_name: String::from("sdf"),
+            hostname: String::from("localhost"),
+            port: 5432,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Clone)]
 pub struct Db {
     pub cluster_url: String,
     pub cluster_user: String,
@@ -93,6 +116,7 @@ impl Default for Vernemq {
 #[derive(Debug, Deserialize, Default, Clone)]
 pub struct Settings {
     pub db: Db,
+    pub pg: Pg,
     pub nats: Nats,
     pub service: Service,
     pub paging: Paging,
