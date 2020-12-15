@@ -4,5 +4,5 @@ node_modules
 .vagrant
 target
 kubeconfig.yml
-components/si-pedant-2/cypress.env.json
-components/si-pedant-2/debug.log
+components/si-pedant/cypress.env.json
+components/si-pedant/debug.log
