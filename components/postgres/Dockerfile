@@ -1,0 +1,6 @@
+FROM postgres:11.10-alpine
+
+ENV POSTGRES_PASSWORD="bugbear"
+ENV PGPASSWORD="bugbear"
+ENV POSTGRES_USER="si"
+ENV POSTGRES_DB="si"

@@ -40,7 +40,7 @@ pub async fn create(
     Ok(warp::reply::json(&reply))
 }
 
-#[tracing::instrument(level = "info")]
+
 pub async fn patch(
     change_set_id: String,
     db: Db,

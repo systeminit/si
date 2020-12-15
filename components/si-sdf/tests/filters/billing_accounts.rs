@@ -3,6 +3,7 @@ use crate::{
     SETTINGS,
 };
 use si_sdf::{
+    data::PgPool,
     filters::api,
     models::{billing_account, BillingAccount, GetReply, PublicKey},
 };
@@ -54,6 +55,9 @@ async fn create() {
     assert_eq!(res.status(), 200, "billing account is created");
     let reply: billing_account::CreateReply =
         serde_json::from_slice(res.body()).expect("could not deserialize response");
+    let pg = PgPool::new(&SETTINGS)
+        .await
+        .expect("failed to connect to postgres");
 
     let test_account = TestAccount {
         user_id: reply.user.id.clone(),
@@ -64,6 +68,7 @@ async fn create() {
         billing_account: reply.billing_account,
         authorization: String::from("poop"),
         system_ids: None,
+        pg,
     };
 
     test_cleanup(test_account)

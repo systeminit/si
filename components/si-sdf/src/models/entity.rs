@@ -198,7 +198,7 @@ pub struct Entity {
 }
 
 impl Entity {
-    #[tracing::instrument(level = "trace")]
+    
     pub fn new(
         db: Db,
         nats: Connection,

@@ -9,6 +9,9 @@ use thiserror::Error;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+pub mod pg;
+pub use pg::{PgError, PgPool};
+
 lazy_static::lazy_static! {
     pub static ref REQWEST: reqwest::Client = reqwest::Client::new();
 }
@@ -33,7 +36,7 @@ pub struct Db {
 }
 
 impl Db {
-    #[tracing::instrument(level = "trace")]
+    
     pub fn new(settings: &Settings) -> DataResult<Self> {
         let mut cluster = SharedCluster::connect(
             &settings.db.cluster_url,
@@ -62,7 +65,7 @@ impl Db {
         })
     }
 
-    #[tracing::instrument(level = "trace")]
+    
     pub async fn query<I>(
         &self,
         query: String,
@@ -89,7 +92,7 @@ impl Db {
         Ok(final_vec)
     }
 
-    #[tracing::instrument(level = "trace")]
+    
     pub async fn query_consistent<I>(
         &self,
         query: String,
@@ -116,7 +119,7 @@ impl Db {
         Ok(final_vec)
     }
 
-    #[tracing::instrument(level = "trace")]
+    
     pub async fn get<S, T>(&self, id: S) -> DataResult<T>
     where
         S: Into<String> + std::fmt::Debug,
@@ -131,7 +134,7 @@ impl Db {
         Ok(item.content_as::<T>()?)
     }
 
-    #[tracing::instrument(level = "trace")]
+    
     pub async fn delete<S>(&self, id: S) -> DataResult<()>
     where
         S: Into<String> + std::fmt::Debug,

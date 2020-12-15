@@ -5,10 +5,13 @@ pub mod handlers;
 pub mod models;
 pub mod veritech;
 
-use crate::data::Db;
 use nats::asynk::Connection;
-use si_settings::Settings;
+//use tokio_compat_02::FutureExt;
 use warp::Filter;
+
+use si_settings::Settings;
+
+use crate::data::Db;
 
 pub async fn start(db: Db, nats: Connection, settings: Settings) {
     let api = filters::api(&db, &nats, &settings.jwt_encrypt.key);

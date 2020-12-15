@@ -162,7 +162,7 @@ pub fn generate_id(type_name: impl AsRef<str>) -> String {
     format!("{}:{}", type_name.as_ref(), uuid.to_simple().to_string())
 }
 
-#[tracing::instrument(level = "trace")]
+
 pub async fn publish_model<T: Serialize + std::fmt::Debug>(
     nats: &Connection,
     model: &T,
@@ -202,7 +202,7 @@ pub async fn publish_model<T: Serialize + std::fmt::Debug>(
     Ok(())
 }
 
-#[tracing::instrument(level = "trace")]
+
 pub async fn publish_model_delete<T: Serialize + std::fmt::Debug>(
     nats: &Connection,
     model: &T,
@@ -240,7 +240,7 @@ pub async fn publish_model_delete<T: Serialize + std::fmt::Debug>(
     Ok(())
 }
 
-#[tracing::instrument(level = "trace")]
+
 pub async fn delete_model<T: Serialize + std::fmt::Debug>(
     db: &Db,
     nats: &Connection,
@@ -253,7 +253,7 @@ pub async fn delete_model<T: Serialize + std::fmt::Debug>(
     Ok(())
 }
 
-#[tracing::instrument(level = "trace")]
+
 pub async fn insert_model<T: Serialize + std::fmt::Debug>(
     db: &Db,
     nats: &Connection,
@@ -267,7 +267,7 @@ pub async fn insert_model<T: Serialize + std::fmt::Debug>(
     Ok(())
 }
 
-#[tracing::instrument(level = "trace")]
+
 pub async fn insert_model_if_missing<T: Serialize + std::fmt::Debug>(
     db: &Db,
     nats: &Connection,
@@ -290,7 +290,7 @@ pub async fn insert_model_if_missing<T: Serialize + std::fmt::Debug>(
     }
 }
 
-#[tracing::instrument(level = "trace")]
+
 pub async fn upsert_model<T: Serialize + std::fmt::Debug>(
     db: &Db,
     nats: &Connection,
@@ -304,7 +304,7 @@ pub async fn upsert_model<T: Serialize + std::fmt::Debug>(
     Ok(())
 }
 
-#[tracing::instrument(level = "trace")]
+
 pub async fn get_model<T: DeserializeOwned + std::fmt::Debug>(
     db: &Db,
     id: impl AsRef<str> + std::fmt::Debug,
@@ -380,7 +380,7 @@ pub async fn load_data_model(
     return Ok(results);
 }
 
-#[tracing::instrument(level = "trace")]
+
 pub async fn list_model(
     db: &Db,
     query: Option<Query>,
@@ -523,7 +523,7 @@ pub async fn list_model(
     }
 }
 
-#[tracing::instrument(level = "trace")]
+
 pub async fn get_model_change_set(
     db: &Db,
     id: impl Into<String> + std::fmt::Debug,

@@ -50,7 +50,7 @@ pub struct System {
 }
 
 impl System {
-    #[tracing::instrument(level = "trace")]
+    
     pub async fn new(
         db: &Db,
         nats: &Connection,

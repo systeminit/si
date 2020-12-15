@@ -28,7 +28,6 @@ jwt-simple = "0.2"
 lazy_static = "1.4"
 names = "0.11"
 nats = "0.8"
-#nats = { git = "https://github.com/systeminit/nats.rs", branch = "nkeys-upgrade" }
 opentelemetry = "0.8"
 opentelemetry-jaeger = "0.7"
 reqwest = { version = "0.10", default-features = false, features = ["rustls-tls", "json"] }
@@ -39,10 +38,10 @@ sodiumoxide = "0.2"
 strum = "0.19.5"
 strum_macros = "0.19.4"
 thiserror = "1.0"
-tokio = { version = "0.2.2", features = ["full"] }
+tokio = { version = "0.2", features = ["full"] }
 toml = "0.5"
 tracing = "0.1"
-tracing-futures = { version = "0.2", features = ["tokio", "std-future"]}
+#tracing-futures = { version = "0.2", features = ["tokio", "std-future"]}
 tracing-opentelemetry = "0.7"
 tracing-subscriber = "0.2.11"
 uuid = { version = "0.8", features = ["serde", "v4"] }
@@ -52,6 +51,9 @@ blake2 = "0.9"
 clap = "3.0.0-beta.2"
 url = "2.2.0"
 regex = "1.4.2"
+deadpool-postgres = "0.5"
+tokio-postgres = { version = "0.5", features = ["runtime", "with-chrono-0_4", "with-serde_json-1"] }
+refinery = { version = "0.4", features = ["tokio", "tokio-postgres"] }
 
 [dev-dependencies]
 lazy_static = "1.4"

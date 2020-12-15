@@ -2,7 +2,7 @@ use crate::data::{Connection, Db};
 use crate::handlers::{authenticate, authorize, HandlerError};
 use crate::models::{edge, get_model, upsert_model, Edge};
 
-#[tracing::instrument(level = "trace", target = "nodes::create")]
+
 pub async fn delete(
     edge_id: String,
     db: Db,
@@ -32,7 +32,7 @@ pub async fn delete(
     Ok(warp::reply::json(&reply))
 }
 
-#[tracing::instrument(level = "trace", target = "nodes::create")]
+
 pub async fn all_predecessors(
     db: Db,
     token: String,
@@ -65,7 +65,7 @@ pub async fn all_predecessors(
     Ok(warp::reply::json(&reply))
 }
 
-#[tracing::instrument(level = "trace", target = "nodes::create")]
+
 pub async fn all_successors(
     db: Db,
     token: String,
