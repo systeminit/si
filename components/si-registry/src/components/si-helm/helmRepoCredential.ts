@@ -6,6 +6,12 @@ registry.componentAndEntity({
   siPathName: "si-core",
   serviceName: "core",
   options(c) {
+    c.entity.iEntity = {
+      uiVisible: true,
+      uiMenuCategory: "helm",
+      uiMenuDisplayName: "repoCredential",
+    };
+
     c.entity.integrationServices.push({
       integrationName: "aws",
       integrationServiceName: "eks_kubernetes",

@@ -2,6 +2,7 @@
   <div id="schematic-panel" class="w-full h-full grid-background">
     <div
       ref="canvasParent"
+      data-cy="editor-schematic-panel-node-editor-canvas"
       class="w-full h-full overflow-hidden"
       @wheel="mouseWheel"
       @mousedown="mouseDown"
@@ -684,9 +685,9 @@ export default Vue.extend({
         `desired adjusted translation - x:${translation.x} y:${translation.y}`,
       );
       this.log(
-        `translation limits - x:0 to ${1 -
-          this.editor.element.offsetWidth} y:0 to ${1 -
-          this.editor.element.offsetHeight}`,
+        `translation limits - x:0 to ${
+          1 - this.editor.element.offsetWidth
+        } y:0 to ${1 - this.editor.element.offsetHeight}`,
       );
 
       // Restrict translations to the view

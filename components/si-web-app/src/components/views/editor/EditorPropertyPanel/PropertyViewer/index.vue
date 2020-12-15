@@ -4,7 +4,7 @@
       <div
         class="flex pt-2 pb-2 pl-6 pr-6 text-base text-white align-middle property-section-bg-color"
       >
-        <div class="self-center w-3/4 text-lg ">
+        <div class="self-center w-3/4 text-lg">
           {{ typeName }}
         </div>
         <div class="flex justify-end w-2/4">
@@ -62,6 +62,7 @@
               aria-label="name"
               v-model="nodeObjectName"
               @blur="updateObjectName"
+              data-cy="editor-property-viewer-node-name-field"
               placeholder="text"
             />
           </div>
@@ -88,6 +89,7 @@
                 <select
                   class="w-4/5 pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none si-property input-bg-color-grey"
                   v-model="secretId"
+                  data-cy="editor-property-viewer-secret-select"
                   @blur="saveSecretId"
                 >
                   <option
@@ -130,7 +132,7 @@
                   <div
                     v-if="
                       repeated(entityProperty) &&
-                        !propKind(entityProperty, 'select')
+                      !propKind(entityProperty, 'select')
                     "
                   >
                     <PropRepeated
@@ -243,12 +245,14 @@
                 name="newConfigures"
                 :options="newConfiguresInputTypes"
                 v-model="newConfigures"
+                dataCy="editor-property-viewer-configures-select"
                 size="xs"
               ></SiSelect>
               <button
                 class="text-center focus:outline-none"
                 type="button"
                 :disabled="newConfigures === null"
+                data-cy="editor-property-viewer-configures-button"
                 @click="createNewConfigures"
               >
                 <PlusSquareIcon size="1.25x" class=""></PlusSquareIcon>
@@ -376,7 +380,7 @@ export default Vue.extend({
     },
     togglePath(path: (string | number)[]) {
       if (
-        _.find(this.collapsedPaths, item => {
+        _.find(this.collapsedPaths, (item) => {
           return _.isEqual(item, path);
         })
       ) {
@@ -392,7 +396,7 @@ export default Vue.extend({
       }
     },
     isOpen(prop: RegistryProperty): boolean {
-      const collapsed = _.find(this.collapsedPaths, path => {
+      const collapsed = _.find(this.collapsedPaths, (path) => {
         if (_.isEqual(prop.path, path)) {
           return true;
         } else {
@@ -406,7 +410,7 @@ export default Vue.extend({
       }
     },
     showPath(prop: RegistryProperty): boolean {
-      const collapsed = _.find(this.collapsedPaths, path => {
+      const collapsed = _.find(this.collapsedPaths, (path) => {
         if (prop.path.length >= path.length) {
           if (_.isEqual(prop.path, path)) {
             // We always want to show the toggle path!
@@ -572,7 +576,7 @@ export default Vue.extend({
       return results;
     },
     hasBeenEdited(): boolean {
-      let result = _.find(this.diff.entries, diffEntry => {
+      let result = _.find(this.diff.entries, (diffEntry) => {
         return _.isEqual(diffEntry.path, ["name"]);
       });
       if (result) {

@@ -1,2 +1,2 @@
-cypress/videos
-cypress/screenshots
+cypress.env.json
+debug.log

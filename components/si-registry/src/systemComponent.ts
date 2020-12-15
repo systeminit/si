@@ -55,6 +55,7 @@ export type UiMenuCategory =
   | "kubernetes"
   | "docker"
   | "aws"
+  | "helm"
   | "none";
 
 export type UiMenuSubCategory = UiAwsMenuCategory;

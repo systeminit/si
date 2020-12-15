@@ -157,7 +157,7 @@ export const application: Module<ApplicationStore, RootStore> = {
         systemIds: [system.id],
       });
       await changeSet.execute({ hypothetical: false });
-      let entity = (await appNode.headObject()) as Entity;
+      let entity = (await appNode.headObject(true)) as Entity;
       commit("updateList", entity);
       return entity;
     },

@@ -51,6 +51,7 @@ export class User implements IUser {
       request,
     );
     const user = new User(userLoginReply.user);
+    await wipe();
     await user.save();
 
     // Store the token, so all requests in the future are authenticated

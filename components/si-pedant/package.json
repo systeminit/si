@@ -1,49 +1,18 @@
 {
-  "name": "si-pedant",
-  "private": true,
-  "version": "0.1.0",
-  "description": "System Initiative Functional Tests Suite",
-  "main": "src/index.js",
+  "name": "si-pedant-2",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
   "scripts": {
-    "cypress:open": "cypress open",
-    "cypress:run": "cypress run",
-    "test": "npm run cypress:run",
-    "start": "npm run cypress:open",
-    "generate": "graphql-codegen"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "The System Initiative, Inc.",
-  "license": "UNLICENSED",
+  "author": "",
+  "license": "ISC",
   "devDependencies": {
-    "@graphql-codegen/cli": "^1.16.3",
-    "@graphql-codegen/typescript": "^1.16.3",
-    "@graphql-codegen/typescript-operations": "^1.16.3",
-    "@types/couchbase": "^2.4.2",
-    "@types/lodash": "^4.14.157",
-    "@types/node-fetch": "^2.5.7",
-    "@typescript-eslint/eslint-plugin": "^3.1.0",
-    "@typescript-eslint/parser": "^3.1.0",
-    "cypress": "^4.7.0",
-    "eslint": "^7.1.0",
-    "eslint-config-prettier": "^6.11.0",
-    "eslint-plugin-chai-friendly": "^0.6.0",
-    "eslint-plugin-cypress": "^2.11.1",
-    "eslint-plugin-prettier": "^3.1.3",
-    "prettier": "^2.0.5",
-    "typescript": "^3.9.3"
+    "cypress": "^6.1.0",
+    "typescript": "^4.1.2"
   },
   "dependencies": {
-    "@types/bluebird": "^3.5.32",
-    "apollo-cache-inmemory": "^1.6.6",
-    "apollo-client": "^2.6.10",
-    "apollo-link": "^1.2.14",
-    "apollo-link-error": "^1.1.13",
-    "apollo-link-http": "^1.5.17",
-    "couchbase": "^3.0.2",
-    "graphql": "^15.0.0",
-    "graphql-tag": "^2.10.3",
-    "lodash": "^4.17.19",
-    "node-fetch": "^2.6.0",
-    "si-registry": "file:../si-registry"
+    "unique-names-generator": "^4.3.1"
   }
 }

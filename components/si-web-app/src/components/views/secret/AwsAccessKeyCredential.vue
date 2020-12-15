@@ -6,7 +6,7 @@
       </div>
 
       <input
-        data-cy="new-secret-form-secret-name"
+        data-cy="new-secret-form-access-key-id"
         class="ml-4 leading-tight text-gray-400 bg-transparent border-none appearance-none focus:outline-none input-bg-color"
         type="text"
         placeholder="AWS Key Id"
@@ -20,7 +20,7 @@
       </div>
 
       <input
-        data-cy="new-secret-form-secret-name"
+        data-cy="new-secret-form-secret-access-key"
         class="ml-4 leading-tight text-gray-400 bg-transparent border-none appearance-none focus:outline-none input-bg-color"
         type="password"
         placeholder="secretAccessKey"

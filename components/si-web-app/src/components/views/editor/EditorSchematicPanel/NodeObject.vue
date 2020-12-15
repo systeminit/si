@@ -5,6 +5,13 @@
       :id="node.id"
       :class="nodeIsSelected"
       v-bind:style="positionStyle"
+      :data-cy="'editor-schematic-panel-node-list-' + nodeIndex"
+      :data-cy-name="
+        'editor-schematic-panel-node-list-' +
+        node.objectType +
+        '-' +
+        displayItem.name
+      "
       @mousedown="selectNode()"
     >
       <span
@@ -97,6 +104,9 @@ export default Vue.extend({
   props: {
     node: {
       type: Object as PropType<Node>,
+    },
+    nodeIndex: {
+      type: Number,
     },
   },
   methods: {

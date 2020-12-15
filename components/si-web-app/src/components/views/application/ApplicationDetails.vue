@@ -89,9 +89,7 @@
               </div>
               <div class="items-center w-full">
                 <div class="flex items-center w-full">
-                  <div class="w-1/3 mr-2 text-right">
-                    changeSet:
-                  </div>
+                  <div class="w-1/3 mr-2 text-right">changeSet:</div>
                   <div class="w-3/6">
                     <SiSelect
                       size="sm"
@@ -103,15 +101,14 @@
                   </div>
                 </div>
                 <div class="flex items-center w-full mt-4">
-                  <div class="w-1/3 mr-2 text-right">
-                    name:
-                  </div>
+                  <div class="w-1/3 mr-2 text-right">name:</div>
                   <div class="w-3/6">
                     <SiTextBox
                       class="w-full"
                       name="new-change-set-name"
                       size="sm"
                       placeholder="new change set name"
+                      dataCy="new-change-set-form-name"
                       v-model="newChangeSetName"
                       v-on:keyup.enter.native="createChangeSetOnEnter()"
                     />
@@ -127,6 +124,7 @@
                 icon="cancel"
                 kind="cancel"
                 @click.native="closeChangeSetCreate()"
+                data-cy="new-change-set-form-cancel-button"
               />
               <Button2
                 size="sm"
@@ -136,6 +134,7 @@
                 kind="save"
                 :disabled="!newChangeSetName"
                 @click.native="createChangeSet()"
+                data-cy="new-change-set-form-create-button"
               />
             </template>
           </SiModal>
@@ -192,9 +191,7 @@
                 </div>
               </div>
               <div class="flex flex-row text-xs text-gray-400 align-middle">
-                <div>
-                  participants:
-                </div>
+                <div>participants:</div>
                 <div class="ml-2">
                   <template v-if="changeSetParticipantCount == 0">
                     {{ changeSetParticipantCount }}
@@ -356,7 +353,7 @@ export default Vue.extend({
       },
     },
     systemList(): DropdownProps["options"] {
-      const systemList = _.map(this.systems, system => {
+      const systemList = _.map(this.systems, (system) => {
         return { value: system.id, label: system.name };
       });
       return systemList;

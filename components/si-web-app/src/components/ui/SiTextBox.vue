@@ -5,6 +5,7 @@
       :aria-label="name"
       :placeholder="placeholder"
       :value="value"
+      :data-cy="dataCy"
       class="block w-full px-2 py-1 pr-8 leading-tight text-gray-400 border border-gray-800 border-solid shadow focus:outline-none textbox"
       @input="valueChanged"
     />
@@ -25,6 +26,7 @@ export interface TextBoxProps {
   value: string;
   placholder: string;
   name: string;
+  dataCy: string;
 }
 
 export default Vue.extend({
@@ -45,6 +47,9 @@ export default Vue.extend({
       type: String,
     },
     placeholder: {
+      type: String,
+    },
+    dataCy: {
       type: String,
     },
   },

@@ -7,6 +7,11 @@ registry.componentAndEntity({
   siPathName: "si-kubernetes",
   serviceName: "kubernetes",
   options(c) {
+    c.entity.iEntity = {
+      uiVisible: true,
+      uiMenuCategory: "helm",
+      uiMenuDisplayName: "chart",
+    };
     c.entity.inputType("helmRepoCredential");
     c.entity.inputType("awsAccessKeyCredential");
     c.entity.inputType("aws");

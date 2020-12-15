@@ -3,7 +3,7 @@ cluster_url = "couchbase://127.0.0.1"
 cluster_user = "si"
 cluster_password = "bugbear"
 bucket_name = "si"
-scan_consistency = "NotBounded"
+scan_consistency = "RequestPlus"
 
 [nats]
 url = "localhost"
