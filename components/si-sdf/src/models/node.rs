@@ -1,27 +1,24 @@
-use chrono::Utc;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use tracing::{error, trace, warn};
+use tracing::error;
 
-use crate::data::{Connection, Db};
-use crate::models::{
-    get_model, insert_model, upsert_model, Edge, EdgeError, EdgeKind, Entity, EntityError, Event,
-    EventError, EventLogError, ModelError, OpReply, OpRequest, Resource, ResourceError,
-    ResourceHealth, ResourceStatus, SiChangeSetError, SiStorable, SiStorableError, System,
-    SystemError, Vertex,
-};
+use crate::data::{NatsTxn, NatsTxnError, PgPool, PgTxn};
 use crate::veritech::Veritech;
+
+use crate::models::{
+    list_model, next_update_clock, Edge, EdgeError, EdgeKind, Entity, Event, EventError, ListReply,
+    ModelError, OrderByDirection, PageToken, Query, Resource, ResourceError, SiStorable, System,
+    SystemError, UpdateClockError, Vertex,
+};
+
+use crate::models::{OpReply, OpRequest};
 
 use std::collections::HashMap;
 
 #[derive(Error, Debug)]
 pub enum NodeError {
-    #[error("si_storable error: {0}")]
-    SiStorable(#[from] SiStorableError),
-    #[error("si_change_set error: {0}")]
-    SiChangeSet(#[from] SiChangeSetError),
     #[error("error with linked entity: {0}")]
-    Entity(#[from] EntityError),
+    Entity(String),
     #[error("error with linked system: {0}")]
     System(#[from] SystemError),
     #[error("error in core model functions: {0}")]
@@ -38,14 +35,20 @@ pub enum NodeError {
     NoObjectId,
     #[error("entity nodes require at least one system")]
     EntityRequiresSystem,
-    #[error("event log error: {0}")]
-    EventLog(#[from] EventLogError),
     #[error("resource error: {0}")]
     Resource(#[from] ResourceError),
     #[error("reqwest error: {0}")]
     Reqwest(#[from] reqwest::Error),
     #[error("event error: {0}")]
     Event(#[from] EventError),
+    #[error("pg error: {0}")]
+    TokioPg(#[from] tokio_postgres::Error),
+    #[error("nats txn error: {0}")]
+    NatsTxn(#[from] NatsTxnError),
+    #[error("update clock: {0}")]
+    UpdateClock(#[from] UpdateClockError),
+    #[error("json serialization error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
 }
 
 pub type NodeResult<T> = Result<T, NodeError>;
@@ -117,38 +120,7 @@ pub struct SyncResourceRequest {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct SyncResourceReply {
-    pub resource: Resource,
-}
-
-#[derive(Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct VeritechSyncPredecessor {
-    pub entity: Entity,
-    pub resource: Resource,
-}
-
-#[derive(Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct VeritechSyncResourceRequest<'a> {
-    pub system_id: &'a str,
-    pub node: &'a Node,
-    pub entity: &'a Entity,
-    pub resource: &'a Resource,
-    pub predecessors: Vec<VeritechSyncPredecessor>,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct VeritechSyncResourceUpdate {
-    pub state: serde_json::Value,
-    pub status: ResourceStatus,
-    pub health: ResourceHealth,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct VeritechSyncResourceReply {
-    pub resource: VeritechSyncResourceUpdate,
+    //pub resource: Resource,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -199,7 +171,14 @@ pub struct Position {
     y: u64,
 }
 
+impl Position {
+    pub fn new(x: u64, y: u64) -> Self {
+        Self { x, y }
+    }
+}
+
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
+#[serde(rename_all = "camelCase")]
 pub enum NodeKind {
     Entity,
     System,
@@ -222,309 +201,199 @@ pub struct Node {
     pub positions: HashMap<String, Position>,
     pub kind: NodeKind,
     pub object_type: String,
+    pub object_id: String,
     pub si_storable: SiStorable,
 }
 
 impl Node {
-    
     pub async fn new(
-        db: Db,
-        nats: Connection,
+        pool: &PgPool,
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        veritech: &Veritech,
         name: Option<String>,
         kind: NodeKind,
-        object_type: impl Into<String> + std::fmt::Debug,
-        billing_account_id: String,
-        organization_id: String,
-        workspace_id: String,
-        change_set_id: String,
-        edit_session_id: String,
-        created_by_user_id: Option<String>,
+        object_type: impl AsRef<str>,
+        workspace_id: impl AsRef<str>,
+        change_set_id: impl AsRef<str>,
+        edit_session_id: impl AsRef<str>,
         system_ids: Option<Vec<String>>,
     ) -> NodeResult<Node> {
-        if kind == NodeKind::Entity
-            && (system_ids.is_none() || system_ids.as_ref().unwrap().len() == 0)
-        {
-            return Err(NodeError::EntityRequiresSystem);
-        }
-        let name = crate::models::generate_name(name);
-        let object_type = object_type.into();
-        let si_storable = SiStorable::new(
-            &db,
-            "node",
-            billing_account_id.clone(),
-            organization_id.clone(),
-            workspace_id.clone(),
-            created_by_user_id.clone(),
-        )
-        .await?;
+        let workspace_id = workspace_id.as_ref();
+        let change_set_id = change_set_id.as_ref();
+        let edit_session_id = edit_session_id.as_ref();
+        let object_type = object_type.as_ref();
 
-        let id = si_storable.object_id.clone();
+        let workspace_update_clock = next_update_clock(workspace_id).await?;
 
-        let node = Node {
-            id: id.clone(),
-            positions: HashMap::new(),
-            kind,
-            object_type: object_type.clone(),
-            si_storable,
-        };
-        insert_model(&db, &nats, &node.id, &node).await?;
+        let row = txn
+            .query_one(
+                "SELECT object FROM node_create_v1($1, $2, $3, $4, $5)",
+                &[
+                    &kind.to_string(),
+                    &object_type,
+                    &workspace_id,
+                    &workspace_update_clock.epoch,
+                    &workspace_update_clock.update_count,
+                ],
+            )
+            .await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        let mut node: Node = serde_json::from_value(json)?;
 
         match node.kind {
             NodeKind::Entity => {
-                let system_ids = system_ids.unwrap();
+                let system_ids = system_ids.ok_or(NodeError::EntityRequiresSystem)?;
                 let entity = Entity::new(
-                    db.clone(),
-                    nats.clone(),
-                    Some(name),
-                    None,
-                    id,
-                    object_type,
-                    false,
-                    billing_account_id,
-                    organization_id,
-                    workspace_id,
-                    change_set_id.clone(),
-                    edit_session_id,
-                    created_by_user_id,
-                    system_ids.clone(),
-                )
-                .await?;
-                let _event = Event::node_entity_create(&db, &nats, &node, &entity, None).await?;
-                for system_id in system_ids.iter() {
-                    node.sync_resource(&db, &nats, system_id, Some(change_set_id.clone()))
-                        .await?;
-                }
-            }
-            NodeKind::System => {
-                System::new(
-                    &db,
+                    &txn,
                     &nats,
-                    Some(name),
+                    name,
                     None,
-                    id,
-                    false,
-                    billing_account_id,
-                    organization_id,
+                    &node.id,
+                    object_type,
                     workspace_id,
                     change_set_id,
                     edit_session_id,
-                    created_by_user_id,
+                    system_ids.clone(),
+                )
+                .await
+                .map_err(|e| NodeError::Entity(e.to_string()))?;
+                node.update_object_id(&txn, &entity.id).await?;
+                let _event = Event::node_entity_create(&txn, &nats, &node, &entity, None).await?;
+                for system_id in system_ids.iter() {
+                    node.sync_resource(
+                        pool,
+                        txn,
+                        nats,
+                        veritech,
+                        system_id,
+                        Some(String::from(change_set_id)),
+                    )
+                    .await?;
+                }
+            }
+            NodeKind::System => {
+                let system = System::new(
+                    &txn,
+                    &nats,
+                    name,
+                    None,
+                    &node.id,
+                    workspace_id,
+                    change_set_id,
+                    edit_session_id,
                 )
                 .await?;
+                node.update_object_id(&txn, &system.id).await?;
             }
         }
+        let json: serde_json::Value = serde_json::to_value(&node)?;
+        nats.publish(&json).await?;
 
         Ok(node)
     }
 
-    pub fn set_position(&mut self, context: String, position: Position) {
+    async fn update_object_id(
+        &mut self,
+        txn: &PgTxn<'_>,
+        object_id: impl AsRef<str>,
+    ) -> NodeResult<()> {
+        let object_id = object_id.as_ref();
+        let row = txn
+            .query_one(
+                "SELECT object FROM node_update_object_id_v1($1, $2)",
+                &[&self.id, &object_id],
+            )
+            .await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        let node: Node = serde_json::from_value(json)?;
+        *self = node;
+        Ok(())
+    }
+
+    pub fn set_position(&mut self, context: impl Into<String>, position: Position) {
+        let context = context.into();
         self.positions.insert(context, position);
+    }
+
+    pub async fn save(&mut self, txn: &PgTxn<'_>, nats: &NatsTxn) -> NodeResult<()> {
+        let workspace_update_clock = next_update_clock(&self.si_storable.workspace_id).await?;
+        self.si_storable.update_clock = workspace_update_clock;
+
+        let json = serde_json::to_value(&self)?;
+        let row = txn
+            .query_one("SELECT object FROM node_save_v1($1)", &[&json])
+            .await?;
+        let updated_result: serde_json::Value = row.try_get("object")?;
+        nats.publish(&updated_result).await?;
+        let mut updated: Node = serde_json::from_value(updated_result)?;
+        std::mem::swap(self, &mut updated);
+        Ok(())
     }
 
     pub async fn sync_resource(
         &self,
-        db: &Db,
-        nats: &Connection,
-        system_id: impl Into<String>,
+        pool: &PgPool,
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        veritech: &Veritech,
+        system_id: impl AsRef<str>,
         change_set_id: Option<String>,
-    ) -> NodeResult<Resource> {
-        let system_id = system_id.into();
-        let mut resource = Resource::get_by_node_id(db, &self.id, &system_id).await?;
-
-        let entity: Entity = if let Some(ref change_set_id) = change_set_id {
-            trace!(?change_set_id, "you should really be getting a change set");
-            match self.get_object_projection(&db, change_set_id).await {
-                Ok(entity) => entity,
-                Err(_) => self.get_head_object(db).await?,
-            }
-        } else if let Ok(entity) = self.get_head_object(db).await {
-            entity
-        } else {
-            let current_time = Utc::now();
-            let unix_timestamp = current_time.timestamp_millis();
-            let timestamp = format!("{}", current_time);
-            resource.unix_timestamp = unix_timestamp;
-            resource.timestamp = timestamp;
-            upsert_model(db, nats, &resource.id, &resource).await?;
-            return Ok(resource);
-        };
-
-        let last_resource = resource.clone();
-        let this_node = self.clone();
-        let this_db = db.clone();
-        let this_nats = nats.clone();
-        let predecessor_edges =
-            Edge::direct_predecessor_edges_by_node_id(&db, EdgeKind::Configures, &self.id).await?;
-
-        let mut predecessors: Vec<VeritechSyncPredecessor> = Vec::new();
-        for edge in predecessor_edges {
-            let edge_node = Node::get(
-                &db,
-                &edge.tail_vertex.node_id,
-                &self.si_storable.billing_account_id,
-            )
-            .await?;
-            let mut edge_entity: Entity = if let Some(ref change_set_id) = change_set_id {
-                match edge_node.get_object_projection(&db, change_set_id).await {
-                    Ok(edge_entity) => edge_entity,
-                    Err(_) => edge_node.get_head_object(db).await?,
-                }
-            } else if let Ok(edge_entity) = edge_node.get_head_object(db).await {
-                edge_entity
-            } else {
-                return Err(NodeError::NoHead);
-            };
-            edge_entity.update_properties_if_secret(db).await?;
-            let edge_resource = Resource::get(&db, &edge_entity.id, &system_id).await?;
-            let predecessor = VeritechSyncPredecessor {
-                entity: edge_entity,
-                resource: edge_resource,
-            };
-            predecessors.push(predecessor);
-        }
-        let mut event = Event::sync_resource(&db, &nats, &entity, &system_id, None).await?;
-
-        tokio::spawn(async move {
-            let request = VeritechSyncResourceRequest {
-                system_id: &system_id,
-                resource: &resource,
-                node: &this_node,
-                entity: &entity,
-                predecessors,
-            };
-
-            let veritech: Veritech<VeritechSyncResourceRequest, VeritechSyncResourceReply> =
-                Veritech::new("ws://localhost:5157/ws/syncResource");
-            let sync_reply = match veritech.send(&this_db, &this_nats, request, &event).await {
-                Ok(Some(sync_reply)) => sync_reply,
-                Ok(None) => {
-                    warn!("request succeeded but no reply");
-                    match event.unknown(&this_db, &this_nats).await {
-                        Ok(_) => {}
-                        Err(e) => {
-                            warn!(?e, "cannot write event unknown to db");
-                        }
-                    }
-                    return;
-                }
-                Err(e) => {
-                    warn!(?e, "veritech request failed");
-                    match event.unknown(&this_db, &this_nats).await {
-                        Ok(_) => {}
-                        Err(e) => {
-                            warn!(?e, "cannot write event unknown to db");
-                        }
-                    }
-                    return;
-                }
-            };
-            if sync_reply.resource.status == ResourceStatus::Failed {
-                match event.error(&this_db, &this_nats).await {
-                    Ok(_) => {}
-                    Err(e) => {
-                        warn!(?e, "cannot write event error to db");
-                    }
-                }
-            } else {
-                match event.success(&this_db, &this_nats).await {
-                    Ok(_) => {}
-                    Err(e) => {
-                        warn!(?e, "cannot write event success to db");
-                    }
-                }
-            }
-            match resource
-                .from_update_for_self(
-                    &this_db,
-                    &this_nats,
-                    sync_reply.resource.state,
-                    sync_reply.resource.status,
-                    sync_reply.resource.health,
-                )
+    ) -> NodeResult<()> {
+        let system_id = system_id.as_ref();
+        let resource: Resource = if let Some(ref change_set_id) = change_set_id {
+            Resource::get_any_by_node_id(&txn, &self.id, system_id, change_set_id)
                 .await
-            {
-                Ok(_) => {}
-                Err(e) => {
-                    warn!("cannot update resource from response: {}", e);
-                    return;
-                }
-            }
-        });
-        Ok(last_resource)
-    }
-
-    pub async fn configure_node(
-        &self,
-        db: &Db,
-        nats: &Connection,
-        head_node_id: impl Into<String>,
-    ) -> NodeResult<Edge> {
-        let head_node_id = head_node_id.into();
-        let head_node = Node::get(&db, &head_node_id, &self.si_storable.billing_account_id).await?;
-        let head_object_id = head_node.get_object_id(db).await?;
-
-        let object_id = self.get_object_id(db).await?;
-
-        let edge = Edge::new(
-            db,
-            nats,
-            Vertex::new(&self.id, &object_id, "output", &self.si_storable.type_name),
-            Vertex::new(
-                head_node_id,
-                head_object_id,
-                "input",
-                &head_node.object_type,
-            ),
-            false,
-            EdgeKind::Configures,
-            self.si_storable.billing_account_id.clone(),
-            self.si_storable.organization_id.clone(),
-            self.si_storable.workspace_id.clone(),
-            None,
-        )
-        .await?;
-
-        Ok(edge)
+                .map_err(|e| ResourceError::Entity(e.to_string()))?
+        } else {
+            dbg!("you are here");
+            Resource::get_head_by_node_id(&txn, &self.id, system_id)
+                .await
+                .map_err(|e| ResourceError::Entity(e.to_string()))?
+        };
+        resource.sync(pool, txn, nats, veritech).await?;
+        Ok(())
     }
 
     pub async fn configured_by(
         &self,
-        db: &Db,
-        nats: &Connection,
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
         node_id: impl Into<String>,
     ) -> NodeResult<Edge> {
         let node_id = node_id.into();
-        let node = Node::get(db, node_id, &self.si_storable.billing_account_id).await?;
-        let node_object_id = node.get_object_id(db).await?;
+        let node = Node::get(&txn, &node_id).await?;
+        let node_object_id = node.get_object_id();
 
-        let object_id = self.get_object_id(db).await?;
+        let object_id = self.get_object_id();
+
         let edge = Edge::new(
-            db,
+            txn,
             nats,
             Vertex::new(&node.id, &node_object_id, "output", &node.object_type),
             Vertex::new(&self.id, object_id, "input", &self.object_type),
             false,
             EdgeKind::Configures,
-            self.si_storable.billing_account_id.clone(),
-            self.si_storable.organization_id.clone(),
-            self.si_storable.workspace_id.clone(),
-            None,
+            &self.si_storable.workspace_id,
         )
         .await?;
+
         Ok(edge)
     }
 
     pub async fn include_in_system(
         &self,
-        db: &Db,
-        nats: &Connection,
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
         system_id: impl Into<String>,
     ) -> NodeResult<Edge> {
         let system_id = system_id.into();
-        let system = System::get_any(db, &system_id).await?;
-        let object_id = self.get_object_id(db).await?;
+        let system = System::get_any(txn, &system_id).await?;
+
+        let object_id = self.get_object_id();
+
         let edge = Edge::new(
-            db,
+            txn,
             nats,
             Vertex::new(
                 &system.node_id,
@@ -535,106 +404,86 @@ impl Node {
             Vertex::new(&self.id, object_id, "input", &self.object_type),
             false,
             EdgeKind::Includes,
-            self.si_storable.billing_account_id.clone(),
-            self.si_storable.organization_id.clone(),
-            self.si_storable.workspace_id.clone(),
-            None,
+            &self.si_storable.workspace_id,
         )
         .await?;
+
         Ok(edge)
     }
 
-    pub async fn get_object_id(&self, db: &Db) -> NodeResult<String> {
-        let query = format!(
-            "SELECT a.*
-          FROM `{bucket}` AS a
-          WHERE a.siStorable.typeName = \"{type_name}\"
-            AND a.nodeId = $node_id
-          LIMIT 1
-        ",
-            bucket = db.bucket_name,
-            type_name = self.kind,
-        );
-        let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
-        named_params.insert("node_id".into(), serde_json::json![&self.id]);
-        let mut query_results: Vec<serde_json::Value> =
-            db.query_consistent(query, Some(named_params)).await?;
-        if query_results.len() == 0 {
-            Err(NodeError::NoHead)
-        } else {
-            let result = query_results.pop().unwrap();
-            let object_id = String::from(result["id"].as_str().ok_or(NodeError::NoObjectId)?);
-            Ok(object_id)
-        }
+    pub fn get_object_id(&self) -> String {
+        return String::from(&self.object_id);
     }
 
-    pub async fn get_head_object<T: DeserializeOwned + std::fmt::Debug>(
-        &self,
-        db: &Db,
-    ) -> NodeResult<T> {
-        let query = format!(
-            "SELECT a.*
-          FROM `{bucket}` AS a
-          WHERE a.siStorable.typeName = \"{type_name}\"
-            AND a.nodeId = $node_id
-            AND a.head = true
-          LIMIT 1
-        ",
-            bucket = db.bucket_name,
-            type_name = self.kind,
-        );
-        let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
-        named_params.insert("node_id".into(), serde_json::json![&self.id]);
-        let mut query_results: Vec<T> = db.query_consistent(query, Some(named_params)).await?;
-        if query_results.len() == 0 {
-            Err(NodeError::NoHead)
-        } else {
-            let result = query_results.pop().unwrap();
-            Ok(result)
-        }
+    pub async fn get_head_object_entity(&self, txn: &PgTxn<'_>) -> NodeResult<Entity> {
+        let e = Entity::get_head(&txn, &self.object_id)
+            .await
+            .map_err(|e| NodeError::Entity(e.to_string()))?;
+        Ok(e)
     }
 
-    pub async fn get_object_projection<T: DeserializeOwned + std::fmt::Debug>(
+    pub async fn get_head_object_system(&self, txn: &PgTxn<'_>) -> NodeResult<System> {
+        let s = System::get_head(&txn, &self.object_id).await?;
+        Ok(s)
+    }
+
+    pub async fn get_projection_object_entity(
         &self,
-        db: &Db,
+        txn: &PgTxn<'_>,
         change_set_id: impl AsRef<str>,
-    ) -> NodeResult<T> {
+    ) -> NodeResult<Entity> {
+        dbg!("---- who the fuck are we ----");
+        dbg!(&self);
         let change_set_id = change_set_id.as_ref();
-        let query = format!(
-            "SELECT a.*
-          FROM `{bucket}` AS a
-          WHERE a.siStorable.typeName = \"{type_name}\"
-            AND a.siChangeSet.changeSetId = $change_set_id
-            AND a.nodeId = $node_id
-            AND a.head = false
-          ORDER BY a.base ASC
-          LIMIT 1
-        ",
-            bucket = db.bucket_name,
-            type_name = self.kind,
-        );
-        let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
-        named_params.insert("node_id".into(), serde_json::json![&self.id]);
-        named_params.insert("change_set_id".into(), serde_json::json![change_set_id]);
-        trace!(?named_params, ?query, "getting obj projection");
-        let mut query_results: Vec<T> = db.query_consistent(query, Some(named_params)).await?;
-        if query_results.len() == 0 {
-            Err(NodeError::NoProjection)
-        } else {
-            let result = query_results.pop().unwrap();
-            Ok(result)
-        }
+        let e = Entity::get_projection(&txn, &self.object_id, &change_set_id)
+            .await
+            .map_err(|e| NodeError::Entity(e.to_string()))?;
+        Ok(e)
     }
 
-    pub async fn get(
-        db: &Db,
-        node_id: impl AsRef<str>,
-        billing_account_id: impl AsRef<str>,
-    ) -> NodeResult<Node> {
-        let node_id = node_id.as_ref();
-        let billing_account_id = billing_account_id.as_ref();
+    pub async fn get_projection_object_system(
+        &self,
+        txn: &PgTxn<'_>,
+        change_set_id: impl AsRef<str>,
+    ) -> NodeResult<System> {
+        let change_set_id = change_set_id.as_ref();
+        let s = System::get_projection(&txn, &self.object_id, &change_set_id)
+            .await
+            .map_err(|e| NodeError::Entity(e.to_string()))?;
+        Ok(s)
+    }
 
-        let node: Node = get_model(db, node_id, billing_account_id).await?;
-        Ok(node)
+    pub async fn get(txn: &PgTxn<'_>, node_id: impl AsRef<str>) -> NodeResult<Node> {
+        let id = node_id.as_ref();
+        let row = txn
+            .query_one("SELECT object FROM node_get_v1($1)", &[&id])
+            .await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        let object = serde_json::from_value(json)?;
+        Ok(object)
+    }
+
+    pub async fn list(
+        txn: &PgTxn<'_>,
+        tenant_id: impl Into<String>,
+        query: Option<Query>,
+        page_size: Option<u32>,
+        order_by: Option<String>,
+        order_by_direction: Option<OrderByDirection>,
+        page_token: Option<PageToken>,
+    ) -> NodeResult<ListReply> {
+        let tenant_id = tenant_id.into();
+        let reply = list_model(
+            txn,
+            "nodes",
+            tenant_id,
+            query,
+            page_size,
+            order_by,
+            order_by_direction,
+            page_token,
+        )
+        .await?;
+        Ok(reply)
     }
 }

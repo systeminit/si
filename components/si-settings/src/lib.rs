@@ -2,6 +2,7 @@ use config;
 use config::{Config, Environment, File as ConfigFile};
 use serde::Deserialize;
 use sodiumoxide;
+use std::path::PathBuf;
 use tracing::{event, Level};
 
 use std::env;
@@ -34,27 +35,6 @@ impl Default for Pg {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct Db {
-    pub cluster_url: String,
-    pub cluster_user: String,
-    pub cluster_password: String,
-    pub bucket_name: String,
-    pub scan_consistency: String,
-}
-
-impl Default for Db {
-    fn default() -> Self {
-        Db {
-            cluster_url: String::from("couchbase://127.0.0.1"),
-            cluster_user: String::from("si"),
-            cluster_password: String::from("bugbear"),
-            bucket_name: String::from("si"),
-            scan_consistency: String::from("NotBounded"),
-        }
-    }
-}
-
-#[derive(Debug, Deserialize, Clone)]
 pub struct Nats {
     pub url: String,
 }
@@ -63,6 +43,32 @@ impl Default for Nats {
     fn default() -> Self {
         Nats {
             url: "localhost".to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct Veritech {
+    pub url: String,
+}
+
+impl Default for Veritech {
+    fn default() -> Self {
+        Self {
+            url: "ws://localhost:5157".to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct EventLogFs {
+    pub root: PathBuf,
+}
+
+impl Default for EventLogFs {
+    fn default() -> Self {
+        Self {
+            root: PathBuf::from("/tmp/si-sdf-event-log-fs"),
         }
     }
 }
@@ -98,55 +104,18 @@ impl Default for JwtEncrypt {
     }
 }
 
-#[derive(Debug, Deserialize, Clone)]
-pub struct Vernemq {
-    pub server_uri: Option<String>,
-    pub shared_topic_id: Option<String>,
-}
-
-impl Default for Vernemq {
-    fn default() -> Self {
-        Vernemq {
-            server_uri: Some(String::from("tcp://localhost:1883")),
-            shared_topic_id: None,
-        }
-    }
-}
-
 #[derive(Debug, Deserialize, Default, Clone)]
 pub struct Settings {
-    pub db: Db,
     pub pg: Pg,
     pub nats: Nats,
+    pub veritech: Veritech,
+    pub event_log_fs: EventLogFs,
     pub service: Service,
     pub paging: Paging,
     pub jwt_encrypt: JwtEncrypt,
-    pub vernemq: Option<Vernemq>,
 }
 
 impl Settings {
-    pub fn vernemq_server_uri(&self) -> String {
-        match self.vernemq {
-            Some(ref vernemq) => match vernemq.server_uri {
-                Some(ref server_uri) => server_uri.to_string(),
-                None => Vernemq::default().server_uri.unwrap(),
-            },
-            None => Vernemq::default().server_uri.unwrap(),
-        }
-    }
-
-    pub fn vernemq_shared_topic_id(&self) -> Result<&str> {
-        let key = "vernemq.shared_topic_id";
-
-        match self.vernemq {
-            Some(ref vernemq) => match vernemq.shared_topic_id {
-                Some(ref shared_topic_id) => Ok(shared_topic_id),
-                None => Err(SettingsError::Required(key)),
-            },
-            None => Err(SettingsError::Required(key)),
-        }
-    }
-
     #[tracing::instrument]
     pub fn new() -> Result<Settings> {
         if let Err(()) = sodiumoxide::init() {

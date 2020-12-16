@@ -1,5 +1,3 @@
-use anyhow::Context;
-use nats;
 use opentelemetry::{api::Provider, sdk};
 use tracing;
 use tracing_opentelemetry::layer;
@@ -48,27 +46,32 @@ async fn main() -> anyhow::Result<()> {
     println!("*** Loading settings ***");
     let settings = si_settings::Settings::new()?;
 
-    println!("*** Connecting to the database ***");
-    let db = si_sdf::data::Db::new(&settings).context("failed to connect to the database")?;
+    println!("*** Connecting to postgres ***");
+    let pg = si_sdf::data::PgPool::new(&settings.pg).await?;
 
     println!("*** Connecting to NATS ***");
-    let nats = nats::asynk::connect(&settings.nats.url).await?;
+    let nats = si_sdf::data::NatsConn::new(&settings.nats).await?;
 
-    println!("*** Creating indexes ***");
-    si_sdf::data::create_indexes(&db).await?;
+    println!("*** Initializing EventLogFs ***");
+    let event_log_fs = si_sdf::data::EventLogFS::init(&settings.event_log_fs).await?;
+
+    println!("*** Initializing Veritech ***");
+    let veritech = si_sdf::veritech::Veritech::new(&settings.veritech, event_log_fs.clone());
 
     println!("*** Checking for JWT keys ***");
-    si_sdf::models::jwt_key::create_if_missing(
-        &db,
-        &nats,
+    let mut conn = pg.pool.get().await?;
+    let txn = conn.transaction().await?;
+    si_sdf::models::jwt_key::create_jwt_key_if_missing(
+        &txn,
         "config/public.pem",
         "config/private.pem",
         &settings.jwt_encrypt.key,
     )
     .await?;
+    txn.commit().await?;
 
     println!("*** Starting service ***");
-    start(db, nats, settings).await;
+    start(pg, nats, veritech, event_log_fs, settings).await;
 
     Ok(())
 }

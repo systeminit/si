@@ -1,7 +1,0 @@
-// vim: ft=javascript
-// Find the same brewery information but in a slightly simpler or cleaner way
-// based only on the data
-{
-  "statement": "SELECT VALUE bw FROM breweries bw WHERE bw.name = 'Kona Brewing'",
-  "pretty": true
-}

@@ -1,9 +1,0 @@
-// -*- mode: js; -*-
-// Query String Query, showing how a query string is specified as search-input.
-{
-    "indexName": "travel-sample-index-unstored",
-    "size": 10,
-    "query": {
-        "query": "description: Imperial"
-    }
-}

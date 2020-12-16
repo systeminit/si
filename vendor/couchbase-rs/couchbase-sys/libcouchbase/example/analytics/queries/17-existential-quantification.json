@@ -1,9 +1,0 @@
-// vim: ft=javascript
-// Find those breweries whose beers include at least one IPA and return the
-// brewery’s name, phone number, and complete list of beer names and associated
-// alcohol levels.
-{
-  "statement": "WITH nested_breweries AS ( SELECT bw.name AS brewer, bw.phone, ( SELECT br.name, br.abv FROM beers br WHERE br.brewery_id = meta(bw).id ORDER BY br.name) AS beers FROM breweries bw) SELECT VALUE nb FROM nested_breweries nb WHERE (SOME b IN nb.beers SATISFIES b.name LIKE '%IPA%') ORDER BY nb.brewer LIMIT 2",
-  "pretty": true
-}
-

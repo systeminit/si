@@ -1,8 +1,8 @@
 use crate::{
-    data::{Connection, Db},
+    data::{NatsTxn, NatsTxnError, PgTxn},
     models::{
-        key_pair::KeyPair,
-        {get_model, insert_model, KeyPairError, ModelError, SiStorable, SiStorableError},
+        list_model, next_update_clock, KeyPair, KeyPairError, ListReply, ModelError,
+        OrderByDirection, PageToken, Query, SiStorable, UpdateClockError,
     },
 };
 use serde::{Deserialize, Serialize};
@@ -45,16 +45,20 @@ macro_rules! enum_impls {
 pub enum SecretError {
     #[error("error when decrypting crypted secret")]
     DecryptionFailed,
-    #[error("failed to deserialize decrypted message as json: {0}")]
-    Deserialize(#[from] serde_json::Error),
     #[error("error in key pair: {0}")]
     KeyPair(#[from] KeyPairError),
     #[error("error in core model functions: {0}")]
     Model(#[from] ModelError),
     #[error("secret is not found")]
     NotFound,
-    #[error("si_storable error: {0}")]
-    SiStorable(#[from] SiStorableError),
+    #[error("pg error: {0}")]
+    TokioPg(#[from] tokio_postgres::Error),
+    #[error("nats txn error: {0}")]
+    NatsTxn(#[from] NatsTxnError),
+    #[error("serde error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("update clock: {0}")]
+    UpdateClock(#[from] UpdateClockError),
 }
 
 pub type SecretResult<T> = Result<T, SecretError>;
@@ -145,8 +149,8 @@ pub struct Secret {
 
 impl Secret {
     pub async fn new(
-        db: &Db,
-        nats: &Connection,
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
         name: impl Into<String>,
         object_type: SecretObjectType,
         kind: SecretKind,
@@ -154,13 +158,10 @@ impl Secret {
         key_pair_id: impl Into<String>,
         version: SecretVersion,
         algorithm: SecretAlgorithm,
-        billing_account_id: String,
-        organization_id: String,
         workspace_id: String,
-        created_by_user_id: String,
     ) -> SecretResult<Self> {
         Ok(EncryptedSecret::new(
-            db,
+            txn,
             nats,
             name,
             object_type,
@@ -169,13 +170,44 @@ impl Secret {
             key_pair_id,
             version,
             algorithm,
-            billing_account_id,
-            organization_id,
             workspace_id,
-            created_by_user_id,
         )
         .await?
         .into())
+    }
+
+    pub async fn get(txn: &PgTxn<'_>, id: impl AsRef<str> + std::fmt::Debug) -> SecretResult<Self> {
+        let id = id.as_ref();
+        let row = txn
+            .query_one("SELECT object FROM secret_get_v1($1)", &[&id])
+            .await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        let object = serde_json::from_value(json)?;
+        Ok(object)
+    }
+
+    pub async fn list(
+        txn: &PgTxn<'_>,
+        tenant_id: impl Into<String>,
+        query: Option<Query>,
+        page_size: Option<u32>,
+        order_by: Option<String>,
+        order_by_direction: Option<OrderByDirection>,
+        page_token: Option<PageToken>,
+    ) -> SecretResult<ListReply> {
+        let tenant_id = tenant_id.into();
+        let reply = list_model(
+            txn,
+            "secrets",
+            tenant_id,
+            query,
+            page_size,
+            order_by,
+            order_by_direction,
+            page_token,
+        )
+        .await?;
+        Ok(reply)
     }
 }
 
@@ -185,11 +217,12 @@ impl Secret {
 /// therefore should *only* be used internally when decrypting secrets for use by `veritech`.
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct EncryptedSecret {
+pub struct EncryptedSecret {
     pub id: String,
     pub name: String,
     pub object_type: SecretObjectType,
     pub kind: SecretKind,
+    #[serde(with = "crypted_serde")]
     crypted: Vec<u8>,
     key_pair_id: String,
     version: SecretVersion,
@@ -199,8 +232,8 @@ pub(crate) struct EncryptedSecret {
 
 impl EncryptedSecret {
     pub async fn new(
-        db: &Db,
-        nats: &Connection,
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
         name: impl Into<String>,
         object_type: SecretObjectType,
         kind: SecretKind,
@@ -208,54 +241,51 @@ impl EncryptedSecret {
         key_pair_id: impl Into<String>,
         version: SecretVersion,
         algorithm: SecretAlgorithm,
-        billing_account_id: String,
-        organization_id: String,
         workspace_id: String,
-        created_by_user_id: String,
     ) -> SecretResult<Self> {
         let name = name.into();
         let crypted = crypted.into();
         let key_pair_id = key_pair_id.into();
 
-        let si_storable = SiStorable::new(
-            db,
-            "secret",
-            billing_account_id,
-            organization_id,
-            workspace_id,
-            Some(created_by_user_id),
-        )
-        .await?;
-        let id = si_storable.object_id.clone();
-        let model = Self {
-            id,
-            name,
-            object_type,
-            kind,
-            crypted,
-            key_pair_id,
-            version,
-            algorithm,
-            si_storable,
-        };
-        insert_model(db, nats, &model.id, &model).await?;
+        let update_clock = next_update_clock(&workspace_id).await?;
 
-        Ok(model)
+        let row = txn
+            .query_one(
+                "SELECT object FROM secret_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
+                &[
+                    &name,
+                    &object_type.to_string(),
+                    &kind.to_string(),
+                    &encode_crypted(&crypted),
+                    &key_pair_id,
+                    &version.to_string(),
+                    &algorithm.to_string(),
+                    &workspace_id,
+                    &update_clock.epoch,
+                    &update_clock.update_count,
+                ],
+            )
+            .await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        nats.publish(&json).await?;
+        let object: Self = serde_json::from_value(json)?;
+
+        Ok(object)
     }
 
-    pub(crate) async fn get(
-        db: &Db,
-        id: impl AsRef<str> + std::fmt::Debug,
-        billing_account_id: impl AsRef<str> + std::fmt::Debug,
-    ) -> SecretResult<Self> {
-        get_model(db, id, billing_account_id)
-            .await
-            .map_err(SecretError::from)
+    pub async fn get(txn: &PgTxn<'_>, id: impl AsRef<str> + std::fmt::Debug) -> SecretResult<Self> {
+        let id = id.as_ref();
+        let row = txn
+            .query_one("SELECT object FROM secret_get_v1($1)", &[&id])
+            .await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        let object = serde_json::from_value(json)?;
+        Ok(object)
     }
 
-    pub(crate) async fn decrypt(self, db: &Db) -> SecretResult<DecryptedSecret> {
+    pub async fn decrypt(self, txn: &PgTxn<'_>) -> SecretResult<DecryptedSecret> {
         let key_pair =
-            KeyPair::get(db, &self.key_pair_id, &self.si_storable.billing_account_id).await?;
+            KeyPair::get(txn, &self.key_pair_id, &self.si_storable.billing_account_id).await?;
 
         self.into_decrypted(&key_pair.public_key, &key_pair.secret_key)
     }
@@ -297,12 +327,40 @@ impl From<EncryptedSecret> for Secret {
 /// persistable and is only intended to be used internally when passing secrets into `veritech`.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct DecryptedSecret {
+pub struct DecryptedSecret {
     pub id: String,
     pub name: String,
     pub object_type: SecretObjectType,
     pub kind: SecretKind,
     pub message: Value,
+}
+
+fn encode_crypted(crypted: &[u8]) -> String {
+    let s = base64::encode_config(crypted.as_ref(), base64::STANDARD_NO_PAD);
+    s
+}
+
+mod crypted_serde {
+    use super::encode_crypted;
+    use serde::{self, Deserialize, Deserializer, Serializer};
+
+    pub fn serialize<S>(crypted: &[u8], serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let s = encode_crypted(crypted);
+        serializer.serialize_str(&s)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        let buffer =
+            base64::decode_config(s, base64::STANDARD_NO_PAD).map_err(serde::de::Error::custom)?;
+        Ok(buffer.into())
+    }
 }
 
 #[cfg(test)]

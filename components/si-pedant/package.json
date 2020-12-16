@@ -14,5 +14,9 @@
   },
   "dependencies": {
     "unique-names-generator": "^4.3.1"
+  },
+  "volta": {
+    "node": "15.5.1",
+    "npm": "6.14.11"
   }
 }

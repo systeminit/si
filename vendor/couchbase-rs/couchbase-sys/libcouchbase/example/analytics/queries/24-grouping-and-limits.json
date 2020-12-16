@@ -1,7 +1,0 @@
-// vim: ft=javascript
-// Return the top three breweries based on their numbers of offered beers. Also
-// illustrate the use of multiple aggregate functions to compute various
-// alcohol content statistics for their beers
-{
-  "statement": "SELECT bw.name, COUNT(*) AS num_beers, AVG(br.abv) AS abv_avg, MIN(br.abv) AS abv_min, MAX(br.abv) AS abv_max FROM breweries bw, beers br WHERE br.brewery_id = meta(bw).id GROUP BY bw.name ORDER BY num_beers DESC LIMIT 3"
-}

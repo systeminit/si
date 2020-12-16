@@ -1,0 +1,491 @@
+use names::{Generator, Name};
+
+use crate::models::billing_account::{signup_new_billing_account, NewBillingAccount};
+use crate::{one_time_setup, TestContext};
+
+use si_sdf::data::{NatsTxn, PgTxn};
+use si_sdf::models::{Event, EventKind, EventStatus};
+
+pub async fn create_event(txn: &PgTxn<'_>, nats: &NatsTxn, nba: &NewBillingAccount) -> Event {
+    let event = Event::new(
+        &txn,
+        &nats,
+        Generator::with_naming(Name::Numbered).next().unwrap(),
+        serde_json::json![{}],
+        EventKind::EntityAction,
+        nba.workspace.si_storable.tenant_ids.clone(),
+        None,
+        nba.workspace.id.clone(),
+    )
+    .await
+    .expect("cannot create event");
+    event
+}
+
+#[tokio::test]
+async fn new() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit()
+        .await
+        .expect("failed to commit the new billing account");
+
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let event = Event::new(
+        &txn,
+        &nats,
+        "I like cheese",
+        serde_json::json![{}],
+        EventKind::EntityAction,
+        nba.workspace.si_storable.tenant_ids.clone(),
+        None,
+        nba.workspace.id.clone(),
+    )
+    .await
+    .expect("cannot create event");
+    assert_eq!(&event.message, "I like cheese");
+    assert_eq!(&event.kind, &EventKind::EntityAction);
+    assert_eq!(
+        &event.context,
+        &nba.workspace.si_storable.tenant_ids.clone()
+    );
+    assert_eq!(&event.status, &EventStatus::Running);
+    assert_eq!(&event.parent_id, &None);
+}
+
+#[tokio::test]
+async fn save() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit()
+        .await
+        .expect("failed to commit the new billing account");
+
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let mut event = Event::new(
+        &txn,
+        &nats,
+        "I like cheese",
+        serde_json::json![{}],
+        EventKind::EntityAction,
+        nba.workspace.si_storable.tenant_ids.clone(),
+        None,
+        nba.workspace.id.clone(),
+    )
+    .await
+    .expect("cannot create event");
+
+    let pre_save_event = event.clone();
+    event.message = String::from("I like my butt");
+    event.save(&txn, &nats).await.expect("cannot save event");
+    assert_eq!(&event.message, "I like my butt");
+    assert!(
+        pre_save_event.si_storable.update_clock < event.si_storable.update_clock,
+        "update clock is not updated correctly"
+    );
+}
+
+#[tokio::test]
+async fn unknown() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit()
+        .await
+        .expect("failed to commit the new billing account");
+
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let mut event = Event::new(
+        &txn,
+        &nats,
+        "I like cheese",
+        serde_json::json![{}],
+        EventKind::EntityAction,
+        nba.workspace.si_storable.tenant_ids.clone(),
+        None,
+        nba.workspace.id.clone(),
+    )
+    .await
+    .expect("cannot create event");
+
+    let pre_save_event = event.clone();
+    event
+        .unknown(&txn, &nats)
+        .await
+        .expect("cannot update event status");
+    assert_eq!(
+        pre_save_event.status,
+        EventStatus::Running,
+        "initial state wasn't running"
+    );
+    assert_eq!(
+        event.status,
+        EventStatus::Unknown,
+        "did not transition to unknown"
+    );
+}
+
+#[tokio::test]
+async fn success() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit()
+        .await
+        .expect("failed to commit the new billing account");
+
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let mut event = Event::new(
+        &txn,
+        &nats,
+        "I like cheese",
+        serde_json::json![{}],
+        EventKind::EntityAction,
+        nba.workspace.si_storable.tenant_ids.clone(),
+        None,
+        nba.workspace.id.clone(),
+    )
+    .await
+    .expect("cannot create event");
+
+    let pre_save_event = event.clone();
+    event
+        .success(&txn, &nats)
+        .await
+        .expect("cannot update event status");
+    assert_eq!(
+        pre_save_event.status,
+        EventStatus::Running,
+        "initial state wasn't running"
+    );
+    assert_eq!(
+        event.status,
+        EventStatus::Success,
+        "did not transition to success"
+    );
+}
+
+#[tokio::test]
+async fn error() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit()
+        .await
+        .expect("failed to commit the new billing account");
+
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let mut event = Event::new(
+        &txn,
+        &nats,
+        "I like cheese",
+        serde_json::json![{}],
+        EventKind::EntityAction,
+        nba.workspace.si_storable.tenant_ids.clone(),
+        None,
+        nba.workspace.id.clone(),
+    )
+    .await
+    .expect("cannot create event");
+
+    let pre_save_event = event.clone();
+    event
+        .error(&txn, &nats)
+        .await
+        .expect("cannot update event status");
+    assert_eq!(
+        pre_save_event.status,
+        EventStatus::Running,
+        "initial state wasn't running"
+    );
+    assert_eq!(
+        event.status,
+        EventStatus::Error,
+        "did not transition to error"
+    );
+}
+
+#[tokio::test]
+async fn running() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit()
+        .await
+        .expect("failed to commit the new billing account");
+
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let mut event = Event::new(
+        &txn,
+        &nats,
+        "I like cheese",
+        serde_json::json![{}],
+        EventKind::EntityAction,
+        nba.workspace.si_storable.tenant_ids.clone(),
+        None,
+        nba.workspace.id.clone(),
+    )
+    .await
+    .expect("cannot create event");
+
+    let pre_save_event = event.clone();
+    event
+        .error(&txn, &nats)
+        .await
+        .expect("cannot update event status");
+    assert_eq!(
+        pre_save_event.status,
+        EventStatus::Running,
+        "initial state wasn't running"
+    );
+    assert_eq!(
+        event.status,
+        EventStatus::Error,
+        "did not transition to error"
+    );
+    event
+        .running(&txn, &nats)
+        .await
+        .expect("cannot update event status");
+    assert_eq!(
+        event.status,
+        EventStatus::Running,
+        "did not transition to running"
+    );
+}
+
+// Has parent checks for if a given event has a parent in its tree
+// with a given parent id.
+#[tokio::test]
+async fn has_parent() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit()
+        .await
+        .expect("failed to commit the new billing account");
+
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let event_prime = Event::new(
+        &txn,
+        &nats,
+        "I like cheese",
+        serde_json::json![{}],
+        EventKind::EntityAction,
+        nba.workspace.si_storable.tenant_ids.clone(),
+        None,
+        nba.workspace.id.clone(),
+    )
+    .await
+    .expect("cannot create event");
+
+    let parent_exists = event_prime
+        .has_parent(&txn, "bullshit:mcbullshitterton")
+        .await
+        .expect("cannot get event object");
+    assert_eq!(parent_exists, false);
+
+    let event_secondary = Event::new(
+        &txn,
+        &nats,
+        "I like cheese",
+        serde_json::json![{}],
+        EventKind::EntityAction,
+        nba.workspace.si_storable.tenant_ids.clone(),
+        Some(event_prime.id.clone()),
+        nba.workspace.id.clone(),
+    )
+    .await
+    .expect("cannot create event");
+
+    let secondary_parent_exists = event_secondary
+        .has_parent(&txn, &event_prime.id)
+        .await
+        .expect("cannot get event object");
+    assert_eq!(secondary_parent_exists, true);
+
+    let event_tertiary = Event::new(
+        &txn,
+        &nats,
+        "I like cheese",
+        serde_json::json![{}],
+        EventKind::EntityAction,
+        nba.workspace.si_storable.tenant_ids.clone(),
+        Some(event_secondary.id.clone()),
+        nba.workspace.id.clone(),
+    )
+    .await
+    .expect("cannot create event");
+
+    let tertiary_parent_exists = event_tertiary
+        .has_parent(&txn, &event_prime.id)
+        .await
+        .expect("cannot get event object");
+    assert_eq!(tertiary_parent_exists, true);
+}
+
+#[tokio::test]
+async fn get() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit()
+        .await
+        .expect("failed to commit the new billing account");
+
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let event = Event::new(
+        &txn,
+        &nats,
+        "I like cheese",
+        serde_json::json![{}],
+        EventKind::EntityAction,
+        nba.workspace.si_storable.tenant_ids.clone(),
+        None,
+        nba.workspace.id.clone(),
+    )
+    .await
+    .expect("cannot create event");
+
+    let same_event = Event::get(&txn, &event.id).await.expect("cannot get event");
+    assert_eq!(&event, &same_event);
+}
+
+#[tokio::test]
+async fn list() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit()
+        .await
+        .expect("failed to commit the new billing account");
+
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let _event = Event::new(
+        &txn,
+        &nats,
+        "I like cheese",
+        serde_json::json![{}],
+        EventKind::EntityAction,
+        nba.workspace.si_storable.tenant_ids.clone(),
+        None,
+        nba.workspace.id.clone(),
+    )
+    .await
+    .expect("cannot create event");
+
+    let _event_two = Event::new(
+        &txn,
+        &nats,
+        "I like cheese also",
+        serde_json::json![{}],
+        EventKind::EntityAction,
+        nba.workspace.si_storable.tenant_ids.clone(),
+        None,
+        nba.workspace.id.clone(),
+    )
+    .await
+    .expect("cannot create event");
+
+    let reply = Event::list(&txn, &nba.billing_account.id, None, None, None, None, None)
+        .await
+        .expect("cannot list events");
+    assert_eq!(reply.items.len(), 2);
+}
+
+#[tokio::test]
+async fn log() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit()
+        .await
+        .expect("failed to commit the new billing account");
+
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let event = Event::new(
+        &txn,
+        &nats,
+        "I like cheese",
+        serde_json::json![{}],
+        EventKind::EntityAction,
+        nba.workspace.si_storable.tenant_ids.clone(),
+        None,
+        nba.workspace.id.clone(),
+    )
+    .await
+    .expect("cannot create event");
+
+    event
+        .log(
+            &txn,
+            &nats,
+            si_sdf::models::EventLogLevel::Error,
+            "super fun!",
+            serde_json::json![{}],
+        )
+        .await
+        .expect("cannot create an eventLog");
+}

@@ -1,6 +1,0 @@
-// vim: ft=javascript
-// Compute the total number of beers in a SQL-like way
-{
-  "statement": "SELECT COUNT(*) AS num_beers FROM beers"
-}
-

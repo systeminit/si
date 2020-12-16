@@ -27,7 +27,8 @@ main() {
       --name "$name" \
       --detach \
       --publish 5432:5432 \
-      "$image"
+      "$image" \
+      -c log_error_verbosity=VERBOSE
   fi
 }
 

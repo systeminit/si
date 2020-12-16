@@ -1,6 +1,0 @@
-// vim: ft=javascript
-// Compute the total number of beers with explicit aggregate function
-{
-  "statement": "SELECT VALUE ARRAY_COUNT((SELECT b FROM beers b))"
-}
-

@@ -1,6 +1,0 @@
-// vim: ft=javascript
-// Find brewery by name, but return objects instead of values
-{
-  "statement": "SELECT bw FROM breweries bw WHERE bw.name = 'Kona Brewing'",
-  "pretty": true
-}

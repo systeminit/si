@@ -21,7 +21,7 @@ pub enum QueryError {
 
 pub type QueryResult<T> = Result<T, QueryError>;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum FieldType {
     Boolean,
@@ -29,7 +29,7 @@ pub enum FieldType {
     Int,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum Comparison {
     Equals,
@@ -39,7 +39,7 @@ pub enum Comparison {
     NotLike,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Expression {
     pub field: String,
@@ -66,7 +66,7 @@ impl Expression {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Item {
     pub query: Option<Query>,
@@ -96,7 +96,7 @@ impl Item {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum BooleanTerm {
     And,
@@ -126,7 +126,7 @@ impl fmt::Display for BooleanTerm {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Query {
     pub boolean_term: Option<BooleanTerm>,
@@ -193,6 +193,97 @@ impl Query {
             items: vec![Item::generate_expression_for_int(field, comparison, value)],
             ..Default::default()
         }
+    }
+
+    pub fn as_pgsql(&self, params: &mut Vec<String>) -> QueryResult<String> {
+        let mut where_string = String::from("");
+        if self.is_not.unwrap_or(false) {
+            where_string.push_str("NOT ");
+        }
+        where_string.push_str("(");
+        let mut item_count = 0;
+        for query_e_option in self.items.iter() {
+            if item_count != 0 {
+                let qbl = match &self.boolean_term {
+                    Some(l) => l,
+                    None => return Err(QueryError::MissingBooleanLogic),
+                };
+                let boolean_term = format!(" {} ", qbl);
+                where_string.push_str(&boolean_term);
+            }
+            if query_e_option.expression.is_some() {
+                match &query_e_option.expression {
+                    Some(exp) => {
+                        let value = match exp.field_type {
+                            FieldType::Boolean => {
+                                if exp.value == "true" {
+                                    params.push(String::from("true"));
+                                    format!("${}::BOOLEAN", params.len())
+                                } else {
+                                    params.push(String::from("false"));
+                                    format!("${}::BOOLEAN", params.len())
+                                }
+                            }
+                            FieldType::String => {
+                                params.push(String::from(&exp.value));
+                                format!("${}::TEXT", params.len())
+                            }
+                            FieldType::Int => {
+                                params.push(String::from(&exp.value));
+                                format!("${}::BIGINT", params.len())
+                                // Elizabeth Jacob fixed this bug, her first, on 04-13-2020.
+                                // Good job, Monkey.
+                                //let vint: u64 = exp.value.parse()?;
+                                //exp.value.as_ref().unwrap_or(&"".into()).parse()?;
+                                //json![vint]
+                            }
+                        };
+                        let field = &exp.field;
+                        let exp_field = if field.contains(".") {
+                            let mut escaped_fields = Vec::new();
+                            for field_part in field.split(".") {
+                                let escaped = format!("'{}'", field_part);
+                                escaped_fields.push(escaped);
+                            }
+                            let mut stabby_fields = format!("->");
+                            stabby_fields.push_str(
+                                escaped_fields[0..escaped_fields.len() - 1]
+                                    .join("->")
+                                    .as_ref(),
+                            );
+                            stabby_fields.push_str(&format!(
+                                "->>{}",
+                                escaped_fields[escaped_fields.len() - 1]
+                            ));
+                            stabby_fields
+                        } else {
+                            format!("->>'{}'", &field)
+                        };
+                        let expression = if exp.comparison == Comparison::Contains {
+                            format!("ARRAY[obj{}] @> ARRAY[{}]", exp_field, value)
+                        } else {
+                            format!("obj{} {} {}", exp_field, exp.comparison, value)
+                        };
+                        where_string.push_str(&expression);
+                    }
+                    None => unreachable!(),
+                }
+            } else if query_e_option.query.is_some() {
+                match &query_e_option.query {
+                    Some(q) => {
+                        let query_group = q.as_pgsql(params)?;
+                        where_string.push_str(&query_group);
+                    }
+                    None => unreachable!(),
+                }
+            } else {
+                return Err(QueryError::MissingExpressionOrQuery);
+            }
+            item_count = item_count + 1;
+        }
+        where_string.push_str(")");
+
+        Ok(where_string)
     }
 
     pub fn as_n1ql(&self, bucket_name: &str) -> QueryResult<String> {
@@ -327,8 +418,12 @@ mod query_test {
             boolean_term: Some(BooleanTerm::And),
             ..Default::default()
         };
-        let query_string = query.as_n1ql("si").expect("Failed to create n1ql query");
-        assert_eq!(query_string, "(si.foo = \"bar\")");
+        let mut params = vec![];
+        let query_string = query
+            .as_pgsql(&mut params)
+            .expect("Failed to create postgres query");
+        assert_eq!(query_string, "(obj->>'foo' = $1::TEXT)");
+        assert_eq!(params[0], "bar");
     }
 
     #[test]
@@ -346,8 +441,12 @@ mod query_test {
             boolean_term: Some(BooleanTerm::And),
             ..Default::default()
         };
-        let query_string = query.as_n1ql("si").expect("Failed to create n1ql query");
-        assert_eq!(query_string, "(ARRAY_CONTAINS(si.foo, \"bar\"))");
+        let mut params = vec![];
+        let query_string = query
+            .as_pgsql(&mut params)
+            .expect("Failed to create pg query");
+        assert_eq!(query_string, "(ARRAY[obj->>'foo'] @> ARRAY[$1::TEXT])");
+        assert_eq!(params[0], "bar");
     }
 
     #[test]
@@ -365,8 +464,12 @@ mod query_test {
             boolean_term: Some(BooleanTerm::And),
             ..Default::default()
         };
-        let query_string = query.as_n1ql("si").expect("Failed to create n1ql query");
-        assert_eq!(query_string, "(si.foo LIKE \"bar\")");
+        let mut params = vec![];
+        let query_string = query
+            .as_pgsql(&mut params)
+            .expect("Failed to create pg query");
+        assert_eq!(query_string, "(obj->>'foo' LIKE $1::TEXT)");
+        assert_eq!(params[0], "bar");
     }
 
     #[test]
@@ -384,8 +487,12 @@ mod query_test {
             boolean_term: Some(BooleanTerm::And),
             ..Default::default()
         };
-        let query_string = query.as_n1ql("si").expect("Failed to create n1ql query");
-        assert_eq!(query_string, "(si.foo NOT LIKE \"bar\")");
+        let mut params = vec![];
+        let query_string = query
+            .as_pgsql(&mut params)
+            .expect("Failed to create pg query");
+        assert_eq!(query_string, "(obj->>'foo' NOT LIKE $1::TEXT)");
+        assert_eq!(params[0], "bar");
     }
 
     #[test]
@@ -403,8 +510,15 @@ mod query_test {
             boolean_term: Some(BooleanTerm::And),
             ..Default::default()
         };
-        let query_string = query.as_n1ql("si").expect("Failed to create n1ql query");
-        assert_eq!(query_string, "(si.foo = 1)");
+        let mut params = vec![];
+        let query_string = query
+            .as_pgsql(&mut params)
+            .expect("Failed to create pg query");
+        assert_eq!(query_string, "(obj->>'foo' = $1::BIGINT)");
+        assert_eq!(params[0], "1");
+
+        //let query_string = query.as_n1ql("si").expect("Failed to create n1ql query");
+        //assert_eq!(query_string, "(si.foo = 1)");
     }
 
     #[test]
@@ -433,11 +547,15 @@ mod query_test {
             boolean_term: Some(BooleanTerm::And),
             ..Default::default()
         };
-        let query_string = query.as_n1ql("si").expect("Failed to create n1ql query");
+        let mut params = vec![];
+        let query_string = query
+            .as_pgsql(&mut params)
+            .expect("Failed to create pg query");
         assert_eq!(
             query_string,
-            "(si.foo = \"bar\" AND si.freaky != \"friday\")"
+            "(obj->>'foo' = $1::TEXT AND obj->>'freaky' != $2::TEXT)",
         );
+        assert_eq!(params, vec![String::from("bar"), String::from("friday")]);
     }
 
     #[test]
@@ -466,11 +584,15 @@ mod query_test {
             boolean_term: Some(BooleanTerm::Or),
             ..Default::default()
         };
-        let query_string = query.as_n1ql("si").expect("Failed to create n1ql query");
+        let mut params = vec![];
+        let query_string = query
+            .as_pgsql(&mut params)
+            .expect("Failed to create pg query");
         assert_eq!(
             query_string,
-            "(si.foo = \"bar\" OR si.freaky != \"friday\")"
+            "(obj->>'foo' = $1::TEXT OR obj->>'freaky' != $2::TEXT)",
         );
+        assert_eq!(params, vec![String::from("bar"), String::from("friday")]);
     }
 
     #[test]
@@ -526,10 +648,22 @@ mod query_test {
             boolean_term: Some(BooleanTerm::And),
             ..Default::default()
         };
-        let query_string = query.as_n1ql("si").expect("Failed to create n1ql query");
+        let mut params = vec![];
+        let query_string = query
+            .as_pgsql(&mut params)
+            .expect("Failed to create pg query");
         assert_eq!(
             query_string,
-            "(si.foo = \"bar\" AND si.freaky != \"friday\" AND (si.parent = \"teacher\" OR si.loop = \"canoe\"))"
+           "(obj->>'foo' = $1::TEXT AND obj->>'freaky' != $2::TEXT AND (obj->>'parent' = $3::TEXT OR obj->>'loop' = $4::TEXT))"
+        );
+        assert_eq!(
+            params,
+            vec![
+                String::from("bar"),
+                String::from("friday"),
+                String::from("teacher"),
+                String::from("canoe")
+            ]
         );
     }
 
@@ -587,10 +721,22 @@ mod query_test {
             boolean_term: Some(BooleanTerm::And),
             ..Default::default()
         };
-        let query_string = query.as_n1ql("si").expect("Failed to create n1ql query");
+        let mut params = vec![];
+        let query_string = query
+            .as_pgsql(&mut params)
+            .expect("Failed to create pg query");
         assert_eq!(
             query_string,
-            "(si.foo = \"bar\" AND si.freaky != \"friday\" AND NOT (si.parent = \"teacher\" OR si.loop = \"canoe\"))"
+           "(obj->>'foo' = $1::TEXT AND obj->>'freaky' != $2::TEXT AND NOT (obj->>'parent' = $3::TEXT OR obj->>'loop' = $4::TEXT))"
+        );
+        assert_eq!(
+            params,
+            vec![
+                String::from("bar"),
+                String::from("friday"),
+                String::from("teacher"),
+                String::from("canoe")
+            ]
         );
     }
 }

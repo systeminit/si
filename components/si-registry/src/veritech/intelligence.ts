@@ -130,6 +130,7 @@ export function calculateProperties(
 ): void {
   console.log("POST /calculateProperties BEGIN");
   const intelReq: CalculatePropertiesRequest = req.body;
+  console.dir(intelReq, { depth: Infinity });
   const entity = intelReq.entity;
   let registryObj;
   try {

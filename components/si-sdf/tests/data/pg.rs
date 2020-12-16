@@ -1,9 +1,11 @@
-use crate::SETTINGS;
+use crate::{one_time_setup, SETTINGS};
 use si_sdf::data::pg::PgPool;
 
 #[tokio::test]
 async fn pg_pool_new() {
-    let pg = PgPool::new(&SETTINGS).await.expect("pool creation to work");
+    let pg = PgPool::new(&SETTINGS.pg)
+        .await
+        .expect("pool creation to work");
     for i in 1..10 {
         let client = pg
             .pool
@@ -25,11 +27,10 @@ async fn pg_pool_new() {
 
 #[tokio::test]
 async fn pg_pool_si_id_check() {
-    let pg = PgPool::new(&SETTINGS).await.expect("pool creation to work");
-    pg.drop_and_create_public_schema()
+    one_time_setup().await.expect("cannot setup pg");
+    let pg = PgPool::new(&SETTINGS.pg)
         .await
-        .expect("delete the schema");
-    pg.migrate().await.expect("migrations to succeed");
+        .expect("failed to connect to postgres");
     let conn = pg.pool.get().await.expect("cannot connect to pg");
     let row = conn
         .query_one("SELECT result FROM next_si_id_v1()", &[])

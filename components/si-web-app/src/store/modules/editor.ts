@@ -935,26 +935,20 @@ export const editor: Module<EditorStore, RootStore> = {
         await state.node.syncResource(systemId, changeSetId);
       }
     },
-    async syncResource({ commit, state, getters }) {
+    async syncResource({ state }) {
       if (state.node && state.system) {
         let node = state.node;
-        let resource = await node.syncResource(
-          state.system.id,
-          state.changeSet?.id,
-        );
-        commit("updateResources", resource);
+        await node.syncResource(state.system.id, state.changeSet?.id);
+        // TODO: We don't commit this, because we won't have it yet - it's
+        // a fully async operation. Gotta come in through the other side.
+        //commit("updateResources", resource);
       }
     },
-    async syncResources({ commit, state, getters }) {
+    async syncResources({ state, getters }) {
       if (state.application && state.system) {
         let nodeList: Node[] = getters["nodeList"];
         for (const node of nodeList) {
-          let resource = await node.syncResource(
-            state.system.id,
-            state.changeSet?.id,
-          );
-          console.log("poopy pants", { resource });
-          commit("updateResources", resource);
+          await node.syncResource(state.system.id, state.changeSet?.id);
         }
       }
     },

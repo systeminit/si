@@ -1,0 +1,1 @@
+SELECT obj AS object FROM billing_accounts WHERE name = $1

@@ -1,21 +1,82 @@
-use crate::{
-    data::{Connection, Db},
-    models::{generate_id, get_model, insert_model, BillingAccount, ModelError, SimpleStorable},
-};
+use base64;
 use serde::{Deserialize, Serialize};
-use sodiumoxide::crypto::box_::{self, PublicKey as BoxPublicKey, SecretKey as BoxSecretKey};
 use thiserror::Error;
+
+use crate::data::{NatsTxn, NatsTxnError, PgTxn};
+
+use crate::models::SimpleStorable;
+use sodiumoxide::crypto::box_::{self, PublicKey as BoxPublicKey, SecretKey as BoxSecretKey};
+
+const KEY_PAIR_GET_CURRENT: &str = include_str!("../data/queries/key_pair_get_current.sql");
 
 #[derive(Debug, Error)]
 pub enum KeyPairError {
     // Not using `BillingAccountError` as this leads us to a circular dependency of errors
     #[error("error in billing account: {0}")]
     BillingAccount(Box<dyn std::error::Error + Sync + Send + 'static>),
-    #[error("error in core model functions: {0}")]
-    Model(#[from] ModelError),
+    #[error("pg error: {0}")]
+    TokioPg(#[from] tokio_postgres::Error),
+    #[error("nats txn error: {0}")]
+    NatsTxn(#[from] NatsTxnError),
+    #[error("serde error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
 }
 
 pub type KeyPairResult<T> = Result<T, KeyPairError>;
+
+mod key_pair_box_public_key_serde {
+    use super::encode_public_key;
+    use serde::{self, Deserialize, Deserializer, Serializer};
+    use sodiumoxide::crypto::box_::PublicKey as BoxPublicKey;
+
+    pub fn serialize<S>(box_public_key: &BoxPublicKey, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let s = encode_public_key(box_public_key);
+        serializer.serialize_str(&s)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<BoxPublicKey, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        let box_buffer =
+            base64::decode_config(s, base64::STANDARD_NO_PAD).map_err(serde::de::Error::custom)?;
+        let pk = BoxPublicKey::from_slice(&box_buffer).ok_or(serde::de::Error::custom(format!(
+            "cannot deserialize public key"
+        )));
+        pk
+    }
+}
+
+mod key_pair_box_secret_key_serde {
+    use super::encode_secret_key;
+    use serde::{self, Deserialize, Deserializer, Serializer};
+    use sodiumoxide::crypto::box_::SecretKey as BoxSecretKey;
+
+    pub fn serialize<S>(box_secret_key: &BoxSecretKey, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let s = encode_secret_key(box_secret_key);
+        serializer.serialize_str(&s)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<BoxSecretKey, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        let box_buffer =
+            base64::decode_config(s, base64::STANDARD_NO_PAD).map_err(serde::de::Error::custom)?;
+        let pk = BoxSecretKey::from_slice(&box_buffer).ok_or(serde::de::Error::custom(format!(
+            "cannot deserialize secret key"
+        )));
+        pk
+    }
+}
 
 /// A database-persisted libsodium box key pair.
 ///
@@ -23,47 +84,72 @@ pub type KeyPairResult<T> = Result<T, KeyPairError>;
 /// internally when decrypting secrets for use by `veritech`.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct KeyPair {
+pub struct KeyPair {
     pub id: String,
     pub name: String,
+    #[serde(with = "key_pair_box_public_key_serde")]
     pub public_key: BoxPublicKey,
+    #[serde(with = "key_pair_box_secret_key_serde")]
     pub secret_key: BoxSecretKey,
     pub si_storable: SimpleStorable,
 }
 
 impl KeyPair {
     pub async fn new(
-        db: &Db,
-        nats: &Connection,
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
         name: impl Into<String>,
         billing_account_id: impl AsRef<str>,
     ) -> KeyPairResult<Self> {
         let name = name.into();
+        let billing_account_id = billing_account_id.as_ref();
         let (public_key, secret_key) = box_::gen_keypair();
 
-        let id = generate_id("keyPair");
-        let si_storable = SimpleStorable::new(&id, "keyPair", billing_account_id.as_ref());
-        let model = Self {
-            id,
-            name,
-            public_key,
-            secret_key,
-            si_storable,
-        };
-        insert_model(db, nats, &model.id, &model).await?;
+        let row = txn
+            .query_one(
+                "SELECT object FROM key_pair_create_v1($1, $2, $3, $4)",
+                &[
+                    &name,
+                    &billing_account_id,
+                    &encode_public_key(&public_key),
+                    &encode_secret_key(&secret_key),
+                ],
+            )
+            .await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        nats.publish(&json).await?;
+        let object: KeyPair = serde_json::from_value(json)?;
 
-        Ok(model)
+        Ok(object)
     }
 
-    pub(crate) async fn get(
-        db: &Db,
+    pub async fn get(
+        txn: &PgTxn<'_>,
         id: impl AsRef<str> + std::fmt::Debug,
         billing_account_id: impl AsRef<str> + std::fmt::Debug,
     ) -> KeyPairResult<Self> {
-        get_model(db, id, billing_account_id)
-            .await
-            .map_err(KeyPairError::from)
+        let id = id.as_ref();
+        let billing_account_id = billing_account_id.as_ref();
+        let row = txn
+            .query_one(
+                "SELECT object FROM key_pair_get_v1($1, $2)",
+                &[&id, &billing_account_id],
+            )
+            .await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        let object = serde_json::from_value(json)?;
+        Ok(object)
     }
+}
+
+fn encode_public_key(key: &BoxPublicKey) -> String {
+    let s = base64::encode_config(key.as_ref(), base64::STANDARD_NO_PAD);
+    s
+}
+
+fn encode_secret_key(key: &BoxSecretKey) -> String {
+    let s = base64::encode_config(key.as_ref(), base64::STANDARD_NO_PAD);
+    s
 }
 
 /// A database-persisted libsodium box public key.
@@ -75,19 +161,24 @@ impl KeyPair {
 pub struct PublicKey {
     pub id: String,
     pub name: String,
+    #[serde(with = "key_pair_box_public_key_serde")]
     pub public_key: BoxPublicKey,
     pub si_storable: SimpleStorable,
 }
 
 impl PublicKey {
-    pub async fn get_current(db: &Db, billing_account_id: impl AsRef<str>) -> KeyPairResult<Self> {
-        let billing_account = BillingAccount::get(db, billing_account_id)
-            .await
-            .map_err(|err| KeyPairError::BillingAccount(Box::new(err)))?;
-        let object: Self =
-            get_model(db, billing_account.current_key_pair_id, billing_account.id).await?;
+    pub async fn get_current(
+        txn: &PgTxn<'_>,
+        billing_account_id: impl AsRef<str>,
+    ) -> KeyPairResult<Self> {
+        let billing_account_id = billing_account_id.as_ref();
 
-        Ok(object)
+        let row = txn
+            .query_one(KEY_PAIR_GET_CURRENT, &[&billing_account_id])
+            .await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        let public_key: PublicKey = serde_json::from_value(json)?;
+        Ok(public_key)
     }
 }
 

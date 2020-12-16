@@ -1,8 +1,0 @@
-// vim: ft=javascript
-// For each Arizona brewery get the brewery's name, location, and a list of
-// competitors' names -- where competitors are other breweries that are
-// geographically close to their location
-{
-  "statement": "SELECT bw1.name AS brewer, bw1.geo AS location, (SELECT VALUE bw2.name FROM breweries bw2 WHERE bw2.name != bw1.name AND abs(bw1.geo.lat - bw2.geo.lat) <= 0.1 AND abs(bw2.geo.lon - bw1.geo.lon) <= 0.1) AS competitors FROM breweries bw1 WHERE bw1.state = 'Arizona' ORDER BY bw1.name LIMIT 3",
-  "pretty": true
-}

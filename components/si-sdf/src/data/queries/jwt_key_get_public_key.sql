@@ -1,0 +1,1 @@
+SELECT public_key FROM jwt_keys WHERE id = $1;

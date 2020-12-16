@@ -1,26 +1,63 @@
-use crate::{test_cleanup, test_setup};
-use crate::{DB, NATS, SETTINGS};
+use warp::http::StatusCode;
+
 use si_sdf::filters::api;
-use si_sdf::models::ListReply;
+use si_sdf::models::{GetReply, ListReply, Organization};
+
+use crate::filters::users::login_user;
+use crate::models::billing_account::signup_new_billing_account;
+use crate::one_time_setup;
+use crate::TestContext;
 
 #[tokio::test]
-async fn list() {
-    let test_account = test_setup().await.expect("failed to setup test");
+async fn get() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, veritech, event_log_fs, secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot get connection");
+    let txn = conn.transaction().await.expect("cannot get transaction");
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit().await.expect("cannot commit txn");
 
-    let filter = api(&DB, &NATS, &SETTINGS.jwt_encrypt.key);
+    let token = login_user(&ctx, &nba).await;
+    let filter = api(pg, nats_conn, veritech, event_log_fs, secret_key);
 
     let res = warp::test::request()
         .method("GET")
-        .header("authorization", &test_account.authorization)
+        .header("authorization", &token)
+        .path(format!("/organizations/{}", &nba.organization.id,).as_ref())
+        .reply(&filter)
+        .await;
+    assert_eq!(res.status(), StatusCode::OK, "model should be found");
+    let reply: GetReply =
+        serde_json::from_slice(res.body()).expect("cannot deserialize get model reply");
+    let item: Organization =
+        serde_json::from_value(reply.item).expect("cannot deserialize model from get model reply");
+    assert_eq!(&nba.organization, &item);
+}
+
+#[tokio::test]
+async fn list() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, veritech, event_log_fs, secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot get connection");
+    let txn = conn.transaction().await.expect("cannot get transaction");
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit().await.expect("cannot commit txn");
+
+    let token = login_user(&ctx, &nba).await;
+    let filter = api(pg, nats_conn, veritech, event_log_fs, secret_key);
+
+    let res = warp::test::request()
+        .method("GET")
+        .header("authorization", &token)
         .path("/organizations")
         .reply(&filter)
         .await;
-    assert_eq!(res.status(), 200, "list should succeed");
-    let list_reply: ListReply =
-        serde_json::from_slice(res.body()).expect("can generate a reply from the body");
-    assert_eq!(1, list_reply.items.len());
-
-    test_cleanup(test_account)
-        .await
-        .expect("failed to finish test");
+    assert_eq!(res.status(), StatusCode::OK, "list model should succeed");
+    let reply: ListReply =
+        serde_json::from_slice(res.body()).expect("cannot deserialize get model reply");
+    assert_eq!(reply.total_count, 1);
 }

@@ -1,4 +1,4 @@
-use crate::data::Db;
+use crate::data::PgPool;
 use jwt_simple::algorithms::RSAKeyPairLike;
 use jwt_simple::claims::Claims;
 use jwt_simple::coarsetime::Duration;
@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use sodiumoxide::crypto::secretbox;
 
 use crate::handlers::HandlerError;
-use crate::models::{BillingAccount, JwtKeyPrivate, LoginReply, LoginRequest, User};
+use crate::models::{get_jwt_signing_key, BillingAccount, LoginReply, LoginRequest, User};
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -16,19 +16,22 @@ pub struct SiClaims {
 }
 
 pub async fn login(
-    db: Db,
+    pg: PgPool,
     secret_key: secretbox::Key,
     request: LoginRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let billing_account = BillingAccount::get_by_name(&db, &request.billing_account_name)
+    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let txn = conn.transaction().await.map_err(HandlerError::from)?;
+
+    let billing_account = BillingAccount::get_by_name(&txn, &request.billing_account_name)
         .await
         .map_err(HandlerError::from)?;
 
-    let user = User::get_by_email(&db, &request.email, &billing_account.id)
+    let user = User::get_by_email(&txn, &request.email, &billing_account.id)
         .await
         .map_err(HandlerError::from)?;
     let verified = user
-        .verify(&db, &request.password)
+        .verify(&txn, &request.password)
         .await
         .map_err(HandlerError::from)?;
 
@@ -36,7 +39,7 @@ pub async fn login(
         return Err(warp::reject::Rejection::from(HandlerError::Unauthorized));
     }
 
-    let signing_key = JwtKeyPrivate::get_jwt_signing_key(&db, &secret_key)
+    let signing_key = get_jwt_signing_key(&txn, &secret_key)
         .await
         .map_err(HandlerError::from)?;
     let si_claims = SiClaims {

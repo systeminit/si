@@ -1,24 +1,38 @@
 use serde::{Deserialize, Serialize};
+use strum_macros::Display;
 use thiserror::Error;
 
-use crate::data::{Connection, Db};
+use crate::data::{NatsTxn, NatsTxnError, PgTxn};
 use crate::models::{
     ChangeSetParticipant, Edge, EdgeError, EdgeKind, UpdateClock, UpdateClockError,
 };
 
+//use crate::data::{Connection, Db};
+//use crate::models::{
+//    ChangeSetParticipant, Edge, EdgeError, EdgeKind, UpdateClock, UpdateClockError,
+//};
+
 #[derive(Error, Debug)]
 pub enum SiChangeSetError {
-    #[error("update count error: {0}")]
-    UpdateCount(#[from] UpdateClockError),
     #[error("change set participation error: {0}")]
     ChangeSetParticipant(String),
     #[error("edge error: {0}")]
     Edge(#[from] EdgeError),
+    #[error("pg error: {0}")]
+    TokioPg(#[from] tokio_postgres::Error),
+    #[error("nats txn error: {0}")]
+    NatsTxn(#[from] NatsTxnError),
+    #[error("update clock: {0}")]
+    UpdateClock(#[from] UpdateClockError),
+    #[error("error creating our object from json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
 }
 
 pub type SiChangeSetResult<T> = Result<T, SiChangeSetError>;
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Display)]
+#[serde(rename_all = "camelCase")]
+#[strum(serialize_all = "camelCase")]
 pub enum SiChangeSetEvent {
     Create,
     Delete,
@@ -37,53 +51,43 @@ pub struct SiChangeSet {
 }
 
 impl SiChangeSet {
-    pub async fn new(
-        db: &Db,
-        nats: &Connection,
-        change_set_id: impl Into<String>,
-        edit_session_id: impl Into<String>,
-        object_id: impl Into<String>,
-        billing_account_id: impl Into<String>,
-        event: SiChangeSetEvent,
-    ) -> SiChangeSetResult<SiChangeSet> {
-        let change_set_id = change_set_id.into();
-        let edit_session_id = edit_session_id.into();
-        let object_id = object_id.into();
-        let billing_account_id = billing_account_id.into();
-        let (_, inserted) = ChangeSetParticipant::new(
-            &db,
+    pub async fn create_change_set_participants(
+        &self,
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        object_id: impl AsRef<str>,
+        workspace_id: impl AsRef<str>,
+    ) -> SiChangeSetResult<()> {
+        let change_set_id: &str = self.change_set_id.as_ref();
+        let object_id = object_id.as_ref();
+        let workspace_id = workspace_id.as_ref();
+
+        let inserted = ChangeSetParticipant::new_if_not_exists(
+            &txn,
             &nats,
             &change_set_id,
             &object_id,
-            billing_account_id.clone(),
+            &workspace_id,
         )
         .await
         .map_err(|e| SiChangeSetError::ChangeSetParticipant(e.to_string()))?;
 
-        if inserted {
+        if inserted.is_some() {
             let edges =
-                Edge::all_predecessor_edges_by_object_id(&db, EdgeKind::Configures, &object_id)
+                Edge::all_predecessor_edges_by_object_id(&txn, &EdgeKind::Configures, object_id)
                     .await?;
             for edge in edges.iter() {
-                ChangeSetParticipant::new(
-                    &db,
+                ChangeSetParticipant::new_if_not_exists(
+                    &txn,
                     &nats,
                     &change_set_id,
                     &edge.tail_vertex.object_id,
-                    billing_account_id.clone(),
+                    &workspace_id,
                 )
                 .await
                 .map_err(|e| SiChangeSetError::ChangeSetParticipant(e.to_string()))?;
             }
         }
-
-        let order_clock = UpdateClock::create_or_update(db, &change_set_id, 0).await?;
-
-        Ok(SiChangeSet {
-            change_set_id,
-            edit_session_id,
-            event,
-            order_clock,
-        })
+        Ok(())
     }
 }

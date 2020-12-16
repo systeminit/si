@@ -5,6 +5,4 @@ debug = true
 members = [
   "components/si-sdf",
   "components/si-settings",
-  "vendor/couchbase-rs/couchbase",
-  "vendor/couchbase-rs/couchbase-sys",
 ]

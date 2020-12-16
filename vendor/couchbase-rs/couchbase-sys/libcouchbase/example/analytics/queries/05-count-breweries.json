@@ -1,5 +1,0 @@
-// vim: ft=javascript
-// Ask Analytics the number of breweries
-{
-  "statement": "SELECT VALUE COUNT(*) FROM breweries"
-}

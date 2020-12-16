@@ -1,32 +1,20 @@
-use crate::{test_cleanup, test_setup, DB};
-
-use si_sdf::models::UpdateClock;
+use crate::models::billing_account::signup_new_billing_account;
+use crate::{one_time_setup, TestContext};
 
 #[tokio::test]
-async fn increment_for_workspace() {
-    let test_account = test_setup().await.expect("failed to setup test");
+async fn updates_a_clock() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let txn = conn.transaction().await.expect("cannot create txn");
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit().await.expect("cannot commit transaction");
 
-    // Update clock starts at 5, because test_setup creates a system in the workspace by
-    // default.
-    let update_clock = UpdateClock::create_or_update(&DB, &test_account.workspace_id, 0)
+    let update_clock = si_sdf::models::update_clock::next_update_clock(&nba.workspace.id)
         .await
-        .expect("failed to get the update clock for the workspace");
-    assert_eq!(update_clock.epoch, 1, "epoch is 1");
-    assert_eq!(update_clock.update_count, 5, "update count is 5");
-
-    let update_clock = UpdateClock::create_or_update(&DB, &test_account.workspace_id, 0)
-        .await
-        .expect("failed to get the update clock for the workspace");
-    assert_eq!(update_clock.epoch, 1, "epoch is 1");
-    assert_eq!(update_clock.update_count, 6, "update count is 6");
-
-    let update_clock = UpdateClock::create_or_update(&DB, &test_account.workspace_id, 0)
-        .await
-        .expect("failed to get the update clock for the workspace");
-    assert_eq!(update_clock.epoch, 1, "epoch is 1");
-    assert_eq!(update_clock.update_count, 7, "update count is 7");
-
-    test_cleanup(test_account)
-        .await
-        .expect("failed to finish test");
+        .expect("canot get update clock");
+    assert_eq!(update_clock.epoch, 0);
+    assert_eq!(update_clock.update_count, 1);
 }

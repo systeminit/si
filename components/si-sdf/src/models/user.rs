@@ -2,22 +2,18 @@ use serde::{Deserialize, Serialize};
 use sodiumoxide::crypto::pwhash::argon2id13;
 use thiserror::Error;
 
-use std::collections::HashMap;
-
-use crate::data::{Connection, Db};
+use crate::data::{NatsTxn, NatsTxnError, PgTxn};
 use crate::models::{
-    check_secondary_key, generate_id, get_model, insert_model, ModelError, SiStorableError,
-    SimpleStorable,
+    list_model, ListReply, ModelError, OrderByDirection, PageToken, Query, SimpleStorable,
 };
+
+const USER_GET_BY_EMAIL: &str = include_str!("../data/queries/user_get_by_email.sql");
+const USER_VERIFY: &str = include_str!("../data/queries/user_verify.sql");
 
 #[derive(Error, Debug)]
 pub enum UserError {
     #[error("a user with this email already exists in this billing account")]
     EmailExists,
-    #[error("si_storable error: {0}")]
-    SiStorable(#[from] SiStorableError),
-    #[error("error in core model functions: {0}")]
-    Model(#[from] ModelError),
     #[error("invalid uft-8 string: {0}")]
     Utf8(#[from] std::str::Utf8Error),
     #[error("error generating password hash")]
@@ -26,6 +22,14 @@ pub enum UserError {
     NotFound,
     #[error("database error: {0}")]
     Data(#[from] crate::data::DataError),
+    #[error("pg error: {0}")]
+    TokioPg(#[from] tokio_postgres::Error),
+    #[error("serde error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("nats txn error: {0}")]
+    NatsTxn(#[from] NatsTxnError),
+    #[error("error in core model functions: {0}")]
+    Model(#[from] ModelError),
 }
 
 pub type UserResult<T> = Result<T, UserError>;
@@ -56,143 +60,102 @@ pub struct User {
 
 impl User {
     pub async fn new(
-        db: &Db,
-        nats: &Connection,
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
         name: impl Into<String>,
         email: impl Into<String>,
-        billing_account_id: impl Into<String>,
         password: impl Into<String>,
+        billing_account_id: impl Into<String>,
     ) -> UserResult<User> {
         let name = name.into();
         let email = email.into();
+        let password_hash = encrypt_password(password)?;
         let billing_account_id = billing_account_id.into();
 
-        if check_secondary_key(db, &billing_account_id, "user", "name", &name).await? {
-            return Err(UserError::EmailExists);
-        }
-
-        let id = generate_id("user");
-        let si_storable = SimpleStorable::new(&id, "user", &billing_account_id);
-        let object = User {
-            id: id.clone(),
-            name,
-            email,
-            si_storable,
-        };
-        insert_model(db, nats, &object.id, &object).await?;
-
-        let _user_password = UserPassword::new(db, nats, id, password, billing_account_id).await?;
+        let row = txn
+            .query_one(
+                "SELECT object FROM user_create_v1($1, $2, $3, $4)",
+                &[&name, &email, &password_hash.as_ref(), &billing_account_id],
+            )
+            .await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        nats.publish(&json).await?;
+        let object: User = serde_json::from_value(json)?;
 
         Ok(object)
     }
 
     pub async fn get_by_email(
-        db: &Db,
+        txn: &PgTxn<'_>,
         email: impl AsRef<str>,
         billing_account_id: impl AsRef<str>,
     ) -> UserResult<User> {
         let email = email.as_ref();
         let billing_account_id = billing_account_id.as_ref();
 
-        let query = format!(
-            "SELECT a.*
-               FROM `{bucket}` AS a
-               WHERE a.siStorable.typeName = \"user\"
-                 AND a.siStorable.billingAccountId = $billing_account_id
-                 AND a.email = $email
-               LIMIT 1",
-            bucket = db.bucket_name,
-        );
-        let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
-        named_params.insert("email".into(), serde_json::json![email]);
-        named_params.insert(
-            "billing_account_id".into(),
-            serde_json::json![billing_account_id],
-        );
-        let mut results: Vec<User> = db.query(query, Some(named_params)).await?;
-        if let Some(user) = results.pop() {
-            Ok(user)
-        } else {
-            Err(UserError::NotFound)
-        }
+        let row = txn
+            .query_one(USER_GET_BY_EMAIL, &[&email, &billing_account_id])
+            .await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        let user: User = serde_json::from_value(json)?;
+        Ok(user)
     }
 
-    pub async fn verify(&self, db: &Db, password: impl AsRef<str>) -> UserResult<bool> {
-        UserPassword::verify(db, &self.id, &self.si_storable.billing_account_id, password).await
-    }
-
-    pub async fn get(
-        db: &Db,
-        user_id: impl AsRef<str>,
-        billing_account_id: impl AsRef<str>,
-    ) -> UserResult<User> {
-        let id = user_id.as_ref();
-        let billing_account_id = billing_account_id.as_ref();
-        let object: User = get_model(db, id, billing_account_id).await?;
-        Ok(object)
-    }
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct UserPassword {
-    pub id: String,
-    pub user_id: String,
-    pub password_hash: String,
-    pub si_storable: SimpleStorable,
-}
-
-impl UserPassword {
-    pub async fn new(
-        db: &Db,
-        nats: &Connection,
-        user_id: impl Into<String>,
-        password: impl Into<String>,
-        billing_account_id: impl Into<String>,
-    ) -> UserResult<UserPassword> {
-        let user_id = user_id.into();
-        let password = password.into();
-        let billing_account_id = billing_account_id.into();
-        let password_hash = encrypt_password(password)?;
-        let id = format!("{}:userPassword", &user_id);
-        let si_storable = SimpleStorable::new(&id, "userPassword", billing_account_id);
-        let object = UserPassword {
-            id,
-            user_id,
-            password_hash,
-            si_storable,
-        };
-        insert_model(db, nats, &object.id, &object).await?;
-
-        Ok(object)
-    }
-
-    pub async fn get(
-        db: &Db,
-        user_id: impl AsRef<str>,
-        billing_account_id: impl AsRef<str>,
-    ) -> UserResult<UserPassword> {
-        let id = format!("{}:userPassword", user_id.as_ref());
-        let billing_account_id = billing_account_id.as_ref();
-        let object: UserPassword = get_model(db, id, billing_account_id).await?;
-        Ok(object)
-    }
-
-    pub async fn verify(
-        db: &Db,
-        user_id: impl AsRef<str>,
-        billing_account_id: impl AsRef<str>,
-        password: impl AsRef<str>,
-    ) -> UserResult<bool> {
-        let user_id = user_id.as_ref();
-        let billing_account_id = billing_account_id.as_ref();
+    pub async fn verify(&self, txn: &PgTxn<'_>, password: impl AsRef<str>) -> UserResult<bool> {
         let password = password.as_ref();
-        let up = UserPassword::get(db, user_id, billing_account_id).await?;
-        Ok(verify_password(password, up.password_hash))
+        let row = txn.query_one(USER_VERIFY, &[&self.id]).await?;
+        let current_password: Vec<u8> = row.try_get("password")?;
+        let result = verify_password(password, &current_password);
+        Ok(result)
+    }
+
+    pub async fn get(txn: &PgTxn<'_>, user_id: impl AsRef<str>) -> UserResult<User> {
+        let id = user_id.as_ref();
+        let row = txn
+            .query_one("SELECT object FROM user_get_v1($1)", &[&id])
+            .await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        let object = serde_json::from_value(json)?;
+        Ok(object)
+    }
+
+    pub async fn list(
+        txn: &PgTxn<'_>,
+        tenant_id: impl Into<String>,
+        query: Option<Query>,
+        page_size: Option<u32>,
+        order_by: Option<String>,
+        order_by_direction: Option<OrderByDirection>,
+        page_token: Option<PageToken>,
+    ) -> UserResult<ListReply> {
+        let tenant_id = tenant_id.into();
+        let reply = list_model(
+            txn,
+            "users",
+            tenant_id,
+            query,
+            page_size,
+            order_by,
+            order_by_direction,
+            page_token,
+        )
+        .await?;
+        Ok(reply)
+    }
+
+    pub async fn save(&self, txn: &PgTxn<'_>, nats: &NatsTxn) -> UserResult<User> {
+        let json = serde_json::to_value(self)?;
+        let row = txn
+            .query_one("SELECT object FROM user_save_v1($1)", &[&json])
+            .await?;
+        let updated_result: serde_json::Value = row.try_get("object")?;
+        nats.publish(&updated_result).await?;
+        let updated = serde_json::from_value(updated_result)?;
+        Ok(updated)
     }
 }
 
-pub fn encrypt_password(password: impl Into<String>) -> UserResult<String> {
+pub fn encrypt_password(password: impl Into<String>) -> UserResult<argon2id13::HashedPassword> {
     let password = password.into();
     let password_hash = argon2id13::pwhash(
         password.as_bytes(),
@@ -200,14 +163,14 @@ pub fn encrypt_password(password: impl Into<String>) -> UserResult<String> {
         argon2id13::MEMLIMIT_INTERACTIVE,
     )
     .map_err(|()| UserError::PasswordHash)?;
-    let password_hash_str = std::str::from_utf8(password_hash.as_ref())?;
-    Ok(password_hash_str.to_string())
+    //let password_hash_str = std::str::from_utf8(password_hash.as_ref())?;
+    Ok(password_hash)
 }
 
-pub fn verify_password(password: &str, password_hash: impl AsRef<str>) -> bool {
+pub fn verify_password(password: &str, password_hash: &[u8]) -> bool {
     let password_hash = password_hash.as_ref();
     let password_bytes = password.as_bytes();
-    if let Some(argon_password) = argon2id13::HashedPassword::from_slice(password_hash.as_bytes()) {
+    if let Some(argon_password) = argon2id13::HashedPassword::from_slice(password_hash) {
         if argon2id13::pwhash_verify(&argon_password, password_bytes) {
             true
         } else {

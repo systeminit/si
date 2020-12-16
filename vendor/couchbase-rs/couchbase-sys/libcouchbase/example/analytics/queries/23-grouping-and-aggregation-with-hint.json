@@ -1,7 +1,0 @@
-// vim: ft=javascript
-// For each brewery that offers more than 30 beers, the following group-by or
-// aggregate query reports the number of beers that it offers. With a
-// hash-based aggregation hint.
-{
-  "statement": "SELECT br.brewery_id, COUNT(*) AS num_beers FROM beers br /*+ hash */ GROUP BY br.brewery_id HAVING COUNT(*) > 30 ORDER BY COUNT(*) DESC"
-}

@@ -1,20 +1,18 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use std::collections::HashMap;
-
-use crate::data::{Connection, DataError, Db};
+use crate::data::{NatsTxn, NatsTxnError, PgTxn};
 use crate::models::{
-    check_secondary_key, generate_id, get_model, insert_model, ModelError, SiStorableError,
-    SimpleStorable,
+    list_model, ListReply, ModelError, OrderByDirection, PageToken, Query, SimpleStorable,
 };
+
+const GROUP_GET_ADMINISTRATORS_GROUP: &str =
+    include_str!("../data/queries/group_get_administrators_group.sql");
 
 #[derive(Error, Debug)]
 pub enum GroupError {
     #[error("a group with this name already exists")]
     NameExists,
-    #[error("si_storable error: {0}")]
-    SiStorable(#[from] SiStorableError),
     #[error("error in core model functions: {0}")]
     Model(#[from] ModelError),
     #[error("invalid uft-8 string: {0}")]
@@ -23,13 +21,17 @@ pub enum GroupError {
     PasswordHash,
     #[error("group not found")]
     NotFound,
-    #[error("data: {0}")]
-    Data(#[from] DataError),
+    #[error("pg error: {0}")]
+    TokioPg(#[from] tokio_postgres::Error),
+    #[error("serde error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("nats txn error: {0}")]
+    NatsTxn(#[from] NatsTxnError),
 }
 
 pub type GroupResult<T> = Result<T, GroupError>;
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Capability {
     pub subject: String,
@@ -57,8 +59,8 @@ pub struct Group {
 
 impl Group {
     pub async fn new(
-        db: &Db,
-        nats: &Connection,
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
         name: impl Into<String>,
         user_ids: Vec<String>,
         api_client_ids: Vec<String>,
@@ -67,60 +69,83 @@ impl Group {
     ) -> GroupResult<Group> {
         let name = name.into();
         let billing_account_id = billing_account_id.into();
+        let capabilities = serde_json::to_value(capabilities)?;
 
-        if check_secondary_key(db, &billing_account_id, "group", "name", &name).await? {
-            return Err(GroupError::NameExists);
-        }
+        let row = txn
+            .query_one(
+                "SELECT object FROM group_create_v1($1, $2, $3, $4, $5)",
+                &[
+                    &name,
+                    &user_ids,
+                    &api_client_ids,
+                    &capabilities,
+                    &billing_account_id,
+                ],
+            )
+            .await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        nats.publish(&json).await?;
+        let object: Group = serde_json::from_value(json)?;
 
-        let id = generate_id("group");
-        let si_storable = SimpleStorable::new(&id, "group", &billing_account_id);
-        let object = Group {
-            id,
-            name,
-            user_ids,
-            api_client_ids,
-            capabilities,
-            si_storable,
-        };
-        insert_model(db, nats, &object.id, &object).await?;
         Ok(object)
     }
 
-    pub async fn get(
-        db: &Db,
-        group_id: impl AsRef<str>,
-        billing_account_id: impl AsRef<str>,
-    ) -> GroupResult<Group> {
+    pub async fn get(txn: &PgTxn<'_>, group_id: impl AsRef<str>) -> GroupResult<Group> {
         let id = group_id.as_ref();
-        let billing_account_id = billing_account_id.as_ref();
-        let object: Group = get_model(db, id, billing_account_id).await?;
+        let row = txn
+            .query_one("SELECT object FROM group_get_v1($1)", &[&id])
+            .await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        let object = serde_json::from_value(json)?;
         Ok(object)
+    }
+
+    pub async fn list(
+        txn: &PgTxn<'_>,
+        tenant_id: impl Into<String>,
+        query: Option<Query>,
+        page_size: Option<u32>,
+        order_by: Option<String>,
+        order_by_direction: Option<OrderByDirection>,
+        page_token: Option<PageToken>,
+    ) -> GroupResult<ListReply> {
+        let tenant_id = tenant_id.into();
+        let reply = list_model(
+            txn,
+            "groups",
+            tenant_id,
+            query,
+            page_size,
+            order_by,
+            order_by_direction,
+            page_token,
+        )
+        .await?;
+        Ok(reply)
+    }
+
+    pub async fn save(&self, txn: &PgTxn<'_>, nats: &NatsTxn) -> GroupResult<Group> {
+        let json = serde_json::to_value(self)?;
+        let row = txn
+            .query_one("SELECT object FROM group_save_v1($1)", &[&json])
+            .await?;
+        let updated_result: serde_json::Value = row.try_get("object")?;
+        nats.publish(&updated_result).await?;
+        let updated = serde_json::from_value(updated_result)?;
+        Ok(updated)
     }
 
     pub async fn get_administrators_group(
-        db: &Db,
+        txn: &PgTxn<'_>,
         billing_account_id: impl AsRef<str>,
     ) -> GroupResult<Group> {
         let billing_account_id = billing_account_id.as_ref();
-        let query = format!(
-            "SELECT a.*
-               FROM `{bucket}` AS a
-               WHERE a.siStorable.typeName = \"group\"
-                 AND a.siStorable.billingAccountId = $billing_account_id
-                 AND a.name = \"administrators\" 
-               LIMIT 1",
-            bucket = db.bucket_name,
-        );
-        let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
-        named_params.insert(
-            "billing_account_id".into(),
-            serde_json::json![billing_account_id],
-        );
-        let mut results: Vec<Group> = db.query(query, Some(named_params)).await?;
-        if let Some(group) = results.pop() {
-            Ok(group)
-        } else {
-            Err(GroupError::NotFound)
-        }
+
+        let row = txn
+            .query_one(GROUP_GET_ADMINISTRATORS_GROUP, &[&billing_account_id])
+            .await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        let group: Group = serde_json::from_value(json)?;
+        Ok(group)
     }
 }

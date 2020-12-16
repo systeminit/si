@@ -1,126 +1,671 @@
-use crate::filters::change_sets::create_change_set;
-use crate::filters::edit_sessions::create_edit_session;
-use crate::filters::nodes::create_node;
-use crate::{test_cleanup, test_setup, DB, NATS};
+use crate::models::billing_account::{signup_new_billing_account, NewBillingAccount};
+use crate::{one_time_setup, TestContext};
+use names::{Generator, Name};
 
-use si_sdf::models::{Edge, EdgeKind, Node};
+use si_sdf::data::{NatsTxn, PgTxn};
+use si_sdf::models::{Edge, EdgeKind, Vertex};
 
-#[test]
-fn all_predecessor_edges_by_node_id() {
-    tokio_test::block_on(Box::pin(async move {
-        let test_account = test_setup().await.expect("failed to setup test");
+pub async fn create_vertex(_txn: &PgTxn<'_>, _nats: &NatsTxn) -> Vertex {
+    // TODO: This should become real nodes/entities and objects!
+    let fake_node_id = Generator::with_naming(Name::Numbered).next().unwrap();
+    let fake_object_id = Generator::with_naming(Name::Numbered).next().unwrap();
+    Vertex::new(
+        format!("node:{}", fake_node_id),
+        format!("object:{}", fake_object_id),
+        "top",
+        "soundgarden",
+    )
+}
 
-        let change_set_id = create_change_set(&test_account).await;
-        let edit_session_id = create_edit_session(&test_account, &change_set_id).await;
+pub async fn create_edge(txn: &PgTxn<'_>, nats: &NatsTxn, nba: &NewBillingAccount) -> Edge {
+    let head_vertex = create_vertex(&txn, &nats).await;
+    let tail_vertex = create_vertex(&txn, &nats).await;
+    Edge::new(
+        &txn,
+        &nats,
+        tail_vertex.clone(),
+        head_vertex.clone(),
+        false,
+        EdgeKind::Includes,
+        nba.workspace.id.clone(),
+    )
+    .await
+    .expect("cannot create new edge")
+}
 
-        let mut created_nodes: Vec<Node> = Vec::new();
-        for _n in 0..20 as usize {
-            let create_node =
-                create_node(&test_account, &change_set_id, &edit_session_id, "service").await;
-            created_nodes.push(create_node.item);
-        }
+pub async fn create_edge_with_tail_vertex(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    nba: &NewBillingAccount,
+    tail_vertex: &Vertex,
+) -> Edge {
+    let head_vertex = create_vertex(&txn, &nats).await;
+    Edge::new(
+        &txn,
+        &nats,
+        tail_vertex.clone(),
+        head_vertex.clone(),
+        false,
+        EdgeKind::Includes,
+        nba.workspace.id.clone(),
+    )
+    .await
+    .expect("cannot create new edge")
+}
 
-        // The graph is 0 -> 1..10
-        //                1 -> 11..12
-        //                2 -> 13..15
-        //                   15 -> 16..19
+struct EdgeGraph {
+    rogue: Edge,
+    first: Edge,
+    second: Edge,
+    third: Edge,
+    fourth: Edge,
+    fifth: Edge,
+}
 
-        // Node 0 -(configures)-> Node 1..10
-        for n in 1..=10 {
-            created_nodes[0]
-                .configure_node(&DB, &NATS, &created_nodes[n].id)
-                .await
-                .expect("failed to add edge to configure node");
-        }
-        // Node 1 -(configures)-> Node 11,12
-        for n in 11..=12 {
-            created_nodes[1]
-                .configure_node(&DB, &NATS, &created_nodes[n].id)
-                .await
-                .expect("failed to add edge to configure node");
-        }
-        // Node 2 -(configures)-> Node 13,14,15
-        for n in 13..=15 {
-            created_nodes[2]
-                .configure_node(&DB, &NATS, &created_nodes[n].id)
-                .await
-                .expect("failed to add edge to configure node");
-        }
-        // Node 15 -(configures)-> Node 16,17,18,19
-        for n in 16..=19 {
-            created_nodes[15]
-                .configure_node(&DB, &NATS, &created_nodes[n].id)
-                .await
-                .expect("failed to add edge to configure node");
-        }
+async fn create_edge_graph(txn: &PgTxn<'_>, nats: &NatsTxn, nba: &NewBillingAccount) -> EdgeGraph {
+    //                        first_edge_tail
+    //                             |              \
+    //                second_edge_head      fifth_edge_head
+    //                             |
+    //                          third_edge_head
+    //                             |
+    //                          fourth_edge_head
 
-        // Node 0 should have no predecessor edges
-        let pedges =
-            Edge::all_predecessor_edges_by_node_id(&DB, EdgeKind::Configures, &created_nodes[0].id)
-                .await
-                .expect("cannot get predecessor edges");
-        assert_eq!(pedges.len(), 0, "has no predecessors");
+    let rogue = create_edge(&txn, &nats, &nba).await;
+    let first = create_edge(&txn, &nats, &nba).await;
+    let second = create_edge_with_tail_vertex(&txn, &nats, &nba, &first.head_vertex).await;
+    let third = create_edge_with_tail_vertex(&txn, &nats, &nba, &second.head_vertex).await;
+    let fourth = create_edge_with_tail_vertex(&txn, &nats, &nba, &third.head_vertex).await;
+    let fifth = create_edge_with_tail_vertex(&txn, &nats, &nba, &first.head_vertex).await;
 
-        // Node 1..10 should have Node 0 as a predecessor edge
-        for n in 1..=10 {
-            let pedges = Edge::all_predecessor_edges_by_node_id(
-                &DB,
-                EdgeKind::Configures,
-                &created_nodes[n].id,
-            )
-            .await
-            .expect("cannot get predecessor edges");
-            assert_eq!(pedges.len(), 1, "has 1 predecessor");
-            assert_eq!(
-                &pedges[0].tail_vertex.node_id, &created_nodes[0].id,
-                "predecessor is node 0"
-            );
-        }
+    EdgeGraph {
+        rogue,
+        first,
+        second,
+        third,
+        fourth,
+        fifth,
+    }
+}
 
-        // Node 11..12 should have Node 0 and Node 1 as predecessor edges
-        for n in 11..=12 {
-            let pedges = Edge::all_predecessor_edges_by_node_id(
-                &DB,
-                EdgeKind::Configures,
-                &created_nodes[n].id,
-            )
-            .await
-            .expect("cannot get predecessor edges");
-            assert_eq!(pedges.len(), 2, "has 2 predecessors");
-            assert_eq!(
-                &pedges[0].tail_vertex.node_id, &created_nodes[1].id,
-                "first predecessor is node 1"
-            );
-            assert_eq!(
-                &pedges[1].tail_vertex.node_id, &created_nodes[0].id,
-                "second predecessor is node 0"
-            );
-        }
+#[tokio::test]
+async fn new() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let txn = conn.transaction().await.expect("cannot create txn");
 
-        // Node 19 should have 3 predecessors, 19->15->2->0
-        let pedges = Edge::all_predecessor_edges_by_node_id(
-            &DB,
-            EdgeKind::Configures,
-            &created_nodes[19].id,
-        )
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit()
         .await
-        .expect("cannot get predecessor edges");
-        assert_eq!(pedges.len(), 3, "has 3 predecessors");
-        assert_eq!(
-            &pedges[0].tail_vertex.node_id, &created_nodes[15].id,
-            "first predecessor is node 15"
-        );
-        assert_eq!(
-            &pedges[1].tail_vertex.node_id, &created_nodes[2].id,
-            "second predecessor is node 2"
-        );
-        assert_eq!(
-            &pedges[2].tail_vertex.node_id, &created_nodes[0].id,
-            "third predecessor is node 0"
-        );
+        .expect("failed to commit the new billing account");
 
-        test_cleanup(test_account)
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let head_vertex = create_vertex(&txn, &nats).await;
+    let tail_vertex = create_vertex(&txn, &nats).await;
+    let edge = Edge::new(
+        &txn,
+        &nats,
+        tail_vertex.clone(),
+        head_vertex.clone(),
+        false,
+        EdgeKind::Includes,
+        nba.workspace.id.clone(),
+    )
+    .await
+    .expect("cannot create new edge");
+
+    assert_eq!(&edge.tail_vertex, &tail_vertex);
+    assert_eq!(&edge.head_vertex, &head_vertex);
+    assert_eq!(&edge.bidirectional, &false);
+    assert_eq!(&edge.kind, &EdgeKind::Includes);
+}
+
+#[tokio::test]
+async fn get() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit()
+        .await
+        .expect("failed to commit the new billing account");
+
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let og_edge = create_edge(&txn, &nats, &nba).await;
+
+    let same_edge = Edge::get(&txn, &og_edge.id)
+        .await
+        .expect("cannot get same edge");
+    assert_eq!(&og_edge, &same_edge);
+}
+
+#[tokio::test]
+async fn list() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit()
+        .await
+        .expect("failed to commit the new billing account");
+
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let _primary_edge = create_edge(&txn, &nats, &nba).await;
+    let _secondary_edge = create_edge(&txn, &nats, &nba).await;
+    let _tertiary_edge = create_edge(&txn, &nats, &nba).await;
+    let reply = Edge::list(&txn, &nba.billing_account.id, None, None, None, None, None)
+        .await
+        .expect("cannot list edges");
+    assert_eq!(reply.items.len(), 3);
+}
+
+#[tokio::test]
+async fn delete() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit()
+        .await
+        .expect("failed to commit the new billing account");
+
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let og_edge = create_edge(&txn, &nats, &nba).await;
+
+    let mut same_edge = Edge::get(&txn, &og_edge.id)
+        .await
+        .expect("cannot get same edge");
+    assert_eq!(&og_edge, &same_edge);
+
+    same_edge
+        .delete(&txn, &nats)
+        .await
+        .expect("cannot delete edge");
+    let delete_edge_result = Edge::get(&txn, &og_edge.id).await;
+    assert!(
+        delete_edge_result.is_err(),
+        "edge exists and should be deleted"
+    );
+}
+
+#[tokio::test]
+async fn direct_successor_edges_by_node_id() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit()
+        .await
+        .expect("failed to commit the new billing account");
+
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let edges = create_edge_graph(&txn, &nats, &nba).await;
+
+    let results = Edge::direct_successor_edges_by_node_id(
+        &txn,
+        &edges.first.kind,
+        &edges.first.head_vertex.node_id,
+    )
+    .await
+    .expect("cannot get direct successor edges by node id");
+
+    assert_eq!(results.len(), 2);
+
+    assert_eq!(false, results.iter().any(|e| e == &edges.first));
+    assert_eq!(true, results.iter().any(|e| e == &edges.second));
+    assert_eq!(false, results.iter().any(|e| e == &edges.third));
+    assert_eq!(false, results.iter().any(|e| e == &edges.fourth));
+    assert_eq!(true, results.iter().any(|e| e == &edges.fifth));
+    assert_eq!(false, results.iter().any(|e| e == &edges.rogue));
+}
+
+#[tokio::test]
+async fn all_successor_edges_by_node_id() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit()
+        .await
+        .expect("failed to commit the new billing account");
+
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let edges = create_edge_graph(&txn, &nats, &nba).await;
+
+    let results = Edge::all_successor_edges_by_node_id(
+        &txn,
+        &edges.first.kind,
+        &edges.first.head_vertex.node_id,
+    )
+    .await
+    .expect("cannot get all successor edges by node id");
+
+    assert_eq!(results.len(), 4);
+
+    assert_eq!(false, results.iter().any(|e| e == &edges.first));
+    assert_eq!(true, results.iter().any(|e| e == &edges.second));
+    assert_eq!(true, results.iter().any(|e| e == &edges.third));
+    assert_eq!(true, results.iter().any(|e| e == &edges.fourth));
+    assert_eq!(true, results.iter().any(|e| e == &edges.fifth));
+    assert_eq!(false, results.iter().any(|e| e == &edges.rogue));
+}
+
+#[tokio::test]
+async fn direct_successor_edges_by_object_id() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit()
+        .await
+        .expect("failed to commit the new billing account");
+
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let edges = create_edge_graph(&txn, &nats, &nba).await;
+
+    let results = Edge::direct_successor_edges_by_object_id(
+        &txn,
+        &edges.first.kind,
+        &edges.first.head_vertex.object_id,
+    )
+    .await
+    .expect("cannot get all successor edges by object id");
+
+    assert_eq!(results.len(), 2);
+
+    assert_eq!(false, results.iter().any(|e| e == &edges.first));
+    assert_eq!(true, results.iter().any(|e| e == &edges.second));
+    assert_eq!(false, results.iter().any(|e| e == &edges.third));
+    assert_eq!(false, results.iter().any(|e| e == &edges.fourth));
+    assert_eq!(true, results.iter().any(|e| e == &edges.fifth));
+    assert_eq!(false, results.iter().any(|e| e == &edges.rogue));
+}
+
+#[tokio::test]
+async fn all_successor_edges_by_object_id() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit()
+        .await
+        .expect("failed to commit the new billing account");
+
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let edges = create_edge_graph(&txn, &nats, &nba).await;
+
+    let results = Edge::all_successor_edges_by_object_id(
+        &txn,
+        &edges.first.kind,
+        &edges.first.head_vertex.object_id,
+    )
+    .await
+    .expect("cannot get all successor edges by object id");
+
+    assert_eq!(results.len(), 4);
+
+    assert_eq!(false, results.iter().any(|e| e == &edges.first));
+    assert_eq!(true, results.iter().any(|e| e == &edges.second));
+    assert_eq!(true, results.iter().any(|e| e == &edges.third));
+    assert_eq!(true, results.iter().any(|e| e == &edges.fourth));
+    assert_eq!(true, results.iter().any(|e| e == &edges.fifth));
+    assert_eq!(false, results.iter().any(|e| e == &edges.rogue));
+}
+
+#[tokio::test]
+async fn direct_predecessor_edges_by_node_id() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit()
+        .await
+        .expect("failed to commit the new billing account");
+
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let edges = create_edge_graph(&txn, &nats, &nba).await;
+
+    let results = Edge::direct_predecessor_edges_by_node_id(
+        &txn,
+        &edges.fourth.kind,
+        &edges.fourth.tail_vertex.node_id,
+    )
+    .await
+    .expect("cannot get direct predecessor edges by node id");
+
+    assert_eq!(results.len(), 1);
+
+    assert_eq!(false, results.iter().any(|e| e == &edges.first));
+    assert_eq!(false, results.iter().any(|e| e == &edges.second));
+    assert_eq!(true, results.iter().any(|e| e == &edges.third));
+    assert_eq!(false, results.iter().any(|e| e == &edges.fourth));
+    assert_eq!(false, results.iter().any(|e| e == &edges.fifth));
+    assert_eq!(false, results.iter().any(|e| e == &edges.rogue));
+}
+
+#[tokio::test]
+async fn all_predecessor_edges_by_node_id() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit()
+        .await
+        .expect("failed to commit the new billing account");
+
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let edges = create_edge_graph(&txn, &nats, &nba).await;
+
+    let results = Edge::all_predecessor_edges_by_node_id(
+        &txn,
+        &edges.fourth.kind,
+        &edges.fourth.tail_vertex.node_id,
+    )
+    .await
+    .expect("cannot get all predecessor edges by node id");
+
+    assert_eq!(results.len(), 3);
+
+    assert_eq!(true, results.iter().any(|e| e == &edges.first));
+    assert_eq!(true, results.iter().any(|e| e == &edges.second));
+    assert_eq!(true, results.iter().any(|e| e == &edges.third));
+    assert_eq!(false, results.iter().any(|e| e == &edges.fourth));
+    assert_eq!(false, results.iter().any(|e| e == &edges.fifth));
+    assert_eq!(false, results.iter().any(|e| e == &edges.rogue));
+}
+
+#[tokio::test]
+async fn direct_predecessor_edges_by_object_id() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit()
+        .await
+        .expect("failed to commit the new billing account");
+
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let edges = create_edge_graph(&txn, &nats, &nba).await;
+
+    let results = Edge::direct_predecessor_edges_by_object_id(
+        &txn,
+        &edges.fourth.kind,
+        &edges.fourth.tail_vertex.object_id,
+    )
+    .await
+    .expect("cannot get direct predecessor edges by object id");
+
+    assert_eq!(results.len(), 1);
+
+    assert_eq!(false, results.iter().any(|e| e == &edges.first));
+    assert_eq!(false, results.iter().any(|e| e == &edges.second));
+    assert_eq!(true, results.iter().any(|e| e == &edges.third));
+    assert_eq!(false, results.iter().any(|e| e == &edges.fourth));
+    assert_eq!(false, results.iter().any(|e| e == &edges.fifth));
+    assert_eq!(false, results.iter().any(|e| e == &edges.rogue));
+}
+
+#[tokio::test]
+async fn all_predecessor_edges_by_object_id() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit()
+        .await
+        .expect("failed to commit the new billing account");
+
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let edges = create_edge_graph(&txn, &nats, &nba).await;
+
+    let results = Edge::all_predecessor_edges_by_object_id(
+        &txn,
+        &edges.fourth.kind,
+        &edges.fourth.tail_vertex.object_id,
+    )
+    .await
+    .expect("cannot get all predecessor edges by object id");
+
+    assert_eq!(results.len(), 3);
+
+    assert_eq!(true, results.iter().any(|e| e == &edges.first));
+    assert_eq!(true, results.iter().any(|e| e == &edges.second));
+    assert_eq!(true, results.iter().any(|e| e == &edges.third));
+    assert_eq!(false, results.iter().any(|e| e == &edges.fourth));
+    assert_eq!(false, results.iter().any(|e| e == &edges.fifth));
+    assert_eq!(false, results.iter().any(|e| e == &edges.rogue));
+}
+
+#[tokio::test]
+async fn by_kind_and_head_node_id() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit()
+        .await
+        .expect("failed to commit the new billing account");
+
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let edges = create_edge_graph(&txn, &nats, &nba).await;
+
+    let results =
+        Edge::by_kind_and_head_node_id(&txn, &edges.fourth.kind, &edges.fourth.tail_vertex.node_id)
             .await
-            .expect("failed to finish test");
-    }));
+            .expect("cannot get results");
+
+    assert_eq!(results.len(), 1);
+
+    assert_eq!(false, results.iter().any(|e| e == &edges.first));
+    assert_eq!(false, results.iter().any(|e| e == &edges.second));
+    assert_eq!(true, results.iter().any(|e| e == &edges.third));
+    assert_eq!(false, results.iter().any(|e| e == &edges.fourth));
+    assert_eq!(false, results.iter().any(|e| e == &edges.fifth));
+    assert_eq!(false, results.iter().any(|e| e == &edges.rogue));
+}
+
+#[tokio::test]
+async fn by_kind_and_head_object_id() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit()
+        .await
+        .expect("failed to commit the new billing account");
+
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let edges = create_edge_graph(&txn, &nats, &nba).await;
+
+    let results = Edge::by_kind_and_head_object_id(
+        &txn,
+        &edges.fourth.kind,
+        &edges.fourth.tail_vertex.object_id,
+    )
+    .await
+    .expect("cannot get results");
+
+    assert_eq!(results.len(), 1);
+
+    assert_eq!(false, results.iter().any(|e| e == &edges.first));
+    assert_eq!(false, results.iter().any(|e| e == &edges.second));
+    assert_eq!(true, results.iter().any(|e| e == &edges.third));
+    assert_eq!(false, results.iter().any(|e| e == &edges.fourth));
+    assert_eq!(false, results.iter().any(|e| e == &edges.fifth));
+    assert_eq!(false, results.iter().any(|e| e == &edges.rogue));
+}
+
+#[tokio::test]
+async fn by_kind_and_tail_node_id() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit()
+        .await
+        .expect("failed to commit the new billing account");
+
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let edges = create_edge_graph(&txn, &nats, &nba).await;
+
+    let results =
+        Edge::by_kind_and_tail_node_id(&txn, &edges.first.kind, &edges.first.head_vertex.node_id)
+            .await
+            .expect("cannot get results");
+
+    assert_eq!(results.len(), 2);
+
+    assert_eq!(false, results.iter().any(|e| e == &edges.first));
+    assert_eq!(true, results.iter().any(|e| e == &edges.second));
+    assert_eq!(false, results.iter().any(|e| e == &edges.third));
+    assert_eq!(false, results.iter().any(|e| e == &edges.fourth));
+    assert_eq!(true, results.iter().any(|e| e == &edges.fifth));
+    assert_eq!(false, results.iter().any(|e| e == &edges.rogue));
+}
+
+#[tokio::test]
+async fn by_kind_and_tail_object_id() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit()
+        .await
+        .expect("failed to commit the new billing account");
+
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let edges = create_edge_graph(&txn, &nats, &nba).await;
+
+    let results = Edge::by_kind_and_tail_object_id(
+        &txn,
+        &edges.first.kind,
+        &edges.first.head_vertex.object_id,
+    )
+    .await
+    .expect("cannot get all successor edges by object id");
+
+    assert_eq!(results.len(), 2);
+
+    assert_eq!(false, results.iter().any(|e| e == &edges.first));
+    assert_eq!(true, results.iter().any(|e| e == &edges.second));
+    assert_eq!(false, results.iter().any(|e| e == &edges.third));
+    assert_eq!(false, results.iter().any(|e| e == &edges.fourth));
+    assert_eq!(true, results.iter().any(|e| e == &edges.fifth));
+    assert_eq!(false, results.iter().any(|e| e == &edges.rogue));
+}
+
+#[tokio::test]
+async fn by_kind_and_head_object_id_and_tail_type_name() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit()
+        .await
+        .expect("failed to commit the new billing account");
+
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let edges = create_edge_graph(&txn, &nats, &nba).await;
+
+    let results = Edge::by_kind_and_head_object_id_and_tail_type_name(
+        &txn,
+        &edges.fourth.kind,
+        &edges.fourth.tail_vertex.object_id,
+        &edges.fourth.head_vertex.type_name,
+    )
+    .await
+    .expect("cannot get direct predecessor edges by object id");
+
+    assert_eq!(results.len(), 1);
+
+    assert_eq!(false, results.iter().any(|e| e == &edges.first));
+    assert_eq!(false, results.iter().any(|e| e == &edges.second));
+    assert_eq!(true, results.iter().any(|e| e == &edges.third));
+    assert_eq!(false, results.iter().any(|e| e == &edges.fourth));
+    assert_eq!(false, results.iter().any(|e| e == &edges.fifth));
+    assert_eq!(false, results.iter().any(|e| e == &edges.rogue));
 }
