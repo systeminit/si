@@ -67,7 +67,7 @@ test: $(TESTABLE)
 
 #test_from_git: $(patsubst %,test//%,$(TO_BUILD))
 
-$(CONTAINABLE): 
+$(CONTAINABLE):
 	@ pushd $(patsubst container//%,%,$@); $(MAKE) container RELEASE=$(RELEASE)
 
 $(RELEASEABLE):
@@ -103,28 +103,28 @@ tmux_windows:
 tmux_panes:
 	@ for x in $(RUNNABLE_COMPONENTS); do tmux split-window -v && tmux send-keys "make watch//$$x" C-m; done
 
-container//opentelemetry-collector-user: 
+container//opentelemetry-collector-user:
 	cd ./components/opentelemetry-collector && ./build.sh
 
-container//opentelemetry-collector: 
+container//opentelemetry-collector:
 	cd ./components/opentelemetry-collector && ./build.sh release
 
 release//opentelemetry-collector: container//opentelemetry-collector
 	docker push systeminit/otelcol:latest
 
-container//nats: 
+container//nats:
 	cd ./components/nats && ./build.sh
 
 release//nats: container//nats
 	docker push systeminit/nats:latest
 
-container//couchbase: 
+container//couchbase:
 	cd ./components/couchbase && ./build.sh
 
 release//couchbase: container//couchbase
 	docker push systeminit/couchbase:latest
 
-container//builder: 
+container//builder:
 	env BUILDKIT_PROGRESS=plain DOCKER_BUILDKIT=1 docker build \
 		-f $(CURDIR)/components/build/Dockerfile-builder \
 		-t si-builder:latest \
@@ -135,19 +135,23 @@ release//builder: container//builder
 	docker push systeminit/si-builder:latest
 
 build_release//cli:
+	@echo "--- [$(shell basename ${CURDIR})] $@"
 	@ pushd ./components/si-sdf; $(MAKE) $@
 
 container//cli:
+	@echo "--- [$(shell basename ${CURDIR})] $@"
 	@ pushd ./components/si-sdf; $(MAKE) $@
 
 release//cli:
+	@echo "--- [$(shell basename ${CURDIR})] $@"
 	@ pushd ./components/si-sdf; $(MAKE) $@
 
 #release_from_git: $(patsubst %,release//%,$(TO_RELEASE))
 #	@ echo "--> You have (maybe) released the System Initative! <--"
 #	@ echo Released: $(TO_RELEASE)
 
-deploy//internal: release 
+deploy//internal: release
+	@echo "--- [$(shell basename ${CURDIR})] $@"
 	@ pushd components/aws-si-internal; env RELEASE=$(RELEASE) pulumi up -y
 
 release: $(RELEASEABLE) release//cli
@@ -159,14 +163,17 @@ $(CLEANABLE):
 clean: $(CLEANABLE)
 
 force_clean:
+	@echo "--- [$(shell basename ${CURDIR})] $@"
 	sudo rm -rf ./components/*/node_modules
 	sudo rm -rf ./target
 
 test_deps:
+	@echo "--- [$(shell basename ${CURDIR})] $@"
 	./components/couchbase/run.sh || docker start db; exit 0
 	./components/nats/run.sh || docker start nats; exit 0
 
-dev_deps: 
+dev_deps:
+	@echo "--- [$(shell basename ${CURDIR})] $@"
 	./components/couchbase/run.sh || docker start db; exit 0
 	./components/opentelemetry-collector/run.sh || docker start otelcol; exit 0
 	./components/nats/run.sh || docker start nats; exit 0
