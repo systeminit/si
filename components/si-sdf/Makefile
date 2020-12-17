@@ -3,9 +3,11 @@ COMPONENT = si-sdf
 .DEFAULT_GOAL := build
 
 build_release//cli:
+	@echo "--- [$(shell basename ${CURDIR})] $@"
 	cargo build --bin si --release --verbose
 
 container//cli:
+	@echo "--- [$(shell basename ${CURDIR})] $@"
 	env BUILDKIT_PROGRESS=plain DOCKER_BUILDKIT=1 docker build \
 		-f $(CURDIR)/../${COMPONENT}/Dockerfile.cli \
 		-t systeminit/si-cli:latest \
@@ -14,5 +16,6 @@ container//cli:
 		$(CURDIR)/../../
 
 release//cli: container//cli
+	@echo "--- [$(shell basename ${CURDIR})] $@"
 	docker push systeminit/si-cli:latest
 	docker push systeminit/si-cli:$(RELEASE)
