@@ -1,7 +1,0 @@
-// vim: ft=javascript
-// For each brewery produce an object that contains the brewery name along with
-// a list of all of the brewery’s offered beer names and alcohol percentages
-{
-  "statement": "SELECT bw.name AS brewer, (SELECT br.name, br.abv FROM beers br WHERE br.brewery_id = meta(bw).id ORDER BY br.name) AS beers FROM breweries bw ORDER BY bw.name LIMIT 2",
-  "pretty": true
-}

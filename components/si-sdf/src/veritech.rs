@@ -6,7 +6,7 @@ use tracing::{error, trace, warn};
 
 use std::collections::HashMap;
 
-use crate::data::{Connection, Db};
+use crate::data::{EventLogFS, EventLogFSError, NatsTxn, PgTxn};
 use crate::models::{Event, EventError, EventLog, EventLogError, EventLogLevel, OutputLineStream};
 
 #[derive(Error, Debug)]
@@ -35,6 +35,8 @@ pub enum VeritechError {
     MissingEventLog(u64),
     #[error("no reply from veritech")]
     NoReply,
+    #[error("event log fs error: {0}")]
+    EventLogFS(#[from] EventLogFSError),
 }
 
 pub type VeritechResult<T> = Result<T, VeritechError>;
@@ -94,32 +96,34 @@ impl<REP> Protocol<REP> {
     }
 }
 
-pub struct Veritech<REQ: Serialize, REP: DeserializeOwned> {
-    pub url: String,
-    __req: std::marker::PhantomData<REQ>,
-    __rep: std::marker::PhantomData<REP>,
+#[derive(Clone, Debug)]
+pub struct Veritech {
+    url: String,
+    event_log_fs: EventLogFS,
 }
 
-impl<REQ: Serialize, REP: DeserializeOwned> Veritech<REQ, REP> {
-    pub fn new(url: impl Into<String>) -> Veritech<REQ, REP> {
-        let url = url.into();
-        Veritech {
-            url,
-            __req: std::marker::PhantomData,
-            __rep: std::marker::PhantomData,
-        }
+impl Veritech {
+    pub fn new(settings: &si_settings::Veritech, event_log_fs: EventLogFS) -> Self {
+        let url = settings.url.clone();
+        Self { url, event_log_fs }
     }
 
-    pub async fn send(
+    pub async fn send<REQ, REP>(
         &self,
-        db: &Db,
-        nats: &Connection,
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        path: impl AsRef<str>,
         request: REQ,
         event: &Event,
-    ) -> VeritechResult<Option<REP>> {
-        let (ws_stream, _) = tokio_tungstenite::connect_async(&self.url)
-            .await
-            .expect("cannot connect to websocket");
+    ) -> VeritechResult<Option<REP>>
+    where
+        REQ: Serialize,
+        REP: DeserializeOwned,
+    {
+        let (ws_stream, _) =
+            tokio_tungstenite::connect_async(format!("{}{}", &self.url, path.as_ref()))
+                .await
+                .expect("cannot connect to websocket");
 
         let (ws_tx, ws_rx) = tokio::sync::mpsc::unbounded_channel();
 
@@ -156,10 +160,10 @@ impl<REQ: Serialize, REP: DeserializeOwned> Veritech<REQ, REP> {
                             event_log.level = log_msg.level;
                             event_log.payload = log_msg.payload;
                             event_log.message = log_msg.message;
-                            event_log.save(&db, &nats).await?;
+                            event_log.save(&txn, &nats).await?;
                         } else {
                             let event_log = event
-                                .log(&db, &nats, log_msg.level, log_msg.message, log_msg.payload)
+                                .log(&txn, &nats, log_msg.level, log_msg.message, log_msg.payload)
                                 .await?;
                             log_cache.insert(log_msg.fake_id, event_log);
                         }
@@ -169,7 +173,14 @@ impl<REQ: Serialize, REP: DeserializeOwned> Veritech<REQ, REP> {
                             .get_mut(&output_line_msg.event_log_id)
                             .ok_or(VeritechError::MissingEventLog(output_line_msg.event_log_id))?;
                         event_log
-                            .output_line(&db, &nats, output_line_msg.stream, output_line_msg.line)
+                            .output_line(
+                                &txn,
+                                &nats,
+                                &self.event_log_fs,
+                                output_line_msg.stream,
+                                output_line_msg.line,
+                                false,
+                            )
                             .await?;
                     }
                 }

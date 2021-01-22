@@ -103,7 +103,13 @@ tmux_windows:
 tmux_panes:
 	@ for x in $(RUNNABLE_COMPONENTS); do tmux split-window -v && tmux send-keys "make watch//$$x" C-m; done
 
-container//opentelemetry-collector-user:
+container//postgres: 
+	cd ./components/postgres && ./build.sh
+
+release//postgres: 
+	docker push systeminit/pg:latest
+
+container//opentelemetry-collector-user: 
 	cd ./components/opentelemetry-collector && ./build.sh
 
 container//opentelemetry-collector:
@@ -118,13 +124,7 @@ container//nats:
 release//nats: container//nats
 	docker push systeminit/nats:latest
 
-container//couchbase:
-	cd ./components/couchbase && ./build.sh
-
-release//couchbase: container//couchbase
-	docker push systeminit/couchbase:latest
-
-container//builder:
+container//builder: 
 	env BUILDKIT_PROGRESS=plain DOCKER_BUILDKIT=1 docker build \
 		-f $(CURDIR)/components/build/Dockerfile-builder \
 		-t si-builder:latest \
@@ -168,12 +168,9 @@ force_clean:
 	sudo rm -rf ./target
 
 test_deps:
-	@echo "--- [$(shell basename ${CURDIR})] $@"
-	./components/couchbase/run.sh || docker start db; exit 0
-	./components/nats/run.sh || docker start nats; exit 0
+	./components/postgres/run.sh; exit 0
+	./components/nats/run.sh; exit 0
 
-dev_deps:
-	@echo "--- [$(shell basename ${CURDIR})] $@"
-	./components/couchbase/run.sh || docker start db; exit 0
-	./components/opentelemetry-collector/run.sh || docker start otelcol; exit 0
-	./components/nats/run.sh || docker start nats; exit 0
+dev_deps: 
+	./components/postgres/run.sh; exit 0
+	./components/nats/run.sh; exit 0

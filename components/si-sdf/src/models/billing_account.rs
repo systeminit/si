@@ -1,26 +1,20 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use std::collections::HashMap;
+use crate::data::{NatsTxn, NatsTxnError, PgTxn};
 
-use crate::data::{Connection, Db};
 use crate::models::{
-    key_pair::KeyPair,
-    {
-        check_secondary_key_universal, generate_id, get_model, insert_model, upsert_model,
-        Capability, Group, GroupError, KeyPairError, ModelError, Organization, OrganizationError,
-        SiStorableError, SimpleStorable, User, UserError, Workspace, WorkspaceError,
-    },
+    Capability, Group, GroupError, KeyPair, KeyPairError, Organization, OrganizationError,
+    PublicKey, SimpleStorable, User, UserError, Workspace, WorkspaceError,
 };
+
+const BILLING_ACCOUNT_GET_BY_NAME: &str =
+    include_str!("../data/queries/billing_account_get_by_name.sql");
 
 #[derive(Error, Debug)]
 pub enum BillingAccountError {
     #[error("a billing account with this name already exists")]
     AccountExists,
-    #[error("si_storable error: {0}")]
-    SiStorable(#[from] SiStorableError),
-    #[error("error in core model functions: {0}")]
-    Model(#[from] ModelError),
     #[error("error in user model: {0}")]
     User(#[from] UserError),
     #[error("error in group model: {0}")]
@@ -35,6 +29,12 @@ pub enum BillingAccountError {
     Data(#[from] crate::data::DataError),
     #[error("billing account is not found")]
     NotFound,
+    #[error("pg error: {0}")]
+    TokioPg(#[from] tokio_postgres::Error),
+    #[error("nats txn error: {0}")]
+    NatsTxn(#[from] NatsTxnError),
+    #[error("serde error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
 }
 
 pub type BillingAccountResult<T> = Result<T, BillingAccountError>;
@@ -59,67 +59,78 @@ pub struct CreateReply {
     pub workspace: Workspace,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct BillingAccount {
     pub id: String,
     pub name: String,
     pub description: String,
-    pub current_key_pair_id: String,
     pub si_storable: SimpleStorable,
 }
 
 impl BillingAccount {
     pub async fn new(
-        db: &Db,
-        nats: &Connection,
-        name: String,
-        description: String,
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        name: impl Into<String>,
+        description: impl Into<String>,
     ) -> BillingAccountResult<Self> {
-        if check_secondary_key_universal(db, "billingAccount", "name", &name).await? {
-            return Err(BillingAccountError::AccountExists);
-        }
-        let id = generate_id("billingAccount");
-        let si_storable = SimpleStorable::new(&id, "billingAccount", &id);
-        let key_pair = KeyPair::new(db, nats, &name, id.clone()).await?;
-        let current_key_pair_id = key_pair.id;
-        let model = Self {
-            id,
-            name,
-            description,
-            current_key_pair_id,
-            si_storable,
-        };
-        insert_model(db, nats, &model.id, &model).await?;
-        Ok(model)
+        let name = name.into();
+        let description = description.into();
+        let row = txn
+            .query_one(
+                "SELECT object FROM billing_account_create_v1($1, $2)",
+                &[&name, &description],
+            )
+            .await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        nats.publish(&json).await?;
+        let object: BillingAccount = serde_json::from_value(json)?;
+
+        Ok(object)
     }
 
     pub async fn signup(
-        db: &Db,
-        nats: &Connection,
-        billing_account_name: String,
-        billing_account_description: String,
-        user_name: String,
-        user_email: String,
-        user_password: String,
-    ) -> BillingAccountResult<(BillingAccount, User, Group, Organization, Workspace)> {
-        let billing_account =
-            BillingAccount::new(db, nats, billing_account_name, billing_account_description)
-                .await?;
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        billing_account_name: impl Into<String>,
+        billing_account_description: impl Into<String>,
+        user_name: impl Into<String>,
+        user_email: impl Into<String>,
+        user_password: impl Into<String>,
+    ) -> BillingAccountResult<(
+        BillingAccount,
+        User,
+        Group,
+        Organization,
+        Workspace,
+        PublicKey,
+    )> {
+        let billing_account = BillingAccount::new(
+            &txn,
+            &nats,
+            billing_account_name,
+            billing_account_description,
+        )
+        .await?;
 
+        let key_pair =
+            KeyPair::new(&txn, &nats, &billing_account.name, &billing_account.id).await?;
+
+        dbg!(&billing_account);
         let user = User::new(
-            db,
-            nats,
+            &txn,
+            &nats,
             user_name,
             user_email,
-            &billing_account.id,
             user_password,
+            &billing_account.id,
         )
         .await?;
 
         let admin_group = Group::new(
-            db,
-            nats,
+            &txn,
+            &nats,
             "administrators",
             vec![user.id.clone()],
             vec![],
@@ -128,61 +139,60 @@ impl BillingAccount {
         )
         .await?;
 
-        let organization = Organization::new(db, nats, "default", &billing_account.id).await?;
+        let organization = Organization::new(&txn, &nats, "default", &billing_account.id).await?;
 
-        let workspace = Workspace::new(db, nats, "default", &billing_account.id).await?;
+        let workspace = Workspace::new(
+            &txn,
+            &nats,
+            "default",
+            &billing_account.id,
+            &organization.id,
+        )
+        .await?;
 
-        Ok((billing_account, user, admin_group, organization, workspace))
+        Ok((
+            billing_account,
+            user,
+            admin_group,
+            organization,
+            workspace,
+            key_pair.into(),
+        ))
     }
 
     pub async fn get(
-        db: &Db,
+        txn: &PgTxn<'_>,
         billing_account_id: impl AsRef<str>,
     ) -> BillingAccountResult<BillingAccount> {
         let id = billing_account_id.as_ref();
-        let object: BillingAccount = get_model(db, id, id).await?;
+        let row = txn
+            .query_one("SELECT object FROM billing_account_get_v1($1)", &[&id])
+            .await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        let object = serde_json::from_value(json)?;
         Ok(object)
     }
 
     pub async fn get_by_name(
-        db: &Db,
-        billing_account_name: impl AsRef<str>,
+        txn: &PgTxn<'_>,
+        name: impl AsRef<str>,
     ) -> BillingAccountResult<BillingAccount> {
-        let billing_account_name = billing_account_name.as_ref();
+        let name = name.as_ref();
 
-        let query = format!(
-            "SELECT a.*
-               FROM `{bucket}` AS a
-               WHERE a.siStorable.typeName = \"billingAccount\"
-                 AND a.name = $billing_account_name
-               LIMIT 1",
-            bucket = db.bucket_name,
-        );
-        let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
-        named_params.insert(
-            "billing_account_name".into(),
-            serde_json::json![billing_account_name],
-        );
-        let mut results: Vec<BillingAccount> = db.query(query, Some(named_params)).await?;
-        if let Some(billing_account) = results.pop() {
-            Ok(billing_account)
-        } else {
-            Err(BillingAccountError::NotFound)
-        }
+        let row = txn.query_one(BILLING_ACCOUNT_GET_BY_NAME, &[&name]).await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        let ba = serde_json::from_value(json)?;
+        Ok(ba)
     }
 
     pub async fn rotate_key_pair(
-        db: &Db,
-        nats: &Connection,
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
         billing_account_id: impl AsRef<str>,
     ) -> BillingAccountResult<()> {
-        let mut billing_account = Self::get(db, billing_account_id).await?;
-        let new_key_pair =
-            KeyPair::new(db, nats, &billing_account.name, &billing_account.id).await?;
-
-        billing_account.current_key_pair_id = new_key_pair.id;
-        upsert_model(db, nats, &billing_account.id, &billing_account).await?;
-
+        let billing_account = Self::get(&txn, billing_account_id).await?;
+        let _new_key_pair =
+            KeyPair::new(&txn, &nats, &billing_account.name, &billing_account.id).await?;
         Ok(())
     }
 }

@@ -1,22 +1,22 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::data::{Connection, Db, REQWEST};
+use crate::data::REQWEST;
+use crate::data::{NatsTxn, NatsTxnError, PgTxn};
+
 use crate::models::{
-    insert_model, EdgeError, EntityError, EventError, ModelError, NodeError, ResourceError,
-    SiChangeSet, SiChangeSetError, SiChangeSetEvent, SiStorable, SiStorableError,
+    next_update_clock, EdgeError, EntityError, EventError, ModelError, NodeError, ResourceError,
+    SiChangeSet, SiChangeSetError, SiChangeSetEvent, SiStorable, UpdateClockError,
 };
 use crate::veritech::VeritechError;
 
 pub mod entity_delete;
 pub use self::entity_delete::{OpEntityDelete, OpEntityDeleteRequest};
 pub mod entity_action;
-pub use self::entity_action::{run_action, OpEntityAction, OpEntityActionRequest};
+pub use self::entity_action::{OpEntityAction, OpEntityActionRequest};
 
 #[derive(Error, Debug)]
 pub enum OpError {
-    #[error("si_storable error: {0}")]
-    SiStorable(#[from] SiStorableError),
     #[error("si_change_set error: {0}")]
     SiChangeSet(#[from] SiChangeSetError),
     #[error("error in core model functions: {0}")]
@@ -29,8 +29,6 @@ pub enum OpError {
     MalformedTarget,
     #[error("error making http call: {0}")]
     Reqwest(#[from] reqwest::Error),
-    #[error("cannot convert from a json value: {0}")]
-    FromJson(#[from] serde_json::Error),
     #[error("edge error: {0}")]
     Edge(#[from] EdgeError),
     #[error("node error: {0}")]
@@ -43,6 +41,14 @@ pub enum OpError {
     Event(#[from] EventError),
     #[error("veritech error: {0}")]
     Veritech(#[from] VeritechError),
+    #[error("pg error: {0}")]
+    TokioPg(#[from] tokio_postgres::Error),
+    #[error("nats txn error: {0}")]
+    NatsTxn(#[from] NatsTxnError),
+    #[error("update clock: {0}")]
+    UpdateClock(#[from] UpdateClockError),
+    #[error("json serialization error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -65,8 +71,8 @@ pub type OpResult<T> = Result<T, OpError>;
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SiOp {
-    skip: bool,
-    override_system: Option<String>,
+    pub skip: bool,
+    pub override_system: Option<String>,
 }
 
 impl SiOp {
@@ -104,57 +110,48 @@ pub struct OpEntitySet {
 
 impl OpEntitySet {
     pub async fn new(
-        db: &Db,
-        nats: &Connection,
-        to_id: impl Into<String>,
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        to_id: impl AsRef<str>,
         path: Vec<String>,
         value: impl Into<serde_json::Value>,
         override_system: Option<String>,
-        billing_account_id: String,
-        organization_id: String,
-        workspace_id: String,
-        change_set_id: String,
-        edit_session_id: String,
-        created_by_user_id: String,
+        workspace_id: impl AsRef<str>,
+        change_set_id: impl AsRef<str>,
+        edit_session_id: impl AsRef<str>,
     ) -> OpResult<Self> {
-        let to_id = to_id.into();
+        let workspace_id = workspace_id.as_ref();
+        let change_set_id = change_set_id.as_ref();
+        let edit_session_id = edit_session_id.as_ref();
+        let to_id = to_id.as_ref();
         let value = value.into();
-        let si_storable = SiStorable::new(
-            db,
-            "opEntitySet",
-            billing_account_id.clone(),
-            organization_id,
-            workspace_id,
-            Some(created_by_user_id),
-        )
-        .await?;
 
-        let id = si_storable.object_id.clone();
+        let workspace_update_clock = next_update_clock(workspace_id).await?;
+        let change_set_update_clock = next_update_clock(change_set_id).await?;
 
-        let si_change_set = SiChangeSet::new(
-            db,
-            nats,
-            change_set_id,
-            edit_session_id,
-            &id,
-            billing_account_id,
-            SiChangeSetEvent::Operation,
-        )
-        .await?;
-
-        let si_op = SiOp::new(override_system);
-
-        let op = OpEntitySet {
-            id,
-            to_id,
-            path,
-            value,
-            si_op,
-            si_storable,
-            si_change_set,
-        };
-        insert_model(db, nats, &op.id, &op).await?;
-        Ok(op)
+        let row = txn
+            .query_one(
+                "SELECT object FROM op_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
+                &[
+                    &"opEntitySet",
+                    &to_id,
+                    &serde_json::json![{"path": path, "value": value }],
+                    &override_system,
+                    &change_set_id,
+                    &edit_session_id,
+                    &SiChangeSetEvent::Operation.to_string(),
+                    &workspace_id,
+                    &workspace_update_clock.epoch,
+                    &workspace_update_clock.update_count,
+                    &change_set_update_clock.epoch,
+                    &change_set_update_clock.update_count,
+                ],
+            )
+            .await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        nats.publish(&json).await?;
+        let object: Self = serde_json::from_value(json)?;
+        Ok(object)
     }
 
     pub fn skip(&self) -> bool {
@@ -207,54 +204,48 @@ pub struct OpSetName {
 
 impl OpSetName {
     pub async fn new(
-        db: &Db,
-        nats: &Connection,
-        to_id: impl Into<String>,
-        value: impl Into<String>,
-        billing_account_id: String,
-        organization_id: String,
-        workspace_id: String,
-        change_set_id: String,
-        edit_session_id: String,
-        created_by_user_id: String,
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        to_id: impl AsRef<str>,
+        value: impl AsRef<str>,
+        workspace_id: impl AsRef<str>,
+        change_set_id: impl AsRef<str>,
+        edit_session_id: impl AsRef<str>,
     ) -> OpResult<Self> {
-        let to_id = to_id.into();
-        let value = value.into();
-        let si_storable = SiStorable::new(
-            db,
-            "opSetName",
-            billing_account_id.clone(),
-            organization_id,
-            workspace_id,
-            Some(created_by_user_id),
-        )
-        .await?;
+        let workspace_id = workspace_id.as_ref();
+        let change_set_id = change_set_id.as_ref();
+        let edit_session_id = edit_session_id.as_ref();
+        let to_id = to_id.as_ref();
+        let value = value.as_ref();
 
-        let id = si_storable.object_id.clone();
+        let workspace_update_clock = next_update_clock(workspace_id).await?;
+        let change_set_update_clock = next_update_clock(change_set_id).await?;
 
-        let si_change_set = SiChangeSet::new(
-            db,
-            nats,
-            change_set_id,
-            edit_session_id,
-            &id,
-            billing_account_id,
-            SiChangeSetEvent::Operation,
-        )
-        .await?;
+        let override_system: Option<String> = None;
 
-        let si_op = SiOp::new(None);
-
-        let op = OpSetName {
-            id,
-            to_id,
-            value,
-            si_op,
-            si_storable,
-            si_change_set,
-        };
-        insert_model(db, nats, &op.id, &op).await?;
-        Ok(op)
+        let row = txn
+            .query_one(
+                "SELECT object FROM op_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
+                &[
+                    &"opSetName",
+                    &to_id,
+                    &serde_json::json![{"value": value }],
+                    &override_system,
+                    &change_set_id,
+                    &edit_session_id,
+                    &SiChangeSetEvent::Operation.to_string(),
+                    &workspace_id,
+                    &workspace_update_clock.epoch,
+                    &workspace_update_clock.update_count,
+                    &change_set_update_clock.epoch,
+                    &change_set_update_clock.update_count,
+                ],
+            )
+            .await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        nats.publish(&json).await?;
+        let object: Self = serde_json::from_value(json)?;
+        Ok(object)
     }
 
     pub fn skip(&self) -> bool {

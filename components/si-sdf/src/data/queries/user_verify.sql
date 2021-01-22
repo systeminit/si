@@ -1,0 +1,1 @@
+SELECT password FROM users WHERE id = si_id_to_primary_key_v1($1) LIMIT 1;

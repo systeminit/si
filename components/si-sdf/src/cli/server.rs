@@ -1,9 +1,10 @@
 use crate::cli::server::command::change_run::{ChangeRun, ChangeRunError};
-use crate::data::{Connection, Db};
+use crate::data::{NatsConn, PgPool, PgTxn};
 use crate::models::{
     ApiClaim, ChangeSetError, EditSessionError, EntityError, Event, EventError, EventLog, OpError,
     OutputLine,
 };
+use crate::veritech::Veritech;
 use futures::{FutureExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -19,7 +20,7 @@ pub use crate::cli::server::command::*;
 #[derive(Error, Debug)]
 pub enum ServerError {
     #[error("connection failed")]
-    Connection,
+    NatsConn,
     #[error("event error: {0}")]
     Event(#[from] EventError),
     #[error("entity error: {0}")]
@@ -32,6 +33,12 @@ pub enum ServerError {
     EditSession(#[from] EditSessionError),
     #[error("changeset op error: {0}")]
     Op(#[from] OpError),
+    #[error("pg error: {0}")]
+    TokioPg(#[from] tokio_postgres::Error),
+    #[error("pg error: {0}")]
+    Deadpool(#[from] deadpool_postgres::PoolError),
+    #[error("nats txn error: {0}")]
+    NatsTxn(#[from] crate::data::NatsTxnError),
 }
 
 pub type ServerResult<T> = Result<T, ServerError>;
@@ -44,16 +51,10 @@ pub enum ClientCommand {
 }
 
 impl ClientCommand {
-    pub async fn into_command(
-        self,
-        db: &Db,
-        billing_account_id: impl AsRef<str>,
-    ) -> ServerResult<Command> {
+    pub async fn into_command(self, txn: &PgTxn<'_>) -> ServerResult<Command> {
         match self {
             Self::NodeChangeRun(node_change_run) => Ok(Command::ChangeRun(
-                node_change_run
-                    .into_change_run(db, billing_account_id)
-                    .await?,
+                node_change_run.into_change_run(&txn).await?,
             )),
             Self::Stop(value) => Ok(Command::Stop(value)),
         }
@@ -107,11 +108,16 @@ impl CommandContext {
         }
     }
 
-    async fn execute(&self, db: &Db, nats: &Connection) -> ServerResult<()> {
+    async fn execute(
+        &self,
+        pg: &PgPool,
+        nats_conn: &NatsConn,
+        veritech: &Veritech,
+    ) -> ServerResult<()> {
         let command = self.command.read().await;
         match command.as_ref() {
             Some(Command::ChangeRun(ref cr)) => {
-                cr.execute(db, nats, self).await?;
+                cr.execute(pg, nats_conn, veritech, self).await?;
             }
             Some(Command::Stop(msg)) => warn!("we shouldn't execute a stop command! bug: {}", msg),
             None => warn!("execute called when no command set; bug!"),
@@ -142,7 +148,13 @@ impl CommandContext {
     }
 }
 
-pub async fn websocket_run(websocket: WebSocket, db: Db, nats: Connection, claim: ApiClaim) {
+pub async fn websocket_run(
+    websocket: WebSocket,
+    pg: PgPool,
+    nats_conn: NatsConn,
+    veritech: Veritech,
+    claim: ApiClaim,
+) {
     dbg!("doing websocket");
     // Split the socket into a sender and receiver of messages.
     let (ws_tx, mut ws_rx) = websocket.split();
@@ -174,16 +186,30 @@ pub async fn websocket_run(websocket: WebSocket, db: Db, nats: Connection, claim
     }));
 
     let ctx2 = ctx.clone();
-    let db2 = db.clone();
+    let pg2 = pg.clone();
     let outbound_ws_tx_from_nats = outbound_ws_tx.clone();
     // Send matching data to the web socket
-    match nats
+    match nats_conn
         .subscribe(&format!("{}.>", &claim.billing_account_id))
         .await
     {
         Ok(mut sub) => {
             tokio::task::spawn(async move {
                 while let Some(msg) = sub.next().await {
+                    let mut conn = match pg2.pool.get().await {
+                        Ok(conn) => conn,
+                        Err(e) => {
+                            tracing::error!(?e, "failed to get connection from pool");
+                            continue;
+                        }
+                    };
+                    let txn = match conn.transaction().await {
+                        Ok(txn) => txn,
+                        Err(e) => {
+                            tracing::error!(?e, "failed to get transaction from connection");
+                            continue;
+                        }
+                    };
                     match serde_json::from_slice::<serde_json::Value>(&msg.data) {
                         Ok(data_json) => {
                             if let Some(type_name) = data_json["siStorable"]["typeName"].as_str() {
@@ -211,7 +237,7 @@ pub async fn websocket_run(websocket: WebSocket, db: Db, nats: Connection, claim
                                                     }
                                                 }
                                             } else if let Ok(true) =
-                                                event.has_parent(&db2, &root_event.id).await
+                                                event.has_parent(&txn, &root_event.id).await
                                             {
                                                 let data_string = serde_json::to_string(
                                                     &CliMessage::Event(event),
@@ -240,7 +266,7 @@ pub async fn websocket_run(websocket: WebSocket, db: Db, nats: Connection, claim
                                             let event_log: EventLog = serde_json::from_value(data_json).expect("bug; we checked type, but cannot deserialize an eventLog");
 
                                             if let Ok(true) =
-                                                event_log.has_parent(&db2, &root_event.id).await
+                                                event_log.has_parent(&txn, &root_event.id).await
                                             {
                                                 let data_string = serde_json::to_string(
                                                     &CliMessage::EventLog(event_log),
@@ -269,7 +295,7 @@ pub async fn websocket_run(websocket: WebSocket, db: Db, nats: Connection, claim
                                             let output_line: OutputLine = serde_json::from_value(data_json).expect("bug; we checked type, but cannot deserialize an outputLine");
 
                                             if let Ok(true) =
-                                                output_line.has_parent(&db2, &root_event.id).await
+                                                output_line.has_parent(&txn, &root_event.id).await
                                             {
                                                 let data_string = serde_json::to_string(
                                                     &CliMessage::OutputLine(output_line),
@@ -298,6 +324,7 @@ pub async fn websocket_run(websocket: WebSocket, db: Db, nats: Connection, claim
                         }
                         Err(err) => error!("bad data from nats: {} / {:#?}", err, msg),
                     }
+                    let _r = txn.commit().await; // We don't care what you return or not, champ
                 }
             });
         }
@@ -308,8 +335,15 @@ pub async fn websocket_run(websocket: WebSocket, db: Db, nats: Connection, claim
     while let Some(message_result) = ws_rx.next().await {
         match message_result {
             Ok(message) => {
-                match process_message(&db, &nats, &claim, &outbound_ws_tx, &ctx, message.clone())
-                    .await
+                match process_message(
+                    &pg,
+                    &nats_conn,
+                    &veritech,
+                    &outbound_ws_tx,
+                    &ctx,
+                    message.clone(),
+                )
+                .await
                 {
                     MessageStream::Finish => break,
                     MessageStream::Continue => {}
@@ -336,9 +370,9 @@ pub async fn websocket_run(websocket: WebSocket, db: Db, nats: Connection, claim
 }
 
 async fn process_message(
-    db: &Db,
-    nats: &Connection,
-    claim: &ApiClaim,
+    pg: &PgPool,
+    nats_conn: &NatsConn,
+    veritech: &Veritech,
     outbound_ws_tx: &UnboundedSender<Result<Message, warp::Error>>,
     ctx: &CommandContext,
     message: Message,
@@ -347,6 +381,21 @@ async fn process_message(
     // sadly the warp Message does not expose the underlying enum for pattern mataching. Instead
     // we'll have to iterate through all the variants by hand with if statements
     if message.is_text() {
+        let mut conn = match pg.pool.get().await {
+            Ok(conn) => conn,
+            Err(e) => {
+                tracing::error!(?e, "cannot get connection from db pool");
+                return MessageStream::Finish;
+            }
+        };
+        let txn = match conn.transaction().await {
+            Ok(txn) => txn,
+            Err(e) => {
+                tracing::error!(?e, "cannot get txn from db connection");
+                return MessageStream::Finish;
+            }
+        };
+
         trace!("recv ws text msg, processing; message={:?}", message);
 
         dbg!(&message);
@@ -362,22 +411,20 @@ async fn process_message(
                 return MessageStream::Finish;
             }
         };
-        match client_command
-            .into_command(db, &claim.billing_account_id)
-            .await
-        {
+        match client_command.into_command(&txn).await {
             Ok(Command::Stop(_)) => {
                 return MessageStream::Finish;
             }
             Ok(command @ Command::ChangeRun(_)) => {
                 ctx.set_command(command.clone()).await;
-                let db2 = db.clone();
-                let nats2 = nats.clone();
+                let pg2 = pg.clone();
+                let nats_conn2 = nats_conn.clone();
+                let veritech2 = veritech.clone();
                 let ctx2 = ctx.clone();
                 let outbound_ws_tx2 = outbound_ws_tx.clone();
                 tokio::task::spawn(async move {
                     dbg!("running change run command execute function");
-                    match ctx2.execute(&db2, &nats2).await {
+                    match ctx2.execute(&pg2, &nats_conn2, &veritech2).await {
                         Ok(()) => {
                             let _e = outbound_ws_tx2
                                 .send(Ok(Message::close_with(1000 as u16, "closed")));

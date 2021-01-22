@@ -1,8 +1,7 @@
-use super::upsert_model;
-use crate::data::{Connection, Db};
+use crate::data::{NatsTxn, NatsTxnError, PgTxn};
 use crate::models::{
-    check_secondary_key, generate_id, get_model, insert_model, Group, GroupError, JwtKeyError,
-    JwtKeyPrivate, ModelError, SiStorableError, SimpleStorable,
+    get_jwt_signing_key, list_model, Group, GroupError, JwtKeyError, ListReply, ModelError,
+    OrderByDirection, PageToken, Query, SimpleStorable,
 };
 use blake2::{Blake2b, Digest};
 use jwt_simple::algorithms::RSAKeyPairLike;
@@ -14,9 +13,7 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum ApiClientError {
-    #[error("si_storable error: {0}")]
-    SiStorable(#[from] SiStorableError),
-    #[error("error in core model functions: {0}")]
+    #[error("model error: {0}")]
     Model(#[from] ModelError),
     #[error("invalid uft-8 string: {0}")]
     Utf8(#[from] std::str::Utf8Error),
@@ -32,22 +29,35 @@ pub enum ApiClientError {
     SignError(String),
     #[error("group: {0}")]
     Group(#[from] GroupError),
+    #[error("pg error: {0}")]
+    TokioPg(#[from] tokio_postgres::Error),
+    #[error("nats txn error: {0}")]
+    NatsTxn(#[from] NatsTxnError),
+    #[error("serde error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
 }
 
 pub type ApiClientResult<T> = Result<T, ApiClientError>;
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum ApiClientKind {
     Cli,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+impl std::fmt::Display for ApiClientKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            &ApiClientKind::Cli => write!(f, "cli"),
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct ApiClient {
     pub id: String,
     pub name: String,
-    pub valid_token_hash: String,
     pub kind: ApiClientKind,
     pub si_storable: SimpleStorable,
 }
@@ -75,9 +85,9 @@ pub struct ApiClaim {
 
 impl ApiClient {
     pub async fn new(
-        db: &Db,
-        nats: &Connection,
-        secret_key: secretbox::Key,
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        secret_key: &secretbox::Key,
         name: impl Into<String>,
         kind: ApiClientKind,
         billing_account_id: impl Into<String>,
@@ -85,52 +95,77 @@ impl ApiClient {
         let name = name.into();
         let billing_account_id = billing_account_id.into();
 
-        if check_secondary_key(db, &billing_account_id, "apiClient", "name", &name).await? {
-            return Err(ApiClientError::NameExists);
-        }
+        let row = txn
+            .query_one(
+                "SELECT object FROM api_client_create_v1($1, $2, $3)",
+                &[&name, &billing_account_id, &kind.to_string()],
+            )
+            .await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        nats.publish(&json).await?;
+        let object: ApiClient = serde_json::from_value(json)?;
 
-        let id = generate_id("apiClient");
-        let si_storable = SimpleStorable::new(&id, "apiClient", &billing_account_id);
-
-        let signing_key = JwtKeyPrivate::get_jwt_signing_key(&db, &secret_key).await?;
+        let signing_key = get_jwt_signing_key(&txn, secret_key).await?;
         let si_claims = ApiClaim {
-            api_client_id: id.clone(),
+            api_client_id: object.id.clone(),
             billing_account_id: billing_account_id.clone(),
         };
         let claims = Claims::with_custom_claims(si_claims, Duration::from_days(7300))
             .with_audience("https://app.systeminit.com")
             .with_issuer("https://app.systeminit.com")
-            .with_subject(id.clone());
+            .with_subject(object.id.clone());
         let jwt = signing_key
             .sign(claims)
             .map_err(|e| ApiClientError::SignError(e.to_string()))?;
         let valid_token_hash =
             format!("{:x}", Blake2b::digest(format!("Bearer {}", &jwt).as_ref()));
 
-        let object = ApiClient {
-            id: id.clone(),
-            name,
-            si_storable,
-            valid_token_hash,
-            kind,
-        };
-        insert_model(db, nats, &object.id, &object).await?;
+        txn.execute(
+            "SELECT api_client_set_valid_token_hash_v1($1, $2)",
+            &[&object.id, &valid_token_hash],
+        )
+        .await?;
 
-        let mut admin_group = Group::get_administrators_group(&db, billing_account_id).await?;
+        dbg!(&object);
+
+        let mut admin_group = Group::get_administrators_group(&txn, billing_account_id).await?;
         admin_group.api_client_ids.push(object.id.clone());
-        upsert_model(&db, &nats, &admin_group.id, &admin_group).await?;
+        admin_group.save(&txn, &nats).await?;
 
         Ok((object, jwt))
     }
 
-    pub async fn get(
-        db: &Db,
-        user_id: impl AsRef<str>,
-        billing_account_id: impl AsRef<str>,
-    ) -> ApiClientResult<ApiClient> {
-        let id = user_id.as_ref();
-        let billing_account_id = billing_account_id.as_ref();
-        let object: ApiClient = get_model(db, id, billing_account_id).await?;
+    pub async fn get(txn: &PgTxn<'_>, id: impl AsRef<str>) -> ApiClientResult<ApiClient> {
+        let id = id.as_ref();
+        let row = txn
+            .query_one("SELECT object FROM api_client_get_v1($1)", &[&id])
+            .await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        let object = serde_json::from_value(json)?;
         Ok(object)
+    }
+
+    pub async fn list(
+        txn: &PgTxn<'_>,
+        tenant_id: impl Into<String>,
+        query: Option<Query>,
+        page_size: Option<u32>,
+        order_by: Option<String>,
+        order_by_direction: Option<OrderByDirection>,
+        page_token: Option<PageToken>,
+    ) -> ApiClientResult<ListReply> {
+        let tenant_id = tenant_id.into();
+        let reply = list_model(
+            txn,
+            "api_clients",
+            tenant_id,
+            query,
+            page_size,
+            order_by,
+            order_by_direction,
+            page_token,
+        )
+        .await?;
+        Ok(reply)
     }
 }

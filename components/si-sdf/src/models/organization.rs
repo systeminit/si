@@ -1,25 +1,26 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::data::{Connection, Db};
+use crate::data::{NatsTxn, NatsTxnError, PgTxn};
 use crate::models::{
-    check_secondary_key, generate_id, get_model, insert_model, ModelError, SiStorableError,
-    SimpleStorable,
+    list_model, ListReply, ModelError, OrderByDirection, PageToken, Query, SimpleStorable,
 };
 
 #[derive(Error, Debug)]
 pub enum OrganizationError {
-    #[error("an organization already exists with this name")]
-    NameExists,
-    #[error("si_storable error: {0}")]
-    SiStorable(#[from] SiStorableError),
+    #[error("pg error: {0}")]
+    TokioPg(#[from] tokio_postgres::Error),
+    #[error("serde error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
     #[error("error in core model functions: {0}")]
     Model(#[from] ModelError),
+    #[error("nats txn error: {0}")]
+    NatsTxn(#[from] NatsTxnError),
 }
 
 pub type OrganizationResult<T> = Result<T, OrganizationError>;
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Organization {
     pub id: String,
@@ -29,37 +30,72 @@ pub struct Organization {
 
 impl Organization {
     pub async fn new(
-        db: &Db,
-        nats: &Connection,
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
         name: impl Into<String>,
         billing_account_id: impl Into<String>,
     ) -> OrganizationResult<Organization> {
         let name = name.into();
         let billing_account_id = billing_account_id.into();
 
-        if check_secondary_key(db, &billing_account_id, "organization", "name", &name).await? {
-            return Err(OrganizationError::NameExists);
-        }
+        let row = txn
+            .query_one(
+                "SELECT object FROM organization_create_v1($1, $2)",
+                &[&name, &billing_account_id],
+            )
+            .await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        nats.publish(&json).await?;
+        let object: Organization = serde_json::from_value(json)?;
 
-        let id = generate_id("organization");
-        let si_storable = SimpleStorable::new(&id, "organization", &billing_account_id);
-        let object = Organization {
-            id,
-            name,
-            si_storable,
-        };
-        insert_model(db, nats, &object.id, &object).await?;
         Ok(object)
     }
 
     pub async fn get(
-        db: &Db,
+        txn: &PgTxn<'_>,
         organization_id: impl AsRef<str>,
-        billing_account_id: impl AsRef<str>,
     ) -> OrganizationResult<Organization> {
         let id = organization_id.as_ref();
-        let billing_account_id = billing_account_id.as_ref();
-        let object: Organization = get_model(db, id, billing_account_id).await?;
+        let row = txn
+            .query_one("SELECT object FROM organization_get_v1($1)", &[&id])
+            .await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        let object = serde_json::from_value(json)?;
         Ok(object)
+    }
+
+    pub async fn save(&self, txn: &PgTxn<'_>, nats: &NatsTxn) -> OrganizationResult<Organization> {
+        let json = serde_json::to_value(self)?;
+        let row = txn
+            .query_one("SELECT object FROM organization_save_v1($1)", &[&json])
+            .await?;
+        let updated_result: serde_json::Value = row.try_get("object")?;
+        nats.publish(&updated_result).await?;
+        let updated = serde_json::from_value(updated_result)?;
+        Ok(updated)
+    }
+
+    pub async fn list(
+        txn: &PgTxn<'_>,
+        tenant_id: impl Into<String>,
+        query: Option<Query>,
+        page_size: Option<u32>,
+        order_by: Option<String>,
+        order_by_direction: Option<OrderByDirection>,
+        page_token: Option<PageToken>,
+    ) -> OrganizationResult<ListReply> {
+        let tenant_id = tenant_id.into();
+        let reply = list_model(
+            txn,
+            "organizations",
+            tenant_id,
+            query,
+            page_size,
+            order_by,
+            order_by_direction,
+            page_token,
+        )
+        .await?;
+        Ok(reply)
     }
 }

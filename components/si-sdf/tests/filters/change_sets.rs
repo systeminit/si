@@ -1,239 +1,177 @@
-use serde_json;
-
-use crate::filters::edit_sessions::create_edit_session;
-use crate::filters::nodes::{create_node, node_entity_set};
-use crate::{test_cleanup, test_setup, TestAccount};
-use crate::{DB, NATS, SETTINGS};
+use warp::http::StatusCode;
 
 use si_sdf::filters::api;
-use si_sdf::models::{change_set, Entity};
+use si_sdf::models::{change_set, ListReply};
 
-pub async fn create_change_set(test_account: &TestAccount) -> String {
-    let filter = api(&DB, &NATS, &SETTINGS.jwt_encrypt.key);
-    let res = warp::test::request()
-        .method("POST")
-        .header("authorization", &test_account.authorization)
-        .json(&change_set::CreateRequest {
-            name: None,
-            workspace_id: test_account.workspace_id.clone(),
-            organization_id: test_account.organization_id.clone(),
-        })
-        .path("/changeSets")
-        .reply(&filter)
-        .await;
-    assert_eq!(res.status(), 200, "change set is created");
-    let result_json: serde_json::Value =
-        serde_json::from_str(String::from_utf8_lossy(res.body()).as_ref())
-            .expect("cannot create a change set, results do not deserialize");
-    if result_json["item"]["id"].is_string() {
-        return result_json["item"]["id"].as_str().unwrap().to_string();
-    } else {
-        panic!("change set output is wrong!");
-    }
-}
-
-pub async fn execute_change_set(test_account: &TestAccount, change_set_id: impl AsRef<str>) {
-    let filter = api(&DB, &NATS, &SETTINGS.jwt_encrypt.key);
-    let change_set_id = change_set_id.as_ref();
-
-    let request = change_set::PatchRequest {
-        op: change_set::PatchOps::Execute(change_set::ExecuteRequest {
-            hypothetical: false,
-        }),
-        workspace_id: test_account.workspace_id.clone(),
-        organization_id: test_account.organization_id.clone(),
-    };
-
-    let res = warp::test::request()
-        .method("PATCH")
-        .header("authorization", &test_account.authorization)
-        .path(format!("/changeSets/{}", change_set_id).as_ref())
-        .json(&request)
-        .reply(&filter)
-        .await;
-    assert_eq!(res.status(), 200, "change set is executed");
-}
-
-pub async fn execute_change_set_hypothetical(
-    test_account: &TestAccount,
-    change_set_id: impl AsRef<str>,
-) {
-    let filter = api(&DB, &NATS, &SETTINGS.jwt_encrypt.key);
-    let change_set_id = change_set_id.as_ref();
-
-    let request = change_set::PatchRequest {
-        op: change_set::PatchOps::Execute(change_set::ExecuteRequest { hypothetical: true }),
-        workspace_id: test_account.workspace_id.clone(),
-        organization_id: test_account.organization_id.clone(),
-    };
-
-    let res = warp::test::request()
-        .method("PATCH")
-        .header("authorization", &test_account.authorization)
-        .path(format!("/changeSets/{}", change_set_id).as_ref())
-        .json(&request)
-        .reply(&filter)
-        .await;
-    assert_eq!(res.status(), 200, "change set is executed");
-}
+use crate::filters::users::login_user;
+use crate::models::billing_account::signup_new_billing_account;
+use crate::models::change_set::create_change_set;
+use crate::models::edit_session::create_edit_session;
+use crate::models::entity::create_entity;
+use crate::models::system::create_system;
+use crate::one_time_setup;
+use crate::TestContext;
 
 #[tokio::test]
 async fn create() {
-    let test_account = test_setup().await.expect("failed to setup test");
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, veritech, event_log_fs, secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot get connection");
+    let txn = conn.transaction().await.expect("cannot get transaction");
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit().await.expect("cannot commit txn");
 
-    let filter = api(&DB, &NATS, &SETTINGS.jwt_encrypt.key);
+    let token = login_user(&ctx, &nba).await;
+    let filter = api(pg, nats_conn, veritech, event_log_fs, secret_key);
 
     let res = warp::test::request()
         .method("POST")
-        .header("authorization", &test_account.authorization)
+        .header("authorization", &token)
         .json(&change_set::CreateRequest {
             name: None,
-            workspace_id: test_account.workspace_id.clone(),
-            organization_id: test_account.organization_id.clone(),
+            workspace_id: nba.workspace.id.clone(),
+            organization_id: nba.organization.id.clone(),
         })
         .path("/changeSets")
         .reply(&filter)
         .await;
-    assert_eq!(res.status(), 200, "change set is created");
-
-    test_cleanup(test_account)
-        .await
-        .expect("failed to finish test");
+    assert_eq!(res.status(), StatusCode::OK, "change set is created");
+    let _change_set_reply: change_set::CreateReply =
+        serde_json::from_slice(res.body()).expect("cannot deserialize reply");
 }
 
 #[tokio::test]
-async fn execute() {
-    let test_account = test_setup().await.expect("failed to setup test");
+async fn patch() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, veritech, event_log_fs, secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot get connection");
+    let txn = conn.transaction().await.expect("cannot get transaction");
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit().await.expect("cannot commit txn");
 
-    let filter = api(&DB, &NATS, &SETTINGS.jwt_encrypt.key);
-    let change_set_id = create_change_set(&test_account).await;
-    let request = change_set::PatchRequest {
-        op: change_set::PatchOps::Execute(change_set::ExecuteRequest { hypothetical: true }),
-        workspace_id: test_account.workspace_id.clone(),
-        organization_id: test_account.organization_id.clone(),
-    };
+    let txn = conn.transaction().await.expect("cannot get transaction");
+    let change_set = create_change_set(&txn, &nats, &nba).await;
+    let edit_session = create_edit_session(&txn, &nats, &nba, &change_set).await;
+    txn.commit().await.expect("cannot commit txn");
+
+    let txn = conn.transaction().await.expect("cannot get transaction");
+    let system = create_system(
+        &pg,
+        &txn,
+        &nats,
+        &veritech,
+        &nba,
+        &change_set,
+        &edit_session,
+    )
+    .await;
+    let entity = create_entity(
+        &pg,
+        &txn,
+        &nats,
+        &veritech,
+        &nba,
+        &change_set,
+        &edit_session,
+        &system,
+    )
+    .await;
+    txn.commit().await.expect("cannot commit txn");
+
+    let token = login_user(&ctx, &nba).await;
+    let filter = api(pg, nats_conn, veritech, event_log_fs, secret_key);
 
     let res = warp::test::request()
         .method("PATCH")
-        .header("authorization", &test_account.authorization)
-        .path(format!("/changeSets/{}", &change_set_id).as_ref())
-        .json(&request)
+        .header("authorization", &token)
+        .json(&change_set::PatchRequest {
+            op: change_set::PatchOps::Execute(change_set::ExecuteRequest { hypothetical: true }),
+            workspace_id: nba.workspace.id.clone(),
+            organization_id: nba.organization.id.clone(),
+        })
+        .path(&format!("/changeSets/{}", &change_set.id))
         .reply(&filter)
         .await;
-    assert_eq!(res.status(), 200, "change set is executed");
+    assert_eq!(res.status(), StatusCode::OK, "change is executed");
+    let _change_set_reply: change_set::PatchReply =
+        serde_json::from_slice(res.body()).expect("cannot deserialize reply");
 
-    test_cleanup(test_account)
-        .await
-        .expect("failed to finish test");
+    let res = warp::test::request()
+        .method("PATCH")
+        .header("authorization", &token)
+        .json(&change_set::PatchRequest {
+            op: change_set::PatchOps::ExecuteWithAction(change_set::ExecuteWithActionRequest {
+                node_id: entity.node_id.clone(),
+                action: String::from("deploy"),
+                system_id: system.id.clone(),
+                edit_session_id: edit_session.id.clone(),
+            }),
+            workspace_id: nba.workspace.id.clone(),
+            organization_id: nba.organization.id.clone(),
+        })
+        .path(&format!("/changeSets/{}", &change_set.id))
+        .reply(&filter)
+        .await;
+    assert_eq!(res.status(), StatusCode::OK, "change is executed");
+    let _change_set_reply: change_set::PatchReply =
+        serde_json::from_slice(res.body()).expect("cannot deserialize reply");
 }
 
-#[test]
-fn calculates_properties_of_successors() {
-    tokio_test::block_on(Box::pin(async move {
-        let test_account = test_setup().await.expect("failed to setup test");
+#[tokio::test]
+async fn list_participants() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, veritech, event_log_fs, secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot get connection");
+    let txn = conn.transaction().await.expect("cannot get transaction");
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit().await.expect("cannot commit txn");
 
-        //let filter = api(&DB, &NATS, &SETTINGS.jwt_encrypt.key);
-        let change_set_id = create_change_set(&test_account).await;
-        let edit_session_id = create_edit_session(&test_account, &change_set_id).await;
+    let txn = conn.transaction().await.expect("cannot get transaction");
+    let change_set = create_change_set(&txn, &nats, &nba).await;
+    let edit_session = create_edit_session(&txn, &nats, &nba, &change_set).await;
+    txn.commit().await.expect("cannot commit txn");
 
-        let service_node_reply =
-            create_node(&test_account, &change_set_id, &edit_session_id, "service").await;
-        let docker_image_node_reply = create_node(
-            &test_account,
-            &change_set_id,
-            &edit_session_id,
-            "dockerImage",
-        )
+    let txn = conn.transaction().await.expect("cannot get transaction");
+    let system = create_system(
+        &pg,
+        &txn,
+        &nats,
+        &veritech,
+        &nba,
+        &change_set,
+        &edit_session,
+    )
+    .await;
+    let _entity = create_entity(
+        &pg,
+        &txn,
+        &nats,
+        &veritech,
+        &nba,
+        &change_set,
+        &edit_session,
+        &system,
+    )
+    .await;
+    txn.commit().await.expect("cannot commit txn");
+
+    let token = login_user(&ctx, &nba).await;
+    let filter = api(pg, nats_conn, veritech, event_log_fs, secret_key);
+
+    let res = warp::test::request()
+        .method("GET")
+        .header("authorization", &token)
+        .path(&format!("/changeSetParticipants"))
+        .reply(&filter)
         .await;
-        let _docker_image_edge = docker_image_node_reply
-            .item
-            .configured_by(&DB, &NATS, &service_node_reply.item.id)
-            .await
-            .expect("failed to create configured by edge for docker image");
-
-        let k8s_deployment_node_reply = create_node(
-            &test_account,
-            &change_set_id,
-            &edit_session_id,
-            "kubernetesDeployment",
-        )
-        .await;
-        let _k8s_deployment_edge = k8s_deployment_node_reply
-            .item
-            .configured_by(&DB, &NATS, &docker_image_node_reply.item.id)
-            .await
-            .expect("failed to create configured by edge for k8s deployment");
-
-        execute_change_set_hypothetical(&test_account, &change_set_id).await;
-
-        let k8s_deployment_projection: Entity = k8s_deployment_node_reply
-            .item
-            .get_object_projection(&DB, &change_set_id)
-            .await
-            .expect("failed to get k8s deployment projection");
-
-        let docker_image_projection: Entity = docker_image_node_reply
-            .item
-            .get_object_projection(&DB, &change_set_id)
-            .await
-            .expect("failed to get docker image projection");
-
-        let container_json = k8s_deployment_projection
-            .inferred_properties
-            .get_property("/kubernetesObject/spec/template/spec/containers/0", None)
-            .expect("could not find container for k8s deployment")
-            .expect("no value for k8s deployment container image 0");
-        let docker_image_projection_image_value = docker_image_projection
-            .properties
-            .get_property("/image", None)
-            .expect("cannot get dockerImage image value")
-            .expect("no value for dockerImage image value");
-        assert_eq!(
-            &container_json["image"],
-            docker_image_projection_image_value
-        );
-
-        node_entity_set(
-            &test_account,
-            &change_set_id,
-            &edit_session_id,
-            &docker_image_node_reply.item.id,
-            vec!["image".into()],
-            "systeminit/whiskers".into(),
-        )
-        .await;
-
-        execute_change_set_hypothetical(&test_account, &change_set_id).await;
-
-        let k8s_deployment_projection: Entity = k8s_deployment_node_reply
-            .item
-            .get_object_projection(&DB, &change_set_id)
-            .await
-            .expect("failed to get k8s deployment projection");
-
-        let docker_image_projection: Entity = docker_image_node_reply
-            .item
-            .get_object_projection(&DB, &change_set_id)
-            .await
-            .expect("failed to get docker image projection");
-
-        let container_json = k8s_deployment_projection
-            .inferred_properties
-            .get_property("/kubernetesObject/spec/template/spec/containers/0", None)
-            .expect("could not find container for k8s deployment")
-            .expect("no value for k8s deployment container image 0");
-        let docker_image_projection_image_value = docker_image_projection
-            .properties
-            .get_property("/image", None)
-            .expect("cannot get dockerImage image value")
-            .expect("no value for dockerImage image value");
-        assert_eq!(
-            &container_json["image"], docker_image_projection_image_value,
-            "failed to compute the image value when it is set manually",
-        );
-
-        test_cleanup(test_account)
-            .await
-            .expect("failed to finish test");
-    }));
+    assert_eq!(res.status(), StatusCode::OK, "list model should succeed");
+    let reply: ListReply =
+        serde_json::from_slice(res.body()).expect("cannot deserialize get model reply");
+    assert_eq!(reply.total_count, 2);
 }

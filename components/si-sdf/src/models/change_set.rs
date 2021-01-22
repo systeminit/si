@@ -1,20 +1,24 @@
 use serde::{Deserialize, Serialize};
+use strum_macros::{Display, EnumString};
 use thiserror::Error;
 use tracing::{trace, warn};
 
 use std::collections::HashMap;
 
-use crate::data::{Connection, Db};
+use crate::data::{NatsTxn, NatsTxnError, PgTxn};
 use crate::models::{
-    calculate_properties, get_base_object, get_model, insert_model, insert_model_if_missing, ops,
-    upsert_model, Edge, EdgeError, EdgeKind, Entity, EntityError, Event, EventError, ModelError,
-    SiChangeSetEvent, SiStorable, SiStorableError, SimpleStorable,
+    calculate_properties, list_model, next_update_clock, ops, Edge, EdgeError, EdgeKind, Entity,
+    EntityError, Event, EventError, ListReply, ModelError, OrderByDirection, PageToken, Query,
+    SiChangeSetEvent, SiStorable, System, SystemError, UpdateClockError,
 };
+use crate::veritech::Veritech;
+
+const CHANGE_SET_PARTICIPANT_EXISTS: &str =
+    include_str!("../data/queries/change_set_participant_exists.sql");
+const CHANGE_SET_ENTRIES: &str = include_str!("../data/queries/change_set_entries.sql");
 
 #[derive(Error, Debug)]
 pub enum ChangeSetError {
-    #[error("si_storable error: {0}")]
-    SiStorable(#[from] SiStorableError),
     #[error("error in core model functions: {0}")]
     Model(#[from] ModelError),
     #[error("malformed change set entry; type is missing")]
@@ -41,6 +45,16 @@ pub enum ChangeSetError {
     Edge(#[from] EdgeError),
     #[error("event error: {0}")]
     Event(#[from] EventError),
+    #[error("pg error: {0}")]
+    TokioPg(#[from] tokio_postgres::Error),
+    #[error("nats txn error: {0}")]
+    NatsTxn(#[from] NatsTxnError),
+    #[error("update clock: {0}")]
+    UpdateClock(#[from] UpdateClockError),
+    #[error("unknown change-set aware object; should be entity or system")]
+    UnknownObjectType,
+    #[error("system error: {0}")]
+    System(#[from] SystemError),
 }
 
 pub type ChangeSetResult<T> = Result<T, ChangeSetError>;
@@ -101,8 +115,9 @@ pub struct ExecuteReply {
     pub item_ids: Vec<String>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Display, EnumString, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+#[strum(serialize_all = "camelCase")]
 pub enum ChangeSetStatus {
     Open,
     Closed,
@@ -111,7 +126,7 @@ pub enum ChangeSetStatus {
     Failed,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ChangeSet {
     pub id: String,
@@ -123,74 +138,89 @@ pub struct ChangeSet {
 
 impl ChangeSet {
     pub async fn new(
-        db: &Db,
-        nats: &Connection,
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
         name: Option<String>,
-        billing_account_id: String,
-        organization_id: String,
         workspace_id: String,
-        created_by_user_id: String,
     ) -> ChangeSetResult<ChangeSet> {
         let name = crate::models::generate_name(name);
-        let si_storable = SiStorable::new(
-            db,
-            "changeSet",
-            billing_account_id,
-            organization_id,
-            workspace_id,
-            Some(created_by_user_id),
-        )
-        .await?;
-        let id = si_storable.object_id.clone();
-        let change_set = ChangeSet {
-            id,
-            name,
-            note: "".to_string(),
-            status: ChangeSetStatus::Open,
-            si_storable,
-        };
-        insert_model(db, nats, &change_set.id, &change_set).await?;
-        Ok(change_set)
+        let update_clock = next_update_clock(&workspace_id).await?;
+        let row = txn
+            .query_one(
+                "SELECT object FROM change_set_create_v1($1, $2, $3, $4, $5, $6)",
+                &[
+                    &name,
+                    &String::new(),
+                    &ChangeSetStatus::Open.to_string(),
+                    &workspace_id,
+                    &update_clock.epoch,
+                    &update_clock.update_count,
+                ],
+            )
+            .await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        nats.publish(&json).await?;
+        let object: ChangeSet = serde_json::from_value(json)?;
+        Ok(object)
     }
 
     pub async fn get(
-        db: &Db,
+        txn: &PgTxn<'_>,
         change_set_id: impl AsRef<str>,
-        billing_account_id: impl AsRef<str>,
     ) -> ChangeSetResult<ChangeSet> {
-        let change_set_id = change_set_id.as_ref();
-        let billing_account_id = billing_account_id.as_ref();
-        let change_set: ChangeSet = get_model(db, change_set_id, billing_account_id).await?;
-        Ok(change_set)
+        let id = change_set_id.as_ref();
+        let row = txn
+            .query_one("SELECT object FROM change_set_get_v1($1)", &[&id])
+            .await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        let object = serde_json::from_value(json)?;
+        Ok(object)
     }
 
-    
+    pub async fn list(
+        txn: &PgTxn<'_>,
+        tenant_id: impl Into<String>,
+        query: Option<Query>,
+        page_size: Option<u32>,
+        order_by: Option<String>,
+        order_by_direction: Option<OrderByDirection>,
+        page_token: Option<PageToken>,
+    ) -> ChangeSetResult<ListReply> {
+        let tenant_id = tenant_id.into();
+        let reply = list_model(
+            txn,
+            "change_sets",
+            tenant_id,
+            query,
+            page_size,
+            order_by,
+            order_by_direction,
+            page_token,
+        )
+        .await?;
+        Ok(reply)
+    }
+
     pub async fn execute(
         &mut self,
-        db: &Db,
-        nats: &Connection,
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        veritech: &Veritech,
         hypothetical: bool,
         parent_event_id: Option<&str>,
     ) -> ChangeSetResult<Vec<String>> {
-        let change_set_entry_query = format!(
-            "SELECT a.*
-          FROM `{bucket}` AS a
-          WHERE a.siChangeSet.changeSetId = $change_set_id 
-            AND (a.siChangeSet.event = \"Operation\" OR a.siChangeSet.event = \"Delete\" OR a.siChangeSet.event = \"Create\")
-          ORDER BY a.siChangeSet.orderClock.epoch ASC, a.siChangeSet.orderClock.updateCount ASC
-        ",
-            bucket = db.bucket_name,
-        );
-        let mut change_set_entry_named_params: HashMap<String, serde_json::Value> = HashMap::new();
-        change_set_entry_named_params.insert("change_set_id".into(), serde_json::json![&self.id]);
-        let change_set_entry_query_results: Vec<serde_json::Value> = db
-            .query_consistent(change_set_entry_query, Some(change_set_entry_named_params))
-            .await?;
+        let rows = txn.query(CHANGE_SET_ENTRIES, &[&self.id]).await?;
+        let mut change_set_entry_query_results: Vec<serde_json::Value> = vec![];
+        for row in rows.into_iter() {
+            let json = row.try_get("object")?;
+            change_set_entry_query_results.push(json);
+        }
 
-        trace!(?change_set_entry_query_results, "change set exec results");
+        warn!(?change_set_entry_query_results, "change set exec results");
 
         let event =
-            Event::change_set_execute(db, nats, &self, parent_event_id.map(|id| id.into())).await?;
+            Event::change_set_execute(&txn, &nats, &self, parent_event_id.map(|id| id.into()))
+                .await?;
 
         let mut seen_map: HashMap<String, serde_json::Value> = HashMap::new();
         let mut last_id: Option<String> = None;
@@ -223,7 +253,7 @@ impl ChangeSet {
                         .as_str()
                         .ok_or(ChangeSetError::TypeMissing)?;
                     if last_obj_type_name == "entity" {
-                        calculate_properties(db, last_obj, Some(&mc)).await?;
+                        calculate_properties(&txn, last_obj, Some(&mc)).await?;
                     }
                 }
             };
@@ -232,8 +262,21 @@ impl ChangeSet {
             let obj = if seen_map.contains_key(to_id) {
                 seen_map.get_mut(to_id).unwrap()
             } else {
-                trace!("getting base object: {} {}", to_id, &self.id);
-                let head_obj = get_base_object(db, to_id, &self.id).await?;
+                let head_obj = match entry_type_name {
+                    "entity" => {
+                        let entity = Entity::get_head_or_base(&txn, to_id, &self.id).await?;
+                        serde_json::to_value(entity)?
+                    }
+                    "system" => {
+                        let system = System::get_head_or_base(&txn, to_id, &self.id).await?;
+                        serde_json::to_value(system)?
+                    }
+                    // Will we hit a bug here when you get an Op? Lets find out?
+                    o => {
+                        warn!(?o, "head object is not an entity or a system, that's bad");
+                        return Err(ChangeSetError::UnknownObjectType);
+                    }
+                };
                 seen_map.insert(String::from(to_id), head_obj);
                 seen_map.get_mut(to_id).unwrap()
             };
@@ -245,22 +288,21 @@ impl ChangeSet {
             last_id = Some(String::from(to_id));
 
             match change_set_event {
-                "Create" => {
+                "create" => {
                     let type_name = obj["siStorable"]["typeName"]
                         .as_str()
                         .ok_or(ChangeSetError::TypeMissing)?;
                     if type_name == "entity" {
-                        calculate_properties(db, obj, Some(&mc)).await?;
+                        calculate_properties(&txn, obj, Some(&mc)).await?;
                     }
                 }
-                "Operation" => match entry_type_name {
+                "operation" => match entry_type_name {
                     "opEntitySet" => {
                         let op: ops::OpEntitySet = serde_json::from_value(change_set_entry)?;
                         trace!(?op, "applying op");
                         op.apply(obj).await?;
                     }
                     "opSetName" => {
-                        trace!(?change_set_entry, "about to deserialize");
                         let op: ops::OpSetName = serde_json::from_value(change_set_entry)?;
                         trace!(?op, "applying op");
                         op.apply(obj).await?;
@@ -273,19 +315,28 @@ impl ChangeSet {
                     "opEntityAction" => {
                         let op: ops::OpEntityAction = serde_json::from_value(change_set_entry)?;
                         trace!(?op, "applying op");
-                        op.apply(&db, &nats, hypothetical, obj, Some(event.id.clone()))
-                            .await?;
+                        op.apply(
+                            &txn,
+                            &nats,
+                            &veritech,
+                            hypothetical,
+                            obj,
+                            Some(event.id.clone()),
+                        )
+                        .await?;
                     }
                     unknown => warn!("cannot find an op for {}", unknown),
                 },
-                unknown => warn!("unknkown change set event {}", unknown),
+                unknown => {
+                    warn!("unknkown change set event {}", unknown)
+                }
             }
         }
 
         if last_type_name.is_some() && last_type_name.unwrap() == "entity" {
             let mc = seen_map.clone();
             let mut last_entity = seen_map.get_mut(&last_id.unwrap()).unwrap();
-            calculate_properties(db, &mut last_entity, Some(&mc)).await?;
+            calculate_properties(&txn, &mut last_entity, Some(&mc)).await?;
         }
 
         // Now that we have reached the end of the changeset, we need to
@@ -302,7 +353,7 @@ impl ChangeSet {
         let mut processed_list: Vec<String> = vec![];
         for parent_id in seen_map_keys {
             let successor_edges =
-                Edge::all_successor_edges_by_object_id(&db, EdgeKind::Configures, &parent_id)
+                Edge::all_successor_edges_by_object_id(&txn, &EdgeKind::Configures, &parent_id)
                     .await?;
             for edge in successor_edges.iter() {
                 if !processed_list.contains(&edge.head_vertex.object_id) {
@@ -311,10 +362,10 @@ impl ChangeSet {
                         let mut entity_json =
                             seen_map.get_mut(&edge.head_vertex.object_id).unwrap();
                         processed_list.push(edge.head_vertex.object_id.clone());
-                        calculate_properties(db, &mut entity_json, Some(&mc)).await?;
+                        calculate_properties(&txn, &mut entity_json, Some(&mc)).await?;
                     } else {
                         let entity = Entity::get_projection_or_head(
-                            &db,
+                            &txn,
                             &edge.head_vertex.object_id,
                             &self.id,
                         )
@@ -322,7 +373,7 @@ impl ChangeSet {
                         let entity_id = entity.id.clone();
                         let mut entity_json = serde_json::to_value(entity)?;
                         processed_list.push(edge.head_vertex.object_id.clone());
-                        calculate_properties(db, &mut entity_json, Some(&seen_map)).await?;
+                        calculate_properties(&txn, &mut entity_json, Some(&seen_map)).await?;
                         seen_map.insert(entity_id, entity_json);
                     }
                 }
@@ -332,18 +383,9 @@ impl ChangeSet {
         // Now save all the new representations. If it is a hypothetical execution,
         // then save all the models to thier changeSet views. If it is not hypothetical, then save
         // their changeSet views *and* their final form, updating the head bit.
-        for (id, obj) in seen_map.iter_mut() {
+        for (_id, obj) in seen_map.iter_mut() {
             if hypothetical {
-                let projection_id = format!("{}:{}", id, &self.id);
                 {
-                    let head = obj
-                        .pointer_mut("/head")
-                        .ok_or(ChangeSetError::MissingHead)?;
-                    *head = serde_json::Value::Bool(false);
-                    let base = obj
-                        .pointer_mut("/base")
-                        .ok_or(ChangeSetError::MissingHead)?;
-                    *base = serde_json::Value::Bool(false);
                     let change_set_id = obj
                         .pointer_mut("/siChangeSet/changeSetId")
                         .ok_or(ChangeSetError::IdMissing)?;
@@ -357,29 +399,47 @@ impl ChangeSet {
                         .ok_or(ChangeSetError::EventMissing)?;
                     *change_set_event = serde_json::json![SiChangeSetEvent::Projection];
                 }
-                upsert_model(db, nats, projection_id, obj).await?;
+                let type_name = obj["siStorable"]["typeName"]
+                    .as_str()
+                    .ok_or(ChangeSetError::TypeMissing)?;
+                match type_name {
+                    "entity" => {
+                        let mut entity: Entity = serde_json::from_value(obj.clone())?;
+                        entity.save_projection(&txn, &nats).await?;
+                    }
+                    "system" => {
+                        let mut system: System = serde_json::from_value(obj.clone())?;
+                        system.save_projection(&txn, &nats).await?;
+                    }
+                    f_type_name => {
+                        tracing::error!(?f_type_name, "got an invalid type name saving change set");
+                        return Err(ChangeSetError::UnknownObjectType);
+                    }
+                }
             } else {
-                let projection_id = format!("{}:{}", id, &self.id);
                 {
-                    let head = obj
-                        .pointer_mut("/head")
-                        .ok_or(ChangeSetError::MissingHead)?;
-                    *head = serde_json::Value::Bool(true);
-                    let base = obj
-                        .pointer_mut("/base")
-                        .ok_or(ChangeSetError::MissingHead)?;
-                    *base = serde_json::Value::Bool(false);
+                    let type_name = obj["siStorable"]["typeName"]
+                        .as_str()
+                        .ok_or(ChangeSetError::TypeMissing)?;
+                    match type_name {
+                        "entity" => {
+                            let mut entity: Entity = serde_json::from_value(obj.clone())?;
+                            entity.save_head(&txn, &nats).await?;
+                        }
+                        "system" => {
+                            let mut system: System = serde_json::from_value(obj.clone())?;
+                            system.save_head(&txn, &nats).await?;
+                        }
+                        f_type_name => {
+                            tracing::error!(
+                                ?f_type_name,
+                                "got an invalid type name saving change set"
+                            );
+                            return Err(ChangeSetError::UnknownObjectType);
+                        }
+                    }
                 }
-                upsert_model(db, nats, id, obj).await?;
                 {
-                    let head = obj
-                        .pointer_mut("/head")
-                        .ok_or(ChangeSetError::MissingHead)?;
-                    *head = serde_json::Value::Bool(false);
-                    let base = obj
-                        .pointer_mut("/base")
-                        .ok_or(ChangeSetError::MissingHead)?;
-                    *base = serde_json::Value::Bool(false);
                     let change_set_id = obj
                         .pointer_mut("/siChangeSet/changeSetId")
                         .ok_or(ChangeSetError::IdMissing)?;
@@ -393,7 +453,23 @@ impl ChangeSet {
                         .ok_or(ChangeSetError::EventMissing)?;
                     *change_set_event = serde_json::json![SiChangeSetEvent::Projection];
                 }
-                upsert_model(db, nats, projection_id, obj).await?;
+                let type_name = obj["siStorable"]["typeName"]
+                    .as_str()
+                    .ok_or(ChangeSetError::TypeMissing)?;
+                match type_name {
+                    "entity" => {
+                        let mut entity: Entity = serde_json::from_value(obj.clone())?;
+                        entity.save_projection(&txn, &nats).await?;
+                    }
+                    "system" => {
+                        let mut system: System = serde_json::from_value(obj.clone())?;
+                        system.save_projection(&txn, &nats).await?;
+                    }
+                    f_type_name => {
+                        tracing::error!(?f_type_name, "got an invalid type name saving change set");
+                        return Err(ChangeSetError::UnknownObjectType);
+                    }
+                }
             }
         }
 
@@ -401,10 +477,25 @@ impl ChangeSet {
 
         if !hypothetical {
             self.status = ChangeSetStatus::Closed;
-            upsert_model(&db, &nats, &self.id, &self).await?;
+            self.save(&txn, &nats).await?;
         }
 
         Ok(response)
+    }
+
+    pub async fn save(&mut self, txn: &PgTxn<'_>, nats: &NatsTxn) -> ChangeSetResult<()> {
+        let update_clock = next_update_clock(&self.si_storable.workspace_id).await?;
+        self.si_storable.update_clock = update_clock;
+
+        let json = serde_json::to_value(&self)?;
+        let row = txn
+            .query_one("SELECT object FROM change_set_save_v1($1)", &[&json])
+            .await?;
+        let updated_result: serde_json::Value = row.try_get("object")?;
+        nats.publish(&updated_result).await?;
+        let mut updated: ChangeSet = serde_json::from_value(updated_result)?;
+        std::mem::swap(self, &mut updated);
+        Ok(())
     }
 }
 
@@ -414,36 +505,96 @@ pub struct ChangeSetParticipant {
     pub id: String,
     pub change_set_id: String,
     pub object_id: String,
-    pub si_storable: SimpleStorable,
+    pub si_storable: SiStorable,
 }
 
 // in to this entity, and making sure they all have change set participant records as well.
 impl ChangeSetParticipant {
     pub async fn new(
-        db: &Db,
-        nats: &Connection,
-        change_set_id: impl Into<String>,
-        object_id: impl Into<String>,
-        billing_account_id: String,
-    ) -> ChangeSetResult<(ChangeSetParticipant, bool)> {
-        let change_set_id = change_set_id.into();
-        let object_id = object_id.into();
-        let id = format!("{}:{}", &change_set_id, &object_id);
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        change_set_id: impl AsRef<str>,
+        object_id: impl AsRef<str>,
+        workspace_id: impl AsRef<str>,
+    ) -> ChangeSetResult<ChangeSetParticipant> {
+        let change_set_id = change_set_id.as_ref();
+        let object_id = object_id.as_ref();
+        let workspace_id = workspace_id.as_ref();
 
-        let si_storable = SimpleStorable::new(&id, "changeSetParticipant", billing_account_id);
-        let change_set_participant = ChangeSetParticipant {
-            id,
-            change_set_id,
-            object_id,
-            si_storable,
-        };
-        let inserted = insert_model_if_missing(
-            db,
-            nats,
-            &change_set_participant.id,
-            &change_set_participant,
+        let update_clock = next_update_clock(workspace_id).await?;
+        let row = txn
+            .query_one(
+                "SELECT object FROM change_set_participant_create_v1($1, $2, $3, $4, $5)",
+                &[
+                    &change_set_id,
+                    &object_id,
+                    &workspace_id,
+                    &update_clock.epoch,
+                    &update_clock.update_count,
+                ],
+            )
+            .await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        nats.publish(&json).await?;
+        let object: ChangeSetParticipant = serde_json::from_value(json)?;
+        Ok(object)
+    }
+
+    pub async fn new_if_not_exists(
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        change_set_id: impl AsRef<str>,
+        object_id: impl AsRef<str>,
+        workspace_id: impl AsRef<str>,
+    ) -> ChangeSetResult<Option<ChangeSetParticipant>> {
+        if ChangeSetParticipant::exists(&txn, &change_set_id, &object_id).await? {
+            Ok(None)
+        } else {
+            Ok(Some(
+                ChangeSetParticipant::new(&txn, &nats, &change_set_id, &object_id, &workspace_id)
+                    .await?,
+            ))
+        }
+    }
+
+    pub async fn exists(
+        txn: &PgTxn<'_>,
+        change_set_id: impl AsRef<str>,
+        object_id: impl AsRef<str>,
+    ) -> ChangeSetResult<bool> {
+        let change_set_id = change_set_id.as_ref();
+        let object_id = object_id.as_ref();
+        let rows = txn
+            .query(CHANGE_SET_PARTICIPANT_EXISTS, &[&change_set_id, &object_id])
+            .await?;
+        if rows.len() > 0 {
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    pub async fn list(
+        txn: &PgTxn<'_>,
+        tenant_id: impl Into<String>,
+        query: Option<Query>,
+        page_size: Option<u32>,
+        order_by: Option<String>,
+        order_by_direction: Option<OrderByDirection>,
+        page_token: Option<PageToken>,
+    ) -> ChangeSetResult<ListReply> {
+        let tenant_id = tenant_id.into();
+        let reply = list_model(
+            txn,
+            "change_set_participants",
+            tenant_id,
+            query,
+            page_size,
+            order_by,
+            order_by_direction,
+            page_token,
         )
         .await?;
-        Ok((change_set_participant, inserted))
+        Ok(reply)
     }
 }

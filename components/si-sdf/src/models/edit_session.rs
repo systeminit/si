@@ -1,23 +1,26 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::data::{Connection, DataError, Db};
+use crate::data::{NatsTxn, NatsTxnError, PgTxn};
 use crate::models::{
-    insert_model, publish_model, ChangeSet, ChangeSetError, ModelError, SiStorable, SiStorableError,
+    next_update_clock, ChangeSet, ChangeSetError, ModelError, SiStorable, UpdateClockError,
 };
-
-use std::collections::HashMap;
+use crate::veritech::Veritech;
 
 #[derive(Error, Debug)]
 pub enum EditSessionError {
-    #[error("si_storable error: {0}")]
-    SiStorable(#[from] SiStorableError),
     #[error("error in core model functions: {0}")]
     Model(#[from] ModelError),
-    #[error("data error: {0}")]
-    Data(#[from] DataError),
     #[error("changeSet error: {0}")]
     ChangeSet(#[from] ChangeSetError),
+    #[error("error creating our object from json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("pg error: {0}")]
+    TokioPg(#[from] tokio_postgres::Error),
+    #[error("nats txn error: {0}")]
+    NatsTxn(#[from] NatsTxnError),
+    #[error("update clock: {0}")]
+    UpdateClock(#[from] UpdateClockError),
 }
 
 pub type EditSessionResult<T> = Result<T, EditSessionError>;
@@ -61,90 +64,72 @@ pub struct EditSession {
 
 impl EditSession {
     pub async fn new(
-        db: &Db,
-        nats: &Connection,
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
         name: Option<String>,
         change_set_id: String,
-        billing_account_id: String,
-        organization_id: String,
         workspace_id: String,
-        created_by_user_id: String,
     ) -> EditSessionResult<EditSession> {
         let name = crate::models::generate_name(name);
-        let si_storable = SiStorable::new(
-            db,
-            "editSession",
-            billing_account_id,
-            organization_id,
-            workspace_id,
-            Some(created_by_user_id),
-        )
-        .await?;
-        let id = si_storable.object_id.clone();
-        let edit_session = EditSession {
-            id,
-            name,
-            change_set_id,
-            note: "".to_string(),
-            reverted: false,
-            si_storable,
-        };
-        insert_model(db, nats, &edit_session.id, &edit_session).await?;
-        Ok(edit_session)
+        let update_clock = next_update_clock(&workspace_id).await?;
+        let row = txn
+            .query_one(
+                "SELECT object FROM edit_session_create_v1($1, $2, $3, $4, $5, $6)",
+                &[
+                    &name,
+                    &String::new(),
+                    &change_set_id,
+                    &workspace_id,
+                    &update_clock.epoch,
+                    &update_clock.update_count,
+                ],
+            )
+            .await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        nats.publish(&json).await?;
+        let object: EditSession = serde_json::from_value(json)?;
+        Ok(object)
+    }
+
+    pub async fn get(
+        txn: &PgTxn<'_>,
+        edit_session_id: impl AsRef<str>,
+    ) -> EditSessionResult<EditSession> {
+        let id = edit_session_id.as_ref();
+        let row = txn
+            .query_one("SELECT object FROM edit_session_get_v1($1)", &[&id])
+            .await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        let object = serde_json::from_value(json)?;
+        Ok(object)
     }
 
     pub async fn cancel(
         &self,
-        db: &Db,
-        nats: &Connection,
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        veritech: &Veritech,
         event_parent_id: Option<&str>,
     ) -> EditSessionResult<()> {
-        let query = format!(
-            "UPDATE `{bucket}`
-                SET siOp.skip = true
-                WHERE siChangeSet.changeSetId = $change_set_id 
-                  AND siChangeSet.editSessionId = $edit_session_id
-            RETURNING `{bucket}`.*",
-            bucket = db.bucket_name,
-        );
-        let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
-        named_params.insert(
-            "change_set_id".into(),
-            serde_json::json![&self.change_set_id],
-        );
-        named_params.insert("edit_session_id".into(), serde_json::json![&self.id]);
-        let query_results: Vec<serde_json::Value> = db.query(query, Some(named_params)).await?;
-        for item in query_results.iter() {
-            publish_model(nats, item).await?;
+        let rows = txn
+            .query("SELECT object FROM edit_session_revert_v1($1)", &[&self.id])
+            .await?;
+        for row in rows.into_iter() {
+            let json: serde_json::Value = match row.try_get("object") {
+                Ok(json) => json,
+                Err(e) => {
+                    dbg!("cannot get row for cancel check, probably fine");
+                    dbg!(&e);
+                    continue;
+                }
+            };
+            nats.publish(&json).await?;
         }
-        let query = format!(
-            "UPDATE `{bucket}`
-                SET siStorable.deleted = true
-                WHERE siChangeSet.changeSetId = $change_set_id 
-                  AND siChangeSet.editSessionId = $edit_session_id
-                  AND base = true
-            RETURNING `{bucket}`.*",
-            bucket = db.bucket_name,
-        );
-        let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
-        named_params.insert(
-            "change_set_id".into(),
-            serde_json::json![&self.change_set_id],
-        );
-        named_params.insert("edit_session_id".into(), serde_json::json![&self.id]);
-        let query_results: Vec<serde_json::Value> = db.query(query, Some(named_params)).await?;
-        for item in query_results.iter() {
-            publish_model(nats, item).await?;
-        }
-        let mut change_set = ChangeSet::get(
-            db,
-            &self.change_set_id,
-            &self.si_storable.billing_account_id,
-        )
-        .await?;
-        change_set.execute(db, nats, true, event_parent_id).await?;
+        let mut change_set = ChangeSet::get(&txn, &self.change_set_id).await?;
+        change_set
+            .execute(txn, nats, veritech, true, event_parent_id)
+            .await?;
 
-        tracing::info!(?query_results, "cancel edit session");
         Ok(())
     }
 }

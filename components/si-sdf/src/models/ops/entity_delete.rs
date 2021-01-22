@@ -1,7 +1,9 @@
-use crate::data::{Connection, Db};
+use crate::data::{NatsTxn, PgTxn};
+
 use crate::models::{
-    insert_model, OpError, OpResult, SiChangeSet, SiChangeSetEvent, SiOp, SiStorable,
+    next_update_clock, OpError, OpResult, SiChangeSet, SiChangeSetEvent, SiOp, SiStorable,
 };
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -22,51 +24,46 @@ pub struct OpEntityDelete {
 
 impl OpEntityDelete {
     pub async fn new(
-        db: &Db,
-        nats: &Connection,
-        to_id: impl Into<String>,
-        billing_account_id: String,
-        organization_id: String,
-        workspace_id: String,
-        change_set_id: String,
-        edit_session_id: String,
-        created_by_user_id: String,
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        to_id: impl AsRef<str>,
+        workspace_id: impl AsRef<str>,
+        change_set_id: impl AsRef<str>,
+        edit_session_id: impl AsRef<str>,
     ) -> OpResult<Self> {
-        let to_id = to_id.into();
-        let si_storable = SiStorable::new(
-            db,
-            "opEntityDelete",
-            billing_account_id.clone(),
-            organization_id,
-            workspace_id,
-            Some(created_by_user_id),
-        )
-        .await?;
+        let to_id = to_id.as_ref();
+        let workspace_id = workspace_id.as_ref();
+        let change_set_id = change_set_id.as_ref();
+        let edit_session_id = edit_session_id.as_ref();
 
-        let id = si_storable.object_id.clone();
+        let workspace_update_clock = next_update_clock(workspace_id).await?;
+        let change_set_update_clock = next_update_clock(change_set_id).await?;
 
-        let si_change_set = SiChangeSet::new(
-            db,
-            nats,
-            change_set_id,
-            edit_session_id,
-            &id,
-            billing_account_id,
-            SiChangeSetEvent::Operation,
-        )
-        .await?;
+        let override_system: Option<String> = None;
 
-        let si_op = SiOp::new(None);
-
-        let op = OpEntityDelete {
-            id,
-            to_id,
-            si_op,
-            si_storable,
-            si_change_set,
-        };
-        insert_model(db, nats, &op.id, &op).await?;
-        Ok(op)
+        let row = txn
+            .query_one(
+                "SELECT object FROM op_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
+                &[
+                    &"opEntityDelete",
+                    &to_id,
+                    &serde_json::json![{}],
+                    &override_system,
+                    &change_set_id,
+                    &edit_session_id,
+                    &SiChangeSetEvent::Operation.to_string(),
+                    &workspace_id,
+                    &workspace_update_clock.epoch,
+                    &workspace_update_clock.update_count,
+                    &change_set_update_clock.epoch,
+                    &change_set_update_clock.update_count,
+                ],
+            )
+            .await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        nats.publish(&json).await?;
+        let object: Self = serde_json::from_value(json)?;
+        Ok(object)
     }
 
     pub fn skip(&self) -> bool {

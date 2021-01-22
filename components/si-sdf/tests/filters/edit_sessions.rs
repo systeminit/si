@@ -1,60 +1,83 @@
-use crate::filters::change_sets::create_change_set;
-use crate::{test_cleanup, test_setup, TestAccount};
-use crate::{DB, NATS, SETTINGS};
+use warp::http::StatusCode;
+
 use si_sdf::filters::api;
-use si_sdf::models::edit_session::CreateRequest;
+use si_sdf::models::edit_session;
 
-pub async fn create_edit_session(
-    test_account: &TestAccount,
-    change_set_id: impl AsRef<str>,
-) -> String {
-    let change_set_id = change_set_id.as_ref();
-    let filter = api(&DB, &NATS, &SETTINGS.jwt_encrypt.key);
-
-    let res = warp::test::request()
-        .method("POST")
-        .header("authorization", &test_account.authorization)
-        .json(&CreateRequest {
-            name: None,
-            workspace_id: test_account.workspace_id.clone(),
-            organization_id: test_account.organization_id.clone(),
-        })
-        .path(format!("/changeSets/{}/editSessions", change_set_id).as_ref())
-        .reply(&filter)
-        .await;
-
-    let result_json: serde_json::Value =
-        serde_json::from_str(String::from_utf8_lossy(res.body()).as_ref())
-            .expect("cannot create an edit session, results do not deserialize");
-    if result_json["item"]["id"].is_string() {
-        return result_json["item"]["id"].as_str().unwrap().to_string();
-    } else {
-        panic!("editSession output is wrong!");
-    }
-}
+use crate::filters::users::login_user;
+use crate::models::billing_account::signup_new_billing_account;
+use crate::models::change_set::create_change_set;
+use crate::models::edit_session::create_edit_session;
+use crate::one_time_setup;
+use crate::TestContext;
 
 #[tokio::test]
 async fn create() {
-    let test_account = test_setup().await.expect("failed to setup test");
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, veritech, event_log_fs, secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot get connection");
+    let txn = conn.transaction().await.expect("cannot get transaction");
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit().await.expect("cannot commit txn");
 
-    let filter = api(&DB, &NATS, &SETTINGS.jwt_encrypt.key);
+    let txn = conn.transaction().await.expect("cannot get transaction");
+    let change_set = create_change_set(&txn, &nats, &nba).await;
+    txn.commit().await.expect("cannot commit txn");
 
-    let change_set_id = create_change_set(&test_account).await;
+    let token = login_user(&ctx, &nba).await;
+    let filter = api(pg, nats_conn, veritech, event_log_fs, secret_key);
 
     let res = warp::test::request()
         .method("POST")
-        .header("authorization", &test_account.authorization)
-        .json(&CreateRequest {
+        .header("authorization", &token)
+        .json(&edit_session::CreateRequest {
             name: None,
-            workspace_id: test_account.workspace_id.clone(),
-            organization_id: test_account.organization_id.clone(),
+            workspace_id: nba.workspace.id.clone(),
+            organization_id: nba.organization.id.clone(),
         })
-        .path(format!("/changeSets/{}/editSessions", change_set_id).as_ref())
+        .path(&format!("/changeSets/{}/editSessions", &change_set.id))
         .reply(&filter)
         .await;
-    assert_eq!(res.status(), 200, "edit session is created");
+    assert_eq!(res.status(), StatusCode::OK, "edit session is created");
+    let _reply: edit_session::CreateReply =
+        serde_json::from_slice(res.body()).expect("cannot deserialize reply");
+}
 
-    test_cleanup(test_account)
-        .await
-        .expect("failed to finish test");
+#[tokio::test]
+async fn patch() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, veritech, event_log_fs, secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot get connection");
+    let txn = conn.transaction().await.expect("cannot get transaction");
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit().await.expect("cannot commit txn");
+
+    let txn = conn.transaction().await.expect("cannot get transaction");
+    let change_set = create_change_set(&txn, &nats, &nba).await;
+    let edit_session = create_edit_session(&txn, &nats, &nba, &change_set).await;
+    txn.commit().await.expect("cannot commit txn");
+
+    let token = login_user(&ctx, &nba).await;
+    let filter = api(pg, nats_conn, veritech, event_log_fs, secret_key);
+
+    let res = warp::test::request()
+        .method("PATCH")
+        .header("authorization", &token)
+        .json(&edit_session::PatchRequest::Cancel(true))
+        .path(&format!(
+            "/changeSets/{}/editSessions/{}",
+            &change_set.id, &edit_session.id
+        ))
+        .reply(&filter)
+        .await;
+    assert_eq!(
+        res.status(),
+        StatusCode::OK,
+        "edit session patch is executed"
+    );
+    let _reply: edit_session::PatchReply =
+        serde_json::from_slice(res.body()).expect("cannot deserialize reply");
 }

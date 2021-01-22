@@ -1,15 +1,14 @@
 use futures::{FutureExt, StreamExt};
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 use tokio::sync::mpsc::{self, UnboundedSender};
 use tracing::{error, trace, warn};
 use warp::ws::{Message, WebSocket};
 
-use crate::data::{Connection, Db};
+use crate::data::{NatsConn, PgPool};
 use crate::handlers::users::SiClaims;
-use crate::models::{
-    key_pair::KeyPair, load_billing_account_model, load_data_model, secret::EncryptedSecret,
-    PublicKey, Secret, UpdateClock,
-};
+use crate::handlers::validate_tenancy;
+use crate::models::{key_pair::KeyPair, secret::EncryptedSecret, PublicKey, Secret, UpdateClock};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -50,7 +49,7 @@ enum MessageStream {
     Finish,
 }
 
-pub async fn websocket_run(websocket: WebSocket, db: Db, nats: Connection, claim: SiClaims) {
+pub async fn websocket_run(websocket: WebSocket, pg: PgPool, nats_conn: NatsConn, claim: SiClaims) {
     // Split the socket into a sender and receiver of messages.
     let (ws_tx, mut ws_rx) = websocket.split();
 
@@ -80,7 +79,7 @@ pub async fn websocket_run(websocket: WebSocket, db: Db, nats: Connection, claim
 
     let outbound_ws_tx_from_nats = outbound_ws_tx.clone();
     // Send matching data to the web socket
-    match nats
+    match nats_conn
         .subscribe(&format!("{}.>", &claim.billing_account_id))
         .await
     {
@@ -110,7 +109,7 @@ pub async fn websocket_run(websocket: WebSocket, db: Db, nats: Connection, claim
         match message_result {
             Ok(message) => {
                 if MessageStream::Finish
-                    == process_message(&db, &claim, &outbound_ws_tx, message.clone()).await
+                    == process_message(&pg, &claim, &outbound_ws_tx, message.clone()).await
                 {
                     break;
                 }
@@ -126,7 +125,7 @@ pub async fn websocket_run(websocket: WebSocket, db: Db, nats: Connection, claim
 }
 
 async fn process_message(
-    db: &Db,
+    pg: &PgPool,
     claim: &SiClaims,
     outbound_ws_tx: &UnboundedSender<Result<Message, warp::Error>>,
     message: Message,
@@ -145,26 +144,20 @@ async fn process_message(
                 }
                 ControlOp::LoadData(load_data) => {
                     trace!("recv control op load data; load_data={:?}", &load_data);
-                    let mut results =
-                        match load_data_model(db, load_data.workspace_id, load_data.update_clock)
-                            .await
-                        {
-                            Ok(results) => results,
-                            Err(err) => {
-                                tracing::error!(?err, "cannot load data");
-                                return MessageStream::Continue;
-                            }
-                        };
-                    let mut b_results =
-                        match load_billing_account_model(db, &claim.billing_account_id).await {
-                            Ok(b_results) => b_results,
-                            Err(err) => {
-                                tracing::error!(?err, "cannot load data");
-                                return MessageStream::Continue;
-                            }
-                        };
-                    results.append(&mut b_results);
-
+                    let results: Vec<serde_json::Value> = match load_data_model(
+                        pg,
+                        &load_data.workspace_id,
+                        &claim.billing_account_id,
+                        &load_data.update_clock,
+                    )
+                    .await
+                    {
+                        Ok(results) => results,
+                        Err(err) => {
+                            tracing::error!(?err, "cannot load data");
+                            return MessageStream::Continue;
+                        }
+                    };
                     for model in results.into_iter() {
                         let model =
                             if let Some(type_name) = model["siStorable"]["typeName"].as_str() {
@@ -242,4 +235,53 @@ async fn process_message(
     }
 
     MessageStream::Continue
+}
+
+#[derive(Error, Debug)]
+pub enum UpdateError {
+    #[error("pg error: {0}")]
+    TokioPg(#[from] tokio_postgres::Error),
+    #[error("serde error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("pg error: {0}")]
+    Deadpool(#[from] deadpool_postgres::PoolError),
+    #[error("unauthorized")]
+    Unauthorized,
+}
+
+pub type UpdateResult<T> = Result<T, UpdateError>;
+
+const WORKSPACE_LOAD_DATA: &str = include_str!("../data/queries/workspace_load_data.sql");
+
+pub async fn load_data_model(
+    pg: &PgPool,
+    workspace_id: impl AsRef<str>,
+    billing_account_id: impl AsRef<str>,
+    update_clock: &UpdateClock,
+) -> UpdateResult<Vec<serde_json::Value>> {
+    let workspace_id = workspace_id.as_ref();
+    let billing_account_id = billing_account_id.as_ref();
+    let mut conn = pg.pool.get().await?;
+    let txn = conn.transaction().await?;
+
+    validate_tenancy(&txn, "workspaces", &workspace_id, &billing_account_id)
+        .await
+        .map_err(|_| UpdateError::Unauthorized)?;
+
+    let mut results = vec![];
+    let rows = txn
+        .query(
+            WORKSPACE_LOAD_DATA,
+            &[
+                &workspace_id,
+                &update_clock.epoch,
+                &update_clock.update_count,
+            ],
+        )
+        .await?;
+    for row in rows.into_iter() {
+        let json: serde_json::Value = row.try_get("object")?;
+        results.push(json);
+    }
+    return Ok(results);
 }

@@ -1,7 +1,6 @@
 use anyhow::Result;
-use futures::StreamExt;
 use lazy_static::lazy_static;
-use nats::asynk::Connection;
+use sodiumoxide::crypto::secretbox;
 use tracing;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::{self, fmt, EnvFilter, Registry};
@@ -9,15 +8,16 @@ use tracing_subscriber::{self, fmt, EnvFilter, Registry};
 use std::env;
 use std::sync::Arc;
 
-use si_sdf::data::{Db, PgPool};
+use si_sdf::data::{EventLogFS, NatsConn, PgPool};
 use si_sdf::models::{BillingAccount, User};
+use si_sdf::veritech::Veritech;
 use si_settings::Settings;
 
 mod data;
 mod filters;
 mod handlers;
 mod models;
-mod use_case;
+//mod use_case;
 
 lazy_static! {
     pub static ref SETTINGS: Settings = {
@@ -31,19 +31,70 @@ lazy_static! {
 
         env::set_var("RUN_ENV", "testing");
 
-        Settings::new().expect("settings should load")
-    };
-    pub static ref DB: Db = {
-        let db = Db::new(&SETTINGS).expect("cannot connect to database");
-        db
-    };
-    pub static ref NATS: Connection = {
-        let nats = futures::executor::block_on(nats::asynk::connect("localhost"))
-            .expect("failed to connect to nats");
-        nats
+        let settings = Settings::new().expect("settings should load");
+        unsafe {
+            si_sdf::PAGE_SECRET_KEY = Some(settings.paging.key.clone());
+        }
+        settings
     };
     pub static ref INIT_LOCK: Arc<tokio::sync::Mutex<bool>> =
         Arc::new(tokio::sync::Mutex::new(false));
+    pub static ref INIT_PG_LOCK: Arc<tokio::sync::Mutex<bool>> =
+        Arc::new(tokio::sync::Mutex::new(false));
+}
+
+pub struct TestContext {
+    // we need to keep this in scope to keep the tempdir from auto-cleaning itself
+    #[allow(dead_code)]
+    tmp_event_log_fs_root: tempfile::TempDir,
+    pg: PgPool,
+    nats_conn: NatsConn,
+    veritech: Veritech,
+    event_log_fs: EventLogFS,
+    secret_key: secretbox::Key,
+}
+
+impl TestContext {
+    pub async fn init() -> Self {
+        Self::init_with_settings(&SETTINGS).await
+    }
+
+    pub async fn init_with_settings(settings: &Settings) -> Self {
+        let tmp_event_log_fs_root = tempfile::tempdir().expect("could not create temp dir");
+        let pg = PgPool::new(&settings.pg)
+            .await
+            .expect("failed to connect to postgres");
+        let nats_conn = NatsConn::new(&settings.nats)
+            .await
+            .expect("failed to connect to NATS");
+        let elf_settings = si_settings::EventLogFs {
+            root: tmp_event_log_fs_root.as_ref().into(),
+        };
+        let event_log_fs = EventLogFS::init(&elf_settings)
+            .await
+            .expect("failed to initialize EventLogFS");
+        let veritech = Veritech::new(&settings.veritech, event_log_fs.clone());
+        let secret_key = settings.jwt_encrypt.key.clone();
+
+        Self {
+            tmp_event_log_fs_root,
+            pg,
+            nats_conn,
+            veritech,
+            event_log_fs,
+            secret_key,
+        }
+    }
+
+    pub fn entries(&self) -> (&PgPool, &NatsConn, &Veritech, &EventLogFS, &secretbox::Key) {
+        (
+            &self.pg,
+            &self.nats_conn,
+            &self.veritech,
+            &self.event_log_fs,
+            &self.secret_key,
+        )
+    }
 }
 
 pub struct TestAccount {
@@ -59,11 +110,14 @@ pub struct TestAccount {
 }
 
 pub async fn one_time_setup() -> Result<()> {
-    let mut finished = INIT_LOCK.lock().await;
+    let mut finished = INIT_PG_LOCK.lock().await;
     if *finished {
         return Ok(());
     }
-    let pg = PgPool::new(&SETTINGS)
+
+    sodiumoxide::init().expect("crypto failed to init");
+
+    let pg = PgPool::new(&SETTINGS.pg)
         .await
         .expect("failed to connect to postgres");
     pg.drop_and_create_public_schema()
@@ -71,93 +125,20 @@ pub async fn one_time_setup() -> Result<()> {
         .expect("failed to drop the database");
     pg.migrate().await.expect("migration failed!");
 
-    match si_sdf::data::create_indexes(&DB).await {
-        Ok(_) => (),
-        Err(err) => println!("failed to create indexes: {}", err),
-    }
-    match si_sdf::data::delete_data(&DB).await {
-        Ok(_) => (),
-        Err(err) => println!("failed to delete data: {}", err),
-    }
-    *finished = true;
-    return Ok(());
-}
+    si_sdf::models::update_clock::init_update_clock_service(&SETTINGS);
 
-pub async fn test_setup() -> Result<TestAccount> {
-    one_time_setup().await?;
-    si_sdf::models::jwt_key::create_if_missing(
-        &DB,
-        &NATS,
+    let mut conn = pg.pool.try_get().await?;
+    let txn = conn.transaction().await?;
+
+    si_sdf::models::create_jwt_key_if_missing(
+        &txn,
         "config/public.pem",
         "config/private.pem",
         &SETTINGS.jwt_encrypt.key,
     )
     .await?;
-    let reply = crate::filters::billing_accounts::signup().await;
-    let jwt =
-        crate::filters::users::login_user(&reply.billing_account.name, &reply.user.email).await;
-    let pg = PgPool::new(&SETTINGS)
-        .await
-        .expect("failed to connect to postgres");
-    let mut test_account = TestAccount {
-        user_id: reply.user.id.clone(),
-        billing_account_id: reply.billing_account.id.clone(),
-        workspace_id: reply.workspace.id,
-        organization_id: reply.organization.id,
-        billing_account: reply.billing_account,
-        user: reply.user,
-        authorization: format!("Bearer {}", jwt),
-        system_ids: None,
-        pg,
-    };
+    txn.commit().await?;
 
-    let system_ids = crate::filters::nodes::create_system(&test_account).await;
-    test_account.system_ids = Some(system_ids);
-
-    Ok(test_account)
-}
-
-pub async fn test_cleanup(test_account: TestAccount) -> Result<()> {
-    let query = format!(
-        "DELETE FROM si_integration AS s
-        WHERE ANY t IN s.siStorable.tenantIds 
-          SATISFIES t = \"{}\" END 
-        RETURNING s",
-        test_account.billing_account_id
-    );
-    let mut result = DB
-        .cluster
-        .query(query, None)
-        .await
-        .expect("could not delete the data for this billing account");
-    let mut result_stream = result.rows_as::<serde_json::Value>()?;
-    while let Some(r) = result_stream.next().await {
-        match r {
-            Ok(_) => (),
-            Err(e) => return Err(anyhow::Error::from(e)),
-        }
-    }
-
-    Ok(())
-}
-
-pub async fn billing_account_cleanup() -> Result<()> {
-    let query = "DELETE FROM si_integration AS s
-        WHERE s.siStorable.typeName  = \"billingAccount\"
-          AND s.name = \"alice\"
-        RETURNING s";
-    let mut result = DB
-        .cluster
-        .query(query, None)
-        .await
-        .expect("could not delete the data for this billing account");
-    let mut result_stream = result.rows_as::<serde_json::Value>()?;
-    while let Some(r) = result_stream.next().await {
-        match r {
-            Ok(_) => (),
-            Err(e) => return Err(anyhow::Error::from(e)),
-        }
-    }
-
+    *finished = true;
     Ok(())
 }

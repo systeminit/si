@@ -1,58 +1,73 @@
 use si_sdf::handlers;
 
-use crate::test_setup;
-use crate::DB;
+use crate::filters::users::login_user;
+use crate::models::billing_account::signup_new_billing_account;
+use crate::one_time_setup;
+use crate::TestContext;
 
 #[tokio::test]
 async fn authorize() {
-    let test_account_one = test_setup().await.expect("failed to setup test1");
-    let test_account_two = test_setup().await.expect("failed to setup test2");
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let txn = conn.transaction().await.expect("cannot create txn");
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit()
+        .await
+        .expect("failed to commit the new billing account");
+    let txn = conn.transaction().await.expect("cannot create txn");
 
-    handlers::authorize(
-        &DB,
-        &test_account_one.user_id,
-        &test_account_one.billing_account_id,
-        "changeSet",
-        "create",
+    handlers::authorize(&txn, &nba.user.id, "changeSet", "create")
+        .await
+        .expect("authorization to succeed");
+}
+
+#[tokio::test]
+async fn authenticate() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let txn = conn.transaction().await.expect("cannot create txn");
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit()
+        .await
+        .expect("failed to commit the new billing account");
+
+    let txn = conn.transaction().await.expect("cannot create txn");
+    let token = login_user(&ctx, &nba).await;
+
+    let claim = handlers::authenticate(&txn, token)
+        .await
+        .expect("authentication to succeed");
+    assert_eq!(claim.user_id, nba.user.id);
+    assert_eq!(claim.billing_account_id, nba.billing_account.id);
+}
+
+#[tokio::test]
+async fn validate_tenancy() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let txn = conn.transaction().await.expect("cannot create txn");
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit()
+        .await
+        .expect("failed to commit the new billing account");
+
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    handlers::validate_tenancy(
+        &txn,
+        "workspaces",
+        &nba.workspace.id,
+        &nba.billing_account.id,
     )
     .await
-    .expect("authorization to succeed");
-
-    handlers::authorize(
-        &DB,
-        &test_account_two.user_id,
-        &test_account_two.billing_account_id,
-        "changeSet",
-        "create",
-    )
-    .await
-    .expect("authorization to succeed");
-
-    let error = handlers::authorize(
-        &DB,
-        &test_account_one.user_id,
-        &test_account_two.billing_account_id,
-        "changeSet",
-        "create",
-    )
-    .await;
-    match error {
-        Ok(_) => panic!("succeeded in authorization when it should fail"),
-        Err(handlers::HandlerError::Unauthorized) => {}
-        Err(err) => panic!("cannot check auth, unknown error: {}", err),
-    }
-
-    let error = handlers::authorize(
-        &DB,
-        &test_account_two.user_id,
-        &test_account_one.billing_account_id,
-        "changeSet",
-        "create",
-    )
-    .await;
-    match error {
-        Ok(_) => panic!("succeeded in authorization when it should fail"),
-        Err(handlers::HandlerError::Unauthorized) => {}
-        Err(err) => panic!("cannot check auth, unknown error: {}", err),
-    }
+    .expect("validation to succeed");
 }

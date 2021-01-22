@@ -1,87 +1,84 @@
-use crate::data::{Connection, Db};
-use crate::handlers::{authenticate, authorize, HandlerError};
-use crate::models;
-use crate::models::change_set::ChangeSet;
+use crate::data::{NatsConn, PgPool};
+use crate::handlers::{authenticate, authorize, validate_tenancy, HandlerError};
 use crate::models::node::{
-    Node, ObjectPatchReply, ObjectPatchRequest, PatchConfiguredByReply, PatchIncludeSystemReply,
-    PatchOp, PatchReply, PatchRequest, PatchSetPositionReply, SyncResourceReply,
+    CreateReply, CreateRequest, Node, NodeKind, ObjectPatchReply, ObjectPatchRequest,
+    PatchConfiguredByReply, PatchIncludeSystemReply, PatchOp, PatchReply, PatchRequest,
+    PatchSetPositionReply, SyncResourceReply,
 };
 use crate::models::ops::{
     OpEntityAction, OpEntityDelete, OpEntitySet, OpReply, OpRequest, OpSetName,
 };
-use tracing::trace;
-
+use crate::models::{ChangeSet, GetReply, GetRequest};
+use crate::veritech::Veritech;
 
 pub async fn create(
-    db: Db,
-    nats: Connection,
+    pg: PgPool,
+    nats_conn: NatsConn,
+    veritech: Veritech,
     token: String,
-    request: models::node::CreateRequest,
+    request: CreateRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let claim = authenticate(&db, &token).await?;
-    authorize(
-        &db,
-        &claim.user_id,
-        &claim.billing_account_id,
-        "node",
-        "create",
-    )
-    .await?;
+    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let txn = conn.transaction().await.map_err(HandlerError::from)?;
+    let nats = nats_conn.transaction();
 
-    let node = models::node::Node::new(
-        db,
-        nats,
+    let claim = authenticate(&txn, &token).await?;
+    authorize(&txn, &claim.user_id, "node", "create").await?;
+
+    let node = Node::new(
+        &pg,
+        &txn,
+        &nats,
+        &veritech,
         request.name,
         request.kind,
         request.object_type,
-        claim.billing_account_id,
-        request.organization_id,
         request.workspace_id,
         request.change_set_id,
         request.edit_session_id,
-        Some(claim.user_id),
         request.system_ids,
     )
     .await
     .map_err(HandlerError::from)?;
 
-    let reply = models::node::CreateReply { item: node };
+    txn.commit().await.map_err(HandlerError::from)?;
+    nats.commit().await.map_err(HandlerError::from)?;
+
+    let reply = CreateReply { item: node };
     Ok(warp::reply::json(&reply))
 }
 
-
 pub async fn patch(
     node_id: String,
-    db: Db,
-    nats: Connection,
+    pg: PgPool,
+    nats_conn: NatsConn,
+    veritech: Veritech,
     token: String,
     request: PatchRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let claim = authenticate(&db, &token).await?;
-    authorize(
-        &db,
-        &claim.user_id,
-        &claim.billing_account_id,
-        "node",
-        "patch",
-    )
-    .await?;
+    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let txn = conn.transaction().await.map_err(HandlerError::from)?;
+    let nats = nats_conn.transaction();
 
-    let mut node: Node = Node::get(&db, &node_id, &claim.billing_account_id)
+    let claim = authenticate(&txn, &token).await?;
+    validate_tenancy(&txn, "nodes", &node_id, &claim.billing_account_id).await?;
+    authorize(&txn, &claim.user_id, "node", "patch").await?;
+
+    let mut node: Node = Node::get(&txn, &node_id)
         .await
         .map_err(HandlerError::from)?;
 
     let reply = match request.op {
         PatchOp::IncludeSystem(system_req) => {
             let edge = node
-                .include_in_system(&db, &nats, &system_req.system_id)
+                .include_in_system(&txn, &nats, &system_req.system_id)
                 .await
                 .map_err(HandlerError::from)?;
             PatchReply::IncludeSystem(PatchIncludeSystemReply { edge })
         }
         PatchOp::ConfiguredBy(configured_by_req) => {
             let edge = node
-                .configured_by(&db, &nats, configured_by_req.node_id)
+                .configured_by(&txn, &nats, configured_by_req.node_id)
                 .await
                 .map_err(HandlerError::from)?;
             PatchReply::ConfiguredBy(PatchConfiguredByReply { edge })
@@ -91,193 +88,234 @@ pub async fn patch(
                 set_position_req.context.clone(),
                 set_position_req.position.clone(),
             );
-            models::upsert_model(&db, &nats, &node.id, &node)
-                .await
-                .map_err(HandlerError::from)?;
+            node.save(&txn, &nats).await.map_err(HandlerError::from)?;
             PatchReply::SetPosition(PatchSetPositionReply {
                 context: set_position_req.context,
                 position: set_position_req.position,
             })
         }
         PatchOp::SyncResource(sync_resource_req) => {
-            let resource = node
-                .sync_resource(
-                    &db,
-                    &nats,
-                    sync_resource_req.system_id,
-                    sync_resource_req.change_set_id,
-                )
-                .await
-                .map_err(HandlerError::from)?;
-            PatchReply::SyncResource(SyncResourceReply { resource })
+            node.sync_resource(
+                &pg,
+                &txn,
+                &nats,
+                &veritech,
+                sync_resource_req.system_id,
+                sync_resource_req.change_set_id,
+            )
+            .await
+            .map_err(HandlerError::from)?;
+            PatchReply::SyncResource(SyncResourceReply {})
         }
     };
+
+    txn.commit().await.map_err(HandlerError::from)?;
+    nats.commit().await.map_err(HandlerError::from)?;
 
     Ok(warp::reply::json(&reply))
 }
 
-
 pub async fn object_patch(
     node_id: String,
-    db: Db,
-    nats: Connection,
+    pg: PgPool,
+    nats_conn: NatsConn,
+    veritech: Veritech,
     token: String,
     request: ObjectPatchRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let claim = authenticate(&db, &token).await?;
-    authorize(
-        &db,
-        &claim.user_id,
+    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let txn = conn.transaction().await.map_err(HandlerError::from)?;
+    let nats = nats_conn.transaction();
+
+    let claim = authenticate(&txn, &token).await?;
+    validate_tenancy(&txn, "nodes", &node_id, &claim.billing_account_id).await?;
+    validate_tenancy(
+        &txn,
+        "change_sets",
+        &request.change_set_id,
         &claim.billing_account_id,
-        "node",
-        "patch",
     )
     .await?;
+    validate_tenancy(
+        &txn,
+        "edit_sessions",
+        &request.edit_session_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+    validate_tenancy(
+        &txn,
+        "workspaces",
+        &request.workspace_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+    validate_tenancy(
+        &txn,
+        "organizations",
+        &request.organization_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+    authorize(&txn, &claim.user_id, "object", "patch").await?;
 
-    let node = Node::get(&db, &node_id, &claim.billing_account_id)
+    let node = Node::get(&txn, &node_id)
         .await
         .map_err(HandlerError::from)?;
-    let entity_id = node.get_object_id(&db).await.map_err(HandlerError::from)?;
+    let entity_id = node.get_object_id();
 
-    let mut change_set: ChangeSet =
-        ChangeSet::get(&db, &request.change_set_id, &claim.billing_account_id)
-            .await
-            .map_err(HandlerError::from)?;
+    let mut change_set: ChangeSet = ChangeSet::get(&txn, &request.change_set_id)
+        .await
+        .map_err(HandlerError::from)?;
 
     match request.op {
         OpRequest::EntitySet(op_request) => {
             OpEntitySet::new(
-                &db,
+                &txn,
                 &nats,
                 &entity_id,
                 op_request.path,
                 op_request.value,
                 op_request.override_system,
-                claim.billing_account_id,
-                request.organization_id,
                 request.workspace_id,
                 request.change_set_id,
                 request.edit_session_id,
-                claim.user_id,
             )
             .await
             .map_err(HandlerError::from)?;
         }
         OpRequest::NameSet(op_request) => {
             OpSetName::new(
-                &db,
+                &txn,
                 &nats,
                 &entity_id,
                 op_request.value,
-                claim.billing_account_id,
-                request.organization_id,
                 request.workspace_id,
                 request.change_set_id,
                 request.edit_session_id,
-                claim.user_id,
             )
             .await
             .map_err(HandlerError::from)?;
         }
         OpRequest::EntityAction(op_request) => {
             OpEntityAction::new(
-                db.clone(),
-                nats.clone(),
+                &txn,
+                &nats,
                 entity_id,
                 op_request.action,
                 op_request.system_id,
-                claim.billing_account_id,
-                request.organization_id,
                 request.workspace_id,
                 request.change_set_id,
                 request.edit_session_id,
-                claim.user_id,
             )
             .await
             .map_err(HandlerError::from)?;
         }
         OpRequest::EntityDelete(_op_request) => {
             OpEntityDelete::new(
-                &db,
+                &txn,
                 &nats,
                 &entity_id,
-                claim.billing_account_id.clone(),
-                request.organization_id.clone(),
                 request.workspace_id.clone(),
                 request.change_set_id.clone(),
                 request.edit_session_id.clone(),
-                claim.user_id.clone(),
             )
             .await
             .map_err(HandlerError::from)?;
-            //if op_request.cascade {
-            //    let successors =
-            //        Edge::all_successor_edges_by_object_id(&db, EdgeKind::Configures, &entity_id)
-            //            .await
-            //            .map_err(HandlerError::from)?;
-            //    // TODO: When we support changing completely the trees, or support more than one
-            //    // configures, we will have to deal with this less heavy handidly (in particular, we're
-            //    // going to have to look at each successor to make sure it doesn't have more than one
-            //    // predecessor). But for now, we can just delete them all too.
-            //    for successor in successors.iter() {
-            //        OpEntityDelete::new(
-            //            &db,
-            //            &nats,
-            //            &successor.head_vertex.object_id,
-            //            claim.billing_account_id.clone(),
-            //            request.organization_id.clone(),
-            //            request.workspace_id.clone(),
-            //            request.change_set_id.clone(),
-            //            request.edit_session_id.clone(),
-            //            claim.user_id.clone(),
-            //        )
-            //        .await
-            //        .map_err(HandlerError::from)?;
-            //    }
-            //}
         }
     }
 
-    // TODO(fnichol): I don't think this will be here for long...
     let item_ids = change_set
-        .execute(&db, &nats, true, None)
+        .execute(&txn, &nats, &veritech, true, None)
         .await
         .map_err(HandlerError::from)?;
+
+    txn.commit().await.map_err(HandlerError::from)?;
+    nats.commit().await.map_err(HandlerError::from)?;
+
     let reply = ObjectPatchReply::Op(OpReply { item_ids });
     Ok(warp::reply::json(&reply))
 }
 
-
 pub async fn get_object(
     node_id: String,
-    db: Db,
+    pg: PgPool,
     token: String,
-    request: models::GetRequest,
+    request: GetRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let claim = authenticate(&db, &token).await?;
-    authorize(
-        &db,
-        &claim.user_id,
-        &claim.billing_account_id,
-        "node",
-        "objectGet",
-    )
-    .await?;
+    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let txn = conn.transaction().await.map_err(HandlerError::from)?;
 
-    let node = models::node::Node::get(&db, node_id, claim.billing_account_id)
+    let claim = authenticate(&txn, &token).await?;
+    validate_tenancy(&txn, "nodes", &node_id, &claim.billing_account_id).await?;
+    authorize(&txn, &claim.user_id, "object", "get").await?;
+
+    let node = Node::get(&txn, node_id).await.map_err(HandlerError::from)?;
+    let object: serde_json::Value = if let Some(change_set_id) = request.change_set_id {
+        validate_tenancy(
+            &txn,
+            "change_sets",
+            &change_set_id,
+            &claim.billing_account_id,
+        )
+        .await?;
+        match node.kind {
+            NodeKind::System => {
+                let obj = node
+                    .get_projection_object_system(&txn, &change_set_id)
+                    .await
+                    .map_err(HandlerError::from)?;
+                serde_json::to_value(obj).map_err(HandlerError::from)?
+            }
+            NodeKind::Entity => {
+                let obj = node
+                    .get_projection_object_entity(&txn, &change_set_id)
+                    .await
+                    .map_err(HandlerError::from)?;
+                serde_json::to_value(obj).map_err(HandlerError::from)?
+            }
+        }
+    } else {
+        match node.kind {
+            NodeKind::System => {
+                let obj = node
+                    .get_head_object_system(&txn)
+                    .await
+                    .map_err(|_| HandlerError::NotFound)?;
+                serde_json::to_value(obj).map_err(HandlerError::from)?
+            }
+            NodeKind::Entity => {
+                let obj = node
+                    .get_head_object_entity(&txn)
+                    .await
+                    .map_err(|_| HandlerError::NotFound)?;
+                serde_json::to_value(obj).map_err(HandlerError::from)?
+            }
+        }
+    };
+
+    let reply = GetReply { item: object };
+    Ok(warp::reply::json(&reply))
+}
+
+pub async fn get(
+    node_id: String,
+    pg: PgPool,
+    token: String,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let txn = conn.transaction().await.map_err(HandlerError::from)?;
+
+    let claim = authenticate(&txn, &token).await?;
+    validate_tenancy(&txn, "nodes", &node_id, &claim.billing_account_id).await?;
+    authorize(&txn, &claim.user_id, &"nodes", "get").await?;
+
+    let object = Node::get(&txn, &node_id)
         .await
         .map_err(HandlerError::from)?;
-    let object: serde_json::Value = if let Some(change_set_id) = request.change_set_id {
-        node.get_object_projection(&db, change_set_id)
-            .await
-            .map_err(|_e| warp::reject::not_found())?
-    } else {
-        node.get_head_object(&db)
-            .await
-            .map_err(|_e| warp::reject::not_found())?
-    };
-    trace!(?object, "got the obj");
 
-    let reply = models::GetReply { item: object };
+    let item = serde_json::to_value(object).map_err(HandlerError::from)?;
+
+    let reply = GetReply { item };
     Ok(warp::reply::json(&reply))
 }

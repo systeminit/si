@@ -1,10 +1,8 @@
-use std::future::Future;
-use std::pin::Pin;
+use crate::data::{NatsTxn, PgTxn};
 
-use crate::data::{Connection, Db, REQWEST};
 use crate::models::{
-    get_base_object, insert_model, Edge, EdgeKind, Entity, Event, Node, OpError, OpResult,
-    Resource, ResourceHealth, ResourceStatus, SiChangeSet, SiChangeSetEvent, SiOp, SiStorable,
+    next_update_clock, Edge, EdgeKind, Entity, Event, Node, OpError, OpResult, Resource,
+    ResourceHealth, ResourceStatus, SiChangeSet, SiChangeSetEvent, SiOp, SiStorable, UpdateClock,
 };
 use crate::veritech::{Veritech, VeritechError};
 use serde::{Deserialize, Serialize};
@@ -29,62 +27,53 @@ pub struct OpEntityAction {
 }
 
 impl OpEntityAction {
-    pub fn new(
-        db: Db,
-        nats: Connection,
-        to_id: String,
-        action: String,
-        system_id: String,
-        billing_account_id: String,
-        organization_id: String,
-        workspace_id: String,
-        change_set_id: String,
-        edit_session_id: String,
-        created_by_user_id: String,
-    ) -> Pin<Box<dyn Future<Output = OpResult<Self>> + Send>> {
-        Box::pin(async move {
-            let si_storable = SiStorable::new(
-                &db,
-                "opEntityAction",
-                billing_account_id.clone(),
-                organization_id,
-                workspace_id,
-                Some(created_by_user_id),
-            )
-            .await?;
+    pub async fn new(
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        to_id: impl Into<String>,
+        action: impl Into<String>,
+        system_id: impl Into<String>,
+        workspace_id: impl Into<String>,
+        change_set_id: impl Into<String>,
+        edit_session_id: impl Into<String>,
+    ) -> OpResult<Self> {
+        let workspace_id = workspace_id.into();
+        let change_set_id = change_set_id.into();
+        let edit_session_id = edit_session_id.into();
+        let to_id = to_id.into();
+        let action = action.into();
+        let system_id = system_id.into();
 
-            let id = si_storable.object_id.clone();
+        let workspace_update_clock = next_update_clock(&workspace_id).await?;
+        let change_set_update_clock = next_update_clock(&change_set_id).await?;
+        let override_system: Option<String> = None;
 
-            let si_change_set = SiChangeSet::new(
-                &db,
-                &nats,
-                change_set_id,
-                edit_session_id,
-                &id,
-                billing_account_id,
-                SiChangeSetEvent::Operation,
-            )
-            .await?;
-
-            let si_op = SiOp::new(None);
-
-            let op = OpEntityAction {
-                id,
-                to_id,
-                action,
-                system_id,
-                si_op,
-                si_storable,
-                si_change_set,
-            };
-            insert_model(&db, &nats, &op.id, &op).await?;
-            Ok(op)
-        })
+        let row = txn
+                .query_one(
+                    "SELECT object FROM op_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
+                    &[
+                    &"opEntityAction",
+                    &to_id,
+                    &serde_json::json![{"action": action, "systemId": system_id }],
+                    &override_system,
+                    &change_set_id,
+                    &edit_session_id,
+                    &SiChangeSetEvent::Operation.to_string(),
+                    &workspace_id,
+                    &workspace_update_clock.epoch,
+                    &workspace_update_clock.update_count,
+                    &change_set_update_clock.epoch,
+                    &change_set_update_clock.update_count,
+                    ],
+                )
+                .await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        nats.publish(&json).await?;
+        let object: Self = serde_json::from_value(json)?;
+        Ok(object)
     }
 
     pub async fn new_no_persist(
-        db: &Db,
-        nats: &Connection,
         to_id: impl Into<String>,
         action: impl Into<String>,
         system_id: impl Into<String>,
@@ -93,33 +82,41 @@ impl OpEntityAction {
         workspace_id: String,
         change_set_id: String,
         edit_session_id: String,
-        created_by_user_id: String,
     ) -> OpResult<Self> {
         let to_id = to_id.into();
         let action = action.into();
         let system_id = system_id.into();
-        let si_storable = SiStorable::new(
-            db,
-            "opEntityAction",
-            billing_account_id.clone(),
-            organization_id,
-            workspace_id,
-            Some(created_by_user_id),
-        )
-        .await?;
+        let object_id = String::from("opEntityAction:ephemeral");
+        let si_storable = SiStorable {
+            type_name: String::from("opEntityAction"),
+            object_id: object_id.clone(),
+            billing_account_id: billing_account_id.clone(),
+            organization_id: organization_id.clone(),
+            workspace_id: workspace_id.clone(),
+            tenant_ids: vec![
+                billing_account_id.clone(),
+                organization_id.clone(),
+                workspace_id.clone(),
+                object_id.clone(),
+            ],
+            created_by_user_id: None,
+            update_clock: UpdateClock {
+                epoch: 0,
+                update_count: 0,
+            },
+            deleted: false,
+        };
+        let si_change_set = SiChangeSet {
+            change_set_id: change_set_id.clone(),
+            edit_session_id: edit_session_id.clone(),
+            event: SiChangeSetEvent::Operation,
+            order_clock: UpdateClock {
+                epoch: 0,
+                update_count: 0,
+            },
+        };
 
-        let id = si_storable.object_id.clone();
-
-        let si_change_set = SiChangeSet::new(
-            db,
-            nats,
-            change_set_id,
-            edit_session_id,
-            &id,
-            billing_account_id,
-            SiChangeSetEvent::Operation,
-        )
-        .await?;
+        let id = object_id.clone();
 
         let si_op = SiOp::new(None);
 
@@ -139,50 +136,52 @@ impl OpEntityAction {
         self.si_op.skip()
     }
 
-    pub fn apply(
+    pub async fn apply(
         &self,
-        db: &Db,
-        nats: &Connection,
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        veritech: &Veritech,
         hypothetical: bool,
         to: &mut serde_json::Value,
         event_parent_id: Option<String>,
-    ) -> Pin<Box<dyn Future<Output = OpResult<()>> + Send>> {
-        let this_action = self.clone();
-        let db = db.clone();
-        let nats = nats.clone();
-        let to = to.clone();
-        Box::pin(async move {
-            if this_action.skip() {
-                return Ok(());
-            }
+    ) -> OpResult<()> {
+        if self.skip() {
+            return Ok(());
+        }
+
+        let mut apply_stack = vec![self.clone()];
+        while let Some(this_action) = apply_stack.pop() {
             let entity: Entity = serde_json::from_value(to.clone())?;
-            let node: Node =
-                Node::get(&db, &entity.node_id, &entity.si_storable.billing_account_id).await?;
-            let resource = Resource::get(&db, &entity.id, &this_action.system_id).await?;
+            let node: Node = Node::get(&txn, &entity.node_id).await?;
+            let resource = Resource::get_any_by_entity_id(
+                &txn,
+                &entity.id,
+                &this_action.system_id,
+                &this_action.si_change_set.change_set_id,
+            )
+            .await?;
 
             // Populate Successors
             let successor_edges =
-                Edge::direct_successor_edges_by_node_id(&db, EdgeKind::Configures, &node.id)
+                Edge::direct_successor_edges_by_node_id(&txn, &EdgeKind::Configures, &node.id)
                     .await?;
             let mut successors: Vec<ActionRequestThunk> = Vec::new();
             for edge in successor_edges.iter() {
-                let edge_node: Node = Node::get(
-                    &db,
-                    &edge.head_vertex.node_id,
-                    &entity.si_storable.billing_account_id,
+                let mut edge_entity: Entity = Entity::get_projection_or_head(
+                    &txn,
+                    &edge.head_vertex.object_id,
+                    &this_action.si_change_set.change_set_id,
                 )
                 .await?;
-                let mut edge_entity: Entity = match edge_node
-                    .get_object_projection(&db, &this_action.si_change_set.change_set_id)
-                    .await
-                {
-                    Ok(edge_entity) => edge_entity,
-                    Err(_) => edge_node.get_head_object(&db).await?,
-                };
-                edge_entity.update_properties_if_secret(&db).await?;
+                edge_entity.update_properties_if_secret(&txn).await?;
 
-                let edge_resource =
-                    Resource::get(&db, &edge_entity.id, &this_action.system_id).await?;
+                let edge_resource = Resource::get_any_by_entity_id(
+                    &txn,
+                    &edge_entity.id,
+                    &this_action.system_id,
+                    &this_action.si_change_set.change_set_id,
+                )
+                .await?;
                 successors.push(ActionRequestThunk {
                     entity: edge_entity,
                     resource: edge_resource,
@@ -191,26 +190,24 @@ impl OpEntityAction {
 
             // Populate Predecessors
             let predecessor_edges =
-                Edge::direct_predecessor_edges_by_node_id(&db, EdgeKind::Configures, &node.id)
+                Edge::direct_predecessor_edges_by_node_id(&txn, &EdgeKind::Configures, &node.id)
                     .await?;
             let mut predecessors: Vec<ActionRequestThunk> = Vec::new();
             for edge in predecessor_edges.iter() {
-                let edge_node = Node::get(
-                    &db,
-                    &edge.tail_vertex.node_id,
-                    &entity.si_storable.billing_account_id,
+                let mut edge_entity: Entity = Entity::get_projection_or_head(
+                    &txn,
+                    &edge.tail_vertex.object_id,
+                    &this_action.si_change_set.change_set_id,
                 )
                 .await?;
-                let mut edge_entity: Entity = match edge_node
-                    .get_object_projection(&db, &this_action.si_change_set.change_set_id)
-                    .await
-                {
-                    Ok(edge_entity) => edge_entity,
-                    Err(_) => edge_node.get_head_object(&db).await?,
-                };
-                edge_entity.update_properties_if_secret(&db).await?;
-                let edge_resource =
-                    Resource::get(&db, &edge_entity.id, &this_action.system_id).await?;
+                edge_entity.update_properties_if_secret(&txn).await?;
+                let edge_resource = Resource::get_any_by_entity_id(
+                    &txn,
+                    &edge_entity.id,
+                    &this_action.system_id,
+                    &this_action.si_change_set.change_set_id,
+                )
+                .await?;
                 predecessors.push(ActionRequestThunk {
                     entity: edge_entity,
                     resource: edge_resource,
@@ -218,12 +215,12 @@ impl OpEntityAction {
             }
 
             let mut event = Event::entity_action(
-                &db,
+                &txn,
                 &nats,
                 &this_action,
                 &entity,
                 &this_action.system_id,
-                event_parent_id,
+                event_parent_id.clone(),
             )
             .await?;
 
@@ -238,42 +235,36 @@ impl OpEntityAction {
                 successors,
             );
 
-            let veritech: Veritech<ActionRequest, ActionReply> =
-                Veritech::new("ws://localhost:5157/ws/action");
-            let response = match veritech.send(&db, &nats, action_request, &event).await? {
+            let response: ActionReply = match veritech
+                .send(&txn, &nats, "/ws/action", action_request, &event)
+                .await?
+            {
                 Some(response) => response,
                 None => {
-                    event.unknown(&db, &nats).await?;
+                    event.unknown(&txn, &nats).await?;
                     return Err(OpError::Veritech(VeritechError::NoReply));
                 }
             };
 
-            //let response = run_action(action_request).await?;
             tracing::warn!(?response, "i dispatched your action!");
 
-            let node_id = to["nodeId"].as_str().ok_or(OpError::Missing("node_id"))?;
             let entity_id = to["id"].as_str().ok_or(OpError::Missing("id"))?;
 
             Resource::from_update(
-                &db,
+                &txn,
                 &nats,
                 response.resource.state,
                 response.resource.status,
                 response.resource.health,
+                hypothetical,
                 &this_action.system_id,
-                node_id,
                 entity_id,
-                this_action.si_storable.billing_account_id.clone(),
-                this_action.si_storable.organization_id.clone(),
-                this_action.si_storable.workspace_id.clone(),
-                this_action.si_storable.created_by_user_id.clone(),
+                &this_action.si_change_set.change_set_id,
             )
             .await?;
 
             for action in response.actions.iter() {
                 let new_action = OpEntityAction::new_no_persist(
-                    &db,
-                    &nats,
                     &action.entity_id,
                     &action.action,
                     &this_action.system_id,
@@ -282,36 +273,13 @@ impl OpEntityAction {
                     this_action.si_storable.workspace_id.clone(),
                     this_action.si_change_set.change_set_id.clone(),
                     this_action.si_change_set.edit_session_id.clone(),
-                    this_action
-                        .si_storable
-                        .created_by_user_id
-                        .as_ref()
-                        .unwrap()
-                        .clone(),
                 )
                 .await?;
-                let mut object = get_base_object(
-                    &db,
-                    &action.entity_id,
-                    &this_action.si_change_set.change_set_id,
-                )
-                .await?;
-
-                new_action
-                    .apply(
-                        &db,
-                        &nats,
-                        hypothetical,
-                        &mut object,
-                        Some(event.id.clone()),
-                    )
-                    .await?;
+                apply_stack.push(new_action);
             }
-
-            event.success(&db, &nats).await?;
-
-            Ok(())
-        })
+            event.success(&txn, &nats).await?;
+        }
+        Ok(())
     }
 }
 
@@ -381,14 +349,4 @@ pub struct ActionUpdate {
 pub struct ActionReply {
     resource: ActionResourceUpdate,
     actions: Vec<ActionUpdate>,
-}
-
-pub async fn run_action(action_request: ActionRequest) -> OpResult<ActionReply> {
-    let res = REQWEST
-        .post("http://localhost:5157/action")
-        .json(&action_request)
-        .send()
-        .await?;
-    let action_reply: ActionReply = res.json().await?;
-    Ok(action_reply)
 }

@@ -1,8 +1,9 @@
 use crate::cli::server::{CommandContext, ServerResult};
-use crate::data::{Connection, Db};
+use crate::data::{NatsConn, PgPool, PgTxn};
 use crate::models::{
     ops::OpEntityAction, ops::OpEntitySet, ChangeSet, EditSession, Entity, Event, Node, NodeError,
 };
+use crate::veritech::Veritech;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -10,6 +11,10 @@ use thiserror::Error;
 pub enum ChangeRunError {
     #[error("node error: {0}")]
     Node(#[from] NodeError),
+    #[error("pg error: {0}")]
+    TokioPg(#[from] tokio_postgres::Error),
+    #[error("pg error: {0}")]
+    Deadpool(#[from] deadpool_postgres::PoolError),
 }
 
 pub type ChangeRunResult<T> = Result<T, ChangeRunError>;
@@ -52,11 +57,10 @@ pub struct NodeActionCommand {
 impl NodeActionCommand {
     pub async fn into_entity_action_command(
         self,
-        db: &Db,
-        billing_account_id: impl AsRef<str>,
+        txn: &PgTxn<'_>,
     ) -> ChangeRunResult<EntityActionCommand> {
-        let node = Node::get(db, self.node_id, billing_account_id).await?;
-        let entity_id = node.get_object_id(db).await?;
+        let node = Node::get(&txn, self.node_id).await?;
+        let entity_id = node.object_id.clone();
 
         Ok(EntityActionCommand {
             entity_id,
@@ -86,11 +90,10 @@ impl NodeSetCommand {
 
     pub async fn into_entity_set_command(
         self,
-        db: &Db,
-        billing_account_id: impl AsRef<str>,
+        txn: &PgTxn<'_>,
     ) -> ChangeRunResult<EntitySetCommand> {
-        let node = Node::get(db, self.node_id, billing_account_id).await?;
-        let entity_id = node.get_object_id(db).await?;
+        let node = Node::get(&txn, self.node_id).await?;
+        let entity_id = node.object_id.clone();
 
         Ok(EntitySetCommand {
             entity_id,
@@ -132,23 +135,12 @@ impl NodeChangeRun {
         self
     }
 
-    pub async fn into_change_run(
-        self,
-        db: &Db,
-        billing_account_id: impl AsRef<str>,
-    ) -> ChangeRunResult<ChangeRun> {
-        let action = self
-            .action
-            .into_entity_action_command(db, billing_account_id.as_ref())
-            .await?;
+    pub async fn into_change_run(self, txn: &PgTxn<'_>) -> ChangeRunResult<ChangeRun> {
+        let action = self.action.into_entity_action_command(&txn).await?;
 
         let mut set_commands = Vec::with_capacity(self.set_commands.len());
         for set_command in self.set_commands.into_iter() {
-            set_commands.push(
-                set_command
-                    .into_entity_set_command(db, billing_account_id.as_ref())
-                    .await?,
-            );
+            set_commands.push(set_command.into_entity_set_command(&txn).await?);
         }
 
         Ok(ChangeRun {
@@ -191,14 +183,19 @@ impl ChangeRun {
 
     pub async fn execute(
         &self,
-        db: &Db,
-        nats: &Connection,
+        pg: &PgPool,
+        nats_conn: &NatsConn,
+        veritech: &Veritech,
         ctx: &CommandContext,
     ) -> ServerResult<()> {
-        let target_entity = Entity::get_any(&db, &self.action.entity_id).await?;
+        let mut conn = pg.pool.get().await?;
+        let txn = conn.transaction().await?;
+        let nats = nats_conn.transaction();
 
-        let root_event = Event::cli_change_run(
-            &db,
+        let target_entity = Entity::get_any(&txn, &self.action.entity_id).await?;
+
+        let mut root_event = Event::cli_change_run(
+            &txn,
             &nats,
             &target_entity,
             &self.action.action,
@@ -207,71 +204,62 @@ impl ChangeRun {
         )
         .await?;
         ctx.set_root_event(root_event.clone()).await;
-        root_event.save(db, nats).await?;
+        root_event.save(&txn, &nats).await?;
 
         let mut change_set = ChangeSet::new(
-            &db,
+            &txn,
             &nats,
             None,
-            target_entity.si_storable.billing_account_id.clone(),
-            target_entity.si_storable.organization_id.clone(),
             target_entity.si_storable.workspace_id.clone(),
-            String::from(ctx.api_client_id.as_ref()),
         )
         .await?;
         ctx.add_tracking_id(change_set.id.clone()).await;
 
         let edit_session = EditSession::new(
-            &db,
+            &txn,
             &nats,
             None,
             change_set.id.clone(),
-            change_set.si_storable.billing_account_id.clone(),
-            change_set.si_storable.organization_id.clone(),
             change_set.si_storable.workspace_id.clone(),
-            String::from(ctx.api_client_id.as_ref()),
         )
         .await?;
         ctx.add_tracking_id(edit_session.id.clone()).await;
 
         for set_command in self.set_commands.iter() {
             let op = OpEntitySet::new(
-                &db,
+                &txn,
                 &nats,
                 set_command.entity_id.clone(),
                 set_command.path.clone(),
                 set_command.value.clone(),
                 None,
-                target_entity.si_storable.billing_account_id.clone(),
-                target_entity.si_storable.organization_id.clone(),
                 target_entity.si_storable.workspace_id.clone(),
                 change_set.id.clone(),
                 edit_session.id.clone(),
-                String::from(ctx.api_client_id.as_ref()),
             )
             .await?;
             ctx.add_tracking_id(op.id.clone()).await;
         }
 
         let act = OpEntityAction::new(
-            db.clone(),
-            nats.clone(),
+            &txn,
+            &nats,
             self.action.entity_id.clone(),
             self.action.action.clone(),
             self.action.system_id.clone(),
-            target_entity.si_storable.billing_account_id.clone(),
-            target_entity.si_storable.organization_id.clone(),
             target_entity.si_storable.workspace_id.clone(),
             change_set.id.clone(),
             edit_session.id.clone(),
-            String::from(ctx.api_client_id.as_ref()),
         )
         .await?;
         ctx.add_tracking_id(act.id.clone()).await;
 
         change_set
-            .execute(&db, &nats, false, Some(root_event.id.as_ref()))
+            .execute(&txn, &nats, &veritech, false, Some(root_event.id.as_ref()))
             .await?;
+
+        txn.commit().await?;
+        nats.commit().await?;
 
         Ok(())
     }

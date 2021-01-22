@@ -1,22 +1,18 @@
 use si_sdf::filters::api;
 use si_sdf::models::{LoginReply, LoginRequest};
 
-use crate::{test_cleanup, test_setup};
-use crate::{DB, NATS, SETTINGS};
+use crate::models::billing_account::{signup_new_billing_account, NewBillingAccount};
+use crate::one_time_setup;
+use crate::TestContext;
 
-pub async fn login_user(
-    billing_account_name: impl Into<String>,
-    email: impl Into<String>,
-) -> String {
-    let billing_account_name = billing_account_name.into();
-    let email = email.into();
-
-    let filter = api(&DB, &NATS, &SETTINGS.jwt_encrypt.key);
+pub async fn login_user(ctx: &TestContext, nba: &NewBillingAccount) -> String {
+    let (pg, nats_conn, veritech, event_log_fs, secret_key) = ctx.entries();
+    let filter = api(pg, nats_conn, veritech, event_log_fs, secret_key);
 
     let request = LoginRequest {
-        billing_account_name,
-        email,
-        password: String::from("boboR0cks"),
+        billing_account_name: nba.billing_account.name.clone(),
+        email: nba.user.email.clone(),
+        password: nba.user_password.clone(),
     };
     let res = warp::test::request()
         .method("POST")
@@ -26,19 +22,29 @@ pub async fn login_user(
         .await;
 
     let reply: LoginReply = serde_json::from_slice(res.body()).expect("cannot deserialize reply");
-    reply.jwt
+    format!("Bearer {}", reply.jwt)
 }
 
 #[tokio::test]
 async fn login() {
-    let test_account = test_setup().await.expect("failed to setup test");
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, veritech, event_log_fs, secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let txn = conn.transaction().await.expect("cannot create txn");
 
-    let filter = api(&DB, &NATS, &SETTINGS.jwt_encrypt.key);
+    let nba = signup_new_billing_account(&txn, &nats).await;
+    txn.commit()
+        .await
+        .expect("failed to commit the new billing account");
+
+    let filter = api(pg, nats_conn, veritech, event_log_fs, secret_key);
 
     let request = LoginRequest {
-        billing_account_name: test_account.billing_account.name.clone(),
-        email: test_account.user.email.clone(),
-        password: String::from("boboR0cks"),
+        billing_account_name: nba.billing_account.name.clone(),
+        email: nba.user.email.clone(),
+        password: nba.user_password.clone(),
     };
 
     let res = warp::test::request()
@@ -50,9 +56,6 @@ async fn login() {
 
     assert!(res.status().is_success());
 
-    let _reply: LoginReply = serde_json::from_slice(res.body()).expect("cannot deserialize reply");
-
-    test_cleanup(test_account)
-        .await
-        .expect("failed to finish test");
+    let reply: LoginReply = serde_json::from_slice(res.body()).expect("cannot deserialize reply");
+    assert_eq!(&reply.user.id, &nba.user.id);
 }

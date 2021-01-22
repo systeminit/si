@@ -1,25 +1,26 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::data::{Connection, Db};
+use crate::data::{NatsTxn, NatsTxnError, PgTxn};
 use crate::models::{
-    check_secondary_key, generate_id, get_model, insert_model, ModelError, SiStorableError,
-    SimpleStorable,
+    list_model, ListReply, ModelError, OrderByDirection, PageToken, Query, SimpleStorable,
 };
 
 #[derive(Error, Debug)]
 pub enum WorkspaceError {
-    #[error("a workspace with this name already exists")]
-    NameExists,
-    #[error("si_storable error: {0}")]
-    SiStorable(#[from] SiStorableError),
+    #[error("pg error: {0}")]
+    TokioPg(#[from] tokio_postgres::Error),
+    #[error("serde error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
     #[error("error in core model functions: {0}")]
     Model(#[from] ModelError),
+    #[error("nats txn error: {0}")]
+    NatsTxn(#[from] NatsTxnError),
 }
 
 pub type WorkspaceResult<T> = Result<T, WorkspaceError>;
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Workspace {
     pub id: String,
@@ -29,37 +30,71 @@ pub struct Workspace {
 
 impl Workspace {
     pub async fn new(
-        db: &Db,
-        nats: &Connection,
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
         name: impl Into<String>,
         billing_account_id: impl Into<String>,
+        organization_id: impl Into<String>,
     ) -> WorkspaceResult<Workspace> {
         let name = name.into();
         let billing_account_id = billing_account_id.into();
+        let organization_id = organization_id.into();
 
-        if check_secondary_key(db, &billing_account_id, "workspace", "name", &name).await? {
-            return Err(WorkspaceError::NameExists);
-        }
+        let row = txn
+            .query_one(
+                "SELECT object FROM workspace_create_v1($1, $2, $3)",
+                &[&name, &billing_account_id, &organization_id],
+            )
+            .await?;
+        let workspace_json: serde_json::Value = row.try_get("object")?;
+        nats.publish(&workspace_json).await?;
+        let workspace: Workspace = serde_json::from_value(workspace_json)?;
 
-        let id = generate_id("workspace");
-        let si_storable = SimpleStorable::new(&id, "workspace", &billing_account_id);
-        let object = Workspace {
-            id,
-            name,
-            si_storable,
-        };
-        insert_model(db, nats, &object.id, &object).await?;
-        Ok(object)
+        Ok(workspace)
     }
 
-    pub async fn get(
-        db: &Db,
-        workspace_id: impl AsRef<str>,
-        billing_account_id: impl AsRef<str>,
-    ) -> WorkspaceResult<Workspace> {
+    pub async fn save(&self, txn: &PgTxn<'_>, nats: &NatsTxn) -> WorkspaceResult<Workspace> {
+        let json = serde_json::to_value(self)?;
+        let row = txn
+            .query_one("SELECT object FROM workspace_save_v1($1)", &[&json])
+            .await?;
+        let updated_result: serde_json::Value = row.try_get("object")?;
+        nats.publish(&updated_result).await?;
+        let updated = serde_json::from_value(updated_result)?;
+        Ok(updated)
+    }
+
+    pub async fn get(txn: &PgTxn<'_>, workspace_id: impl AsRef<str>) -> WorkspaceResult<Workspace> {
         let id = workspace_id.as_ref();
-        let billing_account_id = billing_account_id.as_ref();
-        let object: Workspace = get_model(db, id, billing_account_id).await?;
-        Ok(object)
+        let row = txn
+            .query_one("SELECT object FROM workspace_get_v1($1)", &[&id])
+            .await?;
+        let workspace_json: serde_json::Value = row.try_get("object")?;
+        let workspace = serde_json::from_value(workspace_json)?;
+        Ok(workspace)
+    }
+
+    pub async fn list(
+        txn: &PgTxn<'_>,
+        tenant_id: impl Into<String>,
+        query: Option<Query>,
+        page_size: Option<u32>,
+        order_by: Option<String>,
+        order_by_direction: Option<OrderByDirection>,
+        page_token: Option<PageToken>,
+    ) -> WorkspaceResult<ListReply> {
+        let tenant_id = tenant_id.into();
+        let reply = list_model(
+            txn,
+            "workspaces",
+            tenant_id,
+            query,
+            page_size,
+            order_by,
+            order_by_direction,
+            page_token,
+        )
+        .await?;
+        Ok(reply)
     }
 }

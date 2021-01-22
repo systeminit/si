@@ -413,10 +413,7 @@ export class Node implements INode {
     }
   }
 
-  async syncResource(
-    systemId: string,
-    changeSetId?: string,
-  ): Promise<Resource> {
+  async syncResource(systemId: string, changeSetId?: string): Promise<void> {
     let op;
     if (changeSetId) {
       op = { syncResource: { systemId, changeSetId } };
@@ -428,15 +425,8 @@ export class Node implements INode {
       organizationId: this.siStorable.organizationId,
       workspaceId: this.siStorable.workspaceId,
     };
-    let reply: INodePatchReply = await sdf.patch(`nodes/${this.id}`, request);
-    if (reply.syncResource?.resource) {
-      let resource = new Resource(reply.syncResource.resource);
-      console.log("syncing the resource", { systemId, resource });
-      //await resource.save();
-      return resource;
-    } else {
-      throw new Error("malformed resource sync reply");
-    }
+    await sdf.patch(`nodes/${this.id}`, request);
+    return;
   }
 
   async setPosition(context: string, position: Position) {

@@ -1,12 +1,10 @@
 use deadpool_postgres::{
-    config::ConfigError, Config, Manager, ManagerConfig, Pool, PoolError, RecyclingMethod,
+    config::ConfigError, Config, ManagerConfig, Pool, PoolError, RecyclingMethod,
 };
 use thiserror::Error;
 use tokio_postgres::NoTls;
 
 use std::ops::DerefMut;
-
-use si_settings::Settings;
 
 const MIGRATION_LOCK_NUMBER: i64 = 42;
 
@@ -23,6 +21,7 @@ pub enum PgError {
 }
 
 pub type PgResult<T> = Result<T, PgError>;
+pub type PgTxn<'a> = deadpool_postgres::Transaction<'a>;
 
 mod embedded {
     use refinery::embed_migrations;
@@ -42,14 +41,14 @@ impl std::fmt::Debug for PgPool {
 }
 
 impl PgPool {
-    pub async fn new(settings: &Settings) -> PgResult<PgPool> {
+    pub async fn new(settings: &si_settings::Pg) -> PgResult<PgPool> {
         let mut cfg = Config::new();
-        cfg.hosts = Some(vec![settings.pg.hostname.clone()]);
-        cfg.port = Some(settings.pg.port.clone());
-        cfg.user = Some(settings.pg.user.clone());
-        cfg.password = Some(settings.pg.password.clone());
-        cfg.dbname = Some(settings.pg.dbname.clone());
-        cfg.application_name = Some(settings.pg.application_name.clone());
+        cfg.hosts = Some(vec![settings.hostname.clone()]);
+        cfg.port = Some(settings.port.clone());
+        cfg.user = Some(settings.user.clone());
+        cfg.password = Some(settings.password.clone());
+        cfg.dbname = Some(settings.dbname.clone());
+        cfg.application_name = Some(settings.application_name.clone());
         cfg.manager = Some(ManagerConfig {
             recycling_method: RecyclingMethod::Fast,
         });

@@ -1,22 +1,26 @@
 use reqwest;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::future::Future;
-use std::pin::Pin;
 use thiserror::Error;
 use tracing::{error, info, trace};
 
-use crate::data::{Connection, Db, REQWEST};
+use crate::data::{NatsTxn, NatsTxnError, PgTxn};
+
 use crate::models::{
-    get_base_object, insert_model, secret::EncryptedSecret, upsert_model, Edge, EdgeError,
-    EdgeKind, ModelError, Node, NodeKind, Resource, ResourceError, SecretError, SiChangeSet,
-    SiChangeSetError, SiChangeSetEvent, SiStorable, SiStorableError, System, SystemError, Vertex,
+    list_model, next_update_clock, Edge, EdgeError, EdgeKind, EncryptedSecret, ListReply,
+    ModelError, OrderByDirection, PageToken, Query, Resource, ResourceError, SecretError,
+    SiChangeSet, SiChangeSetError, SiChangeSetEvent, SiStorable, System, SystemError,
+    UpdateClockError, Vertex,
 };
+
+const ENTITY_GET_ANY: &str = include_str!("../data/queries/entity_get_any.sql");
+const ENTITY_GET_HEAD: &str = include_str!("../data/queries/entity_get_head.sql");
+const ENTITY_GET_PROJECTION: &str = include_str!("../data/queries/entity_get_projection.sql");
+const ENTITY_GET_ALL: &str = include_str!("../data/queries/entity_get_all.sql");
+const ENTITY_GET_HEAD_OR_BASE: &str = include_str!("../data/queries/entity_get_head_or_base.sql");
 
 #[derive(Error, Debug)]
 pub enum EntityError {
-    #[error("si_storable error: {0}")]
-    SiStorable(#[from] SiStorableError),
     #[error("si_change_set error: {0}")]
     SiChangeSet(#[from] SiChangeSetError),
     #[error("error in core model functions: {0}")]
@@ -36,7 +40,7 @@ pub enum EntityError {
     #[error("missing field: {0}")]
     Missing(String),
     #[error("json serialization error: {0}")]
-    Json(#[from] serde_json::Error),
+    SerdeJson(#[from] serde_json::Error),
     #[error("edge error: {0}")]
     Edge(#[from] EdgeError),
     #[error("node error: {0}")]
@@ -51,6 +55,16 @@ pub enum EntityError {
     Resource(#[from] ResourceError),
     #[error("secret error: {0}")]
     Secret(#[from] SecretError),
+    #[error("pg error: {0}")]
+    TokioPg(#[from] tokio_postgres::Error),
+    #[error("nats txn error: {0}")]
+    NatsTxn(#[from] NatsTxnError),
+    #[error("update clock: {0}")]
+    UpdateClock(#[from] UpdateClockError),
+    #[error("malformed database entry")]
+    MalformedDatabaseEntry,
+    #[error("missing change set in a save where it is required")]
+    MissingChangeSet,
 }
 
 pub type EntityResult<T> = Result<T, EntityError>;
@@ -125,7 +139,7 @@ pub struct CalculateConfiguresResponse {
     create: Option<Vec<CalculateConfiguresResponseCreateEntry>>,
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct EntityProperties(HashMap<String, serde_json::Value>);
 
@@ -167,19 +181,7 @@ impl EntityProperties {
     }
 }
 
-//pub struct EntityProperties {
-//    baseline: serde_json::Value,
-//}
-//
-//impl EntityProperties {
-//    pub fn new() -> Self {
-//        EntityProperties {
-//            baseline: serde_json::json![{}],
-//        }
-//    }
-//}
-
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Entity {
     pub id: String,
@@ -198,149 +200,196 @@ pub struct Entity {
 }
 
 impl Entity {
-    
-    pub fn new(
-        db: Db,
-        nats: Connection,
+    pub async fn new(
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
         name: Option<String>,
         description: Option<String>,
-        node_id: String,
-        object_type: String,
-        head: bool,
-        billing_account_id: String,
-        organization_id: String,
-        workspace_id: String,
-        change_set_id: String,
-        edit_session_id: String,
-        created_by_user_id: Option<String>,
+        node_id: impl AsRef<str>,
+        object_type: impl AsRef<str>,
+        workspace_id: impl AsRef<str>,
+        change_set_id: impl AsRef<str>,
+        edit_session_id: impl AsRef<str>,
         system_ids: Vec<String>,
-    ) -> Pin<Box<dyn Future<Output = EntityResult<Entity>> + Send>> {
-        Box::pin(async move {
-            if system_ids.len() == 0 {
-                return Err(EntityError::NotEnoughSystems);
-            }
-            let name = crate::models::generate_name(name);
-            let description = if description.is_some() {
-                description.unwrap()
-            } else {
-                name.clone()
-            };
-            let si_storable = SiStorable::new(
-                &db,
-                "entity",
-                billing_account_id.clone(),
-                organization_id.clone(),
-                workspace_id.clone(),
-                created_by_user_id.clone(),
-            )
-            .await?;
-            let expression_properties = EntityProperties::new();
-            let manual_properties = EntityProperties::new();
-            let inferred_properties = EntityProperties::new();
-            let properties = EntityProperties::new();
-            let id = si_storable.object_id.clone();
-            let key = format!("{}:{}", &si_storable.object_id, &change_set_id);
-            let base_key = format!("{}:{}:base", &si_storable.object_id, &change_set_id);
-            let si_change_set = SiChangeSet::new(
-                &db,
-                &nats,
-                change_set_id,
-                edit_session_id,
-                &id,
-                billing_account_id.clone(),
-                SiChangeSetEvent::Create,
-            )
-            .await?;
-            let mut entity = Entity {
-                id: id.clone(),
-                name,
-                object_type,
-                head,
-                base: false,
-                description,
-                expression_properties,
-                manual_properties,
-                inferred_properties,
-                properties,
-                node_id: node_id.clone(),
-                si_storable,
-                si_change_set: Some(si_change_set),
-            };
+    ) -> EntityResult<Entity> {
+        let workspace_id = workspace_id.as_ref();
+        let change_set_id = change_set_id.as_ref();
+        let edit_session_id = edit_session_id.as_ref();
+        let object_type = object_type.as_ref();
+        let node_id = node_id.as_ref();
 
-            insert_model(&db, &nats, &key, &entity).await?;
-            entity.base = true;
-            insert_model(&db, &nats, &base_key, &entity).await?;
-            for system_id in system_ids {
-                trace!(?system_id, ?entity, "getting system edge");
-                let system = System::get_any(&db, &system_id).await?;
-                trace!(?system_id, ?system, ?entity, "adding sytem edge");
-                Edge::new(
-                    &db,
-                    &nats,
-                    Vertex::new(&system.node_id, &system.id, "output", "system"),
-                    Vertex::new(&entity.node_id, &entity.id, "input", &entity.object_type),
-                    false,
-                    EdgeKind::Includes,
-                    billing_account_id.clone(),
-                    organization_id.clone(),
-                    workspace_id.clone(),
-                    None,
-                )
-                .await?;
-                Resource::new(
-                    &db,
-                    &nats,
-                    serde_json::json![{}],
-                    &system_id,
+        if system_ids.len() == 0 {
+            return Err(EntityError::NotEnoughSystems);
+        }
+        let name = crate::models::generate_name(name);
+        let description = if description.is_some() {
+            description.unwrap()
+        } else {
+            name.clone()
+        };
+
+        let workspace_update_clock = next_update_clock(workspace_id).await?;
+        let change_set_update_clock = next_update_clock(change_set_id).await?;
+
+        let row = txn
+            .query_one(
+                "SELECT object FROM entity_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
+                &[
+                    &name,
+                    &description,
+                    &object_type,
                     &node_id,
-                    &id,
-                    billing_account_id.clone(),
-                    organization_id.clone(),
-                    workspace_id.clone(),
-                    created_by_user_id.clone(),
-                )
-                .await?;
+                    &change_set_id,
+                    &edit_session_id,
+                    &SiChangeSetEvent::Create.to_string(),
+                    &workspace_id,
+                    &workspace_update_clock.epoch,
+                    &workspace_update_clock.update_count,
+                    &change_set_update_clock.epoch,
+                    &change_set_update_clock.update_count,
+                ],
+            )
+            .await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        nats.publish(&json).await?;
+        let mut entity: Entity = serde_json::from_value(json)?;
+        match entity.si_change_set.as_ref() {
+            Some(si_change_set) => {
+                si_change_set
+                    .create_change_set_participants(&txn, &nats, &entity.id, &workspace_id)
+                    .await?;
             }
-            entity.calculate_properties(&db).await?;
-            upsert_model(&db, &nats, &key, &entity).await?;
-            entity.base = true;
-            upsert_model(&db, &nats, &base_key, &entity).await?;
+            None => return Err(EntityError::MalformedDatabaseEntry),
+        }
 
-            Ok(entity)
-        })
+        for system_id in system_ids {
+            trace!(?system_id, ?entity, "getting system edge");
+            let system = System::get_any(&txn, &system_id).await?;
+            trace!(?system_id, ?system, ?entity, "adding sytem edge");
+            Edge::new(
+                &txn,
+                &nats,
+                Vertex::new(&system.node_id, &system.id, "output", "system"),
+                Vertex::new(&entity.node_id, &entity.id, "input", &entity.object_type),
+                false,
+                EdgeKind::Includes,
+                &workspace_id,
+            )
+            .await?;
+            Resource::new(
+                &txn,
+                &nats,
+                serde_json::json![{}],
+                &system_id,
+                &node_id,
+                &entity.id,
+                &workspace_id,
+                &change_set_id,
+            )
+            .await?;
+        }
+
+        entity.calculate_properties(&txn).await?;
+
+        entity.save_base_and_projection(&txn, &nats).await?;
+
+        Ok(entity)
     }
 
-    pub fn calculate_configures(
-        &self,
-        db: Db,
-        nats: Connection,
-    ) -> Pin<Box<dyn Future<Output = EntityResult<()>> + Send>> {
-        let entity_json = serde_json::json![self];
-        Box::pin(async move {
-            calculate_configures(db, nats, entity_json).await?;
-            Ok(())
-        })
+    pub async fn save_projection(&mut self, txn: &PgTxn<'_>, nats: &NatsTxn) -> EntityResult<()> {
+        self.head = false;
+        self.base = false;
+        if self.si_change_set.is_none() {
+            return Err(EntityError::MissingChangeSet);
+        }
+
+        let workspace_update_clock = next_update_clock(&self.si_storable.workspace_id).await?;
+        self.si_storable.update_clock = workspace_update_clock;
+        let change_set_update_clock =
+            next_update_clock(&self.si_change_set.as_ref().unwrap().change_set_id).await?;
+        self.si_change_set.as_mut().unwrap().order_clock = change_set_update_clock;
+
+        let json = serde_json::to_value(&self)?;
+        let row = txn
+            .query_one("SELECT object FROM entity_save_projection_v1($1)", &[&json])
+            .await?;
+        let updated_result: serde_json::Value = row.try_get("object")?;
+        nats.publish(&updated_result).await?;
+        let mut updated: Entity = serde_json::from_value(updated_result)?;
+        std::mem::swap(self, &mut updated);
+        Ok(())
     }
 
-    pub async fn calculate_properties(&mut self, db: &Db) -> EntityResult<()> {
+    pub async fn save_base(&mut self, txn: &PgTxn<'_>, nats: &NatsTxn) -> EntityResult<()> {
+        self.head = false;
+        self.base = true;
+        if self.si_change_set.is_none() {
+            return Err(EntityError::MissingChangeSet);
+        }
+
+        let workspace_update_clock = next_update_clock(&self.si_storable.workspace_id).await?;
+        self.si_storable.update_clock = workspace_update_clock;
+        let change_set_update_clock =
+            next_update_clock(&self.si_change_set.as_ref().unwrap().change_set_id).await?;
+        self.si_change_set.as_mut().unwrap().order_clock = change_set_update_clock;
+
+        let json = serde_json::to_value(&self)?;
+        let row = txn
+            .query_one("SELECT object FROM entity_save_base_v1($1)", &[&json])
+            .await?;
+        let updated_result: serde_json::Value = row.try_get("object")?;
+        nats.publish(&updated_result).await?;
+        let mut updated: Entity = serde_json::from_value(updated_result)?;
+        std::mem::swap(self, &mut updated);
+        Ok(())
+    }
+
+    async fn save_base_and_projection(
+        &mut self,
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+    ) -> EntityResult<()> {
+        self.save_projection(&txn, &nats).await?;
+        self.save_base(&txn, &nats).await?;
+        Ok(())
+    }
+
+    pub async fn save_head(&mut self, txn: &PgTxn<'_>, nats: &NatsTxn) -> EntityResult<()> {
+        self.head = true;
+        self.base = false;
+        self.si_change_set = None;
+
+        let update_clock = next_update_clock(&self.si_storable.workspace_id).await?;
+        self.si_storable.update_clock = update_clock;
+
+        let json = serde_json::to_value(&self)?;
+        let row = txn
+            .query_one("SELECT object FROM entity_save_head_v1($1)", &[&json])
+            .await?;
+        let updated_result: serde_json::Value = row.try_get("object")?;
+        nats.publish(&updated_result).await?;
+        let mut updated: Entity = serde_json::from_value(updated_result)?;
+        std::mem::swap(self, &mut updated);
+        Ok(())
+    }
+
+    pub async fn calculate_properties(&mut self, txn: &PgTxn<'_>) -> EntityResult<()> {
         let mut json = serde_json::json![self];
-        calculate_properties(db, &mut json, None).await?;
+        calculate_properties(txn, &mut json, None).await?;
         let new_entity: Entity = serde_json::from_value(json)?;
-        trace!(?new_entity, "new entity from calculate properties");
         *self = new_entity;
         Ok(())
     }
 
-    pub async fn update_properties_if_secret(&mut self, db: &Db) -> EntityResult<()> {
+    pub async fn update_properties_if_secret(&mut self, txn: &PgTxn<'_>) -> EntityResult<()> {
         if let Some(secret_id) = self
             .properties
             .get_property("/secretId", None)?
             .map(|s| s.as_str())
             .flatten()
         {
-            let secret =
-                EncryptedSecret::get(db, secret_id, &self.si_storable.billing_account_id).await?;
-            let decrypted = secret.decrypt(db).await?;
+            let secret = EncryptedSecret::get(&txn, secret_id).await?;
+            let decrypted = secret.decrypt(&txn).await?;
             self.properties
                 .get_or_create_mut("__baseline")
                 .as_object_mut()
@@ -360,101 +409,115 @@ impl Entity {
         Ok(())
     }
 
-    pub async fn get_projection(
-        db: &Db,
-        entity_id: impl AsRef<str>,
-        change_set_id: impl AsRef<str>,
-    ) -> EntityResult<Entity> {
-        let entity_id = entity_id.as_ref();
-        let change_set_id = change_set_id.as_ref();
-        let query = format!(
-            "SELECT a.*
-          FROM `{bucket}` AS a
-          WHERE a.siStorable.typeName = \"entity\"
-            AND a.siStorable.objectId = $entity_id 
-            AND a.siChangeSet.changeSetId = $change_set_id
-            AND a.head = false
-          ORDER BY a.base ASC
-          LIMIT 1
-        ",
-            bucket = db.bucket_name
-        );
-        let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
-        named_params.insert("entity_id".into(), serde_json::json![entity_id]);
-        named_params.insert("change_set_id".into(), serde_json::json![change_set_id]);
-        let mut query_results: Vec<Entity> = db.query(query, Some(named_params)).await?;
-        if query_results.len() == 0 {
-            Err(EntityError::NoHead)
-        } else {
-            let result = query_results.pop().unwrap();
-            Ok(result)
-        }
+    pub async fn get_any(txn: &PgTxn<'_>, id: impl AsRef<str>) -> EntityResult<Entity> {
+        let id = id.as_ref();
+        let row = txn.query_one(ENTITY_GET_ANY, &[&id]).await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        let object: Entity = serde_json::from_value(json)?;
+        Ok(object)
     }
 
-    pub async fn get_head(db: &Db, entity_id: impl AsRef<str>) -> EntityResult<Entity> {
-        let entity_id = entity_id.as_ref();
-        let query = format!(
-            "SELECT a.*
-          FROM `{bucket}` AS a
-          WHERE a.siStorable.typeName = \"entity\"
-            AND a.siStorable.objectId = $entity_id 
-            AND a.head = true
-          LIMIT 1
-        ",
-            bucket = db.bucket_name
-        );
-        let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
-        named_params.insert("entity_id".into(), serde_json::json![entity_id]);
-        let mut query_results: Vec<Entity> = db.query(query, Some(named_params)).await?;
-        if query_results.len() == 0 {
-            Err(EntityError::NoHead)
-        } else {
-            let result = query_results.pop().unwrap();
-            Ok(result)
-        }
+    pub async fn get_head_or_base(
+        txn: &PgTxn<'_>,
+        id: impl AsRef<str>,
+        change_set_id: impl AsRef<str>,
+    ) -> EntityResult<Entity> {
+        let id = id.as_ref();
+        let change_set_id = change_set_id.as_ref();
+        let row = txn
+            .query_one(ENTITY_GET_HEAD_OR_BASE, &[&id, &change_set_id])
+            .await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        let object: Entity = serde_json::from_value(json)?;
+        Ok(object)
+    }
+
+    pub async fn get_head(txn: &PgTxn<'_>, id: impl AsRef<str>) -> EntityResult<Entity> {
+        let id = id.as_ref();
+        let row = txn.query_one(ENTITY_GET_HEAD, &[&id]).await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        let object: Entity = serde_json::from_value(json)?;
+        Ok(object)
+    }
+
+    pub async fn get_projection(
+        txn: &PgTxn<'_>,
+        id: impl AsRef<str>,
+        change_set_id: impl AsRef<str>,
+    ) -> EntityResult<Entity> {
+        let id = id.as_ref();
+        let change_set_id = change_set_id.as_ref();
+        let row = txn
+            .query_one(ENTITY_GET_PROJECTION, &[&id, &change_set_id])
+            .await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        let object: Entity = serde_json::from_value(json)?;
+        Ok(object)
     }
 
     pub async fn get_projection_or_head(
-        db: &Db,
+        txn: &PgTxn<'_>,
         entity_id: impl AsRef<str>,
         change_set_id: impl AsRef<str>,
     ) -> EntityResult<Entity> {
-        match Self::get_projection(db, &entity_id, change_set_id).await {
+        match Self::get_projection(txn, &entity_id, change_set_id).await {
             Ok(entity) => Ok(entity),
-            Err(EntityError::NoHead) => Self::get_head(db, entity_id).await,
-            Err(e) => Err(e),
+            Err(_) => Self::get_head(txn, entity_id).await,
         }
     }
 
-    pub async fn get_all(db: &Db, entity_id: impl AsRef<str>) -> EntityResult<Vec<Entity>> {
-        let entity_id = entity_id.as_ref();
-        let query = format!(
-            "SELECT a.*
-          FROM `{bucket}` AS a
-          WHERE a.siStorable.typeName = \"entity\"
-            AND a.siStorable.objectId = $entity_id 
-        ",
-            bucket = db.bucket_name
-        );
-        let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
-        named_params.insert("entity_id".into(), serde_json::json![entity_id]);
-        let query_results: Vec<Entity> = db.query(query, Some(named_params)).await?;
-        if query_results.len() == 0 {
-            Err(EntityError::NotFound)
-        } else {
-            Ok(query_results)
+    pub async fn get_all(txn: &PgTxn<'_>, entity_id: impl AsRef<str>) -> EntityResult<Vec<Entity>> {
+        let mut results = Vec::new();
+        let id = entity_id.as_ref();
+        let rows = txn.query(ENTITY_GET_ALL, &[&id]).await?;
+
+        for row in rows.into_iter() {
+            let json: serde_json::Value = row.try_get("object")?;
+            let object: Entity = serde_json::from_value(json)?;
+            results.push(object);
         }
+        Ok(results)
     }
 
-    pub async fn get_any(db: &Db, entity_id: impl AsRef<str>) -> EntityResult<Entity> {
-        let entity_id = entity_id.as_ref();
-        let mut entity_list = Entity::get_all(db, entity_id).await?;
-        entity_list.pop().ok_or(EntityError::NoHead)
+    pub async fn list(
+        txn: &PgTxn<'_>,
+        tenant_id: impl Into<String>,
+        query: Option<Query>,
+        page_size: Option<u32>,
+        order_by: Option<String>,
+        order_by_direction: Option<OrderByDirection>,
+        page_token: Option<PageToken>,
+    ) -> EntityResult<ListReply> {
+        let tenant_id = tenant_id.into();
+        let reply = list_model(
+            txn,
+            "entities_head",
+            tenant_id,
+            query,
+            page_size,
+            order_by,
+            order_by_direction,
+            page_token,
+        )
+        .await?;
+        Ok(reply)
     }
+
+    //pub fn calculate_configures(
+    //    &self,
+    //    db: Db,
+    //    nats: Connection,
+    //) -> Pin<Box<dyn Future<Output = EntityResult<()>> + Send>> {
+    //    let entity_json = serde_json::json![self];
+    //    Box::pin(async move {
+    //        calculate_configures(db, nats, entity_json).await?;
+    //        Ok(())
+    //    })
+    //}
 }
 
 pub async fn calculate_properties(
-    db: &Db,
+    txn: &PgTxn<'_>,
     json: &mut serde_json::Value,
     projections: Option<&HashMap<String, serde_json::Value>>,
 ) -> EntityResult<()> {
@@ -463,14 +526,14 @@ pub async fn calculate_properties(
     let optional_change_set_id = if entity.head {
         None
     } else {
-        entity.si_change_set.map(|sic| sic.change_set_id.clone())
+        entity
+            .si_change_set
+            .as_ref()
+            .map(|sic| sic.change_set_id.clone())
     };
-    let node = Node::get(&db, entity.node_id, &entity.si_storable.billing_account_id)
-        .await
-        .map_err(|e| EntityError::Node(e.to_string()))?;
     let system_edges = Edge::by_kind_and_head_object_id_and_tail_type_name(
-        &db,
-        EdgeKind::Includes,
+        &txn,
+        &EdgeKind::Includes,
         &entity.id,
         "system",
     )
@@ -478,23 +541,27 @@ pub async fn calculate_properties(
 
     let mut resources = Vec::new();
     for system_edge in system_edges.iter() {
-        trace!(?system_edge, "system edge");
-        let resource = Resource::get(&db, &entity.id, &system_edge.tail_vertex.object_id).await?;
+        let resource = if let Some(si_change_set) = entity.si_change_set.as_ref() {
+            Resource::get_any_by_entity_id(
+                &txn,
+                &entity.id,
+                &system_edge.tail_vertex.object_id,
+                &si_change_set.change_set_id,
+            )
+            .await?
+        } else {
+            Resource::get_head_by_entity_id(&txn, &entity.id, &system_edge.tail_vertex.object_id)
+                .await?
+        };
         resources.push(resource);
     }
 
     let predecessor_edges =
-        Edge::direct_predecessor_edges_by_node_id(db, EdgeKind::Configures, &node.id).await?;
+        Edge::direct_predecessor_edges_by_object_id(&txn, &EdgeKind::Configures, &entity.id)
+            .await?;
     let mut predecessors: Vec<CalculatePropertiesPredecessor> = Vec::new();
     for edge in predecessor_edges {
-        let edge_node = Node::get(
-            &db,
-            &edge.tail_vertex.node_id,
-            &node.si_storable.billing_account_id,
-        )
-        .await
-        .map_err(|e| EntityError::Node(e.to_string()))?;
-        // OMG, I'm so sorry
+        // OMG, I'm so sorry - still sorry!
         let edge_entity: Entity = {
             let mut pe: Option<Entity> = None;
             if let Some(projection_map) = projections {
@@ -509,25 +576,31 @@ pub async fn calculate_properties(
             if let Some(entity) = pe {
                 entity
             } else if let Some(ref change_set_id) = optional_change_set_id {
-                match edge_node.get_object_projection(&db, change_set_id).await {
-                    Ok(entity) => entity,
-                    Err(_) => edge_node
-                        .get_head_object(db)
-                        .await
-                        .map_err(|e| EntityError::Node(e.to_string()))?,
-                }
-            } else if let Ok(entity) = edge_node.get_head_object(db).await {
-                entity
+                Entity::get_projection_or_head(&txn, &edge.tail_vertex.object_id, change_set_id)
+                    .await?
             } else {
-                return Err(EntityError::Node("no head node!".to_string()));
+                Entity::get_head(&txn, &edge.tail_vertex.object_id).await?
             }
         };
         let mut edge_resources: Vec<Resource> = Vec::new();
         trace!(?system_edges, "calculating edge resources for system edges");
         for system_edge in system_edges.iter() {
-            let edge_resource =
-                Resource::get(&db, &edge_entity.id, &system_edge.tail_vertex.object_id).await?;
-            trace!(?edge_resource, "no mas");
+            let edge_resource = if let Some(ref change_set_id) = optional_change_set_id {
+                Resource::get_any_by_entity_id(
+                    &txn,
+                    &edge_entity.id,
+                    &system_edge.tail_vertex.object_id,
+                    change_set_id,
+                )
+                .await?
+            } else {
+                Resource::get_head_by_entity_id(
+                    &txn,
+                    &edge_entity.id,
+                    &system_edge.tail_vertex.object_id,
+                )
+                .await?
+            };
             edge_resources.push(edge_resource);
         }
 
@@ -541,7 +614,13 @@ pub async fn calculate_properties(
     let object_type = json["objectType"]
         .as_str()
         .ok_or(EntityError::MissingObjectType)?;
-    let res = REQWEST
+
+    //let reqwest: reqwest::Client = if cfg!(test) {
+    let reqwest = reqwest::Client::new();
+    //} else {
+    //    REQWEST.clone()
+    //};
+    let res = reqwest
         .post("http://localhost:5157/calculateProperties")
         .json(&CalculatePropertiesRequest {
             object_type,
@@ -551,6 +630,7 @@ pub async fn calculate_properties(
         })
         .send()
         .await?;
+    dbg!(&res);
     let entity_result: CalculatePropertiesResponse = res.json().await?;
     trace!(
         ?entity_result,
@@ -560,134 +640,134 @@ pub async fn calculate_properties(
     Ok(())
 }
 
-pub fn calculate_configures(
-    db: Db,
-    nats: Connection,
-    entity_json: serde_json::Value,
-) -> Pin<Box<dyn Future<Output = EntityResult<()>> + Send>> {
-    Box::pin(async move {
-        let id = entity_json["id"].as_str().ok_or(EntityError::MissingId)?;
-        let object_type = entity_json["objectType"]
-            .as_str()
-            .ok_or(EntityError::MissingObjectType)?;
-        let node_id = entity_json["nodeId"]
-            .as_str()
-            .ok_or(EntityError::Missing("nodeId".into()))?;
-        let change_set_id = entity_json["siChangeSet"]["changeSetId"]
-            .as_str()
-            .unwrap_or("fakemcfakerton");
-
-        // Get the list of edges this entity configures
-        let configures_edges =
-            Edge::by_kind_and_tail_object_id(&db, EdgeKind::Configures, id).await?;
-        let mut configures = Vec::with_capacity(configures_edges.len());
-        for edge in configures_edges.iter() {
-            let object = get_base_object(&db, &edge.head_vertex.object_id, change_set_id).await?;
-            configures.push(object);
-        }
-
-        // Get the list of systems this entity participates in
-        let system_edges = Edge::by_kind_and_head_object_id_and_tail_type_name(
-            &db,
-            EdgeKind::Includes,
-            id,
-            "system",
-        )
-        .await?;
-        let mut systems: Vec<System> = Vec::with_capacity(system_edges.len());
-        for system_edge in system_edges.iter() {
-            let system = System::get_any(&db, &system_edge.tail_vertex.object_id).await?;
-            systems.push(system);
-        }
-        trace!(?systems, ?node_id, "making nodes with the list of systems");
-
-        let res = REQWEST
-            .post("http://localhost:5157/calculateConfigures")
-            .json(&CalculateConfiguresRequest {
-                entity: &entity_json,
-                configures: &serde_json::json![configures],
-                systems: &serde_json::json![systems],
-            })
-            .send()
-            .await?;
-        let configures_result: CalculateConfiguresResponse = res.json().await?;
-
-        // If any edge is not in the keep list from the callback, then we remove its
-        // connection.
-        if let Some(keep) = configures_result.keep {
-            for edge in configures_edges.into_iter() {
-                if !keep.contains(&edge.head_vertex.object_id) {
-                    edge.delete(&db, &nats).await?;
-                }
-            }
-        }
-
-        // Create new nodes with configures edges!
-        if let Some(create_list) = configures_result.create {
-            let billing_account_id = entity_json["siStorable"]["billingAccountId"]
-                .as_str()
-                .ok_or(EntityError::Missing("siStorable.billingAccountId".into()))?;
-            let organization_id = entity_json["siStorable"]["organizationId"]
-                .as_str()
-                .ok_or(EntityError::Missing("siStorable.organizationId".into()))?;
-            let workspace_id = entity_json["siStorable"]["workspaceId"]
-                .as_str()
-                .ok_or(EntityError::Missing("siStorable.workspaceId".into()))?;
-            let change_set_id = entity_json["siChangeSet"]["changeSetId"]
-                .as_str()
-                .ok_or(EntityError::Missing("siChangeSet.changeSetId".into()))?;
-            let edit_session_id = entity_json["siChangeSet"]["editSessionId"]
-                .as_str()
-                .ok_or(EntityError::Missing("siChangeSet.editSessionId".into()))?;
-
-            for to_create in create_list.into_iter() {
-                trace!(?to_create, "for create list");
-                if &to_create.object_type == object_type {
-                    trace!(
-                        ?object_type,
-                        ?to_create,
-                        "calculate configures requested an object \
-                        of the same type as this one, which is a recursive thing - skipping it!"
-                    );
-                    continue;
-                }
-                let new_node = Node::new(
-                    db.clone(),
-                    nats.clone(),
-                    to_create.name,
-                    NodeKind::Entity,
-                    &to_create.object_type,
-                    billing_account_id.into(),
-                    organization_id.into(),
-                    workspace_id.into(),
-                    change_set_id.into(),
-                    edit_session_id.into(),
-                    None,
-                    Some(to_create.systems.clone()),
-                )
-                .await
-                .map_err(|e| EntityError::Node(e.to_string()))?;
-                let new_object_id = new_node
-                    .get_object_id(&db)
-                    .await
-                    .map_err(|e| EntityError::Node(e.to_string()))?;
-                Edge::new(
-                    &db,
-                    &nats,
-                    Vertex::new(node_id, id, "output", object_type),
-                    Vertex::new(&new_node.id, &new_object_id, "input", &new_node.object_type),
-                    false,
-                    EdgeKind::Configures,
-                    billing_account_id.into(),
-                    organization_id.into(),
-                    workspace_id.into(),
-                    None,
-                )
-                .await?;
-                trace!(?new_node, "created node as configured");
-            }
-        }
-
-        Ok(())
-    })
-}
+// pub fn calculate_configures(
+//     db: Db,
+//     nats: Connection,
+//     entity_json: serde_json::Value,
+// ) -> Pin<Box<dyn Future<Output = EntityResult<()>> + Send>> {
+//     Box::pin(async move {
+//          let id = entity_json["id"].as_str().ok_or(EntityError::MissingId)?;
+//          let object_type = entity_json["objectType"]
+//              .as_str()
+//              .ok_or(EntityError::MissingObjectType)?;
+//          let node_id = entity_json["nodeId"]
+//              .as_str()
+//              .ok_or(EntityError::Missing("nodeId".into()))?;
+//          let change_set_id = entity_json["siChangeSet"]["changeSetId"]
+//              .as_str()
+//              .unwrap_or("fakemcfakerton");
+//
+//          // Get the list of edges this entity configures
+//          let configures_edges =
+//              Edge::by_kind_and_tail_object_id(&db, EdgeKind::Configures, id).await?;
+//          let mut configures = Vec::with_capacity(configures_edges.len());
+//          for edge in configures_edges.iter() {
+//              let object = get_base_object(&db, &edge.head_vertex.object_id, change_set_id).await?;
+//              configures.push(object);
+//          }
+//
+//          // Get the list of systems this entity participates in
+//          let system_edges = Edge::by_kind_and_head_object_id_and_tail_type_name(
+//              &db,
+//              EdgeKind::Includes,
+//              id,
+//              "system",
+//          )
+//          .await?;
+//          let mut systems: Vec<System> = Vec::with_capacity(system_edges.len());
+//          for system_edge in system_edges.iter() {
+//              let system = System::get_any(&db, &system_edge.tail_vertex.object_id).await?;
+//              systems.push(system);
+//          }
+//          trace!(?systems, ?node_id, "making nodes with the list of systems");
+//
+//          let res = REQWEST
+//              .post("http://localhost:5157/calculateConfigures")
+//              .json(&CalculateConfiguresRequest {
+//                  entity: &entity_json,
+//                  configures: &serde_json::json![configures],
+//                  systems: &serde_json::json![systems],
+//              })
+//              .send()
+//              .await?;
+//          let configures_result: CalculateConfiguresResponse = res.json().await?;
+//
+//          // If any edge is not in the keep list from the callback, then we remove its
+//          // connection.
+//          if let Some(keep) = configures_result.keep {
+//              for edge in configures_edges.into_iter() {
+//                  if !keep.contains(&edge.head_vertex.object_id) {
+//                      edge.delete(&db, &nats).await?;
+//                  }
+//              }
+//          }
+//
+//          // Create new nodes with configures edges!
+//          if let Some(create_list) = configures_result.create {
+//              let billing_account_id = entity_json["siStorable"]["billingAccountId"]
+//                  .as_str()
+//                  .ok_or(EntityError::Missing("siStorable.billingAccountId".into()))?;
+//              let organization_id = entity_json["siStorable"]["organizationId"]
+//                  .as_str()
+//                  .ok_or(EntityError::Missing("siStorable.organizationId".into()))?;
+//              let workspace_id = entity_json["siStorable"]["workspaceId"]
+//                  .as_str()
+//                  .ok_or(EntityError::Missing("siStorable.workspaceId".into()))?;
+//              let change_set_id = entity_json["siChangeSet"]["changeSetId"]
+//                  .as_str()
+//                  .ok_or(EntityError::Missing("siChangeSet.changeSetId".into()))?;
+//              let edit_session_id = entity_json["siChangeSet"]["editSessionId"]
+//                  .as_str()
+//                  .ok_or(EntityError::Missing("siChangeSet.editSessionId".into()))?;
+//
+//              for to_create in create_list.into_iter() {
+//                  trace!(?to_create, "for create list");
+//                  if &to_create.object_type == object_type {
+//                      trace!(
+//                          ?object_type,
+//                          ?to_create,
+//                          "calculate configures requested an object \
+//                          of the same type as this one, which is a recursive thing - skipping it!"
+//                      );
+//                      continue;
+//                  }
+//                  let new_node = Node::new(
+//                      db.clone(),
+//                      nats.clone(),
+//                      to_create.name,
+//                      NodeKind::Entity,
+//                      &to_create.object_type,
+//                      billing_account_id.into(),
+//                      organization_id.into(),
+//                      workspace_id.into(),
+//                      change_set_id.into(),
+//                      edit_session_id.into(),
+//                      None,
+//                      Some(to_create.systems.clone()),
+//                  )
+//                  .await
+//                  .map_err(|e| EntityError::Node(e.to_string()))?;
+//                  let new_object_id = new_node
+//                      .get_object_id(&db)
+//                      .await
+//                      .map_err(|e| EntityError::Node(e.to_string()))?;
+//                  Edge::new(
+//                      &db,
+//                      &nats,
+//                      Vertex::new(node_id, id, "output", object_type),
+//                      Vertex::new(&new_node.id, &new_object_id, "input", &new_node.object_type),
+//                      false,
+//                      EdgeKind::Configures,
+//                      billing_account_id.into(),
+//                      organization_id.into(),
+//                      workspace_id.into(),
+//                      None,
+//                  )
+//                  .await?;
+//                  trace!(?new_node, "created node as configured");
+//              }
+//          }
+//
+//         Ok(())
+//     })
+// }
