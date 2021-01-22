@@ -117,7 +117,6 @@ impl BillingAccount {
         let key_pair =
             KeyPair::new(&txn, &nats, &billing_account.name, &billing_account.id).await?;
 
-        dbg!(&billing_account);
         let user = User::new(
             &txn,
             &nats,

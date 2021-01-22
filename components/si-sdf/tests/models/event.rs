@@ -3,13 +3,13 @@ use names::{Generator, Name};
 use crate::models::billing_account::{signup_new_billing_account, NewBillingAccount};
 use crate::{one_time_setup, TestContext};
 
-use si_sdf::data::{NatsTxn, PgTxn};
+use si_sdf::data::{NatsConn, PgPool};
 use si_sdf::models::{Event, EventKind, EventStatus};
 
-pub async fn create_event(txn: &PgTxn<'_>, nats: &NatsTxn, nba: &NewBillingAccount) -> Event {
+pub async fn create_event(pg: &PgPool, nats_conn: &NatsConn, nba: &NewBillingAccount) -> Event {
     let event = Event::new(
-        &txn,
-        &nats,
+        &pg,
+        &nats_conn,
         Generator::with_naming(Name::Numbered).next().unwrap(),
         serde_json::json![{}],
         EventKind::EntityAction,
@@ -36,11 +36,11 @@ async fn new() {
         .await
         .expect("failed to commit the new billing account");
 
-    let txn = conn.transaction().await.expect("cannot create txn");
+    let _txn = conn.transaction().await.expect("cannot create txn");
 
     let event = Event::new(
-        &txn,
-        &nats,
+        &pg,
+        &nats_conn,
         "I like cheese",
         serde_json::json![{}],
         EventKind::EntityAction,
@@ -74,11 +74,11 @@ async fn save() {
         .await
         .expect("failed to commit the new billing account");
 
-    let txn = conn.transaction().await.expect("cannot create txn");
+    let _txn = conn.transaction().await.expect("cannot create txn");
 
     let mut event = Event::new(
-        &txn,
-        &nats,
+        &pg,
+        &nats_conn,
         "I like cheese",
         serde_json::json![{}],
         EventKind::EntityAction,
@@ -91,7 +91,10 @@ async fn save() {
 
     let pre_save_event = event.clone();
     event.message = String::from("I like my butt");
-    event.save(&txn, &nats).await.expect("cannot save event");
+    event
+        .save(&pg, &nats_conn)
+        .await
+        .expect("cannot save event");
     assert_eq!(&event.message, "I like my butt");
     assert!(
         pre_save_event.si_storable.update_clock < event.si_storable.update_clock,
@@ -113,11 +116,11 @@ async fn unknown() {
         .await
         .expect("failed to commit the new billing account");
 
-    let txn = conn.transaction().await.expect("cannot create txn");
+    let _txn = conn.transaction().await.expect("cannot create txn");
 
     let mut event = Event::new(
-        &txn,
-        &nats,
+        &pg,
+        &nats_conn,
         "I like cheese",
         serde_json::json![{}],
         EventKind::EntityAction,
@@ -130,7 +133,7 @@ async fn unknown() {
 
     let pre_save_event = event.clone();
     event
-        .unknown(&txn, &nats)
+        .unknown(&pg, &nats_conn)
         .await
         .expect("cannot update event status");
     assert_eq!(
@@ -159,11 +162,11 @@ async fn success() {
         .await
         .expect("failed to commit the new billing account");
 
-    let txn = conn.transaction().await.expect("cannot create txn");
+    let _txn = conn.transaction().await.expect("cannot create txn");
 
     let mut event = Event::new(
-        &txn,
-        &nats,
+        &pg,
+        &nats_conn,
         "I like cheese",
         serde_json::json![{}],
         EventKind::EntityAction,
@@ -176,7 +179,7 @@ async fn success() {
 
     let pre_save_event = event.clone();
     event
-        .success(&txn, &nats)
+        .success(&pg, &nats_conn)
         .await
         .expect("cannot update event status");
     assert_eq!(
@@ -205,11 +208,11 @@ async fn error() {
         .await
         .expect("failed to commit the new billing account");
 
-    let txn = conn.transaction().await.expect("cannot create txn");
+    let _txn = conn.transaction().await.expect("cannot create txn");
 
     let mut event = Event::new(
-        &txn,
-        &nats,
+        &pg,
+        &nats_conn,
         "I like cheese",
         serde_json::json![{}],
         EventKind::EntityAction,
@@ -222,7 +225,7 @@ async fn error() {
 
     let pre_save_event = event.clone();
     event
-        .error(&txn, &nats)
+        .error(&pg, &nats_conn)
         .await
         .expect("cannot update event status");
     assert_eq!(
@@ -251,11 +254,11 @@ async fn running() {
         .await
         .expect("failed to commit the new billing account");
 
-    let txn = conn.transaction().await.expect("cannot create txn");
+    let _txn = conn.transaction().await.expect("cannot create txn");
 
     let mut event = Event::new(
-        &txn,
-        &nats,
+        &pg,
+        &nats_conn,
         "I like cheese",
         serde_json::json![{}],
         EventKind::EntityAction,
@@ -268,7 +271,7 @@ async fn running() {
 
     let pre_save_event = event.clone();
     event
-        .error(&txn, &nats)
+        .error(&pg, &nats_conn)
         .await
         .expect("cannot update event status");
     assert_eq!(
@@ -282,7 +285,7 @@ async fn running() {
         "did not transition to error"
     );
     event
-        .running(&txn, &nats)
+        .running(&pg, &nats_conn)
         .await
         .expect("cannot update event status");
     assert_eq!(
@@ -311,8 +314,8 @@ async fn has_parent() {
     let txn = conn.transaction().await.expect("cannot create txn");
 
     let event_prime = Event::new(
-        &txn,
-        &nats,
+        &pg,
+        &nats_conn,
         "I like cheese",
         serde_json::json![{}],
         EventKind::EntityAction,
@@ -330,8 +333,8 @@ async fn has_parent() {
     assert_eq!(parent_exists, false);
 
     let event_secondary = Event::new(
-        &txn,
-        &nats,
+        &pg,
+        &nats_conn,
         "I like cheese",
         serde_json::json![{}],
         EventKind::EntityAction,
@@ -349,8 +352,8 @@ async fn has_parent() {
     assert_eq!(secondary_parent_exists, true);
 
     let event_tertiary = Event::new(
-        &txn,
-        &nats,
+        &pg,
+        &nats_conn,
         "I like cheese",
         serde_json::json![{}],
         EventKind::EntityAction,
@@ -385,8 +388,8 @@ async fn get() {
     let txn = conn.transaction().await.expect("cannot create txn");
 
     let event = Event::new(
-        &txn,
-        &nats,
+        &pg,
+        &nats_conn,
         "I like cheese",
         serde_json::json![{}],
         EventKind::EntityAction,
@@ -418,8 +421,8 @@ async fn list() {
     let txn = conn.transaction().await.expect("cannot create txn");
 
     let _event = Event::new(
-        &txn,
-        &nats,
+        &pg,
+        &nats_conn,
         "I like cheese",
         serde_json::json![{}],
         EventKind::EntityAction,
@@ -431,8 +434,8 @@ async fn list() {
     .expect("cannot create event");
 
     let _event_two = Event::new(
-        &txn,
-        &nats,
+        &pg,
+        &nats_conn,
         "I like cheese also",
         serde_json::json![{}],
         EventKind::EntityAction,
@@ -463,11 +466,11 @@ async fn log() {
         .await
         .expect("failed to commit the new billing account");
 
-    let txn = conn.transaction().await.expect("cannot create txn");
+    let _txn = conn.transaction().await.expect("cannot create txn");
 
     let event = Event::new(
-        &txn,
-        &nats,
+        &pg,
+        &nats_conn,
         "I like cheese",
         serde_json::json![{}],
         EventKind::EntityAction,
@@ -480,8 +483,8 @@ async fn log() {
 
     event
         .log(
-            &txn,
-            &nats,
+            &pg,
+            &nats_conn,
             si_sdf::models::EventLogLevel::Error,
             "super fun!",
             serde_json::json![{}],

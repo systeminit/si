@@ -195,8 +195,8 @@ impl ChangeRun {
         let target_entity = Entity::get_any(&txn, &self.action.entity_id).await?;
 
         let mut root_event = Event::cli_change_run(
-            &txn,
-            &nats,
+            &pg,
+            &nats_conn,
             &target_entity,
             &self.action.action,
             &self.action.system_id,
@@ -204,7 +204,7 @@ impl ChangeRun {
         )
         .await?;
         ctx.set_root_event(root_event.clone()).await;
-        root_event.save(&txn, &nats).await?;
+        root_event.save(&pg, &nats_conn).await?;
 
         let mut change_set = ChangeSet::new(
             &txn,
@@ -255,7 +255,15 @@ impl ChangeRun {
         ctx.add_tracking_id(act.id.clone()).await;
 
         change_set
-            .execute(&txn, &nats, &veritech, false, Some(root_event.id.as_ref()))
+            .execute(
+                &pg,
+                &txn,
+                &nats_conn,
+                &nats,
+                &veritech,
+                false,
+                Some(root_event.id.as_ref()),
+            )
             .await?;
 
         txn.commit().await?;

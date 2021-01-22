@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tracing::error;
 
-use crate::data::{NatsTxn, NatsTxnError, PgPool, PgTxn};
+use crate::data::{NatsConn, NatsTxn, NatsTxnError, PgPool, PgTxn};
 use crate::veritech::Veritech;
 
 use crate::models::{
@@ -207,8 +207,9 @@ pub struct Node {
 
 impl Node {
     pub async fn new(
-        pool: &PgPool,
+        pg: &PgPool,
         txn: &PgTxn<'_>,
+        nats_conn: &NatsConn,
         nats: &NatsTxn,
         veritech: &Veritech,
         name: Option<String>,
@@ -245,7 +246,9 @@ impl Node {
             NodeKind::Entity => {
                 let system_ids = system_ids.ok_or(NodeError::EntityRequiresSystem)?;
                 let entity = Entity::new(
+                    &pg,
                     &txn,
+                    &nats_conn,
                     &nats,
                     name,
                     None,
@@ -259,12 +262,13 @@ impl Node {
                 .await
                 .map_err(|e| NodeError::Entity(e.to_string()))?;
                 node.update_object_id(&txn, &entity.id).await?;
-                let _event = Event::node_entity_create(&txn, &nats, &node, &entity, None).await?;
+                let _event =
+                    Event::node_entity_create(&pg, &nats_conn, &node, &entity, None).await?;
                 for system_id in system_ids.iter() {
                     node.sync_resource(
-                        pool,
+                        pg,
                         txn,
-                        nats,
+                        nats_conn,
                         veritech,
                         system_id,
                         Some(String::from(change_set_id)),
@@ -333,9 +337,9 @@ impl Node {
 
     pub async fn sync_resource(
         &self,
-        pool: &PgPool,
+        pg: &PgPool,
         txn: &PgTxn<'_>,
-        nats: &NatsTxn,
+        nats_conn: &NatsConn,
         veritech: &Veritech,
         system_id: impl AsRef<str>,
         change_set_id: Option<String>,
@@ -351,7 +355,9 @@ impl Node {
                 .await
                 .map_err(|e| ResourceError::Entity(e.to_string()))?
         };
-        resource.sync(pool, txn, nats, veritech).await?;
+        resource
+            .sync(pg.clone(), txn, nats_conn.clone(), veritech)
+            .await?;
         Ok(())
     }
 
@@ -432,8 +438,6 @@ impl Node {
         txn: &PgTxn<'_>,
         change_set_id: impl AsRef<str>,
     ) -> NodeResult<Entity> {
-        dbg!("---- who the fuck are we ----");
-        dbg!(&self);
         let change_set_id = change_set_id.as_ref();
         let e = Entity::get_projection(&txn, &self.object_id, &change_set_id)
             .await

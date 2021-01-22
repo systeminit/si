@@ -4,7 +4,7 @@ use serde_json;
 use strum_macros::Display;
 use thiserror::Error;
 
-use crate::data::{NatsTxn, NatsTxnError, PgPool, PgTxn};
+use crate::data::{NatsConn, NatsTxn, NatsTxnError, PgPool, PgTxn};
 use crate::models::{
     next_update_clock, Edge, EdgeError, EdgeKind, Entity, Event, EventError, Node, SiStorable,
     UpdateClockError,
@@ -42,6 +42,8 @@ pub enum ResourceError {
     Edge(#[from] EdgeError),
     #[error("event error: {0}")]
     Event(#[from] EventError),
+    #[error("pg error: {0}")]
+    Deadpool(#[from] deadpool_postgres::PoolError),
 }
 
 #[derive(Serialize, Debug)]
@@ -116,8 +118,8 @@ pub struct Resource {
 
 impl Resource {
     pub async fn new(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
+        pg: &PgPool,
+        nats_conn: &NatsConn,
         state: serde_json::Value,
         system_id: impl AsRef<str>,
         node_id: impl AsRef<str>,
@@ -135,6 +137,10 @@ impl Resource {
         let timestamp = format!("{}", current_time);
 
         let workspace_update_clock = next_update_clock(workspace_id).await?;
+
+        let mut conn = pg.pool.get().await?;
+        let txn = conn.transaction().await?;
+        let nats = nats_conn.transaction();
 
         let row = txn
             .query_one(
@@ -157,6 +163,10 @@ impl Resource {
             .await?;
         let json: serde_json::Value = row.try_get("object")?;
         nats.publish(&json).await?;
+
+        txn.commit().await?;
+        nats.commit().await?;
+
         let object: Resource = serde_json::from_value(json)?;
         Ok(object)
     }
@@ -198,39 +208,6 @@ impl Resource {
         Ok(object)
     }
 
-    //pub async fn get(
-    //    db: &Db,
-    //    entity_id: impl AsRef<str>,
-    //    system_id: impl AsRef<str>,
-    //) -> ResourceResult<Resource> {
-    //    let entity_id = entity_id.as_ref();
-    //    let system_id = system_id.as_ref();
-    //    let query = format!(
-    //        "SELECT a.*
-    //      FROM `{bucket}` AS a
-    //      WHERE a.siStorable.typeName = \"resource\"
-    //        AND a.systemId = $system_id
-    //        AND a.entityId = $entity_id
-    //      LIMIT 1
-    //    ",
-    //        bucket = db.bucket_name,
-    //    );
-    //    let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
-    //    named_params.insert("system_id".into(), serde_json::json![system_id]);
-    //    named_params.insert("entity_id".into(), serde_json::json![entity_id]);
-    //    let mut query_results: Vec<Resource> =
-    //        db.query_consistent(query, Some(named_params)).await?;
-    //    if query_results.len() == 0 {
-    //        Err(ResourceError::NoResource(
-    //            String::from(entity_id),
-    //            String::from(system_id),
-    //        ))
-    //    } else {
-    //        let result = query_results.pop().unwrap();
-    //        Ok(result)
-    //    }
-    //}
-
     pub async fn get_any_by_node_id(
         txn: &PgTxn<'_>,
         node_id: impl AsRef<str>,
@@ -268,43 +245,10 @@ impl Resource {
         Ok(object)
     }
 
-    //pub async fn get_by_node_id(
-    //    db: &Db,
-    //    node_id: impl AsRef<str>,
-    //    system_id: impl AsRef<str>,
-    //) -> ResourceResult<Resource> {
-    //    let node_id = node_id.as_ref();
-    //    let system_id = system_id.as_ref();
-    //    let query = format!(
-    //        "SELECT a.*
-    //      FROM `{bucket}` AS a
-    //      WHERE a.siStorable.typeName = \"resource\"
-    //        AND a.systemId = $system_id
-    //        AND a.nodeId = $node_id
-    //      LIMIT 1
-    //    ",
-    //        bucket = db.bucket_name,
-    //    );
-    //    let mut named_params: HashMap<String, serde_json::Value> = HashMap::new();
-    //    named_params.insert("system_id".into(), serde_json::json![system_id]);
-    //    named_params.insert("node_id".into(), serde_json::json![node_id]);
-    //    let mut query_results: Vec<Resource> =
-    //        db.query_consistent(query, Some(named_params)).await?;
-    //    if query_results.len() == 0 {
-    //        Err(ResourceError::NoResource(
-    //            String::from(node_id),
-    //            String::from(system_id),
-    //        ))
-    //    } else {
-    //        let result = query_results.pop().unwrap();
-    //        Ok(result)
-    //    }
-    //}
-
     pub async fn from_update_for_self(
         &mut self,
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
+        pg: &PgPool,
+        nats_conn: &NatsConn,
         state: serde_json::Value,
         status: ResourceStatus,
         health: ResourceHealth,
@@ -320,16 +264,16 @@ impl Resource {
         self.timestamp = timestamp;
 
         if change_set_id.is_some() {
-            self.save_projection(txn, nats).await?;
+            self.save_projection(pg, nats_conn).await?;
         } else {
-            self.save_head(txn, nats).await?;
+            self.save_head(pg, nats_conn).await?;
         }
         Ok(())
     }
 
     pub async fn from_update(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
+        pg: &PgPool,
+        nats_conn: &NatsConn,
         state: serde_json::Value,
         status: ResourceStatus,
         health: ResourceHealth,
@@ -341,6 +285,9 @@ impl Resource {
         let entity_id = entity_id.as_ref();
         let system_id = system_id.as_ref();
         let change_set_id = change_set_id.as_ref();
+
+        let mut conn = pg.pool.get().await?;
+        let txn = conn.transaction().await?;
 
         let mut resource =
             Resource::get_any_by_entity_id(&txn, entity_id, &system_id, &change_set_id).await?;
@@ -355,16 +302,20 @@ impl Resource {
 
         if hypothetical {
             resource.change_set_id = Some(String::from(change_set_id));
-            resource.save_projection(&txn, &nats).await?;
+            resource.save_projection(&pg, &nats_conn).await?;
         } else {
-            resource.save_head(&txn, &nats).await?;
+            resource.save_head(&pg, &nats_conn).await?;
         }
         Ok(resource)
     }
 
-    pub async fn save_head(&mut self, txn: &PgTxn<'_>, nats: &NatsTxn) -> ResourceResult<()> {
+    pub async fn save_head(&mut self, pg: &PgPool, nats_conn: &NatsConn) -> ResourceResult<()> {
         let update_clock = next_update_clock(&self.si_storable.workspace_id).await?;
         self.si_storable.update_clock = update_clock;
+
+        let mut conn = pg.pool.get().await?;
+        let txn = conn.transaction().await?;
+        let nats = nats_conn.transaction();
 
         let json = serde_json::to_value(&self)?;
         let row = txn
@@ -372,18 +323,30 @@ impl Resource {
             .await?;
         let updated_result: serde_json::Value = row.try_get("object")?;
         nats.publish(&updated_result).await?;
+
+        txn.commit().await?;
+        nats.commit().await?;
+
         let mut updated: Resource = serde_json::from_value(updated_result)?;
         std::mem::swap(self, &mut updated);
         Ok(())
     }
 
-    pub async fn save_projection(&mut self, txn: &PgTxn<'_>, nats: &NatsTxn) -> ResourceResult<()> {
+    pub async fn save_projection(
+        &mut self,
+        pg: &PgPool,
+        nats_conn: &NatsConn,
+    ) -> ResourceResult<()> {
         if self.change_set_id.is_none() {
             return Err(ResourceError::MissingChangeSetId);
         }
 
         let workspace_update_clock = next_update_clock(&self.si_storable.workspace_id).await?;
         self.si_storable.update_clock = workspace_update_clock;
+
+        let mut conn = pg.pool.get().await?;
+        let txn = conn.transaction().await?;
+        let nats = nats_conn.transaction();
 
         let json = serde_json::to_value(&self)?;
         let row = txn
@@ -394,6 +357,10 @@ impl Resource {
             .await?;
         let updated_result: serde_json::Value = row.try_get("object")?;
         nats.publish(&updated_result).await?;
+
+        txn.commit().await?;
+        nats.commit().await?;
+
         let mut updated: Resource = serde_json::from_value(updated_result)?;
         std::mem::swap(self, &mut updated);
         Ok(())
@@ -401,9 +368,9 @@ impl Resource {
 
     pub async fn sync(
         &self,
-        pool: &PgPool,
+        pg: PgPool,
         txn: &PgTxn<'_>,
-        nats: &NatsTxn,
+        nats_conn: NatsConn,
         veritech: &Veritech,
     ) -> ResourceResult<()> {
         let entity: Entity = if let Some(ref change_set_id) = self.change_set_id {
@@ -458,20 +425,24 @@ impl Resource {
             };
             predecessors.push(predecessor);
         }
-        let mut event = Event::sync_resource(&txn, &nats, &entity, &self.system_id, None).await?;
+        let mut event =
+            Event::sync_resource(&pg, &nats_conn, &entity, &self.system_id, None).await?;
 
         let this_node = Node::get(&txn, &self.node_id)
             .await
             .map_err(|e| ResourceError::Node(e.to_string()))?;
-        let this_nats = nats.clone();
+        let this_pg = pg.clone();
+        let this_nats_conn = nats_conn.clone();
         let mut this_resource = self.clone();
-        let this_pool = pool.clone();
         let this_veritech = veritech.clone();
 
         tokio::spawn(async move {
-            let mut conn = match this_pool.pool.get().await {
+            dbg!("** starting request thread **");
+            let mut conn = match this_pg.pool.get().await {
                 Ok(conn) => conn,
                 Err(e) => {
+                    dbg!("cannot get connection to db for sync");
+                    dbg!(&e);
                     tracing::error!(?e, "cannot get connection to sync resource");
                     return;
                 }
@@ -479,10 +450,14 @@ impl Resource {
             let this_txn = match conn.transaction().await {
                 Ok(txn) => txn,
                 Err(e) => {
+                    dbg!("cannot get transaction to sync resource");
+                    dbg!(&e);
                     tracing::error!(?e, "cannot get transaction to sync resource");
                     return;
                 }
             };
+            let this_nats = nats_conn.transaction();
+
             let request = VeritechSyncResourceRequest {
                 system_id: &this_resource.system_id,
                 resource: &this_resource,
@@ -491,49 +466,66 @@ impl Resource {
                 predecessors,
             };
 
+            dbg!("** sending the sync request **");
+
             let sync_reply: VeritechSyncResourceReply = match this_veritech
-                .send(&this_txn, &this_nats, "/ws/syncResource", request, &event)
+                .send(&pg, &this_nats_conn, "/ws/syncResource", request, &event)
                 .await
             {
                 Ok(Some(sync_reply)) => sync_reply,
                 Ok(None) => {
-                    match event.unknown(&this_txn, &this_nats).await {
+                    dbg!("vertich sync got an okay None");
+                    match event.unknown(&this_pg, &this_nats_conn).await {
                         Ok(_) => {}
                         Err(e) => {
+                            dbg!("got a some from the syn reply");
+                            dbg!(&e);
                             tracing::warn!(?e, "cannot write event unknown to db");
                         }
                     }
                     return;
                 }
-                Err(_e) => {
-                    match event.unknown(&this_txn, &this_nats).await {
+                Err(e) => {
+                    dbg!("got an error from the sync request");
+                    dbg!(&e);
+                    match event.unknown(&this_pg, &this_nats_conn).await {
                         Ok(_) => {}
                         Err(e) => {
+                            dbg!("got an error sending an event unknown");
+                            dbg!(&e);
                             tracing::warn!(?e, "cannot write event unknown to db");
                         }
                     }
                     return;
                 }
             };
+            dbg!("*** sync reply ***");
+            dbg!(&sync_reply);
             if sync_reply.resource.status == ResourceStatus::Failed {
-                match event.error(&this_txn, &this_nats).await {
+                dbg!("erroring because resource failed");
+                match event.error(&this_pg, &this_nats_conn).await {
                     Ok(_) => {}
                     Err(e) => {
+                        dbg!("*** failed to write event error on failure ***");
+                        dbg!(&e);
                         tracing::warn!(?e, "cannot write event error to db");
                     }
                 }
             } else {
-                match event.success(&this_txn, &this_nats).await {
+                dbg!("marking event as successful");
+                match event.success(&this_pg, &this_nats_conn).await {
                     Ok(_) => {}
                     Err(e) => {
+                        dbg!("*** failed to mark event as successful ***");
+                        dbg!(&e);
                         tracing::warn!(?e, "cannot write event success to db");
                     }
                 }
             }
             match this_resource
                 .from_update_for_self(
-                    &this_txn,
-                    &this_nats,
+                    &this_pg,
+                    &this_nats_conn,
                     sync_reply.resource.state,
                     sync_reply.resource.status,
                     sync_reply.resource.health,
@@ -543,15 +535,31 @@ impl Resource {
             {
                 Ok(_) => {}
                 Err(e) => {
+                    dbg!("** failed to update resource **");
+                    dbg!(&e);
                     tracing::warn!("cannot update resource from response: {}", e);
                     return;
                 }
             }
+            match this_nats.commit().await {
+                Ok(_) => {}
+                Err(e) => {
+                    tracing::error!(?e, "cannot commit nats transaction for sync resource");
+                    dbg!("** failed to commit nats txn **");
+                    dbg!(&e);
+                }
+            }
             match this_txn.commit().await {
                 Ok(_) => {}
-                Err(e) => tracing::error!(?e, "cannot commit transaction for sync resource"),
+                Err(e) => {
+                    dbg!("** failed to commit db txn **");
+                    dbg!(&e);
+                    tracing::error!(?e, "cannot commit transaction for sync resource");
+                }
             }
+            dbg!("**finished up cleanly**");
         });
+        dbg!("returning from resource sync");
         Ok(())
     }
 }

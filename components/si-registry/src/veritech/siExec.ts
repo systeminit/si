@@ -59,6 +59,9 @@ export async function siExec(
         crlfDelay: Infinity,
       });
       allRl.on("line", data => {
+        console.log("trying to write out for event");
+        console.trace();
+        console.dir(event);
         eventLog.output("all", data);
         all = all + data;
       });

@@ -4,19 +4,19 @@ use crate::models::billing_account::{signup_new_billing_account, NewBillingAccou
 use crate::models::event::create_event;
 use crate::{one_time_setup, TestContext};
 
-use si_sdf::data::{NatsTxn, PgTxn};
+use si_sdf::data::{NatsConn, PgPool};
 use si_sdf::models::{EventLog, EventLogLevel, OutputLineStream};
 
 pub async fn create_event_log(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
+    pg: &PgPool,
+    nats_conn: &NatsConn,
     nba: &NewBillingAccount,
 ) -> EventLog {
-    let event = create_event(&txn, &nats, &nba).await;
+    let event = create_event(&pg, &nats_conn, &nba).await;
 
     let event_log = EventLog::new(
-        &txn,
-        &nats,
+        &pg,
+        &nats_conn,
         "logging your events",
         serde_json::json![{}],
         EventLogLevel::Info,
@@ -42,13 +42,13 @@ async fn new() {
         .await
         .expect("failed to commit the new billing account");
 
-    let txn = conn.transaction().await.expect("cannot create txn");
+    let _txn = conn.transaction().await.expect("cannot create txn");
 
-    let event = create_event(&txn, &nats, &nba).await;
+    let event = create_event(&pg, &nats_conn, &nba).await;
 
     let event_log = EventLog::new(
-        &txn,
-        &nats,
+        &pg,
+        &nats_conn,
         "fading slowly",
         serde_json::json![{}],
         EventLogLevel::Fatal,
@@ -79,11 +79,11 @@ async fn has_parent() {
 
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let event = create_event(&txn, &nats, &nba).await;
+    let event = create_event(&pg, &nats_conn, &nba).await;
 
     let event_log = EventLog::new(
-        &txn,
-        &nats,
+        &pg,
+        &nats_conn,
         "fading slowly",
         serde_json::json![{}],
         EventLogLevel::Fatal,
@@ -118,11 +118,11 @@ async fn get() {
 
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let event = create_event(&txn, &nats, &nba).await;
+    let event = create_event(&pg, &nats_conn, &nba).await;
 
     let og_event_log = EventLog::new(
-        &txn,
-        &nats,
+        &pg,
+        &nats_conn,
         "fading slowly",
         serde_json::json![{}],
         EventLogLevel::Fatal,
@@ -154,11 +154,11 @@ async fn list() {
 
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let event = create_event(&txn, &nats, &nba).await;
+    let event = create_event(&pg, &nats_conn, &nba).await;
 
     let _og_event_log = EventLog::new(
-        &txn,
-        &nats,
+        &pg,
+        &nats_conn,
         "fading slowly",
         serde_json::json![{}],
         EventLogLevel::Fatal,
@@ -169,8 +169,8 @@ async fn list() {
     .expect("cannot create event_log");
 
     let _event_log_back_at_it_again_with_the_white_vans = EventLog::new(
-        &txn,
-        &nats,
+        &pg,
+        &nats_conn,
         "fading slowly",
         serde_json::json![{}],
         EventLogLevel::Fatal,
@@ -201,13 +201,13 @@ async fn save() {
         .await
         .expect("failed to commit the new billing account");
 
-    let txn = conn.transaction().await.expect("cannot create txn");
+    let _txn = conn.transaction().await.expect("cannot create txn");
 
-    let event = create_event(&txn, &nats, &nba).await;
+    let event = create_event(&pg, &nats_conn, &nba).await;
 
     let mut event_log_back_at_it_again_with_the_white_vans = EventLog::new(
-        &txn,
-        &nats,
+        &pg,
+        &nats_conn,
         "fading slowly",
         serde_json::json![{}],
         EventLogLevel::Fatal,
@@ -221,7 +221,7 @@ async fn save() {
     event_log_back_at_it_again_with_the_white_vans.message = "damn daniel".into();
     event_log_back_at_it_again_with_the_white_vans.payload = serde_json::json![{"cool":"shoes"}];
     event_log_back_at_it_again_with_the_white_vans
-        .save(&txn, &nats)
+        .save(&pg, &nats_conn)
         .await
         .expect("cannot save event log");
 
@@ -267,13 +267,13 @@ async fn output_line() {
         .await
         .expect("failed to commit the new billing account");
 
-    let txn = conn.transaction().await.expect("cannot create txn");
+    let _txn = conn.transaction().await.expect("cannot create txn");
 
-    let event = create_event(&txn, &nats, &nba).await;
+    let event = create_event(&pg, &nats_conn, &nba).await;
 
     let mut event_log = EventLog::new(
-        &txn,
-        &nats,
+        &pg,
+        &nats_conn,
         "running kubectl",
         serde_json::json![{}],
         EventLogLevel::Info,
@@ -285,8 +285,8 @@ async fn output_line() {
 
     event_log
         .output_line(
-            &txn,
-            &nats,
+            &pg,
+            &nats_conn,
             &event_log_fs,
             OutputLineStream::Stdout,
             "hey stdout",
@@ -296,8 +296,8 @@ async fn output_line() {
         .expect("cannot create output line");
     event_log
         .output_line(
-            &txn,
-            &nats,
+            &pg,
+            &nats_conn,
             &event_log_fs,
             OutputLineStream::All,
             "hey all",
@@ -307,8 +307,8 @@ async fn output_line() {
         .expect("cannot create output line");
     event_log
         .output_line(
-            &txn,
-            &nats,
+            &pg,
+            &nats_conn,
             &event_log_fs,
             OutputLineStream::Stderr,
             "hey stderr",
@@ -318,8 +318,8 @@ async fn output_line() {
         .expect("cannot create output line");
     event_log
         .output_line(
-            &txn,
-            &nats,
+            &pg,
+            &nats_conn,
             &event_log_fs,
             OutputLineStream::Stderr,
             "",
@@ -329,8 +329,8 @@ async fn output_line() {
         .expect("cannot create output line");
     event_log
         .output_line(
-            &txn,
-            &nats,
+            &pg,
+            &nats_conn,
             &event_log_fs,
             OutputLineStream::Stdout,
             "okay, done stdout",
@@ -340,8 +340,8 @@ async fn output_line() {
         .expect("cannot create output line");
     event_log
         .output_line(
-            &txn,
-            &nats,
+            &pg,
+            &nats_conn,
             &event_log_fs,
             OutputLineStream::Stdout,
             "",
@@ -350,7 +350,14 @@ async fn output_line() {
         .await
         .expect("cannot create output line");
     event_log
-        .output_line(&txn, &nats, &event_log_fs, OutputLineStream::All, "", true)
+        .output_line(
+            &pg,
+            &nats_conn,
+            &event_log_fs,
+            OutputLineStream::All,
+            "",
+            true,
+        )
         .await
         .expect("cannot create output line");
 

@@ -4,13 +4,14 @@ use crate::models::edit_session::create_edit_session;
 use crate::models::node::create_system_node;
 use crate::{one_time_setup, TestContext};
 
-use si_sdf::data::{NatsTxn, PgPool, PgTxn};
+use si_sdf::data::{NatsConn, NatsTxn, PgPool, PgTxn};
 use si_sdf::models::{ChangeSet, ChangeSetParticipant, EditSession, System};
 use si_sdf::veritech::Veritech;
 
 pub async fn create_system(
     pool: &PgPool,
     txn: &PgTxn<'_>,
+    nats_conn: &NatsConn,
     nats: &NatsTxn,
     veritech: &Veritech,
     nba: &NewBillingAccount,
@@ -20,6 +21,7 @@ pub async fn create_system(
     let node = create_system_node(
         &pool,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -59,6 +61,7 @@ async fn new() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -101,6 +104,7 @@ async fn save_head() {
     let mut system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -142,6 +146,7 @@ async fn save_projection() {
     let mut system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -183,6 +188,7 @@ async fn get_any() {
     let mut og_system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -234,6 +240,7 @@ async fn get_head() {
     let mut og_system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -282,6 +289,7 @@ async fn get_projection() {
     let og_system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,

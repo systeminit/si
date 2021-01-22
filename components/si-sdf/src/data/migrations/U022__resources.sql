@@ -5,9 +5,9 @@ CREATE TABLE resources
     billing_account_id bigint                   NOT NULL REFERENCES billing_accounts (id),
     organization_id    bigint                   NOT NULL REFERENCES organizations (id),
     workspace_id       bigint                   NOT NULL REFERENCES workspaces (id),
-    system_id          bigint                   NOT NULL REFERENCES systems (id),
-    node_id            bigint                   UNIQUE NOT NULL REFERENCES nodes (id),
-    entity_id          bigint                   UNIQUE NOT NULL REFERENCES entities (id),
+    system_id          bigint                   NOT NULL,
+    node_id            bigint                   UNIQUE NOT NULL,
+    entity_id          bigint                   UNIQUE NOT NULL,
     tenant_ids         text[]                   NOT NULL,
     created_at         TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at         TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()

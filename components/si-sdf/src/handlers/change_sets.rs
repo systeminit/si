@@ -78,7 +78,15 @@ pub async fn patch(
                 .await
                 .map_err(HandlerError::from)?;
             let impacted_ids = change_set
-                .execute(&txn, &nats, &veritech, execute_request.hypothetical, None)
+                .execute(
+                    &pg,
+                    &txn,
+                    &nats_conn,
+                    &nats,
+                    &veritech,
+                    execute_request.hypothetical,
+                    None,
+                )
                 .await
                 .map_err(HandlerError::from)?;
             PatchReply::Execute(ExecuteReply {
@@ -114,7 +122,7 @@ pub async fn patch(
 
             // Create an event if the action is a "deploy"
             let event_id = if execute_with_action_request.action == "deploy" {
-                let event = Event::change_set_execute(&txn, &nats, &change_set, None)
+                let event = Event::change_set_execute(&pg, &nats_conn, &change_set, None)
                     .await
                     .map_err(HandlerError::from)?;
                 Some(event.id)
@@ -144,7 +152,15 @@ pub async fn patch(
 
             trace!("executing changeset");
             let impacted_ids = change_set
-                .execute(&txn, &nats, &veritech, false, event_id.as_deref())
+                .execute(
+                    &pg,
+                    &txn,
+                    &nats_conn,
+                    &nats,
+                    &veritech,
+                    false,
+                    event_id.as_deref(),
+                )
                 .await
                 .map_err(HandlerError::from)?;
             PatchReply::Execute(ExecuteReply {

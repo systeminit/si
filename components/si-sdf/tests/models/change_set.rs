@@ -159,6 +159,7 @@ async fn execute() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -169,6 +170,7 @@ async fn execute() {
     let first_entity = create_entity(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -180,6 +182,7 @@ async fn execute() {
     let second_entity = create_entity(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -191,6 +194,7 @@ async fn execute() {
     let third_entity = create_entity(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -239,7 +243,7 @@ async fn execute() {
     create_op_entity_delete(&txn, &nats, &nba, &change_set, &edit_session, &third_entity).await;
 
     let impacted_objects = change_set
-        .execute(&txn, &nats, &veritech, true, None)
+        .execute(&pg, &txn, &nats_conn, &nats, &veritech, true, None)
         .await
         .expect("cannot execute change set");
     assert_eq!(impacted_objects.iter().any(|id| id == &system.id), true);
@@ -280,7 +284,7 @@ async fn execute() {
 
     // do the hypotehtical twice
     let impacted_objects = change_set
-        .execute(&txn, &nats, &veritech, true, None)
+        .execute(&pg, &txn, &nats_conn, &nats, &veritech, true, None)
         .await
         .expect("cannot execute change set");
     assert_eq!(impacted_objects.iter().any(|id| id == &system.id), true);
@@ -321,7 +325,7 @@ async fn execute() {
 
     // Now save the non-hypothetical objects!
     let impacted_objects = change_set
-        .execute(&txn, &nats, &veritech, false, None)
+        .execute(&pg, &txn, &nats_conn, &nats, &veritech, false, None)
         .await
         .expect("cannot execute change set");
     assert_eq!(impacted_objects.iter().any(|id| id == &system.id), true);

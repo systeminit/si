@@ -1,5 +1,5 @@
 use crate::data::PgTxn;
-use crate::models::{Event, EventResult};
+use crate::models::{Event, EventResult, SiStorable};
 use serde::{Deserialize, Serialize};
 use strum_macros::{Display, EnumString};
 
@@ -20,6 +20,7 @@ pub struct OutputLine {
     pub event_id: String,
     pub event_log_id: String,
     pub closed: bool,
+    pub si_storable: SiStorable,
 }
 
 impl OutputLine {
@@ -29,6 +30,7 @@ impl OutputLine {
         event_id: impl Into<String>,
         event_log_id: impl Into<String>,
         closed: bool,
+        si_storable: SiStorable,
     ) -> Self {
         let line = line.into();
         let event_id = event_id.into();
@@ -40,6 +42,7 @@ impl OutputLine {
             event_id,
             event_log_id,
             closed,
+            si_storable,
         };
 
         output_line

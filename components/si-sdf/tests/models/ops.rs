@@ -136,6 +136,7 @@ async fn op_entity_set() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -146,6 +147,7 @@ async fn op_entity_set() {
     let entity = create_entity(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -199,6 +201,7 @@ async fn op_entity_set_apply() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -209,6 +212,7 @@ async fn op_entity_set_apply() {
     let entity = create_entity(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -269,6 +273,7 @@ async fn op_set_name() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -279,6 +284,7 @@ async fn op_set_name() {
     let entity = create_entity(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -328,6 +334,7 @@ async fn op_set_name_apply() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -338,6 +345,7 @@ async fn op_set_name_apply() {
     let entity = create_entity(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -390,6 +398,7 @@ async fn op_entity_action() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -400,6 +409,7 @@ async fn op_entity_action() {
     let entity = create_entity(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -451,6 +461,7 @@ async fn op_entity_action_apply() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -461,6 +472,7 @@ async fn op_entity_action_apply() {
     let entity = create_entity(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -487,9 +499,18 @@ async fn op_entity_action_apply() {
     .expect("cannot create op");
 
     let mut entity_json = serde_json::to_value(entity.clone()).expect("cannot serialize entity");
-    op.apply(&txn, &nats, &veritech, true, &mut entity_json, None)
-        .await
-        .expect("cannot apply op");
+    op.apply(
+        &pg,
+        &txn,
+        &nats_conn,
+        &nats,
+        &veritech,
+        true,
+        &mut entity_json,
+        None,
+    )
+    .await
+    .expect("cannot apply op");
     let second_resource =
         Resource::get_any_by_entity_id(&txn, &entity.id, &system.id, &change_set.id)
             .await
@@ -524,6 +545,7 @@ async fn op_entity_delete() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -534,6 +556,7 @@ async fn op_entity_delete() {
     let entity = create_entity(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -582,6 +605,7 @@ async fn op_entity_delete_apply() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -592,6 +616,7 @@ async fn op_entity_delete_apply() {
     let entity = create_entity(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,

@@ -28,6 +28,7 @@ pub async fn create(
     let node = Node::new(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         request.name,
@@ -98,7 +99,7 @@ pub async fn patch(
             node.sync_resource(
                 &pg,
                 &txn,
-                &nats,
+                &nats_conn,
                 &veritech,
                 sync_resource_req.system_id,
                 sync_resource_req.change_set_id,
@@ -226,7 +227,7 @@ pub async fn object_patch(
     }
 
     let item_ids = change_set
-        .execute(&txn, &nats, &veritech, true, None)
+        .execute(&pg, &txn, &nats_conn, &nats, &veritech, true, None)
         .await
         .map_err(HandlerError::from)?;
 

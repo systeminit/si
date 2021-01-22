@@ -21,7 +21,7 @@ async fn get() {
     txn.commit().await.expect("cannot commit txn");
 
     let txn = conn.transaction().await.expect("cannot get transaction");
-    let event = create_event(&txn, &nats, &nba).await;
+    let event = create_event(&pg, &nats_conn, &nba).await;
     txn.commit().await.expect("cannot commit txn");
 
     let token = login_user(&ctx, &nba).await;
@@ -52,7 +52,7 @@ async fn list() {
     txn.commit().await.expect("cannot commit txn");
 
     let txn = conn.transaction().await.expect("cannot get transaction");
-    let _event = create_event(&txn, &nats, &nba).await;
+    let _event = create_event(&pg, &nats_conn, &nba).await;
     txn.commit().await.expect("cannot commit txn");
 
     let token = login_user(&ctx, &nba).await;

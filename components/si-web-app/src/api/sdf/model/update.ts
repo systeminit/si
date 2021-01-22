@@ -173,7 +173,7 @@ function onMessage(ev: MessageEvent) {
     PQ.add(() => model.save());
   } else if (model_data.model?.siStorable?.typeName == "keyPair") {
     const model = new PublicKey(model_data.model as IPublicKey);
-    console.log("keyPair msg", { model });
+    console.log("keyPair msg", { model, model_data });
     PQ.add(() => model.save());
   } else if (model_data.model?.siStorable?.typeName == "secret") {
     const model = new Secret(model_data.model as ISecret);

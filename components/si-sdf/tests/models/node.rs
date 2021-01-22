@@ -5,15 +5,49 @@ use crate::models::system::create_system;
 
 use crate::{one_time_setup, TestContext};
 
-use si_sdf::data::{NatsTxn, PgPool, PgTxn};
+use si_sdf::data::{NatsConn, NatsTxn, PgPool, PgTxn};
 use si_sdf::models::{
     ChangeSet, Edge, EdgeKind, EditSession, Entity, Node, NodeKind, Position, Resource, System,
 };
 use si_sdf::veritech::Veritech;
 
+pub async fn create_custom_entity_node(
+    pg: &PgPool,
+    txn: &PgTxn<'_>,
+    nats_conn: &NatsConn,
+    nats: &NatsTxn,
+    veritech: &Veritech,
+    nba: &NewBillingAccount,
+    system: &System,
+    change_set: &ChangeSet,
+    edit_session: &EditSession,
+    object_type: impl AsRef<str>,
+) -> Node {
+    let object_type = object_type.as_ref();
+    let entity_node = Node::new(
+        &pg,
+        &txn,
+        &nats_conn,
+        &nats,
+        &veritech,
+        None,
+        NodeKind::Entity,
+        object_type,
+        &nba.workspace.id,
+        &change_set.id,
+        &edit_session.id,
+        Some(vec![system.id.clone()]),
+    )
+    .await
+    .expect("cannot create new node");
+
+    entity_node
+}
+
 pub async fn create_entity_node(
     pool: &PgPool,
     txn: &PgTxn<'_>,
+    nats_conn: &NatsConn,
     nats: &NatsTxn,
     veritech: &Veritech,
     nba: &NewBillingAccount,
@@ -24,6 +58,7 @@ pub async fn create_entity_node(
     let entity_node = Node::new(
         &pool,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         None,
@@ -43,6 +78,7 @@ pub async fn create_entity_node(
 pub async fn create_system_node(
     pool: &PgPool,
     txn: &PgTxn<'_>,
+    nats_conn: &NatsConn,
     nats: &NatsTxn,
     veritech: &Veritech,
     nba: &NewBillingAccount,
@@ -52,6 +88,7 @@ pub async fn create_system_node(
     let system_node = Node::new(
         &pool,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         None,
@@ -94,6 +131,7 @@ async fn new() {
     let system_node = Node::new(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         None,
@@ -115,6 +153,7 @@ async fn new() {
     let entity_node = Node::new(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         None,
@@ -159,6 +198,7 @@ async fn set_position() {
     let mut system_node = create_system_node(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -201,6 +241,7 @@ async fn save() {
     let mut system_node = create_system_node(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -252,6 +293,7 @@ async fn sync_resource() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -262,6 +304,7 @@ async fn sync_resource() {
     let entity_node = create_entity_node(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -274,7 +317,7 @@ async fn sync_resource() {
         .sync_resource(
             &pg,
             &txn,
-            &nats,
+            &nats_conn,
             &veritech,
             &system.id,
             Some(change_set.id.clone()),
@@ -294,14 +337,14 @@ async fn sync_resource() {
             .await
             .expect("cannot get resource");
     resource
-        .save_head(&txn, &nats)
+        .save_head(&pg, &nats_conn)
         .await
         .expect("cannot save resource head");
 
     txn.commit().await.expect("cannot commit txn");
     let txn = conn.transaction().await.expect("cannot create txn");
     entity_node
-        .sync_resource(&pg, &txn, &nats, &veritech, &system.id, None)
+        .sync_resource(&pg, &txn, &nats_conn, &veritech, &system.id, None)
         .await
         .expect("cannot sync head resource");
 }
@@ -331,6 +374,7 @@ async fn configured_by() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -341,6 +385,7 @@ async fn configured_by() {
     let first_entity_node = create_entity_node(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -352,6 +397,7 @@ async fn configured_by() {
     let second_entity_node = create_entity_node(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -406,6 +452,7 @@ async fn include_in_system() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -416,6 +463,7 @@ async fn include_in_system() {
     let second_system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -426,6 +474,7 @@ async fn include_in_system() {
     let entity_node = create_entity_node(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -480,6 +529,7 @@ async fn get_object_id() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -490,6 +540,7 @@ async fn get_object_id() {
     let entity_node = create_entity_node(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -527,6 +578,7 @@ async fn get_head_object_entity() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -537,6 +589,7 @@ async fn get_head_object_entity() {
     let entity_node = create_entity_node(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -585,6 +638,7 @@ async fn get_projection_object_entity() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -595,6 +649,7 @@ async fn get_projection_object_entity() {
     let entity_node = create_entity_node(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -639,6 +694,7 @@ async fn get_head_object_system() {
     let system_node = create_system_node(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -686,6 +742,7 @@ async fn get_projection_object_system() {
     let system_node = create_system_node(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -729,6 +786,7 @@ async fn get() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -739,6 +797,7 @@ async fn get() {
     let entity_node = create_entity_node(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -780,6 +839,7 @@ async fn list() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -790,6 +850,7 @@ async fn list() {
     let _first_entity_node = create_entity_node(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -801,6 +862,7 @@ async fn list() {
     let _second_entity_node = create_entity_node(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,

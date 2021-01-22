@@ -32,6 +32,7 @@ async fn load_data_model() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -42,6 +43,7 @@ async fn load_data_model() {
     let entity = create_entity(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,

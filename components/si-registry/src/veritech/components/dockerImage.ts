@@ -84,9 +84,11 @@ intelligence.syncResource = async function(
     "pull",
     request.entity.properties.__baseline.image,
   ]);
+  console.log("before docker image pull");
   const dockerImagePull = await siExec(event, "docker", pullArgs, {
     reject: false,
   });
+  console.log("after image pull");
 
   // If the image pull failed, early return
   if (dockerImagePull.failed) {

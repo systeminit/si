@@ -81,13 +81,14 @@ async fn cancel() {
 
     let txn = conn.transaction().await.expect("cannot create txn");
     edit_session
-        .cancel(&txn, &nats, &veritech, None)
+        .cancel(&pg, &txn, &nats_conn, &nats, &veritech, None)
         .await
         .expect("cannot cancel empty edit session");
 
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -98,6 +99,7 @@ async fn cancel() {
     let entity = create_entity(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -118,7 +120,7 @@ async fn cancel() {
     .await;
 
     edit_session
-        .cancel(&txn, &nats, &veritech, None)
+        .cancel(&pg, &txn, &nats_conn, &nats, &veritech, None)
         .await
         .expect("cannot cancle edit session");
 

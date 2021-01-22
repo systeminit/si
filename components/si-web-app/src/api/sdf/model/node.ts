@@ -41,8 +41,8 @@ export type INodeObject = IEntity | ISystem;
 export type NodeObject = Entity | System;
 
 export enum NodeKind {
-  Entity = "Entity",
-  System = "System",
+  Entity = "entity",
+  System = "system",
 }
 
 export interface Position {

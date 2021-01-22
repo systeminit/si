@@ -7,7 +7,7 @@ use strum_macros::Display;
 use thiserror::Error;
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 
-use crate::data::{EventLogFS, EventLogFSError, NatsTxn, NatsTxnError, PgTxn};
+use crate::data::{EventLogFS, EventLogFSError, NatsConn, NatsTxnError, PgPool, PgTxn};
 use crate::models::{
     list_model, next_update_clock, Event, EventResult, ListReply, ModelError, OrderByDirection,
     OutputLine, OutputLineStream, PageToken, Query, SiStorable, UpdateClockError,
@@ -19,6 +19,8 @@ pub enum EventLogError {
     Model(#[from] ModelError),
     #[error("pg error: {0}")]
     TokioPg(#[from] tokio_postgres::Error),
+    #[error("pg error: {0}")]
+    Deadpool(#[from] deadpool_postgres::PoolError),
     #[error("nats txn error: {0}")]
     NatsTxn(#[from] NatsTxnError),
     #[error("serde error: {0}")]
@@ -94,8 +96,8 @@ impl Clone for Streams {
 
 impl EventLog {
     pub async fn new(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
+        pg: &PgPool,
+        nats_conn: &NatsConn,
         message: impl Into<String>,
         payload: serde_json::Value,
         level: EventLogLevel,
@@ -108,6 +110,10 @@ impl EventLog {
         let timestamp = format!("{}", current_time);
 
         let update_clock = next_update_clock(&workspace_id).await?;
+
+        let mut conn = pg.pool.get().await?;
+        let txn = conn.transaction().await?;
+        let nats = nats_conn.transaction();
 
         let row = txn
             .query_one(
@@ -127,6 +133,10 @@ impl EventLog {
             .await?;
         let json: serde_json::Value = row.try_get("object")?;
         nats.publish(&json).await?;
+
+        txn.commit().await?;
+        nats.commit().await?;
+
         let object: EventLog = serde_json::from_value(json)?;
         Ok(object)
     }
@@ -146,8 +156,8 @@ impl EventLog {
 
     pub async fn output_line(
         &mut self,
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
+        pg: &PgPool,
+        nats_conn: &NatsConn,
         event_log_fs: &EventLogFS,
         stream: OutputLineStream,
         line: impl Into<String>,
@@ -155,8 +165,11 @@ impl EventLog {
     ) -> EventLogResult<OutputLine> {
         if !self.has_output_line {
             self.has_output_line = true;
-            self.save(txn, nats).await?;
+            self.save(pg, nats_conn).await?;
         }
+
+        let mut si_storable = self.si_storable.clone();
+        si_storable.type_name = "outputLine".to_string();
 
         let output_line = OutputLine::new(
             line,
@@ -164,10 +177,15 @@ impl EventLog {
             self.event_id.clone(),
             self.id.clone(),
             closed,
+            si_storable,
         );
+
+        let nats = nats_conn.transaction();
 
         self.write_line(event_log_fs, &output_line).await?;
         nats.publish(&output_line).await?;
+
+        nats.commit().await?;
 
         Ok(output_line)
     }
@@ -206,16 +224,24 @@ impl EventLog {
         Ok(reply)
     }
 
-    pub async fn save(&mut self, txn: &PgTxn<'_>, nats: &NatsTxn) -> EventLogResult<()> {
+    pub async fn save(&mut self, pg: &PgPool, nats_conn: &NatsConn) -> EventLogResult<()> {
         let update_clock = next_update_clock(&self.si_storable.workspace_id).await?;
         self.si_storable.update_clock = update_clock;
 
+        let mut conn = pg.pool.get().await?;
+        let txn = conn.transaction().await?;
+        let nats = nats_conn.transaction();
         let json = serde_json::to_value(&self)?;
+
         let row = txn
             .query_one("SELECT object FROM event_log_save_v1($1)", &[&json])
             .await?;
         let updated_result: serde_json::Value = row.try_get("object")?;
         nats.publish(&updated_result).await?;
+
+        txn.commit().await?;
+        nats.commit().await?;
+
         let updated: Self = serde_json::from_value(updated_result)?;
 
         // We're not mem::swap'ing here because we want to hold onto the `streams` and right now

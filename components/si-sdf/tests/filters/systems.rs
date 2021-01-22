@@ -31,6 +31,7 @@ async fn get() {
     let mut system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -88,6 +89,7 @@ async fn list() {
     let mut system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,

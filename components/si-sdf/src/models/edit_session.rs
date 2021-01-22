@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::data::{NatsTxn, NatsTxnError, PgTxn};
+use crate::data::{NatsConn, NatsTxn, NatsTxnError, PgPool, PgTxn};
 use crate::models::{
     next_update_clock, ChangeSet, ChangeSetError, ModelError, SiStorable, UpdateClockError,
 };
@@ -106,7 +106,9 @@ impl EditSession {
 
     pub async fn cancel(
         &self,
+        pg: &PgPool,
         txn: &PgTxn<'_>,
+        nats_conn: &NatsConn,
         nats: &NatsTxn,
         veritech: &Veritech,
         event_parent_id: Option<&str>,
@@ -127,7 +129,7 @@ impl EditSession {
         }
         let mut change_set = ChangeSet::get(&txn, &self.change_set_id).await?;
         change_set
-            .execute(txn, nats, veritech, true, event_parent_id)
+            .execute(pg, txn, nats_conn, nats, veritech, true, event_parent_id)
             .await?;
 
         Ok(())
