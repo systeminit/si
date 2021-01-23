@@ -31,7 +31,17 @@ async fn create() {
     txn.commit().await.expect("cannot commit txn");
 
     let txn = conn.transaction().await.expect("cannot get transaction");
-    let system = create_system(&pg, &txn, &nats, &veritech, &nba, &change_set, &edit_session).await;
+    let system = create_system(
+        &pg,
+        &txn,
+        &nats_conn,
+        &nats,
+        &veritech,
+        &nba,
+        &change_set,
+        &edit_session,
+    )
+    .await;
     txn.commit().await.expect("cannot commit txn");
 
     let token = login_user(&ctx, &nba).await;
@@ -75,11 +85,32 @@ async fn patch() {
     txn.commit().await.expect("cannot commit txn");
 
     let txn = conn.transaction().await.expect("cannot get transaction");
-    let system = create_system(&pg, &txn, &nats, &veritech, &nba, &change_set, &edit_session).await;
-    let second_system = create_system(&pg, &txn, &nats, &veritech, &nba, &change_set, &edit_session).await;
+    let system = create_system(
+        &pg,
+        &txn,
+        &nats_conn,
+        &nats,
+        &veritech,
+        &nba,
+        &change_set,
+        &edit_session,
+    )
+    .await;
+    let second_system = create_system(
+        &pg,
+        &txn,
+        &nats_conn,
+        &nats,
+        &veritech,
+        &nba,
+        &change_set,
+        &edit_session,
+    )
+    .await;
     let entity_node = create_entity_node(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -91,6 +122,7 @@ async fn patch() {
     let second_entity_node = create_entity_node(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -224,10 +256,21 @@ async fn object_patch() {
     txn.commit().await.expect("cannot commit txn");
 
     let txn = conn.transaction().await.expect("cannot get transaction");
-    let system = create_system(&pg, &txn, &nats, &veritech, &nba, &change_set, &edit_session).await;
+    let system = create_system(
+        &pg,
+        &txn,
+        &nats_conn,
+        &nats,
+        &veritech,
+        &nba,
+        &change_set,
+        &edit_session,
+    )
+    .await;
     let entity_node = create_entity_node(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -343,10 +386,21 @@ async fn get_object() {
     txn.commit().await.expect("cannot commit txn");
 
     let txn = conn.transaction().await.expect("cannot get transaction");
-    let system = create_system(&pg, &txn, &nats, &veritech, &nba, &change_set, &edit_session).await;
+    let system = create_system(
+        &pg,
+        &txn,
+        &nats_conn,
+        &nats,
+        &veritech,
+        &nba,
+        &change_set,
+        &edit_session,
+    )
+    .await;
     let entity_node = create_entity_node(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -426,10 +480,21 @@ async fn get() {
     txn.commit().await.expect("cannot commit txn");
 
     let txn = conn.transaction().await.expect("cannot get transaction");
-    let system = create_system(&pg, &txn, &nats, &veritech, &nba, &change_set, &edit_session).await;
+    let system = create_system(
+        &pg,
+        &txn,
+        &nats_conn,
+        &nats,
+        &veritech,
+        &nba,
+        &change_set,
+        &edit_session,
+    )
+    .await;
     let entity_node = create_entity_node(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,

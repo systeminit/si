@@ -1,4 +1,4 @@
-use crate::data::{NatsTxn, PgTxn};
+use crate::data::{NatsConn, NatsTxn, PgPool, PgTxn};
 
 use crate::models::{
     next_update_clock, Edge, EdgeKind, Entity, Event, Node, OpError, OpResult, Resource,
@@ -138,7 +138,9 @@ impl OpEntityAction {
 
     pub async fn apply(
         &self,
+        pg: &PgPool,
         txn: &PgTxn<'_>,
+        nats_conn: &NatsConn,
         nats: &NatsTxn,
         veritech: &Veritech,
         hypothetical: bool,
@@ -215,8 +217,8 @@ impl OpEntityAction {
             }
 
             let mut event = Event::entity_action(
-                &txn,
-                &nats,
+                &pg,
+                &nats_conn,
                 &this_action,
                 &entity,
                 &this_action.system_id,
@@ -236,12 +238,12 @@ impl OpEntityAction {
             );
 
             let response: ActionReply = match veritech
-                .send(&txn, &nats, "/ws/action", action_request, &event)
+                .send(&pg, &nats_conn, "/ws/action", action_request, &event)
                 .await?
             {
                 Some(response) => response,
                 None => {
-                    event.unknown(&txn, &nats).await?;
+                    event.unknown(&pg, &nats_conn).await?;
                     return Err(OpError::Veritech(VeritechError::NoReply));
                 }
             };
@@ -251,8 +253,8 @@ impl OpEntityAction {
             let entity_id = to["id"].as_str().ok_or(OpError::Missing("id"))?;
 
             Resource::from_update(
-                &txn,
-                &nats,
+                &pg,
+                &nats_conn,
                 response.resource.state,
                 response.resource.status,
                 response.resource.health,
@@ -277,7 +279,7 @@ impl OpEntityAction {
                 .await?;
                 apply_stack.push(new_action);
             }
-            event.success(&txn, &nats).await?;
+            event.success(&pg, &nats_conn).await?;
         }
         Ok(())
     }

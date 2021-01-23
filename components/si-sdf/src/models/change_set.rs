@@ -5,7 +5,7 @@ use tracing::{trace, warn};
 
 use std::collections::HashMap;
 
-use crate::data::{NatsTxn, NatsTxnError, PgTxn};
+use crate::data::{NatsConn, NatsTxn, NatsTxnError, PgPool, PgTxn};
 use crate::models::{
     calculate_properties, list_model, next_update_clock, ops, Edge, EdgeError, EdgeKind, Entity,
     EntityError, Event, EventError, ListReply, ModelError, OrderByDirection, PageToken, Query,
@@ -203,7 +203,9 @@ impl ChangeSet {
 
     pub async fn execute(
         &mut self,
+        pg: &PgPool,
         txn: &PgTxn<'_>,
+        nats_conn: &NatsConn,
         nats: &NatsTxn,
         veritech: &Veritech,
         hypothetical: bool,
@@ -219,7 +221,7 @@ impl ChangeSet {
         warn!(?change_set_entry_query_results, "change set exec results");
 
         let event =
-            Event::change_set_execute(&txn, &nats, &self, parent_event_id.map(|id| id.into()))
+            Event::change_set_execute(&pg, &nats_conn, &self, parent_event_id.map(|id| id.into()))
                 .await?;
 
         let mut seen_map: HashMap<String, serde_json::Value> = HashMap::new();
@@ -316,7 +318,9 @@ impl ChangeSet {
                         let op: ops::OpEntityAction = serde_json::from_value(change_set_entry)?;
                         trace!(?op, "applying op");
                         op.apply(
+                            &pg,
                             &txn,
+                            &nats_conn,
                             &nats,
                             &veritech,
                             hypothetical,

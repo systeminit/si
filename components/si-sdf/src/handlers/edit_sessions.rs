@@ -86,7 +86,7 @@ pub async fn patch(
         .map_err(HandlerError::from)?;
     match request {
         PatchRequest::Cancel(_) => edit_session
-            .cancel(&txn, &nats, &veritech, None)
+            .cancel(&pg, &txn, &nats_conn, &nats, &veritech, None)
             .await
             .map_err(HandlerError::from)?,
     }

@@ -1,20 +1,54 @@
 use crate::models::billing_account::{signup_new_billing_account, NewBillingAccount};
 use crate::models::change_set::create_change_set;
 use crate::models::edit_session::create_edit_session;
-use crate::models::node::create_entity_node;
+use crate::models::node::{create_custom_entity_node, create_entity_node};
 use crate::models::secret::create_secret_with_message;
 use crate::models::system::create_system;
 use crate::{one_time_setup, TestContext};
 
-use si_sdf::data::{NatsTxn, PgPool, PgTxn};
+use si_sdf::data::{NatsConn, NatsTxn, PgPool, PgTxn};
 use si_sdf::models::{
     ChangeSet, ChangeSetParticipant, Edge, EdgeKind, EditSession, Entity, System,
 };
 use si_sdf::veritech::Veritech;
 
+pub async fn create_custom_entity(
+    pg: &PgPool,
+    txn: &PgTxn<'_>,
+    nats_conn: &NatsConn,
+    nats: &NatsTxn,
+    veritech: &Veritech,
+    nba: &NewBillingAccount,
+    change_set: &ChangeSet,
+    edit_session: &EditSession,
+    system: &System,
+    object_type: impl AsRef<str>,
+) -> Entity {
+    let object_type = object_type.as_ref();
+    let node = create_custom_entity_node(
+        &pg,
+        &txn,
+        &nats_conn,
+        &nats,
+        &veritech,
+        &nba,
+        &system,
+        &change_set,
+        &edit_session,
+        object_type,
+    )
+    .await;
+    let entity = node
+        .get_projection_object_entity(&txn, &change_set.id)
+        .await
+        .expect("cannot get object projection");
+    entity
+}
+
 pub async fn create_entity(
     pool: &PgPool,
     txn: &PgTxn<'_>,
+    nats_conn: &NatsConn,
     nats: &NatsTxn,
     veritech: &Veritech,
     nba: &NewBillingAccount,
@@ -25,6 +59,7 @@ pub async fn create_entity(
     let node = create_entity_node(
         &pool,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -65,6 +100,7 @@ async fn new() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -75,6 +111,7 @@ async fn new() {
     let entity = create_entity(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -141,6 +178,7 @@ async fn save_projection() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -151,6 +189,7 @@ async fn save_projection() {
     let mut entity = create_entity(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -212,6 +251,7 @@ async fn save_base() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -223,6 +263,7 @@ async fn save_base() {
     let mut entity = create_entity(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -283,6 +324,7 @@ async fn save_head() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -294,6 +336,7 @@ async fn save_head() {
     let mut entity = create_entity(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -355,6 +398,7 @@ async fn calculate_properties() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -366,6 +410,7 @@ async fn calculate_properties() {
     let mut entity = create_entity(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -405,6 +450,7 @@ async fn update_properties_if_secret() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -416,6 +462,7 @@ async fn update_properties_if_secret() {
     let mut entity = create_entity(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -487,6 +534,7 @@ async fn get_any() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -498,6 +546,7 @@ async fn get_any() {
     let og_entity = create_entity(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -538,6 +587,7 @@ async fn get_head() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -549,6 +599,7 @@ async fn get_head() {
     let mut og_entity = create_entity(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -597,6 +648,7 @@ async fn get_projection() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -608,6 +660,7 @@ async fn get_projection() {
     let mut og_entity = create_entity(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -653,6 +706,7 @@ async fn get_projection_or_head() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -664,6 +718,7 @@ async fn get_projection_or_head() {
     let mut og_entity = create_entity(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -720,6 +775,7 @@ async fn get_all() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -731,6 +787,7 @@ async fn get_all() {
     let mut og_entity = create_entity(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -811,6 +868,7 @@ async fn list() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -822,6 +880,7 @@ async fn list() {
     let mut first_entity = create_entity(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -837,6 +896,7 @@ async fn list() {
     let mut second_entity = create_entity(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,

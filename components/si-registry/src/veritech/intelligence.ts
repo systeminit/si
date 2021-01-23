@@ -151,6 +151,7 @@ export function calculateProperties(
   const intelRes: CalculatePropertiesReply = {
     entity,
   };
+  console.log("calculate properties return", { intelRes });
   res.send(intelRes);
 }
 

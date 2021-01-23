@@ -13,6 +13,7 @@ use si_sdf::models::{BillingAccount, User};
 use si_sdf::veritech::Veritech;
 use si_settings::Settings;
 
+mod bugs;
 mod data;
 mod filters;
 mod handlers;

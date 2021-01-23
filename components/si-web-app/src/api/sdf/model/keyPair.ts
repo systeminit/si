@@ -2,11 +2,12 @@ import { db } from "@/api/sdf/dexie";
 import { ISiStorable } from "@/api/sdf/model/siStorable";
 import _ from "lodash";
 import store from "@/store";
+import { Base64 } from "js-base64";
 
 export interface IPublicKey {
   id: string;
   name: string;
-  publicKey: number[] | Uint8Array;
+  publicKey: Uint8Array | string;
   siStorable: ISiStorable;
 }
 
@@ -19,7 +20,11 @@ export class PublicKey implements IPublicKey {
   constructor(args: IPublicKey) {
     this.id = args.id;
     this.name = args.name;
-    this.publicKey = Uint8Array.from(args.publicKey);
+    if (_.isString(args.publicKey)) {
+      this.publicKey = Base64.toUint8Array(args.publicKey);
+    } else {
+      this.publicKey = args.publicKey;
+    }
     this.siStorable = args.siStorable;
   }
 

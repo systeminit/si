@@ -34,6 +34,7 @@ async fn get() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -44,6 +45,7 @@ async fn get() {
     let entity_node = create_entity_node(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -55,6 +57,7 @@ async fn get() {
     let entity_node_second = create_entity_node(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -117,6 +120,7 @@ async fn list() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -127,6 +131,7 @@ async fn list() {
     let entity_node = create_entity_node(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -138,6 +143,7 @@ async fn list() {
     let entity_node_second = create_entity_node(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -187,6 +193,7 @@ async fn delete() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -197,6 +204,7 @@ async fn delete() {
     let entity_node = create_entity_node(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -208,6 +216,7 @@ async fn delete() {
     let entity_node_second = create_entity_node(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -268,6 +277,7 @@ async fn all_predecessors() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -278,6 +288,7 @@ async fn all_predecessors() {
     let entity_node = create_entity_node(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -289,6 +300,7 @@ async fn all_predecessors() {
     let entity_node_second = create_entity_node(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -383,6 +395,7 @@ async fn all_successors() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -393,6 +406,7 @@ async fn all_successors() {
     let entity_node = create_entity_node(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -404,6 +418,7 @@ async fn all_successors() {
     let entity_node_second = create_entity_node(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,

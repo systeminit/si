@@ -33,6 +33,7 @@ async fn new() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -43,6 +44,7 @@ async fn new() {
     let _entity = create_entity(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -79,6 +81,7 @@ async fn save_head() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -89,6 +92,7 @@ async fn save_head() {
     let entity = create_entity(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -108,7 +112,7 @@ async fn save_head() {
     let first_og_resource = og_resource.clone();
 
     og_resource
-        .save_head(&txn, &nats)
+        .save_head(&pg, &nats_conn)
         .await
         .expect("cannot save");
 
@@ -117,7 +121,7 @@ async fn save_head() {
     let second_og_resource = og_resource.clone();
 
     og_resource
-        .save_head(&txn, &nats)
+        .save_head(&pg, &nats_conn)
         .await
         .expect("cannot save");
 
@@ -153,6 +157,7 @@ async fn save_projection() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -163,6 +168,7 @@ async fn save_projection() {
     let entity = create_entity(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -184,7 +190,7 @@ async fn save_projection() {
     og_resource.status = ResourceStatus::Failed;
 
     og_resource
-        .save_projection(&txn, &nats)
+        .save_projection(&pg, &nats_conn)
         .await
         .expect("cannot save");
 
@@ -223,6 +229,7 @@ async fn get_any_by_entity_id() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -233,6 +240,7 @@ async fn get_any_by_entity_id() {
     let entity = create_entity(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -249,7 +257,7 @@ async fn get_any_by_entity_id() {
     assert_eq!(resource.change_set_id.is_some(), true);
 
     resource
-        .save_head(&txn, &nats)
+        .save_head(&pg, &nats_conn)
         .await
         .expect("cannot save head resource");
 
@@ -286,6 +294,7 @@ async fn get_any_by_node_id() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -296,6 +305,7 @@ async fn get_any_by_node_id() {
     let entity = create_entity(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -313,7 +323,7 @@ async fn get_any_by_node_id() {
     assert_eq!(resource.change_set_id.is_some(), true);
 
     resource
-        .save_head(&txn, &nats)
+        .save_head(&pg, &nats_conn)
         .await
         .expect("cannot save og_resource");
 
@@ -350,6 +360,7 @@ async fn get_head_by_entity_id() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -360,6 +371,7 @@ async fn get_head_by_entity_id() {
     let entity = create_entity(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -379,7 +391,7 @@ async fn get_head_by_entity_id() {
     assert_eq!(resource_result.is_err(), true);
 
     og_resource
-        .save_head(&txn, &nats)
+        .save_head(&pg, &nats_conn)
         .await
         .expect("cannot save og_resource");
 
@@ -417,6 +429,7 @@ async fn get_head_by_node_id() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -427,6 +440,7 @@ async fn get_head_by_node_id() {
     let entity = create_entity(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -446,7 +460,7 @@ async fn get_head_by_node_id() {
     assert_eq!(resource_result.is_err(), true);
 
     og_resource
-        .save_head(&txn, &nats)
+        .save_head(&pg, &nats_conn)
         .await
         .expect("cannot save og_resource");
 
@@ -484,6 +498,7 @@ async fn from_update_for_self() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -494,6 +509,7 @@ async fn from_update_for_self() {
     let entity = create_entity(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -514,8 +530,8 @@ async fn from_update_for_self() {
 
     og_resource
         .from_update_for_self(
-            &txn,
-            &nats,
+            &pg,
+            &nats_conn,
             serde_json::json![{"ozzy": "ozman"}],
             ResourceStatus::InProgress,
             ResourceHealth::Warning,
@@ -533,8 +549,8 @@ async fn from_update_for_self() {
 
     og_resource
         .from_update_for_self(
-            &txn,
-            &nats,
+            &pg,
+            &nats_conn,
             serde_json::json![{"ozzy": "ozman"}],
             ResourceStatus::InProgress,
             ResourceHealth::Warning,
@@ -575,6 +591,7 @@ async fn from_update() {
     let system = create_system(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -585,6 +602,7 @@ async fn from_update() {
     let entity = create_entity(
         &pg,
         &txn,
+        &nats_conn,
         &nats,
         &veritech,
         &nba,
@@ -603,8 +621,8 @@ async fn from_update() {
     let first_og_resource = og_resource.clone();
 
     let og_resource = Resource::from_update(
-        &txn,
-        &nats,
+        &pg,
+        &nats_conn,
         serde_json::json![{"ozzy": "ozman"}],
         ResourceStatus::InProgress,
         ResourceHealth::Warning,
@@ -623,8 +641,8 @@ async fn from_update() {
     let second_og_resource = og_resource.clone();
 
     let og_resource = Resource::from_update(
-        &txn,
-        &nats,
+        &pg,
+        &nats_conn,
         serde_json::json![{"ozzy": "ozman"}],
         ResourceStatus::InProgress,
         ResourceHealth::Warning,

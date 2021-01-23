@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use thiserror::Error;
 use tracing::{error, info, trace};
 
-use crate::data::{NatsTxn, NatsTxnError, PgTxn};
+use crate::data::{NatsConn, NatsTxn, NatsTxnError, PgPool, PgTxn};
 
 use crate::models::{
     list_model, next_update_clock, Edge, EdgeError, EdgeKind, EncryptedSecret, ListReply,
@@ -201,7 +201,9 @@ pub struct Entity {
 
 impl Entity {
     pub async fn new(
+        pg: &PgPool,
         txn: &PgTxn<'_>,
+        nats_conn: &NatsConn,
         nats: &NatsTxn,
         name: Option<String>,
         description: Option<String>,
@@ -277,8 +279,8 @@ impl Entity {
             )
             .await?;
             Resource::new(
-                &txn,
-                &nats,
+                &pg,
+                &nats_conn,
                 serde_json::json![{}],
                 &system_id,
                 &node_id,
@@ -630,7 +632,6 @@ pub async fn calculate_properties(
         })
         .send()
         .await?;
-    dbg!(&res);
     let entity_result: CalculatePropertiesResponse = res.json().await?;
     trace!(
         ?entity_result,

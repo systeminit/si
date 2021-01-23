@@ -6,7 +6,7 @@ use tracing::{error, trace, warn};
 
 use std::collections::HashMap;
 
-use crate::data::{EventLogFS, EventLogFSError, NatsTxn, PgTxn};
+use crate::data::{EventLogFS, EventLogFSError, NatsConn, PgPool};
 use crate::models::{Event, EventError, EventLog, EventLogError, EventLogLevel, OutputLineStream};
 
 #[derive(Error, Debug)]
@@ -110,15 +110,15 @@ impl Veritech {
 
     pub async fn send<REQ, REP>(
         &self,
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
+        pg: &PgPool,
+        nats_conn: &NatsConn,
         path: impl AsRef<str>,
         request: REQ,
         event: &Event,
     ) -> VeritechResult<Option<REP>>
     where
         REQ: Serialize,
-        REP: DeserializeOwned,
+        REP: DeserializeOwned + std::fmt::Debug,
     {
         let (ws_stream, _) =
             tokio_tungstenite::connect_async(format!("{}{}", &self.url, path.as_ref()))
@@ -152,7 +152,10 @@ impl Veritech {
             match message_result {
                 Ok(tungstenite::protocol::Message::Text(data)) => {
                     let reply: Protocol<REP> = serde_json::from_str(&data)?;
+                    dbg!("**** websocket message ****");
+                    dbg!(&reply);
                     if reply.has_reply() {
+                        dbg!("*** has a reply ***");
                         message_reply = Some(reply.get_reply());
                     } else if reply.has_log() {
                         let log_msg = reply.get_log();
@@ -160,10 +163,16 @@ impl Veritech {
                             event_log.level = log_msg.level;
                             event_log.payload = log_msg.payload;
                             event_log.message = log_msg.message;
-                            event_log.save(&txn, &nats).await?;
+                            event_log.save(&pg, &nats_conn).await?;
                         } else {
                             let event_log = event
-                                .log(&txn, &nats, log_msg.level, log_msg.message, log_msg.payload)
+                                .log(
+                                    &pg,
+                                    &nats_conn,
+                                    log_msg.level,
+                                    log_msg.message,
+                                    log_msg.payload,
+                                )
                                 .await?;
                             log_cache.insert(log_msg.fake_id, event_log);
                         }
@@ -174,8 +183,8 @@ impl Veritech {
                             .ok_or(VeritechError::MissingEventLog(output_line_msg.event_log_id))?;
                         event_log
                             .output_line(
-                                &txn,
-                                &nats,
+                                &pg,
+                                &nats_conn,
                                 &self.event_log_fs,
                                 output_line_msg.stream,
                                 output_line_msg.line,
@@ -185,20 +194,24 @@ impl Veritech {
                     }
                 }
                 Ok(tungstenite::protocol::Message::Binary(_)) => {
-                    warn!("received binary message; we only accept text");
+                    dbg!("received binary message; we only accept text");
                     return Err(VeritechError::Binary);
                 }
                 Ok(tungstenite::protocol::Message::Close(data)) => match data {
                     Some(frame) => match frame.code {
                         tungstenite::protocol::frame::coding::CloseCode::Normal => {
+                            dbg!("normal reason for closing");
                             trace!("closed socket normally");
                         }
-                        _ => {
+                        e => {
+                            dbg!("closing errork");
+                            dbg!(&e);
                             warn!(?frame, "request failed");
                             return Err(VeritechError::WebSocket(frame.reason.into()));
                         }
                     },
                     None => {
+                        dbg!("unknown reason for closing");
                         warn!("websocket closed for unknown reasons");
                         return Err(VeritechError::WebSocket(
                             "websocket closed for unknown reasons".into(),
@@ -214,6 +227,8 @@ impl Veritech {
                     dbg!(data);
                 }
                 Err(e) => {
+                    dbg!("*** received an error ***");
+                    dbg!(&e);
                     warn!(?e, "received an error");
                     return Err(VeritechError::WebSocket(e.to_string()));
                 }

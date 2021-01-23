@@ -29,8 +29,29 @@ async fn get() {
     txn.commit().await.expect("cannot commit txn");
 
     let txn = conn.transaction().await.expect("cannot get transaction");
-    let system = create_system(&pg, &txn, &nats, &veritech, &nba, &change_set, &edit_session).await;
-    let entity = create_entity(&pg, &txn, &nats, &veritech, &nba, &change_set, &edit_session, &system).await;
+    let system = create_system(
+        &pg,
+        &txn,
+        &nats_conn,
+        &nats,
+        &veritech,
+        &nba,
+        &change_set,
+        &edit_session,
+    )
+    .await;
+    let entity = create_entity(
+        &pg,
+        &txn,
+        &nats_conn,
+        &nats,
+        &veritech,
+        &nba,
+        &change_set,
+        &edit_session,
+        &system,
+    )
+    .await;
     txn.commit().await.expect("cannot commit txn");
 
     let token = login_user(&ctx, &nba).await;
@@ -64,9 +85,29 @@ async fn list() {
     txn.commit().await.expect("cannot commit txn");
 
     let txn = conn.transaction().await.expect("cannot get transaction");
-    let system = create_system(&pg, &txn, &nats, &veritech, &nba, &change_set, &edit_session).await;
-    let mut entity =
-        create_entity(&pg, &txn, &nats, &veritech, &nba, &change_set, &edit_session, &system).await;
+    let system = create_system(
+        &pg,
+        &txn,
+        &nats_conn,
+        &nats,
+        &veritech,
+        &nba,
+        &change_set,
+        &edit_session,
+    )
+    .await;
+    let mut entity = create_entity(
+        &pg,
+        &txn,
+        &nats_conn,
+        &nats,
+        &veritech,
+        &nba,
+        &change_set,
+        &edit_session,
+        &system,
+    )
+    .await;
     entity
         .save_head(&txn, &nats)
         .await

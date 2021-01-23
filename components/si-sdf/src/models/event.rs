@@ -4,7 +4,7 @@ use serde_json;
 use strum_macros::Display;
 use thiserror::Error;
 
-use crate::data::{NatsTxn, NatsTxnError, PgTxn};
+use crate::data::{NatsConn, NatsTxnError, PgPool, PgTxn};
 use crate::models::{
     list_model, next_update_clock, ops::OpEntityAction, ChangeSet, Entity, EventLog, EventLogError,
     EventLogLevel, ListReply, ModelError, Node, OrderByDirection, PageToken, Query, SiStorable,
@@ -19,6 +19,8 @@ pub enum EventError {
     EventLog(#[from] EventLogError),
     #[error("pg error: {0}")]
     TokioPg(#[from] tokio_postgres::Error),
+    #[error("pg error: {0}")]
+    Deadpool(#[from] deadpool_postgres::PoolError),
     #[error("nats txn error: {0}")]
     NatsTxn(#[from] NatsTxnError),
     #[error("serde error: {0}")]
@@ -69,8 +71,8 @@ pub struct Event {
 
 impl Event {
     pub async fn new(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
+        pg: &PgPool,
+        nats_conn: &NatsConn,
         message: impl Into<String>,
         payload: impl Into<serde_json::Value>,
         kind: EventKind,
@@ -86,6 +88,10 @@ impl Event {
         let start_timestamp = format!("{}", current_time);
 
         let update_clock = next_update_clock(&workspace_id).await?;
+
+        let mut conn = pg.pool.get().await?;
+        let txn = conn.transaction().await?;
+        let nats = nats_conn.transaction();
 
         let row = txn
             .query_one(
@@ -106,14 +112,19 @@ impl Event {
             )
             .await?;
         let json: serde_json::Value = row.try_get("object")?;
+
         nats.publish(&json).await?;
+
+        txn.commit().await?;
+        nats.commit().await?;
+
         let object: Event = serde_json::from_value(json)?;
         Ok(object)
     }
 
     pub async fn from_si_storable(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
+        pg: &PgPool,
+        nats_conn: &NatsConn,
         message: impl Into<String>,
         payload: impl Into<serde_json::Value>,
         kind: EventKind,
@@ -126,8 +137,8 @@ impl Event {
             context_list.append(&mut extra_context);
         };
         Event::new(
-            &txn,
-            &nats,
+            &pg,
+            &nats_conn,
             message,
             payload,
             kind,
@@ -139,8 +150,8 @@ impl Event {
     }
 
     pub async fn node_entity_create(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
+        pg: &PgPool,
+        nats_conn: &NatsConn,
         node: &Node,
         entity: &Entity,
         parent_id: Option<String>,
@@ -154,8 +165,8 @@ impl Event {
         let kind = EventKind::NodeEntityCreate;
         let context = vec![entity.id.clone(), node.id.clone()];
         Event::from_si_storable(
-            &txn,
-            &nats,
+            &pg,
+            &nats_conn,
             message,
             payload,
             kind,
@@ -167,8 +178,8 @@ impl Event {
     }
 
     pub async fn sync_resource(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
+        pg: &PgPool,
+        nats_conn: &NatsConn,
         entity: &Entity,
         system_id: &str,
         event_parent_id: Option<String>,
@@ -189,8 +200,8 @@ impl Event {
             String::from(system_id),
         ];
         Event::from_si_storable(
-            &txn,
-            &nats,
+            &pg,
+            &nats_conn,
             message,
             payload,
             kind,
@@ -202,8 +213,8 @@ impl Event {
     }
 
     pub async fn entity_action(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
+        pg: &PgPool,
+        nats_conn: &NatsConn,
         op_entity_action: &OpEntityAction,
         entity: &Entity,
         system_id: &str,
@@ -222,8 +233,8 @@ impl Event {
         let kind = EventKind::EntityAction;
         let context = vec![entity.node_id.clone(), String::from(system_id)];
         Event::from_si_storable(
-            &txn,
-            &nats,
+            &pg,
+            &nats_conn,
             message,
             payload,
             kind,
@@ -235,8 +246,8 @@ impl Event {
     }
 
     pub async fn change_set_execute(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
+        pg: &PgPool,
+        nats_conn: &NatsConn,
         change_set: &ChangeSet,
         event_parent_id: Option<String>,
     ) -> EventResult<Event> {
@@ -246,8 +257,8 @@ impl Event {
         });
         let kind = EventKind::ChangeSetExecute;
         Event::from_si_storable(
-            &txn,
-            &nats,
+            &pg,
+            &nats_conn,
             message,
             payload,
             kind,
@@ -259,8 +270,8 @@ impl Event {
     }
 
     pub async fn cli_change_run(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
+        pg: &PgPool,
+        nats_conn: &NatsConn,
         entity: &Entity,
         action: &str,
         system_id: &str,
@@ -282,8 +293,8 @@ impl Event {
             String::from(system_id),
         ];
         Event::from_si_storable(
-            &txn,
-            &nats,
+            &pg,
+            &nats_conn,
             message,
             payload,
             kind,
@@ -294,34 +305,34 @@ impl Event {
         .await
     }
 
-    pub async fn running(&mut self, txn: &PgTxn<'_>, nats: &NatsTxn) -> EventResult<()> {
+    pub async fn running(&mut self, pg: &PgPool, nats_conn: &NatsConn) -> EventResult<()> {
         self.status = EventStatus::Running;
-        self.save(&txn, &nats).await?;
+        self.save(&pg, &nats_conn).await?;
         Ok(())
     }
 
-    pub async fn success(&mut self, txn: &PgTxn<'_>, nats: &NatsTxn) -> EventResult<()> {
+    pub async fn success(&mut self, pg: &PgPool, nats_conn: &NatsConn) -> EventResult<()> {
         self.status = EventStatus::Success;
-        self.save(&txn, &nats).await?;
+        self.save(&pg, &nats_conn).await?;
         Ok(())
     }
 
-    pub async fn error(&mut self, txn: &PgTxn<'_>, nats: &NatsTxn) -> EventResult<()> {
+    pub async fn error(&mut self, pg: &PgPool, nats_conn: &NatsConn) -> EventResult<()> {
         self.status = EventStatus::Error;
-        self.save(&txn, &nats).await?;
+        self.save(&pg, &nats_conn).await?;
         Ok(())
     }
 
-    pub async fn unknown(&mut self, txn: &PgTxn<'_>, nats: &NatsTxn) -> EventResult<()> {
+    pub async fn unknown(&mut self, pg: &PgPool, nats_conn: &NatsConn) -> EventResult<()> {
         self.status = EventStatus::Unknown;
-        self.save(&txn, &nats).await?;
+        self.save(&pg, &nats_conn).await?;
         Ok(())
     }
 
     pub async fn log(
         &self,
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
+        pg: &PgPool,
+        nats_conn: &NatsConn,
         level: EventLogLevel,
         message: impl Into<String>,
         payload: impl Into<serde_json::Value>,
@@ -329,8 +340,8 @@ impl Event {
         let message = message.into();
         let payload = payload.into();
         let log = EventLog::new(
-            &txn,
-            &nats,
+            &pg,
+            &nats_conn,
             message,
             payload,
             level,
@@ -403,16 +414,25 @@ impl Event {
         Ok(reply)
     }
 
-    pub async fn save(&mut self, txn: &PgTxn<'_>, nats: &NatsTxn) -> EventResult<()> {
+    pub async fn save(&mut self, pg: &PgPool, nats_conn: &NatsConn) -> EventResult<()> {
         let update_clock = next_update_clock(&self.si_storable.workspace_id).await?;
         self.si_storable.update_clock = update_clock;
 
         let json = serde_json::to_value(&self)?;
+
+        let mut conn = pg.pool.get().await?;
+        let txn = conn.transaction().await?;
+        let nats = nats_conn.transaction();
+
         let row = txn
             .query_one("SELECT object FROM event_save_v1($1)", &[&json])
             .await?;
         let updated_result: serde_json::Value = row.try_get("object")?;
         nats.publish(&updated_result).await?;
+
+        txn.commit().await?;
+        nats.commit().await?;
+
         let mut updated: Self = serde_json::from_value(updated_result)?;
         std::mem::swap(self, &mut updated);
         Ok(())
