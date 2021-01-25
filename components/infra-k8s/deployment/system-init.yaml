@@ -165,52 +165,7 @@ spec:
         name: vernemq
         ports:
         - containerPort: 1883
----
 
-# couchbase
-apiVersion: couchbase.com/v1
-kind: CouchbaseCluster
-metadata:
-  name: couchbase-si 
-spec:
-  baseImage: couchbase/server
-  version: enterprise-6.5.0
-  authSecret: couchbase-auth 
-  exposeAdminConsole: true
-  adminConsoleServices:
-    - data
-  cluster:
-    dataServiceMemoryQuota: 2048
-    indexServiceMemoryQuota: 1024
-    searchServiceMemoryQuota: 1024
-    eventingServiceMemoryQuota: 1024
-    analyticsServiceMemoryQuota: 1024
-    indexStorageSetting: memory_optimized
-    autoFailoverTimeout: 120
-    autoFailoverMaxCount: 3
-    autoFailoverOnDataDiskIssues: true
-    autoFailoverOnDataDiskIssuesTimePeriod: 120
-    autoFailoverServerGroup: false
-  buckets:
-    - name: si
-      type: couchbase
-      memoryQuota: 2048
-      replicas: 1
-      ioPriority: high
-      evictionPolicy: fullEviction
-      conflictResolution: seqno
-      enableFlush: true
-      enableIndexReplica: false
-  servers:
-    - size: 2 
-      name: all_services
-      services:
-        - data
-        - index
-        - query
-        - search
-        - eventing
-        - analytics
 ---
 apiVersion: apps/v1
 kind: Deployment

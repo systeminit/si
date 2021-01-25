@@ -1,3 +1,2 @@
-[db]
-cluster_url = "couchbase://127.0.0.2"
-scan_consistency = "RequestPlus"
+[pg]
+hostname = "127.0.0.2"

@@ -4,9 +4,9 @@ This is the source for the System Initiative.
 
 ## Quick Start
 
-### Linux 
+### Linux
 
-This repository is known to only work on Arch Linux or Ubuntu. If you're 
+This repository is known to only work on Arch Linux or Ubuntu. If you're
 trying to run it on something else... sorry, it's not supported.
 
 If you don't have a Linux VM handy, you can use the scripts in the ./scripts/ folder to get yourself a docker container. Install docker, then run the script, and you'll have the repo mounted inside a container. Follow the instructions for bootstrapping, and you're gtg.
@@ -14,6 +14,7 @@ If you don't have a Linux VM handy, you can use the scripts in the ./scripts/ fo
 ### Bootstrapping
 
 To get ready to run this repository, you should run:
+
 ```
 ./components/build/bootstrap.sh
 ```
@@ -33,66 +34,48 @@ Next, you should run:
 make build
 ```
 
-This will ensure that all the pre-requisites for each component are 
-installed, and compile each component. If this is successful, 
+This will ensure that all the pre-requisites for each component are
+installed, and compile each component. If this is successful,
 congratulations, you're all almost done!
 
 ### Tests
 
-Last stop - get the test suite working. 
+Last stop - get the test suite working.
 
-*Make sure you have docker installed and running as a service.*
+_Make sure you have docker installed and running as a service._
 
-Build a local couchbase container for your development work:
+Build a local postgres container for your development work:
 
 ```
-cd ./components/couchbase
+cd ./components/postgres
 ./build.sh
 ```
 
 Then run it!
 
 ```
-./components/couchbase/run.sh
+./components/postgres/run.sh
 ```
 
-You can then navigate to the Couchbase Web UI:
+You can then use Datagrip to connect to the instance at:
 
 ```
-http://localhost:8091
+localhost:5432
 ```
 
-Log in as user `si`, password `bugbear`. You should see two buckets - `si` and `si_integration`.
-
-Now, run the VerneMQ service for our MQTT broker:
-
-```
-./components/vernemq/run.sh
-```
-
-Also start Jaeger, to get distributed tracing:
-
-```
-./components/jaeger/run.sh
-```
-
-Navigate to the Jaeger web ui:
-
-```
-http://localhost:16686
-```
+Log in as user `si`, password `bugbear`.
 
 Then, you can do:
 
 ```
-env RUST_LOG=debug make test
+make test
 ```
 
 Assuming the tets pass - congratulations!
 
 ### Starting the services
 
-1. Make sure your `db` container is started (docker ps)
+1. Make sure your `pg` container is started (docker ps)
 2. Start the account servcice: cd ./components/si-account && make start
 3. Start the graphql api: cd ./components/si-graphql-api && make start
 4. Start the web ui: cd ./components/si-web-ui && make start
@@ -100,16 +83,6 @@ Assuming the tets pass - congratulations!
 ### Create an account
 
 1. Hit sign up, create an account, and log in.
-
-You'll get a bug - no matter what you do, you won't be able to log in.
-To fix it, go to Couchbase, log in, and go to the "Query" screen. You
-need to type:
-
-```
-create primary index on `si`
-```
-
-And hit execute. Then you can log in, and you'll be gtg.
 
 ## Regular use
 
@@ -124,7 +97,7 @@ specifically ask for windows or panes, with:
 make tmux//windows
 ```
 
-Or 
+Or
 
 ```
 make tmux//panes

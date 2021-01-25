@@ -4,21 +4,18 @@ RUN mkdir /src
 WORKDIR /src
 COPY . /src
 RUN make build//components/si-sdf
-RUN cp $(find /src -name 'libcouchbase.so' | head -n 1) /usr/lib
 
 FROM ubuntu:rolling
 LABEL maintainer="dev@systeminit.com"
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y libssl1.1 libev-dev libevent-dev && \ 
+RUN apt-get update && apt-get install -y libssl1.1 libev-dev libevent-dev && \
   apt-get clean && \
   find /var/lib/apt/lists -type f | xargs rm && \
   find /var/log -type f -exec rm {} \; && \
   rm -rf /usr/share/man/* && \
   rm -rf /usr/share/doc/* && \
-  rm -f /var/log/alternatives.log /var/log/apt/* 
+  rm -f /var/log/alternatives.log /var/log/apt/*
 RUN mkdir -p /svc/si-sdf/config
-COPY --from=build /usr/lib/libcouchbase.so /usr/lib
-RUN ln -s /usr/lib/libcouchbase.so /usr/lib/libcouchbase.so.3
 COPY --from=build /src/target/debug/si-sdf-server /svc/si-sdf
 COPY --from=build /src/components/si-sdf/config/* /svc/si-sdf/config
 COPY --from=build /src/components/build/run.sh /svc

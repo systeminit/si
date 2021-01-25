@@ -1,9 +1,15 @@
-[db]
-cluster_url = "couchbase://127.0.0.1"
-cluster_user = "si"
-cluster_password = "bugbear"
-bucket_name = "si"
-scan_consistency = "NotBounded"
+[pg]
+user = "monkey"
+dbname = "beans"
+application_name = "cool"
+hostname = "that.host"
+port = 172
+
+[veritech]
+url = "nope"
+
+[event_log_fs]
+root = "sandwich"
 
 [nats]
 url = "localhost"
