@@ -3,6 +3,7 @@ include $(CURDIR)/../build/docker.mk
 RELEASE := $(shell date +%Y%m%d%H%M%S)
 WATCH_PATHS ?= .
 WATCH_TASK ?= run
+TEST_ARGS ?=
 RUST_LOG ?= info
 
 .PHONY: build build_release test run start release container
@@ -17,7 +18,7 @@ build_release:
 
 test:
 	@echo "--- [$(shell basename ${CURDIR})] $@"
-	env RUST_BACKTRACE=1 RUST_LOG=debug cargo test -- --nocapture
+	env RUST_BACKTRACE=1 cargo test -- $(TEST_ARGS)
 
 run:
 	@echo "--- [$(shell basename ${CURDIR})] $@"
