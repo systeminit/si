@@ -3,7 +3,7 @@ ARG component
 RUN mkdir /src
 WORKDIR /src
 COPY . /src
-RUN ./components/build/bootstrap.sh \ 
+RUN ./components/build/bootstrap.sh \
   && make build_deps \
   && make build build//components/${component} \
   && apt-get autoremove -y \
@@ -13,10 +13,9 @@ RUN ./components/build/bootstrap.sh \
   && rm -rf /usr/share/man/* \
   && rm -rf /usr/share/doc/* \
   && rm -f /var/log/alternatives.log /var/log/apt/* \
-  && rm /var/cache/debconf/*-old 
+  && rm /var/cache/debconf/*-old
 WORKDIR /src/component/${component}
-RUN . /root/.cargo/env && cd /src/component/${component} && cargo build 
-RUN cp $(find /src -name 'libcouchbase.so' | head -n 1) /usr/lib
+RUN . /root/.cargo/env && cd /src/component/${component} && cargo build
 
 FROM ubuntu:rolling
 ARG component
@@ -33,8 +32,6 @@ RUN env DEBIAN_FRONTEND=noninteractive apt-get update; \
   rm -f /var/log/alternatives.log /var/log/apt/*; \
   rm /var/cache/debconf/*-old
 RUN mkdir -p /svc/${component}/config
-COPY --from=component-builder /usr/lib/libcouchbase.so /usr/lib
-RUN ln -s /usr/lib/libcouchbase.so /usr/lib/libcouchbase.so.3
 COPY --from=component-builder /src/target/${release}/${component}-server /svc/${component}/
 COPY --from=component-builder /src/components/${component}/config/* /svc/${component}/config
 COPY --from=component-builder /src/components/build/run.sh /svc

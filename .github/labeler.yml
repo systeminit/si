@@ -8,8 +8,8 @@ si-pedant:
   - components/si-pedant/**/*
 nats:
   - components/nats
-couchbase:
-  - components/couchbase
+postgres:
+  - components/postgres
 opentelemetry:
   - components/opentelemetry-collector
 ci:

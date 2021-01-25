@@ -1,10 +1,3 @@
-# Install the Couchbase Controller
-
-You have to install the Couchbase operator, controller, etc.
-Follow the instructions here:
-
-https://docs.couchbase.com/operator/current/install-admission-controller.html
-
 # Add secrets
 
 Unfortunately, this just has to be done by hand. Get the secrets from Adam, 
