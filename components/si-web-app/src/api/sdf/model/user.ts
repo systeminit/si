@@ -83,7 +83,7 @@ export class User implements IUser {
     const currentObj = await db.users.get(this.id);
     if (!_.eq(currentObj, this)) {
       await db.users.put(this);
-      await store.dispatch("users/fromDb", this);
+      await store.dispatch("user/fromDb", this);
     }
   }
 }
