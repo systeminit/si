@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_json;
 use strum_macros::Display;
 use thiserror::Error;
+use tracing::{error, warn};
 
 use crate::data::{NatsConn, NatsTxnError, PgPool, PgTxn};
 use crate::models::{
@@ -375,36 +376,63 @@ impl Resource {
         pg: PgPool,
         txn: &PgTxn<'_>,
         nats_conn: NatsConn,
-        veritech: &Veritech,
+        veritech: Veritech,
     ) -> ResourceResult<()> {
         let entity: Entity = if let Some(ref change_set_id) = self.change_set_id {
-            Entity::get_projection_or_head(&txn, &self.entity_id, change_set_id)
+            Entity::get_projection_or_head(txn, &self.entity_id, change_set_id)
                 .await
                 .map_err(|e| ResourceError::Entity(e.to_string()))?
         } else {
-            Entity::get_head(&txn, &self.entity_id)
+            Entity::get_head(txn, &self.entity_id)
                 .await
                 .map_err(|e| ResourceError::Entity(e.to_string()))?
         };
 
-        let predecessor_edges =
-            Edge::direct_predecessor_edges_by_node_id(&txn, &EdgeKind::Configures, &self.id)
-                .await?;
+        let event = Event::sync_resource(&pg, &nats_conn, &entity, &self.system_id, None).await?;
 
-        let mut predecessors: Vec<VeritechSyncPredecessor> = Vec::new();
+        let node = Node::get(txn, &self.node_id)
+            .await
+            .map_err(|e| ResourceError::Node(e.to_string()))?;
+
+        let myself = self.clone();
+
+        let predecessors = self.veritech_sync_predecessors(txn).await?;
+
+        tokio::spawn(async move {
+            call_veritech_sync_resource(
+                pg,
+                nats_conn,
+                veritech,
+                event,
+                node,
+                entity,
+                myself,
+                predecessors,
+            )
+            .await
+        });
+        Ok(())
+    }
+
+    async fn veritech_sync_predecessors(
+        &self,
+        txn: &PgTxn<'_>,
+    ) -> ResourceResult<Vec<VeritechSyncPredecessor>> {
+        let predecessor_edges =
+            Edge::direct_predecessor_edges_by_node_id(txn, &EdgeKind::Configures, &self.id).await?;
+
+        let mut predecessors = Vec::new();
+
         for edge in predecessor_edges {
             let (mut edge_entity, edge_resource) = if let Some(ref change_set_id) =
                 self.change_set_id
             {
-                let edge_entity = Entity::get_projection_or_head(
-                    &txn,
-                    &edge.tail_vertex.object_id,
-                    change_set_id,
-                )
-                .await
-                .map_err(|e| ResourceError::Entity(e.to_string()))?;
+                let edge_entity =
+                    Entity::get_projection_or_head(txn, &edge.tail_vertex.object_id, change_set_id)
+                        .await
+                        .map_err(|e| ResourceError::Entity(e.to_string()))?;
                 let edge_resource = Resource::get_any_by_entity_id(
-                    &txn,
+                    txn,
                     &edge_entity.id,
                     &self.system_id,
                     change_set_id,
@@ -412,15 +440,15 @@ impl Resource {
                 .await?;
                 (edge_entity, edge_resource)
             } else {
-                let edge_entity = Entity::get_head(&txn, &edge.tail_vertex.object_id)
+                let edge_entity = Entity::get_head(txn, &edge.tail_vertex.object_id)
                     .await
                     .map_err(|e| ResourceError::Entity(e.to_string()))?;
                 let edge_resource =
-                    Resource::get_head_by_entity_id(&txn, &edge_entity.id, &self.system_id).await?;
+                    Resource::get_head_by_entity_id(txn, &edge_entity.id, &self.system_id).await?;
                 (edge_entity, edge_resource)
             };
             edge_entity
-                .update_properties_if_secret(&txn)
+                .update_properties_if_secret(txn)
                 .await
                 .map_err(|e| ResourceError::Entity(e.to_string()))?;
             let predecessor = VeritechSyncPredecessor {
@@ -429,141 +457,93 @@ impl Resource {
             };
             predecessors.push(predecessor);
         }
-        let mut event =
-            Event::sync_resource(&pg, &nats_conn, &entity, &self.system_id, None).await?;
 
-        let this_node = Node::get(&txn, &self.node_id)
-            .await
-            .map_err(|e| ResourceError::Node(e.to_string()))?;
-        let this_pg = pg.clone();
-        let this_nats_conn = nats_conn.clone();
-        let mut this_resource = self.clone();
-        let this_veritech = veritech.clone();
+        Ok(predecessors)
+    }
+}
 
-        tokio::spawn(async move {
-            dbg!("** starting request thread **");
-            let mut conn = match this_pg.pool.get().await {
-                Ok(conn) => conn,
-                Err(e) => {
-                    dbg!("cannot get connection to db for sync");
-                    dbg!(&e);
-                    tracing::error!(?e, "cannot get connection to sync resource");
-                    return;
-                }
-            };
-            let this_txn = match conn.transaction().await {
-                Ok(txn) => txn,
-                Err(e) => {
-                    dbg!("cannot get transaction to sync resource");
-                    dbg!(&e);
-                    tracing::error!(?e, "cannot get transaction to sync resource");
-                    return;
-                }
-            };
-            let this_nats = nats_conn.transaction();
+async fn call_veritech_sync_resource(
+    pg: PgPool,
+    nats_conn: NatsConn,
+    veritech: Veritech,
+    mut event: Event,
+    this_node: Node,
+    entity: Entity,
+    mut resource: Resource,
+    predecessors: Vec<VeritechSyncPredecessor>,
+) {
+    let mut conn = match pg.pool.get().await {
+        Ok(conn) => conn,
+        Err(e) => {
+            error!(?e, "cannot get connection to sync resource");
+            return;
+        }
+    };
+    let this_txn = match conn.transaction().await {
+        Ok(txn) => txn,
+        Err(e) => {
+            error!(?e, "cannot get transaction to sync resource");
+            return;
+        }
+    };
+    let this_nats = nats_conn.transaction();
 
-            let request = VeritechSyncResourceRequest {
-                system_id: &this_resource.system_id,
-                resource: &this_resource,
-                node: &this_node,
-                entity: &entity,
-                predecessors,
-            };
+    let request = VeritechSyncResourceRequest {
+        system_id: &resource.system_id,
+        resource: &resource,
+        node: &this_node,
+        entity: &entity,
+        predecessors,
+    };
 
-            dbg!("** sending the sync request **");
-
-            let sync_reply: VeritechSyncResourceReply = match this_veritech
-                .send(&pg, &this_nats_conn, "/ws/syncResource", request, &event)
-                .await
-            {
-                Ok(Some(sync_reply)) => sync_reply,
-                Ok(None) => {
-                    dbg!("vertich sync got an okay None");
-                    match event.unknown(&this_pg, &this_nats_conn).await {
-                        Ok(_) => {}
-                        Err(e) => {
-                            dbg!("got a some from the syn reply");
-                            dbg!(&e);
-                            tracing::warn!(?e, "cannot write event unknown to db");
-                        }
-                    }
-                    return;
-                }
-                Err(e) => {
-                    dbg!("got an error from the sync request");
-                    dbg!(&e);
-                    match event.unknown(&this_pg, &this_nats_conn).await {
-                        Ok(_) => {}
-                        Err(e) => {
-                            dbg!("got an error sending an event unknown");
-                            dbg!(&e);
-                            tracing::warn!(?e, "cannot write event unknown to db");
-                        }
-                    }
-                    return;
-                }
-            };
-            dbg!("*** sync reply ***");
-            dbg!(&sync_reply);
-            if sync_reply.resource.status == ResourceStatus::Failed {
-                dbg!("erroring because resource failed");
-                match event.error(&this_pg, &this_nats_conn).await {
-                    Ok(_) => {}
-                    Err(e) => {
-                        dbg!("*** failed to write event error on failure ***");
-                        dbg!(&e);
-                        tracing::warn!(?e, "cannot write event error to db");
-                    }
-                }
-            } else {
-                dbg!("marking event as successful");
-                match event.success(&this_pg, &this_nats_conn).await {
-                    Ok(_) => {}
-                    Err(e) => {
-                        dbg!("*** failed to mark event as successful ***");
-                        dbg!(&e);
-                        tracing::warn!(?e, "cannot write event success to db");
-                    }
-                }
+    let sync_reply: VeritechSyncResourceReply = match veritech
+        .send(&pg, &nats_conn, "/ws/syncResource", request, &event)
+        .await
+    {
+        Ok(Some(sync_reply)) => sync_reply,
+        Ok(None) => {
+            warn!("vertich sync got an okay None");
+            if let Err(e) = event.unknown(&pg, &nats_conn).await {
+                warn!(?e, "cannot write event unknown to db");
             }
-            match this_resource
-                .from_update_for_self(
-                    &this_pg,
-                    &this_nats_conn,
-                    sync_reply.resource.state,
-                    sync_reply.resource.status,
-                    sync_reply.resource.health,
-                    this_resource.change_set_id.clone(),
-                )
-                .await
-            {
-                Ok(_) => {}
-                Err(e) => {
-                    dbg!("** failed to update resource **");
-                    dbg!(&e);
-                    tracing::warn!("cannot update resource from response: {}", e);
-                    return;
-                }
+            return;
+        }
+        Err(err) => {
+            warn!("veritech got an error from the sync request; err={:?}", err);
+            if let Err(e) = event.unknown(&pg, &nats_conn).await {
+                warn!(?e, "cannot write event unknown to db");
             }
-            match this_nats.commit().await {
-                Ok(_) => {}
-                Err(e) => {
-                    tracing::error!(?e, "cannot commit nats transaction for sync resource");
-                    dbg!("** failed to commit nats txn **");
-                    dbg!(&e);
-                }
-            }
-            match this_txn.commit().await {
-                Ok(_) => {}
-                Err(e) => {
-                    dbg!("** failed to commit db txn **");
-                    dbg!(&e);
-                    tracing::error!(?e, "cannot commit transaction for sync resource");
-                }
-            }
-            dbg!("**finished up cleanly**");
-        });
-        dbg!("returning from resource sync");
-        Ok(())
+            return;
+        }
+    };
+    if sync_reply.resource.status == ResourceStatus::Failed {
+        warn!("veritech sync reply reports status is: resource failed");
+        if let Err(e) = event.error(&pg, &nats_conn).await {
+            warn!(?e, "cannot write event error to db");
+        }
+    } else {
+        if let Err(e) = event.success(&pg, &nats_conn).await {
+            warn!(?e, "cannot write event success to db");
+        }
+    }
+    if let Err(e) = resource
+        .from_update_for_self(
+            &pg,
+            &nats_conn,
+            sync_reply.resource.state,
+            sync_reply.resource.status,
+            sync_reply.resource.health,
+            resource.change_set_id.clone(),
+        )
+        .await
+    {
+        warn!("cannot update resource from response: {}", e);
+        return;
+    }
+    if let Err(e) = this_nats.commit().await {
+        error!(?e, "cannot commit nats transaction for sync resource");
+    }
+    if let Err(e) = this_txn.commit().await {
+        error!(?e, "cannot commit transaction for sync resource");
     }
 }

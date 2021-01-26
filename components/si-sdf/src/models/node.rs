@@ -355,7 +355,7 @@ impl Node {
                 .map_err(|e| ResourceError::Entity(e.to_string()))?
         };
         resource
-            .sync(pg.clone(), txn, nats_conn.clone(), veritech)
+            .sync(pg.clone(), txn, nats_conn.clone(), veritech.clone())
             .await?;
         Ok(())
     }
