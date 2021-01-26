@@ -2,9 +2,7 @@
   <div class="event-bar">
     <div v-if="expanded" class="flex-col w-full h-48">
       <div class="flex items-center h-6">
-        <div class="ml-6 text-base text-gray-100">
-          Events
-        </div>
+        <div class="ml-6 text-base text-gray-100">Events</div>
         <div class="flex justify-end flex-grow mr-2 text-gray-100">
           <button @click="toggleExpand">
             <MinimizeIcon size="1.0x" />
@@ -67,13 +65,13 @@
         <div class="ml-6 text-xs text-gray-100">event</div>
         <div class="ml-4 text-gray-400">
           <span class="text-gray-500">
-            {{ eventLatest.event.status }}
+            {{ eventLatest.status }}
           </span>
           <span class="text-gray-600">
-            {{ eventLatest.event.relativeToNow() }}
+            {{ eventLatest.relativeToNow() }}
           </span>
           <span class="text-gray-400">
-            {{ eventLatest.event.name }}: {{ eventLatest.event.message }}
+            {{ eventLatest.name }}: {{ eventLatest.message }}
           </span>
         </div>
       </div>
@@ -146,6 +144,7 @@ export default Vue.extend({
       if (this.events.length > 0) {
         return this.events[0].event;
       } else {
+        console.log("returning");
         return undefined;
       }
     },
