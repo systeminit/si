@@ -4,6 +4,7 @@ use serde::Serialize;
 use std::sync::Arc;
 use thiserror::Error;
 use tokio::sync::Mutex;
+use tracing::warn;
 
 #[derive(Error, Debug)]
 pub enum NatsTxnError {
@@ -83,7 +84,10 @@ impl NatsTxn {
             } else if model_json["deleted"].is_object() {
                 model_body = model_json["deleted"].clone();
             } else {
-                dbg!(model_json);
+                warn!(
+                    "model_json is missing type name; model_json={:?}",
+                    model_json
+                );
                 return Err(NatsTxnError::MissingTypeName);
             }
             let mut subject_array: Vec<String> = Vec::new();
@@ -104,8 +108,10 @@ impl NatsTxn {
                     .publish(&subject, model_json.to_string())
                     .await?;
             } else {
-                dbg!(&model_json);
-                dbg!("tried to publish a model that has no tenancy!");
+                warn!(
+                    "tried to publish a model that has no tenancy; model_json={:?}",
+                    model_json
+                );
             }
         }
         Ok(())

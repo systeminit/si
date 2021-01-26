@@ -39,11 +39,9 @@ pub async fn login(
         return Err(warp::reject::Rejection::from(HandlerError::Unauthorized));
     }
 
-    dbg!((&billing_account, &user, &verified, &secret_key));
     let signing_key = get_jwt_signing_key(&txn, &secret_key)
         .await
         .map_err(HandlerError::from)?;
-    dbg!("you should get here");
 
     let si_claims = SiClaims {
         user_id: user.id.clone(),

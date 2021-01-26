@@ -350,7 +350,6 @@ impl Node {
                 .await
                 .map_err(|e| ResourceError::Entity(e.to_string()))?
         } else {
-            dbg!("you are here");
             Resource::get_head_by_node_id(&txn, &self.id, system_id)
                 .await
                 .map_err(|e| ResourceError::Entity(e.to_string()))?

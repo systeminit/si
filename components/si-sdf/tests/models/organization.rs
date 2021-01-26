@@ -32,7 +32,6 @@ async fn new() {
     let organization = Organization::new(&txn, &nats, "jesse leach", &ba.id)
         .await
         .expect("cannot create organization");
-    dbg!(&organization);
     assert_eq!(organization.name, "jesse leach");
 }
 
@@ -49,7 +48,6 @@ async fn get() {
     let organization = Organization::new(&txn, &nats, "adam d", &ba.id)
         .await
         .expect("cannot create organization");
-    dbg!(&organization);
     assert_eq!(organization.name, "adam d");
     let wg = Organization::get(&txn, &organization.id)
         .await
@@ -96,7 +94,6 @@ async fn list() {
     )
     .await
     .expect("organization list query failed");
-    dbg!(&query_results);
     assert_eq!(query_results.items.len(), 1);
     assert_eq!(
         query_results.items[0]["name"].to_string(),
@@ -119,7 +116,6 @@ async fn list() {
     )
     .await
     .expect("organization list query failed");
-    dbg!(&query_results);
     assert_eq!(query_results.items.len(), 3);
     assert_eq!(
         query_results.items[0]["name"].to_string(),
@@ -159,7 +155,6 @@ async fn list() {
     )
     .await
     .expect("organization list query failed");
-    dbg!(&query_results);
     assert_eq!(query_results.items.len(), 1);
     assert_eq!(
         query_results.items[0]["name"].to_string(),

@@ -156,8 +156,7 @@ async fn patch() {
     match patch_reply {
         node::PatchReply::IncludeSystem(_) => {}
         r => {
-            dbg!(r);
-            panic!("wrong reply for node patch request");
+            panic!("wrong reply for node patch request; r={:?}", r);
         }
     }
 
@@ -181,8 +180,7 @@ async fn patch() {
     match patch_reply {
         node::PatchReply::ConfiguredBy(_) => {}
         r => {
-            dbg!(r);
-            panic!("wrong reply for node patch request");
+            panic!("wrong reply for node patch request; r={:?}", r);
         }
     }
 
@@ -207,8 +205,7 @@ async fn patch() {
     match patch_reply {
         node::PatchReply::SetPosition(_) => {}
         r => {
-            dbg!(r);
-            panic!("wrong reply for node patch request");
+            panic!("wrong reply for node patch request; r={:?}", r);
         }
     }
 
@@ -233,8 +230,7 @@ async fn patch() {
     match patch_reply {
         node::PatchReply::SyncResource(_) => {}
         r => {
-            dbg!(r);
-            panic!("wrong reply for node patch request");
+            panic!("wrong reply for node patch request; r={:?}", r);
         }
     }
 }

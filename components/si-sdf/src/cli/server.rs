@@ -155,7 +155,6 @@ pub async fn websocket_run(
     veritech: Veritech,
     claim: ApiClaim,
 ) {
-    dbg!("doing websocket");
     // Split the socket into a sender and receiver of messages.
     let (ws_tx, mut ws_rx) = websocket.split();
 
@@ -398,7 +397,6 @@ async fn process_message(
 
         trace!("recv ws text msg, processing; message={:?}", message);
 
-        dbg!(&message);
         // Deserialize the `ClientCommand`
         let client_command = match serde_json::from_slice::<ClientCommand>(&message.into_bytes()) {
             Ok(client_command) => client_command,
@@ -423,7 +421,6 @@ async fn process_message(
                 let ctx2 = ctx.clone();
                 let outbound_ws_tx2 = outbound_ws_tx.clone();
                 tokio::task::spawn(async move {
-                    dbg!("running change run command execute function");
                     match ctx2.execute(&pg2, &nats_conn2, &veritech2).await {
                         Ok(()) => {
                             let _e = outbound_ws_tx2

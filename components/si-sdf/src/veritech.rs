@@ -2,7 +2,7 @@ use futures::{FutureExt, StreamExt};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use thiserror::Error;
 use tokio_tungstenite::tungstenite;
-use tracing::{error, trace, warn};
+use tracing::{debug, error, trace, warn};
 
 use std::collections::HashMap;
 
@@ -152,10 +152,7 @@ impl Veritech {
             match message_result {
                 Ok(tungstenite::protocol::Message::Text(data)) => {
                     let reply: Protocol<REP> = serde_json::from_str(&data)?;
-                    dbg!("**** websocket message ****");
-                    dbg!(&reply);
                     if reply.has_reply() {
-                        dbg!("*** has a reply ***");
                         message_reply = Some(reply.get_reply());
                     } else if reply.has_log() {
                         let log_msg = reply.get_log();
@@ -194,24 +191,20 @@ impl Veritech {
                     }
                 }
                 Ok(tungstenite::protocol::Message::Binary(_)) => {
-                    dbg!("received binary message; we only accept text");
+                    warn!("received binary message; we only accept text");
                     return Err(VeritechError::Binary);
                 }
                 Ok(tungstenite::protocol::Message::Close(data)) => match data {
                     Some(frame) => match frame.code {
                         tungstenite::protocol::frame::coding::CloseCode::Normal => {
-                            dbg!("normal reason for closing");
                             trace!("closed socket normally");
                         }
-                        e => {
-                            dbg!("closing errork");
-                            dbg!(&e);
-                            warn!(?frame, "request failed");
+                        err => {
+                            warn!(?frame, "request failed; err={:?}", err);
                             return Err(VeritechError::WebSocket(frame.reason.into()));
                         }
                     },
                     None => {
-                        dbg!("unknown reason for closing");
                         warn!("websocket closed for unknown reasons");
                         return Err(VeritechError::WebSocket(
                             "websocket closed for unknown reasons".into(),
@@ -219,16 +212,12 @@ impl Veritech {
                     }
                 },
                 Ok(tungstenite::protocol::Message::Ping(data)) => {
-                    dbg!("ping");
-                    dbg!(data);
+                    debug!("ping; data={:?}", data);
                 }
                 Ok(tungstenite::protocol::Message::Pong(data)) => {
-                    dbg!("pong");
-                    dbg!(data);
+                    debug!("pong; data={:?}", data);
                 }
                 Err(e) => {
-                    dbg!("*** received an error ***");
-                    dbg!(&e);
                     warn!(?e, "received an error");
                     return Err(VeritechError::WebSocket(e.to_string()));
                 }
