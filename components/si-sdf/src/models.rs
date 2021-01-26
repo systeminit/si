@@ -190,8 +190,12 @@ pub async fn list_model(
     let mut params = vec![tenant_id];
     if let Some(user_query) = query.clone() {
         let user_query_string = user_query.as_pgsql(&mut params)?;
-        base_query.push_str(" AND ");
-        base_query.push_str(&user_query_string);
+        // This guards against a user query that results in no items being added
+        // to the query, to ensure we don't blow up the query parser later.
+        if user_query_string != "()" {
+            base_query.push_str(" AND ");
+            base_query.push_str(&user_query_string);
+        }
     }
     // make order by break for now - always do by id, and fuck it. It's a SQL injection if we don't
     // validate it.
