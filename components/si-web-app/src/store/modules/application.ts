@@ -178,7 +178,12 @@ export const application: Module<ApplicationStore, RootStore> = {
       }
     },
     async fromResource({ state, commit }, payload: Resource) {
-      const node = await Node.get({ id: payload.nodeId });
+      let node;
+      try {
+        node = await Node.get({ id: payload.nodeId });
+      } catch (e) {
+        return;
+      }
       const predecessors = await node.predecessors();
       let application: Node | undefined = undefined;
       for (const pNode of predecessors) {
