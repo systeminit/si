@@ -4,7 +4,7 @@ use serde_json;
 use strum_macros::Display;
 use thiserror::Error;
 
-use crate::data::{NatsConn, NatsTxn, NatsTxnError, PgPool, PgTxn};
+use crate::data::{NatsConn, NatsTxnError, PgPool, PgTxn};
 use crate::models::{
     next_update_clock, Edge, EdgeError, EdgeKind, Entity, Event, EventError, Node, SiStorable,
     UpdateClockError,
@@ -360,6 +360,10 @@ impl Resource {
 
         txn.commit().await?;
         nats.commit().await?;
+
+        // Note: Fletcher and Adam think this is a good idea right now, but saving to head on every
+        // projection save may end up being a bug at some point. Hope you have a great day!
+        self.save_head(pg, nats_conn).await?;
 
         let mut updated: Resource = serde_json::from_value(updated_result)?;
         std::mem::swap(self, &mut updated);

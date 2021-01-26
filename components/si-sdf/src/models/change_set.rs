@@ -321,7 +321,6 @@ impl ChangeSet {
                             &pg,
                             &txn,
                             &nats_conn,
-                            &nats,
                             &veritech,
                             hypothetical,
                             obj,

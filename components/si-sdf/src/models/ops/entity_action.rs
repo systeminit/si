@@ -141,7 +141,6 @@ impl OpEntityAction {
         pg: &PgPool,
         txn: &PgTxn<'_>,
         nats_conn: &NatsConn,
-        nats: &NatsTxn,
         veritech: &Veritech,
         hypothetical: bool,
         to: &mut serde_json::Value,
