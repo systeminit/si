@@ -503,7 +503,6 @@ async fn op_entity_action_apply() {
         &pg,
         &txn,
         &nats_conn,
-        &nats,
         &veritech,
         true,
         &mut entity_json,

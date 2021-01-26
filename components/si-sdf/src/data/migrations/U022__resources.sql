@@ -140,12 +140,13 @@ BEGIN
                                    updated_at   = now()
     RETURNING obj INTO object;
 
-    IF this_change_set_si_id IS NOT NULL THEN
-        DELETE
-        FROM resources_projection
-        WHERE id = this_id
-          AND change_set_id = si_id_to_primary_key_v1(this_change_set_si_id);
-    END IF;
+    --- Hey, it's us again--you might want this back one day
+    --- IF this_change_set_si_id IS NOT NULL THEN
+    ---     DELETE
+    ---     FROM resources_projection
+    ---     WHERE id = this_id
+    ---       AND change_set_id = si_id_to_primary_key_v1(this_change_set_si_id);
+    --- END IF;
 END
 $$ LANGUAGE PLPGSQL;
 

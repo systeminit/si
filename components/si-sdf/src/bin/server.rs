@@ -49,6 +49,9 @@ async fn main() -> anyhow::Result<()> {
     println!("*** Connecting to postgres ***");
     let pg = si_sdf::data::PgPool::new(&settings.pg).await?;
 
+    println!("*** Running migrations ***");
+    pg.migrate().await?;
+
     println!("*** Connecting to NATS ***");
     let nats = si_sdf::data::NatsConn::new(&settings.nats).await?;
 
