@@ -18,7 +18,6 @@ async fn new() {
     let workspace = Workspace::new(&txn, &nats, "jesse leach", &ba.id, &org.id)
         .await
         .expect("cannot create workspace");
-    dbg!(&workspace);
     assert_eq!(workspace.name, "jesse leach");
 }
 
@@ -36,7 +35,6 @@ async fn get() {
     let workspace = Workspace::new(&txn, &nats, "adam d", &ba.id, &org.id)
         .await
         .expect("cannot create workspace");
-    dbg!(&workspace);
     assert_eq!(workspace.name, "adam d");
     let wg = Workspace::get(&txn, &workspace.id)
         .await
@@ -84,7 +82,6 @@ async fn list_model() {
     )
     .await
     .expect("workspace list query failed");
-    dbg!(&query_results);
     assert_eq!(query_results.items.len(), 1);
     assert_eq!(
         query_results.items[0]["name"].to_string(),
@@ -107,7 +104,6 @@ async fn list_model() {
     )
     .await
     .expect("workspace list query failed");
-    dbg!(&query_results);
     assert_eq!(query_results.items.len(), 3);
     assert_eq!(
         query_results.items[0]["name"].to_string(),
@@ -147,7 +143,6 @@ async fn list_model() {
     )
     .await
     .expect("workspace list query failed");
-    dbg!(&query_results);
     assert_eq!(query_results.items.len(), 1);
     assert_eq!(
         query_results.items[0]["name"].to_string(),

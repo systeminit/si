@@ -205,8 +205,6 @@ pub async fn list_model(
         .iter()
         .map(|p| p as &(dyn tokio_postgres::types::ToSql + Sync))
         .collect();
-    dbg!(&query_string);
-    dbg!(&params_refs);
     let rows = txn.query(&query_string[..], &params_refs[..]).await?;
     let mut results: Vec<serde_json::Value> = vec![];
     for row in rows.iter() {

@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use tracing::warn;
 
 use crate::data::{NatsConn, NatsTxn, NatsTxnError, PgPool, PgTxn};
 use crate::models::{
@@ -119,9 +120,11 @@ impl EditSession {
         for row in rows.into_iter() {
             let json: serde_json::Value = match row.try_get("object") {
                 Ok(json) => json,
-                Err(e) => {
-                    dbg!("cannot get row for cancel check, probably fine");
-                    dbg!(&e);
+                Err(err) => {
+                    warn!(
+                        "cannot get row for cancel check, probably fine; err={}",
+                        err
+                    );
                     continue;
                 }
             };

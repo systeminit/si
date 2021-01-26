@@ -3,7 +3,7 @@ use serde_json;
 use std::convert::TryInto;
 use thiserror::Error;
 use tokio_tungstenite::tungstenite;
-use tracing::{trace, warn};
+use tracing::{debug, trace, warn};
 use url::Url;
 
 pub use crate::cli::formatter::{self, DebugFormatter, SimpleFormatter};
@@ -105,12 +105,10 @@ impl Client {
                     }
                 },
                 Ok(tungstenite::protocol::Message::Ping(data)) => {
-                    dbg!("ping");
-                    dbg!(data);
+                    debug!("ping; data={:?}", data);
                 }
                 Ok(tungstenite::protocol::Message::Pong(data)) => {
-                    dbg!("pong");
-                    dbg!(data);
+                    debug!("pong; data={:?}", data);
                 }
                 Err(e) => {
                     warn!(?e, "received an error");

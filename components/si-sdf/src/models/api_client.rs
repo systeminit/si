@@ -126,8 +126,6 @@ impl ApiClient {
         )
         .await?;
 
-        dbg!(&object);
-
         let mut admin_group = Group::get_administrators_group(&txn, billing_account_id).await?;
         admin_group.api_client_ids.push(object.id.clone());
         admin_group.save(&txn, &nats).await?;

@@ -109,7 +109,6 @@ async fn get() {
         .path(format!("/billingAccounts/{}", &second_nba.billing_account.id,).as_ref())
         .reply(&filter)
         .await;
-    dbg!(&res);
     assert_eq!(
         res.status(),
         StatusCode::UNAUTHORIZED,
