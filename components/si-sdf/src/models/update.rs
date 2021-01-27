@@ -91,7 +91,11 @@ pub async fn websocket_run(websocket: WebSocket, pg: PgPool, nats_conn: NatsConn
                             Ok(op_json) => {
                                 match outbound_ws_tx_from_nats.send(Ok(Message::text(op_json))) {
                                     Ok(_) => (),
-                                    Err(err) => error!("cannot send outbound op; err={:?}", err),
+                                    Err(err) => {
+                                        dbg!("cannot send outbound op; other side likely disconnected");
+                                        dbg!(&err);
+                                        break;
+                                    }
                                 }
                             }
                             Err(err) => error!("cannot serialize op as json: {}", err),
@@ -121,7 +125,7 @@ pub async fn websocket_run(websocket: WebSocket, pg: PgPool, nats_conn: NatsConn
         }
     }
 
-    trace!("ws client connection closed, good bye");
+    dbg!("ws client connection closed, good bye");
 }
 
 async fn process_message(
@@ -189,7 +193,7 @@ async fn process_message(
                         match serde_json::to_string(&UpdateOp::Model(model)) {
                             Ok(op_json) => match outbound_ws_tx.send(Ok(Message::text(op_json))) {
                                 Ok(_) => (),
-                                Err(err) => tracing::error!("cannot send outbound op: {}", err),
+                                Err(err) => tracing::error!("cannot send outbound op 192: {}", err),
                             },
                             Err(err) => {
                                 tracing::error!("cannot serialize op as json: {}", err);
@@ -199,7 +203,7 @@ async fn process_message(
                     match serde_json::to_string(&UpdateOp::LoadFinished) {
                         Ok(op_json) => match outbound_ws_tx.send(Ok(Message::text(op_json))) {
                             Ok(_) => (),
-                            Err(err) => tracing::error!("cannot send outbound op: {}", err),
+                            Err(err) => tracing::error!("cannot send outbound op 202: {}", err),
                         },
                         Err(err) => {
                             tracing::error!("cannot serialize op as json: {}", err);
