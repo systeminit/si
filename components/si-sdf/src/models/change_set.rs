@@ -9,7 +9,7 @@ use crate::data::{NatsConn, NatsTxn, NatsTxnError, PgPool, PgTxn};
 use crate::models::{
     calculate_properties, list_model, next_update_clock, ops, Edge, EdgeError, EdgeKind, Entity,
     EntityError, Event, EventError, ListReply, ModelError, OrderByDirection, PageToken, Query,
-    SiChangeSetEvent, SiStorable, System, SystemError, UpdateClockError,
+    SiChangeSet, SiChangeSetEvent, SiStorable, System, SystemError, UpdateClock, UpdateClockError,
 };
 use crate::veritech::Veritech;
 
@@ -275,8 +275,16 @@ impl ChangeSet {
                     }
                     // Will we hit a bug here when you get an Op? Lets find out?
                     o => {
-                        warn!(?o, "head object is not an entity or a system, that's bad");
-                        return Err(ChangeSetError::UnknownObjectType);
+                        if to_id.starts_with("entity:") {
+                            let entity = Entity::get_head_or_base(&txn, to_id, &self.id).await?;
+                            serde_json::to_value(entity)?
+                        } else if to_id.starts_with("system:") {
+                            let system = System::get_head_or_base(&txn, to_id, &self.id).await?;
+                            serde_json::to_value(system)?
+                        } else {
+                            warn!(?o, "target object is not an entity or a system, that's bad");
+                            return Err(ChangeSetError::UnknownObjectType);
+                        }
                     }
                 };
                 seen_map.insert(String::from(to_id), head_obj);
@@ -388,30 +396,38 @@ impl ChangeSet {
         // their changeSet views *and* their final form, updating the head bit.
         for (_id, obj) in seen_map.iter_mut() {
             if hypothetical {
-                {
-                    let change_set_id = obj
-                        .pointer_mut("/siChangeSet/changeSetId")
-                        .ok_or(ChangeSetError::IdMissing)?;
-                    *change_set_id = serde_json::Value::String(String::from(&self.id));
-                    let edit_session_id = obj
-                        .pointer_mut("/siChangeSet/editSessionId")
-                        .ok_or(ChangeSetError::IdMissing)?;
-                    *edit_session_id = serde_json::Value::String(String::from(""));
-                    let change_set_event = obj
-                        .pointer_mut("/siChangeSet/event")
-                        .ok_or(ChangeSetError::EventMissing)?;
-                    *change_set_event = serde_json::json![SiChangeSetEvent::Projection];
-                }
                 let type_name = obj["siStorable"]["typeName"]
                     .as_str()
                     .ok_or(ChangeSetError::TypeMissing)?;
                 match type_name {
                     "entity" => {
                         let mut entity: Entity = serde_json::from_value(obj.clone())?;
+                        if entity.si_change_set.is_none() {
+                            entity.si_change_set = Some(SiChangeSet {
+                                change_set_id: self.id.clone(),
+                                edit_session_id: String::new(),
+                                event: SiChangeSetEvent::Projection,
+                                order_clock: UpdateClock {
+                                    epoch: 0,
+                                    update_count: 0,
+                                },
+                            });
+                        }
                         entity.save_projection(&txn, &nats).await?;
                     }
                     "system" => {
                         let mut system: System = serde_json::from_value(obj.clone())?;
+                        if system.si_change_set.is_none() {
+                            system.si_change_set = Some(SiChangeSet {
+                                change_set_id: self.id.clone(),
+                                edit_session_id: String::new(),
+                                event: SiChangeSetEvent::Projection,
+                                order_clock: UpdateClock {
+                                    epoch: 0,
+                                    update_count: 0,
+                                },
+                            });
+                        }
                         system.save_projection(&txn, &nats).await?;
                     }
                     f_type_name => {
@@ -442,30 +458,38 @@ impl ChangeSet {
                         }
                     }
                 }
-                {
-                    let change_set_id = obj
-                        .pointer_mut("/siChangeSet/changeSetId")
-                        .ok_or(ChangeSetError::IdMissing)?;
-                    *change_set_id = serde_json::Value::String(String::from(&self.id));
-                    let edit_session_id = obj
-                        .pointer_mut("/siChangeSet/editSessionId")
-                        .ok_or(ChangeSetError::IdMissing)?;
-                    *edit_session_id = serde_json::Value::String(String::from(""));
-                    let change_set_event = obj
-                        .pointer_mut("/siChangeSet/event")
-                        .ok_or(ChangeSetError::EventMissing)?;
-                    *change_set_event = serde_json::json![SiChangeSetEvent::Projection];
-                }
                 let type_name = obj["siStorable"]["typeName"]
                     .as_str()
                     .ok_or(ChangeSetError::TypeMissing)?;
                 match type_name {
                     "entity" => {
                         let mut entity: Entity = serde_json::from_value(obj.clone())?;
+                        if entity.si_change_set.is_none() {
+                            entity.si_change_set = Some(SiChangeSet {
+                                change_set_id: self.id.clone(),
+                                edit_session_id: String::new(),
+                                event: SiChangeSetEvent::Projection,
+                                order_clock: UpdateClock {
+                                    epoch: 0,
+                                    update_count: 0,
+                                },
+                            });
+                        }
                         entity.save_projection(&txn, &nats).await?;
                     }
                     "system" => {
                         let mut system: System = serde_json::from_value(obj.clone())?;
+                        if system.si_change_set.is_none() {
+                            system.si_change_set = Some(SiChangeSet {
+                                change_set_id: self.id.clone(),
+                                edit_session_id: String::new(),
+                                event: SiChangeSetEvent::Projection,
+                                order_clock: UpdateClock {
+                                    epoch: 0,
+                                    update_count: 0,
+                                },
+                            });
+                        }
                         system.save_projection(&txn, &nats).await?;
                     }
                     f_type_name => {
