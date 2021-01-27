@@ -44,7 +44,10 @@
           <div class="mt-2 text-xs font-normal text-center node" v-else>
             {{ displayItem.name }}
           </div>
-          <span v-if="displayItem.head == false" class="text-xs node">
+          <span
+            v-if="displayItem.head == false && currentChangeSet"
+            class="text-xs node"
+          >
             <span class="font-light node">changeSet:</span>
             <div class="ml-2 node">
               {{ currentChangeSet.name }}
