@@ -20,8 +20,8 @@ import { OutputLine, IOutputLine } from "@/api/sdf/model/outputLine";
 import { sdf } from "@/api/sdf";
 import { IUpdateClock } from "@/api/sdf/model/updateClock";
 import { db } from "@/api/sdf/dexie";
-import store from "@/store";
 import { ApiClient, IApiClient } from "./apiClient";
+import Bottle from "bottlejs";
 
 export interface IUpdateClockGlobal extends IUpdateClock {
   id: string;
@@ -84,33 +84,35 @@ export class Update {
 
 function onClose(ev: CloseEvent): any {
   if (sdf.token) {
-    console.log("websocket has closed - reconnecting");
+    // console.log("websocket has closed - reconnecting");
     sdf.setupUpdate();
     if (sdf.update) {
       sdf.update
         .opened()
         .then(_success => {
-          console.log("websocket connection re-established");
+          // console.log("websocket connection re-established");
         })
         .catch(_timeout => {
-          console.log("reconnect failed - scheduling another go");
+          // console.log("reconnect failed - scheduling another go");
           setTimeout(() => {
             onClose(ev);
           }, Math.floor(Math.random() * 5000));
         });
     }
   } else {
-    console.log("websocket closed, and no token provided - not reconnecting");
+    // console.log("websocket closed, and no token provided - not reconnecting");
   }
 }
 
 function onMessage(ev: MessageEvent) {
   const model_data = JSON.parse(ev.data);
+  const bottle = Bottle.pop("default");
+  const store = bottle.container.Store;
 
-  console.log("onMessage", { ev, model_data });
+  // console.log("onMessage", { ev, model_data });
   if (model_data == "loadFinished") {
     PQ.onIdle().then(() => {
-      console.log("loading finished");
+      // console.log("loading finished");
       store.commit("loader/loaded", true);
     });
     return;
@@ -135,61 +137,61 @@ function onMessage(ev: MessageEvent) {
   }
   if (model_data.model?.siStorable?.typeName == "entity") {
     const model = new Entity(model_data.model as IEntity);
-    console.log("entity msg", { model });
+    // console.log("entity msg", { model });
     PQ.add(() => model.save());
   } else if (model_data.model?.siStorable?.typeName == "system") {
     const model = new System(model_data.model as ISystem);
-    console.log("system msg", { model });
+    // console.log("system msg", { model });
     PQ.add(() => model.save());
   } else if (model_data.model?.siStorable?.typeName == "edge") {
     const model = new Edge(model_data.model as IEdge);
-    console.log("edge msg", { model });
+    // console.log("edge msg", { model });
     PQ.add(() => model.save());
   } else if (model_data.model?.siStorable?.typeName == "changeSet") {
     const model = new ChangeSet(model_data.model as IChangeSet);
-    console.log("changeSet msg", { model });
+    // console.log("changeSet msg", { model });
     PQ.add(() => model.save());
   } else if (model_data.model?.siStorable?.typeName == "node") {
     const model = new Node(model_data.model as INode);
-    console.log("node msg", { model });
+    // console.log("node msg", { model });
     PQ.add(() => model.save());
   } else if (model_data.model?.siStorable?.typeName == "opEntitySet") {
     const model = new OpEntitySet(model_data.model as IOpEntitySet);
-    console.log("opEntitySet msg", { model });
+    // console.log("opEntitySet msg", { model });
     PQ.add(() => model.save());
   } else if (model_data.model?.siStorable?.typeName == "changeSetParticipant") {
     const model = new ChangeSetParticipant(
       model_data.model as IChangeSetParticipant,
     );
-    console.log("changeSetParticipant msg", { model });
+    // console.log("changeSetParticipant msg", { model });
     PQ.add(() => model.save());
   } else if (model_data.model?.siStorable?.typeName == "eventLog") {
     const model = new EventLog(model_data.model as IEventLog);
-    console.log("eventLog msg", { model });
+    // console.log("eventLog msg", { model });
     PQ.add(() => model.save());
   } else if (model_data.model?.siStorable?.typeName == "resource") {
     const model = new Resource(model_data.model as IResource);
-    console.log("resource msg", { model });
+    // console.log("resource msg", { model });
     PQ.add(() => model.save());
   } else if (model_data.model?.siStorable?.typeName == "keyPair") {
     const model = new PublicKey(model_data.model as IPublicKey);
-    console.log("keyPair msg", { model, model_data });
+    // console.log("keyPair msg", { model, model_data });
     PQ.add(() => model.save());
   } else if (model_data.model?.siStorable?.typeName == "secret") {
     const model = new Secret(model_data.model as ISecret);
-    console.log("secret msg", { model });
+    // console.log("secret msg", { model });
     PQ.add(() => model.save());
   } else if (model_data.model?.siStorable?.typeName == "apiClient") {
     const model = new ApiClient(model_data.model as IApiClient);
-    console.log("apiClient msg", { model });
+    // console.log("apiClient msg", { model });
     PQ.add(() => model.save());
   } else if (model_data.model?.siStorable?.typeName == "event") {
     const model = new Event(model_data.model as IEvent);
-    console.log("event msg", { model });
+    // console.log("event msg", { model });
     PQ.add(() => model.save());
   } else if (model_data.model?.siStorable?.typeName == "outputLine") {
     const model = new OutputLine(model_data.model as IOutputLine);
-    console.log("outputLine msg", { model });
+    // console.log("outputLine msg", { model });
     PQ.add(() => model.save());
   }
 }

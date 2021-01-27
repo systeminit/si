@@ -1,11 +1,11 @@
 import { sdf } from "@/api/sdf";
 import { db } from "@/api/sdf/dexie";
 import _ from "lodash";
-import store from "@/store";
 import { ISiStorable } from "@/api/sdf/model/siStorable";
 import { ICreateReply, IGetRequest } from "@/api/sdf/model";
 import { PublicKey } from "./keyPair";
 import sealedBox from "tweetnacl-sealedbox-js";
+import Bottle from "bottlejs";
 
 export enum SecretObjectType {
   Credential = "credential",
@@ -79,6 +79,8 @@ export class Secret implements ISecret {
   }
 
   async dispatch(): Promise<void> {
+    const bottle = Bottle.pop("default");
+    const store = bottle.container.Store;
     await store.dispatch("secret/fromSecret", this);
   }
 

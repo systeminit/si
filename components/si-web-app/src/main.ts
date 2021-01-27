@@ -1,3 +1,5 @@
+import Bottle from "bottlejs";
+import { bottleSetup } from "@/di";
 import Vue from "vue";
 import App from "@/App.vue";
 import router from "@/router";
@@ -5,12 +7,15 @@ import router from "@/router";
 import VueGtag from "vue-gtag";
 
 // @ts-ignore
-import store from "@/store";
+import { storeData } from "@/store";
 
 import "@/assets/main.css";
 import "@/assets/tailwind.css";
 
 import "@/plugins/vue-js-modal";
+
+bottleSetup(storeData);
+let bottle = Bottle.pop("default");
 
 Vue.config.productionTip = false;
 
@@ -27,6 +32,6 @@ if (process.env.NODE_ENV == "production") {
 
 new Vue({
   router,
-  store,
+  store: bottle.container.Store,
   render: h => h(App),
 }).$mount("#app");

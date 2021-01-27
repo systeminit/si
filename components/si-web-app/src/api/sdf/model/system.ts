@@ -10,7 +10,7 @@ import {
 import { Query, Comparison } from "@/api/sdf/model/query";
 import { sdf } from "@/api/sdf";
 import _ from "lodash";
-import store from "@/store";
+import Bottle from "bottlejs";
 
 export interface ISystem {
   id: string;
@@ -115,6 +115,8 @@ export class System implements ISystem {
   }
 
   async dispatch(): Promise<void> {
+    const bottle = Bottle.pop("default");
+    const store = bottle.container.Store;
     await store.dispatch("system/fromDb", this);
   }
 

@@ -2,7 +2,7 @@ import { sdf } from "@/api/sdf";
 import { db } from "@/api/sdf/dexie";
 import { ISimpleStorable } from "@/api/sdf/model/siStorable";
 import { IGetRequest, IGetReply } from "@/api/sdf/model";
-import store from "@/store";
+import Bottle from "bottlejs";
 
 export interface IBillingAccount {
   id: string;
@@ -25,6 +25,7 @@ export interface IBillingAccountCreateReply {
   group: Record<string, any>;
   organization: Record<string, any>;
   workspace: Record<string, any>;
+  system: Record<string, any>;
 }
 
 export class BillingAccount implements IBillingAccount {
@@ -70,6 +71,8 @@ export class BillingAccount implements IBillingAccount {
 
   async save(): Promise<string> {
     let result = await db.billingAccounts.put(this);
+    const bottle = Bottle.pop("default");
+    const store = bottle.container.Store;
     await store.dispatch("billingAccount/fromDb", this);
     return result;
   }

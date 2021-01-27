@@ -8,7 +8,6 @@ import {
   IListReply,
 } from "@/api/sdf/model";
 import { Query, Comparison } from "@/api/sdf/model/query";
-import store from "@/store";
 import _ from "lodash";
 
 export interface IOrganization {

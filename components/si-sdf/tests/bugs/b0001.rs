@@ -1,10 +1,8 @@
-use crate::models::billing_account::{signup_new_billing_account, NewBillingAccount};
+use crate::models::billing_account::signup_new_billing_account;
 use crate::models::change_set::create_change_set;
 use crate::models::edit_session::create_edit_session;
 use crate::models::entity::create_entity;
-use crate::models::ops::{
-    create_op_entity_action, create_op_entity_delete, create_op_entity_set, create_op_set_name,
-};
+use crate::models::ops::create_op_set_name;
 use crate::models::system::create_system;
 use crate::{one_time_setup, TestContext};
 
@@ -17,7 +15,7 @@ async fn node_editing_fails_after_change_set_execution() {
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit()
         .await
         .expect("failed to commit the new billing account");

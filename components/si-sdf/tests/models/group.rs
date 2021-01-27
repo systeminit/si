@@ -47,12 +47,12 @@ pub async fn create_group_with_users(
 async fn new() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
 
     let user = create_user(
         &txn,
@@ -88,12 +88,12 @@ async fn new() {
 async fn get() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
 
     let group = create_group_with_users(
         &txn,
@@ -115,11 +115,11 @@ async fn get() {
 async fn list() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
 
     let _group = create_group_with_users(
         &txn,
@@ -144,11 +144,11 @@ async fn list() {
 async fn get_administrators_group() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
 
     let admin = Group::get_administrators_group(&txn, &nba.billing_account.id)
         .await
@@ -160,11 +160,11 @@ async fn get_administrators_group() {
 async fn save() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
 
     let mut group = create_group_with_users(
         &txn,

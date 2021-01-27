@@ -8,9 +8,9 @@ import {
   IListReply,
 } from "@/api/sdf/model";
 import { ISiStorable } from "@/api/sdf/model/siStorable";
-import store from "@/store";
 import { sdf } from "@/api/sdf";
 import { Comparison, FieldType } from "./query";
+import Bottle from "bottlejs";
 
 export enum OutputLineStream {
   Stdout = "stdout",
@@ -59,6 +59,8 @@ export class OutputLine implements IOutputLine {
   }
 
   async dispatch(): Promise<void> {
+    const bottle = Bottle.pop("default");
+    const store = bottle.container.Store;
     await store.dispatch("event/fromOutputLine", this, { root: true });
   }
 

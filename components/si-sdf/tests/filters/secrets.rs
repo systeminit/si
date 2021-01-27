@@ -20,7 +20,7 @@ async fn create() {
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot get connection");
     let txn = conn.transaction().await.expect("cannot get transaction");
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit().await.expect("cannot commit txn");
 
     let txn = conn.transaction().await.expect("cannot get transaction");
@@ -65,7 +65,7 @@ async fn get() {
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot get connection");
     let txn = conn.transaction().await.expect("cannot get transaction");
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit().await.expect("cannot commit txn");
 
     let txn = conn.transaction().await.expect("cannot get transaction");
@@ -96,7 +96,7 @@ async fn list() {
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot get connection");
     let txn = conn.transaction().await.expect("cannot get transaction");
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit().await.expect("cannot commit txn");
 
     let txn = conn.transaction().await.expect("cannot get transaction");

@@ -1,11 +1,13 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::data::{NatsTxn, NatsTxnError, PgTxn};
+use crate::data::{NatsConn, NatsTxn, NatsTxnError, PgPool, PgTxn};
+use crate::Veritech;
 
 use crate::models::{
-    Capability, Group, GroupError, KeyPair, KeyPairError, Organization, OrganizationError,
-    PublicKey, SimpleStorable, User, UserError, Workspace, WorkspaceError,
+    Capability, ChangeSet, ChangeSetError, EditSession, EditSessionError, Group, GroupError,
+    KeyPair, KeyPairError, Node, NodeError, Organization, OrganizationError, PublicKey,
+    SimpleStorable, System, SystemError, User, UserError, Workspace, WorkspaceError,
 };
 
 const BILLING_ACCOUNT_GET_BY_NAME: &str =
@@ -35,6 +37,16 @@ pub enum BillingAccountError {
     NatsTxn(#[from] NatsTxnError),
     #[error("serde error: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("node error: {0}")]
+    Node(#[from] NodeError),
+    #[error("changeSet error: {0}")]
+    ChangeSet(#[from] ChangeSetError),
+    #[error("editSession error: {0}")]
+    EditSession(#[from] EditSessionError),
+    #[error("system error: {0}")]
+    System(#[from] SystemError),
+    #[error("pg error: {0}")]
+    Deadpool(#[from] deadpool_postgres::PoolError),
 }
 
 pub type BillingAccountResult<T> = Result<T, BillingAccountError>;
@@ -57,6 +69,7 @@ pub struct CreateReply {
     pub group: Group,
     pub organization: Organization,
     pub workspace: Workspace,
+    pub system: System,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
@@ -91,8 +104,11 @@ impl BillingAccount {
     }
 
     pub async fn signup(
-        txn: &PgTxn<'_>,
+        pg: &PgPool,
+        txn: PgTxn<'_>,
         nats: &NatsTxn,
+        nats_conn: &NatsConn,
+        veritech: &Veritech,
         billing_account_name: impl Into<String>,
         billing_account_description: impl Into<String>,
         user_name: impl Into<String>,
@@ -105,6 +121,7 @@ impl BillingAccount {
         Organization,
         Workspace,
         PublicKey,
+        System,
     )> {
         let billing_account = BillingAccount::new(
             &txn,
@@ -149,6 +166,46 @@ impl BillingAccount {
         )
         .await?;
 
+        txn.commit().await?;
+
+        let mut cs_conn = pg.pool.get().await?;
+        let cs_txn = cs_conn.transaction().await?;
+        let mut change_set = ChangeSet::new(&cs_txn, &nats, None, workspace.id.clone()).await?;
+        let edit_session = EditSession::new(
+            &cs_txn,
+            &nats,
+            None,
+            change_set.id.clone(),
+            workspace.id.clone(),
+        )
+        .await?;
+        cs_txn.commit().await?;
+
+        let system_txn = cs_conn.transaction().await?;
+        let system_node = Node::new(
+            &pg,
+            &system_txn,
+            &nats_conn,
+            &nats,
+            &veritech,
+            Some(String::from("default")),
+            super::NodeKind::System,
+            "system",
+            &workspace.id,
+            &change_set.id,
+            &edit_session.id,
+            None,
+        )
+        .await?;
+
+        change_set
+            .execute(&pg, &system_txn, &nats_conn, &nats, &veritech, false, None)
+            .await?;
+
+        let system = System::get_head(&system_txn, &system_node.object_id).await?;
+
+        system_txn.commit().await?;
+
         Ok((
             billing_account,
             user,
@@ -156,6 +213,7 @@ impl BillingAccount {
             organization,
             workspace,
             key_pair.into(),
+            system,
         ))
     }
 

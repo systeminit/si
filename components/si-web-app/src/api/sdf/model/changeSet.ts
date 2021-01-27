@@ -11,8 +11,8 @@ import { Comparison, FieldType } from "@/api/sdf/model/query";
 import { Entity } from "@/api/sdf/model/entity";
 import { System } from "@/api/sdf/model/system";
 import { NodeObject } from "@/api/sdf/model/node";
-import store from "@/store";
 import _ from "lodash";
+import Bottle from "bottlejs";
 
 export enum ChangeSetStatus {
   Open = "open",
@@ -163,6 +163,8 @@ export class ChangeSet implements IChangeSet {
   }
 
   async dispatch(): Promise<void> {
+    const bottle = Bottle.pop("default");
+    const store = bottle.container.Store;
     await store.dispatch("application/fromChangeSet", this);
     await store.dispatch("editor/fromChangeSet", this);
   }
@@ -282,6 +284,8 @@ export class ChangeSetParticipant implements IChangeSetParticipant {
   }
 
   async dispatch(): Promise<void> {
+    const bottle = Bottle.pop("default");
+    const store = bottle.container.Store;
     await store.dispatch("application/fromChangeSetParticipant", this);
   }
 

@@ -2,10 +2,9 @@
   <div :id="event.id" class="mx-4 mt-3 event">
     <div class="event-summary">
       <div class="flex flex-col">
-
- 
-        <div class="flex justify-between event-summary-header pr-2 pl-2 py-1 text-gray-400 text-xs">
-
+        <div
+          class="flex justify-between event-summary-header pr-2 pl-2 py-1 text-gray-400 text-xs"
+        >
           <div class="flex justify-between ">
             <div class="">
               <Tooltip>
@@ -19,13 +18,12 @@
             </div>
 
             <div class="pl-1 pr-1">
-            |
+              |
             </div>
 
             <div class="">
-            {{ event.name }}
+              {{ event.name }}
             </div>
-
           </div>
 
           <div
@@ -37,32 +35,33 @@
               'event-unknown': eventUnknown,
             }"
           >
-          {{ event.status }}
+            {{ event.status }}
           </div>
         </div>
 
-        <div class="flex justify-between w-full event-summary-body pr-2 pl-2 py-1 text-gray-400 text-xs">
-
+        <div
+          class="flex justify-between w-full event-summary-body pr-2 pl-2 py-1 text-gray-400 text-xs"
+        >
           <div class="flex flex-col mr-4">
-
             <div class="flex items-start">
-              <alert-triangle-icon size="1.0x" class="text-red-500" v-if="eventFailed"/>
-              <div class="w-3" v-if="!eventFailed">
-
-              </div>
+              <alert-triangle-icon
+                size="1.0x"
+                class="text-red-500"
+                v-if="eventFailed"
+              />
+              <div class="w-3" v-if="!eventFailed"></div>
               <div class="pl-2 pr-1">
                 Root event:
               </div>
-           
+
               <div class="">
                 {{ event.name }}
-              </div>           
+              </div>
             </div>
 
             <div class="pl-5">
               {{ event.localTime() }}
-            </div> 
-
+            </div>
           </div>
 
           <div class="flex flex-col">
@@ -84,35 +83,31 @@
                 <!-- Identify Root event -->
               </div>
             </div>
-
           </div>
 
-            <div class="flex items-end text-right text-white">
-              <button
-                class="mr-1 focus:outline-none"
-                :class="{
-                  hidden: this.showEventDetails,
-                  display: !this.showEventDetails,
-                }"
-                @click="expandEventDetails()"
-              >
-                <chevron-right-icon size="1.1x" class="custom-class" />
-              </button>
+          <div class="flex items-end text-right text-white">
+            <button
+              class="mr-1 focus:outline-none"
+              :class="{
+                hidden: this.showEventDetails,
+                display: !this.showEventDetails,
+              }"
+              @click="expandEventDetails()"
+            >
+              <chevron-right-icon size="1.1x" class="custom-class" />
+            </button>
 
-              <button
-                class="justify-end mr-1 focus:outline-none"
-                :class="{
-                  hidden: !this.showEventDetails,
-                  display: this.showEventDetails,
-                }"
-                @click="collapseEventDetails()"
-              >
-                <chevron-down-icon size="1.1x" class="custom-class" />
-              </button>
-            </div>
-
-
-
+            <button
+              class="justify-end mr-1 focus:outline-none"
+              :class="{
+                hidden: !this.showEventDetails,
+                display: this.showEventDetails,
+              }"
+              @click="collapseEventDetails()"
+            >
+              <chevron-down-icon size="1.1x" class="custom-class" />
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -124,7 +119,7 @@
         display: this.showEventDetails,
       }"
     >
-<!--       <div
+      <!--       <div
         v-for="parent in parents"
         :key="parent.id"
         class="ml-2 text-xs text-right text-gray-400"
@@ -141,7 +136,11 @@
 <script lang="ts">
 import Vue, { PropType } from "vue";
 
-import { ChevronDownIcon, ChevronRightIcon, AlertTriangleIcon } from "vue-feather-icons";
+import {
+  ChevronDownIcon,
+  ChevronRightIcon,
+  AlertTriangleIcon,
+} from "vue-feather-icons";
 
 import EventOperation from "./EventOperation.vue";
 import Tooltip from "@/components/ui/Tooltip.vue";
@@ -253,11 +252,11 @@ export default Vue.extend({
 }
 
 .event-summary-header {
-  background-color: #2A2C2D;
+  background-color: #2a2c2d;
 }
 
 .event-summary-body {
-  background-color:  #313536;
+  background-color: #313536;
 }
 
 .event-operation:nth-child(even) {

@@ -20,7 +20,7 @@ async fn create() {
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot get connection");
     let txn = conn.transaction().await.expect("cannot get transaction");
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit().await.expect("cannot commit txn");
 
     let token = login_user(&ctx, &nba).await;
@@ -50,7 +50,7 @@ async fn patch() {
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot get connection");
     let txn = conn.transaction().await.expect("cannot get transaction");
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit().await.expect("cannot commit txn");
 
     let txn = conn.transaction().await.expect("cannot get transaction");
@@ -131,7 +131,7 @@ async fn list_participants() {
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot get connection");
     let txn = conn.transaction().await.expect("cannot get transaction");
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit().await.expect("cannot commit txn");
 
     let txn = conn.transaction().await.expect("cannot get transaction");
@@ -177,5 +177,5 @@ async fn list_participants() {
     assert_eq!(res.status(), StatusCode::OK, "list model should succeed");
     let reply: ListReply =
         serde_json::from_slice(res.body()).expect("cannot deserialize get model reply");
-    assert_eq!(reply.total_count, 2);
+    assert_eq!(reply.total_count, 3);
 }

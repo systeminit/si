@@ -43,13 +43,13 @@
     </div>
 
     <div class="relative w-full h-full property-panel-view">
-      <CodeViewer v-show="isViewActive('codeView')" />
+      <CodeViewer v-if="isViewActive('codeView')" />
       <PropertyViewer
-        v-show="isViewActive('propertyView')"
+        v-else-if="isViewActive('propertyView')"
         :selectedNode="selectedNode"
       />
       <EventViewer
-        v-show="isViewActive('eventView')"
+        v-else-if="isViewActive('eventView')"
         :selectedNode="selectedNode"
       />
     </div>

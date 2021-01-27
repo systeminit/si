@@ -3,7 +3,6 @@ import { DateTime } from "luxon";
 
 import { db } from "@/api/sdf/dexie";
 import { ISiStorable } from "@/api/sdf/model/siStorable";
-import store from "@/store";
 import { User } from "./user";
 import {
   IGetReply,
@@ -13,6 +12,7 @@ import {
 } from "@/api/sdf/model";
 import { sdf } from "@/api/sdf";
 import { Query, BooleanTerm, Comparison, FieldType } from "./query";
+import Bottle from "bottlejs";
 
 export enum EventStatus {
   Unknown = "unknown",
@@ -113,6 +113,8 @@ export class Event implements IEvent {
   }
 
   async dispatch(): Promise<void> {
+    const bottle = Bottle.pop("default");
+    const store = bottle.container.Store;
     await store.dispatch("event/fromEvent", this, { root: true });
     await store.dispatch("editor/fromEvent", this, { root: true });
   }

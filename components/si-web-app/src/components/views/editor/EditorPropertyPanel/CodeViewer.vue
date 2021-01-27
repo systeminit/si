@@ -1,26 +1,31 @@
 <template>
-  <div id="code-viewer" class="flex w-full h-full">
-    <div id="monaco-mount" class="flex-auto w-full h-full" />
+  <div id="code-viewer" class="w-full h-full">
+    <div class="w-full h-full">
+      <textarea id="codemirror-mount" class="w-full h-full"> </textarea>
+    </div>
   </div>
 </template>
 
 <script lang="ts">
 import Vue from "vue";
 import { mapState, mapGetters } from "vuex";
-import * as monaco from "monaco-editor";
+import codemirror from "codemirror";
+import "codemirror/lib/codemirror.css";
+import "codemirror/theme/base16-dark.css";
+import "codemirror/mode/yaml/yaml";
 
 import { Node } from "@/api/sdf/model/node";
 import _ from "lodash";
 
-interface Data {
-  editor: monaco.editor.IEditor | undefined;
+interface IData {
+  codemirror: null | CodeMirror.Editor;
 }
 
 export default Vue.extend({
   name: "CodeViewer",
-  data(): Data {
+  data(): IData {
     return {
-      editor: undefined,
+      codemirror: null,
     };
   },
   computed: {
@@ -28,23 +33,15 @@ export default Vue.extend({
       codeProperty: "editor/codeProperty",
     }),
     ...mapState({
+      mode: (state: any): any => state.editor.mode,
       selectedNode: (state: any): any => state.editor.node,
     }),
     fieldValue: {
       set(value: any) {
-        console.log("setting the new value", {
-          value,
-          codePropertyPath: this.codeProperty.path,
-        });
-
         this.$store.dispatch("editor/entitySet", {
           path: this.codeProperty.path,
           value,
         });
-        //this.$store.dispatch("node/setFieldValue", {
-        //  path: this.codeProperty.path,
-        //  value,
-        //});
       },
       get(): string {
         if (this.codeProperty) {
@@ -63,53 +60,52 @@ export default Vue.extend({
   },
   methods: {
     updateModel(): void {
-      if (this.editor && this.selectedNode) {
-        let existingModel = monaco.editor.getModel(this.selectedNode.id);
-        if (!existingModel) {
-          const newModel = monaco.editor.createModel(
-            this.fieldValue,
-            this.codeProperty?.language ? this.codeProperty?.language : "yaml",
-            this.selectedNode.id,
-          );
-          this.editor.setModel(newModel);
-        } else {
-          existingModel.setValue(this.fieldValue);
-          this.editor.setModel(existingModel);
+      if (this.codemirror) {
+        if (this.selectedNode) {
+          this.codemirror.setValue(this.fieldValue);
+          if (this.fieldValue == "# No Code!" || this.mode == "view") {
+            this.codemirror.setOption("readOnly", true);
+          } else {
+            this.codemirror.setOption("readOnly", false);
+          }
         }
+        this.codemirror.refresh();
       }
     },
   },
   async mounted() {
     await this.$store.dispatch("editor/loadEditObject");
-    const mountPoint = document.getElementById("monaco-mount");
+    const mountPoint = document.getElementById(
+      "codemirror-mount",
+    ) as HTMLTextAreaElement;
     if (mountPoint) {
-      let editor = monaco.editor.create(mountPoint, {
-        theme: "vs-dark",
-        automaticLayout: true,
-        language: this.codeProperty?.language
-          ? this.codeProperty?.language
-          : "yaml",
-        scrollBeyondLastLine: false,
-        minimap: {
-          enabled: false,
-        },
+      const doc = codemirror.fromTextArea(mountPoint, {
+        lineNumbers: true,
+        viewportMargin: Infinity,
+        mode: "yaml",
+        theme: "base16-dark",
+        screenReaderLabel: "code-mirror-editor",
       });
-      const vx = this;
-      editor.onDidBlurEditorText(function () {
-        const model = editor.getModel();
-        if (model) {
-          let value = model.getValue();
-          vx.fieldValue = value;
+      doc.setSize("100%", "90%");
+      const codeViewerComponent = this;
+      doc.on("blur", function () {
+        let currentValue = doc.getValue();
+        if (currentValue != "# No Code!") {
+          codeViewerComponent.fieldValue = currentValue;
         }
       });
-      this.editor = editor;
+
+      this.codemirror = doc;
+
       this.updateModel();
-    } else {
-      console.log("failed to mount monaco, element not found");
     }
   },
   watch: {
-    selectedNode(currentValue: Node) {
+    async selectedNode(currentValue: Node) {
+      await this.$store.dispatch("editor/loadEditObject");
+      this.updateModel();
+    },
+    async mode(currentMode: string) {
       this.updateModel();
     },
   },

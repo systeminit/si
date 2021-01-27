@@ -45,7 +45,7 @@ const maxHeight = {
   "1/4": "25%",
   "1/2": "50%",
   "3/4": "75%",
-}
+};
 
 exports.colors = colors;
 exports.spacing = spacing;

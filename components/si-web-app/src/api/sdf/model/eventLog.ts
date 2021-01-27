@@ -9,9 +9,9 @@ import {
   IListReply,
 } from "@/api/sdf/model";
 import { ISiStorable } from "@/api/sdf/model/siStorable";
-import store from "@/store";
 import { sdf } from "@/api/sdf";
 import { Comparison, FieldType } from "./query";
+import Bottle from "bottlejs";
 
 export enum EventLogLevel {
   Trace = "trace",
@@ -84,6 +84,8 @@ export class EventLog implements IEventLog {
   }
 
   async dispatch(): Promise<void> {
+    const bottle = Bottle.pop("default");
+    const store = bottle.container.Store;
     await store.dispatch("editor/fromEventLog", this, { root: true });
     await store.dispatch("event/fromEventLog", this, { root: true });
   }

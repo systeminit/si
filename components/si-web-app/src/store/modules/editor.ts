@@ -779,7 +779,6 @@ export const editor: Module<EditorStore, RootStore> = {
       }
 
       let application = state.application;
-      console.log("application", { application });
       if (application) {
         let applicationNode = await Node.get({ id: application.nodeId });
         let successors = await applicationNode.successors();
@@ -891,7 +890,7 @@ export const editor: Module<EditorStore, RootStore> = {
     async nodeCreate(
       { commit, dispatch, rootGetters, state },
       payload: ActionNodeCreate,
-    ) {
+    ): Promise<Node> {
       let workspace = rootGetters["workspace/current"];
       let organization = rootGetters["organization/current"];
       let changeSetId = state.changeSet?.id;
@@ -927,6 +926,7 @@ export const editor: Module<EditorStore, RootStore> = {
       commit("currentResource", undefined);
       await dispatch("node", node);
       commit("mouseTrackSelection", node.id);
+      return node;
     },
     async syncCurrentResource({ state }) {
       let systemId = state.system?.id;
@@ -1035,11 +1035,11 @@ export const editor: Module<EditorStore, RootStore> = {
     },
     fromChangeSet({ commit, dispatch, state }, payload: ChangeSet) {
       if (payload.status == ChangeSetStatus.Open) {
-        console.log("updating from change set", { payload });
+        //console.log("updating from change set", { payload });
         commit("changeSetsOpenAdd", payload);
       } else {
         if (state.changeSet?.id == payload.id) {
-          console.log("removing from change set", { payload });
+          // console.log("removing from change set", { payload });
           dispatch("setChangeSet", { id: undefined });
         }
         commit("changeSetsOpenRemove", payload);
@@ -1102,6 +1102,7 @@ export const editor: Module<EditorStore, RootStore> = {
       if (router.currentRoute.query["mode"]) {
         commit("setMode", router.currentRoute.query["mode"]);
       }
+      await dispatch("loadEditObject");
     },
     async clear({ commit }) {
       commit("clear");

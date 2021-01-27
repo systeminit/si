@@ -20,9 +20,9 @@
     >
       <input
         class="pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none"
-        :data-cy="`editor-property-viewer-prop-${entityProperty.path.join(
-          '-',
-        )}`"
+        :data-cy="
+          `editor-property-viewer-prop-${entityProperty.path.join('-')}`
+        "
         v-bind:class="inputClasses"
         type="checkbox"
         :aria-label="entityProperty.name"
