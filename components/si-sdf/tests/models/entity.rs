@@ -12,7 +12,7 @@ use si_sdf::models::{
 };
 use si_sdf::veritech::Veritech;
 
-pub async fn create_custom_entity(
+pub async fn _create_custom_entity(
     pg: &PgPool,
     txn: &PgTxn<'_>,
     nats_conn: &NatsConn,
@@ -84,7 +84,7 @@ async fn new() {
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit()
         .await
         .expect("failed to commit the new billing account");
@@ -162,7 +162,7 @@ async fn save_projection() {
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit()
         .await
         .expect("failed to commit the new billing account");
@@ -235,7 +235,7 @@ async fn save_base() {
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit()
         .await
         .expect("failed to commit the new billing account");
@@ -308,7 +308,7 @@ async fn save_head() {
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit()
         .await
         .expect("failed to commit the new billing account");
@@ -382,7 +382,7 @@ async fn calculate_properties() {
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit()
         .await
         .expect("failed to commit the new billing account");
@@ -434,7 +434,7 @@ async fn update_properties_if_secret() {
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit()
         .await
         .expect("failed to commit the new billing account");
@@ -518,7 +518,7 @@ async fn get_any() {
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit()
         .await
         .expect("failed to commit the new billing account");
@@ -571,7 +571,7 @@ async fn get_head() {
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit()
         .await
         .expect("failed to commit the new billing account");
@@ -632,7 +632,7 @@ async fn get_projection() {
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit()
         .await
         .expect("failed to commit the new billing account");
@@ -690,7 +690,7 @@ async fn get_projection_or_head() {
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit()
         .await
         .expect("failed to commit the new billing account");
@@ -759,7 +759,7 @@ async fn get_all() {
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit()
         .await
         .expect("failed to commit the new billing account");
@@ -852,7 +852,7 @@ async fn list() {
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit()
         .await
         .expect("failed to commit the new billing account");

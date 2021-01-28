@@ -92,12 +92,12 @@ async fn create_edge_graph(txn: &PgTxn<'_>, nats: &NatsTxn, nba: &NewBillingAcco
 async fn new() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit()
         .await
         .expect("failed to commit the new billing account");
@@ -128,12 +128,12 @@ async fn new() {
 async fn get() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit()
         .await
         .expect("failed to commit the new billing account");
@@ -152,12 +152,12 @@ async fn get() {
 async fn list() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit()
         .await
         .expect("failed to commit the new billing account");
@@ -177,12 +177,12 @@ async fn list() {
 async fn delete() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit()
         .await
         .expect("failed to commit the new billing account");
@@ -211,12 +211,12 @@ async fn delete() {
 async fn direct_successor_edges_by_node_id() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit()
         .await
         .expect("failed to commit the new billing account");
@@ -247,12 +247,12 @@ async fn direct_successor_edges_by_node_id() {
 async fn all_successor_edges_by_node_id() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit()
         .await
         .expect("failed to commit the new billing account");
@@ -283,12 +283,12 @@ async fn all_successor_edges_by_node_id() {
 async fn direct_successor_edges_by_object_id() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit()
         .await
         .expect("failed to commit the new billing account");
@@ -319,12 +319,12 @@ async fn direct_successor_edges_by_object_id() {
 async fn all_successor_edges_by_object_id() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit()
         .await
         .expect("failed to commit the new billing account");
@@ -355,12 +355,12 @@ async fn all_successor_edges_by_object_id() {
 async fn direct_predecessor_edges_by_node_id() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit()
         .await
         .expect("failed to commit the new billing account");
@@ -391,12 +391,12 @@ async fn direct_predecessor_edges_by_node_id() {
 async fn all_predecessor_edges_by_node_id() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit()
         .await
         .expect("failed to commit the new billing account");
@@ -427,12 +427,12 @@ async fn all_predecessor_edges_by_node_id() {
 async fn direct_predecessor_edges_by_object_id() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit()
         .await
         .expect("failed to commit the new billing account");
@@ -463,12 +463,12 @@ async fn direct_predecessor_edges_by_object_id() {
 async fn all_predecessor_edges_by_object_id() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit()
         .await
         .expect("failed to commit the new billing account");
@@ -499,12 +499,12 @@ async fn all_predecessor_edges_by_object_id() {
 async fn by_kind_and_head_node_id() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit()
         .await
         .expect("failed to commit the new billing account");
@@ -532,12 +532,12 @@ async fn by_kind_and_head_node_id() {
 async fn by_kind_and_head_object_id() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit()
         .await
         .expect("failed to commit the new billing account");
@@ -568,12 +568,12 @@ async fn by_kind_and_head_object_id() {
 async fn by_kind_and_tail_node_id() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit()
         .await
         .expect("failed to commit the new billing account");
@@ -601,12 +601,12 @@ async fn by_kind_and_tail_node_id() {
 async fn by_kind_and_tail_object_id() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit()
         .await
         .expect("failed to commit the new billing account");
@@ -637,12 +637,12 @@ async fn by_kind_and_tail_object_id() {
 async fn by_kind_and_head_object_id_and_tail_type_name() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit()
         .await
         .expect("failed to commit the new billing account");

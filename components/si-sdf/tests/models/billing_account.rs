@@ -2,8 +2,11 @@ use names::{Generator, Name};
 
 use crate::{one_time_setup, TestContext};
 
-use si_sdf::data::{NatsTxn, PgTxn};
-use si_sdf::models::{BillingAccount, Capability, Group, Organization, PublicKey, User, Workspace};
+use si_sdf::data::{NatsConn, NatsTxn, PgPool, PgTxn};
+use si_sdf::models::{
+    BillingAccount, Capability, Group, Organization, PublicKey, System, User, Workspace,
+};
+use si_sdf::veritech::Veritech;
 
 #[derive(Debug)]
 pub struct NewBillingAccount {
@@ -14,6 +17,7 @@ pub struct NewBillingAccount {
     pub organization: Organization,
     pub public_key: PublicKey,
     pub user_password: String,
+    pub system: System,
 }
 
 pub async fn new_billing_account(txn: &PgTxn<'_>, nats: &NatsTxn) -> BillingAccount {
@@ -24,16 +28,30 @@ pub async fn new_billing_account(txn: &PgTxn<'_>, nats: &NatsTxn) -> BillingAcco
         .expect("cannot create billing account")
 }
 
-pub async fn signup_new_billing_account(txn: &PgTxn<'_>, nats: &NatsTxn) -> NewBillingAccount {
+pub async fn signup_new_billing_account(
+    pg: &PgPool,
+    _txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    nats_conn: &NatsConn,
+    veritech: &Veritech,
+) -> NewBillingAccount {
     let mut generator = Generator::with_naming(Name::Numbered);
     let billing_account_name = generator.next().unwrap();
     let mut name_generator = Generator::default();
     let user_name = name_generator.next().unwrap();
     let user_password = name_generator.next().unwrap();
-    let (billing_account, user, group, organization, workspace, public_key) =
+    let mut nba_conn = pg.pool.get().await.expect("cannot get connection");
+    let nba_txn = nba_conn
+        .transaction()
+        .await
+        .expect("cannot open new transaction");
+    let (billing_account, user, group, organization, workspace, public_key, system) =
         BillingAccount::signup(
-            &txn,
+            &pg,
+            nba_txn,
             &nats,
+            &nats_conn,
+            &veritech,
             &billing_account_name,
             format!("{} description", billing_account_name),
             &user_name,
@@ -50,6 +68,7 @@ pub async fn signup_new_billing_account(txn: &PgTxn<'_>, nats: &NatsTxn) -> NewB
         workspace,
         public_key,
         user_password,
+        system,
     }
 }
 
@@ -73,15 +92,18 @@ async fn new() {
 async fn signup() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let (billing_account, user, group, organization, workspace, public_key) =
+    let (billing_account, user, group, organization, workspace, public_key, _system) =
         BillingAccount::signup(
-            &txn,
+            &pg,
+            txn,
             &nats,
+            &nats_conn,
+            &veritech,
             "goodbye sniper",
             "I shoot, you run",
             "leo",
@@ -110,12 +132,12 @@ async fn signup() {
 async fn get() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     let ba = BillingAccount::get(&txn, &nba.billing_account.id)
         .await
         .expect("cannot get billing account");
@@ -126,12 +148,12 @@ async fn get() {
 async fn get_by_name() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     let ba = BillingAccount::get_by_name(&txn, &nba.billing_account.name)
         .await
         .expect("cannot get billing account by name");
@@ -142,12 +164,12 @@ async fn get_by_name() {
 async fn rotate_key_pair() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     BillingAccount::rotate_key_pair(&txn, &nats, nba.billing_account.id)
         .await
         .expect("cannot rotate key pair");

@@ -80,12 +80,12 @@ pub async fn create_secret_with_message(
 async fn new() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit()
         .await
         .expect("failed to commit the new billing account");
@@ -120,11 +120,11 @@ async fn new() {
 async fn secret_get() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit()
         .await
         .expect("failed to commit the new billing account");
@@ -143,12 +143,12 @@ async fn secret_get() {
 async fn secret_list() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit()
         .await
         .expect("failed to commit the new billing account");
@@ -168,11 +168,11 @@ async fn secret_list() {
 async fn encrypted_secret_get() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit()
         .await
         .expect("failed to commit the new billing account");
@@ -196,11 +196,11 @@ async fn encrypted_secret_get() {
 async fn encrypt_decrypt_round_trip() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit()
         .await
         .expect("failed to commit the new billing account");
