@@ -14,7 +14,7 @@ pub fn api(
     event_log_fs: &EventLogFS,
     secret_key: &secretbox::Key,
 ) -> BoxedFilter<(impl warp::Reply,)> {
-    billing_accounts(pg, nats_conn)
+    billing_accounts(pg, nats_conn, veritech)
         .or(users(pg, secret_key))
         .or(organizations(pg))
         .or(nodes(pg, nats_conn, veritech))
@@ -271,8 +271,12 @@ pub fn api_client_list(pg: PgPool) -> BoxedFilter<(impl warp::Reply,)> {
 }
 
 // Billing Account API
-pub fn billing_accounts(pg: &PgPool, nats_conn: &NatsConn) -> BoxedFilter<(impl warp::Reply,)> {
-    billing_accounts_create(pg.clone(), nats_conn.clone())
+pub fn billing_accounts(
+    pg: &PgPool,
+    nats_conn: &NatsConn,
+    veritech: &Veritech,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    billing_accounts_create(pg.clone(), nats_conn.clone(), veritech.clone())
         .or(billing_accounts_get(pg.clone()))
         .or(billing_accounts_get_public_key(pg.clone()))
         .boxed()
@@ -281,11 +285,13 @@ pub fn billing_accounts(pg: &PgPool, nats_conn: &NatsConn) -> BoxedFilter<(impl 
 pub fn billing_accounts_create(
     pg: PgPool,
     nats_conn: NatsConn,
+    veritech: Veritech,
 ) -> BoxedFilter<(impl warp::Reply,)> {
     warp::path!("billingAccounts")
         .and(warp::post())
         .and(with_pg(pg))
         .and(with_nats_conn(nats_conn))
+        .and(with_veritech(veritech))
         .and(warp::body::json::<models::billing_account::CreateRequest>())
         .and_then(handlers::billing_accounts::create)
         .boxed()

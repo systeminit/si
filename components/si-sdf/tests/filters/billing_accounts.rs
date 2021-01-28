@@ -53,7 +53,7 @@ async fn get_public_key() {
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot get connection");
     let txn = conn.transaction().await.expect("cannot get transaction");
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit().await.expect("cannot commit txn");
 
     let token = login_user(&ctx, &nba).await;
@@ -82,8 +82,8 @@ async fn get() {
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot get connection");
     let txn = conn.transaction().await.expect("cannot get transaction");
-    let nba = signup_new_billing_account(&txn, &nats).await;
-    let second_nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
+    let second_nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit().await.expect("cannot commit txn");
 
     let token = login_user(&ctx, &nba).await;

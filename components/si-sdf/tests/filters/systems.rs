@@ -19,7 +19,7 @@ async fn get() {
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot get connection");
     let txn = conn.transaction().await.expect("cannot get transaction");
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit().await.expect("cannot commit txn");
 
     let txn = conn.transaction().await.expect("cannot get transaction");
@@ -77,7 +77,7 @@ async fn list() {
     let nats = nats_conn.transaction();
     let mut conn = pg.pool.get().await.expect("cannot get connection");
     let txn = conn.transaction().await.expect("cannot get transaction");
-    let nba = signup_new_billing_account(&txn, &nats).await;
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit().await.expect("cannot commit txn");
 
     let txn = conn.transaction().await.expect("cannot get transaction");
@@ -115,5 +115,5 @@ async fn list() {
     assert_eq!(res.status(), StatusCode::OK, "list model should succeed");
     let reply: ListReply =
         serde_json::from_slice(res.body()).expect("cannot deserialize get model reply");
-    assert_eq!(reply.total_count, 1);
+    assert_eq!(reply.total_count, 2);
 }

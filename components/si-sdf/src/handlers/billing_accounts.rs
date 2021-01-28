@@ -4,20 +4,25 @@ use crate::models::{
     billing_account::{CreateReply, CreateRequest},
     BillingAccount, PublicKey,
 };
+use crate::Veritech;
 
 pub async fn create(
     pg: PgPool,
     nats_conn: NatsConn,
+    veritech: Veritech,
     request: CreateRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
     let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
     let nats = nats_conn.transaction();
 
-    let (billing_account, user, group, organization, workspace, _public_key) =
+    let (billing_account, user, group, organization, workspace, _public_key, system) =
         BillingAccount::signup(
-            &txn,
+            &pg,
+            txn,
             &nats,
+            &nats_conn,
+            &veritech,
             request.billing_account_name,
             request.billing_account_description,
             request.user_name,
@@ -27,7 +32,8 @@ pub async fn create(
         .await
         .map_err(HandlerError::from)?;
 
-    txn.commit().await.map_err(HandlerError::from)?;
+    // The transaction is committed in the function itself
+    //txn.commit().await.map_err(HandlerError::from)?;
     nats.commit().await.map_err(HandlerError::from)?;
 
     let reply = CreateReply {
@@ -36,6 +42,7 @@ pub async fn create(
         group,
         organization,
         workspace,
+        system,
     };
     Ok(warp::reply::json(&reply))
 }
