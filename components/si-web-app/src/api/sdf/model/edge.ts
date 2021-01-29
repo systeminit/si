@@ -9,8 +9,8 @@ import {
   FieldType,
   BooleanTerm,
 } from "@/api/sdf/model/query";
-import store from "@/store";
 import { sdf } from "@/api/sdf";
+import Bottle from "bottlejs";
 
 export interface IAllPredecessorsRequest {
   objectId?: string;
@@ -439,6 +439,8 @@ export class Edge implements IEdge {
   }
 
   async dispatch(): Promise<void> {
+    const bottle = Bottle.pop("default");
+    const store = bottle.container.Store;
     await store.dispatch("application/fromEdge", this, { root: true });
     await store.dispatch("editor/fromEdge", this, { root: true });
   }

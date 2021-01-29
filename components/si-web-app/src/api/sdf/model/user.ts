@@ -1,9 +1,9 @@
+import Bottle from "bottlejs";
 import { sdf } from "@/api/sdf";
 import { db } from "@/api/sdf/dexie";
 import { ISimpleStorable } from "@/api/sdf/model/siStorable";
 import { IGetRequest, IGetReply } from "@/api/sdf/model";
 import { wipe } from "@/api/sdf/dexie";
-import store from "@/store";
 import _ from "lodash";
 
 export interface IUser {
@@ -83,6 +83,8 @@ export class User implements IUser {
     const currentObj = await db.users.get(this.id);
     if (!_.eq(currentObj, this)) {
       await db.users.put(this);
+      const bottle = Bottle.pop("default");
+      const store = bottle.container.Store;
       await store.dispatch("user/fromDb", this);
     }
   }

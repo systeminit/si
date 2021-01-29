@@ -1,6 +1,8 @@
 <template>
   <div class="flex-row">
-    <div class="flex overflow-auto text-xs text-gray-700 event-operation-summary">
+    <div
+      class="flex overflow-auto text-xs text-gray-700 event-operation-summary"
+    >
       <div class="w-10 ml-2">{{ eventLog.level }}</div>
       <div class="ml-2">
         <Tooltip>
@@ -32,12 +34,12 @@
       </div>
     </div>
     <div class="flex-row event-operation-details" v-if="showOutputLines">
-      <div class="flex overflow-auto text-xs text-gray-300 h-auto w-full event-operation-output">
-        
+      <div
+        class="flex overflow-auto text-xs text-gray-300 h-auto w-full event-operation-output"
+      >
         <div class="whitespace-pre-wrap w-full h-auto my-1 ml-3 mr-1 max-h-1/2">
-        {{ outputLines.map(obj => obj.line).join("\n") }}
+          {{ outputLines.map(obj => obj.line).join("\n") }}
         </div>
-
       </div>
     </div>
   </div>
@@ -102,11 +104,8 @@ export default Vue.extend({
 });
 </script>
 
-
 <style type="text/css" scoped>
-
 .event-operation-output {
-  background-color: #090A0A;
+  background-color: #090a0a;
 }
-
 </style>

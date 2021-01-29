@@ -1,8 +1,8 @@
 import { db } from "@/api/sdf/dexie";
 import { ISiStorable } from "@/api/sdf/model/siStorable";
 import _ from "lodash";
-import store from "@/store";
 import { Base64 } from "js-base64";
+import Bottle from "bottlejs";
 
 export interface IPublicKey {
   id: string;
@@ -37,6 +37,8 @@ export class PublicKey implements IPublicKey {
   }
 
   async dispatch(): Promise<void> {
+    const bottle = Bottle.pop("default");
+    const store = bottle.container.Store;
     await store.dispatch("secret/fromPublicKey", this);
   }
 

@@ -14,11 +14,11 @@ import { Entity, IEntity } from "@/api/sdf/model/entity";
 import { System, ISystem } from "@/api/sdf/model/system";
 import { Resource } from "@/api/sdf/model/resource";
 import { Secret } from "@/api/sdf/model/secret";
-import store from "@/store";
 
 import _ from "lodash";
 import { registry, PropLink, PropObject } from "si-registry";
 import { EntityObject } from "si-registry/lib/systemComponent";
+import Bottle from "bottlejs";
 
 export interface RegistryProperty {
   id: string;
@@ -363,6 +363,7 @@ export class Node implements INode {
         return displayObject;
       } catch {}
     }
+    console.log("got a display object", { displayObject });
     throw new Error("cannot get display object; no head or projection");
   }
 
@@ -675,6 +676,8 @@ export class Node implements INode {
   }
 
   async dispatch(): Promise<void> {
+    const bottle = Bottle.pop("default");
+    const store = bottle.container.Store;
     await store.dispatch("editor/fromNode", this);
   }
 

@@ -2,7 +2,6 @@ import { sdf } from "@/api/sdf";
 import { db } from "@/api/sdf/dexie";
 import { ISiStorable } from "@/api/sdf/model/siStorable";
 import { ISiChangeSet } from "@/api/sdf/model/siChangeSet";
-import store from "@/store";
 import _ from "lodash";
 
 export type IEntityOps = IOpEntitySet;

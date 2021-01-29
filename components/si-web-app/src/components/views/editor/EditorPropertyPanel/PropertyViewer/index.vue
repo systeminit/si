@@ -132,7 +132,7 @@
                   <div
                     v-if="
                       repeated(entityProperty) &&
-                      !propKind(entityProperty, 'select')
+                        !propKind(entityProperty, 'select')
                     "
                   >
                     <PropRepeated
@@ -380,7 +380,7 @@ export default Vue.extend({
     },
     togglePath(path: (string | number)[]) {
       if (
-        _.find(this.collapsedPaths, (item) => {
+        _.find(this.collapsedPaths, item => {
           return _.isEqual(item, path);
         })
       ) {
@@ -396,7 +396,7 @@ export default Vue.extend({
       }
     },
     isOpen(prop: RegistryProperty): boolean {
-      const collapsed = _.find(this.collapsedPaths, (path) => {
+      const collapsed = _.find(this.collapsedPaths, path => {
         if (_.isEqual(prop.path, path)) {
           return true;
         } else {
@@ -410,7 +410,7 @@ export default Vue.extend({
       }
     },
     showPath(prop: RegistryProperty): boolean {
-      const collapsed = _.find(this.collapsedPaths, (path) => {
+      const collapsed = _.find(this.collapsedPaths, path => {
         if (prop.path.length >= path.length) {
           if (_.isEqual(prop.path, path)) {
             // We always want to show the toggle path!
@@ -576,7 +576,7 @@ export default Vue.extend({
       return results;
     },
     hasBeenEdited(): boolean {
-      let result = _.find(this.diff.entries, (diffEntry) => {
+      let result = _.find(this.diff.entries, diffEntry => {
         return _.isEqual(diffEntry.path, ["name"]);
       });
       if (result) {

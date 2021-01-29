@@ -8,8 +8,8 @@ import {
   IListRequest,
   IListReply,
 } from "@/api/sdf/model";
-import store from "@/store";
 import _ from "lodash";
+import Bottle from "bottlejs";
 
 export interface IApiClientCreateRequest {
   name: string;
@@ -105,6 +105,8 @@ export class ApiClient implements IApiClient {
   }
 
   async dispatch(): Promise<void> {
+    const bottle = Bottle.pop("default");
+    const store = bottle.container.Store;
     await store.dispatch("client/fromApiClient", this);
   }
 }

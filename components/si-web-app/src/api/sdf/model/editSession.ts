@@ -9,8 +9,8 @@ import {
   ICreateReply,
 } from "@/api/sdf/model";
 import { Query, Comparison } from "@/api/sdf/model/query";
-import store from "@/store";
 import _ from "lodash";
+import Bottle from "bottlejs";
 
 export interface IEditSessionPatchRequest {
   cancel?: boolean;
@@ -163,6 +163,8 @@ export class EditSession implements IEditSession {
   }
 
   async dispatch(): Promise<void> {
+    const bottle = Bottle.pop("default");
+    const store = bottle.container.Store;
     await store.dispatch("editor/fromEditSession", this, { root: true });
   }
 

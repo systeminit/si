@@ -685,9 +685,9 @@ export default Vue.extend({
         `desired adjusted translation - x:${translation.x} y:${translation.y}`,
       );
       this.log(
-        `translation limits - x:0 to ${
-          1 - this.editor.element.offsetWidth
-        } y:0 to ${1 - this.editor.element.offsetHeight}`,
+        `translation limits - x:0 to ${1 -
+          this.editor.element.offsetWidth} y:0 to ${1 -
+          this.editor.element.offsetHeight}`,
       );
 
       // Restrict translations to the view

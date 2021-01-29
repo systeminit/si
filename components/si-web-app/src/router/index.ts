@@ -1,10 +1,10 @@
+import Bottle from "bottlejs";
 import Vue from "vue";
 import VueRouter from "vue-router";
 
 // @ts-ignore: Unreachable code error
 import routes from "./routes";
 
-import store from "@/store";
 import _ from "lodash";
 
 Vue.use(VueRouter);
@@ -44,6 +44,9 @@ const routeCheck = async (to: any, from: any, next: any) => {
     console.log("going to signin");
     return next();
   }
+
+  let bottle = Bottle.pop("default");
+  let store = bottle.container.Store;
 
   let authenticated = await store.dispatch("user/isAuthenticated");
 

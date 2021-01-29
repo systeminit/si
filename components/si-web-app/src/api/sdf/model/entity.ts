@@ -16,7 +16,7 @@ import { System } from "@/api/sdf/model/system";
 import { IListRequest, IListReply, IGetRequest } from "@/api/sdf/model";
 import { sdf } from "@/api/sdf";
 import _ from "lodash";
-import store from "@/store";
+import Bottle from "bottlejs";
 
 export interface IEntityGetReply {
   items: IEntity[];
@@ -345,6 +345,8 @@ export class Entity implements IEntity {
   }
 
   async dispatch(): Promise<void> {
+    const bottle = Bottle.pop("default");
+    const store = bottle.container.Store;
     await store.dispatch("application/fromEntity", this);
     await store.dispatch("editor/fromEntity", this);
   }

@@ -2,7 +2,7 @@ import { db } from "@/api/sdf/dexie";
 import { ISiStorable } from "@/api/sdf/model/siStorable";
 import { sdf } from "@/api/sdf";
 import _ from "lodash";
-import store from "@/store";
+import Bottle from "bottlejs";
 
 export enum ResourceHealth {
   Ok = "ok",
@@ -81,6 +81,8 @@ export class Resource implements IResource {
   }
 
   async dispatch(): Promise<void> {
+    const bottle = Bottle.pop("default");
+    const store = bottle.container.Store;
     await store.dispatch("editor/fromResource", this);
     await store.dispatch("application/fromResource", this);
   }

@@ -10,6 +10,7 @@ export class FetchError extends Error {
     super(message);
     this.name = "FetchError";
     this.response = response;
+    console.log("I got a fetch error", { response });
   }
 }
 

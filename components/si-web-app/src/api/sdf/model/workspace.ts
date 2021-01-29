@@ -8,8 +8,8 @@ import {
   IListReply,
 } from "@/api/sdf/model";
 import { Query, Comparison } from "@/api/sdf/model/query";
-import store from "@/store";
 import _ from "lodash";
+import Bottle from "bottlejs";
 
 export interface IWorkspace {
   id: string;
@@ -29,6 +29,7 @@ export class Workspace implements IWorkspace {
   }
 
   static async get(request: IGetRequest<IWorkspace["id"]>): Promise<Workspace> {
+    console.log("geting current workspace");
     const obj = await db.workspaces.get(request.id);
     if (obj) {
       return new Workspace(obj);
@@ -100,6 +101,8 @@ export class Workspace implements IWorkspace {
     const currentObj = await db.workspaces.get(this.id);
     if (!_.eq(currentObj, this)) {
       await db.workspaces.put(this);
+      const bottle = Bottle.pop("default");
+      const store = bottle.container.Store;
       await store.dispatch("workspace/fromDb", this);
     }
   }

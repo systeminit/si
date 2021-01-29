@@ -8,9 +8,9 @@
       :data-cy="'editor-schematic-panel-node-list-' + nodeIndex"
       :data-cy-name="
         'editor-schematic-panel-node-list-' +
-        node.objectType +
-        '-' +
-        displayItem.name
+          node.objectType +
+          '-' +
+          displayItem.name
       "
       @mousedown="selectNode()"
     >

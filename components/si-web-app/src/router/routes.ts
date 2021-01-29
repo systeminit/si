@@ -9,7 +9,6 @@ import ApplicationList from "@/components/views/application/ApplicationList.vue"
 import SecretList from "@/components/views/secret/SecretList.vue";
 import ClientList from "@/components/views/client/ClientList.vue";
 import ApplicationDetails from "@/components/views/application/ApplicationDetails.vue";
-import store from "@/store";
 
 const routes = [
   {

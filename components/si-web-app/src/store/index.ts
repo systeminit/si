@@ -1,6 +1,6 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import { Store } from "vuex";
+import { Store, StoreOptions } from "vuex";
 import { application, ApplicationStore } from "./modules/application";
 import { secret, SecretStore } from "./modules/secret";
 import { client, ClientStore } from "./modules/client";
@@ -44,8 +44,7 @@ export interface RootStore {
   client: ClientStore;
 }
 
-const store: Store<RootStore> = new Vuex.Store({
-  // @ts-ignore - we know its incomplete, but it isn't really
+export const storeData = {
   state: {
     version: "1",
   },
@@ -63,6 +62,11 @@ const store: Store<RootStore> = new Vuex.Store({
     client,
   },
   strict: debug,
-});
+};
 
-export default store;
+export type SiVuexStore = Store<RootStore>;
+
+// @ts-ignore
+//const store: Store<RootStore> = new Vuex.Store(storeData);
+
+//export default store;
