@@ -193,8 +193,12 @@ export class Edge implements IEdge {
           .each(edge => {
             if (!vertexes_to_check.includes(edge.headVertex.nodeId)) {
               vertexes_to_check.push(edge.headVertex.nodeId);
+              
+              // This doesn't address why there are duplicate edges in db.edges.
+              // But it prevents duplication of nodes, at the moment.
+              // TOTO - investigate why there are duplicate edges in db.edges.
+              items.push(Edge.upgrade(edge));
             }
-            items.push(Edge.upgrade(edge));
           });
       }
     } else {
