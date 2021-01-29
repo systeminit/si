@@ -63,7 +63,6 @@ export default Vue.extend({
       } else if (this.resource.status == ResourceStatus.Deleted) {
         color = deletedColor;
       } else {
-        console.log("resource status", { resource: this.resource });
         color = programmersSuckColor;
       }
       return `fill:rgba(${color})`;
@@ -85,7 +84,6 @@ export default Vue.extend({
       } else if (this.resource.health == ResourceHealth.Unknown) {
         color = unknownColor;
       } else {
-        console.log("resource health", { resource: this.resource });
         color = programmersSuckColor;
       }
       return `fill:rgba(${color})`;

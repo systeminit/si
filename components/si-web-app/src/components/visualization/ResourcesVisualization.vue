@@ -1,8 +1,6 @@
 <template>
   <div class="flex flex-col h-full">
-    <div class="text-sm font-bold text-gray-400">
-      resources
-    </div>
+    <div class="text-sm font-bold text-gray-400">resources</div>
 
     <div class="flex pl-1 mt-1">
       <!-- <div
@@ -20,33 +18,25 @@
               </div>
               <div class="flex flex-col ml-2 text-xs">
                 <div class="flex">
-                  <div class="pr-2">
-                    Kind
-                  </div>
+                  <div class="pr-2">Kind</div>
                   <div>
                     {{ resourceKind(resource) }}
                   </div>
                 </div>
                 <div class="flex">
-                  <div class="pr-2">
-                    Status
-                  </div>
+                  <div class="pr-2">Status</div>
                   <div :style="statusStyle(resource)">
                     {{ resource.status }}
                   </div>
                 </div>
                 <div class="flex">
-                  <div class="pr-2">
-                    Health
-                  </div>
+                  <div class="pr-2">Health</div>
                   <div :style="healthStyle(resource)">
                     {{ resource.health }}
                   </div>
                 </div>
                 <div class="flex">
-                  <div class="pr-2">
-                    Time
-                  </div>
+                  <div class="pr-2">Time</div>
                   <div>
                     {{ resource.timestamp }}
                   </div>
@@ -149,7 +139,6 @@ export default Vue.extend({
       } else if (resource.health == ResourceHealth.Unknown) {
         color = unknownColor;
       } else {
-        console.log("resource health", { resource: resource });
         color = programmersSuckColor;
       }
       return `color:rgba(${color})`;

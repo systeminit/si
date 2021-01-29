@@ -70,7 +70,6 @@ export class EventLog implements IEventLog {
     if (relative) {
       return relative;
     } else {
-      console.log("fuck you");
       return this.timestamp;
     }
   }

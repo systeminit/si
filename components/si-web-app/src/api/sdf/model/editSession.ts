@@ -147,7 +147,6 @@ export class EditSession implements IEditSession {
       request,
     );
     if (reply.cancel) {
-      console.log("you have been canceled");
       return;
     } else {
       throw new Error("incorrect response to patch call");

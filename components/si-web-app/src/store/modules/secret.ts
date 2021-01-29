@@ -55,7 +55,6 @@ export const secret: Module<SecretStore, RootStore> = {
       const organization: Organization = rootGetters["organization/current"];
       const workspace: Workspace = rootGetters["workspace/current"];
 
-      console.log("do you have a public key?", { pk: state.publicKey });
       const secret = await Secret.create({
         name: payload.secretName,
         objectType: SecretObjectType.Credential,

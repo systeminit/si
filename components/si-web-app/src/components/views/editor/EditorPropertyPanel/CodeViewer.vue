@@ -88,7 +88,7 @@ export default Vue.extend({
       });
       doc.setSize("100%", "90%");
       const codeViewerComponent = this;
-      doc.on("blur", function () {
+      doc.on("blur", function() {
         let currentValue = doc.getValue();
         if (currentValue != "# No Code!") {
           codeViewerComponent.fieldValue = currentValue;

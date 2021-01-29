@@ -833,7 +833,7 @@ export const editor: Module<EditorStore, RootStore> = {
             resources.push(resource);
           }
         } catch {
-          console.log("node object not included in this changeset");
+          //console.log("node object not included in this changeset");
         }
       }
       commit("setObjects", objects);
@@ -851,7 +851,6 @@ export const editor: Module<EditorStore, RootStore> = {
     async editSessionCancel({ state }) {
       let editSession = state.editSession;
       if (editSession) {
-        console.log("I am canceling the crap out of this session");
         await editSession.cancel();
       }
     },

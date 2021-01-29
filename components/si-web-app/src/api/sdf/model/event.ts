@@ -217,9 +217,7 @@ export class Event implements IEvent {
         if (parent) {
           parents.push(parent);
           if (parent.parentId) {
-            console.log("have a parent", { parent, checkForParent });
             if (!checkForParent.includes(parent.parentId)) {
-              console.log("but I didn't make it here");
               checkForParent.push(parent.parentId);
             }
           }

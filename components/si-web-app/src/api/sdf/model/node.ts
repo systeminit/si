@@ -309,12 +309,6 @@ export class Node implements INode {
     let edge = _.find(successors, ["headVertex.nodeId", successor.id]);
     if (edge) {
       await edge.delete();
-    } else {
-      console.log("You don't have an edge!", {
-        successor,
-        successors,
-        currentNode: this,
-      });
     }
   }
 
@@ -374,7 +368,6 @@ export class Node implements INode {
         return displayObject;
       } catch {}
     }
-    console.log("got a display object", { displayObject });
     throw new Error("cannot get display object; no head or projection");
   }
 

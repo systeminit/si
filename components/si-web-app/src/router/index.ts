@@ -36,12 +36,10 @@ const routeCheck = async (to: any, from: any, next: any) => {
   // 4. Route to the requested location.
   //
   if (to.path == "/signup") {
-    console.log("going to signup");
     return next();
   }
 
   if (to.path == "/signin") {
-    console.log("going to signin");
     return next();
   }
 

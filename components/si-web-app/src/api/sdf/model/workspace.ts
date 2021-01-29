@@ -29,7 +29,6 @@ export class Workspace implements IWorkspace {
   }
 
   static async get(request: IGetRequest<IWorkspace["id"]>): Promise<Workspace> {
-    console.log("geting current workspace");
     const obj = await db.workspaces.get(request.id);
     if (obj) {
       return new Workspace(obj);

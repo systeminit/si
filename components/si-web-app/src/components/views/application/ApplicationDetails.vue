@@ -341,7 +341,6 @@ export default Vue.extend({
         },
       );
       result.unshift({ label: "none", value: null });
-      console.log("the full list of change sets open", { result });
       return result;
     },
     currentSystem: {
