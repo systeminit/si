@@ -163,6 +163,17 @@ export class Node implements INode {
     return fetched;
   }
 
+  static async get_cache(
+    request: IGetRequest<INode["id"]>,
+  ): Promise<Node | undefined> {
+    const obj = await db.nodes.get(request.id);
+    if (obj) {
+      return new Node(obj);
+    } else {
+      return undefined;
+    }
+  }
+
   static async find(index: "id", value: string): Promise<Node[]> {
     let items = await db.nodes
       .where(index)

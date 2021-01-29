@@ -179,9 +179,10 @@ export const application: Module<ApplicationStore, RootStore> = {
     },
     async fromResource({ state, commit }, payload: Resource) {
       let node;
-      try {
-        node = await Node.get({ id: payload.nodeId });
-      } catch (e) {
+      // We use get_cache here, because the resource gets committed
+      // before the node is created.
+      node = await Node.get_cache({ id: payload.nodeId });
+      if (!node) {
         return;
       }
       const predecessors = await node.predecessors();

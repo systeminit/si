@@ -308,12 +308,13 @@ pub async fn get(
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
 
     let claim = authenticate(&txn, &token).await?;
-    validate_tenancy(&txn, "nodes", &node_id, &claim.billing_account_id).await?;
     authorize(&txn, &claim.user_id, &"nodes", "get").await?;
 
     let object = Node::get(&txn, &node_id)
         .await
-        .map_err(HandlerError::from)?;
+        .map_err(|_| HandlerError::NotFound)?;
+
+    validate_tenancy(&txn, "nodes", &node_id, &claim.billing_account_id).await?;
 
     let item = serde_json::to_value(object).map_err(HandlerError::from)?;
 
