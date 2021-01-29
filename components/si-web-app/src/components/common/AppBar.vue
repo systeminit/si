@@ -1,11 +1,11 @@
 <template>
   <nav
     id="app-bar"
-    class="flex items-center justify-between flex-no-wrap items-baseline h-12 bg-black"
+    class="flex flex-no-wrap items-center items-baseline justify-between h-12 bg-black"
   >
     <div class="flex self-center flex-shrink-0 ml-20">
       <span
-        class="self-center flex-1 font-source-code-pro font-medium subpixel-antialiased text-white text-2xl tracking-tight align-middle"
+        class="self-center flex-1 text-2xl subpixel-antialiased font-medium tracking-tight text-white align-middle font-source-code-pro"
         >system init</span
       >
     </div>
@@ -15,7 +15,7 @@
         <help-circle-icon size="1.5x" class="text-center text-white" />
       </div>
 
-      <div class="self-center flex-1 text-center px-2 py-2 ml-2">
+      <div class="self-center flex-1 px-2 py-2 ml-2 text-center">
         <user-icon
           size="1.5x"
           class="text-center text-white"
@@ -37,7 +37,6 @@ export default {
   },
   methods: {
     async onLogout(event) {
-      console.log("logout clicked");
       await this.$store.dispatch("user/logout");
       this.$router.push({ name: "signin" });
     },

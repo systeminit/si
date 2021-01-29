@@ -144,7 +144,6 @@ export default Vue.extend({
       if (this.events.length > 0) {
         return this.events[0].event;
       } else {
-        console.log("returning");
         return undefined;
       }
     },

@@ -12,7 +12,8 @@ use si_sdf::models::{
 };
 use si_sdf::veritech::Veritech;
 
-pub async fn _create_custom_entity(
+#[allow(dead_code)]
+pub async fn create_custom_entity(
     pg: &PgPool,
     txn: &PgTxn<'_>,
     nats_conn: &NatsConn,

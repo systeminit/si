@@ -1,9 +1,7 @@
 <template>
   <div class="flex flex-col justify-center h-screen bg-black">
     <div class="text-6xl text-center text-gray-300">
-      <div>
-        The System Initiative
-      </div>
+      <div>The System Initiative</div>
       <div class="flex lds-grid">
         <div></div>
         <div></div>
@@ -60,7 +58,6 @@ export default Vue.extend({
       if (!quote) {
         quote = "is unsure about itself";
       }
-      console.log("getting a quote");
       this.quote = quote;
     },
   },
