@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use tokio_postgres::error::SqlState;
 
 use crate::data::{NatsConn, NatsTxn, NatsTxnError, PgPool, PgTxn};
 use crate::Veritech;
@@ -95,7 +96,13 @@ impl BillingAccount {
                 "SELECT object FROM billing_account_create_v1($1, $2)",
                 &[&name, &description],
             )
-            .await?;
+            .await
+            .map_err(|err| match err.code() {
+                Some(sql_state) if sql_state == &SqlState::UNIQUE_VIOLATION => {
+                    BillingAccountError::AccountExists
+                }
+                _ => BillingAccountError::TokioPg(err),
+            })?;
         let json: serde_json::Value = row.try_get("object")?;
         nats.publish(&json).await?;
         let object: BillingAccount = serde_json::from_value(json)?;

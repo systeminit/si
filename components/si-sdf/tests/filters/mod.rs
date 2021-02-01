@@ -12,3 +12,6 @@ pub mod secrets;
 pub mod systems;
 pub mod users;
 pub mod workspaces;
+
+pub mod session_dal;
+pub mod signup_dal;

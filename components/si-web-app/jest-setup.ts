@@ -1,6 +1,5 @@
 import "@testing-library/jest-dom";
-import FDBFactory from "fake-indexeddb/lib/FDBFactory";
-indexedDB = new FDBFactory();
+import "@/plugins/vue-js-modal";
 
 import fetch from "node-fetch";
 import { Request } from "node-fetch";
@@ -25,5 +24,9 @@ global.document.body.createTextRange = function() {
     },
   };
 };
+
+process.on("unhandledRejection", err => {
+  fail(err);
+});
 
 jest.setTimeout(10000);

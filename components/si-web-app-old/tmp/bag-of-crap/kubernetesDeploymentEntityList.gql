@@ -1,0 +1,12 @@
+query{
+  kubernetesDeploymentEntityList(
+    input: {
+      pageSize:"1000"
+    }
+  ) {
+    items {
+      id
+      name
+    }
+  }
+}
