@@ -299,6 +299,14 @@ export default Vue.extend({
   mounted(): void {
     this.canvas.element = this.$refs.canvas;
     this.grid.element = this.$refs.grid;
+    // NOTE: This is bullshit values that exist solely for the test suite to
+    // be able to mount this component.
+    if (this.grid.element.width == undefined) {
+      this.grid.element.width = { baseVal: { value: 100 } };
+    }
+    if (this.grid.element.height == undefined) {
+      this.grid.element.height = { baseVal: { value: 100 } };
+    }
 
     /**
      * TODO
@@ -685,9 +693,9 @@ export default Vue.extend({
         `desired adjusted translation - x:${translation.x} y:${translation.y}`,
       );
       this.log(
-        `translation limits - x:0 to ${1 -
-          this.editor.element.offsetWidth} y:0 to ${1 -
-          this.editor.element.offsetHeight}`,
+        `translation limits - x:0 to ${
+          1 - this.editor.element.offsetWidth
+        } y:0 to ${1 - this.editor.element.offsetHeight}`,
       );
 
       // Restrict translations to the view

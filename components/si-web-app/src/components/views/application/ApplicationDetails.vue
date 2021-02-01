@@ -352,7 +352,7 @@ export default Vue.extend({
       },
     },
     systemList(): DropdownProps["options"] {
-      const systemList = _.map(this.systems, system => {
+      const systemList = _.map(this.systems, (system) => {
         return { value: system.id, label: system.name };
       });
       return systemList;

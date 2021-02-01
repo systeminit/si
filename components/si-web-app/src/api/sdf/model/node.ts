@@ -371,21 +371,21 @@ export class Node implements INode {
     throw new Error("cannot get display object; no head or projection");
   }
 
-  async headObject(load?: boolean): Promise<NodeObject> {
-    let iitem: INodeObject;
+  async headObject(_load?: boolean): Promise<NodeObject> {
+    let iitem: INodeObject | null = null;
     let cacheResult = await db.headEntities
       .where({ nodeId: this.id })
       .toArray();
     if (cacheResult.length && cacheResult[0]) {
       iitem = cacheResult[0];
     } else {
-      if (load) {
+      try {
         let response: IGetReply<INodeObject> = await sdf.get(
           `nodes/${this.id}/object`,
         );
         iitem = response.item;
-      } else {
-        throw new Error("cannot get head object from request");
+      } catch (e) {
+        // Cannot get the head
       }
     }
     if (iitem) {
@@ -406,6 +406,20 @@ export class Node implements INode {
     let cacheResult = await db.projectionEntities
       .where({ nodeId: this.id, "siChangeSet.changeSetId": changeSetId })
       .toArray();
+
+    if (cacheResult.length && cacheResult[0]) {
+      iitem = cacheResult[0];
+    } else {
+      try {
+        let response: IGetReply<INodeObject> = await sdf.get(
+          `nodes/${this.id}/object?`,
+        );
+        iitem = response.item;
+      } catch (e) {
+        // Cannot get the head
+      }
+    }
+
     if (cacheResult.length && cacheResult[0]) {
       iitem = cacheResult[0];
       if (iitem.siStorable.typeName == "system") {

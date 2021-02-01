@@ -874,7 +874,7 @@ export const editor: Module<EditorStore, RootStore> = {
     async changeSetCreate(
       { commit, rootGetters, dispatch },
       payload: ActionChangeSetCreate,
-    ) {
+    ): Promise<ChangeSet> {
       let workspace = rootGetters["workspace/current"];
       let organization = rootGetters["organization/current"];
       let changeSet = await ChangeSet.create({
@@ -885,6 +885,7 @@ export const editor: Module<EditorStore, RootStore> = {
       commit("changeSet", changeSet);
       await dispatch("editSessionCreate");
       await dispatch("modeSwitch");
+      return changeSet;
     },
     async nodeCreate(
       { commit, dispatch, rootGetters, state },
@@ -1009,6 +1010,8 @@ export const editor: Module<EditorStore, RootStore> = {
           updatedEdges = true;
           let changeSetId = state.changeSet?.id;
           let node = await Node.get({ id: payload.headVertex.nodeId });
+
+          console.log("you are about to break", node);
           let entity = await node.displayObject(changeSetId);
           commit("updateNodes", node);
           if (state.node?.id == node.id) {

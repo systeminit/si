@@ -5,12 +5,12 @@
   "scripts": {
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
-    "test:unit": "vue-cli-service test:unit",
+    "test:unit": "vue-cli-service test:unit --runInBand",
     "test:e2e": "vue-cli-service test:e2e",
     "lint": "vue-cli-service lint",
     "eslint": "eslint --debug src/",
     "start": "vue-cli-service serve",
-    "test:unit:watch": "vue-cli-service test:unit --watch"
+    "test:unit:watch": "vue-cli-service test:unit --watch --runInBand"
   },
   "dependencies": {
     "@types/chart.js": "^2.9.22",
@@ -73,6 +73,7 @@
     "@vue/test-utils": "^1.0.3",
     "babel-eslint": "^10.1.0",
     "babel-plugin-transform-remove-console": "^6.9.4",
+    "canvas": "^2.6.1",
     "eslint": "^6.7.2",
     "eslint-plugin-prettier": "^3.1.1",
     "eslint-plugin-vue": "^6.2.2",

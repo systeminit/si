@@ -11,8 +11,9 @@ import { IBillingAccountCreateReply } from "@/api/sdf/model/billingAccount";
 import { IUserLoginReply } from "@/api/sdf/model/user";
 import { Entity } from "@/api/sdf/model/entity";
 import _ from "lodash";
-import { ActionNodeCreate } from "@/store/modules/editor";
+import { ActionNodeCreate, ActionSetChangeSet } from "@/store/modules/editor";
 import { Node } from "@/api/sdf/model/node";
+import { ChangeSet } from "@/api/sdf/model/changeSet";
 
 type SiVuexStore = Store<RootStore>;
 
@@ -74,11 +75,21 @@ export async function selectApplication(
   await store.dispatch("editor/setApplication", { id: application.id });
 }
 
-export async function createChangeSet(store: SiVuexStore, name?: string) {
+export async function createChangeSet(
+  store: SiVuexStore,
+  name?: string,
+): Promise<ChangeSet> {
   let payload = {
     name: name ? name : createFakeName(),
   };
-  await store.dispatch("editor/changeSetCreate", payload);
+  return await store.dispatch("editor/changeSetCreate", payload);
+}
+
+export async function selectChangeSet(
+  store: SiVuexStore,
+  payload: ActionSetChangeSet,
+) {
+  await store.dispatch("editor/setChangeSet", payload);
 }
 
 export async function createNode(

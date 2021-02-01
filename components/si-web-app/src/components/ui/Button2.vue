@@ -2,6 +2,7 @@
   <button
     class="inline-block py-1"
     v-bind:class="buttonStyle"
+    :aria-label="label"
     :disabled="disabled"
   >
     <div class="flex justify-center">
