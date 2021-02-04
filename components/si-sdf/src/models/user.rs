@@ -49,7 +49,7 @@ pub struct LoginReply {
     pub jwt: String,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct User {
     pub id: String,

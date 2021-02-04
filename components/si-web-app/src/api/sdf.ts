@@ -13,6 +13,11 @@ export class FetchError extends Error {
   }
 }
 
+export interface SDFError {
+  message: string;
+  code: number;
+}
+
 export class SDF {
   baseUrl: string;
   wsBaseUrl: string;
@@ -149,12 +154,7 @@ export class SDF {
 
   async send_request<T>(request: Request): Promise<T> {
     let response = await fetch(request);
-    if (!response.ok) {
-      throw new FetchError("request failed", response);
-    }
     let responseJson: T = await response.json();
     return responseJson;
   }
 }
-
-export const sdf = new SDF();

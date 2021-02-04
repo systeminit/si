@@ -15,6 +15,8 @@ pub fn api(
     secret_key: &secretbox::Key,
 ) -> BoxedFilter<(impl warp::Reply,)> {
     billing_accounts(pg, nats_conn, veritech)
+        .or(signup_dal(pg, nats_conn, veritech))
+        .or(session_dal(pg, secret_key))
         .or(users(pg, secret_key))
         .or(organizations(pg))
         .or(nodes(pg, nats_conn, veritech))
@@ -267,6 +269,59 @@ pub fn api_client_list(pg: PgPool) -> BoxedFilter<(impl warp::Reply,)> {
         .and(warp::header::<String>("authorization"))
         .and(warp::query::<models::ListRequest>())
         .and_then(handlers::api_clients::list)
+        .boxed()
+}
+
+// Session DAL
+pub fn session_dal(pg: &PgPool, secret_key: &secretbox::Key) -> BoxedFilter<(impl warp::Reply,)> {
+    session_dal_login(pg.clone(), secret_key.clone())
+        .or(session_dal_restore_authentication(pg.clone()))
+        .boxed()
+}
+
+pub fn session_dal_login(
+    pg: PgPool,
+    secret_key: secretbox::Key,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("sessionDal" / "login")
+        .and(warp::post())
+        .and(with_pg(pg))
+        .and(with_secret_key(secret_key))
+        .and(warp::body::json::<handlers::session_dal::LoginRequest>())
+        .and_then(handlers::session_dal::login)
+        .boxed()
+}
+
+pub fn session_dal_restore_authentication(pg: PgPool) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("sessionDal" / "restoreAuthentication")
+        .and(warp::get())
+        .and(with_pg(pg))
+        .and(warp::header::<String>("authorization"))
+        .and_then(handlers::session_dal::restore_authentication)
+        .boxed()
+}
+
+// Signup DAL
+pub fn signup_dal(
+    pg: &PgPool,
+    nats_conn: &NatsConn,
+    veritech: &Veritech,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    signup_dal_create_billing_account(pg.clone(), nats_conn.clone(), veritech.clone()).boxed()
+}
+
+pub fn signup_dal_create_billing_account(
+    pg: PgPool,
+    nats_conn: NatsConn,
+    veritech: Veritech,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("signupDal" / "createBillingAccount")
+        .and(warp::post())
+        .and(with_pg(pg))
+        .and(with_nats_conn(nats_conn))
+        .and(with_veritech(veritech))
+        .and(warp::body::json::<handlers::signup_dal::CreateRequest>())
+        .and_then(handlers::signup_dal::create_billing_account)
         .boxed()
 }
 

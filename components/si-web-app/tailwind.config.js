@@ -1,4 +1,5 @@
 const theme = require("./src/design/themes/tailwind/tailwind-dark");
+const colors = require("tailwindcss/colors");
 
 module.exports = {
   purge: ["./src/**/*.html", "./src/**/*.vue"],
@@ -10,6 +11,19 @@ module.exports = {
     },
     fontFamily: {
       sans: ["Roboto", "Sans-serif"],
+    },
+    colors: {
+      transparent: "transparent",
+      current: "currentColor",
+      black: colors.black,
+      white: colors.white,
+      gray: colors.trueGray,
+      blue: colors.blue,
+      blueGray: colors.blueGray,
+      indigo: colors.indigo,
+      red: colors.rose,
+      yellow: colors.amber,
+      green: colors.green,
     },
     extend: {
       spacing: theme.spacing,

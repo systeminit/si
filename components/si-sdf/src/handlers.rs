@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tracing::error;
 use warp::http::StatusCode;
@@ -33,6 +33,9 @@ pub mod systems;
 pub mod updates;
 pub mod users;
 pub mod workspaces;
+
+pub mod session_dal;
+pub mod signup_dal;
 
 #[derive(Error, Debug)]
 pub enum HandlerError {
@@ -115,10 +118,30 @@ impl From<HandlerError> for warp::reject::Rejection {
 }
 
 /// An API error serializable to JSON.
-#[derive(Serialize)]
-struct ErrorMessage {
-    code: u16,
-    message: String,
+#[derive(Deserialize, Serialize)]
+pub struct HandlerErrorReply {
+    error: HandlerErrorCause,
+}
+
+impl HandlerErrorReply {
+    fn new(code: impl Into<u16>, message: impl Into<String>) -> Self {
+        Self {
+            error: HandlerErrorCause {
+                code: code.into(),
+                message: message.into(),
+            },
+        }
+    }
+
+    pub fn into_cause(self) -> HandlerErrorCause {
+        self.error
+    }
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct HandlerErrorCause {
+    pub code: u16,
+    pub message: String,
 }
 
 pub async fn authenticate_api_client(
@@ -206,6 +229,11 @@ pub async fn handle_rejection(err: Rejection) -> Result<impl Reply, Infallible> 
     } else if let Some(HandlerError::Unauthorized) = err.find() {
         code = StatusCode::UNAUTHORIZED;
         message = String::from("request is unauthorized");
+    } else if let Some(HandlerError::BillingAccount(BillingAccountError::AccountExists)) =
+        err.find()
+    {
+        code = StatusCode::BAD_REQUEST;
+        message = String::from("cannot create billing account");
     } else if let Some(header) = err.find::<warp::reject::MissingHeader>() {
         code = StatusCode::UNAUTHORIZED;
         message = format!("{}", header);
@@ -216,10 +244,7 @@ pub async fn handle_rejection(err: Rejection) -> Result<impl Reply, Infallible> 
 
     dbg!(("returning error code", &message, &code, &err));
 
-    let json = warp::reply::json(&ErrorMessage {
-        code: code.as_u16(),
-        message: message.into(),
-    });
+    let json = warp::reply::json(&HandlerErrorReply::new(code, message));
 
     Ok(warp::reply::with_status(json, code))
 }

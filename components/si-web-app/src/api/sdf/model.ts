@@ -1,5 +1,4 @@
 import { Query, OrderByDirection } from "@/api/sdf/model/query";
-import { db } from "@/api/sdf/dexie";
 
 export interface IGetReply<T> {
   item: T;

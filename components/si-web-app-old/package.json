@@ -1,0 +1,115 @@
+{
+  "name": "si-web-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "serve": "vue-cli-service serve",
+    "build": "vue-cli-service build",
+    "test:unit": "vue-cli-service test:unit --runInBand",
+    "test:e2e": "vue-cli-service test:e2e",
+    "lint": "vue-cli-service lint",
+    "eslint": "eslint --debug src/",
+    "start": "vue-cli-service serve",
+    "test:unit:watch": "vue-cli-service test:unit --watch --runInBand"
+  },
+  "dependencies": {
+    "@types/chart.js": "^2.9.22",
+    "@types/lodash": "^4.14.157",
+    "@types/node-fetch": "^2.5.4",
+    "@types/vue-feather-icons": "^5.0.0",
+    "@types/ws": "^7.4.0",
+    "ajv": "^6.12.2",
+    "bottlejs": "^2.0.0",
+    "change-case": "^4.1.1",
+    "chart.js": "^2.9.3",
+    "codemirror": "^5.59.2",
+    "core-js": "^3.6.4",
+    "deep-diff": "^1.0.2",
+    "dexie": "^3.0.2",
+    "joi": "^17.2.0",
+    "js-base64": "^3.6.0",
+    "jsonwebtoken": "^8.5.1",
+    "lodash": "^4.17.20",
+    "luxon": "^1.25.0",
+    "p-queue": "^6.6.2",
+    "si-registry": "file:../si-registry",
+    "tailwindcss": "^1.4.6",
+    "tweetnacl": "^1.0.3",
+    "tweetnacl-sealedbox-js": "github:systeminit/tweetnacl-sealed-box#master",
+    "vue": "^2.6.11",
+    "vue-chartjs": "^3.5.0",
+    "vue-feather-icons": "^5.0.0",
+    "vue-gtag": "^1.1.1",
+    "vue-js-modal": "^2.0.0-rc.3",
+    "vue-json-pretty": "^1.7.0",
+    "vue-router": "^3.1.6",
+    "vue-simple-context-menu": "^3.1.10",
+    "vue-trend-chart": "^0.15.2",
+    "vuex": "^3.4.0",
+    "vuex-persist": "^2.2.0",
+    "yaml": "^1.7.2"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^5.11.9",
+    "@testing-library/user-event": "^12.6.2",
+    "@testing-library/vue": "^5.6.1",
+    "@types/codemirror": "0.0.107",
+    "@types/deep-diff": "^1.0.0",
+    "@types/jest": "^24.0.19",
+    "@types/jsdom": "^16.2.6",
+    "@types/jsonwebtoken": "^8.3.5",
+    "@types/luxon": "^1.25.0",
+    "@types/yaml": "^1.2.0",
+    "@typescript-eslint/eslint-plugin": "^2.18.0",
+    "@typescript-eslint/parser": "^2.18.0",
+    "@vue/cli-plugin-babel": "^4.5.11",
+    "@vue/cli-plugin-eslint": "^4.5.11",
+    "@vue/cli-plugin-router": "^4.5.11",
+    "@vue/cli-plugin-typescript": "^4.5.11",
+    "@vue/cli-plugin-unit-jest": "^4.5.11",
+    "@vue/cli-service": "^4.5.11",
+    "@vue/eslint-config-prettier": "^6.0.0",
+    "@vue/eslint-config-typescript": "^5.0.1",
+    "@vue/test-utils": "^1.0.3",
+    "babel-eslint": "^10.1.0",
+    "babel-plugin-transform-remove-console": "^6.9.4",
+    "canvas": "^2.6.1",
+    "eslint": "^6.7.2",
+    "eslint-plugin-prettier": "^3.1.1",
+    "eslint-plugin-vue": "^6.2.2",
+    "fake-indexeddb": "^3.1.2",
+    "jest-dom": "^4.0.0",
+    "jest-transform-stub": "^2.0.0",
+    "jsdom": "^16.4.0",
+    "node-fetch": "^2.6.1",
+    "node-sass": "^4.14.1",
+    "prettier": "^1.19.1",
+    "sass": "^1.19.0",
+    "sass-loader": "^8.0.2",
+    "ts-jest": "^26.4.4",
+    "typescript": "~3.9.3",
+    "unique-names-generator": "^4.3.1",
+    "vue-jest": "^3.0.7",
+    "vue-template-compiler": "^2.6.11"
+  },
+  "eslintConfig": {
+    "parserOptions": {
+      "parser": "@typescript-eslint/parser"
+    },
+    "overrides": [
+      {
+        "files": [
+          "**/__tests__/*.{j,t}s?(x)",
+          "**/tests/unit/**/*.spec.{j,t}s?(x)"
+        ],
+        "env": {
+          "jest": true
+        }
+      }
+    ]
+  },
+  "volta": {
+    "node": "15.5.1",
+    "npm": "6.14.11"
+  }
+}

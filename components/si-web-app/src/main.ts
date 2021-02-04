@@ -2,7 +2,6 @@ import Bottle from "bottlejs";
 import { bottleSetup } from "@/di";
 import Vue from "vue";
 import App from "@/App.vue";
-import router from "@/router";
 
 import VueGtag from "vue-gtag";
 
@@ -31,7 +30,7 @@ if (process.env.NODE_ENV == "production") {
 }
 
 new Vue({
-  router,
+  router: bottle.container.Router,
   store: bottle.container.Store,
   render: h => h(App),
 }).$mount("#app");
