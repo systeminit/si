@@ -15,6 +15,7 @@
         <UploadCloudIcon :size="iconSize" v-else-if="icon == 'deploy'" />
         <LogInIcon :size="iconSize" v-else-if="icon == 'login'" />
         <ArrowUpCircleIcon :size="iconSize" v-else-if="icon == 'signup'" />
+        <PlusSquareIcon :size="iconSize" v-else-if="icon == 'plus'" />
       </div>
       <div class="ml-1 font-normal" v-if="label">
         {{ label }}
@@ -27,6 +28,7 @@
 import Vue from "vue";
 
 import {
+  PlusSquareIcon,
   RefreshCcwIcon,
   PlayIcon,
   SaveIcon,
@@ -49,6 +51,7 @@ interface ButtonProps {
     | "edit"
     | "deploy"
     | "signup"
+    | "plus"
     | "login";
   size: "xs" | "sm" | "base" | "lg";
   disabled: boolean;
@@ -65,6 +68,7 @@ export default Vue.extend({
     UploadCloudIcon,
     LogInIcon,
     ArrowUpCircleIcon,
+    PlusSquareIcon,
   },
   props: {
     kind: {

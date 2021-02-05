@@ -2,16 +2,26 @@ import { Module } from "vuex";
 
 import { User } from "@/api/sdf/model/user";
 import { BillingAccount } from "@/api/sdf/model/billingAccount";
+import { Organization } from "@/api/sdf/model/organization";
+import { Workspace } from "@/api/sdf/model/workspace";
+import { System } from "@/api/sdf/model/system";
+
 import {
   SessionDal,
   ISessionDalLoginRequest,
   ISessionDalLoginReply,
+  IGetDefaultsReply,
 } from "@/api/sdf/dal/sessionDal";
 import { SDFError } from "@/api/sdf";
+
+export type ISetDefaultsReply = IGetDefaultsReply;
 
 export interface SessionStore {
   user: null | User;
   billingAccount: null | BillingAccount;
+  currentWorkspace: null | Workspace;
+  currentOrganization: null | Organization;
+  currentSystem: null | System;
 }
 
 export const session: Module<SessionStore, any> = {
@@ -19,6 +29,9 @@ export const session: Module<SessionStore, any> = {
   state: {
     user: null,
     billingAccount: null,
+    currentWorkspace: null,
+    currentOrganization: null,
+    currentSystem: null,
   },
   mutations: {
     setUser(state, payload: SessionStore["user"]) {
@@ -26,6 +39,18 @@ export const session: Module<SessionStore, any> = {
     },
     setBillingAccount(state, payload: SessionStore["billingAccount"]) {
       state.billingAccount = payload;
+    },
+    setCurrentOrganization(
+      state,
+      payload: SessionStore["currentOrganization"],
+    ) {
+      state.currentOrganization = payload;
+    },
+    setCurrentWorkspace(state, payload: SessionStore["currentWorkspace"]) {
+      state.currentWorkspace = payload;
+    },
+    setCurrentSystem(state, payload: SessionStore["currentSystem"]) {
+      state.currentSystem = payload;
     },
   },
   actions: {
@@ -69,6 +94,18 @@ export const session: Module<SessionStore, any> = {
     async clear({ commit }) {
       commit("setUser", null);
       commit("setBillingAccount", null);
+      commit("setCurrentWorkspace", null);
+      commit("setCurrentOrganization", null);
+      commit("setCurrentSystem", null);
+    },
+    async setDefaults({ commit }): Promise<ISetDefaultsReply> {
+      const reply = await SessionDal.getDefaults();
+      if (!reply.error) {
+        commit("setCurrentOrganization", reply.organization);
+        commit("setCurrentWorkspace", reply.workspace);
+        commit("setCurrentSystem", reply.system);
+      }
+      return reply;
     },
   },
 };

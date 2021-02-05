@@ -1,5 +1,6 @@
 use anyhow::Result;
 use lazy_static::lazy_static;
+use names::{Generator, Name};
 use sodiumoxide::crypto::secretbox;
 use tracing;
 use tracing_subscriber::layer::SubscriberExt;
@@ -142,4 +143,10 @@ pub async fn one_time_setup() -> Result<()> {
 
     *finished = true;
     Ok(())
+}
+
+pub fn generate_fake_name() -> String {
+    let mut generator = Generator::with_naming(Name::Numbered);
+    let name = generator.next().unwrap();
+    return name;
 }

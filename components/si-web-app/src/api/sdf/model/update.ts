@@ -1,6 +1,6 @@
 import PQueue from "p-queue";
 
-//import { IEntity, Entity } from "@/api/sdf/model/entity";
+import { IEntity, Entity } from "@/api/sdf/model/entity";
 //import { ISystem, System } from "@/api/sdf/model/system";
 //import { INode, Node } from "@/api/sdf/model/node";
 //import { IEdge, Edge } from "@/api/sdf/model/edge";
@@ -85,10 +85,11 @@ function onMessage(ev: MessageEvent) {
   const bottle = Bottle.pop("default");
   const store = bottle.container.Store;
 
-  // if (model_data.model?.siStorable?.typeName == "entity") {
-  //   const model = new Entity(model_data.model as IEntity);
-  //   // console.log("entity msg", { model });
-  //   PQ.add(() => model.save());
+  if (model_data.model?.siStorable?.typeName == "entity") {
+    const model = new Entity(model_data.model as IEntity);
+    // console.log("entity msg", { model });
+    PQ.add(() => model.updateStores());
+  }
   // } else if (model_data.model?.siStorable?.typeName == "system") {
   //   const model = new System(model_data.model as ISystem);
   //   // console.log("system msg", { model });

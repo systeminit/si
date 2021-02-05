@@ -43,6 +43,14 @@ context("system initiative", () => {
       cy.get("[data-testid=userEmail]").type("a");
       cy.get("[data-testid=userPassword]").type("a");
       cy.get("[aria-label='Login']").click();
+
+      cy.log("Create application");
+      cy.url().should("match", /^.+\/o\/.+\/w\/.+\/a$/, {
+        timeout: 20000,
+      });
+      cy.get("[aria-label='New Application']").click();
+      cy.get("[data-testid=applicationName]").type("amon amarth");
+      cy.get("[aria-label='Create']").click();
     });
   });
 });
