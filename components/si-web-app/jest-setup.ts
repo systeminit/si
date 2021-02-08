@@ -29,4 +29,4 @@ process.on("unhandledRejection", err => {
   fail(err);
 });
 
-jest.setTimeout(10000);
+jest.setTimeout(45000);

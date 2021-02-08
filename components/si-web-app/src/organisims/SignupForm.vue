@@ -1,8 +1,5 @@
 <template>
   <div class="flex flex-col shadow-lg">
-    <div data-testid="location-display" class="invisible">
-      {{ $route.fullPath }}
-    </div>
     <div
       class="flex items-center justify-between pl-1 pt-1 pb-1 text-sm text-white bg-black"
     >
@@ -124,8 +121,8 @@
 
 <script lang="ts">
 import Vue from "vue";
-import SiTextBox from "@/components/SiTextBox.vue";
-import SiButton from "@/components/SiButton.vue";
+import SiTextBox from "@/atoms/SiTextBox.vue";
+import SiButton from "@/atoms/SiButton.vue";
 import { SignupDal } from "@/api/sdf/dal/signupDal";
 
 interface IData {
@@ -140,7 +137,7 @@ interface IData {
 }
 
 export default Vue.extend({
-  name: "SignupWad",
+  name: "SignupForm",
   components: {
     SiTextBox,
     SiButton,
@@ -163,11 +160,11 @@ export default Vue.extend({
       if (reply.error) {
         this.errorMessage = reply.error.message;
       } else {
-        this.$router.push({ name: "login" });
+        this.$emit("success");
       }
     },
     async backToLogin() {
-      this.$router.push({ name: "login" });
+      this.$emit("back-to-login");
     },
   },
 });

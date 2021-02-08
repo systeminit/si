@@ -1,5 +1,8 @@
 import { BillingAccount } from "@/api/sdf/model/billingAccount";
 import { User } from "@/api/sdf/model/user";
+import { Organization } from "@/api/sdf/model/organization";
+import { Workspace } from "@/api/sdf/model/workspace";
+import { System } from "@/api/sdf/model/system";
 import { SDFError, SDF } from "@/api/sdf";
 import * as jwtLib from "jsonwebtoken";
 import Bottle from "bottlejs";
@@ -87,7 +90,38 @@ export type ISessionDalRestoreAuthenticationReply =
   | ISessionDalRestoreAuthenticationReplySuccess
   | ISessionDalRestoreAuthenticationReplyFailure;
 
+export interface IGetDefaultsReplySuccess {
+  organization: Organization;
+  workspace: Workspace;
+  system: System;
+  error?: never;
+}
+
+export interface IGetDefaultsReplyFailure {
+  organization?: never;
+  workspace?: never;
+  system?: never;
+  error: SDFError;
+}
+
+export type IGetDefaultsReply =
+  | IGetDefaultsReplySuccess
+  | IGetDefaultsReplyFailure;
+
 export class SessionDal {
+  static async getDefaults(): Promise<IGetDefaultsReply> {
+    let bottle = Bottle.pop("default");
+    let sdf: SDF = bottle.container.SDF;
+
+    const reply: IGetDefaultsReply = await sdf.get("sessionDal/getDefaults");
+    if (!reply.error) {
+      reply.workspace = Workspace.upgrade(reply.workspace);
+      reply.organization = Organization.upgrade(reply.organization);
+      reply.system = System.upgrade(reply.system);
+    }
+    return reply;
+  }
+
   static async login(
     request: ISessionDalLoginRequest,
   ): Promise<ISessionDalLoginReply> {

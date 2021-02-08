@@ -17,6 +17,7 @@ pub fn api(
     billing_accounts(pg, nats_conn, veritech)
         .or(signup_dal(pg, nats_conn, veritech))
         .or(session_dal(pg, secret_key))
+        .or(application_dal(pg, nats_conn, veritech))
         .or(users(pg, secret_key))
         .or(organizations(pg))
         .or(nodes(pg, nats_conn, veritech))
@@ -276,6 +277,7 @@ pub fn api_client_list(pg: PgPool) -> BoxedFilter<(impl warp::Reply,)> {
 pub fn session_dal(pg: &PgPool, secret_key: &secretbox::Key) -> BoxedFilter<(impl warp::Reply,)> {
     session_dal_login(pg.clone(), secret_key.clone())
         .or(session_dal_restore_authentication(pg.clone()))
+        .or(session_dal_get_defaults(pg.clone()))
         .boxed()
 }
 
@@ -298,6 +300,56 @@ pub fn session_dal_restore_authentication(pg: PgPool) -> BoxedFilter<(impl warp:
         .and(with_pg(pg))
         .and(warp::header::<String>("authorization"))
         .and_then(handlers::session_dal::restore_authentication)
+        .boxed()
+}
+
+pub fn session_dal_get_defaults(pg: PgPool) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("sessionDal" / "getDefaults")
+        .and(warp::get())
+        .and(with_pg(pg))
+        .and(warp::header::<String>("authorization"))
+        .and_then(handlers::session_dal::get_defaults)
+        .boxed()
+}
+
+// Application DAL
+pub fn application_dal(
+    pg: &PgPool,
+    nats_conn: &NatsConn,
+    veritech: &Veritech,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    application_dal_create_application(pg.clone(), nats_conn.clone(), veritech.clone())
+        .or(application_dal_list_applications(pg.clone()))
+        .boxed()
+}
+
+pub fn application_dal_list_applications(pg: PgPool) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("applicationDal" / "listApplications")
+        .and(warp::get())
+        .and(with_pg(pg))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::query::<
+            handlers::application_dal::ListApplicationsRequest,
+        >())
+        .and_then(handlers::application_dal::list_applications)
+        .boxed()
+}
+
+pub fn application_dal_create_application(
+    pg: PgPool,
+    nats_conn: NatsConn,
+    veritech: Veritech,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("applicationDal" / "createApplication")
+        .and(warp::post())
+        .and(with_pg(pg))
+        .and(with_nats_conn(nats_conn))
+        .and(with_veritech(veritech))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::body::json::<
+            handlers::application_dal::CreateApplicationRequest,
+        >())
+        .and_then(handlers::application_dal::create_application)
         .boxed()
 }
 

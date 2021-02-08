@@ -5,9 +5,13 @@ import {
   animals,
 } from "unique-names-generator";
 import { SignupDal, ISignupDalReply } from "@/api/sdf/dal/signupDal";
-import { SessionDal } from "@/api/sdf/dal/sessionDal";
+import { SessionDal, IGetDefaultsReply } from "@/api/sdf/dal/sessionDal";
 import { User } from "@/api/sdf/model/user";
 import { BillingAccount } from "@/api/sdf/model/billingAccount";
+import { Entity } from "@/api/sdf/model/entity";
+import Bottle from "bottlejs";
+import { IApplicationListEntry } from "@/store/modules/application";
+import { ISetDefaultsReply } from "@/store/modules/session";
 
 export function createFakeName(): string {
   const randomName: string = uniqueNamesGenerator({
@@ -47,4 +51,44 @@ export async function createBillingAccountAndLogin(): Promise<
   }
 
   return { billingAccount: loginReply.billingAccount, user: loginReply.user };
+}
+
+export interface IApplication {
+  application: Entity;
+}
+
+export async function setSessionDefaults(): Promise<ISetDefaultsReply> {
+  let bottle = Bottle.pop("default");
+  let store = bottle.container.Store;
+  return await store.dispatch("session/setDefaults");
+}
+
+export async function createApplication(): Promise<Entity> {
+  let bottle = Bottle.pop("default");
+  let store = bottle.container.Store;
+  let applicationName = createFakeName();
+  let currentWorkspace = store.state.session.currentWorkspace;
+  let currentSystem = store.state.session.currentSystem;
+  let reply = await store.dispatch("application/createApplication", {
+    applicationName,
+    workspaceId: currentWorkspace.id,
+    systemId: currentSystem.id,
+  });
+  return reply.application;
+}
+
+export async function createApplicationListEntry(): Promise<
+  IApplicationListEntry
+> {
+  let bottle = Bottle.pop("default");
+  let store = bottle.container.Store;
+  let applicationName = createFakeName();
+  let currentWorkspace = store.state.session.currentWorkspace;
+  let currentSystem = store.state.session.currentSystem;
+  let reply = await store.dispatch("application/createApplication", {
+    applicationName,
+    workspaceId: currentWorkspace.id,
+    systemId: currentSystem.id,
+  });
+  return reply;
 }

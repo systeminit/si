@@ -4,15 +4,13 @@ import _ from "lodash";
 import routes from "@/router/routes";
 import { bottleSetup, bottleClear, bottleSetStore } from "@/di";
 import {
-  createFakeName,
   createBillingAccountAndLogin,
   INewBillingAccount,
 } from "../../support";
-import Bottle from "bottlejs";
 
-import Component from "@/wads/LoginWad.vue";
+import Component from "@/organisims/LoginForm.vue";
 
-describe("LoginWad.vue", () => {
+describe("LoginForm.vue", () => {
   let initialStoreData: any;
   let nba: INewBillingAccount;
 
@@ -28,7 +26,7 @@ describe("LoginWad.vue", () => {
   });
 
   test("can login", async () => {
-    let { debug, getByLabelText, queryByTestId, findByTestId } = render(
+    let { getByLabelText, queryByTestId, findByTestId } = render(
       Component,
       {
         routes,
@@ -38,7 +36,6 @@ describe("LoginWad.vue", () => {
       (_localVue, store, router) => {
         bottleClear();
         bottleSetStore(store, router);
-        router.push("/authenticate/login");
       },
     );
 
@@ -55,15 +52,10 @@ describe("LoginWad.vue", () => {
     await fireEvent.click(loginButton);
 
     expect(queryByTestId("error-message")).not.toBeInTheDocument();
-
-    await waitFor(async () => {
-      let location = await findByTestId("location-display");
-      expect(location).toHaveTextContent(RegExp("^/$"));
-    });
   });
 
   test("cannot login with a bad password", async () => {
-    let { getByLabelText, findByTestId, findByLabelText } = render(
+    let { getByLabelText, findByTestId } = render(
       Component,
       {
         routes,
@@ -73,7 +65,6 @@ describe("LoginWad.vue", () => {
       (_localVue, store, router) => {
         bottleClear();
         bottleSetStore(store, router);
-        router.push("/authenticate/login");
       },
     );
 
@@ -91,15 +82,10 @@ describe("LoginWad.vue", () => {
 
     let errorMessage = await findByTestId("error-message");
     expect(errorMessage).toHaveTextContent("Login error; please try again!");
-
-    await waitFor(async () => {
-      let location = await findByTestId("location-display");
-      expect(location).toHaveTextContent("/authenticate/login");
-    });
   });
 
   test("can decide to sign up", async () => {
-    let { getByLabelText, queryByTestId, findByTestId } = render(
+    let { getByLabelText, queryByTestId } = render(
       Component,
       {
         routes,
@@ -109,7 +95,6 @@ describe("LoginWad.vue", () => {
       (_localVue, store, router) => {
         bottleClear();
         bottleSetStore(store, router);
-        router.push("/authenticate/login");
       },
     );
 
@@ -117,10 +102,5 @@ describe("LoginWad.vue", () => {
     await fireEvent.click(signupButton);
 
     expect(queryByTestId("error-message")).not.toBeInTheDocument();
-
-    await waitFor(async () => {
-      let location = await findByTestId("location-display");
-      expect(location).toHaveTextContent("/authenticate/signup");
-    });
   });
 });

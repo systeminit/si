@@ -5,9 +5,9 @@ import routes from "@/router/routes";
 import { bottleSetup, bottleClear, bottleSetStore } from "@/di";
 import { createFakeName } from "../../support";
 
-import Component from "@/wads/SignupWad.vue";
+import Component from "@/organisims/SignupForm.vue";
 
-describe("SignupWad.vue", () => {
+describe("SignupForm.vue", () => {
   let initialStoreData: any;
 
   beforeEach(async () => {
@@ -31,7 +31,6 @@ describe("SignupWad.vue", () => {
       (_localVue, store, router) => {
         bottleClear();
         bottleSetStore(store, router);
-        router.push("/authenticate/signup");
       },
     );
 
@@ -59,15 +58,10 @@ describe("SignupWad.vue", () => {
 
     let signupButton = getByLabelText("Sign Up");
     await fireEvent.click(signupButton);
-
-    await waitFor(async () => {
-      let location = await findByTestId("location-display");
-      expect(location).toHaveTextContent("/authenticate/login");
-    });
   });
 
   test("can cancel back to login", async () => {
-    let { getByLabelText, findByTestId } = render(
+    let { getByLabelText } = render(
       Component,
       {
         routes,
@@ -83,10 +77,5 @@ describe("SignupWad.vue", () => {
 
     let cancelButton = getByLabelText("Cancel");
     await fireEvent.click(cancelButton);
-
-    await waitFor(async () => {
-      let location = await findByTestId("location-display");
-      expect(location).toHaveTextContent("/authenticate/login");
-    });
   });
 });
