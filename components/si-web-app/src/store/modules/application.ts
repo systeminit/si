@@ -12,6 +12,8 @@ import {
 } from "@/api/sdf/dal/applicationDal";
 import _ from "lodash";
 import Vue from "vue";
+import Bottle from "bottlejs";
+import { UpdateTracker } from "@/api/updateTracker";
 
 export { IApplicationCreateReply, IApplicationCreateRequest };
 
@@ -101,11 +103,20 @@ export const application: Module<ApplicationStore, any> = {
   },
   actions: {
     activate({ commit }, payload: string) {
+      const bottle = Bottle.pop("default");
+      const updateTracker = bottle.container.UpdateTracker;
+      updateTracker.register("Entity", "application");
+
       commit("addToActivatedBy", payload);
     },
     deactivate({ commit, state }, payload: string) {
       commit("removeFromActivatedBy", payload);
       if (state.activatedBy.length == 0) {
+        const bottle = Bottle.pop("default");
+        const updateTracker: UpdateTracker = bottle.container.UpdateTracker;
+        if (updateTracker) {
+          updateTracker.unregister("Entity", "application");
+        }
         commit("clear");
       }
     },
@@ -129,16 +140,18 @@ export const application: Module<ApplicationStore, any> = {
       }
       return reply;
     },
-    async fromApplicationEntity(
-      { dispatch, state, rootState },
-      _payload: Entity,
-    ) {
+    async fromEntity({ dispatch, state, rootState }, payload: Entity) {
       if (state.activatedBy.length != 0) {
-        if (rootState.session.currentWorkspace.id) {
-          let updateReq: ISetListApplicationsRequest = {
-            workspaceId: rootState.session.currentWorkspace.id,
-          };
-          await dispatch("setListApplications", updateReq);
+        if (
+          payload.objectType == "application" ||
+          payload.objectType == "service"
+        ) {
+          if (rootState.session.currentWorkspace.id) {
+            let updateReq: ISetListApplicationsRequest = {
+              workspaceId: rootState.session.currentWorkspace.id,
+            };
+            await dispatch("setListApplications", updateReq);
+          }
         }
       }
     },

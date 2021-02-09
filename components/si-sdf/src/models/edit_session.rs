@@ -52,7 +52,7 @@ pub struct CreateReply {
     pub item: EditSession,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct EditSession {
     pub id: String,
@@ -106,7 +106,7 @@ impl EditSession {
     }
 
     pub async fn cancel(
-        &self,
+        &mut self,
         pg: &PgPool,
         txn: &PgTxn<'_>,
         nats_conn: &NatsConn,
@@ -134,6 +134,13 @@ impl EditSession {
         change_set
             .execute(pg, txn, nats_conn, nats, veritech, true, event_parent_id)
             .await?;
+
+        // The database query above returns ops that are to be skipped and not the updated
+        // representation of this edit session. In order to maintain the "save-like" feel of
+        // `cancel()`, we'll re-fetch the current database representation and update outselves in
+        // place, much like a model `save()`.
+        let mut updated = Self::get(&txn, &self.id).await?;
+        std::mem::swap(self, &mut updated);
 
         Ok(())
     }

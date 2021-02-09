@@ -1,7 +1,7 @@
 import NotFoundPage from "@/pages/NotFound.vue";
 import Home from "@/pages/Home.vue";
 import Application from "@/templates/Application.vue";
-import ApplicationEditor from "@/templates/ApplicationEditor.vue";
+import ApplicationDetails from "@/templates/ApplicationDetails.vue";
 import Authenticate from "@/pages/Authenticate.vue";
 import Login from "@/templates/Login.vue";
 import Signup from "@/templates/Signup.vue";
@@ -32,8 +32,8 @@ const routes: RouteConfig[] = [
       {
         path: "o/:organizationId/w/:workspaceId/a/:applicationId",
         props: true,
-        name: "applicationEditor",
-        component: ApplicationEditor,
+        name: "applicationDetails",
+        component: ApplicationDetails,
       },
     ],
   },

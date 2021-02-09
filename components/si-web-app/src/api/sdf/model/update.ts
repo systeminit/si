@@ -22,6 +22,7 @@ import { IUpdateClock } from "@/api/sdf/model/updateClock";
 //import { db } from "@/api/sdf/dexie";
 //import { ApiClient, IApiClient } from "./apiClient";
 import Bottle from "bottlejs";
+import { UpdateTracker } from "@/api/updateTracker";
 
 export interface IUpdateClockGlobal extends IUpdateClock {
   id: string;
@@ -83,12 +84,11 @@ function onClose(ev: CloseEvent): any {
 function onMessage(ev: MessageEvent) {
   const model_data = JSON.parse(ev.data);
   const bottle = Bottle.pop("default");
-  const store = bottle.container.Store;
+  const updateTracker: UpdateTracker = bottle.container.UpdateTracker;
 
   if (model_data.model?.siStorable?.typeName == "entity") {
     const model = new Entity(model_data.model as IEntity);
-    // console.log("entity msg", { model });
-    PQ.add(() => model.updateStores());
+    PQ.add(() => updateTracker.dispatch("Entity", model));
   }
   // } else if (model_data.model?.siStorable?.typeName == "system") {
   //   const model = new System(model_data.model as ISystem);

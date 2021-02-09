@@ -81,7 +81,7 @@ pub async fn patch(
     .await?;
     authorize(&txn, &claim.user_id, "editSession", "patch").await?;
 
-    let edit_session = EditSession::get(&txn, &edit_session_id)
+    let mut edit_session = EditSession::get(&txn, &edit_session_id)
         .await
         .map_err(HandlerError::from)?;
     match request {

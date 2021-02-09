@@ -3,6 +3,7 @@ use thiserror::Error;
 
 use crate::data::{NatsTxn, NatsTxnError, PgTxn};
 
+use crate::handlers::LabelListItem;
 use crate::models::{
     list_model, next_update_clock, ListReply, ModelError, OrderByDirection, PageToken, Query,
     SiChangeSet, SiChangeSetError, SiChangeSetEvent, SiStorable, UpdateClockError,
@@ -12,6 +13,7 @@ const SYSTEM_GET_ANY: &str = include_str!("../data/queries/system_get_any.sql");
 const SYSTEM_GET_HEAD: &str = include_str!("../data/queries/system_get_head.sql");
 const SYSTEM_GET_PROJECTION: &str = include_str!("../data/queries/system_get_projection.sql");
 const SYSTEM_GET_HEAD_OR_BASE: &str = include_str!("../data/queries/system_get_head_or_base.sql");
+const SYSTEM_LIST_AS_LABELS: &str = include_str!("../data/queries/system_list_as_labels.sql");
 
 #[derive(Error, Debug)]
 pub enum SystemError {
@@ -234,5 +236,21 @@ impl System {
         let json: serde_json::Value = row.try_get("object")?;
         let object: System = serde_json::from_value(json)?;
         Ok(object)
+    }
+
+    pub async fn list_as_labels(
+        txn: &PgTxn<'_>,
+        workspace_id: impl AsRef<str>,
+    ) -> SystemResult<Vec<LabelListItem>> {
+        let workspace_id = workspace_id.as_ref();
+        let mut results = Vec::new();
+        let rows = txn.query(SYSTEM_LIST_AS_LABELS, &[&workspace_id]).await?;
+        for row in rows.into_iter() {
+            let json: serde_json::Value = row.try_get("item")?;
+            let object: LabelListItem = serde_json::from_value(json)?;
+            results.push(object);
+        }
+
+        return Ok(results);
     }
 }

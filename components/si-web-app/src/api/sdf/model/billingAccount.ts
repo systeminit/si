@@ -29,10 +29,4 @@ export class BillingAccount implements IBillingAccount {
       return new BillingAccount(obj);
     }
   }
-
-  async updateStores() {
-    //const bottle = Bottle.pop("default");
-    //const store = bottle.container.Store;
-    //    await store.dispatch("billingAccount/fromDb", this);
-  }
 }

@@ -74,13 +74,4 @@ export class Entity implements IEntity {
       return new Entity(obj);
     }
   }
-
-  async updateStores() {
-    const bottle = Bottle.pop("default");
-    const store = bottle.container.Store;
-
-    if (this.objectType == "application") {
-      await store.dispatch("application/fromApplicationEntity", this);
-    }
-  }
 }

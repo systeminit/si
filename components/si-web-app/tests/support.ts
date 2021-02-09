@@ -12,6 +12,11 @@ import { Entity } from "@/api/sdf/model/entity";
 import Bottle from "bottlejs";
 import { IApplicationListEntry } from "@/store/modules/application";
 import { ISetDefaultsReply } from "@/store/modules/session";
+import { ChangeSet } from "@/api/sdf/model/changeSet";
+import {
+  ApplicationContextDal,
+  ICreateChangeSetAndEditSessionReply,
+} from "@/api/sdf/dal/applicationContextDal";
 
 export function createFakeName(): string {
   const randomName: string = uniqueNamesGenerator({
@@ -75,6 +80,19 @@ export async function createApplication(): Promise<Entity> {
     systemId: currentSystem.id,
   });
   return reply.application;
+}
+
+export async function createChangeSet(): Promise<
+  ICreateChangeSetAndEditSessionReply
+> {
+  let bottle = Bottle.pop("default");
+  let store = bottle.container.Store;
+  let currentWorkspace = store.state.session.currentWorkspace;
+  let changeSetName = createFakeName();
+  return await ApplicationContextDal.createChangeSetAndEditSession({
+    workspaceId: currentWorkspace.id,
+    changeSetName,
+  });
 }
 
 export async function createApplicationListEntry(): Promise<

@@ -74,7 +74,7 @@ async fn cancel() {
     let txn = conn.transaction().await.expect("cannot create txn");
 
     let change_set = create_change_set(&txn, &nats, &nba).await;
-    let edit_session = create_edit_session(&txn, &nats, &nba, &change_set).await;
+    let mut edit_session = create_edit_session(&txn, &nats, &nba, &change_set).await;
     txn.commit()
         .await
         .expect("failed to commit the new billing account");
@@ -123,6 +123,7 @@ async fn cancel() {
         .cancel(&pg, &txn, &nats_conn, &nats, &veritech, None)
         .await
         .expect("cannot cancle edit session");
+    assert_eq!(edit_session.reverted, true);
 
     let row = txn
         .query_one(

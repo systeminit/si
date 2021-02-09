@@ -24,10 +24,4 @@ export class Organization implements IOrganization {
       return new Organization(obj);
     }
   }
-
-  async updateStores() {
-    //const bottle = Bottle.pop("default");
-    //const store = bottle.container.Store;
-    //    await store.dispatch("billingAccount/fromDb", this);
-  }
 }

@@ -6,6 +6,8 @@ import VueRouter from "vue-router";
 import routes from "@/router/routes";
 import { routeCheck } from "@/router";
 import _ from "lodash";
+import { UpdateTracker } from "./api/updateTracker";
+import { PartyBus } from "./api/partyBus";
 
 export function bottleSetup(storeData: any) {
   let bottle = Bottle.pop("default");
@@ -26,6 +28,12 @@ export function bottleSetup(storeData: any) {
     });
     return router;
   });
+  bottle.factory("UpdateTracker", function(_container): UpdateTracker {
+    return new UpdateTracker();
+  });
+  bottle.factory("PartyBus", function(_container): PartyBus {
+    return new PartyBus();
+  });
 }
 
 export function bottleSetStore(store: any, router: VueRouter) {
@@ -41,6 +49,12 @@ export function bottleSetStore(store: any, router: VueRouter) {
       await routeCheck(to, from, next);
     });
     return router;
+  });
+  bottle.factory("UpdateTracker", function(_container): UpdateTracker {
+    return new UpdateTracker();
+  });
+  bottle.factory("PartyBus", function(_container): PartyBus {
+    return new PartyBus();
   });
 }
 

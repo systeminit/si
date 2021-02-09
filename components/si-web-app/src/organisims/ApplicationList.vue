@@ -10,7 +10,7 @@
       >
         <router-link :to="cardLink(appEntry.application.id)">
           <ApplicationDetailCard
-            :linkTo="linkTo"
+            :linkTo="cardLink(appEntry.application.id)"
             :applicationEntry="appEntry"
             :cardLink="cardLink(appEntry.application.id)"
           />
@@ -83,7 +83,7 @@ export default Vue.extend({
     cardLink(applicationId: string): RawLocation | null {
       if (this.currentWorkspace && this.currentOrganization) {
         return {
-          name: "applicationEditor",
+          name: "applicationDetails",
           params: {
             workspaceId: this.currentWorkspace.id,
             organizationId: this.currentOrganization.id,
