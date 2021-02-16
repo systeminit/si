@@ -45,11 +45,4 @@ export class System implements ISystem {
       return new System(obj);
     }
   }
-
-  async updateStores() {
-    const bottle = Bottle.pop("default");
-    const store = bottle.container.Store;
-
-    await store.dispatch("application/fromSystem", this);
-  }
 }

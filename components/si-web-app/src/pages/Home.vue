@@ -57,6 +57,7 @@ export default Vue.extend({
       "session/setDefaults",
     );
     this.isLoading = false;
+
     if (response.error) {
       this.errorMessage = response.error.message;
     } else {

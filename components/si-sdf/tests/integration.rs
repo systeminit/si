@@ -97,6 +97,26 @@ impl TestContext {
             &self.secret_key,
         )
     }
+
+    pub fn pg(&self) -> &PgPool {
+        &self.pg
+    }
+
+    pub fn nats_conn(&self) -> &NatsConn {
+        &self.nats_conn
+    }
+
+    pub fn veritech(&self) -> &Veritech {
+        &self.veritech
+    }
+
+    pub fn event_log_fs(&self) -> &EventLogFS {
+        &self.event_log_fs
+    }
+
+    pub fn secret_key(&self) -> &secretbox::Key {
+        &self.secret_key
+    }
 }
 
 pub struct TestAccount {

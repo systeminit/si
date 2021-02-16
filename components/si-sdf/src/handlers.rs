@@ -34,6 +34,7 @@ pub mod updates;
 pub mod users;
 pub mod workspaces;
 
+pub mod application_context_dal;
 pub mod application_dal;
 pub mod session_dal;
 pub mod signup_dal;
@@ -143,6 +144,13 @@ impl HandlerErrorReply {
 pub struct HandlerErrorCause {
     pub code: u16,
     pub message: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct LabelListItem {
+    pub label: String,
+    pub value: String,
 }
 
 pub async fn authenticate_api_client(

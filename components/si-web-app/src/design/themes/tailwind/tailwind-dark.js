@@ -47,7 +47,16 @@ const maxHeight = {
   "3/4": "75%",
 };
 
+const zIndex = {
+  "60": 60,
+  "70": 70,
+  "80": 80,
+  "90": 90,
+  "100": 100,
+};
+
 exports.colors = colors;
 exports.spacing = spacing;
 exports.margin = margin;
 exports.maxHeight = maxHeight;
+exports.zIndex = zIndex;

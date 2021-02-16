@@ -62,11 +62,4 @@ export class Resource implements IResource {
       return new Resource(obj);
     }
   }
-
-  async updateStores() {
-    const bottle = Bottle.pop("default");
-    const store = bottle.container.Store;
-
-    await store.dispatch("application/fromResource", this);
-  }
 }

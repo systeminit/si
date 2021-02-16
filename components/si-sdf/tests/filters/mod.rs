@@ -13,6 +13,7 @@ pub mod systems;
 pub mod users;
 pub mod workspaces;
 
+pub mod application_context_dal;
 pub mod application_dal;
 pub mod session_dal;
 pub mod signup_dal;

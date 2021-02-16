@@ -6,6 +6,7 @@ use tracing::{trace, warn};
 use std::collections::HashMap;
 
 use crate::data::{NatsConn, NatsTxn, NatsTxnError, PgPool, PgTxn};
+use crate::handlers::LabelListItem;
 use crate::models::{
     calculate_properties, list_model, next_update_clock, ops, Edge, EdgeError, EdgeKind, Entity,
     EntityError, Event, EventError, ListReply, ModelError, OrderByDirection, PageToken, Query,
@@ -16,6 +17,8 @@ use crate::veritech::Veritech;
 const CHANGE_SET_PARTICIPANT_EXISTS: &str =
     include_str!("../data/queries/change_set_participant_exists.sql");
 const CHANGE_SET_ENTRIES: &str = include_str!("../data/queries/change_set_entries.sql");
+const CHANGE_SET_LIST_AS_LABLES: &str =
+    include_str!("../data/queries/change_set_list_as_labels.sql");
 
 #[derive(Error, Debug)]
 pub enum ChangeSetError {
@@ -523,6 +526,24 @@ impl ChangeSet {
         let mut updated: ChangeSet = serde_json::from_value(updated_result)?;
         std::mem::swap(self, &mut updated);
         Ok(())
+    }
+
+    pub async fn list_as_labels(
+        txn: &PgTxn<'_>,
+        workspace_id: impl AsRef<str>,
+    ) -> ChangeSetResult<Vec<LabelListItem>> {
+        let workspace_id = workspace_id.as_ref();
+        let mut results = Vec::new();
+        let rows = txn
+            .query(CHANGE_SET_LIST_AS_LABLES, &[&workspace_id])
+            .await?;
+        for row in rows.into_iter() {
+            let json: serde_json::Value = row.try_get("item")?;
+            let object: LabelListItem = serde_json::from_value(json)?;
+            results.push(object);
+        }
+
+        return Ok(results);
     }
 }
 

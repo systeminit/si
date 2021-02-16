@@ -30,6 +30,7 @@ module.exports = {
       colors: theme.colors,
       margin: theme.margin,
       maxHeight: theme.maxHeight,
+      zIndex: theme.zIndex,
     },
   },
   variants: {

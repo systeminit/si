@@ -18,6 +18,7 @@ pub fn api(
         .or(signup_dal(pg, nats_conn, veritech))
         .or(session_dal(pg, secret_key))
         .or(application_dal(pg, nats_conn, veritech))
+        .or(application_context_dal(pg, nats_conn, veritech))
         .or(users(pg, secret_key))
         .or(organizations(pg))
         .or(nodes(pg, nats_conn, veritech))
@@ -309,6 +310,132 @@ pub fn session_dal_get_defaults(pg: PgPool) -> BoxedFilter<(impl warp::Reply,)> 
         .and(with_pg(pg))
         .and(warp::header::<String>("authorization"))
         .and_then(handlers::session_dal::get_defaults)
+        .boxed()
+}
+
+// Application Context DAL
+pub fn application_context_dal(
+    pg: &PgPool,
+    nats_conn: &NatsConn,
+    veritech: &Veritech,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    application_context_dal_get_application_context(pg.clone())
+        .or(application_context_dal_get_change_set_and_edit_session(
+            pg.clone(),
+        ))
+        .or(
+            application_context_dal_create_edit_session_and_get_change_set(
+                pg.clone(),
+                nats_conn.clone(),
+            ),
+        )
+        .or(application_context_dal_create_change_set_and_edit_session(
+            pg.clone(),
+            nats_conn.clone(),
+        ))
+        .or(application_context_dal_create_edit_session(
+            pg.clone(),
+            nats_conn.clone(),
+        ))
+        .or(application_context_dal_cancel_edit_session(
+            pg.clone(),
+            nats_conn.clone(),
+            veritech.clone(),
+        ))
+        .boxed()
+}
+
+pub fn application_context_dal_get_application_context(
+    pg: PgPool,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("applicationContextDal" / "getApplicationContext")
+        .and(warp::get())
+        .and(with_pg(pg))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::query::<
+            handlers::application_context_dal::GetApplicationContextRequest,
+        >())
+        .and_then(handlers::application_context_dal::get_application_context)
+        .boxed()
+}
+
+pub fn application_context_dal_create_change_set_and_edit_session(
+    pg: PgPool,
+    nats_conn: NatsConn,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("applicationContextDal" / "createChangeSetAndEditSession")
+        .and(warp::post())
+        .and(with_pg(pg))
+        .and(with_nats_conn(nats_conn))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::body::json::<
+            handlers::application_context_dal::CreateChangeSetAndEditSessionRequest,
+        >())
+        .and_then(handlers::application_context_dal::create_change_set_and_edit_session)
+        .boxed()
+}
+
+pub fn application_context_dal_cancel_edit_session(
+    pg: PgPool,
+    nats_conn: NatsConn,
+    veritech: Veritech,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("applicationContextDal" / "cancelEditSession")
+        .and(warp::post())
+        .and(with_pg(pg))
+        .and(with_nats_conn(nats_conn))
+        .and(with_veritech(veritech))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::body::json::<
+            handlers::application_context_dal::CancelEditSessionRequest,
+        >())
+        .and_then(handlers::application_context_dal::cancel_edit_session)
+        .boxed()
+}
+
+pub fn application_context_dal_create_edit_session(
+    pg: PgPool,
+    nats_conn: NatsConn,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("applicationContextDal" / "createEditSession")
+        .and(warp::post())
+        .and(with_pg(pg))
+        .and(with_nats_conn(nats_conn))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::body::json::<
+            handlers::application_context_dal::CreateEditSessionRequest,
+        >())
+        .and_then(handlers::application_context_dal::create_edit_session)
+        .boxed()
+}
+
+pub fn application_context_dal_create_edit_session_and_get_change_set(
+    pg: PgPool,
+    nats_conn: NatsConn,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("applicationContextDal" / "createEditSessionAndGetChangeSet")
+        .and(warp::post())
+        .and(with_pg(pg))
+        .and(with_nats_conn(nats_conn))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::body::json::<
+            handlers::application_context_dal::CreateEditSessionAndGetChangeSetRequest,
+        >())
+        .and_then(handlers::application_context_dal::create_edit_session_and_get_change_set)
+        .boxed()
+}
+
+pub fn application_context_dal_get_change_set_and_edit_session(
+    pg: PgPool,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("applicationContextDal" / "getChangeSetAndEditSession")
+        .and(warp::get())
+        .and(with_pg(pg))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::query::<
+            handlers::application_context_dal::GetChangeSetAndEditSessionRequest,
+        >())
+        .and_then(handlers::application_context_dal::get_change_set_and_edit_session)
         .boxed()
 }
 

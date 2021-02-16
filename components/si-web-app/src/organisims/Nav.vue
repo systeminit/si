@@ -41,21 +41,20 @@
           </div>
         </div>
 
-        <!-- Applicasions Link -->
+        <!-- Applications Link -->
         <div class="container-link">
-          <!-- <router-link
+          <router-link
             class="w-9/12"
             data-cy="application-nav-link"
             :to="{
               name: 'application',
               params: {
-                applicationId: 'my-app',
-                organizationId: organization.id,
-                workspaceId: workspace.id,
+                organizationId: currentOrganization.id,
+                workspaceId: currentWorkspace.id,
               },
             }"
-            > -->
-          <div class="w-9/12">
+            v-if="currentOrganization && currentWorkspace"
+          >
             <div class="flex items-center justify-start cursor-pointer">
               <code-icon size="1.1x" class="mr-3" />
               <div
@@ -64,8 +63,7 @@
                 Applications
               </div>
             </div>
-          </div>
-          <!-- </router-link> -->
+          </router-link>
         </div>
 
         <!-- Systems Link -->

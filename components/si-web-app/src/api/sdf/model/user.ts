@@ -30,10 +30,4 @@ export class User implements IUser {
       return new User(obj);
     }
   }
-
-  async updateStores() {
-    //const bottle = Bottle.pop("default");
-    //const store = bottle.container.Store;
-    //    await store.dispatch("billingAccount/fromDb", this);
-  }
 }
