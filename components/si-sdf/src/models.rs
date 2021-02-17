@@ -71,6 +71,8 @@ pub use ops::{
 };
 pub mod update;
 pub use update::{websocket_run, WebsocketToken};
+pub mod schematic;
+pub use schematic::{Schematic, SchematicError};
 
 use crate::data::pg::PgTxn;
 use crate::PAGE_SECRET_KEY;

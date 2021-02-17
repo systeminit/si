@@ -40,6 +40,7 @@
     "tweetnacl-sealedbox-js": "github:systeminit/tweetnacl-sealed-box#master",
     "vue": "^2.6.11",
     "vue-chartjs": "^3.5.0",
+    "vue-content-loader": "^0.2.3",
     "vue-feather-icons": "^5.0.0",
     "vue-gtag": "^1.1.1",
     "vue-js-modal": "^2.0.0-rc.3",

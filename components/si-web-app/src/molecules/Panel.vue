@@ -104,7 +104,7 @@ export default Vue.extend({
       return [
         { label: "", value: PanelType.Empty },
         {
-          label: "System Schematic",
+          label: "Schematic",
           value: PanelType.SystemSchematic,
         },
       ];

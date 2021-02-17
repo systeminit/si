@@ -1,5 +1,6 @@
 <template>
   <div class="flex flex-col w-full pb-3">
+    <SiError testId="editor-error" :message="editorErrorMessage" />
     <div class="flex mt-3">
       <div class="items-center w-1/2">
         <button
@@ -82,7 +83,10 @@
           <div class="w-full text-right text-red-400">
             ! a changeSet is required to make edits
           </div>
-          <SiError testId="change-set-create-error" :message="errorMessage" />
+          <SiError
+            testId="change-set-create-error"
+            :message="modalErrorMessage"
+          />
           <div class="items-center w-full">
             <div class="flex items-center w-full">
               <div class="w-1/3 mr-2 text-right">changeSet:</div>
@@ -215,6 +219,7 @@
 import { ctxMapState, InstanceStoreContext } from "@/store";
 import { ApplicationContextStore } from "@/store/modules/applicationContext";
 import { SessionStore } from "@/store/modules/session";
+import { IEditorContext } from "@/store/modules/editor";
 import Vue, { PropType } from "vue";
 
 import { ChevronDownIcon, ChevronRightIcon } from "vue-feather-icons";
@@ -224,6 +229,8 @@ import SiModal from "@/molecules/SiModal.vue";
 import SiTextBox from "@/atoms/SiTextBox.vue";
 import SiError from "@/atoms/SiError.vue";
 import { ChangeSet } from "@/api/sdf/model/changeSet";
+import { SDFError } from "@/api/sdf";
+import { PanelEventBus } from "@/atoms/PanelEventBus";
 
 interface IData {
   showDetails: boolean;
@@ -231,7 +238,8 @@ interface IData {
   newChangeSetForm: {
     name: string;
   };
-  errorMessage: string;
+  modalErrorMessage: string;
+  editorErrorMessage: string;
 }
 
 export default Vue.extend({
@@ -240,7 +248,7 @@ export default Vue.extend({
     workspaceId: { type: String },
     applicationId: { type: String },
     applicationContextCtx: {
-      type: Object as PropType<InstanceStoreContext>,
+      type: Object as PropType<InstanceStoreContext<ApplicationContextStore>>,
     },
   },
   components: {
@@ -259,7 +267,8 @@ export default Vue.extend({
       newChangeSetForm: {
         name: "",
       },
-      errorMessage: "",
+      modalErrorMessage: "",
+      editorErrorMessage: "",
     };
   },
   computed: {
@@ -311,7 +320,7 @@ export default Vue.extend({
           { changeSetId: this.selectCurrentChangeSetId },
         );
         if (reply.error) {
-          this.errorMessage = reply.error.message;
+          this.modalErrorMessage = reply.error.message;
         } else {
           await this.$emit("update-query-param", {
             changeSetId: reply.changeSet.id,
@@ -331,7 +340,7 @@ export default Vue.extend({
           { changeSetId: this.selectCurrentChangeSetId },
         );
         if (reply.error) {
-          this.errorMessage = reply.error.message;
+          this.modalErrorMessage = reply.error.message;
         } else {
           await this.$emit("update-query-param", {
             changeSetId: reply.changeSet.id,
@@ -354,7 +363,7 @@ export default Vue.extend({
     },
     async cancelChangeSetCreate() {
       this.newChangeSetForm.name = "";
-      this.errorMessage = "";
+      this.modalErrorMessage = "";
       this.$modal.hide("changeSetCreate");
     },
     async changeSetCreate() {
@@ -368,7 +377,7 @@ export default Vue.extend({
         },
       );
       if (reply.error) {
-        this.errorMessage = reply.error.message;
+        this.modalErrorMessage = reply.error.message;
       } else {
         await this.$emit("update-query-param", {
           changeSetId: reply.changeSet.id,
@@ -387,7 +396,7 @@ export default Vue.extend({
         },
       );
       if (reply.error) {
-        this.errorMessage = reply.error.message;
+        this.modalErrorMessage = reply.error.message;
       } else {
         await this.$emit("update-query-param", {
           editSessionId: reply.editSession.id,
@@ -432,10 +441,20 @@ export default Vue.extend({
         this.applicationContextCtx.dispatchPath("setEditMode"),
         false,
       );
+      await this.$store.dispatch(
+        this.applicationContextCtx.dispatchPath("finishEditSession"),
+      );
       this.$emit("update-query-param", { editMode: false });
+    },
+    async setEditorErrorMessage(error: string) {
+      this.editorErrorMessage = error;
     },
   },
   async created() {
+    let context: IEditorContext = {
+      applicationId: this.applicationId,
+    };
+    this.$store.dispatch("editor/setContext", context);
     this.$store.dispatch(
       this.applicationContextCtx.dispatchPath("loadApplicationContext"),
       {
@@ -443,6 +462,10 @@ export default Vue.extend({
         applicationId: this.applicationId,
       },
     );
+    PanelEventBus.$on("editor-error-message", this.setEditorErrorMessage);
+  },
+  async beforeDestroy() {
+    PanelEventBus.$off("editor-error-message", this.setEditorErrorMessage);
   },
   watch: {
     async currentChangeSet(newChangeSet: ChangeSet) {

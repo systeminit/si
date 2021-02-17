@@ -20,6 +20,8 @@ import {
 } from "@/api/sdf/dal/applicationContextDal";
 import { EditSession } from "@/api/sdf/model/editSession";
 import { CurrentChangeSetEvent } from "@/api/partyBus/currentChangeSetEvent";
+import { EditSessionCurrentSetEvent } from "@/api/partyBus/editSessionCurrentSetEvent";
+import { StatusBarStore } from "./statusBar";
 
 export interface ApplicationContextStore {
   applicationId: string | null;
@@ -36,7 +38,7 @@ export interface ApplicationContextStore {
   }[];
   currentChangeSet: ChangeSet | null;
   currentEditSession: EditSession | null;
-  statusBarCtx?: InstanceStoreContext | null;
+  statusBarCtx?: InstanceStoreContext<StatusBarStore> | null;
   editMode: boolean;
 }
 
@@ -118,18 +120,24 @@ export const applicationContext: Module<ApplicationContextStore, any> = {
     },
   },
   actions: {
-    activate({ commit }, payload: InstanceStoreContext) {
+    activate(
+      { commit },
+      payload: InstanceStoreContext<ApplicationContextStore>,
+    ) {
       commit("addToActivatedBy", payload.activateName());
       const bottle = Bottle.pop("default");
       bottle.container.UpdateTracker.register("Entity", payload.dispatchPath());
     },
-    deactivate({ commit, state }, payload: InstanceStoreContext) {
+    deactivate(
+      { commit, state },
+      payload: InstanceStoreContext<ApplicationContextStore>,
+    ) {
       commit("removeFromActivatedBy", payload.activateName());
       if (state.activatedBy.size == 0) {
         commit("clear");
       }
     },
-    setStatusBarCtx({ commit }, payload: InstanceStoreContext) {
+    setStatusBarCtx({ commit }, payload: InstanceStoreContext<StatusBarStore>) {
       commit("setStatusBarCtx", payload);
     },
     async setEditMode(
@@ -171,6 +179,7 @@ export const applicationContext: Module<ApplicationContextStore, any> = {
       );
       if (!reply.error) {
         commit("setCurrentChangeSetAndEditSession", reply);
+        new EditSessionCurrentSetEvent(reply.editSession).publish();
         new CurrentChangeSetEvent(reply.changeSet).publish();
       }
       return reply;
@@ -184,6 +193,7 @@ export const applicationContext: Module<ApplicationContextStore, any> = {
       );
       if (!reply.error) {
         commit("setCurrentChangeSetAndEditSession", reply);
+        new EditSessionCurrentSetEvent(reply.editSession).publish();
         new CurrentChangeSetEvent(reply.changeSet).publish();
       }
       return reply;
@@ -195,6 +205,7 @@ export const applicationContext: Module<ApplicationContextStore, any> = {
     }) {
       commit("clearCurrentChangeSetAndCurrentEditSession");
       if (state.statusBarCtx) {
+        new EditSessionCurrentSetEvent(null).publish();
         new CurrentChangeSetEvent(null).publish();
       }
     },
@@ -214,6 +225,7 @@ export const applicationContext: Module<ApplicationContextStore, any> = {
         ]);
         commit("setCurrentChangeSet", reply.changeSet);
         if (state.statusBarCtx) {
+          new EditSessionCurrentSetEvent(reply.editSession).publish();
           new CurrentChangeSetEvent(reply.changeSet).publish();
         }
         commit("setCurrentEditSession", reply.editSession);
@@ -227,6 +239,7 @@ export const applicationContext: Module<ApplicationContextStore, any> = {
       let reply = await ApplicationContextDal.createEditSession(request);
       if (!reply.error) {
         commit("setCurrentEditSession", reply.editSession);
+        new EditSessionCurrentSetEvent(reply.editSession).publish();
       }
       return reply;
     },
@@ -237,15 +250,22 @@ export const applicationContext: Module<ApplicationContextStore, any> = {
       let reply = await ApplicationContextDal.cancelEditSession(request);
       if (!reply.error) {
         commit("setCurrentEditSession", null);
+        new EditSessionCurrentSetEvent(null).publish();
       }
       return reply;
+    },
+    finishEditSession({ commit, state }) {
+      if (state.currentEditSession) {
+        commit("setCurrentEditSession", null);
+        new EditSessionCurrentSetEvent(null).publish();
+      }
     },
   },
 };
 
 export async function registerApplicationContext(
-  applicationContextCtx: InstanceStoreContext,
-  statusBarCtx: InstanceStoreContext,
+  applicationContextCtx: InstanceStoreContext<ApplicationContextStore>,
+  statusBarCtx: InstanceStoreContext<StatusBarStore>,
 ) {
   const bottle = Bottle.pop("default");
   const store: SiVuexStore = bottle.container.Store;
@@ -267,7 +287,9 @@ export async function registerApplicationContext(
   }
 }
 
-export function unregisterApplicationContext(ctx: InstanceStoreContext) {
+export function unregisterApplicationContext(
+  ctx: InstanceStoreContext<ApplicationContextStore>,
+) {
   const bottle = Bottle.pop("default");
   const store: SiVuexStore = bottle.container.Store;
   if (store.hasModule([ctx.storeName, ctx.instanceId])) {

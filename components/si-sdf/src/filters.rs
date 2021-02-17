@@ -19,6 +19,8 @@ pub fn api(
         .or(session_dal(pg, secret_key))
         .or(application_dal(pg, nats_conn, veritech))
         .or(application_context_dal(pg, nats_conn, veritech))
+        .or(editor_dal(pg, nats_conn, veritech))
+        .or(schematic_dal(pg, nats_conn, veritech))
         .or(users(pg, secret_key))
         .or(organizations(pg))
         .or(nodes(pg, nats_conn, veritech))
@@ -310,6 +312,56 @@ pub fn session_dal_get_defaults(pg: PgPool) -> BoxedFilter<(impl warp::Reply,)> 
         .and(with_pg(pg))
         .and(warp::header::<String>("authorization"))
         .and_then(handlers::session_dal::get_defaults)
+        .boxed()
+}
+
+// Schematic DAL
+pub fn schematic_dal(
+    pg: &PgPool,
+    _nats_conn: &NatsConn,
+    _veritech: &Veritech,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    schematic_dal_get_application_system_schematic(pg.clone()).boxed()
+}
+
+pub fn schematic_dal_get_application_system_schematic(
+    pg: PgPool,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("schematicDal" / "getApplicationSystemSchematic")
+        .and(warp::get())
+        .and(with_pg(pg))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::query::<
+            handlers::schematic_dal::GetApplicationSystemSchematicRequest,
+        >())
+        .and_then(handlers::schematic_dal::get_application_system_schematic)
+        .boxed()
+}
+
+// Editor DAL
+pub fn editor_dal(
+    pg: &PgPool,
+    nats_conn: &NatsConn,
+    veritech: &Veritech,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    editor_dal_node_create_for_application(pg.clone(), nats_conn.clone(), veritech.clone()).boxed()
+}
+
+pub fn editor_dal_node_create_for_application(
+    pg: PgPool,
+    nats_conn: NatsConn,
+    veritech: Veritech,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("editorDal" / "nodeCreateForApplication")
+        .and(warp::post())
+        .and(with_pg(pg))
+        .and(with_nats_conn(nats_conn))
+        .and(with_veritech(veritech))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::body::json::<
+            handlers::editor_dal::NodeCreateForApplicationRequest,
+        >())
+        .and_then(handlers::editor_dal::node_create_for_application)
         .boxed()
 }
 

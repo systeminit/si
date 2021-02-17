@@ -1,8 +1,9 @@
 import Vue from "vue";
-import Vuex from "vuex";
+import Vuex, { Module } from "vuex";
 import { Store } from "vuex";
 import { application } from "@/store/modules/application";
 import { session } from "@/store/modules/session";
+import { editor } from "@/store/modules/editor";
 import Bottle from "bottlejs";
 import _ from "lodash";
 
@@ -23,6 +24,8 @@ export const storeData = {
   modules: {
     application,
     session,
+    editor,
+    schematic: { namespaced: true },
     statusBar: { namespaced: true },
     applicationContext: { namespaced: true },
   },
@@ -35,7 +38,7 @@ export function instanceMapState<T>(...paths: string[]): T | null {
 }
 
 export function ctxMapState<T>(
-  ctx: InstanceStoreContext,
+  ctx: InstanceStoreContext<any>,
   ...paths: string[]
 ): T {
   const bottle = Bottle.pop("default");
@@ -52,7 +55,7 @@ export interface IInstanceStoreContext {
   instanceId: string;
 }
 
-export class InstanceStoreContext {
+export class InstanceStoreContext<State> {
   storeName: IInstanceStoreContext["storeName"];
   componentId: IInstanceStoreContext["componentId"];
   instanceId: IInstanceStoreContext["instanceId"];
@@ -74,5 +77,40 @@ export class InstanceStoreContext {
       path = `${path}/${extraPath}`;
     }
     return path;
+  }
+
+  async dispatch(path: string, payload: any): Promise<any> {
+    let bottle = Bottle.pop("default");
+    let store = bottle.container.Store;
+    let reply = await store.dispatch(this.dispatchPath(path), payload);
+    return reply;
+  }
+
+  get state(): State {
+    let bottle = Bottle.pop("default");
+    let store = bottle.container.Store;
+    return store.state[this.storeName][this.instanceId];
+  }
+}
+
+export async function registerStore(
+  ctx: InstanceStoreContext<any>,
+  moduleData: Module<any, any>,
+) {
+  const bottle = Bottle.pop("default");
+  const store: SiVuexStore = bottle.container.Store;
+  if (
+    store.hasModule(ctx.storeName) &&
+    !store.hasModule([ctx.storeName, ctx.instanceId])
+  ) {
+    store.registerModule([ctx.storeName, ctx.instanceId], moduleData);
+  }
+}
+
+export function unregisterStore(ctx: InstanceStoreContext<any>) {
+  const bottle = Bottle.pop("default");
+  const store: SiVuexStore = bottle.container.Store;
+  if (store.hasModule([ctx.storeName, ctx.instanceId])) {
+    store.unregisterModule([ctx.storeName, ctx.instanceId]);
   }
 }

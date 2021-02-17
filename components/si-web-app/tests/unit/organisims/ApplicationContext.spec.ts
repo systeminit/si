@@ -1,8 +1,11 @@
 import { render, fireEvent, waitFor } from "@testing-library/vue";
 import userEvent from "@testing-library/user-event";
 import { storeData, InstanceStoreContext } from "@/store";
-import { registerStatusBar } from "@/store/modules/statusBar";
-import { registerApplicationContext } from "@/store/modules/applicationContext";
+import { registerStatusBar, StatusBarStore } from "@/store/modules/statusBar";
+import {
+  registerApplicationContext,
+  ApplicationContextStore,
+} from "@/store/modules/applicationContext";
 import _ from "lodash";
 import routes from "@/router/routes";
 import { bottleSetup, bottleClear, bottleSetStore } from "@/di";
@@ -24,8 +27,8 @@ interface Setup {
   application: Entity;
   nba: INewBillingAccount;
   sessionDefaults: ISetDefaultsReply;
-  applicationContextCtx: InstanceStoreContext;
-  statusBarCtx: InstanceStoreContext;
+  applicationContextCtx: InstanceStoreContext<ApplicationContextStore>;
+  statusBarCtx: InstanceStoreContext<StatusBarStore>;
   initialChangeSet: ICreateChangeSetAndEditSessionReplySuccess;
 }
 
@@ -42,16 +45,20 @@ async function setup(): Promise<Setup> {
   // Get the default organization and workspace
   let sessionDefaults = await store.dispatch("session/setDefaults");
   let application = await createApplication();
-  let applicationContextCtx = new InstanceStoreContext({
-    storeName: "applicationContext",
-    componentId: "ApplicationDetails",
-    instanceId: "applicationDetails",
-  });
-  let statusBarCtx = new InstanceStoreContext({
-    storeName: "statusBar",
-    componentId: "ApplicationDetails",
-    instanceId: "applicationDetails",
-  });
+  let applicationContextCtx: InstanceStoreContext<ApplicationContextStore> = new InstanceStoreContext(
+    {
+      storeName: "applicationContext",
+      componentId: "ApplicationDetails",
+      instanceId: "applicationDetails",
+    },
+  );
+  let statusBarCtx: InstanceStoreContext<StatusBarStore> = new InstanceStoreContext(
+    {
+      storeName: "statusBar",
+      componentId: "ApplicationDetails",
+      instanceId: "applicationDetails",
+    },
+  );
   let reply = await createChangeSet();
   if (reply.error) {
     throw new Error(`cannot create new change set: ${reply.error.message}`);

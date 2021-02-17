@@ -442,6 +442,33 @@ impl Entity {
         Ok(object)
     }
 
+    pub async fn get_relevant_projection_or_head(
+        txn: &PgTxn<'_>,
+        entity_id: impl AsRef<str>,
+        change_set_id: Option<String>,
+    ) -> EntityResult<Option<Entity>> {
+        let entity_check = if let Some(change_set_id) = change_set_id {
+            match Entity::get_projection_or_head(&txn, &entity_id, &change_set_id).await {
+                Ok(e) => Some(e),
+                Err(err) => {
+                    dbg!("projecton_or_head");
+                    dbg!(err);
+                    None
+                }
+            }
+        } else {
+            match Entity::get_head(&txn, &entity_id).await {
+                Ok(e) => Some(e),
+                Err(err) => {
+                    dbg!("get_head");
+                    dbg!(err);
+                    None
+                }
+            }
+        };
+        Ok(entity_check)
+    }
+
     pub async fn get_projection(
         txn: &PgTxn<'_>,
         id: impl AsRef<str>,
