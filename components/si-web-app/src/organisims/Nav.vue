@@ -150,17 +150,29 @@
             },
           }"
           > -->
-        <div class="w-9/12">
-          <div class="flex items-center justify-start cursor-pointer">
-            <file-icon size="1.1x" class="mr-3" />
-            <div
-              class="text-sm subpixel-antialiased font-normal tracking-tight font-source-code-pro"
-            >
-              Secrets
+        <router-link
+          class="w-9/12"
+          data-cy="secret-nav-link"
+          :to="{
+            name: 'secret',
+            params: {
+              organizationId: currentOrganization.id,
+              workspaceId: currentWorkspace.id,
+            },
+          }"
+          v-if="currentOrganization && currentWorkspace"
+        >
+          <div class="w-9/12">
+            <div class="flex items-center justify-start cursor-pointer">
+              <file-icon size="1.1x" class="mr-3" />
+              <div
+                class="text-sm subpixel-antialiased font-normal tracking-tight font-source-code-pro"
+              >
+                Secrets
+              </div>
             </div>
           </div>
-        </div>
-        <!-- </router-link> -->
+        </router-link>
       </div>
 
       <!-- Clients Link -->

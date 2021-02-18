@@ -1,8 +1,30 @@
-use crate::models::billing_account::new_billing_account;
-use crate::models::organization::create_test_organization;
-use crate::{one_time_setup, TestContext};
+use crate::{
+    generate_fake_name,
+    models::billing_account::{new_billing_account, NewBillingAccount},
+    models::organization::create_test_organization,
+    one_time_setup, TestContext,
+};
 
-use si_sdf::models::{BooleanTerm, Item, Query, Workspace};
+use si_sdf::{
+    data::{NatsTxn, PgTxn},
+    models::{BooleanTerm, Item, Query, Workspace},
+};
+
+pub async fn create_workspace(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    nba: &NewBillingAccount,
+) -> Workspace {
+    Workspace::new(
+        txn,
+        nats,
+        generate_fake_name(),
+        &nba.billing_account.id,
+        &nba.organization.id,
+    )
+    .await
+    .expect("cannot create workspace")
+}
 
 #[tokio::test]
 async fn new() {

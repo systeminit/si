@@ -22,6 +22,7 @@ pub fn api(
         .or(editor_dal(pg, nats_conn, veritech))
         .or(schematic_dal(pg, nats_conn, veritech))
         .or(attribute_dal(pg, nats_conn, veritech))
+        .or(secret_dal(pg, nats_conn))
         //.or(users(pg, secret_key))
         //.or(organizations(pg))
         //.or(nodes(pg, nats_conn, veritech))
@@ -653,6 +654,49 @@ pub fn signup_dal_create_billing_account(
         .and(with_veritech(veritech))
         .and(warp::body::json::<handlers::signup_dal::CreateRequest>())
         .and_then(handlers::signup_dal::create_billing_account)
+        .boxed()
+}
+
+// Secret DAL
+pub fn secret_dal(pg: &PgPool, nats_conn: &NatsConn) -> BoxedFilter<(impl warp::Reply,)> {
+    secret_dal_get_public_key(pg.clone())
+        .or(secret_dal_create_secret(pg.clone(), nats_conn.clone()))
+        .or(secret_dal_list_secrets_for_workspace(pg.clone()))
+        .boxed()
+}
+
+pub fn secret_dal_get_public_key(pg: PgPool) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("secretDal" / "getPublicKey")
+        .and(warp::get())
+        .and(with_pg(pg))
+        .and(warp::header::<String>("authorization"))
+        .and_then(handlers::secret_dal::get_public_key)
+        .boxed()
+}
+
+pub fn secret_dal_create_secret(
+    pg: PgPool,
+    nats_conn: NatsConn,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("secretDal" / "createSecret")
+        .and(warp::post())
+        .and(with_pg(pg))
+        .and(with_nats_conn(nats_conn))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::body::json::<handlers::secret_dal::CreateSecretRequest>())
+        .and_then(handlers::secret_dal::create_secret)
+        .boxed()
+}
+
+pub fn secret_dal_list_secrets_for_workspace(pg: PgPool) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("secretDal" / "listSecretsForWorkspace")
+        .and(warp::get())
+        .and(with_pg(pg))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::query::<
+            handlers::secret_dal::ListSecretsForWorkspaceRequest,
+        >())
+        .and_then(handlers::secret_dal::list_secrets_for_workspace)
         .boxed()
 }
 

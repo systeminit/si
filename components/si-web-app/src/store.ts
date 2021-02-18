@@ -2,6 +2,7 @@ import Vue from "vue";
 import Vuex, { Module } from "vuex";
 import { Store } from "vuex";
 import { application } from "@/store/modules/application";
+import { secret } from "@/store/modules/secret";
 import { session } from "@/store/modules/session";
 import { editor } from "@/store/modules/editor";
 import Bottle from "bottlejs";
@@ -24,6 +25,7 @@ export const storeData = {
   },
   modules: {
     application,
+    secret,
     session,
     editor,
     attribute: { namespaced: true },
