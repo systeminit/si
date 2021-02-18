@@ -76,4 +76,3 @@ export default {
   fill: #d1d1d1;
 }
 </style>
-

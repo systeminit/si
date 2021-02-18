@@ -280,7 +280,7 @@ export default Vue.extend({
               newCheechHeightPercent = maxHeightPercent;
             }
             const panelContainer = this;
-            requestAnimationFrame(function () {
+            requestAnimationFrame(function() {
               panelCheechElem.setAttribute(
                 "style",
                 `height: ${newCheechHeightPercent}%;`,
@@ -363,7 +363,7 @@ export default Vue.extend({
               newCheechWidthPercent = maxWidthPercent;
             }
             const panelContainer = this;
-            requestAnimationFrame(function () {
+            requestAnimationFrame(function() {
               panelCheechElem.setAttribute(
                 "style",
                 `width: ${newCheechWidthPercent}%;`,
@@ -601,4 +601,3 @@ export default Vue.extend({
   },
 });
 </script>
-

@@ -327,4 +327,3 @@ export default Vue.extend({
   color: #c7cacd;
 }
 </style>
-
