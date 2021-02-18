@@ -1,5 +1,5 @@
 <template>
-  <div class="relative w-auto z-100">
+  <div class="relative w-auto">
     <button
       @click="isOpen = !isOpen"
       class="w-full focus:outline-none"
