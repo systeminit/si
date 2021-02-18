@@ -10,6 +10,7 @@ import { CurrentChangeSetEvent } from "@/api/partyBus/currentChangeSetEvent";
 import { EditSessionCurrentSetEvent } from "@/api/partyBus/editSessionCurrentSetEvent";
 import { EditorDal } from "@/api/sdf/dal/editorDal";
 import { NodeKind } from "@/api/sdf/model/node";
+import { NodeCreatedEvent } from "@/api/partyBus/NodeCreatedEvent";
 
 export type IEditorContext = IEditorContextApplication;
 
@@ -93,9 +94,9 @@ export const editor: Module<EditorStore, any> = {
           "Cannot call nodeCreate without a workspace, system, changeSet and editSession or EditContext! bug!",
         );
       }
-      let reply;
+      let reply: INodeCreateReply;
       if (state.context.applicationId) {
-        reply = EditorDal.nodeCreateForApplication({
+        reply = await EditorDal.nodeCreateForApplication({
           kind: NodeKind.Entity,
           objectType: entityObject.typeName,
           workspaceId: currentWorkspace.id,
@@ -106,6 +107,9 @@ export const editor: Module<EditorStore, any> = {
         });
       } else {
         throw new Error("cannot create without an editor context");
+      }
+      if (!reply.error) {
+        new NodeCreatedEvent(reply).publish();
       }
 
       return reply;
