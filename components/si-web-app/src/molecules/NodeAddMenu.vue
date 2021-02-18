@@ -27,7 +27,7 @@
         v-for="item in menuList"
         :data-cy="
           'editor-schematic-node-add-menu-' +
-            item.id.replace(/\s/g, '-').replace(/:/g, '')
+          item.id.replace(/\s/g, '-').replace(/:/g, '')
         "
         :key="item.id"
       >
@@ -45,9 +45,9 @@
             :key="child.id"
             :data-cy="
               'editor-schematic-node-add-menu-' +
-                item.id.replace(/\s/g, '-').replace(/:/g, '') +
-                '-' +
-                child.id.replace(/\s/g, '-').replace(/:/g, '')
+              item.id.replace(/\s/g, '-').replace(/:/g, '') +
+              '-' +
+              child.id.replace(/\s/g, '-').replace(/:/g, '')
             "
             @click="onSelect(child)"
           >
@@ -118,25 +118,26 @@ export default Vue.extend({
     },
     menuItemList(): MenuElement[] {
       // Filter the entityTypeList for entities that are uiVisible
-      var filteredList = _.remove(this.entityTypeList, function(
-        entity: EntityObject,
-      ) {
-        if (entity.iEntity?.uiVisible) {
-          return entity;
-        }
-      });
+      var filteredList = _.remove(
+        this.entityTypeList,
+        function (entity: EntityObject) {
+          if (entity.iEntity?.uiVisible) {
+            return entity;
+          }
+        },
+      );
 
       // Sort the filtered list
       let sortedList = _.sortBy(filteredList, ["iEntity.uiMenuDisplayName"]);
 
       let menuList: MenuElement[] = [];
 
-      sortedList.forEach(function(entity: EntityObject) {
+      sortedList.forEach(function (entity: EntityObject) {
         // Check if this entity has a uiMenuCategory
         if (entity.iEntity?.uiMenuCategory) {
           let menuElement: any;
           // Find the menuElement tht represents the entity uiMenuCategory.
-          menuElement = _.find(menuList, function(e: MenuElement) {
+          menuElement = _.find(menuList, function (e: MenuElement) {
             return e?.id === entity.iEntity?.uiMenuCategory;
           });
 
@@ -153,7 +154,7 @@ export default Vue.extend({
               };
               menuList.push(menuCategory);
               menuList = _.sortBy(menuList, ["id"]);
-              menuElement = _.find(menuList, function(e: MenuElement) {
+              menuElement = _.find(menuList, function (e: MenuElement) {
                 return e?.id === entity.iEntity?.uiMenuCategory;
               });
             }

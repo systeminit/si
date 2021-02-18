@@ -26,6 +26,7 @@ export const storeData = {
     application,
     session,
     editor,
+    attribute: { namespaced: true },
     schematic: { namespaced: true },
     statusBar: { namespaced: true },
     applicationContext: { namespaced: true },
@@ -67,7 +68,7 @@ export class InstanceStoreContext<State> {
     this.instanceId = ctx.instanceId;
   }
 
-  activateName(): string {
+  name(): string {
     return `${this.componentId}-${this.instanceId}`;
   }
 
@@ -80,7 +81,7 @@ export class InstanceStoreContext<State> {
     return path;
   }
 
-  async dispatch(path: string, payload: any): Promise<any> {
+  async dispatch(path: string, payload?: any): Promise<any> {
     let bottle = Bottle.pop("default");
     let store = bottle.container.Store;
     let reply = await store.dispatch(this.dispatchPath(path), payload);

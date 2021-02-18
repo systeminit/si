@@ -49,6 +49,8 @@ import {
 import { mapState } from "vuex";
 import { System } from "@/api/sdf/model/system";
 import { IEditorContextApplication } from "@/store/modules/editor";
+import { Persister } from "@/api/persister";
+import Bottle from "bottlejs";
 
 interface IData {
   applicationContextCtx: InstanceStoreContext<ApplicationContextStore>;
@@ -95,34 +97,25 @@ export default Vue.extend({
     editorContext(): IEditorContextApplication {
       return {
         applicationId: this.applicationId,
+        contextType: "applicationSystem",
       };
     },
   },
   methods: {
     async updateQueryParam(payload: Record<string, any>) {
-      await this.$router
-        .replace({
-          query: Object.assign(
-            {},
-            { ...this.$router.currentRoute.query },
-            payload,
-          ),
-        })
-        .catch(() => {});
+      let bottle = Bottle.pop("default");
+      let persister: Persister = bottle.container.Persister;
+      persister.updateQueryParam(payload);
     },
     async removeQueryParam(payload: string[]) {
-      const query = Object.assign({}, this.$route.query);
-      for (const param of payload) {
-        delete query[param];
-      }
-      await this.$router.replace({ query }).catch(() => {});
+      let bottle = Bottle.pop("default");
+      let persister: Persister = bottle.container.Persister;
+      persister.removeQueryParam(payload);
     },
     async wipeQueryParam() {
-      await this.$router
-        .replace({
-          query: {},
-        })
-        .catch(() => {});
+      let bottle = Bottle.pop("default");
+      let persister: Persister = bottle.container.Persister;
+      persister.wipeQueryParams();
     },
   },
   async created() {
@@ -159,6 +152,14 @@ export default Vue.extend({
       this.applicationContextCtx.dispatchPath("setEditMode"),
       editModeBool,
     );
+    if (this.currentSystem) {
+      let sessionContext: ISessionContextApplicationSystem = {
+        kind: ISessionContextKind.ApplicationSystem,
+        applicationId: this.applicationId,
+        systemId: this.currentSystem.id,
+      };
+      await this.$store.dispatch("session/setSessionContext", sessionContext);
+    }
   },
   async beforeDestroy() {
     unregisterStatusBar(this.applicationContextCtx.instanceId);

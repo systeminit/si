@@ -21,6 +21,7 @@ pub fn api(
         .or(application_context_dal(pg, nats_conn, veritech))
         .or(editor_dal(pg, nats_conn, veritech))
         .or(schematic_dal(pg, nats_conn, veritech))
+        .or(attribute_dal(pg, nats_conn, veritech))
         //.or(users(pg, secret_key))
         //.or(organizations(pg))
         //.or(nodes(pg, nats_conn, veritech))
@@ -312,6 +313,37 @@ pub fn session_dal_get_defaults(pg: PgPool) -> BoxedFilter<(impl warp::Reply,)> 
         .and(with_pg(pg))
         .and(warp::header::<String>("authorization"))
         .and_then(handlers::session_dal::get_defaults)
+        .boxed()
+}
+
+// Attribute DAL
+pub fn attribute_dal(
+    pg: &PgPool,
+    _nats_conn: &NatsConn,
+    _veritech: &Veritech,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    attribute_dal_get_node_list(pg.clone())
+        .or(attribute_dal_get_entity(pg.clone()))
+        .boxed()
+}
+
+pub fn attribute_dal_get_entity(pg: PgPool) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("attributeDal" / "getEntity")
+        .and(warp::get())
+        .and(with_pg(pg))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::query::<handlers::attribute_dal::GetEntityRequest>())
+        .and_then(handlers::attribute_dal::get_entity)
+        .boxed()
+}
+
+pub fn attribute_dal_get_node_list(pg: PgPool) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("attributeDal" / "getObjectList")
+        .and(warp::get())
+        .and(with_pg(pg))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::query::<handlers::attribute_dal::GetObjectListRequest>())
+        .and_then(handlers::attribute_dal::get_object_list)
         .boxed()
 }
 

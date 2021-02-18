@@ -1,6 +1,6 @@
 <template>
   <div
-    class="flex flex-col h-full w-full"
+    class="flex flex-col w-full h-full"
     id="panelTreeRoot"
     @mouseenter="activateShortcuts()"
     @mouseleave="deactivateShortcuts()"
@@ -23,6 +23,8 @@ import PanelContainer, {
 } from "@/molecules/PanelContainer.vue";
 import { PanelEventBus } from "@/atoms/PanelEventBus";
 import _ from "lodash";
+import Bottle from "bottlejs";
+import { Persister } from "@/api/persister";
 
 interface IData {
   panelContainers: IPanelContainer[];
@@ -62,70 +64,77 @@ export default Vue.extend({
     PanelEventBus.$off("delete-panel", this.deletePanel);
   },
   data(): IData {
-    return {
-      shortcuts: false,
-      originalMaximizedElementData: {
-        style: null,
-      },
-      maximizedData: null,
-      putBackTo: {},
-      panelContainers: [
-        {
-          orientation: "row",
-          type: "panelContainer",
-          panels: [
-            {
-              orientation: "column",
-              type: "panelContainer",
-              panels: [
-                {
-                  name: "schematic",
-                  type: "panel",
-                },
-              ],
-            },
-            {
-              orientation: "column",
-              type: "panelContainer",
-              panels: [
-                {
-                  name: "attribute",
-                  type: "panel",
-                },
-                {
-                  name: "somethingelse",
-                  type: "panel",
-                },
-              ],
-            },
-            //{
-            //  orientation: "row",
-            //  type: "panelContainer",
-            //  panels: [
-            //    {
-            //      name: "schematic",
-            //      type: "panel",
-            //    },
-            //    {
-            //      orientation: "column",
-            //      type: "panelContainer",
-            //      panels: [
-            //        {
-            //          name: "attribute",
-            //          type: "panel",
-            //        },
-            //        {
-            //          name: "somethingelse",
-            //          type: "panel",
-            //        },
-            //      ],
-            //    },
-            //  ],
-            //},
-          ],
+    let bottle = Bottle.pop("default");
+    let persister: Persister = bottle.container.Persister;
+    let savedData = persister.getData("panelTree");
+    if (savedData) {
+      return savedData;
+    } else {
+      return {
+        shortcuts: false,
+        originalMaximizedElementData: {
+          style: null,
         },
-      ],
-    };
+        maximizedData: null,
+        putBackTo: {},
+        panelContainers: [
+          {
+            orientation: "row",
+            type: "panelContainer",
+            panels: [
+              {
+                orientation: "column",
+                type: "panelContainer",
+                panels: [
+                  {
+                    name: "schematic",
+                    type: "panel",
+                  },
+                ],
+              },
+              {
+                orientation: "column",
+                type: "panelContainer",
+                panels: [
+                  {
+                    name: "attribute",
+                    type: "panel",
+                  },
+                  {
+                    name: "somethingelse",
+                    type: "panel",
+                  },
+                ],
+              },
+              //{
+              //  orientation: "row",
+              //  type: "panelContainer",
+              //  panels: [
+              //    {
+              //      name: "schematic",
+              //      type: "panel",
+              //    },
+              //    {
+              //      orientation: "column",
+              //      type: "panelContainer",
+              //      panels: [
+              //        {
+              //          name: "attribute",
+              //          type: "panel",
+              //        },
+              //        {
+              //          name: "somethingelse",
+              //          type: "panel",
+              //        },
+              //      ],
+              //    },
+              //  ],
+              //},
+            ],
+          },
+        ],
+      };
+    }
   },
   methods: {
     createNewPanel(event: { panelContainerRef: string }) {
@@ -154,11 +163,6 @@ export default Vue.extend({
       for (let x = 3; x < panelRefParts.length; x++) {
         index = parseInt(panelRefParts[x], 10);
         if (pc.panels[index] && pc.panels[index].type == "panelContainer") {
-          console.log("setting pc", {
-            oldPc: pc,
-            newPc: pc.panels[index],
-            index,
-          });
           // @ts-ignore
           pc = pc.panels[index];
         }
@@ -257,6 +261,16 @@ export default Vue.extend({
           `position: absolute; width: 100%; height: 100%;`,
         );
       }
+    },
+  },
+  watch: {
+    $data: {
+      handler: function(newData, oldData) {
+        let bottle = Bottle.pop("default");
+        let persister: Persister = bottle.container.Persister;
+        persister.setData("panelTree", newData);
+      },
+      deep: true,
     },
   },
 });

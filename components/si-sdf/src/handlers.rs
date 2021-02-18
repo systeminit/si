@@ -36,6 +36,7 @@ pub mod updates;
 
 pub mod application_context_dal;
 pub mod application_dal;
+pub mod attribute_dal;
 pub mod editor_dal;
 pub mod schematic_dal;
 pub mod session_dal;
