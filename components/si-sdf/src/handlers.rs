@@ -10,8 +10,8 @@ use crate::data::{NatsTxnError, PgTxn};
 use crate::models::{
     ApiClientError, BillingAccountError, ChangeSetError, EdgeError, EditSessionError, EntityError,
     EventError, EventLogError, JwtKeyError, KeyPairError, ModelError, NodeError, OpError,
-    OrganizationError, PageTokenError, QueryError, SecretError, SystemError, UserError,
-    WorkspaceError,
+    OrganizationError, PageTokenError, QueryError, SchematicError, SecretError, SystemError,
+    UserError, WorkspaceError,
 };
 
 const AUTHORIZE_USER: &str = include_str!("./data/queries/authorize_user.sql");
@@ -36,6 +36,8 @@ pub mod workspaces;
 
 pub mod application_context_dal;
 pub mod application_dal;
+pub mod editor_dal;
+pub mod schematic_dal;
 pub mod session_dal;
 pub mod signup_dal;
 
@@ -103,6 +105,8 @@ pub enum HandlerError {
     Workspace(#[from] WorkspaceError),
     #[error("system error: {0}")]
     System(#[from] SystemError),
+    #[error("schematic error: {0}")]
+    Schematic(#[from] SchematicError),
 }
 
 pub type HandlerResult<T> = Result<T, HandlerError>;

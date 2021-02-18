@@ -16,12 +16,25 @@ import { SDFError } from "@/api/sdf";
 
 export type ISetDefaultsReply = IGetDefaultsReply;
 
+export enum ISessionContextKind {
+  ApplicationSystem = "applicationSystem",
+}
+
+export interface ISessionContextApplicationSystem {
+  kind: ISessionContextKind.ApplicationSystem;
+  applicationId: string;
+  systemId: string;
+}
+
+export type SessionContext = ISessionContextApplicationSystem;
+
 export interface SessionStore {
   user: null | User;
   billingAccount: null | BillingAccount;
   currentWorkspace: null | Workspace;
   currentOrganization: null | Organization;
   currentSystem: null | System;
+  sessionContext: null | SessionContext;
 }
 
 export const session: Module<SessionStore, any> = {
@@ -32,6 +45,7 @@ export const session: Module<SessionStore, any> = {
     currentWorkspace: null,
     currentOrganization: null,
     currentSystem: null,
+    sessionContext: null,
   },
   mutations: {
     setUser(state, payload: SessionStore["user"]) {
@@ -51,6 +65,9 @@ export const session: Module<SessionStore, any> = {
     },
     setCurrentSystem(state, payload: SessionStore["currentSystem"]) {
       state.currentSystem = payload;
+    },
+    setSessionContext(state, payload: SessionStore["sessionContext"]) {
+      state.sessionContext = payload;
     },
   },
   actions: {
@@ -104,8 +121,13 @@ export const session: Module<SessionStore, any> = {
         commit("setCurrentOrganization", reply.organization);
         commit("setCurrentWorkspace", reply.workspace);
         commit("setCurrentSystem", reply.system);
+      } else {
+        console.log("error in set defaults", { reply });
       }
       return reply;
+    },
+    setSessionContext({ commit }, sessionContext: SessionContext | null) {
+      commit("setSessionContext", sessionContext);
     },
   },
 };

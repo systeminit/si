@@ -10,7 +10,7 @@
         @remove-query-param="removeQueryParam"
       />
       <div id="editor" class="flex w-full h-full overflow-hidden">
-        <Editor />
+        <Editor :context="editorContext" />
       </div>
       <!--
     <div id="eventBar" class="w-full">
@@ -27,6 +27,7 @@ import Vue from "vue";
 
 import {
   registerStatusBar,
+  StatusBarStore,
   unregisterStatusBar,
 } from "@/store/modules/statusBar";
 import {
@@ -40,10 +41,18 @@ import ApplicationContext from "@/organisims/ApplicationContext.vue";
 import Editor from "@/organisims/Editor.vue";
 
 import { ctxMapState, InstanceStoreContext } from "@/store";
+import {
+  ISessionContextApplicationSystem,
+  ISessionContextKind,
+  SessionStore,
+} from "@/store/modules/session";
+import { mapState } from "vuex";
+import { System } from "@/api/sdf/model/system";
+import { IEditorContextApplication } from "@/store/modules/editor";
 
 interface IData {
-  applicationContextCtx: InstanceStoreContext;
-  statusBarCtx: InstanceStoreContext;
+  applicationContextCtx: InstanceStoreContext<ApplicationContextStore>;
+  statusBarCtx: InstanceStoreContext<StatusBarStore>;
 }
 
 export default Vue.extend({
@@ -76,6 +85,17 @@ export default Vue.extend({
     },
     applicationId: {
       type: String,
+    },
+  },
+  computed: {
+    ...mapState({
+      currentSystem: (state: any): SessionStore["currentSystem"] =>
+        state["session"]["currentSystem"],
+    }),
+    editorContext(): IEditorContextApplication {
+      return {
+        applicationId: this.applicationId,
+      };
     },
   },
   methods: {
@@ -143,6 +163,19 @@ export default Vue.extend({
   async beforeDestroy() {
     unregisterStatusBar(this.applicationContextCtx.instanceId);
     unregisterApplicationContext(this.applicationContextCtx);
+    await this.$store.dispatch("session/setSessionContext", null);
+  },
+  watch: {
+    async currentSystem(currentSystem: SessionStore["currentSystem"]) {
+      if (currentSystem) {
+        let sessionContext: ISessionContextApplicationSystem = {
+          kind: ISessionContextKind.ApplicationSystem,
+          applicationId: this.applicationId,
+          systemId: currentSystem.id,
+        };
+        await this.$store.dispatch("session/setSessionContext", sessionContext);
+      }
+    },
   },
 });
 </script>

@@ -8,20 +8,23 @@ import { PartyBusEvent } from "./partyBus/partyBusEvent";
 export class PartyBusSubscription {
   storePath: string;
   storeModuleName: string;
-  storeInstanceName: string;
+  storeInstanceName?: string;
   action?: string;
   eventName: string;
 
   constructor(
     eventName: string,
     storeModuleName: string,
-    storeInstanceName: string,
+    storeInstanceName?: string,
     action?: string,
   ) {
     this.eventName = eventName;
     this.storeModuleName = storeModuleName;
+    this.storePath = `${this.storeModuleName}`;
     this.storeInstanceName = storeInstanceName;
-    this.storePath = `${this.storeModuleName}/${this.storeInstanceName}`;
+    if (this.storeInstanceName) {
+      this.storePath = `${this.storePath}/${this.storeInstanceName}`;
+    }
     if (action) {
       this.action = action;
       this.storePath = `${this.storePath}/${this.action}`;
@@ -47,12 +50,11 @@ export class PartyBus {
       let bottle = Bottle.pop("default");
       let store: SiVuexStore = bottle.container.Store;
       for (const subscription of this.subscriptions[event.eventName].values()) {
-        if (
-          store.hasModule([
-            subscription.storeModuleName,
-            subscription.storeInstanceName,
-          ])
-        ) {
+        let modulePath = [subscription.storeModuleName];
+        if (subscription.storeInstanceName) {
+          modulePath.push(subscription.storeInstanceName);
+        }
+        if (store.hasModule(modulePath)) {
           await store.dispatch(subscription.storePath, event);
         } else {
           // The store has gone, so the subscription goes too
@@ -73,7 +75,7 @@ export class PartyBus {
 
   subscribeToEvents(
     storeModuleName: string,
-    storeInstanceName: string,
+    storeInstanceName: string | undefined,
     events: { eventName: () => string }[],
   ) {
     for (const event of events) {
