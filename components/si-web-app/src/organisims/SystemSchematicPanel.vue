@@ -68,7 +68,11 @@ import {
   registerStore,
   unregisterStore,
 } from "@/store";
-import { SchematicStore, schematicStore } from "@/store/modules/schematic";
+import {
+  SchematicStore,
+  schematicStore,
+  schematicStoreSubscribeEvents,
+} from "@/store/modules/schematic";
 import { mapGetters, mapState } from "vuex";
 import { SessionStore } from "@/store/modules/session";
 import SiLoader from "@/atoms/SiLoader.vue";
@@ -180,7 +184,11 @@ export default Vue.extend({
     },
   },
   async created() {
-    registerStore(this.schematicStoreCtx, schematicStore);
+    registerStore(
+      this.schematicStoreCtx,
+      schematicStore,
+      schematicStoreSubscribeEvents,
+    );
   },
   async mounted() {
     if (this.sessionContext) {

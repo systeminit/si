@@ -3,7 +3,6 @@ import { Entity } from "@/api/sdf/model/entity";
 import { SDFError } from "@/api/sdf";
 import { System } from "@/api/sdf/model/system";
 import Bottle from "bottlejs";
-import { NodeCreatedEvent } from "@/api/partyBus/NodeCreatedEvent";
 
 export interface INodeCreateForApplicationRequest extends INodeCreateRequest {
   applicationId: string;
@@ -57,11 +56,6 @@ async function nodeCreateForApplication(
     "editorDal/nodeCreateForApplication",
     request,
   );
-
-  if (!reply.error) {
-    new NodeCreatedEvent(reply).publish();
-  }
-
   return reply;
 }
 

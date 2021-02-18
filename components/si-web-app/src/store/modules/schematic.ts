@@ -11,13 +11,17 @@ import {
   SchematicDal,
 } from "@/api/sdf/dal/schematicDal";
 import { SchematicNodeSelectedEvent } from "@/api/partyBus/SchematicNodeSelectedEvent";
+import { NodeCreatedEvent } from "@/api/partyBus/NodeCreatedEvent";
 
 export interface SchematicStore {
   kind: SchematicKind | null;
   schematic: Schematic | null;
   rootObjectId: string | null;
   selectedNode: ISchematicNode | null;
+  lastRequest: IGetApplicationSystemSchematicRequest | null;
 }
+
+export const schematicStoreSubscribeEvents = [NodeCreatedEvent];
 
 export const schematicStore: Module<SchematicStore, any> = {
   namespaced: true,
@@ -27,6 +31,7 @@ export const schematicStore: Module<SchematicStore, any> = {
       schematic: null,
       rootObjectId: null,
       selectedNode: null,
+      lastRequest: null,
     };
   },
   mutations: {
@@ -39,8 +44,16 @@ export const schematicStore: Module<SchematicStore, any> = {
     setSelectedNode(state, payload: SchematicStore["selectedNode"]) {
       state.selectedNode = payload;
     },
+    setLastRequest(state, payload: SchematicStore["lastRequest"]) {
+      state.lastRequest = payload;
+    },
   },
   actions: {
+    async onNodeCreated({ state, dispatch }, _event: NodeCreatedEvent) {
+      if (state.lastRequest) {
+        await dispatch("loadApplicationSystemSchematic", state.lastRequest);
+      }
+    },
     setRootObjectId({ commit }, payload: SchematicStore["rootObjectId"]) {
       commit("setRootObjectId", payload);
     },
@@ -51,6 +64,7 @@ export const schematicStore: Module<SchematicStore, any> = {
       let reply = await SchematicDal.getApplicationSystemSchematic(request);
       if (!reply.error) {
         commit("setSchematic", reply.schematic);
+        commit("setLastRequest", request);
       }
       return reply;
     },

@@ -6,6 +6,7 @@ import { session } from "@/store/modules/session";
 import { editor } from "@/store/modules/editor";
 import Bottle from "bottlejs";
 import _ from "lodash";
+import { PartyBus } from "./api/partyBus";
 
 export type SiVuexStore = Store<RootStore>;
 
@@ -96,6 +97,7 @@ export class InstanceStoreContext<State> {
 export async function registerStore(
   ctx: InstanceStoreContext<any>,
   moduleData: Module<any, any>,
+  events?: { eventName: () => string }[],
 ) {
   const bottle = Bottle.pop("default");
   const store: SiVuexStore = bottle.container.Store;
@@ -104,6 +106,10 @@ export async function registerStore(
     !store.hasModule([ctx.storeName, ctx.instanceId])
   ) {
     store.registerModule([ctx.storeName, ctx.instanceId], moduleData);
+  }
+  if (events && events.length) {
+    let partyBus: PartyBus = bottle.container.PartyBus;
+    partyBus.subscribeToEvents(ctx.storeName, ctx.instanceId, events);
   }
 }
 
