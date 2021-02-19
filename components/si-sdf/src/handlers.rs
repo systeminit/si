@@ -17,22 +17,22 @@ use crate::models::{
 const AUTHORIZE_USER: &str = include_str!("./data/queries/authorize_user.sql");
 const AUTHORIZE_API_CLIENT: &str = include_str!("./data/queries/authorize_api_client.sql");
 
-pub mod api_clients;
-pub mod billing_accounts;
-pub mod change_sets;
+//pub mod api_clients;
+//pub mod billing_accounts;
+//pub mod change_sets;
 pub mod cli;
-pub mod edges;
-pub mod edit_sessions;
-pub mod entities;
-pub mod event_logs;
-pub mod events;
-pub mod nodes;
-pub mod organizations;
-pub mod secrets;
-pub mod systems;
+//pub mod edges;
+//pub mod edit_sessions;
+//pub mod entities;
+//pub mod event_logs;
+//pub mod events;
+//pub mod nodes;
+//pub mod organizations;
+//pub mod secrets;
+//pub mod systems;
 pub mod updates;
-pub mod users;
-pub mod workspaces;
+//pub mod users;
+//pub mod workspaces;
 
 pub mod application_context_dal;
 pub mod application_dal;
@@ -169,7 +169,7 @@ pub async fn authenticate_api_client(
 pub async fn authenticate(
     txn: &PgTxn<'_>,
     token: impl AsRef<str>,
-) -> HandlerResult<users::SiClaims> {
+) -> HandlerResult<crate::models::user::SiClaims> {
     let token = token.as_ref();
     let claims = crate::models::jwt_key::validate_bearer_token(&txn, token).await?;
     Ok(claims.custom)

@@ -7,14 +7,9 @@ use jwt_simple::coarsetime::Duration;
 use serde::{Deserialize, Serialize};
 use sodiumoxide::crypto::secretbox;
 
-const GET_DEFAULTS: &str = include_str!("../data/queries/session_dal_get_defaults.sql");
+use crate::models::user::SiClaims;
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct SiClaims {
-    pub user_id: String,
-    pub billing_account_id: String,
-}
+const GET_DEFAULTS: &str = include_str!("../data/queries/session_dal_get_defaults.sql");
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
