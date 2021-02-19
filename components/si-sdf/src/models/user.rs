@@ -2,6 +2,13 @@ use serde::{Deserialize, Serialize};
 use sodiumoxide::crypto::pwhash::argon2id13;
 use thiserror::Error;
 
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SiClaims {
+    pub user_id: String,
+    pub billing_account_id: String,
+}
+
 use crate::data::{NatsTxn, NatsTxnError, PgTxn};
 use crate::models::{
     list_model, ListReply, ModelError, OrderByDirection, PageToken, Query, SimpleStorable,

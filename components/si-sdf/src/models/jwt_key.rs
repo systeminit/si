@@ -10,7 +10,7 @@ use std::io::prelude::*;
 
 use crate::data::PgTxn;
 
-use crate::handlers::users::SiClaims;
+use crate::models::user::SiClaims;
 use crate::models::ApiClaim;
 
 const JWT_KEY_EXISTS: &str = include_str!("../data/queries/jwt_key_exists.sql");

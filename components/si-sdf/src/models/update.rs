@@ -6,8 +6,8 @@ use tracing::{error, trace, warn};
 use warp::ws::{Message, WebSocket};
 
 use crate::data::{NatsConn, PgPool};
-use crate::handlers::users::SiClaims;
 use crate::handlers::validate_tenancy;
+use crate::models::user::SiClaims;
 use crate::models::{key_pair::KeyPair, secret::EncryptedSecret, PublicKey, Secret, UpdateClock};
 
 #[derive(Deserialize, Serialize, Debug)]
