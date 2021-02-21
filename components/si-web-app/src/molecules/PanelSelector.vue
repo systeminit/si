@@ -16,6 +16,18 @@
       :initialMaximizedContainer="maximizedContainer"
       v-if="panelType == 'empty'"
     />
+    <AttributePanel
+      :panelRef="panelRef"
+      :panelContainerRef="panelContainerRef"
+      @change-panel="changePanelType"
+      @panel-maximized-full="setMaximizedFull($event)"
+      @panel-maximized-container="setMaximizedContainer($event)"
+      @panel-minimized-full="setMaximizedFull($event)"
+      @panel-minimized-container="setMaximizedContainer($event)"
+      :initialMaximizedFull="maximizedFull"
+      :initialMaximizedContainer="maximizedContainer"
+      v-if="panelType == 'attribute'"
+    />
     <SystemSchematicPanel
       :panelRef="panelRef"
       :panelContainerRef="panelContainerRef"
@@ -35,10 +47,14 @@
 import Vue, { PropType } from "vue";
 import EmptyPanel from "@/organisims/EmptyPanel.vue";
 import SystemSchematicPanel from "@/organisims/SystemSchematicPanel.vue";
+import AttributePanel from "@/organisims/AttributePanel.vue";
 import { PanelEventBus } from "@/atoms/PanelEventBus";
+import Bottle from "bottlejs";
+import { Persister } from "@/api/persister";
 
 export enum PanelType {
   Empty = "empty",
+  Attribute = "attribute",
   SystemSchematic = "systemSchematic",
 }
 
@@ -62,14 +78,22 @@ export default Vue.extend({
   components: {
     EmptyPanel,
     SystemSchematicPanel,
+    AttributePanel,
   },
   data(): IData {
-    return {
-      shortcuts: false,
-      panelType: this.initialPanelType,
-      maximizedFull: false,
-      maximizedContainer: false,
-    };
+    let bottle = Bottle.pop("default");
+    let persister: Persister = bottle.container.Persister;
+    let savedData = persister.getData(this.panelRef);
+    if (savedData) {
+      return savedData;
+    } else {
+      return {
+        shortcuts: false,
+        panelType: this.initialPanelType,
+        maximizedFull: false,
+        maximizedContainer: false,
+      };
+    }
   },
   mounted() {
     PanelEventBus.$on("shortcut", this.handleShortcut);
@@ -106,6 +130,16 @@ export default Vue.extend({
     },
     changePanelType(newPanelType: PanelType) {
       this.panelType = newPanelType;
+    },
+  },
+  watch: {
+    $data: {
+      handler: function(newData, oldData) {
+        let bottle = Bottle.pop("default");
+        let persister: Persister = bottle.container.Persister;
+        persister.setData(this.panelRef, newData);
+      },
+      deep: true,
     },
   },
 });

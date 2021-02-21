@@ -124,7 +124,7 @@ export const applicationContext: Module<ApplicationContextStore, any> = {
       { commit },
       payload: InstanceStoreContext<ApplicationContextStore>,
     ) {
-      commit("addToActivatedBy", payload.activateName());
+      commit("addToActivatedBy", payload.name());
       const bottle = Bottle.pop("default");
       bottle.container.UpdateTracker.register("Entity", payload.dispatchPath());
     },
@@ -132,7 +132,7 @@ export const applicationContext: Module<ApplicationContextStore, any> = {
       { commit, state },
       payload: InstanceStoreContext<ApplicationContextStore>,
     ) {
-      commit("removeFromActivatedBy", payload.activateName());
+      commit("removeFromActivatedBy", payload.name());
       if (state.activatedBy.size == 0) {
         commit("clear");
       }

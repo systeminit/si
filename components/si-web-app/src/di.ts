@@ -8,6 +8,7 @@ import { routeCheck } from "@/router";
 import _ from "lodash";
 import { UpdateTracker } from "./api/updateTracker";
 import { PartyBus } from "./api/partyBus";
+import { Persister } from "./api/persister";
 
 export function bottleSetup(storeData: any) {
   let bottle = Bottle.pop("default");
@@ -34,6 +35,9 @@ export function bottleSetup(storeData: any) {
   bottle.factory("PartyBus", function(_container): PartyBus {
     return new PartyBus();
   });
+  bottle.factory("Persister", function(_container): Persister {
+    return new Persister();
+  });
 }
 
 export function bottleSetStore(store: any, router: VueRouter) {
@@ -55,6 +59,9 @@ export function bottleSetStore(store: any, router: VueRouter) {
   });
   bottle.factory("PartyBus", function(_container): PartyBus {
     return new PartyBus();
+  });
+  bottle.factory("Persister", function(_container): Persister {
+    return new Persister();
   });
 }
 

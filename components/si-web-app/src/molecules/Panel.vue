@@ -107,6 +107,10 @@ export default Vue.extend({
           label: "Schematic",
           value: PanelType.SystemSchematic,
         },
+        {
+          label: "Attribute",
+          value: PanelType.Attribute,
+        },
       ];
     },
   },

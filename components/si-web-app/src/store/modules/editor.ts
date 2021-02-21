@@ -16,6 +16,7 @@ export type IEditorContext = IEditorContextApplication;
 
 export interface IEditorContextApplication {
   applicationId: string;
+  contextType: "applicationSystem";
 }
 
 export interface EditorStore {

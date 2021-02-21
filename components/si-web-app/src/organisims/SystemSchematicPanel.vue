@@ -17,7 +17,7 @@
         class="pl-1"
       />
       <NodeAddMenu
-        class="pl-1"
+        class="z-30 pl-1"
         @selected="nodeCreate"
         :disabled="!isEditable"
       />
@@ -31,7 +31,7 @@
       ></CodeLoader>
       <div class="relative w-full h-full" v-else>
         <div
-          class="z-20 flex flex-col absolute bg-transparent"
+          class="absolute z-20 flex flex-col bg-transparent"
           v-if="schematic"
         >
           <div
@@ -41,13 +41,13 @@
           >
             <button
               @click="nodeSelect(schematicNode)"
-              class="bg-gray-600 rounded-sm p-1"
+              class="p-1 bg-gray-600 rounded-sm"
             >
               {{ schematicNode.object.name }} - {{ schematicNode.node.id }}
             </button>
           </div>
         </div>
-        <SiGrid class="z-10 absolute" />
+        <SiGrid class="absolute z-10" />
       </div>
     </template>
   </Panel>
@@ -147,9 +147,7 @@ export default Vue.extend({
     },
   },
   methods: {
-    async nodeSelect(schematicNode: ISchematicNode) {
-      console.log("selected", { schematicNode });
-    },
+    async nodeSelect(schematicNode: ISchematicNode) {},
     async nodeCreate(entityObject: EntityObject) {
       let reply: INodeCreateReply = await this.$store.dispatch(
         "editor/nodeCreate",
@@ -178,6 +176,7 @@ export default Vue.extend({
           if (reply.error) {
             PanelEventBus.$emit("editor-error-message", reply.error.message);
           }
+          console.log("made it here", { request });
         }
       }
       this.isLoading = false;
