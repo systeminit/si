@@ -376,7 +376,75 @@ pub fn editor_dal(
     nats_conn: &NatsConn,
     veritech: &Veritech,
 ) -> BoxedFilter<(impl warp::Reply,)> {
-    editor_dal_node_create_for_application(pg.clone(), nats_conn.clone(), veritech.clone()).boxed()
+    editor_dal_node_create_for_application(pg.clone(), nats_conn.clone(), veritech.clone())
+        .or(editor_dal_entity_set_property(
+            pg.clone(),
+            nats_conn.clone(),
+            veritech.clone(),
+        ))
+        .or(editor_dal_entity_set_property_bulk(
+            pg.clone(),
+            nats_conn.clone(),
+            veritech.clone(),
+        ))
+        .or(editor_dal_entity_set_name(
+            pg.clone(),
+            nats_conn.clone(),
+            veritech.clone(),
+        ))
+        .boxed()
+}
+
+pub fn editor_dal_entity_set_name(
+    pg: PgPool,
+    nats_conn: NatsConn,
+    veritech: Veritech,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("editorDal" / "entitySetName")
+        .and(warp::post())
+        .and(with_pg(pg))
+        .and(with_nats_conn(nats_conn))
+        .and(with_veritech(veritech))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::body::json::<handlers::editor_dal::EntitySetNameRequest>())
+        .and_then(handlers::editor_dal::entity_set_name)
+        .boxed()
+}
+
+pub fn editor_dal_entity_set_property(
+    pg: PgPool,
+    nats_conn: NatsConn,
+    veritech: Veritech,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("editorDal" / "entitySetProperty")
+        .and(warp::post())
+        .and(with_pg(pg))
+        .and(with_nats_conn(nats_conn))
+        .and(with_veritech(veritech))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::body::json::<
+            handlers::editor_dal::EntitySetPropertyRequest,
+        >())
+        .and_then(handlers::editor_dal::entity_set_property)
+        .boxed()
+}
+
+pub fn editor_dal_entity_set_property_bulk(
+    pg: PgPool,
+    nats_conn: NatsConn,
+    veritech: Veritech,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("editorDal" / "entitySetPropertyBulk")
+        .and(warp::post())
+        .and(with_pg(pg))
+        .and(with_nats_conn(nats_conn))
+        .and(with_veritech(veritech))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::body::json::<
+            handlers::editor_dal::EntitySetPropertyBulkRequest,
+        >())
+        .and_then(handlers::editor_dal::entity_set_property_bulk)
+        .boxed()
 }
 
 pub fn editor_dal_node_create_for_application(

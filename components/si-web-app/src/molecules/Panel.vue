@@ -1,7 +1,7 @@
 <template>
-  <div class="flex flex-col w-full h-full">
+  <div class="flex flex-col w-full h-full overscroll-none">
     <div
-      class="flex flex-row w-full bg-black items-center"
+      class="flex flex-row items-center w-full bg-black"
       style="height: 3rem; min-height: 3rem"
     >
       <div class="flex justify-start">
@@ -17,8 +17,8 @@
       <div class="flex justify-start">
         <slot name="menuButtons"> </slot>
       </div>
-      <div class="flex flex-row justify-end flex-grow items-center">
-        <div class="pr-2 items-center h-full flex">
+      <div class="flex flex-row items-center justify-end flex-grow">
+        <div class="flex items-center h-full pr-2">
           <button
             data-testid="minimize-container"
             @click="minimizeContainer"
@@ -34,7 +34,7 @@
             <Maximize2Icon />
           </button>
         </div>
-        <div class="pr-2 items-center h-full flex">
+        <div class="flex items-center h-full pr-2">
           <button
             data-testid="minimize-full"
             @click="minimizeFull"

@@ -4,13 +4,14 @@ use std::collections::HashMap;
 use thiserror::Error;
 use tracing::{error, info, trace};
 
-use crate::data::{NatsConn, NatsTxn, NatsTxnError, PgPool, PgTxn};
-
-use crate::models::{
-    list_model, next_update_clock, Edge, EdgeError, EdgeKind, EncryptedSecret, ListReply,
-    ModelError, OrderByDirection, PageToken, Query, Resource, ResourceError, SecretError,
-    SiChangeSet, SiChangeSetError, SiChangeSetEvent, SiStorable, System, SystemError,
-    UpdateClockError, Vertex,
+use crate::{
+    data::{NatsConn, NatsTxn, NatsTxnError, PgPool, PgTxn},
+    models::{
+        list_model, next_update_clock, Edge, EdgeError, EdgeKind, EncryptedSecret, ListReply,
+        ModelError, OrderByDirection, PageToken, Query, Resource, ResourceError, SecretError,
+        SiChangeSet, SiChangeSetError, SiChangeSetEvent, SiStorable, System, SystemError,
+        UpdateClockError, Vertex,
+    },
 };
 
 const ENTITY_GET_ANY: &str = include_str!("../data/queries/entity_get_any.sql");
@@ -419,6 +420,21 @@ impl Entity {
         Ok(object)
     }
 
+    pub async fn get_relevant_head_or_base(
+        txn: &PgTxn<'_>,
+        id: impl AsRef<str>,
+        change_set_id: Option<&String>,
+    ) -> EntityResult<Entity> {
+        let id = id.as_ref();
+        let change_set_id = change_set_id.as_ref();
+        let object = if let Some(change_set_id) = change_set_id {
+            Entity::get_head_or_base(&txn, &id, &change_set_id).await?
+        } else {
+            Entity::get_head(&txn, &id).await?
+        };
+        Ok(object)
+    }
+
     pub async fn get_head_or_base(
         txn: &PgTxn<'_>,
         id: impl AsRef<str>,
@@ -445,7 +461,7 @@ impl Entity {
     pub async fn get_relevant_projection_or_head(
         txn: &PgTxn<'_>,
         entity_id: impl AsRef<str>,
-        change_set_id: Option<String>,
+        change_set_id: Option<&String>,
     ) -> EntityResult<Option<Entity>> {
         let entity_check = if let Some(change_set_id) = change_set_id {
             match Entity::get_projection_or_head(&txn, &entity_id, &change_set_id).await {

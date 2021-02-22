@@ -435,6 +435,7 @@ export default Vue.extend({
         false,
       );
       this.$emit("update-query-param", { editMode: false });
+      this.$emit("remove-query-param", ["editSessionId", "editMode"]);
     },
     async finishEditSession() {
       await this.$store.dispatch(
@@ -445,6 +446,7 @@ export default Vue.extend({
         this.applicationContextCtx.dispatchPath("finishEditSession"),
       );
       this.$emit("update-query-param", { editMode: false });
+      this.$emit("remove-query-param", ["editSessionId", "editMode"]);
     },
     async setEditorErrorMessage(error: string) {
       this.editorErrorMessage = error;

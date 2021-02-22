@@ -32,10 +32,10 @@ export class UpdateTracker {
   async dispatch(objectType: string, payload: any) {
     let bottle = Bottle.pop("default");
     let store: SiVuexStore = bottle.container.Store;
-    if (this.storePaths[objectType]) {
-      for (const storePath of this.storePaths[objectType].values()) {
-        store.dispatch(`${storePath}/from${objectType}`, payload);
-      }
-    }
+    //if (this.storePaths[objectType]) {
+    //  for (const storePath of this.storePaths[objectType].values()) {
+    //    store.dispatch(`${storePath}/from${objectType}`, payload);
+    //  }
+    //}
   }
 }

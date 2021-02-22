@@ -147,7 +147,9 @@ export default Vue.extend({
     },
   },
   methods: {
-    async nodeSelect(schematicNode: ISchematicNode) {},
+    async nodeSelect(schematicNode: ISchematicNode) {
+      this.schematicStoreCtx.dispatch("nodeSelect", schematicNode);
+    },
     async nodeCreate(entityObject: EntityObject) {
       let reply: INodeCreateReply = await this.$store.dispatch(
         "editor/nodeCreate",
@@ -176,7 +178,6 @@ export default Vue.extend({
           if (reply.error) {
             PanelEventBus.$emit("editor-error-message", reply.error.message);
           }
-          console.log("made it here", { request });
         }
       }
       this.isLoading = false;

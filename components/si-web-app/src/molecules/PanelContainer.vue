@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-full w-full" :id="vueHolderContainerRefName()">
+  <div class="flex flex-col w-full h-full" :id="vueHolderContainerRefName()">
     <!-- panel container -->
     <div :id="panelContainerRefName()" :class="panelContainerClasses()">
       <!-- panel holder -->
@@ -31,6 +31,7 @@
         <!-- resizer -->
         <div
           :class="resizerHolderClasses()"
+          style="min-width: 10px; min-height: 10px;"
           v-if="panelIndex != panelContainer.panels.length - 1"
         >
           <div
@@ -476,9 +477,11 @@ export default Vue.extend({
       let styles: Record<string, any> = {};
       if (this.panelContainer.orientation == "column") {
         styles["height"] = `${RESIZER_SIZE}px`;
+        styles["min-height"] = `${RESIZER_SIZE}px`;
         styles["cursor"] = "row-resize";
       } else {
         styles["width"] = `${RESIZER_SIZE}px`;
+        styles["min-width"] = `${RESIZER_SIZE}px`;
         styles["cursor"] = "col-resize";
       }
       return styles;
@@ -530,7 +533,7 @@ export default Vue.extend({
     },
     panelStyles(): string {
       let styles: string;
-      styles = `height: 100%; width: 100%;`;
+      styles = `height: ${100 - RESIZER_HEIGHT_PERCENTAGE}%; width: 100%;`;
       return styles;
     },
     minimizePanel(event: IMaximized) {

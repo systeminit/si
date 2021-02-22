@@ -16,24 +16,61 @@
           :options="objectList"
           v-model="selectedObjectId"
           class="pl-1"
+          :disabled="selectionLocked"
         />
       </div>
-      <button class="pl-1 focus:outline-none">
-        <LockIcon size="1.1x" />
+      <button class="pl-1 focus:outline-none" @click="toggleSelectionLock()">
+        <UnlockIcon size="1.1x" v-if="selectionLocked" />
+        <LockIcon size="1.1x" v-else />
       </button>
-      <button class="pl-1 focus:outline-none">
+      <button
+        class="pl-1 focus:outline-none"
+        :class="attributeViewClasses()"
+        @click="switchToAttributeView()"
+      >
         <DiscIcon size="1.1x" />
       </button>
-      <button class="pl-1 focus:outline-none">
+      <button
+        class="pl-1 focus:outline-none"
+        :class="codeViewClasses()"
+        @click="switchToCodeView()"
+      >
         <CodeIcon size="1.1x" />
       </button>
-      <button class="pl-1 text-white focus:outline-none">
+      <button
+        class="pl-1 text-white focus:outline-none"
+        :class="eventViewClasses()"
+        @click="switchToEventView()"
+      >
         <RadioIcon size="1.1x" />
       </button>
+      <!--
+      <button
+        class="pl-1 text-white focus:outline-none"
+        :class="refreshClasses"
+        @click="refreshObject()"
+        :disabled="!needsRefresh"
+      >
+        <RefreshCwIcon size="1.1x" />
+      </button>
+        -->
     </template>
     <template v-slot:content>
-      <div class="flex w-full" v-if="currentObject">
-        <VueJsonPretty :data="currentObject" />
+      <div class="flex flex-row w-full h-full" v-if="currentObject">
+        <AttributeViewer
+          v-if="activeView == 'attribute'"
+          :attributeStoreCtx="attributeStoreCtx"
+        />
+        <CodeViewer
+          v-else-if="activeView == 'code'"
+          :attributeStoreCtx="attributeStoreCtx"
+        />
+        <div v-else>
+          Not implemented
+          <div>
+            <VueJsonPretty :data="currentObject" />
+          </div>
+        </div>
       </div>
       <div class="flex w-full" v-else>
         <h2>No object selected</h2>
@@ -47,7 +84,11 @@ import Vue from "vue";
 
 import Panel from "@/molecules/Panel.vue";
 import { InstanceStoreContext, registerStore, unregisterStore } from "@/store";
-import { attributeStore, AttributeStore } from "@/store/modules/attribute";
+import {
+  attributeStore,
+  AttributeStore,
+  attributeStoreSubscribeEvents,
+} from "@/store/modules/attribute";
 import {
   AttributeDal,
   IGetEntityReply,
@@ -60,17 +101,28 @@ import { SessionStore } from "@/store/modules/session";
 import { EditorStore } from "@/store/modules/editor";
 import { PanelEventBus } from "@/atoms/PanelEventBus";
 import SiSelect from "@/atoms/SiSelect.vue";
-import { LockIcon, CodeIcon, RadioIcon, DiscIcon } from "vue-feather-icons";
+import {
+  UnlockIcon,
+  LockIcon,
+  CodeIcon,
+  RadioIcon,
+  DiscIcon,
+} from "vue-feather-icons";
 import VueJsonPretty from "vue-json-pretty";
 import "vue-json-pretty/lib/styles.css";
 import { Entity } from "@/api/sdf/model/entity";
 import Bottle from "bottlejs";
 import { Persister } from "@/api/persister";
+import { SchematicNodeSelectedEvent } from "@/api/partyBus/SchematicNodeSelectedEvent";
+import AttributeViewer from "@/organisims/AttributeViewer.vue";
+import CodeViewer from "@/organisims/CodeViewer.vue";
 
 interface IData {
   isLoading: boolean;
   attributeStoreCtx: InstanceStoreContext<AttributeStore>;
   selectedObjectId: string;
+  selectionIsLocked: boolean;
+  activeView: "attribute" | "code" | "event";
 }
 
 export default Vue.extend({
@@ -88,14 +140,17 @@ export default Vue.extend({
     RadioIcon,
     CodeIcon,
     LockIcon,
+    UnlockIcon,
     VueJsonPretty,
+    AttributeViewer,
+    CodeViewer,
   },
   data(): IData {
     let attributeStoreCtx: InstanceStoreContext<AttributeStore> = new InstanceStoreContext(
       {
         storeName: "attribute",
         componentId: "attributePanel",
-        instanceId: "0",
+        instanceId: this.panelRef,
       },
     );
     let bottle = Bottle.pop("default");
@@ -108,6 +163,8 @@ export default Vue.extend({
         isLoading: false,
         selectedObjectId: "",
         attributeStoreCtx,
+        selectionIsLocked: true,
+        activeView: "attribute",
       };
     }
   },
@@ -120,6 +177,9 @@ export default Vue.extend({
       sessionContext: (state: any): SessionStore["sessionContext"] =>
         state.session.sessionContext,
     }),
+    selectionLocked(): AttributeStore["selectionLocked"] {
+      return this.attributeStoreCtx.state.selectionLocked;
+    },
     objectList(): AttributeStore["objectList"] {
       if (this.attributeStoreCtx) {
         return this.attributeStoreCtx.state.objectList;
@@ -134,8 +194,60 @@ export default Vue.extend({
         return null;
       }
     },
+    needsRefresh(): AttributeStore["needsRefresh"] {
+      if (this.attributeStoreCtx) {
+        return this.attributeStoreCtx.state.needsRefresh;
+      } else {
+        return false;
+      }
+    },
+    refreshClasses(): Record<string, any> {
+      if (this.needsRefresh) {
+        return { "text-yellow-300": true };
+      } else {
+        return { "text-gray-700": true };
+      }
+    },
   },
   methods: {
+    async refreshObject() {
+      let reply: IGetEntityReply = await this.attributeStoreCtx.dispatch(
+        "refreshEntity",
+      );
+      if (reply.error) {
+        PanelEventBus.$emit("editor-error-message", reply.error.message);
+      }
+    },
+    viewClasses(view: IData["activeView"]): Record<string, any> {
+      if (view == this.activeView) {
+        return { "text-blue-300": true };
+      } else {
+        return {};
+      }
+    },
+    attributeViewClasses(): Record<string, any> {
+      return this.viewClasses("attribute");
+    },
+    codeViewClasses(): Record<string, any> {
+      return this.viewClasses("code");
+    },
+    eventViewClasses(): Record<string, any> {
+      return this.viewClasses("event");
+    },
+    switchToCodeView() {
+      this.activeView = "code";
+    },
+    switchToAttributeView() {
+      this.activeView = "attribute";
+    },
+    switchToEventView() {
+      this.activeView = "event";
+    },
+    async toggleSelectionLock() {
+      this.selectionIsLocked = await this.attributeStoreCtx.dispatch(
+        "toggleSelectionLocked",
+      );
+    },
     async loadObject() {
       this.isLoading = true;
       let request: IGetEntityRequest;
@@ -206,7 +318,11 @@ export default Vue.extend({
     },
   },
   async created() {
-    registerStore(this.attributeStoreCtx, attributeStore);
+    registerStore(
+      this.attributeStoreCtx,
+      attributeStore,
+      attributeStoreSubscribeEvents,
+    );
   },
   async mounted() {
     if (this.sessionContext) {
@@ -215,9 +331,15 @@ export default Vue.extend({
     if (this.selectedObjectId) {
       await this.loadObject();
     }
+    if (!this.selectionIsLocked) {
+      this.toggleSelectionLock();
+    }
   },
   async beforeDestroy() {
     unregisterStore(this.attributeStoreCtx);
+    let bottle = Bottle.pop("default");
+    let persister: Persister = bottle.container.Persister;
+    persister.removeData(`${this.panelRef}-data`);
   },
   watch: {
     async currentChangeSet() {
