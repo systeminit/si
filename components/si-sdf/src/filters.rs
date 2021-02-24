@@ -1,17 +1,16 @@
+use crate::{
+    data::{EventLogFS, NatsConn, PgPool},
+    handlers, models,
+    veritech::Veritech,
+};
 use sodiumoxide::crypto::secretbox;
 use warp::{filters::BoxedFilter, Filter};
-
-use crate::data::{EventLogFS, NatsConn, PgPool};
-use crate::veritech::Veritech;
-
-use crate::handlers;
-use crate::models::{self, OutputLineStream};
 
 pub fn api(
     pg: &PgPool,
     nats_conn: &NatsConn,
     veritech: &Veritech,
-    event_log_fs: &EventLogFS,
+    _event_log_fs: &EventLogFS,
     secret_key: &secretbox::Key,
 ) -> BoxedFilter<(impl warp::Reply,)> {
     //billing_accounts(pg, nats_conn, veritech)
@@ -936,11 +935,11 @@ fn with_nats_conn(
     warp::any().map(move || nats_conn.clone())
 }
 
-fn with_event_log_fs(
-    event_log_fs: EventLogFS,
-) -> impl Filter<Extract = (EventLogFS,), Error = std::convert::Infallible> + Clone {
-    warp::any().map(move || event_log_fs.clone())
-}
+// fn with_event_log_fs(
+//     event_log_fs: EventLogFS,
+// ) -> impl Filter<Extract = (EventLogFS,), Error = std::convert::Infallible> + Clone {
+//     warp::any().map(move || event_log_fs.clone())
+// }
 
 fn with_veritech(
     veritech: Veritech,
@@ -954,8 +953,8 @@ fn with_secret_key(
     warp::any().map(move || secret_key.clone())
 }
 
-fn with_string(
-    thingy: String,
-) -> impl Filter<Extract = (String,), Error = std::convert::Infallible> + Clone {
-    warp::any().map(move || thingy.clone())
-}
+// fn with_string(
+//     thingy: String,
+// ) -> impl Filter<Extract = (String,), Error = std::convert::Infallible> + Clone {
+//     warp::any().map(move || thingy.clone())
+// }

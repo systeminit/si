@@ -1,8 +1,7 @@
 use crate::{
-    data::{NatsConn, PgPool},
+    data::PgPool,
     handlers::{authenticate, authorize, validate_tenancy, HandlerError, LabelListItem},
-    models::{Edge, EdgeKind, Entity, Node, Schematic},
-    veritech::Veritech,
+    models::{Edge, EdgeKind, Entity},
 };
 use serde::{Deserialize, Serialize};
 

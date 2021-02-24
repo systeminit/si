@@ -122,7 +122,7 @@ impl Schematic {
         txn: &PgTxn<'_>,
         root_object_id: impl AsRef<str>,
         workspace_id: impl AsRef<str>,
-        system_id: impl AsRef<str>,
+        _system_id: impl AsRef<str>,
         change_set_id: Option<String>,
         edge_kinds: Vec<EdgeKind>,
     ) -> SchematicResult<Schematic> {
