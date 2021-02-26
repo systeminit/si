@@ -11,7 +11,7 @@
       :panelContainer="panelContainer"
       parentPrefix="root"
       :index="panelContainerIndex"
-      @maximize-full="maximizeFull($event)"
+      @maximize-full="maximizePanelFull($event)"
     />
   </div>
 </template>
@@ -206,7 +206,11 @@ export default Vue.extend({
         let panelRef = this.maximizedData.panelRef;
         let panelElem = document.getElementById(panelRef) as HTMLElement;
         panelElem.classList.remove("absolute");
-        panelElem.classList.remove("z-100");
+
+        // panelElem.classList.remove("z-100");
+        panelElem.nextElementSibling!.classList.remove("hidden");
+        panelElem.nextElementSibling!.classList.remove("overflow-hidden");
+
         let originalStyle = ogPanelData.style;
         if (originalStyle) {
           panelElem.setAttribute("style", originalStyle);
@@ -252,7 +256,15 @@ export default Vue.extend({
         panelTreeRootElem.classList.add("relative");
         panelTreeRootElem.prepend(panelElem);
         panelElem.classList.add("absolute");
-        panelElem.classList.add("z-100");
+
+        // Hide the other panels
+        // panelElem.classList.add("z-100");
+
+        // Should loop over all sibling. We only have one for now so ....
+        // We should do this directly at the component level instead of here
+        panelElem.nextElementSibling!.classList.add("hidden");
+        panelElem.nextElementSibling!.classList.add("overflow-hidden");
+
         panelElem.setAttribute(
           "style",
           `position: absolute; width: 100%; height: 100%;`,

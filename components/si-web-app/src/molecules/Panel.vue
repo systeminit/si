@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col w-full h-full overscroll-none">
+  <div class="flex flex-col w-full h-full" :class="panelVisibilityClasses()">
     <div
       class="flex flex-row items-center w-full bg-black"
       style="height: 3rem; min-height: 3rem"
@@ -71,6 +71,7 @@ interface IData {
   selectedPanelType: PanelType;
   maximizedFull: boolean;
   maximizedContainer: boolean;
+  isVisible: boolean;
 }
 
 export default Vue.extend({
@@ -94,6 +95,7 @@ export default Vue.extend({
       selectedPanelType: this.initialPanelType,
       maximizedFull: this.initialMaximizedFull,
       maximizedContainer: this.initialMaximizedContainer,
+      isVisible: true,
     };
   },
   computed: {
@@ -117,6 +119,9 @@ export default Vue.extend({
   methods: {
     changePanelType() {
       this.$emit("change-panel", this.selectedPanelType);
+    },
+    togglePanelVisibility() {
+      this.isVisible = !this.isVisible;
     },
     maximizeContainer() {
       this.maximizedContainer = true;
@@ -149,6 +154,12 @@ export default Vue.extend({
         panelRef: this.panelRef,
         panelContainerRef: this.panelContainerRef,
       });
+    },
+    panelVisibilityClasses(): Record<string, any> {
+      let classes: Record<string, any> = {};
+      classes["hidden"] = !this.isVisible;
+      classes["overflow-hidden"] = !this.isVisible;
+      return classes;
     },
   },
 });

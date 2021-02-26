@@ -106,6 +106,7 @@ interface IData {
   originalMaximizedElementData: {
     style: string | null;
   };
+  isVisible: boolean;
 }
 
 export default Vue.extend({
@@ -127,6 +128,7 @@ export default Vue.extend({
       },
       maximizedData: null,
       putBackTo: {},
+      isVisible: true,
     };
   },
   mounted() {
@@ -508,6 +510,9 @@ export default Vue.extend({
         classes["flex"] = true;
         classes["flex-row"] = true;
       }
+      // Panel visibility
+      classes["hidden"] = !this.isVisible;
+      classes["overflow-hidden"] = !this.isVisible;
       return classes;
     },
     panelHolderClasses(panel: Panel): Record<string, any> {
@@ -545,7 +550,11 @@ export default Vue.extend({
         let panelRef = this.maximizedData.panelRef;
         let panelElem = document.getElementById(panelRef) as HTMLElement;
         panelElem.classList.remove("absolute");
-        panelElem.classList.remove("z-90");
+
+        // panelElem.classList.remove("z-90");
+        panelElem.nextElementSibling!.classList.remove("hidden");
+        panelElem.nextElementSibling!.classList.remove("overflow-hidden");
+
         let originalStyle = ogPanelData.style;
         if (originalStyle) {
           panelElem.setAttribute("style", originalStyle);
@@ -594,12 +603,22 @@ export default Vue.extend({
         panelRootElem.classList.add("relative");
         panelRootElem.prepend(panelElem);
         panelElem.classList.add("absolute");
-        panelElem.classList.add("z-90");
+
+        // Hide the other panels
+        // panelElem.classList.add("z-90");
+        // Should loop over all sibling. We only have one for now so ....
+        // We should do this directly at the component level instead of here
+        panelElem.nextElementSibling!.classList.add("hidden");
+        panelElem.nextElementSibling!.classList.add("overflow-hidden");
+
         panelElem.setAttribute(
           "style",
           `position: absolute; width: 100%; height: 100%;`,
         );
       }
+    },
+    togglePanelVisibility() {
+      this.isVisible = !this.isVisible;
     },
   },
 });
