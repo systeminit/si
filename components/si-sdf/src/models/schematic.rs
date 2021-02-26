@@ -155,7 +155,7 @@ impl Schematic {
                 let relevant_successor_object = Entity::get_relevant_projection_or_head(
                     &txn,
                     successor_entity_id,
-                    change_set_id.clone(),
+                    change_set_id.as_ref(),
                 )
                 .await?;
                 if let Some(successor_entity) = relevant_successor_object {

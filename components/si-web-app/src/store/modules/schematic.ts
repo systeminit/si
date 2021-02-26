@@ -12,6 +12,7 @@ import {
 } from "@/api/sdf/dal/schematicDal";
 import { SchematicNodeSelectedEvent } from "@/api/partyBus/SchematicNodeSelectedEvent";
 import { NodeCreatedEvent } from "@/api/partyBus/NodeCreatedEvent";
+import { EntitySetNameEvent } from "@/api/partyBus/EntitySetNameEvent";
 
 export interface SchematicStore {
   kind: SchematicKind | null;
@@ -21,7 +22,10 @@ export interface SchematicStore {
   lastRequest: IGetApplicationSystemSchematicRequest | null;
 }
 
-export const schematicStoreSubscribeEvents = [NodeCreatedEvent];
+export const schematicStoreSubscribeEvents = [
+  NodeCreatedEvent,
+  EntitySetNameEvent,
+];
 
 export const schematicStore: Module<SchematicStore, any> = {
   namespaced: true,
@@ -54,6 +58,11 @@ export const schematicStore: Module<SchematicStore, any> = {
         await dispatch("loadApplicationSystemSchematic", state.lastRequest);
       }
     },
+    async onEntitySetName({ state, dispatch }, _event: NodeCreatedEvent) {
+      if (state.lastRequest) {
+        await dispatch("loadApplicationSystemSchematic", state.lastRequest);
+      }
+    },
     setRootObjectId({ commit }, payload: SchematicStore["rootObjectId"]) {
       commit("setRootObjectId", payload);
     },
@@ -69,8 +78,10 @@ export const schematicStore: Module<SchematicStore, any> = {
       return reply;
     },
     async nodeSelect({ commit }, schematicNode: ISchematicNode) {
-      commit("selectedNode", schematicNode);
-      new SchematicNodeSelectedEvent({ schematicNode: schematicNode });
+      commit("setSelectedNode", schematicNode);
+      new SchematicNodeSelectedEvent({
+        schematicNode: schematicNode,
+      }).publish();
     },
   },
 };

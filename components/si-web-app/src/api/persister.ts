@@ -16,6 +16,10 @@ export class Persister {
     this.storage = window.sessionStorage;
   }
 
+  removeData(key: string) {
+    this.storage.removeItem(key);
+  }
+
   setData(key: string, data: any) {
     this.storage.setItem(key, JSON.stringify(data));
   }

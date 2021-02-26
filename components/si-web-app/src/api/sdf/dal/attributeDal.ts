@@ -43,11 +43,13 @@ export interface IGetEntityRequest {
 
 export interface IGetEntityReplySuccess {
   entity: Entity;
+  baseEntity: Entity;
   error?: never;
 }
 
 export interface IGetEntityReplyFailure {
   entity?: never;
+  baseEntity?: never;
   error: SDFError;
 }
 

@@ -69,7 +69,7 @@ pub async fn get_object_list(
         if let Some(entity) = Entity::get_relevant_projection_or_head(
             &txn,
             &edge.head_vertex.object_id,
-            request.change_set_id.clone(),
+            request.change_set_id.as_ref(),
         )
         .await
         .map_err(HandlerError::from)?
@@ -97,6 +97,7 @@ pub struct GetEntityRequest {
 #[serde(rename_all = "camelCase")]
 pub struct GetEntityReply {
     pub entity: Entity,
+    pub base_entity: Entity,
 }
 
 pub async fn get_entity(
@@ -133,12 +134,23 @@ pub async fn get_entity(
         .await?;
     }
 
-    let entity =
-        Entity::get_relevant_projection_or_head(&txn, &request.entity_id, request.change_set_id)
-            .await
-            .map_err(HandlerError::from)?
-            .ok_or(HandlerError::NotFound)?;
+    let entity = Entity::get_relevant_projection_or_head(
+        &txn,
+        &request.entity_id,
+        request.change_set_id.as_ref(),
+    )
+    .await
+    .map_err(HandlerError::from)?
+    .ok_or(HandlerError::NotFound)?;
 
-    let reply = GetEntityReply { entity };
+    let base_entity =
+        Entity::get_relevant_head_or_base(&txn, &request.entity_id, request.change_set_id.as_ref())
+            .await
+            .map_err(HandlerError::from)?;
+
+    let reply = GetEntityReply {
+        entity,
+        base_entity,
+    };
     Ok(warp::reply::json(&reply))
 }

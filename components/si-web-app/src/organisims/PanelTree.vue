@@ -153,7 +153,6 @@ export default Vue.extend({
         }
       }
       PanelEventBus.$emit("panel-created", event);
-      console.log("create pc", { pc, panelContainers: this.panelContainers });
     },
     // Bug - panel delete does the wrong panel, always the last one.
     deletePanel(event: { panelRef: string }) {
@@ -168,7 +167,6 @@ export default Vue.extend({
         }
         if (x == panelRefParts.length - 1) {
           if (pc.panels.length > 1) {
-            console.log("deleting", { panels: pc.panels, index, event });
             pc.panels.splice(index, 1);
           }
         }
@@ -178,7 +176,6 @@ export default Vue.extend({
     handleShortcut(event: KeyboardEvent) {
       if (this.shortcuts) {
         if (event.altKey && event.shiftKey && event.key == "C") {
-          console.log("num", { num: this.panelContainers[0].panels.length });
           if (this.panelContainers[0].panels.length < 2) {
             this.panelContainers[0].panels.push({
               orientation: "column",

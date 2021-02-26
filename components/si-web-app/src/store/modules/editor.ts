@@ -1,6 +1,14 @@
 import { Module } from "vuex";
 import { EntityObject } from "si-registry/lib/systemComponent";
-import { INodeCreateReply } from "@/api/sdf/dal/editorDal";
+import {
+  INodeCreateReply,
+  IEntitySetPropertyRequest,
+  IEntitySetPropertyReply,
+  IEntitySetNameRequest,
+  IEntitySetNameReply,
+  IEntitySetPropertyBulkRequest,
+  IEntitySetPropertyBulkReply,
+} from "@/api/sdf/dal/editorDal";
 import { SessionStore } from "@/store/modules/session";
 import { ChangeSet } from "@/api/sdf/model/changeSet";
 import { PartyBus } from "@/api/partyBus";
@@ -11,6 +19,8 @@ import { EditSessionCurrentSetEvent } from "@/api/partyBus/editSessionCurrentSet
 import { EditorDal } from "@/api/sdf/dal/editorDal";
 import { NodeKind } from "@/api/sdf/model/node";
 import { NodeCreatedEvent } from "@/api/partyBus/NodeCreatedEvent";
+import { EntityPropertySetEvent } from "@/api/partyBus/EntityPropertySetEvent";
+import { EntitySetNameEvent } from "@/api/partyBus/EntitySetNameEvent";
 
 export type IEditorContext = IEditorContextApplication;
 
@@ -76,6 +86,64 @@ export const editor: Module<EditorStore, any> = {
     async setContext({ commit }, context: EditorStore["context"]) {
       commit("setContext", context);
     },
+    async entitySetName(
+      {},
+      request: IEntitySetNameRequest,
+    ): Promise<IEntitySetNameReply> {
+      let reply = await EditorDal.entitySetName(request);
+      if (!reply.error) {
+        new EntitySetNameEvent({
+          entity: reply.object,
+          entitySetNameRequest: request,
+        }).publish();
+      }
+      return reply;
+    },
+    async entitySetProperty(
+      {},
+      request: IEntitySetPropertyRequest,
+    ): Promise<IEntitySetPropertyReply> {
+      request.path = request.path.slice(2);
+      let reply = await EditorDal.entitySetProperty(request);
+      if (!reply.error) {
+        console.log("set it", {
+          entity: reply.object,
+          entitySetPropertyRequest: request,
+        });
+        new EntityPropertySetEvent({
+          entity: reply.object,
+          entitySetPropertyRequest: request,
+        }).publish();
+      } else {
+        console.log("not sending entity property set event", { reply });
+      }
+      return reply;
+    },
+    async entitySetPropertyBulk(
+      {},
+      request: IEntitySetPropertyBulkRequest,
+    ): Promise<IEntitySetPropertyBulkReply> {
+      for (let property of request.properties) {
+        property.path = property.path.slice(2);
+      }
+      let reply = await EditorDal.entitySetPropertyBulk(request);
+      if (!reply.error) {
+        for (let property of request.properties) {
+          let entitySetPropertyRequest: IEntitySetPropertyRequest = {
+            ...request,
+            ...property,
+          };
+          new EntityPropertySetEvent({
+            entity: reply.object,
+            entitySetPropertyRequest,
+          }).publish();
+        }
+      } else {
+        console.log("not sending entity property set bulk event", { reply });
+      }
+      return reply;
+    },
+
     async nodeCreate(
       { state, rootState },
       entityObject: EntityObject,
