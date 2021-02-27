@@ -1,8 +1,9 @@
-use crate::data::{NatsConn, PgPool};
-use crate::handlers::HandlerError;
-use crate::models::BillingAccount;
-use crate::Veritech;
 use serde::{Deserialize, Serialize};
+
+use si_data::{NatsConn, PgPool};
+use si_model::{BillingAccount, Veritech};
+
+use crate::handlers::HandlerError;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -30,7 +31,7 @@ pub async fn create_billing_account(
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
     let nats = nats_conn.transaction();
 
-    let (billing_account, _user, _group, _organization, _workspace, _public_key, _system) =
+    let (billing_account, _user, _group, _organization, _workspace, _public_key) =
         BillingAccount::signup(
             &pg,
             txn,

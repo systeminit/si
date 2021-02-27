@@ -1,8 +1,7 @@
-use crate::data::{NatsConn, PgPool};
-use crate::handlers::{authenticate, authorize, validate_tenancy, HandlerError, LabelListItem};
-use crate::models::{ChangeSet, EditSession, Entity, System};
-use crate::veritech::Veritech;
+use crate::handlers::{authenticate, authorize, validate_tenancy, HandlerError};
 use serde::{Deserialize, Serialize};
+use si_data::{NatsConn, PgPool};
+use si_model::{application, ApplicationContext, ChangeSet, EditSession, Veritech};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -11,13 +10,7 @@ pub struct GetApplicationContextRequest {
     pub workspace_id: String,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct GetApplicationContextReply {
-    pub application_name: String,
-    pub systems_list: Vec<LabelListItem>,
-    pub open_change_sets_list: Vec<LabelListItem>,
-}
+pub type GetApplicationContextReply = ApplicationContext;
 
 pub async fn get_application_context(
     pg: PgPool,
@@ -28,7 +21,13 @@ pub async fn get_application_context(
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
 
     let claim = authenticate(&txn, &token).await?;
-    authorize(&txn, &claim.user_id, "applicationDal", "listApplications").await?;
+    authorize(
+        &txn,
+        &claim.user_id,
+        "applicationContextDal",
+        "getApplicationContext",
+    )
+    .await?;
     validate_tenancy(
         &txn,
         "workspaces",
@@ -44,25 +43,11 @@ pub async fn get_application_context(
     )
     .await?;
 
-    let application = Entity::get_head(&txn, &request.application_id)
+    let context = application::context(&txn, &request.application_id, &request.workspace_id)
         .await
         .map_err(HandlerError::from)?;
 
-    let systems_list = System::list_as_labels(&txn, &request.workspace_id)
-        .await
-        .map_err(HandlerError::from)?;
-
-    let change_sets_list = ChangeSet::list_as_labels(&txn, &request.workspace_id)
-        .await
-        .map_err(HandlerError::from)?;
-
-    let reply = GetApplicationContextReply {
-        application_name: application.name,
-        systems_list,
-        open_change_sets_list: change_sets_list,
-    };
-
-    Ok(warp::reply::json(&reply))
+    Ok(warp::reply::json(&context))
 }
 
 #[derive(Deserialize, Serialize, Debug)]

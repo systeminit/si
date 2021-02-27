@@ -6,11 +6,10 @@ use si_sdf::handlers::application_dal::{
 };
 
 use crate::filters::session_dal::login_user;
-use crate::models::billing_account::signup_new_billing_account;
-use crate::models::change_set::create_change_set;
-use crate::models::edit_session::create_edit_session;
-use crate::models::entity::create_custom_entity;
-use crate::{generate_fake_name, one_time_setup, TestContext};
+use si_model_test::{
+    create_change_set, create_custom_entity, create_edit_session, generate_fake_name,
+    one_time_setup, signup_new_billing_account, TestContext,
+};
 
 #[tokio::test]
 async fn create_application() {
@@ -33,7 +32,6 @@ async fn create_application() {
         .path("/applicationDal/createApplication")
         .json(&CreateApplicationRequest {
             workspace_id: nba.workspace.id.clone(),
-            system_id: nba.system.id.clone(),
             application_name: app_name.clone(),
         })
         .reply(&filter)
@@ -60,7 +58,7 @@ async fn list_applications() {
 
     let txn = conn.transaction().await.expect("cannot get transaction");
     let mut change_set = create_change_set(&txn, &nats, &nba).await;
-    let edit_session = create_edit_session(&txn, &nats, &nba, &change_set).await;
+    let mut edit_session = create_edit_session(&txn, &nats, &nba, &change_set).await;
     txn.commit().await.expect("cannot commit txn");
 
     let txn = conn.transaction().await.expect("cannot get transaction");
@@ -73,7 +71,6 @@ async fn list_applications() {
         &nba,
         &change_set,
         &edit_session,
-        &nba.system,
         "application",
     )
     .await;
@@ -86,14 +83,18 @@ async fn list_applications() {
         &nba,
         &change_set,
         &edit_session,
-        &nba.system,
         "application",
     )
     .await;
-    change_set
-        .execute(&pg, &txn, &nats_conn, &nats, &veritech, false, None)
+
+    edit_session
+        .save_session(&txn)
         .await
-        .expect("cannot execute changeset");
+        .expect("cannot save edit session");
+    change_set
+        .apply(&txn)
+        .await
+        .expect("cannot apply changeset");
     txn.commit().await.expect("cannot commit txn");
 
     let filter = api(pg, nats_conn, veritech, event_log_fs, secret_key);

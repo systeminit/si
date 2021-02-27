@@ -49,13 +49,15 @@ impl Default for Nats {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Veritech {
-    pub url: String,
+    pub ws_url: String,
+    pub http_url: String,
 }
 
 impl Default for Veritech {
     fn default() -> Self {
         Self {
-            url: "ws://localhost:5157".to_string(),
+            ws_url: "ws://localhost:5157".to_string(),
+            http_url: "http://localhost:5157".to_string(),
         }
     }
 }

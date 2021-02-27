@@ -1,21 +1,21 @@
 use crate::cli::server::command::change_run::{ChangeRun, ChangeRunError};
-use crate::data::{NatsConn, PgPool, PgTxn};
-use crate::models::{
-    ApiClaim, ChangeSetError, EditSessionError, EntityError, Event, EventError, EventLog, OpError,
-    OutputLine,
-};
-use crate::veritech::Veritech;
-use futures::{FutureExt, StreamExt};
+use futures::{FutureExt, StreamExt as FuturesStreamExt};
 use serde::{Deserialize, Serialize};
+use si_data::{NatsConn, PgPool, PgTxn};
+use si_model::{
+    ApiClaim, ChangeSetError, EditSessionError, EntityError, Event, EventError, EventLog,
+    OutputLine, Veritech,
+};
 use std::sync::Arc;
 use thiserror::Error;
 use tokio::sync::mpsc::{self, UnboundedSender};
 use tokio::sync::RwLock;
-use tracing::{error, trace, warn};
+use tokio_stream::wrappers::UnboundedReceiverStream;
 use warp::ws::{Message, WebSocket};
 
 pub mod command;
 pub use crate::cli::server::command::*;
+pub use crate::update::WebsocketToken;
 
 #[derive(Error, Debug)]
 pub enum ServerError {
@@ -31,14 +31,14 @@ pub enum ServerError {
     ChangeSet(#[from] ChangeSetError),
     #[error("editSession error: {0}")]
     EditSession(#[from] EditSessionError),
-    #[error("changeset op error: {0}")]
-    Op(#[from] OpError),
-    #[error("pg error: {0}")]
-    TokioPg(#[from] tokio_postgres::Error),
-    #[error("pg error: {0}")]
-    Deadpool(#[from] deadpool_postgres::PoolError),
-    #[error("nats txn error: {0}")]
-    NatsTxn(#[from] crate::data::NatsTxnError),
+    //#[error("changeset op error: {0}")]
+    //Op(#[from] OpError),
+    //#[error("pg error: {0}")]
+    //TokioPg(#[from] tokio_postgres::Error),
+    //#[error("pg error: {0}")]
+    //Deadpool(#[from] deadpool_postgres::PoolError),
+    //#[error("nats txn error: {0}")]
+    //NatsTxn(#[from] crate::data::NatsTxnError),
 }
 
 pub type ServerResult<T> = Result<T, ServerError>;
@@ -91,6 +91,7 @@ pub enum CliMessage {
     OutputLine(OutputLine),
 }
 
+#[allow(dead_code)]
 impl CommandContext {
     fn new(
         billing_account_id: impl Into<String>,
@@ -119,8 +120,12 @@ impl CommandContext {
             Some(Command::ChangeRun(ref cr)) => {
                 cr.execute(pg, nats_conn, veritech, self).await?;
             }
-            Some(Command::Stop(msg)) => warn!("we shouldn't execute a stop command! bug: {}", msg),
-            None => warn!("execute called when no command set; bug!"),
+            Some(Command::Stop(msg)) => {
+                dbg!("we shouldn't execute a stop command! bug: {}", &msg);
+            }
+            None => {
+                dbg!("execute called when no command set; bug!");
+            }
         }
         Ok(())
     }
@@ -165,6 +170,7 @@ pub async fn websocket_run(
     //    mpsc::UnboundedReceiver<Result<Message, warp::Error>>,
     //) = mpsc::unbounded_channel();
     let (outbound_ws_tx, rx) = mpsc::unbounded_channel();
+    let rx = UnboundedReceiverStream::new(rx);
 
     let ctx = CommandContext::new(&claim.billing_account_id, &claim.api_client_id);
 
@@ -177,9 +183,11 @@ pub async fn websocket_run(
             // this one and warn on all others
             match err.to_string().as_ref() {
                 "Connection closed normally" => {
-                    trace!("ws cli client send closed normally; err={:?}", err)
+                    dbg!("ws cli client send closed normally; err={:?}", err);
                 }
-                _ => warn!("ws cli client send error; err={}, claim={:?}", err, claim2),
+                _ => {
+                    dbg!("ws cli client send error; err={}, claim={:?}", err, claim2);
+                }
             }
         }
     }));
@@ -192,20 +200,20 @@ pub async fn websocket_run(
         .subscribe(&format!("{}.>", &claim.billing_account_id))
         .await
     {
-        Ok(mut sub) => {
+        Ok(sub) => {
             tokio::task::spawn(async move {
                 while let Some(msg) = sub.next().await {
                     let mut conn = match pg2.pool.get().await {
                         Ok(conn) => conn,
-                        Err(e) => {
-                            tracing::error!(?e, "failed to get connection from pool");
+                        Err(_e) => {
+                            dbg!("failed to get connection from pool");
                             continue;
                         }
                     };
                     let txn = match conn.transaction().await {
                         Ok(txn) => txn,
-                        Err(e) => {
-                            tracing::error!(?e, "failed to get transaction from connection");
+                        Err(_e) => {
+                            dbg!("failed to get transaction from connection");
                             continue;
                         }
                     };
@@ -228,7 +236,7 @@ pub async fn websocket_run(
                                                 {
                                                     Ok(_) => (),
                                                     Err(err) => {
-                                                        error!(
+                                                        dbg!(
                                                             "cannot send outbound event; err={:?}; closing",
                                                             err
                                                         );
@@ -247,7 +255,7 @@ pub async fn websocket_run(
                                                 {
                                                     Ok(_) => (),
                                                     Err(err) => {
-                                                        error!(
+                                                        dbg!(
                                                             "cannot send outbound event; err={:?}; closing",
                                                             err
                                                         );
@@ -276,7 +284,7 @@ pub async fn websocket_run(
                                                 {
                                                     Ok(_) => (),
                                                     Err(err) => {
-                                                        error!(
+                                                        dbg!(
                                                             "cannot send outbound event; err={:?}; closing",
                                                             err
                                                         );
@@ -307,7 +315,7 @@ pub async fn websocket_run(
                                                 {
                                                     Ok(_) => (),
                                                     Err(err) => {
-                                                        error!(
+                                                        dbg!(
                                                             "cannot send outbound event; err={:?}; closing",
                                                             err
                                                         );
@@ -321,13 +329,17 @@ pub async fn websocket_run(
                                 }
                             }
                         }
-                        Err(err) => error!("bad data from nats: {} / {:#?}", err, msg),
+                        Err(err) => {
+                            dbg!("bad data from nats: {} / {:#?}", err, msg);
+                        }
                     }
                     let _r = txn.commit().await; // We don't care what you return or not, champ
                 }
             });
         }
-        Err(err) => error!("websocket error creating subscriber: {}", err),
+        Err(err) => {
+            dbg!("websocket error creating subscriber: {}", err);
+        }
     }
 
     // Listen to Commands from the websocket
@@ -349,7 +361,7 @@ pub async fn websocket_run(
                 }
             }
             Err(err) => {
-                trace!("ws cli client poll error; err={:?}", err);
+                dbg!("ws cli client poll error; err={:?}", err);
                 break;
             }
         }
@@ -357,7 +369,7 @@ pub async fn websocket_run(
     match outbound_ws_tx.send(Ok(Message::text("stop"))) {
         Ok(_) => (),
         Err(err) => {
-            error!("cannot send outbound stop event; err={:?}; closing", err);
+            dbg!("cannot send outbound stop event; err={:?}; closing", err);
         }
     }
 
@@ -365,7 +377,7 @@ pub async fn websocket_run(
         .send(Ok(Message::close_with(1000 as u16, "work complete")))
         .expect("cannot close");
 
-    trace!("ws cli client connection closed, good bye");
+    dbg!("ws cli client connection closed, good bye");
 }
 
 async fn process_message(
@@ -382,29 +394,29 @@ async fn process_message(
     if message.is_text() {
         let mut conn = match pg.pool.get().await {
             Ok(conn) => conn,
-            Err(e) => {
-                tracing::error!(?e, "cannot get connection from db pool");
+            Err(_e) => {
+                dbg!("cannot get connection from db pool");
                 return MessageStream::Finish;
             }
         };
         let txn = match conn.transaction().await {
             Ok(txn) => txn,
-            Err(e) => {
-                tracing::error!(?e, "cannot get txn from db connection");
+            Err(_e) => {
+                dbg!("cannot get txn from db connection");
                 return MessageStream::Finish;
             }
         };
 
-        trace!("recv ws text msg, processing; message={:?}", message);
+        dbg!("recv ws text msg, processing; message={:?}", &message);
 
         // Deserialize the `ClientCommand`
         let client_command = match serde_json::from_slice::<ClientCommand>(&message.into_bytes()) {
             Ok(client_command) => client_command,
             Err(err) => {
-                tracing::warn!("error deserializing client command: {}", err);
+                dbg!("error deserializing client command: {}", &err);
                 let _e = outbound_ws_tx.send(Ok(Message::close_with(
                     4001 as u16,
-                    format!("error deserializing client command: {}", err),
+                    format!("error deserializing client command: {}", &err),
                 )));
                 return MessageStream::Finish;
             }
@@ -436,26 +448,26 @@ async fn process_message(
                 });
             }
             Err(err) => {
-                tracing::error!("error deserializing control op: {}", err);
+                dbg!("error deserializing control op: {}", err);
             }
         };
     } else if message.is_close() {
-        trace!("recv ws close msg, skipping; message={:?}", message);
+        dbg!("recv ws close msg, skipping; message={:?}", message);
     } else if message.is_ping() {
         // Pings are automatically ponged via tungstenite so if we receive this message, there is
         // nothing left to do
-        trace!("recv ws ping msg, skipping; message={:?}", message);
+        dbg!("recv ws ping msg, skipping; message={:?}", message);
     } else if message.is_pong() {
-        trace!("recv ws pong msg, skipping; message={:?}", message);
+        dbg!("recv ws pong msg, skipping; message={:?}", message);
     } else if message.is_binary() {
-        warn!(
+        dbg!(
             "recv ws binary message which is not expected (text only), skipping; message={:#x?}",
             message.as_bytes()
         );
     } else {
         // If we trigger this error, then the underlying `tungstenite::protocol::Message` likely
         // has a new variant that we are not not handling explicitly
-        error!(
+        dbg!(
             "recv ws msg of unknown type, likely a new underlying variant, \
             programmer intervention required; message={:?}",
             message

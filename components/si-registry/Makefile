@@ -1,19 +1,14 @@
 include ../build/typescript.mk
 COMPONENT = si-registry
-CONTAINER = si-veritech
 .DEFAULT_GOAL := build
 
-build_js: node_modules
+build: node_modules
 	@echo "--- [$(shell basename ${CURDIR})] $@"
-	npm run build:js
+	npm run build
 
-build_types: node_modules
-	@echo "--- [$(shell basename ${CURDIR})] $@"
-	npm run build:types
-
-watch: build_js start
+watch: build start
 	@ echo "Watching.."
 
 format:
 	@echo "--- [$(shell basename ${CURDIR})] $@"
-	npm run format
+	npm run lint:fix

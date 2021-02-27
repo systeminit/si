@@ -2,8 +2,8 @@ use futures::{FutureExt, StreamExt};
 use serde_json;
 use std::convert::TryInto;
 use thiserror::Error;
+use tokio_stream::wrappers::UnboundedReceiverStream;
 use tokio_tungstenite::tungstenite;
-use tracing::{debug, trace, warn};
 use url::Url;
 
 pub use crate::cli::formatter::{self, DebugFormatter, SimpleFormatter};
@@ -56,6 +56,7 @@ impl Client {
             .expect("cannot connect to websocket");
 
         let (ws_tx, ws_rx) = tokio::sync::mpsc::unbounded_channel();
+        let ws_rx = UnboundedReceiverStream::new(ws_rx);
 
         let (ws_write, mut ws_read) = ws_stream.split();
         tokio::task::spawn(ws_rx.forward(ws_write).map(move |result| {
@@ -65,9 +66,11 @@ impl Client {
                 // this one and warn on all others
                 match err.to_string().as_ref() {
                     "Connection closed normally" => {
-                        trace!("ws client send closed normally; err={:?}", err)
+                        dbg!("ws client send closed normally; err={:?}", &err);
                     }
-                    _ => warn!("ws client send error; err={}", err),
+                    _ => {
+                        dbg!("ws client send error; err={}", err);
+                    }
                 }
             }
         }));
@@ -83,35 +86,35 @@ impl Client {
                     self.formatter.process_message(cli_message)?;
                 }
                 Ok(tungstenite::protocol::Message::Binary(_)) => {
-                    warn!("received binary message; we only accept text");
+                    dbg!("received binary message; we only accept text");
                     return Err(ClientError::Binary);
                 }
                 Ok(tungstenite::protocol::Message::Close(data)) => match data {
                     Some(frame) => match frame.code {
                         tungstenite::protocol::frame::coding::CloseCode::Normal => {
-                            trace!("closed socket normally");
+                            dbg!("closed socket normally");
                             return Ok(());
                         }
                         _ => {
-                            warn!(?frame, "request failed");
+                            dbg!("request failed: {:?}", &frame);
                             return Err(ClientError::WebSocket(frame.reason.into()));
                         }
                     },
                     None => {
-                        warn!("websocket closed for unknown reasons");
+                        dbg!("websocket closed for unknown reasons");
                         return Err(ClientError::WebSocket(
                             "websocket closed for unknown reasons".into(),
                         ));
                     }
                 },
                 Ok(tungstenite::protocol::Message::Ping(data)) => {
-                    debug!("ping; data={:?}", data);
+                    dbg!("ping; data={:?}", data);
                 }
                 Ok(tungstenite::protocol::Message::Pong(data)) => {
-                    debug!("pong; data={:?}", data);
+                    dbg!("pong; data={:?}", data);
                 }
                 Err(e) => {
-                    warn!(?e, "received an error");
+                    dbg!("received an error: {:?}", &e);
                     return Err(ClientError::WebSocket(e.to_string()));
                 }
             }

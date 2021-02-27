@@ -1,14 +1,12 @@
-use crate::data::{EventLogFS, NatsConn, PgPool};
-use crate::veritech::Veritech;
+use si_data::{EventLogFS, NatsConn, PgPool};
+use si_model::Veritech;
 use si_settings::Settings;
 use warp::Filter;
 
 pub mod cli;
-pub mod data;
 pub mod filters;
 pub mod handlers;
-pub mod models;
-pub mod veritech;
+pub mod update;
 
 pub static mut PAGE_SECRET_KEY: Option<sodiumoxide::crypto::secretbox::Key> = None;
 
@@ -32,8 +30,6 @@ pub async fn start(
     unsafe {
         PAGE_SECRET_KEY = Some(settings.paging.key.clone());
     }
-    println!("*** Initializing the Update Clock Service ***");
-    crate::models::update_clock::init_update_clock_service(&settings);
     let api = filters::api(
         &pg,
         &nats_conn,
@@ -56,7 +52,7 @@ pub async fn start(
         ])
         .allow_methods(vec!["HEAD", "GET", "PUT", "POST", "DELETE", "PATCH"]);
 
-    let routes = api.with(warp::trace::request()).with(cors);
+    let routes = api.with(cors);
     println!(
         "*** Listening on http://0.0.0.0:{} ***",
         settings.service.port

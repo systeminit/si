@@ -1,15 +1,13 @@
-use crate::data::PgPool;
 use crate::handlers::{authenticate, HandlerError};
-use crate::models::{get_jwt_signing_key, BillingAccount, Organization, System, User, Workspace};
 use jwt_simple::algorithms::RSAKeyPairLike;
 use jwt_simple::claims::Claims;
 use jwt_simple::coarsetime::Duration;
 use serde::{Deserialize, Serialize};
+use si_data::PgPool;
+use si_model::{
+    get_jwt_signing_key, session, BillingAccount, Organization, SiClaims, User, Workspace,
+};
 use sodiumoxide::crypto::secretbox;
-
-use crate::models::user::SiClaims;
-
-const GET_DEFAULTS: &str = include_str!("../data/queries/session_dal_get_defaults.sql");
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -113,7 +111,7 @@ pub async fn restore_authentication(
 pub struct GetDefaultsReply {
     pub organization: Organization,
     pub workspace: Workspace,
-    pub system: System,
+    //pub system: Entity,
 }
 
 pub async fn get_defaults(
@@ -125,23 +123,14 @@ pub async fn get_defaults(
 
     let claim = authenticate(&txn, &token).await?;
 
-    let row = txn
-        .query_one(GET_DEFAULTS, &[&claim.billing_account_id])
+    let session_defaults = session::get_defaults(&txn, &claim.billing_account_id)
         .await
         .map_err(HandlerError::from)?;
 
-    let org_json: serde_json::Value = row.try_get("organization").map_err(HandlerError::from)?;
-    let organization: Organization =
-        serde_json::from_value(org_json).map_err(HandlerError::from)?;
-    let w_json: serde_json::Value = row.try_get("workspace").map_err(HandlerError::from)?;
-    let workspace: Workspace = serde_json::from_value(w_json).map_err(HandlerError::from)?;
-    let s_json: serde_json::Value = row.try_get("system").map_err(HandlerError::from)?;
-    let system: System = serde_json::from_value(s_json).map_err(HandlerError::from)?;
-
     let reply = GetDefaultsReply {
-        organization,
-        workspace,
-        system,
+        organization: session_defaults.organization,
+        workspace: session_defaults.workspace,
+        //system: session_defaults.system,
     };
 
     Ok(warp::reply::json(&reply))
