@@ -7,7 +7,7 @@ use crate::{one_time_setup, TestContext};
 
 use si_sdf::data::{NatsConn, NatsTxn, PgPool, PgTxn};
 use si_sdf::models::{
-    ChangeSet, Edge, EdgeKind, EditSession, Entity, Node, NodeKind, Position, Resource, System,
+    ChangeSet, Edge, EdgeKind, EditSession, Entity, Node, NodeKind, Resource, System,
 };
 use si_sdf::veritech::Veritech;
 
@@ -147,7 +147,6 @@ async fn new() {
     .expect("cannot create new node");
 
     assert_eq!(&system_node.object_id.starts_with("system:"), &true);
-    assert_eq!(&system_node.positions, &std::collections::HashMap::new());
     assert_eq!(&system_node.kind, &NodeKind::System);
     assert_eq!(&system_node.object_type, "system");
 
@@ -169,52 +168,8 @@ async fn new() {
     .expect("cannot create new node");
 
     assert_eq!(&entity_node.object_id.starts_with("entity:"), &true);
-    assert_eq!(&entity_node.positions, &std::collections::HashMap::new());
     assert_eq!(&entity_node.kind, &NodeKind::Entity);
     assert_eq!(&entity_node.object_type, "service");
-}
-
-#[tokio::test]
-async fn set_position() {
-    one_time_setup().await.expect("one time setup failed");
-    let ctx = TestContext::init().await;
-    let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
-    let nats = nats_conn.transaction();
-    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
-    let txn = conn.transaction().await.expect("cannot create txn");
-
-    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
-    txn.commit()
-        .await
-        .expect("failed to commit the new billing account");
-
-    let txn = conn.transaction().await.expect("cannot create txn");
-    let change_set = create_change_set(&txn, &nats, &nba).await;
-    let edit_session = create_edit_session(&txn, &nats, &nba, &change_set).await;
-    txn.commit()
-        .await
-        .expect("failed to commit the new change set");
-
-    let txn = conn.transaction().await.expect("cannot create txn");
-    let mut system_node = create_system_node(
-        &pg,
-        &txn,
-        &nats_conn,
-        &nats,
-        &veritech,
-        &nba,
-        &change_set,
-        &edit_session,
-    )
-    .await;
-    system_node.set_position("appview", Position::new(0, 0));
-    assert_eq!(
-        system_node
-            .positions
-            .get("appview")
-            .expect("cannot find appview position context"),
-        &Position::new(0, 0)
-    );
 }
 
 #[tokio::test]
@@ -250,14 +205,6 @@ async fn save() {
         &edit_session,
     )
     .await;
-    system_node.set_position("appview", Position::new(0, 0));
-    assert_eq!(
-        system_node
-            .positions
-            .get("appview")
-            .expect("cannot find appview position context"),
-        &Position::new(0, 0)
-    );
     let pre_save_node = system_node.clone();
     system_node
         .save(&txn, &nats)

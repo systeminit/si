@@ -63,7 +63,9 @@ pub use entity::{calculate_properties, Entity, EntityError, EntityResult};
 pub mod resource;
 pub use resource::{Resource, ResourceError, ResourceHealth, ResourceResult, ResourceStatus};
 pub mod node;
-pub use node::{Node, NodeError, NodeKind, NodeResult, Position};
+pub use node::{Node, NodeError, NodeKind, NodeResult};
+pub mod node_position;
+pub use node_position::{NodePosition, NodePositionError, NodePositionResult};
 pub mod ops;
 pub use ops::{
     OpEntityAction, OpEntityDelete, OpEntitySet, OpError, OpReply, OpRequest, OpResult, OpSetName,

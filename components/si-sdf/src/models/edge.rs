@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use tokio_postgres::error::SqlState;
 
 use crate::data::{NatsTxn, NatsTxnError, PgTxn};
 use crate::models::{
@@ -20,6 +21,8 @@ const EDGE_BY_KIND_AND_HEAD_OBJECT_ID_AND_TAIL_TYPE_NAME: &str =
 
 #[derive(Error, Debug)]
 pub enum EdgeError {
+    #[error("an edge with these vertexes and kind already exists")]
+    EdgeExists,
     #[error("error in core model functions: {0}")]
     Model(#[from] ModelError),
     #[error("data layer error: {0}")]
@@ -158,7 +161,12 @@ impl Edge {
                     &update_clock.update_count,
                 ],
             )
-            .await?;
+            .await.map_err(|err| match err.code() {
+                Some(sql_state) if sql_state == &SqlState::UNIQUE_VIOLATION => {
+                    EdgeError::EdgeExists
+                }
+                _ => EdgeError::TokioPg(err),
+            })?;
         let json: serde_json::Value = row.try_get("object")?;
         nats.publish(&json).await?;
         let object: Edge = serde_json::from_value(json)?;

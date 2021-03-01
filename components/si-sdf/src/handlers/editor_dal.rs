@@ -1,7 +1,7 @@
 use crate::{
     data::{NatsConn, PgPool},
     handlers::{authenticate, authorize, validate_tenancy, HandlerError},
-    models::{ChangeSet, Entity, Node, NodeKind, OpEntitySet, OpSetName, System},
+    models::{ChangeSet, Entity, Node, NodeKind, NodePosition, OpEntitySet, OpSetName, System},
     veritech::Veritech,
 };
 use serde::{Deserialize, Serialize};
@@ -440,5 +440,61 @@ pub async fn entity_set_property_bulk(
     txn.commit().await.map_err(HandlerError::from)?;
 
     let reply = EntitySetPropertyReply { object: entity };
+    Ok(warp::reply::json(&reply))
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateNodePositionRequest {
+    pub node_id: String,
+    pub context_id: String,
+    pub x: String,
+    pub y: String,
+    pub workspace_id: String,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateNodePositionReply {
+    pub node_position: NodePosition,
+}
+
+pub async fn update_node_position(
+    pg: PgPool,
+    nats_conn: NatsConn,
+    token: String,
+    request: UpdateNodePositionRequest,
+) -> Result<impl warp::Reply, warp::reject::Rejection> {
+    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let txn = conn.transaction().await.map_err(HandlerError::from)?;
+    let nats = nats_conn.transaction();
+
+    let claim = authenticate(&txn, &token).await?;
+    authorize(&txn, &claim.user_id, "editorDal", "updateNodePosition").await?;
+    validate_tenancy(
+        &txn,
+        "workspaces",
+        &request.workspace_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+    validate_tenancy(&txn, "nodes", &request.node_id, &claim.billing_account_id).await?;
+
+    let node_position = NodePosition::create_or_update(
+        &txn,
+        &nats,
+        &request.node_id,
+        &request.context_id,
+        &request.x,
+        &request.y,
+        &request.workspace_id,
+    )
+    .await
+    .map_err(HandlerError::from)?;
+
+    txn.commit().await.map_err(HandlerError::from)?;
+    nats.commit().await.map_err(HandlerError::from)?;
+
+    let reply = UpdateNodePositionReply { node_position };
     Ok(warp::reply::json(&reply))
 }

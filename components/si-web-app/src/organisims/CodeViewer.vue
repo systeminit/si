@@ -1,7 +1,7 @@
 <template>
   <div id="code-viewer" class="flex flex-col w-full h-full">
-    <div class="h-6 bg-black flex flex-row justify-end">
-      <div class="flex-grow flex justify-start" v-if="currentObject">
+    <div class="flex flex-row justify-end h-6 bg-black">
+      <div class="flex justify-start flex-grow" v-if="currentObject">
         {{ currentObject.name }} ({{ currentObject.objectType }})
       </div>
       <div class="pr-2">
@@ -157,6 +157,7 @@ export default Vue.extend({
                 ])
               ) {
                 let changePath = diffEntry.path.slice(3, diffEntry.path.length);
+                // @ts-ignore
                 let yamlItems = ydoc.contents?.items;
                 PATHWALK: for (let x = 0; x < changePath.length; x++) {
                   const pathItem = changePath[x];

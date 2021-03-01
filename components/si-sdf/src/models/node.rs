@@ -13,8 +13,6 @@ use crate::models::{
 
 use crate::models::{OpReply, OpRequest};
 
-use std::collections::HashMap;
-
 #[derive(Error, Debug)]
 pub enum NodeError {
     #[error("error with linked entity: {0}")]
@@ -100,14 +98,14 @@ pub struct PatchConfiguredByReply {
 #[serde(rename_all = "camelCase")]
 pub struct PatchSetPositionRequest {
     pub context: String,
-    pub position: Position,
+    // pub position: Position,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct PatchSetPositionReply {
     pub context: String,
-    pub position: Position,
+    // pub position: Position,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -128,7 +126,6 @@ pub struct SyncResourceReply {
 pub enum PatchOp {
     IncludeSystem(PatchIncludeSystemRequest),
     ConfiguredBy(PatchConfiguredByRequest),
-    SetPosition(PatchSetPositionRequest),
     SyncResource(SyncResourceRequest),
 }
 
@@ -166,18 +163,6 @@ pub enum ObjectPatchReply {
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
-pub struct Position {
-    x: u64,
-    y: u64,
-}
-
-impl Position {
-    pub fn new(x: u64, y: u64) -> Self {
-        Self { x, y }
-    }
-}
-
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum NodeKind {
     Entity,
@@ -198,7 +183,6 @@ impl std::fmt::Display for NodeKind {
 #[serde(rename_all = "camelCase")]
 pub struct Node {
     pub id: String,
-    pub positions: HashMap<String, Position>,
     pub kind: NodeKind,
     pub object_type: String,
     pub object_id: String,
@@ -313,11 +297,6 @@ impl Node {
         let node: Node = serde_json::from_value(json)?;
         *self = node;
         Ok(())
-    }
-
-    pub fn set_position(&mut self, context: impl Into<String>, position: Position) {
-        let context = context.into();
-        self.positions.insert(context, position);
     }
 
     pub async fn save(&mut self, txn: &PgTxn<'_>, nats: &NatsTxn) -> NodeResult<()> {
@@ -464,6 +443,24 @@ impl Node {
         let json: serde_json::Value = row.try_get("object")?;
         let object = serde_json::from_value(json)?;
         Ok(object)
+    }
+
+    pub async fn get_for_object_id(
+        txn: &PgTxn<'_>,
+        object_id: impl AsRef<str>,
+        change_set_id: Option<String>,
+    ) -> NodeResult<Node> {
+        let object_id = object_id.as_ref();
+        let entity =
+            Entity::get_relevant_projection_or_head(&txn, object_id, change_set_id.as_ref())
+                .await
+                .map_err(|e| NodeError::Entity(e.to_string()))?
+                .ok_or_else(|| {
+                    NodeError::Entity(format!("entity not found for id={}", object_id))
+                })?;
+        let node = Node::get(&txn, &entity.node_id).await?;
+
+        Ok(node)
     }
 
     pub async fn list(

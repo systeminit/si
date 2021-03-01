@@ -12,3 +12,11 @@ build: registry
 	@echo "--- [$(shell basename ${CURDIR})] $@"
 	$(MAKE) node_modules
 	env NODE_ENV=production npm run build
+
+lint: node_modules
+	@echo "--- [$(shell basename ${CURDIR})] $@"
+	npm run lint
+
+lint_no_fix: node_modules
+	@echo "--- [$(shell basename ${CURDIR})] $@"
+	npm run lint-no-fix

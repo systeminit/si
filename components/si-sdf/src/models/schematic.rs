@@ -1,11 +1,13 @@
+use crate::{
+    data::{DataError, PgTxn},
+    models::{
+        Edge, EdgeError, EdgeKind, Entity, EntityError, ModelError, Node, NodeError, NodeKind,
+        NodePosition, NodePositionError, SiStorable,
+    },
+};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use thiserror::Error;
-
-use crate::{
-    data::{DataError, PgTxn},
-    models::{Edge, EdgeError, EdgeKind, Entity, EntityError, ModelError, Node, NodeError},
-};
 
 #[derive(Error, Debug)]
 pub enum SchematicError {
@@ -23,6 +25,8 @@ pub enum SchematicError {
     Edge(#[from] EdgeError),
     #[error("node error: {0}")]
     Node(#[from] NodeError),
+    #[error("node position error: {0}")]
+    NodePosition(#[from] NodePositionError),
 }
 
 pub type SchematicResult<T> = Result<T, SchematicError>;
@@ -33,6 +37,38 @@ enum SchematicKind {
     System,
     Deployment,
     Implementation,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+struct NodeWithPositions {
+    pub id: String,
+    pub kind: NodeKind,
+    pub object_type: String,
+    pub object_id: String,
+    pub positions: HashMap<String, NodePosition>,
+    pub si_storable: SiStorable,
+}
+
+impl NodeWithPositions {
+    pub async fn from_node_position(txn: &PgTxn<'_>, node: Node) -> SchematicResult<Self> {
+        let mut positions = HashMap::new();
+        for node_position in NodePosition::get_by_node_id(&txn, &node.id)
+            .await?
+            .into_iter()
+        {
+            positions.insert(node_position.context_id.clone(), node_position);
+        }
+
+        Ok(Self {
+            id: node.id,
+            kind: node.kind,
+            object_type: node.object_type,
+            object_id: node.object_id,
+            positions,
+            si_storable: node.si_storable,
+        })
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -83,14 +119,16 @@ struct SchematicNodeSockets {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 struct SchematicNode {
-    node: Node,
+    node: NodeWithPositions,
     sockets: SchematicNodeSockets,
     object: serde_json::Value,
     connections: Connections,
 }
 
 impl SchematicNode {
-    fn new(node: Node, object: serde_json::Value) -> SchematicNode {
+    async fn new(txn: &PgTxn<'_>, node: Node, object: serde_json::Value) -> SchematicResult<Self> {
+        let node = NodeWithPositions::from_node_position(&txn, node).await?;
+
         let sockets = SchematicNodeSockets {
             inputs: Vec::new(),
             outputs: Vec::new(),
@@ -99,12 +137,13 @@ impl SchematicNode {
             predecessors: HashMap::new(),
             successors: HashMap::new(),
         };
-        SchematicNode {
+
+        Ok(Self {
             node,
             object,
             sockets,
             connections,
-        }
+        })
     }
 }
 
@@ -122,7 +161,7 @@ impl Schematic {
         txn: &PgTxn<'_>,
         root_object_id: impl AsRef<str>,
         workspace_id: impl AsRef<str>,
-        system_id: impl AsRef<str>,
+        _system_id: impl AsRef<str>,
         change_set_id: Option<String>,
         edge_kinds: Vec<EdgeKind>,
     ) -> SchematicResult<Schematic> {
@@ -167,9 +206,11 @@ impl Schematic {
                         } else {
                             let successor_node_id = successor_node.id.clone();
                             let sn = SchematicNode::new(
+                                &txn,
                                 successor_node.clone(),
                                 serde_json::json![successor_entity],
-                            );
+                            )
+                            .await?;
                             nodes.insert(successor_node_id.clone(), sn);
                             // You just inserted it.. so it's cool.
                             nodes.get_mut(&successor_node_id).unwrap()
@@ -228,5 +269,38 @@ impl Schematic {
         }
         let schematic = Schematic { nodes, edges };
         Ok(schematic)
+    }
+
+    pub fn prune_node(&mut self, prune_node_id: impl AsRef<str>) {
+        let prune_node_id = prune_node_id.as_ref();
+
+        // Remove any node entries with the prune node id
+        self.nodes.retain(|key, _| key != prune_node_id);
+
+        // Remove any successor/predecessor connections that refer to the prune node id
+        for (_, node) in self.nodes.iter_mut() {
+            for (_, connection_edges) in node.connections.predecessors.iter_mut() {
+                // Remove any connection edges that refer to the prune node id
+                connection_edges.retain(|connection_edge| connection_edge.node_id != prune_node_id);
+            }
+            // Remove any remaining empty arrays
+            node.connections
+                .predecessors
+                .retain(|_, values| !values.is_empty());
+
+            for (_, connection_edges) in node.connections.successors.iter_mut() {
+                // Remove any connection edges that refer to the prune node id
+                connection_edges.retain(|connection_edge| connection_edge.node_id != prune_node_id);
+            }
+            // Remove any remaining empty arrays
+            node.connections
+                .successors
+                .retain(|_, values| !values.is_empty());
+        }
+
+        // Remove any edges whose tail or head vertex refers to the prune node id
+        self.edges.retain(|_, edge| {
+            edge.head_vertex.node_id != prune_node_id && edge.tail_vertex.node_id != prune_node_id
+        });
     }
 }

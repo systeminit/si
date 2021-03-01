@@ -1,5 +1,5 @@
 <template>
-  <div class="relative w-auto">
+  <div class="relative w-auto z-80">
     <button
       @click="isOpen = !isOpen"
       class="w-full focus:outline-none"
@@ -27,7 +27,7 @@
         v-for="item in menuList"
         :data-cy="
           'editor-schematic-node-add-menu-' +
-          item.id.replace(/\s/g, '-').replace(/:/g, '')
+            item.id.replace(/\s/g, '-').replace(/:/g, '')
         "
         :key="item.id"
       >
@@ -45,11 +45,11 @@
             :key="child.id"
             :data-cy="
               'editor-schematic-node-add-menu-' +
-              item.id.replace(/\s/g, '-').replace(/:/g, '') +
-              '-' +
-              child.id.replace(/\s/g, '-').replace(/:/g, '')
+                item.id.replace(/\s/g, '-').replace(/:/g, '') +
+                '-' +
+                child.id.replace(/\s/g, '-').replace(/:/g, '')
             "
-            @click="onSelect(child)"
+            @click="onSelect(child, $event)"
           >
             {{ child.id }}
           </li>
@@ -71,6 +71,9 @@ import {
 } from "si-registry/lib/systemComponent";
 import Bottle from "bottlejs";
 
+import { CgMousePosition, Cg2dCoordinate } from "@/api/sicg";
+import { NodeCreatePayload } from "@/store/modules/editor";
+
 type MenuElement = MenuCategory | MenuItem | undefined;
 
 interface MenuCategory {
@@ -84,6 +87,11 @@ interface MenuItem {
   id: string;
   iEntity: EntityObject;
   parent: MenuCategory | undefined;
+}
+
+export interface IselectedEvent {
+  entityObject: EntityObject;
+  position: Cg2dCoordinate;
 }
 
 interface Data {
@@ -112,32 +120,32 @@ export default Vue.extend({
     };
   },
   methods: {
-    onSelect(item: MenuItem): void {
+    onSelect(item: MenuItem, event: MouseEvent): void {
+      event.preventDefault();
       this.$emit("selected", item.iEntity);
       this.isOpen = false;
     },
     menuItemList(): MenuElement[] {
       // Filter the entityTypeList for entities that are uiVisible
-      var filteredList = _.remove(
-        this.entityTypeList,
-        function (entity: EntityObject) {
-          if (entity.iEntity?.uiVisible) {
-            return entity;
-          }
-        },
-      );
+      var filteredList = _.remove(this.entityTypeList, function(
+        entity: EntityObject,
+      ) {
+        if (entity.iEntity?.uiVisible) {
+          return entity;
+        }
+      });
 
       // Sort the filtered list
       let sortedList = _.sortBy(filteredList, ["iEntity.uiMenuDisplayName"]);
 
       let menuList: MenuElement[] = [];
 
-      sortedList.forEach(function (entity: EntityObject) {
+      sortedList.forEach(function(entity: EntityObject) {
         // Check if this entity has a uiMenuCategory
         if (entity.iEntity?.uiMenuCategory) {
           let menuElement: any;
           // Find the menuElement tht represents the entity uiMenuCategory.
-          menuElement = _.find(menuList, function (e: MenuElement) {
+          menuElement = _.find(menuList, function(e: MenuElement) {
             return e?.id === entity.iEntity?.uiMenuCategory;
           });
 
@@ -154,7 +162,7 @@ export default Vue.extend({
               };
               menuList.push(menuCategory);
               menuList = _.sortBy(menuList, ["id"]);
-              menuElement = _.find(menuList, function (e: MenuElement) {
+              menuElement = _.find(menuList, function(e: MenuElement) {
                 return e?.id === entity.iEntity?.uiMenuCategory;
               });
             }
@@ -203,10 +211,10 @@ export default Vue.extend({
         }
       }
     };
-    document.addEventListener("keydown", handleEscape);
-    this.$once("hook:beforeDestroy", () => {
-      document.removeEventListener("keydown", handleEscape);
-    });
+    // document.addEventListener("keydown", handleEscape);
+    // this.$once("hook:beforeDestroy", () => {
+    //   document.removeEventListener("keydown", handleEscape);
+    // });
   },
 });
 </script>
@@ -241,7 +249,6 @@ export default Vue.extend({
   left: 100%;
   top: auto;
   margin-top: -1.305rem;
-  z-index: 1000;
 }
 
 .menu-category:hover .category-items {

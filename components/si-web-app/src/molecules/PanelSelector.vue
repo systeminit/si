@@ -40,7 +40,7 @@
       :initialMaximizedContainer="maximizedContainer"
       v-else-if="panelType == 'secret'"
     />
-    <SystemSchematicPanel
+    <SchematicPanel
       :panelRef="panelRef"
       :panelContainerRef="panelContainerRef"
       @change-panel="changePanelType"
@@ -50,7 +50,7 @@
       @panel-minimized-container="setMaximizedContainer($event)"
       :initialMaximizedFull="maximizedFull"
       :initialMaximizedContainer="maximizedContainer"
-      v-else-if="panelType == 'systemSchematic'"
+      v-else-if="panelType == 'schematic'"
     />
   </div>
 </template>
@@ -58,9 +58,9 @@
 <script lang="ts">
 import Vue, { PropType } from "vue";
 import EmptyPanel from "@/organisims/EmptyPanel.vue";
-import SystemSchematicPanel from "@/organisims/SystemSchematicPanel.vue";
 import SecretPanel from "@/organisims/SecretPanel.vue";
 import AttributePanel from "@/organisims/AttributePanel.vue";
+import SchematicPanel from "@/organisims/SchematicPanel.vue";
 import { PanelEventBus } from "@/atoms/PanelEventBus";
 import Bottle from "bottlejs";
 import { Persister } from "@/api/persister";
@@ -69,7 +69,7 @@ export enum PanelType {
   Empty = "empty",
   Attribute = "attribute",
   Secret = "secret",
-  SystemSchematic = "systemSchematic",
+  Schematic = "schematic",
 }
 
 export interface IData {
@@ -91,9 +91,9 @@ export default Vue.extend({
   },
   components: {
     EmptyPanel,
-    SystemSchematicPanel,
     SecretPanel,
     AttributePanel,
+    SchematicPanel,
   },
   data(): IData {
     let bottle = Bottle.pop("default");

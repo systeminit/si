@@ -12,16 +12,16 @@ export enum NodeKind {
   System = "system",
 }
 
-export interface Position {
-  x: number;
-  y: number;
+export interface NodePosition {
+  [key: string]: {
+    x: string;
+    y: string;
+  };
 }
 
 export interface INode {
   id: string;
-  positions: {
-    [key: string]: Position;
-  };
+  positions: NodePosition;
   kind: NodeKind;
   objectType: string;
   siStorable: ISiStorable;

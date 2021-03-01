@@ -141,12 +141,12 @@
       </SiModal>
     </div>
     <transition
-      enter-active-class="transition-all delay-75 ease-out"
-      leave-active-class="transition-all delay-75 ease-in"
-      enter-class="opacity-0 scale-0"
-      enter-to-class="opacity-100 scale-100"
-      leave-class="opacity-100 scale-100"
-      leave-to-class="opacity-0 scale-75"
+      enter-active-class="transition-all ease-out delay-75"
+      leave-active-class="transition-all ease-in delay-75"
+      enter-class="scale-0 opacity-0"
+      enter-to-class="scale-100 opacity-100"
+      leave-class="scale-100 opacity-100"
+      leave-to-class="scale-75 opacity-0"
     >
       <div
         class="flex w-full"
@@ -453,6 +453,7 @@ export default Vue.extend({
     },
   },
   async created() {
+    // @ts-ignore
     let context: IEditorContext = {
       applicationId: this.applicationId,
     };

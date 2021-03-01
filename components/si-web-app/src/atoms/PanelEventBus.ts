@@ -191,3 +191,22 @@ export function emitPropRepeatedRemoveEvent(
   };
   PanelEventBus.$emit(eventName, event);
 }
+// document.addEventListener("keydown", function() {
+//   PanelEventBus.$emit("shortcut", event);
+// });
+
+function publishPanelViewportUpdateEvent() {
+  PanelEventBus.$emit("panel-viewport-update", true);
+}
+
+function registerPanelViewportUpdateEvents() {
+  PanelEventBus.$on("panel-layout-update", publishPanelViewportUpdateEvent);
+  PanelEventBus.$on("maximize-container", publishPanelViewportUpdateEvent);
+  PanelEventBus.$on("maximize-full", publishPanelViewportUpdateEvent);
+  PanelEventBus.$on("minimize-container", publishPanelViewportUpdateEvent);
+  PanelEventBus.$on("panel-created", publishPanelViewportUpdateEvent);
+  PanelEventBus.$on("panel-deleted", publishPanelViewportUpdateEvent);
+  window.addEventListener("resize", publishPanelViewportUpdateEvent);
+}
+
+registerPanelViewportUpdateEvents();

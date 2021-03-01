@@ -1,7 +1,13 @@
 <template>
-  <div class="flex flex-col w-full h-full" :class="panelVisibilityClasses()">
+  <div
+    class="flex flex-col w-full h-ful"
+    :class="panelClasses()"
+    @mouseenter="mouseEnter()"
+    @mouseleave="mouseLeave()"
+  >
     <div
       class="flex flex-row items-center w-full bg-black"
+      :class="panelMenuClasses()"
       style="height: 3rem; min-height: 3rem"
     >
       <div class="flex justify-start">
@@ -66,12 +72,25 @@ import {
 } from "vue-feather-icons";
 import { PanelType } from "@/molecules/PanelSelector.vue";
 import { PanelEventBus } from "@/atoms/PanelEventBus";
+import _ from "lodash";
+
+import {
+  ShortcutRegistrationEvent,
+  ShortcutContext,
+  MouseRegistrationEvent,
+  MouseContext,
+  ShortcutActions,
+  ShortcutUpdateEvent,
+} from "@/organisims/ShortcutsEventBroker.vue";
 
 interface IData {
   selectedPanelType: PanelType;
   maximizedFull: boolean;
   maximizedContainer: boolean;
   isVisible: boolean;
+  shortcutsEnabled: boolean;
+  id: string;
+  isActive: boolean;
 }
 
 export default Vue.extend({
@@ -96,6 +115,9 @@ export default Vue.extend({
       maximizedFull: this.initialMaximizedFull,
       maximizedContainer: this.initialMaximizedContainer,
       isVisible: true,
+      shortcutsEnabled: false,
+      id: _.uniqueId("panel-"),
+      isActive: false,
     };
   },
   computed: {
@@ -107,7 +129,7 @@ export default Vue.extend({
         { label: "", value: PanelType.Empty },
         {
           label: "Schematic",
-          value: PanelType.SystemSchematic,
+          value: PanelType.Schematic,
         },
         {
           label: "Attribute",
@@ -120,12 +142,76 @@ export default Vue.extend({
       ];
     },
   },
+  mounted: function() {
+    this.registerEvents();
+  },
+  beforeDestroy() {
+    this.deRegisterEvents();
+  },
+  updated() {
+    // Ideally this should only update the child instance...
+    PanelEventBus.$emit("panel-viewport-update", true);
+  },
   methods: {
+    registerEvents(): void {
+      PanelEventBus.$on(
+        "shortcuts-update-" + this.id,
+        this.handleShortcutUpdate,
+      );
+    },
+    deRegisterEvents(): void {
+      PanelEventBus.$off(
+        "shortcuts-update-" + this.id,
+        this.handleShortcutUpdate,
+      );
+    },
+    handleShortcutUpdate(e: ShortcutUpdateEvent) {
+      if ((e.action = ShortcutActions["Maximize"])) {
+        if (!this.maximizedFull) {
+          this.maximizeFull();
+        } else {
+          this.minimizeFull();
+        }
+      }
+    },
     changePanelType() {
       this.$emit("change-panel", this.selectedPanelType);
     },
     togglePanelVisibility() {
       this.isVisible = !this.isVisible;
+    },
+    mouseEnter() {
+      this.isActive = true;
+      this.activateShortcuts();
+    },
+    mouseLeave() {
+      this.isActive = false;
+      this.deactivateShortcuts();
+    },
+    activateShortcuts() {
+      this.shortcutsEnabled = true;
+
+      let ctx: ShortcutContext = {
+        id: this.id,
+        isActive: true,
+      };
+      let event: ShortcutRegistrationEvent = {
+        context: ctx,
+      };
+      PanelEventBus.$emit("shortcuts-registration-update", event);
+    },
+    deactivateShortcuts() {
+      this.shortcutsEnabled = false;
+
+      let ctx: ShortcutContext = {
+        id: this.id,
+        isActive: false,
+      };
+      let event: ShortcutRegistrationEvent = {
+        context: ctx,
+      };
+
+      PanelEventBus.$emit("shortcuts-registration-update", event);
     },
     maximizeContainer() {
       this.maximizedContainer = true;
@@ -153,18 +239,41 @@ export default Vue.extend({
     },
     minimizeFull() {
       this.maximizedFull = false;
-      this.$emit("panel-maximized-full", false);
+      this.$emit("panel-minimized-full", false);
       PanelEventBus.$emit("minimize-full", {
         panelRef: this.panelRef,
         panelContainerRef: this.panelContainerRef,
       });
     },
-    panelVisibilityClasses(): Record<string, any> {
+    panelClasses(): Record<string, any> {
       let classes: Record<string, any> = {};
       classes["hidden"] = !this.isVisible;
       classes["overflow-hidden"] = !this.isVisible;
+      // classes["active-panel"] = this.isActive;
+      classes["inactive-panel"] = !this.isActive;
+      return classes;
+    },
+    panelMenuClasses(): Record<string, any> {
+      let classes: Record<string, any> = {};
+      classes["inactive-panel-menu"] = !this.isActive;
       return classes;
     },
   },
 });
 </script>
+
+<style scoped>
+div.inactive-panel-menu > * {
+  filter: brightness(90%);
+}
+
+div.active-panel {
+  /* border: solid;
+  border-color: #323536;
+  border-width: 0.1em; */
+}
+
+div.inactive-panel > * {
+  /* filter: brightness(98%); */
+}
+</style>
