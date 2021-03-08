@@ -2,6 +2,7 @@ import NotFoundPage from "@/pages/NotFound.vue";
 import Home from "@/pages/Home.vue";
 import Application from "@/templates/Application.vue";
 import ApplicationDetails from "@/templates/ApplicationDetails.vue";
+import Secret from "@/templates/Secret.vue";
 import Authenticate from "@/pages/Authenticate.vue";
 import Login from "@/templates/Login.vue";
 import Signup from "@/templates/Signup.vue";
@@ -34,6 +35,12 @@ const routes: RouteConfig[] = [
         props: true,
         name: "applicationDetails",
         component: ApplicationDetails,
+      },
+      {
+        path: "o/:organizationId/w/:workspaceId/s",
+        props: true,
+        name: "secret",
+        component: Secret,
       },
     ],
   },

@@ -15,6 +15,9 @@ use strum_macros::{Display, EnumString};
 use thiserror::Error;
 use tracing::error;
 
+const SECRET_LIST_FOR_WORKSPACE: &str =
+    include_str!("../data/queries/secret_list_for_workspace.sql");
+
 macro_rules! enum_impls {
     ($ty:ty) => {
         impl From<$ty> for String {
@@ -184,6 +187,26 @@ impl Secret {
         let json: serde_json::Value = row.try_get("object")?;
         let object = serde_json::from_value(json)?;
         Ok(object)
+    }
+
+    pub async fn list_for_workspace(
+        txn: &PgTxn<'_>,
+        workspace_id: impl AsRef<str>,
+    ) -> SecretResult<Vec<Self>> {
+        let workspace_id = workspace_id.as_ref();
+
+        let rows = txn
+            .query(SECRET_LIST_FOR_WORKSPACE, &[&workspace_id])
+            .await?;
+
+        let mut list = Vec::new();
+        for row in rows.into_iter() {
+            let json: serde_json::Value = row.try_get("object")?;
+            let object: Self = serde_json::from_value(json)?;
+            list.push(object);
+        }
+
+        Ok(list)
     }
 
     pub async fn list(

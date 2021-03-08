@@ -113,6 +113,10 @@ export default Vue.extend({
           label: "Attribute",
           value: PanelType.Attribute,
         },
+        {
+          label: "Secret",
+          value: PanelType.Secret,
+        },
       ];
     },
   },

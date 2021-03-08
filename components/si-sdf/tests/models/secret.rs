@@ -1,31 +1,42 @@
-use crate::models::billing_account::{signup_new_billing_account, NewBillingAccount};
-use crate::models::key_pair::create_key_pair;
-use crate::{one_time_setup, TestContext};
-use names::{Generator, Name};
-use si_sdf::data::{NatsTxn, PgTxn};
-use si_sdf::models::{
-    secret::EncryptedSecret, PublicKey, Secret, SecretAlgorithm, SecretKind, SecretObjectType,
-    SecretVersion,
+use crate::{
+    generate_fake_name,
+    models::billing_account::{signup_new_billing_account, NewBillingAccount},
+    models::key_pair::create_key_pair,
+    models::workspace::create_workspace,
+    one_time_setup, TestContext,
+};
+use si_sdf::{
+    data::{NatsTxn, PgTxn},
+    models::{
+        secret::EncryptedSecret, PublicKey, Secret, SecretAlgorithm, SecretKind, SecretObjectType,
+        SecretVersion,
+    },
 };
 
-pub async fn create_secret(txn: &PgTxn<'_>, nats: &NatsTxn, nba: &NewBillingAccount) -> Secret {
-    let key_pair = create_key_pair(txn, nats, nba).await;
-
-    let secret = Secret::new(
+pub async fn create_secret(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    billing_account_id: impl AsRef<str>,
+    workspace_id: impl Into<String>,
+) -> Secret {
+    Secret::new(
         txn,
         nats,
-        Generator::with_naming(Name::Numbered).next().unwrap(),
+        generate_fake_name(),
         SecretObjectType::Credential,
         SecretKind::DockerHub,
-        Generator::with_naming(Name::Numbered).next().unwrap(),
-        key_pair.id,
+        generate_fake_name(),
+        PublicKey::get_current(&txn, billing_account_id.as_ref())
+            .await
+            .expect("could not get current public key")
+            .id
+            .clone(),
         SecretVersion::V1,
         SecretAlgorithm::Sealedbox,
-        nba.workspace.id.clone(),
+        workspace_id.into(),
     )
     .await
-    .expect("cannot create secret");
-    secret
+    .expect("cannot create secret")
 }
 
 pub async fn encrypt_message(
@@ -62,7 +73,7 @@ pub async fn create_secret_with_message(
     let secret = Secret::new(
         txn,
         nats,
-        Generator::with_naming(Name::Numbered).next().unwrap(),
+        generate_fake_name(),
         SecretObjectType::Credential,
         SecretKind::DockerHub,
         crypted,
@@ -93,7 +104,7 @@ async fn new() {
     let txn = conn.transaction().await.expect("cannot create txn");
 
     let key_pair = create_key_pair(&txn, &nats, &nba).await;
-    let name = Generator::with_naming(Name::Numbered).next().unwrap();
+    let name = generate_fake_name();
 
     let secret = Secret::new(
         &txn,
@@ -131,12 +142,51 @@ async fn secret_get() {
 
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let og_secret = create_secret(&txn, &nats, &nba).await;
+    let og_secret = create_secret(&txn, &nats, &nba.billing_account.id, &nba.workspace.id).await;
 
     let secret = Secret::get(&txn, &og_secret.id)
         .await
         .expect("cannot get secret back");
     assert_eq!(secret, og_secret);
+}
+
+#[tokio::test]
+async fn secret_list_for_workspace() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
+
+    txn.commit().await.expect("cannot commit txn");
+    nats.commit().await.expect("cannot commit nats txn");
+
+    let txn = conn.transaction().await.expect("cannot get transaction");
+    let nats = nats_conn.transaction();
+
+    let secret1 = create_secret(&txn, &nats, &nba.billing_account.id, &nba.workspace.id).await;
+    let secret2 = create_secret(&txn, &nats, &nba.billing_account.id, &nba.workspace.id).await;
+
+    let other_workspace = create_workspace(&txn, &nats, &nba).await;
+
+    txn.commit().await.expect("cannot commit txn");
+    nats.commit().await.expect("cannot commit nats txn");
+
+    let txn = conn.transaction().await.expect("cannot get transaction");
+    let nats = nats_conn.transaction();
+
+    let secret3 = create_secret(&txn, &nats, &nba.billing_account.id, &other_workspace.id).await;
+
+    let reply = Secret::list_for_workspace(&txn, &nba.workspace.id)
+        .await
+        .expect("cannot list secrets");
+    assert_eq!(reply.len(), 2);
+    assert_eq!(true, reply.iter().any(|secret| secret == &secret1));
+    assert_eq!(true, reply.iter().any(|secret| secret == &secret2));
+    assert_eq!(false, reply.iter().any(|secret| secret == &secret3));
 }
 
 #[tokio::test]
@@ -155,8 +205,8 @@ async fn secret_list() {
 
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let _secret1 = create_secret(&txn, &nats, &nba).await;
-    let _secret2 = create_secret(&txn, &nats, &nba).await;
+    let _secret1 = create_secret(&txn, &nats, &nba.billing_account.id, &nba.workspace.id).await;
+    let _secret2 = create_secret(&txn, &nats, &nba.billing_account.id, &nba.workspace.id).await;
 
     let reply = Secret::list(&txn, &nba.billing_account.id, None, None, None, None, None)
         .await
@@ -179,7 +229,7 @@ async fn encrypted_secret_get() {
 
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let og_secret = create_secret(&txn, &nats, &nba).await;
+    let og_secret = create_secret(&txn, &nats, &nba.billing_account.id, &nba.workspace.id).await;
 
     let encrypted_secret = EncryptedSecret::get(&txn, &og_secret.id)
         .await
@@ -210,7 +260,7 @@ async fn encrypt_decrypt_round_trip() {
     let public_key = PublicKey::get_current(&txn, &nba.billing_account.id)
         .await
         .expect("cannot get current public key");
-    let name = Generator::with_naming(Name::Numbered).next().unwrap();
+    let name = generate_fake_name();
 
     let message = serde_json::json!({"song": "I'm a little teapot"});
     let crypted = sodiumoxide::crypto::sealedbox::seal(

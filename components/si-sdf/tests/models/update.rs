@@ -55,7 +55,7 @@ async fn load_data_model() {
     let resource = Resource::get_any_by_entity_id(&txn, &entity.id, &system.id, &change_set.id)
         .await
         .expect("failed to get the resource");
-    let secret = create_secret(&txn, &nats, &nba).await;
+    let secret = create_secret(&txn, &nats, &nba.billing_account.id, &nba.workspace.id).await;
     let op = create_op_set_name(
         &txn,
         &nats,
