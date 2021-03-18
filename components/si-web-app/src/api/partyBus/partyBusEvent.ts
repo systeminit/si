@@ -2,9 +2,11 @@ import Bottle from "bottlejs";
 
 export abstract class PartyBusEvent {
   eventName: string;
+  sourcePanelId?: string;
 
-  constructor(eventName: PartyBusEvent["eventName"]) {
+  constructor(eventName: PartyBusEvent["eventName"], sourcePanelId?: string) {
     this.eventName = eventName;
+    this.sourcePanelId = sourcePanelId;
   }
 
   publish() {

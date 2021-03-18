@@ -1,12 +1,19 @@
 <template>
   <div id="app">
-    <router-view class=""></router-view>
+    <ShortcutsEventBroker>
+      <router-view />
+    </ShortcutsEventBroker>
   </div>
 </template>
 
 <script lang="ts">
+import ShortcutsEventBroker from "@/organisims/ShortcutsEventBroker.vue";
+
 export default {
   name: "App",
+  components: {
+    ShortcutsEventBroker,
+  },
 };
 </script>
 

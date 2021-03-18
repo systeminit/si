@@ -18,6 +18,14 @@ export interface INodeCreateRequest {
   systemId: string;
 }
 
+export interface INodeUpdatePositionRequest {
+  nodeId: string;
+  contextId: string;
+  x: string;
+  y: string;
+  workspaceId: string;
+}
+
 export interface INodeObjectEntity {
   entity: Entity;
   system?: never;
@@ -42,9 +50,23 @@ export interface INodeCreateReplyFailure {
   error: SDFError;
 }
 
+export interface INodeUpdatePositionReplySuccess {
+  // nodePosition: any; // ignoring this for now.
+  error?: never;
+}
+
+export interface INodeUpdatePositionReplyFailure {
+  // nodePosition?: any; // ignoring this for now.
+  error: SDFError;
+}
+
 export type INodeCreateReply =
   | INodeCreateReplySuccess
   | INodeCreateReplyFailure;
+
+export type INodeUpdatePositionReply =
+  | INodeUpdatePositionReplySuccess
+  | INodeUpdatePositionReplyFailure;
 
 async function nodeCreateForApplication(
   request: INodeCreateForApplicationRequest,
@@ -54,6 +76,18 @@ async function nodeCreateForApplication(
 
   const reply: INodeCreateReply = await sdf.post(
     "editorDal/nodeCreateForApplication",
+    request,
+  );
+  return reply;
+}
+async function nodeUpdatePosition(
+  request: INodeUpdatePositionRequest,
+): Promise<INodeUpdatePositionReply> {
+  let bottle = Bottle.pop("default");
+  let sdf = bottle.container.SDF;
+
+  const reply: INodeUpdatePositionReply = await sdf.post(
+    "editorDal/updateNodePosition",
     request,
   );
   return reply;
@@ -176,4 +210,5 @@ export const EditorDal = {
   entitySetProperty,
   entitySetPropertyBulk,
   entitySetName,
+  nodeUpdatePosition,
 };

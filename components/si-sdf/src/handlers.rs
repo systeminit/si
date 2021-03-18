@@ -9,9 +9,9 @@ use std::convert::Infallible;
 use crate::data::{NatsTxnError, PgTxn};
 use crate::models::{
     ApiClientError, BillingAccountError, ChangeSetError, EdgeError, EditSessionError, EntityError,
-    EventError, EventLogError, JwtKeyError, KeyPairError, ModelError, NodeError, OpError,
-    OrganizationError, PageTokenError, QueryError, SchematicError, SecretError, SystemError,
-    UserError, WorkspaceError,
+    EventError, EventLogError, JwtKeyError, KeyPairError, ModelError, NodeError, NodePositionError,
+    OpError, OrganizationError, PageTokenError, QueryError, SchematicError, SecretError,
+    SystemError, UserError, WorkspaceError,
 };
 
 const AUTHORIZE_USER: &str = include_str!("./data/queries/authorize_user.sql");
@@ -57,6 +57,8 @@ pub enum HandlerError {
     Model(#[from] ModelError),
     #[error("node error: {0}")]
     Node(#[from] NodeError),
+    #[error("node position error: {0}")]
+    NodePosition(#[from] NodePositionError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("edit session error: {0}")]
@@ -249,6 +251,9 @@ pub async fn handle_rejection(err: Rejection) -> Result<impl Reply, Infallible> 
     {
         code = StatusCode::BAD_REQUEST;
         message = String::from("cannot create billing account");
+    } else if let Some(HandlerError::Edge(EdgeError::EdgeExists)) = err.find() {
+        code = StatusCode::BAD_REQUEST;
+        message = String::from("edge already exists");
     } else if let Some(header) = err.find::<warp::reject::MissingHeader>() {
         code = StatusCode::UNAUTHORIZED;
         message = format!("{}", header);

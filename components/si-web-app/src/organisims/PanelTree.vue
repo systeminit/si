@@ -208,8 +208,13 @@ export default Vue.extend({
         panelElem.classList.remove("absolute");
 
         // panelElem.classList.remove("z-100");
-        panelElem.nextElementSibling!.classList.remove("hidden");
-        panelElem.nextElementSibling!.classList.remove("overflow-hidden");
+        if (
+          panelElem.nextElementSibling &&
+          panelElem.nextElementSibling!.classList
+        ) {
+          panelElem.nextElementSibling!.classList.remove("hidden");
+          panelElem.nextElementSibling!.classList.remove("overflow-hidden");
+        }
 
         let originalStyle = ogPanelData.style;
         if (originalStyle) {

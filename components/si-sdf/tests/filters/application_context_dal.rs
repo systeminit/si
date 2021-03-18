@@ -25,7 +25,7 @@ use si_sdf::{
 };
 use warp::http::StatusCode;
 
-async fn create_application(ctx: &TestContext, nba: &NewBillingAccount) -> Entity {
+pub async fn create_application(ctx: &TestContext, nba: &NewBillingAccount) -> Entity {
     let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let mut conn = pg.pool.get().await.expect("cannot get connection");
 

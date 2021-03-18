@@ -293,6 +293,11 @@ export default Vue.extend({
                 `height: ${newChongHeightPercent}%;`,
               );
               panelContainer.ticking = false;
+
+              // Alex WIP
+              PanelEventBus.$emit("panel-layout-update", {
+                updated: true,
+              });
             });
           } else {
             // Total Width of the container - for figuring out percentages.
@@ -376,6 +381,11 @@ export default Vue.extend({
                 `width: ${newChongWidthPercent}%;`,
               );
               panelContainer.ticking = false;
+            });
+
+            // Alex WIP
+            PanelEventBus.$emit("panel-layout-update", {
+              updated: true,
             });
           }
         }
@@ -551,9 +561,10 @@ export default Vue.extend({
         let panelElem = document.getElementById(panelRef) as HTMLElement;
         panelElem.classList.remove("absolute");
 
-        // panelElem.classList.remove("z-90");
-        panelElem.nextElementSibling!.classList.remove("hidden");
-        panelElem.nextElementSibling!.classList.remove("overflow-hidden");
+        if (panelElem.nextElementSibling != null) {
+          panelElem.nextElementSibling!.classList.remove("hidden");
+          panelElem.nextElementSibling!.classList.remove("overflow-hidden");
+        }
 
         let originalStyle = ogPanelData.style;
         if (originalStyle) {
@@ -605,11 +616,12 @@ export default Vue.extend({
         panelElem.classList.add("absolute");
 
         // Hide the other panels
-        // panelElem.classList.add("z-90");
         // Should loop over all sibling. We only have one for now so ....
         // We should do this directly at the component level instead of here
-        panelElem.nextElementSibling!.classList.add("hidden");
-        panelElem.nextElementSibling!.classList.add("overflow-hidden");
+        if (panelElem.nextElementSibling != null) {
+          panelElem.nextElementSibling.classList.add("hidden");
+          panelElem.nextElementSibling.classList.add("overflow-hidden");
+        }
 
         panelElem.setAttribute(
           "style",
@@ -623,3 +635,10 @@ export default Vue.extend({
   },
 });
 </script>
+
+<style scoped>
+.resizer {
+  /* background-color: #282F32; */
+  background-color: #2b3336;
+}
+</style>

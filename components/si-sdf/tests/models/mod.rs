@@ -10,6 +10,7 @@ pub mod group;
 pub mod jwt_key;
 pub mod key_pair;
 pub mod node;
+pub mod node_position;
 pub mod ops;
 pub mod organization;
 pub mod resource;

@@ -2,6 +2,7 @@ import { Module } from "vuex";
 import { EntityObject } from "si-registry/lib/systemComponent";
 import {
   INodeCreateReply,
+  INodeUpdatePositionReply,
   IEntitySetPropertyRequest,
   IEntitySetPropertyReply,
   IEntitySetNameRequest,
@@ -9,6 +10,15 @@ import {
   IEntitySetPropertyBulkRequest,
   IEntitySetPropertyBulkReply,
 } from "@/api/sdf/dal/editorDal";
+
+import {
+  ConnectionCreateReply,
+  SchematicDal,
+  Connection,
+  ConnectionNodeReference,
+} from "@/api/sdf/dal/schematicDal";
+
+import { PanelEventBus } from "@/atoms/PanelEventBus";
 import { SessionStore } from "@/store/modules/session";
 import { ChangeSet } from "@/api/sdf/model/changeSet";
 import { PartyBus } from "@/api/partyBus";
@@ -19,8 +29,12 @@ import { EditSessionCurrentSetEvent } from "@/api/partyBus/editSessionCurrentSet
 import { EditorDal } from "@/api/sdf/dal/editorDal";
 import { NodeKind } from "@/api/sdf/model/node";
 import { NodeCreatedEvent } from "@/api/partyBus/NodeCreatedEvent";
+import { NodeUpdatedEvent } from "@/api/partyBus/NodeUpdatedEvent";
+import { ConnectionCreatedEvent } from "@/api/partyBus/ConnectionCreatedEvent";
 import { EntityPropertySetEvent } from "@/api/partyBus/EntityPropertySetEvent";
 import { EntitySetNameEvent } from "@/api/partyBus/EntitySetNameEvent";
+
+import { Cg2dCoordinate } from "@/api/sicg";
 
 export type IEditorContext = IEditorContextApplication;
 
@@ -36,6 +50,21 @@ export interface EditorStore {
   currentEditSession: EditSession | null;
 }
 
+export interface ConnectionCreatePayload {
+  connection: Connection;
+}
+
+export interface NodeCreatePayload {
+  entityObject: EntityObject;
+  sourcePanelId: string;
+}
+
+export interface NodeUpdatePositionePayload {
+  nodeId: string;
+  contextId: string;
+  position: Cg2dCoordinate;
+}
+
 export function setupEditor() {
   const bottle = Bottle.pop("default");
   const partyBus: PartyBus = bottle.container.PartyBus;
@@ -43,6 +72,10 @@ export function setupEditor() {
     CurrentChangeSetEvent,
     EditSessionCurrentSetEvent,
   ]);
+}
+
+export interface TransientEdgeRemovalEvent {
+  remove: boolean;
 }
 
 export const editor: Module<EditorStore, any> = {
@@ -146,7 +179,7 @@ export const editor: Module<EditorStore, any> = {
 
     async nodeCreate(
       { state, rootState },
-      entityObject: EntityObject,
+      payload: NodeCreatePayload,
     ): Promise<INodeCreateReply> {
       let currentWorkspace: SessionStore["currentWorkspace"] =
         rootState.session.currentWorkspace;
@@ -167,7 +200,7 @@ export const editor: Module<EditorStore, any> = {
       if (state.context.applicationId) {
         reply = await EditorDal.nodeCreateForApplication({
           kind: NodeKind.Entity,
-          objectType: entityObject.typeName,
+          objectType: payload.entityObject.typeName,
           workspaceId: currentWorkspace.id,
           changeSetId: state.currentChangeSet.id,
           editSessionId: state.currentEditSession.id,
@@ -178,9 +211,79 @@ export const editor: Module<EditorStore, any> = {
         throw new Error("cannot create without an editor context");
       }
       if (!reply.error) {
-        new NodeCreatedEvent(reply).publish();
+        // reply.creatorId = "me!"
+        new NodeCreatedEvent(reply, payload.sourcePanelId).publish();
       }
 
+      return reply;
+    },
+
+    async connectionCreate(
+      { state, rootState },
+      payload: ConnectionCreatePayload,
+    ): Promise<ConnectionCreateReply> {
+      let currentWorkspace: SessionStore["currentWorkspace"] =
+        rootState.session.currentWorkspace;
+      let currentSystem: SessionStore["currentSystem"] =
+        rootState.session.currentSystem;
+      if (
+        !currentWorkspace ||
+        !currentSystem ||
+        !state.currentEditSession ||
+        !state.currentChangeSet ||
+        !state.context
+      ) {
+        throw new Error(
+          "Cannot call nodeCreate without a workspace, system, changeSet and editSession or EditContext! bug!",
+        );
+      }
+
+      let reply: ConnectionCreateReply;
+      if (state.context.applicationId) {
+        reply = await SchematicDal.connectionCreate({
+          connection: payload.connection,
+          workspaceId: currentWorkspace.id,
+          changeSetId: state.currentChangeSet.id,
+          editSessionId: state.currentEditSession.id,
+          applicationId: state.context.applicationId,
+        });
+      } else {
+        throw new Error("cannot create without an editor context");
+      }
+      if (!reply.error) {
+        new ConnectionCreatedEvent(reply).publish();
+      } else {
+      }
+      return reply;
+    },
+
+    async nodeSetPosition(
+      { state, rootState },
+      payload: NodeUpdatePositionePayload,
+    ): Promise<INodeUpdatePositionReply> {
+      let currentWorkspace: SessionStore["currentWorkspace"] =
+        rootState.session.currentWorkspace;
+      if (!currentWorkspace || !state.context) {
+        throw new Error(
+          "Cannot call nodeCreate without a workspace, system, changeSet and editSession or EditContext! bug!",
+        );
+      }
+      let reply: INodeUpdatePositionReply;
+      if (state.context.applicationId) {
+        reply = await EditorDal.nodeUpdatePosition({
+          nodeId: payload.nodeId,
+          contextId: payload.contextId,
+          x: String(payload.position.x),
+          y: String(payload.position.y),
+          workspaceId: currentWorkspace.id,
+        });
+      } else {
+        throw new Error("cannot create without an editor context");
+      }
+      if (!reply.error) {
+        // @ts-ignore
+        new NodeUpdatedEvent(reply).publish();
+      }
       return reply;
     },
   },

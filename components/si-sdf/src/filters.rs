@@ -1,17 +1,16 @@
+use crate::{
+    data::{EventLogFS, NatsConn, PgPool},
+    handlers, models,
+    veritech::Veritech,
+};
 use sodiumoxide::crypto::secretbox;
 use warp::{filters::BoxedFilter, Filter};
-
-use crate::data::{EventLogFS, NatsConn, PgPool};
-use crate::veritech::Veritech;
-
-use crate::handlers;
-use crate::models::{self, OutputLineStream};
 
 pub fn api(
     pg: &PgPool,
     nats_conn: &NatsConn,
     veritech: &Veritech,
-    event_log_fs: &EventLogFS,
+    _event_log_fs: &EventLogFS,
     secret_key: &secretbox::Key,
 ) -> BoxedFilter<(impl warp::Reply,)> {
     //billing_accounts(pg, nats_conn, veritech)
@@ -351,10 +350,10 @@ pub fn attribute_dal_get_node_list(pg: PgPool) -> BoxedFilter<(impl warp::Reply,
 // Schematic DAL
 pub fn schematic_dal(
     pg: &PgPool,
-    _nats_conn: &NatsConn,
+    nats_conn: &NatsConn,
     _veritech: &Veritech,
 ) -> BoxedFilter<(impl warp::Reply,)> {
-    schematic_dal_get_application_system_schematic(pg.clone()).boxed()
+    schematic_dal_get_application_system_schematic(pg.clone()).or(schematic_dal_connection_create(pg.clone(), nats_conn.clone())).boxed()
 }
 
 pub fn schematic_dal_get_application_system_schematic(
@@ -370,6 +369,23 @@ pub fn schematic_dal_get_application_system_schematic(
         .and_then(handlers::schematic_dal::get_application_system_schematic)
         .boxed()
 }
+
+pub fn schematic_dal_connection_create(
+    pg: PgPool,
+    nats_conn: NatsConn,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("schematicDal" / "connectionCreate")
+        .and(warp::post())
+        .and(with_pg(pg))
+        .and(with_nats_conn(nats_conn))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::body::json::<
+            handlers::schematic_dal::ConnectionCreateRequest,
+        >())
+        .and_then(handlers::schematic_dal::connection_create)
+        .boxed()
+}
+
 
 // Editor DAL
 pub fn editor_dal(
@@ -392,6 +408,10 @@ pub fn editor_dal(
             pg.clone(),
             nats_conn.clone(),
             veritech.clone(),
+        ))
+        .or(editor_dal_update_node_position(
+            pg.clone(),
+            nats_conn.clone(),
         ))
         .boxed()
 }
@@ -463,6 +483,22 @@ pub fn editor_dal_node_create_for_application(
             handlers::editor_dal::NodeCreateForApplicationRequest,
         >())
         .and_then(handlers::editor_dal::node_create_for_application)
+        .boxed()
+}
+
+pub fn editor_dal_update_node_position(
+    pg: PgPool,
+    nats_conn: NatsConn,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("editorDal" / "updateNodePosition")
+        .and(warp::post())
+        .and(with_pg(pg))
+        .and(with_nats_conn(nats_conn))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::body::json::<
+            handlers::editor_dal::UpdateNodePositionRequest,
+        >())
+        .and_then(handlers::editor_dal::update_node_position)
         .boxed()
 }
 
@@ -1048,11 +1084,11 @@ fn with_nats_conn(
     warp::any().map(move || nats_conn.clone())
 }
 
-fn with_event_log_fs(
-    event_log_fs: EventLogFS,
-) -> impl Filter<Extract = (EventLogFS,), Error = std::convert::Infallible> + Clone {
-    warp::any().map(move || event_log_fs.clone())
-}
+// fn with_event_log_fs(
+//     event_log_fs: EventLogFS,
+// ) -> impl Filter<Extract = (EventLogFS,), Error = std::convert::Infallible> + Clone {
+//     warp::any().map(move || event_log_fs.clone())
+// }
 
 fn with_veritech(
     veritech: Veritech,
@@ -1066,8 +1102,8 @@ fn with_secret_key(
     warp::any().map(move || secret_key.clone())
 }
 
-fn with_string(
-    thingy: String,
-) -> impl Filter<Extract = (String,), Error = std::convert::Infallible> + Clone {
-    warp::any().map(move || thingy.clone())
-}
+// fn with_string(
+//     thingy: String,
+// ) -> impl Filter<Extract = (String,), Error = std::convert::Infallible> + Clone {
+//     warp::any().map(move || thingy.clone())
+// }
