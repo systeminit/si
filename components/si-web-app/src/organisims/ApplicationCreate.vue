@@ -98,14 +98,14 @@ export default Vue.extend({
         this.errorMessage = "No workspace selected!";
         return;
       }
-      if (!this.currentSystem) {
-        this.errorMessage = "No system selected!";
-        return;
-      }
+      //if (!this.currentSystem) {
+      //  this.errorMessage = "No system selected!";
+      //  return;
+      //}
       let request: IApplicationCreateRequest = {
         applicationName: this.form.applicationName,
         workspaceId: this.currentWorkspace.id,
-        systemId: this.currentSystem.id,
+        //  systemId: this.currentSystem.id,
       };
       let reply = await this.$store.dispatch(
         "application/createApplication",

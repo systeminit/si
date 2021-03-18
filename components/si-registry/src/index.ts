@@ -11,5 +11,7 @@ export {
   ValidatorKind,
   RegistryEntry,
   RegistryEntryUi,
+  MenuCategory,
 } from "./registryEntry";
+export { entityMenu } from "./menu";
 export { registry, findProp } from "./registry";

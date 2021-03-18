@@ -7,6 +7,7 @@ export interface IGetSchematicRequest {
   workspaceId: string;
   rootObjectId: string;
   changeSetId?: string;
+  editSessionId?: string;
 }
 
 export interface IGetSchematicReplySuccess {

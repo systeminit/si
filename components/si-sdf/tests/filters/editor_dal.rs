@@ -1,12 +1,8 @@
-use crate::{
-    filters::{application_context_dal::create_application, session_dal::login_user},
-    generate_fake_name,
-    models::{
-        billing_account::signup_new_billing_account, change_set::create_change_set,
-        edit_session::create_edit_session, node::create_entity_node,
-        node_position::create_node_position,
-    },
-    one_time_setup, TestContext,
+use crate::filters::{application_context_dal::create_application, session_dal::login_user};
+use si_model::{Entity, Node, NodePosition};
+use si_model_test::{
+    create_change_set, create_edit_session, create_entity_node, create_node_position,
+    generate_fake_name, one_time_setup, signup_new_billing_account, TestContext,
 };
 use si_sdf::{
     filters::api,
@@ -14,7 +10,6 @@ use si_sdf::{
         NodeCreateForApplicationRequest, NodeCreateReply, UpdateNodePositionReply,
         UpdateNodePositionRequest,
     },
-    models::{Entity, Node, NodeKind, NodePosition},
 };
 use warp::http::StatusCode;
 
@@ -53,12 +48,10 @@ async fn node_create_for_application() {
         .path("/editorDal/nodeCreateForApplication")
         .json(&NodeCreateForApplicationRequest {
             name: Some(name.clone()),
-            kind: NodeKind::Entity,
-            object_type: "Service".to_string(),
+            entity_type: "service".to_string(),
             workspace_id: nba.workspace.id.clone(),
             change_set_id: change_set.id.clone(),
             edit_session_id: edit_session.id.clone(),
-            system_id: nba.system.id.clone(),
             application_id: application.id.clone(),
         })
         .reply(&filter)
@@ -70,14 +63,15 @@ async fn node_create_for_application() {
 
     let txn = conn.transaction().await.expect("cannot get transaction");
 
-    let reply_entity = reply.object.entity.expect("node object was not an entity");
+    let reply_entity = reply.entity;
 
     let expected_node = Node::get(&txn, &reply.node.id)
         .await
         .expect("cannot get node");
-    let expected_entity = Entity::get_projection(&txn, &reply_entity.id, &change_set.id)
-        .await
-        .expect("cannot get entity");
+    let expected_entity =
+        Entity::for_edit_session(&txn, &reply_entity.id, &change_set.id, &edit_session.id)
+            .await
+            .expect("cannot get entity");
 
     assert_eq!(expected_node, reply.node);
     assert_eq!(expected_entity, reply_entity);
@@ -116,7 +110,6 @@ async fn update_node_position() {
         &nats,
         &veritech,
         &nba,
-        &nba.system,
         &change_set,
         &edit_session,
     )
@@ -170,7 +163,6 @@ async fn update_node_position() {
         &nats,
         &veritech,
         &nba,
-        &nba.system,
         &change_set,
         &edit_session,
     )

@@ -9,6 +9,8 @@ pub mod event_log;
 pub mod group;
 pub mod key_pair;
 pub mod node;
+pub mod node_position;
 pub mod organization;
 pub mod secret;
 pub mod user;
+pub mod workspace;

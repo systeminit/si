@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::{generate_name, ChangeSetError, SiStorable, Veritech};
-use si_data::{NatsConn, NatsTxn, NatsTxnError, PgPool, PgTxn};
+use crate::{generate_name, ChangeSetError, SiStorable};
+use si_data::{NatsTxn, NatsTxnError, PgTxn};
 
 #[derive(Error, Debug)]
 pub enum EditSessionError {
@@ -77,43 +77,13 @@ impl EditSession {
         Ok(())
     }
 
-    pub async fn cancel(
-        &mut self,
-        _pg: &PgPool,
-        txn: &PgTxn<'_>,
-        _nats_conn: &NatsConn,
-        nats: &NatsTxn,
-        _veritech: &Veritech,
-        _event_parent_id: Option<&str>,
-    ) -> EditSessionResult<()> {
-        let rows = txn
-            .query("SELECT object FROM edit_session_revert_v1($1)", &[&self.id])
+    pub async fn cancel(&mut self, txn: &PgTxn<'_>) -> EditSessionResult<()> {
+        let row = txn
+            .query_one("SELECT object FROM edit_session_cancel_v1($1)", &[&self.id])
             .await?;
-        for row in rows.into_iter() {
-            let json: serde_json::Value = match row.try_get("object") {
-                Ok(json) => json,
-                Err(err) => {
-                    dbg!(
-                        "cannot get row for cancel check, probably fine; err={}",
-                        err
-                    );
-                    continue;
-                }
-            };
-            nats.publish(&json).await?;
-        }
-        //let mut change_set = ChangeSet::get(&txn, &self.change_set_id).await?;
-        //change_set
-        //    .execute(pg, txn, nats_conn, nats, veritech, true, event_parent_id)
-        //    .await?;
-
-        // The database query above returns ops that are to be skipped and not the updated
-        // representation of this edit session. In order to maintain the "save-like" feel of
-        // `cancel()`, we'll re-fetch the current database representation and update outselves in
-        // place, much like a model `save()`.
-        let mut updated = Self::get(&txn, &self.id).await?;
-        std::mem::swap(self, &mut updated);
-
+        let json: serde_json::Value = row.try_get("object")?;
+        let edit_session: EditSession = serde_json::from_value(json)?;
+        *self = edit_session;
         Ok(())
     }
 }

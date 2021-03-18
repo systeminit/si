@@ -1,13 +1,12 @@
-use crate::{
-    filters::session_dal::login_user, models::billing_account::signup_new_billing_account,
-    models::secret::encrypt_message, one_time_setup, TestContext,
-};
+use si_model::{PublicKey, SecretAlgorithm, SecretKind, SecretObjectType, SecretVersion};
+use si_model_test::{encrypt_message, one_time_setup, signup_new_billing_account, TestContext};
 use si_sdf::{
     filters::api,
     handlers::secret_dal::{CreateSecretReply, CreateSecretRequest, GetPublicKeyReply},
-    models::{PublicKey, SecretAlgorithm, SecretKind, SecretObjectType, SecretVersion},
 };
 use warp::http::StatusCode;
+
+use crate::filters::session_dal::login_user;
 
 #[tokio::test]
 async fn get_public_key() {

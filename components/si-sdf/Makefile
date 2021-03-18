@@ -1,6 +1,7 @@
 include ../build/rust.mk
 COMPONENT = si-sdf
 .DEFAULT_GOAL := build
+WATCH_PATHS := . ../si-model ../si-settings ../si-data
 
 build_release//cli:
 	@echo "--- [$(shell basename ${CURDIR})] $@"

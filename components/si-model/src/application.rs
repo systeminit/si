@@ -107,6 +107,8 @@ pub async fn create(
         edit_session.id,
     )
     .await?;
+    system::assign_entity_to_system_by_name(&txn, &nats, "production", &application).await?;
+
     txn.commit().await?;
 
     let reply: ApplicationListEntry = ApplicationListEntry {

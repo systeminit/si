@@ -16,7 +16,7 @@ export interface IEntity {
   id: string;
   name: string;
   description: string;
-  objectType: string;
+  entityType: string;
   expressionProperties: {
     [key: string]: Record<string, any>;
   };
@@ -39,7 +39,7 @@ export interface IEntity {
 export class Entity implements IEntity {
   id: IEntity["id"];
   name: IEntity["name"];
-  objectType: IEntity["objectType"];
+  entityType: IEntity["entityType"];
   description: IEntity["description"];
   expressionProperties: IEntity["expressionProperties"];
   manualProperties: IEntity["manualProperties"];
@@ -54,7 +54,7 @@ export class Entity implements IEntity {
   constructor(args: IEntity) {
     this.id = args.id;
     this.name = args.name;
-    this.objectType = args.objectType;
+    this.entityType = args.entityType;
     this.description = args.description;
     this.expressionProperties = args.expressionProperties;
     this.manualProperties = args.manualProperties;

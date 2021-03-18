@@ -32,7 +32,7 @@ pub mod jwt_key;
 pub mod key_pair;
 pub mod label_list;
 pub mod node;
-pub mod node_positions;
+pub mod node_position;
 pub mod organization;
 pub mod output_line;
 pub mod resource;
@@ -65,6 +65,7 @@ pub use jwt_key::{
 pub use key_pair::{KeyPair, KeyPairError, PublicKey};
 pub use label_list::{LabelList, LabelListItem};
 pub use node::{Node, NodeError};
+pub use node_position::{NodePosition, NodePositionError};
 pub use organization::{Organization, OrganizationError};
 pub use output_line::{OutputLine, OutputLineStream};
 pub use resource::{Resource, ResourceError, ResourceHealth, ResourceResult, ResourceStatus};

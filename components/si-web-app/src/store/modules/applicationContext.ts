@@ -17,11 +17,15 @@ import {
   ICancelEditSessionReply,
   ICreateEditSessionAndGetChangeSetRequest,
   ICreateEditSessionAndGetChangeSetReply,
+  ISaveEditSessionRequest,
+  ISaveEditSessionReply,
 } from "@/api/sdf/dal/applicationContextDal";
 import { EditSession } from "@/api/sdf/model/editSession";
 import { CurrentChangeSetEvent } from "@/api/partyBus/currentChangeSetEvent";
 import { EditSessionCurrentSetEvent } from "@/api/partyBus/editSessionCurrentSetEvent";
 import { StatusBarStore } from "./statusBar";
+import { NodeUpdatedEvent } from "@/api/partyBus/NodeUpdatedEvent";
+import { EditSessionCancelEvent } from "@/api/partyBus/EditSessionCancelEvent";
 
 export interface ApplicationContextStore {
   applicationId: string | null;
@@ -244,21 +248,30 @@ export const applicationContext: Module<ApplicationContextStore, any> = {
       return reply;
     },
     async cancelEditSession(
-      { commit },
+      { commit, state },
       request: ICancelEditSessionRequest,
     ): Promise<ICancelEditSessionReply> {
       let reply = await ApplicationContextDal.cancelEditSession(request);
       if (!reply.error) {
         commit("setCurrentEditSession", null);
         new EditSessionCurrentSetEvent(null).publish();
+        new EditSessionCancelEvent({
+          editSessionId: request.editSessionId,
+        }).publish();
       }
       return reply;
     },
-    finishEditSession({ commit, state }) {
-      if (state.currentEditSession) {
+    async saveEditSession(
+      { commit },
+      request: ISaveEditSessionRequest,
+    ): Promise<ISaveEditSessionReply> {
+      console.log("sending request", { request });
+      let reply = await ApplicationContextDal.saveEditSession(request);
+      if (!reply.error) {
         commit("setCurrentEditSession", null);
         new EditSessionCurrentSetEvent(null).publish();
       }
+      return reply;
     },
   },
 };

@@ -5,7 +5,9 @@ use jwt_simple::coarsetime::Duration;
 use serde::{Deserialize, Serialize};
 use si_data::PgPool;
 use si_model::{
-    get_jwt_signing_key, session, BillingAccount, Organization, SiClaims, User, Workspace,
+    get_jwt_signing_key,
+    session::{self, SessionDefaults},
+    BillingAccount, SiClaims, User,
 };
 use sodiumoxide::crypto::secretbox;
 
@@ -106,13 +108,7 @@ pub async fn restore_authentication(
     Ok(warp::reply::json(&reply))
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct GetDefaultsReply {
-    pub organization: Organization,
-    pub workspace: Workspace,
-    //pub system: Entity,
-}
+pub type GetDefaultsReply = SessionDefaults;
 
 pub async fn get_defaults(
     pg: PgPool,
@@ -127,11 +123,5 @@ pub async fn get_defaults(
         .await
         .map_err(HandlerError::from)?;
 
-    let reply = GetDefaultsReply {
-        organization: session_defaults.organization,
-        workspace: session_defaults.workspace,
-        //system: session_defaults.system,
-    };
-
-    Ok(warp::reply::json(&reply))
+    Ok(warp::reply::json(&session_defaults))
 }

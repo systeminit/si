@@ -1,28 +1,34 @@
+use crate::generate_fake_name;
 use crate::model::billing_account::NewBillingAccount;
-use crate::model::key_pair::create_key_pair;
 
 use names::{Generator, Name};
 use si_data::{NatsTxn, PgTxn};
 use si_model::{PublicKey, Secret, SecretAlgorithm, SecretKind, SecretObjectType, SecretVersion};
 
-pub async fn create_secret(txn: &PgTxn<'_>, nats: &NatsTxn, nba: &NewBillingAccount) -> Secret {
-    let key_pair = create_key_pair(txn, nats, nba).await;
-
-    let secret = Secret::new(
+pub async fn create_secret(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    billing_account_id: impl AsRef<str>,
+    workspace_id: impl Into<String>,
+) -> Secret {
+    Secret::new(
         txn,
         nats,
-        Generator::with_naming(Name::Numbered).next().unwrap(),
+        generate_fake_name(),
         SecretObjectType::Credential,
         SecretKind::DockerHub,
-        Generator::with_naming(Name::Numbered).next().unwrap(),
-        key_pair.id,
+        generate_fake_name(),
+        PublicKey::get_current(&txn, billing_account_id.as_ref())
+            .await
+            .expect("could not get current public key")
+            .id
+            .clone(),
         SecretVersion::V1,
         SecretAlgorithm::Sealedbox,
-        nba.workspace.id.clone(),
+        workspace_id.into(),
     )
     .await
-    .expect("cannot create secret");
-    secret
+    .expect("cannot create secret")
 }
 
 pub async fn encrypt_message(

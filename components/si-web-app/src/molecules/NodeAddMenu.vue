@@ -24,34 +24,24 @@
     >
       <li
         class="w-full px-4 text-sm subpixel-antialiased font-light tracking-tight text-left text-gray-300 cursor-pointer options menu-category"
-        v-for="item in menuList"
-        :data-cy="
-          'editor-schematic-node-add-menu-' +
-            item.id.replace(/\s/g, '-').replace(/:/g, '')
-        "
-        :key="item.id"
+        v-for="category in menuItems"
+        :key="category.name"
       >
         <div class="whitespace-no-wrap hover:text-white">
-          {{ item.id }}
+          {{ category.name }}
         </div>
 
         <ul
-          v-if="item.childs"
+          v-if="category.items"
           class="relative w-auto border shadow-md category-items options"
         >
           <li
             class="w-full px-4 text-sm subpixel-antialiased font-light tracking-tight text-left text-gray-300 whitespace-no-wrap cursor-pointer options"
-            v-for="child in item.childs"
-            :key="child.id"
-            :data-cy="
-              'editor-schematic-node-add-menu-' +
-                item.id.replace(/\s/g, '-').replace(/:/g, '') +
-                '-' +
-                child.id.replace(/\s/g, '-').replace(/:/g, '')
-            "
-            @click="onSelect(child, $event)"
+            v-for="item in category.items"
+            :key="item.entityType"
+            @click="onSelect(item, $event)"
           >
-            {{ child.id }}
+            {{ item.displayName }}
           </li>
         </ul>
       </li>
@@ -63,42 +53,10 @@
 import Vue from "vue";
 import _ from "lodash";
 
-import { registry } from "si-registry";
-import {
-  EntityObject,
-  UiMenuCategory,
-  UiMenuSubCategory,
-} from "si-registry/lib/systemComponent";
-import Bottle from "bottlejs";
-
-import { CgMousePosition, Cg2dCoordinate } from "@/api/sicg";
-import { NodeCreatePayload } from "@/store/modules/editor";
-
-type MenuElement = MenuCategory | MenuItem | undefined;
-
-interface MenuCategory {
-  kind: "category";
-  id: string;
-  childs: MenuCategory[] | MenuItem[] | undefined;
-}
-
-interface MenuItem {
-  kind: "item";
-  id: string;
-  iEntity: EntityObject;
-  parent: MenuCategory | undefined;
-}
-
-export interface IselectedEvent {
-  entityObject: EntityObject;
-  position: Cg2dCoordinate;
-}
+import { entityMenu } from "si-registry";
 
 interface Data {
-  entityTypeList: EntityObject[];
   isOpen: boolean;
-  selected: MenuItem | undefined;
-  menuList: MenuElement[];
 }
 
 export default Vue.extend({
@@ -111,100 +69,28 @@ export default Vue.extend({
   },
   components: {},
   data(): Data {
-    let entityTypeList = _.sortBy(registry.listEntities(), ["typeName"]);
     return {
-      entityTypeList,
       isOpen: false,
-      selected: undefined,
-      menuList: [],
     };
   },
-  methods: {
-    onSelect(item: MenuItem, event: MouseEvent): void {
-      event.preventDefault();
-      this.$emit("selected", item.iEntity);
-      this.isOpen = false;
+  computed: {
+    menuItems(): ReturnType<typeof entityMenu>["list"] {
+      const result = entityMenu();
+      return result.list;
     },
-    menuItemList(): MenuElement[] {
-      // Filter the entityTypeList for entities that are uiVisible
-      var filteredList = _.remove(this.entityTypeList, function(
-        entity: EntityObject,
-      ) {
-        if (entity.iEntity?.uiVisible) {
-          return entity;
-        }
-      });
-
-      // Sort the filtered list
-      let sortedList = _.sortBy(filteredList, ["iEntity.uiMenuDisplayName"]);
-
-      let menuList: MenuElement[] = [];
-
-      sortedList.forEach(function(entity: EntityObject) {
-        // Check if this entity has a uiMenuCategory
-        if (entity.iEntity?.uiMenuCategory) {
-          let menuElement: any;
-          // Find the menuElement tht represents the entity uiMenuCategory.
-          menuElement = _.find(menuList, function(e: MenuElement) {
-            return e?.id === entity.iEntity?.uiMenuCategory;
-          });
-
-          // Create a menuElement to represent the entity uiMenuCategory if it doesn't already exist
-          if (!menuElement) {
-            if (
-              entity.iEntity?.uiMenuCategory &&
-              menuElement?.kind !== "category"
-            ) {
-              let menuCategory: MenuCategory = {
-                kind: "category",
-                id: entity.iEntity.uiMenuCategory,
-                childs: [],
-              };
-              menuList.push(menuCategory);
-              menuList = _.sortBy(menuList, ["id"]);
-              menuElement = _.find(menuList, function(e: MenuElement) {
-                return e?.id === entity.iEntity?.uiMenuCategory;
-              });
-            }
-          }
-
-          // Add menuItem to MenuCategory
-          if (
-            menuElement?.kind === "category" &&
-            entity.iEntity.uiMenuDisplayName
-          ) {
-            let menuItemId: string;
-
-            if (entity.iEntity.uiMenuSubCategory) {
-              menuItemId =
-                entity.iEntity.uiMenuSubCategory +
-                " : " +
-                entity.iEntity.uiMenuDisplayName;
-            } else {
-              menuItemId = entity.iEntity.uiMenuDisplayName;
-            }
-
-            let menuItem: MenuItem = {
-              kind: "item",
-              id: menuItemId,
-              iEntity: entity,
-              parent: menuElement,
-            };
-            menuElement?.childs?.push(menuItem);
-          }
-        }
-      });
-      return menuList;
+  },
+  methods: {
+    onSelect({ entityType }: { entityType: string }, event: MouseEvent): void {
+      event.preventDefault();
+      this.$emit("selected", { entityType });
+      this.isOpen = false;
     },
     onMouseEnter(): void {
       this.isOpen = true;
     },
   },
-  mounted() {
-    this.menuList = this.menuItemList();
-  },
   created() {
-    const handleEscape = (e: any) => {
+    const _handleEscape = (e: any) => {
       if (e.key === "Esc" || e.key === "Escape") {
         if (this.isOpen) {
           this.isOpen = false;

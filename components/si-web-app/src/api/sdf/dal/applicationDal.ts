@@ -8,7 +8,6 @@ import _ from "lodash";
 export interface IApplicationCreateRequest {
   applicationName: string;
   workspaceId: string;
-  systemId: string;
 }
 
 export interface IServiceWithResources {

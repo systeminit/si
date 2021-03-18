@@ -1,87 +1,12 @@
 use si_model_test::{
-    create_key_pair, create_workspace, generate_fake_name, one_time_setup,
-    signup_new_billing_account, NewBillingAccount, TestContext,
+    create_key_pair, create_secret, create_workspace, generate_fake_name, one_time_setup,
+    signup_new_billing_account, TestContext,
 };
 
-use si_data::{NatsTxn, PgTxn};
 use si_model::{
     secret::EncryptedSecret, PublicKey, Secret, SecretAlgorithm, SecretKind, SecretObjectType,
     SecretVersion,
 };
-
-pub async fn create_secret(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    billing_account_id: impl AsRef<str>,
-    workspace_id: impl Into<String>,
-) -> Secret {
-    Secret::new(
-        txn,
-        nats,
-        generate_fake_name(),
-        SecretObjectType::Credential,
-        SecretKind::DockerHub,
-        generate_fake_name(),
-        PublicKey::get_current(&txn, billing_account_id.as_ref())
-            .await
-            .expect("could not get current public key")
-            .id
-            .clone(),
-        SecretVersion::V1,
-        SecretAlgorithm::Sealedbox,
-        workspace_id.into(),
-    )
-    .await
-    .expect("cannot create secret")
-}
-
-pub async fn encrypt_message(
-    txn: &PgTxn<'_>,
-    nba: &NewBillingAccount,
-    message: &serde_json::Value,
-) -> Vec<u8> {
-    let public_key = PublicKey::get_current(&txn, &nba.billing_account.id)
-        .await
-        .expect("cannot get current public key");
-
-    let crypted = sodiumoxide::crypto::sealedbox::seal(
-        &serde_json::to_vec(&message).expect("failed to serialize"),
-        &public_key.public_key,
-    );
-    crypted
-}
-
-pub async fn create_secret_with_message(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    nba: &NewBillingAccount,
-    message: serde_json::Value,
-) -> Secret {
-    let public_key = PublicKey::get_current(&txn, &nba.billing_account.id)
-        .await
-        .expect("cannot get current public key");
-
-    let crypted = sodiumoxide::crypto::sealedbox::seal(
-        &serde_json::to_vec(&message).expect("failed to serialize"),
-        &public_key.public_key,
-    );
-
-    let secret = Secret::new(
-        txn,
-        nats,
-        generate_fake_name(),
-        SecretObjectType::Credential,
-        SecretKind::DockerHub,
-        crypted,
-        public_key.id,
-        SecretVersion::V1,
-        SecretAlgorithm::Sealedbox,
-        nba.workspace.id.clone(),
-    )
-    .await
-    .expect("cannot create secret");
-    secret
-}
 
 #[tokio::test]
 async fn new() {
@@ -183,31 +108,6 @@ async fn secret_list_for_workspace() {
     assert_eq!(true, reply.iter().any(|secret| secret == &secret1));
     assert_eq!(true, reply.iter().any(|secret| secret == &secret2));
     assert_eq!(false, reply.iter().any(|secret| secret == &secret3));
-}
-
-#[tokio::test]
-async fn secret_list() {
-    one_time_setup().await.expect("one time setup failed");
-    let ctx = TestContext::init().await;
-    let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
-    let nats = nats_conn.transaction();
-    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
-    let txn = conn.transaction().await.expect("cannot create txn");
-
-    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
-    txn.commit()
-        .await
-        .expect("failed to commit the new billing account");
-
-    let txn = conn.transaction().await.expect("cannot create txn");
-
-    let _secret1 = create_secret(&txn, &nats, &nba.billing_account.id, &nba.workspace.id).await;
-    let _secret2 = create_secret(&txn, &nats, &nba.billing_account.id, &nba.workspace.id).await;
-
-    let reply = Secret::list(&txn, &nba.billing_account.id, None, None, None, None, None)
-        .await
-        .expect("cannot list secrets");
-    assert_eq!(reply.items.len(), 2);
 }
 
 #[tokio::test]

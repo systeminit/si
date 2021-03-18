@@ -2,12 +2,13 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tokio_postgres::error::SqlState;
 
-use crate::Veritech;
+use crate::{SystemError, Veritech};
 use si_data::{NatsConn, NatsTxn, NatsTxnError, PgPool, PgTxn};
 
 use crate::{
-    Capability, Group, GroupError, KeyPair, KeyPairError, Organization, OrganizationError,
-    PublicKey, SimpleStorable, User, UserError, Workspace, WorkspaceError,
+    system, Capability, ChangeSet, ChangeSetError, EditSession, EditSessionError, Group,
+    GroupError, KeyPair, KeyPairError, Organization, OrganizationError, PublicKey, SimpleStorable,
+    User, UserError, Workspace, WorkspaceError,
 };
 
 const BILLING_ACCOUNT_GET_BY_NAME: &str = include_str!("./queries/billing_account_get_by_name.sql");
@@ -34,6 +35,14 @@ pub enum BillingAccountError {
     NatsTxn(#[from] NatsTxnError),
     #[error("serde error: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("change set error: {0}")]
+    ChangeSet(#[from] ChangeSetError),
+    #[error("edit session error: {0}")]
+    EditSession(#[from] EditSessionError),
+    #[error("system error: {0}")]
+    System(#[from] SystemError),
+    #[error("pg error: {0}")]
+    Deadpool(#[from] deadpool_postgres::PoolError),
 }
 
 pub type BillingAccountResult<T> = Result<T, BillingAccountError>;
@@ -97,11 +106,11 @@ impl BillingAccount {
     }
 
     pub async fn signup(
-        _pg: &PgPool,
+        pg: &PgPool,
         txn: PgTxn<'_>,
         nats: &NatsTxn,
-        _nats_conn: &NatsConn,
-        _veritech: &Veritech,
+        nats_conn: &NatsConn,
+        veritech: &Veritech,
         billing_account_name: impl Into<String>,
         billing_account_description: impl Into<String>,
         user_name: impl Into<String>,
@@ -161,43 +170,36 @@ impl BillingAccount {
 
         txn.commit().await?;
 
-        //let mut cs_conn = pg.pool.get().await?;
-        //let cs_txn = cs_conn.transaction().await?;
-        //let mut change_set = ChangeSet::new(&cs_txn, &nats, None, workspace.id.clone()).await?;
-        //let edit_session = EditSession::new(
-        //    &cs_txn,
-        //    &nats,
-        //    None,
-        //    change_set.id.clone(),
-        //    workspace.id.clone(),
-        //)
-        //.await?;
-        //cs_txn.commit().await?;
+        let mut cs_conn = pg.pool.get().await?;
+        let cs_txn = cs_conn.transaction().await?;
+        let mut change_set = ChangeSet::new(&cs_txn, &nats, None, workspace.id.clone()).await?;
+        let mut edit_session = EditSession::new(
+            &cs_txn,
+            &nats,
+            None,
+            change_set.id.clone(),
+            workspace.id.clone(),
+        )
+        .await?;
 
-        //let system_txn = cs_conn.transaction().await?;
-        //let system_node = Node::new(
-        //    &pg,
-        //    &system_txn,
-        //    &nats_conn,
-        //    &nats,
-        //    &veritech,
-        //    Some(String::from("default")),
-        //    super::NodeKind::System,
-        //    "system",
-        //    &workspace.id,
-        //    &change_set.id,
-        //    &edit_session.id,
-        //    None,
-        //)
-        //.await?;
+        // TODO: This should be removed once you can create your own systems.
+        let _system_entity = system::create(
+            &pg,
+            &cs_txn,
+            &nats_conn,
+            &nats,
+            &veritech,
+            Some("production".to_string()),
+            &workspace.id,
+            &change_set.id,
+            &edit_session.id,
+        )
+        .await?;
+        edit_session.save_session(&cs_txn).await?;
+        change_set.apply(&cs_txn).await?;
 
-        //change_set
-        //    .execute(&pg, &system_txn, &nats_conn, &nats, &veritech, false, None)
-        //    .await?;
-
+        cs_txn.commit().await?;
         //let system = System::get_head(&system_txn, &system_node.object_id).await?;
-
-        //system_txn.commit().await?;
 
         Ok((
             billing_account,

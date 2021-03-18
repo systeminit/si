@@ -55,7 +55,7 @@
           class="inline-flex justify-end w-16 mr-2 font-normal text-gray-400"
         >
           <SiButton
-            @click.native="finishEditSession"
+            @click.native="saveEditSession"
             class="w-16"
             label="done"
             icon="save"
@@ -143,10 +143,10 @@
     <transition
       enter-active-class="transition-all ease-out delay-75"
       leave-active-class="transition-all ease-in delay-75"
-      enter-class="scale-0 opacity-0"
-      enter-to-class="scale-100 opacity-100"
-      leave-class="scale-100 opacity-100"
-      leave-to-class="scale-75 opacity-0"
+      enter-class="opacity-0 scale-0"
+      enter-to-class="opacity-100 scale-100"
+      leave-class="opacity-100 scale-100"
+      leave-to-class="opacity-0 scale-75"
     >
       <div
         class="flex w-full"
@@ -230,7 +230,7 @@ import SiTextBox from "@/atoms/SiTextBox.vue";
 import SiError from "@/atoms/SiError.vue";
 import { ChangeSet } from "@/api/sdf/model/changeSet";
 import { SDFError } from "@/api/sdf";
-import { PanelEventBus } from "@/atoms/PanelEventBus";
+import { PanelEventBus, emitEditorErrorMessage } from "@/atoms/PanelEventBus";
 
 interface IData {
   showDetails: boolean;
@@ -430,23 +430,41 @@ export default Vue.extend({
           editSessionId: this.currentEditSession?.id,
         },
       );
-      await this.$store.dispatch(
-        this.applicationContextCtx.dispatchPath("setEditMode"),
-        false,
-      );
-      this.$emit("update-query-param", { editMode: false });
-      this.$emit("remove-query-param", ["editSessionId", "editMode"]);
+      if (reply.error) {
+        emitEditorErrorMessage(
+          `failed to cancel edit session: ${reply.error.message}`,
+        );
+      } else {
+        await this.$store.dispatch(
+          this.applicationContextCtx.dispatchPath("setEditMode"),
+          false,
+        );
+        this.$emit("update-query-param", { editMode: false });
+        this.$emit("remove-query-param", ["editSessionId", "editMode"]);
+      }
     },
-    async finishEditSession() {
-      await this.$store.dispatch(
-        this.applicationContextCtx.dispatchPath("setEditMode"),
-        false,
-      );
-      await this.$store.dispatch(
-        this.applicationContextCtx.dispatchPath("finishEditSession"),
-      );
-      this.$emit("update-query-param", { editMode: false });
-      this.$emit("remove-query-param", ["editSessionId", "editMode"]);
+    async saveEditSession() {
+      if (this.currentWorkspace && this.currentEditSession) {
+        let reply = await this.applicationContextCtx.dispatch(
+          "saveEditSession",
+          {
+            editSessionId: this.currentEditSession.id,
+            workspaceId: this.currentWorkspace.id,
+          },
+        );
+        if (reply.error) {
+          emitEditorErrorMessage(
+            `failed to save edit session: ${reply.error.message}`,
+          );
+        } else {
+          await this.$store.dispatch(
+            this.applicationContextCtx.dispatchPath("setEditMode"),
+            false,
+          );
+          this.$emit("update-query-param", { editMode: false });
+          this.$emit("remove-query-param", ["editSessionId", "editMode"]);
+        }
+      }
     },
     async setEditorErrorMessage(error: string) {
       this.editorErrorMessage = error;

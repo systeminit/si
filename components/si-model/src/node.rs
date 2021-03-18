@@ -4,15 +4,6 @@ use thiserror::Error;
 use si_data::{NatsConn, NatsTxn, NatsTxnError, PgPool, PgTxn};
 
 use crate::{Entity, EntityError, SiStorable, Veritech};
-//use crate::models::{
-//    Edge, EdgeError, EdgeKind, Entity, Event, EventError, ListReply,
-//    ModelError, OrderByDirection, PageToken, Query, Resource, ResourceError, SiStorable, System,
-//    SystemError, UpdateClockError, Vertex,
-//};
-
-//use crate::models::{OpReply, OpRequest};
-
-use std::collections::HashMap;
 
 #[derive(Error, Debug)]
 pub enum NodeError {
@@ -87,6 +78,7 @@ impl Node {
         )
         .await?;
         node.update_object_id(&txn, &entity.id).await?;
+
         //let _event = Event::node_entity_create(&pg, &nats_conn, &node, &entity, None).await?;
         let json: serde_json::Value = serde_json::to_value(&node)?;
         nats.publish(&json).await?;
@@ -132,5 +124,16 @@ impl Node {
         let json: serde_json::Value = row.try_get("object")?;
         let object = serde_json::from_value(json)?;
         Ok(object)
+    }
+
+    pub async fn get_for_object_id(
+        txn: &PgTxn<'_>,
+        object_id: impl AsRef<str>,
+        change_set_id: Option<&String>,
+    ) -> NodeResult<Node> {
+        let object_id = object_id.as_ref();
+        let entity = Entity::for_head_or_change_set(&txn, &object_id, change_set_id).await?;
+        let node = Node::get(&txn, entity.node_id).await?;
+        Ok(node)
     }
 }

@@ -9,6 +9,8 @@ use si_data::{NatsConn, NatsTxn, NatsTxnError, PgPool, PgTxn};
 
 pub mod diff;
 
+const ENTITY_GET_HEAD_BY_NAME_AND_ENTITY_TYPE: &str =
+    include_str!("./queries/entity_get_head_by_name_and_entity_type.sql");
 const ENTITY_FOR_EDIT_SESSION: &str = include_str!("./queries/entity_for_edit_session.sql");
 const ENTITY_FOR_CHANGE_SET: &str = include_str!("./queries/entity_for_change_set.sql");
 const ENTITY_FOR_HEAD: &str = include_str!("./queries/entity_for_head.sql");
@@ -45,6 +47,8 @@ pub enum EntityError {
     Resource(#[from] ResourceError),
     #[error("deadpool error: {0}")]
     Deadpool(#[from] deadpool_postgres::PoolError),
+    #[error("no change set provided")]
+    NoChangeSet,
 }
 
 #[derive(Serialize, Debug)]
@@ -316,6 +320,25 @@ impl Entity {
         }
     }
 
+    pub async fn for_head_or_change_set_or_edit_session(
+        txn: &PgTxn<'_>,
+        entity_id: impl AsRef<str>,
+        change_set_id: Option<&String>,
+        edit_session_id: Option<&String>,
+    ) -> EntityResult<Entity> {
+        if let Some(edit_session_id) = edit_session_id {
+            if let Some(change_set_id) = change_set_id {
+                Entity::for_edit_session(&txn, &entity_id, change_set_id, edit_session_id).await
+            } else {
+                return Err(EntityError::NoChangeSet);
+            }
+        } else if let Some(change_set_id) = change_set_id {
+            Entity::for_change_set(&txn, entity_id, change_set_id).await
+        } else {
+            Entity::for_head(&txn, entity_id).await
+        }
+    }
+
     pub async fn task_calculate_properties_of_successors_for_edit_session(
         pg: PgPool,
         _nats_conn: NatsConn,
@@ -393,6 +416,31 @@ impl Entity {
         });
 
         Ok(())
+    }
+
+    pub async fn get_head_by_name_and_entity_type(
+        txn: &PgTxn<'_>,
+        name: impl AsRef<str>,
+        entity_type: impl AsRef<str>,
+        workspace_id: impl AsRef<str>,
+    ) -> EntityResult<Vec<Entity>> {
+        let name = name.as_ref();
+        let entity_type = entity_type.as_ref();
+        let workspace_id = workspace_id.as_ref();
+
+        let mut results = Vec::new();
+        let rows = txn
+            .query(
+                ENTITY_GET_HEAD_BY_NAME_AND_ENTITY_TYPE,
+                &[&name, &entity_type, &workspace_id],
+            )
+            .await?;
+        for row in rows.into_iter() {
+            let entity_json: serde_json::Value = row.try_get("object")?;
+            let entity: Entity = serde_json::from_value(entity_json)?;
+            results.push(entity);
+        }
+        Ok(results)
     }
 
     //pub async fn as_automerge(&self) -> EntityResult<String> {

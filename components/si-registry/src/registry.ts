@@ -1,6 +1,22 @@
 import _ from "lodash";
 import { Prop, RegistryEntry } from "./registryEntry";
 
+// TODO: Eventually, this needs to become a service that serves up the registry entries
+// for a given organization/billing account - they should be customizable, etc etc.
+import leftHandPath from "./schema/test/leftHandPath";
+import noCallbacks from "./schema/test/noCallbacks";
+import system from "./schema/si/system";
+import service from "./schema/si/service";
+import application from "./schema/si/application";
+
+export const registry: { [entityType: string]: RegistryEntry } = {
+  leftHandPath,
+  noCallbacks,
+  system,
+  service,
+  application,
+};
+
 export function findProp(path: string[]): Prop | undefined {
   if (path.length == 0) {
     return undefined;
@@ -40,19 +56,3 @@ export function findProp(path: string[]): Prop | undefined {
     }
   }
 }
-
-// TODO: Eventually, this needs to become a service that serves up the registry entries
-// for a given organization/billing account - they should be customizable, etc etc.
-import leftHandPath from "./schema/test/leftHandPath";
-import noCallbacks from "./schema/test/noCallbacks";
-import system from "./schema/si/system";
-import service from "./schema/si/service";
-import application from "./schema/si/application";
-
-export const registry: { [entityType: string]: RegistryEntry } = {
-  leftHandPath,
-  noCallbacks,
-  system,
-  service,
-  application,
-};

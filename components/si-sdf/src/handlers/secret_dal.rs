@@ -1,8 +1,7 @@
-use crate::{
-    data::{NatsConn, PgPool},
-    handlers::{authenticate, authorize, validate_tenancy, HandlerError},
-    models::{PublicKey, Secret, SecretAlgorithm, SecretKind, SecretObjectType, SecretVersion},
-};
+use si_data::{NatsConn, PgPool};
+use si_model::{PublicKey, Secret, SecretAlgorithm, SecretKind, SecretObjectType, SecretVersion};
+
+use crate::handlers::{authenticate, authorize, validate_tenancy, HandlerError};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]

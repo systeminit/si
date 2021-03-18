@@ -7,8 +7,6 @@ CREATE TABLE node_positions
     billing_account_id bigint                   NOT NULL REFERENCES billing_accounts (id),
     organization_id    bigint                   NOT NULL REFERENCES organizations (id),
     workspace_id       bigint                   NOT NULL REFERENCES workspaces (id),
-    epoch              bigint                   not null,
-    update_count       bigint                   not null,
     tenant_ids         text[]                   NOT NULL,
     obj                jsonb                    NOT NULL,
     created_at         TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
@@ -21,8 +19,6 @@ CREATE OR REPLACE FUNCTION node_position_create_v1(si_node_id text,
                                                    x text,
                                                    y text,
                                                    si_workspace_id text,
-                                                   this_epoch bigint,
-                                                   this_update_count bigint,
                                                    OUT object jsonb) AS
 $$
 DECLARE
@@ -44,7 +40,7 @@ BEGIN
 
     SELECT our_si_storable, our_organization_id, our_billing_account_id, our_workspace_id, our_tenant_ids
     INTO si_storable, this_organization_id, this_billing_account_id, this_workspace_id, tenant_ids
-    FROM si_storable_create_v1(si_id, si_workspace_id, created_at, updated_at, this_epoch, this_update_count);
+    FROM si_storable_create_v1(si_id, si_workspace_id, created_at, updated_at);
 
     SELECT si_id_to_primary_key_v1(si_node_id) INTO this_node_id;
 
@@ -58,10 +54,10 @@ BEGIN
                )
     INTO object;
 
-    INSERT INTO node_positions(id, si_id, node_id, context_id, billing_account_id, organization_id, workspace_id, epoch,
-                               update_count, tenant_ids, obj, created_at, updated_at)
+    INSERT INTO node_positions(id, si_id, node_id, context_id, billing_account_id, organization_id, workspace_id,
+                               tenant_ids, obj, created_at, updated_at)
     VALUES (this_id, si_id, this_node_id, context_id, this_billing_account_id, this_organization_id, this_workspace_id,
-            this_epoch, this_update_count, tenant_ids, object, created_at, updated_at);
+            tenant_ids, object, created_at, updated_at);
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
@@ -69,8 +65,6 @@ CREATE OR REPLACE FUNCTION node_position_update_v1(si_node_id text,
                                                    this_context_id text,
                                                    x text,
                                                    y text,
-                                                   this_epoch bigint,
-                                                   this_update_count bigint,
                                                    OUT object jsonb) AS
 $$
 DECLARE
@@ -82,14 +76,10 @@ BEGIN
     SELECT obj INTO this_current FROM node_positions WHERE node_id = this_node_id AND context_id = this_context_id;
     SELECT jsonb_set(this_current, '{x}', to_jsonb(x)) INTO this_current;
     SELECT jsonb_set(this_current, '{y}', to_jsonb(y)) INTO this_current;
-    SELECT jsonb_set(this_current, '{siStorable,updateClock,epoch}', to_jsonb(this_epoch)) INTO this_current;
-    SELECT jsonb_set(this_current, '{siStorable,updateClock,updateCount}', to_jsonb(this_update_count)) INTO this_current;
 
     UPDATE node_positions
-    SET epoch        = (this_current -> 'siStorable' -> 'updateClock' ->> 'epoch')::bigint,
-        update_count = (this_current -> 'siStorable' -> 'updateClock' ->> 'updateCount')::bigint,
-        obj          = this_current,
-        updated_at   = NOW()
+    SET obj        = this_current,
+        updated_at = NOW()
     WHERE node_id = this_node_id
       AND context_id = this_context_id
     RETURNING obj INTO object;
@@ -101,12 +91,10 @@ CREATE OR REPLACE FUNCTION node_position_create_or_update_v1(si_node_id text,
                                                              x text,
                                                              y text,
                                                              si_workspace_id text,
-                                                             this_epoch bigint,
-                                                             this_update_count bigint,
                                                              OUT object jsonb) AS
 $$
 DECLARE
-    this_node_id            bigint;
+    this_node_id bigint;
 BEGIN
     SELECT si_id_to_primary_key_v1(si_node_id) INTO this_node_id;
 
@@ -117,18 +105,16 @@ BEGIN
                        si_node_id,
                        this_context_id,
                        x,
-                       y,
-                       this_epoch,
-                       this_update_count)
+                       y
+                   )
         INTO object;
     ELSE
         SELECT node_position_create_v1(si_node_id,
                                        this_context_id,
                                        x,
                                        y,
-                                       si_workspace_id,
-                                       this_epoch,
-                                       this_update_count)
+                                       si_workspace_id
+                   )
         INTO object;
     END IF;
 END;
@@ -156,9 +142,7 @@ BEGIN
     END IF;
 
     UPDATE node_positions
-    SET epoch        = (input_node_position -> 'siStorable' -> 'updateClock' ->> 'epoch')::bigint,
-        update_count = (input_node_position -> 'siStorable' -> 'updateClock' ->> 'updateCount')::bigint,
-        obj          = input_node_position,
+    SET obj          = input_node_position,
         updated_at   = NOW()
     WHERE id = this_id
     RETURNING obj INTO object;

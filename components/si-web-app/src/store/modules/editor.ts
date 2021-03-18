@@ -55,7 +55,7 @@ export interface ConnectionCreatePayload {
 }
 
 export interface NodeCreatePayload {
-  entityObject: EntityObject;
+  entityType: string;
   sourcePanelId: string;
 }
 
@@ -183,11 +183,8 @@ export const editor: Module<EditorStore, any> = {
     ): Promise<INodeCreateReply> {
       let currentWorkspace: SessionStore["currentWorkspace"] =
         rootState.session.currentWorkspace;
-      let currentSystem: SessionStore["currentSystem"] =
-        rootState.session.currentSystem;
       if (
         !currentWorkspace ||
-        !currentSystem ||
         !state.currentEditSession ||
         !state.currentChangeSet ||
         !state.context
@@ -199,18 +196,20 @@ export const editor: Module<EditorStore, any> = {
       let reply: INodeCreateReply;
       if (state.context.applicationId) {
         reply = await EditorDal.nodeCreateForApplication({
-          kind: NodeKind.Entity,
-          objectType: payload.entityObject.typeName,
+          entityType: payload.entityType,
           workspaceId: currentWorkspace.id,
           changeSetId: state.currentChangeSet.id,
           editSessionId: state.currentEditSession.id,
-          systemId: currentSystem.id,
+          applicationId: state.context.applicationId,
+        });
+        console.log("application id", {
           applicationId: state.context.applicationId,
         });
       } else {
         throw new Error("cannot create without an editor context");
       }
       if (!reply.error) {
+        console.log("created node", { reply });
         // reply.creatorId = "me!"
         new NodeCreatedEvent(reply, payload.sourcePanelId).publish();
       }

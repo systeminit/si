@@ -24,6 +24,8 @@ pub enum SchematicError {
     Node(#[from] NodeError),
     #[error("node position error: {0}")]
     NodePosition(#[from] NodePositionError),
+    #[error("no change set provided when one was needed")]
+    NoChangeSet,
 }
 
 pub type SchematicResult<T> = Result<T, SchematicError>;
@@ -158,6 +160,7 @@ impl Schematic {
         workspace_id: impl AsRef<str>,
         _system_id: impl AsRef<str>,
         change_set_id: Option<String>,
+        edit_session_id: Option<String>,
         edge_kinds: Vec<EdgeKind>,
     ) -> SchematicResult<Schematic> {
         // Get the root object
@@ -166,18 +169,20 @@ impl Schematic {
         // Profit!
         let root_object_id = root_object_id.as_ref();
         let workspace_id = workspace_id.as_ref();
-        let root_entity = if let Some(change_set_id) = change_set_id.as_ref() {
-            Entity::for_change_set(&txn, &root_object_id, change_set_id).await?
-        } else {
-            Entity::for_head(&txn, &root_object_id).await?
-        };
+        let root_entity = Entity::for_head_or_change_set_or_edit_session(
+            &txn,
+            &root_object_id,
+            change_set_id.as_ref(),
+            edit_session_id.as_ref(),
+        )
+        .await?;
         let root_node = Node::get(&txn, &root_entity.node_id).await?;
 
         let mut edges: HashMap<String, Edge> = HashMap::new();
         let mut nodes: HashMap<String, SchematicNode> = HashMap::new();
 
         // An edge is included only if the object it points to has a head or a projection for this
-        // changeset - otherwise, it doesn't exist in the schematic!
+        // changeset, or edit session - otherwise, it doesn't exist in the schematic!
         for edge_kind in edge_kinds.iter() {
             let successor_edges =
                 Edge::all_successor_edges_by_node_id(&txn, edge_kind, &root_node.id).await?;
@@ -186,12 +191,17 @@ impl Schematic {
                     continue;
                 }
                 let successor_entity_id = &successor_edge.head_vertex.object_id;
-                let successor_entity = Entity::for_head_or_change_set(
+                let successor_entity = match Entity::for_head_or_change_set_or_edit_session(
                     &txn,
                     successor_entity_id,
                     change_set_id.as_ref(),
+                    edit_session_id.as_ref(),
                 )
-                .await?;
+                .await
+                {
+                    Ok(entity) => entity,
+                    Err(_e) => continue,
+                };
                 edges.insert(successor_edge.id.clone(), successor_edge.clone());
                 let successor_node = Node::get(&txn, &successor_entity.node_id).await?;
                 let schematic_node = if let Some(schematic_node) = nodes.get_mut(&successor_node.id)
