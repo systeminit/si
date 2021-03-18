@@ -1,5 +1,5 @@
 use crate::cli::client::{CliMessage, ClientResult};
-use crate::models::OutputLineStream;
+use si_model::OutputLineStream;
 
 pub trait Formatter {
     fn process_message(&mut self, message: CliMessage) -> ClientResult<()>;

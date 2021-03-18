@@ -1,20 +1,13 @@
 use crate::cli::server::{CommandContext, ServerResult};
-use crate::data::{NatsConn, PgPool, PgTxn};
-use crate::models::{
-    ops::OpEntityAction, ops::OpEntitySet, ChangeSet, EditSession, Entity, Event, Node, NodeError,
-};
-use crate::veritech::Veritech;
 use serde::{Deserialize, Serialize};
+use si_data::{NatsConn, PgPool, PgTxn};
+use si_model::{Node, NodeError, Veritech};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum ChangeRunError {
     #[error("node error: {0}")]
     Node(#[from] NodeError),
-    #[error("pg error: {0}")]
-    TokioPg(#[from] tokio_postgres::Error),
-    #[error("pg error: {0}")]
-    Deadpool(#[from] deadpool_postgres::PoolError),
 }
 
 pub type ChangeRunResult<T> = Result<T, ChangeRunError>;
@@ -183,91 +176,91 @@ impl ChangeRun {
 
     pub async fn execute(
         &self,
-        pg: &PgPool,
-        nats_conn: &NatsConn,
-        veritech: &Veritech,
-        ctx: &CommandContext,
+        _pg: &PgPool,
+        _nats_conn: &NatsConn,
+        _veritech: &Veritech,
+        _ctx: &CommandContext,
     ) -> ServerResult<()> {
-        let mut conn = pg.pool.get().await?;
-        let txn = conn.transaction().await?;
-        let nats = nats_conn.transaction();
+        //let mut conn = pg.pool.get().await?;
+        //let txn = conn.transaction().await?;
+        //let nats = nats_conn.transaction();
 
-        let target_entity = Entity::get_any(&txn, &self.action.entity_id).await?;
+        //let target_entity = Entity::get_any(&txn, &self.action.entity_id).await?;
 
-        let mut root_event = Event::cli_change_run(
-            &pg,
-            &nats_conn,
-            &target_entity,
-            &self.action.action,
-            &self.action.system_id,
-            None,
-        )
-        .await?;
-        ctx.set_root_event(root_event.clone()).await;
-        root_event.save(&pg, &nats_conn).await?;
+        //let mut root_event = Event::cli_change_run(
+        //    &pg,
+        //    &nats_conn,
+        //    &target_entity,
+        //    &self.action.action,
+        //    &self.action.system_id,
+        //    None,
+        //)
+        //.await?;
+        //ctx.set_root_event(root_event.clone()).await;
+        //root_event.save(&pg, &nats_conn).await?;
 
-        let mut change_set = ChangeSet::new(
-            &txn,
-            &nats,
-            None,
-            target_entity.si_storable.workspace_id.clone(),
-        )
-        .await?;
-        ctx.add_tracking_id(change_set.id.clone()).await;
+        //let mut change_set = ChangeSet::new(
+        //    &txn,
+        //    &nats,
+        //    None,
+        //    target_entity.si_storable.workspace_id.clone(),
+        //)
+        //.await?;
+        //ctx.add_tracking_id(change_set.id.clone()).await;
 
-        let edit_session = EditSession::new(
-            &txn,
-            &nats,
-            None,
-            change_set.id.clone(),
-            change_set.si_storable.workspace_id.clone(),
-        )
-        .await?;
-        ctx.add_tracking_id(edit_session.id.clone()).await;
+        //let edit_session = EditSession::new(
+        //    &txn,
+        //    &nats,
+        //    None,
+        //    change_set.id.clone(),
+        //    change_set.si_storable.workspace_id.clone(),
+        //)
+        //.await?;
+        //ctx.add_tracking_id(edit_session.id.clone()).await;
 
-        for set_command in self.set_commands.iter() {
-            let op = OpEntitySet::new(
-                &txn,
-                &nats,
-                set_command.entity_id.clone(),
-                set_command.path.clone(),
-                set_command.value.clone(),
-                None,
-                target_entity.si_storable.workspace_id.clone(),
-                change_set.id.clone(),
-                edit_session.id.clone(),
-            )
-            .await?;
-            ctx.add_tracking_id(op.id.clone()).await;
-        }
+        //for set_command in self.set_commands.iter() {
+        //    let op = OpEntitySet::new(
+        //        &txn,
+        //        &nats,
+        //        set_command.entity_id.clone(),
+        //        set_command.path.clone(),
+        //        set_command.value.clone(),
+        //        None,
+        //        target_entity.si_storable.workspace_id.clone(),
+        //        change_set.id.clone(),
+        //        edit_session.id.clone(),
+        //    )
+        //    .await?;
+        //    ctx.add_tracking_id(op.id.clone()).await;
+        //}
 
-        let act = OpEntityAction::new(
-            &txn,
-            &nats,
-            self.action.entity_id.clone(),
-            self.action.action.clone(),
-            self.action.system_id.clone(),
-            target_entity.si_storable.workspace_id.clone(),
-            change_set.id.clone(),
-            edit_session.id.clone(),
-        )
-        .await?;
-        ctx.add_tracking_id(act.id.clone()).await;
+        //let act = OpEntityAction::new(
+        //    &txn,
+        //    &nats,
+        //    self.action.entity_id.clone(),
+        //    self.action.action.clone(),
+        //    self.action.system_id.clone(),
+        //    target_entity.si_storable.workspace_id.clone(),
+        //    change_set.id.clone(),
+        //    edit_session.id.clone(),
+        //)
+        //.await?;
+        //ctx.add_tracking_id(act.id.clone()).await;
 
-        change_set
-            .execute(
-                &pg,
-                &txn,
-                &nats_conn,
-                &nats,
-                &veritech,
-                false,
-                Some(root_event.id.as_ref()),
-            )
-            .await?;
+        //change_set
+        //    .execute(
+        //        &pg,
+        //        &txn,
+        //        &nats_conn,
+        //        &nats,
+        //        &veritech,
+        //        false,
+        //        Some(root_event.id.as_ref()),
+        //    )
+        //    .await?;
 
-        txn.commit().await?;
-        nats.commit().await?;
+        //txn.commit().await?;
+        //nats.commit().await?;
 
         Ok(())
     }

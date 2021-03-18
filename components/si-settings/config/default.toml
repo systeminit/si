@@ -6,7 +6,8 @@ hostname = "that.host"
 port = 172
 
 [veritech]
-url = "nope"
+ws_url = "nope"
+http_url = "nope"
 
 [event_log_fs]
 root = "sandwich"

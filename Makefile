@@ -21,9 +21,9 @@
 
 include ./components/build/deps.mk
 
-COMPONENTS = components/si-registry components/si-settings components/si-web-app components/si-sdf
-RELEASEABLE_COMPONENTS = components/si-registry components/si-sdf components/si-web-app
-RUNNABLE_COMPONENTS = components/si-registry components/si-sdf components/si-web-app
+COMPONENTS = components/si-data components/si-entity components/si-model components/si-model-test components/si-veritech components/si-registry components/si-settings components/si-web-app components/si-sdf
+RELEASEABLE_COMPONENTS = components/si-veritech components/si-sdf components/si-web-app
+RUNNABLE_COMPONENTS = components/si-veritech components/si-sdf components/si-web-app
 BUILDABLE = $(patsubst %,build//%,$(COMPONENTS))
 TESTABLE = $(patsubst %,test//%,$(COMPONENTS))
 CLEANABLE = $(patsubst %,clean//%,$(COMPONENTS))
@@ -44,7 +44,15 @@ RELEASE := $(shell date +%Y%m%d%H%M%S)
 
 .PHONY: $(BUILDABLE) $(TESTABLE) $(RELEASEABLE) $(CONTAINABLE)
 
-test//components/si-sdf//RDEPS: test//components/si-settings
+test//components/si-sdf//RDEPS: test//components/si-settings test//components/si-model test//components/si-data test//components/si-model-test
+
+test//components/si-model//RDEPS: test//components/si-settings test//components/si-data test//components/si-model-test
+
+test//components/si-veritech//RDEPS: test//components/si-registry test//components/si-entity
+
+test//components/si-entity//RDEPS: test//components/si-registry
+
+test//components/si-web-app//RDEPS: test//components/si-registry test//components/si-entity
 
 %//RDEPS:
 	@ echo "*** No dependencies for $@ ***"

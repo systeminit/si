@@ -1,10 +1,10 @@
 use warp::ws::Ws;
 
-use crate::cli::server::websocket_run;
-use crate::data::{NatsConn, PgPool};
+use si_data::{NatsConn, PgPool};
+use si_model::Veritech;
+
+use crate::cli::server::{websocket_run, WebsocketToken};
 use crate::handlers::{authenticate_api_client, authorize_api_client, HandlerError};
-use crate::models::WebsocketToken;
-use crate::veritech::Veritech;
 
 pub async fn cli(
     ws: Ws,

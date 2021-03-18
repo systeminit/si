@@ -1,8 +1,7 @@
-use crate::{
-    data::{NatsConn, PgPool},
-    handlers::{authenticate, authorize, validate_tenancy, HandlerError},
-    models::{Edge, EdgeKind, Node, Schematic, Vertex},
-};
+use si_data::PgPool;
+use si_model::{Edge, EdgeKind, Node, Schematic, Schematic, Vertex};
+
+use crate::handlers::{authenticate, authorize, validate_tenancy, HandlerError};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -198,6 +197,6 @@ pub async fn connection_create(
     txn.commit().await.map_err(HandlerError::from)?;
     nats.commit().await.map_err(HandlerError::from)?;
 
-    let reply = ConnectionCreateReply { edge: edge };
+    let reply = ConnectionCreateReply { edge };
     Ok(warp::reply::json(&reply))
 }

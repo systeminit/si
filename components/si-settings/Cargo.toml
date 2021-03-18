@@ -10,7 +10,7 @@ serde = { version = "1.0", features = ["derive"] }
 sodiumoxide = "0.2"
 thiserror = "1.0"
 toml = "0.5"
-tracing = "0.1.10"
+tracing = "0.1.25"
 
 [dev-dependencies]
 lazy_static = "1.4"

@@ -1,8 +1,9 @@
 use warp::ws::Ws;
 
-use crate::data::{NatsConn, PgPool};
+use si_data::{NatsConn, PgPool};
+
 use crate::handlers::{authenticate, authorize, HandlerError};
-use crate::models::{websocket_run, WebsocketToken};
+use crate::update::{websocket_run, WebsocketToken};
 
 pub async fn update(
     ws: Ws,

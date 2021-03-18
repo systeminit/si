@@ -7,3 +7,4 @@ kubeconfig.yml
 components/si-pedant/cypress.env.json
 components/si-pedant/debug.log
 components/si-sdf/tmp
+vendor/automerge

@@ -6,9 +6,7 @@ use si_sdf::handlers::session_dal::{
 };
 use si_sdf::handlers::HandlerErrorReply;
 
-use crate::models::billing_account::{signup_new_billing_account, NewBillingAccount};
-use crate::one_time_setup;
-use crate::TestContext;
+use si_model_test::{one_time_setup, signup_new_billing_account, NewBillingAccount, TestContext};
 
 pub async fn login_user(ctx: &TestContext, nba: &NewBillingAccount) -> String {
     let (pg, nats_conn, veritech, event_log_fs, secret_key) = ctx.entries();
@@ -158,5 +156,4 @@ async fn get_defaults() {
         serde_json::from_slice(res.body()).expect("cannot deserialize node reply");
     assert_eq!(reply.workspace, nba.workspace);
     assert_eq!(reply.organization, nba.organization);
-    assert_eq!(reply.system, nba.system);
 }
