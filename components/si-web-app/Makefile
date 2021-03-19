@@ -5,7 +5,7 @@ CONTAINER = si-web-app
 
 registry:
 	@echo "--- [$(shell basename ${CURDIR})] $@"
-	$(MAKE) -C ../si-registry build_js build_types
+	$(MAKE) -C ../si-registry build
 .PHONY: registry
 
 build: registry

@@ -21,7 +21,7 @@
 
 include ./components/build/deps.mk
 
-COMPONENTS = components/si-data components/si-entity components/si-model components/si-model-test components/si-veritech components/si-registry components/si-settings components/si-web-app components/si-sdf
+COMPONENTS = components/si-data components/si-entity components/si-model components/si-model-test components/si-veritech components/si-registry components/si-settings components/si-sdf components/si-web-app
 RELEASEABLE_COMPONENTS = components/si-veritech components/si-sdf components/si-web-app
 RUNNABLE_COMPONENTS = components/si-veritech components/si-sdf components/si-web-app
 BUILDABLE = $(patsubst %,build//%,$(COMPONENTS))
