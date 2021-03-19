@@ -51,5 +51,9 @@
     "morgan": "^1.10.0",
     "si-entity": "../si-entity",
     "si-registry": "../si-registry"
+  },
+  "volta": {
+    "node": "15.12.0",
+    "npm": "7.6.3"
   }
 }
