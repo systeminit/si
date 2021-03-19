@@ -38,5 +38,9 @@
   "dependencies": {
     "lodash": "^4.17.21",
     "validator": "^13.5.2"
+  },
+  "volta": {
+    "node": "15.12.0",
+    "npm": "7.6.3"
   }
 }
