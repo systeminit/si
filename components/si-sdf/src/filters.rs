@@ -16,7 +16,7 @@ pub fn api(
     signup_dal(pg, nats_conn, veritech)
         .or(session_dal(pg, secret_key))
         .or(application_dal(pg, nats_conn, veritech))
-        .or(application_context_dal(pg, nats_conn, veritech))
+        .or(application_context_dal(pg, nats_conn))
         .or(editor_dal(pg, nats_conn, veritech))
         .or(schematic_dal(pg, nats_conn, veritech))
         .or(attribute_dal(pg, nats_conn, veritech))
@@ -208,7 +208,6 @@ pub fn editor_dal_update_node_position(
 pub fn application_context_dal(
     pg: &PgPool,
     nats_conn: &NatsConn,
-    veritech: &Veritech,
 ) -> BoxedFilter<(impl warp::Reply,)> {
     application_context_dal_get_application_context(pg.clone())
         .or(application_context_dal_get_change_set_and_edit_session(
@@ -231,7 +230,10 @@ pub fn application_context_dal(
         .or(application_context_dal_cancel_edit_session(
             pg.clone(),
             nats_conn.clone(),
-            veritech.clone(),
+        ))
+        .or(application_context_dal_save_edit_session(
+            pg.clone(),
+            nats_conn.clone(),
         ))
         .boxed()
 }
@@ -269,18 +271,32 @@ pub fn application_context_dal_create_change_set_and_edit_session(
 pub fn application_context_dal_cancel_edit_session(
     pg: PgPool,
     nats_conn: NatsConn,
-    veritech: Veritech,
 ) -> BoxedFilter<(impl warp::Reply,)> {
     warp::path!("applicationContextDal" / "cancelEditSession")
         .and(warp::post())
         .and(with_pg(pg))
         .and(with_nats_conn(nats_conn))
-        .and(with_veritech(veritech))
         .and(warp::header::<String>("authorization"))
         .and(warp::body::json::<
             handlers::application_context_dal::CancelEditSessionRequest,
         >())
         .and_then(handlers::application_context_dal::cancel_edit_session)
+        .boxed()
+}
+
+pub fn application_context_dal_save_edit_session(
+    pg: PgPool,
+    nats_conn: NatsConn,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("applicationContextDal" / "saveEditSession")
+        .and(warp::post())
+        .and(with_pg(pg))
+        .and(with_nats_conn(nats_conn))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::body::json::<
+            handlers::application_context_dal::SaveEditSessionRequest,
+        >())
+        .and_then(handlers::application_context_dal::save_edit_session)
         .boxed()
 }
 

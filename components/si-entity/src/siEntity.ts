@@ -103,6 +103,7 @@ export class SiEntity implements ISiEntity {
   static fromJson(input: ISiEntity): SiEntity {
     const entity = new SiEntity(input);
     entity.id = input.id;
+    entity.nodeId = input.nodeId;
     entity.name = input.name;
     entity.description = input.description;
     entity.entityType = input.entityType;

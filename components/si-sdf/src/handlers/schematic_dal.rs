@@ -1,5 +1,5 @@
-use si_data::PgPool;
-use si_model::{Edge, EdgeKind, Node, Schematic, Schematic, Vertex};
+use si_data::{NatsConn, PgPool};
+use si_model::{Edge, EdgeKind, Node, Schematic, Vertex};
 
 use crate::handlers::{authenticate, authorize, validate_tenancy, HandlerError};
 use serde::{Deserialize, Serialize};
@@ -10,6 +10,7 @@ pub struct GetApplicationSystemSchematicRequest {
     pub workspace_id: String,
     pub root_object_id: String,
     pub change_set_id: Option<String>,
+    pub edit_session_id: Option<String>,
     pub system_id: String,
 }
 
@@ -44,7 +45,7 @@ pub async fn get_application_system_schematic(
     .await?;
     validate_tenancy(
         &txn,
-        "systems",
+        "entities",
         &request.system_id,
         &claim.billing_account_id,
     )
@@ -63,15 +64,25 @@ pub async fn get_application_system_schematic(
         &request.workspace_id,
         &request.system_id,
         request.change_set_id.clone(),
+        request.edit_session_id.clone(),
         vec![EdgeKind::Configures],
     )
     .await
     .map_err(HandlerError::from)?;
+    dbg!("------- schematic");
+    dbg!(&schematic);
 
-    let root_node = Node::get_for_object_id(&txn, &request.root_object_id, request.change_set_id)
-        .await
-        .map_err(HandlerError::from)?;
+    let root_node = Node::get_for_object_id(
+        &txn,
+        &request.root_object_id,
+        request.change_set_id.as_ref(),
+    )
+    .await
+    .map_err(HandlerError::from)?;
+    dbg!(&root_node);
     schematic.prune_node(root_node.id);
+    dbg!("------- post prunation");
+    dbg!(&schematic);
 
     txn.commit().await.map_err(HandlerError::from)?;
 
@@ -90,14 +101,15 @@ pub struct ConnectionNodeReference {
     pub socket_id: String,
     pub node_kind: String,
 }
+
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Connection {
     pub kind: String,
     pub source: ConnectionNodeReference,
     pub destination: ConnectionNodeReference,
-    pub system_id: String,
 }
+
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ConnectionCreateRequest {
@@ -149,13 +161,6 @@ pub async fn connection_create(
     .await?;
     validate_tenancy(
         &txn,
-        "systems",
-        &request.connection.system_id,
-        &claim.billing_account_id,
-    )
-    .await?;
-    validate_tenancy(
-        &txn,
         "entities",
         &request.application_id,
         &claim.billing_account_id,
@@ -167,7 +172,7 @@ pub async fn connection_create(
         .map_err(HandlerError::from)?;
     let tail_vertex = Vertex::new(
         &request.connection.source.node_id,
-        &source_node.get_object_id(),
+        &source_node.object_id,
         &request.connection.source.socket_id,
         &request.connection.source.node_kind,
     );
@@ -177,7 +182,7 @@ pub async fn connection_create(
         .map_err(HandlerError::from)?;
     let head_vertex = Vertex::new(
         &request.connection.destination.node_id,
-        &destination_node.get_object_id(),
+        &destination_node.object_id,
         &request.connection.destination.socket_id,
         &request.connection.destination.node_kind,
     );

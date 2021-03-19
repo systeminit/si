@@ -2,7 +2,7 @@ import { BillingAccount } from "@/api/sdf/model/billingAccount";
 import { User } from "@/api/sdf/model/user";
 import { Organization } from "@/api/sdf/model/organization";
 import { Workspace } from "@/api/sdf/model/workspace";
-import { System } from "@/api/sdf/model/system";
+import { Entity } from "@/api/sdf/model/entity";
 import { SDFError, SDF } from "@/api/sdf";
 import * as jwtLib from "jsonwebtoken";
 import Bottle from "bottlejs";
@@ -93,7 +93,7 @@ export type ISessionDalRestoreAuthenticationReply =
 export interface IGetDefaultsReplySuccess {
   organization: Organization;
   workspace: Workspace;
-  system: System;
+  system: Entity;
   error?: never;
 }
 
@@ -117,7 +117,6 @@ export class SessionDal {
     if (!reply.error) {
       reply.workspace = Workspace.upgrade(reply.workspace);
       reply.organization = Organization.upgrade(reply.organization);
-      reply.system = System.upgrade(reply.system);
     }
     return reply;
   }

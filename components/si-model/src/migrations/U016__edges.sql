@@ -19,8 +19,8 @@ CREATE TABLE edges
     bidirectional            bool                     NOT NULL DEFAULT false,
     created_at               TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at               TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    UNIQUE (workspace_id, tail_vertex_node_si_id, tail_vertex_object_si_id, tail_vertex_socket, tail_vertex_type_name,
-            head_vertex_node_si_id, head_vertex_object_si_id, head_vertex_socket, head_vertex_type_name, kind)
+    UNIQUE (workspace_id, tail_vertex_node_si_id, tail_vertex_object_si_id, tail_vertex_socket,
+            head_vertex_node_si_id, head_vertex_object_si_id, head_vertex_socket, kind)
 );
 
 CREATE INDEX idx_edges_tenant_ids ON "edges" USING GIN ("tenant_ids");

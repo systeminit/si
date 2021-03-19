@@ -412,7 +412,6 @@ export default Vue.extend({
     setIsNodeCreate(): void {
       this.viewer.isNodeCreate = true;
     },
-
     mouseEnter() {
       this.activateShortcuts();
       this.activateViewer();

@@ -13,7 +13,6 @@ pub struct NodeCreateForApplicationRequest {
     pub workspace_id: String,
     pub change_set_id: String,
     pub edit_session_id: String,
-    pub system_id: String,
     pub application_id: String,
 }
 
@@ -60,13 +59,6 @@ pub async fn node_create_for_application(
     .await?;
     validate_tenancy(
         &txn,
-        "systems",
-        &request.system_id,
-        &claim.billing_account_id,
-    )
-    .await?;
-    validate_tenancy(
-        &txn,
         "entities",
         &request.application_id,
         &claim.billing_account_id,
@@ -107,7 +99,7 @@ pub async fn node_create_for_application(
         Vertex::from_entity(&application_entity, "output"),
         Vertex::from_node(&node, "input"),
         false,
-        si_model::EdgeKind::Includes,
+        si_model::EdgeKind::Configures,
         request.workspace_id,
     )
     .await

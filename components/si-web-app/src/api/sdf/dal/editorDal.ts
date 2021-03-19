@@ -1,4 +1,4 @@
-import { NodeKind, Node } from "@/api/sdf/model/node";
+import { Node } from "@/api/sdf/model/node";
 import { Entity } from "@/api/sdf/model/entity";
 import { SDFError } from "@/api/sdf";
 import { System } from "@/api/sdf/model/system";
@@ -10,12 +10,10 @@ export interface INodeCreateForApplicationRequest extends INodeCreateRequest {
 
 export interface INodeCreateRequest {
   name?: string;
-  kind: NodeKind;
-  objectType: string;
+  entityType: string;
   workspaceId: string;
   changeSetId: string;
   editSessionId: string;
-  systemId: string;
 }
 
 export interface INodeUpdatePositionRequest {

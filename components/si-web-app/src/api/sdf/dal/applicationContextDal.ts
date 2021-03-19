@@ -128,6 +128,25 @@ export type ICreateEditSessionAndGetChangeSetReply =
   | ICreateEditSessionAndGetChangeSetReplySuccess
   | ICreateEditSessionAndGetChangeSetReplyFailure;
 
+export interface ISaveEditSessionRequest {
+  editSessionId: string;
+  workspaceId: string;
+}
+
+export interface ISaveEditSessionReplySuccess {
+  editSession: EditSession;
+  error?: never;
+}
+
+export interface ISaveEditSessionReplyFailure {
+  editSession?: never;
+  error: SDFError;
+}
+
+export type ISaveEditSessionReply =
+  | ISaveEditSessionReplySuccess
+  | ISaveEditSessionReplyFailure;
+
 export class ApplicationContextDal {
   static async getApplicationContext(
     request: IGetApplicationContextRequest,
@@ -207,6 +226,20 @@ export class ApplicationContextDal {
 
     const reply: ICancelEditSessionReply = await sdf.post(
       "applicationContextDal/cancelEditSession",
+      request,
+    );
+
+    return reply;
+  }
+
+  static async saveEditSession(
+    request: ISaveEditSessionRequest,
+  ): Promise<ISaveEditSessionReply> {
+    let bottle = Bottle.pop("default");
+    let sdf = bottle.container.SDF;
+
+    const reply: ISaveEditSessionReply = await sdf.post(
+      "applicationContextDal/saveEditSession",
       request,
     );
 

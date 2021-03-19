@@ -21,9 +21,11 @@ pub use model::event_log::*;
 pub use model::group::*;
 pub use model::key_pair::*;
 pub use model::node::*;
+pub use model::node_position::*;
 pub use model::organization::*;
 pub use model::secret::*;
 pub use model::user::*;
+pub use model::workspace::*;
 
 lazy_static! {
     pub static ref SETTINGS: Settings = {

@@ -4,7 +4,7 @@ import { User } from "@/api/sdf/model/user";
 import { BillingAccount } from "@/api/sdf/model/billingAccount";
 import { Organization } from "@/api/sdf/model/organization";
 import { Workspace } from "@/api/sdf/model/workspace";
-import { System } from "@/api/sdf/model/system";
+import { Entity } from "@/api/sdf/model/entity";
 
 import {
   SessionDal,
@@ -33,7 +33,7 @@ export interface SessionStore {
   billingAccount: null | BillingAccount;
   currentWorkspace: null | Workspace;
   currentOrganization: null | Organization;
-  currentSystem: null | System;
+  currentSystem: null | Entity;
   sessionContext: null | SessionContext;
 }
 

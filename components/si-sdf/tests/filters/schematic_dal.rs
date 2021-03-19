@@ -1,24 +1,15 @@
-use crate::{
-    filters::{application_context_dal::create_application, session_dal::login_user},
-    models::{
-        billing_account::signup_new_billing_account, change_set::create_change_set,
-        edit_session::create_edit_session, node::create_custom_entity_node,
-    },
-    one_time_setup, TestContext,
+use si_model::{Edge, EdgeKind, Vertex};
+use si_model_test::{
+    create_change_set, create_custom_node, create_edit_session, one_time_setup,
+    signup_new_billing_account, TestContext,
 };
+
+use crate::filters::{application_context_dal::create_application, session_dal::login_user};
 use si_sdf::{
     filters::api,
-    handlers::{
-        application_dal::CreateApplicationReply,
-        editor_dal::{
-            NodeCreateForApplicationRequest, NodeCreateReply, UpdateNodePositionReply,
-            UpdateNodePositionRequest,
-        },
-        schematic_dal::{
-            Connection, ConnectionCreateReply, ConnectionCreateRequest, ConnectionNodeReference,
-        },
+    handlers::schematic_dal::{
+        Connection, ConnectionCreateReply, ConnectionCreateRequest, ConnectionNodeReference,
     },
-    models::{Edge, Entity, Node, NodeKind, NodePosition, Vertex},
 };
 use warp::http::StatusCode;
 
@@ -49,27 +40,25 @@ async fn connection_create() {
     let txn = conn.transaction().await.expect("cannot get transaction");
     let nats = nats_conn.transaction();
 
-    let alpha = create_custom_entity_node(
+    let alpha = create_custom_node(
         &pg,
         &txn,
         &nats_conn,
         &nats,
         &veritech,
         &nba,
-        &nba.system,
         &change_set,
         &edit_session,
         "service",
     )
     .await;
-    let bravo = create_custom_entity_node(
+    let bravo = create_custom_node(
         &pg,
         &txn,
         &nats_conn,
         &nats,
         &veritech,
         &nba,
-        &nba.system,
         &change_set,
         &edit_session,
         "service",
@@ -99,7 +88,6 @@ async fn connection_create() {
                     socket_id: "input".to_string(),
                     node_kind: "service".to_string(),
                 },
-                system_id: nba.system.id.clone(),
             },
             workspace_id: nba.workspace.id.clone(),
             change_set_id: change_set.id.clone(),
@@ -146,28 +134,26 @@ async fn connection_create_duplicate() {
     let txn = conn.transaction().await.expect("cannot get transaction");
     let nats = nats_conn.transaction();
 
-    let alpha = create_custom_entity_node(
+    let alpha = create_custom_node(
         &pg,
         &txn,
         &nats_conn,
         &nats,
         &veritech,
         &nba,
-        &nba.system,
         &change_set,
         &edit_session,
         "service",
     )
     .await;
     let tail_vertex = Vertex::new(&alpha.id, &alpha.object_id, "output", "service");
-    let bravo = create_custom_entity_node(
+    let bravo = create_custom_node(
         &pg,
         &txn,
         &nats_conn,
         &nats,
         &veritech,
         &nba,
-        &nba.system,
         &change_set,
         &edit_session,
         "service",
@@ -181,7 +167,7 @@ async fn connection_create_duplicate() {
         tail_vertex,
         head_vertex,
         false,
-        si_sdf::models::EdgeKind::Configures,
+        EdgeKind::Configures,
         &nba.workspace.id,
     )
     .await
@@ -210,7 +196,6 @@ async fn connection_create_duplicate() {
                     socket_id: "input".to_string(),
                     node_kind: "service".to_string(),
                 },
-                system_id: nba.system.id.clone(),
             },
             workspace_id: nba.workspace.id.clone(),
             change_set_id: change_set.id.clone(),

@@ -1,7 +1,7 @@
 use crate::handlers::{authenticate, authorize, validate_tenancy, HandlerError};
 use serde::{Deserialize, Serialize};
 use si_data::{NatsConn, PgPool};
-use si_model::{application, ApplicationContext, ChangeSet, EditSession, Veritech};
+use si_model::{application, ApplicationContext, ChangeSet, EditSession};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -317,7 +317,6 @@ pub struct CancelEditSessionReply {
 pub async fn cancel_edit_session(
     pg: PgPool,
     nats_conn: NatsConn,
-    veritech: Veritech,
     token: String,
     request: CancelEditSessionRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
@@ -345,7 +344,7 @@ pub async fn cancel_edit_session(
         .await
         .map_err(HandlerError::from)?;
     edit_session
-        .cancel(&pg, &txn, &nats_conn, &nats, &veritech, None)
+        .cancel(&txn)
         .await
         .map_err(HandlerError::from)?;
 
@@ -353,6 +352,61 @@ pub async fn cancel_edit_session(
     nats.commit().await.map_err(HandlerError::from)?;
 
     let reply = CancelEditSessionReply { edit_session };
+
+    Ok(warp::reply::json(&reply))
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct SaveEditSessionRequest {
+    pub edit_session_id: String,
+    pub workspace_id: String,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct SaveEditSessionReply {
+    pub edit_session: EditSession,
+}
+
+pub async fn save_edit_session(
+    pg: PgPool,
+    nats_conn: NatsConn,
+    token: String,
+    request: SaveEditSessionRequest,
+) -> Result<impl warp::Reply, warp::reject::Rejection> {
+    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let txn = conn.transaction().await.map_err(HandlerError::from)?;
+    let nats = nats_conn.transaction();
+
+    let claim = authenticate(&txn, &token).await?;
+    authorize(
+        &txn,
+        &claim.user_id,
+        "applicationContextDal",
+        "saveEditSession",
+    )
+    .await?;
+    validate_tenancy(
+        &txn,
+        "workspaces",
+        &request.workspace_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+
+    let mut edit_session = EditSession::get(&txn, &request.edit_session_id)
+        .await
+        .map_err(HandlerError::from)?;
+    edit_session
+        .save_session(&txn)
+        .await
+        .map_err(HandlerError::from)?;
+
+    txn.commit().await.map_err(HandlerError::from)?;
+    nats.commit().await.map_err(HandlerError::from)?;
+
+    let reply = SaveEditSessionReply { edit_session };
 
     Ok(warp::reply::json(&reply))
 }

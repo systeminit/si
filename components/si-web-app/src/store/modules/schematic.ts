@@ -20,6 +20,7 @@ import { SchematicNodeSelectedEvent } from "@/api/partyBus/SchematicNodeSelected
 import { NodeCreatedEvent } from "@/api/partyBus/NodeCreatedEvent";
 import { EntitySetNameEvent } from "@/api/partyBus/EntitySetNameEvent";
 import { NodeUpdatedEvent } from "@/api/partyBus/NodeUpdatedEvent";
+import { EditSessionCancelEvent } from "@/api/partyBus/EditSessionCancelEvent";
 
 import { Cg2dCoordinate } from "@/api/sicg";
 import { Edge } from "@/api/sdf/model/edge";
@@ -52,6 +53,7 @@ export const schematicStoreSubscribeEvents = [
   NodeCreatedEvent,
   EntitySetNameEvent,
   ConnectionCreatedEvent,
+  EditSessionCancelEvent,
 ];
 
 export const schematicStore: Module<SchematicStore, any> = {
@@ -97,6 +99,11 @@ export const schematicStore: Module<SchematicStore, any> = {
         }
       }
     },
+    lastRequestRemoveEditSession(state) {
+      if (state.lastRequest?.editSessionId) {
+        delete state.lastRequest?.editSessionId;
+      }
+    },
   },
   actions: {
     async onNodeCreated({ state, dispatch }, event: NodeCreatedEvent) {
@@ -113,6 +120,15 @@ export const schematicStore: Module<SchematicStore, any> = {
     },
     async onNodeUpdated({ state, dispatch }, _event: NodeUpdatedEvent) {
       if (state.lastRequest) {
+        await dispatch("loadApplicationSystemSchematic", state.lastRequest);
+      }
+    },
+    async onEditSessionCancel(
+      { state, dispatch, commit },
+      _event: EditSessionCancelEvent,
+    ) {
+      if (state.lastRequest) {
+        commit("lastRequestRemoveEditSession");
         await dispatch("loadApplicationSystemSchematic", state.lastRequest);
       }
     },
@@ -138,7 +154,9 @@ export const schematicStore: Module<SchematicStore, any> = {
       { commit },
       request: IGetApplicationSystemSchematicRequest,
     ): Promise<IGetSchematicReply> {
+      console.log("loading schematic again", { request });
       let reply = await SchematicDal.getApplicationSystemSchematic(request);
+      console.log("loading schematic again with a reply ", { request, reply });
       if (!reply.error) {
         commit("setSchematic", reply.schematic);
         commit("setLastRequest", request);

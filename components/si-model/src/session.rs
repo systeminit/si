@@ -3,7 +3,7 @@ use thiserror::Error;
 
 use si_data::PgTxn;
 
-use crate::{Organization, Workspace};
+use crate::{Entity, Organization, Workspace};
 
 const GET_DEFAULTS: &str = include_str!("./queries/session_dal_get_defaults.sql");
 
@@ -22,7 +22,7 @@ pub type SessionResult<T> = Result<T, SessionError>;
 pub struct SessionDefaults {
     pub organization: Organization,
     pub workspace: Workspace,
-    //pub system: Entity,
+    pub system: Entity,
 }
 
 pub async fn get_defaults(
@@ -36,11 +36,12 @@ pub async fn get_defaults(
     let organization: Organization = serde_json::from_value(org_json)?;
     let w_json: serde_json::Value = row.try_get("workspace")?;
     let workspace: Workspace = serde_json::from_value(w_json)?;
-    //let s_json: serde_json::Value = row.try_get("system")?;
-    //let system: Entity = serde_json::from_value(s_json)?;
+    let s_json: serde_json::Value = row.try_get("system")?;
+    let system: Entity = serde_json::from_value(s_json)?;
+
     Ok(SessionDefaults {
         organization,
         workspace,
-        //system,
+        system,
     })
 }

@@ -1,32 +1,9 @@
 use si_model_test::{
-    create_change_set, create_custom_node, create_edit_session, one_time_setup,
-    signup_new_billing_account, NewBillingAccount, TestContext,
+    create_change_set, create_edit_session, create_entity_node, create_node_position,
+    one_time_setup, signup_new_billing_account, TestContext,
 };
 
-use si_data::{NatsTxn, PgTxn};
 use si_model::NodePosition;
-
-pub async fn create_node_position(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    node_id: impl AsRef<str>,
-    context_id: impl AsRef<str>,
-    nba: &NewBillingAccount,
-) -> NodePosition {
-    let node_position = NodePosition::new(
-        &txn,
-        &nats,
-        node_id.as_ref(),
-        context_id.as_ref(),
-        "0",
-        "0",
-        &nba.workspace.id,
-    )
-    .await
-    .expect("cannot create new node position");
-
-    node_position
-}
 
 #[tokio::test]
 async fn new() {
@@ -58,7 +35,6 @@ async fn new() {
         &nats,
         &veritech,
         &nba,
-        &nba.system,
         &change_set,
         &edit_session,
     )
@@ -110,7 +86,6 @@ async fn create_or_update() {
         &nats,
         &veritech,
         &nba,
-        &nba.system,
         &change_set,
         &edit_session,
     )
@@ -186,7 +161,6 @@ async fn by_node_id() {
         &nats,
         &veritech,
         &nba,
-        &nba.system,
         &change_set,
         &edit_session,
     )
@@ -199,7 +173,6 @@ async fn by_node_id() {
         &nats,
         &veritech,
         &nba,
-        &nba.system,
         &change_set,
         &edit_session,
     )
@@ -252,7 +225,6 @@ async fn save() {
         &nats,
         &veritech,
         &nba,
-        &nba.system,
         &change_set,
         &edit_session,
     )

@@ -1,8 +1,6 @@
-use crate::{
-    data::{NatsTxn, NatsTxnError, PgTxn},
-    models::{next_update_clock, ModelError, SiStorable, UpdateClockError},
-};
+use crate::{ModelError, SiStorable};
 use serde::{Deserialize, Serialize};
+use si_data::{NatsTxn, NatsTxnError, PgTxn};
 use thiserror::Error;
 
 const NODE_POSITION_BY_NODE_ID: &str = include_str!("./queries/node_position_by_node_id.sql");
@@ -17,8 +15,6 @@ pub enum NodePositionError {
     SerdeJson(#[from] serde_json::Error),
     #[error("pg error: {0}")]
     TokioPg(#[from] tokio_postgres::Error),
-    #[error("update clock: {0}")]
-    UpdateClock(#[from] UpdateClockError),
 }
 
 pub type NodePositionResult<T> = Result<T, NodePositionError>;
@@ -50,20 +46,10 @@ impl NodePosition {
         let y = y.as_ref();
         let workspace_id = workspace_id.as_ref();
 
-        let workspace_update_clock = next_update_clock(workspace_id).await?;
-
         let row = txn
             .query_one(
-                "SELECT object FROM node_position_create_v1($1, $2, $3, $4, $5, $6, $7)",
-                &[
-                    &node_id,
-                    &context_id,
-                    &x,
-                    &y,
-                    &workspace_id,
-                    &workspace_update_clock.epoch,
-                    &workspace_update_clock.update_count,
-                ],
+                "SELECT object FROM node_position_create_v1($1, $2, $3, $4, $5)",
+                &[&node_id, &context_id, &x, &y, &workspace_id],
             )
             .await?;
         let json: serde_json::Value = row.try_get("object")?;
@@ -88,20 +74,10 @@ impl NodePosition {
         let y = y.as_ref();
         let workspace_id = workspace_id.as_ref();
 
-        let workspace_update_clock = next_update_clock(workspace_id).await?;
-
         let row = txn
             .query_one(
-                "SELECT object FROM node_position_create_or_update_v1($1, $2, $3, $4, $5, $6, $7)",
-                &[
-                    &node_id,
-                    &context_id,
-                    &x,
-                    &y,
-                    &workspace_id,
-                    &workspace_update_clock.epoch,
-                    &workspace_update_clock.update_count,
-                ],
+                "SELECT object FROM node_position_create_or_update_v1($1, $2, $3, $4, $5)",
+                &[&node_id, &context_id, &x, &y, &workspace_id],
             )
             .await?;
         let json: serde_json::Value = row.try_get("object")?;
@@ -130,9 +106,6 @@ impl NodePosition {
     }
 
     pub async fn save(&mut self, txn: &PgTxn<'_>, nats: &NatsTxn) -> NodePositionResult<()> {
-        let workspace_update_clock = next_update_clock(&self.si_storable.workspace_id).await?;
-        self.si_storable.update_clock = workspace_update_clock;
-
         let json = serde_json::to_value(&self)?;
         let row = txn
             .query_one("SELECT object FROM node_position_save_v1($1)", &[&json])

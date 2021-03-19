@@ -9,7 +9,7 @@ CREATE TABLE edit_sessions
     change_set_id      bigint                   NOT NULL REFERENCES change_sets (id),
     tenant_ids         text[]                   NOT NULL,
     obj                jsonb                    NOT NULL,
-    reverted           bool                     NOT NULL DEFAULT false,
+    canceled           bool                     NOT NULL DEFAULT false,
     created_at         TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at         TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
@@ -57,11 +57,26 @@ BEGIN
     INTO object;
 
     INSERT INTO edit_sessions (id, si_id, name, billing_account_id, organization_id, workspace_id, change_set_id,
-                               tenant_ids, obj, reverted, created_at, updated_at)
+                               tenant_ids, obj, canceled, created_at, updated_at)
     VALUES (this_id, si_id, this_name, this_billing_account_id, this_organization_id, this_workspace_id,
             this_change_set_id, tenant_ids, object, false, created_at, updated_at);
 
 END;
+$$ LANGUAGE PLPGSQL VOLATILE;
+
+CREATE OR REPLACE FUNCTION edit_session_cancel_v1(this_si_id text, OUT object jsonb) AS
+$$
+DECLARE
+    this_id  bigint;
+BEGIN
+    /* extract the id */
+    SELECT si_id_to_primary_key_v1(this_si_id) INTO this_id;
+
+    UPDATE edit_sessions SET obj = jsonb_set(obj, '{saved}', 'false'::jsonb) WHERE id = this_id;
+    UPDATE edit_sessions SET obj = jsonb_set(obj, '{canceled}', 'true'::jsonb) WHERE id = this_id;
+    UPDATE edit_sessions SET canceled = true WHERE id = this_id;
+    SELECT obj INTO object FROM edit_sessions WHERE id = this_id;
+END
 $$ LANGUAGE PLPGSQL VOLATILE;
 
 CREATE OR REPLACE FUNCTION edit_session_save_session_v1(this_si_id text, OUT object jsonb) AS
@@ -119,31 +134,6 @@ BEGIN
     RETURNING obj INTO object;
 END
 $$ LANGUAGE PLPGSQL;
-
-CREATE OR REPLACE FUNCTION edit_session_revert_v1(this_edit_session_si_id text, OUT object jsonb) AS
-$$
-DECLARE
-    current_obj           jsonb;
-    this_edit_session_id  bigint;
-    this_edit_session_obj jsonb;
-BEGIN
-    SELECT si_id_to_primary_key_v1(this_edit_session_si_id) INTO this_edit_session_id;
-    SELECT obj INTO current_obj FROM edit_sessions WHERE id = this_edit_session_id;
-    SELECT jsonb_set(current_obj, '{reverted}', 'true'::jsonb) INTO this_edit_session_obj;
-
-    UPDATE edit_sessions
-    SET reverted   = true,
-        obj        = this_edit_session_obj,
-        updated_at = now()
-    WHERE id = this_edit_session_id;
-
-    UPDATE ops
-    SET obj        = jsonb_set(obj, '{siOp, skip}', 'true'::jsonb),
-        updated_at = now()
-    WHERE edit_session_id = this_edit_session_id
-    RETURNING ops.obj INTO object;
-END;
-$$ LANGUAGE PLPGSQL VOLATILE;
 
 CREATE OR REPLACE FUNCTION edit_session_get_v1(si_id text, OUT object jsonb) AS
 $$

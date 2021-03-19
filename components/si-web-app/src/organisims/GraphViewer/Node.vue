@@ -25,7 +25,7 @@
               class="mt-1 text-xs font-medium text-center node"
               :class="nodeTitleClasses"
             >
-              {{ nodeObject.objectType }}
+              {{ nodeObject.entityType }}
             </div>
           </div>
 

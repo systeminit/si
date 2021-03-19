@@ -66,6 +66,5 @@ async fn new() {
     .expect("cannot create node");
 
     assert_eq!(&node.object_id.starts_with("entity:"), &true);
-    assert_eq!(&node.positions, &std::collections::HashMap::new());
     assert_eq!(&node.object_type, "service");
 }

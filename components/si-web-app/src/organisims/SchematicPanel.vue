@@ -130,6 +130,8 @@ export default Vue.extend({
         state.session.sessionContext,
       currentChangeSet: (state: any): EditorStore["currentChangeSet"] =>
         state.editor.currentChangeSet,
+      currentEditSession: (state: any): EditorStore["currentEditSession"] =>
+        state.editor.currentEditSession,
       currentSystem: (state: any): SessionStore["currentSystem"] =>
         state.session.currentSystem,
       editMode(): boolean {
@@ -157,9 +159,9 @@ export default Vue.extend({
     async nodeSelect(schematicNode: ISchematicNode) {
       console.log("selected", { schematicNode });
     },
-    async nodeCreate(entityObject: EntityObject) {
+    async nodeCreate({ entityType }: { entityType: string }) {
       let payload: NodeCreatePayload = {
-        entityObject: entityObject,
+        entityType,
         sourcePanelId: this.schematicStoreCtx.instanceId,
       };
 
@@ -167,6 +169,7 @@ export default Vue.extend({
         "editor/nodeCreate",
         payload,
       );
+      console.log("created a node", { reply });
       if (!reply.error) {
         // @ts-ignore
         this.$refs.graphViewer.setIsNodeCreate();
@@ -177,7 +180,10 @@ export default Vue.extend({
     },
     async loadSchematic() {
       this.isLoading = true;
+      console.log("trying to load schematic");
+
       if (this.currentWorkspace && this.rootObjectId && this.currentSystem) {
+        console.log("lobster");
         if (this.schematicKind == SchematicKind.System) {
           let request: Record<string, any> = {
             workspaceId: this.currentWorkspace.id,
@@ -187,6 +193,10 @@ export default Vue.extend({
           if (this.currentChangeSet) {
             request["changeSetId"] = this.currentChangeSet.id;
           }
+          if (this.currentEditSession) {
+            request["editSessionId"] = this.currentEditSession.id;
+          }
+          console.log("loading schematic", { request });
           let reply = await this.schematicStoreCtx.dispatch(
             "loadApplicationSystemSchematic",
             request,
