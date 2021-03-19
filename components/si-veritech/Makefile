@@ -8,9 +8,6 @@ registry:
 	@echo "--- [$(shell basename ${CURDIR})] $@"
 	$(MAKE) -C ../si-registry build
 
-watch: registry start
-	@ echo "Watching.."
-
 format:
 	@echo "--- [$(shell basename ${CURDIR})] $@"
 	npm run lint:fix

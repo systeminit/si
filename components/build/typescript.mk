@@ -24,7 +24,11 @@ start: node_modules
 	@echo "--- [$(shell basename ${CURDIR})] $@"
 	npm run start
 
-watch: start
+watch: watch
+
+watch: node_modules
+	@echo "--- [$(shell basename ${CURDIR})] $@"
+	npm run watch
 
 clean:
 	@echo "--- [$(shell basename ${CURDIR})] $@"
