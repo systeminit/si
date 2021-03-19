@@ -4,7 +4,7 @@ CONTAINER = si-veritech
 .DEFAULT_GOAL := build
 .PHONY: registry
 
-registry: 
+registry:
 	@echo "--- [$(shell basename ${CURDIR})] $@"
 	$(MAKE) -C ../si-registry build
 
