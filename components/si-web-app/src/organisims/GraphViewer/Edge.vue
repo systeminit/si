@@ -30,7 +30,7 @@ import Vue, { PropType } from "vue";
 import { Edge } from "@/api/sdf/model/edge";
 import { Cg2dCoordinate } from "@/api/sicg";
 
-import { SchematicStore } from "@/store/modules/schematic";
+import { SchematicPanelStore } from "@/store/modules/schematicPanel";
 import { ISchematicNode, Schematic } from "@/api/sdf/model/schematic";
 import { InstanceStoreContext } from "@/store";
 
@@ -86,8 +86,8 @@ export default Vue.extend({
       type: (Object as PropType<Edge> | Object) as PropType<EdgeTemporary>,
       required: false,
     },
-    schematicStoreCtx: {
-      type: Object as PropType<InstanceStoreContext<SchematicStore>>,
+    schematicPanelStoreCtx: {
+      type: Object as PropType<InstanceStoreContext<SchematicPanelStore>>,
       required: true,
     },
     graphViewerId: {
@@ -105,8 +105,8 @@ export default Vue.extend({
   },
   computed: {
     sourceNode(): ISchematicNode | null {
-      if (this.schematicStoreCtx.state.schematic) {
-        return this.schematicStoreCtx.state.schematic.nodes[
+      if (this.schematicPanelStoreCtx.state.schematic) {
+        return this.schematicPanelStoreCtx.state.schematic.nodes[
           this.edge.tailVertex.nodeId
         ] as ISchematicNode;
       } else {
@@ -114,8 +114,8 @@ export default Vue.extend({
       }
     },
     destinationNode(): ISchematicNode | null {
-      if (this.schematicStoreCtx.state.schematic) {
-        return this.schematicStoreCtx.state.schematic?.nodes[
+      if (this.schematicPanelStoreCtx.state.schematic) {
+        return this.schematicPanelStoreCtx.state.schematic?.nodes[
           this.edge.headVertex.nodeId
         ] as ISchematicNode;
       } else {
@@ -231,8 +231,8 @@ export default Vue.extend({
       }
     },
     getNode(nodeId: string): ISchematicNode | undefined {
-      if (this.schematicStoreCtx.state.schematic?.nodes[nodeId]) {
-        return this.schematicStoreCtx.state.schematic?.nodes[nodeId];
+      if (this.schematicPanelStoreCtx.state.schematic?.nodes[nodeId]) {
+        return this.schematicPanelStoreCtx.state.schematic?.nodes[nodeId];
       }
     },
   },
