@@ -78,11 +78,11 @@ import { SessionStore } from "@/store/modules/session";
 
 import { Edge, IEdge, IVertex, EdgeKind } from "@/api/sdf/model/edge";
 
-import { NodePositionUpdateEvent } from "@/organisims/GraphViewer/Node.vue";
+import { NodePositionUpdateEvent } from "@/organisims/SchematicViewer/Node.vue";
 import {
   EdgePostionUpdateEvent,
   EdgeTemporary,
-} from "@/organisims/GraphViewer/Edge.vue";
+} from "@/organisims/SchematicViewer/Edge.vue";
 
 import { SetNodePositionPayload } from "@/store/modules/schematicPanel";
 import { ConnectionCreateReply } from "@/api/sdf/dal/schematicDal";
@@ -112,8 +112,8 @@ import {
 } from "@/store/modules/editor";
 
 import SiBackground from "@/atoms/SiBackground.vue";
-import SiGraphNode from "./GraphViewer/Node.vue";
-import SiGraphEdge from "./GraphViewer/Edge.vue";
+import SiGraphNode from "./SchematicViewer/Node.vue";
+import SiGraphEdge from "./SchematicViewer/Edge.vue";
 
 import {
   ShortcutRegistrationEvent,
@@ -213,7 +213,7 @@ interface IData {
 type IPanelLayoutUpdated = boolean;
 
 export default Vue.extend({
-  name: "GraphViewer",
+  name: "SchematicViewer",
   components: {
     SiGraphEdge,
     SiGraphNode,
@@ -731,9 +731,8 @@ export default Vue.extend({
             let source: ConnectionNodeReference = {
               nodeId: sourceNode[1],
               socketId: sourceNode[2],
-              nodeKind: this.storesCtx.schematicPanelStoreCtx.state.schematic?.nodes[
-                sourceNode[1]
-              ].node.objectType as string,
+              nodeKind: this.storesCtx.schematicPanelStoreCtx.state.schematic
+                ?.nodes[sourceNode[1]].node.objectType as string,
             };
 
             let destinationNode = this.connection.transientConnection.destinationSocketId.split(
@@ -742,9 +741,8 @@ export default Vue.extend({
             let destination: ConnectionNodeReference = {
               nodeId: destinationNode[1],
               socketId: destinationNode[2],
-              nodeKind: this.storesCtx.schematicPanelStoreCtx.state.schematic?.nodes[
-                destinationNode[1]
-              ].node.objectType as string,
+              nodeKind: this.storesCtx.schematicPanelStoreCtx.state.schematic
+                ?.nodes[destinationNode[1]].node.objectType as string,
             };
 
             // console.log(
