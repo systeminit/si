@@ -110,9 +110,8 @@ export const schematicPanelStore: Module<SchematicPanelStore, any> = {
       if (state.lastRequest) {
         await dispatch("loadApplicationSystemSchematic", state.lastRequest);
         if (event.node != null && event.sourcePanelId != undefined) {
-          let node = this.state.schematicPanel[event.sourcePanelId].schematic.nodes[
-            event.node.id
-          ];
+          let node = this.state.schematicPanel[event.sourcePanelId].schematic
+            .nodes[event.node.id];
           await dispatch("nodeSelect", node);
         }
       }
