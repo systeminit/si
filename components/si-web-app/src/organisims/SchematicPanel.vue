@@ -31,7 +31,7 @@
       ></CodeLoader>
       <div class="relative w-full h-full" v-else>
         <div v-if="schematic">
-          <GraphViewer
+          <SchematicViewer
             class="absolute z-10"
             ref="graphViewer"
             :graph="schematic"
@@ -76,7 +76,10 @@ import { IGetApplicationContextRequest } from "@/api/sdf/dal/applicationContextD
 import { IGetApplicationSystemSchematicRequest } from "@/api/sdf/dal/schematicDal";
 import { EditorStore, NodeCreatePayload } from "@/store/modules/editor";
 
-import GraphViewer, { StoresCtx, StoreCtx } from "@/organisims/GraphViewer.vue";
+import SchematicViewer, {
+  StoresCtx,
+  StoreCtx,
+} from "@/organisims/SchematicViewer.vue";
 
 import { Cg2dCoordinate } from "@/api/sicg";
 
@@ -98,7 +101,7 @@ export default Vue.extend({
   },
   components: {
     Panel,
-    GraphViewer,
+    SchematicViewer,
     NodeAddMenu,
     CodeLoader,
     SiSelect,
@@ -238,7 +241,10 @@ export default Vue.extend({
         );
       }
       this.isLoading = true;
-      await this.schematicPanelStoreCtx.dispatch("setRootObjectId", applicationId);
+      await this.schematicPanelStoreCtx.dispatch(
+        "setRootObjectId",
+        applicationId,
+      );
       await this.loadSchematic();
     },
     async currentChangeSet() {

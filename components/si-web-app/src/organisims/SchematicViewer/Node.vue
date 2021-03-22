@@ -88,7 +88,7 @@ import { InstanceStoreContext } from "@/store";
 
 import { INodeObject, Node } from "@/api/sdf/model/node";
 import { IEntity, Entity } from "@/api/sdf/model/entity";
-import { StoresCtx } from "@/organisims/GraphViewer.vue";
+import { StoresCtx } from "@/organisims/SchematicViewer.vue";
 
 import { SiCg } from "@/api/sicg";
 import { Cg2dCoordinate } from "@/api/sicg";
