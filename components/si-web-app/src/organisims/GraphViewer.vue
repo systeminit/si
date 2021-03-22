@@ -21,7 +21,7 @@
         :key="connection.transientConnection.edge.id"
         :edge="connection.transientConnection.edge"
         :graphViewerId="id"
-        :schematicStoreCtx="schematicStoreCtx"
+        :schematicPanelStoreCtx="schematicPanelStoreCtx"
       />
 
       <div v-if="graph">
@@ -30,7 +30,7 @@
           :key="index"
           :edge="edge"
           :graphViewerId="id"
-          :schematicStoreCtx="schematicStoreCtx"
+          :schematicPanelStoreCtx="schematicPanelStoreCtx"
         />
         <SiGraphNode
           v-for="(node, index) in graph.nodes"
@@ -73,7 +73,7 @@ import Vue, { PropType } from "vue";
 import { mapState } from "vuex";
 
 import { PanelEventBus } from "@/atoms/PanelEventBus";
-import { SchematicStore } from "@/store/modules/schematic";
+import { SchematicPanelStore } from "@/store/modules/schematicPanel";
 import { SessionStore } from "@/store/modules/session";
 
 import { Edge, IEdge, IVertex, EdgeKind } from "@/api/sdf/model/edge";
@@ -84,7 +84,7 @@ import {
   EdgeTemporary,
 } from "@/organisims/GraphViewer/Edge.vue";
 
-import { SetNodePositionPayload } from "@/store/modules/schematic";
+import { SetNodePositionPayload } from "@/store/modules/schematicPanel";
 import { ConnectionCreateReply } from "@/api/sdf/dal/schematicDal";
 import {
   ISchematic,
@@ -124,7 +124,7 @@ import {
   ShortcutUpdateEvent,
 } from "@/organisims/ShortcutsEventBroker.vue";
 import { INode } from "@/api/sdf/model/node";
-export type StoreCtx = InstanceStoreContext<SchematicStore>;
+export type StoreCtx = InstanceStoreContext<SchematicPanelStore>;
 
 export interface StoresCtx {
   [storeId: string]: StoreCtx;
@@ -221,11 +221,11 @@ export default Vue.extend({
   },
   props: {
     graph: {
-      type: Object as PropType<SchematicStore["schematic"]>,
+      type: Object as PropType<SchematicPanelStore["schematic"]>,
       required: false,
     },
-    schematicStoreCtx: {
-      type: Object as PropType<InstanceStoreContext<SchematicStore>>,
+    schematicPanelStoreCtx: {
+      type: Object as PropType<InstanceStoreContext<SchematicPanelStore>>,
       required: false,
     },
     storesCtx: {
@@ -324,7 +324,7 @@ export default Vue.extend({
   },
   computed: {
     selectedNode(): ISchematicNode | null {
-      return this.storesCtx.schematicStoreCtx.state.selectedNode;
+      return this.storesCtx.schematicPanelStoreCtx.state.selectedNode;
     },
     ...mapState({
       currentSystem: (state: any): SessionStore["currentSystem"] =>
@@ -355,10 +355,10 @@ export default Vue.extend({
       );
     },
     async selectNode(node: INode) {
-      await this.schematicStoreCtx.dispatch("nodeSelect", node);
+      await this.schematicPanelStoreCtx.dispatch("nodeSelect", node);
     },
     async clearNodeSelection() {
-      await this.schematicStoreCtx.dispatch("nodeSelectionClear");
+      await this.schematicPanelStoreCtx.dispatch("nodeSelectionClear");
     },
     activateShortcuts(): void {
       this.viewer.shortcutsEnabled = true;
@@ -629,7 +629,7 @@ export default Vue.extend({
                   context: "AAA",
                   position: newPosition,
                 };
-                this.storesCtx["schematicStoreCtx"].dispatch(
+                this.storesCtx["schematicPanelStoreCtx"].dispatch(
                   "setNodePosition",
                   setNodePositionPayload,
                 );
@@ -731,7 +731,7 @@ export default Vue.extend({
             let source: ConnectionNodeReference = {
               nodeId: sourceNode[1],
               socketId: sourceNode[2],
-              nodeKind: this.storesCtx.schematicStoreCtx.state.schematic?.nodes[
+              nodeKind: this.storesCtx.schematicPanelStoreCtx.state.schematic?.nodes[
                 sourceNode[1]
               ].node.objectType as string,
             };
@@ -742,7 +742,7 @@ export default Vue.extend({
             let destination: ConnectionNodeReference = {
               nodeId: destinationNode[1],
               socketId: destinationNode[2],
-              nodeKind: this.storesCtx.schematicStoreCtx.state.schematic?.nodes[
+              nodeKind: this.storesCtx.schematicPanelStoreCtx.state.schematic?.nodes[
                 destinationNode[1]
               ].node.objectType as string,
             };

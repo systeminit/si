@@ -35,7 +35,7 @@
             class="absolute z-10"
             ref="graphViewer"
             :graph="schematic"
-            :schematicStoreCtx="schematicStoreCtx"
+            :schematicPanelStoreCtx="schematicPanelStoreCtx"
             :storesCtx="storesCtx"
           />
         </div>
@@ -61,11 +61,11 @@ import {
   unregisterStore,
 } from "@/store";
 import {
-  SchematicStore,
-  schematicStore,
+  SchematicPanelStore,
+  schematicPanelStore,
   NodeSelectWithIdPayload,
-  schematicStoreSubscribeEvents,
-} from "@/store/modules/schematic";
+  schematicPanelStoreSubscribeEvents,
+} from "@/store/modules/schematicPanel";
 import { mapGetters, mapState } from "vuex";
 import { SessionStore } from "@/store/modules/session";
 import SiLoader from "@/atoms/SiLoader.vue";
@@ -81,7 +81,7 @@ import GraphViewer, { StoresCtx, StoreCtx } from "@/organisims/GraphViewer.vue";
 import { Cg2dCoordinate } from "@/api/sicg";
 
 interface IData {
-  schematicStoreCtx: InstanceStoreContext<SchematicStore>;
+  schematicPanelStoreCtx: InstanceStoreContext<SchematicPanelStore>;
   isLoading: boolean;
   schematicKind: SchematicKind;
   storesCtx: StoresCtx;
@@ -105,18 +105,18 @@ export default Vue.extend({
   },
   data(): IData {
     let id = _.uniqueId("schematicPanel:");
-    let schematicStoreCtx: InstanceStoreContext<SchematicStore> = new InstanceStoreContext(
+    let schematicPanelStoreCtx: InstanceStoreContext<SchematicPanelStore> = new InstanceStoreContext(
       {
-        storeName: "schematic",
+        storeName: "schematicPanel",
         componentId: "schematicPanel",
         instanceId: id,
       },
     );
     let storesCtx: StoresCtx = {};
-    storesCtx["schematicStoreCtx"] = schematicStoreCtx;
+    storesCtx["schematicPanelStoreCtx"] = schematicPanelStoreCtx;
     return {
       id: id,
-      schematicStoreCtx,
+      schematicPanelStoreCtx,
       isLoading: true,
       schematicKind: SchematicKind.System,
       storesCtx: storesCtx,
@@ -148,11 +148,11 @@ export default Vue.extend({
         { label: "Implementation", value: SchematicKind.Implementation },
       ];
     },
-    rootObjectId(): SchematicStore["rootObjectId"] {
-      return this.schematicStoreCtx.state.rootObjectId;
+    rootObjectId(): SchematicPanelStore["rootObjectId"] {
+      return this.schematicPanelStoreCtx.state.rootObjectId;
     },
-    schematic(): SchematicStore["schematic"] {
-      return this.schematicStoreCtx.state.schematic;
+    schematic(): SchematicPanelStore["schematic"] {
+      return this.schematicPanelStoreCtx.state.schematic;
     },
   },
   methods: {
@@ -162,7 +162,7 @@ export default Vue.extend({
     async nodeCreate({ entityType }: { entityType: string }) {
       let payload: NodeCreatePayload = {
         entityType,
-        sourcePanelId: this.schematicStoreCtx.instanceId,
+        sourcePanelId: this.schematicPanelStoreCtx.instanceId,
       };
 
       let reply: INodeCreateReply = await this.$store.dispatch(
@@ -197,7 +197,7 @@ export default Vue.extend({
             request["editSessionId"] = this.currentEditSession.id;
           }
           console.log("loading schematic", { request });
-          let reply = await this.schematicStoreCtx.dispatch(
+          let reply = await this.schematicPanelStoreCtx.dispatch(
             "loadApplicationSystemSchematic",
             request,
           );
@@ -211,15 +211,15 @@ export default Vue.extend({
   },
   async created() {
     registerStore(
-      this.schematicStoreCtx,
-      schematicStore,
-      schematicStoreSubscribeEvents,
+      this.schematicPanelStoreCtx,
+      schematicPanelStore,
+      schematicPanelStoreSubscribeEvents,
     );
   },
   async mounted() {
     if (this.sessionContext) {
       this.isLoading = true;
-      await this.schematicStoreCtx.dispatch(
+      await this.schematicPanelStoreCtx.dispatch(
         "setRootObjectId",
         this.sessionContext.applicationId,
       );
@@ -227,7 +227,7 @@ export default Vue.extend({
     }
   },
   async beforeDestroy() {
-    unregisterStore(this.schematicStoreCtx);
+    unregisterStore(this.schematicPanelStoreCtx);
   },
   watch: {
     async sessionContext(sessionContext: SessionStore["sessionContext"]) {
@@ -238,7 +238,7 @@ export default Vue.extend({
         );
       }
       this.isLoading = true;
-      await this.schematicStoreCtx.dispatch("setRootObjectId", applicationId);
+      await this.schematicPanelStoreCtx.dispatch("setRootObjectId", applicationId);
       await this.loadSchematic();
     },
     async currentChangeSet() {

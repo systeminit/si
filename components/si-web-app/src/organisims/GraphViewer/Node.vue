@@ -82,7 +82,7 @@ import _ from "lodash";
 import { ISchematicNode } from "@/api/sdf/model/schematic";
 import { PanelEventBus } from "@/atoms/PanelEventBus";
 
-import { SchematicStore } from "@/store/modules/schematic";
+import { SchematicPanelStore } from "@/store/modules/schematicPanel";
 
 import { InstanceStoreContext } from "@/store";
 
@@ -184,7 +184,7 @@ export default Vue.extend({
       }
     },
     selectedNode(): ISchematicNode | null {
-      return this.storesCtx.schematicStoreCtx.state.selectedNode;
+      return this.storesCtx.schematicPanelStoreCtx.state.selectedNode;
     },
     nodeIsSelected(): Record<string, boolean> {
       if (this.selectedNode && this.selectedNode.node) {
