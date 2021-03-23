@@ -1,95 +1,6 @@
-import { Node } from "@/api/sdf/model/node";
 import { Entity } from "@/api/sdf/model/entity";
 import { SDFError } from "@/api/sdf";
-import { System } from "@/api/sdf/model/system";
 import Bottle from "bottlejs";
-
-export interface INodeCreateForApplicationRequest extends INodeCreateRequest {
-  applicationId: string;
-}
-
-export interface INodeCreateRequest {
-  name?: string;
-  entityType: string;
-  workspaceId: string;
-  changeSetId: string;
-  editSessionId: string;
-}
-
-export interface INodeUpdatePositionRequest {
-  nodeId: string;
-  contextId: string;
-  x: string;
-  y: string;
-  workspaceId: string;
-}
-
-export interface INodeObjectEntity {
-  entity: Entity;
-  system?: never;
-}
-
-export interface INodeObjectSystem {
-  entity?: never;
-  system: System;
-}
-
-export type INodeObject = INodeObjectEntity | INodeObjectSystem;
-
-export interface INodeCreateReplySuccess {
-  node: Node;
-  entity: Entity;
-  error?: never;
-}
-
-export interface INodeCreateReplyFailure {
-  node?: never;
-  entity?: never;
-  error: SDFError;
-}
-
-export interface INodeUpdatePositionReplySuccess {
-  // nodePosition: any; // ignoring this for now.
-  error?: never;
-}
-
-export interface INodeUpdatePositionReplyFailure {
-  // nodePosition?: any; // ignoring this for now.
-  error: SDFError;
-}
-
-export type INodeCreateReply =
-  | INodeCreateReplySuccess
-  | INodeCreateReplyFailure;
-
-export type INodeUpdatePositionReply =
-  | INodeUpdatePositionReplySuccess
-  | INodeUpdatePositionReplyFailure;
-
-async function nodeCreateForApplication(
-  request: INodeCreateForApplicationRequest,
-): Promise<INodeCreateReply> {
-  let bottle = Bottle.pop("default");
-  let sdf = bottle.container.SDF;
-
-  const reply: INodeCreateReply = await sdf.post(
-    "editorDal/nodeCreateForApplication",
-    request,
-  );
-  return reply;
-}
-async function nodeUpdatePosition(
-  request: INodeUpdatePositionRequest,
-): Promise<INodeUpdatePositionReply> {
-  let bottle = Bottle.pop("default");
-  let sdf = bottle.container.SDF;
-
-  const reply: INodeUpdatePositionReply = await sdf.post(
-    "editorDal/updateNodePosition",
-    request,
-  );
-  return reply;
-}
 
 export interface IEntitySetPropertyRequest {
   workspaceId: string;
@@ -204,9 +115,7 @@ async function entitySetName(
 }
 
 export const EditorDal = {
-  nodeCreateForApplication,
   entitySetProperty,
   entitySetPropertyBulk,
   entitySetName,
-  nodeUpdatePosition,
 };

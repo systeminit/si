@@ -5,17 +5,18 @@ import {
   SchematicKind,
   ISchematicNode,
 } from "@/api/sdf/model/schematic";
+
 import {
   IGetApplicationSystemSchematicRequest,
   IGetSchematicReply,
+  INodeCreateReply,
   SchematicDal,
+  Connection,
+  INodeUpdatePositionReply,
+  ConnectionCreateReply,
 } from "@/api/sdf/dal/schematicDal";
 
-import Bottle from "bottlejs";
-import { PartyBus } from "@/api/partyBus";
-import { PanelEventBus } from "@/atoms/PanelEventBus";
 import { ConnectionCreatedEvent } from "@/api/partyBus/ConnectionCreatedEvent";
-
 import { SchematicNodeSelectedEvent } from "@/api/partyBus/SchematicNodeSelectedEvent";
 import { NodeCreatedEvent } from "@/api/partyBus/NodeCreatedEvent";
 import { EntitySetNameEvent } from "@/api/partyBus/EntitySetNameEvent";
@@ -26,12 +27,50 @@ import { Cg2dCoordinate } from "@/api/sicg";
 import { Edge } from "@/api/sdf/model/edge";
 import { schematicSelectedEntityId$ } from "@/observables";
 
+import _ from "lodash";
+
+export type IEditorContext = IEditorContextApplication;
+
+export interface TransientEdgeRemovalEvent {
+  remove: boolean;
+}
+export interface IEditorContextApplication {
+  applicationId: string;
+  contextType: "applicationSystem";
+}
+
+export interface ConnectionCreatePayload {
+  connection: Connection;
+  workspaceId: string;
+  changeSetId: string;
+  editSessionId: string;
+  applicationId: string;
+}
+
 export interface SchematicPanelStore {
   kind: SchematicKind | null;
   schematic: Schematic | null;
   rootObjectId: string | null;
   selectedNode: ISchematicNode | null;
+  selectedNodeId: string | null;
   lastRequest: IGetApplicationSystemSchematicRequest | null;
+}
+
+export interface NodeCreatePayload {
+  entityType: string;
+  sourcePanelId: string;
+  applicationId: string;
+  workspaceId: string;
+  changeSetId: string;
+  editSessionId: string;
+}
+
+export interface NodeUpdatePositionePayload {
+  nodeId: string;
+  contextId: string;
+  position: Cg2dCoordinate;
+  workspaceId: string;
+  applicationId: string;
 }
 
 export interface SetNodePositionPayload {
@@ -65,6 +104,7 @@ export const schematicPanelStore: Module<SchematicPanelStore, any> = {
       schematic: null,
       rootObjectId: null,
       selectedNode: null,
+      selectedNodeId: null,
       lastRequest: null,
     };
   },
@@ -82,27 +122,45 @@ export const schematicPanelStore: Module<SchematicPanelStore, any> = {
         schematicSelectedEntityId$.next("");
       }
       state.selectedNode = payload;
+      if (payload && payload.node.id) {
+        state.selectedNodeId = payload.node.id;
+      }
     },
     setLastRequest(state, payload: SchematicPanelStore["lastRequest"]) {
       state.lastRequest = payload;
     },
     setNodePosition(state, payload: SetNodePositionPayload) {
       if (state.schematic) {
-        let position = {
+        const position = {
           x: String(payload.position.x),
           y: String(payload.position.y),
         };
+
         if (
+          state.schematic &&
+          state.schematic.nodes[payload.nodeId] &&
+          state.schematic.nodes[payload.nodeId].node &&
           state.schematic.nodes[payload.nodeId].node.positions[payload.context]
         ) {
           state.schematic.nodes[payload.nodeId].node.positions[
             payload.context
           ] = position;
         } else {
-          state.schematic.nodes[payload.nodeId].node.positions = {
-            [payload.context]: position,
-          };
+          if (
+            state.schematic &&
+            state.schematic.nodes[payload.nodeId] &&
+            state.schematic.nodes[payload.nodeId].node
+          ) {
+            state.schematic.nodes[payload.nodeId].node.positions = {
+              [payload.context]: position,
+            };
+          }
         }
+      }
+    },
+    addNode(state, node: ISchematicNode) {
+      if (state.schematic) {
+        state.schematic.nodes[node.node.id] = node;
       }
     },
     lastRequestRemoveEditSession(state) {
@@ -112,14 +170,52 @@ export const schematicPanelStore: Module<SchematicPanelStore, any> = {
     },
   },
   actions: {
+    async nodeCreate(
+      { commit, dispatch, state },
+      payload: NodeCreatePayload,
+    ): Promise<INodeCreateReply> {
+      if (
+        !payload.applicationId ||
+        !payload.workspaceId ||
+        !payload.changeSetId ||
+        !payload.editSessionId
+      ) {
+        throw new Error(
+          "Cannot call nodeCreate without a workspace, system, changeSet and editSession or EditContext! bug!",
+        );
+      }
+      let reply: INodeCreateReply;
+      reply = await SchematicDal.nodeCreateForApplication({
+        entityType: payload.entityType,
+        workspaceId: payload.workspaceId,
+        changeSetId: payload.changeSetId,
+        editSessionId: payload.editSessionId,
+        applicationId: payload.applicationId,
+        returnSchematic: true,
+      });
+      if (!reply.error) {
+        if (reply.schematic) {
+          await commit("setSelectedNode", reply.node);
+          await commit("setSchematic", reply.schematic);
+        } else if (!reply.schematic && reply.node) {
+          await commit("addNode", reply.node);
+          await commit("setSelectedNode", reply.node);
+        }
+
+        new SchematicNodeSelectedEvent({
+          schematicNode: reply.node,
+        }).publish();
+
+        new NodeCreatedEvent(
+          _.cloneDeep(reply),
+          payload.sourcePanelId,
+        ).publish();
+      }
+      return reply;
+    },
     async onNodeCreated({ state, dispatch }, event: NodeCreatedEvent) {
       if (state.lastRequest) {
-        await dispatch("loadApplicationSystemSchematic", state.lastRequest);
-        if (event.node != null && event.sourcePanelId != undefined) {
-          let node = this.state.schematicPanel[event.sourcePanelId].schematic
-            .nodes[event.node.id];
-          await dispatch("nodeSelect", node);
-        }
+        await dispatch("setApplicationSystemSchematic", event.schematic);
       }
     },
     async onNodeUpdated({ state, dispatch }, _event: NodeUpdatedEvent) {
@@ -138,12 +234,10 @@ export const schematicPanelStore: Module<SchematicPanelStore, any> = {
     },
     async onConnectionCreated(
       { state, dispatch },
-      _event: ConnectionCreatedEvent,
+      event: ConnectionCreatedEvent,
     ) {
       if (state.lastRequest) {
-        await dispatch("loadApplicationSystemSchematic", state.lastRequest);
-
-        PanelEventBus.$emit("panel-viewport-edge-remove");
+        await dispatch("setApplicationSystemSchematic", event.schematic);
       }
     },
     async onEntitySetName({ state, dispatch }, _event: NodeCreatedEvent) {
@@ -158,15 +252,18 @@ export const schematicPanelStore: Module<SchematicPanelStore, any> = {
       { commit },
       request: IGetApplicationSystemSchematicRequest,
     ): Promise<IGetSchematicReply> {
-      let reply = await SchematicDal.getApplicationSystemSchematic(request);
+      const reply = await SchematicDal.getApplicationSystemSchematic(request);
       if (!reply.error) {
-        commit("setSchematic", reply.schematic);
-        commit("setLastRequest", request);
+        await commit("setSchematic", reply.schematic);
+        await commit("setLastRequest", request);
       }
       return reply;
     },
+    async setApplicationSystemSchematic({ commit }, schematic: Schematic) {
+      await commit("setSchematic", _.cloneDeep(schematic));
+    },
     async nodeSelect({ commit }, schematicNode: ISchematicNode) {
-      commit("setSelectedNode", schematicNode);
+      await commit("setSelectedNode", schematicNode);
       new SchematicNodeSelectedEvent({
         schematicNode: schematicNode,
       }).publish();
@@ -176,6 +273,51 @@ export const schematicPanelStore: Module<SchematicPanelStore, any> = {
     },
     async setNodePosition({ commit }, payload: SetNodePositionPayload) {
       commit("setNodePosition", payload);
+    },
+    async nodeSetPosition(
+      { state, rootState },
+      payload: NodeUpdatePositionePayload,
+    ): Promise<INodeUpdatePositionReply> {
+      let reply: INodeUpdatePositionReply;
+      if (payload.applicationId) {
+        reply = await SchematicDal.nodeUpdatePosition({
+          nodeId: payload.nodeId,
+          contextId: payload.contextId,
+          x: String(payload.position.x),
+          y: String(payload.position.y),
+          workspaceId: payload.workspaceId,
+        });
+      } else {
+        throw new Error("cannot set node position without: applicationId");
+      }
+      if (!reply.error) {
+        // @ts-ignore
+        new NodeUpdatedEvent(reply).publish();
+      }
+      return reply;
+    },
+    async connectionCreate(
+      { state, rootState },
+      payload: ConnectionCreatePayload,
+    ): Promise<ConnectionCreateReply> {
+      let reply: ConnectionCreateReply;
+      if (payload.applicationId) {
+        reply = await SchematicDal.connectionCreate({
+          connection: payload.connection,
+          workspaceId: payload.workspaceId,
+          changeSetId: payload.changeSetId,
+          editSessionId: payload.editSessionId,
+          applicationId: payload.applicationId,
+          returnSchematic: true,
+        });
+      } else {
+        throw new Error("cannot create without an editor context");
+      }
+      if (!reply.error) {
+        new ConnectionCreatedEvent(reply).publish();
+      } else {
+      }
+      return reply;
     },
   },
 };

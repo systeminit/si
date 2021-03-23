@@ -26,7 +26,7 @@
         </tbody>
         <tbody class="divide-y divide-gray-800" v-else>
           <tr>
-            <td colspan="3" class="text-center italic">
+            <td colspan="3" class="italic text-center">
               No secrets created yet!
             </td>
           </tr>

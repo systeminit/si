@@ -1,5 +1,5 @@
 import { PartyBusEvent } from "@/api/partyBus/partyBusEvent";
-import { INodeObject } from "@/api/sdf/dal/editorDal";
+import { INodeObject } from "@/api/sdf/dal/schematicDal";
 import { Node } from "@/api/sdf/model/node";
 
 const NAME = "NodeUpdated";

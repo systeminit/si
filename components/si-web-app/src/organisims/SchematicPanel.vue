@@ -1,10 +1,13 @@
 <template>
   <Panel
-    initialPanelType="systemSchematic"
+    initialPanelType="schematic"
+    :panelIndex="panelIndex"
     :panelRef="panelRef"
     :panelContainerRef="panelContainerRef"
     :initialMaximizedContainer="initialMaximizedContainer"
     :initialMaximizedFull="initialMaximizedFull"
+    :isVisible="isVisible"
+    :isMaximizedContainerEnabled="isMaximizedContainerEnabled"
     v-on="$listeners"
   >
     <template v-slot:menuButtons>
@@ -34,7 +37,7 @@
           <SchematicViewer
             class="absolute z-10"
             ref="graphViewer"
-            :graph="schematic"
+            :schematic="schematic"
             :schematicPanelStoreCtx="schematicPanelStoreCtx"
             :storesCtx="storesCtx"
           />
@@ -46,42 +49,47 @@
 
 <script lang="ts">
 import Vue from "vue";
+import { mapGetters, mapState } from "vuex";
 
-import _ from "lodash";
-
-import Panel from "@/molecules/Panel.vue";
-import NodeAddMenu from "@/molecules/NodeAddMenu.vue";
-import { EntityObject } from "si-registry/lib/systemComponent";
-import { PanelEventBus } from "@/atoms/PanelEventBus";
-import { INodeCreateReply } from "@/api/sdf/dal/editorDal";
 import {
   ctxMapState,
   InstanceStoreContext,
   registerStore,
   unregisterStore,
 } from "@/store";
+import { PanelEventBus } from "@/atoms/PanelEventBus";
+import { Cg2dCoordinate } from "@/api/sicg";
+
+import { SessionStore } from "@/store/modules/session";
+import { ApplicationContextStore } from "@/store/modules/applicationContext";
 import {
   SchematicPanelStore,
   schematicPanelStore,
   NodeSelectWithIdPayload,
   schematicPanelStoreSubscribeEvents,
 } from "@/store/modules/schematicPanel";
-import { mapGetters, mapState } from "vuex";
-import { SessionStore } from "@/store/modules/session";
-import SiLoader from "@/atoms/SiLoader.vue";
-import { CodeLoader } from "vue-content-loader";
-import SiSelect, { SelectProps } from "@/atoms/SiSelect.vue";
+import { EditorStore } from "@/store/modules/editor";
+import { NodeCreatePayload } from "@/store/modules/schematicPanel";
+
 import { ISchematicNode, SchematicKind } from "@/api/sdf/model/schematic";
+
+import { INodeCreateReply } from "@/api/sdf/dal/schematicDal";
 import { IGetApplicationContextRequest } from "@/api/sdf/dal/applicationContextDal";
 import { IGetApplicationSystemSchematicRequest } from "@/api/sdf/dal/schematicDal";
-import { EditorStore, NodeCreatePayload } from "@/store/modules/editor";
 
 import SchematicViewer, {
   StoresCtx,
   StoreCtx,
 } from "@/organisims/SchematicViewer.vue";
+import SiSelect, { SelectProps } from "@/atoms/SiSelect.vue";
+import SiLoader from "@/atoms/SiLoader.vue";
+import { CodeLoader } from "vue-content-loader";
+import NodeAddMenu, {
+  AddMenuSelectedPayload,
+} from "@/molecules/NodeAddMenu.vue";
+import Panel from "@/molecules/Panel.vue";
 
-import { Cg2dCoordinate } from "@/api/sicg";
+import _ from "lodash";
 
 interface IData {
   schematicPanelStoreCtx: InstanceStoreContext<SchematicPanelStore>;
@@ -94,10 +102,13 @@ interface IData {
 export default Vue.extend({
   name: "SchematicPanel",
   props: {
+    panelIndex: Number,
     panelRef: String,
     panelContainerRef: String,
     initialMaximizedFull: Boolean,
     initialMaximizedContainer: Boolean,
+    isVisible: Boolean,
+    isMaximizedContainerEnabled: Boolean,
   },
   components: {
     Panel,
@@ -127,6 +138,8 @@ export default Vue.extend({
   },
   computed: {
     ...mapState({
+      currentApplicationContext: (state: any): EditorStore["context"] =>
+        state.editor.context,
       currentWorkspace: (state: any): SessionStore["currentWorkspace"] =>
         state.session.currentWorkspace,
       sessionContext: (state: any): SessionStore["sessionContext"] =>
@@ -144,6 +157,9 @@ export default Vue.extend({
     ...mapGetters({
       isEditable: "editor/inEditable",
     }),
+    currentApplicationId(): string | undefined {
+      return this.currentApplicationContext?.applicationId;
+    },
     schematicKinds(): SelectProps["options"] {
       return [
         { label: "System", value: SchematicKind.System },
@@ -160,29 +176,39 @@ export default Vue.extend({
   },
   methods: {
     async nodeSelect(schematicNode: ISchematicNode) {
-      console.log("selected", { schematicNode });
+      console.log("selected (does nothing!!!", { schematicNode });
     },
-    async nodeCreate({ entityType }: { entityType: string }) {
-      let payload: NodeCreatePayload = {
-        entityType,
-        sourcePanelId: this.schematicPanelStoreCtx.instanceId,
-      };
+    async nodeCreate(entityType: string, event: MouseEvent) {
+      if (
+        this.currentApplicationId &&
+        this.currentWorkspace &&
+        this.currentChangeSet &&
+        this.currentEditSession
+      ) {
+        const payload: NodeCreatePayload = {
+          entityType,
+          sourcePanelId: this.schematicPanelStoreCtx.instanceId,
+          applicationId: this.currentApplicationId,
+          workspaceId: this.currentWorkspace.id,
+          changeSetId: this.currentChangeSet.id,
+          editSessionId: this.currentEditSession.id,
+        };
 
-      let reply: INodeCreateReply = await this.$store.dispatch(
-        "editor/nodeCreate",
-        payload,
-      );
-      if (!reply.error) {
-        // @ts-ignore
-        this.$refs.graphViewer.setIsNodeCreate();
-        // set
-      } else {
-        PanelEventBus.$emit("editor-error-message", reply.error.message);
+        let reply: INodeCreateReply = await this.schematicPanelStoreCtx.dispatch(
+          "nodeCreate",
+          payload,
+        );
+        if (!reply.error) {
+          // @ts-ignore
+          this.$refs.graphViewer.onNodeCreate(reply.node.node.id, event);
+          // set
+        } else {
+          PanelEventBus.$emit("editor-error-message", reply.error.message);
+        }
       }
     },
     async loadSchematic() {
       this.isLoading = true;
-
       if (this.currentWorkspace && this.rootObjectId && this.currentSystem) {
         if (this.schematicKind == SchematicKind.System) {
           let request: Record<string, any> = {

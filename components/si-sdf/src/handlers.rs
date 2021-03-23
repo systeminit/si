@@ -17,7 +17,6 @@ pub mod application_context_dal;
 pub mod application_dal;
 pub mod attribute_dal;
 pub mod cli;
-pub mod editor_dal;
 pub mod schematic_dal;
 pub mod secret_dal;
 pub mod session_dal;

@@ -1,5 +1,8 @@
 <template>
-  <nav id="workspace-nav" class="flex flex-col w-full h-full vld-parent">
+  <nav
+    id="workspace-nav"
+    class="flex flex-col w-full h-full select-none vld-parent"
+  >
     <DebugRoute testId="location-display-nav" />
     <SiLoader :isLoading="isLoading" />
     <div class="flex justify-center w-full h-13 nav-header">

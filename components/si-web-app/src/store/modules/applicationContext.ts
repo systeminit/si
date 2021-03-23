@@ -267,7 +267,6 @@ export const applicationContext: Module<ApplicationContextStore, any> = {
       { commit },
       request: ISaveEditSessionRequest,
     ): Promise<ISaveEditSessionReply> {
-      console.log("sending request", { request });
       let reply = await ApplicationContextDal.saveEditSession(request);
       if (!reply.error) {
         commit("setCurrentEditSession", null);

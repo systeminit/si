@@ -1,8 +1,8 @@
 <template>
-  <div id="application" class="flex flex-col flex-no-wrap">
+  <div id="application" class="flex flex-col flex-no-wrap select-none">
     <div class="flex flex-row h-4"></div>
     <div class="flex flex-row h-10 bg-gray-700">
-      <div class="align-middle pt-1 pl-2">
+      <div class="pt-1 pl-2 align-middle">
         <SiButton
           icon="plus"
           label="New Application"

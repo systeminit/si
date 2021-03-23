@@ -18,8 +18,11 @@
           v-if="panel.type == 'panel'"
         >
           <PanelSelector
+            ref="panelSelector"
+            :panelIndex="panelIndex"
             :panelRef="panelRefName(panelIndex)"
             :panelContainerRef="panelContainerRefName()"
+            :initialPanelType="panel.name"
           />
         </div>
         <PanelContainer
@@ -31,7 +34,7 @@
         <!-- resizer -->
         <div
           :class="resizerHolderClasses()"
-          style="min-width: 10px; min-height: 10px;"
+          style="min-width: 4px; min-height: 4px;"
           v-if="panelIndex != panelContainer.panels.length - 1"
         >
           <div
@@ -51,13 +54,14 @@ import PanelSelector from "@/molecules/PanelSelector.vue";
 import { PanelEventBus } from "@/atoms/PanelEventBus";
 import _ from "lodash";
 
-const RESIZER_SIZE = 10;
+const RESIZER_SIZE = 4;
 const RESIZER_HEIGHT_PERCENTAGE = 2;
 const RESIZER_WIDTH_PERCENTAGE = 1;
 const MIN_PANEL_COLUMN_SIZE = 50;
 const MIN_PANEL_ROW_SIZE = 200;
 
 interface IMaximized {
+  panelIndex: number;
   panelRef: string;
   panelContainerRef: string;
 }
@@ -94,7 +98,6 @@ export interface IPanelContainer {
   panels: PanelOrPanelContainer[];
   type: "panelContainer";
 }
-
 interface IData {
   resizeEvent: null | ResizeEvent;
   ticking: boolean;
@@ -137,6 +140,7 @@ export default Vue.extend({
     PanelEventBus.$on("minimize-container", this.minimizePanel);
     PanelEventBus.$on("panel-created", this.onPanelCreated);
     PanelEventBus.$on("panel-deleted", this.onPanelDeleted);
+    this.setPanelIsMaximizedContainerEnabled();
   },
   beforeDestroy() {
     PanelEventBus.$off("maximize-container", this.maximizePanel);
@@ -184,6 +188,20 @@ export default Vue.extend({
               `width: ${startingPercentage}%; height: 100%;`,
             );
           }
+        }
+      }
+    },
+    setPanelIsMaximizedContainerEnabled() {
+      let panelSelectors = this.$refs.panelSelector as Vue[];
+      if (panelSelectors && panelSelectors.length > 1) {
+        for (let i = 0; i < panelSelectors.length; i++) {
+          // @ts-ignore
+          panelSelectors[i].isMaximizedContainerEnabled = true;
+        }
+      } else {
+        if (panelSelectors && panelSelectors[0]) {
+          // @ts-ignore
+          panelSelectors[0].isMaximizedContainerEnabled = false;
         }
       }
     },
@@ -555,16 +573,30 @@ export default Vue.extend({
       if (this.panelContainerRefName() != event.panelContainerRef) {
         return;
       }
+
+      let panelSelectors = this.$refs.panelSelector as Vue[];
+      for (let i = 0; i < panelSelectors.length; i++) {
+        // @ts-ignore
+        if (panelSelectors[i].panelIndex != event.panelIndex) {
+          const panelHolderId = this.panelHolderRefName(
+            // @ts-ignore
+            panelSelectors[i].panelIndex,
+          );
+          let panelHolderElem = document.getElementById(panelHolderId);
+          if (panelHolderElem) {
+            panelHolderElem.classList.remove("hidden");
+            panelHolderElem.classList.remove("overflow-hidden");
+          }
+          // @ts-ignore
+          panelSelectors[i].unhide();
+        }
+      }
+
       let ogPanelData = this.originalMaximizedElementData;
       if (this.maximizedData && ogPanelData.style) {
         let panelRef = this.maximizedData.panelRef;
         let panelElem = document.getElementById(panelRef) as HTMLElement;
         panelElem.classList.remove("absolute");
-
-        if (panelElem.nextElementSibling != null) {
-          panelElem.nextElementSibling!.classList.remove("hidden");
-          panelElem.nextElementSibling!.classList.remove("overflow-hidden");
-        }
 
         let originalStyle = ogPanelData.style;
         if (originalStyle) {
@@ -585,6 +617,25 @@ export default Vue.extend({
       if (this.panelContainerRefName() != event.panelContainerRef) {
         return;
       }
+      let panelSelectors = this.$refs.panelSelector as Vue[];
+      for (let i = 0; i < panelSelectors.length; i++) {
+        // @ts-ignore
+        if (panelSelectors[i].panelIndex != event.panelIndex) {
+          const panelHolderId = this.panelHolderRefName(
+            // @ts-ignore
+            panelSelectors[i].panelIndex,
+          );
+          let panelHolderElem = document.getElementById(panelHolderId);
+
+          if (panelHolderElem) {
+            panelHolderElem.classList.add("hidden");
+            panelHolderElem.classList.add("overflow-hidden");
+          }
+          // @ts-ignore
+          panelSelectors[i].hide();
+        }
+      }
+
       let panelRef = event.panelRef;
       let panelContainerRef = event.panelContainerRef;
       let panelElem = document.getElementById(panelRef) as HTMLElement;
@@ -605,24 +656,9 @@ export default Vue.extend({
           style: _.clone(panelElem.getAttribute("style")),
         };
         this.maximizedData = event;
-        let panelRootWidth = Math.floor(
-          panelRootElem.getBoundingClientRect().width,
-        );
-        let panelRootHeight = Math.floor(
-          panelRootElem.getBoundingClientRect().height,
-        );
         panelRootElem.classList.add("relative");
         panelRootElem.prepend(panelElem);
         panelElem.classList.add("absolute");
-
-        // Hide the other panels
-        // Should loop over all sibling. We only have one for now so ....
-        // We should do this directly at the component level instead of here
-        if (panelElem.nextElementSibling != null) {
-          panelElem.nextElementSibling.classList.add("hidden");
-          panelElem.nextElementSibling.classList.add("overflow-hidden");
-        }
-
         panelElem.setAttribute(
           "style",
           `position: absolute; width: 100%; height: 100%;`,

@@ -72,7 +72,7 @@ pub use organization::{Organization, OrganizationError};
 pub use output_line::{OutputLine, OutputLineStream};
 pub use qualification::{Qualification, QualificationError};
 pub use resource::{Resource, ResourceError, ResourceHealth, ResourceResult, ResourceStatus};
-pub use schematic::{Schematic, SchematicError, SchematicResult};
+pub use schematic::{Schematic, SchematicNode, SchematicError, SchematicResult};
 pub use secret::{
     EncryptedSecret, Secret, SecretAlgorithm, SecretError, SecretKind, SecretObjectType,
     SecretResult, SecretVersion,
