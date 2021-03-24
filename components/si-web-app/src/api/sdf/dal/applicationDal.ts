@@ -71,13 +71,13 @@ export class ApplicationDal {
     );
 
     if (!reply.error) {
-      reply.application = Entity.upgrade(reply.application);
+      reply.application = Entity.fromJson(reply.application);
       reply.systems = _.map(reply.systems, isystem => {
         return System.upgrade(isystem);
       });
       reply.servicesWithResources = _.map(reply.servicesWithResources, iswr => {
         return {
-          service: Entity.upgrade(iswr.service),
+          service: Entity.fromJson(iswr.service),
           resources: _.map(iswr.resources, r => {
             return Resource.upgrade(r);
           }),
@@ -100,7 +100,7 @@ export class ApplicationDal {
 
     if (!listReply.error) {
       for (const reply of listReply.list) {
-        reply.application = Entity.upgrade(reply.application);
+        reply.application = Entity.fromJson(reply.application);
         reply.systems = _.map(reply.systems, isystem => {
           return System.upgrade(isystem);
         });
@@ -108,7 +108,7 @@ export class ApplicationDal {
           reply.servicesWithResources,
           iswr => {
             return {
-              service: Entity.upgrade(iswr.service),
+              service: Entity.fromJson(iswr.service),
               resources: _.map(iswr.resources, r => {
                 return Resource.upgrade(r);
               }),

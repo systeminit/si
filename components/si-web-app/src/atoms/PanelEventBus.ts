@@ -1,5 +1,4 @@
 import Vue from "vue";
-import { RegistryProperty } from "@/api/registryProperty";
 
 export const PanelEventBus = new Vue();
 

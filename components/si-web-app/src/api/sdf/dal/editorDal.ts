@@ -38,13 +38,13 @@ export type INodeObject = INodeObjectEntity | INodeObjectSystem;
 
 export interface INodeCreateReplySuccess {
   node: Node;
-  object: INodeObject;
+  entity: Entity;
   error?: never;
 }
 
 export interface INodeCreateReplyFailure {
   node?: never;
-  object?: never;
+  entity?: never;
   error: SDFError;
 }
 

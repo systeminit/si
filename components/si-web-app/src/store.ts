@@ -28,7 +28,7 @@ export const storeData = {
     secret,
     session,
     editor,
-    attribute: { namespaced: true },
+    attributePanel: { namespaced: true },
     schematicPanel: { namespaced: true },
     statusBar: { namespaced: true },
     applicationContext: { namespaced: true },

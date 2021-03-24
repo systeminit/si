@@ -173,31 +173,46 @@ pub async fn context(
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ApplicationEntities {
-    entities_list: LabelList,
+    pub entity_list: LabelList,
 }
 
 pub async fn all_entities(
     txn: &PgTxn<'_>,
     application_id: impl AsRef<str>,
     change_set_id: Option<&String>,
+    edit_session_id: Option<&String>,
 ) -> ApplicationResult<ApplicationEntities> {
     let application_id = application_id.as_ref();
-    let mut entities_list: LabelList = Vec::new();
+    let mut entity_list: LabelList = Vec::new();
 
-    let root_entity = Entity::for_head(&txn, &application_id).await?;
+    let root_entity = Entity::for_head_or_change_set_or_edit_session(
+        &txn,
+        &application_id,
+        change_set_id,
+        edit_session_id,
+    )
+    .await?;
 
     let successors =
         Edge::all_successor_edges_by_object_id(&txn, &EdgeKind::Configures, &root_entity.id)
             .await?;
 
     for edge in successors.into_iter() {
-        let entity =
-            Entity::for_head_or_change_set(&txn, &edge.head_vertex.object_id, change_set_id)
-                .await?;
-        entities_list.push(LabelListItem {
+        let entity = match Entity::for_head_or_change_set_or_edit_session(
+            &txn,
+            &edge.head_vertex.object_id,
+            change_set_id,
+            edit_session_id,
+        )
+        .await
+        {
+            Ok(entity) => entity,
+            Err(_e) => continue,
+        };
+        entity_list.push(LabelListItem {
             label: entity.name,
             value: edge.head_vertex.object_id,
         });
     }
-    Ok(ApplicationEntities { entities_list })
+    Ok(ApplicationEntities { entity_list })
 }

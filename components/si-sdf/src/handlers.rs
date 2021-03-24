@@ -7,7 +7,7 @@ use std::convert::Infallible;
 
 use si_data::{NatsTxnError, PgTxn};
 use si_model::{
-    ApiClientError, ApplicationError, BillingAccountError, ChangeSetError, EdgeError,
+    ApiClientError, ApplicationError, BillingAccountError, ChangeSetError, DiffError, EdgeError,
     EditSessionError, EntityError, EventError, EventLogError, JwtKeyError, KeyPairError,
     ModelError, NodeError, NodePositionError, OrganizationError, SchematicError, SecretError,
     SessionError, UserError, WorkspaceError,
@@ -88,6 +88,8 @@ pub enum HandlerError {
     Session(#[from] SessionError),
     #[error("application error: {0}")]
     Application(#[from] ApplicationError),
+    #[error("diff error: {0}")]
+    Diff(#[from] DiffError),
 }
 
 pub type HandlerResult<T> = Result<T, HandlerError>;

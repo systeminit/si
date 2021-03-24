@@ -37,6 +37,9 @@ module.exports = {
     borderColor: ["group-hover"],
     textColor: ["group-hover"],
     backgroundColor: ["odd", "even"],
+    extend: {
+      opacity: ["disabled"],
+    },
   },
   plugins: [],
 };

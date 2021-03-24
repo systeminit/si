@@ -96,19 +96,54 @@ pub fn session_dal_get_defaults(pg: PgPool) -> BoxedFilter<(impl warp::Reply,)> 
 // Attribute DAL
 pub fn attribute_dal(
     pg: &PgPool,
-    _nats_conn: &NatsConn,
-    _veritech: &Veritech,
+    nats_conn: &NatsConn,
+    veritech: &Veritech,
 ) -> BoxedFilter<(impl warp::Reply,)> {
-    attribute_dal_get_object_list(pg.clone()).boxed()
+    attribute_dal_get_entity(pg.clone())
+        .or(attribute_dal_get_entity_list(pg.clone()))
+        .or(attribute_dal_update_entity(
+            pg.clone(),
+            nats_conn.clone(),
+            veritech.clone(),
+        ))
+        .boxed()
 }
 
-pub fn attribute_dal_get_object_list(pg: PgPool) -> BoxedFilter<(impl warp::Reply,)> {
-    warp::path!("attributeDal" / "getObjectList")
+pub fn attribute_dal_get_entity(pg: PgPool) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("attributeDal" / "getEntity")
         .and(warp::get())
         .and(with_pg(pg))
         .and(warp::header::<String>("authorization"))
-        .and(warp::query::<handlers::attribute_dal::GetObjectListRequest>())
-        .and_then(handlers::attribute_dal::get_object_list)
+        .and(warp::query::<handlers::attribute_dal::GetEntityRequest>())
+        .and_then(handlers::attribute_dal::get_entity)
+        .boxed()
+}
+
+pub fn attribute_dal_get_entity_list(pg: PgPool) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("attributeDal" / "getEntityList")
+        .and(warp::get())
+        .and(with_pg(pg))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::query::<handlers::attribute_dal::GetEntityListRequest>())
+        .and_then(handlers::attribute_dal::get_entity_list)
+        .boxed()
+}
+
+pub fn attribute_dal_update_entity(
+    pg: PgPool,
+    nats_conn: NatsConn,
+    veritech: Veritech,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("attributeDal" / "updateEntity")
+        .and(warp::post())
+        .and(with_pg(pg))
+        .and(with_nats_conn(nats_conn))
+        .and(with_veritech(veritech))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::body::json::<
+            handlers::attribute_dal::UpdateEntityRequest,
+        >())
+        .and_then(handlers::attribute_dal::update_entity)
         .boxed()
 }
 

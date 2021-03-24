@@ -18,7 +18,7 @@ export interface MenuList {
 }
 
 function enumKeys<O extends object, K extends keyof O = keyof O>(obj: O): K[] {
-  return Object.values(obj).filter(k => Number.isNaN(+k)) as K[];
+  return Object.values(obj).filter((k) => Number.isNaN(+k)) as K[];
 }
 
 export function entityMenu(): MenuList {
@@ -37,7 +37,7 @@ export function entityMenu(): MenuList {
       if (schema.ui.menuDisplayName) {
         displayName = schema.ui.menuDisplayName;
       }
-      let mc = _.find(list, ["name", schema.ui.menuCategory]);
+      const mc = _.find(list, ["name", schema.ui.menuCategory]);
       mc.items.push({
         entityType: schema.entityType,
         displayName,
