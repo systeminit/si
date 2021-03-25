@@ -4,6 +4,7 @@
       testId="secret-create-error-message"
       :message="errorMessage"
       :success="createWasSuccessful"
+      @clear="clearErrorMessage"
     />
     <div class="flex flex-row items-center w-full pb-2">
       <div class="w-1/2 pr-2 text-right text-gray-400 align-middle">
@@ -138,11 +139,14 @@ export default Vue.extend({
       this.form.message = {};
 
       this.createWasSuccessful = false;
-      this.errorMessage = "";
+      this.clearErrorMessage();
     },
     cancel() {
       this.clear();
       this.$emit("cancel");
+    },
+    clearErrorMessage() {
+      this.errorMessage = "";
     },
     async create() {
       // empty out the error message, ready for this attempt

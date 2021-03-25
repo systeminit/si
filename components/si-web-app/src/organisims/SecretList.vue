@@ -1,7 +1,11 @@
 <template>
   <div class="vld-parent">
     <SiLoader :isLoading="isLoading" />
-    <SiError testId="secret-list-error" :message="errorMessage" />
+    <SiError
+      testId="secret-list-error"
+      :message="errorMessage"
+      @clear="clearErrorMessage"
+    />
     <div class="flex flex-col">
       <table class="w-full table-fixed">
         <thead>
@@ -91,6 +95,9 @@ export default Vue.extend({
     },
     labelForObjectType(secretObjectType: SecretObjectType): string {
       return SecretObjectType.labelFor(secretObjectType);
+    },
+    clearErrorMessage() {
+      this.errorMessage = "";
     },
   },
   async created() {

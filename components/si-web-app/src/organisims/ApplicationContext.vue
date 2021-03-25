@@ -1,6 +1,10 @@
 <template>
   <div class="flex flex-col w-full pb-3">
-    <SiError testId="editor-error" :message="editorErrorMessage" />
+    <SiError
+      testId="editor-error"
+      :message="editorErrorMessage"
+      @clear="clearEditorErrorMessage"
+    />
     <div class="flex mt-3">
       <div class="items-center w-1/2">
         <button
@@ -86,6 +90,7 @@
           <SiError
             testId="change-set-create-error"
             :message="modalErrorMessage"
+            @clear="clearModalErrorMessage"
           />
           <div class="items-center w-full">
             <div class="flex items-center w-full">
@@ -468,6 +473,12 @@ export default Vue.extend({
     },
     async setEditorErrorMessage(error: string) {
       this.editorErrorMessage = error;
+    },
+    clearEditorErrorMessage() {
+      this.editorErrorMessage = "";
+    },
+    clearModalErrorMessage() {
+      this.modalErrorMessage = "";
     },
   },
   async created() {

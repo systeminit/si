@@ -1,7 +1,11 @@
 <template>
   <div class="vld-parent">
     <SiLoader :isLoading="isLoading" />
-    <SiError testId="application-list-wad-error" :message="errorMessage" />
+    <SiError
+      testId="application-list-wad-error"
+      :message="errorMessage"
+      @clear="clearErrorMessage"
+    />
     <div class="flex flex-col" v-if="applicationList.length">
       <div
         v-for="appEntry in applicationList"
@@ -109,6 +113,9 @@ export default Vue.extend({
         }
         this.isLoading = false;
       }
+    },
+    clearErrorMessage() {
+      this.errorMessage = "";
     },
   },
   async created() {
