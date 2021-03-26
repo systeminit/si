@@ -4,6 +4,7 @@
       testId="application-create-error-message"
       :message="errorMessage"
       :success="applicationCreateSuccess"
+      @clear="clearErrorMessage"
     />
     <div class="flex flex-row items-center w-full pb-2">
       <div class="pr-2 text-gray-400 align-middle w-1/2 text-right">
@@ -117,6 +118,9 @@ export default Vue.extend({
         this.applicationCreateSuccess = true;
         this.$emit("submit");
       }
+    },
+    clearErrorMessage() {
+      this.errorMessage = "";
     },
   },
   async created() {

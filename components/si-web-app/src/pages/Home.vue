@@ -9,7 +9,7 @@
         <Nav />
       </div>
       <div class="flex flex-col w-full h-full bg-gray-900">
-        <SiError :message="errorMessage" />
+        <SiError :message="errorMessage" @clear="clearErrorMessage" />
         <router-view class="w-full h-full overflow-auto" />
       </div>
     </div>
@@ -71,6 +71,11 @@ export default Vue.extend({
         });
       }
     }
+  },
+  methods: {
+    clearErrorMessage() {
+      this.errorMessage = "";
+    },
   },
 });
 </script>
