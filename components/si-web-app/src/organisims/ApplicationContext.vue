@@ -203,10 +203,12 @@
           </div>
           <div class="flex justify-end w-full pt-2 pr-1">
             <SiButton
-              label="execute"
-              icon="play"
+              label="apply"
+              :icon="applyButtonIcon"
+              :kind="applyButtonKind"
               size="xs"
-              :disabled="!currentChangeSet"
+              :disabled="!currentChangeSet || editMode"
+              @click.native="applyChangeSet"
             />
           </div>
         </div>
@@ -302,6 +304,12 @@ export default Vue.extend({
       | undefined {
       return ctxMapState(this.applicationContextCtx, "currentEditSession");
     },
+    applyButtonKind(): string {
+      return !this.currentChangeSet || this.editMode ? "standard" : "save";
+    },
+    applyButtonIcon(): string {
+      return !this.currentChangeSet || this.editMode ? "play" : "save";
+    },
   },
   methods: {
     toggleDetails() {
@@ -361,9 +369,12 @@ export default Vue.extend({
         ]);
       }
     },
-    async cancelChangeSetCreate() {
+    clearChangeSetCreateForm() {
       this.newChangeSetForm.name = "";
       this.modalErrorMessage = "";
+    },
+    async cancelChangeSetCreate() {
+      this.clearChangeSetCreateForm();
       this.$modal.hide("changeSetCreate");
     },
     async changeSetCreate() {
@@ -379,11 +390,12 @@ export default Vue.extend({
       if (reply.error) {
         this.modalErrorMessage = reply.error.message;
       } else {
-        await this.$emit("update-query-param", {
+        this.$emit("update-query-param", {
           changeSetId: reply.changeSet.id,
           editSessionId: reply.editSession.id,
         });
-        await this.$modal.hide("changeSetCreate");
+        this.clearChangeSetCreateForm();
+        this.$modal.hide("changeSetCreate");
         await this.setEditMode();
       }
     },
@@ -463,6 +475,31 @@ export default Vue.extend({
           );
           this.$emit("update-query-param", { editMode: false });
           this.$emit("remove-query-param", ["editSessionId", "editMode"]);
+        }
+      }
+    },
+    async applyChangeSet() {
+      if (this.currentWorkspace && this.currentChangeSet) {
+        let reply = await this.applicationContextCtx.dispatch(
+          "applyChangeSet",
+          {
+            changeSetId: this.currentChangeSet.id,
+            workspaceId: this.currentWorkspace.id,
+          },
+        );
+        if (reply.error) {
+          emitEditorErrorMessage(
+            `failed to apply change set: ${reply.error.message}`,
+          );
+        } else {
+          this.$emit("remove-query-param", ["changeSetId"]);
+          this.$store.dispatch(
+            this.applicationContextCtx.dispatchPath("loadApplicationContext"),
+            {
+              workspaceId: this.workspaceId,
+              applicationId: this.applicationId,
+            },
+          );
         }
       }
     },

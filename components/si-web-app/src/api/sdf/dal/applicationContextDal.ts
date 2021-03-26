@@ -147,6 +147,25 @@ export type ISaveEditSessionReply =
   | ISaveEditSessionReplySuccess
   | ISaveEditSessionReplyFailure;
 
+export interface IApplyChangeSetRequest {
+  changeSetId: string;
+  workspaceId: string;
+}
+
+export interface IApplyChangeSetReplySuccess {
+  changeSet: ChangeSet;
+  error?: never;
+}
+
+export interface IApplyChangeSetReplyFailure {
+  changeSet?: never;
+  error: SDFError;
+}
+
+export type IApplyChangeSetReply =
+  | IApplyChangeSetReplySuccess
+  | IApplyChangeSetReplyFailure;
+
 export class ApplicationContextDal {
   static async getApplicationContext(
     request: IGetApplicationContextRequest,
@@ -240,6 +259,20 @@ export class ApplicationContextDal {
 
     const reply: ISaveEditSessionReply = await sdf.post(
       "applicationContextDal/saveEditSession",
+      request,
+    );
+
+    return reply;
+  }
+
+  static async applyChangeSet(
+    request: IApplyChangeSetRequest,
+  ): Promise<IApplyChangeSetReply> {
+    let bottle = Bottle.pop("default");
+    let sdf = bottle.container.SDF;
+
+    const reply: IApplyChangeSetReply = await sdf.post(
+      "applicationContextDal/applyChangeSet",
       request,
     );
 

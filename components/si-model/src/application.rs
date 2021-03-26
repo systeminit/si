@@ -161,7 +161,7 @@ pub async fn context(
 
     let systems_list = system::list_as_labels(&txn, &workspace_id).await?;
 
-    let open_change_sets_list = ChangeSet::list_as_labels(&txn, &workspace_id).await?;
+    let open_change_sets_list = ChangeSet::open_list_as_labels(&txn, &workspace_id).await?;
 
     Ok(ApplicationContext {
         application_name: application.name,

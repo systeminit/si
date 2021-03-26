@@ -5,15 +5,15 @@ use si_model_test::{
     signup_new_billing_account, NewBillingAccount, TestContext,
 };
 
-use si_model::{ChangeSet, EditSession, Entity, LabelListItem};
+use si_model::{ChangeSet, ChangeSetStatus, EditSession, Entity, LabelListItem};
 
 use si_sdf::{
     filters::api,
     handlers::application_context_dal::{
-        CreateChangeSetAndEditSessionReply, CreateChangeSetAndEditSessionRequest,
-        CreateEditSessionAndGetChangeSetReply, CreateEditSessionAndGetChangeSetRequest,
-        CreateEditSessionReply, CreateEditSessionRequest, GetApplicationContextReply,
-        GetApplicationContextRequest, GetChangeSetAndEditSessionReply,
+        ApplyChangeSetReply, ApplyChangeSetRequest, CreateChangeSetAndEditSessionReply,
+        CreateChangeSetAndEditSessionRequest, CreateEditSessionAndGetChangeSetReply,
+        CreateEditSessionAndGetChangeSetRequest, CreateEditSessionReply, CreateEditSessionRequest,
+        GetApplicationContextReply, GetApplicationContextRequest, GetChangeSetAndEditSessionReply,
         GetChangeSetAndEditSessionRequest,
     },
 };
@@ -365,3 +365,53 @@ async fn create_edit_session_handler() {
 //
 //    assert_eq!(expected_edit_session, reply.edit_session);
 //}
+
+#[tokio::test]
+async fn apply_change_set() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, veritech, event_log_fs, secret_key) = ctx.entries();
+    let mut conn = pg.pool.get().await.expect("cannot get connection");
+    let txn = conn.transaction().await.expect("cannot get transaction");
+    let nats = nats_conn.transaction();
+
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
+
+    txn.commit().await.expect("cannot commit txn");
+    nats.commit().await.expect("cannot commit nats txn");
+
+    let txn = conn.transaction().await.expect("cannot get transaction");
+    let nats = nats_conn.transaction();
+
+    let change_set = create_change_set(&txn, &nats, &nba).await;
+
+    txn.commit().await.expect("cannot commit txn");
+    nats.commit().await.expect("cannot commit nats txn");
+
+    let token = login_user(&ctx, &nba).await;
+    let filter = api(pg, nats_conn, veritech, event_log_fs, secret_key);
+
+    let res = warp::test::request()
+        .method("POST")
+        .header("authorization", &token)
+        .path("/applicationContextDal/applyChangeSet")
+        .json(&ApplyChangeSetRequest {
+            change_set_id: change_set.id.clone(),
+            workspace_id: nba.workspace.id.clone(),
+        })
+        .reply(&filter)
+        .await;
+
+    assert_eq!(res.status(), StatusCode::OK, "request should succeed");
+    let reply: ApplyChangeSetReply =
+        serde_json::from_slice(res.body()).expect("cannot deserialize reply");
+
+    let txn = conn.transaction().await.expect("cannot get transaction");
+
+    let expected_change_set = ChangeSet::get(&txn, &reply.change_set.id)
+        .await
+        .expect("cannot get change set");
+
+    assert_eq!(ChangeSetStatus::Applied, reply.change_set.status);
+    assert_eq!(expected_change_set, reply.change_set);
+}
