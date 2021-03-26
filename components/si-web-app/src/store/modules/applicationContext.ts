@@ -19,6 +19,8 @@ import {
   ICreateEditSessionAndGetChangeSetReply,
   ISaveEditSessionRequest,
   ISaveEditSessionReply,
+  IApplyChangeSetRequest,
+  IApplyChangeSetReply,
 } from "@/api/sdf/dal/applicationContextDal";
 import { EditSession } from "@/api/sdf/model/editSession";
 import { CurrentChangeSetEvent } from "@/api/partyBus/currentChangeSetEvent";
@@ -270,6 +272,17 @@ export const applicationContext: Module<ApplicationContextStore, any> = {
       if (!reply.error) {
         commit("setCurrentEditSession", null);
         new EditSessionCurrentSetEvent(null).publish();
+      }
+      return reply;
+    },
+    async applyChangeSet(
+      { commit },
+      request: IApplyChangeSetRequest,
+    ): Promise<IApplyChangeSetReply> {
+      let reply = await ApplicationContextDal.applyChangeSet(request);
+      if (!reply.error) {
+        commit("setCurrentChangeSet", null);
+        // TODO: more
       }
       return reply;
     },

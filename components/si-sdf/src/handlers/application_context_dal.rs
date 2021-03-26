@@ -410,3 +410,55 @@ pub async fn save_edit_session(
 
     Ok(warp::reply::json(&reply))
 }
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ApplyChangeSetRequest {
+    pub change_set_id: String,
+    pub workspace_id: String,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ApplyChangeSetReply {
+    pub change_set: ChangeSet,
+}
+
+pub async fn apply_change_set(
+    pg: PgPool,
+    nats_conn: NatsConn,
+    token: String,
+    request: ApplyChangeSetRequest,
+) -> Result<impl warp::Reply, warp::reject::Rejection> {
+    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let txn = conn.transaction().await.map_err(HandlerError::from)?;
+    let nats = nats_conn.transaction();
+
+    let claim = authenticate(&txn, &token).await?;
+    authorize(
+        &txn,
+        &claim.user_id,
+        "applicationContextDal",
+        "applyChangeSet",
+    )
+    .await?;
+    validate_tenancy(
+        &txn,
+        "workspaces",
+        &request.workspace_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+
+    let mut change_set = ChangeSet::get(&txn, &request.change_set_id)
+        .await
+        .map_err(HandlerError::from)?;
+    change_set.apply(&txn).await.map_err(HandlerError::from)?;
+
+    txn.commit().await.map_err(HandlerError::from)?;
+    nats.commit().await.map_err(HandlerError::from)?;
+
+    let reply = ApplyChangeSetReply { change_set };
+
+    Ok(warp::reply::json(&reply))
+}

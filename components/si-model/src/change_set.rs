@@ -11,7 +11,8 @@ use crate::{generate_name, LabelList, LabelListItem, SiStorable};
 //    SiChangeSet, SiChangeSetEvent, SiStorable, System, SystemError, UpdateClock, UpdateClockError,
 //};
 
-const CHANGE_SET_LIST_AS_LABLES: &str = include_str!("./queries/change_set_list_as_labels.sql");
+const CHANGE_SET_OPEN_LIST_AS_LABLES: &str =
+    include_str!("./queries/change_set_open_list_as_labels.sql");
 
 #[derive(Error, Debug)]
 pub enum ChangeSetError {
@@ -113,14 +114,14 @@ impl ChangeSet {
         Ok(())
     }
 
-    pub async fn list_as_labels(
+    pub async fn open_list_as_labels(
         txn: &PgTxn<'_>,
         workspace_id: impl AsRef<str>,
     ) -> ChangeSetResult<LabelList> {
         let workspace_id = workspace_id.as_ref();
         let mut results = Vec::new();
         let rows = txn
-            .query(CHANGE_SET_LIST_AS_LABLES, &[&workspace_id])
+            .query(CHANGE_SET_OPEN_LIST_AS_LABLES, &[&workspace_id])
             .await?;
         for row in rows.into_iter() {
             let json: serde_json::Value = row.try_get("item")?;
