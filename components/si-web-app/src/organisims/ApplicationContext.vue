@@ -47,6 +47,14 @@
           class="inline-flex justify-end mr-2 font-normal text-gray-400 w-14"
         >
           <SiButton
+            label="apply"
+            :icon="applyButtonIcon"
+            :kind="applyButtonKind"
+            size="xs"
+            v-if="currentChangeSet && !editMode"
+            @click.native="applyChangeSet"
+          />
+          <SiButton
             @click.native="cancelEditSession"
             label="cancel"
             icon="cancel"
@@ -205,16 +213,6 @@
                 </template>
               </div>
             </div>
-          </div>
-          <div class="flex justify-end w-full pt-2 pr-1">
-            <SiButton
-              label="apply"
-              :icon="applyButtonIcon"
-              :kind="applyButtonKind"
-              size="xs"
-              :disabled="!currentChangeSet || editMode"
-              @click.native="applyChangeSet"
-            />
           </div>
         </div>
       </div>
