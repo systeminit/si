@@ -1,4 +1,5 @@
 import leftHandPath from "./intel/leftHandPath";
+import torture from "./intel/torture";
 import {
   InferPropertiesReply,
   InferPropertiesRequest,
@@ -10,6 +11,7 @@ export interface Intel {
 
 const intel: Record<string, Intel> = {
   leftHandPath,
+  torture,
 };
 
 export default intel;

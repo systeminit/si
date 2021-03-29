@@ -1,4 +1,5 @@
 import ValidatorJS from "validator";
+import { Optional } from "utility-types";
 
 export enum MenuCategory {
   Application = "application",
@@ -40,9 +41,21 @@ export interface ValidatorAlphanumeric extends ValidatorBase {
 
 export type Validator = ValidatorInt | ValidatorAlphanumeric;
 
+export interface WidgetBase {
+  name: string;
+}
+
+export interface WidgetText extends WidgetBase {
+  name: "text";
+}
+
+export type Widgets = WidgetText;
+
 export interface PropBase {
   type: string;
   name: string;
+  widget?: Widgets;
+  displayName?: string;
   required?: boolean;
   validation?: Validator[];
 }
@@ -69,11 +82,17 @@ export interface PropArray extends PropBase {
 
 export type Prop = PropString | PropNumber | PropObject | PropArray;
 export type PropScalars = PropString | PropNumber;
+
+export type ItemPropString = Optional<PropString, "name">;
+export type ItemPropNumber = Optional<PropNumber, "name">;
+export type ItemPropObject = Optional<PropObject, "name">;
+export type ItemPropArray = Optional<PropArray, "name">;
+
 export type ItemProp =
-  | Omit<PropString, "name">
-  | Omit<PropNumber, "name">
-  | Omit<PropObject, "name">
-  | Omit<PropArray, "name">;
+  | ItemPropString
+  | ItemPropNumber
+  | ItemPropObject
+  | ItemPropArray;
 
 export interface RegistryEntry {
   entityType: string;

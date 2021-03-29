@@ -1,6 +1,7 @@
 import Bottle from "bottlejs";
 import { bottleSetup } from "@/di";
 import Vue from "vue";
+import VueRx from "vue-rx";
 import App from "@/App.vue";
 
 import VueGtag from "vue-gtag";
@@ -17,6 +18,7 @@ bottleSetup(storeData);
 let bottle = Bottle.pop("default");
 
 Vue.config.productionTip = false;
+Vue.use(VueRx);
 
 if (process.env.NODE_ENV == "production") {
   Vue.use(VueGtag, {

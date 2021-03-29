@@ -13,14 +13,15 @@
           size="xs"
           id="attributePanelObjectSelect"
           name="attributePanelObjectSelect"
-          :options="objectList"
-          v-model="selectedObjectId"
+          :options="entityLabelList.entityList"
+          v-if="entityLabelList"
+          v-model="selectedEntityId"
           class="pl-1"
-          :disabled="selectionLocked"
+          :disabled="selectionIsLocked"
         />
       </div>
       <button class="pl-1 focus:outline-none" @click="toggleSelectionLock()">
-        <UnlockIcon size="1.1x" v-if="selectionLocked" />
+        <UnlockIcon size="1.1x" v-if="selectionIsLocked" />
         <LockIcon size="1.1x" v-else />
       </button>
       <button
@@ -56,21 +57,24 @@
         -->
     </template>
     <template v-slot:content>
-      <div class="flex flex-row w-full h-full" v-if="currentObject">
+      <div class="flex flex-row w-full h-full" v-if="entity">
         <AttributeViewer
           v-if="activeView == 'attribute'"
-          :attributeStoreCtx="attributeStoreCtx"
+          :entity="entity"
+          :diff="diff"
         />
+        <!--
         <CodeViewer
           v-else-if="activeView == 'code'"
-          :attributeStoreCtx="attributeStoreCtx"
+          :attributePanelStoreCtx="attributePanelStoreCtx"
         />
         <div v-else>
           Not implemented
           <div>
-            <VueJsonPretty :data="currentObject" />
+            <VueJsonPretty :data="entity" />
           </div>
         </div>
+        -->
       </div>
       <div class="flex w-full" v-else>
         <h2>No object selected</h2>
@@ -83,23 +87,7 @@
 import Vue from "vue";
 
 import Panel from "@/molecules/Panel.vue";
-import { InstanceStoreContext, registerStore, unregisterStore } from "@/store";
-import {
-  attributeStore,
-  AttributeStore,
-  attributeStoreSubscribeEvents,
-} from "@/store/modules/attribute";
-import {
-  AttributeDal,
-  IGetEntityReply,
-  IGetEntityRequest,
-  IGetObjectListReply,
-  IGetObjectListRequest,
-} from "@/api/sdf/dal/attributeDal";
-import { mapState } from "vuex";
-import { SessionStore } from "@/store/modules/session";
-import { EditorStore } from "@/store/modules/editor";
-import { PanelEventBus } from "@/atoms/PanelEventBus";
+import { emitEditorErrorMessage } from "@/atoms/PanelEventBus";
 import SiSelect from "@/atoms/SiSelect.vue";
 import {
   UnlockIcon,
@@ -108,21 +96,29 @@ import {
   RadioIcon,
   DiscIcon,
 } from "vue-feather-icons";
-import VueJsonPretty from "vue-json-pretty";
 import "vue-json-pretty/lib/styles.css";
 import { Entity } from "@/api/sdf/model/entity";
 import Bottle from "bottlejs";
 import { Persister } from "@/api/persister";
-import { SchematicNodeSelectedEvent } from "@/api/partyBus/SchematicNodeSelectedEvent";
 import AttributeViewer from "@/organisims/AttributeViewer.vue";
-import CodeViewer from "@/organisims/CodeViewer.vue";
+//import CodeViewer from "@/organisims/CodeViewer.vue";
+import {
+  loadEntityForEdit,
+  attributePanelEntityUpdates$,
+  entityLabelList$,
+  schematicSelectedEntityId$,
+} from "@/observables";
+import { pluck, switchMap, tap } from "rxjs/operators";
+import { Diff } from "@/api/sdf/model/diff";
+import _ from "lodash";
 
 interface IData {
   isLoading: boolean;
-  attributeStoreCtx: InstanceStoreContext<AttributeStore>;
-  selectedObjectId: string;
+  selectedEntityId: string;
   selectionIsLocked: boolean;
   activeView: "attribute" | "code" | "event";
+  entity: Entity | null;
+  diff: Diff;
 }
 
 export default Vue.extend({
@@ -141,83 +137,81 @@ export default Vue.extend({
     CodeIcon,
     LockIcon,
     UnlockIcon,
-    VueJsonPretty,
     AttributeViewer,
-    CodeViewer,
   },
   data(): IData {
-    let attributeStoreCtx: InstanceStoreContext<AttributeStore> = new InstanceStoreContext(
-      {
-        storeName: "attribute",
-        componentId: "attributePanel",
-        instanceId: this.panelRef,
-      },
-    );
     let bottle = Bottle.pop("default");
     let persister: Persister = bottle.container.Persister;
     let persistedData = persister.getData(`${this.panelRef}-data`);
     if (persistedData) {
+      if (persistedData["entity"]) {
+        persistedData["entity"] = Entity.fromJson(persistedData["entity"]);
+      }
       return persistedData;
     } else {
       return {
         isLoading: false,
-        selectedObjectId: "",
-        attributeStoreCtx,
+        selectedEntityId: "",
         selectionIsLocked: true,
         activeView: "attribute",
+        entity: null,
+        diff: [],
       };
     }
   },
-  computed: {
-    ...mapState({
-      currentWorkspace: (state: any): SessionStore["currentWorkspace"] =>
-        state.session.currentWorkspace,
-      currentChangeSet: (state: any): EditorStore["currentChangeSet"] =>
-        state.editor.currentChangeSet,
-      sessionContext: (state: any): SessionStore["sessionContext"] =>
-        state.session.sessionContext,
-    }),
-    selectionLocked(): AttributeStore["selectionLocked"] {
-      return this.attributeStoreCtx.state.selectionLocked;
-    },
-    objectList(): AttributeStore["objectList"] {
-      if (this.attributeStoreCtx) {
-        return this.attributeStoreCtx.state.objectList;
-      } else {
-        return [{ label: "", value: "" }];
-      }
-    },
-    currentObject(): AttributeStore["currentObject"] {
-      if (this.attributeStoreCtx) {
-        return this.attributeStoreCtx.state.currentObject;
-      } else {
-        return null;
-      }
-    },
-    needsRefresh(): AttributeStore["needsRefresh"] {
-      if (this.attributeStoreCtx) {
-        return this.attributeStoreCtx.state.needsRefresh;
-      } else {
-        return false;
-      }
-    },
-    refreshClasses(): Record<string, any> {
-      if (this.needsRefresh) {
-        return { "text-yellow-300": true };
-      } else {
-        return { "text-gray-700": true };
-      }
-    },
+  subscriptions() {
+    return {
+      attributePanelEntityUpdates: attributePanelEntityUpdates$.pipe(
+        tap(reply => {
+          if (reply.entity.id == this.$data.selectedEntityId) {
+            // @ts-ignore
+            this.entity = reply.entity;
+            // @ts-ignore
+            this.diff = reply.diff;
+          }
+        }),
+      ),
+      entityLabelList: entityLabelList$.pipe(
+        tap(r => {
+          if (r.error) {
+            emitEditorErrorMessage(r.error.message);
+          }
+        }),
+      ),
+      schematicSelectedEntityId: schematicSelectedEntityId$.pipe(
+        tap(entityId => {
+          // @ts-ignore
+          if (this.selectionIsLocked) {
+            // @ts-ignore
+            this.selectedEntityId = entityId;
+          }
+        }),
+      ),
+      entityForEdit: this.$watchAsObservable("selectedEntityId", {
+        immediate: true,
+      }).pipe(
+        pluck("newValue"),
+        switchMap(entityId => loadEntityForEdit(entityId)),
+        tap(r => {
+          if (r.error && r.error.code != 42) {
+            // @ts-ignore
+            this.entity = null;
+            // @ts-ignore
+            this.diff = [];
+            emitEditorErrorMessage(r.error.message);
+          } else {
+            if (r.entity) {
+              // @ts-ignore
+              this.entity = r.entity;
+              // @ts-ignore
+              this.diff = r.diff;
+            }
+          }
+        }),
+      ),
+    };
   },
   methods: {
-    async refreshObject() {
-      let reply: IGetEntityReply = await this.attributeStoreCtx.dispatch(
-        "refreshEntity",
-      );
-      if (reply.error) {
-        PanelEventBus.$emit("editor-error-message", reply.error.message);
-      }
-    },
     viewClasses(view: IData["activeView"]): Record<string, any> {
       if (view == this.activeView) {
         return { "text-blue-300": true };
@@ -244,124 +238,21 @@ export default Vue.extend({
       this.activeView = "event";
     },
     async toggleSelectionLock() {
-      this.selectionIsLocked = await this.attributeStoreCtx.dispatch(
-        "toggleSelectionLocked",
-      );
-    },
-    async loadObject() {
-      this.isLoading = true;
-      let request: IGetEntityRequest;
-      if (
-        this.currentWorkspace &&
-        this.currentChangeSet &&
-        this.selectedObjectId
-      ) {
-        request = {
-          workspaceId: this.currentWorkspace.id,
-          changeSetId: this.currentChangeSet.id,
-          entityId: this.selectedObjectId,
-        };
-      } else if (this.currentWorkspace) {
-        request = {
-          workspaceId: this.currentWorkspace.id,
-          entityId: this.selectedObjectId,
-        };
+      if (this.selectionIsLocked) {
+        this.selectionIsLocked = false;
       } else {
-        this.isLoading = false;
-        return;
-      }
-      if (!request.entityId) {
-        this.isLoading = false;
-        this.attributeStoreCtx.dispatch("clearObject");
-        return;
-      }
-      let reply: IGetEntityReply = await this.attributeStoreCtx.dispatch(
-        "loadEntity",
-        request,
-      );
-      if (reply.error) {
-        PanelEventBus.$emit("editor-error-message", reply.error.message);
+        this.selectionIsLocked = true;
       }
     },
-    async loadObjectList() {
-      this.isLoading = true;
-      let request: IGetObjectListRequest;
-      if (
-        this.currentWorkspace &&
-        this.currentChangeSet &&
-        this.sessionContext
-      ) {
-        request = {
-          workspaceId: this.currentWorkspace.id,
-          changeSetId: this.currentChangeSet.id,
-          applicationId: this.sessionContext.applicationId,
-        };
-      } else if (this.currentWorkspace && this.sessionContext) {
-        request = {
-          workspaceId: this.currentWorkspace.id,
-          applicationId: this.sessionContext.applicationId,
-        };
-      } else {
-        this.isLoading = false;
-        throw new Error(
-          "cannot load node list for attribute panel; missing a workspace or session context! bug!",
-        );
-      }
-      let reply: IGetObjectListReply = await this.attributeStoreCtx.dispatch(
-        "loadObjectList",
-        request,
-      );
-      if (reply.error) {
-        PanelEventBus.$emit("editor-error-message", reply.error.message);
-      }
-      this.isLoading = false;
-    },
-  },
-  async created() {
-    registerStore(
-      this.attributeStoreCtx,
-      attributeStore,
-      attributeStoreSubscribeEvents,
-    );
-  },
-  async mounted() {
-    if (this.sessionContext) {
-      await this.loadObjectList();
-    }
-    if (this.selectedObjectId) {
-      await this.loadObject();
-    }
-    if (!this.selectionIsLocked) {
-      this.toggleSelectionLock();
-    }
   },
   async beforeDestroy() {
-    unregisterStore(this.attributeStoreCtx);
     let bottle = Bottle.pop("default");
     let persister: Persister = bottle.container.Persister;
     persister.removeData(`${this.panelRef}-data`);
   },
   watch: {
-    async currentChangeSet() {
-      await this.loadObjectList();
-      await this.loadObject();
-    },
-    async currentWorkspace() {
-      await this.loadObjectList();
-      await this.loadObject();
-    },
-    async sessionContext() {
-      await this.loadObjectList();
-    },
-    async selectedObjectId(newSelectedObject) {
-      if (newSelectedObject != "") {
-        await this.loadObject();
-      } else {
-        this.attributeStoreCtx.dispatch("setCurrentObject", null);
-      }
-    },
     $data: {
-      handler: function(newData, oldData) {
+      handler: function(newData, _oldData) {
         let bottle = Bottle.pop("default");
         let persister: Persister = bottle.container.Persister;
         persister.setData(`${this.panelRef}-data`, newData);

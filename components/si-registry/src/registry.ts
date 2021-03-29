@@ -5,6 +5,7 @@ import { Prop, RegistryEntry } from "./registryEntry";
 // for a given organization/billing account - they should be customizable, etc etc.
 import leftHandPath from "./schema/test/leftHandPath";
 import noCallbacks from "./schema/test/noCallbacks";
+import torture from "./schema/test/torture";
 import system from "./schema/si/system";
 import service from "./schema/si/service";
 import application from "./schema/si/application";
@@ -15,6 +16,7 @@ export const registry: { [entityType: string]: RegistryEntry } = {
   system,
   service,
   application,
+  torture,
 };
 
 export function findProp(path: string[]): Prop | undefined {

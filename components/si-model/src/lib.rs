@@ -54,6 +54,7 @@ pub use billing_account::{BillingAccount, BillingAccountError, BillingAccountRes
 pub use change_set::{ChangeSet, ChangeSetError, ChangeSetResult, ChangeSetStatus, SiChangeSet};
 pub use edge::{Edge, EdgeError, EdgeKind, EdgeResult, Vertex};
 pub use edit_session::{EditSession, EditSessionError, EditSessionResult};
+pub use entity::diff::{diff_for_props, DiffError};
 pub use entity::{Entity, EntityError};
 pub use event::{Event, EventError, EventKind, EventResult, EventStatus};
 pub use event_log::{EventLog, EventLogError, EventLogLevel, EventLogResult};

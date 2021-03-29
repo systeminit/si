@@ -9,7 +9,7 @@ const leftHandPath: RegistryEntry = {
   entityType: "leftHandPath",
   ui: {
     menuCategory: MenuCategory.Kubernetes,
-    menuDisplayName: "Left Hand Path",
+    menuDisplayName: "leftHandPath",
   },
   properties: [
     {

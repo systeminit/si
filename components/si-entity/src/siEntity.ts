@@ -1,8 +1,23 @@
 import _ from "lodash";
-import { Prop, findProp } from "si-registry";
+import {
+  Prop,
+  findProp,
+  ItemProp,
+  PropString,
+  PropNumber,
+  PropArray,
+  registry,
+} from "si-registry";
 
 import { SiStorable } from "./siStorable";
 import { validate, ValidateResult } from "./validation";
+import {
+  ItemPropString,
+  ItemPropNumber,
+  ItemPropArray,
+  PropObject,
+  ItemPropObject,
+} from "si-registry/dist/registryEntry";
 
 export interface ISiEntity {
   id: string;
@@ -70,6 +85,34 @@ export type RegistryPropertyPath = string[];
 
 export interface Setters {
   set(input: Omit<OpSet, "source" | "op">): ValidateResult;
+}
+
+export interface EditField {
+  type: string;
+  widgetName: string;
+  schema: Prop | ItemProp;
+  name: string;
+  path: string[];
+}
+
+export interface EditFieldString extends EditField {
+  type: "string";
+  schema: PropString | ItemPropString;
+}
+
+export interface EditFieldNumber extends EditField {
+  type: "number";
+  schema: PropNumber | ItemPropNumber;
+}
+
+export interface EditFieldArray extends EditField {
+  type: "array";
+  schema: PropArray | ItemPropArray;
+}
+
+export interface EditFieldObject extends EditField {
+  type: "object";
+  schema: PropObject | ItemPropObject;
 }
 
 export class SiEntity implements ISiEntity {
@@ -174,7 +217,13 @@ export class SiEntity implements ISiEntity {
     return _.isEqual(checkPath, b);
   }
 
-  isTombstoned(op: OpSet): boolean {
+  isTombstoned(op: {
+    op?: OpSet["op"];
+    value?: OpSet["value"];
+    path: OpSet["path"];
+    source: OpSet["source"];
+    system: OpSet["system"];
+  }): boolean {
     for (const tombstone of this.tombstones) {
       if (
         this.subPath(op.path, tombstone.path) &&
@@ -391,6 +440,16 @@ export class SiEntity implements ISiEntity {
     return this.addOpSet(op);
   }
 
+  getProperty<T>({
+    system,
+    path,
+  }: {
+    system: OpSet["system"];
+    path: OpSet["path"];
+  }): T {
+    return _.get(this.properties[system], path);
+  }
+
   inferred(): Setters {
     const result: Setters = {
       set(input: Parameters<Setters["set"]>[0]): ValidateResult {
@@ -403,5 +462,167 @@ export class SiEntity implements ISiEntity {
       },
     };
     return result;
+  }
+
+  editFields(): EditField[] {
+    const editFields: EditField[] = [];
+    const rootSchema = registry[this.entityType];
+    const toCheck: {
+      path: EditField["path"];
+      schema: EditField["schema"];
+    }[] = _.map(rootSchema.properties, (p) => {
+      return { path: [p.name], schema: p };
+    });
+
+    for (const checkProp of toCheck) {
+      let widgetName: string;
+      if (checkProp.schema.widget) {
+        widgetName = checkProp.schema.widget.name;
+      } else if (checkProp.schema.type == "string") {
+        widgetName = "text";
+      } else {
+        widgetName = "unknown";
+      }
+      let name: string;
+      if (checkProp.schema.displayName) {
+        name = checkProp.schema.displayName;
+      } else if (checkProp.schema.name) {
+        name = checkProp.schema.name;
+      }
+      const editField: EditField = {
+        type: checkProp.schema.type,
+        schema: checkProp.schema,
+        path: checkProp.path,
+        widgetName,
+        name,
+      };
+      editFields.push(editField);
+      if (checkProp.schema.type == "object") {
+        for (const p of checkProp.schema.properties) {
+          const path = _.cloneDeep(checkProp.path);
+          path.push(p.name);
+          toCheck.push({ path, schema: p });
+        }
+      } else if (checkProp.schema.type == "array") {
+        const path = _.cloneDeep(checkProp.path);
+        const p = checkProp.schema.itemProperty;
+        path.push("a0");
+        toCheck.push({ path, schema: p });
+      }
+    }
+    return editFields;
+  }
+
+  isPathTombstoned(path: OpTombstone["path"]): boolean {
+    const tombstone = _.find(this.tombstones, ["path", path]);
+    if (tombstone) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  valueOpForPath({
+    path,
+    system,
+  }: {
+    path: OpSet["path"];
+    system: OpSet["system"];
+  }): OpSet | undefined {
+    const ops: OpSet[] = _.filter(this.ops, (o) =>
+      _.isEqual(o.path, path),
+    ) as OpSet[];
+    if (ops.length) {
+      let finalOp: OpSet;
+      for (const op of ops) {
+        if (
+          op.system == system &&
+          op.source == OpSource.Manual &&
+          !this.isTombstoned(op)
+        ) {
+          return op as OpSet;
+        } else if (
+          op.system == system &&
+          op.source == OpSource.Inferred &&
+          !this.isTombstoned(op)
+        ) {
+          if (finalOp) {
+            if (finalOp.system == "baseline") {
+              finalOp = op as OpSet;
+            }
+          } else {
+            finalOp = op as OpSet;
+          }
+        } else if (
+          op.system == "baseline" &&
+          op.source == OpSource.Manual &&
+          !this.isTombstoned(op)
+        ) {
+          if (finalOp) {
+            if (
+              finalOp.system == "baseline" &&
+              finalOp.source == OpSource.Inferred
+            ) {
+              finalOp = op as OpSet;
+            }
+          } else {
+            finalOp = op as OpSet;
+          }
+        } else if (
+          op.system == "baseline" &&
+          op.source == OpSource.Inferred &&
+          !this.isTombstoned(op)
+        ) {
+          if (!finalOp) {
+            finalOp = op as OpSet;
+          }
+        }
+      }
+      return finalOp;
+    } else {
+      return undefined;
+    }
+  }
+
+  valueFrom({
+    path,
+    system,
+    source,
+  }: {
+    path: OpSet["path"];
+    system: OpSet["system"];
+    source: OpSet["source"];
+  }): string | number | boolean | undefined {
+    const op = _.find(
+      this.ops,
+      (o) =>
+        o.source == source && _.isEqual(o.path, path) && o.system == system,
+    );
+    if (op) {
+      return op.value;
+    } else {
+      return undefined;
+    }
+  }
+
+  hasValueFrom({
+    path,
+    system,
+    source,
+  }: {
+    path: OpSet["path"];
+    system: OpSet["system"];
+    source: OpSet["source"];
+  }): boolean {
+    const op = _.find(
+      this.ops,
+      (o) =>
+        o.source == source && _.isEqual(o.path, path) && o.system == system,
+    );
+    if (op) {
+      return true;
+    } else {
+      return false;
+    }
   }
 }

@@ -1,35 +1,37 @@
 import { SDFError } from "@/api/sdf";
 import Bottle from "bottlejs";
 import { Entity } from "@/api/sdf/model/entity";
+import { Diff } from "../model/diff";
 
-export interface IGetObjectListRequest {
+export interface IGetEntityListRequest {
   workspaceId: string;
   applicationId: string;
   changeSetId?: string;
+  editSessionId?: string;
 }
 
-export interface IGetObjectListReplySuccess {
-  objectList: { label: string; value: string }[];
+export interface IGetEntityListReplySuccess {
+  entityList: { label: string; value: string }[];
   error?: never;
 }
 
-export interface IGetObjectListReplyFailure {
+export interface IGetEntityListReplyFailure {
   objectList?: never;
   error: SDFError;
 }
 
-export type IGetObjectListReply =
-  | IGetObjectListReplySuccess
-  | IGetObjectListReplyFailure;
+export type IGetEntityListReply =
+  | IGetEntityListReplySuccess
+  | IGetEntityListReplyFailure;
 
-export async function getObjectList(
-  request: IGetObjectListRequest,
-): Promise<IGetObjectListReply> {
+export async function getEntityList(
+  request: IGetEntityListRequest,
+): Promise<IGetEntityListReply> {
   let bottle = Bottle.pop("default");
   let sdf = bottle.container.SDF;
 
-  const reply: IGetObjectListReply = await sdf.get(
-    "attributeDal/getObjectList",
+  const reply: IGetEntityListReply = await sdf.get(
+    "attributeDal/getEntityList",
     request,
   );
   return reply;
@@ -39,17 +41,18 @@ export interface IGetEntityRequest {
   workspaceId: string;
   entityId: string;
   changeSetId?: string;
+  editSessionId?: string;
 }
 
 export interface IGetEntityReplySuccess {
   entity: Entity;
-  baseEntity: Entity;
+  diff: Diff;
   error?: never;
 }
 
 export interface IGetEntityReplyFailure {
   entity?: never;
-  baseEntity?: never;
+  diff?: never;
   error: SDFError;
 }
 
@@ -68,7 +71,46 @@ export async function getEntity(
   return reply;
 }
 
+export interface IUpdateEntityRequest {
+  workspaceId: string;
+  entity: Entity;
+  changeSetId: string;
+  editSessionId: string;
+}
+
+export interface IUpdateEntityReplySuccess {
+  entity: Entity;
+  diff: Diff;
+  label: { label: string; value: string };
+  error?: never;
+}
+
+export interface IUpdateEntityReplyFailure {
+  entity?: never;
+  diff?: never;
+  label?: never;
+  error: SDFError;
+}
+
+export type IUpdateEntityReply =
+  | IUpdateEntityReplySuccess
+  | IUpdateEntityReplyFailure;
+
+export async function updateEntity(
+  request: IUpdateEntityRequest,
+): Promise<IUpdateEntityReply> {
+  let bottle = Bottle.pop("default");
+  let sdf = bottle.container.SDF;
+
+  const reply: IUpdateEntityReply = await sdf.post(
+    "attributeDal/updateEntity",
+    request,
+  );
+  return reply;
+}
+
 export const AttributeDal = {
-  getObjectList,
+  getEntityList,
   getEntity,
+  updateEntity,
 };

@@ -24,6 +24,7 @@ import { EditSessionCancelEvent } from "@/api/partyBus/EditSessionCancelEvent";
 
 import { Cg2dCoordinate } from "@/api/sicg";
 import { Edge } from "@/api/sdf/model/edge";
+import { schematicSelectedEntityId$ } from "@/observables";
 
 export interface SchematicPanelStore {
   kind: SchematicKind | null;
@@ -75,6 +76,11 @@ export const schematicPanelStore: Module<SchematicPanelStore, any> = {
       state.schematic = payload;
     },
     setSelectedNode(state, payload: SchematicPanelStore["selectedNode"]) {
+      if (payload) {
+        schematicSelectedEntityId$.next(payload.object.id);
+      } else {
+        schematicSelectedEntityId$.next("");
+      }
       state.selectedNode = payload;
     },
     setLastRequest(state, payload: SchematicPanelStore["lastRequest"]) {
@@ -152,9 +158,7 @@ export const schematicPanelStore: Module<SchematicPanelStore, any> = {
       { commit },
       request: IGetApplicationSystemSchematicRequest,
     ): Promise<IGetSchematicReply> {
-      console.log("loading schematic again", { request });
       let reply = await SchematicDal.getApplicationSystemSchematic(request);
-      console.log("loading schematic again with a reply ", { request, reply });
       if (!reply.error) {
         commit("setSchematic", reply.schematic);
         commit("setLastRequest", request);

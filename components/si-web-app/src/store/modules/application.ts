@@ -143,8 +143,8 @@ export const application: Module<ApplicationStore, any> = {
     async fromEntity({ dispatch, state, rootState }, payload: Entity) {
       if (state.activatedBy.length != 0) {
         if (
-          payload.objectType == "application" ||
-          payload.objectType == "service"
+          payload.entityType == "application" ||
+          payload.entityType == "service"
         ) {
           if (rootState.session.currentWorkspace.id) {
             let updateReq: ISetListApplicationsRequest = {

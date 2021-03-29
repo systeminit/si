@@ -54,6 +54,7 @@ export function inferProperties(
     debug("default response");
     debug("/inferProperties END");
     request.entity = Entity.fromJson(request.entity);
+    request.entity.computeProperties();
     res.status(200);
     res.send({ entity: request.entity });
   }

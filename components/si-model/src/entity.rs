@@ -103,6 +103,15 @@ pub struct Op {
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct OpTombstone {
+    op: OpType,
+    source: OpSource,
+    system: String,
+    path: Vec<String>,
+}
+
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct ArrayMeta {
     length: u64,
 }
@@ -116,7 +125,7 @@ pub struct Entity {
     pub description: String,
     pub entity_type: String,
     pub ops: Vec<Op>,
-    pub tombstones: Vec<Op>,
+    pub tombstones: Vec<OpTombstone>,
     pub array_meta: serde_json::Value,
     pub properties: serde_json::Value,
     pub si_storable: SiStorable,
@@ -185,6 +194,37 @@ impl Entity {
         //entity.save_projection(&txn, &nats).await?;
 
         Ok(entity)
+    }
+
+    pub async fn update_entity_for_edit_session(
+        &mut self,
+        pg: &PgPool,
+        txn: &PgTxn<'_>,
+        nats_conn: &NatsConn,
+        _nats: &NatsTxn,
+        veritech: &Veritech,
+        change_set_id: impl Into<String>,
+        edit_session_id: impl Into<String>,
+    ) -> EntityResult<()> {
+        let change_set_id = change_set_id.into();
+        let edit_session_id = edit_session_id.into();
+        self.save_for_edit_session(&txn, &change_set_id, &edit_session_id)
+            .await?;
+        let changed = self
+            .infer_properties_for_edit_session(&txn, &veritech, &change_set_id, &edit_session_id)
+            .await?;
+        if changed {
+            Entity::calculate_properties_of_successors_for_edit_session(
+                &pg,
+                &nats_conn,
+                &veritech,
+                String::from(&self.id),
+                String::from(change_set_id),
+                String::from(edit_session_id),
+            )
+            .await?;
+        }
+        Ok(())
     }
 
     pub async fn infer_properties_for_edit_session(
@@ -334,6 +374,23 @@ impl Entity {
             }
         } else if let Some(change_set_id) = change_set_id {
             Entity::for_change_set(&txn, entity_id, change_set_id).await
+        } else {
+            Entity::for_head(&txn, entity_id).await
+        }
+    }
+
+    pub async fn for_diff(
+        txn: &PgTxn<'_>,
+        entity_id: impl AsRef<str>,
+        change_set_id: Option<&String>,
+        edit_session_id: Option<&String>,
+    ) -> EntityResult<Entity> {
+        if let Some(_edit_session_id) = edit_session_id {
+            if let Some(change_set_id) = change_set_id {
+                Entity::for_change_set(&txn, &entity_id, change_set_id).await
+            } else {
+                return Err(EntityError::NoChangeSet);
+            }
         } else {
             Entity::for_head(&txn, entity_id).await
         }

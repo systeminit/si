@@ -1,22 +1,22 @@
 import { PartyBusEvent } from "@/api/partyBus/partyBusEvent";
-import { INodeObject } from "@/api/sdf/dal/editorDal";
 import { Node } from "@/api/sdf/model/node";
+import { Entity } from "../sdf/model/entity";
 
 const NAME = "NodeCreated";
 
 interface IConstructor {
   node: Node;
-  object: INodeObject;
+  entity: Entity;
 }
 
 export class NodeCreatedEvent extends PartyBusEvent {
   node: Node | null;
-  object: INodeObject | null;
+  entity: Entity | null;
 
   constructor(payload: IConstructor, sourcePanelId?: string) {
     super(NAME, sourcePanelId);
     this.node = payload.node;
-    this.object = payload.object;
+    this.entity = payload.entity;
   }
 
   static eventName(): string {

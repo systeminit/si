@@ -1,12 +1,12 @@
 <template>
-  <div class="tooltip" @click="toggleVisibility()">
-    <slot />
+  <div class="tooltip">
+    <div @click="toggleVisibility()">
+      <slot />
+    </div>
     <div
       ref="tooltip"
       class="w-auto p-2 pr-8 mt-1 border tooltip-text"
-      :class="{
-        'tooltip-sticky': isVisible,
-      }"
+      :class="hoverClasses"
     >
       <slot name="tooltip" />
     </div>
@@ -35,11 +35,27 @@ export default Vue.extend({
       type: Number,
       required: false,
     },
+    onlyOnClick: {
+      type: Boolean,
+      required: false,
+    },
   },
   data(): Data {
     return {
       isVisible: false,
     };
+  },
+  computed: {
+    hoverClasses(): Record<string, boolean> {
+      let classes: Record<string, boolean> = {};
+      if (this.isVisible) {
+        classes["tooltip-sticky"] = true;
+      }
+      if (!this.onlyOnClick) {
+        classes["tooltip-hover"] = true;
+      }
+      return classes;
+    },
   },
   methods: {
     positionAlignRight() {
@@ -49,7 +65,7 @@ export default Vue.extend({
       this.$refs.tooltip.style.transform = "translateX(-" + position + "px)";
     },
     toggleVisibility() {
-      if (this.sticky) {
+      if (this.sticky || this.onlyOnClick) {
         this.isVisible = !this.isVisible;
       }
     },
@@ -71,7 +87,7 @@ export default Vue.extend({
   background-color: #222629;
 }
 
-.tooltip:hover .tooltip-text {
+.tooltip:hover .tooltip-text .tooltip-hover {
   visibility: visible;
 }
 

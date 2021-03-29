@@ -13,6 +13,7 @@ import {
   IGetDefaultsReply,
 } from "@/api/sdf/dal/sessionDal";
 import { SDFError } from "@/api/sdf";
+import { workspace$, system$ } from "@/observables";
 
 export type ISetDefaultsReply = IGetDefaultsReply;
 
@@ -61,9 +62,11 @@ export const session: Module<SessionStore, any> = {
       state.currentOrganization = payload;
     },
     setCurrentWorkspace(state, payload: SessionStore["currentWorkspace"]) {
+      workspace$.next(payload);
       state.currentWorkspace = payload;
     },
     setCurrentSystem(state, payload: SessionStore["currentSystem"]) {
+      system$.next(payload);
       state.currentSystem = payload;
     },
     setSessionContext(state, payload: SessionStore["sessionContext"]) {

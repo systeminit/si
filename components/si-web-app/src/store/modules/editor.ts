@@ -1,5 +1,4 @@
 import { Module } from "vuex";
-import { EntityObject } from "si-registry/lib/systemComponent";
 import {
   INodeCreateReply,
   INodeUpdatePositionReply,
@@ -27,7 +26,6 @@ import Bottle from "bottlejs";
 import { CurrentChangeSetEvent } from "@/api/partyBus/currentChangeSetEvent";
 import { EditSessionCurrentSetEvent } from "@/api/partyBus/editSessionCurrentSetEvent";
 import { EditorDal } from "@/api/sdf/dal/editorDal";
-import { NodeKind } from "@/api/sdf/model/node";
 import { NodeCreatedEvent } from "@/api/partyBus/NodeCreatedEvent";
 import { NodeUpdatedEvent } from "@/api/partyBus/NodeUpdatedEvent";
 import { ConnectionCreatedEvent } from "@/api/partyBus/ConnectionCreatedEvent";
@@ -35,6 +33,7 @@ import { EntityPropertySetEvent } from "@/api/partyBus/EntityPropertySetEvent";
 import { EntitySetNameEvent } from "@/api/partyBus/EntitySetNameEvent";
 
 import { Cg2dCoordinate } from "@/api/sicg";
+import { changeSet$, editSession$, applicationId$ } from "@/observables";
 
 export type IEditorContext = IEditorContextApplication;
 
@@ -97,12 +96,15 @@ export const editor: Module<EditorStore, any> = {
   },
   mutations: {
     setCurrentChangeSet(state, payload: EditorStore["currentChangeSet"]) {
+      changeSet$.next(payload);
       state.currentChangeSet = payload;
     },
     setCurrentEditSession(state, payload: EditorStore["currentEditSession"]) {
+      editSession$.next(payload);
       state.currentEditSession = payload;
     },
     setContext(state, payload: EditorStore["context"]) {
+      applicationId$.next(payload?.applicationId);
       state.context = payload;
     },
   },

@@ -172,7 +172,6 @@ export default Vue.extend({
         "editor/nodeCreate",
         payload,
       );
-      console.log("created a node", { reply });
       if (!reply.error) {
         // @ts-ignore
         this.$refs.graphViewer.setIsNodeCreate();
@@ -183,10 +182,8 @@ export default Vue.extend({
     },
     async loadSchematic() {
       this.isLoading = true;
-      console.log("trying to load schematic");
 
       if (this.currentWorkspace && this.rootObjectId && this.currentSystem) {
-        console.log("lobster");
         if (this.schematicKind == SchematicKind.System) {
           let request: Record<string, any> = {
             workspaceId: this.currentWorkspace.id,
@@ -199,7 +196,6 @@ export default Vue.extend({
           if (this.currentEditSession) {
             request["editSessionId"] = this.currentEditSession.id;
           }
-          console.log("loading schematic", { request });
           let reply = await this.schematicPanelStoreCtx.dispatch(
             "loadApplicationSystemSchematic",
             request,

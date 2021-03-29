@@ -23,6 +23,92 @@ describe("siAttr", () => {
     });
   });
 
+  describe("valueOpForPath", () => {
+    test("returns a single op", () => {
+      const { siAttr } = setupTest("leftHandPath");
+      const op: OpSet = {
+        op: OpType.Set,
+        path: ["simpleString"],
+        value: "wewt",
+        source: OpSource.Manual,
+        system: "poop",
+      };
+      siAttr.addOpSet(op);
+      const valueOpForPath = siAttr.valueOpForPath({
+        path: ["simpleString"],
+        system: "poop",
+      });
+      expect(valueOpForPath).toEqual(op);
+    });
+    test("respects precedence", () => {
+      const manualSystemOp: OpSet = {
+        op: OpType.Set,
+        path: ["simpleString"],
+        value: "lies",
+        source: OpSource.Manual,
+        system: "poop",
+      };
+      const inferredSystemOp: OpSet = {
+        op: OpType.Set,
+        path: ["simpleString"],
+        value: "on",
+        source: OpSource.Inferred,
+        system: "poop",
+      };
+      const manualBaselineOp: OpSet = {
+        op: OpType.Set,
+        path: ["simpleString"],
+        value: "whispering",
+        source: OpSource.Manual,
+        system: "baseline",
+      };
+      const inferredBaselineOp: OpSet = {
+        op: OpType.Set,
+        path: ["simpleString"],
+        value: "wind",
+        source: OpSource.Inferred,
+        system: "baseline",
+      };
+      let { siAttr } = setupTest("leftHandPath");
+      siAttr.addOpSet(inferredBaselineOp);
+      siAttr.addOpSet(manualBaselineOp);
+      let valueOpForPath = siAttr.valueOpForPath({
+        path: ["simpleString"],
+        system: "poop",
+      });
+      expect(valueOpForPath).toEqual(manualBaselineOp);
+
+      siAttr = setupTest("leftHandPath").siAttr;
+      siAttr.addOpSet(inferredBaselineOp);
+      siAttr.addOpSet(manualBaselineOp);
+      siAttr.addOpSet(inferredSystemOp);
+      valueOpForPath = siAttr.valueOpForPath({
+        path: ["simpleString"],
+        system: "poop",
+      });
+      expect(valueOpForPath).toEqual(inferredSystemOp);
+
+      siAttr = setupTest("leftHandPath").siAttr;
+      siAttr.addOpSet(inferredBaselineOp);
+      siAttr.addOpSet(manualSystemOp);
+      siAttr.addOpSet(manualBaselineOp);
+      siAttr.addOpSet(inferredSystemOp);
+      valueOpForPath = siAttr.valueOpForPath({
+        path: ["simpleString"],
+        system: "poop",
+      });
+      expect(valueOpForPath).toEqual(manualSystemOp);
+    });
+  });
+
+  describe("editFields", () => {
+    test("returns an empty list if no properties", () => {
+      const { siAttr } = setupTest("service");
+      const editFields = siAttr.editFields();
+      expect(editFields).toEqual([]);
+    });
+  });
+
   // inferred baseline  X      Y      Y      X      X
   // inferred system    Y      X      Y      X      X
   // manual baseline    Y      Y      X      Y      X
