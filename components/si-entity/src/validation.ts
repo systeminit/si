@@ -1,14 +1,14 @@
 import { findProp, Validator, ValidatorKind } from "si-registry";
 import validatorjs from "validator";
 
-interface ValidateSuccess {
+export interface ValidateSuccess {
   errors?: never;
   success: true;
 }
 
-interface ValidateFailure {
+export interface ValidateFailure {
   success?: never;
-  errors: string[];
+  errors: { message: string; link?: string }[];
 }
 
 export type ValidateResult = ValidateSuccess | ValidateFailure;
@@ -17,10 +17,12 @@ export function validate(path: string[], value: string): ValidateResult {
   const prop = findProp(path);
   if (!prop) {
     return {
-      errors: [`Bug! Cannot find property to validate! Path was: ${path}`],
+      errors: [
+        { message: `Bug! Cannot find property to validate! Path was: ${path}` },
+      ],
     };
   }
-  let errors: string[] = [];
+  let errors: ValidateResult["errors"] = [];
   if (prop.validation) {
     const result = runValidators(prop.validation, value);
     if (result.errors) {
@@ -45,11 +47,15 @@ export function runValidators(
   validators: Validator[],
   value: string,
 ): ValidateResult {
-  const errors = [];
+  const errors: ValidateResult["errors"] = [];
   for (const validator of validators) {
     if (validator.kind == ValidatorKind.Alphanumeric) {
       if (!validatorjs.isAlphanumeric(value)) {
-        errors.push("string must be alphanumeric (a-zA-Z0-9)");
+        errors.push({ message: "string must be alphanumeric (a-zA-Z0-9)" });
+      }
+    } else if (validator.kind == ValidatorKind.Regex) {
+      if (!validatorjs.matches(value, validator.regex, "i")) {
+        errors.push({ message: validator.message, link: validator.link });
       }
     }
     if (errors.length > 0) {

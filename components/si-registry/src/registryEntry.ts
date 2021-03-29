@@ -3,6 +3,7 @@ import { Optional } from "utility-types";
 
 export enum MenuCategory {
   Application = "application",
+  Docker = "docker",
   Kubernetes = "kubernetes",
   Helm = "helm",
 }
@@ -24,10 +25,19 @@ export type RegistryEntryUi = RegistryEntryUiPresent | RegistryEntryUiHidden;
 export enum ValidatorKind {
   Alphanumeric = "alphanumeric",
   Int = "int",
+  Regex = "regex",
 }
 
 export interface ValidatorBase {
   kind: ValidatorKind;
+  link?: string;
+  messsage?: string;
+}
+
+export interface ValidatorRegex extends ValidatorBase {
+  kind: ValidatorKind.Regex;
+  regex: string;
+  message: string;
 }
 
 export interface ValidatorInt extends ValidatorBase {
@@ -39,7 +49,7 @@ export interface ValidatorAlphanumeric extends ValidatorBase {
   kind: ValidatorKind.Alphanumeric;
 }
 
-export type Validator = ValidatorInt | ValidatorAlphanumeric;
+export type Validator = ValidatorInt | ValidatorAlphanumeric | ValidatorRegex;
 
 export interface WidgetBase {
   name: string;
@@ -94,8 +104,16 @@ export type ItemProp =
   | ItemPropObject
   | ItemPropArray;
 
+export interface Qualification {
+  name: string;
+  title: string;
+  description: string;
+  link?: string;
+}
+
 export interface RegistryEntry {
   entityType: string;
   ui?: RegistryEntryUi;
   properties: Prop[];
+  qualifications?: Qualification[];
 }

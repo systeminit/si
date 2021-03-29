@@ -9,6 +9,7 @@ import torture from "./schema/test/torture";
 import system from "./schema/si/system";
 import service from "./schema/si/service";
 import application from "./schema/si/application";
+import dockerImage from "./schema/docker/dockerImage";
 
 export const registry: { [entityType: string]: RegistryEntry } = {
   leftHandPath,
@@ -17,6 +18,7 @@ export const registry: { [entityType: string]: RegistryEntry } = {
   service,
   application,
   torture,
+  dockerImage,
 };
 
 export function findProp(path: string[]): Prop | undefined {

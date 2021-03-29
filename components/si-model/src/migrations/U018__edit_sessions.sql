@@ -101,39 +101,21 @@ BEGIN
     ON CONFLICT(id, change_set_id) DO UPDATE
         SET obj        = excluded.obj,
             updated_at = NOW();
+
+    INSERT INTO qualifications_change_set_projection (id, obj, qualified, change_set_id, tenant_ids, created_at)
+    SELECT qualifications_edit_session_projection.id,
+           qualifications_edit_session_projection.obj,
+           qualifications_edit_session_projection.qualified,
+           qualifications_edit_session_projection.change_set_id,
+           qualifications_edit_session_projection.tenant_ids,
+           qualifications_edit_session_projection.created_at
+    FROM qualifications_edit_session_projection
+    WHERE qualifications_edit_session_projection.edit_session_id = this_id
+    ON CONFLICT(id, change_set_id) DO UPDATE
+      SET obj = excluded.obj,
+          updated_at = NOW();
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
-
-CREATE OR REPLACE FUNCTION edit_session_save_v1(input_edit_session jsonb,
-                                                OUT object jsonb) AS
-$$
-DECLARE
-    this_current edit_sessions%rowtype;
-    this_id      bigint;
-BEGIN
-    /* extract the id */
-    SELECT si_id_to_primary_key_v1(input_edit_session ->> 'id') INTO this_id;
-
-    SELECT * INTO this_current FROM edit_sessions WHERE id = this_id;
-    IF NOT FOUND THEN
-        RAISE WARNING 'edit_session id % not found', this_id;
-    END IF;
-
-    /* bail if it is a tenancy violation */
-    IF si_id_to_primary_key_v1(input_edit_session -> 'siStorable' ->> 'billingAccountId') !=
-       this_current.billing_account_id THEN
-        RAISE WARNING 'mutated billing account id; not allowed!';
-    END IF;
-
-    UPDATE edit_sessions
-    SET name       = input_edit_session ->> 'name',
-        reverted   = (input_edit_session ->> 'reverted')::bool,
-        obj        = input_edit_session,
-        updated_at = NOW()
-    WHERE id = this_id
-    RETURNING obj INTO object;
-END
-$$ LANGUAGE PLPGSQL;
 
 CREATE OR REPLACE FUNCTION edit_session_get_v1(si_id text, OUT object jsonb) AS
 $$

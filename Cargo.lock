@@ -2404,6 +2404,7 @@ dependencies = [
  "tokio-postgres",
  "tokio-stream",
  "tokio-tungstenite 0.14.0",
+ "tungstenite 0.13.0",
 ]
 
 [[package]]
@@ -2983,6 +2984,7 @@ dependencies = [
  "httparse",
  "input_buffer",
  "log",
+ "native-tls",
  "rand 0.8.3",
  "sha-1 0.9.1",
  "thiserror",

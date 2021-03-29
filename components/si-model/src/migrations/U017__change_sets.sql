@@ -116,5 +116,17 @@ BEGIN
     ON CONFLICT(id) DO UPDATE
         SET obj        = excluded.obj,
             updated_at = NOW();
+
+    INSERT INTO qualifications_head (id, obj, qualified, tenant_ids, created_at)
+    SELECT qualifications_change_set_projection.id,
+           qualifications_change_set_projection.obj,
+           qualifications_change_set_projection.qualified,
+           qualifications_change_set_projection.tenant_ids,
+           qualifications_change_set_projection.created_at
+    FROM qualifications_change_set_projection
+    WHERE qualifications_change_set_projection.change_set_id = this_id
+    ON CONFLICT(id) DO UPDATE
+      SET obj = excluded.obj,
+          updated_at = NOW();
 END
 $$ LANGUAGE PLPGSQL VOLATILE;

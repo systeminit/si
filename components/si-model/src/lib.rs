@@ -35,6 +35,7 @@ pub mod node;
 pub mod node_position;
 pub mod organization;
 pub mod output_line;
+pub mod qualification;
 pub mod resource;
 pub mod schematic;
 pub mod secret;
@@ -69,6 +70,7 @@ pub use node::{Node, NodeError};
 pub use node_position::{NodePosition, NodePositionError};
 pub use organization::{Organization, OrganizationError};
 pub use output_line::{OutputLine, OutputLineStream};
+pub use qualification::{Qualification, QualificationError};
 pub use resource::{Resource, ResourceError, ResourceHealth, ResourceResult, ResourceStatus};
 pub use schematic::{Schematic, SchematicError, SchematicResult};
 pub use secret::{
