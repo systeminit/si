@@ -7,7 +7,7 @@ use std::env;
 use std::sync::Arc;
 
 use si_data::{EventLogFS, NatsConn, PgPool};
-use si_model::Veritech;
+use si_model::{Veritech, Workflow};
 use si_settings::Settings;
 
 pub mod model;
@@ -115,6 +115,17 @@ pub async fn one_time_setup() -> Result<()> {
 
     let mut conn = pg.pool.try_get().await?;
     let txn = conn.transaction().await?;
+
+    let tmp_event_log_fs_root = tempfile::tempdir().expect("could not create temp dir");
+    let elf_settings = si_settings::EventLogFs {
+        root: tmp_event_log_fs_root.as_ref().into(),
+    };
+    let event_log_fs = EventLogFS::init(&elf_settings)
+        .await
+        .expect("failed to initialize EventLogFS");
+    let veritech = Veritech::new(&SETTINGS.veritech, event_log_fs.clone());
+
+    Workflow::load_builtins(&pg, &veritech).await?;
 
     si_model::create_jwt_key_if_missing(
         &txn,

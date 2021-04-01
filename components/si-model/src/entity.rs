@@ -2,8 +2,8 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::{
-    generate_name, Edge, EdgeError, EdgeKind, Qualification, QualificationError, Resource,
-    ResourceError, SiChangeSet, SiStorable, Veritech, VeritechError,
+    generate_name, Edge, EdgeError, EdgeKind, Qualification, QualificationError, ResourceError,
+    SiChangeSet, SiStorable, Veritech, VeritechError, Workflow, WorkflowError,
 };
 use si_data::{NatsConn, NatsTxn, NatsTxnError, PgPool, PgTxn};
 
@@ -51,13 +51,14 @@ pub enum EntityError {
     NoChangeSet,
     #[error("qualification error: {0}")]
     Qualification(#[from] QualificationError),
+    #[error("workflow error: {0}")]
+    Workflow(#[from] WorkflowError),
 }
 
 #[derive(Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct InferPropertiesPredecessor {
     pub entity: Entity,
-    pub resources: Vec<Resource>,
 }
 
 #[derive(Serialize, Debug)]
@@ -66,7 +67,6 @@ pub struct InferPropertiesRequest {
     entity_type: String,
     entity: Entity,
     predecessors: Vec<InferPropertiesPredecessor>,
-    resources: Vec<Resource>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -82,7 +82,6 @@ pub struct CheckQualificationsRequest {
     entity_type: String,
     entity: Entity,
     predecessors: Vec<InferPropertiesPredecessor>,
-    resources: Vec<Resource>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -274,13 +273,6 @@ impl Entity {
         let nats = nats_conn.transaction();
 
         let system_id = system_id.unwrap_or("baseline".to_string());
-        let resources = Resource::for_edit_session_by_entity_id(
-            &txn,
-            &entity.id,
-            &change_set_id,
-            &edit_session_id,
-        )
-        .await?;
 
         let predecessor_edges =
             Edge::direct_predecessor_edges_by_object_id(&txn, &EdgeKind::Configures, &entity.id)
@@ -294,16 +286,8 @@ impl Entity {
                 &edit_session_id,
             )
             .await?;
-            let edge_resources = Resource::for_edit_session_by_entity_id(
-                &txn,
-                &edge.tail_vertex.object_id,
-                &change_set_id,
-                &edit_session_id,
-            )
-            .await?;
             let predecessor = InferPropertiesPredecessor {
                 entity: edge_entity,
-                resources: edge_resources,
             };
             predecessors.push(predecessor);
         }
@@ -311,7 +295,6 @@ impl Entity {
             entity_type: entity.entity_type.clone(),
             entity: entity.clone(),
             predecessors,
-            resources,
             system_id,
         };
         let (progress_tx, mut progress_rx) =
@@ -324,11 +307,12 @@ impl Entity {
         txn.commit().await?;
         nats.commit().await?;
 
-        let mut valid_names: Vec<String> = vec![];
+        let mut _valid_names: Vec<String> = vec![];
         while let Some(message) = progress_rx.recv().await {
             match message {
                 CheckQualificationsProtocol::ValidNames(names) => {
-                    valid_names = names;
+                    _valid_names = names;
+                    // TODO: maybe report these back to the frontend via nats??
                 }
                 CheckQualificationsProtocol::Start(check_name) => {
                     dbg!(format!("starting {}", check_name));
@@ -424,14 +408,6 @@ impl Entity {
         let change_set_id = change_set_id.as_ref();
         let edit_session_id = edit_session_id.as_ref();
 
-        let resources = Resource::for_edit_session_by_entity_id(
-            &txn,
-            &self.id,
-            &change_set_id,
-            &edit_session_id,
-        )
-        .await?;
-
         let predecessor_edges =
             Edge::direct_predecessor_edges_by_object_id(&txn, &EdgeKind::Configures, &self.id)
                 .await?;
@@ -444,16 +420,8 @@ impl Entity {
                 &edit_session_id,
             )
             .await?;
-            let edge_resources = Resource::for_edit_session_by_entity_id(
-                &txn,
-                &edge.tail_vertex.object_id,
-                &change_set_id,
-                &edit_session_id,
-            )
-            .await?;
             let predecessor = InferPropertiesPredecessor {
                 entity: edge_entity,
-                resources: edge_resources,
             };
             predecessors.push(predecessor);
         }
@@ -461,7 +429,6 @@ impl Entity {
             entity_type: self.entity_type.clone(),
             entity: self.clone(),
             predecessors,
-            resources,
         };
         let response = veritech.infer_properties(request).await?;
         if self != &response.entity {
@@ -695,6 +662,11 @@ impl Entity {
             results.push(entity);
         }
         Ok(results)
+    }
+
+    pub async fn action(txn: &PgTxn<'_>, name: impl AsRef<str>) -> EntityResult<Workflow> {
+        let workflow = Workflow::get_by_name(txn, name).await?;
+        Ok(workflow)
     }
 
     //pub async fn as_automerge(&self) -> EntityResult<String> {

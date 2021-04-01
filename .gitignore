@@ -2,6 +2,7 @@ tags
 .DS_Store
 node_modules
 .vagrant
+.idea
 target
 kubeconfig.yml
 components/si-pedant/cypress.env.json

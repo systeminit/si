@@ -26,7 +26,7 @@ CREATE OR REPLACE FUNCTION event_create_v1(this_message text,
                                            OUT object jsonb) AS
 $$
 DECLARE
-    this_id                      bigint;
+    this_id                 bigint;
     si_id                   text;
     this_workspace_id       bigint;
     this_organization_id    bigint;
@@ -84,7 +84,7 @@ CREATE OR REPLACE FUNCTION event_save_v1(input_event jsonb,
 $$
 DECLARE
     this_current events%rowtype;
-    this_id            bigint;
+    this_id      bigint;
 BEGIN
     /* extract the id */
     SELECT si_id_to_primary_key_v1(input_event ->> 'id') INTO this_id;

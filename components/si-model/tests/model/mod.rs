@@ -16,4 +16,5 @@ mod qualification;
 mod resource;
 mod secret;
 mod user;
+mod workflow;
 mod workspace;

@@ -10,7 +10,7 @@ use si_model::{
     ApiClientError, ApplicationError, BillingAccountError, ChangeSetError, DiffError, EdgeError,
     EditSessionError, EntityError, EventError, EventLogError, JwtKeyError, KeyPairError,
     ModelError, NodeError, NodePositionError, OrganizationError, QualificationError,
-    SchematicError, SecretError, SessionError, UserError, WorkspaceError,
+    SchematicError, SecretError, SessionError, UserError, WorkflowError, WorkspaceError,
 };
 
 pub mod application_context_dal;
@@ -22,6 +22,7 @@ pub mod secret_dal;
 pub mod session_dal;
 pub mod signup_dal;
 pub mod updates;
+pub mod workflow_dal;
 
 #[derive(Error, Debug)]
 pub enum HandlerError {
@@ -91,6 +92,8 @@ pub enum HandlerError {
     Diff(#[from] DiffError),
     #[error("qualification error: {0}")]
     Qualification(#[from] QualificationError),
+    #[error("workflow error: {0}")]
+    Workflow(#[from] WorkflowError),
 }
 
 pub type HandlerResult<T> = Result<T, HandlerError>;

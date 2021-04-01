@@ -111,9 +111,35 @@ export interface Qualification {
   link?: string;
 }
 
+export interface CommandBase {
+  name: string;
+  description: string;
+}
+
+export interface CommandAlias extends CommandBase {
+  name: string;
+  description: string;
+  aliasTo: string;
+  args?: never;
+}
+
+export interface CommandDirect extends CommandBase {
+  aliastTo?: never;
+  args?: Prop[];
+}
+
+export type Command = CommandDirect | CommandAlias;
+
+export interface Action {
+  name: string;
+  args?: Prop[];
+}
+
 export interface RegistryEntry {
   entityType: string;
   ui?: RegistryEntryUi;
   properties: Prop[];
   qualifications?: Qualification[];
+  commands?: Command[];
+  actions?: Action[];
 }

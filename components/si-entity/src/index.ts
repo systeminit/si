@@ -9,4 +9,4 @@ export {
   EditField,
 } from "./siEntity";
 export { SiStorable } from "./siStorable";
-export { Resource } from "./resource";
+export { Resource, ResourceHealth, ResourceStatus } from "./resource";

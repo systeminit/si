@@ -16,7 +16,7 @@ pub enum WorkspaceError {
 
 pub type WorkspaceResult<T> = Result<T, WorkspaceError>;
 
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Workspace {
     pub id: String,

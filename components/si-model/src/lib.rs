@@ -18,6 +18,7 @@ mod embedded {
     embed_migrations!("./src/migrations");
 }
 
+pub mod action;
 pub mod api_client;
 pub mod application;
 pub mod billing_account;
@@ -44,8 +45,10 @@ pub mod si_storable;
 pub mod support;
 pub mod system;
 pub mod user;
+pub mod workflow;
 pub mod workspace;
 
+pub use action::{Action, ActionError, ActionResult};
 pub use api_client::{ApiClaim, ApiClient, ApiClientError, ApiClientKind, ApiClientResult};
 pub use application::{
     ApplicationContext, ApplicationEntities, ApplicationError, ApplicationListEntry,
@@ -79,9 +82,11 @@ pub use secret::{
 };
 pub use session::{SessionError, SessionResult};
 pub use si_storable::{MinimalStorable, SiStorable, SimpleStorable};
+pub use support::lodash::{self, LodashError};
 pub use support::veritech::{Veritech, VeritechError};
 pub use system::{SystemError, SystemResult};
 pub use user::{LoginReply, LoginRequest, SiClaims, User, UserError, UserResult};
+pub use workflow::{Workflow, WorkflowContext, WorkflowError, WorkflowRun};
 pub use workspace::{Workspace, WorkspaceError};
 
 #[derive(Error, Debug)]

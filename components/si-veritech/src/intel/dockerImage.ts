@@ -5,7 +5,7 @@ import {
   InferPropertiesRequest,
 } from "../controllers/inferProperties";
 import Debug from "debug";
-const debug = Debug("veritech:controllers:inferProperties:dockerImage");
+const debug = Debug("veritech:controllers:intel:dockerImage");
 import {
   CheckQualificationsItem,
   CheckQualificationsRequest,
@@ -13,6 +13,7 @@ import {
 import { SiCtx } from "../siCtx";
 
 import _ from "lodash";
+import { RunCommandCallbacks } from "../controllers/runCommand";
 
 function inferProperties(
   request: InferPropertiesRequest,
@@ -67,4 +68,17 @@ export const checkQualifications: CheckQualificationCallbacks = {
   },
 };
 
-export default { inferProperties, checkQualifications };
+export const runCommands: RunCommandCallbacks = {
+  "universal:deploy": async function (ctx, req, ws) {
+    debug("hello from inside");
+    await ctx.execStream(ws, "docker", [
+      "pull",
+      req.selection.entity.getProperty({
+        system: req.system.id,
+        path: ["image"],
+      }),
+    ]);
+  },
+};
+
+export default { inferProperties, checkQualifications, runCommands };

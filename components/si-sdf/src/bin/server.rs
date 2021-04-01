@@ -1,7 +1,7 @@
 use std::env;
 
 use si_data::{EventLogFS, NatsConn, PgPool};
-use si_model::{jwt_key, migrate, Veritech};
+use si_model::{jwt_key, migrate, Veritech, Workflow};
 use si_sdf::start;
 
 #[tokio::main]
@@ -29,6 +29,9 @@ async fn main() -> anyhow::Result<()> {
 
     println!("*** Initializing Veritech ***");
     let veritech = Veritech::new(&settings.veritech, event_log_fs.clone());
+
+    println!("*** Loading workflow builtins ***");
+    Workflow::load_builtins(&pg, &veritech).await?;
 
     println!("*** Checking for JWT keys ***");
     let mut conn = pg.pool.get().await?;

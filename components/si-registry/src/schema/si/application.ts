@@ -6,6 +6,11 @@ const application: RegistryEntry = {
     hidden: true,
   },
   properties: [],
+  actions: [
+    {
+      name: "deploy",
+    },
+  ],
 };
 
 export default application;

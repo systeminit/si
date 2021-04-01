@@ -26,6 +26,16 @@ import {
   Qualification,
   QualificationStart,
 } from "@/api/sdf/model/qualification";
+import {
+  IRunActionReply,
+  IRunActionRequest,
+  WorkflowDal,
+} from "./api/sdf/dal/workflowDal";
+import {
+  WorkflowRun,
+  WorkflowRunStep,
+  WorkflowRunStepEntity,
+} from "./api/sdf/model/workflow";
 
 export const workspace$ = new ReplaySubject<IWorkspace | null>(1);
 workspace$.next(null);
@@ -207,3 +217,7 @@ export const schematicSelectedEntityId$: BehaviorSubject<string> = new BehaviorS
 
 export const entityQualifications$: Subject<Qualification> = new Subject();
 export const entityQualificationStart$: Subject<QualificationStart> = new Subject();
+
+export const workflowRuns$: Subject<WorkflowRun> = new Subject();
+export const workflowRunSteps$: Subject<WorkflowRunStep> = new Subject();
+export const workflowRunStepEntities$: Subject<WorkflowRunStepEntity> = new Subject();
