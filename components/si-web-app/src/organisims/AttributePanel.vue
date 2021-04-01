@@ -39,6 +39,14 @@
         <CodeIcon size="1.1x" />
       </button>
       <button
+        class="pl-1 focus:outline-none"
+        :class="qualificationViewClasses()"
+        @click="switchToQualificationView()"
+      >
+        <CheckSquareIcon size="1.1x" />
+      </button>
+
+      <button
         class="pl-1 text-white focus:outline-none"
         :class="eventViewClasses()"
         @click="switchToEventView()"
@@ -62,6 +70,12 @@
           v-if="activeView == 'attribute'"
           :entity="entity"
           :diff="diff"
+        />
+        <QualificationViewer
+          v-else-if="activeView == 'qualification'"
+          :entity="entity"
+          :qualifications="qualifications"
+          :starting="qualificationStart"
         />
         <!--
         <CodeViewer
@@ -95,30 +109,44 @@ import {
   CodeIcon,
   RadioIcon,
   DiscIcon,
+  CheckSquareIcon,
 } from "vue-feather-icons";
 import "vue-json-pretty/lib/styles.css";
 import { Entity } from "@/api/sdf/model/entity";
 import Bottle from "bottlejs";
 import { Persister } from "@/api/persister";
 import AttributeViewer from "@/organisims/AttributeViewer.vue";
+import QualificationViewer from "@/organisims/QualificationViewer.vue";
 //import CodeViewer from "@/organisims/CodeViewer.vue";
 import {
   loadEntityForEdit,
   attributePanelEntityUpdates$,
   entityLabelList$,
   schematicSelectedEntityId$,
+  entityQualifications$,
+  entityQualificationStart$,
+  changeSet$,
+  editSession$,
+  refreshEntityLabelList$,
 } from "@/observables";
-import { pluck, switchMap, tap } from "rxjs/operators";
+import { combineLatest } from "rxjs";
+import { pluck, switchMap, tap, filter, map } from "rxjs/operators";
 import { Diff } from "@/api/sdf/model/diff";
+import {
+  Qualification,
+  QualificationStart,
+} from "@/api/sdf/model/qualification";
 import _ from "lodash";
 
 interface IData {
   isLoading: boolean;
   selectedEntityId: string;
   selectionIsLocked: boolean;
-  activeView: "attribute" | "code" | "event";
+  activeView: "attribute" | "code" | "event" | "qualification";
   entity: Entity | null;
   diff: Diff;
+  qualifications: Qualification[];
+  qualificationStart: QualificationStart[];
 }
 
 export default Vue.extend({
@@ -137,7 +165,9 @@ export default Vue.extend({
     CodeIcon,
     LockIcon,
     UnlockIcon,
+    CheckSquareIcon,
     AttributeViewer,
+    QualificationViewer,
   },
   data(): IData {
     let bottle = Bottle.pop("default");
@@ -156,11 +186,68 @@ export default Vue.extend({
         activeView: "attribute",
         entity: null,
         diff: [],
+        qualifications: [],
+        qualificationStart: [],
       };
     }
   },
   subscriptions() {
     return {
+      entityQualificationStart: combineLatest(
+        entityQualificationStart$,
+        changeSet$,
+        editSession$,
+      ).pipe(
+        tap(([qualificationStart, changeSet, editSession]) => {
+          if (
+            // @ts-ignore
+            qualificationStart.entityId == this.selectedEntityId &&
+            qualificationStart.changeSetId == changeSet?.id &&
+            qualificationStart.editSessionId == editSession?.id
+          ) {
+            const newStart = _.unionBy(
+              [qualificationStart],
+              // @ts-ignore
+              this.qualificationStart,
+              "start",
+            );
+            // @ts-ignore
+            this.qualificationStart = newStart;
+          }
+        }),
+      ),
+      entityQualifications: combineLatest(
+        entityQualifications$,
+        changeSet$,
+        editSession$,
+      ).pipe(
+        tap(([qualification, changeSet, editSession]) => {
+          if (
+            // @ts-ignore
+            qualification.entityId == this.selectedEntityId &&
+            qualification.siChangeSet.changeSetId == changeSet?.id &&
+            qualification.siChangeSet.editSessionId == editSession?.id
+          ) {
+            // @ts-ignore
+            const newQuals = _.unionBy(
+              [qualification],
+              // @ts-ignore
+              this.qualifications,
+              "name",
+            );
+            // @ts-ignore
+            this.qualifications = newQuals;
+
+            const newStarts = _.filter(
+              // @ts-ignore
+              this.qualificationStart,
+              q => q.start != qualification.name,
+            );
+            // @ts-ignore
+            this.qualificationStart = newStarts;
+          }
+        }),
+      ),
       attributePanelEntityUpdates: attributePanelEntityUpdates$.pipe(
         tap(reply => {
           if (reply.entity.id == this.$data.selectedEntityId) {
@@ -168,12 +255,14 @@ export default Vue.extend({
             this.entity = reply.entity;
             // @ts-ignore
             this.diff = reply.diff;
+            // @ts-ignore
+            this.qualifications = reply.qualifications;
           }
         }),
       ),
       entityLabelList: entityLabelList$.pipe(
         tap(r => {
-          if (r.error) {
+          if (r.error && r.error.code != 42) {
             emitEditorErrorMessage(r.error.message);
           }
         }),
@@ -198,6 +287,8 @@ export default Vue.extend({
             this.entity = null;
             // @ts-ignore
             this.diff = [];
+            // @ts-ignore
+            this.qualifications = [];
             emitEditorErrorMessage(r.error.message);
           } else {
             if (r.entity) {
@@ -205,6 +296,8 @@ export default Vue.extend({
               this.entity = r.entity;
               // @ts-ignore
               this.diff = r.diff;
+              // @ts-ignore
+              this.qualifications = r.qualifications;
             }
           }
         }),
@@ -228,6 +321,9 @@ export default Vue.extend({
     eventViewClasses(): Record<string, any> {
       return this.viewClasses("event");
     },
+    qualificationViewClasses(): Record<string, any> {
+      return this.viewClasses("qualification");
+    },
     switchToCodeView() {
       this.activeView = "code";
     },
@@ -236,6 +332,9 @@ export default Vue.extend({
     },
     switchToEventView() {
       this.activeView = "event";
+    },
+    switchToQualificationView() {
+      this.activeView = "qualification";
     },
     async toggleSelectionLock() {
       if (this.selectionIsLocked) {
@@ -259,6 +358,9 @@ export default Vue.extend({
       },
       deep: true,
     },
+  },
+  mounted() {
+    refreshEntityLabelList$.next(true);
   },
 });
 </script>

@@ -12,6 +12,7 @@ export {
   RegistryEntry,
   RegistryEntryUi,
   MenuCategory,
+  Qualification,
 } from "./registryEntry";
 export { entityMenu } from "./menu";
 export { registry, findProp } from "./registry";

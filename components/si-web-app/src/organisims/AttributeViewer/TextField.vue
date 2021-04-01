@@ -333,12 +333,13 @@ import SquareApplicationIcon from "./icons/SquareApplicationIcon.vue";
 import SquareSystemIcon from "./icons/SquareSystemIcon.vue";
 import { updateEntity } from "@/observables";
 import { Entity } from "@/api/sdf/model/entity";
+import { ValidateFailure } from "si-entity/dist/validation";
 
 interface Data {
   startValue: string;
   currentValue: string;
   updating: boolean;
-  errors: string[];
+  errors: ValidateFailure["errors"];
   showAllValues: boolean;
 }
 

@@ -1,4 +1,5 @@
-import express from "express";
+import { Context } from "koa";
+
 import Debug from "debug";
 const debug = Debug("veritech:controllers:inferProperties");
 
@@ -25,20 +26,17 @@ export interface InferPropertiesResult {
   entity: Entity;
 }
 
-export function inferProperties(
-  req: express.Request,
-  res: express.Response,
-): void {
+export function inferProperties(ctx: Context): void {
   debug("/inferProperties BEGIN");
-  debug("request body: %O", req.body);
-  const request: InferPropertiesRequest = req.body;
+  debug("request body: %O", ctx.request.body);
+  const request: InferPropertiesRequest = ctx.request.body;
   const registryObj = registry[request.entityType];
   if (!registryObj) {
-    res.status(400);
-    res.send({
+    ctx.response.status = 400;
+    ctx.response.body = {
       code: 400,
       message: `Cannot find registry entry for ${request.entityType}`,
-    });
+    };
     return;
   }
 
@@ -49,13 +47,13 @@ export function inferProperties(
     result.entity.computeProperties();
     debug("response body: %O", result);
     debug("/inferProperties END");
-    res.send(result);
+    ctx.response.body = result;
   } else {
     debug("default response");
     debug("/inferProperties END");
     request.entity = Entity.fromJson(request.entity);
     request.entity.computeProperties();
-    res.status(200);
-    res.send({ entity: request.entity });
+    ctx.response.status = 200;
+    ctx.response.body = { entity: request.entity };
   }
 }

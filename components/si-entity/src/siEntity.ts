@@ -444,10 +444,14 @@ export class SiEntity implements ISiEntity {
     system,
     path,
   }: {
-    system: OpSet["system"];
+    system?: OpSet["system"];
     path: OpSet["path"];
   }): T {
-    return _.get(this.properties[system], path);
+    if (this.properties[system]) {
+      return _.get(this.properties[system], path);
+    } else {
+      return _.get(this.properties["baseline"], path);
+    }
   }
 
   inferred(): Setters {

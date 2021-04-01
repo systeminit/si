@@ -12,6 +12,7 @@ mod key_pair;
 mod node;
 mod node_position;
 mod organization;
+mod qualification;
 mod resource;
 mod secret;
 mod user;

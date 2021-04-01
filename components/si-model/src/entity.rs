@@ -2,8 +2,8 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::{
-    generate_name, Edge, EdgeError, EdgeKind, Resource, ResourceError, SiChangeSet, SiStorable,
-    Veritech, VeritechError,
+    generate_name, Edge, EdgeError, EdgeKind, Qualification, QualificationError, Resource,
+    ResourceError, SiChangeSet, SiStorable, Veritech, VeritechError,
 };
 use si_data::{NatsConn, NatsTxn, NatsTxnError, PgPool, PgTxn};
 
@@ -49,6 +49,8 @@ pub enum EntityError {
     Deadpool(#[from] deadpool_postgres::PoolError),
     #[error("no change set provided")]
     NoChangeSet,
+    #[error("qualification error: {0}")]
+    Qualification(#[from] QualificationError),
 }
 
 #[derive(Serialize, Debug)]
@@ -71,6 +73,34 @@ pub struct InferPropertiesRequest {
 #[serde(rename_all = "camelCase")]
 pub struct InferPropertiesResponse {
     entity: Entity,
+}
+
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct CheckQualificationsRequest {
+    system_id: String,
+    entity_type: String,
+    entity: Entity,
+    predecessors: Vec<InferPropertiesPredecessor>,
+    resources: Vec<Resource>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub enum CheckQualificationsProtocol {
+    ValidNames(Vec<String>),
+    Start(String),
+    Item(CheckQualificationsItem),
+    Finished,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct CheckQualificationsItem {
+    name: String,
+    qualified: bool,
+    output: Option<String>,
+    error: Option<String>,
 }
 
 pub type EntityResult<T> = Result<T, EntityError>;
@@ -191,8 +221,6 @@ impl Entity {
             .await?;
         }
 
-        //entity.save_projection(&txn, &nats).await?;
-
         Ok(entity)
     }
 
@@ -225,6 +253,161 @@ impl Entity {
             .await?;
         }
         Ok(())
+    }
+
+    pub async fn task_check_qualifications_for_edit_session(
+        entity: Entity,
+        pg: PgPool,
+        nats_conn: NatsConn,
+        veritech: Veritech,
+        system_id: Option<String>,
+        change_set_id: String,
+        edit_session_id: String,
+        workspace_id: String,
+    ) -> EntityResult<()> {
+        let mut conn = pg.pool.get().await?;
+        let txn = conn.transaction().await?;
+        let nats = nats_conn.transaction();
+
+        let system_id = system_id.unwrap_or("baseline".to_string());
+        let resources = Resource::for_edit_session_by_entity_id(
+            &txn,
+            &entity.id,
+            &change_set_id,
+            &edit_session_id,
+        )
+        .await?;
+
+        let predecessor_edges =
+            Edge::direct_predecessor_edges_by_object_id(&txn, &EdgeKind::Configures, &entity.id)
+                .await?;
+        let mut predecessors: Vec<InferPropertiesPredecessor> = Vec::new();
+        for edge in predecessor_edges {
+            let edge_entity = Entity::for_edit_session(
+                &txn,
+                &edge.tail_vertex.object_id,
+                &change_set_id,
+                &edit_session_id,
+            )
+            .await?;
+            let edge_resources = Resource::for_edit_session_by_entity_id(
+                &txn,
+                &edge.tail_vertex.object_id,
+                &change_set_id,
+                &edit_session_id,
+            )
+            .await?;
+            let predecessor = InferPropertiesPredecessor {
+                entity: edge_entity,
+                resources: edge_resources,
+            };
+            predecessors.push(predecessor);
+        }
+        let request = CheckQualificationsRequest {
+            entity_type: entity.entity_type.clone(),
+            entity: entity.clone(),
+            predecessors,
+            resources,
+            system_id,
+        };
+        let (progress_tx, mut progress_rx) =
+            tokio::sync::mpsc::unbounded_channel::<CheckQualificationsProtocol>();
+
+        veritech
+            .send_async("checkQualifications", request, progress_tx)
+            .await?;
+
+        txn.commit().await?;
+        nats.commit().await?;
+
+        let mut valid_names: Vec<String> = vec![];
+        while let Some(message) = progress_rx.recv().await {
+            match message {
+                CheckQualificationsProtocol::ValidNames(names) => {
+                    valid_names = names;
+                }
+                CheckQualificationsProtocol::Start(check_name) => {
+                    dbg!(format!("starting {}", check_name));
+                    let nats = nats_conn.transaction();
+                    let mut storable = entity.si_storable.clone();
+                    storable.type_name = "qualificationStart".to_string();
+                    nats.publish(&serde_json::json!({
+                        "start": check_name,
+                        "entityId": entity.id.clone(),
+                        "changeSetId": change_set_id.clone(),
+                        "editSessionId": edit_session_id.clone(),
+                        "siStorable": storable,
+                    }))
+                    .await?;
+                    nats.commit().await?;
+                }
+                CheckQualificationsProtocol::Item(qual) => {
+                    dbg!(format!("got a qualification: {:?}", qual));
+                    let txn = conn.transaction().await?;
+                    let nats = nats_conn.transaction();
+                    let q = Qualification::new(
+                        &txn,
+                        &nats,
+                        &entity.id,
+                        qual.name,
+                        qual.qualified,
+                        qual.output,
+                        qual.error,
+                        &change_set_id,
+                        &edit_session_id,
+                        &workspace_id,
+                    )
+                    .await?;
+                    txn.commit().await?;
+                    nats.commit().await?;
+                    dbg!(&q);
+                }
+                CheckQualificationsProtocol::Finished => {
+                    dbg!("got a finished message");
+                    break;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    pub async fn check_qualifications_for_edit_session(
+        &self,
+        pg: &PgPool,
+        nats_conn: &NatsConn,
+        veritech: &Veritech,
+        system_id: Option<String>,
+        change_set_id: impl Into<String>,
+        edit_session_id: impl Into<String>,
+    ) -> EntityResult<bool> {
+        let change_set_id = change_set_id.into();
+        let edit_session_id = edit_session_id.into();
+        let pg = pg.clone();
+        let nats_conn = nats_conn.clone();
+        let veritech = veritech.clone();
+        let entity = self.clone();
+        let workspace_id = entity.si_storable.workspace_id.clone();
+        tokio::spawn(async move {
+            match Entity::task_check_qualifications_for_edit_session(
+                entity,
+                pg,
+                nats_conn,
+                veritech,
+                system_id,
+                change_set_id,
+                edit_session_id,
+                workspace_id,
+            )
+            .await
+            {
+                Ok(()) => {}
+                Err(e) => {
+                    dbg!("who knows what happened checking qualifications: {:?}", &e);
+                }
+            }
+        });
+        Ok(true)
     }
 
     pub async fn infer_properties_for_edit_session(
@@ -398,7 +581,7 @@ impl Entity {
 
     pub async fn task_calculate_properties_of_successors_for_edit_session(
         pg: PgPool,
-        _nats_conn: NatsConn,
+        nats_conn: NatsConn,
         veritech: Veritech,
         first_entity_id: String,
         change_set_id: String,
@@ -430,6 +613,16 @@ impl Entity {
                     )
                     .await?;
                 if changed {
+                    edge_entity
+                        .check_qualifications_for_edit_session(
+                            &pg,
+                            &nats_conn,
+                            &veritech,
+                            None,
+                            change_set_id.clone(),
+                            edit_session_id.clone(),
+                        )
+                        .await?;
                     entities_to_check.push(edge_entity.id);
                 }
             }

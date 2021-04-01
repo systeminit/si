@@ -4,7 +4,7 @@ use si_data::{NatsConn, PgPool};
 use si_model::{
     application,
     entity::diff::{diff_for_props, Diffs},
-    ApplicationEntities, Entity, LabelListItem, Veritech,
+    ApplicationEntities, Entity, LabelListItem, Qualification, Veritech,
 };
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -95,6 +95,7 @@ pub struct GetEntityRequest {
 pub struct GetEntityReply {
     pub entity: Entity,
     pub diff: Diffs,
+    pub qualifications: Vec<Qualification>,
 }
 
 pub async fn get_entity(
@@ -161,7 +162,20 @@ pub async fn get_entity(
         Err(_e) => diff_for_props(&entity, &entity).map_err(HandlerError::from)?,
     };
 
-    let reply = GetEntityReply { entity, diff };
+    let qualifications: Vec<Qualification> = Qualification::for_head_or_change_set_or_edit_session(
+        &txn,
+        &request.entity_id,
+        request.change_set_id.as_ref(),
+        request.edit_session_id.as_ref(),
+    )
+    .await
+    .map_err(HandlerError::from)?;
+
+    let reply = GetEntityReply {
+        entity,
+        diff,
+        qualifications,
+    };
     Ok(warp::reply::json(&reply))
 }
 
@@ -172,6 +186,7 @@ pub struct UpdateEntityRequest {
     pub entity: Entity,
     pub change_set_id: String,
     pub edit_session_id: String,
+    pub system_id: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -179,6 +194,7 @@ pub struct UpdateEntityRequest {
 pub struct UpdateEntityReply {
     pub entity: Entity,
     pub diff: Diffs,
+    pub qualifications: Vec<Qualification>,
     pub label: LabelListItem,
 }
 
@@ -237,7 +253,6 @@ pub async fn update_entity(
         )
         .await
         .map_err(HandlerError::from)?;
-    dbg!(&entity);
     let diff = match Entity::for_diff(
         &txn,
         &entity.id,
@@ -255,12 +270,34 @@ pub async fn update_entity(
         value: entity.id.clone(),
     };
 
+    let qualifications: Vec<Qualification> = Qualification::for_head_or_change_set_or_edit_session(
+        &txn,
+        &entity.id,
+        Some(&request.change_set_id),
+        Some(&request.edit_session_id),
+    )
+    .await
+    .map_err(HandlerError::from)?;
+
     txn.commit().await.map_err(HandlerError::from)?;
     nats.commit().await.map_err(HandlerError::from)?;
+
+    entity
+        .check_qualifications_for_edit_session(
+            &pg,
+            &nats_conn,
+            &veritech,
+            request.system_id,
+            &request.change_set_id,
+            &request.edit_session_id,
+        )
+        .await
+        .map_err(HandlerError::from)?;
 
     let reply = UpdateEntityReply {
         entity,
         diff,
+        qualifications,
         label,
     };
     Ok(warp::reply::json(&reply))

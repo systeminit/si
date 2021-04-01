@@ -2,6 +2,7 @@ import { SDFError } from "@/api/sdf";
 import Bottle from "bottlejs";
 import { Entity } from "@/api/sdf/model/entity";
 import { Diff } from "../model/diff";
+import { Qualification } from "@/api/sdf/model/qualification";
 
 export interface IGetEntityListRequest {
   workspaceId: string;
@@ -47,12 +48,14 @@ export interface IGetEntityRequest {
 export interface IGetEntityReplySuccess {
   entity: Entity;
   diff: Diff;
+  qualifications: Qualification[];
   error?: never;
 }
 
 export interface IGetEntityReplyFailure {
   entity?: never;
   diff?: never;
+  qualifications?: never;
   error: SDFError;
 }
 
@@ -76,12 +79,14 @@ export interface IUpdateEntityRequest {
   entity: Entity;
   changeSetId: string;
   editSessionId: string;
+  systemId?: string;
 }
 
 export interface IUpdateEntityReplySuccess {
   entity: Entity;
   diff: Diff;
   label: { label: string; value: string };
+  qualifications: Qualification[];
   error?: never;
 }
 
@@ -89,6 +94,7 @@ export interface IUpdateEntityReplyFailure {
   entity?: never;
   diff?: never;
   label?: never;
+  qualifications?: never;
   error: SDFError;
 }
 

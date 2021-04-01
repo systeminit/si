@@ -9,8 +9,8 @@ use si_data::{NatsTxnError, PgTxn};
 use si_model::{
     ApiClientError, ApplicationError, BillingAccountError, ChangeSetError, DiffError, EdgeError,
     EditSessionError, EntityError, EventError, EventLogError, JwtKeyError, KeyPairError,
-    ModelError, NodeError, NodePositionError, OrganizationError, SchematicError, SecretError,
-    SessionError, UserError, WorkspaceError,
+    ModelError, NodeError, NodePositionError, OrganizationError, QualificationError,
+    SchematicError, SecretError, SessionError, UserError, WorkspaceError,
 };
 
 pub mod application_context_dal;
@@ -90,6 +90,8 @@ pub enum HandlerError {
     Application(#[from] ApplicationError),
     #[error("diff error: {0}")]
     Diff(#[from] DiffError),
+    #[error("qualification error: {0}")]
+    Qualification(#[from] QualificationError),
 }
 
 pub type HandlerResult<T> = Result<T, HandlerError>;
