@@ -1,14 +1,17 @@
 <template>
   <Panel
     initialPanelType="secret"
+    :panelIndex="panelIndex"
     :panelRef="panelRef"
     :panelContainerRef="panelContainerRef"
     :initialMaximizedContainer="initialMaximizedContainer"
     :initialMaximizedFull="initialMaximizedFull"
+    :isVisible="isVisible"
+    :isMaximizedContainerEnabled="isMaximizedContainerEnabled"
     v-on="$listeners"
   >
     <template v-slot:menuButtons>
-      <div class="align-middle pl-2">
+      <div class="pl-2 align-middle">
         <SiButton
           icon="plus"
           label="New"
@@ -51,10 +54,13 @@ export default Vue.extend({
     SiButton,
   },
   props: {
+    panelIndex: Number,
     panelRef: String,
     panelContainerRef: String,
     initialMaximizedFull: Boolean,
     initialMaximizedContainer: Boolean,
+    isVisible: Boolean,
+    isMaximizedContainerEnabled: Boolean,
   },
   data(): IData {
     return {

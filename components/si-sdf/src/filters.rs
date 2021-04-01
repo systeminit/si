@@ -17,7 +17,6 @@ pub fn api(
         .or(session_dal(pg, secret_key))
         .or(application_dal(pg, nats_conn, veritech))
         .or(application_context_dal(pg, nats_conn))
-        .or(editor_dal(pg, nats_conn, veritech))
         .or(schematic_dal(pg, nats_conn, veritech))
         .or(attribute_dal(pg, nats_conn, veritech))
         .or(secret_dal(pg, nats_conn))
@@ -151,10 +150,19 @@ pub fn attribute_dal_update_entity(
 pub fn schematic_dal(
     pg: &PgPool,
     nats_conn: &NatsConn,
-    _veritech: &Veritech,
+    veritech: &Veritech,
 ) -> BoxedFilter<(impl warp::Reply,)> {
     schematic_dal_get_application_system_schematic(pg.clone())
         .or(schematic_dal_connection_create(
+            pg.clone(),
+            nats_conn.clone(),
+        ))
+        .or(schematic_dal_node_create_for_application(
+            pg.clone(),
+            nats_conn.clone(),
+            veritech.clone(),
+        ))
+        .or(schematic_dal_update_node_position(
             pg.clone(),
             nats_conn.clone(),
         ))
@@ -175,6 +183,24 @@ pub fn schematic_dal_get_application_system_schematic(
         .boxed()
 }
 
+pub fn schematic_dal_node_create_for_application(
+    pg: PgPool,
+    nats_conn: NatsConn,
+    veritech: Veritech,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("schematicDal" / "nodeCreateForApplication")
+        .and(warp::post())
+        .and(with_pg(pg))
+        .and(with_nats_conn(nats_conn))
+        .and(with_veritech(veritech))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::body::json::<
+            handlers::schematic_dal::NodeCreateForApplicationRequest,
+        >())
+        .and_then(handlers::schematic_dal::node_create_for_application)
+        .boxed()
+}
+
 pub fn schematic_dal_connection_create(
     pg: PgPool,
     nats_conn: NatsConn,
@@ -191,51 +217,19 @@ pub fn schematic_dal_connection_create(
         .boxed()
 }
 
-// Editor DAL
-pub fn editor_dal(
-    pg: &PgPool,
-    nats_conn: &NatsConn,
-    veritech: &Veritech,
-) -> BoxedFilter<(impl warp::Reply,)> {
-    editor_dal_node_create_for_application(pg.clone(), nats_conn.clone(), veritech.clone())
-        .or(editor_dal_update_node_position(
-            pg.clone(),
-            nats_conn.clone(),
-        ))
-        .boxed()
-}
-
-pub fn editor_dal_node_create_for_application(
-    pg: PgPool,
-    nats_conn: NatsConn,
-    veritech: Veritech,
-) -> BoxedFilter<(impl warp::Reply,)> {
-    warp::path!("editorDal" / "nodeCreateForApplication")
-        .and(warp::post())
-        .and(with_pg(pg))
-        .and(with_nats_conn(nats_conn))
-        .and(with_veritech(veritech))
-        .and(warp::header::<String>("authorization"))
-        .and(warp::body::json::<
-            handlers::editor_dal::NodeCreateForApplicationRequest,
-        >())
-        .and_then(handlers::editor_dal::node_create_for_application)
-        .boxed()
-}
-
-pub fn editor_dal_update_node_position(
+pub fn schematic_dal_update_node_position(
     pg: PgPool,
     nats_conn: NatsConn,
 ) -> BoxedFilter<(impl warp::Reply,)> {
-    warp::path!("editorDal" / "updateNodePosition")
+    warp::path!("schematicDal" / "updateNodePosition")
         .and(warp::post())
         .and(with_pg(pg))
         .and(with_nats_conn(nats_conn))
         .and(warp::header::<String>("authorization"))
         .and(warp::body::json::<
-            handlers::editor_dal::UpdateNodePositionRequest,
+            handlers::schematic_dal::UpdateNodePositionRequest,
         >())
-        .and_then(handlers::editor_dal::update_node_position)
+        .and_then(handlers::schematic_dal::update_node_position)
         .boxed()
 }
 

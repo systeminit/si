@@ -40,7 +40,7 @@ enum SchematicKind {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-struct NodeWithPositions {
+pub struct NodeWithPositions {
     pub id: String,
     pub object_type: String,
     pub object_id: String,
@@ -115,15 +115,15 @@ struct SchematicNodeSockets {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-struct SchematicNode {
-    node: NodeWithPositions,
+pub struct SchematicNode {
+    pub node: NodeWithPositions,
     sockets: SchematicNodeSockets,
     object: serde_json::Value,
     connections: Connections,
 }
 
 impl SchematicNode {
-    async fn new(txn: &PgTxn<'_>, node: Node, object: serde_json::Value) -> SchematicResult<Self> {
+    pub async fn new(txn: &PgTxn<'_>, node: Node, object: serde_json::Value) -> SchematicResult<Self> {
         let node = NodeWithPositions::from_node_position(&txn, node).await?;
 
         let sockets = SchematicNodeSockets {
@@ -158,7 +158,6 @@ impl Schematic {
         txn: &PgTxn<'_>,
         root_object_id: impl AsRef<str>,
         workspace_id: impl AsRef<str>,
-        _system_id: impl AsRef<str>,
         change_set_id: Option<String>,
         edit_session_id: Option<String>,
         edge_kinds: Vec<EdgeKind>,

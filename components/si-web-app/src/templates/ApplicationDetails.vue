@@ -1,5 +1,5 @@
 <template>
-  <div id="application-editor" class="flex flex-col w-full h-full">
+  <div id="application-editor" class="flex flex-col w-full h-full select-none">
     <div class="flex flex-col w-full h-full">
       <StatusBar :instanceId="applicationContextCtx.instanceId" />
       <ApplicationContext

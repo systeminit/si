@@ -4,19 +4,9 @@
     @mouseenter="activateShortcuts()"
     @mouseleave="deactivateShortcuts()"
   >
-    <EmptyPanel
-      :panelRef="panelRef"
-      :panelContainerRef="panelContainerRef"
-      @change-panel="changePanelType"
-      @panel-maximized-full="setMaximizedFull($event)"
-      @panel-maximized-container="setMaximizedContainer($event)"
-      @panel-minimized-full="setMaximizedFull($event)"
-      @panel-minimized-container="setMaximizedContainer($event)"
-      :initialMaximizedFull="maximizedFull"
-      :initialMaximizedContainer="maximizedContainer"
-      v-if="panelType == 'empty'"
-    />
     <AttributePanel
+      :isVisible="isVisible"
+      :panelIndex="panelIndex"
       :panelRef="panelRef"
       :panelContainerRef="panelContainerRef"
       @change-panel="changePanelType"
@@ -26,9 +16,12 @@
       @panel-minimized-container="setMaximizedContainer($event)"
       :initialMaximizedFull="maximizedFull"
       :initialMaximizedContainer="maximizedContainer"
+      :isMaximizedContainerEnabled="isMaximizedContainerEnabled"
       v-if="panelType == 'attribute'"
     />
     <SecretPanel
+      :isVisible="isVisible"
+      :panelIndex="panelIndex"
       :panelRef="panelRef"
       :panelContainerRef="panelContainerRef"
       @change-panel="changePanelType"
@@ -38,9 +31,12 @@
       @panel-minimized-container="setMaximizedContainer($event)"
       :initialMaximizedFull="maximizedFull"
       :initialMaximizedContainer="maximizedContainer"
+      :isMaximizedContainerEnabled="isMaximizedContainerEnabled"
       v-else-if="panelType == 'secret'"
     />
     <SchematicPanel
+      :isVisible="isVisible"
+      :panelIndex="panelIndex"
       :panelRef="panelRef"
       :panelContainerRef="panelContainerRef"
       @change-panel="changePanelType"
@@ -50,6 +46,7 @@
       @panel-minimized-container="setMaximizedContainer($event)"
       :initialMaximizedFull="maximizedFull"
       :initialMaximizedContainer="maximizedContainer"
+      :isMaximizedContainerEnabled="isMaximizedContainerEnabled"
       v-else-if="panelType == 'schematic'"
     />
   </div>
@@ -66,7 +63,6 @@ import Bottle from "bottlejs";
 import { Persister } from "@/api/persister";
 
 export enum PanelType {
-  Empty = "empty",
   Attribute = "attribute",
   Secret = "secret",
   Schematic = "schematic",
@@ -77,20 +73,22 @@ export interface IData {
   panelType: PanelType;
   maximizedFull: boolean;
   maximizedContainer: boolean;
+  isVisible: boolean;
+  isMaximizedContainerEnabled: Boolean;
 }
 
 export default Vue.extend({
   name: "PanelSelector",
   props: {
+    panelIndex: Number,
     panelRef: String,
     panelContainerRef: String,
     initialPanelType: {
       type: String as PropType<PanelType>,
-      default: PanelType.Empty,
+      default: PanelType.Schematic,
     },
   },
   components: {
-    EmptyPanel,
     SecretPanel,
     AttributePanel,
     SchematicPanel,
@@ -107,6 +105,8 @@ export default Vue.extend({
         panelType: this.initialPanelType,
         maximizedFull: false,
         maximizedContainer: false,
+        isVisible: true,
+        isMaximizedContainerEnabled: true,
       };
     }
   },
@@ -136,6 +136,12 @@ export default Vue.extend({
           });
         }
       }
+    },
+    hide() {
+      this.isVisible = false;
+    },
+    unhide() {
+      this.isVisible = true;
     },
     setMaximizedFull(to: boolean) {
       this.maximizedFull = to;

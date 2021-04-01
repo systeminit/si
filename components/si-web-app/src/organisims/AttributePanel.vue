@@ -1,10 +1,13 @@
 <template>
   <Panel
     initialPanelType="attribute"
+    :panelIndex="panelIndex"
     :panelRef="panelRef"
     :panelContainerRef="panelContainerRef"
     :initialMaximizedContainer="initialMaximizedContainer"
     :initialMaximizedFull="initialMaximizedFull"
+    :isVisible="isVisible"
+    :isMaximizedContainerEnabled="isMaximizedContainerEnabled"
     v-on="$listeners"
   >
     <template v-slot:menuButtons>
@@ -152,10 +155,13 @@ interface IData {
 export default Vue.extend({
   name: "AttributePanel",
   props: {
+    panelIndex: Number,
     panelRef: String,
     panelContainerRef: String,
     initialMaximizedFull: Boolean,
     initialMaximizedContainer: Boolean,
+    isVisible: Boolean,
+    isMaximizedContainerEnabled: Boolean,
   },
   components: {
     Panel,

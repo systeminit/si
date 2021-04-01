@@ -18,22 +18,26 @@
 
       <SiGraphEdge
         v-if="connection.transientConnection.edge"
+        :positionCtx="positionCtx"
         :key="connection.transientConnection.edge.id"
         :edge="connection.transientConnection.edge"
         :graphViewerId="id"
         :schematicPanelStoreCtx="schematicPanelStoreCtx"
       />
 
-      <div v-if="graph">
+      <div v-if="schematic">
         <SiGraphEdge
-          v-for="(edge, index) in graph.edges"
+          v-for="(edge, index) in schematic.edges"
+          :positionCtx="positionCtx"
           :key="index"
           :edge="edge"
           :graphViewerId="id"
           :schematicPanelStoreCtx="schematicPanelStoreCtx"
         />
         <SiGraphNode
-          v-for="(node, index) in graph.nodes"
+          v-for="(node, index) in schematic.nodes"
+          ref="siGraphNode"
+          :positionCtx="positionCtx"
           :key="index"
           :node="node"
           :graphViewerId="id"
@@ -51,69 +55,50 @@
 /**
  * Graph Viewer
  *
- * - Input: graph data (nodes and edges)
- * - Input: viewer configuration (viewer options)
+ * -> Renders graph (nodes and edges)
+ * -> Renders background (grid)
  *
- * - Viewer options:
- * -- Canvas resolution
- * -- Graph rendering style (nodes and edges)
- * -- Background rendering style
- * -- Keyboard shortcuts
- * -- Additional viewer options
+ * -> Handles graph manipulations (nodes and edges: transforms and connections)
+ * -> Handles viewport manipulations (pan and zoom)
  *
- * - Renders graph (nodes and edges)
- * - Renders background (grid)
- *
- * - Handles graph manipulations (nodes and edges: transforms and connections)
- * - Handles viewport manipulations (pan and zoom)
- * - Handles context menus (node right click & background right click menus)
  **/
 
-import Vue, { PropType } from "vue";
+import Vue, { PropType, Component } from "vue";
 import { mapState } from "vuex";
 
+import { InstanceStoreContext } from "@/store";
 import { PanelEventBus } from "@/atoms/PanelEventBus";
-import { SchematicPanelStore } from "@/store/modules/schematicPanel";
-import { SessionStore } from "@/store/modules/session";
+import { SiCg } from "@/api/sicg";
+import { Cg2dCoordinate, CgResolution } from "@/api/sicg";
 
-import { Edge, IEdge, IVertex, EdgeKind } from "@/api/sdf/model/edge";
-
-import { NodePositionUpdateEvent } from "@/organisims/SchematicViewer/Node.vue";
 import {
-  EdgePostionUpdateEvent,
-  EdgeTemporary,
-} from "@/organisims/SchematicViewer/Edge.vue";
+  SchematicPanelStore,
+  NodeUpdatePositionePayload,
+} from "@/store/modules/schematicPanel";
+import { SessionStore } from "@/store/modules/session";
+import {
+  ConnectionCreatePayload,
+  TransientEdgeRemovalEvent,
+} from "@/store/modules/schematicPanel";
 
-import { SetNodePositionPayload } from "@/store/modules/schematicPanel";
-import { ConnectionCreateReply } from "@/api/sdf/dal/schematicDal";
 import {
   ISchematic,
   Schematic,
   ISchematicNode,
 } from "@/api/sdf/model/schematic";
+import { Edge, IEdge, IVertex, EdgeKind } from "@/api/sdf/model/edge";
+import { INode } from "@/api/sdf/model/node";
 
-import { InstanceStoreContext } from "@/store";
+import { EditorStore } from "@/store/modules/editor";
+import { SetNodePositionPayload } from "@/store/modules/schematicPanel";
 
-import { SiCg } from "@/api/sicg";
-import { Cg2dCoordinate, CgResolution } from "@/api/sicg";
-import _ from "lodash";
-
-import { INodeUpdatePositionReply } from "@/api/sdf/dal/editorDal";
 import {
   Connection,
   ConnectionNodeReference,
   ConnectionKind,
+  ConnectionCreateReply,
+  INodeUpdatePositionReply,
 } from "@/api/sdf/dal/schematicDal";
-
-import {
-  NodeUpdatePositionePayload,
-  ConnectionCreatePayload,
-  TransientEdgeRemovalEvent,
-} from "@/store/modules/editor";
-
-import SiBackground from "@/atoms/SiBackground.vue";
-import SiGraphNode from "./SchematicViewer/Node.vue";
-import SiGraphEdge from "./SchematicViewer/Edge.vue";
 
 import {
   ShortcutRegistrationEvent,
@@ -123,45 +108,49 @@ import {
   ShortcutActions,
   ShortcutUpdateEvent,
 } from "@/organisims/ShortcutsEventBroker.vue";
-import { INode } from "@/api/sdf/model/node";
+
+import { NodePositionUpdateEvent } from "@/organisims/SchematicViewer/Node.vue";
+import {
+  EdgePostionUpdateEvent,
+  EdgeTemporary,
+} from "@/organisims/SchematicViewer/Edge.vue";
+
+import SiBackground from "@/atoms/SiBackground.vue";
+import SiGraphNode from "./SchematicViewer/Node.vue";
+import SiGraphEdge from "./SchematicViewer/Edge.vue";
+
+import _ from "lodash";
+
 export type StoreCtx = InstanceStoreContext<SchematicPanelStore>;
 
 export interface StoresCtx {
   [storeId: string]: StoreCtx;
 }
 
-export interface Graph {
-  nodes: ISchematic["nodes"];
-  edges: ISchematic["edges"];
-}
+const COMPONENT_NAMESPACE = "graphViewer";
+const TRANSIENT_CONNECTION_ID = "transientConnection";
+const TRANSIENT_CONNECTION_SVG_ID = "transientConnectionSvg";
 
-interface Selection {
-  element: HTMLElement | null;
-  offset: {
-    x: number;
-    y: number;
-  };
-  position: Cg2dCoordinate;
-  id: string | null;
-}
+type IPanelLayoutUpdated = boolean;
 
 interface IData {
   id: string;
   canvas: {
-    element: Element | Vue | HTMLElement | null;
+    element: HTMLElement | null;
     resolution: CgResolution;
     id: string;
   };
   viewer: {
-    shortcutsEnabled: boolean;
-    panningMode: boolean;
-    isPanning: boolean;
-    draggingMode: boolean;
-    isNodeConnectionMode: boolean;
-    isDragging: boolean;
-    isActive: boolean;
-    isNodeCreate: boolean;
     mouseIsDown: boolean;
+    draggingMode: boolean;
+    panningMode: boolean;
+    shortcutsEnabled: boolean;
+    isActive: boolean;
+    isDragging: boolean;
+    isPanning: boolean;
+    isNodeConnectionMode: boolean;
+    isNodeCreate: boolean;
+    isNodeCreateInit: boolean;
   };
   viewport: {
     element: Element | Vue | HTMLElement | null;
@@ -188,6 +177,7 @@ interface IData {
         x: number;
         y: number;
       };
+      event: MouseEvent | null;
     };
   };
   selection: {
@@ -210,8 +200,6 @@ interface IData {
   };
 }
 
-type IPanelLayoutUpdated = boolean;
-
 export default Vue.extend({
   name: "SchematicViewer",
   components: {
@@ -220,7 +208,7 @@ export default Vue.extend({
     SiBackground,
   },
   props: {
-    graph: {
+    schematic: {
       type: Object as PropType<SchematicPanelStore["schematic"]>,
       required: false,
     },
@@ -234,7 +222,7 @@ export default Vue.extend({
     },
   },
   data(): IData {
-    let id = _.uniqueId("graphViewer:");
+    const id = _.uniqueId(COMPONENT_NAMESPACE + ":");
     return {
       id: id,
       canvas: {
@@ -255,6 +243,7 @@ export default Vue.extend({
         isNodeConnectionMode: false,
         isNodeCreate: false,
         mouseIsDown: false,
+        isNodeCreateInit: false,
       },
       viewport: {
         element: null,
@@ -281,6 +270,7 @@ export default Vue.extend({
             x: 0,
             y: 0,
           },
+          event: null,
         },
       },
       selection: {
@@ -297,10 +287,10 @@ export default Vue.extend({
       },
       connection: {
         transientConnection: {
-          id: "transientConnection",
+          id: TRANSIENT_CONNECTION_ID,
           sourceSocketId: "",
           destinationSocketId: "",
-          elementId: id + "." + "transientConnectionSvg",
+          elementId: id + "." + TRANSIENT_CONNECTION_SVG_ID,
           edge: null,
         },
       },
@@ -309,12 +299,9 @@ export default Vue.extend({
   mounted(): void {
     this.registerEvents();
     this.setCanvasSize();
+    this.canvas.element = this.$refs.canvas as HTMLElement;
+    this.viewport.element = this.$refs.viewport as HTMLElement;
     this.setCanvasPositionToViewportCenter();
-
-    //@ts-ignore
-    this.canvas.element = this.$refs.canvas;
-    //@ts-ignore
-    this.viewport.element = this.$refs.viewport;
   },
   beforeDestroy() {
     this.deRegisterEvents();
@@ -326,13 +313,32 @@ export default Vue.extend({
     selectedNode(): ISchematicNode | null {
       return this.storesCtx.schematicPanelStoreCtx.state.selectedNode;
     },
+    // For nodes position
+    positionCtx(): string | null {
+      if (this.currentSystem) {
+        return this.currentSystem.id;
+      } else {
+        return null;
+      }
+    },
     ...mapState({
+      currentWorkspace: (state: any): SessionStore["currentWorkspace"] =>
+        state.session.currentWorkspace,
       currentSystem: (state: any): SessionStore["currentSystem"] =>
         state.session.currentSystem,
+      currentApplicationContext: (state: any): EditorStore["context"] =>
+        state.editor.context,
+      currentChangeSet: (state: any): EditorStore["currentChangeSet"] =>
+        state.editor.currentChangeSet,
+      currentEditSession: (state: any): EditorStore["currentEditSession"] =>
+        state.editor.currentEditSession,
       editMode(): boolean {
         return this.$store.getters["editor/inEditable"];
       },
     }),
+    currentApplicationId(): string | undefined {
+      return this.currentApplicationContext?.applicationId;
+    },
   },
   methods: {
     registerEvents(): void {
@@ -354,20 +360,14 @@ export default Vue.extend({
         this.handleShortcutUpdate,
       );
     },
-    async selectNode(node: INode) {
-      await this.schematicPanelStoreCtx.dispatch("nodeSelect", node);
-    },
-    async clearNodeSelection() {
-      await this.schematicPanelStoreCtx.dispatch("nodeSelectionClear");
-    },
     activateShortcuts(): void {
       this.viewer.shortcutsEnabled = true;
 
-      let ctx: ShortcutContext = {
+      const ctx: ShortcutContext = {
         id: this.id,
         isActive: true,
       };
-      let event: ShortcutRegistrationEvent = {
+      const event: ShortcutRegistrationEvent = {
         context: ctx,
       };
 
@@ -376,11 +376,11 @@ export default Vue.extend({
     deactivateShortcuts(): void {
       this.viewer.shortcutsEnabled = false;
 
-      let ctx: ShortcutContext = {
+      const ctx: ShortcutContext = {
         id: this.id,
         isActive: false,
       };
-      let event: ShortcutRegistrationEvent = {
+      const event: ShortcutRegistrationEvent = {
         context: ctx,
       };
 
@@ -409,445 +409,35 @@ export default Vue.extend({
     deactivatePanningMode(): void {
       this.viewer.panningMode = false;
     },
-    setIsNodeCreate(): void {
+    async selectNode(node: INode) {
+      await this.schematicPanelStoreCtx.dispatch("nodeSelect", node);
+    },
+    async clearNodeSelection() {
+      await this.schematicPanelStoreCtx.dispatch("nodeSelectionClear");
+    },
+    onNodeCreate(nodeId: string, event: MouseEvent): void {
       this.viewer.isNodeCreate = true;
-    },
-    mouseEnter() {
-      this.activateShortcuts();
-      this.activateViewer();
-    },
-    mouseLeave() {
-      this.deactivateShortcuts();
-      this.deactivateViewer();
-    },
-    mouseDown(e: Event): void {
-      if (this.viewer.isActive) {
-        this.viewer.mouseIsDown = true;
-        // Deletect node if clicking on "canvas"
-        // @ts-ignore
-        if (e.target.id == "transientConnectionSvg") {
-          this.clearNodeSelection();
-        }
+      const id = this.id + "." + nodeId;
+      this.selection.element = document.getElementById(id);
 
-        let ctx: MouseContext = {
-          id: this.id,
-          isActive: true,
-        };
-        let event: MouseRegistrationEvent = {
-          context: ctx,
-        };
-        PanelEventBus.$emit("mouse-registration-update", event);
-
-        // This block should go somewhere else...
-        let canvas = this.canvas.element as HTMLElement;
-        let canvasRect = canvas.getBoundingClientRect();
-        this.viewport.pan.originalPosition = {
-          x: canvasRect.left,
-          y: canvasRect.top,
-        };
-
-        // This block should go somewhere else...
-        let mouseEvent = e as MouseEvent;
-        this.viewport.mouse.position = {
-          x: mouseEvent.clientX,
-          y: mouseEvent.clientY,
-        };
-        // console.log(
-        //   "mouseClicked with position (x,y): ",
-        //   this.viewport.mouse.position.x,
-        //   this.viewport.mouse.position.y,
-        // );
-
-        // Pan viewer
-        if (this.viewer.panningMode) {
-          this.viewer.isPanning = true;
-        } else {
-          this.viewer.draggingMode = true;
-
-          // Select element for current selection
-
-          // Select a node
-          if (e.target && e.target instanceof HTMLDivElement) {
-            if (e.target.classList.contains("node")) {
-              if (this.selectedNode?.node.id) {
-                this.selection.id = this.selectedNode.node.id;
-                let id = this.id + "." + this.selectedNode.node.id;
-                this.selection.element = document.getElementById(id);
-              } else {
-                this.selection.element = null;
-              }
-            } else {
-              this.selection.element = null;
-            }
-          }
-
-          // Draw an edge
-          if (e.target) {
-            //  @ts-ignore
-            if (e.target.classList.contains("socket")) {
-              /**
-               * - Socket Connection -
-               *
-               * V1 Connection
-               * create a new transient edge (p1,p2) and snap p2(xy) to cursor until mouse up.
-               * - user clicks on source socket
-               * - user drags connection edge to destination socket (on mouse move)
-               * - user connects connection edge by draging p2 over the destination socket. On mouse up if p2 is over the
-               *   destination socket, a new connection is made.
-               *
-               * V2 Disconnection
-               * - to disconnect a conneciton, user clicks on a socket and drags the connection edge away from any node
-               *   and mouse up while the connection edge p2 isn't over anohter socket.
-               *
-               */
-
-              // @ts-ignore
-              this.connection.transientConnection.sourceSocketId = e.target.id;
-
-              let selectionObjectOffset = SiCg.cgGetMousePositionInElementSpace(
-                e as MouseEvent,
-                this.canvas.element as HTMLElement,
-              );
-
-              // Ccreate an edge
-              let transientConnection = document.createElementNS(
-                "http://www.w3.org/2000/svg",
-                "line",
-              );
-
-              this.connection.transientConnection.id =
-                this.connection.transientConnection.sourceSocketId +
-                "." +
-                "transient";
-              transientConnection.id = this.connection.transientConnection.id;
-
-              transientConnection.setAttribute(
-                "x1",
-                String(selectionObjectOffset.x),
-              );
-              transientConnection.setAttribute(
-                "y1",
-                String(selectionObjectOffset.y),
-              );
-              transientConnection.setAttribute(
-                "x2",
-                String(selectionObjectOffset.x),
-              );
-              transientConnection.setAttribute(
-                "y2",
-                String(selectionObjectOffset.y),
-              );
-              transientConnection.setAttribute("stroke", "rgb(71,99,113)");
-              transientConnection.setAttribute("stroke-width", "2");
-
-              // Add the edge to the svg
-              let transientConnectionSvg = document.getElementById(
-                this.connection.transientConnection.elementId,
-              );
-
-              transientConnectionSvg?.appendChild(transientConnection);
-
-              // Sets state to update the edge when the mouse moves
-              this.viewer.isNodeConnectionMode = true;
-              this.selection.element = document.getElementById(
-                this.connection.transientConnection.id,
-              );
-            }
-          }
-
-          // Set selection
-          if (e instanceof MouseEvent && this.selection.element) {
-            let selectionOffsetLeft = this.selection.element.offsetLeft;
-            let selectionOffsetTop = this.selection.element.offsetTop;
-
-            let mousePositionX = e.clientX;
-            let mousePositionY = e.clientY;
-
-            this.selection.offset.x = mousePositionX - selectionOffsetLeft;
-            this.selection.offset.y = mousePositionY - selectionOffsetTop;
-          }
-        }
-      }
-    },
-    mouseMove(e: MouseEvent): void {
-      if (this.viewer.isActive) {
-        if (this.viewer.panningMode) {
-          this.viewer.isPanning = true;
-          this.panViewport(e);
-        } else if (
-          this.viewer.isNodeConnectionMode &&
-          this.selection.element &&
-          this.editMode
-        ) {
-          let newPosition = SiCg.cgGetMousePositionInElementSpace(
-            e as MouseEvent,
-            this.canvas.element as HTMLElement,
-          );
-
-          this.selection.element.setAttribute("x2", String(newPosition.x));
-          this.selection.element.setAttribute("y2", String(newPosition.y));
-
-          //@ts-ignore
-          if (e.target.classList.contains("socket")) {
-            this.connection.transientConnection.destinationSocketId =
-              //@ts-ignore
-              e.target.id;
-          }
-        } else {
-          if (this.viewer.isNodeCreate && this.selectedNode) {
-            if (this.selectedNode.node) {
-              this.selection.id = this.selectedNode.node.id;
-              let id = this.id + "." + this.selection.id;
-              this.selection.element = document.getElementById(id);
-              this.viewer.draggingMode = true;
-            }
-          }
-
-          // Refactor node drag using viewer mode and flags...
-          if (this.selection.element !== null) {
-            if (this.viewer.mouseIsDown || this.viewer.isNodeCreate) {
-              if (
-                this.selection.element.classList.contains("node") &&
-                this.editMode
-              ) {
-                this.viewer.isDragging = true;
-
-                let mousePositionX = e.clientX;
-                let mousePositionY = e.clientY;
-
-                // Need to account for zoom factor? (1 / this.zoom.factor)
-                let newPositionX = mousePositionX - this.selection.offset.x;
-                let newPositionY = mousePositionY - this.selection.offset.y;
-
-                let newPosition: Cg2dCoordinate = {
-                  x: newPositionX,
-                  y: newPositionY,
-                };
-
-                let setNodePositionPayload: SetNodePositionPayload = {
-                  nodeId: this.selection.id as string,
-                  context: "AAA",
-                  position: newPosition,
-                };
-                this.storesCtx["schematicPanelStoreCtx"].dispatch(
-                  "setNodePosition",
-                  setNodePositionPayload,
-                );
-
-                let position: Cg2dCoordinate = {
-                  x: newPositionX,
-                  y: newPositionY,
-                };
-
-                let edgePositionUpdate: EdgePostionUpdateEvent = {
-                  nodeId: this.selection.id as string,
-                  nodePosition: position,
-                };
-
-                let eventId =
-                  "panel-viewport-edge-update" +
-                  "." +
-                  this.id +
-                  "." +
-                  this.selection.id;
-
-                PanelEventBus.$emit(eventId, edgePositionUpdate);
-
-                this.selection.position = position;
-              }
-            }
-          }
-        }
-      }
-    },
-    mouseUp(e: MouseEvent): void {
-      if (this.viewer.isActive) {
-        if (this.viewer.isDragging == true) {
-          this.viewer.isDragging = false;
-          this.viewer.draggingMode = false;
-          this.viewer.isNodeCreate = false;
-
-          this.setNodePosition(this.selection.position);
-
-          if (this.selection.id) {
-            let nodePositionUpdate: NodePositionUpdateEvent = {
-              position: this.selection.position,
-              nodeId: this.selection.id,
-            };
-            PanelEventBus.$emit(
-              "panel-viewport-node-update",
-              nodePositionUpdate,
-            );
-
-            let edgePositionUpdate: EdgePostionUpdateEvent = {
-              nodeId: this.selection.id as string,
-              nodePosition: this.selection.position,
-            };
-
-            PanelEventBus.$emit(
-              "panel-viewport-edge-update",
-              edgePositionUpdate,
-            );
-          }
-          this.selection.element = null;
-          this.selection.id = null;
-        }
-
-        // TODO: DESELECT SELECTED NODE
-
-        if (this.viewer.isPanning == true) {
-          this.viewer.isPanning = false;
-
-          let ctx: MouseContext = {
-            id: this.id,
-            isActive: false,
-          };
-          let event: MouseRegistrationEvent = {
-            context: ctx,
-          };
-          PanelEventBus.$emit("mouse-registration-update", event);
-        }
-
-        if (this.viewer.isNodeConnectionMode) {
-          this.viewer.isNodeConnectionMode = false;
-          this.selection.element = null;
-          this.selection.id = null;
-          let transientConnection = document.getElementById(
-            this.connection.transientConnection.id,
-          );
-
-          if (
-            this.connection.transientConnection.destinationSocketId !=
-            this.connection.transientConnection.sourceSocketId
-          ) {
-            // Source socket (we draw the connection from this socket to the destination socket).
-            let sourceElementString = this.connection.transientConnection.sourceSocketId.split(
-              ".",
-            );
-
-            let sourceNode = this.connection.transientConnection.sourceSocketId.split(
-              ".",
-            );
-            let source: ConnectionNodeReference = {
-              nodeId: sourceNode[1],
-              socketId: sourceNode[2],
-              nodeKind: this.storesCtx.schematicPanelStoreCtx.state.schematic
-                ?.nodes[sourceNode[1]].node.objectType as string,
-            };
-
-            let destinationNode = this.connection.transientConnection.destinationSocketId.split(
-              ".",
-            );
-            let destination: ConnectionNodeReference = {
-              nodeId: destinationNode[1],
-              socketId: destinationNode[2],
-              nodeKind: this.storesCtx.schematicPanelStoreCtx.state.schematic
-                ?.nodes[destinationNode[1]].node.objectType as string,
-            };
-
-            // console.log(
-            //   "sourceSocketId:",
-            //   this.connection.transientConnection.sourceSocketId,
-            // );
-            // console.log(
-            //   "destinationSocketId:",
-            //   this.connection.transientConnection.destinationSocketId,
-            // );
-
-            if (!this.edgeExistsOnGraph(source, destination, "configures")) {
-              this.connection.transientConnection.edge = this.newTemporaryEdge(
-                "aa",
-                source.nodeId,
-                destination.nodeId,
-              );
-              this.removeTransientEdge();
-              this.createConnection(source, destination, "configures");
-            }
-
-            this.removeTransientEdge();
-
-            let edgePositionUpdate: EdgePostionUpdateEvent = {
-              sourceNodeId: sourceNode[1],
-              destinationNodeId: destinationNode[1],
-            };
-            PanelEventBus.$emit(
-              "panel-viewport-edge-update",
-              edgePositionUpdate,
-            );
-          }
-        }
-      }
-      this.viewer.mouseIsDown = false;
-      this.viewer.panningMode = false;
-      this.viewer.isPanning = false;
-    },
-    panViewport(e: MouseEvent) {
-      let mousePosition = {
-        x: e.clientX,
-        y: e.clientY,
-      };
-
-      if (
-        this.viewport.pan.position.x != null &&
-        this.viewport.pan.position.y != null &&
-        this.viewport.pan.originalPosition.x != null &&
-        this.viewport.pan.originalPosition.y != null
-      ) {
-        let mouseMovement = {
-          x: mousePosition.x - this.viewport.mouse.position.x,
-          y: mousePosition.y - this.viewport.mouse.position.y,
-        };
-
-        this.viewport.mouse.position = {
-          x: mousePosition.x,
-          y: mousePosition.y,
-        };
-
-        this.viewport.pan.translation = {
-          x: this.viewport.pan.position.x + mouseMovement.x,
-          y: this.viewport.pan.position.y + mouseMovement.y,
-        };
-
-        this.viewport.pan.position = {
-          x: this.viewport.pan.translation.x,
-          y: this.viewport.pan.translation.y,
-        };
-
-        let position: Cg2dCoordinate = {
-          x: this.viewport.pan.translation.x,
-          y: this.viewport.pan.translation.y,
-        };
-
-        let canvas = this.canvas.element as HTMLElement;
-        let canvasRect = canvas.getBoundingClientRect();
-
-        // console.log(
-        //   this.viewport.pan.originalPosition.x,
-        //   canvasRect.left,
-        //   this.viewport.pan.position.x,
-        //   mouseMovement.x,
-        //   position.x,
-        // );
-
-        // console.log("canvas original position (x,y): ", this.viewport.pan.originalPosition.x, this.viewport.pan.originalPosition.y)
-        // console.log("mouse movement (x,y): ", mouseMovement.x, mouseMovement.y)
-        // console.log("translation (x,y): ", this.viewport.pan.translation.x, this.viewport.pan.translation.y)
-        canvas.setAttribute(
-          "style",
-          "left:" +
-            String(position.x) +
-            "px;" +
-            "top:" +
-            String(position.y) +
-            "px;",
+      if (this.canvas.element) {
+        const mouseLocalSpace = SiCg.cgGetMousePositionInElementSpace(
+          event as MouseEvent,
+          this.canvas.element,
         );
-
-        this.viewport.pan.position.x = position.x;
-        this.viewport.pan.position.y = position.y;
+        if (this.selection.element) {
+          const canvasBoundingRect = this.canvas.element.getBoundingClientRect();
+          const node_offset = {
+            x: 70,
+            y: 8,
+          };
+          this.selection.offset.x = node_offset.x;
+          this.selection.offset.y = node_offset.y;
+        }
       }
     },
     setCanvasSize() {
-      let canvas = this.$refs.canvas as HTMLElement;
+      const canvas = this.$refs.canvas as HTMLElement;
       SiCg.cgSetElementSize(
         canvas,
         this.canvas.resolution.x,
@@ -855,21 +445,15 @@ export default Vue.extend({
       );
     },
     setCanvasPositionToViewportCenter() {
-      let canvas = this.$refs.canvas as HTMLElement;
-      let viewport = this.$refs.viewport as HTMLElement;
+      // const canvas = this.$refs.canvas as HTMLElement;
+      // const viewport = this.$refs.viewport as HTMLElement;
       // SiCg.cgSetElementPositionToViewportCenter(canvas, viewport);
-    },
-    redraw(event: IPanelLayoutUpdated | UIEvent) {
-      this.$forceUpdate();
     },
     newTemporaryEdge(
       edgeId: string,
       sourceNodeId: string,
       destinationNodeId: string,
     ): EdgeTemporary {
-      // console.log("newTemporaryEdge:sourceNodeId: ", sourceNodeId);
-      // console.log("newTemporaryEdge:destinationNodeId: ", destinationNodeId);
-
       return {
         id: edgeId,
         headVertex: {
@@ -887,7 +471,7 @@ export default Vue.extend({
     },
     removeTransientEdge() {
       if (this.connection.transientConnection.id) {
-        let transientConnection = document.getElementById(
+        const transientConnection = document.getElementById(
           this.connection.transientConnection.id,
         );
         if (transientConnection != null) {
@@ -895,17 +479,406 @@ export default Vue.extend({
         }
       }
     },
+    redraw(event: IPanelLayoutUpdated | UIEvent) {
+      this.$forceUpdate();
+    },
+    mouseEnter() {
+      this.activateShortcuts();
+      this.activateViewer();
+    },
+    mouseLeave() {
+      this.deactivateShortcuts();
+      this.deactivateViewer();
+    },
+    mouseDown(e: Event): void {
+      if (this.viewer.isActive) {
+        this.viewer.mouseIsDown = true;
+
+        // Initialize mouse position
+        const mouseLocalSpace = SiCg.cgGetMousePositionInElementSpace(
+          e as MouseEvent,
+          this.canvas.element as HTMLElement,
+        );
+
+        const targetElement = e.target as HTMLElement;
+        if (targetElement.id == TRANSIENT_CONNECTION_SVG_ID) {
+          this.clearNodeSelection();
+        }
+
+        const ctx: MouseContext = {
+          id: this.id,
+          isActive: true,
+        };
+        const event: MouseRegistrationEvent = {
+          context: ctx,
+        };
+        PanelEventBus.$emit("mouse-registration-update", event);
+
+        // ----------------------------------------------------------------
+        // Initialize canvas position
+        // ----------------------------------------------------------------
+        if (this.canvas.element) {
+          const canvasRect = this.canvas.element.getBoundingClientRect();
+          this.viewport.pan.originalPosition = {
+            x: canvasRect.left,
+            y: canvasRect.top,
+          };
+        }
+
+        // ----------------------------------------------------------------
+        // Initialize mouse position
+        // ----------------------------------------------------------------
+        const mouseEvent = e as MouseEvent;
+        if (e) {
+          this.viewport.mouse.position = {
+            x: mouseEvent.clientX,
+            y: mouseEvent.clientY,
+          };
+        }
+
+        // ----------------------------------------------------------------
+        // Initialize canvas panning
+        // ----------------------------------------------------------------
+        if (this.viewer.panningMode) {
+          this.viewer.isPanning = true;
+        }
+
+        // ----------------------------------------------------------------
+        // Initialize node dragging
+        // ----------------------------------------------------------------
+        if (!this.viewer.panningMode) {
+          this.viewer.draggingMode = true;
+
+          // Set selected element (node)
+          if (e.target && e.target instanceof HTMLDivElement) {
+            if (e.target.classList.contains("node")) {
+              if (this.selectedNode && this.selectedNode.node.id) {
+                this.selection.id = this.selectedNode.node.id;
+                const id = this.id + "." + this.selectedNode.node.id;
+                this.selection.element = document.getElementById(id);
+              } else {
+                this.selection.id = null;
+                this.selection.element = null;
+              }
+            } else {
+              this.selection.id = null;
+              this.selection.element = null;
+            }
+          }
+
+          // ----------------------------------------------------------------
+          // Initialize edge creation
+          // ----------------------------------------------------------------
+          if (targetElement && targetElement.classList.contains("socket")) {
+            this.connection.transientConnection.sourceSocketId =
+              targetElement.id;
+
+            // Ccreate an edge
+            const transientConnection = document.createElementNS(
+              "http://www.w3.org/2000/svg",
+              "line",
+            );
+
+            this.connection.transientConnection.id =
+              this.connection.transientConnection.sourceSocketId +
+              "." +
+              "transient";
+            transientConnection.id = this.connection.transientConnection.id;
+
+            transientConnection.setAttribute("x1", String(mouseLocalSpace.x));
+            transientConnection.setAttribute("y1", String(mouseLocalSpace.y));
+            transientConnection.setAttribute("x2", String(mouseLocalSpace.x));
+            transientConnection.setAttribute("y2", String(mouseLocalSpace.y));
+            transientConnection.setAttribute("stroke", "rgb(71,99,113)");
+            transientConnection.setAttribute("stroke-width", "2");
+
+            // Add the edge to the svg
+            const transientConnectionSvg = document.getElementById(
+              this.connection.transientConnection.elementId,
+            );
+
+            if (transientConnectionSvg) {
+              transientConnectionSvg.appendChild(transientConnection);
+            }
+
+            // Set state to update the edge when the mouse moves
+            this.viewer.isNodeConnectionMode = true;
+            this.selection.element = document.getElementById(
+              this.connection.transientConnection.id,
+            );
+          }
+
+          // ----------------------------------------------------------------
+          // Set offsets
+          // ----------------------------------------------------------------
+          if (e instanceof MouseEvent && this.selection.element) {
+            this.selection.offset.x =
+              mouseLocalSpace.x - this.selection.element.offsetLeft;
+            this.selection.offset.y =
+              mouseLocalSpace.y - this.selection.element.offsetTop;
+          }
+        }
+      }
+    },
+    mouseMove(e: MouseEvent): void {
+      if (this.viewer.isActive) {
+        const targetElement = e.target as HTMLElement;
+
+        // ----------------------------------------------------------------
+        // Mouse is panning
+        // ----------------------------------------------------------------
+        if (this.viewer.panningMode) {
+          this.viewer.isPanning = true;
+          this.panViewport(e);
+        } else if (
+          this.viewer.isNodeConnectionMode &&
+          this.selection.element &&
+          this.editMode
+        ) {
+          // ----------------------------------------------------------------
+          // Mouse is connecting nodes
+          // ----------------------------------------------------------------
+          const newPosition = SiCg.cgGetMousePositionInElementSpace(
+            e as MouseEvent,
+            this.canvas.element as HTMLElement,
+          );
+          this.selection.element.setAttribute("x2", String(newPosition.x));
+          this.selection.element.setAttribute("y2", String(newPosition.y));
+
+          if (targetElement && targetElement.classList.contains("socket")) {
+            this.connection.transientConnection.destinationSocketId =
+              // @ts-ignore
+              targetElement.id;
+          }
+        } else {
+          // ----------------------------------------------------------------
+          // Mouse is dragging a new node
+          // ----------------------------------------------------------------
+          if (
+            this.viewer.isNodeCreate &&
+            this.selectedNode &&
+            !this.viewer.isNodeCreateInit &&
+            this.selectedNode.node
+          ) {
+            this.selection.id = this.selectedNode.node.id;
+            const id = this.id + "." + this.selection.id;
+            this.selection.element = document.getElementById(id);
+            this.viewer.draggingMode = true;
+          }
+
+          // ----------------------------------------------------------------
+          // Mouse is dragging a node
+          // ----------------------------------------------------------------
+          if (this.selection.element !== null) {
+            if (this.viewer.mouseIsDown || this.viewer.isNodeCreate) {
+              if (
+                this.selection.element.classList.contains("node") &&
+                this.editMode
+              ) {
+                this.viewer.isDragging = true;
+                this.viewport.mouse.event = e as MouseEvent;
+
+                window.requestAnimationFrame(this.dragNode);
+              }
+            }
+          }
+        }
+      }
+    },
+    mouseUp(e: MouseEvent): void {
+      if (this.viewer.isActive) {
+        // ----------------------------------------------------------------
+        // Mouse dragged a node
+        // ----------------------------------------------------------------
+        if (this.viewer.isDragging == true) {
+          this.viewer.isDragging = false;
+          this.viewer.draggingMode = false;
+          this.viewer.isNodeCreate = false;
+          this.viewer.isNodeCreateInit = false;
+
+          this.setNodePosition(this.selection.position);
+
+          if (this.selection.id) {
+            const nodePositionUpdate: NodePositionUpdateEvent = {
+              position: this.selection.position,
+              nodeId: this.selection.id,
+            };
+            PanelEventBus.$emit(
+              "panel-viewport-node-update",
+              nodePositionUpdate,
+            );
+
+            const edgePositionUpdate: EdgePostionUpdateEvent = {
+              nodeId: this.selection.id as string,
+              nodePosition: this.selection.position,
+            };
+
+            PanelEventBus.$emit(
+              "panel-viewport-edge-update",
+              edgePositionUpdate,
+            );
+          }
+          this.selection.element = null;
+          this.selection.id = null;
+        }
+
+        // ----------------------------------------------------------------
+        // Mouse panned the canvas
+        // ----------------------------------------------------------------
+        if (this.viewer.isPanning == true) {
+          this.viewer.isPanning = false;
+
+          const ctx: MouseContext = {
+            id: this.id,
+            isActive: false,
+          };
+          const event: MouseRegistrationEvent = {
+            context: ctx,
+          };
+          PanelEventBus.$emit("mouse-registration-update", event);
+        }
+
+        // ----------------------------------------------------------------
+        // Mouse connected nodes
+        // ----------------------------------------------------------------
+        if (this.viewer.isNodeConnectionMode) {
+          this.viewer.isNodeConnectionMode = false;
+          this.selection.element = null;
+          this.selection.id = null;
+          this.connectNodes();
+        }
+      }
+
+      // ----------------------------------------------------------------
+      // Cleanup
+      // ----------------------------------------------------------------
+      this.viewer.mouseIsDown = false;
+      this.viewer.panningMode = false;
+      this.viewer.isPanning = false;
+      this.removeTransientEdge();
+    },
+    panViewport(e: MouseEvent) {
+      const mousePosition = {
+        x: e.clientX,
+        y: e.clientY,
+      };
+
+      if (
+        this.viewport.pan.position.x != null &&
+        this.viewport.pan.position.y != null &&
+        this.viewport.pan.originalPosition.x != null &&
+        this.viewport.pan.originalPosition.y != null &&
+        this.canvas.element
+      ) {
+        // calculate mouse movement
+        const mouseMovement = {
+          x: mousePosition.x - this.viewport.mouse.position.x,
+          y: mousePosition.y - this.viewport.mouse.position.y,
+        };
+
+        // update viewport mouse position
+        this.viewport.mouse.position = {
+          x: mousePosition.x,
+          y: mousePosition.y,
+        };
+
+        // update viewport pan translation
+        this.viewport.pan.translation = {
+          x: this.viewport.pan.position.x + mouseMovement.x,
+          y: this.viewport.pan.position.y + mouseMovement.y,
+        };
+
+        // set canvas position
+        const position: Cg2dCoordinate = {
+          x: this.viewport.pan.translation.x,
+          y: this.viewport.pan.translation.y,
+        };
+
+        const canvasRect = this.canvas.element.getBoundingClientRect();
+        this.canvas.element.setAttribute(
+          "style",
+          "left:" +
+            String(position.x) +
+            "px;" +
+            "top:" +
+            String(position.y) +
+            "px;",
+        );
+
+        // update viewport pan position
+        this.viewport.pan.position.x = position.x;
+        this.viewport.pan.position.y = position.y;
+      }
+    },
+    async dragNode() {
+      /*
+        Notes
+         - requires mouse position in canvas space
+         - calculates new position for the node that is dragged
+         - temporarily set the node position while the mouse is moving
+         - update edges related to the noded that is dragged
+         - store the new position in the Vue component
+       */
+      if (this.viewport.mouse.event) {
+        // Get mouse position
+        const mouseLocalSpace = SiCg.cgGetMousePositionInElementSpace(
+          this.viewport.mouse.event,
+          this.canvas.element as HTMLElement,
+        );
+
+        // define node updated position
+        const position: Cg2dCoordinate = {
+          x: mouseLocalSpace.x - this.selection.offset.x,
+          y: mouseLocalSpace.y - this.selection.offset.y,
+        };
+
+        // Update node position
+        const setNodePositionPayload: SetNodePositionPayload = {
+          nodeId: this.selection.id as string,
+          context: this.positionCtx as string,
+          position: position,
+        };
+        await this.storesCtx["schematicPanelStoreCtx"].dispatch(
+          "setNodePosition",
+          setNodePositionPayload,
+        );
+
+        // Update node edges position
+        const edgePositionUpdate: EdgePostionUpdateEvent = {
+          nodeId: this.selection.id as string,
+          nodePosition: position,
+        };
+        const eventId =
+          "panel-viewport-edge-update" +
+          "." +
+          this.id +
+          "." +
+          this.selection.id;
+        PanelEventBus.$emit(eventId, edgePositionUpdate);
+
+        // store new node position
+        this.selection.position = position;
+      }
+    },
     async setNodePosition(position: Cg2dCoordinate) {
-      if (this.selectedNode && this.selectedNode.node) {
+      if (
+        this.selectedNode &&
+        this.selectedNode.node &&
+        this.currentApplicationId &&
+        this.currentWorkspace &&
+        this.currentSystem
+      ) {
         if (this.selectedNode.node.id) {
-          let payload: NodeUpdatePositionePayload = {
+          const payload: NodeUpdatePositionePayload = {
             nodeId: this.selectedNode?.node.id,
-            contextId: "AAA",
+            contextId: this.currentSystem.id,
             position: position,
+            applicationId: this.currentApplicationId,
+            workspaceId: this.currentWorkspace.id,
           };
 
-          let reply: INodeUpdatePositionReply = await this.$store.dispatch(
-            "editor/nodeSetPosition",
+          const reply: INodeUpdatePositionReply = await this.schematicPanelStoreCtx.dispatch(
+            "nodeSetPosition",
             payload,
           );
           if (reply.error) {
@@ -914,28 +887,113 @@ export default Vue.extend({
         }
       }
     },
+    async connectNodes() {
+      /*
+        Notes
+         - requires a source and destination sockets
+         - requires a source and destination nodes
+         - creates the connection between the two nodes
+       */
+      if (
+        this.connection.transientConnection.destinationSocketId !=
+        this.connection.transientConnection.sourceSocketId
+      ) {
+        // define source and destination nodes
+        let sourceNode: string[] = [""];
+        let destinationNode: string[] = [""];
+
+        const sourceSocketType = this.connection.transientConnection.sourceSocketId
+          .split(".")[2]
+          .split(":")[1];
+        if (sourceSocketType === "output") {
+          sourceNode = this.connection.transientConnection.sourceSocketId.split(
+            ".",
+          );
+          destinationNode = this.connection.transientConnection.destinationSocketId.split(
+            ".",
+          );
+        } else {
+          destinationNode = this.connection.transientConnection.sourceSocketId.split(
+            ".",
+          );
+          sourceNode = this.connection.transientConnection.destinationSocketId.split(
+            ".",
+          );
+        }
+        if (
+          this.storesCtx &&
+          this.storesCtx.schematicPanelStoreCtx.state.schematic &&
+          this.storesCtx.schematicPanelStoreCtx.state.schematic.nodes[
+            sourceNode[1]
+          ] &&
+          this.storesCtx.schematicPanelStoreCtx.state.schematic.nodes[
+            destinationNode[1]
+          ]
+        ) {
+          // connect nodes
+          const source: ConnectionNodeReference = {
+            nodeId: sourceNode[1],
+            socketId: sourceNode[2],
+            nodeKind: this.storesCtx.schematicPanelStoreCtx.state.schematic
+              .nodes[sourceNode[1]].node.objectType as string,
+          };
+
+          const destination: ConnectionNodeReference = {
+            nodeId: destinationNode[1],
+            socketId: destinationNode[2],
+            nodeKind: this.storesCtx.schematicPanelStoreCtx.state.schematic
+              .nodes[destinationNode[1]].node.objectType as string,
+          };
+
+          if (!this.edgeExistsOnGraph(source, destination, "configures")) {
+            this.connection.transientConnection.edge = this.newTemporaryEdge(
+              "temporaryEdge",
+              source.nodeId,
+              destination.nodeId,
+            );
+            this.removeTransientEdge();
+            await this.createConnection(source, destination, "configures");
+          }
+          this.removeTransientEdge();
+
+          // update node edges position
+          const edgePositionUpdate: EdgePostionUpdateEvent = {
+            sourceNodeId: sourceNode[1],
+            destinationNodeId: destinationNode[1],
+          };
+          PanelEventBus.$emit("panel-viewport-edge-update", edgePositionUpdate);
+        }
+      }
+    },
     async createConnection(
       source: ConnectionNodeReference,
       destination: ConnectionNodeReference,
       kind: String,
     ) {
-      if (this.currentSystem) {
-        let connection: Connection = {
+      if (
+        this.currentSystem &&
+        this.currentApplicationId &&
+        this.currentWorkspace &&
+        this.currentChangeSet &&
+        this.currentEditSession
+      ) {
+        const connection: Connection = {
           kind: kind,
           source: source,
           destination: destination,
           systemId: this.currentSystem.id,
         };
 
-        let payload: ConnectionCreatePayload = {
+        const payload: ConnectionCreatePayload = {
           connection: connection,
+          workspaceId: this.currentWorkspace.id,
+          changeSetId: this.currentChangeSet.id,
+          editSessionId: this.currentEditSession.id,
+          applicationId: this.currentApplicationId,
         };
 
-        // console.log("createConnection:source: ", source.nodeId);
-        // console.log("createConnection:destination: ", destination.nodeId);
-
-        let reply: ConnectionCreateReply = await this.$store.dispatch(
-          "editor/connectionCreate",
+        const reply: ConnectionCreateReply = await this.schematicPanelStoreCtx.dispatch(
+          "connectionCreate",
           payload,
         );
 
@@ -949,11 +1007,11 @@ export default Vue.extend({
       destination: ConnectionNodeReference,
       kind: string,
     ): boolean {
-      if (!this.graph) {
+      if (!this.schematic) {
         throw new Error("graph must be set for edgeExists check, bug!");
       }
 
-      return Object.values(this.graph.edges).some(function(edge) {
+      return Object.values(this.schematic.edges).some(function(edge) {
         return (
           edge.headVertex.nodeId == destination.nodeId &&
           edge.tailVertex.nodeId == source.nodeId &&

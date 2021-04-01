@@ -4,6 +4,7 @@
     :class="panelClasses()"
     @mouseenter="mouseEnter()"
     @mouseleave="mouseLeave()"
+    v-if="isVisible"
   >
     <div
       class="flex flex-row items-center w-full bg-black"
@@ -28,14 +29,19 @@
           <button
             data-testid="minimize-container"
             @click="minimizeContainer"
-            v-if="maximizedContainer"
+            v-if="maximizedContainer && !maximizedFull"
           >
             <Minimize2Icon />
           </button>
+
           <button
             data-testid="maximize-container"
             @click="maximizeContainer"
-            v-else
+            v-if="
+              !maximizedContainer &&
+                !maximizedFull &&
+                isMaximizedContainerEnabled
+            "
           >
             <Maximize2Icon />
           </button>
@@ -48,6 +54,7 @@
           >
             <MinimizeIcon />
           </button>
+
           <button data-testid="maximize-full" @click="maximizeFull" v-else>
             <MaximizeIcon />
           </button>
@@ -87,7 +94,6 @@ interface IData {
   selectedPanelType: PanelType;
   maximizedFull: boolean;
   maximizedContainer: boolean;
-  isVisible: boolean;
   shortcutsEnabled: boolean;
   id: string;
   isActive: boolean;
@@ -96,11 +102,17 @@ interface IData {
 export default Vue.extend({
   name: "Panel",
   props: {
+    panelIndex: Number,
     panelRef: String,
     panelContainerRef: String,
     initialPanelType: String as PropType<PanelType>,
     initialMaximizedFull: Boolean,
     initialMaximizedContainer: Boolean,
+    isVisible: {
+      type: Boolean,
+      default: true,
+    },
+    isMaximizedContainerEnabled: Boolean,
   },
   components: {
     SiSelect,
@@ -114,7 +126,6 @@ export default Vue.extend({
       selectedPanelType: this.initialPanelType,
       maximizedFull: this.initialMaximizedFull,
       maximizedContainer: this.initialMaximizedContainer,
-      isVisible: true,
       shortcutsEnabled: false,
       id: _.uniqueId("panel-"),
       isActive: false,
@@ -126,7 +137,6 @@ export default Vue.extend({
     },
     panelTypes(): ILabelList {
       return [
-        { label: "", value: PanelType.Empty },
         {
           label: "Schematic",
           value: PanelType.Schematic,
@@ -177,9 +187,6 @@ export default Vue.extend({
     changePanelType() {
       this.$emit("change-panel", this.selectedPanelType);
     },
-    togglePanelVisibility() {
-      this.isVisible = !this.isVisible;
-    },
     mouseEnter() {
       this.isActive = true;
       this.activateShortcuts();
@@ -217,6 +224,7 @@ export default Vue.extend({
       this.maximizedContainer = true;
       this.$emit("panel-maximized-container", true);
       PanelEventBus.$emit("maximize-container", {
+        panelIndex: this.panelIndex,
         panelRef: this.panelRef,
         panelContainerRef: this.panelContainerRef,
       });
@@ -225,6 +233,7 @@ export default Vue.extend({
       this.maximizedContainer = false;
       this.$emit("panel-maximized-container", false);
       PanelEventBus.$emit("minimize-container", {
+        panelIndex: this.panelIndex,
         panelRef: this.panelRef,
         panelContainerRef: this.panelContainerRef,
       });
@@ -247,8 +256,8 @@ export default Vue.extend({
     },
     panelClasses(): Record<string, any> {
       let classes: Record<string, any> = {};
-      classes["hidden"] = !this.isVisible;
-      classes["overflow-hidden"] = !this.isVisible;
+      // classes["hidden"] = !this.isVisible;
+      // classes["overflow-hidden"] = !this.isVisible;
       // classes["active-panel"] = this.isActive;
       classes["inactive-panel"] = !this.isActive;
       return classes;

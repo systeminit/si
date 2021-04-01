@@ -18,7 +18,7 @@
         class="socket-output socket node"
       />
 
-      <div class="flex flex-col select-none node">
+      <div class="flex flex-col node">
         <div class="flex flex-col text-white node">
           <div class="node-title-bar node">
             <div
@@ -39,59 +39,25 @@
 </template>
 
 <script lang="ts">
-/**
- * NodeObject
- *
- * A Node
- *  id
- *  kind # the lkind of node, defines the color of the node actions, and more...
- *  name # the name displayed on a node.
- *  inputs [] # a list of input sockets setting properties on this node.
- *  outputs [] # a list of output sockets exposing properties from this this node.
- *  connections [] # a list of connections between this and other node(s).
- *  position # the node position (x,y). Position has to be relative to the main coordinate system.
- *  data # the actual node data.
- *  Note: the inputs and outputs list could be combined into a single list: sockets[]. A socket would be of kind input or output.
- *
- * A Socket (input or output)
- *  id
- *  name # maps to a property on this node.
- *  kind # the kind of socket, input or output.
- *  type # the type of socket, string, int, float, bool, service, k8s-blah, ...
- *  position # to draw connections.
- *
- * A Connection (input or output) - local representation of a connection.
- *  id
- *  socket # a socket on this node.
- *  path # a socket to connect with.
- * kind i/o
- *
- * A Connection (input or output) - global representation of a connection, what goes in the connectionList
- *  id
- *  source # a node socket.
- *  destination # a socket to connect with.
- *
- */
-
 import Vue, { PropType } from "vue";
+
 import { registry } from "si-registry";
 import { mapState, mapActions } from "vuex";
-import _ from "lodash";
 
-// import { RootStore } from "@/store";
-import { ISchematicNode } from "@/api/sdf/model/schematic";
+import { InstanceStoreContext } from "@/store";
 import { PanelEventBus } from "@/atoms/PanelEventBus";
+import { SiCg } from "@/api/sicg";
+import { Cg2dCoordinate } from "@/api/sicg";
 
 import { SchematicPanelStore } from "@/store/modules/schematicPanel";
 
-import { InstanceStoreContext } from "@/store";
-
+import { ISchematicNode } from "@/api/sdf/model/schematic";
 import { INodeObject, Node } from "@/api/sdf/model/node";
 import { IEntity, Entity } from "@/api/sdf/model/entity";
+
 import { StoresCtx } from "@/organisims/SchematicViewer.vue";
 
-import { SiCg } from "@/api/sicg";
-import { Cg2dCoordinate } from "@/api/sicg";
+import _ from "lodash";
 
 type NodeLayoutUpdated = boolean;
 
@@ -122,6 +88,7 @@ export default Vue.extend({
       type: Object as PropType<StoresCtx>,
       required: false,
     },
+    positionCtx: String,
   },
   data(): IData {
     return {
@@ -140,6 +107,9 @@ export default Vue.extend({
   beforeUpdate: function() {
     this.updated++;
   },
+  updated: function() {
+    // console.log("updated")
+  },
   methods: {
     async selectNode() {
       this.$emit("selectNode", this.node);
@@ -154,8 +124,9 @@ export default Vue.extend({
       this.$forceUpdate();
     },
     updateNodePosition(event: NodePositionUpdateEvent) {
+      this.isVisible = true;
       if (event.nodeId == this.nodeId) {
-        let element = document.getElementById(this.id) as HTMLElement;
+        const element = document.getElementById(this.id) as HTMLElement;
         SiCg.cgSetElementPosition(element, event.position);
       }
     },
@@ -166,11 +137,9 @@ export default Vue.extend({
   computed: {
     positionStyle(): Record<string, string> {
       this.updated;
+      const position = this.node?.node.positions[this.positionCtx];
 
-      let context = "AAA";
-      let position = this.node?.node.positions[context];
-
-      if (this.node?.node.positions[context]) {
+      if (this.node?.node.positions[this.positionCtx]) {
         this.nodeIsVisible();
         return {
           left: `${position.x}px`,

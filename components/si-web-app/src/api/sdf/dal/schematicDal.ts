@@ -1,7 +1,9 @@
 import { EdgeKind, Edge } from "@/api/sdf/model/edge";
+import { Entity } from "@/api/sdf/model/entity";
+import { System } from "@/api/sdf/model/system";
 import { SDFError } from "@/api/sdf";
 import Bottle from "bottlejs";
-import { Schematic } from "@/api/sdf/model/schematic";
+import { Schematic, ISchematicNode } from "@/api/sdf/model/schematic";
 
 export interface IGetSchematicRequest {
   workspaceId: string;
@@ -32,8 +34,8 @@ export interface IGetApplicationSystemSchematicRequest
 export async function getApplicationSystemSchematic(
   request: IGetApplicationSystemSchematicRequest,
 ): Promise<IGetSchematicReply> {
-  let bottle = Bottle.pop("default");
-  let sdf = bottle.container.SDF;
+  const bottle = Bottle.pop("default");
+  const sdf = bottle.container.SDF;
 
   const reply: IGetSchematicReply = await sdf.get(
     "schematicDal/getApplicationSystemSchematic",
@@ -43,7 +45,7 @@ export async function getApplicationSystemSchematic(
 }
 
 /*
- * Nodes Connection
+ * Connections
  */
 
 export type ConnectionKind = EdgeKind;
@@ -67,27 +69,37 @@ export interface ConnectionCreateRequest {
   changeSetId: string;
   editSessionId: string;
   applicationId: string;
+  returnSchematic: boolean;
 }
 
 export interface ConnectionCreateReplySuccess {
-  edge: Edge; // We don't need this...
+  edge: Edge;
+  schematic?: never;
+  error?: never;
+}
+
+export interface ConnectionCreateReplySuccessWithSchematic {
+  edge: Edge;
+  schematic: Schematic;
   error?: never;
 }
 
 export interface ConnectionCreateReplyFailure {
-  edge?: Edge; // We don't need this...
+  edge?: Edge;
+  schematic?: never;
   error: SDFError;
 }
 
 export type ConnectionCreateReply =
   | ConnectionCreateReplySuccess
+  | ConnectionCreateReplySuccessWithSchematic
   | ConnectionCreateReplyFailure;
 
 async function connectionCreate(
   request: ConnectionCreateRequest,
 ): Promise<ConnectionCreateReply> {
-  let bottle = Bottle.pop("default");
-  let sdf = bottle.container.SDF;
+  const bottle = Bottle.pop("default");
+  const sdf = bottle.container.SDF;
 
   const reply: ConnectionCreateReply = await sdf.post(
     "schematicDal/connectionCreate",
@@ -96,7 +108,107 @@ async function connectionCreate(
   return reply;
 }
 
+/*
+ * Nodes
+ */
+
+export interface INodeCreateForApplicationRequest extends INodeCreateRequest {
+  applicationId: string;
+  returnSchematic: boolean;
+}
+
+export interface INodeCreateRequest {
+  name?: string;
+  entityType: string;
+  workspaceId: string;
+  changeSetId: string;
+  editSessionId: string;
+}
+
+export interface INodeCreateReplySuccess {
+  node: ISchematicNode;
+  schematic?: never;
+  error?: never;
+}
+
+export interface INodeCreateReplySuccessWithSchematic {
+  node: ISchematicNode;
+  schematic: Schematic;
+  error?: never;
+}
+
+export interface INodeCreateReplyFailure {
+  node?: never;
+  schematic?: never;
+  error: SDFError;
+}
+
+export type INodeCreateReply =
+  | INodeCreateReplySuccess
+  | INodeCreateReplySuccessWithSchematic
+  | INodeCreateReplyFailure;
+
+export interface INodeObjectEntity {
+  entity: Entity;
+  system?: never;
+}
+
+export interface INodeObjectSystem {
+  entity?: never;
+  system: System;
+}
+
+export type INodeObject = INodeObjectEntity | INodeObjectSystem;
+
+export interface INodeUpdatePositionReplySuccess {
+  error?: never;
+}
+
+export interface INodeUpdatePositionReplyFailure {
+  error: SDFError;
+}
+
+export type INodeUpdatePositionReply =
+  | INodeUpdatePositionReplySuccess
+  | INodeUpdatePositionReplyFailure;
+
+export interface INodeUpdatePositionRequest {
+  nodeId: string;
+  contextId: string;
+  x: string;
+  y: string;
+  workspaceId: string;
+}
+
+async function nodeCreateForApplication(
+  request: INodeCreateForApplicationRequest,
+): Promise<INodeCreateReply> {
+  const bottle = Bottle.pop("default");
+  const sdf = bottle.container.SDF;
+
+  const reply: INodeCreateReply = await sdf.post(
+    "schematicDal/nodeCreateForApplication",
+    request,
+  );
+  return reply;
+}
+
+async function nodeUpdatePosition(
+  request: INodeUpdatePositionRequest,
+): Promise<INodeUpdatePositionReply> {
+  const bottle = Bottle.pop("default");
+  const sdf = bottle.container.SDF;
+
+  const reply: INodeUpdatePositionReply = await sdf.post(
+    "schematicDal/updateNodePosition",
+    request,
+  );
+  return reply;
+}
+
 export const SchematicDal = {
   getApplicationSystemSchematic,
   connectionCreate,
+  nodeCreateForApplication,
+  nodeUpdatePosition,
 };

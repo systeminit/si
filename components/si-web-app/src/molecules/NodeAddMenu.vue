@@ -59,6 +59,11 @@ interface Data {
   isOpen: boolean;
 }
 
+export interface AddMenuSelectedPayload {
+  entityType: string;
+  event: MouseEvent;
+}
+
 export default Vue.extend({
   name: "NodeAddMenu",
   props: {
@@ -82,7 +87,12 @@ export default Vue.extend({
   methods: {
     onSelect({ entityType }: { entityType: string }, event: MouseEvent): void {
       event.preventDefault();
-      this.$emit("selected", { entityType });
+
+      const payload: AddMenuSelectedPayload = {
+        entityType: entityType,
+        event: event,
+      };
+      this.$emit("selected", entityType, event);
       this.isOpen = false;
     },
     onMouseEnter(): void {

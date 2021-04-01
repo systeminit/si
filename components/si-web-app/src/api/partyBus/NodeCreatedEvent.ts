@@ -1,22 +1,21 @@
 import { PartyBusEvent } from "@/api/partyBus/partyBusEvent";
-import { Node } from "@/api/sdf/model/node";
-import { Entity } from "../sdf/model/entity";
+import { ISchematicNode, Schematic } from "@/api/sdf/model/schematic";
 
 const NAME = "NodeCreated";
 
 interface IConstructor {
-  node: Node;
-  entity: Entity;
+  node: ISchematicNode;
+  schematic?: Schematic;
 }
 
 export class NodeCreatedEvent extends PartyBusEvent {
-  node: Node | null;
-  entity: Entity | null;
+  node: ISchematicNode | null;
+  schematic?: Schematic | null;
 
   constructor(payload: IConstructor, sourcePanelId?: string) {
     super(NAME, sourcePanelId);
     this.node = payload.node;
-    this.entity = payload.entity;
+    this.schematic = payload.schematic;
   }
 
   static eventName(): string {

@@ -1,23 +1,23 @@
 <template>
-  <div class="flex flex-col shadow-lg">
+  <div class="flex flex-col shadow-lg select-none">
     <div
-      class="flex items-center justify-between pl-1 pt-1 pb-1 text-sm text-white bg-black"
+      class="flex items-center justify-between pt-1 pb-1 pl-1 text-sm text-white bg-black"
     >
       <div>Welcome to the System Initiative!</div>
     </div>
     <div class="p-4 bg-blueGray-800">
       <div
         data-testid="error-message"
-        class="bg-red-500 text-white"
+        class="text-white bg-red-500"
         v-if="errorMessage"
       >
         Error: {{ errorMessage }}
       </div>
-      <div class="flex flex-row mx-2 my-2 items-center object-center">
-        <div class="pr-2 text-gray-400 align-middle w-1/2 text-right">
+      <div class="flex flex-row items-center object-center mx-2 my-2">
+        <div class="w-1/2 pr-2 text-right text-gray-400 align-middle">
           <label for="billingAccountName">Billing Account Name:</label>
         </div>
-        <div class="align-middle w-1/2">
+        <div class="w-1/2 align-middle">
           <SiTextBox
             name="billingAccountName"
             placeholder="acme, inc."

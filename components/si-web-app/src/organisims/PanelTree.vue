@@ -101,7 +101,7 @@ export default Vue.extend({
                     type: "panel",
                   },
                   {
-                    name: "somethingelse",
+                    name: "schematic",
                     type: "panel",
                   },
                 ],

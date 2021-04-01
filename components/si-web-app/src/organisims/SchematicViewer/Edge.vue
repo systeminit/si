@@ -27,14 +27,14 @@
 
 import Vue, { PropType } from "vue";
 
-import { Edge } from "@/api/sdf/model/edge";
+import { InstanceStoreContext } from "@/store";
+import { PanelEventBus } from "@/atoms/PanelEventBus";
 import { Cg2dCoordinate } from "@/api/sicg";
 
 import { SchematicPanelStore } from "@/store/modules/schematicPanel";
-import { ISchematicNode, Schematic } from "@/api/sdf/model/schematic";
-import { InstanceStoreContext } from "@/store";
 
-import { PanelEventBus } from "@/atoms/PanelEventBus";
+import { Edge } from "@/api/sdf/model/edge";
+import { ISchematicNode, Schematic } from "@/api/sdf/model/schematic";
 
 const INPUT_SOCKET_OFFSET = {
   x: 68.5, // node center.
@@ -94,6 +94,7 @@ export default Vue.extend({
       type: String,
       required: true,
     },
+    positionCtx: String,
   },
   data(): IData {
     return {
@@ -105,7 +106,12 @@ export default Vue.extend({
   },
   computed: {
     sourceNode(): ISchematicNode | null {
-      if (this.schematicPanelStoreCtx.state.schematic) {
+      if (
+        this.schematicPanelStoreCtx &&
+        this.schematicPanelStoreCtx.state &&
+        this.schematicPanelStoreCtx.state.schematic &&
+        this.schematicPanelStoreCtx.state.schematic != undefined
+      ) {
         return this.schematicPanelStoreCtx.state.schematic.nodes[
           this.edge.tailVertex.nodeId
         ] as ISchematicNode;
@@ -114,7 +120,12 @@ export default Vue.extend({
       }
     },
     destinationNode(): ISchematicNode | null {
-      if (this.schematicPanelStoreCtx.state.schematic) {
+      if (
+        this.schematicPanelStoreCtx &&
+        this.schematicPanelStoreCtx.state &&
+        this.schematicPanelStoreCtx.state.schematic &&
+        this.schematicPanelStoreCtx.state.schematic != undefined
+      ) {
         return this.schematicPanelStoreCtx.state.schematic?.nodes[
           this.edge.headVertex.nodeId
         ] as ISchematicNode;
@@ -123,9 +134,9 @@ export default Vue.extend({
       }
     },
     sourceSocketPosition(): Cg2dCoordinate | undefined {
-      let context = "AAA";
+      const context = this.positionCtx;
       if (this.sourceNode) {
-        let sourceNodePosition: Cg2dCoordinate = {
+        const sourceNodePosition: Cg2dCoordinate = {
           x: Number(this.sourceNode.node.positions[context].x),
           y: Number(this.sourceNode.node.positions[context].y),
         };
@@ -139,11 +150,14 @@ export default Vue.extend({
     },
 
     destinationSocketPosition(): Cg2dCoordinate | undefined {
-      let context = "AAA";
-      if (this.destinationNode) {
-        let destinationNodePosition: Cg2dCoordinate = {
-          x: Number(this.destinationNode?.node.positions[context].x),
-          y: Number(this.destinationNode?.node.positions[context].y),
+      const context = this.positionCtx;
+      if (
+        this.destinationNode &&
+        this.destinationNode.node.positions[context]
+      ) {
+        const destinationNodePosition: Cg2dCoordinate = {
+          x: Number(this.destinationNode.node.positions[context].x),
+          y: Number(this.destinationNode.node.positions[context].y),
         };
         return {
           x: destinationNodePosition.x + INPUT_SOCKET_OFFSET.x,
@@ -207,7 +221,7 @@ export default Vue.extend({
     },
     updateSvgLinePosition(event: EdgePostionUpdateEvent) {
       if (this.sourceNode && this.destinationNode) {
-        let element = document.getElementById(this.lineId) as HTMLElement;
+        const element = document.getElementById(this.lineId) as HTMLElement;
 
         if (event.nodeId == this.sourceNode.node.id) {
           element.setAttribute(
