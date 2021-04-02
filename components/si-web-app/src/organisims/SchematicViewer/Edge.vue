@@ -1,6 +1,6 @@
 <template>
   <div :id="edge.id" v-if="sourceNode && destinationNode">
-    <svg height="100%" width="100%" class="absolute">
+    <svg height="100%" width="100%" class="absolute" :id="id">
       <line
         v-if="sourceSocketPosition && destinationSocketPosition"
         :id="lineId"

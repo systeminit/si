@@ -1,7 +1,10 @@
 <template>
-  <div class="flex items-center w-full h-6 status-bar" data-testid="status-bar">
+  <div
+    class="flex items-center w-full h-6 pt-1 pb-1 status-bar"
+    data-testid="status-bar"
+  >
     <div class="ml-1 text-xs text-gray-400" v-if="applicationName">
-      {{ applicationName }}
+      applications/{{ applicationName }}
     </div>
 
     <ChevronsRightIcon size="1.0x" class="text-gray-400" v-if="systemName" />

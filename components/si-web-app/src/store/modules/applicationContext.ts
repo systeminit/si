@@ -97,7 +97,7 @@ export const applicationContext: Module<ApplicationContextStore, any> = {
       state.applicationName = payload.applicationName;
       state.systemsList = payload.systemsList;
       state.openChangeSetsList = payload.openChangeSetsList;
-      state.openChangeSetsList.push({ label: "", value: "" });
+      state.openChangeSetsList.push({ label: "active", value: "" });
     },
     setEditMode(state, payload: ApplicationContextStore["editMode"]) {
       state.editMode = payload;

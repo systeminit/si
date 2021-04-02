@@ -8,6 +8,8 @@
 import Vue from "vue";
 import { PanelEventBus } from "@/atoms/PanelEventBus";
 import _ from "lodash";
+import { Subject } from "rxjs";
+import { fromEvent } from "rxjs";
 
 // @keydown.space="handleSpacebar($event)"
 
@@ -42,6 +44,7 @@ export enum ShortcutActions {
 
 export interface ShortcutUpdateEvent {
   action: ShortcutActions;
+  panelId: string;
 }
 
 export interface MouseRegistrationEvent {
@@ -59,6 +62,10 @@ interface IData {
   mouseIsClicked: boolean;
   isPanning: boolean;
 }
+
+export const SpaceBarEvents = new Subject();
+const MousecDown = fromEvent(document, "mousedown");
+const MousecUp = fromEvent(document, "mouseup");
 
 export default Vue.extend({
   name: "ShortcutsEventBroker",
@@ -90,19 +97,13 @@ export default Vue.extend({
         "shortcuts-registration-update",
         this.handleShortcutsRegistrationUpdate,
       );
-      PanelEventBus.$on(
-        "mouse-registration-update",
-        this.handleMouseRegistrationUpdate,
-      );
+      MousecDown.subscribe(x => this.handleMouseEvents(x as Event));
+      MousecUp.subscribe(x => this.handleMouseEvents(x as Event));
     },
     deRegisterEvents(): void {
       PanelEventBus.$off(
         "shortcuts-registration-update",
         this.handleShortcutsRegistrationUpdate,
-      );
-      PanelEventBus.$off(
-        "mouse-registration-update",
-        this.handleMouseRegistrationUpdate,
       );
 
       document.removeEventListener("keydown", this.handleKeyDown);
@@ -114,6 +115,35 @@ export default Vue.extend({
       } else {
         let i = this.eligibleContexts.indexOf(e.context.id);
         this.eligibleContexts = this.eligibleContexts.splice(i, 1);
+      }
+    },
+    handleMouseEvents(e: Event) {
+      if (e.type === "mousedown") {
+        this.mouseIsClicked = true;
+        if (this.spacebarIsPressed && this.mouseIsClicked) {
+          this.isPanning = true;
+          for (var c of this.eligibleContexts) {
+            if (_.startsWith(c, "graphViewer")) {
+              const e: ShortcutUpdateEvent = {
+                action: ShortcutActions["StartPan"],
+                panelId: c,
+              };
+              SpaceBarEvents.next(e);
+            }
+          }
+        }
+      }
+      if (e.type === "mouseup") {
+        this.mouseIsClicked = false;
+        for (var c of this.eligibleContexts) {
+          if (_.startsWith(c, "graphViewer")) {
+            let e: ShortcutUpdateEvent = {
+              action: ShortcutActions["EndPan"],
+              panelId: c,
+            };
+            SpaceBarEvents.next(e);
+          }
+        }
       }
     },
     handleMouseRegistrationUpdate(e: MouseRegistrationEvent) {
@@ -148,34 +178,16 @@ export default Vue.extend({
     },
     spacebarDown(): void {
       this.spacebarIsPressed = true;
-      if (this.isPanning) {
-        for (var c of this.eligibleContexts) {
-          if (_.startsWith(c, "graphViewer")) {
-            let e: ShortcutUpdateEvent = {
-              action: ShortcutActions["StartPan"],
-            };
-            PanelEventBus.$emit("shortcuts-update-" + c, e);
-          }
-        }
-      } else {
-      }
     },
     spacebarUp(): void {
       if (this.isPanning) {
-        for (var c of this.eligibleContexts) {
-          if (_.startsWith(c, "graphViewer")) {
-            let e: ShortcutUpdateEvent = {
-              action: ShortcutActions["EndPan"],
-            };
-            PanelEventBus.$emit("shortcuts-update-" + c, e);
-          }
-        }
         this.isPanning = false;
       } else {
         for (var c of this.eligibleContexts) {
           if (_.startsWith(c, "panel")) {
             let e: ShortcutUpdateEvent = {
               action: ShortcutActions["Maximize"],
+              panelId: c,
             };
             PanelEventBus.$emit("shortcuts-update-" + c, e);
           }

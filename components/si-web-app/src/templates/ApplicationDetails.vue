@@ -10,7 +10,12 @@
         @remove-query-param="removeQueryParam"
       />
       <div id="editor" class="flex w-full h-full overflow-hidden">
-        <Editor :context="editorContext" />
+        <Editor
+          :workspaceId="workspaceId"
+          :applicationId="applicationId"
+          :context="editorContext"
+          :applicationContextCtx="applicationContextCtx"
+        />
       </div>
       <!--
     <div id="eventBar" class="w-full">

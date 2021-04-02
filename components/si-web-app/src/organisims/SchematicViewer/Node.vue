@@ -127,7 +127,15 @@ export default Vue.extend({
       this.isVisible = true;
       if (event.nodeId == this.nodeId) {
         const element = document.getElementById(this.id) as HTMLElement;
-        SiCg.cgSetElementPosition(element, event.position);
+        element.setAttribute(
+          "style",
+          "left:" +
+            event.position.x +
+            "px;" +
+            "top:" +
+            event.position.y +
+            "px;",
+        );
       }
     },
     nodeIsVisible(): void {

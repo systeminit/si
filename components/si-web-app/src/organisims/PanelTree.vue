@@ -85,6 +85,7 @@ export default Vue.extend({
               {
                 orientation: "column",
                 type: "panelContainer",
+                width: 67,
                 panels: [
                   {
                     name: "schematic",
