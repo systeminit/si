@@ -52,7 +52,7 @@
           @click.native="finishEditSession"
           data-cy="application-details-mode-toggle"
           class="w-16"
-          label="done"
+          label="save"
           icon="save"
           kind="save"
           size="xs"

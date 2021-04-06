@@ -175,6 +175,10 @@ export default Vue.extend({
     },
   },
   methods: {
+    onInitialMaximizedFullUpdates(value: Boolean) {
+      // @ts-ignore
+      this.$refs.graphViewer.updateCanvasPosition();
+    },
     async nodeSelect(schematicNode: ISchematicNode) {
       console.log("selected (does nothing!!!", { schematicNode });
     },
@@ -272,6 +276,9 @@ export default Vue.extend({
     async currentChangeSet() {
       this.isLoading = true;
       await this.loadSchematic();
+    },
+    initialMaximizedFull(value) {
+      this.onInitialMaximizedFullUpdates(value);
     },
   },
 });

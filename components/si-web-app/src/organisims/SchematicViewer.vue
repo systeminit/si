@@ -8,7 +8,7 @@
     @mousemove="mouseMove($event)"
     @mouseup="mouseUp($event)"
   >
-    <div :id="canvas.id" ref="canvas" class="absolute block">
+    <div :id="canvas.id" ref="canvas" class="absolute overflow-auto">
       <svg
         :id="connection.transientConnection.elementId"
         height="100%"
@@ -46,7 +46,11 @@
         />
       </div>
 
-      <SiBackground :resolution="canvas.resolution" style="default" />
+      <SiBackground
+        ref="siBackground"
+        :resolution="canvas.resolution"
+        style="default"
+      />
     </div>
   </div>
 </template>
@@ -114,6 +118,7 @@ import {
   EdgePostionUpdateEvent,
   EdgeTemporary,
 } from "@/organisims/SchematicViewer/Edge.vue";
+import { SpaceBarEvents } from "@/organisims/ShortcutsEventBroker.vue";
 
 import SiBackground from "@/atoms/SiBackground.vue";
 import SiGraphNode from "./SchematicViewer/Node.vue";
@@ -136,12 +141,25 @@ type IPanelLayoutUpdated = boolean;
 interface IData {
   id: string;
   canvas: {
+    id: string;
     element: HTMLElement | null;
     resolution: CgResolution;
-    id: string;
+    position: {
+      x: number;
+      y: number;
+    };
+    boundingBox: {
+      width: number;
+      height: number;
+      position: {
+        x: number;
+        y: number;
+      };
+    };
   };
   viewer: {
     mouseIsDown: boolean;
+    spacebarIsDown: boolean;
     draggingMode: boolean;
     panningMode: boolean;
     shortcutsEnabled: boolean;
@@ -151,9 +169,10 @@ interface IData {
     isNodeConnectionMode: boolean;
     isNodeCreate: boolean;
     isNodeCreateInit: boolean;
+    nodeDeselection: boolean;
   };
   viewport: {
-    element: Element | Vue | HTMLElement | null;
+    element: HTMLElement | null;
     pan: {
       translation: {
         x: number;
@@ -171,6 +190,10 @@ interface IData {
         x: number | null;
         y: number | null;
       };
+    };
+    size: {
+      width: number;
+      height: number;
     };
     mouse: {
       position: {
@@ -228,10 +251,22 @@ export default Vue.extend({
       canvas: {
         element: null,
         resolution: {
-          x: 600,
-          y: 600,
+          x: 8000,
+          y: 8000,
+        },
+        position: {
+          x: 0,
+          y: 0,
         },
         id: id + "." + "canvas",
+        boundingBox: {
+          width: 0,
+          height: 0,
+          position: {
+            x: 0,
+            y: 0,
+          },
+        },
       },
       viewer: {
         shortcutsEnabled: false,
@@ -243,7 +278,9 @@ export default Vue.extend({
         isNodeConnectionMode: false,
         isNodeCreate: false,
         mouseIsDown: false,
+        spacebarIsDown: false,
         isNodeCreateInit: false,
+        nodeDeselection: false,
       },
       viewport: {
         element: null,
@@ -272,6 +309,10 @@ export default Vue.extend({
           },
           event: null,
         },
+        size: {
+          width: 0,
+          height: 0,
+        },
       },
       selection: {
         element: null,
@@ -297,18 +338,16 @@ export default Vue.extend({
     };
   },
   mounted(): void {
-    this.registerEvents();
-    this.setCanvasSize();
     this.canvas.element = this.$refs.canvas as HTMLElement;
     this.viewport.element = this.$refs.viewport as HTMLElement;
-    this.setCanvasPositionToViewportCenter();
+    this.setCanvasSize();
+    this.setCanvasPosition();
+    this.registerEvents();
   },
   beforeDestroy() {
     this.deRegisterEvents();
   },
-  beforeUpdate: function() {
-    this.setCanvasPositionToViewportCenter();
-  },
+  beforeUpdate: function() {},
   computed: {
     selectedNode(): ISchematicNode | null {
       return this.storesCtx.schematicPanelStoreCtx.state.selectedNode;
@@ -344,9 +383,8 @@ export default Vue.extend({
     registerEvents(): void {
       PanelEventBus.$on("panel-viewport-update", this.redraw);
       PanelEventBus.$on("panel-viewport-edge-remove", this.removeTemporaryEdge);
-      PanelEventBus.$on(
-        "shortcuts-update-" + this.id,
-        this.handleShortcutUpdate,
+      SpaceBarEvents.subscribe(event =>
+        this.spacebarEvent(event as ShortcutUpdateEvent),
       );
     },
     deRegisterEvents(): void {
@@ -354,10 +392,6 @@ export default Vue.extend({
       PanelEventBus.$off(
         "panel-viewport-edge-remove",
         this.removeTransientEdge,
-      );
-      PanelEventBus.$off(
-        "shortcuts-update-" + this.id,
-        this.handleShortcutUpdate,
       );
     },
     activateShortcuts(): void {
@@ -386,13 +420,6 @@ export default Vue.extend({
 
       PanelEventBus.$emit("shortcuts-registration-update", event);
     },
-    handleShortcutUpdate(e: ShortcutUpdateEvent) {
-      if (e.action == ShortcutActions.StartPan) {
-        this.activatePanningMode();
-      } else if (e.action == ShortcutActions.EndPan) {
-        this.deactivatePanningMode();
-      }
-    },
     activateViewer(): void {
       this.viewer.isActive = true;
     },
@@ -405,9 +432,11 @@ export default Vue.extend({
     },
     activatePanningMode(): void {
       this.viewer.panningMode = true;
+      this.viewer.isPanning = true;
     },
     deactivatePanningMode(): void {
       this.viewer.panningMode = false;
+      this.viewer.isPanning = false;
     },
     async selectNode(node: INode) {
       await this.schematicPanelStoreCtx.dispatch("nodeSelect", node);
@@ -436,6 +465,69 @@ export default Vue.extend({
         }
       }
     },
+    setCanvasPosition() {
+      if (this.viewport.element && this.canvas.element) {
+        const viewportBoundingRect = this.viewport.element.getBoundingClientRect();
+        const offset = {
+          x: Math.abs(
+            this.canvas.resolution.x * 0.5 - viewportBoundingRect.width * 0.5,
+          ) as number,
+          y: Math.abs(
+            this.canvas.resolution.y * 0.5 -
+              (viewportBoundingRect.height * 0, 5),
+          ) as number,
+        };
+
+        this.viewport.size.width = viewportBoundingRect.width;
+        this.viewport.size.height = viewportBoundingRect.height;
+
+        this.canvas.position.x = -Math.abs(offset.x);
+        this.canvas.position.y = -Math.abs(offset.y);
+
+        this.canvas.element.style.left = this.canvas.position.x + "px";
+        this.canvas.element.style.top = this.canvas.position.y + "px";
+      }
+    },
+    updateCanvasPosition() {
+      // called when maximizing/minimizing a panel
+
+      if (this.viewport.element && this.canvas.element) {
+        const viewportBoundingRect = this.viewport.element.getBoundingClientRect();
+
+        // calculate the canvas offsets so that it is centered on the viewport.
+        const offsetToCenter = {
+          x: Math.abs(
+            this.canvas.resolution.x * 0.5 - viewportBoundingRect.width * 0.5,
+          ) as number,
+          y: Math.abs(
+            this.canvas.resolution.y * 0.5 -
+              (viewportBoundingRect.height * 0, 5),
+          ) as number,
+        };
+
+        // Compensate for the change in viewport size.
+        const viewerOffset = {
+          x: viewportBoundingRect.width - this.viewport.size.width,
+          y: viewportBoundingRect.height - this.viewport.size.height,
+        };
+
+        const position = {
+          x: offsetToCenter.x + this.canvas.position.x,
+          y: offsetToCenter.y + this.canvas.position.y,
+        };
+
+        this.viewport.size.width = viewportBoundingRect.width;
+        this.viewport.size.height = viewportBoundingRect.height;
+
+        this.canvas.position.x =
+          -Math.abs(offsetToCenter.x) + position.x + viewerOffset.x * 0.5;
+        this.canvas.position.y =
+          -Math.abs(offsetToCenter.y) + position.y + viewerOffset.y * 0.5;
+
+        this.canvas.element.style.left = this.canvas.position.x + "px";
+        this.canvas.element.style.top = this.canvas.position.y + "px";
+      }
+    },
     setCanvasSize() {
       const canvas = this.$refs.canvas as HTMLElement;
       SiCg.cgSetElementSize(
@@ -443,11 +535,6 @@ export default Vue.extend({
         this.canvas.resolution.x,
         this.canvas.resolution.y,
       );
-    },
-    setCanvasPositionToViewportCenter() {
-      // const canvas = this.$refs.canvas as HTMLElement;
-      // const viewport = this.$refs.viewport as HTMLElement;
-      // SiCg.cgSetElementPositionToViewportCenter(canvas, viewport);
     },
     newTemporaryEdge(
       edgeId: string,
@@ -482,6 +569,22 @@ export default Vue.extend({
     redraw(event: IPanelLayoutUpdated | UIEvent) {
       this.$forceUpdate();
     },
+    spacebarEvent(event: ShortcutUpdateEvent) {
+      if (event.panelId === this.id) {
+        if (event.action === ShortcutActions.StartPan) {
+          this.activatePanningMode();
+        }
+        if (event.action === ShortcutActions.EndPan) {
+          this.deactivatePanningMode();
+        }
+      }
+    },
+    spacebarDown(e: Event): void {
+      this.viewer.spacebarIsDown = true;
+    },
+    spacebarUp(e: Event): void {
+      this.viewer.spacebarIsDown = false;
+    },
     mouseEnter() {
       this.activateShortcuts();
       this.activateViewer();
@@ -500,11 +603,6 @@ export default Vue.extend({
           this.canvas.element as HTMLElement,
         );
 
-        const targetElement = e.target as HTMLElement;
-        if (targetElement.id == TRANSIENT_CONNECTION_SVG_ID) {
-          this.clearNodeSelection();
-        }
-
         const ctx: MouseContext = {
           id: this.id,
           isActive: true,
@@ -512,7 +610,6 @@ export default Vue.extend({
         const event: MouseRegistrationEvent = {
           context: ctx,
         };
-        PanelEventBus.$emit("mouse-registration-update", event);
 
         // ----------------------------------------------------------------
         // Initialize canvas position
@@ -539,14 +636,28 @@ export default Vue.extend({
         // ----------------------------------------------------------------
         // Initialize canvas panning
         // ----------------------------------------------------------------
-        if (this.viewer.panningMode) {
-          this.viewer.isPanning = true;
+        // if (this.viewer.panningMode) {
+        //   this.viewer.isPanning = true;
+        //   console.log("this.viewer.isPanning");
+        // }
+
+        // ----------------------------------------------------------------
+        // Deselect active node
+        // ----------------------------------------------------------------
+        if (e.target && e.target instanceof SVGElement && e.target.id) {
+          if (
+            e.target.id.includes(".transientConnectionSvg") ||
+            e.target.id.includes(".edge:")
+          ) {
+            this.clearNodeSelection();
+            this.viewer.nodeDeselection = true;
+          }
         }
 
         // ----------------------------------------------------------------
         // Initialize node dragging
         // ----------------------------------------------------------------
-        if (!this.viewer.panningMode) {
+        if (!this.viewer.panningMode && !this.viewer.nodeDeselection) {
           this.viewer.draggingMode = true;
 
           // Set selected element (node)
@@ -569,9 +680,12 @@ export default Vue.extend({
           // ----------------------------------------------------------------
           // Initialize edge creation
           // ----------------------------------------------------------------
-          if (targetElement && targetElement.classList.contains("socket")) {
-            this.connection.transientConnection.sourceSocketId =
-              targetElement.id;
+          if (
+            e.target &&
+            e.target instanceof HTMLElement &&
+            e.target.classList.contains("socket")
+          ) {
+            this.connection.transientConnection.sourceSocketId = e.target.id;
 
             // Ccreate an edge
             const transientConnection = document.createElementNS(
@@ -627,8 +741,7 @@ export default Vue.extend({
         // ----------------------------------------------------------------
         // Mouse is panning
         // ----------------------------------------------------------------
-        if (this.viewer.panningMode) {
-          this.viewer.isPanning = true;
+        if (this.viewer.panningMode && this.viewer.isPanning) {
           this.panViewport(e);
         } else if (
           this.viewer.isNodeConnectionMode &&
@@ -735,7 +848,6 @@ export default Vue.extend({
           const event: MouseRegistrationEvent = {
             context: ctx,
           };
-          PanelEventBus.$emit("mouse-registration-update", event);
         }
 
         // ----------------------------------------------------------------
@@ -753,8 +865,8 @@ export default Vue.extend({
       // Cleanup
       // ----------------------------------------------------------------
       this.viewer.mouseIsDown = false;
-      this.viewer.panningMode = false;
       this.viewer.isPanning = false;
+      this.viewer.nodeDeselection = false;
       this.removeTransientEdge();
     },
     panViewport(e: MouseEvent) {
@@ -768,7 +880,8 @@ export default Vue.extend({
         this.viewport.pan.position.y != null &&
         this.viewport.pan.originalPosition.x != null &&
         this.viewport.pan.originalPosition.y != null &&
-        this.canvas.element
+        this.canvas.element &&
+        this.viewport.element
       ) {
         // calculate mouse movement
         const mouseMovement = {
@@ -782,10 +895,9 @@ export default Vue.extend({
           y: mousePosition.y,
         };
 
-        // update viewport pan translation
         this.viewport.pan.translation = {
-          x: this.viewport.pan.position.x + mouseMovement.x,
-          y: this.viewport.pan.position.y + mouseMovement.y,
+          x: this.canvas.position.x + mouseMovement.x,
+          y: this.canvas.position.y + mouseMovement.y,
         };
 
         // set canvas position
@@ -795,19 +907,31 @@ export default Vue.extend({
         };
 
         const canvasRect = this.canvas.element.getBoundingClientRect();
-        this.canvas.element.setAttribute(
-          "style",
-          "left:" +
-            String(position.x) +
-            "px;" +
-            "top:" +
-            String(position.y) +
-            "px;",
-        );
+        const viewportRect = this.viewport.element.getBoundingClientRect();
 
-        // update viewport pan position
-        this.viewport.pan.position.x = position.x;
-        this.viewport.pan.position.y = position.y;
+        const panLimit = {
+          left: 0,
+          top: 0,
+          right: -Math.abs(canvasRect.width - viewportRect.width),
+          bottom: -Math.abs(canvasRect.height - viewportRect.height),
+        };
+
+        const panPostion = {
+          x: Math.min(
+            panLimit.left,
+            Math.max(Math.min(panLimit.left, position.x), panLimit.right),
+          ),
+          y: Math.min(
+            panLimit.top,
+            Math.max(Math.min(panLimit.top, position.y), panLimit.bottom),
+          ),
+        };
+
+        this.canvas.element.style.left = panPostion.x + "px";
+        this.canvas.element.style.top = panPostion.y + "px";
+
+        this.canvas.position.x = position.x;
+        this.canvas.position.y = position.y;
       }
     },
     async dragNode() {

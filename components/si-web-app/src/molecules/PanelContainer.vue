@@ -93,11 +93,24 @@ interface Panel {
 
 export type PanelOrPanelContainer = Panel | IPanelContainer;
 
-export interface IPanelContainer {
+export type IPanelContainer =
+  | IPanelContainerWithoutSize
+  | IPanelContainerWithSize;
+
+export interface IPanelContainerWithoutSize {
   orientation: "column" | "row";
   panels: PanelOrPanelContainer[];
   type: "panelContainer";
+  width?: never;
 }
+
+export interface IPanelContainerWithSize {
+  orientation: "column" | "row";
+  panels: PanelOrPanelContainer[];
+  type: "panelContainer";
+  width: number;
+}
+
 interface IData {
   resizeEvent: null | ResizeEvent;
   ticking: boolean;
@@ -141,6 +154,7 @@ export default Vue.extend({
     PanelEventBus.$on("panel-created", this.onPanelCreated);
     PanelEventBus.$on("panel-deleted", this.onPanelDeleted);
     this.setPanelIsMaximizedContainerEnabled();
+    this.setInitialPanelSize();
   },
   beforeDestroy() {
     PanelEventBus.$off("maximize-container", this.maximizePanel);
@@ -202,6 +216,42 @@ export default Vue.extend({
         if (panelSelectors && panelSelectors[0]) {
           // @ts-ignore
           panelSelectors[0].isMaximizedContainerEnabled = false;
+        }
+      }
+    },
+    setInitialPanelSize() {
+      // Temporary hack to see how the layout feels.
+      const panelContainer = this.panelContainer;
+      const orientation = panelContainer.orientation;
+      const numberOfPanels = panelContainer.panels.length;
+
+      const panelCheechIndex = 0;
+      const panelChongIndex = 1;
+
+      const panelContainerElem = document.getElementById(
+        this.panelContainerRefName(),
+      );
+      const panelCheechElem = this.getPanelHolderElementByIndex(
+        panelCheechIndex,
+      );
+      const panelChongElem = this.getPanelHolderElementByIndex(panelChongIndex);
+
+      if (orientation == "row") {
+        if (panelContainerElem && panelCheechElem && panelChongElem) {
+          // @ts-ignore
+          if (this.panelContainer.panels[0].width) {
+            // @ts-ignore
+            const newCheechWidthPercent = this.panelContainer.panels[0].width;
+            const newChongWidthPercent = 100 - newCheechWidthPercent;
+            panelCheechElem.setAttribute(
+              "style",
+              `width: ${newCheechWidthPercent}%;`,
+            );
+            panelChongElem.setAttribute(
+              "style",
+              `width: ${newChongWidthPercent}%;`,
+            );
+          }
         }
       }
     },
@@ -443,6 +493,7 @@ export default Vue.extend({
       let panelCheech = this.getPanelElementByIndex(panelCheechIndex);
       let panelChongIndex = panelIndex + 1;
       let panelChong = this.getPanelElementByIndex(panelChongIndex);
+
       if (panelCheech && panelChong) {
         const panelCheechSize = {
           panelIndex: panelCheechIndex,

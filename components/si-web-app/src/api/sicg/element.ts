@@ -24,22 +24,24 @@ export function cgSetElementPositionToViewportCenter(
     y: viewportCenter.y - elementContainerCenter.y,
   };
 
-  // This will override style on the element.
-  // TODO: It should update instead of overriding.
-  element.setAttribute(
-    "style",
-    "left:" + offset.x + "px;" + "top:" + offset.y + "px;",
-  );
+  element.style.left = offset.x + "px";
+  element.style.top = offset.y + "px";
+  // element.setAttribute(
+  //   "style",
+  //   "left:" + offset.x + "px;" + "top:" + offset.y + "px;",
+  // );
 }
 
 export function cgSetElementPosition(
   element: HTMLElement,
   position: Cg2dCoordinate,
 ): void {
-  element.setAttribute(
-    "style",
-    "left:" + position.x + "px;" + "top:" + position.y + "px;",
-  );
+  element.style.left = position.x + "px";
+  element.style.top = position.y + "px";
+  // element.setAttribute(
+  //   "style",
+  //   "left:" + position.x + "px;" + "top:" + position.y + "px;",
+  // );
 }
 
 export function cgSetElementSize(
@@ -47,10 +49,12 @@ export function cgSetElementSize(
   width: number,
   height: number,
 ) {
-  element.setAttribute(
-    "style",
-    "width:" + width + "px;" + "height:" + height + "px;",
-  );
+  element.style.width = width + "px";
+  element.style.height = height + "px";
+  // element.setAttribute(
+  //   "style",
+  //   "width:" + width + "px;" + "height:" + height + "px;",
+  // );
 }
 
 export function cgGetMousePositionInElementSpace(

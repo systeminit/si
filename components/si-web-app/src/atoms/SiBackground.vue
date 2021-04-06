@@ -104,15 +104,11 @@ export default Vue.extend({
       // Compose default grid value or take value from prop...
       return "grid";
     },
-
-    // gridStyle(): IGridOptions {
-    //   if (this.style.grid) {
-    //     if (!this.style.grid.default) {
-    //       return this.style.grid
-    //     }
-    //   }
-    //   return this.gridDefaultOptions
-    // }
+    setPosition(posX: number, posY: number): void {
+      const element = this.$refs.siCanvas as HTMLElement;
+      element.style.left = posX + "px";
+      element.style.top = posY + "px";
+    },
   },
 });
 </script>

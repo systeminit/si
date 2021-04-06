@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-full w-full">
+  <div class="flex flex-col w-full h-full">
     <PanelTree />
   </div>
 </template>

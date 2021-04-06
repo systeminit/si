@@ -9,7 +9,7 @@
     <div
       class="flex flex-row items-center w-full bg-black"
       :class="panelMenuClasses()"
-      style="height: 3rem; min-height: 3rem"
+      style="height: 2.5rem; min-height: 2.5rem"
     >
       <div class="flex justify-start">
         <SiSelect
@@ -31,7 +31,7 @@
             @click="minimizeContainer"
             v-if="maximizedContainer && !maximizedFull"
           >
-            <Minimize2Icon />
+            <Minimize2Icon size="1.2x" />
           </button>
 
           <button
@@ -43,7 +43,7 @@
                 isMaximizedContainerEnabled
             "
           >
-            <Maximize2Icon />
+            <Maximize2Icon size="1.2x" />
           </button>
         </div>
         <div class="flex items-center h-full pr-2">
@@ -52,11 +52,11 @@
             @click="minimizeFull"
             v-if="maximizedFull"
           >
-            <MinimizeIcon />
+            <MinimizeIcon size="1.2x" />
           </button>
 
           <button data-testid="maximize-full" @click="maximizeFull" v-else>
-            <MaximizeIcon />
+            <MaximizeIcon size="1.2x" />
           </button>
         </div>
       </div>

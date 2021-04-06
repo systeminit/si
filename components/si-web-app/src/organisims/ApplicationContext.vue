@@ -1,12 +1,12 @@
 <template>
-  <div class="flex flex-col w-full pb-3">
+  <div class="flex flex-col w-full pb-2 header-background">
     <SiError
       testId="editor-error"
       :message="editorErrorMessage"
       @clear="clearEditorErrorMessage"
     />
-    <div class="flex mt-3">
-      <div class="items-center w-1/2">
+    <div class="flex justify-between" :class="titleBarClasses()">
+      <div class="flex items-center">
         <button
           @click="toggleDetails"
           class="focus:outline-none"
@@ -14,209 +14,79 @@
         >
           <ChevronDownIcon
             v-if="showDetails"
+            size="1.2x"
             class="inline-flex text-gray-300"
           />
-          <ChevronRightIcon v-else class="inline-flex text-gray-300" />
+          <ChevronRightIcon
+            size="1.2x"
+            v-else
+            class="inline-flex text-gray-300"
+          />
         </button>
         <div
-          class="inline-flex font-normal text-gray-300"
+          class="inline-flex font-light text-gray-300 font-small "
           data-cy="application-details-application-name"
         >
-          applications/{{ applicationName }}
+          {{ applicationName }}
         </div>
       </div>
 
-      <div class="flex items-center justify-end w-1/2 mr-2">
-        <div
-          class="flex items-center justify-end w-1/4 pr-1 text-xs text-gray-400"
-        >
-          system:
-        </div>
-        <div class="flex items-center mr-5">
-          <SiSelect
-            size="xs"
-            class="mr-4"
-            id="systemSelect"
-            :options="systemsList"
-            :value="currentSystemId"
-            name="systemSelect"
-            :disabled="editMode"
-          />
-        </div>
-        <div
-          class="inline-flex justify-end mr-2 font-normal text-gray-400 w-14"
-        >
-          <SiButton
-            label="apply"
-            :icon="applyButtonIcon"
-            :kind="applyButtonKind"
-            size="xs"
-            v-if="currentChangeSet && !editMode"
-            @click.native="applyChangeSet"
-          />
-          <SiButton
-            @click.native="cancelEditSession"
-            label="cancel"
-            icon="cancel"
-            kind="cancel"
-            size="xs"
-            v-if="editMode"
-          />
-        </div>
-        <div
-          class="inline-flex justify-end w-16 mr-2 font-normal text-gray-400"
-        >
-          <SiButton
-            @click.native="saveEditSession"
-            class="w-16"
-            label="done"
-            icon="save"
-            kind="save"
-            size="xs"
-            v-if="editMode"
-          />
-
-          <SiButton
-            class="w-16"
-            @click.native="startEditSession"
-            label="edit"
-            icon="edit"
-            size="xs"
-            v-else
-          />
-        </div>
+      <div class="flex items-center mr-2">
+        <EditorMenuBar
+          :applicationContextCtx="applicationContextCtx"
+          :workspaceId="workspaceId"
+          :applicationId="applicationId"
+          v-show="!showDetails"
+        />
       </div>
-      <SiModal
-        name="changeSetCreate"
-        title="Select or create a changeSet"
-        class="overflow-visible"
-      >
-        <div class="flex-row w-full">
-          <div class="w-full text-right text-red-400">
-            ! a changeSet is required to make edits
-          </div>
-          <SiError
-            testId="change-set-create-error"
-            :message="modalErrorMessage"
-            @clear="clearModalErrorMessage"
-          />
-          <div class="items-center w-full">
-            <div class="flex items-center w-full">
-              <div class="w-1/3 mr-2 text-right">changeSet:</div>
-              <div class="w-3/6">
-                <SiSelect
-                  size="sm"
-                  :options="openChangeSetsList"
-                  id="selectCurrentChangeSetEdit"
-                  v-model="selectCurrentChangeSetId"
-                  name="selectCurrentChangeSetEdit"
-                  @change.native="editModeChangeSetSelected"
-                />
-              </div>
-            </div>
-            <div class="flex items-center w-full mt-4">
-              <div class="w-1/3 mr-2 text-right">name:</div>
-              <div class="w-3/6">
-                <SiTextBox
-                  class="w-full"
-                  name="new-change-set-name"
-                  id="new-change-set-name"
-                  size="sm"
-                  placeholder="new change set name"
-                  v-model="newChangeSetForm.name"
-                  v-on:keyup.enter.native="changeSetCreate"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-        <template v-slot:buttons>
-          <SiButton
-            size="sm"
-            label="cancel"
-            class="m-1"
-            icon="cancel"
-            kind="cancel"
-            @click.native="cancelChangeSetCreate()"
-            data-cy="new-change-set-form-cancel-button"
-          />
-          <SiButton
-            size="sm"
-            label="create"
-            class="m-1"
-            icon="save"
-            kind="save"
-            :disabled="!newChangeSetForm.name"
-            @click.native="changeSetCreate"
-            data-cy="new-change-set-form-create-button"
-          />
-        </template>
-      </SiModal>
     </div>
-    <transition
-      enter-active-class="transition-all ease-out delay-75"
-      leave-active-class="transition-all ease-in delay-75"
-      enter-class="opacity-0 scale-0"
-      enter-to-class="opacity-100 scale-100"
-      leave-class="opacity-100 scale-100"
-      leave-to-class="opacity-0 scale-75"
+    <div
+      class="flex w-full pb-2 details-panel-background"
+      data-cy="application-details-extended"
+      v-show="showDetails"
     >
-      <div
-        class="flex w-full"
-        data-cy="application-details-extended"
-        v-show="showDetails"
-      >
-        <div
-          class="w-1/4 pt-2 pb-2 pl-2 mx-3 mt-2 border border-solid card-section"
-        >
-          Activity Visualiation
-        </div>
-        <div
-          class="w-1/4 pt-2 pb-2 pl-2 mx-3 mt-2 border border-solid card-section"
-        >
-          Services Visualization
-        </div>
+      <div class="w-1/4 pt-2 pb-2 pl-2 mx-3 mt-2 details-panel card-section">
+        <div class="details-panel-title">Activity</div>
+      </div>
+      <div class="w-1/4 pt-2 pb-2 pl-2 mx-3 mt-2 details-panel card-section">
+        <div class="details-panel-title">Services</div>
+      </div>
 
-        <div
-          class="w-1/4 pt-2 pb-2 pl-2 mx-3 mt-2 border border-solid card-section"
-        >
-          Resources Visualization
-        </div>
-        <div
-          class="w-1/4 pt-2 pb-2 pl-2 mx-3 mt-2 border border-solid card-section"
-        >
-          <div class="flex flex-col">
-            <div class="flex flex-row align-middle">
-              <div class="self-center text-sm font-bold text-gray-400">
-                changeset:
-              </div>
-              <div class="flex ml-2">
-                <SiSelect
-                  size="xs"
-                  :options="openChangeSetsList"
-                  id="selectCurrentChangeSet"
-                  v-model="selectCurrentChangeSetId"
-                  :disabled="editMode"
-                  @change.native="changeSetSelected"
-                />
-              </div>
+      <div class="w-1/4 pt-2 pb-2 pl-2 mx-3 mt-2 details-panel card-section">
+        <div class="details-panel-title">Resources</div>
+      </div>
+      <div class="w-1/4 pt-2 pb-2 pl-2 mx-3 mt-2 details-panel card-section">
+        <div class="flex flex-col">
+          <div class="flex flex-row align-middle">
+            <div class="self-center">
+              <div class="details-panel-title">Changeset</div>
             </div>
-            <div class="flex flex-row text-xs text-gray-400 align-middle">
-              <div>participants:</div>
-              <div class="ml-2">
-                <!-- <template v-if="changeSetParticipantCount == 0"> -->
-                <template v-if="true"> 0 (fake) </template>
-                <template v-else>
-                  <span class="text-gold">
-                    {{ changeSetParticipantCount }}
-                  </span>
-                </template>
-              </div>
+          </div>
+          <div class="flex flex-row text-xs text-gray-400 align-middle">
+            <div>participants:</div>
+            <div class="ml-2">
+              <!-- <template v-if="changeSetParticipantCount == 0"> -->
+              <template v-if="true"> 0 (fake) </template>
+              <template v-else>
+                <span class="text-gold">
+                  {{ changeSetParticipantCount }}
+                </span>
+              </template>
             </div>
           </div>
         </div>
       </div>
-    </transition>
+    </div>
+
+    <div class="flex justify-end mt-1 mr-2" v-show="showDetails">
+      <div class="flex items-center justify-end">
+        <EditorMenuBar
+          :applicationContextCtx="applicationContextCtx"
+          :workspaceId="workspaceId"
+          :applicationId="applicationId"
+        />
+      </div>
+    </div>
   </div>
 </template>
 
@@ -228,14 +98,11 @@ import { IEditorContext } from "@/store/modules/editor";
 import Vue, { PropType } from "vue";
 
 import { ChevronDownIcon, ChevronRightIcon } from "vue-feather-icons";
-import SiSelect from "@/atoms/SiSelect.vue";
-import SiButton from "@/atoms/SiButton.vue";
-import SiModal from "@/molecules/SiModal.vue";
-import SiTextBox from "@/atoms/SiTextBox.vue";
 import SiError from "@/atoms/SiError.vue";
 import { ChangeSet } from "@/api/sdf/model/changeSet";
 import { SDFError } from "@/api/sdf";
 import { PanelEventBus, emitEditorErrorMessage } from "@/atoms/PanelEventBus";
+import EditorMenuBar from "@/organisims/EditorMenuBar.vue";
 
 interface IData {
   showDetails: boolean;
@@ -257,17 +124,14 @@ export default Vue.extend({
     },
   },
   components: {
+    EditorMenuBar,
     ChevronRightIcon,
     ChevronDownIcon,
-    SiSelect,
-    SiButton,
-    SiModal,
-    SiTextBox,
     SiError,
   },
   data(): IData {
     return {
-      showDetails: true,
+      showDetails: false,
       selectCurrentChangeSetId: "",
       newChangeSetForm: {
         name: "",
@@ -322,25 +186,11 @@ export default Vue.extend({
         this.showDetails = true;
       }
     },
-    async editModeChangeSetSelected() {
-      if (this.selectCurrentChangeSetId) {
-        let reply = await this.$store.dispatch(
-          this.applicationContextCtx.dispatchPath(
-            "createEditSessionAndLoadChangeSet",
-          ),
-          { changeSetId: this.selectCurrentChangeSetId },
-        );
-        if (reply.error) {
-          this.modalErrorMessage = reply.error.message;
-        } else {
-          await this.$emit("update-query-param", {
-            changeSetId: reply.changeSet.id,
-            editSessionId: reply.editSession.id,
-          });
-          await this.setEditMode();
-          this.$modal.hide("changeSetCreate");
-        }
-      }
+    titleBarClasses(): Record<string, any> {
+      let classes: Record<string, any> = {};
+      classes["title-background"] = this.showDetails;
+      classes["mt-2"] = !this.showDetails;
+      return classes;
     },
     async changeSetSelected() {
       if (this.selectCurrentChangeSetId) {
@@ -370,36 +220,6 @@ export default Vue.extend({
           "changeSetId",
           "editSessionId",
         ]);
-      }
-    },
-    clearChangeSetCreateForm() {
-      this.newChangeSetForm.name = "";
-      this.modalErrorMessage = "";
-    },
-    async cancelChangeSetCreate() {
-      this.clearChangeSetCreateForm();
-      this.$modal.hide("changeSetCreate");
-    },
-    async changeSetCreate() {
-      let reply = await this.$store.dispatch(
-        this.applicationContextCtx.dispatchPath(
-          "createChangeSetAndEditSession",
-        ),
-        {
-          workspaceId: this.currentWorkspace?.id,
-          changeSetName: this.newChangeSetForm.name,
-        },
-      );
-      if (reply.error) {
-        this.modalErrorMessage = reply.error.message;
-      } else {
-        this.$emit("update-query-param", {
-          changeSetId: reply.changeSet.id,
-          editSessionId: reply.editSession.id,
-        });
-        this.clearChangeSetCreateForm();
-        this.$modal.hide("changeSetCreate");
-        await this.setEditMode();
       }
     },
     async editSessionCreate() {
@@ -545,3 +365,27 @@ export default Vue.extend({
   },
 });
 </script>
+
+<style scoped>
+.details-panel {
+  border: solid;
+  border-width: 1px;
+  border-color: #464753;
+}
+
+.details-panel-title {
+  @apply font-normal text-xs;
+}
+
+.details-panel-background {
+  background-color: #171717;
+}
+
+.header-background {
+  background-color: #171717;
+}
+
+.title-background {
+  background-color: #292929;
+}
+</style>
