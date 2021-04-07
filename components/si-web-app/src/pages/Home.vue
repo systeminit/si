@@ -1,10 +1,11 @@
 <template>
-  <div class="flex flex-col h-screen w-screen bg-black text-white vld-parent">
+  <div class="flex flex-col w-screen h-screen text-white bg-black vld-parent">
     <SiLoader :isLoading="isLoading" />
     <DebugRoute testId="location-display-homepage" />
     <div class="flex flex-row w-full h-full overflow-hidden">
       <div
-        class="flex flex-col flex-no-wrap items-center justify-between flex-shrink-0 bg-primary w-54"
+        class="flex flex-col flex-no-wrap items-center justify-between flex-shrink-0 bg-primary"
+        v-show="navIsVisible"
       >
         <Nav />
       </div>
@@ -29,6 +30,7 @@ import { ISetDefaultsReply } from "@/store/modules/session";
 interface IData {
   errorMessage: string;
   isLoading: boolean;
+  navIsVisible: boolean;
 }
 
 export default Vue.extend({
@@ -43,6 +45,7 @@ export default Vue.extend({
     return {
       errorMessage: "",
       isLoading: true,
+      navIsVisible: true,
     };
   },
   async created() {

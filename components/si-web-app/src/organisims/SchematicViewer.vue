@@ -1,14 +1,14 @@
 <template>
   <div
     ref="viewport"
-    class="w-full h-full"
+    class="w-full h-full overflow-hidden"
     @mouseenter="mouseEnter()"
     @mouseleave="mouseLeave()"
     @mousedown="mouseDown($event)"
     @mousemove="mouseMove($event)"
     @mouseup="mouseUp($event)"
   >
-    <div :id="canvas.id" ref="canvas" class="absolute overflow-auto">
+    <div :id="canvas.id" ref="canvas" class="absolute ">
       <svg
         :id="connection.transientConnection.elementId"
         height="100%"
@@ -433,10 +433,18 @@ export default Vue.extend({
     activatePanningMode(): void {
       this.viewer.panningMode = true;
       this.viewer.isPanning = true;
+
+      if (this.viewport.element) {
+        this.viewport.element.style.cursor = "grab";
+      }
     },
     deactivatePanningMode(): void {
       this.viewer.panningMode = false;
       this.viewer.isPanning = false;
+
+      if (this.viewport.element) {
+        this.viewport.element.style.cursor = "default";
+      }
     },
     async selectNode(node: INode) {
       await this.schematicPanelStoreCtx.dispatch("nodeSelect", node);

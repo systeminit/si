@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col w-full h-full">
+  <div class="flex flex-col w-full h-full editor">
     <PanelTree />
   </div>
 </template>
@@ -32,3 +32,9 @@ export default Vue.extend({
   },
 });
 </script>
+
+<style scoped>
+.editor {
+  border-top: 1px solid #242424;
+}
+</style>

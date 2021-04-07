@@ -17,6 +17,7 @@
           :applicationContextCtx="applicationContextCtx"
         />
       </div>
+      <EventBar />
       <!--
     <div id="eventBar" class="w-full">
       <EventBar />
@@ -42,6 +43,7 @@ import {
 } from "@/store/modules/applicationContext";
 
 import StatusBar from "@/organisims/StatusBar.vue";
+import EventBar from "@/organisims/EventBar.vue";
 import ApplicationContext from "@/organisims/ApplicationContext.vue";
 import Editor from "@/organisims/Editor.vue";
 
@@ -66,6 +68,7 @@ export default Vue.extend({
   name: "ApplicationDetails",
   components: {
     StatusBar,
+    EventBar,
     ApplicationContext,
     Editor,
   },

@@ -14,7 +14,6 @@
     "test:unit:watch": "vue-cli-service test:unit --watch --runInBand"
   },
   "dependencies": {
-    "@tailwindcss/postcss7-compat": "^2.0.2",
     "@types/chart.js": "^2.9.22",
     "@types/lodash": "^4.14.157",
     "@types/node-fetch": "^2.5.4",
@@ -38,10 +37,10 @@
     "rxjs": "^6.6.6",
     "si-entity": "file:../si-entity",
     "si-registry": "file:../si-registry",
-    "tailwindcss": "npm:@tailwindcss/postcss7-compat@^2.0.2",
+    "tailwindcss": "npm:@tailwindcss/postcss7-compat@^2.1.0",
     "tweetnacl": "^1.0.3",
     "tweetnacl-sealedbox-js": "github:systeminit/tweetnacl-sealed-box#master",
-    "vue": "^2.6.11",
+    "vue": "^2.6.12",
     "vue-chartjs": "^3.5.0",
     "vue-content-loader": "^0.2.3",
     "vue-feather-icons": "^5.0.0",
@@ -98,7 +97,7 @@
     "typescript": "~3.9.3",
     "unique-names-generator": "^4.3.1",
     "vue-jest": "^3.0.7",
-    "vue-template-compiler": "^2.6.11"
+    "vue-template-compiler": "^2.6.12"
   },
   "eslintConfig": {
     "parserOptions": {

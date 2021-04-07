@@ -5,7 +5,7 @@
       :message="editorErrorMessage"
       @clear="clearEditorErrorMessage"
     />
-    <div class="flex justify-between" :class="titleBarClasses()">
+    <div class="flex justify-between mt-2">
       <div class="flex items-center">
         <button
           @click="toggleDetails"
@@ -14,29 +14,31 @@
         >
           <ChevronDownIcon
             v-if="showDetails"
-            size="1.2x"
-            class="inline-flex text-gray-300"
+            size="1.1x"
+            class="text-gray-300 "
           />
-          <ChevronRightIcon
-            size="1.2x"
-            v-else
-            class="inline-flex text-gray-300"
-          />
+          <ChevronRightIcon size="1.1x" v-else class="text-gray-300 " />
         </button>
-        <div
-          class="inline-flex font-light text-gray-300 font-small "
-          data-cy="application-details-application-name"
-        >
-          {{ applicationName }}
+      </div>
+
+      <div class="flex">
+        <div class="flex items-center text-xs font-light text-gray-300">
+          Services: 5
+        </div>
+        <div class="flex items-center ml-2 text-xs font-light text-gray-300">
+          Resources: 7
+        </div>
+
+        <div class="flex items-center ml-2 text-xs font-light text-gray-300">
+          Changes: +2 -7
         </div>
       </div>
 
-      <div class="flex items-center mr-2">
+      <div class="flex mr-2" v-show="!showDetails">
         <EditorMenuBar
           :applicationContextCtx="applicationContextCtx"
           :workspaceId="workspaceId"
           :applicationId="applicationId"
-          v-show="!showDetails"
         />
       </div>
     </div>
@@ -59,7 +61,7 @@
         <div class="flex flex-col">
           <div class="flex flex-row align-middle">
             <div class="self-center">
-              <div class="details-panel-title">Changeset</div>
+              <div class="details-panel-title">Changes</div>
             </div>
           </div>
           <div class="flex flex-row text-xs text-gray-400 align-middle">
@@ -188,8 +190,7 @@ export default Vue.extend({
     },
     titleBarClasses(): Record<string, any> {
       let classes: Record<string, any> = {};
-      classes["title-background"] = this.showDetails;
-      classes["mt-2"] = !this.showDetails;
+      // classes["title-background"] = this.showDetails;
       return classes;
     },
     async changeSetSelected() {
@@ -374,7 +375,10 @@ export default Vue.extend({
 }
 
 .details-panel-title {
-  @apply font-normal text-xs;
+  /* @apply font-normal text-xs; */
+  font-weight: 400;
+  font-size: 0.75rem;
+  line-height: 1rem;
 }
 
 .details-panel-background {

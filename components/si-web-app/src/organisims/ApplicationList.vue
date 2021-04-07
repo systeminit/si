@@ -1,5 +1,5 @@
 <template>
-  <div class="vld-parent">
+  <div class="h-full background">
     <SiLoader :isLoading="isLoading" />
     <SiError
       testId="application-list-wad-error"
@@ -132,3 +132,9 @@ export default Vue.extend({
   },
 });
 </script>
+
+<style scoped>
+.background {
+  background-color: #1e1e1e;
+}
+</style>

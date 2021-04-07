@@ -1,22 +1,18 @@
 <template>
-  <div class="h-32 bg-gray-800">
-    <div class="block pt-3 mx-3 text-white">
+  <div class="flex flex-col justify-center w-full bg-gray-800">
+    <div class="pl-3 text-white bg-gray-700">
       {{ application.name }}
     </div>
 
-    <div class="flex mt-1">
-      <div class="flex flex-row items-start justify-between w-11/12">
-        <div
-          class="block w-1/4 h-full pt-1 mx-3 border bg-gray-900 border-gray-400"
-        >
-          Activity Visualization
+    <div class="flex w-full my-3 ">
+      <div class="flex justify-between w-full">
+        <div class="visualization-title ">
+          Activity
           <!-- <ActivityVisualization class="mx-2 mb-2" /> -->
         </div>
 
-        <div
-          class="block w-1/4 h-full pt-1 mx-3 border bg-gray-900 border-gray-400"
-        >
-          Services Visualization
+        <div class="visualization-title ">
+          Services
           <!-- 
           <ServicesVisualization
             class="mx-2 mb-2"
@@ -26,10 +22,8 @@
           -->
         </div>
 
-        <div
-          class="block w-1/4 h-full pt-1 mx-3 border bg-gray-900 border-gray-400"
-        >
-          Systems Visualization
+        <div class="visualization-title ">
+          Systems
           <!--
           <SystemsVisualization
             class="mx-2 mb-2"
@@ -38,9 +32,7 @@
           -->
         </div>
 
-        <div
-          class="block w-1/4 h-full pt-1 mx-3 border bg-gray-900 border-gray-400"
-        >
+        <div class="visualization-title ">
           <ChangeSetCounts
             :changeSetCounts="applicationEntry.changeSetCounts"
             class="mx-2 mb-2"
@@ -52,16 +44,10 @@
           />
           -->
         </div>
-      </div>
 
-      <div class="relative w-1/12 mt-5 mr-3 text-sm font-bold">
-        <button
-          class="absolute inset-y-0 right-0 w-6 h-8 text-gray-500 hover:text-white"
-          @click="goToApplication()"
-          type="button"
-        >
-          <chevron-right-icon size="2x" />
-        </button>
+        <div class="self-center w-6">
+          <chevron-right-icon size="1.5x" class="button" />
+        </div>
       </div>
     </div>
   </div>
@@ -101,3 +87,30 @@ export default Vue.extend({
   },
 });
 </script>
+
+<style scoped>
+.visualization-title {
+  @apply block;
+  @apply h-full;
+  @apply pt-2;
+  @apply pl-3;
+  @apply mx-3;
+  @apply text-xs;
+  @apply bg-gray-900;
+  @apply border;
+  @apply border-gray-600;
+  width: 25%;
+}
+
+.button {
+  color: #4a4b4c;
+}
+
+.button:hover {
+  @apply text-gray-400;
+}
+
+.button:active {
+  @apply text-gray-300;
+}
+</style>

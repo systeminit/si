@@ -574,7 +574,7 @@ export default Vue.extend({
       } else {
         classes["h-full"] = true;
       }
-      classes["bg-gray-700"] = true;
+      classes["resizer"] = true;
       return classes;
     },
     panelContainerClasses(): Record<string, any> {
@@ -612,12 +612,11 @@ export default Vue.extend({
     panelClasses(panel: Panel): Record<string, any> {
       let classes: Record<string, any> = {};
       classes["flex"] = true;
-      //classes["bg-blue-500"] = true;
       return classes;
     },
     panelStyles(): string {
       let styles: string;
-      styles = `height: ${100 - RESIZER_HEIGHT_PERCENTAGE}%; width: 100%;`;
+      styles = `height: 100%; width: 100%;`;
       return styles;
     },
     minimizePanel(event: IMaximized) {
@@ -726,6 +725,7 @@ export default Vue.extend({
 <style scoped>
 .resizer {
   /* background-color: #282F32; */
-  background-color: #2b3336;
+  /* background-color: #2b3336; */
+  background-color: #404040;
 }
 </style>

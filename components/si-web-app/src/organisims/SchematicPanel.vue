@@ -18,6 +18,17 @@
         :options="schematicKinds"
         v-model="schematicKind"
         class="pl-1"
+        :styling="schematicSelectorStyling()"
+      />
+      <SiSelect
+        size="xs"
+        id="systemSelect"
+        name="systemSelect"
+        :options="systemsList"
+        v-model="currentSystemId"
+        class="pl-1"
+        :styling="schematicSelectorStyling()"
+        v-if="schematicKind == 'system'"
       />
       <NodeAddMenu
         class="pl-1"
@@ -153,6 +164,17 @@ export default Vue.extend({
       editMode(): boolean {
         return this.$store.getters["editor/inEditable"];
       },
+      systemsList(): ApplicationContextStore["systemsList"] {
+        return [
+          {
+            value: "",
+            label: "production",
+          },
+        ];
+      },
+      currentSystemId(): string {
+        return "production";
+      },
     }),
     ...mapGetters({
       isEditable: "editor/inEditable",
@@ -178,6 +200,13 @@ export default Vue.extend({
     onInitialMaximizedFullUpdates(value: Boolean) {
       // @ts-ignore
       this.$refs.graphViewer.updateCanvasPosition();
+    },
+    schematicSelectorStyling(): Record<string, any> {
+      let classes: Record<string, any> = {};
+      classes["bg-selectordark"] = true;
+      classes["text-gray-400"] = true;
+      classes["border-gray-800"] = true;
+      return classes;
     },
     async nodeSelect(schematicNode: ISchematicNode) {
       console.log("selected (does nothing!!!", { schematicNode });

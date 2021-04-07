@@ -7,13 +7,7 @@
     xmlns="http://www.w3.org/2000/svg"
     xmlns:xlink="http://www.w3.org/1999/xlink"
   >
-    <g
-      id="si-icon"
-      stroke="none"
-      stroke-width="1.25"
-      fill="none"
-      fill-rule="evenodd"
-    >
+    <g id="si-icon" stroke-width="1.5" fill="none" fill-rule="evenodd">
       <g id="si-icon-properties">
         <rect
           id="si-icon-rectangle"
@@ -32,7 +26,7 @@
           font-weight="normal"
           letter-spacing="0.131250005"
         >
-          <tspan x="3.81210937" y="15">SI</tspan>
+          <tspan x="3.81210937" y="15.2">SI</tspan>
         </text>
       </g>
     </g>

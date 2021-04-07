@@ -1,12 +1,14 @@
 <template>
   <div class="relative inline-block w-full" v-bind:class="textClasses">
     <select
-      class="block w-full px-2 py-1 pr-8 leading-tight text-gray-400 border border-gray-800 border-solid shadow appearance-none focus:outline-none select"
+      class="block w-full px-2 py-1 pr-8 leading-tight border border-solid shadow appearance-none focus:outline-none"
+      :class="selectorStyling()"
       :disabled="disabled"
       :data-testid="id"
       :aria-name="id"
       :id="id"
       @change="selected"
+      @keypress.space.prevent
     >
       <option
         v-for="(option, index) of options"
@@ -26,7 +28,7 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import Vue, { PropType } from "vue";
 import { ChevronDownIcon } from "vue-feather-icons";
 
 export interface SelectPropsOption {
@@ -48,6 +50,10 @@ export default Vue.extend({
   },
   props: {
     name: String,
+    styling: {
+      type: Object as PropType<Record<string, any>>,
+      default: null,
+    },
     id: {
       type: String,
     },
@@ -88,6 +94,16 @@ export default Vue.extend({
         isSelected = optionValue == newValue;
       }
       return isSelected;
+    },
+    selectorStyling(): Record<string, any> {
+      let classes: Record<string, any> = {};
+      if (!this.styling) {
+        classes["text-gray-400"] = true;
+        classes["select"] = true;
+      } else {
+        return this.styling;
+      }
+      return classes;
     },
   },
   computed: {
