@@ -22,7 +22,7 @@
       </div>
     </template>
     <template v-slot:content>
-      <div>
+      <div class="w-full">
         <SecretList v-if="showingList" />
         <SecretCreate
           v-else-if="showingCreate"

@@ -1,8 +1,13 @@
 <template>
-  <div id="application" class="flex flex-col flex-no-wrap select-none">
-    <div class="flex flex-row items-center justify-between h-12 header">
+  <div
+    id="applications"
+    class="flex flex-col w-full h-full select-none page-background"
+  >
+    <div
+      id="applications-header"
+      class="flex flex-row items-center justify-between flex-grow-0 flex-shrink-0 h-12 header-background"
+    >
       <div class="mt-1 ml-8 font-medium align-middle">Applications</div>
-
       <div class="mt-1 mr-8 align-middle ">
         <SiButton icon="plus" label="New" size="xs" @click.native="showModal" />
       </div>
@@ -39,7 +44,9 @@
       </modal>
     </div>
 
-    <ApplicationList linkTo="applicationEditor" />
+    <div class="flex h-full mx-12 mt-4 overflow-y-scroll">
+      <ApplicationList linkTo="applicationEditor" />
+    </div>
   </div>
 </template>
 
@@ -75,7 +82,11 @@ export default Vue.extend({
   background-color: #25788a;
 }
 
-.header {
+.page-background {
+  background-color: #1e1e1e;
+}
+
+.header-background {
   background-color: #171717;
 }
 </style>

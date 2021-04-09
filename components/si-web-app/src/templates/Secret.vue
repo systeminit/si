@@ -1,15 +1,17 @@
 <template>
-  <div id="secret" class="flex flex-col flex-no-wrap select-none">
-    <div class="flex flex-row h-4"></div>
-    <div class="flex flex-row h-10 bg-gray-700">
-      <div class="pt-1 pl-2 align-middle">
-        <SiButton
-          icon="plus"
-          label="New Secret"
-          size="base"
-          @click.native="showModal"
-        />
+  <div
+    id="secret"
+    class="flex flex-col w-full h-full select-none page-background"
+  >
+    <div
+      class="flex flex-row items-center justify-between flex-grow-0 flex-shrink-0 h-12 header-background"
+    >
+      <div class="mt-1 ml-8 font-medium align-middle">Secrets</div>
+
+      <div class="mt-1 mr-8 align-middle ">
+        <SiButton icon="plus" label="New" size="xs" @click.native="showModal" />
       </div>
+
       <modal
         name="new-secret"
         adaptive
@@ -43,7 +45,9 @@
       </modal>
     </div>
 
-    <SecretList />
+    <div class="flex h-full mx-12 mt-4 overflow-hidden">
+      <SecretList />
+    </div>
   </div>
 </template>
 
@@ -72,3 +76,13 @@ export default Vue.extend({
   },
 });
 </script>
+
+<style type="text/css" scoped>
+.page-background {
+  background-color: #1e1e1e;
+}
+
+.header-background {
+  background-color: #171717;
+}
+</style>

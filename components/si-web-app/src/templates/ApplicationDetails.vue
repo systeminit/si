@@ -25,11 +25,39 @@
       -->
     </div>
     <!-- this one is extra -->
+
+    <SiModal name="leave" title="Alert" class="">
+      <div class="flex flex-col items-center w-full h-full mb-2">
+        <div class="text-base font-normal text-red-500">
+          You have unsaved changes!
+        </div>
+        <div class="text-sm text-white">Are you sure you want to leave?</div>
+      </div>
+      <template v-slot:buttons>
+        <SiButton
+          size="sm"
+          label="leave"
+          class="mx-1"
+          icon="null"
+          kind="cancel"
+          @click.native="leave"
+        />
+        <SiButton
+          size="sm"
+          label="stay"
+          class="mx-1"
+          icon="null"
+          kind="save"
+          @click.native="stay"
+        />
+      </template>
+    </SiModal>
   </div>
 </template>
 
 <script lang="ts">
 import Vue from "vue";
+import Route from "vue-router";
 
 import {
   registerStatusBar,
@@ -46,6 +74,8 @@ import StatusBar from "@/organisims/StatusBar.vue";
 import EventBar from "@/organisims/EventBar.vue";
 import ApplicationContext from "@/organisims/ApplicationContext.vue";
 import Editor from "@/organisims/Editor.vue";
+import SiModal from "@/molecules/SiModal.vue";
+import SiButton from "@/atoms/SiButton.vue";
 
 import { ctxMapState, InstanceStoreContext } from "@/store";
 import {
@@ -62,6 +92,7 @@ import Bottle from "bottlejs";
 interface IData {
   applicationContextCtx: InstanceStoreContext<ApplicationContextStore>;
   statusBarCtx: InstanceStoreContext<StatusBarStore>;
+  navDestination: any | null;
 }
 
 export default Vue.extend({
@@ -71,6 +102,8 @@ export default Vue.extend({
     EventBar,
     ApplicationContext,
     Editor,
+    SiModal,
+    SiButton,
   },
   data(): IData {
     return {
@@ -84,6 +117,7 @@ export default Vue.extend({
         componentId: "ApplicationDetails",
         instanceId: "applicationDetails",
       }),
+      navDestination: null,
     };
   },
   props: {
@@ -108,6 +142,9 @@ export default Vue.extend({
         contextType: "applicationSystem",
       };
     },
+    editMode(): ApplicationContextStore["editMode"] {
+      return ctxMapState(this.applicationContextCtx, "editMode");
+    },
   },
   methods: {
     async updateQueryParam(payload: Record<string, any>) {
@@ -124,6 +161,13 @@ export default Vue.extend({
       let bottle = Bottle.pop("default");
       let persister: Persister = bottle.container.Persister;
       persister.wipeQueryParams();
+    },
+    leave() {
+      this.$modal.hide("leave");
+      this.navDestination();
+    },
+    stay() {
+      this.$modal.hide("leave");
     },
   },
   async created() {
@@ -173,6 +217,17 @@ export default Vue.extend({
     unregisterStatusBar(this.applicationContextCtx.instanceId);
     unregisterApplicationContext(this.applicationContextCtx);
     await this.$store.dispatch("session/setSessionContext", null);
+  },
+  beforeRouteLeave(_to, _from, next: any) {
+    if (this.editMode) {
+      if (next != null) {
+        this.navDestination = next;
+        this.$modal.show("leave");
+        next(false);
+      }
+    } else {
+      next();
+    }
   },
   watch: {
     async currentSystem(currentSystem: SessionStore["currentSystem"]) {

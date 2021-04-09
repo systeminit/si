@@ -9,7 +9,7 @@
   >
     <div class="flex flex-col overflow-visible">
       <div
-        class="flex items-center justify-between pl-1 text-sm text-white bg-black"
+        class="flex items-center justify-between pl-2 text-sm text-white bg-black"
       >
         <div>
           {{ title }}
@@ -21,13 +21,13 @@
         </div>
       </div>
 
-      <div class="h-full p-4 overflow-visible">
-        <div class="flex flex-row mx-2 my-2 overflow-visible">
+      <div class="h-full m-3 overflow-visible">
+        <div class="flex flex-row overflow-visible">
           <div class="w-full overflow-visible text-white">
             <slot />
           </div>
         </div>
-        <div class="flex flex-row justify-end w-full mr-2">
+        <div class="flex flex-row justify-end w-full mt-2 mr-2">
           <div>
             <slot name="buttons" />
           </div>
