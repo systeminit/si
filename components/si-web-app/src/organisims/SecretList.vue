@@ -1,6 +1,5 @@
 <template>
   <div class="vld-parent">
-    <SiLoader :isLoading="isLoading" />
     <SiError
       testId="secret-list-error"
       :message="errorMessage"
@@ -42,7 +41,6 @@ import { mapState } from "vuex";
 import _ from "lodash";
 import { SecretStore, ISetSecretListReply } from "@/store/modules/secret";
 import SiError from "@/atoms/SiError.vue";
-import SiLoader from "@/atoms/SiLoader.vue";
 import { SessionStore } from "@/store/modules/session";
 import { SecretKind, SecretObjectType } from "@/api/sdf/model/secret";
 
@@ -55,7 +53,6 @@ export default Vue.extend({
   name: "SecretList",
   components: {
     SiError,
-    SiLoader,
   },
   data(): IData {
     return {

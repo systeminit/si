@@ -1,6 +1,5 @@
 <template>
   <div class="h-full background">
-    <SiLoader :isLoading="isLoading" />
     <SiError
       testId="application-list-wad-error"
       :message="errorMessage"
@@ -21,7 +20,6 @@
         </router-link>
       </div>
     </div>
-    <div v-else>No applications created yet!</div>
   </div>
 </template>
 
@@ -34,7 +32,6 @@ import { Workspace } from "@/api/sdf/model/workspace";
 import { Organization } from "@/api/sdf/model/organization";
 
 import SiError from "@/atoms/SiError.vue";
-import SiLoader from "@/atoms/SiLoader.vue";
 import ApplicationDetailCard from "@/molecules/ApplicationDetailCard.vue";
 
 import {
@@ -64,7 +61,6 @@ export default Vue.extend({
   },
   components: {
     SiError,
-    SiLoader,
     ApplicationDetailCard,
   },
   computed: {
