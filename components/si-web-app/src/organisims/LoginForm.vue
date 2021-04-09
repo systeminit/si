@@ -1,11 +1,11 @@
 <template>
-  <div class="flex flex-col shadow-lg select-none">
+  <div class="flex flex-col shadow-lg select-none login-form">
     <div
       class="flex items-center justify-between pt-1 pb-1 pl-1 text-sm text-white bg-black"
     >
       <div>Welcome to the System Initiative!</div>
     </div>
-    <div class="p-4 bg-blueGray-800">
+    <div class="p-4">
       <div
         data-testid="error-message"
         class="text-white bg-red-500"
@@ -58,7 +58,7 @@
       </div>
     </div>
 
-    <div class="flex justify-end w-full p-2 bg-blueGray-800">
+    <div class="flex justify-end w-full p-2">
       <div class="pr-2">
         <SiButton
           label="Sign Up"
@@ -128,3 +128,10 @@ export default Vue.extend({
   },
 });
 </script>
+
+<style scoped>
+.login-form {
+  background-color: #151b1e;
+  border: 1px solid #2c3940;
+}
+</style>

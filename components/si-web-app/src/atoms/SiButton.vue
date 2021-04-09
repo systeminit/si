@@ -16,6 +16,7 @@
         <LogInIcon :size="iconSize" v-else-if="icon == 'login'" />
         <ArrowUpCircleIcon :size="iconSize" v-else-if="icon == 'signup'" />
         <PlusSquareIcon :size="iconSize" v-else-if="icon == 'plus'" />
+        <GitMergeIcon :size="iconSize" v-else-if="icon == 'merge'" />
       </div>
       <div class="ml-1 font-normal" v-if="label">
         {{ label }}
@@ -37,6 +38,7 @@ import {
   UploadCloudIcon,
   LogInIcon,
   ArrowUpCircleIcon,
+  GitMergeIcon,
 } from "vue-feather-icons";
 
 interface ButtonProps {
@@ -52,7 +54,8 @@ interface ButtonProps {
     | "deploy"
     | "signup"
     | "plus"
-    | "login";
+    | "login"
+    | "merge";
   size: "xs" | "sm" | "base" | "lg";
   disabled: boolean;
 }
@@ -69,6 +72,7 @@ export default Vue.extend({
     LogInIcon,
     ArrowUpCircleIcon,
     PlusSquareIcon,
+    GitMergeIcon,
   },
   props: {
     kind: {
@@ -119,29 +123,64 @@ export default Vue.extend({
 });
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+$button-saturation: 1.2;
+$button-brightness: 1.05;
+
+/* Standard button */
 .button-standard {
   background-color: #50928b;
-  @apply text-white px-2;
+  @apply text-white;
+  @apply px-2;
 }
 
 .button-standard:hover {
-  background-color: #42a69b;
+  filter: brightness($button-brightness);
 }
 
+.button-standard:focus {
+  outline: none;
+}
+
+.button-standard:active {
+  filter: saturate(1.5) brightness($button-brightness);
+}
+
+/* Save button */
 .button-save {
-  @apply text-white px-2 bg-green-500;
+  @apply text-white;
+  @apply px-2;
+  @apply bg-green-500;
 }
 
 .button-save:hover {
-  @apply bg-green-400;
+  filter: brightness($button-brightness);
 }
 
+.button-save:focus {
+  outline: none;
+}
+
+.button-save:active {
+  filter: saturate($button-saturation) brightness($button-brightness);
+}
+
+/* Cancel button */
 .button-cancel {
-  @apply text-white px-2 bg-red-500;
+  @apply text-white;
+  @apply px-2;
+  @apply bg-red-500;
 }
 
 .button-cancel:hover {
-  @apply bg-red-400;
+  filter: brightness($button-brightness);
+}
+
+.button-cancel:focus {
+  outline: none;
+}
+
+.button-cancel:active {
+  filter: saturate($button-saturation) brightness($button-brightness);
 }
 </style>

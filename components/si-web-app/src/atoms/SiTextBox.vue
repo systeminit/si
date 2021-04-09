@@ -7,13 +7,26 @@
       :placeholder="placeholder"
       :value="value"
       :data-testid="id"
-      class="block w-full px-2 py-1 pr-8 leading-tight text-gray-400 border border-gray-800 border-solid shadow focus:outline-none bg-blueGray-700 shadow-inner"
+      class="block w-full px-2 py-1 pr-8 leading-tight text-gray-400 border border-gray-800 border-solid shadow shadow-inner focus:outline-none bg-blueGray-700"
       @input="valueChanged"
+      v-if="!isTextArea"
+    />
+
+    <textarea
+      :type="type"
+      :aria-required="required"
+      :id="id"
+      :placeholder="placeholder"
+      :value="value"
+      :data-testid="id"
+      class="block w-full h-24 px-2 py-1 pr-8 leading-tight text-gray-400 border border-gray-800 border-solid shadow shadow-inner resize-y focus:outline-none bg-blueGray-700"
+      @input="valueChanged"
+      v-if="isTextArea"
     />
     <div
       class="absolute inset-y-0 right-0 flex items-center px-2 text-gray-400 pointer-events-none"
     >
-      <TypeIcon v-bind:size="iconSize" v-if="type == 'text'" />
+      <TypeIcon v-bind:size="iconSize" v-if="type == 'text' && isShowType" />
       <KeyIcon v-bind:size="iconSize" v-else-if="type == 'password'" />
     </div>
   </div>
@@ -62,6 +75,16 @@ export default Vue.extend({
     type: {
       type: String,
       default: "text",
+    },
+    isTextArea: {
+      type: Boolean,
+      default: false,
+      required: false,
+    },
+    isShowType: {
+      type: Boolean,
+      default: true,
+      required: false,
     },
   },
   methods: {

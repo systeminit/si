@@ -3,6 +3,7 @@
     :name="name"
     draggable
     height="auto"
+    :width="width"
     styles="background-color:#313436"
     @before-close="beforeClose"
   >
@@ -53,6 +54,11 @@ export default Vue.extend({
     title: {
       type: String,
       required: true,
+    },
+    width: {
+      type: String,
+      required: false,
+      default: "300px",
     },
   },
   methods: {

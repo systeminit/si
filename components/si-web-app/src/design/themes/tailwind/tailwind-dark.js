@@ -7,6 +7,8 @@ const colors = {
   success: "#4CAF50",
   warning: "#FB8C00",
   black: "#000000",
+  selectordark: "#1B1B1B",
+  selector1: "#343B3F",
 };
 
 const height = {

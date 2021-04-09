@@ -18,6 +18,7 @@
           id="selectPanelType"
           v-model="selectedPanelType"
           class="pl-2"
+          :styling="panelSelectorStyling()"
           @change.native="changePanelType"
         />
       </div>
@@ -183,6 +184,13 @@ export default Vue.extend({
           this.minimizeFull();
         }
       }
+    },
+    panelSelectorStyling(): Record<string, any> {
+      let classes: Record<string, any> = {};
+      classes["bg-selectordark"] = true;
+      classes["text-gray-400"] = true;
+      classes["border-gray-800"] = true;
+      return classes;
     },
     changePanelType() {
       this.$emit("change-panel", this.selectedPanelType);

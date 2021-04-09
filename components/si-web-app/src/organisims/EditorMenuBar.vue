@@ -1,6 +1,6 @@
 <template>
-  <div class="flex w-full">
-    <div id="system-selector" class="flex">
+  <div class="flex w-full h-6" @keyup.stop @keydown.stop>
+    <!-- <div id="system-selector" class="flex">
       <div class="flex items-center justify-end pr-1 text-xs text-gray-400">
         system:
       </div>
@@ -14,6 +14,23 @@
           :disabled="editMode"
         />
       </div>
+    </div> -->
+
+    <div id="revision-selector" class="flex">
+      <div class="flex items-center justify-end pr-1 text-xs text-gray-400">
+        revision:
+      </div>
+      <div class="flex items-center mr-4">
+        <SiSelect
+          size="xs"
+          id="revisionSelect"
+          :styling="changeSetSelectorStyling()"
+          :options="revisionsList"
+          :value="currentRevisionId"
+          name="systemSelect"
+          :disabled="isRevisionButtonDisabled()"
+        />
+      </div>
     </div>
 
     <div id="changeset-selector" class="flex">
@@ -23,6 +40,7 @@
       <div class="flex items-center mr-2">
         <SiSelect
           size="xs"
+          :styling="changeSetSelectorStyling()"
           :options="openChangeSetsList"
           id="selectCurrentChangeSet"
           v-model="selectCurrentChangeSetId"
@@ -35,7 +53,7 @@
     <div id="buttons" class="flex w-auto mr-2">
       <SiButton
         @click.native="cancelEditSession"
-        class="w-16"
+        class="w-16 ml-1"
         label="cancel"
         icon="cancel"
         kind="cancel"
@@ -54,83 +72,105 @@
       <SiButton
         class="w-16 ml-1"
         @click.native="startEditSession"
-        label="edit"
+        :label="changeSetInteractionButton()"
         icon="edit"
         size="xs"
-        v-else
+        v-if="isEditButtonEnabled()"
       />
       <SiButton
         class="w-16 ml-1"
         label="apply"
-        :icon="applyButtonIcon"
+        icon="merge"
         :kind="applyButtonKind"
         size="xs"
-        v-if="currentChangeSet && !editMode"
+        v-if="isApplyButtonEnabled()"
         @click.native="applyChangeSet"
       />
     </div>
     <SiModal
       name="changeSetCreate"
-      title="Select or create a changeSet"
-      class="overflow-visible"
+      title="Create a changeSet"
+      class="w-40 overflow-visible"
     >
-      <div class="flex-row w-full">
-        <div class="w-full text-right text-red-400">
-          ! a changeSet is required to make edits
-        </div>
+      <div class="flex-row">
         <SiError
           testId="change-set-create-error"
           :message="modalErrorMessage"
           @clear="clearModalErrorMessage"
         />
-        <div class="items-center w-full">
-          <div class="flex items-center w-full">
-            <div class="w-1/3 mr-2 text-right">changeSet:</div>
-            <div class="w-3/6">
-              <SiSelect
-                size="sm"
-                :options="openChangeSetsList"
-                id="selectCurrentChangeSetEdit"
-                v-model="selectCurrentChangeSetId"
-                name="selectCurrentChangeSetEdit"
-                @change.native="editModeChangeSetSelected"
-              />
-            </div>
-          </div>
-          <div class="flex items-center w-full mt-4">
-            <div class="w-1/3 mr-2 text-right">name:</div>
-            <div class="w-3/6">
-              <SiTextBox
-                class="w-full"
-                name="new-change-set-name"
-                id="new-change-set-name"
-                size="sm"
-                placeholder="new change set name"
-                v-model="newChangeSetForm.name"
-                v-on:keyup.enter.native="changeSetCreate"
-              />
-            </div>
-          </div>
+        <div class="flex items-center justify-end -mr-1">
+          <div class="text-sm text-right">name:</div>
+          <SiTextBox
+            class="ml-1"
+            name="new-change-set-name"
+            id="new-change-set-name"
+            size="sm"
+            placeholder="new change set name"
+            v-model="newChangeSetForm.name"
+            v-on:keyup.enter.native="changeSetCreate"
+          />
         </div>
       </div>
       <template v-slot:buttons>
         <SiButton
           size="sm"
           label="cancel"
-          class="m-1"
-          icon="cancel"
+          class="mx-1"
+          icon="null"
           kind="cancel"
-          @click.native="cancelChangeSetCreate()"
+          @click.native="cancelChangeSetCreate"
           data-cy="new-change-set-form-cancel-button"
         />
         <SiButton
           size="sm"
           label="create"
-          class="m-1"
-          icon="save"
+          class="mx-1"
+          icon="null"
           kind="save"
           :disabled="!newChangeSetForm.name"
           @click.native="changeSetCreate"
+          data-cy="new-change-set-form-create-button"
+        />
+      </template>
+    </SiModal>
+    <SiModal
+      name="changeSetApply"
+      title="ChangeSet Apply"
+      class="overflow-visible"
+      width="500px"
+    >
+      <div class="">
+        <div class="flex flex-col">
+          <div class="mb-1 ml-1 text-sm text-left">Comment</div>
+          <SiTextBox
+            class="mb-1 ml-1"
+            name="new-change-set-name"
+            id="new-change-set-name"
+            size="sm"
+            :isTextArea="true"
+            :isShowType="false"
+            placeholder="no comment"
+            v-model="newChangeSetForm.name"
+          />
+        </div>
+      </div>
+      <template v-slot:buttons>
+        <SiButton
+          size="sm"
+          label="cancel"
+          class="mx-1"
+          icon="null"
+          kind="cancel"
+          @click.native="cancelChangeSetApply"
+          data-cy="new-change-set-form-cancel-button"
+        />
+        <SiButton
+          size="sm"
+          label="ok"
+          class="mx-1"
+          icon="null"
+          kind="save"
+          @click.native="changeSetApply"
           data-cy="new-change-set-form-create-button"
         />
       </template>
@@ -148,6 +188,7 @@ import { ChangeSet } from "@/api/sdf/model/changeSet";
 import { ApplicationContextStore } from "@/store/modules/applicationContext";
 import { SessionStore } from "@/store/modules/session";
 
+import SiError from "@/atoms/SiError.vue";
 import SiSelect from "@/atoms/SiSelect.vue";
 import SiButton from "@/atoms/SiButton.vue";
 import SiModal from "@/molecules/SiModal.vue";
@@ -160,6 +201,11 @@ interface IData {
   };
   modalErrorMessage: string;
   editorErrorMessage: string;
+}
+
+interface Revision {
+  value: string;
+  label: string;
 }
 
 export default Vue.extend({
@@ -176,6 +222,7 @@ export default Vue.extend({
     SiButton,
     SiTextBox,
     SiModal,
+    SiError,
   },
   data(): IData {
     return {
@@ -206,6 +253,17 @@ export default Vue.extend({
     currentSystemId(): SessionStore["currentSystem"] | undefined {
       return this.$store.state.session.currentSystem?.id;
     },
+    revisionsList(): Revision[] {
+      return [
+        {
+          value: "",
+          label: "latest",
+        },
+      ];
+    },
+    currentRevisionId(): string {
+      return "latest";
+    },
     editMode(): ApplicationContextStore["editMode"] {
       return ctxMapState(this.applicationContextCtx, "editMode");
     },
@@ -214,9 +272,9 @@ export default Vue.extend({
       | undefined {
       return ctxMapState(this.applicationContextCtx, "currentChangeSet");
     },
-    applyButtonIcon(): string {
-      return !this.currentChangeSet || this.editMode ? "play" : "save";
-    },
+    // applyButtonIcon(): string {
+    //   return !this.currentChangeSet || this.editMode ? "play" : "merge";
+    // },
     applyButtonKind(): string {
       return !this.currentChangeSet || this.editMode ? "standard" : "save";
     },
@@ -232,6 +290,65 @@ export default Vue.extend({
     },
   },
   methods: {
+    isRevisionButtonDisabled(): Boolean {
+      if (this.editMode) {
+        return true;
+      } else if (
+        this.selectCurrentChangeSetId &&
+        !this.selectedChangeSetIsAnAction()
+      ) {
+        return true;
+      } else {
+        return false;
+      }
+    },
+    isApplyButtonEnabled(): Boolean {
+      if (
+        this.selectCurrentChangeSetId &&
+        !this.editMode &&
+        !this.selectedChangeSetIsAnAction()
+      ) {
+        return true;
+      } else {
+        return false;
+      }
+    },
+    isEditButtonEnabled(): Boolean {
+      if (
+        this.selectCurrentChangeSetId &&
+        !this.editMode &&
+        !this.selectedChangeSetIsAnAction()
+      ) {
+        return true;
+      } else {
+        return false;
+      }
+    },
+    changeSetInteractionButton(): string {
+      // if (this.currentChangeSet == null) {
+      //   return "new"
+      // } else {
+      //   return "edit"
+      // }
+      return "edit";
+    },
+    changeSetSelectorStyling(): Record<string, any> {
+      let classes: Record<string, any> = {};
+      classes["bg-selector1"] = true;
+      classes["text-gray-400"] = true;
+      classes["border-gray-700"] = true;
+      return classes;
+    },
+    selectedChangeSetIsAnAction(): Boolean {
+      if (
+        this.selectCurrentChangeSetId &&
+        this.selectCurrentChangeSetId.includes("action")
+      ) {
+        return true;
+      } else {
+        return false;
+      }
+    },
     clearModalErrorMessage() {
       this.modalErrorMessage = "";
     },
@@ -239,8 +356,16 @@ export default Vue.extend({
       this.newChangeSetForm.name = "";
       this.modalErrorMessage = "";
     },
+    clearChangeSetApplyForm() {
+      this.newChangeSetForm.name = "";
+      this.modalErrorMessage = "";
+    },
+    clearSelectCurrentChangeSetId() {
+      this.selectCurrentChangeSetId = "";
+    },
     async cancelChangeSetCreate() {
       this.clearChangeSetCreateForm();
+      this.clearSelectCurrentChangeSetId();
       this.$modal.hide("changeSetCreate");
     },
     async changeSetCreate() {
@@ -265,6 +390,52 @@ export default Vue.extend({
         await this.setEditMode();
       }
     },
+    async changeSetSelected() {
+      if (this.selectCurrentChangeSetId) {
+        if (!this.selectCurrentChangeSetId.includes("action")) {
+          let reply = await this.$store.dispatch(
+            this.applicationContextCtx.dispatchPath(
+              "createEditSessionAndLoadChangeSet",
+            ),
+            { changeSetId: this.selectCurrentChangeSetId },
+          );
+          if (reply.error) {
+            this.modalErrorMessage = reply.error.message;
+          } else {
+            await this.$emit("update-query-param", {
+              changeSetId: reply.changeSet.id,
+              editSessionId: reply.editSession.id,
+            });
+          }
+        } else if (this.selectCurrentChangeSetId.includes("action:new")) {
+          await this.showChangeSetCreateModal();
+        } else {
+          await this.$store.dispatch(
+            this.applicationContextCtx.dispatchPath(
+              "clearCurrentChangeSetAndCurrentEditSession",
+            ),
+            null,
+            { root: true },
+          );
+          await this.$emit("remove-query-param", [
+            "changeSetId",
+            "editSessionId",
+          ]);
+        }
+      } else {
+        await this.$store.dispatch(
+          this.applicationContextCtx.dispatchPath(
+            "clearCurrentChangeSetAndCurrentEditSession",
+          ),
+          null,
+          { root: true },
+        );
+        await this.$emit("remove-query-param", [
+          "changeSetId",
+          "editSessionId",
+        ]);
+      }
+    },
     async editModeChangeSetSelected() {
       if (this.selectCurrentChangeSetId) {
         let reply = await this.$store.dispatch(
@@ -283,31 +454,8 @@ export default Vue.extend({
           await this.setEditMode();
           this.$modal.hide("changeSetCreate");
         }
-      }
-    },
-    async applyChangeSet() {
-      if (this.currentWorkspace && this.currentChangeSet) {
-        let reply = await this.applicationContextCtx.dispatch(
-          "applyChangeSet",
-          {
-            changeSetId: this.currentChangeSet.id,
-            workspaceId: this.currentWorkspace.id,
-          },
-        );
-        if (reply.error) {
-          emitEditorErrorMessage(
-            `failed to apply change set: ${reply.error.message}`,
-          );
-        } else {
-          this.$emit("remove-query-param", ["changeSetId"]);
-          this.$store.dispatch(
-            this.applicationContextCtx.dispatchPath("loadApplicationContext"),
-            {
-              workspaceId: this.workspaceId,
-              applicationId: this.applicationId,
-            },
-          );
-        }
+      } else {
+        console.log("none!");
       }
     },
     async startEditSession() {
@@ -386,38 +534,53 @@ export default Vue.extend({
         this.$emit("remove-query-param", ["editSessionId", "editMode"]);
       }
     },
+    async cancelChangeSetApply() {
+      this.clearChangeSetApplyForm();
+      this.$modal.hide("changeSetApply");
+    },
+    async applyChangeSet() {
+      await this.showChangeSetApplyModal();
+    },
+    async changeSetApply() {
+      if (this.currentWorkspace && this.currentChangeSet) {
+        let reply = await this.applicationContextCtx.dispatch(
+          "applyChangeSet",
+          {
+            changeSetId: this.currentChangeSet.id,
+            workspaceId: this.currentWorkspace.id,
+          },
+        );
+        if (reply.error) {
+          emitEditorErrorMessage(
+            `failed to apply change set: ${reply.error.message}`,
+          );
+        } else {
+          this.$emit("remove-query-param", ["changeSetId"]);
+          this.$store.dispatch(
+            this.applicationContextCtx.dispatchPath("loadApplicationContext"),
+            {
+              workspaceId: this.workspaceId,
+              applicationId: this.applicationId,
+            },
+          );
+        }
+      }
+      this.clearChangeSetApplyForm();
+      await this.$store.dispatch(
+        this.applicationContextCtx.dispatchPath(
+          "clearCurrentChangeSetAndCurrentEditSession",
+        ),
+        null,
+        { root: true },
+      );
+      await this.$emit("remove-query-param", ["changeSetId", "editSessionId"]);
+      this.$modal.hide("changeSetApply");
+    },
     async showChangeSetCreateModal() {
       await this.$modal.show("changeSetCreate");
     },
-    async changeSetSelected() {
-      if (this.selectCurrentChangeSetId) {
-        let reply = await this.$store.dispatch(
-          this.applicationContextCtx.dispatchPath(
-            "createEditSessionAndLoadChangeSet",
-          ),
-          { changeSetId: this.selectCurrentChangeSetId },
-        );
-        if (reply.error) {
-          this.modalErrorMessage = reply.error.message;
-        } else {
-          await this.$emit("update-query-param", {
-            changeSetId: reply.changeSet.id,
-            editSessionId: reply.editSession.id,
-          });
-        }
-      } else {
-        await this.$store.dispatch(
-          this.applicationContextCtx.dispatchPath(
-            "clearCurrentChangeSetAndCurrentEditSession",
-          ),
-          null,
-          { root: true },
-        );
-        await this.$emit("remove-query-param", [
-          "changeSetId",
-          "editSessionId",
-        ]);
-      }
+    async showChangeSetApplyModal() {
+      await this.$modal.show("changeSetApply");
     },
   },
 });

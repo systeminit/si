@@ -1,14 +1,10 @@
 <template>
   <div id="application" class="flex flex-col flex-no-wrap select-none">
-    <div class="flex flex-row h-4"></div>
-    <div class="flex flex-row h-10 bg-gray-700">
-      <div class="pt-1 pl-2 align-middle">
-        <SiButton
-          icon="plus"
-          label="New Application"
-          size="base"
-          @click.native="showModal"
-        />
+    <div class="flex flex-row items-center justify-between h-12 header">
+      <div class="mt-1 ml-8 font-medium align-middle">Applications</div>
+
+      <div class="mt-1 mr-8 align-middle ">
+        <SiButton icon="plus" label="New" size="xs" @click.native="showModal" />
       </div>
       <modal
         name="new-application"
@@ -77,5 +73,9 @@ export default Vue.extend({
 <style type="text/css" scoped>
 .input-bg-color {
   background-color: #25788a;
+}
+
+.header {
+  background-color: #171717;
 }
 </style>
