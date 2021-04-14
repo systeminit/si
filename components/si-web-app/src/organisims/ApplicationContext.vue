@@ -21,7 +21,7 @@
         </button>
       </div>
 
-      <div class="flex">
+      <div class="flex" v-if="!showDetails">
         <div class="flex items-center text-xs font-light text-gray-300">
           Services: 5
         </div>

@@ -1,15 +1,16 @@
 <template>
-  <div class="h-full background">
+  <div class="flex w-full h-full">
     <SiError
       testId="application-list-wad-error"
       :message="errorMessage"
       @clear="clearErrorMessage"
     />
-    <div class="flex flex-col" v-if="applicationList.length">
+
+    <div class="flex flex-col w-full" v-if="applicationList.length">
       <div
         v-for="appEntry in applicationList"
         :key="appEntry.application.id"
-        class="mx-8 my-4"
+        class="mb-6"
       >
         <router-link :to="cardLink(appEntry.application.id)">
           <ApplicationDetailCard
@@ -128,9 +129,3 @@ export default Vue.extend({
   },
 });
 </script>
-
-<style scoped>
-.background {
-  background-color: #1e1e1e;
-}
-</style>

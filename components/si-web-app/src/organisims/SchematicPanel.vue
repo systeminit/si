@@ -37,13 +37,7 @@
       />
     </template>
     <template v-slot:content>
-      <CodeLoader
-        v-if="isLoading"
-        viewBox="0 0 300 200"
-        primaryColor="#2d3748"
-        secondaryColor="#000000"
-      ></CodeLoader>
-      <div class="relative w-full h-full" v-else>
+      <div class="relative w-full h-full">
         <div v-if="schematic">
           <SchematicViewer
             class="absolute z-10"
@@ -94,7 +88,6 @@ import SchematicViewer, {
 } from "@/organisims/SchematicViewer.vue";
 import SiSelect, { SelectProps } from "@/atoms/SiSelect.vue";
 import SiLoader from "@/atoms/SiLoader.vue";
-import { CodeLoader } from "vue-content-loader";
 import NodeAddMenu, {
   AddMenuSelectedPayload,
 } from "@/molecules/NodeAddMenu.vue";
@@ -125,7 +118,6 @@ export default Vue.extend({
     Panel,
     SchematicViewer,
     NodeAddMenu,
-    CodeLoader,
     SiSelect,
   },
   data(): IData {

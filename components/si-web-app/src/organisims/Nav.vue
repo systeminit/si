@@ -14,7 +14,7 @@
         >
           <SysinitIcon :size="1.15" class="" v-show="isBrandLogoVisible" />
           <div class="brand-title" v-show="isBrandTitleVisible">
-            System Initiative
+            System Init
           </div>
         </button>
       </div>

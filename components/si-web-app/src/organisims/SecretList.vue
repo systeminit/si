@@ -1,36 +1,42 @@
 <template>
-  <div class="vld-parent">
+  <div class="flex w-full h-full">
     <SiError
       testId="secret-list-error"
       :message="errorMessage"
       @clear="clearErrorMessage"
     />
-    <div class="flex flex-col">
-      <table class="w-full table-fixed">
-        <thead>
-          <tr class="text-xs text-gray-200">
-            <th class="w-1/2 px-4 py-2">Name</th>
-            <th class="w-1/4 px-4 py-2">Kind</th>
-            <th class="w-1/4 px-4 py-2">Type</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-800" v-if="secretList.length > 0">
-          <tr v-for="secret in secretList" :key="secret.id">
-            <td class="px-4 py-4">{{ secret.name }}</td>
-            <td class="px-4 py-4">{{ labelForKind(secret.kind) }}</td>
-            <td class="px-4 py-4 text-right">
+    <div class="flex w-full h-full">
+      <div class="flex flex-col w-full shadow-sm table-fixed">
+        <div class="flex w-full text-sm font-medium text-gray-200 header">
+          <div class="w-8/12 px-2 py-1 text-center align-middle table-border">
+            Name
+          </div>
+          <div class="w-2/12 px-2 py-1 text-center table-border">
+            Kind
+          </div>
+          <div class="w-2/12 px-2 py-1 text-center table-border">
+            Type
+          </div>
+        </div>
+
+        <div class="flex flex-col overflow-y-scroll text-xs text-gray-300">
+          <div
+            class="flex items-center row"
+            v-for="secret in secretList"
+            :key="secret.id"
+          >
+            <div class="w-8/12 px-2 py-1 text-center">
+              {{ secret.name }}
+            </div>
+            <div class="w-2/12 px-2 py-1 text-center ">
+              {{ labelForKind(secret.kind) }}
+            </div>
+            <div class="w-2/12 px-2 py-1 text-center ">
               {{ labelForObjectType(secret.objectType) }}
-            </td>
-          </tr>
-        </tbody>
-        <tbody class="divide-y divide-gray-800" v-else>
-          <tr>
-            <td colspan="3" class="italic text-center">
-              No secrets created yet!
-            </td>
-          </tr>
-        </tbody>
-      </table>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -107,3 +113,25 @@ export default Vue.extend({
   },
 });
 </script>
+
+<style scoped>
+.background {
+  background-color: #1e1e1e;
+}
+
+.header {
+  background-color: #3a3d40;
+}
+
+.row {
+  background-color: #262626;
+}
+
+.row:nth-child(odd) {
+  background-color: #2c2c2c;
+}
+
+.table-border {
+  border-bottom: 1px solid #46494d;
+}
+</style>
