@@ -3,7 +3,7 @@
     <div
       class="absolute shadow-md cursor-move node-container node"
       :id="id"
-      :class="[nodeIsSelected, nodeVisibility]"
+      :class="[nodeIsSelected, nodeVisibility, nodeIsDeleted]"
       v-bind:style="positionStyle"
       @mousedown="selectNode()"
     >
@@ -179,6 +179,13 @@ export default Vue.extend({
         "node-is-selected": false,
       };
     },
+    nodeIsDeleted(): Record<string, boolean> {
+      if (this.node.object.siStorable?.deleted) {
+        return { "node-is-deleted ": true };
+      } else {
+        return { "node-is-deleted ": false };
+      }
+    },
     nodeVisibility(): Record<string, boolean> {
       if (!this.isVisible) {
         return { "node-is-hidden": true };
@@ -257,6 +264,12 @@ export default Vue.extend({
   border-width: 1px;
   border-color: #5cb1b1;
   z-index: 40;
+}
+
+.node-is-deleted {
+  border-radius: 6px;
+  border-width: 1px;
+  border-color: #e21010;
 }
 
 .node-is-hidden {

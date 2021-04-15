@@ -180,6 +180,29 @@ export interface INodeUpdatePositionRequest {
   workspaceId: string;
 }
 
+export interface INodeDeleteRequest {
+  nodeId: string;
+  applicationId: string;
+  workspaceId: string;
+  changeSetId: string;
+  editSessionId: string;
+  systemId: string;
+}
+
+export interface INodeDeleteReplySuccess {
+  schematic: Schematic;
+  error?: never;
+}
+
+export interface INodeDeleteReplyFailure {
+  schematic?: never;
+  error: SDFError;
+}
+
+export type INodeDeleteReply =
+  | INodeDeleteReplySuccess
+  | INodeDeleteReplyFailure;
+
 async function nodeCreateForApplication(
   request: INodeCreateForApplicationRequest,
 ): Promise<INodeCreateReply> {
@@ -206,9 +229,23 @@ async function nodeUpdatePosition(
   return reply;
 }
 
+async function nodeDelete(
+  request: INodeDeleteRequest,
+): Promise<INodeDeleteReply> {
+  const bottle = Bottle.pop("default");
+  const sdf = bottle.container.SDF;
+
+  const reply: INodeDeleteReply = await sdf.post(
+    "schematicDal/deleteNode",
+    request,
+  );
+  return reply;
+}
+
 export const SchematicDal = {
   getApplicationSystemSchematic,
   connectionCreate,
   nodeCreateForApplication,
   nodeUpdatePosition,
+  nodeDelete,
 };

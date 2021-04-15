@@ -7,6 +7,8 @@
     @mousedown="mouseDown($event)"
     @mousemove="mouseMove($event)"
     @mouseup="mouseUp($event)"
+    @keydown.backspace.stop.prevent
+    @keyup.backspace.stop.prevent
   >
     <div :id="canvas.id" ref="canvas" class="absolute ">
       <svg
@@ -94,7 +96,10 @@ import { Edge, IEdge, IVertex, EdgeKind } from "@/api/sdf/model/edge";
 import { INode } from "@/api/sdf/model/node";
 
 import { EditorStore } from "@/store/modules/editor";
-import { SetNodePositionPayload } from "@/store/modules/schematicPanel";
+import {
+  SetNodePositionPayload,
+  NodeDeletePayload,
+} from "@/store/modules/schematicPanel";
 
 import {
   Connection,
@@ -118,7 +123,10 @@ import {
   EdgePostionUpdateEvent,
   EdgeTemporary,
 } from "@/organisims/SchematicViewer/Edge.vue";
-import { SpaceBarEvents } from "@/organisims/ShortcutsEventBroker.vue";
+import {
+  SpaceBarEvents,
+  BackspaceEvents,
+} from "@/organisims/ShortcutsEventBroker.vue";
 
 import SiBackground from "@/atoms/SiBackground.vue";
 import SiGraphNode from "./SchematicViewer/Node.vue";
@@ -383,8 +391,13 @@ export default Vue.extend({
     registerEvents(): void {
       PanelEventBus.$on("panel-viewport-update", this.redraw);
       PanelEventBus.$on("panel-viewport-edge-remove", this.removeTemporaryEdge);
+
       SpaceBarEvents.subscribe(event =>
         this.spacebarEvent(event as ShortcutUpdateEvent),
+      );
+
+      BackspaceEvents.subscribe(event =>
+        this.backspaceEvent(event as ShortcutUpdateEvent),
       );
     },
     deRegisterEvents(): void {
@@ -576,6 +589,38 @@ export default Vue.extend({
     },
     redraw(event: IPanelLayoutUpdated | UIEvent) {
       this.$forceUpdate();
+    },
+
+    backspaceEvent(event: ShortcutUpdateEvent): void {
+      if (event.panelId === this.id) {
+        if (event.action === ShortcutActions.DeleteNode) {
+          this.deleteActiveNode();
+        }
+      }
+    },
+    async deleteActiveNode() {
+      if (
+        this.editMode &&
+        this.selectedNode &&
+        this.currentApplicationId &&
+        this.currentWorkspace &&
+        this.currentChangeSet &&
+        this.currentEditSession &&
+        this.currentSystem
+      ) {
+        const nodeDeletePayload: NodeDeletePayload = {
+          nodeId: this.selectedNode.node.id,
+          applicationId: this.currentApplicationId,
+          workspaceId: this.currentWorkspace.id,
+          changeSetId: this.currentChangeSet.id,
+          editSessionId: this.currentEditSession.id,
+          systemId: this.currentSystem.id,
+        };
+        await this.schematicPanelStoreCtx.dispatch(
+          "nodeDelete",
+          nodeDeletePayload,
+        );
+      }
     },
     spacebarEvent(event: ShortcutUpdateEvent) {
       if (event.panelId === this.id) {

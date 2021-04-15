@@ -429,3 +429,109 @@ pub async fn update_node_position(
     let reply = UpdateNodePositionReply { node_position };
     Ok(warp::reply::json(&reply))
 }
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct DeleteNodeRequest {
+    pub node_id: String,
+    pub application_id: String,
+    pub workspace_id: String,
+    pub change_set_id: String,
+    pub edit_session_id: String,
+    pub system_id: Option<String>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct DeleteNodeReply {
+    pub schematic: Schematic,
+}
+pub async fn delete_node(
+    pg: PgPool,
+    nats_conn: NatsConn,
+    token: String,
+    request: DeleteNodeRequest,
+) -> Result<impl warp::Reply, warp::reject::Rejection> {
+    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let txn = conn.transaction().await.map_err(HandlerError::from)?;
+    let nats = nats_conn.transaction();
+
+    let claim = authenticate(&txn, &token).await?;
+    authorize(
+        &txn,
+        &claim.user_id,
+        "attributeDal",
+        "save_for_edit_sessionEntity",
+    )
+    .await?;
+    validate_tenancy(
+        &txn,
+        "workspaces",
+        &request.workspace_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+    validate_tenancy(
+        &txn,
+        "change_sets",
+        &request.change_set_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+    validate_tenancy(
+        &txn,
+        "edit_sessions",
+        &request.edit_session_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+    validate_tenancy(&txn, "nodes", &request.node_id, &claim.billing_account_id).await?;
+
+    let node = Node::get(&txn, &request.node_id)
+        .await
+        .map_err(HandlerError::from)?;
+
+    let mut entity = Entity::for_edit_session(
+        &txn,
+        &node.object_id,
+        &request.change_set_id,
+        &request.edit_session_id,
+    )
+    .await
+    .map_err(HandlerError::from)?;
+
+    validate_tenancy(&txn, "entities", &entity.id, &claim.billing_account_id).await?;
+
+    entity.delete().await.map_err(HandlerError::from)?;
+
+    entity
+        .save_for_edit_session(&txn, &request.change_set_id, &request.edit_session_id)
+        .await
+        .map_err(HandlerError::from)?;
+
+    let mut schematic = Schematic::get(
+        &txn,
+        &request.application_id,
+        &request.workspace_id,
+        Some(request.change_set_id.clone()),
+        Some(request.edit_session_id),
+        vec![EdgeKind::Configures],
+    )
+    .await
+    .map_err(HandlerError::from)?;
+
+    let root_node =
+        Node::get_for_object_id(&txn, &request.application_id, Some(&request.change_set_id))
+            .await
+            .map_err(HandlerError::from)?;
+    schematic.prune_node(root_node.id);
+
+    txn.commit().await.map_err(HandlerError::from)?;
+    nats.commit().await.map_err(HandlerError::from)?;
+
+    let reply = DeleteNodeReply {
+        schematic: schematic,
+    };
+
+    Ok(warp::reply::json(&reply))
+}

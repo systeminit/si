@@ -166,6 +166,7 @@ pub fn schematic_dal(
             pg.clone(),
             nats_conn.clone(),
         ))
+        .or(schematic_dal_delete_node(pg.clone(), nats_conn.clone()))
         .boxed()
 }
 
@@ -230,6 +231,20 @@ pub fn schematic_dal_update_node_position(
             handlers::schematic_dal::UpdateNodePositionRequest,
         >())
         .and_then(handlers::schematic_dal::update_node_position)
+        .boxed()
+}
+
+pub fn schematic_dal_delete_node(
+    pg: PgPool,
+    nats_conn: NatsConn,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("schematicDal" / "deleteNode")
+        .and(warp::post())
+        .and(with_pg(pg))
+        .and(with_nats_conn(nats_conn))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::body::json::<handlers::schematic_dal::DeleteNodeRequest>())
+        .and_then(handlers::schematic_dal::delete_node)
         .boxed()
 }
 

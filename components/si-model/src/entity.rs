@@ -224,6 +224,11 @@ impl Entity {
         Ok(entity)
     }
 
+    pub async fn delete(&mut self) -> EntityResult<()> {
+        self.si_storable.deleted = true;
+        Ok(())
+    }
+
     pub async fn update_entity_for_edit_session(
         &mut self,
         pg: &PgPool,
