@@ -224,9 +224,9 @@ impl Entity {
         Ok(entity)
     }
 
-    pub async fn delete(&mut self) -> EntityResult<()> {
+    pub fn delete(&mut self) -> () {
         self.si_storable.deleted = true;
-        Ok(())
+        ()
     }
 
     pub async fn update_entity_for_edit_session(

@@ -502,7 +502,7 @@ pub async fn delete_node(
 
     validate_tenancy(&txn, "entities", &entity.id, &claim.billing_account_id).await?;
 
-    entity.delete().await.map_err(HandlerError::from)?;
+    entity.delete();
 
     entity
         .save_for_edit_session(&txn, &request.change_set_id, &request.edit_session_id)
