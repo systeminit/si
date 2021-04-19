@@ -129,7 +129,9 @@ $button-brightness: 1.05;
 
 /* Standard button */
 .button-standard {
-  background-color: #50928b;
+  // background-color: #50928b;
+  background-color: #00b4bc;
+  // background-color: #5D9EBE;
   @apply text-white;
   @apply px-2;
 }

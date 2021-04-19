@@ -14,8 +14,8 @@
       <modal
         name="new-application"
         adaptive
-        width="500"
-        height="150"
+        width="400"
+        height="auto"
         draggable
         styles="background-color:#313436"
       >
@@ -35,10 +35,8 @@
             </div>
           </div>
 
-          <div class="p-4">
-            <div class="flex flex-row mx-2 my-2">
-              <ApplicationCreate @cancel="hideModal" @submit="hideModal" />
-            </div>
+          <div class="flex flex-row w-full p-2">
+            <ApplicationCreate @cancel="hideModal" @submit="hideModal" />
           </div>
         </div>
       </modal>
