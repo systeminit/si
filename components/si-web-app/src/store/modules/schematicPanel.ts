@@ -14,13 +14,16 @@ import {
   Connection,
   INodeUpdatePositionReply,
   ConnectionCreateReply,
+  INodeDeleteRequest,
+  INodeDeleteReply,
 } from "@/api/sdf/dal/schematicDal";
 
 import { ConnectionCreatedEvent } from "@/api/partyBus/ConnectionCreatedEvent";
 import { SchematicNodeSelectedEvent } from "@/api/partyBus/SchematicNodeSelectedEvent";
-import { NodeCreatedEvent } from "@/api/partyBus/NodeCreatedEvent";
 import { EntitySetNameEvent } from "@/api/partyBus/EntitySetNameEvent";
+import { NodeCreatedEvent } from "@/api/partyBus/NodeCreatedEvent";
 import { NodeUpdatedEvent } from "@/api/partyBus/NodeUpdatedEvent";
+import { NodeDeletedEvent } from "@/api/partyBus/NodeDeletedEvent";
 import { EditSessionCancelEvent } from "@/api/partyBus/EditSessionCancelEvent";
 
 import { Cg2dCoordinate } from "@/api/sicg";
@@ -73,6 +76,15 @@ export interface NodeUpdatePositionePayload {
   applicationId: string;
 }
 
+export interface NodeDeletePayload {
+  nodeId: string;
+  applicationId: string;
+  workspaceId: string;
+  changeSetId: string;
+  editSessionId: string;
+  systemId: string;
+}
+
 export interface SetNodePositionPayload {
   nodeId: string;
   context: string;
@@ -91,6 +103,7 @@ export interface updateEdgeListPayload {
 
 export const schematicPanelStoreSubscribeEvents = [
   NodeCreatedEvent,
+  NodeDeletedEvent,
   EntitySetNameEvent,
   ConnectionCreatedEvent,
   EditSessionCancelEvent,
@@ -213,7 +226,36 @@ export const schematicPanelStore: Module<SchematicPanelStore, any> = {
       }
       return reply;
     },
+    async nodeDelete(
+      { commit },
+      payload: NodeDeletePayload,
+    ): Promise<INodeDeleteReply> {
+      const request: INodeDeleteRequest = {
+        nodeId: payload.nodeId,
+        applicationId: payload.applicationId,
+        workspaceId: payload.workspaceId,
+        changeSetId: payload.changeSetId,
+        editSessionId: payload.editSessionId,
+        systemId: payload.systemId,
+      };
+      let reply: INodeDeleteReply;
+      reply = await SchematicDal.nodeDelete(request);
+      if (!reply.error) {
+        new NodeDeletedEvent({
+          nodeId: payload.nodeId,
+          schematic: reply.schematic,
+        }).publish();
+      } else {
+        console.log("oops", reply.error);
+      }
+      return reply;
+    },
     async onNodeCreated({ state, dispatch }, event: NodeCreatedEvent) {
+      if (state.lastRequest) {
+        await dispatch("setApplicationSystemSchematic", event.schematic);
+      }
+    },
+    async onNodeDeleted({ state, dispatch }, event: NodeDeletedEvent) {
       if (state.lastRequest) {
         await dispatch("setApplicationSystemSchematic", event.schematic);
       }

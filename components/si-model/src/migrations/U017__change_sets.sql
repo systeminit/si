@@ -113,9 +113,19 @@ BEGIN
            entities_change_set_projection.created_at
     FROM entities_change_set_projection
     WHERE entities_change_set_projection.change_set_id = this_id
+      AND entities_change_set_projection.obj -> 'siStorable' -> 'deleted' != 'true'
     ON CONFLICT(id) DO UPDATE
         SET obj        = excluded.obj,
             updated_at = NOW();
+
+    DELETE
+    FROM entities_head
+    WHERE entities_head.id IN (
+        SELECT entities_change_set_projection.id
+        FROM entities_change_set_projection
+        WHERE entities_change_set_projection.change_set_id = this_id
+          AND entities_change_set_projection.obj -> 'siStorable' -> 'deleted' = 'true'
+    );
 
     INSERT INTO qualifications_head (id, obj, qualified, tenant_ids, created_at)
     SELECT qualifications_change_set_projection.id,

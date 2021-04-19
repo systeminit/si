@@ -23,6 +23,11 @@ const spacebarKey: KeyboardKey = {
   short: " ",
 };
 
+const backspaceKey: KeyboardKey = {
+  long: "Backspace",
+  short: "Backspace",
+};
+
 type KeyboardEventDown = "keyDown";
 type KeyboardEventUp = "keyUp";
 type KeyboardEventKind = KeyboardEventDown | KeyboardEventUp;
@@ -40,6 +45,7 @@ export enum ShortcutActions {
   StartPan = "pan-start",
   EndPan = "pan-end",
   Maximize = "panel-maximize",
+  DeleteNode = "delete-node",
 }
 
 export interface ShortcutUpdateEvent {
@@ -64,6 +70,8 @@ interface IData {
 }
 
 export const SpaceBarEvents = new Subject();
+export const BackspaceEvents = new Subject();
+
 const MousecDown = fromEvent(document, "mousedown");
 const MousecUp = fromEvent(document, "mouseup");
 
@@ -111,7 +119,8 @@ export default Vue.extend({
     },
     handleShortcutsRegistrationUpdate(e: ShortcutRegistrationEvent) {
       if (e.context.isActive) {
-        this.eligibleContexts.push(e.context.id);
+        if (!this.eligibleContexts.includes(e.context.id))
+          this.eligibleContexts.push(e.context.id);
       } else {
         let i = this.eligibleContexts.indexOf(e.context.id);
         this.eligibleContexts = this.eligibleContexts.splice(i, 1);
@@ -168,12 +177,22 @@ export default Vue.extend({
         e.preventDefault();
         this.handleSpacebar("keyUp");
       }
+
+      if (e.key === backspaceKey.long) {
+        e.preventDefault();
+        this.handleBackspace("keyUp");
+      }
     },
     handleSpacebar(e: KeyboardEventKind) {
       if (e == "keyDown") {
         this.spacebarDown();
       } else if (e == "keyUp") {
         this.spacebarUp();
+      }
+    },
+    handleBackspace(e: KeyboardEventKind) {
+      if (e == "keyUp") {
+        this.backspaceUp();
       }
     },
     spacebarDown(): void {
@@ -194,6 +213,17 @@ export default Vue.extend({
         }
       }
       this.spacebarIsPressed = false;
+    },
+    backspaceUp(): void {
+      for (var c of this.eligibleContexts) {
+        if (_.startsWith(c, "graphViewer")) {
+          const e: ShortcutUpdateEvent = {
+            action: ShortcutActions["DeleteNode"],
+            panelId: c,
+          };
+          BackspaceEvents.next(e);
+        }
+      }
     },
   },
 });
