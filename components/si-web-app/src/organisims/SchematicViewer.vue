@@ -9,6 +9,7 @@
     @mouseup="mouseUp($event)"
     @keydown.backspace.stop.prevent
     @keyup.backspace.stop.prevent
+    @wheel="mouseWheel($event)"
   >
     <div :id="canvas.id" ref="canvas" class="absolute ">
       <svg
@@ -195,8 +196,24 @@ interface IData {
         y: number | null;
       };
       position: {
-        x: number | null;
-        y: number | null;
+        x: number;
+        y: number;
+      };
+    };
+    zoom: {
+      sensitivity: number;
+      factor: number;
+      min: number;
+      max: number;
+      translation: {
+        x: number;
+        y: number;
+      };
+      canvas: {
+        position: {
+          x: number;
+          y: number;
+        };
       };
     };
     size: {
@@ -308,6 +325,22 @@ export default Vue.extend({
           position: {
             x: 0,
             y: 0,
+          },
+        },
+        zoom: {
+          sensitivity: 0.001,
+          factor: 1,
+          min: 0.2,
+          max: 1,
+          translation: {
+            x: 0,
+            y: 0,
+          },
+          canvas: {
+            position: {
+              x: 0,
+              y: 0,
+            },
           },
         },
         mouse: {
@@ -477,6 +510,7 @@ export default Vue.extend({
         );
         if (this.selection.element) {
           const canvasBoundingRect = this.canvas.element.getBoundingClientRect();
+
           const node_offset = {
             x: 70,
             y: 8,
@@ -507,6 +541,11 @@ export default Vue.extend({
 
         this.canvas.element.style.left = this.canvas.position.x + "px";
         this.canvas.element.style.top = this.canvas.position.y + "px";
+
+        this.viewport.zoom.canvas.position = {
+          x: this.canvas.position.x,
+          y: this.canvas.position.y,
+        };
       }
     },
     updateCanvasPosition() {
@@ -778,7 +817,13 @@ export default Vue.extend({
           // ----------------------------------------------------------------
           // Set offsets
           // ----------------------------------------------------------------
-          if (e instanceof MouseEvent && this.selection.element) {
+
+          // Offsets in canvas space
+          if (
+            e instanceof MouseEvent &&
+            this.selection.element &&
+            this.canvas.element
+          ) {
             this.selection.offset.x =
               mouseLocalSpace.x - this.selection.element.offsetLeft;
             this.selection.offset.y =
@@ -922,6 +967,86 @@ export default Vue.extend({
       this.viewer.nodeDeselection = false;
       this.removeTransientEdge();
     },
+    mouseWheel(e: MouseWheelEvent) {
+      this.zoom(e);
+    },
+    zoom(e: MouseWheelEvent) {
+      // console.log(e);
+
+      /**
+       * - Zoom on cursor implementation -
+       *
+       * Uses css transform matrix to scales and translate the <div> element
+       * in order to simulate zooming in at a specific location.
+       *
+       * 1: calculate zoom scale
+       * 2: calculate zoom translation
+       * 3: perform transforms
+       */
+      e.preventDefault();
+
+      /**
+       * mouseScrollAmount
+       * 1: get vertical scroll amount from the mouse event
+       * 2: apply zoom sensitivity multiplier (scroll intensity)
+       *
+       * e.deltaY:: mouse vertical scroll
+       * this.viewport.zoom.sensitivity :: our sensitivity setting
+       */
+      const mouseScrollAmount = e.deltaY * this.viewport.zoom.sensitivity;
+
+      /**
+       * zoomFactor :: new zoom factor
+       * 1: add new mouse scroll amount to previous mouse scroll factor
+       * 2: restrict mouse factor to our min and max range
+       *
+       * this.viewport.zoom.factor represents last zoom factor
+       * this.viewport.zoom.min represents our minimum zoom setting
+       * this.viewport.zoom.max represents our maximum zoom setting
+       */
+      let zoomFactor = this.viewport.zoom.factor + mouseScrollAmount;
+      zoomFactor = Math.min(
+        this.viewport.zoom.max,
+        Math.max(this.viewport.zoom.min, zoomFactor),
+      );
+
+      /**
+       * zoomDeltaPercentage :: difference (in percentage) between
+       *  previous and new zoom factor
+       *
+       * this.viewport.zoom.factor :: previous zoom factor
+       * zoomFactor :: new zoom factor
+       */
+      const zoomDeltaPercentage = 1 - zoomFactor / this.viewport.zoom.factor;
+      const magnitude = zoomDeltaPercentage;
+
+      if (this.canvas.element && this.viewport.element) {
+        const mousePosition = {
+          x: e.clientX - this.viewport.zoom.canvas.position.x,
+          y: e.clientY - this.viewport.zoom.canvas.position.y,
+        };
+
+        const translation = {
+          x: this.viewport.zoom.translation.x + mousePosition.x * magnitude,
+          y: this.viewport.zoom.translation.y + mousePosition.y * magnitude,
+        };
+        const viewportRect = this.viewport.element.getBoundingClientRect();
+
+        if (this.canvas.element) {
+          this.canvas.element.style.transformOrigin = "0 0";
+          this.canvas.element.style.transform = `matrix(${zoomFactor}, 0, 0, ${zoomFactor}, ${translation.x}, ${translation.y})`;
+        }
+
+        this.viewport.zoom.factor = zoomFactor;
+
+        this.viewport.zoom.translation.x = translation.x;
+        this.viewport.zoom.translation.y = translation.y;
+
+        const canvasRect = this.canvas.element.getBoundingClientRect();
+        this.viewport.zoom.canvas.position.x = canvasRect.x;
+        this.viewport.zoom.canvas.position.y = canvasRect.y;
+      }
+    },
     panViewport(e: MouseEvent) {
       const mousePosition = {
         x: e.clientX,
@@ -948,43 +1073,55 @@ export default Vue.extend({
           y: mousePosition.y,
         };
 
-        this.viewport.pan.translation = {
+        this.viewport.pan.position = {
           x: this.canvas.position.x + mouseMovement.x,
           y: this.canvas.position.y + mouseMovement.y,
         };
 
         // set canvas position
         const position: Cg2dCoordinate = {
-          x: this.viewport.pan.translation.x,
-          y: this.viewport.pan.translation.y,
+          x: this.viewport.pan.position.x,
+          y: this.viewport.pan.position.y,
         };
 
         const canvasRect = this.canvas.element.getBoundingClientRect();
         const viewportRect = this.viewport.element.getBoundingClientRect();
 
-        const panLimit = {
-          left: 0,
-          top: 0,
-          right: -Math.abs(canvasRect.width - viewportRect.width),
-          bottom: -Math.abs(canvasRect.height - viewportRect.height),
+        // const panLimit = {
+        //   left: 0,
+        //   top: 0,
+        //   right: -Math.abs(canvasRect.width - viewportRect.width),
+        //   bottom: -Math.abs(canvasRect.height - viewportRect.height),
+        // };
+
+        // const panPostion = {
+        //   x: Math.min(
+        //     panLimit.left,
+        //     Math.max(Math.min(panLimit.left, position.x), panLimit.right),
+        //   ),
+        //   y: Math.min(
+        //     panLimit.top,
+        //     Math.max(Math.min(panLimit.top, position.y), panLimit.bottom),
+        //   ),
+        // };
+
+        this.canvas.element.style.left = position.x + "px";
+        this.canvas.element.style.top = position.y + "px";
+
+        // this.viewport.pan.translation = {
+        //   x: this.viewport.pan.translation.x + (panPostion.x - this.canvas.position.x),
+        //   y: this.viewport.pan.translation.y + (panPostion.y - this.canvas.position.y)
+        // }
+
+        this.canvas.position = {
+          x: position.x,
+          y: position.y,
         };
 
-        const panPostion = {
-          x: Math.min(
-            panLimit.left,
-            Math.max(Math.min(panLimit.left, position.x), panLimit.right),
-          ),
-          y: Math.min(
-            panLimit.top,
-            Math.max(Math.min(panLimit.top, position.y), panLimit.bottom),
-          ),
+        this.viewport.zoom.canvas.position = {
+          x: canvasRect.x,
+          y: canvasRect.y,
         };
-
-        this.canvas.element.style.left = panPostion.x + "px";
-        this.canvas.element.style.top = panPostion.y + "px";
-
-        this.canvas.position.x = position.x;
-        this.canvas.position.y = position.y;
       }
     },
     async dragNode() {
