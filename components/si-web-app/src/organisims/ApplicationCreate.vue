@@ -7,15 +7,16 @@
       @clear="clearErrorMessage"
     />
     <div class="flex flex-row items-center w-full pb-2">
-      <div class="pr-2 text-gray-400 align-middle w-1/2 text-right">
-        <label for="applicationName">Application Name:</label>
+      <div class="pr-2 text-sm text-right text-gray-400 align-middle">
+        <label for="applicationName">Name:</label>
       </div>
-      <div class="align-middle w-1/2">
+      <div class="w-full align-middle">
         <SiTextBox
           name="applicationName"
           placeholder="super dope"
           id="applicationName"
           required
+          size="sm"
           v-model="form.applicationName"
         />
       </div>
@@ -24,17 +25,19 @@
       <div class="pr-2">
         <SiButton
           @click.native="cancel"
+          size="xs"
           label="Cancel"
           kind="cancel"
-          icon="cancel"
+          icon="null"
         />
       </div>
       <div>
         <SiButton
           @click.native="create"
+          size="xs"
           label="Create"
           kind="save"
-          icon="save"
+          icon="null"
         />
       </div>
     </div>

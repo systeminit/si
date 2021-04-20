@@ -10,6 +10,8 @@
       class="block w-full px-2 py-1 pr-8 leading-tight text-gray-400 border border-gray-800 border-solid shadow shadow-inner focus:outline-none bg-blueGray-700"
       @input="valueChanged"
       v-if="!isTextArea"
+      @keyup.stop
+      @keydown.stop
     />
 
     <textarea

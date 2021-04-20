@@ -113,18 +113,17 @@
       </div>
       <template v-slot:buttons>
         <SiButton
-          size="sm"
+          size="xs"
           label="cancel"
-          class="mx-1"
           icon="null"
           kind="cancel"
           @click.native="cancelChangeSetCreate"
           data-cy="new-change-set-form-cancel-button"
         />
         <SiButton
-          size="sm"
+          size="xs"
           label="create"
-          class="mx-1"
+          class="ml-1"
           icon="null"
           kind="save"
           :disabled="!newChangeSetForm.name"
@@ -156,18 +155,17 @@
       </div>
       <template v-slot:buttons>
         <SiButton
-          size="sm"
+          size="xs"
           label="cancel"
-          class="mx-1"
           icon="null"
           kind="cancel"
           @click.native="cancelChangeSetApply"
           data-cy="new-change-set-form-cancel-button"
         />
         <SiButton
-          size="sm"
+          size="xs"
           label="ok"
-          class="mx-1"
+          class="ml-1"
           icon="null"
           kind="save"
           @click.native="changeSetApply"
