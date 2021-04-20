@@ -123,7 +123,11 @@ pub struct SchematicNode {
 }
 
 impl SchematicNode {
-    pub async fn new(txn: &PgTxn<'_>, node: Node, object: serde_json::Value) -> SchematicResult<Self> {
+    pub async fn new(
+        txn: &PgTxn<'_>,
+        node: Node,
+        object: serde_json::Value,
+    ) -> SchematicResult<Self> {
         let node = NodeWithPositions::from_node_position(&txn, node).await?;
 
         let sockets = SchematicNodeSockets {
