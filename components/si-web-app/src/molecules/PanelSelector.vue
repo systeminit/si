@@ -49,6 +49,36 @@
       :isMaximizedContainerEnabled="isMaximizedContainerEnabled"
       v-else-if="panelType == 'schematic'"
     />
+    <WorkflowPanel
+      :isVisible="isVisible"
+      :panelIndex="panelIndex"
+      :panelRef="panelRef"
+      :panelContainerRef="panelContainerRef"
+      @change-panel="changePanelType"
+      @panel-maximized-full="setMaximizedFull($event)"
+      @panel-maximized-container="setMaximizedContainer($event)"
+      @panel-minimized-full="setMaximizedFull($event)"
+      @panel-minimized-container="setMaximizedContainer($event)"
+      :initialMaximizedFull="maximizedFull"
+      :initialMaximizedContainer="maximizedContainer"
+      :isMaximizedContainerEnabled="isMaximizedContainerEnabled"
+      v-else-if="panelType == 'workflow'"
+    />
+    <ActionPanel
+      :isVisible="isVisible"
+      :panelIndex="panelIndex"
+      :panelRef="panelRef"
+      :panelContainerRef="panelContainerRef"
+      @change-panel="changePanelType"
+      @panel-maximized-full="setMaximizedFull($event)"
+      @panel-maximized-container="setMaximizedContainer($event)"
+      @panel-minimized-full="setMaximizedFull($event)"
+      @panel-minimized-container="setMaximizedContainer($event)"
+      :initialMaximizedFull="maximizedFull"
+      :initialMaximizedContainer="maximizedContainer"
+      :isMaximizedContainerEnabled="isMaximizedContainerEnabled"
+      v-else-if="panelType == 'action'"
+    />
   </div>
 </template>
 
@@ -58,14 +88,18 @@ import EmptyPanel from "@/organisims/EmptyPanel.vue";
 import SecretPanel from "@/organisims/SecretPanel.vue";
 import AttributePanel from "@/organisims/AttributePanel.vue";
 import SchematicPanel from "@/organisims/SchematicPanel.vue";
+import WorkflowPanel from "@/organisims/WorkflowPanel.vue";
+import ActionPanel from "@/organisims/ActionPanel.vue";
 import { PanelEventBus } from "@/atoms/PanelEventBus";
 import Bottle from "bottlejs";
 import { Persister } from "@/api/persister";
 
 export enum PanelType {
+  Action = "action",
   Attribute = "attribute",
   Secret = "secret",
   Schematic = "schematic",
+  Workflow = "workflow",
 }
 
 export interface IData {
@@ -92,6 +126,8 @@ export default Vue.extend({
     SecretPanel,
     AttributePanel,
     SchematicPanel,
+    WorkflowPanel,
+    ActionPanel,
   },
   data(): IData {
     let bottle = Bottle.pop("default");

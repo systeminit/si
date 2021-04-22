@@ -10,7 +10,8 @@ CREATE TABLE nodes
     tenant_ids         text[]                   NOT NULL,
     obj                jsonb                    NOT NULL,
     created_at         TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    updated_at         TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+    updated_at         TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    UNIQUE (object_type, object_si_id)
 );
 
 CREATE OR REPLACE FUNCTION node_create_v1(this_object_type text,

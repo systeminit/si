@@ -20,9 +20,47 @@ pub fn api(
         .or(schematic_dal(pg, nats_conn, veritech))
         .or(attribute_dal(pg, nats_conn, veritech))
         .or(secret_dal(pg, nats_conn))
+        .or(workflow_dal(pg, nats_conn, veritech))
         .or(updates(pg, nats_conn))
         .or(cli(pg, nats_conn, veritech))
         .recover(handlers::handle_rejection)
+        .boxed()
+}
+
+// Workflow DAL
+pub fn workflow_dal(
+    pg: &PgPool,
+    nats_conn: &NatsConn,
+    veritech: &Veritech,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    workflow_dal_run_action(pg.clone(), nats_conn.clone(), veritech.clone())
+        .or(workflow_dal_list_action(pg.clone()))
+        .boxed()
+}
+
+pub fn workflow_dal_run_action(
+    pg: PgPool,
+    nats_conn: NatsConn,
+    veritech: Veritech,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("workflowDal" / "runAction")
+        .and(warp::post())
+        .and(with_pg(pg))
+        .and(with_nats_conn(nats_conn))
+        .and(with_veritech(veritech))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::body::json::<handlers::workflow_dal::RunActionRequest>())
+        .and_then(handlers::workflow_dal::run_action)
+        .boxed()
+}
+
+pub fn workflow_dal_list_action(pg: PgPool) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("workflowDal" / "listAction")
+        .and(warp::get())
+        .and(with_pg(pg))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::query::<handlers::workflow_dal::ListActionRequest>())
+        .and_then(handlers::workflow_dal::list_action)
         .boxed()
 }
 

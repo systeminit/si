@@ -4,10 +4,7 @@ use thiserror::Error;
 
 use si_data::{EventLogFS, EventLogFSError};
 
-use crate::{
-    entity::{InferPropertiesRequest, InferPropertiesResponse},
-    Entity,
-};
+use crate::entity::{InferPropertiesRequest, InferPropertiesResponse};
 
 #[derive(Error, Debug)]
 pub enum VeritechError {

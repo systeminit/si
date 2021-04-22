@@ -1,4 +1,4 @@
-import { IUpdateClock } from "./updateClock";
+//import { IUpdateClock } from "./updateClock";
 
 export interface ISiStorable {
   typeName: string;
@@ -8,7 +8,6 @@ export interface ISiStorable {
   workspaceId: string;
   tenantIds: string[];
   createdByUserId?: string;
-  updateClock: IUpdateClock;
   deleted: boolean;
 }
 

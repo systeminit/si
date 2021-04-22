@@ -3,7 +3,7 @@ use thiserror::Error;
 
 use super::Entity;
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum DiffEntry {
     Edit(Edit),
@@ -12,7 +12,7 @@ pub enum DiffEntry {
     RepeatedSize(RepeatedSize),
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Edit {
     pub path: Vec<String>,
@@ -20,21 +20,21 @@ pub struct Edit {
     pub after: serde_json::Value,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Add {
     pub path: Vec<String>,
     pub after: serde_json::Value,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Remove {
     pub path: Vec<String>,
     pub before: serde_json::Value,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct RepeatedSize {
     pub path: Vec<String>,

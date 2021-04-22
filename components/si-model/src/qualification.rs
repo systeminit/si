@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::{ModelError, SiChangeSet, SiStorable};
-use si_data::{NatsConn, NatsTxn, NatsTxnError, PgPool, PgTxn};
+use crate::{SiChangeSet, SiStorable};
+use si_data::{NatsTxn, NatsTxnError, PgTxn};
 
 const QUALIFICATION_FOR_EDIT_SESSION: &str =
     include_str!("./queries/qualification_for_edit_session.sql");
@@ -23,9 +23,6 @@ pub enum QualificationError {
 }
 
 pub type QualificationResult<T> = Result<T, QualificationError>;
-
-// TODO: Implement the edit session and change set apply saves for the
-// qualifications
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]

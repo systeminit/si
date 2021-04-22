@@ -26,6 +26,9 @@ import { UpdateTracker } from "@/api/updateTracker";
 import {
   entityQualifications$,
   entityQualificationStart$,
+  workflowRuns$,
+  workflowRunSteps$,
+  workflowRunStepEntities$,
 } from "@/observables";
 
 export interface IUpdateClockGlobal extends IUpdateClock {
@@ -97,6 +100,12 @@ function onMessage(ev: MessageEvent) {
     entityQualifications$.next(modelData.model);
   } else if (modelData.model?.siStorable?.typeName == "qualificationStart") {
     entityQualificationStart$.next(modelData.model);
+  } else if (modelData.model?.siStorable?.typeName == "workflowRun") {
+    workflowRuns$.next(modelData.model);
+  } else if (modelData.model?.siStorable?.typeName == "workflowRunStep") {
+    workflowRunSteps$.next(modelData.model);
+  } else if (modelData.model?.siStorable?.typeName == "workflowRunStepEntity") {
+    workflowRunStepEntities$.next(modelData.model);
   } else {
     //console.log("websocket on message", { ev, model_data: modelData });
   }

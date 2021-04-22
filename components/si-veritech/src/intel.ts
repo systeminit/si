@@ -5,10 +5,12 @@ import {
   InferPropertiesReply,
   InferPropertiesRequest,
 } from "./controllers/inferProperties";
+import { RunCommandCallbacks } from "./controllers/runCommand";
 
 export interface Intel {
   inferProperties?(request: InferPropertiesRequest): InferPropertiesReply;
   checkQualifications?: CheckQualificationCallbacks;
+  runCommands?: RunCommandCallbacks;
 }
 
 const intel: Record<string, Intel> = {

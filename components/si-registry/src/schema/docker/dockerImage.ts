@@ -41,6 +41,20 @@ const dockerImage: RegistryEntry = {
         "The docker image and tag specified must be accessible via a docker pull.",
     },
   ],
+  actions: [
+    {
+      name: "deploy",
+    },
+    {
+      name: "pull",
+    },
+  ],
+  commands: [
+    {
+      name: "universal:deploy",
+      description: "Deploy",
+    },
+  ],
 };
 
 export default dockerImage;

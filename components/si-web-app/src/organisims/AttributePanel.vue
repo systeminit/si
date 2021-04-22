@@ -48,6 +48,13 @@
       >
         <CheckSquareIcon size="1.1x" />
       </button>
+      <button
+        class="pl-1 text-white focus:outline-none"
+        :class="actionViewClasses()"
+        @click="switchToActionView()"
+      >
+        <PlayIcon size="1.1x" />
+      </button>
 
       <button
         class="pl-1 text-white focus:outline-none"
@@ -56,6 +63,7 @@
       >
         <RadioIcon size="1.1x" />
       </button>
+
       <!--
       <button
         class="pl-1 text-white focus:outline-none"
@@ -80,17 +88,19 @@
           :qualifications="qualifications"
           :starting="qualificationStart"
         />
-        <!--
-        <CodeViewer
-          v-else-if="activeView == 'code'"
-          :attributePanelStoreCtx="attributePanelStoreCtx"
-        />
+        <ActionViewer v-else-if="activeView == 'action'" :entity="entity" />
+
         <div v-else>
           Not implemented
           <div>
             <VueJsonPretty :data="entity" />
           </div>
         </div>
+        <!--
+        <CodeViewer
+          v-else-if="activeView == 'code'"
+          :attributePanelStoreCtx="attributePanelStoreCtx"
+        />
         -->
       </div>
       <div class="flex w-full" v-else>
@@ -113,6 +123,7 @@ import {
   RadioIcon,
   DiscIcon,
   CheckSquareIcon,
+  PlayIcon,
 } from "vue-feather-icons";
 import "vue-json-pretty/lib/styles.css";
 import { Entity } from "@/api/sdf/model/entity";
@@ -120,6 +131,7 @@ import Bottle from "bottlejs";
 import { Persister } from "@/api/persister";
 import AttributeViewer from "@/organisims/AttributeViewer.vue";
 import QualificationViewer from "@/organisims/QualificationViewer.vue";
+import ActionViewer from "@/organisims/ActionViewer.vue";
 //import CodeViewer from "@/organisims/CodeViewer.vue";
 import {
   loadEntityForEdit,
@@ -145,7 +157,7 @@ interface IData {
   isLoading: boolean;
   selectedEntityId: string;
   selectionIsLocked: boolean;
-  activeView: "attribute" | "code" | "event" | "qualification";
+  activeView: "attribute" | "code" | "event" | "qualification" | "action";
   entity: Entity | null;
   diff: Diff;
   qualifications: Qualification[];
@@ -174,6 +186,8 @@ export default Vue.extend({
     CheckSquareIcon,
     AttributeViewer,
     QualificationViewer,
+    PlayIcon,
+    ActionViewer,
   },
   data(): IData {
     let bottle = Bottle.pop("default");
@@ -197,7 +211,7 @@ export default Vue.extend({
       };
     }
   },
-  subscriptions() {
+  subscriptions(): any {
     return {
       entityQualificationStart: combineLatest(
         entityQualificationStart$,
@@ -324,6 +338,9 @@ export default Vue.extend({
     codeViewClasses(): Record<string, any> {
       return this.viewClasses("code");
     },
+    actionViewClasses(): Record<string, any> {
+      return this.viewClasses("action");
+    },
     eventViewClasses(): Record<string, any> {
       return this.viewClasses("event");
     },
@@ -341,6 +358,9 @@ export default Vue.extend({
     },
     switchToQualificationView() {
       this.activeView = "qualification";
+    },
+    switchToActionView() {
+      this.activeView = "action";
     },
     async toggleSelectionLock() {
       if (this.selectionIsLocked) {

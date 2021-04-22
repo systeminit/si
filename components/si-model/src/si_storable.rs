@@ -22,7 +22,7 @@ pub struct SimpleStorable {
     pub deleted: bool,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct MinimalStorable {
     pub type_name: String,
