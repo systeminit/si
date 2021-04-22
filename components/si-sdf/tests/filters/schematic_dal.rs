@@ -80,7 +80,7 @@ async fn connection_create() {
         .path("/schematicDal/connectionCreate")
         .json(&ConnectionCreateRequest {
             connection: Connection {
-                kind: "configures".to_string(),
+                kind: EdgeKind::Configures,
                 source: ConnectionNodeReference {
                     node_id: alpha.id.clone(),
                     socket_id: "output".to_string(),
@@ -189,7 +189,7 @@ async fn connection_create_duplicate() {
         .path("/schematicDal/connectionCreate")
         .json(&ConnectionCreateRequest {
             connection: Connection {
-                kind: "configures".to_string(),
+                kind: EdgeKind::Configures,
                 source: ConnectionNodeReference {
                     node_id: alpha.id.clone(),
                     socket_id: "output".to_string(),

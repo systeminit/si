@@ -104,7 +104,7 @@ pub struct ConnectionNodeReference {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Connection {
-    pub kind: String,
+    pub kind: EdgeKind,
     pub source: ConnectionNodeReference,
     pub destination: ConnectionNodeReference,
 }
@@ -194,7 +194,7 @@ pub async fn connection_create(
         tail_vertex.clone(),
         head_vertex.clone(),
         false,
-        EdgeKind::Configures, //TODO pass this as an argument
+        request.connection.kind, //EdgeKind::Configures
         &request.workspace_id,
     )
     .await
