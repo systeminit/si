@@ -105,7 +105,6 @@ import {
 import {
   Connection,
   ConnectionNodeReference,
-  ConnectionKind,
   ConnectionCreateReply,
   INodeUpdatePositionReply,
 } from "@/api/sdf/dal/schematicDal";
@@ -1266,7 +1265,12 @@ export default Vue.extend({
               destination.nodeId,
             );
             this.removeTransientEdge();
-            await this.createConnection(source, destination, "configures");
+
+            await this.createConnection(
+              source,
+              destination,
+              EdgeKind.Configures,
+            );
           }
           this.removeTransientEdge();
 
@@ -1282,7 +1286,7 @@ export default Vue.extend({
     async createConnection(
       source: ConnectionNodeReference,
       destination: ConnectionNodeReference,
-      kind: String,
+      kind: EdgeKind,
     ) {
       if (
         this.currentSystem &&

@@ -48,8 +48,6 @@ export async function getApplicationSystemSchematic(
  * Connections
  */
 
-export type ConnectionKind = EdgeKind;
-
 export interface ConnectionNodeReference {
   nodeId: string;
   socketId: string;
@@ -57,7 +55,7 @@ export interface ConnectionNodeReference {
 }
 
 export interface Connection {
-  kind: String;
+  kind: EdgeKind;
   source: ConnectionNodeReference;
   destination: ConnectionNodeReference;
   systemId: String;
