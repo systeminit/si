@@ -31,7 +31,7 @@
         v-if="schematicKind == 'system'"
       />
       <NodeAddMenu
-        class="pl-1"
+        class="pl-2"
         @selected="nodeCreate"
         :disabled="!isEditable"
       />
@@ -56,21 +56,14 @@
 import Vue from "vue";
 import { mapGetters, mapState } from "vuex";
 
-import {
-  ctxMapState,
-  InstanceStoreContext,
-  registerStore,
-  unregisterStore,
-} from "@/store";
+import { InstanceStoreContext, registerStore, unregisterStore } from "@/store";
 import { PanelEventBus } from "@/atoms/PanelEventBus";
-import { Cg2dCoordinate } from "@/api/sicg";
 
 import { SessionStore } from "@/store/modules/session";
 import { ApplicationContextStore } from "@/store/modules/applicationContext";
 import {
   SchematicPanelStore,
   schematicPanelStore,
-  NodeSelectWithIdPayload,
   schematicPanelStoreSubscribeEvents,
 } from "@/store/modules/schematicPanel";
 import { EditorStore } from "@/store/modules/editor";
@@ -79,19 +72,11 @@ import { NodeCreatePayload } from "@/store/modules/schematicPanel";
 import { ISchematicNode, SchematicKind } from "@/api/sdf/model/schematic";
 
 import { INodeCreateReply } from "@/api/sdf/dal/schematicDal";
-import { IGetApplicationContextRequest } from "@/api/sdf/dal/applicationContextDal";
-import { IGetApplicationSystemSchematicRequest } from "@/api/sdf/dal/schematicDal";
 
-import SchematicViewer, {
-  StoresCtx,
-  StoreCtx,
-} from "@/organisims/SchematicViewer.vue";
 import SiSelect, { SelectProps } from "@/atoms/SiSelect.vue";
-import SiLoader from "@/atoms/SiLoader.vue";
-import NodeAddMenu, {
-  AddMenuSelectedPayload,
-} from "@/molecules/NodeAddMenu.vue";
+import NodeAddMenu from "@/molecules/NodeAddMenu.vue";
 import Panel from "@/molecules/Panel.vue";
+import SchematicViewer, { StoresCtx } from "@/organisims/SchematicViewer.vue";
 
 import _ from "lodash";
 
