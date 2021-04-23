@@ -82,7 +82,6 @@ import {
 import { emitEditorErrorMessage } from "@/atoms/PanelEventBus";
 import { combineLatest } from "rxjs";
 import { tap, pluck, map } from "rxjs/operators";
-import _ from "lodash";
 
 interface Data {
   dryRun: boolean;
@@ -130,7 +129,7 @@ export default Vue.extend({
       return response;
     },
   },
-  subscriptions(): Record<string, any> {
+  subscriptions: function(this: any): Record<string, any> {
     return {
       editMode: editMode$,
       system: system$,
@@ -138,7 +137,6 @@ export default Vue.extend({
       workflowRunsUpdate: workflowRuns$.pipe(
         tap(workflowRun => {
           if (workflowRun.ctx.entity?.id == this.entity.id) {
-            console.log("have a new workflowRun", { workflowRun });
             for (let x = 0; x < this.workflowRuns.length; x++) {
               if (this.workflowRuns[x].workflowRun.id == workflowRun.id) {
                 let wfr = { workflowRun, steps: this.workflowRuns[x].steps };
@@ -193,26 +191,26 @@ export default Vue.extend({
         workspace$,
         this.$watchAsObservable("entity", { immediate: true }).pipe(
           pluck("newValue"),
-          tap(entity => {
+          tap(_entity => {
             this.workflowRuns = []; // This might want to set a loading indicator!
           }),
-          map(entity => entity.id),
+          map((entity: Entity) => entity.id),
         ),
         this.$watchAsObservable("selectedAction", { immediate: true }).pipe(
           pluck("newValue"),
         ),
       ).pipe(
-        tap(async ([system, workspace, selectedAction]) => {
+        tap(async ([system, workspace, entity, selectedAction]) => {
           // Or maybe this might? Hard to say.
           if (system && workspace) {
             let request: IListActionRequest = {
               workspaceId: workspace.id,
               systemId: system.id,
               // @ts-ignore
-              entityId: this.entity.id,
+              entityId: entity.id,
             };
             if (selectedAction) {
-              request.actionName = selectedAction;
+              request.actionName = selectedAction as string;
             }
             let reply = await WorkflowDal.listAction(request);
             if (reply.error) {

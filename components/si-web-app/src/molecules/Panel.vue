@@ -150,14 +150,6 @@ export default Vue.extend({
           label: "Secret",
           value: PanelType.Secret,
         },
-        {
-          label: "Workflow",
-          value: PanelType.Workflow,
-        },
-        {
-          label: "Action",
-          value: PanelType.Action,
-        },
       ];
     },
   },
