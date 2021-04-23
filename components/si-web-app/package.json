@@ -37,7 +37,7 @@
     "rxjs": "^6.6.6",
     "si-entity": "file:../si-entity",
     "si-registry": "file:../si-registry",
-    "tailwindcss": "npm:@tailwindcss/postcss7-compat@^2.1.0",
+    "tailwindcss": "npm:@tailwindcss/postcss7-compat@^2.1.1",
     "tweetnacl": "^1.0.3",
     "tweetnacl-sealedbox-js": "github:systeminit/tweetnacl-sealed-box#master",
     "vue": "^2.6.12",
