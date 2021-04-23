@@ -42,7 +42,7 @@ export interface ValidatorRegex extends ValidatorBase {
 
 export interface ValidatorInt extends ValidatorBase {
   kind: ValidatorKind.Int;
-  options: ValidatorJS.IsIntOptions;
+  options?: ValidatorJS.IsIntOptions;
 }
 
 export interface ValidatorAlphanumeric extends ValidatorBase {
@@ -59,7 +59,45 @@ export interface WidgetText extends WidgetBase {
   name: "text";
 }
 
-export type Widgets = WidgetText;
+export interface WidgetPassword extends WidgetBase {
+  name: "password";
+}
+
+export interface WidgetCheckbox extends WidgetBase {
+  name: "checkbox";
+}
+
+export interface WidgetNumber extends WidgetBase {
+  name: "number";
+}
+
+export interface WidgetTextArea extends WidgetBase {
+  name: "textArea";
+}
+
+export interface WidgetSelectOptionsItems {
+  items: { value: string | number; label: string }[];
+}
+
+export type WidgetSelectOptions = WidgetSelectOptionsItems;
+
+export interface WidgetSelect extends WidgetBase {
+  name: "select";
+  options: WidgetSelectOptions;
+}
+
+export interface WidgetUnknown extends WidgetBase {
+  name: "unknown";
+}
+
+export type Widgets =
+  | WidgetText
+  | WidgetCheckbox
+  | WidgetNumber
+  | WidgetPassword
+  | WidgetTextArea
+  | WidgetSelect
+  | WidgetUnknown;
 
 export interface PropBase {
   type: string;
@@ -80,9 +118,19 @@ export interface PropNumber extends PropBase {
   defaultValue?: number;
 }
 
+export interface PropBool extends PropBase {
+  type: "boolean";
+  defaultValue?: number;
+}
+
 export interface PropObject extends PropBase {
   type: "object";
   properties: Prop[];
+}
+
+export interface PropMap extends PropBase {
+  type: "map";
+  valueProperty: ItemProp;
 }
 
 export interface PropArray extends PropBase {
@@ -90,18 +138,28 @@ export interface PropArray extends PropBase {
   itemProperty: ItemProp;
 }
 
-export type Prop = PropString | PropNumber | PropObject | PropArray;
-export type PropScalars = PropString | PropNumber;
+export type Prop =
+  | PropString
+  | PropNumber
+  | PropBool
+  | PropObject
+  | PropArray
+  | PropMap;
+export type PropScalars = PropString | PropNumber | PropBool;
 
 export type ItemPropString = Optional<PropString, "name">;
 export type ItemPropNumber = Optional<PropNumber, "name">;
+export type ItemPropBool = Optional<PropBool, "name">;
 export type ItemPropObject = Optional<PropObject, "name">;
+export type ItemPropMap = Optional<PropMap, "name">;
 export type ItemPropArray = Optional<PropArray, "name">;
 
 export type ItemProp =
   | ItemPropString
   | ItemPropNumber
+  | ItemPropBool
   | ItemPropObject
+  | ItemPropMap
   | ItemPropArray;
 
 export interface Qualification {

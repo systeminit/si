@@ -21,6 +21,12 @@ function inferProperties(
     path: ["allLayers"],
     value: "b",
   });
+  entity.set({
+    source: OpSource.Manual,
+    system: "baseline",
+    path: ["mappy", "ragnarok"],
+    value: "thor wins",
+  });
 
   return { entity: request.entity };
 }

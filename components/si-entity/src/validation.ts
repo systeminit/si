@@ -14,13 +14,19 @@ export interface ValidateFailure {
 export type ValidateResult = ValidateSuccess | ValidateFailure;
 
 export function validate(path: string[], value: string): ValidateResult {
-  const prop = findProp(path);
+  let prop = findProp(path);
   if (!prop) {
-    return {
-      errors: [
-        { message: `Bug! Cannot find property to validate! Path was: ${path}` },
-      ],
-    };
+    const checkForObjectPath = path.slice(0, path.length - 1);
+    prop = findProp(checkForObjectPath);
+    if (prop && prop.type != "map") {
+      return {
+        errors: [
+          {
+            message: `Bug! Cannot find property to validate! Path was: ${path}`,
+          },
+        ],
+      };
+    }
   }
   let errors: ValidateResult["errors"] = [];
   if (prop.validation) {
@@ -56,6 +62,12 @@ export function runValidators(
     } else if (validator.kind == ValidatorKind.Regex) {
       if (!validatorjs.matches(value, validator.regex, "i")) {
         errors.push({ message: validator.message, link: validator.link });
+      }
+    } else if (validator.kind == ValidatorKind.Int) {
+      if (!validatorjs.isInt(value, validator.options)) {
+        errors.push({
+          message: `integer is not valid: ${JSON.stringify(validator.options)}`,
+        });
       }
     }
     if (errors.length > 0) {

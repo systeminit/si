@@ -8,9 +8,9 @@
     <template slot="widget">
       <input
         class="flex-grow pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey input-border-grey si-property disabled:opacity-50"
-        type="text"
+        type="number"
         aria-label="name"
-        placeholder="text"
+        placeholder="number"
         v-model="currentValue"
         :disabled="isDisabled"
         @input="onInput"
@@ -53,7 +53,7 @@ interface Data {
 }
 
 export default BaseField.extend({
-  name: "TextField",
+  name: "CheckboxField",
   mixins: [BaseField],
   components: {
     TombstoneEdit,

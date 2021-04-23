@@ -17,6 +17,7 @@ import {
   ItemPropArray,
   PropObject,
   ItemPropObject,
+  RegistryEntry,
 } from "si-registry/dist/registryEntry";
 
 export interface ISiEntity {
@@ -268,6 +269,15 @@ export class SiEntity implements ISiEntity {
   }
 
   addOpUnset(op: OpUnset): void {
+    _.remove(this.ops, (p) => {
+      const shouldRemove =
+        p.op == OpType.Set &&
+        p.system == op.system &&
+        p.source == op.source &&
+        this.subPath(p.path, op.path);
+      return shouldRemove;
+    });
+
     // If what we are removing is an index itself, we need to
     // renumber all the other items.
     if (!_.isNaN(_.toNumber(op.path[op.path.length - 1]))) {
@@ -290,15 +300,6 @@ export class SiEntity implements ISiEntity {
       });
       this.decrementArrayMetaLength(op);
     }
-
-    _.remove(
-      this.ops,
-      (p) =>
-        p.op == OpType.Set &&
-        p.system == op.system &&
-        p.source == op.source &&
-        this.subPath(p.path, op.path),
-    );
   }
 
   addOpTombstone(op: OpTombstone): void {
@@ -316,13 +317,16 @@ export class SiEntity implements ISiEntity {
   isOverridden(op: OpSet, targetSystem: string): boolean {
     if (op.source == OpSource.Inferred && op.system == "baseline") {
       const override = _.find(this.ops, (p) => {
+        // The item we are checking is never overriden.
         if (_.isEqual(p, op)) {
           return false;
         }
+        //
         return (
           _.isEqual(p.path, op.path) &&
           ((p.source == OpSource.Manual && p.system == "baseline") ||
-            p.system == targetSystem)
+            p.system == targetSystem) &&
+          !this.isTombstoned(p as OpSet)
         );
       });
       if (override) {
@@ -336,7 +340,8 @@ export class SiEntity implements ISiEntity {
         return (
           _.isEqual(p.path, op.path) &&
           p.system == op.system &&
-          op.system == targetSystem
+          op.system == targetSystem &&
+          !this.isTombstoned(p as OpSet)
         );
       });
       if (override) {
@@ -350,7 +355,8 @@ export class SiEntity implements ISiEntity {
         return (
           _.isEqual(p.path, op.path) &&
           p.source == OpSource.Manual &&
-          p.system == targetSystem
+          p.system == targetSystem &&
+          !this.isTombstoned(p as OpSet)
         );
       });
       if (override) {
@@ -361,7 +367,7 @@ export class SiEntity implements ISiEntity {
   }
 
   _fixupAndWalkArray(arr: any[]): any[] {
-    arr = _.filter(arr, undefined);
+    arr = _.filter(arr, (i) => !_.isUndefined(i));
     for (let x = 0; x < arr.length; x++) {
       if (_.isArray(arr[x])) {
         arr[x] = this._fixupAndWalkArray(arr[x]);
@@ -406,12 +412,12 @@ export class SiEntity implements ISiEntity {
         if (op.system == "baseline") {
           for (const system of systems) {
             if (!this.isOverridden(op, system) && !this.isTombstoned(op)) {
-              _.set(newProperties[system], op.path, op.value);
+              _.set(newProperties[system], op.path, _.cloneDeep(op.value));
             }
           }
         }
         if (!this.isOverridden(op, op.system) && !this.isTombstoned(op)) {
-          _.set(newProperties[op.system], op.path, op.value);
+          _.set(newProperties[op.system], op.path, _.cloneDeep(op.value));
         }
       }
     }
@@ -468,6 +474,63 @@ export class SiEntity implements ISiEntity {
     return result;
   }
 
+  schema(): RegistryEntry {
+    return registry[this.entityType];
+  }
+
+  toEditField(
+    editFields: EditField[],
+    checkProp: {
+      path: EditField["path"];
+      schema: EditField["schema"];
+    },
+  ): void {
+    let widgetName: string;
+    if (checkProp.schema.widget) {
+      widgetName = checkProp.schema.widget.name;
+    } else if (checkProp.schema.type == "string") {
+      widgetName = "text";
+    } else if (checkProp.schema.type == "number") {
+      widgetName = "number";
+    } else if (checkProp.schema.type == "object") {
+      widgetName = "header";
+    } else if (checkProp.schema.type == "boolean") {
+      widgetName = "checkbox";
+    } else if (checkProp.schema.type == "map") {
+      widgetName = "map";
+    } else if (checkProp.schema.type == "array") {
+      widgetName = "array";
+    } else {
+      widgetName = "unknown";
+    }
+    let name: string;
+    if (checkProp.schema.displayName) {
+      name = checkProp.schema.displayName;
+    } else if (checkProp.schema.name) {
+      name = checkProp.schema.name;
+    }
+    const editField: EditField = {
+      type: checkProp.schema.type,
+      schema: checkProp.schema,
+      path: checkProp.path,
+      widgetName,
+      name,
+    };
+    editFields.push(editField);
+    if (checkProp.schema.type == "object") {
+      for (const p of checkProp.schema.properties) {
+        const path = _.cloneDeep(checkProp.path);
+        path.push(p.name);
+        this.toEditField(editFields, { path, schema: p });
+      }
+    } else if (checkProp.schema.type == "array") {
+      //const path = _.cloneDeep(checkProp.path);
+      //const p = checkProp.schema.itemProperty;
+      //path.push("a0");
+      //this.toEditField(editFields, { path, schema: p });
+    }
+  }
+
   editFields(): EditField[] {
     const editFields: EditField[] = [];
     const rootSchema = registry[this.entityType];
@@ -479,39 +542,34 @@ export class SiEntity implements ISiEntity {
     });
 
     for (const checkProp of toCheck) {
-      let widgetName: string;
-      if (checkProp.schema.widget) {
-        widgetName = checkProp.schema.widget.name;
-      } else if (checkProp.schema.type == "string") {
-        widgetName = "text";
-      } else {
-        widgetName = "unknown";
-      }
-      let name: string;
-      if (checkProp.schema.displayName) {
-        name = checkProp.schema.displayName;
-      } else if (checkProp.schema.name) {
-        name = checkProp.schema.name;
-      }
-      const editField: EditField = {
-        type: checkProp.schema.type,
-        schema: checkProp.schema,
-        path: checkProp.path,
-        widgetName,
-        name,
-      };
-      editFields.push(editField);
-      if (checkProp.schema.type == "object") {
-        for (const p of checkProp.schema.properties) {
-          const path = _.cloneDeep(checkProp.path);
-          path.push(p.name);
-          toCheck.push({ path, schema: p });
+      this.toEditField(editFields, checkProp);
+    }
+    return editFields;
+  }
+
+  arrayEditFields(editField: EditField, index: number): EditField[] {
+    const editFields: EditField[] = [];
+    if (editField.schema.type == "array") {
+      const path = _.cloneDeep(editField.path);
+      path.push(`${index}`);
+      const rootSchema = editField.schema.itemProperty;
+      if (rootSchema.type == "object") {
+        const toCheck: {
+          path: EditField["path"];
+          schema: EditField["schema"];
+        }[] = _.map(rootSchema.properties, (p) => {
+          const subPath = _.cloneDeep(path);
+          subPath.push(p.name);
+          return { path: subPath, schema: p };
+        });
+
+        for (const checkProp of toCheck) {
+          this.toEditField(editFields, checkProp);
         }
-      } else if (checkProp.schema.type == "array") {
-        const path = _.cloneDeep(checkProp.path);
-        const p = checkProp.schema.itemProperty;
-        path.push("a0");
-        toCheck.push({ path, schema: p });
+      } else {
+        const path = _.cloneDeep(editField.path);
+        path.push(`${index}`);
+        this.toEditField(editFields, { path, schema: rootSchema });
       }
     }
     return editFields;

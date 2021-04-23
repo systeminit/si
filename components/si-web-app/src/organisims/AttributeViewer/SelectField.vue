@@ -6,17 +6,22 @@
     :editMode="editMode"
   >
     <template slot="widget">
-      <input
+      <select
         class="flex-grow pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey input-border-grey si-property disabled:opacity-50"
-        type="text"
-        aria-label="name"
         placeholder="text"
         v-model="currentValue"
         :disabled="isDisabled"
         @input="onInput"
         @focus="onFocus"
         @blur="onBlur"
-      />
+      >
+        <option
+          v-for="option in selectOptions"
+          :key="option.value"
+          :value="option.value"
+          >{{ option.label }}
+        </option>
+      </select>
       <div class="flex flex-row w-10">
         <TombstoneEdit
           :entity="entity"
@@ -52,8 +57,13 @@ interface Data {
   errors: ValidateFailure["errors"];
 }
 
+interface SelectItem {
+  label: string;
+  value: string | number;
+}
+
 export default BaseField.extend({
-  name: "TextField",
+  name: "SelectField",
   mixins: [BaseField],
   components: {
     TombstoneEdit,
@@ -67,6 +77,15 @@ export default BaseField.extend({
       updating: false,
       errors: [],
     };
+  },
+  computed: {
+    selectOptions(): SelectItem[] {
+      if (this.editField.schema.widget?.name == "select") {
+        return this.editField.schema.widget.options.items;
+      } else {
+        return [];
+      }
+    },
   },
 });
 </script>

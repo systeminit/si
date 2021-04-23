@@ -104,7 +104,14 @@
         -->
       </div>
       <div class="flex w-full" v-else>
-        <h2>No object selected</h2>
+        <div
+          class="flex flex-col items-center justify-center w-full h-full align-middle"
+        >
+          <img
+            width="300px"
+            :src="require('@/assets/images/cheech-and-chong.svg')"
+          />
+        </div>
       </div>
     </template>
   </Panel>
@@ -318,6 +325,13 @@ export default Vue.extend({
               this.diff = r.diff;
               // @ts-ignore
               this.qualifications = r.qualifications;
+            } else {
+              // @ts-ignore
+              this.entity = null;
+              // @ts-ignore
+              this.diff = null;
+              // @ts-ignore
+              this.qualifications = null;
             }
           }
         }),

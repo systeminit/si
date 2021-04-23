@@ -6,17 +6,16 @@
     :editMode="editMode"
   >
     <template slot="widget">
-      <input
+      <textarea
         class="flex-grow pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey input-border-grey si-property disabled:opacity-50"
-        type="text"
-        aria-label="name"
         placeholder="text"
         v-model="currentValue"
         :disabled="isDisabled"
         @input="onInput"
         @focus="onFocus"
         @blur="onBlur"
-      />
+      >
+      </textarea>
       <div class="flex flex-row w-10">
         <TombstoneEdit
           :entity="entity"
