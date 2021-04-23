@@ -200,14 +200,14 @@ export default Vue.extend({
           pluck("newValue"),
         ),
       ).pipe(
-        tap(async ([system, workspace, entity, selectedAction]) => {
+        tap(async ([system, workspace, entityId, selectedAction]) => {
           // Or maybe this might? Hard to say.
-          if (system && workspace) {
+          if (system && workspace && entityId) {
             let request: IListActionRequest = {
               workspaceId: workspace.id,
               systemId: system.id,
               // @ts-ignore
-              entityId: entity.id,
+              entityId,
             };
             if (selectedAction) {
               request.actionName = selectedAction as string;
