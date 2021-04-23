@@ -1,48 +1,78 @@
 <template>
-  <div class="flex flex-col w-full overflow-hidden" v-if="entity">
+  <div class="flex flex-col w-full" v-if="entity">
     <div
-      class="relative flex flex-row items-center pt-2 pb-2 pl-6 pr-6 text-base text-white property-section-bg-color"
+      class="relative flex flex-row items-center w-full pt-2 pb-2 pl-6 pr-6 text-base text-white property-section-bg-color"
     >
       <div class="text-lg">
         {{ entity.entityType }} {{ entity.name }} actions
       </div>
     </div>
     <div
-      class="relative flex flex-row items-center pt-2 pb-2 pl-6 pr-6 text-base text-white bg-black"
+      class="relative flex flex-row items-center justify-between pt-2 pb-2 pl-6 pr-6 text-base text-white bg-black"
     >
-      <div class="flex">
-        <SiSelect
-          size="xs"
-          id="actionPanelSelect"
-          name="actionPanelSelect"
-          :options="actionList"
-          v-model="selectedAction"
-          class="pl-1"
-        />
+      <div class="flex flex-row">
+        <div class="flex flex-row">
+          <SiSelect
+            size="xs"
+            id="actionPanelSelect"
+            name="actionPanelSelect"
+            :options="actionList"
+            v-model="selectedAction"
+            class="pl-1"
+          />
+        </div>
+
+        <button
+          class="pl-1 focus:outline-none disabled:opacity-30"
+          :disabled="!selectedAction || editMode"
+          @click="runThisAction()"
+        >
+          <PlayCircleIcon size="1.1x" />
+        </button>
+
+        <div class="flex flex-row items-center pl-1">
+          <div class="flex">
+            <input type="checkbox" name="dryRun" v-model="dryRun" />
+          </div>
+          <div class="flex pl-1 text-xs">
+            Dry
+          </div>
+        </div>
       </div>
-      <button
-        class="pl-1 focus:outline-none disabled:opacity-30"
-        :disabled="!selectedAction || editMode"
-        @click="runThisAction()"
-      >
-        <PlayCircleIcon size="1.1x" />
-      </button>
-      <div class="flex flex-row items-center pl-1">
-        <div class="flex">
-          <input type="checkbox" name="dryRun" v-model="dryRun" />
-        </div>
-        <div class="flex pl-1 text-xs">
-          Dry
-        </div>
+
+      <div class="flex flex-row">
+        <button
+          class="focus:outline-none disabled:opacity-30"
+          :class="successesFilterClasses()"
+          @click="toggleShowSucceeded()"
+        >
+          <CheckCircleIcon size="1x" />
+        </button>
+
+        <button
+          class="ml-2 focus:outline-none disabled:opacity-30"
+          :class="failuresFilterClasses()"
+          @click="toggleShowFailed()"
+        >
+          <AlertCircleIcon size="1x" />
+        </button>
       </div>
     </div>
 
-    <div
-      v-if="schema && schema.qualifications"
-      class="flex w-full pt-2 overflow-auto"
-    >
-      <div class="flex flex-col w-full">
-        <VueJsonPretty :data="workflowRuns" />
+    <div class="w-full h-full workflow-runs">
+      <div
+        v-if="schema && schema.qualifications"
+        class="flex flex-col w-full mt-6"
+      >
+        <WorkflowRun
+          v-for="(data, index) in workflowRuns"
+          ref="WorkflowRun"
+          class="mx-4 drop-shadow-xl"
+          :key="index"
+          :workflowRun="data.workflowRun"
+          :workflowSteps="data.steps"
+          v-show="isSucceededVisible"
+        />
       </div>
     </div>
   </div>
@@ -68,8 +98,11 @@ import {
 
 // TODO: Get the list of workflows run for this entity; if they select one, filter. If they hit play, run.
 import SiSelect from "@/atoms/SiSelect.vue";
-import { PlayCircleIcon } from "vue-feather-icons";
-import VueJsonPretty from "vue-json-pretty";
+import {
+  PlayCircleIcon,
+  CheckCircleIcon,
+  AlertCircleIcon,
+} from "vue-feather-icons";
 import { ILabelListItem } from "@/api/sdf/dal";
 import {
   system$,
@@ -83,10 +116,14 @@ import { emitEditorErrorMessage } from "@/atoms/PanelEventBus";
 import { combineLatest } from "rxjs";
 import { tap, pluck, map } from "rxjs/operators";
 
+import WorkflowRun from "@/molecules/WorkflowRun.vue";
+
 interface Data {
   dryRun: boolean;
   selectedAction: string;
   workflowRuns: IListActionReplySuccess["workflowRuns"];
+  isSucceededVisible: boolean;
+  isFailedVisible: boolean;
 }
 
 // The critical data are the 'worfklowRun', 'workflowRunStep', and 'workflowRunStepEntity'.
@@ -102,13 +139,17 @@ export default Vue.extend({
   components: {
     PlayCircleIcon,
     SiSelect,
-    VueJsonPretty,
+    WorkflowRun,
+    CheckCircleIcon,
+    AlertCircleIcon,
   },
   data(): Data {
     return {
       dryRun: false,
       selectedAction: "",
       workflowRuns: [],
+      isSucceededVisible: true,
+      isFailedVisible: true,
     };
   },
   computed: {
@@ -245,6 +286,38 @@ export default Vue.extend({
         }
       }
     },
+    successesFilterClasses(): Record<string, any> {
+      let classes: Record<string, any> = {};
+
+      if (this.isSucceededVisible) {
+        classes["text-green-400"] = true;
+      } else {
+        classes["text-gray-500"] = true;
+      }
+      return classes;
+    },
+    failuresFilterClasses(): Record<string, any> {
+      let classes: Record<string, any> = {};
+
+      if (this.isFailedVisible) {
+        classes["text-red-400"] = true;
+      } else {
+        classes["text-gray-500"] = true;
+      }
+      return classes;
+    },
+    toggleShowSucceeded() {
+      this.isSucceededVisible = !this.isSucceededVisible;
+    },
+    toggleShowFailed() {
+      this.isFailedVisible = !this.isFailedVisible;
+    },
   },
 });
 </script>
+
+<style scoped>
+.workflow-runs {
+  background-color: #212324;
+}
+</style>
