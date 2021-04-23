@@ -36,6 +36,7 @@
           :class="resizerHolderClasses()"
           style="min-width: 4px; min-height: 4px; z-index: 100;"
           v-if="panelIndex != panelContainer.panels.length - 1"
+          v-show="isResizerVisible"
         >
           <div
             :class="resizerClasses()"
@@ -123,6 +124,7 @@ interface IData {
     style: string | null;
   };
   isVisible: boolean;
+  isResizerVisible: boolean;
 }
 
 export default Vue.extend({
@@ -145,6 +147,7 @@ export default Vue.extend({
       maximizedData: null,
       putBackTo: {},
       isVisible: true,
+      isResizerVisible: true,
     };
   },
   mounted() {
@@ -640,6 +643,7 @@ export default Vue.extend({
           // @ts-ignore
           panelSelectors[i].unhide();
         }
+        this.isResizerVisible = true;
       }
 
       let ogPanelData = this.originalMaximizedElementData;
@@ -684,6 +688,7 @@ export default Vue.extend({
           // @ts-ignore
           panelSelectors[i].hide();
         }
+        this.isResizerVisible = false;
       }
 
       let panelRef = event.panelRef;
