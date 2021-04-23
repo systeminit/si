@@ -76,7 +76,6 @@ describe("PartyBus", () => {
         organizationId: "o:1",
         workspaceId: "w:1",
         tenantIds: [],
-        updateClock: { epoch: 0, updateCount: 1 },
         deleted: false,
       },
     });
@@ -109,7 +108,6 @@ describe("PartyBus", () => {
         organizationId: "o:1",
         workspaceId: "w:1",
         tenantIds: [],
-        updateClock: { epoch: 0, updateCount: 1 },
         deleted: false,
       },
     });
@@ -141,7 +139,6 @@ describe("PartyBus", () => {
         organizationId: "o:1",
         workspaceId: "w:1",
         tenantIds: [],
-        updateClock: { epoch: 0, updateCount: 1 },
         deleted: false,
       },
     });
