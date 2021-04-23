@@ -34,7 +34,7 @@
         <!-- resizer -->
         <div
           :class="resizerHolderClasses()"
-          style="min-width: 4px; min-height: 4px;"
+          style="min-width: 4px; min-height: 4px; z-index: 100;"
           v-if="panelIndex != panelContainer.panels.length - 1"
         >
           <div
