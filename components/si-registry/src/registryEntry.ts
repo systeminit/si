@@ -11,12 +11,14 @@ export enum MenuCategory {
 interface RegistryEntryUiHidden {
   menuCategory?: never;
   menuDisplayName?: never;
+  superNode?: never;
   hidden: true;
 }
 
 interface RegistryEntryUiPresent {
   menuCategory: MenuCategory;
   menuDisplayName: string;
+  superNode: boolean;
   hidden?: never;
 }
 

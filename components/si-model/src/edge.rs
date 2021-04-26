@@ -74,6 +74,8 @@ impl Vertex {
 pub enum EdgeKind {
     Configures,
     Includes,
+    Deployment,
+    Implementation,
 }
 
 impl std::fmt::Display for EdgeKind {
@@ -81,6 +83,8 @@ impl std::fmt::Display for EdgeKind {
         let msg = match self {
             EdgeKind::Configures => "configures".to_string(),
             EdgeKind::Includes => "includes".to_string(),
+            EdgeKind::Deployment => "deployment".to_string(),
+            EdgeKind::Implementation => "implementation".to_string(),
         };
         write!(f, "{}", msg)
     }
@@ -199,6 +203,31 @@ impl Edge {
                 vertexes_to_check.push(r.head_vertex.node_id.clone());
             }
             results.append(&mut direct_results);
+        }
+
+        Ok(results)
+    }
+
+    pub async fn all_successor_edges_by_node_id_for_edge_kinds(
+        txn: &PgTxn<'_>,
+        edge_kinds: &Vec<EdgeKind>,
+        node_id: impl Into<String>,
+    ) -> EdgeResult<Vec<Edge>> {
+        let node_id = node_id.into();
+
+        let mut vertexes_to_check = vec![node_id];
+
+        let mut results: Vec<Edge> = Vec::new();
+        while let Some(head_node_id) = vertexes_to_check.pop() {
+            for edge_kind in edge_kinds.iter() {
+                let mut direct_results =
+                    Self::direct_successor_edges_by_node_id(txn, edge_kind, &head_node_id).await?;
+
+                for r in direct_results.iter() {
+                    vertexes_to_check.push(r.head_vertex.node_id.clone());
+                }
+                results.append(&mut direct_results);
+            }
         }
 
         Ok(results)

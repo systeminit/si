@@ -128,6 +128,9 @@ export const schematicPanelStore: Module<SchematicPanelStore, any> = {
     setSchematic(state, payload: SchematicPanelStore["schematic"]) {
       state.schematic = payload;
     },
+    unsetSchematic(state) {
+      state.schematic = null;
+    },
     setSelectedNode(state, payload: SchematicPanelStore["selectedNode"]) {
       if (payload) {
         schematicSelectedEntityId$.next(payload.object.id);
@@ -262,7 +265,7 @@ export const schematicPanelStore: Module<SchematicPanelStore, any> = {
     },
     async onNodeUpdated({ state, dispatch }, _event: NodeUpdatedEvent) {
       if (state.lastRequest) {
-        await dispatch("loadApplicationSystemSchematic", state.lastRequest);
+        await dispatch("loadSchematic", state.lastRequest);
       }
     },
     async onEditSessionCancel(
@@ -271,7 +274,7 @@ export const schematicPanelStore: Module<SchematicPanelStore, any> = {
     ) {
       if (state.lastRequest) {
         commit("lastRequestRemoveEditSession");
-        await dispatch("loadApplicationSystemSchematic", state.lastRequest);
+        await dispatch("loadSchematic", state.lastRequest);
       }
     },
     async onConnectionCreated(
@@ -284,13 +287,13 @@ export const schematicPanelStore: Module<SchematicPanelStore, any> = {
     },
     async onEntitySetName({ state, dispatch }, _event: NodeCreatedEvent) {
       if (state.lastRequest) {
-        await dispatch("loadApplicationSystemSchematic", state.lastRequest);
+        await dispatch("loadSchematic", state.lastRequest);
       }
     },
     setRootObjectId({ commit }, payload: SchematicPanelStore["rootObjectId"]) {
       commit("setRootObjectId", payload);
     },
-    async loadApplicationSystemSchematic(
+    async loadSchematic(
       { commit },
       request: IGetApplicationSystemSchematicRequest,
     ): Promise<IGetSchematicReply> {
@@ -300,6 +303,9 @@ export const schematicPanelStore: Module<SchematicPanelStore, any> = {
         await commit("setLastRequest", request);
       }
       return reply;
+    },
+    async clearSchematic({ commit }) {
+      await commit("unsetSchematic");
     },
     async setApplicationSystemSchematic({ commit }, schematic: Schematic) {
       await commit("setSchematic", _.cloneDeep(schematic));

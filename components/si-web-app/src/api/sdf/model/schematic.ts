@@ -2,9 +2,8 @@ import { Node, INodeObject } from "@/api/sdf/model/node";
 import { Edge } from "@/api/sdf/model/edge";
 
 export enum SchematicKind {
-  System = "system",
   Deployment = "deployment",
-  Implementation = "implementation",
+  Component = "component",
 }
 
 export interface IConnectionEdge {
@@ -67,6 +66,7 @@ export interface ISchematic {
 }
 
 export class Schematic implements ISchematic {
+  kind?: SchematicKind;
   nodes: ISchematic["nodes"];
   edges: ISchematic["edges"];
 

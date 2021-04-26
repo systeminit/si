@@ -10,6 +10,7 @@ const leftHandPath: RegistryEntry = {
   ui: {
     menuCategory: MenuCategory.Kubernetes,
     menuDisplayName: "leftHandPath",
+    superNode: false,
   },
   properties: [
     {

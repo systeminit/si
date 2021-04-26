@@ -125,12 +125,21 @@ export default Vue.extend({
     },
     handleShortcut(event: KeyboardEvent) {
       if (this.shortcuts) {
-        if (event.altKey && event.shiftKey && event.key == "N") {
+        // keyCode 219 is "["
+        if (
+          (event.altKey && event.shiftKey && event.key == "N") ||
+          event.keyCode == 219
+        ) {
           PanelEventBus.$emit("create-new-panel", {
             panelContainerRef: this.panelContainerRef,
           });
         }
-        if (event.altKey && event.shiftKey && event.key == "D") {
+
+        // keyCode 221 is "]"
+        if (
+          (event.altKey && event.shiftKey && event.key == "D") ||
+          event.keyCode == 221
+        ) {
           PanelEventBus.$emit("delete-panel", {
             panelRef: this.panelRef,
           });

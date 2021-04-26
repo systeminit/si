@@ -9,6 +9,7 @@ const torture: RegistryEntry = {
   ui: {
     menuCategory: MenuCategory.Application,
     menuDisplayName: "torture test",
+    superNode: false
   },
   properties: [
     {

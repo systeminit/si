@@ -19,6 +19,7 @@
         v-model="schematicKind"
         class="pl-1"
         :styling="schematicSelectorStyling()"
+        @input="schematicSelected($event)"
       />
       <SiSelect
         size="xs"
@@ -28,25 +29,42 @@
         v-model="currentSystemId"
         class="pl-1"
         :styling="schematicSelectorStyling()"
-        v-if="schematicKind == 'system'"
+        v-if="schematicKind === 'deployment'"
       />
+
+      <div class="flex flex-row" v-if="schematicKind === 'component'">
+        <SiSelect
+          size="xs"
+          id="schematicPanelNodePin"
+          name="schematicPanelNodePin"
+          :options="nodeList()"
+          v-if="nodeList()"
+          v-model="pinnedNodeId"
+          class="pl-1"
+          :disabled="selectionIsTracked"
+        />
+        <button class="pl-1 focus:outline-none" @click="toggleSelectionTrack()">
+          <TargetIcon size="0.9x" :class="targetIconStyling()" />
+        </button>
+      </div>
+
       <NodeAddMenu
         class="pl-2"
+        :filter="addMenuFilter"
         @selected="nodeCreate"
         :disabled="!isEditable"
       />
     </template>
     <template v-slot:content>
       <div class="relative w-full h-full">
-        <div v-if="schematic">
-          <SchematicViewer
-            class="absolute z-10"
-            ref="graphViewer"
-            :schematic="schematic"
-            :schematicPanelStoreCtx="schematicPanelStoreCtx"
-            :storesCtx="storesCtx"
-          />
-        </div>
+        <SchematicViewer
+          class="absolute z-10"
+          ref="graphViewer"
+          :schematic="schematic"
+          :schematicKind="schematicKind"
+          :schematicPanelStoreCtx="schematicPanelStoreCtx"
+          :storesCtx="storesCtx"
+        />
       </div>
     </template>
   </Panel>
@@ -73,19 +91,24 @@ import { ISchematicNode, SchematicKind } from "@/api/sdf/model/schematic";
 
 import { INodeCreateReply } from "@/api/sdf/dal/schematicDal";
 
+import { MenuFilter } from "@/molecules/NodeAddMenu.vue";
+
 import SiSelect, { SelectProps } from "@/atoms/SiSelect.vue";
 import NodeAddMenu from "@/molecules/NodeAddMenu.vue";
 import Panel from "@/molecules/Panel.vue";
 import SchematicViewer, { StoresCtx } from "@/organisims/SchematicViewer.vue";
 
+import { TargetIcon } from "vue-feather-icons";
+
 import _ from "lodash";
 
 interface IData {
   schematicPanelStoreCtx: InstanceStoreContext<SchematicPanelStore>;
-  isLoading: boolean;
   schematicKind: SchematicKind;
   storesCtx: StoresCtx;
   id: string;
+  selectionIsTracked: Boolean;
+  pinnedNodeId: string;
 }
 
 export default Vue.extend({
@@ -104,6 +127,7 @@ export default Vue.extend({
     SchematicViewer,
     NodeAddMenu,
     SiSelect,
+    TargetIcon,
   },
   data(): IData {
     let id = _.uniqueId("schematicPanel:");
@@ -119,9 +143,10 @@ export default Vue.extend({
     return {
       id: id,
       schematicPanelStoreCtx,
-      isLoading: true,
-      schematicKind: SchematicKind.System,
+      schematicKind: SchematicKind.Deployment,
       storesCtx: storesCtx,
+      selectionIsTracked: false,
+      pinnedNodeId: "",
     };
   },
   computed: {
@@ -152,6 +177,9 @@ export default Vue.extend({
       currentSystemId(): string {
         return "production";
       },
+      selectedNode(): ISchematicNode | null {
+        return this.storesCtx.schematicPanelStoreCtx.state.selectedNode;
+      },
     }),
     ...mapGetters({
       isEditable: "editor/inEditable",
@@ -161,9 +189,8 @@ export default Vue.extend({
     },
     schematicKinds(): SelectProps["options"] {
       return [
-        { label: "System", value: SchematicKind.System },
         { label: "Deployment", value: SchematicKind.Deployment },
-        { label: "Implementation", value: SchematicKind.Implementation },
+        { label: "Component", value: SchematicKind.Component },
       ];
     },
     rootObjectId(): SchematicPanelStore["rootObjectId"] {
@@ -172,9 +199,112 @@ export default Vue.extend({
     schematic(): SchematicPanelStore["schematic"] {
       return this.schematicPanelStoreCtx.state.schematic;
     },
+    addMenuFilter(): MenuFilter | string {
+      switch (this.schematicKind) {
+        case SchematicKind.Deployment: {
+          return MenuFilter.Deployment;
+        }
+        case SchematicKind.Component: {
+          return MenuFilter.Implementation;
+        }
+      }
+      return "";
+    },
+  },
+  async created() {
+    registerStore(
+      this.schematicPanelStoreCtx,
+      schematicPanelStore,
+      schematicPanelStoreSubscribeEvents,
+    );
+  },
+  async mounted() {
+    if (this.sessionContext) {
+      await this.schematicPanelStoreCtx.dispatch(
+        "setRootObjectId",
+        this.sessionContext.applicationId,
+      );
+      this.loadSchematic();
+    }
+  },
+  async beforeDestroy() {
+    unregisterStore(this.schematicPanelStoreCtx);
+  },
+  watch: {
+    async sessionContext(sessionContext: SessionStore["sessionContext"]) {
+      let applicationId = this.sessionContext?.applicationId;
+      if (!applicationId) {
+        throw new Error(
+          "failed to extract a root object id from the session; you need to set the context",
+        );
+      }
+      await this.schematicPanelStoreCtx.dispatch(
+        "setRootObjectId",
+        applicationId,
+      );
+      await this.loadSchematic();
+    },
+    async currentChangeSet() {
+      await this.loadSchematic();
+    },
+    initialMaximizedFull(value) {
+      this.onInitialMaximizedFullUpdates(value);
+    },
   },
   methods: {
-    onInitialMaximizedFullUpdates(value: Boolean) {
+    targetIconStyling(): Record<string, any> {
+      let classes: Record<string, any> = {};
+      classes["track-selection"] = this.selectionIsTracked;
+      classes["manual-selection"] = !this.selectionIsTracked;
+      return classes;
+    },
+    async toggleSelectionTrack() {
+      if (this.selectionIsTracked) {
+        this.selectionIsTracked = false;
+      } else {
+        this.selectionIsTracked = true;
+      }
+    },
+    nodeList(): string[] {
+      let nodeList = [];
+      console.log("this.schematic:", this.schematic);
+      if (this.schematic) {
+        for (let node in this.schematic.nodes) {
+          console.log(node);
+          nodeList.push(node);
+        }
+      }
+      console.log("nodeList:", nodeList);
+      return nodeList;
+    },
+    async schematicSelected(kind: string) {
+      if (_.capitalize(kind) in SchematicKind && this.sessionContext) {
+        switch (kind) {
+          case SchematicKind.Deployment: {
+            await this.schematicPanelStoreCtx.dispatch(
+              "setRootObjectId",
+              this.sessionContext.applicationId,
+            );
+            this.loadSchematic();
+            break;
+          }
+
+          case SchematicKind.Component: {
+            if (this.selectedNode) {
+              await this.schematicPanelStoreCtx.dispatch(
+                "setRootObjectId",
+                this.selectedNode.object.id,
+              );
+              this.loadSchematic();
+              break;
+            } else {
+              this.clearSchematic();
+            }
+          }
+        }
+      }
+    },
+    onInitialMaximizedFullUpdates(value: boolean) {
       // @ts-ignore
       this.$refs.graphViewer.updateCanvasPosition();
     },
@@ -185,8 +315,38 @@ export default Vue.extend({
       classes["border-gray-800"] = true;
       return classes;
     },
-    async nodeSelect(schematicNode: ISchematicNode) {
-      console.log("selected (does nothing!!!", { schematicNode });
+    includeRootNode(): boolean {
+      if (this.schematicKind == SchematicKind.Deployment) {
+        return false;
+      } else {
+        return true;
+      }
+    },
+    async loadSchematic() {
+      if (this.currentWorkspace && this.rootObjectId && this.currentSystem) {
+        let request: Record<string, any> = {
+          workspaceId: this.currentWorkspace.id,
+          rootObjectId: this.rootObjectId,
+          systemId: this.currentSystem.id,
+          includeRootNode: this.includeRootNode(),
+        };
+        if (this.currentChangeSet) {
+          request["changeSetId"] = this.currentChangeSet.id;
+        }
+        if (this.currentEditSession) {
+          request["editSessionId"] = this.currentEditSession.id;
+        }
+        let reply = await this.schematicPanelStoreCtx.dispatch(
+          "loadSchematic",
+          request,
+        );
+        if (reply.error) {
+          PanelEventBus.$emit("editor-error-message", reply.error.message);
+        }
+      }
+    },
+    async clearSchematic() {
+      await this.schematicPanelStoreCtx.dispatch("clearSchematic");
     },
     async nodeCreate(entityType: string, event: MouseEvent) {
       if (
@@ -217,75 +377,16 @@ export default Vue.extend({
         }
       }
     },
-    async loadSchematic() {
-      this.isLoading = true;
-      if (this.currentWorkspace && this.rootObjectId && this.currentSystem) {
-        if (this.schematicKind == SchematicKind.System) {
-          let request: Record<string, any> = {
-            workspaceId: this.currentWorkspace.id,
-            rootObjectId: this.rootObjectId,
-            systemId: this.currentSystem.id,
-          };
-          if (this.currentChangeSet) {
-            request["changeSetId"] = this.currentChangeSet.id;
-          }
-          if (this.currentEditSession) {
-            request["editSessionId"] = this.currentEditSession.id;
-          }
-          let reply = await this.schematicPanelStoreCtx.dispatch(
-            "loadApplicationSystemSchematic",
-            request,
-          );
-          if (reply.error) {
-            PanelEventBus.$emit("editor-error-message", reply.error.message);
-          }
-        }
-      }
-      this.isLoading = false;
-    },
-  },
-  async created() {
-    registerStore(
-      this.schematicPanelStoreCtx,
-      schematicPanelStore,
-      schematicPanelStoreSubscribeEvents,
-    );
-  },
-  async mounted() {
-    if (this.sessionContext) {
-      this.isLoading = true;
-      await this.schematicPanelStoreCtx.dispatch(
-        "setRootObjectId",
-        this.sessionContext.applicationId,
-      );
-      this.loadSchematic();
-    }
-  },
-  async beforeDestroy() {
-    unregisterStore(this.schematicPanelStoreCtx);
-  },
-  watch: {
-    async sessionContext(sessionContext: SessionStore["sessionContext"]) {
-      let applicationId = this.sessionContext?.applicationId;
-      if (!applicationId) {
-        throw new Error(
-          "failed to extract a root object id from the session; you need to set the context",
-        );
-      }
-      this.isLoading = true;
-      await this.schematicPanelStoreCtx.dispatch(
-        "setRootObjectId",
-        applicationId,
-      );
-      await this.loadSchematic();
-    },
-    async currentChangeSet() {
-      this.isLoading = true;
-      await this.loadSchematic();
-    },
-    initialMaximizedFull(value) {
-      this.onInitialMaximizedFullUpdates(value);
-    },
   },
 });
 </script>
+
+<style scoped>
+.track-selection {
+  color: orange;
+}
+
+.manual-selection {
+  color: grey;
+}
+</style>

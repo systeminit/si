@@ -18,6 +18,7 @@ pub struct GetApplicationSystemSchematicRequest {
     pub change_set_id: Option<String>,
     pub edit_session_id: Option<String>,
     pub system_id: String,
+    pub include_root_node: bool,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -70,7 +71,12 @@ pub async fn get_application_system_schematic(
         &request.workspace_id,
         request.change_set_id.clone(),
         request.edit_session_id.clone(),
-        vec![EdgeKind::Configures],
+        vec![
+            EdgeKind::Configures,
+            EdgeKind::Deployment,
+            EdgeKind::Implementation,
+        ],
+        // vec![EdgeKind::Configures, EdgeKind::Deployment, EdgeKind::Implementation],
     )
     .await
     .map_err(HandlerError::from)?;
@@ -82,7 +88,11 @@ pub async fn get_application_system_schematic(
     )
     .await
     .map_err(HandlerError::from)?;
-    schematic.prune_node(root_node.id);
+
+    if request.include_root_node == false {
+        schematic.prune_node(root_node.id);
+    }
+
     txn.commit().await.map_err(HandlerError::from)?;
 
     let reply = GetApplicationSystemSchematicReply { schematic };
@@ -206,7 +216,11 @@ pub async fn connection_create(
         &request.workspace_id,
         Some(request.change_set_id.clone()),
         Some(request.edit_session_id.clone()),
-        vec![EdgeKind::Configures],
+        vec![
+            EdgeKind::Configures,
+            EdgeKind::Deployment,
+            EdgeKind::Implementation,
+        ],
     )
     .await
     .map_err(HandlerError::from)?;
@@ -347,7 +361,11 @@ pub async fn node_create_for_application(
         &request.workspace_id,
         Some(request.change_set_id.clone()),
         Some(request.edit_session_id.clone()),
-        vec![EdgeKind::Configures],
+        vec![
+            EdgeKind::Configures,
+            EdgeKind::Deployment,
+            EdgeKind::Implementation,
+        ],
     )
     .await
     .map_err(HandlerError::from)?;
@@ -515,7 +533,11 @@ pub async fn delete_node(
         &request.workspace_id,
         Some(request.change_set_id.clone()),
         Some(request.edit_session_id),
-        vec![EdgeKind::Configures],
+        vec![
+            EdgeKind::Configures,
+            EdgeKind::Deployment,
+            EdgeKind::Implementation,
+        ],
     )
     .await
     .map_err(HandlerError::from)?;

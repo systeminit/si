@@ -29,24 +29,27 @@
       />
 
       <div v-if="schematic">
-        <SiGraphEdge
-          v-for="(edge, index) in schematic.edges"
-          :positionCtx="positionCtx"
-          :key="index"
-          :edge="edge"
-          :graphViewerId="id"
-          :schematicPanelStoreCtx="schematicPanelStoreCtx"
-        />
-        <SiGraphNode
-          v-for="(node, index) in schematic.nodes"
-          ref="siGraphNode"
-          :positionCtx="positionCtx"
-          :key="index"
-          :node="node"
-          :graphViewerId="id"
-          :storesCtx="storesCtx"
-          @selectNode="selectNode"
-        />
+        <div v-for="(edge, index) in schematic.edges" :key="index">
+          <SiGraphEdge
+            :positionCtx="positionCtx"
+            :edge="edge"
+            :graphViewerId="id"
+            :schematicPanelStoreCtx="schematicPanelStoreCtx"
+            v-if="edge.kind === edgeKind()"
+          />
+        </div>
+
+        <div v-for="(node, index) in schematic.nodes" :key="index">
+          <SiGraphNode
+            ref="siGraphNode"
+            :positionCtx="positionCtx"
+            :node="node"
+            :graphViewerId="id"
+            :storesCtx="storesCtx"
+            @selectNode="selectNode"
+            v-if="nodeType().includes(node.node.objectType)"
+          />
+        </div>
       </div>
 
       <SiBackground
@@ -88,11 +91,7 @@ import {
   TransientEdgeRemovalEvent,
 } from "@/store/modules/schematicPanel";
 
-import {
-  ISchematic,
-  Schematic,
-  ISchematicNode,
-} from "@/api/sdf/model/schematic";
+import { SchematicKind, ISchematicNode } from "@/api/sdf/model/schematic";
 import { Edge, IEdge, IVertex, EdgeKind } from "@/api/sdf/model/edge";
 import { INode } from "@/api/sdf/model/node";
 
@@ -258,6 +257,11 @@ export default Vue.extend({
     schematic: {
       type: Object as PropType<SchematicPanelStore["schematic"]>,
       required: false,
+    },
+    schematicKind: {
+      type: String as PropType<SchematicKind>,
+      required: false,
+      default: undefined,
     },
     schematicPanelStoreCtx: {
       type: Object as PropType<InstanceStoreContext<SchematicPanelStore>>,
@@ -489,6 +493,37 @@ export default Vue.extend({
 
       if (this.viewport.element) {
         this.viewport.element.style.cursor = "default";
+      }
+    },
+    edgeKind(): EdgeKind | undefined {
+      switch (this.schematicKind) {
+        case SchematicKind.Deployment: {
+          return EdgeKind.Deployment;
+        }
+
+        case SchematicKind.Component: {
+          return EdgeKind.Implementation;
+        }
+
+        default: {
+          return undefined;
+        }
+      }
+    },
+    // This is a hack, and needs to be refactored!
+    nodeType(): string[] {
+      switch (this.schematicKind) {
+        case SchematicKind.Deployment: {
+          return ["service"];
+        }
+
+        case SchematicKind.Component: {
+          return ["service", "torture", "dockerImage"];
+        }
+
+        default: {
+          return ["service", "torture", "dockerImage"];
+        }
       }
     },
     async selectNode(node: INode) {
@@ -1258,7 +1293,11 @@ export default Vue.extend({
               .nodes[destinationNode[1]].node.objectType as string,
           };
 
-          if (!this.edgeExistsOnGraph(source, destination, "configures")) {
+          const connectionKind = this.connectionKind();
+          if (
+            !this.edgeExistsOnGraph(source, destination, "configures") &&
+            connectionKind != undefined
+          ) {
             this.connection.transientConnection.edge = this.newTemporaryEdge(
               "temporaryEdge",
               source.nodeId,
@@ -1266,11 +1305,7 @@ export default Vue.extend({
             );
             this.removeTransientEdge();
 
-            await this.createConnection(
-              source,
-              destination,
-              EdgeKind.Configures,
-            );
+            await this.createConnection(source, destination, connectionKind);
           }
           this.removeTransientEdge();
 
@@ -1286,7 +1321,7 @@ export default Vue.extend({
     async createConnection(
       source: ConnectionNodeReference,
       destination: ConnectionNodeReference,
-      kind: EdgeKind,
+      connectionKind: EdgeKind,
     ) {
       if (
         this.currentSystem &&
@@ -1296,7 +1331,7 @@ export default Vue.extend({
         this.currentEditSession
       ) {
         const connection: Connection = {
-          kind: kind,
+          kind: connectionKind,
           source: source,
           destination: destination,
           systemId: this.currentSystem.id,
@@ -1317,6 +1352,21 @@ export default Vue.extend({
 
         if (reply.error) {
           PanelEventBus.$emit("editor-error-message", reply.error.message);
+        }
+      }
+    },
+    connectionKind(): EdgeKind | undefined {
+      switch (this.schematicKind) {
+        case SchematicKind.Deployment: {
+          return EdgeKind.Deployment;
+        }
+
+        case SchematicKind.Component: {
+          return EdgeKind.Implementation;
+        }
+
+        default: {
+          return undefined;
         }
       }
     },

@@ -12,6 +12,8 @@ export interface IVertex {
 export enum EdgeKind {
   Configures = "configures",
   Includes = "includes",
+  Deployment = "deployment",
+  Implementation = "implementation",
 }
 
 export interface IEdge {

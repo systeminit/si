@@ -15,5 +15,5 @@ export {
   Qualification,
 } from "./registryEntry";
 export { workflows, Workflow, Step } from "./workflow";
-export { entityMenu } from "./menu";
+export { entityMenu, MenuCategoryItem } from "./menu";
 export { registry, findProp } from "./registry";
