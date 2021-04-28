@@ -46,15 +46,15 @@
         Properties
       </div>
       <template v-if="editFields">
-        <div v-for="editField in editFields" :key="editField.path.join('.')">
-          <TextField
-            :entity="entity"
-            :editMode="editMode"
-            :editField="editField"
-            :systemId="systemId"
-            v-if="editField.widgetName == 'text'"
-          />
-        </div>
+        <EditFields
+          :entity="entity"
+          :editMode="editMode"
+          :editFields="editFields"
+          :systemId="systemId"
+          :backgroundColors="backgroundColors"
+          :closedPaths="closedPaths"
+          @toggle-path="togglePath"
+        />
       </template>
     </div>
   </div>
@@ -75,11 +75,19 @@ import Vue, { PropType } from "vue";
 
 import Tooltip from "@/atoms/Tooltip.vue";
 import { EditIcon, InfoIcon } from "vue-feather-icons";
-import TextField from "@/organisims/AttributeViewer/TextField.vue";
 import NameField from "@/organisims/AttributeViewer/NameField.vue";
+import EditFields from "@/organisims/AttributeViewer/EditFields.vue";
 import { Entity } from "@/api/sdf/model/entity";
 import { editMode$, system$ } from "@/observables";
 import { Diff } from "@/api/sdf/model/diff";
+
+import _ from "lodash";
+import { EditField } from "si-entity";
+import { RegistryEntry } from "si-registry";
+
+interface Data {
+  closedPaths: string[][];
+}
 
 export default Vue.extend({
   name: "AttributeViewer",
@@ -87,8 +95,8 @@ export default Vue.extend({
     Tooltip,
     InfoIcon,
     EditIcon,
-    TextField,
     NameField,
+    EditFields,
   },
   props: {
     entity: {
@@ -100,6 +108,11 @@ export default Vue.extend({
       required: true,
     },
   },
+  data(): Data {
+    return {
+      closedPaths: [],
+    };
+  },
   subscriptions() {
     return {
       editMode: editMode$,
@@ -107,6 +120,13 @@ export default Vue.extend({
     };
   },
   computed: {
+    schemaProperties(): RegistryEntry["properties"] {
+      if (this.entity) {
+        return this.entity.schema().properties;
+      } else {
+        return [];
+      }
+    },
     editFields(): ReturnType<Entity["editFields"]> | undefined {
       if (this.entity) {
         return this.entity.editFields();
@@ -122,6 +142,101 @@ export default Vue.extend({
       } else {
         return "baseline";
       }
+    },
+    backgroundColors(): number[][] {
+      let longestProp = 0;
+      if (this.editFields) {
+        for (const field of this.editFields) {
+          if (field.path) {
+            if (field.path.length > longestProp) {
+              longestProp = field.path.length;
+            }
+          }
+        }
+      }
+      longestProp = longestProp;
+      const colors = this.interpolateColors(
+        "rgb(50, 50, 50)",
+        "rgb(25, 25, 25)",
+        longestProp,
+      );
+      return colors;
+    },
+  },
+  methods: {
+    showFieldForWidget(widget: string, editField: EditField): boolean {
+      let closedByPath = _.find(this.closedPaths, p =>
+        _.isEqual(p, editField.path.slice(0, p.length)),
+      );
+      if (closedByPath) {
+        if (editField.widgetName == "header") {
+          let isHeader = _.find(this.closedPaths, p =>
+            _.isEqual(p, editField.path),
+          );
+          if (isHeader) {
+            return true;
+          } else {
+            return false;
+          }
+        } else {
+          return false;
+        }
+      }
+      return editField.widgetName == widget;
+    },
+    togglePath(path: string[]) {
+      let pathExists = _.find(this.closedPaths, p => _.isEqual(p, path));
+      if (pathExists) {
+        this.closedPaths = _.filter(this.closedPaths, p => !_.isEqual(p, path));
+      } else {
+        this.closedPaths.push(path);
+      }
+    },
+    // Returns a single rgb color interpolation between given rgb color
+    // based on the factor given; via https://codepen.io/njmcode/pen/axoyD?editors=0010
+    interpolateColor(
+      color1: number[],
+      color2: number[],
+      factor: number,
+    ): number[] {
+      if (arguments.length < 3) {
+        factor = 0.5;
+      }
+      let result: number[] = color1.slice();
+      for (var i = 0; i < 3; i++) {
+        result[i] = Math.round(result[i] + factor * (color2[i] - color1[i]));
+      }
+      return result;
+    },
+    // My function to interpolate between two colors completely, returning an array
+    interpolateColors(
+      color1input: string,
+      color2input: string,
+      steps: number,
+    ): number[][] {
+      var stepFactor = 1 / (steps - 1),
+        interpolatedColorArray = [];
+
+      const color1: undefined | number[] = color1input
+        .match(/\d+/g)
+        ?.map(Number);
+      if (color1 === undefined) {
+        throw new Error(`Cannot parse color input for: ${color1input}`);
+      }
+      const color2: undefined | number[] = color2input
+        .match(/\d+/g)
+        ?.map(Number);
+      if (color2 === undefined) {
+        throw new Error(`Cannot parse color input for: ${color2input}`);
+      }
+
+      for (var i = 0; i < steps; i++) {
+        interpolatedColorArray.push(
+          this.interpolateColor(color1, color2, stepFactor * i),
+        );
+      }
+
+      return interpolatedColorArray;
     },
   },
 });

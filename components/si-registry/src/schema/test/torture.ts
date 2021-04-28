@@ -29,6 +29,61 @@ const torture: RegistryEntry = {
       name: "allLayers",
     },
     {
+      type: "boolean",
+      name: "boolMeBaby",
+    },
+    {
+      type: "string",
+      name: "supers3cret",
+      widget: {
+        name: "password",
+      },
+    },
+    {
+      type: "string",
+      name: "biggerText",
+      widget: {
+        name: "textArea",
+      },
+    },
+    {
+      type: "number",
+      name: "gimme a number",
+      validation: [
+        {
+          kind: ValidatorKind.Int,
+        },
+      ],
+    },
+    {
+      type: "string",
+      name: "selectable",
+      widget: {
+        name: "select",
+        options: {
+          items: [
+            { label: "first", value: "first" },
+            { label: "second", value: "second" },
+            { label: "third", value: "third" },
+          ],
+        },
+      },
+    },
+    {
+      type: "map",
+      name: "mappy",
+      valueProperty: {
+        type: "string",
+      },
+    },
+    {
+      type: "array",
+      name: "stringArray",
+      itemProperty: {
+        type: "string",
+      },
+    },
+    {
       type: "array",
       name: "objectArray",
       itemProperty: {
@@ -41,6 +96,55 @@ const torture: RegistryEntry = {
         ],
       },
     },
+    {
+      type: "array",
+      name: "complexArray",
+      itemProperty: {
+        type: "object",
+        properties: [
+          {
+            type: "string",
+            name: "only",
+          },
+          {
+            type: "object",
+            name: "what",
+            properties: [
+              {
+                type: "array",
+                name: "foolish",
+                itemProperty: {
+                  type: "object",
+                  properties: [
+                    {
+                      type: "number",
+                      name: "validatedNumber",
+                      validation: [
+                        {
+                          kind: ValidatorKind.Int,
+                          options: {
+                            max: 10,
+                            min: 2,
+                          },
+                        },
+                      ],
+                    },
+                    {
+                      type: "map",
+                      name: "imagine",
+                      valueProperty: {
+                        type: "string",
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        ],
+      },
+    },
+
     {
       type: "object",
       name: "level0",

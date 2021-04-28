@@ -48,20 +48,7 @@ applicationId$.next(null);
 export const system$ = new ReplaySubject<IEntity | null>(1);
 system$.next(null);
 
-export const editMode$: Observable<boolean> = combineLatest(
-  changeSet$,
-  editSession$,
-).pipe(
-  switchMap(([changeSet, editSession]) => {
-    if (changeSet && editSession) {
-      return from([true]);
-    } else {
-      return from([false]);
-    }
-  }),
-  multicast(new BehaviorSubject(false)),
-  refCount(),
-);
+export const editMode$ = new BehaviorSubject<boolean>(false);
 
 new BehaviorSubject(false);
 

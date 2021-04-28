@@ -4,6 +4,7 @@ import {
   OpSource,
   OpSet,
   OpTombstone,
+  OpUnset,
 } from "../src/siEntity";
 
 interface TestData {
@@ -109,11 +110,9 @@ describe("siAttr", () => {
     });
   });
 
-  // inferred baseline  X      Y      Y      X      X
-  // inferred system    Y      X      Y      X      X
-  // manual baseline    Y      Y      X      Y      X
-  // manual system      Y      Y      Y      Y      Y
-  //                   IB     IS     MB   IB+IS   IB+IS+MB
+  // Each tombstone should *only* tombstone its level,
+  // but no other level.
+  //
   describe("isTombstoned", () => {
     describe("Inferred Baseline", () => {
       function setupTombstone(siAttr: SiEntity) {
@@ -565,7 +564,7 @@ describe("siAttr", () => {
       expect(result).toEqual(
         expect.objectContaining({
           errors: expect.arrayContaining([
-            expect.stringMatching(/alphanumeric/),
+            { message: expect.stringMatching(/alphanumeric/) },
           ]),
         }),
       );
@@ -643,7 +642,21 @@ describe("siAttr", () => {
       expect(siAttr.ops).toContain(secondOp);
       expect(siAttr.ops).toContain(firstOp);
     });
+    test("sets a key and value in a map", () => {
+      const { siAttr } = setupTest("torture");
+      const firstOp: OpSet = {
+        op: OpType.Set,
+        source: OpSource.Manual,
+        path: ["mappy", "mcmap"],
+        value: "tooshy",
+        system: "baseline",
+      };
+      const firstResult = siAttr.addOpSet(firstOp);
+      expect(firstResult).toEqual({ success: true });
+      expect(siAttr.ops).toContain(firstOp);
+    });
   });
+
   describe("addOpUnset", () => {
     test("removes valid operation at path", () => {
       const { siAttr } = setupTest("leftHandPath");
@@ -704,6 +717,59 @@ describe("siAttr", () => {
       expect(siAttr.ops).toContain(firstOp);
       expect(siAttr.ops).not.toContain(secondOp);
       expect(siAttr.ops).not.toContain(thirdOp);
+    });
+
+    test("multi value with an unset", () => {
+      const { siAttr } = setupTest("torture");
+      const firstOp: OpSet = {
+        op: OpType.Set,
+        source: OpSource.Manual,
+        path: ["stringArray", "0"],
+        value: "thirst",
+        system: "baseline",
+      };
+      const firstResult = siAttr.addOpSet(firstOp);
+      expect(firstResult).toEqual({ success: true });
+
+      const secondOp: OpSet = {
+        op: OpType.Set,
+        source: OpSource.Manual,
+        path: ["stringArray", "1"],
+        value: "for",
+        system: "baseline",
+      };
+      const secondResult = siAttr.addOpSet(secondOp);
+      expect(secondResult).toEqual({ success: true });
+
+      const thirdOp: OpSet = {
+        op: OpType.Set,
+        source: OpSource.Manual,
+        path: ["stringArray", "2"],
+        value: "blood",
+        system: "baseline",
+      };
+      const thirdResult = siAttr.addOpSet(thirdOp);
+      expect(thirdResult).toEqual({ success: true });
+
+      siAttr.computeProperties();
+      expect(siAttr.properties).toEqual(
+        expect.objectContaining({
+          baseline: { stringArray: ["thirst", "for", "blood"] },
+        }),
+      );
+
+      siAttr.addOpUnset({
+        op: OpType.Unset,
+        source: OpSource.Manual,
+        path: ["stringArray", "1"],
+        system: "baseline",
+      });
+      siAttr.computeProperties();
+      expect(siAttr.properties).toEqual(
+        expect.objectContaining({
+          baseline: { stringArray: ["thirst", "blood"] },
+        }),
+      );
     });
   });
 
@@ -1013,8 +1079,192 @@ describe("siAttr", () => {
       );
     });
 
+    test("simple scalar value tombstones should not mask lower layers", () => {
+      const { siAttr } = setupTest("leftHandPath");
+      const firstOp: OpSet = {
+        op: OpType.Set,
+        source: OpSource.Inferred,
+        path: ["simpleString"],
+        value: "motordeath",
+        system: "baseline",
+      };
+      const firstResult = siAttr.addOpSet(firstOp);
+      expect(firstResult).toEqual({ success: true });
+
+      const secondOp: OpSet = {
+        op: OpType.Set,
+        source: OpSource.Manual,
+        path: ["simpleString"],
+        value: "gojira",
+        system: "baseline",
+      };
+      const secondResult = siAttr.addOpSet(secondOp);
+      expect(secondResult).toEqual({ success: true });
+
+      siAttr.addOpTombstone({
+        op: OpType.Tombstone,
+        source: OpSource.Manual,
+        system: "baseline",
+        path: ["simpleString"],
+      });
+      siAttr.computeProperties();
+      expect(siAttr.properties).toEqual(
+        expect.objectContaining({
+          baseline: {
+            simpleString: "motordeath",
+          },
+        }),
+      );
+    });
+    describe("maps", () => {
+      test("a single map key and value", () => {
+        const { siAttr } = setupTest("torture");
+        const firstOp: OpSet = {
+          op: OpType.Set,
+          source: OpSource.Manual,
+          path: ["mappy", "curl"],
+          value: "of the burl",
+          system: "baseline",
+        };
+        const firstResult = siAttr.addOpSet(firstOp);
+        expect(firstResult).toEqual({ success: true });
+        siAttr.computeProperties();
+        expect(siAttr.properties).toEqual(
+          expect.objectContaining({
+            baseline: { mappy: { curl: "of the burl" } },
+          }),
+        );
+      });
+      test("a map with many key and value", () => {
+        const { siAttr } = setupTest("torture");
+        const firstOp: OpSet = {
+          op: OpType.Set,
+          source: OpSource.Manual,
+          path: ["mappy", "curl"],
+          value: "of the burl",
+          system: "baseline",
+        };
+        const firstResult = siAttr.addOpSet(firstOp);
+        expect(firstResult).toEqual({ success: true });
+
+        const secondOp: OpSet = {
+          op: OpType.Set,
+          source: OpSource.Manual,
+          path: ["mappy", "buffy"],
+          value: "the vampire slayer",
+          system: "baseline",
+        };
+        const secondResult = siAttr.addOpSet(secondOp);
+        expect(secondResult).toEqual({ success: true });
+
+        siAttr.computeProperties();
+        expect(siAttr.properties).toEqual(
+          expect.objectContaining({
+            baseline: {
+              mappy: { curl: "of the burl", buffy: "the vampire slayer" },
+            },
+          }),
+        );
+      });
+      test("a map with many keys and values at different layers", () => {
+        const { siAttr } = setupTest("torture");
+        const firstOp: OpSet = {
+          op: OpType.Set,
+          source: OpSource.Manual,
+          path: ["mappy", "curl"],
+          value: "of the burl",
+          system: "baseline",
+        };
+        const firstResult = siAttr.addOpSet(firstOp);
+        expect(firstResult).toEqual({ success: true });
+
+        const secondOp: OpSet = {
+          op: OpType.Set,
+          source: OpSource.Inferred,
+          path: ["mappy", "buffy"],
+          value: "the vampire slayer",
+          system: "baseline",
+        };
+        const secondResult = siAttr.addOpSet(secondOp);
+        expect(secondResult).toEqual({ success: true });
+
+        const thirdOp: OpSet = {
+          op: OpType.Set,
+          source: OpSource.Inferred,
+          path: ["mappy", "burn"],
+          value: "it down",
+          system: "poop",
+        };
+        const thirdResult = siAttr.addOpSet(thirdOp);
+        expect(thirdResult).toEqual({ success: true });
+
+        siAttr.computeProperties();
+        expect(siAttr.properties).toEqual(
+          expect.objectContaining({
+            baseline: {
+              mappy: { curl: "of the burl", buffy: "the vampire slayer" },
+            },
+            poop: {
+              mappy: {
+                curl: "of the burl",
+                buffy: "the vampire slayer",
+                burn: "it down",
+              },
+            },
+          }),
+        );
+      });
+    });
     describe("arrays", () => {
       describe("baseline", () => {
+        test("single value empty", () => {
+          const { siAttr } = setupTest("torture");
+          const firstOp: OpSet = {
+            op: OpType.Set,
+            source: OpSource.Manual,
+            path: ["stringArray", "0"],
+            value: "",
+            system: "baseline",
+          };
+          const firstResult = siAttr.addOpSet(firstOp);
+          expect(firstResult).toEqual({ success: true });
+
+          siAttr.computeProperties();
+          expect(siAttr.properties).toEqual(
+            expect.objectContaining({
+              baseline: { stringArray: [""] },
+            }),
+          );
+        });
+        test("multi value empty", () => {
+          const { siAttr } = setupTest("torture");
+          const firstOp: OpSet = {
+            op: OpType.Set,
+            source: OpSource.Manual,
+            path: ["stringArray", "0"],
+            value: "",
+            system: "baseline",
+          };
+          const firstResult = siAttr.addOpSet(firstOp);
+          expect(firstResult).toEqual({ success: true });
+          const secondOp: OpSet = {
+            op: OpType.Set,
+            source: OpSource.Manual,
+            path: ["stringArray", "1"],
+            value: "",
+            system: "baseline",
+          };
+          const secondResult = siAttr.addOpSet(secondOp);
+          expect(secondResult).toEqual({ success: true });
+
+          siAttr.computeProperties();
+          expect(siAttr.properties).toEqual(
+            expect.objectContaining({
+              baseline: { stringArray: ["", ""] },
+            }),
+          );
+        });
+
         test("multiple values", () => {
           const { siAttr } = setupTest("leftHandPath");
           const firstOp: OpSet = {

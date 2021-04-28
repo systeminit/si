@@ -28,6 +28,7 @@ import { EditSessionCurrentSetEvent } from "@/api/partyBus/editSessionCurrentSet
 import { StatusBarStore } from "./statusBar";
 import { NodeUpdatedEvent } from "@/api/partyBus/NodeUpdatedEvent";
 import { EditSessionCancelEvent } from "@/api/partyBus/EditSessionCancelEvent";
+import { editMode$ } from "@/observables";
 
 export interface ApplicationContextStore {
   applicationId: string | null;
@@ -101,6 +102,7 @@ export const applicationContext: Module<ApplicationContextStore, any> = {
       state.openChangeSetsList.push({ label: ": new :", value: "action:new" });
     },
     setEditMode(state, payload: ApplicationContextStore["editMode"]) {
+      editMode$.next(payload);
       state.editMode = payload;
     },
     addToActivatedBy(state, payload: string) {
