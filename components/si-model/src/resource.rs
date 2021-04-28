@@ -95,7 +95,7 @@ pub enum ResourceHealth {
 #[serde(rename_all = "camelCase")]
 pub struct Predecessor {
     entity: Entity,
-    resource: Resource,
+    resource: Option<Resource>,
 }
 
 #[derive(Serialize, Debug)]
@@ -138,9 +138,13 @@ pub struct Resource {
 }
 
 impl Resource {
+    // NOTE: new takes a PgPool and NatsConn intentionally--a resource must be immediately
+    // available for the entire system when created and not batched into another transaction. In
+    // this way we prevent multiple Resource representations being created and other concurrent
+    // tasks can load this representations immediately. You're welcome!
     pub async fn new(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
+        pg: &PgPool,
+        nats_conn: &NatsConn,
         state: serde_json::Value,
         entity_id: impl AsRef<str>,
         system_id: impl AsRef<str>,
@@ -152,6 +156,10 @@ impl Resource {
         let current_time = Utc::now();
         let unix_timestamp = current_time.timestamp_millis();
         let timestamp = format!("{}", current_time);
+
+        let mut conn = pg.pool.get().await?;
+        let txn = conn.transaction().await?;
+        let nats = nats_conn.transaction();
 
         let row = txn
             .query_one(
@@ -169,9 +177,14 @@ impl Resource {
             )
             .await?;
         let json: serde_json::Value = row.try_get("object")?;
+
         nats.publish(&json).await?;
 
         let object: Resource = serde_json::from_value(json)?;
+
+        txn.commit().await?;
+        nats.commit().await?;
+
         Ok(object)
     }
 
@@ -193,35 +206,6 @@ impl Resource {
         let object: Self = serde_json::from_value(object)?;
 
         Ok(Some(object))
-    }
-
-    pub async fn for_system(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        entity_id: impl AsRef<str>,
-        system_id: impl AsRef<str>,
-        workspace_id: impl AsRef<str>,
-    ) -> ResourceResult<Self> {
-        let entity_id = entity_id.as_ref();
-        let system_id = system_id.as_ref();
-
-        let object = match Self::get_by_entity_and_system(txn, entity_id, system_id).await? {
-            Some(object) => object,
-            None => {
-                Self::new(
-                    txn,
-                    nats,
-                    // TODO: likely better defaults here--but does this come from the registry??
-                    serde_json::json!([]),
-                    entity_id,
-                    system_id,
-                    workspace_id,
-                )
-                .await?
-            }
-        };
-
-        Ok(object)
     }
 
     pub async fn save(&mut self, txn: &PgTxn<'_>, nats: &NatsTxn) -> ResourceResult<()> {
@@ -299,7 +283,6 @@ impl Resource {
     ) -> ResourceResult<Self> {
         let mut conn = pg.pool.get().await?;
         let txn = conn.transaction().await?;
-        let nats = nats_conn.transaction();
 
         let (progress_tx, mut progress_rx) = tokio::sync::mpsc::unbounded_channel::<SyncProtocol>();
 
@@ -313,25 +296,23 @@ impl Resource {
         let predecessor_edges =
             Edge::direct_predecessor_edges_by_object_id(&txn, &EdgeKind::Configures, &entity.id)
                 .await?;
+
         let mut predecessors: Vec<Predecessor> = Vec::new();
         for edge in predecessor_edges {
             let edge_entity = Entity::for_head(&txn, &edge.tail_vertex.object_id)
                 .await
                 .map_err(|e| ResourceError::Entity(e.to_string()))?;
-            let predecessor_resource = Self::for_system(
-                &txn,
-                &nats,
-                &edge_entity.id,
-                &system.id,
-                &self.si_storable.workspace_id,
-            )
-            .await?;
+            let edge_resource =
+                Self::get_by_entity_and_system(&txn, &edge_entity.id, &system.id).await?;
+
             let predecessor = Predecessor {
                 entity: edge_entity,
-                resource: predecessor_resource,
+                resource: edge_resource,
             };
             predecessors.push(predecessor);
         }
+
+        txn.commit().await?;
 
         let request = SyncRequest {
             entity: &entity,
@@ -351,20 +332,31 @@ impl Resource {
                 }
                 SyncProtocol::Finish(finish) => {
                     dbg!("command finished!: {:?}", &finish);
+
+                    let txn = conn.transaction().await?;
+                    let nats = nats_conn.transaction();
+
+                    let current_time = Utc::now();
+                    let unix_timestamp = current_time.timestamp_millis();
+                    let timestamp = format!("{}", current_time);
+
                     self.state = finish.state;
                     self.status = finish.status;
                     self.health = finish.health;
+                    self.unix_timestamp = unix_timestamp;
+                    self.timestamp = timestamp;
+
                     if let Some(err_msg) = finish.error {
                         dbg!("uh oh, error when syncing resource: {}", err_msg);
                     }
+
+                    self.save(&txn, &nats).await?;
+
+                    txn.commit().await?;
+                    nats.commit().await?;
                 }
             }
         }
-
-        self.save(&txn, &nats).await?;
-
-        txn.commit().await?;
-        nats.commit().await?;
 
         Ok(self)
     }

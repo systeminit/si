@@ -26,6 +26,7 @@ import { UpdateTracker } from "@/api/updateTracker";
 import {
   entityQualifications$,
   entityQualificationStart$,
+  resources$,
   workflowRuns$,
   workflowRunSteps$,
   workflowRunStepEntities$,
@@ -106,6 +107,8 @@ function onMessage(ev: MessageEvent) {
     workflowRunSteps$.next(modelData.model);
   } else if (modelData.model?.siStorable?.typeName == "workflowRunStepEntity") {
     workflowRunStepEntities$.next(modelData.model);
+  } else if (modelData.model?.siStorable?.typeName == "resource") {
+    resources$.next(modelData.model);
   } else {
     //console.log("websocket on message", { ev, model_data: modelData });
   }

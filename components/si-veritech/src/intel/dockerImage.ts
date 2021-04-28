@@ -12,7 +12,6 @@ import {
 } from "../controllers/checkQualifications";
 import { SiCtx } from "../siCtx";
 
-import _ from "lodash";
 import { RunCommandCallbacks } from "../controllers/runCommand";
 
 function inferProperties(
@@ -61,7 +60,7 @@ export const runCommands: RunCommandCallbacks = {
     debug("hello from inside");
     await ctx.execStream(ws, "docker", [
       "pull",
-      req.selection.entity.getProperty({
+      req.entity.getProperty({
         system: req.system.id,
         path: ["image"],
       }),

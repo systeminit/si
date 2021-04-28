@@ -29,6 +29,11 @@ import {
   QualificationStart,
 } from "@/api/sdf/model/qualification";
 import {
+  ResourceDal,
+  IGetResourceRequest,
+  IGetResourceReply,
+} from "./api/sdf/dal/resourceDal";
+import {
   IRunActionReply,
   IRunActionRequest,
   WorkflowDal,
@@ -43,6 +48,7 @@ import {
   ISchematicNode,
   SchematicKind,
 } from "./api/sdf/model/schematic";
+import { Resource } from "si-entity";
 
 export const workspace$ = new ReplaySubject<IWorkspace | null>(1);
 workspace$.next(null);
@@ -209,6 +215,37 @@ export function updateEntity(entity: Entity): Observable<IUpdateEntityReply> {
   );
 }
 
+export function getResource(
+  entityId: string,
+  system: IEntity | null,
+  workspace: IWorkspace | null,
+): Observable<IGetResourceReply> {
+  if (entityId && system && workspace) {
+    const request: IGetResourceRequest = {
+      entityId,
+      systemId: system.id,
+      workspaceId: workspace.id,
+    };
+    return from(ResourceDal.getResource(request));
+  } else {
+    let reply: IGetResourceReply = {
+      error: {
+        code: 42,
+        message:
+          "cannot get a resource without an entity id, system, and workspace",
+      },
+    };
+    return from([reply]);
+  }
+}
+
+export function loadResource(entityId: string): Observable<IGetResourceReply> {
+  let observable = combineLatest(system$, workspace$).pipe(
+    switchMap(args => getResource(entityId, ...args)),
+  );
+  return observable;
+}
+
 export const refreshEntityLabelList$ = new BehaviorSubject<boolean>(true);
 
 export const entityLabelList$: Observable<IGetEntityListReply> = combineLatest(
@@ -294,3 +331,5 @@ export interface EdgeDeleted {
   edgeId: string;
 }
 export const edgeDeleted$ = new BehaviorSubject<EdgeDeleted | null>(null);
+
+export const resources$: Subject<Resource> = new Subject();

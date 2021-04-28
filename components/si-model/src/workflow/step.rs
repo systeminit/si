@@ -2,13 +2,18 @@ use serde::{Deserialize, Serialize};
 use si_data::{NatsConn, NatsTxn, PgPool, PgTxn};
 use strum_macros::Display;
 
-use crate::workflow::variable::{VariableArray, VariableBool, VariableScalar};
 use crate::workflow::{
     SelectionEntry, WorkflowContext, WorkflowError, WorkflowResult, WorkflowRun,
 };
 use crate::{workflow::selector::Selector, Workflow};
+use crate::{
+    workflow::variable::{VariableArray, VariableBool, VariableScalar},
+    Resource,
+};
 use crate::{Entity, SiStorable, Veritech, Workspace};
 use chrono::Utc;
+
+use super::selector::SelectionEntryPredecessor;
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Display, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -189,7 +194,7 @@ impl Step {
         veritech: &Veritech,
         workflow_run: &mut WorkflowRun,
     ) -> WorkflowResult<()> {
-        workflow_run.ctx.for_step(&pg, &nats_conn, self).await?;
+        workflow_run.ctx.for_step(&pg, self).await?;
         match self {
             Step::Command(s) => s.run(pg, nats_conn, veritech, workflow_run).await,
             Step::Action(s) => s.run(pg, nats_conn, veritech, workflow_run).await,
@@ -256,9 +261,10 @@ pub struct StepCommandInputs {
 #[serde(rename_all = "camelCase")]
 pub struct CommandRequest<'a> {
     inputs: &'a serde_json::Value,
-    selection: &'a SelectionEntry,
-    system: Option<&'a Entity>,
-    workspace: &'a Workspace,
+    system: &'a Entity,
+    entity: &'a Entity,
+    resource: &'a Resource,
+    context: &'a [SelectionEntryPredecessor],
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -307,6 +313,16 @@ impl StepCommand {
         let mut workflow_run_step =
             WorkflowRunStep::new(&txn, &nats, &workflow_run, &Step::Command(self.clone())).await?;
 
+        // Ensure the system was provided--commands must be run in the context of a system!
+        let system = workflow_run
+            .ctx
+            .system
+            .as_ref()
+            .ok_or(WorkflowError::SystemRequired)?;
+
+        txn.commit().await?;
+        nats.commit().await?;
+
         // TODO: Only the linear strategy is implemented! eventually, this should
         // be some kind of wrapper around potential dispatch of this whole section.
         //
@@ -318,16 +334,38 @@ impl StepCommand {
 
             let inputs = workflow_run.ctx.inputs.as_ref().unwrap(); // Safe, we just checked it.
 
+            let txn = conn.transaction().await?;
+            let nats = nats_conn.transaction();
+
             let mut workflow_run_step_entity =
                 WorkflowRunStepEntity::new(&txn, &nats, &selection.entity.id, &workflow_run_step)
                     .await?;
 
+            txn.commit().await?;
+            nats.commit().await?;
+
+            let resource = match &selection.resource {
+                Some(resource) => resource.clone(),
+                None => {
+                    Resource::new(
+                        &pg,
+                        &nats_conn,
+                        serde_json::json!([]),
+                        &selection.entity.id,
+                        &system.id,
+                        &workflow_run.ctx.workspace.id,
+                    )
+                    .await?
+                }
+            };
+
             // Command reqeust!!
             let request = CommandRequest {
                 inputs,
-                selection,
-                system: workflow_run.ctx.system.as_ref(),
-                workspace: &workflow_run.ctx.workspace,
+                system: &system,
+                entity: &selection.entity,
+                resource: &resource,
+                context: &selection.context,
             };
 
             let (progress_tx, mut progress_rx) =
@@ -340,12 +378,25 @@ impl StepCommand {
             while let Some(message) = progress_rx.recv().await {
                 match message {
                     CommandProtocol::Start(_) => {
+                        dbg!("started!");
+
+                        let txn = conn.transaction().await?;
+                        let nats = nats_conn.transaction();
+
                         workflow_run_step_entity.state = WorkflowRunStepEntityState::Running;
                         workflow_run_step_entity.save(&txn, &nats).await?;
+
+                        txn.commit().await?;
+                        nats.commit().await?;
                     }
                     CommandProtocol::Finish(finish) => {
                         match finish {
                             CommandFinish::Success(_) => {
+                                dbg!("command finished with success!");
+
+                                let txn = conn.transaction().await?;
+                                let nats = nats_conn.transaction();
+
                                 workflow_run_step_entity.state =
                                     WorkflowRunStepEntityState::Success;
                                 let current_time = Utc::now();
@@ -354,8 +405,16 @@ impl StepCommand {
                                 workflow_run_step_entity.end_timestamp = Some(timestamp);
                                 workflow_run_step_entity.end_unix_timestamp = Some(unix_timestamp);
                                 workflow_run_step_entity.save(&txn, &nats).await?;
+
+                                txn.commit().await?;
+                                nats.commit().await?;
                             }
                             CommandFinish::Error(error) => {
+                                dbg!("command finished with error! {}", &error);
+
+                                let txn = conn.transaction().await?;
+                                let nats = nats_conn.transaction();
+
                                 workflow_run_step.state = WorkflowRunStepState::Failure;
                                 workflow_run_step_entity.state =
                                     WorkflowRunStepEntityState::Failure;
@@ -373,17 +432,23 @@ impl StepCommand {
                                 workflow_run_step_entity.end_timestamp = Some(timestamp);
                                 workflow_run_step_entity.end_unix_timestamp = Some(unix_timestamp);
                                 workflow_run_step_entity.save(&txn, &nats).await?;
+
+                                txn.commit().await?;
+                                nats.commit().await?;
                             }
                         }
-                        request
-                            .selection
-                            .resource
+                        resource
                             .clone()
                             .sync(pg.clone(), nats_conn.clone(), veritech.clone())
                             .await?;
                     }
                     CommandProtocol::Output(output) => match output {
                         CommandOutput::OutputLine(output) => {
+                            dbg!("stdout: {}", &output);
+
+                            let txn = conn.transaction().await?;
+                            let nats = nats_conn.transaction();
+
                             workflow_run_step_entity.output =
                                 Some(workflow_run_step_entity.output.as_mut().map_or_else(
                                     || output.clone(),
@@ -393,8 +458,16 @@ impl StepCommand {
                                     },
                                 ));
                             workflow_run_step_entity.save(&txn, &nats).await?;
+
+                            txn.commit().await?;
+                            nats.commit().await?;
                         }
                         CommandOutput::ErrorLine(error) => {
+                            dbg!("stderr: {}", &error);
+
+                            let txn = conn.transaction().await?;
+                            let nats = nats_conn.transaction();
+
                             workflow_run_step_entity.error =
                                 Some(workflow_run_step_entity.error.as_mut().map_or_else(
                                     || error.clone(),
@@ -404,11 +477,17 @@ impl StepCommand {
                                     },
                                 ));
                             workflow_run_step_entity.save(&txn, &nats).await?;
+
+                            txn.commit().await?;
+                            nats.commit().await?;
                         }
                     },
                 }
             }
         }
+
+        let txn = conn.transaction().await?;
+        let nats = nats_conn.transaction();
 
         if workflow_run_step.state != WorkflowRunStepState::Failure {
             workflow_run_step.state = WorkflowRunStepState::Success;
@@ -420,8 +499,10 @@ impl StepCommand {
         workflow_run_step.end_unix_timestamp = Some(unix_timestamp);
 
         workflow_run_step.save(&txn, &nats).await?;
+
         txn.commit().await?;
         nats.commit().await?;
+
         Ok(())
     }
 }

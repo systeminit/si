@@ -9,7 +9,7 @@ use si_data::{NatsTxnError, PgTxn};
 use si_model::{
     ApiClientError, ApplicationError, BillingAccountError, ChangeSetError, DiffError, EdgeError,
     EditSessionError, EntityError, EventError, EventLogError, JwtKeyError, KeyPairError,
-    ModelError, NodeError, NodePositionError, OrganizationError, QualificationError,
+    ModelError, NodeError, NodePositionError, OrganizationError, QualificationError, ResourceError,
     SchematicError, SecretError, SessionError, UserError, WorkflowError, WorkspaceError,
 };
 
@@ -17,6 +17,7 @@ pub mod application_context_dal;
 pub mod application_dal;
 pub mod attribute_dal;
 pub mod cli;
+pub mod resource_dal;
 pub mod schematic_dal;
 pub mod secret_dal;
 pub mod session_dal;
@@ -98,6 +99,8 @@ pub enum HandlerError {
     MissingDeploymentSelectedEntityId,
     #[error("a request object was not valid in this edit session or change set")]
     InvalidContext,
+    #[error("resource error: {0}")]
+    Resource(#[from] ResourceError),
 }
 
 pub type HandlerResult<T> = Result<T, HandlerError>;

@@ -19,11 +19,54 @@ pub fn api(
         .or(application_context_dal(pg, nats_conn))
         .or(schematic_dal(pg, nats_conn, veritech))
         .or(attribute_dal(pg, nats_conn, veritech))
+        .or(resource_dal(pg, nats_conn, veritech))
         .or(secret_dal(pg, nats_conn))
         .or(workflow_dal(pg, nats_conn, veritech))
         .or(updates(pg, nats_conn))
         .or(cli(pg, nats_conn, veritech))
         .recover(handlers::handle_rejection)
+        .boxed()
+}
+
+// Resource DAL
+pub fn resource_dal(
+    pg: &PgPool,
+    nats_conn: &NatsConn,
+    veritech: &Veritech,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    resource_dal_get_resource(pg.clone())
+        .or(resource_dal_sync_resource(
+            pg.clone(),
+            nats_conn.clone(),
+            veritech.clone(),
+        ))
+        .boxed()
+}
+
+pub fn resource_dal_get_resource(pg: PgPool) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("resourceDal" / "getResource")
+        .and(with_pg(pg))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::query::<handlers::resource_dal::GetResourceRequest>())
+        .and_then(handlers::resource_dal::get_resource)
+        .boxed()
+}
+
+pub fn resource_dal_sync_resource(
+    pg: PgPool,
+    nats_conn: NatsConn,
+    veritech: Veritech,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("resourceDal" / "syncResource")
+        .and(warp::post())
+        .and(with_pg(pg))
+        .and(with_nats_conn(nats_conn))
+        .and(with_veritech(veritech))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::body::json::<
+            handlers::resource_dal::SyncResourceRequest,
+        >())
+        .and_then(handlers::resource_dal::sync_resource)
         .boxed()
 }
 

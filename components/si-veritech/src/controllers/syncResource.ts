@@ -10,7 +10,7 @@ export interface SyncResourceRequest {
   resource: Resource;
   predecessors: {
     entity: SiEntity;
-    resource: Resource;
+    resource?: Resource;
   }[];
 }
 
@@ -38,9 +38,8 @@ export async function syncResource(ws: WebSocket, req: string): Promise<void> {
   send(ws, {
     finish: {
       state: request.resource.state,
-      status: request.resource.status,
-      health: request.resource.health,
-      error: "uh no, doing nothing",
+      status: ResourceStatus.Created,
+      health: ResourceHealth.Ok,
     },
   });
   close(ws);
