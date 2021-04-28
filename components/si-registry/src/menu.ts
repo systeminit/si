@@ -21,7 +21,8 @@ function enumKeys<O extends object, K extends keyof O = keyof O>(obj: O): K[] {
   return Object.values(obj).filter((k) => Number.isNaN(+k)) as K[];
 }
 
-export function entityMenu(): MenuList {
+export function entityMenu(deploymentNodes?: boolean, implementationNodes?: boolean): MenuList {
+  
   let list: MenuList["list"] = [];
   const categories = enumKeys(MenuCategory).sort();
   for (const category of categories) {
@@ -33,20 +34,48 @@ export function entityMenu(): MenuList {
       continue;
     }
     if (!schema.ui.hidden) {
-      let displayName = schema.entityType;
-      if (schema.ui.menuDisplayName) {
-        displayName = schema.ui.menuDisplayName;
-      }
       const mc = _.find(list, ["name", schema.ui.menuCategory]);
-      mc.items.push({
-        entityType: schema.entityType,
-        displayName,
-      });
+      
+      if (deploymentNodes && schema.ui.superNode) {
+        let displayName = schema.entityType;
+        // @ts-ignore
+        if (schema.ui.menuDisplayName) {
+          // @ts-ignore
+          displayName = schema.ui.menuDisplayName;
+        }
+        mc.items.push({
+          entityType: schema.entityType,
+          displayName,
+        });
+      }
+
+      if (implementationNodes && !schema.ui.superNode) {
+        let displayName = schema.entityType;
+        // @ts-ignore
+        if (schema.ui.menuDisplayName) {
+          // @ts-ignore
+          displayName = schema.ui.menuDisplayName;
+        }
+        mc.items.push({
+          entityType: schema.entityType,
+          displayName,
+        });
+      }
     }
   }
+
+  let reducedList: MenuList["list"] = [];
+  for (const mc of list) {
+    if (mc.items.length) {
+      reducedList.push(mc)
+    }
+  }
+
   for (const mc of list) {
     mc.items = _.sortBy(mc.items, ["displayName"]);
   }
-  list = _.sortBy(list, ["name"]);
-  return { list };
+
+  reducedList = _.sortBy(reducedList, ["name"]);
+  return { list: reducedList };
+
 }

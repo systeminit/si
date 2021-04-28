@@ -5,6 +5,7 @@ const service: RegistryEntry = {
   ui: {
     menuCategory: MenuCategory.Application,
     menuDisplayName: "service",
+    superNode: true
   },
   properties: [],
 };

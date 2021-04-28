@@ -10,6 +10,7 @@ export interface IGetSchematicRequest {
   rootObjectId: string;
   changeSetId?: string;
   editSessionId?: string;
+  includeRootNode: boolean;
 }
 
 export interface IGetSchematicReplySuccess {

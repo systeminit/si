@@ -184,95 +184,99 @@ impl Schematic {
         let mut edges: HashMap<String, Edge> = HashMap::new();
         let mut nodes: HashMap<String, SchematicNode> = HashMap::new();
 
+        let sn =
+            SchematicNode::new(&txn, root_node.clone(), serde_json::json![root_entity]).await?;
+        nodes.insert(root_node.id.clone(), sn);
+
         // An edge is included only if the object it points to has a head or a projection for this
         // changeset, or edit session - otherwise, it doesn't exist in the schematic!
-        for edge_kind in edge_kinds.iter() {
-            let successor_edges =
-                Edge::all_successor_edges_by_node_id(&txn, edge_kind, &root_node.id).await?;
-            for successor_edge in successor_edges.into_iter() {
-                if successor_edge.si_storable.workspace_id != workspace_id {
-                    continue;
-                }
-                let successor_entity_id = &successor_edge.head_vertex.object_id;
-                let successor_entity = match Entity::for_head_or_change_set_or_edit_session(
-                    &txn,
-                    successor_entity_id,
-                    change_set_id.as_ref(),
-                    edit_session_id.as_ref(),
-                )
-                .await
-                {
-                    Ok(entity) => entity,
-                    Err(_e) => continue,
-                };
-                edges.insert(successor_edge.id.clone(), successor_edge.clone());
-                let successor_node = Node::get(&txn, &successor_entity.node_id).await?;
-                let schematic_node = if let Some(schematic_node) = nodes.get_mut(&successor_node.id)
-                {
-                    schematic_node
-                } else {
-                    let successor_node_id = successor_node.id.clone();
-                    let sn = SchematicNode::new(
-                        &txn,
-                        successor_node.clone(),
-                        serde_json::json![successor_entity],
-                    )
-                    .await?;
-                    nodes.insert(successor_node_id.clone(), sn);
-                    // You just inserted it.. so it's cool.
-                    nodes.get_mut(&successor_node_id).unwrap()
-                };
+        let successor_edges =
+            Edge::all_successor_edges_by_node_id_for_edge_kinds(&txn, &edge_kinds, &root_node.id)
+                .await?;
 
-                // Add a predecessors entry for the edge that we're on
+        for successor_edge in successor_edges.into_iter() {
+            if successor_edge.si_storable.workspace_id != workspace_id {
+                continue;
+            }
+            let successor_entity_id = &successor_edge.head_vertex.object_id;
+            let successor_entity = match Entity::for_head_or_change_set_or_edit_session(
+                &txn,
+                successor_entity_id,
+                change_set_id.as_ref(),
+                edit_session_id.as_ref(),
+            )
+            .await
+            {
+                Ok(entity) => entity,
+                Err(_e) => continue,
+            };
+            edges.insert(successor_edge.id.clone(), successor_edge.clone());
+            let successor_node = Node::get(&txn, &successor_entity.node_id).await?;
+            let schematic_node = if let Some(schematic_node) = nodes.get_mut(&successor_node.id) {
                 schematic_node
-                    .connections
-                    .predecessors
-                    .entry(successor_edge.kind.to_string())
-                    .and_modify(|p| {
-                        let connection_edge = ConnectionEdge {
-                            edge_id: successor_edge.id.clone(),
-                            node_id: successor_edge.tail_vertex.node_id.clone(),
-                            socket_id: successor_edge.tail_vertex.socket.clone(),
-                        };
-                        p.push(connection_edge);
-                    })
-                    .or_insert_with(|| {
-                        let connection_edge = ConnectionEdge {
-                            edge_id: successor_edge.id.clone(),
-                            node_id: successor_edge.tail_vertex.node_id.clone(),
-                            socket_id: successor_edge.tail_vertex.socket.clone(),
-                        };
-                        let p = vec![connection_edge];
-                        p
+            } else {
+                let successor_node_id = successor_node.id.clone();
+                let sn = SchematicNode::new(
+                    &txn,
+                    successor_node.clone(),
+                    serde_json::json![successor_entity],
+                )
+                .await?;
+                nodes.insert(successor_node_id.clone(), sn);
+                // You just inserted it.. so it's cool.
+                nodes.get_mut(&successor_node_id).unwrap()
+            };
+
+            // Add a predecessors entry for the edge that we're on
+            schematic_node
+                .connections
+                .predecessors
+                .entry(successor_edge.kind.to_string())
+                .and_modify(|p| {
+                    let connection_edge = ConnectionEdge {
+                        edge_id: successor_edge.id.clone(),
+                        node_id: successor_edge.tail_vertex.node_id.clone(),
+                        socket_id: successor_edge.tail_vertex.socket.clone(),
+                    };
+                    p.push(connection_edge);
+                })
+                .or_insert_with(|| {
+                    let connection_edge = ConnectionEdge {
+                        edge_id: successor_edge.id.clone(),
+                        node_id: successor_edge.tail_vertex.node_id.clone(),
+                        socket_id: successor_edge.tail_vertex.socket.clone(),
+                    };
+                    let p = vec![connection_edge];
+                    p
+                });
+            if successor_edge.head_vertex.node_id != successor_node.id {
+                nodes
+                    .entry(successor_edge.head_vertex.node_id.clone())
+                    .and_modify(|ns| {
+                        ns.connections
+                            .successors
+                            .entry(successor_edge.kind.to_string())
+                            .and_modify(|s| {
+                                let connection_edge = ConnectionEdge {
+                                    edge_id: successor_edge.id.clone(),
+                                    node_id: successor_edge.head_vertex.node_id.clone(),
+                                    socket_id: successor_edge.head_vertex.socket.clone(),
+                                };
+                                s.push(connection_edge);
+                            })
+                            .or_insert_with(|| {
+                                let connection_edge = ConnectionEdge {
+                                    edge_id: successor_edge.id.clone(),
+                                    node_id: successor_edge.head_vertex.node_id.clone(),
+                                    socket_id: successor_edge.head_vertex.socket.clone(),
+                                };
+                                let s = vec![connection_edge];
+                                s
+                            });
                     });
-                if successor_edge.head_vertex.node_id != successor_node.id {
-                    nodes
-                        .entry(successor_edge.head_vertex.node_id.clone())
-                        .and_modify(|ns| {
-                            ns.connections
-                                .successors
-                                .entry(successor_edge.kind.to_string())
-                                .and_modify(|s| {
-                                    let connection_edge = ConnectionEdge {
-                                        edge_id: successor_edge.id.clone(),
-                                        node_id: successor_edge.head_vertex.node_id.clone(),
-                                        socket_id: successor_edge.head_vertex.socket.clone(),
-                                    };
-                                    s.push(connection_edge);
-                                })
-                                .or_insert_with(|| {
-                                    let connection_edge = ConnectionEdge {
-                                        edge_id: successor_edge.id.clone(),
-                                        node_id: successor_edge.head_vertex.node_id.clone(),
-                                        socket_id: successor_edge.head_vertex.socket.clone(),
-                                    };
-                                    let s = vec![connection_edge];
-                                    s
-                                });
-                        });
-                }
             }
         }
+
         let schematic = Schematic { nodes, edges };
         Ok(schematic)
     }

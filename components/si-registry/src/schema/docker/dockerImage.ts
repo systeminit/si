@@ -9,6 +9,7 @@ const dockerImage: RegistryEntry = {
   ui: {
     menuCategory: MenuCategory.Docker,
     menuDisplayName: "docker image",
+    superNode: false,
   },
   properties: [
     {

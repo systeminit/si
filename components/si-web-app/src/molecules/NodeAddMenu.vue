@@ -50,10 +50,10 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import Vue, { PropType } from "vue";
 import _ from "lodash";
 
-import { entityMenu } from "si-registry";
+import { entityMenu, MenuCategoryItem } from "si-registry";
 
 interface Data {
   isOpen: boolean;
@@ -64,12 +64,21 @@ export interface AddMenuSelectedPayload {
   event: MouseEvent;
 }
 
+export enum MenuFilter {
+  Deployment = "deployment",
+  Implementation = "implementation",
+}
+
 export default Vue.extend({
   name: "NodeAddMenu",
   props: {
     disabled: {
       type: Boolean,
       default: false,
+    },
+    filter: {
+      type: String,
+      default: "",
     },
   },
   components: {},
@@ -80,8 +89,27 @@ export default Vue.extend({
   },
   computed: {
     menuItems(): ReturnType<typeof entityMenu>["list"] {
-      const result = entityMenu();
-      return result.list;
+      let items: MenuCategoryItem[] = [];
+
+      // @ts-ignore
+      if (Object.values(MenuFilter).includes(this.filter)) {
+        switch (this.filter) {
+          case MenuFilter.Deployment: {
+            const result = entityMenu(true, false);
+            items = result.list;
+            break;
+          }
+
+          case MenuFilter.Implementation:
+            const result = entityMenu(false, true);
+            items = result.list;
+            break;
+        }
+      } else {
+        const result = entityMenu(true, true);
+        items = result.list;
+      }
+      return items;
     },
   },
   methods: {
