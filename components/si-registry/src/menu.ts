@@ -1,5 +1,5 @@
 import { registry } from "./registry";
-import { RegistryEntry, MenuCategory } from "./registryEntry";
+import { RegistryEntry, MenuCategory, SchematicKind } from "./registryEntry";
 
 import _ from "lodash";
 
@@ -21,9 +21,8 @@ function enumKeys<O extends object, K extends keyof O = keyof O>(obj: O): K[] {
   return Object.values(obj).filter((k) => Number.isNaN(+k)) as K[];
 }
 
-export function entityMenu(deploymentNodes?: boolean, implementationNodes?: boolean): MenuList {
-  
-  let list: MenuList["list"] = [];
+export function entityMenu(filter: SchematicKind[]): MenuList {
+  const list: MenuList["list"] = [];
   const categories = enumKeys(MenuCategory).sort();
   for (const category of categories) {
     const items: MenuCategoryItem["items"] = [];
@@ -33,41 +32,41 @@ export function entityMenu(deploymentNodes?: boolean, implementationNodes?: bool
     if (schema.entityType == "leftHandPath") {
       continue;
     }
-    if (!schema.ui.hidden) {
-      const mc = _.find(list, ["name", schema.ui.menuCategory]);
-      
-      if (deploymentNodes && schema.ui.superNode) {
-        let displayName = schema.entityType;
+    if (schema.ui.hidden) {
+      continue;
+    }
+    // Let us never speak of this again.
+    if (filter.length > 0) {
+      if (schema.ui.schematicKinds) {
         // @ts-ignore
-        if (schema.ui.menuDisplayName) {
-          // @ts-ignore
-          displayName = schema.ui.menuDisplayName;
+        let skipThisEntry = true;
+        for (const s of schema.ui.schematicKinds) {
+          for (const f of filter) {
+            if (f == s) {
+              skipThisEntry = false;
+            }
+          }
         }
-        mc.items.push({
-          entityType: schema.entityType,
-          displayName,
-        });
-      }
-
-      if (implementationNodes && !schema.ui.superNode) {
-        let displayName = schema.entityType;
-        // @ts-ignore
-        if (schema.ui.menuDisplayName) {
-          // @ts-ignore
-          displayName = schema.ui.menuDisplayName;
+        if (skipThisEntry) {
+          continue;
         }
-        mc.items.push({
-          entityType: schema.entityType,
-          displayName,
-        });
       }
     }
+    const mcIndex = _.findIndex(list, ["name", schema.ui.menuCategory]);
+    let displayName = schema.entityType;
+    if (schema.ui.menuDisplayName) {
+      displayName = schema.ui.menuDisplayName;
+    }
+    list[mcIndex].items.push({
+      entityType: schema.entityType,
+      displayName,
+    });
   }
 
   let reducedList: MenuList["list"] = [];
   for (const mc of list) {
     if (mc.items.length) {
-      reducedList.push(mc)
+      reducedList.push(mc);
     }
   }
 
@@ -76,6 +75,6 @@ export function entityMenu(deploymentNodes?: boolean, implementationNodes?: bool
   }
 
   reducedList = _.sortBy(reducedList, ["name"]);
-  return { list: reducedList };
 
+  return { list: reducedList };
 }

@@ -2,6 +2,7 @@ import {
   RegistryEntry,
   MenuCategory,
   ValidatorKind,
+  SchematicKind,
 } from "../../registryEntry";
 
 const torture: RegistryEntry = {
@@ -9,7 +10,7 @@ const torture: RegistryEntry = {
   ui: {
     menuCategory: MenuCategory.Application,
     menuDisplayName: "torture test",
-    superNode: false
+    schematicKinds: [SchematicKind.Component, SchematicKind.Deployment],
   },
   properties: [
     {

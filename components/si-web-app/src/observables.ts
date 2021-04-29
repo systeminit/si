@@ -36,6 +36,11 @@ import {
   WorkflowRunStep,
   WorkflowRunStepEntity,
 } from "./api/sdf/model/workflow";
+import {
+  ISchematic,
+  ISchematicNode,
+  SchematicKind,
+} from "./api/sdf/model/schematic";
 
 export const workspace$ = new ReplaySubject<IWorkspace | null>(1);
 workspace$.next(null);
@@ -198,13 +203,32 @@ export const entityLabelList$: Observable<IGetEntityListReply> = combineLatest(
   refCount(),
 );
 
-export const schematicSelectedEntityId$: BehaviorSubject<string> = new BehaviorSubject(
-  "",
-);
-
 export const entityQualifications$: Subject<Qualification> = new Subject();
 export const entityQualificationStart$: Subject<QualificationStart> = new Subject();
 
 export const workflowRuns$: Subject<WorkflowRun> = new Subject();
 export const workflowRunSteps$: Subject<WorkflowRunStep> = new Subject();
 export const workflowRunStepEntities$: Subject<WorkflowRunStepEntity> = new Subject();
+
+// Schematic
+export const deploymentSchematicSelectNode$ = new ReplaySubject<ISchematicNode | null>(
+  1,
+);
+deploymentSchematicSelectNode$.next(null);
+
+export const schematicSelectNode$ = new ReplaySubject<ISchematicNode | null>(1);
+schematicSelectNode$.next(null);
+
+export interface SchematicUpdated {
+  schematicKind: SchematicKind;
+  schematic: ISchematic;
+}
+export const schematicUpdated$ = new Subject<SchematicUpdated>();
+
+export interface NodePositionUpdated {
+  positionCtx: string;
+}
+export const nodePositionUpdated$ = new ReplaySubject<NodePositionUpdated | null>(
+  1,
+);
+nodePositionUpdated$.next(null);

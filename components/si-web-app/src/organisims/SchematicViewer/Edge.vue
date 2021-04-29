@@ -27,12 +27,8 @@
 
 import Vue, { PropType } from "vue";
 
-import { InstanceStoreContext } from "@/store";
 import { PanelEventBus } from "@/atoms/PanelEventBus";
 import { Cg2dCoordinate } from "@/api/sicg";
-
-import { SchematicPanelStore } from "@/store/modules/schematicPanel";
-
 import { Edge } from "@/api/sdf/model/edge";
 import { ISchematicNode, Schematic } from "@/api/sdf/model/schematic";
 
@@ -61,6 +57,7 @@ interface EdgePositionUpdate {
   destinationNodeId: string;
   nodeId?: never;
   nodePosition?: never;
+  positionCtx: string;
 }
 
 interface NodePositionUpdate {
@@ -68,6 +65,7 @@ interface NodePositionUpdate {
   destinationNodeId?: never;
   nodeId: string;
   nodePosition: Cg2dCoordinate;
+  positionCtx: string;
 }
 
 export type EdgePostionUpdateEvent = EdgePositionUpdate | NodePositionUpdate;
@@ -86,9 +84,9 @@ export default Vue.extend({
       type: (Object as PropType<Edge> | Object) as PropType<EdgeTemporary>,
       required: false,
     },
-    schematicPanelStoreCtx: {
-      type: Object as PropType<InstanceStoreContext<SchematicPanelStore>>,
-      required: true,
+    schematic: {
+      type: Object as PropType<Schematic>,
+      required: false,
     },
     graphViewerId: {
       type: String,
@@ -106,13 +104,8 @@ export default Vue.extend({
   },
   computed: {
     sourceNode(): ISchematicNode | null {
-      if (
-        this.schematicPanelStoreCtx &&
-        this.schematicPanelStoreCtx.state &&
-        this.schematicPanelStoreCtx.state.schematic &&
-        this.schematicPanelStoreCtx.state.schematic != undefined
-      ) {
-        return this.schematicPanelStoreCtx.state.schematic.nodes[
+      if (this.schematic) {
+        return this.schematic.nodes[
           this.edge.tailVertex.nodeId
         ] as ISchematicNode;
       } else {
@@ -120,13 +113,8 @@ export default Vue.extend({
       }
     },
     destinationNode(): ISchematicNode | null {
-      if (
-        this.schematicPanelStoreCtx &&
-        this.schematicPanelStoreCtx.state &&
-        this.schematicPanelStoreCtx.state.schematic &&
-        this.schematicPanelStoreCtx.state.schematic != undefined
-      ) {
-        return this.schematicPanelStoreCtx.state.schematic?.nodes[
+      if (this.schematic) {
+        return this.schematic.nodes[
           this.edge.headVertex.nodeId
         ] as ISchematicNode;
       } else {
@@ -135,7 +123,7 @@ export default Vue.extend({
     },
     sourceSocketPosition(): Cg2dCoordinate | undefined {
       const context = this.positionCtx;
-      if (this.sourceNode) {
+      if (this.sourceNode && this.sourceNode.node.positions[context]) {
         const sourceNodePosition: Cg2dCoordinate = {
           x: Number(this.sourceNode.node.positions[context].x),
           y: Number(this.sourceNode.node.positions[context].y),
@@ -220,33 +208,41 @@ export default Vue.extend({
       );
     },
     updateSvgLinePosition(event: EdgePostionUpdateEvent) {
-      if (this.sourceNode && this.destinationNode) {
+      if (
+        this.sourceNode &&
+        this.destinationNode &&
+        this.positionCtx == event.positionCtx
+      ) {
         const element = document.getElementById(this.lineId) as HTMLElement;
 
-        if (event.nodeId == this.sourceNode.node.id) {
-          element.setAttribute(
-            "x1",
-            String(event.nodePosition.x + OUTPUT_SOCKET_OFFSET.x),
-          );
-          element.setAttribute(
-            "y1",
-            String(event.nodePosition.y + OUTPUT_SOCKET_OFFSET.y),
-          );
-        } else if (event.nodeId == this.destinationNode.node.id) {
-          element.setAttribute(
-            "x2",
-            String(event.nodePosition.x + INPUT_SOCKET_OFFSET.x),
-          );
-          element.setAttribute(
-            "y2",
-            String(event.nodePosition.y + INPUT_SOCKET_OFFSET.y),
-          );
+        if (element) {
+          if (event.nodeId == this.sourceNode.node.id) {
+            element.setAttribute(
+              "x1",
+              String(event.nodePosition.x + OUTPUT_SOCKET_OFFSET.x),
+            );
+            element.setAttribute(
+              "y1",
+              String(event.nodePosition.y + OUTPUT_SOCKET_OFFSET.y),
+            );
+          } else if (event.nodeId == this.destinationNode.node.id) {
+            element.setAttribute(
+              "x2",
+              String(event.nodePosition.x + INPUT_SOCKET_OFFSET.x),
+            );
+            element.setAttribute(
+              "y2",
+              String(event.nodePosition.y + INPUT_SOCKET_OFFSET.y),
+            );
+          }
         }
       }
     },
     getNode(nodeId: string): ISchematicNode | undefined {
-      if (this.schematicPanelStoreCtx.state.schematic?.nodes[nodeId]) {
-        return this.schematicPanelStoreCtx.state.schematic?.nodes[nodeId];
+      if (this.schematic) {
+        if (this.schematic.nodes[nodeId]) {
+          return this.schematic.nodes[nodeId];
+        }
       }
     },
   },

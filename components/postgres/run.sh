@@ -28,7 +28,8 @@ main() {
       --detach \
       --publish 5432:5432 \
       "$image" \
-      -c log_error_verbosity=VERBOSE
+      -c log_error_verbosity=VERBOSE \
+      -c log_statement=all 
   fi
 }
 

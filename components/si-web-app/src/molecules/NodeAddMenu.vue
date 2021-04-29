@@ -54,6 +54,7 @@ import Vue, { PropType } from "vue";
 import _ from "lodash";
 
 import { entityMenu, MenuCategoryItem } from "si-registry";
+import { SchematicKind } from "@/api/sdf/model/schematic";
 
 interface Data {
   isOpen: boolean;
@@ -77,8 +78,7 @@ export default Vue.extend({
       default: false,
     },
     filter: {
-      type: String,
-      default: "",
+      type: Array as PropType<SchematicKind[]>,
     },
   },
   components: {},
@@ -89,27 +89,8 @@ export default Vue.extend({
   },
   computed: {
     menuItems(): ReturnType<typeof entityMenu>["list"] {
-      let items: MenuCategoryItem[] = [];
-
-      // @ts-ignore
-      if (Object.values(MenuFilter).includes(this.filter)) {
-        switch (this.filter) {
-          case MenuFilter.Deployment: {
-            const result = entityMenu(true, false);
-            items = result.list;
-            break;
-          }
-
-          case MenuFilter.Implementation:
-            const result = entityMenu(false, true);
-            items = result.list;
-            break;
-        }
-      } else {
-        const result = entityMenu(true, true);
-        items = result.list;
-      }
-      return items;
+      const result = entityMenu(this.filter);
+      return result.list;
     },
   },
   methods: {
