@@ -31,6 +31,7 @@ module.exports = {
       margin: theme.margin,
       maxHeight: theme.maxHeight,
       zIndex: theme.zIndex,
+      width: theme.width,
     },
   },
   variants: {
