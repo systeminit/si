@@ -2,16 +2,19 @@ import {
   RegistryEntry,
   MenuCategory,
   ValidatorKind,
+  NodeKind,
 } from "../../registryEntry";
 import frobNob from "./frobNob";
 
 const leftHandPath: RegistryEntry = {
   entityType: "leftHandPath",
+  nodeKind: NodeKind.Concept,
   ui: {
     menuCategory: MenuCategory.Kubernetes,
     menuDisplayName: "leftHandPath",
     schematicKinds: [],
   },
+  inputs: [],
   properties: [
     {
       type: "string",

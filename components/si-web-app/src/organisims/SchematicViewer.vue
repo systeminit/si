@@ -46,6 +46,7 @@
             :graphViewerId="id"
             :selectedNode="selectedNode"
             :deploymentSelectedNode="deploymentSelectedNode"
+            :schematicKind="schematicKind"
             @selectNode="selectNode"
           />
         </div>
@@ -125,7 +126,10 @@ import {
   deploymentSchematicSelectNode$,
   schematicUpdated$,
   nodePositionUpdated$,
+  edgeCreating$,
 } from "@/observables";
+import { SiEntity } from "si-entity";
+import { Entity } from "@/api/sdf/model/entity";
 
 export interface SetNodePositionPayload {
   nodeId: string;
@@ -796,6 +800,13 @@ export default Vue.extend({
             e.target instanceof HTMLElement &&
             e.target.classList.contains("socket")
           ) {
+            let entityType = e.target.getAttribute("entityType");
+            let entityId = e.target.getAttribute("entityId");
+            let schematicKind = e.target.getAttribute("schematicKind");
+            if (entityType && schematicKind && entityId) {
+              edgeCreating$.next({ entityType, schematicKind, entityId });
+            }
+
             this.connection.transientConnection.sourceSocketId = e.target.id;
 
             // Ccreate an edge
@@ -1330,6 +1341,13 @@ export default Vue.extend({
           this.schematic.nodes[sourceNode[1]] &&
           this.schematic.nodes[destinationNode[1]]
         ) {
+          let sourceEntity = SiEntity.fromJson(
+            this.schematic.nodes[sourceNode[1]].object as Entity,
+          );
+          let destinationEntity = SiEntity.fromJson(
+            this.schematic.nodes[destinationNode[1]].object as Entity,
+          );
+
           // connect nodes
           const source: ConnectionNodeReference = {
             nodeId: sourceNode[1],
@@ -1347,8 +1365,9 @@ export default Vue.extend({
 
           const connectionKind = this.connectionKind();
           if (
-            !this.edgeExistsOnGraph(source, destination, "configures") &&
-            connectionKind != undefined
+            connectionKind != undefined &&
+            !this.edgeExistsOnGraph(source, destination, connectionKind) &&
+            this.validEdge(sourceEntity, destinationEntity, connectionKind)
           ) {
             this.connection.transientConnection.edge = this.newTemporaryEdge(
               "temporaryEdge",
@@ -1369,6 +1388,31 @@ export default Vue.extend({
           };
           PanelEventBus.$emit("panel-viewport-edge-update", edgePositionUpdate);
         }
+      }
+      edgeCreating$.next(null);
+    },
+    validEdge(
+      sourceEntity: Entity,
+      destinationEntity: Entity,
+      connectionKind: string,
+    ): boolean {
+      let destinationEntitySchema = destinationEntity.schema();
+      let sourceEntitySchema = sourceEntity.schema();
+      let validInput = _.find(destinationEntitySchema.inputs, input => {
+        return (
+          input.edgeKind == connectionKind &&
+          (_.includes(input.types, sourceEntity.entityType) ||
+            (input.types == "implementations" &&
+              _.includes(
+                sourceEntitySchema.implements,
+                destinationEntity.entityType,
+              )))
+        );
+      });
+      if (validInput) {
+        return true;
+      } else {
+        return false;
       }
     },
     async createConnection(
@@ -1426,7 +1470,7 @@ export default Vue.extend({
         }
 
         case SchematicKind.Component: {
-          return EdgeKind.Implementation;
+          return EdgeKind.Configures;
         }
 
         default: {

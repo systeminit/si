@@ -10,6 +10,9 @@ import system from "./schema/si/system";
 import service from "./schema/si/service";
 import application from "./schema/si/application";
 import dockerImage from "./schema/docker/dockerImage";
+import kubernetesService from "./schema/kubernetes/kubernetesService";
+import k8sDeployment from "./schema/kubernetes/k8sDeployment";
+import k8sNamespace from "./schema/kubernetes/k8sNamespace";
 
 export const registry: { [entityType: string]: RegistryEntry } = {
   leftHandPath,
@@ -19,6 +22,9 @@ export const registry: { [entityType: string]: RegistryEntry } = {
   application,
   torture,
   dockerImage,
+  kubernetesService,
+  k8sDeployment,
+  k8sNamespace,
 };
 
 export function findProp(path: string[]): Prop | undefined {

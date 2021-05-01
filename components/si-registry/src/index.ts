@@ -13,6 +13,7 @@ export {
   RegistryEntryUi,
   MenuCategory,
   Qualification,
+  NodeKind,
 } from "./registryEntry";
 export { workflows, Workflow, Step } from "./workflow";
 export { entityMenu, MenuCategoryItem } from "./menu";

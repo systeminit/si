@@ -8,6 +8,7 @@ export enum SchematicKind {
 
 export enum MenuCategory {
   Application = "application",
+  Service = "service",
   Docker = "docker",
   Kubernetes = "kubernetes",
   Helm = "helm",
@@ -207,15 +208,23 @@ export enum Arity {
 
 export interface Input {
   name: string;
-  types: string[];
+  types: string[] | "implementations";
   edgeKind: "deployment" | "component" | "configures";
   arity: Arity;
   required?: boolean;
 }
 
+export enum NodeKind {
+  Concept = "concept",
+  Implementation = "implementation",
+  Concrete = "concrete",
+}
+
 export interface RegistryEntry {
   entityType: string;
+  nodeKind: NodeKind;
   ui?: RegistryEntryUi;
+  implements?: string[];
   inputs: Input[];
   properties: Prop[];
   qualifications?: Qualification[];

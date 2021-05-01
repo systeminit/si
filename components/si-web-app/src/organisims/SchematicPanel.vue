@@ -1,6 +1,6 @@
 <template>
   <Panel
-    initialPanelType="diagram"
+    initialPanelType="schematic"
     :panelIndex="panelIndex"
     :panelRef="panelRef"
     :panelContainerRef="panelContainerRef"
