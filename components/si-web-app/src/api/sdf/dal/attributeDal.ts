@@ -3,6 +3,8 @@ import Bottle from "bottlejs";
 import { Entity } from "@/api/sdf/model/entity";
 import { Diff } from "../model/diff";
 import { Qualification } from "@/api/sdf/model/qualification";
+import { ILabelList } from "../dal";
+import { SchematicKind } from "../model/schematic";
 
 export interface IGetEntityListRequest {
   workspaceId: string;
@@ -115,8 +117,45 @@ export async function updateEntity(
   return reply;
 }
 
+export interface IGetInputLabelsRequest {
+  workspaceId: string;
+  entityId: string;
+  inputName: string;
+  schematicKind: SchematicKind;
+  changeSetId?: string;
+  editSessionId?: string;
+}
+
+export interface IGetInputLabelsReplySuccess {
+  items: ILabelList;
+  error?: never;
+}
+
+export interface IGetInputLabelsReplyFailure {
+  items?: never;
+  error: SDFError;
+}
+
+export type IGetInputLabelsReply =
+  | IGetInputLabelsReplySuccess
+  | IGetInputLabelsReplyFailure;
+
+export async function getInputLabels(
+  request: IGetInputLabelsRequest,
+): Promise<IGetInputLabelsReply> {
+  let bottle = Bottle.pop("default");
+  let sdf = bottle.container.SDF;
+
+  const reply: IGetInputLabelsReply = await sdf.get(
+    "attributeDal/getInputLabels",
+    request,
+  );
+  return reply;
+}
+
 export const AttributeDal = {
   getEntityList,
   getEntity,
   updateEntity,
+  getInputLabels,
 };

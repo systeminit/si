@@ -130,6 +130,7 @@ import {
 } from "@/observables";
 import { SiEntity } from "si-entity";
 import { Entity } from "@/api/sdf/model/entity";
+import { Input } from "si-registry/dist/registryEntry";
 
 export interface SetNodePositionPayload {
   nodeId: string;
@@ -926,6 +927,7 @@ export default Vue.extend({
               ) as HTMLElement;
 
               if (
+                selectionElement &&
                 selectionElement.classList.contains("node") &&
                 this.editMode
               ) {
@@ -1341,17 +1343,30 @@ export default Vue.extend({
           this.schematic.nodes[sourceNode[1]] &&
           this.schematic.nodes[destinationNode[1]]
         ) {
+          const connectionKind = this.connectionKind();
           let sourceEntity = SiEntity.fromJson(
             this.schematic.nodes[sourceNode[1]].object as Entity,
           );
           let destinationEntity = SiEntity.fromJson(
             this.schematic.nodes[destinationNode[1]].object as Entity,
           );
+          let destinationSocketName = "input";
+          if (connectionKind != undefined) {
+            let validInput = this.validInput(
+              sourceEntity,
+              destinationEntity,
+              connectionKind,
+            );
+            if (validInput) {
+              destinationSocketName = validInput.name;
+            }
+          }
 
           // connect nodes
           const source: ConnectionNodeReference = {
             nodeId: sourceNode[1],
             socketId: sourceNode[2],
+            socketName: "output",
             nodeKind: this.schematic.nodes[sourceNode[1]].node
               .objectType as string,
           };
@@ -1359,11 +1374,11 @@ export default Vue.extend({
           const destination: ConnectionNodeReference = {
             nodeId: destinationNode[1],
             socketId: destinationNode[2],
+            socketName: destinationSocketName,
             nodeKind: this.schematic.nodes[destinationNode[1]].node
               .objectType as string,
           };
 
-          const connectionKind = this.connectionKind();
           if (
             connectionKind != undefined &&
             !this.edgeExistsOnGraph(source, destination, connectionKind) &&
@@ -1391,11 +1406,11 @@ export default Vue.extend({
       }
       edgeCreating$.next(null);
     },
-    validEdge(
+    validInput(
       sourceEntity: Entity,
       destinationEntity: Entity,
       connectionKind: string,
-    ): boolean {
+    ): Input | undefined {
       let destinationEntitySchema = destinationEntity.schema();
       let sourceEntitySchema = sourceEntity.schema();
       let validInput = _.find(destinationEntitySchema.inputs, input => {
@@ -1409,6 +1424,18 @@ export default Vue.extend({
               )))
         );
       });
+      return validInput;
+    },
+    validEdge(
+      sourceEntity: Entity,
+      destinationEntity: Entity,
+      connectionKind: string,
+    ): boolean {
+      let validInput = this.validInput(
+        sourceEntity,
+        destinationEntity,
+        connectionKind,
+      );
       if (validInput) {
         return true;
       } else {

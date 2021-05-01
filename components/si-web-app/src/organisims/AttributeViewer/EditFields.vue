@@ -52,6 +52,13 @@
         :systemId="systemId"
         v-else-if="showFieldForWidget('select', editField)"
       />
+      <SelectFromInputField
+        :entity="entity"
+        :editMode="editMode"
+        :editField="editField"
+        :systemId="systemId"
+        v-else-if="showFieldForWidget('selectFromInput', editField)"
+      />
       <MapField
         :entity="entity"
         :editMode="editMode"
@@ -69,6 +76,7 @@
         @toggle-path="togglePath"
         v-else-if="showFieldForWidget('array', editField)"
       />
+      <div v-else>Widget type does not exist for {{ editField }}! Bug</div>
     </div>
   </div>
 </template>
@@ -84,6 +92,7 @@ import PasswordField from "@/organisims/AttributeViewer/PasswordField.vue";
 import SelectField from "@/organisims/AttributeViewer/SelectField.vue";
 import MapField from "@/organisims/AttributeViewer/MapField.vue";
 import ArrayField from "@/organisims/AttributeViewer/ArrayField.vue";
+import SelectFromInputField from "@/organisims/AttributeViewer/SelectFromInputField.vue";
 import Header from "@/organisims/AttributeViewer/Header.vue";
 
 import { EditField } from "si-entity/dist/siEntity";
@@ -102,6 +111,7 @@ export default Vue.extend({
     SelectField,
     MapField,
     ArrayField,
+    SelectFromInputField,
   },
   props: {
     entity: {

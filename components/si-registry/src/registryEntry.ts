@@ -8,6 +8,7 @@ export enum SchematicKind {
 
 export enum MenuCategory {
   Application = "application",
+  AWS = "AWS",
   Service = "service",
   Docker = "docker",
   Kubernetes = "kubernetes",
@@ -94,6 +95,11 @@ export interface WidgetSelect extends WidgetBase {
   options: WidgetSelectOptions;
 }
 
+export interface WidgetSelectFromInput extends WidgetBase {
+  name: "selectFromInput";
+  inputName: string;
+}
+
 export interface WidgetUnknown extends WidgetBase {
   name: "unknown";
 }
@@ -105,6 +111,7 @@ export type Widgets =
   | WidgetPassword
   | WidgetTextArea
   | WidgetSelect
+  | WidgetSelectFromInput
   | WidgetUnknown;
 
 export interface PropBase {
