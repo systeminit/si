@@ -194,7 +194,7 @@ pub async fn all_entities(
     .await?;
 
     let successors =
-        Edge::all_successor_edges_by_object_id(&txn, &EdgeKind::Configures, &root_entity.id)
+        Edge::direct_successor_edges_by_object_id(&txn, &EdgeKind::Includes, &root_entity.id)
             .await?;
 
     for edge in successors.into_iter() {

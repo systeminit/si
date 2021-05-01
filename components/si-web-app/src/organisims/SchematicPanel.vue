@@ -1,6 +1,6 @@
 <template>
   <Panel
-    initialPanelType="schematic"
+    initialPanelType="diagram"
     :panelIndex="panelIndex"
     :panelRef="panelRef"
     :panelContainerRef="panelContainerRef"
@@ -18,20 +18,20 @@
         :options="schematicKinds"
         v-model="schematicKind"
         class="pl-1"
-        :styling="schematicSelectorStyling()"
-        @input="schematicSelected($event)"
+        :styling="schematicSelectorStyling"
       />
+      <!-- This is irrelevant for now; eventually, it should set the system -->
       <SiSelect
         size="xs"
         id="systemSelect"
         name="systemSelect"
         :options="systemsList"
-        v-model="currentSystemId"
         class="pl-1"
-        :styling="schematicSelectorStyling()"
+        :styling="schematicSelectorStyling"
         v-if="schematicKind === 'deployment'"
       />
 
+      <!-- 
       <div class="flex flex-row" v-if="schematicKind === 'component'">
         <SiSelect
           size="xs"
@@ -47,23 +47,24 @@
           <TargetIcon size="0.9x" :class="targetIconStyling()" />
         </button>
       </div>
+      -->
 
       <NodeAddMenu
         class="pl-2"
-        :filter="addMenuFilter"
+        :filter="addMenuFilters"
         @selected="nodeCreate"
-        :disabled="!isEditable"
+        :disabled="!addMenuEnabled"
       />
     </template>
     <template v-slot:content>
       <div class="relative w-full h-full">
         <SchematicViewer
           class="absolute z-10"
-          ref="graphViewer"
           :schematic="schematic"
           :schematicKind="schematicKind"
-          :schematicPanelStoreCtx="schematicPanelStoreCtx"
-          :storesCtx="storesCtx"
+          :positionCtx="positionCtx"
+          :rootObjectId="rootObjectId"
+          ref="graphViewer"
         />
       </div>
     </template>
@@ -72,43 +73,42 @@
 
 <script lang="ts">
 import Vue from "vue";
-import { mapGetters, mapState } from "vuex";
-
-import { InstanceStoreContext, registerStore, unregisterStore } from "@/store";
-import { PanelEventBus } from "@/atoms/PanelEventBus";
-
-import { SessionStore } from "@/store/modules/session";
-import { ApplicationContextStore } from "@/store/modules/applicationContext";
-import {
-  SchematicPanelStore,
-  schematicPanelStore,
-  schematicPanelStoreSubscribeEvents,
-} from "@/store/modules/schematicPanel";
-import { EditorStore } from "@/store/modules/editor";
-import { NodeCreatePayload } from "@/store/modules/schematicPanel";
-
-import { ISchematicNode, SchematicKind } from "@/api/sdf/model/schematic";
-
-import { INodeCreateReply } from "@/api/sdf/dal/schematicDal";
-
-import { MenuFilter } from "@/molecules/NodeAddMenu.vue";
-
-import SiSelect, { SelectProps } from "@/atoms/SiSelect.vue";
-import NodeAddMenu from "@/molecules/NodeAddMenu.vue";
-import Panel from "@/molecules/Panel.vue";
-import SchematicViewer, { StoresCtx } from "@/organisims/SchematicViewer.vue";
-
-import { TargetIcon } from "vue-feather-icons";
-
 import _ from "lodash";
 
-interface IData {
-  schematicPanelStoreCtx: InstanceStoreContext<SchematicPanelStore>;
+import { SchematicKind, Schematic } from "@/api/sdf/model/schematic";
+import { ILabelList } from "@/api/sdf/dal";
+
+import Panel from "@/molecules/Panel.vue";
+import NodeAddMenu from "@/molecules/NodeAddMenu.vue";
+import SiSelect from "@/atoms/SiSelect.vue";
+import SchematicViewer from "@/organisims/SchematicViewer.vue";
+
+import {
+  system$,
+  editMode$,
+  workspace$,
+  applicationId$,
+  deploymentSchematicSelectNode$,
+  changeSet$,
+  editSession$,
+  nodePositionUpdated$,
+  schematicUpdated$,
+  schematicSelectNode$,
+} from "@/observables";
+import { combineLatest, of } from "rxjs";
+import { switchMap, pluck, tap } from "rxjs/operators";
+import {
+  IGetApplicationSystemSchematicRequest,
+  getApplicationSystemSchematic,
+  IGetSchematicReply,
+  SchematicDal,
+  INodeCreateForApplicationRequest,
+} from "@/api/sdf/dal/schematicDal";
+import { emitEditorErrorMessage } from "@/atoms/PanelEventBus";
+
+interface Data {
   schematicKind: SchematicKind;
-  storesCtx: StoresCtx;
-  id: string;
-  selectionIsTracked: Boolean;
-  pinnedNodeId: string;
+  schematic: Schematic | null;
 }
 
 export default Vue.extend({
@@ -124,189 +124,194 @@ export default Vue.extend({
   },
   components: {
     Panel,
-    SchematicViewer,
     NodeAddMenu,
     SiSelect,
-    TargetIcon,
+    SchematicViewer,
   },
-  data(): IData {
-    let id = _.uniqueId("schematicPanel:");
-    let schematicPanelStoreCtx: InstanceStoreContext<SchematicPanelStore> = new InstanceStoreContext(
-      {
-        storeName: "schematicPanel",
-        componentId: "schematicPanel",
-        instanceId: id,
-      },
-    );
-    let storesCtx: StoresCtx = {};
-    storesCtx["schematicPanelStoreCtx"] = schematicPanelStoreCtx;
+  data(): Data {
     return {
-      id: id,
-      schematicPanelStoreCtx,
       schematicKind: SchematicKind.Deployment,
-      storesCtx: storesCtx,
-      selectionIsTracked: false,
-      pinnedNodeId: "",
+      schematic: null,
+    };
+  },
+  subscriptions: function(this: any): Record<string, any> {
+    let selectedSchematicKind$ = this.$watchAsObservable("schematicKind", {
+      immediate: true,
+    }).pipe(pluck("newValue"));
+
+    // and elizabeth loves you
+    let positionCtx$ = combineLatest(
+      selectedSchematicKind$,
+      deploymentSchematicSelectNode$,
+      applicationId$,
+    ).pipe(
+      switchMap(
+        ([
+          selectedSchematicKind,
+          deploymentSelectedSchematicNode,
+          applicationId,
+        ]) => {
+          if (
+            deploymentSelectedSchematicNode &&
+            selectedSchematicKind == SchematicKind.Component
+          ) {
+            return of(
+              `${deploymentSelectedSchematicNode.object.id}.${selectedSchematicKind}`,
+            );
+          } else {
+            return of(`${applicationId}.${selectedSchematicKind}`);
+          }
+        },
+      ),
+    );
+
+    let rootObjectId$ = combineLatest(
+      selectedSchematicKind$,
+      applicationId$,
+      deploymentSchematicSelectNode$,
+    ).pipe(
+      switchMap(
+        ([schematicKind, applicationId, deploymentSchematicSelectNode]) => {
+          if (schematicKind == SchematicKind.Deployment) {
+            if (applicationId) {
+              return of(applicationId);
+            } else {
+              return of("noSelectedApplicationNode");
+            }
+          } else {
+            if (deploymentSchematicSelectNode) {
+              return of(deploymentSchematicSelectNode.object.id);
+            } else {
+              return of("noSelectedDeploymentNode");
+            }
+          }
+        },
+      ),
+    );
+
+    let schematicUpdateCallback$ = schematicUpdated$.pipe(
+      tap(payload => {
+        if (payload.schematicKind == SchematicKind.Deployment) {
+          this.schematic = payload.schematic;
+        }
+      }),
+    );
+
+    let loadSchematic$ = combineLatest(
+      workspace$,
+      system$,
+      selectedSchematicKind$,
+      rootObjectId$,
+      changeSet$,
+      editSession$,
+      nodePositionUpdated$,
+    ).pipe(
+      switchMap(
+        ([
+          workspace,
+          system,
+          selectedSchematicKind,
+          rootObjectId,
+          changeSet,
+          editSession,
+          _nodePositionUpdated,
+        ]) => {
+          if (rootObjectId == "noSelectedDeploymentNode") {
+            this.schematic = null;
+            return of({
+              error: { message: "no selected deployment node", code: 42 },
+            });
+          }
+          if (workspace && system && selectedSchematicKind && rootObjectId) {
+            let includeRootNode = false;
+            if (selectedSchematicKind == SchematicKind.Component) {
+              includeRootNode = true;
+            }
+            let request: IGetApplicationSystemSchematicRequest = {
+              workspaceId: workspace.id,
+              rootObjectId: rootObjectId,
+              systemId: system.id,
+              includeRootNode,
+              schematicKind: selectedSchematicKind,
+            };
+            if (changeSet) {
+              request["changeSetId"] = changeSet.id;
+            }
+            if (editSession) {
+              request["editSessionId"] = editSession.id;
+            }
+            return getApplicationSystemSchematic(request);
+          } else {
+            return of({ error: { message: "cannot get schema", code: 42 } });
+          }
+        },
+      ),
+      tap((reply: IGetSchematicReply) => {
+        if (reply.error) {
+          if (reply.error.code == 406) {
+            if (this.schematicKind == SchematicKind.Component) {
+              deploymentSchematicSelectNode$.next(null);
+              schematicSelectNode$.next(null);
+            } else {
+              schematicSelectNode$.next(null);
+            }
+          } else if (reply.error.code != 42) {
+            emitEditorErrorMessage(reply.error.message);
+          }
+        } else {
+          this.schematic = reply.schematic;
+        }
+      }),
+    );
+    return {
+      editMode: editMode$,
+      selectedSchematicKind: selectedSchematicKind$,
+      system: system$,
+      deploymentSchematicSelectNode: deploymentSchematicSelectNode$,
+      applicationId: applicationId$,
+      rootObjectId: rootObjectId$,
+      loadSchematic: loadSchematic$,
+      positionCtx: positionCtx$,
+      changeSet: changeSet$,
+      editSession: editSession$,
+      workspace: workspace$,
+      schematicUpdateCallback: schematicUpdateCallback$,
     };
   },
   computed: {
-    ...mapState({
-      currentApplicationContext: (state: any): EditorStore["context"] =>
-        state.editor.context,
-      currentWorkspace: (state: any): SessionStore["currentWorkspace"] =>
-        state.session.currentWorkspace,
-      sessionContext: (state: any): SessionStore["sessionContext"] =>
-        state.session.sessionContext,
-      currentChangeSet: (state: any): EditorStore["currentChangeSet"] =>
-        state.editor.currentChangeSet,
-      currentEditSession: (state: any): EditorStore["currentEditSession"] =>
-        state.editor.currentEditSession,
-      currentSystem: (state: any): SessionStore["currentSystem"] =>
-        state.session.currentSystem,
-      editMode(): boolean {
-        return this.$store.getters["editor/inEditable"];
-      },
-      systemsList(): ApplicationContextStore["systemsList"] {
-        return [
-          {
-            value: "",
-            label: "production",
-          },
-        ];
-      },
-      currentSystemId(): string {
-        return "production";
-      },
-      selectedNode(): ISchematicNode | null {
-        return this.storesCtx.schematicPanelStoreCtx.state.selectedNode;
-      },
-    }),
-    ...mapGetters({
-      isEditable: "editor/inEditable",
-    }),
-    currentApplicationId(): string | undefined {
-      return this.currentApplicationContext?.applicationId;
-    },
-    schematicKinds(): SelectProps["options"] {
-      return [
-        { label: "Deployment", value: SchematicKind.Deployment },
-        { label: "Component", value: SchematicKind.Component },
-      ];
-    },
-    rootObjectId(): SchematicPanelStore["rootObjectId"] {
-      return this.schematicPanelStoreCtx.state.rootObjectId;
-    },
-    schematic(): SchematicPanelStore["schematic"] {
-      return this.schematicPanelStoreCtx.state.schematic;
-    },
-    addMenuFilter(): MenuFilter | string {
-      switch (this.schematicKind) {
-        case SchematicKind.Deployment: {
-          return MenuFilter.Deployment;
+    addMenuEnabled(this: any): boolean {
+      if (this.schematicKind == SchematicKind.Component) {
+        if (
+          this.editMode &&
+          !_.isNull(this.deploymentSchematicSelectNode) &&
+          this.deploymentSchematicSelectNode != "noSelectedDeploymentNode"
+        ) {
+          return true;
+        } else {
+          return false;
         }
-        case SchematicKind.Component: {
-          return MenuFilter.Implementation;
-        }
-      }
-      return "";
-    },
-  },
-  async created() {
-    registerStore(
-      this.schematicPanelStoreCtx,
-      schematicPanelStore,
-      schematicPanelStoreSubscribeEvents,
-    );
-  },
-  async mounted() {
-    if (this.sessionContext) {
-      await this.schematicPanelStoreCtx.dispatch(
-        "setRootObjectId",
-        this.sessionContext.applicationId,
-      );
-      this.loadSchematic();
-    }
-  },
-  async beforeDestroy() {
-    unregisterStore(this.schematicPanelStoreCtx);
-  },
-  watch: {
-    async sessionContext(sessionContext: SessionStore["sessionContext"]) {
-      let applicationId = this.sessionContext?.applicationId;
-      if (!applicationId) {
-        throw new Error(
-          "failed to extract a root object id from the session; you need to set the context",
-        );
-      }
-      await this.schematicPanelStoreCtx.dispatch(
-        "setRootObjectId",
-        applicationId,
-      );
-      await this.loadSchematic();
-    },
-    async currentChangeSet() {
-      await this.loadSchematic();
-    },
-    initialMaximizedFull(value) {
-      this.onInitialMaximizedFullUpdates(value);
-    },
-  },
-  methods: {
-    targetIconStyling(): Record<string, any> {
-      let classes: Record<string, any> = {};
-      classes["track-selection"] = this.selectionIsTracked;
-      classes["manual-selection"] = !this.selectionIsTracked;
-      return classes;
-    },
-    async toggleSelectionTrack() {
-      if (this.selectionIsTracked) {
-        this.selectionIsTracked = false;
       } else {
-        this.selectionIsTracked = true;
+        return this.editMode;
       }
     },
-    nodeList(): string[] {
-      let nodeList = [];
-      console.log("this.schematic:", this.schematic);
-      if (this.schematic) {
-        for (let node in this.schematic.nodes) {
-          console.log(node);
-          nodeList.push(node);
-        }
-      }
-      console.log("nodeList:", nodeList);
-      return nodeList;
+    addMenuFilters(): SchematicKind[] {
+      return [this.schematicKind];
     },
-    async schematicSelected(kind: string) {
-      if (_.capitalize(kind) in SchematicKind && this.sessionContext) {
-        switch (kind) {
-          case SchematicKind.Deployment: {
-            await this.schematicPanelStoreCtx.dispatch(
-              "setRootObjectId",
-              this.sessionContext.applicationId,
-            );
-            this.loadSchematic();
-            break;
-          }
-
-          case SchematicKind.Component: {
-            if (this.selectedNode) {
-              await this.schematicPanelStoreCtx.dispatch(
-                "setRootObjectId",
-                this.selectedNode.object.id,
-              );
-              this.loadSchematic();
-              break;
-            } else {
-              this.clearSchematic();
-            }
-          }
-        }
+    schematicKinds(): ILabelList {
+      let labels: ILabelList = [];
+      for (const value in SchematicKind) {
+        labels.push({ label: value, value: _.lowerCase(value) });
       }
+      return labels;
     },
-    onInitialMaximizedFullUpdates(value: boolean) {
+    systemsList(): ILabelList {
       // @ts-ignore
-      this.$refs.graphViewer.updateCanvasPosition();
+      if (this.system) {
+        // @ts-ignore
+        return [{ value: this.system.id, label: this.system.name }];
+      } else {
+        return [{ value: "", label: "" }];
+      }
     },
     schematicSelectorStyling(): Record<string, any> {
       let classes: Record<string, any> = {};
@@ -315,78 +320,66 @@ export default Vue.extend({
       classes["border-gray-800"] = true;
       return classes;
     },
-    includeRootNode(): boolean {
-      if (this.schematicKind == SchematicKind.Deployment) {
-        return false;
-      } else {
-        return true;
-      }
-    },
-    async loadSchematic() {
-      if (this.currentWorkspace && this.rootObjectId && this.currentSystem) {
-        let request: Record<string, any> = {
-          workspaceId: this.currentWorkspace.id,
-          rootObjectId: this.rootObjectId,
-          systemId: this.currentSystem.id,
-          includeRootNode: this.includeRootNode(),
-        };
-        if (this.currentChangeSet) {
-          request["changeSetId"] = this.currentChangeSet.id;
-        }
-        if (this.currentEditSession) {
-          request["editSessionId"] = this.currentEditSession.id;
-        }
-        let reply = await this.schematicPanelStoreCtx.dispatch(
-          "loadSchematic",
-          request,
-        );
-        if (reply.error) {
-          PanelEventBus.$emit("editor-error-message", reply.error.message);
-        }
-      }
-    },
-    async clearSchematic() {
-      await this.schematicPanelStoreCtx.dispatch("clearSchematic");
-    },
-    async nodeCreate(entityType: string, event: MouseEvent) {
+  },
+  methods: {
+    async nodeCreate(
+      this: any,
+      entityType: string,
+      event: MouseEvent,
+    ): Promise<void> {
       if (
-        this.currentApplicationId &&
-        this.currentWorkspace &&
-        this.currentChangeSet &&
-        this.currentEditSession
+        this.applicationId &&
+        this.workspace &&
+        this.changeSet &&
+        this.editSession
       ) {
-        const payload: NodeCreatePayload = {
+        const request: INodeCreateForApplicationRequest = {
           entityType,
-          sourcePanelId: this.schematicPanelStoreCtx.instanceId,
-          applicationId: this.currentApplicationId,
-          workspaceId: this.currentWorkspace.id,
-          changeSetId: this.currentChangeSet.id,
-          editSessionId: this.currentEditSession.id,
+          applicationId: this.applicationId,
+          workspaceId: this.workspace.id,
+          changeSetId: this.changeSet.id,
+          editSessionId: this.editSession.id,
+          schematicKind: this.schematicKind,
         };
+        if (this.schematicKind == SchematicKind.Component) {
+          const deploymentSelectedEntityId = this.deploymentSchematicSelectNode
+            .object.id;
+          request["deploymentSelectedEntityId"] = deploymentSelectedEntityId;
+        }
 
-        let reply: INodeCreateReply = await this.schematicPanelStoreCtx.dispatch(
-          "nodeCreate",
-          payload,
-        );
+        let reply = await SchematicDal.nodeCreateForApplication(request);
+
         if (!reply.error) {
+          if (reply.schematic) {
+            this.schematic = reply.schematic;
+            schematicUpdated$.next({
+              schematicKind: this.schematicKind,
+              schematic: reply.schematic,
+            });
+          }
+          schematicSelectNode$.next(reply.node);
+          if (this.schematicKind == SchematicKind.Deployment) {
+            deploymentSchematicSelectNode$.next(reply.node);
+          }
+
           // @ts-ignore
           this.$refs.graphViewer.onNodeCreate(reply.node.node.id, event);
           // set
         } else {
-          PanelEventBus.$emit("editor-error-message", reply.error.message);
+          emitEditorErrorMessage(reply.error.message);
         }
       }
+    },
+    onInitialMaximizedFullUpdates(_value: boolean) {
+      // TODO: This should be refactored, because it's overly coupled.
+      // @ts-ignore
+      this.$refs.graphViewer.updateCanvasPosition();
+    },
+  },
+  watch: {
+    initialMaximizedFull(value) {
+      this.onInitialMaximizedFullUpdates(value);
     },
   },
 });
 </script>
-
-<style scoped>
-.track-selection {
-  color: orange;
-}
-
-.manual-selection {
-  color: grey;
-}
-</style>

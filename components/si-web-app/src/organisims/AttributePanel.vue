@@ -144,7 +144,7 @@ import {
   loadEntityForEdit,
   attributePanelEntityUpdates$,
   entityLabelList$,
-  schematicSelectedEntityId$,
+  schematicSelectNode$,
   entityQualifications$,
   entityQualificationStart$,
   changeSet$,
@@ -294,12 +294,17 @@ export default Vue.extend({
           }
         }),
       ),
-      schematicSelectedEntityId: schematicSelectedEntityId$.pipe(
-        tap(entityId => {
+      schematicSelectNode: schematicSelectNode$.pipe(
+        tap(node => {
           // @ts-ignore
           if (this.selectionIsLocked) {
-            // @ts-ignore
-            this.selectedEntityId = entityId;
+            if (node) {
+              // @ts-ignore
+              this.selectedEntityId = node.object.id;
+            } else {
+              // @ts-ignore
+              this.selectedEntityId = null;
+            }
           }
         }),
       ),
@@ -309,7 +314,14 @@ export default Vue.extend({
         pluck("newValue"),
         switchMap(entityId => loadEntityForEdit(entityId)),
         tap(r => {
-          if (r.error && r.error.code != 42) {
+          if (r.error && r.error.code == 406) {
+            // @ts-ignore
+            this.entity = null;
+            // @ts-ignore
+            this.diff = null;
+            // @ts-ignore
+            this.qualifications = null;
+          } else if (r.error && r.error.code != 42) {
             // @ts-ignore
             this.entity = null;
             // @ts-ignore

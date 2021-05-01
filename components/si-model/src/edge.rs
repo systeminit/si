@@ -15,6 +15,8 @@ const EDGE_DIRECT_PREDECESSOR_EDGES_BY_OBJECT_ID: &str =
     include_str!("./queries/edge_direct_predecessor_edges_by_object_id.sql");
 const EDGE_BY_KIND_AND_HEAD_OBJECT_ID_AND_TAIL_OBJECT_TYPE: &str =
     include_str!("./queries/edge_by_kind_and_head_object_id_and_tail_object_type.sql");
+const EDGE_BY_KIND_AND_OVERLAPPING_OBJECT_ID_SETS: &str =
+    include_str!("./queries/edge_by_kind_and_overlapping_object_id_sets.sql");
 
 #[derive(Error, Debug)]
 pub enum EdgeError {
@@ -75,6 +77,7 @@ pub enum EdgeKind {
     Configures,
     Includes,
     Deployment,
+    Component,
     Implementation,
 }
 
@@ -84,6 +87,7 @@ impl std::fmt::Display for EdgeKind {
             EdgeKind::Configures => "configures".to_string(),
             EdgeKind::Includes => "includes".to_string(),
             EdgeKind::Deployment => "deployment".to_string(),
+            EdgeKind::Component => "component".to_string(),
             EdgeKind::Implementation => "implementation".to_string(),
         };
         write!(f, "{}", msg)
@@ -159,6 +163,28 @@ impl Edge {
         self.si_storable.deleted = true;
         nats.delete(&self).await?;
         Ok(())
+    }
+
+    pub async fn by_kind_and_overlapping_object_id_sets(
+        txn: &PgTxn<'_>,
+        edge_kind: &EdgeKind,
+        object_id_set: Vec<String>,
+    ) -> EdgeResult<Vec<Edge>> {
+        let rows = txn
+            .query(
+                EDGE_BY_KIND_AND_OVERLAPPING_OBJECT_ID_SETS,
+                &[&edge_kind.to_string(), &object_id_set],
+            )
+            .await?;
+
+        let mut results: Vec<Edge> = Vec::new();
+        for row in rows.into_iter() {
+            let json: serde_json::Value = row.try_get("object")?;
+            let edge: Edge = serde_json::from_value(json)?;
+            results.push(edge);
+        }
+
+        Ok(results)
     }
 
     pub async fn direct_successor_edges_by_node_id(

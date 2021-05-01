@@ -1,6 +1,11 @@
 import ValidatorJS from "validator";
 import { Optional } from "utility-types";
 
+export enum SchematicKind {
+  Deployment = "deployment",
+  Component = "component",
+}
+
 export enum MenuCategory {
   Application = "application",
   Docker = "docker",
@@ -11,14 +16,14 @@ export enum MenuCategory {
 interface RegistryEntryUiHidden {
   menuCategory?: never;
   menuDisplayName?: never;
-  superNode?: never;
+  schematicKinds?: never;
   hidden: true;
 }
 
 interface RegistryEntryUiPresent {
   menuCategory: MenuCategory;
   menuDisplayName: string;
-  superNode: boolean;
+  schematicKinds: SchematicKind[];
   hidden?: never;
 }
 
@@ -195,9 +200,23 @@ export interface Action {
   args?: Prop[];
 }
 
+export enum Arity {
+  Many = "many",
+  One = "one",
+}
+
+export interface Input {
+  name: string;
+  types: string[];
+  edgeKind: "deployment" | "component" | "configures";
+  arity: Arity;
+  required?: boolean;
+}
+
 export interface RegistryEntry {
   entityType: string;
   ui?: RegistryEntryUi;
+  inputs: Input[];
   properties: Prop[];
   qualifications?: Qualification[];
   commands?: Command[];

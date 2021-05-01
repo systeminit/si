@@ -148,7 +148,7 @@ pub async fn get_entity(
         request.edit_session_id.as_ref(),
     )
     .await
-    .map_err(HandlerError::from)?;
+    .map_err(|_| HandlerError::InvalidContext)?;
 
     let diff = match Entity::for_diff(
         &txn,

@@ -94,6 +94,10 @@ pub enum HandlerError {
     Qualification(#[from] QualificationError),
     #[error("workflow error: {0}")]
     Workflow(#[from] WorkflowError),
+    #[error("bad component create; missing deployment selected entity id")]
+    MissingDeploymentSelectedEntityId,
+    #[error("a request object was not valid in this edit session or change set")]
+    InvalidContext,
 }
 
 pub type HandlerResult<T> = Result<T, HandlerError>;
@@ -207,6 +211,9 @@ pub async fn handle_rejection(err: Rejection) -> Result<impl Reply, Infallible> 
     {
         code = StatusCode::BAD_REQUEST;
         message = String::from("cannot create billing account");
+    } else if let Some(HandlerError::InvalidContext) = err.find() {
+        code = StatusCode::NOT_ACCEPTABLE;
+        message = String::from("invalid root object id in schematic request");
     } else if let Some(HandlerError::Edge(EdgeError::EdgeExists)) = err.find() {
         code = StatusCode::BAD_REQUEST;
         message = String::from("edge already exists");

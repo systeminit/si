@@ -2,6 +2,8 @@ import {
   RegistryEntry,
   MenuCategory,
   ValidatorKind,
+  SchematicKind,
+  Arity,
 } from "../../registryEntry";
 
 const dockerImage: RegistryEntry = {
@@ -9,8 +11,16 @@ const dockerImage: RegistryEntry = {
   ui: {
     menuCategory: MenuCategory.Docker,
     menuDisplayName: "docker image",
-    superNode: false,
+    schematicKinds: [SchematicKind.Component],
   },
+  inputs: [
+    {
+      name: "image",
+      types: ["service"],
+      edgeKind: "configures",
+      arity: Arity.One,
+    },
+  ],
   properties: [
     {
       type: "string",

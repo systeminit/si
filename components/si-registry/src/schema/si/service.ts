@@ -1,12 +1,18 @@
-import { RegistryEntry, MenuCategory } from "../../registryEntry";
+import {
+  RegistryEntry,
+  MenuCategory,
+  SchematicKind,
+} from "../../registryEntry";
+import { standardConceptInputs } from "../include/standardConceptInputs";
 
 const service: RegistryEntry = {
   entityType: "service",
   ui: {
     menuCategory: MenuCategory.Application,
     menuDisplayName: "service",
-    superNode: true
+    schematicKinds: [SchematicKind.Deployment],
   },
+  inputs: [...standardConceptInputs],
   properties: [],
 };
 

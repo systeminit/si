@@ -3,7 +3,11 @@ import { Entity } from "@/api/sdf/model/entity";
 import { System } from "@/api/sdf/model/system";
 import { SDFError } from "@/api/sdf";
 import Bottle from "bottlejs";
-import { Schematic, ISchematicNode } from "@/api/sdf/model/schematic";
+import {
+  Schematic,
+  ISchematicNode,
+  SchematicKind,
+} from "@/api/sdf/model/schematic";
 
 export interface IGetSchematicRequest {
   workspaceId: string;
@@ -11,6 +15,7 @@ export interface IGetSchematicRequest {
   changeSetId?: string;
   editSessionId?: string;
   includeRootNode: boolean;
+  schematicKind: SchematicKind;
 }
 
 export interface IGetSchematicReplySuccess {
@@ -56,10 +61,8 @@ export interface ConnectionNodeReference {
 }
 
 export interface Connection {
-  kind: EdgeKind;
   source: ConnectionNodeReference;
   destination: ConnectionNodeReference;
-  systemId: String;
 }
 
 export interface ConnectionCreateRequest {
@@ -67,8 +70,8 @@ export interface ConnectionCreateRequest {
   workspaceId: string;
   changeSetId: string;
   editSessionId: string;
-  applicationId: string;
-  returnSchematic: boolean;
+  rootObjectId: string;
+  schematicKind: SchematicKind;
 }
 
 export interface ConnectionCreateReplySuccess {
@@ -113,7 +116,7 @@ async function connectionCreate(
 
 export interface INodeCreateForApplicationRequest extends INodeCreateRequest {
   applicationId: string;
-  returnSchematic: boolean;
+  deploymentSelectedEntityId?: string;
 }
 
 export interface INodeCreateRequest {
@@ -122,6 +125,7 @@ export interface INodeCreateRequest {
   workspaceId: string;
   changeSetId: string;
   editSessionId: string;
+  schematicKind: SchematicKind;
 }
 
 export interface INodeCreateReplySuccess {

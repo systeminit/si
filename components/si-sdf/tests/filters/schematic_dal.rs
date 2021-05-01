@@ -95,8 +95,7 @@ async fn connection_create() {
             workspace_id: nba.workspace.id.clone(),
             change_set_id: change_set.id.clone(),
             edit_session_id: edit_session.id.clone(),
-            application_id: application.id.clone(),
-            return_schematic: false,
+            root_object_id: application.id.clone(),
         })
         .reply(&filter)
         .await;
@@ -204,8 +203,7 @@ async fn connection_create_duplicate() {
             workspace_id: nba.workspace.id.clone(),
             change_set_id: change_set.id.clone(),
             edit_session_id: edit_session.id.clone(),
-            application_id: application.id.clone(),
-            return_schematic: false,
+            root_object_id: application.id.clone(),
         })
         .reply(&filter)
         .await;
@@ -257,7 +255,7 @@ async fn node_create_for_application() {
             change_set_id: change_set.id.clone(),
             edit_session_id: edit_session.id.clone(),
             application_id: application.id.clone(),
-            return_schematic: false,
+            schematic_kind: si_model::SchematicKind::Deployment,
         })
         .reply(&filter)
         .await;

@@ -24,30 +24,29 @@
         :positionCtx="positionCtx"
         :key="connection.transientConnection.edge.id"
         :edge="connection.transientConnection.edge"
+        :schematic="schematic"
         :graphViewerId="id"
-        :schematicPanelStoreCtx="schematicPanelStoreCtx"
       />
 
       <div v-if="schematic">
-        <div v-for="(edge, index) in schematic.edges" :key="index">
+        <div v-for="edge in schematic.edges" :key="edge.id">
           <SiGraphEdge
             :positionCtx="positionCtx"
             :edge="edge"
+            :schematic="schematic"
             :graphViewerId="id"
-            :schematicPanelStoreCtx="schematicPanelStoreCtx"
-            v-if="edge.kind === edgeKind()"
           />
         </div>
 
-        <div v-for="(node, index) in schematic.nodes" :key="index">
+        <div v-for="node in schematic.nodes" :key="node.node.id">
           <SiGraphNode
-            ref="siGraphNode"
             :positionCtx="positionCtx"
             :node="node"
+            :schematic="schematic"
             :graphViewerId="id"
-            :storesCtx="storesCtx"
+            :selectedNode="selectedNode"
+            :deploymentSelectedNode="deploymentSelectedNode"
             @selectNode="selectNode"
-            v-if="nodeType().includes(node.node.objectType)"
           />
         </div>
       </div>
@@ -73,41 +72,28 @@
  *
  **/
 
-import Vue, { PropType, Component } from "vue";
-import { mapState } from "vuex";
+import Vue, { PropType } from "vue";
+import _ from "lodash";
 
-import { InstanceStoreContext } from "@/store";
-import { PanelEventBus } from "@/atoms/PanelEventBus";
+import { PanelEventBus, emitEditorErrorMessage } from "@/atoms/PanelEventBus";
 import { SiCg } from "@/api/sicg";
 import { Cg2dCoordinate, CgResolution } from "@/api/sicg";
-
 import {
-  SchematicPanelStore,
-  NodeUpdatePositionePayload,
-} from "@/store/modules/schematicPanel";
-import { SessionStore } from "@/store/modules/session";
-import {
-  ConnectionCreatePayload,
-  TransientEdgeRemovalEvent,
-} from "@/store/modules/schematicPanel";
-
-import { SchematicKind, ISchematicNode } from "@/api/sdf/model/schematic";
-import { Edge, IEdge, IVertex, EdgeKind } from "@/api/sdf/model/edge";
-import { INode } from "@/api/sdf/model/node";
-
-import { EditorStore } from "@/store/modules/editor";
-import {
-  SetNodePositionPayload,
-  NodeDeletePayload,
-} from "@/store/modules/schematicPanel";
-
+  SchematicKind,
+  ISchematicNode,
+  Schematic,
+} from "@/api/sdf/model/schematic";
+import { EdgeKind } from "@/api/sdf/model/edge";
 import {
   Connection,
   ConnectionNodeReference,
   ConnectionCreateReply,
   INodeUpdatePositionReply,
+  SchematicDal,
+  INodeDeleteRequest,
+  INodeDeleteReply,
+  INodeUpdatePositionRequest,
 } from "@/api/sdf/dal/schematicDal";
-
 import {
   ShortcutRegistrationEvent,
   ShortcutContext,
@@ -116,7 +102,6 @@ import {
   ShortcutActions,
   ShortcutUpdateEvent,
 } from "@/organisims/ShortcutsEventBroker.vue";
-
 import { NodePositionUpdateEvent } from "@/organisims/SchematicViewer/Node.vue";
 import {
   EdgePostionUpdateEvent,
@@ -126,17 +111,26 @@ import {
   SpaceBarEvents,
   BackspaceEvents,
 } from "@/organisims/ShortcutsEventBroker.vue";
-
 import SiBackground from "@/atoms/SiBackground.vue";
-import SiGraphNode from "./SchematicViewer/Node.vue";
-import SiGraphEdge from "./SchematicViewer/Edge.vue";
+import SiGraphNode from "@/organisims/SchematicViewer/Node.vue";
+import SiGraphEdge from "@/organisims/SchematicViewer/Edge.vue";
+import {
+  schematicSelectNode$,
+  applicationId$,
+  editMode$,
+  workspace$,
+  system$,
+  changeSet$,
+  editSession$,
+  deploymentSchematicSelectNode$,
+  schematicUpdated$,
+  nodePositionUpdated$,
+} from "@/observables";
 
-import _ from "lodash";
-
-export type StoreCtx = InstanceStoreContext<SchematicPanelStore>;
-
-export interface StoresCtx {
-  [storeId: string]: StoreCtx;
+export interface SetNodePositionPayload {
+  nodeId: string;
+  context: string;
+  position: Cg2dCoordinate;
 }
 
 const COMPONENT_NAMESPACE = "graphViewer";
@@ -227,7 +221,7 @@ interface IData {
     };
   };
   selection: {
-    element: HTMLElement | null;
+    element: string | null;
     offset: {
       x: number;
       y: number;
@@ -255,7 +249,7 @@ export default Vue.extend({
   },
   props: {
     schematic: {
-      type: Object as PropType<SchematicPanelStore["schematic"]>,
+      type: Object as PropType<Schematic>,
       required: false,
     },
     schematicKind: {
@@ -263,13 +257,11 @@ export default Vue.extend({
       required: false,
       default: undefined,
     },
-    schematicPanelStoreCtx: {
-      type: Object as PropType<InstanceStoreContext<SchematicPanelStore>>,
-      required: false,
+    positionCtx: {
+      type: String,
     },
-    storesCtx: {
-      type: Object as PropType<StoresCtx>,
-      required: false,
+    rootObjectId: {
+      type: String,
     },
   },
   data(): IData {
@@ -391,37 +383,17 @@ export default Vue.extend({
   beforeDestroy() {
     this.deRegisterEvents();
   },
-  beforeUpdate: function() {},
-  computed: {
-    selectedNode(): ISchematicNode | null {
-      return this.storesCtx.schematicPanelStoreCtx.state.selectedNode;
-    },
-    // For nodes position
-    positionCtx(): string | null {
-      if (this.currentSystem) {
-        return this.currentSystem.id;
-      } else {
-        return null;
-      }
-    },
-    ...mapState({
-      currentWorkspace: (state: any): SessionStore["currentWorkspace"] =>
-        state.session.currentWorkspace,
-      currentSystem: (state: any): SessionStore["currentSystem"] =>
-        state.session.currentSystem,
-      currentApplicationContext: (state: any): EditorStore["context"] =>
-        state.editor.context,
-      currentChangeSet: (state: any): EditorStore["currentChangeSet"] =>
-        state.editor.currentChangeSet,
-      currentEditSession: (state: any): EditorStore["currentEditSession"] =>
-        state.editor.currentEditSession,
-      editMode(): boolean {
-        return this.$store.getters["editor/inEditable"];
-      },
-    }),
-    currentApplicationId(): string | undefined {
-      return this.currentApplicationContext?.applicationId;
-    },
+  subscriptions: function(this: any): Record<string, any> {
+    return {
+      selectedNode: schematicSelectNode$,
+      deploymentSelectedNode: deploymentSchematicSelectNode$,
+      editMode: editMode$,
+      currentWorkspace: workspace$,
+      currentSystem: system$,
+      currentApplicationId: applicationId$,
+      currentChangeSet: changeSet$,
+      currentEditSession: editSession$,
+    };
   },
   methods: {
     registerEvents(): void {
@@ -495,55 +467,62 @@ export default Vue.extend({
         this.viewport.element.style.cursor = "default";
       }
     },
-    edgeKind(): EdgeKind | undefined {
-      switch (this.schematicKind) {
-        case SchematicKind.Deployment: {
-          return EdgeKind.Deployment;
-        }
+    //edgeKind(): EdgeKind | undefined {
+    //  switch (this.schematicKind) {
+    //    case SchematicKind.Deployment: {
+    //      return EdgeKind.Deployment;
+    //    }
 
-        case SchematicKind.Component: {
-          return EdgeKind.Implementation;
-        }
+    //    case SchematicKind.Component: {
+    //      return EdgeKind.Implementation;
+    //    }
 
-        default: {
-          return undefined;
-        }
-      }
-    },
+    //    default: {
+    //      return undefined;
+    //    }
+    //  }
+    //},
     // This is a hack, and needs to be refactored!
-    nodeType(): string[] {
-      switch (this.schematicKind) {
-        case SchematicKind.Deployment: {
-          return ["service"];
-        }
+    //nodeType(): string[] {
+    //  switch (this.schematicKind) {
+    //    case SchematicKind.Deployment: {
+    //      return ["service"];
+    //    }
 
-        case SchematicKind.Component: {
-          return ["service", "torture", "dockerImage"];
-        }
+    //    case SchematicKind.Component: {
+    //      return ["service", "torture", "dockerImage"];
+    //    }
 
-        default: {
-          return ["service", "torture", "dockerImage"];
-        }
+    //    default: {
+    //      return ["service", "torture", "dockerImage"];
+    //    }
+    //  }
+    //},
+    async selectNode(node: ISchematicNode) {
+      schematicSelectNode$.next(node);
+      if (this.schematicKind == SchematicKind.Deployment) {
+        deploymentSchematicSelectNode$.next(node);
       }
-    },
-    async selectNode(node: INode) {
-      await this.schematicPanelStoreCtx.dispatch("nodeSelect", node);
     },
     async clearNodeSelection() {
-      await this.schematicPanelStoreCtx.dispatch("nodeSelectionClear");
+      schematicSelectNode$.next(null);
+      if (this.schematicKind == SchematicKind.Deployment) {
+        deploymentSchematicSelectNode$.next(null);
+      }
     },
-    onNodeCreate(nodeId: string, event: MouseEvent): void {
+    onNodeCreate(nodeId: string, _event: MouseEvent): void {
       this.viewer.isNodeCreate = true;
       const id = this.id + "." + nodeId;
-      this.selection.element = document.getElementById(id);
+      this.selection.element = id; // document.getElementById(id);
 
       if (this.canvas.element) {
-        const mouseLocalSpace = SiCg.cgGetMousePositionInElementSpace(
-          event as MouseEvent,
-          this.canvas.element,
-        );
+        //const mouseLocalSpace = SiCg.cgGetMousePositionInElementSpace(
+        //  event as MouseEvent,
+        //  this.canvas.element,
+        //);
+        // TODO: This guard might be unneeded or a bug!
         if (this.selection.element) {
-          const canvasBoundingRect = this.canvas.element.getBoundingClientRect();
+          //const canvasBoundingRect = this.canvas.element.getBoundingClientRect();
 
           const node_offset = {
             x: 70,
@@ -660,7 +639,7 @@ export default Vue.extend({
         }
       }
     },
-    redraw(event: IPanelLayoutUpdated | UIEvent) {
+    redraw(_event: IPanelLayoutUpdated | UIEvent) {
       this.$forceUpdate();
     },
 
@@ -671,7 +650,7 @@ export default Vue.extend({
         }
       }
     },
-    async deleteActiveNode() {
+    async deleteActiveNode(this: any) {
       if (
         this.editMode &&
         this.selectedNode &&
@@ -681,7 +660,7 @@ export default Vue.extend({
         this.currentEditSession &&
         this.currentSystem
       ) {
-        const nodeDeletePayload: NodeDeletePayload = {
+        const request: INodeDeleteRequest = {
           nodeId: this.selectedNode.node.id,
           applicationId: this.currentApplicationId,
           workspaceId: this.currentWorkspace.id,
@@ -689,10 +668,16 @@ export default Vue.extend({
           editSessionId: this.currentEditSession.id,
           systemId: this.currentSystem.id,
         };
-        await this.schematicPanelStoreCtx.dispatch(
-          "nodeDelete",
-          nodeDeletePayload,
-        );
+        let reply: INodeDeleteReply = await SchematicDal.nodeDelete(request);
+        if (!reply.error) {
+          schematicUpdated$.next({
+            schematicKind: this.schematicKind,
+            schematic: reply.schematic,
+          });
+        } else {
+          emitEditorErrorMessage(reply.error.message);
+        }
+        return reply;
       }
     },
     spacebarEvent(event: ShortcutUpdateEvent) {
@@ -705,10 +690,10 @@ export default Vue.extend({
         }
       }
     },
-    spacebarDown(e: Event): void {
+    spacebarDown(_e: Event): void {
       this.viewer.spacebarIsDown = true;
     },
-    spacebarUp(e: Event): void {
+    spacebarUp(_e: Event): void {
       this.viewer.spacebarIsDown = false;
     },
     mouseEnter() {
@@ -719,7 +704,7 @@ export default Vue.extend({
       this.deactivateShortcuts();
       this.deactivateViewer();
     },
-    mouseDown(e: Event): void {
+    mouseDown(this: any, e: Event): void {
       if (this.viewer.isActive) {
         this.viewer.mouseIsDown = true;
 
@@ -733,7 +718,7 @@ export default Vue.extend({
           id: this.id,
           isActive: true,
         };
-        const event: MouseRegistrationEvent = {
+        const _event: MouseRegistrationEvent = {
           context: ctx,
         };
 
@@ -792,7 +777,7 @@ export default Vue.extend({
               if (this.selectedNode && this.selectedNode.node.id) {
                 this.selection.id = this.selectedNode.node.id;
                 const id = this.id + "." + this.selectedNode.node.id;
-                this.selection.element = document.getElementById(id);
+                this.selection.element = id; //document.getElementById(id);
               } else {
                 this.selection.id = null;
                 this.selection.element = null;
@@ -843,9 +828,11 @@ export default Vue.extend({
 
             // Set state to update the edge when the mouse moves
             this.viewer.isNodeConnectionMode = true;
-            this.selection.element = document.getElementById(
-              this.connection.transientConnection.id,
-            );
+            this.selection.element = this.connection.transientConnection.id;
+
+            // document.getElementById(
+            //  this.connection.transientConnection.id,
+            //);
           }
 
           // ----------------------------------------------------------------
@@ -858,15 +845,18 @@ export default Vue.extend({
             this.selection.element &&
             this.canvas.element
           ) {
+            let selectionElement = document.getElementById(
+              this.selection.element,
+            ) as HTMLElement;
             this.selection.offset.x =
-              mouseLocalSpace.x - this.selection.element.offsetLeft;
+              mouseLocalSpace.x - selectionElement.offsetLeft;
             this.selection.offset.y =
-              mouseLocalSpace.y - this.selection.element.offsetTop;
+              mouseLocalSpace.y - selectionElement.offsetTop;
           }
         }
       }
     },
-    mouseMove(e: MouseEvent): void {
+    mouseMove(this: any, e: MouseEvent): void {
       if (this.viewer.isActive) {
         const targetElement = e.target as HTMLElement;
 
@@ -880,6 +870,10 @@ export default Vue.extend({
           this.selection.element &&
           this.editMode
         ) {
+          let selectionElement = document.getElementById(
+            this.selection.element,
+          ) as HTMLElement;
+
           // ----------------------------------------------------------------
           // Mouse is connecting nodes
           // ----------------------------------------------------------------
@@ -887,8 +881,8 @@ export default Vue.extend({
             e as MouseEvent,
             this.canvas.element as HTMLElement,
           );
-          this.selection.element.setAttribute("x2", String(newPosition.x));
-          this.selection.element.setAttribute("y2", String(newPosition.y));
+          selectionElement.setAttribute("x2", String(newPosition.x));
+          selectionElement.setAttribute("y2", String(newPosition.y));
 
           if (targetElement && targetElement.classList.contains("socket")) {
             this.connection.transientConnection.destinationSocketId =
@@ -907,7 +901,7 @@ export default Vue.extend({
           ) {
             this.selection.id = this.selectedNode.node.id;
             const id = this.id + "." + this.selection.id;
-            this.selection.element = document.getElementById(id);
+            this.selection.element = id; //document.getElementById(id);
             this.viewer.draggingMode = true;
           }
 
@@ -916,8 +910,12 @@ export default Vue.extend({
           // ----------------------------------------------------------------
           if (this.selection.element !== null) {
             if (this.viewer.mouseIsDown || this.viewer.isNodeCreate) {
+              let selectionElement = document.getElementById(
+                this.selection.element,
+              ) as HTMLElement;
+
               if (
-                this.selection.element.classList.contains("node") &&
+                selectionElement.classList.contains("node") &&
                 this.editMode
               ) {
                 this.viewer.isDragging = true;
@@ -947,6 +945,7 @@ export default Vue.extend({
             const nodePositionUpdate: NodePositionUpdateEvent = {
               position: this.selection.position,
               nodeId: this.selection.id,
+              positionCtx: this.positionCtx,
             };
             PanelEventBus.$emit(
               "panel-viewport-node-update",
@@ -956,6 +955,7 @@ export default Vue.extend({
             const edgePositionUpdate: EdgePostionUpdateEvent = {
               nodeId: this.selection.id as string,
               nodePosition: this.selection.position,
+              positionCtx: this.positionCtx,
             };
 
             PanelEventBus.$emit(
@@ -977,7 +977,7 @@ export default Vue.extend({
             id: this.id,
             isActive: false,
           };
-          const event: MouseRegistrationEvent = {
+          const _event: MouseRegistrationEvent = {
             context: ctx,
           };
         }
@@ -1064,7 +1064,7 @@ export default Vue.extend({
           x: this.viewport.zoom.translation.x + mousePosition.x * magnitude,
           y: this.viewport.zoom.translation.y + mousePosition.y * magnitude,
         };
-        const viewportRect = this.viewport.element.getBoundingClientRect();
+        //const viewportRect = this.viewport.element.getBoundingClientRect();
 
         if (this.canvas.element) {
           this.canvas.element.style.transformOrigin = "0 0";
@@ -1119,7 +1119,7 @@ export default Vue.extend({
         };
 
         const canvasRect = this.canvas.element.getBoundingClientRect();
-        const viewportRect = this.viewport.element.getBoundingClientRect();
+        //const viewportRect = this.viewport.element.getBoundingClientRect();
 
         // const panLimit = {
         //   left: 0,
@@ -1186,15 +1186,13 @@ export default Vue.extend({
           context: this.positionCtx as string,
           position: position,
         };
-        await this.storesCtx["schematicPanelStoreCtx"].dispatch(
-          "setNodePosition",
-          setNodePositionPayload,
-        );
+        this.setNodeLocalPosition(setNodePositionPayload);
 
         // Update node edges position
         const edgePositionUpdate: EdgePostionUpdateEvent = {
           nodeId: this.selection.id as string,
           nodePosition: position,
+          positionCtx: this.positionCtx,
         };
         const eventId =
           "panel-viewport-edge-update" +
@@ -1208,7 +1206,36 @@ export default Vue.extend({
         this.selection.position = position;
       }
     },
-    async setNodePosition(position: Cg2dCoordinate) {
+    setNodeLocalPosition(payload: SetNodePositionPayload) {
+      if (this.schematic) {
+        const position = {
+          x: String(payload.position.x),
+          y: String(payload.position.y),
+        };
+
+        if (
+          this.schematic &&
+          this.schematic.nodes[payload.nodeId] &&
+          this.schematic.nodes[payload.nodeId].node &&
+          this.schematic.nodes[payload.nodeId].node.positions[payload.context]
+        ) {
+          this.schematic.nodes[payload.nodeId].node.positions[
+            payload.context
+          ] = position;
+        } else {
+          if (
+            this.schematic &&
+            this.schematic.nodes[payload.nodeId] &&
+            this.schematic.nodes[payload.nodeId].node
+          ) {
+            this.schematic.nodes[payload.nodeId].node.positions = {
+              [payload.context]: position,
+            };
+          }
+        }
+      }
+    },
+    async setNodePosition(this: any, position: Cg2dCoordinate) {
       if (
         this.selectedNode &&
         this.selectedNode.node &&
@@ -1217,20 +1244,50 @@ export default Vue.extend({
         this.currentSystem
       ) {
         if (this.selectedNode.node.id) {
-          const payload: NodeUpdatePositionePayload = {
-            nodeId: this.selectedNode?.node.id,
-            contextId: this.currentSystem.id,
-            position: position,
-            applicationId: this.currentApplicationId,
+          const request: INodeUpdatePositionRequest = {
+            nodeId: this.selectedNode.node.id,
+            contextId: this.positionCtx,
+            x: `${position.x}`,
+            y: `${position.y}`,
             workspaceId: this.currentWorkspace.id,
           };
 
-          const reply: INodeUpdatePositionReply = await this.schematicPanelStoreCtx.dispatch(
-            "nodeSetPosition",
-            payload,
+          let reply: INodeUpdatePositionReply = await SchematicDal.nodeUpdatePosition(
+            request,
           );
+
           if (reply.error) {
-            PanelEventBus.$emit("editor-error-message", reply.error.message);
+            emitEditorErrorMessage(reply.error.message);
+          } else {
+            nodePositionUpdated$.next({ positionCtx: this.positionCtx });
+          }
+
+          if (this.schematicKind == SchematicKind.Deployment) {
+            let componentPositionCtx = `${this.selectedNode.object.id}.component`;
+            if (!this.selectedNode.node.positions[componentPositionCtx]) {
+              if (this.canvas.element) {
+                // const canvasBoundingRect = this.canvas.element.getBoundingClientRect();
+                // const x = canvasBoundingRect.x * 0.5;
+                // const y = canvasBoundingRect.y * 0.5;
+                const request: INodeUpdatePositionRequest = {
+                  nodeId: this.selectedNode.node.id,
+                  contextId: componentPositionCtx,
+                  x: `${position.x}`,
+                  y: `${position.y}`,
+                  workspaceId: this.currentWorkspace.id,
+                };
+
+                let reply: INodeUpdatePositionReply = await SchematicDal.nodeUpdatePosition(
+                  request,
+                );
+
+                if (reply.error) {
+                  emitEditorErrorMessage(reply.error.message);
+                } else {
+                  nodePositionUpdated$.next({ positionCtx: this.positionCtx });
+                }
+              }
+            }
           }
         }
       }
@@ -1269,28 +1326,23 @@ export default Vue.extend({
           );
         }
         if (
-          this.storesCtx &&
-          this.storesCtx.schematicPanelStoreCtx.state.schematic &&
-          this.storesCtx.schematicPanelStoreCtx.state.schematic.nodes[
-            sourceNode[1]
-          ] &&
-          this.storesCtx.schematicPanelStoreCtx.state.schematic.nodes[
-            destinationNode[1]
-          ]
+          this.schematic &&
+          this.schematic.nodes[sourceNode[1]] &&
+          this.schematic.nodes[destinationNode[1]]
         ) {
           // connect nodes
           const source: ConnectionNodeReference = {
             nodeId: sourceNode[1],
             socketId: sourceNode[2],
-            nodeKind: this.storesCtx.schematicPanelStoreCtx.state.schematic
-              .nodes[sourceNode[1]].node.objectType as string,
+            nodeKind: this.schematic.nodes[sourceNode[1]].node
+              .objectType as string,
           };
 
           const destination: ConnectionNodeReference = {
             nodeId: destinationNode[1],
             socketId: destinationNode[2],
-            nodeKind: this.storesCtx.schematicPanelStoreCtx.state.schematic
-              .nodes[destinationNode[1]].node.objectType as string,
+            nodeKind: this.schematic.nodes[destinationNode[1]].node
+              .objectType as string,
           };
 
           const connectionKind = this.connectionKind();
@@ -1305,7 +1357,7 @@ export default Vue.extend({
             );
             this.removeTransientEdge();
 
-            await this.createConnection(source, destination, connectionKind);
+            await this.createConnection(source, destination);
           }
           this.removeTransientEdge();
 
@@ -1313,15 +1365,16 @@ export default Vue.extend({
           const edgePositionUpdate: EdgePostionUpdateEvent = {
             sourceNodeId: sourceNode[1],
             destinationNodeId: destinationNode[1],
+            positionCtx: this.positionCtx,
           };
           PanelEventBus.$emit("panel-viewport-edge-update", edgePositionUpdate);
         }
       }
     },
     async createConnection(
+      this: any,
       source: ConnectionNodeReference,
       destination: ConnectionNodeReference,
-      connectionKind: EdgeKind,
     ) {
       if (
         this.currentSystem &&
@@ -1331,27 +1384,38 @@ export default Vue.extend({
         this.currentEditSession
       ) {
         const connection: Connection = {
-          kind: connectionKind,
           source: source,
           destination: destination,
-          systemId: this.currentSystem.id,
         };
 
-        const payload: ConnectionCreatePayload = {
+        if (
+          this.rootObjectId == "noSelectedApplicationNode" ||
+          this.rootObjectId == "noSelectedDeploymentNode"
+        ) {
+          // This just means that its not possible to create a connection, because
+          // the context is lost. Shouldn't really ever happen, but, you know;
+          // defense in depth and whatnot.
+          return;
+        }
+
+        let reply: ConnectionCreateReply = await SchematicDal.connectionCreate({
           connection: connection,
           workspaceId: this.currentWorkspace.id,
           changeSetId: this.currentChangeSet.id,
           editSessionId: this.currentEditSession.id,
-          applicationId: this.currentApplicationId,
-        };
-
-        const reply: ConnectionCreateReply = await this.schematicPanelStoreCtx.dispatch(
-          "connectionCreate",
-          payload,
-        );
+          rootObjectId: this.rootObjectId,
+          schematicKind: this.schematicKind,
+        });
 
         if (reply.error) {
-          PanelEventBus.$emit("editor-error-message", reply.error.message);
+          emitEditorErrorMessage(reply.error.message);
+        } else {
+          if (reply.schematic) {
+            schematicUpdated$.next({
+              schematicKind: this.schematicKind,
+              schematic: reply.schematic,
+            });
+          }
         }
       }
     },

@@ -41,21 +41,10 @@
 <script lang="ts">
 import Vue, { PropType } from "vue";
 
-import { registry } from "si-registry";
-import { mapState, mapActions } from "vuex";
-
-import { InstanceStoreContext } from "@/store";
 import { PanelEventBus } from "@/atoms/PanelEventBus";
-import { SiCg } from "@/api/sicg";
 import { Cg2dCoordinate } from "@/api/sicg";
-
-import { SchematicPanelStore } from "@/store/modules/schematicPanel";
-
 import { ISchematicNode } from "@/api/sdf/model/schematic";
-import { INodeObject, Node } from "@/api/sdf/model/node";
-import { IEntity, Entity } from "@/api/sdf/model/entity";
-
-import { StoresCtx } from "@/organisims/SchematicViewer.vue";
+import { IEntity } from "@/api/sdf/model/entity";
 
 import _ from "lodash";
 
@@ -64,6 +53,7 @@ type NodeLayoutUpdated = boolean;
 export interface NodePositionUpdateEvent {
   position: Cg2dCoordinate;
   nodeId: string;
+  positionCtx: string;
 }
 
 interface IData {
@@ -76,6 +66,12 @@ interface IData {
 export default Vue.extend({
   name: "Node",
   props: {
+    selectedNode: {
+      type: Object as PropType<ISchematicNode | null>,
+    },
+    deploymentSelectedNode: {
+      type: Object as PropType<ISchematicNode | null>,
+    },
     node: {
       type: Object as PropType<ISchematicNode>,
       required: true,
@@ -83,10 +79,6 @@ export default Vue.extend({
     graphViewerId: {
       type: String,
       required: true,
-    },
-    storesCtx: {
-      type: Object as PropType<StoresCtx>,
-      required: false,
     },
     positionCtx: String,
   },
@@ -120,22 +112,24 @@ export default Vue.extend({
     deRegisterEvents(): void {
       PanelEventBus.$off("panel-viewport-node-update", this.updateNodePosition);
     },
-    redraw(event: NodeLayoutUpdated | UIEvent) {
+    redraw(_event: NodeLayoutUpdated | UIEvent) {
       this.$forceUpdate();
     },
     updateNodePosition(event: NodePositionUpdateEvent) {
-      this.isVisible = true;
-      if (event.nodeId == this.nodeId) {
-        const element = document.getElementById(this.id) as HTMLElement;
-        element.setAttribute(
-          "style",
-          "left:" +
-            event.position.x +
-            "px;" +
-            "top:" +
-            event.position.y +
-            "px;",
-        );
+      if (event.positionCtx == this.positionCtx) {
+        this.isVisible = true;
+        if (event.nodeId == this.nodeId) {
+          const element = document.getElementById(this.id) as HTMLElement;
+          element.setAttribute(
+            "style",
+            "left:" +
+              event.position.x +
+              "px;" +
+              "top:" +
+              event.position.y +
+              "px;",
+          );
+        }
       }
     },
     nodeIsVisible(): void {
@@ -154,30 +148,30 @@ export default Vue.extend({
           top: `${position.y}px`,
         };
       } else {
+        this.nodeIsVisible();
         return {
           left: `0px`,
           top: `0px`,
         };
       }
     },
-    selectedNode(): ISchematicNode | null {
-      return this.storesCtx.schematicPanelStoreCtx.state.selectedNode;
-    },
     nodeIsSelected(): Record<string, boolean> {
-      if (this.selectedNode && this.selectedNode.node) {
-        if (this.selectedNode.node.id == this.nodeId) {
-          return {
-            "node-is-selected": true,
-          };
-        } else {
-          return {
-            "node-is-selected": false,
-          };
-        }
+      if (
+        this.deploymentSelectedNode &&
+        this.deploymentSelectedNode.node.id == this.nodeId
+      ) {
+        return {
+          "node-is-selected-deployment": true,
+        };
+      } else if (
+        this.selectedNode &&
+        this.selectedNode.node.id == this.nodeId
+      ) {
+        return {
+          "node-is-selected": true,
+        };
       }
-      return {
-        "node-is-selected": false,
-      };
+      return {};
     },
     nodeIsDeleted(): Record<string, boolean> {
       if (this.node.object.siStorable?.deleted) {
@@ -263,6 +257,13 @@ export default Vue.extend({
   border-radius: 6px;
   border-width: 1px;
   border-color: #5cb1b1;
+  z-index: 40;
+}
+
+.node-is-selected-deployment {
+  border-radius: 6px;
+  border-width: 1px;
+  border-color: #00ffff;
   z-index: 40;
 }
 
