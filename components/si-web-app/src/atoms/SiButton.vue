@@ -18,7 +18,10 @@
         <PlusSquareIcon :size="iconSize" v-else-if="icon == 'plus'" />
         <GitMergeIcon :size="iconSize" v-else-if="icon == 'merge'" />
       </div>
-      <div class="ml-1 font-normal" v-if="label">
+      <div class="ml-1 font-normal" v-if="label && icon != null">
+        {{ label }}
+      </div>
+      <div class="font-normal" v-if="label && !icon">
         {{ label }}
       </div>
     </div>

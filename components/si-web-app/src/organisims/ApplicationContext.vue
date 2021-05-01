@@ -43,40 +43,24 @@
       </div>
     </div>
     <div
-      class="flex w-full pb-2 details-panel-background"
+      class="flex w-full h-full pb-2 details-panel-background"
       data-cy="application-details-extended"
       v-show="showDetails"
     >
-      <div class="w-1/4 pt-2 pb-2 pl-2 mx-3 mt-2 details-panel card-section">
-        <div class="details-panel-title">Activity</div>
-      </div>
-      <div class="w-1/4 pt-2 pb-2 pl-2 mx-3 mt-2 details-panel card-section">
-        <div class="details-panel-title">Services</div>
+      <div class="w-1/6 h-full py-2 mx-2 ">
+        <ActivitySummary />
       </div>
 
-      <div class="w-1/4 pt-2 pb-2 pl-2 mx-3 mt-2 details-panel card-section">
-        <div class="details-panel-title">Resources</div>
+      <div class="w-2/6 h-full py-2 mx-2 ">
+        <ServicesSummary />
       </div>
-      <div class="w-1/4 pt-2 pb-2 pl-2 mx-3 mt-2 details-panel card-section">
-        <div class="flex flex-col">
-          <div class="flex flex-row align-middle">
-            <div class="self-center">
-              <div class="details-panel-title">Changes</div>
-            </div>
-          </div>
-          <div class="flex flex-row text-xs text-gray-400 align-middle">
-            <div>participants:</div>
-            <div class="ml-2">
-              <!-- <template v-if="changeSetParticipantCount == 0"> -->
-              <template v-if="true"> 0 (fake) </template>
-              <template v-else>
-                <span class="text-gold">
-                  {{ changeSetParticipantCount }}
-                </span>
-              </template>
-            </div>
-          </div>
-        </div>
+
+      <div class="w-2/6 h-full py-2 mx-2 ">
+        <ComputingResourceSummary />
+      </div>
+
+      <div class="w-1/6 h-full py-2 mx-2 ">
+        <ChangesSummary />
       </div>
     </div>
 
@@ -106,6 +90,13 @@ import { SDFError } from "@/api/sdf";
 import { PanelEventBus, emitEditorErrorMessage } from "@/atoms/PanelEventBus";
 import EditorMenuBar from "@/organisims/EditorMenuBar.vue";
 
+import ActivitySummary from "@/molecules/ActivitySummary.vue";
+import ServicesSummary from "@/molecules/ServicesSummary.vue";
+import ComputingResourceSummary from "@/molecules/ComputingResourceSummary.vue";
+import ChangesSummary from "@/molecules/ChangesSummary.vue";
+
+import { UploadIcon } from "vue-feather-icons";
+
 interface IData {
   showDetails: boolean;
   selectCurrentChangeSetId: string;
@@ -130,6 +121,12 @@ export default Vue.extend({
     ChevronRightIcon,
     ChevronDownIcon,
     SiError,
+    ActivitySummary,
+    ServicesSummary,
+    ComputingResourceSummary,
+    ChangesSummary,
+    // UploadIcon,
+    // SiButton,
   },
   data(): IData {
     return {
@@ -372,6 +369,7 @@ export default Vue.extend({
   border: solid;
   border-width: 1px;
   border-color: #464753;
+  background-color: #101010;
 }
 
 .details-panel-title {

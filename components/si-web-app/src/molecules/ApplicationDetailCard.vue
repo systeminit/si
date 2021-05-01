@@ -4,48 +4,21 @@
       {{ application.name }}
     </div>
 
-    <div class="flex w-full my-3">
-      <div class="flex flex-col w-full ml-2 visualization-card">
-        <div class="mx-2 mt-2 visualization-title">
-          Activity
-          <!-- <ActivityVisualization class="mx-2 mb-2" /> -->
-        </div>
+    <div class="flex w-full h-full ">
+      <div class="w-1/6 py-2 mx-2 ">
+        <ActivitySummary height="40px" :showChartLabels="false" />
       </div>
 
-      <div class="flex flex-col w-full ml-2 visualization-card">
-        <div class="mx-2 mt-2 visualization-title">
-          Services
-          <!-- 
-            <ServicesVisualization
-              class="mx-2 mb-2"
-              :applicationId="application.id"
-              inEditor="false"
-            /> 
-            -->
-        </div>
+      <div class="w-2/6 py-2 mx-2 ">
+        <ServicesSummary :showButton="false" />
       </div>
 
-      <div class="flex flex-col w-full ml-2 visualization-card">
-        <div class="mx-2 mt-2 visualization-title">
-          Systems
-          <!--
-            <SystemsVisualization
-              class="mx-2 mb-2"
-              :applicationId="application.id"
-            />
-            -->
-        </div>
+      <div class="w-2/6 py-2 mx-2 ">
+        <ComputingResourceSummary :showButton="false" />
       </div>
 
-      <div class="flex flex-col w-full ml-2 visualization-card">
-        <div class="mx-2 mt-2 visualization-title">
-          Changes
-        </div>
-        <div class="mx-4 my-1">
-          <ChangeSetCounts
-            :changeSetCounts="applicationEntry.changeSetCounts"
-          />
-        </div>
+      <div class="w-1/6 py-2 mx-2 ">
+        <ChangesSummary :showSelectedChangesetData="false" />
       </div>
 
       <div class="self-center w-6">
@@ -61,7 +34,11 @@ import { IApplicationListEntry } from "@/store/modules/application";
 import { RawLocation } from "vue-router";
 
 import { ChevronRightIcon } from "vue-feather-icons";
-import ChangeSetCounts from "@/molecules/ChangeSetCounts.vue";
+
+import ActivitySummary from "@/molecules/ActivitySummary.vue";
+import ServicesSummary from "@/molecules/ServicesSummary.vue";
+import ComputingResourceSummary from "@/molecules/ComputingResourceSummary.vue";
+import ChangesSummary from "@/molecules/ChangesSummary.vue";
 
 export default Vue.extend({
   name: "ApplicationDetailCard",
@@ -75,7 +52,10 @@ export default Vue.extend({
   },
   components: {
     ChevronRightIcon,
-    ChangeSetCounts,
+    ActivitySummary,
+    ServicesSummary,
+    ComputingResourceSummary,
+    ChangesSummary,
   },
   computed: {
     application(): IApplicationListEntry["application"] {
