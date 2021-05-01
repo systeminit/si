@@ -3,24 +3,35 @@
     <div
       class="absolute shadow-md cursor-move node-container node"
       :id="id"
-      :class="[nodeIsSelected, nodeVisibility, nodeIsDeleted]"
+      :class="[
+        nodeIsSelected,
+        nodeVisibility,
+        nodeIsDeleted,
+        nodeInvalidEdgeCreating,
+      ]"
       v-bind:style="positionStyle"
       @mousedown="selectNode()"
     >
       <span
         :ref="`${id}.socket:input`"
         :id="`${id}.socket:input`"
+        :entityType="nodeObject.entityType"
+        :entityId="nodeObject.id"
+        :schematicKind="schematicKind"
         class="socket-input socket node"
       />
       <span
         :ref="`${id}.socket:output`"
         :id="`${id}.socket:output`"
+        :entityType="nodeObject.entityType"
+        :entityId="nodeObject.id"
+        :schematicKind="schematicKind"
         class="socket-output socket node"
       />
 
       <div class="flex flex-col node">
         <div class="flex flex-col text-white node">
-          <div class="node-title-bar node">
+          <div class="node-title-bar node" :class="nodeTitleBarClasses">
             <div
               class="mt-1 text-xs font-medium text-center node"
               :class="nodeTitleClasses"
@@ -29,8 +40,15 @@
             </div>
           </div>
 
-          <div class="mt-2 text-xs font-normal text-center node">
+          <div class="mt-2 mb-2 text-xs font-normal text-center node">
             {{ nodeObject.name }}
+          </div>
+          <div
+            class="ml-2 text-xs font-thin"
+            v-for="input in inputs"
+            :key="input.name"
+          >
+            {{ input.name }} {{ showArity(input.arity) }}
           </div>
         </div>
       </div>
@@ -43,10 +61,15 @@ import Vue, { PropType } from "vue";
 
 import { PanelEventBus } from "@/atoms/PanelEventBus";
 import { Cg2dCoordinate } from "@/api/sicg";
-import { ISchematicNode } from "@/api/sdf/model/schematic";
-import { IEntity } from "@/api/sdf/model/entity";
+import { ISchematicNode, SchematicKind } from "@/api/sdf/model/schematic";
+import { IEntity, Entity } from "@/api/sdf/model/entity";
 
 import _ from "lodash";
+import { SiEntity } from "si-entity";
+import { RegistryEntry, NodeKind, registry } from "si-registry";
+import { edgeCreating$ } from "@/observables";
+import { tap } from "rxjs/operators";
+import { Arity } from "si-registry/dist/registryEntry";
 
 type NodeLayoutUpdated = boolean;
 
@@ -61,6 +84,7 @@ interface IData {
   updated: number;
   nodeId: string;
   isVisible: boolean;
+  invalidEdgeCreating: boolean;
 }
 
 export default Vue.extend({
@@ -76,6 +100,11 @@ export default Vue.extend({
       type: Object as PropType<ISchematicNode>,
       required: true,
     },
+    schematicKind: {
+      type: String as PropType<SchematicKind>,
+      required: false,
+      default: undefined,
+    },
     graphViewerId: {
       type: String,
       required: true,
@@ -88,6 +117,50 @@ export default Vue.extend({
       nodeId: this.node.node.id,
       updated: 0,
       isVisible: false,
+      invalidEdgeCreating: false,
+    };
+  },
+  subscriptions: function(this: any): Record<string, any> {
+    return {
+      edgeCreating: edgeCreating$.pipe(
+        tap(edgeCreating => {
+          if (
+            edgeCreating &&
+            edgeCreating.schematicKind == this.schematicKind &&
+            edgeCreating.entityId != this.nodeObject.id
+          ) {
+            let schema: RegistryEntry = this.entity.schema();
+            let sourceEntitySchema = registry[edgeCreating.entityType];
+            if (!sourceEntitySchema) {
+              return false;
+            }
+
+            let hasValidInput = _.find(schema.inputs, input => {
+              if (this.schematicKind == SchematicKind.Deployment) {
+                return (
+                  input.edgeKind == "deployment" &&
+                  _.includes(input.types, edgeCreating.entityType)
+                );
+              } else if (this.schematicKind == SchematicKind.Component) {
+                return (
+                  input.edgeKind == "configures" &&
+                  (_.includes(input.types, edgeCreating.entityType) ||
+                    (input.types == "implementations" &&
+                      _.includes(
+                        sourceEntitySchema.implements,
+                        this.nodeObject.entityType,
+                      )))
+                );
+              }
+            });
+            if (!hasValidInput) {
+              this.invalidEdgeCreating = true;
+            }
+          } else {
+            this.invalidEdgeCreating = false;
+          }
+        }),
+      ),
     };
   },
   mounted: function() {
@@ -103,6 +176,15 @@ export default Vue.extend({
     // console.log("updated")
   },
   methods: {
+    showArity(arity: Arity): string {
+      if (Arity.One == arity) {
+        return "1";
+      } else if (Arity.Many == arity) {
+        return "*";
+      } else {
+        return "";
+      }
+    },
     async selectNode() {
       this.$emit("selectNode", this.node);
     },
@@ -137,6 +219,21 @@ export default Vue.extend({
     },
   },
   computed: {
+    entity(): Entity {
+      return SiEntity.fromJson(this.node.object as Entity);
+    },
+    inputs(): RegistryEntry["inputs"] {
+      let inputs = _.filter(this.entity.schema().inputs, input => {
+        if (this.schematicKind == SchematicKind.Deployment) {
+          return input.edgeKind == "deployment";
+        } else if (this.schematicKind == SchematicKind.Component) {
+          return input.edgeKind == "configures";
+        } else {
+          return false;
+        }
+      });
+      return inputs;
+    },
     positionStyle(): Record<string, string> {
       this.updated;
       const position = this.node?.node.positions[this.positionCtx];
@@ -173,6 +270,13 @@ export default Vue.extend({
       }
       return {};
     },
+    nodeInvalidEdgeCreating(): Record<string, boolean> {
+      if (this.invalidEdgeCreating) {
+        return { "opacity-50": true };
+      } else {
+        return { "opacity-50": false };
+      }
+    },
     nodeIsDeleted(): Record<string, boolean> {
       if (this.node.object.siStorable?.deleted) {
         return { "node-is-deleted ": true };
@@ -191,8 +295,20 @@ export default Vue.extend({
       //@ts-ignore
       return this.node.object;
     },
+    nodeTitleBarClasses(): Record<string, boolean> {
+      let response: Record<string, boolean> = {};
+      let schema = this.entity.schema();
+      if (schema.nodeKind == NodeKind.Concept) {
+        response["node-concept"] = true;
+      } else if (schema.nodeKind == NodeKind.Implementation) {
+        response["node-implementation"] = true;
+      } else if (schema.nodeKind == NodeKind.Concrete) {
+        response["node-concrete"] = true;
+      }
+      return response;
+    },
     nodeTitleClasses(): Record<string, boolean> {
-      return {
+      let response: Record<string, boolean> = {
         "input-border-gold": true,
         border: true,
         "border-t-0": true,
@@ -200,6 +316,16 @@ export default Vue.extend({
         "border-r-0": true,
         "border-l-0": true,
       };
+
+      let schema = this.entity.schema();
+      if (schema.nodeKind == NodeKind.Concept) {
+        response["node-concept"] = true;
+      } else if (schema.nodeKind == NodeKind.Implementation) {
+        response["node-implementation"] = true;
+      } else if (schema.nodeKind == NodeKind.Concrete) {
+        response["node-concrete"] = true;
+      }
+      return response;
     },
   },
 });
@@ -209,7 +335,7 @@ export default Vue.extend({
 /*node size and color*/
 .node-container {
   width: 140px;
-  height: 100px;
+  min-height: 100px;
   background-color: #282e30;
   border-radius: 6px;
   border-width: 1px;
@@ -217,8 +343,19 @@ export default Vue.extend({
 }
 
 .node-title-bar {
-  background-color: #008ed2;
   border-radius: 4px 4px 0px 0px;
+}
+
+.node-concept {
+  background-color: #008e8e;
+}
+
+.node-implementation {
+  background-color: #aa11ff;
+}
+
+.node-concrete {
+  background-color: #008ed2;
 }
 
 .node-details {

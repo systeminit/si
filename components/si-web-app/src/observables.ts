@@ -232,3 +232,10 @@ export const nodePositionUpdated$ = new ReplaySubject<NodePositionUpdated | null
   1,
 );
 nodePositionUpdated$.next(null);
+
+export interface EdgeCreating {
+  entityType: string;
+  schematicKind: string;
+  entityId: string;
+}
+export const edgeCreating$ = new Subject<EdgeCreating | null>();

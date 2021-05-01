@@ -7,4 +7,16 @@ export const standardConceptInputs: Input[] = [
     edgeKind: "component",
     arity: Arity.Many,
   },
+  {
+    name: "poop",
+    types: ["service"],
+    edgeKind: "deployment",
+    arity: Arity.Many,
+  },
+  {
+    name: "implementations",
+    types: "implementations",
+    edgeKind: "configures",
+    arity: Arity.Many,
+  },
 ];

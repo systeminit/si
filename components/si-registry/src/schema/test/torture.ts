@@ -3,10 +3,12 @@ import {
   MenuCategory,
   ValidatorKind,
   SchematicKind,
+  NodeKind,
 } from "../../registryEntry";
 
 const torture: RegistryEntry = {
   entityType: "torture",
+  nodeKind: NodeKind.Concrete,
   ui: {
     menuCategory: MenuCategory.Application,
     menuDisplayName: "torture test",

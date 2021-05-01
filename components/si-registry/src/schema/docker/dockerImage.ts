@@ -3,24 +3,19 @@ import {
   MenuCategory,
   ValidatorKind,
   SchematicKind,
-  Arity,
+  NodeKind,
+  //Arity,
 } from "../../registryEntry";
 
 const dockerImage: RegistryEntry = {
   entityType: "dockerImage",
+  nodeKind: NodeKind.Concrete,
   ui: {
     menuCategory: MenuCategory.Docker,
     menuDisplayName: "docker image",
     schematicKinds: [SchematicKind.Component],
   },
-  inputs: [
-    {
-      name: "image",
-      types: ["service"],
-      edgeKind: "configures",
-      arity: Arity.One,
-    },
-  ],
+  inputs: [],
   properties: [
     {
       type: "string",
