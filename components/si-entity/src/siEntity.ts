@@ -1,4 +1,5 @@
 import _ from "lodash";
+import yaml from "js-yaml";
 import {
   Prop,
   findProp,
@@ -18,6 +19,7 @@ import {
   PropObject,
   ItemPropObject,
   RegistryEntry,
+  CodeKind,
 } from "si-registry/dist/registryEntry";
 
 export interface ISiEntity {
@@ -33,6 +35,9 @@ export interface ISiEntity {
   };
   properties: {
     [systemId: string]: Record<string, any>;
+  };
+  code: {
+    [systemId: string]: string;
   };
   siStorable?: SiStorable;
 }
@@ -130,6 +135,9 @@ export class SiEntity implements ISiEntity {
   properties: {
     [systemId: string]: Record<string, any>;
   };
+  code: {
+    [systemId: string]: string;
+  };
   siStorable?: ISiEntity["siStorable"];
 
   constructor({ entityType }: { entityType: string }) {
@@ -142,6 +150,7 @@ export class SiEntity implements ISiEntity {
     this.tombstones = [];
     this.arrayMeta = {};
     this.properties = {};
+    this.code = {};
   }
 
   static fromJson(input: ISiEntity): SiEntity {
@@ -398,6 +407,47 @@ export class SiEntity implements ISiEntity {
     return newProperties;
   }
 
+  computeCode(): void {
+    const schema = this.schema();
+    if (schema.code && schema.code.kind == CodeKind.YAML) {
+      for (const system of Object.keys(this.properties)) {
+        const code = yaml.dump(this.properties[system], {
+          //["apiVersion", "kind", "metadata", "spec", "data"]
+          // -- this is probably not the most efficient implementation
+          // of this sort algorithm, but I'm getting tired. :)
+          sortKeys: (a, b): number => {
+            if (a == b) {
+              return 0;
+            } else if (a == "apiVersion") {
+              return -1;
+            } else if (b == "apiVersion") {
+              return 1;
+            } else if (a == "kind") {
+              return -1;
+            } else if (b == "kind") {
+              return 1;
+            } else if (a == "metadata") {
+              return -1;
+            } else if (b == "metadata") {
+              return 1;
+            } else if (a == "spec") {
+              return -1;
+            } else if (b == "spec") {
+              return 1;
+            } else if (a == "data") {
+              return -1;
+            } else if (b == "data") {
+              return 1;
+            } else {
+              return a < b ? -1 : a > b ? 1 : 0;
+            }
+          },
+        });
+        this.code[system] = `---\n${code}`;
+      }
+    }
+  }
+
   computeProperties(): void {
     const systems = _.uniq(
       _.filter(_.map(this.ops, "system"), (s) => s != "baseline"),
@@ -423,6 +473,7 @@ export class SiEntity implements ISiEntity {
     }
 
     this.properties = this.fixupArrays(newProperties);
+    this.computeCode();
   }
 
   set({

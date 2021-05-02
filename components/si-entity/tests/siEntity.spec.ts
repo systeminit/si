@@ -6,6 +6,7 @@ import {
   OpTombstone,
   OpUnset,
 } from "../src/siEntity";
+import yaml from "js-yaml";
 
 interface TestData {
   siAttr: SiEntity;
@@ -104,7 +105,7 @@ describe("siAttr", () => {
 
   describe("editFields", () => {
     test("returns an empty list if no properties", () => {
-      const { siAttr } = setupTest("service");
+      const { siAttr } = setupTest("application");
       const editFields = siAttr.editFields();
       expect(editFields).toEqual([]);
     });
@@ -1731,6 +1732,37 @@ describe("siAttr", () => {
           );
         });
       });
+    });
+  });
+
+  describe("computeCode", () => {
+    test("without a code kind set", () => {
+      const { siAttr } = setupTest("leftHandPath");
+      const op: OpSet = {
+        op: OpType.Set,
+        source: OpSource.Inferred,
+        path: ["simpleString"],
+        value: "thecrown",
+        system: "baseline",
+      };
+      siAttr.addOpSet(op);
+      siAttr.computeProperties();
+      expect(siAttr.code["baseline"]).toBeUndefined();
+    });
+
+    test("with a code kind set to YAML", () => {
+      const { siAttr } = setupTest("torture");
+      const op: OpSet = {
+        op: OpType.Set,
+        source: OpSource.Inferred,
+        path: ["standardString"],
+        value: "thecrown",
+        system: "baseline",
+      };
+      siAttr.addOpSet(op);
+      siAttr.computeProperties();
+      const code = "---\nstandardString: thecrown\n";
+      expect(siAttr.code["baseline"]).toBe(code);
     });
   });
 

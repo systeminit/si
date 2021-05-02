@@ -4,11 +4,13 @@ import {
   ValidatorKind,
   SchematicKind,
   NodeKind,
+  CodeKind,
 } from "../../registryEntry";
 
 const torture: RegistryEntry = {
   entityType: "torture",
   nodeKind: NodeKind.Concrete,
+  code: { kind: CodeKind.YAML },
   ui: {
     menuCategory: MenuCategory.Application,
     menuDisplayName: "torture test",
