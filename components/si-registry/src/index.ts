@@ -14,6 +14,7 @@ export {
   MenuCategory,
   Qualification,
   NodeKind,
+  CodeKind,
 } from "./registryEntry";
 export { workflows, Workflow, Step } from "./workflow";
 export { entityMenu, MenuCategoryItem } from "./menu";

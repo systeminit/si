@@ -227,6 +227,14 @@ export enum NodeKind {
   Concrete = "concrete",
 }
 
+export enum CodeKind {
+  YAML = "yaml",
+}
+
+export interface Code {
+  kind: CodeKind;
+}
+
 export interface RegistryEntry {
   entityType: string;
   nodeKind: NodeKind;
@@ -234,6 +242,7 @@ export interface RegistryEntry {
   implements?: string[];
   inputs: Input[];
   properties: Prop[];
+  code?: Code;
   qualifications?: Qualification[];
   commands?: Command[];
   actions?: Action[];

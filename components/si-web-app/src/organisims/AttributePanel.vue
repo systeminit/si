@@ -82,6 +82,11 @@
           :entity="entity"
           :diff="diff"
         />
+        <CodeViewer
+          v-else-if="activeView == 'code'"
+          :entity="entity"
+          :diff="diff"
+        />
         <QualificationViewer
           v-else-if="activeView == 'qualification'"
           :entity="entity"
@@ -89,7 +94,6 @@
           :starting="qualificationStart"
         />
         <ActionViewer v-else-if="activeView == 'action'" :entity="entity" />
-
         <div v-else>
           Not implemented
           <div>
@@ -139,7 +143,7 @@ import { Persister } from "@/api/persister";
 import AttributeViewer from "@/organisims/AttributeViewer.vue";
 import QualificationViewer from "@/organisims/QualificationViewer.vue";
 import ActionViewer from "@/organisims/ActionViewer.vue";
-//import CodeViewer from "@/organisims/CodeViewer.vue";
+import CodeViewer from "@/organisims/CodeViewer.vue";
 import {
   loadEntityForEdit,
   attributePanelEntityUpdates$,
@@ -193,6 +197,7 @@ export default Vue.extend({
     CheckSquareIcon,
     AttributeViewer,
     QualificationViewer,
+    CodeViewer,
     PlayIcon,
     ActionViewer,
   },

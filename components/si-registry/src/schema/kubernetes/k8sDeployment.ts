@@ -4,6 +4,7 @@ import {
   SchematicKind,
   NodeKind,
   Arity,
+  CodeKind,
 } from "../../registryEntry";
 
 const k8sDeployment: RegistryEntry = {
@@ -14,6 +15,7 @@ const k8sDeployment: RegistryEntry = {
     menuDisplayName: "k8sDeployment",
     schematicKinds: [SchematicKind.Component],
   },
+  code: { kind: CodeKind.YAML },
   inputs: [
     {
       name: "dockerImage",
@@ -28,7 +30,13 @@ const k8sDeployment: RegistryEntry = {
       arity: Arity.One,
     },
   ],
-  properties: [],
+  properties: [
+    { type: "string", name: "apiVersion" },
+    { type: "string", name: "kind" },
+    { type: "string", name: "spec" },
+    { type: "string", name: "data" },
+    { type: "string", name: "other" },
+  ],
 };
 
 export default k8sDeployment;

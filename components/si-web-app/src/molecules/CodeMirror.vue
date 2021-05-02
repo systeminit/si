@@ -1,5 +1,5 @@
 <template>
-  <div class="flex w-full h-auto" ref="cm" />
+  <div class="h-full" ref="cm" />
 </template>
 
 <style scoped>
