@@ -191,7 +191,7 @@ export default Vue.extend({
 
     let schematicUpdateCallback$ = schematicUpdated$.pipe(
       tap(payload => {
-        if (payload.schematicKind == SchematicKind.Deployment) {
+        if (payload.schematicKind == this.schematicKind) {
           this.schematic = payload.schematic;
         }
       }),

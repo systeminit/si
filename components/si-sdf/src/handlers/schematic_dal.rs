@@ -83,55 +83,15 @@ pub async fn get_application_system_schematic(
         }
     }
 
-    // The backend should send an error message to the front that tells it to de-select!
-    let mut schematic = match request.schematic_kind {
-        SchematicKind::Deployment => Schematic::get_deployment(
-            &txn,
-            &request.root_object_id,
-            request.change_set_id.clone(),
-            request.edit_session_id.clone(),
-        )
-        .await
-        .map_err(HandlerError::from)?,
-
-        SchematicKind::Component => Schematic::get_component(
-            &txn,
-            &request.root_object_id,
-            request.change_set_id.clone(),
-            request.edit_session_id.clone(),
-        )
-        .await
-        .map_err(HandlerError::from)?,
-
-        _ => {
-            Schematic::get(
-                &txn,
-                &request.root_object_id,
-                &request.workspace_id,
-                request.change_set_id.clone(),
-                request.edit_session_id.clone(),
-                vec![
-                    EdgeKind::Configures,
-                    EdgeKind::Deployment,
-                    EdgeKind::Implementation,
-                ],
-                // vec![EdgeKind::Configures, EdgeKind::Deployment, EdgeKind::Implementation],
-            )
-            .await
-            .map_err(HandlerError::from)?
-        }
-    };
-
-    if request.include_root_node == false {
-        let root_node = Node::get_for_object_id(
-            &txn,
-            &request.root_object_id,
-            request.change_set_id.as_ref(),
-        )
-        .await
-        .map_err(HandlerError::from)?;
-        schematic.prune_node(root_node.id);
-    }
+    let schematic = Schematic::get_by_schematic_kind(
+        &txn,
+        &request.schematic_kind,
+        &request.root_object_id,
+        request.change_set_id.clone(),
+        request.edit_session_id.clone(),
+    )
+    .await
+    .map_err(HandlerError::from)?;
 
     txn.commit().await.map_err(HandlerError::from)?;
 
@@ -148,6 +108,7 @@ pub async fn get_application_system_schematic(
 pub struct ConnectionNodeReference {
     pub node_id: String,
     pub socket_id: String,
+    pub socket_name: String,
     pub node_kind: String,
 }
 
@@ -223,7 +184,7 @@ pub async fn connection_create(
     let tail_vertex = Vertex::new(
         &request.connection.source.node_id,
         &source_node.object_id,
-        &request.connection.source.socket_id,
+        &request.connection.source.socket_name,
         &request.connection.source.node_kind,
     );
 
@@ -233,7 +194,7 @@ pub async fn connection_create(
     let head_vertex = Vertex::new(
         &request.connection.destination.node_id,
         &destination_node.object_id,
-        &request.connection.destination.socket_id,
+        &request.connection.destination.socket_name,
         &request.connection.destination.node_kind,
     );
 
@@ -255,51 +216,15 @@ pub async fn connection_create(
     .await
     .map_err(HandlerError::from)?;
 
-    let mut schematic = match request.schematic_kind {
-        SchematicKind::Deployment => Schematic::get_deployment(
-            &txn,
-            &request.root_object_id,
-            Some(request.change_set_id.clone()),
-            Some(request.edit_session_id.clone()),
-        )
-        .await
-        .map_err(HandlerError::from)?,
-
-        SchematicKind::Component => Schematic::get_component(
-            &txn,
-            &request.root_object_id,
-            Some(request.change_set_id.clone()),
-            Some(request.edit_session_id.clone()),
-        )
-        .await
-        .map_err(HandlerError::from)?,
-
-        _ => {
-            Schematic::get(
-                &txn,
-                &request.root_object_id,
-                &request.workspace_id,
-                Some(request.change_set_id.clone()),
-                Some(request.edit_session_id.clone()),
-                vec![
-                    EdgeKind::Configures,
-                    EdgeKind::Deployment,
-                    EdgeKind::Implementation,
-                ],
-                // vec![EdgeKind::Configures, EdgeKind::Deployment, EdgeKind::Implementation],
-            )
-            .await
-            .map_err(HandlerError::from)?
-        }
-    };
-
-    if request.schematic_kind == SchematicKind::Deployment {
-        let root_node =
-            Node::get_for_object_id(&txn, &request.root_object_id, Some(&request.change_set_id))
-                .await
-                .map_err(HandlerError::from)?;
-        schematic.prune_node(root_node.id);
-    }
+    let schematic = Schematic::get_by_schematic_kind(
+        &txn,
+        &request.schematic_kind,
+        &request.root_object_id,
+        Some(request.change_set_id.clone()),
+        Some(request.edit_session_id.clone()),
+    )
+    .await
+    .map_err(HandlerError::from)?;
 
     txn.commit().await.map_err(HandlerError::from)?;
     nats.commit().await.map_err(HandlerError::from)?;
@@ -398,7 +323,7 @@ pub async fn node_create_for_application(
     .await
     .map_err(HandlerError::from)?;
 
-    let schematic_node = SchematicNode::new(&txn, node.clone(), serde_json::json![entity])
+    let schematic_node = SchematicNode::new(&txn, node.clone(), entity.clone())
         .await
         .map_err(HandlerError::from)?;
 
@@ -418,9 +343,7 @@ pub async fn node_create_for_application(
     .await
     .map_err(HandlerError::from)?;
 
-    // WE should 100% eliminate using any entity shit here at all - we should
-    // always be talking nodes. Whatevs.
-    let mut schematic = match request.schematic_kind {
+    let schematic = match request.schematic_kind {
         SchematicKind::Deployment => {
             let _edge = Edge::new(
                 &txn,
@@ -434,8 +357,9 @@ pub async fn node_create_for_application(
             .await
             .map_err(HandlerError::from)?;
 
-            Schematic::get_deployment(
+            Schematic::get_by_schematic_kind(
                 &txn,
+                &request.schematic_kind,
                 &application_entity.id,
                 Some(request.change_set_id.clone()),
                 Some(request.edit_session_id.clone()),
@@ -465,9 +389,9 @@ pub async fn node_create_for_application(
                 )
                 .await
                 .map_err(HandlerError::from)?;
-
-                Schematic::get_component(
+                Schematic::get_by_schematic_kind(
                     &txn,
+                    &request.schematic_kind,
                     &deployment_entity.id,
                     Some(request.change_set_id.clone()),
                     Some(request.edit_session_id.clone()),
@@ -478,27 +402,11 @@ pub async fn node_create_for_application(
                 return Err(HandlerError::MissingDeploymentSelectedEntityId.into());
             }
         }
-        _ => Schematic::get(
-            &txn,
-            &request.application_id,
-            &request.workspace_id,
-            Some(request.change_set_id.clone()),
-            Some(request.edit_session_id.clone()),
-            vec![
-                EdgeKind::Configures,
-                EdgeKind::Deployment,
-                EdgeKind::Implementation,
-            ],
-        )
-        .await
-        .map_err(HandlerError::from)?,
+        _ => unreachable!(),
     };
 
-    let root_node =
-        Node::get_for_object_id(&txn, &request.application_id, Some(&request.change_set_id))
-            .await
-            .map_err(HandlerError::from)?;
-    schematic.prune_node(root_node.id);
+    dbg!("returning schematic from create");
+    dbg!(&schematic);
 
     txn.commit().await.map_err(HandlerError::from)?;
     nats.commit().await.map_err(HandlerError::from)?;
@@ -646,10 +554,9 @@ pub async fn delete_node(
         .await
         .map_err(HandlerError::from)?;
 
-    let mut schematic = Schematic::get(
+    let schematic = Schematic::get(
         &txn,
         &request.application_id,
-        &request.workspace_id,
         Some(request.change_set_id.clone()),
         Some(request.edit_session_id),
         vec![
@@ -661,18 +568,10 @@ pub async fn delete_node(
     .await
     .map_err(HandlerError::from)?;
 
-    let root_node =
-        Node::get_for_object_id(&txn, &request.application_id, Some(&request.change_set_id))
-            .await
-            .map_err(HandlerError::from)?;
-    schematic.prune_node(root_node.id);
-
     txn.commit().await.map_err(HandlerError::from)?;
     nats.commit().await.map_err(HandlerError::from)?;
 
-    let reply = DeleteNodeReply {
-        schematic: schematic,
-    };
+    let reply = DeleteNodeReply { schematic };
 
     Ok(warp::reply::json(&reply))
 }

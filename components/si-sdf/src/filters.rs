@@ -138,6 +138,7 @@ pub fn attribute_dal(
 ) -> BoxedFilter<(impl warp::Reply,)> {
     attribute_dal_get_entity(pg.clone())
         .or(attribute_dal_get_entity_list(pg.clone()))
+        .or(attribute_dal_get_input_labels(pg.clone()))
         .or(attribute_dal_update_entity(
             pg.clone(),
             nats_conn.clone(),
@@ -163,6 +164,16 @@ pub fn attribute_dal_get_entity_list(pg: PgPool) -> BoxedFilter<(impl warp::Repl
         .and(warp::header::<String>("authorization"))
         .and(warp::query::<handlers::attribute_dal::GetEntityListRequest>())
         .and_then(handlers::attribute_dal::get_entity_list)
+        .boxed()
+}
+
+pub fn attribute_dal_get_input_labels(pg: PgPool) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("attributeDal" / "getInputLabels")
+        .and(warp::get())
+        .and(with_pg(pg))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::query::<handlers::attribute_dal::GetInputLabelsRequest>())
+        .and_then(handlers::attribute_dal::get_input_labels)
         .boxed()
 }
 

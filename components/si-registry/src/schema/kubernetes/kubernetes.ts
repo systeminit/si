@@ -3,18 +3,27 @@ import {
   MenuCategory,
   SchematicKind,
   NodeKind,
+  Arity,
 } from "../../registryEntry";
 import { standardConceptInputs } from "../include/standardConceptInputs";
 
-const service: RegistryEntry = {
-  entityType: "service",
+const kubernetes: RegistryEntry = {
+  entityType: "kubernetes",
   nodeKind: NodeKind.Concept,
   ui: {
     menuCategory: MenuCategory.Application,
-    menuDisplayName: "service",
+    menuDisplayName: "kubernetes",
     schematicKinds: [SchematicKind.Deployment],
   },
-  inputs: [...standardConceptInputs],
+  inputs: [
+    ...standardConceptInputs,
+    {
+      name: "service",
+      types: ["service"],
+      edgeKind: "deployment",
+      arity: Arity.Many,
+    },
+  ],
   properties: [
     {
       type: "string",
@@ -27,4 +36,4 @@ const service: RegistryEntry = {
   ],
 };
 
-export default service;
+export default kubernetes;

@@ -38,8 +38,8 @@ export function entityMenu(filter: SchematicKind[]): MenuList {
     // Let us never speak of this again.
     if (filter.length > 0) {
       if (schema.ui.schematicKinds) {
-        // @ts-ignore
         let skipThisEntry = true;
+        // @ts-ignore
         for (const s of schema.ui.schematicKinds) {
           for (const f of filter) {
             if (f == s) {

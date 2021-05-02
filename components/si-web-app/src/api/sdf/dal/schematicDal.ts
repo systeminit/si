@@ -57,6 +57,7 @@ export async function getApplicationSystemSchematic(
 export interface ConnectionNodeReference {
   nodeId: string;
   socketId: string;
+  socketName?: string;
   nodeKind: string;
 }
 

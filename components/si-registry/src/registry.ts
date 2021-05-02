@@ -13,6 +13,8 @@ import dockerImage from "./schema/docker/dockerImage";
 import kubernetesService from "./schema/kubernetes/kubernetesService";
 import k8sDeployment from "./schema/kubernetes/k8sDeployment";
 import k8sNamespace from "./schema/kubernetes/k8sNamespace";
+import kubernetes from "./schema/kubernetes/kubernetes";
+import awsEks from "./schema/aws/awsEks";
 
 export const registry: { [entityType: string]: RegistryEntry } = {
   leftHandPath,
@@ -25,6 +27,8 @@ export const registry: { [entityType: string]: RegistryEntry } = {
   kubernetesService,
   k8sDeployment,
   k8sNamespace,
+  kubernetes,
+  awsEks,
 };
 
 export function findProp(path: string[]): Prop | undefined {

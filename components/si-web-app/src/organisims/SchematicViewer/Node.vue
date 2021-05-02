@@ -39,9 +39,11 @@
               {{ nodeObject.entityType }}
             </div>
           </div>
-
           <div class="mt-2 mb-2 text-xs font-normal text-center node">
             {{ nodeObject.name }}
+          </div>
+          <div v-if="showImplementation" class="text-xs font-thin text-center">
+            {{ selectedImplementationField }}
           </div>
           <div
             class="ml-2 text-xs font-thin"
@@ -67,9 +69,17 @@ import { IEntity, Entity } from "@/api/sdf/model/entity";
 import _ from "lodash";
 import { SiEntity } from "si-entity";
 import { RegistryEntry, NodeKind, registry } from "si-registry";
-import { edgeCreating$ } from "@/observables";
-import { tap } from "rxjs/operators";
+import {
+  edgeCreating$,
+  system$,
+  workspace$,
+  changeSet$,
+  editSession$,
+} from "@/observables";
+import { tap, pluck, switchMap } from "rxjs/operators";
 import { Arity } from "si-registry/dist/registryEntry";
+import { combineLatest, of, from } from "rxjs";
+import { IGetEntityRequest, AttributeDal } from "@/api/sdf/dal/attributeDal";
 
 type NodeLayoutUpdated = boolean;
 
@@ -81,10 +91,10 @@ export interface NodePositionUpdateEvent {
 
 interface IData {
   id: string;
-  updated: number;
   nodeId: string;
   isVisible: boolean;
   invalidEdgeCreating: boolean;
+  selectedImplementationField: string | null;
 }
 
 export default Vue.extend({
@@ -115,13 +125,62 @@ export default Vue.extend({
     return {
       id: this.graphViewerId + "." + this.node.node.id,
       nodeId: this.node.node.id,
-      updated: 0,
       isVisible: false,
       invalidEdgeCreating: false,
+      selectedImplementationField: null,
     };
   },
   subscriptions: function(this: any): Record<string, any> {
+    let entity$ = this.$watchAsObservable("entity", { immediate: true }).pipe(
+      pluck("newValue"),
+    );
+    let selectedImplementation$ = combineLatest(
+      system$,
+      entity$,
+      workspace$,
+      changeSet$,
+      editSession$,
+    ).pipe(
+      switchMap(([system, entity, workspace, changeSet, editSession]) => {
+        if (
+          workspace &&
+          entity &&
+          system &&
+          entity.properties[system.id] &&
+          entity.properties[system.id]["implementation"]
+        ) {
+          let selectedOptionEntityId =
+            // @ts-ignore
+            entity.properties[system.id]["implementation"];
+          let request: IGetEntityRequest = {
+            workspaceId: workspace.id,
+            entityId: selectedOptionEntityId as string,
+          };
+          if (changeSet) {
+            request.changeSetId = changeSet.id;
+          }
+          if (editSession) {
+            request.editSessionId = editSession.id;
+          }
+          return AttributeDal.getEntity(request);
+        } else {
+          return Promise.resolve({
+            error: { code: 42, message: "cannot get implementation entity" },
+          });
+        }
+      }),
+      tap(reply => {
+        if (reply.error) {
+          if (reply.error.code == 42 || reply.error.code == 406) {
+            this.selectedImplementationField = null;
+          }
+        } else {
+          this.selectedImplementationField = `${reply.entity.entityType}: ${reply.entity.name}`;
+        }
+      }),
+    );
     return {
+      selectedImplemenation: selectedImplementation$,
       edgeCreating: edgeCreating$.pipe(
         tap(edgeCreating => {
           if (
@@ -169,12 +228,6 @@ export default Vue.extend({
   beforeDestroy() {
     this.deRegisterEvents();
   },
-  beforeUpdate: function() {
-    this.updated++;
-  },
-  updated: function() {
-    // console.log("updated")
-  },
   methods: {
     showArity(arity: Arity): string {
       if (Arity.One == arity) {
@@ -219,6 +272,12 @@ export default Vue.extend({
     },
   },
   computed: {
+    showImplementation(): boolean {
+      return (
+        !_.isNull(this.selectedImplementationField) &&
+        this.schematicKind == SchematicKind.Deployment
+      );
+    },
     entity(): Entity {
       return SiEntity.fromJson(this.node.object as Entity);
     },
@@ -235,7 +294,6 @@ export default Vue.extend({
       return inputs;
     },
     positionStyle(): Record<string, string> {
-      this.updated;
       const position = this.node?.node.positions[this.positionCtx];
 
       if (this.node?.node.positions[this.positionCtx]) {

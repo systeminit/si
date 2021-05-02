@@ -14,6 +14,7 @@ const torture: RegistryEntry = {
     menuDisplayName: "torture test",
     schematicKinds: [SchematicKind.Component, SchematicKind.Deployment],
   },
+  inputs: [],
   properties: [
     {
       type: "string",
