@@ -60,13 +60,9 @@
     </div>
 
     <div class="w-full h-full workflow-runs">
-      <div
-        v-if="schema && schema.qualifications"
-        class="flex flex-col w-full mt-6"
-      >
+      <div class="flex flex-col w-full mt-6">
         <WorkflowRun
           v-for="(data, index) in workflowRuns"
-          ref="WorkflowRun"
           class="mx-4 drop-shadow-xl"
           :key="index"
           :workflowRun="data.workflowRun"

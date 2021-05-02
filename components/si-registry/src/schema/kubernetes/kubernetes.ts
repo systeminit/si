@@ -7,8 +7,8 @@ import {
 } from "../../registryEntry";
 import { standardConceptInputs } from "../include/standardConceptInputs";
 
-const kubernetes: RegistryEntry = {
-  entityType: "kubernetes",
+const kubernetesCluster: RegistryEntry = {
+  entityType: "kubernetesCluster",
   nodeKind: NodeKind.Concept,
   ui: {
     menuCategory: MenuCategory.Application,
@@ -36,4 +36,4 @@ const kubernetes: RegistryEntry = {
   ],
 };
 
-export default kubernetes;
+export default kubernetesCluster;

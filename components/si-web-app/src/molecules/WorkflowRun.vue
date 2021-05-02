@@ -79,7 +79,6 @@
       <div v-show="summaryVisible() || didRun">
         <WorkflowStep
           v-for="(data, index) in workflowSteps"
-          ref="WorkflowStep"
           :key="index"
           :step="data.step"
           :stepEntities="data.stepEntities"
@@ -161,7 +160,7 @@ export default Vue.extend({
       return `(${month}/${day}/${year} - ${hour}:${minute})`;
     },
     formatName(name: string): String {
-      return _.capitalize(name.split(":")[1]);
+      return _.capitalize(name);
     },
     timeDelta(t1: string, t2: string): string {
       return SiTime.timeDelta(t1, t2);

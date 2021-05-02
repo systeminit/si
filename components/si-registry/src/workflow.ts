@@ -164,12 +164,15 @@ export enum StepKind {
   Workflow = "workflow",
 }
 
+// NOTE: Eventually, this needs to be expanded to allow for totally arbitrary selection
+// criteria. For now, though, we can just rely on the fact that there is always a root
+// selected node when we trigger the worfklow!
 export interface Selector {
-  query?: Query;
-  byId?: VariableScalar;
-  filter?: Filter;
-  depth?: "immediate" | "all" | "none";
-  edgeKind?: "configures" | "deployment" | string;
+  types?: string[];
+  fromProperty?: string[];
+  depth?: "immediate" | "all";
+  edgeKind?: "configures" | "deployment";
+  direction?: "input" | "output";
 }
 
 export interface StepBase {
@@ -238,40 +241,152 @@ export const universalDeploy: Workflow = {
       strategy: { kind: VariableKind.String, value: "linear" },
       failIfMissing: { kind: VariableKind.Bool, value: false },
     },
-    //{
-    //  kind: StepKind.Action,
-    //  inputs: {
-    //    name: { kind: VariableKind.String, value: "universal:deploy" },
-    //  },
-    //  selector: {
-    //    byId: {
-    //      kind: VariableKind.Context,
-    //      path: ["entity", "id"],
-    //    },
-    //    //query: {
-    //    //  items: [
-    //    //    {
-    //    //      expression: {
-    //    //        field: "id",
-    //    //        value: {
-    //    //          kind: VariableKind.Context,
-    //    //          path: ["entity", "id"],
-    //    //        },
-    //    //        comparison: Comparison.Equals,
-    //    //        fieldType: FieldType.String,
-    //    //      },
-    //    //    },
-    //    //  ],
-    //    //},
-    //    depth: "immediate",
-    //    edgeKind: "configures",
-    //  },
-    //  strategy: { kind: VariableKind.String, value: "linear" },
-    //  failIfMissing: { kind: VariableKind.Bool, value: false },
-    //},
+  ],
+};
+
+export const serviceDeploy: Workflow = {
+  name: "service:deploy",
+  kind: WorkflowKind.Action,
+  title: "Service Deployment",
+  description: "Deploy services",
+  steps: [
+    {
+      kind: StepKind.Action,
+      inputs: {
+        name: { kind: VariableKind.String, value: "deploy" },
+      },
+      selector: {
+        edgeKind: "deployment",
+        depth: "immediate",
+        direction: "output",
+      },
+    },
+    {
+      kind: StepKind.Action,
+      inputs: {
+        name: { kind: VariableKind.String, value: "deploy" },
+      },
+      selector: {
+        fromProperty: ["implementation"],
+      },
+    },
+  ],
+};
+
+export const kubernetesServiceDeploy: Workflow = {
+  name: "kubernetesService:deploy",
+  kind: WorkflowKind.Action,
+  title: "Kubernetes Service Deployment Implementation",
+  description: "Deploy Kubernetes Objects",
+  steps: [
+    // This is where the kubernetes deployment order will go. See
+    // next section!
+  ],
+};
+
+// This order taken from Helm.
+// https://github.com/helm/helm/blob/484d43913f97292648c867b56768775a55e4bba6/pkg/releaseutil/kind_sorter.go/
+//
+// It is published under the Apache license.
+const k8sTypes = [
+  "k8sNamespace",
+  "k8sNetworkPolicy",
+  "k8sResourceQuota",
+  "k8sLimitRange",
+  "k8sPodSecurityPolicy",
+  "k8sPodDisruptionBudget",
+  "k8sSecret",
+  "k8sConfigMap",
+  "k8sStorageClass",
+  "k8sPersistentVolume",
+  "k8sPersistentVolumeClaim",
+  "k8sServiceAccount",
+  "k8sCustomResourceDefinition",
+  "k8sClusterRole",
+  "k8sClusterRoleList",
+  "k8sClusterRoleBinding",
+  "k8sClusterRoleBindingList",
+  "k8sRole",
+  "k8sRoleList",
+  "k8sRoleBinding",
+  "k8sRoleBindingList",
+  "k8sService",
+  "k8sDaemonSet",
+  "k8sPod",
+  "k8sReplicationController",
+  "k8sReplicaSet",
+  "k8sDeployment",
+  "k8sHorizontalPodAutoscaler",
+  "k8sStatefulSet",
+  "k8sJob",
+  "k8sCronJob",
+  "k8sIngress",
+  "k8sAPIService",
+];
+for (const k8sType of k8sTypes) {
+  kubernetesServiceDeploy.steps.push({
+    kind: StepKind.Action,
+    inputs: {
+      name: { kind: VariableKind.String, value: "apply" },
+    },
+    selector: {
+      edgeKind: "configures",
+      depth: "all",
+      direction: "input",
+      types: [k8sType],
+    },
+  });
+}
+
+// Oh shit, it's the same!
+export const kubernetesClusterDeploy: Workflow = {
+  name: "kubernetesCluster:deploy",
+  kind: WorkflowKind.Action,
+  title: "Kubernetes Cluster Deployment",
+  description: "Deploy a Kubernetes Cluster",
+  steps: [
+    {
+      kind: StepKind.Action,
+      inputs: {
+        name: { kind: VariableKind.String, value: "deploy" },
+      },
+      selector: {
+        edgeKind: "deployment",
+        depth: "immediate",
+        direction: "output",
+      },
+    },
+    {
+      kind: StepKind.Action,
+      inputs: {
+        name: { kind: VariableKind.String, value: "deploy" },
+      },
+      selector: {
+        fromProperty: ["implementation"],
+      },
+    },
+  ],
+};
+
+export const kubernetesApply: Workflow = {
+  name: "kubernetesApply",
+  kind: WorkflowKind.Action,
+  title: "Kubernetes Apply",
+  description: "Apply some stuff to a Kubernetes Cluster",
+  steps: [
+    {
+      kind: StepKind.Command,
+      inputs: {
+        name: { kind: VariableKind.String, value: "apply" },
+      },
+    },
   ],
 };
 
 export const workflows: Record<string, Workflow> = {
+  serviceDeploy,
+  kubernetesServiceDeploy,
+  kubernetesClusterDeploy,
   universalDeploy,
+  kubernetesApply,
 };

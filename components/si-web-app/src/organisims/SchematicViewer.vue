@@ -1417,6 +1417,7 @@ export default Vue.extend({
         return (
           input.edgeKind == connectionKind &&
           (_.includes(input.types, sourceEntity.entityType) ||
+            input.types == "dependencies" ||
             (input.types == "implementations" &&
               _.includes(
                 sourceEntitySchema.implements,

@@ -7,4 +7,10 @@ export const standardConceptInputs: Input[] = [
     edgeKind: "configures",
     arity: Arity.Many,
   },
+  {
+    name: "dependencies",
+    types: "dependencies",
+    edgeKind: "configures",
+    arity: Arity.Many,
+  },
 ];

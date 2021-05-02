@@ -5,6 +5,7 @@ import {
   SchematicKind,
   NodeKind,
   CodeKind,
+  Arity,
 } from "../../registryEntry";
 
 const torture: RegistryEntry = {
@@ -16,7 +17,14 @@ const torture: RegistryEntry = {
     menuDisplayName: "torture test",
     schematicKinds: [SchematicKind.Component, SchematicKind.Deployment],
   },
-  inputs: [],
+  inputs: [
+    {
+      name: "torture",
+      edgeKind: "configures",
+      arity: Arity.Many,
+      types: ["torture"],
+    },
+  ],
   properties: [
     {
       type: "string",

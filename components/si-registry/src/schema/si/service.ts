@@ -25,6 +25,7 @@ const service: RegistryEntry = {
       },
     },
   ],
+  actions: [{ name: "deploy" }],
 };
 
 export default service;
