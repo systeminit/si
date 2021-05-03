@@ -91,6 +91,10 @@ export default Vue.extend({
                     name: "schematic",
                     type: "panel",
                   },
+                  {
+                    name: "schematic",
+                    type: "panel",
+                  },
                 ],
               },
               {
@@ -150,7 +154,7 @@ export default Vue.extend({
       }
       if (pc) {
         if (pc.panels.length < 2) {
-          pc.panels.push({ name: "crikey", type: "panel" });
+          pc.panels.push({ name: "schematic", type: "panel" });
         }
       }
       PanelEventBus.$emit("panel-created", event);

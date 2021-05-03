@@ -182,6 +182,16 @@ export default Vue.extend({
         e.preventDefault();
         this.handleBackspace("keyUp");
       }
+
+      // if (e.key === "f") {
+      //   e.preventDefault();
+      //   this.handleKeyF();
+      // }
+
+      // if (e.key === "a") {
+      //   e.preventDefault();
+      //   this.handleKeyA();
+      // }
     },
     handleSpacebar(e: KeyboardEventKind) {
       if (e == "keyDown") {
@@ -201,18 +211,26 @@ export default Vue.extend({
     spacebarUp(): void {
       if (this.isPanning) {
         this.isPanning = false;
-      } else {
-        for (var c of this.eligibleContexts) {
-          if (_.startsWith(c, "panel")) {
-            let e: ShortcutUpdateEvent = {
-              action: ShortcutActions["Maximize"],
-              panelId: c,
-            };
-            PanelEventBus.$emit("shortcuts-update-" + c, e);
-          }
-        }
       }
+      // Disable spacebar to maximize
+      // } else {
+      //   for (var c of this.eligibleContexts) {
+      //     if (_.startsWith(c, "panel")) {
+      //       let e: ShortcutUpdateEvent = {
+      //         action: ShortcutActions["Maximize"],
+      //         panelId: c,
+      //       };
+      //       PanelEventBus.$emit("shortcuts-update-" + c, e);
+      //     }
+      //   }
+      // }
       this.spacebarIsPressed = false;
+    },
+    handleKeyF(): void {
+      // frame selected
+    },
+    handleKeyA(): void {
+      // frame all
     },
     backspaceUp(): void {
       for (var c of this.eligibleContexts) {
