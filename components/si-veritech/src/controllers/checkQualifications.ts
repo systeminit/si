@@ -9,13 +9,7 @@ import { registry } from "si-registry";
 import intel from "../intel";
 
 export interface CheckQualificationsRequest {
-  entityType: string;
   entity: Entity;
-  resources: Resource[];
-  predecessors: {
-    entity: Entity;
-    resources: Resource[];
-  }[];
   systemId: string;
 }
 
@@ -34,8 +28,8 @@ export async function checkQualifications(
   debug("request message: %O", req);
   const request: CheckQualificationsRequest = JSON.parse(req);
   request.entity = SiEntity.fromJson(request.entity);
-  const schema = registry[request.entityType];
-  const intelFuncs = intel[request.entityType];
+  const schema = registry[request.entity.entityType];
+  const intelFuncs = intel[request.entity.entityType];
   const checkPromises: Promise<void>[] = [];
   if (schema) {
     if (schema.qualifications?.length) {
@@ -43,6 +37,7 @@ export async function checkQualifications(
       ws.send(JSON.stringify({ protocol: { validNames } }));
       for (const q of schema.qualifications) {
         if (
+          intelFuncs &&
           intelFuncs.checkQualifications &&
           intelFuncs.checkQualifications[q.name]
         ) {
@@ -97,6 +92,6 @@ export async function checkQualifications(
       .catch((e) => debug("got an error trying to finalize things", { e }));
   } else {
     debug("closing, schema not found");
-    ws.close(4004, `schema not found for ${request.entityType}; bug!`);
+    ws.close(4004, `schema not found for ${request.entity.entityType}; bug!`);
   }
 }

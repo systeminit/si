@@ -165,6 +165,7 @@ export class SiEntity implements ISiEntity {
     entity.arrayMeta = input.arrayMeta;
     entity.properties = input.properties;
     entity.siStorable = input.siStorable;
+    entity.code = input.code || {}; // whoops
     return entity;
   }
 
@@ -247,10 +248,10 @@ export class SiEntity implements ISiEntity {
   }
 
   addOpSet(op: OpSet): ValidateResult {
-    const result = this.validateProp(op);
-    if (result.errors) {
-      return result;
-    }
+    //const result = this.validateProp(op);
+    //if (result.errors) {
+    //  return result;
+    //}
     this.updateArrayMetaLength(op);
     _.remove(
       this.ops,
@@ -407,10 +408,24 @@ export class SiEntity implements ISiEntity {
     return newProperties;
   }
 
+  getCode(system: string): string | null {
+    if (this.schema().code) {
+      if (this.code[system]) {
+        return this.code[system];
+      } else {
+        return this.code["baseline"];
+      }
+    } else {
+      return null;
+    }
+  }
+
   computeCode(): void {
     const schema = this.schema();
+    const codeToGen = _.concat(["baseline"], Object.keys(this.properties));
     if (schema.code && schema.code.kind == CodeKind.YAML) {
-      for (const system of Object.keys(this.properties)) {
+      for (const system of codeToGen) {
+        console.log("I am fucking doing it", { system });
         const code = yaml.dump(this.properties[system], {
           //["apiVersion", "kind", "metadata", "spec", "data"]
           // -- this is probably not the most efficient implementation
@@ -579,6 +594,32 @@ export class SiEntity implements ISiEntity {
       //const p = checkProp.schema.itemProperty;
       //path.push("a0");
       //this.toEditField(editFields, { path, schema: p });
+    }
+  }
+
+  setDefaultProperties(): void {
+    for (const field of this.editFields()) {
+      if (
+        field.schema.type == "string" ||
+        field.schema.type == "number" ||
+        field.schema.type == "boolean"
+      ) {
+        if (field.schema.defaultValue) {
+          const op = this.valueOpForPath({
+            path: field.path,
+            system: "baseline",
+          });
+          if (!op) {
+            this.addOpSet({
+              op: OpType.Set,
+              path: field.path,
+              value: field.schema.defaultValue,
+              source: OpSource.Inferred,
+              system: "baseline",
+            });
+          }
+        }
+      }
     }
   }
 

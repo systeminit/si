@@ -169,7 +169,7 @@ export default Vue.extend({
       }
     },
     validate(): boolean {
-      if (this.entity && this.startValue != this.currentValue) {
+      if (this.entity) {
         let opSet: OpSet = {
           op: OpType.Set,
           source: OpSource.Manual,
@@ -249,6 +249,7 @@ export default Vue.extend({
       immediate: true,
       handler() {
         this.updateOnPropChanges();
+        this.validate();
       },
     },
   },

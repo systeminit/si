@@ -3,19 +3,15 @@ import { Context } from "koa";
 import Debug from "debug";
 const debug = Debug("veritech:controllers:inferProperties");
 
-import { SiEntity as Entity, Resource } from "si-entity";
-import { registry } from "si-registry";
+import { SiEntity as Entity, Resource, OpType, OpSource } from "si-entity";
+import { registry, RegistryEntry } from "si-registry";
 
 import intel from "../intel";
 
 export interface InferPropertiesRequest {
   entityType: string;
   entity: Entity;
-  resources: Resource[];
-  predecessors: {
-    entity: Entity;
-    resources: Resource[];
-  }[];
+  context: Entity[];
 }
 
 export interface InferPropertiesReply {
@@ -40,9 +36,11 @@ export function inferProperties(ctx: Context): void {
     return;
   }
 
+  request.entity = Entity.fromJson(request.entity);
+  request.entity.setDefaultProperties();
+
   // Check if this object has the right intel functions
   if (intel[request.entityType] && intel[request.entityType].inferProperties) {
-    request.entity = Entity.fromJson(request.entity);
     const result = intel[request.entityType].inferProperties(request);
     result.entity.computeProperties();
     debug("response body: %O", result);
@@ -51,7 +49,6 @@ export function inferProperties(ctx: Context): void {
   } else {
     debug("default response");
     debug("/inferProperties END");
-    request.entity = Entity.fromJson(request.entity);
     request.entity.computeProperties();
     ctx.response.status = 200;
     ctx.response.body = { entity: request.entity };

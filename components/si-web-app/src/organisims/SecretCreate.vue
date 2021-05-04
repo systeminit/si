@@ -35,9 +35,9 @@
       </div>
     </div>
 
-    <AwsAccessKeyCredential v-if="kindIsAwsAccesKey" />
-    <DockerHubCredential v-else-if="kindIsDockerHub" />
-    <HelmRepoCredential v-else-if="kindIsHelmRepo" />
+    <AwsAccessKeyCredential @input="updateMessage" v-if="kindIsAwsAccesKey" />
+    <DockerHubCredential @input="updateMessage" v-else-if="kindIsDockerHub" />
+    <HelmRepoCredential @input="updateMessage" v-else-if="kindIsHelmRepo" />
 
     <div class="flex justify-end w-full">
       <div class="pr-2">
@@ -127,6 +127,9 @@ export default Vue.extend({
     },
   },
   methods: {
+    updateMessage(event: Record<string, any>) {
+      this.form.message = event;
+    },
     async created() {
       console.log("boop: created");
     },

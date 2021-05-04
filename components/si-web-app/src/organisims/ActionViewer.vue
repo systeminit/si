@@ -24,7 +24,7 @@
 
         <button
           class="pl-1 focus:outline-none disabled:opacity-30"
-          :disabled="!selectedAction || editMode"
+          :disabled="!selectedAction || changeSet"
           @click="runThisAction()"
         >
           <PlayCircleIcon size="1.1x" />
@@ -103,6 +103,7 @@ import { ILabelListItem } from "@/api/sdf/dal";
 import {
   system$,
   workspace$,
+  changeSet$,
   editMode$,
   workflowRuns$,
   workflowRunSteps$,
@@ -169,6 +170,7 @@ export default Vue.extend({
   subscriptions: function(this: any): Record<string, any> {
     return {
       editMode: editMode$,
+      changeSet: changeSet$,
       system: system$,
       workspace: workspace$,
       workflowRunsUpdate: workflowRuns$.pipe(

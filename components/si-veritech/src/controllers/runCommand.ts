@@ -5,6 +5,7 @@ import { Resource, SiEntity } from "si-entity";
 
 import { SiCtx } from "../siCtx";
 import intel from "../intel";
+import { DecryptedSecret } from "../support";
 const debug = Debug("veritech:controllers:runCommand");
 
 export interface RunCommandRequest {
@@ -19,6 +20,7 @@ export interface RunCommandRequest {
     context: {
       entity: SiEntity;
       resource: Resource;
+      secret?: DecryptedSecret;
     }[];
   };
   system: SiEntity;

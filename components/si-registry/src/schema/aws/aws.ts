@@ -4,27 +4,32 @@ import {
   SchematicKind,
   NodeKind,
   Arity,
-  //Arity,
 } from "../../registryEntry";
 
-const awsEks: RegistryEntry = {
-  entityType: "awsEks",
+const aws: RegistryEntry = {
+  entityType: "aws",
   nodeKind: NodeKind.Implementation,
   ui: {
     menuCategory: MenuCategory.AWS,
-    menuDisplayName: "awsEks",
+    menuDisplayName: "AWS",
     schematicKinds: [SchematicKind.Component],
   },
-  implements: ["kubernetesCluster"],
+  implements: ["cloudProvider"],
   inputs: [
     {
-      name: "awsEksCluster",
+      name: "awsRegion",
+      types: ["awsRegion"],
       edgeKind: "configures",
       arity: Arity.One,
-      types: ["awsEksCluster"],
+    },
+    {
+      name: "awsAccessKey",
+      types: ["awsAccessKey"],
+      edgeKind: "configures",
+      arity: Arity.One,
     },
   ],
   properties: [],
 };
 
-export default awsEks;
+export default aws;

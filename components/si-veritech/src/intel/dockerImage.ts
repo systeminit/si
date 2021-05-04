@@ -47,23 +47,11 @@ export const checkQualifications: CheckQualificationCallbacks = {
       system: r.systemId,
       path: ["image"],
     }) as string;
-    debug("entity name", {
-      image,
-      systemId: r.systemId,
-      properties: r.entity.properties,
-    });
     const dockerPull = await ctx.exec("docker", ["pull", image]);
     return {
       name: q.name,
       qualified: !dockerPull.failed,
       output: dockerPull.all,
-    };
-  },
-  async dockerImageIsTrue(ctx, q, r) {
-    return {
-      name: q.name,
-      qualified: true,
-      output: `be my fate: ${Date.now()}`,
     };
   },
 };

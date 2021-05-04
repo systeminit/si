@@ -312,7 +312,7 @@ impl From<EncryptedSecret> for Secret {
 /// This type is returned by calling `EncyptedSecret.decrypt(&db).await?` which contains the raw
 /// decrypted message, and without the encrypted payload and other encyption metadata. It is not
 /// persistable and is only intended to be used internally when passing secrets into `veritech`.
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct DecryptedSecret {
     pub id: String,

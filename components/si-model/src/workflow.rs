@@ -535,8 +535,6 @@ impl Workflow {
             let txn = conn.transaction().await?;
             let nats = nats_conn.transaction();
 
-            dbg!("starting workflow run");
-            dbg!(&ctx);
             let workflow_run = WorkflowRun::new(&txn, &nats, &self, ctx).await?;
 
             txn.commit().await?;

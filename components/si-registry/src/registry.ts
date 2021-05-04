@@ -15,6 +15,11 @@ import k8sDeployment from "./schema/kubernetes/k8sDeployment";
 import k8sNamespace from "./schema/kubernetes/k8sNamespace";
 import kubernetesCluster from "./schema/kubernetes/kubernetes";
 import awsEks from "./schema/aws/awsEks";
+import cloudProvider from "./schema/si/cloudProvider";
+import aws from "./schema/aws/aws";
+import awsRegion from "./schema/aws/awsRegion";
+import awsAccessKey from "./schema/aws/awsAccessKey";
+import awsEksCluster from "./schema/aws/awsEksCluster";
 
 export const registry: { [entityType: string]: RegistryEntry } = {
   leftHandPath,
@@ -29,6 +34,11 @@ export const registry: { [entityType: string]: RegistryEntry } = {
   k8sNamespace,
   kubernetesCluster,
   awsEks,
+  cloudProvider,
+  aws,
+  awsRegion,
+  awsAccessKey,
+  awsEksCluster,
 };
 
 export function findProp(path: string[]): Prop | undefined {

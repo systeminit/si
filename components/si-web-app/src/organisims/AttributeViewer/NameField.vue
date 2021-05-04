@@ -82,6 +82,8 @@ export default Vue.extend({
       this.updating = false;
       if (this.startValue != this.currentValue && this.forName) {
         this.entity.name = this.currentValue;
+        this.entity.computeProperties();
+        console.log("you changed the name", { entity: this.entity });
         updateEntity(this.entity).subscribe(reply => {
           if (reply.error) {
             emitEditorErrorMessage(reply.error.message);
