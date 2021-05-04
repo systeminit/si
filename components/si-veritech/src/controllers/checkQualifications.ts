@@ -7,7 +7,6 @@ import { SiEntity as Entity, Resource, SiEntity } from "si-entity";
 import { registry } from "si-registry";
 
 import intel from "../intel";
-import { BehaviorSubject } from "rxjs";
 
 export interface CheckQualificationsRequest {
   entityType: string;

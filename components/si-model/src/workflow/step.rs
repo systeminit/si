@@ -6,6 +6,7 @@ use crate::workflow::variable::{VariableArray, VariableBool, VariableScalar};
 use crate::workflow::{
     SelectionEntry, WorkflowContext, WorkflowError, WorkflowResult, WorkflowRun,
 };
+use crate::{workflow::selector::Selector, Workflow};
 use crate::{Entity, SiStorable, Veritech, Workspace};
 use chrono::Utc;
 
@@ -173,14 +174,6 @@ impl WorkflowRunStepEntity {
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct Selector {
-    by_id: VariableScalar,
-    depth: String,
-    edge_kind: String,
-}
-
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase", tag = "kind")]
 pub enum Step {
     Command(StepCommand),
@@ -213,8 +206,14 @@ impl Step {
 
     pub fn strategy(&self, ctx: &WorkflowContext) -> WorkflowResult<String> {
         let result = match self {
-            Step::Command(s) => s.strategy.evaluate_as_string(ctx)?,
-            Step::Action(s) => s.strategy.evaluate_as_string(ctx)?,
+            Step::Command(s) => s.strategy.as_ref().map_or(String::from("linear"), |f| {
+                f.evaluate_as_string(ctx)
+                    .map_or(String::from("linear"), |s| s)
+            }), //skeeeetchy
+            Step::Action(s) => s.strategy.as_ref().map_or(String::from("linear"), |f| {
+                f.evaluate_as_string(ctx)
+                    .map_or(String::from("linear"), |s| s)
+            }),
         };
         Ok(result)
     }
@@ -233,8 +232,14 @@ impl Step {
 
     pub fn fail_if_missing(&self, ctx: &WorkflowContext) -> WorkflowResult<bool> {
         let result = match self {
-            Step::Command(s) => s.fail_if_missing.evaluate_as_bool(ctx)?,
-            Step::Action(s) => s.fail_if_missing.evaluate_as_bool(ctx)?,
+            Step::Command(s) => s
+                .fail_if_missing
+                .as_ref()
+                .map_or(false, |f| f.evaluate_as_bool(ctx).map_or(false, |b| b)), //skeeeetchy
+            Step::Action(s) => s
+                .fail_if_missing
+                .as_ref()
+                .map_or(false, |f| f.evaluate_as_bool(ctx).map_or(false, |b| b)), //skeeeetchy
         };
         Ok(result)
     }
@@ -282,9 +287,9 @@ pub enum CommandFinish {
 #[serde(rename_all = "camelCase")]
 pub struct StepCommand {
     pub inputs: StepCommandInputs,
-    pub fail_if_missing: VariableScalar,
+    pub fail_if_missing: Option<VariableScalar>,
     pub selector: Option<Selector>,
-    pub strategy: VariableScalar,
+    pub strategy: Option<VariableScalar>,
 }
 
 impl StepCommand {
@@ -440,20 +445,88 @@ pub struct StepActionInputs {
 #[serde(rename_all = "camelCase")]
 pub struct StepAction {
     pub inputs: StepActionInputs,
-    pub fail_if_missing: VariableScalar,
+    pub fail_if_missing: Option<VariableScalar>,
     pub selector: Option<Selector>,
-    pub strategy: VariableScalar,
+    pub strategy: Option<VariableScalar>,
 }
 
 impl StepAction {
     pub async fn run(
         &self,
-        _pg: &PgPool,
-        _nats_conn: &NatsConn,
-        _veritech: &Veritech,
-        _workflow_run: &WorkflowRun,
+        pg: &PgPool,
+        nats_conn: &NatsConn,
+        veritech: &Veritech,
+        workflow_run: &WorkflowRun,
     ) -> WorkflowResult<()> {
-        eprintln!("get ready for a surprise!");
+        let mut conn = pg.pool.get().await?;
+        let txn = conn.transaction().await?;
+        let nats = nats_conn.transaction();
+
+        let mut workflow_run_step =
+            WorkflowRunStep::new(&txn, &nats, &workflow_run, &Step::Action(self.clone())).await?;
+
+        for selection in workflow_run.ctx.selection.iter() {
+            if workflow_run.ctx.inputs.is_none() {
+                return Err(WorkflowError::NoInputs);
+            }
+            let inputs = workflow_run.ctx.inputs.as_ref().unwrap(); // Safe, we just checked it
+            let action_name = inputs["name"]
+                .as_str()
+                .ok_or(WorkflowError::NoNameInInputs)?;
+
+            let mut workflow_run_step_entity =
+                WorkflowRunStepEntity::new(&txn, &nats, &selection.entity.id, &workflow_run_step)
+                    .await?;
+            workflow_run_step_entity.state = WorkflowRunStepEntityState::Running;
+            workflow_run_step_entity.output = Some(format!(
+                "Running action {} on {} {}",
+                &action_name, &selection.entity.entity_type, &selection.entity.name
+            ));
+            workflow_run_step_entity.save(&txn, &nats).await?;
+
+            let workflow_name =
+                Workflow::entity_and_action_name_to_workflow_name(&selection.entity, &action_name);
+
+            let ctx = WorkflowContext {
+                dry_run: workflow_run.ctx.dry_run.clone(),
+                entity: Some(selection.entity.clone()),
+                system: workflow_run.ctx.system.clone(),
+                selection: vec![],
+                strategy: None,
+                fail_if_missing: None,
+                inputs: None,
+                args: None,
+                output: None,
+                store: None,
+                workspace: workflow_run.ctx.workspace.clone(),
+            };
+
+            let workflow_run = Workflow::get_by_name(&txn, workflow_name)
+                .await?
+                .invoke_and_wait(&pg, &nats_conn, &veritech, ctx)
+                .await?;
+            // How to tell if we failed? Who the fuck nknows? I think we can check the state?
+            workflow_run_step_entity.state = WorkflowRunStepEntityState::Success;
+            let current_time = Utc::now();
+            let unix_timestamp = current_time.timestamp_millis();
+            let timestamp = format!("{}", current_time);
+            workflow_run_step_entity.end_timestamp = Some(timestamp);
+            workflow_run_step_entity.end_unix_timestamp = Some(unix_timestamp);
+            workflow_run_step_entity.save(&txn, &nats).await?;
+        }
+        if workflow_run_step.state != WorkflowRunStepState::Failure {
+            workflow_run_step.state = WorkflowRunStepState::Success;
+        }
+        let current_time = Utc::now();
+        let unix_timestamp = current_time.timestamp_millis();
+        let timestamp = format!("{}", current_time);
+        workflow_run_step.end_timestamp = Some(timestamp);
+        workflow_run_step.end_unix_timestamp = Some(unix_timestamp);
+
+        workflow_run_step.save(&txn, &nats).await?;
+        txn.commit().await?;
+        nats.commit().await?;
+
         Ok(())
     }
 }
@@ -469,7 +542,7 @@ pub struct StepWorkflowInputs {
 #[serde(rename_all = "camelCase")]
 pub struct StepWorkflow {
     pub inputs: StepWorkflowInputs,
-    pub fail_if_missing: VariableBool,
+    pub fail_if_missing: Option<VariableBool>,
     pub selector: Option<Selector>,
-    pub strategy: VariableScalar,
+    pub strategy: Option<VariableScalar>,
 }

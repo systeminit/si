@@ -3,6 +3,7 @@ import {
   MenuCategory,
   SchematicKind,
   NodeKind,
+  Arity,
   //Arity,
 } from "../../registryEntry";
 
@@ -14,8 +15,15 @@ const awsEks: RegistryEntry = {
     menuDisplayName: "awsEks",
     schematicKinds: [SchematicKind.Component],
   },
-  implements: ["kubernetes"],
-  inputs: [],
+  implements: ["kubernetesCluster"],
+  inputs: [
+    {
+      name: "torture",
+      edgeKind: "configures",
+      arity: Arity.Many,
+      types: ["torture"],
+    },
+  ],
   properties: [],
 };
 

@@ -67,6 +67,9 @@ pub async fn run_action(
         .await
         .map_err(HandlerError::from)?;
 
+    let workflow_name =
+        Workflow::entity_and_action_name_to_workflow_name(&entity, &request.action_name);
+
     let ctx = WorkflowContext {
         dry_run: true,
         entity: Some(entity),
@@ -81,7 +84,7 @@ pub async fn run_action(
         workspace,
     };
 
-    let workflow_run = Workflow::get_by_name(&txn, "universal:deploy")
+    let workflow_run = Workflow::get_by_name(&txn, workflow_name)
         .await
         .map_err(HandlerError::from)?
         .invoke(&pg, &nats_conn, &veritech, ctx)

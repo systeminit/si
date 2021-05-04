@@ -16,7 +16,7 @@ export interface RunCommandRequest {
   selection: {
     entity: SiEntity;
     resource: Resource;
-    predecessors: {
+    context: {
       entity: SiEntity;
       resource: Resource;
     }[];
@@ -76,14 +76,18 @@ export async function runCommand(ws: WebSocket, req: string): Promise<void> {
   const request: RunCommandRequest = JSON.parse(req);
   request.selection.entity = SiEntity.fromJson(request.selection.entity);
   request.system = SiEntity.fromJson(request.system);
-  for (const p of request.selection.predecessors) {
+  for (const p of request.selection.context) {
     p.entity = SiEntity.fromJson(p.entity);
   }
   debug("request %O", request);
 
   const entityType = request.selection.entity.entityType;
   const intelFuncs = intel[entityType];
-  if (intelFuncs.runCommands && intelFuncs.runCommands[request.inputs.name]) {
+  if (
+    intelFuncs &&
+    intelFuncs.runCommands &&
+    intelFuncs.runCommands[request.inputs.name]
+  ) {
     send(ws, { start: true });
     try {
       await intelFuncs.runCommands[request.inputs.name](SiCtx, request, ws);

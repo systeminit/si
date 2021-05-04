@@ -1,6 +1,7 @@
 import leftHandPath from "./intel/leftHandPath";
 import torture from "./intel/torture";
 import dockerImage, { CheckQualificationCallbacks } from "./intel/dockerImage";
+import k8sDeployment from "./intel/k8sDeployment";
 import {
   InferPropertiesReply,
   InferPropertiesRequest,
@@ -17,6 +18,7 @@ const intel: Record<string, Intel> = {
   leftHandPath,
   torture,
   dockerImage,
+  k8sDeployment,
 };
 
 export default intel;

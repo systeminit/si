@@ -37,6 +37,13 @@ const k8sDeployment: RegistryEntry = {
     { type: "string", name: "data" },
     { type: "string", name: "other" },
   ],
+  actions: [{ name: "apply" }],
+  commands: [
+    {
+      name: "apply",
+      description: "kubectl apply",
+    },
+  ],
 };
 
 export default k8sDeployment;

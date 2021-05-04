@@ -215,7 +215,7 @@ export enum Arity {
 
 export interface Input {
   name: string;
-  types: string[] | "implementations";
+  types: string[] | "implementations" | "dependencies";
   edgeKind: "deployment" | "component" | "configures";
   arity: Arity;
   required?: boolean;

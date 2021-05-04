@@ -204,6 +204,7 @@ export default Vue.extend({
                 return (
                   input.edgeKind == "configures" &&
                   (_.includes(input.types, edgeCreating.entityType) ||
+                    input.types == "dependencies" ||
                     (input.types == "implementations" &&
                       _.includes(
                         sourceEntitySchema.implements,

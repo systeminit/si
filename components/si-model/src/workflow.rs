@@ -1,4 +1,5 @@
 use chrono::Utc;
+use futures::future::{BoxFuture, FutureExt};
 use serde::{Deserialize, Serialize};
 use strum_macros::Display;
 use thiserror::Error;
@@ -7,8 +8,8 @@ use tokio::sync::oneshot;
 use si_data::{NatsConn, NatsTxn, NatsTxnError, PgPool, PgTxn};
 
 use crate::{
-    Edge, EdgeError, EdgeKind, Entity, LodashError, MinimalStorable, Resource, ResourceError,
-    SiStorable, Veritech, VeritechError, Workspace,
+    workflow::selector::SelectionEntry, Edge, EdgeError, EdgeKind, Entity, LodashError,
+    MinimalStorable, Resource, ResourceError, SiStorable, Veritech, VeritechError, Workspace,
 };
 
 const WORKFLOW_GET_BY_NAME: &str = include_str!("./queries/workflow_get_by_name.sql");
@@ -17,12 +18,16 @@ const WORKFLOW_RUN_STEPS_ALL: &str = include_str!("./queries/workflow_run_steps_
 const WORKFLOW_RUN_STEP_ENTITIES_ALL: &str =
     include_str!("./queries/workflow_run_step_entities_all.sql");
 
+pub mod selector;
 pub mod step;
 pub mod variable;
 
 use crate::workflow::step::Step;
 
-use self::step::{WorkflowRunStep, WorkflowRunStepEntity};
+use self::{
+    selector::Selector,
+    step::{WorkflowRunStep, WorkflowRunStepEntity},
+};
 
 #[derive(Error, Debug)]
 pub enum WorkflowError {
@@ -56,6 +61,24 @@ pub enum WorkflowError {
     Entity(String),
     #[error("resource error: {0}")]
     Resource(#[from] ResourceError),
+    #[error("Selector requires root entity selection (for now)")]
+    SelectorWithoutRootEntity,
+    #[error("Selector requested properties, but has none for the system")]
+    NoPropertiesForSystem,
+    #[error("Selector requested an entity from property {0:?}, but it was not found")]
+    PropertyNotFound(Vec<String>),
+    #[error("Selector found a value in property {0:?}, but it was not a string!")]
+    PropertyNotAString(Vec<String>),
+    #[error("Edge Kind is required in a selector, but it was not provided")]
+    EdgeKindMissing,
+    #[error("Depth is required in a selector, but it was not provided")]
+    DepthMissing,
+    #[error("Direction is required in a selector, but it was not provided")]
+    DirectionMissing,
+    #[error("No name when one was required in inputs")]
+    NoNameInInputs,
+    #[error("Tokio oneshot recv error: {0}")]
+    TokioOneshotRecv(#[from] tokio::sync::oneshot::error::RecvError),
 }
 
 pub type WorkflowResult<T> = Result<T, WorkflowError>;
@@ -221,7 +244,9 @@ impl WorkflowRun {
             let result = workflow_run.invoke_task(pg, nats_conn, veritech).await;
 
             if let Err(ref err) = result {
-                dbg!("invoking workflow {} failed: {:?}", workflow_name, err);
+                dbg!("invoking workflow {} failed: {:?}", &workflow_name, &err);
+                dbg!(&workflow_name);
+                dbg!(&err);
             }
             if let Some(wait_channel) = wait_channel {
                 let _ = wait_channel.send(result);
@@ -347,21 +372,6 @@ pub struct LoadWorkflowReply {
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct SelectionEntryPredecessor {
-    entity: Entity,
-    resource: Resource,
-}
-
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct SelectionEntry {
-    entity: Entity,
-    resource: Resource,
-    predecessors: Vec<SelectionEntryPredecessor>,
-}
-
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
-#[serde(rename_all = "camelCase")]
 pub struct WorkflowContext {
     pub dry_run: bool,
     pub entity: Option<Entity>,
@@ -383,67 +393,18 @@ impl WorkflowContext {
         nats_conn: &NatsConn,
         step: &Step,
     ) -> WorkflowResult<()> {
+        let mut conn = pg.pool.get().await?;
+        let txn = conn.transaction().await?;
+        let nats = nats_conn.transaction();
+
         // First, evaluate any selector. If no selector, use the entity from
         // the workflow run context. If there isn't one, fail with a message
         // requiring a selector.
-        let selector_entities = match step.selector() {
-            Some(_selector) => {
-                todo!("implement selector resolution");
-            }
-            None => match &self.entity {
-                Some(entity) => {
-                    let mut conn = pg.pool.get().await?;
-                    let txn = conn.transaction().await?;
-                    let nats = nats_conn.transaction();
-                    let system_id = self
-                        .system
-                        .as_ref()
-                        .ok_or(WorkflowError::SystemRequired)?
-                        .id
-                        .clone();
-                    let predecessor_edges = Edge::direct_predecessor_edges_by_object_id(
-                        &txn,
-                        &EdgeKind::Configures,
-                        &entity.id,
-                    )
-                    .await?;
-                    let mut predecessors: Vec<SelectionEntryPredecessor> = Vec::new();
-                    for edge in predecessor_edges {
-                        let edge_entity = Entity::for_head(&txn, &edge.tail_vertex.object_id)
-                            .await
-                            .map_err(|e| WorkflowError::Entity(e.to_string()))?;
-                        let predecessor_resource = Resource::for_system(
-                            &txn,
-                            &nats,
-                            &edge_entity.id,
-                            &system_id,
-                            &self.workspace.id,
-                        )
-                        .await?;
-                        let predecessor = SelectionEntryPredecessor {
-                            entity: edge_entity,
-                            resource: predecessor_resource,
-                        };
-                        predecessors.push(predecessor);
-                    }
-                    let resource = Resource::for_system(
-                        &txn,
-                        &nats,
-                        &entity.id,
-                        &system_id,
-                        &self.workspace.id,
-                    )
-                    .await?;
-                    vec![SelectionEntry {
-                        entity: entity.clone(),
-                        resource,
-                        predecessors,
-                    }]
-                }
-                None => return Err(WorkflowError::NoSelectorOrEntity),
-            },
+        let selector_entries = match step.selector() {
+            Some(selector) => selector.resolve(&txn, &nats, &self).await?,
+            None => Selector::new().resolve(&txn, &nats, &self).await?,
         };
-        self.selection = selector_entities;
+        self.selection = selector_entries;
 
         // Then, evaluate the strategy for the step. If it isn't one of the
         // valid values after computing, fail.
@@ -508,6 +469,21 @@ impl Workflow {
         Ok(object)
     }
 
+    pub fn entity_and_action_name_to_workflow_name(
+        entity: &Entity,
+        action_name: impl AsRef<str>,
+    ) -> &'static str {
+        let action_name = action_name.as_ref();
+        let s = match (&entity.entity_type[..], action_name) {
+            ("service", "deploy") => "service:deploy",
+            ("kubernetesCluster", "deploy") => "kubernetesCluster:deploy",
+            ("kubernetesService", "deploy") => "kubernetesService:deploy",
+            (_, "apply") => "kubernetesApply",
+            (_, _) => "universal:deploy",
+        };
+        s
+    }
+
     pub async fn get_by_name(txn: &PgTxn<'_>, name: impl AsRef<str>) -> WorkflowResult<Self> {
         let name = name.as_ref();
 
@@ -518,14 +494,14 @@ impl Workflow {
         Ok(workflow)
     }
 
-    pub async fn invoke(
+    pub fn invoke(
         &self,
         pg: &PgPool,
         nats_conn: &NatsConn,
         veritech: &Veritech,
         ctx: WorkflowContext,
-    ) -> WorkflowResult<WorkflowRun> {
-        self.inner_invoke(pg, nats_conn, veritech, ctx, None).await
+    ) -> BoxFuture<WorkflowResult<WorkflowRun>> {
+        self.inner_invoke(pg, nats_conn, veritech, ctx, None)
     }
 
     pub async fn invoke_and_wait(
@@ -534,40 +510,48 @@ impl Workflow {
         nats_conn: &NatsConn,
         veritech: &Veritech,
         ctx: WorkflowContext,
-    ) -> WorkflowResult<(WorkflowRun, oneshot::Receiver<WorkflowResult<()>>)> {
+    ) -> WorkflowResult<WorkflowRun> {
         let (tx, rx) = oneshot::channel();
         let result = self
             .inner_invoke(pg, nats_conn, veritech, ctx, Some(tx))
             .await?;
-        Ok((result, rx))
+        let _ = rx.await?;
+        Ok(result)
     }
 
-    async fn inner_invoke(
+    fn inner_invoke(
         &self,
         pg: &PgPool,
         nats_conn: &NatsConn,
         veritech: &Veritech,
         ctx: WorkflowContext,
         wait_channel: Option<oneshot::Sender<WorkflowResult<()>>>,
-    ) -> WorkflowResult<WorkflowRun> {
-        let mut conn = pg.pool.get().await?;
-        let txn = conn.transaction().await?;
-        let nats = nats_conn.transaction();
+    ) -> BoxFuture<WorkflowResult<WorkflowRun>> {
+        let pg = pg.clone();
+        let nats_conn = nats_conn.clone();
+        let veritech = veritech.clone();
+        async move {
+            let mut conn = pg.pool.get().await?;
+            let txn = conn.transaction().await?;
+            let nats = nats_conn.transaction();
 
-        let workflow_run = WorkflowRun::new(&txn, &nats, &self, ctx).await?;
+            dbg!("starting workflow run");
+            dbg!(&ctx);
+            let workflow_run = WorkflowRun::new(&txn, &nats, &self, ctx).await?;
 
-        txn.commit().await?;
-        nats.commit().await?;
+            txn.commit().await?;
+            nats.commit().await?;
 
-        workflow_run
-            .invoke(
-                pg.clone(),
-                nats_conn.clone(),
-                veritech.clone(),
-                wait_channel,
-            )
-            .await?;
-
-        Ok(workflow_run)
+            workflow_run
+                .invoke(
+                    pg.clone(),
+                    nats_conn.clone(),
+                    veritech.clone(),
+                    wait_channel,
+                )
+                .await?;
+            Ok(workflow_run)
+        }
+        .boxed()
     }
 }

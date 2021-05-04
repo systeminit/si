@@ -5,9 +5,7 @@
       :class="titleClasses()"
     >
       <div class="flex flex-row">
-        <div>
-          {{ step.step.kind }}
-        </div>
+        <div>{{ step.step.kind }} {{ step.step.inputs.name.value }}</div>
       </div>
 
       <button @click="toggleSummary()" class="ml-2 focus:outline-none">
