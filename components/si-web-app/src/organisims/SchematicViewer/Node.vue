@@ -12,23 +12,6 @@
       v-bind:style="positionStyle"
       @mousedown="selectNode()"
     >
-      <span
-        :ref="`${id}.socket:input`"
-        :id="`${id}.socket:input`"
-        :entityType="nodeObject.entityType"
-        :entityId="nodeObject.id"
-        :schematicKind="schematicKind"
-        class="socket-input socket node"
-      />
-      <span
-        :ref="`${id}.socket:output`"
-        :id="`${id}.socket:output`"
-        :entityType="nodeObject.entityType"
-        :entityId="nodeObject.id"
-        :schematicKind="schematicKind"
-        class="socket-output socket node"
-      />
-
       <div class="flex flex-col node">
         <div class="flex flex-col text-white node">
           <div class="node-title-bar node" :class="nodeTitleBarClasses">
@@ -45,12 +28,36 @@
           <div v-if="showImplementation" class="text-xs font-thin text-center">
             {{ selectedImplementationField }}
           </div>
+
           <div
-            class="ml-2 text-xs font-thin"
-            v-for="input in inputs"
-            :key="input.name"
-          >
-            {{ input.name }} {{ showArity(input.arity) }}
+            :ref="`${id}.socket:output`"
+            :id="`${id}.socket:output`"
+            :entityType="nodeObject.entityType"
+            :entityId="nodeObject.id"
+            :schematicKind="schematicKind"
+            class="socket node"
+            :class="outputSocketClasses"
+          />
+
+          <div class="ml-2">
+            <div
+              class="flex flex-row"
+              v-for="input in inputs"
+              :key="input.name"
+            >
+              <div
+                :ref="`${id}.socket:${input.name}`"
+                :id="`${id}.socket:${input.name}`"
+                :entityType="nodeObject.entityType"
+                :entityId="nodeObject.id"
+                :schematicKind="schematicKind"
+                class="socket node"
+                :class="inputSocketClasses"
+              />
+              <div class="ml-1 text-xs font-thin text-center node">
+                {{ input.name }} {{ showArity(input.arity) }}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -81,6 +88,8 @@ import { Arity } from "si-registry/dist/registryEntry";
 import { combineLatest, of, from } from "rxjs";
 import { IGetEntityRequest, AttributeDal } from "@/api/sdf/dal/attributeDal";
 
+import { SchematicOrientation } from "@/organisims/SchematicViewer.vue";
+
 type NodeLayoutUpdated = boolean;
 
 export interface NodePositionUpdateEvent {
@@ -89,12 +98,23 @@ export interface NodePositionUpdateEvent {
   positionCtx: string;
 }
 
+export enum SocketType {
+  Input = "input",
+  Output = "output",
+}
+
+interface NodeSocket {
+  id: string;
+  position: Cg2dCoordinate;
+}
+
 interface IData {
   id: string;
   nodeId: string;
   isVisible: boolean;
   invalidEdgeCreating: boolean;
   selectedImplementationField: string | null;
+  sockets: NodeSocket[];
 }
 
 export default Vue.extend({
@@ -120,6 +140,10 @@ export default Vue.extend({
       required: true,
     },
     positionCtx: String,
+    orientation: {
+      type: String as PropType<SchematicOrientation>,
+      default: "horizontal",
+    },
   },
   data(): IData {
     return {
@@ -128,6 +152,7 @@ export default Vue.extend({
       isVisible: false,
       invalidEdgeCreating: false,
       selectedImplementationField: null,
+      sockets: [],
     };
   },
   subscriptions: function(this: any): Record<string, any> {
@@ -226,6 +251,9 @@ export default Vue.extend({
   mounted: function() {
     this.registerEvents();
   },
+  // updated() {
+  //   this.updateSocketsPosition();
+  // },
   beforeDestroy() {
     this.deRegisterEvents();
   },
@@ -310,6 +338,43 @@ export default Vue.extend({
           top: `0px`,
         };
       }
+    },
+    inputSocketClasses(): Record<string, string> {
+      let classes: Record<string, any> = {};
+
+      switch (this.orientation) {
+        case SchematicOrientation.Vertical: {
+          classes["socket-input-vertical"] = true;
+          classes["socket-input-horizontal"] = false;
+          break;
+        }
+
+        case SchematicOrientation.Horizontal: {
+          classes["socket-input-vertical"] = false;
+          classes["socket-input-horizontal"] = true;
+          break;
+        }
+      }
+      return classes;
+    },
+    outputSocketClasses(): Record<string, string> {
+      let classes: Record<string, any> = {};
+
+      switch (this.orientation) {
+        case SchematicOrientation.Vertical: {
+          classes["socket-output-vertical"] = true;
+          classes["socket-output-horizontal"] = false;
+          break;
+        }
+
+        case SchematicOrientation.Horizontal: {
+          classes["socket-output-vertical"] = false;
+          classes["socket-output-horizontal"] = true;
+          break;
+        }
+      }
+
+      return classes;
     },
     nodeIsSelected(): Record<string, boolean> {
       if (
@@ -435,6 +500,32 @@ export default Vue.extend({
   margin-top: -6px;
 }
 
+.socket-input-vertical {
+  display: block;
+  height: 12px;
+  width: 12px;
+  background-color: #282e30;
+  border-radius: 50%;
+  border-width: 1px;
+  border-color: #008ed2;
+  position: absolute;
+  top: 0px;
+  left: 62px;
+  margin-top: -6px;
+}
+
+.socket-input-horizontal {
+  display: block;
+  height: 12px;
+  width: 12px;
+  background-color: #282e30;
+  border-radius: 50%;
+  border-width: 1px;
+  border-color: #008ed2;
+  position: absolute;
+  left: -6px;
+}
+
 .socket-output {
   display: block;
   height: 12px;
@@ -446,6 +537,34 @@ export default Vue.extend({
   position: absolute;
   bottom: 0px;
   left: 62px;
+  margin-bottom: -6px;
+}
+
+.socket-output-vertical {
+  display: block;
+  height: 12px;
+  width: 12px;
+  background-color: #282e30;
+  border-radius: 50%;
+  border-width: 1px;
+  border-color: #008ed2;
+  position: absolute;
+  bottom: 0px;
+  left: 62px;
+  margin-bottom: -6px;
+}
+
+.socket-output-horizontal {
+  display: block;
+  height: 12px;
+  width: 12px;
+  background-color: #282e30;
+  border-radius: 50%;
+  border-width: 1px;
+  border-color: #008ed2;
+  position: absolute;
+  top: 30px;
+  left: 132px;
   margin-bottom: -6px;
 }
 

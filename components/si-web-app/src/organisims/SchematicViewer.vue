@@ -22,6 +22,7 @@
       <SiGraphEdge
         v-if="connection.transientConnection.edge"
         :positionCtx="positionCtx"
+        :orientation="schematicOrientation()"
         :key="connection.transientConnection.edge.id"
         :edge="connection.transientConnection.edge"
         :schematic="schematic"
@@ -32,6 +33,7 @@
         <div v-for="edge in schematic.edges" :key="edge.id">
           <SiGraphEdge
             :positionCtx="positionCtx"
+            :orientation="schematicOrientation()"
             :edge="edge"
             :schematic="schematic"
             :graphViewerId="id"
@@ -41,6 +43,7 @@
         <div v-for="node in schematic.nodes" :key="node.node.id">
           <SiGraphNode
             :positionCtx="positionCtx"
+            :orientation="schematicOrientation()"
             :node="node"
             :schematic="schematic"
             :graphViewerId="id"
@@ -136,6 +139,11 @@ export interface SetNodePositionPayload {
   nodeId: string;
   context: string;
   position: Cg2dCoordinate;
+}
+
+export enum SchematicOrientation {
+  Vertical = "vertical",
+  Horizontal = "horizontal",
 }
 
 const COMPONENT_NAMESPACE = "graphViewer";
@@ -503,6 +511,21 @@ export default Vue.extend({
     //    }
     //  }
     //},
+    schematicOrientation(): SchematicOrientation | null {
+      switch (this.schematicKind) {
+        case SchematicKind.Deployment: {
+          return SchematicOrientation.Vertical;
+        }
+
+        case SchematicKind.Component: {
+          return SchematicOrientation.Horizontal;
+        }
+
+        default: {
+          return null;
+        }
+      }
+    },
     async selectNode(node: ISchematicNode) {
       schematicSelectNode$.next(node);
       if (this.schematicKind == SchematicKind.Deployment) {
@@ -616,16 +639,18 @@ export default Vue.extend({
     },
     newTemporaryEdge(
       edgeId: string,
-      sourceNodeId: string,
-      destinationNodeId: string,
+      source: ConnectionNodeReference,
+      destination: ConnectionNodeReference,
     ): EdgeTemporary {
       return {
         id: edgeId,
         headVertex: {
-          nodeId: destinationNodeId,
+          nodeId: destination.nodeId,
+          socket: destination.socketName,
         },
         tailVertex: {
-          nodeId: sourceNodeId,
+          nodeId: source.nodeId,
+          socket: source.socketName,
         },
       };
     },
@@ -1327,6 +1352,7 @@ export default Vue.extend({
           sourceNode = this.connection.transientConnection.sourceSocketId.split(
             ".",
           );
+
           destinationNode = this.connection.transientConnection.destinationSocketId.split(
             ".",
           );
@@ -1338,6 +1364,11 @@ export default Vue.extend({
             ".",
           );
         }
+
+        // ALEX DEBUG
+        console.log("sourceNode", sourceNode);
+        console.log("destinationNode", destinationNode);
+
         if (
           this.schematic &&
           this.schematic.nodes[sourceNode[1]] &&
@@ -1350,7 +1381,7 @@ export default Vue.extend({
           let destinationEntity = SiEntity.fromJson(
             this.schematic.nodes[destinationNode[1]].object as Entity,
           );
-          let destinationSocketName = "input";
+          let destinationSocketName = destinationNode[2].split(":")[1];
           if (connectionKind != undefined) {
             let validInput = this.validInput(
               sourceEntity,
@@ -1366,7 +1397,7 @@ export default Vue.extend({
           const source: ConnectionNodeReference = {
             nodeId: sourceNode[1],
             socketId: sourceNode[2],
-            socketName: "output",
+            socketName: sourceNode[2].split(":")[1],
             nodeKind: this.schematic.nodes[sourceNode[1]].node
               .objectType as string,
           };
@@ -1386,8 +1417,8 @@ export default Vue.extend({
           ) {
             this.connection.transientConnection.edge = this.newTemporaryEdge(
               "temporaryEdge",
-              source.nodeId,
-              destination.nodeId,
+              source,
+              destination,
             );
             this.removeTransientEdge();
 
@@ -1518,7 +1549,9 @@ export default Vue.extend({
       return Object.values(this.schematic.edges).some(function(edge) {
         return (
           edge.headVertex.nodeId == destination.nodeId &&
+          edge.headVertex.socket == destination.socketId &&
           edge.tailVertex.nodeId == source.nodeId &&
+          edge.tailVertex.socket == source.socketId &&
           edge.kind == kind
         );
       });
