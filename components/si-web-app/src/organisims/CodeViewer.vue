@@ -56,16 +56,19 @@ export default Vue.extend({
     let codeValueLatest$ = combineLatest(entity$, system$).pipe(
       switchMap(([ientity, system]) => {
         let entity = SiEntity.fromJson(ientity);
-        entity.computeCode();
-        let schema = entity.schema();
-        if (schema.code && system && entity.code[system.id]) {
-          return of(entity.code[system.id]);
+        //entity.computeCode();
+        if (system) {
+          return of(entity.getCode(system.id));
         } else {
-          return of("No code is the best code!");
+          return of(entity.getCode("baseline"));
         }
       }),
       tap(code => {
-        this.codeValue = code;
+        if (code) {
+          this.codeValue = code;
+        } else {
+          this.codeValue = "No code is the best code!";
+        }
       }),
     );
     return {

@@ -329,9 +329,6 @@ impl StepCommand {
                 system: workflow_run.ctx.system.as_ref(),
                 workspace: &workflow_run.ctx.workspace,
             };
-            dbg!("----- context! ----");
-            dbg!(&request);
-            dbg!(&workflow_run.ctx);
 
             let (progress_tx, mut progress_rx) =
                 tokio::sync::mpsc::unbounded_channel::<CommandProtocol>();
@@ -343,7 +340,6 @@ impl StepCommand {
             while let Some(message) = progress_rx.recv().await {
                 match message {
                     CommandProtocol::Start(_) => {
-                        dbg!("started!");
                         workflow_run_step_entity.state = WorkflowRunStepEntityState::Running;
                         workflow_run_step_entity.save(&txn, &nats).await?;
                     }
@@ -358,7 +354,6 @@ impl StepCommand {
                                 workflow_run_step_entity.end_timestamp = Some(timestamp);
                                 workflow_run_step_entity.end_unix_timestamp = Some(unix_timestamp);
                                 workflow_run_step_entity.save(&txn, &nats).await?;
-                                dbg!("command finished with success!");
                             }
                             CommandFinish::Error(error) => {
                                 workflow_run_step.state = WorkflowRunStepState::Failure;
@@ -378,7 +373,6 @@ impl StepCommand {
                                 workflow_run_step_entity.end_timestamp = Some(timestamp);
                                 workflow_run_step_entity.end_unix_timestamp = Some(unix_timestamp);
                                 workflow_run_step_entity.save(&txn, &nats).await?;
-                                dbg!("command finished with error! {}", error);
                             }
                         }
                         request
@@ -399,7 +393,6 @@ impl StepCommand {
                                     },
                                 ));
                             workflow_run_step_entity.save(&txn, &nats).await?;
-                            dbg!("stdout: {}", output);
                         }
                         CommandOutput::ErrorLine(error) => {
                             workflow_run_step_entity.error =
@@ -411,8 +404,6 @@ impl StepCommand {
                                     },
                                 ));
                             workflow_run_step_entity.save(&txn, &nats).await?;
-
-                            dbg!("stderr: {}", error);
                         }
                     },
                 }

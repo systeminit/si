@@ -100,6 +100,11 @@ export interface WidgetSelectFromInput extends WidgetBase {
   inputName: string;
 }
 
+export interface WidgetSelectFromSecret extends WidgetBase {
+  name: "selectFromSecret";
+  secretKind: string;
+}
+
 export interface WidgetUnknown extends WidgetBase {
   name: "unknown";
 }
@@ -112,6 +117,7 @@ export type Widgets =
   | WidgetTextArea
   | WidgetSelect
   | WidgetSelectFromInput
+  | WidgetSelectFromSecret
   | WidgetUnknown;
 
 export interface PropBase {

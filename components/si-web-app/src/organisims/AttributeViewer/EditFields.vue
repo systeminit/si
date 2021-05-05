@@ -59,6 +59,13 @@
         :systemId="systemId"
         v-else-if="showFieldForWidget('selectFromInput', editField)"
       />
+      <SelectFromSecretField
+        :entity="entity"
+        :editMode="editMode"
+        :editField="editField"
+        :systemId="systemId"
+        v-else-if="showFieldForWidget('selectFromSecret', editField)"
+      />
       <MapField
         :entity="entity"
         :editMode="editMode"
@@ -93,6 +100,7 @@ import SelectField from "@/organisims/AttributeViewer/SelectField.vue";
 import MapField from "@/organisims/AttributeViewer/MapField.vue";
 import ArrayField from "@/organisims/AttributeViewer/ArrayField.vue";
 import SelectFromInputField from "@/organisims/AttributeViewer/SelectFromInputField.vue";
+import SelectFromSecretField from "@/organisims/AttributeViewer/SelectFromSecretField.vue";
 import Header from "@/organisims/AttributeViewer/Header.vue";
 
 import { EditField } from "si-entity/dist/siEntity";
@@ -112,6 +120,7 @@ export default Vue.extend({
     MapField,
     ArrayField,
     SelectFromInputField,
+    SelectFromSecretField,
   },
   props: {
     entity: {
