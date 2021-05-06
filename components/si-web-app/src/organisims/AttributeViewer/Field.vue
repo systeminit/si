@@ -3,7 +3,7 @@
     <div class="flex flex-col w-full">
       <div class="flex flex-row items-center w-full">
         <div
-          class="w-40 px-2 text-sm leading-tight text-right text-white"
+          class="w-1/4 break-all px-2 text-sm leading-tight text-right text-white flex-wrap"
           v-if="name"
         >
           {{ name }}

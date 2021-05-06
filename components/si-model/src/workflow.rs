@@ -8,8 +8,8 @@ use tokio::sync::oneshot;
 use si_data::{NatsConn, NatsTxn, NatsTxnError, PgPool, PgTxn};
 
 use crate::{
-    workflow::selector::SelectionEntry, Edge, EdgeError, EdgeKind, Entity, LodashError,
-    MinimalStorable, Resource, ResourceError, SiStorable, Veritech, VeritechError, Workspace,
+    workflow::selector::SelectionEntry, EdgeError, Entity, LodashError, MinimalStorable,
+    ResourceError, SiStorable, Veritech, VeritechError, Workspace,
 };
 
 const WORKFLOW_GET_BY_NAME: &str = include_str!("./queries/workflow_get_by_name.sql");
@@ -176,7 +176,7 @@ impl WorkflowRun {
         let system_id = system_id.as_ref();
         let workspace_id = workspace_id.as_ref();
         let rows = if let Some(action_name) = action_name {
-            let action_name = action_name.as_ref();
+            let _action_name = action_name.as_ref();
             // TODO: Don't leave this like that ;)
             let rows = txn
                 .query(

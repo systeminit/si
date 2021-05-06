@@ -3,8 +3,8 @@ use thiserror::Error;
 
 use crate::{
     generate_name, lodash, secret::DecryptedSecret, Edge, EdgeError, EdgeKind, EncryptedSecret,
-    LodashError, Qualification, QualificationError, Resource, ResourceError, SecretError,
-    SiChangeSet, SiStorable, Veritech, VeritechError, Workflow, WorkflowError,
+    LodashError, Qualification, QualificationError, ResourceError, SecretError, SiChangeSet,
+    SiStorable, Veritech, VeritechError, Workflow, WorkflowError,
 };
 use si_data::{NatsConn, NatsTxn, NatsTxnError, PgPool, PgTxn};
 
@@ -127,12 +127,21 @@ pub enum OpSource {
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct OpFrom {
+    entity_id: String,
+    entity_type: String,
+    array_root: Option<bool>,
+}
+
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct Op {
     op: OpType,
     source: OpSource,
     system: String,
     path: Vec<String>,
     value: serde_json::Value,
+    from: Option<OpFrom>,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
@@ -237,31 +246,37 @@ impl Entity {
     pub async fn update_entity_for_edit_session(
         &mut self,
         pg: &PgPool,
-        txn: &PgTxn<'_>,
         nats_conn: &NatsConn,
-        _nats: &NatsTxn,
         veritech: &Veritech,
         change_set_id: impl Into<String>,
         edit_session_id: impl Into<String>,
     ) -> EntityResult<()> {
+        let mut conn = pg.pool.get().await?;
+        let txn = conn.transaction().await?;
+        let nats = nats_conn.transaction();
+
         let change_set_id = change_set_id.into();
         let edit_session_id = edit_session_id.into();
-        self.save_for_edit_session(&txn, &change_set_id, &edit_session_id)
-            .await?;
-        let changed = self
+        // We don't care if we have changed - this particular callsite
+        // is totally obsessed only with new changes directly, which
+        // means we always want to trigger downstream.
+        let _changed = self
             .infer_properties_for_edit_session(&txn, &veritech, &change_set_id, &edit_session_id)
             .await?;
-        if changed {
-            Entity::calculate_properties_of_successors_for_edit_session(
-                &pg,
-                &nats_conn,
-                &veritech,
-                String::from(&self.id),
-                String::from(change_set_id),
-                String::from(edit_session_id),
-            )
+        self.save_for_edit_session(&txn, &change_set_id, &edit_session_id)
             .await?;
-        }
+        txn.commit().await?;
+        nats.commit().await?;
+        Entity::calculate_properties_of_successors_for_edit_session(
+            &pg,
+            &nats_conn,
+            &veritech,
+            String::from(&self.id),
+            String::from(change_set_id),
+            String::from(edit_session_id),
+        )
+        .await?;
+        //}
         Ok(())
     }
 
@@ -301,7 +316,6 @@ impl Entity {
                     // TODO: maybe report these back to the frontend via nats??
                 }
                 CheckQualificationsProtocol::Start(check_name) => {
-                    dbg!(format!("starting {}", check_name));
                     let nats = nats_conn.transaction();
                     let mut storable = entity.si_storable.clone();
                     storable.type_name = "qualificationStart".to_string();
@@ -316,10 +330,9 @@ impl Entity {
                     nats.commit().await?;
                 }
                 CheckQualificationsProtocol::Item(qual) => {
-                    dbg!(format!("got a qualification: {:?}", qual));
                     let txn = conn.transaction().await?;
                     let nats = nats_conn.transaction();
-                    let q = Qualification::new(
+                    let _q = Qualification::new(
                         &txn,
                         &nats,
                         &entity.id,
@@ -334,10 +347,8 @@ impl Entity {
                     .await?;
                     txn.commit().await?;
                     nats.commit().await?;
-                    dbg!(&q);
                 }
                 CheckQualificationsProtocol::Finished => {
-                    dbg!("got a finished message");
                     break;
                 }
             }
@@ -399,26 +410,42 @@ impl Entity {
                 .await?;
         let mut context: Vec<Entity> = Vec::new();
         for edge in predecessor_edges {
-            let edge_entity = Entity::for_edit_session(
+            let edge_entity = match Entity::for_edit_session(
                 &txn,
                 &edge.tail_vertex.object_id,
                 &change_set_id,
                 &edit_session_id,
             )
-            .await?;
+            .await
+            {
+                Ok(entity) => entity,
+                Err(err) => {
+                    dbg!("error fetching node for edge; clean me up someday");
+                    dbg!(err);
+                    continue;
+                }
+            };
             context.push(edge_entity);
         }
         let concept_edges =
             Edge::direct_predecessor_edges_by_object_id(&txn, &EdgeKind::Component, &self.id)
                 .await?;
         for concept_edge in concept_edges {
-            let concept_deployment_edge_entity = Entity::for_edit_session(
+            let concept_deployment_edge_entity = match Entity::for_edit_session(
                 &txn,
                 &concept_edge.tail_vertex.object_id,
                 &change_set_id,
                 &edit_session_id,
             )
-            .await?;
+            .await
+            {
+                Ok(entity) => entity,
+                Err(err) => {
+                    dbg!("error fetching node for edge component; clean me up someday");
+                    dbg!(err);
+                    continue;
+                }
+            };
             context.push(concept_deployment_edge_entity);
         }
 
@@ -447,7 +474,6 @@ impl Entity {
         let change_set_id = change_set_id.as_ref();
         let edit_session_id = edit_session_id.as_ref();
         let entity_json = serde_json::to_value(self)?;
-        dbg!(&entity_json);
         let _row = txn
             .query_one(
                 "SELECT true FROM entity_save_for_edit_session_v1($1, $2, $3)",
@@ -710,311 +736,3 @@ impl Entity {
         }
     }
 }
-
-// #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
-// #[serde(rename_all = "camelCase")]
-// pub struct EntityContextEntry {
-//     pub entity: Entity,
-//     pub resource: Resource,
-//     pub secret: Option<DecryptedSecret>,
-// }
-//
-// impl EntityContextEntry {
-//     async fn new(
-//         txn: &PgTxn<'_>,
-//         nats: &NatsTxn,
-//         entity_id: impl AsRef<str>,
-//         system_id: impl AsRef<str>,
-//         workspace_id: impl AsRef<str>,
-//         change_set_id: Option<&String>,
-//         edit_session_id: Option<&String>,
-//     ) -> EntityResult<Self> {
-//         let entity_id = entity_id.as_ref();
-//         let system_id = system_id.as_ref();
-//         let workspace_id = workspace_id.as_ref();
-//         let entity = Entity::for_head_or_change_set_or_edit_session(
-//             &txn,
-//             &entity_id,
-//             change_set_id,
-//             edit_session_id,
-//         )
-//         .await?;
-//         let resource =
-//             Resource::for_system(&txn, &nats, &entity_id, &system_id, &workspace_id).await?;
-//         let secret = entity.decrypt_secret_properties(&txn, &system_id).await?;
-//         Ok(EntityContextEntry {
-//             entity,
-//             resource,
-//             secret,
-//         })
-//     }
-//
-//     async fn new_from_entity(
-//         txn: &PgTxn<'_>,
-//         nats: &NatsTxn,
-//         entity: &Entity,
-//         system_id: impl AsRef<str>,
-//         workspace_id: impl AsRef<str>,
-//     ) -> EntityResult<Self> {
-//         let system_id = system_id.as_ref();
-//         let workspace_id = workspace_id.as_ref();
-//         let entity = entity.clone();
-//         let resource =
-//             Resource::for_system(&txn, &nats, &entity.id, &system_id, &workspace_id).await?;
-//         let secret = entity.decrypt_secret_properties(&txn, &system_id).await?;
-//         Ok(EntityContextEntry {
-//             entity,
-//             resource,
-//             secret,
-//         })
-//     }
-// }
-//
-// struct EntityContextList {
-//     pub context: Vec<EntityContextEntry>,
-// }
-//
-// impl EntityContextList {
-//     fn new() -> Self {
-//         EntityContextList { context: vec![] }
-//     }
-//
-//     fn push(&mut self, entry: EntityContextEntry) {
-//         if !self.context.iter().any(|p| p.entity.id == entry.entity.id) {
-//             self.context.push(entry);
-//         }
-//     }
-// }
-//
-// impl From<EntityContextList> for Vec<EntityContextEntry> {
-//     fn from(context: EntityContextList) -> Vec<EntityContextEntry> {
-//         context.context
-//     }
-// }
-//
-// #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
-// #[serde(rename_all = "camelCase")]
-// pub struct EntityContext {
-//     pub entity: Entity,
-//     pub resource: Resource,
-//     pub context: Vec<EntityContextEntry>,
-// }
-//
-// impl EntityContext {
-//     pub async fn new(
-//         txn: &PgTxn<'_>,
-//         nats: &NatsTxn,
-//         entity_id: impl AsRef<str>,
-//         change_set_id: Option<&String>,
-//         edit_session_id: Option<&String>,
-//         system: &Entity,
-//     ) -> EntityResult<Self> {
-//         // Add all your direct configure predecessor edges
-//         let entity_id = entity_id.as_ref();
-//         let entity: Entity = Entity::for_head_or_change_set_or_edit_session(
-//             &txn,
-//             &entity_id,
-//             change_set_id,
-//             edit_session_id,
-//         )
-//         .await?;
-//         let workspace_id = &entity.si_storable.workspace_id[..];
-//         let system_id = &system.id[..];
-//         let predecessor_edges =
-//             Edge::direct_predecessor_edges_by_object_id(&txn, &EdgeKind::Configures, &entity.id)
-//                 .await?;
-//         let mut context = EntityContextList::new();
-//         for edge in predecessor_edges {
-//             let predecessor = match EntityContextEntry::new(
-//                 &txn,
-//                 &nats,
-//                 &edge.tail_vertex.object_id,
-//                 &system_id,
-//                 &workspace_id,
-//                 change_set_id,
-//                 edit_session_id,
-//             )
-//             .await
-//             {
-//                 Ok(p) => p,
-//                 Err(e) => {
-//                     dbg!("cannot get entity for edge walk", &e);
-//                     // This is not the correct way to handle this! we should check specifics.
-//                     continue;
-//                 }
-//             };
-//             context.push(predecessor);
-//         }
-//
-//         // Look up the component edge for the current entity, in order to find our
-//         // conceptual node.
-//         let concept_edges =
-//             Edge::direct_predecessor_edges_by_object_id(&txn, &EdgeKind::Component, &entity.id)
-//                 .await?;
-//         for concept_edge in concept_edges {
-//             let concept_deployment_edge_entity =
-//                 match Entity::for_head_or_change_set_or_edit_session(
-//                     &txn,
-//                     &concept_edge.tail_vertex.object_id,
-//                     change_set_id,
-//                     edit_session_id,
-//                 )
-//                 .await
-//                 {
-//                     Ok(p) => p,
-//                     Err(e) => {
-//                         dbg!("cannot get entity for edge walk", &e);
-//                         // This is not the correct way to handle this! we should check specifics.
-//                         continue;
-//                     }
-//                 };
-//             let concept_entity_context = EntityContextEntry::new_from_entity(
-//                 &txn,
-//                 &nats,
-//                 &concept_deployment_edge_entity,
-//                 &system_id,
-//                 &workspace_id,
-//             )
-//             .await?;
-//             context.push(concept_entity_context);
-//
-//             // This is the selected implementation entity id of the concept entity.
-//             let implementation_entity_id = match concept_deployment_edge_entity
-//                 .get_property_as_string(&system_id, &vec!["implementation"])?
-//             {
-//                 Some(id) => id,
-//                 None => continue,
-//             };
-//             let implementation_entity_context = match EntityContextEntry::new(
-//                 &txn,
-//                 &nats,
-//                 &implementation_entity_id,
-//                 &system_id,
-//                 &workspace_id,
-//                 change_set_id,
-//                 edit_session_id,
-//             )
-//             .await
-//             {
-//                 Ok(p) => p,
-//                 Err(e) => {
-//                     dbg!("cannot get entity for edge walk", &e);
-//                     // This is not the correct way to handle this! we should check specifics.
-//                     continue;
-//                 }
-//             };
-//             context.push(implementation_entity_context);
-//
-//             // Given our concept entity, find all the deployment edges in its graph.
-//             let concept_deployment_edges = Edge::all_successor_edges_by_object_id(
-//                 &txn,
-//                 &EdgeKind::Deployment,
-//                 &concept_deployment_edge_entity.id,
-//             )
-//             .await?;
-//             for concept_deployment_edge in concept_deployment_edges {
-//                 let concept_deployment_edge_entity =
-//                     match Entity::for_head_or_change_set_or_edit_session(
-//                         &txn,
-//                         &concept_deployment_edge.head_vertex.object_id,
-//                         change_set_id,
-//                         edit_session_id,
-//                     )
-//                     .await
-//                     {
-//                         Ok(p) => p,
-//                         Err(e) => {
-//                             dbg!("cannot get entity for edge walk", &e);
-//                             // This is not the correct way to handle this! we should check specifics.
-//                             continue;
-//                         }
-//                     };
-//
-//                 // These are the other conceptual entities with deployment edges to our
-//                 // primary conceptual edge.
-//                 let concept_deployment_edge_context = EntityContextEntry::new_from_entity(
-//                     &txn,
-//                     &nats,
-//                     &concept_deployment_edge_entity,
-//                     &system_id,
-//                     &workspace_id,
-//                 )
-//                 .await?;
-//                 context.push(concept_deployment_edge_context);
-//
-//                 // Whatever the implementation node is for this kubernetes cluster
-//                 let implementation_entity_id = match concept_deployment_edge_entity
-//                     .get_property_as_string(&system_id, &vec!["implementation"])?
-//                 {
-//                     Some(id) => id,
-//                     None => continue,
-//                 };
-//                 let implementation_successor = match EntityContextEntry::new(
-//                     &txn,
-//                     &nats,
-//                     &implementation_entity_id,
-//                     &system_id,
-//                     &workspace_id,
-//                     change_set_id,
-//                     edit_session_id,
-//                 )
-//                 .await
-//                 {
-//                     Ok(p) => p,
-//                     Err(e) => {
-//                         dbg!("cannot get entity for edge walk", &e);
-//                         // This is not the correct way to handle this! we should check specifics.
-//                         continue;
-//                     }
-//                 };
-//                 context.push(implementation_successor);
-//
-//                 // Crosswire all components of this deployment edge implementation!
-//                 let crosswire_edges = Edge::all_predecessor_edges_by_object_id(
-//                     &txn,
-//                     &EdgeKind::Configures,
-//                     &implementation_entity_id,
-//                 )
-//                 .await?;
-//                 for crosswire_edge in crosswire_edges {
-//                     let crosswire_successor = match EntityContextEntry::new(
-//                         &txn,
-//                         &nats,
-//                         &crosswire_edge.tail_vertex.object_id,
-//                         &system_id,
-//                         &workspace_id,
-//                         change_set_id,
-//                         edit_session_id,
-//                     )
-//                     .await
-//                     {
-//                         Ok(p) => p,
-//                         Err(e) => {
-//                             dbg!("cannot get entity for edge walk", &e);
-//                             // This is not the correct way to handle this! we should check specifics.
-//                             continue;
-//                         }
-//                     };
-//
-//                     // Sometimes edges are created but never saved! this can cause
-//                     // some very strange failures when you try and run things.
-//                     context.push(crosswire_successor);
-//                 }
-//             }
-//         }
-//
-//         let resource = Resource::for_system(
-//             &txn,
-//             &nats,
-//             &entity.id,
-//             &system_id,
-//             &entity.si_storable.workspace_id,
-//         )
-//         .await?;
-//         Ok(EntityContext {
-//             entity: entity.clone(),
-//             resource,
-//             context: context.into(),
-//         })
-//     }
-// }

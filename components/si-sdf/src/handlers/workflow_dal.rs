@@ -2,10 +2,7 @@ use crate::handlers::{authenticate, authorize, validate_tenancy, HandlerError};
 use serde::{Deserialize, Serialize};
 use si_data::{NatsConn, PgPool};
 use si_model::workflow::WorkflowRunListItem;
-use si_model::{
-    Action, ActionError, Entity, Veritech, Workflow, WorkflowContext, WorkflowError, WorkflowRun,
-    Workspace,
-};
+use si_model::{Entity, Veritech, Workflow, WorkflowContext, WorkflowRun, Workspace};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -31,7 +28,6 @@ pub async fn run_action(
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
     let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
-    let nats = nats_conn.transaction();
 
     let claim = authenticate(&txn, &token).await?;
     authorize(&txn, &claim.user_id, "workflowDal", "runAction").await?;

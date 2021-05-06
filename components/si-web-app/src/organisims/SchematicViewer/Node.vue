@@ -171,7 +171,9 @@ export default Vue.extend({
           workspace &&
           entity &&
           system &&
+          // @ts-ignore
           entity.properties[system.id] &&
+          // @ts-ignore
           entity.properties[system.id]["implementation"]
         ) {
           let selectedOptionEntityId =

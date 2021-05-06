@@ -3,6 +3,7 @@ import torture from "./intel/torture";
 import dockerImage, { CheckQualificationCallbacks } from "./intel/dockerImage";
 import k8sDeployment from "./intel/k8sDeployment";
 import k8sNamespace from "./intel/k8sNamespace";
+import k8sService from "./intel/k8sService";
 import awsEksCluster from "./intel/awsEksCluster";
 import {
   InferPropertiesReply,
@@ -22,6 +23,7 @@ const intel: Record<string, Intel> = {
   dockerImage,
   k8sDeployment,
   k8sNamespace,
+  k8sService,
   awsEksCluster,
 };
 

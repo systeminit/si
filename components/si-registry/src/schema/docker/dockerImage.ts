@@ -31,6 +31,13 @@ const dockerImage: RegistryEntry = {
         },
       ],
     },
+    {
+      type: "array",
+      name: "ExposedPorts",
+      itemProperty: {
+        type: "string",
+      },
+    },
   ],
   qualifications: [
     {

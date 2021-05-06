@@ -552,7 +552,7 @@ describe("siAttr", () => {
       expect(result).toEqual({ success: true });
       expect(siAttr.ops).toContain(op);
     });
-    test("rejects invalid operation", () => {
+    test("does not reject invalid operation", () => {
       const { siAttr } = setupTest("leftHandPath");
       const op: OpSet = {
         op: OpType.Set,
@@ -562,14 +562,14 @@ describe("siAttr", () => {
         system: "baseline",
       };
       const result = siAttr.addOpSet(op);
-      expect(result).toEqual(
+      expect(result).not.toEqual(
         expect.objectContaining({
           errors: expect.arrayContaining([
             { message: expect.stringMatching(/alphanumeric/) },
           ]),
         }),
       );
-      expect(siAttr.ops).not.toContain(op);
+      expect(siAttr.ops).toContain(op);
     });
     test("replaces previous set operation", () => {
       const { siAttr } = setupTest("leftHandPath");

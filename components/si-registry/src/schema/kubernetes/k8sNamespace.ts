@@ -1,10 +1,4 @@
-import {
-  RegistryEntry,
-  MenuCategory,
-  SchematicKind,
-  NodeKind,
-  CodeKind,
-} from "../../registryEntry";
+import { RegistryEntry, NodeKind } from "../../registryEntry";
 
 import { metadata } from "./shared/objectMeta";
 import {

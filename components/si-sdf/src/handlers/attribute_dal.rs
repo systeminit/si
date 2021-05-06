@@ -258,21 +258,16 @@ pub async fn get_input_labels(
     )
     .await
     .map_err(HandlerError::from)?;
-    dbg!("schematic for labels");
-    dbg!(&schematic);
 
     let mut items: LabelList = vec![];
     for edge in schematic.edges.values() {
-        dbg!("--- evaluationg edge");
-        dbg!(&edge);
-        dbg!(&request);
         if edge.head_vertex.object_id == request.entity_id
             && edge.head_vertex.socket == request.input_name
         {
-            dbg!("made it this far");
-            let schematic_node = schematic.nodes.get(&edge.tail_vertex.node_id).expect(
-                "we expect every edge to have a node in the schematic, and it does not! bug!",
-            );
+            let schematic_node = match schematic.nodes.get(&edge.tail_vertex.node_id) {
+                Some(schematic_node) => schematic_node,
+                None => continue,
+            };
             items.push(LabelListItem {
                 label: format!(
                     "{}: {}",
@@ -280,7 +275,6 @@ pub async fn get_input_labels(
                 ),
                 value: schematic_node.object.id.clone(),
             });
-            dbg!(&items);
         }
     }
 
@@ -348,20 +342,27 @@ pub async fn update_entity(
         &claim.billing_account_id,
     )
     .await?;
+    txn.commit().await.map_err(HandlerError::from)?;
+    nats.commit().await.map_err(HandlerError::from)?;
+
+    // These are going to get committed toot-suite. Probably dumb to have them
+    // here, but.. in a hurry
 
     let mut entity = request.entity;
     entity
         .update_entity_for_edit_session(
             &pg,
-            &txn,
             &nats_conn,
-            &nats,
             &veritech,
             &request.change_set_id,
             &request.edit_session_id,
         )
         .await
         .map_err(HandlerError::from)?;
+
+    let txn = conn.transaction().await.map_err(HandlerError::from)?;
+    let nats = nats_conn.transaction();
+
     let diff = match Entity::for_diff(
         &txn,
         &entity.id,
