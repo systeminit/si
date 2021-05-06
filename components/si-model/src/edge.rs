@@ -32,6 +32,13 @@ pub enum EdgeError {
 
 pub type EdgeResult<T> = Result<T, EdgeError>;
 
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct Edges {
+    pub predecessors: Vec<Edge>,
+    pub successors: Vec<Edge>,
+}
+
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Vertex {
@@ -396,6 +403,65 @@ impl Edge {
             }
             results.append(&mut direct_results);
         }
+
+        Ok(results)
+    }
+
+    pub async fn direct_edges_by_object_id(
+        txn: &PgTxn<'_>,
+        edge_kind: &EdgeKind,
+        object_id: impl Into<String>,
+    ) -> EdgeResult<Edges> {
+        let object_id = object_id.into();
+
+        let mut direct_predecessors: Vec<Edge> = Vec::new();
+        let direct_predecessor_edges =
+            Edge::direct_predecessor_edges_by_object_id(txn, edge_kind, object_id.clone()).await?;
+        for edge in direct_predecessor_edges.into_iter() {
+            direct_predecessors.push(edge.clone());
+        }
+
+        let mut direct_successors: Vec<Edge> = Vec::new();
+        let direct_successor_edges =
+            Edge::direct_successor_edges_by_object_id(txn, edge_kind, object_id).await?;
+        for edge in direct_successor_edges.into_iter() {
+            direct_successors.push(edge.clone());
+        }
+
+        let results = Edges {
+            predecessors: direct_predecessors,
+            successors: direct_successors,
+        };
+
+        Ok(results)
+    }
+
+    pub async fn direct_edges_by_node_id(
+        txn: &PgTxn<'_>,
+        edge_kind: &EdgeKind,
+        node_id: impl Into<String>,
+    ) -> EdgeResult<Edges> {
+        let node_id = node_id.into();
+
+        let mut direct_predecessors: Vec<Edge> = Vec::new();
+
+        let direct_predecessor_edges =
+            Edge::direct_predecessor_edges_by_node_id(txn, edge_kind, node_id.clone()).await?;
+        for edge in direct_predecessor_edges.into_iter() {
+            direct_predecessors.push(edge.clone());
+        }
+
+        let mut direct_successors: Vec<Edge> = Vec::new();
+        let direct_successor_edges =
+            Edge::direct_successor_edges_by_node_id(txn, edge_kind, node_id).await?;
+        for edge in direct_successor_edges.into_iter() {
+            direct_successors.push(edge.clone());
+        }
+
+        let results = Edges {
+            predecessors: direct_predecessors,
+            successors: direct_successors,
+        };
 
         Ok(results)
     }

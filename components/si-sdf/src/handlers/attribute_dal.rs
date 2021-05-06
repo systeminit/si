@@ -4,9 +4,13 @@ use si_data::{NatsConn, PgPool};
 use si_model::{
     application,
     entity::diff::{diff_for_props, Diffs},
-    ApplicationEntities, Entity, LabelList, LabelListItem, Qualification, Schematic, SchematicKind,
-    Veritech,
+    ApplicationEntities, Connection, Connections, Edge, EdgeKind, Entity, LabelList, LabelListItem,
+    Qualification, Schematic, SchematicKind, Veritech,
 };
+
+// ----------------------------------------------------------------------------
+// Entity
+// ----------------------------------------------------------------------------
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -180,107 +184,6 @@ pub async fn get_entity(
     Ok(warp::reply::json(&reply))
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct GetInputLabelsRequest {
-    pub workspace_id: String,
-    pub entity_id: String,
-    pub input_name: String,
-    pub schematic_kind: SchematicKind,
-    pub change_set_id: Option<String>,
-    pub edit_session_id: Option<String>,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct GetInputLabelsReply {
-    pub items: LabelList,
-}
-
-pub async fn get_input_labels(
-    pg: PgPool,
-    token: String,
-    request: GetInputLabelsRequest,
-) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
-    let txn = conn.transaction().await.map_err(HandlerError::from)?;
-
-    let claim = authenticate(&txn, &token).await?;
-    authorize(&txn, &claim.user_id, "attributeDal", "getInputLabels").await?;
-    validate_tenancy(
-        &txn,
-        "workspaces",
-        &request.workspace_id,
-        &claim.billing_account_id,
-    )
-    .await?;
-    validate_tenancy(
-        &txn,
-        "entities",
-        &request.entity_id,
-        &claim.billing_account_id,
-    )
-    .await?;
-    if let Some(change_set_id) = request.change_set_id.as_ref() {
-        validate_tenancy(
-            &txn,
-            "change_sets",
-            &change_set_id,
-            &claim.billing_account_id,
-        )
-        .await?;
-    }
-    if let Some(edit_session_id) = request.edit_session_id.as_ref() {
-        validate_tenancy(
-            &txn,
-            "edit_sessions",
-            &edit_session_id,
-            &claim.billing_account_id,
-        )
-        .await?;
-    }
-
-    Entity::for_head_or_change_set_or_edit_session(
-        &txn,
-        &request.entity_id,
-        request.change_set_id.as_ref(),
-        request.edit_session_id.as_ref(),
-    )
-    .await
-    .map_err(|_| HandlerError::InvalidContext)?;
-
-    let schematic = Schematic::get_by_schematic_kind(
-        &txn,
-        &request.schematic_kind,
-        &request.entity_id,
-        request.change_set_id.clone(),
-        request.edit_session_id.clone(),
-    )
-    .await
-    .map_err(HandlerError::from)?;
-
-    let mut items: LabelList = vec![];
-    for edge in schematic.edges.values() {
-        if edge.head_vertex.object_id == request.entity_id
-            && edge.head_vertex.socket == request.input_name
-        {
-            let schematic_node = match schematic.nodes.get(&edge.tail_vertex.node_id) {
-                Some(schematic_node) => schematic_node,
-                None => continue,
-            };
-            items.push(LabelListItem {
-                label: format!(
-                    "{}: {}",
-                    &schematic_node.object.entity_type, &schematic_node.object.name,
-                ),
-                value: schematic_node.object.id.clone(),
-            });
-        }
-    }
-
-    let reply = GetInputLabelsReply { items };
-    Ok(warp::reply::json(&reply))
-}
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -410,5 +313,272 @@ pub async fn update_entity(
         qualifications,
         label,
     };
+    Ok(warp::reply::json(&reply))
+}
+
+
+// ----------------------------------------------------------------------------
+// Connections
+// ----------------------------------------------------------------------------
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct GetConnectionsRequest {
+    pub workspace_id: String,
+    pub entity_id: String,
+    pub change_set_id: Option<String>,
+    pub edit_session_id: Option<String>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct GetConnectionsReply {
+    pub connections: Connections,
+}
+
+pub async fn get_connections(
+    pg: PgPool,
+    token: String,
+    request: GetConnectionsRequest,
+) -> Result<impl warp::Reply, warp::reject::Rejection> {
+    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let txn = conn.transaction().await.map_err(HandlerError::from)?;
+
+    let claim = authenticate(&txn, &token).await?;
+    authorize(&txn, &claim.user_id, "attributeDal", "getEntityList").await?;
+    validate_tenancy(
+        &txn,
+        "workspaces",
+        &request.workspace_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+    validate_tenancy(
+        &txn,
+        "entities",
+        &request.entity_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+    if let Some(change_set_id) = request.change_set_id.as_ref() {
+        validate_tenancy(
+            &txn,
+            "change_sets",
+            &change_set_id,
+            &claim.billing_account_id,
+        )
+        .await?;
+    }
+    if let Some(edit_session_id) = request.edit_session_id.as_ref() {
+        validate_tenancy(
+            &txn,
+            "edit_sessions",
+            &edit_session_id,
+            &claim.billing_account_id,
+        )
+        .await?;
+    }
+
+    let mut edge_kinds: Vec<EdgeKind> = Vec::new();
+    edge_kinds.push(EdgeKind::Configures);
+    edge_kinds.push(EdgeKind::Deployment);
+
+    let entity = Entity::for_head_or_change_set_or_edit_session(
+        &txn,
+        &request.entity_id,
+        request.change_set_id.as_ref(),
+        request.edit_session_id.as_ref(),
+    )
+    .await
+    .map_err(|_| HandlerError::InvalidContext)?;
+
+    let connections = Connection::connections_from_entity(
+        entity.id,
+        edge_kinds,
+        request.change_set_id.as_ref(),
+        request.edit_session_id.as_ref(),
+        &txn,
+    )
+    .await
+    .map_err(|_| HandlerError::InvalidContext)?;
+
+    txn.commit().await.map_err(HandlerError::from)?;
+
+    let reply = GetConnectionsReply {
+        connections: connections,
+    };
+    Ok(warp::reply::json(&reply))
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct DeleteConnectionRequest {
+    pub workspace_id: String,
+    pub change_set_id: Option<String>,
+    pub edit_session_id: Option<String>,
+    pub edge_id: String,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct DeleteConnectionReply {
+    pub deleted: bool,
+}
+
+pub async fn delete_connection(
+    pg: PgPool,
+    nats_conn: NatsConn,
+    token: String,
+    request: DeleteConnectionRequest,
+) -> Result<impl warp::Reply, warp::reject::Rejection> {
+    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let txn = conn.transaction().await.map_err(HandlerError::from)?;
+    let nats = nats_conn.transaction();
+
+    let claim = authenticate(&txn, &token).await?;
+    authorize(&txn, &claim.user_id, "attributeDal", "getEntityList").await?;
+    validate_tenancy(
+        &txn,
+        "workspaces",
+        &request.workspace_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+    validate_tenancy(&txn, "edges", &request.edge_id, &claim.billing_account_id).await?;
+    if let Some(change_set_id) = request.change_set_id.as_ref() {
+        validate_tenancy(
+            &txn,
+            "change_sets",
+            &change_set_id,
+            &claim.billing_account_id,
+        )
+        .await?;
+    }
+    if let Some(edit_session_id) = request.edit_session_id.as_ref() {
+        validate_tenancy(
+            &txn,
+            "edit_sessions",
+            &edit_session_id,
+            &claim.billing_account_id,
+        )
+        .await?;
+    }
+
+    let mut edge = Edge::get(&txn, &request.edge_id)
+        .await
+        .map_err(HandlerError::from)?;
+
+    let _result = edge.delete(&txn, &nats).await.map_err(HandlerError::from)?;
+
+    txn.commit().await.map_err(HandlerError::from)?;
+    nats.commit().await.map_err(HandlerError::from)?;
+
+    let reply = DeleteConnectionReply { deleted: true };
+    Ok(warp::reply::json(&reply))
+}
+
+// ----------------------------------------------------------------------------
+// Input labels
+// ----------------------------------------------------------------------------
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct GetInputLabelsRequest {
+    pub workspace_id: String,
+    pub entity_id: String,
+    pub input_name: String,
+    pub schematic_kind: SchematicKind,
+    pub change_set_id: Option<String>,
+    pub edit_session_id: Option<String>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct GetInputLabelsReply {
+    pub items: LabelList,
+}
+
+pub async fn get_input_labels(
+    pg: PgPool,
+    token: String,
+    request: GetInputLabelsRequest,
+) -> Result<impl warp::Reply, warp::reject::Rejection> {
+    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let txn = conn.transaction().await.map_err(HandlerError::from)?;
+
+    let claim = authenticate(&txn, &token).await?;
+    authorize(&txn, &claim.user_id, "attributeDal", "getInputLabels").await?;
+    validate_tenancy(
+        &txn,
+        "workspaces",
+        &request.workspace_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+    validate_tenancy(
+        &txn,
+        "entities",
+        &request.entity_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+    if let Some(change_set_id) = request.change_set_id.as_ref() {
+        validate_tenancy(
+            &txn,
+            "change_sets",
+            &change_set_id,
+            &claim.billing_account_id,
+        )
+        .await?;
+    }
+    if let Some(edit_session_id) = request.edit_session_id.as_ref() {
+        validate_tenancy(
+            &txn,
+            "edit_sessions",
+            &edit_session_id,
+            &claim.billing_account_id,
+        )
+        .await?;
+    }
+
+    Entity::for_head_or_change_set_or_edit_session(
+        &txn,
+        &request.entity_id,
+        request.change_set_id.as_ref(),
+        request.edit_session_id.as_ref(),
+    )
+    .await
+    .map_err(|_| HandlerError::InvalidContext)?;
+
+    let schematic = Schematic::get_by_schematic_kind(
+        &txn,
+        &request.schematic_kind,
+        &request.entity_id,
+        request.change_set_id.clone(),
+        request.edit_session_id.clone(),
+    )
+    .await
+    .map_err(HandlerError::from)?;
+
+    let mut items: LabelList = vec![];
+    for edge in schematic.edges.values() {
+        if edge.head_vertex.object_id == request.entity_id
+            && edge.head_vertex.socket == request.input_name
+        {
+            let schematic_node = match schematic.nodes.get(&edge.tail_vertex.node_id) {
+                Some(schematic_node) => schematic_node,
+                None => continue,
+            };
+            items.push(LabelListItem {
+                label: format!(
+                    "{}: {}",
+                    &schematic_node.object.entity_type, &schematic_node.object.name,
+                ),
+                value: schematic_node.object.id.clone(),
+            });
+        }
+    }
+
+    let reply = GetInputLabelsReply { items };
     Ok(warp::reply::json(&reply))
 }

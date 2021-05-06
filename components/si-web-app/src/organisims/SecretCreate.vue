@@ -130,12 +130,12 @@ export default Vue.extend({
     updateMessage(event: Record<string, any>) {
       this.form.message = event;
     },
-    async created() {
-      console.log("boop: created");
-    },
-    async beforeDestroy() {
-      console.log("boop: beforeDestroy");
-    },
+    // async created() {
+    //   console.log("boop: created");
+    // },
+    // async beforeDestroy() {
+    //   console.log("boop: beforeDestroy");
+    // },
     clear() {
       this.form.secretName = "";
       this.form.secretKind = null;

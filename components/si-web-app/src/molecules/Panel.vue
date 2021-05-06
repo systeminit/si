@@ -160,8 +160,8 @@ export default Vue.extend({
     this.deRegisterEvents();
   },
   updated() {
-    // Ideally this should only update the child instance...
-    PanelEventBus.$emit("panel-viewport-update", true);
+    // ALEX: DISABLED (please keep arround)
+    // PanelEventBus.$emit("panel-viewport-update", true);
   },
   methods: {
     registerEvents(): void {

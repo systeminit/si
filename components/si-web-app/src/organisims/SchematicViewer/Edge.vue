@@ -313,15 +313,11 @@ export default Vue.extend({
         if (element && event.nodeId) {
           switch (this.orientation) {
             case SchematicOrientation.Vertical: {
-              console.log("updateSvgLinePosition");
-
               if (event.nodeId == this.sourceNode.node.id) {
                 const sourceSocketPosition: Cg2dCoordinate = {
                   x: event.nodePosition.x + OUTPUT_SOCKET_OFFSET_VERTICAL.x,
                   y: event.nodePosition.y + OUTPUT_SOCKET_OFFSET_VERTICAL.y,
                 };
-
-                console.log(sourceSocketPosition);
 
                 element.setAttribute("x1", String(sourceSocketPosition.x));
                 element.setAttribute("y1", String(sourceSocketPosition.y));
@@ -330,8 +326,6 @@ export default Vue.extend({
                   x: event.nodePosition.x + INPUT_SOCKET_OFFSET_VERTICAL.x,
                   y: event.nodePosition.y + INPUT_SOCKET_OFFSET_VERTICAL.y,
                 };
-
-                console.log(destinationSocketPosition);
 
                 element.setAttribute("x2", String(destinationSocketPosition.x));
                 element.setAttribute("y2", String(destinationSocketPosition.y));

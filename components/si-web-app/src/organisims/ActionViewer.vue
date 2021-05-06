@@ -74,12 +74,6 @@
   </div>
 </template>
 
-<style scoped>
-.property-section-bg-color {
-  background-color: #292c2d;
-}
-</style>
-
 <script lang="ts">
 import Vue, { PropType } from "vue";
 import _ from "lodash";
@@ -317,5 +311,9 @@ export default Vue.extend({
 <style scoped>
 .workflow-runs {
   background-color: #212324;
+}
+
+.property-section-bg-color {
+  background-color: #292c2d;
 }
 </style>
