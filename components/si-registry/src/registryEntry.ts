@@ -35,6 +35,7 @@ export enum ValidatorKind {
   Alphanumeric = "alphanumeric",
   Int = "int",
   Regex = "regex",
+  IsIn = "isIn",
 }
 
 export interface ValidatorBase {
@@ -58,7 +59,16 @@ export interface ValidatorAlphanumeric extends ValidatorBase {
   kind: ValidatorKind.Alphanumeric;
 }
 
-export type Validator = ValidatorInt | ValidatorAlphanumeric | ValidatorRegex;
+export interface ValidatorIsIn extends ValidatorBase {
+  kind: ValidatorKind.IsIn;
+  values: string[];
+}
+
+export type Validator =
+  | ValidatorInt
+  | ValidatorAlphanumeric
+  | ValidatorRegex
+  | ValidatorIsIn;
 
 export interface WidgetBase {
   name: string;
@@ -126,6 +136,7 @@ export interface PropBase {
   widget?: Widgets;
   displayName?: string;
   required?: boolean;
+  link?: string;
   validation?: Validator[];
 }
 

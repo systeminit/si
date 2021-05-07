@@ -61,15 +61,10 @@ async fn new() {
         workspace: nba.workspace.clone(),
     };
 
-    let (_run, rx) = Workflow::get_by_name(&txn, "universal:deploy")
+    let _run = Workflow::get_by_name(&txn, "universal:deploy")
         .await
         .expect("failed to get workflow")
         .invoke_and_wait(&pg, &nats_conn, &veritech, ctx)
         .await
         .expect("failed to invoke workflow");
-    rx.await
-        .expect("failed to wait")
-        .expect("failed during workflow run");
-
-    assert!(false);
 }

@@ -69,6 +69,12 @@ export function runValidators(
           message: `integer is not valid: ${JSON.stringify(validator.options)}`,
         });
       }
+    } else if (validator.kind == ValidatorKind.IsIn) {
+      if (!validatorjs.isIn(value, validator.values)) {
+        errors.push({
+          message: `value must be one of: ${validator.values.join(", ")}`,
+        });
+      }
     }
     if (errors.length > 0) {
       return { errors };

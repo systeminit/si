@@ -492,7 +492,7 @@ impl StepAction {
                 workspace: workflow_run.ctx.workspace.clone(),
             };
 
-            let workflow_run = Workflow::get_by_name(&txn, workflow_name)
+            let _workflow_run = Workflow::get_by_name(&txn, workflow_name)
                 .await?
                 .invoke_and_wait(&pg, &nats_conn, &veritech, ctx)
                 .await?;

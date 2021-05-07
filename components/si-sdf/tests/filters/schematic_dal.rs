@@ -1,4 +1,4 @@
-use si_model::{Edge, EdgeKind, Node, NodePosition, Vertex};
+use si_model::{Edge, EdgeKind, Node, NodePosition, SchematicKind, Vertex};
 use si_model_test::{
     create_change_set, create_custom_node, create_edit_session, create_entity_node,
     create_node_position, generate_fake_name, one_time_setup, signup_new_billing_account,
@@ -80,18 +80,20 @@ async fn connection_create() {
         .path("/schematicDal/connectionCreate")
         .json(&ConnectionCreateRequest {
             connection: Connection {
-                kind: EdgeKind::Configures,
                 source: ConnectionNodeReference {
                     node_id: alpha.id.clone(),
                     socket_id: "output".to_string(),
+                    socket_name: "pants".to_string(),
                     node_kind: "service".to_string(),
                 },
                 destination: ConnectionNodeReference {
                     node_id: bravo.id.clone(),
                     socket_id: "input".to_string(),
+                    socket_name: "poop".to_string(),
                     node_kind: "service".to_string(),
                 },
             },
+            schematic_kind: si_model::SchematicKind::Component,
             workspace_id: nba.workspace.id.clone(),
             change_set_id: change_set.id.clone(),
             edit_session_id: edit_session.id.clone(),
@@ -188,18 +190,20 @@ async fn connection_create_duplicate() {
         .path("/schematicDal/connectionCreate")
         .json(&ConnectionCreateRequest {
             connection: Connection {
-                kind: EdgeKind::Configures,
                 source: ConnectionNodeReference {
                     node_id: alpha.id.clone(),
                     socket_id: "output".to_string(),
+                    socket_name: "output".to_string(),
                     node_kind: "service".to_string(),
                 },
                 destination: ConnectionNodeReference {
                     node_id: bravo.id.clone(),
                     socket_id: "input".to_string(),
+                    socket_name: "input".to_string(),
                     node_kind: "service".to_string(),
                 },
             },
+            schematic_kind: SchematicKind::Component,
             workspace_id: nba.workspace.id.clone(),
             change_set_id: change_set.id.clone(),
             edit_session_id: edit_session.id.clone(),
@@ -256,6 +260,7 @@ async fn node_create_for_application() {
             edit_session_id: edit_session.id.clone(),
             application_id: application.id.clone(),
             schematic_kind: si_model::SchematicKind::Deployment,
+            deployment_selected_entity_id: None,
         })
         .reply(&filter)
         .await;

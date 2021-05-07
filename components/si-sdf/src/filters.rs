@@ -205,6 +205,7 @@ pub fn schematic_dal(
         .or(schematic_dal_connection_create(
             pg.clone(),
             nats_conn.clone(),
+            veritech.clone(),
         ))
         .or(schematic_dal_node_create_for_application(
             pg.clone(),
@@ -254,11 +255,13 @@ pub fn schematic_dal_node_create_for_application(
 pub fn schematic_dal_connection_create(
     pg: PgPool,
     nats_conn: NatsConn,
+    veritech: Veritech,
 ) -> BoxedFilter<(impl warp::Reply,)> {
     warp::path!("schematicDal" / "connectionCreate")
         .and(warp::post())
         .and(with_pg(pg))
         .and(with_nats_conn(nats_conn))
+        .and(with_veritech(veritech))
         .and(warp::header::<String>("authorization"))
         .and(warp::body::json::<
             handlers::schematic_dal::ConnectionCreateRequest,

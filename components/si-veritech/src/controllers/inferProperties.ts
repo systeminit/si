@@ -38,6 +38,9 @@ export function inferProperties(ctx: Context): void {
 
   request.entity = Entity.fromJson(request.entity);
   request.entity.setDefaultProperties();
+  for (let x = 0; x < request.context.length; x++) {
+    request.context[x] = Entity.fromJson(request.context[x]);
+  }
 
   // Check if this object has the right intel functions
   if (intel[request.entityType] && intel[request.entityType].inferProperties) {

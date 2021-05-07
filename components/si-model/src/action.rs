@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use strum_macros::Display;
 use thiserror::Error;
 
-use si_data::{NatsConn, NatsTxn, NatsTxnError, PgPool, PgTxn};
+use si_data::NatsTxnError;
 
 use crate::{entity::diff::Diffs, Resource, SiStorable};
 

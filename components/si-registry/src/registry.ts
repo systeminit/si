@@ -13,6 +13,7 @@ import dockerImage from "./schema/docker/dockerImage";
 import kubernetesService from "./schema/kubernetes/kubernetesService";
 import k8sDeployment from "./schema/kubernetes/k8sDeployment";
 import k8sNamespace from "./schema/kubernetes/k8sNamespace";
+import k8sService from "./schema/kubernetes/k8sService";
 import kubernetesCluster from "./schema/kubernetes/kubernetes";
 import awsEks from "./schema/aws/awsEks";
 import cloudProvider from "./schema/si/cloudProvider";
@@ -32,6 +33,7 @@ export const registry: { [entityType: string]: RegistryEntry } = {
   kubernetesService,
   k8sDeployment,
   k8sNamespace,
+  k8sService,
   kubernetesCluster,
   awsEks,
   cloudProvider,

@@ -215,8 +215,6 @@ impl Veritech {
                                 continue;
                             }
                         };
-                        dbg!("---- a reply ----");
-                        dbg!(&reply);
                         match reply {
                             VeritechMessage::Protocol(progress) => {
                                 match progress_tx.send(progress) {

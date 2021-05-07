@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
 use si_data::{NatsTxn, PgTxn};
 
@@ -128,8 +126,7 @@ impl SelectionEntry {
             .await
             {
                 Ok(p) => p,
-                Err(e) => {
-                    dbg!("cannot get entity for edge walk", &e);
+                Err(_e) => {
                     // This is not the correct way to handle this! we should check specifics.
                     continue;
                 }
@@ -146,8 +143,7 @@ impl SelectionEntry {
             let concept_deployment_edge_entity =
                 match Entity::for_head(&txn, &concept_edge.tail_vertex.object_id).await {
                     Ok(p) => p,
-                    Err(e) => {
-                        dbg!("cannot get entity for edge walk", &e);
+                    Err(_e) => {
                         // This is not the correct way to handle this! we should check specifics.
                         continue;
                     }
@@ -180,8 +176,7 @@ impl SelectionEntry {
             .await
             {
                 Ok(p) => p,
-                Err(e) => {
-                    dbg!("cannot get entity for edge walk", &e);
+                Err(_e) => {
                     // This is not the correct way to handle this! we should check specifics.
                     continue;
                 }
@@ -201,8 +196,7 @@ impl SelectionEntry {
                         .await
                     {
                         Ok(p) => p,
-                        Err(e) => {
-                            dbg!("cannot get entity for edge walk", &e);
+                        Err(_e) => {
                             // This is not the correct way to handle this! we should check specifics.
                             continue;
                         }
@@ -238,8 +232,7 @@ impl SelectionEntry {
                 .await
                 {
                     Ok(p) => p,
-                    Err(e) => {
-                        dbg!("cannot get entity for edge walk", &e);
+                    Err(_e) => {
                         // This is not the correct way to handle this! we should check specifics.
                         continue;
                     }
@@ -264,8 +257,7 @@ impl SelectionEntry {
                     .await
                     {
                         Ok(p) => p,
-                        Err(e) => {
-                            dbg!("cannot get entity for edge walk", &e);
+                        Err(_e) => {
                             // This is not the correct way to handle this! we should check specifics.
                             continue;
                         }

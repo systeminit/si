@@ -140,6 +140,7 @@ pub struct ConnectionCreateReply {
 pub async fn connection_create(
     pg: PgPool,
     nats_conn: NatsConn,
+    veritech: Veritech,
     token: String,
     request: ConnectionCreateRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
@@ -216,6 +217,51 @@ pub async fn connection_create(
     .await
     .map_err(HandlerError::from)?;
 
+    txn.commit().await.map_err(HandlerError::from)?;
+    nats.commit().await.map_err(HandlerError::from)?;
+
+    let txn = conn.transaction().await.map_err(HandlerError::from)?;
+
+    // A cheap and dirty way to re-trigger property calculations
+    // TODO: This should probably all be cleaned up to be efficient!
+    let mut tail_entity = Entity::for_edit_session(
+        &txn,
+        &tail_vertex.object_id,
+        &request.change_set_id,
+        &request.edit_session_id,
+    )
+    .await
+    .map_err(HandlerError::from)?;
+    tail_entity
+        .update_entity_for_edit_session(
+            &pg,
+            &nats_conn,
+            &veritech,
+            &request.change_set_id,
+            &request.edit_session_id,
+        )
+        .await
+        .map_err(HandlerError::from)?;
+
+    let mut head_entity = Entity::for_edit_session(
+        &txn,
+        &head_vertex.object_id,
+        &request.change_set_id,
+        &request.edit_session_id,
+    )
+    .await
+    .map_err(HandlerError::from)?;
+    head_entity
+        .update_entity_for_edit_session(
+            &pg,
+            &nats_conn,
+            &veritech,
+            &request.change_set_id,
+            &request.edit_session_id,
+        )
+        .await
+        .map_err(HandlerError::from)?;
+
     let schematic = Schematic::get_by_schematic_kind(
         &txn,
         &request.schematic_kind,
@@ -227,7 +273,6 @@ pub async fn connection_create(
     .map_err(HandlerError::from)?;
 
     txn.commit().await.map_err(HandlerError::from)?;
-    nats.commit().await.map_err(HandlerError::from)?;
 
     let reply = ConnectionCreateReply { edge, schematic };
     Ok(warp::reply::json(&reply))
@@ -404,9 +449,6 @@ pub async fn node_create_for_application(
         }
         _ => unreachable!(),
     };
-
-    dbg!("returning schematic from create");
-    dbg!(&schematic);
 
     txn.commit().await.map_err(HandlerError::from)?;
     nats.commit().await.map_err(HandlerError::from)?;

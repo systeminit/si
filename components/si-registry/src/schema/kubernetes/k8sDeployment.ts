@@ -1,21 +1,23 @@
+import { RegistryEntry, NodeKind, Arity } from "../../registryEntry";
+
+import { metadata } from "./shared/objectMeta";
 import {
-  RegistryEntry,
-  MenuCategory,
-  SchematicKind,
-  NodeKind,
-  Arity,
-  CodeKind,
-} from "../../registryEntry";
+  apiVersion,
+  kind,
+  qualifications,
+  actions,
+  commands,
+  ui,
+  code,
+} from "./shared/standard";
+import { selector } from "./shared/labelSelector";
+import { template } from "./shared/podTemplateSpec";
 
 const k8sDeployment: RegistryEntry = {
   entityType: "k8sDeployment",
   nodeKind: NodeKind.Concrete,
-  ui: {
-    menuCategory: MenuCategory.Kubernetes,
-    menuDisplayName: "k8sDeployment",
-    schematicKinds: [SchematicKind.Component],
-  },
-  code: { kind: CodeKind.YAML },
+  code: code(),
+  ui: ui("k8sDeployment"),
   inputs: [
     {
       name: "dockerImage",
@@ -31,19 +33,25 @@ const k8sDeployment: RegistryEntry = {
     },
   ],
   properties: [
-    { type: "string", name: "apiVersion" },
-    { type: "string", name: "kind" },
-    { type: "string", name: "spec" },
-    { type: "string", name: "data" },
-    { type: "string", name: "other" },
-  ],
-  actions: [{ name: "apply" }],
-  commands: [
+    apiVersion("apps/v1"),
+    kind("Deployment"),
+    metadata,
     {
-      name: "apply",
-      description: "kubectl apply",
+      type: "object",
+      name: "spec",
+      properties: [
+        {
+          type: "number",
+          name: "replicas",
+        },
+        selector,
+        template,
+      ],
     },
   ],
+  qualifications,
+  actions,
+  commands,
 };
 
 export default k8sDeployment;

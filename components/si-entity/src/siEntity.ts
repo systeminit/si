@@ -64,6 +64,11 @@ interface OpBase {
   path: string[];
   value?: unknown;
   system: "baseline" | string;
+  from?: {
+    entityId: string;
+    entityType: string;
+    arrayRoot?: true;
+  };
 }
 
 export interface OpSet extends OpBase {
@@ -216,16 +221,16 @@ export class SiEntity implements ISiEntity {
     }
   }
 
-  subPath(a: string[], b: string[]): boolean {
+  subPath(long: string[], short: string[]): boolean {
     let checkPath;
-    if (a.length == b.length) {
-      checkPath = a;
-    } else if (a.length > b.length) {
-      checkPath = a.slice(0, b.length);
+    if (long.length == short.length) {
+      checkPath = long;
+    } else if (long.length > short.length) {
+      checkPath = long.slice(0, short.length);
     } else {
       return false;
     }
-    return _.isEqual(checkPath, b);
+    return _.isEqual(checkPath, short);
   }
 
   isTombstoned(op: {
@@ -252,6 +257,7 @@ export class SiEntity implements ISiEntity {
     //if (result.errors) {
     //  return result;
     //}
+
     this.updateArrayMetaLength(op);
     _.remove(
       this.ops,
@@ -420,13 +426,54 @@ export class SiEntity implements ISiEntity {
     }
   }
 
+  yamlNumberReplacer(): Record<string, any> {
+    const numberified = _.cloneDeep(this.properties);
+    for (const key of Object.keys(numberified)) {
+      numberified[key] = this._replaceYamlNumberObject(numberified[key]);
+    }
+    return numberified;
+  }
+
+  _replaceYamlNumberObject(obj: Record<string, any>): Record<string, any> {
+    for (const key of Object.keys(obj)) {
+      if (_.isObjectLike(obj[key])) {
+        obj[key] = this._replaceYamlNumberObject(obj[key]);
+      } else if (_.isArray(obj[key])) {
+        obj[key] = this._replaceYamlNumberArray(obj[key]);
+      } else {
+        const maybeNumber = _.toNumber(obj[key]);
+        if (!_.isNaN(maybeNumber)) {
+          obj[key] = maybeNumber;
+        }
+      }
+    }
+    return obj;
+  }
+
+  _replaceYamlNumberArray(arr: any[]): any[] {
+    for (let x = 0; x < arr.length; x++) {
+      if (_.isObjectLike(arr[x])) {
+        arr[x] = this._replaceYamlNumberObject(arr[x]);
+      } else if (_.isArray(arr[x])) {
+        arr[x] = this._replaceYamlNumberArray(arr[x]);
+      } else {
+        const maybeNumber = _.toNumber(arr[x]);
+        if (!_.isNaN(maybeNumber)) {
+          arr[x] = maybeNumber;
+        }
+      }
+    }
+    return arr;
+  }
+
   computeCode(): void {
+    const newCode: Record<string, string> = {};
     const schema = this.schema();
     const codeToGen = _.concat(["baseline"], Object.keys(this.properties));
+    const numberifiedProperties = this.yamlNumberReplacer();
     if (schema.code && schema.code.kind == CodeKind.YAML) {
       for (const system of codeToGen) {
-        console.log("I am fucking doing it", { system });
-        const code = yaml.dump(this.properties[system], {
+        const code = yaml.dump(numberifiedProperties[system], {
           //["apiVersion", "kind", "metadata", "spec", "data"]
           // -- this is probably not the most efficient implementation
           // of this sort algorithm, but I'm getting tired. :)
@@ -458,9 +505,10 @@ export class SiEntity implements ISiEntity {
             }
           },
         });
-        this.code[system] = `---\n${code}`;
+        newCode[system] = `---\n${code}`;
       }
     }
+    this.code = newCode;
   }
 
   computeProperties(): void {
@@ -491,24 +539,23 @@ export class SiEntity implements ISiEntity {
     this.computeCode();
   }
 
-  set({
-    source,
-    system,
-    path,
-    value,
-  }: {
+  set(args: {
     source: OpSet["source"];
     system: OpSet["system"];
     path: OpSet["path"];
     value: OpSet["value"];
+    from?: OpSet["from"];
   }): ValidateResult {
     const op: OpSet = {
       op: OpType.Set,
-      source,
-      system,
-      path,
-      value,
+      source: args.source,
+      system: args.system,
+      path: args.path,
+      value: args.value,
     };
+    if (args.from) {
+      op.from = args.from;
+    }
     return this.addOpSet(op);
   }
 
@@ -523,6 +570,38 @@ export class SiEntity implements ISiEntity {
       return _.get(this.properties[system], path);
     } else {
       return _.get(this.properties["baseline"], path);
+    }
+  }
+
+  getPropertyForAllSystems<T>({
+    path,
+  }: {
+    path: OpSet["path"];
+  }): Record<string, T> | null {
+    const result: Record<string, T> = {};
+    for (const system of Object.keys(this.properties)) {
+      const value = _.get(this.properties[system], path);
+      if (!_.isUndefined(value)) {
+        result[system] = value;
+      }
+    }
+    if (Object.keys(result).length == 0) {
+      return null;
+    } else {
+      return result;
+    }
+  }
+
+  unsetForAllSystems({ path }: { path: OpSet["path"] }): void {
+    for (const opSet of _.cloneDeep(this.ops)) {
+      if (_.isEqual(opSet.path, path) && opSet.source == OpSource.Inferred) {
+        this.addOpUnset({
+          op: OpType.Unset,
+          path,
+          source: opSet.source,
+          system: opSet.system,
+        });
+      }
     }
   }
 
