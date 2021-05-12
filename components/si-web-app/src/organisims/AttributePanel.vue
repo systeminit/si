@@ -55,6 +55,13 @@
       >
         <PlayIcon size="1.1x" />
       </button>
+      <button
+        class="pl-1 text-white focus:outline-none"
+        :class="resourceViewClasses()"
+        @click="switchToResourceView()"
+      >
+        <HexagonIcon size="1.1x" />
+      </button>
 
       <button
         class="pl-1 text-white focus:outline-none"
@@ -102,7 +109,11 @@
           :starting="qualificationStart"
         />
         <ActionViewer v-else-if="activeView == 'action'" :entity="entity" />
-
+        <ResourceViewer
+          v-else-if="activeView == 'resource'"
+          :entity="entity"
+          :resource="resource"
+        />
         <ConnectionViewer
           v-else-if="activeView == 'connection'"
           :connections="connections"
@@ -151,10 +162,11 @@ import {
   CheckSquareIcon,
   PlayIcon,
   Link2Icon,
+  HexagonIcon,
 } from "vue-feather-icons";
 import "vue-json-pretty/lib/styles.css";
 import { Entity } from "@/api/sdf/model/entity";
-import { Connections } from "@/api/sdf/dal/attributeDal";
+import { Connections, IGetConnectionsReply } from "@/api/sdf/dal/attributeDal";
 import Bottle from "bottlejs";
 import { Persister } from "@/api/persister";
 import AttributeViewer from "@/organisims/AttributeViewer.vue";
@@ -162,6 +174,7 @@ import QualificationViewer from "@/organisims/QualificationViewer.vue";
 import ActionViewer from "@/organisims/ActionViewer.vue";
 import CodeViewer from "@/organisims/CodeViewer.vue";
 import ConnectionViewer from "@/organisims/ConnectionViewer.vue";
+import ResourceViewer from "@/organisims/ResourceViewer.vue";
 import {
   loadEntityForEdit,
   loadConnections,
@@ -174,10 +187,11 @@ import {
   editSession$,
   refreshEntityLabelList$,
   workspace$,
-  edgeDeleted$,
+  system$,
+  resources$,
 } from "@/observables";
 import { combineLatest } from "rxjs";
-import { pluck, switchMap, tap, filter, map } from "rxjs/operators";
+import { pluck, switchMap, tap } from "rxjs/operators";
 import { Diff } from "@/api/sdf/model/diff";
 import { ISchematicNode } from "@/api/sdf/model/schematic";
 import {
@@ -186,6 +200,9 @@ import {
 } from "@/api/sdf/model/qualification";
 import VueJsonPretty from "vue-json-pretty";
 import _ from "lodash";
+import { Resource } from "si-entity";
+import { IGetResourceRequest, ResourceDal } from "@/api/sdf/dal/resourceDal";
+import { IGetEntityReply } from "@/api/sdf/dal/attributeDal";
 
 interface IData {
   isLoading: boolean;
@@ -193,14 +210,16 @@ interface IData {
   selectedNode: ISchematicNode | null;
   selectionIsLocked: boolean;
   activeView:
+    | "action"
     | "attribute"
     | "code"
+    | "connection"
     | "event"
     | "qualification"
-    | "action"
-    | "connection";
+    | "resource";
   entity: Entity | null;
   connections: Connections;
+  resource: Resource | null;
   diff: Diff;
   qualifications: Qualification[];
   qualificationStart: QualificationStart[];
@@ -221,6 +240,7 @@ export default Vue.extend({
     Panel,
     SiSelect,
     DiscIcon,
+    HexagonIcon,
     RadioIcon,
     CodeIcon,
     LockIcon,
@@ -234,6 +254,7 @@ export default Vue.extend({
     ConnectionViewer,
     Link2Icon,
     VueJsonPretty,
+    ResourceViewer,
   },
   data(): IData {
     let bottle = Bottle.pop("default");
@@ -256,13 +277,58 @@ export default Vue.extend({
           inbound: [],
           outbound: [],
         },
+        resource: null,
         diff: [],
         qualifications: [],
         qualificationStart: [],
       };
     }
   },
-  subscriptions(): any {
+  subscriptions(this: any): Record<string, any> {
+    const selectedEntityId$ = this.$watchAsObservable("selectedEntityId", {
+      immediate: true,
+    }).pipe(pluck("newValue"));
+
+    const entityForEdit$ = selectedEntityId$.pipe(
+      switchMap((entityId: string) => loadEntityForEdit(entityId)),
+      tap((r: IGetEntityReply) => {
+        if (r.error && r.error.code == 406) {
+          // @ts-ignore
+          this.entity = null;
+          // @ts-ignore
+          this.diff = null;
+          // @ts-ignore
+          this.qualifications = null;
+        } else if (r.error && r.error.code != 42) {
+          // @ts-ignore
+          this.entity = null;
+          // @ts-ignore
+          this.diff = [];
+          // @ts-ignore
+          this.qualifications = [];
+          if (r.error.code != 42) {
+            emitEditorErrorMessage(r.error.message);
+          }
+        } else {
+          if (r.entity) {
+            // @ts-ignore
+            this.entity = r.entity;
+            // @ts-ignore
+            this.diff = r.diff;
+            // @ts-ignore
+            this.qualifications = r.qualifications;
+          } else {
+            // @ts-ignore
+            this.entity = null;
+            // @ts-ignore
+            this.diff = null;
+            // @ts-ignore
+            this.qualifications = null;
+          }
+        }
+      }),
+    );
+
     return {
       entityQualificationStart: combineLatest(
         entityQualificationStart$,
@@ -356,52 +422,47 @@ export default Vue.extend({
           }
         }),
       ),
-      entityForEdit: this.$watchAsObservable("selectedEntityId", {
-        immediate: true,
-      }).pipe(
-        pluck("newValue"),
-        switchMap(entityId => loadEntityForEdit(entityId)),
-        tap(r => {
-          if (r.error && r.error.code == 406) {
-            // @ts-ignore
-            this.entity = null;
-            // @ts-ignore
-            this.diff = null;
-            // @ts-ignore
-            this.qualifications = null;
-          } else if (r.error && r.error.code != 42) {
-            // @ts-ignore
-            this.entity = null;
-            // @ts-ignore
-            this.diff = [];
-            // @ts-ignore
-            this.qualifications = [];
-            emitEditorErrorMessage(r.error.message);
-          } else {
-            if (r.entity) {
+      entityForEdit: entityForEdit$,
+      resourceForEntity: combineLatest(
+        system$,
+        workspace$,
+        selectedEntityId$,
+      ).pipe(
+        tap(async ([system, workspace, entityId]) => {
+          if (system && workspace && entityId) {
+            const request: IGetResourceRequest = {
               // @ts-ignore
-              this.entity = r.entity;
-              // @ts-ignore
-              this.diff = r.diff;
-              // @ts-ignore
-              this.qualifications = r.qualifications;
+              entityId,
+              systemId: system.id,
+              workspaceId: workspace.id,
+            };
+            const reply = await ResourceDal.getResource(request);
+            if (reply.error) {
+              emitEditorErrorMessage(reply.error.message);
             } else {
-              // @ts-ignore
-              this.entity = null;
-              // @ts-ignore
-              this.diff = null;
-              // @ts-ignore
-              this.qualifications = null;
+              this.resource = reply.resource;
             }
           }
         }),
       ),
-      connectionsForEntity: this.$watchAsObservable("selectedEntityId", {
-        immediate: true,
-      }).pipe(
-        pluck("newValue"),
-        switchMap(entityId => loadConnections(entityId)),
-        tap(r => {
+      resources: combineLatest(system$, selectedEntityId$, resources$).pipe(
+        tap(([system, entityId, resource]) => {
+          if (
+            system &&
+            entityId &&
+            resource &&
+            resource.systemId == system.id &&
+            resource.entityId == entityId
+          ) {
+            this.resource = resource;
+          } else {
+            this.resource = null;
+          }
+        }),
+      ),
+      connectionsForEntity: selectedEntityId$.pipe(
+        switchMap((entityId: string) => loadConnections(entityId)),
+        tap((r: IGetConnectionsReply) => {
           const connections: Connections = {
             inbound: [],
             outbound: [],
@@ -413,7 +474,9 @@ export default Vue.extend({
           } else if (r.error && r.error.code != 42) {
             // @ts-ignore
             this.connections = connections;
-            emitEditorErrorMessage(r.error.message);
+            if (r.error.code != 42) {
+              emitEditorErrorMessage(r.error.message);
+            }
           } else {
             if (r.connections) {
               // @ts-ignore
@@ -450,6 +513,9 @@ export default Vue.extend({
     connectionViewClasses(): Record<string, any> {
       return this.viewClasses("connection");
     },
+    resourceViewClasses(): Record<string, any> {
+      return this.viewClasses("resource");
+    },
     qualificationViewClasses(): Record<string, any> {
       return this.viewClasses("qualification");
     },
@@ -470,6 +536,9 @@ export default Vue.extend({
     },
     switchToActionView() {
       this.activeView = "action";
+    },
+    switchToResourceView() {
+      this.activeView = "resource";
     },
     async toggleSelectionLock() {
       if (this.selectionIsLocked) {

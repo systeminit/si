@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use si_data::{NatsTxn, PgTxn};
+use si_data::PgTxn;
 
 use crate::{
     lodash,
@@ -12,49 +12,31 @@ use crate::{
 #[serde(rename_all = "camelCase")]
 pub struct SelectionEntryPredecessor {
     pub entity: Entity,
-    pub resource: Resource,
+    pub resource: Option<Resource>,
     pub secret: Option<DecryptedSecret>,
 }
 
 impl SelectionEntryPredecessor {
     async fn new(
         txn: &PgTxn<'_>,
-        nats: &NatsTxn,
         entity_id: impl AsRef<str>,
         system_id: impl AsRef<str>,
-        workspace_id: impl AsRef<str>,
     ) -> WorkflowResult<Self> {
         let entity_id = entity_id.as_ref();
-        let system_id = system_id.as_ref();
-        let workspace_id = workspace_id.as_ref();
         let entity = Entity::for_head(&txn, &entity_id)
             .await
             .map_err(|e| WorkflowError::Entity(e.to_string()))?;
-        let resource =
-            Resource::for_system(&txn, &nats, &entity_id, &system_id, &workspace_id).await?;
-        let secret = entity
-            .decrypt_secret_properties(&txn, &system_id)
-            .await
-            .map_err(|e| WorkflowError::Entity(e.to_string()))?;
-        Ok(SelectionEntryPredecessor {
-            entity,
-            resource,
-            secret,
-        })
+
+        Self::new_from_entity(txn, entity, system_id).await
     }
 
     async fn new_from_entity(
         txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        entity: &Entity,
+        entity: Entity,
         system_id: impl AsRef<str>,
-        workspace_id: impl AsRef<str>,
     ) -> WorkflowResult<Self> {
         let system_id = system_id.as_ref();
-        let workspace_id = workspace_id.as_ref();
-        let entity = entity.clone();
-        let resource =
-            Resource::for_system(&txn, &nats, &entity.id, &system_id, &workspace_id).await?;
+        let resource = Resource::get_by_entity_and_system(&txn, &entity.id, &system_id).await?;
         let secret = entity
             .decrypt_secret_properties(&txn, &system_id)
             .await
@@ -93,14 +75,13 @@ impl From<EntityContext> for Vec<SelectionEntryPredecessor> {
 #[serde(rename_all = "camelCase")]
 pub struct SelectionEntry {
     pub entity: Entity,
-    pub resource: Resource,
+    pub resource: Option<Resource>,
     pub context: Vec<SelectionEntryPredecessor>,
 }
 
 impl SelectionEntry {
     pub async fn new(
         txn: &PgTxn<'_>,
-        nats: &NatsTxn,
         entity_id: impl AsRef<str>,
         system: &Entity,
     ) -> WorkflowResult<Self> {
@@ -109,28 +90,22 @@ impl SelectionEntry {
         let entity: Entity = Entity::for_head(&txn, &entity_id)
             .await
             .map_err(|e| WorkflowError::Entity(e.to_string()))?;
-        let workspace_id = &entity.si_storable.workspace_id[..];
         let system_id = &system.id[..];
         let predecessor_edges =
             Edge::direct_predecessor_edges_by_object_id(&txn, &EdgeKind::Configures, &entity.id)
                 .await?;
         let mut context = EntityContext::new();
         for edge in predecessor_edges {
-            let predecessor = match SelectionEntryPredecessor::new(
-                &txn,
-                &nats,
-                &edge.tail_vertex.object_id,
-                &system_id,
-                &workspace_id,
-            )
-            .await
-            {
-                Ok(p) => p,
-                Err(_e) => {
-                    // This is not the correct way to handle this! we should check specifics.
-                    continue;
-                }
-            };
+            let predecessor =
+                match SelectionEntryPredecessor::new(&txn, &edge.tail_vertex.object_id, &system_id)
+                    .await
+                {
+                    Ok(p) => p,
+                    Err(_e) => {
+                        // This is not the correct way to handle this! we should check specifics.
+                        continue;
+                    }
+                };
             context.push(predecessor);
         }
 
@@ -148,16 +123,6 @@ impl SelectionEntry {
                         continue;
                     }
                 };
-            let concept_entity_context = SelectionEntryPredecessor::new_from_entity(
-                &txn,
-                &nats,
-                &concept_deployment_edge_entity,
-                &system_id,
-                &workspace_id,
-            )
-            .await?;
-            context.push(concept_entity_context);
-
             // This is the selected implementation entity id of the concept entity.
             let implementation_entity_id = match concept_deployment_edge_entity
                 .get_property_as_string(&system_id, &vec!["implementation"])
@@ -166,23 +131,6 @@ impl SelectionEntry {
                 Some(id) => id,
                 None => continue,
             };
-            let implementation_entity_context = match SelectionEntryPredecessor::new(
-                &txn,
-                &nats,
-                &implementation_entity_id,
-                &system_id,
-                &workspace_id,
-            )
-            .await
-            {
-                Ok(p) => p,
-                Err(_e) => {
-                    // This is not the correct way to handle this! we should check specifics.
-                    continue;
-                }
-            };
-            context.push(implementation_entity_context);
-
             // Given our concept entity, find all the deployment edges in its graph.
             let concept_deployment_edges = Edge::all_successor_edges_by_object_id(
                 &txn,
@@ -190,6 +138,26 @@ impl SelectionEntry {
                 &concept_deployment_edge_entity.id,
             )
             .await?;
+            let concept_entity_context = SelectionEntryPredecessor::new_from_entity(
+                &txn,
+                concept_deployment_edge_entity,
+                &system_id,
+            )
+            .await?;
+            context.push(concept_entity_context);
+
+            let implementation_entity_context =
+                match SelectionEntryPredecessor::new(&txn, &implementation_entity_id, &system_id)
+                    .await
+                {
+                    Ok(p) => p,
+                    Err(_e) => {
+                        // This is not the correct way to handle this! we should check specifics.
+                        continue;
+                    }
+                };
+            context.push(implementation_entity_context);
+
             for concept_deployment_edge in concept_deployment_edges {
                 let concept_deployment_edge_entity =
                     match Entity::for_head(&txn, &concept_deployment_edge.head_vertex.object_id)
@@ -202,18 +170,6 @@ impl SelectionEntry {
                         }
                     };
 
-                // These are the other conceptual entities with deployment edges to our
-                // primary conceptual edge.
-                let concept_deployment_edge_context = SelectionEntryPredecessor::new_from_entity(
-                    &txn,
-                    &nats,
-                    &concept_deployment_edge_entity,
-                    &system_id,
-                    &workspace_id,
-                )
-                .await?;
-                context.push(concept_deployment_edge_context);
-
                 // Whatever the implementation node is for this kubernetes cluster
                 let implementation_entity_id = match concept_deployment_edge_entity
                     .get_property_as_string(&system_id, &vec!["implementation"])
@@ -222,12 +178,20 @@ impl SelectionEntry {
                     Some(id) => id,
                     None => continue,
                 };
+                // These are the other conceptual entities with deployment edges to our
+                // primary conceptual edge.
+                let concept_deployment_edge_context = SelectionEntryPredecessor::new_from_entity(
+                    &txn,
+                    concept_deployment_edge_entity,
+                    &system_id,
+                )
+                .await?;
+                context.push(concept_deployment_edge_context);
+
                 let implementation_successor = match SelectionEntryPredecessor::new(
                     &txn,
-                    &nats,
                     &implementation_entity_id,
                     &system_id,
-                    &workspace_id,
                 )
                 .await
                 {
@@ -249,10 +213,8 @@ impl SelectionEntry {
                 for crosswire_edge in crosswire_edges {
                     let crosswire_successor = match SelectionEntryPredecessor::new(
                         &txn,
-                        &nats,
                         &crosswire_edge.tail_vertex.object_id,
                         &system_id,
-                        &workspace_id,
                     )
                     .await
                     {
@@ -270,14 +232,8 @@ impl SelectionEntry {
             }
         }
 
-        let resource = Resource::for_system(
-            &txn,
-            &nats,
-            &entity.id,
-            &system_id,
-            &entity.si_storable.workspace_id,
-        )
-        .await?;
+        let resource = Resource::get_by_entity_and_system(&txn, &entity.id, &system.id).await?;
+
         Ok(SelectionEntry {
             entity: entity.clone(),
             resource,
@@ -330,7 +286,6 @@ impl Selector {
     pub async fn resolve(
         &self,
         txn: &PgTxn<'_>,
-        nats: &NatsTxn,
         ctx: &WorkflowContext,
     ) -> WorkflowResult<Vec<SelectionEntry>> {
         let mut results = vec![];
@@ -356,8 +311,7 @@ impl Selector {
             let selected_entity_id = selected_entity_id_json
                 .as_str()
                 .ok_or(WorkflowError::PropertyNotAString(from_property.clone()))?;
-            let selection_entry =
-                SelectionEntry::new(&txn, &nats, &selected_entity_id, &system).await?;
+            let selection_entry = SelectionEntry::new(&txn, &selected_entity_id, &system).await?;
             results.push(selection_entry);
         // Otherwise, we take edge_kind, depth and direction, and query for the successors
         // or predecessors, optionally filtered by type.
@@ -441,14 +395,12 @@ impl Selector {
                     &SelectorDirection::Input => edge.tail_vertex.object_id,
                     &SelectorDirection::Output => edge.head_vertex.object_id,
                 };
-                let selected_entry =
-                    SelectionEntry::new(&txn, &nats, &edge_object_id, &system).await?;
+                let selected_entry = SelectionEntry::new(&txn, &edge_object_id, &system).await?;
                 results.push(selected_entry);
             }
         // Or the current entity is the selected target
         } else {
-            let selection_entry =
-                SelectionEntry::new(&txn, &nats, &root_entity.id, &system).await?;
+            let selection_entry = SelectionEntry::new(&txn, &root_entity.id, &system).await?;
             results.push(selection_entry);
         }
         Ok(results)

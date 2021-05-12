@@ -12,7 +12,7 @@ import { SiCtx } from "./siCtx";
 
 export type TempFile = ReturnType<typeof tmp.file>;
 export type TempDir = ReturnType<typeof tmp.dir>;
-export type Context = Pick<RunCommandRequest, "selection" | "system">;
+export type Context = Pick<RunCommandRequest, "context" | "system">;
 
 export enum SecretKind {
   DockerHub = "dockerHub",
@@ -56,10 +56,7 @@ export function findSecret(
   context: Context,
   kind: SecretKind,
 ): Record<string, any> | null {
-  const contextItem = _.find(
-    context.selection.context,
-    (c) => c.secret?.kind == kind,
-  );
+  const contextItem = _.find(context.context, (c) => c.secret?.kind == kind);
   if (contextItem && contextItem.secret) {
     return contextItem.secret.message;
   } else {
@@ -72,7 +69,7 @@ export function findEntityByType(
   entityType: string,
 ): SiEntity | null {
   const contextItem = _.find(
-    context.selection.context,
+    context.context,
     (c) => c.entity.entityType == entityType,
   );
   if (contextItem?.entity) {

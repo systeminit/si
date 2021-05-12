@@ -86,10 +86,10 @@ export const baseCheckQualifications: CheckQualificationCallbacks = {
 export const baseRunCommands: RunCommandCallbacks = {
   apply: async function (ctx, req, ws) {
     const kubeConfigDir = await awsKubeConfigPath(req);
-    const code = req.selection.entity.getCode(req.system.id);
+    const code = req.entity.getCode(req.system.id);
     if (code) {
       const kubeYaml = await writeKubernetesYaml(
-        req.selection.entity.getCode(req.system.id),
+        req.entity.getCode(req.system.id),
       );
       const result = await ctx.execStream(
         ws,

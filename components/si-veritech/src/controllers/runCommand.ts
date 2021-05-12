@@ -14,16 +14,14 @@ export interface RunCommandRequest {
     name: string;
     args: Record<string, unknown>;
   };
-  selection: {
-    entity: SiEntity;
-    resource: Resource;
-    context: {
-      entity: SiEntity;
-      resource: Resource;
-      secret?: DecryptedSecret;
-    }[];
-  };
   system: SiEntity;
+  entity: SiEntity;
+  resource: Resource;
+  context: {
+    entity: SiEntity;
+    resource?: Resource;
+    secret?: DecryptedSecret;
+  }[];
 }
 
 export interface CommandProtocolStart {
@@ -76,14 +74,14 @@ export interface RunCommandCallbacks {
 export async function runCommand(ws: WebSocket, req: string): Promise<void> {
   debug("/runCommand BEGIN");
   const request: RunCommandRequest = JSON.parse(req);
-  request.selection.entity = SiEntity.fromJson(request.selection.entity);
+  request.entity = SiEntity.fromJson(request.entity);
   request.system = SiEntity.fromJson(request.system);
-  for (const p of request.selection.context) {
+  for (const p of request.context) {
     p.entity = SiEntity.fromJson(p.entity);
   }
   debug("request %O", request);
 
-  const entityType = request.selection.entity.entityType;
+  const entityType = request.entity.entityType;
   const intelFuncs = intel[entityType];
   if (
     intelFuncs &&

@@ -267,7 +267,9 @@ impl WorkflowRun {
 
         self.state = WorkflowRunState::Running;
         self.save(&txn, &nats).await?;
+
         txn.commit().await?;
+        nats.commit().await?;
 
         let mut final_state = WorkflowRunState::Success;
         let mut final_error: Option<WorkflowError> = None;
@@ -288,10 +290,15 @@ impl WorkflowRun {
         self.end_timestamp = Some(timestamp);
         self.end_unix_timestamp = Some(unix_timestamp);
         self.state = final_state;
+
         let txn = conn.transaction().await?;
+        let nats = nats_conn.transaction();
+
         self.save(&txn, &nats).await?;
+
         nats.commit().await?;
         txn.commit().await?;
+
         if let Some(error) = final_error {
             Err(error)
         } else {
@@ -387,22 +394,16 @@ pub struct WorkflowContext {
 }
 
 impl WorkflowContext {
-    pub async fn for_step(
-        &mut self,
-        pg: &PgPool,
-        nats_conn: &NatsConn,
-        step: &Step,
-    ) -> WorkflowResult<()> {
+    pub async fn for_step(&mut self, pg: &PgPool, step: &Step) -> WorkflowResult<()> {
         let mut conn = pg.pool.get().await?;
         let txn = conn.transaction().await?;
-        let nats = nats_conn.transaction();
 
         // First, evaluate any selector. If no selector, use the entity from
         // the workflow run context. If there isn't one, fail with a message
         // requiring a selector.
         let selector_entries = match step.selector() {
-            Some(selector) => selector.resolve(&txn, &nats, &self).await?,
-            None => Selector::new().resolve(&txn, &nats, &self).await?,
+            Some(selector) => selector.resolve(&txn, &self).await?,
+            None => Selector::new().resolve(&txn, &self).await?,
         };
         self.selection = selector_entries;
 

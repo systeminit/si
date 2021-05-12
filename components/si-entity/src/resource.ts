@@ -23,7 +23,6 @@ export interface Resource {
   status: ResourceStatus;
   health: ResourceHealth;
   systemId: string;
-  nodeId: string;
   entityId: string;
   siStorable: SiStorable;
 }
