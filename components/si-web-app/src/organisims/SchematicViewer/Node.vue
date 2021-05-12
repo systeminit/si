@@ -32,8 +32,11 @@
           <div
             :ref="`${id}.socket:output`"
             :id="`${id}.socket:output`"
+            :context="graphViewerId"
             :entityType="nodeObject.entityType"
             :entityId="nodeObject.id"
+            :nodeId="node.node.id"
+            socketName="output"
             :schematicKind="schematicKind"
             class="socket node"
             :class="outputSocketClasses"
@@ -48,8 +51,11 @@
               <div
                 :ref="`${id}.socket:${input.name}`"
                 :id="`${id}.socket:${input.name}`"
+                :context="graphViewerId"
                 :entityType="nodeObject.entityType"
                 :entityId="nodeObject.id"
+                :nodeId="node.node.id"
+                :socketName="input.name"
                 :schematicKind="schematicKind"
                 class="socket node"
                 :class="inputSocketClasses"
@@ -398,16 +404,16 @@ export default Vue.extend({
     },
     nodeInvalidEdgeCreating(): Record<string, boolean> {
       if (this.invalidEdgeCreating) {
-        return { "opacity-50": true };
+        return { "node-disabled": true };
       } else {
-        return { "opacity-50": false };
+        return { "node-disabled": false };
       }
     },
     nodeIsDeleted(): Record<string, boolean> {
       if (this.node.object.siStorable?.deleted) {
-        return { "node-is-deleted ": true };
+        return { "node-is-deleted": true };
       } else {
-        return { "node-is-deleted ": false };
+        return { "node-is-deleted": false };
       }
     },
     nodeVisibility(): Record<string, boolean> {
@@ -486,6 +492,10 @@ export default Vue.extend({
 
 .node-details {
   background-color: #282e30;
+}
+
+.node-disabled {
+  filter: brightness(50%) saturate(50%);
 }
 
 .socket-input {

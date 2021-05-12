@@ -2,9 +2,11 @@ import { SDFError } from "@/api/sdf";
 import Bottle from "bottlejs";
 import { Entity } from "@/api/sdf/model/entity";
 import { Diff } from "../model/diff";
+import { Edge } from "../model/edge";
 import { Qualification } from "@/api/sdf/model/qualification";
 import { ILabelList } from "../dal";
 import { SchematicKind } from "../model/schematic";
+import { Connection } from "../model/connection";
 
 export interface IGetEntityListRequest {
   workspaceId: string;
@@ -66,11 +68,85 @@ export type IGetEntityReply = IGetEntityReplySuccess | IGetEntityReplyFailure;
 export async function getEntity(
   request: IGetEntityRequest,
 ): Promise<IGetEntityReply> {
+  ``;
   let bottle = Bottle.pop("default");
   let sdf = bottle.container.SDF;
 
   const reply: IGetEntityReply = await sdf.get(
     "attributeDal/getEntity",
+    request,
+  );
+  return reply;
+}
+
+export interface Connections {
+  inbound: Connection[];
+  outbound: Connection[];
+}
+
+export interface IGetConnectionsRequest {
+  workspaceId: string;
+  entityId: string;
+  changeSetId?: string;
+  editSessionId?: string;
+}
+
+export interface IGetConnectionsReplySuccess {
+  connections: Connections;
+  error?: never;
+}
+
+export interface IGetConnectionsReplyFailure {
+  connections?: never;
+  error: SDFError;
+}
+
+export type IGetConnectionsReply =
+  | IGetConnectionsReplySuccess
+  | IGetConnectionsReplyFailure;
+
+export async function getConnections(
+  request: IGetConnectionsRequest,
+): Promise<IGetConnectionsReply> {
+  let bottle = Bottle.pop("default");
+  let sdf = bottle.container.SDF;
+
+  const reply: IGetConnectionsReply = await sdf.get(
+    "attributeDal/getConnections",
+    request,
+  );
+  return reply;
+}
+
+export interface IDeleteConnectionRequest {
+  workspaceId: string;
+  changeSetId?: string;
+  editSessionId?: string;
+  edgeId: string;
+}
+
+export interface IDeleteConnectionReplySuccess {
+  deleted: Boolean;
+  error?: never;
+}
+
+export interface IDeleteConnectionReplyFailure {
+  deleted?: never;
+  error: SDFError;
+}
+
+export type IDeleteConnectionReply =
+  | IDeleteConnectionReplySuccess
+  | IDeleteConnectionReplyFailure;
+
+export async function deleteConnection(
+  request: IDeleteConnectionRequest,
+): Promise<IDeleteConnectionReply> {
+  let bottle = Bottle.pop("default");
+  let sdf = bottle.container.SDF;
+
+  const reply: IDeleteConnectionReply = await sdf.post(
+    "attributeDal/deleteConnection",
     request,
   );
   return reply;
@@ -156,6 +232,8 @@ export async function getInputLabels(
 export const AttributeDal = {
   getEntityList,
   getEntity,
+  getConnections,
+  deleteConnection,
   updateEntity,
   getInputLabels,
 };

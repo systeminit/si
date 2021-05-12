@@ -94,6 +94,7 @@ import {
   nodePositionUpdated$,
   schematicUpdated$,
   schematicSelectNode$,
+  edgeDeleted$,
 } from "@/observables";
 import { combineLatest, of } from "rxjs";
 import { switchMap, pluck, tap } from "rxjs/operators";
@@ -109,6 +110,7 @@ import { emitEditorErrorMessage } from "@/atoms/PanelEventBus";
 interface Data {
   schematicKind: SchematicKind;
   schematic: Schematic | null;
+  schematicRootObjectId: string | null;
 }
 
 export default Vue.extend({
@@ -132,6 +134,7 @@ export default Vue.extend({
     return {
       schematicKind: SchematicKind.Deployment,
       schematic: null,
+      schematicRootObjectId: null,
     };
   },
   subscriptions: function(this: any): Record<string, any> {
@@ -203,8 +206,8 @@ export default Vue.extend({
       selectedSchematicKind$,
       rootObjectId$,
       changeSet$,
-      editSession$,
       nodePositionUpdated$,
+      edgeDeleted$,
     ).pipe(
       switchMap(
         ([
@@ -213,8 +216,8 @@ export default Vue.extend({
           selectedSchematicKind,
           rootObjectId,
           changeSet,
-          editSession,
           _nodePositionUpdated,
+          _edgeDeleted,
         ]) => {
           if (rootObjectId == "noSelectedDeploymentNode") {
             this.schematic = null;
@@ -222,6 +225,7 @@ export default Vue.extend({
               error: { message: "no selected deployment node", code: 42 },
             });
           }
+
           if (workspace && system && selectedSchematicKind && rootObjectId) {
             let includeRootNode = false;
             if (selectedSchematicKind == SchematicKind.Component) {
@@ -237,9 +241,10 @@ export default Vue.extend({
             if (changeSet) {
               request["changeSetId"] = changeSet.id;
             }
-            if (editSession) {
-              request["editSessionId"] = editSession.id;
+            if (this.editSession) {
+              request["editSessionId"] = this.editSession.id;
             }
+            this.schematicRootObjectId = rootObjectId;
             return getApplicationSystemSchematic(request);
           } else {
             return of({ error: { message: "cannot get schema", code: 42 } });
@@ -276,6 +281,7 @@ export default Vue.extend({
       editSession: editSession$,
       workspace: workspace$,
       schematicUpdateCallback: schematicUpdateCallback$,
+      edgeDeleted: edgeDeleted$,
     };
   },
   computed: {

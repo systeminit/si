@@ -64,6 +64,14 @@
         <RadioIcon size="1.1x" />
       </button>
 
+      <button
+        class="pl-1 text-white focus:outline-none"
+        :class="connectionViewClasses()"
+        @click="switchTocCnnectionView()"
+      >
+        <Link2Icon size="1.1x" />
+      </button>
+
       <!--
       <button
         class="pl-1 text-white focus:outline-none"
@@ -94,12 +102,19 @@
           :starting="qualificationStart"
         />
         <ActionViewer v-else-if="activeView == 'action'" :entity="entity" />
-        <div v-else>
+
+        <ConnectionViewer
+          v-else-if="activeView == 'connection'"
+          :connections="connections"
+        />
+
+        <div v-else class="text-xs">
           Not implemented
           <div>
             <VueJsonPretty :data="entity" />
           </div>
         </div>
+
         <!--
         <CodeViewer
           v-else-if="activeView == 'code'"
@@ -135,17 +150,21 @@ import {
   DiscIcon,
   CheckSquareIcon,
   PlayIcon,
+  Link2Icon,
 } from "vue-feather-icons";
 import "vue-json-pretty/lib/styles.css";
 import { Entity } from "@/api/sdf/model/entity";
+import { Connections } from "@/api/sdf/dal/attributeDal";
 import Bottle from "bottlejs";
 import { Persister } from "@/api/persister";
 import AttributeViewer from "@/organisims/AttributeViewer.vue";
 import QualificationViewer from "@/organisims/QualificationViewer.vue";
 import ActionViewer from "@/organisims/ActionViewer.vue";
 import CodeViewer from "@/organisims/CodeViewer.vue";
+import ConnectionViewer from "@/organisims/ConnectionViewer.vue";
 import {
   loadEntityForEdit,
+  loadConnections,
   attributePanelEntityUpdates$,
   entityLabelList$,
   schematicSelectNode$,
@@ -154,22 +173,34 @@ import {
   changeSet$,
   editSession$,
   refreshEntityLabelList$,
+  workspace$,
+  edgeDeleted$,
 } from "@/observables";
 import { combineLatest } from "rxjs";
 import { pluck, switchMap, tap, filter, map } from "rxjs/operators";
 import { Diff } from "@/api/sdf/model/diff";
+import { ISchematicNode } from "@/api/sdf/model/schematic";
 import {
   Qualification,
   QualificationStart,
 } from "@/api/sdf/model/qualification";
+import VueJsonPretty from "vue-json-pretty";
 import _ from "lodash";
 
 interface IData {
   isLoading: boolean;
   selectedEntityId: string;
+  selectedNode: ISchematicNode | null;
   selectionIsLocked: boolean;
-  activeView: "attribute" | "code" | "event" | "qualification" | "action";
+  activeView:
+    | "attribute"
+    | "code"
+    | "event"
+    | "qualification"
+    | "action"
+    | "connection";
   entity: Entity | null;
+  connections: Connections;
   diff: Diff;
   qualifications: Qualification[];
   qualificationStart: QualificationStart[];
@@ -200,6 +231,9 @@ export default Vue.extend({
     CodeViewer,
     PlayIcon,
     ActionViewer,
+    ConnectionViewer,
+    Link2Icon,
+    VueJsonPretty,
   },
   data(): IData {
     let bottle = Bottle.pop("default");
@@ -214,9 +248,14 @@ export default Vue.extend({
       return {
         isLoading: false,
         selectedEntityId: "",
+        selectedNode: null,
         selectionIsLocked: true,
         activeView: "attribute",
         entity: null,
+        connections: {
+          inbound: [],
+          outbound: [],
+        },
         diff: [],
         qualifications: [],
         qualificationStart: [],
@@ -306,9 +345,13 @@ export default Vue.extend({
             if (node) {
               // @ts-ignore
               this.selectedEntityId = node.object.id;
+              // @ts-ignore
+              this.selectedNode = node;
             } else {
               // @ts-ignore
               this.selectedEntityId = null;
+              // @ts-ignore
+              this.selectedNode = null;
             }
           }
         }),
@@ -353,6 +396,35 @@ export default Vue.extend({
           }
         }),
       ),
+      connectionsForEntity: this.$watchAsObservable("selectedEntityId", {
+        immediate: true,
+      }).pipe(
+        pluck("newValue"),
+        switchMap(entityId => loadConnections(entityId)),
+        tap(r => {
+          const connections: Connections = {
+            inbound: [],
+            outbound: [],
+          };
+
+          if (r.error && r.error.code == 406) {
+            // @ts-ignore
+            this.connections = connections;
+          } else if (r.error && r.error.code != 42) {
+            // @ts-ignore
+            this.connections = connections;
+            emitEditorErrorMessage(r.error.message);
+          } else {
+            if (r.connections) {
+              // @ts-ignore
+              this.connections = r.connections;
+            } else {
+              // @ts-ignore
+              this.connections = connections;
+            }
+          }
+        }),
+      ),
     };
   },
   methods: {
@@ -375,6 +447,9 @@ export default Vue.extend({
     eventViewClasses(): Record<string, any> {
       return this.viewClasses("event");
     },
+    connectionViewClasses(): Record<string, any> {
+      return this.viewClasses("connection");
+    },
     qualificationViewClasses(): Record<string, any> {
       return this.viewClasses("qualification");
     },
@@ -386,6 +461,9 @@ export default Vue.extend({
     },
     switchToEventView() {
       this.activeView = "event";
+    },
+    switchTocCnnectionView() {
+      this.activeView = "connection";
     },
     switchToQualificationView() {
       this.activeView = "qualification";

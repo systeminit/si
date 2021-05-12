@@ -195,7 +195,8 @@ export function emitPropRepeatedRemoveEvent(
 // });
 
 function publishPanelViewportUpdateEvent() {
-  PanelEventBus.$emit("panel-viewport-update", true);
+  // ALEX: DISABLED (please keep arround)
+  // PanelEventBus.$emit("panel-viewport-update", true);
 }
 
 function registerPanelViewportUpdateEvents() {

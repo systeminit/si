@@ -138,6 +138,11 @@ pub fn attribute_dal(
 ) -> BoxedFilter<(impl warp::Reply,)> {
     attribute_dal_get_entity(pg.clone())
         .or(attribute_dal_get_entity_list(pg.clone()))
+        .or(attribute_dal_get_connections(pg.clone()))
+        .or(attribute_dal_delete_connection(
+            pg.clone(),
+            nats_conn.clone(),
+        ))
         .or(attribute_dal_get_input_labels(pg.clone()))
         .or(attribute_dal_update_entity(
             pg.clone(),
@@ -164,6 +169,32 @@ pub fn attribute_dal_get_entity_list(pg: PgPool) -> BoxedFilter<(impl warp::Repl
         .and(warp::header::<String>("authorization"))
         .and(warp::query::<handlers::attribute_dal::GetEntityListRequest>())
         .and_then(handlers::attribute_dal::get_entity_list)
+        .boxed()
+}
+
+pub fn attribute_dal_get_connections(pg: PgPool) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("attributeDal" / "getConnections")
+        .and(warp::get())
+        .and(with_pg(pg))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::query::<handlers::attribute_dal::GetConnectionsRequest>())
+        .and_then(handlers::attribute_dal::get_connections)
+        .boxed()
+}
+
+pub fn attribute_dal_delete_connection(
+    pg: PgPool,
+    nats_conn: NatsConn,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("attributeDal" / "deleteConnection")
+        .and(warp::post())
+        .and(with_pg(pg))
+        .and(with_nats_conn(nats_conn))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::body::json::<
+            handlers::attribute_dal::DeleteConnectionRequest,
+        >())
+        .and_then(handlers::attribute_dal::delete_connection)
         .boxed()
 }
 

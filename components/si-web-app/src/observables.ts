@@ -16,6 +16,8 @@ import {
   IUpdateEntityReply,
   IGetEntityRequest,
   IGetEntityListRequest,
+  IGetConnectionsRequest,
+  IGetConnectionsReply,
 } from "@/api/sdf/dal/attributeDal";
 import { IWorkspace } from "@/api/sdf/model/workspace";
 import { IChangeSet } from "@/api/sdf/model/changeSet";
@@ -114,6 +116,54 @@ export function loadEntityForEdit(
       }
     }),
   );
+  return observable;
+}
+
+export function getConnections(
+  entityId: string,
+  workspace: IWorkspace | null,
+  changeSet: IChangeSet | null,
+  editSession: IEditSession | null,
+  editMode: Boolean,
+): Observable<IGetConnectionsReply> {
+  if (workspace && entityId) {
+    const request: IGetConnectionsRequest = {
+      entityId,
+      workspaceId: workspace.id,
+    };
+    if (changeSet) {
+      request["changeSetId"] = changeSet.id;
+    }
+    if (editMode && editSession) {
+      request["editSessionId"] = editSession.id;
+    }
+    return from(AttributeDal.getConnections(request)).pipe(
+      map(reply => {
+        if (!reply.error) {
+        }
+        return reply;
+      }),
+    );
+  } else {
+    let reply: IGetConnectionsReply = {
+      error: {
+        code: 42,
+        message: "cannot get direct edges without a workspace or entity id",
+      },
+    };
+    return from([reply]);
+  }
+}
+
+export function loadConnections(
+  entityId: string,
+): Observable<IGetConnectionsReply> {
+  let observable = combineLatest(
+    workspace$,
+    changeSet$,
+    editSession$,
+    editMode$,
+  ).pipe(switchMap(args => getConnections(entityId, ...args)));
   return observable;
 }
 
@@ -239,3 +289,8 @@ export interface EdgeCreating {
   entityId: string;
 }
 export const edgeCreating$ = new Subject<EdgeCreating | null>();
+
+export interface EdgeDeleted {
+  edgeId: string;
+}
+export const edgeDeleted$ = new BehaviorSubject<EdgeDeleted | null>(null);

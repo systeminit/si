@@ -11,7 +11,7 @@
     @keyup.backspace.stop.prevent
     @wheel="mouseWheel($event)"
   >
-    <div :id="canvas.id" ref="canvas" class="absolute ">
+    <div :id="canvas.id" ref="canvas" class="absolute">
       <svg
         :id="connection.transientConnection.elementId"
         height="100%"
@@ -410,7 +410,9 @@ export default Vue.extend({
   },
   methods: {
     registerEvents(): void {
-      PanelEventBus.$on("panel-viewport-update", this.redraw);
+      // ALEX: DISABLED (please keep arround)
+      // PanelEventBus.$on("panel-viewport-update", this.redraw);
+
       PanelEventBus.$on("panel-viewport-edge-remove", this.removeTemporaryEdge);
 
       SpaceBarEvents.subscribe(event =>
@@ -422,7 +424,9 @@ export default Vue.extend({
       );
     },
     deRegisterEvents(): void {
-      PanelEventBus.$off("panel-viewport-update", this.redraw);
+      // ALEX: DISABLED (please keep arround)
+      // PanelEventBus.$off("panel-viewport-update", this.redraw);
+
       PanelEventBus.$off(
         "panel-viewport-edge-remove",
         this.removeTransientEdge,
@@ -533,9 +537,12 @@ export default Vue.extend({
       }
     },
     async clearNodeSelection() {
-      schematicSelectNode$.next(null);
-      if (this.schematicKind == SchematicKind.Deployment) {
-        deploymentSchematicSelectNode$.next(null);
+      // @ts-ignore
+      if (this.selectedNode) {
+        schematicSelectNode$.next(null);
+        if (this.schematicKind == SchematicKind.Deployment) {
+          deploymentSchematicSelectNode$.next(null);
+        }
       }
     },
     onNodeCreate(nodeId: string, _event: MouseEvent): void {
@@ -670,7 +677,8 @@ export default Vue.extend({
       }
     },
     redraw(_event: IPanelLayoutUpdated | UIEvent) {
-      this.$forceUpdate();
+      // ALEX DISABLED
+      // this.$forceUpdate();
     },
 
     backspaceEvent(event: ShortcutUpdateEvent): void {
@@ -826,6 +834,8 @@ export default Vue.extend({
             e.target instanceof HTMLElement &&
             e.target.classList.contains("socket")
           ) {
+            console.log(e.target);
+
             let entityType = e.target.getAttribute("entityType");
             let entityId = e.target.getAttribute("entityId");
             let schematicKind = e.target.getAttribute("schematicKind");
@@ -1038,6 +1048,7 @@ export default Vue.extend({
       this.viewer.isPanning = false;
       this.viewer.nodeDeselection = false;
       this.removeTransientEdge();
+      this.removeTemporaryEdge();
     },
     mouseWheel(e: MouseWheelEvent) {
       this.zoom(e);
@@ -1365,10 +1376,6 @@ export default Vue.extend({
           );
         }
 
-        // ALEX DEBUG
-        console.log("sourceNode", sourceNode);
-        console.log("destinationNode", destinationNode);
-
         if (
           this.schematic &&
           this.schematic.nodes[sourceNode[1]] &&
@@ -1423,6 +1430,7 @@ export default Vue.extend({
             this.removeTransientEdge();
 
             await this.createConnection(source, destination);
+            this.removeTemporaryEdge();
           }
           this.removeTransientEdge();
 
