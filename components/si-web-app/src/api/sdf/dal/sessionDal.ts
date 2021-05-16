@@ -6,6 +6,19 @@ import { Entity } from "@/api/sdf/model/entity";
 import { SDFError, SDF } from "@/api/sdf";
 import * as jwtLib from "jsonwebtoken";
 import Bottle from "bottlejs";
+import {
+  organization$,
+  workspace$,
+  user$,
+  billingAccount$,
+  changeSet$,
+  editSession$,
+  applicationId$,
+  system$,
+  editMode$,
+  deploymentSchematicSelectNode$,
+  schematicSelectNode$,
+} from "@/observables";
 
 export interface ISessionDalLoginRequest {
   billingAccountName: string;
@@ -147,6 +160,18 @@ export class SessionDal {
     if (sdf.update) {
       sdf.update.socket.close();
     }
+    user$.next(null);
+    billingAccount$.next(null);
+    organization$.next(null);
+    workspace$.next(null);
+    changeSet$.next(null);
+    editSession$.next(null);
+    applicationId$.next(null);
+    system$.next(null);
+    editMode$.next(false);
+    deploymentSchematicSelectNode$.next(null);
+    schematicSelectNode$.next(null);
+    sessionStorage.clear();
   }
 
   static async isAuthenticated(

@@ -56,16 +56,16 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import Vue, { PropType } from "vue";
 import {
   // ChevronsRightIcon,
   GitBranchIcon,
   GitCommitIcon,
 } from "vue-feather-icons";
-import { mapState } from "vuex";
-import { camelCase } from "change-case";
-import { StatusBarStore } from "@/store/modules/statusBar";
-import { instanceMapState } from "@/store";
+import { Entity } from "@/api/sdf/model/entity";
+import { changeSet$, editMode$ } from "@/observables";
+import { switchMap } from "rxjs/operators";
+import { from } from "rxjs";
 
 export default Vue.extend({
   name: "StatusBar",
@@ -75,39 +75,34 @@ export default Vue.extend({
     GitCommitIcon,
   },
   props: {
-    instanceId: { type: String },
+    application: { type: Object as PropType<Entity> },
+  },
+  subscriptions(): Record<string, any> {
+    return {
+      changeSetName: changeSet$.pipe(
+        switchMap(changeSet => from([changeSet?.name || null])),
+      ),
+      editMode: editMode$,
+    };
   },
   computed: {
-    applicationName(): StatusBarStore["applicationName"] {
-      return instanceMapState("statusBar", this.instanceId, "applicationName");
-    },
-    systemName(): StatusBarStore["systemName"] {
-      // return instanceMapState("statusBar", this.instanceId, "systemName");
-      return "production";
-    },
-    nodeName(): StatusBarStore["nodeName"] {
-      // return instanceMapState("statusBar", this.instanceId, "nodeName");
-      return "my glorious node";
-    },
-    nodeType(): StatusBarStore["nodeType"] {
-      // return instanceMapState("statusBar", this.instanceId, "nodeType");
-      return "node type";
-    },
-    changeSetName(): StatusBarStore["changeSetName"] {
-      return instanceMapState("statusBar", this.instanceId, "changeSetName");
-    },
-    editMode(): StatusBarStore["editMode"] {
-      return instanceMapState("statusBar", this.instanceId, "editMode");
+    applicationName(): string | undefined {
+      if (this.application) {
+        return this.application.name;
+      } else {
+        return undefined;
+      }
     },
   },
   methods: {
     editModeClasses(): Record<string, any> {
       let classes: Record<string, any> = {};
 
-      if (this.editMode == "view") {
-        classes["mode-view"] = true;
-      } else {
+      // @ts-ignore
+      if (this.editMode) {
         classes["mode-edit"] = true;
+      } else {
+        classes["mode-view"] = true;
       }
       return classes;
     },

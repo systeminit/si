@@ -62,17 +62,21 @@
 
 <script lang="ts">
 import Vue from "vue";
-import { mapState } from "vuex";
 import SiButton from "@/atoms/SiButton.vue";
 import SiError from "@/atoms/SiError.vue";
 import SiSelect, { SelectProps } from "@/atoms/SiSelect.vue";
 import SiTextBox from "@/atoms/SiTextBox.vue";
-import { SecretKind } from "@/api/sdf/model/secret";
-import { ISecretCreateRequest } from "@/store/modules/secret";
+import {
+  SecretKind,
+  SecretVersion,
+  SecretAlgorithm,
+} from "@/api/sdf/model/secret";
 import AwsAccessKeyCredential from "@/organisims/SecretCreate/AwsAccessKeyCredential.vue";
 import DockerHubCredential from "@/organisims/SecretCreate/DockerHubCredential.vue";
 import HelmRepoCredential from "@/organisims/SecretCreate/HelmRepoCredential.vue";
-import { SessionStore } from "@/store/modules/session";
+import { workspace$, refreshSecretList$ } from "@/observables";
+import { SecretDal, ICreateSecretRequest } from "@/api/sdf/dal/secretDal";
+import sealedBox from "tweetnacl-sealedbox-js";
 
 interface IData {
   form: {
@@ -82,6 +86,24 @@ interface IData {
   };
   createWasSuccessful: boolean;
   errorMessage: string;
+}
+
+export function encryptMessage(
+  message: Record<string, string>,
+  publicKey: Uint8Array,
+): number[] {
+  return Array.from(sealedBox.seal(serializeMessage(message), publicKey));
+}
+
+export function serializeMessage(message: Record<string, string>): Uint8Array {
+  const json = JSON.stringify(message, null, 0);
+
+  const result = new Uint8Array(json.length);
+  for (let i = 0; i < json.length; i++) {
+    result[i] = json.charCodeAt(i);
+  }
+
+  return result;
 }
 
 export default Vue.extend({
@@ -106,11 +128,12 @@ export default Vue.extend({
       errorMessage: "",
     };
   },
+  subscriptions(): Record<string, any> {
+    return {
+      currentWorkspace: workspace$,
+    };
+  },
   computed: {
-    ...mapState({
-      currentWorkspace: (state: any): SessionStore["currentWorkspace"] =>
-        state.session.currentWorkspace,
-    }),
     secretKinds(): SelectProps["options"] {
       let secretKinds = SecretKind.selectPropOptions();
       secretKinds.unshift({ label: "", value: "" });
@@ -130,12 +153,6 @@ export default Vue.extend({
     updateMessage(event: Record<string, any>) {
       this.form.message = event;
     },
-    // async created() {
-    //   console.log("boop: created");
-    // },
-    // async beforeDestroy() {
-    //   console.log("boop: beforeDestroy");
-    // },
     clear() {
       this.form.secretName = "";
       this.form.secretKind = null;
@@ -155,6 +172,7 @@ export default Vue.extend({
       // empty out the error message, ready for this attempt
       this.errorMessage = "";
 
+      // @ts-ignore
       if (!this.currentWorkspace) {
         this.errorMessage = "No workspace selected!";
         return;
@@ -164,17 +182,34 @@ export default Vue.extend({
         return;
       }
 
-      const request: ISecretCreateRequest = {
+      const pkReply = await SecretDal.getPublicKey();
+      if (pkReply.error) {
+        return pkReply;
+      }
+      const publicKey = pkReply.publicKey;
+
+      const crypted = encryptMessage(this.form.message, publicKey.publicKey);
+
+      const dalRequest: ICreateSecretRequest = {
         name: this.form.secretName,
+        objectType: SecretKind.objectTypeFor(this.form.secretKind),
         kind: this.form.secretKind,
-        message: this.form.message,
+        crypted,
+        keyPairId: publicKey.id,
+        version: SecretVersion.defaultValue(),
+        algorithm: SecretAlgorithm.defaultValue(),
+        // @ts-ignore
+        workspaceId: this.currentWorkspace.id,
       };
-      const reply = await this.$store.dispatch("secret/createSecret", request);
+
+      const reply = await SecretDal.createSecret(dalRequest);
+
       if (reply.error) {
         this.errorMessage = reply.error.message;
       } else {
         this.createWasSuccessful = true;
         this.clear();
+        refreshSecretList$.next(true);
         this.$emit("submit");
       }
     },

@@ -25,7 +25,8 @@ import SiLoader from "@/atoms/SiLoader.vue";
 import DebugRoute from "@/atoms/DebugRoute.vue";
 import Bottle from "bottlejs";
 import { SDF } from "@/api/sdf";
-import { ISetDefaultsReply } from "@/store/modules/session";
+import { SessionDal } from "@/api/sdf/dal/sessionDal";
+import { organization$, workspace$, system$ } from "@/observables";
 
 interface IData {
   errorMessage: string;
@@ -56,20 +57,21 @@ export default Vue.extend({
 
     // If this is the home page route, then we need to load
     // the users default organization and workspace.
-    let response: ISetDefaultsReply = await this.$store.dispatch(
-      "session/setDefaults",
-    );
+    let reply = await SessionDal.getDefaults();
     this.isLoading = false;
 
-    if (response.error) {
-      this.errorMessage = response.error.message;
+    if (reply.error) {
+      this.errorMessage = reply.error.message;
     } else {
+      organization$.next(reply.organization);
+      workspace$.next(reply.workspace);
+      system$.next(reply.system);
       if (this.$route.name == "home") {
         this.$router.push({
           name: "workspace",
           params: {
-            organizationId: response.organization.id,
-            workspaceId: response.workspace.id,
+            organizationId: reply.organization.id,
+            workspaceId: reply.workspace.id,
           },
         });
       }

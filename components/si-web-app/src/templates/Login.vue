@@ -5,7 +5,6 @@
 <script lang="ts">
 import Vue from "vue";
 
-import DebugRouter from "@/atoms/DebugRoute.vue";
 import LoginForm from "@/organisims/LoginForm.vue";
 
 export default Vue.extend({

@@ -36,9 +36,8 @@
 
       <div class="flex mr-2" v-show="!showDetails">
         <EditorMenuBar
-          :applicationContextCtx="applicationContextCtx"
-          :workspaceId="workspaceId"
-          :applicationId="applicationId"
+          :workspace="currentWorkspace"
+          :application="application"
         />
       </div>
     </div>
@@ -67,9 +66,8 @@
     <div class="flex justify-end mt-1 mr-2" v-show="showDetails">
       <div class="flex items-center justify-end">
         <EditorMenuBar
-          :applicationContextCtx="applicationContextCtx"
-          :workspaceId="workspaceId"
-          :applicationId="applicationId"
+          :workspace="currentWorkspace"
+          :application="application"
         />
       </div>
     </div>
@@ -77,17 +75,11 @@
 </template>
 
 <script lang="ts">
-import { ctxMapState, InstanceStoreContext } from "@/store";
-import { ApplicationContextStore } from "@/store/modules/applicationContext";
-import { SessionStore } from "@/store/modules/session";
-import { IEditorContext } from "@/store/modules/editor";
 import Vue, { PropType } from "vue";
 
 import { ChevronDownIcon, ChevronRightIcon } from "vue-feather-icons";
 import SiError from "@/atoms/SiError.vue";
-import { ChangeSet } from "@/api/sdf/model/changeSet";
-import { SDFError } from "@/api/sdf";
-import { PanelEventBus, emitEditorErrorMessage } from "@/atoms/PanelEventBus";
+import { PanelEventBus } from "@/atoms/PanelEventBus";
 import EditorMenuBar from "@/organisims/EditorMenuBar.vue";
 
 import ActivitySummary from "@/molecules/ActivitySummary.vue";
@@ -95,11 +87,11 @@ import ServicesSummary from "@/molecules/ServicesSummary.vue";
 import ComputingResourceSummary from "@/molecules/ComputingResourceSummary.vue";
 import ChangesSummary from "@/molecules/ChangesSummary.vue";
 
-import { UploadIcon } from "vue-feather-icons";
+import { Entity } from "@/api/sdf/model/entity";
+import { workspace$, editMode$, changeSet$, editSession$ } from "@/observables";
 
 interface IData {
   showDetails: boolean;
-  selectCurrentChangeSetId: string;
   newChangeSetForm: {
     name: string;
   };
@@ -111,10 +103,7 @@ export default Vue.extend({
   name: "ApplicationContext",
   props: {
     workspaceId: { type: String },
-    applicationId: { type: String },
-    applicationContextCtx: {
-      type: Object as PropType<InstanceStoreContext<ApplicationContextStore>>,
-    },
+    application: { type: Object as PropType<Entity> },
   },
   components: {
     EditorMenuBar,
@@ -131,7 +120,6 @@ export default Vue.extend({
   data(): IData {
     return {
       showDetails: false,
-      selectCurrentChangeSetId: "",
       newChangeSetForm: {
         name: "",
       },
@@ -139,41 +127,22 @@ export default Vue.extend({
       editorErrorMessage: "",
     };
   },
+  subscriptions(): Record<string, any> {
+    return {
+      currentWorkspace: workspace$,
+      editMode: editMode$,
+      currentChangeSet: changeSet$,
+      currentEditSession: editSession$,
+    };
+  },
   computed: {
-    currentWorkspace(): SessionStore["currentWorkspace"] | undefined {
-      return this.$store.state.session.currentWorkspace;
+    applicationName(): string | undefined {
+      return this.application.name;
     },
-    applicationName(): ApplicationContextStore["applicationName"] | undefined {
-      return ctxMapState(this.applicationContextCtx, "applicationName");
-    },
-    systemsList(): ApplicationContextStore["systemsList"] | undefined {
-      return ctxMapState(this.applicationContextCtx, "systemsList");
-    },
-    editMode(): ApplicationContextStore["editMode"] {
-      return ctxMapState(this.applicationContextCtx, "editMode");
-    },
-    currentSystemId(): SessionStore["currentSystem"] | undefined {
-      return this.$store.state.session.currentSystem?.id;
-    },
-    openChangeSetsList():
-      | ApplicationContextStore["openChangeSetsList"]
-      | undefined {
-      return ctxMapState(this.applicationContextCtx, "openChangeSetsList");
-    },
-    currentChangeSet():
-      | ApplicationContextStore["currentChangeSet"]
-      | undefined {
-      return ctxMapState(this.applicationContextCtx, "currentChangeSet");
-    },
-    currentEditSession():
-      | ApplicationContextStore["currentEditSession"]
-      | undefined {
-      return ctxMapState(this.applicationContextCtx, "currentEditSession");
-    },
-    applyButtonKind(): string {
+    applyButtonKind(this: any): string {
       return !this.currentChangeSet || this.editMode ? "standard" : "save";
     },
-    applyButtonIcon(): string {
+    applyButtonIcon(this: any): string {
       return !this.currentChangeSet || this.editMode ? "play" : "save";
     },
   },
@@ -190,140 +159,6 @@ export default Vue.extend({
       // classes["title-background"] = this.showDetails;
       return classes;
     },
-    async changeSetSelected() {
-      if (this.selectCurrentChangeSetId) {
-        let reply = await this.$store.dispatch(
-          this.applicationContextCtx.dispatchPath(
-            "createEditSessionAndLoadChangeSet",
-          ),
-          { changeSetId: this.selectCurrentChangeSetId },
-        );
-        if (reply.error) {
-          this.modalErrorMessage = reply.error.message;
-        } else {
-          await this.$emit("update-query-param", {
-            changeSetId: reply.changeSet.id,
-            editSessionId: reply.editSession.id,
-          });
-        }
-      } else {
-        await this.$store.dispatch(
-          this.applicationContextCtx.dispatchPath(
-            "clearCurrentChangeSetAndCurrentEditSession",
-          ),
-          null,
-          { root: true },
-        );
-        await this.$emit("remove-query-param", [
-          "changeSetId",
-          "editSessionId",
-        ]);
-      }
-    },
-    async editSessionCreate() {
-      let reply = await this.$store.dispatch(
-        this.applicationContextCtx.dispatchPath("createEditSession"),
-        {
-          workspaceId: this.currentWorkspace?.id,
-          changeSetId: this.currentChangeSet?.id,
-        },
-      );
-      if (reply.error) {
-        this.modalErrorMessage = reply.error.message;
-      } else {
-        await this.$emit("update-query-param", {
-          editSessionId: reply.editSession.id,
-        });
-        await this.setEditMode();
-      }
-    },
-    async showChangeSetCreateModal() {
-      await this.$modal.show("changeSetCreate");
-    },
-    async setEditMode() {
-      await this.$store.dispatch(
-        this.applicationContextCtx.dispatchPath("setEditMode"),
-        true,
-      );
-      this.$emit("update-query-param", { editMode: true });
-    },
-    async startEditSession() {
-      if (this.currentChangeSet) {
-        await this.editSessionCreate();
-        await this.setEditMode();
-      } else {
-        await this.showChangeSetCreateModal();
-      }
-    },
-    async cancelEditSession() {
-      let reply = await this.$store.dispatch(
-        this.applicationContextCtx.dispatchPath("cancelEditSession"),
-        {
-          workspaceId: this.currentWorkspace?.id,
-          editSessionId: this.currentEditSession?.id,
-        },
-      );
-      if (reply.error) {
-        emitEditorErrorMessage(
-          `failed to cancel edit session: ${reply.error.message}`,
-        );
-      } else {
-        await this.$store.dispatch(
-          this.applicationContextCtx.dispatchPath("setEditMode"),
-          false,
-        );
-        this.$emit("update-query-param", { editMode: false });
-        this.$emit("remove-query-param", ["editSessionId", "editMode"]);
-      }
-    },
-    async saveEditSession() {
-      if (this.currentWorkspace && this.currentEditSession) {
-        let reply = await this.applicationContextCtx.dispatch(
-          "saveEditSession",
-          {
-            editSessionId: this.currentEditSession.id,
-            workspaceId: this.currentWorkspace.id,
-          },
-        );
-        if (reply.error) {
-          emitEditorErrorMessage(
-            `failed to save edit session: ${reply.error.message}`,
-          );
-        } else {
-          await this.$store.dispatch(
-            this.applicationContextCtx.dispatchPath("setEditMode"),
-            false,
-          );
-          this.$emit("update-query-param", { editMode: false });
-          this.$emit("remove-query-param", ["editSessionId", "editMode"]);
-        }
-      }
-    },
-    async applyChangeSet() {
-      if (this.currentWorkspace && this.currentChangeSet) {
-        let reply = await this.applicationContextCtx.dispatch(
-          "applyChangeSet",
-          {
-            changeSetId: this.currentChangeSet.id,
-            workspaceId: this.currentWorkspace.id,
-          },
-        );
-        if (reply.error) {
-          emitEditorErrorMessage(
-            `failed to apply change set: ${reply.error.message}`,
-          );
-        } else {
-          this.$emit("remove-query-param", ["changeSetId"]);
-          this.$store.dispatch(
-            this.applicationContextCtx.dispatchPath("loadApplicationContext"),
-            {
-              workspaceId: this.workspaceId,
-              applicationId: this.applicationId,
-            },
-          );
-        }
-      }
-    },
     async setEditorErrorMessage(error: string) {
       this.editorErrorMessage = error;
     },
@@ -335,31 +170,10 @@ export default Vue.extend({
     },
   },
   async created() {
-    // @ts-ignore
-    let context: IEditorContext = {
-      applicationId: this.applicationId,
-    };
-    this.$store.dispatch("editor/setContext", context);
-    this.$store.dispatch(
-      this.applicationContextCtx.dispatchPath("loadApplicationContext"),
-      {
-        workspaceId: this.workspaceId,
-        applicationId: this.applicationId,
-      },
-    );
     PanelEventBus.$on("editor-error-message", this.setEditorErrorMessage);
   },
   async beforeDestroy() {
     PanelEventBus.$off("editor-error-message", this.setEditorErrorMessage);
-  },
-  watch: {
-    async currentChangeSet(newChangeSet: ChangeSet) {
-      if (newChangeSet) {
-        this.selectCurrentChangeSetId = newChangeSet.id;
-      } else {
-        this.selectCurrentChangeSetId = "";
-      }
-    },
   },
 });
 </script>

@@ -25,26 +25,25 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from "vue";
-import { mapState } from "vuex";
+import Vue from "vue";
 import { RawLocation } from "vue-router";
-
-import { Workspace } from "@/api/sdf/model/workspace";
-import { Organization } from "@/api/sdf/model/organization";
 
 import SiError from "@/atoms/SiError.vue";
 import ApplicationDetailCard from "@/molecules/ApplicationDetailCard.vue";
 
+import { workspace$, organization$, applicationCreated$ } from "@/observables";
 import {
-  ApplicationStore,
-  ISetListApplicationsReply,
-  ISetListApplicationsRequest,
-} from "@/store/modules/application";
-import { SessionStore } from "@/store/modules/session";
+  ApplicationDal,
+  IApplicationListReplySuccess,
+} from "@/api/sdf/dal/applicationDal";
+import { combineLatest, from } from "rxjs";
+import { switchMap, tap } from "rxjs/operators";
+import _ from "lodash";
 
 interface IData {
   errorMessage: string;
   isLoading: boolean;
+  applicationList: IApplicationListReplySuccess["list"];
 }
 
 export default Vue.extend({
@@ -58,30 +57,51 @@ export default Vue.extend({
     return {
       errorMessage: "",
       isLoading: true,
+      applicationList: [],
     };
   },
   components: {
     SiError,
     ApplicationDetailCard,
   },
-  computed: {
-    ...mapState({
-      applicationList: (state: any): ApplicationStore["applicationList"] =>
-        state.application.applicationList,
-      currentWorkspace(
-        state: Record<string, any>,
-      ): SessionStore["currentWorkspace"] {
-        return state["session"]["currentWorkspace"];
-      },
-      currentOrganization(
-        state: Record<string, any>,
-      ): SessionStore["currentOrganization"] {
-        return state["session"]["currentOrganization"];
-      },
-    }),
+  subscriptions(this: any): Record<string, any> {
+    return {
+      currentWorkspace: workspace$,
+      currentOrganization: organization$,
+      applicationListObservable: combineLatest(
+        workspace$,
+        applicationCreated$,
+      ).pipe(
+        switchMap(([workspace, _applicationCreated]) => {
+          this.isLoading = true;
+          if (workspace) {
+            return from(
+              ApplicationDal.listApplications({ workspaceId: workspace.id }),
+            );
+          } else {
+            return from([
+              { error: { code: 42, message: "missing workspace" } },
+            ]);
+          }
+        }),
+        tap(reply => {
+          this.isLoading = false;
+          if (reply.error) {
+            if (reply.error.code == 42) {
+              return;
+            } else {
+              this.errorMessage = reply.error.message;
+            }
+          } else {
+            this.applicationList = _.sortBy(reply.list, ["application.name"]);
+          }
+        }),
+      ),
+    };
   },
   methods: {
-    cardLink(applicationId: string): RawLocation | null {
+    // I feel shame
+    cardLink(this: any, applicationId: string): RawLocation | null {
       if (this.currentWorkspace && this.currentOrganization) {
         return {
           name: "applicationDetails",
@@ -94,37 +114,8 @@ export default Vue.extend({
       }
       return null;
     },
-    async setListApplications(
-      workspace: SessionStore["currentWorkspace"],
-    ): Promise<void> {
-      if (workspace) {
-        this.isLoading = true;
-        let reply: ISetListApplicationsReply = await this.$store.dispatch(
-          "application/setListApplications",
-          {
-            workspaceId: workspace.id,
-          },
-        );
-        if (reply.error) {
-          this.errorMessage = reply.error.message;
-        }
-        this.isLoading = false;
-      }
-    },
     clearErrorMessage() {
       this.errorMessage = "";
-    },
-  },
-  async created() {
-    await this.$store.dispatch("application/activate", "ApplicationListWad");
-    await this.setListApplications(this.currentWorkspace);
-  },
-  async beforeDestroy() {
-    await this.$store.dispatch("application/deactivate", "ApplicationListWad");
-  },
-  watch: {
-    async currentWorkspace(workspace: SessionStore["currentWorkspace"]) {
-      await this.setListApplications(workspace);
     },
   },
 });

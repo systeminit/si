@@ -167,8 +167,6 @@ import {
 import "vue-json-pretty/lib/styles.css";
 import { Entity } from "@/api/sdf/model/entity";
 import { Connections, IGetConnectionsReply } from "@/api/sdf/dal/attributeDal";
-import Bottle from "bottlejs";
-import { Persister } from "@/api/persister";
 import AttributeViewer from "@/organisims/AttributeViewer.vue";
 import QualificationViewer from "@/organisims/QualificationViewer.vue";
 import ActionViewer from "@/organisims/ActionViewer.vue";
@@ -189,6 +187,8 @@ import {
   workspace$,
   system$,
   resources$,
+  attributePanelState$,
+  restoreAttributePanelState$,
 } from "@/observables";
 import { combineLatest } from "rxjs";
 import { pluck, switchMap, tap } from "rxjs/operators";
@@ -257,35 +257,33 @@ export default Vue.extend({
     ResourceViewer,
   },
   data(): IData {
-    let bottle = Bottle.pop("default");
-    let persister: Persister = bottle.container.Persister;
-    let persistedData = persister.getData(`${this.panelRef}-data`);
-    if (persistedData) {
-      if (persistedData["entity"]) {
-        persistedData["entity"] = Entity.fromJson(persistedData["entity"]);
-      }
-      return persistedData;
-    } else {
-      return {
-        isLoading: false,
-        selectedEntityId: "",
-        selectedNode: null,
-        selectionIsLocked: true,
-        activeView: "attribute",
-        entity: null,
-        connections: {
-          inbound: [],
-          outbound: [],
-        },
-        resource: null,
-        diff: [],
-        qualifications: [],
-        qualificationStart: [],
-      };
-    }
+    return {
+      isLoading: false,
+      selectedEntityId: "",
+      selectedNode: null,
+      selectionIsLocked: true,
+      activeView: "attribute",
+      entity: null,
+      connections: {
+        inbound: [],
+        outbound: [],
+      },
+      resource: null,
+      diff: [],
+      qualifications: [],
+      qualificationStart: [],
+    };
   },
   subscriptions(this: any): Record<string, any> {
     const selectedEntityId$ = this.$watchAsObservable("selectedEntityId", {
+      immediate: true,
+    }).pipe(pluck("newValue"));
+
+    const selectionIsLocked$ = this.$watchAsObservable("selectionIsLocked", {
+      immediate: true,
+    }).pipe(pluck("newValue"));
+
+    const activeView$ = this.$watchAsObservable("activeView", {
       immediate: true,
     }).pipe(pluck("newValue"));
 
@@ -488,6 +486,42 @@ export default Vue.extend({
           }
         }),
       ),
+      saveState: combineLatest(
+        selectedEntityId$,
+        selectionIsLocked$,
+        activeView$,
+      ).pipe(
+        tap(([selectedEntityId, selectionIsLocked, activeView]) => {
+          // TODO: fix this coupling to the router
+          let applicationId = this.$route.params["applicationId"];
+          attributePanelState$.next({
+            panelRef: this.panelRef,
+            applicationId,
+            // @ts-ignore
+            selectionIsLocked,
+            // @ts-ignore
+            selectedEntityId,
+            // @ts-ignore
+            activeView,
+          });
+        }),
+      ),
+      restoreState: restoreAttributePanelState$.pipe(
+        tap(attributePanelState => {
+          // TODO: fix this coupling to the router
+          let applicationId = this.$route.params["applicationId"];
+          if (
+            this.panelRef == attributePanelState.panelRef &&
+            applicationId == attributePanelState.applicationId
+          ) {
+            this.selectionIsLocked = attributePanelState.selectionIsLocked;
+            if (!this.selectionIsLocked) {
+              this.selectedEntityId = attributePanelState.selectedEntityId;
+            }
+            this.activeView = attributePanelState.activeView;
+          }
+        }),
+      ),
     };
   },
   methods: {
@@ -546,21 +580,6 @@ export default Vue.extend({
       } else {
         this.selectionIsLocked = true;
       }
-    },
-  },
-  async beforeDestroy() {
-    let bottle = Bottle.pop("default");
-    let persister: Persister = bottle.container.Persister;
-    persister.removeData(`${this.panelRef}-data`);
-  },
-  watch: {
-    $data: {
-      handler: function(newData, _oldData) {
-        let bottle = Bottle.pop("default");
-        let persister: Persister = bottle.container.Persister;
-        persister.setData(`${this.panelRef}-data`, newData);
-      },
-      deep: true,
     },
   },
   mounted() {

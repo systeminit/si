@@ -6,7 +6,7 @@
       @clear="clearErrorMessage"
     />
     <div class="flex w-full h-full">
-      <div class="flex flex-col w-full shadow-sm table-fixed">
+      <div class="flex flex-col w-full table-fixed shadow-sm">
         <div class="flex w-full text-sm font-medium text-gray-200 header">
           <div class="w-8/12 px-2 py-1 text-center align-middle table-border">
             Name
@@ -43,16 +43,18 @@
 
 <script lang="ts">
 import Vue from "vue";
-import { mapState } from "vuex";
 import _ from "lodash";
-import { SecretStore, ISetSecretListReply } from "@/store/modules/secret";
 import SiError from "@/atoms/SiError.vue";
-import { SessionStore } from "@/store/modules/session";
-import { SecretKind, SecretObjectType } from "@/api/sdf/model/secret";
+import { SecretKind, SecretObjectType, ISecret } from "@/api/sdf/model/secret";
+import { workspace$, refreshSecretList$ } from "@/observables";
+import { from, combineLatest } from "rxjs";
+import { SecretDal } from "@/api/sdf/dal/secretDal";
+import { switchMap, tap } from "rxjs/operators";
 
 interface IData {
   errorMessage: string;
   isLoading: boolean;
+  secretList: ISecret[];
 }
 
 export default Vue.extend({
@@ -64,35 +66,45 @@ export default Vue.extend({
     return {
       isLoading: true,
       errorMessage: "",
+      secretList: [],
     };
   },
-  computed: {
-    ...mapState({
-      secretList(state: Record<string, any>): SecretStore["secretList"] {
-        return _.sortBy(state.secret.secretList, ["name"]);
-      },
-      currentWorkspace: (state: any): SessionStore["currentWorkspace"] =>
-        state.session.currentWorkspace,
-    }),
+  subscriptions(): Record<string, any> {
+    return {
+      getSecretList: combineLatest(workspace$, refreshSecretList$).pipe(
+        switchMap(([workspace, _refreshList]) => {
+          // @ts-ignore
+          this.isLoading = true;
+          if (workspace) {
+            return from(SecretDal.listSecrets({ workspaceId: workspace.id }));
+          } else {
+            return from([
+              {
+                error: {
+                  code: 42,
+                  message: "cannot fetch secret list without a workspace",
+                },
+              },
+            ]);
+          }
+        }),
+        tap(reply => {
+          // @ts-ignore
+          this.isLoading = false;
+          if (reply.error) {
+            if (reply.error.code != 42) {
+              // @ts-ignore
+              this.errorMessage = reply.error.message;
+            }
+          } else {
+            // @ts-ignore
+            this.secretList = _.sortBy(reply.list, ["name"]);
+          }
+        }),
+      ),
+    };
   },
   methods: {
-    async setSecretList(
-      workspace: SessionStore["currentWorkspace"],
-    ): Promise<void> {
-      if (workspace) {
-        this.isLoading = true;
-        const reply: ISetSecretListReply = await this.$store.dispatch(
-          "secret/setSecretList",
-          { workspaceId: workspace.id },
-        );
-        if (reply.error) {
-          this.errorMessage = reply.error.message;
-        } else {
-          this.errorMessage = "";
-        }
-        this.isLoading = false;
-      }
-    },
     labelForKind(secretKind: SecretKind): string {
       return SecretKind.labelFor(secretKind);
     },
@@ -101,14 +113,6 @@ export default Vue.extend({
     },
     clearErrorMessage() {
       this.errorMessage = "";
-    },
-  },
-  async created() {
-    await this.setSecretList(this.currentWorkspace);
-  },
-  watch: {
-    async currentWorkspace(workspace: SessionStore["currentWorkspace"]) {
-      await this.setSecretList(workspace);
     },
   },
 });

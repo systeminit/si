@@ -23,8 +23,6 @@ import PanelContainer, {
 } from "@/molecules/PanelContainer.vue";
 import { PanelEventBus } from "@/atoms/PanelEventBus";
 import _ from "lodash";
-import Bottle from "bottlejs";
-import { Persister } from "@/api/persister";
 
 interface IData {
   panelContainers: IPanelContainer[];
@@ -32,8 +30,8 @@ interface IData {
     style: string | null;
   };
   putBackTo: {
-    parent?: HTMLElement;
-    previousSibling?: HTMLElement;
+    parent?: string;
+    previousSibling?: string;
   };
   maximizedData: IMaximized | null;
   shortcuts: boolean;
@@ -64,82 +62,75 @@ export default Vue.extend({
     PanelEventBus.$off("delete-panel", this.deletePanel);
   },
   data(): IData {
-    let bottle = Bottle.pop("default");
-    let persister: Persister = bottle.container.Persister;
-    let savedData = persister.getData("panelTree");
-    if (savedData) {
-      return savedData;
-    } else {
-      return {
-        shortcuts: false,
-        originalMaximizedElementData: {
-          style: null,
+    return {
+      shortcuts: false,
+      originalMaximizedElementData: {
+        style: null,
+      },
+      maximizedData: null,
+      putBackTo: {},
+      panelContainers: [
+        {
+          orientation: "row",
+          type: "panelContainer",
+          panels: [
+            {
+              orientation: "column",
+              type: "panelContainer",
+              width: 67,
+              panels: [
+                {
+                  name: "schematic",
+                  type: "panel",
+                },
+                {
+                  name: "schematic",
+                  type: "panel",
+                },
+              ],
+            },
+            {
+              orientation: "column",
+              type: "panelContainer",
+              panels: [
+                {
+                  name: "attribute",
+                  type: "panel",
+                },
+                {
+                  name: "schematic",
+                  type: "panel",
+                },
+              ],
+            },
+            //{
+            //  orientation: "row",
+            //  type: "panelContainer",
+            //  panels: [
+            //    {
+            //      name: "schematic",
+            //      type: "panel",
+            //    },
+            //    {
+            //      orientation: "column",
+            //      type: "panelContainer",
+            //      panels: [
+            //        {
+            //          name: "attribute",
+            //          type: "panel",
+            //        },
+            //        {
+            //          name: "somethingelse",
+            //          type: "panel",
+            //        },
+            //      ],
+            //    },
+            //  ],
+            //},
+          ],
         },
-        maximizedData: null,
-        putBackTo: {},
-        panelContainers: [
-          {
-            orientation: "row",
-            type: "panelContainer",
-            panels: [
-              {
-                orientation: "column",
-                type: "panelContainer",
-                width: 67,
-                panels: [
-                  {
-                    name: "schematic",
-                    type: "panel",
-                  },
-                  {
-                    name: "schematic",
-                    type: "panel",
-                  },
-                ],
-              },
-              {
-                orientation: "column",
-                type: "panelContainer",
-                panels: [
-                  {
-                    name: "attribute",
-                    type: "panel",
-                  },
-                  {
-                    name: "schematic",
-                    type: "panel",
-                  },
-                ],
-              },
-              //{
-              //  orientation: "row",
-              //  type: "panelContainer",
-              //  panels: [
-              //    {
-              //      name: "schematic",
-              //      type: "panel",
-              //    },
-              //    {
-              //      orientation: "column",
-              //      type: "panelContainer",
-              //      panels: [
-              //        {
-              //          name: "attribute",
-              //          type: "panel",
-              //        },
-              //        {
-              //          name: "somethingelse",
-              //          type: "panel",
-              //        },
-              //      ],
-              //    },
-              //  ],
-              //},
-            ],
-          },
-        ],
-      };
-    }
+      ],
+    };
   },
   methods: {
     createNewPanel(event: { panelContainerRef: string }) {
@@ -227,12 +218,15 @@ export default Vue.extend({
         }
 
         if (this.putBackTo.parent) {
-          this.putBackTo.parent.prepend(panelElem);
+          let parent = document.getElementById(
+            this.putBackTo.parent,
+          ) as HTMLElement;
+          parent.prepend(panelElem);
         } else if (this.putBackTo.previousSibling) {
-          this.putBackTo.previousSibling.insertAdjacentElement(
-            "afterend",
-            panelElem,
-          );
+          let previousSibling = document.getElementById(
+            this.putBackTo.previousSibling,
+          ) as HTMLElement;
+          previousSibling.insertAdjacentElement("afterend", panelElem);
         }
       }
     },
@@ -244,11 +238,11 @@ export default Vue.extend({
       if (panelElem && panelTreeRootElem) {
         let previousSibling = panelElem.previousElementSibling as HTMLElement;
         if (previousSibling) {
-          this.putBackTo = { previousSibling };
+          this.putBackTo = { previousSibling: previousSibling.id };
         } else {
           let parent = panelElem.parentElement;
           if (parent) {
-            this.putBackTo = { parent };
+            this.putBackTo = { parent: parent.id };
           } else {
             throw new Error("Cannot find element to put panel back to- bug!");
           }
@@ -280,16 +274,6 @@ export default Vue.extend({
           `position: absolute; width: 100%; height: 100%;`,
         );
       }
-    },
-  },
-  watch: {
-    $data: {
-      handler: function(newData, oldData) {
-        let bottle = Bottle.pop("default");
-        let persister: Persister = bottle.container.Persister;
-        persister.setData("panelTree", newData);
-      },
-      deep: true,
     },
   },
 });
