@@ -74,12 +74,9 @@ async fn get_resource() {
     txn.commit().await.expect("cannot commit txn");
     nats.commit().await.expect("cannot commit nats txn");
 
-    let txn = conn.transaction().await.expect("cannot get transaction");
-    let nats = nats_conn.transaction();
-
     let resource = Resource::new(
-        &txn,
-        &nats,
+        &pg,
+        &nats_conn,
         serde_json::json!({ "cool": "beans" }),
         &entity.id,
         &system.id,
@@ -87,9 +84,6 @@ async fn get_resource() {
     )
     .await
     .expect("failed to create resource");
-
-    txn.commit().await.expect("cannot commit txn");
-    nats.commit().await.expect("cannot commit nats txn");
 
     let token = login_user(&ctx, &nba).await;
     let filter = api(pg, nats_conn, veritech, event_log_fs, secret_key);
