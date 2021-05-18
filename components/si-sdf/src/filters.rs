@@ -544,6 +544,11 @@ pub fn application_dal(
 ) -> BoxedFilter<(impl warp::Reply,)> {
     application_dal_create_application(pg.clone(), nats_conn.clone(), veritech.clone())
         .or(application_dal_list_applications(pg.clone()))
+        .or(application_dal_deploy_services(
+            pg.clone(),
+            nats_conn.clone(),
+            veritech.clone(),
+        ))
         .boxed()
 }
 
@@ -574,6 +579,24 @@ pub fn application_dal_create_application(
             handlers::application_dal::CreateApplicationRequest,
         >())
         .and_then(handlers::application_dal::create_application)
+        .boxed()
+}
+
+pub fn application_dal_deploy_services(
+    pg: PgPool,
+    nats_conn: NatsConn,
+    veritech: Veritech,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("applicationDal" / "deployServices")
+        .and(warp::post())
+        .and(with_pg(pg))
+        .and(with_nats_conn(nats_conn))
+        .and(with_veritech(veritech))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::body::json::<
+            handlers::application_dal::DeployServicesRequest,
+        >())
+        .and_then(handlers::application_dal::deploy_services)
         .boxed()
 }
 
