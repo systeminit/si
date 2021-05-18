@@ -171,7 +171,7 @@ export interface Selector {
   types?: string[];
   fromProperty?: string[];
   depth?: "immediate" | "all";
-  edgeKind?: "configures" | "deployment";
+  edgeKind?: "configures" | "deployment" | "includes";
   direction?: "input" | "output";
 }
 
@@ -240,6 +240,27 @@ export const universalDeploy: Workflow = {
       },
       strategy: { kind: VariableKind.String, value: "linear" },
       failIfMissing: { kind: VariableKind.Bool, value: false },
+    },
+  ],
+};
+
+export const applicationDeploy: Workflow = {
+  name: "application:deploy",
+  kind: WorkflowKind.Action,
+  title: "Application Deployment",
+  description: "Deploy application",
+  steps: [
+    {
+      kind: StepKind.Action,
+      inputs: {
+        name: { kind: VariableKind.String, value: "deploy" },
+      },
+      selector: {
+        edgeKind: "includes",
+        depth: "immediate",
+        direction: "output",
+        types: ["service"],
+      },
     },
   ],
 };
@@ -385,6 +406,7 @@ export const kubernetesApply: Workflow = {
 
 export const workflows: Record<string, Workflow> = {
   serviceDeploy,
+  applicationDeploy,
   kubernetesServiceDeploy,
   kubernetesClusterDeploy,
   universalDeploy,

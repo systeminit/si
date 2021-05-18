@@ -476,6 +476,7 @@ impl Workflow {
     ) -> &'static str {
         let action_name = action_name.as_ref();
         let s = match (&entity.entity_type[..], action_name) {
+            ("application", "deploy") => "application:deploy",
             ("service", "deploy") => "service:deploy",
             ("kubernetesCluster", "deploy") => "kubernetesCluster:deploy",
             ("kubernetesService", "deploy") => "kubernetesService:deploy",

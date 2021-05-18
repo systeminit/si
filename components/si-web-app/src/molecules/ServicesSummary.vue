@@ -18,7 +18,13 @@
           <div class="flex justify-end mt-2" v-show="showButton">
             <div class="flex items-center justify-center button">
               <!-- <upload-icon size="0.75x" class="mx-1 my-1 align-middle" /> -->
-              <div class="mx-1 align-middle button-text">Deploy</div>
+              <button
+                class="mx-1 align-middle button-text disabled:opacity-30"
+                :disabled="editMode"
+                @click="deploy()"
+              >
+                Deploy
+              </button>
             </div>
           </div>
         </div>
@@ -33,6 +39,9 @@ import Vue from "vue";
 import { servicesData, Service } from "@/api/visualization/servicesData";
 import ServiceVisualization from "@/molecules/ServicesSummary/ServiceVisualization.vue";
 import SummaryCard from "@/atoms/SummaryCard.vue";
+import { editMode$, system$, workspace$, applicationId$ } from "@/observables";
+import { ApplicationDal } from "@/api/sdf/dal/applicationDal";
+import { emitEditorErrorMessage } from "@/atoms/PanelEventBus";
 
 interface IData {
   servicesData: Service[];
@@ -54,6 +63,32 @@ export default Vue.extend({
     return {
       servicesData: servicesData,
     };
+  },
+  subscriptions: function(this: any): Record<string, any> {
+    return {
+      editMode: editMode$,
+      system: system$,
+      workspace: workspace$,
+      applicationId: applicationId$,
+    };
+  },
+  methods: {
+    async deploy(): Promise<void> {
+      // @ts-ignore
+      if (this.applicationId && this.system && this.workspace) {
+        const reply = await ApplicationDal.deployServices({
+          // @ts-ignore
+          workspaceId: this.workspace.id,
+          // @ts-ignore
+          systemId: this.system.id,
+          // @ts-ignore
+          applicationId: this.applicationId,
+        });
+        if (reply.error) {
+          emitEditorErrorMessage(reply.error.message);
+        }
+      }
+    },
   },
 });
 </script>
