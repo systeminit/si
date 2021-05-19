@@ -179,18 +179,19 @@
 <script lang="ts">
 import Vue, { PropType } from "vue";
 
-import { ctxMapState, InstanceStoreContext } from "@/store";
-import { PanelEventBus, emitEditorErrorMessage } from "@/atoms/PanelEventBus";
-import { ChangeSet } from "@/api/sdf/model/changeSet";
-
-import { ApplicationContextStore } from "@/store/modules/applicationContext";
-import { SessionStore } from "@/store/modules/session";
-
 import SiError from "@/atoms/SiError.vue";
 import SiSelect from "@/atoms/SiSelect.vue";
 import SiButton from "@/atoms/SiButton.vue";
 import SiModal from "@/molecules/SiModal.vue";
 import SiTextBox from "@/atoms/SiTextBox.vue";
+import { Entity } from "@/api/sdf/model/entity";
+import { IWorkspace } from "@/api/sdf/model/workspace";
+import { switchMap, pluck, tap } from "rxjs/operators";
+import { combineLatest, from } from "rxjs";
+import { ApplicationContextDal } from "@/api/sdf/dal/applicationContextDal";
+import { system$, editMode$, changeSet$, editSession$ } from "@/observables";
+import _ from "lodash";
+import { emitEditorErrorMessage } from "@/atoms/PanelEventBus";
 
 interface IData {
   selectCurrentChangeSetId: string;
@@ -199,6 +200,14 @@ interface IData {
   };
   modalErrorMessage: string;
   editorErrorMessage: string;
+  systemsList: {
+    value: string;
+    label: string;
+  }[];
+  openChangeSetsList: {
+    value: string;
+    label: string;
+  }[];
 }
 
 interface Revision {
@@ -209,11 +218,8 @@ interface Revision {
 export default Vue.extend({
   name: "EditorMenuBar",
   props: {
-    workspaceId: { type: String },
-    applicationId: { type: String },
-    applicationContextCtx: {
-      type: Object as PropType<InstanceStoreContext<ApplicationContextStore>>,
-    },
+    workspace: { type: Object as PropType<IWorkspace> },
+    application: { type: Object as PropType<Entity> },
   },
   components: {
     SiSelect,
@@ -230,27 +236,75 @@ export default Vue.extend({
       },
       modalErrorMessage: "",
       editorErrorMessage: "",
+      systemsList: [],
+      openChangeSetsList: [],
     };
   },
-  watch: {
-    async currentChangeSet(newChangeSet: ChangeSet) {
-      if (newChangeSet) {
-        this.selectCurrentChangeSetId = newChangeSet.id;
-      } else {
-        this.selectCurrentChangeSetId = "";
-      }
-    },
+  subscriptions(this: any): Record<string, any> {
+    let currentApplication$ = this.$watchAsObservable("application", {
+      immediate: true,
+    }).pipe(pluck("newValue"));
+    let currentWorkspace$ = this.$watchAsObservable("workspace", {
+      immediate: true,
+    }).pipe(pluck("newValue"));
+    return {
+      applicationContext: combineLatest(
+        currentApplication$,
+        currentWorkspace$,
+        changeSet$,
+        editSession$,
+      ).pipe(
+        switchMap(([currentApplication, currentWorkspace]) => {
+          if (currentApplication && currentWorkspace) {
+            return from(
+              ApplicationContextDal.getApplicationContext({
+                // @ts-ignore
+                applicationId: currentApplication.id,
+                // @ts-ignore
+                workspaceId: currentWorkspace.id,
+              }),
+            );
+          } else {
+            return from([
+              {
+                error: {
+                  code: 42,
+                  message:
+                    "cannot load application context without workspace or application id",
+                },
+              },
+            ]);
+          }
+        }),
+        tap(reply => {
+          if (reply.error) {
+            if (reply.error.code != 42) {
+              emitEditorErrorMessage(reply.error.message);
+            }
+          } else {
+            this.systemsList = reply.systemsList;
+            this.openChangeSetsList = _.concat(reply.openChangeSetsList, [
+              { label: "- none -", value: "" },
+              { label: ": new :", value: "action:new" },
+            ]);
+          }
+        }),
+      ),
+      currentSystemId: system$.pipe(switchMap(system => from([system?.id]))),
+      currentChangeSet: changeSet$.pipe(
+        tap(changeSet => {
+          if (changeSet) {
+            this.selectCurrentChangeSetId = changeSet.id;
+          } else {
+            this.selectCurrentChangeSetId = "";
+          }
+        }),
+      ),
+      currentEditSession: editSession$,
+      editMode: editMode$,
+    };
   },
   computed: {
-    currentWorkspace(): SessionStore["currentWorkspace"] | undefined {
-      return this.$store.state.session.currentWorkspace;
-    },
-    systemsList(): ApplicationContextStore["systemsList"] | undefined {
-      return ctxMapState(this.applicationContextCtx, "systemsList");
-    },
-    currentSystemId(): SessionStore["currentSystem"] | undefined {
-      return this.$store.state.session.currentSystem?.id;
-    },
     revisionsList(): Revision[] {
       return [
         {
@@ -262,33 +316,17 @@ export default Vue.extend({
     currentRevisionId(): string {
       return "latest";
     },
-    editMode(): ApplicationContextStore["editMode"] {
-      return ctxMapState(this.applicationContextCtx, "editMode");
-    },
-    currentChangeSet():
-      | ApplicationContextStore["currentChangeSet"]
-      | undefined {
-      return ctxMapState(this.applicationContextCtx, "currentChangeSet");
-    },
     // applyButtonIcon(): string {
     //   return !this.currentChangeSet || this.editMode ? "play" : "merge";
     // },
     applyButtonKind(): string {
+      // @ts-ignore
       return !this.currentChangeSet || this.editMode ? "standard" : "save";
-    },
-    currentEditSession():
-      | ApplicationContextStore["currentEditSession"]
-      | undefined {
-      return ctxMapState(this.applicationContextCtx, "currentEditSession");
-    },
-    openChangeSetsList():
-      | ApplicationContextStore["openChangeSetsList"]
-      | undefined {
-      return ctxMapState(this.applicationContextCtx, "openChangeSetsList");
     },
   },
   methods: {
     isRevisionButtonDisabled(): Boolean {
+      // @ts-ignore
       if (this.editMode) {
         return true;
       } else if (
@@ -303,6 +341,7 @@ export default Vue.extend({
     isApplyButtonEnabled(): Boolean {
       if (
         this.selectCurrentChangeSetId &&
+        // @ts-ignore
         !this.editMode &&
         !this.selectedChangeSetIsAnAction()
       ) {
@@ -314,6 +353,7 @@ export default Vue.extend({
     isEditButtonEnabled(): Boolean {
       if (
         this.selectCurrentChangeSetId &&
+        // @ts-ignore
         !this.editMode &&
         !this.selectedChangeSetIsAnAction()
       ) {
@@ -367,22 +407,15 @@ export default Vue.extend({
       this.$modal.hide("changeSetCreate");
     },
     async changeSetCreate() {
-      let reply = await this.$store.dispatch(
-        this.applicationContextCtx.dispatchPath(
-          "createChangeSetAndEditSession",
-        ),
-        {
-          workspaceId: this.currentWorkspace?.id,
-          changeSetName: this.newChangeSetForm.name,
-        },
-      );
+      let reply = await ApplicationContextDal.createChangeSetAndEditSession({
+        workspaceId: this.workspace?.id,
+        changeSetName: this.newChangeSetForm.name,
+      });
       if (reply.error) {
         this.modalErrorMessage = reply.error.message;
       } else {
-        this.$emit("update-query-param", {
-          changeSetId: reply.changeSet.id,
-          editSessionId: reply.editSession.id,
-        });
+        changeSet$.next(reply.changeSet);
+        editSession$.next(reply.editSession);
         this.clearChangeSetCreateForm();
         this.$modal.hide("changeSetCreate");
         await this.setEditMode();
@@ -391,145 +424,84 @@ export default Vue.extend({
     async changeSetSelected() {
       if (this.selectCurrentChangeSetId) {
         if (!this.selectCurrentChangeSetId.includes("action")) {
-          let reply = await this.$store.dispatch(
-            this.applicationContextCtx.dispatchPath(
-              "createEditSessionAndLoadChangeSet",
-            ),
+          let reply = await ApplicationContextDal.createEditSessionAndGetChangeSet(
             { changeSetId: this.selectCurrentChangeSetId },
           );
           if (reply.error) {
             this.modalErrorMessage = reply.error.message;
           } else {
-            await this.$emit("update-query-param", {
-              changeSetId: reply.changeSet.id,
-              editSessionId: reply.editSession.id,
-            });
+            changeSet$.next(reply.changeSet);
+            editSession$.next(reply.editSession);
           }
         } else if (this.selectCurrentChangeSetId.includes("action:new")) {
-          await this.showChangeSetCreateModal();
+          this.showChangeSetCreateModal();
         } else {
-          await this.$store.dispatch(
-            this.applicationContextCtx.dispatchPath(
-              "clearCurrentChangeSetAndCurrentEditSession",
-            ),
-            null,
-            { root: true },
-          );
-          await this.$emit("remove-query-param", [
-            "changeSetId",
-            "editSessionId",
-          ]);
+          changeSet$.next(null);
+          editSession$.next(null);
+          editMode$.next(false);
         }
       } else {
-        await this.$store.dispatch(
-          this.applicationContextCtx.dispatchPath(
-            "clearCurrentChangeSetAndCurrentEditSession",
-          ),
-          null,
-          { root: true },
-        );
-        await this.$emit("remove-query-param", [
-          "changeSetId",
-          "editSessionId",
-        ]);
-      }
-    },
-    async editModeChangeSetSelected() {
-      if (this.selectCurrentChangeSetId) {
-        let reply = await this.$store.dispatch(
-          this.applicationContextCtx.dispatchPath(
-            "createEditSessionAndLoadChangeSet",
-          ),
-          { changeSetId: this.selectCurrentChangeSetId },
-        );
-        if (reply.error) {
-          this.modalErrorMessage = reply.error.message;
-        } else {
-          await this.$emit("update-query-param", {
-            changeSetId: reply.changeSet.id,
-            editSessionId: reply.editSession.id,
-          });
-          await this.setEditMode();
-          this.$modal.hide("changeSetCreate");
-        }
-      } else {
-        console.log("none!");
+        changeSet$.next(null);
+        editSession$.next(null);
+        editMode$.next(false);
       }
     },
     async startEditSession() {
+      // @ts-ignore
       if (this.currentChangeSet) {
         await this.editSessionCreate();
         await this.setEditMode();
       } else {
-        await this.showChangeSetCreateModal();
+        this.showChangeSetCreateModal();
       }
     },
     async saveEditSession() {
-      if (this.currentWorkspace && this.currentEditSession) {
-        let reply = await this.applicationContextCtx.dispatch(
-          "saveEditSession",
-          {
-            editSessionId: this.currentEditSession.id,
-            workspaceId: this.currentWorkspace.id,
-          },
-        );
+      // @ts-ignore
+      if (this.workspace && this.currentEditSession) {
+        let reply = await ApplicationContextDal.saveEditSession({
+          // @ts-ignore
+          editSessionId: this.currentEditSession.id,
+          workspaceId: this.workspace?.id,
+        });
         if (reply.error) {
           emitEditorErrorMessage(
             `failed to save edit session: ${reply.error.message}`,
           );
         } else {
-          await this.$store.dispatch(
-            this.applicationContextCtx.dispatchPath("setEditMode"),
-            false,
-          );
-          this.$emit("update-query-param", { editMode: false });
-          this.$emit("remove-query-param", ["editSessionId", "editMode"]);
+          editSession$.next(null);
+          editMode$.next(false);
         }
       }
     },
     async setEditMode() {
-      await this.$store.dispatch(
-        this.applicationContextCtx.dispatchPath("setEditMode"),
-        true,
-      );
-      this.$emit("update-query-param", { editMode: true });
+      editMode$.next(true);
     },
     async editSessionCreate() {
-      let reply = await this.$store.dispatch(
-        this.applicationContextCtx.dispatchPath("createEditSession"),
-        {
-          workspaceId: this.currentWorkspace?.id,
-          changeSetId: this.currentChangeSet?.id,
-        },
-      );
+      let reply = await ApplicationContextDal.createEditSession({
+        workspaceId: this.workspace?.id,
+        // @ts-ignore
+        changeSetId: this.currentChangeSet?.id,
+      });
       if (reply.error) {
         this.modalErrorMessage = reply.error.message;
       } else {
-        await this.$emit("update-query-param", {
-          editSessionId: reply.editSession.id,
-        });
+        editSession$.next(reply.editSession);
         await this.setEditMode();
       }
     },
     async cancelEditSession() {
-      let reply = await this.$store.dispatch(
-        this.applicationContextCtx.dispatchPath("cancelEditSession"),
-        {
-          workspaceId: this.currentWorkspace?.id,
-          editSessionId: this.currentEditSession?.id,
-        },
-      );
+      let reply = await ApplicationContextDal.cancelEditSession({
+        workspaceId: this.workspace?.id,
+        // @ts-ignore
+        editSessionId: this.currentEditSession?.id,
+      });
       if (reply.error) {
         emitEditorErrorMessage(
           `failed to cancel edit session: ${reply.error.message}`,
         );
       } else {
-        await this.$store.dispatch(
-          this.applicationContextCtx.dispatchPath("setEditMode"),
-          false,
-        );
-        this.$emit("update-query-param", { editMode: false });
-        this.$emit("remove-query-param", ["editSessionId", "editMode"]);
+        editSession$.next(null);
+        editMode$.next(false);
       }
     },
     async cancelChangeSetApply() {
@@ -537,48 +509,34 @@ export default Vue.extend({
       this.$modal.hide("changeSetApply");
     },
     async applyChangeSet() {
-      await this.showChangeSetApplyModal();
+      this.showChangeSetApplyModal();
     },
     async changeSetApply() {
-      if (this.currentWorkspace && this.currentChangeSet) {
-        let reply = await this.applicationContextCtx.dispatch(
-          "applyChangeSet",
-          {
-            changeSetId: this.currentChangeSet.id,
-            workspaceId: this.currentWorkspace.id,
-          },
-        );
+      // @ts-ignore
+      if (this.workspace && this.currentChangeSet) {
+        let reply = await ApplicationContextDal.applyChangeSet({
+          // @ts-ignore
+          changeSetId: this.currentChangeSet.id,
+          workspaceId: this.workspace?.id,
+        });
         if (reply.error) {
           emitEditorErrorMessage(
             `failed to apply change set: ${reply.error.message}`,
           );
         } else {
-          this.$emit("remove-query-param", ["changeSetId"]);
-          this.$store.dispatch(
-            this.applicationContextCtx.dispatchPath("loadApplicationContext"),
-            {
-              workspaceId: this.workspaceId,
-              applicationId: this.applicationId,
-            },
-          );
+          changeSet$.next(null);
+          editSession$.next(null);
+          editMode$.next(false);
         }
       }
       this.clearChangeSetApplyForm();
-      await this.$store.dispatch(
-        this.applicationContextCtx.dispatchPath(
-          "clearCurrentChangeSetAndCurrentEditSession",
-        ),
-        null,
-        { root: true },
-      );
-      await this.$emit("remove-query-param", ["changeSetId", "editSessionId"]);
       this.$modal.hide("changeSetApply");
     },
-    async showChangeSetCreateModal() {
-      await this.$modal.show("changeSetCreate");
+    showChangeSetCreateModal() {
+      this.$modal.show("changeSetCreate");
     },
-    async showChangeSetApplyModal() {
-      await this.$modal.show("changeSetApply");
+    showChangeSetApplyModal() {
+      this.$modal.show("changeSetApply");
     },
   },
 });

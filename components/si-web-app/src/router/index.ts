@@ -2,6 +2,14 @@ import Vue from "vue";
 import VueRouter from "vue-router";
 import _ from "lodash";
 import Bottle from "bottlejs";
+import {
+  ISessionDalIsAuthenticatedReply,
+  SessionDal,
+} from "@/api/sdf/dal/sessionDal";
+import { SDFError } from "@/api/sdf";
+import { billingAccount$, user$ } from "@/observables";
+import { combineLatest, from as fromRx } from "rxjs";
+import { switchMap, take } from "rxjs/operators";
 
 Vue.use(VueRouter);
 
@@ -17,10 +25,32 @@ export const routeCheck = async (to: any, from: any, next: any) => {
     return next();
   }
 
-  let bottle = Bottle.pop("default");
-  let store = bottle.container.Store;
-  let authenticated = await store.dispatch("session/isAuthenticated");
+  let reply = (await combineLatest([user$, billingAccount$])
+    .pipe(
+      switchMap(([user, billingAccount]) => {
+        return fromRx(SessionDal.isAuthenticated({ user, billingAccount }));
+      }),
+      take(1),
+    )
+    .toPromise()) as ISessionDalIsAuthenticatedReply;
+
+  let authenticated: boolean | SDFError = false;
+  if (reply.error) {
+    authenticated = reply.error;
+  } else if (reply.logout) {
+    await SessionDal.logout();
+    authenticated = false;
+  } else if (reply.login) {
+    authenticated = false;
+  } else {
+    user$.next(reply.user);
+    billingAccount$.next(reply.billingAccount);
+    authenticated = true;
+  }
+
+  // @ts-ignore
   if (authenticated === false || authenticated.error) {
+    // @ts-ignore
     if (authenticated.error) {
       console.log("Error checking authentication", authenticated);
     }

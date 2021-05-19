@@ -230,10 +230,8 @@ import SysinitIcon from "@/atoms/SysinitIcon.vue";
 import SiLoader from "@/atoms/SiLoader.vue";
 import DebugRoute from "@/atoms/DebugRoute.vue";
 
-import { mapState } from "vuex";
-import { SiVuexStore } from "@/store";
-import { Workspace } from "@/api/sdf/model/workspace";
-import { Organization } from "@/api/sdf/model/organization";
+import { organization$, workspace$ } from "@/observables";
+import { SessionDal } from "@/api/sdf/dal/sessionDal";
 
 interface IData {
   isMaximized: boolean;
@@ -263,16 +261,14 @@ export default Vue.extend({
       isMaximized: false,
     };
   },
+  subscriptions(): Record<string, any> {
+    return {
+      currentWorkspace: workspace$,
+      currentOrganization: organization$,
+    };
+  },
   computed: {
-    ...mapState({
-      currentWorkspace(state: Record<string, any>): Workspace {
-        return state["session"]["currentWorkspace"];
-      },
-      currentOrganization(state: Record<string, any>): Organization {
-        return state["session"]["currentOrganization"];
-      },
-    }),
-    isLoading(): boolean {
+    isLoading(this: any): boolean {
       if (this.currentWorkspace && this.currentOrganization) {
         return false;
       } else {
@@ -300,7 +296,7 @@ export default Vue.extend({
   },
   methods: {
     async onLogout(): Promise<void> {
-      await this.$store.dispatch("session/logout");
+      await SessionDal.logout();
       this.$router.push({ name: "login" });
     },
   },

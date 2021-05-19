@@ -7,7 +7,12 @@
 <script lang="ts">
 import Vue, { PropType } from "vue";
 import PanelTree from "@/organisims/PanelTree.vue";
-import { IEditorContext, setupEditor } from "@/store/modules/editor";
+import { applicationId$ } from "@/observables";
+
+export interface IEditorContext {
+  applicationId: string;
+  contextType: "applicationSystem";
+}
 
 export default Vue.extend({
   name: "Editor",
@@ -20,15 +25,7 @@ export default Vue.extend({
     PanelTree,
   },
   created() {
-    setupEditor();
-  },
-  async mounted() {
-    await this.$store.dispatch("editor/setContext", this.context);
-  },
-  watch: {
-    async context(newContext: IEditorContext) {
-      await this.$store.dispatch("editor/setContext", newContext);
-    },
+    applicationId$.next(this.context.applicationId);
   },
 });
 </script>

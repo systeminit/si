@@ -46,17 +46,16 @@
 
 <script lang="ts">
 import Vue from "vue";
-import { mapState } from "vuex";
 
 import SiButton from "@/atoms/SiButton.vue";
 import SiError from "@/atoms/SiError.vue";
 import SiTextBox from "@/atoms/SiTextBox.vue";
 
+import { workspace$, system$, applicationCreated$ } from "@/observables";
 import {
-  IApplicationCreateReply,
+  ApplicationDal,
   IApplicationCreateRequest,
-} from "@/store/modules/application";
-import { SessionStore } from "@/store/modules/session";
+} from "@/api/sdf/dal/applicationDal";
 
 interface IData {
   errorMessage: string;
@@ -82,13 +81,11 @@ export default Vue.extend({
       },
     };
   },
-  computed: {
-    ...mapState({
-      currentWorkspace: (state: any): SessionStore["currentWorkspace"] =>
-        state.session.currentWorkspace,
-      currentSystem: (state: any): SessionStore["currentSystem"] =>
-        state.session.currentSystem,
-    }),
+  subscriptions(): Record<string, any> {
+    return {
+      currentWorkspace: workspace$,
+      currentSystem: system$,
+    };
   },
   methods: {
     cancel() {
@@ -96,41 +93,28 @@ export default Vue.extend({
       this.applicationCreateSuccess = false;
       this.$emit("cancel");
     },
-    async create() {
+    async create(this: any) {
       this.applicationCreateSuccess = false;
       if (!this.currentWorkspace) {
         this.errorMessage = "No workspace selected!";
         return;
       }
-      //if (!this.currentSystem) {
-      //  this.errorMessage = "No system selected!";
-      //  return;
-      //}
       let request: IApplicationCreateRequest = {
         applicationName: this.form.applicationName,
         workspaceId: this.currentWorkspace.id,
-        //  systemId: this.currentSystem.id,
       };
-      let reply = await this.$store.dispatch(
-        "application/createApplication",
-        request,
-      );
+      let reply = await ApplicationDal.createApplication(request);
       if (reply.error) {
         this.errorMessage = reply.error.message;
       } else {
         this.applicationCreateSuccess = true;
+        applicationCreated$.next(reply);
         this.$emit("submit");
       }
     },
     clearErrorMessage() {
       this.errorMessage = "";
     },
-  },
-  async created() {
-    await this.$store.dispatch("application/activate", "ApplicationCreate");
-  },
-  async beforeDestroy() {
-    await this.$store.dispatch("application/deactivate", "ApplicationCreate");
   },
 });
 </script>

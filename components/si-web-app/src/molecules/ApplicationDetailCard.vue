@@ -30,7 +30,6 @@
 
 <script lang="ts">
 import Vue, { PropType } from "vue";
-import { IApplicationListEntry } from "@/store/modules/application";
 import { RawLocation } from "vue-router";
 
 import { ChevronRightIcon } from "vue-feather-icons";
@@ -39,12 +38,13 @@ import ActivitySummary from "@/molecules/ActivitySummary.vue";
 import ServicesSummary from "@/molecules/ServicesSummary.vue";
 import ComputingResourceSummary from "@/molecules/ComputingResourceSummary.vue";
 import ChangesSummary from "@/molecules/ChangesSummary.vue";
+import { IApplicationCreateReplySuccess } from "@/api/sdf/dal/applicationDal";
 
 export default Vue.extend({
   name: "ApplicationDetailCard",
   props: {
     applicationEntry: {
-      type: Object as PropType<IApplicationListEntry>,
+      type: Object as PropType<IApplicationCreateReplySuccess>,
     },
     linkTo: {
       type: Object as PropType<RawLocation>,
@@ -58,7 +58,7 @@ export default Vue.extend({
     ChangesSummary,
   },
   computed: {
-    application(): IApplicationListEntry["application"] {
+    application(): IApplicationCreateReplySuccess["application"] {
       return this.applicationEntry.application;
     },
   },

@@ -83,7 +83,8 @@
 import Vue from "vue";
 import SiTextBox from "@/atoms/SiTextBox.vue";
 import SiButton from "@/atoms/SiButton.vue";
-import { ISessionDalLoginReply } from "@/api/sdf/dal/sessionDal";
+import { SessionDal } from "@/api/sdf/dal/sessionDal";
+import { user$, billingAccount$ } from "@/observables";
 
 interface IData {
   form: {
@@ -115,13 +116,12 @@ export default Vue.extend({
       this.$emit("signup");
     },
     async login() {
-      let reply: ISessionDalLoginReply = await this.$store.dispatch(
-        "session/login",
-        { ...this.form },
-      );
+      const reply = await SessionDal.login({ ...this.form });
       if (reply.error) {
         this.errorMessage = "Login error; please try again!";
       } else {
+        user$.next(reply.user);
+        billingAccount$.next(reply.billingAccount);
         this.$emit("success");
       }
     },

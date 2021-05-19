@@ -95,6 +95,8 @@ import {
   schematicUpdated$,
   schematicSelectNode$,
   edgeDeleted$,
+  schematicPanelKind$,
+  restoreSchematicPanelKind$,
 } from "@/observables";
 import { combineLatest, of } from "rxjs";
 import { switchMap, pluck, tap } from "rxjs/operators";
@@ -282,6 +284,28 @@ export default Vue.extend({
       workspace: workspace$,
       schematicUpdateCallback: schematicUpdateCallback$,
       edgeDeleted: edgeDeleted$,
+      saveSchematicPanelState: selectedSchematicKind$.pipe(
+        tap(schematicKind => {
+          let applicationId = this.$route.params["applicationId"];
+          schematicPanelKind$.next({
+            panelRef: this.panelRef,
+            // @ts-ignore
+            schematicKind,
+            applicationId,
+          });
+        }),
+      ),
+      restoreSchematicPanelState: restoreSchematicPanelKind$.pipe(
+        tap(schematicState => {
+          let applicationId = this.$route.params["applicationId"];
+          if (
+            schematicState.panelRef == this.panelRef &&
+            schematicState.applicationId == applicationId
+          ) {
+            this.schematicKind = schematicState.schematicKind;
+          }
+        }),
+      ),
     };
   },
   computed: {

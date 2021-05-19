@@ -1,21 +1,13 @@
 <template>
   <div id="application-editor" class="flex flex-col w-full h-full select-none">
     <div class="flex flex-col w-full h-full">
-      <StatusBar :instanceId="applicationContextCtx.instanceId" />
+      <StatusBar :application="application" />
       <ApplicationContext
-        :applicationContextCtx="applicationContextCtx"
         :workspaceId="workspaceId"
-        :applicationId="applicationId"
-        @update-query-param="updateQueryParam"
-        @remove-query-param="removeQueryParam"
+        :application="application"
       />
       <div id="editor" class="flex w-full h-full overflow-hidden">
-        <Editor
-          :workspaceId="workspaceId"
-          :applicationId="applicationId"
-          :context="editorContext"
-          :applicationContextCtx="applicationContextCtx"
-        />
+        <Editor :context="editorContext" />
       </div>
       <EventBar />
       <!--
@@ -57,18 +49,6 @@
 
 <script lang="ts">
 import Vue from "vue";
-import Route from "vue-router";
-
-import {
-  registerStatusBar,
-  StatusBarStore,
-  unregisterStatusBar,
-} from "@/store/modules/statusBar";
-import {
-  ApplicationContextStore,
-  registerApplicationContext,
-  unregisterApplicationContext,
-} from "@/store/modules/applicationContext";
 
 import StatusBar from "@/organisims/StatusBar.vue";
 import EventBar from "@/organisims/EventBar.vue";
@@ -77,21 +57,30 @@ import Editor from "@/organisims/Editor.vue";
 import SiModal from "@/molecules/SiModal.vue";
 import SiButton from "@/atoms/SiButton.vue";
 
-import { ctxMapState, InstanceStoreContext } from "@/store";
+export interface IEditorContextApplication {
+  applicationId: string;
+  contextType: "applicationSystem";
+}
+
 import {
-  ISessionContextApplicationSystem,
-  ISessionContextKind,
-  SessionStore,
-} from "@/store/modules/session";
-import { mapState } from "vuex";
-import { System } from "@/api/sdf/model/system";
-import { IEditorContextApplication } from "@/store/modules/editor";
-import { Persister } from "@/api/persister";
-import Bottle from "bottlejs";
+  system$,
+  editMode$,
+  workspace$,
+  getEntity,
+  applicaton$,
+  applicationId$,
+  changeSet$,
+  editSession$,
+  deploymentSchematicSelectNode$,
+  schematicSelectNode$,
+} from "@/observables";
+import { combineLatest } from "rxjs";
+import { tap, switchMap } from "rxjs/operators";
+import { IEntity } from "@/api/sdf/model/entity";
+import { emitEditorErrorMessage } from "@/atoms/PanelEventBus";
 
 interface IData {
-  applicationContextCtx: InstanceStoreContext<ApplicationContextStore>;
-  statusBarCtx: InstanceStoreContext<StatusBarStore>;
+  application: IEntity | null;
   navDestination: any | null;
 }
 
@@ -107,17 +96,8 @@ export default Vue.extend({
   },
   data(): IData {
     return {
-      applicationContextCtx: new InstanceStoreContext({
-        storeName: "applicationContext",
-        componentId: "ApplicationDetails",
-        instanceId: "applicationDetails",
-      }),
-      statusBarCtx: new InstanceStoreContext({
-        storeName: "statusBar",
-        componentId: "ApplicationDetails",
-        instanceId: "applicationDetails",
-      }),
       navDestination: null,
+      application: null,
     };
   },
   props: {
@@ -131,94 +111,57 @@ export default Vue.extend({
       type: String,
     },
   },
+  subscriptions(this: any): Record<string, any> {
+    return {
+      currentSystem: system$,
+      editMode: editMode$,
+      currentApplication: combineLatest(workspace$).pipe(
+        switchMap(([workspace]) =>
+          getEntity(this.applicationId, workspace, null, null),
+        ),
+        tap(result => {
+          if (result.error) {
+            if (result.error.code != 42) {
+              emitEditorErrorMessage(result.error.message);
+            }
+          } else {
+            this.application = result.entity;
+          }
+        }),
+      ),
+    };
+  },
   computed: {
-    ...mapState({
-      currentSystem: (state: any): SessionStore["currentSystem"] =>
-        state["session"]["currentSystem"],
-    }),
     editorContext(): IEditorContextApplication {
       return {
         applicationId: this.applicationId,
         contextType: "applicationSystem",
       };
     },
-    editMode(): ApplicationContextStore["editMode"] {
-      return ctxMapState(this.applicationContextCtx, "editMode");
-    },
   },
   methods: {
-    async updateQueryParam(payload: Record<string, any>) {
-      let bottle = Bottle.pop("default");
-      let persister: Persister = bottle.container.Persister;
-      persister.updateQueryParam(payload);
-    },
-    async removeQueryParam(payload: string[]) {
-      let bottle = Bottle.pop("default");
-      let persister: Persister = bottle.container.Persister;
-      persister.removeQueryParam(payload);
-    },
-    async wipeQueryParam() {
-      let bottle = Bottle.pop("default");
-      let persister: Persister = bottle.container.Persister;
-      persister.wipeQueryParams();
-    },
     leave() {
       this.$modal.hide("leave");
+      this.cleanUpState();
       this.navDestination();
+    },
+    cleanUpState() {
+      applicaton$.next(null);
+      applicationId$.next(null);
+      changeSet$.next(null);
+      editSession$.next(null);
+      editMode$.next(false);
+      deploymentSchematicSelectNode$.next(null);
+      schematicSelectNode$.next(null);
+      sessionStorage.removeItem("schematicPanelKind$");
+      sessionStorage.removeItem("panelTypeChanges$");
     },
     stay() {
       this.$modal.hide("leave");
     },
   },
-  async created() {
-    registerStatusBar(this.applicationContextCtx.instanceId);
-
-    await registerApplicationContext(
-      this.applicationContextCtx,
-      this.statusBarCtx,
-    );
-
-    await this.$store.dispatch(
-      this.applicationContextCtx.dispatchPath("activate"),
-      this.applicationContextCtx,
-    );
-
-    if (this.$route.query.changeSetId && this.$route.query.editSessionId) {
-      let reply = await this.$store.dispatch(
-        this.applicationContextCtx.dispatchPath("loadChangeSetAndEditSession"),
-        {
-          changeSetId: this.$route.query.changeSetId,
-          editSessionId: this.$route.query.editSessionId,
-        },
-      );
-      if (reply.error) {
-        await this.wipeQueryParam();
-      }
-    }
-
-    let editModeBool = false;
-    if (this.$route.query.editMode == "true") {
-      editModeBool = true;
-    }
-    await this.$store.dispatch(
-      this.applicationContextCtx.dispatchPath("setEditMode"),
-      editModeBool,
-    );
-    if (this.currentSystem) {
-      let sessionContext: ISessionContextApplicationSystem = {
-        kind: ISessionContextKind.ApplicationSystem,
-        applicationId: this.applicationId,
-        systemId: this.currentSystem.id,
-      };
-      await this.$store.dispatch("session/setSessionContext", sessionContext);
-    }
-  },
-  async beforeDestroy() {
-    unregisterStatusBar(this.applicationContextCtx.instanceId);
-    unregisterApplicationContext(this.applicationContextCtx);
-    await this.$store.dispatch("session/setSessionContext", null);
-  },
-  beforeRouteLeave(_to, _from, next: any) {
+  async created() {},
+  beforeRouteLeave(this: any, _to, _from, next: any) {
     if (this.editMode) {
       if (next != null) {
         this.navDestination = next;
@@ -226,20 +169,9 @@ export default Vue.extend({
         next(false);
       }
     } else {
+      this.cleanUpState();
       next();
     }
-  },
-  watch: {
-    async currentSystem(currentSystem: SessionStore["currentSystem"]) {
-      if (currentSystem) {
-        let sessionContext: ISessionContextApplicationSystem = {
-          kind: ISessionContextKind.ApplicationSystem,
-          applicationId: this.applicationId,
-          systemId: currentSystem.id,
-        };
-        await this.$store.dispatch("session/setSessionContext", sessionContext);
-      }
-    },
   },
 });
 </script>

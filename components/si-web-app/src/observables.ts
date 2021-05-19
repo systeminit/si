@@ -48,8 +48,18 @@ import {
   ISchematicNode,
   SchematicKind,
 } from "./api/sdf/model/schematic";
-import { Resource } from "si-entity";
+import { Resource, SiEntity } from "si-entity";
+import { IUser } from "./api/sdf/model/user";
+import { IBillingAccount } from "./api/sdf/model/billingAccount";
+import { IOrganization } from "./api/sdf/model/organization";
+import { IApplicationCreateReplySuccess } from "./api/sdf/dal/applicationDal";
 
+export const user$ = new ReplaySubject<IUser | null>(1);
+user$.next(null);
+export const billingAccount$ = new ReplaySubject<IBillingAccount | null>(1);
+billingAccount$.next(null);
+export const organization$ = new ReplaySubject<IOrganization | null>(1);
+organization$.next(null);
 export const workspace$ = new ReplaySubject<IWorkspace | null>(1);
 workspace$.next(null);
 export const changeSet$ = new ReplaySubject<IChangeSet | null>(1);
@@ -58,12 +68,12 @@ export const editSession$ = new ReplaySubject<IEditSession | null>(1);
 editSession$.next(null);
 export const applicationId$ = new ReplaySubject<string | null>(1);
 applicationId$.next(null);
+export const applicaton$ = new ReplaySubject<IEntity | null>(1);
+applicaton$.next(null);
 export const system$ = new ReplaySubject<IEntity | null>(1);
 system$.next(null);
 
 export const editMode$ = new BehaviorSubject<boolean>(false);
-
-new BehaviorSubject(false);
 
 export interface AttributePanelEntityUpdate {
   entity: Entity;
@@ -333,3 +343,43 @@ export interface EdgeDeleted {
 export const edgeDeleted$ = new BehaviorSubject<EdgeDeleted | null>(null);
 
 export const resources$: Subject<Resource> = new Subject();
+
+export const applicationCreated$ = new ReplaySubject<IApplicationCreateReplySuccess | null>(
+  1,
+);
+applicationCreated$.next(null);
+
+export interface PanelTypeChange {
+  panelRef: string;
+  applicationId: string;
+  panelType: string;
+}
+
+export const panelTypeChanges$ = new Subject<PanelTypeChange | null>();
+export const restorePanelTypeChanges$ = new ReplaySubject<PanelTypeChange | null>();
+
+export interface SchematicPanelState {
+  panelRef: string;
+  applicationId: string;
+  schematicKind: string;
+}
+
+export const schematicPanelKind$ = new Subject<SchematicPanelState>();
+export const restoreSchematicPanelKind$ = new ReplaySubject<
+  SchematicPanelState
+>();
+
+export interface AttributePanelState {
+  panelRef: string;
+  applicationId: string;
+  selectionIsLocked: boolean;
+  selectedEntityId: string;
+  activeView: string;
+}
+
+export const attributePanelState$ = new Subject<AttributePanelState>();
+export const restoreAttributePanelState$ = new ReplaySubject<
+  AttributePanelState
+>();
+
+export const refreshSecretList$ = new BehaviorSubject<true>(true);

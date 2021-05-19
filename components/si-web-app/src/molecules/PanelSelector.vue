@@ -59,8 +59,8 @@ import SecretPanel from "@/organisims/SecretPanel.vue";
 import AttributePanel from "@/organisims/AttributePanel.vue";
 import SchematicPanel from "@/organisims/SchematicPanel.vue";
 import { PanelEventBus } from "@/atoms/PanelEventBus";
-import Bottle from "bottlejs";
-import { Persister } from "@/api/persister";
+import { panelTypeChanges$, restorePanelTypeChanges$ } from "@/observables";
+import { tap } from "rxjs/operators";
 
 export enum PanelType {
   Attribute = "attribute",
@@ -94,27 +94,40 @@ export default Vue.extend({
     SchematicPanel,
   },
   data(): IData {
-    let bottle = Bottle.pop("default");
-    let persister: Persister = bottle.container.Persister;
-    let savedData = persister.getData(this.panelRef);
-    if (savedData) {
-      return savedData;
-    } else {
-      return {
-        shortcuts: false,
-        panelType: this.initialPanelType,
-        maximizedFull: false,
-        maximizedContainer: false,
-        isVisible: true,
-        isMaximizedContainerEnabled: true,
-      };
-    }
+    return {
+      shortcuts: false,
+      panelType: this.initialPanelType,
+      maximizedFull: false,
+      maximizedContainer: false,
+      isVisible: true,
+      isMaximizedContainerEnabled: true,
+    };
   },
   mounted() {
     PanelEventBus.$on("shortcut", this.handleShortcut);
   },
   beforeDestroy() {
     PanelEventBus.$off("shortcut", this.handleShortcut);
+  },
+  subscriptions(): Record<string, any> {
+    return {
+      restorePanelType: restorePanelTypeChanges$.pipe(
+        tap(panelTypeChange => {
+          if (panelTypeChange) {
+            // TODO: ew. we shouldn't couple to the router, but.. it's fine for now
+            let applicationId = this.$route.params["applicationId"];
+            if (
+              // @ts-ignore
+              this.panelRef == panelTypeChange.panelRef &&
+              applicationId == panelTypeChange.applicationId
+            ) {
+              // @ts-ignore
+              this.changePanelType(panelTypeChange.panelType);
+            }
+          }
+        }),
+      ),
+    };
   },
   methods: {
     activateShortcuts() {
@@ -160,16 +173,14 @@ export default Vue.extend({
     },
     changePanelType(newPanelType: PanelType) {
       this.panelType = newPanelType;
-    },
-  },
-  watch: {
-    $data: {
-      handler: function(newData, oldData) {
-        let bottle = Bottle.pop("default");
-        let persister: Persister = bottle.container.Persister;
-        persister.setData(this.panelRef, newData);
-      },
-      deep: true,
+      // TODO: ew. we shouldn't couple to the router, but.. it's fine for now
+      let applicationId = this.$route.params["applicationId"];
+      panelTypeChanges$.next({
+        panelRef: this.panelRef,
+        // @ts-ignore
+        applicationId,
+        panelType: newPanelType,
+      });
     },
   },
 });
