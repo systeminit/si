@@ -221,7 +221,10 @@ export default Vue.extend({
           _nodePositionUpdated,
           _edgeDeleted,
         ]) => {
-          if (rootObjectId == "noSelectedDeploymentNode") {
+          if (
+            rootObjectId == "noSelectedDeploymentNode" ||
+            rootObjectId == "noSelectedApplicationNode"
+          ) {
             this.schematic = null;
             return of({
               error: { message: "no selected deployment node", code: 42 },
