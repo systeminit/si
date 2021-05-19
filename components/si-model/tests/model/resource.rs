@@ -44,9 +44,12 @@ async fn new() {
     )
     .await;
 
+    txn.commit().await.expect("cannot commit txn");
+    nats.commit().await.expect("cannot commit nats txn");
+
     let resource = Resource::new(
-        &txn,
-        &nats,
+        &pg,
+        &nats_conn,
         serde_json::json!({ "foo": "bar" }),
         &service_node.object_id,
         &system_node.object_id,
@@ -98,9 +101,12 @@ async fn get_by_entity_and_system() {
     )
     .await;
 
+    txn.commit().await.expect("cannot commit txn");
+    nats.commit().await.expect("cannot commit nats txn");
+
     let created = Resource::new(
-        &txn,
-        &nats,
+        &pg,
+        &nats_conn,
         serde_json::json!({ "foo": "bar" }),
         &service_node.object_id,
         &system_node.object_id,
@@ -108,6 +114,8 @@ async fn get_by_entity_and_system() {
     )
     .await
     .expect("resource is created");
+
+    let txn = conn.transaction().await.expect("cannot create txn");
 
     let resource =
         Resource::get_by_entity_and_system(&txn, &service_node.object_id, &system_node.object_id)
@@ -216,12 +224,9 @@ async fn await_sync() {
     txn.commit().await.expect("cannot commit txn");
     nats.commit().await.expect("cannot commit nats txn");
 
-    let txn = conn.transaction().await.expect("cannot get transaction");
-    let nats = nats_conn.transaction();
-
     let mut resource = Resource::new(
-        &txn,
-        &nats,
+        &pg,
+        &nats_conn,
         serde_json::json!({ "foo": "bar" }),
         &service_node.object_id,
         &system_node.object_id,
@@ -231,9 +236,6 @@ async fn await_sync() {
     .expect("resource is created");
 
     let updated_at_created = resource.timestamp.clone();
-
-    txn.commit().await.expect("cannot commit txn");
-    nats.commit().await.expect("cannot commit nats txn");
 
     resource
         .await_sync(pg.clone(), nats_conn.clone(), veritech.clone())
