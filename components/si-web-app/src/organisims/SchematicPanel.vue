@@ -108,6 +108,7 @@ import {
   INodeCreateForApplicationRequest,
 } from "@/api/sdf/dal/schematicDal";
 import { emitEditorErrorMessage } from "@/atoms/PanelEventBus";
+import { EntityMenuFilters } from "si-registry";
 
 interface Data {
   schematicKind: SchematicKind;
@@ -128,9 +129,9 @@ export default Vue.extend({
   },
   components: {
     Panel,
-    NodeAddMenu,
     SiSelect,
     SchematicViewer,
+    NodeAddMenu,
   },
   data(): Data {
     return {
@@ -327,8 +328,29 @@ export default Vue.extend({
         return this.editMode;
       }
     },
-    addMenuFilters(): SchematicKind[] {
-      return [this.schematicKind];
+    addMenuFilters(this: any): EntityMenuFilters {
+      if (this.schematicKind == SchematicKind.Deployment) {
+        return {
+          rootEntityType: "application",
+          schematicKind: this.schematicKind,
+        };
+      } else {
+        if (
+          this.deploymentSchematicSelectNode &&
+          this.deploymentSchematicSelectNode != "noSelectedDeploymentNode"
+        ) {
+          return {
+            rootEntityType: this.deploymentSchematicSelectNode.object
+              .entityType,
+            schematicKind: this.schematicKind,
+          };
+        } else {
+          return {
+            rootEntityType: "never",
+            schematicKind: this.schematicKind,
+          };
+        }
+      }
     },
     schematicKinds(): ILabelList {
       let labels: ILabelList = [];

@@ -1,6 +1,5 @@
 import {
   RegistryEntry,
-  MenuCategory,
   SchematicKind,
   NodeKind,
   Arity,
@@ -11,9 +10,14 @@ const cloudProvider: RegistryEntry = {
   entityType: "cloudProvider",
   nodeKind: NodeKind.Concept,
   ui: {
-    menuCategory: MenuCategory.Application,
-    menuDisplayName: "cloudProvider",
-    schematicKinds: [SchematicKind.Deployment],
+    menu: [
+      {
+        name: "cloud",
+        menuCategory: ["provider"],
+        schematicKind: SchematicKind.Deployment,
+        rootEntityTypes: ["application"],
+      },
+    ],
   },
   inputs: [
     ...onlyImplementation,

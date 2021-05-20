@@ -1,6 +1,5 @@
 import {
   RegistryEntry,
-  MenuCategory,
   SchematicKind,
   NodeKind,
   Arity,
@@ -10,9 +9,14 @@ const kubernetesService: RegistryEntry = {
   entityType: "kubernetesService",
   nodeKind: NodeKind.Implementation,
   ui: {
-    menuCategory: MenuCategory.Service,
-    menuDisplayName: "kubernetesService",
-    schematicKinds: [SchematicKind.Component],
+    menu: [
+      {
+        name: "kubernetes",
+        menuCategory: ["implementation"],
+        schematicKind: SchematicKind.Component,
+        rootEntityTypes: ["service"],
+      },
+    ],
   },
   implements: ["service"],
   inputs: [

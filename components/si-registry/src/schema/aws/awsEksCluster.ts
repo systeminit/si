@@ -1,6 +1,5 @@
 import {
   RegistryEntry,
-  MenuCategory,
   ValidatorKind,
   SchematicKind,
   NodeKind,
@@ -11,9 +10,14 @@ const awsEksCluster: RegistryEntry = {
   entityType: "awsEksCluster",
   nodeKind: NodeKind.Concrete,
   ui: {
-    menuCategory: MenuCategory.AWS,
-    menuDisplayName: "awsEksCluster",
-    schematicKinds: [SchematicKind.Component],
+    menu: [
+      {
+        name: "cluster",
+        menuCategory: ["aws", "eks"],
+        schematicKind: SchematicKind.Component,
+        rootEntityTypes: ["kubernetesCluster"],
+      },
+    ],
   },
   inputs: [],
   properties: [

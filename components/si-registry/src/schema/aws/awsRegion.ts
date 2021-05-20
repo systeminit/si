@@ -1,6 +1,5 @@
 import {
   RegistryEntry,
-  MenuCategory,
   ValidatorKind,
   SchematicKind,
   NodeKind,
@@ -216,9 +215,14 @@ const awsRegion: RegistryEntry = {
   entityType: "awsRegion",
   nodeKind: NodeKind.Concrete,
   ui: {
-    menuCategory: MenuCategory.AWS,
-    menuDisplayName: "awsRegion",
-    schematicKinds: [SchematicKind.Component],
+    menu: [
+      {
+        name: "region",
+        menuCategory: ["aws"],
+        schematicKind: SchematicKind.Component,
+        rootEntityTypes: ["cloudProvider"],
+      },
+    ],
   },
   inputs: [],
   properties: [

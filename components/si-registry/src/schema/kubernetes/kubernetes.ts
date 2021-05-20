@@ -1,6 +1,5 @@
 import {
   RegistryEntry,
-  MenuCategory,
   SchematicKind,
   NodeKind,
   Arity,
@@ -11,9 +10,14 @@ const kubernetesCluster: RegistryEntry = {
   entityType: "kubernetesCluster",
   nodeKind: NodeKind.Concept,
   ui: {
-    menuCategory: MenuCategory.Application,
-    menuDisplayName: "kubernetes",
-    schematicKinds: [SchematicKind.Deployment],
+    menu: [
+      {
+        name: "kubernetes",
+        menuCategory: ["compute"],
+        schematicKind: SchematicKind.Deployment,
+        rootEntityTypes: ["application"],
+      },
+    ],
   },
   inputs: [
     ...standardConceptInputs,

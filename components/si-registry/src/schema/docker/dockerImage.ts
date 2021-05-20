@@ -1,6 +1,5 @@
 import {
   RegistryEntry,
-  MenuCategory,
   ValidatorKind,
   SchematicKind,
   NodeKind,
@@ -11,9 +10,14 @@ const dockerImage: RegistryEntry = {
   entityType: "dockerImage",
   nodeKind: NodeKind.Concrete,
   ui: {
-    menuCategory: MenuCategory.Docker,
-    menuDisplayName: "docker image",
-    schematicKinds: [SchematicKind.Component],
+    menu: [
+      {
+        name: "image",
+        menuCategory: ["container", "docker"],
+        schematicKind: SchematicKind.Component,
+        rootEntityTypes: ["service"],
+      },
+    ],
   },
   inputs: [],
   properties: [

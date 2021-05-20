@@ -1,6 +1,5 @@
 import {
   RegistryEntry,
-  MenuCategory,
   SchematicKind,
   NodeKind,
   Arity,
@@ -10,9 +9,14 @@ const aws: RegistryEntry = {
   entityType: "aws",
   nodeKind: NodeKind.Implementation,
   ui: {
-    menuCategory: MenuCategory.AWS,
-    menuDisplayName: "AWS",
-    schematicKinds: [SchematicKind.Component],
+    menu: [
+      {
+        name: "aws",
+        menuCategory: ["implementation"],
+        schematicKind: SchematicKind.Component,
+        rootEntityTypes: ["cloudProvider"],
+      },
+    ],
   },
   implements: ["cloudProvider"],
   inputs: [

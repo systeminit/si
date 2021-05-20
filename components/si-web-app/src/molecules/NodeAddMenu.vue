@@ -1,5 +1,9 @@
 <template>
-  <div class="relative w-auto z-80">
+  <div
+    class="relative w-auto menu-root pr-10"
+    @mouseleave="onMouseLeave"
+    @mouseenter="cancelClose"
+  >
     <button
       @click="isOpen = !isOpen"
       class="w-full focus:outline-none"
@@ -18,34 +22,13 @@
       </div>
     </button>
 
-    <ul
-      v-show="isOpen"
-      class="absolute w-auto ml-2 text-gray-200 border shadow-md options"
-    >
-      <li
-        class="w-full px-4 text-sm subpixel-antialiased font-light tracking-tight text-left text-gray-300 cursor-pointer options menu-category"
-        v-for="category in menuItems"
-        :key="category.name"
-      >
-        <div class="whitespace-no-wrap hover:text-white">
-          {{ category.name }}
-        </div>
-
-        <ul
-          v-if="category.items"
-          class="relative w-auto border shadow-md category-items options"
-        >
-          <li
-            class="w-full px-4 text-sm subpixel-antialiased font-light tracking-tight text-left text-gray-300 whitespace-no-wrap cursor-pointer options"
-            v-for="item in category.items"
-            :key="item.entityType"
-            @click="onSelect(item, $event)"
-          >
-            {{ item.displayName }}
-          </li>
-        </ul>
-      </li>
-    </ul>
+    <NodeAddMenuCategory
+      :isOpen="isOpen"
+      :menuItems="menuItems"
+      rootMenu
+      class="menu-root"
+      @selected="onSelect"
+    />
   </div>
 </template>
 
@@ -53,8 +36,8 @@
 import Vue, { PropType } from "vue";
 import _ from "lodash";
 
-import { entityMenu, MenuCategoryItem } from "si-registry";
-import { SchematicKind } from "@/api/sdf/model/schematic";
+import { entityMenu, MenuList } from "si-registry";
+import NodeAddMenuCategory from "./NodeAddMenu/NodeAddMenuCategory.vue";
 
 interface Data {
   isOpen: boolean;
@@ -65,10 +48,9 @@ export interface AddMenuSelectedPayload {
   event: MouseEvent;
 }
 
-export enum MenuFilter {
-  Deployment = "deployment",
-  Implementation = "implementation",
-}
+const debounceIsOpen = _.debounce((component: any, isOpen: boolean) => {
+  component.isOpen = isOpen;
+}, 500);
 
 export default Vue.extend({
   name: "NodeAddMenu",
@@ -78,53 +60,56 @@ export default Vue.extend({
       default: false,
     },
     filter: {
-      type: Array as PropType<SchematicKind[]>,
+      type: Object as PropType<Parameters<typeof entityMenu>[0]>,
     },
   },
-  components: {},
+  components: {
+    NodeAddMenuCategory,
+  },
   data(): Data {
     return {
       isOpen: false,
     };
   },
   computed: {
-    menuItems(): ReturnType<typeof entityMenu>["list"] {
-      const result = entityMenu(this.filter);
-      return result.list;
+    menuItems(): MenuList["list"] {
+      return entityMenu(this.filter).list;
     },
   },
   methods: {
-    onSelect({ entityType }: { entityType: string }, event: MouseEvent): void {
+    onSelect(entityType: string, event: MouseEvent): void {
       event.preventDefault();
-
-      const payload: AddMenuSelectedPayload = {
-        entityType: entityType,
-        event: event,
-      };
       this.$emit("selected", entityType, event);
       this.isOpen = false;
     },
-    onMouseEnter(): void {
-      this.isOpen = true;
+    onMouseLeave(): void {
+      debounceIsOpen(this, false);
+    },
+    cancelClose(): void {
+      debounceIsOpen.cancel();
     },
   },
   created() {
-    const _handleEscape = (e: any) => {
+    const handleEscape = (e: any) => {
       if (e.key === "Esc" || e.key === "Escape") {
         if (this.isOpen) {
           this.isOpen = false;
         }
       }
     };
-    // document.addEventListener("keydown", handleEscape);
-    // this.$once("hook:beforeDestroy", () => {
-    //   document.removeEventListener("keydown", handleEscape);
-    // });
+    document.addEventListener("keydown", handleEscape);
+    this.$once("hook:beforeDestroy", () => {
+      document.removeEventListener("keydown", handleEscape);
+    });
   },
 });
 </script>
 
 <style>
+.menu-root {
+  z-index: 999;
+}
+
 .menu {
   background-color: #2d3748;
   border-color: #485359;
@@ -149,7 +134,7 @@ export default Vue.extend({
 }
 
 .menu-category .category-items {
-  visibility: hidden;
+  /*  visibility: hidden; */
   position: absolute;
   left: 100%;
   top: auto;
@@ -157,6 +142,6 @@ export default Vue.extend({
 }
 
 .menu-category:hover .category-items {
-  visibility: visible;
+  /* visibility: visible; */
 }
 </style>
