@@ -1,7 +1,5 @@
 import {
   RegistryEntry,
-  MenuCategory,
-  ValidatorKind,
   SchematicKind,
   NodeKind,
   //Arity,
@@ -11,9 +9,14 @@ const awsAccessKey: RegistryEntry = {
   entityType: "awsAccessKey",
   nodeKind: NodeKind.Concrete,
   ui: {
-    menuCategory: MenuCategory.AWS,
-    menuDisplayName: "awsAccessKey",
-    schematicKinds: [SchematicKind.Component],
+    menu: [
+      {
+        name: "access key",
+        menuCategory: ["aws"],
+        schematicKind: SchematicKind.Component,
+        rootEntityTypes: ["cloudProvider"],
+      },
+    ],
   },
   inputs: [],
   properties: [

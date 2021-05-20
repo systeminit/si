@@ -6,26 +6,20 @@ export enum SchematicKind {
   Component = "component",
 }
 
-export enum MenuCategory {
-  Application = "application",
-  AWS = "AWS",
-  Service = "service",
-  Docker = "docker",
-  Kubernetes = "kubernetes",
-  Helm = "helm",
-}
-
-interface RegistryEntryUiHidden {
-  menuCategory?: never;
-  menuDisplayName?: never;
-  schematicKinds?: never;
+export interface RegistryEntryUiHidden {
+  menu?: never;
   hidden: true;
 }
 
-interface RegistryEntryUiPresent {
-  menuCategory: MenuCategory;
-  menuDisplayName: string;
-  schematicKinds: SchematicKind[];
+export interface RegistryEntryUiMenuItem {
+  name: string;
+  menuCategory: string[];
+  schematicKind: SchematicKind;
+  rootEntityTypes?: string[];
+}
+
+export interface RegistryEntryUiPresent {
+  menu: RegistryEntryUiMenuItem[];
   hidden?: never;
 }
 

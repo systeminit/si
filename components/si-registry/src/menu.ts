@@ -1,33 +1,34 @@
 import { registry } from "./registry";
-import { RegistryEntry, MenuCategory, SchematicKind } from "./registryEntry";
+import { SchematicKind, RegistryEntryUiMenuItem } from "./registryEntry";
 
 import _ from "lodash";
 
-export interface MenuItem {
-  entityType: string;
-  displayName: string;
-}
-
-export interface MenuCategoryItem {
+export interface Category {
+  kind: "category";
   name: string;
   items: MenuItem[];
 }
 
+export interface Item {
+  kind: "item";
+  name: string;
+  entityType: string;
+}
+
+export type MenuItem = Category | Item;
+
 export interface MenuList {
-  list: MenuCategoryItem[];
+  list: MenuItem[];
 }
 
-function enumKeys<O extends object, K extends keyof O = keyof O>(obj: O): K[] {
-  return Object.values(obj).filter((k) => Number.isNaN(+k)) as K[];
+export interface EntityMenuFilters {
+  schematicKind: SchematicKind;
+  rootEntityType: string;
 }
 
-export function entityMenu(filter: SchematicKind[]): MenuList {
+export function entityMenu(filter: EntityMenuFilters): MenuList {
   const list: MenuList["list"] = [];
-  const categories = enumKeys(MenuCategory).sort();
-  for (const category of categories) {
-    const items: MenuCategoryItem["items"] = [];
-    list.push({ name: category, items });
-  }
+
   for (const schema of Object.values(registry)) {
     if (schema.entityType == "leftHandPath") {
       continue;
@@ -35,46 +36,67 @@ export function entityMenu(filter: SchematicKind[]): MenuList {
     if (schema.ui.hidden) {
       continue;
     }
-    // Let us never speak of this again.
-    if (filter.length > 0) {
-      if (schema.ui.schematicKinds) {
-        let skipThisEntry = true;
+    const menuEntry = _.find(
+      schema.ui.menu,
+      (menuEntry: RegistryEntryUiMenuItem) => {
+        if (menuEntry.rootEntityTypes) {
+          return (
+            menuEntry.schematicKind == filter.schematicKind &&
+            _.includes(menuEntry.rootEntityTypes, filter.rootEntityType)
+          );
+        } else {
+          return menuEntry.schematicKind == filter.schematicKind;
+        }
+      },
+    );
+    if (!menuEntry) {
+      continue;
+    }
+
+    let currentList = list;
+    for (const category of menuEntry.menuCategory) {
+      const existingIndex = _.findIndex(currentList, (i) => {
+        return i.name == category && i.kind == "category";
+      });
+      if (existingIndex == -1) {
+        const newLength = currentList.push({
+          kind: "category",
+          name: category,
+          items: [],
+        });
         // @ts-ignore
-        for (const s of schema.ui.schematicKinds) {
-          for (const f of filter) {
-            if (f == s) {
-              skipThisEntry = false;
-            }
-          }
-        }
-        if (skipThisEntry) {
-          continue;
-        }
+        currentList = currentList[newLength - 1].items;
+      } else {
+        // @ts-ignore
+        currentList = currentList[existingIndex].items;
       }
     }
-    const mcIndex = _.findIndex(list, ["name", schema.ui.menuCategory]);
-    let displayName = schema.entityType;
-    if (schema.ui.menuDisplayName) {
-      displayName = schema.ui.menuDisplayName;
-    }
-    list[mcIndex].items.push({
+    currentList.push({
+      kind: "item",
+      name: menuEntry.name,
       entityType: schema.entityType,
-      displayName,
+    });
+    currentList.sort((a, b) => {
+      if (a.kind == "category" && a.name == "implementation") {
+        return -1;
+      } else {
+        const aName = a.name;
+        const bName = b.name;
+        return aName.localeCompare(bName);
+      }
     });
   }
-
-  let reducedList: MenuList["list"] = [];
-  for (const mc of list) {
-    if (mc.items.length) {
-      reducedList.push(mc);
+  list.sort((a, b) => {
+    if (a.kind == "category" && a.name == "implementation") {
+      return -1;
+    } else if (b.kind == "category" && b.name == "implementation") {
+      return 1;
+    } else {
+      const aName = a.name;
+      const bName = b.name;
+      return aName.localeCompare(bName);
     }
-  }
+  });
 
-  for (const mc of list) {
-    mc.items = _.sortBy(mc.items, ["displayName"]);
-  }
-
-  reducedList = _.sortBy(reducedList, ["name"]);
-
-  return { list: reducedList };
+  return { list };
 }

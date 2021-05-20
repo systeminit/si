@@ -1,4 +1,9 @@
-import { RegistryEntry, NodeKind, Arity } from "../../registryEntry";
+import {
+  RegistryEntry,
+  NodeKind,
+  Arity,
+  SchematicKind,
+} from "../../registryEntry";
 
 import { metadata } from "./shared/objectMeta";
 import {
@@ -7,7 +12,6 @@ import {
   qualifications,
   actions,
   commands,
-  ui,
   code,
 } from "./shared/standard";
 import { selector } from "./shared/labelSelector";
@@ -17,7 +21,16 @@ const k8sDeployment: RegistryEntry = {
   entityType: "k8sDeployment",
   nodeKind: NodeKind.Concrete,
   code: code(),
-  ui: ui("k8sDeployment"),
+  ui: {
+    menu: [
+      {
+        name: "deployment",
+        menuCategory: ["kubernetes"],
+        schematicKind: SchematicKind.Component,
+        rootEntityTypes: ["service"],
+      },
+    ],
+  },
   inputs: [
     {
       name: "dockerImage",

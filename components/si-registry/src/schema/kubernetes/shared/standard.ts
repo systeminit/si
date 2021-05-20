@@ -1,23 +1,13 @@
 import {
   CodeKind,
-  MenuCategory,
   PropString,
   RegistryEntry,
-  SchematicKind,
   ValidatorKind,
 } from "../../../registryEntry";
 import _ from "lodash";
 
 export function code(): RegistryEntry["code"] {
   return { kind: CodeKind.YAML };
-}
-
-export function ui(entityType: string): RegistryEntry["ui"] {
-  return {
-    menuCategory: MenuCategory.Kubernetes,
-    menuDisplayName: entityType,
-    schematicKinds: [SchematicKind.Component],
-  };
 }
 
 export function apiVersion(apiVersion: string): PropString {

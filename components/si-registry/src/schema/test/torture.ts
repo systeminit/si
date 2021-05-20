@@ -1,6 +1,5 @@
 import {
   RegistryEntry,
-  MenuCategory,
   ValidatorKind,
   SchematicKind,
   NodeKind,
@@ -13,9 +12,20 @@ const torture: RegistryEntry = {
   nodeKind: NodeKind.Concrete,
   code: { kind: CodeKind.YAML },
   ui: {
-    menuCategory: MenuCategory.Application,
-    menuDisplayName: "torture test",
-    schematicKinds: [SchematicKind.Component, SchematicKind.Deployment],
+    hidden: true,
+    //menu: [
+    //  {
+    //    name: "torture test",
+    //    menuCategory: ["testing"],
+    //    schematicKind: SchematicKind.Component,
+    //  },
+    //  {
+    //    name: "torture test",
+    //    menuCategory: ["testing", "torture"],
+    //    schematicKind: SchematicKind.Deployment,
+    //    rootEntityTypes: ["application"],
+    //  },
+    //],
   },
   inputs: [
     {

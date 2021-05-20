@@ -3,6 +3,7 @@ import {
   NodeKind,
   Arity,
   ValidatorKind,
+  SchematicKind,
 } from "../../registryEntry";
 
 import { metadata } from "./shared/objectMeta";
@@ -12,7 +13,6 @@ import {
   qualifications,
   actions,
   commands,
-  ui,
   code,
 } from "./shared/standard";
 
@@ -20,7 +20,16 @@ const k8sService: RegistryEntry = {
   entityType: "k8sService",
   nodeKind: NodeKind.Concrete,
   code: code(),
-  ui: ui("k8sService"),
+  ui: {
+    menu: [
+      {
+        name: "service",
+        menuCategory: ["kubernetes"],
+        schematicKind: SchematicKind.Component,
+        rootEntityTypes: ["service"],
+      },
+    ],
+  },
   inputs: [
     {
       name: "k8sNamespace",
