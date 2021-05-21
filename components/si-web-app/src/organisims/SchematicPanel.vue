@@ -97,8 +97,9 @@ import {
   edgeDeleted$,
   schematicPanelKind$,
   restoreSchematicPanelKind$,
+  nameAttributeChanged$,
 } from "@/observables";
-import { combineLatest, of } from "rxjs";
+import { combineLatest, of, BehaviorSubject } from "rxjs";
 import { switchMap, pluck, tap } from "rxjs/operators";
 import {
   IGetApplicationSystemSchematicRequest,
@@ -195,6 +196,8 @@ export default Vue.extend({
       ),
     );
 
+    const refreshSchematic$ = new BehaviorSubject<boolean>(true);
+
     let schematicUpdateCallback$ = schematicUpdated$.pipe(
       tap(payload => {
         if (payload.schematicKind == this.schematicKind) {
@@ -211,6 +214,7 @@ export default Vue.extend({
       changeSet$,
       nodePositionUpdated$,
       edgeDeleted$,
+      refreshSchematic$,
     ).pipe(
       switchMap(
         ([
@@ -221,6 +225,7 @@ export default Vue.extend({
           changeSet,
           _nodePositionUpdated,
           _edgeDeleted,
+          _refreshSchematic,
         ]) => {
           if (
             rootObjectId == "noSelectedDeploymentNode" ||
@@ -307,6 +312,18 @@ export default Vue.extend({
             schematicState.applicationId == applicationId
           ) {
             this.schematicKind = schematicState.schematicKind;
+          }
+        }),
+      ),
+      nameAttributeChanged: nameAttributeChanged$.pipe(
+        tap(payload => {
+          if (
+            payload &&
+            this.schematic &&
+            this.schematic.nodes[payload.nodeId]
+          ) {
+            this.schematic.nodes[payload.nodeId].object.name = payload.newValue;
+            refreshSchematic$.next(true);
           }
         }),
       ),

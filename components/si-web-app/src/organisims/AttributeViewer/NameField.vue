@@ -38,7 +38,7 @@ import _ from "lodash";
 
 import { emitEditorErrorMessage } from "@/atoms/PanelEventBus";
 import { Entity } from "@/api/sdf/model/entity";
-import { updateEntity } from "@/observables";
+import { updateEntity, nameAttributeChanged$ } from "@/observables";
 import { Diff, hasDiff } from "@/api/sdf/model/diff";
 
 interface Data {
@@ -121,10 +121,22 @@ export default Vue.extend({
       if (this.startValue != this.currentValue && this.forName) {
         this.entity.name = this.currentValue;
         this.entity.computeProperties();
-        updateEntity(this.entity).subscribe(reply => {
-          if (reply.error) {
-            emitEditorErrorMessage(reply.error.message);
-          }
+        // Name must be committed to the api before notifying rest of client,
+        // hence awaited here
+        const reply = await updateEntity(this.entity).toPromise();
+        if (reply.error) {
+          emitEditorErrorMessage(reply.error.message);
+          return;
+        }
+        // Now rest of client can be notified which may cause refetching of
+        // data including schematics, hence comment above about api being
+        // consistent *first*
+        nameAttributeChanged$.next({
+          nodeId: this.entity.nodeId,
+          entityId: this.entity.id,
+          entityType: this.entity.entityType,
+          oldValue: this.startValue,
+          newValue: this.currentValue,
         });
       }
     },
