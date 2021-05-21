@@ -330,6 +330,18 @@ export const nodePositionUpdated$ = new ReplaySubject<NodePositionUpdated | null
 );
 nodePositionUpdated$.next(null);
 
+export interface NameAttributeChanged {
+  nodeId: string;
+  entityId: string;
+  entityType: string;
+  oldValue: string;
+  newValue: string;
+}
+export const nameAttributeChanged$ = new ReplaySubject<NameAttributeChanged | null>(
+  1,
+);
+nameAttributeChanged$.next(null);
+
 export interface EdgeCreating {
   entityType: string;
   schematicKind: string;
