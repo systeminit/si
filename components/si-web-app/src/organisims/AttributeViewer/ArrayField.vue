@@ -20,6 +20,7 @@
             :systemId="systemId"
             :backgroundColors="backgroundColors"
             :closedPaths="closedPaths"
+            :diff="diff"
             @toggle-path="togglePath"
           />
           <Unset
@@ -62,6 +63,7 @@
             :systemId="systemId"
             :backgroundColors="backgroundColors"
             :closedPaths="closedPaths"
+            :diff="diff"
             @toggle-path="togglePath"
           />
         </div>
@@ -92,6 +94,7 @@ import { Entity } from "@/api/sdf/model/entity";
 import { PlusIcon } from "vue-feather-icons";
 import { emitEditorErrorMessage } from "@/atoms/PanelEventBus";
 import { updateEntity } from "@/observables";
+import { Diff } from "@/api/sdf/model/diff";
 
 interface Data {
   startValue: unknown[];
@@ -134,6 +137,9 @@ export default BaseField.extend({
     backgroundColors: {
       type: Array as PropType<number[][]>,
       required: true,
+    },
+    diff: {
+      type: Array as PropType<Diff>,
     },
   },
   data(): Data {

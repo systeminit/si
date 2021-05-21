@@ -38,6 +38,7 @@
         :path="[]"
         :systemId="systemId"
         :forName="true"
+        :diff="diff"
       />
       <div
         class="pt-1 pb-1 pl-6 mt-2 text-base text-white align-middle property-section-bg-color"
@@ -53,6 +54,7 @@
           :systemId="systemId"
           :backgroundColors="backgroundColors"
           :closedPaths="closedPaths"
+          :diff="diff"
           @toggle-path="togglePath"
         />
       </template>

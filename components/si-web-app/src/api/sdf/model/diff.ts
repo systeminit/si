@@ -1,3 +1,5 @@
+import _ from "lodash";
+
 export interface DiffEntryEdit {
   path: string[];
   before: any;
@@ -54,3 +56,20 @@ export type DiffEntry =
   | DiffEntryRepeatedSize;
 
 export type Diff = DiffEntry[];
+
+export function hasDiff(diff: Diff, path: string[]): boolean {
+  const hasDiff = _.find(diff, de => {
+    if (de.add) {
+      return _.isEqual(de.add.path, path);
+    } else if (de.edit) {
+      return _.isEqual(de.edit.path, path);
+    } else {
+      return false;
+    }
+  });
+  if (hasDiff) {
+    return true;
+  } else {
+    return false;
+  }
+}

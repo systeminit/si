@@ -10,7 +10,8 @@
       @keydown.stop
     >
       <input
-        class="flex-grow pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey input-border-grey si-property"
+        class="flex-grow pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey si-property"
+        :class="borderColor"
         type="text"
         aria-label="name"
         placeholder="text"
@@ -25,7 +26,7 @@
       class="flex flex-grow pl-2 mr-2 text-sm leading-tight text-gray-400"
     >
       <template v-if="entity">
-        {{ entity.name }}
+        <span :class="textColor"> {{ entity.name }} </span>
       </template>
     </div>
   </div>
@@ -38,6 +39,7 @@ import _ from "lodash";
 import { emitEditorErrorMessage } from "@/atoms/PanelEventBus";
 import { Entity } from "@/api/sdf/model/entity";
 import { updateEntity } from "@/observables";
+import { Diff, hasDiff } from "@/api/sdf/model/diff";
 
 interface Data {
   startValue: string;
@@ -66,6 +68,9 @@ export default Vue.extend({
     forName: {
       type: Boolean,
     },
+    diff: {
+      type: Array as PropType<Diff>,
+    },
   },
   data(): Data {
     return {
@@ -73,6 +78,32 @@ export default Vue.extend({
       currentValue: "",
       updating: false,
     };
+  },
+  computed: {
+    borderColor(): Record<string, boolean> {
+      const gold = hasDiff(this.diff, ["name"]);
+      if (gold) {
+        return {
+          "input-border-gold": true,
+        };
+      } else {
+        return {
+          "input-border-grey": true,
+        };
+      }
+    },
+    textColor(): Record<string, boolean> {
+      const gold = hasDiff(this.diff, ["name"]);
+      if (gold) {
+        return {
+          "text-gold": true,
+        };
+      } else {
+        return {
+          "text-gold": false,
+        };
+      }
+    },
   },
   methods: {
     onEnterKey(event: KeyboardEvent) {
@@ -90,7 +121,6 @@ export default Vue.extend({
       if (this.startValue != this.currentValue && this.forName) {
         this.entity.name = this.currentValue;
         this.entity.computeProperties();
-        console.log("you changed the name", { entity: this.entity });
         updateEntity(this.entity).subscribe(reply => {
           if (reply.error) {
             emitEditorErrorMessage(reply.error.message);

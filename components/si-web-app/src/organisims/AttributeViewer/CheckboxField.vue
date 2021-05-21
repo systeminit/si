@@ -8,7 +8,8 @@
     <template slot="widget">
       <div class="flex flex-grow">
         <input
-          class="pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey input-border-grey si-property disabled:opacity-50"
+          class="pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey si-property disabled:opacity-50"
+          :class="borderColor"
           type="checkbox"
           aria-label="name"
           placeholder="text"
@@ -34,7 +35,9 @@
         />
       </div>
     </template>
-    <template slot="value"> {{ currentValue }} </template>
+    <template slot="value">
+      <span :class="textColor"> {{ currentValue }} </span>
+    </template>
   </Field>
 </template>
 

@@ -7,7 +7,8 @@
   >
     <template slot="widget">
       <input
-        class="flex-grow pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey input-border-grey si-property disabled:opacity-50"
+        class="flex-grow pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey si-property disabled:opacity-50"
+        :class="borderColor"
         type="password"
         aria-label="name"
         placeholder="secret text"
@@ -33,7 +34,9 @@
         />
       </div>
     </template>
-    <template slot="value"> ******* </template>
+    <template slot="value">
+      <span :class="textColor"> ******* </span>
+    </template>
   </Field>
 </template>
 
