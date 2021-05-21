@@ -4,12 +4,13 @@
     :showField="showField"
     :errors="errors"
     :editMode="editMode"
+    :nameClasses="fieldNameColor"
     v-on="$listeners"
   >
     <template slot="widget">
       <div class="flex flex-col flex-grow">
         <div
-          class="flex flex-row border-b-2 pb-2 border-gray-800"
+          class="flex flex-row pb-2 border-b-2 border-gray-800"
           v-for="(editFields, index) in items"
           :key="index"
         >
@@ -30,7 +31,7 @@
             @unset="unset(arrayEntryEditField(index))"
           />
         </div>
-        <div class="flex flex-row pl-2 pt-2">
+        <div class="flex flex-row pt-2 pl-2">
           <button>
             <PlusIcon @click="addItem" size="1x" />
           </button>

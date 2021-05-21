@@ -754,7 +754,6 @@ export class SiEntity implements ISiEntity {
       return false;
     }
   }
-
   valueOpForPath({
     path,
     system,
@@ -812,6 +811,26 @@ export class SiEntity implements ISiEntity {
         }
       }
       return finalOp;
+    } else {
+      return undefined;
+    }
+  }
+  valueFromOp({
+    path,
+    system,
+    source,
+  }: {
+    path: OpSet["path"];
+    system: OpSet["system"];
+    source: OpSet["source"];
+  }): OpSet | undefined {
+    const op = _.find(
+      this.ops,
+      (o) =>
+        o.source == source && _.isEqual(o.path, path) && o.system == system,
+    );
+    if (op) {
+      return op as OpSet;
     } else {
       return undefined;
     }

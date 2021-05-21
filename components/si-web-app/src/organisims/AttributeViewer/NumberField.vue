@@ -4,6 +4,7 @@
     :showField="showField"
     :errors="errors"
     :editMode="editMode"
+    :nameClasses="fieldNameColor"
   >
     <template slot="widget">
       <input
@@ -57,7 +58,7 @@ interface Data {
 }
 
 export default BaseField.extend({
-  name: "CheckboxField",
+  name: "NumberField",
   mixins: [BaseField],
   components: {
     TombstoneEdit,

@@ -4,6 +4,7 @@
     :showField="showField"
     :errors="errors"
     :editMode="editMode"
+    :nameClasses="fieldNameColor"
   >
     <template slot="widget">
       <select

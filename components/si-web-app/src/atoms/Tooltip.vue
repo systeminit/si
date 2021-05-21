@@ -1,5 +1,5 @@
 <template>
-  <div class="tooltip">
+  <div class="w-auto tooltip">
     <div @click="toggleVisibility()">
       <slot />
     </div>
@@ -82,7 +82,7 @@ export default Vue.extend({
 .tooltip .tooltip-text {
   visibility: hidden;
   position: absolute;
-  z-index: 100;
+  z-index: 999;
   border-color: #3a4145;
   background-color: #222629;
 }

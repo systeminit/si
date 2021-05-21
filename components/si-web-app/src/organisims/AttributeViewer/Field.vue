@@ -3,7 +3,8 @@
     <div class="flex flex-col w-full">
       <div class="flex flex-row items-center w-full">
         <div
-          class="w-1/4 break-all px-2 text-sm leading-tight text-right text-white flex-wrap"
+          class="w-1/4 break-all px-2 text-sm leading-tight text-right flex-wrap"
+          :class="nameClasses"
           v-if="name"
         >
           {{ name }}
@@ -59,6 +60,9 @@ export default Vue.extend({
     editMode: {
       type: Boolean,
       required: true,
+    },
+    nameClasses: {
+      type: Object as PropType<Record<string, boolean>>,
     },
   },
 });

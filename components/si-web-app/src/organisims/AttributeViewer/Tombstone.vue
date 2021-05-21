@@ -184,7 +184,7 @@
                           <SquareApplicationIcon size="1x" />
                         </button>
                       </div>
-                      <div class="flex flex-grow ml-2">
+                      <div class="flex  flex-grow ml-2">
                         {{
                           valueFrom({
                             source: "inferred",
