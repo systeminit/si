@@ -15,6 +15,7 @@
         aria-label="name"
         placeholder="text"
         v-model="currentValue"
+        @keyup.enter="onEnterKey($event)"
         @focus="onFocus"
         @blur="onBlur"
       />
@@ -74,6 +75,12 @@ export default Vue.extend({
     };
   },
   methods: {
+    onEnterKey(event: KeyboardEvent) {
+      if (event.target) {
+        // @ts-ignore
+        event.target.blur();
+      }
+    },
     onFocus() {
       this.setStartValueToCurrentValue();
       this.updating = true;

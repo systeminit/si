@@ -14,6 +14,7 @@
         v-model="currentValue"
         :disabled="isDisabled"
         @input="onInput"
+        @keyup.enter="onEnterKey($event)"
         @focus="onFocus"
         @blur="onBlur"
       />

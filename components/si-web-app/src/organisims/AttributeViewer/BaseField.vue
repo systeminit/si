@@ -12,9 +12,6 @@ import {
   OpTombstone,
 } from "si-entity/dist/siEntity";
 
-import TombstoneEdit from "@/organisims/AttributeViewer/Tombstone.vue";
-import Unset from "@/organisims/AttributeViewer/Unset.vue";
-import Field from "@/organisims/AttributeViewer/Field.vue";
 import { updateEntity } from "@/observables";
 import { Entity } from "@/api/sdf/model/entity";
 import { ValidateFailure } from "si-entity/dist/validation";
@@ -189,12 +186,20 @@ export default Vue.extend({
       }
       return true;
     },
+    onInputSelect(): void {
+      this.onInput();
+      this.onBlur();
+    },
     onInput() {
       this.validate();
     },
     onFocus() {
       this.setStartValueToCurrentValue();
       this.updating = true;
+    },
+    onEnterKey(event: KeyboardEvent) {
+      // @ts-ignore
+      event.target.blur();
     },
     async onBlur(editField?: EditField, value?: unknown) {
       if (!editField || editField.type == "blur") {

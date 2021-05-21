@@ -18,6 +18,7 @@
                 type="text"
                 @focus="onFocus"
                 @blur="onBlurForKey(mapValue.key, index)"
+                @keyup.enter="onEnterKey($event)"
                 v-model="keyValue[index]"
                 class="w-full pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey input-border-grey si-property disabled:opacity-50"
                 placeholder="key"
@@ -28,6 +29,7 @@
                 type="text"
                 @focus="onFocus"
                 @blur="onBlurForKeyValue(mapValue.key)"
+                @keyup.enter="onEnterKey($event)"
                 v-model="currentValue[mapValue.key]"
                 class="w-full pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey input-border-grey si-property disabled:opacity-50"
                 placeholder="value"
@@ -110,7 +112,6 @@ import {
   OpSet,
   OpType,
   OpSource,
-  OpUnset,
   OpTombstone,
 } from "si-entity/dist/siEntity";
 
@@ -192,7 +193,7 @@ export default BaseField.extend({
       let editField = this.editFieldForKey(key);
       this.unset(editField);
     },
-    onBlurForKey(oldKey: string, index: string): void {
+    onBlurForKey(oldKey: string, index: number): void {
       this.updating = false;
       if (_.isEqual(oldKey, this.keyValue[index])) {
         return;
