@@ -13,6 +13,7 @@
         placeholder="text"
         v-model="currentValue"
         :disabled="isDisabled"
+        @keyup.enter="onEnterKey($event)"
         @input="onInput"
         @focus="onFocus"
         @blur="onBlur"

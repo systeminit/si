@@ -11,7 +11,7 @@
         placeholder="text"
         v-model="currentValue"
         :disabled="isDisabled"
-        @change="onInput"
+        @change="onInputSelect"
         @focus="onFocus"
         @blur="onBlur"
       >

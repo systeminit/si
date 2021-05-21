@@ -11,6 +11,8 @@
         placeholder="text"
         v-model="currentValue"
         :disabled="isDisabled"
+        @keyup.enter.shift="onEnterKey($event)"
+        @keyup.enter.alt="onEnterKey($event)"
         @input="onInput"
         @focus="onFocus"
         @blur="onBlur"
