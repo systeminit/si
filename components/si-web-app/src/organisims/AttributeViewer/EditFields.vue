@@ -15,6 +15,7 @@
         :editMode="editMode"
         :editField="editField"
         :systemId="systemId"
+        :diff="diff"
         v-else-if="showFieldForWidget('text', editField)"
       />
       <NumberField
@@ -22,6 +23,7 @@
         :editMode="editMode"
         :editField="editField"
         :systemId="systemId"
+        :diff="diff"
         v-else-if="showFieldForWidget('number', editField)"
       />
       <TextAreaField
@@ -29,6 +31,7 @@
         :editMode="editMode"
         :editField="editField"
         :systemId="systemId"
+        :diff="diff"
         v-else-if="showFieldForWidget('textArea', editField)"
       />
       <PasswordField
@@ -36,6 +39,7 @@
         :editMode="editMode"
         :editField="editField"
         :systemId="systemId"
+        :diff="diff"
         v-else-if="showFieldForWidget('password', editField)"
       />
       <CheckboxField
@@ -43,6 +47,7 @@
         :editMode="editMode"
         :editField="editField"
         :systemId="systemId"
+        :diff="diff"
         v-else-if="showFieldForWidget('checkbox', editField)"
       />
       <SelectField
@@ -50,6 +55,7 @@
         :editMode="editMode"
         :editField="editField"
         :systemId="systemId"
+        :diff="diff"
         v-else-if="showFieldForWidget('select', editField)"
       />
       <SelectFromInputField
@@ -57,6 +63,7 @@
         :editMode="editMode"
         :editField="editField"
         :systemId="systemId"
+        :diff="diff"
         v-else-if="showFieldForWidget('selectFromInput', editField)"
       />
       <SelectFromSecretField
@@ -64,6 +71,7 @@
         :editMode="editMode"
         :editField="editField"
         :systemId="systemId"
+        :diff="diff"
         v-else-if="showFieldForWidget('selectFromSecret', editField)"
       />
       <MapField
@@ -71,6 +79,7 @@
         :editMode="editMode"
         :editField="editField"
         :systemId="systemId"
+        :diff="diff"
         v-else-if="showFieldForWidget('map', editField)"
       />
       <ArrayField
@@ -78,6 +87,7 @@
         :editMode="editMode"
         :editField="editField"
         :systemId="systemId"
+        :diff="diff"
         :backgroundColors="backgroundColors"
         :closedPaths="closedPaths"
         @toggle-path="togglePath"
@@ -105,6 +115,7 @@ import Header from "@/organisims/AttributeViewer/Header.vue";
 
 import { EditField } from "si-entity/dist/siEntity";
 import { Entity } from "@/api/sdf/model/entity";
+import { Diff } from "@/api/sdf/model/diff";
 
 // @ts-ignore
 export default Vue.extend({
@@ -145,6 +156,9 @@ export default Vue.extend({
     backgroundColors: {
       type: Array as PropType<number[][]>,
       required: true,
+    },
+    diff: {
+      type: Array as PropType<Diff>,
     },
   },
   methods: {

@@ -15,6 +15,7 @@ import {
 import { updateEntity } from "@/observables";
 import { Entity } from "@/api/sdf/model/entity";
 import { ValidateFailure } from "si-entity/dist/validation";
+import { Diff, hasDiff } from "@/api/sdf/model/diff";
 
 interface Data {
   startValue: unknown | undefined;
@@ -39,6 +40,9 @@ export default Vue.extend({
     },
     systemId: {
       type: String,
+    },
+    diff: {
+      type: Array as PropType<Diff>,
     },
   },
   data(): Data {
@@ -69,6 +73,54 @@ export default Vue.extend({
         });
       }
       return false;
+    },
+    borderColor(): Record<string, boolean> {
+      let gold = hasDiff(
+        this.diff,
+        _.concat(["properties"], this.editField.path),
+      );
+      if (gold) {
+        return {
+          "input-border-gold": true,
+        };
+      }
+      gold = hasDiff(
+        this.diff,
+        _.concat(["properties", this.systemId], this.editField.path),
+      );
+      if (gold) {
+        return {
+          "input-border-gold": true,
+        };
+      } else {
+        return {
+          "input-border-grey": true,
+        };
+      }
+    },
+    textColor(): Record<string, boolean> {
+      let gold = hasDiff(
+        this.diff,
+        _.concat(["properties"], this.editField.path),
+      );
+      if (gold) {
+        return {
+          "text-gold": true,
+        };
+      }
+      gold = hasDiff(
+        this.diff,
+        _.concat(["properties", this.systemId], this.editField.path),
+      );
+      if (gold) {
+        return {
+          "text-gold": true,
+        };
+      } else {
+        return {
+          "text-gold": false,
+        };
+      }
     },
   },
   methods: {

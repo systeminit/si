@@ -20,7 +20,8 @@
                 @blur="onBlurForKey(mapValue.key, index)"
                 @keyup.enter="onEnterKey($event)"
                 v-model="keyValue[index]"
-                class="w-full pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey input-border-grey si-property disabled:opacity-50"
+                class="w-full pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey si-property disabled:opacity-50"
+                :class="borderColorForKey(mapValue.key)"
                 placeholder="key"
               />
             </div>
@@ -31,7 +32,8 @@
                 @blur="onBlurForKeyValue(mapValue.key)"
                 @keyup.enter="onEnterKey($event)"
                 v-model="currentValue[mapValue.key]"
-                class="w-full pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey input-border-grey si-property disabled:opacity-50"
+                class="w-full pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey si-property disabled:opacity-50"
+                :class="borderColorForKey(mapValue.key)"
                 placeholder="value"
               />
             </div>
@@ -92,6 +94,7 @@
       <div class="flex flex-col">
         <div
           class="grid grid-cols-2 gap-1"
+          :class="textColorForKey(key)"
           v-for="(value, key) in currentValue"
           :key="key"
         >
@@ -124,6 +127,7 @@ import BaseField from "./BaseField.vue";
 import { PlusIcon } from "vue-feather-icons";
 import { emitEditorErrorMessage } from "@/atoms/PanelEventBus";
 import { updateEntity } from "@/observables";
+import { hasDiff } from "@/api/sdf/model/diff";
 
 interface Data {
   newKey: string;
@@ -177,6 +181,54 @@ export default BaseField.extend({
     },
   },
   methods: {
+    textColorForKey(key: string): Record<string, boolean> {
+      let gold = hasDiff(
+        this.diff,
+        _.concat(["properties"], this.editField.path, key),
+      );
+      if (gold) {
+        return {
+          "text-gold": true,
+        };
+      }
+      gold = hasDiff(
+        this.diff,
+        _.concat(["properties", this.systemId], this.editField.path, key),
+      );
+      if (gold) {
+        return {
+          "text-gold": true,
+        };
+      } else {
+        return {
+          "text-gold": false,
+        };
+      }
+    },
+    borderColorForKey(key: string): Record<string, boolean> {
+      let gold = hasDiff(
+        this.diff,
+        _.concat(["properties"], this.editField.path, key),
+      );
+      if (gold) {
+        return {
+          "input-border-gold": true,
+        };
+      }
+      gold = hasDiff(
+        this.diff,
+        _.concat(["properties", this.systemId], this.editField.path, key),
+      );
+      if (gold) {
+        return {
+          "input-border-gold": true,
+        };
+      } else {
+        return {
+          "input-border-grey": true,
+        };
+      }
+    },
     editFieldForKey(key: string): EditField {
       const editField = _.cloneDeep(this.editField);
       editField.path.push(key);
