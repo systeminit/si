@@ -74,6 +74,27 @@ export default Vue.extend({
       }
       return false;
     },
+    fieldNameColor(): Record<string, boolean> {
+      const opSet = this.entity.valueOpForPath({
+        path: this.editField.path,
+        system: this.systemId,
+      });
+      if (opSet) {
+        if (opSet.source == OpSource.Inferred) {
+          return {
+            "text-green": true,
+          };
+        } else {
+          return {
+            "text-green": false,
+          };
+        }
+      } else {
+        return {
+          "text-green": false,
+        };
+      }
+    },
     borderColor(): Record<string, boolean> {
       let gold = hasDiff(
         this.diff,

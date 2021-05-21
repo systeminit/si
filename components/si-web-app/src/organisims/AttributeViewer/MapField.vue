@@ -4,6 +4,7 @@
     :showField="showField"
     :errors="errors"
     :editMode="editMode"
+    :nameClasses="fieldNameColor"
   >
     <template slot="widget">
       <div class="flex flex-row w-full pl-5">
@@ -98,7 +99,10 @@
           v-for="(value, key) in currentValue"
           :key="key"
         >
-          <div class="flex flex-row justify-end">{{ key }}:</div>
+          <div class="flex flex-row justify-end">
+            <span :class="fieldNameColorForKey(key)"> {{ key }}</span
+            >:
+          </div>
           <div class="flex flex-row">
             {{ value }}
           </div>
@@ -181,6 +185,27 @@ export default BaseField.extend({
     },
   },
   methods: {
+    fieldNameColorForKey(key: string): Record<string, boolean> {
+      const opSet = this.entity.valueOpForPath({
+        path: _.concat(this.editField.path, key),
+        system: this.systemId,
+      });
+      if (opSet) {
+        if (opSet.source == OpSource.Inferred) {
+          return {
+            "text-green": true,
+          };
+        } else {
+          return {
+            "text-green": false,
+          };
+        }
+      } else {
+        return {
+          "text-green": false,
+        };
+      }
+    },
     textColorForKey(key: string): Record<string, boolean> {
       let gold = hasDiff(
         this.diff,
