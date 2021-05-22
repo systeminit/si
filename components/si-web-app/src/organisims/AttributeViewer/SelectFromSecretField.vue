@@ -54,7 +54,12 @@ import Field from "@/organisims/AttributeViewer/Field.vue";
 import { ValidateFailure } from "si-entity/dist/validation";
 import BaseField from "./BaseField.vue";
 import { combineLatest } from "rxjs";
-import { changeSet$, editSession$, workspace$ } from "@/observables";
+import {
+  changeSet$,
+  editSession$,
+  workspace$,
+  refreshSecretList$,
+} from "@/observables";
 import {
   AttributeDal,
   IGetInputLabelsRequest,
@@ -103,7 +108,11 @@ export default BaseField.extend({
     let entity$ = this.$watchAsObservable("entity", { immediate: true }).pipe(
       pluck("newValue"),
     );
-    let getSelectOptions$ = combineLatest(workspace$, entity$).pipe(
+    let getSelectOptions$ = combineLatest(
+      workspace$,
+      entity$,
+      refreshSecretList$,
+    ).pipe(
       tap(async ([workspace, entity]) => {
         if (
           this.editField.schema.widget?.name == "selectFromSecret" &&
