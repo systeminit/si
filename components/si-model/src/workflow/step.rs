@@ -2,18 +2,19 @@ use serde::{Deserialize, Serialize};
 use si_data::{NatsConn, NatsTxn, PgPool, PgTxn};
 use strum_macros::Display;
 
-use crate::workflow::{
-    SelectionEntry, WorkflowContext, WorkflowError, WorkflowResult, WorkflowRun,
-};
 use crate::{workflow::selector::Selector, Workflow};
 use crate::{
     workflow::variable::{VariableArray, VariableBool, VariableScalar},
     Resource,
 };
+use crate::{
+    workflow::{SelectionEntry, WorkflowContext, WorkflowError, WorkflowResult, WorkflowRun},
+    EdgeKind,
+};
 use crate::{Entity, SiStorable, Veritech, Workspace};
 use chrono::Utc;
 
-use super::selector::SelectionEntryPredecessor;
+use super::selector::{SelectionEntryPredecessor, SelectorDepth, SelectorDirection};
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Display, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -291,11 +292,22 @@ pub enum CommandFinish {
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct ForEach {
+    types: Option<Vec<String>>,
+    from_property: Option<Vec<String>>,
+    depth: Option<SelectorDepth>,
+    edge_kind: Option<EdgeKind>,
+    direction: Option<SelectorDirection>,
+}
+
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct StepCommand {
     pub inputs: StepCommandInputs,
     pub fail_if_missing: Option<VariableScalar>,
     pub selector: Option<Selector>,
     pub strategy: Option<VariableScalar>,
+    pub for_each: Option<ForEach>,
 }
 
 impl StepCommand {
@@ -520,6 +532,7 @@ pub struct StepAction {
     pub fail_if_missing: Option<VariableScalar>,
     pub selector: Option<Selector>,
     pub strategy: Option<VariableScalar>,
+    pub for_each: Option<ForEach>,
 }
 
 impl StepAction {

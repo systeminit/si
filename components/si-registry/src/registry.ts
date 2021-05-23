@@ -21,6 +21,12 @@ import aws from "./schema/aws/aws";
 import awsRegion from "./schema/aws/awsRegion";
 import awsAccessKey from "./schema/aws/awsAccessKey";
 import awsEksCluster from "./schema/aws/awsEksCluster";
+import azure from "./schema/azure/azure";
+import azureAks from "./schema/azure/azureAks";
+import azureLocation from "./schema/azure/azureLocation";
+import azureAksCluster from "./schema/azure/azureAksCluster";
+import azureServicePrincipal from "./schema/azure/azureServicePrincipal";
+import azureResourceGroup from "./schema/azure/azureResourceGroup";
 
 export const registry: { [entityType: string]: RegistryEntry } = {
   leftHandPath,
@@ -41,6 +47,12 @@ export const registry: { [entityType: string]: RegistryEntry } = {
   awsRegion,
   awsAccessKey,
   awsEksCluster,
+  azure,
+  azureAks,
+  azureAksCluster,
+  azureLocation,
+  azureServicePrincipal,
+  azureResourceGroup,
 };
 
 export function findProp(path: string[]): Prop | undefined {

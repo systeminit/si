@@ -175,6 +175,12 @@ export interface Selector {
   direction?: "input" | "output";
 }
 
+export interface ForEach {
+  edgeKind?: "configures" | "deployment" | "includes";
+  direction?: "input" | "output";
+  depth?: "immediate" | "all";
+}
+
 export interface StepBase {
   kind: StepKind;
   inputs?: unknown;
@@ -191,6 +197,7 @@ export interface StepCommand extends StepBase {
   failIfMissing?: VariableBool;
   selector?: Selector;
   strategy?: VariableScalar;
+  forEach?: ForEach;
 }
 
 export interface StepAction extends StepBase {
@@ -201,6 +208,7 @@ export interface StepAction extends StepBase {
   failIfMissing?: VariableBool;
   selector?: Selector;
   strategy?: VariableScalar;
+  forEach?: ForEach;
 }
 
 export interface StepWorkflow extends StepBase {
@@ -289,6 +297,11 @@ export const serviceDeploy: Workflow = {
       },
       selector: {
         fromProperty: ["implementation"],
+      },
+      forEach: {
+        edgeKind: "deployment",
+        depth: "immediate",
+        direction: "output",
       },
     },
   ],
