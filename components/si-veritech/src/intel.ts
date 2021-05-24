@@ -5,6 +5,8 @@ import k8sDeployment from "./intel/k8sDeployment";
 import k8sNamespace from "./intel/k8sNamespace";
 import k8sService from "./intel/k8sService";
 import awsEksCluster from "./intel/awsEksCluster";
+import azureResourceGroup from "./intel/azureResourceGroup";
+import azureAksCluster from "./intel/azureAksCluster";
 import {
   InferPropertiesReply,
   InferPropertiesRequest,
@@ -25,6 +27,8 @@ const intel: Record<string, Intel> = {
   k8sNamespace,
   k8sService,
   awsEksCluster,
+  azureResourceGroup,
+  azureAksCluster,
 };
 
 export default intel;
