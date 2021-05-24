@@ -9,7 +9,7 @@ import {
 import _ from "lodash";
 
 // taken from az aks get-versions -l centralus
-const kubernetesVersions = {
+const kubernetesVersions: Record<string, any> = {
   id:
     "/subscriptions/6602cdaf-54a1-43f3-afc6-d3efbf993c1c/providers/Microsoft.ContainerService/locations/centralus/orchestrators",
   name: "default",
