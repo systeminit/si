@@ -1,6 +1,10 @@
 <template>
-  <div v-on="$listeners">
-    <div v-for="editField in editFields" :key="editField.path.join('.')">
+  <div v-on="$listeners" class="w-full">
+    <div
+      v-for="editField in editFields"
+      :key="editField.path.join('.')"
+      class="my-2"
+    >
       <Header
         :entity="entity"
         :editMode="editMode"

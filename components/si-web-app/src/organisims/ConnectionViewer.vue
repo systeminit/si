@@ -1,5 +1,18 @@
 <template>
   <div class="w-full">
+    <div
+      class="relative flex flex-row items-center h-10 px-6 py-2 text-base text-white align-middle property-section-bg-color"
+    >
+      <div class="flex flex-row items-center text-lg title">
+        <div class="">
+          {{ entity.entityType }}
+        </div>
+
+        <div class="ml-2">
+          {{ entity.name }}
+        </div>
+      </div>
+    </div>
     <div class="flex flex-col">
       <ConnectionSection
         :connections="inputConnections()"
@@ -25,6 +38,7 @@ import Vue, { PropType } from "vue";
 import { Connection } from "@/api/sdf/model/connection";
 import { Connections } from "@/api/sdf/dal/attributeDal";
 import ConnectionSection from "@/molecules/ConnectionSection.vue";
+import { Entity } from "@/api/sdf/model/entity";
 import {
   AttributeDal,
   IDeleteConnectionRequest,
@@ -42,6 +56,10 @@ import {
 export default Vue.extend({
   name: "ConnectionViewer",
   props: {
+    entity: {
+      type: Object as PropType<Entity>,
+      required: true,
+    },
     connections: {
       type: Object as PropType<Connections>,
       required: true,
@@ -108,3 +126,17 @@ export default Vue.extend({
   },
 });
 </script>
+
+<style scoped>
+.property-section-bg-color {
+  background-color: #292c2d;
+}
+
+.title {
+  color: #e0e0e0;
+}
+
+.sub-title {
+  color: #cccccc;
+}
+</style>

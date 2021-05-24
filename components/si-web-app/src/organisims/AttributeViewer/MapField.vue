@@ -7,14 +7,14 @@
     :nameClasses="fieldNameColor"
   >
     <template slot="widget">
-      <div class="flex flex-row w-full pl-5">
-        <div class="flex flex-col">
+      <div class="flex flex-row w-full">
+        <div class="flex flex-col px-2 py-2 border border-gray-700">
           <div
-            class="flex flex-row flex-grow pb-2"
+            class="flex flex-row pb-2"
             v-for="(mapValue, index) in sortedCurrentValue"
             :key="mapValue.key + index"
           >
-            <div class="flex w-1/2 mr-2">
+            <div class="flex">
               <input
                 type="text"
                 @focus="onFocus"
@@ -26,7 +26,7 @@
                 placeholder="key"
               />
             </div>
-            <div class="flex w-1/2 mr-2">
+            <div class="flex ml-2">
               <input
                 type="text"
                 @focus="onFocus"
@@ -38,7 +38,7 @@
                 placeholder="value"
               />
             </div>
-            <div class="flex flex-row w-10">
+            <div class="flex flex-row w-10 ml-1">
               <TombstoneEdit
                 :entity="entity"
                 :editField="editFieldForKey(mapValue.key)"
@@ -53,58 +53,63 @@
               />
             </div>
           </div>
-          <div class="flex flex-row flex-grow border-t border-gray-800">
-            <div class="flex w-1/2 mr-2">
-              <input
-                type="text"
-                v-model="newKey"
-                class="w-full pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey input-border-grey si-property disabled:opacity-50"
-                placeholder="key"
-              />
-            </div>
-            <div class="flex w-1/2 mr-2">
-              <input
-                type="text"
-                v-model="newValue"
-                class="w-full pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey input-border-grey si-property disabled:opacity-50"
-                placeholder="value"
-              />
-            </div>
-            <div class="flex flex-row w-10">
-              <button @click="addToMap"><PlusIcon size="1x" /></button>
+          <div class="flex flex-row flex-grow">
+            <div class="flex flex-row mt-1">
+              <div class="flex mr-2">
+                <input
+                  type="text"
+                  v-model="newKey"
+                  class="w-full pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey input-border-grey si-property disabled:opacity-50"
+                  placeholder="key"
+                />
+              </div>
+              <div class="flex mr-2">
+                <input
+                  type="text"
+                  v-model="newValue"
+                  class="w-full pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey input-border-grey si-property disabled:opacity-50"
+                  placeholder="value"
+                />
+              </div>
+              <div class="flex w-10">
+                <button @click="addToMap"><PlusIcon size="1x" /></button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-      <div class="flex flex-row w-10">
-        <TombstoneEdit
-          :entity="entity"
-          :editField="editField"
-          :systemId="systemId"
-          @toggleTombstone="toggleTombstone"
-        />
-        <Unset
-          :entity="entity"
-          :editField="editField"
-          :systemId="systemId"
-          @unset="unset"
-        />
+
+        <div class="flex flex-row w-10 ml-1">
+          <TombstoneEdit
+            :entity="entity"
+            :editField="editField"
+            :systemId="systemId"
+            @toggleTombstone="toggleTombstone"
+          />
+          <Unset
+            :entity="entity"
+            :editField="editField"
+            :systemId="systemId"
+            @unset="unset"
+          />
+        </div>
       </div>
     </template>
     <template slot="value">
-      <div class="flex flex-col">
+      <div class="flex flex-col w-full mt-4">
         <div
-          class="grid grid-cols-2 gap-1"
+          class="flex"
           :class="textColorForKey(key)"
           v-for="(value, key) in currentValue"
           :key="key"
         >
-          <div class="flex flex-row justify-end">
-            <span :class="fieldNameColorForKey(key)"> {{ key }}</span
-            >:
-          </div>
-          <div class="flex flex-row">
-            {{ value }}
+          <div class="flex flex-row w-full">
+            <div class="text-right text-gray-300">
+              <span :class="fieldNameColorForKey(key)"> {{ key }}</span
+              >:
+            </div>
+            <div class="ml-1 font-light text-left">
+              {{ value }}
+            </div>
           </div>
         </div>
       </div>
@@ -193,16 +198,16 @@ export default BaseField.extend({
       if (opSet) {
         if (opSet.source == OpSource.Inferred) {
           return {
-            "text-green": true,
+            "driven-field": true,
           };
         } else {
           return {
-            "text-green": false,
+            "driven-field": false,
           };
         }
       } else {
         return {
-          "text-green": false,
+          "driven-field": false,
         };
       }
     },

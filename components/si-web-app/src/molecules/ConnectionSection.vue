@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="connection-title">
-      <div class="px-4 py-1 text-sm font-normal">{{ title }}</div>
+      <div class="px-4 py-1 text-xs font-medium ">{{ title }}</div>
     </div>
 
     <div class="mx-4 mt-4 ml-4" v-show="connections">
@@ -125,7 +125,7 @@ export default Vue.extend({
 
 <style scoped>
 .connection-title {
-  background-color: #292c2d;
+  background-color: #1f2122;
   color: #e9f2fe;
 }
 .connection-socket {

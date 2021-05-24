@@ -7,36 +7,38 @@
     :nameClasses="fieldNameColor"
   >
     <template slot="widget">
-      <select
-        class="flex-grow pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey si-property disabled:opacity-50"
-        :class="borderColor"
-        placeholder="text"
-        v-model="currentValue"
-        :disabled="isDisabled"
-        @change="onInputSelect"
-        @focus="onFocus"
-        @blur="onBlur"
-      >
-        <option
-          v-for="option in selectOptions"
-          :key="option.value"
-          :value="option.value"
-          >{{ option.label }}
-        </option>
-      </select>
-      <div class="flex flex-row w-10">
-        <TombstoneEdit
-          :entity="entity"
-          :editField="editField"
-          :systemId="systemId"
-          @toggleTombstone="toggleTombstone"
-        />
-        <Unset
-          :entity="entity"
-          :editField="editField"
-          :systemId="systemId"
-          @unset="unset"
-        />
+      <div class="flex flex-row w-full">
+        <select
+          class="pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey si-property disabled:opacity-50"
+          :class="borderColor"
+          placeholder="text"
+          v-model="currentValue"
+          :disabled="isDisabled"
+          @change="onInputSelect"
+          @focus="onFocus"
+          @blur="onBlur"
+        >
+          <option
+            v-for="option in selectOptions"
+            :key="option.value"
+            :value="option.value"
+            >{{ option.label }}
+          </option>
+        </select>
+        <div class="flex flex-row w-10 ml-1">
+          <TombstoneEdit
+            :entity="entity"
+            :editField="editField"
+            :systemId="systemId"
+            @toggleTombstone="toggleTombstone"
+          />
+          <Unset
+            :entity="entity"
+            :editField="editField"
+            :systemId="systemId"
+            @unset="unset"
+          />
+        </div>
       </div>
     </template>
     <template slot="value">

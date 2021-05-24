@@ -12,17 +12,19 @@
       style="height: 2.5rem; min-height: 2.5rem"
     >
       <div class="flex justify-start">
-        <SiSelect
-          size="xs"
-          :options="panelTypes"
-          id="selectPanelType"
-          v-model="selectedPanelType"
-          class="pl-2"
-          :styling="panelSelectorStyling()"
-          @change.native="changePanelType"
-        />
+        <div class="min-w-max">
+          <SiSelect
+            size="xs"
+            :options="panelTypes"
+            id="selectPanelType"
+            v-model="selectedPanelType"
+            class="pl-2 "
+            :styling="panelSelectorStyling()"
+            @change.native="changePanelType"
+          />
+        </div>
       </div>
-      <div class="flex justify-start">
+      <div class="flex justify-start flex-grow">
         <slot name="menuButtons"> </slot>
       </div>
       <div class="flex flex-row items-center justify-end flex-grow">
@@ -62,7 +64,7 @@
         </div>
       </div>
     </div>
-    <div class="flex flex-row w-full h-full overflow-auto bg-gray-900">
+    <div class="flex flex-grow w-full h-full overflow-auto">
       <slot name="content"> </slot>
     </div>
   </div>

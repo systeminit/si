@@ -8,52 +8,65 @@
     v-on="$listeners"
   >
     <template slot="widget">
-      <div class="flex flex-col flex-grow">
-        <div
-          class="flex flex-row pb-2 border-b-2 border-gray-800"
-          v-for="(editFields, index) in items"
-          :key="index"
-        >
-          <ArrayEditFields
-            :entity="entity"
-            :editMode="editMode"
-            :editFields="editFields"
-            :systemId="systemId"
-            :backgroundColors="backgroundColors"
-            :closedPaths="closedPaths"
-            :diff="diff"
-            @toggle-path="togglePath"
-          />
-          <Unset
-            :entity="entity"
-            :editField="arrayEntryEditField(index)"
-            :systemId="systemId"
-            @unset="unset(arrayEntryEditField(index))"
-          />
+      <div class="flex flex-row w-full border border-gray-700">
+        <div class="flex flex-col px-1 py-1">
+          <div
+            class="flex mt-1"
+            v-for="(editFields, index) in items"
+            :key="index"
+          >
+            <div
+              class="flex flex-row justify-between w-full mx-1 border border-gray-500"
+            >
+              <ArrayEditFields
+                :entity="entity"
+                :editMode="editMode"
+                :editFields="editFields"
+                :systemId="systemId"
+                :backgroundColors="backgroundColors"
+                :closedPaths="closedPaths"
+                :diff="diff"
+                @toggle-path="togglePath"
+              />
+              <div class="flex w-5 bg-gray-600">
+                <Unset
+                  :entity="entity"
+                  :editField="arrayEntryEditField(index)"
+                  :systemId="systemId"
+                  @unset="unset(arrayEntryEditField(index))"
+                />
+              </div>
+            </div>
+          </div>
+          <div class="flex flex-row mt-1 ml-1">
+            <button>
+              <PlusIcon @click="addItem" size="1x" />
+            </button>
+          </div>
         </div>
-        <div class="flex flex-row pt-2 pl-2">
-          <button>
-            <PlusIcon @click="addItem" size="1x" />
-          </button>
+
+        <div class="flex flex-row items-center justify-center w-10 bg-gray-800">
+          <div class="flex">
+            <TombstoneEdit
+              :entity="entity"
+              :editField="editField"
+              :systemId="systemId"
+              @toggleTombstone="toggleTombstone"
+            />
+            <Unset
+              :entity="entity"
+              :editField="editField"
+              :systemId="systemId"
+              @unset="unset"
+            />
+          </div>
         </div>
       </div>
-      <TombstoneEdit
-        :entity="entity"
-        :editField="editField"
-        :systemId="systemId"
-        @toggleTombstone="toggleTombstone"
-      />
-      <Unset
-        :entity="entity"
-        :editField="editField"
-        :systemId="systemId"
-        @unset="unset"
-      />
     </template>
     <template slot="value">
-      <div class="flex flex-col">
+      <div class="flex flex-col mt-4">
         <div
-          class="flex flex-row border-b-2 border-gray-800"
+          class="flex flex-row px-1 py-1 border border-gray-700"
           v-for="(editFields, index) in items"
           :key="index"
         >

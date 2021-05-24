@@ -1,7 +1,7 @@
 <template>
   <section :class="accordionClasses" v-if="currentValue || editMode">
     <div
-      class="pt-1 pb-1 mt-2 text-sm text-white cursor-pointer"
+      class="flex w-full pt-1 pb-1 mt-2 text-sm text-white"
       @click="toggleAccordion"
       :style="propObjectStyle"
     >
