@@ -4,5 +4,5 @@ SELECT jsonb_build_object(
            ) AS item
 FROM change_sets
 WHERE change_sets.workspace_id = si_id_to_primary_key_v1($1)
-  AND change_sets.obj ->> 'status' = 'open'
-ORDER BY change_sets.name;
+  AND change_sets.obj ->> 'status' = 'applied'
+ORDER BY change_sets.updated_at;

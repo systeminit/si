@@ -64,6 +64,8 @@ export const workspace$ = new ReplaySubject<IWorkspace | null>(1);
 workspace$.next(null);
 export const changeSet$ = new ReplaySubject<IChangeSet | null>(1);
 changeSet$.next(null);
+export const revision$ = new ReplaySubject<IChangeSet | null>(1);
+revision$.next(null);
 export const editSession$ = new ReplaySubject<IEditSession | null>(1);
 editSession$.next(null);
 export const applicationId$ = new ReplaySubject<string | null>(1);

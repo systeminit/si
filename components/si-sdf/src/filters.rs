@@ -409,6 +409,7 @@ pub fn application_context_dal(
             pg.clone(),
             nats_conn.clone(),
         ))
+        .or(application_context_dal_get_change_set(pg.clone()))
         .boxed()
 }
 
@@ -503,6 +504,18 @@ pub fn application_context_dal_create_edit_session_and_get_change_set(
             handlers::application_context_dal::CreateEditSessionAndGetChangeSetRequest,
         >())
         .and_then(handlers::application_context_dal::create_edit_session_and_get_change_set)
+        .boxed()
+}
+
+pub fn application_context_dal_get_change_set(pg: PgPool) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("applicationContextDal" / "getChangeSet")
+        .and(warp::get())
+        .and(with_pg(pg))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::query::<
+            handlers::application_context_dal::GetChangeSetRequest,
+        >())
+        .and_then(handlers::application_context_dal::get_change_set)
         .boxed()
 }
 

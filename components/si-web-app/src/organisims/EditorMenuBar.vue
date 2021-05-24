@@ -26,9 +26,10 @@
           id="revisionSelect"
           :styling="changeSetSelectorStyling()"
           :options="revisionsList"
-          :value="currentRevisionId"
+          v-model="currentRevisionId"
           name="systemSelect"
           :disabled="isRevisionButtonDisabled()"
+          @change.native="revisionSelected"
         />
       </div>
     </div>
@@ -44,7 +45,7 @@
           :options="openChangeSetsList"
           id="selectCurrentChangeSet"
           v-model="selectCurrentChangeSetId"
-          :disabled="editMode"
+          :disabled="isChangeSetDisabled()"
           @change.native="changeSetSelected"
         />
       </div>
@@ -189,12 +190,19 @@ import { IWorkspace } from "@/api/sdf/model/workspace";
 import { switchMap, pluck, tap } from "rxjs/operators";
 import { combineLatest, from } from "rxjs";
 import { ApplicationContextDal } from "@/api/sdf/dal/applicationContextDal";
-import { system$, editMode$, changeSet$, editSession$ } from "@/observables";
+import {
+  system$,
+  editMode$,
+  changeSet$,
+  editSession$,
+  revision$,
+} from "@/observables";
 import _ from "lodash";
 import { emitEditorErrorMessage } from "@/atoms/PanelEventBus";
 
 interface IData {
   selectCurrentChangeSetId: string;
+  currentRevisionId: string;
   newChangeSetForm: {
     name: string;
   };
@@ -208,11 +216,10 @@ interface IData {
     value: string;
     label: string;
   }[];
-}
-
-interface Revision {
-  value: string;
-  label: string;
+  revisionsList: {
+    value: string;
+    label: string;
+  }[];
 }
 
 export default Vue.extend({
@@ -231,6 +238,7 @@ export default Vue.extend({
   data(): IData {
     return {
       selectCurrentChangeSetId: "",
+      currentRevisionId: "",
       newChangeSetForm: {
         name: "",
       },
@@ -238,6 +246,7 @@ export default Vue.extend({
       editorErrorMessage: "",
       systemsList: [],
       openChangeSetsList: [],
+      revisionsList: [],
     };
   },
   subscriptions(this: any): Record<string, any> {
@@ -287,13 +296,16 @@ export default Vue.extend({
               { label: "- none -", value: "" },
               { label: ": new :", value: "action:new" },
             ]);
+            this.revisionsList = _.concat(reply.revisionsList, [
+              { value: "", label: "- latest -" },
+            ]);
           }
         }),
       ),
       currentSystemId: system$.pipe(switchMap(system => from([system?.id]))),
       currentChangeSet: changeSet$.pipe(
         tap(changeSet => {
-          if (changeSet) {
+          if (changeSet && !this.currentRevisionId) {
             this.selectCurrentChangeSetId = changeSet.id;
           } else {
             this.selectCurrentChangeSetId = "";
@@ -305,17 +317,6 @@ export default Vue.extend({
     };
   },
   computed: {
-    revisionsList(): Revision[] {
-      return [
-        {
-          value: "",
-          label: "latest",
-        },
-      ];
-    },
-    currentRevisionId(): string {
-      return "latest";
-    },
     // applyButtonIcon(): string {
     //   return !this.currentChangeSet || this.editMode ? "play" : "merge";
     // },
@@ -338,12 +339,24 @@ export default Vue.extend({
         return false;
       }
     },
+    isChangeSetDisabled(): Boolean {
+      if (
+        // @ts-ignore
+        !this.editMode &&
+        this.currentRevisionId
+      ) {
+        return true;
+      } else {
+        return false;
+      }
+    },
     isApplyButtonEnabled(): Boolean {
       if (
         this.selectCurrentChangeSetId &&
         // @ts-ignore
         !this.editMode &&
-        !this.selectedChangeSetIsAnAction()
+        !this.selectedChangeSetIsAnAction() &&
+        !this.currentRevisionId
       ) {
         return true;
       } else {
@@ -355,7 +368,8 @@ export default Vue.extend({
         this.selectCurrentChangeSetId &&
         // @ts-ignore
         !this.editMode &&
-        !this.selectedChangeSetIsAnAction()
+        !this.selectedChangeSetIsAnAction() &&
+        !this.currentRevisionId
       ) {
         return true;
       } else {
@@ -421,6 +435,22 @@ export default Vue.extend({
         await this.setEditMode();
       }
     },
+    async revisionSelected() {
+      if (this.currentRevisionId) {
+        let reply = await ApplicationContextDal.getChangeSet({
+          changeSetId: this.currentRevisionId,
+        });
+        if (reply.error) {
+          emitEditorErrorMessage(reply.error.message);
+        } else {
+          revision$.next(reply.changeSet);
+          changeSet$.next(reply.changeSet);
+        }
+      } else {
+        revision$.next(null);
+        changeSet$.next(null);
+      }
+    },
     async changeSetSelected() {
       if (this.selectCurrentChangeSetId) {
         if (!this.selectCurrentChangeSetId.includes("action")) {
@@ -438,11 +468,13 @@ export default Vue.extend({
         } else {
           changeSet$.next(null);
           editSession$.next(null);
+          revision$.next(null);
           editMode$.next(false);
         }
       } else {
         changeSet$.next(null);
         editSession$.next(null);
+        revision$.next(null);
         editMode$.next(false);
       }
     },
