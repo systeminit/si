@@ -38,6 +38,10 @@
     <AwsAccessKeyCredential @input="updateMessage" v-if="kindIsAwsAccesKey" />
     <DockerHubCredential @input="updateMessage" v-else-if="kindIsDockerHub" />
     <HelmRepoCredential @input="updateMessage" v-else-if="kindIsHelmRepo" />
+    <AzureServicePrincipal
+      @input="updateMessage"
+      v-else-if="kindIsAzureServicePrincipal"
+    />
 
     <div class="flex justify-end w-full">
       <div class="pr-2">
@@ -74,6 +78,7 @@ import {
 import AwsAccessKeyCredential from "@/organisims/SecretCreate/AwsAccessKeyCredential.vue";
 import DockerHubCredential from "@/organisims/SecretCreate/DockerHubCredential.vue";
 import HelmRepoCredential from "@/organisims/SecretCreate/HelmRepoCredential.vue";
+import AzureServicePrincipal from "@/organisims/SecretCreate/AzureServicePrincipal.vue";
 import { workspace$, refreshSecretList$ } from "@/observables";
 import { SecretDal, ICreateSecretRequest } from "@/api/sdf/dal/secretDal";
 import sealedBox from "tweetnacl-sealedbox-js";
@@ -112,6 +117,7 @@ export default Vue.extend({
     AwsAccessKeyCredential,
     DockerHubCredential,
     HelmRepoCredential,
+    AzureServicePrincipal,
     SiButton,
     SiError,
     SiSelect,
@@ -138,6 +144,9 @@ export default Vue.extend({
       let secretKinds = SecretKind.selectPropOptions();
       secretKinds.unshift({ label: "", value: "" });
       return secretKinds;
+    },
+    kindIsAzureServicePrincipal(): boolean {
+      return this.form.secretKind == SecretKind.AzureServicePrincipal;
     },
     kindIsAwsAccesKey(): boolean {
       return this.form.secretKind == SecretKind.AwsAccessKey;

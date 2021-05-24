@@ -94,6 +94,7 @@ pub enum SecretKind {
     DockerHub,
     AwsAccessKey,
     HelmRepo,
+    AzureServicePrincipal,
 }
 
 enum_impls!(SecretKind);

@@ -13,7 +13,12 @@ import {
 import { SiCtx } from "../siCtx";
 
 import { RunCommandCallbacks } from "../controllers/runCommand";
-import { awsKubeConfigPath, writeKubernetesYaml } from "../support";
+import {
+  awsKubeConfigPath,
+  azureKubeConfigPath,
+  findEntityByType,
+  writeKubernetesYaml,
+} from "../support";
 
 export function baseInferProperties(
   request: InferPropertiesRequest,
@@ -85,35 +90,71 @@ export const baseCheckQualifications: CheckQualificationCallbacks = {
 
 export const baseRunCommands: RunCommandCallbacks = {
   apply: async function (ctx, req, ws) {
-    const kubeConfigDir = await awsKubeConfigPath(req);
-    const code = req.entity.getCode(req.system.id);
-    if (code) {
-      const kubeYaml = await writeKubernetesYaml(
-        req.entity.getCode(req.system.id),
-      );
-      const result = await ctx.execStream(
-        ws,
-        "kubectl",
-        [
-          "apply",
-          "-o",
-          "json",
-          "--kubeconfig",
-          `${kubeConfigDir.path}/config`,
-          "-f",
-          kubeYaml.path,
-        ],
-        { reject: false },
-      );
-      if (result.exitCode != 0) {
-        debug("you failed!");
-        debug(result.all);
+    const awsEksCluster = findEntityByType(req, "awsEksCluster");
+    if (awsEksCluster) {
+      const kubeConfigDir = await awsKubeConfigPath(req);
+      const code = req.entity.getCode(req.system.id);
+      if (code) {
+        const kubeYaml = await writeKubernetesYaml(
+          req.entity.getCode(req.system.id),
+        );
+        const result = await ctx.execStream(
+          ws,
+          "kubectl",
+          [
+            "apply",
+            "-o",
+            "json",
+            "--kubeconfig",
+            `${kubeConfigDir.path}/config`,
+            "-f",
+            kubeYaml.path,
+          ],
+          { reject: false },
+        );
+        if (result.exitCode != 0) {
+          debug("you failed!");
+          debug(result.all);
+        } else {
+          debug("you worked!");
+          debug(result.all);
+        }
       } else {
-        debug("you worked!");
-        debug(result.all);
+        await ctx.execStream(ws, "echo", ["no code, so no apply!"]);
       }
-    } else {
-      await ctx.execStream(ws, "echo", ["no code, so no apply!"]);
+    }
+    const azureAksCluster = findEntityByType(req, "azureAksCluster");
+    if (azureAksCluster) {
+      const kubeConfigDir = await azureKubeConfigPath(req);
+      const code = req.entity.getCode(req.system.id);
+      if (code) {
+        const kubeYaml = await writeKubernetesYaml(
+          req.entity.getCode(req.system.id),
+        );
+        const result = await ctx.execStream(
+          ws,
+          "kubectl",
+          [
+            "apply",
+            "-o",
+            "json",
+            "--kubeconfig",
+            `${kubeConfigDir.path}/config`,
+            "-f",
+            kubeYaml.path,
+          ],
+          { reject: false },
+        );
+        if (result.exitCode != 0) {
+          debug("you failed!");
+          debug(result.all);
+        } else {
+          debug("you worked!");
+          debug(result.all);
+        }
+      } else {
+        await ctx.execStream(ws, "echo", ["no code, so no apply!"]);
+      }
     }
   },
 };

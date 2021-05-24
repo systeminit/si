@@ -19,6 +19,7 @@ export enum SecretKind {
   DockerHub = "dockerHub",
   AwsAccessKey = "awsAccessKey",
   HelmRepo = "helmRepo",
+  AzureServicePrincipal = "azureServicePrincipal",
 }
 
 export namespace SecretKind {
@@ -30,6 +31,8 @@ export namespace SecretKind {
         return "Docker Hub";
       case SecretKind.HelmRepo:
         return "Helm Repository";
+      case SecretKind.AzureServicePrincipal:
+        return "Azure Service Principal";
       default:
         throw Error(`Unknown SecretKind variant: ${secretKind}`);
     }
@@ -40,6 +43,7 @@ export namespace SecretKind {
       case SecretKind.AwsAccessKey:
       case SecretKind.DockerHub:
       case SecretKind.HelmRepo:
+      case SecretKind.AzureServicePrincipal:
         return SecretObjectType.Credential;
       default:
         throw Error(`Unknown SecretKind variant: ${secretKind}`);
@@ -64,6 +68,7 @@ export namespace SecretKind {
       selectPropOptionFor(SecretKind.AwsAccessKey),
       selectPropOptionFor(SecretKind.DockerHub),
       selectPropOptionFor(SecretKind.HelmRepo),
+      selectPropOptionFor(SecretKind.AzureServicePrincipal),
     ];
   }
 }

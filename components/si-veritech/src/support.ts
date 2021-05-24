@@ -18,6 +18,7 @@ export enum SecretKind {
   DockerHub = "dockerHub",
   AwsAccessKey = "awsAccessKey",
   HelmRepo = "helmRepo",
+  AzureServicePrincipal = "azureServicePrincipal",
 }
 
 export interface DecryptedSecret {
@@ -163,5 +164,64 @@ export async function awsKubeConfigPath(context: Context): Promise<TempDir> {
       env: awsEnv,
     },
   );
+  return kubeTempDir;
+}
+
+export async function azureLogin(context: Context): Promise<void> {
+  const secret = findSecret(context, SecretKind.AzureServicePrincipal);
+  if (secret) {
+    await SiCtx.exec("az", [
+      "login",
+      "--service-principal",
+      "-u",
+      secret["servicePrincipalUri"],
+      "-p",
+      secret["password"],
+      "--tenant",
+      secret["tenant"],
+    ]);
+  } else {
+    throw new Error(
+      "Azure Service Principal requested, and none found as inputs!",
+    );
+  }
+}
+
+export function azureResourceGroup(context: Context): string {
+  const rgName = findProperty(context, "azureResourceGroup", ["name"]);
+  if (rgName) {
+    return rgName;
+  } else {
+    throw new Error(
+      "Azure Resource Group requested, but none found as inputs!",
+    );
+  }
+}
+
+export function azureAksClusterName(context: Context): string {
+  const aksName = findProperty(context, "azureAksCluster", ["name"]);
+  if (aksName) {
+    return aksName;
+  } else {
+    throw new Error("Azure AKS Cluster requested, but none found as inputs!");
+  }
+}
+
+export async function azureKubeConfigPath(context: Context): Promise<TempDir> {
+  await azureLogin(context);
+  const resourceGroup = azureResourceGroup(context);
+  const clusterName = azureAksClusterName(context);
+  const kubeTempDir = await tempDir({});
+  const kubeconfigPath = path.join(kubeTempDir.path, "config");
+  await SiCtx.exec("az", [
+    "aks",
+    "get-credentials",
+    "--resource-group",
+    resourceGroup,
+    "--name",
+    clusterName,
+    "--file",
+    kubeconfigPath,
+  ]);
   return kubeTempDir;
 }
