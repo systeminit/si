@@ -9,7 +9,7 @@ import {
 import _ from "lodash";
 
 // Taken from the output of az account list-locations on 2021-05-23
-export const azureLocations = [
+export const azureLocations: Record<string, any>[] = [
   {
     displayName: "East US",
     id: "/subscriptions/6602cdaf-54a1-43f3-afc6-d3efbf993c1c/locations/eastus",
