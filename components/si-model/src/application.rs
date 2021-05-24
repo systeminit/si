@@ -147,6 +147,7 @@ pub struct ApplicationContext {
     pub application_name: String,
     pub systems_list: LabelList,
     pub open_change_sets_list: LabelList,
+    pub revisions_list: LabelList,
 }
 
 pub async fn context(
@@ -163,10 +164,13 @@ pub async fn context(
 
     let open_change_sets_list = ChangeSet::open_list_as_labels(&txn, &workspace_id).await?;
 
+    let revisions_list = ChangeSet::revision_list_as_labels(&txn, &workspace_id).await?;
+
     Ok(ApplicationContext {
         application_name: application.name,
         systems_list,
         open_change_sets_list,
+        revisions_list,
     })
 }
 

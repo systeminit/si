@@ -14,6 +14,7 @@ export interface IGetApplicationContextReplySuccess {
   applicationName: string;
   systemsList: ILabelList;
   openChangeSetsList: ILabelList;
+  revisionsList: ILabelList;
   error?: never;
 }
 
@@ -166,6 +167,24 @@ export type IApplyChangeSetReply =
   | IApplyChangeSetReplySuccess
   | IApplyChangeSetReplyFailure;
 
+export interface IGetChangeSetRequest {
+  changeSetId: string;
+}
+
+export interface IGetChangeSetReplySuccess {
+  changeSet: ChangeSet;
+  error?: never;
+}
+
+export interface IGetChangeSetReplyFailure {
+  changeSet?: never;
+  error: SDFError;
+}
+
+export type IGetChangeSetReply =
+  | IGetChangeSetReplySuccess
+  | IGetChangeSetReplyFailure;
+
 export class ApplicationContextDal {
   static async getApplicationContext(
     request: IGetApplicationContextRequest,
@@ -189,6 +208,20 @@ export class ApplicationContextDal {
 
     const reply: ICreateChangeSetAndEditSessionReply = await sdf.post(
       "applicationContextDal/createChangeSetAndEditSession",
+      request,
+    );
+
+    return reply;
+  }
+
+  static async getChangeSet(
+    request: IGetChangeSetRequest,
+  ): Promise<IGetChangeSetReply> {
+    let bottle = Bottle.pop("default");
+    let sdf = bottle.container.SDF;
+
+    const reply: IGetChangeSetReply = await sdf.get(
+      "applicationContextDal/getChangeSet",
       request,
     );
 

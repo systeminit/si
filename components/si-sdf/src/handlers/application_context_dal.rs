@@ -183,6 +183,52 @@ pub async fn get_change_set_and_edit_session(
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
+pub struct GetChangeSetRequest {
+    pub change_set_id: String,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct GetChangeSetReply {
+    pub change_set: ChangeSet,
+}
+
+pub async fn get_change_set(
+    pg: PgPool,
+    token: String,
+    request: GetChangeSetRequest,
+) -> Result<impl warp::Reply, warp::reject::Rejection> {
+    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let txn = conn.transaction().await.map_err(HandlerError::from)?;
+
+    let claim = authenticate(&txn, &token).await?;
+    authorize(
+        &txn,
+        &claim.user_id,
+        "applicationContextDal",
+        "getChangeSet",
+    )
+    .await?;
+    validate_tenancy(
+        &txn,
+        "change_sets",
+        &request.change_set_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+
+    let change_set = ChangeSet::get(&txn, &request.change_set_id)
+        .await
+        .map_err(HandlerError::from)?;
+
+    txn.commit().await.map_err(HandlerError::from)?;
+
+    let reply = GetChangeSetReply { change_set };
+    Ok(warp::reply::json(&reply))
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateEditSessionAndGetChangeSetRequest {
     pub change_set_id: String,
 }
