@@ -1,11 +1,11 @@
 <template>
-  <div class="h-full" ref="cm" />
+  <div class="w-full h-full" ref="cm" />
 </template>
 
 <style scoped>
-.CodeMirror {
-  height: auto;
-}
+/* .CodeMirror {
+  height: 100%;
+} */
 </style>
 
 <script lang="ts">
@@ -14,6 +14,7 @@ import codemirror from "codemirror";
 import "codemirror/lib/codemirror.css";
 import "codemirror/theme/base16-dark.css";
 import "codemirror/mode/yaml/yaml";
+import { PanelEventBus } from "@/atoms/PanelEventBus";
 
 interface Data {
   codeMirror: null | CodeMirror.Editor;
@@ -32,6 +33,21 @@ export default Vue.extend({
       codeMirror: null,
     };
   },
+  created() {
+    window.addEventListener("resize", this.setSize);
+    PanelEventBus.$on("maximize-full", this.setSize);
+    PanelEventBus.$on("maximize-container", this.setSize);
+    PanelEventBus.$on("panel-layout-update", this.setSize);
+  },
+  beforeDestroy() {
+    window.removeEventListener("resize", this.setSize);
+    PanelEventBus.$off("maximize-full", this.setSize);
+    PanelEventBus.$off("maximize-container", this.setSize);
+    PanelEventBus.$off("panel-layout-update", this.setSize);
+  },
+  beforeUpdate() {
+    this.setSize();
+  },
   mounted() {
     let codeMirrorOptions: CodeMirror.EditorConfiguration = {
       value: this.value,
@@ -40,6 +56,7 @@ export default Vue.extend({
       theme: "base16-dark",
       lineWrapping: this.lineWrapping,
       readOnly: this.readOnly,
+      mode: "yaml", //works for YAML but should be an option!
     };
     if (this.noHighlight) {
       codeMirrorOptions["mode"] = null;
@@ -49,12 +66,27 @@ export default Vue.extend({
       codeMirrorOptions,
     );
     this.codeMirror = codeMirror;
+    this.setSize();
   },
   watch: {
     value(newValue: string) {
       if (this.codeMirror) {
         this.codeMirror.setValue(newValue);
+        this.setSize();
       }
+    },
+  },
+  methods: {
+    setSize() {
+      if (this.codeMirror) {
+        const element = this.$refs.cm as HTMLElement;
+        const boundingRect = element.getBoundingClientRect();
+        this.codeMirror.setSize(boundingRect.width, boundingRect.height);
+      }
+    },
+    onMaximize() {
+      console.log("max");
+      this.setSize();
     },
   },
 });

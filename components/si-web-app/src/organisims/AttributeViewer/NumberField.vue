@@ -8,7 +8,7 @@
   >
     <template slot="widget">
       <input
-        class="flex-grow pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey si-property disabled:opacity-50"
+        class="pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey si-property disabled:opacity-50"
         :class="borderColor"
         type="number"
         aria-label="name"
@@ -20,7 +20,7 @@
         @focus="onFocus"
         @blur="onBlur"
       />
-      <div class="flex flex-row w-10">
+      <div class="flex flex-row w-10 ml-1">
         <TombstoneEdit
           :entity="entity"
           :editField="editField"

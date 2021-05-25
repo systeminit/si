@@ -11,75 +11,91 @@
     v-on="$listeners"
   >
     <template v-slot:menuButtons>
-      <div class="flex w-20">
-        <SiSelect
-          size="xs"
-          id="attributePanelObjectSelect"
-          name="attributePanelObjectSelect"
-          :options="entityLabelList.entityList"
-          v-if="entityLabelList"
-          v-model="selectedEntityId"
-          class="pl-1"
-          :disabled="selectionIsLocked"
-        />
-      </div>
-      <button class="pl-1 focus:outline-none" @click="toggleSelectionLock()">
-        <UnlockIcon size="1.1x" v-if="selectionIsLocked" />
-        <LockIcon size="1.1x" v-else />
-      </button>
-      <button
-        class="pl-1 focus:outline-none"
-        :class="attributeViewClasses()"
-        @click="switchToAttributeView()"
-      >
-        <DiscIcon size="1.1x" />
-      </button>
-      <button
-        class="pl-1 focus:outline-none"
-        :class="codeViewClasses()"
-        @click="switchToCodeView()"
-      >
-        <CodeIcon size="1.1x" />
-      </button>
-      <button
-        class="pl-1 focus:outline-none"
-        :class="qualificationViewClasses()"
-        @click="switchToQualificationView()"
-      >
-        <CheckSquareIcon size="1.1x" />
-      </button>
-      <button
-        class="pl-1 text-white focus:outline-none"
-        :class="actionViewClasses()"
-        @click="switchToActionView()"
-      >
-        <PlayIcon size="1.1x" />
-      </button>
-      <button
-        class="pl-1 text-white focus:outline-none"
-        :class="resourceViewClasses()"
-        @click="switchToResourceView()"
-      >
-        <HexagonIcon size="1.1x" />
-      </button>
+      <div class="flex flex-row items-center justify-between flex-grow">
+        <div class="flex flex-row">
+          <div class="min-w-max">
+            <SiSelect
+              size="xs"
+              id="attributePanelObjectSelect"
+              name="attributePanelObjectSelect"
+              :options="entityLabelList.entityList"
+              v-if="entityLabelList"
+              v-model="selectedEntityId"
+              class="pl-1"
+              :disabled="selectionIsLocked"
+            />
+          </div>
+          <button
+            class="pl-1 focus:outline-none"
+            @click="toggleSelectionLock()"
+          >
+            <UnlockIcon size="1.1x" class="unlocked" v-if="selectionIsLocked" />
+            <LockIcon size="1.1x" class="locked" v-else />
+          </button>
+        </div>
 
-      <button
-        class="pl-1 text-white focus:outline-none"
-        :class="eventViewClasses()"
-        @click="switchToEventView()"
-      >
-        <RadioIcon size="1.1x" />
-      </button>
+        <div class="flex flex-row items-center">
+          <button
+            class="pl-1 focus:outline-none"
+            :class="attributeViewClasses()"
+            @click="switchToAttributeView()"
+          >
+            <DiscIcon size="1.1x" />
+          </button>
+          <button
+            class="pl-1 focus:outline-none"
+            :class="codeViewClasses()"
+            @click="switchToCodeView()"
+          >
+            <CodeIcon size="1.1x" />
+          </button>
 
-      <button
-        class="pl-1 text-white focus:outline-none"
-        :class="connectionViewClasses()"
-        @click="switchTocCnnectionView()"
-      >
-        <Link2Icon size="1.1x" />
-      </button>
+          <button
+            class="pl-1 focus:outline-none"
+            :class="qualificationViewClasses()"
+            @click="switchToQualificationView()"
+          >
+            <CheckSquareIcon size="1.1x" />
+          </button>
+        </div>
 
-      <!--
+        <div class="flex flex-row items-center">
+          <!-- <button
+          class="pl-1 text-white focus:outline-none"
+          :class="eventViewClasses()"
+          @click="switchToEventView()"
+        >
+          <RadioIcon size="1.1x" />
+        </button> -->
+
+          <button
+            class="pl-1 text-white focus:outline-none"
+            :class="connectionViewClasses()"
+            @click="switchTocCnnectionView()"
+          >
+            <Link2Icon size="1.1x" />
+          </button>
+        </div>
+
+        <div class="flex items-center">
+          <button
+            class="pl-1 text-white focus:outline-none"
+            :class="actionViewClasses()"
+            @click="switchToActionView()"
+          >
+            <PlayIcon size="1.1x" />
+          </button>
+
+          <button
+            class="pl-1 text-white focus:outline-none"
+            :class="resourceViewClasses()"
+            @click="switchToResourceView()"
+          >
+            <HexagonIcon size="1.1x" />
+          </button>
+        </div>
+
+        <!--
       <button
         class="pl-1 text-white focus:outline-none"
         :class="refreshClasses"
@@ -89,6 +105,7 @@
         <RefreshCwIcon size="1.1x" />
       </button>
         -->
+      </div>
     </template>
     <template v-slot:content>
       <div class="flex flex-row w-full h-full" v-if="entity">
@@ -96,6 +113,8 @@
           v-if="activeView == 'attribute'"
           :entity="entity"
           :diff="diff"
+          :qualifications="qualifications"
+          :starting="qualificationStart"
         />
         <CodeViewer
           v-else-if="activeView == 'code'"
@@ -116,6 +135,7 @@
         />
         <ConnectionViewer
           v-else-if="activeView == 'connection'"
+          :entity="entity"
           :connections="connections"
         />
 
@@ -157,7 +177,7 @@ import {
   UnlockIcon,
   LockIcon,
   CodeIcon,
-  RadioIcon,
+  // RadioIcon,
   DiscIcon,
   CheckSquareIcon,
   PlayIcon,
@@ -241,7 +261,7 @@ export default Vue.extend({
     SiSelect,
     DiscIcon,
     HexagonIcon,
-    RadioIcon,
+    // RadioIcon,
     CodeIcon,
     LockIcon,
     UnlockIcon,
@@ -527,9 +547,9 @@ export default Vue.extend({
   methods: {
     viewClasses(view: IData["activeView"]): Record<string, any> {
       if (view == this.activeView) {
-        return { "text-blue-300": true };
+        return { "menu-button-active": true };
       } else {
-        return {};
+        return { "menu-button-inactive": true };
       }
     },
     attributeViewClasses(): Record<string, any> {
@@ -587,3 +607,21 @@ export default Vue.extend({
   },
 });
 </script>
+
+<style scoped>
+.menu-button-active {
+  color: #69e3d2;
+}
+
+.menu-button-inactive {
+  color: #c6c6c6;
+}
+
+.unlocked {
+  color: #c6c6c6;
+}
+
+.locked {
+  color: #e3ddba;
+}
+</style>

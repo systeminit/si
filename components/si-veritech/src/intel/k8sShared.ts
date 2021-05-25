@@ -58,11 +58,12 @@ export const baseCheckQualifications: CheckQualificationCallbacks = {
       try {
         kubeval = await ctx.exec(
           "kubeval",
-          [kubeYaml.path, "--ignore-missing-schemas"],
+          [kubeYaml.path, "--ignore-missing-schemas", "-o", "json", "--quiet"],
           {
             reject: false,
           },
         );
+        console.log(kubeval)
         if (kubeval.exitCode == 0) {
           qualified = true;
           output = kubeval.all;

@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col w-full overflow-hidden" v-if="entity">
     <div
-      class="relative flex flex-row items-center pt-2 pb-2 pl-6 pr-6 text-base text-white property-section-bg-color"
+      class="relative flex flex-row items-center h-10 px-6 py-2 text-base text-white align-middle property-section-bg-color"
     >
       <div class="text-lg">
         {{ entity.entityType }} {{ entity.name }} qualifications
@@ -9,12 +9,12 @@
     </div>
     <div
       v-if="schema && schema.qualifications"
-      class="flex w-full pt-2 overflow-auto"
+      class="flex w-full h-full pt-2 overflow-auto background-color "
     >
       <div class="flex flex-col w-full">
         <div
           v-for="q in schema.qualifications"
-          class="flex flex-col"
+          class="flex flex-col text-sm"
           :key="q.name"
         >
           <div class="flex flex-row items-center w-full pt-2 pl-4">
@@ -26,53 +26,51 @@
               />
             </div>
             <div class="flex" v-else-if="hasQualificationResult(q.name)">
-              <CheckSquareIcon
+              <SmileIcon
                 class="text-green-300"
+                size="1x"
                 v-if="qualificationResultQualified(q.name)"
               />
-              <SquareIcon class="text-yellow-300" v-else />
+              <FrownIcon size="1.2x" class="text-xs error" v-else />
             </div>
             <div class="flex" v-else>
-              <SquareIcon class="text-gray-700" />
+              <SquareIcon size="1x" class="text-gray-700" />
             </div>
             <div class="flex ml-2">
               {{ q.title }}
             </div>
             <div class="flex ml-2" v-if="q.link">
               <a target="_blank" :href="q.link">
-                <ExternalLinkIcon size="1x" />
+                <InfoIcon class="info-button" size="1x" />
               </a>
             </div>
             <div class="flex justify-end flex-grow pr-4">
-              <button @click="toggleDescription(q.name)">
-                <MoreHorizontalIcon />
+              <button
+                class="focus:outline-none "
+                @click="toggleDescription(q.name)"
+              >
+                <ChevronRightIcon size="1x" v-if="!showDescription[q.name]" />
+                <ChevronDownIcon size="1x" v-else />
               </button>
             </div>
           </div>
 
           <div
-            class="flex flex-col w-full pt-2 pl-8 pr-8"
+            class="flex flex-col w-full pl-4 pr-2"
             v-if="showDescription[q.name]"
           >
-            <div class="flex flex-col w-full">
-              <div class="flex flex-row w-full text-gray-300">
-                Description
-              </div>
-              <div class="ml-4">{{ q.description }}</div>
-            </div>
             <div
               class="flex flex-col w-full"
               v-if="hasQualificationResult(q.name)"
             >
-              <div class="flex flex-row w-full text-gray-300">
+              <div class="mt-2 text-xs font-medium text-gray-300">
                 Output
               </div>
-              <div class="flex ml-4">
-                <CodeMirror
-                  readOnly
-                  lineWrapping
-                  noHighlight
-                  :value="qualificationResultOutput(q.name)"
+
+              <div class="mt-1">
+                <QualificationOutput
+                  :kind="q.name"
+                  :data="qualificationResultOutput(q.name)"
                 />
               </div>
             </div>
@@ -99,14 +97,17 @@ import {
 import { RegistryEntry, registry } from "si-registry";
 import {
   SquareIcon,
-  CheckSquareIcon,
-  MoreHorizontalIcon,
-  ExternalLinkIcon,
+  // CheckSquareIcon,
+  ChevronRightIcon,
+  InfoIcon,
+  ChevronDownIcon,
+  FrownIcon,
+  SmileIcon,
 } from "vue-feather-icons";
 import _ from "lodash";
 
-import CodeMirror from "@/molecules/CodeMirror.vue";
 import { VueLoading } from "vue-loading-template";
+import QualificationOutput from "@/organisims/QualificationViewer/QualificationOutput.vue";
 
 interface Data {
   showDescription: Record<string, boolean>;
@@ -128,11 +129,14 @@ export default Vue.extend({
   },
   components: {
     SquareIcon,
-    MoreHorizontalIcon,
-    ExternalLinkIcon,
-    CheckSquareIcon,
-    CodeMirror,
+    ChevronRightIcon,
+    InfoIcon,
+    // CheckSquareIcon,
     VueLoading,
+    ChevronDownIcon,
+    QualificationOutput,
+    FrownIcon,
+    SmileIcon,
   },
   data(): Data {
     const showDescription: Data["showDescription"] = {};
@@ -184,6 +188,16 @@ export default Vue.extend({
         return "No output";
       }
     },
+    qualificationResultKubevalOutput(name: string): string {
+      const q = _.find(this.qualifications, ["name", name]);
+      if (q?.output) {
+        return q.output;
+      } else if (q?.error) {
+        return q.error;
+      } else {
+        return "No output";
+      }
+    },
     qualificationResultQualified(name: string): boolean {
       const q = _.find(this.qualifications, ["name", name]);
       if (q?.qualified) {
@@ -202,3 +216,17 @@ export default Vue.extend({
   },
 });
 </script>
+
+<style scoped>
+.background-color {
+  background-color: #151515;
+}
+
+.info-button {
+  color: #8fc8ff;
+}
+
+.error {
+  color: #ff8f8f;
+}
+</style>

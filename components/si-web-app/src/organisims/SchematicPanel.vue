@@ -11,27 +11,33 @@
     v-on="$listeners"
   >
     <template v-slot:menuButtons>
-      <SiSelect
-        size="xs"
-        id="schematicSelect"
-        name="schematicSelect"
-        :options="schematicKinds"
-        v-model="schematicKind"
-        class="pl-1"
-        :styling="schematicSelectorStyling"
-      />
-      <!-- This is irrelevant for now; eventually, it should set the system -->
-      <SiSelect
-        size="xs"
-        id="systemSelect"
-        name="systemSelect"
-        :options="systemsList"
-        class="pl-1"
-        :styling="schematicSelectorStyling"
-        v-if="schematicKind === 'deployment'"
-      />
+      <div class="flex flex-row">
+        <div class="min-w-max">
+          <SiSelect
+            size="xs"
+            id="schematicSelect"
+            name="schematicSelect"
+            :options="schematicKinds"
+            v-model="schematicKind"
+            class="pl-1"
+            :styling="schematicSelectorStyling"
+          />
+        </div>
+        <!-- This is irrelevant for now; eventually, it should set the system -->
 
-      <!-- 
+        <div class="min-w-max">
+          <SiSelect
+            size="xs"
+            id="systemSelect"
+            name="systemSelect"
+            :options="systemsList"
+            class="pl-1"
+            :styling="schematicSelectorStyling"
+            v-if="schematicKind === 'deployment'"
+          />
+        </div>
+
+        <!-- 
       <div class="flex flex-row" v-if="schematicKind === 'component'">
         <SiSelect
           size="xs"
@@ -49,12 +55,13 @@
       </div>
       -->
 
-      <NodeAddMenu
-        class="pl-2"
-        :filter="addMenuFilters"
-        @selected="nodeCreate"
-        :disabled="!addMenuEnabled"
-      />
+        <NodeAddMenu
+          class="pl-4"
+          :filter="addMenuFilters"
+          @selected="nodeCreate"
+          :disabled="!addMenuEnabled"
+        />
+      </div>
     </template>
     <template v-slot:content>
       <div class="relative w-full h-full">

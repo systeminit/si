@@ -1,13 +1,13 @@
 <template>
   <div class="flex flex-col w-full overflow-hidden" v-if="entity">
     <div
-      class="relative flex flex-row items-center h-10 pt-2 pb-2 pl-6 pr-6 text-base text-white align-middle property-section-bg-color"
+      class="relative flex flex-row items-center h-10 px-6 py-2 text-base text-white align-middle property-section-bg-color"
     >
       <div class="text-lg">{{ entity.entityType }} {{ entity.name }} Code</div>
     </div>
 
     <div class="flex flex-col flex-grow w-full overflow-auto overscroll-none">
-      <CodeMirror class="w-full" :value="codeValue" readOnly />
+      <CodeMirror class="w-full h-full" :value="codeValue" readOnly />
     </div>
   </div>
 </template>

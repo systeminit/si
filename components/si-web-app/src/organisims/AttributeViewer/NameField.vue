@@ -1,10 +1,10 @@
 <template>
-  <div class="flex flex-row items-center w-full mt-2">
-    <div class="w-40 px-2 text-sm leading-tight text-right text-white">
+  <div class="flex flex-row items-center mx-6 mt-2">
+    <div class="text-sm leading-tight text-right text-white w-28">
       name
     </div>
     <div
-      class="flex flex-grow pl-2 mr-2 mr-10 text-sm leading-tight text-gray-400"
+      class="flex flex-grow pl-2 text-sm leading-tight text-gray-400"
       v-if="editMode"
       @keyup.stop
       @keydown.stop

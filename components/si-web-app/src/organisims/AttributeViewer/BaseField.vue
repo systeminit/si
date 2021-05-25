@@ -82,16 +82,16 @@ export default Vue.extend({
       if (opSet) {
         if (opSet.source == OpSource.Inferred) {
           return {
-            "text-green": true,
+            "driven-field": true,
           };
         } else {
           return {
-            "text-green": false,
+            "driven-field": false,
           };
         }
       } else {
         return {
-          "text-green": false,
+          "driven-field": false,
         };
       }
     },

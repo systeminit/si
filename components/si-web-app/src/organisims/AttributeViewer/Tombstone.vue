@@ -1,5 +1,5 @@
 <template>
-  <div class="flex items-center ml-1">
+  <div class="flex items-center">
     <button>
       <Tooltip sticky alignRight onlyOnClick :offset="20">
         <div
@@ -184,7 +184,7 @@
                           <SquareApplicationIcon size="1x" />
                         </button>
                       </div>
-                      <div class="flex  flex-grow ml-2">
+                      <div class="flex flex-grow ml-2">
                         {{
                           valueFrom({
                             source: "inferred",

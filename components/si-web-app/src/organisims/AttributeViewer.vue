@@ -1,32 +1,46 @@
 <template>
   <div class="flex flex-col w-full overflow-hidden" v-if="entity">
     <div
-      class="relative flex flex-row items-center h-10 pt-2 pb-2 pl-6 pr-6 text-base text-white align-middle property-section-bg-color"
+      class="relative flex flex-row items-center h-10 px-6 py-2 text-base text-white align-middle property-section-bg-color"
     >
-      <div class="text-lg">
+      <div class="text-lg ">
         {{ entity.entityType }}
       </div>
+
+      <div class="ml-2 text-xs">
+        <div v-if="schema && schema.qualifications">
+          <div class="flex flex-col w-full">
+            <div
+              v-for="q in schema.qualifications"
+              class="flex flex-col"
+              :key="q.name"
+            >
+              <div>
+                <div class="flex" v-if="hasQualificationResult(q.name)">
+                  <CheckCircleIcon
+                    class="verification-passed"
+                    size="1x"
+                    v-if="qualificationResultQualified(q.name)"
+                  />
+                  <AlertCircleIcon
+                    size="1x"
+                    class="verification-failed"
+                    v-else
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <CircleIcon size="1x" class="verification-unknown" v-else />
+      </div>
+
       <div
         class="flex flex-row items-center items-end justify-end flex-grow h-full text-xs text-center"
       >
-        <div v-if="diff">
-          <EditIcon size="1x" class="mr-1 gold-bars-icon" />
-        </div>
-        <div v-if="diff" class="text-center">Edit Count: {{ diff.length }}</div>
-        <div class="ml-2">
-          <Tooltip class="inline" alignRight :offset="0.5" sticky>
-            <InfoIcon size="1x" class="inline mr-1" />
-            <template v-slot:tooltip>
-              <div class="flex flex-col text-sm text-gray-400">
-                <div class="pl-2">
-                  {{ entity.nodeId }}
-                </div>
-                <div class="pl-2">
-                  {{ entity.id }}
-                </div>
-              </div>
-            </template>
-          </Tooltip>
+        <div v-if="diff && diff.length > 0" class="flex flex-row items-center">
+          <EditIcon size="1x" class="gold-bars-icon" />
+          <div v-if="diff" class="ml-1 text-center">{{ diff.length }}</div>
         </div>
       </div>
     </div>
@@ -75,17 +89,25 @@
 <script lang="ts">
 import Vue, { PropType } from "vue";
 
-import Tooltip from "@/atoms/Tooltip.vue";
-import { EditIcon, InfoIcon } from "vue-feather-icons";
+import {
+  EditIcon,
+  CheckCircleIcon,
+  AlertCircleIcon,
+  CircleIcon,
+} from "vue-feather-icons";
 import NameField from "@/organisims/AttributeViewer/NameField.vue";
 import EditFields from "@/organisims/AttributeViewer/EditFields.vue";
 import { Entity } from "@/api/sdf/model/entity";
 import { editMode$, system$ } from "@/observables";
 import { Diff } from "@/api/sdf/model/diff";
+import {
+  Qualification,
+  QualificationStart,
+} from "@/api/sdf/model/qualification";
 
 import _ from "lodash";
 import { EditField } from "si-entity";
-import { RegistryEntry } from "si-registry";
+import { RegistryEntry, registry } from "si-registry";
 
 interface Data {
   closedPaths: string[][];
@@ -94,11 +116,12 @@ interface Data {
 export default Vue.extend({
   name: "AttributeViewer",
   components: {
-    Tooltip,
-    InfoIcon,
     EditIcon,
     NameField,
     EditFields,
+    CheckCircleIcon,
+    AlertCircleIcon,
+    CircleIcon,
   },
   props: {
     entity: {
@@ -108,6 +131,12 @@ export default Vue.extend({
     diff: {
       type: Array as PropType<Diff>,
       required: true,
+    },
+    qualifications: {
+      type: Array as PropType<Qualification[]>,
+    },
+    starting: {
+      type: Array as PropType<QualificationStart[]>,
     },
   },
   data(): Data {
@@ -122,6 +151,13 @@ export default Vue.extend({
     };
   },
   computed: {
+    schema(): RegistryEntry | null {
+      if (registry[this.entity.entityType]) {
+        return registry[this.entity.entityType];
+      } else {
+        return null;
+      }
+    },
     schemaProperties(): RegistryEntry["properties"] {
       if (this.entity) {
         return this.entity.schema().properties;
@@ -240,6 +276,44 @@ export default Vue.extend({
 
       return interpolatedColorArray;
     },
+    qualificationResultQualified(name: string): boolean {
+      const q = _.find(this.qualifications, ["name", name]);
+      if (q?.qualified) {
+        return q.qualified;
+      } else {
+        return false;
+      }
+    },
+    qualificationStarting(name: string): boolean {
+      const s = _.find(this.starting, ["start", name]);
+      if (s) {
+        return true;
+      } else {
+        return false;
+      }
+    },
+    hasQualificationResult(name: string): boolean {
+      const q = _.find(this.qualifications, ["name", name]);
+      if (q) {
+        return true;
+      } else {
+        return false;
+      }
+    },
   },
 });
 </script>
+
+<style scoped>
+.verification-passed {
+  color: #44e368;
+}
+
+.verification-failed {
+  color: #e35f44;
+}
+
+.verification-unknown {
+  color: #707070;
+}
+</style>
