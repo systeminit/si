@@ -39,7 +39,44 @@ const kubernetesService: RegistryEntry = {
       arity: Arity.Many,
     },
   ],
-  properties: [],
+  properties: [
+    {
+      type: "array",
+      name: "healthChecks",
+      itemProperty: {
+        type: "object",
+        properties: [
+          {
+            type: "string",
+            name: "protocol",
+            widget: {
+              name: "select",
+              options: {
+                items: [
+                  { label: "HTTP", value: "HTTP" },
+                  { label: "HTTPS", value: "HTTPS" },
+                  { label: "TCP", value: "TCP" },
+                  { label: "UDP", value: "UDP" },
+                ],
+              },
+            },
+          },
+          {
+            type: "string",
+            name: "host",
+          },
+          {
+            type: "string",
+            name: "port",
+          },
+          {
+            type: "string",
+            name: "path",
+          },
+        ],
+      },
+    },
+  ],
 };
 
 export default kubernetesService;

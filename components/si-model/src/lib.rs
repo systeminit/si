@@ -76,7 +76,9 @@ pub use node_position::{NodePosition, NodePositionError};
 pub use organization::{Organization, OrganizationError};
 pub use output_line::{OutputLine, OutputLineStream};
 pub use qualification::{Qualification, QualificationError};
-pub use resource::{Resource, ResourceError, ResourceHealth, ResourceResult, ResourceStatus};
+pub use resource::{
+    Resource, ResourceError, ResourceInternalHealth, ResourceInternalStatus, ResourceResult,
+};
 pub use schematic::{Schematic, SchematicError, SchematicKind, SchematicNode, SchematicResult};
 pub use secret::{
     EncryptedSecret, Secret, SecretAlgorithm, SecretError, SecretKind, SecretObjectType,

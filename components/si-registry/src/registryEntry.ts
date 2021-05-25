@@ -1,6 +1,13 @@
 import ValidatorJS from "validator";
 import { Optional } from "utility-types";
 
+export enum InternalHealth {
+  Ok = "ok",
+  Warning = "warning",
+  Error = "error",
+  Unknown = "unknown",
+}
+
 export enum SchematicKind {
   Deployment = "deployment",
   Component = "component",
@@ -257,4 +264,5 @@ export interface RegistryEntry {
   qualifications?: Qualification[];
   commands?: Command[];
   actions?: Action[];
+  healthStates?: Record<string, InternalHealth>;
 }

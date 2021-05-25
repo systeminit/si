@@ -45,6 +45,13 @@ async fn main() -> anyhow::Result<()> {
     .await?;
     txn.commit().await?;
 
+    println!("*** Starting resource scheduler ***");
+    tokio::task::spawn(si_sdf::resource_scheduler::start(
+        pg.clone(),
+        nats.clone(),
+        veritech.clone(),
+    ));
+
     println!("*** Starting service ***");
     start(pg, nats, veritech, event_log_fs, settings).await;
 

@@ -10,7 +10,6 @@
 
     <div
       class="relative flex flex-row items-center pt-2 pb-2 pl-6 pr-6 text-base text-white bg-black"
-      v-if="resource"
     >
       <div class="flex">
         <button
@@ -23,8 +22,8 @@
       </div>
     </div>
 
-    <div v-if="resource" class="flex w-full pt-2 overflow-auto">
-      <div class="flex flex-col w-full">
+    <div class="flex w-full pt-2 overflow-auto">
+      <div class="flex flex-col w-full" v-if="resource">
         <VueJsonPretty :data="resource" />
       </div>
     </div>

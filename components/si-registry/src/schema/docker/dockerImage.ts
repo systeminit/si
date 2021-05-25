@@ -51,12 +51,6 @@ const dockerImage: RegistryEntry = {
         "The docker image and tag specified must be accessible via a docker pull.",
       link: "https://docs.docker.com/engine/reference/commandline/pull/",
     },
-    {
-      name: "dockerImageIsTrue",
-      title: "Just here for a minute",
-      description:
-        "The docker image and tag specified must be accessible via a docker pull.",
-    },
   ],
   actions: [
     {
