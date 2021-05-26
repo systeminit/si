@@ -1,10 +1,10 @@
 <template>
   <div class="flex flex-col w-full h-full px-2 py-2 shadow-xl details-panel">
-    <div class="w-full h-full details-panel-title">
+    <div class="w-full details-panel-title">
       <slot name="title" />
     </div>
 
-    <div class="flex w-full h-full ">
+    <div class="flex w-full h-full mt-1">
       <slot name="content" />
     </div>
   </div>
