@@ -45,7 +45,7 @@
       </modal>
     </div>
 
-    <div class="flex h-full mx-12 mt-4 overflow-hidden">
+    <div class="flex h-full mx-4 mt-4 overflow-hidden">
       <SecretList />
     </div>
   </div>

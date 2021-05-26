@@ -24,11 +24,14 @@
     <template v-slot:content>
       <div class="w-full">
         <SecretList v-if="showingList" />
-        <SecretCreate
-          v-else-if="showingCreate"
-          @cancel="showList"
-          @submit="showList"
-        />
+
+        <div class="flex items-center justify-center" v-else-if="showingCreate">
+          <div
+            class="flex flex-grow px-4 py-4 mx-8 mt-8 border border-gray-700"
+          >
+            <SecretCreate @cancel="showList" @submit="showList" />
+          </div>
+        </div>
       </div>
     </template>
   </Panel>
