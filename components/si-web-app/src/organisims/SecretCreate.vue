@@ -7,13 +7,15 @@
       @clear="clearErrorMessage"
     />
     <div class="flex flex-row items-center w-full pb-2">
-      <div class="w-1/2 pr-2 text-right text-gray-400 align-middle">
+      <div class="w-1/2 pr-2 text-sm text-right text-gray-400 align-middle">
         <label for="secretName">Secret Name:</label>
       </div>
       <div class="w-1/2 align-middle">
         <SiTextBox
+          size="xs"
           name="secretName"
-          placeholder="my key"
+          placeholder="secret name"
+          :isShowType="false"
           id="secretName"
           required
           v-model="form.secretName"
@@ -21,11 +23,12 @@
       </div>
     </div>
     <div class="flex flex-row items-center w-full pb-2">
-      <div class="w-1/2 pr-2 text-right text-gray-400 align-middle">
+      <div class="w-1/2 pr-2 text-sm text-right text-gray-400 align-middle">
         <label for="secretKind">Secret Kind:</label>
       </div>
       <div class="w-1/2 align-middle">
         <SiSelect
+          size="xs"
           name="secretKind"
           id="secretKind"
           :options="secretKinds"
@@ -46,18 +49,20 @@
     <div class="flex justify-end w-full">
       <div class="pr-2">
         <SiButton
+          size="xs"
           @click.native="cancel"
           label="Cancel"
           kind="cancel"
-          icon="cancel"
+          icon="null"
         />
       </div>
       <div>
         <SiButton
+          size="xs"
           @click.native="create"
           label="Create"
           kind="save"
-          icon="save"
+          icon="null"
         />
       </div>
     </div>

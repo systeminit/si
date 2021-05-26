@@ -6,32 +6,32 @@
       @clear="clearErrorMessage"
     />
     <div class="flex w-full h-full">
-      <div class="flex flex-col w-full table-fixed shadow-sm">
+      <div class="flex flex-col w-full shadow-sm table-fixed">
         <div class="flex w-full text-sm font-medium text-gray-200 header">
-          <div class="w-8/12 px-2 py-1 text-center align-middle table-border">
+          <div class="w-6/12 px-2 py-1 text-center align-middle table-border">
             Name
           </div>
-          <div class="w-2/12 px-2 py-1 text-center table-border">
+          <div class="w-3/12 px-2 py-1 text-center table-border">
             Kind
           </div>
-          <div class="w-2/12 px-2 py-1 text-center table-border">
+          <div class="w-3/12 px-2 py-1 text-center table-border">
             Type
           </div>
         </div>
 
         <div class="flex flex-col overflow-y-scroll text-xs text-gray-300">
           <div
-            class="flex items-center row"
+            class="flex items-center row-item"
             v-for="secret in secretList"
             :key="secret.id"
           >
-            <div class="w-8/12 px-2 py-1 text-center">
+            <div class="w-6/12 px-2 py-1 text-center">
               {{ secret.name }}
             </div>
-            <div class="w-2/12 px-2 py-1 text-center ">
+            <div class="w-3/12 px-2 py-1 text-center ">
               {{ labelForKind(secret.kind) }}
             </div>
-            <div class="w-2/12 px-2 py-1 text-center ">
+            <div class="w-3/12 px-2 py-1 text-center ">
               {{ labelForObjectType(secret.objectType) }}
             </div>
           </div>
@@ -127,11 +127,11 @@ export default Vue.extend({
   background-color: #3a3d40;
 }
 
-.row {
+.row-item {
   background-color: #262626;
 }
 
-.row:nth-child(odd) {
+.row-item:nth-child(odd) {
   background-color: #2c2c2c;
 }
 

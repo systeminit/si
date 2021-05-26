@@ -1,14 +1,16 @@
 <template>
   <div>
     <div class="flex flex-row items-center w-full pb-2">
-      <div class="pr-2 text-gray-400 align-middle w-1/2 text-right">
+      <div class="w-1/2 pr-2 text-sm text-right text-gray-400 align-middle">
         <label for="accessKeyId">AWS Access Key ID:</label>
       </div>
       <div class="w-1/2 align-middle">
         <SiTextBox
+          size="xs"
           name="accessKeyId"
           placeholder=""
           id="accessKeyId"
+          :isShowType="false"
           required
           v-model="accessKeyId"
           @input="updateInput"
@@ -16,14 +18,16 @@
       </div>
     </div>
     <div class="flex flex-row items-center w-full pb-2">
-      <div class="pr-2 text-gray-400 align-middle w-1/2 text-right">
+      <div class="w-1/2 pr-2 text-sm text-right text-gray-400 align-middle">
         <label for="secretAccessKey">AWS Secret Access Key:</label>
       </div>
       <div class="w-1/2 align-middle">
         <SiTextBox
+          size="xs"
           name="secretAccessKey"
           placeholder=""
           id="secretAccessKey"
+          :isShowType="false"
           required
           v-model="secretAccessKey"
           type="password"

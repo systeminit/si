@@ -1,14 +1,16 @@
 <template>
   <div>
     <div class="flex flex-row items-center w-full pb-2">
-      <div class="w-1/2 pr-2 text-right text-gray-400 align-middle">
+      <div class="w-1/2 pr-2 text-sm text-right text-gray-400 align-middle">
         <label for="tenant">Azure Tenant ID:</label>
       </div>
       <div class="w-1/2 align-middle">
         <SiTextBox
+          size="xs"
           name="tenantId"
           placeholder=""
           id="tenantId"
+          :isShowType="false"
           required
           v-model="tenant"
           @input="updateInput"
@@ -16,14 +18,16 @@
       </div>
     </div>
     <div class="flex flex-row items-center w-full pb-2">
-      <div class="w-1/2 pr-2 text-right text-gray-400 align-middle">
+      <div class="w-1/2 pr-2 text-sm text-right text-gray-400 align-middle">
         <label for="servicePrincipalUri">Service Principal URI:</label>
       </div>
       <div class="w-1/2 align-middle">
         <SiTextBox
+          size="xs"
           name="servicePrincipalUri"
           placeholder=""
           id="servicePrincipalUri"
+          :isShowType="false"
           required
           v-model="servicePrincipalUri"
           @input="updateInput"
@@ -31,14 +35,16 @@
       </div>
     </div>
     <div class="flex flex-row items-center w-full pb-2">
-      <div class="w-1/2 pr-2 text-right text-gray-400 align-middle">
+      <div class="w-1/2 pr-2 text-sm text-right text-gray-400 align-middle">
         <label for="password">Password:</label>
       </div>
       <div class="w-1/2 align-middle">
         <SiTextBox
+          size="xs"
           name="password"
           placeholder=""
           id="password"
+          :isShowType="false"
           required
           v-model="password"
           type="password"

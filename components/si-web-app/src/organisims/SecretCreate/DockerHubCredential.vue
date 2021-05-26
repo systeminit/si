@@ -1,14 +1,16 @@
 <template>
   <div>
     <div class="flex flex-row items-center w-full pb-2">
-      <div class="pr-2 text-gray-400 align-middle w-1/2 text-right">
+      <div class="w-1/2 pr-2 text-sm text-right text-gray-400 align-middle">
         <label for="username">Docker Hub Username:</label>
       </div>
       <div class="w-1/2 align-middle">
         <SiTextBox
+          size="xs"
           name="username"
           placeholder=""
           id="username"
+          :isShowType="false"
           required
           v-model="username"
           @input="updateInput"
@@ -16,14 +18,18 @@
       </div>
     </div>
     <div class="flex flex-row items-center w-full pb-2">
-      <div class="pr-2 text-gray-400 align-middle w-1/2 text-right">
+      <div
+        class="w-1/2 pr-2 text-sm text-right text-gray-400 align-middle border-blue-100"
+      >
         <label for="password">Docker Hub Password:</label>
       </div>
       <div class="w-1/2 align-middle">
         <SiTextBox
+          size="xs"
           name="password"
           placeholder=""
           id="password"
+          :isShowType="false"
           required
           v-model="password"
           type="password"
