@@ -4,7 +4,7 @@
       <template v-slot:title>Services</template>
 
       <template v-slot:content>
-        <div class="flex flex-col w-full h-full">
+        <div class="flex flex-col content-start w-full h-full">
           <div class="flex flex-row flex-wrap w-full h-full mx-1">
             <div
               class="mr-2"
@@ -16,15 +16,12 @@
           </div>
 
           <div class="flex justify-end mt-2" v-show="showButton">
-            <div class="flex items-center justify-center button">
-              <!-- <upload-icon size="0.75x" class="mx-1 my-1 align-middle" /> -->
-              <button
-                class="mx-1 align-middle button-text disabled:opacity-30"
-                :disabled="editMode"
-                @click="deploy()"
-              >
-                Deploy
-              </button>
+            <div
+              class="flex text-xs text-center align-middle button"
+              @click="deploy()"
+              v-show="!editMode"
+            >
+              <div class="mx-1 button-text">Deploy</div>
             </div>
           </div>
         </div>
@@ -95,10 +92,10 @@ export default Vue.extend({
 
 <style lang="scss" scoped>
 $button-saturation: 1.2;
-$button-brightness: 1.05;
+$button-brightness: 1.1;
 
 .button {
-  background-color: #5a7b7c;
+  background-color: #5a8f91;
 }
 
 .button-text {
@@ -118,5 +115,10 @@ $button-brightness: 1.05;
 
 .button:active {
   filter: saturate(1.5) brightness($button-brightness);
+}
+
+.button:disabled {
+  background-color: red;
+  color: red;
 }
 </style>
