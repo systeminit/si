@@ -473,8 +473,6 @@ export default Vue.extend({
             resource.entityId == entityId
           ) {
             this.resource = resource;
-          } else {
-            this.resource = null;
           }
         }),
       ),

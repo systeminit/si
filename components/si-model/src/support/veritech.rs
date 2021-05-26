@@ -234,7 +234,7 @@ impl Veritech {
                     Ok(tungstenite::protocol::Message::Close(data)) => match data {
                         Some(frame) => match frame.code {
                             tungstenite::protocol::frame::coding::CloseCode::Normal => {
-                                dbg!("closed socket normally");
+                                //dbg!("closed socket normally");
                             }
                             err => {
                                 dbg!("request failed; err={:?}", err);

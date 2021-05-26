@@ -142,10 +142,15 @@ export interface KubeConfigDir {
   directory: string;
 }
 
-export async function awsKubeConfigPath(context: Context): Promise<TempDir> {
+export async function awsKubeConfigPath(
+  context: Context,
+  clusterName?: string,
+): Promise<TempDir> {
   const awsEnv = awsAccessKeysEnvironment(context);
   const region = awsRegion(context);
-  const clusterName = awsEksClusterName(context);
+  if (!clusterName) {
+    clusterName = awsEksClusterName(context);
+  }
   const kubeTempDir = await tempDir({});
   const kubeconfigPath = path.join(kubeTempDir.path, "config");
   await SiCtx.exec(
@@ -167,8 +172,13 @@ export async function awsKubeConfigPath(context: Context): Promise<TempDir> {
   return kubeTempDir;
 }
 
-export async function azureLogin(context: Context): Promise<void> {
-  const secret = findSecret(context, SecretKind.AzureServicePrincipal);
+export async function azureLogin(
+  context: Context,
+  secret?: Record<string, any>,
+): Promise<void> {
+  if (!secret) {
+    secret = findSecret(context, SecretKind.AzureServicePrincipal);
+  }
   if (secret) {
     await SiCtx.exec("az", [
       "login",
@@ -207,10 +217,15 @@ export function azureAksClusterName(context: Context): string {
   }
 }
 
-export async function azureKubeConfigPath(context: Context): Promise<TempDir> {
+export async function azureKubeConfigPath(
+  context: Context,
+  clusterName?: string,
+): Promise<TempDir> {
   await azureLogin(context);
   const resourceGroup = azureResourceGroup(context);
-  const clusterName = azureAksClusterName(context);
+  if (!clusterName) {
+    clusterName = azureAksClusterName(context);
+  }
   const kubeTempDir = await tempDir({});
   const kubeconfigPath = path.join(kubeTempDir.path, "config");
   await SiCtx.exec("az", [

@@ -17,8 +17,8 @@ CREATE TABLE resources
 CREATE INDEX idx_resources_tenant_ids ON "resources" USING GIN ("tenant_ids");
 
 CREATE OR REPLACE FUNCTION resource_create_v1(this_state jsonb,
-                                              this_status text,
-                                              this_health text,
+                                              this_internal_status text,
+                                              this_internal_health text,
                                               this_timestamp text,
                                               this_unix_timestamp bigint,
                                               this_system_si_id text,
@@ -54,12 +54,16 @@ BEGIN
     SELECT jsonb_build_object(
                    'id', si_id,
                    'state', this_state,
-                   'status', this_status,
-                   'health', this_health,
+                   'internalStatus', this_internal_status,
+                   'internalHealth', this_internal_health,
+                   'state', 'unknown',
+                   'health', 'unknown',
                    'entityId', this_entity_si_id,
                    'systemId', this_system_si_id,
                    'unixTimestamp', this_unix_timestamp,
                    'timestamp', this_timestamp,
+                   'subResources', jsonb_build_object(),
+                   'data', jsonb_build_object(),
                    'siStorable', si_storable
                )
     INTO object;

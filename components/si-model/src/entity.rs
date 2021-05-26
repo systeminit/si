@@ -15,6 +15,7 @@ const ENTITY_GET_HEAD_BY_NAME_AND_ENTITY_TYPE: &str =
 const ENTITY_FOR_EDIT_SESSION: &str = include_str!("./queries/entity_for_edit_session.sql");
 const ENTITY_FOR_CHANGE_SET: &str = include_str!("./queries/entity_for_change_set.sql");
 const ENTITY_FOR_HEAD: &str = include_str!("./queries/entity_for_head.sql");
+const ALL_HEAD_ENTITIES: &str = include_str!("./queries/all_head_entities.sql");
 
 #[derive(Error, Debug)]
 pub enum EntityError {
@@ -680,6 +681,17 @@ impl Entity {
                 &[&name, &entity_type, &workspace_id],
             )
             .await?;
+        for row in rows.into_iter() {
+            let entity_json: serde_json::Value = row.try_get("object")?;
+            let entity: Entity = serde_json::from_value(entity_json)?;
+            results.push(entity);
+        }
+        Ok(results)
+    }
+
+    pub async fn all_head(txn: &PgTxn<'_>) -> EntityResult<Vec<Entity>> {
+        let mut results = Vec::new();
+        let rows = txn.query(ALL_HEAD_ENTITIES, &[]).await?;
         for row in rows.into_iter() {
             let entity_json: serde_json::Value = row.try_get("object")?;
             let entity: Entity = serde_json::from_value(entity_json)?;

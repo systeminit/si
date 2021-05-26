@@ -5,6 +5,8 @@ import {
   baseInferProperties,
   baseCheckQualifications,
   baseRunCommands,
+  baseSyncResource,
+  forEachCluster,
 } from "./k8sShared";
 import {
   InferPropertiesReply,
@@ -20,6 +22,15 @@ import {
   setPropertyFromProperty,
 } from "./inferShared";
 import _ from "lodash";
+import { RunCommandCallbacks } from "../controllers/runCommand";
+import { findEntityByType } from "../support";
+import {
+  CommandProtocolFinish,
+  SyncResourceRequest,
+} from "../controllers/syncResource";
+import WebSocket from "ws";
+import { ResourceInternalHealth } from "si-entity";
+import { SiCtx } from "../siCtx";
 
 export function inferProperties(
   request: InferPropertiesRequest,
@@ -113,8 +124,63 @@ export function inferProperties(
   return { entity };
 }
 
+export async function syncResource(
+  ctx: typeof SiCtx,
+  req: SyncResourceRequest,
+  ws: WebSocket,
+): Promise<CommandProtocolFinish["finish"]> {
+  const response = await baseSyncResource(ctx, req, ws);
+  const nameSpace = findEntityByType(req, "k8sNamespace");
+  const system = req.system.id;
+  const defaultArgs = ["rollout", "status", "deployment", "-w", "--timeout=5s"];
+  if (nameSpace) {
+    defaultArgs.push("-n");
+    defaultArgs.push(
+      nameSpace.getProperty({ system, path: ["metadata", "name"] }),
+    );
+  }
+
+  await forEachCluster(
+    ctx,
+    req,
+    ws,
+    async (_kubeYaml, kubeConfigDir, kubeCluster) => {
+      const result = await ctx.exec(
+        "kubectl",
+        [
+          ...defaultArgs,
+          "--kubeconfig",
+          `${kubeConfigDir.path}/config`,
+          req.entity.getProperty({ system, path: ["metadata", "name"] }),
+        ],
+        { reject: false },
+      );
+      if (result.exitCode != 0) {
+        response.health = "error";
+        response.state = "error";
+        response.internalHealth = ResourceInternalHealth.Error;
+        response.error = result.all;
+        if (response.subResources[kubeCluster.id]) {
+          // @ts-ignore
+          response.subResources[kubeCluster.id].state = "error";
+          // @ts-ignore
+          response.subResources[kubeCluster.id].health = "error";
+          // @ts-ignore
+          response.subResources[kubeCluster.id].internalHealth =
+            ResourceInternalHealth.Error;
+          // @ts-ignore
+          response.subResources[kubeCluster.id].error = result.all;
+        }
+      }
+    },
+  );
+  response.data = response.subResources;
+  return response;
+}
+
 export default {
   inferProperties,
   checkQualifications: baseCheckQualifications,
   runCommands: baseRunCommands,
+  syncResource,
 };

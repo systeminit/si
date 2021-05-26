@@ -6,6 +6,7 @@ use warp::Filter;
 pub mod cli;
 pub mod filters;
 pub mod handlers;
+pub mod resource_scheduler;
 pub mod update;
 
 pub static mut PAGE_SECRET_KEY: Option<sodiumoxide::crypto::secretbox::Key> = None;

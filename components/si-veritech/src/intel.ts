@@ -7,16 +7,27 @@ import k8sService from "./intel/k8sService";
 import awsEksCluster from "./intel/awsEksCluster";
 import azureResourceGroup from "./intel/azureResourceGroup";
 import azureAksCluster from "./intel/azureAksCluster";
+import azureServicePrincipal from "./intel/azureServicePrincipal";
+import azure from "./intel/azure";
+import aws from "./intel/aws";
+import awsEks from "./intel/awsEks";
+import azureAks from "./intel/azureAks";
+import cloudProvider from "./intel/cloudProvider";
+import kubernetesCluster from "./intel/kubernetesCluster";
+import kubernetesService from "./intel/kubernetesService";
+import service from "./intel/service";
 import {
   InferPropertiesReply,
   InferPropertiesRequest,
 } from "./controllers/inferProperties";
 import { RunCommandCallbacks } from "./controllers/runCommand";
+import { SyncResourceCallback } from "./controllers/syncResource";
 
 export interface Intel {
   inferProperties?(request: InferPropertiesRequest): InferPropertiesReply;
   checkQualifications?: CheckQualificationCallbacks;
   runCommands?: RunCommandCallbacks;
+  syncResource?: SyncResourceCallback;
 }
 
 const intel: Record<string, Intel> = {
@@ -29,6 +40,15 @@ const intel: Record<string, Intel> = {
   awsEksCluster,
   azureResourceGroup,
   azureAksCluster,
+  azureServicePrincipal,
+  azure,
+  aws,
+  cloudProvider,
+  awsEks,
+  azureAks,
+  kubernetesCluster,
+  kubernetesService,
+  service,
 };
 
 export default intel;

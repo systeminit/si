@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json;
@@ -6,7 +8,10 @@ use strum_macros::Display;
 use thiserror::Error;
 use tokio::sync::oneshot;
 
-use crate::{Edge, EdgeError, EdgeKind, Entity, Node, SiStorable, Veritech, VeritechError};
+use crate::{
+    workflow::selector::{SelectionEntry, SelectionEntryPredecessor},
+    Edge, EdgeError, EdgeKind, Entity, Node, SiStorable, Veritech, VeritechError,
+};
 
 const RESOURCE_GET_BY_ENTITY_AND_SYSTEM: &str =
     include_str!("./queries/resource_get_by_entity_and_system.sql");
@@ -35,6 +40,8 @@ pub enum ResourceError {
     Veritech(#[from] VeritechError),
     #[error("oneshot recv error: {0}")]
     Recv(#[from] oneshot::error::RecvError),
+    #[error("workflow error: {0}")]
+    Workflow(String),
 }
 
 #[derive(Serialize, Debug)]
@@ -58,8 +65,8 @@ pub struct VeritechSyncResourceRequest<'a> {
 #[serde(rename_all = "camelCase")]
 pub struct VeritechSyncResourceUpdate {
     pub state: serde_json::Value,
-    pub status: ResourceStatus,
-    pub health: ResourceHealth,
+    pub status: ResourceInternalStatus,
+    pub health: ResourceInternalHealth,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -73,7 +80,7 @@ pub type ResourceResult<T> = Result<T, ResourceError>;
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone, Display)]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
-pub enum ResourceStatus {
+pub enum ResourceInternalStatus {
     Pending,
     InProgress,
     Created,
@@ -84,7 +91,7 @@ pub enum ResourceStatus {
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone, Display)]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
-pub enum ResourceHealth {
+pub enum ResourceInternalHealth {
     Ok,
     Warning,
     Error,
@@ -104,15 +111,19 @@ pub struct SyncRequest<'a> {
     entity: &'a Entity,
     resource: &'a Resource,
     system: &'a Entity,
-    predecessors: Vec<Predecessor>,
+    context: Vec<SelectionEntryPredecessor>,
+    resource_context: Vec<Resource>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct SyncFinish {
-    pub state: serde_json::Value,
-    pub status: ResourceStatus,
-    pub health: ResourceHealth,
+    pub data: serde_json::Value,
+    pub state: String,
+    pub health: String,
+    pub internal_status: ResourceInternalStatus,
+    pub internal_health: ResourceInternalHealth,
+    pub sub_resources: HashMap<String, SubResource>,
     pub error: Option<String>,
 }
 
@@ -125,13 +136,30 @@ pub enum SyncProtocol {
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct SubResource {
+    pub unix_timestamp: i64,
+    pub timestamp: String,
+    pub internal_status: ResourceInternalStatus,
+    pub internal_health: ResourceInternalHealth,
+    pub state: String,
+    pub health: String,
+    pub data: serde_json::Value,
+    pub error: Option<String>,
+}
+
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct Resource {
     pub id: String,
     pub unix_timestamp: i64,
     pub timestamp: String,
-    pub state: serde_json::Value,
-    pub status: ResourceStatus,
-    pub health: ResourceHealth,
+    pub internal_status: ResourceInternalStatus,
+    pub internal_health: ResourceInternalHealth,
+    pub state: String,
+    pub health: String,
+    pub data: serde_json::Value,
+    pub sub_resources: HashMap<String, SubResource>,
+    pub error: Option<String>,
     pub system_id: String,
     pub entity_id: String,
     pub si_storable: SiStorable,
@@ -166,8 +194,8 @@ impl Resource {
                 "SELECT object FROM resource_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
                 &[
                     &state,
-                    &ResourceStatus::Pending.to_string(),
-                    &ResourceHealth::Unknown.to_string(),
+                    &ResourceInternalStatus::Pending.to_string(),
+                    &ResourceInternalHealth::Unknown.to_string(),
                     &timestamp,
                     &unix_timestamp,
                     &system_id,
@@ -293,23 +321,22 @@ impl Resource {
             .await
             .map_err(|err| ResourceError::Entity(err.to_string()))?;
 
-        let predecessor_edges =
-            Edge::direct_predecessor_edges_by_object_id(&txn, &EdgeKind::Configures, &entity.id)
+        let context = SelectionEntry::new(&txn, &entity.id, &system)
+            .await
+            .map_err(|e| ResourceError::Workflow(e.to_string()))?;
+
+        let predecessors_for_resources =
+            Edge::all_predecessor_edges_by_object_id(&txn, &EdgeKind::Configures, &entity.id)
                 .await?;
-
-        let mut predecessors: Vec<Predecessor> = Vec::new();
-        for edge in predecessor_edges {
-            let edge_entity = Entity::for_head(&txn, &edge.tail_vertex.object_id)
-                .await
-                .map_err(|e| ResourceError::Entity(e.to_string()))?;
-            let edge_resource =
-                Self::get_by_entity_and_system(&txn, &edge_entity.id, &system.id).await?;
-
-            let predecessor = Predecessor {
-                entity: edge_entity,
-                resource: edge_resource,
-            };
-            predecessors.push(predecessor);
+        let mut resource_context: Vec<Resource> = vec![];
+        for edge in predecessors_for_resources.iter() {
+            let resource =
+                Resource::get_by_entity_and_system(&txn, &edge.tail_vertex.object_id, &system.id)
+                    .await?;
+            match resource {
+                Some(r) => resource_context.push(r),
+                None => continue,
+            }
         }
 
         txn.commit().await?;
@@ -318,7 +345,8 @@ impl Resource {
             entity: &entity,
             resource: &self,
             system: &system,
-            predecessors,
+            context: context.context,
+            resource_context,
         };
 
         veritech
@@ -327,12 +355,8 @@ impl Resource {
 
         while let Some(message) = progress_rx.recv().await {
             match message {
-                SyncProtocol::Start(_) => {
-                    dbg!("started!");
-                }
+                SyncProtocol::Start(_) => {}
                 SyncProtocol::Finish(finish) => {
-                    dbg!("command finished!: {:?}", &finish);
-
                     let txn = conn.transaction().await?;
                     let nats = nats_conn.transaction();
 
@@ -341,10 +365,14 @@ impl Resource {
                     let timestamp = format!("{}", current_time);
 
                     self.state = finish.state;
-                    self.status = finish.status;
                     self.health = finish.health;
+                    self.data = finish.data;
+                    self.internal_status = finish.internal_status;
+                    self.internal_health = finish.internal_health;
+                    self.sub_resources = finish.sub_resources;
                     self.unix_timestamp = unix_timestamp;
                     self.timestamp = timestamp;
+                    self.error = finish.error.clone();
 
                     if let Some(err_msg) = finish.error {
                         dbg!("uh oh, error when syncing resource: {}", err_msg);

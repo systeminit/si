@@ -13,6 +13,12 @@ import {
 import { SiCtx } from "../siCtx";
 
 import { RunCommandCallbacks } from "../controllers/runCommand";
+import {
+  CommandProtocolFinish,
+  SyncResourceRequest,
+} from "../controllers/syncResource";
+import WebSocket from "ws";
+import { ResourceInternalHealth } from "si-entity";
 
 function inferProperties(
   request: InferPropertiesRequest,
@@ -57,7 +63,6 @@ export const checkQualifications: CheckQualificationCallbacks = {
 
 export const runCommands: RunCommandCallbacks = {
   "universal:deploy": async function (ctx, req, ws) {
-    debug("hello from inside");
     await ctx.execStream(ws, "docker", [
       "pull",
       req.entity.getProperty({
@@ -68,4 +73,56 @@ export const runCommands: RunCommandCallbacks = {
   },
 };
 
-export default { inferProperties, checkQualifications, runCommands };
+export async function syncResource(
+  ctx: typeof SiCtx,
+  req: SyncResourceRequest,
+  _ws: WebSocket,
+): Promise<CommandProtocolFinish["finish"]> {
+  const system = req.system.id;
+  const response: CommandProtocolFinish["finish"] = {
+    data: {},
+    state: req.resource.state,
+    health: req.resource.health,
+    internalStatus: req.resource.internalStatus,
+    internalHealth: req.resource.internalHealth,
+    subResources: req.resource.subResources,
+  };
+  const result = await ctx.exec("docker", [
+    "pull",
+    req.entity.getProperty({
+      system,
+      path: ["image"],
+    }),
+  ]);
+  if (result.exitCode != 0) {
+    response.health = "error";
+    response.internalHealth = ResourceInternalHealth.Error;
+    response.error = result.all;
+    response.state = "error";
+  } else {
+    response.health = "ok";
+    response.internalHealth = ResourceInternalHealth.Ok;
+    response.state = "ok";
+    const inspectResult = await ctx.exec("docker", [
+      "image",
+      "inspect",
+      req.entity.getProperty({
+        system,
+        path: ["image"],
+      }),
+    ]);
+    if (inspectResult.exitCode != 0) {
+      response.error = inspectResult.all;
+    } else {
+      response.data["inspect"] = JSON.parse(inspectResult.stdout);
+    }
+  }
+  return response;
+}
+
+export default {
+  inferProperties,
+  checkQualifications,
+  runCommands,
+  syncResource,
+};
