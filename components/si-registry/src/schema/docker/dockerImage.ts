@@ -40,7 +40,20 @@ const dockerImage: RegistryEntry = {
       name: "ExposedPorts",
       itemProperty: {
         type: "string",
+        validation: [
+          {
+            kind: ValidatorKind.Regex,
+            regex: "\\d+\\/(tcp|udp)",
+            message: "invalid exposed port entry; must be [numeric]/(tcp|udp)",
+          },
+        ],
       },
+      validation: [
+        {
+          kind: ValidatorKind.Required,
+          userDefined: true,
+        },
+      ],
     },
   ],
   qualifications: [

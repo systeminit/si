@@ -2,6 +2,7 @@ import {
   RegistryEntry,
   SchematicKind,
   NodeKind,
+  ValidatorKind,
   //Arity,
 } from "../../registryEntry";
 
@@ -27,6 +28,11 @@ const awsAccessKey: RegistryEntry = {
         name: "selectFromSecret",
         secretKind: "awsAccessKey",
       },
+      validation: [
+        {
+          kind: ValidatorKind.Required,
+        },
+      ],
     },
   ],
 };

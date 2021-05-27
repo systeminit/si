@@ -2,6 +2,7 @@ import {
   RegistryEntry,
   SchematicKind,
   NodeKind,
+  ValidatorKind,
   //Arity,
 } from "../../registryEntry";
 
@@ -27,6 +28,11 @@ const azureServicePrincipal: RegistryEntry = {
         name: "selectFromSecret",
         secretKind: "azureServicePrincipal",
       },
+      validation: [
+        {
+          kind: ValidatorKind.Required,
+        },
+      ],
     },
   ],
 };

@@ -3,6 +3,7 @@ import {
   SchematicKind,
   NodeKind,
   WidgetSelectOptionsItems,
+  ValidatorKind,
   //Arity,
 } from "../../registryEntry";
 
@@ -1446,6 +1447,11 @@ const azureLocation: RegistryEntry = {
         name: "select",
         options: generateLabels(),
       },
+      validation: [
+        {
+          kind: ValidatorKind.Required,
+        },
+      ],
     },
   ],
 };

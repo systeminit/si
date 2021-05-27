@@ -37,12 +37,14 @@ export enum ValidatorKind {
   Int = "int",
   Regex = "regex",
   IsIn = "isIn",
+  Required = "required",
 }
 
 export interface ValidatorBase {
   kind: ValidatorKind;
   link?: string;
   messsage?: string;
+  userDefined?: boolean;
 }
 
 export interface ValidatorRegex extends ValidatorBase {
@@ -65,10 +67,15 @@ export interface ValidatorIsIn extends ValidatorBase {
   values: string[];
 }
 
+export interface ValidatorRequired extends ValidatorBase {
+  kind: ValidatorKind.Required;
+}
+
 export type Validator =
   | ValidatorInt
   | ValidatorAlphanumeric
   | ValidatorRegex
+  | ValidatorRequired
   | ValidatorIsIn;
 
 export interface WidgetBase {
@@ -200,7 +207,14 @@ export interface Qualification {
   title: string;
   description: string;
   link?: string;
+  userDefined?: true;
 }
+
+export const allFieldsValidQualification: Qualification = {
+  name: "allFieldsValid",
+  title: "All fields are valid",
+  description: "All the fields must be valid",
+};
 
 export interface CommandBase {
   name: string;

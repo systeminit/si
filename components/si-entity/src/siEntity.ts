@@ -179,7 +179,15 @@ export class SiEntity implements ISiEntity {
   }
 
   validateProp(op: OpSet): ValidateResult {
-    const result = validate(this.fullPropPath(op), `${op.value}`);
+    let result;
+    if (op.value == undefined) {
+      result = validate(
+        this.fullPropPath(op),
+        `___UNDEFINEDMONSTERYARGBLARG___`,
+      );
+    } else {
+      result = validate(this.fullPropPath(op), `${op.value}`);
+    }
     return result;
   }
 

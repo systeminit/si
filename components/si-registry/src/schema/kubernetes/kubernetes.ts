@@ -3,6 +3,7 @@ import {
   SchematicKind,
   NodeKind,
   Arity,
+  ValidatorKind,
 } from "../../registryEntry";
 import { standardConceptInputs } from "../include/standardConceptInputs";
 
@@ -36,6 +37,11 @@ const kubernetesCluster: RegistryEntry = {
         name: "selectFromInput",
         inputName: "implementations",
       },
+      validation: [
+        {
+          kind: ValidatorKind.Required,
+        },
+      ],
     },
   ],
 };
