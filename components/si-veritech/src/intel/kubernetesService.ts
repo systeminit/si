@@ -15,7 +15,6 @@ import {
   SetArrayEntryFromAllEntities,
   setArrayEntryFromAllEntities,
 } from "./inferShared";
-import { forEachCluster } from "./k8sShared";
 
 export function inferProperties(
   request: InferPropertiesRequest,
@@ -110,84 +109,87 @@ export async function syncResource(
     system,
     path: ["healthChecks"],
   });
-  for (const healthCheck of healthChecks) {
-    if (healthCheck["protocol"] == "HTTP") {
-      const host = healthCheck["host"];
-      const port = healthCheck["port"];
-      const path = healthCheck["path"];
-      if (!host) {
-        for (const kubeClusterId of Object.keys(response.subResources)) {
-          if (
-            response.data[kubeClusterId] &&
-            // @ts-ignore
-            response.data[kubeClusterId]["data"] &&
-            // @ts-ignore
-            response.data[kubeClusterId]["data"]["status"] &&
-            // @ts-ignore
-            response.data[kubeClusterId]["data"]["status"]["loadBalancer"] &&
-            // @ts-ignore
-            response.data[kubeClusterId]["data"]["status"]["loadBalancer"][
-              "ingress"
-            ]
-          ) {
-            // @ts-ignore
-            for (const ingress of response.data[kubeClusterId]["data"][
-              "status"
-            ]["loadBalancer"]["ingress"]) {
-              let hostName;
+  if (healthChecks) {
+    // @ts-ignore
+    for (const healthCheck of healthChecks) {
+      if (healthCheck["protocol"] == "HTTP") {
+        const host = healthCheck["host"];
+        const port = healthCheck["port"];
+        const path = healthCheck["path"];
+        if (!host) {
+          for (const kubeClusterId of Object.keys(response.subResources)) {
+            if (
+              response.data[kubeClusterId] &&
               // @ts-ignore
-              if (ingress["hostname"]) {
-                hostName = ingress["hostname"];
-              } else {
-                hostName = ingress["ip"];
-              }
-              if (hostName) {
-                let url = `http://${hostName}:${port}`;
-                if (path) {
-                  url += path;
+              response.data[kubeClusterId]["data"] &&
+              // @ts-ignore
+              response.data[kubeClusterId]["data"]["status"] &&
+              // @ts-ignore
+              response.data[kubeClusterId]["data"]["status"]["loadBalancer"] &&
+              // @ts-ignore
+              response.data[kubeClusterId]["data"]["status"]["loadBalancer"][
+                "ingress"
+              ]
+            ) {
+              // @ts-ignore
+              for (const ingress of response.data[kubeClusterId]["data"][
+                "status"
+              ]["loadBalancer"]["ingress"]) {
+                let hostName;
+                // @ts-ignore
+                if (ingress["hostname"]) {
+                  hostName = ingress["hostname"];
+                } else {
+                  hostName = ingress["ip"];
                 }
-                response.subResources[kubeClusterId].data[
-                  "healthCheckUrl"
-                ] = url;
-                const result = await ctx.exec(
-                  "curl",
-                  ["-v", "-i", "-m", "10", url],
-                  {
-                    reject: false,
-                  },
-                );
-                if (result.exitCode != 0) {
-                  response.health = "error";
-                  response.state = "error";
-                  response.internalHealth = ResourceInternalHealth.Error;
-                  response.error = result.all;
-                  if (response.subResources[kubeClusterId]) {
-                    response.subResources[kubeClusterId].health = "error";
-                    response.subResources[kubeClusterId].state = "error";
-                    response.subResources[kubeClusterId].internalHealth =
-                      ResourceInternalHealth.Error;
-                    response.subResources[kubeClusterId].error = result.all;
+                if (hostName) {
+                  let url = `http://${hostName}:${port}`;
+                  if (path) {
+                    url += path;
+                  }
+                  response.subResources[kubeClusterId].data[
+                    "healthCheckUrl"
+                  ] = url;
+                  const result = await ctx.exec(
+                    "curl",
+                    ["-v", "-i", "-m", "10", url],
+                    {
+                      reject: false,
+                    },
+                  );
+                  if (result.exitCode != 0) {
+                    response.health = "error";
+                    response.state = "error";
+                    response.internalHealth = ResourceInternalHealth.Error;
+                    response.error = result.all;
+                    if (response.subResources[kubeClusterId]) {
+                      response.subResources[kubeClusterId].health = "error";
+                      response.subResources[kubeClusterId].state = "error";
+                      response.subResources[kubeClusterId].internalHealth =
+                        ResourceInternalHealth.Error;
+                      response.subResources[kubeClusterId].error = result.all;
+                    }
                   }
                 }
               }
             }
           }
-        }
-      } else {
-        let url = `http://${host}:${port}`;
-        if (path) {
-          url += path;
-        }
-        // @ts-ignore
-        response.subResources[kubeClusterId]["healthCheckUrl"] = url;
-        const result = await ctx.exec("curl", ["-v", "-i", "-m", "10", url], {
-          reject: false,
-        });
-        if (result.exitCode != 0) {
-          response.health = "error";
-          response.state = "error";
-          response.internalHealth = ResourceInternalHealth.Error;
-          response.error = result.all;
+        } else {
+          let url = `http://${host}:${port}`;
+          if (path) {
+            url += path;
+          }
+          // @ts-ignore
+          response.subResources[kubeClusterId]["healthCheckUrl"] = url;
+          const result = await ctx.exec("curl", ["-v", "-i", "-m", "10", url], {
+            reject: false,
+          });
+          if (result.exitCode != 0) {
+            response.health = "error";
+            response.state = "error";
+            response.internalHealth = ResourceInternalHealth.Error;
+            response.error = result.all;
+          }
         }
       }
     }

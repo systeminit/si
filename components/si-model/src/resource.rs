@@ -15,6 +15,7 @@ use crate::{
 
 const RESOURCE_GET_BY_ENTITY_AND_SYSTEM: &str =
     include_str!("./queries/resource_get_by_entity_and_system.sql");
+const RESOURCES_FOR_ENTITY: &str = include_str!("./queries/resource_for_entity.sql");
 
 #[derive(Error, Debug)]
 pub enum ResourceError {
@@ -234,6 +235,21 @@ impl Resource {
         let object: Self = serde_json::from_value(object)?;
 
         Ok(Some(object))
+    }
+
+    pub async fn for_entity(
+        txn: &PgTxn<'_>,
+        entity_id: impl AsRef<str>,
+    ) -> ResourceResult<Vec<Self>> {
+        let mut results = vec![];
+        let entity_id = entity_id.as_ref();
+        let rows = txn.query(RESOURCES_FOR_ENTITY, &[&entity_id]).await?;
+        for row in rows.into_iter() {
+            let json: serde_json::Value = row.try_get("object")?;
+            let object: Resource = serde_json::from_value(json)?;
+            results.push(object);
+        }
+        Ok(results)
     }
 
     pub async fn save(&mut self, txn: &PgTxn<'_>, nats: &NatsTxn) -> ResourceResult<()> {
