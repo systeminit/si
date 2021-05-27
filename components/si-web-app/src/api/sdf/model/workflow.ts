@@ -88,3 +88,13 @@ export interface WorkflowRunStepEntity {
   error?: string;
   siStorable: ISiStorable;
 }
+
+export interface WorkflowRunListStepsItem {
+  step: WorkflowRunStep;
+  stepEntities: WorkflowRunStepEntity[];
+}
+
+export interface WorkflowRunListItem {
+  workflowRun: WorkflowRun;
+  steps: WorkflowRunListStepsItem[];
+}

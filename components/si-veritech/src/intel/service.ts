@@ -23,7 +23,6 @@ export async function syncResource(
     subResources: req.resource.subResources,
   };
 
-  const system = req.system.id;
   const implementation = req.entity.getProperty({
     system,
     path: ["implementation"],

@@ -1,5 +1,8 @@
 import { Node, INodeObject } from "@/api/sdf/model/node";
 import { Edge } from "@/api/sdf/model/edge";
+import { Resource } from "si-entity";
+import { Qualification } from "./qualification";
+import { WorkflowRunListItem } from "./workflow";
 
 export enum SchematicKind {
   Deployment = "deployment",
@@ -54,6 +57,13 @@ export interface ISchematicNode {
   };
   object: INodeObject;
   connections: IConnections;
+  resources: {
+    [system_id: string]: Resource;
+  };
+  qualifications: Qualification[];
+  workflowRuns: {
+    [system_id: string]: WorkflowRunListItem;
+  };
 }
 
 export interface ISchematic {

@@ -3,8 +3,10 @@ use std::collections::HashMap;
 use thiserror::Error;
 
 use crate::{
+    workflow::{step::WorkflowRunStep, WorkflowRunListItem},
     Edge, EdgeError, EdgeKind, Entity, EntityError, ModelError, Node, NodeError, NodePosition,
-    NodePositionError, SiStorable,
+    NodePositionError, Qualification, QualificationError, Resource, ResourceError, SiStorable,
+    WorkflowError, WorkflowRun,
 };
 use si_data::PgTxn;
 
@@ -28,6 +30,12 @@ pub enum SchematicError {
     NoChangeSet,
     #[error("node is missing in calculated schematic edge set")]
     MissingNode,
+    #[error("resource error: {0}")]
+    Resource(#[from] ResourceError),
+    #[error("qualification error: {0}")]
+    Qualification(#[from] QualificationError),
+    #[error("workflow error: {0}")]
+    Workflow(#[from] WorkflowError),
 }
 
 pub type SchematicResult<T> = Result<T, SchematicError>;
@@ -123,10 +131,19 @@ pub struct SchematicNode {
     pub sockets: SchematicNodeSockets,
     pub object: Entity,
     pub connections: Connections,
+    pub resources: HashMap<String, Resource>,
+    pub qualifications: Vec<Qualification>,
+    pub workflow_runs: HashMap<String, WorkflowRunListItem>,
 }
 
 impl SchematicNode {
-    pub async fn new(txn: &PgTxn<'_>, node: Node, object: Entity) -> SchematicResult<Self> {
+    pub async fn new(
+        txn: &PgTxn<'_>,
+        node: Node,
+        object: Entity,
+        change_set_id: Option<&String>,
+        edit_session_id: Option<&String>,
+    ) -> SchematicResult<Self> {
         let node = NodeWithPositions::from_node_position(&txn, node).await?;
 
         let sockets = SchematicNodeSockets {
@@ -138,12 +155,49 @@ impl SchematicNode {
             successors: HashMap::new(),
         };
 
-        Ok(Self {
+        let mut resources = HashMap::new();
+        let resource_list = Resource::for_entity(&txn, &object.id).await?;
+        let mut system_ids = Vec::new();
+        for resource in resource_list.into_iter() {
+            system_ids.push(resource.system_id.clone());
+            resources.insert(resource.system_id.clone(), resource);
+        }
+
+        let qualification = Qualification::for_head_or_change_set_or_edit_session(
+            txn,
+            &object.id,
+            change_set_id,
+            edit_session_id,
+        )
+        .await?;
+
+        let mut workflow_runs = HashMap::new();
+        for system_id in system_ids.iter() {
+            let action_name: Option<&str> = None;
+            let workflow_run_items = WorkflowRun::list_actions_for_schematic(
+                &txn,
+                &object.id,
+                &system_id,
+                &object.si_storable.workspace_id,
+                action_name,
+            )
+            .await?;
+            if let Some(wr) = workflow_run_items.into_iter().nth(0) {
+                workflow_runs.insert(system_id.clone(), wr);
+            }
+        }
+
+        let sn = Self {
             node,
             object,
             sockets,
             connections,
-        })
+            resources,
+            qualifications: qualification,
+            workflow_runs,
+        };
+
+        Ok(sn)
     }
 }
 
@@ -221,7 +275,14 @@ impl Schematic {
         let mut nodes: HashMap<String, SchematicNode> = HashMap::new();
         let mut object_id_set: Vec<String> = vec![deployment_entity_id.into()];
 
-        let sn = SchematicNode::new(&txn, deployment_node.clone(), deployment_entity).await?;
+        let sn = SchematicNode::new(
+            &txn,
+            deployment_node.clone(),
+            deployment_entity,
+            change_set_id.as_ref(),
+            edit_session_id.as_ref(),
+        )
+        .await?;
         nodes.insert(deployment_node.id.clone(), sn);
 
         let all_node_edges = Edge::direct_successor_edges_by_node_id(
@@ -249,7 +310,14 @@ impl Schematic {
             let successor_node = Node::get(&txn, &successor_entity.node_id).await?;
             if let None = nodes.get(&successor_node.id) {
                 let successor_node_id = successor_node.id.clone();
-                let sn = SchematicNode::new(&txn, successor_node.clone(), successor_entity).await?;
+                let sn = SchematicNode::new(
+                    &txn,
+                    successor_node.clone(),
+                    successor_entity,
+                    change_set_id.as_ref(),
+                    edit_session_id.as_ref(),
+                )
+                .await?;
                 nodes.insert(successor_node_id.clone(), sn);
             };
         }
@@ -354,7 +422,14 @@ impl Schematic {
         let mut nodes: HashMap<String, SchematicNode> = HashMap::new();
         let mut object_id_set: Vec<String> = vec![application_entity_id.into()];
 
-        let sn = SchematicNode::new(&txn, application_node.clone(), application_entity).await?;
+        let sn = SchematicNode::new(
+            &txn,
+            application_node.clone(),
+            application_entity,
+            change_set_id.as_ref(),
+            edit_session_id.as_ref(),
+        )
+        .await?;
         nodes.insert(application_node.id.clone(), sn);
 
         let all_node_edges = Edge::direct_successor_edges_by_node_id(
@@ -382,7 +457,14 @@ impl Schematic {
             let successor_node = Node::get(&txn, &successor_entity.node_id).await?;
             if let None = nodes.get(&successor_node.id) {
                 let successor_node_id = successor_node.id.clone();
-                let sn = SchematicNode::new(&txn, successor_node.clone(), successor_entity).await?;
+                let sn = SchematicNode::new(
+                    &txn,
+                    successor_node.clone(),
+                    successor_entity,
+                    change_set_id.as_ref(),
+                    edit_session_id.as_ref(),
+                )
+                .await?;
                 nodes.insert(successor_node_id.clone(), sn);
             };
         }
@@ -491,7 +573,14 @@ impl Schematic {
         let mut edges: HashMap<String, Edge> = HashMap::new();
         let mut nodes: HashMap<String, SchematicNode> = HashMap::new();
 
-        let sn = SchematicNode::new(&txn, root_node.clone(), root_entity).await?;
+        let sn = SchematicNode::new(
+            &txn,
+            root_node.clone(),
+            root_entity,
+            change_set_id.as_ref(),
+            edit_session_id.as_ref(),
+        )
+        .await?;
         nodes.insert(root_node.id.clone(), sn);
 
         // An edge is included only if the object it points to has a head or a projection for this
@@ -519,7 +608,14 @@ impl Schematic {
                 schematic_node
             } else {
                 let successor_node_id = successor_node.id.clone();
-                let sn = SchematicNode::new(&txn, successor_node.clone(), successor_entity).await?;
+                let sn = SchematicNode::new(
+                    &txn,
+                    successor_node.clone(),
+                    successor_entity,
+                    change_set_id.as_ref(),
+                    edit_session_id.as_ref(),
+                )
+                .await?;
                 nodes.insert(successor_node_id.clone(), sn);
                 // You just inserted it.. so it's cool.
                 nodes.get_mut(&successor_node_id).unwrap()

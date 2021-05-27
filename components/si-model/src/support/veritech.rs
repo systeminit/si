@@ -38,6 +38,8 @@ pub enum VeritechError {
     NoReply,
     #[error("event log fs error: {0}")]
     EventLogFS(#[from] EventLogFSError),
+    #[error("tungestenite: {0}")]
+    Tungstenite(#[from] tungstenite::Error),
 }
 
 pub type VeritechResult<T> = Result<T, VeritechError>;
@@ -165,9 +167,7 @@ impl Veritech {
         PROTOCOL: 'static + DeserializeOwned + std::fmt::Debug + Send,
     {
         let (ws_stream, _) =
-            tokio_tungstenite::connect_async(format!("{}/{}", &self.ws_url, path.as_ref()))
-                .await
-                .expect("cannot connect to websocket");
+            tokio_tungstenite::connect_async(format!("{}/{}", &self.ws_url, path.as_ref())).await?;
 
         let (ws_tx, ws_rx) = tokio::sync::mpsc::unbounded_channel();
 

@@ -368,9 +368,15 @@ pub async fn node_create_for_application(
     .await
     .map_err(HandlerError::from)?;
 
-    let schematic_node = SchematicNode::new(&txn, node.clone(), entity.clone())
-        .await
-        .map_err(HandlerError::from)?;
+    let schematic_node = SchematicNode::new(
+        &txn,
+        node.clone(),
+        entity.clone(),
+        Some(&request.change_set_id),
+        Some(&request.edit_session_id),
+    )
+    .await
+    .map_err(HandlerError::from)?;
 
     let application_entity = Entity::for_head(&txn, &request.application_id)
         .await

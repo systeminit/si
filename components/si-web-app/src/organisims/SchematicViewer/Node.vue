@@ -66,6 +66,11 @@
             </div>
           </div>
         </div>
+        <div class="flex flex-row ml-1 text-xs font-thin text-center node">
+          <CheckCircleIcon size="1x" :class="qualificationStatusClass" />
+          <OctagonIcon size="1x" :class="resourceStatusClass" />
+          <PlayCircleIcon size="1x" :class="workflowStatusClass" />
+        </div>
       </div>
     </div>
   </div>
@@ -80,7 +85,7 @@ import { ISchematicNode, SchematicKind } from "@/api/sdf/model/schematic";
 import { IEntity, Entity } from "@/api/sdf/model/entity";
 
 import _ from "lodash";
-import { SiEntity } from "si-entity";
+import { SiEntity, ResourceInternalHealth } from "si-entity";
 import { RegistryEntry, NodeKind, registry } from "si-registry";
 import {
   edgeCreating$,
@@ -93,8 +98,14 @@ import { tap, pluck, switchMap } from "rxjs/operators";
 import { Arity } from "si-registry/dist/registryEntry";
 import { combineLatest, of, from } from "rxjs";
 import { IGetEntityRequest, AttributeDal } from "@/api/sdf/dal/attributeDal";
+import {
+  CheckCircleIcon,
+  OctagonIcon,
+  PlayCircleIcon,
+} from "vue-feather-icons";
 
 import { SchematicOrientation } from "@/organisims/SchematicViewer.vue";
+import { WorkflowRunState } from "@/api/sdf/model/workflow";
 
 type NodeLayoutUpdated = boolean;
 
@@ -125,6 +136,11 @@ interface IData {
 
 export default Vue.extend({
   name: "Node",
+  components: {
+    CheckCircleIcon,
+    OctagonIcon,
+    PlayCircleIcon,
+  },
   props: {
     selectedNode: {
       type: Object as PropType<ISchematicNode | null>,
@@ -309,6 +325,74 @@ export default Vue.extend({
     },
   },
   computed: {
+    qualificationStatusClass(): Record<string, any> {
+      let style: Record<string, any> = {};
+      if (_.find(this.node.qualifications, q => q.qualified == false)) {
+        style["text-red-500"] = true;
+      } else {
+        style["text-green-500"] = true;
+      }
+      return style;
+    },
+    resourceStatusClass(): Record<string, any> {
+      let style: Record<string, any> = {};
+      if (
+        _.find(
+          Object.values(this.node.resources),
+          r => r.internalHealth == ResourceInternalHealth.Error,
+        )
+      ) {
+        style["text-red-500"] = true;
+        return style;
+      } else if (
+        _.find(
+          Object.values(this.node.resources),
+          r => r.internalHealth == ResourceInternalHealth.Warning,
+        )
+      ) {
+        style["text-yellow-500"] = true;
+        return style;
+      } else if (
+        _.find(
+          Object.values(this.node.resources),
+          r => r.internalHealth == ResourceInternalHealth.Ok,
+        )
+      ) {
+        style["text-green-500"] = true;
+      }
+      return style;
+    },
+    workflowStatusClass(): Record<string, any> {
+      let style: Record<string, any> = {};
+      if (
+        _.find(
+          Object.values(this.node.workflowRuns),
+          w => w.workflowRun.state == WorkflowRunState.Failure,
+        )
+      ) {
+        style["text-red-500"] = true;
+        return style;
+      } else if (
+        _.find(
+          Object.values(this.node.workflowRuns),
+          w => w.workflowRun.state == WorkflowRunState.Running,
+        )
+      ) {
+        style["text-blue-500"] = true;
+        return style;
+      } else if (
+        _.find(
+          Object.values(this.node.workflowRuns),
+          w => w.workflowRun.state == WorkflowRunState.Success,
+        )
+      ) {
+        style["text-green-500"] = true;
+        return style;
+      } else {
+        style["hidden"] = true;
+      }
+      return style;
+    },
     showImplementation(): boolean {
       return (
         !_.isNull(this.selectedImplementationField) &&

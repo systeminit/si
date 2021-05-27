@@ -82,7 +82,11 @@
 import Vue from "vue";
 import _ from "lodash";
 
-import { SchematicKind, Schematic } from "@/api/sdf/model/schematic";
+import {
+  SchematicKind,
+  Schematic,
+  ISchematicNode,
+} from "@/api/sdf/model/schematic";
 import { ILabelList } from "@/api/sdf/dal";
 
 import Panel from "@/molecules/Panel.vue";
@@ -105,6 +109,9 @@ import {
   schematicPanelKind$,
   restoreSchematicPanelKind$,
   nameAttributeChanged$,
+  workflowRuns$,
+  resources$,
+  entityQualifications$,
 } from "@/observables";
 import { combineLatest, of, BehaviorSubject } from "rxjs";
 import { switchMap, pluck, tap } from "rxjs/operators";
@@ -331,6 +338,80 @@ export default Vue.extend({
           ) {
             this.schematic.nodes[payload.nodeId].object.name = payload.newValue;
             refreshSchematic$.next(true);
+          }
+        }),
+      ),
+      workflowRunUpdate: workflowRuns$.pipe(
+        tap(workflowRun => {
+          if (
+            workflowRun.ctx.entity &&
+            workflowRun.ctx.system &&
+            this.schematic
+          ) {
+            const nodeId = workflowRun.ctx.entity.nodeId;
+            const systemId = workflowRun.ctx.system.id;
+            if (this.schematic.nodes[nodeId]) {
+              if (this.schematic.nodes[nodeId].workflowRuns[systemId]) {
+                Vue.set(
+                  this.schematic.nodes[nodeId].workflowRuns[systemId],
+                  "workflowRun",
+                  workflowRun,
+                );
+              } else {
+                Vue.set(this.schematic.nodes[nodeId].workflowRuns, systemId, {
+                  workflowRun,
+                });
+              }
+            }
+          }
+        }),
+      ),
+      resourceUpdate: resources$.pipe(
+        tap(resource => {
+          if (this.schematic) {
+            for (let node of Object.values(this.schematic.nodes)) {
+              // @ts-ignore
+              if (node.node.objectId == resource.entityId) {
+                Vue.set(
+                  // @ts-ignore
+                  this.schematic.nodes[node.node.id].resources,
+                  resource.systemId,
+                  resource,
+                );
+              }
+            }
+          }
+        }),
+      ),
+      qualificationsUpdate: entityQualifications$.pipe(
+        tap(qualification => {
+          if (this.schematic) {
+            for (let node of Object.values(this.schematic.nodes)) {
+              // @ts-ignore
+              if (node.node.objectId == qualification.entityId) {
+                let updated = false;
+                // @ts-ignore
+                for (let x = 0; x < node.qualifications.length; x++) {
+                  // @ts-ignore
+                  let qcheck = node.qualifications[x];
+                  if (qcheck.name == qualification.name) {
+                    Vue.set(
+                      // @ts-ignore
+                      this.schematic.nodes[node.node.id].qualifications,
+                      x,
+                      qualification,
+                    );
+                    updated = true;
+                  }
+                }
+                if (!updated) {
+                  // @ts-ignore
+                  this.schematic.nodes[node.node.id].qualifications.push(
+                    qualification,
+                  );
+                }
+              }
+            }
           }
         }),
       ),

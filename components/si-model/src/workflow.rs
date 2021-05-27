@@ -14,6 +14,8 @@ use crate::{
 
 const WORKFLOW_GET_BY_NAME: &str = include_str!("./queries/workflow_get_by_name.sql");
 const WORKFLOW_ACTION_LIST_ALL: &str = include_str!("./queries/workflow_action_list_all.sql");
+const WORKFLOW_ACTION_LIST_ALL_FOR_SCHEMATIC: &str =
+    include_str!("./queries/workflow_action_list_all_for_schematic.sql");
 const WORKFLOW_RUN_STEPS_ALL: &str = include_str!("./queries/workflow_run_steps_all.sql");
 const WORKFLOW_RUN_STEP_ENTITIES_ALL: &str =
     include_str!("./queries/workflow_run_step_entities_all.sql");
@@ -163,6 +165,48 @@ impl WorkflowRun {
         let object: Self = serde_json::from_value(json)?;
 
         Ok(object)
+    }
+
+    pub async fn list_actions_for_schematic(
+        txn: &PgTxn<'_>,
+        entity_id: impl AsRef<str>,
+        system_id: impl AsRef<str>,
+        workspace_id: impl AsRef<str>,
+        action_name: Option<impl AsRef<str>>,
+    ) -> WorkflowResult<Vec<WorkflowRunListItem>> {
+        let entity_id = entity_id.as_ref();
+        let system_id = system_id.as_ref();
+        let workspace_id = workspace_id.as_ref();
+        let rows = if let Some(action_name) = action_name {
+            let _action_name = action_name.as_ref();
+            // TODO: Don't leave this like that ;)
+            let rows = txn
+                .query(
+                    WORKFLOW_ACTION_LIST_ALL_FOR_SCHEMATIC,
+                    &[&entity_id, &system_id, &workspace_id],
+                )
+                .await?;
+            rows
+        } else {
+            let rows = txn
+                .query(
+                    WORKFLOW_ACTION_LIST_ALL_FOR_SCHEMATIC,
+                    &[&entity_id, &system_id, &workspace_id],
+                )
+                .await?;
+            rows
+        };
+        let mut results: Vec<WorkflowRunListItem> = vec![];
+
+        for row in rows.into_iter() {
+            let workflow_run_json: serde_json::Value = row.try_get("object")?;
+            let workflow_run: WorkflowRun = serde_json::from_value(workflow_run_json)?;
+            results.push(WorkflowRunListItem {
+                workflow_run,
+                steps: vec![],
+            });
+        }
+        Ok(results)
     }
 
     pub async fn list_actions(
