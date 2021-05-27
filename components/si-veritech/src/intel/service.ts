@@ -13,7 +13,7 @@ export async function syncResource(
   req: SyncResourceRequest,
   ws: WebSocket,
 ): Promise<CommandProtocolFinish["finish"]> {
-  const system = req.system.id;
+  let system = req.system.id;
   const response: CommandProtocolFinish["finish"] = {
     data: {},
     state: req.resource.state,
@@ -23,7 +23,7 @@ export async function syncResource(
     subResources: req.resource.subResources,
   };
 
-  const system = req.system.id;
+  system = req.system.id;
   const implementation = req.entity.getProperty({
     system,
     path: ["implementation"],

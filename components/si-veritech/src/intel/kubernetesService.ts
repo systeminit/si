@@ -110,6 +110,9 @@ export async function syncResource(
     system,
     path: ["healthChecks"],
   });
+
+  if (Array.isArray(healthChecks)) {
+
   for (const healthCheck of healthChecks) {
     if (healthCheck["protocol"] == "HTTP") {
       const host = healthCheck["host"];
@@ -193,6 +196,7 @@ export async function syncResource(
     }
   }
   return response;
+  }
 }
 
 export default { inferProperties, syncResource };
