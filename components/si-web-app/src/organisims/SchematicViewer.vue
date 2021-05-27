@@ -187,6 +187,9 @@ interface IData {
   };
   viewport: {
     element: HTMLElement | null;
+    event: {
+      mouse: MouseEvent | null;
+    };
     pan: {
       translation: {
         x: number;
@@ -317,6 +320,9 @@ export default Vue.extend({
       },
       viewport: {
         element: null,
+        event: {
+          mouse: null,
+        },
         pan: {
           translation: {
             x: 0,
@@ -741,6 +747,10 @@ export default Vue.extend({
     mouseLeave() {
       this.deactivateShortcuts();
       this.deactivateViewer();
+
+      if (this.viewport.event.mouse != null) {
+        this.mouseUp(this.viewport.event.mouse);
+      }
     },
     mouseDown(this: any, e: Event): void {
       if (this.viewer.isActive) {
@@ -924,6 +934,7 @@ export default Vue.extend({
           // ----------------------------------------------------------------
           // Mouse is connecting nodes
           // ----------------------------------------------------------------
+          this.viewport.event.mouse = e;
           const newPosition = SiCg.cgGetMousePositionInElementSpace(
             e as MouseEvent,
             this.canvas.element as HTMLElement,
@@ -946,6 +957,7 @@ export default Vue.extend({
             !this.viewer.isNodeCreateInit &&
             this.selectedNode.node
           ) {
+            this.viewport.event.mouse = e;
             this.selection.id = this.selectedNode.node.id;
             const id = this.id + "." + this.selection.id;
             this.selection.element = id; //document.getElementById(id);
@@ -957,6 +969,7 @@ export default Vue.extend({
           // ----------------------------------------------------------------
           if (this.selection.element !== null) {
             if (this.viewer.mouseIsDown || this.viewer.isNodeCreate) {
+              this.viewport.event.mouse = e;
               let selectionElement = document.getElementById(
                 this.selection.element,
               ) as HTMLElement;
@@ -977,68 +990,60 @@ export default Vue.extend({
       }
     },
     mouseUp(e: MouseEvent): void {
-      if (this.viewer.isActive) {
-        // ----------------------------------------------------------------
-        // Mouse dragged a node
-        // ----------------------------------------------------------------
-        if (this.viewer.isDragging == true) {
-          this.viewer.isDragging = false;
-          this.viewer.draggingMode = false;
-          this.viewer.isNodeCreate = false;
-          this.viewer.isNodeCreateInit = false;
+      // ----------------------------------------------------------------
+      // Mouse dragged a node
+      // ----------------------------------------------------------------
+      if (this.viewer.isDragging == true) {
+        this.viewer.isDragging = false;
+        this.viewer.draggingMode = false;
+        this.viewer.isNodeCreate = false;
+        this.viewer.isNodeCreateInit = false;
 
-          this.setNodePosition(this.selection.position);
+        this.setNodePosition(this.selection.position);
 
-          if (this.selection.id) {
-            const nodePositionUpdate: NodePositionUpdateEvent = {
-              position: this.selection.position,
-              nodeId: this.selection.id,
-              positionCtx: this.positionCtx,
-            };
-            PanelEventBus.$emit(
-              "panel-viewport-node-update",
-              nodePositionUpdate,
-            );
-
-            const edgePositionUpdate: EdgePostionUpdateEvent = {
-              nodeId: this.selection.id as string,
-              nodePosition: this.selection.position,
-              positionCtx: this.positionCtx,
-            };
-
-            PanelEventBus.$emit(
-              "panel-viewport-edge-update",
-              edgePositionUpdate,
-            );
-          }
-          this.selection.element = null;
-          this.selection.id = null;
-        }
-
-        // ----------------------------------------------------------------
-        // Mouse panned the canvas
-        // ----------------------------------------------------------------
-        if (this.viewer.isPanning == true) {
-          this.viewer.isPanning = false;
-
-          const ctx: MouseContext = {
-            id: this.id,
-            isActive: false,
+        if (this.selection.id) {
+          const nodePositionUpdate: NodePositionUpdateEvent = {
+            position: this.selection.position,
+            nodeId: this.selection.id,
+            positionCtx: this.positionCtx,
           };
-          const _event: MouseRegistrationEvent = {
-            context: ctx,
-          };
-        }
+          PanelEventBus.$emit("panel-viewport-node-update", nodePositionUpdate);
 
-        // ----------------------------------------------------------------
-        // Mouse connected nodes
-        // ----------------------------------------------------------------
-        if (this.viewer.isNodeConnectionMode) {
-          this.viewer.isNodeConnectionMode = false;
-          this.selection.element = null;
-          this.selection.id = null;
-          this.connectNodes();
+          const edgePositionUpdate: EdgePostionUpdateEvent = {
+            nodeId: this.selection.id as string,
+            nodePosition: this.selection.position,
+            positionCtx: this.positionCtx,
+          };
+
+          PanelEventBus.$emit("panel-viewport-edge-update", edgePositionUpdate);
         }
+        this.selection.element = null;
+        this.selection.id = null;
+      }
+
+      // ----------------------------------------------------------------
+      // Mouse panned the canvas
+      // ----------------------------------------------------------------
+      if (this.viewer.isPanning == true) {
+        this.viewer.isPanning = false;
+
+        const ctx: MouseContext = {
+          id: this.id,
+          isActive: false,
+        };
+        const _event: MouseRegistrationEvent = {
+          context: ctx,
+        };
+      }
+
+      // ----------------------------------------------------------------
+      // Mouse connected nodes
+      // ----------------------------------------------------------------
+      if (this.viewer.isNodeConnectionMode) {
+        this.viewer.isNodeConnectionMode = false;
+        this.selection.element = null;
+        this.selection.id = null;
+        this.connectNodes();
       }
 
       // ----------------------------------------------------------------
@@ -1049,6 +1054,7 @@ export default Vue.extend({
       this.viewer.nodeDeselection = false;
       this.removeTransientEdge();
       this.removeTemporaryEdge();
+      this.viewport.event.mouse = null;
     },
     mouseWheel(e: MouseWheelEvent) {
       this.zoom(e);
