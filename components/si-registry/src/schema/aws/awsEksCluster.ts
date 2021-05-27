@@ -24,6 +24,11 @@ const awsEksCluster: RegistryEntry = {
     {
       type: "string",
       name: "name",
+      validation: [
+        {
+          kind: ValidatorKind.Required,
+        },
+      ],
     },
     {
       type: "string",
@@ -41,6 +46,11 @@ const awsEksCluster: RegistryEntry = {
           ],
         },
       },
+      validation: [
+        {
+          kind: ValidatorKind.Required,
+        },
+      ],
     },
   ],
 };

@@ -4,6 +4,7 @@ import {
   NodeKind,
   Arity,
   WidgetSelectOptionsItems,
+  ValidatorKind,
 } from "../../registryEntry";
 
 import _ from "lodash";
@@ -152,6 +153,11 @@ const azureAksCluster: RegistryEntry = {
     {
       type: "string",
       name: "name",
+      validation: [
+        {
+          kind: ValidatorKind.Required,
+        },
+      ],
     },
     {
       type: "string",
@@ -161,6 +167,11 @@ const azureAksCluster: RegistryEntry = {
         name: "select",
         options: generateLabels(),
       },
+      validation: [
+        {
+          kind: ValidatorKind.Required,
+        },
+      ],
     },
   ],
 };

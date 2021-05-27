@@ -8,26 +8,19 @@
       </div>
 
       <div class="ml-2 text-xs">
-        <div v-if="schema && schema.qualifications">
+        <div v-if="schema">
           <div class="flex flex-col w-full">
-            <div
-              v-for="q in schema.qualifications"
-              class="flex flex-col"
-              :key="q.name"
-            >
-              <div>
-                <div class="flex" v-if="hasQualificationResult(q.name)">
-                  <CheckCircleIcon
-                    class="verification-passed"
-                    size="1x"
-                    v-if="qualificationResultQualified(q.name)"
-                  />
-                  <AlertCircleIcon
-                    size="1x"
-                    class="verification-failed"
-                    v-else
-                  />
-                </div>
+            <div>
+              <div class="flex" v-if="hasQualificationResult">
+                <CheckCircleIcon
+                  class="verification-passed"
+                  size="1x"
+                  v-if="qualificationResultQualified"
+                />
+                <AlertCircleIcon size="1x" class="verification-failed" v-else />
+              </div>
+              <div class="flex" v-else>
+                <CircleIcon size="1x" class="verification-unknown" />
               </div>
             </div>
           </div>
@@ -200,6 +193,21 @@ export default Vue.extend({
       );
       return colors;
     },
+    hasQualificationResult(): boolean {
+      if (this.qualifications && this.qualifications.length > 0) {
+        return true;
+      } else {
+        return false;
+      }
+    },
+    qualificationResultQualified(): boolean {
+      const q = _.find(this.qualifications, ["qualified", false]);
+      if (q) {
+        return false;
+      } else {
+        return true;
+      }
+    },
   },
   methods: {
     showFieldForWidget(widget: string, editField: EditField): boolean {
@@ -276,25 +284,9 @@ export default Vue.extend({
 
       return interpolatedColorArray;
     },
-    qualificationResultQualified(name: string): boolean {
-      const q = _.find(this.qualifications, ["name", name]);
-      if (q?.qualified) {
-        return q.qualified;
-      } else {
-        return false;
-      }
-    },
     qualificationStarting(name: string): boolean {
       const s = _.find(this.starting, ["start", name]);
       if (s) {
-        return true;
-      } else {
-        return false;
-      }
-    },
-    hasQualificationResult(name: string): boolean {
-      const q = _.find(this.qualifications, ["name", name]);
-      if (q) {
         return true;
       } else {
         return false;

@@ -284,9 +284,9 @@ export default Vue.extend({
       this.updating = false;
       if (this.entity && !_.isEqual(this.startValue, this.currentValue)) {
         const validated = this.validate();
-        if (!validated) {
-          return;
-        }
+        //if (!validated) {
+        //  return;
+        //}
         let opSet: OpSet = {
           op: OpType.Set,
           source: OpSource.Manual,

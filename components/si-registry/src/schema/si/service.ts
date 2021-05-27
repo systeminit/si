@@ -1,4 +1,9 @@
-import { RegistryEntry, SchematicKind, NodeKind } from "../../registryEntry";
+import {
+  RegistryEntry,
+  SchematicKind,
+  NodeKind,
+  ValidatorKind,
+} from "../../registryEntry";
 import { standardConceptInputs } from "../include/standardConceptInputs";
 
 const service: RegistryEntry = {
@@ -23,6 +28,11 @@ const service: RegistryEntry = {
         name: "selectFromInput",
         inputName: "implementations",
       },
+      validation: [
+        {
+          kind: ValidatorKind.Required,
+        },
+      ],
     },
     {
       type: "array",

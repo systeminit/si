@@ -233,6 +233,11 @@ const awsRegion: RegistryEntry = {
         name: "select",
         options: generateLabels(),
       },
+      validation: [
+        {
+          kind: ValidatorKind.Required,
+        },
+      ],
     },
   ],
 };

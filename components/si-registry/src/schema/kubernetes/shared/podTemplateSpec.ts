@@ -3,10 +3,13 @@ import {
   RegistryEntry,
   ValidatorKind,
 } from "../../../registryEntry";
-import { metadata } from "./objectMeta";
+import { metadataOptional } from "./objectMeta";
 import { spec } from "./podSpec";
 
-export const podTemplateSpec: RegistryEntry["properties"] = [metadata, spec];
+export const podTemplateSpec: RegistryEntry["properties"] = [
+  metadataOptional,
+  spec,
+];
 
 export const template: PropObject = {
   type: "object",

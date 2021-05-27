@@ -2,6 +2,7 @@ import {
   RegistryEntry,
   SchematicKind,
   NodeKind,
+  ValidatorKind,
   //Arity,
 } from "../../registryEntry";
 import { generateLabels } from "./azureLocation";
@@ -24,6 +25,11 @@ const azureResourceGroup: RegistryEntry = {
     {
       type: "string",
       name: "name",
+      validation: [
+        {
+          kind: ValidatorKind.Required,
+        },
+      ],
     },
     {
       type: "string",
@@ -32,6 +38,11 @@ const azureResourceGroup: RegistryEntry = {
         name: "select",
         options: generateLabels(),
       },
+      validation: [
+        {
+          kind: ValidatorKind.Required,
+        },
+      ],
     },
     {
       type: "map",

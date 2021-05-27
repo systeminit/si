@@ -8,12 +8,12 @@
       </div>
     </div>
     <div
-      v-if="schema && schema.qualifications"
+      v-if="schema"
       class="flex w-full h-full pt-2 overflow-auto background-color "
     >
       <div class="flex flex-col w-full">
         <div
-          v-for="q in schema.qualifications"
+          v-for="q in allQualifications"
           class="flex flex-col text-sm"
           :key="q.name"
         >
@@ -94,7 +94,12 @@ import {
   Qualification,
   QualificationStart,
 } from "@/api/sdf/model/qualification";
-import { RegistryEntry, registry } from "si-registry";
+import {
+  RegistryEntry,
+  registry,
+  allFieldsValidQualification,
+  Qualification as SchemaQualification,
+} from "si-registry";
 import {
   SquareIcon,
   // CheckSquareIcon,
@@ -153,6 +158,13 @@ export default Vue.extend({
     };
   },
   computed: {
+    allQualifications(): SchemaQualification[] {
+      let quals = [allFieldsValidQualification];
+      if (this.schema?.qualifications) {
+        quals = _.concat(quals, this.schema.qualifications);
+      }
+      return quals;
+    },
     schema(): RegistryEntry | null {
       if (registry[this.entity.entityType]) {
         return registry[this.entity.entityType];
@@ -208,9 +220,9 @@ export default Vue.extend({
     },
     toggleDescription(name: string) {
       if (this.showDescription[name]) {
-        this.showDescription[name] = false;
+        Vue.set(this.showDescription, name, false);
       } else {
-        this.showDescription[name] = true;
+        Vue.set(this.showDescription, name, true);
       }
     },
   },
