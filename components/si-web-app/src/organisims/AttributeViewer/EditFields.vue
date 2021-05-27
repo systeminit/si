@@ -97,7 +97,6 @@
         @toggle-path="togglePath"
         v-else-if="showFieldForWidget('array', editField)"
       />
-      <div v-else>Widget type does not exist for {{ editField }}! Bug</div>
     </div>
   </div>
 </template>
