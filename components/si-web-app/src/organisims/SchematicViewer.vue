@@ -134,6 +134,8 @@ import {
 import { SiEntity } from "si-entity";
 import { Entity } from "@/api/sdf/model/entity";
 import { Input } from "si-registry/dist/registryEntry";
+import { Subject } from "rxjs";
+import { tap } from "rxjs/operators";
 
 export interface SetNodePositionPayload {
   nodeId: string;
@@ -844,7 +846,7 @@ export default Vue.extend({
             e.target instanceof HTMLElement &&
             e.target.classList.contains("socket")
           ) {
-            console.log(e.target);
+            //console.log(e.target);
 
             let entityType = e.target.getAttribute("entityType");
             let entityId = e.target.getAttribute("entityId");
@@ -1241,6 +1243,7 @@ export default Vue.extend({
           context: this.positionCtx as string,
           position: position,
         };
+
         this.setNodeLocalPosition(setNodePositionPayload);
 
         // Update node edges position
@@ -1262,6 +1265,7 @@ export default Vue.extend({
       }
     },
     setNodeLocalPosition(payload: SetNodePositionPayload) {
+      payload = _.cloneDeep(payload);
       if (this.schematic) {
         const position = {
           x: String(payload.position.x),
@@ -1274,34 +1278,39 @@ export default Vue.extend({
           this.schematic.nodes[payload.nodeId].node &&
           this.schematic.nodes[payload.nodeId].node.positions[payload.context]
         ) {
-          this.schematic.nodes[payload.nodeId].node.positions[
-            payload.context
-          ] = position;
+          Vue.set(
+            this.schematic.nodes[payload.nodeId].node.positions,
+            payload.context,
+            position,
+          );
         } else {
           if (
             this.schematic &&
             this.schematic.nodes[payload.nodeId] &&
             this.schematic.nodes[payload.nodeId].node
           ) {
-            this.schematic.nodes[payload.nodeId].node.positions = {
+            Vue.set(this.schematic.nodes[payload.nodeId].node, "positions", {
               [payload.context]: position,
-            };
+            });
           }
         }
       }
     },
     async setNodePosition(this: any, position: Cg2dCoordinate) {
+      const selectedNode = _.cloneDeep(this.selectedNode);
+      const positionCtx = _.cloneDeep(this.positionCtx);
+      position = _.cloneDeep(position);
       if (
-        this.selectedNode &&
-        this.selectedNode.node &&
+        selectedNode &&
+        selectedNode.node &&
         this.currentApplicationId &&
         this.currentWorkspace &&
         this.currentSystem
       ) {
-        if (this.selectedNode.node.id) {
+        if (selectedNode.node.id) {
           const request: INodeUpdatePositionRequest = {
-            nodeId: this.selectedNode.node.id,
-            contextId: this.positionCtx,
+            nodeId: selectedNode.node.id,
+            contextId: positionCtx,
             x: `${position.x}`,
             y: `${position.y}`,
             workspaceId: this.currentWorkspace.id,
@@ -1314,18 +1323,18 @@ export default Vue.extend({
           if (reply.error) {
             emitEditorErrorMessage(reply.error.message);
           } else {
-            nodePositionUpdated$.next({ positionCtx: this.positionCtx });
+            nodePositionUpdated$.next({ positionCtx: positionCtx });
           }
 
           if (this.schematicKind == SchematicKind.Deployment) {
-            let componentPositionCtx = `${this.selectedNode.object.id}.component`;
-            if (!this.selectedNode.node.positions[componentPositionCtx]) {
+            let componentPositionCtx = `${selectedNode.object.id}.component`;
+            if (!selectedNode.node.positions[componentPositionCtx]) {
               if (this.canvas.element) {
                 // const canvasBoundingRect = this.canvas.element.getBoundingClientRect();
                 // const x = canvasBoundingRect.x * 0.5;
                 // const y = canvasBoundingRect.y * 0.5;
                 const request: INodeUpdatePositionRequest = {
-                  nodeId: this.selectedNode.node.id,
+                  nodeId: selectedNode.node.id,
                   contextId: componentPositionCtx,
                   x: `${position.x}`,
                   y: `${position.y}`,
@@ -1339,7 +1348,9 @@ export default Vue.extend({
                 if (reply.error) {
                   emitEditorErrorMessage(reply.error.message);
                 } else {
-                  nodePositionUpdated$.next({ positionCtx: this.positionCtx });
+                  nodePositionUpdated$.next({
+                    positionCtx,
+                  });
                 }
               }
             }
