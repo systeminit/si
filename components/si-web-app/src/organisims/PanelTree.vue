@@ -77,7 +77,7 @@ export default Vue.extend({
             {
               orientation: "column",
               type: "panelContainer",
-              width: 67,
+              width: 60,
               panels: [
                 {
                   name: "schematic",
@@ -98,7 +98,7 @@ export default Vue.extend({
                   type: "panel",
                 },
                 {
-                  name: "schematic",
+                  name: "attribute",
                   type: "panel",
                 },
               ],
