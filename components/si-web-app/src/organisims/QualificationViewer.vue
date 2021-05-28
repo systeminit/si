@@ -8,6 +8,20 @@
       </div>
     </div>
     <div
+      class="relative flex flex-row items-center pt-2 pb-2 pl-6 pr-6 text-base text-white bg-black"
+    >
+      <div class="flex">
+        <button
+          class="pl-1 focus:outline-none disabled:opacity-30"
+          :disabled="!editMode"
+          @click="checkQualifications()"
+        >
+          <RefreshCcwIcon size="1.1x" />
+        </button>
+      </div>
+    </div>
+
+    <div
       v-if="schema"
       class="flex w-full h-full pt-2 overflow-auto background-color "
     >
@@ -108,11 +122,21 @@ import {
   ChevronDownIcon,
   FrownIcon,
   SmileIcon,
+  RefreshCcwIcon,
 } from "vue-feather-icons";
 import _ from "lodash";
 
 import { VueLoading } from "vue-loading-template";
 import QualificationOutput from "@/organisims/QualificationViewer/QualificationOutput.vue";
+import {
+  editMode$,
+  editSession$,
+  system$,
+  workspace$,
+  changeSet$,
+} from "@/observables";
+import { AttributeDal } from "@/api/sdf/dal/attributeDal";
+import { emitEditorErrorMessage } from "@/atoms/PanelEventBus";
 
 interface Data {
   showDescription: Record<string, boolean>;
@@ -142,6 +166,7 @@ export default Vue.extend({
     QualificationOutput,
     FrownIcon,
     SmileIcon,
+    RefreshCcwIcon,
   },
   data(): Data {
     const showDescription: Data["showDescription"] = {};
@@ -173,7 +198,30 @@ export default Vue.extend({
       }
     },
   },
+  subscriptions: function(this: any): Record<string, any> {
+    return {
+      editMode: editMode$,
+      changeSet: changeSet$,
+      editSession: editSession$,
+      system: system$,
+      workspace: workspace$,
+    };
+  },
   methods: {
+    async checkQualifications(this: any): Promise<void> {
+      if (this.changeSet && this.editSession && this.system && this.workspace) {
+        let result = await AttributeDal.checkQualifications({
+          entityId: this.entity.id,
+          changeSetId: this.changeSet.id,
+          editSessionId: this.editSession.id,
+          systemId: this.system.id,
+          workspaceId: this.workspace.id,
+        });
+        if (result.error) {
+          emitEditorErrorMessage(result.error.message);
+        }
+      }
+    },
     qualificationStarting(name: string): boolean {
       const s = _.find(this.starting, ["start", name]);
       if (s) {

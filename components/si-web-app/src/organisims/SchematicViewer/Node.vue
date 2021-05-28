@@ -327,10 +327,14 @@ export default Vue.extend({
   computed: {
     qualificationStatusClass(): Record<string, any> {
       let style: Record<string, any> = {};
-      if (_.find(this.node.qualifications, q => q.qualified == false)) {
-        style["text-red-500"] = true;
+      if (this.node.qualifications.length > 0) {
+        if (_.find(this.node.qualifications, q => q.qualified == false)) {
+          style["text-red-500"] = true;
+        } else {
+          style["text-green-500"] = true;
+        }
       } else {
-        style["text-green-500"] = true;
+        style["text-gray-600"] = true;
       }
       return style;
     },
@@ -359,6 +363,8 @@ export default Vue.extend({
         )
       ) {
         style["text-green-500"] = true;
+      } else {
+        style["text-gray-600"] = true;
       }
       return style;
     },

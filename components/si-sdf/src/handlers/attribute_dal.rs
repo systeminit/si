@@ -184,7 +184,6 @@ pub async fn get_entity(
     Ok(warp::reply::json(&reply))
 }
 
-
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateEntityRequest {
@@ -316,6 +315,88 @@ pub async fn update_entity(
     Ok(warp::reply::json(&reply))
 }
 
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct CheckQualificationsRequest {
+    pub workspace_id: String,
+    pub entity_id: String,
+    pub change_set_id: String,
+    pub edit_session_id: String,
+    pub system_id: Option<String>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct CheckQualificationsReply {
+    pub success: bool,
+}
+
+pub async fn check_qualifications(
+    pg: PgPool,
+    nats_conn: NatsConn,
+    veritech: Veritech,
+    token: String,
+    request: CheckQualificationsRequest,
+) -> Result<impl warp::Reply, warp::reject::Rejection> {
+    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let txn = conn.transaction().await.map_err(HandlerError::from)?;
+
+    let claim = authenticate(&txn, &token).await?;
+    authorize(&txn, &claim.user_id, "attributeDal", "checkQualifications").await?;
+    validate_tenancy(
+        &txn,
+        "workspaces",
+        &request.workspace_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+    validate_tenancy(
+        &txn,
+        "change_sets",
+        &request.change_set_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+    validate_tenancy(
+        &txn,
+        "edit_sessions",
+        &request.edit_session_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+    validate_tenancy(
+        &txn,
+        "entities",
+        &request.entity_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+
+    let entity = Entity::for_head_or_change_set_or_edit_session(
+        &txn,
+        &request.entity_id,
+        Some(&request.change_set_id),
+        Some(&request.edit_session_id),
+    )
+    .await
+    .map_err(HandlerError::from)?;
+    txn.commit().await.map_err(HandlerError::from)?;
+
+    entity
+        .check_qualifications_for_edit_session(
+            &pg,
+            &nats_conn,
+            &veritech,
+            request.system_id,
+            &request.change_set_id,
+            &request.edit_session_id,
+        )
+        .await
+        .map_err(HandlerError::from)?;
+
+    let reply = CheckQualificationsReply { success: true };
+    Ok(warp::reply::json(&reply))
+}
 
 // ----------------------------------------------------------------------------
 // Connections
