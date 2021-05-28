@@ -229,6 +229,40 @@ export async function getInputLabels(
   return reply;
 }
 
+export interface ICheckQualificationsRequest {
+  workspaceId: string;
+  entityId: string;
+  changeSetId: string;
+  editSessionId: string;
+  systemId?: string;
+}
+
+export interface ICheckQualificationsReplySuccess {
+  success: true;
+  error?: never;
+}
+
+export interface ICheckQualificationsReplyFailure {
+  error: SDFError;
+}
+
+export type ICheckQualificationsReply =
+  | ICheckQualificationsReplySuccess
+  | ICheckQualificationsReplyFailure;
+
+export async function checkQualifications(
+  request: ICheckQualificationsRequest,
+): Promise<ICheckQualificationsReply> {
+  let bottle = Bottle.pop("default");
+  let sdf = bottle.container.SDF;
+
+  const reply: ICheckQualificationsReply = await sdf.post(
+    "attributeDal/checkQualifications",
+    request,
+  );
+  return reply;
+}
+
 export const AttributeDal = {
   getEntityList,
   getEntity,
@@ -236,4 +270,5 @@ export const AttributeDal = {
   deleteConnection,
   updateEntity,
   getInputLabels,
+  checkQualifications,
 };

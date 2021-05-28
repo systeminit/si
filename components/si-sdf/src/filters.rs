@@ -192,6 +192,11 @@ pub fn attribute_dal(
             nats_conn.clone(),
             veritech.clone(),
         ))
+        .or(attribute_dal_check_qualifications(
+            pg.clone(),
+            nats_conn.clone(),
+            veritech.clone(),
+        ))
         .boxed()
 }
 
@@ -266,6 +271,24 @@ pub fn attribute_dal_update_entity(
             handlers::attribute_dal::UpdateEntityRequest,
         >())
         .and_then(handlers::attribute_dal::update_entity)
+        .boxed()
+}
+
+pub fn attribute_dal_check_qualifications(
+    pg: PgPool,
+    nats_conn: NatsConn,
+    veritech: Veritech,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("attributeDal" / "checkQualifications")
+        .and(warp::post())
+        .and(with_pg(pg))
+        .and(with_nats_conn(nats_conn))
+        .and(with_veritech(veritech))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::body::json::<
+            handlers::attribute_dal::CheckQualificationsRequest,
+        >())
+        .and_then(handlers::attribute_dal::check_qualifications)
         .boxed()
 }
 
