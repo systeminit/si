@@ -8,7 +8,10 @@ use crate::{
     Resource,
 };
 use crate::{
-    workflow::{SelectionEntry, WorkflowContext, WorkflowError, WorkflowResult, WorkflowRun},
+    workflow::{
+        SelectionEntry, WorkflowContext, WorkflowError, WorkflowResult, WorkflowRun,
+        WorkflowRunState,
+    },
     EdgeKind,
 };
 use crate::{Entity, SiStorable, Veritech, Workspace};
@@ -194,7 +197,7 @@ impl Step {
         nats_conn: &NatsConn,
         veritech: &Veritech,
         workflow_run: &mut WorkflowRun,
-    ) -> WorkflowResult<()> {
+    ) -> WorkflowResult<WorkflowRunStep> {
         workflow_run.ctx.for_step(&pg, self).await?;
         match self {
             Step::Command(s) => s.run(pg, nats_conn, veritech, workflow_run).await,
@@ -317,7 +320,7 @@ impl StepCommand {
         nats_conn: &NatsConn,
         veritech: &Veritech,
         workflow_run: &WorkflowRun,
-    ) -> WorkflowResult<()> {
+    ) -> WorkflowResult<WorkflowRunStep> {
         let mut conn = pg.pool.get().await?;
         let txn = conn.transaction().await?;
         let nats = nats_conn.transaction();
@@ -515,7 +518,7 @@ impl StepCommand {
         txn.commit().await?;
         nats.commit().await?;
 
-        Ok(())
+        Ok(workflow_run_step)
     }
 }
 
@@ -542,7 +545,7 @@ impl StepAction {
         nats_conn: &NatsConn,
         veritech: &Veritech,
         workflow_run: &WorkflowRun,
-    ) -> WorkflowResult<()> {
+    ) -> WorkflowResult<WorkflowRunStep> {
         let mut conn = pg.pool.get().await?;
         let txn = conn.transaction().await?;
         let nats = nats_conn.transaction();
@@ -550,7 +553,9 @@ impl StepAction {
         let mut workflow_run_step =
             WorkflowRunStep::new(&txn, &nats, &workflow_run, &Step::Action(self.clone())).await?;
 
+        let mut had_selections = false;
         for selection in workflow_run.ctx.selection.iter() {
+            had_selections = true;
             if workflow_run.ctx.inputs.is_none() {
                 return Err(WorkflowError::NoInputs);
             }
@@ -586,21 +591,39 @@ impl StepAction {
                 workspace: workflow_run.ctx.workspace.clone(),
             };
 
-            let _workflow_run = Workflow::get_by_name(&txn, workflow_name)
+            let mut workflow_run = Workflow::get_by_name(&txn, workflow_name)
                 .await?
                 .invoke_and_wait(&pg, &nats_conn, &veritech, ctx)
                 .await?;
+
+            workflow_run.refresh(&txn).await?;
+
+            //workflow_run.state
             // How to tell if we failed? Who the fuck nknows? I think we can check the state?
-            workflow_run_step_entity.state = WorkflowRunStepEntityState::Success;
+            workflow_run_step_entity.state = match workflow_run.state {
+                WorkflowRunState::Invoked => WorkflowRunStepEntityState::Running,
+                WorkflowRunState::Running => WorkflowRunStepEntityState::Running,
+                WorkflowRunState::Success => WorkflowRunStepEntityState::Success,
+                WorkflowRunState::Failure => WorkflowRunStepEntityState::Failure,
+                WorkflowRunState::Unknown => WorkflowRunStepEntityState::Unknown,
+            };
             let current_time = Utc::now();
             let unix_timestamp = current_time.timestamp_millis();
             let timestamp = format!("{}", current_time);
             workflow_run_step_entity.end_timestamp = Some(timestamp);
             workflow_run_step_entity.end_unix_timestamp = Some(unix_timestamp);
+            if workflow_run_step_entity.state == WorkflowRunStepEntityState::Failure {
+                workflow_run_step.state = WorkflowRunStepState::Failure;
+            }
             workflow_run_step_entity.save(&txn, &nats).await?;
+            dbg!(&workflow_run_step_entity);
         }
-        if workflow_run_step.state != WorkflowRunStepState::Failure {
+        if workflow_run_step.state == WorkflowRunStepState::Failure {
+            workflow_run_step.state = WorkflowRunStepState::Failure;
+        } else if had_selections {
             workflow_run_step.state = WorkflowRunStepState::Success;
+        } else {
+            workflow_run_step.state = WorkflowRunStepState::Unknown;
         }
         let current_time = Utc::now();
         let unix_timestamp = current_time.timestamp_millis();
@@ -612,7 +635,7 @@ impl StepAction {
         txn.commit().await?;
         nats.commit().await?;
 
-        Ok(())
+        Ok(workflow_run_step)
     }
 }
 
