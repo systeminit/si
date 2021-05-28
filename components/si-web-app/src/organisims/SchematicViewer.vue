@@ -1263,6 +1263,9 @@ export default Vue.extend({
     },
     setNodeLocalPosition(payload: SetNodePositionPayload) {
       if (this.schematic) {
+        if (payload.position.x == 0 && payload.position.y == 0) {
+          return;
+        }
         const position = {
           x: String(payload.position.x),
           y: String(payload.position.y),
@@ -1299,6 +1302,9 @@ export default Vue.extend({
         this.currentSystem
       ) {
         if (this.selectedNode.node.id) {
+          if (position.x == 0 && position.y == 0) {
+            return;
+          }
           const request: INodeUpdatePositionRequest = {
             nodeId: this.selectedNode.node.id,
             contextId: this.positionCtx,
