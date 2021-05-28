@@ -417,11 +417,117 @@ export const kubernetesApply: Workflow = {
   ],
 };
 
+export const serviceTerminate: Workflow = {
+  name: "service:terminate",
+  kind: WorkflowKind.Action,
+  title: "Service Termination",
+  description: "Terminate services",
+  steps: [
+    {
+      kind: StepKind.Action,
+      inputs: {
+        name: { kind: VariableKind.String, value: "terminate" },
+      },
+      selector: {
+        fromProperty: ["implementation"],
+      },
+      forEach: {
+        edgeKind: "deployment",
+        depth: "immediate",
+        direction: "output",
+      },
+    },
+  ],
+};
+
+export const kubernetesServiceTerminate: Workflow = {
+  name: "kubernetesService:terminate",
+  kind: WorkflowKind.Action,
+  title: "Kubernetes Service Termination Implementation",
+  description: "Terminate Kubernetes Objects",
+  steps: [
+    // This is where the kubernetes termination order will go. See
+    // next section!
+  ],
+};
+
+// This order taken from Helm.
+// https://github.com/helm/helm/blob/484d43913f97292648c867b56768775a55e4bba6/pkg/releaseutil/kind_sorter.go/
+//
+// It is published under the Apache license.
+const k8sTerminateOrder = [
+  "k8sAPIService",
+  "k8sIngress",
+  "k8sService",
+  "k8sCronJob",
+  "k8sJob",
+  "k8sStatefulSet",
+  "k8sHorizontalPodAutoscaler",
+  "k8sDeployment",
+  "k8sReplicaSet",
+  "k8sReplicationController",
+  "k8sPod",
+  "k8sDaemonSet",
+  "k8sRoleBindingList",
+  "k8sRoleBinding",
+  "k8sRoleList",
+  "k8sRole",
+  "k8sClusterRoleBindingList",
+  "k8sClusterRoleBinding",
+  "k8sClusterRoleList",
+  "k8sClusterRole",
+  "k8sCustomResourceDefinition",
+  "k8sServiceAccount",
+  "k8sPersistentVolumeClaim",
+  "k8sPersistentVolume",
+  "k8sStorageClass",
+  "k8sConfigMap",
+  "k8sSecret",
+  "k8sPodDisruptionBudget",
+  "k8sPodSecurityPolicy",
+  "k8sLimitRange",
+  "k8sResourceQuota",
+  "k8sNetworkPolicy",
+  "k8sNamespace",
+];
+for (const k8sType of k8sTerminateOrder) {
+  kubernetesServiceTerminate.steps.push({
+    kind: StepKind.Action,
+    inputs: {
+      name: { kind: VariableKind.String, value: "delete" },
+    },
+    selector: {
+      edgeKind: "configures",
+      depth: "all",
+      direction: "input",
+      types: [k8sType],
+    },
+  });
+}
+
+export const kubernetesDelete: Workflow = {
+  name: "kubernetesDelete",
+  kind: WorkflowKind.Action,
+  title: "Kubernetes Delete",
+  description: "Delete some stuff to a Kubernetes Cluster",
+  steps: [
+    {
+      kind: StepKind.Command,
+      inputs: {
+        name: { kind: VariableKind.String, value: "delete" },
+      },
+    },
+  ],
+};
+
 export const workflows: Record<string, Workflow> = {
   serviceDeploy,
+  serviceTerminate,
   applicationDeploy,
   kubernetesServiceDeploy,
+  kubernetesServiceTerminate,
   kubernetesClusterDeploy,
   universalDeploy,
   kubernetesApply,
+  kubernetesDelete,
 };

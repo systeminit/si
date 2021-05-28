@@ -49,6 +49,9 @@ export const qualifications = [
   },
 ];
 
-export const actions = [{ name: "apply" }];
+export const actions = [{ name: "apply" }, { name: "delete" }];
 
-export const commands = [{ name: "apply", description: "kubectl apply" }];
+export const commands = [
+  { name: "apply", description: "kubectl apply" },
+  { name: "delete", description: "kubectl delete" },
+];

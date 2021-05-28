@@ -81,6 +81,8 @@ pub enum WorkflowError {
     NoNameInInputs,
     #[error("Tokio oneshot recv error: {0}")]
     TokioOneshotRecv(#[from] tokio::sync::oneshot::error::RecvError),
+    #[error("Workflow named '{0}' was not found")]
+    WorkflowNotFound(String),
 }
 
 pub type WorkflowResult<T> = Result<T, WorkflowError>;
@@ -522,9 +524,12 @@ impl Workflow {
         let s = match (&entity.entity_type[..], action_name) {
             ("application", "deploy") => "application:deploy",
             ("service", "deploy") => "service:deploy",
+            ("service", "terminate") => "service:terminate",
             ("kubernetesCluster", "deploy") => "kubernetesCluster:deploy",
             ("kubernetesService", "deploy") => "kubernetesService:deploy",
+            ("kubernetesService", "terminate") => "kubernetesService:terminate",
             (_, "apply") => "kubernetesApply",
+            (_, "delete") => "kubernetesDelete",
             (_, _) => "universal:deploy",
         };
         s
@@ -533,7 +538,10 @@ impl Workflow {
     pub async fn get_by_name(txn: &PgTxn<'_>, name: impl AsRef<str>) -> WorkflowResult<Self> {
         let name = name.as_ref();
 
-        let row = txn.query_one(WORKFLOW_GET_BY_NAME, &[&name]).await?;
+        let row = txn
+            .query_opt(WORKFLOW_GET_BY_NAME, &[&name])
+            .await?
+            .ok_or_else(|| WorkflowError::WorkflowNotFound(name.to_string()))?;
         let object: serde_json::Value = row.try_get("object")?;
         let workflow: Self = serde_json::from_value(object)?;
 

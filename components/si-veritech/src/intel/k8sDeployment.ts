@@ -1,8 +1,6 @@
-import { OpSource, SiEntity } from "si-entity/dist/siEntity";
 import Debug from "debug";
 const debug = Debug("veritech:controllers:intel:k8sDeployment");
 import {
-  baseInferProperties,
   baseCheckQualifications,
   baseRunCommands,
   baseSyncResource,
@@ -13,16 +11,12 @@ import {
   InferPropertiesRequest,
 } from "../controllers/inferProperties";
 import {
-  allEntitiesByType,
-  findProperty,
   SetArrayEntryFromAllEntities,
   setArrayEntryFromAllEntities,
   setProperty,
   setPropertyFromEntity,
   setPropertyFromProperty,
 } from "./inferShared";
-import _ from "lodash";
-import { RunCommandCallbacks } from "../controllers/runCommand";
 import { findEntityByType } from "../support";
 import {
   CommandProtocolFinish,
