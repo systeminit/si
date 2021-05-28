@@ -76,6 +76,7 @@ pub use node_position::{NodePosition, NodePositionError};
 pub use organization::{Organization, OrganizationError};
 pub use output_line::{OutputLine, OutputLineStream};
 pub use qualification::{Qualification, QualificationError};
+use rand::Rng;
 pub use resource::{
     Resource, ResourceError, ResourceInternalHealth, ResourceInternalStatus, ResourceResult,
 };
@@ -93,6 +94,8 @@ pub use user::{LoginReply, LoginRequest, SiClaims, User, UserError, UserResult};
 pub use workflow::{Workflow, WorkflowContext, WorkflowError, WorkflowRun};
 pub use workspace::{Workspace, WorkspaceError};
 
+const NAME_CHARSET: &[u8] = b"0123456789";
+
 #[derive(Error, Debug)]
 pub enum ModelError {
     #[error("migration error: {0}")]
@@ -109,7 +112,15 @@ pub fn generate_name(name: Option<String>) -> String {
     if name.is_some() {
         return name.unwrap();
     }
-    let mut name_generator = names::Generator::with_naming(names::Name::Numbered);
-    let name = name_generator.next().unwrap();
-    return name;
+    let mut rng = rand::thread_rng();
+    let unique_id: String = (0..4)
+        .map(|_| {
+            let idx = rng.gen_range(0..NAME_CHARSET.len());
+            NAME_CHARSET[idx] as char
+        })
+        .collect();
+    return format!("si-{}", unique_id);
+    //let mut name_generator = names::Generator::with_naming(names::Name::Numbered);
+    //let name = name_generator.next().unwrap();
+    //return name;
 }
