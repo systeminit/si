@@ -5,20 +5,39 @@
     </div>
 
     <div class="flex w-full h-full ">
-      <div class="w-1/6 py-2 mx-2 ">
-        <ActivitySummary height="40px" :showChartLabels="false" />
+      <div class="w-1/5 py-2 mx-2 ">
+        <ActivitySummary
+          height="40px"
+          :applicationId="applicationEntry.application.id"
+        />
       </div>
 
-      <div class="w-2/6 py-2 mx-2 ">
-        <ServicesSummary :showButton="false" />
+      <div class="w-1/5 py-2 mx-2 ">
+        <ServicesSummary
+          :applicationId="applicationEntry.application.id"
+          :showButton="false"
+        />
       </div>
 
-      <div class="w-2/6 py-2 mx-2 ">
-        <ComputingResourceSummary :showButton="false" />
+      <div class="w-1/5 py-2 mx-2 ">
+        <ComputingResourceSummary
+          :applicationId="applicationEntry.application.id"
+          :showButton="false"
+        />
       </div>
 
-      <div class="w-1/6 py-2 mx-2 ">
-        <ChangesSummary :showSelectedChangesetData="false" />
+      <div class="w-1/5 py-2 mx-2 ">
+        <ProviderSummary
+          :applicationId="applicationEntry.application.id"
+          :showButton="false"
+        />
+      </div>
+
+      <div class="w-1/5 py-2 mx-2 ">
+        <ChangesSummary
+          :applicationId="applicationEntry.application.id"
+          :showSelectedChangesetData="false"
+        />
       </div>
 
       <div class="self-center w-6">
@@ -38,6 +57,7 @@ import ActivitySummary from "@/molecules/ActivitySummary.vue";
 import ServicesSummary from "@/molecules/ServicesSummary.vue";
 import ComputingResourceSummary from "@/molecules/ComputingResourceSummary.vue";
 import ChangesSummary from "@/molecules/ChangesSummary.vue";
+import ProviderSummary from "@/molecules/ProviderSummary.vue";
 import { IApplicationCreateReplySuccess } from "@/api/sdf/dal/applicationDal";
 
 export default Vue.extend({
@@ -56,6 +76,7 @@ export default Vue.extend({
     ServicesSummary,
     ComputingResourceSummary,
     ChangesSummary,
+    ProviderSummary,
   },
   computed: {
     application(): IApplicationCreateReplySuccess["application"] {

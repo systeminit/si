@@ -1,4 +1,5 @@
 import { SDFError } from "@/api/sdf";
+import { refreshActivitySummary$ } from "@/observables";
 import Bottle from "bottlejs";
 import {
   WorkflowRun,

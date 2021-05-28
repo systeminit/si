@@ -585,6 +585,9 @@ pub fn application_dal(
             nats_conn.clone(),
             veritech.clone(),
         ))
+        .or(application_dal_activity_summary(pg.clone()))
+        .or(application_dal_changes_summary(pg.clone()))
+        .or(application_dal_resource_summary(pg.clone()))
         .boxed()
 }
 
@@ -597,6 +600,42 @@ pub fn application_dal_list_applications(pg: PgPool) -> BoxedFilter<(impl warp::
             handlers::application_dal::ListApplicationsRequest,
         >())
         .and_then(handlers::application_dal::list_applications)
+        .boxed()
+}
+
+pub fn application_dal_activity_summary(pg: PgPool) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("applicationDal" / "activitySummary")
+        .and(warp::get())
+        .and(with_pg(pg))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::query::<
+            handlers::application_dal::ActivitySummaryRequest,
+        >())
+        .and_then(handlers::application_dal::activity_summary)
+        .boxed()
+}
+
+pub fn application_dal_changes_summary(pg: PgPool) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("applicationDal" / "changesSummary")
+        .and(warp::get())
+        .and(with_pg(pg))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::query::<
+            handlers::application_dal::ChangesSummaryRequest,
+        >())
+        .and_then(handlers::application_dal::changes_summary)
+        .boxed()
+}
+
+pub fn application_dal_resource_summary(pg: PgPool) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("applicationDal" / "resourceSummary")
+        .and(warp::get())
+        .and(with_pg(pg))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::query::<
+            handlers::application_dal::ResourceSummaryRequest,
+        >())
+        .and_then(handlers::application_dal::resource_summary)
         .boxed()
 }
 

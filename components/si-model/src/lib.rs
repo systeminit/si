@@ -46,6 +46,7 @@ pub mod si_storable;
 pub mod support;
 pub mod system;
 pub mod user;
+pub mod visualization;
 pub mod workflow;
 pub mod workspace;
 
@@ -91,6 +92,9 @@ pub use support::lodash::{self, LodashError};
 pub use support::veritech::{Veritech, VeritechError};
 pub use system::{SystemError, SystemResult};
 pub use user::{LoginReply, LoginRequest, SiClaims, User, UserError, UserResult};
+pub use visualization::{
+    ActivitySummary, ChangesSummary, ResourceSummary, VisualizationError, VisualizationResult,
+};
 pub use workflow::{Workflow, WorkflowContext, WorkflowError, WorkflowRun};
 pub use workspace::{Workspace, WorkspaceError};
 

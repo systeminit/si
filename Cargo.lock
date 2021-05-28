@@ -260,6 +260,7 @@ dependencies = [
  "libc",
  "num-integer",
  "num-traits 0.2.12",
+ "serde 1.0.123",
  "time",
  "winapi",
 ]
@@ -2431,6 +2432,7 @@ name = "si-sdf"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "clap",
  "deadpool-postgres",
  "futures",

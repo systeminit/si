@@ -21,20 +21,12 @@
         </button>
       </div>
 
-      <div class="flex" v-if="!showDetails">
-        <div class="flex items-center text-xs font-light text-gray-300">
-          Services: 5
-        </div>
-        <div class="flex items-center ml-2 text-xs font-light text-gray-300">
-          Resources: 7
-        </div>
+      <MenuSummary
+        :applicationId="application.id"
+        v-if="!showDetails && application"
+      />
 
-        <div class="flex items-center ml-2 text-xs font-light text-gray-300">
-          Changes: +2 -7
-        </div>
-      </div>
-
-      <div class="flex mr-2" v-show="!showDetails">
+      <div class="flex mr-2" v-if="!showDetails">
         <EditorMenuBar
           :workspace="currentWorkspace"
           :application="application"
@@ -44,26 +36,33 @@
     <div
       class="flex w-full h-full pb-2 details-panel-background"
       data-cy="application-details-extended"
-      v-show="showDetails"
+      v-if="showDetails"
     >
-      <div class="w-1/6 h-full py-2 mx-2 ">
-        <ActivitySummary />
+      <div class="w-1/5 h-full py-2 mx-2 ">
+        <ActivitySummary :applicationId="application.id" v-if="application" />
       </div>
 
-      <div class="w-2/6 h-full py-2 mx-2 ">
-        <ServicesSummary />
+      <div class="w-1/5 h-full py-2 mx-2 ">
+        <ServicesSummary :applicationId="application.id" v-if="application" />
       </div>
 
-      <div class="w-2/6 h-full py-2 mx-2 ">
-        <ComputingResourceSummary />
+      <div class="w-1/5 h-full py-2 mx-2 ">
+        <ComputingResourceSummary
+          :applicationId="application.id"
+          v-if="application"
+        />
       </div>
 
-      <div class="w-1/6 h-full py-2 mx-2 ">
-        <ChangesSummary />
+      <div class="w-1/5 h-full py-2 mx-2 ">
+        <ProviderSummary :applicationId="application.id" v-if="application" />
+      </div>
+
+      <div class="w-1/5 h-full py-2 mx-2 ">
+        <ChangesSummary :applicationId="application.id" v-if="application" />
       </div>
     </div>
 
-    <div class="flex justify-end mt-1 mr-2" v-show="showDetails">
+    <div class="flex justify-end mt-1 mr-2" v-if="showDetails">
       <div class="flex items-center justify-end">
         <EditorMenuBar
           :workspace="currentWorkspace"
@@ -85,7 +84,9 @@ import EditorMenuBar from "@/organisims/EditorMenuBar.vue";
 import ActivitySummary from "@/molecules/ActivitySummary.vue";
 import ServicesSummary from "@/molecules/ServicesSummary.vue";
 import ComputingResourceSummary from "@/molecules/ComputingResourceSummary.vue";
+import ProviderSummary from "@/molecules/ProviderSummary.vue";
 import ChangesSummary from "@/molecules/ChangesSummary.vue";
+import MenuSummary from "@/molecules/MenuSummary.vue";
 
 import { Entity } from "@/api/sdf/model/entity";
 import { workspace$, editMode$, changeSet$, editSession$ } from "@/observables";
@@ -106,6 +107,7 @@ export default Vue.extend({
     application: { type: Object as PropType<Entity> },
   },
   components: {
+    MenuSummary,
     EditorMenuBar,
     ChevronRightIcon,
     ChevronDownIcon,
@@ -114,6 +116,7 @@ export default Vue.extend({
     ServicesSummary,
     ComputingResourceSummary,
     ChangesSummary,
+    ProviderSummary,
     // UploadIcon,
     // SiButton,
   },

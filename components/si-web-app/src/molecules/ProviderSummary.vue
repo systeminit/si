@@ -1,22 +1,12 @@
 <template>
   <SummaryCard>
-    <template v-slot:title>Computing Resources</template>
+    <template v-slot:title>Providers</template>
 
     <template v-slot:content>
       <div class="flex flex-col w-full h-full">
         <div class="flex flex-row flex-wrap w-full h-full mx-1">
-          <div
-            class="mr-2"
-            v-for="resource in computingResourcesData"
-            :key="resource.id"
-          >
+          <div class="mr-2" v-for="resource in providerData" :key="resource.id">
             <ResourceVisualization :resource="resource" />
-          </div>
-        </div>
-
-        <div class="flex justify-end mt-2" v-show="showButton">
-          <div class="flex items-center justify-center button">
-            <div class="mx-1 align-middle button-text">Sync</div>
           </div>
         </div>
       </div>
@@ -46,27 +36,23 @@ import {
 import { emitEditorErrorMessage } from "@/atoms/PanelEventBus";
 
 interface IData {
-  computingResourcesData: IResourceSummaryReplySuccess["resources"];
+  providerData: IResourceSummaryReplySuccess["resources"];
 }
 
 export default Vue.extend({
-  name: "ComputingResourceSummary",
+  name: "ProviderSummary",
   components: {
     ResourceVisualization,
     SummaryCard,
   },
   props: {
-    showButton: {
-      type: Boolean,
-      default: false,
-    },
     applicationId: {
       type: String,
     },
   },
   data(): IData {
     return {
-      computingResourcesData: [],
+      providerData: [],
     };
   },
   subscriptions(): Record<string, any> {
@@ -79,20 +65,20 @@ export default Vue.extend({
         tap(r => {
           let isUpdated = false;
           // @ts-ignore
-          if (this.computingResourcesData) {
+          if (this.providerData) {
             // @ts-ignore
-            for (let x = 0; x < this.computingResourcesData.length; x++) {
+            for (let x = 0; x < this.providerData.length; x++) {
               // @ts-ignore
-              if (r.id == this.computingResourcesData[x].id) {
+              if (r.id == this.providerData[x].id) {
                 isUpdated = true;
                 // @ts-ignore
-                Vue.set(this.computingResourcesData, x, r);
+                Vue.set(this.providerData, x, r);
               }
             }
             if (!isUpdated) {
-              if (r.entityType == "kubernetesCluster") {
+              if (r.entityType == "cloudProvider") {
                 // @ts-ignore
-                this.computingResourcesData.push(r);
+                this.providerData.push(r);
               }
             }
           }
@@ -110,13 +96,13 @@ export default Vue.extend({
               applicationId,
               workspaceId: workspace.id,
               systemId: system.id,
-              kind: ResourceSummaryKind.ComputingResources,
+              kind: ResourceSummaryKind.Providers,
             });
             if (reply.error) {
               emitEditorErrorMessage(reply.error.message);
             } else {
               // @ts-ignore
-              this.computingResourcesData = reply.resources;
+              this.providerData = reply.resources;
             }
           }
         }),

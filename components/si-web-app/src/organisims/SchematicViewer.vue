@@ -130,6 +130,7 @@ import {
   schematicUpdated$,
   nodePositionUpdated$,
   edgeCreating$,
+  refreshChangesSummary$,
 } from "@/observables";
 import { SiEntity } from "si-entity";
 import { Entity } from "@/api/sdf/model/entity";

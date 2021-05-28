@@ -43,6 +43,7 @@ url = "2.2.0"
 regex = "1.4.2"
 serde_yaml = "0.8.17"
 deadpool-postgres = "0.7.0"
+chrono = { version = "0.4.19", features = ["serde"] }
 
 [dev-dependencies]
 lazy_static = "1.4"

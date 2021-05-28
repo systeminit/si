@@ -13,10 +13,10 @@
 import Vue, { PropType } from "vue";
 
 import {
-  ComputingResource,
   ResourceState,
   ResourceHealth,
 } from "@/api/visualization/computingResourcesData";
+import { Resource, ResourceInternalHealth } from "si-entity";
 
 /*
   User should be able to configure what is displayed on the service visualization
@@ -26,41 +26,31 @@ export default Vue.extend({
   name: "ResourceVisualization",
   components: {},
   props: {
-    data: {
-      type: Object as PropType<ComputingResource>,
+    resource: {
+      type: Object as PropType<Resource>,
     },
   },
   computed: {
     state(): ResourceState {
-      for (let resource of this.data.resources) {
-        if (resource.state == ResourceState.Available) {
-          return ResourceState.Available;
-        }
+      if (this.resource.state == "error" || this.resource.state == "unknown") {
+        return ResourceState.Unavailable;
+      } else {
+        return ResourceState.Available;
       }
-      return ResourceState.Unavailable;
     },
     health(): ResourceHealth {
-      let healthy = 0;
-      let unhealthy = 0;
-      let available = 0;
-
-      for (let resource of this.data.resources) {
-        if (resource.state == ResourceState.Available) {
-          available++;
-        }
-        if (resource.health == ResourceHealth.Healthy) {
-          healthy++;
-        } else if (resource.health == ResourceHealth.Unhealthy) {
-          unhealthy++;
-        }
-      }
-
-      if (healthy === available) {
+      if (this.resource.internalHealth == ResourceInternalHealth.Ok) {
         return ResourceHealth.Healthy;
-      } else if (unhealthy === available) {
-        return ResourceHealth.Unhealthy;
-      } else {
+      } else if (
+        this.resource.internalHealth == ResourceInternalHealth.Warning
+      ) {
         return ResourceHealth.Degraded;
+      } else if (
+        this.resource.internalHealth == ResourceInternalHealth.Unknown
+      ) {
+        return ResourceHealth.Unavailable;
+      } else {
+        return ResourceHealth.Unhealthy;
       }
     },
   },

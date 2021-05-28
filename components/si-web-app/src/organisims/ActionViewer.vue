@@ -102,6 +102,7 @@ import {
   workflowRuns$,
   workflowRunSteps$,
   workflowRunStepEntities$,
+  refreshActivitySummary$,
 } from "@/observables";
 import { emitEditorErrorMessage } from "@/atoms/PanelEventBus";
 import { combineLatest } from "rxjs";
@@ -271,6 +272,7 @@ export default Vue.extend({
         if (reply.error) {
           emitEditorErrorMessage(reply.error.message);
         } else {
+          refreshActivitySummary$.next(true);
           //this.workflowRuns.unshift({
           //  workflowRun: reply.workflowRun,
           //  steps: [],

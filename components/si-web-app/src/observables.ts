@@ -397,3 +397,7 @@ export const restoreAttributePanelState$ = new ReplaySubject<
 >();
 
 export const refreshSecretList$ = new BehaviorSubject<true>(true);
+
+export const refreshChangesSummary$ = new BehaviorSubject<true>(true);
+export const refreshActivitySummary$ = new BehaviorSubject<true>(true);
+export const refreshResourceSummary$ = new BehaviorSubject<true>(true);

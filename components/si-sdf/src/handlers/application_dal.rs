@@ -1,8 +1,10 @@
 use serde::{Deserialize, Serialize};
 use si_data::{NatsConn, PgPool};
 use si_model::{
-    application, ApplicationListEntry, Entity, Veritech, Workflow, WorkflowContext, WorkflowRun,
-    Workspace,
+    application,
+    visualization::{self, ResourceSummary},
+    ActivitySummary, ApplicationListEntry, ChangesSummary, Entity, Veritech, Workflow,
+    WorkflowContext, WorkflowRun, Workspace,
 };
 
 use crate::handlers::{authenticate, authorize, validate_tenancy, HandlerError};
@@ -179,6 +181,158 @@ pub async fn deploy_services(
     nats.commit().await.map_err(HandlerError::from)?;
 
     let reply = DeployServicesReply { workflow_run };
+
+    Ok(warp::reply::json(&reply))
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ActivitySummaryRequest {
+    pub workspace_id: String,
+    pub application_id: String,
+}
+
+pub type ActivitySummaryReply = ActivitySummary;
+
+pub async fn activity_summary(
+    pg: PgPool,
+    token: String,
+    request: ActivitySummaryRequest,
+) -> Result<impl warp::Reply, warp::reject::Rejection> {
+    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let txn = conn.transaction().await.map_err(HandlerError::from)?;
+
+    let claim = authenticate(&txn, &token).await?;
+    authorize(&txn, &claim.user_id, "applicationDal", "activitySummary").await?;
+    validate_tenancy(
+        &txn,
+        "workspaces",
+        &request.workspace_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+    validate_tenancy(
+        &txn,
+        "entities",
+        &request.application_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+
+    let reply = visualization::activity_summary(&txn, &request.application_id)
+        .await
+        .map_err(HandlerError::from)?;
+
+    txn.commit().await.map_err(HandlerError::from)?;
+
+    Ok(warp::reply::json(&reply))
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangesSummaryRequest {
+    pub workspace_id: String,
+    pub application_id: String,
+    pub change_set_id: Option<String>,
+}
+
+pub type ChangesSummaryReply = ChangesSummary;
+
+pub async fn changes_summary(
+    pg: PgPool,
+    token: String,
+    request: ChangesSummaryRequest,
+) -> Result<impl warp::Reply, warp::reject::Rejection> {
+    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let txn = conn.transaction().await.map_err(HandlerError::from)?;
+
+    let claim = authenticate(&txn, &token).await?;
+    authorize(&txn, &claim.user_id, "applicationDal", "activitySummary").await?;
+    validate_tenancy(
+        &txn,
+        "workspaces",
+        &request.workspace_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+    validate_tenancy(
+        &txn,
+        "entities",
+        &request.application_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+
+    let reply =
+        visualization::changes_summary(&txn, &request.application_id, request.change_set_id)
+            .await
+            .map_err(HandlerError::from)?;
+
+    txn.commit().await.map_err(HandlerError::from)?;
+
+    Ok(warp::reply::json(&reply))
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub enum ResourceSummaryKind {
+    Service,
+    ComputingResources,
+    Providers,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ResourceSummaryRequest {
+    pub workspace_id: String,
+    pub application_id: String,
+    pub system_id: String,
+    pub kind: ResourceSummaryKind,
+}
+
+pub type ResourceSummaryReply = ResourceSummary;
+
+pub async fn resource_summary(
+    pg: PgPool,
+    token: String,
+    request: ResourceSummaryRequest,
+) -> Result<impl warp::Reply, warp::reject::Rejection> {
+    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let txn = conn.transaction().await.map_err(HandlerError::from)?;
+
+    let claim = authenticate(&txn, &token).await?;
+    authorize(&txn, &claim.user_id, "applicationDal", "resourceSummary").await?;
+    validate_tenancy(
+        &txn,
+        "workspaces",
+        &request.workspace_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+    validate_tenancy(
+        &txn,
+        "entities",
+        &request.application_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+
+    let entity_types = match request.kind {
+        ResourceSummaryKind::Service => vec!["service"],
+        ResourceSummaryKind::ComputingResources => vec!["kubernetesCluster"],
+        ResourceSummaryKind::Providers => vec!["cloudProvider"],
+    };
+
+    let reply = visualization::resource_summary(
+        &txn,
+        &request.application_id,
+        &request.system_id,
+        entity_types,
+    )
+    .await
+    .map_err(HandlerError::from)?;
+
+    txn.commit().await.map_err(HandlerError::from)?;
 
     Ok(warp::reply::json(&reply))
 }
