@@ -1,11 +1,11 @@
 <template>
-  <div class="w-full h-full" ref="cm" />
+  <div class="w-full h-full CodeMirror" ref="cm" />
 </template>
 
 <style scoped>
-/* .CodeMirror {
-  height: 100%;
-} */
+.CodeMirror {
+  font-size: 12px;
+}
 </style>
 
 <script lang="ts">
