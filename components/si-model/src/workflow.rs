@@ -8,8 +8,8 @@ use tokio::sync::oneshot;
 use si_data::{NatsConn, NatsTxn, NatsTxnError, PgPool, PgTxn};
 
 use crate::{
-    workflow::selector::SelectionEntry, EdgeError, Entity, LodashError, MinimalStorable,
-    ResourceError, SiStorable, Veritech, VeritechError, Workspace,
+    workflow::selector::SelectionEntry, workflow::step::WorkflowRunStepState, EdgeError, Entity,
+    LodashError, MinimalStorable, ResourceError, SiStorable, Veritech, VeritechError, Workspace,
 };
 
 const WORKFLOW_GET_BY_NAME: &str = include_str!("./queries/workflow_get_by_name.sql");
@@ -83,6 +83,8 @@ pub enum WorkflowError {
     TokioOneshotRecv(#[from] tokio::sync::oneshot::error::RecvError),
     #[error("Workflow named '{0}' was not found")]
     WorkflowNotFound(String),
+    #[error("The step failed")]
+    WorkflowStepFailed,
 }
 
 pub type WorkflowResult<T> = Result<T, WorkflowError>;
@@ -321,7 +323,13 @@ impl WorkflowRun {
         let mut final_error: Option<WorkflowError> = None;
         for step in self.data.steps() {
             match step.run(&pg, &nats_conn, &veritech, &mut self).await {
-                Ok(_) => {}
+                Ok(workflow_run_step) => {
+                    if workflow_run_step.state == WorkflowRunStepState::Failure {
+                        final_error = Some(WorkflowError::WorkflowStepFailed);
+                        final_state = WorkflowRunState::Failure;
+                        break;
+                    }
+                }
                 Err(e) => {
                     final_error = Some(e);
                     final_state = WorkflowRunState::Failure;
@@ -336,6 +344,9 @@ impl WorkflowRun {
         self.end_timestamp = Some(timestamp);
         self.end_unix_timestamp = Some(unix_timestamp);
         self.state = final_state;
+        if final_error.is_some() {
+            dbg!(&final_error);
+        }
 
         let txn = conn.transaction().await?;
         let nats = nats_conn.transaction();
@@ -361,6 +372,21 @@ impl WorkflowRun {
         let updated_result: serde_json::Value = row.try_get("object")?;
         nats.publish(&updated_result).await?;
 
+        let mut updated: Self = serde_json::from_value(updated_result)?;
+        std::mem::swap(self, &mut updated);
+        Ok(())
+    }
+
+    pub async fn refresh(&mut self, txn: &PgTxn<'_>) -> WorkflowResult<()> {
+        let json = serde_json::to_value(&self)?;
+
+        let row = txn
+            .query_one(
+                "SELECT obj AS object FROM workflow_runs WHERE si_id = $1",
+                &[&self.id],
+            )
+            .await?;
+        let updated_result: serde_json::Value = row.try_get("object")?;
         let mut updated: Self = serde_json::from_value(updated_result)?;
         std::mem::swap(self, &mut updated);
         Ok(())

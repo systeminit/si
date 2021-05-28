@@ -7,7 +7,7 @@
       <div class="flex items-center justify-between px-2 py-1 title-bar">
         <div class="flex flex-row items-center text-sm">
           <div>
-            {{ formatName(workflowRun.data.name) }}
+            {{ workflowRun.data.title }}
           </div>
 
           <div

@@ -396,7 +396,13 @@ impl Selector {
                     &SelectorDirection::Output => edge.head_vertex.object_id,
                 };
                 let selected_entry = SelectionEntry::new(&txn, &edge_object_id, &system).await?;
-                results.push(selected_entry);
+                if results
+                    .iter()
+                    .find(|se| se.entity.id == selected_entry.entity.id)
+                    .is_none()
+                {
+                    results.push(selected_entry);
+                }
             }
         // Or the current entity is the selected target
         } else {

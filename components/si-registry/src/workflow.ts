@@ -241,14 +241,14 @@ export const universalDeploy: Workflow = {
   title: "Universal Deploy",
   description: "Deploy Things!! so fun!",
   steps: [
-    {
-      kind: StepKind.Command,
-      inputs: {
-        name: { kind: VariableKind.String, value: "universal:deploy" },
-      },
-      strategy: { kind: VariableKind.String, value: "linear" },
-      failIfMissing: { kind: VariableKind.Bool, value: false },
-    },
+    //{
+    //  kind: StepKind.Command,
+    //  inputs: {
+    //    name: { kind: VariableKind.String, value: "universal:deploy" },
+    //  },
+    //  strategy: { kind: VariableKind.String, value: "linear" },
+    //  failIfMissing: { kind: VariableKind.Bool, value: false },
+    //},
   ],
 };
 
@@ -403,7 +403,7 @@ export const kubernetesClusterDeploy: Workflow = {
 };
 
 export const kubernetesApply: Workflow = {
-  name: "kubernetesApply",
+  name: "kubernetes:apply",
   kind: WorkflowKind.Action,
   title: "Kubernetes Apply",
   description: "Apply some stuff to a Kubernetes Cluster",

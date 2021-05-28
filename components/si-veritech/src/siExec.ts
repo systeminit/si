@@ -35,7 +35,7 @@ export async function siExecStream(
         output: {
           outputLine: `running command; cmd="${execaFile} ${execaArgs?.join(
             " ",
-          )}"`,
+          )}"\n`,
         },
       },
     }),

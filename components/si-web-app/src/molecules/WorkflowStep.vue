@@ -2,10 +2,33 @@
   <div class="flex flex-col pl-4 pr-2 background">
     <div
       class="flex flex-row items-center justify-between my-1 text-xs title-bar"
-      :class="titleClasses()"
+      :class="titleClasses"
     >
       <div class="flex flex-row">
-        <div>{{ step.step.kind }} {{ step.step.inputs.name.value }}</div>
+        <div>
+          {{ step.step.kind }} {{ step.step.inputs.name.value }}
+          <span v-if="step.step.selector && step.step.selector.types"
+            >for {{ step.step.selector.types.join(", ") }}
+          </span>
+          <span
+            v-else-if="
+              step.step.selector &&
+                step.step.selector.direction == 'output' &&
+                step.step.selector.edgeKind == 'deployment'
+            "
+          >
+            for deployment edges
+          </span>
+          <span
+            v-else-if="
+              step.step.selector &&
+                step.step.selector.fromProperty &&
+                step.step.selector.fromProperty[0] == 'implementation'
+            "
+          >
+            for implementation edges
+          </span>
+        </div>
       </div>
 
       <button @click="toggleSummary()" class="ml-2 focus:outline-none">
@@ -68,17 +91,23 @@ export default Vue.extend({
       isSummaryVisible: this.expanded,
     };
   },
-  methods: {
+  computed: {
     titleClasses(): Record<string, any> {
       let classes: Record<string, any> = {};
 
       if (this.step.state == "success") {
         classes["state-succeeded"] = true;
+      } else if (this.step.state == "running") {
+        classes["state-running"] = true;
+      } else if (this.step.state == "unknown") {
+        classes["text-gray-600"] = true;
       } else {
         classes["state-failed"] = true;
       }
       return classes;
     },
+  },
+  methods: {
     toggleSummary() {
       this.isSummaryVisible = !this.isSummaryVisible;
     },
