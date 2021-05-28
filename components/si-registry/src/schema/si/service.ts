@@ -71,7 +71,7 @@ const service: RegistryEntry = {
       },
     },
   ],
-  actions: [{ name: "deploy" }],
+  actions: [{ name: "deploy" }, { name: "terminate" }],
 };
 
 export default service;

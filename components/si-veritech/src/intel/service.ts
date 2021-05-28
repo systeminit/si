@@ -6,7 +6,6 @@ import {
 import { SiCtx } from "../siCtx";
 import WebSocket from "ws";
 import _ from "lodash";
-import { findEntityByType } from "../support";
 
 export async function syncResource(
   ctx: typeof SiCtx,

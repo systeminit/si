@@ -1,11 +1,12 @@
+import Debug from "debug";
+const debug = Debug("veritech:controllers:intel:k8sShared");
+
 import { OpSource, SiEntity } from "si-entity/dist/siEntity";
 import { Qualification } from "si-registry";
 import {
   InferPropertiesReply,
   InferPropertiesRequest,
 } from "../controllers/inferProperties";
-import Debug from "debug";
-const debug = Debug("veritech:controllers:intel:k8sNamespace");
 import {
   CheckQualificationsItem,
   CheckQualificationsRequest,
@@ -17,8 +18,6 @@ import {
   awsKubeConfigPath,
   azureKubeConfigPath,
   findEntityByType,
-  TempFile,
-  TempDir,
   writeKubernetesYaml,
 } from "../support";
 import {
@@ -31,6 +30,8 @@ import {
   ResourceInternalStatus,
   SubResource,
 } from "si-entity";
+
+const NS_TYPE = "k8sNamespace";
 
 export function baseInferProperties(
   request: InferPropertiesRequest,
@@ -144,12 +145,9 @@ export const baseRunCommands: RunCommandCallbacks = {
           "kubectl",
           [
             "apply",
-            "-o",
-            "json",
-            "--kubeconfig",
-            `${kubeConfigDir.path}/config`,
-            "-f",
-            kubeYaml.path,
+            "--output=json",
+            `--kubeconfig=${kubeConfigDir.path}/config`,
+            `--filename=${kubeYaml.path}`,
           ],
           { reject: false },
         );
@@ -177,15 +175,81 @@ export const baseRunCommands: RunCommandCallbacks = {
           "kubectl",
           [
             "apply",
-            "-o",
-            "json",
-            "--kubeconfig",
-            `${kubeConfigDir.path}/config`,
-            "-f",
-            kubeYaml.path,
+            "--output=json",
+            `--kubeconfig=${kubeConfigDir.path}/config`,
+            `--filename=${kubeYaml.path}`,
           ],
           { reject: false },
         );
+        if (result.exitCode != 0) {
+          debug("you failed!");
+          debug(result.all);
+        } else {
+          debug("you worked!");
+          debug(result.all);
+        }
+      } else {
+        await ctx.execStream(ws, "echo", ["no code, so no apply!"]);
+      }
+    }
+  },
+  delete: async function (ctx, req, ws) {
+    debug("deleting!");
+    const awsEksCluster = findEntityByType(req, "awsEksCluster");
+    if (awsEksCluster) {
+      const kubeConfigDir = await awsKubeConfigPath(req);
+      const code = req.entity.getCode(req.system.id);
+      if (code) {
+        let args = ["delete", `--kubeconfig=${kubeConfigDir.path}/config`];
+        if (req.entity.entityType != NS_TYPE) {
+          const connectedNamespace = findEntityByType(req, NS_TYPE);
+          if (connectedNamespace) {
+            args.push(
+              `--namespace=${k8sName(connectedNamespace, req.system.id)}`,
+            );
+          }
+        }
+        args = args.concat([
+          k8sObjTypeFromEntityType(req.entity.entityType),
+          k8sName(req.entity, req.system.id),
+        ]);
+
+        const result = await ctx.execStream(ws, "kubectl", args, {
+          reject: false,
+        });
+        if (result.exitCode != 0) {
+          debug("you failed!");
+          debug(result.all);
+        } else {
+          debug("you worked!");
+          debug(result.all);
+        }
+      } else {
+        await ctx.execStream(ws, "echo", ["no code, so no delete!"]);
+      }
+    }
+    const azureAksCluster = findEntityByType(req, "azureAksCluster");
+    if (azureAksCluster) {
+      const kubeConfigDir = await azureKubeConfigPath(req);
+      const code = req.entity.getCode(req.system.id);
+      if (code) {
+        let args = ["delete", `--kubeconfig=${kubeConfigDir.path}/config`];
+        if (req.entity.entityType != NS_TYPE) {
+          const connectedNamespace = findEntityByType(req, NS_TYPE);
+          if (connectedNamespace) {
+            args.push(
+              `--namespace=${k8sName(connectedNamespace, req.system.id)}`,
+            );
+          }
+        }
+        args = args.concat([
+          k8sObjTypeFromEntityType(req.entity.entityType),
+          k8sName(req.entity, req.system.id),
+        ]);
+
+        const result = await ctx.execStream(ws, "kubectl", args, {
+          reject: false,
+        });
         if (result.exitCode != 0) {
           debug("you failed!");
           debug(result.all);
@@ -316,4 +380,81 @@ export async function baseSyncResource(
     response.error = "no cluster attached";
   }
   return response;
+}
+
+function k8sObjTypeFromEntityType(entityType: string): string {
+  switch (entityType) {
+    case "k8sNamespace":
+      return "namespaces";
+    case "k8sNetworkPolicy":
+      return "networkpolicies.networking.k8s.io";
+    case "k8sResourceQuota":
+      return "resourcequotas";
+    case "k8sLimitRange":
+      return "limitranges";
+    case "k8sPodSecurityPolicy":
+      return "podsecuritypolicies.policy";
+    case "k8sPodDisruptionBudget":
+      return "poddisruptionbudgets.policy";
+    case "k8sSecret":
+      return "secrets";
+    case "k8sConfigMap":
+      return "configmaps";
+    case "k8sStorageClass":
+      return "storageclasses.storage.k8s.io";
+    case "k8sPersistentVolume":
+      return "persistentvolumes";
+    case "k8sPersistentVolumeClaim":
+      return "persistentvolumeclaims";
+    case "k8sServiceAccount":
+      return "serviceaccounts";
+    case "k8sCustomResourceDefinition":
+      return "customresourcedefinitions.apiextensions.k8s.io";
+    case "k8sClusterRole":
+      return "clusterroles.rbac.authorization.k8s.io";
+    case "k8sClusterRoleBinding":
+      return "clusterrolebindings.rbac.authorization.k8s.io";
+    case "k8sRole":
+      return "roles.rbac.authorization.k8s.io";
+    case "k8sRoleBinding":
+      return "rolebindings.rbac.authorization.k8s.io";
+    case "k8sService":
+      return "services";
+    case "k8sDaemonSet":
+      return "daemonsets.apps";
+    case "k8sPod":
+      return "pods";
+    case "k8sReplicationController":
+      return "replicationcontrollers";
+    case "k8sReplicaSet":
+      return "replicasets.apps";
+    case "k8sDeployment":
+      return "deployments.apps";
+    case "k8sHorizontalPodAutoscaler":
+      return "horizontalpodautoscalers.autoscaling";
+    case "k8sStatefulSet":
+      return "statefulsets.apps";
+    case "k8sJob":
+      return "jobs.batch";
+    case "k8sCronJob":
+      return "cronjobs.batch";
+    case "k8sIngress":
+      return "ingresses.networking.k8s.io";
+    case "k8sAPIService":
+      return "apiservices.apiregistration.k8s.io";
+
+    case "k8sClusterRoleList":
+    case "k8sClusterRoleBindingList":
+    case "k8sRoleList":
+    case "k8sRoleBindingList":
+    default:
+      throw Error(`Unknown k8s type name for entityType: ${entityType}`);
+  }
+}
+
+function k8sName(entity: SiEntity, systemId: string): string {
+  return entity.getProperty({
+    system: systemId,
+    path: ["metadata", "name"],
+  });
 }
