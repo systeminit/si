@@ -112,6 +112,8 @@ import {
   workflowRuns$,
   resources$,
   entityQualifications$,
+  nodeDeleted$,
+  refreshSchematic$,
 } from "@/observables";
 import { combineLatest, of, BehaviorSubject } from "rxjs";
 import { switchMap, pluck, tap } from "rxjs/operators";
@@ -210,7 +212,7 @@ export default Vue.extend({
       ),
     );
 
-    const refreshSchematic$ = new BehaviorSubject<boolean>(true);
+    const internalRefreshSchematic$ = new BehaviorSubject<boolean>(true);
 
     let schematicUpdateCallback$ = schematicUpdated$.pipe(
       tap(payload => {
@@ -228,6 +230,7 @@ export default Vue.extend({
       changeSet$,
       nodePositionUpdated$,
       edgeDeleted$,
+      internalRefreshSchematic$,
       refreshSchematic$,
     ).pipe(
       switchMap(
@@ -239,6 +242,7 @@ export default Vue.extend({
           changeSet,
           _nodePositionUpdated,
           _edgeDeleted,
+          _internalRefreshSchematic,
           _refreshSchematic,
         ]) => {
           if (
@@ -337,7 +341,18 @@ export default Vue.extend({
             this.schematic.nodes[payload.nodeId]
           ) {
             this.schematic.nodes[payload.nodeId].object.name = payload.newValue;
-            refreshSchematic$.next(true);
+            internalRefreshSchematic$.next(true);
+          }
+        }),
+      ),
+      nodeDeleted: nodeDeleted$.pipe(
+        tap(payload => {
+          if (
+            payload &&
+            this.schematic &&
+            this.schematic.nodes[payload.nodeId]
+          ) {
+            internalRefreshSchematic$.next(true);
           }
         }),
       ),

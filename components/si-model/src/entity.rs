@@ -33,6 +33,16 @@ pub enum EntityError {
     SerdeJson(#[from] serde_json::Error),
     #[error("not found")]
     NotFound,
+    #[error("entity {0} not found for edit session {1}")]
+    NotFoundForEditSession(String, String),
+    #[error("entity {0} not found for change set {1}")]
+    NotFoundForChangeSet(String, String),
+    #[error("entity {0} not found for head")]
+    NotFoundForHead(String),
+    #[error("entity {0} not found for head or change set ({1:?})")]
+    NotFoundForHeadOrChangeSet(String, Option<String>),
+    #[error("entity {0} not found for head or change set ({1:?}) or edit session ({2:?})")]
+    NotFoundForHeadOrChangeSetOrEditSession(String, Option<String>, Option<String>),
     #[error("pg error: {0}")]
     TokioPg(#[from] tokio_postgres::Error),
     #[error("nats txn error: {0}")]
@@ -494,11 +504,17 @@ impl Entity {
         let change_set_id = change_set_id.as_ref();
         let edit_session_id = edit_session_id.as_ref();
         let row = txn
-            .query_one(
+            .query_opt(
                 ENTITY_FOR_EDIT_SESSION,
                 &[&entity_id, &change_set_id, &edit_session_id],
             )
-            .await?;
+            .await?
+            .ok_or_else(|| {
+                EntityError::NotFoundForEditSession(
+                    entity_id.to_string(),
+                    edit_session_id.to_string(),
+                )
+            })?;
         let object: serde_json::Value = row.try_get("object")?;
         let entity: Entity = serde_json::from_value(object)?;
         Ok(entity)
@@ -512,8 +528,11 @@ impl Entity {
         let entity_id = entity_id.as_ref();
         let change_set_id = change_set_id.as_ref();
         let row = txn
-            .query_one(ENTITY_FOR_CHANGE_SET, &[&entity_id, &change_set_id])
-            .await?;
+            .query_opt(ENTITY_FOR_CHANGE_SET, &[&entity_id, &change_set_id])
+            .await?
+            .ok_or_else(|| {
+                EntityError::NotFoundForChangeSet(entity_id.to_string(), change_set_id.to_string())
+            })?;
         let object: serde_json::Value = row.try_get("object")?;
         let entity: Entity = serde_json::from_value(object)?;
         Ok(entity)
@@ -521,7 +540,10 @@ impl Entity {
 
     pub async fn for_head(txn: &PgTxn<'_>, entity_id: impl AsRef<str>) -> EntityResult<Entity> {
         let entity_id = entity_id.as_ref();
-        let row = txn.query_one(ENTITY_FOR_HEAD, &[&entity_id]).await?;
+        let row = txn
+            .query_opt(ENTITY_FOR_HEAD, &[&entity_id])
+            .await?
+            .ok_or_else(|| EntityError::NotFoundForHead(entity_id.to_string()))?;
         let object: serde_json::Value = row.try_get("object")?;
         let entity: Entity = serde_json::from_value(object)?;
         Ok(entity)
@@ -533,9 +555,23 @@ impl Entity {
         change_set_id: Option<&String>,
     ) -> EntityResult<Entity> {
         if let Some(change_set_id) = change_set_id {
-            Entity::for_change_set(&txn, entity_id, change_set_id).await
+            Entity::for_change_set(&txn, entity_id, change_set_id)
+                .await
+                .map_err(|err| match err {
+                    EntityError::NotFoundForChangeSet(entity_id, change_set_id) => {
+                        EntityError::NotFoundForHeadOrChangeSet(entity_id, Some(change_set_id))
+                    }
+                    err => err,
+                })
         } else {
-            Entity::for_head(&txn, entity_id).await
+            Entity::for_head(&txn, entity_id)
+                .await
+                .map_err(|err| match err {
+                    EntityError::NotFoundForHead(entity_id) => {
+                        EntityError::NotFoundForHeadOrChangeSet(entity_id, None)
+                    }
+                    err => err,
+                })
         }
     }
 
@@ -547,14 +583,43 @@ impl Entity {
     ) -> EntityResult<Entity> {
         if let Some(edit_session_id) = edit_session_id {
             if let Some(change_set_id) = change_set_id {
-                Entity::for_edit_session(&txn, &entity_id, change_set_id, edit_session_id).await
+                Entity::for_edit_session(&txn, &entity_id, change_set_id, edit_session_id)
+                    .await
+                    .map_err(|err| match err {
+                        EntityError::NotFoundForEditSession(entity_id, edit_session_id) => {
+                            EntityError::NotFoundForHeadOrChangeSetOrEditSession(
+                                entity_id,
+                                Some(change_set_id.to_string()),
+                                Some(edit_session_id),
+                            )
+                        }
+                        err => err,
+                    })
             } else {
                 return Err(EntityError::NoChangeSet);
             }
         } else if let Some(change_set_id) = change_set_id {
-            Entity::for_change_set(&txn, entity_id, change_set_id).await
+            Entity::for_change_set(&txn, entity_id, change_set_id)
+                .await
+                .map_err(|err| match err {
+                    EntityError::NotFoundForChangeSet(entity_id, change_set_id) => {
+                        EntityError::NotFoundForHeadOrChangeSetOrEditSession(
+                            entity_id,
+                            Some(change_set_id),
+                            None,
+                        )
+                    }
+                    err => err,
+                })
         } else {
-            Entity::for_head(&txn, entity_id).await
+            Entity::for_head(&txn, entity_id)
+                .await
+                .map_err(|err| match err {
+                    EntityError::NotFoundForHead(entity_id) => {
+                        EntityError::NotFoundForHeadOrChangeSetOrEditSession(entity_id, None, None)
+                    }
+                    err => err,
+                })
         }
     }
 
