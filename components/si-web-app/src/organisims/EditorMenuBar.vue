@@ -196,6 +196,8 @@ import {
   changeSet$,
   editSession$,
   revision$,
+  refreshChangesSummary$,
+  refreshActivitySummary$,
 } from "@/observables";
 import _ from "lodash";
 import { emitEditorErrorMessage } from "@/atoms/PanelEventBus";
@@ -502,6 +504,7 @@ export default Vue.extend({
         } else {
           editSession$.next(null);
           editMode$.next(false);
+          refreshChangesSummary$.next(true);
         }
       }
     },
@@ -559,6 +562,7 @@ export default Vue.extend({
           changeSet$.next(null);
           editSession$.next(null);
           editMode$.next(false);
+          refreshActivitySummary$.next(true);
         }
       }
       this.clearChangeSetApplyForm();

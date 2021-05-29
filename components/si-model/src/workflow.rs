@@ -554,8 +554,8 @@ impl Workflow {
             ("kubernetesCluster", "deploy") => "kubernetesCluster:deploy",
             ("kubernetesService", "deploy") => "kubernetesService:deploy",
             ("kubernetesService", "terminate") => "kubernetesService:terminate",
-            (_, "apply") => "kubernetesApply",
-            (_, "delete") => "kubernetesDelete",
+            (_, "apply") => "kubernetes:apply",
+            (_, "delete") => "kubernetes:delete",
             (_, _) => "universal:deploy",
         };
         s

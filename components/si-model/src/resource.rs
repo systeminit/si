@@ -163,6 +163,7 @@ pub struct Resource {
     pub error: Option<String>,
     pub system_id: String,
     pub entity_id: String,
+    pub entity_type: String,
     pub si_storable: SiStorable,
 }
 

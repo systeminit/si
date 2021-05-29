@@ -34,6 +34,7 @@ DECLARE
     this_billing_account_id bigint;
     this_system_id          bigint;
     this_entity_id          bigint;
+    this_entity_type        text;
     tenant_ids              text[];
     created_at              timestamp with time zone;
     updated_at              timestamp with time zone;
@@ -51,6 +52,8 @@ BEGIN
     SELECT si_id_to_primary_key_v1(this_system_si_id) INTO this_system_id;
     SELECT si_id_to_primary_key_v1(this_entity_si_id) INTO this_entity_id;
 
+    SELECT entity_type FROM entities WHERE id = this_entity_id INTO this_entity_type;
+
     SELECT jsonb_build_object(
                    'id', si_id,
                    'state', this_state,
@@ -59,6 +62,7 @@ BEGIN
                    'state', 'unknown',
                    'health', 'unknown',
                    'entityId', this_entity_si_id,
+                   'entityType', this_entity_type,
                    'systemId', this_system_si_id,
                    'unixTimestamp', this_unix_timestamp,
                    'timestamp', this_timestamp,

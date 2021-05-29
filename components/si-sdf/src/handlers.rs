@@ -10,7 +10,8 @@ use si_model::{
     ApiClientError, ApplicationError, BillingAccountError, ChangeSetError, DiffError, EdgeError,
     EditSessionError, EntityError, EventError, EventLogError, JwtKeyError, KeyPairError,
     ModelError, NodeError, NodePositionError, OrganizationError, QualificationError, ResourceError,
-    SchematicError, SecretError, SessionError, UserError, WorkflowError, WorkspaceError,
+    SchematicError, SecretError, SessionError, UserError, VisualizationError, WorkflowError,
+    WorkspaceError,
 };
 
 pub mod application_context_dal;
@@ -101,6 +102,8 @@ pub enum HandlerError {
     InvalidContext,
     #[error("resource error: {0}")]
     Resource(#[from] ResourceError),
+    #[error("visualization error: {0}")]
+    Visualization(#[from] VisualizationError),
 }
 
 pub type HandlerResult<T> = Result<T, HandlerError>;

@@ -19,6 +19,7 @@ import {
   ServiceState,
   ServiceHealth,
 } from "@/api/visualization/servicesData";
+import { Resource, ResourceInternalHealth } from "si-entity";
 
 /*
   User should be able to configure what is displayed on the service visualization
@@ -28,49 +29,46 @@ export default Vue.extend({
   name: "ServiceVisualization",
   components: {},
   props: {
-    data: {
-      type: Object as PropType<Service>,
+    resource: {
+      type: Object as PropType<Resource>,
     },
   },
   computed: {
     state(): ServiceState {
-      for (let serviceInstance of this.data.instances) {
-        if (serviceInstance.state == ServiceState.Running) {
-          return ServiceState.Running;
-        }
+      if (this.resource.state == "ok") {
+        return ServiceState.Running;
+      } else {
+        return ServiceState.Stopped;
       }
-      return ServiceState.Stopped;
     },
     health(): ServiceHealth {
-      let healthy = 0;
-      let unhealthy = 0;
-      let running = 0;
-
-      for (let serviceInstance of this.data.instances) {
-        if (serviceInstance.state == ServiceState.Running) {
-          running++;
-        }
-        if (serviceInstance.health == ServiceHealth.Healthy) {
-          healthy++;
-        } else if (serviceInstance.health == ServiceHealth.Unhealthy) {
-          unhealthy++;
-        }
-      }
-
-      if (healthy === running) {
+      if (this.resource.internalHealth == ResourceInternalHealth.Ok) {
         return ServiceHealth.Healthy;
-      } else if (unhealthy === running) {
+      } else if (
+        this.resource.internalHealth == ResourceInternalHealth.Warning
+      ) {
+        return ServiceHealth.Degraded;
+      } else if (
+        this.resource.internalHealth == ResourceInternalHealth.Unknown
+      ) {
         return ServiceHealth.Unhealthy;
       } else {
-        return ServiceHealth.Degraded;
+        return ServiceHealth.Unhealthy;
       }
     },
     capacity(): number {
-      const instances = this.data.instances.length;
+      let instances = Object.keys(this.resource.subResources).length;
       let running = 0;
 
-      for (let serviceInstance of this.data.instances) {
-        if (serviceInstance.state == ServiceState.Running) {
+      if (instances) {
+        for (let serviceInstance of Object.values(this.resource.subResources)) {
+          if (serviceInstance.internalHealth == "ok") {
+            running++;
+          }
+        }
+      } else {
+        instances = 1;
+        if (this.resource.internalHealth == "ok") {
           running++;
         }
       }

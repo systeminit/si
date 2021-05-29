@@ -1,3 +1,4 @@
+use chrono::prelude::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
@@ -9,6 +10,8 @@ pub struct SiStorable {
     pub organization_id: String,
     pub workspace_id: String,
     pub tenant_ids: Vec<String>,
+    pub created_at: Option<DateTime<Utc>>,
+    pub updated_at: Option<DateTime<Utc>>,
     pub deleted: bool,
 }
 

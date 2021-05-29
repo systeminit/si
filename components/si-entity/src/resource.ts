@@ -38,6 +38,7 @@ export interface Resource {
   subResources: Record<string, SubResource>;
   systemId: string;
   entityId: string;
+  entityType: string;
   error?: string;
   siStorable: SiStorable;
 }

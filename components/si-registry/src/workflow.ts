@@ -506,7 +506,7 @@ for (const k8sType of k8sTerminateOrder) {
 }
 
 export const kubernetesDelete: Workflow = {
-  name: "kubernetesDelete",
+  name: "kubernetes:delete",
   kind: WorkflowKind.Action,
   title: "Kubernetes Delete",
   description: "Delete some stuff to a Kubernetes Cluster",

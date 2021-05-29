@@ -524,7 +524,6 @@ export default Vue.extend({
 
           // @ts-ignore
           this.$refs.graphViewer.onNodeCreate(reply.node.node.id, event);
-          // set
         } else {
           emitEditorErrorMessage(reply.error.message);
         }

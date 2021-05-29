@@ -27,6 +27,7 @@ export interface IResource {
   systemId: string;
   nodeId: string;
   entityId: string;
+  entityType: string;
   siStorable: ISiStorable;
 }
 
@@ -40,6 +41,7 @@ export class Resource implements IResource {
   systemId: IResource["systemId"];
   nodeId: IResource["nodeId"];
   entityId: IResource["entityId"];
+  entityType: string;
   siStorable: IResource["siStorable"];
 
   constructor(args: IResource) {
@@ -53,6 +55,7 @@ export class Resource implements IResource {
     this.nodeId = args.nodeId;
     this.entityId = args.entityId;
     this.siStorable = args.siStorable;
+    this.entityType = args.entityType;
   }
 
   static upgrade(obj: Resource | IResource): Resource {
