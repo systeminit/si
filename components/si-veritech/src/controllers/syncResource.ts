@@ -59,7 +59,7 @@ export async function syncResource(ws: WebSocket, req: string): Promise<void> {
   for (const p of request.context) {
     p.entity = SiEntity.fromJson(p.entity);
   }
-  debug("request %O", request);
+  debug("request %O", request.entity.name);
 
   send(ws, { start: true });
   const entityType = request.entity.entityType;
