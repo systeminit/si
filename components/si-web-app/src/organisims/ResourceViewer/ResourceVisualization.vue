@@ -40,19 +40,58 @@
         class="flex flex-col justify-start h-full card"
         v-if="isDataExpanded"
       >
-        <!-- <CodeMirror
-              class="max-w-md"
-              :value="jsonString"
-              readOnly
-              mode="json"
-            /> -->
+        <ResourceDockerImage
+          :resource="resource"
+          v-if="resource.entityType == 'dockerImage'"
+        />
+        <ResourceK8sNamespace
+          :resource="resource"
+          v-else-if="resource.entityType == 'k8sNamespace'"
+        />
+        <ResourceK8sDeployment
+          :resource="resource"
+          v-else-if="resource.entityType == 'k8sDeployment'"
+        />
+        <ResourceK8sService
+          :resource="resource"
+          v-else-if="resource.entityType == 'k8sService'"
+        />
+        <ResourceKubernetesService
+          :resource="resource"
+          v-else-if="
+            resource.entityType == 'kubernetesService' ||
+              resource.entityType == 'service'
+          "
+        />
+        <ResourceKubernetesCluster
+          :resource="resource"
+          v-else-if="
+            resource.entityType == 'kubernetesCluster' ||
+              resource.entityType == 'awsEks' ||
+              resource.entityType == 'awsEksCluster' ||
+              resource.entityType == 'azureAks' ||
+              resource.entityType == 'azureAksCluster'
+          "
+        />
 
-        <div
-          v-show="Object.keys(resource.data).length > 0"
-          class="w-full overflow-auto"
-        >
-          <div class="mx-4 my-4 json-code">
-            <VueJsonPretty :data="resource.data" :showDoubleQuotes="false" />
+        <div class="flex flex-col" v-if="Object.keys(resource.data).length > 0">
+          <div class="flex flex-row justify-end py-1">
+            <div class="flex text-xs text-gray-500">
+              Raw Data
+            </div>
+            <button @click="toggleRawData()" class="mr-2 focus:outline-none">
+              <ChevronDownIcon
+                v-if="isRawDataExpanded"
+                size="1.1x"
+                class="text-gray-500 "
+              />
+              <ChevronRightIcon size="1.1x" v-else class="text-gray-500" />
+            </button>
+          </div>
+          <div class="w-full overflow-auto" v-if="isRawDataExpanded">
+            <div class="mx-4 my-4 select-text json-code">
+              <VueJsonPretty :data="resource.data" :showDoubleQuotes="false" />
+            </div>
           </div>
         </div>
       </div>
@@ -63,6 +102,12 @@
 <script lang="ts">
 import Vue, { PropType } from "vue";
 import { Resource, ResourceHealth } from "@/api/sdf/model/resource";
+import ResourceDockerImage from "./ResourceDockerImage.vue";
+import ResourceK8sNamespace from "./ResourceK8sNamespace.vue";
+import ResourceK8sDeployment from "./ResourceK8sDeployment.vue";
+import ResourceK8sService from "./ResourceK8sService.vue";
+import ResourceKubernetesService from "./ResourceKubernetesService.vue";
+import ResourceKubernetesCluster from "./ResourceKubernetesCluster.vue";
 // import CodeMirror from "@/molecules/CodeMirror.vue";
 import VueJsonPretty from "vue-json-pretty";
 
@@ -74,6 +119,7 @@ import {
 
 interface IData {
   isDataExpanded: boolean;
+  isRawDataExpanded: boolean;
 }
 
 export default Vue.extend({
@@ -84,6 +130,12 @@ export default Vue.extend({
     HeartIcon,
     ChevronRightIcon,
     ChevronDownIcon,
+    ResourceDockerImage,
+    ResourceK8sNamespace,
+    ResourceK8sDeployment,
+    ResourceK8sService,
+    ResourceKubernetesService,
+    ResourceKubernetesCluster,
   },
   props: {
     resource: {
@@ -92,7 +144,8 @@ export default Vue.extend({
   },
   data(): IData {
     return {
-      isDataExpanded: false,
+      isDataExpanded: true,
+      isRawDataExpanded: false,
     };
   },
   computed: {
@@ -125,12 +178,21 @@ export default Vue.extend({
     toggleData() {
       this.isDataExpanded = !this.isDataExpanded;
     },
+    toggleRawData() {
+      this.isRawDataExpanded = !this.isRawDataExpanded;
+    },
     whenCodeMirrorIsVisible(): Record<string, any> {
       let style: Record<string, any> = {};
       if (this.isDataExpanded) {
         style["h-full"] = true;
       }
       return style;
+    },
+  },
+  watch: {
+    resource() {
+      this.isDataExpanded = true;
+      this.isRawDataExpanded = false;
     },
   },
 });

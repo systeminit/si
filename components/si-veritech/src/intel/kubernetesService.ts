@@ -170,6 +170,8 @@ export async function syncResource(
                       response.subResources[kubeClusterId].error = result.all;
                     }
                   }
+                  response.data[kubeClusterId] =
+                    response.subResources[kubeClusterId];
                 }
               }
             }
@@ -181,6 +183,7 @@ export async function syncResource(
           }
           // @ts-ignore
           response.subResources[kubeClusterId]["healthCheckUrl"] = url;
+          response.data["healthCheckUrl"] = url;
           const result = await ctx.exec("curl", ["-v", "-i", "-m", "10", url], {
             reject: false,
           });

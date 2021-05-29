@@ -279,7 +279,6 @@ export async function baseSyncResource(
   };
 
   const nameSpace = findEntityByType(req, "k8sNamespace");
-  const awsEksCluster = findEntityByType(req, "awsEksCluster");
 
   const defaultArgs = ["get", "-o", "json"];
   if (nameSpace) {
@@ -335,6 +334,8 @@ export async function baseSyncResource(
         subResource.internalStatus = ResourceInternalStatus.Failed;
         subResource.internalHealth = ResourceInternalHealth.Error;
         subResource.error = result.all;
+        subResource.data["clusterName"] = kubeCluster.name;
+        subResource.data["clusterType"] = kubeCluster.entityType;
         debug("you failed!");
         debug(result.all);
       } else {
@@ -343,6 +344,8 @@ export async function baseSyncResource(
         subResource.internalStatus = ResourceInternalStatus.Created;
         subResource.internalHealth = ResourceInternalHealth.Ok;
         subResource.data = JSON.parse(result.stdout);
+        subResource.data["clusterName"] = kubeCluster.name;
+        subResource.data["clusterType"] = kubeCluster.entityType;
         subResource.error = null;
         debug("you worked!");
         debug(result.all);
