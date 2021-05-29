@@ -67,7 +67,7 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 CREATE OR REPLACE FUNCTION edit_session_cancel_v1(this_si_id text, OUT object jsonb) AS
 $$
 DECLARE
-    this_id  bigint;
+    this_id bigint;
 BEGIN
     /* extract the id */
     SELECT si_id_to_primary_key_v1(this_si_id) INTO this_id;
@@ -82,7 +82,7 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 CREATE OR REPLACE FUNCTION edit_session_save_session_v1(this_si_id text, OUT object jsonb) AS
 $$
 DECLARE
-    this_id  bigint;
+    this_id bigint;
 BEGIN
     /* extract the id */
     SELECT si_id_to_primary_key_v1(this_si_id) INTO this_id;
@@ -98,6 +98,17 @@ BEGIN
            entities_edit_session_projection.created_at
     FROM entities_edit_session_projection
     WHERE entities_edit_session_projection.edit_session_id = this_id
+      AND NOT (
+            entities_edit_session_projection.obj -> 'siStorable' -> 'deleted' = 'true' AND
+            entities_edit_session_projection.id NOT IN (SELECT entities_change_set_projection.id
+                                                        FROM entities_change_set_projection
+                                                        WHERE entities_change_set_projection.change_set_id =
+                                                              entities_edit_session_projection.change_set_id) AND
+            entities_edit_session_projection.id NOT IN (SELECT entities_head.id
+                                                        FROM entities_head
+                                                        WHERE entities_head.id =
+                                                              entities_edit_session_projection.id)
+        )
     ON CONFLICT(id, change_set_id) DO UPDATE
         SET obj        = excluded.obj,
             updated_at = NOW();
@@ -112,8 +123,8 @@ BEGIN
     FROM qualifications_edit_session_projection
     WHERE qualifications_edit_session_projection.edit_session_id = this_id
     ON CONFLICT(id, change_set_id) DO UPDATE
-      SET obj = excluded.obj,
-          updated_at = NOW();
+        SET obj        = excluded.obj,
+            updated_at = NOW();
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 

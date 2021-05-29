@@ -537,7 +537,7 @@ pub struct DeleteNodeRequest {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct DeleteNodeReply {
-    pub schematic: Schematic,
+    pub deleted: bool,
 }
 pub async fn delete_node(
     pg: PgPool,
@@ -602,24 +602,10 @@ pub async fn delete_node(
         .await
         .map_err(HandlerError::from)?;
 
-    let schematic = Schematic::get(
-        &txn,
-        &request.application_id,
-        Some(request.change_set_id.clone()),
-        Some(request.edit_session_id),
-        vec![
-            EdgeKind::Configures,
-            EdgeKind::Deployment,
-            EdgeKind::Implementation,
-        ],
-    )
-    .await
-    .map_err(HandlerError::from)?;
-
     txn.commit().await.map_err(HandlerError::from)?;
     nats.commit().await.map_err(HandlerError::from)?;
 
-    let reply = DeleteNodeReply { schematic };
+    let reply = DeleteNodeReply { deleted: true };
 
     Ok(warp::reply::json(&reply))
 }

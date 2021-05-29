@@ -194,12 +194,12 @@ export interface INodeDeleteRequest {
 }
 
 export interface INodeDeleteReplySuccess {
-  schematic: Schematic;
+  deleted: boolean;
   error?: never;
 }
 
 export interface INodeDeleteReplyFailure {
-  schematic?: never;
+  deleted?: never;
   error: SDFError;
 }
 

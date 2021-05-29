@@ -310,6 +310,8 @@ export const workflowRunSteps$: Subject<WorkflowRunStep> = new Subject();
 export const workflowRunStepEntities$: Subject<WorkflowRunStepEntity> = new Subject();
 
 // Schematic
+export const refreshSchematic$ = new BehaviorSubject<boolean>(true);
+
 export const deploymentSchematicSelectNode$ = new ReplaySubject<ISchematicNode | null>(
   1,
 );
@@ -343,6 +345,12 @@ export const nameAttributeChanged$ = new ReplaySubject<NameAttributeChanged | nu
   1,
 );
 nameAttributeChanged$.next(null);
+
+export interface NodeDeleted {
+  nodeId: string;
+}
+export const nodeDeleted$ = new ReplaySubject<NodeDeleted | null>(1);
+nodeDeleted$.next(null);
 
 export interface EdgeCreating {
   entityType: string;

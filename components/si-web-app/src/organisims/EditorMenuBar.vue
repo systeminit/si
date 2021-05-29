@@ -198,6 +198,7 @@ import {
   revision$,
   refreshChangesSummary$,
   refreshActivitySummary$,
+  refreshSchematic$,
 } from "@/observables";
 import _ from "lodash";
 import { emitEditorErrorMessage } from "@/atoms/PanelEventBus";
@@ -505,6 +506,7 @@ export default Vue.extend({
           editSession$.next(null);
           editMode$.next(false);
           refreshChangesSummary$.next(true);
+          refreshSchematic$.next(true);
         }
       }
     },
@@ -537,6 +539,7 @@ export default Vue.extend({
       } else {
         editSession$.next(null);
         editMode$.next(false);
+        refreshSchematic$.next(true);
       }
     },
     async cancelChangeSetApply() {
@@ -563,6 +566,7 @@ export default Vue.extend({
           editSession$.next(null);
           editMode$.next(false);
           refreshActivitySummary$.next(true);
+          refreshSchematic$.next(true);
         }
       }
       this.clearChangeSetApplyForm();

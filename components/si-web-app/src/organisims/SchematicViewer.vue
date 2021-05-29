@@ -131,6 +131,7 @@ import {
   nodePositionUpdated$,
   edgeCreating$,
   refreshChangesSummary$,
+  nodeDeleted$,
 } from "@/observables";
 import { SiEntity } from "si-entity";
 import { Entity } from "@/api/sdf/model/entity";
@@ -705,24 +706,20 @@ export default Vue.extend({
         this.currentEditSession &&
         this.currentSystem
       ) {
-        const request: INodeDeleteRequest = {
-          nodeId: this.selectedNode.node.id,
+        const nodeId = this.selectedNode.node.id;
+        const reply = await SchematicDal.nodeDelete({
+          nodeId,
           applicationId: this.currentApplicationId,
           workspaceId: this.currentWorkspace.id,
           changeSetId: this.currentChangeSet.id,
           editSessionId: this.currentEditSession.id,
           systemId: this.currentSystem.id,
-        };
-        let reply: INodeDeleteReply = await SchematicDal.nodeDelete(request);
-        if (!reply.error) {
-          schematicUpdated$.next({
-            schematicKind: this.schematicKind,
-            schematic: reply.schematic,
-          });
-        } else {
+        });
+        if (reply.error) {
           emitEditorErrorMessage(reply.error.message);
+          return;
         }
-        return reply;
+        nodeDeleted$.next({ nodeId });
       }
     },
     spacebarEvent(event: ShortcutUpdateEvent) {

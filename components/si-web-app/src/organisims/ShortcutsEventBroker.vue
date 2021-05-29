@@ -70,7 +70,7 @@ interface IData {
 }
 
 export const SpaceBarEvents = new Subject();
-export const BackspaceEvents = new Subject();
+export const BackspaceEvents: Subject<ShortcutUpdateEvent> = new Subject();
 
 const MousecDown = fromEvent(document, "mousedown");
 const MousecUp = fromEvent(document, "mouseup");
