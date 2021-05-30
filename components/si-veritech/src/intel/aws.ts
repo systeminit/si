@@ -36,16 +36,17 @@ export async function syncResource(
     env: awsEnv,
     reject: false,
   });
+
   if (output.exitCode != 0) {
     response.health = "error";
     response.internalHealth = ResourceInternalHealth.Error;
     response.state = "error";
     response.error = output.all;
+  } else {
+    response.health = "ok";
+    response.internalHealth = ResourceInternalHealth.Ok;
+    response.state = "ok";
   }
-
-  response.health = "ok";
-  response.internalHealth = ResourceInternalHealth.Ok;
-  response.state = "ok";
   return response;
 }
 
