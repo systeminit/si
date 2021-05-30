@@ -221,48 +221,48 @@ export default Vue.extend({
       ),
       resources: resources$.pipe(
         tap(r => {
-          let isUpdated = false;
+          let isNew = true;
           if (r.entityType == "service") {
             //@ts-ignore
             for (let x = 0; x < this.servicesCache.length; x++) {
               // @ts-ignore
               if (r.id == this.servicesCache[x].id) {
-                isUpdated = true;
+                isNew = false;
                 //@ts-ignore
                 Vue.set(this.servicesCache, x, r);
               }
-              if (!isUpdated) {
-                //@ts-ignore
-                this.servicesCache.push(r);
-              }
+            }
+            if (isNew) {
+              //@ts-ignore
+              this.servicesCache.push(r);
             }
           } else if (r.entityType == "kubernetesCluster") {
             //@ts-ignore
             for (let x = 0; x < this.computingResourcesCache.length; x++) {
               // @ts-ignore
               if (r.id == this.computingResourcesCache[x].id) {
-                isUpdated = true;
+                isNew = false;
                 //@ts-ignore
                 Vue.set(this.computingResourcesCache, x, r);
               }
-              if (!isUpdated) {
-                //@ts-ignore
-                this.computingResourcesCache.push(r);
-              }
+            }
+            if (isNew) {
+              //@ts-ignore
+              this.computingResourcesCache.push(r);
             }
           } else if (r.entityType == "cloudProvider") {
             //@ts-ignore
             for (let x = 0; x < this.providersCache.length; x++) {
               // @ts-ignore
               if (r.id == this.providersCache[x].id) {
-                isUpdated = true;
+                isNew = false;
                 //@ts-ignore
                 Vue.set(this.providersCache, x, r);
               }
-              if (!isUpdated) {
-                //@ts-ignore
-                this.providersCache.push(r);
-              }
+            }
+            if (isNew) {
+              //@ts-ignore
+              this.providersCache.push(r);
             }
           }
         }),
