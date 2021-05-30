@@ -46,6 +46,11 @@ export const podSpec: RegistryEntry["properties"] = [
               ],
             },
           },
+          validation: [
+            {
+              kind: ValidatorKind.Required,
+            },
+          ],
         },
         {
           type: "array",
