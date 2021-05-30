@@ -92,6 +92,19 @@ export function inferProperties(
       });
       for (const system in imageValues) {
         toSet.push({ path: ["image"], value: imageValues[system], system });
+        const checkForTag = new RegExp("^.+(:.+)$");
+        const checkResult = checkForTag.exec(imageValues[system] as string);
+        if (checkResult && checkResult[1] == ":latest") {
+          toSet.push({ path: ["imagePullPolicy"], value: "Always", system });
+        } else if (checkResult) {
+          toSet.push({
+            path: ["imagePullPolicy"],
+            value: "IfNotPresent",
+            system,
+          });
+        } else {
+          toSet.push({ path: ["imagePullPolicy"], value: "Always", system });
+        }
       }
       const exposedPortValues = fromEntity.getPropertyForAllSystems({
         path: ["ExposedPorts"],
