@@ -67,7 +67,7 @@
           :key="index"
           :workflowRun="data.workflowRun"
           :workflowSteps="data.steps"
-          v-show="isSucceededVisible"
+          v-show="showRun(data.workflowRun)"
         />
       </div>
     </div>
@@ -109,6 +109,10 @@ import { combineLatest } from "rxjs";
 import { tap, pluck, map } from "rxjs/operators";
 
 import WorkflowRun from "@/molecules/WorkflowRun.vue";
+import {
+  WorkflowRun as WorkflowRunType,
+  WorkflowRunState,
+} from "@/api/sdf/model/workflow";
 
 interface Data {
   dryRun: boolean;
@@ -258,6 +262,19 @@ export default Vue.extend({
     };
   },
   methods: {
+    showRun(workflowRun: WorkflowRunType): boolean {
+      let show = true;
+      if (workflowRun.state == WorkflowRunState.Failure) {
+        if (this.isFailedVisible == false) {
+          show = false;
+        }
+      } else if (workflowRun.state == WorkflowRunState.Success) {
+        if (this.isSucceededVisible == false) {
+          show = false;
+        }
+      }
+      return show;
+    },
     async runThisAction(): Promise<void> {
       // @ts-ignore
       if (this.system && this.workspace) {

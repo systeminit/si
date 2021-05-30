@@ -14,10 +14,10 @@
             class="ml-1 text-xs text-gray-200"
             v-if="workflowRun.endTimestamp"
           >
-            {{ formatTimestamp(workflowRun.endTimestamp) }}
+            {{ workflowRun.endTimestamp }}
           </div>
           <div class="ml-1 text-xs text-gray-200" v-else>
-            {{ formatTimestamp(workflowRun.startTimestamp) }}
+            {{ workflowRun.startTimestamp }}
           </div>
         </div>
 
@@ -150,13 +150,13 @@ export default Vue.extend({
     },
   },
   methods: {
-    formatTimestamp(timestamp: string): String {
+    formatTimestamp(timestamp: number): String {
       const date = new Date(timestamp);
-      const year = date.getFullYear();
-      const month = date.getMonth();
-      const day = date.getDay();
-      const hour = date.getHours();
-      const minute = date.getMinutes();
+      const year = date.getFullYear().toLocaleString("en-US");
+      const month = date.getMonth().toLocaleString("en-US");
+      const day = date.getDay().toLocaleString("en-US");
+      const hour = date.getHours().toLocaleString("en-US");
+      const minute = date.getMinutes().toLocaleString("en-US");
       return `(${month}/${day}/${year} - ${hour}:${minute})`;
     },
     formatName(name: string): String {
