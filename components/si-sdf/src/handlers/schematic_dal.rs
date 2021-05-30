@@ -272,6 +272,29 @@ pub async fn connection_create(
     .await
     .map_err(HandlerError::from)?;
 
+    head_entity
+        .check_qualifications_for_edit_session(
+            &pg,
+            &nats_conn,
+            &veritech,
+            None,
+            &request.change_set_id,
+            &request.edit_session_id,
+        )
+        .await
+        .map_err(HandlerError::from)?;
+    tail_entity
+        .check_qualifications_for_edit_session(
+            &pg,
+            &nats_conn,
+            &veritech,
+            None,
+            &request.change_set_id,
+            &request.edit_session_id,
+        )
+        .await
+        .map_err(HandlerError::from)?;
+
     txn.commit().await.map_err(HandlerError::from)?;
 
     let reply = ConnectionCreateReply { edge, schematic };
