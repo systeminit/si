@@ -1,35 +1,22 @@
 <template>
   <div class="flex flex-col w-full overflow-hidden" v-if="entity">
     <div
-      class="relative flex flex-row items-center h-10 px-6 py-2 text-base text-white align-middle property-section-bg-color"
+      class="flex flex-row items-center h-10 px-6 py-2 text-base text-white align-middle property-section-bg-color"
     >
-      <div class="text-lg ">
+      <div class="text-lg">
         {{ entity.entityType }}
       </div>
 
-      <div class="ml-2 text-xs">
-        <div v-if="schema">
-          <div class="flex flex-col w-full">
-            <div>
-              <div class="flex" v-if="hasQualificationResult">
-                <CheckCircleIcon
-                  class="verification-passed"
-                  size="1x"
-                  v-if="qualificationResultQualified"
-                />
-                <AlertCircleIcon size="1x" class="verification-failed" v-else />
-              </div>
-              <div class="flex" v-else>
-                <CircleIcon size="1x" class="verification-unknown" />
-              </div>
-            </div>
-          </div>
-        </div>
-        <CircleIcon size="1x" class="verification-unknown" v-else />
+      <div class="ml-2 text-base">
+        <CheckSquareIcon size="1x" :class="qualificationStatus" />
+      </div>
+
+      <div class="ml-2 text-base">
+        <BoxIcon size="1x" :class="resourceHealthStatus" />
       </div>
 
       <div
-        class="flex flex-row items-center items-end justify-end flex-grow h-full text-xs text-center"
+        class="flex flex-row items-center justify-end flex-grow h-full text-xs text-center"
       >
         <div v-if="diff && diff.length > 0" class="flex flex-row items-center">
           <EditIcon size="1x" class="gold-bars-icon" />
@@ -38,7 +25,7 @@
       </div>
     </div>
 
-    <div class="flex flex-col w-full overflow-auto overscroll-none">
+    <div class="flex flex-col w-full overflow-auto scrollbar">
       <NameField
         :entity="entity"
         :editMode="editMode"
@@ -82,15 +69,11 @@
 <script lang="ts">
 import Vue, { PropType } from "vue";
 
-import {
-  EditIcon,
-  CheckCircleIcon,
-  AlertCircleIcon,
-  CircleIcon,
-} from "vue-feather-icons";
+import { EditIcon, CheckSquareIcon, BoxIcon } from "vue-feather-icons";
 import NameField from "@/organisims/AttributeViewer/NameField.vue";
 import EditFields from "@/organisims/AttributeViewer/EditFields.vue";
 import { Entity } from "@/api/sdf/model/entity";
+import { Resource, ResourceHealth } from "@/api/sdf/model/resource";
 import { editMode$, system$ } from "@/observables";
 import { Diff } from "@/api/sdf/model/diff";
 import {
@@ -112,9 +95,8 @@ export default Vue.extend({
     EditIcon,
     NameField,
     EditFields,
-    CheckCircleIcon,
-    AlertCircleIcon,
-    CircleIcon,
+    CheckSquareIcon,
+    BoxIcon,
   },
   props: {
     entity: {
@@ -130,6 +112,9 @@ export default Vue.extend({
     },
     starting: {
       type: Array as PropType<QualificationStart[]>,
+    },
+    resource: {
+      type: Object as PropType<Resource>,
     },
   },
   data(): Data {
@@ -207,6 +192,45 @@ export default Vue.extend({
       } else {
         return true;
       }
+    },
+    resourceHealthStatus(): Record<string, any> {
+      let style: Record<string, any> = {};
+
+      if (this.resource) {
+        if (this.resource.health == ResourceHealth.Ok) {
+          style["ok"] = true;
+        } else if (this.resource.health == ResourceHealth.Warning) {
+          style["warning"] = true;
+        } else if (this.resource.health == ResourceHealth.Error) {
+          style["error"] = true;
+        } else if (this.resource.health == ResourceHealth.Unknown) {
+          style["unknown"] = true;
+        } else {
+          style["unknown"] = true;
+        }
+      } else {
+        style["unknown"] = true;
+      }
+      return style;
+    },
+    qualificationStatus(): Record<string, any> {
+      let style: Record<string, any> = {};
+
+      if (this.qualifications.length > 0) {
+        if (this.isQualifying()) {
+          style["unknown"] = true;
+        } else {
+          if (this.qualificationResultQualified) {
+            style["ok"] = true;
+          } else {
+            style["error"] = true;
+          }
+        }
+      } else {
+        style["unknown"] = true;
+      }
+
+      return style;
     },
   },
   methods: {
@@ -292,6 +316,13 @@ export default Vue.extend({
         return false;
       }
     },
+    isQualifying(): boolean {
+      if (this.starting.length > 0) {
+        return true;
+      } else {
+        return false;
+      }
+    },
   },
 });
 </script>
@@ -307,5 +338,30 @@ export default Vue.extend({
 
 .verification-unknown {
   color: #707070;
+}
+
+.ok {
+  color: #86f0ad;
+}
+
+.warning {
+  color: #f0d286;
+}
+
+.error {
+  color: #f08686;
+}
+
+.unknown {
+  color: #5b6163;
+}
+
+.scrollbar {
+  -ms-overflow-style: none; /* edge, and ie */
+  scrollbar-width: none; /* firefox */
+}
+
+.scrollbar::-webkit-scrollbar {
+  display: none; /*chrome, opera, and safari */
 }
 </style>

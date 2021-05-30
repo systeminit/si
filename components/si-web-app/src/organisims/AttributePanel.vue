@@ -91,7 +91,7 @@
             :class="resourceViewClasses()"
             @click="switchToResourceView()"
           >
-            <HexagonIcon size="1.1x" />
+            <BoxIcon size="1.1x" />
           </button>
         </div>
 
@@ -115,6 +115,7 @@
           :diff="diff"
           :qualifications="qualifications"
           :starting="qualificationStart"
+          :resource="resource"
         />
         <CodeViewer
           v-else-if="activeView == 'code'"
@@ -127,7 +128,11 @@
           :qualifications="qualifications"
           :starting="qualificationStart"
         />
-        <ActionViewer v-else-if="activeView == 'action'" :entity="entity" />
+        <ActionViewer
+          v-else-if="activeView == 'action'"
+          :entity="entity"
+          :resource="resource"
+        />
         <ResourceViewer
           v-else-if="activeView == 'resource'"
           :entity="entity"
@@ -182,7 +187,7 @@ import {
   CheckSquareIcon,
   PlayIcon,
   Link2Icon,
-  HexagonIcon,
+  BoxIcon,
 } from "vue-feather-icons";
 import "vue-json-pretty/lib/styles.css";
 import { Entity } from "@/api/sdf/model/entity";
@@ -260,7 +265,7 @@ export default Vue.extend({
     Panel,
     SiSelect,
     DiscIcon,
-    HexagonIcon,
+    BoxIcon,
     // RadioIcon,
     CodeIcon,
     LockIcon,

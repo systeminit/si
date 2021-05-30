@@ -76,20 +76,25 @@
 
         <div class="flex flex-col" v-if="Object.keys(resource.data).length > 0">
           <div class="flex flex-row justify-end py-1">
-            <div class="flex text-xs text-gray-500">
-              Raw Data
-            </div>
-            <button @click="toggleRawData()" class="mr-2 focus:outline-none">
+            <button
+              @click="toggleRawData()"
+              class="flex flex-row items-center mr-2 focus:outline-none"
+            >
+              <div class="flex text-xs text-gray-500">
+                Raw Data
+              </div>
               <ChevronDownIcon
                 v-if="isRawDataExpanded"
                 size="1.1x"
-                class="text-gray-500 "
+                class="ml-1 text-gray-500"
               />
-              <ChevronRightIcon size="1.1x" v-else class="text-gray-500" />
+              <ChevronRightIcon size="1.1x" v-else class="ml-1 text-gray-500" />
             </button>
           </div>
-          <div class="w-full overflow-auto" v-if="isRawDataExpanded">
-            <div class="mx-4 my-4 select-text json-code">
+          <div class="w-full" v-if="isRawDataExpanded">
+            <div
+              class="mx-4 my-4 overflow-auto select-text json-code scrollbar"
+            >
               <VueJsonPretty :data="resource.data" :showDoubleQuotes="false" />
             </div>
           </div>
@@ -231,5 +236,14 @@ export default Vue.extend({
 
 .json-code {
   width: 24rem;
+}
+
+.scrollbar {
+  -ms-overflow-style: none; /* edge, and ie */
+  scrollbar-width: none; /* firefox */
+}
+
+.scrollbar::-webkit-scrollbar {
+  display: none; /*chrome, opera, and safari */
 }
 </style>

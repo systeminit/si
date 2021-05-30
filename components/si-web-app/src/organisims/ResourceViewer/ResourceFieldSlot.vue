@@ -4,7 +4,7 @@
       {{ label }}
     </div>
     <div
-      class="flex flex-col flex-grow w-full ml-2 mr-4 overflow-x-auto leading-tight text-gray-400 select-text"
+      class="flex flex-col flex-grow w-full ml-2 mr-4 leading-tight text-gray-400 select-text hover-scrollbar"
     >
       <slot />
     </div>
@@ -27,3 +27,21 @@ export default Vue.extend({
   },
 });
 </script>
+
+<style scoped>
+.hover-scrollbar {
+  overflow: hidden;
+}
+.hover-scrollbar:hover {
+  overflow-x: auto;
+}
+
+.scrollbar {
+  -ms-overflow-style: none; /* edge, and ie */
+  scrollbar-width: none; /* firefox */
+}
+
+.scrollbar::-webkit-scrollbar {
+  display: none; /*chrome, opera, and safari */
+}
+</style>
