@@ -98,7 +98,10 @@
                 class="socket node"
                 :class="[inputSocketClasses, socketTypeClass(input.name)]"
               />
-              <div class="text-center socket-name node">
+              <div
+                class="text-center socket-name node"
+                v-if="schematicKind != 'deployment'"
+              >
                 {{ input.name }} {{ showArity(input.arity) }}
               </div>
             </div>
