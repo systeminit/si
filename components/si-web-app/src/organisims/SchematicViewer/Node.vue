@@ -68,6 +68,7 @@
           </div>
 
           <div
+            v-if="renderOutputSocket"
             :ref="`${id}.socket:output`"
             :id="`${id}.socket:output`"
             :context="graphViewerId"
@@ -413,6 +414,14 @@ export default Vue.extend({
     },
   },
   computed: {
+    renderOutputSocket(): boolean {
+      let schema: RegistryEntry = this.entity.schema();
+      if (schema.omitOutputsInSchematic) {
+        return !schema.omitOutputsInSchematic.includes(this.schematicKind);
+      } else {
+        return true;
+      }
+    },
     diffCount(): Number | null {
       //@ts-ignore
       if (this.selectedImplemenation && this.selectedImplemenation.diff) {

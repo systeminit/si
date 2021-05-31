@@ -20,6 +20,7 @@ const service: RegistryEntry = {
     ],
   },
   inputs: [...standardConceptInputs],
+  omitOutputsInSchematic: [SchematicKind.Component],
   properties: [
     {
       type: "string",

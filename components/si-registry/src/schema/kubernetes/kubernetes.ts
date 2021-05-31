@@ -29,6 +29,7 @@ const kubernetesCluster: RegistryEntry = {
       arity: Arity.Many,
     },
   ],
+  omitOutputsInSchematic: [SchematicKind.Component],
   properties: [
     {
       type: "string",
