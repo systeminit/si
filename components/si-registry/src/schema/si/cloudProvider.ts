@@ -29,6 +29,7 @@ const cloudProvider: RegistryEntry = {
       arity: Arity.Many,
     },
   ],
+  omitOutputsInSchematic: [SchematicKind.Deployment, SchematicKind.Component],
   properties: [
     {
       type: "string",

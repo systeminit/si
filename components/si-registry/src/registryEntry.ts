@@ -273,6 +273,7 @@ export interface RegistryEntry {
   ui?: RegistryEntryUi;
   implements?: string[];
   inputs: Input[];
+  omitOutputsInSchematic?: SchematicKind[];
   properties: Prop[];
   code?: Code;
   qualifications?: Qualification[];
