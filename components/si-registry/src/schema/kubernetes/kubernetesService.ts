@@ -32,12 +32,6 @@ const kubernetesService: RegistryEntry = {
       edgeKind: "configures",
       arity: Arity.Many,
     },
-    {
-      name: "k8sPod",
-      types: ["k8sPod"],
-      edgeKind: "configures",
-      arity: Arity.Many,
-    },
   ],
   properties: [
     {
