@@ -416,7 +416,7 @@ export default Vue.extend({
             // @ts-ignore
             this.diff = reply.diff;
             // @ts-ignore
-            this.qualifications = reply.qualifications;
+            //this.qualifications = reply.qualifications;
           }
         }),
       ),
