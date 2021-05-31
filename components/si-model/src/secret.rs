@@ -394,6 +394,8 @@ mod tests {
                     workspace_id,
                     tenant_ids,
                     deleted: false,
+                    created_at: None,
+                    updated_at: None,
                 },
             }
         }
