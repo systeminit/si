@@ -29,7 +29,10 @@
       class="absolute inset-y-0 right-0 flex items-center px-2 text-gray-400 pointer-events-none"
     >
       <TypeIcon v-bind:size="iconSize" v-if="type == 'text' && isShowType" />
-      <KeyIcon v-bind:size="iconSize" v-else-if="type == 'password'" />
+      <KeyIcon
+        v-bind:size="iconSize"
+        v-else-if="type == 'password' && isShowType"
+      />
     </div>
   </div>
 </template>
@@ -85,7 +88,7 @@ export default Vue.extend({
     },
     isShowType: {
       type: Boolean,
-      default: true,
+      default: false,
       required: false,
     },
   },

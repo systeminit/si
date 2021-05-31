@@ -3,7 +3,7 @@
     <div class="flex flex-row justify-end leading-tight text-white w-44">
       {{ label }}
     </div>
-    <div class="flex flex-grow ml-2 overflow-x-auto text-gray-400 select-text">
+    <div class="flex flex-grow ml-2 text-gray-400 select-text hover-scrollbar">
       <div class="flex flex-col py-1" v-if="noLabels">
         <div class="flex leading-tight" v-for="i in value" :key="i.value">
           {{ i.value }}
@@ -42,3 +42,21 @@ export default Vue.extend({
   },
 });
 </script>
+
+<style scoped>
+.hover-scrollbar {
+  overflow: hidden;
+}
+.hover-scrollbar:hover {
+  overflow-x: auto;
+}
+
+.scrollbar {
+  -ms-overflow-style: none; /* edge, and ie */
+  scrollbar-width: none; /* firefox */
+}
+
+.scrollbar::-webkit-scrollbar {
+  display: none; /*chrome, opera, and safari */
+}
+</style>

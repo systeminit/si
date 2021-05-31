@@ -42,7 +42,7 @@
       </modal>
     </div>
 
-    <div class="flex h-full mx-4 mt-4 overflow-y-scroll">
+    <div class="flex h-full mx-4 mt-4 overflow-auto">
       <ApplicationList linkTo="applicationEditor" />
     </div>
   </div>

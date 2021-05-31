@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col w-full" v-if="entity">
     <div
-      class="relative flex flex-row items-center justify-between pt-2 pb-2 pl-6 pr-6 text-white property-section-bg-color"
+      class="flex flex-row items-center justify-between h-10 px-6 py-2 text-base text-white align-middle property-section-bg-color"
     >
       <div class="text-lg">
         {{ entity.entityType }} {{ entity.name }} resource
@@ -11,11 +11,12 @@
         <button
           class="flex items-center focus:outline-none button"
           ref="sync"
-          v-show="!editMode"
+          v-if="!editMode"
           @click="runSync()"
         >
-          <RefreshCcwIcon size="1x" class="text-sm sync-button-invert" />
+          <RefreshCwIcon size="1x" class="text-sm" :class="healthColor" />
         </button>
+        <BoxIcon size="1x" class="text-base" :class="healthColor" v-else />
       </div>
     </div>
 
@@ -32,12 +33,12 @@
 <script lang="ts">
 import Vue, { PropType } from "vue";
 import { Entity } from "@/api/sdf/model/entity";
-import { Resource } from "@/api/sdf/model/resource";
+import { Resource, ResourceHealth } from "@/api/sdf/model/resource";
 import { ResourceDal } from "@/api/sdf/dal/resourceDal";
 import { editMode$, system$, workspace$ } from "@/observables";
 import { emitEditorErrorMessage } from "@/atoms/PanelEventBus";
 import ResourceVisualization from "@/organisims/ResourceViewer/ResourceVisualization.vue";
-import { RefreshCcwIcon } from "vue-feather-icons";
+import { RefreshCwIcon, BoxIcon } from "vue-feather-icons";
 
 interface IData {
   isSynchronizing: boolean;
@@ -60,8 +61,9 @@ export default Vue.extend({
     };
   },
   components: {
-    RefreshCcwIcon,
+    RefreshCwIcon,
     ResourceVisualization,
+    BoxIcon,
   },
   subscriptions: function(this: any): Record<string, any> {
     return {
@@ -69,6 +71,26 @@ export default Vue.extend({
       system: system$,
       workspace: workspace$,
     };
+  },
+  computed: {
+    healthColor(): Record<string, any> {
+      let style: Record<string, any> = {};
+
+      if (this.resource) {
+        if (this.resource.health == ResourceHealth.Ok) {
+          style["health-ok"] = true;
+        } else if (this.resource.health == ResourceHealth.Warning) {
+          style["health-warning"] = true;
+        } else if (this.resource.health == ResourceHealth.Error) {
+          style["health-error"] = true;
+        } else if (this.resource.health == ResourceHealth.Unknown) {
+          style["health-unknown"] = true;
+        } else {
+          style["health-unknown"] = true;
+        }
+      }
+      return style;
+    },
   },
   methods: {
     async runSync(): Promise<void> {
@@ -91,10 +113,10 @@ export default Vue.extend({
       const button = this.$refs.sync as HTMLElement;
       if (button) {
         button.animate(
-          [{ transform: "rotate(0deg)" }, { transform: "rotate(180deg)" }],
+          [{ transform: "rotate(0deg)" }, { transform: "rotate(720deg)" }],
           {
-            duration: 225,
-            easing: "ease-out",
+            duration: 2500,
+            easing: "linear",
           },
         );
       }
@@ -116,8 +138,6 @@ $button-brightness: 1.1;
 }
 
 .button {
-  color: #05b5bc;
-  // color: #98E9F5;
 }
 
 .button:hover {
@@ -134,5 +154,21 @@ $button-brightness: 1.1;
 
 .sync-button-invert {
   transform: scaleX(-1);
+}
+
+.health-ok {
+  color: #86f0ad;
+}
+
+.health-warning {
+  color: #f0d286;
+}
+
+.health-error {
+  color: #f08686;
+}
+
+.health-unknown {
+  color: #bbbbbb;
 }
 </style>

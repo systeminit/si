@@ -58,12 +58,12 @@ const OUTPUT_SOCKET_OFFSET_VERTICAL = {
 
 const OUTPUT_SOCKET_OFFSET_HORIZONTAL = {
   x: 138,
-  y: 36,
+  y: 60,
 };
 
 const INPUT_SOCKET_ALIGNMENT_OFSET = {
   x: 0,
-  y: 16,
+  y: 17,
 };
 
 // ----------------------------------------

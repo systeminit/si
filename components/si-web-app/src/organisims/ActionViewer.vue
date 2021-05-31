@@ -1,10 +1,14 @@
 <template>
   <div class="flex flex-col w-full" v-if="entity">
     <div
-      class="relative flex flex-row items-center w-full pt-2 pb-2 pl-6 pr-6 text-base text-white property-section-bg-color"
+      class="flex flex-row items-center justify-between w-full h-10 px-6 py-2 text-base text-white align-middle property-section-bg-color"
     >
       <div class="text-lg">
         {{ entity.entityType }} {{ entity.name }} actions
+      </div>
+
+      <div class="ml-2 text-base">
+        <BoxIcon size="1x" :class="resourceHealthStatus" />
       </div>
     </div>
     <div
@@ -92,6 +96,7 @@ import {
   PlayCircleIcon,
   CheckCircleIcon,
   AlertCircleIcon,
+  BoxIcon,
 } from "vue-feather-icons";
 import { ILabelListItem } from "@/api/sdf/dal";
 import {
@@ -109,6 +114,8 @@ import { combineLatest } from "rxjs";
 import { tap, pluck, map } from "rxjs/operators";
 
 import WorkflowRun from "@/molecules/WorkflowRun.vue";
+import { Resource, ResourceHealth } from "@/api/sdf/model/resource";
+
 import {
   WorkflowRun as WorkflowRunType,
   WorkflowRunState,
@@ -131,6 +138,9 @@ export default Vue.extend({
       type: Object as PropType<Entity>,
       required: true,
     },
+    resource: {
+      type: Object as PropType<Resource>,
+    },
   },
   components: {
     PlayCircleIcon,
@@ -138,6 +148,7 @@ export default Vue.extend({
     WorkflowRun,
     CheckCircleIcon,
     AlertCircleIcon,
+    BoxIcon,
   },
   data(): Data {
     return {
@@ -164,6 +175,26 @@ export default Vue.extend({
         }
       }
       return response;
+    },
+    resourceHealthStatus(): Record<string, any> {
+      let style: Record<string, any> = {};
+
+      if (this.resource) {
+        if (this.resource.health == ResourceHealth.Ok) {
+          style["ok"] = true;
+        } else if (this.resource.health == ResourceHealth.Warning) {
+          style["warning"] = true;
+        } else if (this.resource.health == ResourceHealth.Error) {
+          style["error"] = true;
+        } else if (this.resource.health == ResourceHealth.Unknown) {
+          style["unknown"] = true;
+        } else {
+          style["unknown"] = true;
+        }
+      } else {
+        style["unknown"] = true;
+      }
+      return style;
     },
   },
   subscriptions: function(this: any): Record<string, any> {
@@ -334,5 +365,21 @@ export default Vue.extend({
 
 .property-section-bg-color {
   background-color: #292c2d;
+}
+
+.ok {
+  color: #86f0ad;
+}
+
+.warning {
+  color: #f0d286;
+}
+
+.error {
+  color: #f08686;
+}
+
+.unknown {
+  color: #5b6163;
 }
 </style>

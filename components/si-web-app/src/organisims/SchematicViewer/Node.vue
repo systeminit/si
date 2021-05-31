@@ -1,7 +1,7 @@
 <template>
   <div>
     <div
-      class="absolute shadow-md cursor-move node-container node"
+      class="absolute flex shadow-md cursor-move node-container node"
       :id="id"
       :class="[
         nodeIsSelected,
@@ -12,20 +12,58 @@
       v-bind:style="positionStyle"
       @mousedown="selectNode()"
     >
-      <div class="flex flex-col node">
-        <div class="flex flex-col text-white node">
-          <div class="node-title-bar node" :class="nodeTitleBarClasses">
+      <div class="flex flex-col justify-between flex-grow">
+        <div class="flex flex-col node">
+          <div
+            class="items-center w-full node-title-bar node"
+            :class="nodeTitleBarClasses"
+          >
             <div
-              class="mt-1 text-xs font-medium text-center node"
-              :class="nodeTitleClasses"
+              class="flex flex-row items-center justify-between node title-bar-content"
             >
-              {{ nodeObject.entityType }}
+              <div class="w-1" />
+
+              <div
+                class="flex text-xs font-medium text-center text-white align-middle node"
+              >
+                {{ nodeObject.entityType }}
+              </div>
+
+              <div
+                class="flex items-center justify-center rounded-full diff-count-content node"
+                v-if="diffCount == 0"
+              >
+                <div
+                  class="font-medium text-center align-middle diff-count-text node"
+                >
+                  {{ diffCount }}
+                </div>
+              </div>
+              <div class="w-1" v-else />
+            </div>
+
+            <div class="w-full">
+              <div class="status-bar" :class="statusBarClass" />
             </div>
           </div>
-          <div class="mt-2 mb-2 text-xs font-normal text-center node">
-            {{ nodeObject.name }}
+
+          <div class="flex flex-row justify-center mx-1 mt-2 mb-2 node">
+            <div class="text-center node-name node">
+              {{ nodeObject.name }}
+            </div>
+            <!-- <div class="w-3 node">
+              <PlayCircleIcon
+                size="1x"
+                :class="workflowStatusClass"
+                class="text-sm font-thin text-center node"
+              />
+            </div> -->
           </div>
-          <div v-if="showImplementation" class="text-xs font-thin text-center">
+
+          <div
+            v-if="showImplementation"
+            class="text-xs font-thin text-center node"
+          >
             {{ selectedImplementationField }}
           </div>
 
@@ -42,9 +80,9 @@
             :class="outputSocketClasses"
           />
 
-          <div class="ml-2">
+          <div class="ml-2 -mt-1">
             <div
-              class="flex flex-row"
+              class="flex flex-row mt-1"
               v-for="input in inputs"
               :key="input.name"
             >
@@ -58,18 +96,25 @@
                 :socketName="input.name"
                 :schematicKind="schematicKind"
                 class="socket node"
-                :class="inputSocketClasses"
+                :class="[inputSocketClasses, socketTypeClass(input.name)]"
               />
-              <div class="ml-1 text-xs font-thin text-center node">
+              <div class="text-center socket-name node">
                 {{ input.name }} {{ showArity(input.arity) }}
               </div>
             </div>
           </div>
         </div>
-        <div class="flex flex-row ml-1 text-xs font-thin text-center node">
-          <CheckCircleIcon size="1x" :class="qualificationStatusClass" />
-          <OctagonIcon size="1x" :class="resourceStatusClass" />
-          <PlayCircleIcon size="1x" :class="workflowStatusClass" />
+
+        <div
+          class="flex flex-row justify-end mx-1 mb-1 text-sm font-thin text-center node"
+        >
+          <CheckSquareIcon
+            size="1x"
+            class="mr-1 node"
+            :class="qualificationStatusClass"
+          />
+
+          <BoxIcon size="1x" class="node" :class="resourceStatusClass" />
         </div>
       </div>
     </div>
@@ -99,9 +144,9 @@ import { Arity } from "si-registry/dist/registryEntry";
 import { combineLatest, of, from } from "rxjs";
 import { IGetEntityRequest, AttributeDal } from "@/api/sdf/dal/attributeDal";
 import {
-  CheckCircleIcon,
-  OctagonIcon,
-  PlayCircleIcon,
+  CheckSquareIcon,
+  BoxIcon,
+  // PlayCircleIcon
 } from "vue-feather-icons";
 
 import { SchematicOrientation } from "@/organisims/SchematicViewer.vue";
@@ -137,9 +182,9 @@ interface IData {
 export default Vue.extend({
   name: "Node",
   components: {
-    CheckCircleIcon,
-    OctagonIcon,
-    PlayCircleIcon,
+    CheckSquareIcon,
+    BoxIcon,
+    // PlayCircleIcon,
   },
   props: {
     selectedNode: {
@@ -229,6 +274,9 @@ export default Vue.extend({
       }),
     );
     return {
+      editSession: editSession$,
+      changeSet: changeSet$,
+      workspace: workspace$,
       selectedImplemenation: selectedImplementation$,
       edgeCreating: edgeCreating$.pipe(
         tap(edgeCreating => {
@@ -282,11 +330,51 @@ export default Vue.extend({
     this.deRegisterEvents();
   },
   methods: {
+    socketTypeClass(name: String): Record<string, any> {
+      let style: Record<string, any> = {};
+      if (
+        name == "k8sDeployment" ||
+        name == "k8sNamespace" ||
+        name == "k8sService"
+      ) {
+        style["socket-component-k8s"] = true;
+      } else if (
+        name == "awsAccessKey" ||
+        name == "awsEks" ||
+        name == "awsEksCluster" ||
+        name == "awsRegion"
+      ) {
+        style["socket-component-aws"] = true;
+      } else if (
+        name == "azureAks" ||
+        name == "azureResourceGroup" ||
+        name == "azureServicePrincipal" ||
+        name == "azureLocation" ||
+        name == "azureAksCluster"
+      ) {
+        style["socket-component-az"] = true;
+      } else if (
+        name == "aws" ||
+        name == "kubernetesService" ||
+        name == "azure"
+      ) {
+        style["socket-implementation"] = true;
+      } else if (name == "dockerImage") {
+        style["socket-component-docker"] = true;
+      } else if (name == "implementations") {
+        style["socket-implementations"] = true;
+      } else if (name == "service") {
+        style["socket-service"] = true;
+      } else if (name == "kubernetesCluster") {
+        style["socket-kubernetes-cluster"] = true;
+      }
+      return style;
+    },
     showArity(arity: Arity): string {
       if (Arity.One == arity) {
-        return "1";
+        return "";
       } else if (Arity.Many == arity) {
-        return "*";
+        return "";
       } else {
         return "";
       }
@@ -325,16 +413,24 @@ export default Vue.extend({
     },
   },
   computed: {
+    diffCount(): Number | null {
+      //@ts-ignore
+      if (this.selectedImplemenation && this.selectedImplemenation.diff) {
+        //@ts-ignore
+        return this.selectedImplemenation.diff.length;
+      }
+      return null;
+    },
     qualificationStatusClass(): Record<string, any> {
       let style: Record<string, any> = {};
       if (this.node.qualifications.length > 0) {
         if (_.find(this.node.qualifications, q => q.qualified == false)) {
-          style["text-red-500"] = true;
+          style["error"] = true;
         } else {
-          style["text-green-500"] = true;
+          style["ok"] = true;
         }
       } else {
-        style["text-gray-600"] = true;
+        style["unknown"] = true;
       }
       return style;
     },
@@ -346,7 +442,7 @@ export default Vue.extend({
           r => r.internalHealth == ResourceInternalHealth.Error,
         )
       ) {
-        style["text-red-500"] = true;
+        style["error"] = true;
         return style;
       } else if (
         _.find(
@@ -354,7 +450,7 @@ export default Vue.extend({
           r => r.internalHealth == ResourceInternalHealth.Warning,
         )
       ) {
-        style["text-yellow-500"] = true;
+        style["warning"] = true;
         return style;
       } else if (
         _.find(
@@ -362,9 +458,41 @@ export default Vue.extend({
           r => r.internalHealth == ResourceInternalHealth.Ok,
         )
       ) {
-        style["text-green-500"] = true;
+        style["ok"] = true;
       } else {
-        style["text-gray-600"] = true;
+        style["unknown"] = true;
+      }
+      return style;
+    },
+    statusBarClass(): Record<string, any> {
+      let style: Record<string, any> = {};
+      if (
+        _.find(
+          Object.values(this.node.workflowRuns),
+          w => w.workflowRun.state == WorkflowRunState.Failure,
+        )
+      ) {
+        style["error-fill"] = true;
+        return style;
+      } else if (
+        _.find(
+          Object.values(this.node.workflowRuns),
+          w => w.workflowRun.state == WorkflowRunState.Running,
+        )
+      ) {
+        style["running-fill"] = true;
+        style["running-animation"] = true;
+        return style;
+      } else if (
+        _.find(
+          Object.values(this.node.workflowRuns),
+          w => w.workflowRun.state == WorkflowRunState.Success,
+        )
+      ) {
+        style["ok-fill"] = true;
+        return style;
+      } else {
+        style["hidden"] = true;
       }
       return style;
     },
@@ -376,7 +504,7 @@ export default Vue.extend({
           w => w.workflowRun.state == WorkflowRunState.Failure,
         )
       ) {
-        style["text-red-500"] = true;
+        style["error"] = true;
         return style;
       } else if (
         _.find(
@@ -384,7 +512,7 @@ export default Vue.extend({
           w => w.workflowRun.state == WorkflowRunState.Running,
         )
       ) {
-        style["text-blue-500"] = true;
+        style["running"] = true;
         return style;
       } else if (
         _.find(
@@ -392,7 +520,7 @@ export default Vue.extend({
           w => w.workflowRun.state == WorkflowRunState.Success,
         )
       ) {
-        style["text-green-500"] = true;
+        style["ok"] = true;
         return style;
       } else {
         style["hidden"] = true;
@@ -458,16 +586,65 @@ export default Vue.extend({
     outputSocketClasses(): Record<string, string> {
       let classes: Record<string, any> = {};
 
+      let schema = this.entity.schema();
+
       switch (this.orientation) {
         case SchematicOrientation.Vertical: {
           classes["socket-output-vertical"] = true;
           classes["socket-output-horizontal"] = false;
+
+          if (schema.entityType == "service") {
+            classes["socket-service"] = true;
+          } else if (schema.entityType == "kubernetesCluster") {
+            classes["socket-kubernetes-cluster"] = true;
+          } else if (schema.entityType == "cloudProvider") {
+            classes["socket-cloud-provider"] = true;
+          }
+
           break;
         }
 
         case SchematicOrientation.Horizontal: {
           classes["socket-output-vertical"] = false;
           classes["socket-output-horizontal"] = true;
+
+          if (schema.entityType == "service") {
+            classes["socket-service"] = true;
+          } else if (schema.entityType == "kubernetesCluster") {
+            classes["socket-kubernetes-cluster"] = true;
+          } else if (schema.entityType == "cloudProvider") {
+            classes["socket-cloud-provider"] = true;
+          } else if (
+            schema.entityType == "k8sDeployment" ||
+            schema.entityType == "k8sNamespace" ||
+            schema.entityType == "k8sService"
+          ) {
+            classes["socket-component-k8s"] = true;
+          } else if (
+            schema.entityType == "awsAccessKey" ||
+            schema.entityType == "awsEksCluster" ||
+            schema.entityType == "awsRegion"
+          ) {
+            classes["socket-component-aws"] = true;
+          } else if (
+            schema.entityType == "azureResourceGroup" ||
+            schema.entityType == "azureServicePrincipal" ||
+            schema.entityType == "azureLocation" ||
+            schema.entityType == "azureAksCluster"
+          ) {
+            classes["socket-component-az"] = true;
+          } else if (
+            schema.entityType == "aws" ||
+            schema.entityType == "kubernetesService" ||
+            schema.entityType == "azure" ||
+            schema.entityType == "azureAks" ||
+            schema.entityType == "awsEks"
+          ) {
+            classes["socket-implementations"] = true;
+          } else if (schema.entityType == "dockerImage") {
+            classes["socket-component-docker"] = true;
+          }
+
           break;
         }
       }
@@ -520,12 +697,41 @@ export default Vue.extend({
     nodeTitleBarClasses(): Record<string, boolean> {
       let response: Record<string, boolean> = {};
       let schema = this.entity.schema();
-      if (schema.nodeKind == NodeKind.Concept) {
-        response["node-concept"] = true;
-      } else if (schema.nodeKind == NodeKind.Implementation) {
+      if (schema.entityType == "service") {
+        response["node-service"] = true;
+      } else if (schema.entityType == "kubernetesCluster") {
+        response["node-kubernetes-cluster"] = true;
+      } else if (schema.entityType == "cloudProvider") {
+        response["node-cloud-provider"] = true;
+      } else if (
+        schema.entityType == "k8sDeployment" ||
+        schema.entityType == "k8sNamespace" ||
+        schema.entityType == "k8sService"
+      ) {
+        response["node-component-k8s"] = true;
+      } else if (
+        schema.entityType == "awsAccessKey" ||
+        schema.entityType == "awsEksCluster" ||
+        schema.entityType == "awsRegion"
+      ) {
+        response["node-component-aws"] = true;
+      } else if (
+        schema.entityType == "azureResourceGroup" ||
+        schema.entityType == "azureServicePrincipal" ||
+        schema.entityType == "azureLocation" ||
+        schema.entityType == "azureAksCluster"
+      ) {
+        response["node-component-az"] = true;
+      } else if (
+        schema.entityType == "aws" ||
+        schema.entityType == "kubernetesService" ||
+        schema.entityType == "azure" ||
+        schema.entityType == "azureAks" ||
+        schema.entityType == "awsEks"
+      ) {
         response["node-implementation"] = true;
-      } else if (schema.nodeKind == NodeKind.Concrete) {
-        response["node-concrete"] = true;
+      } else if (schema.entityType == "dockerImage") {
+        response["node-component-docker"] = true;
       }
       return response;
     },
@@ -555,17 +761,84 @@ export default Vue.extend({
 
 <style type="text/css" scoped>
 /*node size and color*/
+
+.arity-one {
+  /* color: #DBDBDB; */
+  /* border-color: #DBDBDB; */
+  background-color: #282e30;
+  border-color: #008ed2;
+  /* border: none; */
+}
+
+.arity-many {
+  /* color: #EBEDBE; */
+  /* border-color: #EBEDBE; */
+  background-color: #004c70;
+  border-color: #008ed2;
+  /* border: none; */
+}
+.node-name {
+  font-size: 10px;
+  color: #ededed;
+  font-weight: 500;
+}
+
+.socket-name {
+  margin-left: 1px;
+  font-size: 9px;
+  /* color: #DBDBDB; */
+}
+
+.status-bar {
+  height: 3px;
+}
+
+.qualification-content {
+  height: 14px;
+  width: 14px;
+  margin-left: 2px;
+  background-color: #282e30;
+  border-radius: 2px 2px 2px 2px;
+}
+
+.qualification-icon {
+  padding-right: 1px;
+}
+
+.title-bar-empty-space {
+  height: 14px;
+  width: 14px;
+}
+
+.diff-count-content {
+  height: 14px;
+  width: 14px;
+  background-color: #282e30;
+  margin-right: 2px;
+}
+
+.diff-count-text {
+  color: #ce7f3e;
+  padding-right: 0.5px;
+  font-size: 0.5em;
+}
+
 .node-container {
   width: 140px;
   min-height: 100px;
   background-color: #282e30;
-  border-radius: 6px;
+  border-radius: 4px 4px 4px 4px;
   border-width: 1px;
   border-color: transparent;
 }
 
 .node-title-bar {
   border-radius: 4px 4px 0px 0px;
+}
+
+.title-bar-content {
+  padding-top: 4px;
+  padding-bottom: 2px;
 }
 
 .node-concept {
@@ -580,6 +853,81 @@ export default Vue.extend({
   background-color: #008ed2;
 }
 
+.node-service {
+  /* background-color: #00C5D2; */
+  background-color: #00b0bc;
+}
+
+.socket-service {
+  background-color: #00b0bc;
+  border-color: #00d6e4;
+}
+
+.node-kubernetes-cluster {
+  background-color: #80c037;
+}
+
+.socket-kubernetes-cluster {
+  background-color: #80c037;
+  border-color: #99e642;
+}
+
+.node-cloud-provider {
+  background-color: #ed6800;
+}
+
+.socket-cloud-provider {
+  background-color: #ed6800;
+  border-color: #ff7000;
+}
+
+.node-component-k8s {
+  background-color: #921ed6;
+}
+
+.socket-component-k8s {
+  background-color: #921ed6;
+  border-color: #c664ff;
+}
+
+.node-component-aws {
+  /* background-color: #D6C51E; */
+  background-color: #c0b011;
+}
+
+.socket-component-aws {
+  background-color: #c0b011;
+  border-color: #ffea17;
+}
+
+.node-component-az {
+  /* background-color: #1ED6A3; */
+  background-color: #18b08d;
+}
+
+.socket-component-az {
+  background-color: #18b08d;
+  border-color: #20eebf;
+}
+
+.node-component-docker {
+  background-color: #1e88d6;
+}
+
+.socket-component-docker {
+  background-color: #1e88d6;
+  border-color: #7ac7ff;
+}
+
+.node-implementation {
+  background-color: #d61e8c;
+}
+
+.socket-implementations {
+  background-color: #d61e8c;
+  border-color: #f873c2;
+}
+
 .node-details {
   background-color: #282e30;
 }
@@ -592,10 +940,10 @@ export default Vue.extend({
   display: block;
   height: 12px;
   width: 12px;
-  background-color: #282e30;
+  /* background-color: #282e30; */
   border-radius: 50%;
   border-width: 1px;
-  border-color: #008ed2;
+  /* border-color: #008ed2; */
   position: absolute;
   top: 0px;
   left: 62px;
@@ -606,10 +954,11 @@ export default Vue.extend({
   display: block;
   height: 12px;
   width: 12px;
-  background-color: #282e30;
+  /* background-color: #282e30; */
+  /* background-color: red; */
   border-radius: 50%;
   border-width: 1px;
-  border-color: #008ed2;
+  /* border-color: #008ed2; */
   position: absolute;
   top: 0px;
   left: 62px;
@@ -620,10 +969,8 @@ export default Vue.extend({
   display: block;
   height: 12px;
   width: 12px;
-  background-color: #282e30;
   border-radius: 50%;
   border-width: 1px;
-  border-color: #008ed2;
   position: absolute;
   left: -6px;
 }
@@ -632,10 +979,12 @@ export default Vue.extend({
   display: block;
   height: 12px;
   width: 12px;
-  background-color: #282e30;
+  /* background-color: #282e30; */
+  /* background-color: #004C70; */
   border-radius: 50%;
   border-width: 1px;
-  border-color: #008ed2;
+  /* border-color: #008ed2; */
+
   position: absolute;
   bottom: 0px;
   left: 62px;
@@ -646,10 +995,11 @@ export default Vue.extend({
   display: block;
   height: 12px;
   width: 12px;
-  background-color: #282e30;
+  /* background-color: #282e30; */
+  /* background-color: #004C70; */
   border-radius: 50%;
   border-width: 1px;
-  border-color: #008ed2;
+  /* border-color: #008ed2; */
   position: absolute;
   bottom: 0px;
   left: 62px;
@@ -660,12 +1010,13 @@ export default Vue.extend({
   display: block;
   height: 12px;
   width: 12px;
-  background-color: #282e30;
+  /* background-color: #282e30; */
+  /* background-color: #004C70; */
   border-radius: 50%;
   border-width: 1px;
-  border-color: #008ed2;
+  /* border-color: #008ed2; */
   position: absolute;
-  top: 30px;
+  top: 54px;
   left: 132px;
   margin-bottom: -6px;
 }
@@ -673,14 +1024,14 @@ export default Vue.extend({
 .node-is-selected {
   border-radius: 6px;
   border-width: 1px;
-  border-color: #5cb1b1;
+  border-color: #b7d2d4;
   z-index: 40;
 }
 
 .node-is-selected-deployment {
   border-radius: 6px;
   border-width: 1px;
-  border-color: #00ffff;
+  border-color: #b7d2d4;
   z-index: 40;
 }
 
@@ -692,5 +1043,57 @@ export default Vue.extend({
 
 .node-is-hidden {
   display: none;
+}
+
+.ok {
+  color: #86f0ad;
+}
+
+.warning {
+  color: #f0d286;
+}
+
+.error {
+  color: #f08686;
+}
+
+.unknown {
+  color: #bbbbbb;
+}
+
+.running {
+  color: #69bef0;
+}
+
+.ok-fill {
+  background-color: #86f0ad;
+}
+
+.warning-fill {
+  background-color: #f0d286;
+}
+
+.error-fill {
+  background-color: #f08686;
+}
+
+.unknown-fill {
+  background-color: #bbbbbb;
+}
+
+.running-fill {
+  background-color: #69bef0;
+}
+
+.running-animation {
+  animation: pulse 0.5s cubic-bezier(0, 0.19, 0.25, 1.01) infinite;
+  @keyframes pulse {
+    0% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
 }
 </style>
