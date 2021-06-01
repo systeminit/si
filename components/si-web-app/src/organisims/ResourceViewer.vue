@@ -11,7 +11,7 @@
         <button
           class="flex items-center focus:outline-none button"
           ref="sync"
-          v-if="!editMode"
+          v-if="!editMode && resource"
           @click="runSync()"
         >
           <RefreshCwIcon size="1x" class="text-sm" :class="healthColor" />
