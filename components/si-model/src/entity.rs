@@ -304,7 +304,21 @@ impl Entity {
         let mut conn = pg.pool.get().await?;
         let txn = conn.transaction().await?;
         let nats = nats_conn.transaction();
-        let system_id = system_id.unwrap_or("baseline".to_string());
+        let system_id = if system_id.is_none() {
+            let system = Entity::get_head_by_name_and_entity_type(
+                &txn,
+                "production",
+                "system",
+                &entity.si_storable.workspace_id,
+            )
+            .await?;
+            match system.first() {
+                Some(system) => system.id.clone(),
+                None => "baseline".to_string(),
+            }
+        } else {
+            system_id.unwrap()
+        };
         let request = CheckQualificationsRequest {
             entity: entity.clone(),
             system_id,
