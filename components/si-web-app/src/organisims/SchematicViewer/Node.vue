@@ -31,7 +31,7 @@
 
               <div
                 class="flex items-center justify-center rounded-full diff-count-content node"
-                v-if="diffCount == 0"
+                v-if="diffCount"
               >
                 <div
                   class="font-medium text-center align-middle diff-count-text node"
