@@ -7,11 +7,11 @@ use std::convert::Infallible;
 
 use si_data::{NatsTxnError, PgTxn};
 use si_model::{
-    ApiClientError, ApplicationError, BillingAccountError, ChangeSetError, DiffError, EdgeError,
-    EditSessionError, EntityError, EventError, EventLogError, JwtKeyError, KeyPairError,
-    ModelError, NodeError, NodePositionError, OrganizationError, QualificationError, ResourceError,
-    SchematicError, SecretError, SessionError, UserError, VisualizationError, WorkflowError,
-    WorkspaceError,
+    ApiClientError, ApplicationError, BillingAccountError, ChangeSetError, DiffError,
+    DiscoveryError, EdgeError, EditSessionError, EntityError, EventError, EventLogError,
+    JwtKeyError, KeyPairError, ModelError, NodeError, NodePositionError, OrganizationError,
+    QualificationError, ResourceError, SchematicError, SecretError, SessionError, UserError,
+    VisualizationError, WorkflowError, WorkspaceError,
 };
 
 pub mod application_context_dal;
@@ -104,6 +104,8 @@ pub enum HandlerError {
     Resource(#[from] ResourceError),
     #[error("visualization error: {0}")]
     Visualization(#[from] VisualizationError),
+    #[error("discovery error: {0}")]
+    Discovery(#[from] DiscoveryError),
 }
 
 pub type HandlerResult<T> = Result<T, HandlerError>;

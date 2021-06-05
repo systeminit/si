@@ -1,11 +1,11 @@
 use std::time::Duration;
 
-use futures::{future::BoxFuture, Future, FutureExt};
+use futures::{future::BoxFuture, FutureExt};
 use thiserror::Error;
 use tokio::time;
 
 use si_data::{NatsConn, PgPool};
-use si_model::{Edge, EdgeError, EdgeKind, Entity, EntityError, Resource, ResourceError, Veritech};
+use si_model::{EdgeError, Entity, EntityError, Resource, ResourceError, Veritech};
 
 #[derive(Error, Debug)]
 pub enum ResourceSchedulerError {

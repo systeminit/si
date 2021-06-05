@@ -75,6 +75,13 @@
           >
             <Link2Icon size="1.1x" />
           </button>
+          <button
+            class="pl-1 text-white focus:outline-none"
+            :class="discoveryViewClasses()"
+            @click="switchToDiscoveryView()"
+          >
+            <AtSignIcon size="1.1x" />
+          </button>
         </div>
 
         <div class="flex items-center">
@@ -143,6 +150,10 @@
           :entity="entity"
           :connections="connections"
         />
+        <DiscoveryViewer
+          v-else-if="activeView == 'discovery'"
+          :entity="entity"
+        />
 
         <div v-else class="text-xs">
           Not implemented
@@ -187,6 +198,7 @@ import {
   CheckSquareIcon,
   PlayIcon,
   Link2Icon,
+  AtSignIcon,
   BoxIcon,
 } from "vue-feather-icons";
 import "vue-json-pretty/lib/styles.css";
@@ -198,6 +210,7 @@ import ActionViewer from "@/organisims/ActionViewer.vue";
 import CodeViewer from "@/organisims/CodeViewer.vue";
 import ConnectionViewer from "@/organisims/ConnectionViewer.vue";
 import ResourceViewer from "@/organisims/ResourceViewer.vue";
+import DiscoveryViewer from "@/organisims/DiscoveryViewer.vue";
 import {
   loadEntityForEdit,
   loadConnections,
@@ -241,6 +254,7 @@ interface IData {
     | "connection"
     | "event"
     | "qualification"
+    | "discovery"
     | "resource";
   entity: Entity | null;
   connections: Connections;
@@ -277,7 +291,9 @@ export default Vue.extend({
     PlayIcon,
     ActionViewer,
     ConnectionViewer,
+    DiscoveryViewer,
     Link2Icon,
+    AtSignIcon,
     VueJsonPretty,
     ResourceViewer,
   },
@@ -570,6 +586,9 @@ export default Vue.extend({
     connectionViewClasses(): Record<string, any> {
       return this.viewClasses("connection");
     },
+    discoveryViewClasses(): Record<string, any> {
+      return this.viewClasses("discovery");
+    },
     resourceViewClasses(): Record<string, any> {
       return this.viewClasses("resource");
     },
@@ -596,6 +615,9 @@ export default Vue.extend({
     },
     switchToResourceView() {
       this.activeView = "resource";
+    },
+    switchToDiscoveryView() {
+      this.activeView = "discovery";
     },
     async toggleSelectionLock() {
       if (this.selectionIsLocked) {

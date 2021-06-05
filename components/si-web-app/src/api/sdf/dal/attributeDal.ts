@@ -7,6 +7,7 @@ import { Qualification } from "@/api/sdf/model/qualification";
 import { ILabelList } from "../dal";
 import { SchematicKind } from "../model/schematic";
 import { Connection } from "../model/connection";
+import { Resource } from "si-entity";
 
 export interface IGetEntityListRequest {
   workspaceId: string;
@@ -37,6 +38,138 @@ export async function getEntityList(
 
   const reply: IGetEntityListReply = await sdf.get(
     "attributeDal/getEntityList",
+    request,
+  );
+  return reply;
+}
+
+export interface IGetDiscoveryListRequest {
+  workspaceId: string;
+  entityType: string;
+}
+
+export interface IGetDiscoveryListReplySuccess {
+  list: { entity: Entity; resource: Resource }[];
+  error?: never;
+}
+
+export interface IGetDiscoveryListReplyFailure {
+  objectList?: never;
+  error: SDFError;
+}
+
+export type IGetDiscoveryListReply =
+  | IGetDiscoveryListReplySuccess
+  | IGetDiscoveryListReplyFailure;
+
+export async function getDiscoveryList(
+  request: IGetDiscoveryListRequest,
+): Promise<IGetDiscoveryListReply> {
+  let bottle = Bottle.pop("default");
+  let sdf = bottle.container.SDF;
+
+  const reply: IGetDiscoveryListReply = await sdf.get(
+    "attributeDal/getDiscoveryList",
+    request,
+  );
+  return reply;
+}
+
+export interface IGetImplementationsListRequest {
+  workspaceId: string;
+  applicationId: string;
+  implementationEntityTypes: string[];
+}
+
+export interface IGetImplementationsListReplySuccess {
+  list: {
+    [entityType: string]: { entity: Entity; resource: Resource }[];
+  };
+  error?: never;
+}
+
+export interface IGetImplementationsListReplyFailure {
+  objectList?: never;
+  error: SDFError;
+}
+
+export type IGetImplementationsListReply =
+  | IGetImplementationsListReplySuccess
+  | IGetImplementationsListReplyFailure;
+
+export async function getImplementationsList(
+  request: IGetImplementationsListRequest,
+): Promise<IGetImplementationsListReply> {
+  let bottle = Bottle.pop("default");
+  let sdf = bottle.container.SDF;
+
+  const reply: IGetImplementationsListReply = await sdf.post(
+    "attributeDal/getImplementationsList",
+    request,
+  );
+  return reply;
+}
+
+export interface IDiscoverRequest {
+  workspaceId: string;
+  entityId: string;
+  entityType: string;
+}
+
+export interface IDiscoverReplySuccess {
+  success: boolean;
+  error?: never;
+}
+
+export interface IDiscoverReplyFailure {
+  success?: never;
+  error: SDFError;
+}
+
+export type IDiscoverReply = IDiscoverReplySuccess | IDiscoverReplyFailure;
+
+export async function discover(
+  request: IDiscoverRequest,
+): Promise<IDiscoverReply> {
+  let bottle = Bottle.pop("default");
+  let sdf = bottle.container.SDF;
+
+  const reply: IDiscoverReply = await sdf.post(
+    "attributeDal/discover",
+    request,
+  );
+  return reply;
+}
+
+export interface IImportImplementationRequest {
+  workspaceId: string;
+  implementationEntityId: string;
+  entityId: string;
+  applicationId: string;
+}
+
+export interface IImportImplementationReplySuccess {
+  success: boolean;
+  error?: never;
+}
+
+export interface IImportImplementationReplyFailure {
+  success?: never;
+  error: SDFError;
+}
+
+export type IImportImplementationReply =
+  | IImportImplementationReplySuccess
+  | IImportImplementationReplyFailure;
+
+export async function importImplementation(
+  request: IImportImplementationRequest,
+): Promise<IImportImplementationReply> {
+  let bottle = Bottle.pop("default");
+  let sdf = bottle.container.SDF;
+
+  const reply: IImportImplementationReply = await sdf.post(
+    "attributeDal/importImplementation",
     request,
   );
   return reply;
@@ -271,4 +404,8 @@ export const AttributeDal = {
   updateEntity,
   getInputLabels,
   checkQualifications,
+  getDiscoveryList,
+  discover,
+  getImplementationsList,
+  importImplementation,
 };

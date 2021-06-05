@@ -3,10 +3,9 @@ use std::collections::HashMap;
 use thiserror::Error;
 
 use crate::{
-    workflow::{step::WorkflowRunStep, WorkflowRunListItem},
-    Edge, EdgeError, EdgeKind, Entity, EntityError, ModelError, Node, NodeError, NodePosition,
-    NodePositionError, Qualification, QualificationError, Resource, ResourceError, SiStorable,
-    WorkflowError, WorkflowRun,
+    workflow::WorkflowRunListItem, Edge, EdgeError, EdgeKind, Entity, EntityError, ModelError,
+    Node, NodeError, NodePosition, NodePositionError, Qualification, QualificationError, Resource,
+    ResourceError, SiStorable, WorkflowError, WorkflowRun,
 };
 use si_data::PgTxn;
 

@@ -180,6 +180,18 @@ pub fn attribute_dal(
     veritech: &Veritech,
 ) -> BoxedFilter<(impl warp::Reply,)> {
     attribute_dal_get_entity(pg.clone())
+        .or(attribute_dal_discover(
+            pg.clone(),
+            nats_conn.clone(),
+            veritech.clone(),
+        ))
+        .or(attribute_dal_import_implementation(
+            pg.clone(),
+            nats_conn.clone(),
+            veritech.clone(),
+        ))
+        .or(attribute_dal_get_discovery_list(pg.clone()))
+        .or(attribute_dal_get_implementations_list(pg.clone()))
         .or(attribute_dal_get_entity_list(pg.clone()))
         .or(attribute_dal_get_connections(pg.clone()))
         .or(attribute_dal_delete_connection(
@@ -207,6 +219,64 @@ pub fn attribute_dal_get_entity(pg: PgPool) -> BoxedFilter<(impl warp::Reply,)> 
         .and(warp::header::<String>("authorization"))
         .and(warp::query::<handlers::attribute_dal::GetEntityRequest>())
         .and_then(handlers::attribute_dal::get_entity)
+        .boxed()
+}
+
+pub fn attribute_dal_discover(
+    pg: PgPool,
+    nats_conn: NatsConn,
+    veritech: Veritech,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("attributeDal" / "discover")
+        .and(warp::post())
+        .and(with_pg(pg))
+        .and(with_nats_conn(nats_conn))
+        .and(with_veritech(veritech))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::body::json::<handlers::attribute_dal::DiscoverRequest>())
+        .and_then(handlers::attribute_dal::discover)
+        .boxed()
+}
+
+pub fn attribute_dal_import_implementation(
+    pg: PgPool,
+    nats_conn: NatsConn,
+    veritech: Veritech,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("attributeDal" / "importImplementation")
+        .and(warp::post())
+        .and(with_pg(pg))
+        .and(with_nats_conn(nats_conn))
+        .and(with_veritech(veritech))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::body::json::<
+            handlers::attribute_dal::ImportImplementationRequest,
+        >())
+        .and_then(handlers::attribute_dal::import_implementation)
+        .boxed()
+}
+
+pub fn attribute_dal_get_discovery_list(pg: PgPool) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("attributeDal" / "getDiscoveryList")
+        .and(warp::get())
+        .and(with_pg(pg))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::query::<
+            handlers::attribute_dal::GetDiscoveryListRequest,
+        >())
+        .and_then(handlers::attribute_dal::get_discovery_list)
+        .boxed()
+}
+
+pub fn attribute_dal_get_implementations_list(pg: PgPool) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("attributeDal" / "getImplementationsList")
+        .and(warp::post())
+        .and(with_pg(pg))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::body::json::<
+            handlers::attribute_dal::GetImplementationsListRequest,
+        >())
+        .and_then(handlers::attribute_dal::get_implementations_list)
         .boxed()
 }
 

@@ -20,6 +20,7 @@ const awsEks: RegistryEntry = {
     ],
   },
   implements: ["kubernetesCluster"],
+  discoverableFrom: ["aws"],
   inputs: [
     {
       name: "awsEksCluster",

@@ -1,12 +1,300 @@
+use std::collections::HashMap;
+
 use crate::handlers::{authenticate, authorize, validate_tenancy, HandlerError};
 use serde::{Deserialize, Serialize};
 use si_data::{NatsConn, PgPool};
 use si_model::{
-    application,
+    application, discovery,
     entity::diff::{diff_for_props, Diffs},
-    ApplicationEntities, Connection, Connections, Edge, EdgeKind, Entity, LabelList, LabelListItem,
-    Qualification, Schematic, SchematicKind, Veritech,
+    ApplicationEntities, Connection, Connections, DiscoveryListEntry, Edge, EdgeKind, Entity,
+    LabelList, LabelListItem, NodePosition, Qualification, Schematic, SchematicKind, Veritech,
+    Vertex,
 };
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct GetDiscoveryListRequest {
+    pub workspace_id: String,
+    pub entity_type: String,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct GetDiscoveryListReply {
+    list: Vec<DiscoveryListEntry>,
+}
+
+pub async fn get_discovery_list(
+    pg: PgPool,
+    token: String,
+    request: GetDiscoveryListRequest,
+) -> Result<impl warp::Reply, warp::reject::Rejection> {
+    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let txn = conn.transaction().await.map_err(HandlerError::from)?;
+
+    let claim = authenticate(&txn, &token).await?;
+    authorize(&txn, &claim.user_id, "attributeDal", "getDiscoveryList").await?;
+    validate_tenancy(
+        &txn,
+        "workspaces",
+        &request.workspace_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+
+    let list = discovery::list(&txn, &request.workspace_id, &request.entity_type)
+        .await
+        .map_err(HandlerError::from)?;
+
+    Ok(warp::reply::json(&GetDiscoveryListReply { list }))
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct GetImplementationsListRequest {
+    pub workspace_id: String,
+    pub application_id: String,
+    pub implementation_entity_types: Vec<String>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct GetImplementationsListReply {
+    list: HashMap<String, Vec<DiscoveryListEntry>>,
+}
+
+pub async fn get_implementations_list(
+    pg: PgPool,
+    token: String,
+    request: GetImplementationsListRequest,
+) -> Result<impl warp::Reply, warp::reject::Rejection> {
+    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let txn = conn.transaction().await.map_err(HandlerError::from)?;
+
+    let claim = authenticate(&txn, &token).await?;
+    authorize(
+        &txn,
+        &claim.user_id,
+        "attributeDal",
+        "getImplementationsList",
+    )
+    .await?;
+    validate_tenancy(
+        &txn,
+        "workspaces",
+        &request.workspace_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+
+    let list = discovery::implementations_list(
+        &txn,
+        &request.workspace_id,
+        &request.application_id,
+        request.implementation_entity_types,
+    )
+    .await
+    .map_err(HandlerError::from)?;
+
+    Ok(warp::reply::json(&GetImplementationsListReply { list }))
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct DiscoverRequest {
+    pub workspace_id: String,
+    pub entity_id: String,
+    pub entity_type: String,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct DiscoverReply {
+    success: bool,
+}
+
+pub async fn discover(
+    pg: PgPool,
+    nats_conn: NatsConn,
+    veritech: Veritech,
+    token: String,
+    request: DiscoverRequest,
+) -> Result<impl warp::Reply, warp::reject::Rejection> {
+    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let txn = conn.transaction().await.map_err(HandlerError::from)?;
+
+    let claim = authenticate(&txn, &token).await?;
+    authorize(&txn, &claim.user_id, "attributeDal", "discover").await?;
+    validate_tenancy(
+        &txn,
+        "workspaces",
+        &request.workspace_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+    validate_tenancy(
+        &txn,
+        "entities",
+        &request.entity_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+
+    txn.commit().await.map_err(HandlerError::from)?;
+
+    discovery::discover(
+        &pg,
+        &nats_conn,
+        &veritech,
+        &request.workspace_id,
+        &request.entity_id,
+        &request.entity_type,
+    )
+    .await
+    .map_err(HandlerError::from)?;
+
+    Ok(warp::reply::json(&DiscoverReply { success: true }))
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportImplementationRequest {
+    pub workspace_id: String,
+    pub application_id: String,
+    pub entity_id: String,
+    pub implementation_entity_id: String,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportImplementationReply {
+    success: bool,
+}
+
+pub async fn import_implementation(
+    pg: PgPool,
+    nats_conn: NatsConn,
+    _veritech: Veritech,
+    token: String,
+    request: ImportImplementationRequest,
+) -> Result<impl warp::Reply, warp::reject::Rejection> {
+    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let txn = conn.transaction().await.map_err(HandlerError::from)?;
+    let nats = nats_conn.transaction();
+
+    let claim = authenticate(&txn, &token).await?;
+    authorize(&txn, &claim.user_id, "attributeDal", "importImplementation").await?;
+    validate_tenancy(
+        &txn,
+        "workspaces",
+        &request.workspace_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+    validate_tenancy(
+        &txn,
+        "entities",
+        &request.entity_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+    validate_tenancy(
+        &txn,
+        "entities",
+        &request.implementation_entity_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+    validate_tenancy(
+        &txn,
+        "entities",
+        &request.application_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+
+    let application_entity = Entity::for_head(&txn, &request.application_id)
+        .await
+        .map_err(HandlerError::from)?;
+    let concept_entity = Entity::for_head(&txn, &request.entity_id)
+        .await
+        .map_err(HandlerError::from)?;
+    let concept_node_positions = NodePosition::get_by_node_id(&txn, &concept_entity.node_id)
+        .await
+        .map_err(HandlerError::from)?;
+    let impl_entity = Entity::for_head(&txn, &request.implementation_entity_id)
+        .await
+        .map_err(HandlerError::from)?;
+    let impl_entity_predecessor_edges =
+        Edge::all_predecessor_edges_by_object_id(&txn, &EdgeKind::Configures, &impl_entity.id)
+            .await
+            .map_err(HandlerError::from)?;
+    let mut impls_to_import = vec![impl_entity];
+    for edge in impl_entity_predecessor_edges.into_iter() {
+        let sentity = Entity::for_head(&txn, &edge.tail_vertex.object_id)
+            .await
+            .map_err(HandlerError::from)?;
+        impls_to_import.push(sentity);
+    }
+
+    let pos_context_id = format!("{}.component", concept_entity.id);
+    let mut impl_pos_x: f64 = 0 as f64;
+    let mut impl_pos_y: f64 = 0 as f64;
+
+    if let Some(concept_pos) = concept_node_positions
+        .iter()
+        .find(|cnp| cnp.context_id == pos_context_id)
+    {
+        let concept_pos_x: f64 = concept_pos.x.parse().expect("should be a number");
+        let concept_pos_y: f64 = concept_pos.x.parse().expect("should be a number");
+        impl_pos_x = concept_pos_x;
+        impl_pos_y = concept_pos_y;
+    }
+    for i_entity in impls_to_import.iter() {
+        impl_pos_x = impl_pos_x - 200 as f64;
+        NodePosition::create_or_update(
+            &txn,
+            &nats,
+            &i_entity.node_id,
+            &pos_context_id,
+            format!("{:.0}", impl_pos_x),
+            format!("{:.0}", impl_pos_y),
+            &request.workspace_id,
+        )
+        .await
+        .map_err(HandlerError::from)?;
+
+        let _edge = Edge::new(
+            &txn,
+            &nats,
+            Vertex::from_entity(&application_entity, "output"),
+            Vertex::from_entity(&i_entity, "includes"),
+            false,
+            si_model::EdgeKind::Includes,
+            request.workspace_id.clone(),
+        )
+        .await
+        .map_err(HandlerError::from)?;
+
+        let _edge = Edge::new(
+            &txn,
+            &nats,
+            Vertex::from_entity(&concept_entity, "output"),
+            Vertex::from_entity(&i_entity, "deployment"),
+            false,
+            si_model::EdgeKind::Component,
+            request.workspace_id.clone(),
+        )
+        .await
+        .map_err(HandlerError::from)?;
+    }
+
+    txn.commit().await.map_err(HandlerError::from)?;
+
+    Ok(warp::reply::json(&ImportImplementationReply {
+        success: true,
+    }))
+}
 
 // ----------------------------------------------------------------------------
 // Entity
@@ -485,9 +773,7 @@ pub async fn get_connections(
 
     txn.commit().await.map_err(HandlerError::from)?;
 
-    let reply = GetConnectionsReply {
-        connections: connections,
-    };
+    let reply = GetConnectionsReply { connections };
     Ok(warp::reply::json(&reply))
 }
 
