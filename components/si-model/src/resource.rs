@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use chrono::Utc;
+use futures::{future::BoxFuture, FutureExt};
 use serde::{Deserialize, Serialize};
 use serde_json;
 use si_data::{NatsConn, NatsTxn, NatsTxnError, PgPool, PgTxn};
@@ -405,4 +406,51 @@ impl Resource {
 
         Ok(self)
     }
+}
+
+pub fn sync_resource(
+    pg: &PgPool,
+    nats_conn: &NatsConn,
+    veritech: &Veritech,
+    entity: &Entity,
+) -> BoxFuture<'static, ResourceResult<()>> {
+    let entity = entity.clone();
+    let pg = pg.clone();
+    let veritech = veritech.clone();
+    let nats_conn = nats_conn.clone();
+    let r = async move {
+        let mut conn = pg.pool.get().await?;
+        let txn = conn.transaction().await?;
+        let systems: Vec<Entity> = Entity::get_head_by_name_and_entity_type(
+            &txn,
+            "production",
+            "system",
+            &entity.si_storable.workspace_id,
+        )
+        .await
+        .map_err(|e| ResourceError::Entity(e.to_string()))?
+        .into_iter()
+        .filter(|s| s.si_storable.workspace_id == entity.si_storable.workspace_id)
+        .collect();
+        let system_id = systems.first().unwrap().id.clone();
+        let mut r = match Resource::get_by_entity_and_system(&txn, &entity.id, &system_id).await? {
+            Some(r) => r,
+            None => {
+                Resource::new(
+                    &pg,
+                    &nats_conn,
+                    serde_json::json!([]),
+                    &entity.id,
+                    &system_id,
+                    &entity.si_storable.workspace_id,
+                )
+                .await?
+            }
+        };
+        r.await_sync(pg.clone(), nats_conn.clone(), veritech.clone())
+            .await?;
+        txn.commit().await?;
+        Ok(())
+    };
+    r.boxed()
 }

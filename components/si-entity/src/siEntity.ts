@@ -631,6 +631,29 @@ export class SiEntity implements ISiEntity {
     return registry[this.entityType];
   }
 
+  discoverable(): RegistryEntry[] {
+    const discoverable: RegistryEntry[] = [];
+    for (const entry of Object.values(registry)) {
+      if (entry.discoverableFrom) {
+        const match = _.find(
+          entry.discoverableFrom,
+          (e) => e == this.entityType,
+        );
+        if (match) {
+          if (entry) {
+            discoverable.push(entry);
+          } else {
+            console.log(
+              "A discoverable entity was found, but it was not in the registry! bug!",
+              { match, entity: this },
+            );
+          }
+        }
+      }
+    }
+    return discoverable;
+  }
+
   toEditField(
     editFields: EditField[],
     checkProp: {

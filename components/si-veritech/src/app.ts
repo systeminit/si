@@ -55,3 +55,15 @@ router.get("/syncResource", async (ctx: Context) => {
     });
   }
 });
+router.get("/discover", async (ctx: Context) => {
+  if (ctx.ws) {
+    const ws = await ctx.ws();
+
+    ws.on("message", function (msg: string) {
+      controller.discover(ws, msg);
+    });
+    ws.on("close", (code: number, reason: string) => {
+      debug("socket closed", { code, reason });
+    });
+  }
+});

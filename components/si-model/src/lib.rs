@@ -24,6 +24,7 @@ pub mod application;
 pub mod billing_account;
 pub mod change_set;
 pub mod connection;
+pub mod discovery;
 pub mod edge;
 pub mod edit_session;
 pub mod entity;
@@ -59,6 +60,7 @@ pub use application::{
 pub use billing_account::{BillingAccount, BillingAccountError, BillingAccountResult};
 pub use change_set::{ChangeSet, ChangeSetError, ChangeSetResult, ChangeSetStatus, SiChangeSet};
 pub use connection::{Connection, ConnectionError, ConnectionPoint, Connections};
+pub use discovery::{DiscoveryError, DiscoveryListEntry};
 pub use edge::{Edge, EdgeError, EdgeKind, EdgeResult, Edges, Vertex};
 pub use edit_session::{EditSession, EditSessionError, EditSessionResult};
 pub use entity::diff::{diff_for_props, DiffError};

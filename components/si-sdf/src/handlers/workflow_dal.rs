@@ -1,7 +1,7 @@
 use crate::handlers::{authenticate, authorize, validate_tenancy, HandlerError};
 use serde::{Deserialize, Serialize};
 use si_data::{NatsConn, PgPool};
-use si_model::{workflow::WorkflowRunListItem, Resource};
+use si_model::workflow::WorkflowRunListItem;
 use si_model::{Entity, Veritech, Workflow, WorkflowContext, WorkflowRun, Workspace};
 
 #[derive(Deserialize, Serialize, Debug)]

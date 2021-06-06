@@ -378,8 +378,6 @@ impl WorkflowRun {
     }
 
     pub async fn refresh(&mut self, txn: &PgTxn<'_>) -> WorkflowResult<()> {
-        let json = serde_json::to_value(&self)?;
-
         let row = txn
             .query_one(
                 "SELECT obj AS object FROM workflow_runs WHERE si_id = $1",

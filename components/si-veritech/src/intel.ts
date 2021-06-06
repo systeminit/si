@@ -22,12 +22,14 @@ import {
 } from "./controllers/inferProperties";
 import { RunCommandCallbacks } from "./controllers/runCommand";
 import { SyncResourceCallback } from "./controllers/syncResource";
+import { DiscoveryCallback } from "./controllers/discover";
 
 export interface Intel {
   inferProperties?(request: InferPropertiesRequest): InferPropertiesReply;
   checkQualifications?: CheckQualificationCallbacks;
   runCommands?: RunCommandCallbacks;
   syncResource?: SyncResourceCallback;
+  discover?: DiscoveryCallback;
 }
 
 const intel: Record<string, Intel> = {

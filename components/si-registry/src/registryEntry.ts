@@ -272,6 +272,7 @@ export interface RegistryEntry {
   nodeKind: NodeKind;
   ui?: RegistryEntryUi;
   implements?: string[];
+  discoverableFrom?: string[];
   inputs: Input[];
   omitOutputsInSchematic?: SchematicKind[];
   properties: Prop[];

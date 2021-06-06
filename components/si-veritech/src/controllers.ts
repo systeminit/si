@@ -3,6 +3,7 @@ import { checkQualifications } from "./controllers/checkQualifications";
 import { loadWorkflows } from "./controllers/loadWorkflows";
 import { runCommand } from "./controllers/runCommand";
 import { syncResource } from "./controllers/syncResource";
+import { discover } from "./controllers/discover";
 
 const controller = {
   inferProperties,
@@ -10,6 +11,7 @@ const controller = {
   loadWorkflows,
   runCommand,
   syncResource,
+  discover,
 };
 
 export default controller;
