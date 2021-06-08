@@ -323,6 +323,7 @@ schematicSelectNode$.next(null);
 export interface SchematicUpdated {
   schematicKind: SchematicKind;
   schematic: ISchematic;
+  rootObjectId: string | null;
 }
 export const schematicUpdated$ = new Subject<SchematicUpdated>();
 
@@ -353,6 +354,7 @@ export const nodeDeleted$ = new ReplaySubject<NodeDeleted | null>(1);
 nodeDeleted$.next(null);
 
 export interface EdgeCreating {
+  graphViewerId: string;
   entityType: string;
   schematicKind: string;
   entityId: string;
@@ -384,6 +386,8 @@ export interface SchematicPanelState {
   panelRef: string;
   applicationId: string;
   schematicKind: string;
+  rootObjectId: string | null;
+  isPinned: boolean;
 }
 
 export const schematicPanelKind$ = new Subject<SchematicPanelState>();

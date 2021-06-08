@@ -1,6 +1,6 @@
 <template>
   <div
-    class="relative w-auto menu-root pr-10"
+    class="relative w-auto menu-root"
     @mouseleave="onMouseLeave"
     @mouseenter="cancelClose"
   >

@@ -280,6 +280,7 @@ export default Vue.extend({
     },
     rootObjectId: {
       type: String,
+      required: false,
     },
   },
   data(): IData {
@@ -844,11 +845,17 @@ export default Vue.extend({
           ) {
             console.log(e.target);
 
+            let graphViewerId = this.id;
             let entityType = e.target.getAttribute("entityType");
             let entityId = e.target.getAttribute("entityId");
             let schematicKind = e.target.getAttribute("schematicKind");
             if (entityType && schematicKind && entityId) {
-              edgeCreating$.next({ entityType, schematicKind, entityId });
+              edgeCreating$.next({
+                graphViewerId,
+                entityType,
+                schematicKind,
+                entityId,
+              });
             }
 
             this.connection.transientConnection.sourceSocketId = e.target.id;
@@ -1502,22 +1509,13 @@ export default Vue.extend({
         this.currentApplicationId &&
         this.currentWorkspace &&
         this.currentChangeSet &&
-        this.currentEditSession
+        this.currentEditSession &&
+        this.rootObjectId
       ) {
         const connection: Connection = {
           source: source,
           destination: destination,
         };
-
-        if (
-          this.rootObjectId == "noSelectedApplicationNode" ||
-          this.rootObjectId == "noSelectedDeploymentNode"
-        ) {
-          // This just means that its not possible to create a connection, because
-          // the context is lost. Shouldn't really ever happen, but, you know;
-          // defense in depth and whatnot.
-          return;
-        }
 
         let reply: ConnectionCreateReply = await SchematicDal.connectionCreate({
           connection: connection,
@@ -1535,6 +1533,7 @@ export default Vue.extend({
             schematicUpdated$.next({
               schematicKind: this.schematicKind,
               schematic: reply.schematic,
+              rootObjectId: this.rootObjectId,
             });
           }
         }

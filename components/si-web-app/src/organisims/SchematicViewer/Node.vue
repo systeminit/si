@@ -143,9 +143,9 @@ import {
   changeSet$,
   editSession$,
 } from "@/observables";
-import { tap, pluck, switchMap } from "rxjs/operators";
+import { tap, pluck, switchMap, filter } from "rxjs/operators";
 import { Arity } from "si-registry/dist/registryEntry";
-import { combineLatest, of, from } from "rxjs";
+import { combineLatest } from "rxjs";
 import { IGetEntityRequest, AttributeDal } from "@/api/sdf/dal/attributeDal";
 import {
   CheckSquareIcon,
@@ -283,6 +283,12 @@ export default Vue.extend({
       workspace: workspace$,
       selectedImplemenation: selectedImplementation$,
       edgeCreating: edgeCreating$.pipe(
+        filter(
+          edgeCreating =>
+            (!_.isNull(edgeCreating) &&
+              edgeCreating.graphViewerId == this.graphViewerId) ||
+            _.isNull(edgeCreating),
+        ),
         tap(edgeCreating => {
           if (
             edgeCreating &&
