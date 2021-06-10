@@ -174,13 +174,12 @@ pub struct ImportImplementationReply {
 pub async fn import_implementation(
     pg: PgPool,
     nats_conn: NatsConn,
-    _veritech: Veritech,
+    veritech: Veritech,
     token: String,
     request: ImportImplementationRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
     let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
-    let nats = nats_conn.transaction();
 
     let claim = authenticate(&txn, &token).await?;
     authorize(&txn, &claim.user_id, "attributeDal", "importImplementation").await?;
@@ -212,88 +211,86 @@ pub async fn import_implementation(
         &claim.billing_account_id,
     )
     .await?;
-
-    let application_entity = Entity::for_head(&txn, &request.application_id)
-        .await
-        .map_err(HandlerError::from)?;
-    let concept_entity = Entity::for_head(&txn, &request.entity_id)
-        .await
-        .map_err(HandlerError::from)?;
-    let concept_node_positions = NodePosition::get_by_node_id(&txn, &concept_entity.node_id)
-        .await
-        .map_err(HandlerError::from)?;
-    let impl_entity = Entity::for_head(&txn, &request.implementation_entity_id)
-        .await
-        .map_err(HandlerError::from)?;
-    let impl_entity_predecessor_edges =
-        Edge::all_predecessor_edges_by_object_id(&txn, &EdgeKind::Configures, &impl_entity.id)
-            .await
-            .map_err(HandlerError::from)?;
-    let mut impls_to_import = vec![impl_entity];
-    for edge in impl_entity_predecessor_edges.into_iter() {
-        let sentity = Entity::for_head(&txn, &edge.tail_vertex.object_id)
-            .await
-            .map_err(HandlerError::from)?;
-        impls_to_import.push(sentity);
-    }
-
-    let pos_context_id = format!("{}.component", concept_entity.id);
-    let mut impl_pos_x: f64 = 0 as f64;
-    let mut impl_pos_y: f64 = 0 as f64;
-
-    if let Some(concept_pos) = concept_node_positions
-        .iter()
-        .find(|cnp| cnp.context_id == pos_context_id)
-    {
-        let concept_pos_x: f64 = concept_pos.x.parse().expect("should be a number");
-        let concept_pos_y: f64 = concept_pos.x.parse().expect("should be a number");
-        impl_pos_x = concept_pos_x;
-        impl_pos_y = concept_pos_y;
-    }
-    for i_entity in impls_to_import.iter() {
-        impl_pos_x = impl_pos_x - 200 as f64;
-        NodePosition::create_or_update(
-            &txn,
-            &nats,
-            &i_entity.node_id,
-            &pos_context_id,
-            format!("{:.0}", impl_pos_x),
-            format!("{:.0}", impl_pos_y),
-            &request.workspace_id,
-        )
-        .await
-        .map_err(HandlerError::from)?;
-
-        let _edge = Edge::new(
-            &txn,
-            &nats,
-            Vertex::from_entity(&application_entity, "output"),
-            Vertex::from_entity(&i_entity, "includes"),
-            false,
-            si_model::EdgeKind::Includes,
-            request.workspace_id.clone(),
-        )
-        .await
-        .map_err(HandlerError::from)?;
-
-        let _edge = Edge::new(
-            &txn,
-            &nats,
-            Vertex::from_entity(&concept_entity, "output"),
-            Vertex::from_entity(&i_entity, "deployment"),
-            false,
-            si_model::EdgeKind::Component,
-            request.workspace_id.clone(),
-        )
-        .await
-        .map_err(HandlerError::from)?;
-    }
-
     txn.commit().await.map_err(HandlerError::from)?;
+
+    discovery::import_implementation(
+        &pg,
+        &nats_conn,
+        &veritech,
+        &request.workspace_id,
+        &request.application_id,
+        &request.entity_id,
+        &request.implementation_entity_id,
+    )
+    .await
+    .map_err(HandlerError::from)?;
 
     Ok(warp::reply::json(&ImportImplementationReply {
         success: true,
     }))
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportConceptRequest {
+    pub workspace_id: String,
+    pub application_id: String,
+    pub implementation_entity_id: String,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportConceptReply {
+    success: bool,
+}
+
+pub async fn import_concept(
+    pg: PgPool,
+    nats_conn: NatsConn,
+    veritech: Veritech,
+    token: String,
+    request: ImportConceptRequest,
+) -> Result<impl warp::Reply, warp::reject::Rejection> {
+    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let txn = conn.transaction().await.map_err(HandlerError::from)?;
+
+    let claim = authenticate(&txn, &token).await?;
+    authorize(&txn, &claim.user_id, "attributeDal", "importConcept").await?;
+    validate_tenancy(
+        &txn,
+        "workspaces",
+        &request.workspace_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+    validate_tenancy(
+        &txn,
+        "entities",
+        &request.implementation_entity_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+    validate_tenancy(
+        &txn,
+        "entities",
+        &request.application_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+    txn.commit().await.map_err(HandlerError::from)?;
+
+    discovery::import_concept(
+        &pg,
+        &nats_conn,
+        &veritech,
+        &request.workspace_id,
+        &request.application_id,
+        &request.implementation_entity_id,
+    )
+    .await
+    .map_err(HandlerError::from)?;
+
+    Ok(warp::reply::json(&ImportConceptReply { success: true }))
 }
 
 // ----------------------------------------------------------------------------

@@ -146,6 +146,7 @@ export interface IImportImplementationRequest {
   implementationEntityId: string;
   entityId: string;
   applicationId: string;
+  withConcept?: true;
 }
 
 export interface IImportImplementationReplySuccess {
@@ -170,6 +171,39 @@ export async function importImplementation(
 
   const reply: IImportImplementationReply = await sdf.post(
     "attributeDal/importImplementation",
+    request,
+  );
+  return reply;
+}
+
+export interface IImportConceptRequest {
+  workspaceId: string;
+  implementationEntityId: string;
+  applicationId: string;
+}
+
+export interface IImportConceptReplySuccess {
+  success: boolean;
+  error?: never;
+}
+
+export interface IImportConceptReplyFailure {
+  success?: never;
+  error: SDFError;
+}
+
+export type IImportConceptReply =
+  | IImportConceptReplySuccess
+  | IImportConceptReplyFailure;
+
+export async function importConcept(
+  request: IImportConceptRequest,
+): Promise<IImportConceptReply> {
+  let bottle = Bottle.pop("default");
+  let sdf = bottle.container.SDF;
+
+  const reply: IImportConceptReply = await sdf.post(
+    "attributeDal/importConcept",
     request,
   );
   return reply;
@@ -408,4 +442,5 @@ export const AttributeDal = {
   discover,
   getImplementationsList,
   importImplementation,
+  importConcept,
 };

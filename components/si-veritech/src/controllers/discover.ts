@@ -67,13 +67,15 @@ export async function discover(ws: WebSocket, req: string): Promise<void> {
       const response = await intelFuncs.discover(SiCtx, request, ws);
       send(ws, { finish: response });
     } catch (e) {
+      console.log("got here", e);
       const response: DiscoveryProtocolFinish["finish"] = {
-        error: `sync failed: ${e}`,
+        error: `discovery failed: ${e}`,
         discovered: [],
       };
       send(ws, { finish: response });
     }
   } else {
+    console.log("nothing to see here");
     send(ws, { finish: { discovered: [] } });
   }
   close(ws);

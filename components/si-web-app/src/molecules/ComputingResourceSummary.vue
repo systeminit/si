@@ -36,7 +36,7 @@ import {
   ResourceSummaryKind,
 } from "@/api/sdf/dal/applicationDal";
 import { combineLatest } from "rxjs";
-import { pluck, tap } from "rxjs/operators";
+import { pluck, tap, debounceTime } from "rxjs/operators";
 import {
   workspace$,
   system$,
@@ -75,27 +75,49 @@ export default Vue.extend({
     }).pipe(pluck("newValue"));
 
     return {
+      system: system$,
+      workspace: workspace$,
       resources: resources$.pipe(
-        tap(r => {
-          let isUpdated = false;
-          // @ts-ignore
-          if (this.computingResourcesData) {
-            // @ts-ignore
-            for (let x = 0; x < this.computingResourcesData.length; x++) {
-              // @ts-ignore
-              if (r.id == this.computingResourcesData[x].id) {
-                isUpdated = true;
-                // @ts-ignore
-                Vue.set(this.computingResourcesData, x, r);
-              }
-            }
-            if (!isUpdated) {
-              if (r.entityType == "kubernetesCluster") {
-                // @ts-ignore
-                this.computingResourcesData.push(r);
-              }
+        debounceTime(5000),
+        tap(async r => {
+          //@ts-ignore
+          if (this.applicationId && this.system && this.workspace) {
+            let reply = await ApplicationDal.resourceSummary({
+              //@ts-ignore
+              applicationId: this.applicationId,
+              //@ts-ignore
+              workspaceId: this.workspace.id,
+              //@ts-ignore
+              systemId: this.system.id,
+              kind: ResourceSummaryKind.ComputingResources,
+            });
+            if (reply.error) {
+              emitEditorErrorMessage(reply.error.message);
+            } else {
+              //@ts-ignore
+              this.computingResourcesData = reply.resources;
             }
           }
+
+          //let isUpdated = false;
+          //// @ts-ignore
+          //if (this.computingResourcesData) {
+          //  // @ts-ignore
+          //  for (let x = 0; x < this.computingResourcesData.length; x++) {
+          //    // @ts-ignore
+          //    if (r.id == this.computingResourcesData[x].id) {
+          //      isUpdated = true;
+          //      // @ts-ignore
+          //      Vue.set(this.computingResourcesData, x, r);
+          //    }
+          //  }
+          //  if (!isUpdated) {
+          //    if (r.entityType == "kubernetesCluster") {
+          //      // @ts-ignore
+          //      this.computingResourcesData.push(r);
+          //    }
+          //  }
+          //}
         }),
       ),
       updateResources: combineLatest(

@@ -122,6 +122,15 @@
                     :class="resourceStatusClass(discovered.resource)"
                   />
                 </div>
+                <div class="flex pl-2">
+                  <button
+                    class="flex items-center focus:outline-none button"
+                    v-if="!editMode && !changeSet"
+                    @click="importConcept(discovered.entity.id)"
+                  >
+                    <PlusCircleIcon size="1x" class="text-sm" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -356,6 +365,25 @@ export default Vue.extend({
         refreshImplementations$.next(true);
       }
     },
+    async importConcept(implementationEntityId: string) {
+      // @ts-ignore
+      if (this.applicationId && this.entity && this.workspace) {
+        let reply = await AttributeDal.importConcept({
+          // @ts-ignore
+          workspaceId: this.workspace.id,
+          implementationEntityId,
+          // @ts-ignore
+          applicationId: this.applicationId,
+        });
+        if (reply.error) {
+          emitEditorErrorMessage(reply.error.message);
+        }
+        refreshSchematic$.next(true);
+        refreshEntityLabelList$.next(true);
+        refreshImplementations$.next(true);
+      }
+    },
+
     async runSync(event: MouseEvent, entityType: string) {
       if (event.target) {
         this.animateSyncButton(event.target);

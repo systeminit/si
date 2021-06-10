@@ -19,6 +19,7 @@ const kubernetesService: RegistryEntry = {
     ],
   },
   implements: ["service"],
+  discoverableFrom: ["awsEks"],
   inputs: [
     {
       name: "k8sDeployment",

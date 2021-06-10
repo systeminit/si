@@ -7,7 +7,7 @@ const debug = Debug("veritech:support");
 import _ from "lodash";
 
 import { RunCommandRequest } from "./controllers/runCommand";
-import { SiEntity } from "si-entity";
+import { OpSource, OpType, SiEntity } from "si-entity";
 import { SiCtx } from "./siCtx";
 
 export type TempFile = ReturnType<typeof tmp.file>;
@@ -239,4 +239,90 @@ export async function azureKubeConfigPath(
     kubeconfigPath,
   ]);
   return kubeTempDir;
+}
+
+export function k8sDiscoverEntity(
+  entity: SiEntity,
+  data: Record<string, any>,
+): void {
+  const path: string[] = [];
+  const entityName = _.get(data, ["metadata", "name"]);
+  entity.name = entityName.replace("-service", "");
+  //_k8sDiscoverEntityObject(entity, data, path);
+}
+
+function _k8sDiscoverEntityArray(
+  entity: SiEntity,
+  data: Record<string, any>,
+  path: string[],
+): void {
+  const currentArray = _.get(data, path);
+  for (let x = 0; x < currentArray.length; x++) {
+    const indexValue = currentArray[x];
+    const currentPath = _.concat(path, [`${x}`]);
+    if (_.isArray(indexValue)) {
+      entity.addOpSet({
+        op: OpType.Set,
+        source: OpSource.Inferred,
+        path: currentPath,
+        // @ts-ignore
+        value: [],
+        system: "baseline",
+      });
+      _k8sDiscoverEntityArray(entity, data, currentPath);
+    } else if (_.isObjectLike(indexValue)) {
+      entity.addOpSet({
+        op: OpType.Set,
+        source: OpSource.Inferred,
+        path: currentPath,
+        // @ts-ignore
+        value: {},
+        system: "baseline",
+      });
+      _k8sDiscoverEntityObject(entity, data, currentPath, indexValue);
+    } else {
+      entity.addOpSet({
+        op: OpType.Set,
+        source: OpSource.Inferred,
+        path: currentPath,
+        value: indexValue,
+        system: "baseline",
+      });
+    }
+  }
+}
+
+function _k8sDiscoverEntityObject(
+  entity: SiEntity,
+  data: Record<string, any>,
+  path: string[],
+  currentData?: Record<string, any>,
+) {
+  const walk = currentData ? currentData : data;
+  for (const key of Object.keys(walk)) {
+    const currentPath = _.concat(path, [key]);
+    const currentValue = _.get(data, currentPath);
+    debug({ currentPath, currentValue });
+    if (_.isArray(currentValue)) {
+      debug("is array");
+      _k8sDiscoverEntityArray(entity, data, _.cloneDeep(currentPath));
+    } else if (_.isObjectLike(currentValue)) {
+      debug("is object");
+      _k8sDiscoverEntityObject(
+        entity,
+        data,
+        _.cloneDeep(currentPath),
+        _.cloneDeep(currentValue),
+      );
+    } else {
+      debug("is value");
+      entity.addOpSet({
+        op: OpType.Set,
+        source: OpSource.Inferred,
+        path: currentPath,
+        value: currentValue,
+        system: "baseline",
+      });
+    }
+  }
 }

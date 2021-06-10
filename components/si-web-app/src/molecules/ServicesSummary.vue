@@ -50,7 +50,7 @@ import {
   ResourceSummaryKind,
 } from "@/api/sdf/dal/applicationDal";
 import { emitEditorErrorMessage } from "@/atoms/PanelEventBus";
-import { pluck, tap, switchMap } from "rxjs/operators";
+import { pluck, tap, switchMap, debounceTime } from "rxjs/operators";
 import { combineLatest, from } from "rxjs";
 
 interface IData {
@@ -95,24 +95,39 @@ export default Vue.extend({
       system: system$,
       workspace: workspace$,
       resources: resources$.pipe(
-        tap(r => {
-          let isUpdated = false;
-          // @ts-ignore
-          if (this.servicesData) {
-            // @ts-ignore
-            for (let x = 0; x < this.servicesData.length; x++) {
+        debounceTime(5000),
+        tap(async r => {
+          if (this.applicationId && this.system && this.workspace) {
+            let reply = await ApplicationDal.resourceSummary({
+              applicationId: this.applicationId,
+              workspaceId: this.workspace.id,
+              systemId: this.system.id,
+              kind: ResourceSummaryKind.Service,
+            });
+            if (reply.error) {
+              emitEditorErrorMessage(reply.error.message);
+            } else {
               // @ts-ignore
-              if (r.id == this.servicesData[x].id) {
-                isUpdated = true;
-                Vue.set(this.servicesData, x, r);
-              }
-            }
-            if (!isUpdated) {
-              if (r.entityType == "service") {
-                this.servicesData.push(r);
-              }
+              this.servicesData = reply.resources;
             }
           }
+          //let isUpdated = false;
+          //// @ts-ignore
+          //if (this.servicesData) {
+          //  // @ts-ignore
+          //  for (let x = 0; x < this.servicesData.length; x++) {
+          //    // @ts-ignore
+          //    if (r.id == this.servicesData[x].id) {
+          //      isUpdated = true;
+          //      Vue.set(this.servicesData, x, r);
+          //    }
+          //  }
+          //  if (!isUpdated) {
+          //    if (r.entityType == "service") {
+          //      this.servicesData.push(r);
+          //    }
+          //  }
+          //}
         }),
       ),
       updateResources: combineLatest(
