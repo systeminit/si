@@ -147,12 +147,12 @@ pub struct OpFrom {
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Op {
-    op: OpType,
-    source: OpSource,
-    system: String,
-    path: Vec<String>,
-    value: serde_json::Value,
-    from: Option<OpFrom>,
+    pub op: OpType,
+    pub source: OpSource,
+    pub system: String,
+    pub path: Vec<String>,
+    pub value: serde_json::Value,
+    pub from: Option<OpFrom>,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]

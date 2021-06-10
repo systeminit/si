@@ -98,9 +98,19 @@ export async function discover(
         const awsEks = new SiEntity({ entityType: "awsEks" });
         awsEks.name = clusterData["cluster"]["name"];
 
+        const kubernetesCluster = new SiEntity({
+          entityType: "kubernetesCluster",
+        });
+        kubernetesCluster.name = clusterData["cluster"]["name"];
+
         response.discovered.push({
-          entity: awsEks,
-          configures: [{ entity: awsEksCluster, configures: [] }],
+          entity: kubernetesCluster,
+          configures: [
+            {
+              entity: awsEks,
+              configures: [{ entity: awsEksCluster, configures: [] }],
+            },
+          ],
         });
       }
     }

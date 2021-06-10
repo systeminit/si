@@ -115,10 +115,11 @@ impl SelectionEntry {
             Edge::direct_predecessor_edges_by_object_id(&txn, &EdgeKind::Component, &entity.id)
                 .await?;
         for concept_edge in concept_edges {
+            dbg!(&concept_edge);
             let concept_deployment_edge_entity =
                 match Entity::for_head(&txn, &concept_edge.tail_vertex.object_id).await {
                     Ok(p) => p,
-                    Err(_e) => {
+                    Err(e) => {
                         // This is not the correct way to handle this! we should check specifics.
                         continue;
                     }
@@ -138,6 +139,7 @@ impl SelectionEntry {
                 &concept_deployment_edge_entity.id,
             )
             .await?;
+
             let concept_entity_context = SelectionEntryPredecessor::new_from_entity(
                 &txn,
                 concept_deployment_edge_entity,

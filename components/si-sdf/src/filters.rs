@@ -190,6 +190,11 @@ pub fn attribute_dal(
             nats_conn.clone(),
             veritech.clone(),
         ))
+        .or(attribute_dal_import_concept(
+            pg.clone(),
+            nats_conn.clone(),
+            veritech.clone(),
+        ))
         .or(attribute_dal_get_discovery_list(pg.clone()))
         .or(attribute_dal_get_implementations_list(pg.clone()))
         .or(attribute_dal_get_entity_list(pg.clone()))
@@ -253,6 +258,24 @@ pub fn attribute_dal_import_implementation(
             handlers::attribute_dal::ImportImplementationRequest,
         >())
         .and_then(handlers::attribute_dal::import_implementation)
+        .boxed()
+}
+
+pub fn attribute_dal_import_concept(
+    pg: PgPool,
+    nats_conn: NatsConn,
+    veritech: Veritech,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("attributeDal" / "importConcept")
+        .and(warp::post())
+        .and(with_pg(pg))
+        .and(with_nats_conn(nats_conn))
+        .and(with_veritech(veritech))
+        .and(warp::header::<String>("authorization"))
+        .and(warp::body::json::<
+            handlers::attribute_dal::ImportConceptRequest,
+        >())
+        .and_then(handlers::attribute_dal::import_concept)
         .boxed()
 }
 
