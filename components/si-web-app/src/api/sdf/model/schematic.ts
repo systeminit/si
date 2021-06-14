@@ -9,6 +9,17 @@ export enum SchematicKind {
   Component = "component",
 }
 
+export function schematicKindfromString(s: string): SchematicKind {
+  switch (s) {
+    case "deployment":
+      return SchematicKind.Deployment;
+    case "component":
+      return SchematicKind.Component;
+    default:
+      throw Error(`Unknown SchematicKind member: ${s}`);
+  }
+}
+
 export interface IConnectionEdge {
   edgeId: string;
   nodeId: string;

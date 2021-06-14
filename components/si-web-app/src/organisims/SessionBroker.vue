@@ -171,6 +171,7 @@ export default Vue.extend({
           restoreSchematicPanelKind$.next(schematicPanelState);
         }
       }
+      restoreSchematicPanelKind$.complete();
 
       // Restore Attribute Panel State
       let attributeJson = sessionStorage.getItem("attributePanelState$");
