@@ -2,7 +2,7 @@ use crate::{get_jwt_signing_key, Group, GroupError, JwtKeyError, SimpleStorable}
 use blake2::{Blake2b, Digest};
 use jwt_simple::algorithms::RSAKeyPairLike;
 use jwt_simple::claims::Claims;
-use jwt_simple::coarsetime::Duration;
+use jwt_simple::reexports::coarsetime::Duration;
 use serde::{Deserialize, Serialize};
 use si_data::{NatsTxn, NatsTxnError, PgTxn};
 use sodiumoxide::crypto::secretbox;
