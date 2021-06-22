@@ -20,7 +20,7 @@ path = "src/bin/keygen.rs"
 [dependencies]
 anyhow = "1.0"
 futures = { version = "0.3", features = ["alloc"] }
-jwt-simple = "0.2"
+jwt-simple = "0.10.1"
 lazy_static = "1.4"
 names = "0.11"
 serde = { version = "1.0.123", features = ["derive"] }
@@ -29,8 +29,8 @@ si-settings = { path = "../si-settings" }
 si-data = { path = "../si-data" }
 si-model = { path = "../si-model" }
 sodiumoxide = "0.2"
-strum = "0.19.5"
-strum_macros = "0.19.4"
+strum = "0.21.0"
+strum_macros = "0.21.1"
 thiserror = "1.0"
 tokio = { version = "1.2.0", features = ["full"] }
 tokio-stream = "0.1.3"
@@ -42,7 +42,7 @@ clap = "3.0.0-beta.2"
 url = "2.2.0"
 regex = "1.4.2"
 serde_yaml = "0.8.17"
-deadpool-postgres = "0.7.0"
+deadpool-postgres = "0.9.0"
 chrono = { version = "0.4.19", features = ["serde"] }
 
 [dev-dependencies]
@@ -50,5 +50,5 @@ lazy_static = "1.4"
 names = "0.11"
 serde_urlencoded = "0.7.0"
 tempfile = "3.1.0"
-tokio-test = "0.2"
+tokio-test = "0.4"
 si-model-test = { path = "../si-model-test" }

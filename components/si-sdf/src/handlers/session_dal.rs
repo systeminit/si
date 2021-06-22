@@ -1,7 +1,7 @@
 use crate::handlers::{authenticate, HandlerError};
 use jwt_simple::algorithms::RSAKeyPairLike;
 use jwt_simple::claims::Claims;
-use jwt_simple::coarsetime::Duration;
+use jwt_simple::reexports::coarsetime::Duration;
 use serde::{Deserialize, Serialize};
 use si_data::PgPool;
 use si_model::{

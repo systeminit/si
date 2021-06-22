@@ -5,7 +5,7 @@ authors = ["Adam Jacob <adam@systeminit.com>"]
 edition = "2018"
 
 [dependencies]
-config = { version = "0.10", features = ["toml"] }
+config = { version = "0.11", features = ["toml"] }
 serde = { version = "1.0", features = ["derive"] }
 sodiumoxide = "0.2"
 thiserror = "1.0"

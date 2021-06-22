@@ -10,7 +10,7 @@ edition = "2018"
 base64 = "0.13.0"
 blake2 = "0.9.1"
 futures = "0.3.13"
-jwt-simple = "0.2.8"
+jwt-simple = "0.10.1"
 names = "0.11.0"
 refinery = "0.5.0"
 serde = "1.0.123"
@@ -18,18 +18,18 @@ serde_json = { version = "1.0.64", features = ["preserve_order"] }
 si-data = { path = "../si-data" }
 si-settings = { path = "../si-settings" }
 sodiumoxide = "0.2.6"
-strum = "0.20.0"
-strum_macros = "0.20.1"
+strum = "0.21.0"
+strum_macros = "0.21.1"
 tempfile = "3.2.0"
 thiserror = "1.0.24"
 tokio = { version = "1.2.0", features = ["full"] }
-tokio-postgres = { version ="0.7.0", features = ["runtime", "with-chrono-0_4", "with-serde_json-1"] } 
+tokio-postgres = { version ="0.7.0", features = ["runtime", "with-chrono-0_4", "with-serde_json-1"] }
 tokio-stream = "0.1.3"
 tokio-tungstenite = "0.14.0"
 tungstenite = "0.13.0"
 reqwest = { version = "0.11.1", features = ["json"] }
 chrono = { version = "0.4.19", features = ["serde"] }
-deadpool-postgres = "0.7.0"
+deadpool-postgres = "0.9.0"
 rand = "0.8.3"
 
 [dev-dependencies]
