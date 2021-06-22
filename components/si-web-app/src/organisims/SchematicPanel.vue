@@ -563,7 +563,7 @@ export default Vue.extend({
 
           if (schematic) {
             for (const node of Object.values(schematic.nodes)) {
-              if (node.node.siStorable.objectId == resource.entityId) {
+              if (node.node.objectId == resource.entityId) {
                 Vue.set(
                   schematic.nodes[node.node.id].resources,
                   resource.systemId,
@@ -581,7 +581,7 @@ export default Vue.extend({
 
           if (schematic) {
             for (let node of Object.values(schematic.nodes)) {
-              if (node.node.siStorable.objectId == qualification.entityId) {
+              if (node.node.objectId == qualification.entityId) {
                 let updated = false;
                 for (let x = 0; x < node.qualifications.length; x++) {
                   let qcheck = node.qualifications[x];
