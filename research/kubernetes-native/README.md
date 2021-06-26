@@ -1,4 +1,4 @@
-# Terraform
+# Kubernetes Native
 
 ## Build base system
 
@@ -15,13 +15,6 @@ host$ docker run -ti -v "$(pwd):/home/bobo/src" research
 You should be sitting at a Bash shell prompt as user `bobo` on a fresh Arch
 Linux system with [Paru](https://github.com/morganamilo/paru) installed for AUR
 packages and passwordless `sudoers` privileges.
-
-## Install Terraform
-
-```sh
-sudo pacman -S --noconfirm terraform
-terraform -install-autocomplete && . ~/.bashrc
-```
 
 ## Install AWS CLI (v2)
 
@@ -43,6 +36,7 @@ Enter a value for (all others can be blank/none/default):
 
 ```sh
 sudo pacman -S --noconfirm kubectl bash-completion
+bash # required to re-load bash-completion helpers
 echo 'eval "$(kubectl completion bash)"' >>~/.bashrc && . ~/.bashrc
 aws eks update-kubeconfig --region us-east-2 --name democluster
 ```
@@ -57,21 +51,25 @@ kubectl get services
 
 ```sh
 cd src
-terraform init
+kubectl apply -f 01-namespace.yaml
+kubectl -n naynay apply -f 02-deployment.yaml
+kubectl -n naynay apply -f 03-service.yaml
 ```
+
+To get the DNS hostname for the AWS load balancer run:
 
 ```sh
-terraform plan
-terraform apply
+kubectl -n naynay get services
 ```
 
-The URL for the load balancer-exposed Whiskers service should be (eventually)
-accessible with the `whiskers_url` Terraform output.
+It will be listed under the `EXTERNAL-IP` column.
 
 ## Teardown
 
 ```sh
-terraform destroy
-rm -rf .terraform .terraform.lock.hcl terraform.tfstate*
+kubectl -n naynay delete -f 03-service.yaml
+kubectl -n naynay delete -f 02-deployment.yaml
+kubectl delete -f 01-namespace.yaml
+exit
 exit
 ```
