@@ -1,4 +1,4 @@
-# Terraform
+# Pulumi
 
 ## Build base system
 
@@ -16,11 +16,12 @@ You should be sitting at a Bash shell prompt as user `bobo` on a fresh Arch
 Linux system with [Paru](https://github.com/morganamilo/paru) installed for AUR
 packages and passwordless `sudoers` privileges.
 
-## Install Terraform
+## Install Pulumi
 
 ```sh
-sudo pacman -S --noconfirm terraform
-terraform -install-autocomplete && . ~/.bashrc
+curl -fsSL https://get.pulumi.com | sh
+echo 'eval "$(pulumi gen-completion bash)"' >>~/.bashrc && . ~/.bashrc
+sudo pacman -S --noconfirm nodejs npm
 ```
 
 ## Install AWS CLI (v2)
@@ -53,25 +54,32 @@ Test connectivity with:
 kubectl get services
 ```
 
-## Deploy
+## Create Project
 
 ```sh
 cd src
-terraform init
+mkdir whiskers
+cd whiskers
+pulumi new kubernetes-typescript -g
 ```
+
+Ah TypeScript, hello friend! Oh and you brought your editor language servers
+with you so that I can tab-complete my way through everything? Even better!
+
+## Deploy
 
 ```sh
-terraform plan
-terraform apply
+cd ~/src/whiskers
+pulumi login
+npm install
+pulumi up
 ```
-
-The URL for the load balancer-exposed Whiskers service should be (eventually)
-accessible with the `whiskers_url` Terraform output.
 
 ## Teardown
 
 ```sh
-terraform destroy
-rm -rf .terraform .terraform.lock.hcl terraform.tfstate*
+pulumi destroy
+pulumi stack rm
+rm -rf node_modules
 exit
 ```
