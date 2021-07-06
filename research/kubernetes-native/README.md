@@ -35,8 +35,7 @@ Enter a value for (all others can be blank/none/default):
 ## Install kubectl
 
 ```sh
-sudo pacman -S --noconfirm kubectl bash-completion
-bash # required to re-load bash-completion helpers
+sudo pacman -S --noconfirm kubectl
 echo 'eval "$(kubectl completion bash)"' >>~/.bashrc && . ~/.bashrc
 aws eks update-kubeconfig --region us-east-2 --name democluster
 ```

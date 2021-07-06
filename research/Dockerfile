@@ -6,7 +6,7 @@ ARG USER=bobo
 ARG GROUP=$USER
 
 RUN pacman -Syu --noconfirm \
-  && pacman -S --noconfirm bash sudo \
+  && pacman -S --noconfirm bash bash-completion sudo \
   && echo "%wheel ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/01_wheel \
   && groupadd --gid 1000 "$GROUP" \
   && useradd --create-home --shell /bin/bash --groups wheel --gid "$GROUP" --uid 1000 "$USER" \
