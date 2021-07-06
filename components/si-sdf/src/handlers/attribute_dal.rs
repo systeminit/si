@@ -7,8 +7,7 @@ use si_model::{
     application, discovery,
     entity::diff::{diff_for_props, Diffs},
     ApplicationEntities, Connection, Connections, DiscoveryListEntry, Edge, EdgeKind, Entity,
-    LabelList, LabelListItem, NodePosition, Qualification, Schematic, SchematicKind, Veritech,
-    Vertex,
+    LabelList, LabelListItem, Qualification, Schematic, SchematicKind, Veritech,
 };
 
 #[derive(Deserialize, Serialize, Debug)]

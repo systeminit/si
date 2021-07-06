@@ -119,7 +119,7 @@ impl SelectionEntry {
             let concept_deployment_edge_entity =
                 match Entity::for_head(&txn, &concept_edge.tail_vertex.object_id).await {
                     Ok(p) => p,
-                    Err(e) => {
+                    Err(_e) => {
                         // This is not the correct way to handle this! we should check specifics.
                         continue;
                     }
