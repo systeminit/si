@@ -672,7 +672,7 @@ pub async fn task_discover(
                                 )
                                 .await
                                 {
-                                    Ok(edge) => {}
+                                    Ok(_edge) => {}
                                     Err(EdgeError::EdgeExists) => {}
                                     Err(e) => return Err(DiscoveryError::from(e)),
                                 };
@@ -693,7 +693,7 @@ pub async fn task_discover(
                                     )
                                     .await
                                     {
-                                        Ok(edge) => {}
+                                        Ok(_edge) => {}
                                         Err(EdgeError::EdgeExists) => {}
                                         Err(e) => return Err(DiscoveryError::from(e)),
                                     };
