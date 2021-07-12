@@ -8,15 +8,14 @@ edition = "2018"
 
 [dependencies]
 anyhow = "1.0.38"
-tokio = { version = "1.2.0", features = ["full"] }
+jwt-simple = "0.10.1"
 lazy_static = "1.4.0"
 names = "0.11.0"
-sodiumoxide = "0.2.6"
+serde = "1.0.123"
+serde_json = { version = "1.0.64", features = ["preserve_order"] }
 si-data = { path = "../si-data" }
 si-model = { path = "../si-model" }
 si-settings = { path = "../si-settings" }
-jwt-simple = "0.10.1"
+sodiumoxide = "0.2.6"
 tempfile = "3.2.0"
-serde = "1.0.123"
-serde_json = { version = "1.0.64", features = ["preserve_order"] }
-
+tokio = { version = "1.2.0", features = ["full"] }
