@@ -1,9 +1,7 @@
-use warp::http::StatusCode;
-
+use si_model_test::{one_time_setup, signup_new_billing_account, TestContext};
 use si_sdf::filters::api;
 use si_sdf::handlers::signup_dal::{CreateReply, CreateRequest};
-
-use si_model_test::{one_time_setup, signup_new_billing_account, TestContext};
+use warp::http::StatusCode;
 
 #[tokio::test]
 async fn create_billing_account() {
@@ -43,7 +41,7 @@ async fn create_billing_account_denied_if_existing() {
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, event_log_fs, secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
-    let mut conn = pg.pool.get().await.expect("cannot get connection");
+    let mut conn = pg.get().await.expect("cannot get connection");
     let txn = conn.transaction().await.expect("cannot get transaction");
     let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit().await.expect("cannot commit txn");

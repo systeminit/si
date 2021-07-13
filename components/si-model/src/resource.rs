@@ -1,18 +1,17 @@
-use std::collections::HashMap;
-
+use crate::{
+    workflow::selector::{SelectionEntry, SelectionEntryPredecessor},
+    Edge, EdgeError, EdgeKind, Entity, Node, SiStorable, Veritech, VeritechError,
+};
 use chrono::Utc;
 use futures::{future::BoxFuture, FutureExt};
 use serde::{Deserialize, Serialize};
 use serde_json;
 use si_data::{NatsConn, NatsTxn, NatsTxnError, PgPool, PgTxn};
+use std::collections::HashMap;
 use strum_macros::Display;
 use thiserror::Error;
 use tokio::sync::oneshot;
-
-use crate::{
-    workflow::selector::{SelectionEntry, SelectionEntryPredecessor},
-    Edge, EdgeError, EdgeKind, Entity, Node, SiStorable, Veritech, VeritechError,
-};
+use tracing::instrument;
 
 const RESOURCE_GET_BY_ENTITY_AND_SYSTEM: &str =
     include_str!("./queries/resource_get_by_entity_and_system.sql");
@@ -20,28 +19,28 @@ const RESOURCES_FOR_ENTITY: &str = include_str!("./queries/resource_for_entity.s
 
 #[derive(Error, Debug)]
 pub enum ResourceError {
-    #[error("no resource found: {0} {1}")]
-    NoResource(String, String),
-    #[error("missing change set id on resource projection save")]
-    MissingChangeSetId,
-    #[error("pg error: {0}")]
-    TokioPg(#[from] tokio_postgres::Error),
-    #[error("nats txn error: {0}")]
-    NatsTxn(#[from] NatsTxnError),
-    #[error("pg error: {0}")]
-    Deadpool(#[from] deadpool_postgres::PoolError),
-    #[error("serde error: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("entity error: {0}")]
-    Entity(String),
-    #[error("node error: {0}")]
-    Node(String),
     #[error("edge error: {0}")]
     Edge(#[from] EdgeError),
-    #[error("veritech error: {0}")]
-    Veritech(#[from] VeritechError),
+    #[error("entity error: {0}")]
+    Entity(String),
+    #[error("missing change set id on resource projection save")]
+    MissingChangeSetId,
+    #[error("nats txn error: {0}")]
+    NatsTxn(#[from] NatsTxnError),
+    #[error("node error: {0}")]
+    Node(String),
+    #[error("no resource found: {0} {1}")]
+    NoResource(String, String),
+    #[error("pg error: {0}")]
+    Pg(#[from] si_data::PgError),
+    #[error("pg pool error: {0}")]
+    PgPool(#[from] si_data::PgPoolError),
     #[error("oneshot recv error: {0}")]
     Recv(#[from] oneshot::error::RecvError),
+    #[error("serde error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("veritech error: {0}")]
+    Veritech(#[from] VeritechError),
     #[error("workflow error: {0}")]
     Workflow(String),
 }
@@ -188,7 +187,7 @@ impl Resource {
         let unix_timestamp = current_time.timestamp_millis();
         let timestamp = format!("{}", current_time);
 
-        let mut conn = pg.pool.get().await?;
+        let mut conn = pg.get().await?;
         let txn = conn.transaction().await?;
         let nats = nats_conn.transaction();
 
@@ -321,13 +320,14 @@ impl Resource {
         Ok(())
     }
 
+    #[instrument(name = "resource.sync_task", skip(self, pg, nats_conn, veritech))]
     pub async fn sync_task(
         mut self,
         pg: PgPool,
         nats_conn: NatsConn,
         veritech: Veritech,
     ) -> ResourceResult<Self> {
-        let mut conn = pg.pool.get().await?;
+        let mut conn = pg.get().await?;
         let txn = conn.transaction().await?;
 
         let (progress_tx, mut progress_rx) = tokio::sync::mpsc::unbounded_channel::<SyncProtocol>();
@@ -419,7 +419,7 @@ pub fn sync_resource(
     let veritech = veritech.clone();
     let nats_conn = nats_conn.clone();
     let r = async move {
-        let mut conn = pg.pool.get().await?;
+        let mut conn = pg.get().await?;
         let txn = conn.transaction().await?;
         let systems: Vec<Entity> = Entity::get_head_by_name_and_entity_type(
             &txn,

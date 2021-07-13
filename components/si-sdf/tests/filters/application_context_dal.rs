@@ -1,12 +1,9 @@
 use crate::filters::session_dal::login_user;
-
+use si_model::{ChangeSet, ChangeSetStatus, EditSession, Entity, LabelListItem};
 use si_model_test::{
     create_change_set, create_custom_node, create_edit_session, generate_fake_name, one_time_setup,
     signup_new_billing_account, NewBillingAccount, TestContext,
 };
-
-use si_model::{ChangeSet, ChangeSetStatus, EditSession, Entity, LabelListItem};
-
 use si_sdf::{
     filters::api,
     handlers::application_context_dal::{
@@ -21,7 +18,7 @@ use warp::http::StatusCode;
 
 pub async fn create_application(ctx: &TestContext, nba: &NewBillingAccount) -> Entity {
     let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
-    let mut conn = pg.pool.get().await.expect("cannot get connection");
+    let mut conn = pg.get().await.expect("cannot get connection");
 
     let txn = conn.transaction().await.expect("cannot get transaction");
     let nats = nats_conn.transaction();
@@ -70,7 +67,7 @@ async fn get_application_context() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, event_log_fs, secret_key) = ctx.entries();
-    let mut conn = pg.pool.get().await.expect("cannot get connection");
+    let mut conn = pg.get().await.expect("cannot get connection");
     let txn = conn.transaction().await.expect("cannot get transaction");
     let nats = nats_conn.transaction();
 
@@ -127,7 +124,7 @@ async fn create_change_set_and_edit_session() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, event_log_fs, secret_key) = ctx.entries();
-    let mut conn = pg.pool.get().await.expect("cannot get connection");
+    let mut conn = pg.get().await.expect("cannot get connection");
     let txn = conn.transaction().await.expect("cannot get transaction");
     let nats = nats_conn.transaction();
 
@@ -174,7 +171,7 @@ async fn get_change_set_and_edit_session() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, event_log_fs, secret_key) = ctx.entries();
-    let mut conn = pg.pool.get().await.expect("cannot get connection");
+    let mut conn = pg.get().await.expect("cannot get connection");
     let txn = conn.transaction().await.expect("cannot get transaction");
     let nats = nats_conn.transaction();
 
@@ -222,7 +219,7 @@ async fn create_edit_session_and_get_change_set() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, event_log_fs, secret_key) = ctx.entries();
-    let mut conn = pg.pool.get().await.expect("cannot get connection");
+    let mut conn = pg.get().await.expect("cannot get connection");
     let txn = conn.transaction().await.expect("cannot get transaction");
     let nats = nats_conn.transaction();
 
@@ -271,7 +268,7 @@ async fn create_edit_session_handler() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, event_log_fs, secret_key) = ctx.entries();
-    let mut conn = pg.pool.get().await.expect("cannot get connection");
+    let mut conn = pg.get().await.expect("cannot get connection");
     let txn = conn.transaction().await.expect("cannot get transaction");
     let nats = nats_conn.transaction();
 
@@ -321,7 +318,7 @@ async fn create_edit_session_handler() {
 //    one_time_setup().await.expect("one time setup failed");
 //    let ctx = TestContext::init().await;
 //    let (pg, nats_conn, veritech, event_log_fs, secret_key) = ctx.entries();
-//    let mut conn = pg.pool.get().await.expect("cannot get connection");
+//    let mut conn = pg.get().await.expect("cannot get connection");
 //    let txn = conn.transaction().await.expect("cannot get transaction");
 //    let nats = nats_conn.transaction();
 //
@@ -371,7 +368,7 @@ async fn apply_change_set() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, event_log_fs, secret_key) = ctx.entries();
-    let mut conn = pg.pool.get().await.expect("cannot get connection");
+    let mut conn = pg.get().await.expect("cannot get connection");
     let txn = conn.transaction().await.expect("cannot get transaction");
     let nats = nats_conn.transaction();
 

@@ -1,11 +1,10 @@
+use crate::filters::{application_context_dal::create_application, session_dal::login_user};
 use si_model::{Edge, EdgeKind, Node, NodePosition, SchematicKind, Vertex};
 use si_model_test::{
     create_change_set, create_custom_node, create_edit_session, create_entity_node,
     create_node_position, generate_fake_name, one_time_setup, signup_new_billing_account,
     TestContext,
 };
-
-use crate::filters::{application_context_dal::create_application, session_dal::login_user};
 use si_sdf::{
     filters::api,
     handlers::schematic_dal::{
@@ -21,7 +20,7 @@ async fn connection_create() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, event_log_fs, secret_key) = ctx.entries();
-    let mut conn = pg.pool.get().await.expect("cannot get connection");
+    let mut conn = pg.get().await.expect("cannot get connection");
     let txn = conn.transaction().await.expect("cannot get transaction");
     let nats = nats_conn.transaction();
 
@@ -117,7 +116,7 @@ async fn connection_create_duplicate() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, event_log_fs, secret_key) = ctx.entries();
-    let mut conn = pg.pool.get().await.expect("cannot get connection");
+    let mut conn = pg.get().await.expect("cannot get connection");
     let txn = conn.transaction().await.expect("cannot get transaction");
     let nats = nats_conn.transaction();
 
@@ -224,7 +223,7 @@ async fn node_create_for_application() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, event_log_fs, secret_key) = ctx.entries();
-    let mut conn = pg.pool.get().await.expect("cannot get connection");
+    let mut conn = pg.get().await.expect("cannot get connection");
     let txn = conn.transaction().await.expect("cannot get transaction");
     let nats = nats_conn.transaction();
 
@@ -282,7 +281,7 @@ async fn update_node_position() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, event_log_fs, secret_key) = ctx.entries();
-    let mut conn = pg.pool.get().await.expect("cannot get connection");
+    let mut conn = pg.get().await.expect("cannot get connection");
     let txn = conn.transaction().await.expect("cannot get transaction");
     let nats = nats_conn.transaction();
 

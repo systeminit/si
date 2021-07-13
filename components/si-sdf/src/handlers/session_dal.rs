@@ -1,4 +1,4 @@
-use crate::handlers::{authenticate, HandlerError};
+use crate::handlers::HandlerError;
 use jwt_simple::algorithms::RSAKeyPairLike;
 use jwt_simple::claims::Claims;
 use jwt_simple::reexports::coarsetime::Duration;
@@ -32,7 +32,7 @@ pub async fn login(
     secret_key: secretbox::Key,
     request: LoginRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
 
     let billing_account = BillingAccount::get_by_name(&txn, &request.billing_account_name)
@@ -84,13 +84,11 @@ pub struct RestoreAuthenticationReply {
 }
 
 pub async fn restore_authentication(
+    claim: SiClaims,
     pg: PgPool,
-    token: String,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
-
-    let claim = authenticate(&txn, &token).await?;
 
     let billing_account = BillingAccount::get(&txn, &claim.billing_account_id)
         .await
@@ -111,13 +109,11 @@ pub async fn restore_authentication(
 pub type GetDefaultsReply = SessionDefaults;
 
 pub async fn get_defaults(
+    claim: SiClaims,
     pg: PgPool,
-    token: String,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
-
-    let claim = authenticate(&txn, &token).await?;
 
     let session_defaults = session::get_defaults(&txn, &claim.billing_account_id)
         .await

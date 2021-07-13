@@ -1,27 +1,28 @@
+use crate::{Edge, EdgeError, EdgeKind, Entity, EntityError, ModelError, Node, NodeError};
 use serde::{Deserialize, Serialize};
 use si_data::PgTxn;
 use thiserror::Error;
 
-use crate::{Edge, EdgeError, EdgeKind, Entity, EntityError, ModelError, Node, NodeError};
-
 #[derive(Error, Debug)]
 pub enum ConnectionError {
-    #[error("error in core model functions: {0}")]
-    Model(#[from] ModelError),
-    #[error("pg error: {0}")]
-    TokioPg(#[from] tokio_postgres::Error),
-    #[error("serde error: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("entity error: {0}")]
-    Entity(#[from] EntityError),
     #[error("edge error: {0}")]
     Edge(#[from] EdgeError),
-    #[error("node error: {0}")]
-    Node(#[from] NodeError),
-    #[error("no change set provided when one was needed")]
-    NoChangeSet,
+    #[error("entity error: {0}")]
+    Entity(#[from] EntityError),
     #[error("node is missing in calculated schematic edge set")]
     MissingNode,
+    #[error("error in core model functions: {0}")]
+    Model(#[from] ModelError),
+    #[error("no change set provided when one was needed")]
+    NoChangeSet,
+    #[error("node error: {0}")]
+    Node(#[from] NodeError),
+    #[error("pg error: {0}")]
+    Pg(#[from] si_data::PgError),
+    #[error("pg pool error: {0}")]
+    PgPool(#[from] si_data::PgPoolError),
+    #[error("serde error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
 }
 
 pub type ConnectionResult<T> = Result<T, ConnectionError>;

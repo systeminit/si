@@ -1,22 +1,20 @@
-use std::time::Duration;
-
 use futures::{future::BoxFuture, FutureExt};
+use si_data::{NatsConn, PgPool};
+use si_model::{EdgeError, Entity, EntityError, Resource, ResourceError, Veritech};
+use std::time::Duration;
 use thiserror::Error;
 use tokio::time;
 
-use si_data::{NatsConn, PgPool};
-use si_model::{EdgeError, Entity, EntityError, Resource, ResourceError, Veritech};
-
 #[derive(Error, Debug)]
 pub enum ResourceSchedulerError {
-    #[error("deadpool error: {0}")]
-    Deadpool(#[from] deadpool_postgres::PoolError),
-    #[error("pg error: {0}")]
-    TokioPg(#[from] tokio_postgres::Error),
-    #[error("entity error: {0}")]
-    Entity(#[from] EntityError),
     #[error("edge error: {0}")]
     Edge(#[from] EdgeError),
+    #[error("entity error: {0}")]
+    Entity(#[from] EntityError),
+    #[error("pg error: {0}")]
+    Pg(#[from] si_data::PgError),
+    #[error("pg pool error: {0}")]
+    PgPool(#[from] si_data::PgPoolError),
     #[error("resource error: {0}")]
     Resource(#[from] ResourceError),
 }
@@ -33,7 +31,7 @@ pub async fn start(
         dbg!("waiting for a new resource sync run to be timed");
         interval.tick().await;
         dbg!("starting a new resource sync run");
-        let mut conn = pg.pool.get().await?;
+        let mut conn = pg.get().await?;
         let txn = conn.transaction().await?;
         let all_entities = Entity::all_head(&txn)
             .await?
@@ -64,7 +62,7 @@ pub fn sync_resource(
     let veritech = veritech.clone();
     let nats_conn = nats_conn.clone();
     let r = async move {
-        let mut conn = pg.pool.get().await?;
+        let mut conn = pg.get().await?;
         let txn = conn.transaction().await?;
         let systems: Vec<Entity> = Entity::get_head_by_name_and_entity_type(
             &txn,

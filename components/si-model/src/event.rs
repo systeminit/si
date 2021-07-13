@@ -1,24 +1,23 @@
+use crate::{Entity, EventLog, EventLogError, EventLogLevel, ModelError, Node, SiStorable};
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json;
+use si_data::{NatsConn, NatsTxnError, PgPool, PgTxn};
 use strum_macros::Display;
 use thiserror::Error;
 
-use crate::{Entity, EventLog, EventLogError, EventLogLevel, ModelError, Node, SiStorable};
-use si_data::{NatsConn, NatsTxnError, PgPool, PgTxn};
-
 #[derive(Error, Debug)]
 pub enum EventError {
-    #[error("error in core model functions: {0}")]
-    Model(#[from] ModelError),
     #[error("eventLog error: {0}")]
     EventLog(#[from] EventLogError),
-    #[error("pg error: {0}")]
-    TokioPg(#[from] tokio_postgres::Error),
-    #[error("pg error: {0}")]
-    Deadpool(#[from] deadpool_postgres::PoolError),
+    #[error("error in core model functions: {0}")]
+    Model(#[from] ModelError),
     #[error("nats txn error: {0}")]
     NatsTxn(#[from] NatsTxnError),
+    #[error("pg error: {0}")]
+    Pg(#[from] si_data::PgError),
+    #[error("pg pool error: {0}")]
+    PgPool(#[from] si_data::PgPoolError),
     #[error("serde error: {0}")]
     SerdeJson(#[from] serde_json::Error),
 }
@@ -81,7 +80,7 @@ impl Event {
         let start_unix_timestamp = current_time.timestamp_millis();
         let start_timestamp = format!("{}", current_time);
 
-        let mut conn = pg.pool.get().await?;
+        let mut conn = pg.get().await?;
         let txn = conn.transaction().await?;
         let nats = nats_conn.transaction();
 
@@ -326,7 +325,7 @@ impl Event {
     pub async fn save(&mut self, pg: &PgPool, nats_conn: &NatsConn) -> EventResult<()> {
         let json = serde_json::to_value(&self)?;
 
-        let mut conn = pg.pool.get().await?;
+        let mut conn = pg.get().await?;
         let txn = conn.transaction().await?;
         let nats = nats_conn.transaction();
 

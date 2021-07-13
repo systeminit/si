@@ -6,6 +6,8 @@ import { Resource, SiEntity } from "si-entity";
 import { SiCtx } from "../siCtx";
 import intel from "../intel";
 import { DecryptedSecret } from "../support";
+import { tracer } from "../telemetry";
+import api, { Span } from "@opentelemetry/api";
 const debug = Debug("veritech:controllers:runCommand");
 
 export interface RunCommandRequest {
@@ -71,8 +73,15 @@ export interface RunCommandCallbacks {
   [commandName: string]: RunCommandCallback;
 }
 
-export async function runCommand(ws: WebSocket, req: string): Promise<void> {
+export async function runCommand(
+  ws: WebSocket,
+  req: string,
+  parent: Span,
+): Promise<void> {
+  const ctx = api.trace.setSpan(api.context.active(), parent);
+  const span = tracer.startSpan("runcommand.task", undefined, ctx);
   debug("/runCommand BEGIN");
+
   const request: RunCommandRequest = JSON.parse(req);
   request.entity = SiEntity.fromJson(request.entity);
   request.system = SiEntity.fromJson(request.system);
@@ -100,6 +109,7 @@ export async function runCommand(ws: WebSocket, req: string): Promise<void> {
   }
   close(ws);
   debug("finished");
+  span.end();
 }
 
 function send(ws: WebSocket, message: CommandProtocol) {

@@ -1,11 +1,10 @@
+use crate::handlers::{authorize, validate_tenancy, HandlerError};
+use serde::{Deserialize, Serialize};
 use si_data::{NatsConn, PgPool};
 use si_model::{
-    Edge, EdgeKind, Entity, Node, NodePosition, Schematic, SchematicKind, SchematicNode, Veritech,
-    Vertex,
+    Edge, EdgeKind, Entity, Node, NodePosition, Schematic, SchematicKind, SchematicNode, SiClaims,
+    Veritech, Vertex,
 };
-
-use crate::handlers::{authenticate, authorize, validate_tenancy, HandlerError};
-use serde::{Deserialize, Serialize};
 
 // ===============================================================
 // Schematic (nodes and edges)
@@ -30,14 +29,13 @@ pub struct GetApplicationSystemSchematicReply {
 }
 
 pub async fn get_application_system_schematic(
-    pg: PgPool,
-    token: String,
+    claim: SiClaims,
     request: GetApplicationSystemSchematicRequest,
+    pg: PgPool,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
 
-    let claim = authenticate(&txn, &token).await?;
     authorize(
         &txn,
         &claim.user_id,
@@ -138,17 +136,16 @@ pub struct ConnectionCreateReply {
 }
 
 pub async fn connection_create(
+    claim: SiClaims,
+    request: ConnectionCreateRequest,
     pg: PgPool,
     nats_conn: NatsConn,
     veritech: Veritech,
-    token: String,
-    request: ConnectionCreateRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
     let nats = nats_conn.transaction();
 
-    let claim = authenticate(&txn, &token).await?;
     authorize(&txn, &claim.user_id, "editorDal", "edgeCreate").await?;
     validate_tenancy(
         &txn,
@@ -326,17 +323,16 @@ pub struct NodeCreateReply {
 }
 
 pub async fn node_create_for_application(
+    claim: SiClaims,
+    request: NodeCreateForApplicationRequest,
     pg: PgPool,
     nats_conn: NatsConn,
     veritech: Veritech,
-    token: String,
-    request: NodeCreateForApplicationRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
     let nats = nats_conn.transaction();
 
-    let claim = authenticate(&txn, &token).await?;
     authorize(&txn, &claim.user_id, "editorDal", "nodeCreate").await?;
     validate_tenancy(
         &txn,
@@ -507,16 +503,15 @@ pub struct UpdateNodePositionReply {
 }
 
 pub async fn update_node_position(
+    claim: SiClaims,
+    request: UpdateNodePositionRequest,
     pg: PgPool,
     nats_conn: NatsConn,
-    token: String,
-    request: UpdateNodePositionRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
     let nats = nats_conn.transaction();
 
-    let claim = authenticate(&txn, &token).await?;
     authorize(&txn, &claim.user_id, "editorDal", "updateNodePosition").await?;
     validate_tenancy(
         &txn,
@@ -563,16 +558,15 @@ pub struct DeleteNodeReply {
     pub deleted: bool,
 }
 pub async fn delete_node(
+    claim: SiClaims,
+    request: DeleteNodeRequest,
     pg: PgPool,
     nats_conn: NatsConn,
-    token: String,
-    request: DeleteNodeRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
     let nats = nats_conn.transaction();
 
-    let claim = authenticate(&txn, &token).await?;
     authorize(
         &txn,
         &claim.user_id,

@@ -178,7 +178,9 @@ force_clean:
 test_deps:
 	./components/postgres/run.sh; exit 0
 	./components/nats/run.sh; exit 0
+	cd ./components/otelcol && make run
 
-dev_deps: 
+dev_deps:
 	./components/postgres/run.sh; exit 0
 	./components/nats/run.sh; exit 0
+	cd ./components/otelcol && make run

@@ -1,38 +1,36 @@
-use serde::{Deserialize, Serialize};
-use thiserror::Error;
-
-use si_data::{NatsConn, NatsTxn, NatsTxnError, PgPool, PgTxn};
-
 use crate::{
     system, ChangeSet, ChangeSetError, Edge, EdgeError, EdgeKind, EditSession, EditSessionError,
     Entity, EntityError, LabelList, LabelListItem, Node, NodeError, Resource, SystemError,
     Veritech,
 };
+use serde::{Deserialize, Serialize};
+use si_data::{NatsConn, NatsTxn, NatsTxnError, PgPool, PgTxn};
+use thiserror::Error;
 
 pub const APPLICATION_LIST: &str = include_str!("./queries/application_list.sql");
 
 #[derive(Error, Debug)]
 pub enum ApplicationError {
-    #[error("pg error: {0}")]
-    TokioPg(#[from] tokio_postgres::Error),
-    #[error("serde error: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("pg error: {0}")]
-    Deadpool(#[from] deadpool_postgres::PoolError),
+    #[error("edge error: {0}")]
+    Edge(#[from] EdgeError),
+    #[error("entity error: {0}")]
+    Entity(#[from] EntityError),
     #[error("changeset error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("edit session error: {0}")]
     EditSession(#[from] EditSessionError),
-    #[error("node error: {0}")]
-    Node(#[from] NodeError),
-    #[error("entity error: {0}")]
-    Entity(#[from] EntityError),
     #[error("nats txn: {0}")]
     NatsTxn(#[from] NatsTxnError),
+    #[error("node error: {0}")]
+    Node(#[from] NodeError),
+    #[error("pg error: {0}")]
+    Pg(#[from] si_data::PgError),
+    #[error("pg pool error: {0}")]
+    PgPool(#[from] si_data::PgPoolError),
+    #[error("serde error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
     #[error("system error: {0}")]
     System(#[from] SystemError),
-    #[error("edge error: {0}")]
-    Edge(#[from] EdgeError),
 }
 
 pub type ApplicationResult<T> = Result<T, ApplicationError>;
@@ -71,7 +69,7 @@ pub async fn create(
     let application_name = application_name.into();
     let workspace_id = workspace_id.into();
 
-    let mut conn = pg.pool.get().await?;
+    let mut conn = pg.get().await?;
     let txn = conn.transaction().await?;
     let mut change_set = ChangeSet::new(&txn, &nats, None, workspace_id.clone()).await?;
     let mut edit_session = EditSession::new(

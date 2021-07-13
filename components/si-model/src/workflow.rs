@@ -1,16 +1,15 @@
-use chrono::Utc;
-use futures::future::{BoxFuture, FutureExt};
-use serde::{Deserialize, Serialize};
-use strum_macros::Display;
-use thiserror::Error;
-use tokio::sync::oneshot;
-
-use si_data::{NatsConn, NatsTxn, NatsTxnError, PgPool, PgTxn};
-
 use crate::{
     workflow::selector::SelectionEntry, workflow::step::WorkflowRunStepState, EdgeError, Entity,
     LodashError, MinimalStorable, ResourceError, SiStorable, Veritech, VeritechError, Workspace,
 };
+use chrono::Utc;
+use futures::future::{BoxFuture, FutureExt};
+use serde::{Deserialize, Serialize};
+use si_data::{NatsConn, NatsTxn, NatsTxnError, PgPool, PgTxn};
+use strum_macros::Display;
+use thiserror::Error;
+use tokio::sync::oneshot;
+use tracing::instrument;
 
 const WORKFLOW_GET_BY_NAME: &str = include_str!("./queries/workflow_get_by_name.sql");
 const WORKFLOW_ACTION_LIST_ALL: &str = include_str!("./queries/workflow_action_list_all.sql");
@@ -33,58 +32,58 @@ use self::{
 
 #[derive(Error, Debug)]
 pub enum WorkflowError {
-    #[error("json serialization error: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("nats txn error: {0}")]
-    NatsTxn(#[from] NatsTxnError),
-    #[error("pg error: {0}")]
-    TokioPg(#[from] tokio_postgres::Error),
-    #[error("pg error: {0}")]
-    Deadpool(#[from] deadpool_postgres::PoolError),
-    #[error("veritech error: {0}")]
-    Veritech(#[from] VeritechError),
-    #[error("lodash error: {0}")]
-    Lodash(#[from] LodashError),
-    #[error("no selector or implicit entity provided; invalid step!")]
-    NoSelectorOrEntity,
-    #[error("no {0} value found in {1} for path {2}")]
-    NoValue(String, String, String),
-    #[error("expected {0} recevied {:?}")]
-    WrongType(String, serde_json::Value),
-    #[error("invalid strategy: {0}")]
-    InvalidStrategy(String),
-    #[error("no inputs when they were required")]
-    NoInputs,
-    #[error("no system is provided, but is required!")]
-    SystemRequired,
-    #[error("edge error: {0}")]
-    Edge(#[from] EdgeError),
-    #[error("entity error: {0}")]
-    Entity(String),
-    #[error("resource error: {0}")]
-    Resource(#[from] ResourceError),
-    #[error("Selector requires root entity selection (for now)")]
-    SelectorWithoutRootEntity,
-    #[error("Selector requested properties, but has none for the system")]
-    NoPropertiesForSystem,
-    #[error("Selector requested an entity from property {0:?}, but it was not found")]
-    PropertyNotFound(Vec<String>),
-    #[error("Selector found a value in property {0:?}, but it was not a string!")]
-    PropertyNotAString(Vec<String>),
-    #[error("Edge Kind is required in a selector, but it was not provided")]
-    EdgeKindMissing,
     #[error("Depth is required in a selector, but it was not provided")]
     DepthMissing,
     #[error("Direction is required in a selector, but it was not provided")]
     DirectionMissing,
+    #[error("edge error: {0}")]
+    Edge(#[from] EdgeError),
+    #[error("Edge Kind is required in a selector, but it was not provided")]
+    EdgeKindMissing,
+    #[error("entity error: {0}")]
+    Entity(String),
+    #[error("invalid strategy: {0}")]
+    InvalidStrategy(String),
+    #[error("lodash error: {0}")]
+    Lodash(#[from] LodashError),
+    #[error("nats txn error: {0}")]
+    NatsTxn(#[from] NatsTxnError),
+    #[error("no inputs when they were required")]
+    NoInputs,
     #[error("No name when one was required in inputs")]
     NoNameInInputs,
+    #[error("Selector requested properties, but has none for the system")]
+    NoPropertiesForSystem,
+    #[error("no selector or implicit entity provided; invalid step!")]
+    NoSelectorOrEntity,
+    #[error("no {0} value found in {1} for path {2}")]
+    NoValue(String, String, String),
+    #[error("pg error: {0}")]
+    Pg(#[from] si_data::PgError),
+    #[error("pg pool error: {0}")]
+    PgPool(#[from] si_data::PgPoolError),
+    #[error("Selector found a value in property {0:?}, but it was not a string!")]
+    PropertyNotAString(Vec<String>),
+    #[error("Selector requested an entity from property {0:?}, but it was not found")]
+    PropertyNotFound(Vec<String>),
+    #[error("resource error: {0}")]
+    Resource(#[from] ResourceError),
+    #[error("Selector requires root entity selection (for now)")]
+    SelectorWithoutRootEntity,
+    #[error("json serialization error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("no system is provided, but is required!")]
+    SystemRequired,
     #[error("Tokio oneshot recv error: {0}")]
     TokioOneshotRecv(#[from] tokio::sync::oneshot::error::RecvError),
+    #[error("veritech error: {0}")]
+    Veritech(#[from] VeritechError),
     #[error("Workflow named '{0}' was not found")]
     WorkflowNotFound(String),
     #[error("The step failed")]
     WorkflowStepFailed,
+    #[error("expected {0} recevied {:?}")]
+    WrongType(String, serde_json::Value),
 }
 
 pub type WorkflowResult<T> = Result<T, WorkflowError>;
@@ -309,7 +308,7 @@ impl WorkflowRun {
         nats_conn: NatsConn,
         veritech: Veritech,
     ) -> WorkflowResult<()> {
-        let mut conn = pg.pool.get().await?;
+        let mut conn = pg.get().await?;
         let txn = conn.transaction().await?;
         let nats = nats_conn.transaction();
 
@@ -465,7 +464,7 @@ pub struct WorkflowContext {
 
 impl WorkflowContext {
     pub async fn for_step(&mut self, pg: &PgPool, step: &Step) -> WorkflowResult<()> {
-        let mut conn = pg.pool.get().await?;
+        let mut conn = pg.get().await?;
         let txn = conn.transaction().await?;
 
         // First, evaluate any selector. If no selector, use the entity from
@@ -508,12 +507,13 @@ pub enum InvokeWorkflowProtocol {
 }
 
 impl Workflow {
+    #[instrument(name = "workflow.load_builtins", skip(pg, veritech))]
     pub async fn load_builtins(pg: &PgPool, veritech: &Veritech) -> WorkflowResult<()> {
         let reply: LoadWorkflowReply = veritech
             .send_sync("loadWorkflows", LoadWorkflowRequest { doit: true })
             .await?;
 
-        let mut conn = pg.pool.get().await?;
+        let mut conn = pg.get().await?;
         let txn = conn.transaction().await?;
         for workflow_data in reply.workflows {
             Self::upsert_from(&txn, &workflow_data).await?;
@@ -609,7 +609,7 @@ impl Workflow {
         let nats_conn = nats_conn.clone();
         let veritech = veritech.clone();
         async move {
-            let mut conn = pg.pool.get().await?;
+            let mut conn = pg.get().await?;
             let txn = conn.transaction().await?;
             let nats = nats_conn.transaction();
 

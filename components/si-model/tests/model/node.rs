@@ -1,10 +1,9 @@
+use si_data::{NatsConn, NatsTxn, PgPool, PgTxn};
+use si_model::{ChangeSet, EditSession, Node, Veritech};
 use si_model_test::{
     create_change_set, create_edit_session, one_time_setup, signup_new_billing_account,
     NewBillingAccount, TestContext,
 };
-
-use si_data::{NatsConn, NatsTxn, PgPool, PgTxn};
-use si_model::{ChangeSet, EditSession, Node, Veritech};
 
 #[allow(dead_code)]
 pub async fn create_custom_node(
@@ -42,7 +41,7 @@ async fn new() {
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
-    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
     let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;

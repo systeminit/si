@@ -1,19 +1,17 @@
+use crate::{entity::diff::Diffs, Resource, SiStorable};
 use serde::{Deserialize, Serialize};
+use si_data::NatsTxnError;
 use strum_macros::Display;
 use thiserror::Error;
 
-use si_data::NatsTxnError;
-
-use crate::{entity::diff::Diffs, Resource, SiStorable};
-
 #[derive(Error, Debug)]
 pub enum ActionError {
-    #[error("json serialization error: {0}")]
-    SerdeJson(#[from] serde_json::Error),
     #[error("nats txn error: {0}")]
     NatsTxn(#[from] NatsTxnError),
     #[error("pg error: {0}")]
-    TokioPg(#[from] tokio_postgres::Error),
+    Pg(#[from] si_data::PgError),
+    #[error("json serialization error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
 }
 
 pub type ActionResult<T> = Result<T, ActionError>;

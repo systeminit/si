@@ -1,8 +1,7 @@
-use serde::{Deserialize, Serialize};
-use thiserror::Error;
-
 use crate::{SiChangeSet, SiStorable};
+use serde::{Deserialize, Serialize};
 use si_data::{NatsTxn, NatsTxnError, PgTxn};
+use thiserror::Error;
 
 const QUALIFICATION_FOR_EDIT_SESSION: &str =
     include_str!("./queries/qualification_for_edit_session.sql");
@@ -12,14 +11,16 @@ const QUALIFICATION_FOR_HEAD: &str = include_str!("./queries/qualification_for_h
 
 #[derive(Error, Debug)]
 pub enum QualificationError {
-    #[error("json serialization error: {0}")]
-    SerdeJson(#[from] serde_json::Error),
     #[error("nats txn error: {0}")]
     NatsTxn(#[from] NatsTxnError),
-    #[error("pg error: {0}")]
-    TokioPg(#[from] tokio_postgres::Error),
     #[error("no change set when one was expected")]
     NoChangeSet,
+    #[error("pg error: {0}")]
+    Pg(#[from] si_data::PgError),
+    #[error("pg pool error: {0}")]
+    PgPool(#[from] si_data::PgPoolError),
+    #[error("json serialization error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
 }
 
 pub type QualificationResult<T> = Result<T, QualificationError>;

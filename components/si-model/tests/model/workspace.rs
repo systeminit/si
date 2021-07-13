@@ -1,8 +1,7 @@
+use si_model::Workspace;
 use si_model_test::{
     create_new_billing_account, create_test_organization, one_time_setup, TestContext,
 };
-
-use si_model::Workspace;
 
 #[tokio::test]
 async fn new() {
@@ -10,7 +9,7 @@ async fn new() {
     let ctx = TestContext::init().await;
     let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
-    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
     let ba = create_new_billing_account(&txn, &nats).await;
     let org = create_test_organization(&txn, &nats, "dark tranquility", &ba.id).await;
@@ -27,7 +26,7 @@ async fn get() {
     let ctx = TestContext::init().await;
     let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
-    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
     let ba = create_new_billing_account(&txn, &nats).await;
     let org = create_test_organization(&txn, &nats, "dark tranquility", &ba.id).await;
@@ -49,7 +48,7 @@ async fn save() {
     let ctx = TestContext::init().await;
     let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
-    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
     let ba = create_new_billing_account(&txn, &nats).await;
     let org = create_test_organization(&txn, &nats, "dark tranquility", &ba.id).await;

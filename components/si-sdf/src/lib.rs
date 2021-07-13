@@ -1,12 +1,13 @@
 use si_data::{EventLogFS, NatsConn, PgPool};
 use si_model::Veritech;
 use si_settings::Settings;
-use warp::Filter;
+use warp::{trace::Info, Filter};
 
 pub mod cli;
 pub mod filters;
 pub mod handlers;
 pub mod resource_scheduler;
+pub mod telemetry;
 pub mod update;
 
 pub static mut PAGE_SECRET_KEY: Option<sodiumoxide::crypto::secretbox::Key> = None;
@@ -52,8 +53,39 @@ pub async fn start(
             "Content-Type",
         ])
         .allow_methods(vec!["HEAD", "GET", "PUT", "POST", "DELETE", "PATCH"]);
+    let tracing = warp::trace(|info: Info| {
+        use tracing::field::{display, Empty};
 
-    let routes = api.with(cors);
+        let span = tracing::info_span!(
+            "request",
+            http.method = %info.method(),
+            // http.url, ex: https://www.foo.bar/search?q=Yep#SemConv
+            http.target = %info.path(),
+            http.host = Empty,
+            // http.scheme, ex: https
+            // http.status_code: ex: 200
+            http.flavor = ?info.version(),
+            http.user_agent = Empty,
+            net.transport = "ip_tcp",
+            net.peer.ip = Empty,
+            net.peer.port = Empty,
+        );
+
+        if let Some(host) = info.host() {
+            span.record("http.host", &display(host));
+        }
+        if let Some(user_agent) = info.user_agent() {
+            span.record("http.user_agent", &display(user_agent));
+        }
+        if let Some(remote_addr) = info.remote_addr() {
+            span.record("net.peer.ip", &display(remote_addr.ip()));
+            span.record("net.peer.port", &display(remote_addr.port()));
+        }
+
+        span
+    });
+    let routes = api.with(cors).with(tracing);
+
     println!(
         "*** Listening on http://0.0.0.0:{} ***",
         settings.service.port

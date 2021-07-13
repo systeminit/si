@@ -1,5 +1,4 @@
 use names::{Generator, Name};
-
 use si_data::{NatsConn, NatsTxn, PgPool, PgTxn};
 use si_model::{BillingAccount, Group, Organization, PublicKey, User, Veritech, Workspace};
 
@@ -35,7 +34,7 @@ pub async fn signup_new_billing_account(
     let mut name_generator = Generator::default();
     let user_name = name_generator.next().unwrap();
     let user_password = name_generator.next().unwrap();
-    let mut nba_conn = pg.pool.get().await.expect("cannot get connection");
+    let mut nba_conn = pg.get().await.expect("cannot get connection");
     let nba_txn = nba_conn
         .transaction()
         .await

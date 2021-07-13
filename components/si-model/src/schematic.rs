@@ -1,38 +1,37 @@
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use thiserror::Error;
-
 use crate::{
     workflow::WorkflowRunListItem, Edge, EdgeError, EdgeKind, Entity, EntityError, ModelError,
     Node, NodeError, NodePosition, NodePositionError, Qualification, QualificationError, Resource,
     ResourceError, SiStorable, WorkflowError, WorkflowRun,
 };
+use serde::{Deserialize, Serialize};
 use si_data::PgTxn;
+use std::collections::HashMap;
+use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum SchematicError {
-    #[error("error in core model functions: {0}")]
-    Model(#[from] ModelError),
-    #[error("pg error: {0}")]
-    TokioPg(#[from] tokio_postgres::Error),
-    #[error("serde error: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("entity error: {0}")]
-    Entity(#[from] EntityError),
     #[error("edge error: {0}")]
     Edge(#[from] EdgeError),
+    #[error("entity error: {0}")]
+    Entity(#[from] EntityError),
+    #[error("node is missing in calculated schematic edge set")]
+    MissingNode,
+    #[error("error in core model functions: {0}")]
+    Model(#[from] ModelError),
+    #[error("no change set provided when one was needed")]
+    NoChangeSet,
     #[error("node error: {0}")]
     Node(#[from] NodeError),
     #[error("node position error: {0}")]
     NodePosition(#[from] NodePositionError),
-    #[error("no change set provided when one was needed")]
-    NoChangeSet,
-    #[error("node is missing in calculated schematic edge set")]
-    MissingNode,
-    #[error("resource error: {0}")]
-    Resource(#[from] ResourceError),
+    #[error("pg error: {0}")]
+    Pg(#[from] si_data::PgError),
     #[error("qualification error: {0}")]
     Qualification(#[from] QualificationError),
+    #[error("resource error: {0}")]
+    Resource(#[from] ResourceError),
+    #[error("serde error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
     #[error("workflow error: {0}")]
     Workflow(#[from] WorkflowError),
 }

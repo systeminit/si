@@ -1,10 +1,3 @@
-use std::collections::HashMap;
-
-use serde::{Deserialize, Serialize};
-use thiserror::Error;
-
-use si_data::{NatsConn, NatsTxnError, PgPool, PgTxn};
-
 use crate::{
     entity::Op,
     resource,
@@ -13,41 +6,46 @@ use crate::{
     EntityError, Node, NodeError, NodePosition, NodePositionError, Resource, ResourceError,
     Veritech, VeritechError, Vertex, WorkflowError,
 };
+use serde::{Deserialize, Serialize};
+use si_data::{NatsConn, NatsTxnError, PgPool, PgTxn};
+use std::collections::HashMap;
+use thiserror::Error;
+use tracing::instrument;
 
 pub const DISCOVERY_LIST: &str = include_str!("./queries/discovery_list.sql");
 
 #[derive(Error, Debug)]
 pub enum DiscoveryError {
-    #[error("pg error: {0}")]
-    TokioPg(#[from] tokio_postgres::Error),
-    #[error("serde error: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("pg error: {0}")]
-    Deadpool(#[from] deadpool_postgres::PoolError),
-    #[error("entity error: {0}")]
-    Entity(#[from] EntityError),
-    #[error("discovery request entity is not in a system, invalid request")]
-    NoSystem,
-    #[error("workflow error: {0}")]
-    Workflow(#[from] WorkflowError),
-    #[error("veritech error: {0}")]
-    Veritech(#[from] VeritechError),
+    #[error("edge error: {0}")]
+    Edge(#[from] EdgeError),
     #[error("changeSet error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("editSession error: {0}")]
     EditSession(#[from] EditSessionError),
-    #[error("node error: {0}")]
-    Node(#[from] NodeError),
-    #[error("edge error: {0}")]
-    Edge(#[from] EdgeError),
-    #[error("resource error: {0}")]
-    Resource(#[from] ResourceError),
-    #[error("node position error: {0}")]
-    NodePosition(#[from] NodePositionError),
-    #[error("no conceptual node could be found")]
-    NoConcept,
+    #[error("entity error: {0}")]
+    Entity(#[from] EntityError),
     #[error("nats txn error: {0}")]
     NatsTxn(#[from] NatsTxnError),
+    #[error("no conceptual node could be found")]
+    NoConcept,
+    #[error("discovery request entity is not in a system, invalid request")]
+    NoSystem,
+    #[error("node error: {0}")]
+    Node(#[from] NodeError),
+    #[error("node position error: {0}")]
+    NodePosition(#[from] NodePositionError),
+    #[error("pg error: {0}")]
+    Pg(#[from] si_data::PgError),
+    #[error("pg pool error: {0}")]
+    PgPool(#[from] si_data::PgPoolError),
+    #[error("resource error: {0}")]
+    Resource(#[from] ResourceError),
+    #[error("serde error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("veritech error: {0}")]
+    Veritech(#[from] VeritechError),
+    #[error("workflow error: {0}")]
+    Workflow(#[from] WorkflowError),
 }
 
 pub type DiscoveryResult<T> = Result<T, DiscoveryError>;
@@ -122,7 +120,7 @@ pub async fn import_concept(
     let application_id = application_id.as_ref();
     let implementation_entity_id = implementation_entity_id.as_ref();
 
-    let mut conn = pg.pool.get().await?;
+    let mut conn = pg.get().await?;
     let txn = conn.transaction().await?;
     let nats = nats_conn.transaction();
 
@@ -320,7 +318,7 @@ pub async fn import_implementation(
     let importing_entity_id = importing_entity_id.as_ref();
     let implementation_entity_id = implementation_entity_id.as_ref();
 
-    let mut conn = pg.pool.get().await?;
+    let mut conn = pg.get().await?;
     let txn = conn.transaction().await?;
     let nats = nats_conn.transaction();
 
@@ -466,6 +464,7 @@ pub enum DiscoveryProtocol {
     Finish(DiscoveryFinish),
 }
 
+#[instrument(skip(pg, nats_conn, veritech, workspace_id, entity_id, entity_type))]
 pub async fn task_discover(
     pg: PgPool,
     nats_conn: NatsConn,
@@ -474,7 +473,7 @@ pub async fn task_discover(
     entity_id: String,
     entity_type: String,
 ) -> DiscoveryResult<()> {
-    let mut conn = pg.pool.get().await?;
+    let mut conn = pg.get().await?;
     let txn = conn.transaction().await?;
 
     // The root entity that will be doing discovery

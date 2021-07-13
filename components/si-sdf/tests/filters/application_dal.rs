@@ -1,15 +1,13 @@
-use warp::http::StatusCode;
-
-use si_sdf::filters::api;
-use si_sdf::handlers::application_dal::{
-    CreateApplicationReply, CreateApplicationRequest, ListApplicationsReply,
-};
-
 use crate::filters::session_dal::login_user;
 use si_model_test::{
     create_change_set, create_custom_entity, create_edit_session, generate_fake_name,
     one_time_setup, signup_new_billing_account, TestContext,
 };
+use si_sdf::filters::api;
+use si_sdf::handlers::application_dal::{
+    CreateApplicationReply, CreateApplicationRequest, ListApplicationsReply,
+};
+use warp::http::StatusCode;
 
 #[tokio::test]
 async fn create_application() {
@@ -17,7 +15,7 @@ async fn create_application() {
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, event_log_fs, secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
-    let mut conn = pg.pool.get().await.expect("cannot get connection");
+    let mut conn = pg.get().await.expect("cannot get connection");
     let txn = conn.transaction().await.expect("cannot get transaction");
     let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit().await.expect("cannot commit txn");
@@ -49,7 +47,7 @@ async fn list_applications() {
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, event_log_fs, secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
-    let mut conn = pg.pool.get().await.expect("cannot get connection");
+    let mut conn = pg.get().await.expect("cannot get connection");
     let txn = conn.transaction().await.expect("cannot get transaction");
     let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit().await.expect("cannot commit txn");

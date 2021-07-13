@@ -1,11 +1,10 @@
-use si_model_test::{
-    create_key_pair, create_secret, create_workspace, generate_fake_name, one_time_setup,
-    signup_new_billing_account, TestContext,
-};
-
 use si_model::{
     secret::EncryptedSecret, PublicKey, Secret, SecretAlgorithm, SecretKind, SecretObjectType,
     SecretVersion,
+};
+use si_model_test::{
+    create_key_pair, create_secret, create_workspace, generate_fake_name, one_time_setup,
+    signup_new_billing_account, TestContext,
 };
 
 #[tokio::test]
@@ -14,7 +13,7 @@ async fn new() {
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
-    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
     let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
@@ -54,7 +53,7 @@ async fn secret_get() {
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
-    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
     let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit()
@@ -77,7 +76,7 @@ async fn secret_list_for_workspace() {
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
-    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
     let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
@@ -116,7 +115,7 @@ async fn encrypted_secret_get() {
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
-    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
     let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit()
@@ -144,7 +143,7 @@ async fn encrypt_decrypt_round_trip() {
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
-    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
     let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit()

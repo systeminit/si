@@ -1,14 +1,12 @@
 use anyhow::Result;
 use lazy_static::lazy_static;
 use names::{Generator, Name};
-use sodiumoxide::crypto::secretbox;
-
-use std::env;
-use std::sync::Arc;
-
 use si_data::{EventLogFS, NatsConn, PgPool};
 use si_model::{Veritech, Workflow};
 use si_settings::Settings;
+use sodiumoxide::crypto::secretbox;
+use std::env;
+use std::sync::Arc;
 
 pub mod model;
 pub use model::billing_account::*;
@@ -73,7 +71,9 @@ impl TestContext {
         let event_log_fs = EventLogFS::init(&elf_settings)
             .await
             .expect("failed to initialize EventLogFS");
-        let veritech = Veritech::new(&settings.veritech, event_log_fs.clone());
+        let veritech = Veritech::new(&settings.veritech, event_log_fs.clone())
+            .await
+            .expect("failed to create veritech client");
         let secret_key = settings.jwt_encrypt.key.clone();
 
         Self {
@@ -113,7 +113,7 @@ pub async fn one_time_setup() -> Result<()> {
         .expect("failed to drop the database");
     si_model::migrate(&pg).await.expect("migration failed!");
 
-    let mut conn = pg.pool.try_get().await?;
+    let mut conn = pg.get().await?;
     let txn = conn.transaction().await?;
 
     let tmp_event_log_fs_root = tempfile::tempdir().expect("could not create temp dir");
@@ -123,7 +123,9 @@ pub async fn one_time_setup() -> Result<()> {
     let event_log_fs = EventLogFS::init(&elf_settings)
         .await
         .expect("failed to initialize EventLogFS");
-    let veritech = Veritech::new(&SETTINGS.veritech, event_log_fs.clone());
+    let veritech = Veritech::new(&SETTINGS.veritech, event_log_fs.clone())
+        .await
+        .expect("failed to create veritech client");
 
     Workflow::load_builtins(&pg, &veritech).await?;
 

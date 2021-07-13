@@ -1,8 +1,7 @@
+use crate::SimpleStorable;
 use serde::{Deserialize, Serialize};
 use si_data::{NatsTxn, NatsTxnError, PgTxn};
 use thiserror::Error;
-
-use crate::SimpleStorable;
 
 const GROUP_GET_ADMINISTRATORS_GROUP: &str =
     include_str!("./queries/group_get_administrators_group.sql");
@@ -11,18 +10,20 @@ const GROUP_GET_ADMINISTRATORS_GROUP: &str =
 pub enum GroupError {
     #[error("a group with this name already exists")]
     NameExists,
-    #[error("invalid uft-8 string: {0}")]
-    Utf8(#[from] std::str::Utf8Error),
-    #[error("error generating password hash")]
-    PasswordHash,
-    #[error("group not found")]
-    NotFound,
-    #[error("pg error: {0}")]
-    TokioPg(#[from] tokio_postgres::Error),
-    #[error("serde error: {0}")]
-    SerdeJson(#[from] serde_json::Error),
     #[error("nats txn error: {0}")]
     NatsTxn(#[from] NatsTxnError),
+    #[error("group not found")]
+    NotFound,
+    #[error("error generating password hash")]
+    PasswordHash,
+    #[error("pg error: {0}")]
+    Pg(#[from] si_data::PgError),
+    #[error("pg pool error: {0}")]
+    PgPool(#[from] si_data::PgPoolError),
+    #[error("serde error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("invalid uft-8 string: {0}")]
+    Utf8(#[from] std::str::Utf8Error),
 }
 
 pub type GroupResult<T> = Result<T, GroupError>;

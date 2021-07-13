@@ -1,17 +1,18 @@
-use serde::{Deserialize, Serialize};
-use thiserror::Error;
-
 use crate::SimpleStorable;
+use serde::{Deserialize, Serialize};
 use si_data::{NatsTxn, NatsTxnError, PgTxn};
+use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum OrganizationError {
-    #[error("pg error: {0}")]
-    TokioPg(#[from] tokio_postgres::Error),
-    #[error("serde error: {0}")]
-    SerdeJson(#[from] serde_json::Error),
     #[error("nats txn error: {0}")]
     NatsTxn(#[from] NatsTxnError),
+    #[error("pg error: {0}")]
+    Pg(#[from] si_data::PgError),
+    #[error("pg pool error: {0}")]
+    PgPool(#[from] si_data::PgPoolError),
+    #[error("serde error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
 }
 
 pub type OrganizationResult<T> = Result<T, OrganizationError>;

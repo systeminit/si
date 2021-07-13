@@ -1,6 +1,5 @@
+use si_data::{PgPool, PgPoolError};
 use thiserror::Error;
-
-use si_data::{PgError, PgPool};
 
 pub static mut PAGE_SECRET_KEY: Option<sodiumoxide::crypto::secretbox::Key> = None;
 
@@ -105,7 +104,7 @@ const NAME_CHARSET: &[u8] = b"0123456789";
 #[derive(Error, Debug)]
 pub enum ModelError {
     #[error("migration error: {0}")]
-    Migration(#[from] PgError),
+    Migration(#[from] PgPoolError),
 }
 pub type ModelResult<T> = Result<T, ModelError>;
 

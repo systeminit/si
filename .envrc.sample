@@ -1,0 +1,2 @@
+export HONEYCOMB_TOKEN=
+export HONEYCOMB_DATASET=dev-$USER-ng

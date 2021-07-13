@@ -1,8 +1,7 @@
+use si_model::{Capability, Group};
 use si_model_test::{
     create_group_with_users, create_user, one_time_setup, signup_new_billing_account, TestContext,
 };
-
-use si_model::{Capability, Group};
 
 #[tokio::test]
 async fn new() {
@@ -10,7 +9,7 @@ async fn new() {
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
-    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
     let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
@@ -51,7 +50,7 @@ async fn get() {
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
-    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
     let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
@@ -78,7 +77,7 @@ async fn get_administrators_group() {
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
-    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
     let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
 
@@ -94,7 +93,7 @@ async fn save() {
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
-    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
     let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
 

@@ -1,3 +1,4 @@
+use super::session_dal::login_user;
 use si_model::Resource;
 use si_model_test::{
     create_change_set, create_custom_entity, create_edit_session, one_time_setup,
@@ -9,14 +10,12 @@ use si_sdf::{
 };
 use warp::http::StatusCode;
 
-use super::session_dal::login_user;
-
 #[tokio::test]
 async fn get_resource() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, event_log_fs, secret_key) = ctx.entries();
-    let mut conn = pg.pool.get().await.expect("cannot get connection");
+    let mut conn = pg.get().await.expect("cannot get connection");
     let txn = conn.transaction().await.expect("cannot get transaction");
     let nats = nats_conn.transaction();
 
@@ -115,7 +114,7 @@ async fn get_resource_no_resource() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, event_log_fs, secret_key) = ctx.entries();
-    let mut conn = pg.pool.get().await.expect("cannot get connection");
+    let mut conn = pg.get().await.expect("cannot get connection");
     let txn = conn.transaction().await.expect("cannot get transaction");
     let nats = nats_conn.transaction();
 

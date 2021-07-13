@@ -1,9 +1,7 @@
-use serde::{Deserialize, Serialize};
-use si_data::{NatsTxn, NatsTxnError, PgTxn};
-use thiserror::Error;
-use tokio_postgres::error::SqlState;
-
 use crate::{Entity, Node, SiStorable};
+use serde::{Deserialize, Serialize};
+use si_data::{pg::SqlState, NatsTxn, NatsTxnError, PgTxn};
+use thiserror::Error;
 
 const EDGE_DIRECT_SUCCESSOR_EDGES_BY_NODE_ID: &str =
     include_str!("./queries/edge_direct_successor_edges_by_node_id.sql");
@@ -22,10 +20,12 @@ const EDGE_BY_KIND_AND_OVERLAPPING_OBJECT_ID_SETS: &str =
 pub enum EdgeError {
     #[error("an edge with these vertexes and kind already exists")]
     EdgeExists,
-    #[error("pg error: {0}")]
-    TokioPg(#[from] tokio_postgres::Error),
     #[error("nats txn error: {0}")]
     NatsTxn(#[from] NatsTxnError),
+    #[error("pg error: {0}")]
+    Pg(#[from] si_data::PgError),
+    #[error("pg pool error: {0}")]
+    PgPool(#[from] si_data::PgPoolError),
     #[error("serde error: {0}")]
     SerdeJson(#[from] serde_json::Error),
 }
@@ -145,7 +145,7 @@ impl Edge {
                 Some(sql_state) if sql_state == &SqlState::UNIQUE_VIOLATION => {
                     EdgeError::EdgeExists
                 }
-                _ => EdgeError::TokioPg(err),
+                _ => EdgeError::Pg(err),
             })?;
         let json: serde_json::Value = row.try_get("object")?;
         nats.publish(&json).await?;

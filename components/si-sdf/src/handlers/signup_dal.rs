@@ -1,9 +1,7 @@
+use crate::handlers::HandlerError;
 use serde::{Deserialize, Serialize};
-
 use si_data::{NatsConn, PgPool};
 use si_model::{BillingAccount, Veritech};
-
-use crate::handlers::HandlerError;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -27,7 +25,7 @@ pub async fn create_billing_account(
     veritech: Veritech,
     request: CreateRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
     let nats = nats_conn.transaction();
 

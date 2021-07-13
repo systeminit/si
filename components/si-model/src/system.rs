@@ -1,27 +1,26 @@
-use si_data::{NatsConn, NatsTxn, PgPool, PgTxn};
-use thiserror::Error;
-
 use crate::{
     Edge, EdgeError, Entity, EntityError, LabelList, LabelListItem, Node, NodeError, Veritech,
     Vertex,
 };
+use si_data::{NatsConn, NatsTxn, PgPool, PgTxn};
+use thiserror::Error;
 
 const SYSTEM_LIST_AS_LABELS: &str = include_str!("./queries/system_list_as_labels.sql");
 
 #[derive(Error, Debug)]
 pub enum SystemError {
-    #[error("pg error: {0}")]
-    TokioPg(#[from] tokio_postgres::Error),
-    #[error("serde error: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("entity error: {0}")]
-    Entity(#[from] EntityError),
-    #[error("node error: {0}")]
-    Node(#[from] NodeError),
     #[error("edge error: {0}")]
     Edge(#[from] EdgeError),
+    #[error("entity error: {0}")]
+    Entity(#[from] EntityError),
     #[error("system name not found: {0}")]
     NameNotFound(String),
+    #[error("node error: {0}")]
+    Node(#[from] NodeError),
+    #[error("pg error: {0}")]
+    Pg(#[from] si_data::PgError),
+    #[error("serde error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
 }
 
 pub type SystemResult<T> = Result<T, SystemError>;

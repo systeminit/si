@@ -1,12 +1,9 @@
-use std::{convert::TryFrom, convert::TryInto, num::TryFromIntError};
-
+use crate::{ChangeSet, EntityError, Resource, WorkflowRun};
 use chrono::{prelude::*, Duration};
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
-
 use si_data::PgTxn;
-
-use crate::{ChangeSet, EntityError, Resource, WorkflowRun};
+use std::{convert::TryFrom, convert::TryInto, num::TryFromIntError};
+use thiserror::Error;
 
 const CHANGE_SET_APPLIED_BY_APPLICATION: &str =
     include_str!("./queries/change_set_applied_by_application.sql");
@@ -21,12 +18,12 @@ const RESOURCE_FOR_VISUALIZATION: &str = include_str!("queries/resource_for_visu
 
 #[derive(Error, Debug)]
 pub enum VisualizationError {
-    #[error("pg error: {0}")]
-    TokioPg(#[from] tokio_postgres::Error),
-    #[error("serde error: {0}")]
-    SerdeJson(#[from] serde_json::Error),
     #[error("entity error: {0}")]
     Entity(#[from] EntityError),
+    #[error("serde error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("pg error: {0}")]
+    Pg(#[from] si_data::PgError),
     #[error("integer conversion error: {0}")]
     TryFromIntError(#[from] TryFromIntError),
 }
@@ -182,6 +179,7 @@ pub struct ResourceSummary {
     resources: Vec<Resource>,
 }
 
+#[tracing::instrument(skip(txn, application_id, system_id, entity_types))]
 pub async fn resource_summary(
     txn: &PgTxn<'_>,
     application_id: impl AsRef<str>,

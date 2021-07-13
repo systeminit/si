@@ -1,8 +1,9 @@
-use si_data::{NatsConn, PgPool};
-use si_model::{PublicKey, Secret, SecretAlgorithm, SecretKind, SecretObjectType, SecretVersion};
-
-use crate::handlers::{authenticate, authorize, validate_tenancy, HandlerError};
+use crate::handlers::{authorize, validate_tenancy, HandlerError};
 use serde::{Deserialize, Serialize};
+use si_data::{NatsConn, PgPool};
+use si_model::{
+    PublicKey, Secret, SecretAlgorithm, SecretKind, SecretObjectType, SecretVersion, SiClaims,
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -11,13 +12,11 @@ pub struct GetPublicKeyReply {
 }
 
 pub async fn get_public_key(
+    claim: SiClaims,
     pg: PgPool,
-    token: String,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
-
-    let claim = authenticate(&txn, &token).await?;
 
     let public_key = PublicKey::get_current(&txn, &claim.billing_account_id)
         .await
@@ -47,16 +46,15 @@ pub struct CreateSecretReply {
 }
 
 pub async fn create_secret(
+    claim: SiClaims,
+    request: CreateSecretRequest,
     pg: PgPool,
     nats_conn: NatsConn,
-    token: String,
-    request: CreateSecretRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
     let nats = nats_conn.transaction();
 
-    let claim = authenticate(&txn, &token).await?;
     authorize(&txn, &claim.user_id, "secretDal", "createSecret").await?;
 
     validate_tenancy(
@@ -109,14 +107,13 @@ pub struct ListSecretsForWorkspaceReply {
 }
 
 pub async fn list_secrets_for_workspace(
-    pg: PgPool,
-    token: String,
+    claim: SiClaims,
     request: ListSecretsForWorkspaceRequest,
+    pg: PgPool,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
 
-    let claim = authenticate(&txn, &token).await?;
     authorize(&txn, &claim.user_id, "secretDal", "listSecretsForWorkspace").await?;
 
     validate_tenancy(

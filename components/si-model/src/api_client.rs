@@ -12,26 +12,26 @@ const AUTHORIZE_API_CLIENT: &str = include_str!("./queries/authorize_api_client.
 
 #[derive(Error, Debug)]
 pub enum ApiClientError {
-    #[error("invalid uft-8 string: {0}")]
-    Utf8(#[from] std::str::Utf8Error),
-    #[error("user is not found")]
-    NotFound,
-    #[error("API client name already exists")]
-    NameExists,
-    #[error("API Client is unauthorized")]
-    Unauthorized,
-    #[error("jwt private key: {0}")]
-    JwtKey(#[from] JwtKeyError),
-    #[error("jwt signing error: {0}")]
-    SignError(String),
     #[error("group: {0}")]
     Group(#[from] GroupError),
-    #[error("pg error: {0}")]
-    TokioPg(#[from] tokio_postgres::Error),
+    #[error("jwt private key: {0}")]
+    JwtKey(#[from] JwtKeyError),
+    #[error("API client name already exists")]
+    NameExists,
     #[error("nats txn error: {0}")]
     NatsTxn(#[from] NatsTxnError),
+    #[error("user is not found")]
+    NotFound,
+    #[error("pg error: {0}")]
+    Pg(#[from] si_data::PgError),
     #[error("serde error: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("jwt signing error: {0}")]
+    SignError(String),
+    #[error("API Client is unauthorized")]
+    Unauthorized,
+    #[error("invalid uft-8 string: {0}")]
+    Utf8(#[from] std::str::Utf8Error),
 }
 
 pub type ApiClientResult<T> = Result<T, ApiClientError>;

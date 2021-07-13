@@ -1,17 +1,16 @@
-use serde::{Deserialize, Serialize};
-use thiserror::Error;
-
 use crate::SimpleStorable;
+use serde::{Deserialize, Serialize};
 use si_data::{NatsTxn, NatsTxnError, PgTxn};
+use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum WorkspaceError {
-    #[error("pg error: {0}")]
-    TokioPg(#[from] tokio_postgres::Error),
-    #[error("serde error: {0}")]
-    SerdeJson(#[from] serde_json::Error),
     #[error("nats txn error: {0}")]
     NatsTxn(#[from] NatsTxnError),
+    #[error("pg error: {0}")]
+    Pg(#[from] si_data::PgError),
+    #[error("serde error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
 }
 
 pub type WorkspaceResult<T> = Result<T, WorkspaceError>;

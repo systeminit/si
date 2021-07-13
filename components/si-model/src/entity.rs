@@ -1,12 +1,12 @@
-use serde::{Deserialize, Serialize};
-use thiserror::Error;
-
 use crate::{
     generate_name, lodash, secret::DecryptedSecret, Edge, EdgeError, EdgeKind, EncryptedSecret,
     LodashError, Qualification, QualificationError, ResourceError, SecretError, SiChangeSet,
     SiStorable, Veritech, VeritechError, Workflow, WorkflowError,
 };
+use serde::{Deserialize, Serialize};
 use si_data::{NatsConn, NatsTxn, NatsTxnError, PgPool, PgTxn};
+use thiserror::Error;
+use tracing::instrument;
 
 pub mod diff;
 
@@ -19,58 +19,58 @@ const ALL_HEAD_ENTITIES: &str = include_str!("./queries/all_head_entities.sql");
 
 #[derive(Error, Debug)]
 pub enum EntityError {
-    #[error("no head entity found; logic error")]
-    NoHead,
-    #[error("no override system found: {0}")]
-    Override(String),
-    #[error("invalid entity; missing object type")]
-    MissingObjectType,
-    #[error("invalid entity; missing node id")]
-    MissingId,
+    #[error("edge error: {0}")]
+    Edge(#[from] EdgeError),
+    #[error("lodash error: {0}")]
+    Lodash(#[from] LodashError),
+    #[error("malformed database entry")]
+    MalformedDatabaseEntry,
     #[error("missing field: {0}")]
     Missing(String),
-    #[error("json serialization error: {0}")]
-    SerdeJson(#[from] serde_json::Error),
+    #[error("invalid entity; missing node id")]
+    MissingId,
+    #[error("missing change set in a save where it is required")]
+    MissingChangeSet,
+    #[error("invalid entity; missing object type")]
+    MissingObjectType,
+    #[error("nats txn error: {0}")]
+    NatsTxn(#[from] NatsTxnError),
+    #[error("no change set provided")]
+    NoChangeSet,
     #[error("not found")]
     NotFound,
-    #[error("entity {0} not found for edit session {1}")]
-    NotFoundForEditSession(String, String),
     #[error("entity {0} not found for change set {1}")]
     NotFoundForChangeSet(String, String),
+    #[error("entity {0} not found for edit session {1}")]
+    NotFoundForEditSession(String, String),
     #[error("entity {0} not found for head")]
     NotFoundForHead(String),
     #[error("entity {0} not found for head or change set ({1:?})")]
     NotFoundForHeadOrChangeSet(String, Option<String>),
     #[error("entity {0} not found for head or change set ({1:?}) or edit session ({2:?})")]
     NotFoundForHeadOrChangeSetOrEditSession(String, Option<String>, Option<String>),
+    #[error("no head entity found; logic error")]
+    NoHead,
+    #[error("no override system found: {0}")]
+    Override(String),
     #[error("pg error: {0}")]
-    TokioPg(#[from] tokio_postgres::Error),
-    #[error("nats txn error: {0}")]
-    NatsTxn(#[from] NatsTxnError),
-    #[error("malformed database entry")]
-    MalformedDatabaseEntry,
-    #[error("missing change set in a save where it is required")]
-    MissingChangeSet,
-    #[error("veritech error: {0}")]
-    Veritech(#[from] VeritechError),
-    #[error("edge error: {0}")]
-    Edge(#[from] EdgeError),
-    #[error("resource error: {0}")]
-    Resource(#[from] ResourceError),
-    #[error("deadpool error: {0}")]
-    Deadpool(#[from] deadpool_postgres::PoolError),
-    #[error("no change set provided")]
-    NoChangeSet,
+    Pg(#[from] si_data::PgError),
+    #[error("pg pool error: {0}")]
+    PgPool(#[from] si_data::PgPoolError),
     #[error("qualification error: {0}")]
     Qualification(#[from] QualificationError),
+    #[error("resource error: {0}")]
+    Resource(#[from] ResourceError),
+    #[error("secret error: {0}")]
+    Secret(#[from] SecretError),
+    #[error("json serialization error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("veritech error: {0}")]
+    Veritech(#[from] VeritechError),
     #[error("workflow error: {0}")]
     Workflow(#[from] WorkflowError),
     #[error("expected a property to be a {0}, but it is not: {1:?}")]
     WrongTypeForProp(&'static str, Vec<String>),
-    #[error("lodash error: {0}")]
-    Lodash(#[from] LodashError),
-    #[error("secret error: {0}")]
-    Secret(#[from] SecretError),
 }
 
 #[derive(Serialize, Debug)]
@@ -82,9 +82,9 @@ pub struct InferPropertiesPredecessor {
 #[derive(Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct InferPropertiesRequest {
-    entity_type: String,
-    entity: Entity,
-    context: Vec<Entity>,
+    pub(crate) entity_type: String,
+    pub(crate) entity: Entity,
+    pub(crate) context: Vec<Entity>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -262,7 +262,7 @@ impl Entity {
         change_set_id: impl Into<String>,
         edit_session_id: impl Into<String>,
     ) -> EntityResult<()> {
-        let mut conn = pg.pool.get().await?;
+        let mut conn = pg.get().await?;
         let txn = conn.transaction().await?;
         let nats = nats_conn.transaction();
 
@@ -291,6 +291,16 @@ impl Entity {
         Ok(())
     }
 
+    #[instrument(skip(
+        entity,
+        pg,
+        nats_conn,
+        veritech,
+        system_id,
+        change_set_id,
+        edit_session_id,
+        workspace_id
+    ))]
     pub async fn task_check_qualifications_for_edit_session(
         entity: Entity,
         pg: PgPool,
@@ -301,7 +311,7 @@ impl Entity {
         edit_session_id: String,
         workspace_id: String,
     ) -> EntityResult<()> {
-        let mut conn = pg.pool.get().await?;
+        let mut conn = pg.get().await?;
         let txn = conn.transaction().await?;
         let nats = nats_conn.transaction();
         let system_id = if system_id.is_none() {
@@ -420,6 +430,10 @@ impl Entity {
         Ok(true)
     }
 
+    #[instrument(
+        name = "entity.infer_properties_for_edit_session",
+        skip(self, txn, veritech, change_set_id, edit_session_id)
+    )]
     pub async fn infer_properties_for_edit_session(
         &mut self,
         txn: &PgTxn<'_>,
@@ -662,7 +676,7 @@ impl Entity {
         change_set_id: String,
         edit_session_id: String,
     ) -> EntityResult<()> {
-        let mut conn = pg.pool.get().await?;
+        let mut conn = pg.get().await?;
         let txn = conn.transaction().await?;
 
         let mut entities_to_check = vec![first_entity_id];

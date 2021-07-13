@@ -1,15 +1,12 @@
-use serde::{Deserialize, Serialize};
-use thiserror::Error;
-use tokio_postgres::error::SqlState;
-
-use crate::{SystemError, Veritech};
-use si_data::{NatsConn, NatsTxn, NatsTxnError, PgPool, PgTxn};
-
 use crate::{
     system, Capability, ChangeSet, ChangeSetError, EditSession, EditSessionError, Group,
     GroupError, KeyPair, KeyPairError, Organization, OrganizationError, PublicKey, SimpleStorable,
     User, UserError, Workspace, WorkspaceError,
 };
+use crate::{SystemError, Veritech};
+use serde::{Deserialize, Serialize};
+use si_data::{pg::SqlState, NatsConn, NatsTxn, NatsTxnError, PgPool, PgTxn};
+use thiserror::Error;
 
 const BILLING_ACCOUNT_GET_BY_NAME: &str = include_str!("./queries/billing_account_get_by_name.sql");
 
@@ -17,32 +14,32 @@ const BILLING_ACCOUNT_GET_BY_NAME: &str = include_str!("./queries/billing_accoun
 pub enum BillingAccountError {
     #[error("a billing account with this name already exists")]
     AccountExists,
-    #[error("error in user model: {0}")]
-    User(#[from] UserError),
-    #[error("error in group model: {0}")]
-    Group(#[from] GroupError),
-    #[error("error in organization model: {0}")]
-    Organization(#[from] OrganizationError),
-    #[error("error in key pair model: {0}")]
-    KeyPair(#[from] KeyPairError),
-    #[error("error in workspace model: {0}")]
-    Workspace(#[from] WorkspaceError),
-    #[error("billing account is not found")]
-    NotFound,
-    #[error("pg error: {0}")]
-    TokioPg(#[from] tokio_postgres::Error),
-    #[error("nats txn error: {0}")]
-    NatsTxn(#[from] NatsTxnError),
-    #[error("serde error: {0}")]
-    SerdeJson(#[from] serde_json::Error),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("edit session error: {0}")]
     EditSession(#[from] EditSessionError),
+    #[error("error in group model: {0}")]
+    Group(#[from] GroupError),
+    #[error("error in key pair model: {0}")]
+    KeyPair(#[from] KeyPairError),
+    #[error("nats txn error: {0}")]
+    NatsTxn(#[from] NatsTxnError),
+    #[error("billing account is not found")]
+    NotFound,
+    #[error("error in organization model: {0}")]
+    Organization(#[from] OrganizationError),
+    #[error("pg error: {0}")]
+    Pg(#[from] si_data::PgError),
+    #[error("pg pool error: {0}")]
+    PgPool(#[from] si_data::PgPoolError),
+    #[error("serde error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
     #[error("system error: {0}")]
     System(#[from] SystemError),
-    #[error("pg error: {0}")]
-    Deadpool(#[from] deadpool_postgres::PoolError),
+    #[error("error in user model: {0}")]
+    User(#[from] UserError),
+    #[error("error in workspace model: {0}")]
+    Workspace(#[from] WorkspaceError),
 }
 
 pub type BillingAccountResult<T> = Result<T, BillingAccountError>;
@@ -96,7 +93,7 @@ impl BillingAccount {
                 Some(sql_state) if sql_state == &SqlState::UNIQUE_VIOLATION => {
                     BillingAccountError::AccountExists
                 }
-                _ => BillingAccountError::TokioPg(err),
+                _ => BillingAccountError::Pg(err),
             })?;
         let json: serde_json::Value = row.try_get("object")?;
         nats.publish(&json).await?;
@@ -170,7 +167,7 @@ impl BillingAccount {
 
         txn.commit().await?;
 
-        let mut cs_conn = pg.pool.get().await?;
+        let mut cs_conn = pg.get().await?;
         let cs_txn = cs_conn.transaction().await?;
         let mut change_set = ChangeSet::new(&cs_txn, &nats, None, workspace.id.clone()).await?;
         let mut edit_session = EditSession::new(

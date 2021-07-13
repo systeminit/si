@@ -19,18 +19,18 @@ pub use crate::update::WebsocketToken;
 
 #[derive(Error, Debug)]
 pub enum ServerError {
-    #[error("connection failed")]
-    NatsConn,
-    #[error("event error: {0}")]
-    Event(#[from] EventError),
-    #[error("entity error: {0}")]
-    Entity(#[from] EntityError),
     #[error("change run error: {0}")]
     ChangeRun(#[from] ChangeRunError),
     #[error("editSession error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("editSession error: {0}")]
     EditSession(#[from] EditSessionError),
+    #[error("entity error: {0}")]
+    Entity(#[from] EntityError),
+    #[error("event error: {0}")]
+    Event(#[from] EventError),
+    #[error("connection failed")]
+    NatsConn,
     //#[error("changeset op error: {0}")]
     //Op(#[from] OpError),
     //#[error("pg error: {0}")]
@@ -203,7 +203,7 @@ pub async fn websocket_run(
         Ok(sub) => {
             tokio::task::spawn(async move {
                 while let Some(msg) = sub.next().await {
-                    let mut conn = match pg2.pool.get().await {
+                    let mut conn = match pg2.get().await {
                         Ok(conn) => conn,
                         Err(_e) => {
                             dbg!("failed to get connection from pool");
@@ -392,7 +392,7 @@ async fn process_message(
     // sadly the warp Message does not expose the underlying enum for pattern mataching. Instead
     // we'll have to iterate through all the variants by hand with if statements
     if message.is_text() {
-        let mut conn = match pg.pool.get().await {
+        let mut conn = match pg.get().await {
             Ok(conn) => conn,
             Err(_e) => {
                 dbg!("cannot get connection from db pool");

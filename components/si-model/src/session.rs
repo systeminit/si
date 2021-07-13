@@ -1,16 +1,14 @@
-use serde::{Deserialize, Serialize};
-use thiserror::Error;
-
-use si_data::PgTxn;
-
 use crate::{Entity, Organization, Workspace};
+use serde::{Deserialize, Serialize};
+use si_data::PgTxn;
+use thiserror::Error;
 
 const GET_DEFAULTS: &str = include_str!("./queries/session_dal_get_defaults.sql");
 
 #[derive(Error, Debug)]
 pub enum SessionError {
     #[error("pg error: {0}")]
-    TokioPg(#[from] tokio_postgres::Error),
+    Pg(#[from] si_data::PgError),
     #[error("serde error: {0}")]
     SerdeJson(#[from] serde_json::Error),
 }

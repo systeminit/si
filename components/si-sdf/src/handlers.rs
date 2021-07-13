@@ -1,10 +1,4 @@
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
-use warp::http::StatusCode;
-use warp::{reject::Reject, Rejection, Reply};
-
-use std::convert::Infallible;
-
 use si_data::{NatsTxnError, PgTxn};
 use si_model::{
     ApiClientError, ApplicationError, BillingAccountError, ChangeSetError, DiffError,
@@ -13,6 +7,11 @@ use si_model::{
     QualificationError, ResourceError, SchematicError, SecretError, SessionError, UserError,
     VisualizationError, WorkflowError, WorkspaceError,
 };
+use std::convert::Infallible;
+use thiserror::Error;
+use tracing::warn;
+use warp::http::StatusCode;
+use warp::{reject::Reject, Rejection, Reply};
 
 pub mod application_context_dal;
 pub mod application_dal;
@@ -28,84 +27,84 @@ pub mod workflow_dal;
 
 #[derive(Error, Debug)]
 pub enum HandlerError {
-    #[error("invalid json pointer: {0}")]
-    InvalidJsonPointer(String),
-    #[error("invalid json value: {0}")]
-    InvalidJsonValue(#[from] serde_json::Error),
-    #[error("mismatched json value: {0}")]
-    MismatchedJsonValue(String),
-    #[error("error in the model layer: {0}")]
-    Model(#[from] ModelError),
-    #[error("node error: {0}")]
-    Node(#[from] NodeError),
-    #[error("node position error: {0}")]
-    NodePosition(#[from] NodePositionError),
-    #[error("change set error: {0}")]
-    ChangeSet(#[from] ChangeSetError),
-    #[error("edit session error: {0}")]
-    EditSession(#[from] EditSessionError),
+    #[error("api client error: {0}")]
+    ApiClient(#[from] ApiClientError),
+    #[error("application error: {0}")]
+    Application(#[from] ApplicationError),
     #[error("billing account error: {0}")]
     BillingAccount(#[from] BillingAccountError),
-    #[error("user error: {0}")]
-    User(#[from] UserError),
-    #[error("call is unauthorized")]
-    Unauthorized,
-    #[error("jwt error fetching signing key: {0}")]
-    JwtKey(#[from] JwtKeyError),
-    #[error("error signing jwt claim: {0}")]
-    JwtClaim(String),
+    #[error("change set error: {0}")]
+    ChangeSet(#[from] ChangeSetError),
+    #[error("diff error: {0}")]
+    Diff(#[from] DiffError),
+    #[error("discovery error: {0}")]
+    Discovery(#[from] DiscoveryError),
     #[error("edge error: {0}")]
     Edge(#[from] EdgeError),
+    #[error("edit session error: {0}")]
+    EditSession(#[from] EditSessionError),
     #[error("entity error: {0}")]
     Entity(#[from] EntityError),
-    #[error("key pair error: {0}")]
-    KeyPair(#[from] KeyPairError),
-    #[error("secret error: {0}")]
-    Secret(#[from] SecretError),
     #[error("event error: {0}")]
     Event(#[from] EventError),
     #[error("event log error: {0}")]
     EventLog(#[from] EventLogError),
-    #[error("api client error: {0}")]
-    ApiClient(#[from] ApiClientError),
-    #[error("invalid request")]
-    InvalidRequest,
-    #[error("nats txn error: {0}")]
-    NatsTxn(#[from] NatsTxnError),
-    #[error("organization error: {0}")]
-    Organization(#[from] OrganizationError),
-    #[error("item not found")]
-    NotFound,
-    #[error("workspace error: {0}")]
-    Workspace(#[from] WorkspaceError),
-    #[error("schematic error: {0}")]
-    Schematic(#[from] SchematicError),
-    #[error("yaml error: {0}")]
-    Yaml(#[from] serde_yaml::Error),
-    #[error("pg error: {0}")]
-    TokioPg(#[from] tokio_postgres::Error),
-    #[error("pg error: {0}")]
-    Deadpool(#[from] deadpool_postgres::PoolError),
-    #[error("session error: {0}")]
-    Session(#[from] SessionError),
-    #[error("application error: {0}")]
-    Application(#[from] ApplicationError),
-    #[error("diff error: {0}")]
-    Diff(#[from] DiffError),
-    #[error("qualification error: {0}")]
-    Qualification(#[from] QualificationError),
-    #[error("workflow error: {0}")]
-    Workflow(#[from] WorkflowError),
-    #[error("bad component create; missing deployment selected entity id")]
-    MissingDeploymentSelectedEntityId,
     #[error("a request object was not valid in this edit session or change set")]
     InvalidContext,
+    #[error("invalid json pointer: {0}")]
+    InvalidJsonPointer(String),
+    #[error("invalid json value: {0}")]
+    InvalidJsonValue(#[from] serde_json::Error),
+    #[error("invalid request")]
+    InvalidRequest,
+    #[error("error signing jwt claim: {0}")]
+    JwtClaim(String),
+    #[error("jwt error fetching signing key: {0}")]
+    JwtKey(#[from] JwtKeyError),
+    #[error("key pair error: {0}")]
+    KeyPair(#[from] KeyPairError),
+    #[error("mismatched json value: {0}")]
+    MismatchedJsonValue(String),
+    #[error("bad component create; missing deployment selected entity id")]
+    MissingDeploymentSelectedEntityId,
+    #[error("error in the model layer: {0}")]
+    Model(#[from] ModelError),
+    #[error("nats txn error: {0}")]
+    NatsTxn(#[from] NatsTxnError),
+    #[error("node error: {0}")]
+    Node(#[from] NodeError),
+    #[error("node position error: {0}")]
+    NodePosition(#[from] NodePositionError),
+    #[error("item not found")]
+    NotFound,
+    #[error("organization error: {0}")]
+    Organization(#[from] OrganizationError),
+    #[error("pg error: {0}")]
+    Pg(#[from] si_data::PgError),
+    #[error("pg pool error: {0}")]
+    PgPool(#[from] si_data::PgPoolError),
+    #[error("qualification error: {0}")]
+    Qualification(#[from] QualificationError),
     #[error("resource error: {0}")]
     Resource(#[from] ResourceError),
+    #[error("schematic error: {0}")]
+    Schematic(#[from] SchematicError),
+    #[error("secret error: {0}")]
+    Secret(#[from] SecretError),
+    #[error("session error: {0}")]
+    Session(#[from] SessionError),
+    #[error("call is unauthorized")]
+    Unauthorized,
+    #[error("user error: {0}")]
+    User(#[from] UserError),
     #[error("visualization error: {0}")]
     Visualization(#[from] VisualizationError),
-    #[error("discovery error: {0}")]
-    Discovery(#[from] DiscoveryError),
+    #[error("workflow error: {0}")]
+    Workflow(#[from] WorkflowError),
+    #[error("workspace error: {0}")]
+    Workspace(#[from] WorkspaceError),
+    #[error("yaml error: {0}")]
+    Yaml(#[from] serde_yaml::Error),
 }
 
 pub type HandlerResult<T> = Result<T, HandlerError>;
@@ -155,6 +154,13 @@ pub async fn authenticate(
     Ok(claims)
 }
 
+#[tracing::instrument(
+    skip(txn, table, id, billing_account_id),
+    fields(
+        enduser.billing_account_id = billing_account_id.as_ref(),
+        db.table = table.as_ref(),
+    )
+)]
 pub async fn validate_tenancy(
     txn: &PgTxn<'_>,
     table: impl AsRef<str>,
@@ -165,11 +171,14 @@ pub async fn validate_tenancy(
     let id = id.as_ref();
     let billing_account_id = billing_account_id.as_ref();
     let sql = format!("SELECT true AS validate FROM {table} WHERE billing_account_id = si_id_to_primary_key_v1($2) AND id = si_id_to_primary_key_v1($1) LIMIT 1;", table=table);
-    let _row = txn
-        .query_one(&sql[..], &[&id, &billing_account_id])
-        .await
-        .map_err(|_| HandlerError::Unauthorized)?;
-    Ok(())
+
+    txn.query_opt(sql.as_str(), &[&id, &billing_account_id])
+        .await?
+        .ok_or_else(|| {
+            warn!("tenancy validation failed");
+            HandlerError::Unauthorized
+        })
+        .map(|_| ())
 }
 
 pub async fn authorize(
@@ -180,8 +189,10 @@ pub async fn authorize(
 ) -> HandlerResult<()> {
     si_model::user::authorize(txn, user_id, subject, action)
         .await
-        .map_err(|_| HandlerError::Unauthorized)?;
-    Ok(())
+        .map_err(|err| match err {
+            UserError::Unauthorized => HandlerError::Unauthorized,
+            _ => HandlerError::from(err),
+        })
 }
 
 pub async fn authorize_api_client(

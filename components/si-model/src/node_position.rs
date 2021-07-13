@@ -11,10 +11,12 @@ pub enum NodePositionError {
     Model(#[from] ModelError),
     #[error("nats txn error: {0}")]
     NatsTxn(#[from] NatsTxnError),
+    #[error("pg error: {0}")]
+    Pg(#[from] si_data::PgError),
+    #[error("pg pool error: {0}")]
+    PgPool(#[from] si_data::PgPoolError),
     #[error("json serialization error: {0}")]
     SerdeJson(#[from] serde_json::Error),
-    #[error("pg error: {0}")]
-    TokioPg(#[from] tokio_postgres::Error),
 }
 
 pub type NodePositionResult<T> = Result<T, NodePositionError>;
