@@ -10,7 +10,6 @@ edition = "2018"
 base64 = "0.13.0"
 blake2 = "0.9.1"
 chrono = { version = "0.4.19", features = ["serde"] }
-deadpool-postgres = "0.9.0"
 futures = "0.3.13"
 jwt-simple = "0.10.1"
 names = "0.11.0"
@@ -27,10 +26,15 @@ strum_macros = "0.21.1"
 tempfile = "3.2.0"
 thiserror = "1.0.24"
 tokio = { version = "1.2.0", features = ["full"] }
-tokio-postgres = { version ="0.7.0", features = ["runtime", "with-chrono-0_4", "with-serde_json-1"] }
 tokio-stream = "0.1.3"
 tokio-tungstenite = "0.15.0"
+tracing = "0.1.26"
 tungstenite = "0.14.0"
+uname = "0.1.1"
+url = "2.2.2"
+opentelemetry = "0.15.0"
+opentelemetry-http = "0.4.0"
+tracing-opentelemetry = "0.14.0"
 
 [dev-dependencies]
 anyhow = "1.0.38"

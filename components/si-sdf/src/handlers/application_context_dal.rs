@@ -1,7 +1,7 @@
-use crate::handlers::{authenticate, authorize, validate_tenancy, HandlerError};
+use crate::handlers::{authorize, validate_tenancy, HandlerError};
 use serde::{Deserialize, Serialize};
 use si_data::{NatsConn, PgPool};
-use si_model::{application, ApplicationContext, ChangeSet, EditSession};
+use si_model::{application, ApplicationContext, ChangeSet, EditSession, SiClaims};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -13,14 +13,13 @@ pub struct GetApplicationContextRequest {
 pub type GetApplicationContextReply = ApplicationContext;
 
 pub async fn get_application_context(
-    pg: PgPool,
-    token: String,
+    claim: SiClaims,
     request: GetApplicationContextRequest,
+    pg: PgPool,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
 
-    let claim = authenticate(&txn, &token).await?;
     authorize(
         &txn,
         &claim.user_id,
@@ -65,16 +64,15 @@ pub struct CreateChangeSetAndEditSessionReply {
 }
 
 pub async fn create_change_set_and_edit_session(
+    claim: SiClaims,
+    request: CreateChangeSetAndEditSessionRequest,
     pg: PgPool,
     nats_conn: NatsConn,
-    token: String,
-    request: CreateChangeSetAndEditSessionRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
     let nats = nats_conn.transaction();
 
-    let claim = authenticate(&txn, &token).await?;
     authorize(
         &txn,
         &claim.user_id,
@@ -135,14 +133,13 @@ pub struct GetChangeSetAndEditSessionReply {
 }
 
 pub async fn get_change_set_and_edit_session(
-    pg: PgPool,
-    token: String,
+    claim: SiClaims,
     request: GetChangeSetAndEditSessionRequest,
+    pg: PgPool,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
 
-    let claim = authenticate(&txn, &token).await?;
     authorize(
         &txn,
         &claim.user_id,
@@ -194,14 +191,13 @@ pub struct GetChangeSetReply {
 }
 
 pub async fn get_change_set(
-    pg: PgPool,
-    token: String,
+    claim: SiClaims,
     request: GetChangeSetRequest,
+    pg: PgPool,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
 
-    let claim = authenticate(&txn, &token).await?;
     authorize(
         &txn,
         &claim.user_id,
@@ -241,16 +237,15 @@ pub struct CreateEditSessionAndGetChangeSetReply {
 }
 
 pub async fn create_edit_session_and_get_change_set(
+    claim: SiClaims,
+    request: CreateEditSessionAndGetChangeSetRequest,
     pg: PgPool,
     nats_conn: NatsConn,
-    token: String,
-    request: CreateEditSessionAndGetChangeSetRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
     let nats = nats_conn.transaction();
 
-    let claim = authenticate(&txn, &token).await?;
     authorize(
         &txn,
         &claim.user_id,
@@ -304,16 +299,15 @@ pub struct CreateEditSessionReply {
 }
 
 pub async fn create_edit_session(
+    claim: SiClaims,
+    request: CreateEditSessionRequest,
     pg: PgPool,
     nats_conn: NatsConn,
-    token: String,
-    request: CreateEditSessionRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
     let nats = nats_conn.transaction();
 
-    let claim = authenticate(&txn, &token).await?;
     authorize(
         &txn,
         &claim.user_id,
@@ -361,16 +355,15 @@ pub struct CancelEditSessionReply {
 }
 
 pub async fn cancel_edit_session(
+    claim: SiClaims,
+    request: CancelEditSessionRequest,
     pg: PgPool,
     nats_conn: NatsConn,
-    token: String,
-    request: CancelEditSessionRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
     let nats = nats_conn.transaction();
 
-    let claim = authenticate(&txn, &token).await?;
     authorize(
         &txn,
         &claim.user_id,
@@ -416,16 +409,15 @@ pub struct SaveEditSessionReply {
 }
 
 pub async fn save_edit_session(
+    claim: SiClaims,
+    request: SaveEditSessionRequest,
     pg: PgPool,
     nats_conn: NatsConn,
-    token: String,
-    request: SaveEditSessionRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
     let nats = nats_conn.transaction();
 
-    let claim = authenticate(&txn, &token).await?;
     authorize(
         &txn,
         &claim.user_id,
@@ -471,16 +463,15 @@ pub struct ApplyChangeSetReply {
 }
 
 pub async fn apply_change_set(
+    claim: SiClaims,
+    request: ApplyChangeSetRequest,
     pg: PgPool,
     nats_conn: NatsConn,
-    token: String,
-    request: ApplyChangeSetRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
     let nats = nats_conn.transaction();
 
-    let claim = authenticate(&txn, &token).await?;
     authorize(
         &txn,
         &claim.user_id,

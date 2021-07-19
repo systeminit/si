@@ -1,19 +1,20 @@
-use serde::{Deserialize, Serialize};
-use thiserror::Error;
-
 use crate::{generate_name, ChangeSetError, SiStorable};
+use serde::{Deserialize, Serialize};
 use si_data::{NatsTxn, NatsTxnError, PgTxn};
+use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum EditSessionError {
     #[error("changeSet error: {0}")]
     ChangeSet(#[from] ChangeSetError),
-    #[error("error creating our object from json: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("pg error: {0}")]
-    TokioPg(#[from] tokio_postgres::Error),
     #[error("nats txn error: {0}")]
     NatsTxn(#[from] NatsTxnError),
+    #[error("pg error: {0}")]
+    Pg(#[from] si_data::PgError),
+    #[error("pg pool error: {0}")]
+    PgPool(#[from] si_data::PgPoolError),
+    #[error("error creating our object from json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
 }
 
 pub type EditSessionResult<T> = Result<T, EditSessionError>;

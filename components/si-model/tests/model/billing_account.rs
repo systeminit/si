@@ -1,6 +1,5 @@
-use si_model_test::{create_new_billing_account, one_time_setup, TestContext};
-
 use si_model::BillingAccount;
+use si_model_test::{create_new_billing_account, one_time_setup, TestContext};
 
 #[tokio::test]
 async fn new() {
@@ -8,7 +7,7 @@ async fn new() {
     let ctx = TestContext::init().await;
     let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
-    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
     let ba = BillingAccount::new(&txn, &nats, "af", "adam and fletcher")
@@ -24,7 +23,7 @@ async fn get() {
     let ctx = TestContext::init().await;
     let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
-    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
     let billing_account = create_new_billing_account(&txn, &nats).await;
@@ -40,7 +39,7 @@ async fn get_by_name() {
     let ctx = TestContext::init().await;
     let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
-    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
     let billing_account = create_new_billing_account(&txn, &nats).await;
@@ -56,7 +55,7 @@ async fn rotate_key_pair() {
     let ctx = TestContext::init().await;
     let (pg, nats_conn, _veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
-    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
     let billing_account = create_new_billing_account(&txn, &nats).await;

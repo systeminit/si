@@ -1,8 +1,7 @@
-use si_data::{NatsTxn, NatsTxnError, PgTxn};
-
 use crate::{KeyPair, KeyPairError, ModelError, SiStorable};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use si_data::{NatsTxn, NatsTxnError, PgTxn};
 use sodiumoxide::crypto::{
     box_::{PublicKey, SecretKey},
     sealedbox,
@@ -46,12 +45,14 @@ pub enum SecretError {
     KeyPair(#[from] KeyPairError),
     #[error("error in core model functions: {0}")]
     Model(#[from] ModelError),
+    #[error("nats txn error: {0}")]
+    NatsTxn(#[from] NatsTxnError),
     #[error("secret is not found")]
     NotFound,
     #[error("pg error: {0}")]
-    TokioPg(#[from] tokio_postgres::Error),
-    #[error("nats txn error: {0}")]
-    NatsTxn(#[from] NatsTxnError),
+    Pg(#[from] si_data::PgError),
+    #[error("pg pool error: {0}")]
+    PgPool(#[from] si_data::PgPoolError),
     #[error("serde error: {0}")]
     SerdeJson(#[from] serde_json::Error),
 }

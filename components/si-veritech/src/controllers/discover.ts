@@ -1,16 +1,12 @@
 import WebSocket from "ws";
 import Debug from "debug";
 
-import {
-  SiEntity,
-  SubResource,
-  Resource,
-  ResourceInternalStatus,
-  ResourceInternalHealth,
-} from "si-entity";
+import { SiEntity } from "si-entity";
 import { DecryptedSecret } from "../support";
 import intel from "../intel";
 import { SiCtx } from "../siCtx";
+import { tracer } from "../telemetry";
+import api, { Span } from "@opentelemetry/api";
 
 const debug = Debug("veritech:controllers:discover");
 
@@ -50,8 +46,15 @@ export type DiscoveryProtocol =
   | DiscoveryProtocolStart
   | DiscoveryProtocolFinish;
 
-export async function discover(ws: WebSocket, req: string): Promise<void> {
+export async function discover(
+  ws: WebSocket,
+  req: string,
+  parent: Span,
+): Promise<void> {
+  const ctx = api.trace.setSpan(api.context.active(), parent);
+  const span = tracer.startSpan("discover.task", undefined, ctx);
   debug("/discover BEGIN");
+
   const request: DiscoveryRequest = JSON.parse(req);
   request.entity = SiEntity.fromJson(request.entity);
   request.system = SiEntity.fromJson(request.system);
@@ -80,6 +83,7 @@ export async function discover(ws: WebSocket, req: string): Promise<void> {
   }
   close(ws);
   debug("finished");
+  span.end();
 }
 
 function send(ws: WebSocket, message: DiscoveryProtocol) {

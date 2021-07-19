@@ -1,12 +1,10 @@
-use warp::http::StatusCode;
-
+use si_model_test::{one_time_setup, signup_new_billing_account, NewBillingAccount, TestContext};
 use si_sdf::filters::api;
 use si_sdf::handlers::session_dal::{
     GetDefaultsReply, LoginReply, LoginRequest, RestoreAuthenticationReply,
 };
 use si_sdf::handlers::HandlerErrorReply;
-
-use si_model_test::{one_time_setup, signup_new_billing_account, NewBillingAccount, TestContext};
+use warp::http::StatusCode;
 
 pub async fn login_user(ctx: &TestContext, nba: &NewBillingAccount) -> String {
     let (pg, nats_conn, veritech, event_log_fs, secret_key) = ctx.entries();
@@ -35,7 +33,7 @@ async fn login() {
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, event_log_fs, secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
-    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
     let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
@@ -71,7 +69,7 @@ async fn login_bad_password() {
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, event_log_fs, secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
-    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
     let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
@@ -108,7 +106,7 @@ async fn restore_authentication() {
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, event_log_fs, secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
-    let mut conn = pg.pool.get().await.expect("cannot get connection");
+    let mut conn = pg.get().await.expect("cannot get connection");
     let txn = conn.transaction().await.expect("cannot get transaction");
     let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit().await.expect("cannot commit txn");
@@ -136,7 +134,7 @@ async fn get_defaults() {
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, event_log_fs, secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
-    let mut conn = pg.pool.get().await.expect("cannot get connection");
+    let mut conn = pg.get().await.expect("cannot get connection");
     let txn = conn.transaction().await.expect("cannot get transaction");
     let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit().await.expect("cannot commit txn");

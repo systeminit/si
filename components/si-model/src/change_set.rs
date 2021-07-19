@@ -1,15 +1,8 @@
+use crate::{generate_name, LabelList, LabelListItem, SiStorable};
 use serde::{Deserialize, Serialize};
 use si_data::{NatsTxn, NatsTxnError, PgTxn};
 use strum_macros::{Display, EnumString};
 use thiserror::Error;
-
-use crate::{generate_name, LabelList, LabelListItem, SiStorable};
-//use crate::veritech::Veritech;
-//use crate::{
-//    calculate_properties, list_model, next_update_clock, ops, Edge, EdgeError, EdgeKind, Entity,
-//    EntityError, Event, EventError, ListReply, ModelError, OrderByDirection, PageToken, Query,
-//    SiChangeSet, SiChangeSetEvent, SiStorable, System, SystemError, UpdateClock, UpdateClockError,
-//};
 
 const CHANGE_SET_OPEN_LIST_AS_LABLES: &str =
     include_str!("./queries/change_set_open_list_as_labels.sql");
@@ -18,22 +11,24 @@ const CHANGE_SET_REVISION_LIST_AS_LABLES: &str =
 
 #[derive(Error, Debug)]
 pub enum ChangeSetError {
-    #[error("malformed change set entry; type is missing")]
-    TypeMissing,
-    #[error("malformed change set entry; id is missing")]
-    IdMissing,
-    #[error("malformed change set entry; to_id is missing")]
-    ToIdMissing,
-    #[error("error creating our object from json: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("missing head value in object")]
-    MissingHead,
     #[error("missing change set event field")]
     EventMissing,
-    #[error("pg error: {0}")]
-    TokioPg(#[from] tokio_postgres::Error),
+    #[error("malformed change set entry; id is missing")]
+    IdMissing,
+    #[error("missing head value in object")]
+    MissingHead,
     #[error("nats txn error: {0}")]
     NatsTxn(#[from] NatsTxnError),
+    #[error("pg error: {0}")]
+    Pg(#[from] si_data::PgError),
+    #[error("pg pool error: {0}")]
+    PgPool(#[from] si_data::PgPoolError),
+    #[error("error creating our object from json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("malformed change set entry; to_id is missing")]
+    ToIdMissing,
+    #[error("malformed change set entry; type is missing")]
+    TypeMissing,
 }
 
 pub type ChangeSetResult<T> = Result<T, ChangeSetError>;

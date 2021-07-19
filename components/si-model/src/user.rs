@@ -1,9 +1,9 @@
+use crate::{JwtKeyError, SimpleStorable};
 use serde::{Deserialize, Serialize};
+use si_data::{NatsTxn, NatsTxnError, PgTxn};
 use sodiumoxide::crypto::pwhash::argon2id13;
 use thiserror::Error;
-
-use crate::{JwtKeyError, SimpleStorable};
-use si_data::{NatsTxn, NatsTxnError, PgTxn};
+use tracing::warn;
 
 const AUTHORIZE_USER: &str = include_str!("./queries/authorize_user.sql");
 const USER_GET_BY_EMAIL: &str = include_str!("./queries/user_get_by_email.sql");
@@ -20,22 +20,22 @@ pub struct SiClaims {
 pub enum UserError {
     #[error("a user with this email already exists in this billing account")]
     EmailExists,
-    #[error("invalid uft-8 string: {0}")]
-    Utf8(#[from] std::str::Utf8Error),
-    #[error("error generating password hash")]
-    PasswordHash,
-    #[error("user is not found")]
-    NotFound,
-    #[error("user is unauthorized")]
-    Unauthorized,
-    #[error("pg error: {0}")]
-    TokioPg(#[from] tokio_postgres::Error),
-    #[error("serde error: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("nats txn error: {0}")]
-    NatsTxn(#[from] NatsTxnError),
     #[error("jwt key error: {0}")]
     JwtKey(#[from] JwtKeyError),
+    #[error("nats txn error: {0}")]
+    NatsTxn(#[from] NatsTxnError),
+    #[error("user is not found")]
+    NotFound,
+    #[error("error generating password hash")]
+    PasswordHash,
+    #[error("pg error: {0}")]
+    Pg(#[from] si_data::PgError),
+    #[error("serde error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("user is unauthorized")]
+    Unauthorized,
+    #[error("invalid uft-8 string: {0}")]
+    Utf8(#[from] std::str::Utf8Error),
 }
 
 pub type UserResult<T> = Result<T, UserError>;
@@ -163,24 +163,35 @@ pub fn verify_password(password: &str, password_hash: &[u8]) -> bool {
     }
 }
 
+#[tracing::instrument(skip(txn, token))]
 pub async fn authenticate(txn: &PgTxn<'_>, token: impl AsRef<str>) -> UserResult<SiClaims> {
     let token = token.as_ref();
     let claims = crate::jwt_key::validate_bearer_token(&txn, token).await?;
     Ok(claims.custom)
 }
 
+#[tracing::instrument(
+    skip(txn, user_id, subject, action),
+    fields(
+        enduser.id = user_id.as_ref(),
+        authn.subject = subject.as_ref(),
+        authn.action = action.as_ref(),
+    )
+)]
 pub async fn authorize(
     txn: &PgTxn<'_>,
     user_id: impl AsRef<str>,
     subject: impl AsRef<str>,
     action: impl AsRef<str>,
 ) -> UserResult<()> {
-    let user_id = user_id.as_ref();
-    let subject = subject.as_ref();
-    let action = action.as_ref();
-    let _row = txn
-        .query_one(AUTHORIZE_USER, &[&user_id, &subject, &action])
-        .await
-        .map_err(|_| UserError::Unauthorized)?;
-    Ok(())
+    txn.query_opt(
+        AUTHORIZE_USER,
+        &[&user_id.as_ref(), &subject.as_ref(), &action.as_ref()],
+    )
+    .await?
+    .ok_or_else(|| {
+        warn!("user is not authorized");
+        UserError::Unauthorized
+    })
+    .map(|_| ())
 }

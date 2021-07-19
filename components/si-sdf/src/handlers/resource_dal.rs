@@ -1,8 +1,7 @@
+use crate::handlers::{authorize, validate_tenancy, HandlerError};
 use serde::{Deserialize, Serialize};
 use si_data::{NatsConn, PgPool};
-use si_model::{Resource, ResourceError, Veritech};
-
-use crate::handlers::{authenticate, authorize, validate_tenancy, HandlerError};
+use si_model::{Resource, ResourceError, SiClaims, Veritech};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -19,14 +18,13 @@ pub struct GetResourceReply {
 }
 
 pub async fn get_resource(
-    pg: PgPool,
-    token: String,
+    claim: SiClaims,
     request: GetResourceRequest,
+    pg: PgPool,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
 
-    let claim = authenticate(&txn, &token).await?;
     authorize(&txn, &claim.user_id, "resourceDal", "getResource").await?;
     validate_tenancy(
         &txn,
@@ -78,16 +76,15 @@ pub struct SyncResourceReply {
 }
 
 pub async fn sync_resource(
+    claim: SiClaims,
+    request: SyncResourceRequest,
     pg: PgPool,
     nats_conn: NatsConn,
     veritech: Veritech,
-    token: String,
-    request: SyncResourceRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
 
-    let claim = authenticate(&txn, &token).await?;
     authorize(&txn, &claim.user_id, "resourceDal", "syncResource").await?;
     validate_tenancy(
         &txn,

@@ -1,6 +1,5 @@
-use si_model_test::{one_time_setup, signup_new_billing_account, TestContext};
-
 use si_model::{Event, EventKind, EventStatus};
+use si_model_test::{one_time_setup, signup_new_billing_account, TestContext};
 
 #[tokio::test]
 async fn new() {
@@ -8,7 +7,7 @@ async fn new() {
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
-    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
     let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
@@ -46,7 +45,7 @@ async fn save() {
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
-    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
     let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
@@ -84,7 +83,7 @@ async fn unknown() {
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
-    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
     let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
@@ -130,7 +129,7 @@ async fn success() {
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
-    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
     let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
@@ -176,7 +175,7 @@ async fn error() {
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
-    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
     let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
@@ -222,7 +221,7 @@ async fn running() {
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
-    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
     let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
@@ -279,7 +278,7 @@ async fn has_parent() {
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
-    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
     let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
@@ -353,7 +352,7 @@ async fn get() {
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
-    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
     let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
@@ -386,7 +385,7 @@ async fn log() {
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
-    let mut conn = pg.pool.get().await.expect("cannot connect to pg");
+    let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
     let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;

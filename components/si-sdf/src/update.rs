@@ -1,12 +1,11 @@
 use futures::{FutureExt, StreamExt};
 use serde::{Deserialize, Serialize};
+use si_data::{NatsConn, PgPool};
+use si_model::{EncryptedSecret, KeyPair, PublicKey, Secret, SiClaims};
 use thiserror::Error;
 use tokio::sync::mpsc::{self, UnboundedSender};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use warp::ws::{Message, WebSocket};
-
-use si_data::{NatsConn, PgPool};
-use si_model::{EncryptedSecret, KeyPair, PublicKey, Secret, SiClaims};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -253,11 +252,9 @@ async fn process_message(
 #[derive(Error, Debug)]
 pub enum UpdateError {
     #[error("pg error: {0}")]
-    TokioPg(#[from] tokio_postgres::Error),
+    Pg(#[from] si_data::PgError),
     #[error("serde error: {0}")]
     SerdeJson(#[from] serde_json::Error),
-    #[error("pg error: {0}")]
-    Deadpool(#[from] deadpool_postgres::PoolError),
     #[error("unauthorized")]
     Unauthorized,
 }

@@ -1,20 +1,18 @@
-use warp::ws::Ws;
-
-use si_data::{NatsConn, PgPool};
-use si_model::Veritech;
-
 use crate::cli::server::{websocket_run, WebsocketToken};
 use crate::handlers::{authenticate_api_client, authorize_api_client, HandlerError};
+use si_data::{NatsConn, PgPool};
+use si_model::Veritech;
+use warp::ws::Ws;
 
 pub async fn cli(
     ws: Ws,
+    ws_token: WebsocketToken,
     pg: PgPool,
     nats_conn: NatsConn,
     veritech: Veritech,
-    ws_token: WebsocketToken,
 ) -> Result<impl warp::reply::Reply, warp::reject::Rejection> {
     let token = ws_token.token;
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
 
     let claim = authenticate_api_client(&txn, &token).await?;

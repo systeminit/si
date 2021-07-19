@@ -1,13 +1,12 @@
+use crate::handlers::{authorize, validate_tenancy, HandlerError};
 use serde::{Deserialize, Serialize};
 use si_data::{NatsConn, PgPool};
 use si_model::{
     application,
     visualization::{self, ResourceSummary},
-    ActivitySummary, ApplicationListEntry, ChangesSummary, Entity, Veritech, Workflow,
+    ActivitySummary, ApplicationListEntry, ChangesSummary, Entity, SiClaims, Veritech, Workflow,
     WorkflowContext, WorkflowRun, Workspace,
 };
-
-use crate::handlers::{authenticate, authorize, validate_tenancy, HandlerError};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -19,17 +18,16 @@ pub struct CreateApplicationRequest {
 pub type CreateApplicationReply = ApplicationListEntry;
 
 pub async fn create_application(
+    claim: SiClaims,
+    request: CreateApplicationRequest,
     pg: PgPool,
     nats_conn: NatsConn,
     veritech: Veritech,
-    token: String,
-    request: CreateApplicationRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
     let nats = nats_conn.transaction();
 
-    let claim = authenticate(&txn, &token).await?;
     authorize(&txn, &claim.user_id, "applicationDal", "createApplication").await?;
     validate_tenancy(
         &txn,
@@ -70,14 +68,13 @@ pub struct ListApplicationsReply {
 }
 
 pub async fn list_applications(
-    pg: PgPool,
-    token: String,
+    claim: SiClaims,
     request: ListApplicationsRequest,
+    pg: PgPool,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
 
-    let claim = authenticate(&txn, &token).await?;
     authorize(&txn, &claim.user_id, "applicationDal", "listApplications").await?;
     validate_tenancy(
         &txn,
@@ -110,17 +107,16 @@ pub struct DeployServicesReply {
 }
 
 pub async fn deploy_services(
+    claim: SiClaims,
+    request: DeployServicesRequest,
     pg: PgPool,
     nats_conn: NatsConn,
     veritech: Veritech,
-    token: String,
-    request: DeployServicesRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
     let nats = nats_conn.transaction();
 
-    let claim = authenticate(&txn, &token).await?;
     authorize(&txn, &claim.user_id, "applicationDal", "deployServices").await?;
     validate_tenancy(
         &txn,
@@ -195,14 +191,13 @@ pub struct ActivitySummaryRequest {
 pub type ActivitySummaryReply = ActivitySummary;
 
 pub async fn activity_summary(
-    pg: PgPool,
-    token: String,
+    claim: SiClaims,
     request: ActivitySummaryRequest,
+    pg: PgPool,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
 
-    let claim = authenticate(&txn, &token).await?;
     authorize(&txn, &claim.user_id, "applicationDal", "activitySummary").await?;
     validate_tenancy(
         &txn,
@@ -239,14 +234,13 @@ pub struct ChangesSummaryRequest {
 pub type ChangesSummaryReply = ChangesSummary;
 
 pub async fn changes_summary(
-    pg: PgPool,
-    token: String,
+    claim: SiClaims,
     request: ChangesSummaryRequest,
+    pg: PgPool,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
 
-    let claim = authenticate(&txn, &token).await?;
     authorize(&txn, &claim.user_id, "applicationDal", "activitySummary").await?;
     validate_tenancy(
         &txn,
@@ -292,15 +286,21 @@ pub struct ResourceSummaryRequest {
 
 pub type ResourceSummaryReply = ResourceSummary;
 
+#[tracing::instrument(
+    skip(claim, request, pg),
+    fields(
+        enduser.id = %claim.user_id,
+        enduser.billing_account_id = %claim.billing_account_id,
+    )
+)]
 pub async fn resource_summary(
-    pg: PgPool,
-    token: String,
+    claim: SiClaims,
     request: ResourceSummaryRequest,
+    pg: PgPool,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
 
-    let claim = authenticate(&txn, &token).await?;
     authorize(&txn, &claim.user_id, "applicationDal", "resourceSummary").await?;
     validate_tenancy(
         &txn,

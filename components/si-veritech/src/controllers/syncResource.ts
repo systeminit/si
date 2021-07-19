@@ -11,6 +11,8 @@ import {
 import { DecryptedSecret } from "../support";
 import intel from "../intel";
 import { SiCtx } from "../siCtx";
+import { tracer } from "../telemetry";
+import api, { Span } from "@opentelemetry/api";
 
 const debug = Debug("veritech:controllers:syncResource");
 
@@ -51,8 +53,15 @@ export type CommandProtocol = CommandProtocolStart | CommandProtocolFinish;
 
 // TODO: Plumb the callback through, and then implement the actual resource data
 // for given things.
-export async function syncResource(ws: WebSocket, req: string): Promise<void> {
+export async function syncResource(
+  ws: WebSocket,
+  req: string,
+  parent: Span,
+): Promise<void> {
+  const ctx = api.trace.setSpan(api.context.active(), parent);
+  const span = tracer.startSpan("syncresource.task", undefined, ctx);
   debug("/syncResource BEGIN");
+
   const request: SyncResourceRequest = JSON.parse(req);
   request.entity = SiEntity.fromJson(request.entity);
   request.system = SiEntity.fromJson(request.system);
@@ -93,6 +102,7 @@ export async function syncResource(ws: WebSocket, req: string): Promise<void> {
   }
   close(ws);
   debug("finished");
+  span.end();
 }
 
 function send(ws: WebSocket, message: CommandProtocol) {

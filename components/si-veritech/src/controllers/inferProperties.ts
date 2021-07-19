@@ -1,4 +1,5 @@
 import { Context } from "koa";
+import api from "@opentelemetry/api";
 
 import Debug from "debug";
 const debug = Debug("veritech:controllers:inferProperties");
@@ -23,9 +24,15 @@ export interface InferPropertiesResult {
 }
 
 export function inferProperties(ctx: Context): void {
-  debug("/inferProperties BEGIN");
+  const span = api.trace.getSpan(api.context.active());
+  span.updateName("veritech.inferproperties");
   debug("request body: %O", ctx.request.body);
   const request: InferPropertiesRequest = ctx.request.body;
+  span.setAttributes({
+    "si.entity.type": request.entityType,
+    "si.entity.id": request.entity.id,
+  });
+
   const registryObj = registry[request.entityType];
   if (!registryObj) {
     ctx.response.status = 400;
@@ -47,11 +54,9 @@ export function inferProperties(ctx: Context): void {
     const result = intel[request.entityType].inferProperties(request);
     result.entity.computeProperties();
     debug("response body: %O", result);
-    debug("/inferProperties END");
     ctx.response.body = result;
   } else {
     debug("default response");
-    debug("/inferProperties END");
     request.entity.computeProperties();
     ctx.response.status = 200;
     ctx.response.body = { entity: request.entity };

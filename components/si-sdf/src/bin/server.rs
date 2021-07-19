@@ -1,14 +1,10 @@
-use std::env;
-
 use si_data::{EventLogFS, NatsConn, PgPool};
 use si_model::{jwt_key, migrate, Veritech, Workflow};
-use si_sdf::start;
+use si_sdf::{start, telemetry};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    if env::var_os("RUST_LOG").is_none() {
-        env::set_var("RUST_LOG", "entities=info");
-    }
+    telemetry::init()?;
 
     let server_name = "si-sdf";
     println!("*** Starting {} ***", server_name);
@@ -28,13 +24,13 @@ async fn main() -> anyhow::Result<()> {
     let event_log_fs = EventLogFS::init(&settings.event_log_fs).await?;
 
     println!("*** Initializing Veritech ***");
-    let veritech = Veritech::new(&settings.veritech, event_log_fs.clone());
+    let veritech = Veritech::new(&settings.veritech, event_log_fs.clone()).await?;
 
     println!("*** Loading workflow builtins ***");
     Workflow::load_builtins(&pg, &veritech).await?;
 
     println!("*** Checking for JWT keys ***");
-    let mut conn = pg.pool.get().await?;
+    let mut conn = pg.get().await?;
     let txn = conn.transaction().await?;
     jwt_key::create_jwt_key_if_missing(
         &txn,

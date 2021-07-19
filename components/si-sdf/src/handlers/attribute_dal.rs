@@ -1,14 +1,13 @@
-use std::collections::HashMap;
-
-use crate::handlers::{authenticate, authorize, validate_tenancy, HandlerError};
+use crate::handlers::{authorize, validate_tenancy, HandlerError};
 use serde::{Deserialize, Serialize};
 use si_data::{NatsConn, PgPool};
 use si_model::{
     application, discovery,
     entity::diff::{diff_for_props, Diffs},
     ApplicationEntities, Connection, Connections, DiscoveryListEntry, Edge, EdgeKind, Entity,
-    LabelList, LabelListItem, Qualification, Schematic, SchematicKind, Veritech,
+    LabelList, LabelListItem, Qualification, Schematic, SchematicKind, SiClaims, Veritech,
 };
+use std::collections::HashMap;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -24,14 +23,13 @@ pub struct GetDiscoveryListReply {
 }
 
 pub async fn get_discovery_list(
-    pg: PgPool,
-    token: String,
+    claim: SiClaims,
     request: GetDiscoveryListRequest,
+    pg: PgPool,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
 
-    let claim = authenticate(&txn, &token).await?;
     authorize(&txn, &claim.user_id, "attributeDal", "getDiscoveryList").await?;
     validate_tenancy(
         &txn,
@@ -63,14 +61,13 @@ pub struct GetImplementationsListReply {
 }
 
 pub async fn get_implementations_list(
-    pg: PgPool,
-    token: String,
+    claim: SiClaims,
     request: GetImplementationsListRequest,
+    pg: PgPool,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
 
-    let claim = authenticate(&txn, &token).await?;
     authorize(
         &txn,
         &claim.user_id,
@@ -113,16 +110,15 @@ pub struct DiscoverReply {
 }
 
 pub async fn discover(
+    claim: SiClaims,
+    request: DiscoverRequest,
     pg: PgPool,
     nats_conn: NatsConn,
     veritech: Veritech,
-    token: String,
-    request: DiscoverRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
 
-    let claim = authenticate(&txn, &token).await?;
     authorize(&txn, &claim.user_id, "attributeDal", "discover").await?;
     validate_tenancy(
         &txn,
@@ -171,16 +167,15 @@ pub struct ImportImplementationReply {
 }
 
 pub async fn import_implementation(
+    claim: SiClaims,
+    request: ImportImplementationRequest,
     pg: PgPool,
     nats_conn: NatsConn,
     veritech: Veritech,
-    token: String,
-    request: ImportImplementationRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
 
-    let claim = authenticate(&txn, &token).await?;
     authorize(&txn, &claim.user_id, "attributeDal", "importImplementation").await?;
     validate_tenancy(
         &txn,
@@ -244,16 +239,15 @@ pub struct ImportConceptReply {
 }
 
 pub async fn import_concept(
+    claim: SiClaims,
+    request: ImportConceptRequest,
     pg: PgPool,
     nats_conn: NatsConn,
     veritech: Veritech,
-    token: String,
-    request: ImportConceptRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
 
-    let claim = authenticate(&txn, &token).await?;
     authorize(&txn, &claim.user_id, "attributeDal", "importConcept").await?;
     validate_tenancy(
         &txn,
@@ -308,14 +302,13 @@ pub struct GetEntityListRequest {
 pub type GetEntityListReply = ApplicationEntities;
 
 pub async fn get_entity_list(
-    pg: PgPool,
-    token: String,
+    claim: SiClaims,
     request: GetEntityListRequest,
+    pg: PgPool,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
 
-    let claim = authenticate(&txn, &token).await?;
     authorize(&txn, &claim.user_id, "attributeDal", "getEntityList").await?;
     validate_tenancy(
         &txn,
@@ -388,14 +381,13 @@ pub struct GetEntityReply {
 }
 
 pub async fn get_entity(
-    pg: PgPool,
-    token: String,
+    claim: SiClaims,
     request: GetEntityRequest,
+    pg: PgPool,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
 
-    let claim = authenticate(&txn, &token).await?;
     authorize(&txn, &claim.user_id, "attributeDal", "getEntityList").await?;
     validate_tenancy(
         &txn,
@@ -488,17 +480,16 @@ pub struct UpdateEntityReply {
 }
 
 pub async fn update_entity(
+    claim: SiClaims,
+    request: UpdateEntityRequest,
     pg: PgPool,
     nats_conn: NatsConn,
     veritech: Veritech,
-    token: String,
-    request: UpdateEntityRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
     let nats = nats_conn.transaction();
 
-    let claim = authenticate(&txn, &token).await?;
     authorize(&txn, &claim.user_id, "attributeDal", "saveEntity").await?;
     validate_tenancy(
         &txn,
@@ -616,16 +607,15 @@ pub struct CheckQualificationsReply {
 }
 
 pub async fn check_qualifications(
+    claim: SiClaims,
+    request: CheckQualificationsRequest,
     pg: PgPool,
     nats_conn: NatsConn,
     veritech: Veritech,
-    token: String,
-    request: CheckQualificationsRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
 
-    let claim = authenticate(&txn, &token).await?;
     authorize(&txn, &claim.user_id, "attributeDal", "checkQualifications").await?;
     validate_tenancy(
         &txn,
@@ -702,14 +692,13 @@ pub struct GetConnectionsReply {
 }
 
 pub async fn get_connections(
-    pg: PgPool,
-    token: String,
+    claim: SiClaims,
     request: GetConnectionsRequest,
+    pg: PgPool,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
 
-    let claim = authenticate(&txn, &token).await?;
     authorize(&txn, &claim.user_id, "attributeDal", "getEntityList").await?;
     validate_tenancy(
         &txn,
@@ -789,16 +778,15 @@ pub struct DeleteConnectionReply {
 }
 
 pub async fn delete_connection(
+    claim: SiClaims,
+    request: DeleteConnectionRequest,
     pg: PgPool,
     nats_conn: NatsConn,
-    token: String,
-    request: DeleteConnectionRequest,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
     let nats = nats_conn.transaction();
 
-    let claim = authenticate(&txn, &token).await?;
     authorize(&txn, &claim.user_id, "attributeDal", "getEntityList").await?;
     validate_tenancy(
         &txn,
@@ -862,14 +850,13 @@ pub struct GetInputLabelsReply {
 }
 
 pub async fn get_input_labels(
-    pg: PgPool,
-    token: String,
+    claim: SiClaims,
     request: GetInputLabelsRequest,
+    pg: PgPool,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
-    let mut conn = pg.pool.get().await.map_err(HandlerError::from)?;
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;
 
-    let claim = authenticate(&txn, &token).await?;
     authorize(&txn, &claim.user_id, "attributeDal", "getInputLabels").await?;
     validate_tenancy(
         &txn,

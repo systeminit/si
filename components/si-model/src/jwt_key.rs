@@ -1,14 +1,13 @@
-use jwt_simple::algorithms::{RS256KeyPair, RS256PublicKey};
-use jwt_simple::prelude::JWTClaims;
-use jwt_simple::prelude::RSAPublicKeyLike;
-use jwt_simple::prelude::Token;
-use sodiumoxide::crypto::secretbox;
-use thiserror::Error;
-
-use std::fs::File;
-use std::io::prelude::*;
-
+use jwt_simple::{
+    algorithms::{RS256KeyPair, RS256PublicKey},
+    prelude::{JWTClaims, RSAPublicKeyLike, Token},
+};
 use si_data::PgTxn;
+use sodiumoxide::crypto::secretbox;
+use std::{fs::File, io::prelude::*};
+use thiserror::Error;
+use tokio::task::JoinError;
+use tracing::{info_span, Instrument};
 
 use crate::{ApiClaim, SiClaims};
 
@@ -19,34 +18,39 @@ const JWT_KEY_GET_PUBLIC_KEY: &str = include_str!("./queries/jwt_key_get_public_
 
 #[derive(Error, Debug)]
 pub enum JwtKeyError {
-    #[error("failed to decrypt secret data")]
-    Decrypt,
-    #[error("failed to build string from utf8: {0}")]
-    Utf8(#[from] std::string::FromUtf8Error),
+    #[error("bad nonce bytes")]
+    BadNonce,
     #[error("failed to decode base64 string: {0}")]
     Base64Decode(#[from] base64::DecodeError),
+    #[error("invalid bearer token")]
+    BearerToken,
+    #[error("failed to decrypt secret data")]
+    Decrypt,
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
-    #[error("no signing keys - bad news for you!")]
-    NoKeys,
     #[error("failure to build signing key from pem: {0}")]
     KeyFromPem(String),
     #[error("failure to extract metadata from bearer token: {0}")]
     Metadata(String),
-    #[error("failure to verify token: {0}")]
-    Verify(String),
-    #[error("invalid bearer token")]
-    BearerToken,
-    #[error("pg error: {0}")]
-    TokioPg(#[from] tokio_postgres::Error),
-    #[error("bad nonce bytes")]
-    BadNonce,
+    #[error("no signing keys - bad news for you!")]
+    NoKeys,
     #[error("bad string version of numeric id: {0}")]
     ParseInt(#[from] std::num::ParseIntError),
+    #[error("pg error: {0}")]
+    Pg(#[from] si_data::PgError),
+    #[error("pg pool error: {0}")]
+    PgPool(#[from] si_data::PgPoolError),
+    #[error("{0}")]
+    TaskJoin(#[from] JoinError),
+    #[error("failed to build string from utf8: {0}")]
+    Utf8(#[from] std::string::FromUtf8Error),
+    #[error("failure to verify token: {0}")]
+    Verify(String),
 }
 
 pub type JwtKeyResult<T> = Result<T, JwtKeyError>;
 
+#[tracing::instrument(skip(txn, id))]
 pub async fn get_jwt_validation_key(
     txn: &PgTxn<'_>,
     id: impl AsRef<str>,
@@ -56,29 +60,45 @@ pub async fn get_jwt_validation_key(
 
     let row = txn.query_one(JWT_KEY_GET_PUBLIC_KEY, &[&id]).await?;
     let key: String = row.try_get("public_key")?;
-    RS256PublicKey::from_pem(&key).map_err(|err| JwtKeyError::KeyFromPem(format!("{}", err)))
+
+    tokio::task::spawn_blocking(move || {
+        RS256PublicKey::from_pem(&key).map_err(|err| JwtKeyError::KeyFromPem(format!("{}", err)))
+    })
+    .instrument(info_span!(
+        "from_pem",
+        code.namespace = "jwt_simple::algorithms::RS256PublicKey"
+    ))
+    .await?
 }
 
+#[tracing::instrument(skip(txn, bearer_token))]
 pub async fn validate_bearer_token(
     txn: &PgTxn<'_>,
     bearer_token: impl AsRef<str>,
 ) -> JwtKeyResult<JWTClaims<SiClaims>> {
     let bearer_token = bearer_token.as_ref();
     let token = if let Some(token) = bearer_token.strip_prefix("Bearer ") {
-        token
+        token.to_string()
     } else {
         return Err(JwtKeyError::BearerToken);
     };
 
     let metadata =
-        Token::decode_metadata(token).map_err(|err| JwtKeyError::Metadata(format!("{}", err)))?;
+        Token::decode_metadata(&token).map_err(|err| JwtKeyError::Metadata(format!("{}", err)))?;
     let key_id = metadata
         .key_id()
         .ok_or(JwtKeyError::Metadata("missing key id".into()))?;
     let public_key = get_jwt_validation_key(txn, key_id).await?;
-    let claims = public_key
-        .verify_token::<SiClaims>(&token, None)
-        .map_err(|err| JwtKeyError::Verify(format!("{}", err)))?;
+    let claims = tokio::task::spawn_blocking(move || {
+        public_key
+            .verify_token::<SiClaims>(&token, None)
+            .map_err(|err| JwtKeyError::Verify(format!("{}", err)))
+    })
+    .instrument(info_span!(
+        "verify_token",
+        code.namespace = "jwt_simple::algorithms::RSAPublicKeyLike"
+    ))
+    .await??;
     Ok(claims)
 }
 

@@ -1,3 +1,4 @@
+use crate::filters::session_dal::login_user;
 use si_model::{PublicKey, SecretAlgorithm, SecretKind, SecretObjectType, SecretVersion};
 use si_model_test::{encrypt_message, one_time_setup, signup_new_billing_account, TestContext};
 use si_sdf::{
@@ -6,15 +7,13 @@ use si_sdf::{
 };
 use warp::http::StatusCode;
 
-use crate::filters::session_dal::login_user;
-
 #[tokio::test]
 async fn get_public_key() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, event_log_fs, secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
-    let mut conn = pg.pool.get().await.expect("cannot get connection");
+    let mut conn = pg.get().await.expect("cannot get connection");
     let txn = conn.transaction().await.expect("cannot get transaction");
     let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit().await.expect("cannot commit txn");
@@ -47,7 +46,7 @@ async fn create_secret() {
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, event_log_fs, secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
-    let mut conn = pg.pool.get().await.expect("cannot get connection");
+    let mut conn = pg.get().await.expect("cannot get connection");
     let txn = conn.transaction().await.expect("cannot get transaction");
     let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     txn.commit().await.expect("cannot commit txn");

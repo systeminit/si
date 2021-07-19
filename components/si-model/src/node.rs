@@ -1,26 +1,26 @@
-use serde::{Deserialize, Serialize};
-use thiserror::Error;
-
-use si_data::{NatsConn, NatsTxn, NatsTxnError, PgPool, PgTxn};
-
 use crate::{Entity, EntityError, SiStorable, Veritech};
+use serde::{Deserialize, Serialize};
+use si_data::{NatsConn, NatsTxn, NatsTxnError, PgPool, PgTxn};
+use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum NodeError {
     #[error("entity creation error: {0}")]
     Entity(#[from] EntityError),
-    #[error("no head object found; logic error")]
-    NoHead,
-    #[error("no projection object found")]
-    NoProjection,
-    #[error("no object id; bug!")]
-    NoObjectId,
     #[error("entity nodes require at least one system")]
     EntityRequiresSystem,
-    #[error("pg error: {0}")]
-    TokioPg(#[from] tokio_postgres::Error),
+    #[error("no head object found; logic error")]
+    NoHead,
+    #[error("no object id; bug!")]
+    NoObjectId,
+    #[error("no projection object found")]
+    NoProjection,
     #[error("nats txn error: {0}")]
     NatsTxn(#[from] NatsTxnError),
+    #[error("pg error: {0}")]
+    Pg(#[from] si_data::PgError),
+    #[error("pg pool error: {0}")]
+    PgPool(#[from] si_data::PgPoolError),
     #[error("json serialization error: {0}")]
     SerdeJson(#[from] serde_json::Error),
 }

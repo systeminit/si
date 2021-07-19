@@ -1,7 +1,4 @@
-use serde::{Deserialize, Serialize};
-use si_data::{NatsConn, NatsTxn, PgPool, PgTxn};
-use strum_macros::Display;
-
+use super::selector::{SelectionEntryPredecessor, SelectorDepth, SelectorDirection};
 use crate::{workflow::selector::Selector, Workflow};
 use crate::{
     workflow::variable::{VariableArray, VariableBool, VariableScalar},
@@ -13,8 +10,10 @@ use crate::{
 };
 use crate::{Entity, SiStorable, Veritech};
 use chrono::Utc;
-
-use super::selector::{SelectionEntryPredecessor, SelectorDepth, SelectorDirection};
+use serde::{Deserialize, Serialize};
+use si_data::{NatsConn, NatsTxn, PgPool, PgTxn};
+use strum_macros::Display;
+use tracing::instrument;
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Display, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -311,6 +310,10 @@ pub struct StepCommand {
 }
 
 impl StepCommand {
+    #[instrument(
+        name = "stepcommand.run",
+        skip(self, pg, nats_conn, veritech, workflow_run)
+    )]
     pub async fn run(
         &self,
         pg: &PgPool,
@@ -318,7 +321,7 @@ impl StepCommand {
         veritech: &Veritech,
         workflow_run: &WorkflowRun,
     ) -> WorkflowResult<WorkflowRunStep> {
-        let mut conn = pg.pool.get().await?;
+        let mut conn = pg.get().await?;
         let txn = conn.transaction().await?;
         let nats = nats_conn.transaction();
 
@@ -543,7 +546,7 @@ impl StepAction {
         veritech: &Veritech,
         workflow_run: &WorkflowRun,
     ) -> WorkflowResult<WorkflowRunStep> {
-        let mut conn = pg.pool.get().await?;
+        let mut conn = pg.get().await?;
         let txn = conn.transaction().await?;
         let nats = nats_conn.transaction();
 

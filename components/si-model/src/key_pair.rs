@@ -1,11 +1,9 @@
+use crate::SimpleStorable;
 use base64;
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
-
 use si_data::{NatsTxn, NatsTxnError, PgTxn};
-
-use crate::SimpleStorable;
 use sodiumoxide::crypto::box_::{self, PublicKey as BoxPublicKey, SecretKey as BoxSecretKey};
+use thiserror::Error;
 
 const KEY_PAIR_GET_CURRENT: &str = include_str!("./queries/key_pair_get_current.sql");
 
@@ -14,10 +12,12 @@ pub enum KeyPairError {
     // Not using `BillingAccountError` as this leads us to a circular dependency of errors
     #[error("error in billing account: {0}")]
     BillingAccount(Box<dyn std::error::Error + Sync + Send + 'static>),
-    #[error("pg error: {0}")]
-    TokioPg(#[from] tokio_postgres::Error),
     #[error("nats txn error: {0}")]
     NatsTxn(#[from] NatsTxnError),
+    #[error("pg error: {0}")]
+    Pg(#[from] si_data::PgError),
+    #[error("pg pool error: {0}")]
+    PgPool(#[from] si_data::PgPoolError),
     #[error("serde error: {0}")]
     SerdeJson(#[from] serde_json::Error),
 }

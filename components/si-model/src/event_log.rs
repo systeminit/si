@@ -1,31 +1,30 @@
+use crate::{Event, EventResult, ModelError, OutputLine, OutputLineStream, SiStorable};
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json;
+use si_data::{EventLogFS, EventLogFSError, NatsConn, NatsTxnError, PgPool, PgTxn};
 use std::fmt;
 use std::pin::Pin;
 use strum_macros::Display;
 use thiserror::Error;
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 
-use crate::{Event, EventResult, ModelError, OutputLine, OutputLineStream, SiStorable};
-use si_data::{EventLogFS, EventLogFSError, NatsConn, NatsTxnError, PgPool, PgTxn};
-
 #[derive(Error, Debug)]
 pub enum EventLogError {
-    #[error("error in core model functions: {0}")]
-    Model(#[from] ModelError),
-    #[error("pg error: {0}")]
-    TokioPg(#[from] tokio_postgres::Error),
-    #[error("pg error: {0}")]
-    Deadpool(#[from] deadpool_postgres::PoolError),
-    #[error("nats txn error: {0}")]
-    NatsTxn(#[from] NatsTxnError),
-    #[error("serde error: {0}")]
-    SerdeJson(#[from] serde_json::Error),
     #[error("eventLogFS error: {0}")]
     EventLogFS(#[from] EventLogFSError),
     #[error("io error: {0}")]
     IO(#[from] tokio::io::Error),
+    #[error("error in core model functions: {0}")]
+    Model(#[from] ModelError),
+    #[error("nats txn error: {0}")]
+    NatsTxn(#[from] NatsTxnError),
+    #[error("pg error: {0}")]
+    Pg(#[from] si_data::PgError),
+    #[error("pg pool error: {0}")]
+    PgPool(#[from] si_data::PgPoolError),
+    #[error("serde error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
 }
 
 pub type EventLogResult<T> = Result<T, EventLogError>;
@@ -104,7 +103,7 @@ impl EventLog {
         let unix_timestamp = current_time.timestamp_millis();
         let timestamp = format!("{}", current_time);
 
-        let mut conn = pg.pool.get().await?;
+        let mut conn = pg.get().await?;
         let txn = conn.transaction().await?;
         let nats = nats_conn.transaction();
 
@@ -192,7 +191,7 @@ impl EventLog {
     }
 
     pub async fn save(&mut self, pg: &PgPool, nats_conn: &NatsConn) -> EventLogResult<()> {
-        let mut conn = pg.pool.get().await?;
+        let mut conn = pg.get().await?;
         let txn = conn.transaction().await?;
         let nats = nats_conn.transaction();
         let json = serde_json::to_value(&self)?;

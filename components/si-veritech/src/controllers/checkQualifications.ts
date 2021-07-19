@@ -4,19 +4,15 @@ import { SiCtx } from "../siCtx";
 const debug = Debug("veritech:controllers:checkQualifications");
 import _ from "lodash";
 
-import {
-  SiEntity as Entity,
-  Resource,
-  SiEntity,
-  OpSet,
-  OpSource,
-} from "si-entity";
+import { SiEntity as Entity, SiEntity, OpSet, OpSource } from "si-entity";
 import {
   Qualification,
   registry,
   allFieldsValidQualification,
   ValidatorKind,
 } from "si-registry";
+import { tracer } from "../telemetry";
+import api, { Span } from "@opentelemetry/api";
 
 import intel from "../intel";
 
@@ -132,9 +128,13 @@ export async function allFieldsValid(
 export async function checkQualifications(
   ws: WebSocket,
   req: string,
+  parent: Span,
 ): Promise<void> {
+  const ctx = api.trace.setSpan(api.context.active(), parent);
+  const span = tracer.startSpan("checkqualifications.task", undefined, ctx);
   debug("/checkQualifications BEGIN");
   debug("request message: %O", req);
+
   const request: CheckQualificationsRequest = JSON.parse(req);
   request.entity = SiEntity.fromJson(request.entity);
   const schema = registry[request.entity.entityType];
@@ -215,4 +215,5 @@ export async function checkQualifications(
     debug("closing, schema not found");
     ws.close(4004, `schema not found for ${request.entity.entityType}; bug!`);
   }
+  span.end();
 }
