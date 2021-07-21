@@ -4,7 +4,6 @@ use si_model::{SiClaims, Veritech};
 use sodiumoxide::crypto::secretbox;
 use warp::{filters::BoxedFilter, Filter};
 
-#[tracing::instrument]
 pub fn api(
     pg: &PgPool,
     nats_conn: &NatsConn,
@@ -665,7 +664,6 @@ pub fn application_context_dal_apply_change_set(
 }
 
 // Application DAL
-#[tracing::instrument]
 pub fn application_dal(
     pg: &PgPool,
     nats_conn: &NatsConn,
@@ -720,7 +718,6 @@ pub fn application_dal_changes_summary(pg: PgPool) -> BoxedFilter<(impl warp::Re
         .boxed()
 }
 
-#[tracing::instrument(skip(pg))]
 pub fn application_dal_resource_summary(pg: PgPool) -> BoxedFilter<(impl warp::Reply,)> {
     warp::path!("applicationDal" / "resourceSummary")
         .and(warp::get())

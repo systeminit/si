@@ -1,5 +1,6 @@
 use si_data::{PgPool, PgPoolError};
 use thiserror::Error;
+use tracing::instrument;
 
 pub static mut PAGE_SECRET_KEY: Option<sodiumoxide::crypto::secretbox::Key> = None;
 
@@ -108,6 +109,7 @@ pub enum ModelError {
 }
 pub type ModelResult<T> = Result<T, ModelError>;
 
+#[instrument(skip(pg))]
 pub async fn migrate(pg: &PgPool) -> ModelResult<()> {
     let result = pg.migrate(embedded::migrations::runner()).await?;
     Ok(result)
