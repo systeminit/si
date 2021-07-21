@@ -66,6 +66,19 @@ struct ConnectionMetadata {
 }
 
 impl PgPool {
+    #[instrument(
+        name = "pgpool.new",
+        skip(settings),
+        fields(
+            db.system = Empty,
+            db.connection_string = Empty,
+            db.name = Empty,
+            db.user = Empty,
+            net.peer.ip = Empty,
+            net.peer.port = Empty,
+            net.transport = Empty,
+        )
+    )]
     pub async fn new(settings: &si_settings::Pg) -> PgPoolResult<Self> {
         let mut cfg = Config::new();
         cfg.hosts = Some(vec![settings.hostname.clone()]);
@@ -78,11 +91,6 @@ impl PgPool {
             recycling_method: RecyclingMethod::Fast,
         });
         let pool = cfg.create_pool(NoTls)?;
-
-        // Warm up the pool and ensure that we can connect to the database. In practice, this pool
-        // only gets created on a service start so this is a one-time cost with a nice fail-fast
-        // approach.
-        pool.get().await?;
 
         let resolving_hostname = format!("{}:{}", settings.hostname, settings.port);
         let net_peer_ip = tokio::task::spawn_blocking(move || {
@@ -106,6 +114,23 @@ impl PgPool {
             net_peer_port: settings.port,
             net_transport: "ip_tcp",
         };
+
+        let span = Span::current();
+        span.record("db.system", &metadata.db_system);
+        span.record(
+            "db.connection_string",
+            &metadata.db_connection_string.as_str(),
+        );
+        span.record("db.name", &metadata.db_name.as_str());
+        span.record("db.user", &metadata.db_user.as_str());
+        span.record("net.peer.ip", &metadata.net_peer_ip.as_str());
+        span.record("net.peer.port", &metadata.net_peer_port);
+        span.record("net.transport", &metadata.net_transport);
+
+        // Warm up the pool and ensure that we can connect to the database. In practice, this pool
+        // only gets created on a service start so this is a one-time cost with a nice fail-fast
+        // approach.
+        pool.get().await?;
 
         Ok(Self {
             pool,
@@ -136,7 +161,19 @@ impl PgPool {
         })
     }
 
-    #[instrument(skip(self, runner))]
+    #[instrument(
+        name = "pgpool.migrate",
+        skip(self, runner),
+        fields(
+            db.system = %self.metadata.db_system,
+            db.connection_string = %self.metadata.db_connection_string,
+            db.name = %self.metadata.db_name,
+            db.user = %self.metadata.db_user,
+            net.peer.ip = %self.metadata.net_peer_ip,
+            net.peer.port = %self.metadata.net_peer_port,
+            net.transport = %self.metadata.net_transport,
+        )
+    )]
     pub async fn migrate(&self, runner: refinery::Runner) -> PgPoolResult<()> {
         let mut conn = self.pool.get().await?;
         conn.query_one("SELECT pg_advisory_lock($1)", &[&MIGRATION_LOCK_NUMBER])

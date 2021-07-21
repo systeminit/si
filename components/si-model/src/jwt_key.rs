@@ -7,7 +7,7 @@ use sodiumoxide::crypto::secretbox;
 use std::{fs::File, io::prelude::*};
 use thiserror::Error;
 use tokio::task::JoinError;
-use tracing::{info_span, Instrument};
+use tracing::{info_span, instrument, Instrument};
 
 use crate::{ApiClaim, SiClaims};
 
@@ -145,6 +145,7 @@ pub async fn get_jwt_signing_key(
     Ok(key_pair_with_id)
 }
 
+#[instrument(skip(txn, public_filename, private_filename, secret_key))]
 pub async fn create_jwt_key_if_missing(
     txn: &PgTxn<'_>,
     public_filename: impl AsRef<str>,

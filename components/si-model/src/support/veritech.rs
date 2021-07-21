@@ -145,6 +145,18 @@ enum VeritechMessage<PROGRESS: std::fmt::Debug> {
 }
 
 impl Veritech {
+    #[instrument(
+        name = "veritechclient.new",
+        skip(settings, event_log_fs),
+        fields(
+            http.user_agent = Empty,
+            http.scheme = Empty,
+            net.peer.ip = Empty,
+            net.peer.port = Empty,
+            net.transport = Empty,
+            peer.service = Empty,
+        )
+    )]
     pub async fn new(
         settings: &si_settings::Veritech,
         event_log_fs: EventLogFS,
@@ -178,6 +190,14 @@ impl Veritech {
             net_transport: "ip_tcp",
             peer_service: "si-veritech",
         });
+
+        let span = Span::current();
+        span.record("http.user_agent", &metadata.http_user_agent.as_str());
+        span.record("http.scheme", &metadata.http_scheme.as_str());
+        span.record("net.peer.ip", &metadata.net_peer_ip.as_str());
+        span.record("net.peer.port", &metadata.net_peer_port);
+        span.record("net.transport", &metadata.net_transport);
+        span.record("peer.service", &metadata.peer_service);
 
         Ok(Self {
             ws_url,

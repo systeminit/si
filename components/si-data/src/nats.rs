@@ -3,6 +3,7 @@ use serde::Serialize;
 use std::sync::Arc;
 use thiserror::Error;
 use tokio::sync::Mutex;
+use tracing::{info_span, instrument, Instrument, Span};
 
 #[derive(Error, Debug)]
 pub enum NatsTxnError {
@@ -20,16 +21,21 @@ pub struct NatsConn {
 }
 
 impl NatsConn {
+    // TODO(fnichol): complete NatsConn instrumentation connection metadata
+    #[instrument(name = "natsconn.new", skip(settings))]
     pub async fn new(settings: &si_settings::Nats) -> NatsTxnResult<Self> {
         let conn = async_nats::connect(&settings.url).await?;
 
         Ok(Self { conn })
     }
 
+    // TODO(fnichol): add some form of `db.transaction` attribute
+    #[instrument(name = "natsconn.transaction", skip(self))]
     pub fn transaction(&self) -> NatsTxn {
-        NatsTxn::new(self.conn.clone())
+        NatsTxn::new(self.conn.clone(), Span::current())
     }
 
+    #[instrument(name = "natsconn.subscribe", skip(self, subject))]
     pub async fn subscribe(&self, subject: &str) -> std::io::Result<Subscription> {
         self.conn.subscribe(subject).await
     }
@@ -39,16 +45,19 @@ impl NatsConn {
 pub struct NatsTxn {
     connection: Connection,
     object_list: Arc<Mutex<Vec<serde_json::Value>>>,
+    tx_span: Span,
 }
 
 impl NatsTxn {
-    fn new(connection: Connection) -> Self {
+    fn new(connection: Connection, tx_span: Span) -> Self {
         NatsTxn {
             connection,
             object_list: Arc::new(Mutex::new(Vec::new())),
+            tx_span,
         }
     }
 
+    #[instrument(name = "natstxn.publish", skip(self, object))]
     pub async fn publish<T: Serialize + std::fmt::Debug>(&self, object: &T) -> NatsTxnResult<()> {
         let json: serde_json::Value = serde_json::to_value(object)?;
         let mut object_list = self.object_list.lock().await;
@@ -56,6 +65,7 @@ impl NatsTxn {
         Ok(())
     }
 
+    #[instrument(name = "natstxn.delete", skip(self, object))]
     pub async fn delete<T: Serialize + std::fmt::Debug>(&self, object: &T) -> NatsTxnResult<()> {
         let json: serde_json::Value = serde_json::to_value(object)?;
         let mut object_list = self.object_list.lock().await;
@@ -63,6 +73,8 @@ impl NatsTxn {
         Ok(())
     }
 
+    // TODO(fnichol): record a transaction attribute as committed
+    #[instrument(name = "natstxn.commit", skip(self))]
     pub async fn commit(self) -> NatsTxnResult<()> {
         let mut object_list = self.object_list.lock().await;
         for model_json in object_list.iter_mut() {
@@ -86,6 +98,10 @@ impl NatsTxn {
                 let subject: String = subject_array.join(".");
                 self.connection
                     .publish(&subject, model_json.to_string())
+                    .instrument(info_span!(
+                        "publish",
+                        code.namespace = "async-nats::Connection"
+                    ))
                     .await?;
             } else {
                 dbg!(
