@@ -1,4 +1,5 @@
 import _ from "lodash";
+import { Config } from "@/config";
 import { urlSafeBase64Encode } from "@/api/sdf/base64";
 import { IListRequest, IListReply } from "@/api/sdf/model";
 import { Update } from "@/api/sdf/model/update";
@@ -19,23 +20,14 @@ export interface SDFError {
 }
 
 export class SDF {
-  baseUrl: string;
-  wsBaseUrl: string;
+  baseUrl: URL;
+  wsBaseUrl: URL;
   currentToken?: string;
   update?: Update;
 
-  constructor() {
-    let baseUrl = process.env.VUE_APP_SDF || "http://localhost:5156";
-    if (!process.env.VUE_APP_SDF && process.env.NODE_ENV === "production") {
-      baseUrl = "https://api.systeminit.com";
-    }
-    this.baseUrl = baseUrl;
-
-    let wsBaseUrl = process.env.VUE_APP_SDF_WS || "ws://localhost:5156/updates";
-    if (!process.env.VUE_APP_SDF_WS && process.env.NODE_ENV === "production") {
-      wsBaseUrl = "https://api.systeminit.com/updates";
-    }
-    this.wsBaseUrl = wsBaseUrl;
+  constructor(config: Config) {
+    this.baseUrl = config.sdfBaseUrl;
+    this.wsBaseUrl = config.sdfBaseWsUrl;
   }
 
   async startUpdate() {
@@ -45,7 +37,7 @@ export class SDF {
   }
 
   async setupUpdate() {
-    const url = new URL(this.wsBaseUrl);
+    const url = new URL(this.wsBaseUrl.toString());
     url.searchParams.set("token", `Bearer ${this.token}`);
     this.update = new Update(url.toString());
   }
@@ -92,13 +84,17 @@ export class SDF {
     return this.get(pathString, args);
   }
 
+  requestUrl(pathString: string): URL {
+    return new URL(`${this.baseUrl.pathname}/${pathString}`, this.baseUrl);
+  }
+
   async get<T>(
     pathString: string,
     queryParams?: Record<string, any>,
   ): Promise<T> {
     let headers = this.standard_headers();
 
-    const url = new URL(pathString, this.baseUrl);
+    const url = this.requestUrl(pathString);
     if (queryParams) {
       Object.keys(queryParams).forEach(key =>
         url.searchParams.set(key, queryParams[key]),
@@ -116,7 +112,7 @@ export class SDF {
 
   async post<T>(pathString: string, args: Record<string, any>): Promise<T> {
     let headers = this.standard_headers();
-    const url = new URL(pathString, this.baseUrl);
+    const url = this.requestUrl(pathString);
     const request = new Request(url.toString(), {
       method: "POST",
       mode: "cors",
@@ -129,7 +125,7 @@ export class SDF {
 
   async patch<T>(pathString: string, args: Record<string, any>): Promise<T> {
     let headers = this.standard_headers();
-    const url = new URL(pathString, this.baseUrl);
+    const url = this.requestUrl(pathString);
     const request = new Request(url.toString(), {
       method: "PATCH",
       mode: "cors",
@@ -142,7 +138,7 @@ export class SDF {
 
   async delete<T>(pathString: string): Promise<T> {
     let headers = this.standard_headers();
-    const url = new URL(pathString, this.baseUrl);
+    const url = this.requestUrl(pathString);
     const request = new Request(url.toString(), {
       method: "DELETE",
       mode: "cors",

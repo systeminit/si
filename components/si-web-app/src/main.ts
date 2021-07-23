@@ -1,5 +1,6 @@
 import Bottle from "bottlejs";
 import { bottleSetup } from "@/di";
+import { config } from "@/config";
 import Vue from "vue";
 import VueRx from "vue-rx";
 import App from "@/App.vue";
@@ -11,7 +12,7 @@ import "@/assets/tailwind.css";
 
 import "@/plugins/vue-js-modal";
 
-bottleSetup();
+bottleSetup(config);
 let bottle = Bottle.pop("default");
 
 Vue.config.productionTip = false;
