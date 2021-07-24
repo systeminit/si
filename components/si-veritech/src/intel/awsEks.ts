@@ -6,11 +6,18 @@ import {
 import { SiCtx } from "../siCtx";
 import WebSocket from "ws";
 import _ from "lodash";
-import { awsAccessKeysEnvironment, findEntityByType } from "../support";
+import {
+  awsAccessKeysEnvironment,
+  awsRegion,
+  findEntityByType,
+} from "../support";
 import {
   DiscoveryProtocolFinish,
   DiscoveryRequest,
 } from "../controllers/discover";
+import Debug from "debug";
+
+const debug = Debug("veritech:intel:awsEks");
 
 export async function syncResource(
   _ctx: typeof SiCtx,
@@ -65,18 +72,40 @@ export async function discover(
     discovered: [],
   };
   const awsEnv = awsAccessKeysEnvironment(req);
-  const output = await ctx.exec("aws", ["eks", "list-clusters"], {
-    env: awsEnv,
-  });
-  const listClusters: Record<string, string[]> = JSON.parse(output.stdout);
+  const region = awsRegion(req);
+  const output = await ctx.exec(
+    "aws",
+    ["eks", "--region", region, "list-clusters"],
+    {
+      env: awsEnv,
+    },
+  );
+
+  let listClusters: Record<string, string[]>;
+  try {
+    listClusters = JSON.parse(output.stdout);
+  } catch (e) {
+    debug("list-clusters output %O", output);
+    debug(e);
+    throw e;
+  }
   if (listClusters["clusters"]) {
     for (const cluster of listClusters["clusters"]) {
       const clusterOutput = await ctx.exec(
         "aws",
-        ["eks", "describe-cluster", "--name", cluster],
+        ["eks", "--region", region, "describe-cluster", "--name", cluster],
         { env: awsEnv },
       );
-      const clusterData: Record<string, any> = JSON.parse(clusterOutput.stdout);
+
+      let clusterData: Record<string, any>;
+      try {
+        clusterData = JSON.parse(clusterOutput.stdout);
+      } catch (e) {
+        debug("describe-cluster output %O", clusterOutput);
+        debug(e);
+        throw e;
+      }
+
       if (clusterData["cluster"]) {
         const awsEksCluster = new SiEntity({ entityType: "awsEksCluster" });
         awsEksCluster.name = clusterData["cluster"]["name"];
