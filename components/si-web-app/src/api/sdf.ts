@@ -85,7 +85,24 @@ export class SDF {
   }
 
   requestUrl(pathString: string): URL {
-    return new URL(`${this.baseUrl.pathname}/${pathString}`, this.baseUrl);
+    let basePath;
+    if (this.baseUrl.pathname.endsWith("/")) {
+      basePath = this.baseUrl.pathname.slice(
+        0,
+        this.baseUrl.pathname.length - 1,
+      );
+    } else {
+      basePath = this.baseUrl.pathname;
+    }
+    let requestPath;
+    if (pathString.startsWith("/")) {
+      requestPath = pathString.slice(1);
+    } else {
+      requestPath = pathString;
+    }
+    const url = new URL(`${basePath}/${requestPath}`, this.baseUrl);
+
+    return url;
   }
 
   async get<T>(
