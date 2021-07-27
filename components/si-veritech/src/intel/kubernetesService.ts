@@ -8,6 +8,7 @@ import { SiCtx } from "../siCtx";
 import WebSocket from "ws";
 import _ from "lodash";
 import {
+  awsAccessKeysEnvironment,
   awsKubeConfigPath,
   findEntityByType,
   k8sDiscoverEntity,
@@ -222,20 +223,25 @@ export async function discover(
   };
   const cluster = findEntityByType(req, "awsEksCluster");
   debug({ cluster, req });
+  const awsEnv = awsAccessKeysEnvironment(req);
   const kubeConfigDir = await awsKubeConfigPath(
     req,
     cluster.getProperty({ system, path: ["name"] }),
   );
 
-  const servicesResult = await ctx.exec("kubectl", [
-    "get",
-    "services",
-    "-A",
-    "-o",
-    "json",
-    "--kubeconfig",
-    `${kubeConfigDir.path}/config`,
-  ]);
+  const servicesResult = await ctx.exec(
+    "kubectl",
+    [
+      "get",
+      "services",
+      "-A",
+      "-o",
+      "json",
+      "--kubeconfig",
+      `${kubeConfigDir.path}/config`,
+    ],
+    { env: awsEnv },
+  );
   const listServices: Record<string, any> = JSON.parse(servicesResult.stdout);
   if (listServices["items"]) {
     for (const serviceDataFull of listServices["items"]) {
@@ -272,15 +278,19 @@ export async function discover(
       //k8sService.computeCode();
       const serviceNamespace = _.get(serviceData, ["metadata", "namespace"]);
       if (serviceNamespace) {
-        const namespaceResult = await ctx.exec("kubectl", [
-          "get",
-          "namespace",
-          "-o",
-          "json",
-          "--kubeconfig",
-          `${kubeConfigDir.path}/config`,
-          serviceNamespace,
-        ]);
+        const namespaceResult = await ctx.exec(
+          "kubectl",
+          [
+            "get",
+            "namespace",
+            "-o",
+            "json",
+            "--kubeconfig",
+            `${kubeConfigDir.path}/config`,
+            serviceNamespace,
+          ],
+          { env: awsEnv },
+        );
         const namespaceDataFull: Record<string, any> = JSON.parse(
           namespaceResult.stdout,
         );
@@ -368,17 +378,21 @@ export async function discover(
       //}
 
       // Now, discover the kubernetes deployment via the selector
-      const deploymentResult = await ctx.exec("kubectl", [
-        "get",
-        "deployments",
-        "-A",
-        "-o",
-        "json",
-        "--kubeconfig",
-        `${kubeConfigDir.path}/config`,
-        "-l",
-        deploymentSelectorKey.join(","),
-      ]);
+      const deploymentResult = await ctx.exec(
+        "kubectl",
+        [
+          "get",
+          "deployments",
+          "-A",
+          "-o",
+          "json",
+          "--kubeconfig",
+          `${kubeConfigDir.path}/config`,
+          "-l",
+          deploymentSelectorKey.join(","),
+        ],
+        { env: awsEnv },
+      );
       const deploymentsList: Record<string, any> = JSON.parse(
         deploymentResult.stdout,
       );
@@ -451,7 +465,7 @@ export async function discover(
           //    "--kubeconfig",
           //    `${kubeConfigDir.path}/config`,
           //    deploymentNamespace,
-          //  ]);
+          //  ], { env: awsEnv });
           //  const namespaceDataFull: Record<string, any> = JSON.parse(
           //    namespaceResult.stdout,
           //  );
