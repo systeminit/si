@@ -15,6 +15,7 @@ import { SiCtx } from "../siCtx";
 
 import { RunCommandCallbacks } from "../controllers/runCommand";
 import {
+  awsAccessKeysEnvironment,
   awsKubeConfigPath,
   azureKubeConfigPath,
   findEntityByType,
@@ -109,6 +110,7 @@ export async function forEachCluster(
   callback: (
     kubeYaml: any,
     kubeConfigDir: any,
+    env: Record<string, string>,
     cluster: SiEntity,
   ) => Promise<void>,
 ): Promise<void> {
@@ -117,15 +119,16 @@ export async function forEachCluster(
     const kubeYaml = await writeKubernetesYaml(
       req.entity.getCode(req.system.id),
     );
+    const execEnv = awsAccessKeysEnvironment(req);
     const awsEksCluster = findEntityByType(req, "awsEksCluster");
     if (awsEksCluster) {
       const kubeConfigDir = await awsKubeConfigPath(req);
-      await callback(kubeYaml, kubeConfigDir, awsEksCluster);
+      await callback(kubeYaml, kubeConfigDir, execEnv, awsEksCluster);
     }
     const azureAksCluster = findEntityByType(req, "azureAksCluster");
     if (azureAksCluster) {
       const kubeConfigDir = await azureKubeConfigPath(req);
-      await callback(kubeYaml, kubeConfigDir, azureAksCluster);
+      await callback(kubeYaml, kubeConfigDir, {}, azureAksCluster);
     }
   }
 }
@@ -135,6 +138,7 @@ export const baseRunCommands: RunCommandCallbacks = {
     const awsEksCluster = findEntityByType(req, "awsEksCluster");
     if (awsEksCluster) {
       const kubeConfigDir = await awsKubeConfigPath(req);
+      const awsEnv = awsAccessKeysEnvironment(req);
       const code = req.entity.getCode(req.system.id);
       if (code) {
         const kubeYaml = await writeKubernetesYaml(
@@ -149,7 +153,7 @@ export const baseRunCommands: RunCommandCallbacks = {
             `--kubeconfig=${kubeConfigDir.path}/config`,
             `--filename=${kubeYaml.path}`,
           ],
-          { reject: false },
+          { env: awsEnv, reject: false },
         );
         if (result.exitCode != 0) {
           debug("you failed!");
@@ -198,6 +202,7 @@ export const baseRunCommands: RunCommandCallbacks = {
     const awsEksCluster = findEntityByType(req, "awsEksCluster");
     if (awsEksCluster) {
       const kubeConfigDir = await awsKubeConfigPath(req);
+      const awsEnv = awsAccessKeysEnvironment(req);
       const code = req.entity.getCode(req.system.id);
       if (code) {
         let args = ["delete", `--kubeconfig=${kubeConfigDir.path}/config`];
@@ -215,6 +220,7 @@ export const baseRunCommands: RunCommandCallbacks = {
         ]);
 
         const result = await ctx.execStream(ws, "kubectl", args, {
+          env: awsEnv,
           reject: false,
         });
         if (result.exitCode != 0) {
@@ -294,7 +300,7 @@ export async function baseSyncResource(
     ctx,
     req,
     ws,
-    async (_kubeYaml, kubeConfigDir, kubeCluster) => {
+    async (_kubeYaml, kubeConfigDir, execEnv, kubeCluster) => {
       let subResource: SubResource;
       if (response.subResources[kubeCluster.id]) {
         subResource = response.subResources[kubeCluster.id];
@@ -326,7 +332,7 @@ export async function baseSyncResource(
           kind,
           name,
         ],
-        { reject: false },
+        { env: execEnv, reject: false },
       );
       if (result.exitCode != 0) {
         subResource.state = "unknown";

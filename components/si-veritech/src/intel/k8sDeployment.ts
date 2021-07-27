@@ -151,7 +151,7 @@ export async function syncResource(
     ctx,
     req,
     ws,
-    async (_kubeYaml, kubeConfigDir, kubeCluster) => {
+    async (_kubeYaml, kubeConfigDir, execEnv, kubeCluster) => {
       const result = await ctx.exec(
         "kubectl",
         [
@@ -160,7 +160,7 @@ export async function syncResource(
           `${kubeConfigDir.path}/config`,
           req.entity.getProperty({ system, path: ["metadata", "name"] }),
         ],
-        { reject: false },
+        { env: execEnv, reject: false },
       );
       if (result.exitCode != 0) {
         response.health = "error";

@@ -71,11 +71,25 @@ export async function discover(
   const response: DiscoveryProtocolFinish["finish"] = {
     discovered: [],
   };
-  const awsEnv = awsAccessKeysEnvironment(req);
-  const region = awsRegion(req);
+  let awsEnv;
+  try {
+    awsEnv = awsAccessKeysEnvironment(req);
+  } catch (e) {
+    response.error = `${e}`;
+    return response;
+  }
+  let region;
+  try {
+    region = awsRegion(req);
+  } catch (e) {
+    response.error = `${e}`;
+    return response;
+  }
+  const defaultArgs = ["--region", region];
+
   const output = await ctx.exec(
     "aws",
-    ["eks", "--region", region, "list-clusters"],
+    [...defaultArgs, "eks", "list-clusters"],
     {
       env: awsEnv,
     },
@@ -93,7 +107,7 @@ export async function discover(
     for (const cluster of listClusters["clusters"]) {
       const clusterOutput = await ctx.exec(
         "aws",
-        ["eks", "--region", region, "describe-cluster", "--name", cluster],
+        [...defaultArgs, "eks", "describe-cluster", "--name", cluster],
         { env: awsEnv },
       );
 

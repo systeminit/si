@@ -10,7 +10,7 @@ import {
   CommandProtocolFinish,
 } from "../controllers/syncResource";
 import { SiCtx } from "../siCtx";
-import { awsKubeConfigPath } from "../support";
+import { awsAccessKeysEnvironment, awsKubeConfigPath } from "../support";
 import WebSocket from "ws";
 //import Debug from "debug";
 //const _debug = Debug("veritech:controllers:intel:dockerImage");
@@ -45,6 +45,16 @@ export async function syncResource(
     internalHealth: req.resource.internalHealth,
     subResources: req.resource.subResources,
   };
+  let awsEnv;
+  try {
+    awsEnv = awsAccessKeysEnvironment(req);
+  } catch (e) {
+    response.health = "error";
+    response.internalHealth = ResourceInternalHealth.Error;
+    response.state = "error";
+    response.error = `Cannot find AWS access keys! (cause=${e})`;
+    return response;
+  }
   const kubeConfigDir = await awsKubeConfigPath(
     req,
     req.entity.getProperty({ system, path: ["name"] }),
@@ -52,7 +62,7 @@ export async function syncResource(
   const result = await ctx.exec(
     "kubectl",
     [...defaultArgs, "--kubeconfig", `${kubeConfigDir.path}/config`],
-    { reject: false },
+    { env: awsEnv, reject: false },
   );
   if (result.exitCode != 0) {
     response.error = result.all;
@@ -75,7 +85,7 @@ export async function syncResource(
       "--kubeconfig",
       `${kubeConfigDir.path}/config`,
     ],
-    { reject: false },
+    { env: awsEnv, reject: false },
   );
   if (nodesResult.exitCode != 0) {
     response.error = nodesResult.all;

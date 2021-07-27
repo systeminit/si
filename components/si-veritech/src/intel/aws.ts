@@ -5,7 +5,7 @@ import {
 } from "../controllers/syncResource";
 import { SiCtx } from "../siCtx";
 import WebSocket from "ws";
-import { awsAccessKeysEnvironment } from "../support";
+import { awsAccessKeysEnvironment, awsRegion } from "../support";
 
 export async function syncResource(
   ctx: typeof SiCtx,
@@ -31,11 +31,26 @@ export async function syncResource(
     response.error = "Cannot find AWS access keys!";
     return response;
   }
+  let region;
+  try {
+    region = awsRegion(req);
+  } catch (e) {
+    response.health = "error";
+    response.internalHealth = ResourceInternalHealth.Error;
+    response.state = "error";
+    response.error = "Cannot determine AWS region!";
+    return response;
+  }
+  const defaultArgs = ["--region", region];
 
-  const output = await ctx.exec("aws", ["iam", "list-access-keys"], {
-    env: awsEnv,
-    reject: false,
-  });
+  const output = await ctx.exec(
+    "aws",
+    [...defaultArgs, "iam", "list-access-keys"],
+    {
+      env: awsEnv,
+      reject: false,
+    },
+  );
 
   if (output.exitCode != 0) {
     response.health = "error";

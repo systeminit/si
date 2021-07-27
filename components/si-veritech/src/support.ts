@@ -148,6 +148,7 @@ export async function awsKubeConfigPath(
 ): Promise<TempDir> {
   const awsEnv = awsAccessKeysEnvironment(context);
   const region = awsRegion(context);
+  const defaultArgs = ["--region", region];
   if (!clusterName) {
     clusterName = awsEksClusterName(context);
   }
@@ -156,9 +157,8 @@ export async function awsKubeConfigPath(
   await SiCtx.exec(
     "aws",
     [
+      ...defaultArgs,
       "eks",
-      "--region",
-      region,
       "update-kubeconfig",
       "--name",
       clusterName,
