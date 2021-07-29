@@ -18,6 +18,8 @@
           required
           size="sm"
           v-model="form.applicationName"
+          @keyup.enter.native="onEnter"
+          @keyup.escape.native="cancel"
         />
       </div>
     </div>
@@ -88,6 +90,11 @@ export default Vue.extend({
     };
   },
   methods: {
+    onEnter() {
+      if (this.form.applicationName.length > 0) {
+        this.create();
+      }
+    },
     cancel() {
       this.form.applicationName = "";
       this.applicationCreateSuccess = false;

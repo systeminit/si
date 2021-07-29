@@ -108,7 +108,8 @@
             size="sm"
             placeholder="new change set name"
             v-model="newChangeSetForm.name"
-            v-on:keyup.enter.native="changeSetCreate"
+            @keyup.enter.native="changeSetCreate"
+            @keyup.escape.native="cancelChangeSetCreate"
           />
         </div>
       </div>
