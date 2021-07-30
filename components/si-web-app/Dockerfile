@@ -1,15 +1,36 @@
-FROM systeminit/si-builder:latest as build
-LABEL maintainer="dev@systeminit.com"
-COPY . /src
-WORKDIR /src
-ENV NPM_CONFIG_ALLOW_ROOT=true
-ENV NPM_CONFIG_UNSAFE_PERM=true
-ENV VUE_APP_SDF=https://internal-api.systeminit.com
-ENV VUE_APP_SDF_WS=wss://internal-api.systeminit.com/updates
-RUN make build//components/si-web-app
+ARG BUILDER_IMAGE=cache
+ARG NODE_VERSION=16.5.0
+ARG NGINX_VERSION=1.21.1
 
-FROM nginx:mainline-alpine
-LABEL maintainer="dev@systeminit.com"
-COPY --from=build /src/components/si-web-app/dist /app
-COPY --from=build /src/components/si-web-app/htpasswd /etc/nginx/htpasswd
-COPY --from=build /src/components/si-web-app/nginx.conf /etc/nginx/nginx.conf
+###########################################################################
+# Cache Stage
+###########################################################################
+FROM node:$NODE_VERSION as cache
+ARG NODE_VERSION
+
+WORKDIR /usr/src
+COPY . .
+
+RUN (cd components/si-registry && npm ci && npm run build)
+RUN (cd components/si-entity && npm ci && npm run build)
+RUN (cd components/si-web-app && npm ci)
+
+###########################################################################
+# Builder Stage
+###########################################################################
+FROM $BUILDER_IMAGE as builder
+ARG VUE_APP_SDF_BASE_HTTP_URL
+ARG VUE_APP_SDF_BASE_WS_URL
+
+WORKDIR /usr/src
+COPY . .
+
+WORKDIR components/si-web-app
+RUN env && npm run build
+
+###########################################################################
+# Final Stage
+###########################################################################
+FROM nginx:$NGINX_VERSION-alpine as final
+
+COPY --from=builder /usr/src/components/si-web-app/dist /usr/share/nginx/html

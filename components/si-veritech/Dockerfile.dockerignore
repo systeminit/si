@@ -1,0 +1,24 @@
+# Use an allow-list strategy vs and ignore-list strategy to only include what
+# is necessary and no more for less unnecessary rebuilds.
+
+# Ignore everything
+*
+
+# Root/common files
+!.prettierrc.js
+!babel.config.js
+
+# TODO: temporary
+!Makefile
+!components/build
+
+# All components required to build
+!components/si-entity
+!components/si-registry
+!components/si-veritech
+
+# Ignore non-portable context in component sub-directories
+**/.envrc
+**/tmp
+**/node_modules
+components/*/dist

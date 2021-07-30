@@ -9,7 +9,7 @@ processors:
 
 exporters:
   logging:
-    loglevel: "debug"
+    loglevel: "warn"
   otlp:
     endpoint: "api.honeycomb.io:443"
     headers:

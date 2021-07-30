@@ -1,0 +1,23 @@
+# Use an allow-list strategy vs and ignore-list strategy to only include what
+# is necessary and no more for less unnecessary rebuilds.
+
+# Ignore everything
+*
+
+# Root/Cargo workspace files
+!.cargo
+!Cargo.*
+!rust-toolchain
+!rustfmt.toml
+
+# All workspace member directories from `Cargo.toml`
+!components/si-data
+!components/si-model
+!components/si-model-test
+!components/si-sdf
+!components/si-settings
+
+# Ignore non-portable context in component sub-directories
+**/.envrc
+**/tmp
+components/*/targ

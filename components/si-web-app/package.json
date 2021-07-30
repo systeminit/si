@@ -80,7 +80,7 @@
     "@vue/test-utils": "^1.0.3",
     "babel-eslint": "^10.1.0",
     "babel-plugin-transform-remove-console": "^6.9.4",
-    "canvas": "^2.6.1",
+    "canvas": "^2.8.0",
     "eslint": "^6.7.2",
     "eslint-plugin-prettier": "^3.1.1",
     "eslint-plugin-vue": "^6.2.2",
@@ -88,7 +88,6 @@
     "jest-transform-stub": "^2.0.0",
     "jsdom": "^16.4.0",
     "node-fetch": "^2.6.1",
-    "node-sass": "^4.14.1",
     "prettier": "^1.19.1",
     "sass": "^1.19.0",
     "sass-loader": "^8.0.2",
@@ -115,7 +114,7 @@
     ]
   },
   "volta": {
-    "node": "15.12.0",
-    "npm": "7.6.3"
+    "node": "16.5.0",
+    "npm": "7.20.3"
   }
 }
