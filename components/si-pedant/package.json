@@ -16,7 +16,7 @@
     "unique-names-generator": "^4.3.1"
   },
   "volta": {
-    "node": "15.12.0",
-    "npm": "7.6.3"
+    "node": "16.5.0",
+    "npm": "7.20.3"
   }
 }
