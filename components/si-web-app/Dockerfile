@@ -33,4 +33,6 @@ RUN env && npm run build
 ###########################################################################
 FROM nginx:$NGINX_VERSION-alpine as final
 
+RUN rm -rf /etc/nginx/conf.d/default.conf /usr/share/nginx/html/*
+COPY --from=builder /usr/src/components/si-web-app/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /usr/src/components/si-web-app/dist /usr/share/nginx/html

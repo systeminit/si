@@ -11,3 +11,6 @@ components/si-sdf/tmp
 vendor/automerge
 *.ignore
 /.envrc
+/support/dev/k8s/**/*.env
+/support/dev/k8s/**/dockerconfig.json
+/support/dev/k8s/**/web-htpasswd
