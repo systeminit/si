@@ -55,7 +55,10 @@ RUN apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-releas
   && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" \
       | tee /etc/apt/sources.list.d/docker.list > /dev/null \
   && apt-get update \
-  && apt-get install -y docker-ce docker-ce-cli containerd.io
+  && apt-get install -y docker-ce docker-ce-cli containerd.io supervisor \
+  && usermod --append --groups docker node
+COPY components/si-veritech/supervisor/dockerd.conf /etc/supervisor/conf.d/
+COPY components/si-veritech/supervisor/entrypoint.sh /
 # Install AWS CLI `aws`
 COPY --from=awscli /usr/local/aws-cli/ /usr/local/aws-cli/
 COPY --from=awscli /usr/local/aws-cli-bin/ /usr/local/bin/
@@ -81,5 +84,11 @@ RUN cd components/si-veritech && make build
 
 WORKDIR components/si-veritech
 
+USER root
+
 EXPOSE 5157/tcp
-CMD ["/usr/bin/make", "watch"]
+ENTRYPOINT [ \
+  "/bin/sh", "/entrypoint.sh", "--", \
+    "/sbin/runuser", "-u", "node", "--", \
+      "/usr/bin/make", "watch" \
+]
