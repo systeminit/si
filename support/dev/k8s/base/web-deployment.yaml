@@ -1,0 +1,24 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  labels:
+    app: web
+spec:
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+        - name: web
+          image: systeminit/si-web-app:20210805.044312.0-sha.23b66502
+          ports:
+            - containerPort: 80
+      imagePullSecrets:
+        - name: dockerhub
+      restartPolicy: Always

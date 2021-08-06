@@ -1,5 +1,5 @@
 ---
-version: "3.9"
+version: "3"
 services:
   postgres:
     build: ../../components/postgres
@@ -53,7 +53,7 @@ services:
       context: ../..
       dockerfile: components/si-web-app/Dockerfile
       args:
-        VUE_APP_SDF_BASE_HTTP_URL: http://localhost:5156
-        VUE_APP_SDF_BASE_WS_URL: ws://localhost:5156/updates
+        VUE_APP_SDF_BASE_HTTP_URL: http://app.systeminit.com/api
+        VUE_APP_SDF_BASE_WS_URL: ws://app.systeminit.com/api/updates
     ports:
       - "8080:80"
