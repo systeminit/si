@@ -7,7 +7,13 @@
     </div>
 
     <div class="flex flex-col flex-grow w-full overflow-auto overscroll-none">
-      <CodeMirror class="w-full h-full" :value="codeValue" readOnly />
+      <Monaco
+        class="w-full h-full"
+        :readOnly="!editMode"
+        :value="codeValue"
+        @input="setNewCodeValue"
+        @blur="updateEntityFromCode"
+      />
     </div>
   </div>
 </template>
@@ -23,31 +29,74 @@ import Vue, { PropType } from "vue";
 
 import { Entity } from "@/api/sdf/model/entity";
 
-import CodeMirror from "@/molecules/CodeMirror.vue";
-import { system$ } from "@/observables";
+import Monaco from "@/molecules/Monaco.vue";
+import { system$, updateEntity, editMode$ } from "@/observables";
 import { pluck, switchMap, tap } from "rxjs/operators";
 import { combineLatest, Observable, of } from "rxjs";
-import { SiEntity } from "si-entity";
+import { Diff } from "@/api/sdf/model/diff";
+import { SiEntity, OpSource } from "si-entity";
+import { Qualification } from "@/api/sdf/model/qualification";
+import { emitEditorErrorMessage } from "@/atoms/PanelEventBus";
+import _ from "lodash";
 
 export interface Data {
   codeValue: string;
+  newCodeValue: string;
 }
 
 export default Vue.extend({
-  name: "CodeViwer",
+  name: "CodeViewer",
   components: {
-    CodeMirror,
+    Monaco,
   },
   props: {
     entity: {
       type: Object as PropType<Entity>,
       required: true,
     },
+    diff: {
+      type: Array as PropType<Diff>,
+      required: true,
+    },
+    qualifications: {
+      type: Array as PropType<Qualification[]>,
+    },
   },
   data(): Data {
     return {
       codeValue: "No code is the best code!",
+      newCodeValue: "No code is the best code!",
     };
+  },
+  methods: {
+    setNewCodeValue(value: string, _event: any) {
+      this.newCodeValue = value;
+    },
+    updateEntityFromCode() {
+      const code = this.newCodeValue;
+      if (
+        _.isEqual(this.newCodeValue, this.codeValue) ||
+        this.newCodeValue == "No code is the best code!"
+      ) {
+        return;
+      }
+      console.log("hrm", {
+        codeValue: this.codeValue,
+        newCodeValue: this.newCodeValue,
+      });
+
+      // @ts-ignore
+      if (this.system) {
+        // @ts-ignore
+        this.entity.setCode(OpSource.Manual, this.system.id, code);
+        this.entity.computeProperties();
+        updateEntity(this.entity).subscribe(reply => {
+          if (reply.error) {
+            emitEditorErrorMessage(reply.error.message);
+          }
+        });
+      }
+    },
   },
   subscriptions: function(this: any): Record<string, any> {
     let entity$: Observable<Entity> = this.$watchAsObservable("entity", {
@@ -74,6 +123,7 @@ export default Vue.extend({
     return {
       system: system$,
       codeValueLatest: codeValueLatest$,
+      editMode: editMode$,
     };
   },
 });

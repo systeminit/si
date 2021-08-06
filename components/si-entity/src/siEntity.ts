@@ -422,6 +422,90 @@ export class SiEntity implements ISiEntity {
     return newProperties;
   }
 
+  setCode(
+    source: OpSet["source"],
+    system: OpSet["system"],
+    code: string,
+  ): void {
+    if (this.schema().code?.kind == CodeKind.YAML) {
+      this.setCodeYaml(source, system, code);
+    }
+  }
+
+  setCodeYaml(
+    source: OpSet["source"],
+    system: OpSet["system"],
+    code: string,
+  ): void {
+    let newData;
+    try {
+      newData = yaml.load(code);
+    } catch (e) {
+      console.log("Failed to load valid yaml for code", e);
+    }
+    if (_.isArray(newData) || _.isString(newData) || _.isNumber(newData)) {
+      return;
+    }
+    this._setCodeFromObject(source, system, [], newData);
+  }
+
+  _setCodeFromScalar(
+    source: OpSet["source"],
+    system: OpSet["system"],
+    path: string[],
+    value: string | number | boolean,
+  ): void {
+    const existingOp = this.valueOpForPath({ system, path });
+    if (existingOp) {
+      if (_.isEqual(existingOp.value, value)) {
+        return;
+      } else {
+        this.set({ source, system, path, value });
+      }
+    } else {
+      this.set({ source, system, path, value });
+    }
+  }
+
+  _setCodeFromArray(
+    source: OpSet["source"],
+    system: OpSet["system"],
+    startingPath: string[],
+    target: any[],
+  ): void {
+    for (let x = 0; x < target.length; x++) {
+      const path = _.cloneDeep(startingPath);
+      path.push(`${x}`);
+      const v = target[x];
+      if (_.isArray(v)) {
+        this._setCodeFromArray(source, system, path, v);
+      } else if (_.isObjectLike(v)) {
+        this._setCodeFromObject(source, system, path, v);
+      } else {
+        this._setCodeFromScalar(source, system, path, v);
+      }
+    }
+  }
+
+  _setCodeFromObject(
+    source: OpSet["source"],
+    system: OpSet["system"],
+    startingPath: string[],
+    targetObject: Record<string, any>,
+  ): void {
+    for (const k of Object.keys(targetObject)) {
+      const path = _.cloneDeep(startingPath);
+      path.push(k);
+      if (_.isArray(targetObject[k])) {
+        this._setCodeFromArray(source, system, path, targetObject[k]);
+      } else if (_.isObjectLike(targetObject[k])) {
+        this._setCodeFromObject(source, system, path, targetObject[k]);
+      } else {
+        this._setCodeFromScalar(source, system, path, targetObject[k]);
+      }
+    }
+  }
+
   getCode(system: string): string | null {
     if (this.schema().code) {
       if (this.code[system]) {

@@ -128,6 +128,7 @@
           v-else-if="activeView == 'code'"
           :entity="entity"
           :diff="diff"
+          :qualifications="qualifications"
         />
         <QualificationViewer
           v-else-if="activeView == 'qualification'"
@@ -433,6 +434,8 @@ export default Vue.extend({
             this.diff = reply.diff;
             // @ts-ignore
             //this.qualifications = reply.qualifications;
+          } else {
+            console.log("not for me");
           }
         }),
       ),
