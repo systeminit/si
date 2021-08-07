@@ -113,7 +113,6 @@ import ResourceK8sDeployment from "./ResourceK8sDeployment.vue";
 import ResourceK8sService from "./ResourceK8sService.vue";
 import ResourceKubernetesService from "./ResourceKubernetesService.vue";
 import ResourceKubernetesCluster from "./ResourceKubernetesCluster.vue";
-// import CodeMirror from "@/molecules/CodeMirror.vue";
 import VueJsonPretty from "vue-json-pretty";
 
 import {
@@ -130,7 +129,6 @@ interface IData {
 export default Vue.extend({
   name: "ResourceVisualization",
   components: {
-    // CodeMirror,
     VueJsonPretty,
     HeartIcon,
     ChevronRightIcon,
@@ -185,13 +183,6 @@ export default Vue.extend({
     },
     toggleRawData() {
       this.isRawDataExpanded = !this.isRawDataExpanded;
-    },
-    whenCodeMirrorIsVisible(): Record<string, any> {
-      let style: Record<string, any> = {};
-      if (this.isDataExpanded) {
-        style["h-full"] = true;
-      }
-      return style;
     },
   },
   watch: {
