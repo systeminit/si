@@ -106,6 +106,19 @@ export const podSpec: RegistryEntry["properties"] = [
       ],
     },
   },
+  {
+    type: "array",
+    name: "imagePullSecrets",
+    itemProperty: {
+      type: "object",
+      properties: [
+        {
+          type: "string",
+          name: "name",
+        },
+      ],
+    },
+  },
 ];
 
 export const spec: PropObject = {
