@@ -344,6 +344,7 @@ export default Vue.extend({
       let style: Record<string, any> = {};
       if (
         name == "k8sDeployment" ||
+        name == "k8sIngress" ||
         name == "k8sNamespace" ||
         name == "k8sSecret" ||
         name == "k8sService"
@@ -635,6 +636,7 @@ export default Vue.extend({
             classes["socket-cloud-provider"] = true;
           } else if (
             schema.entityType == "k8sDeployment" ||
+            schema.entityType == "k8sIngress" ||
             schema.entityType == "k8sNamespace" ||
             schema.entityType == "k8sSecret" ||
             schema.entityType == "k8sService"
@@ -725,6 +727,7 @@ export default Vue.extend({
         response["node-cloud-provider"] = true;
       } else if (
         schema.entityType == "k8sDeployment" ||
+        schema.entityType == "k8sIngress" ||
         schema.entityType == "k8sNamespace" ||
         schema.entityType == "k8sSecret" ||
         schema.entityType == "k8sService"

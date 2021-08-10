@@ -44,13 +44,17 @@
           :resource="resource"
           v-if="resource.entityType == 'dockerImage'"
         />
-        <ResourceK8sNamespace
-          :resource="resource"
-          v-else-if="resource.entityType == 'k8sNamespace'"
-        />
         <ResourceK8sDeployment
           :resource="resource"
           v-else-if="resource.entityType == 'k8sDeployment'"
+        />
+        <ResourceK8sIngress
+          :resource="resource"
+          v-else-if="resource.entityType == 'k8sIngress'"
+        />
+        <ResourceK8sNamespace
+          :resource="resource"
+          v-else-if="resource.entityType == 'k8sNamespace'"
         />
         <ResourceK8sService
           :resource="resource"
@@ -108,13 +112,13 @@
 import Vue, { PropType } from "vue";
 import { Resource, ResourceHealth } from "@/api/sdf/model/resource";
 import ResourceDockerImage from "./ResourceDockerImage.vue";
-import ResourceK8sNamespace from "./ResourceK8sNamespace.vue";
 import ResourceK8sDeployment from "./ResourceK8sDeployment.vue";
+import ResourceK8sIngress from "./ResourceK8sIngress.vue";
+import ResourceK8sNamespace from "./ResourceK8sNamespace.vue";
 import ResourceK8sService from "./ResourceK8sService.vue";
-import ResourceKubernetesService from "./ResourceKubernetesService.vue";
 import ResourceKubernetesCluster from "./ResourceKubernetesCluster.vue";
+import ResourceKubernetesService from "./ResourceKubernetesService.vue";
 import VueJsonPretty from "vue-json-pretty";
-
 import {
   HeartIcon,
   ChevronRightIcon,
@@ -129,16 +133,17 @@ interface IData {
 export default Vue.extend({
   name: "ResourceVisualization",
   components: {
-    VueJsonPretty,
-    HeartIcon,
-    ChevronRightIcon,
     ChevronDownIcon,
+    ChevronRightIcon,
+    HeartIcon,
     ResourceDockerImage,
-    ResourceK8sNamespace,
     ResourceK8sDeployment,
+    ResourceK8sIngress,
+    ResourceK8sNamespace,
     ResourceK8sService,
-    ResourceKubernetesService,
     ResourceKubernetesCluster,
+    ResourceKubernetesService,
+    VueJsonPretty,
   },
   props: {
     resource: {

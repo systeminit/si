@@ -2,6 +2,7 @@ import leftHandPath from "./intel/leftHandPath";
 import torture from "./intel/torture";
 import dockerImage, { CheckQualificationCallbacks } from "./intel/dockerImage";
 import k8sDeployment from "./intel/k8sDeployment";
+import k8sIngress from "./intel/k8sIngress";
 import k8sNamespace from "./intel/k8sNamespace";
 import k8sSecret from "./intel/k8sSecret";
 import k8sService from "./intel/k8sService";
@@ -38,6 +39,7 @@ const intel: Record<string, Intel> = {
   torture,
   dockerImage,
   k8sDeployment,
+  k8sIngress,
   k8sNamespace,
   k8sSecret,
   k8sService,
