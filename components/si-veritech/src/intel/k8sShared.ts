@@ -315,22 +315,14 @@ export async function baseSyncResource(
           internalHealth: ResourceInternalHealth.Unknown,
         };
       }
-      const kind = req.entity.getProperty({
-        system: req.system.id,
-        path: ["kind"],
-      }) as string;
-      const name = req.entity.getProperty({
-        system: req.system.id,
-        path: ["metadata", "name"],
-      }) as string;
       const result = await ctx.exec(
         "kubectl",
         [
           ...defaultArgs,
           "--kubeconfig",
           `${kubeConfigDir.path}/config`,
-          kind,
-          name,
+          k8sObjTypeFromEntityType(req.entity.entityType),
+          k8sName(req.entity, req.system.id),
         ],
         { env: execEnv, reject: false },
       );

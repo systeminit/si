@@ -12,6 +12,7 @@ import application from "./schema/si/application";
 import dockerImage from "./schema/docker/dockerImage";
 import kubernetesService from "./schema/kubernetes/kubernetesService";
 import k8sDeployment from "./schema/kubernetes/k8sDeployment";
+import k8sIngress from "./schema/kubernetes/k8sIngress";
 import k8sNamespace from "./schema/kubernetes/k8sNamespace";
 import k8sService from "./schema/kubernetes/k8sService";
 import k8sSecret from "./schema/kubernetes/k8sSecret";
@@ -39,6 +40,7 @@ export const registry: { [entityType: string]: RegistryEntry } = {
   dockerImage,
   kubernetesService,
   k8sDeployment,
+  k8sIngress,
   k8sNamespace,
   k8sSecret,
   k8sService,
