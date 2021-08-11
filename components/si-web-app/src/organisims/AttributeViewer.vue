@@ -160,7 +160,13 @@ export default Vue.extend({
       }
     },
     backgroundColors(): number[][] {
-      let longestProp = 0;
+      let longestProp = 50;
+      // BUG: There is a bug here - this will increase
+      //      the longestProp number if there is a clearly nested, non-array
+      //      object depth greater than 50. But it won't deal with array's
+      //      at all. If we need to figure out how to deal with nested arrays
+      //      of objects that are more than 50 levels deep, this code will
+      //      need to be fixed.
       if (this.editFields) {
         for (const field of this.editFields) {
           if (field.path) {
