@@ -345,6 +345,7 @@ export default Vue.extend({
       if (
         name == "k8sDeployment" ||
         name == "k8sNamespace" ||
+        name == "k8sSecret" ||
         name == "k8sService"
       ) {
         style["socket-component-k8s"] = true;
@@ -635,6 +636,7 @@ export default Vue.extend({
           } else if (
             schema.entityType == "k8sDeployment" ||
             schema.entityType == "k8sNamespace" ||
+            schema.entityType == "k8sSecret" ||
             schema.entityType == "k8sService"
           ) {
             classes["socket-component-k8s"] = true;
@@ -724,6 +726,7 @@ export default Vue.extend({
       } else if (
         schema.entityType == "k8sDeployment" ||
         schema.entityType == "k8sNamespace" ||
+        schema.entityType == "k8sSecret" ||
         schema.entityType == "k8sService"
       ) {
         response["node-component-k8s"] = true;

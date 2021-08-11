@@ -76,6 +76,35 @@ export function inferProperties(
   setArrayEntryFromAllEntities({
     entity,
     context,
+    entityType: "k8sSecret",
+    toPath: ["spec", "template", "spec", "imagePullSecrets"],
+    valuesCallback(
+      fromEntity,
+    ): ReturnType<SetArrayEntryFromAllEntities["valuesCallback"]> {
+      const toSet: { path: string[]; value: any; system: string }[] = [];
+
+      const secretValues = fromEntity.getPropertyForAllSystems({
+        path: ["metadata", "name"],
+      });
+      if (secretValues) {
+        for (const system in secretValues) {
+          if (secretValues[system]) {
+            toSet.push({
+              path: ["name"],
+              value: secretValues[system],
+              system,
+            });
+          }
+        }
+      }
+
+      return toSet;
+    },
+  });
+
+  setArrayEntryFromAllEntities({
+    entity,
+    context,
     entityType: "dockerImage",
     toPath: ["spec", "template", "spec", "containers"],
     valuesCallback(

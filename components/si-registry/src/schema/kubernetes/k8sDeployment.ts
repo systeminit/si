@@ -44,6 +44,12 @@ const k8sDeployment: RegistryEntry = {
       edgeKind: "configures",
       arity: Arity.One,
     },
+    {
+      name: "k8sSecret",
+      types: ["k8sSecret"],
+      edgeKind: "configures",
+      arity: Arity.Many,
+    },
   ],
   properties: [
     apiVersion("apps/v1"),
