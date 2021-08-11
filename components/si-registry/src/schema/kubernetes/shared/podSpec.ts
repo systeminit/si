@@ -103,6 +103,38 @@ export const podSpec: RegistryEntry["properties"] = [
             ],
           },
         },
+        {
+          type: "array",
+          name: "volumeMounts",
+          itemProperty: {
+            type: "object",
+            properties: [
+              {
+                type: "string",
+                name: "name",
+              },
+              {
+                type: "string",
+                name: "mountPath",
+              },
+            ],
+          },
+        },
+      ],
+    },
+  },
+  {
+    type: "array",
+    name: "volumes",
+    itemProperty: {
+      type: "object",
+      properties: [
+        { type: "string", name: "name" },
+        {
+          type: "object",
+          name: "configMap",
+          properties: [{ type: "string", name: "name" }],
+        },
       ],
     },
   },

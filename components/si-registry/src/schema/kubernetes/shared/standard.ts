@@ -29,7 +29,7 @@ export function kind(kind: string): PropString {
   return {
     type: "string",
     name: "kind",
-    defaultValue: _.capitalize(kind),
+    defaultValue: kind,
     validation: [
       {
         kind: ValidatorKind.Regex,

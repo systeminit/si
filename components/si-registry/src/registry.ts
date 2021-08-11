@@ -16,6 +16,7 @@ import k8sIngress from "./schema/kubernetes/k8sIngress";
 import k8sNamespace from "./schema/kubernetes/k8sNamespace";
 import k8sService from "./schema/kubernetes/k8sService";
 import k8sSecret from "./schema/kubernetes/k8sSecret";
+import k8sConfigMap from "./schema/kubernetes/k8sConfigMap";
 import kubernetesCluster from "./schema/kubernetes/kubernetes";
 import awsEks from "./schema/aws/awsEks";
 import cloudProvider from "./schema/si/cloudProvider";
@@ -43,6 +44,7 @@ export const registry: { [entityType: string]: RegistryEntry } = {
   k8sIngress,
   k8sNamespace,
   k8sSecret,
+  k8sConfigMap,
   k8sService,
   kubernetesCluster,
   awsEks,

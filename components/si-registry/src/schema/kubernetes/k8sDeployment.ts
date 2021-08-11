@@ -50,6 +50,12 @@ const k8sDeployment: RegistryEntry = {
       edgeKind: "configures",
       arity: Arity.Many,
     },
+    {
+      name: "k8sConfigMap",
+      types: ["k8sConfigMap"],
+      edgeKind: "configures",
+      arity: Arity.Many,
+    },
   ],
   properties: [
     apiVersion("apps/v1"),

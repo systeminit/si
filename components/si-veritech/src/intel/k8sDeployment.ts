@@ -105,6 +105,43 @@ export function inferProperties(
   setArrayEntryFromAllEntities({
     entity,
     context,
+    entityType: "k8sConfigMap",
+    toPath: ["spec", "template", "spec", "volumes"],
+    valuesCallback(
+      fromEntity,
+    ): ReturnType<SetArrayEntryFromAllEntities["valuesCallback"]> {
+      const toSet: { path: string[]; value: any; system: string }[] = [];
+
+      const configMapValues = fromEntity.getPropertyForAllSystems({
+        path: ["metadata", "name"],
+      });
+      if (configMapValues) {
+        for (const system in configMapValues) {
+          if (configMapValues[system]) {
+            toSet.push({
+              path: ["name"],
+              value: String(configMapValues[system]).concat("-vol"),
+              system,
+            });
+            toSet.push({
+              path: ["configMap", "name"],
+              value: configMapValues[system],
+              system,
+            });
+          }
+        }
+      }
+      return toSet;
+    },
+  });
+
+  // volumeMounts:
+  // - name: config
+  // mountPath: /etc/otel
+
+  setArrayEntryFromAllEntities({
+    entity,
+    context,
     entityType: "dockerImage",
     toPath: ["spec", "template", "spec", "containers"],
     valuesCallback(
@@ -153,9 +190,33 @@ export function inferProperties(
           });
         }
       }
+
+      const volumeMountsValues = entity.getPropertyForAllSystems({
+        path: ["spec", "template", "spec", "volumes"],
+      });
+
+      if (volumeMountsValues) {
+        for (const system in volumeMountsValues) {
+          if (volumeMountsValues[system]) {
+            toSet.push({
+              path: ["volumeMounts", "name"],
+              value: String(volumeMountsValues[system]).concat("-vol"),
+              system,
+            });
+          }
+        }
+      }
+
       return toSet;
     },
   });
+
+  // if contaienrs exists
+  // setProperty({
+  //   entity,
+  //   toPath: ["metadata", "name"],
+  //   value: entity.name,
+  // });
 
   return { entity };
 }
