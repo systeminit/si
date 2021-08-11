@@ -7,6 +7,7 @@ export {
   OpType,
   OpSource,
   EditField,
+  CodeDecorationItem,
 } from "./siEntity";
 export { SiStorable } from "./siStorable";
 export {

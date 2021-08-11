@@ -1,5 +1,5 @@
 import _ from "lodash";
-import yaml from "js-yaml";
+import YAML, { LineCounter, Parser } from "yaml";
 import {
   Prop,
   findProp,
@@ -124,6 +124,44 @@ export interface EditFieldArray extends EditField {
 export interface EditFieldObject extends EditField {
   type: "object";
   schema: PropObject | ItemPropObject;
+}
+
+export enum CodeDecorationItemType {
+  Gutter = "gutter",
+  Line = "line",
+}
+
+export interface CodeDecorationItemBase {
+  startLine: number;
+  startCol: number;
+  endLine: number;
+  endCol: number;
+}
+
+export interface CodeDecorationItemDriven extends CodeDecorationItemBase {
+  type: CodeDecorationItemType.Line;
+  kind: "driven";
+  source: OpSource;
+  system: OpBase["system"];
+}
+
+export interface CodeDecorationItemChanged extends CodeDecorationItemBase {
+  type: CodeDecorationItemType.Line;
+  kind: "changed";
+}
+
+export interface CodeDecorationItemQualification
+  extends CodeDecorationItemBase {
+  type: CodeDecorationItemType.Gutter;
+  kind: "qualification";
+}
+
+export type CodeDecorationItem = CodeDecorationItemDriven;
+
+export interface YamlDocPath {
+  path: string[];
+  line: number;
+  col: number;
 }
 
 export class SiEntity implements ISiEntity {
@@ -439,7 +477,7 @@ export class SiEntity implements ISiEntity {
   ): void {
     let newData;
     try {
-      newData = yaml.load(code);
+      newData = YAML.parse(code);
     } catch (e) {
       console.log("Failed to load valid yaml for code", e);
     }
@@ -518,6 +556,102 @@ export class SiEntity implements ISiEntity {
     }
   }
 
+  _yamlDocToPathsBlockSeq(
+    lineCounter: LineCounter,
+    results: YamlDocPath[],
+    startingPath: string[],
+    blockSeq: YAML.CST.BlockSequence,
+  ): YamlDocPath[] {
+    for (let key = 0; key < blockSeq.items.length; key++) {
+      const item = blockSeq.items[key];
+      if (item.value?.type == "scalar") {
+        const path = _.cloneDeep(startingPath);
+        path.push(`${key}`);
+        const { line, col } = lineCounter.linePos(item.value.offset);
+        results.push({ path, line, col });
+      } else if (item.value.type == "block-map") {
+        const path = _.cloneDeep(startingPath);
+        path.push(`${key}`);
+        const newBlockMap = item.value;
+        this._yamlDocToPathsBlockMap(lineCounter, results, path, newBlockMap);
+      } else if (item.value.type == "block-seq") {
+        const path = _.cloneDeep(startingPath);
+        path.push(`${key}`);
+        const newBlockSeq = item.value;
+        this._yamlDocToPathsBlockSeq(lineCounter, results, path, newBlockSeq);
+      }
+    }
+    return results;
+  }
+
+  _yamlDocToPathsBlockMap(
+    lineCounter: LineCounter,
+    results: YamlDocPath[],
+    startingPath: string[],
+    blockMap: YAML.CST.BlockMap,
+  ): YamlDocPath[] {
+    for (const item of blockMap.items) {
+      if (item.value?.type == "scalar" && item.key?.type == "scalar") {
+        const path = _.cloneDeep(startingPath);
+        const key = item.key?.source;
+        path.push(key);
+        const { line, col } = lineCounter.linePos(item.value.offset);
+        results.push({ path, line, col });
+      } else if (item.value.type == "block-map" && item.key?.type == "scalar") {
+        const path = _.cloneDeep(startingPath);
+        const key = item.key?.source;
+        path.push(key);
+        const newBlockMap = item.value;
+        this._yamlDocToPathsBlockMap(lineCounter, results, path, newBlockMap);
+      } else if (item.value.type == "block-seq" && item.key?.type == "scalar") {
+        const path = _.cloneDeep(startingPath);
+        const key = item.key?.source;
+        path.push(key);
+        const newBlockSeq = item.value;
+        this._yamlDocToPathsBlockSeq(lineCounter, results, path, newBlockSeq);
+      }
+    }
+    return results;
+  }
+
+  _yamlDocToPaths(system: string): YamlDocPath[] {
+    const lineCounter = new LineCounter();
+    const parser = new Parser(lineCounter.addNewLine);
+    const tokens = parser.parse(this.getCode(system));
+    const tokenArray = Array.from(tokens);
+    const result: YamlDocPath[] = [];
+    if (tokenArray[0]?.type == "document") {
+      const document = tokenArray[0];
+      if (document.value?.type == "block-map") {
+        this._yamlDocToPathsBlockMap(lineCounter, result, [], document.value);
+      }
+    }
+    return result;
+  }
+
+  getCodeDecorations(system: string): CodeDecorationItem[] {
+    const yamlDocPaths = this._yamlDocToPaths(system);
+    const results: CodeDecorationItem[] = [];
+    for (const op of this.ops) {
+      if (op.op == OpType.Set) {
+        const yamlDocPath = _.find(yamlDocPaths, { path: op.path });
+        if (yamlDocPath) {
+          results.push({
+            kind: "driven",
+            type: CodeDecorationItemType.Line,
+            source: op.source,
+            system: op.system,
+            startLine: yamlDocPath.line,
+            startCol: yamlDocPath.col,
+            endLine: yamlDocPath.line,
+            endCol: yamlDocPath.col,
+          });
+        }
+      }
+    }
+    return results;
+  }
+
   yamlNumberReplacer(): Record<string, any> {
     const numberified = _.cloneDeep(this.properties);
     for (const key of Object.keys(numberified)) {
@@ -565,35 +699,35 @@ export class SiEntity implements ISiEntity {
     const numberifiedProperties = this.yamlNumberReplacer();
     if (schema.code && schema.code.kind == CodeKind.YAML) {
       for (const system of codeToGen) {
-        const code = yaml.dump(numberifiedProperties[system], {
+        const code = YAML.stringify(numberifiedProperties[system], {
           //["apiVersion", "kind", "metadata", "spec", "data"]
           // -- this is probably not the most efficient implementation
           // of this sort algorithm, but I'm getting tired. :)
-          sortKeys: (a, b): number => {
-            if (a == b) {
+          sortMapEntries: (a, b): number => {
+            if (a.key == b.key) {
               return 0;
-            } else if (a == "apiVersion") {
+            } else if (a.key == "apiVersion") {
               return -1;
-            } else if (b == "apiVersion") {
+            } else if (b.key == "apiVersion") {
               return 1;
-            } else if (a == "kind") {
+            } else if (a.key == "kind") {
               return -1;
-            } else if (b == "kind") {
+            } else if (b.key == "kind") {
               return 1;
-            } else if (a == "metadata") {
+            } else if (a.key == "metadata") {
               return -1;
-            } else if (b == "metadata") {
+            } else if (b.key == "metadata") {
               return 1;
-            } else if (a == "spec") {
+            } else if (a.key == "spec") {
               return -1;
-            } else if (b == "spec") {
+            } else if (b.key == "spec") {
               return 1;
-            } else if (a == "data") {
+            } else if (a.key == "data") {
               return -1;
-            } else if (b == "data") {
+            } else if (b.key == "data") {
               return 1;
             } else {
-              return a < b ? -1 : a > b ? 1 : 0;
+              return a.key < b.key ? -1 : a.key > b.key ? 1 : 0;
             }
           },
         });
