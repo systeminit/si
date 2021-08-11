@@ -126,6 +126,10 @@ const k8sService: RegistryEntry = {
             ],
           },
         },
+        {
+          type: "string",
+          name: "externalName",
+        },
       ],
     },
   ],
