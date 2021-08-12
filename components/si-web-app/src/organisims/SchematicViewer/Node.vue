@@ -347,6 +347,7 @@ export default Vue.extend({
         name == "k8sIngress" ||
         name == "k8sNamespace" ||
         name == "k8sSecret" ||
+        name == "k8sConfigMap" ||
         name == "k8sService"
       ) {
         style["socket-component-k8s"] = true;
@@ -639,6 +640,7 @@ export default Vue.extend({
             schema.entityType == "k8sIngress" ||
             schema.entityType == "k8sNamespace" ||
             schema.entityType == "k8sSecret" ||
+            schema.entityType == "k8sConfigMap" ||
             schema.entityType == "k8sService"
           ) {
             classes["socket-component-k8s"] = true;
@@ -730,6 +732,7 @@ export default Vue.extend({
         schema.entityType == "k8sIngress" ||
         schema.entityType == "k8sNamespace" ||
         schema.entityType == "k8sSecret" ||
+        schema.entityType == "k8sConfigMap" ||
         schema.entityType == "k8sService"
       ) {
         response["node-component-k8s"] = true;
