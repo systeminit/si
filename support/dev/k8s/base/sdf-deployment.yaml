@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: sdf
-          image: systeminit/si-sdf:20210804.175704.0-sha.8bf62c25
+          image: systeminit/si-sdf:20210812.184406.0-sha.5a7b0f0f
           ports:
             - containerPort: 5156
           env:
