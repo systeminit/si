@@ -6,7 +6,6 @@ import {
   OpTombstone,
   OpUnset,
 } from "../src/siEntity";
-import yaml from "js-yaml";
 
 interface TestData {
   siAttr: SiEntity;

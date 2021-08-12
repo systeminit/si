@@ -11,6 +11,7 @@
         class="w-full h-full"
         :readOnly="!editMode"
         :value="codeValue"
+        :codeDecorations="codeDecorations"
         @input="setNewCodeValue"
         @blur="updateEntityFromCode"
       />
@@ -34,7 +35,7 @@ import { system$, updateEntity, editMode$ } from "@/observables";
 import { pluck, switchMap, tap } from "rxjs/operators";
 import { combineLatest, Observable, of } from "rxjs";
 import { Diff } from "@/api/sdf/model/diff";
-import { SiEntity, OpSource } from "si-entity";
+import { SiEntity, OpSource, CodeDecorationItem } from "si-entity";
 import { Qualification } from "@/api/sdf/model/qualification";
 import { emitEditorErrorMessage } from "@/atoms/PanelEventBus";
 import _ from "lodash";
@@ -68,6 +69,17 @@ export default Vue.extend({
       newCodeValue: "No code is the best code!",
     };
   },
+  computed: {
+    codeDecorations(): CodeDecorationItem[] {
+      // @ts-ignore
+      if (this.system && this.system.id) {
+        // @ts-ignore
+        return this.entity.getCodeDecorations(this.system.id);
+      } else {
+        return this.entity.getCodeDecorations("baseline");
+      }
+    },
+  },
   methods: {
     setNewCodeValue(value: string, _event: any) {
       this.newCodeValue = value;
@@ -80,10 +92,6 @@ export default Vue.extend({
       ) {
         return;
       }
-      console.log("hrm", {
-        codeValue: this.codeValue,
-        newCodeValue: this.newCodeValue,
-      });
 
       // @ts-ignore
       if (this.system) {

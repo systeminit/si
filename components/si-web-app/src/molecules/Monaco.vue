@@ -1,14 +1,16 @@
 <template>
-  <div class="flex w-full max-full overflow-hidden" @keydown.stop @keyup.stop>
+  <div class="flex w-full overflow-hidden max-full" @keydown.stop @keyup.stop>
     <div :id="editorId" class="w-full h-full"></div>
   </div>
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import Vue, { PropType } from "vue";
 import * as monaco from "monaco-editor";
+import { editor as MonacoEditor } from "monaco-editor";
 import _ from "lodash";
 import { emitEditorErrorMessage } from "@/atoms/PanelEventBus";
+import { CodeDecorationItem } from "si-entity";
 
 interface Data {
   editorId: string;
@@ -18,6 +20,7 @@ interface Data {
 declare module "vue/types/options" {
   interface ComponentOptions<V extends Vue> {
     monaco?: monaco.editor.ICodeEditor;
+    decorations?: string[];
   }
 }
 
@@ -31,6 +34,10 @@ export default Vue.extend({
     readOnly: {
       type: Boolean,
       default: false,
+    },
+    codeDecorations: {
+      type: Array as PropType<CodeDecorationItem[]>,
+      default: [],
     },
   },
   data(): Data {
@@ -64,6 +71,7 @@ export default Vue.extend({
       });
       editor.setValue(this.value);
       this.$options.monaco = editor;
+      this.$options.decorations = [];
       editor.onDidBlurEditorText(() => {
         this.$emit("blur");
       });
@@ -98,6 +106,54 @@ export default Vue.extend({
         }
       },
     },
+    codeDecorations: {
+      immediate: true,
+      handler(newValue: CodeDecorationItem[]) {
+        if (this.$options.monaco && _.isArray(this.$options.decorations)) {
+          const newDecorations: Array<MonacoEditor.IModelDeltaDecoration> = [];
+          for (const codeItem of newValue) {
+            const range = new monaco.Range(
+              codeItem.startLine,
+              codeItem.startCol,
+              codeItem.endLine,
+              codeItem.endCol,
+            );
+            const options: MonacoEditor.IModelDecorationOptions = {};
+            if (codeItem.type == "line") {
+              options.isWholeLine = true;
+              if (codeItem.kind == "driven") {
+                if (codeItem.source == "inferred") {
+                  options.linesDecorationsClassName = "inferredLineDecoration";
+                } else {
+                  options.linesDecorationsClassName = "manualLineDecoration";
+                }
+              }
+            }
+            newDecorations.push({
+              range,
+              options,
+            });
+          }
+          this.$options.decorations = this.$options.monaco.deltaDecorations(
+            this.$options.decorations,
+            newDecorations,
+          );
+        }
+      },
+    },
   },
 });
 </script>
+
+<style>
+.inferredLineDecoration {
+  background: #69c6e3;
+  width: 2px !important;
+  margin-left: 3px;
+}
+.manualLineDecoration {
+  background: #5b6163;
+  width: 2px !important;
+  margin-left: 3px;
+}
+</style>
