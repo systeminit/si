@@ -6,9 +6,9 @@
   "main": "dist/index.js",
   "scripts": {
     "clean": "rm -rf ./dist",
-    "build": "tsc",
+    "build": "tsc --downlevelIteration",
     "build:clean": "npm run clean && npm run build",
-    "build:watch": "npm run clean && tsc --watch",
+    "build:watch": "npm run clean && tsc --downlevelIteration --watch",
     "watch": "npm run build:watch",
     "test": "jest",
     "test:watch": "jest --watch --forceExit",
