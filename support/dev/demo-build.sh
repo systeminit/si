@@ -18,7 +18,7 @@ main() {
     DOCKER_BUILDKIT=1 \
     BUILDKIT_PROGRESS=plain \
     COMPOSE_DOCKER_CLI_BUILD=1 \
-    docker-compose build --parallel
+    docker-compose build --parallel "$@"
 }
 
 die() {

@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: veritech
-          image: systeminit/si-veritech:20210805.212101.0-sha.334dd9e1
+          image: systeminit/si-veritech:20210812.184421.0-sha.5a7b0f0f
           ports:
             - containerPort: 5157
           env:
