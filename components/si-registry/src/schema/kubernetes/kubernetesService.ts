@@ -34,6 +34,12 @@ const kubernetesService: RegistryEntry = {
       arity: Arity.Many,
     },
     {
+      name: "k8sSecret",
+      types: ["k8sSecret"],
+      edgeKind: "configures",
+      arity: Arity.Many,
+    },
+    {
       name: "k8sService",
       types: ["k8sService"],
       edgeKind: "configures",
