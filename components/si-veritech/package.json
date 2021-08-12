@@ -6,8 +6,8 @@
   "main": "src/index.ts",
   "scripts": {
     "clean": "rm -rf ./dist",
-    "build": "tsc",
-    "build:watch": "npm run clean && tsc --watch",
+    "build": "tsc --downlevelIteration",
+    "build:watch": "npm run clean && tsc --downlevelIteration --watch",
     "watch": "ts-node-dev --respawn --transpile-only --rs --exit-child ./src/index.ts",
     "start": "node ./dist/index.js",
     "start:debug": "npm run build && node --inspect-brk ./dist/index.js",
