@@ -4,8 +4,10 @@
       class="relative flex flex-row items-center h-10 px-6 py-2 text-base text-white align-middle property-section-bg-color"
     >
       <div class="text-lg">{{ entity.entityType }} {{ entity.name }} Code</div>
+      <div class="flex flex-grow align-middle justify-end">
+        <SiButton kind="save" icon="save" label="save" size="xs" />
+      </div>
     </div>
-
     <div class="flex flex-col flex-grow w-full overflow-auto overscroll-none">
       <Monaco
         class="w-full h-full"
@@ -34,10 +36,11 @@ import Monaco from "@/molecules/Monaco.vue";
 import { system$, updateEntity, editMode$ } from "@/observables";
 import { pluck, switchMap, tap } from "rxjs/operators";
 import { combineLatest, Observable, of } from "rxjs";
-import { Diff } from "@/api/sdf/model/diff";
+import { Diff, DiffEntry } from "@/api/sdf/model/diff";
 import { SiEntity, OpSource, CodeDecorationItem } from "si-entity";
 import { Qualification } from "@/api/sdf/model/qualification";
 import { emitEditorErrorMessage } from "@/atoms/PanelEventBus";
+import SiButton from "@/atoms/SiButton.vue";
 import _ from "lodash";
 
 export interface Data {
@@ -49,6 +52,7 @@ export default Vue.extend({
   name: "CodeViewer",
   components: {
     Monaco,
+    SiButton,
   },
   props: {
     entity: {
@@ -71,12 +75,33 @@ export default Vue.extend({
   },
   computed: {
     codeDecorations(): CodeDecorationItem[] {
+      const changedDiffEntries: string[][] = _.map(
+        _.filter(this.diff, d => {
+          if (d.add || d.edit) {
+            return true;
+          } else {
+            return false;
+          }
+        }),
+        d => {
+          if (d.add) {
+            return d.add.path.slice(2);
+          } else if (d.edit) {
+            return d.edit.path.slice(2);
+          } else {
+            throw new Error("returned a diff entry thats not an add or edit");
+          }
+        },
+      );
       // @ts-ignore
       if (this.system && this.system.id) {
-        // @ts-ignore
-        return this.entity.getCodeDecorations(this.system.id);
+        return this.entity.getCodeDecorations(
+          // @ts-ignore
+          this.system.id,
+          changedDiffEntries,
+        );
       } else {
-        return this.entity.getCodeDecorations("baseline");
+        return this.entity.getCodeDecorations("baseline", changedDiffEntries);
       }
     },
   },

@@ -127,6 +127,11 @@ export default Vue.extend({
                 } else {
                   options.linesDecorationsClassName = "manualLineDecoration";
                 }
+              } else if (codeItem.kind == "changed") {
+                options.linesDecorationsClassName = "changedLineDecoration";
+              } else if (codeItem.kind == "qualification") {
+                options.linesDecorationsClassName =
+                  "qualificationLineDecoration";
               }
             }
             newDecorations.push({
@@ -155,5 +160,15 @@ export default Vue.extend({
   background: #5b6163;
   width: 2px !important;
   margin-left: 3px;
+}
+.changedLineDecoration {
+  background: #ce7f3e;
+  width: 2px !important;
+  margin-left: 7px;
+}
+.qualificationLineDecoration {
+  background: rgba(248, 113, 113, 1);
+  width: 2px !important;
+  margin-left: 11px;
 }
 </style>
