@@ -1,5 +1,5 @@
 ARG BUILDER_IMAGE=cache
-ARG NODE_VERSION=16.5.0
+ARG NODE_VERSION=16.6.1
 ARG NGINX_VERSION=1.21.1
 
 ###########################################################################
