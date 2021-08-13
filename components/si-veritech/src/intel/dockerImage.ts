@@ -52,11 +52,15 @@ export const checkQualifications: CheckQualificationCallbacks = {
       system: r.systemId,
       path: ["image"],
     }) as string;
-    const dockerPull = await ctx.exec("docker", ["pull", image]);
+    const skopeoInspect = await ctx.exec("skopeo", [
+      "inspect",
+      "--config",
+      `docker://docker.io/${image}`,
+    ]);
     return {
       name: q.name,
-      qualified: !dockerPull.failed,
-      output: dockerPull.all,
+      qualified: !skopeoInspect.failed,
+      output: skopeoInspect.all,
     };
   },
 };
