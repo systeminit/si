@@ -1,16 +1,17 @@
 use bytes::Buf;
 use deadpool::managed::Object;
 use deadpool_postgres::{
-    config::ConfigError, Config, Manager, ManagerConfig, Pool, PoolError, RecyclingMethod,
-    Transaction, TransactionBuilder,
+    config::ConfigError, Config, Manager, ManagerConfig, Pool, PoolConfig, PoolError,
+    RecyclingMethod, Transaction, TransactionBuilder,
 };
-use std::{fmt, net::ToSocketAddrs, ops::DerefMut, sync::Arc};
+use std::{fmt, net::ToSocketAddrs, ops::DerefMut, sync::Arc, time::Duration};
 use tokio_postgres::{
     types::{BorrowToSql, ToSql, Type},
     CancelToken, Client, CopyInSink, CopyOutStream, IsolationLevel, NoTls, Portal, Row, RowStream,
     SimpleQueryMessage, Statement, ToStatement,
 };
 use tracing::{
+    debug,
     field::{display, Empty},
     instrument, Instrument, Span,
 };
@@ -60,6 +61,7 @@ struct ConnectionMetadata {
     db_connection_string: String,
     db_name: String,
     db_user: String,
+    db_pool_max_size: usize,
     net_peer_ip: String,
     net_peer_port: u16,
     net_transport: &'static str,
@@ -74,6 +76,7 @@ impl PgPool {
             db.connection_string = Empty,
             db.name = Empty,
             db.user = Empty,
+            db.pool.max_size = Empty,
             net.peer.ip = Empty,
             net.peer.port = Empty,
             net.transport = Empty,
@@ -90,6 +93,18 @@ impl PgPool {
         cfg.manager = Some(ManagerConfig {
             recycling_method: RecyclingMethod::Fast,
         });
+        let mut pool_config = PoolConfig::new(settings.pool_max_size);
+        if let Some(secs) = settings.pool_timeout_wait_secs {
+            pool_config.timeouts.wait = Some(Duration::from_secs(secs));
+        }
+        if let Some(secs) = settings.pool_timeout_create_secs {
+            pool_config.timeouts.create = Some(Duration::from_secs(secs));
+        }
+        if let Some(secs) = settings.pool_timeout_recycle_secs {
+            pool_config.timeouts.recycle = Some(Duration::from_secs(secs));
+        }
+        debug!(db.pool_config = ?pool_config);
+        cfg.pool = Some(pool_config);
         let pool = cfg.create_pool(NoTls)?;
 
         let resolving_hostname = format!("{}:{}", settings.hostname, settings.port);
@@ -110,6 +125,7 @@ impl PgPool {
             ),
             db_name: settings.dbname.clone(),
             db_user: settings.user.clone(),
+            db_pool_max_size: settings.pool_max_size,
             net_peer_ip,
             net_peer_port: settings.port,
             net_transport: "ip_tcp",
@@ -123,6 +139,7 @@ impl PgPool {
         );
         span.record("db.name", &metadata.db_name.as_str());
         span.record("db.user", &metadata.db_user.as_str());
+        span.record("db.pool.max_size", &metadata.db_pool_max_size);
         span.record("net.peer.ip", &metadata.net_peer_ip.as_str());
         span.record("net.peer.port", &metadata.net_peer_port);
         span.record("net.transport", &metadata.net_transport);
@@ -147,12 +164,21 @@ impl PgPool {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = Empty,
+            db.pool.size = Empty,
+            db.pool.available = Empty,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
             net.transport = %self.metadata.net_transport,
         )
     )]
     pub async fn get(&self) -> PgPoolResult<InstrumentedClient> {
+        let pool_status = self.pool.status();
+        let span = Span::current();
+        span.record("db.pool.max_size", &pool_status.max_size);
+        span.record("db.pool.size", &pool_status.size);
+        span.record("db.pool.available", &pool_status.available);
+
         let inner = self.pool.get().await?;
 
         Ok(InstrumentedClient {
@@ -169,6 +195,7 @@ impl PgPool {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
             net.transport = %self.metadata.net_transport,
@@ -220,6 +247,7 @@ impl InstrumentedClient {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             db.statement = query,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
@@ -240,6 +268,7 @@ impl InstrumentedClient {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             db.statement = query,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
@@ -265,6 +294,7 @@ impl InstrumentedClient {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             db.transaction = Empty,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
@@ -292,6 +322,7 @@ impl InstrumentedClient {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
             net.transport = %self.metadata.net_transport,
@@ -317,6 +348,7 @@ impl InstrumentedClient {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             db.statement = query,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
@@ -340,6 +372,7 @@ impl InstrumentedClient {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             db.statement = query,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
@@ -374,6 +407,7 @@ impl InstrumentedClient {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             db.statement = statement,
             db.rows = Empty,
             net.peer.ip = %self.metadata.net_peer_ip,
@@ -415,6 +449,7 @@ impl InstrumentedClient {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             db.statement = statement,
             db.rows = Empty,
             net.peer.ip = %self.metadata.net_peer_ip,
@@ -456,6 +491,7 @@ impl InstrumentedClient {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             db.statement = statement,
             db.rows = Empty,
             net.peer.ip = %self.metadata.net_peer_ip,
@@ -503,6 +539,7 @@ impl InstrumentedClient {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             db.statement = statement,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
@@ -540,6 +577,7 @@ impl InstrumentedClient {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             db.statement = statement,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
@@ -576,6 +614,7 @@ impl InstrumentedClient {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             db.statement = statement,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
@@ -608,6 +647,7 @@ impl InstrumentedClient {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
             net.transport = %self.metadata.net_transport,
@@ -637,6 +677,7 @@ impl InstrumentedClient {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
             net.transport = %self.metadata.net_transport,
@@ -672,6 +713,7 @@ impl InstrumentedClient {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             db.statement = query,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
@@ -701,6 +743,7 @@ impl InstrumentedClient {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             db.statement = query,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
@@ -721,6 +764,7 @@ impl InstrumentedClient {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
             net.transport = %self.metadata.net_transport,
@@ -744,6 +788,7 @@ impl InstrumentedClient {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
             net.transport = %self.metadata.net_transport,
@@ -764,6 +809,7 @@ impl InstrumentedClient {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
             net.transport = %self.metadata.net_transport,
@@ -807,6 +853,7 @@ impl<'a> InstrumentedTransaction<'a> {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             db.statement = query,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
@@ -831,6 +878,7 @@ impl<'a> InstrumentedTransaction<'a> {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             db.statement = query,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
@@ -858,6 +906,7 @@ impl<'a> InstrumentedTransaction<'a> {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
             net.transport = %self.metadata.net_transport,
@@ -882,6 +931,7 @@ impl<'a> InstrumentedTransaction<'a> {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
             net.transport = %self.metadata.net_transport,
@@ -907,6 +957,7 @@ impl<'a> InstrumentedTransaction<'a> {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             db.statement = query,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
@@ -934,6 +985,7 @@ impl<'a> InstrumentedTransaction<'a> {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             db.statement = query,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
@@ -972,6 +1024,7 @@ impl<'a> InstrumentedTransaction<'a> {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             db.statement = statement,
             db.rows = Empty,
             net.peer.ip = %self.metadata.net_peer_ip,
@@ -1018,6 +1071,7 @@ impl<'a> InstrumentedTransaction<'a> {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             db.statement = statement,
             db.rows = Empty,
             net.peer.ip = %self.metadata.net_peer_ip,
@@ -1064,6 +1118,7 @@ impl<'a> InstrumentedTransaction<'a> {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             db.statement = statement,
             db.rows = Empty,
             net.peer.ip = %self.metadata.net_peer_ip,
@@ -1116,6 +1171,7 @@ impl<'a> InstrumentedTransaction<'a> {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             db.statement = statement,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
@@ -1157,6 +1213,7 @@ impl<'a> InstrumentedTransaction<'a> {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             db.statement = statement,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
@@ -1197,6 +1254,7 @@ impl<'a> InstrumentedTransaction<'a> {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             db.statement = statement,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
@@ -1233,6 +1291,7 @@ impl<'a> InstrumentedTransaction<'a> {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
             net.transport = %self.metadata.net_transport,
@@ -1264,6 +1323,7 @@ impl<'a> InstrumentedTransaction<'a> {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
             net.transport = %self.metadata.net_transport,
@@ -1296,6 +1356,7 @@ impl<'a> InstrumentedTransaction<'a> {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
             net.transport = %self.metadata.net_transport,
@@ -1320,6 +1381,7 @@ impl<'a> InstrumentedTransaction<'a> {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
             net.transport = %self.metadata.net_transport,
@@ -1354,6 +1416,7 @@ impl<'a> InstrumentedTransaction<'a> {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
             net.transport = %self.metadata.net_transport,
@@ -1387,6 +1450,7 @@ impl<'a> InstrumentedTransaction<'a> {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
             net.transport = %self.metadata.net_transport,
@@ -1426,6 +1490,7 @@ impl<'a> InstrumentedTransaction<'a> {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             db.statement = query,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
@@ -1459,6 +1524,7 @@ impl<'a> InstrumentedTransaction<'a> {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             db.statement = query,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
@@ -1483,6 +1549,7 @@ impl<'a> InstrumentedTransaction<'a> {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
             net.transport = %self.metadata.net_transport,
@@ -1502,6 +1569,7 @@ impl<'a> InstrumentedTransaction<'a> {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             db.transaction = Empty,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
@@ -1528,6 +1596,7 @@ impl<'a> InstrumentedTransaction<'a> {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
             net.transport = %self.metadata.net_transport,
@@ -1556,6 +1625,7 @@ impl<'a> InstrumentedTransaction<'a> {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
             net.transport = %self.metadata.net_transport,
@@ -1632,6 +1702,7 @@ impl<'a> InstrumentedTransactionBuilder<'a> {
             db.connection_string = %self.metadata.db_connection_string,
             db.name = %self.metadata.db_name,
             db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
             net.peer.ip = %self.metadata.net_peer_ip,
             net.peer.port = %self.metadata.net_peer_port,
             net.transport = %self.metadata.net_transport,

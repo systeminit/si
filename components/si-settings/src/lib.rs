@@ -5,13 +5,16 @@ use sodiumoxide;
 use std::path::PathBuf;
 use tracing::{event, Level};
 
-use std::env;
+use std::{cmp, env};
 
 pub mod error;
 
 use crate::error::{Result, SettingsError};
 
+const MAX_POOL_SIZE_MINIMUM: usize = 32;
+
 #[derive(Debug, Deserialize, Clone)]
+#[serde(default)]
 pub struct Pg {
     pub user: String,
     pub password: String,
@@ -19,22 +22,33 @@ pub struct Pg {
     pub application_name: String,
     pub hostname: String,
     pub port: u16,
+    pub pool_max_size: usize,
+    pub pool_timeout_wait_secs: Option<u64>,
+    pub pool_timeout_create_secs: Option<u64>,
+    pub pool_timeout_recycle_secs: Option<u64>,
 }
 
 impl Default for Pg {
     fn default() -> Self {
+        let pool_max_size = cmp::max(MAX_POOL_SIZE_MINIMUM, num_cpus::get_physical() * 4);
+
         Pg {
             user: String::from("si"),
             password: String::from("bugbear"),
             dbname: String::from("si"),
-            application_name: String::from("sdf"),
+            application_name: String::from("si-sdf"),
             hostname: String::from("localhost"),
             port: 5432,
+            pool_max_size,
+            pool_timeout_wait_secs: None,
+            pool_timeout_create_secs: None,
+            pool_timeout_recycle_secs: None,
         }
     }
 }
 
 #[derive(Debug, Deserialize, Clone)]
+#[serde(default)]
 pub struct Nats {
     pub url: String,
 }
@@ -48,6 +62,7 @@ impl Default for Nats {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+#[serde(default)]
 pub struct Veritech {
     pub ws_url: String,
     pub http_url: String,
@@ -63,6 +78,7 @@ impl Default for Veritech {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+#[serde(default)]
 pub struct EventLogFs {
     pub root: PathBuf,
 }
@@ -75,12 +91,20 @@ impl Default for EventLogFs {
     }
 }
 
-#[derive(Debug, Deserialize, Default, Clone)]
+#[derive(Debug, Deserialize, Clone)]
+#[serde(default)]
 pub struct Service {
     pub port: u16,
 }
 
+impl Default for Service {
+    fn default() -> Self {
+        Self { port: 5156 }
+    }
+}
+
 #[derive(Debug, Deserialize, Clone)]
+#[serde(default)]
 pub struct Paging {
     pub key: sodiumoxide::crypto::secretbox::Key,
 }
@@ -94,6 +118,7 @@ impl Default for Paging {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+#[serde(default)]
 pub struct JwtEncrypt {
     pub key: sodiumoxide::crypto::secretbox::Key,
 }
@@ -107,6 +132,7 @@ impl Default for JwtEncrypt {
 }
 
 #[derive(Debug, Deserialize, Default, Clone)]
+#[serde(default)]
 pub struct Settings {
     pub pg: Pg,
     pub nats: Nats,
