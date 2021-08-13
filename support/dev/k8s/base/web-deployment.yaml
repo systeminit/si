@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: web
-          image: systeminit/si-web-app:20210812.184440.0-sha.5a7b0f0f
+          image: systeminit/si-web-app:20210813.211006.0-sha.7d335fa6
           ports:
             - containerPort: 80
       imagePullSecrets:
