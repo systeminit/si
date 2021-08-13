@@ -40,7 +40,7 @@ export function inferProperties(
   setProperty({
     entity,
     toPath: ["metadata", "name"],
-    value: `${entity.name}-service`,
+    value: entity.name,
   });
 
   // Do you have a k8s namespace? If so, set the namespace.

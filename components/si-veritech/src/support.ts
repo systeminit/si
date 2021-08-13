@@ -247,7 +247,6 @@ export function k8sDiscoverEntity(
 ): void {
   const path: string[] = [];
   const entityName = _.get(data, ["metadata", "name"]);
-  entity.name = entityName.replace("-service", "");
   //_k8sDiscoverEntityObject(entity, data, path);
 }
 

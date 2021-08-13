@@ -272,7 +272,6 @@ export async function discover(
         system: "baseline",
       });
 
-      //k8sService.name = serviceData["metadata"]["name"].replace("-service", "");
       k8sDiscoverEntity(k8sService, serviceData);
       //k8sService.computeProperties();
       //k8sService.computeCode();
