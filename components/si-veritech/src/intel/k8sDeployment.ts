@@ -120,7 +120,7 @@ export function inferProperties(
           if (configMapValues[system]) {
             toSet.push({
               path: ["name"],
-              value: String(configMapValues[system]).concat("-vol"),
+              value: configMapValues[system],
               system,
             });
             toSet.push({
@@ -200,7 +200,7 @@ export function inferProperties(
           if (volumeMountsValues[system]) {
             toSet.push({
               path: ["volumeMounts", "name"],
-              value: String(volumeMountsValues[system]).concat("-vol"),
+              value: volumeMountsValues[system],
               system,
             });
           }
