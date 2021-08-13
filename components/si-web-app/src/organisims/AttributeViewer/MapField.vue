@@ -28,12 +28,23 @@
             </div>
             <div class="flex ml-2">
               <input
+                v-if="valueWidget == 'text'"
                 type="text"
                 @focus="onFocus"
                 @blur="onBlurForKeyValue(mapValue.key)"
                 @keyup.enter="onEnterKey($event)"
                 v-model="currentValue[mapValue.key]"
                 class="w-full pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey si-property disabled:opacity-50"
+                :class="borderColorForKey(mapValue.key)"
+                placeholder="value"
+              />
+              <textarea
+                v-else
+                @focus="onFocus"
+                @blur="onBlurForKeyValue(mapValue.key)"
+                @keyup.enter="onEnterKey($event)"
+                v-model="currentValue[mapValue.key]"
+                class="w-full h-5 pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey si-property disabled:opacity-50"
                 :class="borderColorForKey(mapValue.key)"
                 placeholder="value"
               />
@@ -66,8 +77,15 @@
               <div class="flex mr-2">
                 <input
                   type="text"
+                  v-if="valueWidget == 'text'"
                   v-model="newValue"
                   class="w-full pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey input-border-grey si-property disabled:opacity-50"
+                  placeholder="value"
+                />
+                <textarea
+                  v-else
+                  v-model="newValue"
+                  class="w-full h-5 pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey input-border-grey si-property disabled:opacity-50"
                   placeholder="value"
                 />
               </div>
@@ -107,7 +125,17 @@
               <span :class="fieldNameColorForKey(key)"> {{ key }}</span
               >:
             </div>
-            <div class="ml-1 font-light text-left">
+            <div
+              class="ml-1 font-light text-left"
+              v-if="valueWidget == 'textArea'"
+            >
+              <pre>
+              <code class="whitespace-pre">
+{{ value }}
+              </code>
+              </pre>
+            </div>
+            <div class="ml-1 font-light text-left" v-else>
               {{ value }}
             </div>
           </div>
@@ -187,6 +215,14 @@ export default BaseField.extend({
         this.keyValue[index] = sorted[index].key;
       }
       return _.sortBy(data, ["key"]);
+    },
+    valueWidget(): "text" | "textArea" {
+      if (this.editField.schema.type == "map") {
+        if (this.editField.schema.valueProperty.widget?.name == "textArea") {
+          return "textArea";
+        }
+      }
+      return "text";
     },
   },
   methods: {
