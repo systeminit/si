@@ -682,42 +682,25 @@ export class SiEntity implements ISiEntity {
 
   yamlNumberReplacer(): Record<string, any> {
     const numberified = _.cloneDeep(this.properties);
-    for (const key of Object.keys(numberified)) {
-      numberified[key] = this._replaceYamlNumberObject(numberified[key]);
+    for (const op of this.ops) {
+      if (op.op == OpType.Set) {
+        const prop = this.findProp(op);
+        if (prop) {
+          if (prop.type == "number") {
+            for (const system of Object.keys(numberified)) {
+              const value = _.get(numberified, [system, ...op.path]);
+              if (value) {
+                const number = _.toNumber(op.value);
+                if (!_.isNaN(number)) {
+                  _.set(numberified, [system, ...op.path], number);
+                }
+              }
+            }
+          }
+        }
+      }
     }
     return numberified;
-  }
-
-  _replaceYamlNumberObject(obj: Record<string, any>): Record<string, any> {
-    for (const key of Object.keys(obj)) {
-      if (_.isObjectLike(obj[key])) {
-        obj[key] = this._replaceYamlNumberObject(obj[key]);
-      } else if (_.isArray(obj[key])) {
-        obj[key] = this._replaceYamlNumberArray(obj[key]);
-      } else {
-        const maybeNumber = _.toNumber(obj[key]);
-        if (!_.isNaN(maybeNumber)) {
-          obj[key] = maybeNumber;
-        }
-      }
-    }
-    return obj;
-  }
-
-  _replaceYamlNumberArray(arr: any[]): any[] {
-    for (let x = 0; x < arr.length; x++) {
-      if (_.isObjectLike(arr[x])) {
-        arr[x] = this._replaceYamlNumberObject(arr[x]);
-      } else if (_.isArray(arr[x])) {
-        arr[x] = this._replaceYamlNumberArray(arr[x]);
-      } else {
-        const maybeNumber = _.toNumber(arr[x]);
-        if (!_.isNaN(maybeNumber)) {
-          arr[x] = maybeNumber;
-        }
-      }
-    }
-    return arr;
   }
 
   computeCode(): void {
