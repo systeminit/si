@@ -152,11 +152,14 @@ export interface CodeDecorationItemChanged extends CodeDecorationItemBase {
 
 export interface CodeDecorationItemQualification
   extends CodeDecorationItemBase {
-  type: CodeDecorationItemType.Gutter;
+  type: CodeDecorationItemType.Line;
   kind: "qualification";
 }
 
-export type CodeDecorationItem = CodeDecorationItemDriven;
+export type CodeDecorationItem =
+  | CodeDecorationItemDriven
+  | CodeDecorationItemChanged
+  | CodeDecorationItemQualification;
 
 export interface YamlDocPath {
   path: string[];
@@ -629,7 +632,10 @@ export class SiEntity implements ISiEntity {
     return result;
   }
 
-  getCodeDecorations(system: string): CodeDecorationItem[] {
+  getCodeDecorations(
+    system: string,
+    diffPaths: string[][],
+  ): CodeDecorationItem[] {
     const yamlDocPaths = this._yamlDocToPaths(system);
     const results: CodeDecorationItem[] = [];
     for (const op of this.ops) {
@@ -646,6 +652,28 @@ export class SiEntity implements ISiEntity {
             endLine: yamlDocPath.line,
             endCol: yamlDocPath.col,
           });
+          const isDiff = _.find(diffPaths, (p) => _.isEqual(p, op.path));
+          if (isDiff) {
+            results.push({
+              kind: "changed",
+              type: CodeDecorationItemType.Line,
+              startLine: yamlDocPath.line,
+              startCol: yamlDocPath.col,
+              endLine: yamlDocPath.line,
+              endCol: yamlDocPath.col,
+            });
+          }
+          const valid = this.validateProp(op);
+          if (valid.errors) {
+            results.push({
+              kind: "qualification",
+              type: CodeDecorationItemType.Line,
+              startLine: yamlDocPath.line,
+              startCol: yamlDocPath.col,
+              endLine: yamlDocPath.line,
+              endCol: yamlDocPath.col,
+            });
+          }
         }
       }
     }
