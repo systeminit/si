@@ -29,7 +29,6 @@ services:
       dockerfile: components/si-veritech/Dockerfile
     ports:
       - "5157:5157"
-    privileged: true
   sdf:
     build:
       context: ../..
