@@ -80,6 +80,9 @@ const k8sSecret: RegistryEntry = {
       name: "data",
       valueProperty: {
         type: "string",
+        widget: {
+          name: "textArea",
+        },
       },
     },
   ],

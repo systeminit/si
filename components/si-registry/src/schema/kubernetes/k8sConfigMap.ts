@@ -39,6 +39,9 @@ const k8sConfigMap: RegistryEntry = {
       name: "data",
       valueProperty: {
         type: "string",
+        widget: {
+          name: "textArea",
+        },
       },
     },
   ],
