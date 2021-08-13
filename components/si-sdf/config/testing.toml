@@ -1,19 +1,5 @@
-[pg]
-user = "si"
-password = "bugbear"
-dbname = "si"
-application_name = "si-sdf"
-hostname = "localhost"
-port = 5432
-
 [event_log_fs]
 root = "tmp/testing-event-log-fs"
-
-[nats]
-url = "localhost"
-
-[veritech]
-url = "ws://localhost:5157"
 
 [service]
 port = 50152
