@@ -91,12 +91,14 @@ export async function syncResource(
     internalHealth: req.resource.internalHealth,
     subResources: req.resource.subResources,
   };
-  const result = await ctx.exec("docker", [
-    "pull",
-    req.entity.getProperty({
-      system,
-      path: ["image"],
-    }),
+  const image = req.entity.getProperty({
+    system,
+    path: ["image"],
+  });
+  const result = await ctx.exec("skopeo", [
+    "inspect",
+    "--config",
+    `docker://docker.io/${image}`,
   ]);
   if (result.exitCode != 0) {
     response.health = "error";
@@ -107,19 +109,7 @@ export async function syncResource(
     response.health = "ok";
     response.internalHealth = ResourceInternalHealth.Ok;
     response.state = "ok";
-    const inspectResult = await ctx.exec("docker", [
-      "image",
-      "inspect",
-      req.entity.getProperty({
-        system,
-        path: ["image"],
-      }),
-    ]);
-    if (inspectResult.exitCode != 0) {
-      response.error = inspectResult.all;
-    } else {
-      response.data["inspect"] = JSON.parse(inspectResult.stdout);
-    }
+    response.data["inspect"] = JSON.parse(result.stdout);
   }
   return response;
 }

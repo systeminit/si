@@ -31,9 +31,9 @@ export default Vue.extend({
   computed: {
     data(): Record<string, any> | null {
       // @ts-ignore
-      if (this.resource.data.inspect && this.resource.data.inspect.length > 0) {
+      if (this.resource.data.inspect) {
         // @ts-ignore
-        return this.resource.data.inspect[0];
+        return this.resource.data.inspect;
       } else {
         return null;
       }
@@ -50,11 +50,11 @@ export default Vue.extend({
     exposedPorts(): ResourceFieldArrayValue {
       if (
         this.data &&
-        this.data["Config"] &&
-        this.data["Config"]["ExposedPorts"]
+        this.data["config"] &&
+        this.data["config"]["ExposedPorts"]
       ) {
         let results = [];
-        for (const port of Object.keys(this.data["Config"]["ExposedPorts"])) {
+        for (const port of Object.keys(this.data["config"]["ExposedPorts"])) {
           results.push({ label: port, value: port });
         }
         return results;
