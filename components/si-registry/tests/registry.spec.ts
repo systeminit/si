@@ -1,7 +1,7 @@
 import { findProp } from "../src/registry";
 
 describe("registry", () => {
-  describe("findProperty", () => {
+  describe("findProp", () => {
     test("simple property", () => {
       const simpleString = findProp(["leftHandPath", "simpleString"]);
       expect(simpleString).not.toBeUndefined();
@@ -38,6 +38,22 @@ describe("registry", () => {
         expect.objectContaining({
           name: "abnormal",
           type: "array",
+        }),
+      );
+    });
+    test("deeply nested array of arrays with an object", () => {
+      const prop = findProp([
+        "yamlNumbers",
+        "nestedObject",
+        "objectArrayArray",
+        "0",
+        "0",
+        "deeplyNestedString",
+      ]);
+      expect(prop).toEqual(
+        expect.objectContaining({
+          name: "deeplyNestedString",
+          type: "string",
         }),
       );
     });

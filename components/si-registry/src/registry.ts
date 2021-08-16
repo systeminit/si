@@ -1,5 +1,13 @@
 import _ from "lodash";
-import { Prop, RegistryEntry } from "./registryEntry";
+import {
+  ItemProp,
+  ItemPropArray,
+  ItemPropObject,
+  Prop,
+  PropArray,
+  PropObject,
+  RegistryEntry,
+} from "./registryEntry";
 
 // TODO: Eventually, this needs to become a service that serves up the registry entries
 // for a given organization/billing account - they should be customizable, etc etc.
@@ -30,10 +38,12 @@ import azureLocation from "./schema/azure/azureLocation";
 import azureAksCluster from "./schema/azure/azureAksCluster";
 import azureServicePrincipal from "./schema/azure/azureServicePrincipal";
 import azureResourceGroup from "./schema/azure/azureResourceGroup";
+import yamlNumbers from "./schema/test/yamlNumbers";
 
 export const registry: { [entityType: string]: RegistryEntry } = {
   leftHandPath,
   noCallbacks,
+  yamlNumbers,
   system,
   service,
   application,
@@ -61,7 +71,31 @@ export const registry: { [entityType: string]: RegistryEntry } = {
   azureResourceGroup,
 };
 
-export function findProp(path: string[]): Prop | undefined {
+function _findPropForObject(
+  name: string,
+  targetProp: PropObject | ItemPropObject,
+): Prop | undefined {
+  const prop = _.find(targetProp.properties, ["name", name]);
+  return prop;
+}
+
+//function _findPropForArray(
+//  name: string,
+//  targetProp: PropArray | ItemPropArray,
+//): Prop | undefined {
+//  const prop = _.find(targetProp.properties, ["name", name]);
+//  return prop;
+//}
+
+function _findPropForRegistryEntry(
+  name: string,
+  registryEntry: RegistryEntry,
+): Prop | undefined {
+  const prop = _.find(registryEntry.properties, ["name", name]);
+  return prop;
+}
+
+export function findProp(path: string[]): ItemProp | Prop | undefined {
   if (path.length == 0) {
     return undefined;
   }
@@ -69,34 +103,75 @@ export function findProp(path: string[]): Prop | undefined {
   if (!registryEntry) {
     return undefined;
   }
-  let properties = registryEntry.properties;
+  let prop: ItemProp | Prop | undefined;
   for (let x = 1; x < path.length; x++) {
-    const propName = path[x];
-    if (!_.isNaN(_.toNumber(propName))) {
-      continue;
-    }
-    const prop = _.find(properties, ["name", propName]);
-    if (x == path.length - 1) {
-      return prop;
-    }
-    if (prop && prop.type == "object") {
-      properties = prop.properties;
-    } else if (prop && prop.type == "array") {
-      // if an array is the second to last path, and the next item
-      // is an array index, we should return the current prop.
-      if (x == path.length - 2) {
-        const lookAheadPropName = path[x + 1];
-        if (!_.isNaN(_.toNumber(lookAheadPropName))) {
-          return prop;
-        }
-      }
-      if (prop.itemProperty.type == "object") {
-        properties = prop.itemProperty.properties;
-      } else {
-        return undefined;
-      }
+    const checkName = path[x];
+    if (x == 1) {
+      // Set the prop to the entry in the registry
+      prop = _findPropForRegistryEntry(path[x], registryEntry);
     } else {
-      return undefined;
+      if (prop.type == "object") {
+        prop = _findPropForObject(path[x], prop);
+      } else if (prop.type == "array" && prop.itemProperty.type == "object") {
+        if (_.isNaN(_.toNumber(checkName))) {
+          prop = _findPropForObject(path[x], prop.itemProperty);
+        }
+        //} else if (prop.type == "array" && prop.itemProperty.type == "array") {
+        //  prop = prop.itemProperty;
+      } else if (prop.type == "array") {
+        prop = prop.itemProperty;
+      } else if (prop.type == "map" && prop.valueProperty.type == "object") {
+        prop = _findPropForObject(path[x], prop.valueProperty);
+      } else if (prop.type == "map" && prop.valueProperty.type == "array") {
+        prop = prop.valueProperty;
+      }
     }
   }
+  return prop;
 }
+
+//export function findProp(path: string[]): Prop | undefined {
+//  if (path.length == 0) {
+//    return undefined;
+//  }
+//  const registryEntry = registry[path[0]];
+//  if (!registryEntry) {
+//    return undefined;
+//  }
+//  let properties = registryEntry.properties;
+//  for (let x = 1; x < path.length; x++) {
+//    const propName = path[x];
+//    if (!_.isNaN(_.toNumber(propName))) {
+//      continue;
+//    }
+//    const prop = _.find(properties, ["name", propName]);
+//    if (x == path.length - 1) {
+//      return prop;
+//    }
+//    console.log({ prop, x });
+//    if (prop && prop.type == "object") {
+//      properties = prop.properties;
+//    } else if (prop && prop.type == "array") {
+//      // if an array is the second to last path, and the next item
+//      // is an array index, we should return the current prop.
+//      if (x == path.length - 2) {
+//        const lookAheadPropName = path[x + 1];
+//        if (!_.isNaN(_.toNumber(lookAheadPropName))) {
+//          return prop;
+//        }
+//      }
+//
+//      if (prop.itemProperty.type == "array") {
+//        continue; // Just move to the next one
+//      }
+//
+//      if (prop.itemProperty.type == "object") {
+//        properties = prop.itemProperty.properties;
+//      } else {
+//        return undefined;
+//      }
+//    } else {
+//      return undefined;
+//    }
+//  }
+//}
