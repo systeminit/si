@@ -2,7 +2,6 @@ import { SDFError } from "@/api/sdf";
 import Bottle from "bottlejs";
 import { Entity } from "@/api/sdf/model/entity";
 import { Diff } from "../model/diff";
-import { Edge } from "../model/edge";
 import { Qualification } from "@/api/sdf/model/qualification";
 import { ILabelList } from "../dal";
 import { SchematicKind } from "../model/schematic";

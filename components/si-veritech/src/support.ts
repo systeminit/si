@@ -137,6 +137,29 @@ export function awsEksClusterName(context: Context): string {
   }
 }
 
+export async function skopeoDockerHubAuth(creds: {
+  username: string;
+  password: string;
+}): Promise<TempDir> {
+  const authTempDir = await tempDir({});
+  const authPath = path.join(authTempDir.path, "auth.json");
+  const auth = Buffer.from(`${creds.username}:${creds.password}`).toString(
+    "base64",
+  );
+  const authData = {
+    auths: {
+      "docker.io": {
+        auth,
+      },
+    },
+  };
+  await fs.writeFile(authPath, JSON.stringify(authData, null, 0), {
+    mode: 0o400,
+  });
+
+  return authTempDir;
+}
+
 export interface KubeConfigDir {
   tempDir: TempDir;
   directory: string;
