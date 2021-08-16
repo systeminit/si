@@ -232,7 +232,7 @@ export class SiEntity implements ISiEntity {
     return result;
   }
 
-  findProp(op: OpSet): Prop | undefined {
+  findProp(op: OpSet): Prop | ItemProp | undefined {
     const result = findProp(this.fullPropPath(op));
     return result;
   }
@@ -680,28 +680,129 @@ export class SiEntity implements ISiEntity {
     return results;
   }
 
-  yamlNumberReplacer(): Record<string, any> {
-    const numberified = _.cloneDeep(this.properties);
-    for (const op of this.ops) {
-      if (op.op == OpType.Set) {
-        const prop = this.findProp(op);
+  _yamlNumberReplacerArray(
+    system: string,
+    basePath: string[],
+    targetObject: any[],
+  ): void {
+    for (let x = 0; x < targetObject.length; x++) {
+      const path = _.cloneDeep(basePath);
+      path.push(`${x}`);
+      if (_.isArray(targetObject[x])) {
+        this._yamlNumberReplacerArray(system, path, targetObject[x]);
+      } else if (_.isObject(targetObject[x])) {
+        this._yamlNumberReplacerObject(system, path, targetObject[x]);
+      } else {
+        const fakeOp: OpSet = {
+          op: OpType.Set,
+          path,
+          value: targetObject[x],
+          system,
+          source: OpSource.Manual,
+        };
+        const prop = this.findProp(fakeOp);
         if (prop) {
-          if (prop.type == "number") {
-            for (const system of Object.keys(numberified)) {
-              const value = _.get(numberified, [system, ...op.path]);
-              if (value) {
-                const number = _.toNumber(op.value);
-                if (!_.isNaN(number)) {
-                  _.set(numberified, [system, ...op.path], number);
-                }
-              }
+          if (prop.type == "array" && prop.itemProperty.type == "number") {
+            const numberValue = _.toNumber(targetObject[x]);
+            if (!_.isNaN(numberValue)) {
+              targetObject[x] = numberValue;
+            }
+          } else if (prop.type == "number") {
+            const numberValue = _.toNumber(targetObject[x]);
+            if (!_.isNaN(numberValue)) {
+              targetObject[x] = numberValue;
             }
           }
+        } else {
+          console.log("cannot find prop", { fakeOp });
         }
       }
     }
+  }
+
+  _yamlNumberReplacerObject(
+    system: string,
+    basePath: string[],
+    targetObject: Record<string, any>,
+  ): void {
+    for (const key in targetObject) {
+      const path = _.cloneDeep(basePath);
+      path.push(key);
+      if (_.isArray(targetObject[key])) {
+        this._yamlNumberReplacerArray(system, path, targetObject[key]);
+      } else if (_.isObject(targetObject[key])) {
+        this._yamlNumberReplacerObject(system, path, targetObject[key]);
+      } else {
+        const fakeOp: OpSet = {
+          op: OpType.Set,
+          path,
+          value: targetObject[key],
+          system,
+          source: OpSource.Manual,
+        };
+        let prop = this.findProp(fakeOp);
+        if (!prop) {
+          const mapPath = path.slice(0, path.length - 1);
+          fakeOp.path = mapPath;
+          prop = this.findProp(fakeOp);
+          console.log("looking for prop", { prop, fakeOp });
+          if (prop && prop.type != "map") {
+            continue;
+          }
+        }
+        if (prop) {
+          if (prop.type == "number") {
+            const numberValue = _.toNumber(targetObject[key]);
+            if (!_.isNaN(numberValue)) {
+              targetObject[key] = numberValue;
+            }
+          } else if (prop.type == "map") {
+            if (prop.valueProperty.type == "number") {
+              const numberValue = _.toNumber(targetObject[key]);
+              if (!_.isNaN(numberValue)) {
+                targetObject[key] = numberValue;
+              }
+            }
+          }
+        } else {
+          console.log("cannot find prop", { fakeOp });
+        }
+      }
+    }
+  }
+
+  yamlNumberReplacer(): Record<string, any> {
+    const numberified = _.cloneDeep(this.properties);
+    for (const system of Object.keys(numberified)) {
+      this._yamlNumberReplacerObject(system, [], numberified[system]);
+    }
     return numberified;
   }
+
+  //yamlNumberReplacer(): Record<string, any> {
+  //  const numberified = _.cloneDeep(this.properties);
+  //  for (const op of this.ops) {
+  //    if (op.op == OpType.Set) {
+  //      const prop = this.findProp(op);
+  //      if (prop) {
+  //        if (prop.type == "number") {
+  //          for (const system of Object.keys(numberified)) {
+  //            const value = _.get(numberified, [system, ...op.path]);
+  //            if (value) {
+  //              const number = _.toNumber(op.value);
+  //              if (!_.isNaN(number)) {
+  //                _.set(numberified, [system, ...op.path], number);
+  //              }
+  //            }
+  //          }
+  //        }
+  //      } else {
+  //        console.log("Cannot find prop for op", { op });
+  //      }
+  //    }
+  //  }
+  //  return numberified;
+  //}
 
   computeCode(): void {
     const newCode: Record<string, string> = {};
