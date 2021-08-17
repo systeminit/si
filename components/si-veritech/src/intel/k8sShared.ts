@@ -61,11 +61,11 @@ export interface CheckQualificationCallbacks {
 
 export const baseCheckQualifications: CheckQualificationCallbacks = {
   async kubeval(ctx, q, r) {
-    const code = r.entity.getCode(r.systemId);
+    const code = r.entity.getCode(r.system.id);
     let qualified = false;
     let output = "";
     if (code) {
-      const kubeYaml = await writeKubernetesYaml(r.entity.getCode(r.systemId));
+      const kubeYaml = await writeKubernetesYaml(r.entity.getCode(r.system.id));
 
       qualified = false;
       let kubeval;

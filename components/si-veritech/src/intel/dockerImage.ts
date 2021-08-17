@@ -19,6 +19,8 @@ import {
 } from "../controllers/syncResource";
 import WebSocket from "ws";
 import { ResourceInternalHealth } from "si-entity";
+import { findSecret, SecretKind, skopeoDockerHubAuth } from "../support";
+import path from "path";
 
 function inferProperties(
   request: InferPropertiesRequest,
@@ -47,14 +49,25 @@ export interface CheckQualificationCallbacks {
 }
 
 export const checkQualifications: CheckQualificationCallbacks = {
-  async dockerImageExistsInRegistry(ctx, q, r) {
-    const image = r.entity.getProperty({
-      system: r.systemId,
+  async dockerImageExistsInRegistry(ctx, q, req) {
+    const image = req.entity.getProperty({
+      system: req.system.id,
       path: ["image"],
     }) as string;
+    const args = ["inspect", "--config"];
+    let authTempDir;
+    const secret = findSecret(req, SecretKind.DockerHub);
+    if (secret) {
+      authTempDir = await skopeoDockerHubAuth({
+        username: secret.username ? secret.username : "<username-not-set>",
+        password: secret.password ? secret.password : "<password-not-set>",
+      });
+
+      args.push("--authfile");
+      args.push(path.join(authTempDir.path, "auth.json"));
+    }
     const skopeoInspect = await ctx.exec("skopeo", [
-      "inspect",
-      "--config",
+      ...args,
       `docker://docker.io/${image}`,
     ]);
     return {
@@ -95,9 +108,20 @@ export async function syncResource(
     system,
     path: ["image"],
   });
+  const args = ["inspect", "--config"];
+  let authTempDir;
+  const secret = findSecret(req, SecretKind.DockerHub);
+  if (secret) {
+    authTempDir = await skopeoDockerHubAuth({
+      username: secret.username ? secret.username : "<username-not-set>",
+      password: secret.password ? secret.password : "<password-not-set>",
+    });
+
+    args.push("--authfile");
+    args.push(path.join(authTempDir.path, "auth.json"));
+  }
   const result = await ctx.exec("skopeo", [
-    "inspect",
-    "--config",
+    ...args,
     `docker://docker.io/${image}`,
   ]);
   if (result.exitCode != 0) {

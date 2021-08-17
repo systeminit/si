@@ -1,9 +1,9 @@
 import {
-  RegistryEntry,
-  ValidatorKind,
-  SchematicKind,
+  Arity,
   NodeKind,
-  //Arity,
+  RegistryEntry,
+  SchematicKind,
+  ValidatorKind,
 } from "../../registryEntry";
 
 const dockerImage: RegistryEntry = {
@@ -19,7 +19,14 @@ const dockerImage: RegistryEntry = {
       },
     ],
   },
-  inputs: [],
+  inputs: [
+    {
+      name: "dockerHubCredential",
+      types: ["dockerHubCredential"],
+      edgeKind: "configures",
+      arity: Arity.One,
+    },
+  ],
   properties: [
     {
       type: "string",

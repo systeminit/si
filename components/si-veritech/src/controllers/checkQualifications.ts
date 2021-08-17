@@ -15,10 +15,15 @@ import { tracer } from "../telemetry";
 import api, { Span } from "@opentelemetry/api";
 
 import intel from "../intel";
+import { DecryptedSecret } from "../support";
 
 export interface CheckQualificationsRequest {
   entity: Entity;
-  systemId: string;
+  system: SiEntity;
+  context: {
+    entity: SiEntity;
+    secret?: DecryptedSecret;
+  }[];
 }
 
 export interface CheckQualificationsItem {
@@ -74,17 +79,17 @@ export async function allFieldsValid(
             hasValue =
               r.entity.hasValueFrom({
                 path: editField.path,
-                system: r.systemId,
+                system: r.system.id,
                 source: OpSource.Manual,
               }) ||
               r.entity.hasValueFrom({
                 path: editField.path,
-                system: r.systemId,
+                system: r.system.id,
                 source: OpSource.Inferred,
               }) ||
               r.entity.hasValueFrom({
                 path: editField.path,
-                system: r.systemId,
+                system: r.system.id,
                 source: OpSource.Expression,
               }) ||
               r.entity.hasValueFrom({

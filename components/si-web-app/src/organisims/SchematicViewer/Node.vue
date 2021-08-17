@@ -372,7 +372,7 @@ export default Vue.extend({
         name == "azure"
       ) {
         style["socket-implementation"] = true;
-      } else if (name == "dockerImage") {
+      } else if (name == "dockerImage" || name == "dockerHubCredential") {
         style["socket-component-docker"] = true;
       } else if (name == "implementations") {
         style["socket-implementations"] = true;
@@ -665,7 +665,10 @@ export default Vue.extend({
             schema.entityType == "awsEks"
           ) {
             classes["socket-implementations"] = true;
-          } else if (schema.entityType == "dockerImage") {
+          } else if (
+            schema.entityType == "dockerImage" ||
+            schema.entityType == "dockerHubCredential"
+          ) {
             classes["socket-component-docker"] = true;
           }
 
@@ -757,7 +760,10 @@ export default Vue.extend({
         schema.entityType == "awsEks"
       ) {
         response["node-implementation"] = true;
-      } else if (schema.entityType == "dockerImage") {
+      } else if (
+        schema.entityType == "dockerImage" ||
+        schema.entityType == "dockerHubCredential"
+      ) {
         response["node-component-docker"] = true;
       }
       return response;

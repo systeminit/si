@@ -17,6 +17,7 @@ import torture from "./schema/test/torture";
 import system from "./schema/si/system";
 import service from "./schema/si/service";
 import application from "./schema/si/application";
+import dockerHubCredential from "./schema/docker/dockerHubCredential";
 import dockerImage from "./schema/docker/dockerImage";
 import kubernetesService from "./schema/kubernetes/kubernetesService";
 import k8sDeployment from "./schema/kubernetes/k8sDeployment";
@@ -48,6 +49,7 @@ export const registry: { [entityType: string]: RegistryEntry } = {
   service,
   application,
   torture,
+  dockerHubCredential,
   dockerImage,
   kubernetesService,
   k8sDeployment,
