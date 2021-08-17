@@ -12,5 +12,5 @@ secretGenerator:
       - postgres.env
 
 resources:
-  - postgres-deployment.yaml
+  - postgres-statefulSet.yaml
   - postgres-service.yaml

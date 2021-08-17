@@ -23,11 +23,11 @@ resources:
   - otelcol-deployment.yaml
   - otelcol-service.yaml
   - sdf-deployment.yaml
-  - sdf-http-ingress.yaml
-  - sdf-ws-ingress.yaml
   - sdf-service.yaml
   - veritech-deployment.yaml
   - veritech-service.yaml
   - web-deployment.yaml
-  - web-ingress.yaml
   - web-service.yaml
+  - sdf-http-ingress.yaml
+  - sdf-ws-ingress.yaml
+  - web-ingress.yaml
