@@ -101,7 +101,7 @@ invoke_cli() {
   if [ -z "${CI:-}" ]; then
     setup_buildx
   fi
-  build "$img" "$push" "$ci_mode" "$@"
+  build "$img" "$push" "$ci_mode" "$author" "$@"
 }
 
 setup_buildx() {
@@ -119,6 +119,8 @@ build() {
   shift
   local ci_mode="$1"
   shift
+  local author="$1"
+  shift
 
   need_cmd date
   need_cmd docker
@@ -128,8 +130,21 @@ build() {
   http_url="${VUE_APP_SDF_BASE_HTTP_URL:-http://app.systeminit.com/api}"
   ws_url="${VUE_APP_SDF_BASE_WS_URL:-ws://app.systeminit.com/api/updates}"
 
+  # Get a build time in UTC, allowing for override by SOURCE_DATE_EPOCH
+  # See: https://reproducible-builds.org/specs/source-date-epoch/
+  local build_time
+  build_time="${SOURCE_DATE_EPOCH:-$(date -u +%s)}"
+
+  local created
+  created="$(date -u -d "@$build_time" +%FT%TZ)"
+
+  local revision
+  revision="$(git show -s --format=%H)"
+
   local build_version
-  build_version="$(date -u +%Y%m%d.%H%M%S).0-sha.$(git show -s --format=%h)"
+  build_version="$(
+    date -u -d "@$build_time" +%Y%m%d.%H%M%S
+  ).0-sha.$(git show -s --format=%h)"
 
   cd "${0%/*}/.."
 
@@ -138,6 +153,14 @@ build() {
     buildx build
     --build-arg "VUE_APP_SDF_BASE_HTTP_URL=$http_url"
     --build-arg "VUE_APP_SDF_BASE_WS_URL=$ws_url"
+    --label "name=$img"
+    --label "maintainer=$author"
+    --label "org.opencontainers.image.version=$build_version"
+    --label "org.opencontainers.image.authors=$author"
+    --label "org.opencontainers.image.licenses=PROPRIETARY"
+    --label "org.opencontainers.image.source=http://github.com/systeminit/si.git"
+    --label "org.opencontainers.image.revision=$revision"
+    --label "org.opencontainers.image.created=$created"
     --tag "$img:$build_version"
     --tag "$img:latest"
   )
