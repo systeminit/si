@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+
+main() {
+  set -eu
+  if [ -n "${DEBUG:-}" ]; then set -v; fi
+  if [ -n "${TRACE:-}" ]; then set -xv; fi
+
+  local version img name
+  version="${VERSION:-11.10-alpine}"
+  img="${IMG:-postgres}"
+  name="${CONTAINER_NAME:-postgres}"
+
+  : "${POSTGRES_PASSWORD=bugbear}"
+  : "${PGPASSWORD=bugbear}"
+  : "${POSTGRES_USER=si}"
+  : "${POSTGRES_DB=si}"
+
+  if [ -n "$(docker container ls --filter "name=^$name" --filter "status=running" --quiet)" ]; then
+    echo "  - Container $name is already running"
+  elif [ -n "$(docker container ls --filter "name=^$name" --all --quiet)" ]; then
+    echo "  - Starting stopped container $name"
+    docker container start "$name"
+  else
+    echo "  - Creating and starting container $name"
+    cd "${0%/*}/.."
+
+    set -x
+    exec docker run --detach \
+      --env "POSTGRES_PASSWORD=$POSTGRES_PASSWORD" \
+      --env "PGPASSWORD=$PGPASSWORD" \
+      --env "POSTGRES_USER=$POSTGRES_USER" \
+      --env "POSTGRES_DB=$POSTGRES_DB" \
+      --publish 5432:5432 \
+      --name "$name" \
+      "$@" \
+      "$img:$version" \
+      -c log_error_verbosity=VERBOSE \
+      -c log_statement=all
+  fi
+}
+
+main "$@" || exit 1

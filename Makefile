@@ -28,21 +28,14 @@ BUILDABLE = $(patsubst %,build//%,$(COMPONENTS))
 TESTABLE = $(patsubst %,test//%,$(COMPONENTS))
 CLEANABLE = $(patsubst %,clean//%,$(COMPONENTS))
 RELEASEABLE = $(patsubst %,release//%,$(RELEASEABLE_COMPONENTS))
-CONTAINABLE = $(patsubst %,container//%,$(RELEASEABLE_COMPONENTS))
+IMAGEABLE = $(patsubst %,image//%,$(RELEASEABLE_COMPONENTS))
 WATCHABLE = $(patsubst %,watch//%,$(RUNNABLE_COMPONENTS))
 BUILDABLE_REGEX = $(shell echo $(COMPONENTS) | tr " " "|")
 RELEASEABLE_REGEX = $(shell echo $(RELEASEABLE_COMPONENTS) | tr " " "|")
-#TO_BUILD=$(shell git diff --name-only origin/master...HEAD | grep -E "^($(BUILDABLE_REGEX))" | cut -d "/" -f 1,2 | sort | uniq | tr "\n" " ")
-
-GITHUB_SHA := HEAD
-
-#TO_RELEASE=$(shell git diff --name-only HEAD^ | grep -E "^($(RELEASEABLE_REGEX))" | cut -d "/" -f 1,2 | sort | uniq | tr "\n" " ")
-
-RELEASE := $(shell date +%Y%m%d%H%M%S)
 
 .DEFAULT_GOAL := build
 
-.PHONY: $(BUILDABLE) $(TESTABLE) $(RELEASEABLE) $(CONTAINABLE)
+.PHONY: $(BUILDABLE) $(TESTABLE) $(RELEASEABLE) $(IMAGEABLE) image release
 
 test//components/si-sdf//RDEPS: test//components/si-settings test//components/si-model test//components/si-data test//components/si-model-test
 
@@ -62,8 +55,6 @@ $(BUILDABLE):
 
 build: $(BUILDABLE)
 
-#build_from_git: $(patsubst %,build//%,$(TO_BUILD))
-
 $(TESTABLE): % : %//RDEPS
 ifdef TEST_IN_CONTAINERS
 	@ pushd $(patsubst test//%,%,$@); $(MAKE) test_container RELEASE=$(RELEASE)
@@ -73,13 +64,11 @@ endif
 
 test: $(TESTABLE)
 
-#test_from_git: $(patsubst %,test//%,$(TO_BUILD))
-
-$(CONTAINABLE):
-	@ pushd $(patsubst container//%,%,$@); $(MAKE) container RELEASE=$(RELEASE)
+$(IMAGEABLE):
+	cd $(patsubst image//%,%,$@) && $(MAKE) image
 
 $(RELEASEABLE):
-	@ pushd $(patsubst release//%,%,$@); $(MAKE) release RELEASE=$(RELEASE)
+	cd $(patsubst release//%,%,$@) && $(MAKE) release
 
 $(WATCHABLE):
 	@ pushd $(patsubst watch//%,%,$@); $(MAKE) watch
@@ -111,62 +100,25 @@ tmux_windows:
 tmux_panes:
 	@ for x in $(RUNNABLE_COMPONENTS); do tmux split-window -v && tmux send-keys "make watch//$$x" C-m; done
 
-container//postgres: 
-	cd ./components/postgres && ./build.sh
-
-release//postgres: 
-	docker push systeminit/pg:latest
-
-container//opentelemetry-collector-user: 
-	cd ./components/opentelemetry-collector && ./build.sh
-
-container//opentelemetry-collector:
-	cd ./components/opentelemetry-collector && ./build.sh release
-
-release//opentelemetry-collector: container//opentelemetry-collector
-	docker push systeminit/otelcol:latest
-
-container//nats:
-	cd ./components/nats && ./build.sh
-
-release//nats: container//nats
-	docker push systeminit/nats:latest
-
-container//builder: 
-	env BUILDKIT_PROGRESS=plain DOCKER_BUILDKIT=1 docker build \
-		-f $(CURDIR)/components/build/Dockerfile-builder \
-		-t si-builder:latest \
-		-t systeminit/si-builder:latest \
-		.
-
-release//builder: container//builder
-	docker push systeminit/si-builder:latest
-
 build_release//cli:
 	@echo "--- [$(shell basename ${CURDIR})] $@"
 	@ pushd ./components/si-sdf; $(MAKE) $@
 
 container//cli:
 	@echo "--- [$(shell basename ${CURDIR})] $@"
-	@ pushd ./components/si-sdf; $(MAKE) $@
-
-release//cli:
-	@echo "--- [$(shell basename ${CURDIR})] $@"
-	@ pushd ./components/si-sdf; $(MAKE) $@
-
-#release_from_git: $(patsubst %,release//%,$(TO_RELEASE))
-#	@ echo "--> You have (maybe) released the System Initative! <--"
-#	@ echo Released: $(TO_RELEASE)
+	@cd ./components/si-sdf; $(MAKE) $@
 
 deploy//internal: release
 	@echo "--- [$(shell basename ${CURDIR})] $@"
-	@ pushd components/aws-si-internal; env RELEASE=$(RELEASE) pulumi up -y
+	@cd components/aws-si-internal; env RELEASE=$(RELEASE) pulumi up -y
 
-release: $(RELEASEABLE) release//cli
-	@ echo "--> You have released the System Initative! <--"
+release: $(RELEASEABLE)
+	@echo "--> You have released the System Initative! <--"
+
+image: $(IMAGEABLE)
 
 $(CLEANABLE):
-	@ pushd $(patsubst clean//%,%,$@); $(MAKE) clean
+	@cd $(patsubst clean//%,%,$@); $(MAKE) clean
 
 clean: $(CLEANABLE)
 
@@ -175,12 +127,45 @@ force_clean:
 	sudo rm -rf ./components/*/node_modules
 	sudo rm -rf ./target
 
-test_deps:
-	./components/postgres/run.sh; exit 0
-	./components/nats/run.sh; exit 0
-	cd ./components/otelcol && make run
+run-dev-deps:
+	@echo "--- [$(shell basename ${CURDIR})] $@"
+	cd ./components/postgres && $(MAKE) run-container
+	cd ./components/nats && $(MAKE) run-container
+	cd ./components/otelcol && $(MAKE) run-container
+.PHONY: run-dev-deps
 
-dev_deps:
-	./components/postgres/run.sh; exit 0
-	./components/nats/run.sh; exit 0
-	cd ./components/otelcol && make run
+run-containers: run-dev-deps
+	@echo "--- [$(shell basename ${CURDIR})] $@"
+	cd ./components/si-veritech && $(MAKE) run-container
+	cd ./components/si-sdf && $(MAKE) run-container
+	cd ./components/si-web-app && $(MAKE) run-container
+.PHONY: run-containers
+
+run-test-deps: run-dev-deps
+.PHONY: run-test-deps
+
+stop-dev-deps:
+	@echo "--- [$(shell basename ${CURDIR})] $@"
+	cd ./components/postgres && $(MAKE) stop-container
+	cd ./components/nats && $(MAKE) stop-container
+	cd ./components/otelcol && $(MAKE) stop-container
+
+stop-containers: stop-dev-deps
+	@echo "--- [$(shell basename ${CURDIR})] $@"
+	cd ./components/si-veritech && $(MAKE) stop-container
+	cd ./components/si-sdf && $(MAKE) stop-container
+	cd ./components/si-web-app && $(MAKE) stop-container
+.PHONY: stop-containers
+
+clean-dev-deps:
+	@echo "--- [$(shell basename ${CURDIR})] $@"
+	cd ./components/postgres && $(MAKE) clean-container
+	cd ./components/nats && $(MAKE) clean-container
+	cd ./components/otelcol && $(MAKE) clean-container
+
+clean-containers: clean-dev-deps
+	@echo "--- [$(shell basename ${CURDIR})] $@"
+	cd ./components/si-veritech && $(MAKE) clean-container
+	cd ./components/si-sdf && $(MAKE) clean-container
+	cd ./components/si-web-app && $(MAKE) clean-container
+.PHONY: clean-containers

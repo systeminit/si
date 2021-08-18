@@ -22,3 +22,4 @@
 **/tmp
 **/node_modules
 components/*/dist
+components/*/bin
