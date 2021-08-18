@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: sdf
-          image: systeminit/si-sdf:20210813.175429.0-sha.492f1b46
+          image: systeminit/si-sdf:stable
           ports:
             - containerPort: 5156
           env:
@@ -47,6 +47,7 @@ spec:
               value: http://veritech:5157
             - name: SI_VERITECH__WS_URL
               value: ws://veritech:5157
+      imagePullPolicy: Always
       imagePullSecrets:
         - name: dockerhub
       restartPolicy: Always

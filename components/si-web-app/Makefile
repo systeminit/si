@@ -1,6 +1,8 @@
 include ../build/typescript.mk
+include ../build/image.mk
+
 COMPONENT:=si-web-app
-CONTAINER = si-web-app
+CONTAINER_NAME := web
 .DEFAULT_GOAL := build
 
 registry:

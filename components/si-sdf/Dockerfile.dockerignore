@@ -21,3 +21,5 @@
 **/.envrc
 **/tmp
 components/*/targ
+components/*/bin
+components/*/Makefile

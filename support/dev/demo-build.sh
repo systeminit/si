@@ -6,13 +6,6 @@ main() {
   if [ -n "${DEBUG:-}" ]; then set -v; fi
   if [ -n "${TRACE:-}" ]; then set -xv; fi
 
-  if [ -z "${HONEYCOMB_TOKEN:-}" ]; then
-    die "HONEYCOMB_TOKEN must be set"
-  fi
-  if [ -z "${HONEYCOMB_DATASET:-}" ]; then
-    die "HONEYCOMB_DATASET must be set"
-  fi
-
   set -x
   env \
     DOCKER_BUILDKIT=1 \

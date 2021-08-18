@@ -1,8 +1,9 @@
 include ../build/typescript.mk
+include ../build/image.mk
 COMPONENT = si-veritech
-CONTAINER = si-veritech
+CONTAINER_NAME := veritech
 .DEFAULT_GOAL := build
-.PHONY: registry
+.PHONY: registry registry format run-image
 
 registry:
 	@echo "--- [$(shell basename ${CURDIR})] $@"
