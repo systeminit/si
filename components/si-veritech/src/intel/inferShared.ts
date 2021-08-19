@@ -251,6 +251,84 @@ export function setArrayEntryFromAllEntities(
   return args.entity;
 }
 
+export interface SetArrayEntriesFromAllEntities {
+  entity: SetArrayEntryFromAllEntities["entity"];
+  context: SetArrayEntryFromAllEntities["context"];
+  entityType: SetArrayEntryFromAllEntities["entityType"];
+  toPath: SetArrayEntryFromAllEntities["toPath"];
+  valuesCallback: (
+    fromEntity: SiEntity,
+  ) => { path: string[]; value: any; system: string }[][];
+}
+
+export function setArrayEntriesFromAllEntites(
+  args: SetArrayEntriesFromAllEntities,
+): SiEntity {
+  const startingOps = _.cloneDeep(args.entity.ops);
+
+  // Remove all previously inferred path and from entityType.
+  for (const op of startingOps) {
+    if (
+      op.source == OpSource.Inferred &&
+      op.from?.entityType == args.entityType
+    ) {
+      if (!op.from?.arrayRoot) {
+        args.entity.addOpUnset({
+          op: OpType.Unset,
+          system: op.system,
+          path: op.path,
+          source: OpSource.Inferred,
+        });
+      }
+    }
+  }
+
+  // Set the values for each matching entity
+  const matchingEntities = allEntitiesByType(args.context, args.entityType);
+  for (const matchingEntity of matchingEntities) {
+    const matchingEntityValuesToSet = args.valuesCallback(matchingEntity);
+    for (const valuesToSet of matchingEntityValuesToSet) {
+      const fullPath = [args.entity.entityType].concat(args.toPath);
+      const arrayMetaKey = args.entity.pathToString(fullPath);
+      let index = args.entity.arrayMeta[arrayMetaKey]?.length;
+      if (!index) {
+        index = 0;
+      }
+      const newPathRoot = args.toPath.concat(`${index}`);
+      setEntityFromValuesToSet(
+        args.entity,
+        matchingEntity,
+        newPathRoot,
+        valuesToSet,
+      );
+    }
+  }
+
+  // Prune all roots that have no values set at all.
+  const pruneOps = _.cloneDeep(args.entity.ops);
+  for (const op of pruneOps) {
+    if (
+      op.source == OpSource.Inferred &&
+      op.from?.entityType == args.entityType &&
+      op.from?.arrayRoot
+    ) {
+      const hasItem = _.find(args.entity.ops, (o) => {
+        return args.entity.subPath(o.path, op.path);
+      });
+      if (!hasItem) {
+        args.entity.addOpUnset({
+          op: OpType.Unset,
+          path: op.path,
+          source: op.source,
+          system: op.system,
+        });
+      }
+    }
+  }
+
+  return args.entity;
+}
+
 export function findEntityByType(
   context: Context,
   entityType: string,
