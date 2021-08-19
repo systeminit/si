@@ -46,6 +46,109 @@ const k8sIngress: RegistryEntry = {
       name: "spec",
       properties: [
         {
+          type: "array",
+          name: "rules",
+          itemProperty: {
+            type: "object",
+            properties: [
+              {
+                type: "string",
+                name: "host",
+              },
+              {
+                type: "object",
+                name: "http",
+                properties: [
+                  {
+                    type: "array",
+                    name: "paths",
+                    itemProperty: {
+                      type: "object",
+                      properties: [
+                        {
+                          type: "string",
+                          name: "path",
+                        },
+                        {
+                          type: "string",
+                          name: "pathType",
+                          widget: {
+                            name: "select",
+                            options: {
+                              items: [
+                                { label: "Exact", value: "Exact" },
+                                { label: "Prefix", value: "Prefix" },
+                                {
+                                  label: "ImplementationSpecific",
+                                  value: "ImplementationSpecific",
+                                },
+                              ],
+                            },
+                          },
+                        },
+                        {
+                          type: "object",
+                          name: "backend",
+                          properties: [
+                            {
+                              type: "object",
+                              name: "service",
+                              properties: [
+                                {
+                                  type: "string",
+                                  name: "name",
+                                },
+                                {
+                                  type: "object",
+                                  name: "port",
+                                  properties: [
+                                    {
+                                      type: "string",
+                                      name: "name",
+                                    },
+                                    {
+                                      type: "number",
+                                      name: "number",
+                                      validation: [
+                                        {
+                                          kind: ValidatorKind.Int,
+                                          options: { min: 0, max: 65536 },
+                                        },
+                                      ],
+                                    },
+                                  ],
+                                },
+                              ],
+                            },
+                            {
+                              type: "object",
+                              name: "resource",
+                              properties: [
+                                {
+                                  type: "string",
+                                  name: "apiGroup",
+                                },
+                                {
+                                  type: "string",
+                                  name: "kind",
+                                },
+                                {
+                                  type: "string",
+                                  name: "name",
+                                },
+                              ],
+                            },
+                          ],
+                        },
+                      ],
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        {
           type: "object",
           name: "defaultBackend",
           properties: [
@@ -102,109 +205,6 @@ const k8sIngress: RegistryEntry = {
         {
           type: "string",
           name: "ingressClassName",
-        },
-        {
-          type: "array",
-          name: "rules",
-          itemProperty: {
-            type: "object",
-            properties: [
-              {
-                type: "string",
-                name: "host",
-              },
-              {
-                type: "object",
-                name: "http",
-                properties: [
-                  {
-                    type: "array",
-                    name: "paths",
-                    itemProperty: {
-                      type: "object",
-                      properties: [
-                        {
-                          type: "object",
-                          name: "backend",
-                          properties: [
-                            {
-                              type: "object",
-                              name: "resource",
-                              properties: [
-                                {
-                                  type: "string",
-                                  name: "apiGroup",
-                                },
-                                {
-                                  type: "string",
-                                  name: "kind",
-                                },
-                                {
-                                  type: "string",
-                                  name: "name",
-                                },
-                              ],
-                            },
-                            {
-                              type: "object",
-                              name: "service",
-                              properties: [
-                                {
-                                  type: "string",
-                                  name: "name",
-                                },
-                                {
-                                  type: "object",
-                                  name: "port",
-                                  properties: [
-                                    {
-                                      type: "string",
-                                      name: "name",
-                                    },
-                                    {
-                                      type: "number",
-                                      name: "number",
-                                      validation: [
-                                        {
-                                          kind: ValidatorKind.Int,
-                                          options: { min: 0, max: 65536 },
-                                        },
-                                      ],
-                                    },
-                                  ],
-                                },
-                              ],
-                            },
-                          ],
-                        },
-                        {
-                          type: "string",
-                          name: "path",
-                        },
-                        {
-                          type: "string",
-                          name: "pathType",
-                          widget: {
-                            name: "select",
-                            options: {
-                              items: [
-                                { label: "Exact", value: "Exact" },
-                                { label: "Prefix", value: "Prefix" },
-                                {
-                                  label: "ImplementationSpecific",
-                                  value: "ImplementationSpecific",
-                                },
-                              ],
-                            },
-                          },
-                        },
-                      ],
-                    },
-                  },
-                ],
-              },
-            ],
-          },
         },
         {
           type: "array",
