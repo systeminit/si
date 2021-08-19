@@ -158,6 +158,7 @@ export const baseRunCommands: RunCommandCallbacks = {
         if (result.exitCode != 0) {
           debug("you failed!");
           debug(result.all);
+          throw new Error(`kubectl command failed with exit code: ${result.exitCode}`);
         } else {
           debug("you worked!");
           debug(result.all);
