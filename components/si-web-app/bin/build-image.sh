@@ -122,9 +122,18 @@ build() {
   local author="$1"
   shift
 
-  need_cmd date
   need_cmd docker
   need_cmd git
+
+  # Prefer `gdate` if available if we are running on macOS to try and favor the
+  # GNU version of date over the BSD version for epoch timestamp parsing.
+  local date_cmd
+  if command -v gdate >/dev/null 2>&1; then
+    date_cmd="gdate"
+  else
+    need_cmd date
+    date_cmd="date"
+  fi
 
   local http_url ws_url
   http_url="${VUE_APP_SDF_BASE_HTTP_URL:-http://app.systeminit.com/api}"
@@ -133,17 +142,17 @@ build() {
   # Get a build time in UTC, allowing for override by SOURCE_DATE_EPOCH
   # See: https://reproducible-builds.org/specs/source-date-epoch/
   local build_time
-  build_time="${SOURCE_DATE_EPOCH:-$(date -u +%s)}"
+  build_time="${SOURCE_DATE_EPOCH:-$("$date_cmd" -u +%s)}"
 
   local created
-  created="$(date -u -d "@$build_time" +%FT%TZ)"
+  created="$("$date_cmd" -u -d "@$build_time" +%FT%TZ)"
 
   local revision
   revision="$(git show -s --format=%H)"
 
   local build_version
   build_version="$(
-    date -u -d "@$build_time" +%Y%m%d.%H%M%S
+    "$date_cmd" -u -d "@$build_time" +%Y%m%d.%H%M%S
   ).0-sha.$(git show -s --format=%h)"
 
   cd "${0%/*}/.."
