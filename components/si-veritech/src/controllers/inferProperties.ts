@@ -4,15 +4,21 @@ import api from "@opentelemetry/api";
 import Debug from "debug";
 const debug = Debug("veritech:controllers:inferProperties");
 
-import { SiEntity as Entity, Resource, OpType, OpSource } from "si-entity";
-import { registry, RegistryEntry } from "si-registry";
+import { SiEntity as Entity } from "si-entity";
+import { registry } from "si-registry";
 
 import intel from "../intel";
+import { DecryptedSecret } from "../support";
+
+export interface InferPropertiesRequestContextEntry {
+  entity: Entity;
+  secret: Record<string, DecryptedSecret | null>;
+}
 
 export interface InferPropertiesRequest {
   entityType: string;
   entity: Entity;
-  context: Entity[];
+  context: InferPropertiesRequestContextEntry[];
 }
 
 export interface InferPropertiesReply {
@@ -46,7 +52,7 @@ export function inferProperties(ctx: Context): void {
   request.entity = Entity.fromJson(request.entity);
   request.entity.setDefaultProperties();
   for (let x = 0; x < request.context.length; x++) {
-    request.context[x] = Entity.fromJson(request.context[x]);
+    request.context[x].entity = Entity.fromJson(request.context[x].entity);
   }
 
   // Check if this object has the right intel functions

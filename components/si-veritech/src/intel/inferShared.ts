@@ -1,19 +1,23 @@
-import { OpSource, OpType, SiEntity } from "si-entity";
-import { InferPropertiesRequest } from "../controllers/inferProperties";
+import { OpSet, OpSource, OpType, SiEntity } from "si-entity";
+import {
+  InferPropertiesRequest,
+  InferPropertiesRequestContextEntry,
+} from "../controllers/inferProperties";
 import _ from "lodash";
 import Debug from "debug";
 import { findProp } from "si-registry";
+import { DecryptedSecret } from "../support";
 const debug = Debug("veritech:controllers:intel:inferShared");
 
 export type Context = InferPropertiesRequest["context"];
 
-export function allEntitiesByType(
+export function allContextEntriesByType(
   context: Context,
   entityType: string,
-): SiEntity[] {
+): InferPropertiesRequestContextEntry[] {
   const entities = _.filter(
     context,
-    (entity) => entity.entityType == entityType,
+    (entry) => entry.entity.entityType == entityType,
   );
   return entities;
 }
@@ -24,7 +28,7 @@ export interface SetArrayEntryFromAllEntities {
   entityType: string;
   toPath: string[];
   valuesCallback: (
-    fromEntity: SiEntity,
+    fromEntry: InferPropertiesRequestContextEntry,
   ) => { path: string[]; value: any; system: string }[];
 }
 
@@ -159,21 +163,24 @@ export function setArrayEntryFromAllEntities(
   }
 
   // Set the values for each matching entity
-  const matchingEntities = allEntitiesByType(args.context, args.entityType);
-  for (const matchingEntity of matchingEntities) {
-    const valuesToSet = args.valuesCallback(matchingEntity);
+  const matchingEntries = allContextEntriesByType(
+    args.context,
+    args.entityType,
+  );
+  for (const matchingEntry of matchingEntries) {
+    const valuesToSet = args.valuesCallback(matchingEntry);
     const arrayRoot = _.find(args.entity.ops, (o) => {
       return (
         o.source == OpSource.Inferred &&
-        o.from?.entityId == matchingEntity.id &&
+        o.from?.entityId == matchingEntry.entity.id &&
         o.from?.arrayRoot &&
-        matchingEntity.subPath(o.path, args.toPath)
+        matchingEntry.entity.subPath(o.path, args.toPath)
       );
     });
     if (arrayRoot) {
       setEntityFromValuesToSet(
         args.entity,
-        matchingEntity,
+        matchingEntry.entity,
         arrayRoot.path,
         valuesToSet,
       );
@@ -212,15 +219,15 @@ export function setArrayEntryFromAllEntities(
         value: initialValue,
         system: "baseline",
         from: {
-          entityId: matchingEntity.id,
-          entityType: matchingEntity.entityType,
+          entityId: matchingEntry.entity.id,
+          entityType: matchingEntry.entity.entityType,
           arrayRoot: true,
         },
       });
       args.entity.computeProperties();
       setEntityFromValuesToSet(
         args.entity,
-        matchingEntity,
+        matchingEntry.entity,
         newPathRoot,
         valuesToSet,
       );
@@ -257,7 +264,7 @@ export interface SetArrayEntriesFromAllEntities {
   entityType: SetArrayEntryFromAllEntities["entityType"];
   toPath: SetArrayEntryFromAllEntities["toPath"];
   valuesCallback: (
-    fromEntity: SiEntity,
+    fromEntry: InferPropertiesRequestContextEntry,
   ) => { path: string[]; value: any; system: string }[][];
 }
 
@@ -284,9 +291,12 @@ export function setArrayEntriesFromAllEntites(
   }
 
   // Set the values for each matching entity
-  const matchingEntities = allEntitiesByType(args.context, args.entityType);
-  for (const matchingEntity of matchingEntities) {
-    const matchingEntityValuesToSet = args.valuesCallback(matchingEntity);
+  const matchingEntries = allContextEntriesByType(
+    args.context,
+    args.entityType,
+  );
+  for (const matchingEntry of matchingEntries) {
+    const matchingEntityValuesToSet = args.valuesCallback(matchingEntry);
     for (const valuesToSet of matchingEntityValuesToSet) {
       const fullPath = [args.entity.entityType].concat(args.toPath);
       const arrayMetaKey = args.entity.pathToString(fullPath);
@@ -297,7 +307,7 @@ export function setArrayEntriesFromAllEntites(
       const newPathRoot = args.toPath.concat(`${index}`);
       setEntityFromValuesToSet(
         args.entity,
-        matchingEntity,
+        matchingEntry.entity,
         newPathRoot,
         valuesToSet,
       );
@@ -329,13 +339,16 @@ export function setArrayEntriesFromAllEntites(
   return args.entity;
 }
 
-export function findEntityByType(
+export function findEntryByType(
   context: Context,
   entityType: string,
-): SiEntity | null {
-  const entity = _.find(context, (entity) => entity.entityType == entityType);
-  if (entity) {
-    return entity;
+): InferPropertiesRequestContextEntry | null {
+  const entry = _.find(
+    context,
+    (entry) => entry.entity.entityType == entityType,
+  );
+  if (entry) {
+    return entry;
   } else {
     return null;
   }
@@ -351,13 +364,15 @@ export function findProperty<T>(
   entityType: string,
   path: string[],
 ): FindPropertyResult<T> | null {
-  const entity = findEntityByType(context, entityType);
-  if (entity) {
-    const properties: Record<string, T> = entity.getPropertyForAllSystems({
-      path,
-    });
+  const entry = findEntryByType(context, entityType);
+  if (entry) {
+    const properties: Record<string, T> = entry.entity.getPropertyForAllSystems(
+      {
+        path,
+      },
+    );
     if (properties) {
-      return { entity, properties };
+      return { entity: entry.entity, properties };
     } else {
       return null;
     }
@@ -379,7 +394,7 @@ export function setPropertyFromProperty({
   fromPath,
 }: SetPropertyFromProperty): SiEntity {
   setPropertyFromEntity({
-    context: [entity],
+    context: [{ entity, secret: {} }],
     entityType: entity.entityType,
     fromPath,
     toEntity: entity,
@@ -420,6 +435,7 @@ export interface SetPropertyFromEntityArgs {
   fromPath: string[];
   toEntity: SiEntity;
   toPath: string[];
+  transform?: (value: OpSet["value"]) => OpSet["value"];
 }
 
 export function setPropertyFromEntity({
@@ -428,22 +444,24 @@ export function setPropertyFromEntity({
   fromPath,
   toEntity,
   toPath,
+  transform,
 }: SetPropertyFromEntityArgs): SiEntity {
   toEntity.unsetForAllSystems({ path: toPath });
-  const newValue = findProperty<string>(context, entityType, fromPath);
+  const newValue = findProperty<OpSet["value"]>(context, entityType, fromPath);
   if (newValue) {
     for (const system in newValue.properties) {
+      let value = newValue.properties[system];
+      if (transform) {
+        value = transform(value);
+      }
+
       debug("----- set property from value");
-      debug({
-        value: newValue.properties[system],
-        system,
-        toPath,
-      });
+      debug({ value, system, toPath });
       toEntity.set({
         source: OpSource.Inferred,
         system,
         path: toPath,
-        value: newValue.properties[system],
+        value,
         from: {
           entityId: newValue.entity.id,
           entityType: newValue.entity.entityType,
@@ -452,5 +470,47 @@ export function setPropertyFromEntity({
       toEntity.computeProperties();
     }
   }
+  return toEntity;
+}
+
+export interface SetPropertyFromEntitySecretArgs {
+  context: Context;
+  entityType: string;
+  toEntity: SiEntity;
+  toPath: string[];
+  transform: (decrypted: DecryptedSecret["message"]) => OpSet["value"];
+}
+
+export function setPropertyFromEntitySecret({
+  context,
+  entityType,
+  toEntity,
+  toPath,
+  transform,
+}: SetPropertyFromEntitySecretArgs): SiEntity {
+  toEntity.unsetForAllSystems({ path: toPath });
+
+  const entry = findEntryByType(context, entityType);
+  if (entry) {
+    for (const system in entry.secret) {
+      const message = entry.secret[system]?.message;
+      if (message) {
+        const value = transform(message);
+
+        toEntity.set({
+          source: OpSource.Inferred,
+          system,
+          path: toPath,
+          value,
+          from: {
+            entityId: entry.entity.id,
+            entityType: entry.entity.entityType,
+          },
+        });
+        toEntity.computeProperties();
+      }
+    }
+  }
+
   return toEntity;
 }

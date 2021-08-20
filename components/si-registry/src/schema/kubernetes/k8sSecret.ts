@@ -36,6 +36,12 @@ const k8sSecret: RegistryEntry = {
       edgeKind: "configures",
       arity: Arity.One,
     },
+    {
+      name: "dockerHubCredential",
+      types: ["dockerHubCredential"],
+      edgeKind: "configures",
+      arity: Arity.One,
+    },
   ],
   properties: [
     apiVersion("v1"),

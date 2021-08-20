@@ -79,11 +79,11 @@ export function inferProperties(
     entityType: "k8sSecret",
     toPath: ["spec", "template", "spec", "imagePullSecrets"],
     valuesCallback(
-      fromEntity,
+      fromEntry,
     ): ReturnType<SetArrayEntryFromAllEntities["valuesCallback"]> {
       const toSet: { path: string[]; value: any; system: string }[] = [];
 
-      const secretValues = fromEntity.getPropertyForAllSystems({
+      const secretValues = fromEntry.entity.getPropertyForAllSystems({
         path: ["metadata", "name"],
       });
       if (secretValues) {
@@ -108,11 +108,11 @@ export function inferProperties(
     entityType: "k8sConfigMap",
     toPath: ["spec", "template", "spec", "volumes"],
     valuesCallback(
-      fromEntity,
+      fromEntry,
     ): ReturnType<SetArrayEntryFromAllEntities["valuesCallback"]> {
       const toSet: { path: string[]; value: any; system: string }[] = [];
 
-      const configMapValues = fromEntity.getPropertyForAllSystems({
+      const configMapValues = fromEntry.entity.getPropertyForAllSystems({
         path: ["metadata", "name"],
       });
       if (configMapValues) {
@@ -145,15 +145,15 @@ export function inferProperties(
     entityType: "dockerImage",
     toPath: ["spec", "template", "spec", "containers"],
     valuesCallback(
-      fromEntity,
+      fromEntry,
     ): ReturnType<SetArrayEntryFromAllEntities["valuesCallback"]> {
       const toSet: { path: string[]; value: any; system: string }[] = [];
       toSet.push({
         path: ["name"],
-        value: fromEntity.name,
+        value: fromEntry.entity.name,
         system: "baseline",
       });
-      const imageValues = fromEntity.getPropertyForAllSystems({
+      const imageValues = fromEntry.entity.getPropertyForAllSystems({
         path: ["image"],
       });
       for (const system in imageValues) {
@@ -172,7 +172,7 @@ export function inferProperties(
           toSet.push({ path: ["imagePullPolicy"], value: "Always", system });
         }
       }
-      const exposedPortValues = fromEntity.getPropertyForAllSystems({
+      const exposedPortValues = fromEntry.entity.getPropertyForAllSystems({
         path: ["ExposedPorts"],
       });
       for (const system in exposedPortValues) {
