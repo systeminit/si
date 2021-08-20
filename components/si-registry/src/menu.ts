@@ -13,9 +13,18 @@ export interface Item {
   kind: "item";
   name: string;
   entityType: string;
+  links?: LinkNodeItem[];
 }
 
-export type MenuItem = Category | Item;
+export interface LinkNodeItem {
+  kind: "link";
+  entityType: string;
+  nodeId: string;
+  entityId: string;
+  name: string;
+}
+
+export type MenuItem = Category | Item | LinkNodeItem;
 
 export interface MenuList {
   list: MenuItem[];
@@ -26,10 +35,51 @@ export interface EntityMenuFilters {
   rootEntityType: string;
 }
 
-export function entityMenu(filter: EntityMenuFilters): MenuList {
+export function entityTypesForMenu(filter: EntityMenuFilters): string[] {
+  const entityTypes: string[] = [];
+
+  for (const schema of Object.values(registry)) {
+    if (schema.entityType == "leftHandPath") {
+      continue;
+    }
+    if (schema.ui.hidden) {
+      continue;
+    }
+    const menuEntry = _.find(
+      schema.ui.menu,
+      (menuEntry: RegistryEntryUiMenuItem) => {
+        if (menuEntry.rootEntityTypes) {
+          return (
+            menuEntry.schematicKind == filter.schematicKind &&
+            _.includes(menuEntry.rootEntityTypes, filter.rootEntityType)
+          );
+        } else {
+          return menuEntry.schematicKind == filter.schematicKind;
+        }
+      },
+    );
+    if (!menuEntry) {
+      continue;
+    }
+    entityTypes.push(schema.entityType);
+  }
+  return entityTypes;
+}
+
+export function entityMenu(
+  filter: EntityMenuFilters,
+  links?: LinkNodeItem[],
+): MenuList {
   const list: MenuList["list"] = [];
 
   for (const schema of Object.values(registry)) {
+    let linkEntities: LinkNodeItem[] = [];
+    if (links) {
+      linkEntities = _.filter(links, (l) => l.entityType == schema.entityType);
+      if (linkEntities.length == 0) {
+        continue;
+      }
+    }
     if (schema.entityType == "leftHandPath") {
       continue;
     }
@@ -75,6 +125,7 @@ export function entityMenu(filter: EntityMenuFilters): MenuList {
       kind: "item",
       name: menuEntry.name,
       entityType: schema.entityType,
+      links: linkEntities,
     });
     currentList.sort((a, b) => {
       if (a.kind == "category" && a.name == "implementation") {

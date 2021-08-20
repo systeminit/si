@@ -120,6 +120,13 @@ export interface INodeCreateForApplicationRequest extends INodeCreateRequest {
   deploymentSelectedEntityId?: string;
 }
 
+export interface INodeLinkForApplicationRequest extends INodeCreateRequest {
+  applicationId: string;
+  deploymentSelectedEntityId?: string;
+  nodeId: string;
+  entityId: string;
+}
+
 export interface INodeCreateRequest {
   name?: string;
   entityType: string;
@@ -151,6 +158,8 @@ export type INodeCreateReply =
   | INodeCreateReplySuccess
   | INodeCreateReplySuccessWithSchematic
   | INodeCreateReplyFailure;
+
+export type INodeLinkReply = INodeCreateReply;
 
 export interface INodeObjectEntity {
   entity: Entity;
@@ -246,10 +255,76 @@ async function nodeDelete(
   return reply;
 }
 
+async function nodeLinkForApplication(
+  request: INodeLinkForApplicationRequest,
+): Promise<INodeLinkReply> {
+  const bottle = Bottle.pop("default");
+  const sdf = bottle.container.SDF;
+
+  const reply: INodeLinkReply = await sdf.post(
+    "schematicDal/nodeLinkForApplication",
+    request,
+  );
+  return reply;
+}
+
+export interface LinkNodeItem {
+  kind: "link";
+  entityType: string;
+  nodeId: string;
+  entityId: string;
+  name: string;
+}
+
+export interface IGetNodeLinkMenuRequest {
+  entityTypes: string[];
+  workspaceId: string;
+  changeSetId: string;
+  editSessionId: string;
+  positionCtx: string;
+}
+
+export interface IGetNodeLinkMenuReplySuccess {
+  link: LinkNodeItem[];
+  error?: never;
+}
+
+export interface IGetNodeLinkMenuReplyFailure {
+  link?: never;
+  error: SDFError;
+}
+
+export type IGetNodeLinkMenuReply =
+  | IGetNodeLinkMenuReplySuccess
+  | IGetNodeLinkMenuReplyFailure;
+
+async function getNodeLinkMenu(
+  request: IGetNodeLinkMenuRequest,
+): Promise<IGetNodeLinkMenuReply> {
+  const bottle = Bottle.pop("default");
+  const sdf = bottle.container.SDF;
+  const componentEntityId = request.positionCtx.split(".")[0];
+  const data = {
+    workspaceId: request.workspaceId,
+    changeSetId: request.changeSetId,
+    editSessionId: request.editSessionId,
+    entityTypes: request.entityTypes,
+    componentEntityId,
+  };
+
+  const reply: IGetNodeLinkMenuReply = await sdf.post(
+    "schematicDal/getNodeLinkMenu",
+    data,
+  );
+  return reply;
+}
+
 export const SchematicDal = {
   getApplicationSystemSchematic,
   connectionCreate,
   nodeCreateForApplication,
+  nodeLinkForApplication,
   nodeUpdatePosition,
   nodeDelete,
+  getNodeLinkMenu,
 };

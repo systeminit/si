@@ -17,5 +17,12 @@ export {
   allFieldsValidQualification,
 } from "./registryEntry";
 export { workflows, Workflow, Step } from "./workflow";
-export { entityMenu, EntityMenuFilters, MenuItem, MenuList } from "./menu";
+export {
+  entityMenu,
+  entityTypesForMenu,
+  EntityMenuFilters,
+  MenuItem,
+  MenuList,
+  LinkNodeItem,
+} from "./menu";
 export { registry, findProp } from "./registry";
