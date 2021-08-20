@@ -6,7 +6,7 @@ image:
 
 publish:
 	@echo "--- [$(shell basename ${CURDIR})] $@"
-	./bin/build-image.sh --push
+	./bin/build-image.sh --push $(PUBLISH_ARGS)
 
 release:
 	@echo "--- [$(shell basename ${CURDIR})] $@"

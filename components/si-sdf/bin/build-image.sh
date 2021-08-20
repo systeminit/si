@@ -16,6 +16,7 @@ print_usage() {
     FLAGS:
         -h, --help      Prints help information
         -C, --ci        Enables CI mode
+        -l, --latest    When '--push' is used, also push to the latest tag
         -p, --push      Publishes the image and all tags
 
     ARGS:
@@ -39,7 +40,7 @@ main() {
 }
 
 invoke_cli() {
-  local program author ci_mode push
+  local program author ci_mode push latest
   program="$1"
   shift
   author="$1"
@@ -50,9 +51,10 @@ invoke_cli() {
 
   ci_mode=""
   push=""
+  latest=""
 
   OPTIND=1
-  while getopts "Chp-:" arg; do
+  while getopts "Chlp-:" arg; do
     case "$arg" in
       C)
         ci_mode=true
@@ -60,6 +62,9 @@ invoke_cli() {
       h)
         print_usage "$program" "$author"
         return 0
+        ;;
+      l)
+        latest=true
         ;;
       p)
         push=true
@@ -72,6 +77,9 @@ invoke_cli() {
           help)
             print_usage "$program" "$author"
             return 0
+            ;;
+          latest)
+            latest=true
             ;;
           push)
             push=true
@@ -101,7 +109,7 @@ invoke_cli() {
   if [ -z "${CI:-}" ]; then
     setup_buildx
   fi
-  build "$img" "$push" "$ci_mode" "$author" "$@"
+  build "$img" "$push" "$latest" "$ci_mode" "$author" "$@"
 }
 
 setup_buildx() {
@@ -116,6 +124,8 @@ build() {
   local img="$1"
   shift
   local push="$1"
+  shift
+  local latest="$1"
   shift
   local ci_mode="$1"
   shift
@@ -165,8 +175,10 @@ build() {
     --label "org.opencontainers.image.revision=$revision"
     --label "org.opencontainers.image.created=$created"
     --tag "$img:$build_version"
-    --tag "$img:latest"
   )
+  if [[ "$push" != "true" || "$latest" == "true" ]]; then
+    args+=(--tag "$img:latest")
+  fi
   if [[ "$ci_mode" == "true" ]]; then
     args+=(--tag "$img:stable")
   fi
