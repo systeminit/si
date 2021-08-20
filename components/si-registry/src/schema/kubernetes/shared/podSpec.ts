@@ -30,6 +30,80 @@ export const podSpec: RegistryEntry["properties"] = [
                 type: "string",
                 name: "value",
               },
+              {
+                type: "object",
+                name: "valueFrom",
+                properties: [
+                  {
+                    type: "object",
+                    name: "secretKeyRef",
+                    properties: [
+                      {
+                        type: "string",
+                        name: "name",
+                      },
+                      {
+                        type: "string",
+                        name: "key",
+                      },
+                      {
+                        type: "boolean",
+                        name: "optional",
+                      },
+                    ],
+                  },
+                  {
+                    type: "object",
+                    name: "configMapRef",
+                    properties: [
+                      {
+                        type: "string",
+                        name: "name",
+                      },
+                      {
+                        type: "string",
+                        name: "key",
+                      },
+                      {
+                        type: "boolean",
+                        name: "optional",
+                      },
+                    ],
+                  },
+                  {
+                    type: "object",
+                    name: "resourceFieldRef",
+                    properties: [
+                      {
+                        type: "string",
+                        name: "containerName",
+                      },
+                      {
+                        type: "string",
+                        name: "resource",
+                      },
+                      {
+                        type: "string",
+                        name: "divisor",
+                      },
+                    ],
+                  },
+                  {
+                    type: "object",
+                    name: "fieldRef",
+                    properties: [
+                      {
+                        type: "string",
+                        name: "apiVersion",
+                      },
+                      {
+                        type: "string",
+                        name: "fieldPath",
+                      },
+                    ],
+                  },
+                ],
+              },
             ],
           },
         },
