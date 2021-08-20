@@ -15,8 +15,8 @@ import {
 import {
   allEntitiesByType,
   findProperty,
-  SetArrayEntryFromAllEntities,
-  setArrayEntryFromAllEntities,
+  SetArrayEntriesFromAllEntities,
+  setArrayEntriesFromAllEntites,
   setProperty,
   setPropertyFromEntity,
   setPropertyFromProperty,
@@ -52,15 +52,15 @@ export function inferProperties(
     toPath: ["metadata", "namespace"],
   });
 
-  setArrayEntryFromAllEntities({
+  setArrayEntriesFromAllEntites({
     entity,
     context,
     entityType: "k8sDeployment",
     toPath: ["spec", "ports"],
     valuesCallback(
       fromEntity,
-    ): ReturnType<SetArrayEntryFromAllEntities["valuesCallback"]> {
-      const toSet: { path: string[]; value: any; system: string }[] = [];
+    ): ReturnType<SetArrayEntriesFromAllEntities["valuesCallback"]> {
+      const toSet = [];
       const containersBySystem: Record<
         string,
         Record<string, any>[]
@@ -72,24 +72,29 @@ export function inferProperties(
         for (const container of containers) {
           if (container["ports"]) {
             for (const portDef of container["ports"]) {
+              const entry = [];
               if (portDef["containerPort"]) {
-                toSet.push({
+                entry.push({
                   path: ["port"],
                   value: portDef["containerPort"],
                   system,
                 });
               }
               if (portDef["protocol"]) {
-                toSet.push({
+                entry.push({
                   path: ["protocol"],
                   value: portDef["protocol"],
                   system,
                 });
               }
+              if (entry.length > 0) {
+                toSet.push(entry);
+              }
             }
           }
         }
       }
+      debug("ready toSet", { toSet: JSON.stringify(toSet) });
       return toSet;
     },
   });
