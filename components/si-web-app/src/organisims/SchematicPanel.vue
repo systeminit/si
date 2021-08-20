@@ -71,6 +71,14 @@
           @selected="nodeCreate"
           :disabled="!addMenuEnabled"
         />
+
+        <NodeLinkMenu
+          class="pl-4"
+          :positionCtx="positionCtx"
+          :filter="addMenuFilters"
+          @selected="nodeLink"
+          :disabled="!linkMenuEnabled"
+        />
       </div>
     </template>
     <template v-slot:content>
@@ -102,6 +110,7 @@ import { ILabelList } from "@/api/sdf/dal";
 
 import Panel from "@/molecules/Panel.vue";
 import NodeAddMenu from "@/molecules/NodeAddMenu.vue";
+import NodeLinkMenu from "@/molecules/NodeLinkMenu.vue";
 import SiSelect from "@/atoms/SiSelect.vue";
 import SchematicViewer from "@/organisims/SchematicViewer.vue";
 
@@ -134,9 +143,10 @@ import {
   IGetSchematicReply,
   SchematicDal,
   INodeCreateForApplicationRequest,
+  INodeLinkForApplicationRequest,
 } from "@/api/sdf/dal/schematicDal";
 import { emitEditorErrorMessage } from "@/atoms/PanelEventBus";
-import { EntityMenuFilters } from "si-registry";
+import { EntityMenuFilters, LinkNodeItem } from "si-registry";
 import { LockIcon, UnlockIcon } from "vue-feather-icons";
 import { IWorkspace } from "@/api/sdf/model/workspace";
 import { IEntity } from "@/api/sdf/model/entity";
@@ -165,6 +175,7 @@ export default Vue.extend({
   components: {
     LockIcon,
     NodeAddMenu,
+    NodeLinkMenu,
     Panel,
     SchematicViewer,
     SiSelect,
@@ -607,6 +618,17 @@ export default Vue.extend({
     };
   },
   computed: {
+    linkMenuEnabled(this: any): boolean {
+      if (this.schematicKind == SchematicKind.Component) {
+        if (this.editMode && !_.isNull(this.deploymentSchematicSelectNode)) {
+          return true;
+        } else {
+          return false;
+        }
+      } else {
+        return this.editMode;
+      }
+    },
     addMenuEnabled(this: any): boolean {
       if (this.schematicKind == SchematicKind.Component) {
         if (this.editMode && !_.isNull(this.deploymentSchematicSelectNode)) {
@@ -724,6 +746,64 @@ export default Vue.extend({
         }
       }
     },
+    async nodeLink(
+      this: any,
+      toLink: LinkNodeItem,
+      event: MouseEvent,
+    ): Promise<void> {
+      if (
+        this.applicationId &&
+        this.workspace &&
+        this.changeSet &&
+        this.editSession
+      ) {
+        const request: INodeLinkForApplicationRequest = {
+          entityType: toLink.entityType,
+          nodeId: toLink.nodeId,
+          entityId: toLink.entityId,
+          applicationId: this.applicationId,
+          workspaceId: this.workspace.id,
+          changeSetId: this.changeSet.id,
+          editSessionId: this.editSession.id,
+          schematicKind: this.schematicKind,
+        };
+        if (
+          this.schematicKind == SchematicKind.Component &&
+          this.rootObjectId &&
+          this.schematic
+        ) {
+          const ret = _.find(
+            Object.values(this.schematic.nodes as ISchematicNode[]),
+            n => n.object.id == this.rootObjectId,
+          );
+          if (ret) {
+            request["deploymentSelectedEntityId"] = ret.object.id;
+          }
+        }
+
+        let reply = await SchematicDal.nodeLinkForApplication(request);
+
+        if (!reply.error) {
+          if (reply.schematic) {
+            this.schematic = reply.schematic;
+            schematicUpdated$.next({
+              schematicKind: this.schematicKind,
+              schematic: reply.schematic,
+              rootObjectId: this.rootObjectId,
+            });
+          }
+          schematicSelectNode$.next(reply.node);
+          if (this.schematicKind == SchematicKind.Deployment) {
+            deploymentSchematicSelectNode$.next(reply.node);
+          }
+
+          this.$refs.graphViewer.onNodeCreate(reply.node.node.id, event);
+        } else {
+          emitEditorErrorMessage(reply.error.message);
+        }
+      }
+    },
+
     onInitialMaximizedFullUpdates(this: any, _value: boolean) {
       // TODO: This should be refactored, because it's overly coupled.
       this.$refs.graphViewer.updateCanvasPosition();

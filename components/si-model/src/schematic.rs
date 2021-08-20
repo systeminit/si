@@ -8,6 +8,8 @@ use si_data::PgTxn;
 use std::collections::HashMap;
 use thiserror::Error;
 
+const ENTITY_FOR_LINK_MENU: &str = include_str!("./queries/entity_for_link_menu.sql");
+
 #[derive(Error, Debug)]
 pub enum SchematicError {
     #[error("edge error: {0}")]
@@ -705,4 +707,60 @@ impl Schematic {
             edge.head_vertex.node_id != prune_node_id && edge.tail_vertex.node_id != prune_node_id
         });
     }
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct LinkNodeItem {
+    pub kind: String,
+    pub entity_type: String,
+    pub node_id: String,
+    pub entity_id: String,
+    pub name: String,
+}
+
+impl From<Entity> for LinkNodeItem {
+    fn from(entity: Entity) -> Self {
+        Self {
+            kind: String::from("link"),
+            entity_type: entity.entity_type,
+            entity_id: entity.id,
+            node_id: entity.node_id,
+            name: entity.name,
+        }
+    }
+}
+
+pub async fn get_link_menu(
+    txn: &PgTxn<'_>,
+    workspace_id: impl AsRef<str>,
+    change_set_id: impl AsRef<str>,
+    edit_session_id: impl AsRef<str>,
+    component_entity_id: impl AsRef<str>,
+    entity_types: Vec<String>,
+) -> SchematicResult<Vec<LinkNodeItem>> {
+    let workspace_id = workspace_id.as_ref();
+    let change_set_id = change_set_id.as_ref();
+    let edit_session_id = edit_session_id.as_ref();
+    let component_entity_id = component_entity_id.as_ref();
+
+    let mut links: Vec<LinkNodeItem> = Vec::new();
+    let rows = txn
+        .query(
+            ENTITY_FOR_LINK_MENU,
+            &[
+                &entity_types,
+                &component_entity_id,
+                &change_set_id,
+                &edit_session_id,
+                &workspace_id,
+            ],
+        )
+        .await?;
+    for row in rows.into_iter() {
+        let entity_json: serde_json::Value = row.try_get("object")?;
+        let entity: Entity = serde_json::from_value(entity_json)?;
+        links.push(entity.into());
+    }
+    Ok(links)
 }

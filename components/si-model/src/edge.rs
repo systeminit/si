@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use si_data::{pg::SqlState, NatsTxn, NatsTxnError, PgTxn};
 use thiserror::Error;
 
+const EDGE_EXISTS: &str = include_str!("./queries/edge_exists.sql");
 const EDGE_DIRECT_SUCCESSOR_EDGES_BY_NODE_ID: &str =
     include_str!("./queries/edge_direct_successor_edges_by_node_id.sql");
 const EDGE_DIRECT_SUCCESSOR_EDGES_BY_OBJECT_ID: &str =
@@ -151,6 +152,64 @@ impl Edge {
         nats.publish(&json).await?;
         let object: Edge = serde_json::from_value(json)?;
         Ok(object)
+    }
+
+    pub async fn new_if_not_exists(
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        tail_vertex: Vertex,
+        head_vertex: Vertex,
+        bidirectional: bool,
+        kind: EdgeKind,
+        workspace_id: impl AsRef<str>,
+    ) -> EdgeResult<()> {
+        let workspace_id = workspace_id.as_ref();
+        let exists = txn
+            .query_opt(
+                EDGE_EXISTS,
+                &[
+                    &tail_vertex.node_id,
+                    &tail_vertex.object_type,
+                    &tail_vertex.socket,
+                    &head_vertex.node_id,
+                    &head_vertex.object_type,
+                    &head_vertex.socket,
+                ],
+            )
+            .await?;
+        let row = match exists {
+            Some(row) => row,
+            None => {
+                let row = txn
+            .query_one(
+                "SELECT object FROM edge_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
+                &[
+                    &head_vertex.node_id,
+                    &head_vertex.object_id,
+                    &head_vertex.socket,
+                    &head_vertex.object_type,
+                    &tail_vertex.node_id,
+                    &tail_vertex.object_id,
+                    &tail_vertex.socket,
+                    &tail_vertex.object_type,
+                    &kind.to_string(),
+                    &bidirectional,
+                    &workspace_id,
+                ],
+            )
+            .await
+            .map_err(|err| match err.code() {
+                Some(sql_state) if sql_state == &SqlState::UNIQUE_VIOLATION => {
+                    EdgeError::EdgeExists
+                }
+                _ => EdgeError::Pg(err),
+            })?;
+                row
+            }
+        };
+        let json: serde_json::Value = row.try_get("object")?;
+        nats.publish(&json).await?;
+        Ok(())
     }
 
     pub async fn get(txn: &PgTxn<'_>, edge_id: impl AsRef<str>) -> EdgeResult<Edge> {

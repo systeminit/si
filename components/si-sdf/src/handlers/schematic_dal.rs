@@ -2,6 +2,7 @@ use crate::handlers::{authorize, validate_tenancy, HandlerError};
 use serde::{Deserialize, Serialize};
 use si_data::{NatsConn, PgPool};
 use si_model::{
+    schematic::{self, LinkNodeItem},
     Edge, EdgeKind, Entity, Node, NodePosition, Schematic, SchematicKind, SchematicNode, SiClaims,
     Veritech, Vertex,
 };
@@ -557,6 +558,7 @@ pub struct DeleteNodeRequest {
 pub struct DeleteNodeReply {
     pub deleted: bool,
 }
+
 pub async fn delete_node(
     claim: SiClaims,
     request: DeleteNodeRequest,
@@ -623,6 +625,247 @@ pub async fn delete_node(
     nats.commit().await.map_err(HandlerError::from)?;
 
     let reply = DeleteNodeReply { deleted: true };
+
+    Ok(warp::reply::json(&reply))
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct NodeLinkForApplicationRequest {
+    pub name: Option<String>,
+    pub node_id: String,
+    pub entity_id: String,
+    pub entity_type: String,
+    pub workspace_id: String,
+    pub change_set_id: String,
+    pub edit_session_id: String,
+    pub application_id: String,
+    pub deployment_selected_entity_id: Option<String>,
+    pub schematic_kind: SchematicKind,
+}
+
+pub async fn node_link_for_application(
+    claim: SiClaims,
+    request: NodeLinkForApplicationRequest,
+    pg: PgPool,
+    nats_conn: NatsConn,
+    veritech: Veritech,
+) -> Result<impl warp::Reply, warp::reject::Rejection> {
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
+    let txn = conn.transaction().await.map_err(HandlerError::from)?;
+    let nats = nats_conn.transaction();
+
+    authorize(&txn, &claim.user_id, "editorDal", "nodeLink").await?;
+    validate_tenancy(
+        &txn,
+        "workspaces",
+        &request.workspace_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+    validate_tenancy(
+        &txn,
+        "change_sets",
+        &request.change_set_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+    validate_tenancy(
+        &txn,
+        "edit_sessions",
+        &request.edit_session_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+    validate_tenancy(
+        &txn,
+        "entities",
+        &request.application_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+    validate_tenancy(
+        &txn,
+        "entities",
+        &request.entity_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+    validate_tenancy(&txn, "nodes", &request.node_id, &claim.billing_account_id).await?;
+
+    let node = Node::get(&txn, &request.node_id)
+        .await
+        .map_err(HandlerError::from)?;
+
+    let entity = Entity::for_edit_session(
+        &txn,
+        &request.entity_id,
+        &request.change_set_id,
+        &request.edit_session_id,
+    )
+    .await
+    .map_err(HandlerError::from)?;
+
+    let schematic_node = SchematicNode::new(
+        &txn,
+        node.clone(),
+        entity.clone(),
+        Some(&request.change_set_id),
+        Some(&request.edit_session_id),
+    )
+    .await
+    .map_err(HandlerError::from)?;
+
+    let application_entity = Entity::for_head(&txn, &request.application_id)
+        .await
+        .map_err(HandlerError::from)?;
+
+    let _edge = Edge::new_if_not_exists(
+        &txn,
+        &nats,
+        Vertex::from_entity(&application_entity, "output"),
+        Vertex::from_node(&node, "includes"),
+        false,
+        si_model::EdgeKind::Includes,
+        request.workspace_id.clone(),
+    )
+    .await
+    .map_err(HandlerError::from)?;
+
+    let schematic = match request.schematic_kind {
+        SchematicKind::Deployment => {
+            let _edge = Edge::new_if_not_exists(
+                &txn,
+                &nats,
+                Vertex::from_entity(&application_entity, "output"),
+                Vertex::from_node(&node, "application"),
+                false,
+                si_model::EdgeKind::Component,
+                request.workspace_id.clone(),
+            )
+            .await
+            .map_err(HandlerError::from)?;
+
+            Schematic::get_by_schematic_kind(
+                &txn,
+                &request.schematic_kind,
+                &application_entity.id,
+                Some(request.change_set_id.clone()),
+                Some(request.edit_session_id.clone()),
+            )
+            .await
+            .map_err(HandlerError::from)?
+        }
+        SchematicKind::Component => {
+            if let Some(deployment_selected_entity_id) = request.deployment_selected_entity_id {
+                let deployment_entity = Entity::for_head_or_change_set_or_edit_session(
+                    &txn,
+                    &deployment_selected_entity_id,
+                    Some(&request.change_set_id),
+                    Some(&request.edit_session_id),
+                )
+                .await
+                .map_err(HandlerError::from)?;
+
+                let _edge = Edge::new_if_not_exists(
+                    &txn,
+                    &nats,
+                    Vertex::from_entity(&deployment_entity, "output"),
+                    Vertex::from_node(&node, "deployment"),
+                    false,
+                    si_model::EdgeKind::Component,
+                    request.workspace_id.clone(),
+                )
+                .await
+                .map_err(HandlerError::from)?;
+                Schematic::get_by_schematic_kind(
+                    &txn,
+                    &request.schematic_kind,
+                    &deployment_entity.id,
+                    Some(request.change_set_id.clone()),
+                    Some(request.edit_session_id.clone()),
+                )
+                .await
+                .map_err(HandlerError::from)?
+            } else {
+                return Err(HandlerError::MissingDeploymentSelectedEntityId.into());
+            }
+        }
+        _ => unreachable!(),
+    };
+
+    txn.commit().await.map_err(HandlerError::from)?;
+    nats.commit().await.map_err(HandlerError::from)?;
+
+    let reply = NodeCreateReply {
+        node: schematic_node,
+        schematic,
+    };
+
+    Ok(warp::reply::json(&reply))
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct GetNodeLinkMenuRequest {
+    pub entity_types: Vec<String>,
+    pub workspace_id: String,
+    pub change_set_id: String,
+    pub edit_session_id: String,
+    pub component_entity_id: String,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct GetNodeLinkMenuReply {
+    pub link: Vec<LinkNodeItem>,
+}
+
+pub async fn get_node_link_menu(
+    claim: SiClaims,
+    request: GetNodeLinkMenuRequest,
+    pg: PgPool,
+) -> Result<impl warp::Reply, warp::reject::Rejection> {
+    let mut conn = pg.get().await.map_err(HandlerError::from)?;
+    let txn = conn.transaction().await.map_err(HandlerError::from)?;
+
+    authorize(&txn, &claim.user_id, "attributeDal", "getNodeLinkMenu").await?;
+    validate_tenancy(
+        &txn,
+        "workspaces",
+        &request.workspace_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+    validate_tenancy(
+        &txn,
+        "change_sets",
+        &request.change_set_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+    validate_tenancy(
+        &txn,
+        "edit_sessions",
+        &request.edit_session_id,
+        &claim.billing_account_id,
+    )
+    .await?;
+
+    let link = schematic::get_link_menu(
+        &txn,
+        &request.workspace_id,
+        &request.change_set_id,
+        &request.edit_session_id,
+        &request.component_entity_id,
+        request.entity_types,
+    )
+    .await
+    .map_err(HandlerError::from)?;
+
+    let reply = GetNodeLinkMenuReply { link };
+
+    txn.commit().await.map_err(HandlerError::from)?;
 
     Ok(warp::reply::json(&reply))
 }

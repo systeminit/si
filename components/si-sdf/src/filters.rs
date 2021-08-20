@@ -405,6 +405,12 @@ pub fn schematic_dal(
             nats_conn.clone(),
         ))
         .or(schematic_dal_delete_node(pg.clone(), nats_conn.clone()))
+        .or(schematic_dal_node_link_for_application(
+            pg.clone(),
+            nats_conn.clone(),
+            veritech.clone(),
+        ))
+        .or(schematic_dal_get_node_link_menu(pg.clone()))
         .boxed()
 }
 
@@ -485,6 +491,36 @@ pub fn schematic_dal_delete_node(
         .and(with_pg(pg))
         .and(with_nats_conn(nats_conn))
         .and_then(handlers::schematic_dal::delete_node)
+        .boxed()
+}
+
+pub fn schematic_dal_node_link_for_application(
+    pg: PgPool,
+    nats_conn: NatsConn,
+    veritech: Veritech,
+) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("schematicDal" / "nodeLinkForApplication")
+        .and(warp::post())
+        .and(authenticated(pg.clone()))
+        .and(warp::body::json::<
+            handlers::schematic_dal::NodeLinkForApplicationRequest,
+        >())
+        .and(with_pg(pg))
+        .and(with_nats_conn(nats_conn))
+        .and(with_veritech(veritech))
+        .and_then(handlers::schematic_dal::node_link_for_application)
+        .boxed()
+}
+
+pub fn schematic_dal_get_node_link_menu(pg: PgPool) -> BoxedFilter<(impl warp::Reply,)> {
+    warp::path!("schematicDal" / "getNodeLinkMenu")
+        .and(warp::post())
+        .and(authenticated(pg.clone()))
+        .and(warp::body::json::<
+            handlers::schematic_dal::GetNodeLinkMenuRequest,
+        >())
+        .and(with_pg(pg))
+        .and_then(handlers::schematic_dal::get_node_link_menu)
         .boxed()
 }
 
