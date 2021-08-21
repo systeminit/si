@@ -2,7 +2,6 @@ import { OpSource, SiEntity } from "si-entity/dist/siEntity";
 import Debug from "debug";
 const debug = Debug("veritech:controllers:intel:k8sService");
 import {
-  baseInferProperties,
   baseCheckQualifications,
   baseRunCommands,
   baseSyncResource,
@@ -13,21 +12,16 @@ import {
   InferPropertiesRequest,
 } from "../controllers/inferProperties";
 import {
-  allEntitiesByType,
-  findProperty,
   SetArrayEntriesFromAllEntities,
   setArrayEntriesFromAllEntites,
   setProperty,
   setPropertyFromEntity,
-  setPropertyFromProperty,
 } from "./inferShared";
-import _ from "lodash";
 import { SiCtx } from "../siCtx";
 import {
   CommandProtocolFinish,
   SyncResourceRequest,
 } from "../controllers/syncResource";
-import { findEntityByType } from "../support";
 import WebSocket from "ws";
 import { ResourceInternalHealth } from "si-entity";
 
@@ -58,13 +52,13 @@ export function inferProperties(
     entityType: "k8sDeployment",
     toPath: ["spec", "ports"],
     valuesCallback(
-      fromEntity,
+      fromEntry,
     ): ReturnType<SetArrayEntriesFromAllEntities["valuesCallback"]> {
       const toSet = [];
       const containersBySystem: Record<
         string,
         Record<string, any>[]
-      > = fromEntity.getPropertyForAllSystems({
+      > = fromEntry.entity.getPropertyForAllSystems({
         path: ["spec", "template", "spec", "containers"],
       });
       for (const system in containersBySystem) {

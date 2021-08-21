@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::{
     generate_name, lodash, secret::DecryptedSecret, Edge, EdgeError, EdgeKind, EncryptedSecret,
     LodashError, Qualification, QualificationError, ResourceError, SecretError, SiChangeSet,
@@ -79,12 +81,19 @@ pub struct InferPropertiesPredecessor {
     pub entity: Entity,
 }
 
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct InferPropertiesRequestContextEntry {
+    pub entity: Entity,
+    pub secret: HashMap<String, Option<DecryptedSecret>>,
+}
+
 #[derive(Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct InferPropertiesRequest {
     pub(crate) entity_type: String,
     pub(crate) entity: Entity,
-    pub(crate) context: Vec<Entity>,
+    pub(crate) context: Vec<InferPropertiesRequestContextEntry>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -453,7 +462,7 @@ impl Entity {
         let predecessor_edges =
             Edge::direct_predecessor_edges_by_object_id(&txn, &EdgeKind::Configures, &self.id)
                 .await?;
-        let mut context: Vec<Entity> = Vec::new();
+        let mut context = Vec::new();
         for edge in predecessor_edges {
             let edge_entity = match Entity::for_edit_session(
                 &txn,
@@ -470,7 +479,11 @@ impl Entity {
                     continue;
                 }
             };
-            context.push(edge_entity);
+            let secret = edge_entity.decrypt_all_secret_properties(&txn).await?;
+            context.push(InferPropertiesRequestContextEntry {
+                entity: edge_entity,
+                secret,
+            });
         }
         let concept_edges =
             Edge::direct_predecessor_edges_by_object_id(&txn, &EdgeKind::Component, &self.id)
@@ -491,7 +504,13 @@ impl Entity {
                     continue;
                 }
             };
-            context.push(concept_deployment_edge_entity);
+            let secret = concept_deployment_edge_entity
+                .decrypt_all_secret_properties(&txn)
+                .await?;
+            context.push(InferPropertiesRequestContextEntry {
+                entity: concept_deployment_edge_entity,
+                secret,
+            });
         }
 
         let request = InferPropertiesRequest {
@@ -829,6 +848,29 @@ impl Entity {
         Ok(Some(result))
     }
 
+    pub fn get_property_as_string_all_systems(
+        &self,
+        path: &Vec<impl AsRef<str>>,
+    ) -> EntityResult<HashMap<String, Option<String>>> {
+        let mut result = HashMap::new();
+        for (system_id, properties) in self.properties.as_object().expect("TODO: handle").iter() {
+            let value = match lodash::get(properties, &path)? {
+                Some(entity_id_json) => match entity_id_json.as_str() {
+                    Some(entity_id_str) => Some(String::from(entity_id_str)),
+                    None => {
+                        return Err(EntityError::WrongTypeForProp(
+                            "String".into(),
+                            path.iter().map(|p| String::from(p.as_ref())).collect(),
+                        ))
+                    }
+                },
+                None => None,
+            };
+            result.insert(system_id.to_string(), value);
+        }
+        Ok(result)
+    }
+
     // This is pretty sketchy, but it's going to work for now. We really need to
     // make the schema for an entity available to SDF, so it can make smarter
     // assumptions about what properties and fields exist.
@@ -845,6 +887,28 @@ impl Entity {
             }
             None => Ok(None),
         }
+    }
+
+    // Like the above method, this is even more sketchy. All decrypted eggs in one HashMap, makes
+    // my stomach hurt.
+    pub async fn decrypt_all_secret_properties(
+        &self,
+        txn: &PgTxn<'_>,
+    ) -> EntityResult<HashMap<String, Option<DecryptedSecret>>> {
+        let mut result = HashMap::new();
+        for (system_id, secret_id) in self.get_property_as_string_all_systems(&vec!["secret"])? {
+            let value = match secret_id {
+                Some(secret_id) => {
+                    let encrypted_secret = EncryptedSecret::get(&txn, secret_id).await?;
+                    let decrypted_secret = encrypted_secret.decrypt(&txn).await?;
+                    Some(decrypted_secret)
+                }
+                None => None,
+            };
+            result.insert(system_id.to_string(), value);
+        }
+
+        Ok(result)
     }
 }
 

@@ -39,14 +39,14 @@ export function inferProperties(
     entityType: "k8sService",
     toPath: ["healthChecks"],
     valuesCallback(
-      fromEntity,
+      fromEntry,
     ): ReturnType<SetArrayEntryFromAllEntities["valuesCallback"]> {
       const toSet: { path: string[]; value: any; system: string }[] = [];
 
       const portsBySystem: Record<
         string,
         Record<string, any>[]
-      > = fromEntity.getPropertyForAllSystems({
+      > = fromEntry.entity.getPropertyForAllSystems({
         path: ["spec", "ports"],
       });
       for (const system in portsBySystem) {
