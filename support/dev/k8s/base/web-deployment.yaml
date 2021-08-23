@@ -17,9 +17,9 @@ spec:
       containers:
         - name: web
           image: systeminit/si-web:stable
+          imagePullPolicy: Always
           ports:
             - containerPort: 80
-      imagePullPolicy: Always
       imagePullSecrets:
         - name: dockerhub
       restartPolicy: Always
