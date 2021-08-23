@@ -17,6 +17,7 @@ spec:
       containers:
         - name: veritech
           image: systeminit/si-veritech:stable
+          imagePullPolicy: Always
           ports:
             - containerPort: 5157
           env:
@@ -24,7 +25,6 @@ spec:
               value: http://otelcol:4317
           securityContext:
             privileged: true
-      imagePullPolicy: Always
       imagePullSecrets:
         - name: dockerhub
       restartPolicy: Always
