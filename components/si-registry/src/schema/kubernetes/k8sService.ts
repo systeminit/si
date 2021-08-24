@@ -66,17 +66,6 @@ const k8sService: RegistryEntry = {
               ],
             },
           },
-          validation: [
-            {
-              kind: ValidatorKind.IsIn,
-              values: ["LoadBalancer"],
-              userDefined: true,
-            },
-            {
-              kind: ValidatorKind.Required,
-              userDefined: true,
-            },
-          ],
         },
         {
           type: "map",
