@@ -73,34 +73,39 @@ export function inferProperties(
     toPath: ["spec", "template", "metadata", "namespace"],
   });
 
-  setArrayEntryFromAllEntities({
-    entity,
-    context,
-    entityType: "k8sSecret",
-    toPath: ["spec", "template", "spec", "imagePullSecrets"],
-    valuesCallback(
-      fromEntry,
-    ): ReturnType<SetArrayEntryFromAllEntities["valuesCallback"]> {
-      const toSet: { path: string[]; value: any; system: string }[] = [];
+  /*
+   Leaving the next block of code because we might need it when we automate the creation of an
+   imagePullSecrets on edge connection.
+  */
 
-      const secretValues = fromEntry.entity.getPropertyForAllSystems({
-        path: ["metadata", "name"],
-      });
-      if (secretValues) {
-        for (const system in secretValues) {
-          if (secretValues[system]) {
-            toSet.push({
-              path: ["name"],
-              value: secretValues[system],
-              system,
-            });
-          }
-        }
-      }
+  // setArrayEntryFromAllEntities({
+  //   entity,
+  //   context,
+  //   entityType: "k8sSecret",
+  //   toPath: ["spec", "template", "spec", "imagePullSecrets"],
+  //   valuesCallback(
+  //     fromEntry,
+  //   ): ReturnType<SetArrayEntryFromAllEntities["valuesCallback"]> {
+  //     const toSet: { path: string[]; value: any; system: string }[] = [];
 
-      return toSet;
-    },
-  });
+  //     const secretValues = fromEntry.entity.getPropertyForAllSystems({
+  //       path: ["metadata", "name"],
+  //     });
+  //     if (secretValues) {
+  //       for (const system in secretValues) {
+  //         if (secretValues[system]) {
+  //           toSet.push({
+  //             path: ["name"],
+  //             value: secretValues[system],
+  //             system,
+  //           });
+  //         }
+  //       }
+  //     }
+
+  //     return toSet;
+  //   },
+  // });
 
   setArrayEntryFromAllEntities({
     entity,
