@@ -67,6 +67,13 @@ export function inferProperties(
           if (container["ports"]) {
             for (const portDef of container["ports"]) {
               const entry = [];
+              if (portDef["name"]) {
+                entry.push({
+                  path: ["name"],
+                  value: portDef["name"],
+                  system,
+                });
+              }
               if (portDef["containerPort"]) {
                 entry.push({
                   path: ["port"],
