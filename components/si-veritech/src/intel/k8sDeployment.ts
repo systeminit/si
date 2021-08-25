@@ -190,7 +190,7 @@ export function inferProperties(
             : "TCP";
           toSet.push({
             path: ["ports"],
-            value: { containerPort: portNumber, protocol: portProtocol },
+            value: { name: `port-${portNumber}`, containerPort: portNumber, protocol: portProtocol },
             system,
           });
         }
