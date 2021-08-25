@@ -6,4 +6,4 @@ export CMD="$@"
 
 echo ${CMD}
 
-docker run -it ${CONTAINER_NAME}:${CONTAINER_VERSION} ${CMD}
+docker run -it --rm ${CONTAINER_NAME}:${CONTAINER_VERSION} ${CMD}
