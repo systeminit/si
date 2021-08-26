@@ -40,8 +40,11 @@ import azureAksCluster from "./schema/azure/azureAksCluster";
 import azureServicePrincipal from "./schema/azure/azureServicePrincipal";
 import azureResourceGroup from "./schema/azure/azureResourceGroup";
 import yamlNumbers from "./schema/test/yamlNumbers";
+import inferenceTests from "./schema/test/inferenceTests";
+import stringGeneric from "./schema/generic/string";
 
 export const registry: { [entityType: string]: RegistryEntry } = {
+  inferenceTests,
   leftHandPath,
   noCallbacks,
   yamlNumbers,
@@ -71,6 +74,7 @@ export const registry: { [entityType: string]: RegistryEntry } = {
   azureLocation,
   azureServicePrincipal,
   azureResourceGroup,
+  string: stringGeneric,
 };
 
 function _findPropForObject(
@@ -123,7 +127,7 @@ export function findProp(path: string[]): ItemProp | Prop | undefined {
       } else if (prop.type == "array") {
         prop = prop.itemProperty;
       } else if (prop.type == "map" && prop.valueProperty.type == "object") {
-        prop = _findPropForObject(path[x], prop.valueProperty);
+        prop = prop.valueProperty;
       } else if (prop.type == "map" && prop.valueProperty.type == "array") {
         prop = prop.valueProperty;
       }
@@ -131,49 +135,3 @@ export function findProp(path: string[]): ItemProp | Prop | undefined {
   }
   return prop;
 }
-
-//export function findProp(path: string[]): Prop | undefined {
-//  if (path.length == 0) {
-//    return undefined;
-//  }
-//  const registryEntry = registry[path[0]];
-//  if (!registryEntry) {
-//    return undefined;
-//  }
-//  let properties = registryEntry.properties;
-//  for (let x = 1; x < path.length; x++) {
-//    const propName = path[x];
-//    if (!_.isNaN(_.toNumber(propName))) {
-//      continue;
-//    }
-//    const prop = _.find(properties, ["name", propName]);
-//    if (x == path.length - 1) {
-//      return prop;
-//    }
-//    console.log({ prop, x });
-//    if (prop && prop.type == "object") {
-//      properties = prop.properties;
-//    } else if (prop && prop.type == "array") {
-//      // if an array is the second to last path, and the next item
-//      // is an array index, we should return the current prop.
-//      if (x == path.length - 2) {
-//        const lookAheadPropName = path[x + 1];
-//        if (!_.isNaN(_.toNumber(lookAheadPropName))) {
-//          return prop;
-//        }
-//      }
-//
-//      if (prop.itemProperty.type == "array") {
-//        continue; // Just move to the next one
-//      }
-//
-//      if (prop.itemProperty.type == "object") {
-//        properties = prop.itemProperty.properties;
-//      } else {
-//        return undefined;
-//      }
-//    } else {
-//      return undefined;
-//    }
-//  }
-//}

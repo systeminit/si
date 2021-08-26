@@ -1,4 +1,5 @@
 import _ from "lodash";
+import { Inference } from "si-inference";
 import YAML, { LineCounter, Parser } from "yaml";
 import {
   Prop,
@@ -39,6 +40,7 @@ export interface ISiEntity {
   code: {
     [systemId: string]: string;
   };
+  inferences?: Inference[];
   siStorable?: SiStorable;
 }
 
@@ -64,6 +66,13 @@ interface OpBase {
   path: string[];
   value?: unknown;
   system: "baseline" | string;
+  provenance?: {
+    context: {
+      id: string;
+      entityType: string;
+    }[];
+    inference: Inference;
+  };
   from?: {
     entityId: string;
     entityType: string;
@@ -186,6 +195,7 @@ export class SiEntity implements ISiEntity {
     [systemId: string]: string;
   };
   siStorable?: ISiEntity["siStorable"];
+  isTarget?: boolean;
 
   constructor({ entityType }: { entityType: string }) {
     this.id = "fake";
@@ -198,6 +208,7 @@ export class SiEntity implements ISiEntity {
     this.arrayMeta = {};
     this.properties = {};
     this.code = {};
+    this.isTarget = false;
   }
 
   static fromJson(input: ISiEntity): SiEntity {
@@ -303,25 +314,26 @@ export class SiEntity implements ISiEntity {
   }
 
   addOpSet(op: OpSet): ValidateResult {
-    //const result = this.validateProp(op);
-    //if (result.errors) {
-    //  return result;
-    //}
+    this.updateFromOps({ setOps: [op] });
+    ////const result = this.validateProp(op);
+    ////if (result.errors) {
+    ////  return result;
+    ////}
 
-    this.updateArrayMetaLength(op);
-    _.remove(
-      this.ops,
-      (p) =>
-        p.op == OpType.Set &&
-        p.system == op.system &&
-        p.source == op.source &&
-        _.isEqual(p.path, op.path),
-    );
-    this.ops.push(op);
+    //this.updateArrayMetaLength(op);
+    //_.remove(
+    //  this.ops,
+    //  (p) =>
+    //    p.op == OpType.Set &&
+    //    p.system == op.system &&
+    //    p.source == op.source &&
+    //    _.isEqual(p.path, op.path),
+    //);
+    //this.ops.push(op);
     return { success: true };
   }
 
-  decrementArrayMetaLength(op: OpUnset): void {
+  decrementArrayMetaLength(op: Op): void {
     const arrayPath = [this.entityType].concat(
       op.path.slice(0, op.path.length - 1),
     );
@@ -1116,6 +1128,7 @@ export class SiEntity implements ISiEntity {
       return false;
     }
   }
+
   valueOpForPath({
     path,
     system,
@@ -1238,5 +1251,76 @@ export class SiEntity implements ISiEntity {
     } else {
       return false;
     }
+  }
+
+  updateFromOps({
+    inference,
+    setOps,
+  }: {
+    inference?: Inference;
+    setOps: OpSet[];
+  }): void {
+    if (inference) {
+      const removed = _.remove(
+        this.ops,
+        (existingOp) =>
+          existingOp.op == OpType.Set &&
+          existingOp.source == OpSource.Inferred &&
+          existingOp.provenance?.inference.name == inference.name,
+      );
+      for (const removedOp of removed) {
+        if (!_.isNaN(_.toNumber(removedOp.path[removedOp.path.length - 1]))) {
+          _.forEach(this.ops, (p) => {
+            if (p.system == removedOp.system) {
+              let checkPath;
+              if (p.path.length >= removedOp.path.length) {
+                checkPath = p.path.slice(0, removedOp.path.length - 1);
+              } else {
+                return;
+              }
+              if (
+                _.isEqual(
+                  checkPath,
+                  removedOp.path.slice(0, removedOp.path.length - 1),
+                )
+              ) {
+                const pIndex = _.toNumber(p.path[removedOp.path.length - 1]);
+                const metaIndex = _.toNumber(
+                  removedOp.path[removedOp.path.length - 1],
+                );
+                if (pIndex > metaIndex) {
+                  p.path[removedOp.path.length - 1] = `${pIndex - 1}`;
+                }
+              }
+            }
+          });
+          this.decrementArrayMetaLength(removedOp);
+        }
+      }
+    }
+    for (const setOp of setOps) {
+      this.updateArrayMetaLength(setOp);
+      if (!inference) {
+        _.remove(
+          this.ops,
+          (p) =>
+            p.op == OpType.Set &&
+            p.system == setOp.system &&
+            p.source == setOp.source &&
+            _.isEqual(p.path, setOp.path),
+        );
+      }
+      this.ops.push(setOp);
+    }
+  }
+
+  nextIndex(path: string[]): number {
+    const fullPath = [this.entityType].concat(path);
+    const arrayMetaKey = this.pathToString(fullPath);
+    let arrayLength = this.arrayMeta[arrayMetaKey]?.length;
+    if (!arrayLength) {
+      arrayLength = 0;
+    }
+    return arrayLength;
   }
 }

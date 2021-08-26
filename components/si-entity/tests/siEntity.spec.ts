@@ -1,10 +1,10 @@
+import { Inference } from "si-inference";
 import {
   SiEntity,
   OpType,
   OpSource,
   OpSet,
   OpTombstone,
-  OpUnset,
 } from "../src/siEntity";
 
 interface TestData {
@@ -1990,6 +1990,134 @@ describe("siAttr", () => {
         setupOps(siAttr);
         expect(siAttr.isOverridden(op, "baseline")).toBe(false);
         expect(siAttr.isOverridden(op, "system:1")).toBe(false);
+      });
+    });
+  });
+
+  describe("updateFromOps", () => {
+    describe("inferred", () => {
+      test("new scalar values", () => {
+        const { siAttr } = setupTest("leftHandPath");
+
+        const inference: Inference = {
+          name: "setSimpleString",
+          kind: "lambda",
+          from: [
+            {
+              entityType: "leftHandPath",
+              data: { name: true },
+            },
+          ],
+          to: { path: ["simpleString"] },
+          code: "firstEntity.name",
+        };
+
+        const setOps: OpSet[] = [
+          {
+            op: OpType.Set,
+            source: OpSource.Inferred,
+            path: ["simpleString"],
+            value: "hooded menace",
+            system: "baseline",
+            provenance: {
+              context: [],
+              inference,
+            },
+          },
+        ];
+
+        siAttr.updateFromOps({ inference, setOps });
+
+        expect(siAttr.ops).toContainEqual(setOps[0]);
+      });
+
+      test("updating existing scalar values", () => {
+        const { siAttr } = setupTest("leftHandPath");
+
+        const inference: Inference = {
+          name: "setSimpleString",
+          kind: "lambda",
+          from: [
+            {
+              entityType: "leftHandPath",
+              data: { name: true },
+            },
+          ],
+          to: { path: ["simpleString"] },
+          code: "firstEntity.name",
+        };
+
+        const setOps: OpSet[] = [
+          {
+            op: OpType.Set,
+            source: OpSource.Inferred,
+            path: ["simpleString"],
+            value: "hooded menace",
+            system: "baseline",
+            provenance: {
+              context: [],
+              inference,
+            },
+          },
+        ];
+
+        siAttr.updateFromOps({ inference, setOps });
+        expect(siAttr.ops).toContainEqual(setOps[0]);
+
+        const setOpsUpdate: OpSet[] = [
+          {
+            op: OpType.Set,
+            source: OpSource.Inferred,
+            path: ["simpleString"],
+            value: "suncrow",
+            system: "baseline",
+            provenance: {
+              context: [],
+              inference,
+            },
+          },
+        ];
+        siAttr.updateFromOps({ inference, setOps: setOpsUpdate });
+        expect(siAttr.ops).not.toContainEqual(setOps[0]);
+        expect(siAttr.ops).toContainEqual(setOpsUpdate[0]);
+      });
+
+      test("removing existing scalar values", () => {
+        const { siAttr } = setupTest("leftHandPath");
+
+        const inference: Inference = {
+          name: "setSimpleString",
+          kind: "lambda",
+          from: [
+            {
+              entityType: "leftHandPath",
+              data: { name: true },
+            },
+          ],
+          to: { path: ["simpleString"] },
+          code: "firstEntity.name",
+        };
+
+        const setOps: OpSet[] = [
+          {
+            op: OpType.Set,
+            source: OpSource.Inferred,
+            path: ["simpleString"],
+            value: "hooded menace",
+            system: "baseline",
+            provenance: {
+              context: [],
+              inference,
+            },
+          },
+        ];
+
+        siAttr.updateFromOps({ inference, setOps });
+        expect(siAttr.ops).toContainEqual(setOps[0]);
+
+        const blankSet: OpSet[] = [];
+        siAttr.updateFromOps({ inference, setOps: blankSet });
+        expect(siAttr.ops).not.toContainEqual(setOps[0]);
       });
     });
   });
