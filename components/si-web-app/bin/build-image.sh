@@ -116,7 +116,9 @@ setup_buildx() {
   local name=si
 
   if ! docker buildx inspect "$name" >/dev/null 2>&1; then
-    docker buildx create --name "$name" --driver docker-container --use
+    docker buildx create --name "$name" --driver docker-container --use;
+  else
+    docker buildx use "$name"
   fi
 }
 
