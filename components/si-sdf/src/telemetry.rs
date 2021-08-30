@@ -8,6 +8,7 @@ use opentelemetry::{
     },
     trace::TraceError,
 };
+use opentelemetry_otlp::WithExportConfig;
 use opentelemetry_semantic_conventions::resource;
 use std::time::Duration;
 use thiserror::Error;
@@ -43,9 +44,9 @@ pub fn tracing_subscriber() -> Result<impl tracing::Subscriber + Send + Sync, Te
 
 fn try_tracer() -> Result<Tracer, TraceError> {
     opentelemetry_otlp::new_pipeline()
-        .with_env()
+        .tracing()
+        .with_exporter(opentelemetry_otlp::new_exporter().tonic().with_env())
         .with_trace_config(trace::config().with_resource(telemetry_resource()))
-        .with_tonic()
         .install_batch(opentelemetry::runtime::Tokio)
 }
 
