@@ -105,6 +105,42 @@ export const podSpec: RegistryEntry["properties"] = [
                 ],
               },
             ],
+            editPartials: [
+              {
+                kind: "item",
+                name: "env.value",
+                propertyPaths: [["name"], ["value"]],
+              },
+              {
+                kind: "category",
+                name: "env.valueFrom",
+                items: [
+                  {
+                    kind: "item",
+                    name: "env.valueFrom.configMapRef",
+                    propertyPaths: [["name"], ["valueFrom", "configMapRef"]],
+                  },
+                  {
+                    kind: "item",
+                    name: "env.valueFrom.fieldRef",
+                    propertyPaths: [["name"], ["valueFrom", "fieldRef"]],
+                  },
+                  {
+                    kind: "item",
+                    name: "env.valueFrom.resourceFieldRef",
+                    propertyPaths: [
+                      ["name"],
+                      ["valueFrom", "resourceFieldRef"],
+                    ],
+                  },
+                  {
+                    kind: "item",
+                    name: "env.valueFrom.secretKeyRef",
+                    propertyPaths: [["name"], ["valueFrom", "secretKeyRef"]],
+                  },
+                ],
+              },
+            ],
           },
         },
         {

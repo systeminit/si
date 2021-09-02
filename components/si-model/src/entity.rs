@@ -163,6 +163,7 @@ pub struct Op {
     pub path: Vec<String>,
     pub value: serde_json::Value,
     pub from: Option<OpFrom>,
+    pub edit_partial: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
