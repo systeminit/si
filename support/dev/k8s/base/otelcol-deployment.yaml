@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: otelcol
-          image: otel/opentelemetry-collector:0.31.0
+          image: otel/opentelemetry-collector-contrib:0.31.0
           ports:
             - containerPort: 4317
             - containerPort: 55679
