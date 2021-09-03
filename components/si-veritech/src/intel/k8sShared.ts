@@ -135,6 +135,7 @@ export async function forEachCluster(
 
 export const baseRunCommands: RunCommandCallbacks = {
   apply: async function (ctx, req, ws) {
+    let ranACommand = false;
     const awsEksCluster = findEntityByType(req, "awsEksCluster");
     if (awsEksCluster) {
       const kubeConfigDir = await awsKubeConfigPath(req);
@@ -144,6 +145,7 @@ export const baseRunCommands: RunCommandCallbacks = {
         const kubeYaml = await writeKubernetesYaml(
           req.entity.getCode(req.system.id),
         );
+        ranACommand = true;
         const result = await ctx.execStream(
           ws,
           "kubectl",
@@ -158,12 +160,15 @@ export const baseRunCommands: RunCommandCallbacks = {
         if (result.exitCode != 0) {
           debug("you failed!");
           debug(result.all);
-          throw new Error(`kubectl command failed with exit code: ${result.exitCode}`);
+          throw new Error(
+            `kubectl command failed with exit code: ${result.exitCode}`,
+          );
         } else {
           debug("you worked!");
           debug(result.all);
         }
       } else {
+        ranACommand = true;
         await ctx.execStream(ws, "echo", ["no code, so no apply!"]);
       }
     }
@@ -175,6 +180,7 @@ export const baseRunCommands: RunCommandCallbacks = {
         const kubeYaml = await writeKubernetesYaml(
           req.entity.getCode(req.system.id),
         );
+        ranACommand = true;
         const result = await ctx.execStream(
           ws,
           "kubectl",
@@ -189,13 +195,36 @@ export const baseRunCommands: RunCommandCallbacks = {
         if (result.exitCode != 0) {
           debug("you failed!");
           debug(result.all);
+          throw new Error(
+            `kubectl command failed with exit code: ${result.exitCode}`,
+          );
         } else {
           debug("you worked!");
           debug(result.all);
         }
       } else {
+        ranACommand = true;
         await ctx.execStream(ws, "echo", ["no code, so no apply!"]);
       }
+    }
+
+    if (!ranACommand) {
+      ws.send(
+        JSON.stringify({
+          protocol: {
+            output: {
+              errorLine:
+                'xxx Expected to run a "kubectl apply", ' +
+                "but no clusters were found to run on. " +
+                "Confirm your cloud provider is properly wired, " +
+                "this may be a bug!\n\n",
+            },
+          },
+        }),
+      );
+      throw new Error(
+        "No programs were executed but at least one execution was expected",
+      );
     }
   },
   delete: async function (ctx, req, ws) {
