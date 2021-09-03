@@ -75,6 +75,7 @@ export interface OpSet extends OpBase {
   op: OpType.Set;
   path: string[];
   value: string | number | boolean | null;
+  editPartial?: string;
 }
 
 export interface OpUnset extends OpBase {

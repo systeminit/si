@@ -39,9 +39,13 @@
             </div>
           </div>
           <div class="flex flex-row mt-1 ml-1">
-            <button>
-              <PlusIcon @click="addItem" size="1x" />
-            </button>
+            <ArrayAddEntry
+              :entity="entity"
+              :editField="editField"
+              :systemId="systemId"
+              :items="items"
+              @add-item-edit-fields="addItemEditFields"
+            />
           </div>
         </div>
 
@@ -109,6 +113,8 @@ import { PlusIcon } from "vue-feather-icons";
 import { emitEditorErrorMessage } from "@/atoms/PanelEventBus";
 import { updateEntity } from "@/observables";
 import { Diff } from "@/api/sdf/model/diff";
+import ArrayAddEntry from "@/molecules/ArrayAddEntry.vue";
+import { EditPartial } from "si-registry/dist/registryEntry";
 
 interface Data {
   startValue: unknown[];
@@ -126,6 +132,7 @@ export default BaseField.extend({
     Unset,
     Field,
     PlusIcon,
+    ArrayAddEntry,
     ArrayEditFields: () => import("./EditFields.vue"),
   },
   props: {
@@ -165,22 +172,36 @@ export default BaseField.extend({
       items: [],
     };
   },
+  computed: {
+    schemaEditPartials(): EditPartial[] | undefined {
+      if (
+        this.editField.schema.type == "array" &&
+        this.editField.schema.itemProperty.type == "object"
+      ) {
+        return this.editField.schema.itemProperty.editPartials;
+      } else {
+        return undefined;
+      }
+    },
+    schemaHasEditPartials(): boolean {
+      if (this.schemaEditPartials) {
+        return true;
+      } else {
+        return false;
+      }
+    },
+  },
   methods: {
     togglePath(event: any) {
       this.$emit("toggle-path", event);
+    },
+    addItemEditFields(fields: EditField[]) {
+      this.items.push(fields);
     },
     arrayEntryEditField(index: number): EditField {
       let editField = _.cloneDeep(this.editField);
       editField.path.push(`${index}`);
       return editField;
-    },
-    arrayEditFields(): EditField[] {
-      if (this.entity) {
-        let nextIndex = this.nextIndex();
-        return this.entity.arrayEditFields(this.editField, nextIndex);
-      } else {
-        return [];
-      }
     },
     nextIndex(): number {
       let fullPath = [this.entity.entityType].concat(this.editField.path);
@@ -191,55 +212,94 @@ export default BaseField.extend({
       }
       return arrayLength;
     },
-    addItem() {
-      this.items.push(this.arrayEditFields());
-      let path = _.cloneDeep(this.editField.path);
-      let nextIndex = this.nextIndex();
-      path.push(`${nextIndex}`);
-      let value: unknown = "";
-      if (this.editField.schema.type == "array") {
-        if (this.editField.schema.itemProperty.type == "string") {
-          value = "";
-        } else if (this.editField.schema.itemProperty.type == "number") {
-          value = 0;
-        } else if (this.editField.schema.itemProperty.type == "boolean") {
-          value = false;
-        } else if (this.editField.schema.itemProperty.type == "object") {
-          value = {};
-        } else if (this.editField.schema.itemProperty.type == "array") {
-          value = [];
-        } else if (this.editField.schema.itemProperty.type == "map") {
-          value = {};
-        }
-      }
-      const opSet: OpSet = {
-        op: OpType.Set,
-        source: OpSource.Manual,
-        path,
-        // @ts-ignore
-        value: _.cloneDeep(value),
-        system: this.systemId,
-      };
-      const result = this.entity.addOpSet(opSet);
-      if (!result.success) {
-        emitEditorErrorMessage(result.errors.join("\n"));
-      }
-      this.entity.computeProperties();
-      updateEntity(this.entity).subscribe(reply => {
-        if (reply.error) {
-          emitEditorErrorMessage(reply.error.message);
-        }
-      });
-    },
     setItems() {
       const items = [];
       if (!_.isUndefined(this.currentValue)) {
+        const parentPath = this.editField.path;
         for (let index = 0; index < this.currentValue.length; index++) {
-          const editFields = this.entity.arrayEditFields(this.editField, index);
+          let editFields = this.entity.arrayEditFields(this.editField, index);
+          if (this.schemaHasEditPartials) {
+            // @ts-ignore
+            const opSetPartials: OpSet[] = _.filter(
+              this.entity.ops,
+              o =>
+                o.system == this.systemId &&
+                o.op == "set" &&
+                o.path.length == parentPath.length + 1 &&
+                o.editPartial,
+            );
+            for (const op of opSetPartials) {
+              if (op.editPartial) {
+                editFields = this.filterEditFieldsForPartial(
+                  editFields,
+                  op.editPartial,
+                  op.path,
+                );
+              }
+            }
+          }
           items.push(editFields);
         }
       }
       this.items = items;
+    },
+    filterEditFieldsForPartial(
+      arrayEditFields: EditField[],
+      editPartialName: string,
+      pathPrefix: string[],
+    ): EditField[] {
+      const result = [];
+      for (const editField of arrayEditFields) {
+        if (this.entity.subPath(editField.path, pathPrefix)) {
+          // If the editField falls under the array item path, then we need to
+          // filter
+          const pathPrefixes = this.propertyPathPrefixes(
+            editPartialName,
+            pathPrefix,
+          );
+          if (
+            _.some(pathPrefixes, prefix =>
+              this.entity.subPath(editField.path, prefix),
+            )
+          ) {
+            result.push(editField);
+          }
+        } else {
+          // Otherwise keep the editField
+          result.push(editField);
+        }
+      }
+      return result;
+    },
+    propertyPathPrefixes(
+      name: string,
+      pathRoot: string[],
+      schemaEditPartials?: EditPartial[],
+    ): string[][] | null {
+      if (!schemaEditPartials) {
+        schemaEditPartials = this.schemaEditPartials;
+      }
+      if (!schemaEditPartials) {
+        return null;
+      }
+
+      for (const editPartial of schemaEditPartials) {
+        if (editPartial.kind == "item") {
+          if (editPartial.name == name) {
+            return editPartial.propertyPaths.map(e => pathRoot.concat(e));
+          }
+        } else {
+          const result = this.propertyPathPrefixes(
+            name,
+            pathRoot,
+            editPartial.items,
+          );
+          if (result) {
+            return result;
+          }
+        }
+      }
+      return null;
     },
     updateOnPropChanges() {
       if (!this.updating && this.entity) {

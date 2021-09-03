@@ -616,6 +616,7 @@ pub async fn task_discover(
                                         path: vec!["implementation".to_string()],
                                         value: serde_json::json![entity.id],
                                         from: None,
+                                        edit_partial: None,
                                     });
                                     concept_entity
                                         .infer_properties_for_edit_session(

@@ -138,6 +138,20 @@ export type Widgets =
   | WidgetSelectFromSecret
   | WidgetUnknown;
 
+export interface EditPartialCategory {
+  kind: "category";
+  name: string;
+  items: EditPartialItem[];
+}
+
+export interface EditPartialItem {
+  kind: "item";
+  name: string;
+  propertyPaths: string[][];
+}
+
+export type EditPartial = EditPartialItem | EditPartialCategory;
+
 export interface PropBase {
   type: string;
   name: string;
@@ -166,6 +180,7 @@ export interface PropBool extends PropBase {
 export interface PropObject extends PropBase {
   type: "object";
   properties: Prop[];
+  editPartials?: EditPartial[];
 }
 
 export interface PropMap extends PropBase {
