@@ -6,6 +6,9 @@ receivers:
 
 processors:
   batch:
+  probabilistic_sampler:
+    sampling_percentage: 10
+    hash_seed: 42
 
 exporters:
   logging:
@@ -25,7 +28,7 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [batch]
+      processors: [probabilistic_sampler, batch]
       exporters: [logging, otlp]
     metrics:
       receivers: [otlp]
