@@ -107,38 +107,42 @@ export function inferProperties(
   //   },
   // });
 
-  setArrayEntryFromAllEntities({
-    entity,
-    context,
-    entityType: "k8sConfigMap",
-    toPath: ["spec", "template", "spec", "volumes"],
-    valuesCallback(
-      fromEntry,
-    ): ReturnType<SetArrayEntryFromAllEntities["valuesCallback"]> {
-      const toSet: { path: string[]; value: any; system: string }[] = [];
+  // NOTE(fnichol): commenting out k8sConfigMap->k8sDeployment temporarily
+  // per story
+  // https://app.clubhouse.io/systeminit/story/1516/don-t-create-a-volume-automatically-when-connecting-a-k8sconfigmap-to-a-k8sdeployment
+  //
+  // setArrayEntryFromAllEntities({
+  //   entity,
+  //   context,
+  //   entityType: "k8sConfigMap",
+  //   toPath: ["spec", "template", "spec", "volumes"],
+  //   valuesCallback(
+  //     fromEntry,
+  //   ): ReturnType<SetArrayEntryFromAllEntities["valuesCallback"]> {
+  //     const toSet: { path: string[]; value: any; system: string }[] = [];
 
-      const configMapValues = fromEntry.entity.getPropertyForAllSystems({
-        path: ["metadata", "name"],
-      });
-      if (configMapValues) {
-        for (const system in configMapValues) {
-          if (configMapValues[system]) {
-            toSet.push({
-              path: ["name"],
-              value: configMapValues[system],
-              system,
-            });
-            toSet.push({
-              path: ["configMap", "name"],
-              value: configMapValues[system],
-              system,
-            });
-          }
-        }
-      }
-      return toSet;
-    },
-  });
+  //     const configMapValues = fromEntry.entity.getPropertyForAllSystems({
+  //       path: ["metadata", "name"],
+  //     });
+  //     if (configMapValues) {
+  //       for (const system in configMapValues) {
+  //         if (configMapValues[system]) {
+  //           toSet.push({
+  //             path: ["name"],
+  //             value: configMapValues[system],
+  //             system,
+  //           });
+  //           toSet.push({
+  //             path: ["configMap", "name"],
+  //             value: configMapValues[system],
+  //             system,
+  //           });
+  //         }
+  //       }
+  //     }
+  //     return toSet;
+  //   },
+  // });
 
   // volumeMounts:
   // - name: config
@@ -190,7 +194,11 @@ export function inferProperties(
             : "TCP";
           toSet.push({
             path: ["ports"],
-            value: { name: `port-${portNumber}`, containerPort: portNumber, protocol: portProtocol },
+            value: {
+              name: `port-${portNumber}`,
+              containerPort: portNumber,
+              protocol: portProtocol,
+            },
             system,
           });
         }
