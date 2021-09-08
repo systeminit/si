@@ -9,10 +9,3 @@ members = [
   "components/si-model",
   "components/si-model-test",
 ]
-
-[patch.crates-io]
-# pending next release of `tracing-subscriber`, post-0.2.19
-# git rev is current commit in the `v0.1.x` branch
-tracing = { git = "https://github.com/tokio-rs/tracing.git", rev = "326d74f280a4394b4696a8137eb08f53ad626c8e" }
-tracing-opentelemetry = { git = "https://github.com/tokio-rs/tracing.git", rev = "326d74f280a4394b4696a8137eb08f53ad626c8e" }
-tracing-subscriber = { git = "https://github.com/tokio-rs/tracing.git", rev = "326d74f280a4394b4696a8137eb08f53ad626c8e" }
