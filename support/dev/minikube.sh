@@ -2,10 +2,7 @@
 
 
 # Start minikube
-minikube start --kubernetes-version=v1.19.6 --vm=true
-
-# Enable ingress
-minikube addons enable ingress
+minikube start --kubernetes-version=v1.19.6 --addons=ingress --vm=true
 
 # Deploy namespace
 kubectl apply -f k8s/namespace/sidvlp-namespace.yaml
