@@ -1,5 +1,6 @@
 import ValidatorJS from "validator";
 import { Optional } from "utility-types";
+import { From, Inference } from "si-inference";
 
 export enum InternalHealth {
   Ok = "ok",
@@ -152,6 +153,51 @@ export interface EditPartialItem {
 
 export type EditPartial = EditPartialItem | EditPartialCategory;
 
+export type PropInferenceBase = Optional<Omit<Inference, "to">, "from">;
+export type EntityInferenceBase = Omit<Inference, "to">;
+
+export interface UserProvidesBase {
+  required?: boolean;
+}
+
+export interface UserProvidesFrom extends UserProvidesBase {
+  from: Array<{
+    kind: "entityId";
+    data: From;
+  }>;
+}
+
+export type UserProvided = UserProvidesFrom;
+
+export type UserProvides = Array<UserProvided>;
+
+export interface PropInference extends PropInferenceBase {
+  userProvides?: UserProvides;
+}
+
+export interface EntityInference extends EntityInferenceBase {
+  userProvides?: UserProvides;
+}
+
+export interface InferenceSelectSingle {
+  single: true;
+  multiple?: never;
+  default?: string;
+}
+
+export interface InferenceSelectMultiple {
+  single?: never;
+  multiple: true;
+  default?: string[];
+}
+
+export type InferenceSelect = InferenceSelectSingle | InferenceSelectMultiple;
+
+export interface PropInferenceRecord {
+  select: InferenceSelect;
+  functions: Array<PropInference>;
+}
+
 export interface PropBase {
   type: string;
   name: string;
@@ -160,6 +206,7 @@ export interface PropBase {
   required?: boolean;
   link?: string;
   validation?: Validator[];
+  inference?: PropInferenceRecord;
 }
 
 export interface PropString extends PropBase {
@@ -296,4 +343,5 @@ export interface RegistryEntry {
   commands?: Command[];
   actions?: Action[];
   healthStates?: Record<string, InternalHealth>;
+  inference?: EntityInference[];
 }
