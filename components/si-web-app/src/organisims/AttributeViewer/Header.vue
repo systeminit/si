@@ -42,7 +42,6 @@ import _ from "lodash";
 import { ChevronRightIcon, ChevronDownIcon } from "vue-feather-icons";
 
 interface Data {
-  open: boolean;
   currentValue: Record<string, any> | null;
 }
 
@@ -72,20 +71,40 @@ export default Vue.extend({
       type: Array as PropType<number[][]>,
       required: true,
     },
+    outdentCount: {
+      type: Number,
+    },
+    treeOpenState: {
+      type: Object as PropType<{ [pathKey: string]: boolean }>,
+      required: true,
+    },
   },
   data(): Data {
     return {
-      open: true,
       currentValue: null,
     };
   },
   computed: {
+    open(): boolean {
+      const key = this.editField.path.join("::");
+      const openState = this.treeOpenState[key];
+      return openState;
+    },
+    paddingLeft(): number {
+      const indentFactorPx = 10;
+      let indentCount = this.editField.path.length;
+      if (!_.isUndefined(this.outdentCount)) {
+        indentCount -= this.outdentCount;
+      }
+
+      return indentCount * indentFactorPx;
+    },
     propObjectStyle(): string {
       const rgb = this.backgroundColors[this.editField.path.length - 1].join(
         ",",
       );
       let style = `background-color: rgb(${rgb});`;
-      style = `${style} padding-left: ${this.editField.path.length * 10}px;`;
+      style = `${style} padding-left: ${this.paddingLeft}px;`;
       return style;
     },
     accordionClasses(): Record<string, boolean> {
@@ -96,8 +115,8 @@ export default Vue.extend({
   },
   methods: {
     toggleAccordion(): void {
-      this.open = !this.open;
-      this.$emit("toggle-path", this.editField.path);
+      const pathKey = this.editField.path.join("::");
+      this.$emit("toggle-path", pathKey);
     },
     updateOnPropChanges() {
       if (this.entity) {
@@ -111,6 +130,13 @@ export default Vue.extend({
     setCurrentValue(payload: Record<string, any>) {
       this.currentValue = payload;
     },
+  },
+  created(): void {
+    const key = this.editField.path.join("::");
+    if (!this.treeOpenState.hasOwnProperty(key)) {
+      // TDOD(fnichol): is it false always by default??
+      this.$emit("set-tree-open-state", { key, value: false });
+    }
   },
   watch: {
     entity: {

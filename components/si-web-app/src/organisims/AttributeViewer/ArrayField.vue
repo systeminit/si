@@ -24,9 +24,11 @@
                 :editFields="editFields"
                 :systemId="systemId"
                 :backgroundColors="backgroundColors"
-                :closedPaths="closedPaths"
                 :diff="diff"
+                :outdentCount="outdentCount"
+                :treeOpenState="treeOpenState"
                 @toggle-path="togglePath"
+                @set-tree-open-state="setTreeOpenState"
               />
               <div class="flex w-5 bg-gray-600">
                 <Unset
@@ -80,9 +82,10 @@
             :editFields="editFields"
             :systemId="systemId"
             :backgroundColors="backgroundColors"
-            :closedPaths="closedPaths"
+            :treeOpenState="treeOpenState"
             :diff="diff"
             @toggle-path="togglePath"
+            @set-tree-open-state="setTreeOpenState"
           />
         </div>
       </div>
@@ -151,8 +154,8 @@ export default BaseField.extend({
     systemId: {
       type: String,
     },
-    closedPaths: {
-      type: Array as PropType<string[][]>,
+    treeOpenState: {
+      type: Object as PropType<{ [pathKey: string]: boolean }>,
       required: true,
     },
     backgroundColors: {
@@ -190,10 +193,23 @@ export default BaseField.extend({
         return false;
       }
     },
+    outdentCount(): number | undefined {
+      if (this.editField.type == "array") {
+        // outdent for child headers is the path length plus 2, where 1
+        // is for the array index entry and the other 1 is for the first key
+        // under the index entry.
+        return this.editField.path.length + 2;
+      } else {
+        return undefined;
+      }
+    },
   },
   methods: {
-    togglePath(event: any) {
-      this.$emit("toggle-path", event);
+    togglePath(pathKey: string) {
+      this.$emit("toggle-path", pathKey);
+    },
+    setTreeOpenState(entry: { key: string; value: boolean }) {
+      this.$emit("set-tree-open-state", entry);
     },
     addItemEditFields(fields: EditField[]) {
       this.items.push(fields);
