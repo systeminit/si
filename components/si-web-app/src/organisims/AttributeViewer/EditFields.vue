@@ -11,7 +11,10 @@
         :editField="editField"
         :systemId="systemId"
         :backgroundColors="backgroundColors"
+        :outdentCount="outdentCount"
+        :treeOpenState="treeOpenState"
         @toggle-path="togglePath"
+        @set-tree-open-state="setTreeOpenState"
         v-if="showFieldForWidget('header', editField)"
       />
       <TextField
@@ -93,8 +96,9 @@
         :systemId="systemId"
         :diff="diff"
         :backgroundColors="backgroundColors"
-        :closedPaths="closedPaths"
+        :treeOpenState="treeOpenState"
         @toggle-path="togglePath"
+        @set-tree-open-state="setTreeOpenState"
         v-else-if="showFieldForWidget('array', editField)"
       />
     </div>
@@ -152,8 +156,8 @@ export default Vue.extend({
     systemId: {
       type: String,
     },
-    closedPaths: {
-      type: Array as PropType<string[][]>,
+    treeOpenState: {
+      type: Object as PropType<{ [pathKey: string]: boolean }>,
       required: true,
     },
     backgroundColors: {
@@ -163,29 +167,46 @@ export default Vue.extend({
     diff: {
       type: Array as PropType<Diff>,
     },
+    outdentCount: {
+      type: Number,
+    },
   },
   methods: {
-    togglePath(event: any) {
-      this.$emit("toggle-path", event);
+    togglePath(pathKey: string) {
+      this.$emit("toggle-path", pathKey);
+    },
+    setTreeOpenState(entry: { key: string; value: boolean }) {
+      this.$emit("set-tree-open-state", entry);
     },
     showFieldForWidget(widget: string, editField: EditField): boolean {
-      let closedByPath = _.find(this.closedPaths, p =>
-        _.isEqual(p, editField.path.slice(0, p.length)),
-      );
-      if (closedByPath) {
-        if (editField.widgetName == "header") {
-          let isHeader = _.find(this.closedPaths, p =>
-            _.isEqual(p, editField.path),
-          );
-          if (isHeader) {
+      // Find all parent header paths from the `EditField`, sorted by hierarchy
+      const pathKeys = Object.keys(this.treeOpenState)
+        .filter(pathKey =>
+          this.entity.subPath(editField.path, pathKey.split("::")),
+        )
+        .sort();
+
+      // Check each parent header, starting at the top of the hierarchy
+      for (const pathKey of pathKeys) {
+        // If this path (one of the `EditField`'s parents) is closed...
+        if (this.treeOpenState[pathKey] === false) {
+          if (
+            editField.widgetName == "header" &&
+            widget == "header" &&
+            _.isEqual(editField.path, pathKey.split("::"))
+          ) {
+            // If this path is the path for this `EditField`, we show it!
             return true;
           } else {
+            // Otherwise a parent path for the `EditField` is closed and we
+            // should not display ourselves
             return false;
           }
-        } else {
-          return false;
         }
       }
+
+      // At this point, all parent header paths are open, so we should display
+      // if the desired widget matches the `EditField`'s kind
       return editField.widgetName == widget;
     },
   },

@@ -40,16 +40,17 @@
       >
         Properties
       </div>
-      <template v-if="editFields">
+      <template v-if="editFields && treeOpenState">
         <EditFields
           :entity="entity"
           :editMode="editMode"
           :editFields="editFields"
           :systemId="systemId"
           :backgroundColors="backgroundColors"
-          :closedPaths="closedPaths"
+          :treeOpenState="treeOpenState"
           :diff="diff"
           @toggle-path="togglePath"
+          @set-tree-open-state="setTreeOpenState"
         />
       </template>
     </div>
@@ -86,7 +87,9 @@ import { EditField } from "si-entity";
 import { RegistryEntry, registry } from "si-registry";
 
 interface Data {
-  closedPaths: string[][];
+  treeOpenState: {
+    [pathKey: string]: boolean;
+  };
 }
 
 export default Vue.extend({
@@ -119,7 +122,7 @@ export default Vue.extend({
   },
   data(): Data {
     return {
-      closedPaths: [],
+      treeOpenState: {},
     };
   },
   subscriptions() {
@@ -240,32 +243,47 @@ export default Vue.extend({
     },
   },
   methods: {
-    showFieldForWidget(widget: string, editField: EditField): boolean {
-      let closedByPath = _.find(this.closedPaths, p =>
-        _.isEqual(p, editField.path.slice(0, p.length)),
-      );
-      if (closedByPath) {
-        if (editField.widgetName == "header") {
-          let isHeader = _.find(this.closedPaths, p =>
-            _.isEqual(p, editField.path),
-          );
-          if (isHeader) {
-            return true;
-          } else {
-            return false;
-          }
-        } else {
-          return false;
-        }
+    togglePath(pathKey: string) {
+      if (this.treeOpenState.hasOwnProperty(pathKey)) {
+        Vue.set(this.treeOpenState, pathKey, !this.treeOpenState[pathKey]);
       }
-      return editField.widgetName == widget;
     },
-    togglePath(path: string[]) {
-      let pathExists = _.find(this.closedPaths, p => _.isEqual(p, path));
-      if (pathExists) {
-        this.closedPaths = _.filter(this.closedPaths, p => !_.isEqual(p, path));
+    setTreeOpenState(entry: { key: string; value: boolean }) {
+      Vue.set(this.treeOpenState, entry.key, entry.value);
+      this.updateTreeOpenState();
+    },
+    updateTreeOpenState() {
+      if (this.entity) {
+        const headerEditFields = this.entity
+          .editFields()
+          .filter(
+            editField =>
+              editField.type == "object" && editField.widgetName == "header",
+          );
+
+        for (const editField of headerEditFields) {
+          const key = editField.path.join("::");
+          if (!this.treeOpenState.hasOwnProperty(key)) {
+            Vue.set(this.treeOpenState, key, false);
+          }
+        }
+
+        for (const op of this.entity.ops) {
+          // Find all parent header paths from the `EditField`, sorted by
+          // hierarchy
+          const pathKeys = Object.keys(this.treeOpenState)
+            .filter(pathKey =>
+              this.entity.subPath(op.path, pathKey.split("::")),
+            )
+            .sort();
+
+          // Open each parent header, starting at the top of the hierarchy
+          for (const pathKey of pathKeys) {
+            Vue.set(this.treeOpenState, pathKey, true);
+          }
+        }
       } else {
-        this.closedPaths.push(path);
+        this.treeOpenState = {};
       }
     },
     // Returns a single rgb color interpolation between given rgb color
@@ -328,6 +346,15 @@ export default Vue.extend({
       } else {
         return false;
       }
+    },
+  },
+  watch: {
+    entity: {
+      deep: true,
+      immediate: true,
+      handler() {
+        this.updateTreeOpenState();
+      },
     },
   },
 });
