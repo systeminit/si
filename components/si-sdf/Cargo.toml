@@ -24,7 +24,7 @@ clap = "3.0.0-beta.2"
 futures = { version = "0.3", features = ["alloc"] }
 jwt-simple = "0.10.1"
 lazy_static = "1.4"
-names = "0.11"
+names = { version = "0.12.0", default-features = false }
 opentelemetry = { version = "0.16.0", features = ["rt-tokio", "trace"] }
 opentelemetry-otlp = "0.9.0"
 opentelemetry-semantic-conventions = "0.8.0"
@@ -51,7 +51,6 @@ warp = "0.3"
 
 [dev-dependencies]
 lazy_static = "1.4"
-names = "0.11"
 serde_urlencoded = "0.7.0"
 si-model-test = { path = "../si-model-test" }
 tempfile = "3.1.0"

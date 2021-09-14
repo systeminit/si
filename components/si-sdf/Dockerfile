@@ -1,5 +1,5 @@
 ARG BUILDER_IMAGE=cache
-ARG RUST_VERSION=1.54.0
+ARG RUST_VERSION=1.55.0
 
 ###########################################################################
 # Cache Stage
