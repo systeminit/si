@@ -11,6 +11,7 @@ ARG NODE_VERSION
 WORKDIR /usr/src
 COPY . .
 
+RUN (cd components/si-inference && npm ci && npm run build)
 RUN (cd components/si-registry && npm ci && npm run build)
 RUN (cd components/si-entity && npm ci && npm run build)
 RUN (cd components/si-web-app && npm ci)

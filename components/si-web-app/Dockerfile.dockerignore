@@ -10,6 +10,7 @@
 
 # All components required to build
 !components/si-entity
+!components/si-inference
 !components/si-registry
 !components/si-web-app
 

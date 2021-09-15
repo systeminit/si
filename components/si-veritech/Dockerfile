@@ -75,6 +75,7 @@ COPY --chown=node:node . .
 
 USER node
 
+RUN cd components/si-inference && make build
 RUN cd components/si-registry && make build
 RUN cd components/si-entity && make build
 RUN cd components/si-veritech && make build
