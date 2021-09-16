@@ -23,6 +23,7 @@
             :panelRef="panelRefName(panelIndex)"
             :panelContainerRef="panelContainerRefName()"
             :initialPanelType="panel.name"
+            :initialContextType="panel.context"
           />
         </div>
         <PanelContainer
@@ -89,6 +90,7 @@ interface Size {
 
 interface Panel {
   name: string;
+  context?: string;
   type: "panel";
 }
 
