@@ -5,7 +5,7 @@ on:
     branches:
       - master
     paths:
-      - .github/workflows/${{ github.workflow }}.yml
+      - .github/workflows/release-si-web.yml
       - .prettierrc.js
       - babel.config.js
       - components/si-entity/**

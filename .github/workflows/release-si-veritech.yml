@@ -5,7 +5,7 @@ on:
     branches:
       - master
     paths:
-      - .github/workflows/${{ github.workflow }}.yml
+      - .github/workflows/release-si-veritech.yml
       - .prettierrc.js
       - Makefile
       - babel.config.js

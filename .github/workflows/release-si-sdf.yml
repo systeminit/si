@@ -5,7 +5,7 @@ on:
     branches:
       - master
     paths:
-      - .github/workflows/${{ github.workflow }}.yml
+      - .github/workflows/release-si-sdf.yml
       - .Cargo.*
       - .cargo/**
       - components/si-data/**
