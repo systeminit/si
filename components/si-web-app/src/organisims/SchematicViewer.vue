@@ -431,6 +431,9 @@ export default Vue.extend({
       BackspaceEvents.subscribe(event =>
         this.backspaceEvent(event as ShortcutUpdateEvent),
       );
+
+      document.addEventListener("keydown", this.handleKeyDown);
+      document.addEventListener("keyup", this.handleKeyUp);
     },
     deRegisterEvents(): void {
       // ALEX: DISABLED (please keep arround)
@@ -440,6 +443,9 @@ export default Vue.extend({
         "panel-viewport-edge-remove",
         this.removeTransientEdge,
       );
+
+      document.removeEventListener("keydown", this.handleKeyDown);
+      document.removeEventListener("keyup", this.handleKeyUp);
     },
     activateShortcuts(): void {
       this.viewer.shortcutsEnabled = true;
@@ -493,6 +499,25 @@ export default Vue.extend({
         this.viewport.element.style.cursor = "default";
       }
     },
+    handleKeyDown(e: KeyboardEvent) {
+      if (this.viewer.isActive) {
+        if (e.key === "Spacebar" || e.key === " ") {
+          e.preventDefault();
+          this.viewer.spacebarIsDown = true;
+          this.viewer.panningMode = true;
+        }
+      }
+    },
+    handleKeyUp(e: KeyboardEvent) {
+      if (this.viewer.isActive) {
+        if (e.key === "Spacebar" || e.key === " ") {
+          e.preventDefault();
+          this.viewer.spacebarIsDown = false;
+          this.viewer.panningMode = false;
+        }
+      }
+    },
+
     //edgeKind(): EdgeKind | undefined {
     //  switch (this.schematicKind) {
     //    case SchematicKind.Deployment: {
@@ -794,15 +819,19 @@ export default Vue.extend({
         // ----------------------------------------------------------------
         // Initialize canvas panning
         // ----------------------------------------------------------------
-        // if (this.viewer.panningMode) {
-        //   this.viewer.isPanning = true;
-        //   console.log("this.viewer.isPanning");
-        // }
+        if (this.viewer.panningMode) {
+          this.viewer.isPanning = true;
+        }
 
         // ----------------------------------------------------------------
         // Deselect active node
         // ----------------------------------------------------------------
-        if (e.target && e.target instanceof SVGElement && e.target.id) {
+        if (
+          e.target &&
+          e.target instanceof SVGElement &&
+          e.target.id &&
+          !this.viewer.panningMode
+        ) {
           if (
             e.target.id.includes(".transientConnectionSvg") ||
             e.target.id.includes(".edge:")
