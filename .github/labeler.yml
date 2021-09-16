@@ -1,16 +1,74 @@
-si-sdf:
-  - components/si-sdf/**/*
-si-registry:
-  - components/si-registry/**/*
-si-web-app:
-  - components/si-web-app/**/*
-si-pedant:
-  - components/si-pedant/**/*
-nats:
-  - components/nats
-postgres:
-  - components/postgres
-opentelemetry:
-  - components/opentelemetry-collector
-ci:
+---
+#
+# CI/CD infrastructure
+#
+A-ci:
+  - .ci/**/*
   - .github/**/*
+
+#
+# Third-party development images
+#
+A-nats:
+  - components/nats/**/*
+A-otelcol:
+  - components/otelcol/**/*
+A-postgres:
+  - components/postgres/**/*
+A-skopeo:
+  - components/skopeo/**/*
+
+#
+# System Initiative components
+#
+A-si-cyclone:
+  - components/si-cyclone/**/*
+  - .prettierrc.js
+A-si-data:
+  - components/si-data/**/*
+  - .cargo/**/*
+  - Cargo.lock
+  - rust-toolchain
+  - rustfmt.toml
+A-si-entity:
+  - components/si-entity/**/*
+  - .prettierrc.js
+A-si-inference:
+  - components/si-inference/**/*
+  - .prettierrc.js
+A-si-model:
+  - components/si-model/**/*
+  - .cargo/**/*
+  - Cargo.lock
+  - rust-toolchain
+  - rustfmt.toml
+A-si-model-test:
+  - components/si-model-test/**/*
+  - .cargo/**/*
+  - Cargo.lock
+  - rust-toolchain
+  - rustfmt.toml
+A-si-pedant:
+  - components/si-pedant/**/*
+  - .prettierrc.js
+A-si-registry:
+  - components/si-registry/**/*
+  - .prettierrc.js
+A-si-sdf:
+  - components/si-sdf/**/*
+  - .cargo/**/*
+  - Cargo.lock
+  - rust-toolchain
+  - rustfmt.toml
+A-si-settings:
+  - components/si-settings/**/*
+  - .cargo/**/*
+  - Cargo.lock
+  - rust-toolchain
+  - rustfmt.toml
+A-si-veritech:
+  - components/si-veritech/**/*
+  - .prettierrc.js
+A-si-web:
+  - components/si-web-app/**/*
+  - .prettierrc.js
