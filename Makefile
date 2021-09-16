@@ -22,12 +22,12 @@
 include ./components/build/deps.mk
 
 COMPONENTS = components/si-data components/si-entity components/si-model components/si-model-test components/si-veritech components/si-registry components/si-settings components/si-sdf components/si-web-app
-RELEASEABLE_COMPONENTS = components/si-veritech components/si-sdf components/si-web-app
+RELEASEABLE_COMPONENTS = si-veritech si-sdf si-web-app
 RUNNABLE_COMPONENTS = components/si-veritech components/si-sdf components/si-web-app
 BUILDABLE = $(patsubst %,build//%,$(COMPONENTS))
 TESTABLE = $(patsubst %,test//%,$(COMPONENTS))
 CLEANABLE = $(patsubst %,clean//%,$(COMPONENTS))
-RELEASEABLE = $(patsubst %,release//%,$(RELEASEABLE_COMPONENTS))
+RELEASEABLE = $(patsubst %,release-%,$(RELEASEABLE_COMPONENTS))
 IMAGEABLE = $(patsubst %,image//%,$(RELEASEABLE_COMPONENTS))
 WATCHABLE = $(patsubst %,watch//%,$(RUNNABLE_COMPONENTS))
 BUILDABLE_REGEX = $(shell echo $(COMPONENTS) | tr " " "|")
@@ -68,7 +68,9 @@ $(IMAGEABLE):
 	cd $(patsubst image//%,%,$@) && $(MAKE) image
 
 $(RELEASEABLE):
-	cd $(patsubst release//%,%,$@) && $(MAKE) release
+	cd components/$(patsubst release-%,%,$@) && $(MAKE) release
+# TODO(fnichol): rename `components/si-web-app` -> `components/si-web`
+release-si-web: release-si-web-app
 
 $(WATCHABLE):
 	@ pushd $(patsubst watch//%,%,$@); $(MAKE) watch

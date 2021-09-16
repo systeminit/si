@@ -46,8 +46,10 @@ invoke_cli() {
   author="$1"
   shift
 
-  local img
+  local img source license
   img="${IMG:-systeminit/si-sdf}"
+  source="http://github.com/systeminit/si.git"
+  license="PROPRIETARY"
 
   ci_mode=""
   push=""
@@ -109,14 +111,14 @@ invoke_cli() {
   if [ -z "${CI:-}" ]; then
     setup_buildx
   fi
-  build "$img" "$push" "$latest" "$ci_mode" "$author" "$@"
+  build "$img" "$push" "$latest" "$ci_mode" "$author" "$source" "$license" "$@"
 }
 
 setup_buildx() {
   local name=si
 
   if ! docker buildx inspect "$name" >/dev/null 2>&1; then
-    docker buildx create --name "$name" --driver docker-container --use;
+    docker buildx create --name "$name" --driver docker-container --use
   else
     docker buildx use "$name"
   fi
@@ -132,6 +134,10 @@ build() {
   local ci_mode="$1"
   shift
   local author="$1"
+  shift
+  local source="$1"
+  shift
+  local license="$1"
   shift
 
   need_cmd docker
@@ -172,8 +178,8 @@ build() {
     --label "maintainer=$author"
     --label "org.opencontainers.image.version=$build_version"
     --label "org.opencontainers.image.authors=$author"
-    --label "org.opencontainers.image.licenses=PROPRIETARY"
-    --label "org.opencontainers.image.source=http://github.com/systeminit/si.git"
+    --label "org.opencontainers.image.licenses=$license"
+    --label "org.opencontainers.image.source=$source"
     --label "org.opencontainers.image.revision=$revision"
     --label "org.opencontainers.image.created=$created"
     --tag "$img:$build_version"
@@ -199,8 +205,53 @@ build() {
 
   export BUILDKIT_PROGRESS=plain
 
+  echo "--- Building image '$img'"
   set -x
-  exec docker "${args[@]}"
+  docker "${args[@]}"
+  set +x
+
+  build_manifest "$img" "$build_version" "$revision" "$created" \
+    "$author" "$source" "$license"
+}
+
+build_manifest() {
+  local img="$1"
+  local build_version="$2"
+  local revision="$3"
+  local created="$4"
+  local author="$5"
+  local source="$6"
+  local license="$7"
+
+  need_cmd basename
+  need_cmd dirname
+  need_cmd jq
+  need_cmd mkdir
+  need_cmd pwd
+
+  local manifest
+  manifest="../../tmp/release-$(basename "$img").manifest.json"
+  mkdir -p "$(dirname "$manifest")"
+  manifest="$(cd "$(dirname "$manifest")" && pwd)/$(basename "$manifest")"
+
+  echo "--- Writing manifest $manifest"
+  jq -n -c \
+    --arg img "$img" \
+    --arg build_version "$build_version" \
+    --arg revision "$revision" \
+    --arg created "$created" \
+    --arg author "$author" \
+    --arg source "$source" \
+    --arg license "$license" \
+    '. + {
+      name: $img,
+      author: $author,
+      version: $build_version,
+      revision: $revision,
+      created: $created,
+      source: $source,
+      license: $license
+    }' >"$manifest"
 }
 
 die() {
