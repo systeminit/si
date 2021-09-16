@@ -167,16 +167,16 @@ export default Vue.extend({
       }
     },
     handleKeyDown(e: KeyboardEvent): void {
-      if (e.key === spacebarKey.long || e.key === spacebarKey.short) {
-        e.preventDefault();
-        this.handleSpacebar("keyDown");
-      }
+      // if (e.key === spacebarKey.long || e.key === spacebarKey.short) {
+      //   e.preventDefault();
+      //   this.handleSpacebar("keyDown");
+      // }
     },
     handleKeyUp(e: KeyboardEvent): void {
-      if (e.key === spacebarKey.long || e.key === spacebarKey.short) {
-        e.preventDefault();
-        this.handleSpacebar("keyUp");
-      }
+      // if (e.key === spacebarKey.long || e.key === spacebarKey.short) {
+      //   e.preventDefault();
+      //   this.handleSpacebar("keyUp");
+      // }
 
       if (e.key === backspaceKey.long) {
         e.preventDefault();
