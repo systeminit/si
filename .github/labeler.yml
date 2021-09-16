@@ -1,10 +1,12 @@
 ---
 #
-# CI/CD infrastructure
+# Project infrastructure
 #
 A-ci:
   - .ci/**/*
   - .github/**/*
+A-docs:
+  - docs/**/*
 
 #
 # Third-party development images
