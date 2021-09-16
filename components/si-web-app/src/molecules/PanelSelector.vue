@@ -9,6 +9,7 @@
       :panelIndex="panelIndex"
       :panelRef="panelRef"
       :panelContainerRef="panelContainerRef"
+      :initialContext="attributePanelInitialContext"
       @change-panel="changePanelType"
       @panel-maximized-full="setMaximizedFull($event)"
       @panel-maximized-container="setMaximizedContainer($event)"
@@ -39,6 +40,7 @@
       :panelIndex="panelIndex"
       :panelRef="panelRef"
       :panelContainerRef="panelContainerRef"
+      :initialContext="schematicPanelInitialContext"
       @change-panel="changePanelType"
       @panel-maximized-full="setMaximizedFull($event)"
       @panel-maximized-container="setMaximizedContainer($event)"
@@ -54,10 +56,12 @@
 
 <script lang="ts">
 import Vue, { PropType } from "vue";
-import EmptyPanel from "@/organisims/EmptyPanel.vue";
 import SecretPanel from "@/organisims/SecretPanel.vue";
 import AttributePanel from "@/organisims/AttributePanel.vue";
 import SchematicPanel from "@/organisims/SchematicPanel.vue";
+
+import { schematicKindfromString } from "@/api/sdf/model/schematic";
+
 import { PanelEventBus } from "@/atoms/PanelEventBus";
 import { panelTypeChanges$, restorePanelTypeChanges$ } from "@/observables";
 import { tap } from "rxjs/operators";
@@ -86,6 +90,9 @@ export default Vue.extend({
     initialPanelType: {
       type: String as PropType<PanelType>,
       default: PanelType.Schematic,
+    },
+    initialContextType: {
+      type: String,
     },
   },
   components: {
@@ -128,6 +135,14 @@ export default Vue.extend({
         }),
       ),
     };
+  },
+  computed: {
+    schematicPanelInitialContext() {
+      return schematicKindfromString(this.initialContextType);
+    },
+    attributePanelInitialContext() {
+      return this.initialContextType;
+    },
   },
   methods: {
     activateShortcuts() {

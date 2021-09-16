@@ -185,7 +185,7 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import Vue, { PropType } from "vue";
 
 import Panel from "@/molecules/Panel.vue";
 import { emitEditorErrorMessage } from "@/atoms/PanelEventBus";
@@ -243,20 +243,22 @@ import { Resource } from "si-entity";
 import { IGetResourceRequest, ResourceDal } from "@/api/sdf/dal/resourceDal";
 import { IGetEntityReply } from "@/api/sdf/dal/attributeDal";
 
+type ActiveView =
+  | "action"
+  | "attribute"
+  | "code"
+  | "connection"
+  | "event"
+  | "qualification"
+  | "discovery"
+  | "resource";
+
 interface IData {
   isLoading: boolean;
   selectedEntityId: string;
   selectedNode: ISchematicNode | null;
   selectionIsLocked: boolean;
-  activeView:
-    | "action"
-    | "attribute"
-    | "code"
-    | "connection"
-    | "event"
-    | "qualification"
-    | "discovery"
-    | "resource";
+  activeView: ActiveView;
   entity: Entity | null;
   connections: Connections;
   resource: Resource | null;
@@ -275,6 +277,10 @@ export default Vue.extend({
     initialMaximizedContainer: Boolean,
     isVisible: Boolean,
     isMaximizedContainerEnabled: Boolean,
+    initialContext: {
+      type: String as PropType<ActiveView>,
+      default: "attribute",
+    },
   },
   components: {
     Panel,
@@ -304,7 +310,7 @@ export default Vue.extend({
       selectedEntityId: "",
       selectedNode: null,
       selectionIsLocked: true,
-      activeView: "attribute",
+      activeView: this.initialContext as ActiveView,
       entity: null,
       connections: {
         inbound: [],

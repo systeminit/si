@@ -81,10 +81,12 @@ export default Vue.extend({
               panels: [
                 {
                   name: "schematic",
+                  context: "deployment",
                   type: "panel",
                 },
                 {
                   name: "schematic",
+                  context: "component",
                   type: "panel",
                 },
               ],
@@ -95,10 +97,12 @@ export default Vue.extend({
               panels: [
                 {
                   name: "attribute",
+                  context: "attribute",
                   type: "panel",
                 },
                 {
                   name: "attribute",
+                  context: "qualification",
                   type: "panel",
                 },
               ],

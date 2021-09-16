@@ -17,6 +17,7 @@
             size="xs"
             id="schematicSelect"
             name="schematicSelect"
+            :value="schematicKind"
             :options="schematicKinds"
             v-model="schematicKind"
             class="pl-1"
@@ -97,7 +98,7 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import Vue, { PropType } from "vue";
 import _ from "lodash";
 
 import {
@@ -171,6 +172,10 @@ export default Vue.extend({
     initialMaximizedContainer: Boolean,
     isVisible: Boolean,
     isMaximizedContainerEnabled: Boolean,
+    initialContext: {
+      type: String,
+      default: "deployment",
+    },
   },
   components: {
     LockIcon,
@@ -183,7 +188,7 @@ export default Vue.extend({
   },
   data(): Data {
     return {
-      schematicKind: SchematicKind.Deployment,
+      schematicKind: schematicKindfromString(this.initialContext),
       schematic: null,
       rootObjectId: null,
       isPinned: false,
