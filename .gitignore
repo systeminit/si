@@ -14,3 +14,4 @@ vendor/automerge
 /support/dev/k8s/**/*.env
 /support/dev/k8s/**/dockerconfig.json
 /support/dev/k8s/**/web-htpasswd
+/tmp/
