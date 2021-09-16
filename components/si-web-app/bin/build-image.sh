@@ -173,6 +173,13 @@ build() {
     "$date_cmd" -u -d "@$build_time" +%Y%m%d.%H%M%S
   ).0-sha.$(git show -s --format=%h)"
 
+  local image_url
+  image_url="https://hub.docker.com/r/$img"
+  image_url="$image_url/tags?page=1&ordering=last_updated&name=$build_version"
+
+  local commit_url
+  commit_url="${source%.git}/commit/$revision"
+
   cd "${0%/*}/.."
 
   local args
@@ -188,6 +195,8 @@ build() {
     --label "org.opencontainers.image.source=$source"
     --label "org.opencontainers.image.revision=$revision"
     --label "org.opencontainers.image.created=$created"
+    --label "com.systeminit.image.image_url=$image_url"
+    --label "com.systeminit.image.commit_url=$commit_url"
     --tag "$img:$build_version"
   )
   if [[ "$push" != "true" || "$latest" == "true" ]]; then
@@ -217,7 +226,7 @@ build() {
   set +x
 
   build_manifest "$img" "$build_version" "$revision" "$created" \
-    "$author" "$source" "$license"
+    "$author" "$source" "$license" "$image_url" "$commit_url"
 }
 
 build_manifest() {
@@ -228,6 +237,8 @@ build_manifest() {
   local author="$5"
   local source="$6"
   local license="$7"
+  local image_url="$8"
+  local commit_url="$9"
 
   need_cmd basename
   need_cmd dirname
@@ -249,14 +260,18 @@ build_manifest() {
     --arg author "$author" \
     --arg source "$source" \
     --arg license "$license" \
+    --arg image_url "$image_url" \
+    --arg commit_url "$commit_url" \
     '. + {
       name: $img,
       author: $author,
+      license: $license,
       version: $build_version,
-      revision: $revision,
       created: $created,
-      source: $source,
-      license: $license
+      revision: $revision,
+      repo_url: $source,
+      image_url: $image_url,
+      commit_url: $commit_url
     }' >"$manifest"
 }
 
