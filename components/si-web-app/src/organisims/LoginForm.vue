@@ -65,14 +65,16 @@
           [Sign Up]
         </button>
       </div>
-      <button
-        class="inline-block py-1 button button-login"
-        :class="loginButtonStyling()"
-        aria-label="Sign In"
-        @click="login"
-      >
-        [Login]
-      </button>
+      <div class="pr-2">
+        <button
+          class="inline-block py-1 button button-login"
+          :class="loginButtonStyling()"
+          aria-label="Sign In"
+          @click="login"
+        >
+          [Login]
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -82,7 +84,7 @@ import Vue from "vue";
 import { SessionDal } from "@/api/sdf/dal/sessionDal";
 import { user$, billingAccount$ } from "@/observables";
 
-export enum InputKind {
+enum InputKind {
   BillingAccount = "billingAccount",
   Email = "email",
   Password = "password",
