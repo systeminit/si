@@ -21,9 +21,26 @@
 
 include ./components/build/deps.mk
 
-COMPONENTS = components/si-data components/si-entity components/si-model components/si-model-test components/si-veritech components/si-registry components/si-settings components/si-sdf components/si-web-app
-RELEASEABLE_COMPONENTS = si-veritech si-sdf si-web-app
-RUNNABLE_COMPONENTS = components/si-veritech components/si-sdf components/si-web-app
+# order is important as earlier components are needed to build later components
+COMPONENTS = \
+	components/si-inference \
+	components/si-entity \
+	components/si-registry \
+	components/si-veritech \
+	components/si-web-app \
+	components/si-data \
+	components/si-model \
+	components/si-model-test \
+	components/si-settings \
+	components/si-sdf
+RELEASEABLE_COMPONENTS = \
+	si-veritech \
+	si-sdf \
+	si-web-app
+RUNNABLE_COMPONENTS = \
+	components/si-veritech \
+	components/si-sdf \
+	components/si-web-app
 BUILDABLE = $(patsubst %,build//%,$(COMPONENTS))
 TESTABLE = $(patsubst %,test//%,$(COMPONENTS))
 CLEANABLE = $(patsubst %,clean//%,$(COMPONENTS))
