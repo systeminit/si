@@ -6,8 +6,8 @@ on:
       - master
     paths:
       - .github/workflows/release-si-sdf.yml
-      - .Cargo.*
       - .cargo/**
+      - Cargo.*
       - components/si-data/**
       - components/si-model-settings/**
       - components/si-model-test/**
