@@ -1,5 +1,5 @@
 ARG BUILDER_IMAGE=builder_cache
-ARG NODE_VERSION=16.8.0
+ARG NODE_VERSION=16.9.1
 
 ###########################################################################
 # Cache Stage
