@@ -3,6 +3,7 @@ CREATE TABLE entities
     id                 bigint PRIMARY KEY,
     si_id              text UNIQUE,
     entity_type        text,
+    schema_id          bigint                   NOT NULL REFERENCES schemas (id),
     billing_account_id bigint                   NOT NULL REFERENCES billing_accounts (id),
     organization_id    bigint                   NOT NULL REFERENCES organizations (id),
     workspace_id       bigint                   NOT NULL REFERENCES workspaces (id),
@@ -73,6 +74,8 @@ DECLARE
     this_array_meta         jsonb;
     this_tombstones         jsonb;
     this_ops                jsonb;
+    this_schema_id          bigint;
+    this_schema_si_id       text;
 BEGIN
     SELECT next_si_id_v1() INTO this_id;
     SELECT 'entity:' || this_id INTO si_id;
@@ -96,12 +99,26 @@ BEGIN
     SELECT '[]'::jsonb INTO this_ops;
     SELECT '[]'::jsonb INTO this_tombstones;
 
+    /* WARNING: This should be removed. It will dynamically create missing
+       schemas, to keep things working. It needs to become an error!
+     */
+    SELECT id FROM schemas WHERE entity_type = this_entity_type INTO this_schema_id;
+    RAISE WARNING 'Have an existing schema: %', this_schema_id;
+    IF this_schema_id IS NULL THEN
+        SELECT si_id_to_primary_key_v1(schema_create_v1(this_entity_type, this_entity_type, this_entity_type) ->> 'id')
+        INTO this_schema_id;
+        RAISE WARNING 'Created a schema: %', this_schema_id;
+    END IF;
+    SELECT 'schema:' || this_schema_id INTO this_schema_si_id;
+    /* WARNING OVER - BUT FOR REAL, DROP THIS EVENTUALLY */
+
     SELECT jsonb_build_object(
                    'id', si_id,
                    'nodeId', this_node_si_id,
                    'name', this_name,
                    'description', this_description,
                    'entityType', this_entity_type,
+                   'schemaId', this_schema_si_id,
                    'ops', this_ops,
                    'tombstones', this_tombstones,
                    'arrayMeta', this_array_meta,
@@ -111,22 +128,22 @@ BEGIN
                )
     INTO object;
 
-    INSERT INTO entities (id, si_id, entity_type, billing_account_id, organization_id, workspace_id, node_id,
+    INSERT INTO entities (id, si_id, entity_type, schema_id, billing_account_id, organization_id, workspace_id, node_id,
                           tenant_ids, created_at,
                           updated_at)
-    VALUES (this_id, si_id, this_entity_type, this_billing_account_id, this_organization_id, this_workspace_id,
+    VALUES (this_id, si_id, this_entity_type, this_schema_id, this_billing_account_id, this_organization_id, this_workspace_id,
             this_node_id, tenant_ids, created_at, updated_at);
 
     INSERT INTO entities_edit_session_projection (id, obj, change_set_id, edit_session_id, tenant_ids, created_at,
                                                   updated_at)
     VALUES (this_id, object, this_change_set_id, this_edit_session_id, tenant_ids, created_at, updated_at);
-END;
+END ;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
 CREATE OR REPLACE FUNCTION entity_save_for_edit_session_v1(input_entity jsonb,
                                                            change_set_si_id text,
                                                            edit_session_si_id text
-                                                           ) RETURNS VOID AS
+) RETURNS VOID AS
 $$
 DECLARE
     this_id              bigint;
@@ -151,7 +168,7 @@ BEGIN
             DEFAULT)
     ON CONFLICT (id, change_set_id, edit_session_id) DO UPDATE SET obj        = input_entity,
 
-                                                                  updated_at = now();
+                                                                   updated_at = now();
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 

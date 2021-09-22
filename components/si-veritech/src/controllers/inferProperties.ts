@@ -40,14 +40,22 @@ export function inferProperties(ctx: Context): void {
   });
 
   const registryObj = registry[request.entityType];
+  // NOTE: This whole thing is going to disappear when we're done refactoring. This is
+  // just going to make it work, for now.
   if (!registryObj) {
-    ctx.response.status = 400;
-    ctx.response.body = {
-      code: 400,
-      message: `Cannot find registry entry for ${request.entityType}`,
-    };
+    ctx.response.status = 200;
+    ctx.response.body = { entity: request.entity };
     return;
   }
+
+  //if (!registryObj) {
+  //  ctx.response.status = 400;
+  //  ctx.response.body = {
+  //    code: 400,
+  //    message: `Cannot find registry entry for ${request.entityType}`,
+  //  };
+  //  return;
+  //}
 
   request.entity = Entity.fromJson(request.entity);
   request.entity.setDefaultProperties();

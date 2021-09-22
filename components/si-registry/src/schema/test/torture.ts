@@ -169,7 +169,26 @@ const torture: RegistryEntry = {
         ],
       },
     },
-
+    {
+      type: "object",
+      name: "nestedTest",
+      properties: [
+        {
+          type: "string",
+          name: "banana",
+        },
+        {
+          type: "object",
+          name: "squirrel",
+          properties: [
+            {
+              type: "string",
+              name: "name",
+            },
+          ],
+        },
+      ],
+    },
     {
       type: "object",
       name: "level0",

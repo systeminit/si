@@ -39,7 +39,9 @@ pub mod node_position;
 pub mod organization;
 pub mod output_line;
 pub mod qualification;
+pub mod resolver;
 pub mod resource;
+pub mod schema;
 pub mod schematic;
 pub mod secret;
 pub mod session;
@@ -80,9 +82,14 @@ pub use organization::{Organization, OrganizationError};
 pub use output_line::{OutputLine, OutputLineStream};
 pub use qualification::{Qualification, QualificationError};
 use rand::Rng;
+pub use resolver::{
+    Resolver, ResolverArgKindBinding, ResolverBackendKind, ResolverBinding, ResolverError,
+    ResolverOutputKind,
+};
 pub use resource::{
     Resource, ResourceError, ResourceInternalHealth, ResourceInternalStatus, ResourceResult,
 };
+pub use schema::{prop::PropString, Prop, Schema, SchemaError};
 pub use schematic::{Schematic, SchematicError, SchematicKind, SchematicNode, SchematicResult};
 pub use secret::{
     EncryptedSecret, Secret, SecretAlgorithm, SecretError, SecretKind, SecretObjectType,

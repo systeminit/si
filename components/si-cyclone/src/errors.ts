@@ -9,6 +9,14 @@ export class InferenceError extends Error {
   }
 }
 
+export class RegistryLookupError extends InferenceError {
+  constructor(args: { entityType: string }) {
+    const message = `Entity type ${args.entityType} does not exist in the registry!`;
+    super(message);
+    this.name = "RegistryLookupError";
+  }
+}
+
 export class InvalidTargetPropError extends InferenceError {
   constructor(args: { expected: string; found: string }) {
     const message = `Invalid target prop type in value function; expected '${args.expected}' found '${args.found}'`;

@@ -50,7 +50,7 @@ const inferenceTests: RegistryEntry = {
                 ],
               },
             ],
-            code: "fistEntity.name",
+            code: "firstEntity.name",
           },
         ],
       },

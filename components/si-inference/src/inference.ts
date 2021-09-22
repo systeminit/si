@@ -2,6 +2,7 @@ export interface SelectEntityId {
   entityId: string;
   entityType?: never;
   targetEntity?: never;
+  self?: never;
   data: From;
 }
 
@@ -9,6 +10,7 @@ export interface SelectEntityType {
   entityId?: never;
   entityType: string;
   targetEntity?: never;
+  self?: never;
   data: From;
 }
 
@@ -16,10 +18,23 @@ export interface SelectTarget {
   entityId?: never;
   entityType?: never;
   targetEntity: true;
+  self?: never;
   data: From;
 }
 
-export type SelectOptions = SelectEntityType | SelectEntityId | SelectTarget;
+export interface SelectSelf {
+  entityId?: never;
+  entityType?: never;
+  targetEntity?: never;
+  self: true;
+  data: From;
+}
+
+export type SelectOptions =
+  | SelectEntityType
+  | SelectEntityId
+  | SelectTarget
+  | SelectSelf;
 
 export type Select = SelectOptions[];
 

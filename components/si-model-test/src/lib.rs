@@ -21,6 +21,7 @@ pub use model::key_pair::*;
 pub use model::node::*;
 pub use model::node_position::*;
 pub use model::organization::*;
+pub use model::schema::*;
 pub use model::secret::*;
 pub use model::user::*;
 pub use model::workspace::*;

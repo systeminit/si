@@ -29,6 +29,7 @@ export interface ISiEntity {
   name: string;
   description: string;
   entityType: string;
+  schemaId: string;
   ops: Op[];
   tombstones: OpTombstone[];
   arrayMeta: {
@@ -81,6 +82,7 @@ interface OpBase {
 }
 
 export interface OpSet extends OpBase {
+  //id: string;
   op: OpType.Set;
   path: string[];
   value: string | number | boolean | null;
@@ -182,6 +184,7 @@ export class SiEntity implements ISiEntity {
   nodeId: string;
   name: string;
   description: string;
+  schemaId: string;
   entityType: ISiEntity["entityType"];
   ops: Op[];
   tombstones: OpTombstone[];
@@ -202,6 +205,7 @@ export class SiEntity implements ISiEntity {
     this.nodeId = "fake";
     this.name = "fake";
     this.description = "fake";
+    this.schemaId = "fake";
     this.entityType = entityType;
     this.ops = [];
     this.tombstones = [];
@@ -217,6 +221,7 @@ export class SiEntity implements ISiEntity {
     entity.nodeId = input.nodeId;
     entity.name = input.name;
     entity.description = input.description;
+    entity.schemaId = input.schemaId;
     entity.entityType = input.entityType;
     entity.ops = input.ops;
     entity.tombstones = input.tombstones;
