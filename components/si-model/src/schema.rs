@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use si_data::{NatsTxn, NatsTxnError, PgError, PgTxn};
 use thiserror::Error;
 
-use crate::MinimalStorable;
+use crate::{MinimalStorable, Resolver, ResolverBinding, ResolverError};
 
 #[derive(Error, Debug)]
 pub enum SchemaError {
@@ -16,6 +16,8 @@ pub enum SchemaError {
     Pg(#[from] PgError),
     #[error("serde error: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("resolver error: {0}")]
+    Resolver(#[from] ResolverError),
 }
 
 pub type SchemaResult<T> = Result<T, SchemaError>;
@@ -47,9 +49,25 @@ impl Schema {
                 &[&name, &entity_type, &description],
             )
             .await?;
-        let json: serde_json::Value = row.try_get("object")?;
-        nats.publish(&json).await?;
-        let object: Schema = serde_json::from_value(json)?;
-        Ok(object)
+        let schema_json: serde_json::Value = row.try_get("object")?;
+        nats.publish(&schema_json).await?;
+        let schema: Schema = serde_json::from_value(schema_json)?;
+
+        let empty_object_resolver = Resolver::get_by_name(&txn, "si:setEmptyObject").await?;
+        let _binding = ResolverBinding::new(
+            &txn,
+            &nats,
+            &empty_object_resolver.id,
+            crate::resolver::ResolverBackendKindBinding::EmptyObject,
+            schema.id.clone(),
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+        .await?;
+
+        Ok(schema)
     }
 }

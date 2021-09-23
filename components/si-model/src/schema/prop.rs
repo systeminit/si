@@ -7,3 +7,17 @@ use serde::{Deserialize, Serialize};
 pub enum Prop {
     String(PropString),
 }
+
+impl Prop {
+    pub fn id(&self) -> &str {
+        match self {
+            Prop::String(p) => p.id.as_str(),
+        }
+    }
+
+    pub fn parent_id(&self) -> Option<&str> {
+        match self {
+            Prop::String(p) => p.parent_id.as_deref(),
+        }
+    }
+}

@@ -4,7 +4,7 @@ CREATE TABLE props
     si_id      text UNIQUE,
     schema_id  bigint                   NOT NULL REFERENCES schemas (id),
     name       text                     NOT NULL UNIQUE,
-    path       bigint[],
+    parent_id  bigint REFERENCES props (id),
     kind       text                     NOT NULL,
     obj        jsonb                    NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
@@ -12,14 +12,14 @@ CREATE TABLE props
 );
 
 ALTER TABLE props
- ADD CONSTRAINT valid_kind_check CHECK (kind IN ('string'));
+    ADD CONSTRAINT valid_kind_check CHECK (kind IN ('string'));
 
 CREATE OR REPLACE FUNCTION prop_create_v1(
     name text,
     description text,
     this_kind text,
-    path_si text[],
-    schema_si_id text,
+    this_parent_si_id text,
+    this_schema_si_id text,
     OUT object jsonb
 ) AS
 $$
@@ -27,7 +27,7 @@ DECLARE
     id             bigint;
     si_id          text;
     this_schema_id bigint;
-    this_path      bigint[];
+    this_parent_id bigint;
     created_at     timestamp with time zone;
     updated_at     timestamp with time zone;
     si_storable    jsonb;
@@ -37,8 +37,7 @@ BEGIN
     SELECT NOW() INTO created_at;
     SELECT NOW() INTO updated_at;
 
-    SELECT si_id_to_primary_key_v1(schema_si_id) INTO this_schema_id;
-    SELECT array_agg(si_id_to_primary_key_v1(path_entry)) FROM unnest(path_si) AS path_entry INTO this_path;
+    SELECT si_id_to_primary_key_v1(this_schema_si_id) INTO this_schema_id;
 
     SELECT jsonb_build_object(
                    'typeName', 'prop',
@@ -54,13 +53,17 @@ BEGIN
                    'name', name,
                    'description', description,
                    'kind', this_kind,
-                   'schemaId', this_schema_id,
-                   'path', path_si,
+                   'schemaId', this_schema_si_id,
                    'siStorable', si_storable
                )
     INTO object;
 
-    INSERT INTO props (id, si_id, schema_id, name, path, kind, obj)
-        VALUES (id, si_id, this_schema_id, name, this_path, this_kind, object);
+    IF this_parent_si_id IS NOT NULL THEN
+        SELECT si_id_to_primary_key_v1(this_parent_si_id) INTO this_parent_id;
+        SELECT jsonb_set(object, '{parentId}', to_jsonb(this_parent_si_id), true) INTO object;
+    END IF;
+
+    INSERT INTO props (id, si_id, schema_id, name, parent_id, kind, obj)
+    VALUES (id, si_id, this_schema_id, name, this_parent_id, this_kind, object);
 END;
 $$ LANGUAGE PLPGSQL;

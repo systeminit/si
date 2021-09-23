@@ -1,4 +1,4 @@
-use crate::{schema::SchemaResult, MinimalStorable};
+use crate::{schema::SchemaResult, MinimalStorable, Resolver, ResolverBinding};
 use serde::{Deserialize, Serialize};
 use si_data::{NatsTxn, PgTxn};
 
@@ -8,7 +8,8 @@ pub struct PropString {
     pub id: String,
     pub name: String,
     pub description: String,
-    pub default_value: Option<String>,
+    pub parent_id: Option<String>,
+    pub schema_id: String,
     pub si_storable: MinimalStorable,
 }
 
@@ -19,7 +20,7 @@ impl PropString {
         schema_id: impl Into<String>,
         name: impl Into<String>,
         description: impl Into<String>,
-        path: Vec<String>,
+        parent_id: Option<String>,
     ) -> SchemaResult<Self> {
         let name = name.into();
         let description = description.into();
@@ -27,12 +28,28 @@ impl PropString {
         let row = txn
             .query_one(
                 "SELECT object FROM prop_create_v1($1, $2, $3, $4, $5)",
-                &[&name, &description, &"string", &path, &schema_id],
+                &[&name, &description, &"string", &parent_id, &schema_id],
             )
             .await?;
-        let json: serde_json::Value = row.try_get("object")?;
-        nats.publish(&json).await?;
-        let object: PropString = serde_json::from_value(json)?;
-        Ok(object)
+        let prop_json: serde_json::Value = row.try_get("object")?;
+        nats.publish(&prop_json).await?;
+        let prop_string: PropString = serde_json::from_value(prop_json)?;
+
+        let unset_resolver = Resolver::get_by_name(&txn, "si:unset").await?;
+        let _binding = ResolverBinding::new(
+            &txn,
+            &nats,
+            &unset_resolver.id,
+            crate::resolver::ResolverBackendKindBinding::Unset,
+            schema_id.clone(),
+            Some(prop_string.id.clone()),
+            None,
+            None,
+            None,
+            None,
+        )
+        .await?;
+
+        Ok(prop_string)
     }
 }

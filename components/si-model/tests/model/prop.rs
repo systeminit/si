@@ -11,7 +11,7 @@ mod string {
         let mut conn = pg.get().await.expect("cannot connect to pg");
         let txn = conn.transaction().await.expect("cannot create txn");
         let schema = create_new_schema(&txn, &nats).await;
-        let prop = PropString::new(&txn, &nats, &schema.id, "poop", "canoe", Vec::new())
+        let prop = PropString::new(&txn, &nats, &schema.id, "poop", "canoe", None)
             .await
             .expect("cannot create new prop");
         assert_eq!(prop.name, "poop");

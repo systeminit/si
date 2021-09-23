@@ -54,6 +54,11 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL;
 
+SELECT resolver_create_v1('si:setEmptyObject', 'returns an empty object', 'emptyObject', 'object');
+SELECT resolver_create_v1('si:setEmptyArray', 'returns an empty array', 'emptyArray', 'array');
+SELECT resolver_create_v1('si:setString', 'takes a string as input and returns it', 'string', 'string');
+SELECT resolver_create_v1('si:unset', 'ensures this prop is never set', 'unset', 'unset');
+
 CREATE TABLE resolver_bindings
 (
     id              bigint PRIMARY KEY,
@@ -61,7 +66,7 @@ CREATE TABLE resolver_bindings
     entity_id       bigint REFERENCES entities (id),
     system_id       bigint REFERENCES entities (id),
     resolver_id     bigint                   NOT NULL REFERENCES resolvers (id),
-    schema_id       bigint REFERENCES schemas (id),
+    schema_id       bigint                   NOT NULL REFERENCES schemas (id),
     prop_id         bigint REFERENCES props (id),
     change_set_id   bigint REFERENCES change_sets (id),
     edit_session_id bigint REFERENCES edit_sessions (id),
@@ -103,6 +108,7 @@ BEGIN
 
     SELECT si_id_to_primary_key_v1(this_resolver_si_id) INTO this_resolver_id;
     SELECT si_id_to_primary_key_v1(this_prop_si_id) INTO this_prop_id;
+    SELECT si_id_to_primary_key_v1(this_schema_si_id) INTO this_schema_id;
 
     SELECT jsonb_build_object(
                    'typeName', 'resolverBinding',
@@ -116,16 +122,11 @@ BEGIN
     SELECT jsonb_build_object(
                    'id', si_id,
                    'resolverId', this_resolver_si_id,
-                   'propId', this_prop_si_id,
                    'backendBinding', this_backend_binding,
+                   'schemaId', this_schema_si_id,
                    'siStorable', si_storable
                )
     INTO object;
-
-    IF this_schema_si_id IS NOT NULL THEN
-        SELECT si_id_to_primary_key_v1(this_schema_si_id) INTO this_schema_id;
-        SELECT jsonb_set(object, '{schemaId}', to_jsonb(this_schema_si_id), true) INTO object;
-    END IF;
 
     IF this_prop_si_id IS NOT NULL THEN
         SELECT si_id_to_primary_key_v1(this_prop_si_id) INTO this_prop_id;
