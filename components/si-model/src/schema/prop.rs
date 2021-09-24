@@ -15,6 +15,12 @@ impl Prop {
         }
     }
 
+    pub fn name(&self) -> &str {
+        match self {
+            Prop::String(p) => p.name.as_ref(),
+        }
+    }
+
     pub fn parent_id(&self) -> Option<&str> {
         match self {
             Prop::String(p) => p.parent_id.as_deref(),

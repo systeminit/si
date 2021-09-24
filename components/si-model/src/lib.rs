@@ -83,8 +83,8 @@ pub use output_line::{OutputLine, OutputLineStream};
 pub use qualification::{Qualification, QualificationError};
 use rand::Rng;
 pub use resolver::{
-    Resolver, ResolverArgKindBinding, ResolverBackendKind, ResolverBinding, ResolverError,
-    ResolverOutputKind,
+    Resolver, ResolverArgKindBinding, ResolverBackendKind, ResolverBackendKindBinding,
+    ResolverBackendKindStringBinding, ResolverBinding, ResolverError, ResolverOutputKind,
 };
 pub use resource::{
     Resource, ResourceError, ResourceInternalHealth, ResourceInternalStatus, ResourceResult,

@@ -1,4 +1,6 @@
-use si_model::Prop;
+use si_model::{
+    Prop, Resolver, ResolverBackendKindBinding, ResolverBackendKindStringBinding, ResolverBinding,
+};
 use si_model_test::{
     create_change_set, create_custom_node, create_edit_session, create_new_prop_string,
     create_new_prop_string_with_parent, create_new_schema, one_time_setup,
@@ -6,7 +8,7 @@ use si_model_test::{
 };
 
 #[tokio::test]
-async fn resolve_attributes() {
+async fn execute_resolver_bindings() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
     let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
@@ -15,8 +17,6 @@ async fn resolve_attributes() {
     let txn = conn.transaction().await.expect("cannot create txn");
     let schema = create_new_schema(&txn, &nats).await;
     let prop = create_new_prop_string(&txn, &nats, &schema).await;
-    let _strange =
-        create_new_prop_string_with_parent(&txn, &nats, &schema, &Prop::String(prop)).await;
 
     let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     let change_set = create_change_set(&txn, &nats, &nba).await;
@@ -34,12 +34,105 @@ async fn resolve_attributes() {
     )
     .await;
 
-    txn.commit().await.expect("transaction fucked up");
-    let txn = conn.transaction().await.expect("cannot create txn");
-
-    si_model::resolver::resolve_attributes(&txn, &schema.id, &node.object_id)
+    si_model::resolver::execute_resolver_bindings(&txn, &nats, &schema.id, &node.object_id)
         .await
         .expect("cannot resolve attributes");
+}
+
+#[tokio::test]
+async fn get_properties_for_entity_empty() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.get().await.expect("cannot connect to pg");
+    let txn = conn.transaction().await.expect("cannot create txn");
+    let schema = create_new_schema(&txn, &nats).await;
+    let prop = create_new_prop_string(&txn, &nats, &schema).await;
+
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
+    let change_set = create_change_set(&txn, &nats, &nba).await;
+    let edit_session = create_edit_session(&txn, &nats, &nba, &change_set).await;
+    let node = create_custom_node(
+        &pg,
+        &txn,
+        &nats_conn,
+        &nats,
+        &veritech,
+        &nba,
+        &change_set,
+        &edit_session,
+        &schema.entity_type,
+    )
+    .await;
+
+    si_model::resolver::execute_resolver_bindings(&txn, &nats, &schema.id, &node.object_id)
+        .await
+        .expect("cannot resolve attributes");
+    let props = si_model::resolver::get_properties_for_entity(&txn, &schema.id, &node.object_id)
+        .await
+        .expect("cannot get properties for entity");
+    assert_eq!(props, serde_json::json!({}));
+}
+
+#[tokio::test]
+async fn get_properties_for_entity_with_string() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.get().await.expect("cannot connect to pg");
+    let txn = conn.transaction().await.expect("cannot create txn");
+    let schema = create_new_schema(&txn, &nats).await;
+    let prop = create_new_prop_string(&txn, &nats, &schema).await;
+
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
+    let change_set = create_change_set(&txn, &nats, &nba).await;
+    let edit_session = create_edit_session(&txn, &nats, &nba, &change_set).await;
+    let node = create_custom_node(
+        &pg,
+        &txn,
+        &nats_conn,
+        &nats,
+        &veritech,
+        &nba,
+        &change_set,
+        &edit_session,
+        &schema.entity_type,
+    )
+    .await;
+
+    let string_resolver = Resolver::get_by_name(&txn, "si:setString")
+        .await
+        .expect("cannot get resolver");
+
+    let backend_binding = ResolverBackendKindBinding::String(ResolverBackendKindStringBinding {
+        value: String::from("spiritbox"),
+    });
+
+    let resolver_binding = ResolverBinding::new(
+        &txn,
+        &nats,
+        &string_resolver.id,
+        backend_binding.clone(),
+        schema.id.clone(),
+        Some(prop.id.clone()),
+        Some(node.object_id.clone()),
+        None,
+        None,
+        None,
+    )
+    .await
+    .expect("cannot create resolver binding");
+
+    si_model::resolver::execute_resolver_bindings(&txn, &nats, &schema.id, &node.object_id)
+        .await
+        .expect("cannot resolve attributes");
+    let properties =
+        si_model::resolver::get_properties_for_entity(&txn, &schema.id, &node.object_id)
+            .await
+            .expect("cannot get properties for entity");
+    assert_eq!(properties[&prop.name], serde_json::json!("spiritbox"));
 }
 
 mod resolver {
