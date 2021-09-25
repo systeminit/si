@@ -4,7 +4,7 @@ use si_data::{NatsTxn, PgTxn};
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct PropString {
+pub struct PropArray {
     pub id: String,
     pub name: String,
     pub description: String,
@@ -13,7 +13,7 @@ pub struct PropString {
     pub si_storable: MinimalStorable,
 }
 
-impl PropString {
+impl PropArray {
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
@@ -28,12 +28,12 @@ impl PropString {
         let row = txn
             .query_one(
                 "SELECT object FROM prop_create_v1($1, $2, $3, $4, $5)",
-                &[&name, &description, &"string", &parent_id, &schema_id],
+                &[&name, &description, &"array", &parent_id, &schema_id],
             )
             .await?;
         let prop_json: serde_json::Value = row.try_get("object")?;
         nats.publish(&prop_json).await?;
-        let prop_string: PropString = serde_json::from_value(prop_json)?;
+        let prop_array: PropArray = serde_json::from_value(prop_json)?;
 
         let unset_resolver = Resolver::get_by_name(&txn, "si:unset").await?;
         let _binding = ResolverBinding::new(
@@ -42,7 +42,7 @@ impl PropString {
             &unset_resolver.id,
             crate::resolver::ResolverBackendKindBinding::Unset,
             schema_id.clone(),
-            Some(prop_string.id.clone()),
+            Some(prop_array.id.clone()),
             None,
             None,
             None,
@@ -50,6 +50,6 @@ impl PropString {
         )
         .await?;
 
-        Ok(prop_string)
+        Ok(prop_array)
     }
 }

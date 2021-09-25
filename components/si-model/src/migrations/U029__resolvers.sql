@@ -56,7 +56,13 @@ $$ LANGUAGE PLPGSQL;
 
 SELECT resolver_create_v1('si:setEmptyObject', 'returns an empty object', 'emptyObject', 'object');
 SELECT resolver_create_v1('si:setEmptyArray', 'returns an empty array', 'emptyArray', 'array');
+SELECT resolver_create_v1('si:setEmptyMap', 'returns an empty map', 'emptyObject', 'object');
 SELECT resolver_create_v1('si:setString', 'takes a string as input and returns it', 'string', 'string');
+SELECT resolver_create_v1('si:setNumber', 'takes a number as input and returns it', 'number', 'number');
+SELECT resolver_create_v1('si:setBoolean', 'takes a boolean as input and returns it', 'boolean', 'boolean');
+SELECT resolver_create_v1('si:setObject', 'takes an object as input and returns it', 'object', 'object');
+SELECT resolver_create_v1('si:setMap', 'takes a map as input and returns it', 'object', 'object');
+SELECT resolver_create_v1('si:setArray', 'takes an array as input and returns it', 'array', 'array');
 SELECT resolver_create_v1('si:unset', 'ensures this prop is never set', 'unset', 'unset');
 
 CREATE TABLE resolver_bindings

@@ -12,7 +12,7 @@ CREATE TABLE props
 );
 
 ALTER TABLE props
-    ADD CONSTRAINT valid_kind_check CHECK (kind IN ('string'));
+    ADD CONSTRAINT valid_kind_check CHECK (kind IN ('string', 'number', 'boolean', 'object', 'map', 'array'));
 
 CREATE OR REPLACE FUNCTION prop_create_v1(
     name text,
@@ -20,6 +20,7 @@ CREATE OR REPLACE FUNCTION prop_create_v1(
     this_kind text,
     this_parent_si_id text,
     this_schema_si_id text,
+    this_options jsonb,
     OUT object jsonb
 ) AS
 $$
@@ -57,6 +58,10 @@ BEGIN
                    'siStorable', si_storable
                )
     INTO object;
+
+    IF this_options IS NOT NULL THEN
+        SELECT jsonb_set(object, '{options}', this_options, true) INTO object;
+    END IF;
 
     IF this_parent_si_id IS NOT NULL THEN
         SELECT si_id_to_primary_key_v1(this_parent_si_id) INTO this_parent_id;

@@ -1,16 +1,17 @@
 use std::collections::HashMap;
 
-use petgraph::algo::{is_cyclic_directed, toposort};
+use petgraph::algo::toposort;
 use petgraph::dot::{Config, Dot};
 use petgraph::graph::{DiGraph, NodeIndex};
-use petgraph::visit::{Dfs, DfsPostOrder};
+use petgraph::visit::DfsPostOrder;
 use petgraph::EdgeDirection::Outgoing;
 use serde::{Deserialize, Serialize};
 use si_data::{NatsTxn, NatsTxnError, PgError, PgTxn};
 use strum_macros::{Display, IntoStaticStr};
 use thiserror::Error;
 
-use crate::{Entity, MinimalStorable, Prop, SiStorable};
+use crate::resolver::ResolverError::MismatchedResolverBackend;
+use crate::{Entity, MinimalStorable, Prop, SchemaError, SiStorable};
 
 const RESOLVER_BY_NAME: &str = include_str!("./queries/resolver_by_name.sql");
 const RESOLVER_BINDINGS_FOR_ENTITY: &str =
@@ -28,6 +29,14 @@ pub enum ResolverError {
     SerdeJson(#[from] serde_json::Error),
     #[error("invalid resolver response data; expected String and received {0}")]
     InvalidStringData(serde_json::Value),
+    #[error("invalid resolver response data; expected Number and received {0}")]
+    InvalidNumberData(serde_json::Value),
+    #[error("invalid resolver response data; expected Boolean and received {0}")]
+    InvalidBooleanData(serde_json::Value),
+    #[error("invalid resolver response data; expected Object and received {0}")]
+    InvalidObjectData(serde_json::Value),
+    #[error("invalid resolver response data; expected Array and received {0}")]
+    InvalidArrayData(serde_json::Value),
     #[error("Missing prop in attribute resolution: {0} not found")]
     MissingProp(String),
     #[error("Missing an index in the graph for a node")]
@@ -44,6 +53,10 @@ pub enum ResolverError {
     MissingSchemaRoot,
     #[error("Cannot write value to a non object")]
     CannotWriteToObject,
+    #[error("Schema error: {0}")]
+    SchemaError(String),
+    #[error("Mismatched Resolver Backend Binding; Backend {0:?} does not match Prop {1:?}")]
+    MismatchedResolverBackend(ResolverBackendKindBinding, Prop),
 }
 
 pub type ResolverResult<T> = Result<T, ResolverError>;
@@ -53,6 +66,10 @@ pub type ResolverResult<T> = Result<T, ResolverError>;
 #[strum(serialize_all = "camelCase")]
 pub enum ResolverBackendKind {
     String,
+    Number,
+    Boolean,
+    Object,
+    Array,
     EmptyObject,
     EmptyArray,
     Unset,
@@ -62,6 +79,10 @@ pub enum ResolverBackendKind {
 #[serde(rename_all = "camelCase", tag = "kind")]
 pub enum ResolverBackendKindBinding {
     String(ResolverBackendKindStringBinding),
+    Number(ResolverBackendKindNumberBinding),
+    Boolean(ResolverBackendKindBooleanBinding),
+    Object(ResolverBackendKindObjectBinding),
+    Array(ResolverBackendKindArrayBinding),
     EmptyObject,
     EmptyArray,
     Unset,
@@ -73,11 +94,37 @@ pub struct ResolverBackendKindStringBinding {
     pub value: String,
 }
 
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ResolverBackendKindNumberBinding {
+    pub value: u64,
+}
+
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ResolverBackendKindBooleanBinding {
+    pub value: bool,
+}
+
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ResolverBackendKindObjectBinding {
+    pub value: serde_json::Value,
+}
+
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ResolverBackendKindArrayBinding {
+    pub value: serde_json::Value,
+}
+
 #[derive(Deserialize, Serialize, Debug, Display, IntoStaticStr, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
 pub enum ResolverOutputKind {
     String,
+    Number,
+    Boolean,
     Object,
     Array,
     Unset,
@@ -186,6 +233,32 @@ impl ResolverBinding {
     ) -> ResolverResult<Self> {
         let resolver_id = resolver_id.into();
 
+        if let Some(ref prop_id) = prop_id {
+            let prop = Prop::get_by_id(&txn, &prop_id)
+                .await
+                .map_err(|e| ResolverError::SchemaError(e.to_string()))?;
+            let valid = match (&prop, &backend_binding) {
+                (_, ResolverBackendKindBinding::Unset)
+                | (Prop::Map(_), ResolverBackendKindBinding::EmptyObject)
+                | (Prop::Map(_), ResolverBackendKindBinding::Object(_))
+                | (Prop::Array(_), ResolverBackendKindBinding::Array(_))
+                | (Prop::Array(_), ResolverBackendKindBinding::EmptyArray)
+                | (Prop::String(_), ResolverBackendKindBinding::String(_))
+                | (Prop::Boolean(_), ResolverBackendKindBinding::Boolean(_))
+                | (Prop::Object(_), ResolverBackendKindBinding::Object(_))
+                | (Prop::Object(_), ResolverBackendKindBinding::EmptyObject)
+                | (Prop::Number(_), ResolverBackendKindBinding::Number(_)) => true,
+                _ => false,
+            };
+            if !valid {
+                return Err(MismatchedResolverBackend(
+                    backend_binding.clone(),
+                    prop.clone(),
+                ));
+            }
+        }
+
+        // TODO: We should check that the backend binding matches the selected resolver backend
         let backend_binding = serde_json::to_value(&backend_binding)?;
         let row = txn
             .query_one(
@@ -208,11 +281,6 @@ impl ResolverBinding {
         Ok(object)
     }
 
-    // TODO: Tomorrow morning, get started on how we create default resolver functions
-    // as needed. In particular, we need to create the default resolver for the entire
-    // schema first, which should just return a raw object. It would probably be best
-    // if that resolver actually existed, becasue then we could always use the same
-    // behavior for returning what we want. (ie: the user could override it)
     pub async fn resolve(&self) -> ResolverResult<Option<serde_json::Value>> {
         // Resolve arguments by looking up the ResolverArgBindings
         //
@@ -227,6 +295,32 @@ impl ResolverBinding {
                     return Err(ResolverError::InvalidStringData(result));
                 }
                 result
+            }
+            ResolverBackendKindBinding::Number(context) => {
+                let result = serde_json::to_value(&context.value)?;
+                if !result.is_number() {
+                    return Err(ResolverError::InvalidNumberData(result));
+                }
+                result
+            }
+            ResolverBackendKindBinding::Boolean(context) => {
+                let result = serde_json::to_value(&context.value)?;
+                if !result.is_boolean() {
+                    return Err(ResolverError::InvalidNumberData(result));
+                }
+                result
+            }
+            ResolverBackendKindBinding::Object(context) => {
+                if !context.value.is_object() {
+                    return Err(ResolverError::InvalidObjectData(context.value.clone()));
+                }
+                context.value.clone()
+            }
+            ResolverBackendKindBinding::Array(context) => {
+                if !context.value.is_array() {
+                    return Err(ResolverError::InvalidArrayData(context.value.clone()));
+                }
+                context.value.clone()
             }
             ResolverBackendKindBinding::EmptyObject => serde_json::json!({}),
             ResolverBackendKindBinding::EmptyArray => serde_json::json!([]),
@@ -559,7 +653,7 @@ pub async fn get_properties_for_entity(
         if resolver_binding_value.is_schema_root() {
             // Here is where you would compare this resolver binding with any
             // previously seen for either this schema root or property. If
-            // it takes precendece, it should mutate the value.
+            // it takes precedence, it should mutate the value.
             schema_root = Some(resolver_binding_value.clone());
             selected_binding_values
                 .entry(schema_id.to_string())
@@ -568,7 +662,7 @@ pub async fn get_properties_for_entity(
             if let Some(prop_id) = &resolver_binding_value.prop_id {
                 // Here is where you would compare this resolver binding with any
                 // previously seen for either this schema root or property. If
-                // it takes precendece, it should mutate the value.
+                // it takes precedence, it should mutate the value.
                 match selected_binding_values.get(prop_id) {
                     Some(existing_binding_value) => {
                         if resolver_binding_value.takes_precedence(&existing_binding_value)? {
@@ -657,10 +751,6 @@ pub async fn get_properties_for_entity(
         }
     }
 
-    dbg!("fuckity buckets mr pickles!");
-    dbg!(&selected_binding_values);
-    dbg!(&dfspo);
-    dbg!(&rbvgraph);
     let final_value = selected_binding_values
         .remove(schema_id)
         .ok_or(ResolverError::MissingSchemaRoot)?;

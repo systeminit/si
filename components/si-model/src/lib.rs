@@ -83,13 +83,17 @@ pub use output_line::{OutputLine, OutputLineStream};
 pub use qualification::{Qualification, QualificationError};
 use rand::Rng;
 pub use resolver::{
-    Resolver, ResolverArgKindBinding, ResolverBackendKind, ResolverBackendKindBinding,
+    Resolver, ResolverArgKindBinding, ResolverBackendKind, ResolverBackendKindArrayBinding,
+    ResolverBackendKindBinding, ResolverBackendKindNumberBinding, ResolverBackendKindObjectBinding,
     ResolverBackendKindStringBinding, ResolverBinding, ResolverError, ResolverOutputKind,
 };
 pub use resource::{
     Resource, ResourceError, ResourceInternalHealth, ResourceInternalStatus, ResourceResult,
 };
-pub use schema::{prop::PropString, Prop, Schema, SchemaError};
+pub use schema::{
+    prop::PropArray, prop::PropBoolean, prop::PropMap, prop::PropNumber, prop::PropObject,
+    prop::PropString, Prop, Schema, SchemaError, SchemaResult,
+};
 pub use schematic::{Schematic, SchematicError, SchematicKind, SchematicNode, SchematicResult};
 pub use secret::{
     EncryptedSecret, Secret, SecretAlgorithm, SecretError, SecretKind, SecretObjectType,
