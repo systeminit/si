@@ -1,7 +1,7 @@
-use crate::model::billing_account::NewBillingAccount;
+use crate::test::model::billing_account::NewBillingAccount;
 
 use si_data::{NatsConn, NatsTxn, PgPool, PgTxn};
-use si_model::{ChangeSet, EditSession, Node, Veritech};
+use crate::{ChangeSet, EditSession, Node, Veritech};
 
 pub async fn create_entity_node(
     pg: &PgPool,

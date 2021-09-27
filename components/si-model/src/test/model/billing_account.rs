@@ -1,6 +1,6 @@
 use names::{Generator, Name};
 use si_data::{NatsConn, NatsTxn, PgPool, PgTxn};
-use si_model::{BillingAccount, Group, Organization, PublicKey, User, Veritech, Workspace};
+use crate::{BillingAccount, Group, Organization, PublicKey, User, Veritech, Workspace};
 
 #[derive(Debug)]
 pub struct NewBillingAccount {

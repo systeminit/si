@@ -48,6 +48,7 @@ pub mod session;
 pub mod si_storable;
 pub mod support;
 pub mod system;
+pub mod test;
 pub mod user;
 pub mod visualization;
 pub mod workflow;

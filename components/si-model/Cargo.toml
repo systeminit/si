@@ -36,6 +36,8 @@ tungstenite = "0.14.0"
 uname = "0.1.1"
 url = "2.2.2"
 petgraph = "0.6.0"
+anyhow = "1.0.40"
+lazy_static = "1.4.0"
 
 [dev-dependencies]
 anyhow = "1.0.38"

@@ -1,7 +1,7 @@
-use crate::model::user::create_user;
+use crate::test::model::user::create_user;
 
 use si_data::{NatsTxn, PgTxn};
-use si_model::{Capability, Group};
+use crate::{Capability, Group};
 
 pub async fn create_group_with_users(
     txn: &PgTxn<'_>,

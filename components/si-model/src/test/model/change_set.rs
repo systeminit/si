@@ -1,7 +1,7 @@
-use crate::model::billing_account::NewBillingAccount;
+use crate::test::model::billing_account::NewBillingAccount;
 
 use si_data::{NatsTxn, PgTxn};
-use si_model::ChangeSet;
+use crate::ChangeSet;
 
 pub async fn create_change_set(
     txn: &PgTxn<'_>,

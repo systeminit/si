@@ -1,5 +1,5 @@
 use si_data::{NatsTxn, PgTxn};
-use si_model::Organization;
+use crate::Organization;
 
 pub async fn create_test_organization(
     txn: &PgTxn<'_>,

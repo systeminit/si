@@ -1,8 +1,8 @@
-use crate::model::billing_account::NewBillingAccount;
+use crate::test::model::billing_account::NewBillingAccount;
 use names::{Generator, Name};
 
 use si_data::{NatsTxn, PgTxn};
-use si_model::KeyPair;
+use crate::KeyPair;
 
 pub async fn create_key_pair(txn: &PgTxn<'_>, nats: &NatsTxn, nba: &NewBillingAccount) -> KeyPair {
     let key_pair = KeyPair::new(

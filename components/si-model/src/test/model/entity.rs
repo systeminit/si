@@ -1,7 +1,7 @@
-use crate::model::billing_account::NewBillingAccount;
+use crate::test::model::billing_account::NewBillingAccount;
 
 use si_data::{NatsConn, NatsTxn, PgPool, PgTxn};
-use si_model::{ChangeSet, EditSession, Entity, Node, Veritech};
+use crate::{ChangeSet, EditSession, Entity, Node, Veritech};
 
 #[allow(dead_code)]
 pub async fn create_custom_entity(

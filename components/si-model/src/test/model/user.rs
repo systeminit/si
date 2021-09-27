@@ -1,5 +1,5 @@
 use si_data::{NatsTxn, PgTxn};
-use si_model::User;
+use crate::User;
 
 pub async fn create_user(
     txn: &PgTxn<'_>,

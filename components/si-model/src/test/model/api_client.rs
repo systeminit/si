@@ -1,8 +1,8 @@
-use crate::model::billing_account::NewBillingAccount;
-use crate::SETTINGS;
+use crate::test::model::billing_account::NewBillingAccount;
+use crate::test::SETTINGS;
 
 use si_data::{NatsTxn, PgTxn};
-use si_model::{ApiClient, ApiClientKind};
+use crate::{ApiClient, ApiClientKind};
 
 pub async fn create_api_client(
     txn: &PgTxn<'_>,

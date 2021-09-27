@@ -1,7 +1,7 @@
 use names::{Generator, Name};
 use si_data::{NatsConn, NatsTxn, PgPool, PgTxn};
-use si_model::schema::prop::PropArray;
-use si_model::{Prop, PropBoolean, PropMap, PropNumber, PropObject, PropString, Schema};
+use crate::schema::prop::PropArray;
+use crate::{Prop, PropBoolean, PropMap, PropNumber, PropObject, PropString, Schema};
 
 pub async fn create_new_schema(txn: &PgTxn<'_>, nats: &NatsTxn) -> Schema {
     let mut generator = Generator::with_naming(Name::Numbered);

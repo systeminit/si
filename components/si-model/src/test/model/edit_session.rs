@@ -1,7 +1,7 @@
-use crate::model::billing_account::NewBillingAccount;
+use crate::test::model::billing_account::NewBillingAccount;
 
 use si_data::{NatsTxn, PgTxn};
-use si_model::{ChangeSet, EditSession};
+use crate::{ChangeSet, EditSession};
 
 pub async fn create_edit_session(
     txn: &PgTxn<'_>,

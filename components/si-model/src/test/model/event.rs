@@ -1,9 +1,9 @@
 use names::{Generator, Name};
 
-use crate::model::billing_account::NewBillingAccount;
+use crate::test::model::billing_account::NewBillingAccount;
 
 use si_data::{NatsConn, PgPool};
-use si_model::{Event, EventKind};
+use crate::{Event, EventKind};
 
 pub async fn create_event(pg: &PgPool, nats_conn: &NatsConn, nba: &NewBillingAccount) -> Event {
     let event = Event::new(

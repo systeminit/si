@@ -1,6 +1,6 @@
-use crate::NewBillingAccount;
+use crate::test::NewBillingAccount;
 use si_data::{NatsTxn, PgTxn};
-use si_model::NodePosition;
+use crate::NodePosition;
 
 pub async fn create_node_position(
     txn: &PgTxn<'_>,

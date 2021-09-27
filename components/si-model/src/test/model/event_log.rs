@@ -1,8 +1,8 @@
-use crate::model::billing_account::NewBillingAccount;
-use crate::model::event::create_event;
+use crate::test::model::billing_account::NewBillingAccount;
+use crate::test::model::event::create_event;
 
 use si_data::{NatsConn, PgPool};
-use si_model::{EventLog, EventLogLevel};
+use crate::{EventLog, EventLogLevel};
 
 pub async fn create_event_log(
     pg: &PgPool,

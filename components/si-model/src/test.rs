@@ -2,7 +2,7 @@ use anyhow::Result;
 use lazy_static::lazy_static;
 use names::{Generator, Name};
 use si_data::{EventLogFS, NatsConn, PgPool};
-use si_model::{Veritech, Workflow};
+use crate::{Veritech, Workflow};
 use si_settings::Settings;
 use sodiumoxide::crypto::secretbox;
 use std::env;
@@ -32,7 +32,7 @@ lazy_static! {
 
         let settings = Settings::new().expect("settings should load");
         unsafe {
-            si_model::PAGE_SECRET_KEY = Some(settings.paging.key.clone());
+            crate::PAGE_SECRET_KEY = Some(settings.paging.key.clone());
         }
         settings
     };
@@ -112,7 +112,7 @@ pub async fn one_time_setup() -> Result<()> {
     pg.drop_and_create_public_schema()
         .await
         .expect("failed to drop the database");
-    si_model::migrate(&pg).await.expect("migration failed!");
+    crate::migrate(&pg).await.expect("migration failed!");
 
     let mut conn = pg.get().await?;
     let txn = conn.transaction().await?;
@@ -130,7 +130,7 @@ pub async fn one_time_setup() -> Result<()> {
 
     Workflow::load_builtins(&pg, &veritech).await?;
 
-    si_model::create_jwt_key_if_missing(
+    crate::create_jwt_key_if_missing(
         &txn,
         "config/public.pem",
         "config/private.pem",

@@ -1,7 +1,7 @@
 use si_data::{NatsTxn, PgTxn};
-use si_model::Workspace;
+use crate::Workspace;
 
-use crate::{generate_fake_name, NewBillingAccount};
+use crate::test::{generate_fake_name, NewBillingAccount};
 
 pub async fn create_workspace(
     txn: &PgTxn<'_>,

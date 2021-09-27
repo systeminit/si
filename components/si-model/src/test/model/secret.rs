@@ -1,9 +1,9 @@
-use crate::generate_fake_name;
-use crate::model::billing_account::NewBillingAccount;
+use crate::test::generate_fake_name;
+use crate::test::model::billing_account::NewBillingAccount;
 
 use names::{Generator, Name};
 use si_data::{NatsTxn, PgTxn};
-use si_model::{PublicKey, Secret, SecretAlgorithm, SecretKind, SecretObjectType, SecretVersion};
+use crate::{PublicKey, Secret, SecretAlgorithm, SecretKind, SecretObjectType, SecretVersion};
 
 pub async fn create_secret(
     txn: &PgTxn<'_>,

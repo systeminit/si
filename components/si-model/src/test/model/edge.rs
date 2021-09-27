@@ -1,8 +1,8 @@
-use crate::model::billing_account::NewBillingAccount;
+use crate::test::model::billing_account::NewBillingAccount;
 use names::{Generator, Name};
 
 use si_data::{NatsTxn, PgTxn};
-use si_model::{Edge, EdgeKind, Vertex};
+use crate::{Edge, EdgeKind, Vertex};
 
 pub async fn create_vertex(_txn: &PgTxn<'_>, _nats: &NatsTxn) -> Vertex {
     // TODO: This should become real nodes/entities and objects!
