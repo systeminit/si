@@ -351,10 +351,7 @@ async fn get_properties_for_entity_with_primitive_values() {
     let map_resolver = Resolver::get_by_name(&txn, "si:setObject")
         .await
         .expect("cannot get resolver");
-    let map_backend_binding =
-        ResolverBackendKindBinding::Object(ResolverBackendKindObjectBinding {
-            value: serde_json::json!({}),
-        });
+    let map_backend_binding = ResolverBackendKindBinding::EmptyObject;
     let _resolver_binding = ResolverBinding::new(
         &txn,
         &nats,
@@ -362,6 +359,30 @@ async fn get_properties_for_entity_with_primitive_values() {
         map_backend_binding.clone(),
         schema.id.clone(),
         Some(prop_map.id.clone()),
+        Some(node.object_id.clone()),
+        None,
+        None,
+        None,
+    )
+    .await
+    .expect("cannot create resolver binding");
+
+    let prop_map_item_value =
+        create_new_prop_string(&txn, &nats, &schema.id, Some(prop_map.id.clone()), true).await;
+    let prop_map_item_resolver = Resolver::get_by_name(&txn, "si:setString")
+        .await
+        .expect("cannot get resolver");
+    let prop_map_item_resolver_backend =
+        ResolverBackendKindBinding::String(ResolverBackendKindStringBinding {
+            value: "pretenders".to_string(),
+        });
+    let _resolver_binding = ResolverBinding::new(
+        &txn,
+        &nats,
+        &prop_map_item_resolver.id,
+        prop_map_item_resolver_backend.clone(),
+        schema.id.clone(),
+        Some(prop_map_item_value.id.clone()),
         Some(node.object_id.clone()),
         None,
         None,

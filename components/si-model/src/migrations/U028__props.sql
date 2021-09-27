@@ -5,6 +5,7 @@ CREATE TABLE props
     schema_id  bigint                   NOT NULL REFERENCES schemas (id),
     name       text                     NOT NULL UNIQUE,
     parent_id  bigint REFERENCES props (id),
+    is_item    bool                     NOT NULL DEFAULT false,
     kind       text                     NOT NULL,
     obj        jsonb                    NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
@@ -20,7 +21,7 @@ CREATE OR REPLACE FUNCTION prop_create_v1(
     this_kind text,
     this_parent_si_id text,
     this_schema_si_id text,
-    this_options jsonb,
+    this_is_item bool,
     OUT object jsonb
 ) AS
 $$
@@ -54,21 +55,18 @@ BEGIN
                    'name', name,
                    'description', description,
                    'kind', this_kind,
+                   'isItem', this_is_item,
                    'schemaId', this_schema_si_id,
                    'siStorable', si_storable
                )
     INTO object;
-
-    IF this_options IS NOT NULL THEN
-        SELECT jsonb_set(object, '{options}', this_options, true) INTO object;
-    END IF;
 
     IF this_parent_si_id IS NOT NULL THEN
         SELECT si_id_to_primary_key_v1(this_parent_si_id) INTO this_parent_id;
         SELECT jsonb_set(object, '{parentId}', to_jsonb(this_parent_si_id), true) INTO object;
     END IF;
 
-    INSERT INTO props (id, si_id, schema_id, name, parent_id, kind, obj)
-    VALUES (id, si_id, this_schema_id, name, this_parent_id, this_kind, object);
+    INSERT INTO props (id, si_id, schema_id, name, parent_id, is_item, kind, obj)
+    VALUES (id, si_id, this_schema_id, name, this_parent_id, this_is_item, this_kind, object);
 END;
 $$ LANGUAGE PLPGSQL;

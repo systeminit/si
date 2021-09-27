@@ -10,6 +10,7 @@ pub struct PropObject {
     pub description: String,
     pub parent_id: Option<String>,
     pub schema_id: String,
+    pub is_item: bool,
     pub si_storable: MinimalStorable,
 }
 
@@ -21,14 +22,22 @@ impl PropObject {
         name: impl Into<String>,
         description: impl Into<String>,
         parent_id: Option<String>,
+        is_item: bool,
     ) -> SchemaResult<Self> {
         let name = name.into();
         let description = description.into();
         let schema_id = schema_id.into();
         let row = txn
             .query_one(
-                "SELECT object FROM prop_create_v1($1, $2, $3, $4, $5)",
-                &[&name, &description, &"object", &parent_id, &schema_id],
+                "SELECT object FROM prop_create_v1($1, $2, $3, $4, $5, $6)",
+                &[
+                    &name,
+                    &description,
+                    &"object",
+                    &parent_id,
+                    &schema_id,
+                    &is_item,
+                ],
             )
             .await?;
         let prop_json: serde_json::Value = row.try_get("object")?;

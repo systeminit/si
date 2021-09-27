@@ -215,6 +215,7 @@ pub struct ResolverBinding {
     pub edit_session_id: Option<String>,
     pub system_id: Option<String>,
     pub backend_binding: ResolverBackendKindBinding,
+    pub map_key_name: Option<String>,
     pub si_storable: MinimalStorable,
 }
 

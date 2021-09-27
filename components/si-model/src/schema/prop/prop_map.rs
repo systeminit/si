@@ -16,7 +16,7 @@ pub struct PropMap {
     pub description: String,
     pub parent_id: Option<String>,
     pub schema_id: String,
-    pub options: PropMapOptions,
+    pub is_item: bool,
     pub si_storable: MinimalStorable,
 }
 
@@ -28,12 +28,12 @@ impl PropMap {
         name: impl Into<String>,
         description: impl Into<String>,
         parent_id: Option<String>,
-        options: PropMapOptions,
+        is_item: bool,
     ) -> SchemaResult<Self> {
         let name = name.into();
         let description = description.into();
         let schema_id = schema_id.into();
-        let options_json = serde_json::to_value(options)?;
+        //let options_json = serde_json::to_value(options)?;
         let row = txn
             .query_one(
                 "SELECT object FROM prop_create_v1($1, $2, $3, $4, $5, $6)",
@@ -43,7 +43,7 @@ impl PropMap {
                     &"map",
                     &parent_id,
                     &schema_id,
-                    &options_json,
+                    &is_item,
                 ],
             )
             .await?;
