@@ -1,6 +1,6 @@
 use crate::filters::session_dal::login_user;
 use si_model::{PublicKey, SecretAlgorithm, SecretKind, SecretObjectType, SecretVersion};
-use si_model_test::{encrypt_message, one_time_setup, signup_new_billing_account, TestContext};
+use si_model::test::{encrypt_message, one_time_setup, signup_new_billing_account, TestContext};
 use si_sdf::{
     filters::api,
     handlers::secret_dal::{CreateSecretReply, CreateSecretRequest, GetPublicKeyReply},

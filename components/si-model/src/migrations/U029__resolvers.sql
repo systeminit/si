@@ -74,6 +74,7 @@ CREATE TABLE resolver_bindings
     resolver_id     bigint                   NOT NULL REFERENCES resolvers (id),
     schema_id       bigint                   NOT NULL REFERENCES schemas (id),
     prop_id         bigint REFERENCES props (id),
+    parent_resolver_binding_id bigint REFERENCES resolver_bindings(id),
     change_set_id   bigint REFERENCES change_sets (id),
     edit_session_id bigint REFERENCES edit_sessions (id),
     obj             jsonb                    NOT NULL,
@@ -85,11 +86,13 @@ CREATE OR REPLACE FUNCTION resolver_binding_create_v1(
     this_resolver_si_id text,
     this_schema_si_id text,
     this_prop_si_id text,
+    this_parent_resolver_binding_si_id text,
     this_entity_si_id text,
     this_backend_binding jsonb,
     this_system_si_id text,
     this_change_set_si_id text,
     this_edit_session_si_id text,
+    this_map_key_name text,
     OUT object jsonb
 ) AS
 $$
@@ -101,6 +104,7 @@ DECLARE
     this_resolver_id     bigint;
     this_schema_id       bigint;
     this_prop_id         bigint;
+    this_parent_resolver_id bigint;
     this_entity_id       bigint;
     this_system_id       bigint;
     this_change_set_id   bigint;
@@ -139,6 +143,10 @@ BEGIN
         SELECT jsonb_set(object, '{propId}', to_jsonb(this_prop_si_id), true) INTO object;
     END IF;
 
+    IF this_parent_resolver_binding_si_id IS NOT NULL THEN
+        SELECT si_id_to_primary_key_v1(this_parent_resolver_binding_si_id) INTO this_parent_resolver_id;
+        SELECT jsonb_set(object, '{parentResolverBindingId}', to_jsonb(this_parent_resolver_binding_si_id), true) INTO object;
+    END IF;
 
     IF this_entity_si_id IS NOT NULL THEN
         SELECT si_id_to_primary_key_v1(this_entity_si_id) INTO this_entity_id;
@@ -162,10 +170,14 @@ BEGIN
         SELECT jsonb_set(object, '{editSessionId}', to_jsonb(this_edit_session_id), true) INTO object;
     END IF;
 
+    IF this_map_key_name IS NOT NULL THEN
+        SELECT jsonb_set(object, '{mapKeyName}', to_jsonb(this_map_key_name), true) INTO object;
+    END IF;
+
     INSERT INTO resolver_bindings (id, si_id, entity_id, system_id, change_set_id, edit_session_id, resolver_id,
-                                   schema_id, prop_id, obj, created_at, updated_at)
+                                   schema_id, prop_id, parent_resolver_binding_id, obj, created_at, updated_at)
     VALUES (id, si_id, this_entity_id, this_system_id, this_change_set_id, this_edit_session_id, this_resolver_id,
-            this_schema_id, this_prop_id, object, created_at, updated_at);
+            this_schema_id, this_prop_id, this_parent_resolver_id, object, created_at, updated_at);
 END;
 $$ LANGUAGE PLPGSQL;
 
@@ -179,6 +191,7 @@ CREATE TABLE resolver_binding_values
     entity_id           bigint REFERENCES entities (id),
     system_id           bigint REFERENCES entities (id),
     prop_id             bigint REFERENCES props (id),
+    parent_resolver_binding_id bigint REFERENCES resolver_bindings(id),
     change_set_id       bigint REFERENCES change_sets (id),
     edit_session_id     bigint REFERENCES edit_sessions (id),
     output_value        jsonb                    NOT NULL,
@@ -195,10 +208,12 @@ CREATE OR REPLACE FUNCTION resolver_binding_value_create_v1(
     this_resolver_si_id text,
     this_schema_si_id text,
     this_prop_si_id text,
+    this_parent_resolver_binding_si_id text,
     this_entity_si_id text,
     this_system_si_id text,
     this_change_set_si_id text,
     this_edit_session_si_id text,
+    this_map_key_name text,
     OUT object jsonb
 ) AS
 $$
@@ -211,6 +226,7 @@ DECLARE
     this_resolver_id         bigint;
     this_schema_id           bigint;
     this_prop_id             bigint;
+    this_parent_resolver_binding_id bigint;
     this_entity_id           bigint;
     this_system_id           bigint;
     this_change_set_id       bigint;
@@ -252,6 +268,10 @@ BEGIN
         SELECT jsonb_set(object, '{propId}', to_jsonb(this_prop_si_id), true) INTO object;
     END IF;
 
+    IF this_parent_resolver_binding_si_id IS NOT NULL THEN
+        SELECT si_id_to_primary_key_v1(this_parent_resolver_binding_si_id) INTO this_parent_resolver_binding_id;
+        SELECT jsonb_set(object, '{parentResolverBindingId}', to_jsonb(this_parent_resolver_binding_si_id), true) INTO object;
+    END IF;
 
     IF this_entity_si_id IS NOT NULL THEN
         SELECT si_id_to_primary_key_v1(this_entity_si_id) INTO this_entity_id;
@@ -273,11 +293,15 @@ BEGIN
         SELECT jsonb_set(object, '{editSessionId}', to_jsonb(this_edit_session_id), true) INTO object;
     END IF;
 
+    IF this_map_key_name IS NOT NULL THEN
+        SELECT jsonb_set(object, '{mapKeyName}', to_jsonb(this_map_key_name), true) INTO object;
+    END IF;
+
     INSERT INTO resolver_binding_values (id, si_id, resolver_binding_id, resolver_id, schema_id, entity_id, system_id,
-                                         prop_id, change_set_id, edit_session_id, output_value, obj_value, obj,
+                                         prop_id, parent_resolver_binding_id, change_set_id, edit_session_id, output_value, obj_value, obj,
                                          created_at, updated_at)
     VALUES (id, si_id, this_resolver_binding_id, this_resolver_id, this_schema_id, this_entity_id, this_system_id,
-            this_prop_id, this_change_set_id, this_edit_session_id, this_output_value, this_obj_value, object,
+            this_prop_id, this_parent_resolver_binding_id, this_change_set_id, this_edit_session_id, this_output_value, this_obj_value, object,
             created_at, updated_at);
 END;
 $$ LANGUAGE PLPGSQL;

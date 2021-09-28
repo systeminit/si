@@ -2245,7 +2245,6 @@ dependencies = [
  "serde 1.0.130",
  "serde_json",
  "si-data",
- "si-model-test",
  "si-settings",
  "sodiumoxide",
  "strum",
@@ -2260,24 +2259,6 @@ dependencies = [
  "tungstenite 0.14.0",
  "uname",
  "url",
-]
-
-[[package]]
-name = "si-model-test"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "jwt-simple",
- "lazy_static",
- "names",
- "serde 1.0.130",
- "serde_json",
- "si-data",
- "si-model",
- "si-settings",
- "sodiumoxide",
- "tempfile",
- "tokio",
 ]
 
 [[package]]
@@ -2301,7 +2282,6 @@ dependencies = [
  "serde_yaml",
  "si-data",
  "si-model",
- "si-model-test",
  "si-settings",
  "sodiumoxide",
  "strum",

@@ -7,6 +7,7 @@ use si_data::{NatsTxn, NatsTxnError, PgError, PgTxn};
 use thiserror::Error;
 
 use crate::{MinimalStorable, Resolver, ResolverBinding, ResolverError};
+use std::option::Option::None;
 
 #[derive(Error, Debug)]
 pub enum SchemaError {
@@ -60,6 +61,8 @@ impl Schema {
             &empty_object_resolver.id,
             crate::resolver::ResolverBackendKindBinding::EmptyObject,
             schema.id.clone(),
+            None,
+            None,
             None,
             None,
             None,

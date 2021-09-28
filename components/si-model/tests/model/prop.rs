@@ -1,6 +1,6 @@
 mod string {
     use si_model::PropString;
-    use si_model_test::{create_new_schema, one_time_setup, TestContext};
+    use si_model::test::{create_new_schema, one_time_setup, TestContext};
 
     #[tokio::test]
     async fn new() {

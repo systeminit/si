@@ -1,6 +1,6 @@
 use super::session_dal::login_user;
 use si_model::Resource;
-use si_model_test::{
+use si_model::test::{
     create_change_set, create_custom_entity, create_edit_session, one_time_setup,
     signup_new_billing_account, TestContext,
 };

@@ -1,5 +1,5 @@
 use si_model::User;
-use si_model_test::{create_new_billing_account, one_time_setup, TestContext};
+use si_model::test::{create_new_billing_account, one_time_setup, TestContext};
 
 #[tokio::test]
 async fn new() {

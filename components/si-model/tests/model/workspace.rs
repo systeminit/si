@@ -1,5 +1,5 @@
 use si_model::Workspace;
-use si_model_test::{
+use si_model::test::{
     create_new_billing_account, create_test_organization, one_time_setup, TestContext,
 };
 

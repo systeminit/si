@@ -1,6 +1,6 @@
 use si_data::{NatsConn, NatsTxn, PgPool, PgTxn};
 use si_model::{ChangeSet, EditSession, Node, Veritech};
-use si_model_test::{
+use si_model::test::{
     create_change_set, create_edit_session, one_time_setup, signup_new_billing_account,
     NewBillingAccount, TestContext,
 };

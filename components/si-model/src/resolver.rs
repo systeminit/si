@@ -12,6 +12,8 @@ use thiserror::Error;
 
 use crate::resolver::ResolverError::MismatchedResolverBackend;
 use crate::{Entity, MinimalStorable, Prop, SchemaError, SiStorable};
+use jwt_simple::reexports::serde_json::Value;
+use std::option::Option::None;
 
 const RESOLVER_BY_NAME: &str = include_str!("./queries/resolver_by_name.sql");
 const RESOLVER_BINDINGS_FOR_ENTITY: &str =
@@ -57,6 +59,8 @@ pub enum ResolverError {
     SchemaError(String),
     #[error("Mismatched Resolver Backend Binding; Backend {0:?} does not match Prop {1:?}")]
     MismatchedResolverBackend(ResolverBackendKindBinding, Prop),
+    #[error("Map has item prop, but resolver binding value is lacking a key: {0}")]
+    MissingResolverBindingValueMapKey(String),
 }
 
 pub type ResolverResult<T> = Result<T, ResolverError>;
@@ -211,6 +215,7 @@ pub struct ResolverBinding {
     pub entity_id: Option<String>,
     pub schema_id: String,
     pub prop_id: Option<String>,
+    pub parent_resolver_binding_id: Option<String>,
     pub change_set_id: Option<String>,
     pub edit_session_id: Option<String>,
     pub system_id: Option<String>,
@@ -227,10 +232,12 @@ impl ResolverBinding {
         backend_binding: ResolverBackendKindBinding,
         schema_id: String,
         prop_id: Option<String>,
+        parent_resolver_binding_id: Option<String>,
         entity_id: Option<String>,
         system_id: Option<String>,
         change_set_id: Option<String>,
         edit_session_id: Option<String>,
+        map_key_name: Option<String>,
     ) -> ResolverResult<Self> {
         let resolver_id = resolver_id.into();
 
@@ -263,16 +270,18 @@ impl ResolverBinding {
         let backend_binding = serde_json::to_value(&backend_binding)?;
         let row = txn
             .query_one(
-                "SELECT object FROM resolver_binding_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
+                "SELECT object FROM resolver_binding_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
                 &[
                     &resolver_id,
                     &schema_id,
                     &prop_id,
+                    &parent_resolver_binding_id,
                     &entity_id,
                     &backend_binding,
                     &system_id,
                     &change_set_id,
                     &edit_session_id,
+                    &map_key_name,
                 ],
             )
             .await?;
@@ -368,11 +377,13 @@ pub struct ResolverBindingValue {
     pub entity_id: Option<String>,
     pub schema_id: String,
     pub prop_id: Option<String>,
+    pub parent_resolver_binding_id: Option<String>,
     pub change_set_id: Option<String>,
     pub edit_session_id: Option<String>,
     pub system_id: Option<String>,
     pub output_value: serde_json::Value,
     pub obj_value: serde_json::Value,
+    pub map_key_name: Option<String>,
     pub si_storable: MinimalStorable,
 }
 
@@ -386,17 +397,19 @@ impl ResolverBindingValue {
         resolver_id: impl Into<String>,
         schema_id: String,
         prop_id: Option<String>,
+        parent_resolver_binding_id: Option<String>,
         entity_id: Option<String>,
         system_id: Option<String>,
         change_set_id: Option<String>,
         edit_session_id: Option<String>,
+        map_key_name: Option<String>,
     ) -> ResolverResult<Self> {
         let resolver_id = resolver_id.into();
         let resolver_binding_id = resolver_binding_id.into();
 
         let row = txn
             .query_one(
-                "SELECT object FROM resolver_binding_value_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
+                "SELECT object FROM resolver_binding_value_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
                 &[
                     &output_value,
                     &obj_value,
@@ -404,10 +417,12 @@ impl ResolverBindingValue {
                     &resolver_id,
                     &schema_id,
                     &prop_id,
+                    &parent_resolver_binding_id,
                     &entity_id,
                     &system_id,
                     &change_set_id,
                     &edit_session_id,
+                    &map_key_name,
                 ],
             )
             .await?;
@@ -438,6 +453,16 @@ impl ResolverBindingValue {
             return Ok(true);
         }
         Ok(false)
+    }
+
+    pub fn reference_key(&self) -> String {
+        if let Some(parent_resolver_binding_id) = &self.parent_resolver_binding_id {
+            parent_resolver_binding_id.to_string()
+        } else if let Some(prop_id) = &self.prop_id {
+            prop_id.to_string()
+        } else {
+            self.schema_id.to_string()
+        }
     }
 }
 
@@ -599,10 +624,12 @@ pub async fn execute_resolver_bindings(
                 &resolver_binding.resolver_id,
                 resolver_binding.schema_id.clone(),
                 resolver_binding.prop_id.clone(),
+                resolver_binding.parent_resolver_binding_id.clone(),
                 resolver_binding.entity_id.clone(),
                 resolver_binding.system_id.clone(),
                 resolver_binding.change_set_id.clone(),
                 resolver_binding.edit_session_id.clone(),
+                resolver_binding.map_key_name.clone(),
             )
             .await?;
         }
@@ -641,9 +668,11 @@ pub async fn get_properties_for_entity(
 
     let mut rbvgraph = DiGraph::<String, String>::new();
     let mut schema_root: Option<ResolverBindingValue> = None;
-    // schema_id | prop_id -> ResolverBindingValue
+    // schema_id | prop_id | parent_resolver_binding_id -> ResolverBindingValue
     let mut selected_binding_values: HashMap<String, ResolverBindingValue> = HashMap::new();
     let mut props: HashMap<String, Prop> = HashMap::new();
+
+    let mut parent_resolver_binding: HashMap<String, String> = HashMap::new();
 
     // Figure out which values to keep in the working set, and which can be knocked out.
     for row in rows.into_iter() {
@@ -657,7 +686,7 @@ pub async fn get_properties_for_entity(
             // it takes precedence, it should mutate the value.
             schema_root = Some(resolver_binding_value.clone());
             selected_binding_values
-                .entry(schema_id.to_string())
+                .entry(resolver_binding_value.reference_key())
                 .or_insert(resolver_binding_value);
         } else {
             if let Some(prop_id) = &resolver_binding_value.prop_id {
@@ -667,11 +696,17 @@ pub async fn get_properties_for_entity(
                 match selected_binding_values.get(prop_id) {
                     Some(existing_binding_value) => {
                         if resolver_binding_value.takes_precedence(&existing_binding_value)? {
-                            selected_binding_values.insert(prop_id.clone(), resolver_binding_value);
+                            selected_binding_values.insert(
+                                resolver_binding_value.reference_key(),
+                                resolver_binding_value,
+                            );
                         }
                     }
                     None => {
-                        selected_binding_values.insert(prop_id.clone(), resolver_binding_value);
+                        selected_binding_values.insert(
+                            resolver_binding_value.reference_key(),
+                            resolver_binding_value,
+                        );
                     }
                 }
             } else {
@@ -687,28 +722,28 @@ pub async fn get_properties_for_entity(
         }
     }
 
-    let mut prop_idx_map: HashMap<String, NodeIndex<u32>> = HashMap::new();
+    let mut graph_node_idx_map: HashMap<String, NodeIndex<u32>> = HashMap::new();
     let schema_root_id_idx = match schema_root {
         Some(schema_root) => {
             let schema_root_id_idx = rbvgraph.add_node(schema_root.schema_id.clone());
-            prop_idx_map.insert(schema_root.schema_id.clone(), schema_root_id_idx);
+            graph_node_idx_map.insert(schema_root.reference_key(), schema_root_id_idx);
             schema_root_id_idx
         }
         None => return Err(ResolverError::MissingSchemaRoot),
     };
 
-    for prop_id in selected_binding_values.keys() {
-        let prop_idx = rbvgraph.add_node(prop_id.clone());
-        prop_idx_map.insert(prop_id.clone(), prop_idx);
+    for reference_key in selected_binding_values.keys() {
+        let graph_node_idx = rbvgraph.add_node(reference_key.clone());
+        graph_node_idx_map.insert(reference_key.clone(), graph_node_idx);
     }
 
     for prop in props.values() {
-        let prop_idx = prop_idx_map
+        let prop_idx = graph_node_idx_map
             .get(prop.id())
             .ok_or_else(|| ResolverError::MissingGraphIndex)?;
         match prop.parent_id() {
             Some(parent_id) => {
-                let parent_idx = prop_idx_map
+                let parent_idx = graph_node_idx_map
                     .get(parent_id)
                     .ok_or_else(|| ResolverError::MissingGraphIndex)?;
 
@@ -719,6 +754,11 @@ pub async fn get_properties_for_entity(
             }
         }
     }
+    // TODO: What we need is to refactor this code so that we are
+    // tracking the actual rbvid as the sole node in the graph. We
+    // then calculate multiple edges to the rbv - the schema, the prop,
+    // and potentially the parent_rbs. Then we can walk *that* tree
+    // and get the right values, not just the schema walk values.
 
     let mut dfspo = DfsPostOrder::new(&rbvgraph, schema_root_id_idx);
     while let Some(current_idx) = dfspo.next(&rbvgraph) {
@@ -743,12 +783,31 @@ pub async fn get_properties_for_entity(
                 .get_mut(current_id)
                 .ok_or(ResolverError::MissingResolverBinding(current_id.clone()))?;
 
+            let is_schema_root = current_rbv.is_schema_root();
+
             let obj_value = current_rbv
                 .obj_value
                 .as_object_mut()
                 .ok_or(ResolverError::CannotWriteToObject)?;
 
-            obj_value.insert(child_prop.name().to_string(), child_rbv.obj_value);
+            if is_schema_root {
+                obj_value.insert(child_prop.name().to_string(), child_rbv.obj_value);
+            } else {
+                let current_prop = props
+                    .get(current_id)
+                    .ok_or(ResolverError::MissingProp(current_id.clone()))?;
+                if let Prop::Map(_) = current_prop {
+                    let key_name = child_rbv.map_key_name.as_deref().ok_or_else(|| {
+                        ResolverError::MissingResolverBindingValueMapKey(format!(
+                            "{:?}",
+                            &child_rbv
+                        ))
+                    })?;
+                    obj_value.insert(key_name.to_string(), child_rbv.obj_value);
+                } else {
+                    obj_value.insert(child_prop.name().to_string(), child_rbv.obj_value);
+                }
+            }
         }
     }
 

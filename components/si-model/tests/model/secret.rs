@@ -2,7 +2,7 @@ use si_model::{
     secret::EncryptedSecret, PublicKey, Secret, SecretAlgorithm, SecretKind, SecretObjectType,
     SecretVersion,
 };
-use si_model_test::{
+use si_model::test::{
     create_key_pair, create_secret, create_workspace, generate_fake_name, one_time_setup,
     signup_new_billing_account, TestContext,
 };

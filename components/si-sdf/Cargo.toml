@@ -52,6 +52,5 @@ warp = "0.3"
 [dev-dependencies]
 lazy_static = "1.4"
 serde_urlencoded = "0.7.0"
-si-model-test = { path = "../si-model-test" }
 tempfile = "3.1.0"
 tokio-test = "0.4"

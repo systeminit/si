@@ -1,5 +1,5 @@
 use si_model::Schema;
-use si_model_test::{one_time_setup, TestContext};
+use si_model::test::{one_time_setup, TestContext};
 
 #[tokio::test]
 async fn new() {

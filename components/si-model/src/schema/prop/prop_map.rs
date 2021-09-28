@@ -1,6 +1,7 @@
 use crate::{schema::SchemaResult, MinimalStorable, Prop, Resolver, ResolverBinding};
 use serde::{Deserialize, Serialize};
 use si_data::{NatsTxn, PgTxn};
+use std::option::Option::None;
 
 // TODO: Maps have one child prop, which is the valueProp from the old days.
 // To add an entry to a map, you bind to the valueProp, but must also specify
@@ -59,6 +60,8 @@ impl PropMap {
             crate::resolver::ResolverBackendKindBinding::Unset,
             schema_id.clone(),
             Some(prop_map.id.clone()),
+            None,
+            None,
             None,
             None,
             None,

@@ -1,6 +1,7 @@
 use crate::{schema::SchemaResult, MinimalStorable, Resolver, ResolverBinding};
 use serde::{Deserialize, Serialize};
 use si_data::{NatsTxn, PgTxn};
+use std::option::Option::None;
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -52,6 +53,8 @@ impl PropObject {
             crate::resolver::ResolverBackendKindBinding::Unset,
             schema_id.clone(),
             Some(prop_object.id.clone()),
+            None,
+            None,
             None,
             None,
             None,
