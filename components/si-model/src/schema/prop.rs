@@ -5,7 +5,7 @@ mod prop_number;
 mod prop_object;
 mod prop_string;
 
-use crate::{SchemaError, SchemaResult};
+use crate::SchemaResult;
 pub use prop_array::PropArray;
 pub use prop_boolean::PropBoolean;
 pub use prop_map::PropMap;
@@ -13,7 +13,7 @@ pub use prop_number::PropNumber;
 pub use prop_object::PropObject;
 pub use prop_string::PropString;
 use serde::{Deserialize, Serialize};
-use si_data::{PgError, PgTxn};
+use si_data::PgTxn;
 
 const PROP_BY_ID: &str = include_str!("../queries/prop_by_id.sql");
 

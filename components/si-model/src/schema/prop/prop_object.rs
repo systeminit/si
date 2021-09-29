@@ -45,7 +45,7 @@ impl PropObject {
         nats.publish(&prop_json).await?;
         let prop_object: PropObject = serde_json::from_value(prop_json)?;
 
-        let unset_resolver = Resolver::get_by_name(&txn, "si:unset").await?;
+        let unset_resolver = Resolver::find_by_name(&txn, "si:unset").await?;
         let _binding = ResolverBinding::new(
             &txn,
             &nats,

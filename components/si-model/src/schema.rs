@@ -54,7 +54,7 @@ impl Schema {
         nats.publish(&schema_json).await?;
         let schema: Schema = serde_json::from_value(schema_json)?;
 
-        let empty_object_resolver = Resolver::get_by_name(&txn, "si:setEmptyObject").await?;
+        let empty_object_resolver = Resolver::find_by_name(&txn, "si:setEmptyObject").await?;
         let _binding = ResolverBinding::new(
             &txn,
             &nats,

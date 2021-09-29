@@ -649,7 +649,7 @@ pub async fn node_link_for_application(
     request: NodeLinkForApplicationRequest,
     pg: PgPool,
     nats_conn: NatsConn,
-    veritech: Veritech,
+    _veritech: Veritech,
 ) -> Result<impl warp::Reply, warp::reject::Rejection> {
     let mut conn = pg.get().await.map_err(HandlerError::from)?;
     let txn = conn.transaction().await.map_err(HandlerError::from)?;

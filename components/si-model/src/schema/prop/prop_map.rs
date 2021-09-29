@@ -1,4 +1,4 @@
-use crate::{schema::SchemaResult, MinimalStorable, Prop, Resolver, ResolverBinding};
+use crate::{schema::SchemaResult, MinimalStorable, Resolver, ResolverBinding};
 use serde::{Deserialize, Serialize};
 use si_data::{NatsTxn, PgTxn};
 use std::option::Option::None;
@@ -52,7 +52,7 @@ impl PropMap {
         nats.publish(&prop_json).await?;
         let prop_map: PropMap = serde_json::from_value(prop_json)?;
 
-        let unset_resolver = Resolver::get_by_name(&txn, "si:unset").await?;
+        let unset_resolver = Resolver::find_by_name(&txn, "si:unset").await?;
         let _binding = ResolverBinding::new(
             &txn,
             &nats,

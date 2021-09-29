@@ -1,7 +1,7 @@
-use names::{Generator, Name};
-use si_data::{NatsConn, NatsTxn, PgPool, PgTxn};
 use crate::schema::prop::PropArray;
 use crate::{Prop, PropBoolean, PropMap, PropNumber, PropObject, PropString, Schema};
+use names::{Generator, Name};
+use si_data::{NatsTxn, PgTxn};
 
 pub async fn create_new_schema(txn: &PgTxn<'_>, nats: &NatsTxn) -> Schema {
     let mut generator = Generator::with_naming(Name::Numbered);
@@ -16,7 +16,7 @@ pub async fn create_new_prop_string(
     nats: &NatsTxn,
     schema: &Schema,
     parent_id: Option<String>,
-    is_item: bool,
+    _is_item: bool,
 ) -> PropString {
     let mut generator = Generator::with_naming(Name::Numbered);
     let name = generator.next().unwrap();
@@ -50,10 +50,15 @@ pub async fn create_new_prop_boolean(
         .expect("cannot create prop")
 }
 
-pub async fn create_new_prop_map(txn: &PgTxn<'_>, nats: &NatsTxn, schema: &Schema) -> PropMap {
+pub async fn create_new_prop_map(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    schema: &Schema,
+    parent_id: Option<String>,
+) -> PropMap {
     let mut generator = Generator::with_naming(Name::Numbered);
     let name = generator.next().unwrap();
-    PropMap::new(&txn, &nats, &schema.id, &name, &name, None, false)
+    PropMap::new(&txn, &nats, &schema.id, &name, &name, parent_id, false)
         .await
         .expect("cannot create prop")
 }
