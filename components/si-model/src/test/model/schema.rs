@@ -16,10 +16,21 @@ pub async fn create_new_prop_string(
     nats: &NatsTxn,
     schema: &Schema,
     parent_id: Option<String>,
-    _is_item: bool,
 ) -> PropString {
     let mut generator = Generator::with_naming(Name::Numbered);
     let name = generator.next().unwrap();
+    PropString::new(&txn, &nats, &schema.id, &name, &name, parent_id, false)
+        .await
+        .expect("cannot create prop")
+}
+
+pub async fn create_new_prop_string_with_name(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    schema: &Schema,
+    parent_id: Option<String>,
+    name: String,
+) -> PropString {
     PropString::new(&txn, &nats, &schema.id, &name, &name, parent_id, false)
         .await
         .expect("cannot create prop")
@@ -79,6 +90,16 @@ pub async fn create_new_prop_object(
 ) -> PropObject {
     let mut generator = Generator::with_naming(Name::Numbered);
     let name = generator.next().unwrap();
+    create_new_prop_object_with_name(&txn, &nats, &schema, parent_id, name).await
+}
+
+pub async fn create_new_prop_object_with_name(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    schema: &Schema,
+    parent_id: Option<String>,
+    name: String,
+) -> PropObject {
     PropObject::new(&txn, &nats, &schema.id, &name, &name, parent_id, false)
         .await
         .expect("cannot create prop")

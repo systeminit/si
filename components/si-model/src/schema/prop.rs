@@ -14,6 +14,8 @@ pub use prop_object::PropObject;
 pub use prop_string::PropString;
 use serde::{Deserialize, Serialize};
 use si_data::PgTxn;
+use std::collections::HashMap;
+use std::ops::{Deref, DerefMut};
 
 const PROP_BY_ID: &str = include_str!("../queries/prop_by_id.sql");
 
@@ -68,5 +70,34 @@ impl Prop {
         let json: serde_json::Value = row.try_get("object")?;
         let object = serde_json::from_value(json)?;
         Ok(object)
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SchemaMap(HashMap<String, Prop>);
+
+impl Deref for SchemaMap {
+    type Target = HashMap<String, Prop>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for SchemaMap {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl SchemaMap {
+    pub fn new() -> SchemaMap {
+        SchemaMap(HashMap::new())
+    }
+
+    pub fn find_prop_by_name(&self, parent_id: Option<&str>, name: impl AsRef<str>) -> Option<&Prop> {
+        let name = name.as_ref();
+        self.values().find(|p| p.parent_id() == parent_id && p.name() == name)
     }
 }

@@ -94,6 +94,7 @@ pub use resource::{
 pub use schema::{
     prop::PropArray, prop::PropBoolean, prop::PropMap, prop::PropNumber, prop::PropObject,
     prop::PropString, Prop, Schema, SchemaError, SchemaResult,
+    prop::SchemaMap,
 };
 pub use schematic::{Schematic, SchematicError, SchematicKind, SchematicNode, SchematicResult};
 pub use secret::{

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 use petgraph::algo::toposort;
 use petgraph::dot::{Config, Dot};
@@ -11,14 +11,14 @@ use strum_macros::{Display, IntoStaticStr};
 use thiserror::Error;
 
 use crate::resolver::ResolverError::MismatchedResolverBackend;
-use crate::{MinimalStorable, Prop, SiStorable};
+use crate::test::create_edit_session;
+use crate::{MinimalStorable, Prop, SchemaMap, SiStorable};
 use std::option::Option::None;
 
 const RESOLVER_BY_NAME: &str = include_str!("./queries/resolver_by_name.sql");
-const RESOLVER_BINDINGS_FOR_ENTITY: &str =
-    include_str!("./queries/resolver_bindings_for_entity.sql");
 const RESOLVER_BINDING_VALUES_FOR_ENTITY: &str =
     include_str!("./queries/resolver_binding_values_for_entity.sql");
+const SCHEMA_ALL_PROPS: &str = include_str!("./queries/schema_all_props.sql");
 
 #[derive(Error, Debug)]
 pub enum ResolverError {
@@ -68,6 +68,12 @@ pub enum ResolverError {
     InvalidRelationship(ResolverBindingValue),
     #[error("missing a prop id when one is required")]
     MissingPropId,
+    #[error("schema root resolvers must return objects; returned: {0}")]
+    SchemaRootResolverMustBeObject(serde_json::Value),
+    #[error("cannot find matching prop named {0}; output value was: {1:?}; rb was: {2:?}")]
+    InvalidOutputValueMissingProp(String, serde_json::Value, ResolverBinding),
+    #[error("cannot cast a number to a u64: {0}")]
+    InvalidNumberNotU64(serde_json::Value),
 }
 
 pub type ResolverResult<T> = Result<T, ResolverError>;
@@ -131,6 +137,12 @@ pub struct ResolverBackendKindArrayBinding {
     pub value: serde_json::Value,
 }
 
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ResolverBackendKindJsonBinding {
+    pub value: serde_json::Value,
+}
+
 #[derive(Deserialize, Serialize, Debug, Display, IntoStaticStr, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
@@ -141,6 +153,7 @@ pub enum ResolverOutputKind {
     Object,
     Array,
     Unset,
+    Json,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
@@ -216,7 +229,7 @@ pub struct ResolverArg {
     pub si_storable: MinimalStorable,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ResolverBinding {
     pub id: String,
@@ -256,6 +269,7 @@ impl ResolverBinding {
                 .map_err(|e| ResolverError::SchemaError(e.to_string()))?;
             let valid = match (&prop, &backend_binding) {
                 (_, ResolverBackendKindBinding::Unset)
+                | (_, ResolverBackendKindBinding::Json(_))
                 | (Prop::Map(_), ResolverBackendKindBinding::EmptyObject)
                 | (Prop::Map(_), ResolverBackendKindBinding::Object(_))
                 | (Prop::Array(_), ResolverBackendKindBinding::Array(_))
@@ -275,7 +289,6 @@ impl ResolverBinding {
             }
         }
 
-        // TODO: We should check that the backend binding matches the selected resolver backend
         let backend_binding = serde_json::to_value(&backend_binding)?;
         let row = txn
             .query_one(
@@ -297,11 +310,12 @@ impl ResolverBinding {
         let json: serde_json::Value = row.try_get("object")?;
         nats.publish(&json).await?;
         let resolver_binding: ResolverBinding = serde_json::from_value(json)?;
-        let _resolver_result = resolver_binding.resolve(&txn, &nats).await?;
+        resolver_binding.resolve(&txn, &nats).await?;
 
         Ok(resolver_binding)
     }
 
+    #[async_recursion::async_recursion]
     pub async fn resolve(
         &self,
         txn: &PgTxn<'_>,
@@ -350,26 +364,21 @@ impl ResolverBinding {
             ResolverBackendKindBinding::EmptyObject => serde_json::json!({}),
             ResolverBackendKindBinding::EmptyArray => serde_json::json!([]),
             ResolverBackendKindBinding::Unset => return Ok(None),
+            ResolverBackendKindBinding::Json(context) => context.value.clone(),
         };
 
-        let obj_value = output_value.clone(); // This will get more complex
-        let _ = ResolverBindingValue::new(
-            &txn,
-            &nats,
-            output_value.clone(),
-            obj_value,
-            &self.id,
-            &self.resolver_id,
-            self.schema_id.clone(),
-            self.prop_id.clone(),
-            self.parent_resolver_binding_id.clone(),
-            self.entity_id.clone(),
-            self.system_id.clone(),
-            self.change_set_id.clone(),
-            self.edit_session_id.clone(),
-            self.map_key_name.clone(),
-        )
-        .await?;
+        let generated_resolver_bindings =
+            create_rbv_and_generate_resolver_bindings_from_output_value(
+                &txn,
+                &nats,
+                &self,
+                output_value.clone(),
+            )
+            .await?;
+
+        //for generated_rb in generated_resolver_bindings.into_iter() {
+        //    generated_rb.resolve(&txn, &nats).await?;
+        //}
 
         Ok(Some(output_value))
     }
@@ -933,6 +942,243 @@ pub async fn get_properties_for_entity(
         .ok_or(ResolverError::MissingSchemaRoot)?;
 
     Ok(final_value.obj_value)
+}
+
+struct ToDoRb {
+    prop: Option<Prop>,
+    output_value: serde_json::Value,
+}
+
+pub async fn create_resolver_binding_value_from_rb(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    rb: &ResolverBinding,
+    output_value: serde_json::Value,
+) -> ResolverResult<()> {
+    let obj_value = output_value.clone();
+    let _ = ResolverBindingValue::new(
+        &txn,
+        &nats,
+        output_value.clone(),
+        obj_value,
+        &rb.id,
+        &rb.resolver_id,
+        rb.schema_id.clone(),
+        rb.prop_id.clone(),
+        rb.parent_resolver_binding_id.clone(),
+        rb.entity_id.clone(),
+        rb.system_id.clone(),
+        rb.change_set_id.clone(),
+        rb.edit_session_id.clone(),
+        rb.map_key_name.clone(),
+    )
+    .await?;
+    Ok(())
+}
+
+pub async fn create_rbv_and_generate_resolver_bindings_from_output_value(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    rb: &ResolverBinding,
+    incoming_output_value: serde_json::Value,
+) -> ResolverResult<Vec<ResolverBinding>> {
+    let mut result = Vec::new();
+    match &rb.backend_binding {
+        ResolverBackendKindBinding::Json(context) => {
+            let mut schema_map = SchemaMap::new();
+            let rows = txn.query(SCHEMA_ALL_PROPS, &[&rb.schema_id]).await?;
+            for row in rows.into_iter() {
+                let prop_json: serde_json::Value = row.try_get("object")?;
+                let prop: Prop = serde_json::from_value(prop_json)?;
+                schema_map.insert(prop.id().to_string(), prop);
+            }
+
+            let prop = match rb.prop_id.as_deref() {
+                Some(prop_id) => {
+                    let prop = schema_map.get(prop_id).ok_or(ResolverError::MissingPropId)?;
+                    Some(prop.clone())
+                }
+                None => None,
+            };
+
+            let mut to_do_list: VecDeque<ToDoRb> = VecDeque::new();
+            to_do_list.push_back(ToDoRb {
+                prop,
+                output_value: incoming_output_value,
+            });
+
+            while let Some(ToDoRb {
+                prop,
+                output_value,
+            }) = to_do_list.pop_front()
+            {
+                // If you are the schema root, and this isn't then object, then fuck off
+                if prop.is_none() && !output_value.is_object() {
+                        return Err(ResolverError::SchemaRootResolverMustBeObject(output_value));
+                }
+
+                match (prop, output_value) {
+                    (None, serde_json::Value::Object(json_object_value)) => {
+                        let top_resolver = Resolver::find_by_name(&txn, "si:setEmptyObject")
+                            .await
+                            .expect("cannot get resolver");
+                        let top_backend_binding = ResolverBackendKindBinding::EmptyObject;
+                        ResolverBinding::new(
+                            &txn,
+                            &nats,
+                            &top_resolver.id,
+                            top_backend_binding,
+                            rb.schema_id.clone(),
+                            None,
+                            None,
+                            rb.entity_id.clone(),
+                            rb.system_id.clone(),
+                            rb.edit_session_id.clone(),
+                            rb.edit_session_id.clone(),
+                            None,
+                        )
+                            .await?;
+                        for (field_key, field_json_value) in json_object_value.into_iter() {
+                            let field_prop = schema_map
+                                .find_prop_by_name(None, &field_key)
+                                .ok_or_else(|| {
+                                    ResolverError::InvalidOutputValueMissingProp(
+                                        field_key.clone(),
+                                        field_json_value.clone(),
+                                        rb.clone(),
+                                    )
+                                })?;
+                            to_do_list.push_back(ToDoRb {
+                                prop: Some(field_prop.clone()),
+                                output_value: field_json_value,
+                            });
+                        }
+                    }
+                    (Some(Prop::Object(prop)), serde_json::Value::Object(json_object_value)) => {
+                        let top_resolver = Resolver::find_by_name(&txn, "si:setEmptyObject")
+                            .await
+                            .expect("cannot get resolver");
+                        let top_backend_binding = ResolverBackendKindBinding::EmptyObject;
+                        ResolverBinding::new(
+                            &txn,
+                            &nats,
+                            &top_resolver.id,
+                            top_backend_binding,
+                            rb.schema_id.clone(),
+                            Some(prop.id.clone()),
+                            None,
+                            rb.entity_id.clone(),
+                            rb.system_id.clone(),
+                            rb.edit_session_id.clone(),
+                            rb.edit_session_id.clone(),
+                            None,
+                        )
+                            .await?;
+                        for (field_key, field_json_value) in json_object_value.into_iter() {
+                            let field_prop = schema_map
+                                .find_prop_by_name(Some(&prop.id), &field_key)
+                                .ok_or_else(|| {
+                                    ResolverError::InvalidOutputValueMissingProp(
+                                        field_key.to_string(),
+                                        field_json_value.clone(),
+                                        rb.clone(),
+                                    )
+                                })?;
+                            to_do_list.push_back(ToDoRb {
+                                prop: Some(field_prop.clone()),
+                                output_value: field_json_value,
+                            });
+                        }
+                    }
+                    (Some(Prop::String(prop)), serde_json::Value::String(field_value)) => {
+                        let resolver = Resolver::find_by_name(&txn, "si:setString")
+                            .await
+                            .expect("cannot get resolver");
+                        let backend_binding = ResolverBackendKindBinding::String(
+                            ResolverBackendKindStringBinding {
+                                value: field_value,
+                            },
+                        );
+                        ResolverBinding::new(
+                            &txn,
+                            &nats,
+                            &resolver.id,
+                            backend_binding,
+                            rb.schema_id.clone(),
+                            Some(prop.id.clone()),
+                            None,
+                            rb.entity_id.clone(),
+                            rb.system_id.clone(),
+                            rb.edit_session_id.clone(),
+                            rb.edit_session_id.clone(),
+                            None,
+                        )
+                            .await?;
+                    }
+                    (Some(Prop::Number(prop)), serde_json::Value::Number(field_json_value)) => {
+                        let resolver = Resolver::find_by_name(&txn, "si:setNumber")
+                            .await
+                            .expect("cannot get resolver");
+                        let field_value = field_json_value.as_u64().ok_or(
+                            ResolverError::InvalidNumberNotU64(serde_json::Value::Number(
+                                field_json_value.clone(),
+                            )),
+                        )?;
+                        let backend_binding = ResolverBackendKindBinding::Number(
+                            ResolverBackendKindNumberBinding {
+                                value: field_value.clone(),
+                            },
+                        );
+                        ResolverBinding::new(
+                            &txn,
+                            &nats,
+                            &resolver.id,
+                            backend_binding,
+                            rb.schema_id.clone(),
+                            Some(prop.id.clone()),
+                            None,
+                            rb.entity_id.clone(),
+                            rb.system_id.clone(),
+                            rb.edit_session_id.clone(),
+                            rb.edit_session_id.clone(),
+                            None,
+                        )
+                            .await?;
+                    }
+                    (Some(Prop::Boolean(prop)), serde_json::Value::Bool(field_value)) => {
+                        let resolver = Resolver::find_by_name(&txn, "si:setBoolean")
+                            .await
+                            .expect("cannot get resolver");
+                        let backend_binding = ResolverBackendKindBinding::Boolean(
+                            ResolverBackendKindBooleanBinding {
+                                value: field_value.clone(),
+                            },
+                        );
+                        ResolverBinding::new(
+                            &txn,
+                            &nats,
+                            &resolver.id,
+                            backend_binding,
+                            rb.schema_id.clone(),
+                            Some(prop.id.clone()),
+                            None,
+                            rb.entity_id.clone(),
+                            rb.system_id.clone(),
+                            rb.edit_session_id.clone(),
+                            rb.edit_session_id.clone(),
+                            None,
+                        )
+                            .await?;
+                    }
+                    _ => todo!("haven't added the error cases, but its going to get wacky"),
+                }
+            }
+        }
+        _ => {
+            create_resolver_binding_value_from_rb(&txn, &nats, rb, incoming_output_value).await?;
+        }
+    }
+    Ok(result)
 }
 
 //impl DefaultStringResolver {
