@@ -53,7 +53,7 @@ impl PropMap {
         let prop_map: PropMap = serde_json::from_value(prop_json)?;
 
         let unset_resolver = Resolver::find_by_name(&txn, "si:unset").await?;
-        let _binding = ResolverBinding::new(
+        let _resolver_binding = ResolverBinding::new(
             &txn,
             &nats,
             &unset_resolver.id,
