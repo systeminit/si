@@ -2327,6 +2327,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "si-veritech-2"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "opentelemetry",
+ "opentelemetry-otlp",
+ "opentelemetry-semantic-conventions",
+ "serde 1.0.130",
+ "serde_json",
+ "si-data",
+ "si-model",
+ "si-settings",
+ "thiserror",
+ "tokio",
+ "toml",
+ "tracing",
+ "tracing-opentelemetry",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "signal-hook-registry"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

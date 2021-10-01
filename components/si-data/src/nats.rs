@@ -1,4 +1,4 @@
-use async_nats::{Connection, Subscription};
+pub use async_nats::{Connection, Message, Subscription};
 use serde::Serialize;
 use std::sync::Arc;
 use thiserror::Error;
@@ -38,6 +38,15 @@ impl NatsConn {
     #[instrument(name = "natsconn.subscribe", skip(self, subject))]
     pub async fn subscribe(&self, subject: &str) -> std::io::Result<Subscription> {
         self.conn.subscribe(subject).await
+    }
+
+    #[instrument(name = "natsconn.queue_subscribe", skip(self, subject, queue))]
+    pub async fn queue_subscribe(
+        &self,
+        subject: &str,
+        queue: &str,
+    ) -> std::io::Result<Subscription> {
+        self.conn.queue_subscribe(subject, queue).await
     }
 }
 

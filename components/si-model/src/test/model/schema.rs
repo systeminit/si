@@ -77,15 +77,42 @@ pub async fn create_new_prop_map(
 ) -> PropMap {
     let mut generator = Generator::with_naming(Name::Numbered);
     let name = generator.next().unwrap();
+    create_new_prop_map_with_name(&txn, &nats, &schema, parent_id, name).await
+}
+
+pub async fn create_new_prop_map_with_name(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    schema: &Schema,
+    parent_id: Option<String>,
+    name: String,
+) -> PropMap {
     PropMap::new(&txn, &nats, &schema.id, &name, &name, parent_id, false)
         .await
         .expect("cannot create prop")
 }
 
-pub async fn create_new_prop_array(txn: &PgTxn<'_>, nats: &NatsTxn, schema: &Schema) -> PropArray {
+pub async fn create_new_prop_array(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    schema: &Schema,
+    parent_id: Option<String>,
+) -> PropArray {
     let mut generator = Generator::with_naming(Name::Numbered);
     let name = generator.next().unwrap();
-    PropArray::new(&txn, &nats, &schema.id, &name, &name, None, false)
+    PropArray::new(&txn, &nats, &schema.id, &name, &name, parent_id, false)
+        .await
+        .expect("cannot create prop")
+}
+
+pub async fn create_new_prop_array_with_name(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    schema: &Schema,
+    parent_id: Option<String>,
+    name: String,
+) -> PropArray {
+    PropArray::new(&txn, &nats, &schema.id, &name, &name, parent_id, false)
         .await
         .expect("cannot create prop")
 }

@@ -1,7 +1,5 @@
 use std::collections::{HashMap, VecDeque};
 
-use petgraph::algo::toposort;
-use petgraph::dot::{Config, Dot};
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::DfsPostOrder;
 use petgraph::EdgeDirection::Outgoing;
@@ -11,7 +9,6 @@ use strum_macros::{Display, IntoStaticStr};
 use thiserror::Error;
 
 use crate::resolver::ResolverError::MismatchedResolverBackend;
-use crate::test::create_edit_session;
 use crate::{MinimalStorable, Prop, SchemaMap, SiStorable};
 use std::option::Option::None;
 
@@ -74,6 +71,12 @@ pub enum ResolverError {
     InvalidOutputValueMissingProp(String, serde_json::Value, ResolverBinding),
     #[error("cannot cast a number to a u64: {0}")]
     InvalidNumberNotU64(serde_json::Value),
+    #[error("missing item prop for map or array: {0}")]
+    MissingItemProp(String),
+    #[error(
+        "mismatch between function result and schema.\n\nprop result:\n{0:?}\n\nvalue:\n{1:?}"
+    )]
+    MismatchedFunctionResultAndSchema(Option<Prop>, serde_json::Value),
 }
 
 pub type ResolverResult<T> = Result<T, ResolverError>;
@@ -367,18 +370,13 @@ impl ResolverBinding {
             ResolverBackendKindBinding::Json(context) => context.value.clone(),
         };
 
-        let generated_resolver_bindings =
-            create_rbv_and_generate_resolver_bindings_from_output_value(
-                &txn,
-                &nats,
-                &self,
-                output_value.clone(),
-            )
-            .await?;
-
-        //for generated_rb in generated_resolver_bindings.into_iter() {
-        //    generated_rb.resolve(&txn, &nats).await?;
-        //}
+        create_rbv_and_generate_resolver_bindings_from_output_value(
+            &txn,
+            &nats,
+            &self,
+            output_value.clone(),
+        )
+        .await?;
 
         Ok(Some(output_value))
     }
@@ -842,7 +840,7 @@ pub async fn get_properties_for_entity(
         };
         rbvgraph.add_edge(*parent_idx, *rbv_idx, weight);
     }
-    println!("{:?}", Dot::with_config(&rbvgraph, &[]));
+    //println!("{:?}", Dot::with_config(&rbvgraph, &[]));
 
     let mut dfspo = DfsPostOrder::new(&rbvgraph, *schema_root_id_idx);
     while let Some(current_idx) = dfspo.next(&rbvgraph) {
@@ -947,6 +945,7 @@ pub async fn get_properties_for_entity(
 struct ToDoRb {
     prop: Option<Prop>,
     output_value: serde_json::Value,
+    map_key_name: Option<String>,
 }
 
 pub async fn create_resolver_binding_value_from_rb(
@@ -981,10 +980,9 @@ pub async fn create_rbv_and_generate_resolver_bindings_from_output_value(
     nats: &NatsTxn,
     rb: &ResolverBinding,
     incoming_output_value: serde_json::Value,
-) -> ResolverResult<Vec<ResolverBinding>> {
-    let mut result = Vec::new();
+) -> ResolverResult<()> {
     match &rb.backend_binding {
-        ResolverBackendKindBinding::Json(context) => {
+        ResolverBackendKindBinding::Json(_) => {
             let mut schema_map = SchemaMap::new();
             let rows = txn.query(SCHEMA_ALL_PROPS, &[&rb.schema_id]).await?;
             for row in rows.into_iter() {
@@ -995,7 +993,9 @@ pub async fn create_rbv_and_generate_resolver_bindings_from_output_value(
 
             let prop = match rb.prop_id.as_deref() {
                 Some(prop_id) => {
-                    let prop = schema_map.get(prop_id).ok_or(ResolverError::MissingPropId)?;
+                    let prop = schema_map
+                        .get(prop_id)
+                        .ok_or(ResolverError::MissingPropId)?;
                     Some(prop.clone())
                 }
                 None => None,
@@ -1005,16 +1005,18 @@ pub async fn create_rbv_and_generate_resolver_bindings_from_output_value(
             to_do_list.push_back(ToDoRb {
                 prop,
                 output_value: incoming_output_value,
+                map_key_name: None,
             });
 
             while let Some(ToDoRb {
                 prop,
                 output_value,
+                map_key_name,
             }) = to_do_list.pop_front()
             {
                 // If you are the schema root, and this isn't then object, then fuck off
                 if prop.is_none() && !output_value.is_object() {
-                        return Err(ResolverError::SchemaRootResolverMustBeObject(output_value));
+                    return Err(ResolverError::SchemaRootResolverMustBeObject(output_value));
                 }
 
                 match (prop, output_value) {
@@ -1035,9 +1037,9 @@ pub async fn create_rbv_and_generate_resolver_bindings_from_output_value(
                             rb.system_id.clone(),
                             rb.edit_session_id.clone(),
                             rb.edit_session_id.clone(),
-                            None,
+                            map_key_name,
                         )
-                            .await?;
+                        .await?;
                         for (field_key, field_json_value) in json_object_value.into_iter() {
                             let field_prop = schema_map
                                 .find_prop_by_name(None, &field_key)
@@ -1051,6 +1053,7 @@ pub async fn create_rbv_and_generate_resolver_bindings_from_output_value(
                             to_do_list.push_back(ToDoRb {
                                 prop: Some(field_prop.clone()),
                                 output_value: field_json_value,
+                                map_key_name: None,
                             });
                         }
                     }
@@ -1071,9 +1074,9 @@ pub async fn create_rbv_and_generate_resolver_bindings_from_output_value(
                             rb.system_id.clone(),
                             rb.edit_session_id.clone(),
                             rb.edit_session_id.clone(),
-                            None,
+                            map_key_name,
                         )
-                            .await?;
+                        .await?;
                         for (field_key, field_json_value) in json_object_value.into_iter() {
                             let field_prop = schema_map
                                 .find_prop_by_name(Some(&prop.id), &field_key)
@@ -1087,18 +1090,89 @@ pub async fn create_rbv_and_generate_resolver_bindings_from_output_value(
                             to_do_list.push_back(ToDoRb {
                                 prop: Some(field_prop.clone()),
                                 output_value: field_json_value,
+                                map_key_name: None,
                             });
                         }
                     }
+                    (Some(Prop::Map(prop)), serde_json::Value::Object(json_object_value)) => {
+                        let top_resolver = Resolver::find_by_name(&txn, "si:setEmptyObject")
+                            .await
+                            .expect("cannot get resolver");
+                        let top_backend_binding = ResolverBackendKindBinding::EmptyObject;
+                        ResolverBinding::new(
+                            &txn,
+                            &nats,
+                            &top_resolver.id,
+                            top_backend_binding,
+                            rb.schema_id.clone(),
+                            Some(prop.id.clone()),
+                            None,
+                            rb.entity_id.clone(),
+                            rb.system_id.clone(),
+                            rb.edit_session_id.clone(),
+                            rb.edit_session_id.clone(),
+                            map_key_name,
+                        )
+                        .await?;
+
+                        let item_prop =
+                            schema_map
+                                .find_item_prop_for_parent(&prop.id)
+                                .ok_or_else(|| {
+                                    ResolverError::MissingItemProp(format!("{:?}", &prop))
+                                })?;
+                        for (field_key, field_json_value) in json_object_value.into_iter() {
+                            to_do_list.push_back(ToDoRb {
+                                prop: Some(item_prop.clone()),
+                                output_value: field_json_value,
+                                map_key_name: Some(field_key),
+                            });
+                        }
+                    }
+                    (Some(Prop::Array(prop)), serde_json::Value::Array(json_object_value)) => {
+                        let top_resolver = Resolver::find_by_name(&txn, "si:setEmptyArray")
+                            .await
+                            .expect("cannot get resolver");
+                        let top_backend_binding = ResolverBackendKindBinding::EmptyArray;
+                        ResolverBinding::new(
+                            &txn,
+                            &nats,
+                            &top_resolver.id,
+                            top_backend_binding,
+                            rb.schema_id.clone(),
+                            Some(prop.id.clone()),
+                            None,
+                            rb.entity_id.clone(),
+                            rb.system_id.clone(),
+                            rb.edit_session_id.clone(),
+                            rb.edit_session_id.clone(),
+                            map_key_name,
+                        )
+                        .await?;
+
+                        let item_prop =
+                            schema_map
+                                .find_item_prop_for_parent(&prop.id)
+                                .ok_or_else(|| {
+                                    ResolverError::MissingItemProp(format!("{:?}", &prop))
+                                })?;
+                        for field_json_value in json_object_value.into_iter() {
+                            to_do_list.push_back(ToDoRb {
+                                prop: Some(item_prop.clone()),
+                                output_value: field_json_value,
+                                map_key_name: None,
+                            });
+                        }
+                    }
+
                     (Some(Prop::String(prop)), serde_json::Value::String(field_value)) => {
                         let resolver = Resolver::find_by_name(&txn, "si:setString")
                             .await
                             .expect("cannot get resolver");
-                        let backend_binding = ResolverBackendKindBinding::String(
-                            ResolverBackendKindStringBinding {
+                        let backend_binding =
+                            ResolverBackendKindBinding::String(ResolverBackendKindStringBinding {
                                 value: field_value,
-                            },
-                        );
+                            });
                         ResolverBinding::new(
                             &txn,
                             &nats,
@@ -1111,24 +1185,24 @@ pub async fn create_rbv_and_generate_resolver_bindings_from_output_value(
                             rb.system_id.clone(),
                             rb.edit_session_id.clone(),
                             rb.edit_session_id.clone(),
-                            None,
+                            map_key_name,
                         )
-                            .await?;
+                        .await?;
                     }
                     (Some(Prop::Number(prop)), serde_json::Value::Number(field_json_value)) => {
                         let resolver = Resolver::find_by_name(&txn, "si:setNumber")
                             .await
                             .expect("cannot get resolver");
-                        let field_value = field_json_value.as_u64().ok_or(
-                            ResolverError::InvalidNumberNotU64(serde_json::Value::Number(
-                                field_json_value.clone(),
-                            )),
-                        )?;
-                        let backend_binding = ResolverBackendKindBinding::Number(
-                            ResolverBackendKindNumberBinding {
+                        let field_value =
+                            field_json_value
+                                .as_u64()
+                                .ok_or(ResolverError::InvalidNumberNotU64(
+                                    serde_json::Value::Number(field_json_value.clone()),
+                                ))?;
+                        let backend_binding =
+                            ResolverBackendKindBinding::Number(ResolverBackendKindNumberBinding {
                                 value: field_value.clone(),
-                            },
-                        );
+                            });
                         ResolverBinding::new(
                             &txn,
                             &nats,
@@ -1141,9 +1215,9 @@ pub async fn create_rbv_and_generate_resolver_bindings_from_output_value(
                             rb.system_id.clone(),
                             rb.edit_session_id.clone(),
                             rb.edit_session_id.clone(),
-                            None,
+                            map_key_name,
                         )
-                            .await?;
+                        .await?;
                     }
                     (Some(Prop::Boolean(prop)), serde_json::Value::Bool(field_value)) => {
                         let resolver = Resolver::find_by_name(&txn, "si:setBoolean")
@@ -1166,11 +1240,15 @@ pub async fn create_rbv_and_generate_resolver_bindings_from_output_value(
                             rb.system_id.clone(),
                             rb.edit_session_id.clone(),
                             rb.edit_session_id.clone(),
-                            None,
+                            map_key_name,
                         )
-                            .await?;
+                        .await?;
                     }
-                    _ => todo!("haven't added the error cases, but its going to get wacky"),
+                    (prop, value) => {
+                        return Err(ResolverError::MismatchedFunctionResultAndSchema(
+                            prop, value,
+                        ));
+                    }
                 }
             }
         }
@@ -1178,7 +1256,7 @@ pub async fn create_rbv_and_generate_resolver_bindings_from_output_value(
             create_resolver_binding_value_from_rb(&txn, &nats, rb, incoming_output_value).await?;
         }
     }
-    Ok(result)
+    Ok(())
 }
 
 //impl DefaultStringResolver {

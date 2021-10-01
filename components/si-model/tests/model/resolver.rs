@@ -1,13 +1,14 @@
 use si_model::resolver::{ResolverBackendKindBooleanBinding, ResolverBackendKindJsonBinding};
 use si_model::test::{
     create_change_set, create_custom_node, create_edit_session, create_new_prop_array,
-    create_new_prop_boolean, create_new_prop_boolean_with_name, create_new_prop_map,
-    create_new_prop_number, create_new_prop_object, create_new_prop_object_with_name,
-    create_new_prop_string, create_new_prop_string_with_name, create_new_prop_string_with_parent,
-    create_new_schema, one_time_setup, signup_new_billing_account, TestContext,
+    create_new_prop_array_with_name, create_new_prop_boolean, create_new_prop_boolean_with_name,
+    create_new_prop_map, create_new_prop_map_with_name, create_new_prop_number,
+    create_new_prop_object, create_new_prop_object_with_name, create_new_prop_string,
+    create_new_prop_string_with_name, create_new_schema, one_time_setup,
+    signup_new_billing_account, TestContext,
 };
 use si_model::{
-    Prop, Resolver, ResolverBackendKindArrayBinding, ResolverBackendKindBinding,
+    Resolver, ResolverBackendKindArrayBinding, ResolverBackendKindBinding,
     ResolverBackendKindNumberBinding, ResolverBackendKindObjectBinding,
     ResolverBackendKindStringBinding, ResolverBinding,
 };
@@ -54,7 +55,7 @@ async fn get_properties_for_entity_empty() {
     let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
     let schema = create_new_schema(&txn, &nats).await;
-    let prop = create_new_prop_string(&txn, &nats, &schema, None).await;
+    let _prop = create_new_prop_string(&txn, &nats, &schema, None).await;
 
     let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
     let change_set = create_change_set(&txn, &nats, &nba).await;
@@ -105,7 +106,7 @@ async fn get_properties_for_entity_nested_object_from_one_json_binding() {
         "canoe".to_string(),
     )
     .await;
-    let prop_third_object = create_new_prop_string_with_name(
+    let _prop_third_object = create_new_prop_string_with_name(
         &txn,
         &nats,
         &schema,
@@ -113,7 +114,7 @@ async fn get_properties_for_entity_nested_object_from_one_json_binding() {
         "who".to_string(),
     )
     .await;
-    let prop_fourth_object = create_new_prop_boolean_with_name(
+    let _prop_fourth_object = create_new_prop_boolean_with_name(
         &txn,
         &nats,
         &schema,
@@ -121,6 +122,26 @@ async fn get_properties_for_entity_nested_object_from_one_json_binding() {
         "pair".to_string(),
     )
     .await;
+    let prop_map_object = create_new_prop_map_with_name(
+        &txn,
+        &nats,
+        &schema,
+        Some(prop_first_object.id.clone()),
+        "mapperton".to_string(),
+    )
+    .await;
+    let _prop_map_object_item =
+        create_new_prop_string(&txn, &nats, &schema, Some(prop_map_object.id.clone())).await;
+    let prop_array = create_new_prop_array_with_name(
+        &txn,
+        &nats,
+        &schema,
+        Some(prop_first_object.id.clone()),
+        "arraymonster".to_string(),
+    )
+    .await;
+    let _prop_array_object_item =
+        create_new_prop_string(&txn, &nats, &schema, Some(prop_array.id.clone())).await;
 
     let node = create_custom_node(
         &pg,
@@ -142,9 +163,17 @@ async fn get_properties_for_entity_nested_object_from_one_json_binding() {
                     "who": "fletcher"
                 },
                 "pair": true,
+                "mapperton": {
+                    "slow": "moving increments",
+                    "pressure": "is crushing me",
+                },
+                "arraymonster": [ "foo", "bar", "baz" ]
             }
         }
     );
+
+    let _array_item_prop_string =
+        create_new_prop_string(&txn, &nats, &schema, Some(prop_array.id.clone())).await;
 
     dbg!(&resulting_object);
 
@@ -440,7 +469,7 @@ async fn get_properties_for_entity_with_primitive_values() {
     .await
     .expect("cannot create resolver binding");
 
-    let prop_array = create_new_prop_array(&txn, &nats, &schema).await;
+    let prop_array = create_new_prop_array(&txn, &nats, &schema, None).await;
     let array_resolver = Resolver::find_by_name(&txn, "si:setArray")
         .await
         .expect("cannot get resolver");
@@ -616,7 +645,7 @@ async fn get_properties_for_entity_complex_map() {
     let schema = create_new_schema(&txn, &nats).await;
     let prop_map_top = create_new_prop_map(&txn, &nats, &schema, None).await;
     let nested_map = create_new_prop_map(&txn, &nats, &schema, Some(prop_map_top.id.clone())).await;
-    let nested_map_item_value =
+    let _nested_map_item_value =
         create_new_prop_string(&txn, &nats, &schema, Some(nested_map.id.clone())).await;
     let node = create_custom_node(
         &pg,

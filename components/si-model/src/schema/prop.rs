@@ -100,4 +100,9 @@ impl SchemaMap {
         let name = name.as_ref();
         self.values().find(|p| p.parent_id() == parent_id && p.name() == name)
     }
+
+    pub fn find_item_prop_for_parent(&self, parent_id: impl AsRef<str>) -> Option<&Prop> {
+        let parent_id = parent_id.as_ref();
+        self.values().find(|p| p.parent_id() == Some(parent_id))
+    }
 }
