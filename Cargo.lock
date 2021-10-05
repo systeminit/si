@@ -1014,6 +1014,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "hex"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
+
+[[package]]
 name = "hmac"
 version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1119,6 +1125,19 @@ dependencies = [
  "pin-project-lite",
  "tokio",
  "tokio-io-timeout",
+]
+
+[[package]]
+name = "hyperlocal"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0fafdf7b2b2de7c9784f76e02c0935e65a8117ec3b768644379983ab333ac98c"
+dependencies = [
+ "futures-util",
+ "hex",
+ "hyper",
+ "pin-project",
+ "tokio",
 ]
 
 [[package]]
@@ -2435,6 +2454,7 @@ dependencies = [
  "derive_builder",
  "futures",
  "hyper",
+ "hyperlocal",
  "opentelemetry",
  "opentelemetry-otlp",
  "opentelemetry-semantic-conventions",

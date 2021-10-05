@@ -1,3 +1,4 @@
+use crate::{LivenessStatus, ReadinessStatus};
 use axum::{
     extract::{
         ws::{Message, WebSocket},
@@ -8,46 +9,8 @@ use axum::{
 use hyper::StatusCode;
 use tracing::warn;
 
-#[derive(Debug)]
-enum LivenessStatus {
-    Ok,
-}
-
-impl LivenessStatus {
-    fn as_str(&self) -> &'static str {
-        match self {
-            LivenessStatus::Ok => "ok\n",
-        }
-    }
-}
-
-impl From<LivenessStatus> for &'static str {
-    fn from(value: LivenessStatus) -> Self {
-        value.as_str()
-    }
-}
-
 pub async fn liveness() -> (StatusCode, &'static str) {
     (StatusCode::OK, LivenessStatus::Ok.into())
-}
-
-#[derive(Debug)]
-enum ReadinessStatus {
-    Ready,
-}
-
-impl ReadinessStatus {
-    fn as_str(&self) -> &'static str {
-        match self {
-            ReadinessStatus::Ready => "ready\n",
-        }
-    }
-}
-
-impl From<ReadinessStatus> for &'static str {
-    fn from(value: ReadinessStatus) -> Self {
-        value.as_str()
-    }
 }
 
 pub async fn readiness() -> Result<&'static str, StatusCode> {

@@ -1,5 +1,5 @@
 use color_eyre::Result;
-use si_cyclone::server::{telemetry, Server};
+use si_cyclone::{telemetry, Server};
 use std::convert::TryInto;
 
 mod cli;
