@@ -1,6 +1,6 @@
-use std::{net::SocketAddr, path::PathBuf};
-
 use clap::{AppSettings, Clap};
+use si_cyclone::server::{Config, ConfigBuilderError, IncomingStream};
+use std::{convert::TryFrom, net::SocketAddr, path::PathBuf};
 
 /// Parse, validate, and return the CLI arguments as a typed struct.
 pub(crate) fn parse() -> Args {
@@ -46,4 +46,33 @@ pub(crate) struct Args {
     /// Disables resolver endpoint.
     #[clap(long, group = "resolver")]
     pub(crate) disable_resolver: bool,
+}
+
+impl TryFrom<Args> for Config {
+    type Error = ConfigBuilderError;
+
+    fn try_from(args: Args) -> Result<Self, Self::Error> {
+        let mut builder = Self::builder();
+
+        if let Some(socket_addr) = args.bind_addr {
+            builder.incoming_stream(IncomingStream::HTTPSocket(socket_addr));
+        }
+        if let Some(pathbuf) = args.bind_uds {
+            builder.incoming_stream(IncomingStream::UnixDomainSocket(pathbuf));
+        }
+
+        if args.enable_ping {
+            builder.enable_ping(true);
+        } else if args.disable_ping {
+            builder.enable_ping(false);
+        }
+
+        if args.enable_resolver {
+            builder.enable_resolver(true);
+        } else if args.disable_resolver {
+            builder.enable_resolver(false);
+        }
+
+        builder.build()
+    }
 }
