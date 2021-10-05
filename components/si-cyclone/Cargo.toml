@@ -9,6 +9,8 @@ edition = "2018"
 axum = { version = "0.2.5", features = ["ws"] }
 clap = { version = "3.0.0-beta.4" }
 color-eyre = "0.5.11"
+derive_builder = "0.10.2"
+futures = "0.3.17"
 hyper = { version = "0.14.13", features = ["http1", "runtime", "server"] }
 opentelemetry = { version = "0.16.0", features = ["rt-tokio", "trace"] }
 opentelemetry-otlp = "0.9.0"

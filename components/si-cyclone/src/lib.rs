@@ -1,89 +1,53 @@
-use axum::{
-    extract::{
-        ws::{Message, WebSocket},
-        WebSocketUpgrade,
-    },
-    handler::get,
-    response::IntoResponse,
-    routing::BoxRoute,
-    Router,
-};
-use hyper::StatusCode;
-use tower_http::trace::{DefaultMakeSpan, TraceLayer};
-use tracing::warn;
+use derive_builder::Builder;
+use std::{net::SocketAddr, path::PathBuf};
 
+mod router;
 pub mod telemetry;
+pub mod uds;
 
-pub fn app() -> Router<BoxRoute> {
-    Router::new()
-        .route("/liveness", get(liveness).head(liveness))
-        .route("/readiness", get(readiness).head(readiness))
-        .route("/execute", execute_routes())
-        // TODO(fnichol): customize http tracing further, using:
-        // https://docs.rs/tower-http/0.1.1/tower_http/trace/index.html
-        .layer(
-            TraceLayer::new_for_http()
-                .make_span_with(DefaultMakeSpan::default().include_headers(true)),
-        )
-        .boxed()
+pub use router::app;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum IncomingStream {
+    HTTPSocket(SocketAddr),
+    UnixDomainSocket(PathBuf),
 }
 
-fn execute_routes() -> Router<BoxRoute> {
-    Router::new().route("/ping", get(execute_ws_ping)).boxed()
-}
-
-async fn execute_ws_ping(ws: WebSocketUpgrade) -> impl IntoResponse {
-    async fn handle_socket(mut socket: WebSocket) {
-        if let Err(ref err) = socket.send(Message::Text("pong".to_string())).await {
-            warn!("client disconnected; error={}", err);
-        }
-    }
-
-    ws.on_upgrade(handle_socket);
-}
-
-#[derive(Debug)]
-enum LivenessStatus {
-    Ok,
-}
-
-impl LivenessStatus {
-    fn as_str(&self) -> &'static str {
-        match self {
-            LivenessStatus::Ok => "ok\n",
-        }
+impl Default for IncomingStream {
+    fn default() -> Self {
+        Self::HTTPSocket(SocketAddr::from(([0, 0, 0, 0], 8080)))
     }
 }
 
-impl From<LivenessStatus> for &'static str {
-    fn from(value: LivenessStatus) -> Self {
-        value.as_str()
+#[derive(Debug, Builder)]
+pub struct Config {
+    #[builder(default = "false")]
+    enable_ping: bool,
+
+    #[builder(default = "true")]
+    enable_resolver: bool,
+
+    #[builder(default = "IncomingStream::default()")]
+    incoming_stream: IncomingStream,
+}
+
+impl Config {
+    pub fn builder() -> ConfigBuilder {
+        ConfigBuilder::default()
     }
-}
 
-async fn liveness() -> (StatusCode, &'static str) {
-    (StatusCode::OK, LivenessStatus::Ok.into())
-}
-
-#[derive(Debug)]
-enum ReadinessStatus {
-    Ready,
-}
-
-impl ReadinessStatus {
-    fn as_str(&self) -> &'static str {
-        match self {
-            ReadinessStatus::Ready => "ready\n",
-        }
+    /// Get a reference to the config's enable ping.
+    pub fn enable_ping(&self) -> bool {
+        self.enable_ping
     }
-}
 
-impl From<ReadinessStatus> for &'static str {
-    fn from(value: ReadinessStatus) -> Self {
-        value.as_str()
+    /// Get a reference to the config's enable resolver.
+    pub fn enable_resolver(&self) -> bool {
+        self.enable_resolver
     }
-}
 
-async fn readiness() -> Result<&'static str, StatusCode> {
-    Ok(ReadinessStatus::Ready.into())
+    /// Get a reference to the config's incoming stream.
+    pub fn incoming_stream(&self) -> &IncomingStream {
+        &self.incoming_stream
+    }
 }
