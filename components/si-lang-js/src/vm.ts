@@ -1,16 +1,13 @@
 import { RemoteFunctionRequest } from "./remote_function";
 import { VM, VMScript } from "vm2";
-import Debug from "debug";
-import lodash from "lodash";
+import { Sandbox } from "./sandbox";
 
-export function createVm(kind: RemoteFunctionRequest["kind"]): VM {
-  const sandbox: Record<string, any> = {};
+export function createVm(
+  kind: RemoteFunctionRequest["kind"],
+  sandbox: Sandbox
+): VM {
   const timeout = 2000;
   const fixAsync = true;
-  if (kind == "resolver") {
-    sandbox["debug"] = Debug("cyclone:resolver:ts");
-    sandbox["_"] = lodash;
-  }
   return new VM({
     timeout,
     sandbox,

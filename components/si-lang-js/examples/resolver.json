@@ -1,0 +1,6 @@
+{
+  "kind": "resolver",
+  "code": "console.log('i like'); console.log('my butt'); v = { a: 'b' }",
+  "containerImage": "poop",
+  "containerTag": "canoe"
+}
