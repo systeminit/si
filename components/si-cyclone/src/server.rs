@@ -1,4 +1,4 @@
-pub use config::{Config, ConfigBuilderError, IncomingStream};
+pub use config::{Config, ConfigBuilder, ConfigBuilderError, IncomingStream};
 pub use routes::routes;
 pub use server::Server;
 pub use uds::{UDSIncomingStream, UDSIncomingStreamError};

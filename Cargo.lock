@@ -2458,6 +2458,7 @@ dependencies = [
  "opentelemetry",
  "opentelemetry-otlp",
  "opentelemetry-semantic-conventions",
+ "tempfile",
  "thiserror",
  "tokio",
  "tower-http",

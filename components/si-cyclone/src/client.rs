@@ -75,7 +75,7 @@ impl Client {
     }
 
     pub async fn readiness(&self) -> Result<ReadinessStatus, ClientError> {
-        let res = self.get("/liveness").await?;
+        let res = self.get("/readiness").await?;
 
         if res.status() != StatusCode::OK {
             return Err(ClientError::UnexpectedStatusCoce(res.status()));
@@ -167,5 +167,107 @@ impl UDSClient {
             &self.socket,
             &format!("/{}", path.as_ref().trim_start_matches('/')),
         ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use tempfile::{NamedTempFile, TempPath};
+
+    use super::*;
+    use crate::{
+        server::{Config, ConfigBuilder},
+        Server,
+    };
+
+    fn rand_uds() -> TempPath {
+        NamedTempFile::new()
+            .expect("failed to create named tempfile")
+            .into_temp_path()
+    }
+
+    async fn uds_server(builder: &mut ConfigBuilder, tmp_socket: &TempPath) -> Server {
+        let config = builder
+            .unix_domain_socket(tmp_socket)
+            .build()
+            .expect("failed to build config");
+
+        Server::init(config).await.expect("failed to init server")
+    }
+
+    async fn uds_client_for_running_server(
+        builder: &mut ConfigBuilder,
+        tmp_socket: &TempPath,
+    ) -> Client {
+        let server = uds_server(builder, tmp_socket).await;
+        let path = server
+            .as_uds()
+            .expect("server is not uds server")
+            .local_path();
+        tokio::spawn(async move { server.run().await });
+
+        Client::new_uds(path)
+    }
+
+    async fn http_server(builder: &mut ConfigBuilder) -> Server {
+        let config = builder
+            .http_socket("127.0.0.1:0")
+            .expect("failed to resolve socket addr")
+            .build()
+            .expect("failed to build config");
+        Server::init(config).await.expect("failed to init server")
+    }
+
+    async fn http_client_for_running_server(builder: &mut ConfigBuilder) -> Client {
+        let server = http_server(builder).await;
+        let socket = server
+            .as_http()
+            .expect("server is not an http server")
+            .local_addr();
+        tokio::spawn(async move { server.run().await });
+
+        Client::new_http(socket).expect("failed to create client")
+    }
+
+    #[tokio::test]
+    async fn http_liveness() {
+        let mut builder = Config::builder();
+        let client = http_client_for_running_server(&mut builder).await;
+
+        let response = client.liveness().await.expect("failed to get liveness");
+
+        assert_eq!(response, LivenessStatus::Ok);
+    }
+
+    #[tokio::test]
+    async fn uds_liveness() {
+        let tmp_socket = rand_uds();
+        let mut builder = Config::builder();
+        let client = uds_client_for_running_server(&mut builder, &tmp_socket).await;
+
+        let response = client.liveness().await.expect("failed to get liveness");
+
+        assert_eq!(response, LivenessStatus::Ok);
+    }
+
+    #[tokio::test]
+    async fn http_readiness() {
+        let mut builder = Config::builder();
+        let client = http_client_for_running_server(&mut builder).await;
+
+        let response = client.readiness().await.expect("failed to get readiness");
+
+        assert_eq!(response, ReadinessStatus::Ready);
+    }
+
+    #[tokio::test]
+    async fn uds_readiness() {
+        let tmp_socket = rand_uds();
+        let mut builder = Config::builder();
+        let client = uds_client_for_running_server(&mut builder, &tmp_socket).await;
+
+        let response = client.readiness().await.expect("failed to get readiness");
+
+        assert_eq!(response, ReadinessStatus::Ready);
     }
 }

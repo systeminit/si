@@ -1,4 +1,11 @@
+use std::{
+    ops::Deref,
+    path::{Path, PathBuf},
+};
+
 use super::{routes, Config, IncomingStream, UDSIncomingStream, UDSIncomingStreamError};
+use axum::routing::{BoxRoute, IntoMakeService};
+use hyper::server::conn::AddrIncoming;
 use thiserror::Error;
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 use tracing::info;
@@ -13,37 +20,100 @@ pub enum ServerError {
 
 pub struct Server {
     config: Config,
+    inner: InnerServer,
 }
 
 impl Server {
     pub async fn init(config: Config) -> Result<Self, ServerError> {
-        Ok(Self { config })
+        let inner = InnerServer::create_with(&config).await?;
+        Ok(Self { config, inner })
     }
 
     pub async fn run(self) -> Result<(), ServerError> {
-        let routes = routes(&self.config)
+        match self.inner {
+            InnerServer::HTTP(server) => server.await?,
+            InnerServer::UDS(server) => server.await?,
+        }
+
+        Ok(())
+    }
+
+    /// Gets a reference to the server's config.
+    pub fn config(&self) -> &Config {
+        &self.config
+    }
+
+    /// If the server is an HTTP variant, returns the inner instance, otherwise returns `None`.
+    pub fn as_http(&self) -> Option<&axum::Server<AddrIncoming, IntoMakeService<BoxRoute>>> {
+        if let InnerServer::HTTP(ref server) = self.inner {
+            Some(server)
+        } else {
+            None
+        }
+    }
+
+    /// If the server is a UDS variant, returns the inner instance, otherwise returns `None`.
+    pub fn as_uds(&self) -> Option<UDSIncomingStreamServer> {
+        if let InnerServer::UDS(ref server) = self.inner {
+            let path = match self.config.incoming_stream().as_unix_domain_socket() {
+                Some(path) => path,
+                None => return None,
+            };
+            Some(UDSIncomingStreamServer(server, path))
+        } else {
+            None
+        }
+    }
+}
+
+/// Wraps a UDS server to allow for a `local_path` method.
+pub struct UDSIncomingStreamServer<'a>(
+    &'a axum::Server<UDSIncomingStream, IntoMakeService<BoxRoute>>,
+    &'a Path,
+);
+
+impl<'a> UDSIncomingStreamServer<'a> {
+    pub fn local_path(&self) -> PathBuf {
+        self.1.into()
+    }
+}
+
+impl<'a> Deref for UDSIncomingStreamServer<'a> {
+    type Target = &'a axum::Server<UDSIncomingStream, IntoMakeService<BoxRoute>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+enum InnerServer {
+    HTTP(axum::Server<AddrIncoming, IntoMakeService<BoxRoute>>),
+    UDS(axum::Server<UDSIncomingStream, IntoMakeService<BoxRoute>>),
+}
+
+impl InnerServer {
+    async fn create_with(config: &Config) -> Result<Self, ServerError> {
+        let routes = routes(&config)
             // TODO(fnichol): customize http tracing further, using:
             // https://docs.rs/tower-http/0.1.1/tower_http/trace/index.html
             .layer(
                 TraceLayer::new_for_http()
                     .make_span_with(DefaultMakeSpan::default().include_headers(true)),
-            );
+            )
+            .boxed();
 
-        match self.config.incoming_stream() {
+        match config.incoming_stream() {
             IncomingStream::HTTPSocket(socket_addr) => {
                 info!("binding to HTTP socket; socket_addr={}", &socket_addr);
-                axum::Server::bind(&socket_addr)
-                    .serve(routes.into_make_service())
-                    .await?;
+                let inner = axum::Server::bind(&socket_addr).serve(routes.into_make_service());
+                Ok(Self::HTTP(inner))
             }
             IncomingStream::UnixDomainSocket(path) => {
                 info!("binding to Unix domain socket; path={}", path.display());
-                axum::Server::builder(UDSIncomingStream::create(path).await?)
-                    .serve(routes.into_make_service())
-                    .await?;
+                let inner = axum::Server::builder(UDSIncomingStream::create(path).await?)
+                    .serve(routes.into_make_service());
+                Ok(Self::UDS(inner))
             }
         }
-
-        Ok(())
     }
 }
