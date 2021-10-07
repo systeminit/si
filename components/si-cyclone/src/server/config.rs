@@ -1,12 +1,17 @@
-use derive_builder::Builder;
 use std::{
     net::{SocketAddr, ToSocketAddrs},
     path::{Path, PathBuf},
 };
+
+use derive_builder::Builder;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum ConfigError {
+    #[error("config builder")]
+    Builder(#[from] ConfigBuilderError),
+    #[error("lang server program does not exist: {0}")]
+    LangServerProgramNotFound(PathBuf),
     #[error("no socket addrs where resolved")]
     NoSocketAddrResolved,
     #[error("failed to resolve socket addrs")]
@@ -23,6 +28,9 @@ pub struct Config {
 
     #[builder(default = "IncomingStream::default()")]
     incoming_stream: IncomingStream,
+
+    #[builder(setter(into))]
+    lang_server_path: PathBuf,
 }
 
 impl Config {
@@ -44,6 +52,11 @@ impl Config {
     /// Gets a reference to the config's incoming stream.
     pub fn incoming_stream(&self) -> &IncomingStream {
         &self.incoming_stream
+    }
+
+    /// Gets a reference to the config's lang server path.
+    pub fn lang_server_path(&self) -> &Path {
+        &self.lang_server_path
     }
 }
 

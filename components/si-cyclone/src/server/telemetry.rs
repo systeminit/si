@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use opentelemetry::{
     global,
     sdk::{
@@ -10,7 +12,6 @@ use opentelemetry::{
 };
 use opentelemetry_otlp::WithExportConfig;
 use opentelemetry_semantic_conventions::resource;
-use std::time::Duration;
 use thiserror::Error;
 use tracing_subscriber::{prelude::*, util::TryInitError, Registry};
 

@@ -1,5 +1,5 @@
-use clap::{AppSettings, Clap};
-use si_cyclone::server::{Config, ConfigBuilderError, IncomingStream};
+use clap::{AppSettings, ArgSettings, Clap};
+use si_cyclone::server::{Config, ConfigError, IncomingStream};
 use std::{convert::TryFrom, net::SocketAddr, path::PathBuf};
 
 /// Parse, validate, and return the CLI arguments as a typed struct.
@@ -46,10 +46,14 @@ pub(crate) struct Args {
     /// Disables resolver endpoint.
     #[clap(long, group = "resolver")]
     pub(crate) disable_resolver: bool,
+
+    /// Path to the lang server program.
+    #[clap(long, env = "SI_LANG_SERVER", setting = ArgSettings::HideEnvValues)]
+    pub(crate) lang_server: PathBuf,
 }
 
 impl TryFrom<Args> for Config {
-    type Error = ConfigBuilderError;
+    type Error = ConfigError;
 
     fn try_from(args: Args) -> Result<Self, Self::Error> {
         let mut builder = Self::builder();
@@ -73,6 +77,12 @@ impl TryFrom<Args> for Config {
             builder.enable_resolver(false);
         }
 
-        builder.build()
+        if args.lang_server.is_file() {
+            builder.lang_server_path(args.lang_server);
+        } else {
+            return Err(ConfigError::LangServerProgramNotFound(args.lang_server));
+        }
+
+        builder.build().map_err(From::from)
     }
 }

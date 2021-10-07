@@ -2,6 +2,7 @@
 mod cfg;
 pub mod liveness;
 pub mod readiness;
+pub mod resolver_function;
 
 pub use liveness::{LivenessStatus, LivenessStatusParseError};
 pub use readiness::{ReadinessStatus, ReadinessStatusParseError};

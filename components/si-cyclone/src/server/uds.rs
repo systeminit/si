@@ -1,9 +1,10 @@
-use futures::ready;
-use hyper::server::accept::Accept;
 use std::{
     path::{Path, PathBuf},
     task::{Context, Poll},
 };
+
+use futures::ready;
+use hyper::server::accept::Accept;
 use thiserror::Error;
 use tokio::{
     fs,

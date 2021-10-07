@@ -1,4 +1,10 @@
-use crate::{LivenessStatus, LivenessStatusParseError, ReadinessStatus, ReadinessStatusParseError};
+use std::{
+    convert::{TryFrom, TryInto},
+    net::{SocketAddr, ToSocketAddrs},
+    path::PathBuf,
+    str::{self, FromStr},
+};
+
 use axum::http::request::Builder;
 use http::uri::{Authority, InvalidUri, InvalidUriParts, PathAndQuery, Scheme};
 use hyper::{
@@ -8,17 +14,18 @@ use hyper::{
     Body, Method, Request, Response, StatusCode, Uri,
 };
 use hyperlocal::{UnixClientExt, UnixConnector};
-use std::{
-    convert::{TryFrom, TryInto},
-    net::{SocketAddr, ToSocketAddrs},
-    path::PathBuf,
-    str::{self, FromStr},
-};
 use thiserror::Error;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_tungstenite::WebSocketStream;
 
-pub use tokio_tungstenite::tungstenite::Message as WebSocketMessage;
+use self::resolver_function::ResolverFunctionExecution;
+use crate::{LivenessStatus, LivenessStatusParseError, ReadinessStatus, ReadinessStatusParseError};
+
+pub use tokio_tungstenite::tungstenite::{
+    protocol::frame::CloseFrame as WebSocketCloseFrame, Message as WebSocketMessage,
+};
+
+mod resolver_function;
 
 #[derive(Debug, Error)]
 pub enum ClientError {
@@ -162,6 +169,11 @@ where
         self.websocket_stream("/execute/ping").await
     }
 
+    pub async fn execute_resolver(&mut self) -> Result<ResolverFunctionExecution<T>, ClientError> {
+        let stream = self.websocket_stream("/execute/resolver").await?;
+        Ok(stream.into())
+    }
+
     fn http_request_uri<P>(&self, path_and_query: P) -> Result<Uri, ClientError>
     where
         P: TryInto<PathAndQuery, Error = InvalidUri>,
@@ -265,6 +277,8 @@ where
 
 #[cfg(test)]
 mod tests {
+    use std::{borrow::Cow, env};
+
     use super::*;
     use crate::{
         server::{Config, ConfigBuilder},
@@ -279,9 +293,17 @@ mod tests {
             .into_temp_path()
     }
 
+    fn lang_server_path() -> Cow<'static, str> {
+        match env::var("SI_TEST_LANG_SERVER").ok() {
+            Some(val) => Cow::Owned(val),
+            None => Cow::Borrowed("../si-lang-js/target/si-lang-js"),
+        }
+    }
+
     async fn uds_server(builder: &mut ConfigBuilder, tmp_socket: &TempPath) -> Server {
         let config = builder
             .unix_domain_socket(tmp_socket)
+            .lang_server_path(lang_server_path().to_string())
             .build()
             .expect("failed to build config");
 
@@ -306,6 +328,7 @@ mod tests {
         let config = builder
             .http_socket("127.0.0.1:0")
             .expect("failed to resolve socket addr")
+            .lang_server_path(lang_server_path().to_string())
             .build()
             .expect("failed to build config");
         Server::init(config).await.expect("failed to init server")
@@ -428,5 +451,31 @@ mod tests {
             Err(unexpected) => panic!("unexpected error: {:?}", unexpected),
             Ok(_) => panic!("stream not expected"),
         }
+    }
+
+    #[tokio::test]
+    async fn http_execute_resolver() {
+        let mut builder = Config::builder();
+        let mut client = http_client_for_running_server(builder.enable_resolver(true)).await;
+
+        let mut progress = client
+            .execute_resolver()
+            .await
+            .expect("failed to establish websocket stream")
+            .start()
+            .await
+            .expect("failed to start protocol");
+        while let Some(message) = progress.next().await {
+            match message {
+                Ok(message) => {
+                    dbg!(message);
+                }
+                Err(err) => panic!("message errored: {:?}", err),
+            }
+        }
+        let result = progress.finish().await.expect("failed to return result");
+        dbg!(result);
+
+        todo!("fuck yeah errbody!!")
     }
 }

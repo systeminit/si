@@ -3,6 +3,7 @@ debug = true
 
 [workspace]
 members = [
+  "components/bytes-lines-codec",
   "components/si-cyclone",
   "components/si-data",
   "components/si-model",
