@@ -12,7 +12,7 @@ pub fn routes(config: &Config) -> Router<BoxRoute> {
             "/readiness",
             get(handlers::readiness).head(handlers::readiness),
         )
-        .route("/execute", execute_routes(&config))
+        .nest("/execute", execute_routes(&config))
         .boxed()
 }
 

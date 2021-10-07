@@ -24,7 +24,7 @@ pub async fn execute_ws_ping(ws: WebSocketUpgrade) -> impl IntoResponse {
         }
     }
 
-    ws.on_upgrade(handle_socket);
+    ws.on_upgrade(handle_socket)
 }
 
 pub async fn execute_ws_resolver(ws: WebSocketUpgrade) -> impl IntoResponse {
@@ -32,5 +32,5 @@ pub async fn execute_ws_resolver(ws: WebSocketUpgrade) -> impl IntoResponse {
         todo!("HAY resolver!")
     }
 
-    ws.on_upgrade(handle_socket);
+    ws.on_upgrade(handle_socket)
 }
