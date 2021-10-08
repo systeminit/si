@@ -4,7 +4,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use futures::{Future, Stream, StreamExt};
+use futures::{Future, SinkExt, Stream, StreamExt};
 use hyper::client::connect::Connection;
 use thiserror::Error;
 use tokio::io::{AsyncRead, AsyncWrite};
@@ -12,11 +12,19 @@ use tokio_tungstenite::WebSocketStream;
 
 use crate::resolver_function::{
     FunctionResult, ResolverFunctionExecutingMessage, ResolverFunctionMessage,
+    ResolverFunctionRequest,
 };
 
 pub use tokio_tungstenite::tungstenite::{
     protocol::frame::CloseFrame as WebSocketCloseFrame, Message as WebSocketMessage,
 };
+
+pub fn execute<T>(
+    stream: WebSocketStream<T>,
+    request: ResolverFunctionRequest,
+) -> ResolverFunctionExecution<T> {
+    ResolverFunctionExecution { stream, request }
+}
 
 #[derive(Debug, Error)]
 pub enum ResolverFunctionExecutionError {
@@ -24,17 +32,16 @@ pub enum ResolverFunctionExecutionError {
     ClosingWithoutResult,
     #[error("failed to deserialize json message")]
     JSONDeserialize(#[source] serde_json::Error),
+    #[error("failed to serialize json message")]
+    JSONSerialize(#[source] serde_json::Error),
+    #[error("failed to send websocket message")]
+    WSSendIO(#[source] tokio_tungstenite::tungstenite::Error),
 }
 
 #[derive(Debug)]
 pub struct ResolverFunctionExecution<T> {
     stream: WebSocketStream<T>,
-}
-
-impl<T> From<WebSocketStream<T>> for ResolverFunctionExecution<T> {
-    fn from(stream: WebSocketStream<T>) -> Self {
-        Self { stream }
-    }
+    request: ResolverFunctionRequest,
 }
 
 impl<T> ResolverFunctionExecution<T>
@@ -49,7 +56,7 @@ where
                 let msg: ResolverFunctionMessage = serde_json::from_str(&json)
                     .map_err(ResolverFunctionExecutionError::JSONDeserialize)?;
                 match msg {
-                    ResolverFunctionMessage::Start => Ok(self.into()),
+                    ResolverFunctionMessage::Start => {}
                     invalid => panic!("invalid message before start: {:?}", invalid),
                 }
             }
@@ -57,6 +64,17 @@ where
             Some(Err(err)) => panic!("websocket errored: {:?}", err),
             None => panic!(),
         }
+
+        let msg = WebSocketMessage::Text(
+            serde_json::to_string(&self.request)
+                .map_err(ResolverFunctionExecutionError::JSONSerialize)?,
+        );
+        self.stream
+            .send(msg)
+            .await
+            .map_err(ResolverFunctionExecutionError::WSSendIO)?;
+
+        Ok(self.into())
     }
 }
 

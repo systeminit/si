@@ -12,6 +12,7 @@ export interface RemoteFunctionRequestResolver {
 export type RemoteFunctionRequest = RemoteFunctionRequestResolver;
 
 export interface RemoteFunctionOutputLine {
+  protocol: "output";
   stream: "stdout" | "stderr";
   level: "debug" | "info" | "warn" | "error";
   group?: string;
@@ -21,6 +22,7 @@ export interface RemoteFunctionOutputLine {
 }
 
 export interface RemoteFunctionResultFailure {
+  protocol: "result";
   status: "failure";
   kind: string;
   error: {
@@ -32,6 +34,7 @@ export interface RemoteFunctionResultFailure {
 }
 
 export interface RemoteFunctionResultResolver {
+  protocol: "result";
   status: "success";
   kind: "resolver";
   error?: never;
@@ -53,6 +56,7 @@ export function executeRemoteFunction(request: RemoteFunctionRequest) {
     functionResult = vm.run(code);
   } catch (e) {
     result = {
+      protocol: "result",
       status: "failure",
       kind: request.kind,
       error: {
@@ -65,6 +69,7 @@ export function executeRemoteFunction(request: RemoteFunctionRequest) {
     if (_.isUndefined(functionResult)) {
       sandbox.console.log("function returned undefined");
       result = {
+        protocol: "result",
         status: "success",
         kind: request.kind,
         unset: true,
@@ -78,6 +83,7 @@ export function executeRemoteFunction(request: RemoteFunctionRequest) {
       _.isNull(functionResult)
     ) {
       result = {
+        protocol: "result",
         status: "success",
         kind: request.kind,
         data: functionResult,
@@ -85,6 +91,7 @@ export function executeRemoteFunction(request: RemoteFunctionRequest) {
       };
     } else {
       result = {
+        protocol: "result",
         status: "failure",
         kind: request.kind,
         error: {

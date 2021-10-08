@@ -19,7 +19,10 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_tungstenite::WebSocketStream;
 
 use self::resolver_function::ResolverFunctionExecution;
-use crate::{LivenessStatus, LivenessStatusParseError, ReadinessStatus, ReadinessStatusParseError};
+use crate::{
+    resolver_function::ResolverFunctionRequest, LivenessStatus, LivenessStatusParseError,
+    ReadinessStatus, ReadinessStatusParseError,
+};
 
 pub use tokio_tungstenite::tungstenite::{
     protocol::frame::CloseFrame as WebSocketCloseFrame, Message as WebSocketMessage,
@@ -169,9 +172,12 @@ where
         self.websocket_stream("/execute/ping").await
     }
 
-    pub async fn execute_resolver(&mut self) -> Result<ResolverFunctionExecution<T>, ClientError> {
+    pub async fn execute_resolver(
+        &mut self,
+        request: ResolverFunctionRequest,
+    ) -> Result<ResolverFunctionExecution<T>, ClientError> {
         let stream = self.websocket_stream("/execute/resolver").await?;
-        Ok(stream.into())
+        Ok(resolver_function::execute(stream, request))
     }
 
     fn http_request_uri<P>(&self, path_and_query: P) -> Result<Uri, ClientError>
@@ -281,10 +287,14 @@ mod tests {
 
     use super::*;
     use crate::{
+        resolver_function::{
+            FunctionResult, ResolverFunctionExecutingMessage, ResolverFunctionRequest,
+        },
         server::{Config, ConfigBuilder},
         Server,
     };
     use futures::StreamExt;
+    use serde_json::json;
     use tempfile::{NamedTempFile, TempPath};
 
     fn rand_uds() -> TempPath {
@@ -458,24 +468,54 @@ mod tests {
         let mut builder = Config::builder();
         let mut client = http_client_for_running_server(builder.enable_resolver(true)).await;
 
+        let req = ResolverFunctionRequest {
+            kind: "resolver".to_string(),
+            code: r#"console.log('i like'); console.log('my butt'); v = { a: 'b' }"#.to_string(),
+            container_image: "poop".to_string(),
+            container_tag: "canoe".to_string(),
+        };
+
+        // Start the protocol
         let mut progress = client
-            .execute_resolver()
+            .execute_resolver(req)
             .await
             .expect("failed to establish websocket stream")
             .start()
             .await
             .expect("failed to start protocol");
-        while let Some(message) = progress.next().await {
-            match message {
-                Ok(message) => {
-                    dbg!(message);
-                }
-                Err(err) => panic!("message errored: {:?}", err),
+
+        // Consume the output messages
+        match progress.next().await {
+            Some(Ok(ResolverFunctionExecutingMessage::OutputStream(output))) => {
+                assert_eq!(output.message, "i like")
+            }
+            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
+            Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
+            None => panic!("output stream ended early"),
+        };
+        match progress.next().await {
+            Some(Ok(ResolverFunctionExecutingMessage::OutputStream(output))) => {
+                assert_eq!(output.message, "my butt")
+            }
+            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
+            Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
+            None => panic!("output stream ended early"),
+        };
+        match progress.next().await {
+            None => assert!(true),
+            Some(unexpected) => panic!("output stream should be done: {:?}", unexpected),
+        };
+
+        // Get the result
+        let result = progress.finish().await.expect("failed to return result");
+        match result {
+            FunctionResult::Success(success) => {
+                assert_eq!(success.unset, false);
+                assert_eq!(success.data, json!({"a": "b"}));
+            }
+            FunctionResult::Failure(failure) => {
+                panic!("result should be success; failure={:?}", failure)
             }
         }
-        let result = progress.finish().await.expect("failed to return result");
-        dbg!(result);
-
-        todo!("fuck yeah errbody!!")
     }
 }

@@ -7,7 +7,6 @@ use axum::{
     },
     response::IntoResponse,
 };
-use futures::StreamExt;
 use hyper::StatusCode;
 use tracing::warn;
 
@@ -37,17 +36,18 @@ pub async fn ws_execute_resolver(
     Extension(state): Extension<Arc<State>>,
 ) -> impl IntoResponse {
     async fn handle_socket(socket: WebSocket, state: Arc<State>) {
-        let mut progress = match resolver_function::execute(socket, state.lang_server_path())
+        let started = match resolver_function::execute(socket, state.lang_server_path())
             .start()
             .await
         {
             Ok(progress) => progress,
-            Err(err) => panic!("starting failed: {:?}", err),
+            Err(err) => panic!("failed to start: {:?}", err),
         };
-        while let Some(message) = progress.next().await {
-            dbg!(message);
-        }
-        match progress.finish().await {
+        let proccessed = match started.process().await {
+            Ok(processed) => processed,
+            Err(err) => panic!("failed to process: {:?}", err),
+        };
+        match proccessed.finish().await {
             Ok(_) => todo!(),
             Err(err) => panic!("failed to finish: {:?}", err),
         }
