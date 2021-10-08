@@ -48,11 +48,31 @@ impl NatsConn {
     ) -> std::io::Result<Subscription> {
         self.conn.queue_subscribe(subject, queue).await
     }
+
+    #[instrument(name = "natsconn.publish", skip(self))]
+    pub async fn publish(&self, subject: &str, message: &str) -> std::io::Result<()> {
+        self.conn.publish(subject, message).await
+    }
+
+    #[instrument(name = "natsconn.request_multi", skip(self))]
+    pub async fn request_multi(
+        &self,
+        subject: &str,
+        message: &str,
+    ) -> std::io::Result<Subscription> {
+        self.conn.request_multi(subject, message).await
+    }
+}
+
+impl From<Connection> for NatsConn {
+    fn from(conn: Connection) -> Self {
+        NatsConn { conn }
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct NatsTxn {
-    connection: Connection,
+    pub connection: Connection,
     object_list: Arc<Mutex<Vec<serde_json::Value>>>,
     tx_span: Span,
 }

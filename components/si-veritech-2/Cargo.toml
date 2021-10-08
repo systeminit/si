@@ -8,12 +8,17 @@ default-run = "si-veritech"
 name = "si-veritech"
 path = "src/bin/veritech.rs"
 
+[features]
+default = ["client", "server"]
+client = []
+server = []
+
 [dependencies]
 anyhow = "1.0"
 thiserror = "1.0"
 si-data = { path = "../si-data" }
-si-model = { path = "../si-model" }
 si-settings = { path = "../si-settings" }
+si-cyclone = { path = "../si-cyclone", features = ["client"] }
 toml = "0.5"
 tracing = "0.1.26"
 tracing-opentelemetry = "0.15.0"
@@ -24,3 +29,4 @@ opentelemetry-semantic-conventions = "0.8.0"
 tokio = { version = "1.2.0", features = ["full"] }
 serde = "1.0.123"
 serde_json = { version = "1.0.64", features = ["preserve_order"] }
+futures = { version = "0.3.17"}

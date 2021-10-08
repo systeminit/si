@@ -1,4 +1,6 @@
-use si_model::resolver::{ResolverBackendKindBooleanBinding, ResolverBackendKindJsonBinding};
+use si_model::resolver::{
+    ResolverBackendKindBooleanBinding, ResolverBackendKindJsBinding, ResolverBackendKindJsonBinding,
+};
 use si_model::test::{
     create_change_set, create_custom_node, create_edit_session, create_new_prop_array,
     create_new_prop_array_with_name, create_new_prop_boolean, create_new_prop_boolean_with_name,
@@ -13,38 +15,6 @@ use si_model::{
     ResolverBackendKindStringBinding, ResolverBinding,
 };
 use std::option::Option::None;
-
-//#[tokio::test]
-//async fn execute_resolver_bindings() {
-//    one_time_setup().await.expect("one time setup failed");
-//    let ctx = TestContext::init().await;
-//    let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
-//    let nats = nats_conn.transaction();
-//    let mut conn = pg.get().await.expect("cannot connect to pg");
-//    let txn = conn.transaction().await.expect("cannot create txn");
-//    let schema = create_new_schema(&txn, &nats).await;
-//    let prop = create_new_prop_string(&txn, &nats, &schema, None, false).await;
-//
-//    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
-//    let change_set = create_change_set(&txn, &nats, &nba).await;
-//    let edit_session = create_edit_session(&txn, &nats, &nba, &change_set).await;
-//    let node = create_custom_node(
-//        &pg,
-//        &txn,
-//        &nats_conn,
-//        &nats,
-//        &veritech,
-//        &nba,
-//        &change_set,
-//        &edit_session,
-//        &schema.entity_type,
-//    )
-//    .await;
-//
-//si_model::resolver::execute_resolver_bindings(&txn, &nats, &schema.id, &node.object_id)
-//    .await
-//    .expect("cannot resolve attributes");
-//}
 
 #[tokio::test]
 async fn get_properties_for_entity_empty() {
@@ -80,6 +50,152 @@ async fn get_properties_for_entity_empty() {
         .await
         .expect("cannot get properties for entity");
     assert_eq!(props, serde_json::json!({}));
+}
+
+#[tokio::test]
+async fn get_properties_for_entity_nested_object_from_one_js_function() {
+    one_time_setup().await.expect("one time setup failed");
+    let ctx = TestContext::init().await;
+    let (pg, nats_conn, veritech, _event_log_fs, _secret_key) = ctx.entries();
+    let nats = nats_conn.transaction();
+    let mut conn = pg.get().await.expect("cannot connect to pg");
+    let txn = conn.transaction().await.expect("cannot create txn");
+
+    let nba = signup_new_billing_account(&pg, &txn, &nats, &nats_conn, &veritech).await;
+    let change_set = create_change_set(&txn, &nats, &nba).await;
+    let edit_session = create_edit_session(&txn, &nats, &nba, &change_set).await;
+
+    let schema = create_new_schema(&txn, &nats).await;
+    let prop_first_object =
+        create_new_prop_object_with_name(&txn, &nats, &schema, None, "poop".to_string()).await;
+    let prop_second_object = create_new_prop_object_with_name(
+        &txn,
+        &nats,
+        &schema,
+        Some(prop_first_object.id.clone()),
+        "canoe".to_string(),
+    )
+    .await;
+    let _prop_third_object = create_new_prop_string_with_name(
+        &txn,
+        &nats,
+        &schema,
+        Some(prop_second_object.id.clone()),
+        "who".to_string(),
+    )
+    .await;
+    let _prop_fourth_object = create_new_prop_boolean_with_name(
+        &txn,
+        &nats,
+        &schema,
+        Some(prop_first_object.id.clone()),
+        "pair".to_string(),
+    )
+    .await;
+    let prop_map_object = create_new_prop_map_with_name(
+        &txn,
+        &nats,
+        &schema,
+        Some(prop_first_object.id.clone()),
+        "mapperton".to_string(),
+    )
+    .await;
+    let _prop_map_object_item =
+        create_new_prop_string(&txn, &nats, &schema, Some(prop_map_object.id.clone())).await;
+    let prop_array = create_new_prop_array_with_name(
+        &txn,
+        &nats,
+        &schema,
+        Some(prop_first_object.id.clone()),
+        "arraymonster".to_string(),
+    )
+    .await;
+    let _prop_array_object_item =
+        create_new_prop_string(&txn, &nats, &schema, Some(prop_array.id.clone())).await;
+
+    let node = create_custom_node(
+        &pg,
+        &txn,
+        &nats_conn,
+        &nats,
+        &veritech,
+        &nba,
+        &change_set,
+        &edit_session,
+        &schema.entity_type,
+    )
+    .await;
+
+    let resulting_object = serde_json::json!(
+        {
+            "poop": {
+                "canoe": {
+                    "who": "fletcher"
+                },
+                "pair": true,
+                "mapperton": {
+                    "slow": "moving increments",
+                    "pressure": "is crushing me",
+                },
+                "arraymonster": [ "foo", "bar", "baz" ]
+            }
+        }
+    );
+
+    let _array_item_prop_string =
+        create_new_prop_string(&txn, &nats, &schema, Some(prop_array.id.clone())).await;
+
+    dbg!(&resulting_object);
+
+    let js_resolver = Resolver::find_by_name(&txn, "si:setJs")
+        .await
+        .expect("cannot get resolver");
+    let js_resolver_backend_binding =
+        ResolverBackendKindBinding::Js(ResolverBackendKindJsBinding {
+            code: r#"
+                console.log("you love me");
+                console.log("I know you do");
+                f = {
+                    "poop": {
+                        "canoe": {
+                            "who": "fletcher"
+                        },
+                        "pair": true,
+                        "mapperton": {
+                            "slow": "moving increments",
+                            "pressure": "is crushing me",
+                        },
+                        "arraymonster": [ "foo", "bar", "baz" ]
+                    }
+                }
+            "#
+            .to_string(),
+        });
+
+    let _schema_resolver_binding = ResolverBinding::new(
+        &txn,
+        &nats,
+        &js_resolver.id,
+        js_resolver_backend_binding.clone(),
+        schema.id.clone(),
+        None,
+        None,
+        Some(node.object_id.clone()),
+        None,
+        None,
+        None,
+        None,
+    )
+    .await
+    .expect("cannot create resolver binding");
+
+    let properties =
+        si_model::resolver::get_properties_for_entity(&txn, &schema.id, &node.object_id)
+            .await
+            .expect("cannot get properties for entity");
+    txn.commit().await.expect("nope");
+    dbg!(&properties);
+    assert_eq!(&properties, &resulting_object);
 }
 
 #[tokio::test]

@@ -30,7 +30,7 @@
     "fmt": "prettier --write .",
     "fmt:check": "prettier --check .",
     "run": "npm run build && node ./dist/index.js",
-    "package": "pkg . --output ./target/si-lang-js"
+    "package": "npm run build && pkg . --output ./target/si-lang-js"
   },
   "author": "System Initiative, Inc.",
   "license": "Proprietary",

@@ -2567,6 +2567,7 @@ dependencies = [
  "serde_json",
  "si-data",
  "si-settings",
+ "si-veritech-2",
  "sodiumoxide",
  "strum",
  "strum_macros",
@@ -2640,13 +2641,14 @@ name = "si-veritech-2"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "futures",
  "opentelemetry",
  "opentelemetry-otlp",
  "opentelemetry-semantic-conventions",
  "serde 1.0.130",
  "serde_json",
+ "si-cyclone",
  "si-data",
- "si-model",
  "si-settings",
  "thiserror",
  "tokio",

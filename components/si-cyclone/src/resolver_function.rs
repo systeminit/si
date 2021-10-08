@@ -43,17 +43,17 @@ pub enum FunctionResult {
 
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct ResultSuccess {
-    pub(crate) data: Value,
-    pub(crate) unset: bool,
+    pub data: Value,
+    pub unset: bool,
 }
 
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct ResultFailure {
-    pub(crate) error: ResultFailureError,
+    pub error: ResultFailureError,
 }
 
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct ResultFailureError {
-    pub(crate) message: String,
-    pub(crate) name: String,
+    pub message: String,
+    pub name: String,
 }

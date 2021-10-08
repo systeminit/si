@@ -1,0 +1,6 @@
+{
+  "kind": "resolver",
+  "code": "console.log('you love me'); console.log('I know you do'); f = { poop: { canoe: { who: 'fletcher' }, pair: true, mapperton: { slow: 'moving increments', pressure: 'is crushing me', }, arraymonster: [ 'foo', 'bar', 'baz' ] } }",
+  "containerImage": "poop",
+  "containerTag": "canoe"
+}

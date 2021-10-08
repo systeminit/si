@@ -18,7 +18,7 @@ use thiserror::Error;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_tungstenite::WebSocketStream;
 
-use self::resolver_function::ResolverFunctionExecution;
+pub use self::resolver_function::{ResolverFunctionExecution, ResolverFunctionExecutionError};
 use crate::{
     resolver_function::ResolverFunctionRequest, LivenessStatus, LivenessStatusParseError,
     ReadinessStatus, ReadinessStatusParseError,

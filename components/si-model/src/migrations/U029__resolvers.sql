@@ -65,6 +65,7 @@ SELECT resolver_create_v1('si:setMap', 'takes a map as input and returns it', 'o
 SELECT resolver_create_v1('si:setArray', 'takes an array as input and returns it', 'array', 'array');
 SELECT resolver_create_v1('si:unset', 'ensures this prop is never set', 'unset', 'unset');
 SELECT resolver_create_v1('si:setJson', 'takes raw json as an input and returns it', 'json', 'json');
+SELECT resolver_create_v1('si:setJs', 'takes a js function as an input and returns its output', 'js', 'json');
 
 CREATE TABLE resolver_bindings
 (

@@ -4,7 +4,7 @@ use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::DfsPostOrder;
 use petgraph::EdgeDirection::Outgoing;
 use serde::{Deserialize, Serialize};
-use si_data::{NatsTxn, NatsTxnError, PgError, PgTxn};
+use si_data::{NatsConn, NatsTxn, NatsTxnError, PgError, PgTxn};
 use strum_macros::{Display, IntoStaticStr};
 use thiserror::Error;
 
@@ -77,6 +77,10 @@ pub enum ResolverError {
         "mismatch between function result and schema.\n\nprop result:\n{0:?}\n\nvalue:\n{1:?}"
     )]
     MismatchedFunctionResultAndSchema(Option<Prop>, serde_json::Value),
+    #[error("veritech error: {0:?}")]
+    VeritechError(#[from] si_veritech_2::client::VeritechClientError),
+    #[error("function error: {0} {1}")]
+    FunctionError(String, String),
 }
 
 pub type ResolverResult<T> = Result<T, ResolverError>;
@@ -94,6 +98,7 @@ pub enum ResolverBackendKind {
     EmptyArray,
     Unset,
     Json,
+    Js,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
@@ -108,6 +113,7 @@ pub enum ResolverBackendKindBinding {
     EmptyArray,
     Unset,
     Json(ResolverBackendKindJsonBinding),
+    Js(ResolverBackendKindJsBinding),
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
@@ -144,6 +150,12 @@ pub struct ResolverBackendKindArrayBinding {
 #[serde(rename_all = "camelCase")]
 pub struct ResolverBackendKindJsonBinding {
     pub value: serde_json::Value,
+}
+
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ResolverBackendKindJsBinding {
+    pub code: String,
 }
 
 #[derive(Deserialize, Serialize, Debug, Display, IntoStaticStr, PartialEq, Eq)]
@@ -368,6 +380,27 @@ impl ResolverBinding {
             ResolverBackendKindBinding::EmptyArray => serde_json::json!([]),
             ResolverBackendKindBinding::Unset => return Ok(None),
             ResolverBackendKindBinding::Json(context) => context.value.clone(),
+            ResolverBackendKindBinding::Js(context) => {
+                let conn: NatsConn = nats.connection.clone().into();
+                let result =
+                    si_veritech_2::client::run_function(&conn, "resolver", context.code.clone())
+                        .await?;
+                match result {
+                    si_veritech_2::FunctionResult::Success(success) => {
+                        if success.unset {
+                            return Ok(None);
+                        } else {
+                            success.data
+                        }
+                    }
+                    si_veritech_2::FunctionResult::Failure(failure) => {
+                        return Err(ResolverError::FunctionError(
+                            failure.error.name,
+                            failure.error.message,
+                        ));
+                    }
+                }
+            }
         };
 
         create_rbv_and_generate_resolver_bindings_from_output_value(
