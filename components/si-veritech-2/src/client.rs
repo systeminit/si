@@ -40,9 +40,10 @@ pub async fn run_function(
     // TODO - We will eventually want this to timeout if we don't receive the
     // payload in time. Lots of fanciness can ensue.
     while let Some(msg) = reply_sub.next().await {
-        let json_payload = serde_json::to_value(&msg.data)?;
+        let json_payload: serde_json::Value = serde_json::from_slice(&msg.data)?;
         // Then it is output
-        if json_payload["stream"].is_null() {
+        if !json_payload["stream"].is_null() {
+            // TODO: We should do something here with output!
             dbg!(json_payload);
         } else {
             let function_result: FunctionResult = serde_json::from_value(json_payload)?;

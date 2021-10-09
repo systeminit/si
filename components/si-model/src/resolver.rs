@@ -285,6 +285,7 @@ impl ResolverBinding {
             let valid = match (&prop, &backend_binding) {
                 (_, ResolverBackendKindBinding::Unset)
                 | (_, ResolverBackendKindBinding::Json(_))
+                | (_, ResolverBackendKindBinding::Js(_))
                 | (Prop::Map(_), ResolverBackendKindBinding::EmptyObject)
                 | (Prop::Map(_), ResolverBackendKindBinding::Object(_))
                 | (Prop::Array(_), ResolverBackendKindBinding::Array(_))
@@ -1015,7 +1016,7 @@ pub async fn create_rbv_and_generate_resolver_bindings_from_output_value(
     incoming_output_value: serde_json::Value,
 ) -> ResolverResult<()> {
     match &rb.backend_binding {
-        ResolverBackendKindBinding::Json(_) => {
+        ResolverBackendKindBinding::Json(_) | ResolverBackendKindBinding::Js(_) => {
             let mut schema_map = SchemaMap::new();
             let rows = txn.query(SCHEMA_ALL_PROPS, &[&rb.schema_id]).await?;
             for row in rows.into_iter() {

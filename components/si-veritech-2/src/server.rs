@@ -25,12 +25,9 @@ pub enum VeritechServerError {
 pub type VeritechServerResult<T> = Result<T, VeritechServerError>;
 
 pub async fn start(nats: NatsConn, settings: Settings) -> VeritechServerResult<()> {
-    dbg!("getting the fucking subscription asshole");
     let sub = nats.subscribe("veritech.function.resolver").await?;
-    dbg!("got it and now waiting for messages");
     while let Some(message) = sub.next().await {
-        dbg!(&message);
-        dbg!(&message.data);
+        // TODO: This should spawn; we want to process a bunch of these
         match process_message(nats.clone(), message).await {
             Ok(_) => {}
             Err(e) => tracing::error!("message processing failed: {}", e),
@@ -72,6 +69,7 @@ pub async fn run_resolver_function(nats: NatsConn, message: Message) -> Veritech
                 nats.publish(mailbox, &serde_json::to_string(&output)?)
                     .await?;
             }
+            Ok(ResolverFunctionExecutingMessage::Heartbeat) => {}
             Ok(unexpected) => todo!("deal with unexpected messages: {:?}", unexpected),
             Err(e) => todo!("deal with this: {:?}", e),
         }

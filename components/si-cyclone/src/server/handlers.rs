@@ -48,9 +48,9 @@ pub async fn ws_execute_resolver(
             Err(err) => panic!("failed to process: {:?}", err),
         };
         match proccessed.finish().await {
-            Ok(_) => todo!(),
+            Ok(_) => {}
             Err(err) => panic!("failed to finish: {:?}", err),
-        }
+        };
     }
 
     wsu.on_upgrade(move |socket| handle_socket(socket, state))

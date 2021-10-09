@@ -129,7 +129,8 @@ where
                     ResolverFunctionMessage::FunctionResult(function_result) => {
                         self.result = Some(function_result);
                         // TODO(fnichol): what is the right return here??
-                        Poll::Pending
+                        Poll::Ready(Some(Ok(ResolverFunctionExecutingMessage::Heartbeat)))
+                        //Poll::Pending
                     }
                     // We got a finish message
                     ResolverFunctionMessage::Finish => {

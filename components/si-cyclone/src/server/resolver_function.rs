@@ -15,7 +15,7 @@ use tokio_serde::{
     Framed, SymmetricallyFramed,
 };
 use tokio_util::codec::{FramedRead, FramedWrite};
-use tracing::warn;
+use tracing::{debug, warn};
 
 use crate::{
     resolver_function::{
@@ -251,7 +251,7 @@ impl ResolverFunctionServerExecutionClosing {
             match time::timeout(CHILD_WAIT_TIMEOUT_SECS, child.wait()).await {
                 Ok(wait_result) => {
                     let exit_status = wait_result.map_err(ResolverFunctionError::ChildWait)?;
-                    warn!("child process had a nonzero exit; code={}", exit_status);
+                    debug!("child process exited; code={}", exit_status);
                 }
                 Err(_elapsed) => {
                     if let Ok(_) = child.start_kill() {
@@ -259,7 +259,10 @@ impl ResolverFunctionServerExecutionClosing {
                             .wait()
                             .await
                             .map_err(ResolverFunctionError::ChildWait)?;
-                        warn!("child process had a nonzero exit; code={}", exit_status);
+                        warn!(
+                            "child process had a nonzero exit; killed code={}",
+                            exit_status
+                        );
                     }
                 }
             },
