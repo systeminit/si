@@ -1,5 +1,5 @@
 use si_model::{Capability, Group};
-use si_model_test::{
+use si_model::test::{
     create_group_with_users, create_user, one_time_setup, signup_new_billing_account, TestContext,
 };
 

@@ -1,5 +1,5 @@
 use si_model::{Edge, EdgeKind};
-use si_model_test::{
+use si_model::test::{
     create_edge, create_edge_graph, create_vertex, one_time_setup, signup_new_billing_account,
     TestContext,
 };

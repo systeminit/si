@@ -1,5 +1,5 @@
 use si_model::Entity;
-use si_model_test::{
+use si_model::test::{
     create_change_set, create_custom_node, create_edit_session, one_time_setup,
     signup_new_billing_account, TestContext,
 };

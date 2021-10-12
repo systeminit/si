@@ -1,5 +1,5 @@
 use si_model::{KeyPair, PublicKey};
-use si_model_test::{one_time_setup, signup_new_billing_account, TestContext};
+use si_model::test::{one_time_setup, signup_new_billing_account, TestContext};
 
 #[tokio::test]
 async fn new() {

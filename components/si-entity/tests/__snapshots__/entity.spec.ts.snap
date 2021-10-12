@@ -1,0 +1,3 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Entity emptyValueForContainerProp throws an error on non container prop types 1`] = `"Prop of type string is not a container type, it must be one of: object, map, or array"`;

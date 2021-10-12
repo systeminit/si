@@ -1,5 +1,5 @@
 use si_model::{EventLog, EventLogLevel, OutputLineStream};
-use si_model_test::{create_event, one_time_setup, signup_new_billing_account, TestContext};
+use si_model::test::{create_event, one_time_setup, signup_new_billing_account, TestContext};
 use tokio::io::AsyncReadExt;
 
 #[tokio::test]

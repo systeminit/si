@@ -1,6 +1,6 @@
 use jwt_simple::algorithms::RSAKeyPairLike;
 use si_model::jwt_key;
-use si_model_test::{one_time_setup, TestContext};
+use si_model::test::{one_time_setup, TestContext};
 
 // {get_jwt_signing_key, get_jwt_validation_key};
 

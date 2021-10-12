@@ -3,9 +3,11 @@ debug = true
 
 [workspace]
 members = [
-  "components/si-sdf",
-  "components/si-settings",
+  "components/bytes-lines-codec",
+  "components/si-cyclone",
   "components/si-data",
   "components/si-model",
-  "components/si-model-test",
+  "components/si-sdf",
+  "components/si-settings",
+  "components/si-veritech-2",
 ]

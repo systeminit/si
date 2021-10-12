@@ -1,6 +1,6 @@
 use si_model::{ApiClient, ApiClientKind, Group};
-use si_model_test::model::billing_account::signup_new_billing_account;
-use si_model_test::{one_time_setup, TestContext, SETTINGS};
+use si_model::test::model::billing_account::signup_new_billing_account;
+use si_model::test::{one_time_setup, TestContext, SETTINGS};
 
 #[tokio::test]
 async fn new() {

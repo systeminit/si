@@ -1,4 +1,4 @@
-use si_model_test::{one_time_setup, signup_new_billing_account, TestContext};
+use si_model::test::{one_time_setup, signup_new_billing_account, TestContext};
 use si_sdf::handlers;
 
 #[tokio::test]

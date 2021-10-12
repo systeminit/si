@@ -186,6 +186,7 @@ pub struct ArrayMeta {
 pub struct Entity {
     pub id: String,
     pub node_id: String,
+    pub schema_id: String,
     pub name: String,
     pub description: String,
     pub entity_type: String,

@@ -154,7 +154,7 @@ impl Settings {
 
         // Start off by merging in the "default" configuration file
         event!(Level::DEBUG, "Loading config/default.toml");
-        s.merge(ConfigFile::with_name("config/default"))?;
+        s.merge(ConfigFile::with_name("config/default").required(false))?;
         event!(Level::DEBUG, ?s, "Loaded config/default.toml");
 
         // Add in the current environment file

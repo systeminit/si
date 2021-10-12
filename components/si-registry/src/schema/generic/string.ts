@@ -23,13 +23,13 @@ const string: RegistryEntry = {
     {
       name: "copy",
       kind: "lambda",
-      from: [{ targetEntity: true, data: { path: ["value"] } }],
+      from: [{ self: true, data: { path: ["value"] } }],
       code: "firstEntity.properties.value",
     },
     {
       name: "upperCase",
       kind: "lambda",
-      from: [{ targetEntity: true, data: { path: ["value"] } }],
+      from: [{ self: true, data: { path: ["value"] } }],
       code: "_.toUpper(firstEntity.properties.value)",
     },
   ],

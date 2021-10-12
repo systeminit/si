@@ -1,6 +1,6 @@
 use crate::filters::{application_context_dal::create_application, session_dal::login_user};
 use si_model::{Edge, EdgeKind, Node, NodePosition, SchematicKind, Vertex};
-use si_model_test::{
+use si_model::test::{
     create_change_set, create_custom_node, create_edit_session, create_entity_node,
     create_node_position, generate_fake_name, one_time_setup, signup_new_billing_account,
     TestContext,

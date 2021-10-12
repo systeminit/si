@@ -1,4 +1,4 @@
-use si_model_test::{one_time_setup, signup_new_billing_account, NewBillingAccount, TestContext};
+use si_model::test::{one_time_setup, signup_new_billing_account, NewBillingAccount, TestContext};
 use si_sdf::filters::api;
 use si_sdf::handlers::session_dal::{
     GetDefaultsReply, LoginReply, LoginRequest, RestoreAuthenticationReply,

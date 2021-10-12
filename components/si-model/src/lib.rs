@@ -39,13 +39,17 @@ pub mod node_position;
 pub mod organization;
 pub mod output_line;
 pub mod qualification;
+pub mod remote_function;
+pub mod resolver;
 pub mod resource;
+pub mod schema;
 pub mod schematic;
 pub mod secret;
 pub mod session;
 pub mod si_storable;
 pub mod support;
 pub mod system;
+pub mod test;
 pub mod user;
 pub mod visualization;
 pub mod workflow;
@@ -80,8 +84,18 @@ pub use organization::{Organization, OrganizationError};
 pub use output_line::{OutputLine, OutputLineStream};
 pub use qualification::{Qualification, QualificationError};
 use rand::Rng;
+pub use remote_function::{RemoteFunctionRequest, RemoteFunctionResult};
+pub use resolver::{
+    Resolver, ResolverArgKindBinding, ResolverBackendKind, ResolverBackendKindArrayBinding,
+    ResolverBackendKindBinding, ResolverBackendKindNumberBinding, ResolverBackendKindObjectBinding,
+    ResolverBackendKindStringBinding, ResolverBinding, ResolverError, ResolverOutputKind,
+};
 pub use resource::{
     Resource, ResourceError, ResourceInternalHealth, ResourceInternalStatus, ResourceResult,
+};
+pub use schema::{
+    prop::PropArray, prop::PropBoolean, prop::PropMap, prop::PropNumber, prop::PropObject,
+    prop::PropString, prop::SchemaMap, Prop, Schema, SchemaError, SchemaResult,
 };
 pub use schematic::{Schematic, SchematicError, SchematicKind, SchematicNode, SchematicResult};
 pub use secret::{

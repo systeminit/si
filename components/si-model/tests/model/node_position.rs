@@ -1,5 +1,5 @@
 use si_model::NodePosition;
-use si_model_test::{
+use si_model::test::{
     create_change_set, create_edit_session, create_entity_node, create_node_position,
     one_time_setup, signup_new_billing_account, TestContext,
 };
