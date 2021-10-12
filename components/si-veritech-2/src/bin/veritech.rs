@@ -31,7 +31,7 @@ impl Server {
 
     async fn run(self) -> anyhow::Result<()> {
         info!("Starting service");
-        start(self.nats, self.settings).await;
+        start(self.nats, self.settings).await?;
 
         Ok(())
     }

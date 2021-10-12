@@ -57,7 +57,10 @@ pub(crate) struct GlobalArgs {
 
 #[derive(Clap, Debug)]
 pub(crate) enum SubCmd {
-    Node(SubCmdNode),
+    Node {
+        #[clap(subcommand)]
+        sub: SubCmdNode,
+    },
 }
 
 /// Manage nodes
