@@ -9,7 +9,7 @@ async fn main() -> Result<()> {
     let args = cli::parse();
 
     match args.subcmd {
-        SubCmd::Node(subcmd) => match subcmd {
+        SubCmd::Node { sub } => match sub {
             SubCmdNode::Run(args) => sub_node_run(args).await,
         },
     }

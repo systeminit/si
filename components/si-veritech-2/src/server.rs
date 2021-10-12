@@ -24,7 +24,7 @@ pub enum VeritechServerError {
 
 pub type VeritechServerResult<T> = Result<T, VeritechServerError>;
 
-pub async fn start(nats: NatsConn, settings: Settings) -> VeritechServerResult<()> {
+pub async fn start(nats: NatsConn, _settings: Settings) -> VeritechServerResult<()> {
     let sub = nats.subscribe("veritech.function.resolver").await?;
     while let Some(message) = sub.next().await {
         // TODO: This should spawn; we want to process a bunch of these
@@ -70,7 +70,6 @@ pub async fn run_resolver_function(nats: NatsConn, message: Message) -> Veritech
                     .await?;
             }
             Ok(ResolverFunctionExecutingMessage::Heartbeat) => {}
-            Ok(unexpected) => todo!("deal with unexpected messages: {:?}", unexpected),
             Err(e) => todo!("deal with this: {:?}", e),
         }
     }
