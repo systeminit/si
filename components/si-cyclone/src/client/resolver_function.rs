@@ -30,12 +30,26 @@ pub fn execute<T>(
 pub enum ResolverFunctionExecutionError {
     #[error("closing execution stream without a result")]
     ClosingWithoutResult,
+    #[error("finish message received before result message was received")]
+    FinishBeforeResult,
     #[error("failed to deserialize json message")]
     JSONDeserialize(#[source] serde_json::Error),
     #[error("failed to serialize json message")]
     JSONSerialize(#[source] serde_json::Error),
+    #[error("unexpected websocket message after finish was sent: {0}")]
+    MessageAfterFinish(WebSocketMessage),
+    #[error("unexpected resolver function message before start was sent: {0:?}")]
+    MessageBeforeStart(ResolverFunctionMessage),
+    #[error("websocket stream is closed, but finish was not sent")]
+    WSClosedBeforeFinish,
+    #[error("websocket stream is closed, but start was not sent")]
+    WSClosedBeforeStart,
+    #[error("failed to read websocket message")]
+    WSReadIO(#[source] tokio_tungstenite::tungstenite::Error),
     #[error("failed to send websocket message")]
     WSSendIO(#[source] tokio_tungstenite::tungstenite::Error),
+    #[error("unexpected websocket message type: {0}")]
+    UnexpectedMessageType(WebSocketMessage),
 }
 
 type Result<T> = std::result::Result<T, ResolverFunctionExecutionError>;
@@ -52,25 +66,35 @@ where
 {
     pub async fn start(mut self) -> Result<ResolverFunctionExecutionStarted<T>> {
         match self.stream.next().await {
-            Some(Ok(WebSocketMessage::Text(json))) => {
-                let msg: ResolverFunctionMessage = serde_json::from_str(&json)
+            Some(Ok(WebSocketMessage::Text(json_str))) => {
+                let msg = ResolverFunctionMessage::deserialize_from_str(&json_str)
                     .map_err(ResolverFunctionExecutionError::JSONDeserialize)?;
                 match msg {
-                    ResolverFunctionMessage::Start => {}
-                    invalid => panic!("invalid message before start: {:?}", invalid),
+                    ResolverFunctionMessage::Start => {
+                        // received correct message, so proceed
+                    }
+                    unexpected => {
+                        return Err(ResolverFunctionExecutionError::MessageBeforeStart(
+                            unexpected,
+                        ))
+                    }
                 }
             }
-            Some(Ok(unexpected)) => panic!("unexpected websocket message type: {}", unexpected),
-            Some(Err(err)) => panic!("websocket errored: {:?}", err),
-            None => panic!(),
+            Some(Ok(unexpected)) => {
+                return Err(ResolverFunctionExecutionError::UnexpectedMessageType(
+                    unexpected,
+                ))
+            }
+            Some(Err(err)) => return Err(ResolverFunctionExecutionError::WSReadIO(err)),
+            None => return Err(ResolverFunctionExecutionError::WSClosedBeforeStart),
         }
 
-        let msg = WebSocketMessage::Text(
-            serde_json::to_string(&self.request)
-                .map_err(ResolverFunctionExecutionError::JSONSerialize)?,
-        );
+        let msg = self
+            .request
+            .serialize_to_string()
+            .map_err(ResolverFunctionExecutionError::JSONSerialize)?;
         self.stream
-            .send(msg)
+            .send(WebSocketMessage::Text(msg))
             .await
             .map_err(ResolverFunctionExecutionError::WSSendIO)?;
 
@@ -113,8 +137,8 @@ where
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         match Pin::new(&mut self.stream.next()).poll(cx) {
             // We successfully got a websocket text message
-            Poll::Ready(Some(Ok(WebSocketMessage::Text(json)))) => {
-                let msg: ResolverFunctionMessage = serde_json::from_str(&json)
+            Poll::Ready(Some(Ok(WebSocketMessage::Text(json_str)))) => {
+                let msg = ResolverFunctionMessage::deserialize_from_str(&json_str)
                     .map_err(ResolverFunctionExecutionError::JSONDeserialize)?;
                 match msg {
                     // We got a heartbeat message, pass it on
@@ -139,23 +163,30 @@ where
                             Poll::Ready(None)
                         } else {
                             // Otherwise we got a finish before seeing the result
-                            panic!("finish message received before result message")
+                            Poll::Ready(Some(Err(
+                                ResolverFunctionExecutionError::FinishBeforeResult,
+                            )))
                         }
                     }
                     // We got an unexpected message
-                    invalid => todo!("invalid message before start: {:?}", invalid),
+                    unexpected => Poll::Ready(Some(Err(
+                        ResolverFunctionExecutionError::MessageBeforeStart(unexpected),
+                    ))),
                 }
             }
             // We successfully got an unexpected websocket message type that was not text
-            Poll::Ready(Some(Ok(unexpected))) => {
-                panic!("unexpected websocket message type: {}", unexpected)
-            }
+            Poll::Ready(Some(Ok(unexpected))) => Poll::Ready(Some(Err(
+                ResolverFunctionExecutionError::UnexpectedMessageType(unexpected),
+            ))),
             // We failed to get the next websocket message
             Poll::Ready(Some(Err(err))) => {
-                panic!("websocket message had error: {:?}", err)
+                Poll::Ready(Some(Err(ResolverFunctionExecutionError::WSReadIO(err))))
             }
             // We see the end of the websocket stream, but finish was never sent
-            Poll::Ready(None) => panic!("websocket stream is closed, but finish was not sent"),
+            Poll::Ready(None) => Poll::Ready(Some(Err(
+                ResolverFunctionExecutionError::WSClosedBeforeFinish,
+            ))),
+            // Not ready, so...not ready!
             Poll::Pending => Poll::Pending,
         }
     }
@@ -188,11 +219,10 @@ where
     async fn finish(mut self) -> Result<FunctionResult> {
         match self.stream.next().await {
             Some(Ok(WebSocketMessage::Close(_))) | None => Ok(self.result),
-            Some(Ok(unexpected)) => panic!(
-                "unexpected websocket message after finish was sent: {}",
-                unexpected
-            ),
-            Some(Err(err)) => panic!("websocket errored: {:?}", err),
+            Some(Ok(unexpected)) => Err(ResolverFunctionExecutionError::MessageAfterFinish(
+                unexpected,
+            )),
+            Some(Err(err)) => Err(ResolverFunctionExecutionError::WSReadIO(err)),
         }
     }
 }

@@ -11,7 +11,10 @@ use hyper::StatusCode;
 use tracing::warn;
 
 use super::routes::State;
-use crate::{server::resolver_function, LivenessStatus, ReadinessStatus};
+use crate::{
+    resolver_function::ResolverFunctionMessage, server::resolver_function, LivenessStatus,
+    ReadinessStatus,
+};
 
 #[allow(clippy::unused_async)]
 pub async fn liveness() -> (StatusCode, &'static str) {
@@ -38,22 +41,45 @@ pub async fn ws_execute_resolver(
     wsu: WebSocketUpgrade,
     Extension(state): Extension<Arc<State>>,
 ) -> impl IntoResponse {
-    async fn handle_socket(socket: WebSocket, state: Arc<State>) {
-        let started = match resolver_function::execute(socket, state.lang_server_path())
-            .start()
+    async fn handle_socket(mut socket: WebSocket, state: Arc<State>) {
+        let proto = match resolver_function::execute(state.lang_server_path())
+            .start(&mut socket)
             .await
         {
-            Ok(progress) => progress,
-            Err(err) => panic!("failed to start: {:?}", err),
+            Ok(started) => started,
+            Err(err) => {
+                warn!(error = ?err, "failed to start protocol");
+                if let Err(err) = fail_execute_resolver(socket, "failed to start protocol").await {
+                    warn!(error = ?err, "failed to fail execute resolver");
+                };
+                return;
+            }
         };
-        let proccessed = match started.process().await {
+        let proto = match proto.process(&mut socket).await {
             Ok(processed) => processed,
-            Err(err) => panic!("failed to process: {:?}", err),
+            Err(err) => {
+                warn!(error = ?err, "failed to process protocol");
+                if let Err(err) = fail_execute_resolver(socket, "failed to process protocol").await
+                {
+                    warn!(error = ?err, "failed to fail execute resolver");
+                };
+                return;
+            }
         };
-        if let Err(err) = proccessed.finish().await {
-            panic!("failed to finish: {:?}", err);
+        if let Err(err) = proto.finish(socket).await {
+            warn!(error = ?err, "failed to finish protocol");
         }
     }
 
     wsu.on_upgrade(move |socket| handle_socket(socket, state))
+}
+
+async fn fail_execute_resolver(
+    mut socket: WebSocket,
+    message: impl Into<String>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let msg = ResolverFunctionMessage::fail(message).serialize_to_string()?;
+    socket.send(Message::Text(msg)).await?;
+    socket.close().await?;
+    Ok(())
 }

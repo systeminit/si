@@ -498,6 +498,14 @@ mod tests {
             Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
             None => panic!("output stream ended early"),
         };
+        // TODO(fnichol): until we've determined how to handle processing the result server side,
+        // we're going to see a heartbeat come back when a request is processed
+        match progress.next().await {
+            Some(Ok(ResolverFunctionExecutingMessage::Heartbeat)) => assert!(true),
+            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
+            Some(Err(err)) => panic!("failed to receive heartbeat: err={:?}", err),
+            None => panic!("output stream ended early"),
+        }
         match progress.next().await {
             None => assert!(true),
             Some(unexpected) => panic!("output stream should be done: {:?}", unexpected),
