@@ -8,9 +8,10 @@ pub(crate) fn parse() -> Args {
     Args::parse()
 }
 
-/// TODO(fnichol): fill in short help
+/// A function dispatch executor.
 ///
-/// TODO(fnichol): fill in long help
+/// Cyclone is a software component of the System Initiative which handles requested execution of
+/// small functions in a backing language server.
 #[derive(Clap, Debug)]
 #[clap(
     global_setting = AppSettings::ColoredHelp,

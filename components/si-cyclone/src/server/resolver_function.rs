@@ -28,12 +28,8 @@ use crate::{
 const CHILD_WAIT_TIMEOUT_SECS: Duration = Duration::from_secs(10);
 const TX_TIMEOUT_SECS: Duration = Duration::from_secs(2);
 
-pub fn execute(
-    socket: WebSocket,
-    lang_server_path: impl Into<PathBuf>,
-) -> ResolverFunctionExecution {
+pub fn execute(lang_server_path: impl Into<PathBuf>) -> ResolverFunctionExecution {
     ResolverFunctionExecution {
-        ws: socket,
         lang_server_path: lang_server_path.into(),
     }
 }
@@ -42,6 +38,8 @@ pub fn execute(
 pub enum ResolverFunctionError {
     #[error("failed to consume the {0} stream for the child process")]
     ChildIO(&'static str),
+    #[error("failed to receive child process message")]
+    ChildRecvIO(#[source] io::Error),
     #[error("failed to send child process message")]
     ChildSendIO(#[source] io::Error),
     #[error("failed to spawn child process; program={0}")]
@@ -54,31 +52,33 @@ pub enum ResolverFunctionError {
     JSONSerialize(#[source] serde_json::Error),
     #[error("failed to close websocket")]
     WSClose(#[source] axum::Error),
+    #[error("failed to receive websocket message--stream is closed")]
+    WSRecvClosed,
     #[error("failed to receive websocket message")]
     WSRecvIO(#[source] axum::Error),
     #[error("failed to send websocket message")]
     WSSendIO(#[source] axum::Error),
     #[error("send timeout")]
     SendTimeout(#[source] tokio::time::error::Elapsed),
+    #[error("unexpected websocket message type: {0:?}")]
+    UnexpectedMessageType(WebSocketMessage),
 }
 
 type Result<T> = std::result::Result<T, ResolverFunctionError>;
 
 #[derive(Debug)]
 pub struct ResolverFunctionExecution {
-    ws: WebSocket,
     lang_server_path: PathBuf,
 }
 
 impl ResolverFunctionExecution {
-    pub async fn start(mut self) -> Result<ResolverFunctionServerExecutionStarted> {
-        self.ws_send_start().await?;
-        let request = self.read_request().await?;
+    pub async fn start(self, ws: &mut WebSocket) -> Result<ResolverFunctionServerExecutionStarted> {
+        Self::ws_send_start(ws).await?;
+        let request = Self::read_request(ws).await?;
 
         let mut child = Command::new(&self.lang_server_path)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            // .stderr(Stdio::piped())
             .spawn()
             .map_err(|err| ResolverFunctionError::ChildSpawn(err, self.lang_server_path.clone()))?;
 
@@ -96,44 +96,31 @@ impl ResolverFunctionExecution {
             let codec = FramedRead::new(stdout, BytesLinesCodec::new());
             SymmetricallyFramed::new(codec, SymmetricalJson::default())
         };
-        // let stderr = {
-        //     let stderr = child
-        //         .stderr
-        //         .take()
-        //         .ok_or(ResolverFunctionError::ChildIO("stderr"))?;
-        //     let codec = FramedRead::new(stderr, BytesLinesCodec::new());
-        //     SymmetricallyFramed::new(codec, SymmetricalJson::default())
-        // };
 
-        Ok(ResolverFunctionServerExecutionStarted {
-            ws: self.ws,
-            child,
-            stdout,
-            // stderr,
-        })
+        Ok(ResolverFunctionServerExecutionStarted { child, stdout })
     }
 
-    async fn read_request(&mut self) -> Result<ResolverFunctionRequest> {
-        let request = match self.ws.next().await {
-            Some(Ok(WebSocketMessage::Text(request_json))) => {
-                let msg: ResolverFunctionRequest = serde_json::from_str(&request_json)
-                    .map_err(ResolverFunctionError::JSONDeserialize)?;
-                msg
+    async fn read_request(ws: &mut WebSocket) -> Result<ResolverFunctionRequest> {
+        let request = match ws.next().await {
+            Some(Ok(WebSocketMessage::Text(json_str))) => {
+                ResolverFunctionRequest::deserialize_from_str(&json_str)
+                    .map_err(ResolverFunctionError::JSONDeserialize)?
             }
-            Some(Ok(unexpected)) => panic!("unexpected websocket message type: {:?}", unexpected),
-            Some(Err(err)) => panic!("websocket errored: {:?}", err),
-            None => panic!(),
+            Some(Ok(unexpected)) => {
+                return Err(ResolverFunctionError::UnexpectedMessageType(unexpected))
+            }
+            Some(Err(err)) => return Err(ResolverFunctionError::WSRecvIO(err)),
+            None => return Err(ResolverFunctionError::WSRecvClosed),
         };
         Ok(request)
     }
 
-    async fn ws_send_start(&mut self) -> Result<()> {
-        let msg = WebSocketMessage::Text(
-            serde_json::to_string(&ResolverFunctionMessage::Start)
-                .map_err(ResolverFunctionError::JSONSerialize)?,
-        );
+    async fn ws_send_start(ws: &mut WebSocket) -> Result<()> {
+        let msg = ResolverFunctionMessage::Start
+            .serialize_to_string()
+            .map_err(ResolverFunctionError::JSONSerialize)?;
 
-        time::timeout(TX_TIMEOUT_SECS, self.ws.send(msg))
+        time::timeout(TX_TIMEOUT_SECS, ws.send(WebSocketMessage::Text(msg)))
             .await
             .map_err(ResolverFunctionError::SendTimeout)?
             .map_err(ResolverFunctionError::WSSendIO)?;
@@ -161,7 +148,6 @@ impl ResolverFunctionExecution {
 
 #[derive(Debug)]
 pub struct ResolverFunctionServerExecutionStarted {
-    ws: WebSocket,
     child: Child,
     stdout: Framed<
         FramedRead<ChildStdout, BytesLinesCodec>,
@@ -169,11 +155,13 @@ pub struct ResolverFunctionServerExecutionStarted {
         LSResolverFunctionMessage,
         Json<LSResolverFunctionMessage, LSResolverFunctionMessage>,
     >,
-    // stderr: Framed<FramedRead<ChildStderr, BytesLinesCodec>, Value, Value, Json<Value, Value>>,
 }
 
 impl ResolverFunctionServerExecutionStarted {
-    pub async fn process(mut self) -> Result<ResolverFunctionServerExecutionClosing> {
+    pub async fn process(
+        self,
+        ws: &mut WebSocket,
+    ) -> Result<ResolverFunctionServerExecutionClosing> {
         let mut stream = self
             .stdout
             .map(|ls_result| match ls_result {
@@ -185,53 +173,78 @@ impl ResolverFunctionServerExecutionStarted {
                         ResolverFunctionMessage::FunctionResult(FunctionResult::new_from(result)),
                     ),
                 },
-                Err(err) => panic!("failed to read a message from child: {:?}", err),
+                Err(err) => Err(ResolverFunctionError::ChildRecvIO(err)),
             })
             .map(|msg_result: Result<_>| match msg_result {
-                Ok(msg) => match serde_json::to_string(&msg)
+                Ok(msg) => match msg
+                    .serialize_to_string()
                     .map_err(ResolverFunctionError::JSONSerialize)
                 {
                     Ok(json_str) => Ok(WebSocketMessage::Text(json_str)),
                     Err(err) => Err(err),
                 },
-                Err(err) => panic!("things are going bad, yo: {:?}", err),
+                Err(err) => Err(err),
             });
 
         while let Some(msg) = stream.try_next().await? {
-            self.ws
-                .send(msg)
+            ws.send(msg)
                 .await
                 .map_err(ResolverFunctionError::WSSendIO)?;
         }
 
-        Ok(ResolverFunctionServerExecutionClosing {
-            ws: self.ws,
-            child: self.child,
-        })
+        Ok(ResolverFunctionServerExecutionClosing { child: self.child })
     }
 }
 
 #[derive(Debug)]
 pub struct ResolverFunctionServerExecutionClosing {
-    ws: WebSocket,
     child: Child,
 }
 
 impl ResolverFunctionServerExecutionClosing {
-    pub async fn finish(mut self) -> Result<()> {
-        self.ws_send_finish().await?;
-        Self::ws_close(self.ws).await?;
-        Self::child_shutdown(self.child).await?;
+    pub async fn finish(self, mut ws: WebSocket) -> Result<()> {
+        let finished = Self::ws_send_finish(&mut ws).await;
+        let closed = Self::ws_close(ws).await;
+        let shutdown = Self::child_shutdown(self.child).await;
 
-        Ok(())
+        match (finished, closed, shutdown) {
+            // Everything succeeds, great!
+            (Ok(_), Ok(_), Ok(_)) => Ok(()),
+
+            // One of the steps failed, return its error
+            (Ok(_), Ok(_), Err(err)) => Err(err),
+            (Ok(_), Err(err), Ok(_)) => Err(err),
+            (Err(err), Ok(_), Ok(_)) => Err(err),
+
+            // 2/3 steps errored so warn about the lower priority error and return the highest
+            // priority
+            (Ok(_), Err(err), Err(shutdown)) => {
+                warn!(error = ?shutdown, "failed to shutdown child cleanly");
+                Err(err)
+            }
+            (Err(err), Ok(_), Err(shutdown)) => {
+                warn!(error = ?shutdown, "failed to shutdown child cleanly");
+                Err(err)
+            }
+            (Err(err), Err(closed), Ok(_)) => {
+                warn!(error = ?closed, "failed to cleanly close websocket");
+                Err(err)
+            }
+
+            // All steps failed so warn about the lower priorities and return the highest priority
+            (Err(err), Err(closed), Err(shutdown)) => {
+                warn!(error = ?shutdown, "failed to shutdown child cleanly");
+                warn!(error = ?closed, "failed to cleanly close websocket");
+                Err(err)
+            }
+        }
     }
 
-    async fn ws_send_finish(&mut self) -> Result<()> {
-        let msg = WebSocketMessage::Text(
-            serde_json::to_string(&ResolverFunctionMessage::Finish)
-                .map_err(ResolverFunctionError::JSONSerialize)?,
-        );
-        time::timeout(TX_TIMEOUT_SECS, self.ws.send(msg))
+    async fn ws_send_finish(ws: &mut WebSocket) -> Result<()> {
+        let msg = ResolverFunctionMessage::Finish
+            .serialize_to_string()
+            .map_err(ResolverFunctionError::JSONSerialize)?;
+        time::timeout(TX_TIMEOUT_SECS, ws.send(WebSocketMessage::Text(msg)))
             .await
             .map_err(ResolverFunctionError::SendTimeout)?
             .map_err(ResolverFunctionError::WSSendIO)?;
