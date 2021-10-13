@@ -9,15 +9,17 @@ use thiserror::Error;
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 use tracing::info;
 
-use super::{routes, Config, IncomingStream, UDSIncomingStream, UDSIncomingStreamError};
+use super::{routes, Config, IncomingStream, UdsIncomingStream, UdsIncomingStreamError};
 
 #[derive(Debug, Error)]
 pub enum ServerError {
     #[error("hyper server error")]
     Hyper(#[from] hyper::Error),
     #[error("UDS incoming stream error")]
-    UDS(#[from] UDSIncomingStreamError),
+    Uds(#[from] UdsIncomingStreamError),
 }
+
+type Result<T> = std::result::Result<T, ServerError>;
 
 pub struct Server {
     config: Config,
@@ -25,15 +27,15 @@ pub struct Server {
 }
 
 impl Server {
-    pub async fn init(config: Config) -> Result<Self, ServerError> {
+    pub async fn init(config: Config) -> Result<Self> {
         let inner = InnerServer::create_with(&config).await?;
         Ok(Self { config, inner })
     }
 
-    pub async fn run(self) -> Result<(), ServerError> {
+    pub async fn run(self) -> Result<()> {
         match self.inner {
-            InnerServer::HTTP(server) => server.await?,
-            InnerServer::UDS(server) => server.await?,
+            InnerServer::Http(server) => server.await?,
+            InnerServer::Uds(server) => server.await?,
         }
 
         Ok(())
@@ -46,7 +48,7 @@ impl Server {
 
     /// If the server is an HTTP variant, returns the inner instance, otherwise returns `None`.
     pub fn as_http(&self) -> Option<&axum::Server<AddrIncoming, IntoMakeService<BoxRoute>>> {
-        if let InnerServer::HTTP(ref server) = self.inner {
+        if let InnerServer::Http(ref server) = self.inner {
             Some(server)
         } else {
             None
@@ -54,13 +56,13 @@ impl Server {
     }
 
     /// If the server is a UDS variant, returns the inner instance, otherwise returns `None`.
-    pub fn as_uds(&self) -> Option<UDSIncomingStreamServer> {
-        if let InnerServer::UDS(ref server) = self.inner {
+    pub fn as_uds(&self) -> Option<UdsIncomingStreamServer> {
+        if let InnerServer::Uds(ref server) = self.inner {
             let path = match self.config.incoming_stream().as_unix_domain_socket() {
                 Some(path) => path,
                 None => return None,
             };
-            Some(UDSIncomingStreamServer(server, path))
+            Some(UdsIncomingStreamServer(server, path))
         } else {
             None
         }
@@ -68,19 +70,19 @@ impl Server {
 }
 
 /// Wraps a UDS server to allow for a `local_path` method.
-pub struct UDSIncomingStreamServer<'a>(
-    &'a axum::Server<UDSIncomingStream, IntoMakeService<BoxRoute>>,
+pub struct UdsIncomingStreamServer<'a>(
+    &'a axum::Server<UdsIncomingStream, IntoMakeService<BoxRoute>>,
     &'a Path,
 );
 
-impl<'a> UDSIncomingStreamServer<'a> {
+impl<'a> UdsIncomingStreamServer<'a> {
     pub fn local_path(&self) -> PathBuf {
         self.1.into()
     }
 }
 
-impl<'a> Deref for UDSIncomingStreamServer<'a> {
-    type Target = &'a axum::Server<UDSIncomingStream, IntoMakeService<BoxRoute>>;
+impl<'a> Deref for UdsIncomingStreamServer<'a> {
+    type Target = &'a axum::Server<UdsIncomingStream, IntoMakeService<BoxRoute>>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -88,13 +90,13 @@ impl<'a> Deref for UDSIncomingStreamServer<'a> {
 }
 
 enum InnerServer {
-    HTTP(axum::Server<AddrIncoming, IntoMakeService<BoxRoute>>),
-    UDS(axum::Server<UDSIncomingStream, IntoMakeService<BoxRoute>>),
+    Http(axum::Server<AddrIncoming, IntoMakeService<BoxRoute>>),
+    Uds(axum::Server<UdsIncomingStream, IntoMakeService<BoxRoute>>),
 }
 
 impl InnerServer {
-    async fn create_with(config: &Config) -> Result<Self, ServerError> {
-        let routes = routes(&config)
+    async fn create_with(config: &Config) -> Result<Self> {
+        let routes = routes(config)
             // TODO(fnichol): customize http tracing further, using:
             // https://docs.rs/tower-http/0.1.1/tower_http/trace/index.html
             .layer(
@@ -106,14 +108,14 @@ impl InnerServer {
         match config.incoming_stream() {
             IncomingStream::HTTPSocket(socket_addr) => {
                 info!("binding to HTTP socket; socket_addr={}", &socket_addr);
-                let inner = axum::Server::bind(&socket_addr).serve(routes.into_make_service());
-                Ok(Self::HTTP(inner))
+                let inner = axum::Server::bind(socket_addr).serve(routes.into_make_service());
+                Ok(Self::Http(inner))
             }
             IncomingStream::UnixDomainSocket(path) => {
                 info!("binding to Unix domain socket; path={}", path.display());
-                let inner = axum::Server::builder(UDSIncomingStream::create(path).await?)
+                let inner = axum::Server::builder(UdsIncomingStream::create(path).await?)
                     .serve(routes.into_make_service());
-                Ok(Self::UDS(inner))
+                Ok(Self::Uds(inner))
             }
         }
     }

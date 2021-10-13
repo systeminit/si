@@ -3,7 +3,7 @@ pub use axum::extract::ws::Message as WebSocketMessage;
 pub use config::{Config, ConfigBuilder, ConfigError, IncomingStream};
 pub use routes::routes;
 pub use server::Server;
-pub use uds::{UDSIncomingStream, UDSIncomingStreamError};
+pub use uds::{UdsIncomingStream, UdsIncomingStreamError};
 
 mod config;
 mod handlers;

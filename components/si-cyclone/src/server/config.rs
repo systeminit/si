@@ -18,6 +18,8 @@ pub enum ConfigError {
     SocketAddrResolve(#[source] std::io::Error),
 }
 
+type Result<T> = std::result::Result<T, ConfigError>;
+
 #[derive(Debug, Builder)]
 pub struct Config {
     #[builder(default = "false")]
@@ -35,36 +37,38 @@ pub struct Config {
 
 impl Config {
     /// Constructs a builder for creating a Config
+    #[must_use]
     pub fn builder() -> ConfigBuilder {
         ConfigBuilder::default()
     }
 
     /// Gets a reference to the config's enable ping.
+    #[must_use]
     pub fn enable_ping(&self) -> bool {
         self.enable_ping
     }
 
     /// Gets a reference to the config's enable resolver.
+    #[must_use]
     pub fn enable_resolver(&self) -> bool {
         self.enable_resolver
     }
 
     /// Gets a reference to the config's incoming stream.
+    #[must_use]
     pub fn incoming_stream(&self) -> &IncomingStream {
         &self.incoming_stream
     }
 
     /// Gets a reference to the config's lang server path.
+    #[must_use]
     pub fn lang_server_path(&self) -> &Path {
         &self.lang_server_path
     }
 }
 
 impl ConfigBuilder {
-    pub fn http_socket(
-        &mut self,
-        socket_addrs: impl ToSocketAddrs,
-    ) -> Result<&mut Self, ConfigError> {
+    pub fn http_socket(&mut self, socket_addrs: impl ToSocketAddrs) -> Result<&mut Self> {
         Ok(self.incoming_stream(IncomingStream::http_socket(socket_addrs)?))
     }
 
@@ -86,7 +90,7 @@ impl Default for IncomingStream {
 }
 
 impl IncomingStream {
-    pub fn http_socket(socket_addrs: impl ToSocketAddrs) -> Result<Self, ConfigError> {
+    pub fn http_socket(socket_addrs: impl ToSocketAddrs) -> Result<Self> {
         let socket_addr = socket_addrs
             .to_socket_addrs()
             .map_err(ConfigError::SocketAddrResolve)?
@@ -101,6 +105,7 @@ impl IncomingStream {
         Self::UnixDomainSocket(pathbuf)
     }
 
+    #[must_use]
     pub fn as_unix_domain_socket(&self) -> Option<&Path> {
         if let Self::UnixDomainSocket(path) = self {
             Some(path)
@@ -109,6 +114,7 @@ impl IncomingStream {
         }
     }
 
+    #[must_use]
     pub fn as_http_socket(&self) -> Option<&SocketAddr> {
         if let Self::HTTPSocket(socket) = self {
             Some(socket)

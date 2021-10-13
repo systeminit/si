@@ -12,6 +12,7 @@ pub enum ReadinessStatus {
 }
 
 impl ReadinessStatus {
+    #[must_use]
     pub fn as_str(&self) -> &'static str {
         match self {
             ReadinessStatus::Ready => "ready\n",

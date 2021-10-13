@@ -12,6 +12,7 @@ pub enum LivenessStatus {
 }
 
 impl LivenessStatus {
+    #[must_use]
     pub fn as_str(&self) -> &'static str {
         match self {
             LivenessStatus::Ok => "ok\n",

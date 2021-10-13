@@ -27,6 +27,7 @@ impl From<&Config> for State {
     }
 }
 
+#[must_use]
 pub fn routes(config: &Config) -> Router<BoxRoute> {
     let shared_state = Arc::new(State::from(config));
 
@@ -39,7 +40,7 @@ pub fn routes(config: &Config) -> Router<BoxRoute> {
             "/readiness",
             get(handlers::readiness).head(handlers::readiness),
         )
-        .nest("/execute", execute_routes(&config))
+        .nest("/execute", execute_routes(config))
         .layer(AddExtensionLayer::new(shared_state))
         .boxed()
 }

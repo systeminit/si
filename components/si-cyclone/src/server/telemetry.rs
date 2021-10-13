@@ -23,13 +23,15 @@ pub enum TelemetryInitError {
     TryInit(#[from] TryInitError),
 }
 
-pub fn init() -> Result<(), TelemetryInitError> {
+type Result<T> = std::result::Result<T, TelemetryInitError>;
+
+pub fn init() -> Result<()> {
     global::set_text_map_propagator(TraceContextPropagator::new());
     tracing_subscriber()?.try_init()?;
     Ok(())
 }
 
-pub fn tracing_subscriber() -> Result<impl tracing::Subscriber + Send + Sync, TelemetryInitError> {
+pub fn tracing_subscriber() -> Result<impl tracing::Subscriber + Send + Sync> {
     Ok(Registry::default()
         .with(
             tracing_subscriber::EnvFilter::try_from_env("SI_LOG")
@@ -43,7 +45,7 @@ pub fn tracing_subscriber() -> Result<impl tracing::Subscriber + Send + Sync, Te
         .with(tracing_opentelemetry::layer().with_tracer(try_tracer()?)))
 }
 
-fn try_tracer() -> Result<Tracer, TraceError> {
+fn try_tracer() -> std::result::Result<Tracer, TraceError> {
     opentelemetry_otlp::new_pipeline()
         .tracing()
         .with_exporter(opentelemetry_otlp::new_exporter().tonic().with_env())
