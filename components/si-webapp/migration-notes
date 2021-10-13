@@ -1,0 +1,18 @@
+Template v-for have changed. The key must be on the <template> tag
+https://v3.vuejs.org/guide/migration/key-attribute.html#with-template-v-for
+
+
+Vite only performs transpilation on .ts files and does NOT perform type checking.
+https://vitejs.dev/guide/features.html#npm-dependency-resolving-and-pre-bundling
+
+Routing has changed.
+https://next.router.vuejs.org/guide/migration/#removed-star-or-catch-all-routes
+
+
+Need to install latest (beta) browser dev tool
+https://v3.vuejs.org/guide/migration/introduction.html#devtools-extension
+
+
+Prettier 4 and tailwind issue - keep prettier locked at 2.2.X
+https://github.com/prettier/prettier/issues/10918
+

@@ -24,10 +24,10 @@ analyze:
       type: npm
       target: components/si-veritech
       path: components/si-veritech
-    - name: si-web-app
+    - name: si-webapp
       type: npm
-      target: components/si-web-app
-      path: components/si-web-app
+      target: components/si-webapp
+      path: components/si-webapp
     - name: rust-deps
       type: cargo
       target: .

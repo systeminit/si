@@ -1,0 +1,30 @@
+@import url("https://fonts.googleapis.com/css?family=Roboto:100,100i,300,300i,400,400i,500,500i,700,700i,900,900i&display=swap");
+@import url("https://fonts.googleapis.com/css?family=Source+Code+Pro:200,200i,300,300i,400,400i,500,500i,600,600i,700,700i,900,900i&display=swap");
+
+.si-property:focus {
+  background-color: #2a7889;
+}
+
+.input-border-grey {
+  border-color: #444444;
+}
+
+.input-border-gold {
+  border-color: #ce7f3e;
+}
+
+.text-gold {
+  color: #ce7f3e;
+}
+
+.text-green {
+  color: #69e39b;
+}
+
+.input-bg-color-grey {
+  background-color: #292c2d;
+}
+
+.driven-field {
+  color: #69c6e3;
+}

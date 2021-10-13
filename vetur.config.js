@@ -12,7 +12,7 @@ module.exports = {
   // **optional** default: `[{ root: './' }]`
   // support monorepos
   projects: [
-    "./components/si-web-app", // shorthand for only root.
+    "./components/si-webapp", // shorthand for only root.
   ],
 };
 
