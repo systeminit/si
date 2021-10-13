@@ -38,6 +38,8 @@ pub enum ResolverFunctionExecutionError {
     WSSendIO(#[source] tokio_tungstenite::tungstenite::Error),
 }
 
+type Result<T> = std::result::Result<T, ResolverFunctionExecutionError>;
+
 #[derive(Debug)]
 pub struct ResolverFunctionExecution<T> {
     stream: WebSocketStream<T>,
@@ -48,9 +50,7 @@ impl<T> ResolverFunctionExecution<T>
 where
     T: AsyncRead + AsyncWrite + Connection + Unpin + Send + 'static,
 {
-    pub async fn start(
-        mut self,
-    ) -> Result<ResolverFunctionExecutionStarted<T>, ResolverFunctionExecutionError> {
+    pub async fn start(mut self) -> Result<ResolverFunctionExecutionStarted<T>> {
         match self.stream.next().await {
             Some(Ok(WebSocketMessage::Text(json))) => {
                 let msg: ResolverFunctionMessage = serde_json::from_str(&json)
@@ -97,7 +97,7 @@ impl<T> ResolverFunctionExecutionStarted<T>
 where
     T: AsyncRead + AsyncWrite + Connection + Unpin + Send + 'static,
 {
-    pub async fn finish(self) -> Result<FunctionResult, ResolverFunctionExecutionError> {
+    pub async fn finish(self) -> Result<FunctionResult> {
         ResolverFunctionExecutionClosing::try_from(self)?
             .finish()
             .await
@@ -108,7 +108,7 @@ impl<T> Stream for ResolverFunctionExecutionStarted<T>
 where
     T: AsyncRead + AsyncWrite + Connection + Unpin + Send + 'static,
 {
-    type Item = Result<ResolverFunctionExecutingMessage, ResolverFunctionExecutionError>;
+    type Item = Result<ResolverFunctionExecutingMessage>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         match Pin::new(&mut self.stream.next()).poll(cx) {
@@ -170,7 +170,7 @@ pub struct ResolverFunctionExecutionClosing<T> {
 impl<T> TryFrom<ResolverFunctionExecutionStarted<T>> for ResolverFunctionExecutionClosing<T> {
     type Error = ResolverFunctionExecutionError;
 
-    fn try_from(value: ResolverFunctionExecutionStarted<T>) -> Result<Self, Self::Error> {
+    fn try_from(value: ResolverFunctionExecutionStarted<T>) -> Result<Self> {
         match value.result {
             Some(result) => Ok(Self {
                 stream: value.stream,
@@ -185,7 +185,7 @@ impl<T> ResolverFunctionExecutionClosing<T>
 where
     T: AsyncRead + AsyncWrite + Connection + Unpin + Send + 'static,
 {
-    async fn finish(mut self) -> Result<FunctionResult, ResolverFunctionExecutionError> {
+    async fn finish(mut self) -> Result<FunctionResult> {
         match self.stream.next().await {
             Some(Ok(WebSocketMessage::Close(_))) | None => Ok(self.result),
             Some(Ok(unexpected)) => panic!(

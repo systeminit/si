@@ -13,10 +13,12 @@ use tracing::warn;
 use super::routes::State;
 use crate::{server::resolver_function, LivenessStatus, ReadinessStatus};
 
+#[allow(clippy::unused_async)]
 pub async fn liveness() -> (StatusCode, &'static str) {
     (StatusCode::OK, LivenessStatus::Ok.into())
 }
 
+#[allow(clippy::unused_async)]
 pub async fn readiness() -> Result<&'static str, StatusCode> {
     Ok(ReadinessStatus::Ready.into())
 }
@@ -31,6 +33,7 @@ pub async fn ws_execute_ping(wsu: WebSocketUpgrade) -> impl IntoResponse {
     wsu.on_upgrade(handle_socket)
 }
 
+#[allow(clippy::unused_async)]
 pub async fn ws_execute_resolver(
     wsu: WebSocketUpgrade,
     Extension(state): Extension<Arc<State>>,
@@ -47,10 +50,9 @@ pub async fn ws_execute_resolver(
             Ok(processed) => processed,
             Err(err) => panic!("failed to process: {:?}", err),
         };
-        match proccessed.finish().await {
-            Ok(_) => {}
-            Err(err) => panic!("failed to finish: {:?}", err),
-        };
+        if let Err(err) = proccessed.finish().await {
+            panic!("failed to finish: {:?}", err);
+        }
     }
 
     wsu.on_upgrade(move |socket| handle_socket(socket, state))

@@ -1,6 +1,7 @@
+use std::{convert::TryFrom, net::SocketAddr, path::PathBuf};
+
 use clap::{AppSettings, ArgSettings, Clap};
 use si_cyclone::server::{Config, ConfigError, IncomingStream};
-use std::{convert::TryFrom, net::SocketAddr, path::PathBuf};
 
 /// Parse, validate, and return the CLI arguments as a typed struct.
 pub(crate) fn parse() -> Args {

@@ -68,6 +68,8 @@ pub enum ClientError {
     WebsocketConnection(#[source] tokio_tungstenite::tungstenite::Error),
 }
 
+type Result<T> = std::result::Result<T, ClientError>;
+
 #[derive(Clone, Debug)]
 pub struct Client<C, S> {
     inner_client: hyper::Client<C, Body>,
@@ -80,9 +82,7 @@ pub type UDSClient = Client<UnixConnector, PathBuf>;
 pub type HTTPClient = Client<HttpConnector, SocketAddr>;
 
 impl Client<(), ()> {
-    pub fn http(
-        socket_addrs: impl ToSocketAddrs,
-    ) -> Result<Client<HttpConnector, SocketAddr>, ClientError> {
+    pub fn http(socket_addrs: impl ToSocketAddrs) -> Result<Client<HttpConnector, SocketAddr>> {
         let socket = socket_addrs
             .to_socket_addrs()
             .map_err(ClientError::SocketAddrResolve)?
@@ -108,7 +108,7 @@ impl Client<(), ()> {
         })
     }
 
-    pub fn uds(socket: impl Into<PathBuf>) -> Result<Client<UnixConnector, PathBuf>, ClientError> {
+    pub fn uds(socket: impl Into<PathBuf>) -> Result<Client<UnixConnector, PathBuf>> {
         let socket = socket.into();
         let connector = UnixConnector;
         let inner_client = hyper::Client::unix();
@@ -140,13 +140,13 @@ where
     C::Future: Unpin + Send,
     T: AsyncRead + AsyncWrite + Connection + Unpin + Send + 'static,
 {
-    pub async fn liveness(&self) -> Result<LivenessStatus, ClientError> {
-        let res = self.get("/liveness").await?;
+    pub async fn liveness(&self) -> Result<LivenessStatus> {
+        let response = self.get("/liveness").await?;
 
-        if res.status() != StatusCode::OK {
-            return Err(ClientError::UnexpectedStatusCode(res.status()));
+        if response.status() != StatusCode::OK {
+            return Err(ClientError::UnexpectedStatusCode(response.status()));
         }
-        let body = body::to_bytes(res)
+        let body = body::to_bytes(response)
             .await
             .map_err(ClientError::ReadResponseBody)?;
         let result = LivenessStatus::from_str(str::from_utf8(body.as_ref())?)?;
@@ -154,13 +154,13 @@ where
         Ok(result)
     }
 
-    pub async fn readiness(&self) -> Result<ReadinessStatus, ClientError> {
-        let res = self.get("/readiness").await?;
+    pub async fn readiness(&self) -> Result<ReadinessStatus> {
+        let response = self.get("/readiness").await?;
 
-        if res.status() != StatusCode::OK {
-            return Err(ClientError::UnexpectedStatusCode(res.status()));
+        if response.status() != StatusCode::OK {
+            return Err(ClientError::UnexpectedStatusCode(response.status()));
         }
-        let body = body::to_bytes(res)
+        let body = body::to_bytes(response)
             .await
             .map_err(ClientError::ReadResponseBody)?;
         let result = ReadinessStatus::from_str(str::from_utf8(body.as_ref())?)?;
@@ -168,19 +168,19 @@ where
         Ok(result)
     }
 
-    pub async fn execute_ping(&mut self) -> Result<WebSocketStream<T>, ClientError> {
+    pub async fn execute_ping(&mut self) -> Result<WebSocketStream<T>> {
         self.websocket_stream("/execute/ping").await
     }
 
     pub async fn execute_resolver(
         &mut self,
         request: ResolverFunctionRequest,
-    ) -> Result<ResolverFunctionExecution<T>, ClientError> {
+    ) -> Result<ResolverFunctionExecution<T>> {
         let stream = self.websocket_stream("/execute/resolver").await?;
         Ok(resolver_function::execute(stream, request))
     }
 
-    fn http_request_uri<P>(&self, path_and_query: P) -> Result<Uri, ClientError>
+    fn http_request_uri<P>(&self, path_and_query: P) -> Result<Uri>
     where
         P: TryInto<PathAndQuery, Error = InvalidUri>,
     {
@@ -191,7 +191,7 @@ where
         Ok(uri)
     }
 
-    fn ws_request_uri<P>(&self, path_and_query: P) -> Result<Uri, ClientError>
+    fn ws_request_uri<P>(&self, path_and_query: P) -> Result<Uri>
     where
         P: TryInto<PathAndQuery, Error = InvalidUri>,
     {
@@ -200,10 +200,10 @@ where
         match uri_scheme {
             Some(scheme) => match scheme.as_str() {
                 "http" | "unix" => {
-                    let _ = parts.scheme.replace(Scheme::try_from("ws")?);
+                    let _replaced = parts.scheme.replace(Scheme::try_from("ws")?);
                 }
                 "https" => {
-                    let _ = parts.scheme.replace(Scheme::try_from("wss")?);
+                    let _replaced = parts.scheme.replace(Scheme::try_from("wss")?);
                 }
                 unsupported => {
                     return Err(ClientError::InvalidWebsocketScheme(unsupported.to_string()));
@@ -217,7 +217,7 @@ where
         Ok(uri)
     }
 
-    fn new_http_request<P>(&self, path_and_query: P) -> Result<Builder, ClientError>
+    fn new_http_request<P>(&self, path_and_query: P) -> Result<Builder>
     where
         P: TryInto<PathAndQuery, Error = InvalidUri>,
     {
@@ -226,40 +226,37 @@ where
         Ok(Request::builder().uri(uri))
     }
 
-    fn new_ws_request<P>(&self, path_and_query: P) -> Result<Request<()>, ClientError>
+    fn new_ws_request<P>(&self, path_and_query: P) -> Result<Request<()>>
     where
         P: TryInto<PathAndQuery, Error = InvalidUri>,
     {
         let uri = self.ws_request_uri(path_and_query)?;
-        let req = Request::builder()
+        let request = Request::builder()
             .uri(uri)
             .method(Method::GET)
             .body(())
             .map_err(ClientError::Request)?;
 
-        Ok(req)
+        Ok(request)
     }
 
-    async fn get<P>(&self, path_and_query: P) -> Result<Response<Body>, ClientError>
+    async fn get<P>(&self, path_and_query: P) -> Result<Response<Body>>
     where
         P: TryInto<PathAndQuery, Error = InvalidUri>,
     {
-        let req = self
+        let request = self
             .new_http_request(path_and_query)?
             .method(Method::GET)
             .body(Body::empty())
             .map_err(ClientError::Request)?;
-        self.request(req).await.map_err(ClientError::Response)
+        self.request(request).await.map_err(ClientError::Response)
     }
 
     fn request(&self, req: Request<Body>) -> ResponseFuture {
         self.inner_client.request(req)
     }
 
-    async fn websocket_stream<P>(
-        &mut self,
-        path_and_query: P,
-    ) -> Result<WebSocketStream<T>, ClientError>
+    async fn websocket_stream<P>(&mut self, path_and_query: P) -> Result<WebSocketStream<T>>
     where
         P: TryInto<PathAndQuery, Error = InvalidUri>,
     {
@@ -268,13 +265,13 @@ where
             .call(self.uri.clone())
             .await
             .map_err(|err| ClientError::Connect(err.into()))?;
-        let req = self.new_ws_request(path_and_query)?;
-        let (websocket_stream, res) = tokio_tungstenite::client_async(req, stream)
+        let request = self.new_ws_request(path_and_query)?;
+        let (websocket_stream, response) = tokio_tungstenite::client_async(request, stream)
             .await
             .map_err(ClientError::WebsocketConnection)?;
 
-        if res.status() != StatusCode::SWITCHING_PROTOCOLS {
-            return Err(ClientError::UnexpectedStatusCode(res.status()));
+        if response.status() != StatusCode::SWITCHING_PROTOCOLS {
+            return Err(ClientError::UnexpectedStatusCode(response.status()));
         }
 
         Ok(websocket_stream)

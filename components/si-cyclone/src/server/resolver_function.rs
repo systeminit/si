@@ -15,7 +15,7 @@ use tokio_serde::{
     Framed, SymmetricallyFramed,
 };
 use tokio_util::codec::{FramedRead, FramedWrite};
-use tracing::{debug, warn};
+use tracing::warn;
 
 use crate::{
     resolver_function::{
@@ -62,6 +62,8 @@ pub enum ResolverFunctionError {
     SendTimeout(#[source] tokio::time::error::Elapsed),
 }
 
+type Result<T> = std::result::Result<T, ResolverFunctionError>;
+
 #[derive(Debug)]
 pub struct ResolverFunctionExecution {
     ws: WebSocket,
@@ -69,9 +71,7 @@ pub struct ResolverFunctionExecution {
 }
 
 impl ResolverFunctionExecution {
-    pub async fn start(
-        mut self,
-    ) -> Result<ResolverFunctionServerExecutionStarted, ResolverFunctionError> {
+    pub async fn start(mut self) -> Result<ResolverFunctionServerExecutionStarted> {
         self.ws_send_start().await?;
         let request = self.read_request().await?;
 
@@ -113,7 +113,7 @@ impl ResolverFunctionExecution {
         })
     }
 
-    async fn read_request(&mut self) -> Result<ResolverFunctionRequest, ResolverFunctionError> {
+    async fn read_request(&mut self) -> Result<ResolverFunctionRequest> {
         let request = match self.ws.next().await {
             Some(Ok(WebSocketMessage::Text(request_json))) => {
                 let msg: ResolverFunctionRequest = serde_json::from_str(&request_json)
@@ -127,7 +127,7 @@ impl ResolverFunctionExecution {
         Ok(request)
     }
 
-    async fn ws_send_start(&mut self) -> Result<(), ResolverFunctionError> {
+    async fn ws_send_start(&mut self) -> Result<()> {
         let msg = WebSocketMessage::Text(
             serde_json::to_string(&ResolverFunctionMessage::Start)
                 .map_err(ResolverFunctionError::JSONSerialize)?,
@@ -143,7 +143,7 @@ impl ResolverFunctionExecution {
     async fn child_send_function_request(
         stdin: ChildStdin,
         request: ResolverFunctionRequest,
-    ) -> Result<(), ResolverFunctionError> {
+    ) -> Result<()> {
         let codec = FramedWrite::new(stdin, BytesLinesCodec::new());
         let mut stdin = SymmetricallyFramed::new(codec, SymmetricalJson::default());
 
@@ -173,9 +173,7 @@ pub struct ResolverFunctionServerExecutionStarted {
 }
 
 impl ResolverFunctionServerExecutionStarted {
-    pub async fn process(
-        mut self,
-    ) -> Result<ResolverFunctionServerExecutionClosing, ResolverFunctionError> {
+    pub async fn process(mut self) -> Result<ResolverFunctionServerExecutionClosing> {
         let mut stream = self
             .stdout
             .map(|ls_result| match ls_result {
@@ -189,17 +187,15 @@ impl ResolverFunctionServerExecutionStarted {
                 },
                 Err(err) => panic!("failed to read a message from child: {:?}", err),
             })
-            .map(
-                |msg_result: Result<_, ResolverFunctionError>| match msg_result {
-                    Ok(msg) => match serde_json::to_string(&msg)
-                        .map_err(ResolverFunctionError::JSONSerialize)
-                    {
-                        Ok(json_str) => Ok(WebSocketMessage::Text(json_str)),
-                        Err(err) => Err(err),
-                    },
-                    Err(err) => panic!("things are going bad, yo: {:?}", err),
+            .map(|msg_result: Result<_>| match msg_result {
+                Ok(msg) => match serde_json::to_string(&msg)
+                    .map_err(ResolverFunctionError::JSONSerialize)
+                {
+                    Ok(json_str) => Ok(WebSocketMessage::Text(json_str)),
+                    Err(err) => Err(err),
                 },
-            );
+                Err(err) => panic!("things are going bad, yo: {:?}", err),
+            });
 
         while let Some(msg) = stream.try_next().await? {
             self.ws
@@ -222,7 +218,7 @@ pub struct ResolverFunctionServerExecutionClosing {
 }
 
 impl ResolverFunctionServerExecutionClosing {
-    pub async fn finish(mut self) -> Result<(), ResolverFunctionError> {
+    pub async fn finish(mut self) -> Result<()> {
         self.ws_send_finish().await?;
         Self::ws_close(self.ws).await?;
         Self::child_shutdown(self.child).await?;
@@ -230,7 +226,7 @@ impl ResolverFunctionServerExecutionClosing {
         Ok(())
     }
 
-    async fn ws_send_finish(&mut self) -> Result<(), ResolverFunctionError> {
+    async fn ws_send_finish(&mut self) -> Result<()> {
         let msg = WebSocketMessage::Text(
             serde_json::to_string(&ResolverFunctionMessage::Finish)
                 .map_err(ResolverFunctionError::JSONSerialize)?,
@@ -239,34 +235,32 @@ impl ResolverFunctionServerExecutionClosing {
             .await
             .map_err(ResolverFunctionError::SendTimeout)?
             .map_err(ResolverFunctionError::WSSendIO)?;
+
         Ok(())
     }
 
-    async fn ws_close(ws: WebSocket) -> Result<(), ResolverFunctionError> {
+    async fn ws_close(ws: WebSocket) -> Result<()> {
         ws.close().await.map_err(ResolverFunctionError::WSClose)
     }
 
-    async fn child_shutdown(mut child: Child) -> Result<(), ResolverFunctionError> {
-        Ok(
-            match time::timeout(CHILD_WAIT_TIMEOUT_SECS, child.wait()).await {
-                Ok(wait_result) => {
-                    let exit_status = wait_result.map_err(ResolverFunctionError::ChildWait)?;
-                    debug!("child process exited; code={}", exit_status);
+    async fn child_shutdown(mut child: Child) -> Result<()> {
+        match time::timeout(CHILD_WAIT_TIMEOUT_SECS, child.wait()).await {
+            Ok(wait_result) => {
+                let exit_status = wait_result.map_err(ResolverFunctionError::ChildWait)?;
+                warn!("child process had a nonzero exit; code={}", exit_status);
+            }
+            Err(_elapsed) => {
+                if child.start_kill().is_ok() {
+                    let exit_status = child
+                        .wait()
+                        .await
+                        .map_err(ResolverFunctionError::ChildWait)?;
+                    warn!("child process had a nonzero exit; code={}", exit_status);
                 }
-                Err(_elapsed) => {
-                    if let Ok(_) = child.start_kill() {
-                        let exit_status = child
-                            .wait()
-                            .await
-                            .map_err(ResolverFunctionError::ChildWait)?;
-                        warn!(
-                            "child process had a nonzero exit; killed code={}",
-                            exit_status
-                        );
-                    }
-                }
-            },
-        )
+            }
+        };
+
+        Ok(())
     }
 }
 
