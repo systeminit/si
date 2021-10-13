@@ -664,9 +664,13 @@ mod tests {
         }
         match progress.next().await {
             None => assert!(true),
+            Some(Ok(ResolverFunctionExecutingMessage::Heartbeat)) => assert!(true),
             Some(unexpected) => panic!("output stream should be done: {:?}", unexpected),
         };
-
+        match progress.next().await {
+            None => assert!(true),
+            Some(unexpected) => panic!("output stream should be done: {:?}", unexpected),
+        };
         // Get the result
         let result = progress.finish().await.expect("failed to return result");
         match result {

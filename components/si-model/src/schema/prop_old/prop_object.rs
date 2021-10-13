@@ -1,21 +1,21 @@
 use crate::{schema::SchemaResult, MinimalStorable, Resolver, ResolverBinding};
 use serde::{Deserialize, Serialize};
 use si_data::{NatsTxn, PgTxn};
+use std::collections::HashMap;
 use std::option::Option::None;
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct PropNumber {
+pub struct PropObject {
     pub id: String,
     pub name: String,
     pub description: String,
-    pub parent_id: Option<String>,
-    pub schema_id: String,
-    pub is_item: bool,
+    pub schemas: Vec<String>,
+    pub parents: HashMap<String, String>,
     pub si_storable: MinimalStorable,
 }
 
-impl PropNumber {
+impl PropObject {
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
@@ -23,27 +23,19 @@ impl PropNumber {
         name: impl Into<String>,
         description: impl Into<String>,
         parent_id: Option<String>,
-        is_item: bool,
     ) -> SchemaResult<Self> {
         let name = name.into();
         let description = description.into();
         let schema_id = schema_id.into();
         let row = txn
             .query_one(
-                "SELECT object FROM prop_create_v1($1, $2, $3, $4, $5, $6)",
-                &[
-                    &name,
-                    &description,
-                    &"number",
-                    &parent_id,
-                    &schema_id,
-                    &is_item,
-                ],
+                "SELECT object FROM prop_create_v1($1, $2, $3, $4, $5)",
+                &[&name, &description, &"object", &parent_id, &schema_id],
             )
             .await?;
         let prop_json: serde_json::Value = row.try_get("object")?;
         nats.publish(&prop_json).await?;
-        let prop_number: PropNumber = serde_json::from_value(prop_json)?;
+        let prop_object: PropObject = serde_json::from_value(prop_json)?;
 
         let unset_resolver = Resolver::find_by_name(&txn, "si:unset").await?;
         let _resolver_binding = ResolverBinding::new(
@@ -52,7 +44,7 @@ impl PropNumber {
             &unset_resolver.id,
             crate::resolver::ResolverBackendKindBinding::Unset,
             schema_id.clone(),
-            Some(prop_number.id.clone()),
+            Some(prop_object.id.clone()),
             None,
             None,
             None,
@@ -62,6 +54,6 @@ impl PropNumber {
         )
         .await?;
 
-        Ok(prop_number)
+        Ok(prop_object)
     }
 }

@@ -5,6 +5,7 @@ use tokio::sync::mpsc;
 
 use super::{server::ShutdownSource, Config};
 
+#[allow(dead_code)]
 struct State {
     // TODO(fnichol): we're likely going to use this, but we can't allow it to be dropped because
     // that will trigger the read side and... shutdown. Cool, no?
