@@ -11,4 +11,5 @@ pub mod resolver_function;
 mod routes;
 mod server;
 pub mod telemetry;
+pub(crate) mod tower;
 mod uds;

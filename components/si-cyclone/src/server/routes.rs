@@ -4,9 +4,10 @@ use std::{
 };
 
 use axum::{handler::get, routing::BoxRoute, AddExtensionLayer, Router};
+use tokio::sync::mpsc;
 use tracing::debug;
 
-use super::{handlers, Config};
+use super::{handlers, tower::LimitRequestLayer, Config};
 
 pub struct State {
     lang_server_path: PathBuf,
@@ -28,7 +29,7 @@ impl From<&Config> for State {
 }
 
 #[must_use]
-pub fn routes(config: &Config) -> Router<BoxRoute> {
+pub fn routes(config: &Config, limit_request_shutdown_tx: mpsc::Sender<()>) -> Router<BoxRoute> {
     let shared_state = Arc::new(State::from(config));
 
     Router::new()
@@ -40,26 +41,52 @@ pub fn routes(config: &Config) -> Router<BoxRoute> {
             "/readiness",
             get(handlers::readiness).head(handlers::readiness),
         )
-        .nest("/execute", execute_routes(config))
+        .nest(
+            "/execute",
+            execute_routes(config, limit_request_shutdown_tx),
+        )
         .layer(AddExtensionLayer::new(shared_state))
         .boxed()
 }
 
-fn execute_routes(config: &Config) -> Router<BoxRoute> {
+fn execute_routes(
+    config: &Config,
+    limit_request_shutdown_tx: mpsc::Sender<()>,
+) -> Router<BoxRoute> {
     let mut router = Router::new().boxed();
 
     if config.enable_ping() {
         debug!("enabling ping endpoint");
         router = router
-            .route("/ping", get(handlers::ws_execute_ping))
+            .or(Router::new().route("/ping", get(handlers::ws_execute_ping)))
             .boxed();
     }
     if config.enable_resolver() {
         debug!("enabling resolver endpoint");
         router = router
-            .route("/resolver", get(handlers::ws_execute_resolver))
+            .or(Router::new().route("/resolver", get(handlers::ws_execute_resolver)))
             .boxed();
     }
 
     router
+        .layer(LimitRequestLayer::new(
+            config.limit_requests(),
+            limit_request_shutdown_tx,
+        ))
+        // TODO(fnichol): we are going to need this, mark my words...
+        // .handle_error(convert_tower_error_into_reponse)
+        .boxed()
 }
+
+// TODO(fnichol): we are going to need this, mark my words...
+//
+//
+// fn convert_tower_error_into_reponse(err: BoxError) -> Result<Response<Full<Bytes>>, Infallible> {
+//     // TODO(fnichol): more to do here, see:
+//     // https://github.com/bwalter/rust-axum-scylla/blob/main/src/routing/mod.rs
+//     Ok((
+//         StatusCode::INTERNAL_SERVER_ERROR,
+//         Json(json!({ "error": err.to_string() })),
+//     )
+//         .into_response())
+// }

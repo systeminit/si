@@ -33,6 +33,9 @@ pub struct Config {
 
     #[builder(setter(into))]
     lang_server_path: PathBuf,
+
+    #[builder(setter(into), default)]
+    limit_requests: Option<u32>,
 }
 
 impl Config {
@@ -64,6 +67,11 @@ impl Config {
     #[must_use]
     pub fn lang_server_path(&self) -> &Path {
         &self.lang_server_path
+    }
+
+    /// Gets a reference to the config's limit requests.
+    pub fn limit_requests(&self) -> Option<u32> {
+        self.limit_requests
     }
 }
 

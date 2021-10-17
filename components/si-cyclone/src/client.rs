@@ -287,10 +287,11 @@ mod tests {
         resolver_function::{
             FunctionResult, ResolverFunctionExecutingMessage, ResolverFunctionRequest,
         },
-        server::{Config, ConfigBuilder},
+        server::{Config, ConfigBuilder, UdsIncomingStream},
         Server,
     };
     use futures::StreamExt;
+    use hyper::server::conn::AddrIncoming;
     use serde_json::json;
     use tempfile::{NamedTempFile, TempPath};
 
@@ -307,14 +308,17 @@ mod tests {
         }
     }
 
-    async fn uds_server(builder: &mut ConfigBuilder, tmp_socket: &TempPath) -> Server {
+    async fn uds_server(
+        builder: &mut ConfigBuilder,
+        tmp_socket: &TempPath,
+    ) -> Server<UdsIncomingStream, PathBuf> {
         let config = builder
             .unix_domain_socket(tmp_socket)
             .lang_server_path(lang_server_path().to_string())
             .build()
             .expect("failed to build config");
 
-        Server::init(config).await.expect("failed to init server")
+        Server::uds(config).await.expect("failed to init server")
     }
 
     async fn uds_client_for_running_server(
@@ -322,31 +326,26 @@ mod tests {
         tmp_socket: &TempPath,
     ) -> UDSClient {
         let server = uds_server(builder, tmp_socket).await;
-        let path = server
-            .as_uds()
-            .expect("server is not uds server")
-            .local_path();
+        let path = server.local_socket().clone();
         tokio::spawn(async move { server.run().await });
 
         Client::uds(path).expect("failed to create uds client")
     }
 
-    async fn http_server(builder: &mut ConfigBuilder) -> Server {
+    async fn http_server(builder: &mut ConfigBuilder) -> Server<AddrIncoming, SocketAddr> {
         let config = builder
             .http_socket("127.0.0.1:0")
             .expect("failed to resolve socket addr")
             .lang_server_path(lang_server_path().to_string())
             .build()
             .expect("failed to build config");
-        Server::init(config).await.expect("failed to init server")
+
+        Server::http(config).expect("failed to init server")
     }
 
     async fn http_client_for_running_server(builder: &mut ConfigBuilder) -> HTTPClient {
         let server = http_server(builder).await;
-        let socket = server
-            .as_http()
-            .expect("server is not an http server")
-            .local_addr();
+        let socket = server.local_socket().clone();
         tokio::spawn(async move { server.run().await });
 
         Client::http(socket).expect("failed to create client")

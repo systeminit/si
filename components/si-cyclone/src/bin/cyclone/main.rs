@@ -1,7 +1,10 @@
 use std::convert::TryInto;
 
 use color_eyre::Result;
-use si_cyclone::{telemetry, Server};
+use si_cyclone::{
+    server::{Config, IncomingStream},
+    telemetry, Server,
+};
 
 mod args;
 
@@ -11,5 +14,14 @@ async fn main() -> Result<()> {
     telemetry::init()?;
     let config = args::parse().try_into()?;
 
-    Server::init(config).await?.run().await.map_err(From::from)
+    run(config).await
+}
+
+async fn run(config: Config) -> Result<()> {
+    match config.incoming_stream() {
+        IncomingStream::HTTPSocket(_) => Server::http(config)?.run().await?,
+        IncomingStream::UnixDomainSocket(_) => Server::uds(config).await?.run().await?,
+    }
+
+    Ok(())
 }
