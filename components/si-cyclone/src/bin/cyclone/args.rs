@@ -52,6 +52,14 @@ pub(crate) struct Args {
     /// Path to the lang server program.
     #[clap(long, env = "SI_LANG_SERVER", setting = ArgSettings::HideEnvValues)]
     pub(crate) lang_server: PathBuf,
+
+    /// Limits execution requests to 1 before shutting down
+    #[clap(long, group = "limit_requests")]
+    pub(crate) oneshot: bool,
+
+    /// Limits execution requests to the given value before shutting down
+    #[clap(long, group = "limit_requests")]
+    pub(crate) limit_requests: Option<u32>,
 }
 
 impl TryFrom<Args> for Config {
@@ -83,6 +91,12 @@ impl TryFrom<Args> for Config {
             builder.lang_server_path(args.lang_server);
         } else {
             return Err(ConfigError::LangServerProgramNotFound(args.lang_server));
+        }
+
+        if args.oneshot {
+            builder.limit_requests(1);
+        } else if let Some(limit_requests) = args.limit_requests {
+            builder.limit_requests(limit_requests);
         }
 
         builder.build().map_err(From::from)
