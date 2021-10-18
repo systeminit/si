@@ -1,6 +1,7 @@
 use std::{
     net::{SocketAddr, ToSocketAddrs},
     path::{Path, PathBuf},
+    time::Duration,
 };
 
 use derive_builder::Builder;
@@ -22,6 +23,9 @@ type Result<T> = std::result::Result<T, ConfigError>;
 
 #[derive(Debug, Builder)]
 pub struct Config {
+    #[builder(default)]
+    watch: Option<Duration>,
+
     #[builder(default = "false")]
     enable_ping: bool,
 
@@ -43,6 +47,11 @@ impl Config {
     #[must_use]
     pub fn builder() -> ConfigBuilder {
         ConfigBuilder::default()
+    }
+
+    /// Gets a reference to the config's watch.
+    pub fn watch(&self) -> Option<Duration> {
+        self.watch
     }
 
     /// Gets a reference to the config's enable ping.

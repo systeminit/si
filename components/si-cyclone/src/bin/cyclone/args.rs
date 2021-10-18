@@ -1,4 +1,4 @@
-use std::{convert::TryFrom, net::SocketAddr, path::PathBuf};
+use std::{convert::TryFrom, net::SocketAddr, path::PathBuf, time::Duration};
 
 use clap::{AppSettings, ArgSettings, Clap};
 use si_cyclone::server::{Config, ConfigError, IncomingStream};
@@ -32,6 +32,18 @@ pub(crate) struct Args {
     /// Binds service to a unix domain socket [example: /var/run/cyclone.sock]
     #[clap(long, group = "bind")]
     pub(crate) bind_uds: Option<PathBuf>,
+
+    /// Enables active/watch behavior.
+    #[clap(long, group = "watch")]
+    pub(crate) enable_watch: bool,
+
+    /// Disables active/watch behavior.
+    #[clap(long, group = "watch")]
+    pub(crate) disable_watch: bool,
+
+    /// Active/watch timeout in seconds.
+    #[clap(long, default_value = "10")]
+    pub(crate) watch_timeout: u64,
 
     /// Enables ping endpoint.
     #[clap(long, group = "ping")]
@@ -73,6 +85,12 @@ impl TryFrom<Args> for Config {
         }
         if let Some(pathbuf) = args.bind_uds {
             builder.incoming_stream(IncomingStream::UnixDomainSocket(pathbuf));
+        }
+
+        if args.enable_watch {
+            builder.watch(Some(Duration::from_secs(args.watch_timeout)));
+        } else if args.disable_watch {
+            builder.watch(None);
         }
 
         if args.enable_ping {

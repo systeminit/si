@@ -9,7 +9,7 @@ use tokio::{
     sync::{mpsc, oneshot},
 };
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
-use tracing::{error, info};
+use tracing::{error, info, trace};
 
 use super::{routes, Config, IncomingStream, UdsIncomingStream, UdsIncomingStreamError};
 
@@ -41,7 +41,7 @@ impl Server<(), ()> {
                 let (service, shutdown_rx) = build_service(&config)?;
 
                 info!("binding to HTTP socket; socket_addr={}", &socket_addr);
-                let inner = axum::Server::bind(&socket_addr).serve(service);
+                let inner = axum::Server::bind(socket_addr).serve(service);
                 let socket = inner.local_addr();
 
                 Ok(Server {
@@ -51,7 +51,7 @@ impl Server<(), ()> {
                     shutdown_rx,
                 })
             }
-            wrong => return Err(ServerError::WrongIncomingStream("http", wrong.clone())),
+            wrong => Err(ServerError::WrongIncomingStream("http", wrong.clone())),
         }
     }
 
@@ -72,7 +72,7 @@ impl Server<(), ()> {
                     shutdown_rx,
                 })
             }
-            wrong => return Err(ServerError::WrongIncomingStream("http", wrong.clone())),
+            wrong => Err(ServerError::WrongIncomingStream("http", wrong.clone())),
         }
     }
 }
@@ -106,9 +106,9 @@ where
 }
 
 fn build_service(config: &Config) -> Result<(IntoMakeService<BoxRoute>, oneshot::Receiver<()>)> {
-    let (limit_request_shutdown_tx, limit_request_shutdown_rx) = mpsc::channel::<()>(4);
+    let (shutdown_tx, shutdown_rx) = mpsc::channel(4);
 
-    let routes = routes(config, limit_request_shutdown_tx)
+    let routes = routes(config, shutdown_tx)
         // TODO(fnichol): customize http tracing further, using:
         // https://docs.rs/tower-http/0.1.1/tower_http/trace/index.html
         .layer(
@@ -117,13 +117,13 @@ fn build_service(config: &Config) -> Result<(IntoMakeService<BoxRoute>, oneshot:
         )
         .boxed();
 
-    let graceful_shutdown_rx = prepare_graceful_shutdown(limit_request_shutdown_rx)?;
+    let graceful_shutdown_rx = prepare_graceful_shutdown(shutdown_rx)?;
 
     Ok((routes.into_make_service(), graceful_shutdown_rx))
 }
 
 fn prepare_graceful_shutdown(
-    mut internal_graceful_shutdown_rx: mpsc::Receiver<()>,
+    mut shutdown_rx: mpsc::Receiver<ShutdownSource>,
 ) -> Result<oneshot::Receiver<()>> {
     let (graceful_shutdown_tx, graceful_shutdown_rx) = oneshot::channel::<()>();
     let mut sigterm_stream =
@@ -131,7 +131,7 @@ fn prepare_graceful_shutdown(
 
     tokio::spawn(async move {
         fn send_graceful_shutdown(tx: oneshot::Sender<()>) {
-            if let Err(_) = tx.send(()) {
+            if tx.send(()).is_err() {
                 error!("the server graceful shutdown receiver has already dropped");
             }
         }
@@ -141,12 +141,25 @@ fn prepare_graceful_shutdown(
                 info!("received SIGTERM signal, performing graceful shutdown");
                 send_graceful_shutdown(graceful_shutdown_tx);
             }
-            _ = internal_graceful_shutdown_rx.recv() => {
-                info!("received internal shutdown, performing graceful shutdown");
+            source = shutdown_rx.recv() => {
+                info!(
+                    "received internal shutdown, performing graceful shutdown; source={:?}",
+                    source,
+                );
                 send_graceful_shutdown(graceful_shutdown_tx);
+            }
+            else => {
+                // All other arms are closed, nothing left to do but return
+                trace!("returning from graceful shutdown with all select arms closed");
             }
         };
     });
 
     Ok(graceful_shutdown_rx)
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum ShutdownSource {
+    LimitRequest,
+    WatchTimeout,
 }

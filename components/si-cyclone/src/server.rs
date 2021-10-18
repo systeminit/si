@@ -13,3 +13,4 @@ mod server;
 pub mod telemetry;
 pub(crate) mod tower;
 mod uds;
+pub mod watch;
