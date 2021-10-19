@@ -9,5 +9,5 @@ members = [
   "components/si-model",
   "components/si-sdf",
   "components/si-settings",
-  "components/si-veritech-2",
+  "components/si-veritech",
 ]

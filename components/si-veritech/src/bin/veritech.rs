@@ -1,6 +1,6 @@
 use si_data::NatsConn;
 use si_settings::Settings;
-use si_veritech_2::{start, telemetry};
+use si_veritech::{start, telemetry};
 use tracing::{instrument, log::info};
 
 #[tokio::main]

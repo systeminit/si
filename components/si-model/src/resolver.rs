@@ -78,7 +78,7 @@ pub enum ResolverError {
     )]
     MismatchedFunctionResultAndSchema(Option<Prop>, serde_json::Value),
     #[error("veritech error: {0:?}")]
-    VeritechError(#[from] si_veritech_2::client::VeritechClientError),
+    VeritechError(#[from] si_veritech::client::VeritechClientError),
     #[error("function error: {0} {1}")]
     FunctionError(String, String),
 }
@@ -384,17 +384,17 @@ impl ResolverBinding {
             ResolverBackendKindBinding::Js(context) => {
                 let conn: NatsConn = nats.connection.clone().into();
                 let result =
-                    si_veritech_2::client::run_function(&conn, "resolver", context.code.clone())
+                    si_veritech::client::run_function(&conn, "resolver", context.code.clone())
                         .await?;
                 match result {
-                    si_veritech_2::FunctionResult::Success(success) => {
+                    si_veritech::FunctionResult::Success(success) => {
                         if success.unset {
                             return Ok(None);
                         } else {
                             success.data
                         }
                     }
-                    si_veritech_2::FunctionResult::Failure(failure) => {
+                    si_veritech::FunctionResult::Failure(failure) => {
                         return Err(ResolverError::FunctionError(
                             failure.error.name,
                             failure.error.message,
