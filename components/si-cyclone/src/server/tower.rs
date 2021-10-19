@@ -16,14 +16,19 @@ mod limit_requests {
     use tower::{Layer, Service};
     use tracing::{debug, trace, warn};
 
+    use crate::server::server::ShutdownSource;
+
     #[derive(Clone, Debug)]
     pub struct LimitRequestLayer {
         remaining: Arc<Option<AtomicU32>>,
-        shutdown_tx: mpsc::Sender<()>,
+        shutdown_tx: mpsc::Sender<ShutdownSource>,
     }
 
     impl LimitRequestLayer {
-        pub fn new(remaining: Option<impl Into<u32>>, shutdown_tx: mpsc::Sender<()>) -> Self {
+        pub fn new(
+            remaining: Option<impl Into<u32>>,
+            shutdown_tx: mpsc::Sender<ShutdownSource>,
+        ) -> Self {
             Self {
                 remaining: Arc::new(remaining.map(|r| r.into().into())),
                 shutdown_tx,
@@ -43,14 +48,14 @@ mod limit_requests {
     pub struct LimitRequest<T> {
         inner: T,
         remaining: Arc<Option<AtomicU32>>,
-        shutdown_tx: mpsc::Sender<()>,
+        shutdown_tx: mpsc::Sender<ShutdownSource>,
     }
 
     impl<T> LimitRequest<T> {
         pub fn new(
             inner: T,
             remaining: Arc<Option<AtomicU32>>,
-            shutdown_tx: mpsc::Sender<()>,
+            shutdown_tx: mpsc::Sender<ShutdownSource>,
         ) -> Self {
             Self {
                 inner,
@@ -80,7 +85,7 @@ mod limit_requests {
                 // shutdown handle.
                 Some(remaining) => {
                     let mut updated = remaining.load(Ordering::Relaxed);
-                    updated = updated.checked_sub(1).unwrap_or(0);
+                    updated = updated.saturating_sub(1);
                     remaining.store(updated, Ordering::Relaxed);
                     debug!("requests remaining: {}", updated);
 
@@ -104,12 +109,12 @@ mod limit_requests {
         pub struct ResponseFuture<T> {
             #[pin]
             response: T,
-            shutdown_tx: Option<mpsc::Sender<()>>,
+            shutdown_tx: Option<mpsc::Sender<ShutdownSource>>,
         }
     }
 
     impl<T> ResponseFuture<T> {
-        fn new(response: T, shutdown_tx: Option<mpsc::Sender<()>>) -> Self {
+        fn new(response: T, shutdown_tx: Option<mpsc::Sender<ShutdownSource>>) -> Self {
             Self {
                 response,
                 shutdown_tx,
@@ -132,7 +137,7 @@ mod limit_requests {
                         let tx = tx.clone();
                         tokio::spawn(async move {
                             trace!("sending shutdown to limit request shutdown receiver");
-                            if let Err(_) = tx.send(()).await {
+                            if tx.send(ShutdownSource::LimitRequest).await.is_err() {
                                 warn!(
                                     "the limit request shutdown receiver has already been dropped"
                                 );

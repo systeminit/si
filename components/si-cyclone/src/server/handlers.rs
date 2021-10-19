@@ -8,12 +8,13 @@ use axum::{
     response::IntoResponse,
 };
 use hyper::StatusCode;
-use tracing::warn;
+use tracing::{trace, warn};
 
-use super::routes::State;
+use super::routes::{State, WatchKeepalive};
 use crate::{
-    resolver_function::ResolverFunctionMessage, server::resolver_function, LivenessStatus,
-    ReadinessStatus,
+    resolver_function::ResolverFunctionMessage,
+    server::{resolver_function, watch},
+    LivenessStatus, ReadinessStatus,
 };
 
 #[allow(clippy::unused_async)]
@@ -24,6 +25,24 @@ pub async fn liveness() -> (StatusCode, &'static str) {
 #[allow(clippy::unused_async)]
 pub async fn readiness() -> Result<&'static str, StatusCode> {
     Ok(ReadinessStatus::Ready.into())
+}
+
+pub async fn ws_watch(
+    wsu: WebSocketUpgrade,
+    Extension(watch_keepalive): Extension<Arc<WatchKeepalive>>,
+) -> impl IntoResponse {
+    async fn handle_socket(mut socket: WebSocket, watch_keepalive: Arc<WatchKeepalive>) {
+        if let Err(err) = watch::run(watch_keepalive.clone_tx(), watch_keepalive.timeout())
+            .start(&mut socket)
+            .await
+        {
+            // An error is most likely returned when the client side terminates the websocket
+            // session or if a network partition occurs, so this is our "normal" behavior
+            trace!(error = ?err, "protocol finished");
+        }
+    }
+
+    wsu.on_upgrade(move |socket| handle_socket(socket, watch_keepalive))
 }
 
 pub async fn ws_execute_ping(wsu: WebSocketUpgrade) -> impl IntoResponse {

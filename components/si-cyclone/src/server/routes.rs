@@ -1,13 +1,15 @@
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
+    time::Duration,
 };
 
 use axum::{handler::get, routing::BoxRoute, AddExtensionLayer, Router};
 use tokio::sync::mpsc;
 use tracing::debug;
 
-use super::{handlers, tower::LimitRequestLayer, Config};
+use super::{handlers, server::ShutdownSource, tower::LimitRequestLayer, Config};
+use crate::server::watch;
 
 pub struct State {
     lang_server_path: PathBuf,
@@ -28,11 +30,27 @@ impl From<&Config> for State {
     }
 }
 
+pub struct WatchKeepalive {
+    tx: mpsc::Sender<()>,
+    timeout: Duration,
+}
+
+impl WatchKeepalive {
+    pub fn clone_tx(&self) -> mpsc::Sender<()> {
+        self.tx.clone()
+    }
+
+    /// Gets a reference to the watch keepalive tx's timeout.
+    pub fn timeout(&self) -> Duration {
+        self.timeout
+    }
+}
+
 #[must_use]
-pub fn routes(config: &Config, limit_request_shutdown_tx: mpsc::Sender<()>) -> Router<BoxRoute> {
+pub fn routes(config: &Config, shutdown_tx: mpsc::Sender<ShutdownSource>) -> Router<BoxRoute> {
     let shared_state = Arc::new(State::from(config));
 
-    Router::new()
+    let mut router = Router::new()
         .route(
             "/liveness",
             get(handlers::liveness).head(handlers::liveness),
@@ -41,18 +59,35 @@ pub fn routes(config: &Config, limit_request_shutdown_tx: mpsc::Sender<()>) -> R
             "/readiness",
             get(handlers::readiness).head(handlers::readiness),
         )
-        .nest(
-            "/execute",
-            execute_routes(config, limit_request_shutdown_tx),
-        )
-        .layer(AddExtensionLayer::new(shared_state))
-        .boxed()
+        .nest("/execute", execute_routes(config, shutdown_tx.clone()))
+        .boxed();
+
+    if let Some(watch_timeout) = config.watch() {
+        debug!("enabling watch endpoint");
+        let (keepalive_tx, keepalive_rx) = mpsc::channel::<()>(4);
+
+        tokio::spawn(watch::watch_timeout_task(
+            watch_timeout,
+            shutdown_tx,
+            keepalive_rx,
+        ));
+
+        let watch_keepalive = WatchKeepalive {
+            tx: keepalive_tx,
+            timeout: watch_timeout,
+        };
+
+        router = router
+            .or(Router::new()
+                .route("/watch", get(handlers::ws_watch))
+                .layer(AddExtensionLayer::new(Arc::new(watch_keepalive))))
+            .boxed();
+    }
+
+    router.layer(AddExtensionLayer::new(shared_state)).boxed()
 }
 
-fn execute_routes(
-    config: &Config,
-    limit_request_shutdown_tx: mpsc::Sender<()>,
-) -> Router<BoxRoute> {
+fn execute_routes(config: &Config, shutdown_tx: mpsc::Sender<ShutdownSource>) -> Router<BoxRoute> {
     let mut router = Router::new().boxed();
 
     if config.enable_ping() {
@@ -69,10 +104,7 @@ fn execute_routes(
     }
 
     router
-        .layer(LimitRequestLayer::new(
-            config.limit_requests(),
-            limit_request_shutdown_tx,
-        ))
+        .layer(LimitRequestLayer::new(config.limit_requests(), shutdown_tx))
         // TODO(fnichol): we are going to need this, mark my words...
         // .handle_error(convert_tower_error_into_reponse)
         .boxed()
