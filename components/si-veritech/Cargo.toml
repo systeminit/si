@@ -1,5 +1,5 @@
 [package]
-name = "si-veritech-2"
+name = "si-veritech"
 version = "0.1.0"
 edition = "2018"
 default-run = "si-veritech"

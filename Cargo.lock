@@ -2569,7 +2569,7 @@ dependencies = [
  "serde_json",
  "si-data",
  "si-settings",
- "si-veritech-2",
+ "si-veritech",
  "sodiumoxide",
  "strum",
  "strum_macros",
@@ -2639,7 +2639,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "si-veritech-2"
+name = "si-veritech"
 version = "0.1.0"
 dependencies = [
  "anyhow",

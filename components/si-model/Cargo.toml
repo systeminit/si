@@ -22,7 +22,7 @@ serde = "1.0.123"
 serde_json = { version = "1.0.64", features = ["preserve_order"] }
 si-data = { path = "../si-data" }
 si-settings = { path = "../si-settings" }
-si-veritech-2 = { path = "../si-veritech-2", features = ["client"] }
+si-veritech = { path = "../si-veritech", features = ["client"] }
 sodiumoxide = "0.2.6"
 strum = "0.21.0"
 strum_macros = "0.21.1"
