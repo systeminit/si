@@ -85,7 +85,7 @@ impl PgPool {
     pub async fn new(settings: &si_settings::Pg) -> PgPoolResult<Self> {
         let mut cfg = Config::new();
         cfg.hosts = Some(vec![settings.hostname.clone()]);
-        cfg.port = Some(settings.port.clone());
+        cfg.port = Some(settings.port);
         cfg.user = Some(settings.user.clone());
         cfg.password = Some(settings.password.clone());
         cfg.dbname = Some(settings.dbname.clone());
@@ -113,7 +113,7 @@ impl PgPool {
                 .to_socket_addrs()
                 .map_err(PgPoolError::ResolveHostname)
                 .and_then(|mut iter| iter.next().ok_or(PgPoolError::ResolveHostnameNoEntries))
-                .and_then(|socket_addr| Ok(socket_addr.ip().to_string()))
+                .map(|socket_addr| socket_addr.ip().to_string())
         })
         .await??;
 
@@ -463,7 +463,7 @@ impl InstrumentedClient {
         params: &[&(dyn ToSql + Sync)],
     ) -> Result<Row, Error> {
         let r = self.inner.query_one(statement, params).await;
-        if let Ok(_) = r {
+        if r.is_ok() {
             Span::current().record("db.rows", &display(1));
         }
         r
@@ -1090,7 +1090,7 @@ impl<'a> InstrumentedTransaction<'a> {
             .query_one(statement, params)
             .instrument(self.tx_span.clone())
             .await;
-        if let Ok(_) = r {
+        if r.is_ok() {
             Span::current().record("db.rows", &display(1));
         }
         r

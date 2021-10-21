@@ -1,7 +1,7 @@
 use std::{convert::TryFrom, net::SocketAddr, path::PathBuf, time::Duration};
 
 use clap::{AppSettings, ArgSettings, Clap};
-use si_cyclone::server::{Config, ConfigError, IncomingStream};
+use si_cyclone::{Config, ConfigError, IncomingStream};
 
 /// Parse, validate, and return the CLI arguments as a typed struct.
 pub(crate) fn parse() -> Args {
@@ -25,7 +25,7 @@ pub(crate) struct Args {
     #[clap(short = 'v', long = "verbose", parse(from_occurrences))]
     pub(crate) verbose: usize,
 
-    /// Binds service to a socket address [example: 0.0.0.0:8080]
+    /// Binds service to a socket address [example: 0.0.0.0:5157]
     #[clap(long, group = "bind")]
     pub(crate) bind_addr: Option<SocketAddr>,
 
@@ -117,6 +117,6 @@ impl TryFrom<Args> for Config {
             builder.limit_requests(limit_requests);
         }
 
-        builder.build().map_err(From::from)
+        builder.build().map_err(Into::into)
     }
 }

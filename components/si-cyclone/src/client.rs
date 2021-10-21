@@ -1,33 +1,44 @@
 use std::{
     convert::{TryFrom, TryInto},
+    marker::PhantomData,
     net::{SocketAddr, ToSocketAddrs},
     path::PathBuf,
     str::{self, FromStr},
 };
 
-use axum::http::request::Builder;
-use http::uri::{Authority, InvalidUri, InvalidUriParts, PathAndQuery, Scheme};
+use async_trait::async_trait;
+use http::{
+    request::Builder,
+    uri::{Authority, InvalidUri, InvalidUriParts, PathAndQuery, Scheme},
+};
 use hyper::{
     body,
-    client::{connect::Connection, HttpConnector, ResponseFuture},
+    client::{HttpConnector, ResponseFuture},
     service::Service,
     Body, Method, Request, Response, StatusCode, Uri,
 };
-use hyperlocal::{UnixClientExt, UnixConnector};
+use hyperlocal::{UnixClientExt, UnixConnector, UnixStream};
 use thiserror::Error;
-use tokio::io::{AsyncRead, AsyncWrite};
+use tokio::{
+    io::{AsyncRead, AsyncWrite},
+    net::TcpStream,
+};
 use tokio_tungstenite::WebSocketStream;
 
-pub use self::resolver_function::{ResolverFunctionExecution, ResolverFunctionExecutionError};
+use self::ping::PingExecution;
 use crate::{
     resolver_function::ResolverFunctionRequest, LivenessStatus, LivenessStatusParseError,
     ReadinessStatus, ReadinessStatusParseError,
 };
 
+pub use hyper::client::connect::Connection;
 pub use tokio_tungstenite::tungstenite::{
     protocol::frame::CloseFrame as WebSocketCloseFrame, Message as WebSocketMessage,
 };
 
+pub use self::resolver_function::{ResolverFunctionExecution, ResolverFunctionExecutionError};
+
+mod ping;
 mod resolver_function;
 
 #[derive(Debug, Error)]
@@ -70,19 +81,55 @@ pub enum ClientError {
 
 type Result<T> = std::result::Result<T, ClientError>;
 
-#[derive(Clone, Debug)]
-pub struct Client<C, S> {
-    inner_client: hyper::Client<C, Body>,
-    connector: C,
-    socket: S,
+#[derive(Debug)]
+pub struct Client<Conn, Strm, Sock> {
+    inner_client: hyper::Client<Conn, Body>,
+    connector: Conn,
+    socket: Sock,
     uri: Uri,
+    _phantom: PhantomData<Strm>,
 }
 
-pub type UDSClient = Client<UnixConnector, PathBuf>;
-pub type HTTPClient = Client<HttpConnector, SocketAddr>;
+impl<Conn, Strm, Sock> Clone for Client<Conn, Strm, Sock>
+where
+    Conn: Clone,
+    Sock: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            inner_client: self.inner_client.clone(),
+            connector: self.connector.clone(),
+            socket: self.socket.clone(),
+            uri: self.uri.clone(),
+            _phantom: PhantomData,
+        }
+    }
+}
 
-impl Client<(), ()> {
-    pub fn http(socket_addrs: impl ToSocketAddrs) -> Result<Client<HttpConnector, SocketAddr>> {
+pub type UdsClient = Client<UnixConnector, UnixStream, PathBuf>;
+pub type HttpClient = Client<HttpConnector, TcpStream, SocketAddr>;
+
+#[async_trait]
+pub trait CycloneClient<Strm>
+where
+    Strm: AsyncRead + AsyncWrite + Connection + Unpin + Send + 'static,
+{
+    async fn liveness(&self) -> Result<LivenessStatus>;
+
+    async fn readiness(&self) -> Result<ReadinessStatus>;
+
+    async fn execute_ping(&mut self) -> Result<PingExecution<Strm>>;
+
+    async fn execute_resolver(
+        &mut self,
+        request: ResolverFunctionRequest,
+    ) -> Result<ResolverFunctionExecution<Strm>>;
+}
+
+impl Client<(), (), ()> {
+    pub fn http(
+        socket_addrs: impl ToSocketAddrs,
+    ) -> Result<Client<HttpConnector, TcpStream, SocketAddr>> {
         let socket = socket_addrs
             .to_socket_addrs()
             .map_err(ClientError::SocketAddrResolve)?
@@ -105,10 +152,11 @@ impl Client<(), ()> {
             connector,
             socket,
             uri,
+            _phantom: PhantomData,
         })
     }
 
-    pub fn uds(socket: impl Into<PathBuf>) -> Result<Client<UnixConnector, PathBuf>> {
+    pub fn uds(socket: impl Into<PathBuf>) -> Result<Client<UnixConnector, UnixStream, PathBuf>> {
         let socket = socket.into();
         let connector = UnixConnector;
         let inner_client = hyper::Client::unix();
@@ -129,18 +177,21 @@ impl Client<(), ()> {
             connector,
             socket,
             uri,
+            _phantom: PhantomData,
         })
     }
 }
 
-impl<C, S, T> Client<C, S>
+#[async_trait]
+impl<Conn, Strm, Sock> CycloneClient<Strm> for Client<Conn, Strm, Sock>
 where
-    C: Service<Uri, Response = T> + Clone + Send + Sync + 'static,
-    C::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
-    C::Future: Unpin + Send,
-    T: AsyncRead + AsyncWrite + Connection + Unpin + Send + 'static,
+    Conn: Service<Uri, Response = Strm> + Clone + Send + Sync + 'static,
+    Conn::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+    Conn::Future: Unpin + Send,
+    Strm: AsyncRead + AsyncWrite + Connection + Unpin + Send + Sync + 'static,
+    Sock: Send + Sync,
 {
-    pub async fn liveness(&self) -> Result<LivenessStatus> {
+    async fn liveness(&self) -> Result<LivenessStatus> {
         let response = self.get("/liveness").await?;
 
         if response.status() != StatusCode::OK {
@@ -154,7 +205,7 @@ where
         Ok(result)
     }
 
-    pub async fn readiness(&self) -> Result<ReadinessStatus> {
+    async fn readiness(&self) -> Result<ReadinessStatus> {
         let response = self.get("/readiness").await?;
 
         if response.status() != StatusCode::OK {
@@ -168,18 +219,27 @@ where
         Ok(result)
     }
 
-    pub async fn execute_ping(&mut self) -> Result<WebSocketStream<T>> {
-        self.websocket_stream("/execute/ping").await
+    async fn execute_ping(&mut self) -> Result<PingExecution<Strm>> {
+        let stream = self.websocket_stream("/execute/ping").await?;
+        Ok(ping::execute(stream))
     }
 
-    pub async fn execute_resolver(
+    async fn execute_resolver(
         &mut self,
         request: ResolverFunctionRequest,
-    ) -> Result<ResolverFunctionExecution<T>> {
+    ) -> Result<ResolverFunctionExecution<Strm>> {
         let stream = self.websocket_stream("/execute/resolver").await?;
         Ok(resolver_function::execute(stream, request))
     }
+}
 
+impl<Conn, Strm, Sock> Client<Conn, Strm, Sock>
+where
+    Conn: Service<Uri, Response = Strm> + Clone + Send + Sync + 'static,
+    Conn::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+    Conn::Future: Unpin + Send,
+    Strm: AsyncRead + AsyncWrite + Connection + Unpin + Send + Sync + 'static,
+{
     fn http_request_uri<P>(&self, path_and_query: P) -> Result<Uri>
     where
         P: TryInto<PathAndQuery, Error = InvalidUri>,
@@ -256,7 +316,7 @@ where
         self.inner_client.request(req)
     }
 
-    async fn websocket_stream<P>(&mut self, path_and_query: P) -> Result<WebSocketStream<T>>
+    async fn websocket_stream<P>(&mut self, path_and_query: P) -> Result<WebSocketStream<Strm>>
     where
         P: TryInto<PathAndQuery, Error = InvalidUri>,
     {
@@ -324,7 +384,7 @@ mod tests {
     async fn uds_client_for_running_server(
         builder: &mut ConfigBuilder,
         tmp_socket: &TempPath,
-    ) -> UDSClient {
+    ) -> UdsClient {
         let server = uds_server(builder, tmp_socket).await;
         let path = server.local_socket().clone();
         tokio::spawn(async move { server.run().await });
@@ -343,7 +403,7 @@ mod tests {
         Server::http(config).expect("failed to init server")
     }
 
-    async fn http_client_for_running_server(builder: &mut ConfigBuilder) -> HTTPClient {
+    async fn http_client_for_running_server(builder: &mut ConfigBuilder) -> HttpClient {
         let server = http_server(builder).await;
         let socket = server.local_socket().clone();
         tokio::spawn(async move { server.run().await });
@@ -398,18 +458,13 @@ mod tests {
         let mut builder = Config::builder();
         let mut client = http_client_for_running_server(builder.enable_ping(true)).await;
 
-        let (_, mut rx) = client
+        client
             .execute_ping()
             .await
-            .expect("failed to get stream")
-            .split();
-
-        match rx.next().await {
-            Some(Ok(WebSocketMessage::Text(text))) => assert_eq!("pong", text),
-            Some(Ok(unexpected)) => panic!("unexpected message type: {}", unexpected),
-            Some(Err(err)) => panic!("unexpected error: {}", err),
-            None => panic!("websocket stream should contain a message"),
-        }
+            .expect("failed to establish websocket stream")
+            .start()
+            .await
+            .expect("failed to start protocol")
     }
 
     #[tokio::test]
@@ -431,18 +486,13 @@ mod tests {
         let mut client =
             uds_client_for_running_server(builder.enable_ping(true), &tmp_socket).await;
 
-        let (_, mut rx) = client
+        client
             .execute_ping()
             .await
-            .expect("failed to get stream")
-            .split();
-
-        match rx.next().await {
-            Some(Ok(WebSocketMessage::Text(text))) => assert_eq!("pong", text),
-            Some(Ok(unexpected)) => panic!("unexpected message type: {}", unexpected),
-            Some(Err(err)) => panic!("unexpected error: {:?}", err),
-            None => panic!("websocket stream should contain a message"),
-        }
+            .expect("failed to establish websocket stream")
+            .start()
+            .await
+            .expect("failed to start protocol")
     }
 
     #[tokio::test]

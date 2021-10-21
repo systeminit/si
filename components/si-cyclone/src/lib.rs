@@ -11,25 +11,22 @@
     clippy::module_name_repetitions
 )]
 
-#[macro_use]
-mod cfg;
-pub mod liveness;
-pub mod readiness;
+mod liveness;
+mod readiness;
 pub mod resolver_function;
 
-pub use liveness::{LivenessStatus, LivenessStatusParseError};
-pub use readiness::{ReadinessStatus, ReadinessStatusParseError};
+pub(crate) use liveness::{LivenessStatus, LivenessStatusParseError};
+pub(crate) use readiness::{ReadinessStatus, ReadinessStatusParseError};
 
-cfg_feature! {
-    #![feature = "server"]
+#[cfg(feature = "server")]
+mod server;
+#[cfg(feature = "server")]
+pub use server::{telemetry, Config, ConfigError, IncomingStream, Server};
 
-    pub mod server;
-    pub use server::{Server, telemetry};
-}
-
-cfg_feature! {
-    #![feature = "client"]
-
-    pub mod client;
-    pub use client::Client;
-}
+#[cfg(feature = "client")]
+mod client;
+#[cfg(feature = "client")]
+pub use client::{
+    Client, ClientError, Connection, CycloneClient, HttpClient, ResolverFunctionExecutionError,
+    UdsClient,
+};

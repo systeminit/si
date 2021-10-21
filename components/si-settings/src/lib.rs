@@ -1,15 +1,12 @@
-use config;
+use std::{cmp, env, path::PathBuf};
+
 use config::{Config, Environment, File as ConfigFile};
 use serde::Deserialize;
-use sodiumoxide;
-use std::path::PathBuf;
 use tracing::{event, Level};
 
-use std::{cmp, env};
+use crate::error::{Result, SettingsError};
 
 pub mod error;
-
-use crate::error::{Result, SettingsError};
 
 const MAX_POOL_SIZE_MINIMUM: usize = 32;
 
@@ -160,7 +157,7 @@ impl Settings {
         // Add in the current environment file
         // Default to 'development' env
         // Note that this file is _optional_
-        let env = env::var("RUN_ENV").unwrap_or("development".into());
+        let env = env::var("RUN_ENV").unwrap_or_else(|_| "development".into());
         event!(
             Level::DEBUG,
             ?env,

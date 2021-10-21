@@ -10,6 +10,7 @@ edition = "2018"
 default = ["client", "server"]
 
 client = [
+  "async-trait",
   "http",
   "hyperlocal",
   "tokio-tungstenite",
@@ -21,12 +22,10 @@ server = [
   "clap",
   "color-eyre",
   "derive_builder",
-  "futures",
   "opentelemetry",
   "opentelemetry-otlp",
   "opentelemetry-semantic-conventions",
   "pin-project-lite",
-  "tokio",
   "tokio-serde",
   "tokio-util",
   "tower",
@@ -37,15 +36,17 @@ server = [
 
 [dependencies]
 # server and client
-futures = { version = "0.3.17", optional = true }
+futures = { version = "0.3.17" }
 hyper = { version = "0.14", features = ["client", "http1", "runtime", "server"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["preserve_order"] }
 thiserror = { version = "1.0" }
+tokio = { version = "1.12.0", features = ["full"] }
 tracing = { version = "0.1" }
 uuid = { version = "0.8.2", features = ["serde", "v4"] }
 
 # client only
+async-trait = { version = "0.1.51", optional = true }
 http = { version = "0.2.5", optional = true }
 hyperlocal = { version = "0.8.0", default-features = false, features = ["client"], optional = true }
 tokio-tungstenite = { version = "0.15.0", optional = true }
@@ -60,7 +61,6 @@ opentelemetry = { version = "0.16.0", features = ["rt-tokio", "trace"], optional
 opentelemetry-otlp = { version = "0.9.0", optional = true }
 opentelemetry-semantic-conventions = { version = "0.8.0", optional = true }
 pin-project-lite = { version = "0.2.7", optional = true }
-tokio = { version = "1.12.0", features = ["full"], optional = true }
 tokio-serde = { version = "0.8.0", features = ["json"], optional = true }
 tokio-util = { version = "0.6.8", features = ["codec"], optional = true }
 tower = { version = "0.4.8", optional = true }

@@ -1,7 +1,7 @@
 use std::convert::TryInto;
 
 use color_eyre::Result;
-use si_cyclone::{telemetry, Config, IncomingStream, Server};
+use si_veritech::{telemetry, Config, CycloneStream, Server};
 
 mod args;
 
@@ -15,9 +15,9 @@ async fn main() -> Result<()> {
 }
 
 async fn run(config: Config) -> Result<()> {
-    match config.incoming_stream() {
-        IncomingStream::HTTPSocket(_) => Server::http(config)?.run().await?,
-        IncomingStream::UnixDomainSocket(_) => Server::uds(config).await?.run().await?,
+    match config.cyclone_stream() {
+        CycloneStream::HttpSocket(_) => Server::for_cyclone_http(config).await?.run().await?,
+        CycloneStream::UnixDomainSocket(_) => Server::for_cyclone_uds(config).await?.run().await?,
     }
 
     Ok(())
