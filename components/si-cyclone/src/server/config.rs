@@ -102,7 +102,7 @@ pub enum IncomingStream {
 
 impl Default for IncomingStream {
     fn default() -> Self {
-        Self::HTTPSocket(SocketAddr::from(([0, 0, 0, 0], 8080)))
+        Self::HTTPSocket(SocketAddr::from(([0, 0, 0, 0], 5157)))
     }
 }
 
@@ -120,23 +120,5 @@ impl IncomingStream {
     pub fn unix_domain_socket(path: impl Into<PathBuf>) -> Self {
         let pathbuf = path.into();
         Self::UnixDomainSocket(pathbuf)
-    }
-
-    #[must_use]
-    pub fn as_unix_domain_socket(&self) -> Option<&Path> {
-        if let Self::UnixDomainSocket(path) = self {
-            Some(path)
-        } else {
-            None
-        }
-    }
-
-    #[must_use]
-    pub fn as_http_socket(&self) -> Option<&SocketAddr> {
-        if let Self::HTTPSocket(socket) = self {
-            Some(socket)
-        } else {
-            None
-        }
     }
 }

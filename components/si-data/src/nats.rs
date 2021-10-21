@@ -123,7 +123,7 @@ impl NatsTxn {
                     None => return Ok(()),
                 }
             }
-            if subject_array.len() != 0 {
+            if !subject_array.is_empty() {
                 let subject: String = subject_array.join(".");
                 self.connection
                     .publish(&subject, model_json.to_string())

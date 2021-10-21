@@ -1167,8 +1167,7 @@ dependencies = [
 [[package]]
 name = "hyperlocal"
 version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0fafdf7b2b2de7c9784f76e02c0935e65a8117ec3b768644379983ab333ac98c"
+source = "git+https://github.com/fnichol/hyperlocal.git?branch=pub-unix-stream#6dfd2ad721d7031876ce494f62aae98bc5de0fae"
 dependencies = [
  "futures-util",
  "hex",
@@ -2496,6 +2495,7 @@ dependencies = [
 name = "si-cyclone"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "axum",
  "bytes-lines-codec",
  "clap",
@@ -2642,8 +2642,11 @@ dependencies = [
 name = "si-veritech"
 version = "0.1.0"
 dependencies = [
- "anyhow",
+ "clap",
+ "color-eyre",
+ "derive_builder",
  "futures",
+ "futures-lite",
  "opentelemetry",
  "opentelemetry-otlp",
  "opentelemetry-semantic-conventions",

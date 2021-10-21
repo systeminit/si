@@ -50,6 +50,9 @@ pub async fn ws_execute_ping(wsu: WebSocketUpgrade) -> impl IntoResponse {
         if let Err(ref err) = socket.send(Message::Text("pong".to_string())).await {
             warn!("client disconnected; error={}", err);
         }
+        if let Err(ref err) = socket.close().await {
+            warn!("server failed to close websocket; error={}", err);
+        }
     }
 
     wsu.on_upgrade(handle_socket)
