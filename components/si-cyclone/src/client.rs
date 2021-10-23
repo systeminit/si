@@ -3,7 +3,10 @@ use std::{
     marker::PhantomData,
     net::{SocketAddr, ToSocketAddrs},
     path::PathBuf,
+    result,
     str::{self, FromStr},
+    sync::Arc,
+    time::Duration,
 };
 
 use async_trait::async_trait;
@@ -17,7 +20,7 @@ use hyper::{
     service::Service,
     Body, Method, Request, Response, StatusCode, Uri,
 };
-use hyperlocal::{UnixClientExt, UnixConnector, UnixStream};
+use hyperlocal::{UnixClientExt, UnixConnector};
 use thiserror::Error;
 use tokio::{
     io::{AsyncRead, AsyncWrite},
@@ -25,26 +28,33 @@ use tokio::{
 };
 use tokio_tungstenite::WebSocketStream;
 
-use self::ping::PingExecution;
-use crate::{
-    resolver_function::ResolverFunctionRequest, LivenessStatus, LivenessStatusParseError,
-    ReadinessStatus, ReadinessStatusParseError,
-};
-
 pub use hyper::client::connect::Connection;
+pub use hyperlocal::UnixStream;
 pub use tokio_tungstenite::tungstenite::{
     protocol::frame::CloseFrame as WebSocketCloseFrame, Message as WebSocketMessage,
 };
 
-pub use self::resolver_function::{ResolverFunctionExecution, ResolverFunctionExecutionError};
+pub use self::ping::{PingExecution, PingExecutionError};
+pub use self::resolver_function::{
+    ResolverFunctionExecution, ResolverFunctionExecutionClosing, ResolverFunctionExecutionError,
+    ResolverFunctionExecutionStarted,
+};
+pub use self::watch::{Watch, WatchError, WatchStarted};
+pub use crate::{
+    resolver_function::ResolverFunctionRequest, LivenessStatus, LivenessStatusParseError,
+    ReadinessStatus, ReadinessStatusParseError,
+};
 
 mod ping;
 mod resolver_function;
+mod watch;
 
 #[derive(Debug, Error)]
 pub enum ClientError {
     #[error("cannot create client uri")]
     ClientUri(#[source] http::Error),
+    #[error("client is not healthy")]
+    Unhealty(#[source] Box<dyn std::error::Error + Send + Sync>),
     #[error("invalid liveness status")]
     InvalidLivenessStatus(#[from] LivenessStatusParseError),
     #[error("invalid readiness status")]
@@ -79,10 +89,17 @@ pub enum ClientError {
     WebsocketConnection(#[source] tokio_tungstenite::tungstenite::Error),
 }
 
-type Result<T> = std::result::Result<T, ClientError>;
+impl ClientError {
+    pub fn unhealthy(source: impl std::error::Error + Send + Sync + 'static) -> Self {
+        Self::Unhealty(Box::new(source))
+    }
+}
+
+type Result<T> = result::Result<T, ClientError>;
 
 #[derive(Debug)]
 pub struct Client<Conn, Strm, Sock> {
+    config: Arc<ClientConfig>,
     inner_client: hyper::Client<Conn, Body>,
     connector: Conn,
     socket: Sock,
@@ -97,6 +114,7 @@ where
 {
     fn clone(&self) -> Self {
         Self {
+            config: self.config.clone(),
             inner_client: self.inner_client.clone(),
             connector: self.connector.clone(),
             socket: self.socket.clone(),
@@ -114,16 +132,18 @@ pub trait CycloneClient<Strm>
 where
     Strm: AsyncRead + AsyncWrite + Connection + Unpin + Send + 'static,
 {
-    async fn liveness(&self) -> Result<LivenessStatus>;
+    async fn watch(&mut self) -> result::Result<Watch<Strm>, ClientError>;
 
-    async fn readiness(&self) -> Result<ReadinessStatus>;
+    async fn liveness(&mut self) -> result::Result<LivenessStatus, ClientError>;
 
-    async fn execute_ping(&mut self) -> Result<PingExecution<Strm>>;
+    async fn readiness(&mut self) -> result::Result<ReadinessStatus, ClientError>;
+
+    async fn execute_ping(&mut self) -> result::Result<PingExecution<Strm>, ClientError>;
 
     async fn execute_resolver(
         &mut self,
         request: ResolverFunctionRequest,
-    ) -> Result<ResolverFunctionExecution<Strm>>;
+    ) -> result::Result<ResolverFunctionExecution<Strm>, ClientError>;
 }
 
 impl Client<(), (), ()> {
@@ -146,8 +166,10 @@ impl Client<(), (), ()> {
             .path_and_query("/")
             .build()
             .map_err(ClientError::ClientUri)?;
+        let config = Arc::new(ClientConfig::default());
 
         Ok(Client {
+            config,
             inner_client,
             connector,
             socket,
@@ -171,8 +193,10 @@ impl Client<(), (), ()> {
             .path_and_query("/")
             .build()
             .map_err(ClientError::ClientUri)?;
+        let config = Arc::new(ClientConfig::default());
 
         Ok(Client {
+            config,
             inner_client,
             connector,
             socket,
@@ -191,7 +215,12 @@ where
     Strm: AsyncRead + AsyncWrite + Connection + Unpin + Send + Sync + 'static,
     Sock: Send + Sync,
 {
-    async fn liveness(&self) -> Result<LivenessStatus> {
+    async fn watch(&mut self) -> Result<Watch<Strm>> {
+        let stream = self.websocket_stream("/watch").await?;
+        Ok(watch::watch(stream, self.config.watch_timeout))
+    }
+
+    async fn liveness(&mut self) -> Result<LivenessStatus> {
         let response = self.get("/liveness").await?;
 
         if response.status() != StatusCode::OK {
@@ -205,7 +234,7 @@ where
         Ok(result)
     }
 
-    async fn readiness(&self) -> Result<ReadinessStatus> {
+    async fn readiness(&mut self) -> Result<ReadinessStatus> {
         let response = self.get("/readiness").await?;
 
         if response.status() != StatusCode::OK {
@@ -338,6 +367,19 @@ where
     }
 }
 
+#[derive(Debug)]
+struct ClientConfig {
+    watch_timeout: Duration,
+}
+
+impl Default for ClientConfig {
+    fn default() -> Self {
+        Self {
+            watch_timeout: Duration::from_secs(10),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::{borrow::Cow, env};
@@ -412,9 +454,67 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn http_watch() {
+        let mut builder = Config::builder();
+        let mut client =
+            http_client_for_running_server(builder.watch(Some(Duration::from_secs(2)))).await;
+
+        // Start the protocol
+        let mut progress = client
+            .watch()
+            .await
+            .expect("failed to establish websocket stream")
+            .start()
+            .await
+            .expect("failed to start protocol");
+
+        // Consume 3 pings
+        for _ in 0..2 {
+            match progress.next().await {
+                Some(Ok(v)) => assert_eq!(v, ()),
+                Some(Err(err)) => panic!("failed to receive ping; err={:?}", err),
+                None => panic!("stream ended early"),
+            }
+        }
+
+        // Signal the client's desire to stop the watch
+        progress.stop().await.expect("failed to stop protocol");
+    }
+
+    #[tokio::test]
+    async fn uds_watch() {
+        let tmp_socket = rand_uds();
+        let mut builder = Config::builder();
+        let mut client =
+            uds_client_for_running_server(builder.watch(Some(Duration::from_secs(2))), &tmp_socket)
+                .await;
+
+        // Start the protocol
+        let mut progress = client
+            .watch()
+            .await
+            .expect("failed to establish websocket stream")
+            .start()
+            .await
+            .expect("failed to start protocol");
+
+        // Consume 3 pings
+        for _ in 0..2 {
+            match progress.next().await {
+                Some(Ok(v)) => assert_eq!(v, ()),
+                Some(Err(err)) => panic!("failed to receive ping; err={:?}", err),
+                None => panic!("stream ended early"),
+            }
+        }
+
+        // Signal the client's desire to stop the watch
+        progress.stop().await.expect("failed to stop protocol");
+    }
+
+    #[tokio::test]
     async fn http_liveness() {
         let mut builder = Config::builder();
-        let client = http_client_for_running_server(&mut builder).await;
+        let mut client = http_client_for_running_server(&mut builder).await;
 
         let response = client.liveness().await.expect("failed to get liveness");
 
@@ -425,7 +525,7 @@ mod tests {
     async fn uds_liveness() {
         let tmp_socket = rand_uds();
         let mut builder = Config::builder();
-        let client = uds_client_for_running_server(&mut builder, &tmp_socket).await;
+        let mut client = uds_client_for_running_server(&mut builder, &tmp_socket).await;
 
         let response = client.liveness().await.expect("failed to get liveness");
 
@@ -435,7 +535,7 @@ mod tests {
     #[tokio::test]
     async fn http_readiness() {
         let mut builder = Config::builder();
-        let client = http_client_for_running_server(&mut builder).await;
+        let mut client = http_client_for_running_server(&mut builder).await;
 
         let response = client.readiness().await.expect("failed to get readiness");
 
@@ -446,7 +546,7 @@ mod tests {
     async fn uds_readiness() {
         let tmp_socket = rand_uds();
         let mut builder = Config::builder();
-        let client = uds_client_for_running_server(&mut builder, &tmp_socket).await;
+        let mut client = uds_client_for_running_server(&mut builder, &tmp_socket).await;
 
         let response = client.readiness().await.expect("failed to get readiness");
 

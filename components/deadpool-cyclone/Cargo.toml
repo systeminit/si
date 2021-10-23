@@ -1,0 +1,22 @@
+[package]
+name = "deadpool-cyclone"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+async-trait = { version = "0.1.51" }
+deadpool = { version = "0.9.0", features = ["rt_tokio_1"] }
+derive_builder = { version = "0.10.2" }
+futures = { version = "0.3.17" }
+nix = { version = "0.23.0" }
+si-cyclone = { path = "../si-cyclone", default-features = false, features = ["client"] }
+tempfile = { version = "3.2.0" }
+thiserror = { version = "1.0" }
+tokio = { version = "1.12.0", features = ["full"] }
+tracing = { version = "0.1" }
+
+[dev-dependencies]
+tokio = { version = "1.12.0", features = ["full"] }
+tracing-subscriber = { version = "0.2.19" }

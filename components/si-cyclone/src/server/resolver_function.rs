@@ -18,6 +18,7 @@ use tokio_util::codec::{FramedRead, FramedWrite};
 use tracing::warn;
 
 use crate::{
+    process::{self, ShutdownError},
     resolver_function::{
         FunctionResult, OutputStream, ResolverFunctionMessage, ResolverFunctionRequest,
         ResultFailure, ResultFailureError, ResultSuccess,
@@ -25,7 +26,6 @@ use crate::{
     server::WebSocketMessage,
 };
 
-const CHILD_WAIT_TIMEOUT_SECS: Duration = Duration::from_secs(10);
 const TX_TIMEOUT_SECS: Duration = Duration::from_secs(2);
 
 pub fn execute(lang_server_path: impl Into<PathBuf>) -> ResolverFunctionExecution {
@@ -44,8 +44,8 @@ pub enum ResolverFunctionError {
     ChildSendIO(#[source] io::Error),
     #[error("failed to spawn child process; program={0}")]
     ChildSpawn(#[source] io::Error, PathBuf),
-    #[error("failed to wait on child process")]
-    ChildWait(#[source] io::Error),
+    #[error(transparent)]
+    ChildShutdown(#[from] ShutdownError),
     #[error("failed to deserialize json message")]
     JSONDeserialize(#[source] serde_json::Error),
     #[error("failed to serialize json message")]
@@ -202,10 +202,14 @@ pub struct ResolverFunctionServerExecutionClosing {
 }
 
 impl ResolverFunctionServerExecutionClosing {
-    pub async fn finish(self, mut ws: WebSocket) -> Result<()> {
+    pub async fn finish(mut self, mut ws: WebSocket) -> Result<()> {
         let finished = Self::ws_send_finish(&mut ws).await;
         let closed = Self::ws_close(ws).await;
-        let shutdown = Self::child_shutdown(self.child).await;
+        let shutdown =
+            process::child_shutdown(&mut self.child, Some(process::Signal::SIGTERM), None)
+                .await
+                .map_err(Into::into);
+        drop(self.child);
 
         match (finished, closed, shutdown) {
             // Everything succeeds, great!
@@ -254,26 +258,6 @@ impl ResolverFunctionServerExecutionClosing {
 
     async fn ws_close(ws: WebSocket) -> Result<()> {
         ws.close().await.map_err(ResolverFunctionError::WSClose)
-    }
-
-    async fn child_shutdown(mut child: Child) -> Result<()> {
-        match time::timeout(CHILD_WAIT_TIMEOUT_SECS, child.wait()).await {
-            Ok(wait_result) => {
-                let exit_status = wait_result.map_err(ResolverFunctionError::ChildWait)?;
-                warn!("child process had a nonzero exit; code={}", exit_status);
-            }
-            Err(_elapsed) => {
-                if child.start_kill().is_ok() {
-                    let exit_status = child
-                        .wait()
-                        .await
-                        .map_err(ResolverFunctionError::ChildWait)?;
-                    warn!("child process had a nonzero exit; code={}", exit_status);
-                }
-            }
-        };
-
-        Ok(())
     }
 }
 

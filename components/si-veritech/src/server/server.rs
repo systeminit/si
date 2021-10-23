@@ -1,7 +1,8 @@
 use futures::{StreamExt, TryStreamExt};
 use si_cyclone::{
+    client::Connection,
     resolver_function::{ResolverFunctionExecutingMessage, ResolverFunctionRequest},
-    Client, Connection, CycloneClient, HttpClient, UdsClient,
+    Client, CycloneClient, HttpClient, UdsClient,
 };
 use si_data::NatsConn;
 use thiserror::Error;
@@ -20,7 +21,7 @@ pub enum ServerError {
     #[error(transparent)]
     Publisher(#[from] PublisherError),
     #[error(transparent)]
-    ResolverFunction(#[from] si_cyclone::ResolverFunctionExecutionError),
+    ResolverFunction(#[from] si_cyclone::client::ResolverFunctionExecutionError),
     #[error(transparent)]
     Subscriber(#[from] SubscriberError),
     #[error("wrong cyclone stream for {0} server: {1:?}")]

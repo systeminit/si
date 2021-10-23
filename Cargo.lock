@@ -586,6 +586,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "deadpool"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "137f7a694f9395431e6c5d4f2026defef6002310577d76c7c80619ed626b681b"
+dependencies = [
+ "async-trait",
+ "num_cpus",
+ "tokio",
+]
+
+[[package]]
+name = "deadpool-cyclone"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "deadpool 0.9.0",
+ "derive_builder",
+ "futures",
+ "nix",
+ "si-cyclone",
+ "tempfile",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "deadpool-postgres"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -593,7 +621,7 @@ checksum = "1586368a579e26f158266d0a415bcb5df04a64b65913b2a31715d97987bd4d44"
 dependencies = [
  "async-trait",
  "config",
- "deadpool",
+ "deadpool 0.8.2",
  "futures",
  "log",
  "serde 1.0.130",
@@ -1400,6 +1428,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "308cc39be01b73d0d18f82a0e7b2a3df85245f84af96fdddc5d202d27e47b86a"
 
 [[package]]
+name = "memoffset"
+version = "0.6.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "59accc507f1338036a0477ef61afdae33cde60840f4dfe481319ce3ad116ddf9"
+dependencies = [
+ "autocfg 1.0.1",
+]
+
+[[package]]
 name = "mime"
 version = "0.3.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1504,6 +1541,19 @@ dependencies = [
  "rustls-native-certs",
  "webpki",
  "winapi",
+]
+
+[[package]]
+name = "nix"
+version = "0.23.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f305c2c2e4c39a82f7bf0bf65fb557f9070ce06781d4f2454295cc34b1c43188"
+dependencies = [
+ "bitflags",
+ "cc",
+ "cfg-if",
+ "libc",
+ "memoffset",
 ]
 
 [[package]]
@@ -2502,9 +2552,11 @@ dependencies = [
  "color-eyre",
  "derive_builder",
  "futures",
+ "futures-lite",
  "http",
  "hyper",
  "hyperlocal",
+ "nix",
  "opentelemetry",
  "opentelemetry-otlp",
  "opentelemetry-semantic-conventions",
@@ -2531,7 +2583,7 @@ version = "0.1.0"
 dependencies = [
  "async-nats",
  "bytes",
- "deadpool",
+ "deadpool 0.8.2",
  "deadpool-postgres",
  "lazy_static",
  "refinery",
