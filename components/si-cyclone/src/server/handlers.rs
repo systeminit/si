@@ -27,6 +27,7 @@ pub async fn readiness() -> Result<&'static str, StatusCode> {
     Ok(ReadinessStatus::Ready.into())
 }
 
+#[allow(clippy::unused_async)]
 pub async fn ws_watch(
     wsu: WebSocketUpgrade,
     Extension(watch_keepalive): Extension<Arc<WatchKeepalive>>,
@@ -45,6 +46,7 @@ pub async fn ws_watch(
     wsu.on_upgrade(move |socket| handle_socket(socket, watch_keepalive))
 }
 
+#[allow(clippy::unused_async)]
 pub async fn ws_execute_ping(wsu: WebSocketUpgrade) -> impl IntoResponse {
     async fn handle_socket(mut socket: WebSocket) {
         if let Err(ref err) = socket.send(Message::Text("pong".to_string())).await {

@@ -1,9 +1,8 @@
-use std::convert::TryInto;
-
 use color_eyre::Result;
-use si_cyclone::{telemetry, Config, IncomingStream, Server};
+use si_cyclone::{Config, IncomingStream, Server};
 
 mod args;
+mod telemetry;
 
 #[tokio::main]
 async fn main() -> Result<()> {

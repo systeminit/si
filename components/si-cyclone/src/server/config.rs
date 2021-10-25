@@ -50,6 +50,7 @@ impl Config {
     }
 
     /// Gets a reference to the config's watch.
+    #[must_use]
     pub fn watch(&self) -> Option<Duration> {
         self.watch
     }
@@ -79,6 +80,7 @@ impl Config {
     }
 
     /// Gets a reference to the config's limit requests.
+    #[must_use]
     pub fn limit_requests(&self) -> Option<u32> {
         self.limit_requests
     }
