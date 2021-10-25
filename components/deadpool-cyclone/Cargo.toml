@@ -1,7 +1,8 @@
 [package]
 name = "deadpool-cyclone"
 version = "0.1.0"
-edition = "2018"
+edition = "2021"
+rust-version = "1.56"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -19,4 +20,5 @@ tracing = { version = "0.1" }
 
 [dev-dependencies]
 tokio = { version = "1.12.0", features = ["full"] }
+tokio-test = "0.4.2"
 tracing-subscriber = { version = "0.2.19" }

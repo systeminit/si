@@ -6,12 +6,15 @@ use std::{
 
 use deadpool_cyclone::{
     client::CycloneClient,
-    instance::{Instance, LocalUdsInstance, LocalUdsInstanceSpec},
+    instance::{
+        cyclone::{LocalUdsInstance, LocalUdsInstanceSpec},
+        Instance,
+    },
     Manager, Pool,
 };
 use futures::{stream, StreamExt, TryStreamExt};
 use tokio::signal;
-use tracing::{error, info, instrument};
+use tracing::{error, info};
 use tracing_subscriber::{fmt, prelude::*, EnvFilter, Registry};
 
 #[tokio::main]

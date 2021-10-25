@@ -1,11 +1,29 @@
+//! Cyclone instance pooling implementation.
+//!
+
+#![warn(
+    missing_docs,
+    clippy::unwrap_in_result,
+    clippy::unwrap_used,
+    clippy::panic,
+    clippy::missing_panics_doc,
+    clippy::panic_in_result_fn
+)]
+#![allow(
+    clippy::missing_errors_doc,
+    clippy::module_inception,
+    clippy::module_name_repetitions
+)]
+
 use async_trait::async_trait;
 use deadpool::managed;
 use thiserror::Error;
 
-use self::instance::{Instance, InstanceSpec};
+use self::instance::{Instance, Spec};
 
 pub use si_cyclone::client;
 
+/// [`Instance`] implementations.
 pub mod instance;
 
 /// Type alias for using [`managed::Pool`] with Cyclone.
@@ -33,16 +51,15 @@ pub type Connection<S> = managed::Object<Manager<S>>;
 /// Type alias for using [`managed::RecycleResult`] with Cyclone.
 pub type RecycleResult<T> = managed::RecycleResult<ManagerError<T>>;
 
+/// Error type for [`Manager<S>`].
 #[derive(Debug, Error)]
 pub enum ManagerError<T> {
+    /// An Instance error.
     #[error("instance error")]
     Instance(#[source] T),
 }
 
-/// [`Manager`] for creating and recycling instances of Cyclone connections (i.e. [`Instance`]s).
-///
-/// [`Manager`]: managed::Manager
-/// [`Instance`]: self::instance::Instance
+/// [`Manager`] for creating and recycling generic [`Instance`]s.
 #[derive(Debug)]
 pub struct Manager<S> {
     spec: S,
@@ -58,7 +75,7 @@ impl<S> Manager<S> {
 #[async_trait]
 impl<B, S, I, E> managed::Manager for Manager<S>
 where
-    S: InstanceSpec<Error = E, Instance = I> + Send + Sync,
+    S: Spec<Error = E, Instance = I> + Send + Sync,
     I: Instance<SpecBuilder = B, Error = E> + Send,
 {
     type Type = I;
