@@ -1,4 +1,4 @@
-use std::{convert::TryFrom, net::SocketAddr, path::PathBuf, time::Duration};
+use std::{net::SocketAddr, path::PathBuf, time::Duration};
 
 use clap::{AppSettings, ArgSettings, Clap};
 use si_cyclone::{Config, ConfigError, IncomingStream};
@@ -18,10 +18,11 @@ pub(crate) fn parse() -> Args {
     global_setting = AppSettings::UnifiedHelpMessage,
     max_term_width = 100,
 )]
+#[allow(clippy::struct_excessive_bools)]
 pub(crate) struct Args {
     /// Sets the verbosity mode.
     ///
-    /// Multiple -v options increase verbosity. The maximum is 3.
+    /// Multiple -v options increase verbosity. The maximum is 4.
     #[clap(short = 'v', long = "verbose", parse(from_occurrences))]
     pub(crate) verbose: usize,
 

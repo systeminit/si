@@ -23,7 +23,7 @@ pub use readiness::{ReadinessStatus, ReadinessStatusParseError};
 #[cfg(feature = "server")]
 mod server;
 #[cfg(feature = "server")]
-pub use server::{telemetry, Config, ConfigError, IncomingStream, Server};
+pub use server::{Config, ConfigError, IncomingStream, Server};
 
 #[cfg(feature = "client")]
 pub mod client;

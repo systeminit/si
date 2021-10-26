@@ -1,4 +1,4 @@
-use std::{io, process::ExitStatus, time::Duration};
+use std::{io, num::TryFromIntError, process::ExitStatus, time::Duration};
 
 use nix::{sys::signal, unistd::Pid};
 use thiserror::Error;
@@ -13,6 +13,8 @@ pub use nix::sys::signal::Signal;
 pub enum ShutdownError {
     #[error("failed to wait on child process")]
     ChildWait(#[source] io::Error),
+    #[error("failed to convert pid from u32 to i32--overflow")]
+    PidOverflow(#[from] TryFromIntError),
     #[error("failed to signal child")]
     Signal(#[from] nix::errno::Errno),
     #[error("sending SIGKILL failed")]
@@ -26,7 +28,10 @@ pub async fn child_shutdown(
 ) -> Result<ExitStatus, ShutdownError> {
     if let (Some(signal), Some(pid)) = (signal, child.id()) {
         trace!("sending {} to child process {}", signal, pid);
-        signal::kill(Pid::from_raw(pid as i32), signal)?;
+        // Thanks, Clippy!
+        // See: https://rust-lang.github.io/rust-clippy/master/index.html#cast_possible_wrap
+        let pid = i32::try_from(pid)?;
+        signal::kill(Pid::from_raw(pid), signal)?;
     }
 
     match time::timeout(

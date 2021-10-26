@@ -1,6 +1,5 @@
 use std::{
     borrow::Cow,
-    convert::TryFrom,
     env,
     ffi::{OsStr, OsString},
     io,
@@ -22,6 +21,7 @@ pub enum CanonicalCommandError {
 pub struct CanonicalCommand(PathBuf);
 
 impl CanonicalCommand {
+    #[must_use]
     pub fn as_path(&self) -> &Path {
         self.0.as_path()
     }
@@ -118,22 +118,8 @@ fn canonicalize_command(program: impl AsRef<OsStr>) -> Result<PathBuf, Canonical
 fn find_command(program: impl AsRef<OsStr>) -> Result<PathBuf, CanonicalCommandError> {
     let path = Path::new(program.as_ref());
 
-    if path.is_absolute() {
-        if path.is_file() {
-            Ok(path.to_path_buf())
-        } else {
-            Err(CanonicalCommandError::NotFound(
-                program.as_ref().to_string_lossy().to_string(),
-            ))
-        }
-    } else if path.is_relative() {
-        if path.is_file() {
-            Ok(path.to_path_buf())
-        } else {
-            Err(CanonicalCommandError::NotFound(
-                program.as_ref().to_string_lossy().to_string(),
-            ))
-        }
+    if path.is_file() {
+        Ok(path.to_path_buf())
     } else {
         env::split_paths(&env::var("PATH").unwrap_or_else(|_| "".to_string()))
             .map(|path| path.join(program.as_ref()))

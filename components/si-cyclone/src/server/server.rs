@@ -51,7 +51,9 @@ impl Server<(), ()> {
                     shutdown_rx,
                 })
             }
-            wrong => Err(ServerError::WrongIncomingStream("http", wrong.clone())),
+            wrong @ IncomingStream::UnixDomainSocket(_) => {
+                Err(ServerError::WrongIncomingStream("http", wrong.clone()))
+            }
         }
     }
 
@@ -72,7 +74,9 @@ impl Server<(), ()> {
                     shutdown_rx,
                 })
             }
-            wrong => Err(ServerError::WrongIncomingStream("http", wrong.clone())),
+            wrong @ IncomingStream::HTTPSocket(_) => {
+                Err(ServerError::WrongIncomingStream("http", wrong.clone()))
+            }
         }
     }
 }

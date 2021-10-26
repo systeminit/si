@@ -216,9 +216,9 @@ impl ResolverFunctionServerExecutionClosing {
             (Ok(_), Ok(_), Ok(_)) => Ok(()),
 
             // One of the steps failed, return its error
-            (Ok(_), Ok(_), Err(err)) => Err(err),
-            (Ok(_), Err(err), Ok(_)) => Err(err),
-            (Err(err), Ok(_), Ok(_)) => Err(err),
+            (Ok(_), Ok(_), Err(err)) | (Ok(_), Err(err), Ok(_)) | (Err(err), Ok(_), Ok(_)) => {
+                Err(err)
+            }
 
             // 2/3 steps errored so warn about the lower priority error and return the highest
             // priority

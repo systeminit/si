@@ -16,14 +16,14 @@ use thiserror::Error;
 use tracing_subscriber::{prelude::*, util::TryInitError, Registry};
 
 #[derive(Debug, Error)]
-pub enum TelemetryInitError {
+pub enum InitError {
     #[error("{0}")]
     Trace(#[from] TraceError),
     #[error("{0}")]
     TryInit(#[from] TryInitError),
 }
 
-type Result<T> = std::result::Result<T, TelemetryInitError>;
+type Result<T> = std::result::Result<T, InitError>;
 
 pub fn init() -> Result<()> {
     global::set_text_map_propagator(TraceContextPropagator::new());
