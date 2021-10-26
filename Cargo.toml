@@ -3,14 +3,15 @@ debug = true
 
 [workspace]
 members = [
+  "cmd/cyclone",
   "components/bytes-lines-codec",
   "components/deadpool-cyclone",
-  "components/si-cyclone",
   "components/si-data",
   "components/si-model",
   "components/si-sdf",
   "components/si-settings",
   "components/si-veritech",
+  "pkg/cyclone",
 ]
 
 [patch.crates-io]

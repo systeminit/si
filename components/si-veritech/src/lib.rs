@@ -11,7 +11,7 @@
     clippy::module_name_repetitions
 )]
 
-pub use si_cyclone::resolver_function::*;
+pub use cyclone::resolver_function::*;
 
 #[cfg(feature = "server")]
 pub mod server;

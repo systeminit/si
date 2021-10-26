@@ -23,8 +23,9 @@ A-skopeo:
 #
 # System Initiative components
 #
-A-si-cyclone:
-  - components/si-cyclone/**/*
+A-cyclone:
+  - cmd/cyclone/**/*
+  - pkg/cyclone/**/*
   - .prettierrc.js
 A-si-data:
   - components/si-data/**/*

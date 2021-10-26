@@ -6,9 +6,7 @@ use std::{
 };
 
 use async_trait::async_trait;
-use derive_builder::Builder;
-use futures::StreamExt;
-use si_cyclone::{
+use cyclone::{
     canonical_command::CanonicalCommand,
     client::{
         Connection, PingExecution, ResolverFunctionExecution, UnixStream, Watch, WatchError,
@@ -18,6 +16,8 @@ use si_cyclone::{
     resolver_function::ResolverFunctionRequest,
     Client, ClientError, CycloneClient, LivenessStatus, ReadinessStatus, UdsClient,
 };
+use derive_builder::Builder;
+use futures::StreamExt;
 use tempfile::{NamedTempFile, TempPath};
 use thiserror::Error;
 use tokio::{

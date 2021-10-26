@@ -26,7 +26,7 @@ server = [
 futures = { version = "0.3.17"}
 serde = "1.0.123"
 serde_json = { version = "1.0.64", features = ["preserve_order"] }
-si-cyclone = { path = "../si-cyclone", default-features = false, features = ["client"] }
+cyclone = { path = "../../pkg/cyclone", default-features = false, features = ["client"] }
 si-data = { path = "../si-data" }
 si-settings = { path = "../si-settings" }
 thiserror = { version = "1.0" }

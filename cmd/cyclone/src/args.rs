@@ -1,7 +1,7 @@
 use std::{net::SocketAddr, path::PathBuf, time::Duration};
 
 use clap::{AppSettings, ArgSettings, Clap};
-use si_cyclone::{Config, ConfigError, IncomingStream};
+use cyclone::{Config, ConfigError, IncomingStream};
 
 /// Parse, validate, and return the CLI arguments as a typed struct.
 pub(crate) fn parse() -> Args {
@@ -14,6 +14,7 @@ pub(crate) fn parse() -> Args {
 /// small functions in a backing language server.
 #[derive(Clap, Debug)]
 #[clap(
+    name = "cyclone",
     global_setting = AppSettings::ColoredHelp,
     global_setting = AppSettings::UnifiedHelpMessage,
     max_term_width = 100,

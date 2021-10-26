@@ -381,7 +381,7 @@ impl Default for ClientConfig {
 
 #[cfg(test)]
 mod tests {
-    use std::{borrow::Cow, env};
+    use std::{borrow::Cow, env, path::Path};
 
     use super::*;
     use crate::{
@@ -403,10 +403,18 @@ mod tests {
     }
 
     fn lang_server_path() -> Cow<'static, str> {
-        match env::var("SI_TEST_LANG_SERVER").ok() {
-            Some(val) => Cow::Owned(val),
-            None => Cow::Borrowed("../si-lang-js/target/si-lang-js"),
-        }
+        const ENVVAR: &str = "SI_TEST_LANG_SERVER";
+        const DEFAULT: &str = "../../components/si-lang-js/target/si-lang-js";
+
+        env::var(ENVVAR).ok().map(Cow::Owned).unwrap_or_else(|| {
+            if !Path::new(DEFAULT).exists() {
+                panic!(
+                    "lang server not yet built at {}. Override default by setting {}",
+                    DEFAULT, ENVVAR
+                );
+            }
+            Cow::Borrowed(DEFAULT)
+        })
     }
 
     async fn uds_server(
