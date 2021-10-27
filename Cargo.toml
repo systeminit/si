@@ -6,12 +6,12 @@ members = [
   "cmd/cyclone",
   "cmd/veritech",
   "components/bytes-lines-codec",
-  "components/deadpool-cyclone",
   "components/si-data",
   "components/si-model",
   "components/si-sdf",
   "components/si-settings",
   "pkg/cyclone",
+  "pkg/deadpool-cyclone",
   "pkg/veritech",
 ]
 

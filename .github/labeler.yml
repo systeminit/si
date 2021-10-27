@@ -27,6 +27,9 @@ A-cyclone:
   - cmd/cyclone/**/*
   - pkg/cyclone/**/*
   - .prettierrc.js
+A-deadpool-cyclone:
+  - pkg/deadpool-cyclone/**/*
+  - .prettierrc.js
 A-si-data:
   - components/si-data/**/*
   - .cargo/**/*
