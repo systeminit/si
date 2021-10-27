@@ -1,4 +1,5 @@
 use clap::{AppSettings, Clap};
+use sdf::{Config, ConfigError};
 
 /// Parse, validate, and return the CLI arguments as a typed struct.
 pub(crate) fn parse() -> Args {
@@ -22,4 +23,14 @@ pub(crate) struct Args {
     /// Multiple -v options increase verbosity. The maximum is 4.
     #[clap(short = 'v', long = "verbose", parse(from_occurrences))]
     pub(crate) verbose: usize,
+}
+
+impl TryFrom<Args> for Config {
+    type Error = ConfigError;
+
+    fn try_from(value: Args) -> Result<Self, Self::Error> {
+        let builder = Self::builder();
+
+        builder.build().map_err(Into::into)
+    }
 }

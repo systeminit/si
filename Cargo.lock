@@ -2459,6 +2459,19 @@ dependencies = [
 [[package]]
 name = "sdf"
 version = "0.1.0"
+dependencies = [
+ "axum",
+ "derive_builder",
+ "futures",
+ "hyper",
+ "nix",
+ "serde 1.0.130",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tower-http",
+ "tracing",
+]
 
 [[package]]
 name = "sdf-cli"

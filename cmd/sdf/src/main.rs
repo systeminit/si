@@ -1,5 +1,5 @@
 use color_eyre::Result;
-use tracing::debug;
+use sdf::{Config, IncomingStream, Server};
 
 mod args;
 mod telemetry;
@@ -8,10 +8,16 @@ mod telemetry;
 async fn main() -> Result<()> {
     color_eyre::install()?;
     telemetry::init()?;
-    let args = args::parse();
-    debug!(arguments = ?args);
+    let config = args::parse().try_into()?;
 
-    println!("Hello, world!");
+    run(config).await
+}
+
+async fn run(config: Config) -> Result<()> {
+    match config.incoming_stream() {
+        IncomingStream::HTTPSocket(_) => Server::http(config)?.run().await?,
+        IncomingStream::UnixDomainSocket(_) => Server::uds(config).await?.run().await?,
+    }
 
     Ok(())
 }
