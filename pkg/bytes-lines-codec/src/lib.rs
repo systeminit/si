@@ -1,8 +1,86 @@
+//! Frame a stream of bytes which are split by a newline character.
+//!
+//! This implementation has drawn heavy inspiration from both the `LengthDelimitedCodec` and the
+//! `LinesCodec` in [`tokio-util`].
+//!
+//! [`tokio-util`]: https://docs.rs/tokio-util/*/tokio_util/codec/index.html
+//!
+//! # Getting started
+//!
+//! If implementing a protocol from scratch, using newline delimited framing is an easy way to get
+//! started. [`BytesLinesCodec::new()`] will return a newline delimited codec using default
+//! configuration values.  This can then be used to construct a framer to adapt a full-duplex byte
+//! stream into a stream of frames.
+//!
+//! ```
+//! use tokio::io::{AsyncRead, AsyncWrite};
+//! use tokio_util::codec::Framed;
+//! use bytes_lines_codec::BytesLinesCodec;
+//!
+//! fn bind_transport<T: AsyncRead + AsyncWrite>(io: T)
+//!     -> Framed<T, BytesLinesCodec>
+//! {
+//!     Framed::new(io, BytesLinesCodec::new())
+//! }
+//! # pub fn main() {}
+//! ```
+//!
+//! The returned transport implements `Sink + Stream` for `BytesMut`.
+//!
+//! Specifically, given the following:
+//!
+//! ```
+//! use tokio::io::{AsyncRead, AsyncWrite};
+//! use tokio_util::codec::Framed;
+//! use bytes_lines_codec::BytesLinesCodec;
+//!
+//! use futures::SinkExt;
+//! use bytes::Bytes;
+//!
+//! async fn write_frame<T>(io: T) -> Result<(), Box<dyn std::error::Error>>
+//! where
+//!     T: AsyncRead + AsyncWrite + Unpin,
+//! {
+//!     let mut transport = Framed::new(io, BytesLinesCodec::new());
+//!     let frame = Bytes::from("hello world");
+//!
+//!     transport.send(frame).await?;
+//!     Ok(())
+//! }
+//! ```
+//!
+//! The encoded frame will look like this:
+//!
+//! ```text
+//! +---- data ---+----+
+//! | hello world | \n |
+//! +-------------+----+
+//! ```
+
+#![warn(
+    missing_docs,
+    clippy::unwrap_in_result,
+    clippy::unwrap_used,
+    clippy::panic,
+    clippy::missing_panics_doc,
+    clippy::panic_in_result_fn
+)]
+#![allow(
+    clippy::missing_errors_doc,
+    clippy::module_inception,
+    clippy::module_name_repetitions
+)]
+
 use std::{cmp, fmt, io};
 
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use tokio_util::codec::{Decoder, Encoder};
 
+/// A codec for frames delimited by a newline character.
+///
+/// See [module level] documentation for more detail.
+///
+/// [module level]: index.html
 #[derive(Debug)]
 pub struct BytesLinesCodec {
     next_index: usize,
@@ -22,10 +100,26 @@ impl Default for BytesLinesCodec {
 }
 
 impl BytesLinesCodec {
+    /// Creates a new `BytesLinesCodec` with the default configuration values.
+    ///
+    /// # Note
+    ///
+    /// The returned `BytesLinesCodec` will have a maximum length of 8MB for a buffered line in an
+    /// attempt to prevent a potential security risk (that is, a user provided stream that contains
+    /// no newlines could potential be unbounded and could consume all memory for the process). To
+    /// set a different value, see [`Self::new_with_max_length()`].
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Builds a `BytesLinesCodec` with a maximum line length limit.
+    ///
+    /// When set, calls to [`BytesLinesCodec::decode()`] will return a [`BytesLinesCodecError`]
+    /// when a line exceeds the length limit. Subsequent calls will discard up to the `limit` bytes
+    /// from that line until a newline character is reached, returning `None` until the line over
+    /// the limit has been discarded. After that point, calls to `decode` will function as normal.
+    #[must_use]
     pub fn new_with_max_length(max_length: usize) -> Self {
         Self {
             max_length,
@@ -133,6 +227,7 @@ impl Encoder<Bytes> for BytesLinesCodec {
     }
 }
 
+/// An error when the number of bytes read is more than max frame length.
 pub struct BytesLinesCodecError {
     _priv: (),
 }
