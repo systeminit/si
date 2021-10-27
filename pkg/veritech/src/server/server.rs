@@ -49,7 +49,9 @@ impl Server<()> {
                     cyclone_client,
                 })
             }
-            wrong => Err(ServerError::WrongCycloneStream("http", wrong.clone())),
+            wrong @ CycloneStream::UnixDomainSocket(_) => {
+                Err(ServerError::WrongCycloneStream("http", wrong.clone()))
+            }
         }
     }
 
@@ -66,7 +68,9 @@ impl Server<()> {
                     cyclone_client,
                 })
             }
-            wrong => Err(ServerError::WrongCycloneStream("http", wrong.clone())),
+            wrong @ CycloneStream::HttpSocket(_) => {
+                Err(ServerError::WrongCycloneStream("http", wrong.clone()))
+            }
         }
     }
 }
