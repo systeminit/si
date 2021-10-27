@@ -9,29 +9,47 @@ A-docs:
   - docs/**/*
 
 #
-# Third-party development images
+# System Initiative apps (i.e. webapps/ios apps/android apps)
 #
-A-nats:
-  - components/nats/**/*
-A-otelcol:
-  - components/otelcol/**/*
-A-postgres:
-  - components/postgres/**/*
-A-skopeo:
-  - components/skopeo/**/*
+A-si-web:
+  - components/si-web-app/**/*
+  - .prettierrc.js
 
 #
-# System Initiative components
+# System Initiative cmds (i.e. services/programs/binaries)
 #
 A-cyclone:
   - cmd/cyclone/**/*
   - pkg/cyclone/**/*
-  - .prettierrc.js
-A-deadpool-cyclone:
-  - pkg/deadpool-cyclone/**/*
-  - .prettierrc.js
+  - .cargo/**/*
+  - Cargo.lock
+  - rust-toolchain
+  - rustfmt.toml
+A-si-sdf:
+  - components/si-sdf/**/*
+  - .cargo/**/*
+  - Cargo.lock
+  - rust-toolchain
+  - rustfmt.toml
+A-veritech:
+  - cmd/veritech/**/*
+  - pkg/veritech/**/*
+  - .cargo/**/*
+  - Cargo.lock
+  - rust-toolchain
+  - rustfmt.toml
+
+#
+# System Initiative pkgs (i.e. crates/packages/libraries)
+#
 A-si-data:
   - components/si-data/**/*
+  - .cargo/**/*
+  - Cargo.lock
+  - rust-toolchain
+  - rustfmt.toml
+A-deadpool-cyclone:
+  - pkg/deadpool-cyclone/**/*
   - .cargo/**/*
   - Cargo.lock
   - rust-toolchain
@@ -48,34 +66,27 @@ A-si-model:
   - Cargo.lock
   - rust-toolchain
   - rustfmt.toml
-A-si-model-test:
-  - components/si-model-test/**/*
-  - .cargo/**/*
-  - Cargo.lock
-  - rust-toolchain
-  - rustfmt.toml
 A-si-pedant:
   - components/si-pedant/**/*
   - .prettierrc.js
 A-si-registry:
   - components/si-registry/**/*
   - .prettierrc.js
-A-si-sdf:
-  - components/si-sdf/**/*
-  - .cargo/**/*
-  - Cargo.lock
-  - rust-toolchain
-  - rustfmt.toml
 A-si-settings:
   - components/si-settings/**/*
   - .cargo/**/*
   - Cargo.lock
   - rust-toolchain
   - rustfmt.toml
-A-veritech:
-  - cmd/veritech/**/*
-  - pkg/veritech/**/*
-  - .prettierrc.js
-A-si-web:
-  - components/si-web-app/**/*
-  - .prettierrc.js
+
+#
+# Third-party development images
+#
+A-nats:
+  - components/nats/**/*
+A-otelcol:
+  - components/otelcol/**/*
+A-postgres:
+  - components/postgres/**/*
+A-skopeo:
+  - components/skopeo/**/*
