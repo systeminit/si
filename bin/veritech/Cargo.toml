@@ -1,19 +1,21 @@
 [package]
-name = "sdf-cli"
+name = "veritech-cli"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.56"
 publish = false
 
 [[bin]]
-name = "sdf"
+name = "veritech"
 path = "src/main.rs"
 
 [dependencies]
 clap = { version = "3.0.0-beta.4" }
 color-eyre = { version = "0.5.11" }
-sdf = { path = "../../pkg/sdf" }
+# TODO(fnichol): I *think* we can boil this off?
+si-settings = { path = "../../lib/si-settings" }
 tokio = { version = "1.12.0", features = ["full"] }
+veritech = { path = "../../lib/veritech", features = ["server"] }
 
 # TODO(fnichol): extract into `pkg/telemetry`
 opentelemetry = { version = "0.16.0", features = ["rt-tokio", "trace"] }

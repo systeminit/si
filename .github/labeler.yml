@@ -16,65 +16,56 @@ A-si-web:
   - .prettierrc.js
 
 #
-# System Initiative cmds (i.e. services/programs/binaries)
+# System Initiative bins (i.e. services/programs/binaries)
 #
 A-cyclone:
-  - cmd/cyclone/**/*
-  - pkg/cyclone/**/*
+  - bin/cyclone/**/*
+  - lib/cyclone/**/*
   - .cargo/**/*
   - Cargo.lock
   - rust-toolchain
   - rustfmt.toml
 A-sdf:
-  - cmd/sdf/**/*
-  - pkg/sdf/**/*
+  - bin/sdf/**/*
+  - lib/sdf/**/*
   - .cargo/**/*
   - Cargo.lock
   - rust-toolchain
   - rustfmt.toml
 A-veritech:
-  - cmd/veritech/**/*
-  - pkg/veritech/**/*
+  - bin/veritech/**/*
+  - lib/veritech/**/*
   - .cargo/**/*
   - Cargo.lock
   - rust-toolchain
   - rustfmt.toml
+A-lang-js:
+  - bin/lang-js/**/*
+  - .prettierrc.js
 
 #
-# System Initiative pkgs (i.e. crates/packages/libraries)
+# System Initiative libs (i.e. crates/packages/libraries)
 #
 A-si-data:
-  - components/si-data/**/*
+  - lib/si-data/**/*
   - .cargo/**/*
   - Cargo.lock
   - rust-toolchain
   - rustfmt.toml
 A-deadpool-cyclone:
-  - pkg/deadpool-cyclone/**/*
+  - lib/deadpool-cyclone/**/*
   - .cargo/**/*
   - Cargo.lock
   - rust-toolchain
   - rustfmt.toml
-A-si-entity:
-  - components/si-entity/**/*
-  - .prettierrc.js
-A-si-inference:
-  - components/si-inference/**/*
-  - .prettierrc.js
 A-si-model:
-  - components/si-model/**/*
+  - lib/si-model/**/*
   - .cargo/**/*
   - Cargo.lock
   - rust-toolchain
   - rustfmt.toml
-A-si-pedant:
-  - components/si-pedant/**/*
-  - .prettierrc.js
-A-si-registry:
-  - components/si-registry/**/*
-  - .prettierrc.js
 A-si-settings:
-  - components/si-settings/**/*
+  - lib/si-settings/**/*
   - .cargo/**/*
   - Cargo.lock
   - rust-toolchain
@@ -84,10 +75,10 @@ A-si-settings:
 # Third-party development images
 #
 A-nats:
-  - components/nats/**/*
+  - component/nats/**/*
 A-otelcol:
-  - components/otelcol/**/*
+  - component/otelcol/**/*
 A-postgres:
-  - components/postgres/**/*
+  - component/postgres/**/*
 A-skopeo:
-  - components/skopeo/**/*
+  - component/skopeo/**/*

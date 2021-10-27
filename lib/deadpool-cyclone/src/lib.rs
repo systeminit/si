@@ -101,7 +101,7 @@ mod tests {
         let spec = LocalUdsInstance::spec()
             .try_cyclone_cmd_path("../../target/debug/cyclone")
             .expect("failed to find cyclone program")
-            .try_lang_server_cmd_path("../../components/si-lang-js/target/si-lang-js")
+            .try_lang_server_cmd_path("../../bin/lang-js/target/lang-js")
             .expect("failed to find lang server program")
             .limit_requests(2)
             .ping()

@@ -404,7 +404,7 @@ mod tests {
 
     fn lang_server_path() -> Cow<'static, str> {
         const ENVVAR: &str = "SI_TEST_LANG_SERVER";
-        const DEFAULT: &str = "../../components/si-lang-js/target/si-lang-js";
+        const DEFAULT: &str = "../../bin/lang-js/target/lang-js";
 
         env::var(ENVVAR).ok().map(Cow::Owned).unwrap_or_else(|| {
             if !Path::new(DEFAULT).exists() {
