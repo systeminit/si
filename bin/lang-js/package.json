@@ -1,0 +1,63 @@
+{
+  "name": "lang-js",
+  "private": "true",
+  "version": "0.1.0",
+  "description": "Inference for Entities",
+  "main": "dist/index.js",
+  "bin": {
+    "lang-js": "./dist/index.js"
+  },
+  "pkg": {
+    "scripts": "dist/**/*.js",
+    "assets": [
+      "node_modules/commander/**/*.js",
+      "node_modules/debug/**/*.js",
+      "node_modules/vm2/**/*",
+      "node_modules/lodash/**/*.js"
+    ]
+  },
+  "scripts": {
+    "clean": "rm -rf ./dist",
+    "build": "tsc",
+    "build:clean": "npm run clean && npm run build",
+    "build:watch": "npm run clean && tsc --watch",
+    "watch": "npm run build:watch",
+    "test": "jest",
+    "test:watch": "jest --watch --forceExit",
+    "test:debug": "node --inspect-brk node_modules/.bin/jest --runInBand",
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "fmt": "prettier --write .",
+    "fmt:check": "prettier --check .",
+    "run": "npm run build && node ./dist/index.js",
+    "package": "npm run build && pkg . --output ./target/lang-js"
+  },
+  "author": "System Initiative, Inc.",
+  "license": "Proprietary",
+  "devDependencies": {
+    "@types/debug": "^4.1.5",
+    "@types/jest": "^26.0.20",
+    "@types/lodash": "^4.14.168",
+    "@typescript-eslint/eslint-plugin": "^4.17.0",
+    "@typescript-eslint/parser": "^4.17.0",
+    "eslint": "^7.21.0",
+    "eslint-config-prettier": "^8.1.0",
+    "eslint-plugin-jest": "^24.1.9",
+    "eslint-plugin-prettier": "^3.3.1",
+    "jest": "^26.6.3",
+    "pkg": "^5.3.3",
+    "prettier": "^2.2.1",
+    "ts-jest": "^26.5.3",
+    "typescript": "^4.2.3"
+  },
+  "dependencies": {
+    "commander": "^8.2.0",
+    "debug": "^4.3.1",
+    "lodash": "^4.17.21",
+    "vm2": "^3.9.3"
+  },
+  "volta": {
+    "node": "16.5.0",
+    "npm": "7.20.3"
+  }
+}

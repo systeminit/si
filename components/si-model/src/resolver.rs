@@ -4,13 +4,14 @@ use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::DfsPostOrder;
 use petgraph::EdgeDirection::Outgoing;
 use serde::{Deserialize, Serialize};
-use si_data::{NatsConn, NatsTxn, NatsTxnError, PgError, PgTxn};
 use strum_macros::{Display, IntoStaticStr};
 use thiserror::Error;
 
+use si_data::{NatsConn, NatsTxn, NatsTxnError, PgError, PgTxn};
+
+use crate::prop_variant::PropVariant;
 use crate::resolver::ResolverError::MismatchedResolverBackend;
-use crate::{MinimalStorable, Prop, SchemaMap, SiStorable};
-use std::option::Option::None;
+use crate::{MinimalStorable, Prop, PropKind, SchemaMap, SiStorable};
 
 const RESOLVER_BY_NAME: &str = include_str!("./queries/resolver_by_name.sql");
 const RESOLVER_BINDING_VALUES_FOR_ENTITY: &str =
@@ -56,7 +57,7 @@ pub enum ResolverError {
     #[error("Schema error: {0}")]
     SchemaError(String),
     #[error("Mismatched Resolver Backend Binding; Backend {0:?} does not match Prop {1:?}")]
-    MismatchedResolverBackend(ResolverBackendKindBinding, Prop),
+    MismatchedResolverBackend(ResolverBackendKindBinding, PropVariant),
     #[error("Map has item prop, but resolver binding value is lacking a key: {0}")]
     MissingResolverBindingValueMapKey(String),
     #[error("Missing Resolver Binding Value for required Resolver Binding: {0:?})")]
@@ -78,7 +79,7 @@ pub enum ResolverError {
     )]
     MismatchedFunctionResultAndSchema(Option<Prop>, serde_json::Value),
     #[error("veritech error: {0:?}")]
-    VeritechError(#[from] si_veritech_2::client::VeritechClientError),
+    VeritechError(#[from] veritech::client::VeritechClientError),
     #[error("function error: {0} {1}")]
     FunctionError(String, String),
 }
@@ -250,8 +251,8 @@ pub struct ResolverBinding {
     pub id: String,
     pub resolver_id: String,
     pub entity_id: Option<String>,
-    pub schema_id: String,
-    pub prop_id: Option<String>,
+    pub schema_variant_id: Option<String>,
+    pub prop_variant_id: Option<String>,
     pub parent_resolver_binding_id: Option<String>,
     pub change_set_id: Option<String>,
     pub edit_session_id: Option<String>,
@@ -267,8 +268,8 @@ impl ResolverBinding {
         nats: &NatsTxn,
         resolver_id: impl Into<String>,
         backend_binding: ResolverBackendKindBinding,
-        schema_id: String,
-        prop_id: Option<String>,
+        schema_variant_id: Option<String>,
+        prop_variant_id: Option<String>,
         parent_resolver_binding_id: Option<String>,
         entity_id: Option<String>,
         system_id: Option<String>,
@@ -278,29 +279,29 @@ impl ResolverBinding {
     ) -> ResolverResult<Self> {
         let resolver_id = resolver_id.into();
 
-        if let Some(ref prop_id) = prop_id {
-            let prop = Prop::get_by_id(&txn, &prop_id)
+        if let Some(ref pv_id) = prop_variant_id {
+            let prop_variant = PropVariant::get_by_id(&txn, &pv_id)
                 .await
                 .map_err(|e| ResolverError::SchemaError(e.to_string()))?;
-            let valid = match (&prop, &backend_binding) {
+            let valid = match (&prop_variant.kind, &backend_binding) {
                 (_, ResolverBackendKindBinding::Unset)
                 | (_, ResolverBackendKindBinding::Json(_))
                 | (_, ResolverBackendKindBinding::Js(_))
-                | (Prop::Map(_), ResolverBackendKindBinding::EmptyObject)
-                | (Prop::Map(_), ResolverBackendKindBinding::Object(_))
-                | (Prop::Array(_), ResolverBackendKindBinding::Array(_))
-                | (Prop::Array(_), ResolverBackendKindBinding::EmptyArray)
-                | (Prop::String(_), ResolverBackendKindBinding::String(_))
-                | (Prop::Boolean(_), ResolverBackendKindBinding::Boolean(_))
-                | (Prop::Object(_), ResolverBackendKindBinding::Object(_))
-                | (Prop::Object(_), ResolverBackendKindBinding::EmptyObject)
-                | (Prop::Number(_), ResolverBackendKindBinding::Number(_)) => true,
+                | (PropKind::Map, ResolverBackendKindBinding::EmptyObject)
+                | (PropKind::Map, ResolverBackendKindBinding::Object(_))
+                | (PropKind::Array, ResolverBackendKindBinding::Array(_))
+                | (PropKind::Array, ResolverBackendKindBinding::EmptyArray)
+                | (PropKind::String, ResolverBackendKindBinding::String(_))
+                | (PropKind::Boolean, ResolverBackendKindBinding::Boolean(_))
+                | (PropKind::Object, ResolverBackendKindBinding::Object(_))
+                | (PropKind::Object, ResolverBackendKindBinding::EmptyObject)
+                | (PropKind::Number, ResolverBackendKindBinding::Number(_)) => true,
                 _ => false,
             };
             if !valid {
                 return Err(MismatchedResolverBackend(
                     backend_binding.clone(),
-                    prop.clone(),
+                    prop_variant.clone(),
                 ));
             }
         }
@@ -311,8 +312,8 @@ impl ResolverBinding {
                 "SELECT object FROM resolver_binding_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
                 &[
                     &resolver_id,
-                    &schema_id,
-                    &prop_id,
+                    &schema_variant_id,
+                    &prop_variant_id,
                     &parent_resolver_binding_id,
                     &entity_id,
                     &backend_binding,
@@ -384,17 +385,16 @@ impl ResolverBinding {
             ResolverBackendKindBinding::Js(context) => {
                 let conn: NatsConn = nats.connection.clone().into();
                 let result =
-                    si_veritech_2::client::run_function(&conn, "resolver", context.code.clone())
-                        .await?;
+                    veritech::client::run_function(&conn, "resolver", context.code.clone()).await?;
                 match result {
-                    si_veritech_2::FunctionResult::Success(success) => {
+                    veritech::FunctionResult::Success(success) => {
                         if success.unset {
                             return Ok(None);
                         } else {
                             success.data
                         }
                     }
-                    si_veritech_2::FunctionResult::Failure(failure) => {
+                    veritech::FunctionResult::Failure(failure) => {
                         return Err(ResolverError::FunctionError(
                             failure.error.name,
                             failure.error.message,
@@ -416,7 +416,7 @@ impl ResolverBinding {
     }
 
     pub fn is_schema_root(&self) -> bool {
-        self.prop_id.is_none()
+        self.prop_variant_id.is_none()
     }
 }
 
@@ -450,8 +450,8 @@ pub struct ResolverBindingValue {
     pub resolver_binding_id: String,
     pub resolver_id: String,
     pub entity_id: Option<String>,
-    pub schema_id: String,
-    pub prop_id: Option<String>,
+    pub schema_variant_id: Option<String>,
+    pub prop_variant_id: Option<String>,
     pub parent_resolver_binding_id: Option<String>,
     pub change_set_id: Option<String>,
     pub edit_session_id: Option<String>,
@@ -462,6 +462,7 @@ pub struct ResolverBindingValue {
     pub si_storable: MinimalStorable,
 }
 
+// TODO: Rebuild ResolverBindings and ResolverBindingValues, and refactor
 impl ResolverBindingValue {
     pub async fn new(
         txn: &PgTxn<'_>,
@@ -470,8 +471,8 @@ impl ResolverBindingValue {
         obj_value: serde_json::Value,
         resolver_binding_id: impl Into<String>,
         resolver_id: impl Into<String>,
-        schema_id: String,
-        prop_id: Option<String>,
+        schema_variant_id: Option<String>,
+        prop_variant_id: Option<String>,
         parent_resolver_binding_id: Option<String>,
         entity_id: Option<String>,
         system_id: Option<String>,
@@ -490,8 +491,8 @@ impl ResolverBindingValue {
                     &obj_value,
                     &resolver_binding_id,
                     &resolver_id,
-                    &schema_id,
-                    &prop_id,
+                    &schema_variant_id,
+                    &prop_variant_id,
                     &parent_resolver_binding_id,
                     &entity_id,
                     &system_id,
@@ -508,17 +509,17 @@ impl ResolverBindingValue {
     }
 
     pub fn is_schema_root(&self) -> bool {
-        self.prop_id.is_none()
+        self.prop_variant_id.is_none()
     }
 
     pub fn takes_precedence(&self, other: &ResolverBindingValue) -> ResolverResult<bool> {
-        if self.schema_id != other.schema_id {
+        if self.schema_variant_id != other.schema_variant_id {
             return Err(ResolverError::MismatchedResolverBindingValue(
                 self.clone(),
                 other.clone(),
             ));
         }
-        if self.prop_id != other.prop_id {
+        if self.prop_variant_id != other.prop_variant_id {
             return Err(ResolverError::MismatchedResolverBindingValue(
                 self.clone(),
                 other.clone(),
@@ -530,13 +531,14 @@ impl ResolverBindingValue {
         Ok(false)
     }
 
+    // TODO: reference_key no longer works like you think it does
     pub fn reference_key(&self) -> String {
         if let Some(parent_resolver_binding_id) = &self.parent_resolver_binding_id {
             parent_resolver_binding_id.to_string()
-        } else if let Some(prop_id) = &self.prop_id {
+        } else if let Some(prop_id) = &self.prop_variant_id {
             prop_id.to_string()
         } else {
-            self.schema_id.to_string()
+            self.schema_variant_id.as_ref().unwrap().clone()
         }
     }
 }
@@ -725,255 +727,256 @@ impl ResolverBindingValue {
 // - schema,[prop], entity, change_set,
 // - schema,[prop], entity,
 // - schema,[prop]
-//
+
 pub async fn get_properties_for_entity(
     txn: &PgTxn<'_>,
     schema_id: impl AsRef<str>,
     entity_id: impl AsRef<str>,
 ) -> ResolverResult<serde_json::Value> {
-    let schema_id = schema_id.as_ref();
-    let entity_id = entity_id.as_ref();
+    return Ok(serde_json::Value::Null);
+    //  let schema_id = schema_id.as_ref();
+    //  let entity_id = entity_id.as_ref();
 
-    // Select all the binding values
-    let rows = txn
-        .query(
-            RESOLVER_BINDING_VALUES_FOR_ENTITY,
-            &[&schema_id, &entity_id],
-        )
-        .await?;
+    //  // Select all the binding values
+    //  let rows = txn
+    //      .query(
+    //          RESOLVER_BINDING_VALUES_FOR_ENTITY,
+    //          &[&schema_id, &entity_id],
+    //      )
+    //      .await?;
 
-    // Graph is rbv_id and a string for the edge type
-    let mut rbvgraph = DiGraph::<String, String>::new();
+    //  // Graph is rbv_id and a string for the edge type
+    //  let mut rbvgraph = DiGraph::<String, String>::new();
 
-    // The RBV that is the root of the schema
-    let mut schema_root: Option<ResolverBindingValue> = None;
+    //  // The RBV that is the root of the schema
+    //  let mut schema_root: Option<ResolverBindingValue> = None;
 
-    // Key is the rbv id
-    let mut selected_binding_values: HashMap<String, ResolverBindingValue> = HashMap::new();
+    //  // Key is the rbv id
+    //  let mut selected_binding_values: HashMap<String, ResolverBindingValue> = HashMap::new();
 
-    // A list of all the props; key is the prop id
-    let mut props: HashMap<String, Prop> = HashMap::new();
+    //  // A list of all the props; key is the prop id
+    //  let mut props: HashMap<String, Prop> = HashMap::new();
 
-    // A map of prop_ids to an rbv; for edge creation
-    let mut prop_id_to_rbv_id: HashMap<String, String> = HashMap::new();
+    //  // A map of prop_ids to an rbv; for edge creation
+    //  let mut prop_id_to_rbv_id: HashMap<String, String> = HashMap::new();
 
-    // A map of parent_rb_ids to a vector of binding values; for edge creation
-    // We're trying to get the rbv_id for a given rb_id!
-    let mut rb_id_to_rbv_id: HashMap<String, String> = HashMap::new();
+    //  // A map of parent_rb_ids to a vector of binding values; for edge creation
+    //  // We're trying to get the rbv_id for a given rb_id!
+    //  let mut rb_id_to_rbv_id: HashMap<String, String> = HashMap::new();
 
-    // Figure out which values to keep in the working set, and which can be knocked out.
-    for row in rows.into_iter() {
-        let resolver_binding_value_json: serde_json::Value =
-            row.try_get("resolver_binding_values")?;
-        let resolver_binding_value: ResolverBindingValue =
-            serde_json::from_value(resolver_binding_value_json)?;
+    //  // Figure out which values to keep in the working set, and which can be knocked out.
+    //  for row in rows.into_iter() {
+    //      let resolver_binding_value_json: serde_json::Value =
+    //          row.try_get("resolver_binding_values")?;
+    //      let resolver_binding_value: ResolverBindingValue =
+    //          serde_json::from_value(resolver_binding_value_json)?;
 
-        rb_id_to_rbv_id.insert(
-            resolver_binding_value.resolver_binding_id.clone(),
-            resolver_binding_value.id.clone(),
-        );
+    //      rb_id_to_rbv_id.insert(
+    //          resolver_binding_value.resolver_binding_id.clone(),
+    //          resolver_binding_value.id.clone(),
+    //      );
 
-        // Populate the reverse lookup by prop_id
-        if let Some(prop_id) = &resolver_binding_value.prop_id {
-            prop_id_to_rbv_id
-                .entry(prop_id.clone())
-                .or_insert(resolver_binding_value.id.clone());
-        }
+    //      // Populate the reverse lookup by prop_id
+    //      if let Some(prop_id) = &resolver_binding_value.prop_id {
+    //          prop_id_to_rbv_id
+    //              .entry(prop_id.clone())
+    //              .or_insert(resolver_binding_value.id.clone());
+    //      }
 
-        if resolver_binding_value.is_schema_root() {
-            // Here is where you would compare this resolver binding with any
-            // previously seen for either this schema root or property. If
-            // it takes precedence, it should mutate the value.
-            schema_root = Some(resolver_binding_value.clone());
-            selected_binding_values
-                .entry(resolver_binding_value.id.clone())
-                .or_insert(resolver_binding_value);
-        } else {
-            if let Some(prop_id) = &resolver_binding_value.prop_id {
-                // Here is where you would compare this resolver binding with any
-                // previously seen for either this schema root or property. If
-                // it takes precedence, it should mutate the value.
-                match selected_binding_values.get(prop_id) {
-                    Some(existing_binding_value) => {
-                        if resolver_binding_value.takes_precedence(&existing_binding_value)? {
-                            selected_binding_values
-                                .insert(resolver_binding_value.id.clone(), resolver_binding_value);
-                        }
-                    }
-                    None => {
-                        selected_binding_values
-                            .insert(resolver_binding_value.id.clone(), resolver_binding_value);
-                    }
-                }
-            } else {
-                return Err(ResolverError::ResolverBindingValueInvalid(
-                    resolver_binding_value.clone(),
-                ));
-            }
-        }
+    //      if resolver_binding_value.is_schema_root() {
+    //          // Here is where you would compare this resolver binding with any
+    //          // previously seen for either this schema root or property. If
+    //          // it takes precedence, it should mutate the value.
+    //          schema_root = Some(resolver_binding_value.clone());
+    //          selected_binding_values
+    //              .entry(resolver_binding_value.id.clone())
+    //              .or_insert(resolver_binding_value);
+    //      } else {
+    //          if let Some(prop_id) = &resolver_binding_value.prop_id {
+    //              // Here is where you would compare this resolver binding with any
+    //              // previously seen for either this schema root or property. If
+    //              // it takes precedence, it should mutate the value.
+    //              match selected_binding_values.get(prop_id) {
+    //                  Some(existing_binding_value) => {
+    //                      if resolver_binding_value.takes_precedence(&existing_binding_value)? {
+    //                          selected_binding_values
+    //                              .insert(resolver_binding_value.id.clone(), resolver_binding_value);
+    //                      }
+    //                  }
+    //                  None => {
+    //                      selected_binding_values
+    //                          .insert(resolver_binding_value.id.clone(), resolver_binding_value);
+    //                  }
+    //              }
+    //          } else {
+    //              return Err(ResolverError::ResolverBindingValueInvalid(
+    //                  resolver_binding_value.clone(),
+    //              ));
+    //          }
+    //      }
 
-        if let Some(prop_json) = row.try_get("prop").ok() {
-            let prop: Prop = serde_json::from_value(prop_json)?;
-            props.entry(prop.id().to_string()).or_insert(prop);
-        }
-    }
+    //      if let Some(prop_json) = row.try_get("prop").ok() {
+    //          let prop: Prop = serde_json::from_value(prop_json)?;
+    //          props.entry(prop.id.to_string()).or_insert(prop);
+    //      }
+    //  }
 
-    // Key is the rbv_id, value is the result of adding the nodes to the graph.
-    let mut rbv_id_to_graph_idx: HashMap<String, NodeIndex<u32>> = HashMap::new();
-    for resolver_binding_value_id in selected_binding_values.keys() {
-        let graph_node_idx = rbvgraph.add_node(resolver_binding_value_id.clone());
-        rbv_id_to_graph_idx.insert(resolver_binding_value_id.clone(), graph_node_idx);
-    }
+    //  // Key is the rbv_id, value is the result of adding the nodes to the graph.
+    //  let mut rbv_id_to_graph_idx: HashMap<String, NodeIndex<u32>> = HashMap::new();
+    //  for resolver_binding_value_id in selected_binding_values.keys() {
+    //      let graph_node_idx = rbvgraph.add_node(resolver_binding_value_id.clone());
+    //      rbv_id_to_graph_idx.insert(resolver_binding_value_id.clone(), graph_node_idx);
+    //  }
 
-    // Extract the schema roots index, because we're going to use it when we populate edges.
-    let schema_root_id_idx = rbv_id_to_graph_idx
-        .get(
-            &schema_root
-                .as_ref()
-                .ok_or(ResolverError::MissingSchemaRoot)?
-                .id,
-        )
-        .ok_or(ResolverError::MissingGraphIndex)?;
+    //  // Extract the schema roots index, because we're going to use it when we populate edges.
+    //  let schema_root_id_idx = rbv_id_to_graph_idx
+    //      .get(
+    //          &schema_root
+    //              .as_ref()
+    //              .ok_or(ResolverError::MissingSchemaRoot)?
+    //              .id,
+    //      )
+    //      .ok_or(ResolverError::MissingGraphIndex)?;
 
-    // Populate the edges.
-    //
-    // * Edge to the schema root, if thats your parent
-    // * Edge for your parent_rb relationship, if you have one
-    // * Edge for your prop relationship, as a last resort
-    for resolver_binding_value in selected_binding_values.values() {
-        let rbv_idx = rbv_id_to_graph_idx
-            .get(&resolver_binding_value.id)
-            .ok_or(ResolverError::MissingGraphIndex)?;
-        let (parent_idx, weight) = if resolver_binding_value.is_schema_root() {
-            continue;
-        } else if let Some(parent_rb_id) = &resolver_binding_value.parent_resolver_binding_id {
-            let parent_rbv_id = rb_id_to_rbv_id.get(parent_rb_id).ok_or(
-                ResolverError::MissingResolverBindingValueForResolverBinding(parent_rb_id.clone()),
-            )?;
-            let parent_idx = rbv_id_to_graph_idx
-                .get(parent_rbv_id)
-                .ok_or(ResolverError::MissingGraphIndex)?;
-            (parent_idx, "parent_rbv".to_string())
-        } else if let Some(prop_id) = &resolver_binding_value.prop_id {
-            let prop = props.get(prop_id).ok_or(ResolverError::MissingPropId)?;
-            if let Some(parent_prop_id) = prop.parent_id() {
-                let parent_prop_prbv_id = prop_id_to_rbv_id
-                    .get(parent_prop_id)
-                    .ok_or(ResolverError::MissingProp(prop_id.clone()))?;
-                let prop_parent_idx = rbv_id_to_graph_idx
-                    .get(parent_prop_prbv_id)
-                    .ok_or(ResolverError::MissingGraphIndex)?;
-                (prop_parent_idx, "prop".to_string())
-            } else {
-                (schema_root_id_idx, "schema_root".to_string())
-            }
-        } else {
-            return Err(ResolverError::InvalidRelationship(
-                resolver_binding_value.clone(),
-            ));
-        };
-        rbvgraph.add_edge(*parent_idx, *rbv_idx, weight);
-    }
-    //println!("{:?}", Dot::with_config(&rbvgraph, &[]));
+    //  // Populate the edges.
+    //  //
+    //  // * Edge to the schema root, if thats your parent
+    //  // * Edge for your parent_rb relationship, if you have one
+    //  // * Edge for your prop relationship, as a last resort
+    //  for resolver_binding_value in selected_binding_values.values() {
+    //      let rbv_idx = rbv_id_to_graph_idx
+    //          .get(&resolver_binding_value.id)
+    //          .ok_or(ResolverError::MissingGraphIndex)?;
+    //      let (parent_idx, weight) = if resolver_binding_value.is_schema_root() {
+    //          continue;
+    //      } else if let Some(parent_rb_id) = &resolver_binding_value.parent_resolver_binding_id {
+    //          let parent_rbv_id = rb_id_to_rbv_id.get(parent_rb_id).ok_or(
+    //              ResolverError::MissingResolverBindingValueForResolverBinding(parent_rb_id.clone()),
+    //          )?;
+    //          let parent_idx = rbv_id_to_graph_idx
+    //              .get(parent_rbv_id)
+    //              .ok_or(ResolverError::MissingGraphIndex)?;
+    //          (parent_idx, "parent_rbv".to_string())
+    //      } else if let Some(prop_id) = &resolver_binding_value.prop_id {
+    //          let prop = props.get(prop_id).ok_or(ResolverError::MissingPropId)?;
+    //          if let Some(parent_prop_id) = prop.parent_id(&schema_id) {
+    //              let parent_prop_prbv_id = prop_id_to_rbv_id
+    //                  .get(parent_prop_id)
+    //                  .ok_or(ResolverError::MissingProp(prop_id.clone()))?;
+    //              let prop_parent_idx = rbv_id_to_graph_idx
+    //                  .get(parent_prop_prbv_id)
+    //                  .ok_or(ResolverError::MissingGraphIndex)?;
+    //              (prop_parent_idx, "prop".to_string())
+    //          } else {
+    //              (schema_root_id_idx, "schema_root".to_string())
+    //          }
+    //      } else {
+    //          return Err(ResolverError::InvalidRelationship(
+    //              resolver_binding_value.clone(),
+    //          ));
+    //      };
+    //      rbvgraph.add_edge(*parent_idx, *rbv_idx, weight);
+    //  }
+    //  //println!("{:?}", Dot::with_config(&rbvgraph, &[]));
 
-    let mut dfspo = DfsPostOrder::new(&rbvgraph, *schema_root_id_idx);
-    while let Some(current_idx) = dfspo.next(&rbvgraph) {
-        let current_rbv_id = rbvgraph
-            .node_weight(current_idx)
-            .ok_or(ResolverError::MissingGraphIndex)?;
+    //  let mut dfspo = DfsPostOrder::new(&rbvgraph, *schema_root_id_idx);
+    //  while let Some(current_idx) = dfspo.next(&rbvgraph) {
+    //      let current_rbv_id = rbvgraph
+    //          .node_weight(current_idx)
+    //          .ok_or(ResolverError::MissingGraphIndex)?;
 
-        let mut children: Vec<String> = Vec::new();
-        for child_idx in rbvgraph.neighbors_directed(current_idx, Outgoing) {
-            let child_rbv_id = rbvgraph
-                .node_weight(child_idx)
-                .ok_or(ResolverError::MissingGraphIndex)?;
-            children.push(child_rbv_id.to_string());
-        }
+    //      let mut children: Vec<String> = Vec::new();
+    //      for child_idx in rbvgraph.neighbors_directed(current_idx, Outgoing) {
+    //          let child_rbv_id = rbvgraph
+    //              .node_weight(child_idx)
+    //              .ok_or(ResolverError::MissingGraphIndex)?;
+    //          children.push(child_rbv_id.to_string());
+    //      }
 
-        // ADAM AND FLETCHER SAYS: Why are we sorting this? Well, the reason is that our
-        // database IDs are naturally sorted by time. That means by sorting
-        // this list of our children, we are certain to get them in a stable
-        // order that won't change between iterations. If you monkey with any
-        // of those constraints, we're pretty sure that arrays are going to break.
-        // But hey - fuck around and find out, amirite?
-        children.sort();
-        for child_rbv_id in children.into_iter() {
-            let child_rbv = selected_binding_values
-                .get(&child_rbv_id)
-                .ok_or(ResolverError::MissingResolverBinding(child_rbv_id.clone()))?
-                .clone();
+    //      // ADAM AND FLETCHER SAYS: Why are we sorting this? Well, the reason is that our
+    //      // database IDs are naturally sorted by time. That means by sorting
+    //      // this list of our children, we are certain to get them in a stable
+    //      // order that won't change between iterations. If you monkey with any
+    //      // of those constraints, we're pretty sure that arrays are going to break.
+    //      // But hey - fuck around and find out, amirite?
+    //      children.sort();
+    //      for child_rbv_id in children.into_iter() {
+    //          let child_rbv = selected_binding_values
+    //              .get(&child_rbv_id)
+    //              .ok_or(ResolverError::MissingResolverBinding(child_rbv_id.clone()))?
+    //              .clone();
 
-            let current_rbv = selected_binding_values.get_mut(current_rbv_id).ok_or(
-                ResolverError::MissingResolverBinding(current_rbv_id.clone()),
-            )?;
+    //          let current_rbv = selected_binding_values.get_mut(current_rbv_id).ok_or(
+    //              ResolverError::MissingResolverBinding(current_rbv_id.clone()),
+    //          )?;
 
-            let is_schema_root = current_rbv.is_schema_root();
+    //          let is_schema_root = current_rbv.is_schema_root();
 
-            let child_prop = {
-                let child_prop_id = child_rbv
-                    .prop_id
-                    .as_ref()
-                    .ok_or(ResolverError::MissingPropId)?;
-                let child_prop = props
-                    .get(child_prop_id)
-                    .ok_or_else(|| ResolverError::MissingProp(child_prop_id.clone()))?;
-                child_prop
-            };
+    //          let child_prop = {
+    //              let child_prop_id = child_rbv
+    //                  .prop_id
+    //                  .as_ref()
+    //                  .ok_or(ResolverError::MissingPropId)?;
+    //              let child_prop = props
+    //                  .get(child_prop_id)
+    //                  .ok_or_else(|| ResolverError::MissingProp(child_prop_id.clone()))?;
+    //              child_prop
+    //          };
 
-            if is_schema_root {
-                let obj_value = current_rbv
-                    .obj_value
-                    .as_object_mut()
-                    .ok_or(ResolverError::CannotWriteToObject)?;
-                obj_value.insert(child_prop.name().to_string(), child_rbv.obj_value);
-            } else {
-                let current_prop_id = current_rbv
-                    .prop_id
-                    .as_deref()
-                    .ok_or(ResolverError::MissingPropId)?;
-                let current_prop = props
-                    .get(current_prop_id)
-                    .ok_or(ResolverError::MissingProp(current_prop_id.to_string()))?;
-                match current_prop {
-                    Prop::Map(_) => {
-                        let obj_value = current_rbv
-                            .obj_value
-                            .as_object_mut()
-                            .ok_or(ResolverError::CannotWriteToObject)?;
-                        let debug_foo = format!("{:?}", &child_rbv);
-                        let key_name = child_rbv.map_key_name.as_ref().ok_or_else(|| {
-                            ResolverError::MissingResolverBindingValueMapKey(debug_foo)
-                        })?;
-                        obj_value.insert(key_name.to_string(), child_rbv.obj_value);
-                    }
-                    Prop::Array(_) => {
-                        let obj_value = current_rbv
-                            .obj_value
-                            .as_array_mut()
-                            .ok_or(ResolverError::CannotWriteToArray)?;
-                        obj_value.push(child_rbv.obj_value);
-                    }
-                    _ => {
-                        let obj_value = current_rbv
-                            .obj_value
-                            .as_object_mut()
-                            .ok_or(ResolverError::CannotWriteToObject)?;
-                        obj_value.insert(child_prop.name().to_string(), child_rbv.obj_value);
-                    }
-                }
-            }
-        }
-    }
+    //          if is_schema_root {
+    //              let obj_value = current_rbv
+    //                  .obj_value
+    //                  .as_object_mut()
+    //                  .ok_or(ResolverError::CannotWriteToObject)?;
+    //              obj_value.insert(child_prop.name().to_string(), child_rbv.obj_value);
+    //          } else {
+    //              let current_prop_id = current_rbv
+    //                  .prop_id
+    //                  .as_deref()
+    //                  .ok_or(ResolverError::MissingPropId)?;
+    //              let current_prop = props
+    //                  .get(current_prop_id)
+    //                  .ok_or(ResolverError::MissingProp(current_prop_id.to_string()))?;
+    //              match current_prop {
+    //                  Prop::Map(_) => {
+    //                      let obj_value = current_rbv
+    //                          .obj_value
+    //                          .as_object_mut()
+    //                          .ok_or(ResolverError::CannotWriteToObject)?;
+    //                      let debug_foo = format!("{:?}", &child_rbv);
+    //                      let key_name = child_rbv.map_key_name.as_ref().ok_or_else(|| {
+    //                          ResolverError::MissingResolverBindingValueMapKey(debug_foo)
+    //                      })?;
+    //                      obj_value.insert(key_name.to_string(), child_rbv.obj_value);
+    //                  }
+    //                  Prop::Array(_) => {
+    //                      let obj_value = current_rbv
+    //                          .obj_value
+    //                          .as_array_mut()
+    //                          .ok_or(ResolverError::CannotWriteToArray)?;
+    //                      obj_value.push(child_rbv.obj_value);
+    //                  }
+    //                  _ => {
+    //                      let obj_value = current_rbv
+    //                          .obj_value
+    //                          .as_object_mut()
+    //                          .ok_or(ResolverError::CannotWriteToObject)?;
+    //                      obj_value.insert(child_prop.name().to_string(), child_rbv.obj_value);
+    //                  }
+    //              }
+    //          }
+    //      }
+    //  }
 
-    let schema_root_id = &schema_root
-        .as_ref()
-        .ok_or(ResolverError::MissingSchemaRoot)?
-        .id;
-    let final_value = selected_binding_values
-        .remove(schema_root_id)
-        .ok_or(ResolverError::MissingSchemaRoot)?;
+    //  let schema_root_id = &schema_root
+    //      .as_ref()
+    //      .ok_or(ResolverError::MissingSchemaRoot)?
+    //      .id;
+    //  let final_value = selected_binding_values
+    //      .remove(schema_root_id)
+    //      .ok_or(ResolverError::MissingSchemaRoot)?;
 
-    Ok(final_value.obj_value)
+    //  Ok(final_value.obj_value)
 }
 
 struct ToDoRb {
@@ -996,8 +999,8 @@ pub async fn create_resolver_binding_value_from_rb(
         obj_value,
         &rb.id,
         &rb.resolver_id,
-        rb.schema_id.clone(),
-        rb.prop_id.clone(),
+        rb.schema_variant_id.clone(),
+        rb.prop_variant_id.clone(),
         rb.parent_resolver_binding_id.clone(),
         rb.entity_id.clone(),
         rb.system_id.clone(),
@@ -1017,274 +1020,278 @@ pub async fn create_rbv_and_generate_resolver_bindings_from_output_value(
 ) -> ResolverResult<()> {
     match &rb.backend_binding {
         ResolverBackendKindBinding::Json(_) | ResolverBackendKindBinding::Js(_) => {
-            let mut schema_map = SchemaMap::new();
-            let rows = txn.query(SCHEMA_ALL_PROPS, &[&rb.schema_id]).await?;
-            for row in rows.into_iter() {
-                let prop_json: serde_json::Value = row.try_get("object")?;
-                let prop: Prop = serde_json::from_value(prop_json)?;
-                schema_map.insert(prop.id().to_string(), prop);
-            }
+            //let mut schema_map = SchemaMap::new();
+            //let rows = txn
+            //    .query(SCHEMA_ALL_PROPS, &[&rb.schema_variant_id])
+            //    .await?;
+            //for row in rows.into_iter() {
+            //    let prop_json: serde_json::Value = row.try_get("object")?;
+            //    let prop: Prop = serde_json::from_value(prop_json)?;
+            //    schema_map.insert(prop.id().to_string(), prop);
+            //}
 
-            let prop = match rb.prop_id.as_deref() {
-                Some(prop_id) => {
-                    let prop = schema_map
-                        .get(prop_id)
-                        .ok_or(ResolverError::MissingPropId)?;
-                    Some(prop.clone())
-                }
-                None => None,
-            };
+            //let prop = match rb.prop_id.as_deref() {
+            //    Some(prop_id) => {
+            //        let prop = schema_map
+            //            .get(prop_id)
+            //            .ok_or(ResolverError::MissingPropId)?;
+            //        Some(prop.clone())
+            //    }
+            //    None => None,
+            //};
 
-            let mut to_do_list: VecDeque<ToDoRb> = VecDeque::new();
-            to_do_list.push_back(ToDoRb {
-                prop,
-                output_value: incoming_output_value,
-                map_key_name: None,
-            });
+            //let mut to_do_list: VecDeque<ToDoRb> = VecDeque::new();
+            //to_do_list.push_back(ToDoRb {
+            //    prop,
+            //    output_value: incoming_output_value,
+            //    map_key_name: None,
+            //});
 
-            while let Some(ToDoRb {
-                prop,
-                output_value,
-                map_key_name,
-            }) = to_do_list.pop_front()
-            {
-                // If you are the schema root, and this isn't then object, then fuck off
-                if prop.is_none() && !output_value.is_object() {
-                    return Err(ResolverError::SchemaRootResolverMustBeObject(output_value));
-                }
+            //while let Some(ToDoRb {
+            //    prop,
+            //    output_value,
+            //    map_key_name,
+            //}) = to_do_list.pop_front()
+            //{
+            //    // If you are the schema root, and this isn't then object, then fuck off
+            //    if prop.is_none() && !output_value.is_object() {
+            //        return Err(ResolverError::SchemaRootResolverMustBeObject(output_value));
+            //    }
 
-                match (prop, output_value) {
-                    (None, serde_json::Value::Object(json_object_value)) => {
-                        let top_resolver = Resolver::find_by_name(&txn, "si:setEmptyObject")
-                            .await
-                            .expect("cannot get resolver");
-                        let top_backend_binding = ResolverBackendKindBinding::EmptyObject;
-                        ResolverBinding::new(
-                            &txn,
-                            &nats,
-                            &top_resolver.id,
-                            top_backend_binding,
-                            rb.schema_id.clone(),
-                            None,
-                            None,
-                            rb.entity_id.clone(),
-                            rb.system_id.clone(),
-                            rb.edit_session_id.clone(),
-                            rb.edit_session_id.clone(),
-                            map_key_name,
-                        )
-                        .await?;
-                        for (field_key, field_json_value) in json_object_value.into_iter() {
-                            let field_prop = schema_map
-                                .find_prop_by_name(None, &field_key)
-                                .ok_or_else(|| {
-                                    ResolverError::InvalidOutputValueMissingProp(
-                                        field_key.clone(),
-                                        field_json_value.clone(),
-                                        rb.clone(),
-                                    )
-                                })?;
-                            to_do_list.push_back(ToDoRb {
-                                prop: Some(field_prop.clone()),
-                                output_value: field_json_value,
-                                map_key_name: None,
-                            });
-                        }
-                    }
-                    (Some(Prop::Object(prop)), serde_json::Value::Object(json_object_value)) => {
-                        let top_resolver = Resolver::find_by_name(&txn, "si:setEmptyObject")
-                            .await
-                            .expect("cannot get resolver");
-                        let top_backend_binding = ResolverBackendKindBinding::EmptyObject;
-                        ResolverBinding::new(
-                            &txn,
-                            &nats,
-                            &top_resolver.id,
-                            top_backend_binding,
-                            rb.schema_id.clone(),
-                            Some(prop.id.clone()),
-                            None,
-                            rb.entity_id.clone(),
-                            rb.system_id.clone(),
-                            rb.edit_session_id.clone(),
-                            rb.edit_session_id.clone(),
-                            map_key_name,
-                        )
-                        .await?;
-                        for (field_key, field_json_value) in json_object_value.into_iter() {
-                            let field_prop = schema_map
-                                .find_prop_by_name(Some(&prop.id), &field_key)
-                                .ok_or_else(|| {
-                                    ResolverError::InvalidOutputValueMissingProp(
-                                        field_key.to_string(),
-                                        field_json_value.clone(),
-                                        rb.clone(),
-                                    )
-                                })?;
-                            to_do_list.push_back(ToDoRb {
-                                prop: Some(field_prop.clone()),
-                                output_value: field_json_value,
-                                map_key_name: None,
-                            });
-                        }
-                    }
-                    (Some(Prop::Map(prop)), serde_json::Value::Object(json_object_value)) => {
-                        let top_resolver = Resolver::find_by_name(&txn, "si:setEmptyObject")
-                            .await
-                            .expect("cannot get resolver");
-                        let top_backend_binding = ResolverBackendKindBinding::EmptyObject;
-                        ResolverBinding::new(
-                            &txn,
-                            &nats,
-                            &top_resolver.id,
-                            top_backend_binding,
-                            rb.schema_id.clone(),
-                            Some(prop.id.clone()),
-                            None,
-                            rb.entity_id.clone(),
-                            rb.system_id.clone(),
-                            rb.edit_session_id.clone(),
-                            rb.edit_session_id.clone(),
-                            map_key_name,
-                        )
-                        .await?;
+            //    match (prop, output_value) {
+            //        (None, serde_json::Value::Object(json_object_value)) => {
+            //            let top_resolver = Resolver::find_by_name(&txn, "si:setEmptyObject")
+            //                .await
+            //                .expect("cannot get resolver");
+            //            let top_backend_binding = ResolverBackendKindBinding::EmptyObject;
+            //            ResolverBinding::new(
+            //                &txn,
+            //                &nats,
+            //                &top_resolver.id,
+            //                top_backend_binding,
+            //                rb.schema_variant_id.clone(),
+            //                None,
+            //                None,
+            //                rb.entity_id.clone(),
+            //                rb.system_id.clone(),
+            //                rb.edit_session_id.clone(),
+            //                rb.edit_session_id.clone(),
+            //                map_key_name,
+            //            )
+            //            .await?;
+            //            for (field_key, field_json_value) in json_object_value.into_iter() {
+            //                let field_prop = schema_map
+            //                    .find_prop_by_name(&rb.schema_variant_id, None, &field_key)
+            //                    .ok_or_else(|| {
+            //                        ResolverError::InvalidOutputValueMissingProp(
+            //                            field_key.clone(),
+            //                            field_json_value.clone(),
+            //                            rb.clone(),
+            //                        )
+            //                    })?;
+            //                to_do_list.push_back(ToDoRb {
+            //                    prop: Some(field_prop.clone()),
+            //                    output_value: field_json_value,
+            //                    map_key_name: None,
+            //                });
+            //            }
+            //        }
+            //        (Some(Prop::Object(prop)), serde_json::Value::Object(json_object_value)) => {
+            //            let top_resolver = Resolver::find_by_name(&txn, "si:setEmptyObject")
+            //                .await
+            //                .expect("cannot get resolver");
+            //            let top_backend_binding = ResolverBackendKindBinding::EmptyObject;
+            //            ResolverBinding::new(
+            //                &txn,
+            //                &nats,
+            //                &top_resolver.id,
+            //                top_backend_binding,
+            //                rb.schema_variant_id.clone(),
+            //                Some(prop.id.clone()),
+            //                None,
+            //                rb.entity_id.clone(),
+            //                rb.system_id.clone(),
+            //                rb.edit_session_id.clone(),
+            //                rb.edit_session_id.clone(),
+            //                map_key_name,
+            //            )
+            //            .await?;
+            //            for (field_key, field_json_value) in json_object_value.into_iter() {
+            //                let field_prop = schema_map
+            //                    .find_prop_by_name(
+            //                        &rb.schema_variant_id,
+            //                        Some(&prop.id),
+            //                        &field_key,
+            //                    )
+            //                    .ok_or_else(|| {
+            //                        ResolverError::InvalidOutputValueMissingProp(
+            //                            field_key.to_string(),
+            //                            field_json_value.clone(),
+            //                            rb.clone(),
+            //                        )
+            //                    })?;
+            //                to_do_list.push_back(ToDoRb {
+            //                    prop: Some(field_prop.clone()),
+            //                    output_value: field_json_value,
+            //                    map_key_name: None,
+            //                });
+            //            }
+            //        }
+            //        (Some(Prop::Map(prop)), serde_json::Value::Object(json_object_value)) => {
+            //            let top_resolver = Resolver::find_by_name(&txn, "si:setEmptyObject")
+            //                .await
+            //                .expect("cannot get resolver");
+            //            let top_backend_binding = ResolverBackendKindBinding::EmptyObject;
+            //            ResolverBinding::new(
+            //                &txn,
+            //                &nats,
+            //                &top_resolver.id,
+            //                top_backend_binding,
+            //                rb.schema_variant_id.clone(),
+            //                Some(prop.id.clone()),
+            //                None,
+            //                rb.entity_id.clone(),
+            //                rb.system_id.clone(),
+            //                rb.edit_session_id.clone(),
+            //                rb.edit_session_id.clone(),
+            //                map_key_name,
+            //            )
+            //            .await?;
 
-                        let item_prop =
-                            schema_map
-                                .find_item_prop_for_parent(&prop.id)
-                                .ok_or_else(|| {
-                                    ResolverError::MissingItemProp(format!("{:?}", &prop))
-                                })?;
-                        for (field_key, field_json_value) in json_object_value.into_iter() {
-                            to_do_list.push_back(ToDoRb {
-                                prop: Some(item_prop.clone()),
-                                output_value: field_json_value,
-                                map_key_name: Some(field_key),
-                            });
-                        }
-                    }
-                    (Some(Prop::Array(prop)), serde_json::Value::Array(json_object_value)) => {
-                        let top_resolver = Resolver::find_by_name(&txn, "si:setEmptyArray")
-                            .await
-                            .expect("cannot get resolver");
-                        let top_backend_binding = ResolverBackendKindBinding::EmptyArray;
-                        ResolverBinding::new(
-                            &txn,
-                            &nats,
-                            &top_resolver.id,
-                            top_backend_binding,
-                            rb.schema_id.clone(),
-                            Some(prop.id.clone()),
-                            None,
-                            rb.entity_id.clone(),
-                            rb.system_id.clone(),
-                            rb.edit_session_id.clone(),
-                            rb.edit_session_id.clone(),
-                            map_key_name,
-                        )
-                        .await?;
+            //            let item_prop = schema_map
+            //                .find_item_prop_for_parent(&rb.schema_variant_id, &prop.id)
+            //                .ok_or_else(|| {
+            //                    ResolverError::MissingItemProp(format!("{:?}", &prop))
+            //                })?;
+            //            for (field_key, field_json_value) in json_object_value.into_iter() {
+            //                to_do_list.push_back(ToDoRb {
+            //                    prop: Some(item_prop.clone()),
+            //                    output_value: field_json_value,
+            //                    map_key_name: Some(field_key),
+            //                });
+            //            }
+            //        }
+            //        (Some(Prop::Array(prop)), serde_json::Value::Array(json_object_value)) => {
+            //            let top_resolver = Resolver::find_by_name(&txn, "si:setEmptyArray")
+            //                .await
+            //                .expect("cannot get resolver");
+            //            let top_backend_binding = ResolverBackendKindBinding::EmptyArray;
+            //            ResolverBinding::new(
+            //                &txn,
+            //                &nats,
+            //                &top_resolver.id,
+            //                top_backend_binding,
+            //                rb.schema_variant_id.clone(),
+            //                Some(prop.id.clone()),
+            //                None,
+            //                rb.entity_id.clone(),
+            //                rb.system_id.clone(),
+            //                rb.edit_session_id.clone(),
+            //                rb.edit_session_id.clone(),
+            //                map_key_name,
+            //            )
+            //            .await?;
 
-                        let item_prop =
-                            schema_map
-                                .find_item_prop_for_parent(&prop.id)
-                                .ok_or_else(|| {
-                                    ResolverError::MissingItemProp(format!("{:?}", &prop))
-                                })?;
-                        for field_json_value in json_object_value.into_iter() {
-                            to_do_list.push_back(ToDoRb {
-                                prop: Some(item_prop.clone()),
-                                output_value: field_json_value,
-                                map_key_name: None,
-                            });
-                        }
-                    }
+            //            let item_prop = schema_map
+            //                .find_item_prop_for_parent(&rb.schema_variant_id, &prop.id)
+            //                .ok_or_else(|| {
+            //                    ResolverError::MissingItemProp(format!("{:?}", &prop))
+            //                })?;
+            //            for field_json_value in json_object_value.into_iter() {
+            //                to_do_list.push_back(ToDoRb {
+            //                    prop: Some(item_prop.clone()),
+            //                    output_value: field_json_value,
+            //                    map_key_name: None,
+            //                });
+            //            }
+            //        }
 
-                    (Some(Prop::String(prop)), serde_json::Value::String(field_value)) => {
-                        let resolver = Resolver::find_by_name(&txn, "si:setString")
-                            .await
-                            .expect("cannot get resolver");
-                        let backend_binding =
-                            ResolverBackendKindBinding::String(ResolverBackendKindStringBinding {
-                                value: field_value,
-                            });
-                        ResolverBinding::new(
-                            &txn,
-                            &nats,
-                            &resolver.id,
-                            backend_binding,
-                            rb.schema_id.clone(),
-                            Some(prop.id.clone()),
-                            None,
-                            rb.entity_id.clone(),
-                            rb.system_id.clone(),
-                            rb.edit_session_id.clone(),
-                            rb.edit_session_id.clone(),
-                            map_key_name,
-                        )
-                        .await?;
-                    }
-                    (Some(Prop::Number(prop)), serde_json::Value::Number(field_json_value)) => {
-                        let resolver = Resolver::find_by_name(&txn, "si:setNumber")
-                            .await
-                            .expect("cannot get resolver");
-                        let field_value =
-                            field_json_value
-                                .as_u64()
-                                .ok_or(ResolverError::InvalidNumberNotU64(
-                                    serde_json::Value::Number(field_json_value.clone()),
-                                ))?;
-                        let backend_binding =
-                            ResolverBackendKindBinding::Number(ResolverBackendKindNumberBinding {
-                                value: field_value.clone(),
-                            });
-                        ResolverBinding::new(
-                            &txn,
-                            &nats,
-                            &resolver.id,
-                            backend_binding,
-                            rb.schema_id.clone(),
-                            Some(prop.id.clone()),
-                            None,
-                            rb.entity_id.clone(),
-                            rb.system_id.clone(),
-                            rb.edit_session_id.clone(),
-                            rb.edit_session_id.clone(),
-                            map_key_name,
-                        )
-                        .await?;
-                    }
-                    (Some(Prop::Boolean(prop)), serde_json::Value::Bool(field_value)) => {
-                        let resolver = Resolver::find_by_name(&txn, "si:setBoolean")
-                            .await
-                            .expect("cannot get resolver");
-                        let backend_binding = ResolverBackendKindBinding::Boolean(
-                            ResolverBackendKindBooleanBinding {
-                                value: field_value.clone(),
-                            },
-                        );
-                        ResolverBinding::new(
-                            &txn,
-                            &nats,
-                            &resolver.id,
-                            backend_binding,
-                            rb.schema_id.clone(),
-                            Some(prop.id.clone()),
-                            None,
-                            rb.entity_id.clone(),
-                            rb.system_id.clone(),
-                            rb.edit_session_id.clone(),
-                            rb.edit_session_id.clone(),
-                            map_key_name,
-                        )
-                        .await?;
-                    }
-                    (prop, value) => {
-                        return Err(ResolverError::MismatchedFunctionResultAndSchema(
-                            prop, value,
-                        ));
-                    }
-                }
-            }
+            //        (Some(Prop::String(prop)), serde_json::Value::String(field_value)) => {
+            //            let resolver = Resolver::find_by_name(&txn, "si:setString")
+            //                .await
+            //                .expect("cannot get resolver");
+            //            let backend_binding =
+            //                ResolverBackendKindBinding::String(ResolverBackendKindStringBinding {
+            //                    value: field_value,
+            //                });
+            //            ResolverBinding::new(
+            //                &txn,
+            //                &nats,
+            //                &resolver.id,
+            //                backend_binding,
+            //                rb.schema_variant_id.clone(),
+            //                Some(prop.id.clone()),
+            //                None,
+            //                rb.entity_id.clone(),
+            //                rb.system_id.clone(),
+            //                rb.edit_session_id.clone(),
+            //                rb.edit_session_id.clone(),
+            //                map_key_name,
+            //            )
+            //            .await?;
+            //        }
+            //        (Some(Prop::Number(prop)), serde_json::Value::Number(field_json_value)) => {
+            //            let resolver = Resolver::find_by_name(&txn, "si:setNumber")
+            //                .await
+            //                .expect("cannot get resolver");
+            //            let field_value =
+            //                field_json_value
+            //                    .as_u64()
+            //                    .ok_or(ResolverError::InvalidNumberNotU64(
+            //                        serde_json::Value::Number(field_json_value.clone()),
+            //                    ))?;
+            //            let backend_binding =
+            //                ResolverBackendKindBinding::Number(ResolverBackendKindNumberBinding {
+            //                    value: field_value.clone(),
+            //                });
+            //            ResolverBinding::new(
+            //                &txn,
+            //                &nats,
+            //                &resolver.id,
+            //                backend_binding,
+            //                rb.schema_variant_id.clone(),
+            //                Some(prop.id.clone()),
+            //                None,
+            //                rb.entity_id.clone(),
+            //                rb.system_id.clone(),
+            //                rb.edit_session_id.clone(),
+            //                rb.edit_session_id.clone(),
+            //                map_key_name,
+            //            )
+            //            .await?;
+            //        }
+            //        (Some(Prop::Boolean(prop)), serde_json::Value::Bool(field_value)) => {
+            //            let resolver = Resolver::find_by_name(&txn, "si:setBoolean")
+            //                .await
+            //                .expect("cannot get resolver");
+            //            let backend_binding = ResolverBackendKindBinding::Boolean(
+            //                ResolverBackendKindBooleanBinding {
+            //                    value: field_value.clone(),
+            //                },
+            //            );
+            //            ResolverBinding::new(
+            //                &txn,
+            //                &nats,
+            //                &resolver.id,
+            //                backend_binding,
+            //                rb.schema_variant_id.clone(),
+            //                Some(prop.id.clone()),
+            //                None,
+            //                rb.entity_id.clone(),
+            //                rb.system_id.clone(),
+            //                rb.edit_session_id.clone(),
+            //                rb.edit_session_id.clone(),
+            //                map_key_name,
+            //            )
+            //            .await?;
+            //        }
+            //        (prop, value) => {
+            //            return Err(ResolverError::MismatchedFunctionResultAndSchema(
+            //                prop, value,
+            //            ));
+            //        }
+            //    }
+            // }
         }
         _ => {
             create_resolver_binding_value_from_rb(&txn, &nats, rb, incoming_output_value).await?;

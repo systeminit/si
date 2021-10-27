@@ -9,68 +9,76 @@ A-docs:
   - docs/**/*
 
 #
-# Third-party development images
+# System Initiative apps (i.e. webapps/ios apps/android apps)
 #
-A-nats:
-  - components/nats/**/*
-A-otelcol:
-  - components/otelcol/**/*
-A-postgres:
-  - components/postgres/**/*
-A-skopeo:
-  - components/skopeo/**/*
+A-si-web:
+  - components/si-web-app/**/*
+  - .prettierrc.js
 
 #
-# System Initiative components
+# System Initiative bins (i.e. services/programs/binaries)
 #
-A-si-cyclone:
-  - components/si-cyclone/**/*
+A-cyclone:
+  - bin/cyclone/**/*
+  - lib/cyclone/**/*
+  - .cargo/**/*
+  - Cargo.lock
+  - rust-toolchain
+  - rustfmt.toml
+A-sdf:
+  - bin/sdf/**/*
+  - lib/sdf/**/*
+  - .cargo/**/*
+  - Cargo.lock
+  - rust-toolchain
+  - rustfmt.toml
+A-veritech:
+  - bin/veritech/**/*
+  - lib/veritech/**/*
+  - .cargo/**/*
+  - Cargo.lock
+  - rust-toolchain
+  - rustfmt.toml
+A-lang-js:
+  - bin/lang-js/**/*
   - .prettierrc.js
+
+#
+# System Initiative libs (i.e. crates/packages/libraries)
+#
 A-si-data:
-  - components/si-data/**/*
+  - lib/si-data/**/*
   - .cargo/**/*
   - Cargo.lock
   - rust-toolchain
   - rustfmt.toml
-A-si-entity:
-  - components/si-entity/**/*
-  - .prettierrc.js
-A-si-inference:
-  - components/si-inference/**/*
-  - .prettierrc.js
+A-deadpool-cyclone:
+  - lib/deadpool-cyclone/**/*
+  - .cargo/**/*
+  - Cargo.lock
+  - rust-toolchain
+  - rustfmt.toml
 A-si-model:
-  - components/si-model/**/*
-  - .cargo/**/*
-  - Cargo.lock
-  - rust-toolchain
-  - rustfmt.toml
-A-si-model-test:
-  - components/si-model-test/**/*
-  - .cargo/**/*
-  - Cargo.lock
-  - rust-toolchain
-  - rustfmt.toml
-A-si-pedant:
-  - components/si-pedant/**/*
-  - .prettierrc.js
-A-si-registry:
-  - components/si-registry/**/*
-  - .prettierrc.js
-A-si-sdf:
-  - components/si-sdf/**/*
+  - lib/si-model/**/*
   - .cargo/**/*
   - Cargo.lock
   - rust-toolchain
   - rustfmt.toml
 A-si-settings:
-  - components/si-settings/**/*
+  - lib/si-settings/**/*
   - .cargo/**/*
   - Cargo.lock
   - rust-toolchain
   - rustfmt.toml
-A-si-veritech:
-  - components/si-veritech/**/*
-  - .prettierrc.js
-A-si-web:
-  - components/si-web-app/**/*
-  - .prettierrc.js
+
+#
+# Third-party development images
+#
+A-nats:
+  - component/nats/**/*
+A-otelcol:
+  - component/otelcol/**/*
+A-postgres:
+  - component/postgres/**/*
+A-skopeo:
+  - component/skopeo/**/*

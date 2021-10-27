@@ -8,26 +8,10 @@ cli:
   project: git@github.com:systeminit/si
 analyze:
   modules:
-    - name: si-entity
+    - name: lang-js
       type: npm
-      target: components/si-entity
-      path: components/si-entity
-    - name: si-pedant
-      type: npm
-      target: components/si-pedant
-      path: components/si-pedant
-    - name: si-registry
-      type: npm
-      target: components/si-registry
-      path: components/si-registry
-    - name: si-veritech
-      type: npm
-      target: components/si-veritech
-      path: components/si-veritech
-    - name: si-webapp
-      type: npm
-      target: components/si-webapp
-      path: components/si-webapp
+      target: bin/lang-js
+      path: bin/lang-js
     - name: rust-deps
       type: cargo
       target: .

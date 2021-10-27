@@ -1,0 +1,25 @@
+[package]
+name = "sdf-cli"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.56"
+publish = false
+
+[[bin]]
+name = "sdf"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "3.0.0-beta.4" }
+color-eyre = { version = "0.5.11" }
+sdf = { path = "../../lib/sdf" }
+tokio = { version = "1.12.0", features = ["full"] }
+
+# TODO(fnichol): extract into `pkg/telemetry`
+opentelemetry = { version = "0.16.0", features = ["rt-tokio", "trace"] }
+opentelemetry-otlp = { version = "0.9.0" }
+opentelemetry-semantic-conventions = { version = "0.8.0" }
+thiserror = { version = "1.0" }
+tracing = { version = "0.1" }
+tracing-opentelemetry = { version = "0.15.0" }
+tracing-subscriber = { version = "0.2.19" }
