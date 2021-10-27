@@ -24,10 +24,10 @@ server = [
 futures = { version = "0.3.17"}
 serde = "1.0.123"
 serde_json = { version = "1.0.64", features = ["preserve_order"] }
-cyclone = { path = "../../pkg/cyclone", default-features = false, features = ["client"] }
-si-data = { path = "../../components/si-data" }
+cyclone = { path = "../../lib/cyclone", default-features = false, features = ["client"] }
+si-data = { path = "../../lib/si-data" }
 # TODO(fnichol): I *think* we can boil this off?
-si-settings = { path = "../../components/si-settings" }
+si-settings = { path = "../../lib/si-settings" }
 thiserror = { version = "1.0" }
 tokio = { version = "1.2.0", features = ["full"] }
 toml = "0.5"

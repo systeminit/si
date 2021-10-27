@@ -1,11 +1,11 @@
 {
-  "name": "si-lang-js",
+  "name": "lang-js",
   "private": "true",
   "version": "0.1.0",
   "description": "Inference for Entities",
   "main": "dist/index.js",
   "bin": {
-    "si-lang-js": "./dist/index.js"
+    "lang-js": "./dist/index.js"
   },
   "pkg": {
     "scripts": "dist/**/*.js",
@@ -30,7 +30,7 @@
     "fmt": "prettier --write .",
     "fmt:check": "prettier --check .",
     "run": "npm run build && node ./dist/index.js",
-    "package": "npm run build && pkg . --output ./target/si-lang-js"
+    "package": "npm run build && pkg . --output ./target/lang-js"
   },
   "author": "System Initiative, Inc.",
   "license": "Proprietary",
