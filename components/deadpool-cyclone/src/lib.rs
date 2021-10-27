@@ -21,7 +21,7 @@ use thiserror::Error;
 
 use self::instance::{Instance, Spec};
 
-pub use si_cyclone::client;
+pub use cyclone::client;
 
 /// [`Instance`] implementations.
 pub mod instance;

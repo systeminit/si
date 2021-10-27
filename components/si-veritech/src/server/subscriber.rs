@@ -5,10 +5,10 @@ use std::{
     task::{Context, Poll},
 };
 
+use cyclone::resolver_function::ResolverFunctionRequest;
 use futures::Stream;
 use futures_lite::FutureExt;
 use serde::de::DeserializeOwned;
-use si_cyclone::resolver_function::ResolverFunctionRequest;
 use si_data::{nats, NatsConn};
 use thiserror::Error;
 

@@ -1,5 +1,5 @@
 use color_eyre::Result;
-use si_cyclone::{Config, IncomingStream, Server};
+use cyclone::{Config, IncomingStream, Server};
 
 mod args;
 mod telemetry;

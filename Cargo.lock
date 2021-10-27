@@ -532,6 +532,52 @@ dependencies = [
 ]
 
 [[package]]
+name = "cyclone"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "axum",
+ "bytes-lines-codec",
+ "derive_builder",
+ "futures",
+ "futures-lite",
+ "http",
+ "hyper",
+ "hyperlocal",
+ "nix",
+ "pin-project-lite",
+ "serde 1.0.130",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+ "tokio",
+ "tokio-serde",
+ "tokio-tungstenite 0.15.0",
+ "tokio-util",
+ "tower",
+ "tower-http",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "cyclone-cli"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "color-eyre",
+ "cyclone",
+ "opentelemetry",
+ "opentelemetry-otlp",
+ "opentelemetry-semantic-conventions",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "tracing-opentelemetry",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "darling"
 version = "0.12.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -601,11 +647,11 @@ name = "deadpool-cyclone"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "cyclone",
  "deadpool 0.9.0",
  "derive_builder",
  "futures",
  "nix",
- "si-cyclone",
  "tempfile",
  "thiserror",
  "tokio",
@@ -2543,42 +2589,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "si-cyclone"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "axum",
- "bytes-lines-codec",
- "clap",
- "color-eyre",
- "derive_builder",
- "futures",
- "futures-lite",
- "http",
- "hyper",
- "hyperlocal",
- "nix",
- "opentelemetry",
- "opentelemetry-otlp",
- "opentelemetry-semantic-conventions",
- "pin-project-lite",
- "serde 1.0.130",
- "serde_json",
- "tempfile",
- "thiserror",
- "tokio",
- "tokio-serde",
- "tokio-tungstenite 0.15.0",
- "tokio-util",
- "tower",
- "tower-http",
- "tracing",
- "tracing-opentelemetry",
- "tracing-subscriber",
- "uuid",
-]
-
-[[package]]
 name = "si-data"
 version = "0.1.0"
 dependencies = [
@@ -2697,6 +2707,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "color-eyre",
+ "cyclone",
  "derive_builder",
  "futures",
  "futures-lite",
@@ -2705,7 +2716,6 @@ dependencies = [
  "opentelemetry-semantic-conventions",
  "serde 1.0.130",
  "serde_json",
- "si-cyclone",
  "si-data",
  "si-settings",
  "thiserror",

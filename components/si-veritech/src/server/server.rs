@@ -1,9 +1,9 @@
-use futures::{StreamExt, TryStreamExt};
-use si_cyclone::{
+use cyclone::{
     client::Connection,
     resolver_function::{ResolverFunctionExecutingMessage, ResolverFunctionRequest},
     Client, CycloneClient, HttpClient, UdsClient,
 };
+use futures::{StreamExt, TryStreamExt};
 use si_data::NatsConn;
 use thiserror::Error;
 use tokio::io::{AsyncRead, AsyncWrite};
@@ -15,13 +15,13 @@ use crate::server::config::CycloneStream;
 #[derive(Error, Debug)]
 pub enum ServerError {
     #[error(transparent)]
-    Cyclone(#[from] si_cyclone::ClientError),
+    Cyclone(#[from] cyclone::ClientError),
     #[error("failed to connecto to nats")]
     NatsConnection(#[source] si_data::NatsTxnError),
     #[error(transparent)]
     Publisher(#[from] PublisherError),
     #[error(transparent)]
-    ResolverFunction(#[from] si_cyclone::client::ResolverFunctionExecutionError),
+    ResolverFunction(#[from] cyclone::client::ResolverFunctionExecutionError),
     #[error(transparent)]
     Subscriber(#[from] SubscriberError),
     #[error("wrong cyclone stream for {0} server: {1:?}")]

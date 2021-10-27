@@ -1,7 +1,7 @@
 use std::io;
 
+use cyclone::resolver_function::{FunctionResult, OutputStream};
 use serde::Serialize;
-use si_cyclone::resolver_function::{FunctionResult, OutputStream};
 use si_data::NatsConn;
 use thiserror::Error;
 
