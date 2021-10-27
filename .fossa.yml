@@ -8,10 +8,14 @@ cli:
   project: git@github.com:systeminit/si
 analyze:
   modules:
-    - name: lang-js
+    - name: bin/lang-js
       type: npm
       target: bin/lang-js
       path: bin/lang-js
+    - name: app/web
+      type: npm
+      target: app/web
+      path: app/web
     - name: rust-deps
       type: cargo
       target: .

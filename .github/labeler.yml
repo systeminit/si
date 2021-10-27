@@ -12,7 +12,7 @@ A-docs:
 # System Initiative apps (i.e. webapps/ios apps/android apps)
 #
 A-si-web:
-  - components/si-web-app/**/*
+  - app/web/**/*
   - .prettierrc.js
 
 #
