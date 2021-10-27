@@ -28,7 +28,7 @@ pub(crate) struct Args {
 impl TryFrom<Args> for Config {
     type Error = ConfigError;
 
-    fn try_from(value: Args) -> Result<Self, Self::Error> {
+    fn try_from(_value: Args) -> Result<Self, Self::Error> {
         let builder = Self::builder();
 
         builder.build().map_err(Into::into)

@@ -125,6 +125,121 @@ BEGIN
     ON CONFLICT(id, change_set_id) DO UPDATE
         SET obj        = excluded.obj,
             updated_at = NOW();
+
+    INSERT INTO schemas_change_set_projection (id, obj, change_set_id, tenant_ids, created_at)
+    SELECT schemas_edit_session_projection.id,
+           schemas_edit_session_projection.obj,
+           schemas_edit_session_projection.change_set_id,
+           schemas_edit_session_projection.tenant_ids,
+           schemas_edit_session_projection.created_at
+    FROM schemas_edit_session_projection
+    WHERE schemas_edit_session_projection.edit_session_id = this_id
+      AND NOT (
+            schemas_edit_session_projection.obj -> 'siStorable' -> 'deleted' = 'true' AND
+            schemas_edit_session_projection.id NOT IN (SELECT schemas_change_set_projection.id
+                                                       FROM schemas_change_set_projection
+                                                       WHERE schemas_change_set_projection.change_set_id =
+                                                             schemas_edit_session_projection.change_set_id) AND
+            schemas_edit_session_projection.id NOT IN (SELECT schemas_head.id
+                                                       FROM schemas_head
+                                                       WHERE schemas_head.id =
+                                                             schemas_edit_session_projection.id)
+        )
+    ON CONFLICT(id, change_set_id) DO UPDATE
+        SET obj        = excluded.obj,
+            updated_at = NOW();
+
+    INSERT INTO schema_variants_change_set_projection (id, obj, root_prop_variant_id, change_set_id, tenant_ids, created_at)
+    SELECT schema_variants_edit_session_projection.id,
+           schema_variants_edit_session_projection.obj,
+           schema_variants_edit_session_projection.root_prop_variant_id,
+           schema_variants_edit_session_projection.change_set_id,
+           schema_variants_edit_session_projection.tenant_ids,
+           schema_variants_edit_session_projection.created_at
+    FROM schema_variants_edit_session_projection
+    WHERE schema_variants_edit_session_projection.edit_session_id = this_id
+      AND NOT (
+                schema_variants_edit_session_projection.obj -> 'siStorable' -> 'deleted' = 'true' AND
+                schema_variants_edit_session_projection.id NOT IN (SELECT schema_variants_change_set_projection.id
+                                                                   FROM schema_variants_change_set_projection
+                                                                   WHERE schema_variants_change_set_projection.change_set_id =
+                                                                         schema_variants_edit_session_projection.change_set_id) AND
+                schema_variants_edit_session_projection.id NOT IN (SELECT schema_variants_head.id
+                                                                   FROM schema_variants_head
+                                                                   WHERE schema_variants_head.id =
+                                                                         schema_variants_edit_session_projection.id)
+        )
+    ON CONFLICT(id, change_set_id) DO UPDATE
+        SET obj        = excluded.obj,
+            updated_at = NOW();
+
+    INSERT INTO props_change_set_projection (id, obj, change_set_id, tenant_ids, created_at)
+    SELECT props_edit_session_projection.id,
+           props_edit_session_projection.obj,
+           props_edit_session_projection.change_set_id,
+           props_edit_session_projection.tenant_ids,
+           props_edit_session_projection.created_at
+    FROM props_edit_session_projection
+    WHERE props_edit_session_projection.edit_session_id = this_id
+      AND NOT (
+            props_edit_session_projection.obj -> 'siStorable' -> 'deleted' = 'true' AND
+            props_edit_session_projection.id NOT IN (SELECT props_change_set_projection.id
+                                                     FROM props_change_set_projection
+                                                     WHERE props_change_set_projection.change_set_id =
+                                                           props_edit_session_projection.change_set_id) AND
+            props_edit_session_projection.id NOT IN (SELECT props_head.id
+                                                     FROM props_head
+                                                     WHERE props_head.id =
+                                                           props_edit_session_projection.id)
+        )
+    ON CONFLICT(id, change_set_id) DO UPDATE
+        SET obj        = excluded.obj,
+            updated_at = NOW();
+
+    INSERT INTO prop_variants_change_set_projection (id, obj, change_set_id, tenant_ids, created_at)
+    SELECT prop_variants_edit_session_projection.id,
+           prop_variants_edit_session_projection.obj,
+           prop_variants_edit_session_projection.change_set_id,
+           prop_variants_edit_session_projection.tenant_ids,
+           prop_variants_edit_session_projection.created_at
+    FROM prop_variants_edit_session_projection
+    WHERE prop_variants_edit_session_projection.edit_session_id = this_id
+      AND NOT (
+                prop_variants_edit_session_projection.obj -> 'siStorable' -> 'deleted' = 'true' AND
+                prop_variants_edit_session_projection.id NOT IN (SELECT prop_variants_change_set_projection.id
+                                                                 FROM prop_variants_change_set_projection
+                                                                 WHERE prop_variants_change_set_projection.change_set_id =
+                                                                       prop_variants_edit_session_projection.change_set_id) AND
+                prop_variants_edit_session_projection.id NOT IN (SELECT props_head.id
+                                                                 FROM props_head
+                                                                 WHERE props_head.id =
+                                                                       prop_variants_edit_session_projection.id)
+        )
+    ON CONFLICT(id, change_set_id) DO UPDATE
+        SET obj        = excluded.obj,
+            updated_at = NOW();
+
+    INSERT INTO prop_variants_schema_variants (prop_variant_id, schema_variant_id, change_set_id, edit_session_id,
+                                               deleted)
+    SELECT prop_variants_schema_variants.prop_variant_id,
+           prop_variants_schema_variants.schema_variant_id,
+           prop_variants_schema_variants.change_set_id,
+           NULL,
+           prop_variants_schema_variants.deleted
+    FROM prop_variants_schema_variants
+    WHERE prop_variants_schema_variants.edit_session_id = this_id;
+
+    INSERT INTO prop_variant_lineage (id, parent_prop_variant_id, child_prop_variant_id, change_set_id, edit_session_id,
+                                               deleted)
+    SELECT prop_variant_lineage.id,
+           prop_variant_lineage.parent_prop_variant_id,
+           prop_variant_lineage.child_prop_variant_id,
+           prop_variant_lineage.change_set_id,
+           NULL,
+           prop_variant_lineage.deleted
+    FROM prop_variant_lineage
+    WHERE prop_variant_lineage.edit_session_id = this_id;
+
 END
 $$ LANGUAGE PLPGSQL VOLATILE;
 

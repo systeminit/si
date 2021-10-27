@@ -1,8 +1,8 @@
+use crate::{Veritech, Workflow};
 use anyhow::Result;
 use lazy_static::lazy_static;
 use names::{Generator, Name};
 use si_data::{EventLogFS, NatsConn, PgPool};
-use crate::{Veritech, Workflow};
 use si_settings::Settings;
 use sodiumoxide::crypto::secretbox;
 use std::env;
@@ -138,6 +138,11 @@ pub async fn one_time_setup() -> Result<()> {
     )
     .await?;
     txn.commit().await?;
+
+    let nats_conn = NatsConn::new(&SETTINGS.nats)
+        .await
+        .expect("failed to connect to NATS");
+    crate::migrate_builtin_schemas(&pg, &nats_conn).await?;
 
     *finished = true;
     Ok(())

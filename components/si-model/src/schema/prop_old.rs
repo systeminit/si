@@ -18,6 +18,7 @@ use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 
 const PROP_BY_ID: &str = include_str!("../queries/prop_by_id.sql");
+//const PROP_PARENT_ID_FOR_SCHEMA: &str = include_str!("../queries/prop_parent_id_for_schema.sql");
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase", tag = "kind")]
@@ -53,15 +54,17 @@ impl Prop {
         }
     }
 
-    pub fn parent_id(&self) -> Option<&str> {
-        match self {
-            Prop::String(p) => p.parent_id.as_deref(),
-            Prop::Number(p) => p.parent_id.as_deref(),
-            Prop::Boolean(p) => p.parent_id.as_deref(),
-            Prop::Object(p) => p.parent_id.as_deref(),
-            Prop::Array(p) => p.parent_id.as_deref(),
-            Prop::Map(p) => p.parent_id.as_deref(),
-        }
+    pub fn parent_id(&self, schema_id: impl AsRef<str>) -> Option<&str> {
+        let schema_id = schema_id.as_ref();
+        let parent_option = match self {
+            Prop::String(p) => p.parents.get(schema_id),
+            Prop::Number(p) => p.parents.get(schema_id),
+            Prop::Boolean(p) => p.parents.get(schema_id),
+            Prop::Object(p) => p.parents.get(schema_id),
+            Prop::Array(p) => p.parents.get(schema_id),
+            Prop::Map(p) => p.parents.get(schema_id),
+        };
+        parent_option.map(|o| &o[..])
     }
 
     pub async fn get_by_id(txn: &PgTxn<'_>, id: impl AsRef<str>) -> SchemaResult<Self> {
@@ -96,13 +99,26 @@ impl SchemaMap {
         SchemaMap(HashMap::new())
     }
 
-    pub fn find_prop_by_name(&self, parent_id: Option<&str>, name: impl AsRef<str>) -> Option<&Prop> {
+    pub fn find_prop_by_name(
+        &self,
+        schema_id: impl AsRef<str>,
+        parent_id: Option<&str>,
+        name: impl AsRef<str>,
+    ) -> Option<&Prop> {
+        let schema_id = schema_id.as_ref();
         let name = name.as_ref();
-        self.values().find(|p| p.parent_id() == parent_id && p.name() == name)
+        self.values()
+            .find(|p| p.parent_id(schema_id) == parent_id && p.name() == name)
     }
 
-    pub fn find_item_prop_for_parent(&self, parent_id: impl AsRef<str>) -> Option<&Prop> {
+    pub fn find_item_prop_for_parent(
+        &self,
+        schema_id: impl AsRef<str>,
+        parent_id: impl AsRef<str>,
+    ) -> Option<&Prop> {
+        let schema_id = schema_id.as_ref();
         let parent_id = parent_id.as_ref();
-        self.values().find(|p| p.parent_id() == Some(parent_id))
+        self.values()
+            .find(|p| p.parent_id(schema_id) == Some(parent_id))
     }
 }

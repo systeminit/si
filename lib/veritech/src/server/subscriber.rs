@@ -65,6 +65,7 @@ pub struct Subscription<T> {
 }
 
 impl<T> Subscription<T> {
+    #[allow(dead_code)]
     pub async fn drain(&self) -> Result<()> {
         self.inner.drain().await.map_err(SubscriberError::NatsDrain)
     }

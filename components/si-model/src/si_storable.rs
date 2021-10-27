@@ -32,3 +32,17 @@ pub struct MinimalStorable {
     pub object_id: String,
     pub deleted: bool,
 }
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct GlobalStorable {
+    pub type_name: String,
+    pub object_id: String,
+    pub billing_account_id: Option<String>,
+    pub organization_id: Option<String>,
+    pub workspace_id: Option<String>,
+    pub tenant_ids: Vec<String>,
+    pub created_at: Option<DateTime<Utc>>,
+    pub updated_at: Option<DateTime<Utc>>,
+    pub deleted: bool,
+}

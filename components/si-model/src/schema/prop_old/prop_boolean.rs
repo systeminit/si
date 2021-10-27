@@ -1,6 +1,7 @@
 use crate::{schema::SchemaResult, MinimalStorable, Resolver, ResolverBinding};
 use serde::{Deserialize, Serialize};
 use si_data::{NatsTxn, PgTxn};
+use std::collections::HashMap;
 use std::option::Option::None;
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -8,10 +9,9 @@ use std::option::Option::None;
 pub struct PropBoolean {
     pub id: String,
     pub name: String,
+    pub schemas: Vec<String>,
+    pub parents: HashMap<String, String>,
     pub description: String,
-    pub parent_id: Option<String>,
-    pub is_item: bool,
-    pub schema_id: String,
     pub si_storable: MinimalStorable,
 }
 
@@ -23,22 +23,14 @@ impl PropBoolean {
         name: impl Into<String>,
         description: impl Into<String>,
         parent_id: Option<String>,
-        is_item: bool,
     ) -> SchemaResult<Self> {
         let name = name.into();
         let description = description.into();
         let schema_id = schema_id.into();
         let row = txn
             .query_one(
-                "SELECT object FROM prop_create_v1($1, $2, $3, $4, $5, $6)",
-                &[
-                    &name,
-                    &description,
-                    &"boolean",
-                    &parent_id,
-                    &schema_id,
-                    &is_item,
-                ],
+                "SELECT object FROM prop_create_v1($1, $2, $3, $4, $5)",
+                &[&name, &description, &"boolean", &parent_id, &schema_id],
             )
             .await?;
         let prop_json: serde_json::Value = row.try_get("object")?;
