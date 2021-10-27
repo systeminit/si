@@ -1,0 +1,29 @@
+module.exports = {
+  root: true,
+  env: {
+    node: true,
+  },
+  extends: [
+    "eslint:recommended",
+    "plugin:vue/vue3-recommended",
+    "@vue/typescript",
+    "@vue/prettier",
+  ],
+  rules: {
+    "no-console": "off",
+    "no-debugger": "off",
+    "no-alert": "error",
+    "no-unused-vars": "off", // Causes issues with ts enums
+    "@typescript-eslint/no-unused-vars": [
+      "warn",
+      {
+        argsIgnorePattern: "^_",
+        varsIgnorePattern: "^_",
+      },
+    ],
+  },
+  parserOptions: {
+    parser: "@typescript-eslint/parser",
+  },
+  ignorePatterns: ["src/ignore/*"],
+};
