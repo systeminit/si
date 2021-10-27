@@ -4,15 +4,19 @@ debug = true
 [workspace]
 members = [
   "cmd/cyclone",
+  "cmd/sdf",
   "cmd/veritech",
   "components/si-data",
   "components/si-model",
-  "components/si-sdf",
   "components/si-settings",
   "pkg/bytes-lines-codec",
   "pkg/cyclone",
   "pkg/deadpool-cyclone",
+  "pkg/sdf",
   "pkg/veritech",
+
+  # TODO(fnichol): remove when fully deprecated
+  "components/si-sdf",
 ]
 
 [patch.crates-io]

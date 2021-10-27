@@ -2457,6 +2457,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "sdf"
+version = "0.1.0"
+
+[[package]]
+name = "sdf-cli"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "color-eyre",
+ "opentelemetry",
+ "opentelemetry-otlp",
+ "opentelemetry-semantic-conventions",
+ "sdf",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "tracing-opentelemetry",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "security-framework"
 version = "2.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
