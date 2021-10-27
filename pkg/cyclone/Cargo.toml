@@ -4,12 +4,12 @@ version = "0.1.0"
 edition = "2021"
 rust-version = "1.56"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [features]
-# TODO(fnichol): remove "client" feature from default
-default = ["client", "server"]
+# By default, no features are enabled--consumers of this crate need to opt-in
+# to the features they desire.
+default = []
 
+# The client implementation for a cyclone server.
 client = [
   "async-trait",
   "futures-lite",
@@ -18,6 +18,7 @@ client = [
   "tokio-tungstenite",
 ]
 
+# The server side implementation of cyclone, as a library.
 server = [
   "axum",
   "bytes-lines-codec",

@@ -14,7 +14,7 @@ color-eyre = { version = "0.5.11" }
 # TODO(fnichol): I *think* we can boil this off?
 si-settings = { path = "../../components/si-settings" }
 tokio = { version = "1.12.0", features = ["full"] }
-veritech = { path = "../../pkg/veritech", default-features = false, features = ["server"] }
+veritech = { path = "../../pkg/veritech", features = ["server"] }
 
 # TODO(fnichol): extract into `pkg/telemetry`
 opentelemetry = { version = "0.16.0", features = ["rt-tokio", "trace"] }
