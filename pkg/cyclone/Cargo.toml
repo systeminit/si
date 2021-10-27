@@ -3,6 +3,7 @@ name = "cyclone"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.56"
+publish = false
 
 [features]
 # By default, no features are enabled--consumers of this crate need to opt-in
