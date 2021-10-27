@@ -25,8 +25,9 @@ A-cyclone:
   - Cargo.lock
   - rust-toolchain
   - rustfmt.toml
-A-si-sdf:
-  - components/si-sdf/**/*
+A-sdf:
+  - cmd/sdf/**/*
+  - pkg/sdf/**/*
   - .cargo/**/*
   - Cargo.lock
   - rust-toolchain
