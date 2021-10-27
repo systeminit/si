@@ -1,5 +1,5 @@
 {
-  "name": "si-webapp",
+  "name": "web",
   "version": "0.0.0",
   "scripts": {
     "start": "vite",
