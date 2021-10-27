@@ -16,7 +16,7 @@ pub use cyclone::resolver_function::*;
 #[cfg(feature = "server")]
 pub mod server;
 #[cfg(feature = "server")]
-pub use server::{telemetry, Config, ConfigBuilder, ConfigError, CycloneStream, Server};
+pub use server::{Config, ConfigBuilder, ConfigError, CycloneStream, Server};
 
 #[cfg(feature = "client")]
 pub mod client;
