@@ -37,11 +37,13 @@ impl Config {
     }
 
     /// Gets a reference to the config's nats url.
+    #[must_use]
     pub fn nats_url(&self) -> &str {
         self.nats_url.as_str()
     }
 
     /// Gets a reference to the config's cyclone stream.
+    #[must_use]
     pub fn cyclone_stream(&self) -> &CycloneStream {
         &self.cyclone_stream
     }

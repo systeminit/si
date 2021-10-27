@@ -42,14 +42,14 @@ pub async fn run_function(
     while let Some(msg) = reply_sub.next().await {
         let json_payload: serde_json::Value = serde_json::from_slice(&msg.data)?;
         // Then it is output
-        if !json_payload["stream"].is_null() {
-            // TODO: We should do something here with output!
-            dbg!(json_payload);
-        } else {
+        if json_payload["stream"].is_null() {
             let function_result: FunctionResult = serde_json::from_value(json_payload)?;
             result = Some(function_result);
             break;
         }
+
+        // TODO: We should do something here with output!
+        dbg!(json_payload);
     }
     result.ok_or(VeritechClientError::NoResult)
 }
