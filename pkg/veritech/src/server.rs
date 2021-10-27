@@ -7,4 +7,3 @@ mod config;
 mod publisher;
 mod server;
 mod subscriber;
-pub mod telemetry;

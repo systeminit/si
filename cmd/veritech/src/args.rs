@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 
 use clap::{AppSettings, Clap};
-use si_veritech::server::{Config, ConfigError};
+use veritech::server::{Config, ConfigError};
 
 /// Parse, validate, and return the CLI arguments as a typed struct.
 pub(crate) fn parse() -> Args {
@@ -10,6 +10,7 @@ pub(crate) fn parse() -> Args {
 
 #[derive(Clap, Debug)]
 #[clap(
+    name = "cyclone",
     global_setting = AppSettings::ColoredHelp,
     global_setting = AppSettings::UnifiedHelpMessage,
     max_term_width = 100,

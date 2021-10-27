@@ -2632,7 +2632,6 @@ dependencies = [
  "serde_json",
  "si-data",
  "si-settings",
- "si-veritech",
  "sodiumoxide",
  "strum",
  "strum_macros",
@@ -2646,6 +2645,7 @@ dependencies = [
  "tungstenite 0.14.0",
  "uname",
  "url",
+ "veritech",
 ]
 
 [[package]]
@@ -2699,31 +2699,6 @@ dependencies = [
  "thiserror",
  "toml",
  "tracing",
-]
-
-[[package]]
-name = "si-veritech"
-version = "0.1.0"
-dependencies = [
- "clap",
- "color-eyre",
- "cyclone",
- "derive_builder",
- "futures",
- "futures-lite",
- "opentelemetry",
- "opentelemetry-otlp",
- "opentelemetry-semantic-conventions",
- "serde 1.0.130",
- "serde_json",
- "si-data",
- "si-settings",
- "thiserror",
- "tokio",
- "toml",
- "tracing",
- "tracing-opentelemetry",
- "tracing-subscriber",
 ]
 
 [[package]]
@@ -3485,6 +3460,42 @@ name = "vec_map"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f1bddf1187be692e79c5ffeab891132dfb0f236ed36a43c7ed39f1165ee20191"
+
+[[package]]
+name = "veritech"
+version = "0.1.0"
+dependencies = [
+ "cyclone",
+ "derive_builder",
+ "futures",
+ "futures-lite",
+ "serde 1.0.130",
+ "serde_json",
+ "si-data",
+ "si-settings",
+ "thiserror",
+ "tokio",
+ "toml",
+ "tracing",
+]
+
+[[package]]
+name = "veritech-cli"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "color-eyre",
+ "opentelemetry",
+ "opentelemetry-otlp",
+ "opentelemetry-semantic-conventions",
+ "si-settings",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "tracing-opentelemetry",
+ "tracing-subscriber",
+ "veritech",
+]
 
 [[package]]
 name = "version_check"

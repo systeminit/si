@@ -1,9 +1,10 @@
 use std::convert::TryInto;
 
 use color_eyre::Result;
-use si_veritech::{telemetry, Config, CycloneStream, Server};
+use veritech::{Config, CycloneStream, Server};
 
 mod args;
+mod telemetry;
 
 #[tokio::main]
 async fn main() -> Result<()> {

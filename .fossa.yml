@@ -20,10 +20,6 @@ analyze:
       type: npm
       target: components/si-registry
       path: components/si-registry
-    - name: si-veritech
-      type: npm
-      target: components/si-veritech
-      path: components/si-veritech
     - name: si-web-app
       type: npm
       target: components/si-web-app
