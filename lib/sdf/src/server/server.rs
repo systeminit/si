@@ -1,9 +1,11 @@
 use std::{io, net::SocketAddr, path::PathBuf};
 
-use axum::routing::{BoxRoute, IntoMakeService};
+use crate::server::config::JwtSigningKey;
+use axum::routing::IntoMakeService;
+use axum::Router;
+use dal::migrate;
 use hyper::server::{accept::Accept, conn::AddrIncoming};
 use si_data::{NatsConfig, NatsConn, NatsTxnError, PgPool, PgPoolConfig, PgPoolError};
-use si_model::migrate;
 use thiserror::Error;
 use tokio::{
     io::{AsyncRead, AsyncWrite},
@@ -20,7 +22,7 @@ pub enum ServerError {
     #[error("hyper server error")]
     Hyper(#[from] hyper::Error),
     #[error(transparent)]
-    Model(#[from] si_model::ModelError),
+    Model(#[from] dal::ModelError),
     #[error(transparent)]
     Nats(#[from] NatsTxnError),
     #[error(transparent)]
@@ -37,7 +39,7 @@ pub type Result<T> = std::result::Result<T, ServerError>;
 
 pub struct Server<I, S> {
     config: Config,
-    inner: axum::Server<I, IntoMakeService<BoxRoute>>,
+    inner: axum::Server<I, IntoMakeService<Router>>,
     socket: S,
     shutdown_rx: oneshot::Receiver<()>,
 }
@@ -50,10 +52,11 @@ impl Server<(), ()> {
     ) -> Result<Server<AddrIncoming, SocketAddr>> {
         match config.incoming_stream() {
             IncomingStream::HTTPSocket(socket_addr) => {
-                let (service, shutdown_rx) = build_service(pg_pool, nats)?;
+                let (service, shutdown_rx) =
+                    build_service(pg_pool, nats, config.jwt_signing_key().clone())?;
 
                 info!("binding to HTTP socket; socket_addr={}", &socket_addr);
-                let inner = axum::Server::bind(socket_addr).serve(service);
+                let inner = axum::Server::bind(socket_addr).serve(service.into_make_service());
                 let socket = inner.local_addr();
 
                 Ok(Server {
@@ -76,11 +79,12 @@ impl Server<(), ()> {
     ) -> Result<Server<UdsIncomingStream, PathBuf>> {
         match config.incoming_stream() {
             IncomingStream::UnixDomainSocket(path) => {
-                let (service, shutdown_rx) = build_service(pg_pool, nats)?;
+                let (service, shutdown_rx) =
+                    build_service(pg_pool, nats, config.jwt_signing_key().clone())?;
 
                 info!("binding to Unix domain socket; path={}", path.display());
-                let inner =
-                    axum::Server::builder(UdsIncomingStream::create(path).await?).serve(service);
+                let inner = axum::Server::builder(UdsIncomingStream::create(path).await?)
+                    .serve(service.into_make_service());
                 let socket = path.clone();
 
                 Ok(Server {
@@ -143,24 +147,24 @@ where
     }
 }
 
-fn build_service(
+pub fn build_service(
     pg_pool: PgPool,
     nats: NatsConn,
-) -> Result<(IntoMakeService<BoxRoute>, oneshot::Receiver<()>)> {
+    jwt_signing_key: JwtSigningKey,
+) -> Result<(Router, oneshot::Receiver<()>)> {
     let (shutdown_tx, shutdown_rx) = mpsc::channel(4);
 
-    let routes = routes(pg_pool, nats, shutdown_tx)
+    let routes = routes(pg_pool, nats, jwt_signing_key, shutdown_tx)
         // TODO(fnichol): customize http tracing further, using:
         // https://docs.rs/tower-http/0.1.1/tower_http/trace/index.html
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(DefaultMakeSpan::default().include_headers(true)),
-        )
-        .boxed();
+        );
 
     let graceful_shutdown_rx = prepare_graceful_shutdown(shutdown_rx)?;
 
-    Ok((routes.into_make_service(), graceful_shutdown_rx))
+    Ok((routes, graceful_shutdown_rx))
 }
 
 fn prepare_graceful_shutdown(

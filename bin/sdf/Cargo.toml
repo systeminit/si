@@ -10,7 +10,7 @@ name = "sdf"
 path = "src/main.rs"
 
 [dependencies]
-clap = { version = "3.0.0-beta.4" }
+clap = { version = "3.0.0-beta.5" }
 color-eyre = { version = "0.5.11" }
 sdf = { path = "../../lib/sdf" }
 tokio = { version = "1.12.0", features = ["full"] }

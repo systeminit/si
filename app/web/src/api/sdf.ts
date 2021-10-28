@@ -1,8 +1,8 @@
 // import _ from "lodash";
 import { Config } from "@/config";
-import { urlSafeBase64Encode } from "@/api/sdf/base64";
-import { IListRequest, IListReply } from "@/api/sdf/model";
-import { Update } from "@/api/sdf/model/update";
+import _ from "lodash";
+//import { urlSafeBase64Encode } from "@/api/sdf/base64";
+//import { Update } from "@/api/sdf/model/update";
 
 export class FetchError extends Error {
   response: Response;
@@ -14,16 +14,24 @@ export class FetchError extends Error {
   }
 }
 
-export interface SDFError {
+export interface SdfError {
+  statusCode: number;
   message: string;
   code: number;
 }
+
+export interface ApiResponseError {
+  error: SdfError;
+}
+
+export type ApiResponse<T> = (T & { error?: never }) | ApiResponseError;
 
 export class SDF {
   baseUrl: URL;
   wsBaseUrl: URL;
   currentToken?: string;
-  update?: Update;
+
+  //update?: Update;
 
   constructor(config: Config) {
     this.baseUrl = config.sdfBaseUrl;
@@ -31,15 +39,15 @@ export class SDF {
   }
 
   async startUpdate() {
-    if (!this.update) {
-      this.setupUpdate();
-    }
+    //if (!this.update) {
+    //  this.setupUpdate();
+    //}
   }
 
   async setupUpdate() {
-    const url = new URL(this.wsBaseUrl.toString());
-    url.searchParams.set("token", `Bearer ${this.token}`);
-    this.update = new Update(url.toString());
+    //const url = new URL(this.wsBaseUrl.toString());
+    //url.searchParams.set("token", `Bearer ${this.token}`);
+    //this.update = new Update(url.toString());
   }
 
   set token(token: SDF["currentToken"]) {
@@ -73,17 +81,6 @@ export class SDF {
     return headers;
   }
 
-  async list<T>(
-    pathString: string,
-    request?: IListRequest,
-  ): Promise<IListReply<T>> {
-    const args: Record<string, any> = { ...request };
-    if (request?.query) {
-      args["query"] = urlSafeBase64Encode(JSON.stringify(request.query));
-    }
-    return this.get(pathString, args);
-  }
-
   requestUrl(pathString: string): URL {
     let basePath;
     if (this.baseUrl.pathname.endsWith("/")) {
@@ -108,7 +105,7 @@ export class SDF {
   async get<T>(
     pathString: string,
     queryParams?: Record<string, any>,
-  ): Promise<T> {
+  ): Promise<ApiResponse<T>> {
     const headers = this.standard_headers();
 
     const url = this.requestUrl(pathString);
@@ -120,40 +117,43 @@ export class SDF {
 
     const request = new Request(url.toString(), {
       method: "GET",
-      mode: "cors",
       headers,
     });
-    const response: T = await this.send_request(request);
-    return response;
+    const raw: ApiResponse<T> = await this.send_request(request);
+    return raw;
   }
 
-  async post<T>(pathString: string, args: Record<string, any>): Promise<T> {
+  async post<T>(
+    pathString: string,
+    args: Record<string, any>,
+  ): Promise<ApiResponse<T>> {
     const headers = this.standard_headers();
     const url = this.requestUrl(pathString);
     const request = new Request(url.toString(), {
       method: "POST",
-      mode: "cors",
       headers,
       body: JSON.stringify(args),
     });
-    const response: T = await this.send_request(request);
+    const response: ApiResponse<T> = await this.send_request(request);
     return response;
   }
 
-  async patch<T>(pathString: string, args: Record<string, any>): Promise<T> {
+  async patch<T>(
+    pathString: string,
+    args: Record<string, any>,
+  ): Promise<ApiResponse<T>> {
     const headers = this.standard_headers();
     const url = this.requestUrl(pathString);
     const request = new Request(url.toString(), {
       method: "PATCH",
-      mode: "cors",
       headers,
       body: JSON.stringify(args),
     });
-    const response: T = await this.send_request(request);
+    const response: ApiResponse<T> = await this.send_request(request);
     return response;
   }
 
-  async delete<T>(pathString: string): Promise<T> {
+  async delete<T>(pathString: string): Promise<ApiResponse<T>> {
     const headers = this.standard_headers();
     const url = this.requestUrl(pathString);
     const request = new Request(url.toString(), {
@@ -161,13 +161,21 @@ export class SDF {
       mode: "cors",
       headers,
     });
-    const response: T = await this.send_request(request);
+    const response: ApiResponse<T> = await this.send_request(request);
     return response;
   }
 
-  async send_request<T>(request: Request): Promise<T> {
+  async send_request<T>(request: Request): Promise<ApiResponse<T>> {
     const response = await fetch(request);
-    const responseJson: T = await response.json();
+    const responseJson: ApiResponse<T> = await response.json();
     return responseJson;
+  }
+}
+
+export function isSdfError(obj: unknown): obj is ApiResponseError {
+  if ((obj as ApiResponseError).error) {
+    return true;
+  } else {
+    return false;
   }
 }

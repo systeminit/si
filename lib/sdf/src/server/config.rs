@@ -39,7 +39,12 @@ pub struct Config {
 
     #[builder(default = "MigrationMode::default()")]
     migration_mode: MigrationMode,
+
+    #[builder(default = "JwtSigningKey::default()")]
+    jwt_signing_key: JwtSigningKey,
 }
+
+pub type JwtSigningKey = dal::JwtEncrypt;
 
 impl StandardConfig for Config {
     type Builder = ConfigBuilder;
@@ -69,6 +74,12 @@ impl Config {
     pub fn nats(&self) -> &NatsConfig {
         &self.nats
     }
+
+    /// Gets a reference to the config's nats.
+    #[must_use]
+    pub fn jwt_signing_key(&self) -> &JwtSigningKey {
+        &self.jwt_signing_key
+    }
 }
 
 impl ConfigBuilder {
@@ -86,6 +97,7 @@ pub struct ConfigFile {
     pg: PgPoolConfig,
     nats: NatsConfig,
     migration_mode: MigrationMode,
+    jwt_signing_key: JwtSigningKey,
 }
 
 impl StandardConfigFile for ConfigFile {
@@ -100,6 +112,7 @@ impl TryFrom<ConfigFile> for Config {
         config.pg_pool(value.pg);
         config.nats(value.nats);
         config.migration_mode(value.migration_mode);
+        config.jwt_signing_key(value.jwt_signing_key);
         config.build().map_err(Into::into)
     }
 }

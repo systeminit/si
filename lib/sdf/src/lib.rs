@@ -13,6 +13,6 @@
 
 mod server;
 pub use server::{
-    Config, ConfigError, ConfigFile, IncomingStream, MigrationMode, Server, StandardConfig,
-    StandardConfigFile,
+    build_service, service, Config, ConfigError, ConfigFile, IncomingStream, JwtSigningKey,
+    MigrationMode, Server, StandardConfig, StandardConfigFile,
 };
