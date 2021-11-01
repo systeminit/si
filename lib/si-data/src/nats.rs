@@ -1,5 +1,5 @@
 pub use async_nats::{Connection, Message, Subscription};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use thiserror::Error;
 use tokio::sync::Mutex;
@@ -15,6 +15,20 @@ pub enum NatsTxnError {
 
 pub type NatsTxnResult<T> = Result<T, NatsTxnError>;
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(default)]
+pub struct NatsConfig {
+    pub url: String,
+}
+
+impl Default for NatsConfig {
+    fn default() -> Self {
+        NatsConfig {
+            url: "localhost".to_string(),
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct NatsConn {
     conn: Connection,
@@ -23,7 +37,7 @@ pub struct NatsConn {
 impl NatsConn {
     // TODO(fnichol): complete NatsConn instrumentation connection metadata
     #[instrument(name = "natsconn.new", skip(settings))]
-    pub async fn new(settings: &si_settings::Nats) -> NatsTxnResult<Self> {
+    pub async fn new(settings: &NatsConfig) -> NatsTxnResult<Self> {
         let conn = async_nats::connect(&settings.url).await?;
 
         Ok(Self { conn })

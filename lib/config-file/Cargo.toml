@@ -1,0 +1,39 @@
+[package]
+name = "config-file"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.56"
+
+[features]
+default = []
+
+json = []
+toml = []
+yaml = []
+
+load-str = ["serde"]
+load-json = ["json", "serde_json", "load-str"]
+load-toml = ["toml", "serde_toml", "load-str"]
+load-yaml = ["yaml", "serde_yaml", "load-str"]
+load-sync = ["load-str"]
+load-async = ["load-str", "tokio"]
+
+layered = ["serde", "config"]
+layered-json = ["layered", "json", "config/json"]
+layered-toml = ["layered", "toml", "config/toml"]
+layered-yaml = ["layered", "yaml", "config/yaml"]
+
+[dependencies]
+config = { version = "0.11.0", default-features = false, optional = true }
+directories = "4.0.1"
+pathdiff = "0.2.1"
+serde = { version = "1.0.130", optional = true }
+serde_json = { version = "1.0.68", optional = true }
+serde_toml = { package = "toml", version = "0.5.8", optional = true }
+serde_yaml = { version = "0.8.21", optional = true }
+thiserror = "1.0.30"
+tokio = { version = "1.12.0", features = ["fs", "io-util"], optional = true }
+tracing = "0.1"
+
+[dev-dependencies]
+serde = { version = "1.0.130", features = ["derive"] }

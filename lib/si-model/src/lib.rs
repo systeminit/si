@@ -7,23 +7,25 @@ pub mod change_set;
 pub mod edit_session;
 pub mod history_event;
 pub mod jwt_key;
+pub mod standard_accessors;
+pub mod standard_model;
 pub mod standard_pk;
 pub mod tenancy;
 pub mod test_harness;
 pub mod timestamp;
 pub mod visibility;
-pub mod standard_model;
-pub mod standard_accessors;
 
+pub use billing_account::{BillingAccount, BillingAccountError};
 pub use change_set::{ChangeSet, ChangeSetError, ChangeSetPk, ChangeSetStatus, NO_CHANGE_SET_PK};
-pub use edit_session::{EditSession, EditSessionError, EditSessionPk, EditSessionStatus, NO_EDIT_SESSION_PK};
+pub use edit_session::{
+    EditSession, EditSessionError, EditSessionPk, EditSessionStatus, NO_EDIT_SESSION_PK,
+};
 pub use history_event::{HistoryActor, HistoryEvent, HistoryEventError};
 pub use jwt_key::create_jwt_key_if_missing;
+pub use standard_model::{StandardModel, StandardModelError, StandardModelResult};
 pub use tenancy::{Tenancy, TenancyError};
 pub use timestamp::{Timestamp, TimestampError};
 pub use visibility::{Visibility, VisibilityError};
-pub use billing_account::{BillingAccount, BillingAccountError};
-pub use standard_model::{StandardModelError, StandardModel, StandardModelResult};
 
 use si_data::{NatsConn, NatsTxnError, PgError, PgPool, PgPoolError};
 
@@ -37,16 +39,17 @@ const NAME_CHARSET: &[u8] = b"0123456789";
 
 #[derive(Error, Debug)]
 pub enum ModelError {
-    #[error("migration error: {0}")]
+    #[error(transparent)]
     Migration(#[from] PgPoolError),
-    #[error("database error: {0}")]
-    PgError(#[from] PgError),
-    #[error("nats txn error: {0}")]
+    #[error(transparent)]
     NatsTxnError(#[from] NatsTxnError),
+    #[error("database error")]
+    PgError(#[from] PgError),
 }
+
 pub type ModelResult<T> = Result<T, ModelError>;
 
-#[instrument(skip(pg))]
+#[instrument(skip_all)]
 pub async fn migrate(pg: &PgPool) -> ModelResult<()> {
     let result = pg.migrate(embedded::migrations::runner()).await?;
     Ok(result)

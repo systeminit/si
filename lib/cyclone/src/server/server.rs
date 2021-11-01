@@ -9,7 +9,7 @@ use tokio::{
     sync::{mpsc, oneshot},
 };
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
-use tracing::{error, info, trace};
+use tracing::{debug, error, info, trace};
 
 use super::{routes, Config, IncomingStream, UdsIncomingStream, UdsIncomingStreamError};
 
@@ -40,9 +40,10 @@ impl Server<(), ()> {
             IncomingStream::HTTPSocket(socket_addr) => {
                 let (service, shutdown_rx) = build_service(&config)?;
 
-                info!("binding to HTTP socket; socket_addr={}", &socket_addr);
+                debug!(socket = %socket_addr, "binding an http server");
                 let inner = axum::Server::bind(socket_addr).serve(service);
                 let socket = inner.local_addr();
+                info!(socket = %socket, "http server serving");
 
                 Ok(Server {
                     config,
@@ -62,10 +63,11 @@ impl Server<(), ()> {
             IncomingStream::UnixDomainSocket(path) => {
                 let (service, shutdown_rx) = build_service(&config)?;
 
-                info!("binding to Unix domain socket; path={}", path.display());
+                debug!(socket = %path.display(), "binding a unix domain server");
                 let inner =
                     axum::Server::builder(UdsIncomingStream::create(path).await?).serve(service);
                 let socket = path.clone();
+                info!(socket = %socket.display(), "unix domain server serving");
 
                 Ok(Server {
                     config,

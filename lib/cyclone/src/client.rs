@@ -395,6 +395,7 @@ mod tests {
     use hyper::server::conn::AddrIncoming;
     use serde_json::json;
     use tempfile::{NamedTempFile, TempPath};
+    use test_env_log::test;
 
     fn rand_uds() -> TempPath {
         NamedTempFile::new()
@@ -460,7 +461,7 @@ mod tests {
         Client::http(socket).expect("failed to create client")
     }
 
-    #[tokio::test]
+    #[test(tokio::test)]
     async fn http_watch() {
         let mut builder = Config::builder();
         let mut client =
@@ -488,7 +489,7 @@ mod tests {
         progress.stop().await.expect("failed to stop protocol");
     }
 
-    #[tokio::test]
+    #[test(tokio::test)]
     async fn uds_watch() {
         let tmp_socket = rand_uds();
         let mut builder = Config::builder();
@@ -518,7 +519,7 @@ mod tests {
         progress.stop().await.expect("failed to stop protocol");
     }
 
-    #[tokio::test]
+    #[test(tokio::test)]
     async fn http_liveness() {
         let mut builder = Config::builder();
         let mut client = http_client_for_running_server(&mut builder).await;
@@ -528,7 +529,7 @@ mod tests {
         assert_eq!(response, LivenessStatus::Ok);
     }
 
-    #[tokio::test]
+    #[test(tokio::test)]
     async fn uds_liveness() {
         let tmp_socket = rand_uds();
         let mut builder = Config::builder();
@@ -539,7 +540,7 @@ mod tests {
         assert_eq!(response, LivenessStatus::Ok);
     }
 
-    #[tokio::test]
+    #[test(tokio::test)]
     async fn http_readiness() {
         let mut builder = Config::builder();
         let mut client = http_client_for_running_server(&mut builder).await;
@@ -549,7 +550,7 @@ mod tests {
         assert_eq!(response, ReadinessStatus::Ready);
     }
 
-    #[tokio::test]
+    #[test(tokio::test)]
     async fn uds_readiness() {
         let tmp_socket = rand_uds();
         let mut builder = Config::builder();
@@ -560,7 +561,7 @@ mod tests {
         assert_eq!(response, ReadinessStatus::Ready);
     }
 
-    #[tokio::test]
+    #[test(tokio::test)]
     async fn http_execute_ping() {
         let mut builder = Config::builder();
         let mut client = http_client_for_running_server(builder.enable_ping(true)).await;
@@ -574,7 +575,7 @@ mod tests {
             .expect("failed to start protocol")
     }
 
-    #[tokio::test]
+    #[test(tokio::test)]
     async fn http_execute_ping_not_enabled() {
         let mut builder = Config::builder();
         let mut client = http_client_for_running_server(builder.enable_ping(false)).await;
@@ -586,7 +587,7 @@ mod tests {
         }
     }
 
-    #[tokio::test]
+    #[test(tokio::test)]
     async fn uds_execute_ping() {
         let tmp_socket = rand_uds();
         let mut builder = Config::builder();
@@ -602,7 +603,7 @@ mod tests {
             .expect("failed to start protocol")
     }
 
-    #[tokio::test]
+    #[test(tokio::test)]
     async fn uds_execute_ping_not_enabled() {
         let tmp_socket = rand_uds();
         let mut builder = Config::builder();
@@ -616,7 +617,7 @@ mod tests {
         }
     }
 
-    #[tokio::test]
+    #[test(tokio::test)]
     async fn http_execute_resolver() {
         let mut builder = Config::builder();
         let mut client = http_client_for_running_server(builder.enable_resolver(true)).await;
@@ -662,11 +663,6 @@ mod tests {
             Some(Err(err)) => panic!("failed to receive heartbeat: err={:?}", err),
             None => panic!("output stream ended early"),
         }
-        match progress.next().await {
-            None => assert!(true),
-            Some(Ok(ResolverFunctionExecutingMessage::Heartbeat)) => assert!(true),
-            Some(unexpected) => panic!("output stream should be done: {:?}", unexpected),
-        };
         match progress.next().await {
             None => assert!(true),
             Some(unexpected) => panic!("output stream should be done: {:?}", unexpected),

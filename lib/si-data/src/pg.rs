@@ -1,10 +1,12 @@
+use std::{cmp, fmt, net::ToSocketAddrs, ops::DerefMut, sync::Arc, time::Duration};
+
 use bytes::Buf;
 use deadpool::managed::Object;
 use deadpool_postgres::{
     config::ConfigError, Config, Manager, ManagerConfig, Pool, PoolConfig, PoolError,
     RecyclingMethod, Transaction, TransactionBuilder,
 };
-use std::{fmt, net::ToSocketAddrs, ops::DerefMut, sync::Arc, time::Duration};
+use serde::{Deserialize, Serialize};
 use tokio_postgres::{
     types::{BorrowToSql, ToSql, Type},
     CancelToken, Client, CopyInSink, CopyOutStream, IsolationLevel, NoTls, Portal, Row, RowStream,
@@ -13,12 +15,15 @@ use tokio_postgres::{
 use tracing::{
     debug,
     field::{display, Empty},
-    instrument, Instrument, Span,
+    instrument, warn, Instrument, Span,
 };
 
 pub use tokio_postgres::{error::SqlState, Error};
 
+use crate::SensitiveString;
+
 const MIGRATION_LOCK_NUMBER: i64 = 42;
+const MAX_POOL_SIZE_MINIMUM: usize = 32;
 
 #[derive(thiserror::Error, Debug)]
 pub enum PgPoolError {
@@ -40,6 +45,40 @@ pub enum PgPoolError {
 
 pub type PgPoolResult<T> = Result<T, PgPoolError>;
 pub type PgTxn<'a> = InstrumentedTransaction<'a>;
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(default)]
+pub struct PgPoolConfig {
+    pub user: String,
+    pub password: SensitiveString,
+    pub dbname: String,
+    pub application_name: String,
+    pub hostname: String,
+    pub port: u16,
+    pub pool_max_size: usize,
+    pub pool_timeout_wait_secs: Option<u64>,
+    pub pool_timeout_create_secs: Option<u64>,
+    pub pool_timeout_recycle_secs: Option<u64>,
+}
+
+impl Default for PgPoolConfig {
+    fn default() -> Self {
+        let pool_max_size = cmp::max(MAX_POOL_SIZE_MINIMUM, num_cpus::get_physical() * 4);
+
+        PgPoolConfig {
+            user: String::from("si"),
+            password: SensitiveString::from("bugbear"),
+            dbname: String::from("si"),
+            application_name: String::from("sdf"),
+            hostname: String::from("localhost"),
+            port: 5432,
+            pool_max_size,
+            pool_timeout_wait_secs: None,
+            pool_timeout_create_secs: None,
+            pool_timeout_recycle_secs: None,
+        }
+    }
+}
 
 #[derive(Clone)]
 pub struct PgPool {
@@ -82,12 +121,12 @@ impl PgPool {
             net.transport = Empty,
         )
     )]
-    pub async fn new(settings: &si_settings::Pg) -> PgPoolResult<Self> {
+    pub async fn new(settings: &PgPoolConfig) -> PgPoolResult<Self> {
         let mut cfg = Config::new();
         cfg.hosts = Some(vec![settings.hostname.clone()]);
         cfg.port = Some(settings.port);
         cfg.user = Some(settings.user.clone());
-        cfg.password = Some(settings.password.clone());
+        cfg.password = Some(settings.password.clone().into());
         cfg.dbname = Some(settings.dbname.clone());
         cfg.application_name = Some(settings.application_name.clone());
         cfg.manager = Some(ManagerConfig {
@@ -144,15 +183,21 @@ impl PgPool {
         span.record("net.peer.port", &metadata.net_peer_port);
         span.record("net.transport", &metadata.net_transport);
 
-        // Warm up the pool and ensure that we can connect to the database. In practice, this pool
-        // only gets created on a service start so this is a one-time cost with a nice fail-fast
-        // approach.
-        pool.get().await?;
-
-        Ok(Self {
+        let pg_pool = Self {
             pool,
             metadata: Arc::new(metadata),
-        })
+        };
+
+        // Warm up the pool and test that we can connect to the database. Note that this is only
+        // advisory--it will not terminate any process or service that may be running or about to
+        // be run. We assume that the pool is an autonomous actor that can make forward progress
+        // towards its goal and maintain its own healthiness. This is in order to prevent a
+        // database network connection hiccup from crashing a fleet of services which may get
+        // immediately rescheduled/restarted only to fall into a perpetual crash loop while not
+        // being able to serve any traffic--including health/readiness status.
+        drop(tokio::spawn(test_connection_task(pg_pool.clone())));
+
+        Ok(pg_pool)
     }
 
     /// Retrieve object from pool or wait for one to become available.
@@ -1723,4 +1768,36 @@ impl<'a> fmt::Debug for InstrumentedTransactionBuilder<'a> {
             .field("metadata", &self.metadata)
             .finish_non_exhaustive()
     }
+}
+
+#[instrument(skip_all)]
+async fn test_connection_task(check_pool: PgPool) {
+    const QUERY: &str = "SELECT 1";
+    let conn = match check_pool.get().await {
+        Ok(conn) => conn,
+        Err(err) => {
+            warn!(error = %err, "failed to get initial database connection from pool");
+            return;
+        }
+    };
+    debug!("got initial database connection");
+    let row = match conn.query_one(QUERY, &[]).await {
+        Ok(row) => row,
+        Err(err) => {
+            warn!(error = %err, db.statement = &QUERY, "failed to execute validation query");
+            return;
+        }
+    };
+    let col: i32 = match row.try_get(0) {
+        Ok(col) => col,
+        Err(err) => {
+            warn!(error = %err, "failed to parse column 0 of row");
+            return;
+        }
+    };
+    if col != 1 {
+        warn!("validation query did not return 1; val={}", col);
+        return;
+    }
+    debug!("successfully connected to database and executed initial validation query");
 }

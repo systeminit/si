@@ -4,8 +4,11 @@ use std::{
 };
 
 use derive_builder::Builder;
-use si_settings::error::SettingsError;
+use serde::{Deserialize, Serialize};
+use si_data::NatsConfig;
 use thiserror::Error;
+
+pub use si_settings::{StandardConfig, StandardConfigFile};
 
 #[derive(Debug, Error)]
 pub enum ConfigError {
@@ -14,7 +17,7 @@ pub enum ConfigError {
     #[error("no socket addrs where resolved")]
     NoSocketAddrResolved,
     #[error(transparent)]
-    Settings(#[from] SettingsError),
+    Settings(#[from] si_settings::SettingsError),
     #[error("failed to resolve socket addrs")]
     SocketAddrResolve(#[source] std::io::Error),
 }
@@ -23,29 +26,47 @@ type Result<T> = std::result::Result<T, ConfigError>;
 
 #[derive(Debug, Builder)]
 pub struct Config {
-    nats_url: String,
+    #[builder(default = "NatsConfig::default()")]
+    nats: NatsConfig,
 
     #[builder(default = "CycloneStream::default()")]
     cyclone_stream: CycloneStream,
 }
 
+impl StandardConfig for Config {
+    type Builder = ConfigBuilder;
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+pub struct ConfigFile {
+    nats: NatsConfig,
+}
+
+impl StandardConfigFile for ConfigFile {
+    type Error = ConfigError;
+}
+
+impl TryFrom<ConfigFile> for Config {
+    type Error = ConfigError;
+
+    fn try_from(value: ConfigFile) -> Result<Self> {
+        let mut config = Config::builder();
+        config.nats(value.nats);
+        config.build().map_err(Into::into)
+    }
+}
+
 impl Config {
-    /// Constructs a builder for creating a Config
-    #[must_use]
-    pub fn builder() -> ConfigBuilder {
-        ConfigBuilder::default()
-    }
-
-    /// Gets a reference to the config's nats url.
-    #[must_use]
-    pub fn nats_url(&self) -> &str {
-        self.nats_url.as_str()
-    }
-
     /// Gets a reference to the config's cyclone stream.
     #[must_use]
     pub fn cyclone_stream(&self) -> &CycloneStream {
         &self.cyclone_stream
+    }
+
+    /// Gets a reference to the config's nats.
+    #[must_use]
+    pub fn nats(&self) -> &NatsConfig {
+        &self.nats
     }
 }
 

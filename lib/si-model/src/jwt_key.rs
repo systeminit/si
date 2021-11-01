@@ -1,3 +1,4 @@
+use crate::pk;
 use jwt_simple::{
     algorithms::{RS256KeyPair, RS256PublicKey},
     prelude::{JWTClaims, RSAPublicKeyLike, Token},
@@ -9,7 +10,6 @@ use std::{fs::File, io::prelude::*};
 use thiserror::Error;
 use tokio::task::JoinError;
 use tracing::{info_span, instrument, Instrument};
-use crate::pk;
 
 const JWT_KEY_EXISTS: &str = include_str!("./queries/jwt_key_exists.sql");
 const JWT_KEY_GET_LATEST_PRIVATE_KEY: &str =
@@ -64,8 +64,25 @@ pub struct ApiClaim {
 
 pk!(JwtPk);
 
+#[derive(Debug, Deserialize, Clone)]
+#[serde(default)]
+pub struct JwtEncrypt {
+    pub key: secretbox::Key,
+}
+
+impl Default for JwtEncrypt {
+    fn default() -> Self {
+        JwtEncrypt {
+            key: secretbox::gen_key(),
+        }
+    }
+}
+
 #[tracing::instrument(skip(txn, jwt_id))]
-pub async fn get_jwt_validation_key(txn: &PgTxn<'_>, jwt_id: impl AsRef<str>) -> JwtKeyResult<RS256PublicKey> {
+pub async fn get_jwt_validation_key(
+    txn: &PgTxn<'_>,
+    jwt_id: impl AsRef<str>,
+) -> JwtKeyResult<RS256PublicKey> {
     let jwt_id = jwt_id.as_ref();
     let pk: JwtPk = jwt_id.parse::<i64>()?.into();
 
