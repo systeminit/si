@@ -2,6 +2,8 @@ use std::{io, net::SocketAddr, path::PathBuf};
 
 use axum::routing::{BoxRoute, IntoMakeService};
 use hyper::server::{accept::Accept, conn::AddrIncoming};
+use si_data::{NatsConfig, NatsConn, NatsTxnError, PgPool, PgPoolConfig, PgPoolError};
+use si_model::migrate;
 use thiserror::Error;
 use tokio::{
     io::{AsyncRead, AsyncWrite},
@@ -9,7 +11,7 @@ use tokio::{
     sync::{mpsc, oneshot},
 };
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
-use tracing::{error, info, trace};
+use tracing::{debug, error, info, instrument, trace};
 
 use super::{routes, Config, IncomingStream, UdsIncomingStream, UdsIncomingStreamError};
 
@@ -17,15 +19,21 @@ use super::{routes, Config, IncomingStream, UdsIncomingStream, UdsIncomingStream
 pub enum ServerError {
     #[error("hyper server error")]
     Hyper(#[from] hyper::Error),
+    #[error(transparent)]
+    Model(#[from] si_model::ModelError),
+    #[error(transparent)]
+    Nats(#[from] NatsTxnError),
+    #[error(transparent)]
+    PgPool(#[from] PgPoolError),
     #[error("failed to setup signal handler")]
     Signal(#[source] io::Error),
-    #[error("UDS incoming stream error")]
+    #[error(transparent)]
     Uds(#[from] UdsIncomingStreamError),
     #[error("wrong incoming stream for {0} server: {1:?}")]
     WrongIncomingStream(&'static str, IncomingStream),
 }
 
-type Result<T> = std::result::Result<T, ServerError>;
+pub type Result<T> = std::result::Result<T, ServerError>;
 
 pub struct Server<I, S> {
     config: Config,
@@ -35,10 +43,14 @@ pub struct Server<I, S> {
 }
 
 impl Server<(), ()> {
-    pub fn http(config: Config) -> Result<Server<AddrIncoming, SocketAddr>> {
+    pub fn http(
+        config: Config,
+        pg_pool: PgPool,
+        nats: NatsConn,
+    ) -> Result<Server<AddrIncoming, SocketAddr>> {
         match config.incoming_stream() {
             IncomingStream::HTTPSocket(socket_addr) => {
-                let (service, shutdown_rx) = build_service(&config)?;
+                let (service, shutdown_rx) = build_service(pg_pool, nats)?;
 
                 info!("binding to HTTP socket; socket_addr={}", &socket_addr);
                 let inner = axum::Server::bind(socket_addr).serve(service);
@@ -57,10 +69,14 @@ impl Server<(), ()> {
         }
     }
 
-    pub async fn uds(config: Config) -> Result<Server<UdsIncomingStream, PathBuf>> {
+    pub async fn uds(
+        config: Config,
+        pg_pool: PgPool,
+        nats: NatsConn,
+    ) -> Result<Server<UdsIncomingStream, PathBuf>> {
         match config.incoming_stream() {
             IncomingStream::UnixDomainSocket(path) => {
-                let (service, shutdown_rx) = build_service(&config)?;
+                let (service, shutdown_rx) = build_service(pg_pool, nats)?;
 
                 info!("binding to Unix domain socket; path={}", path.display());
                 let inner =
@@ -78,6 +94,24 @@ impl Server<(), ()> {
                 Err(ServerError::WrongIncomingStream("http", wrong.clone()))
             }
         }
+    }
+
+    pub async fn migrate_database(pg: &PgPool) -> Result<()> {
+        migrate(pg).await.map_err(Into::into)
+    }
+
+    #[instrument(skip_all)]
+    pub async fn create_pg_pool(pg_pool_config: &PgPoolConfig) -> Result<PgPool> {
+        let pool = PgPool::new(pg_pool_config).await.map_err(Into::into);
+        debug!("successfully started pg pool (note that not all connections may be healthy)");
+        pool
+    }
+
+    #[instrument(skip_all)]
+    pub async fn connect_to_nats(nats_config: &NatsConfig) -> Result<NatsConn> {
+        let client = NatsConn::new(nats_config).await.map_err(Into::into);
+        debug!("successfully connected nats client");
+        client
     }
 }
 
@@ -109,10 +143,13 @@ where
     }
 }
 
-fn build_service(config: &Config) -> Result<(IntoMakeService<BoxRoute>, oneshot::Receiver<()>)> {
+fn build_service(
+    pg_pool: PgPool,
+    nats: NatsConn,
+) -> Result<(IntoMakeService<BoxRoute>, oneshot::Receiver<()>)> {
     let (shutdown_tx, shutdown_rx) = mpsc::channel(4);
 
-    let routes = routes(config, shutdown_tx)
+    let routes = routes(pg_pool, nats, shutdown_tx)
         // TODO(fnichol): customize http tracing further, using:
         // https://docs.rs/tower-http/0.1.1/tower_http/trace/index.html
         .layer(

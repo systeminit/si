@@ -7,6 +7,7 @@ members = [
   "bin/sdf",
   "bin/veritech",
   "lib/bytes-lines-codec",
+  "lib/config-file",
   "lib/cyclone",
   "lib/deadpool-cyclone",
   "lib/sdf",

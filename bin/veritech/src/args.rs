@@ -1,7 +1,13 @@
 use std::convert::TryFrom;
 
 use clap::{AppSettings, Clap};
-use veritech::server::{Config, ConfigError};
+use si_settings::StandardConfigFile;
+use veritech::{
+    server::{Config, ConfigError},
+    ConfigFile,
+};
+
+const NAME: &str = "veritech";
 
 /// Parse, validate, and return the CLI arguments as a typed struct.
 pub(crate) fn parse() -> Args {
@@ -10,7 +16,7 @@ pub(crate) fn parse() -> Args {
 
 #[derive(Clap, Debug)]
 #[clap(
-    name = "cyclone",
+    name = NAME,
     global_setting = AppSettings::ColoredHelp,
     global_setting = AppSettings::UnifiedHelpMessage,
     max_term_width = 100,
@@ -31,16 +37,11 @@ impl TryFrom<Args> for Config {
     type Error = ConfigError;
 
     fn try_from(args: Args) -> Result<Self, Self::Error> {
-        let settings = si_settings::Settings::new()?;
-
-        let mut builder = Self::builder();
-
-        if let Some(nats_url) = args.nats_url {
-            builder.nats_url(nats_url);
-        } else {
-            builder.nats_url(settings.nats.url);
-        }
-
-        builder.build().map_err(Into::into)
+        ConfigFile::layered_load(NAME, move |config_map| {
+            if let Some(url) = args.nats_url {
+                config_map.set("nats.url", url);
+            }
+        })?
+        .try_into()
     }
 }

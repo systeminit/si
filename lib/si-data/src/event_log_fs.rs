@@ -36,6 +36,20 @@ pub struct EventLogFS {
     pending_persist_path: PathBuf,
 }
 
+#[derive(Debug, Deserialize, Clone)]
+#[serde(default)]
+pub struct EventLogFsConfig {
+    pub root: PathBuf,
+}
+
+impl Default for EventLogFsConfig {
+    fn default() -> Self {
+        Self {
+            root: PathBuf::from("/tmp/si-sdf-event-log-fs"),
+        }
+    }
+}
+
 async fn is_file(path: impl AsRef<Path>) -> bool {
     fs::metadata(path)
         .await
@@ -44,7 +58,7 @@ async fn is_file(path: impl AsRef<Path>) -> bool {
 }
 
 impl EventLogFS {
-    pub async fn init(settings: &si_settings::EventLogFs) -> EventLogFSResult<Self> {
+    pub async fn init(settings: &EventLogFsConfig) -> EventLogFSResult<Self> {
         let root = &settings.root;
 
         let fs = Self {

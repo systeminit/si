@@ -1,20 +1,44 @@
-use crate::{ChangeSet, EditSession, HistoryActor, Tenancy, Visibility, BillingAccount, NO_EDIT_SESSION_PK, NO_CHANGE_SET_PK};
+use crate::jwt_key::JwtEncrypt;
+use crate::{
+    BillingAccount, ChangeSet, EditSession, HistoryActor, Tenancy, Visibility, NO_CHANGE_SET_PK,
+    NO_EDIT_SESSION_PK,
+};
 use anyhow::Result;
 use lazy_static::lazy_static;
 use names::{Generator, Name};
-use si_data::{NatsConn, NatsTxn, PgPool, PgTxn};
-use si_settings::Settings;
+use si_data::{NatsConfig, NatsConn, NatsTxn, PgPool, PgPoolConfig, PgTxn};
 use sodiumoxide::crypto::secretbox;
 use std::env;
 use std::sync::Arc;
 
-lazy_static! {
-    pub static ref SETTINGS: Settings = {
-        env::set_var("RUN_ENV", "testing");
+#[derive(Debug)]
+pub struct TestConfig {
+    pg: PgPoolConfig,
+    nats: NatsConfig,
+    jwt_encrypt: JwtEncrypt,
+}
 
-        let settings = Settings::new().expect("settings should load");
-        settings
-    };
+impl Default for TestConfig {
+    fn default() -> Self {
+        let mut nats = NatsConfig::default();
+        if let Ok(value) = env::var("SI_TEST_NATS_URL") {
+            nats.url = value;
+        }
+        let mut pg = PgPoolConfig::default();
+        if let Ok(value) = env::var("SI_TEST_PG_HOSTNAME") {
+            pg.hostname = value;
+        }
+
+        Self {
+            pg,
+            nats,
+            jwt_encrypt: JwtEncrypt::default(),
+        }
+    }
+}
+
+lazy_static! {
+    pub static ref SETTINGS: TestConfig = TestConfig::default();
     pub static ref INIT_LOCK: Arc<tokio::sync::Mutex<bool>> =
         Arc::new(tokio::sync::Mutex::new(false));
     pub static ref INIT_PG_LOCK: Arc<tokio::sync::Mutex<bool>> =
@@ -35,7 +59,7 @@ impl TestContext {
         Self::init_with_settings(&SETTINGS).await
     }
 
-    pub async fn init_with_settings(settings: &Settings) -> Self {
+    pub async fn init_with_settings(settings: &TestConfig) -> Self {
         let tmp_event_log_fs_root = tempfile::tempdir().expect("could not create temp dir");
         let pg = PgPool::new(&settings.pg)
             .await
@@ -140,14 +164,12 @@ pub fn create_visibility_edit_session(
     Visibility::new(change_set.pk, edit_session.pk, false)
 }
 
-pub fn create_visibility_change_set(
-    change_set: &ChangeSet,
-) -> Visibility {
+pub fn create_visibility_change_set(change_set: &ChangeSet) -> Visibility {
     Visibility::new(change_set.pk, NO_EDIT_SESSION_PK, false)
 }
 
 pub fn create_visibility_head() -> Visibility {
-    Visibility::new(NO_CHANGE_SET_PK,NO_EDIT_SESSION_PK, false)
+    Visibility::new(NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK, false)
 }
 
 pub async fn create_billing_account_with_name(
@@ -167,7 +189,6 @@ pub async fn create_billing_account_with_name(
         &name,
         None,
     )
-        .await
-        .expect("cannot create billing_account")
+    .await
+    .expect("cannot create billing_account")
 }
-

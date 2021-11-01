@@ -151,15 +151,11 @@ where
 }
 
 async fn connect_to_nats(config: &Config) -> Result<NatsConn> {
-    info!("connecting to NATS; url={}", config.nats_url());
+    info!("connecting to NATS; url={}", config.nats().url);
 
-    // TODO(fnichol): update `NatsConn` to take bare URL, keeping in mind all other consumers
-    // of Settings need to be updated
-    let nats_conn = NatsConn::new(&si_settings::Nats {
-        url: config.nats_url().to_string(),
-    })
-    .await
-    .map_err(ServerError::NatsConnection)?;
+    let nats_conn = NatsConn::new(config.nats())
+        .await
+        .map_err(ServerError::NatsConnection)?;
 
     Ok(nats_conn)
 }

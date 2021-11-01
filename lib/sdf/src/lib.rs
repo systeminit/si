@@ -12,4 +12,7 @@
 )]
 
 mod server;
-pub use server::{Config, ConfigError, IncomingStream, Server};
+pub use server::{
+    Config, ConfigError, ConfigFile, IncomingStream, MigrationMode, Server, StandardConfig,
+    StandardConfigFile,
+};
