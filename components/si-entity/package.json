@@ -40,7 +40,7 @@
     "lodash": "^4.17.21",
     "si-registry": "../si-registry",
     "uuid": "^8.3.2",
-    "validator": "^13.5.2",
+    "validator": "^13.7.0",
     "yaml": "2.0.0-7"
   },
   "volta": {
