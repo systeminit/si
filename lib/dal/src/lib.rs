@@ -43,7 +43,7 @@ pub use user::{User, UserClaim, UserError, UserId, UserResult};
 pub use visibility::{Visibility, VisibilityError};
 pub use workspace::{Workspace, WorkspaceError, WorkspaceId, WorkspacePk, WorkspaceResult};
 
-use si_data::{NatsConn, NatsTxnError, PgError, PgPool, PgPoolError};
+use si_data::{NatsClient, NatsError, PgError, PgPool, PgPoolError};
 
 mod embedded {
     use refinery::embed_migrations;
@@ -58,7 +58,7 @@ pub enum ModelError {
     #[error(transparent)]
     Migration(#[from] PgPoolError),
     #[error(transparent)]
-    NatsTxnError(#[from] NatsTxnError),
+    Nats(#[from] NatsError),
     #[error("database error")]
     PgError(#[from] PgError),
 }
@@ -72,7 +72,7 @@ pub async fn migrate(pg: &PgPool) -> ModelResult<()> {
 }
 
 #[instrument(skip(pg, nats))]
-pub async fn migrate_builtin_schemas(pg: &PgPool, nats: &NatsConn) -> ModelResult<()> {
+pub async fn migrate_builtin_schemas(pg: &PgPool, nats: &NatsClient) -> ModelResult<()> {
     let mut conn = pg.get().await?;
     let txn = conn.transaction().await?;
     let nats = nats.transaction();

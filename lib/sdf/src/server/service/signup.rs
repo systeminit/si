@@ -13,7 +13,7 @@ pub mod create_account;
 #[derive(Debug, Error)]
 pub enum SignupError {
     #[error(transparent)]
-    Nats(#[from] si_data::NatsTxnError),
+    Nats(#[from] si_data::NatsError),
     #[error(transparent)]
     Pg(#[from] si_data::PgError),
     #[error("billing account error: {0}")]

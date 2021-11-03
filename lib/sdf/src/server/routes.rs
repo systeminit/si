@@ -34,7 +34,7 @@ impl State {
 #[must_use]
 pub fn routes(
     pg_pool: pg::PgPool,
-    nats: nats::NatsConn,
+    nats: nats::Client,
     jwt_signing_key: JwtSigningKey,
     shutdown_tx: mpsc::Sender<ShutdownSource>,
 ) -> Router {
@@ -68,9 +68,9 @@ pub fn test_routes(mut router: Router) -> Router {
 #[derive(Debug, Error)]
 pub enum AppError {
     #[error(transparent)]
-    Nats(#[from] si_data::NatsTxnError),
+    Nats(#[from] nats::Error),
     #[error(transparent)]
-    Pg(#[from] si_data::PgError),
+    Pg(#[from] pg::Error),
     #[error(transparent)]
     Server(#[from] ServerError),
 }

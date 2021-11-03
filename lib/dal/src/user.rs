@@ -9,7 +9,7 @@ use jwt_simple::algorithms::RSAKeyPairLike;
 use jwt_simple::claims::Claims;
 use jwt_simple::reexports::coarsetime::Duration;
 use serde::{Deserialize, Serialize};
-use si_data::{NatsTxn, NatsTxnError, PgError, PgTxn};
+use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use sodiumoxide::crypto::pwhash::argon2id13;
 use sodiumoxide::crypto::secretbox;
 use thiserror::Error;
@@ -25,7 +25,7 @@ pub enum UserError {
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
     #[error("nats txn error: {0}")]
-    NatsTxn(#[from] NatsTxnError),
+    Nats(#[from] NatsError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
     #[error("standard model error: {0}")]

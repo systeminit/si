@@ -5,7 +5,7 @@ use axum::routing::IntoMakeService;
 use axum::Router;
 use dal::migrate;
 use hyper::server::{accept::Accept, conn::AddrIncoming};
-use si_data::{NatsConfig, NatsConn, NatsTxnError, PgPool, PgPoolConfig, PgPoolError};
+use si_data::{NatsClient, NatsConfig, NatsError, PgPool, PgPoolConfig, PgPoolError};
 use thiserror::Error;
 use tokio::{
     io::{AsyncRead, AsyncWrite},
@@ -24,7 +24,7 @@ pub enum ServerError {
     #[error(transparent)]
     Model(#[from] dal::ModelError),
     #[error(transparent)]
-    Nats(#[from] NatsTxnError),
+    Nats(#[from] NatsError),
     #[error(transparent)]
     PgPool(#[from] PgPoolError),
     #[error("failed to setup signal handler")]
@@ -48,7 +48,7 @@ impl Server<(), ()> {
     pub fn http(
         config: Config,
         pg_pool: PgPool,
-        nats: NatsConn,
+        nats: NatsClient,
     ) -> Result<Server<AddrIncoming, SocketAddr>> {
         match config.incoming_stream() {
             IncomingStream::HTTPSocket(socket_addr) => {
@@ -75,7 +75,7 @@ impl Server<(), ()> {
     pub async fn uds(
         config: Config,
         pg_pool: PgPool,
-        nats: NatsConn,
+        nats: NatsClient,
     ) -> Result<Server<UdsIncomingStream, PathBuf>> {
         match config.incoming_stream() {
             IncomingStream::UnixDomainSocket(path) => {
@@ -112,8 +112,8 @@ impl Server<(), ()> {
     }
 
     #[instrument(skip_all)]
-    pub async fn connect_to_nats(nats_config: &NatsConfig) -> Result<NatsConn> {
-        let client = NatsConn::new(nats_config).await.map_err(Into::into);
+    pub async fn connect_to_nats(nats_config: &NatsConfig) -> Result<NatsClient> {
+        let client = NatsClient::new(nats_config).await.map_err(Into::into);
         debug!("successfully connected nats client");
         client
     }
@@ -149,7 +149,7 @@ where
 
 pub fn build_service(
     pg_pool: PgPool,
-    nats: NatsConn,
+    nats: NatsClient,
     jwt_signing_key: JwtSigningKey,
 ) -> Result<(Router, oneshot::Receiver<()>)> {
     let (shutdown_tx, shutdown_rx) = mpsc::channel(4);

@@ -1,14 +1,16 @@
-use crate::{FunctionResult, ResolverFunctionRequest};
-use si_data::NatsConn;
+use futures::StreamExt;
+use si_data::NatsClient;
 use thiserror::Error;
 use tracing::instrument;
 
+use crate::{FunctionResult, ResolverFunctionRequest};
+
 #[derive(Error, Debug)]
 pub enum VeritechClientError {
-    #[error("serde error: {0}")]
+    #[error("serde error")]
     SerdeJson(#[from] serde_json::Error),
-    #[error("io error: {0}")]
-    Io(#[from] std::io::Error),
+    #[error("nats io error")]
+    Nats(#[from] si_data::NatsError),
     #[error("no function result from cyclone; bug!")]
     NoResult,
 }
@@ -17,7 +19,7 @@ pub type VeritechClientResult<T> = Result<T, VeritechClientError>;
 
 #[instrument(name = "veritech.client.run_function", skip(nats, kind, code))]
 pub async fn run_function(
-    nats: &NatsConn,
+    nats: &NatsClient,
     kind: impl Into<String>,
     code: impl Into<String>,
 ) -> VeritechClientResult<FunctionResult> {
@@ -29,18 +31,18 @@ pub async fn run_function(
         container_image: "foo".to_string(),
         container_tag: "latest".to_string(),
     };
-    let reply_sub = nats
+    let mut reply_sub = nats
         .request_multi(
             "veritech.function.resolver",
-            &serde_json::to_string(&request)?,
+            serde_json::to_string(&request)?,
         )
         .await?;
 
     let mut result: Option<FunctionResult> = None;
     // TODO - We will eventually want this to timeout if we don't receive the
     // payload in time. Lots of fanciness can ensue.
-    while let Some(msg) = reply_sub.next().await {
-        let json_payload: serde_json::Value = serde_json::from_slice(&msg.data)?;
+    while let Some(msg) = reply_sub.next().await.transpose()? {
+        let json_payload: serde_json::Value = serde_json::from_slice(msg.data())?;
         // Then it is output
         if json_payload["stream"].is_null() {
             let function_result: FunctionResult = serde_json::from_value(json_payload)?;

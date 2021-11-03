@@ -1,10 +1,11 @@
-use crate::{HistoryActor, HistoryEvent, HistoryEventError, Tenancy, Timestamp, Visibility};
 use chrono::{DateTime, Utc};
 use postgres_types::ToSql;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use si_data::{NatsTxn, NatsTxnError, PgError, PgTxn};
+use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use thiserror::Error;
+
+use crate::{HistoryActor, HistoryEvent, HistoryEventError, Tenancy, Timestamp, Visibility};
 
 #[derive(Error, Debug)]
 pub enum StandardModelError {
@@ -12,8 +13,8 @@ pub enum StandardModelError {
     SerdeJson(#[from] serde_json::Error),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
-    #[error("nats txn error: {0}")]
-    NatsTxn(#[from] NatsTxnError),
+    #[error("nats error")]
+    Nats(#[from] NatsError),
     #[error("{0} pk {1} is missing when one was expected; it does not exist, is not visible, or is not valid for this tenancy")]
     ModelMissing(String, String),
     #[error("history event error: {0}")]
@@ -331,7 +332,8 @@ pub async fn finish_create_from_row<Object: Send + Sync + DeserializeOwned + Sta
     row: tokio_postgres::Row,
 ) -> StandardModelResult<Object> {
     let json: serde_json::Value = row.try_get("object")?;
-    nats.publish(&json).await?;
+    // TODO(fnichol): determine subject(s) for publishing
+    nats.publish("standardModel", &json).await?;
     let _history_event = HistoryEvent::new(
         &txn,
         &nats,

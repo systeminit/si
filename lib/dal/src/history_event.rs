@@ -1,6 +1,6 @@
 use crate::{pk, Tenancy, Timestamp, UserId};
 use serde::{Deserialize, Serialize};
-use si_data::{NatsTxn, NatsTxnError, PgError, PgTxn};
+use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use strum_macros::Display as StrumDisplay;
 use thiserror::Error;
 
@@ -11,7 +11,7 @@ pub enum HistoryEventError {
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
     #[error("nats txn error: {0}")]
-    NatsTxn(#[from] NatsTxnError),
+    Nats(#[from] NatsError),
 }
 
 pub type HistoryEventResult<T> = Result<T, HistoryEventError>;
@@ -58,7 +58,8 @@ impl HistoryEvent {
             )
             .await?;
         let json: serde_json::Value = row.try_get("object")?;
-        nats.publish(&json).await?;
+        // TODO(fnichol): determine subject(s) for publishing
+        nats.publish("historyEvent", &json).await?;
         let object: HistoryEvent = serde_json::from_value(json)?;
         Ok(object)
     }

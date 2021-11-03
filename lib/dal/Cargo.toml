@@ -20,7 +20,7 @@ refinery = "0.6.0"
 reqwest = { version = "0.11.1", default-features = false, features = ["json"] }
 serde = "1.0.123"
 serde_json = { version = "1.0.64", features = ["preserve_order"] }
-si-data = { path = "../../lib/si-data" }
+si-data = { path = "../../lib/si-data", features = ["nats", "pg"] }
 veritech = { path = "../../lib/veritech", features = ["client"] }
 sodiumoxide = "0.2.6"
 strum = "0.21.0"

@@ -4,7 +4,7 @@ use thiserror::Error;
 
 use crate::{pk, HistoryActor, HistoryEvent, HistoryEventError, Tenancy, Timestamp};
 use chrono::{DateTime, Utc};
-use si_data::{NatsTxn, NatsTxnError, PgError, PgTxn};
+use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 
 #[derive(Error, Debug)]
 pub enum ChangeSetError {
@@ -12,8 +12,8 @@ pub enum ChangeSetError {
     SerdeJson(#[from] serde_json::Error),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
-    #[error("nats txn error: {0}")]
-    NatsTxn(#[from] NatsTxnError),
+    #[error(transparent)]
+    Nats(#[from] NatsError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
 }
@@ -66,7 +66,8 @@ impl ChangeSet {
             )
             .await?;
         let json: serde_json::Value = row.try_get("object")?;
-        nats.publish(&json).await?;
+        // TODO(fnichol): determine subject(s) for publishing
+        nats.publish("changeSet", &json).await?;
         let _history_event = HistoryEvent::new(
             &txn,
             &nats,

@@ -1,7 +1,7 @@
 use crate::{pk, ChangeSetPk, HistoryActor, HistoryEvent, HistoryEventError, Tenancy, Timestamp};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use si_data::{NatsTxn, NatsTxnError, PgError, PgTxn};
+use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use strum_macros::{Display, EnumString};
 use thiserror::Error;
 
@@ -11,8 +11,8 @@ pub enum EditSessionError {
     SerdeJson(#[from] serde_json::Error),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
-    #[error("nats txn error: {0}")]
-    NatsTxn(#[from] NatsTxnError),
+    #[error(transparent)]
+    Nats(#[from] NatsError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
 }
@@ -71,7 +71,8 @@ impl EditSession {
             )
             .await?;
         let json: serde_json::Value = row.try_get("object")?;
-        nats.publish(&json).await?;
+        // TODO(fnichol): determine subject(s) for publishing
+        nats.publish("editSession", &json).await?;
         let _history_event = HistoryEvent::new(
             &txn,
             &nats,

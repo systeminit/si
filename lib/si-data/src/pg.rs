@@ -1,4 +1,4 @@
-use std::{cmp, fmt, net::ToSocketAddrs, ops::DerefMut, sync::Arc, time::Duration};
+use std::{cmp, fmt, net::ToSocketAddrs, sync::Arc, time::Duration};
 
 use bytes::Buf;
 use deadpool::managed::Object;
@@ -108,8 +108,8 @@ struct ConnectionMetadata {
 
 impl PgPool {
     #[instrument(
-        name = "pgpool.new",
-        skip(settings),
+        name = "pg_pool::new",
+        skip_all,
         fields(
             db.system = Empty,
             db.connection_string = Empty,
@@ -202,8 +202,8 @@ impl PgPool {
 
     /// Retrieve object from pool or wait for one to become available.
     #[instrument(
-        name = "pgpool.get",
-        skip(self),
+        name = "pool.get",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -233,8 +233,8 @@ impl PgPool {
     }
 
     #[instrument(
-        name = "pgpool.migrate",
-        skip(self, runner),
+        name = "pool.migrate",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -250,7 +250,7 @@ impl PgPool {
         let mut conn = self.pool.get().await?;
         conn.query_one("SELECT pg_advisory_lock($1)", &[&MIGRATION_LOCK_NUMBER])
             .await?;
-        let client = conn.deref_mut().deref_mut();
+        let client = &mut **conn;
         match runner.run_async(client).await {
             Ok(_) => {
                 conn.query_one("SELECT pg_advisory_unlock($1)", &[&MIGRATION_LOCK_NUMBER])
@@ -265,7 +265,7 @@ impl PgPool {
         }
     }
 
-    #[instrument(skip(self))]
+    #[instrument(name = "pool.drop_and_create_public_schema", skip_all)]
     pub async fn drop_and_create_public_schema(&self) -> PgPoolResult<()> {
         let conn = self.get().await?;
         conn.execute("DROP SCHEMA IF EXISTS public CASCADE", &[])
@@ -285,8 +285,8 @@ impl InstrumentedClient {
     /// Like [`tokio_postgres::Transaction::prepare`](#method.prepare-1)
     /// but uses an existing statement from the cache if possible.
     #[instrument(
-        name = "instrumentedclient.prepare_cached",
-        skip(self, query),
+        name = "client.prepare_cached",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -306,8 +306,8 @@ impl InstrumentedClient {
     /// Like [`tokio_postgres::Transaction::prepare_typed`](#method.prepare_typed-1)
     /// but uses an existing statement from the cache if possible.
     #[instrument(
-        name = "instrumentedclient.prepare_typed_cached",
-        skip(self, query, types),
+        name = "client.prepare_typed_cached",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -332,8 +332,8 @@ impl InstrumentedClient {
     ///
     /// The transaction will roll back by default - use the `commit` method to commit it.
     #[instrument(
-        name = "instrumentedclient.transaction",
-        skip(self),
+        name = "client.transaction",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -360,8 +360,8 @@ impl InstrumentedClient {
     /// isolation level and other
     /// attributes.
     #[instrument(
-        name = "instrumentedclient.build_transaction",
-        skip(self),
+        name = "client.build_transaction",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -386,8 +386,8 @@ impl InstrumentedClient {
     /// by `$1`, `$2`, etc), which are set when executed. Prepared statements can only be used with
     /// the connection that created them.
     #[instrument(
-        name = "instrumentedclient.prepare",
-        skip(self, query),
+        name = "client.prepare",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -410,8 +410,8 @@ impl InstrumentedClient {
     /// parameters will be inferred. For example, `client.prepare_typed(query, &[])` is equivalent
     /// to `client.prepare(query)`.
     #[instrument(
-        name = "instrumentedclient.prepare_typed",
-        skip(self, query, parameter_types),
+        name = "client.prepare_typed",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -445,8 +445,8 @@ impl InstrumentedClient {
     ///
     /// Panics if the number of parameters provided does not match the number expected.
     #[instrument(
-        name = "instrumentedclient.query",
-        skip(self, statement, params),
+        name = "client.query",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -487,8 +487,8 @@ impl InstrumentedClient {
     ///
     /// Panics if the number of parameters provided does not match the number expected.
     #[instrument(
-        name = "instrumentedclient.query_one",
-        skip(self, statement, params),
+        name = "client.query_one",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -529,8 +529,8 @@ impl InstrumentedClient {
     ///
     /// Panics if the number of parameters provided does not match the number expected.
     #[instrument(
-        name = "instrumentedclient.query_opt",
-        skip(self, statement, params),
+        name = "client.query_opt",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -577,8 +577,8 @@ impl InstrumentedClient {
     ///
     /// [`query`]: #method.query
     #[instrument(
-        name = "instrumentedclient.query_raw",
-        skip(self, statement, params),
+        name = "client.query_raw",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -615,8 +615,8 @@ impl InstrumentedClient {
     ///
     /// Panics if the number of parameters provided does not match the number expected.
     #[instrument(
-        name = "instrumentedclient.execute",
-        skip(self, statement, params),
+        name = "client.execute",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -652,8 +652,8 @@ impl InstrumentedClient {
     ///
     /// [`execute`]: #method.execute
     #[instrument(
-        name = "instrumentedclient.execute_raw",
-        skip(self, statement, params),
+        name = "client.execute_raw",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -685,8 +685,8 @@ impl InstrumentedClient {
     ///
     /// Panics if the statement contains parameters.
     #[instrument(
-        name = "instrumentedclient.copy_in",
-        skip(self, statement),
+        name = "client.copy_in",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -715,8 +715,8 @@ impl InstrumentedClient {
     ///
     /// Panics if the statement contains parameters.
     #[instrument(
-        name = "instrumentedclient.copy_out",
-        skip(self, statement),
+        name = "client.copy_out",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -751,8 +751,8 @@ impl InstrumentedClient {
     /// provided the functionality to safely embed that data in the request. Do not form statements
     /// via string concatenation and pass them to this method!
     #[instrument(
-        name = "instrumentedclient.simple_query",
-        skip(self, query),
+        name = "client.simple_query",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -781,8 +781,8 @@ impl InstrumentedClient {
     /// provided the functionality to safely embed that data in the request. Do not form statements
     /// via string concatenation and pass them to this method!
     #[instrument(
-        name = "instrumentedclient.batch_execute",
-        skip(self, query),
+        name = "client.batch_execute",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -802,8 +802,8 @@ impl InstrumentedClient {
     /// Constructs a cancellation token that can later be used to request cancellation of a query
     /// running on the connection associated with this client.
     #[instrument(
-        name = "instrumentedclient.cancel_token",
-        skip(self),
+        name = "client.cancel_token",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -826,8 +826,8 @@ impl InstrumentedClient {
     /// in the database, this method can be used to flush the local cache and allow the new,
     /// updated definitions to be loaded.
     #[instrument(
-        name = "instrumentedclient.clear_type_cache",
-        skip(self),
+        name = "client.clear_type_cache",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -840,15 +840,15 @@ impl InstrumentedClient {
         )
     )]
     pub fn clear_type_cache(&self) {
-        self.inner.clear_type_cache()
+        self.inner.clear_type_cache();
     }
 
     /// Determines if the connection to the server has already closed.
     ///
     /// In that case, all future queries will fail.
     #[instrument(
-        name = "instrumentedclient.is_closed",
-        skip(self),
+        name = "client.is_closed",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -891,8 +891,8 @@ impl<'a> InstrumentedTransaction<'a> {
     /// Like [`tokio_postgres::Transaction::prepare`](#method.prepare-1)
     /// but uses an existing statement from the cache if possible.
     #[instrument(
-        name = "instrumentedtransaction.prepare_cached",
-        skip(self, query),
+        name = "transaction.prepare_cached",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -916,8 +916,8 @@ impl<'a> InstrumentedTransaction<'a> {
     /// Like [`tokio_postgres::Transaction::prepare_typed`](#method.prepare_typed-1)
     /// but uses an existing statement from the cache if possible.
     #[instrument(
-        name = "instrumentedtransaction.prepare_typed_cached",
-        skip(self, query, types),
+        name = "transaction.prepare_typed_cached",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -944,8 +944,8 @@ impl<'a> InstrumentedTransaction<'a> {
 
     /// Consumes the transaction, committing all changes made within it.
     #[instrument(
-        name = "instrumentedtransaction.commit",
-        skip(self),
+        name = "transaction.commit",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -958,6 +958,7 @@ impl<'a> InstrumentedTransaction<'a> {
         )
     )]
     pub async fn commit(self) -> Result<(), Error> {
+        let _ = &self;
         Span::current().follows_from(&self.tx_span);
         let r = self.inner.commit().instrument(self.tx_span.clone()).await;
         self.tx_span.record("db.transaction", &display("commit"));
@@ -969,8 +970,8 @@ impl<'a> InstrumentedTransaction<'a> {
     /// This is equivalent to `Transaction`'s `Drop` implementation, but provides any error
     /// encountered to the caller.
     #[instrument(
-        name = "instrumentedtransaction.rollback",
-        skip(self),
+        name = "transaction.rollback",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -983,6 +984,7 @@ impl<'a> InstrumentedTransaction<'a> {
         )
     )]
     pub async fn rollback(self) -> Result<(), Error> {
+        let _ = &self;
         Span::current().follows_from(&self.tx_span);
         let r = self.inner.rollback().instrument(self.tx_span.clone()).await;
         self.tx_span.record("db.transaction", &display("rollback"));
@@ -995,8 +997,8 @@ impl<'a> InstrumentedTransaction<'a> {
     /// by `$1`, `$2`, etc), which are set when executed. Prepared statements can only be used with
     /// the connection that created them.
     #[instrument(
-        name = "instrumentedtransaction.prepare",
-        skip(self, query),
+        name = "transaction.prepare",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1023,8 +1025,8 @@ impl<'a> InstrumentedTransaction<'a> {
     /// parameters will be inferred. For example, `client.prepare_typed(query, &[])` is equivalent
     /// to `client.prepare(query)`.
     #[instrument(
-        name = "instrumentedtransaction.prepare_typed",
-        skip(self, query, parameter_types),
+        name = "transaction.prepare_typed",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1062,8 +1064,8 @@ impl<'a> InstrumentedTransaction<'a> {
     ///
     /// Panics if the number of parameters provided does not match the number expected.
     #[instrument(
-        name = "instrumentedtransaction.query",
-        skip(self, statement, params),
+        name = "transaction.query",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1109,8 +1111,8 @@ impl<'a> InstrumentedTransaction<'a> {
     ///
     /// Panics if the number of parameters provided does not match the number expected.
     #[instrument(
-        name = "instrumentedtransaction.query_one",
-        skip(self, statement, params),
+        name = "transaction.query_one",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1156,8 +1158,8 @@ impl<'a> InstrumentedTransaction<'a> {
     ///
     /// Panics if the number of parameters provided does not match the number expected.
     #[instrument(
-        name = "instrumentedtransaction.query_opt",
-        skip(self, statement, params),
+        name = "transaction.query_opt",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1209,8 +1211,8 @@ impl<'a> InstrumentedTransaction<'a> {
     ///
     /// [`query`]: #method.query
     #[instrument(
-        name = "instrumentedtransaction.query_raw",
-        skip(self, statement, params),
+        name = "transaction.query_raw",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1251,8 +1253,8 @@ impl<'a> InstrumentedTransaction<'a> {
     ///
     /// Panics if the number of parameters provided does not match the number expected.
     #[instrument(
-        name = "instrumentedtransaction.execute",
-        skip(self, statement, params),
+        name = "transaction.execute",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1292,8 +1294,8 @@ impl<'a> InstrumentedTransaction<'a> {
     ///
     /// [`execute`]: #method.execute
     #[instrument(
-        name = "instrumentedtransaction.execute_raw",
-        skip(self, statement, params),
+        name = "transaction.execute_raw",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1329,8 +1331,8 @@ impl<'a> InstrumentedTransaction<'a> {
     ///
     /// Panics if the number of parameters provided does not match the number expected.
     #[instrument(
-        name = "instrumentedtransaction.bind",
-        skip(self, statement, params),
+        name = "transaction.bind",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1361,8 +1363,8 @@ impl<'a> InstrumentedTransaction<'a> {
     ///
     /// [`bind`]: #method.bind
     #[instrument(
-        name = "instrumentedtransaction.bind_raw",
-        skip(self, statement, params),
+        name = "transaction.bind_raw",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1394,8 +1396,8 @@ impl<'a> InstrumentedTransaction<'a> {
     /// returned in each call to `query_portal`. If the requested number is negative or 0, all rows
     /// will be returned.
     #[instrument(
-        name = "instrumentedtransaction.query_portal",
-        skip(self, portal, max_rows),
+        name = "transaction.query_portal",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1419,8 +1421,8 @@ impl<'a> InstrumentedTransaction<'a> {
     ///
     /// [`query_portal`]: #method.query_portal
     #[instrument(
-        name = "instrumentedtransaction.query_portal_raw",
-        skip(self, portal, max_rows),
+        name = "transaction.query_portal_raw",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1454,8 +1456,8 @@ impl<'a> InstrumentedTransaction<'a> {
     ///
     /// Panics if the statement contains parameters.
     #[instrument(
-        name = "instrumentedtransaction.copy_in",
-        skip(self, statement),
+        name = "transaction.copy_in",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1488,8 +1490,8 @@ impl<'a> InstrumentedTransaction<'a> {
     ///
     /// Panics if the statement contains parameters.
     #[instrument(
-        name = "instrumentedtransaction.copy_out",
-        skip(self, statement),
+        name = "transaction.copy_out",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1528,8 +1530,8 @@ impl<'a> InstrumentedTransaction<'a> {
     /// provided the functionality to safely embed that data in the request. Do not form statements
     /// via string concatenation and pass them to this method!
     #[instrument(
-        name = "instrumentedtransaction.simple_query",
-        skip(self, query),
+        name = "transaction.simple_query",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1562,8 +1564,8 @@ impl<'a> InstrumentedTransaction<'a> {
     /// provided the functionality to safely embed that data in the request. Do not form statements
     /// via string concatenation and pass them to this method!
     #[instrument(
-        name = "instrumentedtransaction.batch_execute",
-        skip(self, query),
+        name = "transaction.batch_execute",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1587,8 +1589,8 @@ impl<'a> InstrumentedTransaction<'a> {
     /// Constructs a cancellation token that can later be used to request cancellation of a query
     /// running on the connection associated with this client.
     #[instrument(
-        name = "instrumentedtransaction.cancel_token",
-        skip(self),
+        name = "transaction.cancel_token",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1607,8 +1609,8 @@ impl<'a> InstrumentedTransaction<'a> {
 
     /// Like `Client::transaction`, but creates a nested transaction via a savepoint.
     #[instrument(
-        name = "instrumentedtransaction.transaction",
-        skip(self),
+        name = "transaction.transaction",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1634,8 +1636,8 @@ impl<'a> InstrumentedTransaction<'a> {
 
     /// Like `Client::transaction`, but creates a nested transaction via a savepoint with the specified name.
     #[instrument(
-        name = "instrumentedtransaction.savepoint",
-        skip(self, name),
+        name = "transaction.savepoint",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1663,8 +1665,8 @@ impl<'a> InstrumentedTransaction<'a> {
 
     /// Returns a reference to the underlying `Client`.
     #[instrument(
-        name = "instrumentedtransaction.client",
-        skip(self),
+        name = "transaction.client",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1699,7 +1701,7 @@ impl<'a> InstrumentedTransactionBuilder<'a> {
     /// Sets the isolation level of the transaction.
     ///
     /// Like `tokio_postgres::TransactionBuilder::isolation_level`
-    #[instrument(skip(self, isolation_level))]
+    #[instrument(skip_all)]
     pub fn isolation_level(self, isolation_level: IsolationLevel) -> Self {
         Self {
             inner: self.inner.isolation_level(isolation_level),
@@ -1710,7 +1712,7 @@ impl<'a> InstrumentedTransactionBuilder<'a> {
     /// Sets the access mode of the transaction.
     ///
     /// Like `tokio_postgres::TransactionBuilder::read_only`
-    #[instrument(skip(self, read_only))]
+    #[instrument(skip_all)]
     pub fn read_only(self, read_only: bool) -> Self {
         Self {
             inner: self.inner.read_only(read_only),
@@ -1725,7 +1727,7 @@ impl<'a> InstrumentedTransactionBuilder<'a> {
     /// guarantee that it will not be aborted due to serialization failure.
     ///
     /// Like `tokio_postgres::TransactionBuilder::deferrable`
-    #[instrument(skip(self, deferrable))]
+    #[instrument(skip_all)]
     pub fn deferrable(self, deferrable: bool) -> Self {
         Self {
             inner: self.inner.deferrable(deferrable),
@@ -1740,8 +1742,8 @@ impl<'a> InstrumentedTransactionBuilder<'a> {
     ///
     /// Like `tokio_postgres::TransactionBuilder::start`
     #[instrument(
-        name = "instrumentedtransactionbuilder.start",
-        skip(self),
+        name = "transaction_builder.start",
+        skip_all,
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,

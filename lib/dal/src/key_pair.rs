@@ -7,7 +7,7 @@ use crate::{
     HistoryEventError, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
 };
 use serde::{Deserialize, Serialize};
-use si_data::{NatsTxn, NatsTxnError, PgError, PgTxn};
+use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use sodiumoxide::crypto::box_::{self, PublicKey as BoxPublicKey, SecretKey as BoxSecretKey};
 use thiserror::Error;
 
@@ -20,7 +20,7 @@ pub enum KeyPairError {
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
     #[error("nats txn error: {0}")]
-    NatsTxn(#[from] NatsTxnError),
+    Nats(#[from] NatsError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
     #[error("standard model error: {0}")]
