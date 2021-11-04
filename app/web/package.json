@@ -16,7 +16,16 @@
     "cypress:run": "cypress run"
   },
   "dependencies": {
-    "vue": "^3.2.16"
+    "@pixi/layers": "^1.0.11",
+    "@reactivex/rxjs": "^6.6.7",
+    "@xstate/vue": "^0.8.1",
+    "konva": "^8.2.3",
+    "pixi-filters": "^4.1.5",
+    "pixi.js": "^6.2.0",
+    "rxjs": "^7.4.0",
+    "vue": "^3.2.22",
+    "vuse-rx": "^0.13.1",
+    "xstate": "^4.26.0"
   },
   "devDependencies": {
     "@types/chart.js": "^2.9.3",
