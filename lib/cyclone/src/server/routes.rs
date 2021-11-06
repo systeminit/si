@@ -5,8 +5,8 @@ use std::{
 };
 
 use axum::{handler::get, routing::BoxRoute, AddExtensionLayer, Router};
+use telemetry::prelude::*;
 use tokio::sync::mpsc;
-use tracing::debug;
 
 use super::{handlers, server::ShutdownSource, tower::LimitRequestLayer, Config};
 use crate::server::watch;

@@ -12,9 +12,9 @@ mod limit_requests {
     };
 
     use pin_project_lite::pin_project;
+    use telemetry::prelude::*;
     use tokio::sync::mpsc;
     use tower::{Layer, Service};
-    use tracing::{debug, trace, warn};
 
     use crate::server::server::ShutdownSource;
 

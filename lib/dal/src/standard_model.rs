@@ -3,6 +3,7 @@ use postgres_types::ToSql;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{HistoryActor, HistoryEvent, HistoryEventError, Tenancy, Timestamp, Visibility};
@@ -23,7 +24,7 @@ pub enum StandardModelError {
 
 pub type StandardModelResult<T> = Result<T, StandardModelError>;
 
-#[tracing::instrument(skip(txn))]
+#[instrument(skip(txn))]
 pub async fn get_by_pk<PK: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
     txn: &PgTxn<'_>,
     table: &str,
@@ -37,7 +38,7 @@ pub async fn get_by_pk<PK: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
     Ok(object)
 }
 
-#[tracing::instrument(skip(txn))]
+#[instrument(skip(txn))]
 pub async fn get_by_id<ID: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
     txn: &PgTxn<'_>,
     table: &str,
@@ -67,7 +68,7 @@ pub fn object_option_from_row_option<OBJECT: DeserializeOwned>(
     }
 }
 
-#[tracing::instrument(skip(txn))]
+#[instrument(skip(txn))]
 pub async fn belongs_to<ID: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
     txn: &PgTxn<'_>,
     table: &str,
@@ -85,7 +86,7 @@ pub async fn belongs_to<ID: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
     object_option_from_row_option(row_option)
 }
 
-#[tracing::instrument(skip(txn))]
+#[instrument(skip(txn))]
 pub async fn set_belongs_to<ObjectId: Send + Sync + ToSql, BelongsToId: Send + Sync + ToSql>(
     txn: &PgTxn<'_>,
     table: &str,
@@ -102,7 +103,7 @@ pub async fn set_belongs_to<ObjectId: Send + Sync + ToSql, BelongsToId: Send + S
     Ok(())
 }
 
-#[tracing::instrument(skip(txn))]
+#[instrument(skip(txn))]
 pub async fn unset_belongs_to<ObjectId: Send + Sync + ToSql>(
     txn: &PgTxn<'_>,
     table: &str,
@@ -118,7 +119,7 @@ pub async fn unset_belongs_to<ObjectId: Send + Sync + ToSql>(
     Ok(())
 }
 
-#[tracing::instrument(skip(txn))]
+#[instrument(skip(txn))]
 pub async fn has_many<ID: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
     txn: &PgTxn<'_>,
     table: &str,
@@ -142,7 +143,7 @@ pub async fn has_many<ID: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
     Ok(objects_from_rows(rows)?)
 }
 
-#[tracing::instrument(skip(txn))]
+#[instrument(skip(txn))]
 pub async fn many_to_many<
     LeftId: Send + Sync + ToSql,
     RightId: Send + Sync + ToSql,
@@ -174,7 +175,7 @@ pub async fn many_to_many<
     Ok(objects_from_rows(rows)?)
 }
 
-#[tracing::instrument(skip(txn))]
+#[instrument(skip(txn))]
 pub async fn associate_many_to_many<LeftId: Send + Sync + ToSql, RightId: Send + Sync + ToSql>(
     txn: &PgTxn<'_>,
     table: &str,
@@ -197,7 +198,7 @@ pub async fn associate_many_to_many<LeftId: Send + Sync + ToSql, RightId: Send +
     Ok(())
 }
 
-#[tracing::instrument(skip(txn))]
+#[instrument(skip(txn))]
 pub async fn disassociate_many_to_many<
     LeftId: Send + Sync + ToSql,
     RightId: Send + Sync + ToSql,
@@ -253,7 +254,7 @@ pub fn option_object_from_row<OBJECT: DeserializeOwned>(
     Ok(result)
 }
 
-#[tracing::instrument(skip(txn))]
+#[instrument(skip(txn))]
 pub async fn update<PK: Send + Sync + ToSql + std::fmt::Display, VALUE: Send + Sync + ToSql>(
     txn: &PgTxn<'_>,
     table: &str,
@@ -272,7 +273,7 @@ pub async fn update<PK: Send + Sync + ToSql + std::fmt::Display, VALUE: Send + S
         .map_err(|_| StandardModelError::ModelMissing(table.to_string(), pk.to_string()))
 }
 
-#[tracing::instrument(skip(txn))]
+#[instrument(skip(txn))]
 pub async fn list<OBJECT: DeserializeOwned>(
     txn: &PgTxn<'_>,
     table: &str,
@@ -288,7 +289,7 @@ pub async fn list<OBJECT: DeserializeOwned>(
     Ok(objects_from_rows(rows)?)
 }
 
-#[tracing::instrument(skip(txn))]
+#[instrument(skip(txn))]
 pub async fn delete<PK: Send + Sync + ToSql + std::fmt::Display>(
     txn: &PgTxn<'_>,
     table: &str,
@@ -305,7 +306,7 @@ pub async fn delete<PK: Send + Sync + ToSql + std::fmt::Display>(
         .map_err(|_| StandardModelError::ModelMissing(table.to_string(), pk.to_string()))
 }
 
-#[tracing::instrument(skip(txn))]
+#[instrument(skip(txn))]
 pub async fn undelete<PK: Send + Sync + ToSql + std::fmt::Display>(
     txn: &PgTxn<'_>,
     table: &str,
@@ -322,7 +323,7 @@ pub async fn undelete<PK: Send + Sync + ToSql + std::fmt::Display>(
         .map_err(|_| StandardModelError::ModelMissing(table.to_string(), pk.to_string()))
 }
 
-#[tracing::instrument(skip(txn, row))]
+#[instrument(skip(txn, row))]
 pub async fn finish_create_from_row<Object: Send + Sync + DeserializeOwned + StandardModel>(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
@@ -377,7 +378,7 @@ pub trait StandardModel {
         format!("{} {}", Self::history_event_message_name(), msg)
     }
 
-    #[tracing::instrument(skip(txn))]
+    #[instrument(skip(txn))]
     async fn get_by_pk(txn: &PgTxn<'_>, pk: &Self::Pk) -> StandardModelResult<Self>
     where
         Self: Sized + DeserializeOwned,
@@ -386,7 +387,7 @@ pub trait StandardModel {
         Ok(object)
     }
 
-    #[tracing::instrument(skip(txn))]
+    #[instrument(skip(txn))]
     async fn get_by_id(
         txn: &PgTxn<'_>,
         tenancy: &Tenancy,
@@ -402,7 +403,7 @@ pub trait StandardModel {
         Ok(object)
     }
 
-    #[tracing::instrument(skip(txn))]
+    #[instrument(skip(txn))]
     async fn list(
         txn: &PgTxn<'_>,
         tenancy: &Tenancy,
@@ -416,7 +417,7 @@ pub trait StandardModel {
         Ok(result)
     }
 
-    #[tracing::instrument(skip(txn, self))]
+    #[instrument(skip(txn, self))]
     async fn delete(
         &mut self,
         txn: &si_data::PgTxn<'_>,
@@ -444,7 +445,7 @@ pub trait StandardModel {
         Ok(())
     }
 
-    #[tracing::instrument(skip(txn, self))]
+    #[instrument(skip(txn, self))]
     async fn undelete(
         &mut self,
         txn: &PgTxn<'_>,

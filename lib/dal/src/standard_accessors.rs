@@ -13,7 +13,7 @@ macro_rules! standard_model_many_to_many {
         returns: $returns:ident,
         result: $result_type:ident $(,)? ) => {
 
-            #[tracing::instrument(skip(txn))]
+            #[telemetry::tracing::instrument(skip(txn))]
             pub async fn $lookup_fn(&self, txn: &si_data::PgTxn<'_>) -> $result_type<Vec<$returns>> {
                 let other: Option<&$right_id> = None;
                 let r = crate::standard_model::many_to_many(
@@ -31,7 +31,7 @@ macro_rules! standard_model_many_to_many {
             }
 
             paste::paste! {
-                #[tracing::instrument(skip(txn))]
+                #[telemetry::tracing::instrument(skip(txn))]
                 pub async fn [<$lookup_fn _with_tenancy>](&self, txn: &si_data::PgTxn<'_>, tenancy: &crate::Tenancy) -> $result_type<Vec<$returns>> {
                     let other: Option<&$right_id> = None;
                     let r = crate::standard_model::many_to_many(
@@ -49,7 +49,7 @@ macro_rules! standard_model_many_to_many {
                 }
             }
 
-            #[tracing::instrument(skip(txn, nats))]
+            #[telemetry::tracing::instrument(skip(txn, nats))]
             pub async fn $associate_fn(&self, txn: &si_data::PgTxn<'_>, nats: &si_data::NatsTxn, history_actor: &crate::HistoryActor, right_id: &$right_id) -> $result_type<()> {
                 let _r = crate::standard_model::associate_many_to_many(
                     &txn,
@@ -73,7 +73,7 @@ macro_rules! standard_model_many_to_many {
                 Ok(())
             }
 
-            #[tracing::instrument(skip(txn, nats))]
+            #[telemetry::tracing::instrument(skip(txn, nats))]
             pub async fn $disassociate_fn(&self, txn: &si_data::PgTxn<'_>, nats: &si_data::NatsTxn, history_actor: &crate::HistoryActor, right_id: &$right_id) -> $result_type<()> {
                 let _r = crate::standard_model::disassociate_many_to_many(
                     &txn,
@@ -110,7 +110,7 @@ macro_rules! standard_model_many_to_many {
         returns: $returns:ident,
         result: $result_type:ident $(,)? ) => {
 
-            #[tracing::instrument(skip(txn, nats))]
+            #[telemetry::tracing::instrument(skip(txn, nats))]
             pub async fn $lookup_fn(&self, txn: &si_data::PgTxn<'_>) -> $result_type<Vec<$returns>> {
                 let other: Option<&$left_id> = None;
                 let r = crate::standard_model::many_to_many(
@@ -127,7 +127,7 @@ macro_rules! standard_model_many_to_many {
                 Ok(r)
             }
 
-            #[tracing::instrument(skip(txn, nats))]
+            #[telemetry::tracing::instrument(skip(txn, nats))]
             pub async fn $associate_fn(&self, txn: &si_data::PgTxn<'_>, nats: &si_data::NatsTxn, history_actor: &crate::HistoryActor, left_id: &$left_id) -> $result_type<()> {
                 let _r = crate::standard_model::associate_many_to_many(
                     &txn,
@@ -151,7 +151,7 @@ macro_rules! standard_model_many_to_many {
                 Ok(())
             }
 
-            #[tracing::instrument(skip(txn, nats))]
+            #[telemetry::tracing::instrument(skip(txn, nats))]
             pub async fn $disassociate_fn(&self, txn: &si_data::PgTxn<'_>, nats: &si_data::NatsTxn, history_actor: &crate::HistoryActor, left_id: &$left_id) -> $result_type<()> {
                 let _r = crate::standard_model::disassociate_many_to_many(
                     &txn,
@@ -186,7 +186,7 @@ macro_rules! standard_model_has_many {
         model_table: $retrieve_table:expr,
         returns: $has_many:ident,
         result: $result_type:ident $(,)? ) => {
-        #[tracing::instrument(skip(txn))]
+        #[telemetry::tracing::instrument(skip(txn))]
         pub async fn $lookup_fn(&self, txn: &si_data::PgTxn<'_>) -> $result_type<Vec<$has_many>> {
             let r = crate::standard_model::has_many(
                 &txn,
@@ -214,7 +214,7 @@ macro_rules! standard_model_belongs_to {
         returns: $belongs_to:ident,
         result: $result_type:ident $(,)? ) => {
 
-        #[tracing::instrument(skip(txn))]
+        #[telemetry::tracing::instrument(skip(txn))]
         pub async fn $lookup_fn(
             &self,
             txn: &si_data::PgTxn<'_>,
@@ -232,7 +232,7 @@ macro_rules! standard_model_belongs_to {
         }
 
         paste::paste! {
-            #[tracing::instrument(skip(txn))]
+            #[telemetry::tracing::instrument(skip(txn))]
             pub async fn [<$lookup_fn _with_tenancy>](
                 &self,
                 txn: &si_data::PgTxn<'_>,
@@ -251,7 +251,7 @@ macro_rules! standard_model_belongs_to {
             }
         }
 
-        #[tracing::instrument(skip(txn))]
+        #[telemetry::tracing::instrument(skip(txn))]
         pub async fn $set_fn(
             &self,
             txn: &si_data::PgTxn<'_>,
@@ -281,7 +281,7 @@ macro_rules! standard_model_belongs_to {
             Ok(())
         }
 
-        #[tracing::instrument(skip(txn))]
+        #[telemetry::tracing::instrument(skip(txn))]
         pub async fn $unset_fn(
             &self,
             txn: &si_data::PgTxn<'_>,
@@ -315,7 +315,7 @@ macro_rules! standard_model_belongs_to {
 #[macro_export]
 macro_rules! standard_model_accessor_ro {
     ($column:ident, $value_type:ident) => {
-        #[tracing::instrument]
+        #[telemetry::tracing::instrument]
         pub fn $column(&self) -> &$value_type {
             &self.$column
         }
@@ -325,13 +325,13 @@ macro_rules! standard_model_accessor_ro {
 #[macro_export]
 macro_rules! standard_model_accessor {
     ($column:ident, $value_type:ident, $result_type:ident $(,)?) => {
-        #[tracing::instrument]
+        #[telemetry::tracing::instrument]
         pub fn $column(&self) -> &str {
             &self.$column
         }
 
         paste::paste! {
-            #[tracing::instrument(skip(txn, nats, value))]
+            #[telemetry::tracing::instrument(skip(txn, nats, value))]
             pub async fn [<set_ $column>](
                 &mut self,
                 txn: &si_data::PgTxn<'_>,
@@ -359,13 +359,13 @@ macro_rules! standard_model_accessor {
         }
     };
     ($column:ident, Enum($value_type:ident), $result_type:ident $(,)?) => {
-        #[tracing::instrument]
+        #[telemetry::tracing::instrument]
         pub fn $column(&self) -> &$value_type {
             &self.$column
         }
 
         paste::paste! {
-            #[tracing::instrument(skip(txn, nats, value))]
+            #[telemetry::tracing::instrument(skip(txn, nats, value))]
             pub async fn [<set_ $column>](
                 &mut self,
                 txn: &si_data::PgTxn<'_>,
@@ -395,13 +395,13 @@ macro_rules! standard_model_accessor {
     };
 
     ($column:ident, Option<String>, $result_type:ident $(,)?) => {
-        #[tracing::instrument]
+        #[telemetry::tracing::instrument]
         pub fn $column(&self) -> Option<&str> {
             self.$column.as_deref()
         }
 
         paste::paste! {
-            #[tracing::instrument(skip(txn, nats, value))]
+            #[telemetry::tracing::instrument(skip(txn, nats, value))]
             pub async fn [<set_ $column>](
                 &mut self,
                 txn: &si_data::PgTxn<'_>,
@@ -428,13 +428,13 @@ macro_rules! standard_model_accessor {
         }
     };
     ($column:ident, Option<$value_type:ident>, $result_type:ident $(,)?) => {
-        #[tracing::instrument]
+        #[telemetry::tracing::instrument]
         pub fn $column(&self) -> Option<&$value_type> {
             self.$column.as_ref()
         }
 
         paste::paste! {
-            #[tracing::instrument(skip(txn, nats, value))]
+            #[telemetry::tracing::instrument(skip(txn, nats, value))]
             pub async fn [<set_ $column>](
                 &mut self,
                 txn: &si_data::PgTxn<'_>,

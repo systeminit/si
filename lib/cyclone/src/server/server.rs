@@ -2,6 +2,7 @@ use std::{io, net::SocketAddr, path::PathBuf};
 
 use axum::routing::{BoxRoute, IntoMakeService};
 use hyper::server::{accept::Accept, conn::AddrIncoming};
+use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::{
     io::{AsyncRead, AsyncWrite},
@@ -9,7 +10,6 @@ use tokio::{
     sync::{mpsc, oneshot},
 };
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
-use tracing::{debug, error, info, trace};
 
 use super::{routes, Config, IncomingStream, UdsIncomingStream, UdsIncomingStreamError};
 

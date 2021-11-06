@@ -10,6 +10,7 @@ use axum::{
 use hyper::StatusCode;
 use serde_json::json;
 use si_data::{nats, pg};
+use telemetry::TelemetryClient;
 use thiserror::Error;
 use tokio::sync::mpsc;
 
@@ -33,6 +34,7 @@ impl State {
 
 #[must_use]
 pub fn routes(
+    telemetry: impl TelemetryClient,
     pg_pool: pg::PgPool,
     nats: nats::Client,
     jwt_signing_key: JwtSigningKey,
@@ -52,9 +54,10 @@ pub fn routes(
         .nest("/api/schema", crate::server::service::schema::routes());
     router = test_routes(router);
     router = router
-        .layer(AddExtensionLayer::new(shared_state.clone()))
-        .layer(AddExtensionLayer::new(pg_pool.clone()))
-        .layer(AddExtensionLayer::new(nats.clone()))
+        .layer(AddExtensionLayer::new(shared_state))
+        .layer(AddExtensionLayer::new(telemetry))
+        .layer(AddExtensionLayer::new(pg_pool))
+        .layer(AddExtensionLayer::new(nats))
         .layer(AddExtensionLayer::new(jwt_signing_key));
     router
 }

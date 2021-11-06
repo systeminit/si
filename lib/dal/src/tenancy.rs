@@ -1,7 +1,9 @@
-use crate::{BillingAccountId, OrganizationId, WorkspaceId};
 use serde::{Deserialize, Serialize};
 use si_data::{PgError, PgTxn};
+use telemetry::prelude::*;
 use thiserror::Error;
+
+use crate::{BillingAccountId, OrganizationId, WorkspaceId};
 
 #[derive(Error, Debug)]
 pub enum TenancyError {
@@ -24,7 +26,7 @@ pub struct Tenancy {
 }
 
 impl Tenancy {
-    #[tracing::instrument]
+    #[instrument]
     pub fn new(
         universal: bool,
         billing_account_ids: Vec<BillingAccountId>,
@@ -39,7 +41,7 @@ impl Tenancy {
         };
     }
 
-    #[tracing::instrument]
+    #[instrument]
     pub fn new_empty() -> Self {
         return Tenancy {
             universal: false,
@@ -49,7 +51,7 @@ impl Tenancy {
         };
     }
 
-    #[tracing::instrument]
+    #[instrument]
     pub fn new_universal() -> Self {
         return Tenancy {
             universal: true,
@@ -59,7 +61,7 @@ impl Tenancy {
         };
     }
 
-    #[tracing::instrument]
+    #[instrument]
     pub fn new_billing_account(billing_account_ids: Vec<BillingAccountId>) -> Self {
         return Tenancy {
             universal: false,
@@ -69,7 +71,7 @@ impl Tenancy {
         };
     }
 
-    #[tracing::instrument]
+    #[instrument]
     pub fn new_organization(organization_ids: Vec<OrganizationId>) -> Self {
         return Tenancy {
             universal: false,
@@ -79,7 +81,7 @@ impl Tenancy {
         };
     }
 
-    #[tracing::instrument]
+    #[instrument]
     pub fn new_workspace(workspace_ids: Vec<WorkspaceId>) -> Self {
         return Tenancy {
             universal: false,
@@ -89,7 +91,7 @@ impl Tenancy {
         };
     }
 
-    #[tracing::instrument(skip(txn))]
+    #[instrument(skip(txn))]
     pub async fn check(&self, txn: &PgTxn<'_>, check_tenancy: &Tenancy) -> TenancyResult<bool> {
         let row = txn
             .query_one(

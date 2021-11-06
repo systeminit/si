@@ -1,14 +1,13 @@
 use std::{fmt, sync::Arc};
 
 use nats_client as nats;
+use telemetry::prelude::*;
 use tokio::task::spawn_blocking;
-use tracing::{field::Empty, instrument, Span};
 
 use super::{
     jetstream::{AckKind, JetStreamMessageInfo},
     ConnectionMetadata, Error, Headers, Result,
 };
-use crate::telemetry::{SpanExt, SpanKind};
 
 #[derive(Clone)]
 pub struct Message {

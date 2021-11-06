@@ -1,8 +1,10 @@
-use crate::{pk, Tenancy, Timestamp, UserId};
 use serde::{Deserialize, Serialize};
 use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use strum_macros::Display as StrumDisplay;
+use telemetry::prelude::*;
 use thiserror::Error;
+
+use crate::{pk, Tenancy, Timestamp, UserId};
 
 #[derive(Error, Debug)]
 pub enum HistoryEventError {
@@ -44,7 +46,7 @@ pub struct HistoryEvent {
 }
 
 impl HistoryEvent {
-    #[tracing::instrument(skip(txn, nats, label, message))]
+    #[instrument(skip(txn, nats, label, message))]
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,

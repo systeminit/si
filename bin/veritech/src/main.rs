@@ -1,24 +1,42 @@
-use std::convert::TryInto;
-
 use color_eyre::Result;
+use telemetry::{start_tracing_level_signal_handler_task, tracing::debug, TelemetryClient};
 use veritech::{Config, CycloneStream, Server};
 
 mod args;
-mod telemetry;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     color_eyre::install()?;
-    telemetry::init()?;
-    let config = args::parse().try_into()?;
+    let config = telemetry::Config::builder()
+        .service_name("veritech")
+        .service_namespace("si")
+        .app_modules(vec!["veritech_cli", "veritech"])
+        .build()?;
+    let telemetry = telemetry::init(config)?;
+    let args = args::parse();
 
-    run(config).await
+    run(args, telemetry).await
 }
 
-async fn run(config: Config) -> Result<()> {
+async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
+    if args.verbose > 0 {
+        telemetry.set_verbosity(args.verbose.into()).await?;
+    }
+    debug!(arguments =?args, "parsed cli arguments");
+    if args.disable_opentelemetry {
+        telemetry.disable_opentelemetry().await?;
+    }
+    let config = Config::try_from(args)?;
+
+    start_tracing_level_signal_handler_task(&telemetry)?;
+
     match config.cyclone_stream() {
-        CycloneStream::HttpSocket(_) => Server::for_cyclone_http(config).await?.run().await?,
-        CycloneStream::UnixDomainSocket(_) => Server::for_cyclone_uds(config).await?.run().await?,
+        CycloneStream::HttpSocket(_) => {
+            Server::for_cyclone_http(config).await?.run().await?;
+        }
+        CycloneStream::UnixDomainSocket(_) => {
+            Server::for_cyclone_uds(config).await?.run().await?;
+        }
     }
 
     Ok(())

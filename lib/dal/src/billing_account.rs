@@ -1,3 +1,8 @@
+use serde::{Deserialize, Serialize};
+use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use telemetry::prelude::*;
+use thiserror::Error;
+
 use crate::standard_model::option_object_from_row;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_has_many,
@@ -5,9 +10,6 @@ use crate::{
     KeyPairError, Organization, OrganizationError, StandardModel, StandardModelError, Tenancy,
     Timestamp, User, UserError, Visibility, Workspace, WorkspaceError,
 };
-use serde::{Deserialize, Serialize};
-use si_data::{NatsError, NatsTxn, PgError, PgTxn};
-use thiserror::Error;
 
 const BILLING_ACCOUNT_GET_BY_NAME: &str = include_str!("./queries/billing_account_get_by_name.sql");
 const BILLING_ACCOUNT_GET_DEFAULTS: &str =

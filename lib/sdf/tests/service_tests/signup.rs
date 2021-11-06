@@ -12,7 +12,9 @@ async fn create_account() {
     one_time_setup().await.expect("cannot setup tests");
     let ctx = TestContext::init().await;
     let (pg, nats, secret_key) = ctx.entries();
+    let telemetry = ctx.telemetry();
     let (app, _) = sdf::build_service(
+        telemetry,
         pg.clone(),
         nats.clone(),
         JwtSigningKey {

@@ -1,11 +1,13 @@
+use serde::{Deserialize, Serialize};
+use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use telemetry::prelude::*;
+use thiserror::Error;
+
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
     HistoryActor, HistoryEventError, Organization, OrganizationId, StandardModel,
     StandardModelError, Tenancy, Timestamp, Visibility,
 };
-use serde::{Deserialize, Serialize};
-use si_data::{NatsError, NatsTxn, PgError, PgTxn};
-use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum WorkspaceError {

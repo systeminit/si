@@ -5,6 +5,7 @@ use bytes_lines_codec::BytesLinesCodec;
 use futures::{SinkExt, StreamExt, TryStreamExt};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::{
     process::{Child, ChildStdin, ChildStdout, Command},
@@ -15,7 +16,6 @@ use tokio_serde::{
     Framed, SymmetricallyFramed,
 };
 use tokio_util::codec::{FramedRead, FramedWrite};
-use tracing::warn;
 
 use crate::{
     process::{self, ShutdownError},

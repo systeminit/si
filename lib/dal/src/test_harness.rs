@@ -5,12 +5,14 @@ use crate::{
     User, Visibility, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
 };
 use anyhow::Result;
+use async_trait::async_trait;
 use lazy_static::lazy_static;
 use names::{Generator, Name};
 use si_data::{NatsClient, NatsConfig, NatsTxn, PgPool, PgPoolConfig, PgTxn};
 use sodiumoxide::crypto::secretbox;
 use std::env;
 use std::sync::Arc;
+use telemetry::{ClientError, TelemetryClient, Verbosity};
 
 #[derive(Debug)]
 pub struct TestConfig {
@@ -46,6 +48,39 @@ lazy_static! {
         Arc::new(tokio::sync::Mutex::new(false));
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct NoopTelemetryClient;
+
+#[async_trait]
+impl TelemetryClient for NoopTelemetryClient {
+    async fn set_verbosity(&mut self, _updated: Verbosity) -> Result<(), ClientError> {
+        Ok(())
+    }
+
+    async fn increase_verbosity(&mut self) -> Result<(), ClientError> {
+        Ok(())
+    }
+
+    async fn decrease_verbosity(&mut self) -> Result<(), ClientError> {
+        Ok(())
+    }
+
+    async fn set_custom_tracing(
+        &mut self,
+        _directives: impl Into<String> + Send + 'async_trait,
+    ) -> Result<(), ClientError> {
+        Ok(())
+    }
+
+    async fn enable_opentelemetry(&mut self) -> Result<(), ClientError> {
+        Ok(())
+    }
+
+    async fn disable_opentelemetry(&mut self) -> Result<(), ClientError> {
+        Ok(())
+    }
+}
+
 pub struct TestContext {
     // we need to keep this in scope to keep the tempdir from auto-cleaning itself
     #[allow(dead_code)]
@@ -53,6 +88,7 @@ pub struct TestContext {
     pub pg: PgPool,
     pub nats_conn: NatsClient,
     pub secret_key: secretbox::Key,
+    pub telemetry: NoopTelemetryClient,
 }
 
 impl TestContext {
@@ -69,17 +105,24 @@ impl TestContext {
             .await
             .expect("failed to connect to NATS");
         let secret_key = settings.jwt_encrypt.key.clone();
+        let telemetry = NoopTelemetryClient;
 
         Self {
             tmp_event_log_fs_root,
             pg,
             nats_conn,
             secret_key,
+            telemetry,
         }
     }
 
     pub fn entries(&self) -> (&PgPool, &NatsClient, &secretbox::Key) {
         (&self.pg, &self.nats_conn, &self.secret_key)
+    }
+
+    /// Gets a reference to the test context's telemetry.
+    pub fn telemetry(&self) -> NoopTelemetryClient {
+        self.telemetry
     }
 }
 

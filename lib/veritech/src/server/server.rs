@@ -5,9 +5,9 @@ use cyclone::{
 };
 use futures::{StreamExt, TryStreamExt};
 use si_data::NatsClient;
+use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::io::{AsyncRead, AsyncWrite};
-use tracing::{error, info, instrument, trace, warn};
 
 use super::{Config, Publisher, PublisherError, Request, Subscriber, SubscriberError};
 use crate::server::config::CycloneStream;

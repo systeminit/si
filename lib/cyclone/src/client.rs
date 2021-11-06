@@ -383,6 +383,12 @@ impl Default for ClientConfig {
 mod tests {
     use std::{borrow::Cow, env, path::Path};
 
+    use futures::StreamExt;
+    use hyper::server::conn::AddrIncoming;
+    use serde_json::json;
+    use tempfile::{NamedTempFile, TempPath};
+    use test_env_log::test;
+
     use super::*;
     use crate::{
         resolver_function::{
@@ -391,11 +397,6 @@ mod tests {
         server::{Config, ConfigBuilder, UdsIncomingStream},
         Server,
     };
-    use futures::StreamExt;
-    use hyper::server::conn::AddrIncoming;
-    use serde_json::json;
-    use tempfile::{NamedTempFile, TempPath};
-    use test_env_log::test;
 
     fn rand_uds() -> TempPath {
         NamedTempFile::new()

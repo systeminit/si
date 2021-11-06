@@ -13,13 +13,5 @@ path = "src/main.rs"
 clap = { version = "3.0.0-beta.5" }
 color-eyre = { version = "0.5.11" }
 cyclone = { path = "../../lib/cyclone", features = ["server"] }
-thiserror = { version = "1.0" }
+telemetry = { path = "../../lib/telemetry-rs", features = ["application"] }
 tokio = { version = "1.12.0", features = ["full"] }
-
-# TODO(fnichol): extract into `pkg/telemetry`
-opentelemetry = { version = "0.16.0", features = ["rt-tokio", "trace"] }
-opentelemetry-otlp = { version = "0.9.0" }
-opentelemetry-semantic-conventions = { version = "0.8.0" }
-tracing = { version = "0.1" }
-tracing-opentelemetry = { version = "0.15.0" }
-tracing-subscriber = { version = "0.2.19" }

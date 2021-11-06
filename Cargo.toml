@@ -9,12 +9,13 @@ members = [
     "lib/bytes-lines-codec",
     "lib/config-file",
     "lib/cyclone",
+    "lib/dal",
     "lib/deadpool-cyclone",
     "lib/sdf",
     "lib/veritech",
     "lib/si-data",
     "lib/si-settings",
-    "lib/dal",
+    "lib/telemetry-rs",
 ]
 
 [patch.crates-io]

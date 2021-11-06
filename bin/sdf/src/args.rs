@@ -13,10 +13,7 @@ pub(crate) fn parse() -> Args {
 /// Super Dimension Fortress (SDF) is the central and primary API surface which handles front end
 /// calls and dispatches function executions, among other great things.
 #[derive(Parser, Debug)]
-#[clap(
-    name = NAME,
-    max_term_width = 100,
-)]
+#[clap(name = NAME, max_term_width = 100)]
 pub(crate) struct Args {
     /// Sets the verbosity mode.
     ///
@@ -51,6 +48,10 @@ pub(crate) struct Args {
     /// Database migration mode on startup
     #[clap(long, possible_values = MigrationMode::variants())]
     pub(crate) migration_mode: Option<MigrationMode>,
+
+    /// Disable OpenTelemetry on startup
+    #[clap(long)]
+    pub(crate) disable_opentelemetry: bool,
 }
 
 impl TryFrom<Args> for Config {
