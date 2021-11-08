@@ -1,30 +1,27 @@
-// import NotFoundPage from "@/pages/NotFound.vue";
 // import Home from "@/pages/Home.vue";
 // import Application from "@/templates/Application.vue";
 // import ApplicationDetails from "@/templates/ApplicationDetails.vue";
 // import Secret from "@/templates/Secret.vue";
+import NotFoundPage from "@/pages/NotFound.vue";
 import Authenticate from "@/pages/Authenticate.vue";
-// import Login from "@/templates/Login.vue";
+import Login from "@/templates/Login.vue";
 import Signup from "@/templates/Signup.vue";
 import { RouteRecordRaw } from "vue-router";
 
 // @ts-ignore
 const routes: RouteRecordRaw[] = [
-  // {
-  //   path: "*",
-  //   component: NotFoundPage,
-  // },
-  // {
-  //   path: "/",
-  //   name: "home",
-  //   component: Home,
-  //   children: [
-  //     {
-  //       path: "o/:organizationId/w/:workspaceId",
-  //       props: true,
-  //       name: "workspace",
-  //       redirect: { name: "application" },
-  //     },
+  {
+    path: "/",
+    name: "home",
+    component: NotFoundPage,
+  },
+  //  children: [
+  //    {
+  //      path: "o/:organizationId/w/:workspaceId",
+  //      props: true,
+  //      name: "workspace",
+  //      redirect: { name: "application" },
+  //    },
   //     {
   //       path: "o/:organizationId/w/:workspaceId/a",
   //       props: true,
@@ -52,11 +49,11 @@ const routes: RouteRecordRaw[] = [
     // redirect: { name: "login" },
     redirect: { name: "signup" },
     children: [
-      // {
-      //   path: "login",
-      //   name: "login",
-      //   component: Login,
-      // },
+      {
+        path: "login",
+        name: "login",
+        component: Login,
+      },
       {
         path: "signup",
         name: "signup",

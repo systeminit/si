@@ -10,6 +10,7 @@ module.exports = {
     "@vue/prettier",
   ],
   rules: {
+    "camelcase": "off",
     "no-console": "off",
     "no-debugger": "off",
     "no-alert": "error",

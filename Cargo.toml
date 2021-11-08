@@ -3,20 +3,21 @@ debug = true
 
 [workspace]
 members = [
-  "bin/cyclone",
-  "bin/sdf",
-  "bin/veritech",
-  "lib/bytes-lines-codec",
-  "lib/config-file",
-  "lib/cyclone",
-  "lib/deadpool-cyclone",
-  "lib/sdf",
-  "lib/veritech",
-  "lib/si-data",
-  "lib/si-settings",
-  "lib/si-model",
+    "bin/cyclone",
+    "bin/sdf",
+    "bin/veritech",
+    "lib/bytes-lines-codec",
+    "lib/config-file",
+    "lib/cyclone",
+    "lib/deadpool-cyclone",
+    "lib/sdf",
+    "lib/veritech",
+    "lib/si-data",
+    "lib/si-settings",
+    "lib/dal",
 ]
 
 [patch.crates-io]
 # pending a potential merge and release of https://github.com/softprops/hyperlocal/pull/53
 hyperlocal = { git = "https://github.com/fnichol/hyperlocal.git", branch = "pub-unix-stream" }
+axum = { git = "https://github.com/tokio-rs/axum.git" }

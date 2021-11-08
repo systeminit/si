@@ -12,11 +12,12 @@
       <div class="flex flex-row items-center object-center mx-2 my-2">
         <div class="w-2/3 pr-2 text-right text-gray-400 align-middle">
           <label class="signup-form-text" for="billingAccountName"
-            >Organization</label
+            >Billing Account Name</label
           >
         </div>
         <div class="w-2/3 align-middle">
           <input
+            data-test="billingAccountName"
             id="billingAccountName"
             v-model="form.billingAccountName"
             class="block w-full px-2 py-1 pr-8 leading-tight shadow signup-form-input focus:outline-none"
@@ -27,10 +28,11 @@
 
       <div class="flex flex-row items-center object-center mx-2 my-2">
         <div class="w-2/3 pr-2 text-right text-gray-400 align-middle">
-          <label class="signup-form-text" for="userFullName">Full Name</label>
+          <label class="signup-form-text" for="userName">Full Name</label>
         </div>
         <div class="w-2/3 align-middle">
           <input
+            data-test="userName"
             id="userName"
             v-model="form.userName"
             class="block w-full px-2 py-1 pr-8 leading-tight shadow signup-form-input focus:outline-none"
@@ -44,6 +46,7 @@
         </div>
         <div class="w-2/3 align-middle">
           <input
+            data-test="userEmail"
             id="userEmail"
             v-model="form.userEmail"
             class="block w-full px-2 py-1 pr-8 leading-tight shadow signup-form-input focus:outline-none"
@@ -53,13 +56,12 @@
       </div>
       <div class="flex flex-row items-center object-center mx-2 my-2">
         <div class="w-2/3 pr-2 text-right text-gray-400 align-middle">
-          <label class="signup-form-text" for="userPasswordFirst"
-            >Password</label
-          >
+          <label class="signup-form-text" for="userPassword"> Password </label>
         </div>
         <div class="w-2/3 align-middle">
           <input
-            id="userPasswordFirst"
+            data-test="userPassword"
+            id="userPassword"
             v-model="form.userPassword"
             class="block w-full px-2 py-1 pr-8 leading-tight shadow signup-form-input focus:outline-none"
             :class="inputStyling('password')"
@@ -94,10 +96,11 @@
       </div>
       <div class="pr-2">
         <button
+          data-test="signUp"
           class="inline-block py-1 button button-signup"
           :class="signupButtonStyling()"
           aria-label="Sign Up"
-          @click="createBillingAccount"
+          @click="createAccount"
         >
           [Sign Up]
         </button>
@@ -108,7 +111,12 @@
 
 <script lang="ts">
 import { defineComponent } from "vue";
-import { SignupDal } from "@/api/sdf/dal/signupDal";
+import {
+  CreateAccountRequest,
+  CreateAccountResponse,
+  SignupService,
+} from "@/api/sdf/service/signup";
+import { ApiResponse } from "@/api/sdf";
 
 enum InputKind {
   BillingAccount = "billingAccount",
@@ -118,13 +126,7 @@ enum InputKind {
 }
 
 interface IData {
-  form: {
-    billingAccountName: string;
-    billingAccountDescription: string;
-    userName: string;
-    userEmail: string;
-    userPassword: string;
-  };
+  form: CreateAccountRequest;
   errorMessage: string | undefined;
 }
 
@@ -135,7 +137,6 @@ export default defineComponent({
     return {
       form: {
         billingAccountName: "",
-        billingAccountDescription: "",
         userName: "",
         userEmail: "",
         userPassword: "",
@@ -144,8 +145,10 @@ export default defineComponent({
     };
   },
   methods: {
-    async createBillingAccount() {
-      let reply = await SignupDal.createBillingAccount(this.form);
+    async createAccount() {
+      let reply: ApiResponse<CreateAccountResponse> = await SignupService.createAccount(
+        this.form,
+      );
       if (reply.error) {
         this.errorMessage = reply.error.message;
       } else {

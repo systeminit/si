@@ -3,6 +3,7 @@ use axum::{
     extract::{Extension, FromRequest, RequestParts},
     Json,
 };
+use dal::UserClaim;
 use hyper::StatusCode;
 use serde::Serialize;
 use si_data::{
@@ -135,4 +136,63 @@ fn internal_error(err: impl std::error::Error) -> (StatusCode, Json<InternalErro
             error: err.to_string(),
         }),
     )
+}
+
+pub struct JwtSigningKey(crate::JwtSigningKey);
+
+#[async_trait]
+impl<P> FromRequest<P> for JwtSigningKey
+where
+    P: Send,
+{
+    type Rejection = (StatusCode, Json<InternalError>);
+
+    async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
+        let Extension(key) = Extension::<crate::server::config::JwtSigningKey>::from_request(req)
+            .await
+            .map_err(internal_error)?;
+        Ok(Self(key))
+    }
+}
+
+impl JwtSigningKey {
+    pub fn key(&self) -> &sodiumoxide::crypto::secretbox::Key {
+        &self.0.key
+    }
+}
+
+pub struct Authorization(pub UserClaim);
+
+#[async_trait]
+impl<P> FromRequest<P> for Authorization
+where
+    P: Send,
+{
+    type Rejection = (StatusCode, Json<serde_json::Value>);
+
+    async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
+        let error_response = (
+            StatusCode::UNAUTHORIZED,
+            Json(
+                serde_json::json!({ "error": { "message": "unauthorized", "code": 42, "statusCode": 401 } }),
+            ),
+        );
+
+        let mut ro_txn = PgRoTxn::from_request(req)
+            .await
+            .map_err(|_| error_response.clone())?;
+        let txn = ro_txn.start().await.map_err(|_| error_response.clone())?;
+
+        let headers = req.headers().ok_or_else(|| error_response.clone())?;
+        let authorization_header_value = headers
+            .get("Authorization")
+            .ok_or_else(|| error_response.clone())?;
+        let authorization = authorization_header_value
+            .to_str()
+            .map_err(|_| error_response.clone())?;
+        let claim = UserClaim::from_bearer_token(&txn, authorization)
+            .await
+            .map_err(|_| error_response)?;
+        Ok(Self(claim))
+    }
 }

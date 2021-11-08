@@ -1,4 +1,4 @@
-use clap::{AppSettings, Clap};
+use clap::{AppSettings, Parser};
 use sdf::{Config, ConfigError, ConfigFile, MigrationMode, StandardConfigFile};
 
 const NAME: &str = "sdf";
@@ -12,11 +12,9 @@ pub(crate) fn parse() -> Args {
 ///
 /// Super Dimension Fortress (SDF) is the central and primary API surface which handles front end
 /// calls and dispatches function executions, among other great things.
-#[derive(Clap, Debug)]
+#[derive(Parser, Debug)]
 #[clap(
     name = NAME,
-    global_setting = AppSettings::ColoredHelp,
-    global_setting = AppSettings::UnifiedHelpMessage,
     max_term_width = 100,
 )]
 pub(crate) struct Args {

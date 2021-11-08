@@ -35,7 +35,10 @@ main() {
       "$@" \
       "$img:$version" \
       -c log_error_verbosity=VERBOSE \
-      -c log_statement=all
+      -c log_statement=all \
+      -c shared_buffers=4GB \
+      -c wal_buffers=64MB \
+      -c effective_cache_size=32GB
   fi
 }
 
