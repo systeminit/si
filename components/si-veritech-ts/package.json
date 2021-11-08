@@ -71,7 +71,7 @@
     "si-registry": "../si-registry",
     "tmp": "^0.2.1",
     "tmp-promise": "^3.0.2",
-    "ws": "^7.4.4"
+    "ws": "^7.4.6"
   },
   "volta": {
     "node": "16.9.1",
