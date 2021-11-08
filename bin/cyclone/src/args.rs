@@ -1,7 +1,9 @@
 use std::{net::SocketAddr, path::PathBuf, time::Duration};
 
-use clap::{AppSettings, ArgSettings, Clap};
+use clap::{ArgSettings, Parser};
 use cyclone::{Config, ConfigError, IncomingStream};
+
+const NAME: &str = "cyclone";
 
 /// Parse, validate, and return the CLI arguments as a typed struct.
 pub(crate) fn parse() -> Args {
@@ -12,13 +14,8 @@ pub(crate) fn parse() -> Args {
 ///
 /// Cyclone is a software component of the System Initiative which handles requested execution of
 /// small functions in a backing language server.
-#[derive(Clap, Debug)]
-#[clap(
-    name = "cyclone",
-    global_setting = AppSettings::ColoredHelp,
-    global_setting = AppSettings::UnifiedHelpMessage,
-    max_term_width = 100,
-)]
+#[derive(Debug, Parser)]
+#[clap(name = NAME, max_term_width = 100)]
 #[allow(clippy::struct_excessive_bools)]
 pub(crate) struct Args {
     /// Sets the verbosity mode.

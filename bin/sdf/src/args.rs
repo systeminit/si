@@ -1,4 +1,4 @@
-use clap::{AppSettings, Parser};
+use clap::Parser;
 use sdf::{Config, ConfigError, ConfigFile, MigrationMode, StandardConfigFile};
 
 const NAME: &str = "sdf";

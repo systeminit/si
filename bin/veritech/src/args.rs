@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 
-use clap::{AppSettings, Clap};
+use clap::Parser;
 use si_settings::StandardConfigFile;
 use veritech::{
     server::{Config, ConfigError},
@@ -14,13 +14,8 @@ pub(crate) fn parse() -> Args {
     Args::parse()
 }
 
-#[derive(Clap, Debug)]
-#[clap(
-    name = NAME,
-    global_setting = AppSettings::ColoredHelp,
-    global_setting = AppSettings::UnifiedHelpMessage,
-    max_term_width = 100,
-)]
+#[derive(Debug, Parser)]
+#[clap(name = NAME, max_term_width = 100)]
 pub(crate) struct Args {
     /// Sets the verbosity mode.
     ///
