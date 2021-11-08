@@ -14,7 +14,7 @@ pub mod restore_authentication;
 #[derive(Debug, Error)]
 pub enum SessionError {
     #[error(transparent)]
-    Nats(#[from] si_data::NatsTxnError),
+    Nats(#[from] si_data::NatsError),
     #[error(transparent)]
     Pg(#[from] si_data::PgError),
     #[error(transparent)]

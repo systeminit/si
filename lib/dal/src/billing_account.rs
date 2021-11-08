@@ -6,7 +6,7 @@ use crate::{
     Timestamp, User, UserError, Visibility, Workspace, WorkspaceError,
 };
 use serde::{Deserialize, Serialize};
-use si_data::{NatsTxn, NatsTxnError, PgError, PgTxn};
+use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use thiserror::Error;
 
 const BILLING_ACCOUNT_GET_BY_NAME: &str = include_str!("./queries/billing_account_get_by_name.sql");
@@ -18,7 +18,7 @@ pub enum BillingAccountError {
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
     #[error("nats txn error: {0}")]
-    NatsTxn(#[from] NatsTxnError),
+    Nats(#[from] NatsError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
     #[error("standard model error: {0}")]

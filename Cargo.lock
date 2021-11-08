@@ -59,16 +59,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "async-nats"
-version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3dae854440faecce70f0664f41f09a588de1e7a4366931ec3962ded3d8f903c5"
-dependencies = [
- "blocking",
- "nats",
-]
-
-[[package]]
 name = "async-recursion"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1717,12 +1707,14 @@ dependencies = [
 
 [[package]]
 name = "nats"
-version = "0.10.1"
+version = "0.15.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c0cfa3903c3e613edddaa4a2f86b2053a1d6fbcf315a3ff352c25ba9f0a8585"
+checksum = "2a3097b182107db2cf690280d61f23f17ee31d49f3994ad152ee6a10261f77c3"
 dependencies = [
  "base64",
  "base64-url",
+ "blocking",
+ "chrono",
  "crossbeam-channel",
  "fastrand",
  "itoa",
@@ -1737,6 +1729,8 @@ dependencies = [
  "regex",
  "rustls",
  "rustls-native-certs",
+ "serde",
+ "serde_json",
  "webpki",
  "winapi",
 ]
@@ -2837,12 +2831,16 @@ dependencies = [
 name = "si-data"
 version = "0.1.0"
 dependencies = [
- "async-nats",
  "bytes",
+ "crossbeam-channel",
  "deadpool 0.8.2",
  "deadpool-postgres",
+ "futures",
  "lazy_static",
+ "nats",
+ "nkeys",
  "num_cpus",
+ "opentelemetry",
  "refinery",
  "serde",
  "serde_json",
@@ -2851,7 +2849,9 @@ dependencies = [
  "thiserror",
  "tokio",
  "tokio-postgres",
+ "tokio-test",
  "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -3619,6 +3619,7 @@ dependencies = [
  "derive_builder",
  "futures",
  "futures-lite",
+ "pin-project-lite",
  "serde",
  "serde_json",
  "si-data",

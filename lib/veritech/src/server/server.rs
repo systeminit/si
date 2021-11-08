@@ -4,7 +4,7 @@ use cyclone::{
     Client, CycloneClient, HttpClient, UdsClient,
 };
 use futures::{StreamExt, TryStreamExt};
-use si_data::NatsConn;
+use si_data::NatsClient;
 use thiserror::Error;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tracing::{error, info, instrument, trace, warn};
@@ -16,8 +16,8 @@ use crate::server::config::CycloneStream;
 pub enum ServerError {
     #[error(transparent)]
     Cyclone(#[from] cyclone::ClientError),
-    #[error("failed to connecto to nats")]
-    NatsConnection(#[source] si_data::NatsTxnError),
+    #[error("error connecting to nats")]
+    NatsConnect(#[source] si_data::NatsError),
     #[error(transparent)]
     Publisher(#[from] PublisherError),
     #[error(transparent)]
@@ -31,7 +31,7 @@ pub enum ServerError {
 type Result<T> = std::result::Result<T, ServerError>;
 
 pub struct Server<Cycl> {
-    nats_conn: NatsConn,
+    nats: NatsClient,
     cyclone_client: Cycl,
 }
 
@@ -40,12 +40,12 @@ impl Server<()> {
     pub async fn for_cyclone_http(config: Config) -> Result<Server<HttpClient>> {
         match config.cyclone_stream() {
             CycloneStream::HttpSocket(socket_addr) => {
-                let nats_conn = connect_to_nats(&config).await?;
+                let nats = connect_to_nats(&config).await?;
                 // TODO(fnichol): determine client type and connection details
                 let cyclone_client = Client::http(socket_addr)?;
 
                 Ok(Server {
-                    nats_conn,
+                    nats,
                     cyclone_client,
                 })
             }
@@ -59,12 +59,12 @@ impl Server<()> {
     pub async fn for_cyclone_uds(config: Config) -> Result<Server<UdsClient>> {
         match config.cyclone_stream() {
             CycloneStream::UnixDomainSocket(path) => {
-                let nats_conn = connect_to_nats(&config).await?;
+                let nats = connect_to_nats(&config).await?;
                 // TODO(fnichol): determine client type and connection details
                 let cyclone_client = Client::uds(path)?;
 
                 Ok(Server {
-                    nats_conn,
+                    nats,
                     cyclone_client,
                 })
             }
@@ -81,7 +81,7 @@ impl<Cycl> Server<Cycl> {
         Cycl: CycloneClient<Strm> + Send + Clone + 'static,
         Strm: AsyncRead + AsyncWrite + Connection + Unpin + Send + 'static,
     {
-        let mut resolver_function_requests = Subscriber::resolver_function(&self.nats_conn).await?;
+        let mut resolver_function_requests = Subscriber::resolver_function(&self.nats).await?;
 
         // NOTE: for the moment, this stream will terminate on first error, being a NATS IO error,
         // a serde deserialize, etc. This may not be what we want, or we want to have a
@@ -89,7 +89,7 @@ impl<Cycl> Server<Cycl> {
         while let Some(request) = resolver_function_requests.try_next().await? {
             // Spawn a task an process the request
             tokio::spawn(resolver_function_request_task(
-                self.nats_conn.clone(),
+                self.nats.clone(),
                 self.cyclone_client.clone(),
                 request,
             ));
@@ -102,20 +102,20 @@ impl<Cycl> Server<Cycl> {
 }
 
 async fn resolver_function_request_task<Cycl, Strm>(
-    nats_conn: NatsConn,
+    nats: NatsClient,
     cyclone_client: Cycl,
     request: Request<ResolverFunctionRequest>,
 ) where
     Cycl: CycloneClient<Strm>,
     Strm: AsyncRead + AsyncWrite + Connection + Unpin + Send + 'static,
 {
-    if let Err(err) = resolver_function_request(nats_conn, cyclone_client, request).await {
+    if let Err(err) = resolver_function_request(nats, cyclone_client, request).await {
         warn!(error = ?err, "resolver function execution failed");
     }
 }
 
 async fn resolver_function_request<Cycl, Strm>(
-    nats_conn: NatsConn,
+    nats: NatsClient,
     mut cyclone_client: Cycl,
     request: Request<ResolverFunctionRequest>,
 ) -> Result<()>
@@ -125,7 +125,7 @@ where
 {
     let (reply_mailbox, cyclone_request) = request.into_parts();
 
-    let publisher = Publisher::new(&nats_conn, &reply_mailbox);
+    let publisher = Publisher::new(&nats, &reply_mailbox);
     let mut progress = cyclone_client
         .execute_resolver(cyclone_request)
         .await?
@@ -150,12 +150,12 @@ where
     Ok(())
 }
 
-async fn connect_to_nats(config: &Config) -> Result<NatsConn> {
+async fn connect_to_nats(config: &Config) -> Result<NatsClient> {
     info!("connecting to NATS; url={}", config.nats().url);
 
-    let nats_conn = NatsConn::new(config.nats())
+    let nats = NatsClient::new(config.nats())
         .await
-        .map_err(ServerError::NatsConnection)?;
+        .map_err(ServerError::NatsConnect)?;
 
-    Ok(nats_conn)
+    Ok(nats)
 }

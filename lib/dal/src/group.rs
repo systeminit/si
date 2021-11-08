@@ -5,7 +5,7 @@ use crate::{
     Timestamp, User, UserId, Visibility,
 };
 use serde::{Deserialize, Serialize};
-use si_data::{NatsTxn, NatsTxnError, PgError, PgTxn};
+use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -15,7 +15,7 @@ pub enum GroupError {
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
     #[error("nats txn error: {0}")]
-    NatsTxn(#[from] NatsTxnError),
+    Nats(#[from] NatsError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
     #[error("standard model error: {0}")]

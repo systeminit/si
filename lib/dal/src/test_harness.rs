@@ -7,7 +7,7 @@ use crate::{
 use anyhow::Result;
 use lazy_static::lazy_static;
 use names::{Generator, Name};
-use si_data::{NatsConfig, NatsConn, NatsTxn, PgPool, PgPoolConfig, PgTxn};
+use si_data::{NatsClient, NatsConfig, NatsTxn, PgPool, PgPoolConfig, PgTxn};
 use sodiumoxide::crypto::secretbox;
 use std::env;
 use std::sync::Arc;
@@ -51,7 +51,7 @@ pub struct TestContext {
     #[allow(dead_code)]
     tmp_event_log_fs_root: tempfile::TempDir,
     pub pg: PgPool,
-    pub nats_conn: NatsConn,
+    pub nats_conn: NatsClient,
     pub secret_key: secretbox::Key,
 }
 
@@ -65,7 +65,7 @@ impl TestContext {
         let pg = PgPool::new(&settings.pg)
             .await
             .expect("failed to connect to postgres");
-        let nats_conn = NatsConn::new(&settings.nats)
+        let nats_conn = NatsClient::new(&settings.nats)
             .await
             .expect("failed to connect to NATS");
         let secret_key = settings.jwt_encrypt.key.clone();
@@ -78,7 +78,7 @@ impl TestContext {
         }
     }
 
-    pub fn entries(&self) -> (&PgPool, &NatsConn, &secretbox::Key) {
+    pub fn entries(&self) -> (&PgPool, &NatsClient, &secretbox::Key) {
         (&self.pg, &self.nats_conn, &self.secret_key)
     }
 }
@@ -111,7 +111,7 @@ pub async fn one_time_setup() -> Result<()> {
     .await?;
     txn.commit().await?;
 
-    let nats_conn = NatsConn::new(&SETTINGS.nats)
+    let nats_conn = NatsClient::new(&SETTINGS.nats)
         .await
         .expect("failed to connect to NATS");
     crate::migrate_builtin_schemas(&pg, &nats_conn).await?;

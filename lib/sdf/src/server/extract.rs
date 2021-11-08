@@ -6,10 +6,7 @@ use axum::{
 use dal::UserClaim;
 use hyper::StatusCode;
 use serde::Serialize;
-use si_data::{
-    nats,
-    pg::{self, InstrumentedClient},
-};
+use si_data::{nats, pg};
 
 pub struct PgPool(pub pg::PgPool);
 
@@ -28,7 +25,7 @@ where
     }
 }
 
-pub struct PgConn(pub InstrumentedClient);
+pub struct PgConn(pub pg::InstrumentedClient);
 
 #[async_trait]
 impl<P> FromRequest<P> for PgConn
@@ -44,7 +41,7 @@ where
     }
 }
 
-pub struct PgRwTxn(InstrumentedClient);
+pub struct PgRwTxn(pg::InstrumentedClient);
 
 #[async_trait]
 impl<P> FromRequest<P> for PgRwTxn
@@ -65,7 +62,7 @@ impl PgRwTxn {
     }
 }
 
-pub struct PgRoTxn(InstrumentedClient);
+pub struct PgRoTxn(pg::InstrumentedClient);
 
 #[async_trait]
 impl<P> FromRequest<P> for PgRoTxn
@@ -86,7 +83,7 @@ impl PgRoTxn {
     }
 }
 
-pub struct Nats(pub nats::NatsConn);
+pub struct Nats(pub nats::Client);
 
 #[async_trait]
 impl<P> FromRequest<P> for Nats
@@ -96,14 +93,14 @@ where
     type Rejection = (StatusCode, Json<InternalError>);
 
     async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
-        let Extension(nats) = Extension::<nats::NatsConn>::from_request(req)
+        let Extension(nats) = Extension::<nats::Client>::from_request(req)
             .await
             .map_err(internal_error)?;
         Ok(Self(nats))
     }
 }
 
-pub struct NatsTxn(nats::NatsConn);
+pub struct NatsTxn(nats::Client);
 
 #[async_trait]
 impl<P> FromRequest<P> for NatsTxn
@@ -119,7 +116,7 @@ where
 }
 
 impl NatsTxn {
-    pub async fn start(&mut self) -> Result<nats::NatsTxn, nats::NatsTxnError> {
+    pub async fn start(&mut self) -> Result<nats::NatsTxn, nats::Error> {
         Ok(self.0.transaction())
     }
 }

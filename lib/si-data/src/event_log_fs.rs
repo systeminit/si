@@ -82,7 +82,7 @@ impl EventLogFS {
         let log_path = self.active_path.join(basename(event_log_id, stream));
 
         if !is_file(&log_path).await {
-            let _ = fs::File::create(&log_path).await?;
+            let _ignored = fs::File::create(&log_path).await?;
         }
         let file = BufWriter::new(fs::OpenOptions::new().append(true).open(log_path).await?);
 
