@@ -10,7 +10,7 @@ name = "cyclone"
 path = "src/main.rs"
 
 [dependencies]
-clap = { version = "3.0.0-beta.4" }
+clap = { version = "3.0.0-beta.5" }
 color-eyre = { version = "0.5.11" }
 cyclone = { path = "../../lib/cyclone", features = ["server"] }
 thiserror = { version = "1.0" }

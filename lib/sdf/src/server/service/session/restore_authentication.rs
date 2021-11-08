@@ -1,8 +1,8 @@
 use super::SessionResult;
-use crate::server::extract::{Authorization, JwtSigningKey, NatsTxn, PgRoTxn, PgRwTxn};
+use crate::server::extract::{Authorization, PgRoTxn};
 use crate::server::service::session::SessionError;
 use axum::Json;
-use dal::{BillingAccount, StandardModel, Tenancy, User, UserClaim, Visibility};
+use dal::{BillingAccount, StandardModel, Tenancy, User, Visibility};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
