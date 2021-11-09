@@ -1,8 +1,8 @@
 use crate::test_setup;
 use dal::test_harness::{
-    create_billing_account, create_billing_account_with_name, create_change_set,
-    create_edit_session, create_visibility_edit_session, create_visibility_head, one_time_setup,
-    TestContext,
+    billing_account_signup, create_billing_account, create_billing_account_with_name,
+    create_change_set, create_edit_session, create_visibility_edit_session, create_visibility_head,
+    one_time_setup, TestContext,
 };
 use dal::{BillingAccount, HistoryActor, StandardModel, Tenancy};
 
@@ -178,4 +178,18 @@ async fn find_by_name() {
         name_billing_account,
         "billing_acccount by name does not match created billing account"
     );
+}
+
+#[tokio::test]
+async fn get_defaults() {
+    test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats);
+    let (nba, _auth_token) = billing_account_signup(&txn, &nats, &secret_key).await;
+    let visibility = create_visibility_head();
+    let tenancy = Tenancy::new_billing_account(vec![*nba.billing_account.id()]);
+    let defaults =
+        BillingAccount::get_defaults(&txn, &tenancy, &visibility, nba.billing_account.id())
+            .await
+            .expect("cannot get defaults for billing account");
+    assert_eq!(defaults.organization, nba.organization, "default organization matches created organization");
+    assert_eq!(defaults.workspace, nba.workspace, "default workspace matches created workspace");
 }

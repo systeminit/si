@@ -10,6 +10,7 @@ use thiserror::Error;
 
 pub mod login;
 pub mod restore_authentication;
+pub mod get_defaults;
 
 #[derive(Debug, Error)]
 pub enum SessionError {
@@ -48,8 +49,13 @@ impl IntoResponse for SessionError {
 }
 
 pub fn routes() -> Router {
-    Router::new().route("/login", post(login::login)).route(
+    Router::new().route("/login", post(login::login))
+        .route(
         "/restore_authentication",
         get(restore_authentication::restore_authentication),
-    )
+        )
+        .route(
+            "/get_defaults",
+            get(get_defaults::get_defaults)
+        )
 }

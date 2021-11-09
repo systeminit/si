@@ -2,6 +2,7 @@
 
 declare namespace Cypress {
   import { SignupService } from "../src/api/sdf/service/signup";
+  import { SessionService } from "../src/api/sdf/service/session";
   import {
     CreateAccountRequest,
     CreateAccountResponse,
@@ -9,6 +10,7 @@ declare namespace Cypress {
 
   interface CustomWindow extends Window {
     SignupService: typeof SignupService;
+    SessionService: typeof SessionService;
   }
 
   interface Chainable {
@@ -27,5 +29,6 @@ declare namespace Cypress {
     getBySelLike(value: string): Chainable<Element>;
 
     signup(): Chainable<Response<any>>;
+    signupAndLogin(): Chainable<Response<any>>;
   }
 }

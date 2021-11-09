@@ -17,6 +17,7 @@ use tokio::task::JoinError;
 
 const USER_PASSWORD: &str = include_str!("./queries/user_password.sql");
 const USER_FIND_BY_EMAIL: &str = include_str!("queries/user_find_by_email.sql");
+const AUTHORIZE_USER: &str = include_str!("./queries/authorize_user.sql");
 
 #[derive(Error, Debug)]
 pub enum UserError {
@@ -136,6 +137,18 @@ impl User {
             .await?;
         let result = option_object_from_row(maybe_row)?;
         Ok(result)
+    }
+
+    pub async fn authorize(
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        user_id: &UserId,
+    ) -> UserResult<bool> {
+        let _row = txn
+            .query_one(AUTHORIZE_USER, &[&tenancy, &visibility, &user_id])
+            .await?;
+        Ok(true)
     }
 
     pub async fn login(
