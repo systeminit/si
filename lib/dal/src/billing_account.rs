@@ -1,4 +1,4 @@
-use crate::standard_model::option_object_from_row;
+use crate::standard_model::{option_object_from_row};
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_has_many,
     Capability, CapabilityError, Group, GroupError, HistoryActor, HistoryEventError, KeyPair,
@@ -10,6 +10,7 @@ use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use thiserror::Error;
 
 const BILLING_ACCOUNT_GET_BY_NAME: &str = include_str!("./queries/billing_account_get_by_name.sql");
+const BILLING_ACCOUNT_GET_DEFAULTS: &str = include_str!("./queries/billing_account_get_defaults.sql");
 
 #[derive(Error, Debug)]
 pub enum BillingAccountError {
@@ -261,6 +262,24 @@ impl BillingAccount {
         let result = option_object_from_row(maybe_row)?;
         Ok(result)
     }
+
+    pub async fn get_defaults(
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        id: &BillingAccountId,
+    ) -> BillingAccountResult<BillingAccountDefaults> {
+        let row = txn.query_one(BILLING_ACCOUNT_GET_DEFAULTS, &[&tenancy, &visibility, &id]).await?;
+        let organization_json: serde_json::Value = row.try_get("organization")?;
+        let organization: Organization = serde_json::from_value(organization_json)?;
+        let workspace_json: serde_json::Value = row.try_get("workspace")?;
+        let workspace: Workspace = serde_json::from_value(workspace_json)?;
+        let result = BillingAccountDefaults {
+            organization,
+            workspace,
+        };
+        Ok(result)
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
@@ -269,6 +288,12 @@ pub struct BillingAccountSignup {
     pub key_pair: KeyPair,
     pub user: User,
     pub admin_group: Group,
+    pub organization: Organization,
+    pub workspace: Workspace,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+pub struct BillingAccountDefaults {
     pub organization: Organization,
     pub workspace: Workspace,
 }

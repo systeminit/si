@@ -1,8 +1,10 @@
-use crate::service_tests::{api_request, api_request_raw};
+use crate::service_tests::{api_request, api_request_auth_empty, api_request_raw};
 use crate::test_setup;
-use axum::http::StatusCode;
+use axum::http::{StatusCode, Method};
 use sdf::service::session::login::{LoginRequest, LoginResponse};
+use sdf::service::session::restore_authentication::RestoreAuthenticationResponse;
 use sdf::JwtSigningKey;
+use sdf::service::session::get_defaults::GetDefaultsResponse;
 
 #[tokio::test]
 async fn login() {
@@ -55,4 +57,56 @@ async fn login() {
         api_request_raw(app.clone(), "/api/session/login", &wrong_password_request).await;
     assert_eq!(wrong_password_status, StatusCode::UNAUTHORIZED);
     assert_eq!(wrong_password_response["error"]["message"], "login failed");
+}
+
+#[tokio::test]
+async fn restore_authentication() {
+    test_setup!(
+        _ctx,
+        _secret_key,
+        _pg,
+        _conn,
+        _txn,
+        _nats_conn,
+        _nats,
+        app,
+        nba,
+        auth_token
+    );
+
+    let response: RestoreAuthenticationResponse =
+        api_request_auth_empty(
+            app.clone(),
+            Method::GET,
+            "/api/session/restore_authentication",
+            &auth_token
+        ).await;
+    assert_eq!(nba.billing_account, response.billing_account);
+    assert_eq!(nba.user, response.user);
+}
+
+#[tokio::test]
+async fn get_defaults() {
+    test_setup!(
+        _ctx,
+        _secret_key,
+        _pg,
+        _conn,
+        _txn,
+        _nats_conn,
+        _nats,
+        app,
+        nba,
+        auth_token
+    );
+
+    let response: GetDefaultsResponse =
+        api_request_auth_empty(
+            app.clone(),
+            Method::GET,
+            "/api/session/get_defaults",
+            &auth_token
+        ).await;
+    assert_eq!(nba.organization, response.organization);
+    assert_eq!(nba.workspace, response.workspace);
 }

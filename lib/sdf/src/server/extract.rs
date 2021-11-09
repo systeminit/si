@@ -3,7 +3,8 @@ use axum::{
     extract::{Extension, FromRequest, RequestParts},
     Json,
 };
-use dal::UserClaim;
+use dal::User;
+use dal::{Tenancy, UserClaim, Visibility};
 use hyper::StatusCode;
 use serde::Serialize;
 use si_data::{nats, pg};
@@ -189,7 +190,14 @@ where
             .map_err(|_| error_response.clone())?;
         let claim = UserClaim::from_bearer_token(&txn, authorization)
             .await
-            .map_err(|_| error_response)?;
+            .map_err(|_| error_response.clone())?;
+        let tenancy = Tenancy::new_billing_account(vec![claim.billing_account_id.clone()]);
+        let visibility = Visibility::new_head(false);
+        User::authorize(&txn, &tenancy, &visibility, &claim.user_id)
+            .await
+            .map_err(|_| error_response.clone())?;
+        txn.commit().await.map_err(|_| error_response.clone())?;
+
         Ok(Self(claim))
     }
 }

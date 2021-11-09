@@ -17,6 +17,8 @@ export interface LoginResponse {
   jwt: string;
 }
 
+// NOTE: If you change this functions behavior, make sure you
+// also change the cypress command for signup and login to match!
 export async function login(
   request: LoginRequest,
 ): Promise<ApiResponse<LoginResponse>> {

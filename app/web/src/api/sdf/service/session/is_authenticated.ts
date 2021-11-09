@@ -1,4 +1,4 @@
-import { take } from "rxjs/operators";
+import { firstValueFrom } from "rxjs";
 import { user$ } from "@/observable/user";
 import { billingAccount$ } from "@/observable/billing_account";
 import Bottle from "bottlejs";
@@ -19,8 +19,8 @@ export async function isAuthenticated(): Promise<ApiResponse<boolean>> {
     if (Date.now() >= JSON.parse(atob(token.split(".")[1])).exp * 1000) {
       return false;
     }
-    const user = await user$.pipe(take(1)).toPromise();
-    const billingAccount = await billingAccount$.pipe(take(1)).toPromise();
+    const user = await firstValueFrom(user$);
+    const billingAccount = await firstValueFrom(billingAccount$);
     if (!user && !billingAccount) {
       const result: ApiResponse<RestoreAuthenticationResponse> = await sdf.get(
         "session/restore_authentication",
