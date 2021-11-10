@@ -2,9 +2,17 @@ use serde::{Deserialize, Serialize};
 use strum_macros::{Display, EnumString};
 use thiserror::Error;
 
-use crate::{pk, HistoryActor, HistoryEvent, HistoryEventError, Tenancy, Timestamp};
+use crate::label_list::LabelList;
+use crate::standard_model::object_option_from_row_option;
+use crate::{
+    pk, HistoryActor, HistoryEvent, HistoryEventError, LabelListError, StandardModelError, Tenancy,
+    Timestamp,
+};
 use chrono::{DateTime, Utc};
 use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+
+const CHANGE_SET_OPEN_LIST: &str = include_str!("./queries/change_set_open_list.sql");
+const CHANGE_SET_GET_BY_PK: &str = include_str!("./queries/change_set_get_by_pk.sql");
 
 #[derive(Error, Debug)]
 pub enum ChangeSetError {
@@ -16,6 +24,10 @@ pub enum ChangeSetError {
     Nats(#[from] NatsError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
+    #[error("label list error: {0}")]
+    LabelList(#[from] LabelListError),
+    #[error("standard model error: {0}")]
+    StandardModel(#[from] StandardModelError),
 }
 
 pub type ChangeSetResult<T> = Result<T, ChangeSetError>;
@@ -110,5 +122,28 @@ impl ChangeSet {
         )
         .await?;
         Ok(())
+    }
+
+    #[tracing::instrument(skip(txn))]
+    pub async fn list_open(
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+    ) -> ChangeSetResult<LabelList<ChangeSetPk>> {
+        let rows = txn.query(CHANGE_SET_OPEN_LIST, &[&tenancy]).await?;
+        let results = LabelList::from_rows(rows)?;
+        Ok(results)
+    }
+
+    #[tracing::instrument(skip(txn))]
+    pub async fn get_by_pk(
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        pk: &ChangeSetPk,
+    ) -> ChangeSetResult<Option<ChangeSet>> {
+        let row = txn
+            .query_opt(CHANGE_SET_GET_BY_PK, &[&tenancy, &pk])
+            .await?;
+        let change_set: Option<ChangeSet> = object_option_from_row_option(row)?;
+        Ok(change_set)
     }
 }

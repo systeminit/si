@@ -17,9 +17,9 @@
         </div>
         <div class="w-2/3 align-middle">
           <input
-            data-test="billingAccountName"
             id="billingAccountName"
             v-model="form.billingAccountName"
+            data-test="billingAccountName"
             class="block w-full px-2 py-1 pr-8 leading-tight shadow signup-form-input focus:outline-none"
             :class="inputStyling('billingAccount')"
           />
@@ -32,9 +32,9 @@
         </div>
         <div class="w-2/3 align-middle">
           <input
-            data-test="userName"
             id="userName"
             v-model="form.userName"
+            data-test="userName"
             class="block w-full px-2 py-1 pr-8 leading-tight shadow signup-form-input focus:outline-none"
             :class="inputStyling('name')"
           />
@@ -46,9 +46,9 @@
         </div>
         <div class="w-2/3 align-middle">
           <input
-            data-test="userEmail"
             id="userEmail"
             v-model="form.userEmail"
+            data-test="userEmail"
             class="block w-full px-2 py-1 pr-8 leading-tight shadow signup-form-input focus:outline-none"
             :class="inputStyling('email')"
           />
@@ -60,9 +60,9 @@
         </div>
         <div class="w-2/3 align-middle">
           <input
-            data-test="userPassword"
             id="userPassword"
             v-model="form.userPassword"
+            data-test="userPassword"
             class="block w-full px-2 py-1 pr-8 leading-tight shadow signup-form-input focus:outline-none"
             :class="inputStyling('password')"
             type="password"

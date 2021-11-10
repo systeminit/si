@@ -9,13 +9,15 @@
 
 <script lang="ts">
 // import ShortcutsEventBroker from "./organisims/ShortcutsEventBroker.vue";
-// import SessionBroker from "./organisims/SessionBroker.vue";
+import { restoreFromSession } from "@/observable/session_state";
 
 export default {
   name: "App",
   components: {
     // ShortcutsEventBroker,
-    // SessionBroker,
+  },
+  beforeMount() {
+    restoreFromSession();
   },
 };
 </script>

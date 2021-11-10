@@ -44,7 +44,12 @@ pub fn routes(
     router = router
         .route("/demo", get(handlers::demo))
         .nest("/api/signup", crate::server::service::signup::routes())
-        .nest("/api/session", crate::server::service::session::routes());
+        .nest("/api/session", crate::server::service::session::routes())
+        .nest(
+            "/api/change_set",
+            crate::server::service::change_set::routes(),
+        )
+        .nest("/api/schema", crate::server::service::schema::routes());
     router = test_routes(router);
     router = router
         .layer(AddExtensionLayer::new(shared_state.clone()))

@@ -1,0 +1,141 @@
+use crate::test_setup;
+
+use dal::schema::SchemaKind;
+use dal::test_harness::billing_account_signup;
+use dal::{HistoryActor, Schema, StandardModel, Tenancy, Visibility};
+
+#[tokio::test]
+async fn new() {
+    test_setup!(ctx, _secret_key, _pg, _conn, txn, _nats_conn, nats);
+    let tenancy = Tenancy::new_universal();
+    let visibility = Visibility::new_head(false);
+    let history_actor = HistoryActor::SystemInit;
+    let _schema = Schema::new(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        "mastodon",
+        &SchemaKind::Concrete,
+    )
+    .await
+    .expect("cannot create schema");
+}
+
+#[tokio::test]
+async fn billing_accounts() {
+    test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats);
+    let tenancy = Tenancy::new_universal();
+    let visibility = Visibility::new_head(false);
+    let history_actor = HistoryActor::SystemInit;
+    let (nba, _token) = billing_account_signup(&txn, &nats, &secret_key).await;
+    let schema = Schema::new(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        "mastodon",
+        &SchemaKind::Concrete,
+    )
+    .await
+    .expect("cannot create schema");
+    schema
+        .add_billing_account(&txn, &nats, &history_actor, nba.billing_account.id())
+        .await
+        .expect("cannot add billing account");
+
+    let relations = schema
+        .billing_accounts(&txn)
+        .await
+        .expect("cannot get billing accounts");
+    assert_eq!(relations, vec![nba.billing_account.clone()]);
+
+    schema
+        .remove_billing_account(&txn, &nats, &history_actor, nba.billing_account.id())
+        .await
+        .expect("cannot remove billing account");
+    let relations = schema
+        .billing_accounts(&txn)
+        .await
+        .expect("cannot get billing accounts");
+    assert_eq!(relations, vec![]);
+}
+
+#[tokio::test]
+async fn organizations() {
+    test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats);
+    let tenancy = Tenancy::new_universal();
+    let visibility = Visibility::new_head(false);
+    let history_actor = HistoryActor::SystemInit;
+    let (nba, _token) = billing_account_signup(&txn, &nats, &secret_key).await;
+    let schema = Schema::new(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        "mastodon",
+        &SchemaKind::Concrete,
+    )
+    .await
+    .expect("cannot create schema");
+    schema
+        .add_organization(&txn, &nats, &history_actor, nba.organization.id())
+        .await
+        .expect("cannot add organization");
+
+    let relations = schema
+        .organizations(&txn)
+        .await
+        .expect("cannot get organization");
+    assert_eq!(relations, vec![nba.organization.clone()]);
+
+    schema
+        .remove_organization(&txn, &nats, &history_actor, nba.organization.id())
+        .await
+        .expect("cannot remove organization");
+    let relations = schema
+        .organizations(&txn)
+        .await
+        .expect("cannot get organizations");
+    assert_eq!(relations, vec![]);
+}
+
+#[tokio::test]
+async fn workspaces() {
+    test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats);
+    let tenancy = Tenancy::new_universal();
+    let visibility = Visibility::new_head(false);
+    let history_actor = HistoryActor::SystemInit;
+    let (nba, _token) = billing_account_signup(&txn, &nats, &secret_key).await;
+    let schema = Schema::new(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        "mastodon",
+        &SchemaKind::Concrete,
+    )
+    .await
+    .expect("cannot create schema");
+    schema
+        .add_workspace(&txn, &nats, &history_actor, nba.workspace.id())
+        .await
+        .expect("cannot add organization");
+
+    let relations = schema
+        .workspaces(&txn)
+        .await
+        .expect("cannot get workspaces");
+    assert_eq!(relations, vec![nba.workspace.clone()]);
+
+    schema
+        .remove_workspace(&txn, &nats, &history_actor, nba.workspace.id())
+        .await
+        .expect("cannot remove workspace");
+    let relations = schema.workspaces(&txn).await.expect("cannot get workspace");
+    assert_eq!(relations, vec![]);
+}

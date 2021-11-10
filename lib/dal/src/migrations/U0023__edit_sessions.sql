@@ -119,3 +119,15 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
+CREATE OR REPLACE FUNCTION edit_session_cancel_v1(this_edit_session_pk bigint,
+                                                  OUT timestamp_updated_at timestamp with time zone) AS
+$$
+BEGIN
+    UPDATE edit_sessions
+    SET status     = 'Canceled',
+        updated_at = now()
+    WHERE pk = this_edit_session_pk
+    RETURNING updated_at INTO timestamp_updated_at;
+END;
+$$ LANGUAGE PLPGSQL VOLATILE;
+

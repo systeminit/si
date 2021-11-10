@@ -1,3 +1,4 @@
+use crate::test_setup;
 use dal::edit_session::EditSession;
 use dal::test_harness::{
     create_billing_account_with_name, create_change_set, create_edit_session,
@@ -97,4 +98,34 @@ async fn save() {
         billing_account.visibility().change_set_pk,
         change_set_billing_account.visibility().change_set_pk
     );
+}
+
+#[tokio::test]
+async fn get_by_pk() {
+    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats);
+
+    let tenancy = Tenancy::new_universal();
+    let history_actor = HistoryActor::SystemInit;
+    let change_set = create_change_set(&txn, &nats, &tenancy, &history_actor).await;
+    let edit_session = create_edit_session(&txn, &nats, &history_actor, &change_set).await;
+    let result = EditSession::get_by_pk(&txn, &tenancy, &edit_session.pk)
+        .await
+        .expect("cannot get edit session by pk")
+        .expect("edit session pk should exist");
+    assert_eq!(&edit_session, &result);
+}
+
+#[tokio::test]
+async fn cancel() {
+    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats);
+
+    let tenancy = Tenancy::new_universal();
+    let history_actor = HistoryActor::SystemInit;
+    let change_set = create_change_set(&txn, &nats, &tenancy, &history_actor).await;
+    let mut edit_session = create_edit_session(&txn, &nats, &history_actor, &change_set).await;
+    edit_session
+        .cancel(&txn, &nats, &history_actor)
+        .await
+        .expect("cannot cancel edit session");
+    assert_eq!(&edit_session.status, &EditSessionStatus::Canceled);
 }

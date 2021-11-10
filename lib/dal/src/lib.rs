@@ -10,7 +10,9 @@ pub mod group;
 pub mod history_event;
 pub mod jwt_key;
 pub mod key_pair;
+pub mod label_list;
 pub mod organization;
+pub mod schema;
 pub mod standard_accessors;
 pub mod standard_model;
 pub mod standard_pk;
@@ -22,7 +24,7 @@ pub mod visibility;
 pub mod workspace;
 
 pub use billing_account::{
-    BillingAccount, BillingAccountError, BillingAccountId, BillingAccountPk,
+    BillingAccount, BillingAccountDefaults, BillingAccountError, BillingAccountId, BillingAccountPk,
 };
 pub use capability::{Capability, CapabilityError, CapabilityId, CapabilityPk, CapabilityResult};
 pub use change_set::{ChangeSet, ChangeSetError, ChangeSetPk, ChangeSetStatus, NO_CHANGE_SET_PK};
@@ -33,9 +35,11 @@ pub use group::{Group, GroupError, GroupId, GroupResult};
 pub use history_event::{HistoryActor, HistoryEvent, HistoryEventError};
 pub use jwt_key::{create_jwt_key_if_missing, JwtEncrypt};
 pub use key_pair::{KeyPair, KeyPairError, KeyPairResult};
+pub use label_list::{LabelEntry, LabelList, LabelListError};
 pub use organization::{
     Organization, OrganizationError, OrganizationId, OrganizationPk, OrganizationResult,
 };
+pub use schema::{Schema, SchemaError, SchemaId, SchemaKind, SchemaPk};
 pub use standard_model::{StandardModel, StandardModelError, StandardModelResult};
 pub use tenancy::{Tenancy, TenancyError};
 pub use timestamp::{Timestamp, TimestampError};

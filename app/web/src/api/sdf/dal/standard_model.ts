@@ -5,3 +5,8 @@ export interface StandardModel extends Visibility, Tenancy {
   pk: number;
   id: number;
 }
+
+export interface StandardModelNoVisibility extends Tenancy {
+  pk: number;
+  id: number;
+}

@@ -36,7 +36,7 @@
 <script lang="ts">
 import { defineComponent } from "vue";
 
-export default defineComponent( {
+export default defineComponent({
   name: "SysinitIcon",
   props: {
     size: {
@@ -45,7 +45,7 @@ export default defineComponent( {
       default: 1,
     },
   },
-  data: function() {
+  data: function () {
     return {
       width: 1.25, //20px
       height: 1.313, // 21px
@@ -53,7 +53,7 @@ export default defineComponent( {
     };
   },
   computed: {
-    resolution: function() {
+    resolution: function () {
       return {
         width: (this.width * this.size).toString() + this.resolutionSpace,
         height: (this.height * this.size).toString() + this.resolutionSpace,

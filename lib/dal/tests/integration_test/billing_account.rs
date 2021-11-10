@@ -190,6 +190,12 @@ async fn get_defaults() {
         BillingAccount::get_defaults(&txn, &tenancy, &visibility, nba.billing_account.id())
             .await
             .expect("cannot get defaults for billing account");
-    assert_eq!(defaults.organization, nba.organization, "default organization matches created organization");
-    assert_eq!(defaults.workspace, nba.workspace, "default workspace matches created workspace");
+    assert_eq!(
+        defaults.organization, nba.organization,
+        "default organization matches created organization"
+    );
+    assert_eq!(
+        defaults.workspace, nba.workspace,
+        "default workspace matches created workspace"
+    );
 }

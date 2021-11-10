@@ -1,9 +1,15 @@
-use crate::{pk, ChangeSetPk, HistoryActor, HistoryEvent, HistoryEventError, Tenancy, Timestamp};
+use crate::standard_model::object_option_from_row_option;
+use crate::{
+    pk, ChangeSetPk, HistoryActor, HistoryEvent, HistoryEventError, StandardModelError, Tenancy,
+    Timestamp,
+};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use strum_macros::{Display, EnumString};
 use thiserror::Error;
+
+const EDIT_SESSION_GET_BY_PK: &str = include_str!("./queries/edit_session_get_by_pk.sql");
 
 #[derive(Error, Debug)]
 pub enum EditSessionError {
@@ -15,6 +21,8 @@ pub enum EditSessionError {
     Nats(#[from] NatsError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
+    #[error("standadrd model error: {0}")]
+    StandardModel(#[from] StandardModelError),
 }
 
 pub type EditSessionResult<T> = Result<T, EditSessionError>;
@@ -87,6 +95,19 @@ impl EditSession {
         Ok(object)
     }
 
+    #[tracing::instrument(skip(txn))]
+    pub async fn get_by_pk(
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        pk: &EditSessionPk,
+    ) -> EditSessionResult<Option<Self>> {
+        let row = txn
+            .query_opt(EDIT_SESSION_GET_BY_PK, &[&tenancy, &pk])
+            .await?;
+        let result = object_option_from_row_option(row)?;
+        Ok(result)
+    }
+
     #[tracing::instrument(skip(txn, nats))]
     pub async fn save(
         &mut self,
@@ -110,6 +131,35 @@ impl EditSession {
             "edit_session.save",
             &history_actor,
             "Edit Session saved",
+            &serde_json::json![{ "pk": &self.pk }],
+            &self.tenancy,
+        )
+        .await?;
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(txn, nats))]
+    pub async fn cancel(
+        &mut self,
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        history_actor: &HistoryActor,
+    ) -> EditSessionResult<()> {
+        let row = txn
+            .query_one(
+                "SELECT timestamp_updated_at FROM edit_session_cancel_v1($1)",
+                &[&self.pk],
+            )
+            .await?;
+        let updated_at: DateTime<Utc> = row.try_get("timestamp_updated_at")?;
+        self.timestamp.updated_at = updated_at;
+        self.status = EditSessionStatus::Canceled;
+        let _history_event = HistoryEvent::new(
+            &txn,
+            &nats,
+            "edit_session.cancel",
+            &history_actor,
+            "Edit Session cancelled",
             &serde_json::json![{ "pk": &self.pk }],
             &self.tenancy,
         )

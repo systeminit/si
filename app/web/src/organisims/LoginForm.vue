@@ -7,9 +7,9 @@
     </div>
     <div class="p-4">
       <div
+        v-if="errorMessage"
         data-testid="error-message"
         class="text-white bg-red-500"
-        v-if="errorMessage"
       >
         Error: {{ errorMessage }}
       </div>
@@ -21,11 +21,11 @@
         </div>
         <div class="w-2/3 align-middle">
           <input
+            id="billingAccountName"
+            v-model="form.billingAccountName"
             data-test="billingAccountName"
             class="block w-full px-2 py-1 pr-8 leading-tight shadow login-form-input focus:outline-none"
             :class="inputStyling('billingAccount')"
-            id="billingAccountName"
-            v-model="form.billingAccountName"
           />
         </div>
       </div>
@@ -35,11 +35,11 @@
         </div>
         <div class="w-2/3 align-middle">
           <input
+            id="userEmail"
+            v-model="form.userEmail"
             data-test="userEmail"
             class="block w-full px-2 py-1 pr-8 leading-tight shadow login-form-input focus:outline-none"
             :class="inputStyling('email')"
-            id="userEmail"
-            v-model="form.userEmail"
           />
         </div>
       </div>
@@ -49,12 +49,12 @@
         </div>
         <div class="w-2/3 align-middle">
           <input
+            id="password"
+            v-model="form.userPassword"
             data-test="password"
             class="block w-full px-2 py-1 pr-8 leading-tight shadow login-form-input focus:outline-none"
             :class="inputStyling('password')"
-            id="password"
             type="password"
-            v-model="form.userPassword"
           />
         </div>
       </div>
@@ -107,6 +107,7 @@ interface IData {
 export default defineComponent({
   name: "LoginForm",
   components: {},
+  emits: ["signup", "success"],
   data(): IData {
     return {
       form: {

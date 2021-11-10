@@ -2635,6 +2635,7 @@ version = "0.1.0"
 dependencies = [
  "axum 0.3.0",
  "axum-debug",
+ "chrono",
  "dal",
  "derive_builder",
  "futures",
@@ -2642,6 +2643,7 @@ dependencies = [
  "nix",
  "serde",
  "serde_json",
+ "serde_url_params",
  "serde_with",
  "si-data",
  "si-settings",
@@ -2743,6 +2745,16 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
+]
+
+[[package]]
+name = "serde_url_params"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2c43307d0640738af32fe8d01e47119bc0fc8a686be470a44a586caff76dfb34"
+dependencies = [
+ "serde",
+ "url",
 ]
 
 [[package]]

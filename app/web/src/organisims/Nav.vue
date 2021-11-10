@@ -71,7 +71,11 @@
           <!-- Systems Link -->
           <div class="container-link">
             <div class="flex items-center justify-start">
-              <VueFeather type="share-2" size="1.1rem" class="transform rotate-90" />
+              <VueFeather
+                type="share-2"
+                size="1.1rem"
+                class="transform rotate-90"
+              />
               <div v-show="isLinkTitleVisible" class="link-title">Systems</div>
             </div>
           </div>
@@ -182,7 +186,6 @@
               </div>
             </router-link>
           </div>
-
         </div>
 
         <div class="flex flex-col justify-end flex-grow">
@@ -204,9 +207,10 @@
 
       <div class="flex items-center w-full mx-6 my-4 color-grey-medium">
         <button data-test="logout" aria-label="Logout" @click="onLogout">
-          <VueFeather type="log-out"
-                      size="1.1rem"
-                      class="text-center cursor-pointer logout-button"
+          <VueFeather
+            type="log-out"
+            size="1.1rem"
+            class="text-center cursor-pointer logout-button"
           />
         </button>
       </div>

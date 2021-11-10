@@ -3,7 +3,7 @@
     :active="isLoading"
     loader="bars"
     color="#ffffff"
-    backgroundColor="#000000"
+    background-color="#000000"
     :opacity="opacity"
   ></Loading>
 </template>
@@ -19,15 +19,15 @@ export default defineComponent({
     // @ts-ignore
     Loading,
   },
-  data() {
-    return {
-      opacity: 1,
-    };
-  },
   props: {
     isLoading: {
       type: Boolean,
     },
+  },
+  data() {
+    return {
+      opacity: 1,
+    };
   },
 });
 </script>
