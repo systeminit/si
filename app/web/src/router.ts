@@ -6,6 +6,9 @@ import NotFoundPage from "@/pages/NotFound.vue";
 import Authenticate from "@/pages/Authenticate.vue";
 import Login from "@/templates/Login.vue";
 import Signup from "@/templates/Signup.vue";
+import Schema from "@/templates/Schema.vue";
+import SchemaList from "@/organisims/Schema/SchemaList.vue";
+import SchemaNew from "@/organisims/Schema/SchemaNew.vue";
 
 const routes: RouteRecordRaw[] = [
   {
@@ -41,7 +44,20 @@ const routes: RouteRecordRaw[] = [
         path: "schema",
         props: true,
         name: "schema",
-        component: NotFoundPage,
+        component: Schema,
+        redirect: { name: "schema-list" },
+        children: [
+          {
+            name: "schema-list",
+            path: "list",
+            component: SchemaList,
+          },
+          {
+            name: "schema-new",
+            path: "new",
+            component: SchemaNew,
+          },
+        ],
       },
     ],
   },

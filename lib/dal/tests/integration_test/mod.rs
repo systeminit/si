@@ -7,6 +7,7 @@ mod history_event;
 mod jwt_key;
 mod key_pair;
 mod organization;
+mod schema;
 mod standard_model;
 mod tenancy;
 mod user;

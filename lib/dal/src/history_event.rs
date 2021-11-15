@@ -22,6 +22,12 @@ pub enum HistoryActor {
     SystemInit,
 }
 
+impl From<UserId> for HistoryActor {
+    fn from(id: UserId) -> Self {
+        HistoryActor::User(id)
+    }
+}
+
 pk!(HistoryEventPk);
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]

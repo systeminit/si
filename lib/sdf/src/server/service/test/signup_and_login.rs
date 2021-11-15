@@ -12,7 +12,11 @@ pub struct SignupResponse {
     jwt: String,
 }
 
-pub async fn signup_and_login(mut txn: PgRwTxn, mut nats: NatsTxn, secret_key: JwtSigningKey) -> TestResult<Json<SignupResponse>> {
+pub async fn signup_and_login(
+    mut txn: PgRwTxn,
+    mut nats: NatsTxn,
+    secret_key: JwtSigningKey,
+) -> TestResult<Json<SignupResponse>> {
     let txn = txn.start().await?;
     let nats = nats.start().await?;
     let tenancy = Tenancy::new_universal();
@@ -35,7 +39,15 @@ pub async fn signup_and_login(mut txn: PgRwTxn, mut nats: NatsTxn, secret_key: J
         &user_password,
     )
     .await?;
-    let jwt = result.user.login(&txn, &secret_key.key(), &result.billing_account.id(), user_password).await?;
+    let jwt = result
+        .user
+        .login(
+            &txn,
+            &secret_key.key(),
+            &result.billing_account.id(),
+            user_password,
+        )
+        .await?;
     txn.commit().await?;
     nats.commit().await?;
     Ok(Json(SignupResponse { data: result, jwt }))

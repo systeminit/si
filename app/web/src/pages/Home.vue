@@ -1,11 +1,11 @@
 <template>
   <div class="flex flex-col w-screen h-screen text-white bg-black vld-parent">
-    <SiLoader v-model="isLoading"  />
-    <DebugRoute testId="location-display-homepage" />
+    <SiLoader v-model="isLoading" />
+    <DebugRoute test-id="location-display-homepage" />
     <div class="flex flex-row w-full h-full overflow-hidden">
       <div
-        class="flex flex-col flex-no-wrap items-center justify-between flex-shrink-0 bg-primary"
         v-show="navIsVisible"
+        class="flex flex-col flex-no-wrap items-center justify-between flex-shrink-0 bg-primary"
       >
         <Nav />
       </div>
@@ -25,15 +25,28 @@ import SiLoader from "@/atoms/SiLoader.vue";
 import DebugRoute from "@/atoms/DebugRoute.vue";
 import { SessionService } from "@/api/sdf/service/session";
 import { useRouter, useRoute } from "vue-router";
+import { globalErrorMessage$ } from "@/observable/global";
+import { refFrom } from "vuse-rx";
+import { map } from "rxjs/operators";
 
 const route = useRoute();
 const router = useRouter();
-const errorMessage = ref("");
+const errorMessage = refFrom(
+  globalErrorMessage$.pipe(
+    map((response) => {
+      if (response?.error) {
+        return response.error.message;
+      } else {
+        return "";
+      }
+    }),
+  ),
+);
 const isLoading = ref(true);
 const navIsVisible = ref(true);
 
 const clearErrorMessage = () => {
-  errorMessage.value = "";
+  globalErrorMessage$.next(null);
 };
 
 onMounted(async () => {

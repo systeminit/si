@@ -311,11 +311,6 @@ BEGIN
                     '   row_to_json(%5$I.*) AS object' ||
                     ' FROM %1$I' ||
                     ' INNER JOIN %5$I ON %5$I.id = %1$I.%6$I ' ||
-                    '  AND in_tenancy_v1(%2$L, ' ||
-                    '                    %5$I.tenancy_universal, ' ||
-                    '                    %5$I.tenancy_billing_account_ids,' ||
-                    '                    %5$I.tenancy_organization_ids,' ||
-                    '                    %5$I.tenancy_workspace_ids)' ||
                     '  AND is_visible_v1(%3$L,' ||
                     '                    %5$I.visibility_change_set_pk,' ||
                     '                    %5$I.visibility_edit_session_pk,' ||

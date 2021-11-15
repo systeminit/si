@@ -2,9 +2,7 @@ use super::SessionResult;
 use crate::server::extract::{Authorization, PgRoTxn};
 use axum::Json;
 use dal::billing_account::BillingAccountDefaults;
-use dal::{
-    BillingAccount, Organization, Tenancy, Visibility, Workspace,
-};
+use dal::{BillingAccount, Organization, Tenancy, Visibility, Workspace};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]

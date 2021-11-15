@@ -1,6 +1,9 @@
 use crate::test_setup;
 
-use dal::test_harness::{billing_account_signup, create_billing_account, create_change_set, create_edit_session, create_visibility_edit_session, create_visibility_head};
+use dal::test_harness::{
+    billing_account_signup, create_billing_account, create_change_set, create_edit_session,
+    create_visibility_edit_session, create_visibility_head,
+};
 use dal::{HistoryActor, StandardModel, Tenancy, User};
 
 #[tokio::test]
@@ -102,7 +105,9 @@ async fn authorize() {
 
     let (nba, _auth_token) = billing_account_signup(&txn, &nats, &secret_key).await;
     let ba_tenancy = Tenancy::new_billing_account(vec![*nba.billing_account.id()]);
-    let worked = User::authorize(&txn, &ba_tenancy, &visibility, &nba.user.id()).await.expect("admin group user should be authorized");
+    let worked = User::authorize(&txn, &ba_tenancy, &visibility, &nba.user.id())
+        .await
+        .expect("admin group user should be authorized");
     assert_eq!(worked, true, "authorized admin group user returns true");
     let password = "snakesOnAPlane123";
     let user_no_group = User::new(
@@ -115,9 +120,12 @@ async fn authorize() {
         "bobotclown@systeminit.com",
         &password,
     )
-        .await
-        .expect("cannot create user");
+    .await
+    .expect("cannot create user");
     let f = User::authorize(&txn, &ba_tenancy, &visibility, &user_no_group.id()).await;
-    assert_eq!(f.is_err(), true, "user that is not in the admin group should fail");
+    assert_eq!(
+        f.is_err(),
+        true,
+        "user that is not in the admin group should fail"
+    );
 }
-

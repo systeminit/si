@@ -5,22 +5,29 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use tower::ServiceExt;
 
+mod change_set;
+mod schema;
 mod session;
 mod signup;
 
-pub async fn api_request_auth_empty<Res: DeserializeOwned>(
+pub async fn api_request_auth_query<Req: Serialize, Res: DeserializeOwned>(
     app: Router,
-    method: Method,
     uri: impl AsRef<str>,
     auth_token: impl AsRef<str>,
+    request: &Req,
 ) -> Res {
     let auth_token = auth_token.as_ref();
-    let uri = uri.as_ref();
+    let uri_str = uri.as_ref();
+    let params = serde_url_params::to_string(&request).expect("cannot serialize params");
+    let uri = format!("{}?{}", uri_str, params);
     let api_request = Request::builder()
-        .method(method)
+        .method(Method::GET)
         .uri(uri)
         .header(http::header::CONTENT_TYPE, "application/json")
-        .header(http::header::AUTHORIZATION, format!("Bearer {}", auth_token))
+        .header(
+            http::header::AUTHORIZATION,
+            format!("Bearer {}", auth_token),
+        )
         .body(Body::empty())
         .expect("cannot create api request");
     let response = app.oneshot(api_request).await.expect("cannot send request");
@@ -35,6 +42,68 @@ pub async fn api_request_auth_empty<Res: DeserializeOwned>(
     serde_json::from_value(body_json).expect("response is not a valid rust struct")
 }
 
+pub async fn api_request_auth_json_body<Req: Serialize, Res: DeserializeOwned>(
+    app: Router,
+    method: Method,
+    uri: impl AsRef<str>,
+    auth_token: impl AsRef<str>,
+    request: &Req,
+) -> Res {
+    let auth_token = auth_token.as_ref();
+    let uri = uri.as_ref();
+    let api_request = Request::builder()
+        .method(method)
+        .uri(uri)
+        .header(http::header::CONTENT_TYPE, "application/json")
+        .header(
+            http::header::AUTHORIZATION,
+            format!("Bearer {}", auth_token),
+        )
+        .body(Body::from(
+            serde_json::to_vec(&serde_json::json!(&request)).expect("cannot turn request to json"),
+        ))
+        .expect("cannot create api request");
+    let response = app.oneshot(api_request).await.expect("cannot send request");
+    let status = response.status();
+    let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+    let body_json: serde_json::Value =
+        serde_json::from_slice(&body).expect("response is not valid json");
+    if status != StatusCode::OK {
+        dbg!(&body_json);
+        assert_eq!(status, StatusCode::OK);
+    }
+    serde_json::from_value(body_json).expect("response is not a valid rust struct")
+}
+
+pub async fn api_request_auth_empty<Res: DeserializeOwned>(
+    app: Router,
+    method: Method,
+    uri: impl AsRef<str>,
+    auth_token: impl AsRef<str>,
+) -> Res {
+    let auth_token = auth_token.as_ref();
+    let uri = uri.as_ref();
+    let api_request = Request::builder()
+        .method(method)
+        .uri(uri)
+        .header(http::header::CONTENT_TYPE, "application/json")
+        .header(
+            http::header::AUTHORIZATION,
+            format!("Bearer {}", auth_token),
+        )
+        .body(Body::empty())
+        .expect("cannot create api request");
+    let response = app.oneshot(api_request).await.expect("cannot send request");
+    let status = response.status();
+    let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+    let body_json: serde_json::Value =
+        serde_json::from_slice(&body).expect("response is not valid json");
+    if status != StatusCode::OK {
+        dbg!(&body_json);
+        assert_eq!(status, StatusCode::OK);
+    }
+    serde_json::from_value(body_json).expect("response is not a valid rust struct")
+}
 
 pub async fn api_request<Req: Serialize, Res: DeserializeOwned>(
     app: Router,
@@ -107,7 +176,7 @@ macro_rules! test_setup {
         let ($app, _) = sdf::build_service(
             $pg.clone(),
             $nats_conn.clone(),
-            JwtSigningKey {
+            sdf::JwtSigningKey {
                 key: $secret_key.clone(),
             },
         )

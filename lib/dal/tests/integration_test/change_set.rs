@@ -84,3 +84,76 @@ async fn apply() {
         NO_CHANGE_SET_PK,
     );
 }
+
+#[tokio::test]
+async fn list_open() {
+    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats);
+
+    let tenancy = Tenancy::new_universal();
+    let history_actor = HistoryActor::SystemInit;
+
+    let a_change_set = create_change_set(&txn, &nats, &tenancy, &history_actor).await;
+    let b_change_set = create_change_set(&txn, &nats, &tenancy, &history_actor).await;
+    let mut c_change_set = create_change_set(&txn, &nats, &tenancy, &history_actor).await;
+    let full_list = ChangeSet::list_open(&txn, &tenancy)
+        .await
+        .expect("cannot get list of open change sets");
+    assert_eq!(full_list.len(), 3);
+    assert!(
+        full_list
+            .iter()
+            .find(|f| f.label == a_change_set.name)
+            .is_some(),
+        "change set has first entry"
+    );
+    assert!(
+        full_list
+            .iter()
+            .find(|f| f.label == b_change_set.name)
+            .is_some(),
+        "change set has second entry"
+    );
+    assert!(
+        full_list
+            .iter()
+            .find(|f| f.label == c_change_set.name)
+            .is_some(),
+        "change set has third entry"
+    );
+    c_change_set
+        .apply(&txn, &nats, &history_actor)
+        .await
+        .expect("cannot apply change set");
+    let partial_list = ChangeSet::list_open(&txn, &tenancy)
+        .await
+        .expect("cannot get list of open change sets");
+    assert_eq!(partial_list.len(), 2);
+    assert!(
+        partial_list
+            .iter()
+            .find(|f| f.label == a_change_set.name)
+            .is_some(),
+        "change set has first entry"
+    );
+    assert!(
+        partial_list
+            .iter()
+            .find(|f| f.label == b_change_set.name)
+            .is_some(),
+        "change set has second entry"
+    );
+}
+
+#[tokio::test]
+async fn get_by_pk() {
+    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats);
+
+    let tenancy = Tenancy::new_universal();
+    let history_actor = HistoryActor::SystemInit;
+    let change_set = create_change_set(&txn, &nats, &tenancy, &history_actor).await;
+    let result = ChangeSet::get_by_pk(&txn, &tenancy, &change_set.pk)
+        .await
+        .expect("cannot get change set by pk")
+        .expect("change set pk should exist");
+    assert_eq!(&change_set, &result);
+}

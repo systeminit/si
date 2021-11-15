@@ -30,6 +30,25 @@ macro_rules! standard_model_many_to_many {
                 Ok(r)
             }
 
+            paste::paste! {
+                #[tracing::instrument(skip(txn))]
+                pub async fn [<$lookup_fn _with_tenancy>](&self, txn: &si_data::PgTxn<'_>, tenancy: &crate::Tenancy) -> $result_type<Vec<$returns>> {
+                    let other: Option<&$right_id> = None;
+                    let r = crate::standard_model::many_to_many(
+                        &txn,
+                        $table_name,
+                        tenancy,
+                        &self.visibility(),
+                        $left_table,
+                        $right_table,
+                        Some(self.id()),
+                        other,
+                    )
+                    .await?;
+                    Ok(r)
+                }
+            }
+
             #[tracing::instrument(skip(txn, nats))]
             pub async fn $associate_fn(&self, txn: &si_data::PgTxn<'_>, nats: &si_data::NatsTxn, history_actor: &crate::HistoryActor, right_id: &$right_id) -> $result_type<()> {
                 let _r = crate::standard_model::associate_many_to_many(
@@ -212,6 +231,26 @@ macro_rules! standard_model_belongs_to {
             Ok(r)
         }
 
+        paste::paste! {
+            #[tracing::instrument(skip(txn))]
+            pub async fn [<$lookup_fn _with_tenancy>](
+                &self,
+                txn: &si_data::PgTxn<'_>,
+                tenancy: &crate::Tenancy,
+            ) -> $result_type<Option<$belongs_to>> {
+                let r = crate::standard_model::belongs_to(
+                    &txn,
+                    $table,
+                    &self.tenancy(),
+                    &self.visibility(),
+                    $retrieve_table,
+                    &self.id(),
+                )
+                .await?;
+                Ok(r)
+            }
+        }
+
         #[tracing::instrument(skip(txn))]
         pub async fn $set_fn(
             &self,
@@ -319,6 +358,42 @@ macro_rules! standard_model_accessor {
             }
         }
     };
+    ($column:ident, Enum($value_type:ident), $result_type:ident $(,)?) => {
+        #[tracing::instrument]
+        pub fn $column(&self) -> &$value_type {
+            &self.$column
+        }
+
+        paste::paste! {
+            #[tracing::instrument(skip(txn, nats, value))]
+            pub async fn [<set_ $column>](
+                &mut self,
+                txn: &si_data::PgTxn<'_>,
+                nats: &si_data::NatsTxn,
+                history_actor: &crate::HistoryActor,
+                value: impl Into<$value_type>,
+            ) -> $result_type<()> {
+                let value: $value_type = value.into();
+                let value_string = value.to_string();
+                let updated_at =
+                        standard_model::update(&txn, Self::table_name(), stringify!($column), &self.tenancy(), self.pk(), &value_string).await?;
+                let _history_event = crate::HistoryEvent::new(
+                    &txn,
+                    &nats,
+                    &Self::history_event_label(vec!["updated"]),
+                    &history_actor,
+                    &Self::history_event_message("updated"),
+                    &serde_json::json![{ "pk": self.pk, "field": stringify!($column), "value": &value }],
+                    &self.tenancy(),
+                )
+                .await?;
+                self.timestamp.updated_at = updated_at;
+                self.$column = value;
+                Ok(())
+            }
+        }
+    };
+
     ($column:ident, Option<String>, $result_type:ident $(,)?) => {
         #[tracing::instrument]
         pub fn $column(&self) -> Option<&str> {
