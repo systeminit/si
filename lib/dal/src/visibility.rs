@@ -1,7 +1,9 @@
-use crate::{ChangeSetPk, EditSessionPk, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK};
 use serde::{Deserialize, Serialize};
 use si_data::{PgError, PgTxn};
+use telemetry::prelude::*;
 use thiserror::Error;
+
+use crate::{ChangeSetPk, EditSessionPk, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK};
 
 #[derive(Error, Debug)]
 pub enum VisibilityError {
@@ -22,7 +24,7 @@ pub struct Visibility {
 }
 
 impl Visibility {
-    #[tracing::instrument]
+    #[instrument]
     pub fn new(change_set_pk: ChangeSetPk, edit_session_pk: EditSessionPk, deleted: bool) -> Self {
         Visibility {
             change_set_pk,
@@ -31,17 +33,17 @@ impl Visibility {
         }
     }
 
-    #[tracing::instrument]
+    #[instrument]
     pub fn new_head(deleted: bool) -> Self {
         Visibility::new(NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK, deleted)
     }
 
-    #[tracing::instrument]
+    #[instrument]
     pub fn new_change_set(change_set_pk: ChangeSetPk, deleted: bool) -> Self {
         Visibility::new(change_set_pk, NO_EDIT_SESSION_PK, deleted)
     }
 
-    #[tracing::instrument]
+    #[instrument]
     pub fn new_edit_session(
         change_set_pk: ChangeSetPk,
         edit_session_pk: EditSessionPk,
@@ -50,7 +52,7 @@ impl Visibility {
         Visibility::new(change_set_pk, edit_session_pk, deleted)
     }
 
-    #[tracing::instrument(skip(txn))]
+    #[instrument(skip(txn))]
     pub async fn is_visible_to(
         &self,
         txn: &PgTxn<'_>,

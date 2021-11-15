@@ -8,7 +8,7 @@ use axum::{
     response::IntoResponse,
 };
 use hyper::StatusCode;
-use tracing::{trace, warn};
+use telemetry::prelude::*;
 
 use super::routes::{State, WatchKeepalive};
 use crate::{

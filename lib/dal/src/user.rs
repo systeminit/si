@@ -1,3 +1,11 @@
+use jwt_simple::{algorithms::RSAKeyPairLike, claims::Claims, reexports::coarsetime::Duration};
+use serde::{Deserialize, Serialize};
+use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use sodiumoxide::crypto::{pwhash::argon2id13, secretbox};
+use telemetry::prelude::*;
+use thiserror::Error;
+use tokio::task::JoinError;
+
 use crate::jwt_key::{get_jwt_signing_key, JwtKeyError};
 use crate::standard_model::option_object_from_row;
 use crate::{
@@ -5,15 +13,6 @@ use crate::{
     BillingAccount, BillingAccountId, HistoryActor, HistoryEventError, StandardModel,
     StandardModelError, Tenancy, Timestamp, Visibility,
 };
-use jwt_simple::algorithms::RSAKeyPairLike;
-use jwt_simple::claims::Claims;
-use jwt_simple::reexports::coarsetime::Duration;
-use serde::{Deserialize, Serialize};
-use si_data::{NatsError, NatsTxn, PgError, PgTxn};
-use sodiumoxide::crypto::pwhash::argon2id13;
-use sodiumoxide::crypto::secretbox;
-use thiserror::Error;
-use tokio::task::JoinError;
 
 const USER_PASSWORD: &str = include_str!("./queries/user_password.sql");
 const USER_FIND_BY_EMAIL: &str = include_str!("queries/user_find_by_email.sql");

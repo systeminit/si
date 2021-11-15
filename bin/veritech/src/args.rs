@@ -1,10 +1,7 @@
-use std::convert::TryFrom;
-
 use clap::Parser;
-use si_settings::StandardConfigFile;
 use veritech::{
     server::{Config, ConfigError},
-    ConfigFile,
+    ConfigFile, StandardConfigFile,
 };
 
 const NAME: &str = "veritech";
@@ -19,13 +16,17 @@ pub(crate) fn parse() -> Args {
 pub(crate) struct Args {
     /// Sets the verbosity mode.
     ///
-    /// Multiple -v options increase verbosity. The maximum is 3.
+    /// Multiple -v options increase verbosity. The maximum is 4.
     #[clap(short = 'v', long = "verbose", parse(from_occurrences))]
     pub(crate) verbose: usize,
 
-    /// NATS connection URL [example: 0.0.0.0:8080]
+    /// NATS connection URL [example: 0.0.0.0:4222]
     #[clap(long, short = 'u')]
     pub(crate) nats_url: Option<String>,
+
+    /// Disable OpenTelemetry on startup
+    #[clap(long)]
+    pub(crate) disable_opentelemetry: bool,
 }
 
 impl TryFrom<Args> for Config {

@@ -28,5 +28,3 @@ pub use nats::{Client as NatsClient, Error as NatsError, NatsConfig, NatsTxn};
 
 mod sensitive_string;
 pub use sensitive_string::SensitiveString;
-
-pub mod telemetry;

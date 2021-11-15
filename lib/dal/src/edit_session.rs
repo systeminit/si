@@ -1,13 +1,14 @@
-use crate::standard_model::object_option_from_row_option;
-use crate::{
-    pk, ChangeSetPk, HistoryActor, HistoryEvent, HistoryEventError, StandardModelError, Tenancy,
-    Timestamp,
-};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use strum_macros::{Display, EnumString};
+use telemetry::prelude::*;
 use thiserror::Error;
+
+use crate::{
+    pk, standard_model::object_option_from_row_option, ChangeSetPk, HistoryActor, HistoryEvent,
+    HistoryEventError, StandardModelError, Tenancy, Timestamp,
+};
 
 const EDIT_SESSION_GET_BY_PK: &str = include_str!("./queries/edit_session_get_by_pk.sql");
 
@@ -54,7 +55,7 @@ pub struct EditSession {
 }
 
 impl EditSession {
-    #[tracing::instrument(skip(txn, nats, name, note))]
+    #[instrument(skip(txn, nats, name, note))]
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
@@ -95,7 +96,7 @@ impl EditSession {
         Ok(object)
     }
 
-    #[tracing::instrument(skip(txn))]
+    #[instrument(skip(txn))]
     pub async fn get_by_pk(
         txn: &PgTxn<'_>,
         tenancy: &Tenancy,
@@ -108,7 +109,7 @@ impl EditSession {
         Ok(result)
     }
 
-    #[tracing::instrument(skip(txn, nats))]
+    #[instrument(skip(txn, nats))]
     pub async fn save(
         &mut self,
         txn: &PgTxn<'_>,
@@ -138,7 +139,7 @@ impl EditSession {
         Ok(())
     }
 
-    #[tracing::instrument(skip(txn, nats))]
+    #[instrument(skip(txn, nats))]
     pub async fn cancel(
         &mut self,
         txn: &PgTxn<'_>,

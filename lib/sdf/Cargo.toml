@@ -8,6 +8,7 @@ publish = false
 [dependencies]
 axum = { version = "0.3.0", features = ["ws"] }
 axum-debug = { version = "0.1.0" }
+chrono = { version = "0.4.19", features = ["serde"] }
 derive_builder = { version = "0.10.2" }
 futures = { version = "0.3.17" }
 hyper = { version = "0.14", features = ["http1", "runtime", "server"] }
@@ -18,15 +19,14 @@ serde_with = "1.10.0"
 si-data = { path = "../../lib/si-data" }
 dal = { path = "../dal" }
 si-settings = { path = "../../lib/si-settings" }
+sodiumoxide = "0.2.7"
 strum = "0.21.0"
 strum_macros = "0.21.1"
+telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { version = "1.0" }
 tokio = { version = "1.12.0", features = ["full"] }
 tower-http = { version = "0.1", features = ["trace"] }
 tower = { version = "0.4.10" }
-tracing = { version = "0.1" }
-sodiumoxide = "0.2.7"
-chrono = { version = "0.4.19", features = ["serde"] }
 
 [dev-dependencies]
 serde_url_params = "0.2.1"

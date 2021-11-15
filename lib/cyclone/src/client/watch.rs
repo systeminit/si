@@ -7,13 +7,13 @@ use std::{
 use futures::{Stream, StreamExt};
 use futures_lite::FutureExt;
 use hyper::client::connect::Connection;
+use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::{
     io::{AsyncRead, AsyncWrite},
     time,
 };
 use tokio_tungstenite::{tungstenite::Message as WebSocketMessage, WebSocketStream};
-use tracing::trace;
 
 pub fn watch<T>(stream: WebSocketStream<T>, ping_wait_timeout: Duration) -> Watch<T> {
     Watch {

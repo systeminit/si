@@ -2,14 +2,12 @@ use std::{fmt::Debug, io, sync::Arc, time::Duration};
 
 use nats_client as nats;
 use serde::{Deserialize, Serialize};
+use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::{
     sync::Mutex,
     task::{self, spawn_blocking},
 };
-use tracing::{debug, field::Empty, instrument, span, Level, Span};
-
-use crate::telemetry::{SpanExt, SpanKind};
 
 pub mod jetstream;
 mod message;

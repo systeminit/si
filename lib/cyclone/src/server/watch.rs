@@ -1,9 +1,9 @@
 use std::time::Duration;
 
 use axum::extract::ws::WebSocket;
+use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::{sync::mpsc, time};
-use tracing::{info, trace, warn};
 
 use super::server::ShutdownSource;
 use crate::server::WebSocketMessage;

@@ -1,12 +1,14 @@
+use serde::{Deserialize, Serialize};
+use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use telemetry::prelude::*;
+use thiserror::Error;
+
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_many_to_many,
     BillingAccount, BillingAccountId, HistoryActor, HistoryEventError, Organization,
     OrganizationId, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility, Workspace,
     WorkspaceId,
 };
-use serde::{Deserialize, Serialize};
-use si_data::{NatsError, NatsTxn, PgError, PgTxn};
-use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum SchemaError {

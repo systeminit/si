@@ -1,6 +1,7 @@
 use rand::Rng;
+use si_data::{NatsClient, NatsError, PgError, PgPool, PgPoolError};
+use telemetry::prelude::*;
 use thiserror::Error;
-use tracing::instrument;
 
 pub mod billing_account;
 pub mod capability;
@@ -46,8 +47,6 @@ pub use timestamp::{Timestamp, TimestampError};
 pub use user::{User, UserClaim, UserError, UserId, UserResult};
 pub use visibility::{Visibility, VisibilityError};
 pub use workspace::{Workspace, WorkspaceError, WorkspaceId, WorkspacePk, WorkspaceResult};
-
-use si_data::{NatsClient, NatsError, PgError, PgPool, PgPoolError};
 
 mod embedded {
     use refinery::embed_migrations;

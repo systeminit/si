@@ -7,9 +7,9 @@ use serde::{Deserialize, Serialize};
 use si_data::PgTxn;
 use sodiumoxide::crypto::secretbox;
 use std::{fs::File, io::prelude::*};
+use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::task::JoinError;
-use tracing::{info_span, instrument, Instrument};
 
 const JWT_KEY_EXISTS: &str = include_str!("./queries/jwt_key_exists.sql");
 const JWT_KEY_GET_LATEST_PRIVATE_KEY: &str =

@@ -24,6 +24,10 @@ pub(crate) struct Args {
     #[clap(short = 'v', long = "verbose", parse(from_occurrences))]
     pub(crate) verbose: usize,
 
+    /// Disable OpenTelemetry on startup
+    #[clap(long)]
+    pub(crate) disable_opentelemetry: bool,
+
     /// Binds service to a socket address [example: 0.0.0.0:5157]
     #[clap(long, group = "bind")]
     pub(crate) bind_addr: Option<SocketAddr>,

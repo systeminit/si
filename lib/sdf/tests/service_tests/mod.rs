@@ -170,10 +170,12 @@ macro_rules! test_setup {
             .expect("one time setup failed");
         let $ctx = dal::test_harness::TestContext::init().await;
         let ($pg, $nats_conn, $secret_key) = $ctx.entries();
+        let telemetry = $ctx.telemetry();
         let $nats = $nats_conn.transaction();
         let mut $pgconn = $pg.get().await.expect("cannot connect to pg");
         let $pgtxn = $pgconn.transaction().await.expect("cannot create txn");
         let ($app, _) = sdf::build_service(
+            telemetry,
             $pg.clone(),
             $nats_conn.clone(),
             sdf::JwtSigningKey {

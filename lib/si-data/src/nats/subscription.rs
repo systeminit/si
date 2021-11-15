@@ -6,11 +6,10 @@ use std::{
 
 use futures::{FutureExt, Stream};
 use nats_client as nats;
+use telemetry::prelude::*;
 use tokio::task::spawn_blocking;
-use tracing::{field::Empty, instrument, Span};
 
 use super::{ConnectionMetadata, Error, Message, Result};
-use crate::telemetry::{SpanExt, SpanKind};
 
 /// A `Subscription` receives `Message`s published to specific NATS `Subject`s.
 #[derive(Debug)]

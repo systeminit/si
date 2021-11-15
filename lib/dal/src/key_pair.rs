@@ -1,15 +1,16 @@
 mod key_pair_box_public_key_serde;
 mod key_pair_box_secret_key_serde;
+use serde::{Deserialize, Serialize};
+use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use sodiumoxide::crypto::box_::{self, PublicKey as BoxPublicKey, SecretKey as BoxSecretKey};
+use telemetry::prelude::*;
+use thiserror::Error;
 
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_accessor_ro,
     standard_model_belongs_to, BillingAccount, BillingAccountId, HistoryActor, HistoryEvent,
     HistoryEventError, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
 };
-use serde::{Deserialize, Serialize};
-use si_data::{NatsError, NatsTxn, PgError, PgTxn};
-use sodiumoxide::crypto::box_::{self, PublicKey as BoxPublicKey, SecretKey as BoxSecretKey};
-use thiserror::Error;
 
 const PUBLIC_KEY_GET_CURRENT: &str = include_str!("./queries/public_key_get_current.sql");
 

@@ -1,7 +1,7 @@
 use futures::StreamExt;
 use si_data::NatsClient;
+use telemetry::prelude::*;
 use thiserror::Error;
-use tracing::instrument;
 
 use crate::{FunctionResult, ResolverFunctionRequest};
 

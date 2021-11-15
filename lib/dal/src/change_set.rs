@@ -1,5 +1,8 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use strum_macros::{Display, EnumString};
+use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::label_list::LabelList;
@@ -8,8 +11,6 @@ use crate::{
     pk, HistoryActor, HistoryEvent, HistoryEventError, LabelListError, StandardModelError, Tenancy,
     Timestamp,
 };
-use chrono::{DateTime, Utc};
-use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 
 const CHANGE_SET_OPEN_LIST: &str = include_str!("./queries/change_set_open_list.sql");
 const CHANGE_SET_GET_BY_PK: &str = include_str!("./queries/change_set_get_by_pk.sql");
@@ -60,7 +61,7 @@ pub struct ChangeSet {
 }
 
 impl ChangeSet {
-    #[tracing::instrument(skip(txn, nats, name, note))]
+    #[instrument(skip(txn, nats, name, note))]
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
@@ -94,7 +95,7 @@ impl ChangeSet {
         Ok(object)
     }
 
-    #[tracing::instrument(skip(txn, nats))]
+    #[instrument(skip(txn, nats))]
     pub async fn apply(
         &mut self,
         txn: &PgTxn<'_>,

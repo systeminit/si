@@ -7,15 +7,11 @@ use deadpool_postgres::{
     RecyclingMethod, Transaction, TransactionBuilder,
 };
 use serde::{Deserialize, Serialize};
+use telemetry::prelude::*;
 use tokio_postgres::{
     types::{BorrowToSql, ToSql, Type},
     CancelToken, Client, CopyInSink, CopyOutStream, IsolationLevel, NoTls, Portal, Row, RowStream,
     SimpleQueryMessage, Statement, ToStatement,
-};
-use tracing::{
-    debug,
-    field::{display, Empty},
-    instrument, warn, Instrument, Span,
 };
 
 pub use tokio_postgres::{error::SqlState, Error};
@@ -467,7 +463,7 @@ impl InstrumentedClient {
     ) -> Result<Vec<Row>, Error> {
         let r = self.inner.query(statement, params).await;
         if let Ok(ref rows) = r {
-            Span::current().record("db.rows", &display(rows.len()));
+            Span::current().record("db.rows", &rows.len());
         }
         r
     }
@@ -509,7 +505,7 @@ impl InstrumentedClient {
     ) -> Result<Row, Error> {
         let r = self.inner.query_one(statement, params).await;
         if r.is_ok() {
-            Span::current().record("db.rows", &display(1));
+            Span::current().record("db.rows", &1);
         }
         r
     }
@@ -553,10 +549,10 @@ impl InstrumentedClient {
         if let Ok(ref maybe) = r {
             Span::current().record(
                 "db.rows",
-                &display(match maybe {
+                &match maybe {
                     Some(_) => 1,
                     None => 0,
-                }),
+                },
             );
         }
         r
@@ -961,7 +957,7 @@ impl<'a> InstrumentedTransaction<'a> {
         let _ = &self;
         Span::current().follows_from(&self.tx_span);
         let r = self.inner.commit().instrument(self.tx_span.clone()).await;
-        self.tx_span.record("db.transaction", &display("commit"));
+        self.tx_span.record("db.transaction", &"commit");
         r
     }
 
@@ -987,7 +983,7 @@ impl<'a> InstrumentedTransaction<'a> {
         let _ = &self;
         Span::current().follows_from(&self.tx_span);
         let r = self.inner.rollback().instrument(self.tx_span.clone()).await;
-        self.tx_span.record("db.transaction", &display("rollback"));
+        self.tx_span.record("db.transaction", &"rollback");
         r
     }
 
@@ -1091,7 +1087,7 @@ impl<'a> InstrumentedTransaction<'a> {
             .instrument(self.tx_span.clone())
             .await;
         if let Ok(ref rows) = r {
-            Span::current().record("db.rows", &display(rows.len()));
+            Span::current().record("db.rows", &rows.len());
         }
         r
     }
@@ -1138,7 +1134,7 @@ impl<'a> InstrumentedTransaction<'a> {
             .instrument(self.tx_span.clone())
             .await;
         if r.is_ok() {
-            Span::current().record("db.rows", &display(1));
+            Span::current().record("db.rows", &1);
         }
         r
     }
@@ -1187,10 +1183,10 @@ impl<'a> InstrumentedTransaction<'a> {
         if let Ok(ref maybe) = r {
             Span::current().record(
                 "db.rows",
-                &display(match maybe {
+                &match maybe {
                     Some(_) => 1,
                     None => 0,
-                }),
+                },
             );
         }
         r
