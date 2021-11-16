@@ -7,10 +7,8 @@ use thiserror::Error;
 
 use crate::label_list::LabelList;
 use crate::standard_model::object_option_from_row_option;
-use crate::{
-    pk, HistoryActor, HistoryEvent, HistoryEventError, LabelListError, StandardModelError, Tenancy,
-    Timestamp,
-};
+use crate::{pk, HistoryActor, HistoryEvent, HistoryEventError, LabelListError, StandardModelError, Tenancy, Timestamp, WsEventError};
+use crate::ws_event::{WsEvent, WsPayload};
 
 const CHANGE_SET_OPEN_LIST: &str = include_str!("./queries/change_set_open_list.sql");
 const CHANGE_SET_GET_BY_PK: &str = include_str!("./queries/change_set_get_by_pk.sql");
@@ -29,6 +27,8 @@ pub enum ChangeSetError {
     LabelList(#[from] LabelListError),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
+    #[error("ws event error: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 
 pub type ChangeSetResult<T> = Result<T, ChangeSetError>;
@@ -79,8 +79,6 @@ impl ChangeSet {
             )
             .await?;
         let json: serde_json::Value = row.try_get("object")?;
-        // TODO(fnichol): determine subject(s) for publishing
-        nats.publish("changeSet", &json).await?;
         let _history_event = HistoryEvent::new(
             &txn,
             &nats,
@@ -92,6 +90,7 @@ impl ChangeSet {
         )
         .await?;
         let object: Self = serde_json::from_value(json)?;
+        WsEvent::change_set_created(&object).publish(&nats).await?;
         Ok(object)
     }
 
@@ -122,6 +121,7 @@ impl ChangeSet {
             &self.tenancy,
         )
         .await?;
+        WsEvent::change_set_applied(&self).publish(&nats).await?;
         Ok(())
     }
 
@@ -146,5 +146,31 @@ impl ChangeSet {
             .await?;
         let change_set: Option<ChangeSet> = object_option_from_row_option(row)?;
         Ok(change_set)
+    }
+}
+
+impl WsEvent {
+    pub fn change_set_created(change_set: &ChangeSet) -> Self {
+        let billing_account_ids = WsEvent::billing_account_id_from_tenancy(&change_set.tenancy);
+        WsEvent::new(
+            billing_account_ids,
+            WsPayload::ChangeSetCreated(change_set.pk),
+        )
+    }
+
+    pub fn change_set_applied(change_set: &ChangeSet) -> Self {
+        let billing_account_ids = WsEvent::billing_account_id_from_tenancy(&change_set.tenancy);
+        WsEvent::new(
+            billing_account_ids,
+            WsPayload::ChangeSetApplied(change_set.pk),
+        )
+    }
+
+    pub fn change_set_canceled(change_set: &ChangeSet) -> Self {
+        let billing_account_ids = WsEvent::billing_account_id_from_tenancy(&change_set.tenancy);
+        WsEvent::new(
+            billing_account_ids,
+            WsPayload::ChangeSetCanceled(change_set.pk),
+        )
     }
 }

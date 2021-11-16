@@ -157,8 +157,9 @@ dependencies = [
 
 [[package]]
 name = "axum"
-version = "0.3.0"
-source = "git+https://github.com/tokio-rs/axum.git#9512d14c998c4bfa08bafec899838d2d61f16c04"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ebef2d70f09908abd9bedd61f62db165e051eb7643c48ab1642b568b685752a0"
 dependencies = [
  "async-trait",
  "base64",
@@ -2526,7 +2527,7 @@ dependencies = [
 name = "sdf"
 version = "0.1.0"
 dependencies = [
- "axum 0.3.0",
+ "axum 0.3.3",
  "axum-debug",
  "chrono",
  "dal",
@@ -2546,6 +2547,7 @@ dependencies = [
  "telemetry",
  "thiserror",
  "tokio",
+ "tokio-tungstenite",
  "tower",
  "tower-http",
 ]

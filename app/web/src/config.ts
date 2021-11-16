@@ -15,7 +15,7 @@ export const config: Config = {
   sdfBaseWsUrl: new URL(
     process.env.VUE_APP_SDF_BASE_WS_URL ||
       (process.env.NODE_ENV == "production"
-        ? "wss://app.systeminit.com/api/updates"
-        : "ws://localhost:8080/api/updates"),
+        ? "wss://app.systeminit.com/api/ws/billing_account_updates"
+        : "ws://localhost:8080/api/ws/billing_account_updates"),
   ),
 };

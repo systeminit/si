@@ -1,6 +1,7 @@
 // import _ from "lodash";
 import { Config } from "@/config";
 import _ from "lodash";
+import { SdfWs } from "@/api/sdf/ws";
 //import { urlSafeBase64Encode } from "@/api/sdf/base64";
 //import { Update } from "@/api/sdf/model/update";
 
@@ -31,7 +32,7 @@ export class SDF {
   wsBaseUrl: URL;
   currentToken?: string;
 
-  //update?: Update;
+  ws?: SdfWs;
 
   constructor(config: Config) {
     this.baseUrl = config.sdfBaseUrl;
@@ -39,22 +40,22 @@ export class SDF {
   }
 
   async startUpdate() {
-    //if (!this.update) {
-    //  this.setupUpdate();
-    //}
+    if (!this.ws) {
+      await this.setupUpdate();
+    }
   }
 
   async setupUpdate() {
-    //const url = new URL(this.wsBaseUrl.toString());
-    //url.searchParams.set("token", `Bearer ${this.token}`);
-    //this.update = new Update(url.toString());
+    const url = new URL(this.wsBaseUrl.toString());
+    url.searchParams.set("token", `Bearer ${this.token}`);
+    this.ws = new SdfWs(url.toString());
   }
 
   set token(token: SDF["currentToken"]) {
     this.currentToken = token;
     if (token) {
       localStorage.setItem("si-sdf-token", token);
-      this.setupUpdate();
+      this.setupUpdate().then();
     } else {
       localStorage.removeItem("si-sdf-token");
     }
