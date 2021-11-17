@@ -12,7 +12,7 @@ use serde_json::json;
 use si_data::{nats, pg};
 use telemetry::TelemetryClient;
 use thiserror::Error;
-use tokio::sync::mpsc;
+use tokio::sync::{broadcast, mpsc};
 
 use super::{
     handlers,
@@ -32,6 +32,15 @@ impl State {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct ShutdownBroadcast(broadcast::Sender<()>);
+
+impl ShutdownBroadcast {
+    pub fn subscribe(&self) -> broadcast::Receiver<()> {
+        self.0.subscribe()
+    }
+}
+
 #[must_use]
 pub fn routes(
     telemetry: impl TelemetryClient,
@@ -39,6 +48,7 @@ pub fn routes(
     nats: nats::Client,
     jwt_signing_key: JwtSigningKey,
     shutdown_tx: mpsc::Sender<ShutdownSource>,
+    shutdown_broadcast_tx: broadcast::Sender<()>,
 ) -> Router {
     let shared_state = Arc::new(State::new(shutdown_tx));
 
@@ -51,14 +61,18 @@ pub fn routes(
             "/api/change_set",
             crate::server::service::change_set::routes(),
         )
-        .nest("/api/schema", crate::server::service::schema::routes());
+        .nest("/api/schema", crate::server::service::schema::routes())
+        .nest("/api/ws", crate::server::service::ws::routes());
     router = test_routes(router);
     router = router
         .layer(AddExtensionLayer::new(shared_state))
         .layer(AddExtensionLayer::new(telemetry))
         .layer(AddExtensionLayer::new(pg_pool))
         .layer(AddExtensionLayer::new(nats))
-        .layer(AddExtensionLayer::new(jwt_signing_key));
+        .layer(AddExtensionLayer::new(jwt_signing_key))
+        .layer(AddExtensionLayer::new(ShutdownBroadcast(
+            shutdown_broadcast_tx,
+        )));
     router
 }
 

@@ -183,6 +183,14 @@ impl Subscription {
         span.record_ok();
         Ok(())
     }
+
+    pub async fn async_next(&self) -> Result<Option<Message>> {
+        let inner = self.inner.clone();
+        match spawn_blocking(move || inner.next()).await {
+            Ok(maybe_msg) => Ok(maybe_msg.map(|inner| Message::new(inner, self.metadata.clone()))),
+            Err(err) => Err(err.into()),
+        }
+    }
 }
 
 impl Stream for Subscription {

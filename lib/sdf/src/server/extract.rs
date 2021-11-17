@@ -1,8 +1,10 @@
+use std::collections::HashMap;
 use axum::{
     async_trait,
     extract::{Extension, FromRequest, RequestParts},
     Json,
 };
+use axum::extract::Query;
 use dal::User;
 use dal::{Tenancy, UserClaim, Visibility};
 use hyper::StatusCode;
@@ -201,3 +203,43 @@ where
         Ok(Self(claim))
     }
 }
+
+pub struct WsAuthorization(pub UserClaim);
+
+#[async_trait]
+impl<P> FromRequest<P> for WsAuthorization
+    where
+        P: Send,
+{
+    type Rejection = (StatusCode, Json<serde_json::Value>);
+
+    async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
+        let error_response = (
+            StatusCode::UNAUTHORIZED,
+            Json(
+                serde_json::json!({ "error": { "message": "unauthorized", "code": 42, "statusCode": 401 } }),
+            ),
+        );
+
+        let mut ro_txn = PgRoTxn::from_request(req)
+            .await
+            .map_err(|_| error_response.clone())?;
+        let txn = ro_txn.start().await.map_err(|_| error_response.clone())?;
+
+        let query: Query<HashMap<String, String>> = Query::from_request(req).await.map_err(|_| error_response.clone())?;
+        let authorization = query.get("token").ok_or(error_response.clone())?;
+
+        let claim = UserClaim::from_bearer_token(&txn, authorization)
+            .await
+            .map_err(|_| error_response.clone())?;
+        let tenancy = Tenancy::new_billing_account(vec![claim.billing_account_id.clone()]);
+        let visibility = Visibility::new_head(false);
+        User::authorize(&txn, &tenancy, &visibility, &claim.user_id)
+            .await
+            .map_err(|_| error_response.clone())?;
+        txn.commit().await.map_err(|_| error_response.clone())?;
+
+        Ok(Self(claim))
+    }
+}
+

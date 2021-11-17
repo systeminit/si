@@ -3,3 +3,4 @@ pub mod schema;
 pub mod session;
 pub mod signup;
 pub mod test;
+pub mod ws;

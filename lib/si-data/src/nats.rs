@@ -168,6 +168,7 @@ impl Client {
             messaging.protocol = %self.metadata.messaging_protocol,
             messaging.system = %self.metadata.messaging_system,
             messaging.url = %self.metadata.messaging_url,
+            messaging.subject = Empty,
             net.transport = %self.metadata.net_transport,
             otel.kind = %SpanKind::Consumer,
             otel.name = Empty,
@@ -876,7 +877,7 @@ impl NatsTxn {
     }
 
     #[instrument(
-        name = "transaction.commit",
+    name = "transaction.commit",
         skip_all,
         fields(
             messaging.protocol = %self.metadata.messaging_protocol,

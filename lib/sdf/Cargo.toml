@@ -25,6 +25,7 @@ strum_macros = "0.21.1"
 telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { version = "1.0" }
 tokio = { version = "1.12.0", features = ["full"] }
+tokio-tungstenite = "0.15.0"
 tower-http = { version = "0.1", features = ["trace"] }
 tower = { version = "0.4.10" }
 

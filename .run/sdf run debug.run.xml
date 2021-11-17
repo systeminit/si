@@ -16,7 +16,7 @@
     </method>
   </configuration>
   <configuration default="false" name="sdf run debug" type="CargoCommandRunConfiguration" factoryName="Cargo Command" folderName="sdf">
-    <option name="command" value="run --bin sdf" />
+    <option name="command" value="run --bin sdf -- -v" />
     <option name="workingDirectory" value="file://$PROJECT_DIR$" />
     <option name="channel" value="DEFAULT" />
     <option name="requiredFeatures" value="true" />
@@ -24,9 +24,7 @@
     <option name="emulateTerminal" value="false" />
     <option name="withSudo" value="false" />
     <option name="backtrace" value="SHORT" />
-    <envs>
-      <env name="SI_LOG" value="debug" />
-    </envs>
+    <envs />
     <option name="isRedirectInput" value="false" />
     <option name="redirectInputPath" value="" />
     <method v="2">

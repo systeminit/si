@@ -11,7 +11,7 @@ use thiserror::Error;
 use tokio::{
     io::{AsyncRead, AsyncWrite},
     signal::unix,
-    sync::{mpsc, oneshot},
+    sync::{broadcast, mpsc, oneshot},
 };
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 
@@ -156,45 +156,65 @@ pub fn build_service(
     jwt_signing_key: JwtSigningKey,
 ) -> Result<(Router, oneshot::Receiver<()>)> {
     let (shutdown_tx, shutdown_rx) = mpsc::channel(4);
+    // Note the channel parameter corresponds to the number of channels that may be maintained when
+    // the sender is guaranteeing delivery. While this number may end of being related to the
+    // number of active WebSocket sessions, it's not necessarily the same number.
+    let (shutdown_broadcast_tx, _) = broadcast::channel(512);
 
-    let routes = routes(telemetry, pg_pool, nats, jwt_signing_key, shutdown_tx)
-        // TODO(fnichol): customize http tracing further, using:
-        // https://docs.rs/tower-http/0.1.1/tower_http/trace/index.html
-        .layer(
-            TraceLayer::new_for_http()
-                .make_span_with(DefaultMakeSpan::default().include_headers(true)),
-        );
+    let routes = routes(
+        telemetry,
+        pg_pool,
+        nats,
+        jwt_signing_key,
+        shutdown_tx,
+        shutdown_broadcast_tx.clone(),
+    )
+    // TODO(fnichol): customize http tracing further, using:
+    // https://docs.rs/tower-http/0.1.1/tower_http/trace/index.html
+    .layer(
+        TraceLayer::new_for_http().make_span_with(DefaultMakeSpan::default().include_headers(true)),
+    );
 
-    let graceful_shutdown_rx = prepare_graceful_shutdown(shutdown_rx)?;
+    let graceful_shutdown_rx = prepare_graceful_shutdown(shutdown_rx, shutdown_broadcast_tx)?;
 
     Ok((routes, graceful_shutdown_rx))
 }
 
 fn prepare_graceful_shutdown(
     mut shutdown_rx: mpsc::Receiver<ShutdownSource>,
+    shutdown_broadcast_tx: broadcast::Sender<()>,
 ) -> Result<oneshot::Receiver<()>> {
     let (graceful_shutdown_tx, graceful_shutdown_rx) = oneshot::channel::<()>();
     let mut sigterm_stream =
         unix::signal(unix::SignalKind::terminate()).map_err(ServerError::Signal)?;
 
     tokio::spawn(async move {
-        fn send_graceful_shutdown(tx: oneshot::Sender<()>) {
+        fn send_graceful_shutdown(
+            tx: oneshot::Sender<()>,
+            shutdown_broadcast_tx: broadcast::Sender<()>,
+        ) {
+            // Send graceful shutdown to axum server which stops it from accepting requests
             if tx.send(()).is_err() {
                 error!("the server graceful shutdown receiver has already dropped");
+            }
+            // Send shutdown to all long running sessions (notably, WebSocket sessions), so they
+            // can cleanly terminate
+            if shutdown_broadcast_tx.send(()).is_err() {
+                error!("all broadcast shutdown receivers have already been dropped");
             }
         }
 
         tokio::select! {
             _ = sigterm_stream.recv() => {
                 info!("received SIGTERM signal, performing graceful shutdown");
-                send_graceful_shutdown(graceful_shutdown_tx);
+                send_graceful_shutdown(graceful_shutdown_tx, shutdown_broadcast_tx);
             }
             source = shutdown_rx.recv() => {
                 info!(
                     "received internal shutdown, performing graceful shutdown; source={:?}",
                     source,
                 );
-                send_graceful_shutdown(graceful_shutdown_tx);
+                send_graceful_shutdown(graceful_shutdown_tx, shutdown_broadcast_tx);
             }
             else => {
                 // All other arms are closed, nothing left to do but return
