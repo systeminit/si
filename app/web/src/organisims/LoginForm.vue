@@ -87,7 +87,7 @@
 
 <script lang="ts">
 import { defineComponent } from "vue";
-import { SessionService } from "@/api/sdf/service/session";
+import { SessionService } from "@/service/session";
 
 enum InputKind {
   BillingAccount = "billingAccount",

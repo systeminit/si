@@ -37,6 +37,7 @@ export class SDF {
   constructor(config: Config) {
     this.baseUrl = config.sdfBaseUrl;
     this.wsBaseUrl = config.sdfBaseWsUrl;
+    this.startUpdate().then();
   }
 
   async startUpdate() {

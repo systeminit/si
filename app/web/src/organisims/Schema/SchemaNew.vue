@@ -81,7 +81,7 @@ import SiError from "@/atoms/SiError.vue";
 import { useRouter } from "vue-router";
 import { ref } from "vue";
 import { SchemaKind } from "@/api/sdf/dal/schema";
-import { SchemaService } from "@/api/sdf/service/schema";
+import { SchemaService } from "@/service/schema";
 import { enumKeys } from "@/utils/enumKeys";
 
 const router = useRouter();

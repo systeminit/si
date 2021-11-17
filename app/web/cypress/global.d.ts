@@ -1,12 +1,12 @@
 /// <reference types="cypress" />
 
 declare namespace Cypress {
-  import { SignupService } from "../src/api/sdf/service/signup";
-  import { SessionService } from "../src/api/sdf/service/session";
+  import { SignupService } from "../src/service/signup";
+  import { SessionService } from "../src/service/session";
   import {
     CreateAccountRequest,
     CreateAccountResponse,
-  } from "../src/api/sdf/service/signup/create_account";
+  } from "../src/service/signup/create_account";
 
   interface CustomWindow extends Window {
     SignupService: typeof SignupService;
