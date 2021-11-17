@@ -2,10 +2,11 @@
   <div
     class="flex flex-row items-center justify-between flex-grow-0 flex-shrink-0 h-12 header-background"
   >
-    <div class="mt-1 ml-8 font-medium align-middle">Schema</div>
+    <div class="mt-1 ml-8 font-medium align-middle">Schema
+      <SiButton class="ml-2" icon="plus" label="New" size="xs" @click="schemaNew()" />
+    </div>
     <div class="mt-1 mr-8 align-middle">
       <ChangeSetWidget />
-      <SiButton icon="plus" label="New" size="xs" @click="schemaNew()" />
     </div>
   </div>
 </template>
