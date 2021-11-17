@@ -28,6 +28,7 @@ import { useRouter, useRoute } from "vue-router";
 import { globalErrorMessage$ } from "@/observable/global";
 import { refFrom } from "vuse-rx";
 import { map } from "rxjs/operators";
+import { GlobalErrorService } from "@/service/global_error";
 
 const route = useRoute();
 const router = useRouter();
@@ -46,7 +47,7 @@ const isLoading = ref(true);
 const navIsVisible = ref(true);
 
 const clearErrorMessage = () => {
-  globalErrorMessage$.next(null);
+  GlobalErrorService.clear();
 };
 
 onMounted(async () => {

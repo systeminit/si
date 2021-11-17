@@ -118,7 +118,6 @@ import {
   revision$,
 } from "@/observable/change_set";
 
-import { globalErrorMessage$ } from "@/observable/global";
 import { editMode$ } from "@/observable/edit_mode";
 
 import SiSelect from "@/atoms/SiSelect.vue";
@@ -136,6 +135,7 @@ import { ChangeSet } from "@/api/sdf/dal/change_set";
 
 import { tap } from "rxjs";
 import _ from "lodash";
+import { GlobalErrorService } from "@/service/global_error";
 
 const CHANGE_SET_NONE = -2;
 const CHANGE_SET_NEW = -3;
@@ -188,7 +188,7 @@ const _openChangeSetsList$ = refFrom(
         { label: ": new :", value: CHANGE_SET_NEW },
       ];
       if (response.error) {
-        globalErrorMessage$.next(response);
+        GlobalErrorService.set(response);
         openChangeSetsList.value = always;
       } else {
         openChangeSetsList.value = _.concat(response.list, always);
@@ -221,7 +221,7 @@ const changeSetSelected = async () => {
       pk: selectedChangeSetPk.value,
     });
     if (response.error) {
-      globalErrorMessage$.next(response);
+      GlobalErrorService.set(response);
     }
   }
 };
@@ -249,7 +249,7 @@ const changeSetCreate = async () => {
 const changeSetApply = async () => {
   let response = await ChangeSetService.applyChangeSet();
   if (response.error) {
-    globalErrorMessage$.next(response);
+    GlobalErrorService.set(response);
   } else {
     selectedChangeSetPk.value = CHANGE_SET_NONE;
   }
@@ -258,13 +258,13 @@ const changeSetApply = async () => {
 const editSessionCancel = async () => {
   let response = await ChangeSetService.cancelEditSession();
   if (response.error) {
-    globalErrorMessage$.next(response);
+    GlobalErrorService.set(response);
   }
 };
 const editSessionSave = async () => {
   let response = await ChangeSetService.saveEditSession();
   if (response.error) {
-    globalErrorMessage$.next(response);
+    GlobalErrorService.set(response);
   }
 };
 const editSessionStart = async () => {
@@ -272,7 +272,7 @@ const editSessionStart = async () => {
     changeSetPk: selectedChangeSetPk.value,
   });
   if (response.error) {
-    globalErrorMessage$.next(response);
+    GlobalErrorService.set(response);
   }
 };
 </script>

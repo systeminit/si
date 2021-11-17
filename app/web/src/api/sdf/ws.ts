@@ -1,8 +1,4 @@
 import Bottle from "bottlejs";
-import {
-  eventChangeSetApplied$,
-  eventChangeSetCreated$,
-} from "@/observable/change_set";
 import { WsEvent } from "@/api/sdf/dal/ws_event";
 import { WsEventService } from "@/service/ws_event";
 

@@ -42,6 +42,10 @@ eventChangeSetApplied$.next(null);
 export const eventChangeSetCanceled$ = new ReplaySubject<number | null>(1);
 eventChangeSetCanceled$.next(null);
 
+/**
+ * The list of open change sets, refreshed when the right events trigger, debounced, and
+ * shared. Always populated once it's been called, if there are subscribers.
+ */
 export const changeSetsOpenList$ = combineLatest([
   eventChangeSetCreated$,
   eventChangeSetApplied$,

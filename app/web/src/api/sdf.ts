@@ -41,7 +41,7 @@ export class SDF {
   }
 
   async startUpdate() {
-    if (!this.ws) {
+    if (!this.ws && this.token) {
       await this.setupUpdate();
     }
   }
