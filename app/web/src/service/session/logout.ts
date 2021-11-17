@@ -1,17 +1,15 @@
 import Bottle from "bottlejs";
 import { SDF } from "@/api/sdf";
-import { user$ } from "@/observable/user";
-import { billingAccount$ } from "@/observable/billing_account";
 
 export async function logout() {
   const bottle = Bottle.pop("default");
   const sdf: SDF = bottle.container.SDF;
 
   sdf.token = undefined;
-  //if (sdf.update) {
-  //  sdf.update.socket.close();
-  //}
-  user$.next(null);
-  billingAccount$.next(null);
+  if (sdf.ws) {
+    sdf.ws.socket.close();
+  }
   sessionStorage.clear();
+  // We reload the window because we want to reset the state!
+  window.location.reload();
 }

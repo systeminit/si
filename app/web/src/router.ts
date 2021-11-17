@@ -1,6 +1,6 @@
 import { config } from "@/config";
 import { createWebHistory, createRouter, RouteRecordRaw } from "vue-router";
-import { SessionService } from "@/api/sdf/service/session";
+import { SessionService } from "@/service/session";
 import Home from "@/pages/Home.vue";
 import NotFoundPage from "@/pages/NotFound.vue";
 import Authenticate from "@/pages/Authenticate.vue";

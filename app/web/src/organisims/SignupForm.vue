@@ -115,7 +115,7 @@ import {
   CreateAccountRequest,
   CreateAccountResponse,
   SignupService,
-} from "@/api/sdf/service/signup";
+} from "@/service/signup";
 import { ApiResponse } from "@/api/sdf";
 
 enum InputKind {

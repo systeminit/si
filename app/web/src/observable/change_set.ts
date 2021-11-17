@@ -7,7 +7,7 @@ import {
 } from "rxjs";
 import { switchMap } from "rxjs/operators";
 import { ChangeSet } from "@/api/sdf/dal/change_set";
-import { ChangeSetService } from "@/api/sdf/service/change_set";
+import { ChangeSetService } from "@/service/change_set";
 import { persistToSession } from "@/observable/session_state";
 
 /**

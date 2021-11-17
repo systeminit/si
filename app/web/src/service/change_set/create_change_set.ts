@@ -2,9 +2,10 @@ import Bottle from "bottlejs";
 import { ApiResponse, SDF } from "@/api/sdf";
 import { ChangeSet } from "@/api/sdf/dal/change_set";
 import { EditSession } from "@/api/sdf/dal/edit_session";
-import { changeSet$, eventChangeSetCreated$ } from "@/observable/change_set";
+import { changeSet$ } from "@/observable/change_set";
 import { editSession$ } from "@/observable/edit_session";
 import { editMode$ } from "@/observable/edit_mode";
+import { WsEventService } from "@/service/ws_event";
 
 interface CreateChangeSetRequest {
   changeSetName: string;
@@ -30,6 +31,9 @@ export async function createChangeSet(
   changeSet$.next(response.changeSet);
   editSession$.next(response.editSession);
   editMode$.next(true);
-  eventChangeSetCreated$.next(response.changeSet.pk);
+  WsEventService.sendEvent({
+    kind: "ChangeSetCreated",
+    data: response.changeSet.pk,
+  });
   return response;
 }

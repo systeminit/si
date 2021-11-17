@@ -223,7 +223,7 @@ import { ref, computed } from "vue";
 import { refFrom } from "vuse-rx";
 import VueFeather from "vue-feather";
 import SysinitIcon from "@/atoms/SysinitIcon.vue";
-import { SessionService } from "@/api/sdf/service/session";
+import { SessionService } from "@/service/session";
 import { useRouter } from "vue-router";
 import { workspace$ } from "@/observable/workspace";
 import { organization$ } from "@/observable/organization";

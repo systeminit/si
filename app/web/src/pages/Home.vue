@@ -23,7 +23,7 @@ import Nav from "@/organisims/Nav.vue";
 import SiError from "@/atoms/SiError.vue";
 import SiLoader from "@/atoms/SiLoader.vue";
 import DebugRoute from "@/atoms/DebugRoute.vue";
-import { SessionService } from "@/api/sdf/service/session";
+import { SessionService } from "@/service/session";
 import { useRouter, useRoute } from "vue-router";
 import { globalErrorMessage$ } from "@/observable/global";
 import { refFrom } from "vuse-rx";

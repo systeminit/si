@@ -36,7 +36,7 @@ import Bottle from "bottlejs";
 import { user$ } from "../../src/observable/user";
 import { billingAccount$ } from "../../src/observable/billing_account";
 import { SDF } from "../../src/api/sdf";
-import { SessionService } from "../../src/api/sdf/service/session";
+import { SessionService } from "../../src/service/session";
 
 Cypress.Commands.add("getBySel", (selector, ...args) => {
   return cy.get(`[data-test=${selector}]`, ...args);

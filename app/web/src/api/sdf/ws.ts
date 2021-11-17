@@ -1,5 +1,10 @@
 import Bottle from "bottlejs";
-import { eventChangeSetApplied$, eventChangeSetCreated$ } from "@/observable/change_set";
+import {
+  eventChangeSetApplied$,
+  eventChangeSetCreated$,
+} from "@/observable/change_set";
+import { WsEvent } from "@/api/sdf/dal/ws_event";
+import { WsEventService } from "@/service/ws_event";
 
 export class SdfWs {
   socket: WebSocket;
@@ -53,11 +58,6 @@ function onClose(ev: CloseEvent): any {
 }
 
 function onMessage(ev: MessageEvent) {
-  const modelData = JSON.parse(ev.data);
-  console.log("modelData", { modelData, ev });
-  if (modelData.payload.kind == "ChangeSetCreated") {
-    eventChangeSetCreated$.next(modelData.payload.data);
-  } else if (modelData.payload.kind == "ChangeSetApplied") {
-    eventChangeSetApplied$.next(modelData.payload.data);
-  }
+  const wsEvent: WsEvent = JSON.parse(ev.data);
+  WsEventService.dispatch(wsEvent);
 }

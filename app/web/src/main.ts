@@ -7,8 +7,8 @@ import router from "./router";
 
 import "@/assets/main.css";
 import "@/assets/tailwind.css";
-import { SignupService } from "@/api/sdf/service/signup";
-import { SessionService } from "@/api/sdf/service/session";
+import { SignupService } from "@/service/signup";
+import { SessionService } from "@/service/session";
 
 bottleSetup(config);
 
