@@ -1,9 +1,6 @@
 use crate::billing_account::BillingAccountSignup;
 use crate::jwt_key::JwtEncrypt;
-use crate::{
-    BillingAccount, ChangeSet, EditSession, Group, HistoryActor, KeyPair, StandardModel, Tenancy,
-    User, Visibility, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
-};
+use crate::{BillingAccount, ChangeSet, EditSession, Group, HistoryActor, KeyPair, StandardModel, Tenancy, User, Visibility, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK, Schema, SchemaKind};
 use anyhow::Result;
 use async_trait::async_trait;
 use lazy_static::lazy_static;
@@ -339,3 +336,26 @@ pub async fn billing_account_signup(
         .expect("cannot log in newly created user");
     (nba, auth_token)
 }
+
+pub async fn create_schema(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+    kind: &SchemaKind,
+) -> Schema {
+    let name = generate_fake_name();
+    Schema::new(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        &name,
+        &kind,
+    )
+        .await
+        .expect("cannot create schema")
+}
+

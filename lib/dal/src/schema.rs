@@ -3,12 +3,7 @@ use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::{
-    impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_many_to_many,
-    BillingAccount, BillingAccountId, HistoryActor, HistoryEventError, Organization,
-    OrganizationId, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility, Workspace,
-    WorkspaceId,
-};
+use crate::{impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_many_to_many, BillingAccount, BillingAccountId, HistoryActor, HistoryEventError, Organization, OrganizationId, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility, Workspace, WorkspaceId, WsEvent, WsPayload, WsEventError};
 
 #[derive(Error, Debug)]
 pub enum SchemaError {
@@ -21,7 +16,9 @@ pub enum SchemaError {
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
     #[error("standard model error: {0}")]
-    StandardModelError(#[from] StandardModelError),
+    StandardModel(#[from] StandardModelError),
+    #[error("ws event error: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 
 pub type SchemaResult<T> = Result<T, SchemaError>;
@@ -74,7 +71,7 @@ impl_standard_model! {
     model: Schema,
     pk: SchemaPk,
     id: SchemaId,
-    table_name: "schema",
+    table_name: "schemas",
     history_event_label_base: "schema",
     history_event_message_name: "Schema"
 }
@@ -106,6 +103,7 @@ impl Schema {
             row,
         )
         .await?;
+        WsEvent::schema_created(&object).publish(&nats).await?;
         Ok(object)
     }
 
@@ -181,4 +179,14 @@ impl Schema {
         returns: Schema,
         result: SchemaResult,
     );
+}
+
+impl WsEvent {
+    pub fn schema_created(schema: &Schema) -> Self {
+        let billing_account_ids = WsEvent::billing_account_id_from_tenancy(&schema.tenancy);
+        WsEvent::new(
+            billing_account_ids,
+            WsPayload::SchemaCreated(schema.pk),
+        )
+    }
 }

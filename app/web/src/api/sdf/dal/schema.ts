@@ -6,8 +6,6 @@ export enum SchemaKind {
   Concrete = "concrete",
 }
 
-export type SchemaKindStrings = keyof typeof SchemaKind;
-
 export interface Schema extends StandardModel {
   name: string;
   kind: SchemaKind;

@@ -3,6 +3,7 @@ module.exports = {
   env: {
     node: true,
   },
+  globals: { defineProps: "readonly", defineEmits: "readonly", },
   extends: [
     "eslint:recommended",
     "plugin:vue/vue3-recommended",
@@ -10,7 +11,7 @@ module.exports = {
     "@vue/prettier",
   ],
   rules: {
-    "camelcase": "off",
+    camelcase: "off",
     "no-console": "off",
     "no-debugger": "off",
     "no-alert": "error",

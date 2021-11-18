@@ -13,106 +13,33 @@
         Create Schema
       </div>
     </div>
-    <div class="flex flex-row page-background">
-      <SiError :message="errorMessage" />
-      <div class="flex flex-col mt-4">
-        <SiFormRow>
-          <template #label>
-            <label>Schema Name:</label>
-          </template>
-          <template #widget>
-            <SiTextBox
-              id="schemaName"
-              v-model="form.name"
-              size="xs"
-              name="name"
-              placeholder="schema name"
-              :is-show-type="false"
-              required
-            />
-          </template>
-        </SiFormRow>
-        <SiFormRow>
-          <template #label>
-            <label>Schema Kind:</label>
-          </template>
-          <template #widget>
-            <SiSelect
-              id="schemaKind"
-              :options="kindOptions"
-              value="concrete"
-              size="xs"
-            />
-          </template>
-        </SiFormRow>
-        <div class="flex justify-end w-full">
-          <div class="pr-2">
-            <SiButton
-              size="xs"
-              label="Cancel"
-              kind="cancel"
-              icon="null"
-              @click="cancel"
-            />
-          </div>
-          <div>
-            <SiButton
-              size="xs"
-              label="Create"
-              kind="save"
-              icon="null"
-              @click="create"
-            />
-          </div>
-        </div>
-      </div>
+    <div class="flex flex-row">
+      <SchemaCreateForm @create="create" @cancel="cancel" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import VueFeather from "vue-feather";
-import SiTextBox from "@/atoms/SiTextBox.vue";
-import SiSelect from "@/atoms/SiSelect.vue";
-import SiButton from "@/atoms/SiButton.vue";
-import SiFormRow from "@/atoms/SiFormRow.vue";
-import SiError from "@/atoms/SiError.vue";
+import SchemaCreateForm from "./SchemaCreateForm.vue";
 
 import { useRouter } from "vue-router";
-import { ref } from "vue";
-import { SchemaKind } from "@/api/sdf/dal/schema";
-import { SchemaService } from "@/service/schema";
-import { enumKeys } from "@/utils/enumKeys";
+import { GlobalErrorService } from "@/service/global_error";
+import { ApiResponse } from "@/api/sdf";
+import { CreateSchemaResponse } from "@/service/schema/create_schema";
 
 const router = useRouter();
-
-const kindOptionsArray: Array<{ label: string; value: string }> = [];
-for (const value of enumKeys(SchemaKind)) {
-  kindOptionsArray.push({ label: value, value: SchemaKind[value] });
-}
-const kindOptions = ref(kindOptionsArray);
-
-const form = ref({
-  name: "",
-  kind: SchemaKind.Concrete,
-});
 
 const cancel = async () => {
   await router.push({ name: "schema-list" });
 };
 
-const errorMessage = ref("");
-const create = async () => {
-  let result = await SchemaService.createSchema(form.value);
+const create = async (result: ApiResponse<CreateSchemaResponse>) => {
   if (result.error) {
-    errorMessage.value = result.error.message;
+    GlobalErrorService.set(result);
   } else {
     await router.push({ name: "schema-list" });
   }
-};
-
-const _schemaNew = async () => {
-  await router.push({ name: "schema-new" });
 };
 </script>
 

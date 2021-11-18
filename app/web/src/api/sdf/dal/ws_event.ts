@@ -16,8 +16,13 @@ export interface WsChangeSetCanceled {
   kind: "ChangeSetCanceled";
   data: number;
 }
+export interface WsSchemaCreated {
+  kind: "SchemaCreated";
+  data: number;
+}
 
 export type WsPayload =
+  | WsSchemaCreated
   | WsChangeSetCreated
   | WsChangeSetApplied
   | WsChangeSetCanceled;

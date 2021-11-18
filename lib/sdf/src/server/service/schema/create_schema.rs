@@ -9,6 +9,8 @@ use serde::{Deserialize, Serialize};
 pub struct CreateSchemaRequest {
     pub name: String,
     pub kind: SchemaKind,
+    #[serde(flatten)]
+    pub visibility: Visibility,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -26,18 +28,19 @@ pub async fn create_schema(
     let txn = txn.start().await?;
     let nats = nats.start().await?;
     let tenancy = Tenancy::new_billing_account(vec![claim.billing_account_id]);
-    let visibility = Visibility::new_head(false);
     let history_actor: HistoryActor = HistoryActor::from(claim.user_id);
     let schema = Schema::new(
         &txn,
         &nats,
         &tenancy,
-        &visibility,
+        &request.visibility,
         &history_actor,
         &request.name,
         &request.kind,
     )
     .await?;
+    txn.commit().await?;
+    nats.commit().await?;
     let response = CreateSchemaResponse { schema };
     Ok(Json(response))
 }

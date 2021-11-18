@@ -15,6 +15,15 @@ macro_rules! pk {
         )]
         pub struct $name(i64);
 
+        impl std::str::FromStr for $name {
+            type Err = std::num::ParseIntError;
+
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                let x = s.parse::<i64>()?;
+                Ok($name(x))
+            }
+        }
+
         impl<'a> postgres_types::FromSql<'a> for $name {
             fn from_sql(
                 ty: &postgres_types::Type,

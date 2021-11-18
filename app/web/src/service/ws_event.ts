@@ -5,6 +5,7 @@ import {
   eventChangeSetCanceled$,
   eventChangeSetCreated$,
 } from "@/observable/change_set";
+import { eventSchemaCreated$ } from "@/observable/schema";
 
 const eventMap: {
   [E in WsEvent["payload"]["kind"]]: BehaviorSubject<any> | ReplaySubject<any>;
@@ -12,6 +13,7 @@ const eventMap: {
   ChangeSetCreated: eventChangeSetCreated$,
   ChangeSetApplied: eventChangeSetApplied$,
   ChangeSetCanceled: eventChangeSetCanceled$,
+  SchemaCreated: eventSchemaCreated$,
 };
 
 export function dispatch(wsEvent: WsEvent) {

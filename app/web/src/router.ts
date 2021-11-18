@@ -51,6 +51,7 @@ const routes: RouteRecordRaw[] = [
             name: "schema-list",
             path: "list",
             component: SchemaList,
+            props: { modal: true },
           },
           {
             name: "schema-new",

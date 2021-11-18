@@ -1,4 +1,4 @@
-use crate::{BillingAccountId, ChangeSet, ChangeSetPk, StandardModel, Tenancy};
+use crate::{BillingAccountId, ChangeSetPk, SchemaPk, StandardModel, Tenancy};
 use serde::{Deserialize, Serialize};
 use si_data::{NatsError, NatsTxn};
 use thiserror::Error;
@@ -19,6 +19,7 @@ pub enum WsPayload {
     ChangeSetCreated(ChangeSetPk),
     ChangeSetApplied(ChangeSetPk),
     ChangeSetCanceled(ChangeSetPk),
+    SchemaCreated(SchemaPk),
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]

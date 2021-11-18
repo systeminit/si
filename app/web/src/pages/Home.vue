@@ -29,6 +29,7 @@ import { globalErrorMessage$ } from "@/observable/global";
 import { refFrom } from "vuse-rx";
 import { map } from "rxjs/operators";
 import { GlobalErrorService } from "@/service/global_error";
+import { firstValueFrom, tap } from "rxjs";
 
 const route = useRoute();
 const router = useRouter();
@@ -51,7 +52,7 @@ const clearErrorMessage = () => {
 };
 
 onMounted(async () => {
-  const defaults = await SessionService.getDefaults();
+  const defaults = await firstValueFrom(SessionService.getDefaults());
   isLoading.value = false;
   if (route.name == "home" && !defaults.error) {
     await router.push({

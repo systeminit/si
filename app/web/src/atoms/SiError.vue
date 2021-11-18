@@ -3,7 +3,7 @@
     <div v-if="message" :data-test="test" class="bg-red-500 text-white flex">
       <span class="flex-grow">Error: {{ message }}</span>
       <button class="flex-grow-0" @click="clear">
-        <VueFeather type="xicon" />
+        <VueFeather type="x" />
       </button>
     </div>
     <div

@@ -1,13 +1,7 @@
 import {
-  combineLatest,
-  debounceTime,
-  from,
   ReplaySubject,
-  shareReplay,
 } from "rxjs";
-import { switchMap } from "rxjs/operators";
 import { ChangeSet } from "@/api/sdf/dal/change_set";
-import { ChangeSetService } from "@/service/change_set";
 import { persistToSession } from "@/observable/session_state";
 
 /**
@@ -41,25 +35,3 @@ eventChangeSetApplied$.next(null);
  */
 export const eventChangeSetCanceled$ = new ReplaySubject<number | null>(1);
 eventChangeSetCanceled$.next(null);
-
-/**
- * The list of open change sets, refreshed when the right events trigger, debounced, and
- * shared. Always populated once it's been called, if there are subscribers.
- */
-export const changeSetsOpenList$ = combineLatest([
-  eventChangeSetCreated$,
-  eventChangeSetApplied$,
-  eventChangeSetCanceled$,
-]).pipe(
-  switchMap(
-    ([
-      _eventChangeSetCreated,
-      _eventChangeSetApplied,
-      _eventChangeSetCanceled,
-    ]) => {
-      return from(ChangeSetService.listOpenChangeSets());
-    },
-  ),
-  debounceTime(100),
-  shareReplay(1),
-);
