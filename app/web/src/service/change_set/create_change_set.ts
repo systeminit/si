@@ -6,6 +6,7 @@ import { changeSet$ } from "@/observable/change_set";
 import { editSession$ } from "@/observable/edit_session";
 import { editMode$ } from "@/observable/edit_mode";
 import { WsEventService } from "@/service/ws_event";
+import { Observable, tap } from "rxjs";
 
 interface CreateChangeSetRequest {
   changeSetName: string;
@@ -16,24 +17,27 @@ interface CreateChangeSetResponse {
   editSession: EditSession;
 }
 
-export async function createChangeSet(
+export function createChangeSet(
   request: CreateChangeSetRequest,
-): Promise<ApiResponse<CreateChangeSetResponse>> {
+): Observable<ApiResponse<CreateChangeSetResponse>> {
   const bottle = Bottle.pop("default");
   const sdf: SDF = bottle.container.SDF;
-  const response: ApiResponse<CreateChangeSetResponse> = await sdf.post(
-    "change_set/create_change_set",
-    request,
-  );
-  if (response.error) {
-    return response;
-  }
-  changeSet$.next(response.changeSet);
-  editSession$.next(response.editSession);
-  editMode$.next(true);
-  WsEventService.sendEvent({
-    kind: "ChangeSetCreated",
-    data: response.changeSet.pk,
-  });
-  return response;
+  return sdf
+    .post<ApiResponse<CreateChangeSetResponse>>(
+      "change_set/create_change_set",
+      request,
+    )
+    .pipe(
+      tap((response) => {
+        if (!response.error) {
+          changeSet$.next(response.changeSet);
+          editSession$.next(response.editSession);
+          editMode$.next(true);
+          WsEventService.sendEvent({
+            kind: "ChangeSetCreated",
+            data: response.changeSet.pk,
+          });
+        }
+      }),
+    );
 }

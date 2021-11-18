@@ -1,5 +1,6 @@
-import { ApiResponse } from "@/api/sdf";
+import { ApiResponse, SDF } from "@/api/sdf";
 import Bottle from "bottlejs";
+import { Observable } from "rxjs";
 
 export interface CreateAccountRequest {
   billingAccountName: string;
@@ -12,12 +13,14 @@ export interface CreateAccountResponse {
   success: boolean;
 }
 
-export async function createAccount(
+export function createAccount(
   request: CreateAccountRequest,
-): Promise<ApiResponse<CreateAccountResponse>> {
+): Observable<ApiResponse<CreateAccountResponse>> {
   const bottle = Bottle.pop("default");
-  const sdf = bottle.container.SDF;
+  const sdf: SDF = bottle.container.SDF;
 
-  const response = await sdf.post("signup/create_account", request);
-  return response;
+  return sdf.post<ApiResponse<CreateAccountResponse>>(
+    "signup/create_account",
+    request,
+  );
 }

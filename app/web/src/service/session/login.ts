@@ -1,9 +1,10 @@
-import { ApiResponse } from "@/api/sdf";
+import { ApiResponse, SDF } from "@/api/sdf";
 import Bottle from "bottlejs";
 import { User } from "@/api/sdf/dal/user";
 import { BillingAccount } from "@/api/sdf/dal/billing_account";
 import { user$ } from "@/observable/user";
 import { billingAccount$ } from "@/observable/billing_account";
+import { Observable, tap } from "rxjs";
 
 export interface LoginRequest {
   billingAccountName: string;
@@ -17,17 +18,19 @@ export interface LoginResponse {
   jwt: string;
 }
 
-// NOTE: If you change this functions behavior, make sure you
-// also change the cypress command for signup and login to match!
-export async function login(
+export function login(
   request: LoginRequest,
-): Promise<ApiResponse<LoginResponse>> {
+): Observable<ApiResponse<LoginResponse>> {
   const bottle = Bottle.pop("default");
-  const sdf = bottle.container.SDF;
+  const sdf: SDF = bottle.container.SDF;
 
-  const response: LoginResponse = await sdf.post("session/login", request);
-  sdf.token = response.jwt;
-  user$.next(response.user);
-  billingAccount$.next(response.billingAccount);
-  return response;
+  return sdf.post<ApiResponse<LoginResponse>>("session/login", request).pipe(
+    tap((response) => {
+      if (!response.error) {
+        sdf.token = response.jwt;
+        user$.next(response.user);
+        billingAccount$.next(response.billingAccount);
+      }
+    }),
+  );
 }

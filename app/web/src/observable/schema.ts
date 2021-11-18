@@ -1,7 +1,7 @@
-import { BehaviorSubject } from "rxjs";
+import { ReplaySubject } from "rxjs";
 
 /**
- * Triggered when a list of schemas needs to be refreshed, either because of
- * local action or remote behavior.
+ * Fired with the id of the new change set when one is canceled.
  */
-export const schemaListRefresh$ = new BehaviorSubject<boolean>(true);
+export const eventSchemaCreated$ = new ReplaySubject<number | null>(1);
+eventSchemaCreated$.next(null);

@@ -112,13 +112,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { refFrom, untilUnmounted } from "vuse-rx";
-import {
-  changeSet$,
-  changeSetsOpenList$,
-  revision$,
-} from "@/observable/change_set";
-
-import { editMode$ } from "@/observable/edit_mode";
 
 import SiSelect from "@/atoms/SiSelect.vue";
 import SiButton from "@/atoms/SiButton.vue";
@@ -131,9 +124,6 @@ import { $vfm } from "vue-final-modal";
 
 import { ChangeSetService } from "@/service/change_set";
 import { LabelList } from "@/api/sdf/dal/label_list";
-import { ChangeSet } from "@/api/sdf/dal/change_set";
-
-import { tap } from "rxjs";
 import _ from "lodash";
 import { GlobalErrorService } from "@/service/global_error";
 
@@ -143,9 +133,7 @@ const CHANGE_SET_NEW = -3;
 // The selected change set primary key
 const selectedChangeSetPk = ref<number>(CHANGE_SET_NONE);
 // If we are in editMode or not
-const editMode = refFrom<boolean>(editMode$);
-// The currently selected revision
-const revision = refFrom<ChangeSet | null>(revision$);
+const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
 
 // Styling for the change set selector and buttons
 const changeSetSelectorStyling = () => {
@@ -160,8 +148,7 @@ const editButtonEnabled = () => {
     selectedChangeSetPk.value != CHANGE_SET_NONE &&
     selectedChangeSetPk.value != CHANGE_SET_NEW &&
     selectedChangeSetPk.value &&
-    !editMode.value &&
-    !revision.value
+    !editMode.value
   );
 };
 const applyButtonEnabled = () => {
@@ -169,60 +156,52 @@ const applyButtonEnabled = () => {
     selectedChangeSetPk.value != CHANGE_SET_NONE &&
     selectedChangeSetPk.value != CHANGE_SET_NEW &&
     selectedChangeSetPk.value &&
-    !editMode.value &&
-    !revision.value
+    !editMode.value
   );
 };
 const applyButtonKind = computed(() => (editMode.value ? "standard" : "save"));
 
-// The open change sets list!
-const openChangeSetsList = ref<LabelList<number>>([
+const DEFAULT_CHANGESET_LABLES = [
   { label: "- none -", value: CHANGE_SET_NONE },
   { label: ": new :", value: CHANGE_SET_NEW },
-]);
-const _openChangeSetsList$ = refFrom(
-  changeSetsOpenList$.pipe(
-    tap((response) => {
-      const always = [
-        { label: "- none -", value: CHANGE_SET_NONE },
-        { label: ": new :", value: CHANGE_SET_NEW },
-      ];
-      if (response.error) {
-        GlobalErrorService.set(response);
-        openChangeSetsList.value = always;
-      } else {
-        openChangeSetsList.value = _.concat(response.list, always);
-      }
-    }),
-  ),
-);
+];
 
-// Setting the selected Change Set
-const _setSelectedChangeSetPk$ = refFrom(
-  untilUnmounted(
-    changeSet$.pipe(
-      tap((changeSet) => {
-        if (changeSet) {
-          selectedChangeSetPk.value = changeSet.pk;
-        } else {
-          selectedChangeSetPk.value = CHANGE_SET_NONE;
-        }
-      }),
-    ),
-  ),
-);
+// The open change sets list!
+const openChangeSetsList = ref<LabelList<number>>(DEFAULT_CHANGESET_LABLES);
+
+// Update the list of open change sets dynamically
+untilUnmounted(ChangeSetService.listOpenChangeSets()).subscribe((response) => {
+  if (response.error) {
+    GlobalErrorService.set(response);
+    openChangeSetsList.value = DEFAULT_CHANGESET_LABLES;
+  } else {
+    openChangeSetsList.value = _.concat(
+      response.list,
+      DEFAULT_CHANGESET_LABLES,
+    );
+  }
+});
+
+// Set the current change set as selected if it changes outside our POV
+untilUnmounted(ChangeSetService.currentChangeSet()).subscribe((changeSet) => {
+  if (changeSet) {
+    selectedChangeSetPk.value = changeSet.pk;
+  } else {
+    selectedChangeSetPk.value = CHANGE_SET_NONE;
+  }
+});
+
 const changeSetSelected = async () => {
   if (selectedChangeSetPk.value == CHANGE_SET_NONE) {
     ChangeSetService.switchToHead();
   } else if (selectedChangeSetPk.value == CHANGE_SET_NEW) {
     await $vfm.show("changeSetCreate");
   } else {
-    let response = await ChangeSetService.getChangeSet({
-      pk: selectedChangeSetPk.value,
-    });
-    if (response.error) {
-      GlobalErrorService.set(response);
-    }
+    GlobalErrorService.setIfError(
+      ChangeSetService.getChangeSet({
+        pk: selectedChangeSetPk.value,
+      }),
+    );
   }
 };
 
@@ -235,45 +214,40 @@ const changeSetCreateCancel = async () => {
   changeSetCreateModalShow.value = false;
   changeSetCreateForm.value.name = "";
 };
-const changeSetCreate = async () => {
-  const response = await ChangeSetService.createChangeSet({
+const changeSetCreate = () => {
+  ChangeSetService.createChangeSet({
     changeSetName: changeSetCreateForm.value.name,
+  }).subscribe(async (response) => {
+    if (response.error) {
+      changeSetCreateModalError.value = response.error.message;
+    } else {
+      await $vfm.hide("changeSetCreate");
+      selectedChangeSetPk.value = response.changeSet.pk;
+    }
   });
-  if (response.error) {
-    changeSetCreateModalError.value = response.error.message;
-  } else {
-    await $vfm.hide("changeSetCreate");
-    selectedChangeSetPk.value = response.changeSet.pk;
-  }
 };
-const changeSetApply = async () => {
-  let response = await ChangeSetService.applyChangeSet();
-  if (response.error) {
-    GlobalErrorService.set(response);
-  } else {
-    selectedChangeSetPk.value = CHANGE_SET_NONE;
-  }
+const changeSetApply = () => {
+  ChangeSetService.applyChangeSet().subscribe((response) => {
+    if (response.error) {
+      GlobalErrorService.set(response);
+    } else {
+      selectedChangeSetPk.value = CHANGE_SET_NONE;
+    }
+  });
 };
 
-const editSessionCancel = async () => {
-  let response = await ChangeSetService.cancelEditSession();
-  if (response.error) {
-    GlobalErrorService.set(response);
-  }
+const editSessionCancel = () => {
+  GlobalErrorService.setIfError(ChangeSetService.cancelEditSession());
 };
-const editSessionSave = async () => {
-  let response = await ChangeSetService.saveEditSession();
-  if (response.error) {
-    GlobalErrorService.set(response);
-  }
+const editSessionSave = () => {
+  GlobalErrorService.setIfError(ChangeSetService.saveEditSession());
 };
-const editSessionStart = async () => {
-  let response = await ChangeSetService.startEditSession({
-    changeSetPk: selectedChangeSetPk.value,
-  });
-  if (response.error) {
-    GlobalErrorService.set(response);
-  }
+const editSessionStart = () => {
+  GlobalErrorService.setIfError(
+    ChangeSetService.startEditSession({
+      changeSetPk: selectedChangeSetPk.value,
+    }),
+  );
 };
 </script>
 

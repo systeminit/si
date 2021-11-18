@@ -7,8 +7,12 @@ import { startEditSession } from "./change_set/start_edit_session";
 import { cancelEditSession } from "./change_set/cancel_edit_session";
 import { saveEditSession } from "./change_set/save_edit_session";
 import { switchToHead } from "./change_set/switch_to_head";
+import { currentChangeSet } from "./change_set/current_change_set";
+import { currentEditMode } from "./change_set/current_edit_mode";
 
 export const ChangeSetService = {
+  currentEditMode,
+  currentChangeSet,
   listOpenChangeSets,
   createChangeSet,
   applyChangeSet,

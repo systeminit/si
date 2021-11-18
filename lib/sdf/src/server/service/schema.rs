@@ -1,7 +1,7 @@
 use axum::body::{Bytes, Full};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
-use axum::routing::post;
+use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
 use dal::{SchemaError as DalSchemaError, StandardModelError};
@@ -9,6 +9,7 @@ use std::convert::Infallible;
 use thiserror::Error;
 
 pub mod create_schema;
+pub mod list_schemas;
 
 #[derive(Debug, Error)]
 pub enum SchemaError {
@@ -43,4 +44,5 @@ impl IntoResponse for SchemaError {
 
 pub fn routes() -> Router {
     Router::new().route("/create_schema", post(create_schema::create_schema))
+        .route("/list_schemas", get(list_schemas::list_schemas))
 }

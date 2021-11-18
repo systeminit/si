@@ -1,7 +1,7 @@
 import Bottle from "bottlejs";
 import { ApiResponse, SDF } from "@/api/sdf";
 import { editMode$ } from "@/observable/edit_mode";
-import { firstValueFrom, from, mergeMap, take, tap } from "rxjs";
+import { from, mergeMap, Observable, take, tap } from "rxjs";
 import { ChangeSet } from "@/api/sdf/dal/change_set";
 import { changeSet$, eventChangeSetApplied$ } from "@/observable/change_set";
 import { editSession$ } from "@/observable/edit_session";
@@ -14,39 +14,38 @@ interface ApplyChangeSetResponse {
   changeSet: ChangeSet | null;
 }
 
-export async function applyChangeSet(): Promise<
+export function applyChangeSet(): Observable<
   ApiResponse<ApplyChangeSetResponse>
 > {
-  return firstValueFrom(
-    changeSet$.pipe(
-      take(1),
-      mergeMap((changeSet) => {
-        if (changeSet) {
-          const bottle = Bottle.pop("default");
-          const sdf: SDF = bottle.container.SDF;
-          return from(
-            sdf.post<ApplyChangeSetResponse>("change_set/apply_change_set", {
-              changeSetPk: changeSet.pk,
-            }),
-          );
-        } else {
-          const response: ApiResponse<ApplyChangeSetResponse> = {
-            changeSet: null,
-          };
-          return from([response]);
+  return changeSet$.pipe(
+    take(1),
+    mergeMap((changeSet) => {
+      if (changeSet) {
+        const bottle = Bottle.pop("default");
+        const sdf: SDF = bottle.container.SDF;
+        return sdf.post<ApiResponse<ApplyChangeSetResponse>>(
+          "change_set/apply_change_set",
+          {
+            changeSetPk: changeSet.pk,
+          },
+        );
+      } else {
+        const response: ApiResponse<ApplyChangeSetResponse> = {
+          changeSet: null,
+        };
+        return from([response]);
+      }
+    }),
+    tap((response) => {
+      if (!response.error) {
+        changeSet$.next(null);
+        editSession$.next(null);
+        editMode$.next(false);
+        if (response.changeSet) {
+          eventChangeSetApplied$.next(response.changeSet.pk);
         }
-      }),
-      tap((response) => {
-        if (!response.error) {
-          changeSet$.next(null);
-          editSession$.next(null);
-          editMode$.next(false);
-          if (response.changeSet) {
-            eventChangeSetApplied$.next(response.changeSet.pk);
-          }
-        }
-      }),
-      take(1),
-    ),
+      }
+    }),
+    take(1),
   );
 }

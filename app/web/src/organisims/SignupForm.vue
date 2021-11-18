@@ -117,6 +117,7 @@ import {
   SignupService,
 } from "@/service/signup";
 import { ApiResponse } from "@/api/sdf";
+import { take, tap } from "rxjs";
 
 enum InputKind {
   BillingAccount = "billingAccount",
@@ -145,15 +146,14 @@ export default defineComponent({
     };
   },
   methods: {
-    async createAccount() {
-      let reply: ApiResponse<CreateAccountResponse> = await SignupService.createAccount(
-        this.form,
-      );
-      if (reply.error) {
-        this.errorMessage = reply.error.message;
-      } else {
-        this.$emit("success");
-      }
+    createAccount() {
+      SignupService.createAccount(this.form).subscribe((response) => {
+        if (response.error) {
+          this.errorMessage = response.error.message;
+        } else {
+          this.$emit("success");
+        }
+      });
     },
     async backToLogin() {
       this.$emit("back-to-login");

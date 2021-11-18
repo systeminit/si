@@ -4,6 +4,7 @@ import { ChangeSet } from "@/api/sdf/dal/change_set";
 import { changeSet$, revision$ } from "@/observable/change_set";
 import { editSession$ } from "@/observable/edit_session";
 import { editMode$ } from "@/observable/edit_mode";
+import { Observable, tap } from "rxjs";
 
 interface GetChangeSetRequest {
   pk: number;
@@ -13,22 +14,24 @@ interface GetChangeSetResponse {
   changeSet: ChangeSet;
 }
 
-export async function getChangeSet(
+export function getChangeSet(
   request: GetChangeSetRequest,
-): Promise<ApiResponse<GetChangeSetResponse>> {
+): Observable<ApiResponse<GetChangeSetResponse>> {
   const bottle = Bottle.pop("default");
   const sdf: SDF = bottle.container.SDF;
-  const response: ApiResponse<GetChangeSetResponse> = await sdf.get(
-    "change_set/get_change_set",
-    request,
-  );
-  if (response.error) {
-    return response;
-  }
-  changeSet$.next(response.changeSet);
-  editSession$.next(null);
-  revision$.next(null);
-  editMode$.next(false);
-
-  return response;
+  return sdf
+    .get<ApiResponse<GetChangeSetResponse>>(
+      "change_set/get_change_set",
+      request,
+    )
+    .pipe(
+      tap((response) => {
+        if (!response.error) {
+          changeSet$.next(response.changeSet);
+          editSession$.next(null);
+          revision$.next(null);
+          editMode$.next(false);
+        }
+      }),
+    );
 }

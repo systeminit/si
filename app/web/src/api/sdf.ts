@@ -1,9 +1,7 @@
-// import _ from "lodash";
 import { Config } from "@/config";
-import _ from "lodash";
 import { SdfWs } from "@/api/sdf/ws";
-//import { urlSafeBase64Encode } from "@/api/sdf/base64";
-//import { Update } from "@/api/sdf/model/update";
+import { fromFetch } from "rxjs/fetch";
+import { from, mergeMap, Observable } from "rxjs";
 
 export class FetchError extends Error {
   response: Response;
@@ -37,16 +35,16 @@ export class SDF {
   constructor(config: Config) {
     this.baseUrl = config.sdfBaseUrl;
     this.wsBaseUrl = config.sdfBaseWsUrl;
-    this.startUpdate().then();
+    this.startUpdate();
   }
 
-  async startUpdate() {
+  startUpdate() {
     if (!this.ws && this.token) {
-      await this.setupUpdate();
+      this.setupUpdate();
     }
   }
 
-  async setupUpdate() {
+  setupUpdate() {
     const url = new URL(this.wsBaseUrl.toString());
     url.searchParams.set("token", `Bearer ${this.token}`);
     this.ws = new SdfWs(url.toString());
@@ -56,7 +54,7 @@ export class SDF {
     this.currentToken = token;
     if (token) {
       localStorage.setItem("si-sdf-token", token);
-      this.setupUpdate().then();
+      this.setupUpdate();
     } else {
       localStorage.removeItem("si-sdf-token");
     }
@@ -99,15 +97,13 @@ export class SDF {
     } else {
       requestPath = pathString;
     }
-    const url = new URL(`${basePath}/${requestPath}`, this.baseUrl);
-
-    return url;
+    return new URL(`${basePath}/${requestPath}`, this.baseUrl);
   }
 
-  async get<T>(
+  get<T>(
     pathString: string,
     queryParams?: Record<string, any>,
-  ): Promise<ApiResponse<T>> {
+  ): Observable<ApiResponse<T>> {
     const headers = this.standard_headers();
 
     const url = this.requestUrl(pathString);
@@ -116,19 +112,17 @@ export class SDF {
         url.searchParams.set(key, queryParams[key]),
       );
     }
-
     const request = new Request(url.toString(), {
       method: "GET",
       headers,
     });
-    const raw: ApiResponse<T> = await this.send_request(request);
-    return raw;
+    return this.send_request(request);
   }
 
-  async post<T>(
+  post<T>(
     pathString: string,
     args: Record<string, any>,
-  ): Promise<ApiResponse<T>> {
+  ): Observable<ApiResponse<T>> {
     const headers = this.standard_headers();
     const url = this.requestUrl(pathString);
     const request = new Request(url.toString(), {
@@ -136,14 +130,13 @@ export class SDF {
       headers,
       body: JSON.stringify(args),
     });
-    const response: ApiResponse<T> = await this.send_request(request);
-    return response;
+    return this.send_request(request);
   }
 
-  async patch<T>(
+  patch<T>(
     pathString: string,
     args: Record<string, any>,
-  ): Promise<ApiResponse<T>> {
+  ): Observable<ApiResponse<T>> {
     const headers = this.standard_headers();
     const url = this.requestUrl(pathString);
     const request = new Request(url.toString(), {
@@ -151,11 +144,10 @@ export class SDF {
       headers,
       body: JSON.stringify(args),
     });
-    const response: ApiResponse<T> = await this.send_request(request);
-    return response;
+    return this.send_request(request);
   }
 
-  async delete<T>(pathString: string): Promise<ApiResponse<T>> {
+  delete<T>(pathString: string): Observable<ApiResponse<T>> {
     const headers = this.standard_headers();
     const url = this.requestUrl(pathString);
     const request = new Request(url.toString(), {
@@ -163,21 +155,18 @@ export class SDF {
       mode: "cors",
       headers,
     });
-    const response: ApiResponse<T> = await this.send_request(request);
-    return response;
+    return this.send_request(request);
   }
 
-  async send_request<T>(request: Request): Promise<ApiResponse<T>> {
-    const response = await fetch(request);
-    const responseJson: ApiResponse<T> = await response.json();
-    return responseJson;
+  send_request<T>(request: Request): Observable<ApiResponse<T>> {
+    return fromFetch(request).pipe(
+      mergeMap((response) => {
+        return from(response.json());
+      }),
+    );
   }
 }
 
 export function isSdfError(obj: unknown): obj is ApiResponseError {
-  if ((obj as ApiResponseError).error) {
-    return true;
-  } else {
-    return false;
-  }
+  return !!(obj as ApiResponseError).error;
 }

@@ -5,7 +5,7 @@ use axum::{
     Json,
 };
 use axum::extract::Query;
-use dal::User;
+use dal::{ChangeSetPk, EditSessionPk, User};
 use dal::{Tenancy, UserClaim, Visibility};
 use hyper::StatusCode;
 use serde::Serialize;
@@ -243,3 +243,36 @@ impl<P> FromRequest<P> for WsAuthorization
     }
 }
 
+
+pub struct QueryVisibility(pub Visibility);
+
+#[async_trait]
+impl<P> FromRequest<P> for QueryVisibility
+    where
+        P: Send,
+{
+    type Rejection = (StatusCode, Json<serde_json::Value>);
+
+    async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
+        let error_response = (
+            StatusCode::NOT_ACCEPTABLE,
+            Json(
+                serde_json::json!({ "error": { "message": "bad or missing visibility", "code": 42, "statusCode": 406 } }),
+            ),
+        );
+
+        let query: Query<HashMap<String, String>> = Query::from_request(req).await.map_err(|_| error_response.clone())?;
+        let change_set_pk_string = query.get("visibility_change_set_pk").ok_or(error_response.clone())?;
+        let change_set_pk: ChangeSetPk = change_set_pk_string.parse().map_err(|_| error_response.clone())?;
+        let edit_session_pk_string = query.get("visibility_edit_session_pk").ok_or(error_response.clone())?;
+        let edit_session_pk: EditSessionPk = edit_session_pk_string.parse().map_err(|_| error_response.clone())?;
+        let deleted_string = query.get("visibility_deleted").ok_or(error_response.clone())?;
+        let deleted = match deleted_string.as_ref() {
+            "true" => true,
+            "false" => false,
+            _ => return Err(error_response.clone()),
+        };
+        let visibility = Visibility::new(change_set_pk, edit_session_pk, deleted);
+        Ok(Self(visibility))
+    }
+}

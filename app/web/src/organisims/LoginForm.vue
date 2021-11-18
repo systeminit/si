@@ -122,15 +122,14 @@ export default defineComponent({
     goToSignUp() {
       this.$emit("signup");
     },
-    async login() {
-      const reply = await SessionService.login(this.form);
-      if (reply.error) {
-        this.errorMessage = "Login error; please try again!";
-      } else {
-        //user$.next(reply.user);
-        //billingAccount$.next(reply.billingAccount);
-        this.$emit("success");
-      }
+    login() {
+      SessionService.login(this.form).subscribe((response) => {
+        if (response.error) {
+          this.errorMessage = "Login error; please try again!";
+        } else {
+          this.$emit("success");
+        }
+      });
     },
     inputStyling(inputKind: string): Record<string, any> {
       let classes: Record<string, any> = {};
