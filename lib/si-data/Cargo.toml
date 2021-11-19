@@ -57,3 +57,11 @@ tokio-postgres = { version ="0.7.0", features = ["runtime", "with-chrono-0_4", "
 nkeys = "0.1.0"
 tokio-test = "0.4.2"
 tracing-subscriber = { version = "0.2.19" }
+
+[[example]]
+name = "nats-subscribe"
+required-features = ["nats"]
+
+[[example]]
+name = "nats-publish"
+required-features = ["nats"]

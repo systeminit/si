@@ -51,7 +51,7 @@ pub struct Client {
 }
 
 impl Client {
-    #[instrument(name = "client::new", skip_all)]
+    #[instrument(name = "client::new", skip_all, level = "debug")]
     pub async fn new(config: &NatsConfig) -> Result<Self> {
         Self::connect_with_options(&config.url, Options::default()).await
     }
@@ -59,6 +59,7 @@ impl Client {
     #[instrument(
         name = "client.transaction",
         skip_all,
+        level = "debug",
         fields(
             messaging.protocol = %self.metadata.messaging_protocol,
             messaging.system = %self.metadata.messaging_system,
@@ -102,6 +103,7 @@ impl Client {
     #[instrument(
         name = "client::connect_with_options",
         skip_all,
+        level = "debug",
         fields(
             messaging.protocol = Empty,
             messaging.system = Empty,
@@ -160,6 +162,7 @@ impl Client {
     #[instrument(
         name = "client.subscribe",
         skip_all,
+        level = "debug",
         fields(
             messaging.consumer_id = %self.metadata.messaging_consumer_id,
             messaging.destination = Empty,
@@ -170,7 +173,7 @@ impl Client {
             messaging.url = %self.metadata.messaging_url,
             messaging.subject = Empty,
             net.transport = %self.metadata.net_transport,
-            otel.kind = %SpanKind::Consumer,
+            otel.kind = %SpanKind::Client,
             otel.name = Empty,
             otel.status_code = Empty,
             otel.status_message = Empty,
@@ -181,14 +184,15 @@ impl Client {
 
         let subject = subject.into();
         span.record("messaging.destination", &subject.as_str());
-        span.record("otel.name", &format!("{} process", &subject).as_str());
+        span.record("otel.name", &format!("{} receive", &subject).as_str());
         let inner = self.inner.clone();
-        let sub = spawn_blocking(move || inner.subscribe(&subject))
+        let sub_subject = subject.clone();
+        let sub = spawn_blocking(move || inner.subscribe(&sub_subject))
             .await
             .map_err(|err| span.record_err(Error::Async(err)))?
             .map_err(|err| span.record_err(Error::Nats(err)))?;
 
-        Ok(Subscription::new(sub, self.metadata.clone(), span))
+        Ok(Subscription::new(sub, subject, self.metadata.clone(), span))
     }
 
     /// Create a queue subscription for the given NATS connection.
@@ -204,6 +208,7 @@ impl Client {
     #[instrument(
         name = "client.queue_subscribe",
         skip_all,
+        level = "debug",
         fields(
             messaging.consumer_id = %self.metadata.messaging_consumer_id,
             messaging.destination = Empty,
@@ -214,7 +219,7 @@ impl Client {
             messaging.system = %self.metadata.messaging_system,
             messaging.url = %self.metadata.messaging_url,
             net.transport = %self.metadata.net_transport,
-            otel.kind = %SpanKind::Consumer,
+            otel.kind = %SpanKind::Client,
             otel.name = Empty,
             otel.status_code = Empty,
             otel.status_message = Empty,
@@ -231,14 +236,15 @@ impl Client {
         let queue = queue.into();
         span.record("messaging.destination", &subject.as_str());
         span.record("messaging.subscription.queue", &queue.as_str());
-        span.record("otel.name", &format!("{} process", &subject).as_str());
+        span.record("otel.name", &format!("{} receive", &subject).as_str());
         let inner = self.inner.clone();
-        let sub = spawn_blocking(move || inner.queue_subscribe(&subject, &queue))
+        let sub_subject = subject.clone();
+        let sub = spawn_blocking(move || inner.queue_subscribe(&sub_subject, &queue))
             .await
             .map_err(|err| span.record_err(Error::Async(err)))?
             .map_err(|err| span.record_err(Error::Nats(err)))?;
 
-        Ok(Subscription::new(sub, self.metadata.clone(), span))
+        Ok(Subscription::new(sub, subject, self.metadata.clone(), span))
     }
 
     /// Publish a message on the given subject.
@@ -271,6 +277,7 @@ impl Client {
     #[instrument(
         name = "client.publish_request",
         skip_all,
+        level = "debug",
         fields(
             messaging.destination = Empty,
             messaging.destination_kind = "topic",
@@ -340,6 +347,7 @@ impl Client {
     #[instrument(
         name = "client.request",
         skip_all,
+        level = "debug",
         fields(
             messaging.destination = Empty,
             messaging.destination_kind = "topic",
@@ -393,6 +401,7 @@ impl Client {
     #[instrument(
         name = "client.request_timeout",
         skip_all,
+        level = "debug",
         fields(
             messaging.destination = Empty,
             messaging.destination_kind = "topic",
@@ -444,6 +453,7 @@ impl Client {
     #[instrument(
         name = "client.request_multi",
         skip_all,
+        level = "debug",
         fields(
             messaging.destination = Empty,
             messaging.destination_kind = "topic",
@@ -471,7 +481,8 @@ impl Client {
         span.record("messaging.destination", &subject.as_str());
         span.record("otel.name", &format!("{} send", &subject).as_str());
         let inner = self.inner.clone();
-        let sub = spawn_blocking(move || inner.request_multi(&subject, &msg))
+        let sub_subject = subject.clone();
+        let sub = spawn_blocking(move || inner.request_multi(&sub_subject, &msg))
             .await
             .map_err(|err| span.record_err(Error::Async(err)))?
             .map_err(|err| span.record_err(Error::Nats(err)))?;
@@ -487,7 +498,7 @@ impl Client {
             messaging.system = %self.metadata.messaging_system,
             messaging.url = %self.metadata.messaging_url,
             net.transport = %self.metadata.net_transport,
-            otel.kind = %SpanKind::Consumer,
+            otel.kind = %SpanKind::Client,
             otel.name = %format!("{} receive", &sub_span_subject),
             otel.status_code = Empty,
             otel.status_message = Empty,
@@ -495,7 +506,12 @@ impl Client {
         sub_span.follows_from(&span);
 
         span.record_ok();
-        Ok(Subscription::new(sub, self.metadata.clone(), sub_span))
+        Ok(Subscription::new(
+            sub,
+            subject,
+            self.metadata.clone(),
+            sub_span,
+        ))
     }
 
     /// Flush a NATS connection by sending a `PING` protocol and waiting for the responding `PONG`.
@@ -515,6 +531,7 @@ impl Client {
     #[instrument(
         name = "client.flush",
         skip_all,
+        level = "debug",
         fields(
             messaging.protocol = %self.metadata.messaging_protocol,
             messaging.system = %self.metadata.messaging_system,
@@ -555,6 +572,7 @@ impl Client {
     #[instrument(
         name = "client.flush_timeout",
         skip_all,
+        level = "debug",
         fields(
             messaging.protocol = %self.metadata.messaging_protocol,
             messaging.system = %self.metadata.messaging_system,
@@ -595,6 +613,7 @@ impl Client {
     #[instrument(
         name = "client.close",
         skip_all,
+        level = "debug",
         fields(
             messaging.protocol = %self.metadata.messaging_protocol,
             messaging.system = %self.metadata.messaging_system,
@@ -633,6 +652,7 @@ impl Client {
     #[instrument(
         name = "client.rtt",
         skip_all,
+        level = "debug",
         fields(
             messaging.protocol = %self.metadata.messaging_protocol,
             messaging.system = %self.metadata.messaging_system,
@@ -717,6 +737,7 @@ impl Client {
     #[instrument(
         name = "client.drain",
         skip_all,
+        level = "debug",
         fields(
             messaging.protocol = %self.metadata.messaging_protocol,
             messaging.system = %self.metadata.messaging_system,
@@ -766,6 +787,7 @@ impl Client {
     #[instrument(
         name = "client.publish_with_reply_or_headers",
         skip_all,
+        level = "debug",
         fields(
             messaging.destination = Empty,
             messaging.destination_kind = "topic",
@@ -821,15 +843,47 @@ impl Client {
     pub fn max_payload(&self) -> usize {
         self.inner.max_payload()
     }
+
+    /// Gets a reference to the client's metadata.
+    pub fn metadata(&self) -> &ConnectionMetadata {
+        self.metadata.as_ref()
+    }
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct ConnectionMetadata {
+pub struct ConnectionMetadata {
     messaging_consumer_id: String,
     messaging_protocol: &'static str,
     messaging_system: &'static str,
     messaging_url: String,
     net_transport: &'static str,
+}
+
+impl ConnectionMetadata {
+    /// Gets a reference to the connection metadata's messaging consumer id.
+    pub fn messaging_consumer_id(&self) -> &str {
+        self.messaging_consumer_id.as_ref()
+    }
+
+    /// Gets a reference to the connection metadata's messaging protocol.
+    pub fn messaging_protocol(&self) -> &str {
+        self.messaging_protocol
+    }
+
+    /// Gets a reference to the connection metadata's messaging system.
+    pub fn messaging_system(&self) -> &str {
+        self.messaging_system
+    }
+
+    /// Gets a reference to the connection metadata's messaging url.
+    pub fn messaging_url(&self) -> &str {
+        self.messaging_url.as_ref()
+    }
+
+    /// Gets a reference to the connection metadata's net transport.
+    pub fn net_transport(&self) -> &str {
+        self.net_transport
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -853,6 +907,7 @@ impl NatsTxn {
     #[instrument(
         name = "transaction.publish",
         skip_all,
+        level = "debug",
         fields(
             messaging.protocol = %self.metadata.messaging_protocol,
             messaging.system = %self.metadata.messaging_system,
@@ -877,8 +932,9 @@ impl NatsTxn {
     }
 
     #[instrument(
-    name = "transaction.commit",
+        name = "transaction.commit",
         skip_all,
+        level = "debug",
         fields(
             messaging.protocol = %self.metadata.messaging_protocol,
             messaging.system = %self.metadata.messaging_system,
@@ -909,6 +965,7 @@ impl NatsTxn {
     #[instrument(
         name = "transaction.rollback",
         skip_all,
+        level = "debug",
         fields(
             messaging.protocol = %self.metadata.messaging_protocol,
             messaging.system = %self.metadata.messaging_system,
@@ -927,5 +984,10 @@ impl NatsTxn {
         self.tx_span.record("messaging.transaction", &"rollback");
         span.record_ok();
         Ok(())
+    }
+
+    /// Gets a reference to the nats txn's metadata.
+    pub fn metadata(&self) -> &ConnectionMetadata {
+        self.metadata.as_ref()
     }
 }

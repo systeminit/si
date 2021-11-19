@@ -60,6 +60,7 @@ impl Message {
     #[instrument(
         name = "message.respond",
         skip_all,
+        level = "debug",
         fields(
             messaging.destination = Empty,
             messaging.destination_kind = "topic",
@@ -102,6 +103,7 @@ impl Message {
     #[instrument(
         name = "message.ack",
         skip_all,
+        level = "debug",
         fields(
             messaging.destination = Empty,
             messaging.destination_kind = "topic",
@@ -142,6 +144,7 @@ impl Message {
     #[instrument(
         name = "message.ack_kind",
         skip_all,
+        level = "debug",
         fields(
             messaging.destination = Empty,
             messaging.destination_kind = "topic",
@@ -183,6 +186,7 @@ impl Message {
     #[instrument(
         name = "message.double_ack",
         skip_all,
+        level = "debug",
         fields(
             messaging.destination = Empty,
             messaging.destination_kind = "topic",
