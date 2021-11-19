@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
-use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use strum_macros::Display as StrumDisplay;
-use telemetry::prelude::*;
 use thiserror::Error;
+
+use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use telemetry::prelude::*;
 
 use crate::{pk, Tenancy, Timestamp, UserId};
 
@@ -18,7 +19,7 @@ pub enum HistoryEventError {
 
 pub type HistoryEventResult<T> = Result<T, HistoryEventError>;
 
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, StrumDisplay)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, StrumDisplay, Clone)]
 pub enum HistoryActor {
     User(UserId),
     SystemInit,
@@ -27,6 +28,12 @@ pub enum HistoryActor {
 impl From<UserId> for HistoryActor {
     fn from(id: UserId) -> Self {
         HistoryActor::User(id)
+    }
+}
+
+impl From<&HistoryActor> for HistoryActor {
+    fn from(history_actor: &HistoryActor) -> Self {
+        history_actor.clone()
     }
 }
 

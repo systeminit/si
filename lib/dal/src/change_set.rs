@@ -1,13 +1,14 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use strum_macros::{Display, EnumString};
-use telemetry::prelude::*;
 use thiserror::Error;
 
+use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use telemetry::prelude::*;
+
+use crate::{HistoryActor, HistoryEvent, HistoryEventError, LabelListError, pk, StandardModelError, Tenancy, Timestamp, WsEventError};
 use crate::label_list::LabelList;
 use crate::standard_model::object_option_from_row_option;
-use crate::{pk, HistoryActor, HistoryEvent, HistoryEventError, LabelListError, StandardModelError, Tenancy, Timestamp, WsEventError};
 use crate::ws_event::{WsEvent, WsPayload};
 
 const CHANGE_SET_OPEN_LIST: &str = include_str!("./queries/change_set_open_list.sql");
@@ -90,7 +91,7 @@ impl ChangeSet {
         )
         .await?;
         let object: Self = serde_json::from_value(json)?;
-        WsEvent::change_set_created(&object).publish(&nats).await?;
+        WsEvent::change_set_created(&object, history_actor).publish(&nats).await?;
         Ok(object)
     }
 
@@ -121,7 +122,7 @@ impl ChangeSet {
             &self.tenancy,
         )
         .await?;
-        WsEvent::change_set_applied(&self).publish(&nats).await?;
+        WsEvent::change_set_applied(&self, history_actor).publish(&nats).await?;
         Ok(())
     }
 
@@ -150,26 +151,32 @@ impl ChangeSet {
 }
 
 impl WsEvent {
-    pub fn change_set_created(change_set: &ChangeSet) -> Self {
+    pub fn change_set_created(change_set: &ChangeSet, history_actor: impl Into<HistoryActor>) -> Self {
         let billing_account_ids = WsEvent::billing_account_id_from_tenancy(&change_set.tenancy);
+        let history_actor = history_actor.into();
         WsEvent::new(
             billing_account_ids,
+            history_actor,
             WsPayload::ChangeSetCreated(change_set.pk),
         )
     }
 
-    pub fn change_set_applied(change_set: &ChangeSet) -> Self {
+    pub fn change_set_applied(change_set: &ChangeSet, history_actor: impl Into<HistoryActor>) -> Self {
         let billing_account_ids = WsEvent::billing_account_id_from_tenancy(&change_set.tenancy);
+        let history_actor = history_actor.into();
         WsEvent::new(
             billing_account_ids,
+            history_actor,
             WsPayload::ChangeSetApplied(change_set.pk),
         )
     }
 
-    pub fn change_set_canceled(change_set: &ChangeSet) -> Self {
+    pub fn change_set_canceled(change_set: &ChangeSet, history_actor: impl Into<HistoryActor>) -> Self {
         let billing_account_ids = WsEvent::billing_account_id_from_tenancy(&change_set.tenancy);
+        let history_actor = history_actor.into();
         WsEvent::new(
             billing_account_ids,
+            history_actor,
             WsPayload::ChangeSetCanceled(change_set.pk),
         )
     }

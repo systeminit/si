@@ -1,14 +1,12 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use strum_macros::{Display, EnumString};
-use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::{
-    pk, standard_model::object_option_from_row_option, ChangeSetPk, HistoryActor, HistoryEvent,
-    HistoryEventError, StandardModelError, Tenancy, Timestamp,
-};
+use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use telemetry::prelude::*;
+
+use crate::{ChangeSetPk, HistoryActor, HistoryEvent, HistoryEventError, pk, standard_model::object_option_from_row_option, StandardModelError, Tenancy, Timestamp, WsEvent, WsEventError, WsPayload};
 
 const EDIT_SESSION_GET_BY_PK: &str = include_str!("./queries/edit_session_get_by_pk.sql");
 
@@ -24,6 +22,8 @@ pub enum EditSessionError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("standadrd model error: {0}")]
     StandardModel(#[from] StandardModelError),
+    #[error("ws event error: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 
 pub type EditSessionResult<T> = Result<T, EditSessionError>;
@@ -136,6 +136,7 @@ impl EditSession {
             &self.tenancy,
         )
         .await?;
+        WsEvent::edit_session_saved(&self, history_actor).publish(&nats).await?;
         Ok(())
     }
 
@@ -164,7 +165,20 @@ impl EditSession {
             &serde_json::json![{ "pk": &self.pk }],
             &self.tenancy,
         )
-        .await?;
+            .await?;
         Ok(())
     }
 }
+
+impl WsEvent {
+    pub fn edit_session_saved(edit_session: &EditSession, history_actor: impl Into<HistoryActor>) -> Self {
+        let billing_account_ids = WsEvent::billing_account_id_from_tenancy(&edit_session.tenancy);
+        let history_actor = history_actor.into();
+        WsEvent::new(
+            billing_account_ids,
+            history_actor,
+            WsPayload::EditSessionSaved(edit_session.change_set_pk),
+        )
+    }
+}
+

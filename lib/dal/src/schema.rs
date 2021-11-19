@@ -1,9 +1,10 @@
 use serde::{Deserialize, Serialize};
-use si_data::{NatsError, NatsTxn, PgError, PgTxn};
-use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::{impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_many_to_many, BillingAccount, BillingAccountId, HistoryActor, HistoryEventError, Organization, OrganizationId, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility, Workspace, WorkspaceId, WsEvent, WsPayload, WsEventError};
+use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use telemetry::prelude::*;
+
+use crate::{BillingAccount, BillingAccountId, HistoryActor, HistoryEventError, impl_standard_model, Organization, OrganizationId, pk, standard_model, standard_model_accessor, standard_model_many_to_many, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility, Workspace, WorkspaceId, WsEvent, WsEventError, WsPayload};
 
 #[derive(Error, Debug)]
 pub enum SchemaError {
@@ -103,7 +104,6 @@ impl Schema {
             row,
         )
         .await?;
-        WsEvent::schema_created(&object).publish(&nats).await?;
         Ok(object)
     }
 
@@ -179,14 +179,4 @@ impl Schema {
         returns: Schema,
         result: SchemaResult,
     );
-}
-
-impl WsEvent {
-    pub fn schema_created(schema: &Schema) -> Self {
-        let billing_account_ids = WsEvent::billing_account_id_from_tenancy(&schema.tenancy);
-        WsEvent::new(
-            billing_account_ids,
-            WsPayload::SchemaCreated(schema.pk),
-        )
-    }
 }

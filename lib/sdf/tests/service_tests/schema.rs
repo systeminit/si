@@ -1,10 +1,12 @@
+use axum::http::Method;
+
+use dal::{HistoryActor, SchemaKind, StandardModel, Tenancy, Visibility};
+use dal::test_harness::create_schema as dal_create_schema;
+use sdf::service::schema::create_schema::{CreateSchemaRequest, CreateSchemaResponse};
+use sdf::service::schema::list_schemas::{ListSchemaRequest, ListSchemaResponse};
+
 use crate::service_tests::{api_request_auth_json_body, api_request_auth_query};
 use crate::test_setup;
-use axum::http::Method;
-use dal::{HistoryActor, SchemaKind, StandardModel, Tenancy, Visibility};
-use sdf::service::schema::create_schema::{CreateSchemaRequest, CreateSchemaResponse};
-use dal::test_harness::create_schema as dal_create_schema;
-use sdf::service::schema::list_schemas::{ListSchemaRequest, ListSchemaResponse};
 
 #[tokio::test]
 async fn create_schema() {
@@ -20,9 +22,11 @@ async fn create_schema() {
         _nba,
         auth_token
     );
+    let visibility = Visibility::new_head(false);
     let request = CreateSchemaRequest {
         name: "fancyPants".to_string(),
         kind: SchemaKind::Concrete,
+        visibility,
     };
     let response: CreateSchemaResponse = api_request_auth_json_body(
         app,

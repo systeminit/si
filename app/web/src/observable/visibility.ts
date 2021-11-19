@@ -3,10 +3,19 @@ import {
   combineLatest,
   debounceTime,
   from,
+  Observable,
   shareReplay,
 } from "rxjs";
-import { changeSet$ } from "@/observable/change_set";
-import { editSession$ } from "@/observable/edit_session";
+import {
+  changeSet$,
+  eventChangeSetApplied$,
+  eventChangeSetCanceled$,
+  eventChangeSetCreated$,
+} from "@/observable/change_set";
+import {
+  editSession$,
+  eventEditSessionSaved$,
+} from "@/observable/edit_session";
 import { switchMap } from "rxjs/operators";
 import {
   NO_CHANGE_SET_PK,
@@ -16,7 +25,7 @@ import {
 
 export const showDeleted$ = new BehaviorSubject<boolean>(false);
 
-export const visibility$ = combineLatest([
+export const visibility$: Observable<Visibility> = combineLatest([
   changeSet$,
   editSession$,
   showDeleted$,
@@ -35,3 +44,11 @@ export const visibility$ = combineLatest([
   }),
   shareReplay(1),
 );
+
+export const standardVisibilityEvents$ = combineLatest([
+  visibility$,
+  eventChangeSetCreated$,
+  eventChangeSetApplied$,
+  eventChangeSetCanceled$,
+  eventEditSessionSaved$,
+]).pipe(shareReplay(1));

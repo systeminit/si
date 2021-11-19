@@ -1,7 +1,9 @@
-use crate::{BillingAccountId, ChangeSetPk, SchemaPk, Tenancy};
 use serde::{Deserialize, Serialize};
-use si_data::{NatsError, NatsTxn};
 use thiserror::Error;
+
+use si_data::{NatsError, NatsTxn};
+
+use crate::{BillingAccountId, ChangeSetPk, HistoryActor, SchemaPk, Tenancy};
 
 #[derive(Error, Debug)]
 pub enum WsEventError {
@@ -19,6 +21,7 @@ pub enum WsPayload {
     ChangeSetCreated(ChangeSetPk),
     ChangeSetApplied(ChangeSetPk),
     ChangeSetCanceled(ChangeSetPk),
+    EditSessionSaved(ChangeSetPk),
     SchemaCreated(SchemaPk),
 }
 
@@ -26,14 +29,20 @@ pub enum WsPayload {
 pub struct WsEvent {
     version: i64,
     billing_account_ids: Vec<BillingAccountId>,
+    history_actor: HistoryActor,
     payload: WsPayload,
 }
 
 impl WsEvent {
-    pub fn new(billing_account_ids: Vec<BillingAccountId>, payload: WsPayload) -> Self {
+    pub fn new(
+        billing_account_ids: Vec<BillingAccountId>,
+        history_actor: HistoryActor,
+        payload: WsPayload,
+    ) -> Self {
         WsEvent {
             version: 1,
             billing_account_ids,
+            history_actor,
             payload,
         }
     }

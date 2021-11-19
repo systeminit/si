@@ -122,9 +122,10 @@ import SiFormRow from "@/atoms/SiFormRow.vue";
 // @ts-ignore
 import { $vfm } from "vue-final-modal";
 
-import { ChangeSetService } from "@/service/change_set";
 import { LabelList } from "@/api/sdf/dal/label_list";
 import _ from "lodash";
+
+import { ChangeSetService } from "@/service/change_set";
 import { GlobalErrorService } from "@/service/global_error";
 
 const CHANGE_SET_NONE = -2;

@@ -1,20 +1,20 @@
 import { ApiResponse, SDF } from "@/api/sdf";
 import { Schema } from "@/api/sdf/dal/schema";
 import { combineLatest, Observable, shareReplay } from "rxjs";
-import { visibility$ } from "@/observable/visibility";
+import { standardVisibilityEvents$ } from "@/observable/visibility";
 import Bottle from "bottlejs";
-import { eventSchemaCreated$ } from "@/observable/schema";
+import { schemaCreated$ } from "@/observable/schema";
 import { switchMap } from "rxjs/operators";
 
 export interface ListSchemaResponse {
   list: Array<Schema>;
 }
 
-export const schemaList$ = combineLatest([
-  visibility$,
-  eventSchemaCreated$,
+const schemaList$ = combineLatest([
+  standardVisibilityEvents$,
+  schemaCreated$,
 ]).pipe(
-  switchMap(([visibility, _eventSchemaCreated]) => {
+  switchMap(([[visibility]]) => {
     const bottle = Bottle.pop("default");
     const sdf: SDF = bottle.container.SDF;
     return sdf.get<ApiResponse<ListSchemaResponse>>(

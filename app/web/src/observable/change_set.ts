@@ -1,8 +1,12 @@
-import {
-  ReplaySubject,
-} from "rxjs";
+import { ReplaySubject } from "rxjs";
 import { ChangeSet } from "@/api/sdf/dal/change_set";
 import { persistToSession } from "@/observable/session_state";
+import {
+  WsChangeSetApplied,
+  WsChangeSetCanceled,
+  WsChangeSetCreated,
+  WsEvent,
+} from "@/api/sdf/dal/ws_event";
 
 /**
  * The currently active change set, or null if there isn't one.
@@ -19,19 +23,25 @@ revision$.next(null);
 persistToSession("revision", revision$);
 
 /**
- * Fired with the id of the new change set when one is created.
+ * Fired with the pk of the new change set when one is created.
  */
-export const eventChangeSetCreated$ = new ReplaySubject<number | null>(1);
+export const eventChangeSetCreated$ = new ReplaySubject<WsEvent<WsChangeSetCreated> | null>(
+  1,
+);
 eventChangeSetCreated$.next(null);
 
 /**
- * Fired with the id of the new change set when one is applied.
+ * Fired with the pk of the new change set when one is applied.
  */
-export const eventChangeSetApplied$ = new ReplaySubject<number | null>(1);
+export const eventChangeSetApplied$ = new ReplaySubject<WsEvent<WsChangeSetApplied> | null>(
+  1,
+);
 eventChangeSetApplied$.next(null);
 
 /**
- * Fired with the id of the new change set when one is canceled.
+ * Fired with the pk of the new change set when one is canceled.
  */
-export const eventChangeSetCanceled$ = new ReplaySubject<number | null>(1);
+export const eventChangeSetCanceled$ = new ReplaySubject<WsEvent<WsChangeSetCanceled> | null>(
+  1,
+);
 eventChangeSetCanceled$.next(null);
