@@ -176,8 +176,22 @@ impl BillingAccount {
         .await?;
         user.set_billing_account(&txn, &nats, &history_actor, billing_account.id())
             .await?;
-
         let user_history_actor = HistoryActor::User(*user.id());
+
+        // TODO: remove the bobo user before we ship!
+        let user_bobo = User::new(
+            &txn,
+            &nats,
+            &billing_account_tenancy,
+            &visibility,
+            &history_actor,
+            &user_name,
+            &format!("bobo-{}", user_email.as_ref()),
+            &user_password,
+        )
+            .await?;
+        user_bobo.set_billing_account(&txn, &nats, &history_actor, billing_account.id())
+            .await?;
 
         let admin_group = Group::new(
             &txn,
@@ -193,6 +207,9 @@ impl BillingAccount {
             .await?;
         admin_group
             .add_user(&txn, &nats, &user_history_actor, user.id())
+            .await?;
+        admin_group
+            .add_user(&txn, &nats, &user_history_actor, user_bobo.id())
             .await?;
 
         let any_cap = Capability::new(

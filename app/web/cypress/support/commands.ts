@@ -37,6 +37,9 @@ import { user$ } from "../../src/observable/user";
 import { billingAccount$ } from "../../src/observable/billing_account";
 import { SDF } from "../../src/api/sdf";
 import { SessionService } from "../../src/service/session";
+import faker from "faker";
+import { CreateAccountRequest } from "../../src/service/signup/create_account";
+import { firstValueFrom } from "rxjs";
 
 Cypress.Commands.add("getBySel", (selector, ...args) => {
   return cy.get(`[data-test=${selector}]`, ...args);
@@ -56,16 +59,26 @@ Cypress.Commands.add("signup", () => {
   });
 
   return cy
-    .request({
-      method: "POST",
-      url: "/api/test/fixtures/signup",
-      log: false,
+    .window({ log: false })
+    .its("SignupService", { log: false })
+    .then((signup) => {
+      const billingAccountName = faker.company.companyName();
+      const userName = faker.name.findName();
+      const userEmail = faker.internet.email();
+      const userPassword = "snakes";
+      const request = {
+        billingAccountName,
+        userName,
+        userEmail,
+        userPassword,
+      };
+      cy.wrap(request).as("nba");
+      return firstValueFrom(signup.createAccount(request));
     })
     .then((response) => {
-      cy.wrap(response.body.data, { log: false }).as("testCtx");
       log.set({
         consoleProps() {
-          return response.body.data;
+          return response;
         },
       });
       log.end();
@@ -80,32 +93,30 @@ Cypress.Commands.add("signupAndLogin", () => {
     // @ts-ignore
     autoEnd: false,
   });
-  cy.visit("/", { log: false });
 
-  return cy
-    .request({
-      method: "POST",
-      url: "/api/test/fixtures/signup",
-      log: false,
-    })
-    .then((response) => {
-      cy.wrap(response.body.data, { log: false }).as("testCtx");
-      log.set({
-        consoleProps() {
-          return response.body.data;
-        },
-      });
-      log.end();
-      cy.window({ log: false })
-        .its("SessionService", { log: false })
-        .then((s) => {
-          return s.login({
-            billingAccountName: response.body.data.billing_account.name,
-            userEmail: response.body.data.user.email,
-            userPassword: "snakes",
-          });
+  cy.signup();
+  return cy.get<CreateAccountRequest>("@nba").then((ctx) => {
+    return cy
+      .window()
+      .its("SessionService")
+      .then((SessionService) => {
+        return firstValueFrom(
+          SessionService.login({
+            billingAccountName: ctx.billingAccountName,
+            userEmail: ctx.userEmail,
+            userPassword: ctx.userPassword,
+          }),
+        );
+      })
+      .then((response) => {
+        log.set({
+          consoleProps() {
+            return response;
+          },
         });
-    });
+        log.end();
+      });
+  });
 });
 
 export interface TestCtx {

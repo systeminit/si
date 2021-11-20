@@ -45,7 +45,7 @@ export const visibility$: Observable<Visibility> = combineLatest([
   shareReplay(1),
 );
 
-export const standardVisibilityEvents$ = combineLatest([
+export const standardVisibilityTriggers$ = combineLatest([
   visibility$,
   eventChangeSetCreated$,
   eventChangeSetApplied$,

@@ -3,7 +3,7 @@ import { ApiResponse, SDF } from "@/api/sdf";
 import { editMode$ } from "@/observable/edit_mode";
 import { from, mergeMap, Observable, take, tap } from "rxjs";
 import { ChangeSet } from "@/api/sdf/dal/change_set";
-import { changeSet$, eventChangeSetApplied$ } from "@/observable/change_set";
+import { changeSet$ } from "@/observable/change_set";
 import { editSession$ } from "@/observable/edit_session";
 
 /**
@@ -41,9 +41,6 @@ export function applyChangeSet(): Observable<
         changeSet$.next(null);
         editSession$.next(null);
         editMode$.next(false);
-        if (response.changeSet) {
-          eventChangeSetApplied$.next(response.changeSet.pk);
-        }
       }
     }),
     take(1),

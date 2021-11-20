@@ -2,6 +2,7 @@ import { Config } from "@/config";
 import { SdfWs } from "@/api/sdf/ws";
 import { fromFetch } from "rxjs/fetch";
 import { from, mergeMap, Observable } from "rxjs";
+import _ from "lodash";
 
 export class FetchError extends Error {
   response: Response;
@@ -108,9 +109,17 @@ export class SDF {
 
     const url = this.requestUrl(pathString);
     if (queryParams) {
-      Object.keys(queryParams).forEach((key) =>
-        url.searchParams.set(key, queryParams[key]),
-      );
+      Object.keys(queryParams).forEach((key) => {
+        if (_.isBoolean(queryParams[key])) {
+          if (queryParams[key]) {
+            url.searchParams.set(key, "1");
+          } else {
+            url.searchParams.set(key, "0");
+          }
+        } else {
+          url.searchParams.set(key, queryParams[key]);
+        }
+      });
     }
     const request = new Request(url.toString(), {
       method: "GET",

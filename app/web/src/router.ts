@@ -9,6 +9,8 @@ import Signup from "@/templates/Signup.vue";
 import Schema from "@/templates/Schema.vue";
 import SchemaList from "@/organisims/Schema/SchemaList.vue";
 import SchemaNew from "@/organisims/Schema/SchemaNew.vue";
+import SchemaView from "@/organisims/Schema/SchemaView.vue";
+import _ from "lodash";
 
 const routes: RouteRecordRaw[] = [
   {
@@ -57,6 +59,22 @@ const routes: RouteRecordRaw[] = [
             name: "schema-new",
             path: "new",
             component: SchemaNew,
+          },
+          {
+            name: "schema-view",
+            path: ":schemaId",
+            props: (route) => {
+              let schemaId;
+              if (_.isArray(route.params.schemaId)) {
+                schemaId = Number.parseInt(route.params.schemaId[0]);
+              } else {
+                schemaId = Number.parseInt(route.params.schemaId);
+              }
+              return {
+                schemaId,
+              };
+            },
+            component: SchemaView,
           },
         ],
       },

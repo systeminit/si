@@ -9,6 +9,7 @@ import "@/assets/main.css";
 import "@/assets/tailwind.css";
 import { SignupService } from "@/service/signup";
 import { SessionService } from "@/service/session";
+import { ChangeSetService } from "@/service/change_set";
 
 bottleSetup(config);
 
@@ -22,6 +23,8 @@ if (window.Cypress) {
   window.SignupService = SignupService;
   // @ts-ignore
   window.SessionService = SessionService;
+  // @ts-ignore
+  window.ChangeSetService = ChangeSetService;
 }
 
 app.use(router);

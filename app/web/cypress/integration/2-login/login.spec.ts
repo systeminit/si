@@ -7,10 +7,9 @@ describe("Login", () => {
 
   it("lets the user log in", () => {
     cy.visit("authenticate/login");
-    cy.get("@testCtx").then((testCtx: any) => {
-      testCtx = testCtx as TestCtx;
-      cy.getBySel("billingAccountName").type(testCtx.billing_account.name);
-      cy.getBySel("userEmail").type(testCtx.user.email);
+    cy.get("@nba").then((testCtx: any) => {
+      cy.getBySel("billingAccountName").type(testCtx.billingAccountName);
+      cy.getBySel("userEmail").type(testCtx.userEmail);
       cy.getBySel("password").type("snakes");
       cy.getBySel("login")
         .click()

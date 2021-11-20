@@ -1,11 +1,10 @@
 <template>
   <div class="flex flex-col">
-    <div
-      class="flex flex-row items-center justify-between flex-grow-0 flex-shrink-0 h-12 header-background"
-    >
-      <div class="mt-1 ml-8 font-medium align-middle">
+    <SiChangeSetHeader>
+      <template #title>
         Schema
         <SiButton
+          data-test="schema-new-button"
           class="ml-2"
           icon="plus"
           label="New"
@@ -13,28 +12,25 @@
           :disabled="!editMode"
           @click="schemaNew()"
         />
-      </div>
-      <SiModal
-        v-if="modal"
-        v-model="schemaCreateModalShow"
-        name="schemaCreate"
-        :esc-to-close="true"
-      >
-        <template #title>Create Schema</template>
-        <template #body>
-          <SchemaCreateForm
-            @create="closeCreateSchemaModal"
-            @cancel="closeCreateSchemaModal"
-          />
-        </template>
-        <template #buttons>
-          <div></div>
-        </template>
-      </SiModal>
-      <div class="mt-1 mr-8 align-middle">
-        <ChangeSetWidget />
-      </div>
-    </div>
+      </template>
+    </SiChangeSetHeader>
+    <SiModal
+      v-if="modal"
+      v-model="schemaCreateModalShow"
+      name="schemaCreate"
+      :esc-to-close="true"
+    >
+      <template #title>Create Schema</template>
+      <template #body>
+        <SchemaCreateForm
+          @create="closeCreateSchemaModal"
+          @cancel="closeCreateSchemaModal"
+        />
+      </template>
+      <template #buttons>
+        <div></div>
+      </template>
+    </SiModal>
     <div class="flex flex-row mt-5 page-background w-full">
       <div class="flex flex-col w-full">
         <div class="flex flex-row">
@@ -46,12 +42,17 @@
           </div>
         </div>
         <div
+          data-test="schema-list"
           v-for="schema in schemaList"
           :key="schema.pk"
           class="flex flex-row row-item"
         >
           <div class="w-6/12 px-2 py-1 text-center">
-            {{ schema.name }}
+            <router-link
+              :to="{ name: 'schema-view', params: { schemaId: schema.id } }"
+            >
+              {{ schema.name }}
+            </router-link>
           </div>
           <div class="w-6/12 px-2 py-1 text-center align-middle">
             {{ schema.kind }}
@@ -78,6 +79,7 @@ import { from } from "rxjs";
 import { switchMap } from "rxjs/operators";
 import { SchemaService } from "@/service/schema";
 import { ChangeSetService } from "@/service/change_set";
+import SiChangeSetHeader from "@/molecules/SiChangeSetHeader.vue";
 
 const router = useRouter();
 

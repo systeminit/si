@@ -4,6 +4,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{ChangeSetPk, EditSessionPk, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK};
+use serde_aux::field_attributes::{deserialize_bool_from_anything, deserialize_number_from_string};
 
 #[derive(Error, Debug)]
 pub enum VisibilityError {
@@ -15,11 +16,20 @@ pub type VisibilityResult<T> = Result<T, VisibilityError>;
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone, Copy)]
 pub struct Visibility {
-    #[serde(rename = "visibility_change_set_pk")]
+    #[serde(
+        rename = "visibility_change_set_pk",
+        deserialize_with = "deserialize_number_from_string"
+    )]
     pub change_set_pk: ChangeSetPk,
-    #[serde(rename = "visibility_edit_session_pk")]
+    #[serde(
+        rename = "visibility_edit_session_pk",
+        deserialize_with = "deserialize_number_from_string"
+    )]
     pub edit_session_pk: EditSessionPk,
-    #[serde(rename = "visibility_deleted")]
+    #[serde(
+        rename = "visibility_deleted",
+        deserialize_with = "deserialize_bool_from_anything"
+    )]
     pub deleted: bool,
 }
 

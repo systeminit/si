@@ -6,7 +6,7 @@
       </div>
       <div class="flex items-center mr-2">
         <SiSelect
-          id="selectCurrentChangeSet"
+          id="select-current-change-set"
           v-model="selectedChangeSetPk"
           value-as-number
           :options="openChangeSetsList"
@@ -192,11 +192,11 @@ untilUnmounted(ChangeSetService.currentChangeSet()).subscribe((changeSet) => {
   }
 });
 
-const changeSetSelected = async () => {
+const changeSetSelected = () => {
   if (selectedChangeSetPk.value == CHANGE_SET_NONE) {
     ChangeSetService.switchToHead();
   } else if (selectedChangeSetPk.value == CHANGE_SET_NEW) {
-    await $vfm.show("changeSetCreate");
+    changeSetCreateModalShow.value = true;
   } else {
     GlobalErrorService.setIfError(
       ChangeSetService.getChangeSet({
