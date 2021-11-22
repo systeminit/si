@@ -8,7 +8,7 @@ use telemetry::prelude::*;
 use tokio::sync::broadcast;
 
 use crate::server::{
-    extract::{Authorization, Nats, WsAuthorization},
+    extract::{Nats, WsAuthorization},
     routes::ShutdownBroadcast,
 };
 
@@ -80,7 +80,7 @@ mod billing_account_updates {
 
     use axum::extract::ws::{self, WebSocket};
     use dal::BillingAccountId;
-    use futures::{StreamExt, TryStreamExt};
+    use futures::TryStreamExt;
     use si_data::{nats::Subscription, NatsClient, NatsError};
     use telemetry::prelude::*;
     use thiserror::Error;
@@ -115,7 +115,10 @@ mod billing_account_updates {
 
     impl BillingAccountUpdates {
         pub async fn start(self) -> Result<BillingAccountUpdatesStarted> {
-            let subject = format!("si.billing_account_id.{}.>", self.billing_account_id.to_string());
+            let subject = format!(
+                "si.billing_account_id.{}.>",
+                self.billing_account_id.to_string()
+            );
             let subscription = self
                 .nats
                 .subscribe(&subject)
@@ -132,12 +135,12 @@ mod billing_account_updates {
     }
 
     impl BillingAccountUpdatesStarted {
-        pub async fn process(self, ws: &mut WebSocket) -> Result<BillingAccountUpdatesClosing> {
+        pub async fn process(mut self, ws: &mut WebSocket) -> Result<BillingAccountUpdatesClosing> {
             // Send all messages down the WebSocket until and unless an error is encountered, the
             // client websocket connection is closed, or the nats subscription naturally closes
             while let Some(nats_msg) = self
                 .subscription
-                .async_next()
+                .try_next()
                 .await
                 .map_err(BillingAccountUpdatesError::NatsIo)?
             {

@@ -1,4 +1,4 @@
-use crate::{BillingAccountId, ChangeSetPk, SchemaPk, StandardModel, Tenancy};
+use crate::{BillingAccountId, ChangeSetPk, SchemaPk, Tenancy};
 use serde::{Deserialize, Serialize};
 use si_data::{NatsError, NatsTxn};
 use thiserror::Error;
@@ -14,7 +14,7 @@ pub enum WsEventError {
 pub type WsEventResult<T> = Result<T, WsEventError>;
 
 #[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
-#[serde(tag = "kind", content="data")]
+#[serde(tag = "kind", content = "data")]
 pub enum WsPayload {
     ChangeSetCreated(ChangeSetPk),
     ChangeSetApplied(ChangeSetPk),
@@ -38,15 +38,16 @@ impl WsEvent {
         }
     }
 
-    pub fn billing_account_id_from_tenancy(
-        tenancy: &Tenancy,
-    ) -> Vec<BillingAccountId> {
+    pub fn billing_account_id_from_tenancy(tenancy: &Tenancy) -> Vec<BillingAccountId> {
         tenancy.billing_account_ids.clone()
     }
 
     pub async fn publish(&self, nats: &NatsTxn) -> WsEventResult<()> {
         for billing_account_id in self.billing_account_ids.iter() {
-            let subject = format!("si.billing_account_id.{}.event", billing_account_id.to_string());
+            let subject = format!(
+                "si.billing_account_id.{}.event",
+                billing_account_id.to_string()
+            );
             nats.publish(subject, &self).await?;
         }
         Ok(())
