@@ -1,7 +1,7 @@
 use super::SchemaResult;
-use crate::server::extract::{Authorization, NatsTxn, PgRoTxn, QueryVisibility};
+use crate::server::extract::{Authorization, PgRoTxn, QueryVisibility};
 use axum::Json;
-use dal::{HistoryActor, Schema, SchemaKind, StandardModel, Tenancy, Visibility};
+use dal::{Schema, StandardModel, Tenancy, Visibility};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
