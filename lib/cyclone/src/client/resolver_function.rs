@@ -152,6 +152,10 @@ where
                     ResolverFunctionMessage::FunctionResult(function_result) => {
                         self.result = Some(function_result);
                         // TODO(fnichol): what is the right return here??
+                        // (future fnichol): hey buddy! pretty sure you can:
+                        // `cx.waker().wake_by_ref()` before returning Poll::Ready which immediatly
+                        // re-wakes this stream to maybe pop another item off. cool huh? I think
+                        // you're learning and that's great.
                         Poll::Ready(Some(Ok(ResolverFunctionExecutingMessage::Heartbeat)))
                         //Poll::Pending
                     }

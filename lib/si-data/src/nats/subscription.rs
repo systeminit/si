@@ -1,4 +1,5 @@
 use std::{
+    future::Future,
     pin::Pin,
     sync::Arc,
     task::{Context, Poll},
@@ -7,7 +8,7 @@ use std::{
 use futures::{FutureExt, Stream};
 use nats_client as nats;
 use telemetry::prelude::*;
-use tokio::task::spawn_blocking;
+use tokio::task::{spawn_blocking, JoinHandle};
 
 use super::{ConnectionMetadata, Error, Message, Result};
 
@@ -15,16 +16,18 @@ use super::{ConnectionMetadata, Error, Message, Result};
 #[derive(Debug)]
 pub struct Subscription {
     inner: nats::Subscription,
+    next: Option<NextMessage>,
     shutdown_tx: crossbeam_channel::Sender<()>,
     shutdown_rx: crossbeam_channel::Receiver<()>,
-    metadata: Arc<ConnectionMetadata>,
+    metadata: Arc<SubscriptionMessageMetadata>,
     sub_span: Span,
 }
 
 impl Subscription {
     pub(crate) fn new(
         inner: nats::Subscription,
-        metadata: Arc<ConnectionMetadata>,
+        subject: String,
+        connection_metadata: Arc<ConnectionMetadata>,
         sub_span: Span,
     ) -> Self {
         // We don't use the tx side explicitly, but rather rely on the behavior when this
@@ -37,11 +40,22 @@ impl Subscription {
         // but with cloneable tx and rx ends.
         let (shutdown_tx, shutdown_rx) = crossbeam_channel::bounded(0);
 
+        let metadata = SubscriptionMessageMetadata {
+            connection_metadata,
+            messaging_destination: subject.clone(),
+            messaging_destination_kind: "topic",
+            messaging_operation: "process",
+            messaging_subject: subject.clone(),
+            process_otel_kind: SpanKind::Consumer.to_string(),
+            process_otel_name: format!("{} process", subject),
+        };
+
         Self {
             inner,
+            next: None,
             shutdown_tx,
             shutdown_rx,
-            metadata,
+            metadata: Arc::new(metadata),
             sub_span,
         }
     }
@@ -63,11 +77,12 @@ impl Subscription {
     #[instrument(
         name = "subscription.unsubscribe",
         skip_all,
+        level = "debug",
         fields(
-            messaging.protocol = %self.metadata.messaging_protocol,
-            messaging.system = %self.metadata.messaging_system,
-            messaging.url = %self.metadata.messaging_url,
-            net.transport = %self.metadata.net_transport,
+            messaging.protocol = %self.metadata.messaging_protocol(),
+            messaging.system = %self.metadata.messaging_system(),
+            messaging.url = %self.metadata.messaging_url(),
+            net.transport = %self.metadata.net_transport(),
             otel.kind = %SpanKind::Client,
             otel.status_code = Empty,
             otel.status_message = Empty,
@@ -103,11 +118,12 @@ impl Subscription {
     #[instrument(
         name = "subscription.close",
         skip_all,
+        level = "debug",
         fields(
-            messaging.protocol = %self.metadata.messaging_protocol,
-            messaging.system = %self.metadata.messaging_system,
-            messaging.url = %self.metadata.messaging_url,
-            net.transport = %self.metadata.net_transport,
+            messaging.protocol = %self.metadata.messaging_protocol(),
+            messaging.system = %self.metadata.messaging_system(),
+            messaging.url = %self.metadata.messaging_url(),
+            net.transport = %self.metadata.net_transport(),
             otel.kind = %SpanKind::Client,
             otel.status_code = Empty,
             otel.status_message = Empty,
@@ -160,11 +176,12 @@ impl Subscription {
     #[instrument(
         name = "subscription.drain",
         skip_all,
+        level = "debug",
         fields(
-            messaging.protocol = %self.metadata.messaging_protocol,
-            messaging.system = %self.metadata.messaging_system,
-            messaging.url = %self.metadata.messaging_url,
-            net.transport = %self.metadata.net_transport,
+            messaging.protocol = %self.metadata.messaging_protocol(),
+            messaging.system = %self.metadata.messaging_system(),
+            messaging.url = %self.metadata.messaging_url(),
+            net.transport = %self.metadata.net_transport(),
             otel.kind = %SpanKind::Client,
             otel.status_code = Empty,
             otel.status_message = Empty,
@@ -184,11 +201,21 @@ impl Subscription {
         Ok(())
     }
 
-    pub async fn async_next(&self) -> Result<Option<Message>> {
+    /// Gets a reference to the subscription's span.
+    pub fn span(&self) -> &Span {
+        &self.sub_span
+    }
+
+    /// Gets a reference to the subscription's metadata.
+    pub fn metadata(&self) -> &SubscriptionMessageMetadata {
+        self.metadata.as_ref()
+    }
+
+    fn next_message(&self) -> NextMessage {
         let inner = self.inner.clone();
-        match spawn_blocking(move || inner.next()).await {
-            Ok(maybe_msg) => Ok(maybe_msg.map(|inner| Message::new(inner, self.metadata.clone()))),
-            Err(err) => Err(err.into()),
+        NextMessage {
+            handle: spawn_blocking(move || inner.next()),
+            metadata: self.metadata.as_connection_metadata(),
         }
     }
 }
@@ -196,15 +223,136 @@ impl Subscription {
 impl Stream for Subscription {
     type Item = Result<Message>;
 
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let _enter = self.sub_span.enter();
-        let inner = self.inner.clone();
-        match spawn_blocking(move || inner.next()).poll_unpin(cx) {
-            Poll::Ready(Ok(ready)) => Poll::Ready(
-                Ok(ready.map(|msg| Message::new(msg, self.metadata.clone()))).transpose(),
-            ),
-            Poll::Ready(Err(err)) => Poll::Ready(Some(Err(Error::Async(err)))),
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        // If we have a `NextMessage` in progress, grab it and otherwise start a new one
+        let mut next = self.next.take().unwrap_or_else(|| self.next_message());
+
+        // Start the subscription span timing--we're doing this after the call above as that was a
+        // mutable borrow whereas this is an immutable borrow, and besides the wait time is in the
+        // poll, not an in-memory data manipulation
+        let entered = self.sub_span.enter();
+
+        // Poll the `NextMessage` future
+        match Pin::new(&mut next).poll(cx) {
+            // We got a new message, pass it on
+            Poll::Ready(Ok(Some(ready))) => Poll::Ready(Some(Ok(ready))),
+            // `NextMessage` yielded `None`, meaning the inner subscription is done, so close this
+            // stream out
+            Poll::Ready(Ok(None)) => Poll::Ready(None),
+            // `NextMessage` yielded an error, pass it along
+            Poll::Ready(Err(err)) => Poll::Ready(Some(Err(err))),
+            // `NextMessage` returned pending, so stash our future and return pending on the stream
+            Poll::Pending => {
+                // We're about to mutably borrow to stash our future, so drop the span timing to
+                // minimize borrow checker trickery
+                drop(entered);
+                // Stash the future for the next `poll_next` call
+                self.next.replace(next);
+                Poll::Pending
+            }
+        }
+    }
+}
+
+/// A future that yields the next message in a `Subscription`.
+///
+/// The implementation wraps an inner blocking API so we're driving a `spawn_blocking` `JoinHandle`
+/// to completion.
+#[derive(Debug)]
+struct NextMessage {
+    handle: JoinHandle<Option<nats::Message>>,
+    metadata: Arc<ConnectionMetadata>,
+}
+
+impl Future for NextMessage {
+    type Output = Result<Option<Message>>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        // Poll our blocking task handle
+        match self.handle.poll_unpin(cx) {
+            // Our task completed and yielded a potential message, so convert into our `Message`
+            // type and pass it along
+            Poll::Ready(Ok(maybe_msg)) => Poll::Ready(Ok(
+                maybe_msg.map(|inner| Message::new(inner, self.metadata.clone()))
+            )),
+            // We got an error--a join handle error from tokio--so return that
+            Poll::Ready(Err(err)) => Poll::Ready(Err(Error::Async(err))),
+            // Our task is not yet complete, so return pending
             Poll::Pending => Poll::Pending,
         }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct SubscriptionMessageMetadata {
+    connection_metadata: Arc<ConnectionMetadata>,
+    messaging_destination: String,
+    messaging_destination_kind: &'static str,
+    messaging_operation: &'static str,
+    messaging_subject: String,
+
+    process_otel_kind: String,
+    process_otel_name: String,
+}
+
+impl SubscriptionMessageMetadata {
+    /// Gets a reference to the subscription message metadata's messaging consumer id.
+    pub fn messaging_consumer_id(&self) -> &str {
+        self.connection_metadata.messaging_consumer_id()
+    }
+
+    /// Gets a reference to the subscription message metadata's messaging destination.
+    pub fn messaging_destination(&self) -> &str {
+        self.messaging_destination.as_ref()
+    }
+
+    /// Gets a reference to the subscription message metadata's messaging destination kind.
+    pub fn messaging_destination_kind(&self) -> &str {
+        self.messaging_destination_kind
+    }
+
+    /// Gets a reference to the subscription message metadata's messaging operation.
+    pub fn messaging_operation(&self) -> &str {
+        self.messaging_operation
+    }
+
+    /// Gets a reference to the subscription message metadata's messaging protocol.
+    pub fn messaging_protocol(&self) -> &str {
+        self.connection_metadata.messaging_protocol()
+    }
+
+    /// Gets a reference to the subscription message metadata's messaging system.
+    pub fn messaging_system(&self) -> &str {
+        self.connection_metadata.messaging_system()
+    }
+
+    /// Gets a reference to the subscription message metadata's messaging url.
+    pub fn messaging_url(&self) -> &str {
+        self.connection_metadata.messaging_url()
+    }
+
+    /// Gets a reference to the subscription message metadata's messaging subject.
+    pub fn messaging_subject(&self) -> &str {
+        self.messaging_subject.as_ref()
+    }
+
+    /// Get a reference to the subscription message metadata's net transport.
+    pub fn net_transport(&self) -> &str {
+        self.connection_metadata.net_transport()
+    }
+
+    /// Gets a reference to the subscription message metadata's process otel kind.
+    pub fn process_otel_kind(&self) -> &str {
+        &self.process_otel_kind
+    }
+
+    /// Gets a reference to the subscription message metadata's process otel name.
+    pub fn process_otel_name(&self) -> &str {
+        self.process_otel_name.as_ref()
+    }
+
+    /// Get a reference to the subscription message metadata's connection metadata.
+    pub fn as_connection_metadata(&self) -> Arc<ConnectionMetadata> {
+        self.connection_metadata.clone()
     }
 }
