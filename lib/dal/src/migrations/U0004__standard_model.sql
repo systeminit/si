@@ -59,26 +59,102 @@ BEGIN
 END ;
 $$ LANGUAGE PLPGSQL STABLE;
 
-CREATE OR REPLACE FUNCTION update_by_pk_v1(this_table_text text,
+CREATE OR REPLACE FUNCTION update_by_id_v1(this_table_text text,
                                            this_column text,
                                            this_tenancy jsonb,
-                                           this_pk bigint,
+                                           this_visibility jsonb,
+                                           this_id bigint,
                                            this_value text,
                                            OUT updated_at timestamp with time zone)
 AS
 $$
 DECLARE
-    this_table regclass;
+    this_table                   regclass;
+    this_visibility_row          visibility_record_v1;
+    copy_change_set_column_names text;
 BEGIN
     this_table := this_table_text::regclass;
-    EXECUTE format('UPDATE %1$I SET %2$I = %5$L, updated_at = now() WHERE pk = %4$L ' ||
+    this_visibility_row = visibility_json_to_columns_v1(this_visibility);
+
+    /* First, try the update - if it works, we're all set. */
+    EXECUTE format('UPDATE %1$I SET %2$I = %8$L, updated_at = now() WHERE id = %7$L ' ||
                    '  AND in_tenancy_v1(%3$L, ' ||
                    '                    %1$I.tenancy_universal, ' ||
                    '                    %1$I.tenancy_billing_account_ids,' ||
                    '                    %1$I.tenancy_organization_ids,' ||
                    '                    %1$I.tenancy_workspace_ids)' ||
+                   '  AND %1$I.visibility_change_set_pk = %4$L ' ||
+                   '  AND %1$I.visibility_edit_session_pk = %5$L ' ||
+                   '  AND %1$I.visibility_deleted = %6$L' ||
                    ' RETURNING updated_at',
-                   this_table, this_column, this_tenancy, this_pk, this_value) INTO updated_at;
+                   this_table, this_column, this_tenancy, this_visibility_row.visibility_change_set_pk,
+                   this_visibility_row.visibility_edit_session_pk, this_visibility_row.visibility_deleted, this_id,
+                   this_value) INTO updated_at;
+
+    /* If updated_at is still null, that is because the update found no rows. We need to first copy the last known
+       good data, and then update it. */
+    IF updated_at IS NULL THEN
+        /* Check if we are doing an update to the edit session visibility. If we are, then we need to
+           copy the change set row if it exists, and if that doesn't exist, copy the head row. If
+           neither exist, that is an error.
+
+           If we aren't checking the change set and edit session, then we are pulling from head, so we
+           can just copy head. */
+        IF this_visibility_row.visibility_change_set_pk != '-1' AND
+           this_visibility_row.visibility_edit_session_pk != '-1' THEN
+
+            SELECT string_agg(information_schema.columns.column_name::text, ',')
+            FROM information_schema.columns
+            WHERE information_schema.columns.table_name = 'schemas'
+              AND information_schema.columns.column_name NOT IN
+                  (this_column, 'visibility_change_set_pk', 'visibility_edit_session_pk', 'pk', 'created_at',
+                   'updated_at')
+            INTO copy_change_set_column_names;
+
+            EXECUTE format('INSERT INTO %1$I (%2$s, visibility_change_set_pk, visibility_edit_session_pk, %3$s) ' ||
+                            ' SELECT %4$L, %5$L, %6$L, %3$s FROM %1$I WHERE ' ||
+                            ' %1$I.id = %7$L' ||
+                            ' AND %1$I.visibility_change_set_pk = %5$L ' ||
+                            ' AND %1$I.visibility_edit_session_pk = -1 ' ||
+                            ' RETURNING updated_at',
+                            this_table,
+                            this_column,
+                            copy_change_set_column_names,
+                            this_value,
+                            this_visibility_row.visibility_change_set_pk,
+                            this_visibility_row.visibility_edit_session_pk,
+                            this_id) INTO updated_at;
+            IF updated_at IS NULL THEN
+                EXECUTE format('INSERT INTO %1$I (%2$s, visibility_change_set_pk, visibility_edit_session_pk, %3$s) ' ||
+                               ' SELECT %4$L, %5$L, %6$L, %3$s FROM %1$I WHERE ' ||
+                               ' %1$I.id = %7$L' ||
+                               ' AND %1$I.visibility_change_set_pk = -1 ' ||
+                               ' AND %1$I.visibility_edit_session_pk = -1 ' ||
+                               ' RETURNING updated_at',
+                               this_table,
+                               this_column,
+                               copy_change_set_column_names,
+                               this_value,
+                               this_visibility_row.visibility_change_set_pk,
+                               this_visibility_row.visibility_edit_session_pk,
+                               this_id) INTO updated_at;
+            END IF;
+        ELSE
+            EXECUTE format('INSERT INTO %1$I (%2$s, visibility_change_set_pk, visibility_edit_session_pk, %3$s) ' ||
+                           ' SELECT %4$L, %5$L, %6$L, %3$s FROM %1$I WHERE ' ||
+                           ' %1$I.id = %7$L' ||
+                           ' AND %1$I.visibility_change_set_pk = -1 ' ||
+                           ' AND %1$I.visibility_edit_session_pk = -1 ' ||
+                           ' RETURNING updated_at',
+                           this_table,
+                           this_column,
+                           copy_change_set_column_names,
+                           this_value,
+                           this_visibility_row.visibility_change_set_pk,
+                           this_visibility_row.visibility_edit_session_pk,
+                           this_id) INTO updated_at;
+        END IF;
+    END IF;
 END ;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
@@ -156,7 +232,7 @@ BEGIN
                                 '                    %1$I.visibility_change_set_pk,' ||
                                 '                    %1$I.visibility_edit_session_pk,' ||
                                 '                    %1$I.visibility_deleted)' ||
-                                ' ORDER BY id, visibility_change_set_pk ASC, visibility_edit_session_pk ASC'
+                                ' ORDER BY id, visibility_change_set_pk DESC, visibility_edit_session_pk DESC'
         , this_table, this_tenancy, this_visibility);
 END ;
 $$ LANGUAGE PLPGSQL STABLE;
@@ -205,7 +281,7 @@ BEGIN
                                 '                    %1$I.visibility_change_set_pk,' ||
                                 '                    %1$I.visibility_edit_session_pk,' ||
                                 '                    %1$I.visibility_deleted)' ||
-                                ' ORDER BY id, visibility_change_set_pk ASC, visibility_edit_session_pk ASC' ||
+                                ' ORDER BY id, visibility_change_set_pk DESC, visibility_edit_session_pk DESC' ||
                                 ' LIMIT 1'
         , this_table, this_tenancy, this_visibility, this_object_id, this_retrieve_table);
 END;
@@ -256,7 +332,7 @@ BEGIN
                     '                    %1$I.visibility_change_set_pk,' ||
                     '                    %1$I.visibility_edit_session_pk,' ||
                     '                    %1$I.visibility_deleted)' ||
-                    ' ORDER BY id, visibility_change_set_pk ASC, visibility_edit_session_pk ASC'
+                    ' ORDER BY id, visibility_change_set_pk DESC, visibility_edit_session_pk DESC'
         , this_table, this_tenancy, this_visibility, this_belongs_to_id, this_retrieve_table);
 
     RAISE DEBUG 'has_many query: %', query;
@@ -325,7 +401,7 @@ BEGIN
                     '                    %1$I.visibility_change_set_pk,' ||
                     '                    %1$I.visibility_edit_session_pk,' ||
                     '                    %1$I.visibility_deleted)' ||
-                    ' ORDER BY id, visibility_change_set_pk ASC, visibility_edit_session_pk ASC'
+                    ' ORDER BY id, visibility_change_set_pk DESC, visibility_edit_session_pk DESC'
         , this_table, this_tenancy, this_visibility, this_query_object_id, this_return_table, this_join_column,
                     this_query_column);
 
@@ -589,10 +665,10 @@ END;
 $$ LANGUAGE plpgsql VOLATILE;
 
 CREATE OR REPLACE FUNCTION set_belongs_to_v1(this_table_name text,
-                                                     this_tenancy jsonb,
-                                                     this_visibility jsonb,
-                                                     this_object_id bigint,
-                                                     this_belongs_to_id bigint
+                                             this_tenancy jsonb,
+                                             this_visibility jsonb,
+                                             this_object_id bigint,
+                                             this_belongs_to_id bigint
 ) RETURNS VOID AS
 $$
 DECLARE
@@ -636,9 +712,9 @@ END;
 $$ LANGUAGE plpgsql VOLATILE;
 
 CREATE OR REPLACE FUNCTION unset_belongs_to_v1(this_table_name text,
-                                                        this_tenancy jsonb,
-                                                        this_visibility jsonb,
-                                                        this_object_id bigint
+                                               this_tenancy jsonb,
+                                               this_visibility jsonb,
+                                               this_object_id bigint
 ) RETURNS VOID AS
 $$
 DECLARE

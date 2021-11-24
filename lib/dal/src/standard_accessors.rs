@@ -336,12 +336,13 @@ macro_rules! standard_model_accessor {
                 &mut self,
                 txn: &si_data::PgTxn<'_>,
                 nats: &si_data::NatsTxn,
+                visibility: &crate::Visibility,
                 history_actor: &crate::HistoryActor,
                 value: impl Into<$value_type>,
             ) -> $result_type<()> {
                 let value: $value_type = value.into();
                 let updated_at =
-                        standard_model::update(&txn, Self::table_name(), stringify!($column), &self.tenancy(), self.pk(), &value).await?;
+                        standard_model::update(&txn, Self::table_name(), stringify!($column), &self.tenancy(), &visibility, self.id(), &value).await?;
                 let _history_event = crate::HistoryEvent::new(
                     &txn,
                     &nats,
@@ -370,13 +371,14 @@ macro_rules! standard_model_accessor {
                 &mut self,
                 txn: &si_data::PgTxn<'_>,
                 nats: &si_data::NatsTxn,
+                visibility: &crate::Visibility,
                 history_actor: &crate::HistoryActor,
                 value: impl Into<$value_type>,
             ) -> $result_type<()> {
                 let value: $value_type = value.into();
                 let value_string = value.to_string();
                 let updated_at =
-                        standard_model::update(&txn, Self::table_name(), stringify!($column), &self.tenancy(), self.pk(), &value_string).await?;
+                        standard_model::update(&txn, Self::table_name(), stringify!($column), &self.tenancy(), &visibility, self.id(), &value_string).await?;
                 let _history_event = crate::HistoryEvent::new(
                     &txn,
                     &nats,
@@ -406,11 +408,12 @@ macro_rules! standard_model_accessor {
                 &mut self,
                 txn: &si_data::PgTxn<'_>,
                 nats: &si_data::NatsTxn,
+                visibility: &crate::Visibility,
                 history_actor: &crate::HistoryActor,
                 value: Option<String>,
             ) -> $result_type<()> {
                 let updated_at =
-                        standard_model::update(&txn, Self::table_name(), stringify!($column), &self.tenancy(), self.pk(), &value).await?;
+                        standard_model::update(&txn, Self::table_name(), stringify!($column), &self.tenancy(), &visibility, self.id(), &value).await?;
                 let _history_event = crate::HistoryEvent::new(
                     &txn,
                     &nats,
@@ -439,11 +442,12 @@ macro_rules! standard_model_accessor {
                 &mut self,
                 txn: &si_data::PgTxn<'_>,
                 nats: &si_data::NatsTxn,
+                visibility: &crate::Visibility,
                 history_actor: &crate::HistoryActor,
                 value: Option<$value_type>,
             ) -> $result_type<()> {
                 let updated_at =
-                        standard_model::update(&txn, Self::table_name(), stringify!($column), self.tenancy(), self.pk(), &value).await?;
+                        standard_model::update(&txn, Self::table_name(), stringify!($column), self.tenancy(), &visibility, self.id(), &value).await?;
                 let _history_event = crate::HistoryEvent::new(
                     &txn,
                     &nats,

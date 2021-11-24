@@ -1,8 +1,10 @@
 use crate::test_setup;
 
 use dal::schema::SchemaKind;
-use dal::test_harness::billing_account_signup;
+use dal::test_harness::{billing_account_signup, create_schema, create_schema_ui_menu};
 use dal::{HistoryActor, Schema, StandardModel, Tenancy, Visibility};
+
+pub mod ui_menu;
 
 #[tokio::test]
 async fn new() {
@@ -138,4 +140,29 @@ async fn workspaces() {
         .expect("cannot remove workspace");
     let relations = schema.workspaces(&txn).await.expect("cannot get workspace");
     assert_eq!(relations, vec![]);
+}
+
+#[tokio::test]
+async fn ui_menus() {
+    test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats);
+    let tenancy = Tenancy::new_universal();
+    let visibility = Visibility::new_head(false);
+    let history_actor = HistoryActor::SystemInit;
+    let schema = create_schema(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        &SchemaKind::Concrete,
+    )
+    .await;
+    let schema_ui_menu =
+        create_schema_ui_menu(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+    schema_ui_menu
+        .set_schema(&txn, &nats, &history_actor, schema.id())
+        .await
+        .expect("cannot set schema");
+    let ui_menus = schema.ui_menus(&txn).await.expect("cannot get ui menus");
+    assert_eq!(ui_menus, vec![schema_ui_menu.clone()]);
 }

@@ -1,0 +1,102 @@
+<template>
+  <EditFormField :show="show">
+    <template #name>
+      {{ editField.name }}
+    </template>
+    <template #edit>
+      <input
+        class="pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey si-property disabled:opacity-50"
+        :class="borderColor"
+        type="text"
+        aria-label="name"
+        placeholder="text"
+        v-model="currentValue"
+        @keyup.enter="onKeyEnter($event)"
+        @focus="onFocus"
+        @blur="onBlur"
+      />
+    </template>
+    <template #show>
+      <span :class="textColor">{{ editField.value }}</span>
+    </template>
+  </EditFormField>
+</template>
+
+<script setup lang="ts">
+import { computed, PropType, ref, watch } from "vue";
+import type { EditField } from "@/api/sdf/dal/edit_field";
+import EditFormField from "./EditFormField.vue";
+import { EditFieldService } from "@/service/edit_field";
+import { GlobalErrorService } from "@/service/global_error";
+import { UpdateFromEditFieldResponse } from "@/service/edit_field/update_from_edit_field";
+import { ApiResponse } from "@/api/sdf";
+
+const props = defineProps({
+  show: {
+    type: Boolean,
+    required: true,
+  },
+  editField: {
+    type: Object as PropType<EditField>,
+    required: true,
+  },
+});
+
+const updating = ref(false);
+const startValue = ref(props.editField.value);
+const currentValue = ref(props.editField.value);
+const onFocus = () => {
+  updating.value = true;
+  startValue.value = currentValue.value;
+};
+const onBlur = () => {
+  if (currentValue.value != startValue.value) {
+    EditFieldService.updateFromEditField({
+      objectKind: props.editField.object_kind,
+      objectId: props.editField.object_id,
+      editFieldId: props.editField.id,
+      value: currentValue.value,
+    }).subscribe((response: ApiResponse<UpdateFromEditFieldResponse>) => {
+      if (response.error) {
+        GlobalErrorService.set(response);
+      }
+    });
+  }
+  updating.value = false;
+};
+const onKeyEnter = (event: KeyboardEvent) => {
+  if (event && event.target) {
+    // @ts-ignore - we don't know what the real type is!
+    event.target.blur();
+  }
+};
+watch(
+  () => props.editField,
+  (editField, _prevEditField) => {
+    if (!updating.value && editField.value != currentValue.value) {
+      currentValue.value = editField.value;
+    }
+  },
+);
+
+const borderColor = computed(
+  (): Record<string, boolean> => {
+    if (props.editField.visibility_diff.kind != "None") {
+      return { "input-border-gold": true };
+    } else {
+      return { "input-border-grey": true };
+    }
+  },
+);
+const textColor = computed(
+  (): Record<string, boolean> => {
+    if (props.editField.visibility_diff.kind != "None") {
+      return { "text-gold": true };
+    } else {
+      return { "text-gold": false };
+    }
+  },
+);
+</script>
+
+<style scoped></style>

@@ -62,6 +62,7 @@ pub fn routes(
             crate::server::service::change_set::routes(),
         )
         .nest("/api/schema", crate::server::service::schema::routes())
+        .nest("/api/edit_field", crate::server::service::edit_field::routes())
         .nest("/api/ws", crate::server::service::ws::routes());
     router = test_routes(router);
     router = router

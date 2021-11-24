@@ -1,6 +1,9 @@
 use crate::billing_account::BillingAccountSignup;
 use crate::jwt_key::JwtEncrypt;
-use crate::{BillingAccount, ChangeSet, EditSession, Group, HistoryActor, KeyPair, StandardModel, Tenancy, User, Visibility, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK, Schema, SchemaKind};
+use crate::{
+    schema, BillingAccount, ChangeSet, EditSession, Group, HistoryActor, KeyPair, Schema,
+    SchemaKind, StandardModel, Tenancy, User, Visibility, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
+};
 use anyhow::Result;
 use async_trait::async_trait;
 use lazy_static::lazy_static;
@@ -355,7 +358,18 @@ pub async fn create_schema(
         &name,
         &kind,
     )
-        .await
-        .expect("cannot create schema")
+    .await
+    .expect("cannot create schema")
 }
 
+pub async fn create_schema_ui_menu(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+) -> schema::UiMenu {
+    schema::UiMenu::new(&txn, &nats, &tenancy, &visibility, &history_actor)
+        .await
+        .expect("cannot create schema ui menu")
+}

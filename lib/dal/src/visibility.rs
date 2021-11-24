@@ -62,6 +62,16 @@ impl Visibility {
         Visibility::new(change_set_pk, edit_session_pk, deleted)
     }
 
+    #[instrument]
+    pub fn in_edit_session(&self) -> bool {
+       self.edit_session_pk != NO_EDIT_SESSION_PK
+    }
+
+    #[instrument]
+    pub fn in_change_set(&self) -> bool {
+        self.change_set_pk != NO_CHANGE_SET_PK
+    }
+
     #[instrument(skip(txn))]
     pub async fn is_visible_to(
         &self,

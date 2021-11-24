@@ -14,6 +14,7 @@ import {
 } from "@/observable/change_set";
 import {
   editSession$,
+  editSessionWritten$,
   eventEditSessionSaved$,
 } from "@/observable/edit_session";
 import { switchMap } from "rxjs/operators";
@@ -51,4 +52,5 @@ export const standardVisibilityTriggers$ = combineLatest([
   eventChangeSetApplied$,
   eventChangeSetCanceled$,
   eventEditSessionSaved$,
+  editSessionWritten$,
 ]).pipe(shareReplay(1));

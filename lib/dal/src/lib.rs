@@ -24,6 +24,8 @@ pub mod user;
 pub mod visibility;
 pub mod workspace;
 pub mod ws_event;
+pub mod edit_field;
+pub mod schematic;
 
 pub use billing_account::{
     BillingAccount, BillingAccountDefaults, BillingAccountError, BillingAccountId, BillingAccountPk,
@@ -49,6 +51,7 @@ pub use user::{User, UserClaim, UserError, UserId, UserResult};
 pub use visibility::{Visibility, VisibilityError};
 pub use workspace::{Workspace, WorkspaceError, WorkspaceId, WorkspacePk, WorkspaceResult};
 pub use ws_event::{WsEvent, WsEventError, WsPayload};
+pub use schematic::SchematicKind;
 
 mod embedded {
     use refinery::embed_migrations;

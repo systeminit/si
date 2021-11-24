@@ -2,12 +2,11 @@
   <div v-if="isLoaded()">
     <div class="flex flex-col">
       <SiChangeSetHeader>
-        <template #title> Schema {{ schema.name }} </template>
+        <template #title> Schema {{ schema.name }}</template>
       </SiChangeSetHeader>
     </div>
-    <div v-if="editMode">Edit me!</div>
-    <div v-else>
-      {{ schema }}
+    <div>
+      <EditForm object-kind="Schema" :object-id="schemaId" />
     </div>
   </div>
   <div v-else-if="isNotFound()">
@@ -22,10 +21,11 @@ import { SchemaService } from "@/service/schema";
 import { refFrom } from "vuse-rx";
 import { GlobalErrorService } from "@/service/global_error";
 import { tap } from "rxjs";
-import { Schema } from "@/api/sdf/dal/schema";
+import type { Schema } from "@/api/sdf/dal/schema";
 import { ApiResponse } from "@/api/sdf";
 import { ref } from "vue";
 import { ChangeSetService } from "@/service/change_set";
+import EditForm from "@/organisims/EditForm.vue";
 
 const props = defineProps({
   schemaId: {
@@ -39,6 +39,7 @@ enum ReadyState {
   LOADED,
   NOT_FOUND,
 }
+
 const ready = ref<ReadyState>(ReadyState.LOADING);
 const isLoaded = () => ready.value == ReadyState.LOADED;
 const isNotFound = () => ready.value == ReadyState.NOT_FOUND;

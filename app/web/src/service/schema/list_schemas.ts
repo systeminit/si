@@ -3,17 +3,13 @@ import { Schema } from "@/api/sdf/dal/schema";
 import { combineLatest, Observable, shareReplay } from "rxjs";
 import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import Bottle from "bottlejs";
-import { schemaCreated$ } from "@/observable/schema";
 import { switchMap } from "rxjs/operators";
 
 export interface ListSchemaResponse {
   list: Array<Schema>;
 }
 
-const schemaList$ = combineLatest([
-  standardVisibilityTriggers$,
-  schemaCreated$,
-]).pipe(
+const schemaList$ = combineLatest([standardVisibilityTriggers$]).pipe(
   switchMap(([[visibility]]) => {
     const bottle = Bottle.pop("default");
     const sdf: SDF = bottle.container.SDF;

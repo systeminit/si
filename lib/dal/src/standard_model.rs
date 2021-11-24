@@ -16,7 +16,7 @@ pub enum StandardModelError {
     Pg(#[from] PgError),
     #[error("nats error")]
     Nats(#[from] NatsError),
-    #[error("{0} pk {1} is missing when one was expected; it does not exist, is not visible, or is not valid for this tenancy")]
+    #[error("{0} id {1} is missing when one was expected; it does not exist, is not visible, or is not valid for this tenancy")]
     ModelMissing(String, String),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
@@ -61,6 +61,9 @@ pub fn object_option_from_row_option<OBJECT: DeserializeOwned>(
     match row_option {
         Some(row) => {
             let json: serde_json::Value = row.try_get("object")?;
+            dbg!("----- raw json -----");
+            dbg!(&json);
+            dbg!("----- end raw json -----");
             let object: OBJECT = serde_json::from_value(json)?;
             Ok(Some(object))
         }
@@ -255,22 +258,23 @@ pub fn option_object_from_row<OBJECT: DeserializeOwned>(
 }
 
 #[instrument(skip(txn))]
-pub async fn update<PK: Send + Sync + ToSql + std::fmt::Display, VALUE: Send + Sync + ToSql>(
+pub async fn update<ID: Send + Sync + ToSql + std::fmt::Display, VALUE: Send + Sync + ToSql>(
     txn: &PgTxn<'_>,
     table: &str,
     column: &str,
     tenancy: &Tenancy,
-    pk: &PK,
+    visibility: &Visibility,
+    id: &ID,
     value: &VALUE,
 ) -> StandardModelResult<DateTime<Utc>> {
     let row = txn
         .query_one(
-            "SELECT updated_at FROM update_by_pk_v1($1, $2, $3, $4, $5)",
-            &[&table, &column, &tenancy, &pk, &value],
+            "SELECT updated_at FROM update_by_id_v1($1, $2, $3, $4, $5, $6)",
+            &[&table, &column, &tenancy, &visibility, &id, &value],
         )
         .await?;
     row.try_get("updated_at")
-        .map_err(|_| StandardModelError::ModelMissing(table.to_string(), pk.to_string()))
+        .map_err(|_| StandardModelError::ModelMissing(table.to_string(), id.to_string()))
 }
 
 #[instrument(skip(txn))]
@@ -333,8 +337,6 @@ pub async fn finish_create_from_row<Object: Send + Sync + DeserializeOwned + Sta
     row: tokio_postgres::Row,
 ) -> StandardModelResult<Object> {
     let json: serde_json::Value = row.try_get("object")?;
-    // TODO(fnichol): determine subject(s) for publishing
-    nats.publish("standardModel", &json).await?;
     let _history_event = HistoryEvent::new(
         &txn,
         &nats,

@@ -20,3 +20,9 @@ eventEditSessionSaved$.next(null);
  */
 export const editSessionCanceled$ = new ReplaySubject<number | null>(1);
 editSessionCanceled$.next(null);
+
+/**
+ * Fired when an edit session has been written to
+ */
+export const editSessionWritten$ = new ReplaySubject<true>(1);
+editSessionWritten$.next(true);

@@ -6,6 +6,7 @@ import { Observable, take, tap } from "rxjs";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { visibility$ } from "@/observable/visibility";
 import { switchMap } from "rxjs/operators";
+import { editSessionWritten$ } from "@/observable/edit_session";
 
 export interface CreateSchemaArgs {
   name: String;
@@ -35,6 +36,7 @@ export function createSchema(
           tap((response) => {
             if (!response.error) {
               schemaCreated$.next(response.schema.pk);
+              editSessionWritten$.next(true);
             }
           }),
         );

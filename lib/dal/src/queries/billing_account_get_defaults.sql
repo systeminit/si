@@ -27,5 +27,5 @@ WHERE organization_belongs_to_billing_account.belongs_to_id = $3
   AND is_visible_v1($2, organization_belongs_to_billing_account.visibility_change_set_pk,
                     organization_belongs_to_billing_account.visibility_edit_session_pk,
                     organization_belongs_to_billing_account.visibility_deleted)
-ORDER BY id, visibility_change_set_pk ASC, visibility_edit_session_pk ASC
+ORDER BY id, visibility_change_set_pk DESC, visibility_edit_session_pk DESC
 LIMIT 1;
