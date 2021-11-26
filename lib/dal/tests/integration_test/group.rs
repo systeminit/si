@@ -34,11 +34,11 @@ async fn add_user() {
     let user_one = create_user(&txn, &nats, &tenancy, &visibility, &history_actor).await;
     let user_two = create_user(&txn, &nats, &tenancy, &visibility, &history_actor).await;
     group
-        .add_user(&txn, &nats, &history_actor, user_one.id())
+        .add_user(&txn, &nats, &visibility, &history_actor, user_one.id())
         .await
         .expect("cannot add user");
     group
-        .add_user(&txn, &nats, &history_actor, user_two.id())
+        .add_user(&txn, &nats, &visibility, &history_actor, user_two.id())
         .await
         .expect("cannot add user");
 }
@@ -58,19 +58,19 @@ async fn remove_user() {
     let user_one = create_user(&txn, &nats, &tenancy, &visibility, &history_actor).await;
     let user_two = create_user(&txn, &nats, &tenancy, &visibility, &history_actor).await;
     group
-        .add_user(&txn, &nats, &history_actor, user_one.id())
+        .add_user(&txn, &nats, &visibility, &history_actor, user_one.id())
         .await
         .expect("cannot remove user");
     group
-        .add_user(&txn, &nats, &history_actor, user_two.id())
+        .add_user(&txn, &nats, &visibility, &history_actor, user_two.id())
         .await
         .expect("cannot remove user");
     group
-        .remove_user(&txn, &nats, &history_actor, user_one.id())
+        .remove_user(&txn, &nats, &visibility, &history_actor, user_one.id())
         .await
         .expect("cannot remove user");
     group
-        .remove_user(&txn, &nats, &history_actor, user_two.id())
+        .remove_user(&txn, &nats, &visibility, &history_actor, user_two.id())
         .await
         .expect("cannot remove user");
 }
@@ -90,16 +90,16 @@ async fn users() {
     let user_one = create_user(&txn, &nats, &tenancy, &visibility, &history_actor).await;
     let user_two = create_user(&txn, &nats, &tenancy, &visibility, &history_actor).await;
     group
-        .add_user(&txn, &nats, &history_actor, user_one.id())
+        .add_user(&txn, &nats, &visibility, &history_actor, user_one.id())
         .await
         .expect("cannot add user");
     group
-        .add_user(&txn, &nats, &history_actor, user_two.id())
+        .add_user(&txn, &nats, &visibility, &history_actor, user_two.id())
         .await
         .expect("cannot add user");
 
     let all_users = group
-        .users(&txn)
+        .users(&txn, &visibility)
         .await
         .expect("cannot list users for group");
     assert_eq!(
@@ -109,11 +109,11 @@ async fn users() {
     );
 
     group
-        .remove_user(&txn, &nats, &history_actor, user_one.id())
+        .remove_user(&txn, &nats, &visibility, &history_actor, user_one.id())
         .await
         .expect("cannot remove user");
     let some_users = group
-        .users(&txn)
+        .users(&txn, &visibility)
         .await
         .expect("cannot list users for group");
     txn.commit().await.expect("cannot commit txn");

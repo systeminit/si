@@ -1,9 +1,9 @@
-use super::{SchemaResult, SchemaError};
-use crate::server::extract::{Authorization, NatsTxn, PgRoTxn, QueryVisibility};
-use axum::extract::Query;
-use axum::Json;
-use dal::{HistoryActor, Schema, SchemaId, SchemaKind, StandardModel, Tenancy, Visibility};
+use axum::{extract::Query, Json};
+use dal::{Schema, SchemaId, StandardModel, Tenancy, Visibility};
 use serde::{Deserialize, Serialize};
+
+use super::{SchemaError, SchemaResult};
+use crate::server::extract::{Authorization, PgRoTxn};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

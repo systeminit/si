@@ -1,5 +1,3 @@
-mod key_pair_box_public_key_serde;
-mod key_pair_box_secret_key_serde;
 use serde::{Deserialize, Serialize};
 use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use sodiumoxide::crypto::box_::{self, PublicKey as BoxPublicKey, SecretKey as BoxSecretKey};
@@ -11,6 +9,9 @@ use crate::{
     standard_model_belongs_to, BillingAccount, BillingAccountId, HistoryActor, HistoryEvent,
     HistoryEventError, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
 };
+
+mod key_pair_box_public_key_serde;
+mod key_pair_box_secret_key_serde;
 
 const PUBLIC_KEY_GET_CURRENT: &str = include_str!("./queries/public_key_get_current.sql");
 
@@ -78,8 +79,8 @@ impl KeyPair {
             .query_one(
                 "SELECT object FROM key_pair_create_v1($1, $2, $3, $4, $5)",
                 &[
-                    &tenancy,
-                    &visibility,
+                    tenancy,
+                    visibility,
                     &name,
                     &encode_public_key(&public_key),
                     &encode_secret_key(&secret_key),
@@ -88,13 +89,13 @@ impl KeyPair {
             .await?;
         let json: serde_json::Value = row.try_get("object")?;
         let _history_event = HistoryEvent::new(
-            &txn,
-            &nats,
+            txn,
+            nats,
             Self::history_event_label(vec!["create"]),
-            &history_actor,
+            history_actor,
             Self::history_event_message("created"),
             &serde_json::json![{ "visibility": &visibility }],
-            &tenancy,
+            tenancy,
         )
         .await?;
         let object = serde_json::from_value(json)?;

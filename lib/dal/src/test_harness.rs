@@ -164,9 +164,7 @@ pub async fn one_time_setup() -> Result<()> {
 }
 
 pub fn generate_fake_name() -> String {
-    let mut generator = Generator::with_naming(Name::Numbered);
-    let name = generator.next().unwrap();
-    return name;
+    Generator::with_naming(Name::Numbered).next().unwrap()
 }
 
 pub async fn create_change_set(
@@ -176,7 +174,7 @@ pub async fn create_change_set(
     history_actor: &HistoryActor,
 ) -> ChangeSet {
     let name = generate_fake_name();
-    ChangeSet::new(&txn, &nats, &tenancy, &history_actor, &name, None)
+    ChangeSet::new(txn, nats, tenancy, history_actor, &name, None)
         .await
         .expect("cannot create change_set")
 }
@@ -189,8 +187,8 @@ pub async fn create_edit_session(
 ) -> EditSession {
     let name = generate_fake_name();
     EditSession::new(
-        &txn,
-        &nats,
+        txn,
+        nats,
         &change_set.tenancy,
         history_actor,
         &change_set.pk,
@@ -224,17 +222,9 @@ pub async fn create_billing_account_with_name(
     history_actor: &HistoryActor,
     name: impl AsRef<str>,
 ) -> BillingAccount {
-    BillingAccount::new(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        &name,
-        None,
-    )
-    .await
-    .expect("cannot create billing_account")
+    BillingAccount::new(txn, nats, tenancy, visibility, history_actor, &name, None)
+        .await
+        .expect("cannot create billing_account")
 }
 
 pub async fn create_billing_account(
@@ -245,17 +235,9 @@ pub async fn create_billing_account(
     history_actor: &HistoryActor,
 ) -> BillingAccount {
     let name = generate_fake_name();
-    BillingAccount::new(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        &name,
-        None,
-    )
-    .await
-    .expect("cannot create billing_account")
+    BillingAccount::new(txn, nats, tenancy, visibility, history_actor, &name, None)
+        .await
+        .expect("cannot create billing_account")
 }
 
 pub async fn create_key_pair(
@@ -266,7 +248,7 @@ pub async fn create_key_pair(
     history_actor: &HistoryActor,
 ) -> KeyPair {
     let name = generate_fake_name();
-    KeyPair::new(&txn, &nats, &tenancy, &visibility, &history_actor, &name)
+    KeyPair::new(txn, nats, tenancy, visibility, history_actor, &name)
         .await
         .expect("cannot create key_pair")
 }
@@ -280,11 +262,11 @@ pub async fn create_user(
 ) -> User {
     let name = generate_fake_name();
     User::new(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
         &name,
         &format!("{}@test.systeminit.com", name),
         "liesAreTold",
@@ -301,7 +283,7 @@ pub async fn create_group(
     history_actor: &HistoryActor,
 ) -> Group {
     let name = generate_fake_name();
-    Group::new(&txn, &nats, &tenancy, &visibility, &history_actor, &name)
+    Group::new(txn, nats, tenancy, visibility, history_actor, &name)
         .await
         .expect("cannot create group")
 }
@@ -320,8 +302,8 @@ pub async fn billing_account_signup(
     let user_password = "snakes";
 
     let nba = BillingAccount::signup(
-        &txn,
-        &nats,
+        txn,
+        nats,
         &tenancy,
         &visibility,
         &history_actor,
@@ -334,7 +316,7 @@ pub async fn billing_account_signup(
     .expect("cannot signup a new billing_account");
     let auth_token = nba
         .user
-        .login(&txn, &secret_key, &nba.billing_account.id(), "snakes")
+        .login(txn, secret_key, nba.billing_account.id(), "snakes")
         .await
         .expect("cannot log in newly created user");
     (nba, auth_token)
@@ -349,17 +331,9 @@ pub async fn create_schema(
     kind: &SchemaKind,
 ) -> Schema {
     let name = generate_fake_name();
-    Schema::new(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        &name,
-        &kind,
-    )
-    .await
-    .expect("cannot create schema")
+    Schema::new(txn, nats, tenancy, visibility, history_actor, &name, kind)
+        .await
+        .expect("cannot create schema")
 }
 
 pub async fn create_schema_ui_menu(
@@ -369,7 +343,7 @@ pub async fn create_schema_ui_menu(
     visibility: &Visibility,
     history_actor: &HistoryActor,
 ) -> schema::UiMenu {
-    schema::UiMenu::new(&txn, &nats, &tenancy, &visibility, &history_actor)
+    schema::UiMenu::new(txn, nats, tenancy, visibility, history_actor)
         .await
         .expect("cannot create schema ui menu")
 }

@@ -2,9 +2,7 @@ use crate::test_setup;
 
 use dal::schema::SchemaKind;
 use dal::test_harness::{create_schema, create_schema_ui_menu};
-use dal::{
-    schema::UiMenu, HistoryActor, SchematicKind, StandardModel, Tenancy, Visibility,
-};
+use dal::{schema::UiMenu, HistoryActor, SchematicKind, StandardModel, Tenancy, Visibility};
 
 #[tokio::test]
 async fn new() {
@@ -34,22 +32,29 @@ async fn set_schema() {
         &history_actor,
         &SchemaKind::Concrete,
     )
-        .await;
+    .await;
     let schema_ui_menu =
         create_schema_ui_menu(&txn, &nats, &tenancy, &visibility, &history_actor).await;
 
     schema_ui_menu
-        .set_schema(&txn, &nats, &history_actor, schema.id())
+        .set_schema(&txn, &nats, &visibility, &history_actor, schema.id())
         .await
         .expect("cannot associate ui menu with schema");
-    let attached_schema = schema_ui_menu.schema(&txn).await.expect("cannot get schema").expect("should have a schema");
+    let attached_schema = schema_ui_menu
+        .schema(&txn, &visibility)
+        .await
+        .expect("cannot get schema")
+        .expect("should have a schema");
     assert_eq!(schema, attached_schema);
 
     schema_ui_menu
-        .unset_schema(&txn, &nats, &history_actor)
+        .unset_schema(&txn, &nats, &visibility, &history_actor)
         .await
         .expect("cannot associate ui menu with schema");
-    let attached_schema = schema_ui_menu.schema(&txn).await.expect("cannot get schema");
+    let attached_schema = schema_ui_menu
+        .schema(&txn, &visibility)
+        .await
+        .expect("cannot get schema");
     assert_eq!(attached_schema, None);
 }
 
@@ -67,18 +72,29 @@ async fn root_schematics() {
         &history_actor,
         &SchemaKind::Concrete,
     )
-        .await;
+    .await;
 
     let schema_ui_menu =
         create_schema_ui_menu(&txn, &nats, &tenancy, &visibility, &history_actor).await;
 
-    schema_ui_menu.add_root_schematic(&txn, &nats, &history_actor, root_schema.id()).await.expect("cannot add root schematic");
+    schema_ui_menu
+        .add_root_schematic(&txn, &nats, &visibility, &history_actor, root_schema.id())
+        .await
+        .expect("cannot add root schematic");
 
-    let root_schematics = schema_ui_menu.root_schematics(&txn).await.expect("cannot list root schematics");
+    let root_schematics = schema_ui_menu
+        .root_schematics(&txn, &visibility)
+        .await
+        .expect("cannot list root schematics");
     assert_eq!(root_schematics, vec![root_schema.clone()]);
 
-    schema_ui_menu.remove_root_schematic(&txn, &nats, &history_actor, root_schema.id()).await.expect("cannot add root schematic");
-    let no_root_schematics = schema_ui_menu.root_schematics(&txn).await.expect("cannot list root schematics");
+    schema_ui_menu
+        .remove_root_schematic(&txn, &nats, &visibility, &history_actor, root_schema.id())
+        .await
+        .expect("cannot add root schematic");
+    let no_root_schematics = schema_ui_menu
+        .root_schematics(&txn, &visibility)
+        .await
+        .expect("cannot list root schematics");
     assert_eq!(no_root_schematics, vec![]);
 }
-

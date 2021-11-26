@@ -1,4 +1,3 @@
-use crate::{pk, UserClaim};
 use jwt_simple::{
     algorithms::{RS256KeyPair, RS256PublicKey},
     prelude::{JWTClaims, RSAPublicKeyLike, Token},
@@ -10,6 +9,8 @@ use std::{fs::File, io::prelude::*};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::task::JoinError;
+
+use crate::{pk, UserClaim};
 
 const JWT_KEY_EXISTS: &str = include_str!("./queries/jwt_key_exists.sql");
 const JWT_KEY_GET_LATEST_PRIVATE_KEY: &str =
@@ -127,7 +128,7 @@ pub async fn validate_bearer_token(
         Token::decode_metadata(&token).map_err(|err| JwtKeyError::Metadata(format!("{}", err)))?;
     let key_id = metadata
         .key_id()
-        .ok_or(JwtKeyError::Metadata("missing key id".into()))?;
+        .ok_or_else(|| JwtKeyError::Metadata("missing key id".into()))?;
     let public_key = get_jwt_validation_key(txn, key_id).await?;
     let claims = tokio::task::spawn_blocking(move || {
         public_key
@@ -158,11 +159,11 @@ pub async fn validate_bearer_token_api_client(
         Token::decode_metadata(token).map_err(|err| JwtKeyError::Metadata(format!("{}", err)))?;
     let key_id = metadata
         .key_id()
-        .ok_or(JwtKeyError::Metadata("missing key id".into()))?;
+        .ok_or_else(|| JwtKeyError::Metadata("missing key id".into()))?;
 
     let public_key = get_jwt_validation_key(txn, key_id).await?;
     let claims = public_key
-        .verify_token::<ApiClaim>(&token, None)
+        .verify_token::<ApiClaim>(token, None)
         .map_err(|err| JwtKeyError::Verify(format!("{}", err)))?;
     Ok(claims)
 }
@@ -196,7 +197,7 @@ pub async fn create_jwt_key_if_missing(
     secret_key: &secretbox::Key,
 ) -> JwtKeyResult<()> {
     let rows = txn.query(JWT_KEY_EXISTS, &[]).await?;
-    if rows.len() > 0 {
+    if !rows.is_empty() {
         return Ok(());
     }
 
@@ -207,7 +208,7 @@ pub async fn create_jwt_key_if_missing(
     let mut private_key = String::new();
     private_file.read_to_string(&mut private_key)?;
     let nonce = secretbox::gen_nonce();
-    let encrypted_key = secretbox::seal(private_key.as_bytes(), &nonce, &secret_key);
+    let encrypted_key = secretbox::seal(private_key.as_bytes(), &nonce, secret_key);
     let base64_encrypted_key = base64::encode(encrypted_key);
 
     let mut public_file = File::open(public_filename)?;

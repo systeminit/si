@@ -1,9 +1,10 @@
 use axum::extract::Query;
-use super::SchemaResult;
-use crate::server::extract::{Authorization, PgRoTxn, QueryVisibility};
 use axum::Json;
 use dal::{Schema, StandardModel, Tenancy, Visibility};
 use serde::{Deserialize, Serialize};
+
+use super::SchemaResult;
+use crate::server::extract::{Authorization, PgRoTxn};
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct ListSchemaRequest {

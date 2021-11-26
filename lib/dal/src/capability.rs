@@ -67,15 +67,15 @@ impl Capability {
         let row = txn
             .query_one(
                 "SELECT object FROM capability_create_v1($1, $2, $3, $4)",
-                &[&tenancy, &visibility, &subject, &action],
+                &[tenancy, visibility, &subject, &action],
             )
             .await?;
         let object = standard_model::finish_create_from_row(
-            &txn,
-            &nats,
-            &tenancy,
-            &visibility,
-            &history_actor,
+            txn,
+            nats,
+            tenancy,
+            visibility,
+            history_actor,
             row,
         )
         .await?;

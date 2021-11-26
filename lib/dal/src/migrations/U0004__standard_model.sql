@@ -53,7 +53,7 @@ BEGIN
                                 '                    %1$I.visibility_change_set_pk,' ||
                                 '                    %1$I.visibility_edit_session_pk,' ||
                                 '                    %1$I.visibility_deleted)' ||
-                                ' ORDER BY id, visibility_change_set_pk ASC, visibility_edit_session_pk ASC' ||
+                                ' ORDER BY id, visibility_change_set_pk DESC, visibility_edit_session_pk DESC' ||
                                 ' LIMIT 1'
         , this_table, this_id, this_tenancy, this_visibility);
 END ;

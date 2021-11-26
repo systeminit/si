@@ -1,11 +1,13 @@
 use axum::extract::Query;
-use super::EditFieldResult;
-use crate::server::extract::{Authorization, NatsTxn, PgRwTxn};
 use axum::Json;
-use chrono::Utc;
-use dal::{EditSession, HistoryActor, Tenancy, edit_field::{EditFieldObjectKind, EditFields}, Visibility, Schema, schema};
+use dal::{
+    edit_field::{EditFieldAble, EditFieldObjectKind, EditFields},
+    schema, Schema, Tenancy, Visibility,
+};
 use serde::{Deserialize, Serialize};
-use dal::edit_field::EditFieldAble;
+
+use super::EditFieldResult;
+use crate::server::extract::{Authorization, PgRwTxn};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -35,12 +37,14 @@ pub async fn get_edit_fields(
             Schema::get_edit_fields(&txn, &tenancy, &request.visibility, &request.id.into()).await?
         }
         EditFieldObjectKind::SchemaUiMenu => {
-            schema::UiMenu::get_edit_fields(&txn, &tenancy, &request.visibility, &request.id.into()).await?
+            schema::UiMenu::get_edit_fields(&txn, &tenancy, &request.visibility, &request.id.into())
+                .await?
         }
-
     };
 
     txn.commit().await?;
 
-    Ok(Json(GetEditFieldsResponse { fields: edit_fields }))
+    Ok(Json(GetEditFieldsResponse {
+        fields: edit_fields,
+    }))
 }

@@ -1,10 +1,11 @@
-use axum::body::{Bytes, Full};
-use axum::http::StatusCode;
-use axum::response::IntoResponse;
-use axum::routing::{get, post};
-use axum::Json;
-use axum::Router;
-use dal::{EditSessionError, SchemaError, StandardModelError};
+use axum::{
+    body::{Bytes, Full},
+    http::StatusCode,
+    response::IntoResponse,
+    routing::{get, post},
+    Json, Router,
+};
+use dal::{SchemaError, StandardModelError};
 use std::convert::Infallible;
 use thiserror::Error;
 
@@ -30,13 +31,15 @@ impl IntoResponse for EditFieldError {
     type BodyError = Infallible;
 
     fn into_response(self) -> hyper::Response<Self::Body> {
-        let (status, error_message) = match self {
-            _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
-        };
+        let (status, error_message) = (StatusCode::INTERNAL_SERVER_ERROR, self.to_string());
 
-        let body = Json(
-            serde_json::json!({ "error": { "message": error_message, "code": 42, "statusCode": status.as_u16() } }),
-        );
+        let body = Json(serde_json::json!({
+            "error": {
+                "message": error_message,
+                "code": 42,
+                "statusCode": status.as_u16(),
+            },
+        }));
 
         (status, body).into_response()
     }
@@ -44,10 +47,7 @@ impl IntoResponse for EditFieldError {
 
 pub fn routes() -> Router {
     Router::new()
-        .route(
-            "/get_edit_fields",
-            get(get_edit_fields::get_edit_fields),
-        )
+        .route("/get_edit_fields", get(get_edit_fields::get_edit_fields))
         .route(
             "/update_from_edit_field",
             post(update_from_edit_field::update_from_edit_field),

@@ -154,7 +154,13 @@ async fn set_description() {
     .await;
 
     billing_account
-        .set_description(&txn, &nats, &visibility, &history_actor, Some("smooth".to_string()))
+        .set_description(
+            &txn,
+            &nats,
+            &visibility,
+            &history_actor,
+            Some("smooth".to_string()),
+        )
         .await
         .expect("cannot set description");
     assert_eq!(billing_account.description(), Some("smooth"));

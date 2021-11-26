@@ -1,11 +1,9 @@
-use crate::edit_field::EditFieldError::VisibilityDiffMissingHeadValue;
-use crate::{HistoryActor, LabelList, Tenancy, Visibility};
 use serde::{Deserialize, Serialize};
 use si_data::{NatsTxn, PgTxn};
-use std::collections::HashMap;
-use std::future::Future;
-use std::pin::Pin;
+use std::{future::Future, pin::Pin};
 use thiserror::Error;
+
+use crate::{HistoryActor, LabelList, Tenancy, Visibility};
 
 #[derive(Error, Debug)]
 pub enum EditFieldError {
@@ -68,6 +66,7 @@ pub struct EditField {
 }
 
 impl EditField {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         name: String,
         path: Vec<String>,
@@ -106,7 +105,13 @@ pub struct TextWidget {}
 
 impl TextWidget {
     pub fn new() -> Self {
-        TextWidget {}
+        Self::default()
+    }
+}
+
+impl Default for TextWidget {
+    fn default() -> Self {
+        Self {}
     }
 }
 
@@ -169,6 +174,7 @@ pub trait EditFieldAble {
         id: &Self::Id,
     ) -> Result<EditFields, Self::ErrorKind>;
 
+    #[allow(clippy::too_many_arguments)]
     async fn update_from_edit_field(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
@@ -203,7 +209,6 @@ pub fn value_and_visiblity_diff_option<Obj, Value: Eq + Serialize + ?Sized>(
     }
     Ok((value, visibility_diff))
 }
-
 
 pub fn value_and_visiblity_diff<Obj, Value: Eq + Serialize + ?Sized>(
     visibility: &Visibility,

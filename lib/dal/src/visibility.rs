@@ -64,7 +64,7 @@ impl Visibility {
 
     #[instrument]
     pub fn in_edit_session(&self) -> bool {
-       self.edit_session_pk != NO_EDIT_SESSION_PK
+        self.edit_session_pk != NO_EDIT_SESSION_PK
     }
 
     #[instrument]
@@ -104,7 +104,7 @@ impl postgres_types::ToSql for Visibility {
         Self: Sized,
     {
         let json = serde_json::to_value(self)?;
-        postgres_types::ToSql::to_sql(&json, &ty, out)
+        postgres_types::ToSql::to_sql(&json, ty, out)
     }
 
     fn accepts(ty: &postgres_types::Type) -> bool
@@ -120,6 +120,6 @@ impl postgres_types::ToSql for Visibility {
         out: &mut postgres_types::private::BytesMut,
     ) -> Result<postgres_types::IsNull, Box<dyn std::error::Error + Sync + Send>> {
         let json = serde_json::to_value(self)?;
-        postgres_types::ToSql::to_sql(&json, &ty, out)
+        postgres_types::ToSql::to_sql(&json, ty, out)
     }
 }

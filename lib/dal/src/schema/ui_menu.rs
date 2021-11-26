@@ -1,18 +1,19 @@
-use super::{Schema, SchemaId, SchemaResult};
-use crate::edit_field::{
-    value_and_visiblity_diff, value_and_visiblity_diff_option, EditField, EditFieldAble,
-    EditFieldDataType, EditFieldObjectKind, EditFields, RequiredValidator, SelectWidget,
-    TextWidget, Validator, Widget,
-};
-use crate::{
-    impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    standard_model_many_to_many, HistoryActor, LabelList, SchemaError, SchemaKind, SchematicKind,
-    StandardModel, Tenancy, Timestamp, Visibility,
-};
 use jwt_simple::reexports::serde_json::Value;
 use serde::{Deserialize, Serialize};
 use si_data::{NatsTxn, PgTxn};
 use telemetry::prelude::*;
+
+use super::{Schema, SchemaId, SchemaResult};
+use crate::{
+    edit_field::{
+        value_and_visiblity_diff, value_and_visiblity_diff_option, EditField, EditFieldAble,
+        EditFieldDataType, EditFieldObjectKind, EditFields, RequiredValidator, SelectWidget,
+        TextWidget, Validator, Widget,
+    },
+    impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
+    standard_model_many_to_many, HistoryActor, LabelList, SchemaError, SchematicKind,
+    StandardModel, Tenancy, Timestamp, Visibility,
+};
 
 pk!(UiMenuPk);
 pk!(UiMenuId);
@@ -57,11 +58,11 @@ impl UiMenu {
             )
             .await?;
         let object = standard_model::finish_create_from_row(
-            &txn,
-            &nats,
-            &tenancy,
-            &visibility,
-            &history_actor,
+            txn,
+            nats,
+            tenancy,
+            visibility,
+            history_actor,
             row,
         )
         .await?;
@@ -109,38 +110,38 @@ impl EditFieldAble for UiMenu {
         visibility: &Visibility,
         id: &Self::Id,
     ) -> Result<EditFields, Self::ErrorKind> {
-        let object = UiMenu::get_by_id(&txn, &tenancy, &visibility, &id)
+        let object = UiMenu::get_by_id(txn, tenancy, visibility, id)
             .await?
             .ok_or(SchemaError::UiMenuNotFound(*id))?;
         let head_obj: Option<UiMenu> = if visibility.in_change_set() {
             let head_visibility = Visibility::new_head(visibility.deleted);
-            UiMenu::get_by_id(&txn, &tenancy, &head_visibility, &id).await?
+            UiMenu::get_by_id(txn, tenancy, &head_visibility, id).await?
         } else {
             None
         };
         let change_set_obj: Option<UiMenu> = if visibility.in_change_set() {
             let change_set_visibility =
                 Visibility::new_change_set(visibility.change_set_pk, visibility.deleted);
-            UiMenu::get_by_id(&txn, &tenancy, &change_set_visibility, &id).await?
+            UiMenu::get_by_id(txn, tenancy, &change_set_visibility, id).await?
         } else {
             None
         };
         let (name_value, name_visibility_diff) = value_and_visiblity_diff_option(
-            &visibility,
+            visibility,
             Some(&object),
             UiMenu::name,
             head_obj.as_ref(),
             change_set_obj.as_ref(),
         )?;
         let (category_value, category_visibility_diff) = value_and_visiblity_diff_option(
-            &visibility,
+            visibility,
             Some(&object),
             UiMenu::category,
             head_obj.as_ref(),
             change_set_obj.as_ref(),
         )?;
         let (schematic_kind_value, schematic_kind_visibility_diff) = value_and_visiblity_diff(
-            &visibility,
+            visibility,
             Some(&object),
             UiMenu::schematic_kind,
             head_obj.as_ref(),
@@ -198,7 +199,7 @@ impl EditFieldAble for UiMenu {
         value: Option<Value>,
     ) -> Result<(), Self::ErrorKind> {
         let edit_field_id = edit_field_id.as_ref();
-        let mut object = UiMenu::get_by_id(&txn, &tenancy, &visibility, &id)
+        let mut object = UiMenu::get_by_id(txn, tenancy, visibility, &id)
             .await?
             .ok_or(SchemaError::UiMenuNotFound(id))?;
         match edit_field_id {
@@ -206,10 +207,9 @@ impl EditFieldAble for UiMenu {
             // since it was optional in the first place.
             "name" => match value {
                 Some(json_value) => {
-                    let value = json_value
-                        .as_str().map(|s| s.to_string());
+                    let value = json_value.as_str().map(|s| s.to_string());
                     object
-                        .set_name(&txn, &nats, &visibility, &history_actor, value)
+                        .set_name(txn, nats, visibility, history_actor, value)
                         .await?;
                 }
                 None => panic!("cannot set the value"),
@@ -218,7 +218,7 @@ impl EditFieldAble for UiMenu {
                 Some(json_value) => {
                     let value = json_value.as_str().map(|s| s.to_string());
                     object
-                        .set_category(&txn, &nats, &visibility, &history_actor, value)
+                        .set_category(txn, nats, visibility, history_actor, value)
                         .await?;
                 }
                 None => panic!("cannot set the value"),
@@ -228,14 +228,13 @@ impl EditFieldAble for UiMenu {
                     let value: SchematicKind = serde_json::from_value(json_value)
                         .expect("value must be a string, and it aint");
                     object
-                        .set_schematic_kind(&txn, &nats, &visibility, &history_actor, value)
+                        .set_schematic_kind(txn, nats, visibility, history_actor, value)
                         .await?;
                 }
                 None => panic!("cannot set the value"),
-            }
+            },
             _ => {}
         }
         Ok(())
-
     }
 }

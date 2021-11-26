@@ -1,23 +1,23 @@
-use petgraph::visit::Walker;
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
-
 use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use telemetry::prelude::*;
-pub use ui_menu::UiMenu;
+use thiserror::Error;
 
-use crate::edit_field::{
-    value_and_visiblity_diff, ArrayWidget, EditField, EditFieldAble, EditFieldDataType,
-    EditFieldError, EditFieldObjectKind, EditFieldResult, EditFields, HeaderWidget,
-    RequiredValidator, SelectWidget, TextWidget, Validator, VisibilityDiff, Widget,
-};
-use crate::schema::ui_menu::UiMenuId;
 use crate::{
-    impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_has_many,
-    standard_model_many_to_many, BillingAccount, BillingAccountId, HistoryActor, HistoryEventError,
-    LabelEntry, LabelList, Organization, OrganizationId, StandardModel, StandardModelError,
-    Tenancy, Timestamp, Visibility, Workspace, WorkspaceId, WsEvent, WsEventError, WsPayload,
+    edit_field::{
+        value_and_visiblity_diff, ArrayWidget, EditField, EditFieldAble, EditFieldDataType,
+        EditFieldError, EditFieldObjectKind, EditFields, HeaderWidget, RequiredValidator,
+        SelectWidget, TextWidget, Validator, VisibilityDiff, Widget,
+    },
+    impl_standard_model, pk,
+    schema::ui_menu::UiMenuId,
+    standard_model, standard_model_accessor, standard_model_has_many, standard_model_many_to_many,
+    BillingAccount, BillingAccountId, HistoryActor, HistoryEventError, LabelEntry, LabelList,
+    Organization, OrganizationId, StandardModel, StandardModelError, Tenancy, Timestamp,
+    Visibility, Workspace, WorkspaceId, WsEventError,
 };
+
+pub use ui_menu::UiMenu;
 
 pub mod ui_menu;
 
@@ -109,11 +109,11 @@ impl Schema {
             )
             .await?;
         let object = standard_model::finish_create_from_row(
-            &txn,
-            &nats,
-            &tenancy,
-            &visibility,
-            &history_actor,
+            txn,
+            nats,
+            tenancy,
+            visibility,
+            history_actor,
             row,
         )
         .await?;
@@ -199,31 +199,31 @@ impl EditFieldAble for Schema {
         visibility: &Visibility,
         id: &SchemaId,
     ) -> SchemaResult<EditFields> {
-        let object = Schema::get_by_id(&txn, &tenancy, &visibility, &id)
+        let object = Schema::get_by_id(txn, tenancy, visibility, id)
             .await?
             .ok_or(SchemaError::NotFound(*id))?;
         let head_obj: Option<Schema> = if visibility.in_change_set() {
             let head_visibility = Visibility::new_head(visibility.deleted);
-            Schema::get_by_id(&txn, &tenancy, &head_visibility, &id).await?
+            Schema::get_by_id(txn, tenancy, &head_visibility, id).await?
         } else {
             None
         };
         let change_set_obj: Option<Schema> = if visibility.in_change_set() {
             let change_set_visibility =
                 Visibility::new_change_set(visibility.change_set_pk, visibility.deleted);
-            Schema::get_by_id(&txn, &tenancy, &change_set_visibility, &id).await?
+            Schema::get_by_id(txn, tenancy, &change_set_visibility, id).await?
         } else {
             None
         };
         let (name_value, name_visibility_diff) = value_and_visiblity_diff(
-            &visibility,
+            visibility,
             Some(&object),
             Schema::name,
             head_obj.as_ref(),
             change_set_obj.as_ref(),
         )?;
         let (kind_value, kind_visibility_diff) = value_and_visiblity_diff(
-            &visibility,
+            visibility,
             Some(&object),
             Schema::kind,
             head_obj.as_ref(),
@@ -231,13 +231,9 @@ impl EditFieldAble for Schema {
         )?;
 
         let mut ui_menu_items: Vec<EditFields> = vec![];
-        dbg!("----");
-        dbg!(&object);
-        dbg!(&visibility);
-        dbg!("----");
-        for ui_menu in object.ui_menus(&txn).await?.into_iter() {
+        for ui_menu in object.ui_menus(txn, visibility).await?.into_iter() {
             let edit_fields =
-                UiMenu::get_edit_fields(&txn, &tenancy, &visibility, ui_menu.id()).await?;
+                UiMenu::get_edit_fields(txn, tenancy, visibility, ui_menu.id()).await?;
             ui_menu_items.push(edit_fields);
         }
 
@@ -315,7 +311,7 @@ impl EditFieldAble for Schema {
         value: Option<serde_json::Value>,
     ) -> SchemaResult<()> {
         let edit_field_id = edit_field_id.as_ref();
-        let mut object = Schema::get_by_id(&txn, &tenancy, &visibility, &id)
+        let mut object = Schema::get_by_id(txn, tenancy, visibility, &id)
             .await?
             .ok_or(SchemaError::NotFound(id))?;
         // value: None = remove value, Some(v) = set value
@@ -326,7 +322,7 @@ impl EditFieldAble for Schema {
                         .as_str()
                         .expect("value must be a string, and it aint");
                     object
-                        .set_name(&txn, &nats, &visibility, &history_actor, value)
+                        .set_name(txn, nats, visibility, history_actor, value)
                         .await?;
                 }
                 None => panic!("cannot set the value"),
@@ -336,15 +332,17 @@ impl EditFieldAble for Schema {
                     let value: SchemaKind = serde_json::from_value(json_value)
                         .expect("value must be a string, and it aint");
                     object
-                        .set_kind(&txn, &nats, &visibility, &history_actor, value)
+                        .set_kind(txn, nats, visibility, history_actor, value)
                         .await?;
                 }
                 None => panic!("cannot set the value"),
             },
             "ui.menuItems" => {
                 let new_ui_menu =
-                    UiMenu::new(&txn, &nats, &tenancy, &visibility, &history_actor).await?;
-                new_ui_menu.set_schema(&txn, &nats, &history_actor, object.id()).await?;
+                    UiMenu::new(txn, nats, tenancy, visibility, history_actor).await?;
+                new_ui_menu
+                    .set_schema(txn, nats, visibility, history_actor, object.id())
+                    .await?;
             }
             _ => {}
         }

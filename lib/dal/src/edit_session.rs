@@ -1,12 +1,14 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use strum_macros::{Display, EnumString};
+use telemetry::prelude::*;
 use thiserror::Error;
 
-use si_data::{NatsError, NatsTxn, PgError, PgTxn};
-use telemetry::prelude::*;
-
-use crate::{ChangeSetPk, HistoryActor, HistoryEvent, HistoryEventError, pk, standard_model::object_option_from_row_option, StandardModelError, Tenancy, Timestamp, WsEvent, WsEventError, WsPayload};
+use crate::{
+    pk, standard_model::object_option_from_row_option, ChangeSetPk, HistoryActor, HistoryEvent,
+    HistoryEventError, StandardModelError, Tenancy, Timestamp, WsEvent, WsEventError, WsPayload,
+};
 
 const EDIT_SESSION_GET_BY_PK: &str = include_str!("./queries/edit_session_get_by_pk.sql");
 
@@ -83,13 +85,13 @@ impl EditSession {
         // TODO(fnichol): determine subject(s) for publishing
         nats.publish("editSession", &json).await?;
         let _history_event = HistoryEvent::new(
-            &txn,
-            &nats,
+            txn,
+            nats,
             "edit_session.create",
-            &history_actor,
+            history_actor,
             "Edit Session created",
             &json,
-            &tenancy,
+            tenancy,
         )
         .await?;
         let object: Self = serde_json::from_value(json)?;
@@ -127,16 +129,18 @@ impl EditSession {
         self.timestamp.updated_at = updated_at;
         self.status = EditSessionStatus::Saved;
         let _history_event = HistoryEvent::new(
-            &txn,
-            &nats,
+            txn,
+            nats,
             "edit_session.save",
-            &history_actor,
+            history_actor,
             "Edit Session saved",
             &serde_json::json![{ "pk": &self.pk }],
             &self.tenancy,
         )
         .await?;
-        WsEvent::edit_session_saved(&self, history_actor).publish(&nats).await?;
+        WsEvent::edit_session_saved(self, history_actor)
+            .publish(nats)
+            .await?;
         Ok(())
     }
 
@@ -157,21 +161,24 @@ impl EditSession {
         self.timestamp.updated_at = updated_at;
         self.status = EditSessionStatus::Canceled;
         let _history_event = HistoryEvent::new(
-            &txn,
-            &nats,
+            txn,
+            nats,
             "edit_session.cancel",
-            &history_actor,
+            history_actor,
             "Edit Session cancelled",
             &serde_json::json![{ "pk": &self.pk }],
             &self.tenancy,
         )
-            .await?;
+        .await?;
         Ok(())
     }
 }
 
 impl WsEvent {
-    pub fn edit_session_saved(edit_session: &EditSession, history_actor: impl Into<HistoryActor>) -> Self {
+    pub fn edit_session_saved(
+        edit_session: &EditSession,
+        history_actor: impl Into<HistoryActor>,
+    ) -> Self {
         let billing_account_ids = WsEvent::billing_account_id_from_tenancy(&edit_session.tenancy);
         let history_actor = history_actor.into();
         WsEvent::new(
@@ -181,4 +188,3 @@ impl WsEvent {
         )
     }
 }
-

@@ -61,9 +61,6 @@ pub fn object_option_from_row_option<OBJECT: DeserializeOwned>(
     match row_option {
         Some(row) => {
             let json: serde_json::Value = row.try_get("object")?;
-            dbg!("----- raw json -----");
-            dbg!(&json);
-            dbg!("----- end raw json -----");
             let object: OBJECT = serde_json::from_value(json)?;
             Ok(Some(object))
         }
@@ -143,9 +140,10 @@ pub async fn has_many<ID: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
             ],
         )
         .await?;
-    Ok(objects_from_rows(rows)?)
+    objects_from_rows(rows)
 }
 
+#[allow(clippy::too_many_arguments)]
 #[instrument(skip(txn))]
 pub async fn many_to_many<
     LeftId: Send + Sync + ToSql,
@@ -175,7 +173,7 @@ pub async fn many_to_many<
             ],
         )
         .await?;
-    Ok(objects_from_rows(rows)?)
+    objects_from_rows(rows)
 }
 
 #[instrument(skip(txn))]
@@ -290,7 +288,7 @@ pub async fn list<OBJECT: DeserializeOwned>(
             &[&table, &tenancy, &visibility],
         )
         .await?;
-    Ok(objects_from_rows(rows)?)
+    objects_from_rows(rows)
 }
 
 #[instrument(skip(txn))]
@@ -338,13 +336,13 @@ pub async fn finish_create_from_row<Object: Send + Sync + DeserializeOwned + Sta
 ) -> StandardModelResult<Object> {
     let json: serde_json::Value = row.try_get("object")?;
     let _history_event = HistoryEvent::new(
-        &txn,
-        &nats,
+        txn,
+        nats,
         Object::history_event_label(vec!["create"]),
-        &history_actor,
+        history_actor,
         Object::history_event_message("created"),
         &serde_json::json![{ "visibility": &visibility }],
-        &tenancy,
+        tenancy,
     )
     .await?;
     let object: Object = serde_json::from_value(json)?;
@@ -385,7 +383,7 @@ pub trait StandardModel {
     where
         Self: Sized + DeserializeOwned,
     {
-        let object = crate::standard_model::get_by_pk(&txn, Self::table_name(), &pk).await?;
+        let object = crate::standard_model::get_by_pk(txn, Self::table_name(), &pk).await?;
         Ok(object)
     }
 
@@ -400,7 +398,7 @@ pub trait StandardModel {
         Self: Sized + DeserializeOwned,
     {
         let object =
-            crate::standard_model::get_by_id(&txn, Self::table_name(), &tenancy, &visibility, &id)
+            crate::standard_model::get_by_id(txn, Self::table_name(), tenancy, visibility, &id)
                 .await?;
         Ok(object)
     }
@@ -415,7 +413,7 @@ pub trait StandardModel {
         Self: Sized + DeserializeOwned,
     {
         let result =
-            crate::standard_model::list(&txn, Self::table_name(), &tenancy, &visibility).await?;
+            crate::standard_model::list(txn, Self::table_name(), tenancy, visibility).await?;
         Ok(result)
     }
 
@@ -430,18 +428,29 @@ pub trait StandardModel {
         Self: Send + Sync,
     {
         let updated_at: chrono::DateTime<chrono::Utc> =
-            crate::standard_model::delete(&txn, Self::table_name(), self.tenancy(), self.pk())
+            crate::standard_model::delete(txn, Self::table_name(), self.tenancy(), self.pk())
                 .await?;
+        // TODO(fnichol): I think that mutating our own visibility is likely okay in this
+        // situation, as opposed to passing in an explicit visbility. The consequence is that
+        // you'll be setting *this* object to be in a deleted state, no matter its current
+        // visibility. This may prove to be sufficiently unsafe and warrents an explicitly passed
+        // visibility when deleting. As it stands right now, it would be maximally safe to fetch
+        // this object by id for the target visibility (with `deleted = false`) and then delete
+        // *taht* instance.
         self.visibility_mut().deleted = true;
         self.timestamp_mut().updated_at = updated_at;
         let _history_event = crate::HistoryEvent::new(
-            &txn,
-            &nats,
+            txn,
+            nats,
             &Self::history_event_label(vec!["deleted"]),
-            &history_actor,
+            history_actor,
             &Self::history_event_message("deleted"),
-            &serde_json::json![{ "pk": self.pk(), "id": self.id(), "visibility": self.visibility() }],
-            &self.tenancy(),
+            &serde_json::json![{
+                "pk": self.pk(),
+                "id": self.id(),
+                "visibility": self.visibility(),
+            }],
+            self.tenancy(),
         )
         .await?;
         Ok(())
@@ -458,18 +467,23 @@ pub trait StandardModel {
         Self: Send + Sync,
     {
         let updated_at: chrono::DateTime<chrono::Utc> =
-            crate::standard_model::undelete(&txn, Self::table_name(), self.tenancy(), self.pk())
+            crate::standard_model::undelete(txn, Self::table_name(), self.tenancy(), self.pk())
                 .await?;
+        // TODO(fnichol): See the `Self.delete()` method for notes and caution.
         self.visibility_mut().deleted = false;
         self.timestamp_mut().updated_at = updated_at;
         let _history_event = crate::HistoryEvent::new(
-            &txn,
-            &nats,
+            txn,
+            nats,
             &Self::history_event_label(vec!["undeleted"]),
-            &history_actor,
+            history_actor,
             &Self::history_event_message("undeleted"),
-            &serde_json::json![{ "pk": self.pk(), "id": self.id(), "visibility": self.visibility() }],
-            &self.tenancy(),
+            &serde_json::json![{
+                "pk": self.pk(),
+                "id": self.id(),
+                "visibility": self.visibility(),
+            }],
+            self.tenancy(),
         )
         .await?;
         Ok(())

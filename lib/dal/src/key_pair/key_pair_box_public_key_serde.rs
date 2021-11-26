@@ -17,8 +17,7 @@ where
     let s = String::deserialize(deserializer)?;
     let box_buffer =
         base64::decode_config(s, base64::STANDARD_NO_PAD).map_err(serde::de::Error::custom)?;
-    let pk = BoxPublicKey::from_slice(&box_buffer).ok_or(serde::de::Error::custom(format!(
-        "cannot deserialize public key"
-    )));
-    pk
+
+    BoxPublicKey::from_slice(&box_buffer)
+        .ok_or_else(|| serde::de::Error::custom("cannot deserialize public key"))
 }

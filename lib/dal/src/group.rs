@@ -65,15 +65,15 @@ impl Group {
         let row = txn
             .query_one(
                 "SELECT object FROM group_create_v1($1, $2, $3)",
-                &[&tenancy, &visibility, &name],
+                &[tenancy, visibility, &name],
             )
             .await?;
         let object = standard_model::finish_create_from_row(
-            &txn,
-            &nats,
-            &tenancy,
-            &visibility,
-            &history_actor,
+            txn,
+            nats,
+            tenancy,
+            visibility,
+            history_actor,
             row,
         )
         .await?;

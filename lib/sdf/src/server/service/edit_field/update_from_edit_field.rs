@@ -1,10 +1,12 @@
+use axum::Json;
+use dal::{
+    edit_field::{EditFieldAble, EditFieldObjectKind},
+    schema, HistoryActor, Schema, Tenancy, Visibility,
+};
+use serde::{Deserialize, Serialize};
+
 use super::EditFieldResult;
 use crate::server::extract::{Authorization, NatsTxn, PgRwTxn};
-use axum::Json;
-use chrono::Utc;
-use dal::edit_field::EditFieldAble;
-use dal::{edit_field::{EditFieldObjectKind, EditFields}, EditSession, HistoryActor, Schema, schematic, Tenancy, Visibility, schema};
-use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -59,8 +61,8 @@ pub async fn update_from_edit_field(
                 request.edit_field_id,
                 request.value,
             )
-                .await?
-        },
+            .await?
+        }
     };
 
     txn.commit().await?;

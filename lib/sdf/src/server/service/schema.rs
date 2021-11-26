@@ -9,8 +9,8 @@ use std::convert::Infallible;
 use thiserror::Error;
 
 pub mod create_schema;
-pub mod list_schemas;
 pub mod get_schema;
+pub mod list_schemas;
 
 #[derive(Debug, Error)]
 pub enum SchemaError {
@@ -47,7 +47,8 @@ impl IntoResponse for SchemaError {
 }
 
 pub fn routes() -> Router {
-    Router::new().route("/create_schema", post(create_schema::create_schema))
+    Router::new()
+        .route("/create_schema", post(create_schema::create_schema))
         .route("/list_schemas", get(list_schemas::list_schemas))
         .route("/get_schema", get(get_schema::get_schema))
 }

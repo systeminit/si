@@ -6,6 +6,7 @@ use thiserror::Error;
 pub mod billing_account;
 pub mod capability;
 pub mod change_set;
+pub mod edit_field;
 pub mod edit_session;
 pub mod group;
 pub mod history_event;
@@ -14,6 +15,7 @@ pub mod key_pair;
 pub mod label_list;
 pub mod organization;
 pub mod schema;
+pub mod schematic;
 pub mod standard_accessors;
 pub mod standard_model;
 pub mod standard_pk;
@@ -24,8 +26,6 @@ pub mod user;
 pub mod visibility;
 pub mod workspace;
 pub mod ws_event;
-pub mod edit_field;
-pub mod schematic;
 
 pub use billing_account::{
     BillingAccount, BillingAccountDefaults, BillingAccountError, BillingAccountId, BillingAccountPk,
@@ -44,6 +44,7 @@ pub use organization::{
     Organization, OrganizationError, OrganizationId, OrganizationPk, OrganizationResult,
 };
 pub use schema::{Schema, SchemaError, SchemaId, SchemaKind, SchemaPk};
+pub use schematic::SchematicKind;
 pub use standard_model::{StandardModel, StandardModelError, StandardModelResult};
 pub use tenancy::{Tenancy, TenancyError};
 pub use timestamp::{Timestamp, TimestampError};
@@ -51,7 +52,6 @@ pub use user::{User, UserClaim, UserError, UserId, UserResult};
 pub use visibility::{Visibility, VisibilityError};
 pub use workspace::{Workspace, WorkspaceError, WorkspaceId, WorkspacePk, WorkspaceResult};
 pub use ws_event::{WsEvent, WsEventError, WsPayload};
-pub use schematic::SchematicKind;
 
 mod embedded {
     use refinery::embed_migrations;
@@ -91,9 +91,10 @@ pub async fn migrate_builtin_schemas(pg: &PgPool, nats: &NatsClient) -> ModelRes
 }
 
 pub fn generate_name(name: Option<String>) -> String {
-    if name.is_some() {
-        return name.unwrap();
+    if let Some(name) = name {
+        return name;
     }
+
     let mut rng = rand::thread_rng();
     let unique_id: String = (0..4)
         .map(|_| {
@@ -101,5 +102,5 @@ pub fn generate_name(name: Option<String>) -> String {
             NAME_CHARSET[idx] as char
         })
         .collect();
-    return format!("si-{}", unique_id);
+    format!("si-{}", unique_id)
 }
