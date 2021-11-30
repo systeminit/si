@@ -36,6 +36,15 @@ pub async fn get_edit_fields(
         EditFieldObjectKind::Schema => {
             Schema::get_edit_fields(&txn, &tenancy, &request.visibility, &request.id.into()).await?
         }
+        EditFieldObjectKind::SchemaVariant => {
+            schema::SchemaVariant::get_edit_fields(
+                &txn,
+                &tenancy,
+                &request.visibility,
+                &request.id.into(),
+            )
+            .await?
+        }
         EditFieldObjectKind::SchemaUiMenu => {
             schema::UiMenu::get_edit_fields(&txn, &tenancy, &request.visibility, &request.id.into())
                 .await?

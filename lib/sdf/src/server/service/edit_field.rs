@@ -5,7 +5,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use dal::{SchemaError, StandardModelError};
+use dal::{schema::variant::SchemaVariantError, SchemaError, StandardModelError};
 use std::convert::Infallible;
 use thiserror::Error;
 
@@ -21,7 +21,9 @@ pub enum EditFieldError {
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
     #[error("schema error: {0}")]
-    SchemaError(#[from] SchemaError),
+    Schema(#[from] SchemaError),
+    #[error("schema error: {0}")]
+    SchemaVariant(#[from] SchemaVariantError),
 }
 
 pub type EditFieldResult<T> = std::result::Result<T, EditFieldError>;

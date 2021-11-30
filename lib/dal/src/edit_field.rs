@@ -41,6 +41,7 @@ pub enum Widget {
 pub enum EditFieldObjectKind {
     Schema,
     SchemaUiMenu,
+    SchemaVariant,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
@@ -68,16 +69,18 @@ pub struct EditField {
 impl EditField {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        name: String,
+        name: impl Into<String>,
         path: Vec<String>,
         object_kind: EditFieldObjectKind,
-        object_id: i64,
+        object_id: impl Into<i64>,
         data_type: EditFieldDataType,
         widget: Widget,
         value: Option<serde_json::Value>,
         visibility_diff: VisibilityDiff,
         validators: Vec<Validator>,
     ) -> Self {
+        let name = name.into();
+        let object_id = object_id.into();
         let mut id_parts = path.clone();
         id_parts.push(name.clone());
         let id = id_parts.join(".");

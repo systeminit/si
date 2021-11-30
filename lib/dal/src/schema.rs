@@ -3,6 +3,7 @@ use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use self::variant::{SchemaVariantError, SchemaVariantResult};
 use crate::{
     edit_field::{
         value_and_visiblity_diff, ArrayWidget, EditField, EditFieldAble, EditFieldDataType,
@@ -18,8 +19,10 @@ use crate::{
 };
 
 pub use ui_menu::UiMenu;
+pub use variant::SchemaVariant;
 
 pub mod ui_menu;
+pub mod variant;
 
 #[derive(Error, Debug)]
 pub enum SchemaError {
@@ -41,6 +44,8 @@ pub enum SchemaError {
     UiMenuNotFound(UiMenuId),
     #[error("edit field error: {0}")]
     EditField(#[from] EditFieldError),
+    #[error("schema variant error: {0}")]
+    Variant(#[from] SchemaVariantError),
 }
 
 pub type SchemaResult<T> = Result<T, SchemaError>;
@@ -173,6 +178,14 @@ impl Schema {
         result: SchemaResult,
     );
 
+    standard_model_has_many!(
+        lookup_fn: variants,
+        table: "schema_variant_belongs_to_schema",
+        model_table: "schema_variants",
+        returns: SchemaVariant,
+        result: SchemaVariantResult,
+    );
+
     standard_model_many_to_many!(
         lookup_fn: implements,
         associate_fn: add_implements_schema,
@@ -186,6 +199,162 @@ impl Schema {
         returns: Schema,
         result: SchemaResult,
     );
+
+    fn name_edit_field(
+        visibility: &Visibility,
+        object: &Self,
+        head_object: &Option<Self>,
+        change_set_object: &Option<Self>,
+    ) -> SchemaResult<EditField> {
+        let field_name = "name";
+        let target_fn = Self::name;
+        let object_kind = EditFieldObjectKind::Schema;
+
+        let (value, visibility_diff) = value_and_visiblity_diff(
+            visibility,
+            Some(object),
+            target_fn,
+            head_object.as_ref(),
+            change_set_object.as_ref(),
+        )?;
+
+        Ok(EditField::new(
+            field_name,
+            vec![],
+            object_kind,
+            object.id,
+            EditFieldDataType::String,
+            Widget::Text(TextWidget::new()),
+            value,
+            visibility_diff,
+            vec![Validator::Required(RequiredValidator)],
+        ))
+    }
+
+    fn kind_edit_field(
+        visibility: &Visibility,
+        object: &Self,
+        head_object: &Option<Self>,
+        change_set_object: &Option<Self>,
+    ) -> SchemaResult<EditField> {
+        let field_name = "kind";
+        let target_fn = Self::kind;
+        let object_kind = EditFieldObjectKind::Schema;
+
+        let (value, visibility_diff) = value_and_visiblity_diff(
+            visibility,
+            Some(object),
+            target_fn,
+            head_object.as_ref(),
+            change_set_object.as_ref(),
+        )?;
+
+        Ok(EditField::new(
+            field_name,
+            vec![],
+            object_kind,
+            object.id,
+            EditFieldDataType::String,
+            Widget::Select(SelectWidget::new(
+                LabelList::new(vec![
+                    LabelEntry::new(
+                        SchemaKind::Concrete.to_string(),
+                        serde_json::to_value(SchemaKind::Concrete)?,
+                    ),
+                    LabelEntry::new(
+                        SchemaKind::Concept.to_string(),
+                        serde_json::to_value(SchemaKind::Concept)?,
+                    ),
+                    LabelEntry::new(
+                        SchemaKind::Implementation.to_string(),
+                        serde_json::to_value(SchemaKind::Implementation)?,
+                    ),
+                ]),
+                Some(serde_json::to_value(SchemaKind::Concrete)?),
+            )),
+            value,
+            visibility_diff,
+            vec![Validator::Required(RequiredValidator)],
+        ))
+    }
+
+    async fn variants_edit_field(
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        object: &Self,
+    ) -> SchemaResult<EditField> {
+        let field_name = "variants";
+        let object_kind = EditFieldObjectKind::Schema;
+
+        let mut items: Vec<EditFields> = vec![];
+        for variant in object.variants(txn, visibility).await?.into_iter() {
+            let edit_fields =
+                SchemaVariant::get_edit_fields(txn, tenancy, visibility, variant.id()).await?;
+            items.push(edit_fields);
+        }
+
+        Ok(EditField::new(
+            field_name,
+            vec![],
+            object_kind,
+            object.id,
+            EditFieldDataType::None,
+            Widget::Header(HeaderWidget::new(vec![EditField::new(
+                "schemaVariants",
+                vec![field_name.to_string()],
+                EditFieldObjectKind::Schema,
+                object.id,
+                EditFieldDataType::Array,
+                Widget::Array(ArrayWidget::new(items)),
+                None,
+                VisibilityDiff::None,
+                vec![Validator::Required(RequiredValidator)],
+            )])),
+            None,
+            VisibilityDiff::None,
+            vec![Validator::Required(RequiredValidator)],
+        ))
+    }
+
+    async fn ui_edit_field(
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        object: &Self,
+    ) -> SchemaResult<EditField> {
+        let field_name = "ui";
+        let object_kind = EditFieldObjectKind::Schema;
+
+        let mut items: Vec<EditFields> = vec![];
+        for ui_menu in object.ui_menus(txn, visibility).await?.into_iter() {
+            let edit_fields =
+                UiMenu::get_edit_fields(txn, tenancy, visibility, ui_menu.id()).await?;
+            items.push(edit_fields);
+        }
+
+        Ok(EditField::new(
+            field_name,
+            vec![],
+            object_kind,
+            object.id,
+            EditFieldDataType::None,
+            Widget::Header(HeaderWidget::new(vec![EditField::new(
+                "menuItems",
+                vec![field_name.to_string()],
+                EditFieldObjectKind::Schema,
+                object.id,
+                EditFieldDataType::Array,
+                Widget::Array(ArrayWidget::new(items)),
+                None,
+                VisibilityDiff::None,
+                vec![Validator::Required(RequiredValidator)],
+            )])),
+            None,
+            VisibilityDiff::None,
+            vec![Validator::Required(RequiredValidator)],
+        ))
+    }
 }
 
 #[async_trait::async_trait]
@@ -202,101 +371,25 @@ impl EditFieldAble for Schema {
         let object = Schema::get_by_id(txn, tenancy, visibility, id)
             .await?
             .ok_or(SchemaError::NotFound(*id))?;
-        let head_obj: Option<Schema> = if visibility.in_change_set() {
+        let head_object: Option<Schema> = if visibility.in_change_set() {
             let head_visibility = Visibility::new_head(visibility.deleted);
             Schema::get_by_id(txn, tenancy, &head_visibility, id).await?
         } else {
             None
         };
-        let change_set_obj: Option<Schema> = if visibility.in_change_set() {
+        let change_set_object: Option<Schema> = if visibility.in_change_set() {
             let change_set_visibility =
                 Visibility::new_change_set(visibility.change_set_pk, visibility.deleted);
             Schema::get_by_id(txn, tenancy, &change_set_visibility, id).await?
         } else {
             None
         };
-        let (name_value, name_visibility_diff) = value_and_visiblity_diff(
-            visibility,
-            Some(&object),
-            Schema::name,
-            head_obj.as_ref(),
-            change_set_obj.as_ref(),
-        )?;
-        let (kind_value, kind_visibility_diff) = value_and_visiblity_diff(
-            visibility,
-            Some(&object),
-            Schema::kind,
-            head_obj.as_ref(),
-            change_set_obj.as_ref(),
-        )?;
-
-        let mut ui_menu_items: Vec<EditFields> = vec![];
-        for ui_menu in object.ui_menus(txn, visibility).await?.into_iter() {
-            let edit_fields =
-                UiMenu::get_edit_fields(txn, tenancy, visibility, ui_menu.id()).await?;
-            ui_menu_items.push(edit_fields);
-        }
 
         Ok(vec![
-            EditField::new(
-                String::from("name"),
-                vec![],
-                EditFieldObjectKind::Schema,
-                object.id.into(),
-                EditFieldDataType::String,
-                Widget::Text(TextWidget::new()),
-                name_value,
-                name_visibility_diff,
-                vec![Validator::Required(RequiredValidator)],
-            ),
-            EditField::new(
-                String::from("kind"),
-                vec![],
-                EditFieldObjectKind::Schema,
-                object.id.into(),
-                EditFieldDataType::String,
-                Widget::Select(SelectWidget::new(
-                    LabelList::new(vec![
-                        LabelEntry::new(
-                            SchemaKind::Concrete.to_string(),
-                            serde_json::to_value(SchemaKind::Concrete)?,
-                        ),
-                        LabelEntry::new(
-                            SchemaKind::Concept.to_string(),
-                            serde_json::to_value(SchemaKind::Concept)?,
-                        ),
-                        LabelEntry::new(
-                            SchemaKind::Implementation.to_string(),
-                            serde_json::to_value(SchemaKind::Implementation)?,
-                        ),
-                    ]),
-                    Some(serde_json::to_value(SchemaKind::Concrete)?),
-                )),
-                kind_value,
-                kind_visibility_diff,
-                vec![Validator::Required(RequiredValidator)],
-            ),
-            EditField::new(
-                String::from("ui"),
-                vec![],
-                EditFieldObjectKind::Schema,
-                object.id.into(),
-                EditFieldDataType::None,
-                Widget::Header(HeaderWidget::new(vec![EditField::new(
-                    String::from("menuItems"),
-                    vec!["ui".to_string()],
-                    EditFieldObjectKind::Schema,
-                    object.id.into(),
-                    EditFieldDataType::Array,
-                    Widget::Array(ArrayWidget::new(ui_menu_items)),
-                    None,
-                    VisibilityDiff::None,
-                    vec![Validator::Required(RequiredValidator)],
-                )])),
-                None,
-                VisibilityDiff::None,
-                vec![Validator::Required(RequiredValidator)],
-            ),
+            Self::name_edit_field(visibility, &object, &head_object, &change_set_object)?,
+            Self::kind_edit_field(visibility, &object, &head_object, &change_set_object)?,
+            Self::variants_edit_field(txn, tenancy, visibility, &object).await?,
+            Self::ui_edit_field(txn, tenancy, visibility, &object).await?,
         ])
     }
 
@@ -337,6 +430,20 @@ impl EditFieldAble for Schema {
                 }
                 None => panic!("cannot set the value"),
             },
+            "variants.schemaVariants" => {
+                let variant = SchemaVariant::new(
+                    txn,
+                    nats,
+                    tenancy,
+                    visibility,
+                    history_actor,
+                    "TODO: name me!",
+                )
+                .await?;
+                variant
+                    .set_schema(txn, nats, visibility, history_actor, object.id())
+                    .await?;
+            }
             "ui.menuItems" => {
                 let new_ui_menu =
                     UiMenu::new(txn, nats, tenancy, visibility, history_actor).await?;

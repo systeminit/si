@@ -43,16 +43,29 @@ impl Visibility {
         }
     }
 
+    /// Constructs a new head `Visibility`.
     #[instrument]
     pub fn new_head(deleted: bool) -> Self {
         Visibility::new(NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK, deleted)
     }
 
+    /// Converts this `Visibility` to a new head `Visibility`.
+    pub fn to_head(&self) -> Self {
+        Self::new_head(self.deleted)
+    }
+
+    /// Constructs a new change set `Visibility`.
     #[instrument]
     pub fn new_change_set(change_set_pk: ChangeSetPk, deleted: bool) -> Self {
         Visibility::new(change_set_pk, NO_EDIT_SESSION_PK, deleted)
     }
 
+    /// Converts this `Visibility` to a new change set `Visibility`.
+    pub fn to_change_set(&self) -> Self {
+        Self::new_change_set(self.change_set_pk, self.deleted)
+    }
+
+    /// Constructs a new edit session `Visibility`.
     #[instrument]
     pub fn new_edit_session(
         change_set_pk: ChangeSetPk,

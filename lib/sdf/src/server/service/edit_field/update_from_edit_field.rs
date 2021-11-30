@@ -1,7 +1,8 @@
 use axum::Json;
 use dal::{
     edit_field::{EditFieldAble, EditFieldObjectKind},
-    schema, HistoryActor, Schema, Tenancy, Visibility,
+    schema::{self, SchemaVariant},
+    HistoryActor, Schema, Tenancy, Visibility,
 };
 use serde::{Deserialize, Serialize};
 
@@ -39,6 +40,19 @@ pub async fn update_from_edit_field(
     match request.object_kind {
         EditFieldObjectKind::Schema => {
             Schema::update_from_edit_field(
+                &txn,
+                &nats,
+                &tenancy,
+                &request.visibility,
+                &history_actor,
+                request.object_id.into(),
+                request.edit_field_id,
+                request.value,
+            )
+            .await?
+        }
+        EditFieldObjectKind::SchemaVariant => {
+            SchemaVariant::update_from_edit_field(
                 &txn,
                 &nats,
                 &tenancy,

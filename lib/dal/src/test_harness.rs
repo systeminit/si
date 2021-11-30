@@ -347,3 +347,16 @@ pub async fn create_schema_ui_menu(
         .await
         .expect("cannot create schema ui menu")
 }
+
+pub async fn create_schema_variant(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+) -> schema::SchemaVariant {
+    let name = generate_fake_name();
+    schema::SchemaVariant::new(txn, nats, tenancy, visibility, history_actor, name)
+        .await
+        .expect("cannot create schema variant")
+}

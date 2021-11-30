@@ -5,6 +5,7 @@ use dal::test_harness::{billing_account_signup, create_schema, create_schema_ui_
 use dal::{HistoryActor, Schema, StandardModel, Tenancy, Visibility};
 
 pub mod ui_menu;
+pub mod variant;
 
 #[tokio::test]
 async fn new() {
