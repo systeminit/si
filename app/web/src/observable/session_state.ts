@@ -29,7 +29,7 @@ export function persistToSession(key: string, obs: Observable<unknown>): void {
   sessionSubscriptions[key] = { observable: obs, subscription };
 }
 
-function saveObservable(key: string, value: any): void {
+export function saveObservable(key: string, value: any): void {
   if (_.isUndefined(value)) {
     return;
   }

@@ -10,6 +10,7 @@ import Schema from "@/templates/Schema.vue";
 import SchemaList from "@/organisims/Schema/SchemaList.vue";
 import SchemaNew from "@/organisims/Schema/SchemaNew.vue";
 import SchemaView from "@/organisims/Schema/SchemaView.vue";
+import Editor from "@/organisims/Editor.vue";
 import _ from "lodash";
 
 const routes: RouteRecordRaw[] = [
@@ -28,19 +29,19 @@ const routes: RouteRecordRaw[] = [
         path: "o/:organizationId/w/:workspaceId/a",
         props: true,
         name: "application",
-        component: NotFoundPage, // Application
+        component: Editor, // Application
       },
       {
         path: "o/:organizationId/w/:workspaceId/a/:applicationId",
         props: true,
         name: "applicationDetails",
-        component: NotFoundPage, // ApplicationDetails
+        component: Editor, // ApplicationDetails
       },
       {
         path: "o/:organizationId/w/:workspaceId/s",
         props: true,
         name: "secret",
-        component: NotFoundPage, // Secret
+        component: Editor, // Secret
       },
       {
         path: "schema",
@@ -98,6 +99,14 @@ const routes: RouteRecordRaw[] = [
         component: Signup,
       },
     ],
+  },
+  {
+    path: "/404",
+    component: NotFoundPage,
+  },
+  {
+    path: "/:catchAll(.*)",
+    redirect: "/404",
   },
 ];
 
