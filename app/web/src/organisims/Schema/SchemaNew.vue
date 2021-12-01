@@ -1,9 +1,7 @@
 <template>
   <div class="flex flex-col w-full page-background">
-    <div
-      class="flex flex-row items-center justify-between flex-grow-0 flex-shrink-0 h-12 header-background"
-    >
-      <div class="mt-1 ml-8 font-medium align-middle inline-flex items-center">
+    <SiChangeSetHeader>
+      <template #title>
         <router-link
           :to="{ name: 'schema-list' }"
           class="inline-flex items-center"
@@ -11,8 +9,8 @@
           <VueFeather type="chevron-left" />
         </router-link>
         Create Schema
-      </div>
-    </div>
+      </template>
+    </SiChangeSetHeader>
     <div class="flex flex-row">
       <SchemaCreateForm @create="create" @cancel="cancel" />
     </div>
@@ -27,6 +25,7 @@ import { useRouter } from "vue-router";
 import { GlobalErrorService } from "@/service/global_error";
 import { ApiResponse } from "@/api/sdf";
 import { CreateSchemaResponse } from "@/service/schema/create_schema";
+import SiChangeSetHeader from "@/molecules/SiChangeSetHeader.vue";
 
 const router = useRouter();
 

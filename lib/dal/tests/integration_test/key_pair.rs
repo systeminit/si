@@ -33,24 +33,30 @@ async fn belongs_to() {
     let key_pair = create_key_pair(&txn, &nats, &tenancy, &visibility, &history_actor).await;
 
     key_pair
-        .set_billing_account(&txn, &nats, &history_actor, billing_account.id())
+        .set_billing_account(
+            &txn,
+            &nats,
+            &visibility,
+            &history_actor,
+            billing_account.id(),
+        )
         .await
         .expect("cannot set billing account");
 
     let belongs_to_ba: BillingAccount = key_pair
-        .billing_account(&txn)
+        .billing_account(&txn, &visibility)
         .await
         .expect("cannot get belongs to billing account")
         .expect("billing account should exist");
     assert_eq!(&billing_account, &belongs_to_ba);
 
     key_pair
-        .unset_billing_account(&txn, &nats, &history_actor)
+        .unset_billing_account(&txn, &nats, &visibility, &history_actor)
         .await
         .expect("cannot set billing account");
 
     let belongs_to_ba: Option<BillingAccount> = key_pair
-        .billing_account(&txn)
+        .billing_account(&txn, &visibility)
         .await
         .expect("cannot get belongs to billing account");
     assert!(
@@ -71,12 +77,24 @@ async fn public_key_get_current() {
         create_billing_account(&txn, &nats, &tenancy, &visibility, &history_actor).await;
     let first_key_pair = create_key_pair(&txn, &nats, &tenancy, &visibility, &history_actor).await;
     first_key_pair
-        .set_billing_account(&txn, &nats, &history_actor, billing_account.id())
+        .set_billing_account(
+            &txn,
+            &nats,
+            &visibility,
+            &history_actor,
+            billing_account.id(),
+        )
         .await
         .expect("cannot set billing account");
     let second_key_pair = create_key_pair(&txn, &nats, &tenancy, &visibility, &history_actor).await;
     second_key_pair
-        .set_billing_account(&txn, &nats, &history_actor, billing_account.id())
+        .set_billing_account(
+            &txn,
+            &nats,
+            &visibility,
+            &history_actor,
+            billing_account.id(),
+        )
         .await
         .expect("cannot set billing account");
 

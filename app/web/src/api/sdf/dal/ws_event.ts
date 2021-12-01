@@ -1,28 +1,39 @@
-export interface WsEvent {
+import { HistoryActor } from "@/api/sdf/dal/history_actor";
+
+export interface WsEvent<Payload extends WsPayload> {
   version: number;
   billing_account_ids: Array<number>;
-  payload: WsPayload;
+  history_actor: HistoryActor;
+  payload: Payload;
 }
 
-export interface WsChangeSetCreated {
+export interface WsPayload {
+  kind: string;
+  data: unknown;
+}
+
+export interface WsChangeSetCreated extends WsPayload {
   kind: "ChangeSetCreated";
   data: number;
 }
-export interface WsChangeSetApplied {
+
+export interface WsChangeSetApplied extends WsPayload {
   kind: "ChangeSetApplied";
   data: number;
 }
-export interface WsChangeSetCanceled {
+
+export interface WsChangeSetCanceled extends WsPayload {
   kind: "ChangeSetCanceled";
   data: number;
 }
-export interface WsSchemaCreated {
-  kind: "SchemaCreated";
+
+export interface WsEditSessionSaved extends WsPayload {
+  kind: "EditSessionSaved";
   data: number;
 }
 
-export type WsPayload =
-  | WsSchemaCreated
+export type WsPayloadKinds =
+  | WsEditSessionSaved
   | WsChangeSetCreated
   | WsChangeSetApplied
   | WsChangeSetCanceled;

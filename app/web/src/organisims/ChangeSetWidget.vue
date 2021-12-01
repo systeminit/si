@@ -6,7 +6,7 @@
       </div>
       <div class="flex items-center mr-2">
         <SiSelect
-          id="selectCurrentChangeSet"
+          id="select-current-change-set"
           v-model="selectedChangeSetPk"
           value-as-number
           :options="openChangeSetsList"
@@ -122,9 +122,10 @@ import SiFormRow from "@/atoms/SiFormRow.vue";
 // @ts-ignore
 import { $vfm } from "vue-final-modal";
 
-import { ChangeSetService } from "@/service/change_set";
 import { LabelList } from "@/api/sdf/dal/label_list";
 import _ from "lodash";
+
+import { ChangeSetService } from "@/service/change_set";
 import { GlobalErrorService } from "@/service/global_error";
 
 const CHANGE_SET_NONE = -2;
@@ -191,11 +192,11 @@ untilUnmounted(ChangeSetService.currentChangeSet()).subscribe((changeSet) => {
   }
 });
 
-const changeSetSelected = async () => {
+const changeSetSelected = () => {
   if (selectedChangeSetPk.value == CHANGE_SET_NONE) {
     ChangeSetService.switchToHead();
   } else if (selectedChangeSetPk.value == CHANGE_SET_NEW) {
-    await $vfm.show("changeSetCreate");
+    changeSetCreateModalShow.value = true;
   } else {
     GlobalErrorService.setIfError(
       ChangeSetService.getChangeSet({

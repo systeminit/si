@@ -1,15 +1,15 @@
-use std::collections::HashMap;
+use axum::extract::Query;
 use axum::{
     async_trait,
     extract::{Extension, FromRequest, RequestParts},
     Json,
 };
-use axum::extract::Query;
 use dal::{ChangeSetPk, EditSessionPk, User};
 use dal::{Tenancy, UserClaim, Visibility};
 use hyper::StatusCode;
 use serde::Serialize;
 use si_data::{nats, pg};
+use std::collections::HashMap;
 
 pub struct PgPool(pub pg::PgPool);
 
@@ -173,9 +173,13 @@ where
     async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
         let error_response = (
             StatusCode::UNAUTHORIZED,
-            Json(
-                serde_json::json!({ "error": { "message": "unauthorized", "code": 42, "statusCode": 401 } }),
-            ),
+            Json(serde_json::json!({
+                "error": {
+                    "message": "unauthorized",
+                    "code": 42,
+                    "statusCode": 401,
+                },
+            })),
         );
 
         let mut ro_txn = PgRoTxn::from_request(req)
@@ -193,7 +197,7 @@ where
         let claim = UserClaim::from_bearer_token(&txn, authorization)
             .await
             .map_err(|_| error_response.clone())?;
-        let tenancy = Tenancy::new_billing_account(vec![claim.billing_account_id.clone()]);
+        let tenancy = Tenancy::new_billing_account(vec![claim.billing_account_id]);
         let visibility = Visibility::new_head(false);
         User::authorize(&txn, &tenancy, &visibility, &claim.user_id)
             .await
@@ -208,17 +212,21 @@ pub struct WsAuthorization(pub UserClaim);
 
 #[async_trait]
 impl<P> FromRequest<P> for WsAuthorization
-    where
-        P: Send,
+where
+    P: Send,
 {
     type Rejection = (StatusCode, Json<serde_json::Value>);
 
     async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
         let error_response = (
             StatusCode::UNAUTHORIZED,
-            Json(
-                serde_json::json!({ "error": { "message": "unauthorized", "code": 42, "statusCode": 401 } }),
-            ),
+            Json(serde_json::json!({
+                "error": {
+                    "message": "unauthorized",
+                    "code": 42,
+                    "statusCode": 401,
+                },
+            })),
         );
 
         let mut ro_txn = PgRoTxn::from_request(req)
@@ -226,13 +234,15 @@ impl<P> FromRequest<P> for WsAuthorization
             .map_err(|_| error_response.clone())?;
         let txn = ro_txn.start().await.map_err(|_| error_response.clone())?;
 
-        let query: Query<HashMap<String, String>> = Query::from_request(req).await.map_err(|_| error_response.clone())?;
-        let authorization = query.get("token").ok_or(error_response.clone())?;
+        let query: Query<HashMap<String, String>> = Query::from_request(req)
+            .await
+            .map_err(|_| error_response.clone())?;
+        let authorization = query.get("token").ok_or_else(|| error_response.clone())?;
 
         let claim = UserClaim::from_bearer_token(&txn, authorization)
             .await
             .map_err(|_| error_response.clone())?;
-        let tenancy = Tenancy::new_billing_account(vec![claim.billing_account_id.clone()]);
+        let tenancy = Tenancy::new_billing_account(vec![claim.billing_account_id]);
         let visibility = Visibility::new_head(false);
         User::authorize(&txn, &tenancy, &visibility, &claim.user_id)
             .await
@@ -243,30 +253,45 @@ impl<P> FromRequest<P> for WsAuthorization
     }
 }
 
-
 pub struct QueryVisibility(pub Visibility);
 
 #[async_trait]
 impl<P> FromRequest<P> for QueryVisibility
-    where
-        P: Send,
+where
+    P: Send,
 {
     type Rejection = (StatusCode, Json<serde_json::Value>);
 
     async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
         let error_response = (
             StatusCode::NOT_ACCEPTABLE,
-            Json(
-                serde_json::json!({ "error": { "message": "bad or missing visibility", "code": 42, "statusCode": 406 } }),
-            ),
+            Json(serde_json::json!({
+                "error": {
+                    "message": "bad or missing visibility",
+                    "code": 42,
+                    "statusCode": 406,
+                },
+            })),
         );
 
-        let query: Query<HashMap<String, String>> = Query::from_request(req).await.map_err(|_| error_response.clone())?;
-        let change_set_pk_string = query.get("visibility_change_set_pk").ok_or(error_response.clone())?;
-        let change_set_pk: ChangeSetPk = change_set_pk_string.parse().map_err(|_| error_response.clone())?;
-        let edit_session_pk_string = query.get("visibility_edit_session_pk").ok_or(error_response.clone())?;
-        let edit_session_pk: EditSessionPk = edit_session_pk_string.parse().map_err(|_| error_response.clone())?;
-        let deleted_string = query.get("visibility_deleted").ok_or(error_response.clone())?;
+        let query: Query<HashMap<String, String>> = Query::from_request(req)
+            .await
+            .map_err(|_| error_response.clone())?;
+        let change_set_pk_string = query
+            .get("visibility_change_set_pk")
+            .ok_or_else(|| error_response.clone())?;
+        let change_set_pk: ChangeSetPk = change_set_pk_string
+            .parse()
+            .map_err(|_| error_response.clone())?;
+        let edit_session_pk_string = query
+            .get("visibility_edit_session_pk")
+            .ok_or_else(|| error_response.clone())?;
+        let edit_session_pk: EditSessionPk = edit_session_pk_string
+            .parse()
+            .map_err(|_| error_response.clone())?;
+        let deleted_string = query
+            .get("visibility_deleted")
+            .ok_or_else(|| error_response.clone())?;
         let deleted = match deleted_string.as_ref() {
             "true" => true,
             "false" => false,

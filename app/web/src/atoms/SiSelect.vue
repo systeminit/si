@@ -5,7 +5,6 @@
       class="block w-full px-2 py-1 pr-8 leading-tight border border-solid shadow appearance-none focus:outline-none"
       :class="selectorStyling()"
       :disabled="disabled"
-      :data-test="id"
       :aria-name="id"
       @change="selected"
       @keypress.space.prevent

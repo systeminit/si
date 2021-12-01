@@ -16,6 +16,7 @@ rand = "0.8.3"
 refinery = "0.6.0"
 serde = "1.0.123"
 serde_json = { version = "1.0.64", features = ["preserve_order"] }
+serde-aux = "3.0.1"
 si-data = { path = "../../lib/si-data", features = ["nats", "pg"] }
 sodiumoxide = "0.2.6"
 strum = "0.21.0"

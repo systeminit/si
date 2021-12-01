@@ -71,7 +71,8 @@ impl_standard_model! {
 }
 
 impl User {
-    #[tracing::instrument(skip(txn, nats, name, email, password))]
+    #[allow(clippy::too_many_arguments)]
+    #[tracing::instrument(skip_all)]
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
@@ -100,11 +101,11 @@ impl User {
             )
             .await?;
         let object = standard_model::finish_create_from_row(
-            &txn,
-            &nats,
-            &tenancy,
-            &visibility,
-            &history_actor,
+            txn,
+            nats,
+            tenancy,
+            visibility,
+            history_actor,
             row,
         )
         .await?;
@@ -168,9 +169,9 @@ impl User {
         let claims = Claims::with_custom_claims(user_claim, Duration::from_days(1))
             .with_audience("https://app.systeminit.com")
             .with_issuer("https://app.systeminit.com")
-            .with_subject(self.id().clone());
+            .with_subject(*self.id());
 
-        let signing_key = get_jwt_signing_key(&txn, &secret_key).await?;
+        let signing_key = get_jwt_signing_key(txn, secret_key).await?;
         let jwt = signing_key.sign(claims)?;
         Ok(jwt)
     }
@@ -194,7 +195,7 @@ impl UserClaim {
         txn: &PgTxn<'_>,
         token: impl AsRef<str>,
     ) -> UserResult<UserClaim> {
-        let claims = crate::jwt_key::validate_bearer_token(&txn, &token).await?;
+        let claims = crate::jwt_key::validate_bearer_token(txn, &token).await?;
         Ok(claims.custom)
     }
 }
@@ -229,11 +230,7 @@ pub async fn verify_password(
         let password_hash = password_hash.as_ref();
         let password_bytes = password.as_bytes();
         if let Some(argon_password) = argon2id13::HashedPassword::from_slice(password_hash) {
-            if argon2id13::pwhash_verify(&argon_password, password_bytes) {
-                true
-            } else {
-                false
-            }
+            argon2id13::pwhash_verify(&argon_password, password_bytes)
         } else {
             false
         }

@@ -5,7 +5,6 @@ import { EditSession } from "@/api/sdf/dal/edit_session";
 import { changeSet$ } from "@/observable/change_set";
 import { editSession$ } from "@/observable/edit_session";
 import { editMode$ } from "@/observable/edit_mode";
-import { WsEventService } from "@/service/ws_event";
 import { Observable, tap } from "rxjs";
 
 interface CreateChangeSetRequest {
@@ -33,10 +32,6 @@ export function createChangeSet(
           changeSet$.next(response.changeSet);
           editSession$.next(response.editSession);
           editMode$.next(true);
-          WsEventService.sendEvent({
-            kind: "ChangeSetCreated",
-            data: response.changeSet.pk,
-          });
         }
       }),
     );

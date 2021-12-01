@@ -1,32 +1,26 @@
-import { WsEvent } from "@/api/sdf/dal/ws_event";
-import { ReplaySubject, BehaviorSubject } from "rxjs";
+import { WsEvent, WsPayloadKinds } from "@/api/sdf/dal/ws_event";
+import { BehaviorSubject, ReplaySubject } from "rxjs";
 import {
   eventChangeSetApplied$,
   eventChangeSetCanceled$,
   eventChangeSetCreated$,
 } from "@/observable/change_set";
-import { eventSchemaCreated$ } from "@/observable/schema";
+import { eventEditSessionSaved$ } from "@/observable/edit_session";
 
 const eventMap: {
-  [E in WsEvent["payload"]["kind"]]: BehaviorSubject<any> | ReplaySubject<any>;
+  [E in WsPayloadKinds["kind"]]: BehaviorSubject<any> | ReplaySubject<any>;
 } = {
   ChangeSetCreated: eventChangeSetCreated$,
   ChangeSetApplied: eventChangeSetApplied$,
   ChangeSetCanceled: eventChangeSetCanceled$,
-  SchemaCreated: eventSchemaCreated$,
+  EditSessionSaved: eventEditSessionSaved$,
 };
 
-export function dispatch(wsEvent: WsEvent) {
+export function dispatch(wsEvent: WsEvent<WsPayloadKinds>) {
   const obs$ = eventMap[wsEvent.payload.kind];
-  obs$.next(wsEvent.payload.data);
-}
-
-export function sendEvent(payload: WsEvent["payload"]) {
-  const obs$ = eventMap[payload.kind];
-  obs$.next(payload.data);
+  obs$.next(wsEvent);
 }
 
 export const WsEventService = {
   dispatch,
-  sendEvent,
 };

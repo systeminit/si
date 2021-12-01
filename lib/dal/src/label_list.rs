@@ -31,6 +31,12 @@ impl<Value: Debug + Serialize + DeserializeOwned> LabelEntry<Value> {
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct LabelList<Value>(Vec<LabelEntry<Value>>);
 
+impl<Value> LabelList<Value> {
+    pub fn new(options: Vec<LabelEntry<Value>>) -> Self {
+        LabelList(options)
+    }
+}
+
 impl<Value: Debug + DeserializeOwned + Serialize + postgres_types::FromSqlOwned> LabelList<Value> {
     pub fn from_rows(rows: Vec<tokio_postgres::Row>) -> LabelListResult<LabelList<Value>> {
         let mut results = Vec::new();

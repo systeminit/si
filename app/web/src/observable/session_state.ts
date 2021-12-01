@@ -6,6 +6,7 @@ import {
   Subscription,
   tap,
 } from "rxjs";
+import _ from "lodash";
 
 export const sessionSaveEnabled$ = new BehaviorSubject<boolean>(false);
 export const sessionSubscriptions: {
@@ -29,6 +30,9 @@ export function persistToSession(key: string, obs: Observable<unknown>): void {
 }
 
 function saveObservable(key: string, value: any): void {
+  if (_.isUndefined(value)) {
+    return;
+  }
   sessionStorage.setItem(key, JSON.stringify(value));
 }
 

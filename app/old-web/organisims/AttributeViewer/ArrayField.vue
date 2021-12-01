@@ -137,7 +137,7 @@ export default BaseField.extend({
     PlusIcon,
     ArrayAddEntry,
     ArrayEditFields: () => import("./EditFields.vue"),
-  },
+  }widget,
   props: {
     entity: {
       type: Object as PropType<Entity>,

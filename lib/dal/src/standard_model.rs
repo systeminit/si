@@ -16,7 +16,7 @@ pub enum StandardModelError {
     Pg(#[from] PgError),
     #[error("nats error")]
     Nats(#[from] NatsError),
-    #[error("{0} pk {1} is missing when one was expected; it does not exist, is not visible, or is not valid for this tenancy")]
+    #[error("{0} id {1} is missing when one was expected; it does not exist, is not visible, or is not valid for this tenancy")]
     ModelMissing(String, String),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
@@ -140,9 +140,10 @@ pub async fn has_many<ID: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
             ],
         )
         .await?;
-    Ok(objects_from_rows(rows)?)
+    objects_from_rows(rows)
 }
 
+#[allow(clippy::too_many_arguments)]
 #[instrument(skip(txn))]
 pub async fn many_to_many<
     LeftId: Send + Sync + ToSql,
@@ -172,7 +173,7 @@ pub async fn many_to_many<
             ],
         )
         .await?;
-    Ok(objects_from_rows(rows)?)
+    objects_from_rows(rows)
 }
 
 #[instrument(skip(txn))]
@@ -255,22 +256,23 @@ pub fn option_object_from_row<OBJECT: DeserializeOwned>(
 }
 
 #[instrument(skip(txn))]
-pub async fn update<PK: Send + Sync + ToSql + std::fmt::Display, VALUE: Send + Sync + ToSql>(
+pub async fn update<ID: Send + Sync + ToSql + std::fmt::Display, VALUE: Send + Sync + ToSql>(
     txn: &PgTxn<'_>,
     table: &str,
     column: &str,
     tenancy: &Tenancy,
-    pk: &PK,
+    visibility: &Visibility,
+    id: &ID,
     value: &VALUE,
 ) -> StandardModelResult<DateTime<Utc>> {
     let row = txn
         .query_one(
-            "SELECT updated_at FROM update_by_pk_v1($1, $2, $3, $4, $5)",
-            &[&table, &column, &tenancy, &pk, &value],
+            "SELECT updated_at FROM update_by_id_v1($1, $2, $3, $4, $5, $6)",
+            &[&table, &column, &tenancy, &visibility, &id, &value],
         )
         .await?;
     row.try_get("updated_at")
-        .map_err(|_| StandardModelError::ModelMissing(table.to_string(), pk.to_string()))
+        .map_err(|_| StandardModelError::ModelMissing(table.to_string(), id.to_string()))
 }
 
 #[instrument(skip(txn))]
@@ -286,7 +288,7 @@ pub async fn list<OBJECT: DeserializeOwned>(
             &[&table, &tenancy, &visibility],
         )
         .await?;
-    Ok(objects_from_rows(rows)?)
+    objects_from_rows(rows)
 }
 
 #[instrument(skip(txn))]
@@ -333,16 +335,14 @@ pub async fn finish_create_from_row<Object: Send + Sync + DeserializeOwned + Sta
     row: tokio_postgres::Row,
 ) -> StandardModelResult<Object> {
     let json: serde_json::Value = row.try_get("object")?;
-    // TODO(fnichol): determine subject(s) for publishing
-    nats.publish("standardModel", &json).await?;
     let _history_event = HistoryEvent::new(
-        &txn,
-        &nats,
+        txn,
+        nats,
         Object::history_event_label(vec!["create"]),
-        &history_actor,
+        history_actor,
         Object::history_event_message("created"),
         &serde_json::json![{ "visibility": &visibility }],
-        &tenancy,
+        tenancy,
     )
     .await?;
     let object: Object = serde_json::from_value(json)?;
@@ -383,7 +383,7 @@ pub trait StandardModel {
     where
         Self: Sized + DeserializeOwned,
     {
-        let object = crate::standard_model::get_by_pk(&txn, Self::table_name(), &pk).await?;
+        let object = crate::standard_model::get_by_pk(txn, Self::table_name(), &pk).await?;
         Ok(object)
     }
 
@@ -398,7 +398,7 @@ pub trait StandardModel {
         Self: Sized + DeserializeOwned,
     {
         let object =
-            crate::standard_model::get_by_id(&txn, Self::table_name(), &tenancy, &visibility, &id)
+            crate::standard_model::get_by_id(txn, Self::table_name(), tenancy, visibility, &id)
                 .await?;
         Ok(object)
     }
@@ -413,7 +413,7 @@ pub trait StandardModel {
         Self: Sized + DeserializeOwned,
     {
         let result =
-            crate::standard_model::list(&txn, Self::table_name(), &tenancy, &visibility).await?;
+            crate::standard_model::list(txn, Self::table_name(), tenancy, visibility).await?;
         Ok(result)
     }
 
@@ -428,18 +428,29 @@ pub trait StandardModel {
         Self: Send + Sync,
     {
         let updated_at: chrono::DateTime<chrono::Utc> =
-            crate::standard_model::delete(&txn, Self::table_name(), self.tenancy(), self.pk())
+            crate::standard_model::delete(txn, Self::table_name(), self.tenancy(), self.pk())
                 .await?;
+        // TODO(fnichol): I think that mutating our own visibility is likely okay in this
+        // situation, as opposed to passing in an explicit visbility. The consequence is that
+        // you'll be setting *this* object to be in a deleted state, no matter its current
+        // visibility. This may prove to be sufficiently unsafe and warrents an explicitly passed
+        // visibility when deleting. As it stands right now, it would be maximally safe to fetch
+        // this object by id for the target visibility (with `deleted = false`) and then delete
+        // *taht* instance.
         self.visibility_mut().deleted = true;
         self.timestamp_mut().updated_at = updated_at;
         let _history_event = crate::HistoryEvent::new(
-            &txn,
-            &nats,
+            txn,
+            nats,
             &Self::history_event_label(vec!["deleted"]),
-            &history_actor,
+            history_actor,
             &Self::history_event_message("deleted"),
-            &serde_json::json![{ "pk": self.pk(), "id": self.id(), "visibility": self.visibility() }],
-            &self.tenancy(),
+            &serde_json::json![{
+                "pk": self.pk(),
+                "id": self.id(),
+                "visibility": self.visibility(),
+            }],
+            self.tenancy(),
         )
         .await?;
         Ok(())
@@ -456,18 +467,23 @@ pub trait StandardModel {
         Self: Send + Sync,
     {
         let updated_at: chrono::DateTime<chrono::Utc> =
-            crate::standard_model::undelete(&txn, Self::table_name(), self.tenancy(), self.pk())
+            crate::standard_model::undelete(txn, Self::table_name(), self.tenancy(), self.pk())
                 .await?;
+        // TODO(fnichol): See the `Self.delete()` method for notes and caution.
         self.visibility_mut().deleted = false;
         self.timestamp_mut().updated_at = updated_at;
         let _history_event = crate::HistoryEvent::new(
-            &txn,
-            &nats,
+            txn,
+            nats,
             &Self::history_event_label(vec!["undeleted"]),
-            &history_actor,
+            history_actor,
             &Self::history_event_message("undeleted"),
-            &serde_json::json![{ "pk": self.pk(), "id": self.id(), "visibility": self.visibility() }],
-            &self.tenancy(),
+            &serde_json::json![{
+                "pk": self.pk(),
+                "id": self.id(),
+                "visibility": self.visibility(),
+            }],
+            self.tenancy(),
         )
         .await?;
         Ok(())

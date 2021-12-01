@@ -1,8 +1,10 @@
-use super::SchemaResult;
-use crate::server::extract::{Authorization, PgRoTxn, QueryVisibility};
+use axum::extract::Query;
 use axum::Json;
 use dal::{Schema, StandardModel, Tenancy, Visibility};
 use serde::{Deserialize, Serialize};
+
+use super::SchemaResult;
+use crate::server::extract::{Authorization, PgRoTxn};
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct ListSchemaRequest {
@@ -18,12 +20,12 @@ pub struct ListSchemaResponse {
 
 pub async fn list_schemas(
     mut txn: PgRoTxn,
+    Query(request): Query<ListSchemaRequest>,
     Authorization(claim): Authorization,
-    QueryVisibility(visibility): QueryVisibility,
 ) -> SchemaResult<Json<ListSchemaResponse>> {
     let txn = txn.start().await?;
     let tenancy = Tenancy::new_billing_account(vec![claim.billing_account_id]);
-    let list = Schema::list(&txn, &tenancy, &visibility).await?;
+    let list = Schema::list(&txn, &tenancy, &request.visibility).await?;
     let response = ListSchemaResponse { list };
     Ok(Json(response))
 }

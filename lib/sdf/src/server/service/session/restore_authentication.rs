@@ -1,9 +1,12 @@
-use super::SessionResult;
-use crate::server::extract::{Authorization, PgRoTxn};
-use crate::server::service::session::SessionError;
 use axum::Json;
 use dal::{BillingAccount, StandardModel, Tenancy, User, Visibility};
 use serde::{Deserialize, Serialize};
+
+use super::SessionResult;
+use crate::server::{
+    extract::{Authorization, PgRoTxn},
+    service::session::SessionError,
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -27,13 +30,13 @@ pub async fn restore_authentication(
         &claim.billing_account_id,
     )
     .await?
-    .ok_or_else(|| SessionError::LoginFailed)?;
+    .ok_or(SessionError::LoginFailed)?;
 
     let billing_account_tenancy = Tenancy::new_billing_account(vec![*billing_account.id()]);
 
     let user = User::get_by_id(&txn, &billing_account_tenancy, &visibility, &claim.user_id)
         .await?
-        .ok_or_else(|| SessionError::LoginFailed)?;
+        .ok_or(SessionError::LoginFailed)?;
 
     let reply = RestoreAuthenticationResponse {
         user,

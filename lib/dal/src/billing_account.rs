@@ -88,11 +88,11 @@ impl BillingAccount {
             )
             .await?;
         let object = standard_model::finish_create_from_row(
-            &txn,
-            &nats,
-            &tenancy,
-            &visibility,
-            &history_actor,
+            txn,
+            nats,
+            tenancy,
+            visibility,
+            history_actor,
             row,
         )
         .await?;
@@ -126,6 +126,7 @@ impl BillingAccount {
         result: BillingAccountResult,
     );
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn signup(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
@@ -138,12 +139,12 @@ impl BillingAccount {
         user_password: impl AsRef<str>,
     ) -> BillingAccountResult<BillingAccountSignup> {
         let billing_account = BillingAccount::new(
-            &txn,
-            &nats,
-            &tenancy,
-            &visibility,
-            &history_actor,
-            &billing_account_name,
+            txn,
+            nats,
+            tenancy,
+            visibility,
+            history_actor,
+            billing_account_name,
             None,
         )
         .await?;
@@ -151,75 +152,105 @@ impl BillingAccount {
         let billing_account_tenancy = Tenancy::new_billing_account(vec![*billing_account.id()]);
 
         let key_pair = KeyPair::new(
-            &txn,
-            &nats,
+            txn,
+            nats,
             &billing_account_tenancy,
-            &visibility,
-            &history_actor,
+            visibility,
+            history_actor,
             "default",
         )
         .await?;
         key_pair
-            .set_billing_account(&txn, &nats, &history_actor, billing_account.id())
+            .set_billing_account(txn, nats, visibility, history_actor, billing_account.id())
             .await?;
 
         let user = User::new(
-            &txn,
-            &nats,
+            txn,
+            nats,
             &billing_account_tenancy,
-            &visibility,
-            &history_actor,
+            visibility,
+            history_actor,
             &user_name,
             &user_email,
             &user_password,
         )
         .await?;
-        user.set_billing_account(&txn, &nats, &history_actor, billing_account.id())
+        user.set_billing_account(txn, nats, visibility, history_actor, billing_account.id())
             .await?;
-
         let user_history_actor = HistoryActor::User(*user.id());
 
-        let admin_group = Group::new(
-            &txn,
-            &nats,
+        // TODO: remove the bobo user before we ship!
+        let user_bobo = User::new(
+            txn,
+            nats,
             &billing_account_tenancy,
-            &visibility,
+            visibility,
+            history_actor,
+            &user_name,
+            &format!("bobo-{}", user_email.as_ref()),
+            &user_password,
+        )
+        .await?;
+        user_bobo
+            .set_billing_account(txn, nats, visibility, history_actor, billing_account.id())
+            .await?;
+
+        let admin_group = Group::new(
+            txn,
+            nats,
+            &billing_account_tenancy,
+            visibility,
             &user_history_actor,
             "administrators",
         )
         .await?;
         admin_group
-            .set_billing_account(&txn, &nats, &user_history_actor, billing_account.id())
+            .set_billing_account(
+                txn,
+                nats,
+                visibility,
+                &user_history_actor,
+                billing_account.id(),
+            )
             .await?;
         admin_group
-            .add_user(&txn, &nats, &user_history_actor, user.id())
+            .add_user(txn, nats, visibility, &user_history_actor, user.id())
+            .await?;
+        admin_group
+            .add_user(txn, nats, visibility, &user_history_actor, user_bobo.id())
             .await?;
 
         let any_cap = Capability::new(
-            &txn,
-            &nats,
+            txn,
+            nats,
             &billing_account_tenancy,
-            &visibility,
+            visibility,
             &user_history_actor,
             "any",
             "any",
         )
         .await?;
         any_cap
-            .set_group(&txn, &nats, &user_history_actor, admin_group.id())
+            .set_group(txn, nats, visibility, &user_history_actor, admin_group.id())
             .await?;
 
         let organization = Organization::new(
-            &txn,
-            &nats,
+            txn,
+            nats,
             &billing_account_tenancy,
-            &visibility,
+            visibility,
             &user_history_actor,
             "default",
         )
         .await?;
         organization
-            .set_billing_account(&txn, &nats, &user_history_actor, billing_account.id())
+            .set_billing_account(
+                txn,
+                nats,
+                visibility,
+                &user_history_actor,
+                billing_account.id(),
+            )
             .await?;
 
         let organization_tenancy = Tenancy::new(
@@ -230,16 +261,22 @@ impl BillingAccount {
         );
 
         let workspace = Workspace::new(
-            &txn,
-            &nats,
+            txn,
+            nats,
             &organization_tenancy,
-            &visibility,
+            visibility,
             &user_history_actor,
             "default",
         )
         .await?;
         workspace
-            .set_organization(&txn, &nats, &user_history_actor, organization.id())
+            .set_organization(
+                txn,
+                nats,
+                visibility,
+                &user_history_actor,
+                organization.id(),
+            )
             .await?;
 
         Ok(BillingAccountSignup {

@@ -30,13 +30,15 @@ impl IntoResponse for TestError {
     type BodyError = Infallible;
 
     fn into_response(self) -> hyper::Response<Self::Body> {
-        let (status, error_message) = match self {
-            _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
-        };
+        let (status, error_message) = (StatusCode::INTERNAL_SERVER_ERROR, self.to_string());
 
-        let body = Json(
-            serde_json::json!({ "error": { "message": error_message, "code": 42, "statusCode": status.as_u16() } }),
-        );
+        let body = Json(serde_json::json!({
+            "error": {
+                "message": error_message,
+                "code": 42,
+                "statusCode": status.as_u16(),
+            },
+        }));
 
         (status, body).into_response()
     }

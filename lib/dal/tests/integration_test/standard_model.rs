@@ -318,7 +318,8 @@ async fn update() {
         "billing_accounts",
         "name",
         &tenancy,
-        &billing_account.pk(),
+        &visibility,
+        &billing_account.id(),
         &"funtime",
     )
     .await

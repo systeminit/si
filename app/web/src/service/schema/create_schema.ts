@@ -1,11 +1,12 @@
 import Bottle from "bottlejs";
 import { ApiResponse, SDF } from "@/api/sdf";
 import { Schema, SchemaKind } from "@/api/sdf/dal/schema";
-import { eventSchemaCreated$ } from "@/observable/schema";
-import { combineLatest, Observable, take, tap } from "rxjs";
+import { schemaCreated$ } from "@/observable/schema";
+import { Observable, take, tap } from "rxjs";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { visibility$ } from "@/observable/visibility";
 import { switchMap } from "rxjs/operators";
+import { editSessionWritten$ } from "@/observable/edit_session";
 
 export interface CreateSchemaArgs {
   name: String;
@@ -23,9 +24,9 @@ export function createSchema(
 ): Observable<ApiResponse<CreateSchemaResponse>> {
   const bottle = Bottle.pop("default");
   const sdf: SDF = bottle.container.SDF;
-  return combineLatest([visibility$]).pipe(
+  return visibility$.pipe(
     take(1),
-    switchMap(([visibility]) => {
+    switchMap((visibility) => {
       return sdf
         .post<ApiResponse<CreateSchemaResponse>>("schema/create_schema", {
           ...args,
@@ -34,7 +35,8 @@ export function createSchema(
         .pipe(
           tap((response) => {
             if (!response.error) {
-              eventSchemaCreated$.next(response.schema.pk);
+              schemaCreated$.next(response.schema.pk);
+              editSessionWritten$.next(true);
             }
           }),
         );

@@ -26,72 +26,66 @@ pub struct Tenancy {
 }
 
 impl Tenancy {
-    #[instrument]
     pub fn new(
         universal: bool,
         billing_account_ids: Vec<BillingAccountId>,
         organization_ids: Vec<OrganizationId>,
         workspace_ids: Vec<WorkspaceId>,
     ) -> Self {
-        return Tenancy {
+        Self {
             universal,
             billing_account_ids,
             organization_ids,
             workspace_ids,
-        };
+        }
     }
 
-    #[instrument]
     pub fn new_empty() -> Self {
-        return Tenancy {
+        Self {
             universal: false,
             billing_account_ids: Vec::new(),
             organization_ids: Vec::new(),
             workspace_ids: Vec::new(),
-        };
+        }
     }
 
-    #[instrument]
     pub fn new_universal() -> Self {
-        return Tenancy {
+        Self {
             universal: true,
             billing_account_ids: Vec::new(),
             organization_ids: Vec::new(),
             workspace_ids: Vec::new(),
-        };
+        }
     }
 
-    #[instrument]
     pub fn new_billing_account(billing_account_ids: Vec<BillingAccountId>) -> Self {
-        return Tenancy {
+        Self {
             universal: false,
             billing_account_ids,
             organization_ids: Vec::new(),
             workspace_ids: Vec::new(),
-        };
+        }
     }
 
-    #[instrument]
     pub fn new_organization(organization_ids: Vec<OrganizationId>) -> Self {
-        return Tenancy {
+        Self {
             universal: false,
             billing_account_ids: Vec::new(),
             organization_ids,
             workspace_ids: Vec::new(),
-        };
+        }
     }
 
-    #[instrument]
     pub fn new_workspace(workspace_ids: Vec<WorkspaceId>) -> Self {
-        return Tenancy {
+        Self {
             universal: false,
             billing_account_ids: Vec::new(),
             organization_ids: Vec::new(),
             workspace_ids,
-        };
+        }
     }
 
-    #[instrument(skip(txn))]
+    #[instrument(skip_all)]
     pub async fn check(&self, txn: &PgTxn<'_>, check_tenancy: &Tenancy) -> TenancyResult<bool> {
         let row = txn
             .query_one(
@@ -120,7 +114,7 @@ impl postgres_types::ToSql for Tenancy {
         Self: Sized,
     {
         let json = serde_json::to_value(self)?;
-        postgres_types::ToSql::to_sql(&json, &ty, out)
+        postgres_types::ToSql::to_sql(&json, ty, out)
     }
 
     fn accepts(ty: &postgres_types::Type) -> bool
@@ -136,6 +130,6 @@ impl postgres_types::ToSql for Tenancy {
         out: &mut postgres_types::private::BytesMut,
     ) -> Result<postgres_types::IsNull, Box<dyn std::error::Error + Sync + Send>> {
         let json = serde_json::to_value(self)?;
-        postgres_types::ToSql::to_sql(&json, &ty, out)
+        postgres_types::ToSql::to_sql(&json, ty, out)
     }
 }

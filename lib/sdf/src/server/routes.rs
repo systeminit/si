@@ -8,7 +8,6 @@ use axum::{
     AddExtensionLayer, Json, Router,
 };
 use hyper::StatusCode;
-use serde_json::json;
 use si_data::{nats, pg};
 use telemetry::TelemetryClient;
 use thiserror::Error;
@@ -62,6 +61,10 @@ pub fn routes(
             crate::server::service::change_set::routes(),
         )
         .nest("/api/schema", crate::server::service::schema::routes())
+        .nest(
+            "/api/edit_field",
+            crate::server::service::edit_field::routes(),
+        )
         .nest("/api/ws", crate::server::service::ws::routes());
     router = test_routes(router);
     router = router
@@ -104,11 +107,15 @@ impl IntoResponse for AppError {
     type BodyError = Infallible;
 
     fn into_response(self) -> hyper::Response<Self::Body> {
-        let (status, error_message) = match self {
-            _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
-        };
+        let (status, error_message) = (StatusCode::INTERNAL_SERVER_ERROR, self.to_string());
 
-        let body = Json(json!({ "error": error_message }));
+        let body = Json(serde_json::json!({
+            "error": {
+                "message": error_message,
+                "code": 42,
+                "statusCode": status.as_u16(),
+            },
+        }));
 
         (status, body).into_response()
     }

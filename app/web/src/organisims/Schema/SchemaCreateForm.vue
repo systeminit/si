@@ -8,6 +8,7 @@
         </template>
         <template #widget>
           <SiTextBox
+            data-test="schema-new-form-name"
             id="schemaName"
             v-model="form.name"
             size="xs"
@@ -24,7 +25,7 @@
         </template>
         <template #widget>
           <SiSelect
-            id="schemaKind"
+            id="schema-new-form-kind"
             :options="kindOptions"
             value="concrete"
             size="xs"
@@ -43,6 +44,7 @@
         </div>
         <div>
           <SiButton
+            data-test="schema-new-form-create-button"
             size="xs"
             label="Create"
             kind="save"
