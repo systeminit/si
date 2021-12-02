@@ -1,7 +1,9 @@
 import * as PIXI from "pixi.js";
 
-import { Node } from "../geo";
-import { translateNode } from "../transform";
+import { Node } from "../obj";
+import { SceneManager } from "../scene";
+import { SchematicDataManager } from "../../data";
+import { NodeUpdate } from "../../model";
 
 interface Position {
   x: number;
@@ -18,10 +20,15 @@ export interface DraggingInteractionData {
 }
 
 export class DraggingManager {
+  sceneManager: SceneManager;
+  dataManager: SchematicDataManager;
   data?: PIXI.InteractionData | undefined;
   offset?: Position | undefined;
 
-  constructor() {}
+  constructor(sceneManager: SceneManager, dataManager: SchematicDataManager) {
+    this.sceneManager = sceneManager;
+    this.dataManager = dataManager;
+  }
 
   beforeDrag(data: PIXI.InteractionData, offset: Position): void {
     this.data = data;
@@ -35,9 +42,20 @@ export class DraggingManager {
         x: localPosition.x - this.offset.x,
         y: localPosition.y - this.offset.y,
       };
-      translateNode(node, position);
+
+      this.sceneManager.translateNode(node, position);
     }
   }
 
-  afterDrag(): void {}
+  afterDrag(node: Node): void {
+    const nodeUpdate: NodeUpdate = {
+      nodeId: node.id,
+      position: {
+        ctxId: "aaa",
+        x: node.x,
+        y: node.y,
+      },
+    };
+    this.dataManager.nodeUpdate$.next(nodeUpdate);
+  }
 }

@@ -1,6 +1,6 @@
 <template>
-  <div :id="container.id" ref="container" class="w-full h-full bg-red-800">
-    <div class="flex flex-row">
+  <div :id="container.id" ref="container" class="w-full h-full">
+    <!-- <div class="flex flex-row">
       <div class="ml-2 font-medium text-yellow-200">{{ state.value }}</div>
 
       <div v-if="selection" class="ml-2 font-medium text-blue-200">
@@ -8,8 +8,14 @@
           {{ s.name }}
         </div>
       </div>
-    </div>
-    <canvas :id="canvas.id" ref="canvas" />
+    </div> -->
+    <canvas
+      :id="canvas.id"
+      ref="canvas"
+      @wheel="handleMouseWheel"
+      @mouseenter="mouseEnter()"
+      @mouseleave="mouseLeave()"
+    />
   </div>
 </template>
 
@@ -22,11 +28,15 @@ import { refFrom } from "vuse-rx";
 import { ViewerStateMachine, ViewerEventKind } from "./state";
 import { useMachine } from "@xstate/vue";
 
-import { SceneGraphData, SceneManager } from "./Viewer/scene";
+import { SceneManager } from "./Viewer/scene";
 import { InteractionManager } from "./Viewer/interaction";
 import { Renderer } from "./Viewer/renderer";
+import { SchematicDataManager } from "./data";
+
+import { Schematic } from "./model";
 
 import * as s from "./state";
+import { schematicData$ } from "./data";
 
 interface KeyboardKey {
   long: string;
@@ -41,6 +51,7 @@ const spacebarKey: KeyboardKey = {
 interface Data {
   component: {
     id: string;
+    isActive: boolean;
   };
   canvas: {
     id: string;
@@ -54,24 +65,25 @@ interface Data {
   };
   renderer: Renderer | undefined;
   sceneManager: SceneManager | undefined;
+  dataManager: SchematicDataManager | undefined;
   spaceBarPressed: boolean;
   resizeObserver: ResizeObserver;
   interactionManager: InteractionManager | undefined;
 }
 
 export default defineComponent({
-  name: "GraphViewer",
+  name: "Viewer",
   props: {
     schematicViewerId: {
       type: String,
       required: true,
     },
-    sceneGraphData: {
-      type: Object as PropType<SceneGraphData>,
-      required: true,
-    },
     viewerState: {
       type: Object as PropType<ViewerStateMachine>,
+      required: true,
+    },
+    schematicData: {
+      type: Object as PropType<Schematic> | undefined,
       required: true,
     },
   },
@@ -102,6 +114,7 @@ export default defineComponent({
     return {
       component: {
         id: id,
+        isActive: false,
       },
       canvas: {
         id: canvasId,
@@ -115,10 +128,18 @@ export default defineComponent({
       },
       renderer: undefined,
       sceneManager: undefined,
+      dataManager: undefined,
       spaceBarPressed: false,
       resizeObserver: resizeObserver,
       interactionManager: undefined,
     };
+  },
+  watch: {
+    schematicData(schematic) {
+      if (this.sceneManager && this.schematicData) {
+        this.dataManager?.schematicData$.next(schematic);
+      }
+    },
   },
   mounted(): void {
     this.canvas.element = this.$refs.canvas as HTMLCanvasElement;
@@ -126,11 +147,6 @@ export default defineComponent({
 
     document.addEventListener("keydown", this.handleKeyDown);
     document.addEventListener("keyup", this.handleKeyUp);
-
-    // @ts-ignore
-    this.container.element.addEventListener("wheel", this.handleMouseWheel, {
-      passive: false,
-    });
 
     // this.$once("hook:beforeDestroy", () => {
     //   this.container.element.removeEventListener("keydown", this.handleKeyDown);
@@ -148,23 +164,31 @@ export default defineComponent({
       backgroundColor: 0x282828,
     });
 
+    const dataManager = new SchematicDataManager();
+    this.dataManager = dataManager;
 
-    this.sceneManager = new SceneManager(
-      this.renderer as Renderer,
-      this.sceneGraphData,
-    );
+    dataManager.schematicData$.subscribe({
+      next: (d) => this.loadSchematicData(d),
+    });
+
+    // Global events
+    schematicData$.subscribe({
+      next: (d) => this.dataManager?.schematicData$.next(d),
+    });
+
+    this.sceneManager = new SceneManager(this.renderer as Renderer);
 
     const interactionManager = new InteractionManager(
       this.sceneManager as SceneManager,
+      dataManager,
       this.service,
       this.renderer as Renderer,
     );
     this.interactionManager = interactionManager;
 
-    this.renderer.stage.sortableChildren = true;
+    this.sceneManager.subscribeToInteracctionEvents(interactionManager);
 
-    // const grid = new Grid();
-    // this.renderer.stage.addChild(grid);
+    this.renderer.stage.sortableChildren = true;
 
     this.renderer.stage.addChild(this.sceneManager.scene as PIXI.Container);
 
@@ -186,7 +210,9 @@ export default defineComponent({
     handleKeyDown(e: KeyboardEvent): void {
       if (e.key === spacebarKey.long || e.key === spacebarKey.short) {
         e.preventDefault();
-        this.send(ViewerEventKind.ACTIVATE_PANNING);
+        if (this.component.isActive) {
+          this.send(ViewerEventKind.ACTIVATE_PANNING);
+        }
       }
     },
 
@@ -195,6 +221,13 @@ export default defineComponent({
         e.preventDefault();
         this.send(ViewerEventKind.DEACTIVATE_PANNING);
       }
+    },
+
+    mouseEnter() {
+      this.component.isActive = true;
+    },
+    mouseLeave() {
+      this.component.isActive = false;
     },
 
     handleMouseWheel(e: WheelEvent): void {
@@ -207,6 +240,12 @@ export default defineComponent({
         this.interactionManager.zoomingManager.zoom(e);
         this.interactionManager.renderer.renderStage();
         this.send(ViewerEventKind.DEACTIVATE_ZOOMING);
+      }
+    },
+
+    loadSchematicData(schematic: Schematic | null): void {
+      if (schematic && this.sceneManager) {
+        this.sceneManager.loadSceneData(schematic);
       }
     },
   },

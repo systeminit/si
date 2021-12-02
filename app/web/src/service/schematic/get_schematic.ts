@@ -1,10 +1,14 @@
-import { ApiResponse, SDF } from "@/api/sdf";
-import { Schematic } from "@/api/sdf/dal/schematic";
-import { combineLatest, Observable, shareReplay } from "rxjs";
-import { standardVisibilityTriggers$ } from "@/observable/visibility";
-import Bottle from "bottlejs";
-import { switchMap } from "rxjs/operators";
+// import { ApiResponse, SDF } from "@/api/sdf";
+// import { Schematic } from "@/api/sdf/dal/schematic";
+// import { combineLatest, from, Observable, shareReplay } from "rxjs";
+// import { standardVisibilityTriggers$ } from "@/observable/visibility";
+// import Bottle from "bottlejs";
+// import { switchMap } from "rxjs/operators";
+
+import { ApiResponse } from "@/api/sdf";
+import { from, Observable } from "rxjs";
 import { Visibility } from "@/api/sdf/dal/visibility";
+import { Schematic, schematicData } from "@/organisims/SchematicViewer/model";
 
 export interface GetSchematicArgs {
   context: string;
@@ -24,21 +28,22 @@ export function getSchematic(
   if (getSchematicCollection[args.context]) {
     return getSchematicCollection[args.context];
   }
-  getSchematicCollection[args.context] = combineLatest([
-    standardVisibilityTriggers$,
-  ]).pipe(
-    switchMap(([[visibility]]) => {
-      const bottle = Bottle.pop("default");
-      const sdf: SDF = bottle.container.SDF;
-      return sdf.get<ApiResponse<GetSchematicResponse>>(
-        "schematic/get_schematic",
-        {
-          ...args,
-          ...visibility,
-        },
-      );
-    }),
-    shareReplay(1),
-  );
-  return getSchematicCollection[args.context];
+  // getSchematicCollection[args.context] = combineLatest([
+  //   standardVisibilityTriggers$,
+  // ]).pipe(
+  //   switchMap(([[visibility]]) => {
+  //     const bottle = Bottle.pop("default");
+  //     const sdf: SDF = bottle.container.SDF;
+  //     return sdf.get<ApiResponse<GetSchematicResponse>>(
+  //       "schematic/get_schematic",
+  //       {
+  //         ...args,
+  //         ...visibility,
+  //       },
+  //     );
+  //   }),
+  //   shareReplay(1),
+  // );
+  // return getSchematicCollection[args.context];
+  return from([schematicData]);
 }

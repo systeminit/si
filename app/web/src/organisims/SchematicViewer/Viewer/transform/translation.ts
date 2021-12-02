@@ -1,4 +1,4 @@
-import { Node } from "../geo";
+import { Node } from "../obj";
 import { Position } from "../cg";
 
 export function translateNode(node: Node, position: Position): void {

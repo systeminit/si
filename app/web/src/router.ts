@@ -15,6 +15,7 @@ import ApplicationList from "@/organisims/Application/ApplicationList.vue";
 import ApplicationView from "@/organisims/Application/ApplicationView.vue";
 import Editor from "@/organisims/Editor.vue";
 import _ from "lodash";
+import SchematicViewer from "@/organisims/SchematicViewer.vue";
 
 const routes: RouteRecordRaw[] = [
   {
@@ -93,6 +94,12 @@ const routes: RouteRecordRaw[] = [
             component: SchemaView,
           },
         ],
+      },
+      {
+        path: "schematic",
+        props: true,
+        name: "schematic",
+        component: SchematicViewer,
       },
     ],
   },

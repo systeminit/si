@@ -31,10 +31,11 @@
         <div class="flex items-center h-full pr-2">
           <button
             v-if="maximizedContainer && !maximizedFull"
+            class="flex items-center"
             data-testid="minimize-container"
             @click="minimizeContainer"
           >
-            <VueFeather type="minimize-2" />
+            <VueFeather type="minimize-2" size="1.2rem" stroke-width="1.5" />
           </button>
 
           <button
@@ -43,23 +44,30 @@
               !maximizedFull &&
               isMaximizedContainerEnabled
             "
+            class="flex items-center"
             data-testid="maximize-container"
             @click="maximizeContainer"
           >
-            <VueFeather type="maximize-2" />
+            <VueFeather type="maximize-2" size="1.2rem" stroke-width="1.5" />
           </button>
         </div>
         <div class="flex items-center h-full pr-2">
           <button
             v-if="maximizedFull"
+            class="flex items-center"
             data-testid="minimize-full"
             @click="minimizeFull"
           >
-            <VueFeather type="minimize" />
+            <VueFeather type="minimize" size="1.2rem" stroke-width="1.5" />
           </button>
 
-          <button v-else data-testid="maximize-full" @click="maximizeFull">
-            <VueFeather type="maximize" />
+          <button
+            v-else
+            class="flex items-center"
+            data-testid="maximize-full"
+            @click="maximizeFull"
+          >
+            <VueFeather type="maximize" size="1.2rem" stroke-width="1.5" />
           </button>
         </div>
       </div>

@@ -7,6 +7,7 @@ varying vec2 vUvs;
 uniform vec3 uColor;
 uniform float uBorderThickness;
 uniform float uGridSubdivisions;
+uniform float uZoomFactor;
 
 float rect(in vec2 _st, in float _thickness) {
     vec2 bottomLeftCorner = step(vec2(_thickness), _st);
@@ -18,22 +19,13 @@ float rect(in vec2 _st, in float _thickness) {
 void main() {
     vec3 color = vec3(uColor);
     vec2 st1 = vUvs;
-    vec2 st2 = vUvs;
 
-    //  st1
+    float thicknessAdjustment = pow((1.0 / uZoomFactor), 1.2);
     st1 *= uGridSubdivisions;
     st1 = fract(st1); // x - floor(x)
-    float rectInner = rect(st1, uBorderThickness);
-    float alphaInner = rectInner;
+    float rectInner = rect(st1, uBorderThickness * 1.75 * thicknessAdjustment);
 
-
-    //  st2
-    st2 *= ( uGridSubdivisions * 0.25);
-    st2 = fract(st2); // x - floor(x)
-    float rectOuter = rect(st2, uBorderThickness);
-    float alphaOuter = rectOuter;
-
-    float alpha = max(rectInner * 0.75, rectOuter);
+    float alpha = rectInner * clamp(uZoomFactor, 0.1, 1.0);
 
     gl_FragColor = vec4(color, alpha);
 }

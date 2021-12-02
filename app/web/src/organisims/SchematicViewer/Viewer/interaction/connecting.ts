@@ -1,7 +1,8 @@
 import * as PIXI from "pixi.js";
 
 import { SceneManager } from "../scene";
-import { Connection } from "../geo";
+import { SchematicDataManager } from "../../data";
+import { Connection } from "../obj";
 
 interface Position {
   x: number;
@@ -18,6 +19,8 @@ export interface ConnectingInteractionData {
 }
 
 export class ConnectingManager {
+  dataManager: SchematicDataManager;
+  zoomFactor: number;
   interactiveConnection?: undefined;
   sourceSocket?: string | undefined;
   destinationSocket?: string | undefined;
@@ -25,14 +28,19 @@ export class ConnectingManager {
   data?: PIXI.InteractionData | undefined;
   offset?: Position | undefined;
 
-  constructor() {}
+  constructor(dataManager: SchematicDataManager) {
+    this.dataManager = dataManager;
+    this.zoomFactor = 1;
+  }
 
   beforeConnect(
     data: PIXI.InteractionData,
-    target: PIXI.Container,
+    target: Connection,
     sceneManager: SceneManager,
     offset: Position,
+    zoomFactor: number,
   ): void {
+    this.zoomFactor = zoomFactor;
     this.data = data;
     this.sourceSocket = target.name;
     this.offset = {
@@ -40,14 +48,16 @@ export class ConnectingManager {
       y: offset.y,
     };
 
+    //  (sp.x - offset.x) * (1 / this.zoomFactor),
+
     sceneManager.interactiveConnection = sceneManager.createConnection(
       {
-        x: target.worldTransform.tx - offset.x,
-        y: target.worldTransform.ty - offset.y,
+        x: (target.worldTransform.tx - offset.x) * (1 / this.zoomFactor),
+        y: (target.worldTransform.ty - offset.y) * (1 / this.zoomFactor),
       },
       {
-        x: data.global.x - offset.x,
-        y: data.global.y - offset.y,
+        x: (data.global.x - offset.x) * (1 / this.zoomFactor),
+        y: (data.global.y - offset.y) * (1 / this.zoomFactor),
       },
       "none",
       "none",
@@ -60,11 +70,10 @@ export class ConnectingManager {
       sceneManager.updateConnectionInteractive(
         sceneManager.interactiveConnection.name,
         {
-          x: data.global.x - this.offset.x,
-          y: data.global.y - this.offset.y,
+          x: (data.global.x - this.offset.x) * (1 / this.zoomFactor),
+          y: (data.global.y - this.offset.y) * (1 / this.zoomFactor),
         },
       );
-
       sceneManager.refreshConnections();
     }
   }
@@ -79,18 +88,23 @@ export class ConnectingManager {
       const destination = sceneManager.getGeo(this.destinationSocket);
       sceneManager.createConnection(
         {
-          x: source.worldTransform.tx - this.offset.x,
-          y: source.worldTransform.ty - this.offset.y,
+          x: (source.worldTransform.tx - this.offset.x) * (1 / this.zoomFactor),
+          y: (source.worldTransform.ty - this.offset.y) * (1 / this.zoomFactor),
         },
         {
-          x: destination.worldTransform.tx - this.offset.x,
-          y: destination.worldTransform.ty - this.offset.y,
+          x:
+            (destination.worldTransform.tx - this.offset.x) *
+            (1 / this.zoomFactor),
+          y:
+            (destination.worldTransform.ty - this.offset.y) *
+            (1 / this.zoomFactor),
         },
         source.name,
         destination.name,
       );
       this.clearInteractiveConnection(sceneManager);
       sceneManager.refreshConnections();
+      this.dataManager.connectionCreate$.next({ id: "a new connection" });
     }
   }
 

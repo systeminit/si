@@ -2,17 +2,18 @@ import * as PIXI from "pixi.js";
 
 import * as SHADER from "../shader";
 
-
 export const BACKGROUND_GRID_NAME = "backgroundGrid";
 
 export class Grid extends PIXI.Container {
-  name: string;
   shader?: string;
+  zoomFactor?: number;
+  quad: PIXI.Mesh<PIXI.Shader>;
 
   constructor(size: number) {
     super();
 
     this.name = BACKGROUND_GRID_NAME;
+    this.zoomFactor = 1;
 
     const x = size;
     const y = size;
@@ -35,6 +36,7 @@ export class Grid extends PIXI.Container {
       uColor: [0.198, 0.198, 0.198],
       uBorderThickness: 0.02,
       uGridSubdivisions: 80.0,
+      uZoomFactor: this.zoomFactor,
     };
 
     const shader = PIXI.Shader.from(
@@ -43,15 +45,16 @@ export class Grid extends PIXI.Container {
       uniforms,
     );
 
-    const quad = new PIXI.Mesh(geo, shader);
-    quad.blendMode = PIXI.BLEND_MODES.NORMAL_NPM;
-    quad.position.set(x, y);
-    quad.scale.set(1);
-
-    this.addChild(quad);
+    this.quad = new PIXI.Mesh(geo, shader);
+    this.quad.name = "quad";
+    this.quad.blendMode = PIXI.BLEND_MODES.NORMAL_NPM;
+    this.quad.position.set(x, y);
+    this.quad.scale.set(1);
+    this.addChild(this.quad);
   }
 
-  // update(zoomFactor: number) {
-  //   // update uGridSubdivisions and shader
-  // }
+  updateZoomFactor(zoomFactor: number) {
+    const c = this.getChildByName("quad") as PIXI.Mesh<PIXI.Shader>;
+    c.shader.uniforms.uZoomFactor = zoomFactor;
+  }
 }

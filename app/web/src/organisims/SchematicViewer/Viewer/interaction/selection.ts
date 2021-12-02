@@ -1,5 +1,5 @@
 import { selection$ } from "../../state";
-import { Node } from "../geo";
+import { Node } from "../obj";
 
 export class SelectionManager {
   selection: Array<Node>;
@@ -8,6 +8,7 @@ export class SelectionManager {
     this.selection = [];
   }
 
+  // Selection should not be cleared when the schematic updates.
   select(node: Node): void {
     if (this.selection.length > 0) {
       this.clearSelection();

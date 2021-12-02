@@ -1,6 +1,7 @@
 import * as PIXI from "pixi.js";
+import * as Rx from "rxjs";
 
-import { zoomMagnitude$ } from "../../state";
+import { Renderer } from "../renderer";
 
 export class ZoomingManager {
   data?: PIXI.InteractionData | undefined;
@@ -10,15 +11,28 @@ export class ZoomingManager {
   min: number;
   max: number;
   container: PIXI.Container;
+  renderer: Renderer;
+  zoomMagnitude$: Rx.ReplaySubject<number | null>;
+  zoomFactor$: Rx.ReplaySubject<number | null>;
 
-  constructor(container: PIXI.Container) {
+  constructor(
+    container: PIXI.Container,
+    renderer: Renderer,
+    zoomMagnitude$: Rx.ReplaySubject<number | null>,
+    zoomFactor$: Rx.ReplaySubject<number | null>,
+  ) {
+    this.renderer = renderer;
+
     this.scale = 1;
     this.sensitivity = 0.001;
     this.factor = 1;
-    this.min = 0.4;
+    this.min = 0.5;
     this.max = 1;
 
     this.container = container;
+
+    this.zoomMagnitude$ = zoomMagnitude$;
+    this.zoomFactor$ = zoomFactor$;
   }
 
   beforePan(data: PIXI.InteractionData): void {
@@ -34,9 +48,13 @@ export class ZoomingManager {
     const zoomDeltaPercentage = 1 - zoomFactor / this.factor;
     const magnitude = zoomDeltaPercentage;
 
+    const mouseCanvasPosition = {
+      x: this.renderer.plugins.interaction.mouse.global.x,
+      y: this.renderer.plugins.interaction.mouse.global.y,
+    };
     const mousePosition = {
-      x: e.clientX - this.container.position.x,
-      y: e.clientY - this.container.position.y,
+      x: mouseCanvasPosition.x - this.container.position.x,
+      y: mouseCanvasPosition.y - this.container.position.y,
     };
 
     const translation = {
@@ -53,8 +71,7 @@ export class ZoomingManager {
     this.container.y = translation.y;
     this.container.updateTransform();
 
-    zoomMagnitude$.next(magnitude);
-
-    // Observables to pass state back to the interaction manager... ^^
+    this.zoomMagnitude$.next(magnitude);
+    this.zoomFactor$.next(zoomFactor);
   }
 }
