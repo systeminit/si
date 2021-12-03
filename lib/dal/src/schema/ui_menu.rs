@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use jwt_simple::reexports::serde_json::Value;
 use serde::{Deserialize, Serialize};
 use si_data::{NatsTxn, PgTxn};
@@ -18,7 +19,7 @@ use crate::{
 pk!(UiMenuPk);
 pk!(UiMenuId);
 
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct UiMenu {
     pk: UiMenuPk,
     id: UiMenuId,
@@ -54,7 +55,7 @@ impl UiMenu {
         let row = txn
             .query_one(
                 "SELECT object FROM schema_ui_menu_create_v1($1, $2, $3)",
-                &[&tenancy, &visibility, &SchematicKind::Component.to_string()],
+                &[&tenancy, &visibility, &SchematicKind::Component.as_ref()],
             )
             .await?;
         let object = standard_model::finish_create_from_row(
@@ -99,17 +100,17 @@ impl UiMenu {
     );
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 impl EditFieldAble for UiMenu {
     type Id = UiMenuId;
-    type ErrorKind = SchemaError;
+    type Error = SchemaError;
 
     async fn get_edit_fields(
         txn: &PgTxn<'_>,
         tenancy: &Tenancy,
         visibility: &Visibility,
         id: &Self::Id,
-    ) -> Result<EditFields, Self::ErrorKind> {
+    ) -> Result<EditFields, Self::Error> {
         let object = UiMenu::get_by_id(txn, tenancy, visibility, id)
             .await?
             .ok_or(SchemaError::UiMenuNotFound(*id))?;
@@ -197,7 +198,7 @@ impl EditFieldAble for UiMenu {
         id: Self::Id,
         edit_field_id: String,
         value: Option<Value>,
-    ) -> Result<(), Self::ErrorKind> {
+    ) -> Result<(), Self::Error> {
         let edit_field_id = edit_field_id.as_ref();
         let mut object = UiMenu::get_by_id(txn, tenancy, visibility, &id)
             .await?

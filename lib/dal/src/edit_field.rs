@@ -1,12 +1,17 @@
 use serde::{Deserialize, Serialize};
 use si_data::{NatsTxn, PgTxn};
 use std::{future::Future, pin::Pin};
+use strum_macros::{AsRefStr, Display, EnumString};
 use thiserror::Error;
 
-use crate::{HistoryActor, LabelList, Tenancy, Visibility};
+use crate::{
+    label_list::ToLabelList, HistoryActor, LabelList, LabelListError, Tenancy, Visibility,
+};
 
 #[derive(Error, Debug)]
 pub enum EditFieldError {
+    #[error("label list error: {0}")]
+    LabelList(#[from] LabelListError),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("missing head value in visibility diff calculation")]
@@ -31,17 +36,19 @@ pub enum EditFieldDataType {
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(tag = "kind", content = "options")]
 pub enum Widget {
-    Text(TextWidget),
-    Select(SelectWidget),
-    Header(HeaderWidget),
     Array(ArrayWidget),
+    Checkbox(CheckboxWidget),
+    Header(HeaderWidget),
+    Select(SelectWidget),
+    Text(TextWidget),
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
+#[derive(AsRefStr, Clone, Debug, Deserialize, Display, EnumString, Eq, PartialEq, Serialize)]
 pub enum EditFieldObjectKind {
     Schema,
     SchemaUiMenu,
     SchemaVariant,
+    Socket,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
@@ -104,6 +111,21 @@ pub type EditFields = Vec<EditField>;
 pub type UpdateFunction = Box<dyn Fn(String) -> Pin<Box<dyn Future<Output = EditFieldResult<()>>>>>;
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
+pub struct CheckboxWidget {}
+
+impl CheckboxWidget {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl Default for CheckboxWidget {
+    fn default() -> Self {
+        Self {}
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 pub struct TextWidget {}
 
 impl TextWidget {
@@ -130,6 +152,31 @@ impl SelectWidget {
     }
 }
 
+pub trait ToSelectWidget: ToLabelList {
+    fn to_select_widget_with_no_default() -> EditFieldResult<SelectWidget> {
+        Ok(SelectWidget::new(Self::to_label_list()?, None))
+    }
+
+    fn to_select_widget_with<D>(default: D) -> EditFieldResult<SelectWidget>
+    where
+        D: Serialize,
+    {
+        Ok(SelectWidget::new(
+            Self::to_label_list()?,
+            Some(serde_json::to_value(default)?),
+        ))
+    }
+}
+
+pub trait ToSelectWidgetDefault: ToLabelList + Default {
+    fn to_select_widget_with_default() -> EditFieldResult<SelectWidget> {
+        Ok(SelectWidget::new(
+            Self::to_label_list()?,
+            Some(serde_json::to_value(Self::default())?),
+        ))
+    }
+}
+
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 pub struct HeaderWidget {
     edit_fields: EditFields,
@@ -152,6 +199,12 @@ impl ArrayWidget {
     }
 }
 
+impl From<Vec<EditFields>> for ArrayWidget {
+    fn from(entries: Vec<EditFields>) -> Self {
+        Self::new(entries)
+    }
+}
+
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(tag = "kind")]
 pub enum Validator {
@@ -168,14 +221,14 @@ pub struct RegexValidator;
 #[async_trait::async_trait]
 pub trait EditFieldAble {
     type Id;
-    type ErrorKind;
+    type Error;
 
     async fn get_edit_fields(
         txn: &PgTxn<'_>,
         tenancy: &Tenancy,
         visibility: &Visibility,
         id: &Self::Id,
-    ) -> Result<EditFields, Self::ErrorKind>;
+    ) -> Result<EditFields, Self::Error>;
 
     #[allow(clippy::too_many_arguments)]
     async fn update_from_edit_field(
@@ -187,7 +240,7 @@ pub trait EditFieldAble {
         id: Self::Id,
         edit_field_id: String,
         value: Option<serde_json::Value>,
-    ) -> Result<(), Self::ErrorKind>;
+    ) -> Result<(), Self::Error>;
 }
 
 pub fn value_and_visiblity_diff_option<Obj, Value: Eq + Serialize + ?Sized>(
@@ -228,6 +281,29 @@ pub fn value_and_visiblity_diff<Obj, Value: Eq + Serialize + ?Sized>(
         target_value,
         head_value_option,
         change_set_value_option,
+    )?;
+    let mut value = None;
+    if let Some(target_value_real) = target_value {
+        value = Some(serde_json::to_value(target_value_real)?);
+    }
+    Ok((value, visibility_diff))
+}
+
+pub fn value_and_visiblity_diff_copy<Obj, Value: Eq + Serialize>(
+    visibility: &Visibility,
+    target_obj: Option<&Obj>,
+    target_fn: impl Fn(&Obj) -> Value,
+    head_obj: Option<&Obj>,
+    change_set_obj: Option<&Obj>,
+) -> EditFieldResult<(Option<serde_json::Value>, VisibilityDiff)> {
+    let target_value = target_obj.as_deref().map(|o| target_fn(o));
+    let head_value_option = head_obj.as_deref().map(|o| target_fn(o));
+    let change_set_value_option = change_set_obj.as_deref().map(|o| target_fn(o));
+    let visibility_diff = visibility_diff(
+        visibility,
+        target_value.as_ref(),
+        head_value_option.as_ref(),
+        change_set_value_option.as_ref(),
     )?;
     let mut value = None;
     if let Some(target_value_real) = target_value {

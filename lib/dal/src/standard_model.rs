@@ -3,6 +3,7 @@ use postgres_types::ToSql;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use strum_macros::AsRefStr;
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -23,6 +24,18 @@ pub enum StandardModelError {
 }
 
 pub type StandardModelResult<T> = Result<T, StandardModelError>;
+
+#[derive(AsRefStr, Debug, Eq, PartialEq)]
+#[strum(serialize_all = "lowercase")]
+pub enum TypeHint {
+    Bytea,
+    BigInt,
+    Boolean,
+    Char,
+    Integer,
+    SmallInt,
+    Text,
+}
 
 #[instrument(skip(txn))]
 pub async fn get_by_pk<PK: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
@@ -255,27 +268,35 @@ pub fn option_object_from_row<OBJECT: DeserializeOwned>(
     Ok(result)
 }
 
-#[instrument(skip(txn))]
-pub async fn update<ID: Send + Sync + ToSql + std::fmt::Display, VALUE: Send + Sync + ToSql>(
+#[instrument(skip_all)]
+#[allow(clippy::too_many_arguments)]
+pub async fn update<ID, VALUE>(
     txn: &PgTxn<'_>,
     table: &str,
     column: &str,
     tenancy: &Tenancy,
     visibility: &Visibility,
     id: &ID,
-    value: &VALUE,
-) -> StandardModelResult<DateTime<Utc>> {
+    value: VALUE,
+    hint: TypeHint,
+) -> StandardModelResult<DateTime<Utc>>
+where
+    ID: Send + Sync + ToSql + std::fmt::Display,
+    VALUE: Send + Sync + ToSql,
+{
+    let query = format!(
+        "SELECT updated_at FROM update_by_id_v1($1, $2, $3, $4, $5, $6::{})",
+        hint.as_ref()
+    );
+
     let row = txn
-        .query_one(
-            "SELECT updated_at FROM update_by_id_v1($1, $2, $3, $4, $5, $6)",
-            &[&table, &column, &tenancy, &visibility, &id, &value],
-        )
+        .query_one(&query, &[&table, &column, tenancy, visibility, &id, &value])
         .await?;
     row.try_get("updated_at")
         .map_err(|_| StandardModelError::ModelMissing(table.to_string(), id.to_string()))
 }
 
-#[instrument(skip(txn))]
+#[instrument(skip_all)]
 pub async fn list<OBJECT: DeserializeOwned>(
     txn: &PgTxn<'_>,
     table: &str,
@@ -285,13 +306,13 @@ pub async fn list<OBJECT: DeserializeOwned>(
     let rows = txn
         .query(
             "SELECT * FROM list_models_v1($1, $2, $3)",
-            &[&table, &tenancy, &visibility],
+            &[&table, tenancy, visibility],
         )
         .await?;
     objects_from_rows(rows)
 }
 
-#[instrument(skip(txn))]
+#[instrument(skip_all)]
 pub async fn delete<PK: Send + Sync + ToSql + std::fmt::Display>(
     txn: &PgTxn<'_>,
     table: &str,
@@ -308,7 +329,7 @@ pub async fn delete<PK: Send + Sync + ToSql + std::fmt::Display>(
         .map_err(|_| StandardModelError::ModelMissing(table.to_string(), pk.to_string()))
 }
 
-#[instrument(skip(txn))]
+#[instrument(skip_all)]
 pub async fn undelete<PK: Send + Sync + ToSql + std::fmt::Display>(
     txn: &PgTxn<'_>,
     table: &str,
@@ -325,7 +346,7 @@ pub async fn undelete<PK: Send + Sync + ToSql + std::fmt::Display>(
         .map_err(|_| StandardModelError::ModelMissing(table.to_string(), pk.to_string()))
 }
 
-#[instrument(skip(txn, row))]
+#[instrument(skip_all)]
 pub async fn finish_create_from_row<Object: Send + Sync + DeserializeOwned + StandardModel>(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
@@ -378,7 +399,7 @@ pub trait StandardModel {
         format!("{} {}", Self::history_event_message_name(), msg)
     }
 
-    #[instrument(skip(txn))]
+    #[instrument(skip_all)]
     async fn get_by_pk(txn: &PgTxn<'_>, pk: &Self::Pk) -> StandardModelResult<Self>
     where
         Self: Sized + DeserializeOwned,
@@ -387,7 +408,7 @@ pub trait StandardModel {
         Ok(object)
     }
 
-    #[instrument(skip(txn))]
+    #[instrument(skip_all)]
     async fn get_by_id(
         txn: &PgTxn<'_>,
         tenancy: &Tenancy,
@@ -403,7 +424,7 @@ pub trait StandardModel {
         Ok(object)
     }
 
-    #[instrument(skip(txn))]
+    #[instrument(skip_all)]
     async fn list(
         txn: &PgTxn<'_>,
         tenancy: &Tenancy,
@@ -417,7 +438,7 @@ pub trait StandardModel {
         Ok(result)
     }
 
-    #[instrument(skip(txn, self))]
+    #[instrument(skip_all)]
     async fn delete(
         &mut self,
         txn: &si_data::PgTxn<'_>,
@@ -456,7 +477,7 @@ pub trait StandardModel {
         Ok(())
     }
 
-    #[instrument(skip(txn, self))]
+    #[instrument(skip_all)]
     async fn undelete(
         &mut self,
         txn: &PgTxn<'_>,

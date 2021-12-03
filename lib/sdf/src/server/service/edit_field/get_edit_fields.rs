@@ -2,7 +2,9 @@ use axum::extract::Query;
 use axum::Json;
 use dal::{
     edit_field::{EditFieldAble, EditFieldObjectKind, EditFields},
-    schema, Schema, Tenancy, Visibility,
+    schema,
+    socket::Socket,
+    Schema, Tenancy, Visibility,
 };
 use serde::{Deserialize, Serialize};
 
@@ -36,6 +38,10 @@ pub async fn get_edit_fields(
         EditFieldObjectKind::Schema => {
             Schema::get_edit_fields(&txn, &tenancy, &request.visibility, &request.id.into()).await?
         }
+        EditFieldObjectKind::SchemaUiMenu => {
+            schema::UiMenu::get_edit_fields(&txn, &tenancy, &request.visibility, &request.id.into())
+                .await?
+        }
         EditFieldObjectKind::SchemaVariant => {
             schema::SchemaVariant::get_edit_fields(
                 &txn,
@@ -45,9 +51,8 @@ pub async fn get_edit_fields(
             )
             .await?
         }
-        EditFieldObjectKind::SchemaUiMenu => {
-            schema::UiMenu::get_edit_fields(&txn, &tenancy, &request.visibility, &request.id.into())
-                .await?
+        EditFieldObjectKind::Socket => {
+            Socket::get_edit_fields(&txn, &tenancy, &request.visibility, &request.id.into()).await?
         }
     };
 

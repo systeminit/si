@@ -1,7 +1,7 @@
 use crate::billing_account::BillingAccountSignup;
 use crate::jwt_key::JwtEncrypt;
 use crate::{
-    schema, BillingAccount, ChangeSet, EditSession, Group, HistoryActor, KeyPair, Schema,
+    schema, socket, BillingAccount, ChangeSet, EditSession, Group, HistoryActor, KeyPair, Schema,
     SchemaKind, StandardModel, Tenancy, User, Visibility, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
 };
 use anyhow::Result;
@@ -147,8 +147,8 @@ pub async fn one_time_setup() -> Result<()> {
 
     crate::create_jwt_key_if_missing(
         &txn,
-        "config/public.pem",
-        "config/private.pem",
+        concat!(env!("CARGO_MANIFEST_DIR"), "/", "config/public.pem"),
+        concat!(env!("CARGO_MANIFEST_DIR"), "/", "config/private.pem"),
         &SETTINGS.jwt_encrypt.key,
     )
     .await?;
@@ -359,4 +359,26 @@ pub async fn create_schema_variant(
     schema::SchemaVariant::new(txn, nats, tenancy, visibility, history_actor, name)
         .await
         .expect("cannot create schema variant")
+}
+
+pub async fn create_socket(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+) -> socket::Socket {
+    let name = generate_fake_name();
+    socket::Socket::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        name,
+        &socket::SocketEdgeKind::Configures,
+        &socket::SocketArity::One,
+    )
+    .await
+    .expect("cannot create socket")
 }

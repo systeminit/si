@@ -8,11 +8,14 @@ use thiserror::Error;
 use crate::{
     edit_field::{
         value_and_visiblity_diff, EditField, EditFieldAble, EditFieldDataType, EditFieldError,
-        EditFieldObjectKind, EditFields, RequiredValidator, TextWidget, Validator, Widget,
+        EditFieldObjectKind, EditFields, HeaderWidget, RequiredValidator, TextWidget, Validator,
+        VisibilityDiff, Widget,
     },
-    impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    HistoryActor, HistoryEventError, Schema, SchemaId, StandardModel, StandardModelError, Tenancy,
-    Timestamp, Visibility, WsEventError,
+    impl_standard_model, pk,
+    socket::{Socket, SocketError, SocketId},
+    standard_model, standard_model_accessor, standard_model_belongs_to,
+    standard_model_many_to_many, HistoryActor, HistoryEventError, Schema, SchemaId, StandardModel,
+    StandardModelError, Tenancy, Timestamp, Visibility, WsEventError,
 };
 
 #[derive(Error, Debug)]
@@ -29,6 +32,8 @@ pub enum SchemaVariantError {
     Pg(#[from] PgError),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("socket error: {0}")]
+    Socket(#[from] SocketError),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
     #[error("ws event error: {0}")]
@@ -104,6 +109,24 @@ impl SchemaVariant {
         result: SchemaVariantResult,
     );
 
+    standard_model_many_to_many!(
+        lookup_fn: sockets,
+        associate_fn: add_socket,
+        disassociate_fn: remove_socket,
+        table_name: "socket_many_to_many_schema_variants",
+        left_table: "sockets",
+        left_id: SocketId,
+        right_table: "schema_variants",
+        right_id: SchemaId,
+        which_table_is_this: "right",
+        returns: Socket,
+        result: SchemaVariantResult,
+    );
+
+    fn edit_field_object_kind() -> EditFieldObjectKind {
+        EditFieldObjectKind::SchemaVariant
+    }
+
     fn name_edit_field(
         visibility: &Visibility,
         object: &Self,
@@ -112,7 +135,6 @@ impl SchemaVariant {
     ) -> SchemaVariantResult<EditField> {
         let field_name = "name";
         let target_fn = Self::name;
-        let object_kind = EditFieldObjectKind::SchemaVariant;
 
         let (value, visibility_diff) = value_and_visiblity_diff(
             visibility,
@@ -125,7 +147,7 @@ impl SchemaVariant {
         Ok(EditField::new(
             field_name,
             vec![],
-            object_kind,
+            Self::edit_field_object_kind(),
             object.id,
             EditFieldDataType::String,
             Widget::Text(TextWidget::new()),
@@ -134,12 +156,50 @@ impl SchemaVariant {
             vec![Validator::Required(RequiredValidator)],
         ))
     }
+
+    async fn connections_edit_field(
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        object: &Self,
+    ) -> SchemaVariantResult<EditField> {
+        let field_name = "connections";
+
+        let mut items: Vec<EditFields> = vec![];
+        for socket in object.sockets(txn, visibility).await?.into_iter() {
+            let edit_fields =
+                Socket::get_edit_fields(txn, tenancy, visibility, socket.id()).await?;
+            items.push(edit_fields);
+        }
+
+        Ok(EditField::new(
+            field_name,
+            vec![],
+            Self::edit_field_object_kind(),
+            object.id,
+            EditFieldDataType::None,
+            Widget::Header(HeaderWidget::new(vec![EditField::new(
+                "sockets",
+                vec![field_name.to_string()],
+                EditFieldObjectKind::SchemaVariant,
+                object.id,
+                EditFieldDataType::Array,
+                Widget::Array(items.into()),
+                None,
+                VisibilityDiff::None,
+                vec![Validator::Required(RequiredValidator)],
+            )])),
+            None,
+            VisibilityDiff::None,
+            vec![Validator::Required(RequiredValidator)],
+        ))
+    }
 }
 
 #[async_trait]
 impl EditFieldAble for SchemaVariant {
     type Id = SchemaVariantId;
-    type ErrorKind = SchemaVariantError;
+    type Error = SchemaVariantError;
 
     #[instrument(skip_all)]
     async fn get_edit_fields(
@@ -147,7 +207,7 @@ impl EditFieldAble for SchemaVariant {
         tenancy: &Tenancy,
         visibility: &Visibility,
         id: &Self::Id,
-    ) -> Result<EditFields, Self::ErrorKind> {
+    ) -> Result<EditFields, Self::Error> {
         let object = Self::get_by_id(txn, tenancy, visibility, id)
             .await?
             .ok_or(SchemaVariantError::NotFound(*id))?;
@@ -164,12 +224,10 @@ impl EditFieldAble for SchemaVariant {
             None
         };
 
-        let edit_fields = vec![Self::name_edit_field(
-            visibility,
-            &object,
-            &head_object,
-            &change_set_object,
-        )?];
+        let edit_fields = vec![
+            Self::name_edit_field(visibility, &object, &head_object, &change_set_object)?,
+            Self::connections_edit_field(txn, tenancy, visibility, &object).await?,
+        ];
 
         Ok(edit_fields)
     }
@@ -184,7 +242,7 @@ impl EditFieldAble for SchemaVariant {
         id: Self::Id,
         edit_field_id: String,
         value: Option<Value>,
-    ) -> Result<(), Self::ErrorKind> {
+    ) -> Result<(), Self::Error> {
         let mut object = Self::get_by_id(txn, tenancy, visibility, &id)
             .await?
             .ok_or(SchemaVariantError::NotFound(id))?;
@@ -202,6 +260,24 @@ impl EditFieldAble for SchemaVariant {
                 }
                 None => panic!("TODO: value for name not provided, cannot set value"),
             },
+            "connections.sockets" => {
+                // TODO(fnichol): we're sticking in arbitrary default values--these become required
+                // field entries on a "new item" form somewhere
+                let socket = Socket::new(
+                    txn,
+                    nats,
+                    tenancy,
+                    visibility,
+                    history_actor,
+                    "TODO: name me!",
+                    &crate::socket::SocketEdgeKind::Deployment,
+                    &crate::socket::SocketArity::One,
+                )
+                .await?;
+                socket
+                    .add_type(txn, nats, visibility, history_actor, object.id())
+                    .await?;
+            }
             invalid => panic!("TODO: invalid field name: {}", invalid),
         }
 

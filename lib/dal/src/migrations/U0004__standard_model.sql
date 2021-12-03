@@ -105,25 +105,25 @@ BEGIN
 
             SELECT string_agg(information_schema.columns.column_name::text, ',')
             FROM information_schema.columns
-            WHERE information_schema.columns.table_name = 'schemas'
+            WHERE information_schema.columns.table_name = this_table
               AND information_schema.columns.column_name NOT IN
                   (this_column, 'visibility_change_set_pk', 'visibility_edit_session_pk', 'pk', 'created_at',
                    'updated_at')
             INTO copy_change_set_column_names;
 
             EXECUTE format('INSERT INTO %1$I (%2$s, visibility_change_set_pk, visibility_edit_session_pk, %3$s) ' ||
-                            ' SELECT %4$L, %5$L, %6$L, %3$s FROM %1$I WHERE ' ||
-                            ' %1$I.id = %7$L' ||
-                            ' AND %1$I.visibility_change_set_pk = %5$L ' ||
-                            ' AND %1$I.visibility_edit_session_pk = -1 ' ||
-                            ' RETURNING updated_at',
-                            this_table,
-                            this_column,
-                            copy_change_set_column_names,
-                            this_value,
-                            this_visibility_row.visibility_change_set_pk,
-                            this_visibility_row.visibility_edit_session_pk,
-                            this_id) INTO updated_at;
+                           ' SELECT %4$L, %5$L, %6$L, %3$s FROM %1$I WHERE ' ||
+                           ' %1$I.id = %7$L' ||
+                           ' AND %1$I.visibility_change_set_pk = %5$L ' ||
+                           ' AND %1$I.visibility_edit_session_pk = -1 ' ||
+                           ' RETURNING updated_at',
+                           this_table,
+                           this_column,
+                           copy_change_set_column_names,
+                           this_value,
+                           this_visibility_row.visibility_change_set_pk,
+                           this_visibility_row.visibility_edit_session_pk,
+                           this_id) INTO updated_at;
             IF updated_at IS NULL THEN
                 EXECUTE format('INSERT INTO %1$I (%2$s, visibility_change_set_pk, visibility_edit_session_pk, %3$s) ' ||
                                ' SELECT %4$L, %5$L, %6$L, %3$s FROM %1$I WHERE ' ||
@@ -155,6 +155,27 @@ BEGIN
                            this_id) INTO updated_at;
         END IF;
     END IF;
+END ;
+$$ LANGUAGE PLPGSQL VOLATILE;
+
+-- update_by_id_v1 (BOOL)
+CREATE OR REPLACE FUNCTION update_by_id_v1(this_table_text text,
+                                           this_column text,
+                                           this_tenancy jsonb,
+                                           this_visibility jsonb,
+                                           this_id bigint,
+                                           this_value bool,
+                                           OUT updated_at timestamp with time zone)
+AS
+$$
+BEGIN
+    SELECT update_by_id_v1(this_table_text,
+                           this_column,
+                           this_tenancy,
+                           this_visibility,
+                           this_id,
+                           CAST(this_value as text))
+    INTO updated_at;
 END ;
 $$ LANGUAGE PLPGSQL VOLATILE;
 

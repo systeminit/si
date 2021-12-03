@@ -1,14 +1,16 @@
+use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use strum_macros::{AsRefStr, Display, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use self::variant::{SchemaVariantError, SchemaVariantResult};
 use crate::{
     edit_field::{
-        value_and_visiblity_diff, ArrayWidget, EditField, EditFieldAble, EditFieldDataType,
-        EditFieldError, EditFieldObjectKind, EditFields, HeaderWidget, RequiredValidator,
-        SelectWidget, TextWidget, Validator, VisibilityDiff, Widget,
+        value_and_visiblity_diff, EditField, EditFieldAble, EditFieldDataType, EditFieldError,
+        EditFieldObjectKind, EditFields, HeaderWidget, RequiredValidator, SelectWidget, TextWidget,
+        Validator, VisibilityDiff, Widget,
     },
     impl_standard_model, pk,
     schema::ui_menu::UiMenuId,
@@ -53,16 +55,7 @@ pub type SchemaResult<T> = Result<T, SchemaError>;
 pk!(SchemaPk);
 pk!(SchemaId);
 
-#[derive(
-    Deserialize,
-    Serialize,
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    strum_macros::Display,
-    strum_macros::EnumString,
-)]
+#[derive(AsRefStr, Clone, Debug, Deserialize, Display, EnumString, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
 pub enum SchemaKind {
@@ -71,7 +64,7 @@ pub enum SchemaKind {
     Concrete,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct Schema {
     pk: SchemaPk,
     id: SchemaId,
@@ -110,7 +103,7 @@ impl Schema {
         let row = txn
             .query_one(
                 "SELECT object FROM schema_create_v1($1, $2, $3, $4)",
-                &[&tenancy, &visibility, &name, &kind.to_string()],
+                &[&tenancy, &visibility, &name, &kind.as_ref()],
             )
             .await?;
         let object = standard_model::finish_create_from_row(
@@ -306,7 +299,7 @@ impl Schema {
                 EditFieldObjectKind::Schema,
                 object.id,
                 EditFieldDataType::Array,
-                Widget::Array(ArrayWidget::new(items)),
+                Widget::Array(items.into()),
                 None,
                 VisibilityDiff::None,
                 vec![Validator::Required(RequiredValidator)],
@@ -345,7 +338,7 @@ impl Schema {
                 EditFieldObjectKind::Schema,
                 object.id,
                 EditFieldDataType::Array,
-                Widget::Array(ArrayWidget::new(items)),
+                Widget::Array(items.into()),
                 None,
                 VisibilityDiff::None,
                 vec![Validator::Required(RequiredValidator)],
@@ -357,10 +350,10 @@ impl Schema {
     }
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 impl EditFieldAble for Schema {
     type Id = SchemaId;
-    type ErrorKind = SchemaError;
+    type Error = SchemaError;
 
     async fn get_edit_fields(
         txn: &PgTxn<'_>,
@@ -451,7 +444,7 @@ impl EditFieldAble for Schema {
                     .set_schema(txn, nats, visibility, history_actor, object.id())
                     .await?;
             }
-            _ => {}
+            invalid => panic!("TODO: invalid field name: {}", invalid),
         }
         Ok(())
     }
