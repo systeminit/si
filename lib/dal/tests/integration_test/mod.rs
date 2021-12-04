@@ -8,6 +8,7 @@ mod jwt_key;
 mod key_pair;
 mod organization;
 mod schema;
+mod socket;
 mod standard_model;
 mod tenancy;
 mod user;

@@ -14,6 +14,10 @@ export enum EditFieldDataType {
   None = "None",
 }
 
+export interface CheckboxWidgetDal {
+  kind: "Checkbox";
+}
+
 export interface TextWidgetDal {
   kind: "Text";
 }
@@ -38,7 +42,12 @@ export interface ArrayWidgetDal {
   };
 }
 
-export type Widget = TextWidgetDal | SelectWidgetDal | HeaderWidgetDal | ArrayWidgetDal;
+export type Widget =
+  | CheckboxWidgetDal
+  | TextWidgetDal
+  | SelectWidgetDal
+  | HeaderWidgetDal
+  | ArrayWidgetDal;
 
 export interface RequiredValidator {
   kind: "Required";
@@ -60,7 +69,10 @@ export interface VisibilityDiffChangeSet {
   value: any;
 }
 
-export type VisibilityDiff = VisibilityDiffNone | VisibilityDiffChangeSet | VisibilityDiffHead
+export type VisibilityDiff =
+  | VisibilityDiffNone
+  | VisibilityDiffChangeSet
+  | VisibilityDiffHead;
 
 export interface EditField {
   id: string;

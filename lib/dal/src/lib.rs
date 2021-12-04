@@ -16,6 +16,7 @@ pub mod label_list;
 pub mod organization;
 pub mod schema;
 pub mod schematic;
+pub mod socket;
 pub mod standard_accessors;
 pub mod standard_model;
 pub mod standard_pk;

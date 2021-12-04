@@ -321,6 +321,7 @@ async fn update() {
         &visibility,
         &billing_account.id(),
         &"funtime",
+        standard_model::TypeHint::Text,
     )
     .await
     .expect("cannot update field");

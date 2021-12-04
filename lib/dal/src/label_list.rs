@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use si_data::PgError;
 use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
+use strum::IntoEnumIterator;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -16,49 +17,68 @@ pub enum LabelListError {
 pub type LabelListResult<T> = Result<T, LabelListError>;
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-pub struct LabelEntry<Value> {
+pub struct LabelEntry<V> {
     pub label: String,
-    pub value: Value,
+    pub value: V,
 }
 
-impl<Value: Debug + Serialize + DeserializeOwned> LabelEntry<Value> {
-    pub fn new(label: impl Into<String>, value: Value) -> Self {
+impl<V> LabelEntry<V> {
+    pub fn new(label: impl Into<String>, value: V) -> Self {
         let label = label.into();
         LabelEntry { label, value }
     }
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-pub struct LabelList<Value>(Vec<LabelEntry<Value>>);
+pub struct LabelList<V>(Vec<LabelEntry<V>>);
 
-impl<Value> LabelList<Value> {
-    pub fn new(options: Vec<LabelEntry<Value>>) -> Self {
+impl<V> LabelList<V> {
+    pub fn new(options: Vec<LabelEntry<V>>) -> Self {
         LabelList(options)
     }
 }
 
-impl<Value: Debug + DeserializeOwned + Serialize + postgres_types::FromSqlOwned> LabelList<Value> {
-    pub fn from_rows(rows: Vec<tokio_postgres::Row>) -> LabelListResult<LabelList<Value>> {
+impl<V> From<Vec<LabelEntry<V>>> for LabelList<V> {
+    fn from(value: Vec<LabelEntry<V>>) -> Self {
+        Self(value)
+    }
+}
+
+impl<V> LabelList<V>
+where
+    V: Debug + DeserializeOwned + Serialize + postgres_types::FromSqlOwned,
+{
+    pub fn from_rows(rows: Vec<tokio_postgres::Row>) -> LabelListResult<LabelList<V>> {
         let mut results = Vec::new();
         for row in rows.into_iter() {
             let name: String = row.try_get("name")?;
-            let value: Value = row.try_get("value")?;
+            let value: V = row.try_get("value")?;
             results.push(LabelEntry::new(name, value));
         }
         Ok(LabelList(results))
     }
 }
 
-impl<Value: DeserializeOwned + Serialize + Debug> Deref for LabelList<Value> {
-    type Target = Vec<LabelEntry<Value>>;
+impl<V> Deref for LabelList<V> {
+    type Target = Vec<LabelEntry<V>>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl<Value: DeserializeOwned + Serialize + Debug> DerefMut for LabelList<Value> {
-    fn deref_mut(&mut self) -> &mut Vec<LabelEntry<Value>> {
+impl<V> DerefMut for LabelList<V> {
+    fn deref_mut(&mut self) -> &mut Vec<LabelEntry<V>> {
         &mut self.0
+    }
+}
+
+pub trait ToLabelList: IntoEnumIterator + Serialize + ToString {
+    fn to_label_list() -> std::result::Result<LabelList<serde_json::Value>, LabelListError> {
+        let mut list = Vec::new();
+        for v in Self::iter() {
+            list.push(LabelEntry::new(v.to_string(), serde_json::to_value(v)?));
+        }
+        Ok(list.into())
     }
 }
