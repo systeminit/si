@@ -42,9 +42,9 @@
           </div>
         </div>
         <div
-          data-test="schema-list"
           v-for="schema in schemaList"
           :key="schema.pk"
+          data-test="schema-list"
           class="flex flex-row row-item"
         >
           <div class="w-6/12 px-2 py-1 text-center">

@@ -5,12 +5,12 @@
     </template>
     <template #edit>
       <input
+        v-model="currentValue"
         class="pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey si-property disabled:opacity-50"
         :class="borderColor"
         type="text"
         aria-label="name"
         placeholder="text"
-        v-model="currentValue"
         @keyup.enter="onKeyEnter($event)"
         @focus="onFocus"
         @blur="onBlur"

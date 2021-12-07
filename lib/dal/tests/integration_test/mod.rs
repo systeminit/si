@@ -1,11 +1,13 @@
 mod billing_account;
 mod capability;
 mod change_set;
+mod component;
 mod edit_session;
 mod group;
 mod history_event;
 mod jwt_key;
 mod key_pair;
+mod node;
 mod organization;
 mod schema;
 mod socket;

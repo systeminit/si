@@ -3,7 +3,6 @@ import { Schema } from "@/api/sdf/dal/schema";
 import { combineLatest, Observable, shareReplay } from "rxjs";
 import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import Bottle from "bottlejs";
-import { schemaCreated$ } from "@/observable/schema";
 import { switchMap } from "rxjs/operators";
 import { Visibility } from "@/api/sdf/dal/visibility";
 
@@ -11,8 +10,7 @@ export interface GetSchemaArgs {
   schemaId: number;
 }
 
-export interface GetSchemaRequest extends GetSchemaArgs, Visibility {
-}
+export interface GetSchemaRequest extends GetSchemaArgs, Visibility {}
 
 export type GetSchemaResponse = Schema;
 
@@ -28,7 +26,6 @@ export function getSchema(
   }
   getSchemaCollection[args.schemaId] = combineLatest([
     standardVisibilityTriggers$,
-    schemaCreated$,
   ]).pipe(
     switchMap(([[visibility]]) => {
       const bottle = Bottle.pop("default");

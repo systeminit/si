@@ -66,8 +66,9 @@ import {
 } from "./panel_types";
 import {
   createPanelContainerMaximizedObservable,
-  createPanelContainerSizeObservable, restorePanelContainerMaximizedObservable,
-  restorePanelContainerSizeObservable
+  createPanelContainerSizeObservable,
+  restorePanelContainerMaximizedObservable,
+  restorePanelContainerSizeObservable,
 } from "@/observable/editor";
 
 const props = defineProps({
@@ -105,7 +106,7 @@ onMounted(() => {
   );
   if (panelContainerMaximized) {
     maximizedData.value = panelContainerMaximized;
-  };
+  }
 });
 
 watch(

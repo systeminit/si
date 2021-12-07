@@ -21,7 +21,8 @@ pub async fn get_schema(
     Query(request): Query<GetSchemaRequest>,
 ) -> SchemaResult<Json<GetSchemaResponse>> {
     let txn = txn.start().await?;
-    let tenancy = Tenancy::new_billing_account(vec![claim.billing_account_id]);
+    let mut tenancy = Tenancy::new_billing_account(vec![claim.billing_account_id]);
+    tenancy.universal = true;
     let response = Schema::get_by_id(&txn, &tenancy, &request.visibility, &request.schema_id)
         .await?
         .ok_or(SchemaError::SchemaNotFound)?;

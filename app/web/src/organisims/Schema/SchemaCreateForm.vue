@@ -8,9 +8,9 @@
         </template>
         <template #widget>
           <SiTextBox
-            data-test="schema-new-form-name"
             id="schemaName"
             v-model="form.name"
+            data-test="schema-new-form-name"
             size="xs"
             name="name"
             placeholder="schema name"

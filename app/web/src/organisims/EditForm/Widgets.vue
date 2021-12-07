@@ -1,5 +1,9 @@
 <template>
-  <div class="flex flex-row w-full" v-for="editField in editFields" :key="editField.id">
+  <div
+    v-for="editField in editFields"
+    :key="editField.id"
+    class="flex flex-row w-full"
+  >
     <!-- eventually this will do the show/hide logic -->
     <HeaderWidget v-if="editField.widget.kind === 'Header'" :show="true" :edit-field="editField" />
     <ArrayWidget

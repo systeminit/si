@@ -23,6 +23,7 @@ use crate::{
 pub use ui_menu::UiMenu;
 pub use variant::SchemaVariant;
 
+pub mod builtins;
 pub mod ui_menu;
 pub mod variant;
 

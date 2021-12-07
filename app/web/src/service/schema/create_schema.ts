@@ -1,7 +1,6 @@
 import Bottle from "bottlejs";
 import { ApiResponse, SDF } from "@/api/sdf";
 import { Schema, SchemaKind } from "@/api/sdf/dal/schema";
-import { schemaCreated$ } from "@/observable/schema";
 import { Observable, take, tap } from "rxjs";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { visibility$ } from "@/observable/visibility";
@@ -35,7 +34,6 @@ export function createSchema(
         .pipe(
           tap((response) => {
             if (!response.error) {
-              schemaCreated$.next(response.schema.pk);
               editSessionWritten$.next(true);
             }
           }),
