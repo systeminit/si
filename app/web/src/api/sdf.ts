@@ -3,6 +3,7 @@ import { SdfWs } from "@/api/sdf/ws";
 import { fromFetch } from "rxjs/fetch";
 import { from, mergeMap, Observable } from "rxjs";
 import _ from "lodash";
+import { SessionService } from "@/service/session";
 
 export class FetchError extends Error {
   response: Response;
@@ -170,7 +171,11 @@ export class SDF {
   send_request<T>(request: Request): Observable<ApiResponse<T>> {
     return fromFetch(request).pipe(
       mergeMap((response) => {
-        return from(response.json());
+        if (response.status === 401) {
+          return from(SessionService.logout());
+        } else {
+          return from(response.json());
+        }
       }),
     );
   }

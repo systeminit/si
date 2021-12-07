@@ -56,11 +56,7 @@ onMounted(async () => {
   isLoading.value = false;
   if (route.name == "home" && !defaults.error) {
     await router.push({
-      name: "workspace",
-      params: {
-        organizationId: defaults.organization.id,
-        workspaceId: defaults.workspace.id,
-      },
+      name: "application-list",
     });
   }
 });

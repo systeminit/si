@@ -6,6 +6,7 @@ use thiserror::Error;
 pub mod billing_account;
 pub mod capability;
 pub mod change_set;
+pub mod component;
 pub mod edit_field;
 pub mod edit_session;
 pub mod group;
@@ -13,6 +14,7 @@ pub mod history_event;
 pub mod jwt_key;
 pub mod key_pair;
 pub mod label_list;
+pub mod node;
 pub mod organization;
 pub mod schema;
 pub mod schematic;
@@ -33,6 +35,7 @@ pub use billing_account::{
 };
 pub use capability::{Capability, CapabilityError, CapabilityId, CapabilityPk, CapabilityResult};
 pub use change_set::{ChangeSet, ChangeSetError, ChangeSetPk, ChangeSetStatus, NO_CHANGE_SET_PK};
+pub use component::{Component, ComponentError, ComponentId};
 pub use edit_session::{
     EditSession, EditSessionError, EditSessionPk, EditSessionStatus, NO_EDIT_SESSION_PK,
 };
@@ -41,6 +44,7 @@ pub use history_event::{HistoryActor, HistoryEvent, HistoryEventError};
 pub use jwt_key::{create_jwt_key_if_missing, JwtEncrypt};
 pub use key_pair::{KeyPair, KeyPairError, KeyPairResult};
 pub use label_list::{LabelEntry, LabelList, LabelListError};
+pub use node::{Node, NodeError};
 pub use organization::{
     Organization, OrganizationError, OrganizationId, OrganizationPk, OrganizationResult,
 };
@@ -70,6 +74,8 @@ pub enum ModelError {
     Nats(#[from] NatsError),
     #[error("database error")]
     PgError(#[from] PgError),
+    #[error("Schema error")]
+    Schema(#[from] SchemaError),
 }
 
 pub type ModelResult<T> = Result<T, ModelError>;
@@ -85,7 +91,7 @@ pub async fn migrate_builtin_schemas(pg: &PgPool, nats: &NatsClient) -> ModelRes
     let mut conn = pg.get().await?;
     let txn = conn.transaction().await?;
     let nats = nats.transaction();
-    //schema_builtins::system::migrate(&txn, &nats).await?;
+    schema::builtins::migrate(&txn, &nats).await?;
     txn.commit().await?;
     nats.commit().await?;
     Ok(())

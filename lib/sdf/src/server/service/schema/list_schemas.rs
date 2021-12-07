@@ -24,7 +24,8 @@ pub async fn list_schemas(
     Authorization(claim): Authorization,
 ) -> SchemaResult<Json<ListSchemaResponse>> {
     let txn = txn.start().await?;
-    let tenancy = Tenancy::new_billing_account(vec![claim.billing_account_id]);
+    let mut tenancy = Tenancy::new_billing_account(vec![claim.billing_account_id]);
+    tenancy.universal = true;
     let list = Schema::list(&txn, &tenancy, &request.visibility).await?;
     let response = ListSchemaResponse { list };
     Ok(Json(response))

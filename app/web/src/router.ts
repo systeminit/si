@@ -10,6 +10,8 @@ import Schema from "@/templates/Schema.vue";
 import SchemaList from "@/organisims/Schema/SchemaList.vue";
 import SchemaNew from "@/organisims/Schema/SchemaNew.vue";
 import SchemaView from "@/organisims/Schema/SchemaView.vue";
+import Application from "@/templates/Application.vue";
+import ApplicationList from "@/organisims/Application/ApplicationList.vue";
 import Editor from "@/organisims/Editor.vue";
 import _ from "lodash";
 
@@ -20,28 +22,40 @@ const routes: RouteRecordRaw[] = [
     component: Home,
     children: [
       {
-        path: "o/:organizationId/w/:workspaceId",
-        props: true,
-        name: "workspace",
-        redirect: { name: "application" },
-      },
-      {
-        path: "o/:organizationId/w/:workspaceId/a",
+        path: "application",
         props: true,
         name: "application",
-        component: Editor, // Application
-      },
-      {
-        path: "o/:organizationId/w/:workspaceId/a/:applicationId",
-        props: true,
-        name: "applicationDetails",
-        component: Editor, // ApplicationDetails
-      },
-      {
-        path: "o/:organizationId/w/:workspaceId/s",
-        props: true,
-        name: "secret",
-        component: Editor, // Secret
+        component: Application,
+        redirect: { name: "application-list" },
+        children: [
+          {
+            name: "application-list",
+            path: "list",
+            component: ApplicationList,
+            props: { modal: true },
+          },
+          {
+            name: "application-new",
+            path: "new",
+            component: Editor,
+          },
+          {
+            name: "application-view",
+            path: ":applicationId",
+            props: (route) => {
+              let applicationId;
+              if (_.isArray(route.params.applicationId)) {
+                applicationId = Number.parseInt(route.params.applicationId[0]);
+              } else {
+                applicationId = Number.parseInt(route.params.applicationId);
+              }
+              return {
+                applicationId,
+              };
+            },
+            component: Editor,
+          },
+        ],
       },
       {
         path: "schema",
@@ -102,6 +116,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: "/404",
+    name: "notFound",
     component: NotFoundPage,
   },
   {

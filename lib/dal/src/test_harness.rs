@@ -1,8 +1,10 @@
 use crate::billing_account::BillingAccountSignup;
 use crate::jwt_key::JwtEncrypt;
+use crate::node::NodeKind;
 use crate::{
-    schema, socket, BillingAccount, ChangeSet, EditSession, Group, HistoryActor, KeyPair, Schema,
-    SchemaKind, StandardModel, Tenancy, User, Visibility, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
+    schema, socket, BillingAccount, ChangeSet, Component, EditSession, Group, HistoryActor, KeyPair, Node,
+    Schema, SchemaKind, StandardModel, Tenancy, User, Visibility, NO_CHANGE_SET_PK,
+    NO_EDIT_SESSION_PK,
 };
 use anyhow::Result;
 use async_trait::async_trait;
@@ -359,6 +361,55 @@ pub async fn create_schema_variant(
     schema::SchemaVariant::new(txn, nats, tenancy, visibility, history_actor, name)
         .await
         .expect("cannot create schema variant")
+}
+
+pub async fn create_component_and_schema(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+) -> Component {
+    let schema = create_schema(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        &SchemaKind::Concept,
+    )
+    .await;
+    let schema_variant = create_schema_variant(txn, nats, tenancy, visibility, history_actor).await;
+    schema_variant
+        .set_schema(txn, nats, visibility, history_actor, schema.id())
+        .await
+        .expect("cannot set schema variant");
+    let name = generate_fake_name();
+    let entity = Component::new(txn, nats, tenancy, visibility, history_actor, &name)
+        .await
+        .expect("cannot create entity");
+    entity
+}
+
+pub async fn create_node(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+    node_kind: &NodeKind,
+) -> Node {
+    let node = Node::new(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        node_kind,
+    )
+    .await
+    .expect("cannot create node");
+    node
 }
 
 pub async fn create_socket(

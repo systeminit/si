@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-row items-center w-full" v-if="show">
+  <div v-if="show" class="flex flex-row items-center w-full">
     <div class="flex flex-col w-full">
       <div class="flex flex-row items-center">
         <div class="flex-wrap self-start text-sm leading-tight text-right w-36">
@@ -7,8 +7,8 @@
         </div>
         <div class="flex w-full">
           <div
-            class="flex mx-2 text-sm leading-tight text-gray-400"
             v-if="editMode"
+            class="flex mx-2 text-sm leading-tight text-gray-400"
             @keyup.stop
             @keydown.stop
           >
@@ -35,7 +35,7 @@
 import { refFrom } from "vuse-rx";
 import { ChangeSetService } from "@/service/change_set";
 
-const props = defineProps({
+defineProps({
   show: {
     type: Boolean,
     required: true,

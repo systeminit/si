@@ -13,12 +13,9 @@
       <div
         class="flex flex-col items-center justify-center w-full h-full align-middle"
       >
-        {{panelContainerRef}}
-        {{panelRef}}
-        <img
-          width="300"
-          :src="cheechSvg"
-        />
+        {{ panelContainerRef }}
+        {{ panelRef }}
+        <img width="300" :src="cheechSvg" />
       </div>
     </template>
   </Panel>

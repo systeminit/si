@@ -1,5 +1,5 @@
 import Bottle from "bottlejs";
-import { WsEvent } from "@/api/sdf/dal/ws_event";
+import { WsEvent, WsPayloadKinds } from "@/api/sdf/dal/ws_event";
 import { WsEventService } from "@/service/ws_event";
 
 export class SdfWs {
@@ -54,6 +54,6 @@ function onClose(ev: CloseEvent): any {
 }
 
 function onMessage(ev: MessageEvent) {
-  const wsEvent: WsEvent = JSON.parse(ev.data);
+  const wsEvent: WsEvent<WsPayloadKinds> = JSON.parse(ev.data);
   WsEventService.dispatch(wsEvent);
 }

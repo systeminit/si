@@ -1,3 +1,4 @@
+pub mod application;
 pub mod change_set;
 pub mod edit_field;
 pub mod schema;

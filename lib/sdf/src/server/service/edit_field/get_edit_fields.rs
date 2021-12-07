@@ -32,7 +32,9 @@ pub async fn get_edit_fields(
     Query(request): Query<GetEditFieldsRequest>,
 ) -> EditFieldResult<Json<GetEditFieldsResponse>> {
     let txn = txn.start().await?;
-    let tenancy = Tenancy::new_billing_account(vec![claim.billing_account_id]);
+    let mut tenancy = Tenancy::new_billing_account(vec![claim.billing_account_id]);
+    // TODO: This needs to be something we can control - it's a security problem now - Adam
+    tenancy.universal = true;
 
     let edit_fields = match request.object_kind {
         EditFieldObjectKind::Schema => {

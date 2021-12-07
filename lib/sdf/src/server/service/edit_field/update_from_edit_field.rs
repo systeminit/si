@@ -35,7 +35,8 @@ pub async fn update_from_edit_field(
 ) -> EditFieldResult<Json<UpdateFromEditFieldResponse>> {
     let txn = txn.start().await?;
     let nats = nats.start().await?;
-    let tenancy = Tenancy::new_billing_account(vec![claim.billing_account_id]);
+    let mut tenancy = Tenancy::new_billing_account(vec![claim.billing_account_id]);
+    tenancy.universal = true;
     let history_actor: HistoryActor = HistoryActor::from(claim.user_id);
 
     match request.object_kind {

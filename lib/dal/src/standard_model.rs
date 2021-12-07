@@ -68,6 +68,24 @@ pub async fn get_by_id<ID: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
     object_option_from_row_option(row_option)
 }
 
+#[instrument(skip(txn))]
+pub async fn find_by_attr<V: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
+    txn: &PgTxn<'_>,
+    table: &str,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    attr_name: &str,
+    value: &V,
+) -> StandardModelResult<Option<OBJECT>> {
+    let row_option = txn
+        .query_opt(
+            "SELECT * FROM find_by_attr_v1($1, $2, $3, $4, $5)",
+            &[&table, &tenancy, &visibility, &attr_name, &value],
+        )
+        .await?;
+    object_option_from_row_option(row_option)
+}
+
 pub fn object_option_from_row_option<OBJECT: DeserializeOwned>(
     row_option: Option<tokio_postgres::Row>,
 ) -> StandardModelResult<Option<OBJECT>> {

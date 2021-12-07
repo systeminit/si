@@ -1,8 +1,6 @@
 <template>
   <section>
-    <div
-      class="flex w-full pt-1 pb-1 mt-2 text-sm text-white"
-    >
+    <div class="flex w-full pt-1 pb-1 mt-2 text-sm text-white">
       <div v-if="open" class="flex">
         <VueFeather type="chevron-down" />
         {{ editField.name }}
@@ -40,7 +38,7 @@ const props = defineProps({
 
 const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
 const widget = computed<HeaderWidgetDal>(() => {
-  console.log({widget: JSON.stringify(props.editField.widget)});
+  console.log({ widget: JSON.stringify(props.editField.widget) });
   return props.editField.widget as HeaderWidgetDal;
 });
 

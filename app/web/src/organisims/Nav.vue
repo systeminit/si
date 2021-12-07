@@ -49,14 +49,8 @@
           <!-- Applications Link -->
           <div class="container-link">
             <router-link
-              v-if="currentOrganization && currentWorkspace"
-              data-cy="application-nav-link"
               :to="{
-                name: 'application',
-                params: {
-                  organizationId: currentOrganization.id,
-                  workspaceId: currentWorkspace.id,
-                },
+                name: 'application-list',
               }"
             >
               <div class="flex items-center justify-start cursor-pointer">
@@ -136,13 +130,7 @@
             <router-link
               v-if="currentOrganization && currentWorkspace"
               data-cy="secret-nav-link"
-              :to="{
-                name: 'secret',
-                params: {
-                  organizationId: currentOrganization.id,
-                  workspaceId: currentWorkspace.id,
-                },
-              }"
+              to="notFound"
             >
               <div class="flex items-center justify-start cursor-pointer">
                 <VueFeather type="key" size="1.1rem" class="" />

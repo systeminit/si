@@ -1,10 +1,10 @@
 use crate::test_setup;
 use dal::test_harness::{
-    create_billing_account_with_name, create_change_set, create_edit_session,
-    create_visibility_edit_session, create_visibility_head,
+    create_billing_account, create_billing_account_with_name, create_change_set,
+    create_edit_session, create_visibility_edit_session, create_visibility_head,
 };
 use dal::{
-    BillingAccount, ChangeSet, ChangeSetStatus, HistoryActor, StandardModel, Tenancy,
+    BillingAccount, ChangeSet, ChangeSetStatus, HistoryActor, StandardModel, Tenancy, Visibility,
     NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
 };
 
@@ -89,8 +89,12 @@ async fn apply() {
 async fn list_open() {
     test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats);
 
-    let tenancy = Tenancy::new_universal();
+    let uv_tenancy = Tenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
+    let head_visibility = Visibility::new_head(false);
+    let billing_account =
+        create_billing_account(&txn, &nats, &uv_tenancy, &head_visibility, &history_actor).await;
+    let tenancy = Tenancy::new_billing_account(vec![*billing_account.id()]);
 
     let a_change_set = create_change_set(&txn, &nats, &tenancy, &history_actor).await;
     let b_change_set = create_change_set(&txn, &nats, &tenancy, &history_actor).await;
