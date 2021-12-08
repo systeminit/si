@@ -68,6 +68,9 @@ pub async fn get_by_id<ID: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
     object_option_from_row_option(row_option)
 }
 
+// This likely has some fun bugs living inside it when the value you pass is not
+// a string. Bright side - so far, only strings! :)
+// Hugs, Adam
 #[instrument(skip(txn))]
 pub async fn find_by_attr<V: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
     txn: &PgTxn<'_>,
@@ -76,14 +79,14 @@ pub async fn find_by_attr<V: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
     visibility: &Visibility,
     attr_name: &str,
     value: &V,
-) -> StandardModelResult<Option<OBJECT>> {
-    let row_option = txn
-        .query_opt(
+) -> StandardModelResult<Vec<OBJECT>> {
+    let rows = txn
+        .query(
             "SELECT * FROM find_by_attr_v1($1, $2, $3, $4, $5)",
             &[&table, &tenancy, &visibility, &attr_name, &value],
         )
         .await?;
-    object_option_from_row_option(row_option)
+    objects_from_rows(rows)
 }
 
 pub fn object_option_from_row_option<OBJECT: DeserializeOwned>(
@@ -440,6 +443,29 @@ pub trait StandardModel {
             crate::standard_model::get_by_id(txn, Self::table_name(), tenancy, visibility, &id)
                 .await?;
         Ok(object)
+    }
+
+    #[instrument(skip_all)]
+    async fn find_by_attr<V: Send + Sync + ToSql>(
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        attr_name: &str,
+        value: &V,
+    ) -> StandardModelResult<Vec<Self>>
+    where
+        Self: Sized + DeserializeOwned,
+    {
+        let objects = crate::standard_model::find_by_attr(
+            txn,
+            Self::table_name(),
+            tenancy,
+            visibility,
+            attr_name,
+            value,
+        )
+        .await?;
+        Ok(objects)
     }
 
     #[instrument(skip_all)]

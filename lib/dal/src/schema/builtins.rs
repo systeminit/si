@@ -11,7 +11,7 @@ async fn application(txn: &PgTxn<'_>, nats: &NatsTxn) -> SchemaResult<()> {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
-    let schema = Schema::new(
+    let mut schema = Schema::new(
         txn,
         nats,
         &tenancy,
@@ -21,10 +21,22 @@ async fn application(txn: &PgTxn<'_>, nats: &NatsTxn) -> SchemaResult<()> {
         &SchemaKind::Concept,
     )
     .await?;
+
     let variant =
         SchemaVariant::new(txn, nats, &tenancy, &visibility, &history_actor, "v0").await?;
     variant
         .set_schema(&txn, &nats, &visibility, &history_actor, schema.id())
         .await?;
+
+    schema
+        .set_default_schema_variant_id(
+            &txn,
+            &nats,
+            &visibility,
+            &history_actor,
+            Some(*variant.id()),
+        )
+        .await?;
+
     Ok(())
 }

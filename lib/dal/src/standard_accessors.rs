@@ -231,12 +231,13 @@ macro_rules! standard_model_has_many {
         pub async fn $lookup_fn(
             &self,
             txn: &si_data::PgTxn<'_>,
+            tenancy: &$crate::Tenancy,
             visibility: &$crate::Visibility,
         ) -> $result_type<Vec<$has_many>> {
             let r = $crate::standard_model::has_many(
                 &txn,
                 $table,
-                &self.tenancy(),
+                tenancy,
                 visibility,
                 $retrieve_table,
                 &self.id(),
@@ -711,7 +712,7 @@ macro_rules! standard_model_accessor {
     };
 
     ($column:ident, Option<$value_type:ident>, $result_type:ident $(,)?) => {
-        standard_model_accessor!(@get_column_as_option $column);
+        standard_model_accessor!(@get_column_as_option $column, $value_type);
         standard_model_accessor!(@set_column_with_option
             $column,
             $value_type,
@@ -719,4 +720,15 @@ macro_rules! standard_model_accessor {
             $result_type,
         );
     };
+
+    ($column:ident, OptionBigInt<$value_type:ident>, $result_type:ident $(,)?) => {
+        standard_model_accessor!(@get_column_as_option $column, $value_type);
+        standard_model_accessor!(@set_column_with_option
+            $column,
+            $value_type,
+            $crate::standard_model::TypeHint::BigInt,
+            $result_type,
+        );
+    };
+
 }

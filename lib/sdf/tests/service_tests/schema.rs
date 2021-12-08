@@ -82,7 +82,7 @@ async fn list_schemas() {
     };
     let response: ListSchemaResponse =
         api_request_auth_query(app, "/api/schema/list_schemas", &auth_token, &request).await;
-    assert_eq!(response.list.len(), 2);
+    assert_eq!(response.list.len(), 3);
 }
 
 #[tokio::test]

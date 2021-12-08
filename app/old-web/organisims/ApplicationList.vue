@@ -57,7 +57,7 @@ export default Vue.extend({
     return {
       errorMessage: "",
       isLoading: true,
-      applicationList: [],
+      applicationList: []o,
     };
   },
   components: {

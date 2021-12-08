@@ -1,12 +1,12 @@
 use crate::test_setup;
 use dal::test_harness::{
-    create_billing_account_with_name, create_change_set, create_edit_session, create_group,
-    create_key_pair, create_user, create_visibility_change_set, create_visibility_edit_session,
-    create_visibility_head,
+    create_billing_account, create_billing_account_with_name, create_change_set,
+    create_edit_session, create_group, create_key_pair, create_schema, create_user,
+    create_visibility_change_set, create_visibility_edit_session, create_visibility_head,
 };
 use dal::{
-    standard_model, BillingAccount, Group, GroupId, HistoryActor, KeyPair, StandardModel, Tenancy,
-    User, UserId, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
+    standard_model, BillingAccount, Group, GroupId, HistoryActor, KeyPair, Schema, SchemaKind,
+    StandardModel, Tenancy, User, UserId, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
 };
 
 #[tokio::test]
@@ -1000,4 +1000,108 @@ async fn associate_many_to_many_no_repeat_entries() {
     )
     .await;
     assert!(result.is_err(), "should error");
+}
+
+#[tokio::test]
+async fn find_by_attr() {
+    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats);
+
+    let universal_tenancy = Tenancy::new_universal();
+    let history_actor = HistoryActor::SystemInit;
+    let head_visibility = create_visibility_head();
+    let billing_account = create_billing_account(
+        &txn,
+        &nats,
+        &universal_tenancy,
+        &head_visibility,
+        &history_actor,
+    )
+    .await;
+    let tenancy = Tenancy::new_billing_account(vec![*billing_account.id()]);
+    let change_set = create_change_set(&txn, &nats, &tenancy, &history_actor).await;
+    let edit_session = create_edit_session(&txn, &nats, &history_actor, &change_set).await;
+    let edit_session_visibility = create_visibility_edit_session(&change_set, &edit_session);
+
+    let schema_one = create_schema(
+        &txn,
+        &nats,
+        &tenancy,
+        &edit_session_visibility,
+        &history_actor,
+        &SchemaKind::Concept,
+    )
+    .await;
+    let schema_two = create_schema(
+        &txn,
+        &nats,
+        &tenancy,
+        &edit_session_visibility,
+        &history_actor,
+        &SchemaKind::Concept,
+    )
+    .await;
+    let schema_three = create_schema(
+        &txn,
+        &nats,
+        &tenancy,
+        &edit_session_visibility,
+        &history_actor,
+        &SchemaKind::Concept,
+    )
+    .await;
+
+    let result: Vec<Schema> = standard_model::find_by_attr(
+        &txn,
+        "schemas",
+        &tenancy,
+        &edit_session_visibility,
+        "name",
+        &schema_one.name().to_string(),
+    )
+    .await
+    .expect("cannot find the object by name");
+    assert_eq!(result.len(), 1);
+    assert_eq!(result[0], schema_one);
+
+    let schema_four = Schema::new(
+        &txn,
+        &nats,
+        &tenancy,
+        &edit_session_visibility,
+        &history_actor,
+        schema_one.name(),
+        schema_one.kind(),
+    )
+    .await
+    .expect("cannot create another schema with the same name");
+
+    let result: Vec<Schema> = standard_model::find_by_attr(
+        &txn,
+        "schemas",
+        &tenancy,
+        &edit_session_visibility,
+        "name",
+        &schema_one.name().to_string(),
+    )
+    .await
+    .expect("cannot find the object by name");
+    assert_eq!(result.len(), 2);
+    assert_eq!(result[0], schema_one);
+    assert_eq!(result[1], schema_four);
+
+    let result: Vec<Schema> = standard_model::find_by_attr(
+        &txn,
+        "schemas",
+        &tenancy,
+        &edit_session_visibility,
+        "kind",
+        &schema_one.kind().to_string(),
+    )
+    .await
+    .expect("cannot find the object by name");
+    assert_eq!(result[0], schema_one);
+    assert_eq!(result[1], schema_two);
+    assert_eq!(result[2], schema_three);
+    assert_eq!(result[3], schema_four);
+    assert_eq!(result.len(), 4);
 }

@@ -11,12 +11,13 @@ import _ from "lodash";
 
 export interface CreateApplicationArgs {
   name: String;
-  workspaceId: number;
 }
 
 export interface CreateApplicationRequest
   extends CreateApplicationArgs,
-    Visibility {}
+    Visibility {
+  workspaceId: number;
+}
 
 export interface CreateApplicationResponse {
   application: Component;

@@ -1,32 +1,32 @@
 <template>
   <EditFormField :show="show">
-    <template #name>{{editField.name}}</template>
+    <template #name>{{ editField.name }}</template>
     <template #edit>
       <input
+        v-model="currentValue"
         class="pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey si-property disabled:opacity-50"
         :class="borderColor"
         type="checkbox"
         placeholder="text"
-        v-model="currentValue"
         @change="onBlur"
         @focus="onFocus"
         @blur="onBlur"
       />
     </template>
     <template #show>
-      <span :class="textColor">{{editField.value}}</span>
+      <span :class="textColor">{{ editField.value }}</span>
     </template>
   </EditFormField>
 </template>
 
 <script setup lang="ts">
-import {computed, PropType, ref, watch} from "vue";
-import type {EditField, CheckboxWidgetDal} from "@/api/sdf/dal/edit_field";
-import {EditFieldService} from "@/service/edit_field";
+import { computed, PropType, ref, watch } from "vue";
+import type { EditField, CheckboxWidgetDal } from "@/api/sdf/dal/edit_field";
+import { EditFieldService } from "@/service/edit_field";
 import EditFormField from "./EditFormField.vue";
-import {GlobalErrorService} from "@/service/global_error";
-import {UpdateFromEditFieldResponse} from "@/service/edit_field/update_from_edit_field";
-import {ApiResponse} from "@/api/sdf";
+import { GlobalErrorService } from "@/service/global_error";
+import { UpdateFromEditFieldResponse } from "@/service/edit_field/update_from_edit_field";
+import { ApiResponse } from "@/api/sdf";
 
 const props = defineProps({
   show: {
@@ -81,18 +81,18 @@ watch(
 const borderColor = computed(
   (): Record<string, boolean> => {
     if (props.editField.visibility_diff.kind != "None") {
-      return {"input-border-gold": true};
+      return { "input-border-gold": true };
     } else {
-      return {"input-border-grey": true};
+      return { "input-border-grey": true };
     }
   },
 );
 const textColor = computed(
   (): Record<string, boolean> => {
     if (props.editField.visibility_diff.kind != "None") {
-      return {"text-gold": true};
+      return { "text-gold": true };
     } else {
-      return {"text-gold": false};
+      return { "text-gold": false };
     }
   },
 );

@@ -15,11 +15,12 @@ use crate::{
     impl_standard_model, pk,
     schema::ui_menu::UiMenuId,
     standard_model, standard_model_accessor, standard_model_has_many, standard_model_many_to_many,
-    BillingAccount, BillingAccountId, HistoryActor, HistoryEventError, LabelEntry, LabelList,
-    Organization, OrganizationId, StandardModel, StandardModelError, Tenancy, Timestamp,
+    BillingAccount, BillingAccountId, Component, HistoryActor, HistoryEventError, LabelEntry,
+    LabelList, Organization, OrganizationId, StandardModel, StandardModelError, Tenancy, Timestamp,
     Visibility, Workspace, WorkspaceId, WsEventError,
 };
 
+use crate::schema::variant::SchemaVariantId;
 pub use ui_menu::UiMenu;
 pub use variant::SchemaVariant;
 
@@ -78,6 +79,7 @@ pub struct Schema {
     #[serde(flatten)]
     visibility: Visibility,
     ui_hidden: bool,
+    default_schema_variant_id: Option<SchemaVariantId>,
 }
 
 impl_standard_model! {
@@ -121,6 +123,11 @@ impl Schema {
 
     standard_model_accessor!(name, String, SchemaResult);
     standard_model_accessor!(kind, Enum(SchemaKind), SchemaResult);
+    standard_model_accessor!(
+        default_schema_variant_id,
+        OptionBigInt<SchemaVariantId>,
+        SchemaResult
+    );
 
     standard_model_many_to_many!(
         lookup_fn: billing_accounts,
@@ -169,6 +176,14 @@ impl Schema {
         table: "schema_ui_menu_belongs_to_schema",
         model_table: "schema_ui_menus",
         returns: UiMenu,
+        result: SchemaResult,
+    );
+
+    standard_model_has_many!(
+        lookup_fn: components,
+        table: "component_belongs_to_schema",
+        model_table: "components",
+        returns: Component,
         result: SchemaResult,
     );
 
@@ -282,7 +297,11 @@ impl Schema {
         let object_kind = EditFieldObjectKind::Schema;
 
         let mut items: Vec<EditFields> = vec![];
-        for variant in object.variants(txn, visibility).await?.into_iter() {
+        for variant in object
+            .variants(txn, object.tenancy(), visibility)
+            .await?
+            .into_iter()
+        {
             let edit_fields =
                 SchemaVariant::get_edit_fields(txn, tenancy, visibility, variant.id()).await?;
             items.push(edit_fields);
@@ -321,7 +340,11 @@ impl Schema {
         let object_kind = EditFieldObjectKind::Schema;
 
         let mut items: Vec<EditFields> = vec![];
-        for ui_menu in object.ui_menus(txn, visibility).await?.into_iter() {
+        for ui_menu in object
+            .ui_menus(txn, object.tenancy(), visibility)
+            .await?
+            .into_iter()
+        {
             let edit_fields =
                 UiMenu::get_edit_fields(txn, tenancy, visibility, ui_menu.id()).await?;
             items.push(edit_fields);

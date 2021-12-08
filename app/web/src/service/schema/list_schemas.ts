@@ -1,6 +1,6 @@
 import { ApiResponse, SDF } from "@/api/sdf";
 import { Schema } from "@/api/sdf/dal/schema";
-import { combineLatest, Observable, shareReplay } from "rxjs";
+import { combineLatest, Observable, share } from "rxjs";
 import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import Bottle from "bottlejs";
 import { switchMap } from "rxjs/operators";
@@ -18,7 +18,7 @@ const schemaList$ = combineLatest([standardVisibilityTriggers$]).pipe(
       visibility,
     );
   }),
-  shareReplay(1),
+  share(),
 );
 
 export function listSchemas(): Observable<ApiResponse<ListSchemaResponse>> {

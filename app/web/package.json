@@ -17,6 +17,7 @@
     "vue": "^3.2.16"
   },
   "devDependencies": {
+    "@types/chart.js": "^2.9.3",
     "@types/jsonwebtoken": "^8.5.5",
     "@types/lodash": "^4.14.175",
     "@types/node": "^16.10.9",

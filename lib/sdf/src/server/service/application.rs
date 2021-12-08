@@ -1,14 +1,15 @@
 use axum::body::{Bytes, Full};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
-use axum::routing::{post};
+use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
-use dal::{ComponentError as DalComponentError, NodeError, StandardModelError};
+use dal::{ComponentError as DalComponentError, SchemaError, StandardModelError, WsEventError};
 use std::convert::Infallible;
 use thiserror::Error;
 
 pub mod create_application;
+pub mod list_applications;
 
 #[derive(Debug, Error)]
 pub enum ApplicationError {
@@ -22,10 +23,14 @@ pub enum ApplicationError {
     Component(#[from] DalComponentError),
     #[error("not found")]
     NotFound,
+    #[error("schema not found")]
+    SchemaNotFound,
     #[error("invalid request")]
     InvalidRequest,
-    #[error("node error")]
-    Node(#[from] NodeError),
+    #[error("schema error: {0}")]
+    SchemaError(#[from] SchemaError),
+    #[error("ws event error: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 
 pub type ApplicationResult<T> = std::result::Result<T, ApplicationError>;
@@ -37,6 +42,7 @@ impl IntoResponse for ApplicationError {
     fn into_response(self) -> hyper::Response<Self::Body> {
         let (status, error_message) = match self {
             ApplicationError::NotFound => (StatusCode::NOT_FOUND, self.to_string()),
+            ApplicationError::SchemaNotFound => (StatusCode::NOT_FOUND, self.to_string()),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };
 
@@ -49,8 +55,13 @@ impl IntoResponse for ApplicationError {
 }
 
 pub fn routes() -> Router {
-    Router::new().route(
-        "/create_application",
-        post(create_application::create_application),
-    )
+    Router::new()
+        .route(
+            "/create_application",
+            post(create_application::create_application),
+        )
+        .route(
+            "/list_applications",
+            get(list_applications::list_applications),
+        )
 }
