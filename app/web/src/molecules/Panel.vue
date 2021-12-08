@@ -138,6 +138,10 @@ const panelTypes = computed<LabelList<PanelType>>(() => {
       label: "Secret",
       value: PanelType.Secret,
     },
+    {
+      label: "Empty",
+      value: PanelType.Empty,
+    },
   ];
 });
 

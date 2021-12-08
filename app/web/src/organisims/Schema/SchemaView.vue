@@ -1,6 +1,7 @@
 <template>
   <div v-if="isLoaded()">
     <div class="flex flex-col">
+      <StatusBar />
       <SiChangeSetHeader>
         <template #title> Schema {{ schema.name }}</template>
       </SiChangeSetHeader>
@@ -26,6 +27,7 @@ import { ApiResponse } from "@/api/sdf";
 import { ref } from "vue";
 import { ChangeSetService } from "@/service/change_set";
 import EditForm from "@/organisims/EditForm.vue";
+import StatusBar from "@/molecules/StatusBar.vue";
 
 const props = defineProps({
   schemaId: {

@@ -19,8 +19,8 @@
         <template #title>Create new application</template>
         <template #body>
           <ApplicationCreateForm
-            @create="closeCreateModal($event)"
-            @cancel="closeCreateModal($event)"
+            @create="created($event)"
+            @cancel="canceled($event)"
           />
         </template>
         <template #buttons>
@@ -65,6 +65,7 @@ import { from } from "rxjs";
 import { ListApplicationItem } from "@/service/application/list_application";
 import { ApplicationService } from "@/service/application";
 import ApplicationCard from "@/organisims/Application/ApplicationCard.vue";
+import { useRouter } from "vue-router";
 
 const applicationList = refFrom<Array<ListApplicationItem>>(
   ApplicationService.listApplications().pipe(
@@ -83,9 +84,36 @@ const applicationCreateModalShow = ref<boolean>(false);
 const applicationNew = () => {
   applicationCreateModalShow.value = true;
 };
+
 const closeCreateModal = (response: ApiResponse<CreateApplicationResponse>) => {
   if (!response.error) {
     applicationCreateModalShow.value = false;
+  }
+};
+
+const canceled = (response: ApiResponse<CreateApplicationResponse>) => {
+  closeCreateModal(response);
+};
+
+const router = useRouter();
+
+const created = (response: ApiResponse<CreateApplicationResponse>) => {
+  closeCreateModal(response);
+  if (!response.error) {
+    router
+      .push({
+        name: "application-view",
+        params: { applicationId: response.application.id },
+      })
+      .catch((_e) => {
+        GlobalErrorService.set({
+          error: {
+            code: 42,
+            statusCode: 500,
+            message: "cannot route to application",
+          },
+        });
+      });
   }
 };
 </script>
