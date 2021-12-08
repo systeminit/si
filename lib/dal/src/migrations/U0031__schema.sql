@@ -15,7 +15,8 @@ CREATE TABLE schemas
     kind                        text                     NOT NULL,
     ui_menu_name                text,
     ui_menu_category            ltree,
-    ui_hidden                   boolean                  NOT NULL DEFAULT false
+    ui_hidden                   boolean                  NOT NULL DEFAULT false,
+    default_schema_variant_id   bigint
 );
 SELECT standard_model_table_constraints_v1('schemas');
 SELECT many_to_many_table_create_v1('schema_many_to_many_billing_account', 'schemas', 'billing_accounts');

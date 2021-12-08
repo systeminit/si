@@ -48,6 +48,7 @@ import SiButton from "@/atoms/SiButton.vue";
 import SiError from "@/atoms/SiError.vue";
 import SiTextBox from "@/atoms/SiTextBox.vue";
 import SiFormRow from "@/atoms/SiFormRow.vue";
+import { ApplicationService } from "@/service/application";
 
 const emit = defineEmits(["cancel", "create"]);
 
@@ -57,7 +58,15 @@ const form = ref({
 });
 
 const create = () => {
-  emit("create");
+  ApplicationService.createApplication({
+    name: form.value.applicationName,
+  }).subscribe((response) => {
+    if (response.error) {
+      errorMessage.value = response.error.message;
+    }
+    form.value.applicationName = "";
+    emit("create", response);
+  });
 };
 
 const onEnter = () => {

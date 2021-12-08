@@ -59,6 +59,42 @@ BEGIN
 END ;
 $$ LANGUAGE PLPGSQL STABLE;
 
+CREATE OR REPLACE FUNCTION find_by_attr_v1(this_table_text text, this_tenancy jsonb, this_visibility jsonb, this_attr_name text, this_value text)
+    RETURNS TABLE
+            (
+                id                         bigint,
+                visibility_change_set_pk   bigint,
+                visibility_edit_session_pk bigint,
+                object                     json
+            )
+AS
+$$
+DECLARE
+    this_table regclass;
+BEGIN
+    this_table := this_table_text::regclass;
+    RETURN QUERY EXECUTE format('SELECT DISTINCT ON (%1$I.id)' ||
+                                '   %1$I.id,' ||
+                                '   %1$I.visibility_change_set_pk,' ||
+                                '   %1$I.visibility_edit_session_pk,' ||
+                                '   row_to_json(%1$I.*) AS object' ||
+                                ' FROM %1$I' ||
+                                ' WHERE %1$I.%4$I = %5$L' ||
+                                '  AND in_tenancy_v1(%2$L, ' ||
+                                '                    %1$I.tenancy_universal, ' ||
+                                '                    %1$I.tenancy_billing_account_ids,' ||
+                                '                    %1$I.tenancy_organization_ids,' ||
+                                '                    %1$I.tenancy_workspace_ids)' ||
+                                '  AND is_visible_v1(%3$L,' ||
+                                '                    %1$I.visibility_change_set_pk,' ||
+                                '                    %1$I.visibility_edit_session_pk,' ||
+                                '                    %1$I.visibility_deleted)' ||
+                                ' ORDER BY id, visibility_change_set_pk DESC, visibility_edit_session_pk DESC'
+        , this_table, this_tenancy, this_visibility, this_attr_name, this_value);
+END ;
+$$ LANGUAGE PLPGSQL STABLE;
+
+
 CREATE OR REPLACE FUNCTION update_by_id_v1(this_table_text text,
                                            this_column text,
                                            this_tenancy jsonb,
@@ -165,6 +201,27 @@ CREATE OR REPLACE FUNCTION update_by_id_v1(this_table_text text,
                                            this_visibility jsonb,
                                            this_id bigint,
                                            this_value bool,
+                                           OUT updated_at timestamp with time zone)
+AS
+$$
+BEGIN
+    SELECT update_by_id_v1(this_table_text,
+                           this_column,
+                           this_tenancy,
+                           this_visibility,
+                           this_id,
+                           CAST(this_value as text))
+    INTO updated_at;
+END ;
+$$ LANGUAGE PLPGSQL VOLATILE;
+
+-- update_by_id_v1 (bigint)
+CREATE OR REPLACE FUNCTION update_by_id_v1(this_table_text text,
+                                           this_column text,
+                                           this_tenancy jsonb,
+                                           this_visibility jsonb,
+                                           this_id bigint,
+                                           this_value bigint,
                                            OUT updated_at timestamp with time zone)
 AS
 $$

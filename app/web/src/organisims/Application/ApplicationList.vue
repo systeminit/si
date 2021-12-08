@@ -19,8 +19,8 @@
         <template #title>Create new application</template>
         <template #body>
           <ApplicationCreateForm
-            @create="closeCreateModal"
-            @cancel="closeCreateModal"
+            @create="closeCreateModal($event)"
+            @cancel="closeCreateModal($event)"
           />
         </template>
         <template #buttons>
@@ -29,8 +29,23 @@
       </SiModal>
     </div>
 
-    <div class="flex h-full mx-4 mt-4 overflow-auto">
-      <!-- <ApplicationList linkTo="applicationEditor" /> -->
+    <div class="flex flex-col px-4 mt-4 overflow-auto">
+      <div
+        v-for="appEntry in applicationList"
+        :key="appEntry.application.id"
+        class="mb-6"
+      >
+        <router-link
+          :to="{
+            name: 'application-view',
+            params: { applicationId: appEntry.application.id },
+          }"
+        >
+          <ApplicationCard
+            :application="appEntry.application"
+          ></ApplicationCard>
+        </router-link>
+      </div>
     </div>
   </div>
 </template>
@@ -41,13 +56,37 @@ import { ref } from "vue";
 import SiButton from "@/atoms/SiButton.vue";
 import SiModal from "@/molecules/SiModal.vue";
 import ApplicationCreateForm from "@/organisims/Application/ApplicationCreateForm.vue";
+import { CreateApplicationResponse } from "@/service/application/create_application";
+import { ApiResponse } from "@/api/sdf";
+import { refFrom } from "vuse-rx/src/index";
+import { switchMap } from "rxjs/operators";
+import { GlobalErrorService } from "@/service/global_error";
+import { from } from "rxjs";
+import { ListApplicationItem } from "@/service/application/list_application";
+import { ApplicationService } from "@/service/application";
+import ApplicationCard from "@/organisims/Application/ApplicationCard.vue";
+
+const applicationList = refFrom<Array<ListApplicationItem>>(
+  ApplicationService.listApplications().pipe(
+    switchMap((response) => {
+      if (response.error) {
+        GlobalErrorService.set(response);
+        return from([[]]);
+      } else {
+        return from([response.list]);
+      }
+    }),
+  ),
+);
 
 const applicationCreateModalShow = ref<boolean>(false);
 const applicationNew = () => {
   applicationCreateModalShow.value = true;
 };
-const closeCreateModal = () => {
-  applicationCreateModalShow.value = false;
+const closeCreateModal = (response: ApiResponse<CreateApplicationResponse>) => {
+  if (!response.error) {
+    applicationCreateModalShow.value = false;
+  }
 };
 </script>
 

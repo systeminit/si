@@ -22,6 +22,41 @@ async fn new() {
 }
 
 #[tokio::test]
+async fn new_for_schema_variant_with_node() {
+    test_setup!(ctx, _secret_key, _pg, _conn, txn, _nats_conn, nats);
+    let tenancy = Tenancy::new_universal();
+    let visibility = Visibility::new_head(false);
+    let history_actor = HistoryActor::SystemInit;
+    let schema = create_schema(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        &SchemaKind::Concept,
+    )
+    .await;
+    let schema_variant =
+        create_schema_variant(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+    schema_variant
+        .set_schema(&txn, &nats, &visibility, &history_actor, schema.id())
+        .await
+        .expect("cannot set schema variant");
+
+    let _component = Component::new_for_schema_variant_with_node(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        "mastodon",
+        schema_variant.id(),
+    )
+    .await
+    .expect("cannot create component");
+}
+
+#[tokio::test]
 async fn schema_relationships() {
     test_setup!(ctx, _secret_key, _pg, _conn, txn, _nats_conn, nats);
     let tenancy = Tenancy::new_universal();

@@ -5,6 +5,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use tower::ServiceExt;
 
+mod application;
 mod change_set;
 mod schema;
 mod session;
@@ -65,13 +66,21 @@ pub async fn api_request_auth_json_body<Req: Serialize, Res: DeserializeOwned>(
         .expect("cannot create api request");
     let response = app.oneshot(api_request).await.expect("cannot send request");
     let status = response.status();
-    let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
-    let body_json: serde_json::Value =
-        serde_json::from_slice(&body).expect("response is not valid json");
+    let body = hyper::body::to_bytes(response.into_body())
+        .await
+        .expect("cannot read body");
     if status != StatusCode::OK {
-        dbg!(&body_json);
+        dbg!(&body);
         assert_eq!(status, StatusCode::OK);
     }
+    let body_json: serde_json::Value = match serde_json::from_slice(&body) {
+        Ok(body_json) => body_json,
+        Err(_e) => {
+            dbg!(&body);
+            panic!("response is not valid json");
+        }
+    };
+
     serde_json::from_value(body_json).expect("response is not a valid rust struct")
 }
 

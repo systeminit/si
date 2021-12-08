@@ -192,7 +192,7 @@ async fn ui_menus() {
         .await
         .expect("cannot set schema");
     let ui_menus = schema
-        .ui_menus(&txn, &visibility)
+        .ui_menus(&txn, schema.tenancy(), &visibility)
         .await
         .expect("cannot get ui menus");
     assert_eq!(ui_menus, vec![schema_ui_menu.clone()]);

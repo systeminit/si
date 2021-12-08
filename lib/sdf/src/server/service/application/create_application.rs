@@ -1,10 +1,9 @@
 use super::{ApplicationError, ApplicationResult};
 use crate::server::extract::{Authorization, NatsTxn, PgRwTxn};
 use axum::Json;
-use dal::node::NodeKind;
 use dal::{
-    Component, HistoryActor, Node, StandardModel, Tenancy, Visibility,
-    Workspace, WorkspaceId,
+    Component, HistoryActor, StandardModel, Tenancy, Visibility, Workspace,
+    WorkspaceId, WsEvent, WsPayload, NO_CHANGE_SET_PK,
 };
 use serde::{Deserialize, Serialize};
 
@@ -32,7 +31,6 @@ pub async fn create_application(
     let txn = txn.start().await?;
     let nats = nats.start().await?;
 
-    // Create the workspace tenancy
     let billing_account_tenancy = Tenancy::new_billing_account(vec![claim.billing_account_id]);
     let history_actor: HistoryActor = HistoryActor::from(claim.user_id);
     let workspace = Workspace::get_by_id(
@@ -43,11 +41,12 @@ pub async fn create_application(
     )
     .await?
     .ok_or(ApplicationError::InvalidRequest)?;
-
     let tenancy = Tenancy::new_workspace(vec![*workspace.id()]);
+
     // You can only create applications directly to head? This feels wrong, but..
     let visibility = Visibility::new_head(false);
-    let component = Component::new(
+
+    let (component, _node) = Component::new_application_with_node(
         &txn,
         &nats,
         &tenancy,
@@ -56,17 +55,16 @@ pub async fn create_application(
         &request.name,
     )
     .await?;
-    let node = Node::new(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        &NodeKind::Component,
+
+    // When we create something intentionally on head, we need to fake that a change
+    // set has been applied.
+    WsEvent::new(
+        billing_account_tenancy.billing_account_ids.clone(),
+        history_actor.clone(),
+        WsPayload::ChangeSetApplied(NO_CHANGE_SET_PK),
     )
+    .publish(&nats)
     .await?;
-    node.set_component(&txn, &nats, &visibility, &history_actor, component.id())
-        .await?;
 
     txn.commit().await?;
     nats.commit().await?;
