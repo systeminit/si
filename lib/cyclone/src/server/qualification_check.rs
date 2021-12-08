@@ -20,10 +20,10 @@ use tokio_util::codec::{FramedRead, FramedWrite};
 
 use crate::{
     process::{self, ShutdownError},
-    resolver_function::{
-        OutputStream, ResolverFunctionMessage, ResolverFunctionRequest, ResolverFunctionResult,
-        ResolverFunctionResultFailure, ResolverFunctionResultFailureError,
-        ResolverFunctionResultSuccess,
+    qualification_check::{
+        OutputStream, QualificationCheckMessage, QualificationCheckRequest,
+        QualificationCheckResult, QualificationCheckResultFailure,
+        QualificationCheckResultFailureError, QualificationCheckResultSuccess,
     },
     server::WebSocketMessage,
 };
@@ -33,15 +33,15 @@ const TX_TIMEOUT_SECS: Duration = Duration::from_secs(2);
 pub fn execute(
     lang_server_path: impl Into<PathBuf>,
     lang_server_debugging: bool,
-) -> ResolverFunctionExecution {
-    ResolverFunctionExecution {
+) -> QualificationCheckExecution {
+    QualificationCheckExecution {
         lang_server_path: lang_server_path.into(),
         lang_server_debugging,
     }
 }
 
 #[derive(Debug, Error)]
-pub enum ResolverFunctionError {
+pub enum QualificationCheckError {
     #[error("failed to consume the {0} stream for the child process")]
     ChildIO(&'static str),
     #[error("failed to receive child process message")]
@@ -70,129 +70,132 @@ pub enum ResolverFunctionError {
     UnexpectedMessageType(WebSocketMessage),
 }
 
-type Result<T> = std::result::Result<T, ResolverFunctionError>;
+type Result<T> = std::result::Result<T, QualificationCheckError>;
 
 #[derive(Debug)]
-pub struct ResolverFunctionExecution {
+pub struct QualificationCheckExecution {
     lang_server_path: PathBuf,
     lang_server_debugging: bool,
 }
 
-impl ResolverFunctionExecution {
-    pub async fn start(self, ws: &mut WebSocket) -> Result<ResolverFunctionServerExecutionStarted> {
+impl QualificationCheckExecution {
+    pub async fn start(
+        self,
+        ws: &mut WebSocket,
+    ) -> Result<QualificationCheckServerExecutionStarted> {
         Self::ws_send_start(ws).await?;
         let request = Self::read_request(ws).await?;
 
         let mut command = Command::new(&self.lang_server_path);
         command
-            .arg("resolverfunction")
+            .arg("qualificationcheck")
             .stdin(Stdio::piped())
             .stdout(Stdio::piped());
         if self.lang_server_debugging {
             command.env("DEBUG", "*").env("DEBUG_DEPTH", "5");
         }
         debug!(cmd = ?command, "spawning child process");
-        let mut child = command
-            .spawn()
-            .map_err(|err| ResolverFunctionError::ChildSpawn(err, self.lang_server_path.clone()))?;
+        let mut child = command.spawn().map_err(|err| {
+            QualificationCheckError::ChildSpawn(err, self.lang_server_path.clone())
+        })?;
 
         let stdin = child
             .stdin
             .take()
-            .ok_or(ResolverFunctionError::ChildIO("stdin"))?;
+            .ok_or(QualificationCheckError::ChildIO("stdin"))?;
         Self::child_send_function_request(stdin, request).await?;
 
         let stdout = {
             let stdout = child
                 .stdout
                 .take()
-                .ok_or(ResolverFunctionError::ChildIO("stdout"))?;
+                .ok_or(QualificationCheckError::ChildIO("stdout"))?;
             let codec = FramedRead::new(stdout, BytesLinesCodec::new());
             SymmetricallyFramed::new(codec, SymmetricalJson::default())
         };
 
-        Ok(ResolverFunctionServerExecutionStarted { child, stdout })
+        Ok(QualificationCheckServerExecutionStarted { child, stdout })
     }
 
-    async fn read_request(ws: &mut WebSocket) -> Result<ResolverFunctionRequest> {
+    async fn read_request(ws: &mut WebSocket) -> Result<QualificationCheckRequest> {
         let request = match ws.next().await {
             Some(Ok(WebSocketMessage::Text(json_str))) => {
-                ResolverFunctionRequest::deserialize_from_str(&json_str)
-                    .map_err(ResolverFunctionError::JSONDeserialize)?
+                QualificationCheckRequest::deserialize_from_str(&json_str)
+                    .map_err(QualificationCheckError::JSONDeserialize)?
             }
             Some(Ok(unexpected)) => {
-                return Err(ResolverFunctionError::UnexpectedMessageType(unexpected))
+                return Err(QualificationCheckError::UnexpectedMessageType(unexpected))
             }
-            Some(Err(err)) => return Err(ResolverFunctionError::WSRecvIO(err)),
-            None => return Err(ResolverFunctionError::WSRecvClosed),
+            Some(Err(err)) => return Err(QualificationCheckError::WSRecvIO(err)),
+            None => return Err(QualificationCheckError::WSRecvClosed),
         };
         Ok(request)
     }
 
     async fn ws_send_start(ws: &mut WebSocket) -> Result<()> {
-        let msg = ResolverFunctionMessage::Start
+        let msg = QualificationCheckMessage::Start
             .serialize_to_string()
-            .map_err(ResolverFunctionError::JSONSerialize)?;
+            .map_err(QualificationCheckError::JSONSerialize)?;
 
         time::timeout(TX_TIMEOUT_SECS, ws.send(WebSocketMessage::Text(msg)))
             .await
-            .map_err(ResolverFunctionError::SendTimeout)?
-            .map_err(ResolverFunctionError::WSSendIO)?;
+            .map_err(QualificationCheckError::SendTimeout)?
+            .map_err(QualificationCheckError::WSSendIO)?;
         Ok(())
     }
 
     async fn child_send_function_request(
         stdin: ChildStdin,
-        request: ResolverFunctionRequest,
+        request: QualificationCheckRequest,
     ) -> Result<()> {
         let codec = FramedWrite::new(stdin, BytesLinesCodec::new());
         let mut stdin = SymmetricallyFramed::new(codec, SymmetricalJson::default());
 
         time::timeout(TX_TIMEOUT_SECS, stdin.send(request))
             .await
-            .map_err(ResolverFunctionError::SendTimeout)?
-            .map_err(ResolverFunctionError::ChildSendIO)?;
+            .map_err(QualificationCheckError::SendTimeout)?
+            .map_err(QualificationCheckError::ChildSendIO)?;
         time::timeout(TX_TIMEOUT_SECS, stdin.close())
             .await
-            .map_err(ResolverFunctionError::SendTimeout)?
-            .map_err(ResolverFunctionError::ChildSendIO)?;
+            .map_err(QualificationCheckError::SendTimeout)?
+            .map_err(QualificationCheckError::ChildSendIO)?;
         Ok(())
     }
 }
 
 #[derive(Debug)]
-pub struct ResolverFunctionServerExecutionStarted {
+pub struct QualificationCheckServerExecutionStarted {
     child: Child,
     stdout: Framed<
         FramedRead<ChildStdout, BytesLinesCodec>,
-        LangServerResolverFunctionMessage,
-        LangServerResolverFunctionMessage,
-        Json<LangServerResolverFunctionMessage, LangServerResolverFunctionMessage>,
+        LangServerQualificationCheckMessage,
+        LangServerQualificationCheckMessage,
+        Json<LangServerQualificationCheckMessage, LangServerQualificationCheckMessage>,
     >,
 }
 
-impl ResolverFunctionServerExecutionStarted {
+impl QualificationCheckServerExecutionStarted {
     pub async fn process(
         self,
         ws: &mut WebSocket,
-    ) -> Result<ResolverFunctionServerExecutionClosing> {
+    ) -> Result<QualificationCheckServerExecutionClosing> {
         let mut stream = self
             .stdout
             .map(|ls_result| match ls_result {
                 Ok(ls_msg) => match ls_msg {
-                    LangServerResolverFunctionMessage::Output(output) => {
-                        Ok(ResolverFunctionMessage::OutputStream(output.into()))
+                    LangServerQualificationCheckMessage::Output(output) => {
+                        Ok(QualificationCheckMessage::OutputStream(output.into()))
                     }
-                    LangServerResolverFunctionMessage::Result(result) => {
-                        Ok(ResolverFunctionMessage::Result(result.into()))
+                    LangServerQualificationCheckMessage::Result(result) => {
+                        Ok(QualificationCheckMessage::Result(result.into()))
                     }
                 },
-                Err(err) => Err(ResolverFunctionError::ChildRecvIO(err)),
+                Err(err) => Err(QualificationCheckError::ChildRecvIO(err)),
             })
             .map(|msg_result: Result<_>| match msg_result {
                 Ok(msg) => match msg
                     .serialize_to_string()
-                    .map_err(ResolverFunctionError::JSONSerialize)
+                    .map_err(QualificationCheckError::JSONSerialize)
                 {
                     Ok(json_str) => Ok(WebSocketMessage::Text(json_str)),
                     Err(err) => Err(err),
@@ -203,19 +206,19 @@ impl ResolverFunctionServerExecutionStarted {
         while let Some(msg) = stream.try_next().await? {
             ws.send(msg)
                 .await
-                .map_err(ResolverFunctionError::WSSendIO)?;
+                .map_err(QualificationCheckError::WSSendIO)?;
         }
 
-        Ok(ResolverFunctionServerExecutionClosing { child: self.child })
+        Ok(QualificationCheckServerExecutionClosing { child: self.child })
     }
 }
 
 #[derive(Debug)]
-pub struct ResolverFunctionServerExecutionClosing {
+pub struct QualificationCheckServerExecutionClosing {
     child: Child,
 }
 
-impl ResolverFunctionServerExecutionClosing {
+impl QualificationCheckServerExecutionClosing {
     pub async fn finish(mut self, mut ws: WebSocket) -> Result<()> {
         let finished = Self::ws_send_finish(&mut ws).await;
         let closed = Self::ws_close(ws).await;
@@ -259,25 +262,25 @@ impl ResolverFunctionServerExecutionClosing {
     }
 
     async fn ws_send_finish(ws: &mut WebSocket) -> Result<()> {
-        let msg = ResolverFunctionMessage::Finish
+        let msg = QualificationCheckMessage::Finish
             .serialize_to_string()
-            .map_err(ResolverFunctionError::JSONSerialize)?;
+            .map_err(QualificationCheckError::JSONSerialize)?;
         time::timeout(TX_TIMEOUT_SECS, ws.send(WebSocketMessage::Text(msg)))
             .await
-            .map_err(ResolverFunctionError::SendTimeout)?
-            .map_err(ResolverFunctionError::WSSendIO)?;
+            .map_err(QualificationCheckError::SendTimeout)?
+            .map_err(QualificationCheckError::WSSendIO)?;
 
         Ok(())
     }
 
     async fn ws_close(ws: WebSocket) -> Result<()> {
-        ws.close().await.map_err(ResolverFunctionError::WSClose)
+        ws.close().await.map_err(QualificationCheckError::WSClose)
     }
 }
 
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(tag = "protocol", rename_all = "camelCase")]
-enum LangServerResolverFunctionMessage {
+enum LangServerQualificationCheckMessage {
     Output(LangServerOutput),
     Result(LangServerResult),
 }
@@ -314,18 +317,18 @@ enum LangServerResult {
     Failure(LangServerFailure),
 }
 
-impl From<LangServerResult> for ResolverFunctionResult {
+impl From<LangServerResult> for QualificationCheckResult {
     fn from(value: LangServerResult) -> Self {
         match value {
-            LangServerResult::Success(success) => Self::Success(ResolverFunctionResultSuccess {
+            LangServerResult::Success(success) => Self::Success(QualificationCheckResultSuccess {
                 execution_id: success.execution_id,
-                data: success.data,
-                unset: success.unset,
+                qualified: success.qualified,
+                output: success.output,
                 timestamp: timestamp(),
             }),
-            LangServerResult::Failure(failure) => Self::Failure(ResolverFunctionResultFailure {
+            LangServerResult::Failure(failure) => Self::Failure(QualificationCheckResultFailure {
                 execution_id: failure.execution_id,
-                error: ResolverFunctionResultFailureError {
+                error: QualificationCheckResultFailureError {
                     kind: failure.error.kind,
                     message: failure.error.message,
                 },
@@ -339,8 +342,8 @@ impl From<LangServerResult> for ResolverFunctionResult {
 #[serde(rename_all = "camelCase")]
 struct LangServerSuccess {
     execution_id: String,
-    data: Value,
-    unset: bool,
+    qualified: bool,
+    output: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]

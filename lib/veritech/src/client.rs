@@ -3,7 +3,7 @@ use si_data::NatsClient;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::{FunctionResult, ResolverFunctionRequest};
+use crate::{ResolverFunctionRequest, ResolverFunctionResult};
 
 #[derive(Error, Debug)]
 pub enum VeritechClientError {
@@ -22,7 +22,7 @@ pub async fn run_function(
     nats: &NatsClient,
     kind: impl Into<String>,
     code: impl Into<String>,
-) -> VeritechClientResult<FunctionResult> {
+) -> VeritechClientResult<ResolverFunctionResult> {
     let kind = kind.into();
     let code = code.into();
     let request = ResolverFunctionRequest {
@@ -38,14 +38,14 @@ pub async fn run_function(
         )
         .await?;
 
-    let mut result: Option<FunctionResult> = None;
+    let mut result: Option<ResolverFunctionResult> = None;
     // TODO - We will eventually want this to timeout if we don't receive the
     // payload in time. Lots of fanciness can ensue.
     while let Some(msg) = reply_sub.next().await.transpose()? {
         let json_payload: serde_json::Value = serde_json::from_slice(msg.data())?;
         // Then it is output
         if json_payload["stream"].is_null() {
-            let function_result: FunctionResult = serde_json::from_value(json_payload)?;
+            let function_result: ResolverFunctionResult = serde_json::from_value(json_payload)?;
             result = Some(function_result);
             break;
         }

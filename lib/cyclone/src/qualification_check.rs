@@ -5,14 +5,14 @@ use serde_json::Value;
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ResolverFunctionRequest {
+pub struct QualificationCheckRequest {
     pub execution_id: String,
     pub handler: String,
-    pub parameters: Option<HashMap<String, Value>>,
+    pub component: Component,
     pub code_base64: String,
 }
 
-impl ResolverFunctionRequest {
+impl QualificationCheckRequest {
     pub fn deserialize_from_str(s: &str) -> Result<Self, serde_json::Error> {
         serde_json::from_str(s)
     }
@@ -22,17 +22,24 @@ impl ResolverFunctionRequest {
     }
 }
 
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Component {
+    pub name: String,
+    pub properties: HashMap<String, Value>,
+}
+
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub enum ResolverFunctionMessage {
+pub enum QualificationCheckMessage {
     Start,
     Finish,
     Heartbeat,
     Fail(Fail),
     OutputStream(OutputStream),
-    Result(ResolverFunctionResult),
+    Result(QualificationCheckResult),
 }
 
-impl ResolverFunctionMessage {
+impl QualificationCheckMessage {
     pub fn fail(message: impl Into<String>) -> Self {
         Self::Fail(Fail {
             message: message.into(),
@@ -49,7 +56,7 @@ impl ResolverFunctionMessage {
 }
 
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub enum ResolverFunctionExecutingMessage {
+pub enum QualificationCheckExecutingMessage {
     Heartbeat,
     OutputStream(OutputStream),
 }
@@ -66,28 +73,28 @@ pub struct OutputStream {
 }
 
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub enum ResolverFunctionResult {
-    Success(ResolverFunctionResultSuccess),
-    Failure(ResolverFunctionResultFailure),
+pub enum QualificationCheckResult {
+    Success(QualificationCheckResultSuccess),
+    Failure(QualificationCheckResultFailure),
 }
 
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct ResolverFunctionResultSuccess {
+pub struct QualificationCheckResultSuccess {
     pub execution_id: String,
-    pub data: Value,
-    pub unset: bool,
+    pub qualified: bool,
+    pub output: Option<String>,
     pub timestamp: u64,
 }
 
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct ResolverFunctionResultFailure {
+pub struct QualificationCheckResultFailure {
     pub execution_id: String,
-    pub error: ResolverFunctionResultFailureError,
+    pub error: QualificationCheckResultFailureError,
     pub timestamp: u64,
 }
 
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct ResolverFunctionResultFailureError {
+pub struct QualificationCheckResultFailureError {
     pub kind: String,
     pub message: String,
 }

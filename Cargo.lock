@@ -306,6 +306,7 @@ dependencies = [
  "tokio",
  "tokio-serde",
  "tokio-util",
+ "tracing",
 ]
 
 [[package]]
@@ -566,7 +567,9 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "axum 0.2.8",
+ "base64",
  "bytes-lines-codec",
+ "chrono",
  "derive_builder",
  "futures",
  "futures-lite",
@@ -750,12 +753,15 @@ dependencies = [
  "derive_builder",
  "futures",
  "nix",
+ "serde",
+ "serde_json",
  "tempfile",
  "thiserror",
  "tokio",
  "tokio-test",
  "tracing",
  "tracing-subscriber",
+ "uuid",
 ]
 
 [[package]]

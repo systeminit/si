@@ -1,4 +1,4 @@
-use cyclone::resolver_function::{FunctionResult, OutputStream};
+use cyclone::resolver_function::{OutputStream, ResolverFunctionResult};
 use serde::Serialize;
 use si_data::NatsClient;
 use thiserror::Error;
@@ -40,4 +40,4 @@ impl<'a> Publisher<'a> {
 pub trait Publishable: Serialize {}
 
 impl Publishable for OutputStream {}
-impl Publishable for FunctionResult {}
+impl Publishable for ResolverFunctionResult {}

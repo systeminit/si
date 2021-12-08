@@ -16,6 +16,7 @@ pub mod key_pair;
 pub mod label_list;
 pub mod node;
 pub mod organization;
+pub mod qualification_check;
 pub mod schema;
 pub mod schematic;
 pub mod socket;
@@ -48,7 +49,12 @@ pub use node::{Node, NodeError};
 pub use organization::{
     Organization, OrganizationError, OrganizationId, OrganizationPk, OrganizationResult,
 };
-pub use schema::{Schema, SchemaError, SchemaId, SchemaKind, SchemaPk};
+pub use qualification_check::{
+    QualificationCheck, QualificationCheckError, QualificationCheckId, QualificationCheckPk,
+};
+pub use schema::{
+    Schema, SchemaError, SchemaId, SchemaKind, SchemaPk, SchemaVariant, SchemaVariantId,
+};
 pub use schematic::SchematicKind;
 pub use standard_model::{StandardModel, StandardModelError, StandardModelResult};
 pub use tenancy::{Tenancy, TenancyError};

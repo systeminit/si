@@ -26,11 +26,11 @@ mod limit_requests {
 
     impl LimitRequestLayer {
         pub fn new(
-            remaining: Option<impl Into<u32>>,
+            remaining: Arc<Option<AtomicU32>>,
             shutdown_tx: mpsc::Sender<ShutdownSource>,
         ) -> Self {
             Self {
-                remaining: Arc::new(remaining.map(|r| r.into().into())),
+                remaining,
                 shutdown_tx,
             }
         }

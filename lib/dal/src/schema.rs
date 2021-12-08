@@ -20,9 +20,8 @@ use crate::{
     Visibility, Workspace, WorkspaceId, WsEventError,
 };
 
-use crate::schema::variant::SchemaVariantId;
 pub use ui_menu::UiMenu;
-pub use variant::SchemaVariant;
+pub use variant::{SchemaVariant, SchemaVariantId};
 
 pub mod builtins;
 pub mod ui_menu;

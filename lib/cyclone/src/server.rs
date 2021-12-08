@@ -6,7 +6,9 @@ pub use server::Server;
 pub use uds::{UdsIncomingStream, UdsIncomingStreamError};
 
 mod config;
+pub(crate) mod extract;
 mod handlers;
+pub mod qualification_check;
 pub mod resolver_function;
 mod routes;
 mod server;

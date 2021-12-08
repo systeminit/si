@@ -10,10 +10,14 @@ use axum::{
 use hyper::StatusCode;
 use telemetry::prelude::*;
 
-use super::routes::{State, WatchKeepalive};
+use super::{
+    extract::LimitRequestGuard,
+    routes::{State, WatchKeepalive},
+};
 use crate::{
+    qualification_check::QualificationCheckMessage,
     resolver_function::ResolverFunctionMessage,
-    server::{resolver_function, watch},
+    server::{qualification_check, resolver_function, watch},
     LivenessStatus, ReadinessStatus,
 };
 
@@ -47,8 +51,11 @@ pub async fn ws_watch(
 }
 
 #[allow(clippy::unused_async)]
-pub async fn ws_execute_ping(wsu: WebSocketUpgrade) -> impl IntoResponse {
-    async fn handle_socket(mut socket: WebSocket) {
+pub async fn ws_execute_ping(
+    wsu: WebSocketUpgrade,
+    limit_request_guard: LimitRequestGuard,
+) -> impl IntoResponse {
+    async fn handle_socket(mut socket: WebSocket, _limit_request_guard: LimitRequestGuard) {
         if let Err(ref err) = socket.send(Message::Text("pong".to_string())).await {
             warn!("client disconnected; error={}", err);
         }
@@ -57,16 +64,21 @@ pub async fn ws_execute_ping(wsu: WebSocketUpgrade) -> impl IntoResponse {
         }
     }
 
-    wsu.on_upgrade(handle_socket)
+    wsu.on_upgrade(move |socket| handle_socket(socket, limit_request_guard))
 }
 
 #[allow(clippy::unused_async)]
 pub async fn ws_execute_resolver(
     wsu: WebSocketUpgrade,
     Extension(state): Extension<Arc<State>>,
+    limit_request_guard: LimitRequestGuard,
 ) -> impl IntoResponse {
-    async fn handle_socket(mut socket: WebSocket, state: Arc<State>) {
-        let proto = match resolver_function::execute(state.lang_server_path())
+    async fn handle_socket(
+        mut socket: WebSocket,
+        state: Arc<State>,
+        _limit_request_guard: LimitRequestGuard,
+    ) {
+        let proto = match resolver_function::execute(state.lang_server_path(), true)
             .start(&mut socket)
             .await
         {
@@ -95,7 +107,7 @@ pub async fn ws_execute_resolver(
         }
     }
 
-    wsu.on_upgrade(move |socket| handle_socket(socket, state))
+    wsu.on_upgrade(move |socket| handle_socket(socket, state, limit_request_guard))
 }
 
 async fn fail_execute_resolver(
@@ -103,6 +115,61 @@ async fn fail_execute_resolver(
     message: impl Into<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let msg = ResolverFunctionMessage::fail(message).serialize_to_string()?;
+    socket.send(Message::Text(msg)).await?;
+    socket.close().await?;
+    Ok(())
+}
+
+#[allow(clippy::unused_async)]
+pub async fn ws_execute_qualification(
+    wsu: WebSocketUpgrade,
+    Extension(state): Extension<Arc<State>>,
+    limit_request_guard: LimitRequestGuard,
+) -> impl IntoResponse {
+    async fn handle_socket(
+        mut socket: WebSocket,
+        state: Arc<State>,
+        _limit_request_guard: LimitRequestGuard,
+    ) {
+        let proto = match qualification_check::execute(state.lang_server_path(), true)
+            .start(&mut socket)
+            .await
+        {
+            Ok(started) => started,
+            Err(err) => {
+                warn!(error = ?err, "failed to start protocol");
+                if let Err(err) = fail_qualification_check(socket, "failed to start protocol").await
+                {
+                    warn!(error = ?err, "failed to fail execute qualification");
+                };
+                return;
+            }
+        };
+        let proto = match proto.process(&mut socket).await {
+            Ok(processed) => processed,
+            Err(err) => {
+                warn!(error = ?err, "failed to process protocol");
+                if let Err(err) =
+                    fail_qualification_check(socket, "failed to process protocol").await
+                {
+                    warn!(error = ?err, "failed to fail execute qualification");
+                };
+                return;
+            }
+        };
+        if let Err(err) = proto.finish(socket).await {
+            warn!(error = ?err, "failed to finish protocol");
+        }
+    }
+
+    wsu.on_upgrade(move |socket| handle_socket(socket, state, limit_request_guard))
+}
+
+async fn fail_qualification_check(
+    mut socket: WebSocket,
+    message: impl Into<String>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let msg = QualificationCheckMessage::fail(message).serialize_to_string()?;
     socket.send(Message::Text(msg)).await?;
     socket.close().await?;
     Ok(())

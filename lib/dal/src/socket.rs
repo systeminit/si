@@ -13,10 +13,9 @@ use crate::{
     },
     impl_standard_model,
     label_list::ToLabelList,
-    pk,
-    schema::{variant::SchemaVariantId, SchemaVariant},
-    standard_model, standard_model_accessor, standard_model_many_to_many, HistoryActor,
-    HistoryEventError, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
+    pk, standard_model, standard_model_accessor, standard_model_many_to_many, HistoryActor,
+    HistoryEventError, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError, Tenancy,
+    Timestamp, Visibility,
 };
 
 #[derive(Error, Debug)]

@@ -34,17 +34,22 @@ pub use tokio_tungstenite::tungstenite::{
 };
 
 pub use self::ping::{PingExecution, PingExecutionError};
+pub use self::qualification_check::{
+    QualificationCheckExecution, QualificationCheckExecutionClosing,
+    QualificationCheckExecutionError, QualificationCheckExecutionStarted,
+};
 pub use self::resolver_function::{
     ResolverFunctionExecution, ResolverFunctionExecutionClosing, ResolverFunctionExecutionError,
     ResolverFunctionExecutionStarted,
 };
 pub use self::watch::{Watch, WatchError, WatchStarted};
 pub use crate::{
-    resolver_function::ResolverFunctionRequest, LivenessStatus, LivenessStatusParseError,
-    ReadinessStatus, ReadinessStatusParseError,
+    qualification_check::QualificationCheckRequest, resolver_function::ResolverFunctionRequest,
+    LivenessStatus, LivenessStatusParseError, ReadinessStatus, ReadinessStatusParseError,
 };
 
 mod ping;
+mod qualification_check;
 mod resolver_function;
 mod watch;
 
@@ -143,6 +148,11 @@ where
         &mut self,
         request: ResolverFunctionRequest,
     ) -> result::Result<ResolverFunctionExecution<Strm>, ClientError>;
+
+    async fn execute_qualification(
+        &mut self,
+        request: QualificationCheckRequest,
+    ) -> result::Result<QualificationCheckExecution<Strm>, ClientError>;
 }
 
 impl Client<(), (), ()> {
@@ -258,6 +268,14 @@ where
     ) -> Result<ResolverFunctionExecution<Strm>> {
         let stream = self.websocket_stream("/execute/resolver").await?;
         Ok(resolver_function::execute(stream, request))
+    }
+
+    async fn execute_qualification(
+        &mut self,
+        request: QualificationCheckRequest,
+    ) -> Result<QualificationCheckExecution<Strm>> {
+        let stream = self.websocket_stream("/execute/qualification").await?;
+        Ok(qualification_check::execute(stream, request))
     }
 }
 
@@ -381,7 +399,7 @@ impl Default for ClientConfig {
 
 #[cfg(test)]
 mod tests {
-    use std::{borrow::Cow, env, path::Path};
+    use std::{borrow::Cow, collections::HashMap, env, path::Path};
 
     use futures::StreamExt;
     use hyper::server::conn::AddrIncoming;
@@ -391,8 +409,11 @@ mod tests {
 
     use super::*;
     use crate::{
+        qualification_check::{
+            Component, QualificationCheckExecutingMessage, QualificationCheckResult,
+        },
         resolver_function::{
-            FunctionResult, ResolverFunctionExecutingMessage, ResolverFunctionRequest,
+            ResolverFunctionExecutingMessage, ResolverFunctionRequest, ResolverFunctionResult,
         },
         server::{Config, ConfigBuilder, UdsIncomingStream},
         Server,
@@ -624,10 +645,17 @@ mod tests {
         let mut client = http_client_for_running_server(builder.enable_resolver(true)).await;
 
         let req = ResolverFunctionRequest {
-            kind: "resolver".to_string(),
-            code: r#"console.log('i like'); console.log('my butt'); v = { a: 'b' }"#.to_string(),
-            container_image: "poop".to_string(),
-            container_tag: "canoe".to_string(),
+            execution_id: "1234".to_string(),
+            handler: "doit".to_string(),
+            parameters: None,
+            code_base64: base64::encode(
+                r#"function doit(p) {
+                    console.log('i like');
+                    console.log('my butt');
+                    v = { a: 'b' };
+                    return v;
+                }"#,
+            ),
         };
 
         // Start the protocol
@@ -671,11 +699,243 @@ mod tests {
         // Get the result
         let result = progress.finish().await.expect("failed to return result");
         match result {
-            FunctionResult::Success(success) => {
+            ResolverFunctionResult::Success(success) => {
                 assert_eq!(success.unset, false);
                 assert_eq!(success.data, json!({"a": "b"}));
             }
-            FunctionResult::Failure(failure) => {
+            ResolverFunctionResult::Failure(failure) => {
+                panic!("result should be success; failure={:?}", failure)
+            }
+        }
+    }
+
+    #[test(tokio::test)]
+    async fn uds_execute_resolver() {
+        let tmp_socket = rand_uds();
+        let mut builder = Config::builder();
+        let mut client =
+            uds_client_for_running_server(builder.enable_resolver(true), &tmp_socket).await;
+
+        let req = ResolverFunctionRequest {
+            execution_id: "1234".to_string(),
+            handler: "doit".to_string(),
+            parameters: None,
+            code_base64: base64::encode(
+                r#"function doit(p) {
+                    console.log('i like');
+                    console.log('my butt');
+                    v = { a: 'b' };
+                    return v;
+                }"#,
+            ),
+        };
+
+        // Start the protocol
+        let mut progress = client
+            .execute_resolver(req)
+            .await
+            .expect("failed to establish websocket stream")
+            .start()
+            .await
+            .expect("failed to start protocol");
+
+        // Consume the output messages
+        match progress.next().await {
+            Some(Ok(ResolverFunctionExecutingMessage::OutputStream(output))) => {
+                assert_eq!(output.message, "i like")
+            }
+            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
+            Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
+            None => panic!("output stream ended early"),
+        };
+        match progress.next().await {
+            Some(Ok(ResolverFunctionExecutingMessage::OutputStream(output))) => {
+                assert_eq!(output.message, "my butt")
+            }
+            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
+            Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
+            None => panic!("output stream ended early"),
+        };
+        // TODO(fnichol): until we've determined how to handle processing the result server side,
+        // we're going to see a heartbeat come back when a request is processed
+        match progress.next().await {
+            Some(Ok(ResolverFunctionExecutingMessage::Heartbeat)) => assert!(true),
+            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
+            Some(Err(err)) => panic!("failed to receive heartbeat: err={:?}", err),
+            None => panic!("output stream ended early"),
+        }
+        match progress.next().await {
+            None => assert!(true),
+            Some(unexpected) => panic!("output stream should be done: {:?}", unexpected),
+        };
+        // Get the result
+        let result = progress.finish().await.expect("failed to return result");
+        match result {
+            ResolverFunctionResult::Success(success) => {
+                assert_eq!(success.unset, false);
+                assert_eq!(success.data, json!({"a": "b"}));
+            }
+            ResolverFunctionResult::Failure(failure) => {
+                panic!("result should be success; failure={:?}", failure)
+            }
+        }
+    }
+
+    #[test(tokio::test)]
+    async fn http_execute_qualification() {
+        let mut builder = Config::builder();
+        let mut client = http_client_for_running_server(builder.enable_qualification(true)).await;
+
+        let req = QualificationCheckRequest {
+            execution_id: "1234".to_string(),
+            handler: "checkit".to_string(),
+            component: Component {
+                name: "pringles".to_string(),
+                properties: HashMap::new(),
+            },
+            code_base64: base64::encode(
+                r#"function checkit(component) {
+                    console.log('i like');
+                    console.log('my butt');
+                    if (component["name"] == "pringles") {
+                        return { qualified: true };
+                    } else {
+                        return {
+                            qualified: false,
+                            output: "name is not tasty enough",
+                        };
+                    }
+                }"#,
+            ),
+        };
+
+        // Start the protocol
+        let mut progress = client
+            .execute_qualification(req)
+            .await
+            .expect("failed to establish websocket stream")
+            .start()
+            .await
+            .expect("failed to start protocol");
+
+        // Consume the output messages
+        match progress.next().await {
+            Some(Ok(QualificationCheckExecutingMessage::OutputStream(output))) => {
+                assert_eq!(output.message, "i like")
+            }
+            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
+            Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
+            None => panic!("output stream ended early"),
+        };
+        match progress.next().await {
+            Some(Ok(QualificationCheckExecutingMessage::OutputStream(output))) => {
+                assert_eq!(output.message, "my butt")
+            }
+            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
+            Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
+            None => panic!("output stream ended early"),
+        };
+        // TODO(fnichol): until we've determined how to handle processing the result server side,
+        // we're going to see a heartbeat come back when a request is processed
+        match progress.next().await {
+            Some(Ok(QualificationCheckExecutingMessage::Heartbeat)) => assert!(true),
+            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
+            Some(Err(err)) => panic!("failed to receive heartbeat: err={:?}", err),
+            None => panic!("output stream ended early"),
+        }
+        match progress.next().await {
+            None => assert!(true),
+            Some(unexpected) => panic!("output stream should be done: {:?}", unexpected),
+        };
+        // Get the result
+        let result = progress.finish().await.expect("failed to return result");
+        match result {
+            QualificationCheckResult::Success(success) => {
+                assert_eq!(success.qualified, true);
+                assert_eq!(success.output, None);
+            }
+            QualificationCheckResult::Failure(failure) => {
+                panic!("result should be success; failure={:?}", failure)
+            }
+        }
+    }
+
+    #[test(tokio::test)]
+    async fn uds_execute_qualification() {
+        let tmp_socket = rand_uds();
+        let mut builder = Config::builder();
+        let mut client =
+            uds_client_for_running_server(builder.enable_qualification(true), &tmp_socket).await;
+
+        let req = QualificationCheckRequest {
+            execution_id: "1234".to_string(),
+            handler: "checkit".to_string(),
+            component: Component {
+                name: "pringles".to_string(),
+                properties: HashMap::new(),
+            },
+            code_base64: base64::encode(
+                r#"function checkit(component) {
+                    console.log('i like');
+                    console.log('my butt');
+                    if (component["name"] == "pringles") {
+                        return { qualified: true };
+                    } else {
+                        return {
+                            qualified: false,
+                            output: "name is not tasty enough",
+                        };
+                    }
+                }"#,
+            ),
+        };
+
+        // Start the protocol
+        let mut progress = client
+            .execute_qualification(req)
+            .await
+            .expect("failed to establish websocket stream")
+            .start()
+            .await
+            .expect("failed to start protocol");
+
+        // Consume the output messages
+        match progress.next().await {
+            Some(Ok(QualificationCheckExecutingMessage::OutputStream(output))) => {
+                assert_eq!(output.message, "i like")
+            }
+            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
+            Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
+            None => panic!("output stream ended early"),
+        };
+        match progress.next().await {
+            Some(Ok(QualificationCheckExecutingMessage::OutputStream(output))) => {
+                assert_eq!(output.message, "my butt")
+            }
+            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
+            Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
+            None => panic!("output stream ended early"),
+        };
+        // TODO(fnichol): until we've determined how to handle processing the result server side,
+        // we're going to see a heartbeat come back when a request is processed
+        match progress.next().await {
+            Some(Ok(QualificationCheckExecutingMessage::Heartbeat)) => assert!(true),
+            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
+            Some(Err(err)) => panic!("failed to receive heartbeat: err={:?}", err),
+            None => panic!("output stream ended early"),
+        }
+        match progress.next().await {
+            None => assert!(true),
+            Some(unexpected) => panic!("output stream should be done: {:?}", unexpected),
+        };
+        // Get the result
+        let result = progress.finish().await.expect("failed to return result");
+        match result {
+            QualificationCheckResult::Success(success) => {
+                assert_eq!(success.qualified, true);
+                assert_eq!(success.output, None);
+            }
+            QualificationCheckResult::Failure(failure) => {
                 panic!("result should be success; failure={:?}", failure)
             }
         }

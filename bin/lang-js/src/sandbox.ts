@@ -1,8 +1,9 @@
-import { consoleObject as console } from "./sandbox/console";
 import _ from "lodash";
-import { RemoteFunctionRequest } from "./remote_function";
 
-export type Sandbox = Record<string, any>;
+import { FunctionKind } from "./function";
+import { makeConsole } from "./sandbox/console";
+
+export type Sandbox = Record<string, unknown>;
 
 export class UnknownSandboxKind extends Error {
   constructor(kind: string) {
@@ -12,15 +13,33 @@ export class UnknownSandboxKind extends Error {
   }
 }
 
-export const resolverSandbox = {
-  console,
-  _,
-};
+function commonSandbox(executionId: string): Sandbox {
+  return {
+    console: makeConsole(executionId),
+    _,
+  };
+}
 
-export function createSandbox(kind: RemoteFunctionRequest["kind"]): Sandbox {
-  if (kind == "resolver") {
-    return resolverSandbox;
-  } else {
-    throw new UnknownSandboxKind(kind);
+const resolverFunctionSandbox = {};
+
+const qualificationCheckSandbox = {};
+
+export function createSandbox(
+  kind: FunctionKind,
+  executionId: string
+): Sandbox {
+  switch (kind) {
+    case FunctionKind.ResolverFunction:
+      return {
+        ...commonSandbox(executionId),
+        ...resolverFunctionSandbox,
+      };
+    case FunctionKind.QualificationCheck:
+      return {
+        ...commonSandbox(executionId),
+        ...qualificationCheckSandbox,
+      };
+    default:
+      throw new UnknownSandboxKind(kind);
   }
 }

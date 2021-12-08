@@ -1,6 +1,5 @@
 use std::{
-    io,
-    path::{Path, PathBuf},
+    net::{Ipv4Addr, SocketAddr, SocketAddrV4},
     result,
     time::Duration,
 };
@@ -9,20 +8,18 @@ use async_trait::async_trait;
 use cyclone::{
     canonical_command::CanonicalCommand,
     client::{
-        Connection, PingExecution, QualificationCheckExecution, ResolverFunctionExecution,
-        UnixStream, Watch, WatchError, WatchStarted,
+        Connection, PingExecution, QualificationCheckExecution, QualificationCheckRequest,
+        ResolverFunctionExecution, ResolverFunctionRequest, Watch, WatchError, WatchStarted,
     },
     process::{self, ShutdownError},
-    qualification_check::QualificationCheckRequest,
-    resolver_function::ResolverFunctionRequest,
-    Client, ClientError, CycloneClient, LivenessStatus, ReadinessStatus, UdsClient,
+    Client, ClientError, CycloneClient, HttpClient, LivenessStatus, ReadinessStatus,
 };
 use derive_builder::Builder;
 use futures::StreamExt;
-use tempfile::{NamedTempFile, TempPath};
 use thiserror::Error;
 use tokio::{
-    io::{AsyncRead, AsyncWrite},
+    io::{self, AsyncRead, AsyncWrite},
+    net::{TcpListener, TcpStream},
     process::{Child, Command},
     sync::oneshot,
     time,
@@ -31,12 +28,12 @@ use tracing::{debug, trace, warn};
 
 use crate::instance::{Instance, Spec, SpecBuilder};
 
-/// Error type for [`LocalUdsInstance`].
+/// Error type for [`LocalHttpInstance`].
 #[derive(Debug, Error)]
-pub enum LocalUdsInstanceError {
+pub enum LocalHttpInstanceError {
     /// Spec builder error.
     #[error(transparent)]
-    Builder(#[from] LocalUdsInstanceSpecBuilderError),
+    Builder(#[from] LocalHttpInstanceSpecBuilderError),
     /// Failed to spawn a child process.
     #[error("failed to spawn cyclone child process")]
     ChildSpawn(#[source] io::Error),
@@ -49,9 +46,9 @@ pub enum LocalUdsInstanceError {
     /// Instance has exhausted its predefined request count.
     #[error("no remaining requests, cyclone server is considered unhealthy")]
     NoRemainingRequests,
-    /// Failed to create socket from temporary file.
-    #[error("failed to create temp socket")]
-    TempSocket(#[source] io::Error),
+    /// Error when binding local socket.
+    #[error("error when binding local socket")]
+    SocketBind(#[source] io::Error),
     /// Cyclone client `watch` endpoint error.
     #[error(transparent)]
     Watch(#[from] WatchError),
@@ -66,26 +63,21 @@ pub enum LocalUdsInstanceError {
     WatchShutDown,
 }
 
-type Result<T> = result::Result<T, LocalUdsInstanceError>;
+type Result<T> = result::Result<T, LocalHttpInstanceError>;
 
-/// A local Cyclone [`Instance`], managed as a spawned child process, communicating over a Unix
-/// domain socket.
+/// A local Cyclone [`Instance`], managed as a spawned child process, communicating over HTTP.
 #[derive(Debug)]
-pub struct LocalUdsInstance {
-    // The `TempPath` type is kept around as an [RAII
-    // guard](https://rust-unofficial.github.io/patterns/patterns/behavioural/RAII.html), that is,
-    // when `LocalUdsInstance` is dropped, the temp file is marked for deletion.
-    _temp_path: Option<TempPath>,
-    client: UdsClient,
+pub struct LocalHttpInstance {
+    client: HttpClient,
     limit_requests: Option<u32>,
     child: Child,
     watch_shutdown_tx: oneshot::Sender<()>,
 }
 
 #[async_trait]
-impl Instance for LocalUdsInstance {
-    type SpecBuilder = LocalUdsInstanceSpecBuilder;
-    type Error = LocalUdsInstanceError;
+impl Instance for LocalHttpInstance {
+    type SpecBuilder = LocalHttpInstanceSpecBuilder;
+    type Error = LocalHttpInstanceError;
 
     async fn terminate(mut self) -> result::Result<(), Self::Error> {
         if !self.watch_shutdown_tx.is_closed() && self.watch_shutdown_tx.send(()).is_err() {
@@ -107,8 +99,8 @@ impl Instance for LocalUdsInstance {
 }
 
 #[async_trait]
-impl CycloneClient<UnixStream> for LocalUdsInstance {
-    async fn watch(&mut self) -> result::Result<Watch<UnixStream>, ClientError> {
+impl CycloneClient<TcpStream> for LocalHttpInstance {
+    async fn watch(&mut self) -> result::Result<Watch<TcpStream>, ClientError> {
         self.ensure_healthy_client()
             .await
             .map_err(ClientError::unhealthy)?;
@@ -132,7 +124,7 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
         self.client.readiness().await
     }
 
-    async fn execute_ping(&mut self) -> result::Result<PingExecution<UnixStream>, ClientError> {
+    async fn execute_ping(&mut self) -> result::Result<PingExecution<TcpStream>, ClientError> {
         self.ensure_healthy_client()
             .await
             .map_err(ClientError::unhealthy)?;
@@ -146,7 +138,7 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
     async fn execute_resolver(
         &mut self,
         request: ResolverFunctionRequest,
-    ) -> result::Result<ResolverFunctionExecution<UnixStream>, ClientError> {
+    ) -> result::Result<ResolverFunctionExecution<TcpStream>, ClientError> {
         self.ensure_healthy_client()
             .await
             .map_err(ClientError::unhealthy)?;
@@ -160,7 +152,7 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
     async fn execute_qualification(
         &mut self,
         request: QualificationCheckRequest,
-    ) -> result::Result<QualificationCheckExecution<UnixStream>, ClientError> {
+    ) -> result::Result<QualificationCheckExecution<TcpStream>, ClientError> {
         self.ensure_healthy_client()
             .await
             .map_err(ClientError::unhealthy)?;
@@ -172,13 +164,13 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
     }
 }
 
-impl LocalUdsInstance {
+impl LocalHttpInstance {
     async fn ensure_healthy_client(&mut self) -> Result<()> {
         if !self.is_watch_shutdown_open() {
-            return Err(LocalUdsInstanceError::WatchShutDown);
+            return Err(LocalHttpInstanceError::WatchShutDown);
         }
         if !self.has_remaining_requests() {
-            return Err(LocalUdsInstanceError::NoRemainingRequests);
+            return Err(LocalHttpInstanceError::NoRemainingRequests);
         }
 
         Ok(())
@@ -202,9 +194,9 @@ impl LocalUdsInstance {
     }
 }
 
-/// The [`Spec`] for [`LocalUdsInstance`]
+/// The [`Spec`] for [`LocalHttpInstance`]
 #[derive(Builder, Debug)]
-pub struct LocalUdsInstanceSpec {
+pub struct LocalHttpInstanceSpec {
     /// Canonical path to the `cyclone` program.
     #[builder(try_setter, setter(into))]
     cyclone_cmd_path: CanonicalCommand,
@@ -215,7 +207,7 @@ pub struct LocalUdsInstanceSpec {
 
     /// Socket strategy for a spawned Cyclone server.
     #[builder(default)]
-    socket_strategy: LocalUdsSocketStrategy,
+    socket_strategy: LocalHttpSocketStrategy,
 
     /// Sets the watch timeout value for a spawned Cyclone server.
     #[builder(setter(into, strip_option), default)]
@@ -239,18 +231,18 @@ pub struct LocalUdsInstanceSpec {
 }
 
 #[async_trait]
-impl Spec for LocalUdsInstanceSpec {
-    type Instance = LocalUdsInstance;
-    type Error = LocalUdsInstanceError;
+impl Spec for LocalHttpInstanceSpec {
+    type Instance = LocalHttpInstance;
+    type Error = LocalHttpInstanceError;
 
     async fn spawn(&self) -> result::Result<Self::Instance, Self::Error> {
-        let (temp_path, socket) = temp_path_and_socket_from(&self.socket_strategy)?;
-        let mut cmd = self.build_command(&socket);
+        let socket_addr = socket_addr_from(&self.socket_strategy).await?;
+        let mut cmd = self.build_command(&socket_addr);
 
         debug!("spawning child process; cmd={:?}", &cmd);
         let child = cmd.spawn().map_err(Self::Error::ChildSpawn)?;
 
-        let mut client = Client::uds(socket)?;
+        let mut client = Client::http(socket_addr)?;
 
         // Establish the client watch session. As the process may be booting, we will retry for a
         // period before giving up and assuming that the server instance has failed.
@@ -283,7 +275,6 @@ impl Spec for LocalUdsInstanceSpec {
         tokio::spawn(watch_task(watch_progress, watch_shutdown_rx));
 
         Ok(Self::Instance {
-            _temp_path: temp_path,
             client,
             limit_requests: self.limit_requests,
             child,
@@ -292,11 +283,11 @@ impl Spec for LocalUdsInstanceSpec {
     }
 }
 
-impl LocalUdsInstanceSpec {
-    fn build_command(&self, socket: &Path) -> Command {
+impl LocalHttpInstanceSpec {
+    fn build_command(&self, socket: &SocketAddr) -> Command {
         let mut cmd = Command::new(&self.cyclone_cmd_path);
-        cmd.arg("--bind-uds")
-            .arg(&socket)
+        cmd.arg("--bind-addr")
+            .arg(socket.to_string())
             .arg("--lang-server")
             .arg(&self.lang_server_cmd_path)
             .arg("--enable-watch");
@@ -321,16 +312,16 @@ impl LocalUdsInstanceSpec {
     }
 }
 
-impl SpecBuilder for LocalUdsInstanceSpecBuilder {
-    type Spec = LocalUdsInstanceSpec;
-    type Error = LocalUdsInstanceError;
+impl SpecBuilder for LocalHttpInstanceSpecBuilder {
+    type Spec = LocalHttpInstanceSpec;
+    type Error = LocalHttpInstanceError;
 
     fn build(&self) -> result::Result<Self::Spec, Self::Error> {
         self.build().map_err(Into::into)
     }
 }
 
-impl LocalUdsInstanceSpecBuilder {
+impl LocalHttpInstanceSpecBuilder {
     /// Sets the limit requests strategy to `1` for a spawned Cyclone server.
     pub fn oneshot(&mut self) -> &mut Self {
         self.limit_requests(Some(1))
@@ -352,62 +343,54 @@ impl LocalUdsInstanceSpecBuilder {
     }
 }
 
-/// Socket strategy when spawning [`Instance`]s using a local Unix domain socket.
+/// Socket strategy when spawning [`Instance`]s using a TCP socket.
 #[derive(Clone, Debug)]
-pub enum LocalUdsSocketStrategy {
-    /// Randomly assign a socket from a temp file.
+pub enum LocalHttpSocketStrategy {
+    /// Randomly assign a port.
     Random,
-    /// Randomly assign a socket from a temp file in the given parent directory.
-    RandomIn(PathBuf),
-    /// Use the given path as the socket location.
-    Custom(PathBuf),
+    /// Use the given port.
+    Custom(u16),
 }
 
-impl Default for LocalUdsSocketStrategy {
+impl Default for LocalHttpSocketStrategy {
     fn default() -> Self {
         Self::Random
     }
 }
 
-impl LocalUdsSocketStrategy {
+impl LocalHttpSocketStrategy {
     /// Creates a random socket strategy.
     #[must_use]
     pub fn random() -> Self {
         Self::Random
     }
 
-    /// Creates a random socket strategy in the given parent directory.
-    pub fn random_in(path: impl Into<PathBuf>) -> Self {
-        Self::RandomIn(path.into())
-    }
-
-    /// Creates a custom socket strategy for the given socket location.
-    pub fn custom(path: impl Into<PathBuf>) -> Self {
-        Self::Custom(path.into())
+    /// Creates a custom port strategy.
+    pub fn custom(port: impl Into<u16>) -> Self {
+        Self::Custom(port.into())
     }
 }
 
-fn temp_path_and_socket_from(
-    socket_strategy: &LocalUdsSocketStrategy,
-) -> Result<(Option<TempPath>, PathBuf)> {
+async fn socket_addr_from(socket_strategy: &LocalHttpSocketStrategy) -> Result<SocketAddr> {
     match socket_strategy {
-        LocalUdsSocketStrategy::Random => {
-            let temp_path = NamedTempFile::new()
-                .map_err(LocalUdsInstanceError::TempSocket)?
-                .into_temp_path();
-            let socket = PathBuf::from(&temp_path);
-
-            Ok((Some(temp_path), socket))
+        LocalHttpSocketStrategy::Random => {
+            // NOTE(fnichol): we're asking the kernel to give us a currently unassigned port, then
+            // immediately attempting to give that port to another spawned process. You could
+            // probably think of scenarios where the spawned program might not be able to bind to
+            // this, right? However, for the moment we should be reasonably okay--this pooling code
+            // would attempt to spawn another Cyclone instance if one couldn't be booted up
+            // correctly, so a bit of a retry is built in here. WHAT COULD GO WRONG!?
+            let listener = TcpListener::bind("127.0.0.1:0")
+                .await
+                .map_err(LocalHttpInstanceError::SocketBind)?;
+            listener
+                .local_addr()
+                .map_err(LocalHttpInstanceError::SocketBind)
         }
-        LocalUdsSocketStrategy::RandomIn(parent_path) => {
-            let temp_path = NamedTempFile::new_in(parent_path)
-                .map_err(LocalUdsInstanceError::TempSocket)?
-                .into_temp_path();
-            let socket = PathBuf::from(&temp_path);
-
-            Ok((Some(temp_path), socket))
-        }
-        LocalUdsSocketStrategy::Custom(socket) => Ok((None, socket.clone())),
+        LocalHttpSocketStrategy::Custom(port) => Ok(SocketAddr::V4(SocketAddrV4::new(
+            Ipv4Addr::new(127, 0, 0, 1),
+            *port,
+        ))),
     }
 }
 
