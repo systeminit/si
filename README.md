@@ -1,114 +1,80 @@
 # System Initiative
 
-This is the source for the System Initiative.
+This is a monolithic repository containing the source for System Initiative (SI).
+
+## Supported Developer Environments
+
+| OS         | OS Type   | amd64 | arm64 (aarch64) |
+|------------|-----------|-------|-----------------|
+| Arch Linux | linux-gnu | ✅     | 🚫️             |
+| Fedora     | linux-gnu | ⚠️    | ⚠️              |
+| macOS      | darwin    | ✅     | ✅               |           |
+
+> **Legend:**
+> - ✅: validated manually or automatically
+> - ⚠️: not yet validated, but likely supported
+> - 🚫: not yet validated, decidedly unsupported, and/or yet to be supported
 
 ## Quick Start
 
-### Linux
+To get ready to run this repository, you should run the following script:
 
-This repository is known to only work on Arch Linux or Ubuntu. If you're
-trying to run it on something else... sorry, it's not supported.
-
-If you don't have a Linux VM handy, you can use the scripts in the ./scripts/ folder to get yourself a docker container. Install docker, then run the script, and you'll have the repo mounted inside a container. Follow the instructions for bootstrapping, and you're gtg.
-
-### Bootstrapping
-
-To get ready to run this repository, you should run:
-
-```
-./components/build/bootstrap.sh
+```bash
+./scripts/bootstrap.sh
 ```
 
-This will detect either Arch or Ubuntu, and install the pre-requisites
-needed to build a component.
+The bootstrapper is idempotent, so feel free to run it as many times as you like!
+However, it _will_ upgrade existing packages without confirmations, so ensure that you are ready to do so.
 
-Next, you need to install the dependencies.
+With all dependencies installed and required binaries in `PATH`, we are ready to go!
+In one terminal pane (e.g. using a terminal multiplexer, such as `tmux`, or tabs/windows), execute the following:
 
-```
-make build_deps
-```
-
-Next, you should run:
-
-```
-make build
+```bash
+make sdf-all
 ```
 
-This will ensure that all the pre-requisites for each component are
-installed, and compile each component. If this is successful,
-congratulations, you're all almost done!
+This will ensure that our database is running, our NATS server is running, the JS language server is built, all crates are built, and the database has been "warmed up" via our test suite.
+Open success, you can execute `make sdf-run` for subsequent runs.
 
-### Tests
+In another terminal pane, execute the following command:
 
-Last stop - get the test suite working.
-
-_Make sure you have docker installed and running as a service._
-
-Build a local postgres container for your development work:
-
-```
-cd ./components/postgres
-./build.sh
+```bash
+make app-run
 ```
 
-Then run it!
+This will run the web application, which you can access by navigating to https://localhost:8080.
+Now, you have SI running!
+
+## Architecture
+
+The diagram below illustrates a _very_ high-level overview of SI's calling stack.
+There are many other components, including the JS language server, that aren't displayed, but the "onion-style" diagram is meant to show the overall flow from mouse-click to database entry.
 
 ```
-./components/postgres/run.sh
+┌──────────────────────────┐
+│ Web Application          │
+│ ┌──────────────────────┐ │
+│ │ SDF                  │ │
+│ │ ┌──────────────────┐ │ │
+│ │ │ DAL              │ │ │
+│ │ │ ┌──────────────┐ │ │ │
+│ │ │ │ DB ("smart") │ │ │ │
+│ │ │ └──────────────┘ │ │ │
+│ │ │                  │ │ │
+│ │ └──────────────────┘ │ │
+│ │                      │ │
+│ └──────────────────────┘ │
+│                          │
+└──────────────────────────┘
 ```
 
-You can then use Datagrip to connect to the instance at:
+We claim that the database is "smart" because it includes many functions, currently in `PLPGSQL`, that perform non-trivial logic.
 
-```
-localhost:5432
-```
+## Contributing
 
-Log in as user `si`, password `bugbear`.
+We highly recommend following the [Convential Commits](https://www.conventionalcommits.org/en/v1.0.0/#specification) format when committing changes.
+Our prefixes are derived from the official specification as well as the those found in [commitlint](https://github.com/conventional-changelog/commitlint/tree/master/%40commitlint/config-conventional), based on [Angular's commit conventions](https://github.com/angular/angular/blob/master/CONTRIBUTING.md).
+When in doubt, use `feat`, `fix`, or `chore`!
 
-Then, you can do:
-
-```
-make test
-```
-
-Assuming the tets pass - congratulations!
-
-### Starting the services
-
-1. Make sure your `pg` container is started (docker ps)
-2. Start the account servcice: cd ./components/si-account && make start
-3. Start the graphql api: cd ./components/si-graphql-api && make start
-4. Start the web ui: cd ./components/si-web-ui && make start
-
-### Create an account
-
-1. Hit sign up, create an account, and log in.
-
-## Regular use
-
-```
-make tmux
-```
-
-Will start all the services in a tmux session called `si`. You can also
-specifically ask for windows or panes, with:
-
-```
-make tmux//windows
-```
-
-Or
-
-```
-make tmux//panes
-```
-
-If a session does not exist, one will be created for you. If you are inside of
-tmux already, it will automatically detect that, and create the panes/windows
-for you inside the session you are in.
-
-```
-make watch
-```
-
-Will start all the services in a single shell, without tmux.
+Moreover, please sign your commits using `git commit -s`.
+You can amend an existing commit with `git commit -s --amend`, if needed.
