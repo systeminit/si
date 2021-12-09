@@ -3,7 +3,9 @@ LABEL maintainer="dev@systeminit.com"
 RUN mkdir /src
 WORKDIR /src
 COPY . /src
-RUN ./components/build/bootstrap.sh \ 
+RUN apt-get update -y \
+  && apt-get upgrade -y \
+  && apt-get install -y build-essential make sudo git \
   && make build_deps \
   && npm config set user 0 \
   && npm config set unsafe-perm true \

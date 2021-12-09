@@ -19,6 +19,10 @@
 # This is like a half-baked version of habitats rdeps work, things like
 # mbt, and bazel. Lets see how far it gets us.
 
+# We declare our path to the directory containing the root Makefile before other imports.
+# This ensures that we have the accurate path to the root of the repository for our targets.
+MAKEPATH := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+
 include ./components/build/deps.mk
 
 # order is important as earlier components are needed to build later components
@@ -50,7 +54,7 @@ WATCHABLE = $(patsubst %,watch//%,$(RUNNABLE_COMPONENTS))
 BUILDABLE_REGEX = $(shell echo $(COMPONENTS) | tr " " "|")
 RELEASEABLE_REGEX = $(shell echo $(RELEASEABLE_COMPONENTS) | tr " " "|")
 
-.DEFAULT_GOAL := build
+.DEFAULT_GOAL := sdf-prepare
 
 .PHONY: $(BUILDABLE) $(TESTABLE) $(RELEASEABLE) $(IMAGEABLE) image release
 
@@ -188,3 +192,40 @@ clean-containers: clean-dev-deps
 	cd ./components/si-sdf && $(MAKE) clean-container
 	cd ./components/si-web-app && $(MAKE) clean-container
 .PHONY: clean-containers
+
+# FIXME(nickgerace): The below targets are to be used during the transition period between the
+# Vue 2 to Vue 3 rewrite. These targets should be merged into existing ones once the transition is
+# complete.
+
+sdf-prepare:
+	cd $(MAKEPATH)/bin/lang-js; npm install
+	cd $(MAKEPATH)/bin/lang-js; npm run package
+	$(MAKEPATH)/component/postgres/bin/run-container.sh
+	$(MAKEPATH)/component/nats/bin/run-container.sh
+	cd $(MAKEPATH); cargo check
+	cd $(MAKEPATH); cargo build
+	cd $(MAKEPATH); cargo test
+	cd $(MAKEPATH); cargo doc
+.PHONY: sdf-prepare
+
+tidy-crates:
+	cd $(MAKEPATH); cargo fix --edition-idioms --allow-dirty --allow-staged
+	cd $(MAKEPATH); cargo fmt
+	cd $(MAKEPATH); cargo clippy --all-features --all-targets
+	cd $(MAKEPATH); cargo check
+
+sdf-run:
+	cd $(MAKEPATH); cargo run --bin sdf -- --disable-opentelemetry
+.PHONY: sdf-run
+
+sdf-all: sdf-prepare sdf-run
+.PHONY: sdf-all
+
+app-run:
+	cd $(MAKEPATH)/app/web; npm install
+	cd $(MAKEPATH)/app/web; npm run dev
+.PHONY: app-run
+
+cargo-clean:
+	cd $(MAKEPATH); cargo clean
+.PHONY: clean-cargo
