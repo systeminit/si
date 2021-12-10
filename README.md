@@ -78,3 +78,11 @@ When in doubt, use `feat`, `fix`, or `chore`!
 
 Moreover, please sign your commits using `git commit -s`.
 You can amend an existing commit with `git commit -s --amend`, if needed.
+
+## Engineering Team Links
+
+Welcome to the team! A few handy links:
+
+* [Engineering Team Onboarding](https://docs.google.com/presentation/d/1Ypesl1iZ5KXI9KBxXINYPlo5TexAuln6Dg26yPXEqbM) - the foundation of our team
+* [Engineering Process](https://docs.google.com/document/d/1T3pMkTUX5fhzkBpG4NR3x6DrhZ18xXIjnSYl0g6Ld4o) - how we work together 
+
