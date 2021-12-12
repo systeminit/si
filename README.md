@@ -4,18 +4,26 @@ This is a monolithic repository containing the source for System Initiative (SI)
 
 ## Supported Developer Environments
 
-| OS         | OS Type   | amd64 | arm64 (aarch64) |
-|------------|-----------|-------|-----------------|
-| Arch Linux | linux-gnu | ✅     | 🚫️             |
-| Fedora     | linux-gnu | ⚠️    | ⚠️              |
-| macOS      | darwin    | ✅     | ✅               |           |
+* Arch Linux `(x86_64 / amd64)`
+* Fedora `(x86_64 / amd64)`
+* macOS `(arm64 / aarch64)`
+* macOS `(x86_64 / amd64)`
 
-> **Legend:**
-> - ✅: validated manually or automatically
-> - ⚠️: not yet validated, but likely supported
-> - 🚫: not yet validated, decidedly unsupported, and/or yet to be supported
+> If your preferred environment is not listed, please feel free to add it once the following conditions have been met:
+>
+> 1. It's been added to the idempotent [bootstrap script](./scripts/bootstrap.sh)
+> 2. The aforementioned script has been tested and remains idempotent
+> 3. Running the **Quickstart** steps below is successful and the UI is fully functional
+>
+> _Please note:_ adding your preferred environment will also add you as a maintainer of its functionality throughout this repository.
 
-## Quick Start
+We recommend using the latest stable Rust toolchain and latest LTS Node toolchain for your environment.
+If unsure, the following tools are recommended to help manage your toolchains:
+
+* [**rustup**](https://rustup.rs) 🦀: Rust, `cargo`, etc.
+* [**volta**](https://volta.sh) ⚡: `node`, `npm`, etc.
+
+## Quickstart
 
 To get ready to run this repository, you should run the following script:
 
