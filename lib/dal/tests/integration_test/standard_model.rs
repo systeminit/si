@@ -265,31 +265,21 @@ async fn list() {
         "there are 4 objects to list for edit session"
     );
     assert!(
-        change_set_set
-            .iter()
-            .find(|ba| ba.name() == "coheed")
-            .is_some(),
+        change_set_set.iter().any(|ba| ba.name() == "coheed"),
         "coheed is in the set"
     );
     assert!(
-        change_set_set
-            .iter()
-            .find(|ba| ba.name() == "spiritbox")
-            .is_some(),
+        change_set_set.iter().any(|ba| ba.name() == "spiritbox"),
         "spiritbox is in the set"
     );
     assert!(
         change_set_set
             .iter()
-            .find(|ba| ba.name() == "zeal and ardor")
-            .is_some(),
+            .any(|ba| ba.name() == "zeal and ardor"),
         "zeal and ardor is in the set"
     );
     assert!(
-        change_set_set
-            .iter()
-            .find(|ba| ba.name() == "iron maiden")
-            .is_some(),
+        change_set_set.iter().any(|ba| ba.name() == "iron maiden"),
         "iron maiden is in the set"
     );
 }

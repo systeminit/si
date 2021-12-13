@@ -51,7 +51,7 @@ async fn login() {
     .await
     .expect("cannot create user");
     let _jwt = user
-        .login(&txn, &secret_key, billing_account.id(), password)
+        .login(&txn, secret_key, billing_account.id(), password)
         .await
         .expect("cannot get jwt");
 }
@@ -103,9 +103,9 @@ async fn authorize() {
     let history_actor = HistoryActor::SystemInit;
     let visibility = create_visibility_head();
 
-    let (nba, _auth_token) = billing_account_signup(&txn, &nats, &secret_key).await;
+    let (nba, _auth_token) = billing_account_signup(&txn, &nats, secret_key).await;
     let ba_tenancy = Tenancy::new_billing_account(vec![*nba.billing_account.id()]);
-    let worked = User::authorize(&txn, &ba_tenancy, &visibility, &nba.user.id())
+    let worked = User::authorize(&txn, &ba_tenancy, &visibility, nba.user.id())
         .await
         .expect("admin group user should be authorized");
     assert_eq!(worked, true, "authorized admin group user returns true");
@@ -122,7 +122,7 @@ async fn authorize() {
     )
     .await
     .expect("cannot create user");
-    let f = User::authorize(&txn, &ba_tenancy, &visibility, &user_no_group.id()).await;
+    let f = User::authorize(&txn, &ba_tenancy, &visibility, user_no_group.id()).await;
     assert_eq!(
         f.is_err(),
         true,

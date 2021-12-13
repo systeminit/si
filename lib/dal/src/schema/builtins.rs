@@ -3,7 +3,7 @@ use crate::{HistoryActor, Schema, SchemaKind, StandardModel, Tenancy, Visibility
 use si_data::{NatsTxn, PgTxn};
 
 pub async fn migrate(txn: &PgTxn<'_>, nats: &NatsTxn) -> SchemaResult<()> {
-    application(&txn, &nats).await?;
+    application(txn, nats).await?;
     Ok(())
 }
 
@@ -25,17 +25,11 @@ async fn application(txn: &PgTxn<'_>, nats: &NatsTxn) -> SchemaResult<()> {
     let variant =
         SchemaVariant::new(txn, nats, &tenancy, &visibility, &history_actor, "v0").await?;
     variant
-        .set_schema(&txn, &nats, &visibility, &history_actor, schema.id())
+        .set_schema(txn, nats, &visibility, &history_actor, schema.id())
         .await?;
 
     schema
-        .set_default_schema_variant_id(
-            &txn,
-            &nats,
-            &visibility,
-            &history_actor,
-            Some(*variant.id()),
-        )
+        .set_default_schema_variant_id(txn, nats, &visibility, &history_actor, Some(*variant.id()))
         .await?;
 
     Ok(())

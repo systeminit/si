@@ -12,7 +12,7 @@ async fn get_jwt_signing_key() {
     let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let _signing_key = jwt_key::get_jwt_signing_key(&txn, &secret_key)
+    let _signing_key = jwt_key::get_jwt_signing_key(&txn, secret_key)
         .await
         .expect("cannot get jwt signing key");
 }
@@ -25,7 +25,7 @@ async fn get_jwt_validation_key() {
     let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let signing_key = jwt_key::get_jwt_signing_key(&txn, &secret_key)
+    let signing_key = jwt_key::get_jwt_signing_key(&txn, secret_key)
         .await
         .expect("cannot get jwt signing key");
 

@@ -6,7 +6,7 @@ async fn head_is_visibile_to_head() {
     test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, _nats);
 
     let visibility = Visibility::new_head(false);
-    let check_visibility = visibility.clone();
+    let check_visibility = visibility;
 
     let check = visibility
         .is_visible_to(&txn, &check_visibility)

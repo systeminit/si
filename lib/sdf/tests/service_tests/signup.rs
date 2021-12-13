@@ -22,7 +22,7 @@ async fn create_account() {
         },
     )
     .expect("cannot build new server");
-    let app: Router = app.into();
+    let app: Router = app;
 
     let request = signup::create_account::CreateAccountRequest {
         billing_account_name: "witness".to_string(),

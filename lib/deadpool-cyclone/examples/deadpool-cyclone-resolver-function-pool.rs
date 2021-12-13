@@ -29,7 +29,7 @@ async fn main() -> Result<(), Box<(dyn std::error::Error + 'static)>> {
         .with(fmt::layer())
         .try_init()?;
 
-    let concurrency = match env::args().skip(1).next() {
+    let concurrency = match env::args().nth(1) {
         Some(arg) => usize::from_str(&arg)?,
         None => 4,
     };

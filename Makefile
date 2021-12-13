@@ -208,12 +208,6 @@ sdf-prepare:
 	cd $(MAKEPATH); cargo doc
 .PHONY: sdf-prepare
 
-tidy-crates:
-	cd $(MAKEPATH); cargo fix --edition-idioms --allow-dirty --allow-staged
-	cd $(MAKEPATH); cargo fmt
-	cd $(MAKEPATH); cargo clippy --all-features --all-targets
-	cd $(MAKEPATH); cargo check
-
 sdf-run:
 	cd $(MAKEPATH); cargo run --bin sdf -- --disable-opentelemetry
 .PHONY: sdf-run
@@ -229,3 +223,17 @@ app-run:
 cargo-clean:
 	cd $(MAKEPATH); cargo clean
 .PHONY: clean-cargo
+
+# Actual target to be ran in CI, but can also be ran locally.
+# TODO(nick): add back cargo test.
+ci:
+	cd $(MAKEPATH); cargo fmt --all -- --check
+	cd $(MAKEPATH); cargo clippy -- -D warnings
+.PHONY: ci
+
+# TODO(nick): add back cargo test.
+ci-prepare:
+	cd $(MAKEPATH); cargo fix --edition-idioms --allow-dirty --allow-staged
+	cd $(MAKEPATH); cargo fmt --all
+	cd $(MAKEPATH); cargo clippy --fix --allow-dirty --allow-staged --all-targets
+.PHONY: ci-prepare

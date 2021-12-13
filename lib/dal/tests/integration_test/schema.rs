@@ -136,7 +136,7 @@ async fn workspaces() {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
-    let (nba, _token) = billing_account_signup(&txn, &nats, &secret_key).await;
+    let (nba, _token) = billing_account_signup(&txn, &nats, secret_key).await;
     let schema = Schema::new(
         &txn,
         &nats,

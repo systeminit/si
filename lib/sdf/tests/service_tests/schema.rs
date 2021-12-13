@@ -77,9 +77,7 @@ async fn list_schemas() {
     )
     .await;
     txn.commit().await.expect("cannot commit txn");
-    let request = ListSchemaRequest {
-        visibility: visibility.clone(),
-    };
+    let request = ListSchemaRequest { visibility };
     let response: ListSchemaResponse =
         api_request_auth_query(app, "/api/schema/list_schemas", &auth_token, &request).await;
     assert_eq!(response.list.len(), 3);
@@ -113,7 +111,7 @@ async fn get_schemas() {
     .await;
     txn.commit().await.expect("cannot commit txn");
     let request = GetSchemaRequest {
-        visibility: visibility.clone(),
+        visibility,
         schema_id: *schema_one.id(),
     };
     let response: GetSchemaResponse =

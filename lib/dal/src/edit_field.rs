@@ -123,7 +123,7 @@ pub type EditFields = Vec<EditField>;
 
 pub type UpdateFunction = Box<dyn Fn(String) -> Pin<Box<dyn Future<Output = EditFieldResult<()>>>>>;
 
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Default, Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 pub struct CheckboxWidget {}
 
 impl CheckboxWidget {
@@ -132,24 +132,12 @@ impl CheckboxWidget {
     }
 }
 
-impl Default for CheckboxWidget {
-    fn default() -> Self {
-        Self {}
-    }
-}
-
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Default, Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 pub struct TextWidget {}
 
 impl TextWidget {
     pub fn new() -> Self {
         Self::default()
-    }
-}
-
-impl Default for TextWidget {
-    fn default() -> Self {
-        Self {}
     }
 }
 
@@ -259,13 +247,13 @@ pub trait EditFieldAble {
 pub fn value_and_visiblity_diff_option<Obj, Value: Eq + Serialize + ?Sized>(
     visibility: &Visibility,
     target_obj: Option<&Obj>,
-    target_fn: impl Fn(&Obj) -> Option<&Value>,
+    target_fn: impl Fn(&Obj) -> Option<&Value> + Copy,
     head_obj: Option<&Obj>,
     change_set_obj: Option<&Obj>,
 ) -> EditFieldResult<(Option<serde_json::Value>, VisibilityDiff)> {
-    let target_value = target_obj.as_deref().map(|o| target_fn(o));
-    let head_value_option = head_obj.as_deref().map(|o| target_fn(o));
-    let change_set_value_option = change_set_obj.as_deref().map(|o| target_fn(o));
+    let target_value = target_obj.map(target_fn);
+    let head_value_option = head_obj.map(target_fn);
+    let change_set_value_option = change_set_obj.map(target_fn);
     let visibility_diff = visibility_diff(
         visibility,
         target_value.as_ref(),
@@ -282,13 +270,13 @@ pub fn value_and_visiblity_diff_option<Obj, Value: Eq + Serialize + ?Sized>(
 pub fn value_and_visiblity_diff<Obj, Value: Eq + Serialize + ?Sized>(
     visibility: &Visibility,
     target_obj: Option<&Obj>,
-    target_fn: impl Fn(&Obj) -> &Value,
+    target_fn: impl Fn(&Obj) -> &Value + Copy,
     head_obj: Option<&Obj>,
     change_set_obj: Option<&Obj>,
 ) -> EditFieldResult<(Option<serde_json::Value>, VisibilityDiff)> {
-    let target_value = target_obj.as_deref().map(|o| target_fn(o));
-    let head_value_option = head_obj.as_deref().map(|o| target_fn(o));
-    let change_set_value_option = change_set_obj.as_deref().map(|o| target_fn(o));
+    let target_value = target_obj.map(target_fn);
+    let head_value_option = head_obj.map(target_fn);
+    let change_set_value_option = change_set_obj.map(target_fn);
     let visibility_diff = visibility_diff(
         visibility,
         target_value,
@@ -305,13 +293,13 @@ pub fn value_and_visiblity_diff<Obj, Value: Eq + Serialize + ?Sized>(
 pub fn value_and_visiblity_diff_copy<Obj, Value: Eq + Serialize>(
     visibility: &Visibility,
     target_obj: Option<&Obj>,
-    target_fn: impl Fn(&Obj) -> Value,
+    target_fn: impl Fn(&Obj) -> Value + Copy,
     head_obj: Option<&Obj>,
     change_set_obj: Option<&Obj>,
 ) -> EditFieldResult<(Option<serde_json::Value>, VisibilityDiff)> {
-    let target_value = target_obj.as_deref().map(|o| target_fn(o));
-    let head_value_option = head_obj.as_deref().map(|o| target_fn(o));
-    let change_set_value_option = change_set_obj.as_deref().map(|o| target_fn(o));
+    let target_value = target_obj.map(target_fn);
+    let head_value_option = head_obj.map(target_fn);
+    let change_set_value_option = change_set_obj.map(target_fn);
     let visibility_diff = visibility_diff(
         visibility,
         target_value.as_ref(),

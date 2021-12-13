@@ -48,6 +48,7 @@ impl ResolverFunctionMessage {
     }
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum ResolverFunctionExecutingMessage {
     Heartbeat,

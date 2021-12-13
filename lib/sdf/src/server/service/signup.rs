@@ -11,6 +11,7 @@ use thiserror::Error;
 
 pub mod create_account;
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Error)]
 pub enum SignupError {
     #[error(transparent)]

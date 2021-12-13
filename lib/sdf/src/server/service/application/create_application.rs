@@ -2,8 +2,8 @@ use super::{ApplicationError, ApplicationResult};
 use crate::server::extract::{Authorization, NatsTxn, PgRwTxn};
 use axum::Json;
 use dal::{
-    Component, HistoryActor, StandardModel, Tenancy, Visibility, Workspace,
-    WorkspaceId, WsEvent, WsPayload, NO_CHANGE_SET_PK,
+    Component, HistoryActor, StandardModel, Tenancy, Visibility, Workspace, WorkspaceId, WsEvent,
+    WsPayload, NO_CHANGE_SET_PK,
 };
 use serde::{Deserialize, Serialize};
 

@@ -105,11 +105,11 @@ impl Component {
         let mut schema_tenancy = tenancy.clone();
         schema_tenancy.universal = true;
         let schema_variant =
-            SchemaVariant::get_by_id(&txn, &schema_tenancy, &visibility, &schema_variant_id)
+            SchemaVariant::get_by_id(txn, &schema_tenancy, visibility, schema_variant_id)
                 .await?
                 .ok_or(ComponentError::SchemaVariantNotFound)?;
         let schema = schema_variant
-            .schema(&txn, &visibility)
+            .schema(txn, visibility)
             .await?
             .ok_or(ComponentError::SchemaNotFound)?;
 
@@ -130,28 +130,22 @@ impl Component {
         )
         .await?;
         component
-            .set_schema(&txn, &nats, &visibility, &history_actor, schema.id())
+            .set_schema(txn, nats, visibility, history_actor, schema.id())
             .await?;
         component
-            .set_schema_variant(
-                &txn,
-                &nats,
-                &visibility,
-                &history_actor,
-                schema_variant.id(),
-            )
+            .set_schema_variant(txn, nats, visibility, history_actor, schema_variant.id())
             .await?;
 
         let node = Node::new(
-            &txn,
-            &nats,
-            &tenancy,
-            &visibility,
-            &history_actor,
+            txn,
+            nats,
+            tenancy,
+            visibility,
+            history_actor,
             &NodeKind::Component,
         )
         .await?;
-        node.set_component(&txn, &nats, &visibility, &history_actor, component.id())
+        node.set_component(txn, nats, visibility, history_actor, component.id())
             .await?;
 
         Ok((component, node))
@@ -168,9 +162,9 @@ impl Component {
     ) -> ComponentResult<(Self, Node)> {
         let universal_tenancy = Tenancy::new_universal();
         let schemas = Schema::find_by_attr(
-            &txn,
+            txn,
             &universal_tenancy,
-            &visibility,
+            visibility,
             "name",
             &"application".to_string(),
         )
@@ -180,11 +174,11 @@ impl Component {
             .default_schema_variant_id()
             .ok_or(ComponentError::SchemaVariantNotFound)?;
         let (component, node) = Component::new_for_schema_variant_with_node(
-            &txn,
-            &nats,
-            &tenancy,
-            &visibility,
-            &history_actor,
+            txn,
+            nats,
+            tenancy,
+            visibility,
+            history_actor,
             name,
             schema_variant_id,
         )

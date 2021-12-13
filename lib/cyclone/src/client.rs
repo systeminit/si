@@ -477,7 +477,7 @@ mod tests {
 
     async fn http_client_for_running_server(builder: &mut ConfigBuilder) -> HttpClient {
         let server = http_server(builder).await;
-        let socket = server.local_socket().clone();
+        let socket = *server.local_socket();
         tokio::spawn(async move { server.run().await });
 
         Client::http(socket).expect("failed to create client")

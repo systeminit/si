@@ -6,7 +6,9 @@ use dal::{Component, HistoryActor, StandardModel, Tenancy, Visibility};
 use sdf::service::application::create_application::{
     CreateApplicationRequest, CreateApplicationResponse,
 };
-use sdf::service::application::list_applications::{ListApplicationRequest, ListApplicationResponse};
+use sdf::service::application::list_applications::{
+    ListApplicationRequest, ListApplicationResponse,
+};
 
 #[tokio::test]
 async fn create_application() {
@@ -54,7 +56,7 @@ async fn list_applications() {
         auth_token
     );
     let visibility = Visibility::new_head(false);
-    let tenancy= Tenancy::new_workspace(vec![*nba.workspace.id()]);
+    let tenancy = Tenancy::new_workspace(vec![*nba.workspace.id()]);
     let history_actor = HistoryActor::SystemInit;
 
     let (component, _node) = Component::new_application_with_node(

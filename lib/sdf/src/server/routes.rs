@@ -65,7 +65,10 @@ pub fn routes(
             crate::server::service::change_set::routes(),
         )
         .nest("/api/schema", crate::server::service::schema::routes())
-        .nest("/api/schematic", crate::server::service::schematic::routes())
+        .nest(
+            "/api/schematic",
+            crate::server::service::schematic::routes(),
+        )
         .nest(
             "/api/edit_field",
             crate::server::service::edit_field::routes(),
@@ -95,6 +98,7 @@ pub fn test_routes(mut router: Router) -> Router {
     router
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Error)]
 pub enum AppError {
     #[error(transparent)]

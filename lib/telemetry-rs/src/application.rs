@@ -48,12 +48,14 @@ pub struct Config {
     #[builder(setter(into), default = r#"env!("CARGO_PKG_VERSION").to_string()"#)]
     service_version: String,
 
+    #[allow(dead_code)]
     #[builder(setter(into))]
     service_namespace: String,
 
     #[builder(default)]
     app_modules: Vec<&'static str>,
 
+    #[allow(dead_code)]
     #[builder(
         setter(into, strip_option),
         default = "self.default_log_env_var_prefix()?"

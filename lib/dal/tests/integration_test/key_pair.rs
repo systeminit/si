@@ -98,7 +98,7 @@ async fn public_key_get_current() {
         .await
         .expect("cannot set billing account");
 
-    let pk = PublicKey::get_current(&txn, &tenancy, &visibility, &billing_account.id())
+    let pk = PublicKey::get_current(&txn, &tenancy, &visibility, billing_account.id())
         .await
         .expect("cannot get public key");
 
