@@ -326,46 +326,52 @@ impl EditFieldAble for Socket {
         match edit_field_id.as_ref() {
             "name" => match value {
                 Some(json_value) => {
-                    let value = json_value
-                        .as_str()
-                        .map(|s| s.to_string())
-                        .expect("TODO: value is not a string");
+                    let value = json_value.as_str().map(|s| s.to_string()).ok_or(
+                        Self::Error::EditField(EditFieldError::InvalidValueType("string")),
+                    )?;
                     object
                         .set_name(txn, nats, visibility, history_actor, value)
                         .await?;
                 }
-                None => panic!("TODO: value for name not provided, cannot set value"),
+                None => return Err(EditFieldError::MissingValue.into()),
             },
             "edge_kind" => match value {
                 Some(json_value) => {
-                    let value: SocketEdgeKind = serde_json::from_value(json_value)
-                        .expect("TODO: value is not a SocketEdgeKind");
+                    let value: SocketEdgeKind =
+                        serde_json::from_value(json_value).map_err(|_| {
+                            Self::Error::EditField(EditFieldError::InvalidValueType(
+                                "SocketEdgeKind",
+                            ))
+                        })?;
                     object
                         .set_edge_kind(txn, nats, visibility, history_actor, value)
                         .await?;
                 }
-                None => panic!("TODO: value for name not provided, cannot set value"),
+                None => return Err(EditFieldError::MissingValue.into()),
             },
             "arity" => match value {
                 Some(json_value) => {
-                    let value: SocketArity = serde_json::from_value(json_value)
-                        .expect("TODO: value is not a SocketArity");
+                    let value: SocketArity = serde_json::from_value(json_value).map_err(|_| {
+                        Self::Error::EditField(EditFieldError::InvalidValueType("SocketArity"))
+                    })?;
                     object
                         .set_arity(txn, nats, visibility, history_actor, value)
                         .await?;
                 }
-                None => panic!("TODO: value for name not provided, cannot set value"),
+                None => return Err(EditFieldError::MissingValue.into()),
             },
             "required" => match value {
                 Some(json_value) => {
-                    let value = json_value.as_bool().expect("TODO: value is not a bool");
+                    let value = json_value.as_bool().ok_or(Self::Error::EditField(
+                        EditFieldError::InvalidValueType("boolean"),
+                    ))?;
                     object
                         .set_required(txn, nats, visibility, history_actor, value)
                         .await?;
                 }
-                None => panic!("TODO: value for name not provided, cannot set value"),
+                None => return Err(EditFieldError::MissingValue.into()),
             },
-            invalid => panic!("TODO: invalid field name: {}", invalid),
+            invalid => return Err(EditFieldError::invalid_field(invalid).into()),
         }
 
         Ok(())

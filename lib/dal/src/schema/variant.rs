@@ -250,15 +250,14 @@ impl EditFieldAble for SchemaVariant {
         match edit_field_id.as_ref() {
             "name" => match value {
                 Some(json_value) => {
-                    let value = json_value
-                        .as_str()
-                        .map(|s| s.to_string())
-                        .expect("TODO: value is not a string");
+                    let value = json_value.as_str().map(|s| s.to_string()).ok_or(
+                        Self::Error::EditField(EditFieldError::InvalidValueType("string")),
+                    )?;
                     object
                         .set_name(txn, nats, visibility, history_actor, value)
                         .await?;
                 }
-                None => panic!("TODO: value for name not provided, cannot set value"),
+                None => return Err(EditFieldError::MissingValue.into()),
             },
             "connections.sockets" => {
                 // TODO(fnichol): we're sticking in arbitrary default values--these become required
@@ -278,7 +277,7 @@ impl EditFieldAble for SchemaVariant {
                     .add_type(txn, nats, visibility, history_actor, object.id())
                     .await?;
             }
-            invalid => panic!("TODO: invalid field name: {}", invalid),
+            invalid => return Err(EditFieldError::invalid_field(invalid).into()),
         }
 
         Ok(())

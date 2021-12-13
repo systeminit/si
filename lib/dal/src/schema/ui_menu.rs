@@ -8,8 +8,8 @@ use super::{Schema, SchemaId, SchemaResult};
 use crate::{
     edit_field::{
         value_and_visiblity_diff, value_and_visiblity_diff_option, EditField, EditFieldAble,
-        EditFieldDataType, EditFieldObjectKind, EditFields, RequiredValidator, SelectWidget,
-        TextWidget, Validator, Widget,
+        EditFieldDataType, EditFieldError, EditFieldObjectKind, EditFields, RequiredValidator,
+        SelectWidget, TextWidget, Validator, Widget,
     },
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
     standard_model_many_to_many, HistoryActor, LabelList, SchemaError, SchematicKind,
@@ -213,7 +213,7 @@ impl EditFieldAble for UiMenu {
                         .set_name(txn, nats, visibility, history_actor, value)
                         .await?;
                 }
-                None => panic!("cannot set the value"),
+                None => return Err(EditFieldError::MissingValue.into()),
             },
             "category" => match value {
                 Some(json_value) => {
@@ -222,7 +222,7 @@ impl EditFieldAble for UiMenu {
                         .set_category(txn, nats, visibility, history_actor, value)
                         .await?;
                 }
-                None => panic!("cannot set the value"),
+                None => return Err(EditFieldError::MissingValue.into()),
             },
             "schematic_kind" => match value {
                 Some(json_value) => {
@@ -232,9 +232,9 @@ impl EditFieldAble for UiMenu {
                         .set_schematic_kind(txn, nats, visibility, history_actor, value)
                         .await?;
                 }
-                None => panic!("cannot set the value"),
+                None => return Err(EditFieldError::MissingValue.into()),
             },
-            _ => {}
+            invalid => return Err(EditFieldError::invalid_field(invalid).into()),
         }
         Ok(())
     }
